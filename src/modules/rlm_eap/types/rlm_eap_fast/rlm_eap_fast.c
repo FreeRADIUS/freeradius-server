@@ -73,6 +73,99 @@ static CONF_PARSER submodule_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+static fr_dict_t const *dict_eap_fast;
+
+extern fr_dict_autoload_t rlm_eap_fast_dict[];
+fr_dict_autoload_t rlm_eap_fast_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_eap_fast, .proto = "eap-fast" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_eap_tls_require_client_cert;
+fr_dict_attr_t const *attr_eap_type;
+fr_dict_attr_t const *attr_ms_chap_peer_challenge;
+fr_dict_attr_t const *attr_proxy_to_realm;
+
+fr_dict_attr_t const *attr_eap_message;
+fr_dict_attr_t const *attr_freeradius_proxied_to;
+fr_dict_attr_t const *attr_user_name;
+fr_dict_attr_t const *attr_user_password;
+
+fr_dict_attr_t const *attr_eap_fast_crypto_binding;
+fr_dict_attr_t const *attr_eap_fast_eap_payload;
+fr_dict_attr_t const *attr_eap_fast_error;
+fr_dict_attr_t const *attr_eap_fast_intermediate_result;
+fr_dict_attr_t const *attr_eap_fast_nak;
+fr_dict_attr_t const *attr_eap_fast_pac_a_id;
+fr_dict_attr_t const *attr_eap_fast_pac_a_id_info;
+fr_dict_attr_t const *attr_eap_fast_pac_acknowledge;
+fr_dict_attr_t const *attr_eap_fast_pac_i_id;
+fr_dict_attr_t const *attr_eap_fast_pac_info_a_id;
+fr_dict_attr_t const *attr_eap_fast_pac_info_a_id_info;
+fr_dict_attr_t const *attr_eap_fast_pac_info_i_id;
+fr_dict_attr_t const *attr_eap_fast_pac_info_pac_lifetime;
+fr_dict_attr_t const *attr_eap_fast_pac_info_pac_type;
+fr_dict_attr_t const *attr_eap_fast_pac_info_tlv;
+fr_dict_attr_t const *attr_eap_fast_pac_key;
+fr_dict_attr_t const *attr_eap_fast_pac_lifetime;
+fr_dict_attr_t const *attr_eap_fast_pac_opaque_i_id;
+fr_dict_attr_t const *attr_eap_fast_pac_opaque_pac_key;
+fr_dict_attr_t const *attr_eap_fast_pac_opaque_pac_lifetime;
+fr_dict_attr_t const *attr_eap_fast_pac_opaque_pac_type;
+fr_dict_attr_t const *attr_eap_fast_pac_opaque_tlv;
+fr_dict_attr_t const *attr_eap_fast_pac_tlv;
+fr_dict_attr_t const *attr_eap_fast_pac_type;
+fr_dict_attr_t const *attr_eap_fast_result;
+fr_dict_attr_t const *attr_eap_fast_tlv;
+fr_dict_attr_t const *attr_eap_fast_vendor_specific;
+
+extern fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[] = {
+	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_freeradius_proxied_to, .name = "FreeRADIUS-Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+
+	{ .out = &attr_eap_fast_crypto_binding, .name = "EAP-FAST-Crypto-Binding", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_eap_payload, .name = "EAP-FAST-EAP-Payload", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_error, .name = "EAP-FAST-Error", .type = FR_TYPE_UINT32, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_intermediate_result, .name = "EAP-FAST-Intermediate-Result", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_nak, .name = "EAP-FAST-NAK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_a_id, .name = "EAP-FAST-PAC-A-ID", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_a_id_info, .name = "EAP-FAST-PAC-A-ID-Info", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_acknowledge, .name = "EAP-FAST-PAC-Acknowledge", .type = FR_TYPE_UINT16, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_i_id, .name = "EAP-FAST-PAC-I-ID", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_info_a_id, .name = "EAP-FAST-PAC-Info-A-ID", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_info_a_id_info, .name = "EAP-FAST-PAC-Info-A-ID-Info", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_info_i_id, .name = "EAP-FAST-PAC-Info-I-ID", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_info_pac_lifetime, .name = "EAP-FAST-PAC-Info-PAC-Lifetime", .type = FR_TYPE_UINT32, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_info_pac_type, .name = "EAP-FAST-PAC-Info-PAC-Type", .type = FR_TYPE_UINT16, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_info_tlv, .name = "EAP-FAST-PAC-Info-TLV", .type = FR_TYPE_TLV, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_key, .name = "EAP-FAST-PAC-Key", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_lifetime, .name = "EAP-FAST-PAC-Lifetime", .type = FR_TYPE_UINT32, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_opaque_i_id, .name = "EAP-FAST-PAC-Opaque-I-ID", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_opaque_pac_key, .name = "EAP-FAST-PAC-Opaque-PAC-Key", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_opaque_pac_lifetime, .name = "EAP-FAST-PAC-Opaque-PAC-Lifetime", .type = FR_TYPE_UINT32, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_opaque_pac_type, .name = "EAP-FAST-PAC-Opaque-PAC-Type", .type = FR_TYPE_UINT16, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_opaque_tlv, .name = "EAP-FAST-PAC-Opaque-TLV", .type = FR_TYPE_TLV, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_tlv, .name = "EAP-FAST-PAC-TLV", .type = FR_TYPE_TLV, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_pac_type, .name = "EAP-FAST-PAC-Type", .type = FR_TYPE_UINT16, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_result, .name = "EAP-FAST-Result", .type = FR_TYPE_UINT16, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_tlv, .name = "EAP-FAST-TLV", .type = FR_TYPE_TLV, .dict = &dict_eap_fast },
+	{ .out = &attr_eap_fast_vendor_specific, .name = "EAP-FAST-Vendor-Specific", .type = FR_TYPE_OCTETS, .dict = &dict_eap_fast },
+
+	{ NULL }
+};
+
 /*
  *	Attach the module.
  */
@@ -217,7 +310,6 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	eap_fast_tunnel_t	*t;
 	VALUE_PAIR		*fast_vps = NULL, *vp;
 	vp_cursor_t		cursor;
-	fr_dict_attr_t const	*fast_da;
 	char const		*errmsg;
 	int			dlen, plen;
 	uint16_t		length;
@@ -231,7 +323,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	RDEBUG("PAC provided via ClientHello SessionTicket extension");
 	RHEXDUMP(L_DBG_LVL_MAX, data, len, "PAC-Opaque");
 
-	if ((ntohs(opaque->hdr.type) & EAP_FAST_TLV_TYPE) != PAC_INFO_PAC_OPAQUE) {
+	if ((ntohs(opaque->hdr.type) & EAP_FAST_TLV_TYPE) != attr_eap_fast_pac_opaque_tlv->attr) {
 		errmsg = "PAC is not of type Opaque";
 error:
 		RERROR("%s, sending alert to client", errmsg);
@@ -278,11 +370,8 @@ error:
 
 	RHEXDUMP(L_DBG_LVL_MAX, (uint8_t const *)&opaque_plaintext, plen, "PAC-Opaque plaintext data section");
 
-	fast_da = fr_dict_attr_by_name(NULL, "EAP-FAST-PAC-Opaque-TLV");
-	rad_assert(fast_da != NULL);
-
 	fr_pair_cursor_init(&cursor, &fast_vps);
-	if (eap_fast_decode_pair(tls_session, &cursor, fast_da, (uint8_t *)&opaque_plaintext, plen, NULL) < 0) {
+	if (eap_fast_decode_pair(tls_session, &cursor, attr_eap_fast_pac_opaque_tlv, (uint8_t *)&opaque_plaintext, plen, NULL) < 0) {
 		errmsg = fr_strerror();
 		goto error;
 	}
@@ -290,27 +379,24 @@ error:
 	for (vp = fr_pair_cursor_first(&cursor); vp; vp = fr_pair_cursor_next(&cursor)) {
 		char *value;
 
-		switch (vp->da->attr) {
-		case PAC_INFO_PAC_TYPE:
+		if (vp->da == attr_eap_fast_pac_info_pac_type) {
 			rad_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_uint32;
-			break;
-
-		case PAC_INFO_PAC_LIFETIME:
+		} else if (vp->da == attr_eap_fast_pac_info_pac_lifetime) {
 			rad_assert(t->pac.expires == 0);
 			t->pac.expires = vp->vp_uint32;
 			t->pac.expired = (vp->vp_uint32 <= time(NULL));
-			break;
-
-		case PAC_INFO_PAC_KEY:
+		/*
+		 *	Not sure if this is the correct attr
+		 *	The original enum didn't match a specific TLV nesting level
+		 */
+		} else if (vp->da == attr_eap_fast_pac_key) {
 			rad_assert(t->pac.key == NULL);
 			rad_assert(vp->vp_length == PAC_KEY_LENGTH);
 			t->pac.key = talloc_array(t, uint8_t, PAC_KEY_LENGTH);
 			rad_assert(t->pac.key != NULL);
 			memcpy(t->pac.key, vp->vp_octets, PAC_KEY_LENGTH);
-			break;
-
-		default:
+		} else {
 			value = fr_pair_asprint(tls_session, vp, '"');
 			RERROR("unknown TLV: %s", value);
 			talloc_free(value);
@@ -491,7 +577,7 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_num(eap_session->request->control, 0, FR_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
+	vp = fr_pair_find_by_da(eap_session->request->control, attr_eap_tls_require_client_cert, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {
@@ -526,7 +612,7 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	RFC 4851 section 4.1.1
 	 *	N.B. mandatory/reserved flags are not applicable here
 	 */
-	eap_fast_tlv_append(tls_session, PAC_INFO_A_ID, false, PAC_A_ID_LENGTH, inst->a_id);
+	eap_fast_tlv_append(tls_session, attr_eap_fast_pac_info_a_id, false, PAC_A_ID_LENGTH, inst->a_id);
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS

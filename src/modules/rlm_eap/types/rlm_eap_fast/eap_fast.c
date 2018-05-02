@@ -103,11 +103,11 @@ static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, u
 	RHEXDUMP(L_DBG_LVL_MAX, t->emsk, EAP_EMSK_LEN, "EMSK");
 }
 
-void eap_fast_tlv_append(tls_session_t *tls_session, int tlv, bool mandatory, int length, void const *data)
+void eap_fast_tlv_append(tls_session_t *tls_session, fr_dict_attr_t const *tlv, bool mandatory, int length, void const *data)
 {
 	uint16_t hdr[2];
 
-	hdr[0] = (mandatory) ? htons(tlv | EAP_FAST_TLV_MANDATORY) : htons(tlv);
+	hdr[0] = (mandatory) ? htons(tlv->attr | EAP_FAST_TLV_MANDATORY) : htons(tlv->attr);
 	hdr[1] = htons(length);
 
 	tls_session->record_from_buff(&tls_session->clean_in, &hdr, 4);
@@ -119,23 +119,20 @@ static void eap_fast_send_error(tls_session_t *tls_session, int error)
 	uint32_t value;
 	value = htonl(error);
 
-	eap_fast_tlv_append(tls_session, EAP_FAST_TLV_ERROR, true, sizeof(value), &value);
+	eap_fast_tlv_append(tls_session, attr_eap_fast_error, true, sizeof(value), &value);
 }
 
 static void eap_fast_append_result(tls_session_t *tls_session, FR_CODE code)
 {
-	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
+	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
+	uint16_t		state;
+	fr_dict_attr_t const	*da;
 
-	int type = (t->result_final)
-			? EAP_FAST_TLV_RESULT
-			: EAP_FAST_TLV_INTERMED_RESULT;
 
-	uint16_t state = (code == FR_CODE_ACCESS_REJECT)
-			? EAP_FAST_TLV_RESULT_FAILURE
-			: EAP_FAST_TLV_RESULT_SUCCESS;
-	state = htons(state);
+	da = (t->result_final) ? attr_eap_fast_result : attr_eap_fast_intermediate_result;
+	state = htons((code == FR_CODE_ACCESS_REJECT) ? EAP_FAST_TLV_RESULT_FAILURE : EAP_FAST_TLV_RESULT_SUCCESS);
 
-	eap_fast_tlv_append(tls_session, type, true, sizeof(state), &state);
+	eap_fast_tlv_append(tls_session, da, true, sizeof(state), &state);
 }
 
 static void eap_fast_send_identity_request(REQUEST *request, tls_session_t *tls_session, eap_session_t *eap_session)
@@ -150,7 +147,7 @@ static void eap_fast_send_identity_request(REQUEST *request, tls_session_t *tls_
 	eap_packet.length[1] = EAP_HEADER_LEN + 1;
 	eap_packet.data[0] = FR_EAP_IDENTITY;
 
-	eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, sizeof(eap_packet), &eap_packet);
+	eap_fast_tlv_append(tls_session, attr_eap_fast_eap_payload, true, sizeof(eap_packet), &eap_packet);
 }
 
 static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_session)
@@ -165,30 +162,31 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_sessio
 
 	RDEBUG("Sending Tunnel PAC");
 
-	pac.key.hdr.type = htons(EAP_FAST_TLV_MANDATORY | PAC_INFO_PAC_KEY);
+	pac.key.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_key->attr);
 	pac.key.hdr.length = htons(sizeof(pac.key.data));
 	rad_assert(sizeof(pac.key.data) % sizeof(uint32_t) == 0);
 	RANDFILL(pac.key.data);
 
-	pac.info.lifetime.hdr.type = htons(PAC_INFO_PAC_LIFETIME);
+	pac.info.lifetime.hdr.type = htons(attr_eap_fast_pac_info_pac_lifetime->attr);
 	pac.info.lifetime.hdr.length = htons(sizeof(pac.info.lifetime.data));
 	pac.info.lifetime.data = htonl(time(NULL) + t->pac_lifetime);
 
-	pac.info.a_id.hdr.type = htons(EAP_FAST_TLV_MANDATORY | PAC_INFO_A_ID);
+	pac.info.a_id.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_a_id->attr);
 	pac.info.a_id.hdr.length = htons(sizeof(pac.info.a_id.data));
 	memcpy(pac.info.a_id.data, t->a_id, sizeof(pac.info.a_id.data));
 
-	pac.info.a_id_info.hdr.type = htons(PAC_INFO_A_ID_INFO);
+	pac.info.a_id_info.hdr.type = htons(attr_eap_fast_pac_a_id->attr);
 	pac.info.a_id_info.hdr.length = htons(sizeof(pac.info.a_id_info.data));
-	#define MIN(a,b) (((a)>(b)) ? (b) : (a))
+
+#define MIN(a,b) (((a)>(b)) ? (b) : (a))
 	alen = MIN(talloc_array_length(t->authority_identity) - 1, sizeof(pac.info.a_id_info.data));
 	memcpy(pac.info.a_id_info.data, t->authority_identity, alen);
 
-	pac.info.type.hdr.type = htons(EAP_FAST_TLV_MANDATORY | PAC_INFO_PAC_TYPE);
+	pac.info.type.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_info_pac_type->attr);
 	pac.info.type.hdr.length = htons(sizeof(pac.info.type.data));
 	pac.info.type.data = htons(PAC_TYPE_TUNNEL);
 
-	pac.info.hdr.type = htons(EAP_FAST_TLV_MANDATORY | PAC_INFO_PAC_INFO);
+	pac.info.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_info_tlv->attr);
 	pac.info.hdr.length = htons(sizeof(pac.info.lifetime)
 				+ sizeof(pac.info.a_id)
 				+ sizeof(pac.info.a_id_info)
@@ -207,12 +205,11 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_sessio
 				    t->a_id, PAC_A_ID_LENGTH, t->pac_opaque_key, pac.opaque.iv,
 				    pac.opaque.data, pac.opaque.tag);
 
-	pac.opaque.hdr.type = htons(EAP_FAST_TLV_MANDATORY | PAC_INFO_PAC_OPAQUE);
+	pac.opaque.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_opaque_tlv->attr);
 	pac.opaque.hdr.length = htons(sizeof(pac.opaque) - sizeof(pac.opaque.hdr) - sizeof(pac.opaque.data) + dlen);
 	RHEXDUMP(L_DBG_LVL_MAX, (uint8_t const *)&pac.opaque, sizeof(pac.opaque) - sizeof(pac.opaque.data) + dlen, "PAC-Opaque");
 
-	eap_fast_tlv_append(tls_session, EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_PAC, true,
-			    sizeof(pac) - sizeof(pac.opaque.data) + dlen, &pac);
+	eap_fast_tlv_append(tls_session, attr_eap_fast_pac_tlv, true, sizeof(pac) - sizeof(pac.opaque.data) + dlen, &pac);
 }
 
 static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_session)
@@ -223,7 +220,7 @@ static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 
 	RDEBUG("Sending Cryptobinding");
 
-	binding.tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
+	binding.tlv_type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_crypto_binding->attr);
 	binding.length = htons(len);
 	binding.version = EAP_FAST_VERSION;
 	binding.received_version = EAP_FAST_VERSION;	/* FIXME use the clients value */
@@ -239,8 +236,10 @@ static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	fr_hmac_sha1(binding.compound_mac, (uint8_t *)&binding, sizeof(binding), t->cmk, EAP_FAST_CMK_LEN);
 	RHEXDUMP(L_DBG_LVL_MAX, binding.compound_mac, sizeof(binding.compound_mac), "Compound MAC");
 
-	eap_fast_tlv_append(tls_session, EAP_FAST_TLV_CRYPTO_BINDING, true, len, &binding.reserved);
+	eap_fast_tlv_append(tls_session, attr_eap_fast_crypto_binding, true, len, &binding.reserved);
 }
+
+#define EAP_FAST_TLV_MAX 11
 
 static int eap_fast_verify(REQUEST *request, tls_session_t *tls_session, uint8_t const *data, unsigned int data_len)
 {
@@ -263,34 +262,32 @@ static int eap_fast_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 		memcpy(&attr, data, sizeof(attr));
 		attr = ntohs(attr) & EAP_FAST_TLV_TYPE;
 
-		switch (attr) {
-		case EAP_FAST_TLV_RESULT:
-		case EAP_FAST_TLV_NAK:
-		case EAP_FAST_TLV_ERROR:
-		case EAP_FAST_TLV_VENDOR_SPECIFIC:
-		case EAP_FAST_TLV_EAP_PAYLOAD:
-		case EAP_FAST_TLV_INTERMED_RESULT:
-		case EAP_FAST_TLV_PAC:
-		case EAP_FAST_TLV_CRYPTO_BINDING:
+		if ((attr == attr_eap_fast_result->attr) ||
+		    (attr == attr_eap_fast_nak->attr) ||
+		    (attr == attr_eap_fast_error->attr) ||
+		    (attr == attr_eap_fast_vendor_specific->attr) ||
+		    (attr == attr_eap_fast_eap_payload->attr) ||
+		    (attr == attr_eap_fast_intermediate_result->attr) ||
+		    (attr == attr_eap_fast_pac_tlv->attr) ||
+		    (attr == attr_eap_fast_crypto_binding->attr)) {
 			num[attr]++;
 			present |= 1 << attr;
 
-			if (num[EAP_FAST_TLV_EAP_PAYLOAD] > 1) {
+			if (num[attr_eap_fast_eap_payload->attr] > 1) {
 				RDEBUG("Too many EAP-Payload TLVs");
 unexpected:
-				for (int i = 0; i < EAP_FAST_TLV_MAX; i++)
-					if (present & (1 << i))
-						RDEBUG(" - attribute %d is present", i);
+				for (int i = 0; i < EAP_FAST_TLV_MAX; i++) {
+					if (present & (1 << i)) RDEBUG(" - attribute %d is present", i);
+				}
 				eap_fast_send_error(tls_session, EAP_FAST_ERR_UNEXPECTED_TLV);
 				return 0;
 			}
 
-			if (num[EAP_FAST_TLV_INTERMED_RESULT] > 1) {
+			if (num[attr_eap_fast_intermediate_result->attr] > 1) {
 				RDEBUG("Too many Intermediate-Result TLVs");
 				goto unexpected;
 			}
-			break;
-		default:
+		} else {
 			if ((data[0] & 0x80) != 0) {
 				RDEBUG("Unknown mandatory TLV %02x", attr);
 				goto unexpected;
@@ -330,7 +327,7 @@ unexpected:
 		 * authentication process before allocating
 		 * memory.
 		 */
-		if ((attr == EAP_FAST_TLV_INTERMED_RESULT) || (attr == EAP_FAST_TLV_RESULT)) {
+		if ((attr == attr_eap_fast_intermediate_result->attr) || (attr == attr_eap_fast_result->attr)) {
 			uint16_t status;
 
 			if (length < 2) {
@@ -362,12 +359,12 @@ unexpected:
 	/*
 	 * Check if the peer mixed & matched TLVs.
 	 */
-	if ((num[EAP_FAST_TLV_NAK] > 0) && (num[EAP_FAST_TLV_NAK] != total)) {
+	if ((num[attr_eap_fast_nak->attr] > 0) && (num[attr_eap_fast_nak->attr] != total)) {
 		RDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request.");
 		goto unexpected;
 	}
 
-	if (num[EAP_FAST_TLV_INTERMED_RESULT] > 0 && num[EAP_FAST_TLV_RESULT]) {
+	if (num[attr_eap_fast_intermediate_result->attr] > 0 && num[attr_eap_fast_intermediate_result->attr]) {
 		RDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request.");
 		goto unexpected;
 	}
@@ -383,7 +380,7 @@ unexpected:
 		}
 		break;
 	case EAP_FAST_AUTHENTICATION:
-		if (present != 1 << EAP_FAST_TLV_EAP_PAYLOAD) {
+		if (present != 1 << attr_eap_fast_eap_payload->attr) {
 			RDEBUG("Unexpected TLVs in authentication stage");
 			goto unexpected;
 		}
@@ -391,16 +388,16 @@ unexpected:
 	case EAP_FAST_CRYPTOBIND_CHECK:
 	{
 		uint32_t bits = (t->result_final)
-				? 1 << EAP_FAST_TLV_RESULT
-				: 1 << EAP_FAST_TLV_INTERMED_RESULT;
-		if (present & ~(bits | (1 << EAP_FAST_TLV_CRYPTO_BINDING) | (1 << EAP_FAST_TLV_PAC))) {
+				? 1 << attr_eap_fast_result->attr
+				: 1 << attr_eap_fast_intermediate_result->attr;
+		if (present & ~(bits | (1 << attr_eap_fast_crypto_binding->attr) | (1 << attr_eap_fast_pac_tlv->attr))) {
 			RDEBUG("Unexpected TLVs in cryptobind checking stage");
 			goto unexpected;
 		}
 		break;
 	}
 	case EAP_FAST_PROVISIONING:
-		if (present & ~((1 << EAP_FAST_TLV_PAC) | (1 << EAP_FAST_TLV_RESULT))) {
+		if (present & ~((1 << attr_eap_fast_pac_tlv->attr) | (1 << attr_eap_fast_result->attr))) {
 			RDEBUG("Unexpected TLVs in provisioning stage");
 			goto unexpected;
 		}
@@ -543,8 +540,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		 */
 		(void) fr_pair_cursor_init(&cursor, &reply->vps);
 
-		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_EAP_MESSAGE, TAG_ANY)) != NULL) {
-			eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
+		while ((vp = fr_pair_cursor_next_by_da(&cursor, attr_eap_message, TAG_ANY)) != NULL) {
+			eap_fast_tlv_append(tls_session, attr_eap_fast_eap_payload, true, vp->vp_length, vp->vp_octets);
 		}
 
 		rcode = RLM_MODULE_HANDLED;
@@ -582,7 +579,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	 * Add the tunneled attributes to the fake request.
 	 */
 
-	fake->packet->vps = fr_pair_afrom_num(fake->packet, 0, FR_EAP_MESSAGE);
+	fake->packet->vps = fr_pair_afrom_da(fake->packet, attr_eap_message);
 	fr_pair_value_memcpy(fake->packet->vps, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length);
 
 	RDEBUG("Got tunneled request");
@@ -591,13 +588,14 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	/*
 	 * Tell the request that it's a fake one.
 	 */
-	fr_pair_make(fake->packet, &fake->packet->vps, "Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
+	MEM(vp = fr_pair_add_by_da(fake->packet, &fake->packet->vps, attr_freeradius_proxied_to, 0));
+	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"));
 
 	/*
 	 * Update other items in the REQUEST data structure.
 	 */
-	fake->username = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_NAME, TAG_ANY);
-	fake->password = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
+	fake->username = fr_pair_find_by_da(fake->packet->vps, attr_user_name, TAG_ANY);
+	fake->password = fr_pair_find_by_da(fake->packet->vps, attr_user_password, TAG_ANY);
 
 	/*
 	 * No User-Name, try to create one from stored data.
@@ -608,7 +606,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		 * an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_num(fake->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
+			vp = fr_pair_find_by_da(fake->packet->vps, attr_eap_message, TAG_ANY);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
@@ -617,13 +615,11 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 				/*
 				 * Create & remember a User-Name
 				 */
-				t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
-				rad_assert(t->username != NULL);
+				MEM(t->username = fr_pair_afrom_da(t, attr_user_name));
 				t->username->vp_tainted = true;
-
 				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
-				RDEBUG("Got tunneled identity of %s", t->username->vp_strvalue);
+				RDEBUG("Got tunneled identity of %pV", &t->username->data);
 			} else {
 				/*
 				 * Don't reject the request outright,
@@ -637,14 +633,14 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		if (t->username) {
 			vp = fr_pair_list_copy(fake->packet, t->username);
 			fr_pair_add(&fake->packet->vps, vp);
-			fake->username = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+			fake->username = fr_pair_find_by_da(fake->packet->vps, attr_user_name, TAG_ANY);
 		}
 	} /* else the request ALREADY had a User-Name */
 
 	if (t->stage == EAP_FAST_AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
 		VALUE_PAIR *tvp;
 
-		tvp = fr_pair_afrom_num(fake, 0, FR_EAP_TYPE);
+		tvp = fr_pair_afrom_da(fake, attr_eap_type);
 		tvp->vp_uint32 = t->default_provisioning_method;
 		fr_pair_add(&fake->control, tvp);
 
@@ -676,7 +672,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
+		vp = fr_pair_find_by_da(fake->control, attr_proxy_to_realm, TAG_ANY);
 		if (vp) {
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
@@ -816,27 +812,21 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 		FR_CODE code = FR_CODE_ACCESS_REJECT;
 		char *value;
 
-		switch (vp->da->parent->attr) {
-		case FR_EAP_FAST_TLV:
-			switch (vp->da->attr) {
-			case EAP_FAST_TLV_EAP_PAYLOAD:
+		if (vp->da->parent == attr_eap_fast_tlv) {
+			if (vp->da == attr_eap_fast_eap_payload) {
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
-				if (code == FR_CODE_ACCESS_ACCEPT)
-					t->stage = EAP_FAST_CRYPTOBIND_CHECK;
-				break;
-			case EAP_FAST_TLV_RESULT:
-			case EAP_FAST_TLV_INTERMED_RESULT:
+				if (code == FR_CODE_ACCESS_ACCEPT) t->stage = EAP_FAST_CRYPTOBIND_CHECK;
+			} else if ((vp->da == attr_eap_fast_result) ||
+				   (vp->da == attr_eap_fast_intermediate_result)) {
 				code = FR_CODE_ACCESS_ACCEPT;
 				t->stage = EAP_FAST_PROVISIONING;
-				break;
-			default:
+			} else {
 				value = fr_pair_asprint(request->packet, vp, '"');
 				RDEBUG2("ignoring unknown %s", value);
 				talloc_free(value);
 				continue;
 			}
-			break;
-		case EAP_FAST_TLV_CRYPTO_BINDING:
+		} else if (vp->da->parent == attr_eap_fast_crypto_binding) {
 			binding = &my_binding;
 
 			/*
@@ -867,39 +857,35 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 				break;
 			}
 			continue;
-		case EAP_FAST_TLV_PAC:
-			switch (vp->da->attr) {
-			case PAC_INFO_PAC_ACK:
+		} else if (vp->da->parent == attr_eap_fast_pac_tlv) {
+			if (vp->da == attr_eap_fast_pac_acknowledge) {
 				if (vp->vp_uint32 == EAP_FAST_TLV_RESULT_SUCCESS) {
 					code = FR_CODE_ACCESS_ACCEPT;
 					t->pac.expires = UINT32_MAX;
 					t->pac.expired = false;
 					t->stage = EAP_FAST_COMPLETE;
 				}
-				break;
-			case PAC_INFO_PAC_TYPE:
+			} else if (vp->da == attr_eap_fast_pac_info_pac_type) {
 				if (vp->vp_uint32 != PAC_TYPE_TUNNEL) {
 					RDEBUG("only able to serve Tunnel PAC's, ignoring request");
 					continue;
 				}
 				t->pac.send = true;
 				continue;
-			default:
+			} else {
 				value = fr_pair_asprint(request->packet, vp, '"');
 				RDEBUG2("ignoring unknown EAP-FAST-PAC-TLV %s", value);
 				talloc_free(value);
 				continue;
 			}
-			break;
-		default:
+		} else {
 			value = fr_pair_asprint(request->packet, vp, '"');
 			RDEBUG2("ignoring non-EAP-FAST TLV %s", value);
 			talloc_free(value);
 			continue;
 		}
 
-		if (code == FR_CODE_ACCESS_REJECT)
-			return FR_CODE_ACCESS_REJECT;
+		if (code == FR_CODE_ACCESS_REJECT) return FR_CODE_ACCESS_REJECT;
 	}
 
 	if (binding) {
@@ -975,7 +961,7 @@ FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	}
 
 	fr_pair_cursor_init(&cursor, &fast_vps);
-	if (eap_fast_decode_pair(request, &cursor, fr_dict_attr_by_num(NULL, 0, FR_EAP_FAST_TLV),
+	if (eap_fast_decode_pair(request, &cursor, attr_eap_fast_tlv,
 				 data, data_len, NULL) < 0) return FR_CODE_ACCESS_REJECT;
 
 	RDEBUG("Got Tunneled FAST TLVs");
@@ -1038,10 +1024,10 @@ FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		 * it would be a great idea to flip the recv/send keys around
 		 */
 		#define EAPTLS_MPPE_KEY_LEN 32
-		eap_add_reply(request, "MS-MPPE-Recv-Key", t->msk, EAPTLS_MPPE_KEY_LEN);
-		eap_add_reply(request, "MS-MPPE-Send-Key", &t->msk[EAPTLS_MPPE_KEY_LEN], EAPTLS_MPPE_KEY_LEN);
-		eap_add_reply(request, "EAP-MSK", t->msk, EAP_FAST_KEY_LEN);
-		eap_add_reply(request, "EAP-EMSK", t->emsk, EAP_EMSK_LEN);
+		eap_add_reply(request, attr_ms_mppe_recv_key, t->msk, EAPTLS_MPPE_KEY_LEN);
+		eap_add_reply(request, attr_ms_mppe_send_key, &t->msk[EAPTLS_MPPE_KEY_LEN], EAPTLS_MPPE_KEY_LEN);
+		eap_add_reply(request, attr_eap_msk, t->msk, EAP_FAST_KEY_LEN);
+		eap_add_reply(request, attr_eap_emsk, t->emsk, EAP_EMSK_LEN);
 
 		break;
 

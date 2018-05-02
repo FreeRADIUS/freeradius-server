@@ -47,7 +47,7 @@ RCSIDH(eap_fast_h, "$Id$")
 #define EAP_FAST_TLV_RESULT_SUCCESS		1
 #define EAP_FAST_TLV_RESULT_FAILURE		2
 
-typedef enum eap_fast_stage_t {
+typedef enum {
 	EAP_FAST_TLS_SESSION_HANDSHAKE = 0,
 	EAP_FAST_AUTHENTICATION,
 	EAP_FAST_CRYPTOBIND_CHECK,
@@ -55,28 +55,14 @@ typedef enum eap_fast_stage_t {
 	EAP_FAST_COMPLETE
 } eap_fast_stage_t;
 
-typedef enum eap_fast_auth_type {
+typedef enum {
 	EAP_FAST_UNKNOWN = 0,
 	EAP_FAST_PROVISIONING_ANON,
 	EAP_FAST_PROVISIONING_AUTH,
 	EAP_FAST_NORMAL_AUTH
 } eap_fast_auth_type_t;
 
-typedef enum eap_fast_pac_info_attr_type_t {
-	PAC_INFO_PAC_KEY = 1,	// 1
-	PAC_INFO_PAC_OPAQUE,	// 2
-	PAC_INFO_PAC_LIFETIME,	// 3
-	PAC_INFO_A_ID,		// 4
-	PAC_INFO_I_ID,		// 5
-	PAC_INFO_PAC_RESERVED6,	// 6
-	PAC_INFO_A_ID_INFO,	// 7
-	PAC_INFO_PAC_ACK,	// 8
-	PAC_INFO_PAC_INFO,	// 9
-	PAC_INFO_PAC_TYPE,	// 10
-	PAC_INFO_MAX
-} eap_fast_pac_info_attr_type_t;
-
-typedef enum eap_fast_pac_type_t {
+typedef enum {
 	PAC_TYPE_TUNNEL = 1,	// 1
 	PAC_TYPE_MACHINE_AUTH,	// 2
 	PAC_TYPE_USER_AUTHZ,	// 3
@@ -163,31 +149,6 @@ typedef struct eap_tlv_crypto_binding_tlv_t {
         uint8_t compound_mac[20];
 } CC_HINT(__packed__) eap_tlv_crypto_binding_tlv_t;
 
-typedef enum eap_fast_tlv_type_t {
-	EAP_FAST_TLV_RESERVED_0 = 0,	// 0
-	EAP_FAST_TLV_RESERVED_1,  	// 1
-	EAP_FAST_TLV_RESERVED_2,  	// 2
-	EAP_FAST_TLV_RESULT,     	// 3
-	EAP_FAST_TLV_NAK,        	// 4
-	EAP_FAST_TLV_ERROR,      	// 5
-	EAP_FAST_TLV_RESERVED6,  	// 6
-	EAP_FAST_TLV_VENDOR_SPECIFIC,	// 7
-	EAP_FAST_TLV_RESERVED8,		// 8
-	EAP_FAST_TLV_EAP_PAYLOAD,       // 9
-	EAP_FAST_TLV_INTERMED_RESULT,	// 10
-	EAP_FAST_TLV_PAC,		// 11
-	EAP_FAST_TLV_CRYPTO_BINDING,	// 12
-	EAP_FAST_TLV_RESERVED_13,	// 13
-	EAP_FAST_TLV_RESERVED_14, 	// 14
-	EAP_FAST_TLV_RESERVED_15, 	// 15
-	EAP_FAST_TLV_RESERVED_16,	// 16
-	EAP_FAST_TLV_RESERVED_17, 	// 17
-	EAP_FAST_TLV_TRUSTED_ROOT, 	// 18
-	EAP_FAST_TLV_REQ_ACTION, 	// 19
-	EAP_FAST_TLV_PKCS,		// 20
-	EAP_FAST_TLV_MAX
-} eap_fast_tlv_type_t;
-
 typedef enum eap_fast_tlv_crypto_binding_tlv_subtype_t {
 	EAP_FAST_TLV_CRYPTO_BINDING_SUBTYPE_REQUEST = 0,	// 0
 	EAP_FAST_TLV_CRYPTO_BINDING_SUBTYPE_RESPONSE		// 1
@@ -243,10 +204,48 @@ typedef struct eap_fast_tunnel_t {
 	char const	*virtual_server;
 } eap_fast_tunnel_t;
 
+extern fr_dict_attr_t const *attr_eap_tls_require_client_cert;
+extern fr_dict_attr_t const *attr_eap_type;
+extern fr_dict_attr_t const *attr_ms_chap_peer_challenge;
+extern fr_dict_attr_t const *attr_proxy_to_realm;
+
+extern fr_dict_attr_t const *attr_eap_message;
+extern fr_dict_attr_t const *attr_freeradius_proxied_to;
+extern fr_dict_attr_t const *attr_user_name;
+extern fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_t const *attr_eap_fast_crypto_binding;
+extern fr_dict_attr_t const *attr_eap_fast_eap_payload;
+extern fr_dict_attr_t const *attr_eap_fast_error;
+extern fr_dict_attr_t const *attr_eap_fast_intermediate_result;
+extern fr_dict_attr_t const *attr_eap_fast_nak;
+extern fr_dict_attr_t const *attr_eap_fast_pac_a_id;
+extern fr_dict_attr_t const *attr_eap_fast_pac_a_id_info;
+extern fr_dict_attr_t const *attr_eap_fast_pac_acknowledge;
+extern fr_dict_attr_t const *attr_eap_fast_pac_i_id;
+extern fr_dict_attr_t const *attr_eap_fast_pac_info_a_id;
+extern fr_dict_attr_t const *attr_eap_fast_pac_info_a_id_info;
+extern fr_dict_attr_t const *attr_eap_fast_pac_info_i_id;
+extern fr_dict_attr_t const *attr_eap_fast_pac_info_pac_lifetime;
+extern fr_dict_attr_t const *attr_eap_fast_pac_info_pac_type;
+extern fr_dict_attr_t const *attr_eap_fast_pac_info_tlv;
+extern fr_dict_attr_t const *attr_eap_fast_pac_key;
+extern fr_dict_attr_t const *attr_eap_fast_pac_lifetime;
+extern fr_dict_attr_t const *attr_eap_fast_pac_opaque_i_id;
+extern fr_dict_attr_t const *attr_eap_fast_pac_opaque_pac_key;
+extern fr_dict_attr_t const *attr_eap_fast_pac_opaque_pac_lifetime;
+extern fr_dict_attr_t const *attr_eap_fast_pac_opaque_pac_type;
+extern fr_dict_attr_t const *attr_eap_fast_pac_opaque_tlv;
+extern fr_dict_attr_t const *attr_eap_fast_pac_tlv;
+extern fr_dict_attr_t const *attr_eap_fast_pac_type;
+extern fr_dict_attr_t const *attr_eap_fast_result;
+extern fr_dict_attr_t const *attr_eap_fast_tlv;
+extern fr_dict_attr_t const *attr_eap_fast_vendor_specific;
+
 /*
  *	Process the FAST portion of an EAP-FAST request.
  */
-void eap_fast_tlv_append(tls_session_t *tls_session, int tlv, bool mandatory,
+void eap_fast_tlv_append(tls_session_t *tls_session, fr_dict_attr_t const *da, bool mandatory,
 			 int length, const void *data) CC_HINT(nonnull);
 FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session) CC_HINT(nonnull);
 
