@@ -1,7 +1,7 @@
 TARGET := libfreeradius-eap.a
 
 SOURCES	:= \
-	eapcommon.c\
+	eap_base.c\
 	eap_chbind.c
 
 ifneq (${OPENSSL_LIBS},)

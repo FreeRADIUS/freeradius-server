@@ -66,6 +66,31 @@ RCSID("$Id$")
 #include "eap_types.h"
 #include "eap.h"
 
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t eap_base_dict[];
+fr_dict_autoload_t eap_base_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_eap_msk;
+fr_dict_attr_t const *attr_eap_emsk;
+
+fr_dict_attr_t const *attr_ms_mppe_send_key;
+fr_dict_attr_t const *attr_ms_mppe_recv_key;
+
+extern fr_dict_attr_autoload_t eap_base_dict_attr[];
+fr_dict_attr_autoload_t eap_base_dict_attr[] = {
+	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_emsk, .name = "EAP-EMSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+
+	{ NULL }
+};
+
 /** Return an EAP-Type for a particular name
  *
  * Converts a name into an IANA EAP type.
@@ -308,17 +333,11 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 /*
  *	Add raw hex data to the reply.
  */
-void eap_add_reply(REQUEST *request,
-		   char const *name, uint8_t const *value, int len)
+void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, int len)
 {
 	VALUE_PAIR *vp;
 
-	vp = pair_make_reply(name, NULL, T_OP_EQ);
-	if (!vp) {
-		RPEDEBUG("Did not create attribute %s", name);
-		return;
-	}
-
+	MEM(vp = pair_update_reply(da, 0));
 	fr_pair_value_memcpy(vp, value, len);
 
 	RINDENT();
@@ -399,3 +418,21 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	return rcode;
 }
 
+/** Initialise the lib eap base library
+ *
+ */
+int eap_base_init(void)
+{
+	if (fr_dict_autoload(eap_base_dict) < 0) return -1;
+	if (fr_dict_attr_autoload(eap_base_dict_attr) < 0) return -1;
+
+	return 0;
+}
+
+/** De-init the lib eap base library
+ *
+ */
+void eap_base_free(void)
+{
+	fr_dict_autofree(eap_base_dict);
+}

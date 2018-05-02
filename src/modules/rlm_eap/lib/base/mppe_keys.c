@@ -28,9 +28,11 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <string.h>
 
-#include "eap_tls.h"
+
 #include <openssl/hmac.h>
 #include <freeradius-devel/sha1.h>
+#include "eap_tls.h"
+#include "eap_base.h"
 
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
@@ -227,12 +229,12 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 
 	RDEBUG2("Adding session keys");
 	p = out;
-	eap_add_reply(request, "MS-MPPE-Recv-Key", p, EAP_TLS_MPPE_KEY_LEN);
+	eap_add_reply(request, attr_ms_mppe_recv_key, p, EAP_TLS_MPPE_KEY_LEN);
 	p += EAP_TLS_MPPE_KEY_LEN;
-	eap_add_reply(request, "MS-MPPE-Send-Key", p, EAP_TLS_MPPE_KEY_LEN);
+	eap_add_reply(request, attr_ms_mppe_send_key, p, EAP_TLS_MPPE_KEY_LEN);
 
-	eap_add_reply(request, "EAP-MSK", out, 64);
-	eap_add_reply(request, "EAP-EMSK", out + 64, 64);
+	eap_add_reply(request, attr_eap_msk, out, 64);
+	eap_add_reply(request, attr_eap_emsk, out + 64, 64);
 }
 
 

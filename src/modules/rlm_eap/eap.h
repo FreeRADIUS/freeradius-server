@@ -28,6 +28,7 @@ RCSIDH(eap_h, "$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
+#include "lib/base/eap_base.h"
 #include "eap_types.h"
 
 /* TLS configuration name */
@@ -44,8 +45,6 @@ typedef struct eap_round {
 	eap_packet_t	*request;			//!< Packet we will send to the peer.
 	bool		set_request_id;			//!< Whether the EAP-Method already set the next request ID.
 } eap_round_t;
-
-typedef struct _eap_session eap_session_t;
 
 /*
  *	Function to process EAP packets.
@@ -120,6 +119,3 @@ typedef struct eap_tunnel_data_t {
 	void			*tls_session;
 	eap_tunnel_callback_t	callback;
 } eap_tunnel_data_t;
-
-rlm_rcode_t	eap_virtual_server(REQUEST *request, REQUEST *fake,
-				   eap_session_t *eap_session, char const *virtual_server);

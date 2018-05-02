@@ -522,9 +522,9 @@ static int eap_aka_send_eap_success(eap_session_t *eap_session)
 	eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 
 	p = eap_aka_session->keys.msk;
-	eap_add_reply(eap_session->request, "MS-MPPE-Recv-Key", p, EAP_TLS_MPPE_KEY_LEN);
+	eap_add_reply(eap_session->request, attr_ms_mppe_recv_key, p, EAP_TLS_MPPE_KEY_LEN);
 	p += EAP_TLS_MPPE_KEY_LEN;
-	eap_add_reply(eap_session->request, "MS-MPPE-Send-Key", p, EAP_TLS_MPPE_KEY_LEN);
+	eap_add_reply(eap_session->request, attr_ms_mppe_send_key, p, EAP_TLS_MPPE_KEY_LEN);
 
 	return 0;
 }

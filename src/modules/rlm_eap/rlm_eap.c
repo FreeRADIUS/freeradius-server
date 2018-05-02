@@ -1043,6 +1043,23 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
+static int mod_load(void)
+{
+	rlm_eap_t	instance = { .name = "global" };
+	rlm_eap_t	*inst = &instance;
+
+	if (eap_base_init() < 0) {
+		PERROR("Failed initialising EAP base library");
+		return -1;
+	}
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	eap_base_free();
+}
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -1052,6 +1069,8 @@ rad_module_t rlm_eap = {
 	.name		= "eap",
 	.inst_size	= sizeof(rlm_eap_t),
 	.config		= module_config,
+	.load		= mod_load,
+	.unload		= mod_unload,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {

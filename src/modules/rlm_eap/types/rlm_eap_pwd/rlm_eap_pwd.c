@@ -400,8 +400,8 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		/*
 		 *	Return the MSK (in halves).
 		 */
-		eap_add_reply(eap_session->request, "MS-MPPE-Recv-Key", msk, MPPE_KEY_LEN);
-		eap_add_reply(eap_session->request, "MS-MPPE-Send-Key", msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
+		eap_add_reply(eap_session->request, attr_ms_mppe_recv_key, msk, MPPE_KEY_LEN);
+		eap_add_reply(eap_session->request, attr_ms_mppe_send_key, msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
 
 		rcode = RLM_MODULE_FAIL;
 		break;
