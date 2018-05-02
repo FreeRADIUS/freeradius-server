@@ -955,15 +955,9 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
 #if 0
 static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
-	fr_dict_autoload_t const *p = *((fr_dict_autoload_t **)symbol);
-
-	while ((p++)->out) {
-		DEBUG2("%s: Loading %s dictionary", module->name, p->proto);
-
-		if (fr_dict_autoload(p) < 0) {
-			ERROR("Failed loading dictionary: %s", fr_strerror());
-			return -1;
-		}
+	if (fr_dict_autoload(*((fr_dict_autoload_t **)symbol)) < 0) {
+		ERROR("Failed loading dictionary: %s", fr_strerror());
+		return -1;
 	}
 
 	return 0;
@@ -977,12 +971,7 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
  */
 static void _module_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
-	fr_dict_autoload_t const *p = ((fr_dict_autoload_t *)symbol);
-
-	while (p->proto) {
-		fr_dict_autofree(p);
-		p++;
-	}
+	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
 }
 #endif
 
@@ -997,15 +986,9 @@ static void _module_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSE
  */
 static int _module_dict_attr_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
-	fr_dict_attr_autoload_t const *p = (fr_dict_attr_autoload_t *)symbol;
-
-	while (p->out) {
-		DEBUG4("%s: Resolving attr %s", module->name, p->name);
-		if (fr_dict_attr_autoload(p) < 0) {
-			ERROR("%s: %s", module->name, fr_strerror());
-			return -1;
-		}
-		p++;
+	if (fr_dict_attr_autoload((fr_dict_attr_autoload_t *)symbol) < 0) {
+		ERROR("%s: %s", module->name, fr_strerror());
+		return -1;
 	}
 
 	return 0;
