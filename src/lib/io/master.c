@@ -843,7 +843,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
 	fr_io_instance_t *inst;
-	ssize_t packet_len;
+	ssize_t packet_len = -1;
 	fr_time_t recv_time;
 	fr_io_client_t *client;
 	fr_io_address_t address;
@@ -1286,7 +1286,7 @@ have_client:
 			 *	Allocate the pending packet structure.
 			 */
 			pending = fr_io_pending_alloc(client, buffer, packet_len,
-							     track, *priority);
+						      track, *priority);
 			if (!pending) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(client->src_ipaddr), 0);
 				DEBUG("Failed tracking packet from client %s - discarding packet", src_buf);
