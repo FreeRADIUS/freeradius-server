@@ -564,8 +564,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 				return NULL;
 			}
 		} else {
-			// @todo TCP - define this.  It's essentially open(), but sets FDs
-//			inst->app_io->fd_set(connection->app_io_instance, fd)
+			inst->app_io->fd_set(connection->app_io_instance, fd);
 		}
 
 		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(connection->address->src_ipaddr), 0);

@@ -114,6 +114,7 @@ typedef struct fr_app_io_t {
 	fr_io_open_t			open;		//!< Open a new socket for listening, or accept/connect a new
 							//!< connection.
 	fr_io_get_fd_t			fd;		//!< Return the file descriptor from the instance.
+	fr_io_set_fd_t			fd_set;		//!< Set the file descriptor to the instance.
 	fr_io_data_read_t		read;		//!< Read from a socket to a data buffer
 	fr_io_data_write_t		write;		//!< Write from a data buffer to a socket
 	fr_io_data_inject_t		inject;		//!< Inject a packet into a socket.
