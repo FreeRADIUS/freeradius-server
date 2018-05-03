@@ -337,6 +337,33 @@ error:
 #undef DUP_FIELD
 
 
+/** Count the number of connections used by active clients.
+ *
+ *  Unfortunately, we also count NAK'd connections, too, even if they
+ *  are closed.  The alternative is to walk through all connections
+ *  for each client, which would be a long time.
+ */
+static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED int keylen, void *data)
+{
+	fr_io_client_t *client = data;
+	int connections;
+
+	/*
+	 *	This client has no connections, skip the mutex lock.
+	 */
+	if (!client->ht) return 0;
+
+	rad_assert(client->use_connected);
+
+	pthread_mutex_lock(&client->mutex);
+	connections = fr_hash_table_num_elements(client->ht);
+	pthread_mutex_unlock(&client->mutex);
+
+	*((uint32_t *) ctx) += connections;
+
+	return 0;
+}
+
 /** Create a new connection.
  *
  *  Called ONLY from the master socket.
@@ -361,6 +388,24 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	 *	called when the instance data is freed.
 	 */
 	if (!nak) {
+		if (inst->max_connections) {
+			/*
+			 *	We've hit the connection limit.  Walk
+			 *	over all clients with connections, and
+			 *	count the number of connections used.
+			 */
+			if (inst->num_connections >= inst->max_connections) {
+				inst->num_connections = 0;
+
+				(void) fr_trie_walk(inst->trie, &inst->num_connections, count_connections);
+
+				if ((inst->num_connections + 1) >= inst->max_connections) {
+					DEBUG("Too many open connections.  Ignoring dynamic client %s.  Discarding packet.", client->radclient->shortname);
+					return NULL;
+				}
+			}
+		}
+
 		if (dl_instance(NULL, &dl_inst, NULL, inst->dl_inst, inst->transport, DL_TYPE_SUBMODULE) < 0) {
 			DEBUG("Failed to find proto_%s_%s", inst->app->name, inst->transport);
 			return NULL;
@@ -559,6 +604,16 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		talloc_free(dl_inst);
 		return NULL;
 	}
+
+	/*
+	 *	We have one more connection.  Note that we do
+	 *	NOT decrement this counter when a connection
+	 *	closes, as the close is done in a child
+	 *	thread.  Instead, we just let counter hit the
+	 *	limit, and then walk over the clients to reset
+	 *	the count.
+	 */
+	inst->num_connections++;
 
 	return connection;
 }
@@ -767,34 +822,6 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 	if (!client->connected) client->inst->num_pending_packets++;
 
 	return pending;
-}
-
-
-/** Count the number of connections used by active clients.
- *
- *  Unfortunately, we also count NAK'd connections, too, even if they
- *  are closed.  The alternative is to walk through all connections
- *  for each client, which would be a long time.
- */
-static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED int keylen, void *data)
-{
-	fr_io_client_t *client = data;
-	int connections;
-
-	/*
-	 *	This client has no connections, skip the mutex lock.
-	 */
-	if (!client->ht) return 0;
-
-	rad_assert(client->use_connected);
-
-	pthread_mutex_lock(&client->mutex);
-	connections = fr_hash_table_num_elements(client->ht);
-	pthread_mutex_unlock(&client->mutex);
-
-	*((uint32_t *) ctx) += connections;
-
-	return 0;
 }
 
 
@@ -1258,39 +1285,11 @@ have_client:
 	 *	No existing connection, create one.
 	 */
 	if (!connection) {
-		if (inst->max_connections) {
-			/*
-			 *	We've hit the connection limit.  Walk
-			 *	over all clients with connections, and
-			 *	count the number of connections used.
-			 */
-			if (inst->num_connections >= inst->max_connections) {
-				inst->num_connections = 0;
-
-				(void) fr_trie_walk(inst->trie, &inst->num_connections, count_connections);
-
-				if ((inst->num_connections + 1) >= inst->max_connections) {
-					DEBUG("Too many open connections.  Ignoring dynamic client %s.  Discarding packet.", client->radclient->shortname);
-					return 0;
-				}
-			}
-		}
-
 		connection = fr_io_connection_alloc(inst, client, &address, NULL);
 		if (!connection) {
 			DEBUG("Failed to allocate connection from client %s.  Discarding packet.", client->radclient->shortname);
 			return 0;
 		}
-
-		/*
-		 *	We have one more connection.  Note that we do
-		 *	NOT decrement this counter when a connection
-		 *	closes, as the close is done in a child
-		 *	thread.  Instead, we just let counter hit the
-		 *	limit, and then walk over the clients to reset
-		 *	the count.
-		 */
-		inst->num_connections++;
 	}
 
 	DEBUG("Sending packet to connection %s", connection->name);
