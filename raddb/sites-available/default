@@ -171,7 +171,7 @@ server default {
 			#  subsection below.  See that section for
 			#  more information.
 			#
-			dynamic_clients = true
+#			dynamic_clients = true
 
 			#
 			#  If dynamic clients are allowed, then limit
