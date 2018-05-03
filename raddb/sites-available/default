@@ -214,7 +214,7 @@ server default {
 			#  As with v3, "ipaddr", "ipv4addr", and "ipv6addr"
 			#  are all allowed.
 			#
-			ipaddr = 127.0.0.1
+			ipaddr = *
 			port = 1812
 
 			#
