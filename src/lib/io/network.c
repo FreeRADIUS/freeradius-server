@@ -659,6 +659,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 
 	if (!s->dead) {
 		if (fr_event_fd_delete(nr->el, s->fd, s->filter) < 0) {
+			PERROR("Failed deleting socket from even loop in _network_socket_free");
 			rad_assert("Failed removing socket FD from event loop in _network_socket_free" == NULL);
 		}
 	}
