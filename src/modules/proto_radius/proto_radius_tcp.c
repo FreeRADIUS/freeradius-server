@@ -244,7 +244,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 }
 
 
-/** Open a TCP listener for RADIUS
+/** Close a TCP listener for RADIUS
  *
  * @param[in] instance of the RADIUS TCP I/O path.
  * @return
@@ -260,7 +260,6 @@ static int mod_close(void *instance)
 
 	return 0;
 }
-
 
 static int mod_connection_set(void *instance, fr_io_address_t *connection)
 {
