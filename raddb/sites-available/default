@@ -69,7 +69,7 @@ server default {
 		#
 		#  Both "udp" and "tcp" are allowed here.
 		#
-		transport = tcp
+		transport = udp
 
 		#
 		#  Limits for this socket.
