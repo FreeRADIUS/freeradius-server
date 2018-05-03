@@ -1031,6 +1031,23 @@ do_read:
 			return 0;
 		}
 		*priority = value;
+
+		/*
+		 *	If the connection is pending, pause reading of
+		 *	more packets.  If mod_write() accepts the
+		 *	connection, it will resume reading.
+		 *	Otherwise, it will close the socket without
+		 *	resuming it.
+		 */
+		if (connection &&
+		    (connection->client->state == PR_CLIENT_PENDING)) {
+			rad_assert(!connection->paused);
+
+			connection->paused = true;
+			(void) fr_event_filter_update(connection->el,
+						      inst->app_io->fd(connection->app_io_instance),
+						      FR_EVENT_FILTER_IO, pause_read);
+		}
 	}
 
 	/*
@@ -1494,22 +1511,6 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 	} else {
 		connection->el = el;
 		connection->nr = nr;
-
-		/*
-		 *	If the connection is pending, pause reading of
-		 *	more packets.  If mod_write() accepts the
-		 *	connection, it will resume reading.
-		 *	Otherwise, it will close the socket without
-		 *	resuming it.
-		 */
-		if (connection->client->state == PR_CLIENT_PENDING) {
-			rad_assert(!connection->paused);
-
-			connection->paused = true;
-			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(connection->app_io_instance),
-						      FR_EVENT_FILTER_IO, pause_read);
-		}
 	}
 }
 
