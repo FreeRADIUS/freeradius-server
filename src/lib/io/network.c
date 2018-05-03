@@ -561,7 +561,10 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 {
 	fr_network_socket_t *s = ctx;
 
-	s->listen->app_io->error(s->listen->app_io_instance);
+	if (s->listen->app_io->error) {
+		s->listen->app_io->error(s->listen->app_io_instance);
+	}
+
 	fr_network_socket_dead(talloc_parent(s), s);
 }
 
@@ -645,7 +648,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	if (fr_event_fd_insert(nr, nr->el, s->fd,
 			       fr_network_read,
 			       NULL,
-			       listen->app_io->error ? fr_network_error : NULL,
+			       fr_network_error,
 			       s) < 0) {
 		PERROR("Failed adding new socket to event loop");
 		fr_network_socket_dead(nr, s);
@@ -749,7 +752,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	if (fr_event_fd_insert(nr, nr->el, s->fd,
 			       fr_network_read,
 			       NULL,
-			       app_io->error ? fr_network_error : NULL,
+			       fr_network_error,
 			       s) < 0) {
 		PERROR("Failed adding new socket to event loop");
 		talloc_free(s);
@@ -1189,7 +1192,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 				if (fr_event_fd_insert(nr, nr->el, s->fd,
 						       fr_network_read,
 						       fr_network_write,
-						       listen->app_io->error ? fr_network_error : NULL,
+						       fr_network_error,
 						       s) < 0) {
 					PERROR("Failed adding write callback to event loop");
 					goto error;
