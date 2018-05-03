@@ -859,6 +859,14 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	*is_dup = false;
 	track = NULL;
 
+	/*
+	 *	There was data left over from the previous read, go
+	 *	get the rest of it now.  We MUST do this instead of
+	 *	popping a pending packet, because the leftover bytes
+	 *	are already in the output buffer.
+	 */
+	if (*leftover) goto do_read;
+
 redo:
 	/*
 	 *	Read one pending packet.  The packet may be pending
@@ -939,8 +947,12 @@ redo:
 		goto have_client;
 
 	} else {
-		fr_io_address_t *local_address = &address;
-		fr_time_t *local_recv_time = &recv_time;
+		fr_io_address_t *local_address;
+		fr_time_t *local_recv_time;
+
+do_read:
+		local_address = &address;
+		local_recv_time = &recv_time;
 
 		/*
 		 *	@todo TCP - handle TCP connected sockets, where we
@@ -967,7 +979,6 @@ redo:
 		packet_len = inst->app_io->read(app_io_instance, (void **) &local_address, &local_recv_time,
 					  buffer, buffer_len, leftover, priority, is_dup);
 		if (packet_len <= 0) {
-			DEBUG("NO DATA %d", (int) packet_len);
 			return packet_len;
 		}
 
