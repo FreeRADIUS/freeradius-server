@@ -365,7 +365,6 @@ static int mod_fd(void const *instance)
 /** Set the file descriptor for this socket.
  *
  * @param[in] instance of the RADIUS TCP I/O path.
- * @return the file descriptor
  */
 static void mod_fd_set(void *instance, int fd)
 {
