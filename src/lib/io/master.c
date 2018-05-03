@@ -369,8 +369,9 @@ static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED int ke
  *  Called ONLY from the master socket.
  */
 static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_client_t *client,
-								fr_io_address_t *address,
-								fr_io_connection_t *nak)
+						  int fd,
+						  fr_io_address_t *address,
+						  fr_io_connection_t *nak)
 {
 	int rcode;
 	fr_io_connection_t *connection;
@@ -550,11 +551,21 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 *	This also sets connection->name.
 		 */
 		if ((inst->app_io->connection_set(connection->app_io_instance, connection->address) < 0) ||
-		    (inst->app_io->instantiate(connection->app_io_instance, inst->app_io_conf) < 0) ||
-		    (inst->app_io->open(connection->app_io_instance) < 0)) {
-			DEBUG("Failed opening connected socket.");
+		    (inst->app_io->instantiate(connection->app_io_instance, inst->app_io_conf) < 0)) {
+			DEBUG("Failed opening initializing socket.");
 			talloc_free(dl_inst);
 			return NULL;
+		}
+
+		if (fd < 0) {
+			if (inst->app_io->open(connection->app_io_instance) < 0) {
+				DEBUG("Failed opening connected socket.");
+				talloc_free(dl_inst);
+				return NULL;
+			}
+		} else {
+			// @todo TCP - define this.  It's essentially open(), but sets FDs
+//			inst->app_io->fd_set(connection->app_io_instance, fd)
 		}
 
 		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(connection->address->src_ipaddr), 0);
@@ -1285,7 +1296,7 @@ have_client:
 	 *	No existing connection, create one.
 	 */
 	if (!connection) {
-		connection = fr_io_connection_alloc(inst, client, &address, NULL);
+		connection = fr_io_connection_alloc(inst, client, -1, &address, NULL);
 		if (!connection) {
 			DEBUG("Failed to allocate connection from client %s.  Discarding packet.", client->radclient->shortname);
 			return 0;
@@ -1853,7 +1864,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	too.
 		 */
 		if (connection) {
-			connection = fr_io_connection_alloc(inst, client, connection->address, connection);
+			connection = fr_io_connection_alloc(inst, client, -1, connection->address, connection);
 			client_expiry_timer(connection->el, NULL, connection->client);
 
 			errno = ECONNREFUSED;
