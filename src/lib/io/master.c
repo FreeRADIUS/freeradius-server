@@ -852,7 +852,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	fr_io_pending_packet_t *pending;
 	fr_io_track_t *track;
 	void *app_io_instance;
-	int value;
+	int value, accept_fd = -1;
 
 	get_inst(instance, &inst, &connection, &app_io_instance);
 
@@ -946,6 +946,40 @@ redo:
 		 */
 		goto have_client;
 
+	} else if (!connection && (inst->ipproto == IPPROTO_TCP)) {
+		struct sockaddr_storage saremote;
+		socklen_t salen;
+
+		salen = sizeof(saremote);
+
+		/*
+		 *	We're a TCP socket but are NOT connected.  We
+		 *	must be the master socket.  Accept the new
+		 *	connection, and figure out src/dst IP/port.
+		 */
+		accept_fd = accept(inst->app_io->fd(app_io_instance),
+				   (struct sockaddr *) &saremote, &salen);
+
+		/*
+		 *	Couldn't open a NEW socket, but THIS ONE is
+		 *	OK.  So don't return -1.
+		 */
+		if (accept_fd < 0) {
+			DEBUG("proto_%s_%s - failed to accept new socket: %s",
+			      inst->app->name, inst->transport, fr_syserror(errno));
+			return 0;
+		}
+
+		(void) fr_ipaddr_from_sockaddr(&saremote, salen, &address.src_ipaddr, &address.src_port);
+
+		salen = sizeof(saremote);
+
+		/*
+		 *	@todo - only if the local listen address is "*".
+		 */
+		(void) getsockname(accept_fd, (struct sockaddr *) &saremote, &salen);
+		(void) fr_ipaddr_from_sockaddr(&saremote, salen, &address.dst_ipaddr, &address.dst_port);
+
 	} else {
 		fr_io_address_t *local_address;
 		fr_time_t *local_recv_time;
@@ -1010,12 +1044,19 @@ do_read:
 
 	} else {
 		client = connection->client;
+
+		/*
+		 *	We don't care what the read function says
+		 *	about address.  We have it already.
+		 */
+		address = *connection->address;
 	}
 
 	/*
 	 *	Negative cache entry.  Drop the packet.
 	 */
 	if (client && client->state == PR_CLIENT_NAK) {
+		if (accept_fd >= 0) close(accept_fd);
 		return 0;
 	}
 
@@ -1048,8 +1089,15 @@ do_read:
 		} else if (inst->dynamic_clients) {
 			if (inst->max_clients && (inst->num_clients >= inst->max_clients)) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
-				DEBUG("proto_%s - ignoring packet code %d from client IP address %s - too many dynamic clients are defined",
-				      inst->app_io->name, buffer[0], src_buf);
+
+				if (accept_fd <= 0) {
+					DEBUG("proto_%s - ignoring packet code %d from client IP address %s - too many dynamic clients are defined",
+					      inst->app_io->name, buffer[0], src_buf);
+				} else {
+					DEBUG("proto_%s - ignoring connection attempt from client IP address %s - too many dynamic clients are defined",
+					      inst->app_io->name, src_buf);
+					close(accept_fd);
+				}
 				return 0;
 			}
 
@@ -1074,8 +1122,15 @@ do_read:
 		} else {
 		ignore:
 			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
-			DEBUG("proto_%s - ignoring packet code %d from unknown client IP address %s",
-			      inst->app_io->name, buffer[0], src_buf);
+
+			if (accept_fd < 0) {
+				DEBUG("proto_%s - ignoring packet code %d from unknown client IP address %s",
+				      inst->app_io->name, buffer[0], src_buf);
+			} else {
+				DEBUG("proto_%s - ignoring connection attempt from unknown client IP address %s",
+				      inst->app_io->name, src_buf);
+				close(accept_fd);
+			}
 			return 0;
 		}
 
@@ -1139,6 +1194,7 @@ do_read:
 		if (fr_trie_insert(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
 			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.", inst->app_io->name, client->radclient->shortname);
 			talloc_free(client);
+			if (accept_fd >= 0) close(accept_fd);
 			return -1;
 		}
 
@@ -1151,17 +1207,17 @@ have_client:
 	rad_assert(client->state != PR_CLIENT_NAK);
 
 	/*
-	 *	@todo TCP - have CLIENT_ACCEPT socket?  for those
-	 *	sockets, we never read packets or push packets to the
-	 *	child socket.  But we do create connections?
-	 *
-	 *	For those connections, we just create the
-	 *	connection and start it up.  We don't inject
-	 *	any packets to it.  Instead, we rely on the
-	 *	connection to notice that it's pending, read
-	 *	the first packet, and then run the dynamic
-	 *	client definition code.
+	 *	We've accepted a new connection.  Go allocate it, and
+	 *	let it read from the socket.
 	 */
+	if (accept_fd >= 0) {
+		if (!fr_io_connection_alloc(inst, client, accept_fd, &address, NULL)) {
+			DEBUG("Failed to allocate connection from client %s.", client->radclient->shortname);
+			close(accept_fd);
+		}
+
+		return 0;
+	}
 
 	/*
 	 *	No connected sockets, OR we are the connected socket.
@@ -1262,13 +1318,19 @@ have_client:
 	}
 
 	/*
+	 *	This must be the main UDP socket which creates
+	 *	connections.
+	 */
+	rad_assert(inst->ipproto == IPPROTO_UDP);
+
+	/*
 	 *	We're using connected sockets, but this socket isn't
 	 *	connected.  It must be the master socket.  The master
 	 *	can either be STATIC, DYNAMIC, or PENDING.  Whatever
 	 *	the state, the child socket will take care of handling
 	 *	the packet.  e.g. dynamic clients, etc.
 	 */
-	if (inst->ipproto == IPPROTO_UDP) {
+	{
 		bool nak = false;
 
 		my_connection.address = &address;
@@ -1286,21 +1348,6 @@ have_client:
 			DEBUG("Discarding packet to NAKed connection %s", connection->name);
 			return 0;
 		}
-
-	} else {		/* IPPROTO_TCP */
-		/*
-		 *	@todo TCP - accept() a new connection?
-		 *	and set up address properly?  and somehow
-		 *	track that we want to start a new connection,
-		 *	but we don't have a packet for it...
-		 *
-		 *	TBH, we probably want read() and write() to be
-		 *	in the listener, so that the IO handler can
-		 *	set those to itself, and then call the
-		 *	underlying app_io mod_read/write.
-		 */
-		connection = NULL;
-		rad_assert(0 == 1);
 	}
 
 	/*
@@ -1862,10 +1909,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		rad_assert(client->packets == 0);
 
 		/*
-		 *	If we're a connected socket, allocate a new
-		 *	connection which is a place-holder for the
-		 *	NAK.  Then, tell the network side to destroy
-		 *	this connection.
+		 *	If we're a connected UDP socket, allocate a
+		 *	new connection which is the place-holder for
+		 *	the NAK.  We will reject packets from from the
+		 *	src/dst IP/port.
 		 *
 		 *	The timer will take care of deleting the NAK
 		 *	connection (which doesn't have any FDs
@@ -1874,13 +1921,19 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	is done, which will then free that connection,
 		 *	too.
 		 */
-		if (connection) {
+		if (connection && (inst->ipproto == IPPROTO_UDP)) {
 			connection = fr_io_connection_alloc(inst, client, -1, connection->address, connection);
 			client_expiry_timer(connection->el, NULL, connection->client);
 
 			errno = ECONNREFUSED;
 			return -1;
 		}
+
+		/*
+		 *	For connected TCP sockets, we just call the
+		 *	expiry timer, which will close and free the
+		 *	connection.
+		 */
 
 		client_expiry_timer(connection ? connection->el : inst->el, NULL, client);
 		return buffer_len;
