@@ -64,17 +64,96 @@ server default {
 		type = Status-Server
 
 		#
-		#  For now, only UDP transport is supported.
-		#
 		#  You can have a "headless" server (e.g. inner-tunnel)
 		#  by commenting out the "transport" configuration.
 		#
-		transport = udp
+		#  Both "udp" and "tcp" are allowed here.
+		#
+		transport = tcp
 
 		#
-		#  When the configuration has "transport = foo",
-		#  it looks for a "foo" subsection.  That subsection
-		#  contains all of the configuration for the transport.
+		#  Limits for this socket.
+		#
+		limit {
+			#
+			#  Limit the number of dynamic clients which
+			#  can be defined.
+			#
+			#  If there are no dynamic clients, this
+			#  configuration item is ignored.
+			#
+			#  The special value of "0" means "no limit".
+			#  We do not recommend this.
+			#
+			max_clients = 256
+
+			#
+			#  Limit the total number of connections which
+			#  used.  Each connection opens a new socket,
+			#  so be aware of system file descriptor
+			#  limitations.
+			#
+			#  If the listeners do not use connected
+			#  sockets, then this configuration item is
+			#  ignored.
+			#
+			max_connections = 256
+
+			#
+			#  Free a dynamic client, or close a
+			#  connection if it does not receive
+			#  a packet within this time.
+			#
+			#  Useful range of values: 5 to 600
+			#
+			idle_timeout = 60.0
+
+			#
+			#  If a dynamic client is disallowed, it is
+			#  placed onto a "NAK" blacklist for a period
+			#  of time.  This blacklist helps to prevent
+			#  DoS attacks.
+			#
+			#  After "nak_timeout" seconds, the blacklist
+			#  entry will be removed, and the IP will be
+			#  allowed to try again to define a dynamic
+			#  client.
+			#
+			#  Useful range of values: 1 to 600
+			#
+			nak_lifetime = 30.0
+
+			#
+			#  cleanup_delay: The time to wait (in
+			#  seconds) before cleaning up a reply to an
+			#  Access-Request packet.
+			#
+			#  The reply is normally cached internally for
+			#  a short period of time, after it is sent to
+			#  the NAS.  The reply packet may be lost in
+			#  the network, and the NAS will not see it.
+			#  The NAS will then re-send the request, and
+			#  the server will respond quickly with the
+			#  cached reply.
+			#
+			#  If this value is set too low, then
+			#  duplicate requests from the NAS MAY NOT be
+			#  detected, and will instead be handled as
+			#  separate requests.
+			#
+			#  If this value is set too high, then the
+			#  server will use more memory for no benefit.
+			#
+			#  Useful range of values: 2 to 10
+			#
+			cleanup_delay = 5.0
+		}
+
+		#
+		#  When the configuration has "transport = udp", it
+		#  looks for a "udp" subsection.  That subsection
+		#  contains all of the configuration for the UDP
+		#  transport.
 		#
 		udp {
 			#
@@ -83,7 +162,98 @@ server default {
 			#
 			ipaddr = *
 			port = 1812
-			cleanup_delay = 30
+
+			#
+			#  Whether or not we allow dynamic clients.
+			#
+			#  If set to true, then packets from unknown
+			#  clients are passed throug the "new client"
+			#  subsection below.  See that section for
+			#  more information.
+			#
+			dynamic_clients = true
+
+			#
+			#  If dynamic clients are allowed, then limit
+			#  them to only a small set of source
+			#  networks.
+			#
+			#  If dynamic clients are not allowed, then
+			#  this section is ignored.
+			#
+			networks {
+				#
+				#  Allow packets from these networks
+				#  to define dynamic clients.
+				#
+				#  Packets from all other sources will
+				#  be rejected.
+				#
+				#  Even if a packet is from an allowed
+				#  network, it still must be allowed
+				#  by the "new client" subsection.
+				#
+				#  There is no limit to the number of
+				#  networks which can be listed here.
+				#
+				allow = 127/8
+				allow = 192.0.2/24
+#				deny = 127.0.0/24
+			}
+		}
+
+
+		#
+		#  When the configuration has "transport = tcp", it
+		#  looks for a "tcp" subsection.  That subsection
+		#  contains all of the configuration for the TCP
+		#  transport.
+		#
+		tcp {
+			#
+			#  As with v3, "ipaddr", "ipv4addr", and "ipv6addr"
+			#  are all allowed.
+			#
+			ipaddr = 127.0.0.1
+			port = 1812
+
+			#
+			#  Whether or not we allow dynamic clients.
+			#
+			#  If set to true, then packets from unknown
+			#  clients are passed throug the "new client"
+			#  subsection below.  See that section for
+			#  more information.
+			#
+#			dynamic_clients = true
+
+			#
+			#  If dynamic clients are allowed, then limit
+			#  them to only a small set of source
+			#  networks.
+			#
+			#  If dynamic clients are not allowed, then
+			#  this section is ignored.
+			#
+			networks {
+				#
+				#  Allow packets from these networks
+				#  to define dynamic clients.
+				#
+				#  Packets from all other sources will
+				#  be rejected.
+				#
+				#  Even if a packet is from an allowed
+				#  network, it still must be allowed
+				#  by the "new client" subsection.
+				#
+				#  There is no limit to the number of
+				#  networks which can be listed here.
+				#
+				allow = 127/8
+				allow = 192.0.2/24
+#				deny = 127.0.0/24
+			}
 		}
 	}
 
