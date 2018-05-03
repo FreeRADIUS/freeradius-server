@@ -108,19 +108,22 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 
 	fr_time_t			*recv_time_p;
 
-	// @todo - FIXME
-	*leftover = 0;
-
 	recv_time_p = *recv_time;
 
 	/*
-	 *      Tell tcp_recv if we're connected or not.
+	 *      Read data into the buffer.
 	 */
-	data_size = read(inst->sockfd, buffer, buffer_len);
+	data_size = read(inst->sockfd, buffer + *leftover, buffer_len - *leftover);
 	if (data_size < 0) {
 		DEBUG2("proto_radius_tcp got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
 	}
+
+	/*
+	 *	Note that we return ERROR for all bad packets, as
+	 *	there's no point in reading RADIUS packets from a TCP
+	 *	connection which isn't sending us RADIUS packets.
+	 */
 
 	/*
 	 *	TCP read of zero means the socket is dead.
@@ -130,29 +133,43 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 		return -1;
 	}
 
-	packet_len = data_size;
-
 	/*
-	 *	Return ERROR for all bad packets, as there's no point
-	 *	in reading RADIUS packets from a TCP connection which
-	 *	isn't sending us RADIUS packets.
+	 *	We MUST always start with a known RADIUS packet.
 	 */
-	if (data_size < 20) {
-		DEBUG2("proto_radius_tcp got 'too short' packet size %zd", data_size);
-		inst->stats.total_malformed_requests++;
-		return -1;
-	}
-
-	if (packet_len > inst->max_packet_size) {
-		DEBUG2("proto_radius_tcp got 'too long' packet size %zd > %u", data_size, inst->max_packet_size);
-		inst->stats.total_malformed_requests++;
-		return -1;
-	}
-
 	if ((buffer[0] == 0) || (buffer[0] > FR_MAX_PACKET_CODE)) {
 		DEBUG("proto_radius_tcp got invalid packet code %d", buffer[0]);
 		inst->stats.total_unknown_types++;
 		return -1;
+	}
+
+	/*
+	 *	Not enough for one packet.  Tell the caller that we need to read more.
+	 */
+	if (data_size < 20) {
+		*leftover = data_size;
+		return 0;
+	}
+
+	/*
+	 *	Figure out how large the RADIUS packet is.
+	 */
+	packet_len = (buffer[2] << 8) | buffer[3];
+
+	/*
+	 *	We don't have a complete RADIUS packet.  Tell the
+	 *	caller that we need to read more.
+	 */
+	if ((size_t) data_size < packet_len) {
+		*leftover = data_size;
+		return 0;
+	}
+
+	/*
+	 *	We've read more than one packet.  Tell the caller that
+	 *	there's more data available, and return only one packet.
+	 */
+	if ((size_t) data_size > packet_len) {
+		*leftover = data_size - packet_len;
 	}
 
 	/*
