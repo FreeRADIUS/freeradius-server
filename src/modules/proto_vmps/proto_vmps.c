@@ -348,14 +348,8 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	}
 #endif
 
-#if 0
 	data_len = fr_vmps_encode(buffer, buffer_len, request->packet->data,
-				    client->secret, talloc_array_length(client->secret) - 1,
-				    request->reply->code, request->reply->id, request->reply->vps);
-#else
-	// @todo - redo vqp encode/decode as per RADIUS
-	data_len = -1;
-#endif
+				  request->reply->code, request->reply->id, request->reply->vps);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding VMPS reply");
 		return -1;

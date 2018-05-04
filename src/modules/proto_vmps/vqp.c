@@ -413,6 +413,136 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 	{ 0x0c03, 0x0c08, 0,      0,      0,      0 }
 };
 
+
+ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
+		       int code, uint32_t id, VALUE_PAIR *vps)
+{
+	uint8_t *attr;
+	VALUE_PAIR *vp;
+	fr_cursor_t cursor;
+
+	if (buflen < 8) {
+		fr_strerror_printf("Output buffer is too small for VMPS header.");
+		return -1;
+	}
+
+	buffer[0] = VQP_VERSION;
+	buffer[1] = code;
+	buffer[2] = 0;
+
+	/*
+	 *	The number of attributes is hard-coded.
+	 */
+	if ((code == 1) || (code == 3)) {
+		uint32_t sequence;
+
+		buffer[3] = VQP_MAX_ATTRIBUTES;
+
+		sequence = htonl(id);
+		memcpy(buffer + 4, &sequence, 4);
+	} else {
+		if (!original) {
+			fr_strerror_printf("Cannot send VQP response without request");
+			return -1;
+		}
+
+		/*
+		 *	Packet Sequence Number
+		 */
+		memcpy(buffer + 4, original + 4, 4);
+
+		buffer[3] = 2;
+	}
+
+	attr = buffer + 8;
+
+	/*
+	 *	Encode the VP's.
+	 */
+	fr_cursor_init(&cursor, &vps);
+	while ((vp = fr_cursor_current(&cursor))) {
+		size_t len;
+
+		if (vp->da->flags.internal) goto next;
+
+		/*
+		 *	Skip non-VMPS attributes/
+		 */
+		if (!((vp->da->attr >= 0x2c01) && (vp->da->attr <= 0x2c08))) goto next;
+
+		if (attr >= (buffer + buflen)) break;
+
+		debug_pair(vp);
+
+		switch (vp->vp_type) {
+		case FR_TYPE_IPV4_ADDR:
+			len = fr_vqp_attr_sizes[vp->vp_type][0];
+			break;
+
+		case FR_TYPE_ETHERNET:
+			len = fr_vqp_attr_sizes[vp->vp_type][0];
+			break;
+
+		case FR_TYPE_OCTETS:
+		case FR_TYPE_STRING:
+			len = vp->vp_length;
+			break;
+
+		default:
+			return -1;
+		}
+
+		/*
+		 *	If the attribute overflows the buffer, stop.
+		 */
+		if ((attr + 6 + len) >= (buffer + buflen)) break;
+
+		/*
+		 *	Type.  Note that we look at only the lower 8
+		 *	bits, as the upper 8 bits have been hacked.
+		 *	See also dictionary.vqp
+		 */
+		attr[0] = 0;
+		attr[1] = 0;
+		attr[2] = 0x0c;
+		attr[3] = vp->da->attr & 0xff;
+
+		/* Length */
+		attr[4] = (len >> 8) & 0xff;
+		attr[5] = len & 0xff;
+
+		attr += 6;
+
+		/* Data */
+		switch (vp->vp_type) {
+		case FR_TYPE_IPV4_ADDR:
+			memcpy(attr, &vp->vp_ipv4addr, len);
+			attr += len;
+			break;
+
+		case FR_TYPE_ETHERNET:
+			memcpy(attr, vp->vp_ether, len);
+			attr += len;
+			break;
+
+		case FR_TYPE_OCTETS:
+		case FR_TYPE_STRING:
+			memcpy(attr, vp->vp_octets, len);
+			attr += len;
+			break;
+
+		default:
+			return -1;
+		}
+
+next:
+		fr_cursor_next(&cursor);
+	}
+
+	return attr - buffer;
+}
+
+
 int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 {
 	int		i, code, length;
@@ -426,7 +556,6 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	}
 
 	if (packet->data) return 0;
-
 
 	code = packet->code;
 	if (!code) {

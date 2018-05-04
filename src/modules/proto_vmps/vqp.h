@@ -43,6 +43,9 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
 ssize_t vqp_packet_size(uint8_t const *data, size_t data_len);
 void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 
+ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
+		       int code, uint32_t id, VALUE_PAIR *vps) CC_HINT(nonnull(1));
+
 extern char const *fr_vmps_codes[FR_MAX_VMPS_CODE];
 
 #ifdef __cplusplus
