@@ -803,35 +803,16 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, main_config.max_request_time, 0);
 	}
 
-	if (!c->secret || (c->secret[0] == '\0')) {
-#ifdef WITH_DHCP
-		char const *value = NULL;
-		CONF_PAIR *cp = cf_pair_find(cs, "dhcp");
-
-		if (cp) value = cf_pair_value(cp);
-
-		/*
-		 *	Secrets aren't needed for DHCP.
-		 */
-		if (value && (strcmp(value, "yes") == 0)) return c;
-#endif
-
 #ifdef WITH_TLS
-		/*
-		 *	If the client is TLS only, the secret can be
-		 *	omitted.  When omitted, it's hard-coded to
-		 *	"radsec".  See RFC 6614.
-		 */
-		if (c->tls_required) {
-			c->secret = talloc_typed_strdup(cs, "radsec");
-		} else
-#endif
-
-		{
-			cf_log_err(cs, "secret must be at least 1 character long");
-			goto error;
-		}
+	/*
+	 *	If the client is TLS only, the secret can be
+	 *	omitted.  When omitted, it's hard-coded to
+	 *	"radsec".  See RFC 6614.
+	 */
+	if (c->tls_required) {
+		c->secret = talloc_typed_strdup(cs, "radsec");
 	}
+#endif
 
 #ifdef WITH_TCP
 	if ((c->proto == IPPROTO_TCP) || (c->proto == IPPROTO_IP)) {
