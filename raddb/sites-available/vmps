@@ -9,6 +9,15 @@
 ######################################################################
 
 server vmps {
+	#
+	#  In v4, all "server" sections MUST start with a "namespace"
+	#  parameter.  This tells the server which protocol is being used.
+	#
+	#  All of the subsequent "listen" sections in this server will
+	#  only accept packets for that protocol.
+	#
+	namespace = vmps
+
 	listen {
 		transport = udp
 
@@ -22,8 +31,9 @@ server vmps {
 			#	1589 is the default VMPS port.
 			port = 1589
 
-			#  Type of packets to listen for.  Here, it is VMPS.
-			type = vmps
+			#  Type of VMPS packets to listen for.
+			type = VMPS-Join-Request
+			type = VMPS-Reconfirm-Request
 
 			#  Some systems support binding to an interface, in addition
 			#  to the IP address.  This feature isn't strictly necessary,
@@ -36,8 +46,6 @@ server vmps {
 			#
 			#	interface = eth0
 		}
-
-		type = VMPS-Join-Request
 	}
 
 	#  If you have switches that are allowed to send VMPS, but NOT
@@ -46,7 +54,6 @@ server vmps {
 	#  Note that for compatibility with RADIUS, you still have to
 	#  list a "secret" for each client, though that secret will not
 	#  be used for anything.
-
 
 	#
 	#  This section is called when it receives a VMPS-Join-Request.
@@ -97,5 +104,10 @@ server vmps {
 	     ok
 	}
 
-	# Proxying of VMPS requests is NOT supported.
+	#
+	#  This section is called when not responding to packets.
+	#
+	send Do-Not-Respond {
+	     ok
+	}
 }
