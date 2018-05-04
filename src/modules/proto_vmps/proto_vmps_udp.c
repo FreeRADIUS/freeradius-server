@@ -19,8 +19,8 @@
  * @file proto_radius_udp.c
  * @brief RADIUS handler for UDP.
  *
- * @copyright 2016 The FreeRADIUS server project.
- * @copyright 2016 Alan DeKok (aland@deployingradius.com)
+ * @copyright 2018 The FreeRADIUS server project.
+ * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
 #include <freeradius-devel/radiusd.h>
@@ -92,7 +92,7 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_BOOL, proto_vmps_udp_t, dynamic_clients) } ,
 	{ FR_CONF_POINTER("networks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) networks_config },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_vmps_udp_t, max_packet_size), .dflt = "4096" } ,
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_vmps_udp_t, max_packet_size), .dflt = "1024" } ,
 
 	CONF_PARSER_TERMINATOR
 };
