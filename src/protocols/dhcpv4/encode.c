@@ -59,7 +59,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 	FR_PROTO_TRACE("%zu byte(s) available for value", outlen);
 
-	if (outlen < vp->vp_length) return 0;
+	if (outlen < vp->vp_length) return -1;	/* Not enough output buffer space. */
 
 	switch (tlv_stack[depth]->type) {
 	case FR_TYPE_UINT8:
@@ -169,8 +169,8 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 		VALUE_PAIR *next;
 
 		len = encode_value(p, outlen - out[1], tlv_stack, depth, cursor);
-		if (len < 0) return len;
-		if (len == 0) {
+		if (len < -1) return len;
+		if (len == -1) {
 			FR_PROTO_TRACE("No more space in option");
 			if (out[1] == 0) {
 				/* Couldn't encode anything: don't leave behind these two octets. */
