@@ -21,60 +21,27 @@
  * @file proto_vmps.h
  * @brief Structures for the VMPS protocol
  *
- * @copyright 2017 Alan DeKok <aland@freeradius.org>
+ * @copyright 2018 Alan DeKok <aland@freeradius.org>
  */
+#include <freeradius-devel/io/master.h>
+#include <freeradius-devel/vqp.h>
 #include "vqp.h"
-
-/** Return the VMPS client associated with the request
- *
- * @param[in] instance		#fr_app_io_t instance.
- * @param[in] packet_ctx	as allocated/returned by the #fr_app_io_t.
- */
-typedef RADCLIENT *(*proto_vmps_client_get_t)(void const *instance, void const *packet_ctx);
-
-/** Get src/dst address from the #fr_app_io_t module
- *
- * @param[out] sockaddr		structure to populate.  If UNIX socket, path will be a shallow copy.
- * @param[in] instance		#fr_app_io_t instance.
- * @param[in] packet_ctx	as allocated/returned by the #fr_app_io_t.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-typedef int (*proto_vmps_addr_get_t)(fr_socket_addr_t *sockaddr,
-				       void const *instance, void const *packet_ctx);
-
-/** Semi-private functions exported by proto_vmps #fr_app_io_t modules
- *
- * Should only be used by the proto_vmps module, and submodules.
- */
-typedef struct {
-	proto_vmps_addr_get_t		src;				//!< Retrieve the src address of the packet.
-	proto_vmps_addr_get_t		dst;				//!< Retrieve the dst address of the packet.
-} proto_vmps_app_io_t;
 
 /** An instance of a proto_vmps listen section
  *
  */
-typedef struct {
-	CONF_SECTION			*server_cs;			//!< server CS for this listener
+typedef struct proto_vmps_t {
+	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
-	dl_instance_t			*io_submodule;			//!< As provided by the transport_parse
-									///< callback.  Broken out into the
-									///< app_io_* fields below for convenience.
+	dl_instance_t			**type_submodule;		//!< Instance of the various types
+	dl_instance_t			*dynamic_submodule;		//!< proto_vmps_dynamic_client
+									//!< only one instance per type allowed.
+	fr_io_process_t			process;			//!< process function
 
-	fr_app_io_t const		*app_io;			//!< Easy access to the app_io handle.
-	void				*app_io_instance;		//!< Easy access to the app_io instance.
-	CONF_SECTION			*app_io_conf;			//!< Easy access to the app_io's config section.
-	proto_vmps_app_io_t		*app_io_private;		//!< Internal interface for proto_vmps.
+	uint32_t			max_packet_size;		//!< for message ring buffer.
+	uint32_t			num_messages;			//!< for message ring buffer.
 
-	dl_instance_t			**process_submodule;		//!< Instance of the various types
+	bool				code_allowed[FR_MAX_VMPS_CODE];	//!< Allowed packet codes.
 
-	fr_io_process_t			process;			//!< process entry point
-
-	uint32_t			default_message_size;		//!< for message ring buffer
-	uint32_t			num_messages;			//!< for message ring buffer
-
-	fr_listen_t const		*listen;			//!< The listener structure which describes
-									///< the I/O path.
+	uint32_t			priorities[FR_MAX_VMPS_CODE];	//!< priorities for individual packets
 } proto_vmps_t;

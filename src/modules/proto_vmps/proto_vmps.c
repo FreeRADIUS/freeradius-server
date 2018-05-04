@@ -66,33 +66,22 @@ static CONF_PARSER const proto_vmps_config[] = {
 };
 
 
-#if 0
 /*
  *	Allow configurable priorities for each listener.
  */
-static uint32_t priorities[FR_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_REQUEST] = PRIORITY_HIGH,
-	[FR_CODE_ACCOUNTING_REQUEST] = PRIORITY_LOW,
-	[FR_CODE_COA_REQUEST] = PRIORITY_NORMAL,
-	[FR_CODE_DISCONNECT_REQUEST] = PRIORITY_NORMAL,
-	[FR_CODE_STATUS_SERVER] = PRIORITY_NOW,
+static uint32_t priorities[FR_MAX_VMPS_CODE] = {
+	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST] = PRIORITY_LOW,
+	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST] = PRIORITY_LOW,
 };
 
 static const CONF_PARSER priority_config[] = {
-	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_CODE_ACCESS_REQUEST]),
-	  .dflt = STRINGIFY(PRIORITY_HIGH) },
-	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_CODE_ACCOUNTING_REQUEST]),
+	{ FR_CONF_OFFSET("VMPS-Join-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST]),
 	  .dflt = STRINGIFY(PRIORITY_LOW) },
-	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_CODE_COA_REQUEST]),
-	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
-	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_CODE_DISCONNECT_REQUEST]),
-	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
-	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_CODE_STATUS_SERVER]),
-	  .dflt = STRINGIFY(PRIORITY_NOW) },
+	{ FR_CONF_OFFSET("VMPS-Reconfirm-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_LOW) },
 
 	CONF_PARSER_TERMINATOR
 };
-#endif
 
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
@@ -137,7 +126,11 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 
 	code = type_enum->value->vb_uint32;
 
-	// @todo - check code VMPS-Request???
+	if ((code != FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST) &&
+	    (code != FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST)) {
+		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
+		return -1;
+	}
 
 	/*
 	 *	Setting 'type = foo' means you MUST have at least a
@@ -158,13 +151,14 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	 */
 	inst = talloc_get_type_abort(parent_inst->data, proto_vmps_t);
 
-// @todo - set allowed for the 2 types we support
-//	inst->code_allowed[code] = true;
+	inst->code_allowed[code] = true;
 
 	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
+	 *
+	 *	We allow "type = foo", but we just load proto_vmps_all.a
 	 */
-	return dl_instance(ctx, out, listen_cs,	parent_inst, type_enum->alias, DL_TYPE_SUBMODULE);
+	return dl_instance(ctx, out, listen_cs,	parent_inst, "all", DL_TYPE_SUBMODULE);
 }
 
 /** Wrapper around dl_instance
@@ -236,6 +230,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
 
+#if 0
 	/*
 	 *	Note that we don't set a limit on max_attributes here.
 	 *	That MUST be set and checked in the underlying
@@ -245,6 +240,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
+#endif
 
 	/*
 	 *	Set the rest of the fields.
@@ -376,7 +372,6 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 static void mod_process_set(void const *instance, REQUEST *request)
 {
 	proto_vmps_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_t);
-	fr_io_process_t process;
 	fr_io_track_t *track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
@@ -397,28 +392,18 @@ static void mod_process_set(void const *instance, REQUEST *request)
 		return;
 	}
 
-//	process = inst->process_by_code[request->packet->code];
-// @todo - set this!
-	process = NULL;
-	if (!process) {
-		REDEBUG("proto_vmps - No module available to handle packet code %i", request->packet->code);
-		return;
-	}
-
-	request->async->process = process;
+	request->async->process = inst->process;
 }
 
 
-static int mod_priority(UNUSED void const *instance, UNUSED uint8_t const *buffer, UNUSED size_t buflen)
+static int mod_priority(void const *instance, UNUSED uint8_t const *buffer, UNUSED size_t buflen)
 {
-//	proto_vmps_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_t);
+	proto_vmps_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_t);
 
 	/*
 	 *	Disallowed packet
 	 */
-//	if (!inst->priorities[buffer[0]]) return 0;
-
-//	if (!inst->process_by_code[buffer[0]]) return -1;
+	if (!inst->priorities[buffer[1]]) return 0;
 
 	/*
 	 *	@todo - if we cared, we could also return -1 for "this
@@ -430,9 +415,7 @@ static int mod_priority(UNUSED void const *instance, UNUSED uint8_t const *buffe
 	/*
 	 *	Return the configured priority.
 	 */
-//	return inst->priorities[buffer[0]];
-
-	return PRIORITY_NORMAL;
+	return inst->priorities[buffer[1]];
 }
 
 /** Open listen sockets/connect to external event source
@@ -543,6 +526,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		fr_dict_enum_t const *dv;
 		char const *name, *packet_type;
 		CONF_SECTION *subcs;
+		rlm_components_t component = MOD_AUTHORIZE;
 
 		if (!cf_item_is_section(ci)) continue;
 
@@ -575,22 +559,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 */
 		packet_type = cf_section_name2(subcs);
 		dv = fr_dict_enum_by_alias(da, packet_type);
-
-
-		// @todo skip anything other than the 2 request packets
-		if (!dv) {
+		if (!dv ||
+		    ((dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST) &&
+		     (dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_RESPONSE) &&
+		     (dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST) &&
+		     (dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_RESPONSE) &&
+		     (dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_DO_NOT_RESPOND))) {
 			cf_log_err(subcs, "Invalid VMPS packet type in '%s %s {...}'",
 				   name, packet_type);
 			return -1;
-		}
-
-		/*
-		 *	Skip 'recv foo' when it's a request packet
-		 *	that isn't used by this instance.
-		 */
-		if ((strcmp(name, "recv") == 0) && 0) {
-			cf_log_warn(subcs, "Skipping %s %s { ...}", name, packet_type);
-			continue;
 		}
 
 		/*
@@ -598,8 +575,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 */
 		cf_log_debug(subcs, "compiling - %s %s {...}", name, packet_type);
 
-		// @todo - set component here?  Maybe all post-auth?
-		if (unlang_compile(subcs, -1) < 0) {
+		if (strcmp(name, "send") == 0) component = MOD_POST_AUTH;
+
+		if (unlang_compile(subcs, component) < 0) {
 			cf_log_err(subcs, "Failed compiling '%s %s { ... }' section", name, packet_type);
 			return -1;
 		}
@@ -636,9 +614,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		if (!fr_cond_assert(enumv)) return -1;
 
 		code = enumv->value->vb_uint32;
-//		inst->process_by_code[code] = app_process->process;	/* Store the process function */
 
-//		rad_assert(inst->code_allowed[code] == true);
+		inst->process = app_process->process;		/* Store the process function */
+
+		rad_assert(inst->code_allowed[code] == true);
 		i++;
 	}
 
@@ -775,10 +754,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	subcs = cf_section_find(conf, "priority", NULL);
 	if (subcs) {
-//		if (cf_section_rules_push(subcs, priority_config) < 0) return -1;
+		if (cf_section_rules_push(subcs, priority_config) < 0) return -1;
 		if (cf_section_parse(NULL, NULL, subcs) < 0) return -1;
 	} else {
-		// @todo - set the priorities for the packets we care about
+		rad_assert(sizeof(inst->priorities) == sizeof(priorities));
+		memcpy(&inst->priorities, &priorities, sizeof(priorities));
 	}
 
 	/*
