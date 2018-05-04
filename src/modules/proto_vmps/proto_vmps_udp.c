@@ -186,7 +186,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_vmps_udp - Received %d ID %04x length %d %s",
+	DEBUG2("proto_vmps_udp - Received %d ID %08x length %d %s",
 	       buffer[1], id,
 	       (int) packet_len, inst->name);
 
