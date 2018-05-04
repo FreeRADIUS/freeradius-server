@@ -70,6 +70,12 @@ RCSID("$Id$")
 #define VQP_VERSION (1)
 #define VQP_MAX_ATTRIBUTES (12)
 
+char const *fr_vmps_codes[FR_MAX_VMPS_CODE] = {
+	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST] = "VMPS-Join-Request",
+	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST] = "VMPS-Reconfirm-Request",
+};
+
+
 static size_t const fr_vqp_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
 

@@ -33,12 +33,16 @@ extern "C" {
 
 extern fr_dict_t const *dict_vqp;
 
+#define FR_MAX_VMPS_CODE (5)
+
 RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd);
 bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len);
 int vqp_send(RADIUS_PACKET *packet);
 int vqp_decode(RADIUS_PACKET *packet);
 int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
 ssize_t vqp_packet_size(uint8_t const *data, size_t data_len);
+
+extern char const *fr_vmps_codes[FR_MAX_VMPS_CODE];
 
 #ifdef __cplusplus
 }
