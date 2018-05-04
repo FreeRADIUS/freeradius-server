@@ -230,7 +230,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
 
-#if 0
 	/*
 	 *	Note that we don't set a limit on max_attributes here.
 	 *	That MUST be set and checked in the underlying
@@ -240,7 +239,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
-#endif
 
 	/*
 	 *	Set the rest of the fields.
