@@ -650,6 +650,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
+// @todo - allow for "wildcard" clients, which allow anything
+// and then rely on "networks" to filter source IPs...
+// which means we probably want to filter on "networks" even if there are no dynamic clients
 static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	return client_find(NULL, ipaddr, ipproto);
