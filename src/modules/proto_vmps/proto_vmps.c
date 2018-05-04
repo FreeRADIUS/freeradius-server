@@ -590,7 +590,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		fr_app_process_t const	*app_process;
 		fr_dict_enum_t const	*enumv;
-		int code;
 
 		app_process = (fr_app_process_t const *)inst->type_submodule[i]->module->common;
 		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule[i]->data,
@@ -605,11 +604,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
 		if (!fr_cond_assert(enumv)) return -1;
 
-		code = enumv->value->vb_uint32;
-
 		inst->process = app_process->process;		/* Store the process function */
 
-		rad_assert(inst->code_allowed[code] == true);
+		rad_assert(inst->code_allowed[enumv->value->vb_uint32] == true);
 		i++;
 	}
 
