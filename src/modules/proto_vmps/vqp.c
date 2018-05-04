@@ -72,7 +72,9 @@ RCSID("$Id$")
 
 char const *fr_vmps_codes[FR_MAX_VMPS_CODE] = {
 	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST] = "VMPS-Join-Request",
+	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_RESPONSE] = "VMPS-Join-Response",
 	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST] = "VMPS-Reconfirm-Request",
+	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_RESPONSE] = "VMPS-Reconfirm-Response",
 };
 
 
@@ -686,4 +688,67 @@ ssize_t vqp_packet_size(uint8_t const *data, size_t data_len)
 	 *	We've reached the end of the packet.
 	 */
 	return ptr - data;
+}
+
+static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
+{
+	int i;
+	static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+	for (i = 0; i < attrlen; i++) {
+		if ((i > 0) && ((i & 0x0f) == 0x00))
+			fprintf(fr_log_fp, "%.*s", depth, tabs);
+		fprintf(fr_log_fp, "%02x ", ptr[i]);
+		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
+	}
+	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
+}
+
+
+/** Print a raw VMPS packet as hex.
+ *
+ */
+void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
+{
+	int length;
+	uint8_t const *attr, *end;
+	uint32_t id;
+
+	if (packet_len < 8) return;
+
+	fprintf(fp, "  Version:\t\t%u\n", packet[0]);
+
+	if ((packet[1] > 0) && (packet[1] < FR_MAX_VMPS_CODE) && fr_vmps_codes[packet[1]]) {
+		fprintf(fp, "  OpCode:\t\t%s\n", fr_vmps_codes[packet[1]]);
+	} else {
+		fprintf(fp, "  OpCode:\t\t%u\n", packet[1]);
+	}
+
+	if ((packet[2] > 0) && (packet[2] < FR_MAX_VMPS_CODE) && fr_vmps_codes[packet[2]]) {
+		fprintf(fp, "  OpCode:\t\t%s\n", fr_vmps_codes[packet[2]]);
+	} else {
+		fprintf(fp, "  OpCode:\t\t%u\n", packet[2]);
+	}
+
+	fprintf(fp, "  Data Count:\t\t%u\n", packet[3]);
+
+	memcpy(&id, packet + 4, 4);
+	id = ntohl(id);
+
+	fprintf(fp, "  ID:\t%08x\n", id);
+
+	if (packet_len == 8) return;
+
+	for (attr = packet + 8, end = packet + packet_len;
+	     attr < end;
+	     attr += length) {
+		memcpy(&id, attr, 4);
+		id = ntohl(id);
+
+		length = (attr[4] << 8) | attr[5];
+
+		fprintf(fp, "\t\t%08x  %04x  ", id, length);
+
+		print_hex_data(attr + 5, length, 3);
+	}
 }
