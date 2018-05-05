@@ -83,6 +83,24 @@ static const CONF_PARSER priority_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+
+static fr_dict_t const *dict_vmps;
+
+extern fr_dict_autoload_t proto_vmps_dict[];
+fr_dict_autoload_t proto_vmps_dict[] = {
+	{ .out = &dict_vmps, .proto = "vqp" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_vmps_packet_type;
+
+extern fr_dict_attr_autoload_t proto_vmps_dict_attr[];
+fr_dict_attr_autoload_t proto_vmps_dict_attr[] = {
+	{ .out = &attr_vmps_packet_type, .name = "VMPS-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps},
+	{ NULL }
+};
+
+
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
  * @param[in] ctx	to allocate data in (instance of proto_vmps).
