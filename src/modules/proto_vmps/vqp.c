@@ -328,6 +328,15 @@ int vqp_decode(RADIUS_PACKET *packet)
 		ptr += 6;
 
 		/*
+		 *	fr_vmps_ok() should have checked this already,
+		 *	but it doesn't hurt to do it again.
+		 */
+		if (attr_len > (size_t) (end - ptr)) {
+			fr_strerror_printf("Attribute length exceeds received data");
+			goto error;
+		}
+
+		/*
 		 *	Hack to get the dictionaries to work correctly.
 		 */
 		attr |= 0x2000;
@@ -340,49 +349,16 @@ int vqp_decode(RADIUS_PACKET *packet)
 			return -1;
 		}
 
-		switch (vp->vp_type) {
-		case FR_TYPE_ETHERNET:
-			if (attr_len != fr_vqp_attr_sizes[vp->vp_type][0]) goto unknown;
-
-			memcpy(&vp->vp_ether, ptr, 6);
-			break;
-
-		case FR_TYPE_IPV4_ADDR:
-			if (attr_len == fr_vqp_attr_sizes[vp->vp_type][0]) {
-				memcpy(&vp->vp_ipv4addr, ptr, 4);
-				break;
-			}
-
-			/*
-			 *	Value doesn't match the type we have for the
-			 *	valuepair so we must change it's da to an
-			 *	unknown attr.
-			 */
-		unknown:
-			fr_pair_to_unknown(vp);
-			/* FALL-THROUGH */
-
-		default:
-		case FR_TYPE_OCTETS:
-			if (attr_len > (size_t)(end - ptr)) {
-				fr_strerror_printf("Attribute length exceeds received data");
-				goto error;
-			}
-			if (attr_len == 0) break;
-
-			fr_pair_value_memcpy(vp, ptr, attr_len);
-			break;
-
-		case FR_TYPE_STRING:
-			if (attr_len > (size_t)(end - ptr)) {
-				fr_strerror_printf("Attribute length exceeds received data");
-				goto error;
-			}
-			if (attr_len == 0) break;
-
-			fr_pair_value_bstrncpy(vp, ptr, attr_len);
-			break;
+		/*
+		 *	Rely on value_box to do the work.
+		 *
+		 *	@todo - if the attribute is malformed, create a "raw" one.
+		 */
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, ptr, attr_len, true) < 0) {
+			talloc_free(vp);
+			return -1;
 		}
+
 		ptr += attr_len;
 		vp->vp_tainted = true;
 		debug_pair(vp);
