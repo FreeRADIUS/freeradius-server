@@ -698,11 +698,29 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	size_t			i = 0;
 	CONF_PAIR		*cp = NULL;
 	CONF_SECTION		*subcs;
+	fr_dict_attr_t const	*da;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
 	 */
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
+
+	/*
+	 *	Hack until autoload works
+	 */
+	da = fr_dict_attr_by_name(NULL, "VMPS-Packet-Type");
+	if (!da) {
+		if (fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.vqp") < 0) {
+			cf_log_err(conf, "Failed loading dictionary.vqp: %s", fr_strerror());
+			return -1;
+		}
+
+		da = fr_dict_attr_by_name(NULL, "VMPS-Packet-Type");
+		if (!da) {
+			cf_log_err(conf, "No VMPS-Packet-Type in dictionary.vqp");
+			return -1;
+		}
+	}
 
 	/*
 	 *	Bootstrap the process modules
