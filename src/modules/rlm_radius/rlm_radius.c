@@ -159,8 +159,8 @@ static fr_dict_attr_t const *attr_chap_challenge;
 static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_proxy_state;
 
-extern fr_dict_attr_autoload_t rlm_radius_attr[];
-fr_dict_attr_autoload_t rlm_radius_attr[] = {
+extern fr_dict_attr_autoload_t rlm_radius_dict_attr[];
+fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
 	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
