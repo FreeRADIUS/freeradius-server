@@ -83,12 +83,11 @@ static const CONF_PARSER priority_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
 static fr_dict_t const *dict_vmps;
 
 extern fr_dict_autoload_t proto_vmps_dict[];
 fr_dict_autoload_t proto_vmps_dict[] = {
-	{ .out = &dict_vmps, .proto = "vqp" },
+	{ .out = &dict_vmps, .proto = "vmps" },
 	{ NULL }
 };
 
