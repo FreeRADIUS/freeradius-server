@@ -904,7 +904,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (!inst->code_allowed[FR_CODE_ACCESS_REQUEST]) {
 		inst->io.cleanup_delay.tv_sec = 0;
 		inst->io.cleanup_delay.tv_usec = 0;
-		WARN("proto_radius - setting 'cleanup_delay = 0' as this listener does not receive Access-Request packets");
 	}
 
 	/*
