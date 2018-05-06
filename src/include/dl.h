@@ -166,6 +166,8 @@ struct dl_instance {
 #define DL_INSTANTIATE_PRIORITY	5		//!< Callback priority for bootstrap callback
 
 
+int			dl_init(void);
+
 int			dl_symbol_init_cb_register(unsigned int priority, char const *symbol,
 						   dl_init_t func, void *ctx);
 

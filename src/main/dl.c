@@ -119,8 +119,6 @@ static FR_NAME_NUMBER const dl_type_prefix[] = {
 	{  NULL , -1 },
 };
 
-static int dl_init(void);
-
 static int dl_symbol_init_cmp(void const *one, void const *two)
 {
 	dl_symbol_init_t const *a = one, *b = two;
@@ -684,8 +682,6 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	char			*p, *q;
 	dl_common_t const	*module;
 
-	if (!dl) dl_init();
-
 	if (parent) {
 		module_name = talloc_typed_asprintf(NULL, "%s_%s_%s",
 						    fr_int2str(dl_type_prefix, parent->type, "<INVALID>"),
@@ -894,7 +890,7 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 /** Initialise structures needed by the dynamic linker
  *
  */
-static int dl_init(void)
+int dl_init(void)
 {
 	if (dl) return 0;
 

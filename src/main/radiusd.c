@@ -396,6 +396,12 @@ int main(int argc, char *argv[])
 	if (main_config.daemonize) main_config.write_pid = true;
 
 	/*
+	 *	Initialize the DL infrastructure, which is used by the
+	 *	config file parser.
+	 */
+	dl_init();
+
+	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init() < 0) exit(EXIT_FAILURE);
