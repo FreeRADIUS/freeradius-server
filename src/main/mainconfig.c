@@ -258,6 +258,60 @@ static const CONF_PARSER switch_users_config[] = {
 };
 
 
+#if 0
+/** Callback to automatically load dictionaries required by modules
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	DEBUG("Loading dictionary %s", module->name);
+
+	if (fr_dict_autoload(*((fr_dict_autoload_t **)symbol)) < 0) {
+		ERROR("Failed loading dictionary: %s", fr_strerror());
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Callback to automatically free a dictionary when the module is unloaded
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ */
+static void _module_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
+}
+
+
+/** Callback to automatically resolve attributes and check the types are correct
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int _module_dict_attr_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	if (fr_dict_attr_autoload((fr_dict_attr_autoload_t *)symbol) < 0) {
+		ERROR("%s: %s", module->name, fr_strerror());
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
 static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t len = 0;
@@ -673,14 +727,44 @@ int main_config_init(void)
 	main_config.talloc_pool_size = 8 * 1024; /* default */
 
 	/*
+	 *	@todo - the proto_FOO modules are loaded via the
+	 *	CONF_SECTION parser callbacks.  Which means that the
+	 *	fr_dict_autoload() and fr_dict_attr_autoload()
+	 *	functions need to be call from here, before the
+	 *	configuration is parsed.  Right now, those rules are
+	 *	added in modules_bootstrap().  At that point, the
+	 *	proto_FOO modules have already been loaded.  So any
+	 *	autoload they have is ignored.
+	 *
+	 *	Except that we ALSO need to load raddb/dictionary,
+	 *	ideally BEFORE instantiating the modules, but AFTER
+	 *	loading the various proto_FOO.
+	 *
+	 *	This likely means moving the DICT_READ_OPTIONAL stuff
+	 *	to after the "parsing main configuration" stage.
+	 */
+
+	/*
 	 *	Read the distribution dictionaries first, then
 	 *	the ones in raddb.
 	 */
+#if 0
+	(void) dl_init();
+
+	/*
+	 *	Register dictionary autoload callbacks
+	 */
+	dl_symbol_init_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autoload, NULL);
+	dl_symbol_free_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autofree, NULL);
+	dl_symbol_init_cb_register(DL_DICT_ATTR_PRIORITY, "dict_attr", _module_dict_attr_autoload, NULL);
+#else
+
 	DEBUG2("Including dictionary file \"%s/%s\"", main_config.dictionary_dir, FR_DICTIONARY_FILE);
 	if (fr_dict_from_file(NULL, &main_config.dict, main_config.dictionary_dir, FR_DICTIONARY_FILE, "radius") != 0) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return -1;
 	}
+#endif
 
 #define DICT_READ_OPTIONAL(_d, _n) \
 do {\
