@@ -282,22 +282,20 @@ static int dl_symbol_init_walk(dl_t const *dl_module)
 	dl_symbol_init_t	*init;
 	fr_cursor_t		cursor;
 	void			*sym = NULL;
+	char			buffer[256];
 
 	for (init = fr_cursor_init(&cursor, &dl->sym_init);
 	     init;
 	     init = fr_cursor_next(&cursor)) {
 		if (init->symbol) {
-			char *sym_name = NULL;
+			snprintf(buffer, sizeof(buffer), "%s_%s", dl_module->name, init->symbol);
 
-			MEM(sym_name = talloc_typed_asprintf(NULL, "%s_%s", dl_module->name, init->symbol));
-			sym = dlsym(dl_module->handle, sym_name);
+			sym = dlsym(dl_module->handle, buffer);
 			if (!sym) {
-				DEBUG4("Symbol %s not found", sym_name);
-				talloc_free(sym_name);
+				DEBUG4("Symbol %s not found", buffer);
 				continue;
 			}
-			DEBUG3("Symbol %s found at %p", sym_name, sym);
-			talloc_free(sym_name);
+			DEBUG3("Symbol %s found at %p", buffer, sym);
 		}
 
 		if (init->func(dl_module, sym, init->ctx) < 0) return -1;
