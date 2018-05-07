@@ -733,12 +733,59 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 	}
 	talloc_set_destructor(cs, _cf_section_free);
 
-	if (parent) {
-		cs->depth = parent->depth + 1;
-		cf_item_add(parent, &(cs->item));
-	}
 	if (filename) cf_filename_set(cs, filename);
 	if (lineno) cf_lineno_set(cs, lineno);
+
+	if (parent) {
+		CONF_DATA const *cd;
+		CONF_PARSER *rule;
+
+		cs->depth = parent->depth + 1;
+		cf_item_add(parent, &(cs->item));
+
+		cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, cf_section_name1(parent));
+		if (cd) {
+			rule = cf_data_value(cd);
+
+			/*
+			 *	The parent has an ON_READ rule.  Check
+			 *	if that rule has a child which matches
+			 *	this section.
+			 */
+			if ((FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) &&
+			    ((rule->type & FR_TYPE_ON_READ) != 0) &&
+			    rule->subcs) {
+				CONF_PARSER const *rule_p;
+
+				for (rule_p = rule->subcs; rule_p->name; rule_p++) {
+					if ((FR_BASE_TYPE(rule_p->type) == FR_TYPE_SUBSECTION) &&
+					    ((rule_p->type & FR_TYPE_ON_READ) != 0) &&
+					    (strcmp(rule_p->name, name1) == 0)) {
+						(void) _cf_section_rule_push(cs, rule_p, cd->item.filename, cd->item.lineno);
+						(void) rule_p->func(ctx, NULL, cf_section_to_item(cs), rule_p);
+						return cs;
+					}
+				}
+			}
+		}
+
+		/*
+		 *	Call any ON_READ callback.  And push this rule
+		 *	to the child section, so that the child can
+		 *	pick it up.
+		 */
+		cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, name1);
+		if (cd) {
+			rule = cf_data_value(cd);
+			if (rule->func &&
+			    (FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) &&
+			    ((rule->type & FR_TYPE_ON_READ) != 0)) {
+				(void) cf_section_rules_push(cs, rule);
+
+				(void) rule->func(ctx, NULL, cf_section_to_item(cs), rule);
+			}
+		}
+	}
 
 	return cs;
 }
