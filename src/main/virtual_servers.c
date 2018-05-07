@@ -186,17 +186,12 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, CONF_ITEM *c
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	CONF_SECTION		*server_cs = cf_item_to_section(ci);
-	CONF_PAIR		*namespace;
 
-	namespace = cf_pair_find(server_cs, "namespace");
-	if (!namespace) {
-		cf_log_err(server_cs, "virtual server %s MUST contain a 'namespace' option",
-			   cf_section_name2(server_cs));
-		return -1;
-	}
+	/*
+	 *	Just a place-holder which does nothing.
+	 */
 
 	return 0;
 }
