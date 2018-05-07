@@ -799,8 +799,6 @@ do {\
 	if (!subcs) {
 		subcs = cf_section_alloc(cs, cs, "feature", NULL);
 		if (!subcs) return -1;
-
-		cf_section_add(cs, subcs);
 	}
 	dependency_init_features(subcs);
 
@@ -813,7 +811,6 @@ do {\
 	if (!subcs) {
 		subcs = cf_section_alloc(cs, cs, "version", NULL);
 		if (!subcs) return -1;
-		cf_section_add(cs, subcs);
 	}
 	dependency_version_numbers_init(subcs);
 

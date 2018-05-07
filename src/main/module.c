@@ -269,7 +269,6 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 		       cf_section_name(module));
 
 		mycs = cf_section_alloc(module, module, "pool", NULL);
-		cf_section_add(module, mycs);
 	}
 
 	/*

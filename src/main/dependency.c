@@ -612,8 +612,6 @@ void dependency_version_print(void)
 			       (int)(max - talloc_array_length(attr)), spaces, cf_pair_value(cp));
 		}
 
-		talloc_free(features);
-
 		DEBUG2("Server core libs:");
 
 		for (ci = cf_item_next(versions, NULL);
@@ -639,8 +637,6 @@ void dependency_version_print(void)
 			       ENGINE_get_name(engine));
 		}
 #endif
-
-		talloc_free(versions);
 
 		DEBUG2("Endianness:");
 #ifdef WORDS_BIGENDIAN

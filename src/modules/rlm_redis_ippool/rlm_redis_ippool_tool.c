@@ -1517,7 +1517,6 @@ do { \
 	pool_cs = cf_section_find(conf->cs, "pool", NULL);
 	if (!pool_cs) {
 		pool_cs = cf_section_alloc(conf->cs, conf->cs, "pool", NULL);
-		cf_section_add(conf->cs, pool_cs);
 	}
 	cp = cf_pair_find(pool_cs, "start");
 	if (!cp) {

@@ -1282,7 +1282,6 @@ int main(int argc, char *argv[])
 	 */
 	MEM(cs = cf_section_alloc(autofree, NULL, "unit_test_attribute", NULL));
 	MEM(features = cf_section_alloc(cs, cs, "feature", NULL));
-	cf_section_add(cs, features);
 	dependency_init_features(features);	/* Add build time features to the config section */
 
 	while ((c = getopt(argc, argv, "d:D:fxMh")) != EOF) switch (c) {

@@ -2259,7 +2259,6 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	mycs = cf_section_find(module, "pool", NULL);
 	if (!mycs) {
 		mycs = cf_section_alloc(module, module, "pool", NULL);
-		cf_section_add(module, mycs);
 	}
 
 	if (conf->max_nodes == UINT8_MAX) {

@@ -733,7 +733,10 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 	}
 	talloc_set_destructor(cs, _cf_section_free);
 
-	if (parent) cs->depth = parent->depth + 1;
+	if (parent) {
+		cs->depth = parent->depth + 1;
+		cf_item_add(parent, &(cs->item));
+	}
 	if (filename) cf_filename_set(cs, filename);
 	if (lineno) cf_lineno_set(cs, lineno);
 
