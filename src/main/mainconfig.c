@@ -259,6 +259,8 @@ static const CONF_PARSER switch_users_config[] = {
 
 
 #if 0
+extern const CONF_PARSER virtual_servers_on_read_config[];
+
 /** Callback to automatically load dictionaries required by modules
  *
  * @param[in] module	being loaded.
@@ -726,30 +728,22 @@ int main_config_init(void)
 	 */
 	main_config.talloc_pool_size = 8 * 1024; /* default */
 
-	/*
-	 *	@todo - the proto_FOO modules are loaded via the
-	 *	CONF_SECTION parser callbacks.  Which means that the
-	 *	fr_dict_autoload() and fr_dict_attr_autoload()
-	 *	functions need to be call from here, before the
-	 *	configuration is parsed.  Right now, those rules are
-	 *	added in modules_bootstrap().  At that point, the
-	 *	proto_FOO modules have already been loaded.  So any
-	 *	autoload they have is ignored.
-	 *
-	 *	Except that we ALSO need to load raddb/dictionary,
-	 *	ideally BEFORE instantiating the modules, but AFTER
-	 *	loading the various proto_FOO.
-	 *
-	 *	This likely means moving the DICT_READ_OPTIONAL stuff
-	 *	to after the "parsing main configuration" stage.
-	 */
-
-	/*
-	 *	Read the distribution dictionaries first, then
-	 *	the ones in raddb.
-	 */
 #if 0
-	(void) dl_init();
+	/*
+	 *	@todo - not quite done yet... these dictionaries have
+	 *	to be loaded from radius_dir.  But the
+	 *	fr_dict_autoload_t has a base_dir pointer
+	 *	there... it's probably best to pass radius_dir into
+	 *	fr_dict_autoload() and have it use that instead.
+	 *
+	 *	Once that's done, the proto_foo dictionaries SHOULD be
+	 *	autoloaded, AND loaded before the configuration files
+	 *	are read.
+	 *
+	 *	And then all of the modules have to be updated to use
+	 *	their local dict pointer, instead of NULL.
+	 */
+	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) return -1;
 
 	/*
 	 *	Register dictionary autoload callbacks
@@ -757,14 +751,17 @@ int main_config_init(void)
 	dl_symbol_init_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autoload, NULL);
 	dl_symbol_free_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autofree, NULL);
 	dl_symbol_init_cb_register(DL_DICT_ATTR_PRIORITY, "dict_attr", _module_dict_attr_autoload, NULL);
-#else
+#endif
 
+	/*
+	 *	Read the distribution dictionaries first, then
+	 *	the ones in raddb.
+	 */
 	DEBUG2("Including dictionary file \"%s/%s\"", main_config.dictionary_dir, FR_DICTIONARY_FILE);
 	if (fr_dict_from_file(NULL, &main_config.dict, main_config.dictionary_dir, FR_DICTIONARY_FILE, "radius") != 0) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return -1;
 	}
-#endif
 
 #define DICT_READ_OPTIONAL(_d, _n) \
 do {\
