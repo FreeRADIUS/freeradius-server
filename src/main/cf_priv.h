@@ -144,6 +144,8 @@ typedef struct cf_file_t {
 	struct stat		buf;
 } cf_file_t;
 
+CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child);
+
 #ifdef __cplusplus
 }
 #endif

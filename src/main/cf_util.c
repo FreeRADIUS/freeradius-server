@@ -395,7 +395,7 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
  *	- The item removed.
  *	- NULL if the item wasn't set.
  */
-static CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
+CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
 {
 	CONF_ITEM	*found;
 	bool		in_ident1, in_ident2;
