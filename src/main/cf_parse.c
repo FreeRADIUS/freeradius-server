@@ -1452,14 +1452,21 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 		 *	rule in its place.
 		 */
 		if ((old->type & FR_TYPE_ON_READ) != 0) {
-			(void) cf_remove(CF_TO_ITEM(cs), CF_TO_ITEM(cd));
-			talloc_const_free(cd);
+			CONF_DATA *cd1;
 
-			if (!_cf_data_add_static(CF_TO_ITEM(cs), rule, "CONF_PARSER", rule->name, filename, lineno)) {
-				cf_log_err(cs, "Failed adding rule '%s'", rule->name);
-				cf_debug(cs);
-				return -1;
-			}
+			/*
+			 *	Over-write the rule in place.
+			 *
+			 *	We'd like to call cf_remove(), but
+			 *	that apparently doesn't work for
+			 *	CONF_DATA.  We don't need to
+			 *	free/alloc one, so re-using this is
+			 *	fine.
+			 */
+			memcpy(&cd1, &cd, sizeof(cd1));
+			cd1->data = rule;
+			cd1->item.filename = filename;
+			cd1->item.lineno = lineno;
 			return 0;
 		}
 
