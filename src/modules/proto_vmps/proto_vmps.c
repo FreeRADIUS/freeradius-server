@@ -87,7 +87,7 @@ static fr_dict_t const *dict_vmps;
 
 extern fr_dict_autoload_t proto_vmps_dict[];
 fr_dict_autoload_t proto_vmps_dict[] = {
-	{ .out = &dict_vmps, .proto = "vmps" },
+	{ .out = &dict_vmps, .proto = "vqp" },
 	{ NULL }
 };
 
@@ -709,16 +709,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	da = fr_dict_attr_by_name(NULL, "VMPS-Packet-Type");
 	if (!da) {
-		if (fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.vqp") < 0) {
-			cf_log_err(conf, "Failed loading dictionary.vqp: %s", fr_strerror());
-			return -1;
-		}
-
-		da = fr_dict_attr_by_name(NULL, "VMPS-Packet-Type");
-		if (!da) {
-			cf_log_err(conf, "No VMPS-Packet-Type in dictionary.vqp");
-			return -1;
-		}
+		cf_log_err(conf, "No VMPS-Packet-Type in dictionary.vqp");
+		return -1;
 	}
 
 	/*

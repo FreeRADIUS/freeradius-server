@@ -258,7 +258,6 @@ static const CONF_PARSER switch_users_config[] = {
 };
 
 
-#if 0
 extern const CONF_PARSER virtual_servers_on_read_config[];
 
 /** Callback to automatically load dictionaries required by modules
@@ -274,10 +273,33 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
 {
 	DEBUG("Loading dictionary %s", module->name);
 
+#if 0
 	if (fr_dict_autoload(main_config.dictionary_dir, (fr_dict_autoload_t const *)symbol) < 0) {
 		WARN("Failed loading dictionary: %s", fr_strerror());
 		return 0;
 	}
+#else
+	/*
+	 *	Hack for now
+	 */
+	fr_dict_autoload_t const	*to_load, *p;
+	char				buffer[256];
+
+	to_load = symbol;
+
+	for (p = to_load; p->out; p++) {
+		snprintf(buffer, sizeof(buffer), "dictionary.%s", p->proto);
+
+		/*
+		 *	0   == loaded
+		 *	-1  == error on load
+		 *	-2  == non-existent
+		 */
+		if (fr_dict_read(main_config.dict, main_config.dictionary_dir, buffer) == -1) {
+			return -1;
+		}
+	}
+#endif
 
 	return 0;
 }
@@ -288,9 +310,9 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
  * @param[in] symbol	An array of fr_dict_autoload_t to load.
  * @param[in] user_ctx	unused.
  */
-static void _module_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
+static void _module_dict_autofree(UNUSED dl_t const *module, UNUSED void *symbol, UNUSED void *user_ctx)
 {
-	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
+//	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
 }
 
 /** Callback to automatically resolve attributes and check the types are correct
@@ -311,7 +333,6 @@ static int _module_dict_attr_autoload(dl_t const *module, void *symbol, UNUSED v
 
 	return 0;
 }
-#endif
 
 static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
@@ -785,7 +806,6 @@ do {\
 	}
 	dependency_version_numbers_init(subcs);
 
-#if 0
 	/*
 	 *	@todo - not quite done yet... these dictionaries have
 	 *	to be loaded from radius_dir.  But the
@@ -808,7 +828,6 @@ do {\
 	dl_symbol_init_cb_register(DL_DICT_ATTR_PRIORITY, "dict_attr", _module_dict_attr_autoload, NULL);
 	dl_symbol_init_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autoload, NULL);
 	dl_symbol_free_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autofree, NULL);
-#endif
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
