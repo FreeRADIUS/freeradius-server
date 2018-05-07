@@ -775,6 +775,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	dl_init();
+
 	/*
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 */
