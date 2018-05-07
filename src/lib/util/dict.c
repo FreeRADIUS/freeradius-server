@@ -5281,33 +5281,34 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 
 /** Process a dict_autoload element to load a protocol
  *
+ * @param[in] dir	directory where the dictionaries are stored.
  * @param[in] to_load	dictionary definition.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_autoload(fr_dict_autoload_t const *to_load)
+int fr_dict_autoload(char const *dir, fr_dict_autoload_t const *to_load)
 {
 	fr_dict_t			*dict = NULL;
 	fr_dict_autoload_t const	*p;
+	char const			*my_dir;
 
 	for (p = to_load; p->out; p++) {
+		my_dir = dir;
+
 		if (unlikely(!p->out)) {
 			fr_strerror_printf("autoload missing parameter out");
 			return -1;
 		}
 
-		if (unlikely(!p->base_dir)) {
-			fr_strerror_printf("autoload missing parameter base_dir");
-			return 0;	/* Change to -1 later */
-		}
+		if (p->base_dir) my_dir = p->base_dir;
 
 		if (unlikely(!p->proto)) {
 			fr_strerror_printf("autoload missing parameter proto");
 			return -1;
 		}
 
-		if (fr_dict_protocol_afrom_file(NULL, &dict, p->base_dir, p->proto) < 0) return -1;
+		if (fr_dict_protocol_afrom_file(NULL, &dict, my_dir, p->proto) < 0) return -1;
 
 		if (p->out) *(p->out) = dict;
 	}

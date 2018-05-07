@@ -351,7 +351,7 @@ int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
  */
 int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load);
 
-int			fr_dict_autoload(fr_dict_autoload_t const *to_load);
+int			fr_dict_autoload(char const *dir, fr_dict_autoload_t const *to_load);
 
 void			fr_dict_autofree(fr_dict_autoload_t const *to_free);
 /** @} */

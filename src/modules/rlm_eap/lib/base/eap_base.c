@@ -423,7 +423,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
  */
 int eap_base_init(void)
 {
-	if (fr_dict_autoload(eap_base_dict) < 0) return -1;
+	if (fr_dict_autoload(main_config.dictionary_dir, eap_base_dict) < 0) return -1;
 	if (fr_dict_attr_autoload(eap_base_dict_attr) < 0) return -1;
 
 	return 0;

@@ -954,7 +954,7 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
 #if 0
 static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
-	if (fr_dict_autoload((fr_dict_autoload_t *)symbol) < 0) {
+	if (fr_dict_autoload(main_config.dictionary_dir, (fr_dict_autoload_t *)symbol) < 0) {
 		ERROR("Failed loading dictionary: %s", fr_strerror());
 		return -1;
 	}
