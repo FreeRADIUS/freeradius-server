@@ -275,8 +275,8 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
 	DEBUG("Loading dictionary %s", module->name);
 
 	if (fr_dict_autoload(main_config.dictionary_dir, (fr_dict_autoload_t const *)symbol) < 0) {
-		ERROR("Failed loading dictionary: %s", fr_strerror());
-		return -1;
+		WARN("Failed loading dictionary: %s", fr_strerror());
+		return 0;
 	}
 
 	return 0;
@@ -292,7 +292,6 @@ static void _module_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSE
 {
 	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
 }
-
 
 /** Callback to automatically resolve attributes and check the types are correct
  *
@@ -728,31 +727,6 @@ int main_config_init(void)
 	 */
 	main_config.talloc_pool_size = 8 * 1024; /* default */
 
-#if 0
-	/*
-	 *	@todo - not quite done yet... these dictionaries have
-	 *	to be loaded from radius_dir.  But the
-	 *	fr_dict_autoload_t has a base_dir pointer
-	 *	there... it's probably best to pass radius_dir into
-	 *	fr_dict_autoload() and have it use that instead.
-	 *
-	 *	Once that's done, the proto_foo dictionaries SHOULD be
-	 *	autoloaded, AND loaded before the configuration files
-	 *	are read.
-	 *
-	 *	And then all of the modules have to be updated to use
-	 *	their local dict pointer, instead of NULL.
-	 */
-	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) return -1;
-
-	/*
-	 *	Register dictionary autoload callbacks
-	 */
-	dl_symbol_init_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autoload, NULL);
-	dl_symbol_free_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autofree, NULL);
-	dl_symbol_init_cb_register(DL_DICT_ATTR_PRIORITY, "dict_attr", _module_dict_attr_autoload, NULL);
-#endif
-
 	/*
 	 *	Read the distribution dictionaries first, then
 	 *	the ones in raddb.
@@ -810,6 +784,31 @@ do {\
 		if (!subcs) return -1;
 	}
 	dependency_version_numbers_init(subcs);
+
+#if 0
+	/*
+	 *	@todo - not quite done yet... these dictionaries have
+	 *	to be loaded from radius_dir.  But the
+	 *	fr_dict_autoload_t has a base_dir pointer
+	 *	there... it's probably best to pass radius_dir into
+	 *	fr_dict_autoload() and have it use that instead.
+	 *
+	 *	Once that's done, the proto_foo dictionaries SHOULD be
+	 *	autoloaded, AND loaded before the configuration files
+	 *	are read.
+	 *
+	 *	And then all of the modules have to be updated to use
+	 *	their local dict pointer, instead of NULL.
+	 */
+	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) return -1;
+
+	/*
+	 *	Register dictionary autoload callbacks
+	 */
+	dl_symbol_init_cb_register(DL_DICT_ATTR_PRIORITY, "dict_attr", _module_dict_attr_autoload, NULL);
+	dl_symbol_init_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autoload, NULL);
+	dl_symbol_free_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autofree, NULL);
+#endif
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
