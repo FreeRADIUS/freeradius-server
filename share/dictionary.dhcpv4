@@ -173,7 +173,6 @@ ATTRIBUTE	DHCP-IP-Address-Lease-Time		51	integer
 ATTRIBUTE	DHCP-Overload				52	byte
 ATTRIBUTE	DHCP-Message-Type			53	byte
 
-VALUE	DHCP-Message-Type		DHCP-Do-Not-Respond	0
 VALUE	DHCP-Message-Type		DHCP-Discover		1
 VALUE	DHCP-Message-Type		DHCP-Offer		2
 VALUE	DHCP-Message-Type		DHCP-Request		3
@@ -189,6 +188,8 @@ VALUE	DHCP-Message-Type		DHCP-Lease-Unknown	12
 VALUE	DHCP-Message-Type		DHCP-Lease-Active	13
 VALUE	DHCP-Message-Type		DHCP-Bulk-Lease-Query	14
 VALUE	DHCP-Message-Type		DHCP-Lease-Query-Done	15
+
+VALUE	DHCP-Message-Type		DHCP-Do-Not-Respond	256
 
 ATTRIBUTE	DHCP-DHCP-Server-Identifier		54	ipaddr
 

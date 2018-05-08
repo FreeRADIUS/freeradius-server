@@ -98,7 +98,7 @@ listen {
 #  At least one of these attributes should be set at the end of each
 #  section for a response to be sent.
 
-dhcp DHCP-Discover {
+recv DHCP-Discover {
 
 	#  Set the type of packet to send in reply.
 	#
@@ -157,7 +157,7 @@ dhcp DHCP-Discover {
 	ok
 }
 
-dhcp DHCP-Request {
+recv DHCP-Request {
 
 	# Response packet type. See DHCP-Discover section above.
 	update reply {
@@ -211,14 +211,14 @@ dhcp DHCP-Request {
 #  By default this configuration will ignore them all. Any packet type
 #  not defined here will be responded to with a DHCP-NAK.
 
-dhcp DHCP-Decline {
+recv DHCP-Decline {
 	update reply {
 	       &DHCP-Message-Type = DHCP-Do-Not-Respond
 	}
 	reject
 }
 
-dhcp DHCP-Inform {
+recv DHCP-Inform {
 	update reply {
 	       &DHCP-Message-Type = DHCP-Do-Not-Respond
 	}
@@ -228,7 +228,7 @@ dhcp DHCP-Inform {
 #
 #  For Windows 7 boxes
 #
-#dhcp DHCP-Inform {
+#recv DHCP-Inform {
 #	update reply {
 #		Packet-Dst-Port = 67
 #		DHCP-Message-Type = DHCP-ACK
@@ -238,7 +238,7 @@ dhcp DHCP-Inform {
 #	ok
 #}
 
-dhcp DHCP-Release {
+recv DHCP-Release {
 	update reply {
 	       &DHCP-Message-Type = DHCP-Do-Not-Respond
 	}
@@ -246,7 +246,7 @@ dhcp DHCP-Release {
 }
 
 
-dhcp DHCP-Lease-Query {
+recv DHCP-Lease-Query {
 	#  The thing being queried for is implicit
 	#  in the packets.
 
