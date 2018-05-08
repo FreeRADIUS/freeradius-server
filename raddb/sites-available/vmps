@@ -21,6 +21,10 @@ server vmps {
 	listen {
 		transport = udp
 
+		#  Type of VMPS packets to listen for.
+		type = VMPS-Join-Request
+		type = VMPS-Reconfirm-Request
+
 		udp {
 			# VMPS sockets only support IPv4 addresses.
 			ipaddr = *
@@ -30,10 +34,6 @@ server vmps {
 			#	integer port number
 			#	1589 is the default VMPS port.
 			port = 1589
-
-			#  Type of VMPS packets to listen for.
-			type = VMPS-Join-Request
-			type = VMPS-Reconfirm-Request
 
 			#  Some systems support binding to an interface, in addition
 			#  to the IP address.  This feature isn't strictly necessary,
@@ -102,6 +102,26 @@ server vmps {
 	#
 	send VMPS-Join-Response {
 	     ok
+	}
+
+	#
+	#  This section is called when it receives a VMPS-Reconfirm-Request.
+	#
+	recv VMPS-Reconfirm-Request {
+		#
+		#  Add contents here!
+		#
+		ok
+	}
+
+	#
+	#  This section is called when it receives a VMPS-Reconfirm-Response
+	#
+	recv VMPS-Reconfirm-Response {
+		#
+		#  Add contents here!
+		#
+		ok
 	}
 
 	#
