@@ -2,6 +2,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
 	* cleanup_delay can now be 30 seconds.  This helps
 	  with proxies which have packet loss.
+	* Do-Not-Respond policies can now be set in the
+	  "post-auth" section, too.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
