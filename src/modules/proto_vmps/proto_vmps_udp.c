@@ -224,7 +224,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	NAK), and instead reply with the cached reply.
 	 */
 	if (track->reply_len) {
-		if (track->reply_len >= 20) {
+		if (track->reply_len >= 8) {
 			char *packet;
 
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
@@ -241,7 +241,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	/*
 	 *	We only write VMPS packets.
 	 */
-	rad_assert(buffer_len >= 20);
+	rad_assert(buffer_len >= 8);
 
 	/*
 	 *	Only write replies if they're VMPS packets.
@@ -472,7 +472,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, INT_MAX);
 	}
 
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 20);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 32);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
 
 	if (!inst->port) {
