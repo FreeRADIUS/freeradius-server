@@ -400,21 +400,19 @@ static int mod_fd(void const *instance)
 static int mod_compare(UNUSED void const *instance, void const *one, void const *two)
 {
 	int rcode;
-
 	uint8_t const *a = one;
 	uint8_t const *b = two;
 
 	/*
-	 *	The tree is ordered by IDs, which are (hopefully)
-	 *	pseudo-randomly distributed.
+	 *	Order by transaction ID
 	 */
-	rcode = (a[1] < b[1]) - (a[1] > b[1]);
+	rcode = memcmp(a + 4, b + 4, 4);
 	if (rcode != 0) return rcode;
 
 	/*
-	 *	Then ordered by code, which is usally the same.
+	 *	Then ordered by opcode, which is usally the same.
 	 */
-	return (a[0] < b[0]) - (a[0] > b[0]);
+	return (a[1] < b[1]) - (a[1] > b[1]);
 }
 
 
