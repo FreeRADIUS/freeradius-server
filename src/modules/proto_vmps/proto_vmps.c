@@ -117,23 +117,16 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
 	proto_vmps_t		*inst;
 	dl_instance_t		*parent_inst;
-	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
 
 	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
-	da = fr_dict_attr_by_name(NULL, "VMPS-Packet-Type");
-	if (!da) {
-		ERROR("Missing definiton for VMPS-Packet-Type");
-		return -1;
-	}
-
 	/*
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(da, type_str);
+	type_enum = fr_dict_enum_by_alias(attr_vmps_packet_type, type_str);
 	if (!type_enum) {
 		cf_log_err(ci, "Invalid type \"%s\"", type_str);
 		return -1;
@@ -510,19 +503,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	proto_vmps_t		*inst = talloc_get_type_abort(instance, proto_vmps_t);
 	size_t			i;
 
-	fr_dict_attr_t const	*da;
 	CONF_PAIR		*cp = NULL;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
-
-	/*
-	 *	Needed to populate the code array
-	 */
-	da = fr_dict_attr_by_name(NULL, "VMPS-Packet-Type");
-	if (!da) {
-		ERROR("Missing definition for VMPS-Packet-Type");
-		return -1;
-	}
 
 	/*
 	 *	Compile each "send/recv + VMPS packet type" section.
@@ -567,7 +550,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	Check that the packet type is known.
 		 */
 		packet_type = cf_section_name2(subcs);
-		dv = fr_dict_enum_by_alias(da, packet_type);
+		dv = fr_dict_enum_by_alias(attr_vmps_packet_type, packet_type);
 		if (!dv ||
 		    ((dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST) &&
 		     (dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_RESPONSE) &&
@@ -697,21 +680,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	size_t			i = 0;
 	CONF_PAIR		*cp = NULL;
 	CONF_SECTION		*subcs;
-	fr_dict_attr_t const	*da;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
 	 */
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
-	/*
-	 *	Hack until autoload works
-	 */
-	da = fr_dict_attr_by_name(NULL, "VMPS-Packet-Type");
-	if (!da) {
-		cf_log_err(conf, "No VMPS-Packet-Type in dictionary.vqp");
-		return -1;
-	}
+	rad_assert(dict_vmps != NULL);
+	rad_assert(attr_vmps_packet_type != NULL);
 
 	/*
 	 *	Bootstrap the process modules
