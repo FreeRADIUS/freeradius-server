@@ -1188,6 +1188,7 @@ do_read:
 		 *	Create the packet tracking table for this client.
 		 */
 		if (inst->app_io->track_duplicates) {
+			rad_assert(inst->app_io->compare != NULL);
 			MEM(client->table = rbtree_talloc_create(client, track_cmp, fr_io_track_t,
 								 NULL, RBTREE_FLAG_NONE));
 		}
