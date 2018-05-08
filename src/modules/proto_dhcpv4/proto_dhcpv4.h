@@ -24,7 +24,7 @@
  * @copyright 2018 Alan DeKok <aland@freedhcpv4.org>
  */
 #include <freeradius-devel/io/master.h>
-
+#include <freeradius-devel/dhcpv4/dhcpv4.h>
 
 /** An instance of a proto_dhcpv4 listen section
  *

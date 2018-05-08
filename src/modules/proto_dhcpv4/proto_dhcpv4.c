@@ -23,7 +23,6 @@
  * @copyright 2016 Alan DeKok (aland@freedhcpv4.org)
  */
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/unlang.h>
