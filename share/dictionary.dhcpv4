@@ -189,7 +189,7 @@ VALUE	DHCP-Message-Type		DHCP-Lease-Active	13
 VALUE	DHCP-Message-Type		DHCP-Bulk-Lease-Query	14
 VALUE	DHCP-Message-Type		DHCP-Lease-Query-Done	15
 
-VALUE	DHCP-Message-Type		DHCP-Do-Not-Respond	256
+VALUE	DHCP-Message-Type		DHCP-Do-Not-Respond	255
 
 ATTRIBUTE	DHCP-DHCP-Server-Identifier		54	ipaddr
 
