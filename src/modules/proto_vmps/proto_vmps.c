@@ -377,7 +377,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 	fr_io_track_t *track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
-	rad_assert(request->packet->code <= FR_CODE_MAX);
+	rad_assert(request->packet->code <= FR_MAX_VMPS_CODE);
 
 	request->server_cs = inst->io.server_cs;
 
@@ -394,6 +394,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 		return;
 	}
 
+	rad_assert(inst->process != NULL);
 	request->async->process = inst->process;
 }
 
@@ -613,7 +614,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	No IO module, it's an empty listener.
 	 */
-	if (!inst->io.submodule) return 0;
+	if (!i || !inst->io.submodule) return 0;
 
 	/*
 	 *	These configuration items are not printed by default,
