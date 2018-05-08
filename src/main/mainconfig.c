@@ -298,6 +298,8 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
 		if (fr_dict_read(main_config.dict, main_config.dictionary_dir, buffer) == -1) {
 			return -1;
 		}
+
+		if (p->out) *(p->out) = main_config.dict;
 	}
 #endif
 
