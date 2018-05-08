@@ -233,7 +233,7 @@ int main(int argc, char **argv)
 			showname = 0;
 			break;
 		case 'N':
-			if (inet_pton(AF_INET, optarg, &nas_ip_address) < 0) {
+			if (inet_pton(AF_INET, optarg, &nas_ip_address) <= 0) {
 				usage(1);
 			}
 			break;
