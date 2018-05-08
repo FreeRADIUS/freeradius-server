@@ -394,10 +394,6 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 53, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
 		request->reply->code = vp->vp_uint8;
-		if ((request->reply->code != 0) &&
-		    (request->reply->code < FR_DHCP_OFFSET)) {
-			request->reply->code += FR_DHCP_OFFSET;
-		}
 	}
 	else switch (rcode) {
 	case RLM_MODULE_OK:
@@ -982,14 +978,14 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 	 *
 	 *	This really belongs in a utility library
 	 */
-	if ((packet->code > FR_DHCP_OFFSET) && (packet->code < FR_DHCP_MAX)) {
+	if ((packet->code > 0) && (packet->code < FR_DHCP_MAX)) {
 		RDEBUG("%s %s Id %08x from %s%s%s:%i to %s%s%s:%i "
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 		       "%s%s%s"
 #endif
 		       "length %zu",
 		       received ? "Received" : "Sent",
-		       dhcp_message_types[packet->code - FR_DHCP_OFFSET],
+		       dhcp_message_types[packet->code],
 		       packet->id,
 		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 		       inet_ntop(packet->src_ipaddr.af,

@@ -309,7 +309,7 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 		return NULL;
 	}
 
-	packet->code = code[2] | FR_DHCP_OFFSET;
+	packet->code = code[2];
 
 	/*
 	 *	Create a unique vector from the MAC address and the

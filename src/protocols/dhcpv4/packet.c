@@ -503,7 +503,7 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 
 	p[0] = 0x35;		/* DHCP-Message-Type */
 	p[1] = 1;
-	p[2] = packet->code - FR_DHCP_OFFSET;
+	p[2] = packet->code;
 	p += 3;
 
 	/*

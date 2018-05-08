@@ -215,7 +215,7 @@ RADIUS_PACKET *fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipa
 	}
 
 	packet->data_len = data_len;
-	packet->code = code[2] | FR_DHCP_OFFSET;
+	packet->code = code[2];
 	packet->id = pkt_id;
 
 	packet->dst_port = dst_port;

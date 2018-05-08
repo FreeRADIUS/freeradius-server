@@ -150,7 +150,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 		 *	Allow to set packet type using DHCP-Message-Type
 		 */
 		if ((fr_dict_vendor_num_by_da(vp->da) == DHCP_MAGIC_VENDOR) && vp->da->attr == FR_DHCP_MESSAGE_TYPE) {
-			request->code = vp->vp_uint32 + FR_DHCP_OFFSET;
+			request->code = vp->vp_uint32;
 		} else if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 		/*
 		 *	Allow it to set the packet type in
@@ -516,7 +516,7 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 #endif
 	       "length %zu\n",
 	       received ? "Received" : "Sending",
-	       dhcp_message_types[packet->code - FR_DHCP_OFFSET],
+	       dhcp_message_types[packet->code],
 	       packet->id,
 	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 	       inet_ntop(packet->src_ipaddr.af,
