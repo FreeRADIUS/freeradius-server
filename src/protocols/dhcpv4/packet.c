@@ -551,3 +551,41 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 
 	return 0;
 }
+
+RADIUS_PACKET *fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len)
+{
+	RADIUS_PACKET *packet;
+	uint32_t	magic;
+	uint8_t const	*code;
+
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, FR_DHCP_MESSAGE_TYPE);
+	if (!code) return NULL;
+
+	if (data_len < MIN_PACKET_SIZE) return NULL;
+
+	/* Now that checks are done, allocate packet */
+	packet = fr_radius_alloc(NULL, false);
+	if (!packet) {
+		fr_strerror_printf("Failed allocating packet");
+		return NULL;
+	}
+
+	/*
+	 *	Get XID.
+	 */
+	memcpy(&magic, data + 4, 4);
+
+	packet->data_len = data_len;
+	packet->code = code[2];
+	packet->id = ntohl(magic);
+
+	/*
+	 *	FIXME: for DISCOVER / REQUEST: src_port == dst_port + 1
+	 *	FIXME: for OFFER / ACK       : src_port = dst_port - 1
+	 */
+
+	/*
+	 *	Unique keys are xid, client mac, and client ID?
+	 */
+	return packet;
+}

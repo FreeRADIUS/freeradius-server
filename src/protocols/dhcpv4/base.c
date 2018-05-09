@@ -143,46 +143,45 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 /** Check reveived DHCP request is valid and build RADIUS_PACKET structure if it is
  *
  * @param data pointer to received packet.
- * @param data_len length of received data.
+ * @param data_len length of received data, and then length of the actual DHCP data.
  *
  * @return
- *	- RADIUS_PACKET pointer if valid
- *	- NULL if invalid
+ *	- true if the packet is well-formed
+ *	- false if it's a bad packet
  */
-RADIUS_PACKET *fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len)
+bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len)
 {
 	uint32_t	magic;
 	uint8_t const	*code;
 	int		pkt_id;
-	RADIUS_PACKET	*packet;
 	size_t		hlen;
 
 	if (data_len < MIN_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too small (%zu < %d)", data_len, MIN_PACKET_SIZE);
-		return NULL;
+		return false;
 	}
 
 	if (data_len > MAX_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too large (%zx > %d)", data_len, MAX_PACKET_SIZE);
-		return NULL;
+		return false;
 	}
 
 	if (data[1] > 1) {
 		fr_strerror_printf("DHCP can only process ethernet requests, not type %02x", data[1]);
-		return NULL;
+		return false;
 	}
 
 	hlen = data[2];
 	if ((hlen != 0) && (hlen != 6)) {
 		fr_strerror_printf("Ethernet HW length incorrect.  Expected 6 got %zu", hlen);
-		return NULL;
+		return false;
 	}
 
 	memcpy(&magic, data + 236, 4);
 	magic = ntohl(magic);
 	if (magic != DHCP_OPTION_MAGIC_NUMBER) {
 		fr_strerror_printf("BOOTP not supported");
-		return NULL;
+		return false;
 	}
 
 	/*
@@ -194,50 +193,17 @@ RADIUS_PACKET *fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len)
 	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, FR_DHCP_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
-		return NULL;
+		return false;
 	}
 
 	if ((code[1] < 1) || (code[2] == 0) || (code[2] >= DHCP_MAX_MESSAGE_TYPE)) {
 		fr_strerror_printf("Unknown value %d for message-type option", code[2]);
-		return NULL;
+		return false;
 	}
 
-	/* Now that checks are done, allocate packet */
-	packet = fr_radius_alloc(NULL, false);
-	if (!packet) {
-		fr_strerror_printf("Failed allocating packet");
-		return NULL;
-	}
-
-	packet->data_len = data_len;
-	packet->code = code[2];
-	packet->id = pkt_id;
-
-	/*
-	 *	Create a unique vector from the MAC address and the
-	 *	DHCP opcode.  This is a hack for the RADIUS
-	 *	infrastructure in the rest of the server.
-	 *
-	 *	Note: data[2] == 6, which is smaller than
-	 *	sizeof(packet->vector)
-	 *
-	 *	FIXME:  Look for client-identifier in packet,
-	 *      and use that, too?
-	 */
-	memset(packet->vector, 0, sizeof(packet->vector));
-	memcpy(packet->vector, data + 28, hlen);
-	packet->vector[hlen] = packet->code & 0xff;
-
-	/*
-	 *	FIXME: for DISCOVER / REQUEST: src_port == dst_port + 1
-	 *	FIXME: for OFFER / ACK       : src_port = dst_port - 1
-	 */
-
-	/*
-	 *	Unique keys are xid, client mac, and client ID?
-	 */
-	return packet;
+	return true;
 }
+
 
 /** Resolve/cache attributes in the DHCP dictionary
  *

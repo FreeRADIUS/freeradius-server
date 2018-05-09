@@ -208,7 +208,9 @@ RADIUS_PACKET *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	dst_ipaddr.prefix = 32;
 	dst_ipaddr.scope_id = 0;
 
-	packet = fr_dhcpv4_packet_ok(p, data_len);
+	if (!fr_dhcpv4_ok(data, data_len)) return NULL;
+
+	packet = fr_dhcpv4_packet_alloc(data, data_len);
 	if (!packet) return NULL;
 
 	packet->dst_port = dst_port;
