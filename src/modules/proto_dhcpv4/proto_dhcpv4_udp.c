@@ -143,7 +143,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		return 0;
 	}
 
-	if (!fr_dhcp_ok(buffer, data_size, &message_type, &xid)) {
+	if (!fr_dhcpv4_ok(buffer, data_size, &message_type, &xid)) {
 		DEBUG2("proto_dhcpv4_udp got invalid packet, ignoring it - %s",
 			fr_strerror());
 		return 0;
