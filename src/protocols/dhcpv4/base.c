@@ -144,17 +144,12 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
  *
  * @param data pointer to received packet.
  * @param data_len length of received data.
- * @param src_ipaddr source ip address.
- * @param src_port source port address.
- * @param dst_ipaddr destination ip address.
- * @param dst_port destination port address.
  *
  * @return
  *	- RADIUS_PACKET pointer if valid
  *	- NULL if invalid
  */
-RADIUS_PACKET *fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipaddr_t src_ipaddr,
-				   uint16_t src_port, fr_ipaddr_t dst_ipaddr, uint16_t dst_port)
+RADIUS_PACKET *fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len)
 {
 	uint32_t	magic;
 	uint8_t const	*code;
@@ -217,12 +212,6 @@ RADIUS_PACKET *fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipa
 	packet->data_len = data_len;
 	packet->code = code[2];
 	packet->id = pkt_id;
-
-	packet->dst_port = dst_port;
-	packet->src_port = src_port;
-
-	packet->src_ipaddr = src_ipaddr;
-	packet->dst_ipaddr = dst_ipaddr;
 
 	/*
 	 *	Create a unique vector from the MAC address and the

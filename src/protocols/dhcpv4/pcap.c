@@ -208,14 +208,18 @@ RADIUS_PACKET *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	dst_ipaddr.prefix = 32;
 	dst_ipaddr.scope_id = 0;
 
-	packet = fr_dhcpv4_packet_ok(p, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
-	if (packet) {
-		packet->data = talloc_memdup(packet, p, packet->data_len);
-		packet->timestamp = header->ts;
-		packet->if_index = pcap->if_index;
-		return packet;
-	}
+	packet = fr_dhcpv4_packet_ok(p, data_len);
+	if (!packet) return NULL;
 
-	return NULL;
+	packet->dst_port = dst_port;
+	packet->src_port = src_port;
+
+	packet->src_ipaddr = src_ipaddr;
+	packet->dst_ipaddr = dst_ipaddr;
+
+	packet->data = talloc_memdup(packet, p, packet->data_len);
+	packet->timestamp = header->ts;
+	packet->if_index = pcap->if_index;
+	return packet;
 }
 #endif	/* HAVE_PCAP_H */
