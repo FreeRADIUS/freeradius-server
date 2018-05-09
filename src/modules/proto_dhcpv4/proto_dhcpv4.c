@@ -235,10 +235,6 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
  */
 static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
-#if 1
-	rad_assert(0 == 1);
-	return -1;
-#else
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t *address = track->address;
@@ -246,10 +242,15 @@ static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUS
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
+#if 0
+	/*
+	 *	@todo - print hex packets here!
+	 */
 	if (DEBUG_ENABLED3) {
 		RDEBUG("proto_dhcpv4 decode packet");
 		fr_dhcpv4_print_hex(fr_log_fp, data, data_len);
 	}
+#endif
 
 	client = address->radclient;
 
@@ -269,8 +270,7 @@ static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUS
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to fr_dhcpv4_ok().
 	 */
-	if (fr_dhcpv4_packet_decode(request->packet, NULL, 0,
-				    inst->tunnel_password_zeros, client->secret) < 0) {
+	if (fr_dhcpv4_packet_decode(request->packet) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -301,7 +301,6 @@ static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUS
 	 *	Let the app_io do anything it needs to do.
 	 */
 	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
-#endif
 }
 
 static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
@@ -387,7 +386,6 @@ static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, 
 #endif
 
 	data_len = fr_dhcpv4_encode(buffer, buffer_len, request->packet->data,
-				    client->secret, talloc_array_length(client->secret) - 1,
 				    request->reply->code, request->reply->id, request->reply->vps);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding DHCPV4 reply");
