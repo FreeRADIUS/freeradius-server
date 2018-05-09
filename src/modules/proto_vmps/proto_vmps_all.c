@@ -78,6 +78,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		rad_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
+		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
 			if (request->packet->code == FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST) {
