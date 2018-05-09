@@ -1525,6 +1525,11 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	struct timeval *delay;
 	int packets, connections;
 
+	/*
+	 *	No event list?  We don't need to expire the client.
+	 */
+	if (!el) return;
+
 	DEBUG("TIMER - checking status of client %s", client->radclient->shortname);
 
 	// @todo - print out what we plan on doing next
@@ -1730,10 +1735,10 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	fr_io_instance_t *inst = client->inst;
 
 	/*
-	 *	We're called from mod_write().  Set a cleanup_delay
-	 *	for Access-Request packets.
+	 *	@todo - figure out how to do this only for SOME
+	 *	packets, not just RADIUS ones.
 	 */
-	if (!now && (track->packet[0] == FR_CODE_ACCESS_REQUEST) &&
+	if (el && !now &&
 	    ((inst->cleanup_delay.tv_sec | inst->cleanup_delay.tv_usec) != 0)) {
 
 		struct timeval when;
@@ -1787,7 +1792,6 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	 */
 	if (client->state == PR_CLIENT_STATIC) return;
 
-	rad_assert(el != NULL);
 	rad_assert(client->state != PR_CLIENT_NAK);
 	rad_assert(client->state != PR_CLIENT_PENDING);
 
