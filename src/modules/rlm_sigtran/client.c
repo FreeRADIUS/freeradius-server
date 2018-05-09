@@ -256,11 +256,17 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 }
 
 static void sigtran_client_signal(UNUSED REQUEST *request, UNUSED void *instance,
-				  UNUSED void *thread, void *rctx, UNUSED fr_state_signal_t action)
+				  UNUSED void *thread, void *rctx, fr_state_signal_t action)
 {
 	sigtran_transaction_t	*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
 
+	/*
+	 *	Ignore DUP signals, along with all others.
+	 */
+	if (action != FR_SIGNAL_CANCEL) return;
+
 	txn->ctx.defunct = true;	/* Mark the transaction up as needing to be freed */
+	txn->ctx.request = NULL;	/* remove the link to the (now dead) request */
 }
 
 static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *rctx)
