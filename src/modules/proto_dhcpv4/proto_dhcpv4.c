@@ -305,10 +305,6 @@ static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUS
 
 static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
 {
-#if 1
-	rad_assert(0 == 1);
-	return -1;
-#else
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t *address = track->address;
@@ -385,26 +381,21 @@ static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, 
 	}
 #endif
 
-	data_len = fr_dhcpv4_encode(buffer, buffer_len, request->packet->data,
+	data_len = fr_dhcpv4_encode(buffer, buffer_len,
 				    request->reply->code, request->reply->id, request->reply->vps);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding DHCPV4 reply");
 		return -1;
 	}
 
-	if (fr_dhcpv4_sign(buffer, request->packet->data,
-			   (uint8_t const *) client->secret, talloc_array_length(client->secret) - 1) < 0) {
-		RPEDEBUG("Failed signing DHCPV4 reply");
-		return -1;
-	}
-
+#if 0
 	if (DEBUG_ENABLED3) {
 		RDEBUG("proto_dhcpv4 encode packet");
 		fr_dhcpv4_print_hex(fr_log_fp, buffer, data_len);
 	}
+#endif
 
 	return data_len;
-#endif
 }
 
 static void mod_process_set(void const *instance, REQUEST *request)
