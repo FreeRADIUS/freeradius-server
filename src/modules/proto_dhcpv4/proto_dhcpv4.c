@@ -237,6 +237,7 @@ static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUS
 {
 #if 1
 	rad_assert(0 == 1);
+	return -1;
 #else
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
@@ -307,6 +308,7 @@ static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, 
 {
 #if 1
 	rad_assert(0 == 1);
+	return -1;
 #else
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
