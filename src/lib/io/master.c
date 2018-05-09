@@ -2279,6 +2279,174 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
+/** Create a trie from arrays of allow / deny IP addresses
+ *
+ * @param ctx	the talloc ctx
+ * @param af	the address family to allow
+ * @param allow the array of IPs / networks to allow.  MUST be talloc'd
+ * @param deny	the array of IPs / networks to deny.  MAY be NULL, MUST be talloc'd
+ * @return
+ *	- fr_trie_t on success
+ *	- NULL on error
+ */
+fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_ipaddr_t *deny)
+{
+	fr_trie_t *trie;
+	size_t i, num;
+
+	MEM(trie = fr_trie_alloc(ctx));
+
+	num = talloc_array_length(allow);
+	rad_assert(num > 0);
+
+	for (i = 0; i < num; i++) {
+		fr_ipaddr_t *network;
+		char buffer[256];
+
+		/*
+		 *	Can't add v4 networks to a v6 socket, or vice versa.
+		 */
+		if (allow[i].af != af) {
+			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(allow[i]), 0);
+			fr_strerror_printf("Address family in entry %zd - 'allow = %s' does not match 'ipaddr'", i + 1, buffer);
+			talloc_free(trie);
+			return NULL;
+		}
+
+		/*
+		 *	Duplicates are bad.
+		 */
+		network = fr_trie_match(trie,
+					&allow[i].addr, allow[i].prefix);
+		if (network) {
+			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(allow[i]), 0);
+			fr_strerror_printf("Cannot add duplicate entry 'allow = %s'", buffer);
+			talloc_free(trie);
+			return NULL;
+		}
+
+		/*
+		 *	Look for overlapping entries.
+		 *	i.e. the networks MUST be disjoint.
+		 *
+		 *	Note that this catches 192.168.1/24
+		 *	followed by 192.168/16, but NOT the
+		 *	other way around.  The best fix is
+		 *	likely to add a flag to
+		 *	fr_trie_alloc() saying "we can only
+		 *	have terminal fr_trie_user_t nodes"
+		 */
+		network = fr_trie_lookup(trie,
+					 &allow[i].addr, allow[i].prefix);
+		if (network && (network->prefix <= allow[i].prefix)) {
+			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(allow[i]), 0);
+			fr_strerror_printf("Cannot add overlapping entry 'allow = %s'", buffer);
+			fr_strerror_printf("Entry is completely enclosed inside of a previously defined network.");
+			talloc_free(trie);
+			return NULL;
+		}
+
+		/*
+		 *	Insert the network into the trie.
+		 *	Lookups will return the fr_ipaddr_t of
+		 *	the network.
+		 */
+		if (fr_trie_insert(trie,
+				   &allow[i].addr, allow[i].prefix,
+				   &allow[i]) < 0) {
+			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(allow[i]), 0);
+			fr_strerror_printf("Failed adding 'allow = %s' to tracking table.", buffer);
+			talloc_free(trie);
+			return NULL;
+		}
+	}
+
+	/*
+	 *	And now check denied networks.
+	 */
+	num = talloc_array_length(deny);
+	if (!num) return trie;
+
+	/*
+	 *	Since the default is to deny, you can only add
+	 *	a "deny" inside of a previous "allow".
+	 */
+	for (i = 0; i < num; i++) {
+		fr_ipaddr_t *network;
+		char buffer[256];
+
+		/*
+		 *	Can't add v4 networks to a v6 socket, or vice versa.
+		 */
+		if (deny[i].af != af) {
+			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(deny[i]), 0);
+			fr_strerror_printf("Address family in entry %zd - 'deny = %s' does not match 'ipaddr'", i + 1, buffer);
+			talloc_free(trie);
+			return NULL;
+		}
+
+		/*
+		 *	Duplicates are bad.
+		 */
+		network = fr_trie_match(trie,
+					&deny[i].addr, deny[i].prefix);
+		if (network) {
+			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(deny[i]), 0);
+			fr_strerror_printf("Cannot add duplicate entry 'deny = %s'", buffer);
+			talloc_free(trie);
+			return NULL;
+		}
+
+		/*
+		 *	A "deny" can only be within a previous "allow".
+		 */
+		network = fr_trie_lookup(trie,
+					 &deny[i].addr, deny[i].prefix);
+		if (!network) {
+			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(deny[i]), 0);
+			fr_strerror_printf("The network in entry %zd - 'deny = %s' is not contained within a previous 'allow'",
+				   i + 1, buffer);
+			talloc_free(trie);
+			return NULL;
+		}
+
+		/*
+		 *	We hack the AF in "deny" rules.  If
+		 *	the lookup gets AF_UNSPEC, then we're
+		 *	adding a "deny" inside of a "deny".
+		 */
+		if (network->af != af) {
+			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(deny[i]), 0);
+			fr_strerror_printf("The network in entry %zd - 'deny = %s' is overlaps with another 'deny' rule",
+				   i + 1, buffer);
+			talloc_free(trie);
+			return NULL;
+		}
+
+		/*
+		 *	Insert the network into the trie.
+		 *	Lookups will return the fr_ipaddr_t of
+		 *	the network.
+		 */
+		if (fr_trie_insert(trie,
+				   &deny[i].addr, deny[i].prefix,
+				   &deny[i]) < 0) {
+			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(deny[i]), 0);
+			fr_strerror_printf("Failed adding 'deny = %s' to tracking table.", buffer);
+			talloc_free(trie);
+			return NULL;
+		}
+
+		/*
+		 *	Hack it to make it a deny rule.
+		 */
+		deny[i].af = AF_UNSPEC;
+	}
+
+	return trie;
+}
+
+
 fr_app_io_t fr_master_app_io = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_master_io",

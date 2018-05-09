@@ -109,6 +109,8 @@ typedef struct fr_io_instance_t {
 
 extern fr_app_io_t fr_master_app_io;
 
+fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_ipaddr_t *deny);
+
 #ifdef __cplusplus
 }
 #endif
