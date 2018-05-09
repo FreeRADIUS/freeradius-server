@@ -109,6 +109,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	ssize_t				data_size;
 	size_t				packet_len = -1; /* @todo -fixme */
 	struct timeval			timestamp;
+	uint8_t				message_type;
+	uint32_t			xid;
 
 	fr_time_t			*recv_time_p;
 
@@ -141,7 +143,11 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		return 0;
 	}
 
-//	packet_len = data_size;
+	if (!fr_dhcp_ok(buffer, data_size, &message_type, &xid)) {
+		DEBUG2("proto_dhcpv4_udp got invalid packet, ignoring it - %s",
+			fr_strerror());
+		return 0;
+	}
 
 	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
@@ -150,19 +156,12 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	proto_dhcpv4 sets the priority
 	 */
 
-#if 0
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_dhcpv4_udp - Received %s ID %d length %d %s",
-	       fr_packet_codes[buffer[0]], buffer[1],
+	DEBUG2("proto_dhcpv4_udp - Received %s XID %04x length %d %s",
+	       dhcp_message_types[message_type], xid,
 	       (int) packet_len, inst->name);
-#endif
-
-	/*
-	 *	@todo - sanity check the packet
-	 */
-	rad_assert(0 == 1);
 
 	return packet_len;
 }

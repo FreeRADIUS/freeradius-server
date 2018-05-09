@@ -144,16 +144,17 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
  *
  * @param data pointer to received packet.
  * @param data_len length of received data, and then length of the actual DHCP data.
+ * @param[out] message_type where the message type will be stored (if used)
+ * @param[out] xid where the xid will be stored (if used)
  *
  * @return
  *	- true if the packet is well-formed
  *	- false if it's a bad packet
  */
-bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len)
+bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, uint32_t *xid)
 {
 	uint32_t	magic;
 	uint8_t const	*code;
-	int		pkt_id;
 	size_t		hlen;
 
 	if (data_len < MIN_PACKET_SIZE) {
@@ -184,12 +185,6 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len)
 		return false;
 	}
 
-	/*
-	 *	Create unique keys for the packet.
-	 */
-	memcpy(&magic, data + 4, 4);
-	pkt_id = ntohl(magic);
-
 	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, FR_DHCP_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
@@ -199,6 +194,19 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len)
 	if ((code[1] < 1) || (code[2] == 0) || (code[2] >= DHCP_MAX_MESSAGE_TYPE)) {
 		fr_strerror_printf("Unknown value %d for message-type option", code[2]);
 		return false;
+	}
+
+	/*
+	 *	@todo - data_len MAY be larger than the data in the
+	 *	packet.  In which case, we should update data_len with
+	 *	the true size of the packet.
+	 */
+
+	if (message_type) *message_type = code[2];
+
+	if (xid) {
+		memcpy(&magic, data + 4, 4);
+		*xid = ntohl(magic);
 	}
 
 	return true;

@@ -188,7 +188,7 @@ RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd)
 	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
 	fr_ipaddr_from_sockaddr(&src, sizeof_src, &src_ipaddr, &src_port);
 
-	if (!fr_dhcpv4_ok(data, data_len)) return NULL;
+	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return NULL;
 
 	packet = fr_dhcpv4_packet_alloc(data, data_len);
 	if (!packet) return NULL;

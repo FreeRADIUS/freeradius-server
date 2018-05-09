@@ -142,7 +142,7 @@ int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet);
  */
 int8_t		fr_dhcpv4_attr_cmp(void const *a, void const *b);
 
-bool		fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len);
+bool		fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, uint32_t *xid);
 RADIUS_PACKET	*fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len);
 
 int		fr_dhcpv4_init(void);
