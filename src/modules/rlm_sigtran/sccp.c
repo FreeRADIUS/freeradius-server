@@ -74,9 +74,16 @@ static void sigtran_tcap_timeout(void *data)
 	REQUEST *request;
 	sigtran_transaction_t *txn = talloc_get_type_abort(data, sigtran_transaction_t);
 
-	request = txn->ctx.request;
+	/*
+	 *	Only do RDEBUG if the transaction is still active.
+	 */
+	if (!txn->ctx.defunct) {
+		request = txn->ctx.request;
 
-	REDEBUG("OTID %u Invoke ID %u timeout", txn->ctx.otid, txn->ctx.invoke_id);
+		REDEBUG("OTID %u Invoke ID %u timeout", txn->ctx.otid, txn->ctx.invoke_id);
+	} else {
+		DEBUG("OTID %u Invoke ID %u timeout", txn->ctx.otid, txn->ctx.invoke_id);
+	}
 
 	/*
 	 *	Remove the outstanding transaction
