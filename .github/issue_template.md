@@ -1,7 +1,9 @@
 # Issue type
-- **Questions about the server or its usage MUST be posted to the [users mailing list](http://freeradius.org/list/users.html).  If you post those issues here, they will be closed and locked**
+- **Questions about the server or its usage MUST be posted to the [users mailing list](http://freeradius.org/list/users.html).  If you post those issues here, they will be closed and locked.**
 - **Remote security exploits MUST be sent to security@freeradius.org.**
+
 ***
+
 **REMOVE THOSE WHICH DO NOT APPLY**
 - Defect - Crash or memory corruption.
 - Defect - Non compliance with a standards document, or incorrect API usage.
