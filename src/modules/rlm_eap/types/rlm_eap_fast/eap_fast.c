@@ -631,8 +631,6 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		} /* else there WAS a t->username */
 
 		if (t->username) {
-			VALUE_PAIR *vp;
-
 			vp = fr_pair_copy(fake->packet, t->username);
 			fr_pair_add(&fake->packet->vps, vp);
 			fake->username = vp;
