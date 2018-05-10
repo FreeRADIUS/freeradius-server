@@ -58,6 +58,8 @@ typedef struct proto_dhcpv4_udp_t {
 
 	uint16_t			port;			//!< Port to listen on.
 
+	bool				broadcast;		//!< whether we listen for broadcast packets
+
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
 								//!< buffer value.
 	bool				dynamic_clients;	//!< whether we have dynamic clients
@@ -89,6 +91,8 @@ static const CONF_PARSER udp_listen_config[] = {
 
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_dhcpv4_udp_t, port) },
 	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_dhcpv4_udp_t, recv_buff) },
+
+	{ FR_CONF_OFFSET("broadcast", FR_TYPE_BOOL, proto_dhcpv4_udp_t, broadcast) } ,
 
 	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_BOOL, proto_dhcpv4_udp_t, dynamic_clients) } ,
 	{ FR_CONF_POINTER("networks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) networks_config },
@@ -275,6 +279,17 @@ static int mod_open(void *instance)
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
 			ERROR("Failed to set socket 'reuseport': %s", fr_syserror(errno));
+			close(sockfd);
+			return -1;
+		}
+	}
+
+	if (inst->broadcast) {
+		int on = 1;
+
+		if (setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
+			ERROR("Failed to set broadcast option: %s", fr_syserror(errno));
+			close(sockfd);
 			return -1;
 		}
 	}
