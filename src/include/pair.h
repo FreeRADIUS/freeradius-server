@@ -202,7 +202,9 @@ int		fr_pair_to_unknown(VALUE_PAIR *vp);
 int 		fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value);
 
 /* Searching and list modification */
-VALUE_PAIR	*fr_pair_cursor_init_by_da(fr_cursor_t *cursor, VALUE_PAIR **head, fr_dict_attr_t const *da);
+void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
+
+void		*fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx);
 
 VALUE_PAIR	*fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag);
 
@@ -232,8 +234,6 @@ VALUE_PAIR	*fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **list,
 				      bool skip_if_exists);
 
 void		fr_pair_delete_by_da(VALUE_PAIR **head, fr_dict_attr_t const *da, int8_t tag);
-
-void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
 
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);

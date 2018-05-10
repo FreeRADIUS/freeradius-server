@@ -594,21 +594,21 @@ int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
  * @param[in,out] prev	The VALUE_PAIR before curr. Will be updated to point to the
  *			pair before the one returned, or the last pair in the list
  *			if no matching pairs found.
- * @param[in] curr	The VALUE_PAIR after cursor->current.  Will be checked to
+ * @param[in] to_eval	The VALUE_PAIR after cursor->current.  Will be checked to
  *			see if it matches the specified fr_dict_attr_t.
- * @param[in] ctx	The fr_dict_attr_t to search for.
+ * @param[in] uctx	The fr_dict_attr_t to search for.
  * @return
  *	- Next matching VALUE_PAIR.
  *	- NULL if not more matching VALUE_PAIRs could be found.
  */
-static void *_pair_iter_by_da(void **prev, void *curr, void *ctx)
+void *fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx)
 {
 	VALUE_PAIR	*c, *p;
-	fr_dict_attr_t	*da = ctx;
+	fr_dict_attr_t	*da = uctx;
 
-	if (!curr) return NULL;
+	if (!to_eval) return NULL;
 
-	for (p = *prev, c = curr; c; p = c, c = c->next) {
+	for (p = *prev, c = to_eval; c; p = c, c = c->next) {
 		VP_VERIFY(c);
 		if (c->da == da) break;
 	}
@@ -618,17 +618,33 @@ static void *_pair_iter_by_da(void **prev, void *curr, void *ctx)
 	return c;
 }
 
-/** Create a cursor which will only return pairs with the specified fr_dict_attr_t
+/** Iterate over pairs which are decedents of the specified da
  *
- * @param[in] cursor	Usually an #fr_cursor_t struct in stack memory.
- * @param[in] head	Pointer to the start of the list.
- * @param[in] da	We're searching for.
+ * @param[in,out] prev	The VALUE_PAIR before curr. Will be updated to point to the
+ *			pair before the one returned, or the last pair in the list
+ *			if no matching pairs found.
+ * @param[in] to_eval	The VALUE_PAIR after cursor->current.  Will be checked to
+ *			see if it matches the specified fr_dict_attr_t.
+ * @param[in] uctx	The fr_dict_attr_t to search for.
  * @return
- *	- The first VALUE_PAIR in the list matching da
+ *	- Next matching VALUE_PAIR.
+ *	- NULL if not more matching VALUE_PAIRs could be found.
  */
-VALUE_PAIR *fr_pair_cursor_init_by_da(fr_cursor_t *cursor, VALUE_PAIR **head, fr_dict_attr_t const *da)
+void *fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx)
 {
-	return fr_cursor_talloc_iter_init(cursor, head, _pair_iter_by_da, da, VALUE_PAIR);
+	VALUE_PAIR	*c, *p;
+	fr_dict_attr_t	*da = uctx;
+
+	if (!to_eval) return NULL;
+
+	for (p = *prev, c = to_eval; c; p = c, c = c->next) {
+		VP_VERIFY(c);
+		if (fr_dict_parent_common(da, c->da, true)) break;
+	}
+
+	*prev = p;
+
+	return c;
 }
 
 /** Find the pair with the matching DAs
@@ -873,28 +889,6 @@ void fr_pair_delete_by_child_num(VALUE_PAIR **head, fr_dict_attr_t const *parent
 	if (!da) return;
 
 	fr_pair_delete_by_da(head, da, tag);
-}
-
-/** An iterator for use by #fr_cursor_iter_init or #fr_cursor_talloc_iter_init
- *
- * @note The #fr_dict_attr_t to match should be passed in as the uctx value when initialising the iterator.
- */
-void *fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx)
-{
-	fr_dict_attr_t const *da = uctx;
-	VALUE_PAIR *c, *p;
-
-	if (!to_eval) return NULL;
-
-	for (c = to_eval, p = *prev; c; p = c, c = c->next) {
-		if (c->da == da) {
-			*prev = p;
-			return c;
-		}
-	}
-
-	*prev = to_eval;
-	return NULL;
 }
 
 /** Create a new VALUE_PAIR
