@@ -67,6 +67,8 @@ typedef struct proto_radius_udp_t {
 
 	fr_io_address_t			*connection;		//!< for connected sockets.
 
+	RADCLIENT_LIST			*clients;		//!< local clients
+
 } proto_radius_udp_t;
 
 
@@ -455,6 +457,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	size_t			num;
+	CONF_ITEM		*ci;
+	CONF_SECTION		*server_cs;
 
 	inst->cs = cs;
 
@@ -513,11 +517,43 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		}
 	}
 
+	ci = cf_parent(inst->cs); /* listen { ... } */
+	rad_assert(ci != NULL);
+	ci = cf_parent(ci);
+	rad_assert(ci != NULL);
+
+	server_cs = cf_item_to_section(ci);
+
+	/*
+	 *	Look up local clients, if they exist.
+	 *
+	 *	@todo - ensure that we only parse clients which are
+	 *	for IPPROTO_UDP, and require a "secret".
+	 */
+	if (cf_section_find_next(server_cs, NULL, "client", CF_IDENT_ANY)) {
+		inst->clients = client_list_parse_section(server_cs, false);
+		if (!inst->clients) {
+			cf_log_err(cs, "Failed creating local clients");
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipaddr, int ipproto)
+static RADCLIENT *mod_client_find(void *instance, fr_ipaddr_t const *ipaddr, int ipproto)
 {
+	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	RADCLIENT		*client;
+
+	/*
+	 *	Prefer local clients.
+	 */
+	if (inst->clients) {
+		client = client_find(inst->clients, ipaddr, ipproto);
+		if (client) return client;
+	}
+
 	return client_find(NULL, ipaddr, ipproto);
 }
 
