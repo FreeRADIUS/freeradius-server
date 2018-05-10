@@ -21,6 +21,7 @@
 #  The DHCP functionality goes into a virtual server.
 #
 server dhcp {
+	namespace = dhcpv4
 
 #  Define a DHCP socket.
 #
@@ -38,53 +39,44 @@ server dhcp {
 #  section per interface.
 #
 listen {
-	#  This is a dhcp socket.
-	type = dhcp
+	type = DHCP-Discover
+	type = DHCP-Decline
 
-	#  IP address to listen on. Will usually be the IP of the
-	#  interface, or 0.0.0.0
-	ipaddr = 127.0.0.1
+	protocol = udp
 
-	#  source IP address for unicast packets sent by the
-	#  DHCP server.
-	#
-	#  The source IP for unicast packets is chosen from the first
-	#  one of the following items which returns a valid IP
-	#  address:
-	#
-	#	src_ipaddr
-	#	ipaddr
-	#	reply:DHCP-Server-IP-Address
-	#	reply:DHCP-DHCP-Server-Identifier
-	#
-	src_ipaddr = 127.0.0.1
+	udp {
+		#  IP address to listen on. Will usually be the IP of the
+		#  interface, or 0.0.0.0
+		ipaddr = 127.0.0.1
 
-	#  The port should be 67 for a production network. Don't set
-	#  it to 67 on a production network unless you really know
-	#  what you're doing. Even if nothing is configured below, the
-	#  server may still NAK legitimate responses from clients.
-	port = 6700
+		#  The port should be 67 for a production network. Don't set
+		#  it to 67 on a production network unless you really know
+		#  what you're doing. Even if nothing is configured below, the
+		#  server may still NAK legitimate responses from clients.
+		port = 6700
 
-	#  Interface name we are listening on. See comments above.
-#	interface = lo0
+		#  Interface name we are listening on. See comments above.
+#		interface = lo0
 
-	# The DHCP server defaults to allowing broadcast packets.
-	# Set this to "no" only when the server receives *all* packets
-	# from a relay agent.  i.e. when *no* clients are on the same
-	# LAN as the DHCP server.
-	#
-	# It's set to "no" here for testing. It will usually want to
-	# be "yes" in production, unless you are only dealing with
-	# relayed packets.
-	broadcast = no
+		# The DHCP server defaults to allowing broadcast packets.
+		# Set this to "no" only when the server receives *all* packets
+		# from a relay agent.  i.e. when *no* clients are on the same
+		# LAN as the DHCP server.
+		#
+		# It's set to "no" here for testing. It will usually want to
+		# be "yes" in production, unless you are only dealing with
+		# relayed packets.
+		broadcast = no
 
-	# On Linux if you're running the server as non-root, you
-	# will need to do:
-	#
-	#	sudo setcap cap_net_admin=ei /path/to/radiusd
-	#
-	# This will allow the server to set ARP table entries
-	# for newly allocated IPs
+		# On Linux if you're running the server as non-root, you
+		# will need to do:
+		#
+		#	sudo setcap cap_net_admin=ei /path/to/radiusd
+		#
+		# This will allow the server to set ARP table entries
+		# for newly allocated IPs
+	}
+
 }
 
 #  Packets received on the socket will be processed through one
