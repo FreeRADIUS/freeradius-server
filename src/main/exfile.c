@@ -197,7 +197,7 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
 
 	if (!trigger_args) return;
 
-	MEM(ef->trigger_args = fr_pair_list_copy(ef, trigger_args));
+	MEM(ef->trigger_args = fr_pair_list_dup(ef, trigger_args));
 }
 
 

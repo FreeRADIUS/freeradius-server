@@ -1637,15 +1637,15 @@ error:
 	return -1;
 }
 
-/** Copy a pairlist
+/** Duplicate a list of pairs
  *
  * Copy all pairs from 'from' regardless of tag, attribute or vendor.
  *
- * @param[in] ctx for new #VALUE_PAIR (s) to be allocated in.
- * @param[in] from whence to copy #VALUE_PAIR (s).
+ * @param[in] ctx	for new #VALUE_PAIR (s) to be allocated in.
+ * @param[in] from	whence to copy #VALUE_PAIR (s).
  * @return the head of the new #VALUE_PAIR list or NULL on error.
  */
-VALUE_PAIR *fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR *from)
+VALUE_PAIR *fr_pair_list_dup(TALLOC_CTX *ctx, VALUE_PAIR *from)
 {
 	vp_cursor_t src, dst;
 
@@ -1661,7 +1661,7 @@ VALUE_PAIR *fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR *from)
 			fr_pair_list_free(&out);
 			return NULL;
 		}
-		fr_pair_cursor_append(&dst, vp); /* fr_pair_list_copy sets next pointer to NULL */
+		fr_pair_cursor_append(&dst, vp); /* fr_pair_list_dup sets next pointer to NULL */
 	}
 
 	return out;

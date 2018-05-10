@@ -913,7 +913,7 @@ void fr_pool_enable_triggers(fr_pool_t *pool, char const *trigger_prefix, VALUE_
 
 	if (!trigger_args) return;
 
-	MEM(pool->trigger_args = fr_pair_list_copy(pool, trigger_args));
+	MEM(pool->trigger_args = fr_pair_list_dup(pool, trigger_args));
 }
 
 /** Create a new connection pool

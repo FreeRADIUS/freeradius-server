@@ -766,7 +766,7 @@ int cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
  *	extra magic that we don't want here.
  *
  *	FIXME: integrate this with the code calling it, so that we
- *	only fr_pair_list_copy() those attributes that we're really going to
+ *	only fr_pair_list_dup() those attributes that we're really going to
  *	use.
  */
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat)
@@ -825,7 +825,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 
 	to_count = 0;
 	ctx = talloc_parent(*to);
-	to_copy = fr_pair_list_copy(ctx, *to);
+	to_copy = fr_pair_list_dup(ctx, *to);
 	for (vp = to_copy; vp != NULL; vp = next) {
 		next = vp->next;
 		to_list[to_count++] = vp;

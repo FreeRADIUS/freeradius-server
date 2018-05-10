@@ -140,7 +140,7 @@ RADIUS_PACKET *fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 	out->data = NULL;
 	out->data_len = 0;
 
-	out->vps = fr_pair_list_copy(out, in->vps);
+	out->vps = fr_pair_list_dup(out, in->vps);
 
 	return out;
 }
