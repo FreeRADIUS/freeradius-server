@@ -1081,7 +1081,7 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 	fr_pair_make(fake->packet, &fake->packet->vps, "Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 
 	if (t->username) {
-		vp = fr_pair_list_dup(fake->packet, t->username);
+		vp = fr_pair_copy(fake->packet, t->username);
 		fr_pair_add(&fake->packet->vps, vp);
 		fake->username = vp;
 		RDEBUG2("Setting &request:User-Name from tunneled (inner) identity \"%s\"",

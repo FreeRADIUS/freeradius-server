@@ -173,7 +173,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 
 	/* Add the username to the fake request */
 	if (chbind->username) {
-		VALUE_PAIR *vp = NULL;
+		VALUE_PAIR *vp;
 
 		vp = fr_pair_copy(fake->packet, chbind->username);
 		fr_pair_add(&fake->packet->vps, vp);

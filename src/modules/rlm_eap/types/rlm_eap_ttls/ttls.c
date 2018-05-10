@@ -829,9 +829,11 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		} /* else there WAS a t->username */
 
 		if (t->username) {
-			vp = fr_pair_list_dup(fake->packet, t->username);
+			VALUE_PAIR *vp;
+
+			vp = fr_pair_copy(fake->packet, t->username);
 			fr_pair_add(&fake->packet->vps, vp);
-			fake->username = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+			fake->username = vp;
 		}
 	} /* else the request ALREADY had a User-Name */
 

@@ -927,12 +927,19 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			state->children[i].child->packet->code = request->packet->code;
 
 			if (state->g->clone) {
-				state->children[i].child->packet->vps = fr_pair_list_dup(state->children[i].child->packet,
-											  request->packet->vps);
-				state->children[i].child->reply->vps = fr_pair_list_dup(state->children[i].child->reply,
-											 request->reply->vps);
-				state->children[i].child->control = fr_pair_list_dup(state->children[i].child,
-										      request->control);
+				if ((fr_pair_list_dup(state->children[i].child->packet,
+						      &state->children[i].child->packet->vps,
+						      request->packet->vps) < 0) ||
+				    (fr_pair_list_dup(state->children[i].child->reply,
+						      &state->children[i].child->reply->vps,
+						      request->reply->vps) < 0) ||
+				    (fr_pair_list_dup(state->children[i].child,
+						      &state->children[i].child->control,
+						      request->control) < 0)) {
+					REDEBUG("failed copying lists to clone");
+					for (i = 0; i < state->num_children; i++) TALLOC_FREE(state->children[i].child);
+					return RLM_MODULE_FAIL;
+				}
 			}
 
 			/* FALL-THROUGH */

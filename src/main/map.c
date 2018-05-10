@@ -2036,7 +2036,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		}
 		if (!from) return 0;
 
-		found = fr_pair_list_dup(ctx, *from);
+		if (fr_pair_list_dup(ctx, &found, *from) < 0) return -1;
 
 		/*
 		 *	List to list copy is empty if the src list has no attributes.

@@ -776,7 +776,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	VALUE_PAIR	*vp, *next, **last;
 	VALUE_PAIR	**from_list, **to_list;
 	VALUE_PAIR	*append, **append_tail;
-	VALUE_PAIR 	*to_copy;
+	VALUE_PAIR 	*to_copy = NULL;
 	bool		*edited = NULL;
 	REQUEST		*fixup = NULL;
 	TALLOC_CTX	*ctx;
@@ -825,7 +825,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 
 	to_count = 0;
 	ctx = talloc_parent(*to);
-	to_copy = fr_pair_list_dup(ctx, *to);
+	MEM(fr_pair_list_dup(ctx, &to_copy, *to) == 0);
 	for (vp = to_copy; vp != NULL; vp = next) {
 		next = vp->next;
 		to_list[to_count++] = vp;

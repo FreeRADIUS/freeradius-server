@@ -315,8 +315,8 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			       RADIUS_PACKET *request_packet, RADIUS_PACKET *reply_packet)
 {
 	char const	*name;
-	VALUE_PAIR	*check_tmp;
-	VALUE_PAIR	*reply_tmp;
+	VALUE_PAIR	*check_tmp = NULL;
+	VALUE_PAIR	*reply_tmp = NULL;
 	PAIR_LIST const *user_pl, *default_pl;
 	bool		found = false;
 	PAIR_LIST	my_pl;
@@ -374,7 +374,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			default_pl = default_pl->next;
 		}
 
-		check_tmp = fr_pair_list_dup(request, pl->check);
+		MEM(fr_pair_list_dup(request, &check_tmp, pl->check) == 0);
 		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
@@ -390,9 +390,12 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			found = true;
 
 			/* ctx may be reply or proxy */
-			reply_tmp = fr_pair_list_dup(reply_packet, pl->reply);
+			MEM(fr_pair_list_dup(reply_packet, &reply_tmp, pl->reply) == 0);
+
 			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
 			fr_pair_list_move(request, &request->control, &check_tmp);
+
+			reply_tmp = NULL;	/* radius_pairmove() frees input attributes */
 			fr_pair_list_free(&check_tmp);
 
 			/*

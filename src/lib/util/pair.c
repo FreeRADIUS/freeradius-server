@@ -1636,29 +1636,38 @@ error:
  * Copy all pairs from 'from' regardless of tag, attribute or vendor.
  *
  * @param[in] ctx	for new #VALUE_PAIR (s) to be allocated in.
+ * @param[in] to	where to copy attributes to.
  * @param[in] from	whence to copy #VALUE_PAIR (s).
  * @return the head of the new #VALUE_PAIR list or NULL on error.
  */
-VALUE_PAIR *fr_pair_list_dup(TALLOC_CTX *ctx, VALUE_PAIR *from)
+int fr_pair_list_dup(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR *from)
 {
-	vp_cursor_t src, dst;
+	fr_cursor_t src, dst, tmp;
 
-	VALUE_PAIR *out = NULL, *vp;
+	VALUE_PAIR *head = NULL, *vp;
 
-	fr_pair_cursor_init(&dst, &out);
-	for (vp = fr_pair_cursor_init(&src, &from);
+	fr_cursor_init(&tmp, &head);
+	for (vp = fr_cursor_init(&src, &from);
 	     vp;
-	     vp = fr_pair_cursor_next(&src)) {
+	     vp = fr_cursor_next(&src)) {
 		VP_VERIFY(vp);
 		vp = fr_pair_copy(ctx, vp);
 		if (!vp) {
-			fr_pair_list_free(&out);
-			return NULL;
+			fr_pair_list_free(&head);
+			return -1;
 		}
-		fr_pair_cursor_append(&dst, vp); /* fr_pair_list_dup sets next pointer to NULL */
+		fr_cursor_append(&tmp, vp); /* fr_pair_list_dup sets next pointer to NULL */
 	}
 
-	return out;
+	if (!*to) {	/* Fast Path */
+		*to = head;
+	} else {
+		fr_cursor_init(&dst, to);
+		fr_cursor_head(&tmp);
+		fr_cursor_merge(&dst, &tmp);
+	}
+
+	return 0;
 }
 
 /** Move pairs from source list to destination list respecting operator

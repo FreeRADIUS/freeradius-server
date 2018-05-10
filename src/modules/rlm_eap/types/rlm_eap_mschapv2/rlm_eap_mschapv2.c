@@ -254,7 +254,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 *	access-accept e.g. vlan, etc. This lets the PEAP
 	 *	use_tunneled_reply code work
 	 */
-	data->reply = fr_pair_list_dup(data, request->reply->vps);
+	MEM(fr_pair_list_dup(data, &data->reply, request->reply->vps) == 0);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,
