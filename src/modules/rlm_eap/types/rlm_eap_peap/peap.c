@@ -726,7 +726,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 		/* save the SoH VPs */
 		rad_assert(!t->soh_reply_vps);
-		fr_pair_list_mcopy_by_num(t, &t->soh_reply_vps, &fake->reply->vps, 0, 0, TAG_ANY);
+		MEM(fr_pair_list_dup(t, &t->soh_reply_vps, fake->reply->vps) == 0);
 		rad_assert(!fake->reply->vps);
 		TALLOC_FREE(fake);
 

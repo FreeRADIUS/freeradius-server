@@ -472,7 +472,7 @@ failure:
 		case FR_EAP_MSCHAPV2_SUCCESS:
 			eap_round->request->code = FR_EAP_CODE_SUCCESS;
 
-			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps, &data->mppe_keys, 0, 0, TAG_ANY);
+			MEM(fr_pair_list_dup(request->reply, &request->reply->vps, data->mppe_keys) == 0);
 			/* FALL-THROUGH */
 
 		case FR_EAP_MSCHAPV2_ACK:
@@ -482,7 +482,7 @@ failure:
 			 */
 			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps, &data->reply, 0, 0, TAG_ANY);
+			MEM(fr_pair_list_dup(request->reply, &request->reply->vps, data->reply) == 0);
 			return RLM_MODULE_OK;
 		}
 		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
