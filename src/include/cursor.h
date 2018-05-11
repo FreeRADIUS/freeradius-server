@@ -95,7 +95,7 @@ void fr_cursor_free_list(fr_cursor_t *cursor) CC_HINT(nonnull);
  *	- The first item returned by the iterator.
  */
 #define fr_cursor_talloc_iter_init(_cursor, _head, _iter, _ctx, _type) \
-	_fr_cursor_init(_cursor, (void **)_head, offsetof(__typeof__(**(_head)), next), _iter, _ctx, #_type)
+	_fr_cursor_init(_cursor, (void * const *)_head, offsetof(__typeof__(**(_head)), next), _iter, _ctx, #_type)
 
 /** Initialise a cursor with a custom iterator
  *
@@ -109,7 +109,7 @@ void fr_cursor_free_list(fr_cursor_t *cursor) CC_HINT(nonnull);
  *	- The first item returned by the iterator.
  */
 #define fr_cursor_iter_init(_cursor, _head, _iter, _ctx) \
-	_fr_cursor_init(_cursor, (void **)_head, offsetof(__typeof__(**(_head)), next), _iter, _ctx, NULL)
+	_fr_cursor_init(_cursor, (void * const *)_head, offsetof(__typeof__(**(_head)), next), _iter, _ctx, NULL)
 
 /** Initialise a cursor with runtime talloc type safety checks
  *
@@ -121,7 +121,7 @@ void fr_cursor_free_list(fr_cursor_t *cursor) CC_HINT(nonnull);
  *	- The first item in the list.
  */
 #define fr_cursor_talloc_init(_cursor, _head, _type) \
-	_fr_cursor_init(_cursor, (void **)_head, offsetof(__typeof__(**(_head)), next), NULL, NULL, #_type)
+	_fr_cursor_init(_cursor, (void * const *)_head, offsetof(__typeof__(**(_head)), next), NULL, NULL, #_type)
 
 /** Initialise a cursor
  *
@@ -132,7 +132,7 @@ void fr_cursor_free_list(fr_cursor_t *cursor) CC_HINT(nonnull);
  *	- The first item in the list.
  */
 #define fr_cursor_init(_cursor, _head) \
-	_fr_cursor_init(_cursor, (void **)_head, offsetof(__typeof__(**(_head)), next), NULL, NULL, NULL)
+	_fr_cursor_init(_cursor, (void * const *)_head, offsetof(__typeof__(**(_head)), next), NULL, NULL, NULL)
 
 void *_fr_cursor_init(fr_cursor_t *cursor, void * const *head, size_t offset,
 		      fr_cursor_iter_t iter, void const *ctx, char const *type);
