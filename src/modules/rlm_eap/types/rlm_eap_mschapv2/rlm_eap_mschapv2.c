@@ -30,32 +30,99 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
-typedef struct rlm_eap_mschapv2_t {
+static int auth_type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+
+typedef struct {
 	bool			with_ntdomain_hack;
 	bool			send_error;
 	char const		*identity;
-	int			auth_type_mschap;
-	char			const *auth_type_mschap_name;
+	fr_dict_enum_t		*auth_type;
 } rlm_eap_mschapv2_t;
 
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOL, rlm_eap_mschapv2_t, with_ntdomain_hack), .dflt = "no" },
 
+	{ FR_CONF_OFFSET("auth_type", FR_TYPE_VOID, rlm_eap_mschapv2_t, auth_type), .func = auth_type_parse,  .dflt = "mschap" },
 	{ FR_CONF_OFFSET("send_error", FR_TYPE_BOOL, rlm_eap_mschapv2_t, send_error), .dflt = "no" },
 	{ FR_CONF_OFFSET("identity", FR_TYPE_STRING, rlm_eap_mschapv2_t, identity) },
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t rlm_eap_mschapv2_dict[];
+fr_dict_autoload_t rlm_eap_mschapv2_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_ms_chap_peer_challenge;
+static fr_dict_attr_t const *attr_ms_chap_user_name;
+
+static fr_dict_attr_t const *attr_ms_chap_challenge;
+static fr_dict_attr_t const *attr_ms_chap_error;
+static fr_dict_attr_t const *attr_ms_chap_nt_enc_pw;
+static fr_dict_attr_t const *attr_ms_chap2_cpw;
+static fr_dict_attr_t const *attr_ms_chap2_response;
+static fr_dict_attr_t const *attr_ms_chap2_success;
+static fr_dict_attr_t const *attr_ms_mppe_encryption_policy;
+static fr_dict_attr_t const *attr_ms_mppe_encryption_type;
+static fr_dict_attr_t const *attr_state;
+static fr_dict_attr_t const *attr_user_name;
+
+extern fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_user_name, .name = "MS-CHAP-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_ms_chap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_error, .name = "MS-CHAP-Error", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_nt_enc_pw, .name = "MS-CHAP-NT-Enc-PW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_cpw, .name = "MS-CHAP2-CPW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_response, .name = "MS-CHAP2-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_success, .name = "MS-CHAP2-Success", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_encryption_policy, .name = "MS-MPPE-Encryption-Policy", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_encryption_type, .name = "MS-MPPE-Encryption-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
 static void fix_mppe_keys(eap_session_t *eap_session, mschapv2_opaque_t *data)
 {
-	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, VENDORPEC_MICROSOFT, 7,
-				  TAG_ANY);
-	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, VENDORPEC_MICROSOFT, 8,
-				  TAG_ANY);
-	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, VENDORPEC_MICROSOFT, 16,
-				  TAG_ANY);
-	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, VENDORPEC_MICROSOFT, 17,
-				  TAG_ANY);
+	fr_pair_list_copy_by_da(data, &data->mppe_keys, eap_session->request->reply->vps,
+				attr_ms_mppe_encryption_policy);
+	fr_pair_list_copy_by_da(data, &data->mppe_keys, eap_session->request->reply->vps,
+				attr_ms_mppe_encryption_type);
+	fr_pair_list_copy_by_da(data, &data->mppe_keys, eap_session->request->reply->vps, attr_ms_mppe_recv_key);
+	fr_pair_list_copy_by_da(data, &data->mppe_keys, eap_session->request->reply->vps, attr_ms_mppe_send_key);
+}
+
+/** Translate a string auth_type into an enumeration value
+ *
+ * @param[in] ctx	to allocate data.
+ * @param[out] out	Where to write the auth_type we created or resolved.
+ * @param[in] ci	#CONF_PAIR specifying the name of the auth_type.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
+
+	if (fr_dict_enum_add_alias_next(attr_auth_type, auth_type) < 0) {
+		cf_log_err(ci, "Failed adding %s alias", attr_auth_type->name);
+		return -1;
+	}
+	*((fr_dict_enum_t **)out) = fr_dict_enum_by_alias(attr_auth_type, auth_type);
+
+	return 0;
 }
 
 /*
@@ -78,8 +145,7 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *ea
 	/*
 	 *	Always called with vendor Microsoft
 	 */
-	switch (reply->da->attr) {
-	case FR_MSCHAP_CHALLENGE:
+	if (reply->da == attr_ms_chap_challenge) {
 		/*
 		 *   0                   1                   2                   3
 		 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -119,11 +185,8 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *ea
 		 *	Copy the Challenge, success, or error over.
 		 */
 		memcpy(ptr, reply->vp_octets, reply->vp_length);
-
 		memcpy((ptr + reply->vp_length), inst->identity, (talloc_array_length(inst->identity) - 1));
-		break;
-
-	case FR_MSCHAP2_SUCCESS:
+	} else if (reply->da == attr_ms_chap2_success) {
 		/*
 		 *   0                   1                   2                   3
 		 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -150,9 +213,7 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *ea
 		length = htons(length);
 		memcpy((eap_round->request->type.data + 2), &length, sizeof(uint16_t));
 		memcpy((eap_round->request->type.data + 4), reply->vp_strvalue + 1, 42);
-		break;
-
-	case FR_MSCHAP_ERROR:
+	} else if (reply->da == attr_ms_chap_error) {
 		REDEBUG("MSCHAP Failure");
 		length = 4 + reply->vp_length - 1;
 		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
@@ -171,11 +232,8 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *ea
 		/*
 		 *	Copy the entire failure message.
 		 */
-		memcpy((eap_round->request->type.data + 4),
-		       reply->vp_strvalue + 1, reply->vp_length - 1);
-		break;
-
-	default:
+		memcpy((eap_round->request->type.data + 4), reply->vp_strvalue + 1, reply->vp_length - 1);
+	} else {
 		RERROR("Internal sanity check failed");
 		return -1;
 	}
@@ -216,8 +274,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 		 *	Move the attribute, so it doesn't go into
 		 *	the reply.
 		 */
-		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, VENDORPEC_MICROSOFT,
-					  FR_MSCHAP2_SUCCESS, TAG_ANY);
+		fr_pair_list_copy_by_da(data, &response, request->reply->vps, attr_ms_chap2_success);
 		break;
 
 	default:
@@ -254,7 +311,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 *	access-accept e.g. vlan, etc. This lets the PEAP
 	 *	use_tunneled_reply code work
 	 */
-	MEM(fr_pair_list_dup(data, &data->reply, request->reply->vps) == 0);
+	MEM(fr_pair_list_copy(data, &data->reply, request->reply->vps) >= 0);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,
@@ -268,11 +325,12 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 #endif
 
 
-static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst, eap_session_t *eap_session, rlm_rcode_t rcode)
+static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst,
+				   eap_session_t *eap_session, rlm_rcode_t rcode)
 {
 	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t		*eap_round = eap_session->this_round;
-	VALUE_PAIR		*response;
+	VALUE_PAIR		*response = NULL;
 
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
@@ -284,16 +342,20 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst, e
 	 *	Take the response from the mschap module, and
 	 *	return success or failure, depending on the result.
 	 */
-	response = NULL;
 	if (rcode == RLM_MODULE_OK) {
-		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, VENDORPEC_MICROSOFT,
-					  FR_MSCHAP2_SUCCESS, TAG_ANY);
+		if (fr_pair_list_copy_by_da(data, &response, request->reply->vps, attr_ms_chap2_success) < 0) {
+			RPERROR("Failed copying %s", attr_ms_chap2_success->name);
+			return RLM_MODULE_FAIL;
+		}
+
 		data->code = FR_EAP_MSCHAPV2_SUCCESS;
 	} else if (inst->send_error) {
-		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_ERROR,
-					  TAG_ANY);
+		if (fr_pair_list_copy_by_da(data, &response, request->reply->vps, attr_ms_chap_error) < 0) {
+			RPERROR("Failed copying %s", attr_ms_chap_error->name);
+			return RLM_MODULE_FAIL;
+		}
 		if (response) {
-			int n,err,retry;
+			int n, err, retry;
 			char buf[34];
 
 			VP_VERIFY(response);
@@ -325,7 +387,7 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst, e
 	 *	No response, die.
 	 */
 	if (!response) {
-		REDEBUG("No MS-CHAP2-Success or MS-CHAP-Error was found");
+		REDEBUG("No %s or %s attributes were found", attr_ms_chap2_success->name, attr_ms_chap_error->name);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -407,11 +469,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 
 			RDEBUG2("Password change packet received");
 
-			auth_challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
-			if (!auth_challenge) return 0;
+			MEM(auth_challenge = pair_update_request(attr_ms_chap_challenge, TAG_ANY));
 			fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN);
 
-			cpw = pair_make_request("MS-CHAP2-CPW", NULL, T_OP_EQ);
+			MEM(cpw = pair_update_request(attr_ms_chap2_cpw, TAG_ANY));
 			p = talloc_array(cpw, uint8_t, 68);
 			p[0] = 7;
 			p[1] = mschap_id;
@@ -427,7 +488,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 				int to_copy = 516 - copied;
 				if (to_copy > 243) to_copy = 243;
 
-				nt_enc = pair_make_request("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
+				MEM(nt_enc = pair_add_request(attr_ms_chap_nt_enc_pw, TAG_ANY));
 				p = talloc_array(nt_enc, uint8_t, 4 + to_copy);
 				p[0] = 6;
 				p[1] = mschap_id;
@@ -472,7 +533,7 @@ failure:
 		case FR_EAP_MSCHAPV2_SUCCESS:
 			eap_round->request->code = FR_EAP_CODE_SUCCESS;
 
-			MEM(fr_pair_list_dup(request->reply, &request->reply->vps, data->mppe_keys) == 0);
+			MEM(fr_pair_list_copy(request->reply, &request->reply->vps, data->mppe_keys) >= 0);
 			/* FALL-THROUGH */
 
 		case FR_EAP_MSCHAPV2_ACK:
@@ -482,7 +543,7 @@ failure:
 			 */
 			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-			MEM(fr_pair_list_dup(request->reply, &request->reply->vps, data->reply) == 0);
+			MEM(fr_pair_list_copy(request->reply, &request->reply->vps, data->reply) >= 0);
 			return RLM_MODULE_OK;
 		}
 		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
@@ -557,13 +618,10 @@ failure:
 	 *	to pass to the 'mschap' module.  This is a little wonky,
 	 *	but it works.
 	 */
-	auth_challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
-	if (!auth_challenge) return RLM_MODULE_FAIL;
+	MEM(auth_challenge = pair_update_request(attr_ms_chap_challenge, TAG_ANY));
 	fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN);
 
-	response = pair_make_request("MS-CHAP2-Response", NULL, T_OP_EQ);
-	if (!response) return RLM_MODULE_FAIL;
-
+	MEM(response = pair_update_request(attr_ms_chap2_response, TAG_ANY));
 	p = talloc_array(response, uint8_t, MSCHAPV2_RESPONSE_LEN);
 	p[0] = eap_round->response->type.data[1];
 	p[1] = eap_round->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
@@ -574,15 +632,12 @@ failure:
 	 *	the challenge sent by the client.
 	 */
 	if (data->has_peer_challenge) memcpy(p + 2, data->peer_challenge, MSCHAPV2_CHALLENGE_LEN);
-
 	fr_pair_value_memsteal(response, p);
-
-	name = pair_make_request("MS-CHAP-User-Name", NULL, T_OP_EQ);
-	if (!name) return RLM_MODULE_FAIL;
 
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */
+	MEM(name = pair_update_request(attr_ms_chap_user_name, TAG_ANY));
 	name->vp_tainted = true;
 	name->vp_length = length - 49 - 5;
 	name->vp_strvalue = q = talloc_array(name, char, name->vp_length + 1);
@@ -634,7 +689,7 @@ packet_ready:
 		 *	the State attribute back, before passing
 		 *	the eap_session & request back into the tunnel.
 		 */
-		fr_pair_delete_by_num(&request->packet->vps, 0, FR_STATE, TAG_ANY);
+		fr_pair_delete_by_da(&request->packet->vps, attr_state, TAG_ANY);
 
 		/*
 		 *	Fix the User-Name when proxying, to strip off
@@ -643,7 +698,7 @@ packet_ready:
 		 *	in the user name, THEN discard the user name.
 		 */
 		if (inst->with_ntdomain_hack &&
-		    ((auth_challenge = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY)) != NULL) &&
+		    ((auth_challenge = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY)) != NULL) &&
 		    ((username = memchr(auth_challenge->vp_octets, '\\', auth_challenge->vp_length)) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
@@ -666,9 +721,9 @@ packet_ready:
 	/*
 	 *	This is a wild & crazy hack.
 	 */
-	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type_mschap_name);
+	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type->alias);
 	if (!unlang) {
-		rcode = process_authenticate(inst->auth_type_mschap, request);
+		rcode = process_authenticate(inst->auth_type->value->vb_uint32, request);
 	} else {
 		unlang_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME);
 		rcode = unlang_interpret_continue(request);
@@ -701,24 +756,24 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 
 	if (!fr_cond_assert(instance)) return RLM_MODULE_FAIL;
 
-	auth_challenge = fr_pair_find_by_num(request->control, VENDORPEC_MICROSOFT, FR_MSCHAP_CHALLENGE, TAG_ANY);
+	auth_challenge = fr_pair_find_by_da(request->control, attr_ms_chap_challenge, TAG_ANY);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-		RWDEBUG("control:MS-CHAP-Challenge is incorrect length.  Ignoring it.");
+		RWDEBUG("&control:MS-CHAP-Challenge is incorrect length.  Ignoring it");
 		auth_challenge = NULL;
 	}
 
-	peer_challenge = fr_pair_find_by_num(request->control, 0, FR_MS_CHAP_PEER_CHALLENGE, TAG_ANY);
+	peer_challenge = fr_pair_find_by_da(request->control, attr_ms_chap_peer_challenge, TAG_ANY);
 	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-		RWDEBUG("control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it.");
+		RWDEBUG("&control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 		peer_challenge = NULL;
 	}
 
 	if (auth_challenge) {
 		created_auth_challenge = false;
 
-		peer_challenge = fr_pair_find_by_num(request->control, 0, FR_MS_CHAP_PEER_CHALLENGE, TAG_ANY);
+		peer_challenge = fr_pair_find_by_da(request->control, attr_ms_chap_peer_challenge, TAG_ANY);
 		if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-			RWDEBUG("control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it.");
+			RWDEBUG("&control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 			peer_challenge = NULL;
 		}
 
@@ -726,11 +781,10 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 		created_auth_challenge = true;
 		peer_challenge = NULL;
 
-		auth_challenge = fr_pair_make(eap_session, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
-
 		/*
 		 *	Get a random challenge.
 		 */
+		MEM(auth_challenge = fr_pair_afrom_da(eap_session, attr_ms_chap_challenge));
 		p = talloc_array(auth_challenge, uint8_t, MSCHAPV2_CHALLENGE_LEN);
 		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) p[i] = fr_rand();
 		fr_pair_value_memsteal(auth_challenge, p);
@@ -763,7 +817,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	and free it.
 	 */
 	eapmschapv2_compose(instance, eap_session, auth_challenge);
-	if (created_auth_challenge) fr_pair_list_free(&auth_challenge);
+	if (created_auth_challenge) TALLOC_FREE(auth_challenge);
 
 #ifdef WITH_PROXY
 	/*
@@ -791,7 +845,6 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
 	rlm_eap_mschapv2_t *inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
-	fr_dict_enum_t const *enumv;
 
 	if (inst->identity && (strlen(inst->identity) > 255)) {
 		cf_log_err(cs, "identity is too long");
@@ -799,15 +852,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	}
 
 	if (!inst->identity) inst->identity = talloc_typed_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
-
-	enumv = fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MS-CHAP");
-	if (!enumv) enumv = fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MSCHAP");
-	if (!enumv) {
-		cf_log_err(cs, "Failed to find 'Auth-Type MS-CHAP' section.  Cannot authenticate users.");
-		return -1;
-	}
-	inst->auth_type_mschap = enumv->value->vb_uint32;
-	inst->auth_type_mschap_name = enumv->alias;
 
 	return 0;
 }

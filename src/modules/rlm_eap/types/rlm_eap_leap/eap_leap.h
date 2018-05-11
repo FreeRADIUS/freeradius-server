@@ -56,6 +56,11 @@ typedef struct leap_session_t {
 	uint8_t		peer_response[24];
 } leap_session_t;
 
+extern fr_dict_attr_t const *attr_cleartext_password;
+extern fr_dict_attr_t const *attr_nt_password;
+extern fr_dict_attr_t const *attr_cisco_avpair;
+extern fr_dict_attr_t const *attr_user_password;
+
 /* function declarations here */
 
 int 		eap_leap_compose(REQUEST *request, eap_round_t *auth, leap_packet_t *reply);

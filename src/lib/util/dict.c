@@ -3105,26 +3105,17 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
 
 /** Return vendor attribute for the specified dictionary and pen
  *
- * @param[in] dict		to search for the vendor in.
  * @param[in] vendor_root	of the vendor root attribute.  Could be 26 (for example) in RADIUS.
  * @param[in] vendor_pen	to find.
  * @return
  *	- NULL if vendor does not exist.
  *	- A fr_dict_attr_t representing the vendor in the dictionary hierarchy.
  */
-fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t const *dict, unsigned int vendor_root, uint32_t vendor_pen)
+fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen)
 {
-	fr_dict_attr_t const *da;
+	fr_dict_attr_t const *vendor;
 
-	if (!dict) return NULL;
-
-	da = fr_dict_attr_child_by_num(fr_dict_root(dict), vendor_root);
-	if (!da) {
-		fr_strerror_printf("Vendor root attribute %i not defined in dict %s", vendor_root, dict->root->name);
-		return NULL;
-	}
-
-	switch (da->type) {
+	switch (vendor_root->type) {
 	case FR_TYPE_VSA:	/* Vendor specific attribute */
 	case FR_TYPE_EVS:	/* Extended vendor specific attribute */
 		break;
@@ -3133,24 +3124,24 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t const *dict, unsigned
 		fr_strerror_printf("Wrong type for vendor root, expected '%s' or '%s' got '%s'",
 				   fr_int2str(dict_attr_types, FR_TYPE_VSA, "<INVALID>"),
 				   fr_int2str(dict_attr_types, FR_TYPE_EVS, "<INVALID>"),
-				   fr_int2str(dict_attr_types, da->type, "<INVALID>"));
+				   fr_int2str(dict_attr_types, vendor_root->type, "<INVALID>"));
 		return NULL;
 	}
 
-	da = fr_dict_attr_child_by_num(da, vendor_pen);
-	if (!da) {
+	vendor = fr_dict_attr_child_by_num(vendor_root, vendor_pen);
+	if (!vendor) {
 		fr_strerror_printf("Vendor %i not defined", vendor_pen);
 		return NULL;
 	}
 
-	if (da->type != FR_TYPE_VENDOR) {
+	if (vendor->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("Wrong type for vendor, expected '%s' got '%s'",
-				   fr_int2str(dict_attr_types, da->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, vendor->type, "<INVALID>"),
 				   fr_int2str(dict_attr_types, FR_TYPE_VENDOR, "<INVALID>"));
 		return NULL;
 	}
 
-	return da;
+	return vendor;
 }
 
 /** Look up a dictionary attribute by a name embedded in another string

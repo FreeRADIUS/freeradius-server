@@ -31,6 +31,22 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/md5.h>
 
+static fr_dict_t const *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_eap_md5_dict[];
+fr_dict_autoload_t rlm_eap_md5_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_cleartext_password;
+
+extern fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
 
 /*
@@ -103,7 +119,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	rad_assert(eap_session->request != NULL);
 
-	password = fr_pair_find_by_num(eap_session->request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_da(eap_session->request->control, attr_cleartext_password, TAG_ANY);
 	if (!password) {
 		REDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
 		return RLM_MODULE_REJECT;

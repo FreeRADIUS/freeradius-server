@@ -140,7 +140,7 @@ RADIUS_PACKET *fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 	out->data = NULL;
 	out->data_len = 0;
 
-	if (fr_pair_list_dup(out, &out->vps, in->vps) < 0) {
+	if (fr_pair_list_copy(out, &out->vps, in->vps) < 0) {
 		talloc_free(out);
 		return NULL;
 	}

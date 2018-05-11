@@ -145,8 +145,6 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	uint8_t const		*p = data, *end = p + data_len;
 
 	VALUE_PAIR		*vp = NULL;
-	fr_dict_attr_t const	*vendor_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
-									 FR_VENDOR_SPECIFIC);
 	SSL			*ssl = decoder_ctx;
 
 	while (p < end) {
@@ -183,7 +181,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			p += 4;
 			value_len -= 4;	/* -= 4 for the vendor ID field */
 
-			our_parent = fr_dict_vendor_attr_by_num(fr_dict_internal, FR_VENDOR_SPECIFIC, vendor);
+			our_parent = fr_dict_vendor_attr_by_num(attr_vendor_specific, vendor);
 			if (!our_parent) {
 				if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
 					fr_strerror_printf("Mandatory bit set and no vendor %u found", vendor);
@@ -191,7 +189,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 					goto error;
 				}
 
-				MEM(vp->da = fr_dict_unknown_afrom_fields(vp, vendor_root, vendor, attr));
+				MEM(vp->da = fr_dict_unknown_afrom_fields(vp, attr_vendor_specific, vendor, attr));
 				goto do_value;
 			}
 		} else {
@@ -253,9 +251,7 @@ do_value:
 		 *	challenge) But if the client gets the challenge correct,
 		 *	we're not too worried about the Id.
 		 */
-		if ((fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_CHAP_CHALLENGE)) ||
-		    ((fr_dict_vendor_num_by_da(vp->da) == VENDORPEC_MICROSOFT) && (vp->da->attr == FR_MSCHAP_CHALLENGE))
-		   ) {
+		if ((vp->da == attr_chap_challenge) || (vp->da == attr_ms_chap_challenge)) {
 			uint8_t	challenge[16];
 			uint8_t	scratch[16];
 
@@ -537,28 +533,11 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		for (vp = fr_cursor_init(&cursor, &reply->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-		     	switch (fr_dict_vendor_num_by_da(vp->da)) {
-			case VENDORPEC_UKERNA:
-				if (vp->da->attr == FR_UKERNA_CHBIND) {
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-				}
-				break;
-
-			case 0:
-				switch (vp->da->attr) {
-				case FR_EAP_MESSAGE:
-				case FR_REPLY_MESSAGE:
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-					break;
-
-				default:
-					break;
-
-				}
-
-			default:
-				continue;
-			}
+		     	if ((vp->da == attr_eap_message) || (vp->da == attr_reply_message)) {
+		     		fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+		     	} else if (vp->da == attr_eap_channel_binding_message) {
+				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+		     	}
 		}
 		rcode = RLM_MODULE_HANDLED;
 		break;
@@ -782,7 +761,8 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	fr_pair_make(fake->packet, &fake->packet->vps, "Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
+	MEM(vp = fr_pair_add_by_da(fake->packet, &fake->packet->vps, attr_freeradius_proxied_to, 0));
+	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"));
 
 	RDEBUG("Got tunneled request");
 	rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
@@ -790,8 +770,8 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Update other items in the REQUEST data structure.
 	 */
-	fake->username = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_NAME, TAG_ANY);
-	fake->password = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
+	fake->username = fr_pair_find_by_da(fake->packet->vps, attr_user_name, TAG_ANY);
+	fake->password = fr_pair_find_by_da(fake->packet->vps, attr_user_password, TAG_ANY);
 
 	/*
 	 *	No User-Name, try to create one from stored data.
@@ -802,7 +782,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		 *	an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_num(fake->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
+			vp = fr_pair_find_by_da(fake->packet->vps, attr_eap_message, TAG_ANY);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
@@ -811,7 +791,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 				/*
 				 *	Create & remember a User-Name
 				 */
-				t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
+				t->username = fr_pair_afrom_da(t, attr_user_name);
 				rad_assert(t->username != NULL);
 				t->username->vp_tainted = true;
 
@@ -882,7 +862,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
+		vp = fr_pair_find_by_da(fake->control, attr_proxy_to_realm, TAG_ANY);
 		if (vp) {
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
@@ -893,8 +873,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			fr_pair_list_mcopy_by_num(request, &request->control, &fake->control, 0, FR_PROXY_TO_REALM,
-						  TAG_ANY);
+			fr_pair_list_copy_by_da(request, &request->control, fake->control, attr_proxy_to_realm);
 
 			/*
 			 *	Seed the proxy packet with the
@@ -905,10 +884,8 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			request->proxy = request_alloc_proxy(request);
 
 			request->proxy->packet = talloc_steal(request->proxy, fake->packet);
-			memset(&request->proxy->packet->src_ipaddr, 0,
-			       sizeof(request->proxy->packet->src_ipaddr));
-			memset(&request->proxy->packet->src_ipaddr, 0,
-			       sizeof(request->proxy->packet->src_ipaddr));
+			memset(&request->proxy->packet->src_ipaddr, 0, sizeof(request->proxy->packet->src_ipaddr));
+			memset(&request->proxy->packet->src_ipaddr, 0, sizeof(request->proxy->packet->src_ipaddr));
 			request->proxy->packet->src_port = 0;
 			request->proxy->packet->dst_port = 0;
 			fake->packet = NULL;

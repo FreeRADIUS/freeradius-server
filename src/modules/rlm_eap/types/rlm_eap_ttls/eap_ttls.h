@@ -31,6 +31,18 @@ typedef struct ttls_tunnel_t {
 	char const	*virtual_server;
 } ttls_tunnel_t;
 
+extern fr_dict_attr_t const *attr_eap_tls_require_client_cert;
+extern fr_dict_attr_t const *attr_proxy_to_realm;
+extern fr_dict_attr_t const *attr_chap_challenge;
+extern fr_dict_attr_t const *attr_eap_message;
+extern fr_dict_attr_t const *attr_freeradius_proxied_to;
+extern fr_dict_attr_t const *attr_ms_chap_challenge;
+extern fr_dict_attr_t const *attr_reply_message;
+extern fr_dict_attr_t const *attr_eap_channel_binding_message;
+extern fr_dict_attr_t const *attr_user_name;
+extern fr_dict_attr_t const *attr_user_password;
+extern fr_dict_attr_t const *attr_vendor_specific;
+
 /*
  *	Process the TTLS portion of an EAP-TTLS request.
  */

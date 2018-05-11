@@ -1638,36 +1638,145 @@ error:
  * @param[in] ctx	for new #VALUE_PAIR (s) to be allocated in.
  * @param[in] to	where to copy attributes to.
  * @param[in] from	whence to copy #VALUE_PAIR (s).
- * @return the head of the new #VALUE_PAIR list or NULL on error.
+ * @return
+ *	- >0 the number of attributes copied.
+ *	- 0 if no attributes copied.
+ *	- -1 on error.
  */
-int fr_pair_list_dup(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR *from)
+int fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR *from)
 {
-	fr_cursor_t src, dst, tmp;
+	fr_cursor_t	src, dst, tmp;
 
-	VALUE_PAIR *head = NULL, *vp;
+	VALUE_PAIR	*head = NULL;
+	VALUE_PAIR	*vp;
+	int		cnt = 0;
 
-	fr_cursor_init(&tmp, &head);
-	for (vp = fr_cursor_init(&src, &from);
+	fr_cursor_talloc_init(&tmp, &head, VALUE_PAIR);
+	for (vp = fr_cursor_talloc_init(&src, &from, VALUE_PAIR);
 	     vp;
-	     vp = fr_cursor_next(&src)) {
+	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);
 		vp = fr_pair_copy(ctx, vp);
 		if (!vp) {
 			fr_pair_list_free(&head);
 			return -1;
 		}
-		fr_cursor_append(&tmp, vp); /* fr_pair_list_dup sets next pointer to NULL */
+		fr_cursor_append(&tmp, vp); /* fr_pair_list_copy sets next pointer to NULL */
 	}
 
 	if (!*to) {	/* Fast Path */
 		*to = head;
 	} else {
-		fr_cursor_init(&dst, to);
+		fr_cursor_talloc_init(&dst, to, VALUE_PAIR);
 		fr_cursor_head(&tmp);
 		fr_cursor_merge(&dst, &tmp);
 	}
 
-	return 0;
+	return cnt;
+}
+
+/** Duplicate pairs in a list matching the specified da
+ *
+ * Copy all pairs from 'from' matching the specified da.
+ *
+ * @param[in] ctx	for new #VALUE_PAIR (s) to be allocated in.
+ * @param[in] to	where to copy attributes to.
+ * @param[in] from	whence to copy #VALUE_PAIR (s).
+ * @param[in] da	to match.
+ * @return
+ *	- >0 the number of attributes copied.
+ *	- 0 if no attributes copied.
+ *	- -1 on error.
+ */
+int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,
+			    VALUE_PAIR const *from, fr_dict_attr_t const *da)
+{
+	fr_cursor_t	src, dst, tmp;
+
+	VALUE_PAIR	*head = NULL;
+	VALUE_PAIR	*vp;
+	int		cnt = 0;
+
+	if (unlikely(!da)) {
+		fr_strerror_printf("No search attribute provided");
+		return -1;
+	}
+
+	fr_cursor_talloc_init(&tmp, &head, VALUE_PAIR);
+	for (vp = fr_cursor_talloc_iter_init(&src, &from, fr_pair_iter_next_by_da, da, VALUE_PAIR);
+	     vp;
+	     vp = fr_cursor_next(&src), cnt++) {
+		VP_VERIFY(vp);
+		vp = fr_pair_copy(ctx, vp);
+		if (!vp) {
+			fr_pair_list_free(&head);
+			return -1;
+		}
+		fr_cursor_append(&tmp, vp); /* fr_pair_list_copy sets next pointer to NULL */
+	}
+
+	if (!*to) {	/* Fast Path */
+		*to = head;
+	} else {
+		fr_cursor_talloc_init(&dst, to, VALUE_PAIR);
+		fr_cursor_head(&tmp);
+		fr_cursor_merge(&dst, &tmp);
+	}
+
+	return cnt;
+}
+
+/** Duplicate pairs in a list where the da is a descendant of parent_da
+ *
+ * Copy all pairs from 'from' which are descendants of the specified 'parent_da'.
+ * This is particularly useful for copying attributes of a particular vendor, where the vendor
+ * da is passed as parent_da.
+ *
+ * @param[in] ctx	for new #VALUE_PAIR (s) to be allocated in.
+ * @param[in] to	where to copy attributes to.
+ * @param[in] from	whence to copy #VALUE_PAIR (s).
+ * @param[in] parent_da	to match.
+ * @return
+ *	- >0 the number of attributes copied.
+ *	- 0 if no attributes copied.
+ *	- -1 on error.
+ */
+int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
+				  VALUE_PAIR const *from, fr_dict_attr_t const *parent_da)
+{
+	fr_cursor_t	src, dst, tmp;
+
+	VALUE_PAIR	*head = NULL;
+	VALUE_PAIR	*vp;
+	int		cnt = 0;
+
+	if (unlikely(!parent_da)) {
+		fr_strerror_printf("No search attribute provided");
+		return -1;
+	}
+
+	fr_cursor_talloc_init(&tmp, &head, VALUE_PAIR);
+	for (vp = fr_cursor_talloc_iter_init(&src, &from, fr_pair_iter_next_by_ancestor, parent_da, VALUE_PAIR);
+	     vp;
+	     vp = fr_cursor_next(&src), cnt++) {
+		VP_VERIFY(vp);
+		vp = fr_pair_copy(ctx, vp);
+		if (!vp) {
+			fr_pair_list_free(&head);
+			return -1;
+		}
+		fr_cursor_append(&tmp, vp); /* fr_pair_list_copy sets next pointer to NULL */
+	}
+
+	if (!*to) {	/* Fast Path */
+		*to = head;
+	} else {
+		fr_cursor_talloc_init(&dst, to, VALUE_PAIR);
+		fr_cursor_head(&tmp);
+		fr_cursor_merge(&dst, &tmp);
+	}
+
+	return cnt;
 }
 
 /** Move pairs from source list to destination list respecting operator
@@ -1823,199 +1932,82 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	fr_pair_add(to, head_new);
 }
 
-/** Move matching pairs between VALUE_PAIR lists
+/** Move a list of pairs
  *
- * Move pairs of a matching attribute number, vendor number and tag from the
- * the input list to the output list.
+ * Move all pairs from 'from' matching the specified da.  Pairs will be reparented
+ * to the specified ctx.
  *
- * @note fr_pair_list_free should be called on the head of the old list to free unmoved
-	 attributes (if they're no longer needed).
- *
- * @param[in] ctx for talloc
- * @param[in,out] to destination list.
- * @param[in,out] from source list.
- * @param[in] attr to match. If attribute FR_VENDOR_SPECIFIC and vendor 0,
- *	will match (and therefore copy) only VSAs.
- *	If attribute 0 and vendor 0  will match (and therefore copy) all
- *	attributes.
- * @param[in] vendor to match.
- * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
- * @param[in] move if set to "true", VPs are moved.  If set to "false", VPs are copied, and the old one deleted.
+ * @param[in] ctx	for new #VALUE_PAIR (s) to be allocated in.
+ * @param[in] to	where to move attributes to.
+ * @param[in] from	whence to move #VALUE_PAIR (s).
+ * @param[in] da	to match.
+ * @return
+ *	- >0 number of pairs moved.
+ *	- 0 if no pairs were moved.
  */
-static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned int vendor,
-					      unsigned int attr, int8_t tag, bool move)
+int fr_pair_list_move_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,
+			    VALUE_PAIR const *from, fr_dict_attr_t const *da)
 {
-	VALUE_PAIR *to_tail, *i, *next, *this;
-	VALUE_PAIR *iprev = NULL;
+	fr_cursor_t	src, dst;
 
-	/*
-	 *	Find the last pair in the "to" list and put it in "to_tail".
-	 *
-	 *	@todo: replace the "if" with "VALUE_PAIR **tail"
-	 */
-	if (*to != NULL) {
-		to_tail = *to;
-		for(i = *to; i; i = i->next) {
-			VP_VERIFY(i);
-			to_tail = i;
-		}
-	} else
-		to_tail = NULL;
+	VALUE_PAIR	*vp;
+	int		cnt = 0;
 
-	/*
-	 *	Attr/vendor of 0 means "move them all".
-	 *	It's better than "fr_pair_add(foo,bar);bar=NULL"
-	 */
-	if ((vendor == 0) && (attr == 0)) {
-		if (*to) {
-			to_tail->next = *from;
-		} else {
-			*to = *from;
-		}
-
-		for (i = *from; i; i = i->next) {
-			fr_pair_steal(ctx, i);
-		}
-
-		*from = NULL;
-		return;
+	if (unlikely(!da)) {
+		fr_strerror_printf("No search attribute provided");
+		return -1;
 	}
 
-	for (i = *from; i; i = next) {
-		VP_VERIFY(i);
-		next = i->next;
-
-		if (!ATTR_TAG_MATCH(i, tag)) {
-			iprev = i;
-			continue;
-		}
-
-		/*
-		 *	vendor=0, attr = FR_VENDOR_SPECIFIC means
-		 *	"match any vendor attribute".
-		 */
-		if ((vendor == 0) && (attr == FR_VENDOR_SPECIFIC)) {
-			/*
-			 *	It's a VSA: move it over.
-			 */
-			if (!fr_dict_attr_is_top_level(i->da)) goto move;
-
-			/*
-			 *	It's Vendor-Specific: move it over.
-			 */
-			if (i->da->attr == attr) goto move;
-
-			/*
-			 *	It's not a VSA: ignore it.
-			 */
-			iprev = i;
-			continue;
-		}
-
-		/*
-		 *	If it isn't an exact match, ignore it.
-		 */
-		if (!vendor) {
-			if (!(fr_dict_attr_is_top_level(i->da) && (i->da->attr == attr))) {
-				iprev = i;
-				continue;
-			}
-		} else {
-			if (!((i->da->parent->type == FR_TYPE_VENDOR) &&
-			      (i->da->attr == attr) && (fr_dict_vendor_num_by_da(i->da) == vendor))) {
-				iprev = i;
-				continue;
-			}
-		}
-
-	move:
-		/*
-		 *	Remove the attribute from the "from" list.
-		 */
-		if (iprev)
-			iprev->next = next;
-		else
-			*from = next;
-
-		if (move) {
-			this = i;
-		} else {
-			this = fr_pair_copy(ctx, i);
-		}
-
-		/*
-		 *	Add the attribute to the "to" list.
-		 */
-		if (to_tail)
-			to_tail->next = this;
-		else
-			*to = this;
-		to_tail = this;
-		this->next = NULL;
-
-		if (move) {
-			fr_pair_steal(ctx, i);
-		} else {
-			talloc_free(i);
-		}
+	fr_cursor_talloc_init(&dst, to, VALUE_PAIR);
+	for (vp = fr_cursor_talloc_iter_init(&src, &from, fr_pair_iter_next_by_da, da, VALUE_PAIR);
+	     vp;
+	     vp = fr_cursor_next(&src), cnt++) {
+		VP_VERIFY(vp);
+		fr_pair_steal(ctx, vp);
+		fr_cursor_append(&dst, vp);
 	}
+
+	return cnt;
 }
 
-
-/** Move matching pairs between VALUE_PAIR lists
+/** Move pairs in a list where the da is a descendant of parent_da
  *
- * Move pairs of a matching attribute number, vendor number and tag from the
- * the input list to the output list.
+ * Copy all pairs from 'from' which are descendants of the specified 'parent_da'.
+ * This is particularly useful for moving attributes of a particular vendor, where the vendor
+ * da is passed as parent_da.
  *
- * @note pairs which are moved have their parent changed to ctx.
- *
- * @note fr_pair_list_free should be called on the head of the old list to free unmoved
-	 attributes (if they're no longer needed).
- *
- * @param[in] ctx for talloc
- * @param[in,out] to destination list.
- * @param[in,out] from source list.
- * @param[in] attr to match. If attribute FR_VENDOR_SPECIFIC and vendor 0,
- *	will match (and therefore copy) only VSAs.
- *	If attribute 0 and vendor 0  will match (and therefore copy) all
- *	attributes.
- * @param[in] vendor to match.
- * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
+ * @param[in] ctx	for new #VALUE_PAIR (s) to be allocated in.
+ * @param[in] to	where to move attributes to.
+ * @param[in] from	whence to move #VALUE_PAIR (s).
+ * @param[in] parent_da	to match.
+ * @return
+ *	- >0 number of pairs moved.
+ *	- 0 if no pairs were moved.
  */
-void fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-			      unsigned int vendor, unsigned int attr, int8_t tag)
+int fr_pair_list_move_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR const *from,
+				  fr_dict_attr_t const *parent_da)
 {
-	fr_pair_list_move_by_num_internal(ctx, to, from, vendor, attr, tag, true);
+	fr_cursor_t	src, dst;
+
+	VALUE_PAIR	*vp;
+	int		cnt = 0;
+
+	if (unlikely(!parent_da)) {
+		fr_strerror_printf("No search attribute provided");
+		return -1;
+	}
+
+	fr_cursor_talloc_init(&dst, to, VALUE_PAIR);
+	for (vp = fr_cursor_talloc_iter_init(&src, &from, fr_pair_iter_next_by_ancestor, parent_da, VALUE_PAIR);
+	     vp;
+	     vp = fr_cursor_next(&src), cnt++) {
+		VP_VERIFY(vp);
+		fr_pair_steal(ctx, vp);
+		fr_cursor_append(&dst, vp);
+	}
+
+	return cnt;
 }
-
-
-/** Copy / delete matching pairs between VALUE_PAIR lists
- *
- * Move pairs of a matching attribute number, vendor number and tag from the
- * the input list to the output list.  Like fr_pair_list_move_by_num(), but
- * instead does copy / delete.
- *
- * @note The pair is NOT reparented.  It is copied and deleted.
- *
- * @note fr_pair_list_free should be called on the head of the old list to free unmoved
-	 attributes (if they're no longer needed).
- *
- * @param[in] ctx for talloc
- * @param[in,out] to destination list.
- * @param[in,out] from source list.
- * @param[in] attr to match. If attribute FR_VENDOR_SPECIFIC and vendor 0,
- *	will match (and therefore copy) only VSAs.
- *	If attribute 0 and vendor 0  will match (and therefore copy) all
- *	attributes.
- * @param[in] vendor to match.
- * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
- */
-void fr_pair_list_mcopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-			       unsigned int vendor, unsigned int attr, int8_t tag)
-{
-	fr_pair_list_move_by_num_internal(ctx, to, from, vendor, attr, tag, false);
-}
-
 
 /** Convert string value to native attribute value
  *

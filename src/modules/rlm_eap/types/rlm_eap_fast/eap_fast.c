@@ -648,12 +648,12 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		 * RFC 5422 section 3.2.3 - Authenticating Using EAP-FAST-MSCHAPv2
 		 */
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
-			tvp = fr_pair_afrom_num(fake, VENDORPEC_MICROSOFT, FR_MSCHAP_CHALLENGE);
+			tvp = fr_pair_afrom_da(fake, attr_ms_chap_challenge);
 			fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, CHAP_VALUE_LENGTH);
 			fr_pair_add(&fake->control, tvp);
 			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->server_challenge, CHAP_VALUE_LENGTH, "MSCHAPv2 auth_challenge");
 
-			tvp = fr_pair_afrom_num(fake, 0, FR_MS_CHAP_PEER_CHALLENGE);
+			tvp = fr_pair_afrom_da(fake, attr_ms_chap_peer_challenge);
 			fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, CHAP_VALUE_LENGTH);
 			fr_pair_add(&fake->control, tvp);
 			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->client_challenge, CHAP_VALUE_LENGTH, "MSCHAPv2 peer_challenge");
@@ -680,15 +680,12 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);
 
 			/*
-			 * Tell the original request that it's going
-			 * to be proxied.
+			 *	Tell the original request that it's going to be proxied.
 			 */
-			fr_pair_list_mcopy_by_num(request, &request->control, &fake->control, 0,
-						  FR_PROXY_TO_REALM, TAG_ANY);
+			fr_pair_list_copy_by_da(request, &request->control, fake->control, attr_proxy_to_realm);
 
 			/*
-			 * Seed the proxy packet with the
-			 * tunneled request.
+			 *	Seed the proxy packet with the tunneled request.
 			 */
 			rad_assert(!request->proxy);
 
@@ -706,24 +703,23 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			fake->reply = NULL;
 
 			/*
-			 * Set up the callbacks for the tunnel
+			 *	Set up the callbacks for the tunnel
 			 */
 			tunnel = talloc_zero(request, eap_tunnel_data_t);
 			tunnel->tls_session = tls_session;
 
 			/*
-			 * Associate the callback with the request.
+			 *	Associate the callback with the request.
 			 */
 			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 					       tunnel, false, false, false);
 			fr_cond_assert(ret == 0);
 
 			/*
-			 * rlm_eap.c has taken care of associating
-			 * the eap_session with the fake request.
+			 *	rlm_eap.c has taken care of associating the eap_session
+			 *	with the fake request.
 			 *
-			 * So we associate the fake request with
-			 * this request.
+			 *	So we associate the fake request with this request.
 			 */
 			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
 					       fake, true, false, false);
@@ -732,8 +728,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			fake = NULL;
 
 			/*
-			 * Didn't authenticate the packet, but
-			 * we're proxying it.
+			 *	Didn't authenticate the packet, but we're proxying it.
 			 */
 			code = FR_CODE_STATUS_CLIENT;
 
@@ -747,7 +742,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 
 	default:
 		/*
-		 * Returns RLM_MODULE_FOO, and we want to return FR_FOO
+		 *	Returns RLM_MODULE_FOO, and we want to return FR_FOO
 		 */
 		rcode = process_reply(eap_session, tls_session, request, fake->reply);
 		switch (rcode) {

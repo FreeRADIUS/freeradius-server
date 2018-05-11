@@ -749,9 +749,7 @@ VALUE	SoH-MS-Machine-Role		client			1
 VALUE	SoH-MS-Machine-Role		dc			2
 VALUE	SoH-MS-Machine-Role		server			3
 
-ATTRIBUTE	SoH-Supported				2119	integer
-VALUE	SoH-Supported			no			0
-VALUE	SoH-Supported			yes			1
+ATTRIBUTE	SoH-Supported				2119	bool
 
 ATTRIBUTE	SoH-MS-Windows-Health-Status		2120	string
 ATTRIBUTE	SoH-MS-Health-Other			2129	string

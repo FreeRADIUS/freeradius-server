@@ -55,7 +55,7 @@ static fr_dict_attr_t const *attr_ms_quarantine_soh;
 
 extern fr_dict_attr_autoload_t rlm_soh_dict_attr[];
 fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
-	{ .out = &attr_soh_supported, .name = "SoH-Supported", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_supported, .name = "SoH-Supported", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_soh_ms_machine_os_vendor, .name = "SoH-MS-Machine-OS-vendor", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_soh_ms_machine_os_version, .name = "SoH-MS-Machine-OS-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_soh_ms_machine_os_release, .name = "SoH-MS-Machine-OS-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },

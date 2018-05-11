@@ -195,7 +195,7 @@ authenticate chap {
 
 #
 #  MSCHAP authentication.
-authenticate ms-chap {
+authenticate mschap {
 	mschap
 }
 

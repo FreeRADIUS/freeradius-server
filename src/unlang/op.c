@@ -927,13 +927,13 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			state->children[i].child->packet->code = request->packet->code;
 
 			if (state->g->clone) {
-				if ((fr_pair_list_dup(state->children[i].child->packet,
+				if ((fr_pair_list_copy(state->children[i].child->packet,
 						      &state->children[i].child->packet->vps,
 						      request->packet->vps) < 0) ||
-				    (fr_pair_list_dup(state->children[i].child->reply,
+				    (fr_pair_list_copy(state->children[i].child->reply,
 						      &state->children[i].child->reply->vps,
 						      request->reply->vps) < 0) ||
-				    (fr_pair_list_dup(state->children[i].child,
+				    (fr_pair_list_copy(state->children[i].child,
 						      &state->children[i].child->control,
 						      request->control) < 0)) {
 					REDEBUG("failed copying lists to clone");

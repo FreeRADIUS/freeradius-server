@@ -52,6 +52,24 @@ static CONF_PARSER submodule_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_eap_tls_dict[];
+fr_dict_autoload_t rlm_eap_tls_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_eap_tls_require_client_cert;
+static fr_dict_attr_t const *attr_virtual_server;
+
+extern fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
+	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
@@ -86,7 +104,7 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, eap_session_t *ea
 	VALUE_PAIR	*vp;
 
 	/* set the virtual server to use */
-	vp = fr_pair_find_by_num(request->control, 0, FR_VIRTUAL_SERVER, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_virtual_server, TAG_ANY);
 	if (vp) {
 		server_cs = virtual_server_find(vp->vp_strvalue);
 		if (!server_cs) {
@@ -204,7 +222,7 @@ static rlm_rcode_t mod_session_init(void *uctx, eap_session_t *eap_session)
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_num(eap_session->request->control, 0, FR_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
+	vp = fr_pair_find_by_da(eap_session->request->control, attr_eap_tls_require_client_cert, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {

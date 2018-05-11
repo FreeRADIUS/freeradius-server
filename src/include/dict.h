@@ -307,8 +307,7 @@ fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t ve
 
 fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
 
-fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_t const *dict,
-						    unsigned int vendor_root, uint32_t vendor_pen);
+fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen);
 
 fr_dict_attr_t const	*fr_dict_attr_by_name_substr(fr_dict_t const *dict, char const **name);
 

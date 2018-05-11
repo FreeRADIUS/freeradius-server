@@ -26,12 +26,14 @@ RCSID("$Id$")
 
 #include "eap_peap.h"
 
+static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+
 typedef struct rlm_eap_peap_t {
 	char const		*tls_conf_name;		//!< TLS configuration.
-	fr_tls_conf_t	*tls_conf;
+	fr_tls_conf_t		*tls_conf;
 
-	char const		*inner_eap_module;	//!< module name for inner EAP
-	fr_dict_enum_t		*auth_type_eap;
+	fr_dict_enum_t		*inner_eap_module;	//!< Auth type of the inner eap module
+
 	bool			use_tunneled_reply;	//!< Use the reply attributes from the tunneled session in
 							//!< the non-tunneled reply to the client.
 
@@ -48,11 +50,10 @@ typedef struct rlm_eap_peap_t {
 	bool			req_client_cert;	//!< Do we do require a client cert?
 } rlm_eap_peap_t;
 
-
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_peap_t, tls_conf_name) },
 
-	{ FR_CONF_OFFSET("inner_eap_module", FR_TYPE_STRING, rlm_eap_peap_t, inner_eap_module), },
+	{ FR_CONF_OFFSET("inner_eap_module", FR_TYPE_VOID, rlm_eap_peap_t, inner_eap_module), .func = auth_type_parse, .dflt = "eap" },
 
 	{ FR_CONF_DEPRECATED("copy_request_to_tunnel", FR_TYPE_BOOL, rlm_eap_peap_t, NULL), .dflt = "no" },
 
@@ -71,6 +72,61 @@ static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("soh_virtual_server", FR_TYPE_STRING, rlm_eap_peap_t, soh_virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
+
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t rlm_eap_peap_dict[];
+fr_dict_autoload_t rlm_eap_peap_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_auth_type;
+fr_dict_attr_t const *attr_eap_tls_require_client_cert;
+fr_dict_attr_t const *attr_proxy_to_realm;
+fr_dict_attr_t const *attr_soh_supported;
+
+fr_dict_attr_t const *attr_eap_message;
+fr_dict_attr_t const *attr_freeradius_proxied_to;
+fr_dict_attr_t const *attr_user_name;
+
+extern fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_soh_supported, .name = "SoH-Supported", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+
+	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_freeradius_proxied_to, .name = "FreeRADIUS-Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
+/** Translate a string auth_type into an enumeration value
+ *
+ * @param[in] ctx	to allocate data.
+ * @param[out] out	Where to write the auth_type we created or resolved.
+ * @param[in] ci	#CONF_PAIR specifying the name of the auth_type.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
+
+	if (fr_dict_enum_add_alias_next(attr_auth_type, auth_type) < 0) {
+		cf_log_err(ci, "Failed adding %s alias", attr_auth_type->name);
+		return -1;
+	}
+	*((fr_dict_enum_t **)out) = fr_dict_enum_by_alias(attr_auth_type, auth_type);
+
+	return 0;
+}
 
 /*
  *	Allocate the PEAP per-session data
@@ -178,7 +234,7 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 	/*
 	 *	Process the PEAP portion of the request.
 	 */
-	rcode = eap_peap_process(eap_session, tls_session, inst->auth_type_eap);
+	rcode = eap_peap_process(eap_session, tls_session, inst->inner_eap_module);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		eap_tls_fail(eap_session);
@@ -231,7 +287,7 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_num(eap_session->request->control, 0, FR_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
+	vp = fr_pair_find_by_da(eap_session->request->control, attr_eap_tls_require_client_cert, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {
@@ -284,7 +340,6 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
 	rlm_eap_peap_t		*inst = talloc_get_type_abort(instance, rlm_eap_peap_t);
-	fr_dict_enum_t		*dv;
 
 	if (!virtual_server_find(inst->virtual_server)) {
 		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
@@ -306,20 +361,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	if (!inst->tls_conf) {
 		ERROR("Failed initializing SSL context");
 		return -1;
-	}
-
-	/*
-	 *	Don't expose this if we don't need it.
-	 */
-	if (!inst->inner_eap_module) inst->inner_eap_module = "eap";
-
-	dv = fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->inner_eap_module);
-	if (!dv) {
-		WARN("Failed to find 'Auth-Type %s' section in virtual server %s.  "
-		     "The server cannot proxy inner-tunnel EAP packets",
-		     inst->inner_eap_module, inst->virtual_server);
-	} else {
-		inst->auth_type_eap = dv;
 	}
 
 	return 0;

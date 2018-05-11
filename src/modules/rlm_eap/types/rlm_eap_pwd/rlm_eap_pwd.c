@@ -49,6 +49,26 @@ static CONF_PARSER submodule_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t rlm_eap_pwd_dict[];
+fr_dict_autoload_t rlm_eap_pwd_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_cleartext_password;
+static fr_dict_attr_t const *attr_framed_mtu;
+
+extern fr_dict_attr_autoload_t rlm_eap_pwd_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_pwd_dict_attr[] = {
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_framed_mtu, .name = "Framed-MTU", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
+
 static int send_pwd_request(pwd_session_t *session, eap_round_t *eap_round)
 {
 	size_t		len;
@@ -278,7 +298,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		memcpy(session->peer_id, packet->identity, session->peer_id_len);
 		session->peer_id[session->peer_id_len] = '\0';
 
-		vp = fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
+		vp = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
 		if (!vp) {
 			REDEBUG("Failed to find password for %s to do pwd authentication", session->peer_id);
 			return RLM_MODULE_REJECT;
@@ -456,7 +476,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	The admin can dynamically change the MTU.
 	 */
 	session->mtu = inst->fragment_size;
-	vp = fr_pair_find_by_num(eap_session->request->packet->vps, 0, FR_FRAMED_MTU, TAG_ANY);
+	vp = fr_pair_find_by_da(eap_session->request->packet->vps, attr_framed_mtu, TAG_ANY);
 
 	/*
 	 *	session->mtu is *our* MTU.  We need to subtract off the EAP

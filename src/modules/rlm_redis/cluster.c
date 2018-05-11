@@ -331,8 +331,8 @@ static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
 		args = trigger_args_afrom_server(pool, node->name, node->addr.port);
 		if (!args) return;
 
-		if (node->cluster->trigger_args) MEM(fr_pair_list_dup(node->cluster, &args,
-								      node->cluster->trigger_args) == 0);
+		if (node->cluster->trigger_args) MEM(fr_pair_list_copy(node->cluster, &args,
+								      node->cluster->trigger_args) >= 0);
 
 		fr_pool_enable_triggers(pool, node->cluster->trigger_prefix, args);
 
@@ -394,7 +394,7 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 			args = trigger_args_afrom_server(node->pool, node->name, node->addr.port);
 			if (!args) goto error;
 
-			if (cluster->trigger_args) MEM(fr_pair_list_dup(cluster, &args, cluster->trigger_args) == 0);
+			if (cluster->trigger_args) MEM(fr_pair_list_copy(cluster, &args, cluster->trigger_args) >= 0);
 
 			fr_pool_enable_triggers(node->pool, node->cluster->trigger_prefix, args);
 
@@ -2232,7 +2232,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		/*
 		 *	Duplicate the trigger arguments.
 		 */
-		 if (trigger_args) MEM(fr_pair_list_dup(cluster, &cluster->trigger_args, trigger_args) == 0);
+		 if (trigger_args) MEM(fr_pair_list_copy(cluster, &cluster->trigger_args, trigger_args) >= 0);
 	}
 
 	/*

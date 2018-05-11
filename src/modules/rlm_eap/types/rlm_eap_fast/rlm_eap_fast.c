@@ -87,6 +87,7 @@ fr_dict_autoload_t rlm_eap_fast_dict[] = {
 
 fr_dict_attr_t const *attr_eap_tls_require_client_cert;
 fr_dict_attr_t const *attr_eap_type;
+fr_dict_attr_t const *attr_ms_chap_challenge;
 fr_dict_attr_t const *attr_ms_chap_peer_challenge;
 fr_dict_attr_t const *attr_proxy_to_realm;
 
@@ -127,6 +128,7 @@ extern fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[] = {
 	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 

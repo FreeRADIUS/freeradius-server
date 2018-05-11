@@ -28,6 +28,30 @@ RCSID("$Id$")
 
 #include "eap_leap.h"
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t rlm_eap_leap_dict[];
+fr_dict_autoload_t rlm_eap_leap_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_cleartext_password;
+fr_dict_attr_t const *attr_nt_password;
+fr_dict_attr_t const *attr_cisco_avpair;
+fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t rlm_eap_leap_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_leap_dict_attr[] = {
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_nt_password, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_cisco_avpair, .name = "Cisco-AVPair", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session)
@@ -56,8 +80,8 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	 *	The password is never sent over the wire.
 	 *	Always get the configured password, for each user.
 	 */
-	password = fr_pair_find_by_num(eap_session->request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
-	if (!password) password = fr_pair_find_by_num(eap_session->request->control, 0, FR_NT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_da(eap_session->request->control, attr_cleartext_password, TAG_ANY);
+	if (!password) password = fr_pair_find_by_da(eap_session->request->control, attr_nt_password, TAG_ANY);
 	if (!password) {
 		REDEBUG("No Cleartext-Password or NT-Password configured for this user");
 		talloc_free(packet);

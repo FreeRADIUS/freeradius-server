@@ -260,13 +260,18 @@ bool 		fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter,
 /* Lists */
 FR_TOKEN	fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
 int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
-int		fr_pair_list_dup(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR *from);
+
+int		fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR *from);
+int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,
+					VALUE_PAIR const *from, fr_dict_attr_t const *da);
+int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
+					      VALUE_PAIR const *from, fr_dict_attr_t const *parent_da);
 
 void		fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
-void		fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-					 unsigned int vendor, unsigned int attr, int8_t tag);
-void		fr_pair_list_mcopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-					  unsigned int vendor, unsigned int attr, int8_t tag);
+int		fr_pair_list_move_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,
+					VALUE_PAIR const *from, fr_dict_attr_t const *da);
+int		fr_pair_list_move_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
+					      VALUE_PAIR const *from, fr_dict_attr_t const *da);
 
 /* Value manipulation */
 int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t len);

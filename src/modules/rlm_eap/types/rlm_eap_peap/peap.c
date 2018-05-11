@@ -164,7 +164,10 @@ static void eap_peap_soh_verify(REQUEST *request, RADIUS_PACKET *packet,
 	uint32_t eap_method;
 	int rv;
 
-	vp = fr_pair_make(packet, &packet->vps, "SoH-Supported", "no", T_OP_EQ);
+	MEM(vp = fr_pair_afrom_da(packet, attr_soh_supported));
+	vp->vp_bool = false;
+	fr_pair_add(&packet->vps, vp);
+
 	if (data && data[0] == FR_EAP_NAK) {
 		RDEBUG("SoH - client NAKed");
 		return;
@@ -271,7 +274,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 
 	if (data_len > 65535) return NULL; /* paranoia */
 
-	vp = fr_pair_afrom_num(packet, 0, FR_EAP_MESSAGE);
+	vp = fr_pair_afrom_da(packet, attr_eap_message);
 	if (!vp) {
 		return NULL;
 	}
@@ -293,7 +296,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 	fr_pair_cursor_init(&cursor, &head);
 	fr_pair_cursor_append(&cursor, vp);
 	while (total < data_len) {
-		vp = fr_pair_afrom_num(packet, 0, FR_EAP_MESSAGE);
+		vp = fr_pair_afrom_da(packet, attr_eap_message);
 		if (!vp) {
 			fr_pair_list_free(&head);
 			return NULL;
@@ -421,7 +424,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
-		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
+		fr_pair_list_copy_by_da(t, &vp, reply->vps, attr_eap_message);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -685,7 +688,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		/*
 		 *	Save it for later.
 		 */
-		t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
+		t->username = fr_pair_afrom_da(t, attr_user_name);
 		rad_assert(t->username != NULL);
 		t->username->vp_tainted = true;
 
@@ -708,9 +711,8 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		eap_peap_soh_verify(fake, fake->packet, data, data_len);
 		setup_fake_request(request, fake, t);
 
-		if (t->soh_virtual_server) {
-			fake->server_cs = virtual_server_find(t->soh_virtual_server);
-		}
+		if (t->soh_virtual_server) fake->server_cs = virtual_server_find(t->soh_virtual_server);
+
 		RDEBUG("Sending SoH request to server %s",
 		       fake->server_cs ? cf_section_name2(fake->server_cs) : "NULL");
 		rad_virtual_server(fake);
@@ -726,7 +728,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 		/* save the SoH VPs */
 		rad_assert(!t->soh_reply_vps);
-		MEM(fr_pair_list_dup(t, &t->soh_reply_vps, fake->reply->vps) == 0);
+		MEM(fr_pair_list_copy(t, &t->soh_reply_vps, fake->reply->vps) >= 0);
 		rad_assert(!fake->reply->vps);
 		TALLOC_FREE(fake);
 
@@ -823,7 +825,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		len = t->username->vp_length + EAP_HEADER_LEN + 1;
 		t->status = PEAP_STATUS_PHASE2;
 
-		vp = fr_pair_afrom_num(fake->packet, 0, FR_EAP_MESSAGE);
+		vp = fr_pair_afrom_da(fake->packet, attr_eap_message);
 
 		q = talloc_array(vp, uint8_t, len);
 		q[0] = FR_EAP_CODE_RESPONSE;
@@ -869,7 +871,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		 *	EAP-Identity packet.
 		 */
 		if ((data[0] == FR_EAP_IDENTITY) && (data_len > 1)) {
-			t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
+			t->username = fr_pair_afrom_da(t, attr_user_name);
 			rad_assert(t->username != NULL);
 			t->username->vp_tainted = true;
 
@@ -893,7 +895,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
+		vp = fr_pair_find_by_da(fake->control, attr_proxy_to_realm, TAG_ANY);
 
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
@@ -972,7 +974,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				 *	EAP-Message into another set
 				 *	of attributes.
 				 */
-				fr_pair_delete_by_num(&fake->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
+				fr_pair_delete_by_da(&fake->packet->vps, attr_eap_message, TAG_ANY);
 			}
 
 			RDEBUG2("Tunnelled authentication will be proxied to %s", vp->vp_strvalue);
@@ -981,8 +983,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			fr_pair_list_mcopy_by_num(request, &request->control, &fake->control, 0, FR_PROXY_TO_REALM,
-						  TAG_ANY);
+			fr_pair_list_copy_by_da(request, &request->control, fake->control, attr_proxy_to_realm);
 
 			/*
 			 *	Seed the proxy packet with the
@@ -1078,7 +1079,8 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	fr_pair_make(fake->packet, &fake->packet->vps, "Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
+	MEM(vp = fr_pair_add_by_da(fake->packet, &fake->packet->vps, attr_freeradius_proxied_to, 0));
+	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"));
 
 	if (t->username) {
 		vp = fr_pair_copy(fake->packet, t->username);

@@ -206,6 +206,7 @@ typedef struct eap_fast_tunnel_t {
 
 extern fr_dict_attr_t const *attr_eap_tls_require_client_cert;
 extern fr_dict_attr_t const *attr_eap_type;
+extern fr_dict_attr_t const *attr_ms_chap_challenge;
 extern fr_dict_attr_t const *attr_ms_chap_peer_challenge;
 extern fr_dict_attr_t const *attr_proxy_to_realm;
 

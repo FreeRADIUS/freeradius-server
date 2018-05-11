@@ -374,7 +374,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			default_pl = default_pl->next;
 		}
 
-		MEM(fr_pair_list_dup(request, &check_tmp, pl->check) == 0);
+		MEM(fr_pair_list_copy(request, &check_tmp, pl->check) >= 0);
 		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
@@ -390,7 +390,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			found = true;
 
 			/* ctx may be reply or proxy */
-			MEM(fr_pair_list_dup(reply_packet, &reply_tmp, pl->reply) == 0);
+			MEM(fr_pair_list_copy(reply_packet, &reply_tmp, pl->reply) >= 0);
 
 			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
 			fr_pair_list_move(request, &request->control, &check_tmp);
