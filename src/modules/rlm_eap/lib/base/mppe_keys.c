@@ -33,6 +33,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/sha1.h>
 #include "eap_tls.h"
 #include "eap_base.h"
+#include "eap_attrs.h"
 
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
@@ -308,7 +309,7 @@ void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *ssl, uint32_t header)
 	VALUE_PAIR *vp;
 	uint8_t *buff, *p;
 
-	vp = fr_pair_afrom_num(packet, 0, FR_EAP_SESSION_ID);
+	vp = fr_pair_afrom_da(packet, attr_eap_session_id);
 	if (!vp) return;
 
 	MEM(buff = p = talloc_array(vp, uint8_t, 1 + (2 * SSL3_RANDOM_SIZE)));

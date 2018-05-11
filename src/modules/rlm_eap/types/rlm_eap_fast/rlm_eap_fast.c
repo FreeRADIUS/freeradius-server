@@ -92,7 +92,11 @@ fr_dict_attr_t const *attr_ms_chap_peer_challenge;
 fr_dict_attr_t const *attr_proxy_to_realm;
 
 fr_dict_attr_t const *attr_eap_message;
+fr_dict_attr_t const *attr_eap_msk;
+fr_dict_attr_t const *attr_eap_emsk;
 fr_dict_attr_t const *attr_freeradius_proxied_to;
+fr_dict_attr_t const *attr_ms_mppe_send_key;
+fr_dict_attr_t const *attr_ms_mppe_recv_key;
 fr_dict_attr_t const *attr_user_name;
 fr_dict_attr_t const *attr_user_password;
 
@@ -133,7 +137,11 @@ fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[] = {
 	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_emsk, .name = "EAP-EMSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_freeradius_proxied_to, .name = "FreeRADIUS-Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 

@@ -57,11 +57,13 @@ static CONF_PARSER submodule_config[] = {
 };
 
 static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 static fr_dict_t const *dict_eap_sim;
 
 extern fr_dict_autoload_t rlm_eap_sim_dict[];
 fr_dict_autoload_t rlm_eap_sim_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
 	{ .out = &dict_eap_sim, .proto = "eap-sim" },
 	{ NULL }
 };
@@ -69,6 +71,9 @@ fr_dict_autoload_t rlm_eap_sim_dict[] = {
 static fr_dict_attr_t const *attr_eap_sim_mk;
 static fr_dict_attr_t const *attr_eap_sim_root;
 static fr_dict_attr_t const *attr_eap_sim_subtype;
+
+static fr_dict_attr_t const *attr_ms_mppe_send_key;
+static fr_dict_attr_t const *attr_ms_mppe_recv_key;
 
 static fr_dict_attr_t const *attr_eap_sim_any_id_req;
 static fr_dict_attr_t const *attr_eap_sim_client_error_code;
@@ -91,6 +96,9 @@ fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[] = {
 	{ .out = &attr_eap_sim_mk, .name = "EAP-SIM-MK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_eap_sim_root, .name = "EAP-SIM-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
+	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	{ .out = &attr_eap_sim_any_id_req, .name = "EAP-SIM-Any-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim },
 	{ .out = &attr_eap_sim_client_error_code, .name = "EAP-SIM-Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim },

@@ -72,6 +72,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_tls.h"
+#include "eap_attrs.h"
 
 FR_NAME_NUMBER const eap_tls_status_table[] = {
 	{ "invalid",			EAP_TLS_INVALID },

@@ -70,6 +70,8 @@ static fr_dict_attr_t const *attr_ms_chap2_response;
 static fr_dict_attr_t const *attr_ms_chap2_success;
 static fr_dict_attr_t const *attr_ms_mppe_encryption_policy;
 static fr_dict_attr_t const *attr_ms_mppe_encryption_type;
+static fr_dict_attr_t const *attr_ms_mppe_send_key;
+static fr_dict_attr_t const *attr_ms_mppe_recv_key;
 static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
 
@@ -87,6 +89,8 @@ fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[] = {
 	{ .out = &attr_ms_chap2_success, .name = "MS-CHAP2-Success", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_encryption_policy, .name = "MS-MPPE-Encryption-Policy", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_encryption_type, .name = "MS-MPPE-Encryption-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }

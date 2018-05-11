@@ -211,7 +211,11 @@ extern fr_dict_attr_t const *attr_ms_chap_peer_challenge;
 extern fr_dict_attr_t const *attr_proxy_to_realm;
 
 extern fr_dict_attr_t const *attr_eap_message;
+extern fr_dict_attr_t const *attr_eap_msk;
+extern fr_dict_attr_t const *attr_eap_emsk;
 extern fr_dict_attr_t const *attr_freeradius_proxied_to;
+extern fr_dict_attr_t const *attr_ms_mppe_send_key;
+extern fr_dict_attr_t const *attr_ms_mppe_recv_key;
 extern fr_dict_attr_t const *attr_user_name;
 extern fr_dict_attr_t const *attr_user_password;
 

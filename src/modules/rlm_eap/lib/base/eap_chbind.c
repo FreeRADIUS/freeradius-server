@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include "eap_chbind.h"
+#include "eap_attrs.h"
 
 static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 {
@@ -42,7 +43,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
 		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) continue;
-		if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) continue;
+		if (vp->da == attr_message_authenticator) continue;
 
 		total += 2 + vp->vp_length;
 	}
@@ -62,7 +63,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	 *	Set the response code.  Default to "fail" if none was
 	 *	specified.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_CHBIND_RESPONSE_CODE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_chbind_response_code, TAG_ANY);
 	if (vp) {
 		ptr[0] = vp->vp_uint32;
 	} else {
@@ -93,7 +94,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 			fr_cursor_next(&cursor);
 			continue;
 		}
-		if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) goto next;
+		if (vp->da == attr_message_authenticator) goto next;
 
 		length = fr_radius_encode_pair(ptr, end - ptr, &cursor, NULL);
 		ptr += length;
@@ -155,11 +156,12 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 
 FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 {
-	FR_CODE code;
-	rlm_rcode_t rcode;
-	REQUEST *fake = NULL;
-	uint8_t const *attr_data;
-	size_t data_len = 0;
+	FR_CODE		code;
+	rlm_rcode_t	rcode;
+	REQUEST		*fake = NULL;
+	uint8_t const	*attr_data;
+	size_t		data_len = 0;
+	VALUE_PAIR	*vp;
 
 	/* check input parameters */
 	rad_assert((request != NULL) &&
@@ -169,7 +171,8 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 
 	/* Set-up the fake request */
 	fake = request_alloc_fake(request);
-	fr_pair_make(fake->packet, &fake->packet->vps, "Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
+	MEM(vp = fr_pair_add_by_da(fake->packet, &fake->packet->vps, attr_freeradius_proxied_to, 0));
+	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"));
 
 	/* Add the username to the fake request */
 	if (chbind->username) {
@@ -257,16 +260,16 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	chbind_packet_t		*packet;
 	vp_cursor_t		cursor;
 
-	first = fr_pair_find_by_num(vps, VENDORPEC_UKERNA, FR_UKERNA_CHBIND, TAG_ANY);
+	first = fr_pair_find_by_da(vps, attr_eap_channel_binding_message, TAG_ANY);
 	if (!first) return NULL;
 
 	/*
 	 *	Compute the total length of the channel binding data.
 	 */
 	length = 0;
-	for (vp =fr_pair_cursor_init(&cursor, &first);
+	for (vp = fr_pair_cursor_init(&cursor, &first);
 	     vp != NULL;
-	     vp = fr_pair_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, FR_UKERNA_CHBIND, TAG_ANY)) {
+	     vp = fr_pair_cursor_next_by_da(&cursor, attr_eap_channel_binding_message, TAG_ANY)) {
 		length += vp->vp_length;
 	}
 
@@ -287,7 +290,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	packet = (chbind_packet_t *) ptr;
 	for (vp = fr_pair_cursor_init(&cursor, &first);
 	     vp != NULL;
-	     vp = fr_pair_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, FR_UKERNA_CHBIND, TAG_ANY)) {
+	     vp = fr_pair_cursor_next_by_da(&cursor, attr_eap_channel_binding_message, TAG_ANY)) {
 		memcpy(ptr, vp->vp_octets, vp->vp_length);
 		ptr += vp->vp_length;
 	}
@@ -301,7 +304,7 @@ VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind)
 
 	if (!chbind) return NULL; /* don't produce garbage */
 
-	vp = fr_pair_afrom_num(packet, VENDORPEC_UKERNA, FR_UKERNA_CHBIND);
+	vp = fr_pair_afrom_da(packet, attr_eap_channel_binding_message);
 	if (!vp) return NULL;
 	fr_pair_value_memcpy(vp, (uint8_t *) chbind, talloc_array_length((uint8_t *)chbind));
 

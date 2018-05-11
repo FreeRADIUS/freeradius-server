@@ -58,11 +58,13 @@ static CONF_PARSER submodule_config[] = {
 };
 
 static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 static fr_dict_t const *dict_eap_aka;
 
 extern fr_dict_autoload_t rlm_eap_aka_dict[];
 fr_dict_autoload_t rlm_eap_aka_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
 	{ .out = &dict_eap_aka, .proto = "eap-aka" },
 	{ NULL }
 };
@@ -70,6 +72,9 @@ fr_dict_autoload_t rlm_eap_aka_dict[] = {
 static fr_dict_attr_t const *attr_eap_aka_root;
 static fr_dict_attr_t const *attr_eap_aka_subtype;
 static fr_dict_attr_t const *attr_sim_amf;
+
+static fr_dict_attr_t const *attr_ms_mppe_send_key;
+static fr_dict_attr_t const *attr_ms_mppe_recv_key;
 
 static fr_dict_attr_t const *attr_eap_aka_any_id_req;
 static fr_dict_attr_t const *attr_eap_aka_autn;
@@ -93,6 +98,9 @@ fr_dict_attr_autoload_t rlm_eap_aka_dict_attr[] = {
 	{ .out = &attr_eap_aka_root, .name = "EAP-AKA-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 	{ .out = &attr_eap_aka_subtype, .name = "EAP-AKA-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_sim_amf, .name = "SIM-AMF", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+
+	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	{ .out = &attr_eap_aka_any_id_req, .name = "EAP-AKA-Any-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka },
 	{ .out = &attr_eap_aka_autn, .name = "EAP-AKA-AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },

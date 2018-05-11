@@ -64,27 +64,46 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/rad_assert.h>
 #include "eap_types.h"
+#include "eap_attrs.h"
 #include "eap.h"
 
+static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t eap_base_dict[];
 fr_dict_autoload_t eap_base_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-
 	{ NULL }
 };
 
+fr_dict_attr_t const *attr_chbind_response_code;
+fr_dict_attr_t const *attr_eap_session_id;
+fr_dict_attr_t const *attr_eap_type;
+fr_dict_attr_t const *attr_virtual_server;
+
+fr_dict_attr_t const *attr_message_authenticator;
+fr_dict_attr_t const *attr_eap_channel_binding_message;
+fr_dict_attr_t const *attr_eap_message;
 fr_dict_attr_t const *attr_eap_msk;
 fr_dict_attr_t const *attr_eap_emsk;
-
+fr_dict_attr_t const *attr_freeradius_proxied_to;
 fr_dict_attr_t const *attr_ms_mppe_send_key;
 fr_dict_attr_t const *attr_ms_mppe_recv_key;
 
 extern fr_dict_attr_autoload_t eap_base_dict_attr[];
 fr_dict_attr_autoload_t eap_base_dict_attr[] = {
+	{ .out = &attr_chbind_response_code, .name = "Chbind-Response-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_eap_session_id, .name = "EAP-Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_channel_binding_message, .name = "EAP-Channel-Binding-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_eap_emsk, .name = "EAP-EMSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_freeradius_proxied_to, .name = "FreeRADIUS-Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
@@ -104,7 +123,7 @@ eap_type_t eap_name2type(char const *name)
 {
 	fr_dict_enum_t	*dv;
 
-	dv = fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_EAP_TYPE), name);
+	dv = fr_dict_enum_by_alias(attr_eap_type, name);
 	if (!dv) return FR_EAP_INVALID;
 
 	if (dv->value->vb_uint32 >= FR_EAP_MAX_TYPES) return FR_EAP_INVALID;
@@ -120,7 +139,7 @@ char const *eap_type2name(eap_type_t method)
 {
 	fr_dict_enum_t	*dv;
 
-	dv = fr_dict_enum_by_value(fr_dict_attr_by_num(NULL, 0, FR_EAP_TYPE), fr_box_uint32(method));
+	dv = fr_dict_enum_by_value(attr_eap_type, fr_box_uint32(method));
 	if (dv) return dv->alias;
 
 	return "unknown";
@@ -220,7 +239,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 		size = total;
 		if (size > 253) size = 253;
 
-		vp = fr_pair_afrom_num(packet, 0, FR_EAP_MESSAGE);
+		vp = fr_pair_afrom_da(packet, attr_eap_message);
 		if (!vp) {
 			fr_pair_list_free(&head);
 			return NULL;
@@ -256,7 +275,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	first = fr_pair_find_by_num(vps, 0, FR_EAP_MESSAGE, TAG_ANY);
+	first = fr_pair_find_by_da(vps, attr_eap_message, TAG_ANY);
 	if (!first) {
 		fr_strerror_printf("EAP-Message not found");
 		return NULL;
@@ -290,7 +309,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 */
 	total_len = 0;
 	fr_pair_cursor_init(&cursor, &first);
-	while ((i = fr_pair_cursor_next_by_num(&cursor, 0, FR_EAP_MESSAGE, TAG_ANY))) {
+	while ((i = fr_pair_cursor_next_by_da(&cursor, attr_eap_message, TAG_ANY))) {
 		total_len += i->vp_length;
 
 		if (total_len > len) {
@@ -322,7 +341,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
 	fr_pair_cursor_first(&cursor);
-	while ((i = fr_pair_cursor_next_by_num(&cursor, 0, FR_EAP_MESSAGE, TAG_ANY))) {
+	while ((i = fr_pair_cursor_next_by_da(&cursor, attr_eap_message, TAG_ANY))) {
 		memcpy(ptr, i->vp_strvalue, i->vp_length);
 		ptr += i->vp_length;
 	}
@@ -367,7 +386,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	rlm_rcode_t	rcode;
 	VALUE_PAIR	*vp;
 
-	vp = fr_pair_find_by_num(request->control, 0, FR_VIRTUAL_SERVER, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_virtual_server, TAG_ANY);
 	fake->server_cs = vp ? virtual_server_find(vp->vp_strvalue) : virtual_server_find(virtual_server);
 
 	if (fake->server_cs) {

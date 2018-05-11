@@ -17,30 +17,23 @@
 
 /**
  * $Id$
- * @file eap_base.h
+ * @file eap_attrs.h
  * @brief Interface into the base EAP library
  *
  * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-RCSIDH(eap_base_h, "$Id$")
+RCSIDH(eap_attrs_h, "$Id$")
 
-#include "eap_types.h"
+extern fr_dict_attr_t const *attr_chbind_response_code;
+extern fr_dict_attr_t const *attr_eap_session_id;
+extern fr_dict_attr_t const *attr_eap_type;
+extern fr_dict_attr_t const *attr_virtual_server;
 
-/*
- * interfaces in eapcommon.c
- */
-eap_type_t		eap_name2type(char const *name);
-char const		*eap_type2name(eap_type_t method);
-int			eap_wireformat(eap_packet_t *reply);
-
-VALUE_PAIR		*eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *reply);
-eap_packet_raw_t	*eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
-void			eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, int len);
-
-rlm_rcode_t		eap_virtual_server(REQUEST *request, REQUEST *fake,
-					   eap_session_t *eap_session, char const *virtual_server);
-
-int			eap_base_init(void);
-
-void			eap_base_free(void);
-
+extern fr_dict_attr_t const *attr_message_authenticator;
+extern fr_dict_attr_t const *attr_eap_channel_binding_message;
+extern fr_dict_attr_t const *attr_eap_message;
+extern fr_dict_attr_t const *attr_eap_msk;
+extern fr_dict_attr_t const *attr_eap_emsk;
+extern fr_dict_attr_t const *attr_freeradius_proxied_to;
+extern fr_dict_attr_t const *attr_ms_mppe_send_key;
+extern fr_dict_attr_t const *attr_ms_mppe_recv_key;
