@@ -30,6 +30,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <assert.h>
+#include <signal.h>
 
 #ifdef __EMX__
 #  define SHELL_CMD 			"sh"
@@ -323,6 +324,8 @@ typedef struct {
 static void add_rpath(count_chars *cc, char const *path);
 #endif
 
+static pid_t spawn_pid;
+
 static void usage(int code)
 {
 	printf("Usage: jlibtool [OPTIONS...] COMMANDS...\n");
@@ -555,6 +558,11 @@ static char *shell_esc(char const *str)
 	return cmd;
 }
 
+static void external_spawn_sig_handler(int signo)
+{
+	kill(spawn_pid, signo);	/* Forward the signal to the process we're executing */
+}
+
 static int external_spawn(command_t *cmd, char const *file, char const **argv)
 {
 	file = file;		/* -Wunused */
@@ -576,14 +584,43 @@ static int external_spawn(command_t *cmd, char const *file, char const **argv)
 	return spawnvp(P_WAIT, argv[0], argv);
 #else
 	{
-		pid_t pid;
-		pid = fork();
-		if (pid == 0) {
+		/*
+		 *	Signals we forward to our executing process
+		 */
+		spawn_pid = fork();
+		if (spawn_pid == 0) {
 			return execvp(argv[0], (char**)argv);
 		}
 		else {
 			int status;
-			waitpid(pid, &status, 0);
+
+#define SIGNAL_FORWARD(_sig) if (signal(_sig, external_spawn_sig_handler) < 0) \
+	do { \
+		fprintf(stderr, "Failed setting signal handler for %i: %s\n", _sig, strerror(errno)); \
+		exit(EXIT_FAILURE); \
+	} while(0)
+
+#define SIGNAL_RESET(_sig) signal(_sig, SIG_DFL)
+
+			SIGNAL_FORWARD(SIGHUP);
+			SIGNAL_FORWARD(SIGINT);
+			SIGNAL_FORWARD(SIGQUIT);
+			SIGNAL_FORWARD(SIGTRAP);
+			SIGNAL_FORWARD(SIGPIPE);
+			SIGNAL_FORWARD(SIGTERM);
+			SIGNAL_FORWARD(SIGUSR1);
+			SIGNAL_FORWARD(SIGUSR2);
+
+			waitpid(spawn_pid, &status, 0);
+
+			SIGNAL_RESET(SIGHUP);
+			SIGNAL_RESET(SIGINT);
+			SIGNAL_RESET(SIGQUIT);
+			SIGNAL_RESET(SIGTRAP);
+			SIGNAL_RESET(SIGPIPE);
+			SIGNAL_RESET(SIGTERM);
+			SIGNAL_RESET(SIGUSR1);
+			SIGNAL_RESET(SIGUSR2);
 
 			/*
 			 *	Exited via exit(status)
