@@ -89,8 +89,16 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
 		default:
 			return -1;
 		}
-	default:
 		return 0;
+
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_PREFIX:
+		return 0;
+
+	default:
+		rad_assert(0);
+		return -1;
 	}
 }
 
