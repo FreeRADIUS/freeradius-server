@@ -269,6 +269,23 @@ server default {
 	}
 
 
+	#
+	#  The "client" sections can can also be placed here.  Unlike
+	#  v3, they do not need to be wrapped in a "clients" section.
+	#  They can just co-exist beside the "listen" sections.
+	#
+	#  Clients listed here will apply to *all* listeners in this
+	#  virtual server.
+	#
+	client localhost {
+		shortname = sample
+		ipaddr = 192.0.2.1
+		secret = testing123
+
+		# The other "client" configuration items can be added
+		# here, too.
+	}
+
 
 ######################################################################
 #
