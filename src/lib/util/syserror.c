@@ -184,7 +184,7 @@ char const *fr_syserror(int num)
  		fr_thread_local_set_destructor(fr_syserror_buffer, _fr_logging_free, buffer);
 	}
 
-	if (!num) return "No error";
+	if (num == 0) return "No additional error information";
 
 	p = buffer;
 	end = p + FR_SYSERROR_BUFSIZE;
