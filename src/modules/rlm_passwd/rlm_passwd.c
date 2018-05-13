@@ -37,8 +37,8 @@ struct mypasswd {
 
 struct hashtable {
 	int tablesize;
-	int keyfield;
-	int nfields;
+	int key_field;
+	int num_fields;
 	int islist;
 	int ignorenis;
 	char * filename;
@@ -51,10 +51,10 @@ struct hashtable {
 
 #ifdef TEST
 
-void printpw(struct mypasswd *pw, int nfields){
+void printpw(struct mypasswd *pw, int num_fields){
 	int i;
 	if (pw) {
-		for( i = 0; i < nfields; i++ ) printf("%s:", pw->field[i]);
+		for( i = 0; i < num_fields; i++ ) printf("%s:", pw->field[i]);
 		printf("\n");
 	}
 	else printf ("Not found\n");
@@ -63,19 +63,19 @@ void printpw(struct mypasswd *pw, int nfields){
 #endif
 
 
-static struct mypasswd *mypasswd_alloc(char const* buffer, int nfields, size_t* len)
+static struct mypasswd *mypasswd_alloc(char const* buffer, int num_fields, size_t* len)
 {
 	struct mypasswd *t;
-	/* reserve memory for (struct mypasswd) + listflag (nfields * sizeof (char*)) +
-	** fields (nfields * sizeof (char)) + strlen (inst->format) + 1 */
+	/* reserve memory for (struct mypasswd) + listflag (num_fields * sizeof (char*)) +
+	** fields (num_fields * sizeof (char)) + strlen (inst->format) + 1 */
 
-	*len = sizeof(struct mypasswd) + nfields * sizeof (char*) + nfields * sizeof (char ) + strlen(buffer) + 1;
+	*len = sizeof(struct mypasswd) + num_fields * sizeof (char*) + num_fields * sizeof (char ) + strlen(buffer) + 1;
 	MEM(t = (struct mypasswd *)talloc_zero_array(NULL, uint8_t, *len));
 
 	return t;
 }
 
-static int string_to_entry(char const* string, int nfields, char delimiter,
+static int string_to_entry(char const* string, int num_fields, char delimiter,
 			   struct mypasswd *passwd, size_t bufferlen)
 {
 	char *str;
@@ -91,23 +91,23 @@ static int string_to_entry(char const* string, int nfields, char delimiter,
 	if (string[len-1] == '\r') len--;
 	if(!len) return 0;
 	if (!len || !passwd ||
-	    bufferlen < (len + nfields * sizeof (char*) + nfields * sizeof (char) + sizeof (struct mypasswd) + 1) ) return 0;
+	    bufferlen < (len + num_fields * sizeof (char*) + num_fields * sizeof (char) + sizeof (struct mypasswd) + 1) ) return 0;
 	passwd->next = NULL;
 	data_beg=(char *)passwd + sizeof(struct mypasswd);
-	str = data_beg + nfields * sizeof (char) + nfields * sizeof (char*);
+	str = data_beg + num_fields * sizeof (char) + num_fields * sizeof (char*);
 	memcpy (str, string, len);
 	str[len] = 0;
 	passwd->field[fn++] = str;
-	passwd->listflag = data_beg + nfields * sizeof (char *);
+	passwd->listflag = data_beg + num_fields * sizeof (char *);
 	for(i=0; i < len; i++){
 		if (str[i] == delimiter) {
 			str[i] = 0;
 			passwd->field[fn++] = str + i + 1;
-			if (fn == nfields) break;
+			if (fn == num_fields) break;
 		}
 	}
-	for (; fn < nfields; fn++) passwd->field[fn] = NULL;
-	return len + nfields * sizeof (char) + nfields * sizeof (char*) + sizeof (struct mypasswd) + 1;
+	for (; fn < num_fields; fn++) passwd->field[fn] = NULL;
+	return len + num_fields * sizeof (char) + num_fields * sizeof (char*) + sizeof (struct mypasswd) + 1;
 }
 
 
@@ -151,8 +151,8 @@ static void release_ht(struct hashtable * ht){
 	talloc_free(ht);
 }
 
-static struct hashtable * build_hash_table (char const * file, int nfields,
-					    int keyfield, int islist, int tablesize, int ignorenis, char delimiter)
+static struct hashtable * build_hash_table (char const * file, int num_fields,
+					    int key_field, int islist, int tablesize, int ignorenis, char delimiter)
 {
 	struct hashtable* ht;
 	size_t len;
@@ -167,8 +167,8 @@ static struct hashtable * build_hash_table (char const * file, int nfields,
 	MEM(ht->filename = talloc_typed_strdup(ht, file));
 
 	ht->tablesize = tablesize;
-	ht->nfields = nfields;
-	ht->keyfield = keyfield;
+	ht->num_fields = num_fields;
+	ht->key_field = key_field;
 	ht->islist = islist;
 	ht->ignorenis = ignorenis;
 
@@ -189,25 +189,25 @@ static struct hashtable * build_hash_table (char const * file, int nfields,
 	MEM(ht->table = talloc_zero_array(ht, struct mypasswd *, tablesize));
 	while (fgets(buffer, 1024, ht->fp)) {
 		if(*buffer && *buffer!='\n' && (!ignorenis || (*buffer != '+' && *buffer != '-')) ){
-			hashentry = mypasswd_alloc(buffer, nfields, &len);
+			hashentry = mypasswd_alloc(buffer, num_fields, &len);
 			if (!hashentry){
 				release_hash_table(ht);
 				return ht;
 			}
 
-			len = string_to_entry(buffer, nfields, ht->delimiter, hashentry, len);
-			if (!hashentry->field[keyfield] || *hashentry->field[keyfield] == '\0') {
+			len = string_to_entry(buffer, num_fields, ht->delimiter, hashentry, len);
+			if (!hashentry->field[key_field] || *hashentry->field[key_field] == '\0') {
 				talloc_free(hashentry);
 				continue;
 			}
 
 			if (islist) {
-				list = hashentry->field[keyfield];
+				list = hashentry->field[key_field];
 				for (nextlist = list; *nextlist && *nextlist!=','; nextlist++);
 				if (*nextlist) *nextlist++ = 0;
 				else nextlist = 0;
 			}
-			h = hash(hashentry->field[keyfield], tablesize);
+			h = hash(hashentry->field[key_field], tablesize);
 			hashentry->next = ht->table[h];
 			ht->table[h] = hashentry;
 			if (islist) {
@@ -215,12 +215,12 @@ static struct hashtable * build_hash_table (char const * file, int nfields,
 					for (nextlist = list; *nextlist && *nextlist!=','; nextlist++);
 					if (*nextlist) *nextlist++ = 0;
 					else nextlist = 0;
-					if(!(hashentry1 = mypasswd_alloc("", nfields, &len))){
+					if(!(hashentry1 = mypasswd_alloc("", num_fields, &len))){
 						release_hash_table(ht);
 						return ht;
 					}
-					for (i=0; i<nfields; i++) hashentry1->field[i] = hashentry->field[i];
-					hashentry1->field[keyfield] = list;
+					for (i=0; i<num_fields; i++) hashentry1->field[i] = hashentry->field[i];
+					hashentry1->field[key_field] = list;
 					h = hash(list, tablesize);
 					hashentry1->next = ht->table[h];
 					ht->table[h] = hashentry1;
@@ -246,7 +246,7 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 		/* get saved address of next item to check from buffer */
 		hashentry = *last_found;
 		for (; hashentry; hashentry = hashentry->next) {
-			if (!strcmp(hashentry->field[ht->keyfield], name)) {
+			if (!strcmp(hashentry->field[ht->key_field], name)) {
 				/* save new address */
 				*last_found = hashentry->next;
 				return hashentry;
@@ -260,14 +260,14 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 	passwd = (struct mypasswd *) ht->buffer;
 
 	while (fgets(buffer, 1024,ht->fp)) {
-		if(*buffer && *buffer!='\n' && string_to_entry(buffer, ht->nfields, ht->delimiter, passwd, sizeof(ht->buffer)-1) &&
+		if(*buffer && *buffer!='\n' && string_to_entry(buffer, ht->num_fields, ht->delimiter, passwd, sizeof(ht->buffer)-1) &&
 		   (!ht->ignorenis || (*buffer !='-' && *buffer != '+') ) ){
 			if(!ht->islist) {
-				if(!strcmp(passwd->field[ht->keyfield], name))
+				if(!strcmp(passwd->field[ht->key_field], name))
 					return passwd;
 			}
 			else {
-				for (list = passwd->field[ht->keyfield], nextlist = list; nextlist; list = nextlist) {
+				for (list = passwd->field[ht->key_field], nextlist = list; nextlist; list = nextlist) {
 					for(nextlist = list; *nextlist && *nextlist!=','; nextlist++);
 					if(!*nextlist) {
 						nextlist = 0;
@@ -298,7 +298,7 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht,
 	if (ht->tablesize > 0) {
 		h = hash (name, ht->tablesize);
 		for (hashentry = ht->table[h]; hashentry; hashentry = hashentry->next) {
-			if (!strcmp(hashentry->field[ht->keyfield], name)){
+			if (!strcmp(hashentry->field[ht->key_field], name)){
 				/* save address of next item to check into buffer */
 				*last_found=hashentry->next;
 				return hashentry;
@@ -351,15 +351,15 @@ int main(void){
 #else  /* TEST */
 typedef struct rlm_passwd_t {
 	struct hashtable	*ht;
-	struct mypasswd		*pwdfmt;
+	struct mypasswd		*pwd_fmt;
 	char const		*filename;
 	char const		*format;
 	char const		*delimiter;
 	bool			allow_multiple;
 	bool			ignore_nislike;
 	uint32_t		hash_size;
-	uint32_t		nfields;
-	uint32_t		keyfield;
+	uint32_t		num_fields;
+	uint32_t		key_field;
 	uint32_t		listable;
 	fr_dict_attr_t const		*keyattr;
 	bool			ignore_empty;
@@ -382,7 +382,7 @@ static const CONF_PARSER module_config[] = {
 
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	int			nfields = 0, keyfield = -1, listable = 0;
+	int			num_fields = 0, key_field = -1, listable = 0;
 	char const		*s;
 	char			*lf = NULL; /* destination list flags temporary */
 	size_t			len;
@@ -409,7 +409,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	do {
 		if(s == inst->format - 1 || *s == ':'){
 			if(*(s+1) == '*'){
-				keyfield = nfields;
+				key_field = num_fields;
 				s++;
 			}
 			if(*(s+1) == ','){
@@ -417,73 +417,73 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 				s++;
 			}
 			if(*(s+1) == '='){
-				lf[nfields]=1;
+				lf[num_fields]=1;
 				s++;
 			}
 			if(*(s+1) == '~'){
-				lf[nfields]=2;
+				lf[num_fields]=2;
 				s++;
 			}
-			nfields++;
+			num_fields++;
 		}
 		s++;
 	}while(*s);
-	if(keyfield < 0) {
+	if(key_field < 0) {
 		cf_log_err(conf, "no field marked as key in format: %s",
 			      inst->format);
 		return -1;
 	}
 
-	inst->ht = build_hash_table(inst->filename, nfields, keyfield, listable,
+	inst->ht = build_hash_table(inst->filename, num_fields, key_field, listable,
 				    inst->hash_size, inst->ignore_nislike, *inst->delimiter);
 	if (!inst->ht){
 		ERROR("Can't build hashtable from passwd file");
 		return -1;
 	}
 
-	inst->pwdfmt = mypasswd_alloc(inst->format, nfields, &len);
-	if (!inst->pwdfmt){
+	inst->pwd_fmt = mypasswd_alloc(inst->format, num_fields, &len);
+	if (!inst->pwd_fmt){
 		ERROR("Memory allocation failed");
 		release_ht(inst->ht);
 		inst->ht = NULL;
 		return -1;
 	}
-	if (!string_to_entry(inst->format, nfields, ':', inst->pwdfmt , len)) {
+	if (!string_to_entry(inst->format, num_fields, ':', inst->pwd_fmt , len)) {
 		ERROR("Unable to convert format entry");
 		release_ht(inst->ht);
 		inst->ht = NULL;
 		return -1;
 	}
 
-	memcpy(inst->pwdfmt->listflag, lf, nfields);
+	memcpy(inst->pwd_fmt->listflag, lf, num_fields);
 
 	talloc_free(lf);
-	for (i=0; i<nfields; i++) {
-		if (*inst->pwdfmt->field[i] == '*') inst->pwdfmt->field[i]++;
-		if (*inst->pwdfmt->field[i] == ',') inst->pwdfmt->field[i]++;
-		if (*inst->pwdfmt->field[i] == '=') inst->pwdfmt->field[i]++;
-		if (*inst->pwdfmt->field[i] == '~') inst->pwdfmt->field[i]++;
+	for (i=0; i<num_fields; i++) {
+		if (*inst->pwd_fmt->field[i] == '*') inst->pwd_fmt->field[i]++;
+		if (*inst->pwd_fmt->field[i] == ',') inst->pwd_fmt->field[i]++;
+		if (*inst->pwd_fmt->field[i] == '=') inst->pwd_fmt->field[i]++;
+		if (*inst->pwd_fmt->field[i] == '~') inst->pwd_fmt->field[i]++;
 	}
-	if (!*inst->pwdfmt->field[keyfield]) {
+	if (!*inst->pwd_fmt->field[key_field]) {
 		cf_log_err(conf, "key field is empty");
 		release_ht(inst->ht);
 		inst->ht = NULL;
 		return -1;
 	}
-	if (!(da = fr_dict_attr_by_name(NULL, inst->pwdfmt->field[keyfield]))) {
-		ERROR("Unable to resolve attribute: %s", inst->pwdfmt->field[keyfield]);
+	if (!(da = fr_dict_attr_by_name(NULL, inst->pwd_fmt->field[key_field]))) {
+		ERROR("Unable to resolve attribute: %s", inst->pwd_fmt->field[key_field]);
 		release_ht(inst->ht);
 		inst->ht = NULL;
 		return -1;
 	}
 
 	inst->keyattr = da;
-	inst->nfields = nfields;
-	inst->keyfield = keyfield;
+	inst->num_fields = num_fields;
+	inst->key_field = key_field;
 	inst->listable = listable;
 
-	DEBUG3("nfields: %d keyfield %d(%s) listable: %s", nfields, keyfield,
-	       inst->pwdfmt->field[keyfield], listable ? "yes" : "no");
+	DEBUG3("num_fields: %d key_field %d(%s) listable: %s", num_fields, key_field,
+	       inst->pwd_fmt->field[key_field], listable ? "yes" : "no");
 
 	return 0;
 
@@ -496,7 +496,7 @@ static int mod_detach (void *instance) {
 		release_ht(inst->ht);
 		inst->ht = NULL;
 	}
-	talloc_free(inst->pwdfmt);
+	talloc_free(inst->pwd_fmt);
 	return 0;
 #undef inst
 }
@@ -507,15 +507,15 @@ static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, REQUEST *reque
 	uint32_t i;
 	VALUE_PAIR *vp;
 
-	for (i = 0; i < inst->nfields; i++) {
-		if (inst->pwdfmt->field[i] && *inst->pwdfmt->field[i] && pw->field[i] && i != inst->keyfield  && inst->pwdfmt->listflag[i] == when) {
+	for (i = 0; i < inst->num_fields; i++) {
+		if (inst->pwd_fmt->field[i] && *inst->pwd_fmt->field[i] && pw->field[i] && i != inst->key_field  && inst->pwd_fmt->listflag[i] == when) {
 			if ( !inst->ignore_empty || pw->field[i][0] != 0 ) { /* if value in key/value pair is not empty */
-				vp = fr_pair_make(ctx, vps, inst->pwdfmt->field[i], pw->field[i], T_OP_EQ);
+				vp = fr_pair_make(ctx, vps, inst->pwd_fmt->field[i], pw->field[i], T_OP_EQ);
 				if (vp) {
-					RDEBUG("Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
+					RDEBUG("Added %s: '%s' to %s ", inst->pwd_fmt->field[i], pw->field[i], listname);
 				}
 			} else
-				RDEBUG("NOOP %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
+				RDEBUG("NOOP %s: '%s' to %s ", inst->pwd_fmt->field[i], pw->field[i], listname);
 		}
 	}
 }
@@ -527,25 +527,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, UNUSED void *
 	char			buffer[1024];
 	VALUE_PAIR		*key, *i;
 	struct mypasswd		*pw, *last_found;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	int			found = 0;
 
 	key = fr_pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
-	if (!key) {
-		return RLM_MODULE_NOTFOUND;
-	}
+	if (!key) return RLM_MODULE_NOTFOUND;
 
-	for (i = fr_pair_cursor_init(&cursor, &key);
+	for (i = fr_cursor_talloc_iter_init(&cursor, &key, fr_pair_iter_next_by_da, inst->keyattr, VALUE_PAIR);
 	     i;
-	     i = fr_pair_cursor_next_by_num(&cursor, fr_dict_vendor_num_by_da(inst->keyattr),
-	     				    inst->keyattr->attr, TAG_ANY)) {
+	     i = fr_cursor_next(&cursor)) {
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */
 		fr_pair_value_snprint(buffer, sizeof(buffer), i, 0);
-		if (!(pw = get_pw_nam(buffer, inst->ht, &last_found)) ) {
-			continue;
-		}
+		pw = get_pw_nam(buffer, inst->ht, &last_found);
+		if (!pw) continue;
+
 		do {
 			result_add(request, inst, request, &request->control, pw, 0, "config");
 			result_add(request->reply, inst, request, &request->reply->vps, pw, 1, "reply_items");
@@ -554,16 +551,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, UNUSED void *
 
 		found++;
 
-		if (!inst->allow_multiple) {
-			break;
-		}
+		if (!inst->allow_multiple) break;
 	}
 
 	if (!found) return RLM_MODULE_NOTFOUND;
 
 	return RLM_MODULE_OK;
-
-#undef inst
 }
 
 extern rad_module_t rlm_passwd;
