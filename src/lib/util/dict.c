@@ -5299,7 +5299,21 @@ int fr_dict_autoload(char const *dir, fr_dict_autoload_t const *to_load)
 			return -1;
 		}
 
-		if (fr_dict_protocol_afrom_file(NULL, &dict, my_dir, p->proto) < 0) return -1;
+		/*
+		 *	Load the internal dictionary
+		 */
+		if (strcmp(p->proto, "freeradius") == 0) {
+			if (fr_dict_internal_afrom_file(NULL, &dict, my_dir, NULL) < 0) return -1;
+		} else {
+			/*
+			 *	FIXME - Temporarily disabled
+			 */
+#if 0
+			if (fr_dict_protocol_afrom_file(NULL, &dict, my_dir, p->proto) < 0) return -1;
+#else
+			continue;
+#endif
+		}
 
 		if (p->out) *(p->out) = dict;
 	}

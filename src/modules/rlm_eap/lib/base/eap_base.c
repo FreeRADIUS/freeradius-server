@@ -442,17 +442,19 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
  */
 int eap_base_init(void)
 {
-	/*
-	 *	@todo - get this working.  Right now, there's no
-	 *	"dictionary.radius", so it fails.
-	 */
-//	if (fr_dict_autoload(main_config.dictionary_dir, eap_base_dict) < 0) return -1;
+	if (fr_dict_autoload(main_config.dictionary_dir, eap_base_dict) < 0) {
+		PERROR("Failed loading dictionary");
+		return -1;
+	}
 
 	/*
 	 *	But mainconfig.c does read the dictionaries before
 	 *	loading modules, so these have to exist.
 	 */
-	if (fr_dict_attr_autoload(eap_base_dict_attr) < 0) return -1;
+	if (fr_dict_attr_autoload(eap_base_dict_attr) < 0) {
+		PERROR("Failed resolving attributes");
+		return -1;
+	}
 
 	return 0;
 }
