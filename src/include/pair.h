@@ -271,7 +271,7 @@ int		fr_pair_list_move_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
 					      VALUE_PAIR **from, fr_dict_attr_t const *da);
 
 /* Value manipulation */
-int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t len);
+int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t len);
 void		fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t len);
 void		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src);
