@@ -196,6 +196,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	RDEBUG("Login within allowed time-slot, %d seconds left in this session", left);
 
 	switch (pair_update_reply(&vp, attr_session_timeout)) {
+	case 1:
 		/* just update... */
 		if (vp->vp_uint32 > (uint32_t)left) {
 			vp->vp_uint32 = (uint32_t)left;
