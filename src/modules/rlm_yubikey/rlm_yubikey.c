@@ -298,7 +298,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	Insert a new request attribute just containing the OTP
 		 *	portion.
 		 */
-		MEM(vp = pair_update_request(attr_yubikey_otp, TAG_ANY));
+		MEM(pair_update_request(&vp, attr_yubikey_otp) >= 0);
 		fr_pair_value_strcpy(vp, otp);
 
 		/*
@@ -332,13 +332,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	It's left up to the user if they want to decode it or not.
 	 */
 	if (inst->id_len) {
-		MEM(vp = pair_update_request(attr_yubikey_public_id, TAG_ANY));
+		MEM(pair_update_request(&vp, attr_yubikey_public_id) >= 0);
 		fr_pair_value_bstrncpy(vp, passcode, inst->id_len);
 	}
 
 	dval = fr_dict_enum_by_alias(attr_auth_type, inst->name);
 	if (dval) {
-		MEM(vp = pair_add_control(attr_auth_type, TAG_ANY));
+		MEM(pair_add_control(&vp, attr_auth_type) >= 0);
 		fr_value_box_copy(NULL, &vp->data, dval->value);
 	}
 

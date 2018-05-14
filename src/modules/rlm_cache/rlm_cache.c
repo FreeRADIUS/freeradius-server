@@ -183,7 +183,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_ca
 
 	if (inst->config.stats) {
 		rad_assert(request->packet != NULL);
-		vp = pair_update_request(attr_cache_entry_hits, TAG_ANY);
+		MEM(pair_update_request(&vp, attr_cache_entry_hits) >= 0);
 		vp->vp_uint32 = c->hits;
 	}
 

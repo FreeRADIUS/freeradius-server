@@ -1386,7 +1386,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 */
 	if (fr_pair_find_by_da(request->packet->vps, attr_message_authenticator, TAG_ANY)) {
 		require_ma = true;
-		fr_pair_delete_by_da(&request->packet->vps, attr_message_authenticator, TAG_ANY);
+		pair_delete_request(attr_message_authenticator);
 	}
 
 	/*
@@ -2074,10 +2074,10 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 		if (c->inst->parent->status_check == FR_CODE_STATUS_SERVER) {
 			VALUE_PAIR *vp;
 
-			MEM(vp = pair_add_request(attr_nas_identifier, 0));
+			MEM(pair_add_request(&vp, attr_nas_identifier) >= 0);
 			fr_pair_value_strcpy(vp, "status check - are you alive?");
 
-			MEM(pair_add_request(attr_event_timestamp, 0));
+			MEM(pair_add_request(NULL, attr_event_timestamp) >= 0);
 		} else {
 			vp_map_t *map;
 
@@ -2094,7 +2094,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 			 *	will be the time at which the packet
 			 *	is sent.
 			 */
-			MEM(pair_update_request(attr_event_timestamp, 0));
+			MEM(pair_update_request(NULL, attr_event_timestamp) >= 0);
 		}
 
 		DEBUG3("Status check packet will be %s", fr_packet_codes[u->code]);

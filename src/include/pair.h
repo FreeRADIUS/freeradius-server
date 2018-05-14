@@ -226,14 +226,11 @@ void		fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int
 void		fr_pair_delete_by_child_num(VALUE_PAIR **head, fr_dict_attr_t const *parent,
 					    unsigned int attr, int8_t tag);
 
-VALUE_PAIR	*fr_pair_add_by_da(TALLOC_CTX *ctx, VALUE_PAIR **list,
-				   fr_dict_attr_t const *da, int8_t tag);
+int		fr_pair_add_by_da(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR **list, fr_dict_attr_t const *da);
 
-VALUE_PAIR	*fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **list,
-				      fr_dict_attr_t const *da, int8_t tag,
-				      bool skip_if_exists);
+int		fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR **list, fr_dict_attr_t const *da);
 
-void		fr_pair_delete_by_da(VALUE_PAIR **head, fr_dict_attr_t const *da, int8_t tag);
+int		fr_pair_delete_by_da(VALUE_PAIR **head, fr_dict_attr_t const *da);
 
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);

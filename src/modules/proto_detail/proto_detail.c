@@ -366,7 +366,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		 *	Look for Acct-Delay-Time, and update
 		 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
 		 */
-		MEM(vp = pair_update_request(attr_acct_delay_time, 0));
+		MEM(pair_update_request(&vp, attr_acct_delay_time) >= 0);
 		if (timestamp != 0) vp->vp_uint32 += time(NULL) - timestamp;
 	}
 

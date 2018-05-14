@@ -300,7 +300,7 @@ leap_packet_t *eap_leap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PA
 	/*
 	 *	Calculate the leap:session-key attribute
 	 */
-	MEM(vp = pair_add_reply(attr_cisco_avpair, TAG_ANY));
+	MEM(pair_add_reply(&vp, attr_cisco_avpair) >= 0);
 
 	/*
 	 *	And calculate the MPPE session key.

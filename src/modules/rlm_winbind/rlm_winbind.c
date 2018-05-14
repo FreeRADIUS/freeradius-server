@@ -472,7 +472,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	}
 
 	RDEBUG("Setting Auth-Type to winbind");
-	MEM(vp = pair_add_control(attr_auth_type, TAG_ANY));
+	MEM(pair_add_control(&vp, attr_auth_type) >= 0);
 	fr_value_box_copy(vp, &vp->data, inst->auth_type->value);
 	vp->data.enumv = vp->da;
 

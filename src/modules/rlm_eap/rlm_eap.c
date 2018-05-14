@@ -723,7 +723,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 
 	RDEBUG("&control:%s = %s", attr_auth_type->name, inst->auth_type->alias);
 
-	MEM(vp = pair_update_control(attr_auth_type, TAG_ANY));
+	MEM(pair_update_control(&vp, attr_auth_type) >= 0);
 	fr_value_box_copy(vp, &vp->data, inst->auth_type->value);
 	vp->data.enumv = vp->da;
 
@@ -817,7 +817,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 		 *	Access-Accept.
 		 */
 		if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && request->username) {
-			vp = pair_update_reply(attr_user_name, TAG_ANY);
+			MEM(pair_update_reply(&vp, attr_user_name) >= 0);
 			fr_pair_value_bstrncpy(vp, request->username->vp_strvalue, request->username->vp_length);
 		}
 
@@ -964,7 +964,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	 *	Make sure there's a message authenticator attribute in the response
 	 *	RADIUS protocol code will calculate the correct value later...
 	 */
-	MEM(vp = pair_update_reply(attr_message_authenticator, TAG_ANY));
+	MEM(pair_update_reply(&vp, attr_message_authenticator) >= 0);
 	fr_pair_value_memsteal(vp, talloc_zero_array(vp, uint8_t, AUTH_VECTOR_LEN));
 
 	return RLM_MODULE_UPDATED;

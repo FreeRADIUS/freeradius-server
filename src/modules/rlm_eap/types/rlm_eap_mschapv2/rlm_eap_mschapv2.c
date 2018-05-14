@@ -473,10 +473,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 
 			RDEBUG2("Password change packet received");
 
-			MEM(auth_challenge = pair_update_request(attr_ms_chap_challenge, TAG_ANY));
+			MEM(pair_update_request(&auth_challenge, attr_ms_chap_challenge) >= 0);
 			fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN);
 
-			MEM(cpw = pair_update_request(attr_ms_chap2_cpw, TAG_ANY));
+			MEM(pair_update_request(&cpw, attr_ms_chap2_cpw) >= 0);
 			p = talloc_array(cpw, uint8_t, 68);
 			p[0] = 7;
 			p[1] = mschap_id;
@@ -492,7 +492,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 				int to_copy = 516 - copied;
 				if (to_copy > 243) to_copy = 243;
 
-				MEM(nt_enc = pair_add_request(attr_ms_chap_nt_enc_pw, TAG_ANY));
+				MEM(pair_add_request(&nt_enc, attr_ms_chap_nt_enc_pw) >= 0);
 				p = talloc_array(nt_enc, uint8_t, 4 + to_copy);
 				p[0] = 6;
 				p[1] = mschap_id;
@@ -622,10 +622,10 @@ failure:
 	 *	to pass to the 'mschap' module.  This is a little wonky,
 	 *	but it works.
 	 */
-	MEM(auth_challenge = pair_update_request(attr_ms_chap_challenge, TAG_ANY));
+	MEM(pair_update_request(&auth_challenge, attr_ms_chap_challenge) >= 0);
 	fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN);
 
-	MEM(response = pair_update_request(attr_ms_chap2_response, TAG_ANY));
+	MEM(pair_update_request(&response, attr_ms_chap2_response) >= 0);
 	p = talloc_array(response, uint8_t, MSCHAPV2_RESPONSE_LEN);
 	p[0] = eap_round->response->type.data[1];
 	p[1] = eap_round->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
@@ -641,7 +641,7 @@ failure:
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */
-	MEM(name = pair_update_request(attr_ms_chap_user_name, TAG_ANY));
+	MEM(pair_update_request(&name, attr_ms_chap_user_name) >= 0);
 	name->vp_tainted = true;
 	name->vp_length = length - 49 - 5;
 	name->vp_strvalue = q = talloc_array(name, char, name->vp_length + 1);
@@ -693,7 +693,7 @@ packet_ready:
 		 *	the State attribute back, before passing
 		 *	the eap_session & request back into the tunnel.
 		 */
-		fr_pair_delete_by_da(&request->packet->vps, attr_state, TAG_ANY);
+		pair_delete_request(attr_state);
 
 		/*
 		 *	Fix the User-Name when proxying, to strip off

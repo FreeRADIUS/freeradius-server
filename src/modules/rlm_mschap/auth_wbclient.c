@@ -178,7 +178,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 		authparams.account_name = normalised_username;
 
 		/* Set FR_MS_CHAP_USER_NAME */
-		MEM(vp_chap_user_name = pair_update_request(attr_ms_chap_user_name, 0));
+		MEM(pair_update_request(&vp_chap_user_name, attr_ms_chap_user_name) >= 0);
 		fr_pair_value_bstrncpy(vp_chap_user_name,
 				       normalised_username, talloc_array_length(normalised_username) - 1);
 

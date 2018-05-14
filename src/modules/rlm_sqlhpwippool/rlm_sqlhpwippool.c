@@ -604,7 +604,7 @@ fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 	}
 
 	/* add IP address to reply packet */
-	vp = pair_add_reply(attr_framed_ip_address, TAG_ANY);
+	MEM(pair_add_reply(&vp, attr_framed_ip_address) >= 0);
 	vp->vp_ipv4addr = ip.s_addr;
 
 	RDEBUG2("Returning %s", inet_ntoa(ip));

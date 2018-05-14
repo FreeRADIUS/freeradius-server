@@ -520,45 +520,92 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 
 /** Allocate a VALUE_PAIR in the request list
  *
+ * @param[in] _attr	allocated.
  * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
- * @param[in] _tag	tag of the attribute to be found or allocated.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-#define pair_add_request(_da, _tag) fr_pair_add_by_da(request->packet, &request->packet->vps, _da, _tag)
+#define pair_add_request(_attr, _da) fr_pair_add_by_da(request->packet, _attr, &request->packet->vps, _da)
 
 /** Allocate a VALUE_PAIR in the reply list
  *
+ * @param[in] _attr	allocated.
  * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
- * @param[in] _tag	tag of the attribute to be found or allocated.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-#define pair_add_reply(_da, _tag) fr_pair_add_by_da(request->reply, &request->reply->vps, _da, _tag)
+#define pair_add_reply(_attr, _da) fr_pair_add_by_da(request->reply, _attr, &request->reply->vps, _da)
 
 /** Allocate a VALUE_PAIR in the control list
  *
+ * @param[in] _attr	allocated.
  * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
- * @param[in] _tag	tag of the attribute to be found or allocated.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-#define pair_add_control(_da, _tag) fr_pair_add_by_da(request, &request->control, _da, _tag)
+#define pair_add_control(_attr, _da) fr_pair_add_by_da(request, _attr, &request->control, _da)
 
 /** Return or allocate a VALUE_PAIR in the request list
  *
+ * @param[in] _attr	allocated or found.
  * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
- * @param[in] _tag	tag of the attribute to be found or allocated.
+ * @return
+ *	- 1 if attribute already existed.
+ *	- 0 if we allocated a new attribute.
+ *	- -1 on failure.
  */
-#define pair_update_request(_da, _tag) fr_pair_update_by_da(request->packet, &request->packet->vps, _da, _tag, false)
+#define pair_update_request(_attr, _da) fr_pair_update_by_da(request->packet, _attr, &request->packet->vps, _da)
 
 /** Return or allocate a VALUE_PAIR in the reply list
  *
+ * @param[in] _attr	allocated or found.
  * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
- * @param[in] _tag	tag of the attribute to be found or allocated.
+ * @return
+ *	- 1 if attribute already existed.
+ *	- 0 if we allocated a new attribute.
+ *	- -1 on failure.
  */
-#define pair_update_reply(_da, _tag) fr_pair_update_by_da(request->reply, &request->reply->vps, _da, _tag, false)
+#define pair_update_reply(_attr, _da) fr_pair_update_by_da(request->reply, _attr, &request->reply->vps, _da)
 
 /** Return or allocate a VALUE_PAIR in the control list
  *
  * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
- * @param[in] _tag	tag of the attribute to be found or allocated.
+ * @return
+ *	- 1 if attribute already existed.
+ *	- 0 if we allocated a new attribute.
+ *	- -1 on failure.
  */
-#define pair_update_control(_da, _tag) fr_pair_update_by_da(request, &request->control, _da, _tag, false)
+#define pair_update_control(_attr, _da) fr_pair_update_by_da(request, _attr, &request->control, _da)
+
+/** Return or allocate a VALUE_PAIR in the request list
+ *
+ * @param[in] _da	#fr_dict_attr_t of the pair(s) to be deleted.
+ * @return
+ *	- >0 the number of pairs deleted.
+ *	- 0 if no pairs were deleted.
+ */
+#define pair_delete_request(_da) fr_pair_delete_by_da(&request->packet->vps, _da)
+
+/** Return or allocate a VALUE_PAIR in the reply list
+ *
+ * @param[in] _da	#fr_dict_attr_t of the pair(s) to be deleted.
+ * @return
+ *	- >0 the number of pairs deleted.
+ *	- 0 if no pairs were deleted.
+ */
+#define pair_delete_reply(_da) fr_pair_delete_by_da(&request->reply->vps, _da)
+
+/** Return or allocate a VALUE_PAIR in the control list
+ *
+ * @param[in] _da	#fr_dict_attr_t of the pair(s) to be deleted.
+ * @return
+ *	- >0 the number of pairs deleted.
+ *	- 0 if no pairs were deleted.
+ */
+#define pair_delete_control(_da) fr_pair_delete_by_da(&request->control, _da)
 
 /* threads.c */
 int		thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers);

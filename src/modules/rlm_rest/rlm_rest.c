@@ -121,22 +121,19 @@ fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
  */
 static int rlm_rest_status_update(REQUEST *request, void *handle)
 {
-	TALLOC_CTX	*ctx;
-	VALUE_PAIR	**list;
 	int		code;
 	VALUE_PAIR	*vp;
 
-	RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 	code = rest_get_handle_code(handle);
 	if (!code) {
-		fr_pair_delete_by_da(list, attr_rest_http_status_code, TAG_ANY);
+		pair_delete_request(attr_rest_http_status_code);
 		RDEBUG2("&REST-HTTP-Status-Code !* ANY");
 		return -1;
 	}
 
 	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
 
-	MEM(vp = pair_update_request(attr_rest_http_status_code, TAG_ANY));;
+	MEM(pair_update_request(&vp, attr_rest_http_status_code) >= 0);
 	vp->vp_uint32 = code;
 
 	return 0;

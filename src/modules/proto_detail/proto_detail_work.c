@@ -119,7 +119,7 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 	request->reply->id = track->id;
 	REQUEST_VERIFY(request);
 
-	MEM(vp = pair_update_request(attr_packet_transmit_counter, 0));
+	MEM(pair_update_request(&vp, attr_packet_transmit_counter) >= 0);
 	vp->vp_uint32 = track->count;
 
 	return 0;

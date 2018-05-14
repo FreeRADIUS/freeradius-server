@@ -1001,7 +1001,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		/*
 		 *	Add Cleartext-Password attribute to the request
 		 */
-		MEM(vp = pair_update_control(attr_cleartext_password, 0));
+		MEM(pair_update_control(&vp, attr_cleartext_password) >= 0);
 		fr_pair_value_bstrncpy(vp, password, pass_size);
 
 		if (RDEBUG_ENABLED3) {

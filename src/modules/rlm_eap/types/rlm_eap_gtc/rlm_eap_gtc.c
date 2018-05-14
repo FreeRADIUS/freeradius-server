@@ -160,7 +160,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 *	If there was a User-Password in the request,
 	 *	why the heck are they using EAP-GTC?
 	 */
-	MEM(vp = pair_update_request(attr_user_password, TAG_ANY));
+	MEM(pair_update_request(&vp, attr_user_password) >= 0);
 	fr_pair_value_bstrncpy(vp, eap_round->response->type.data, eap_round->response->type.length);
 	vp->vp_tainted = true;
 

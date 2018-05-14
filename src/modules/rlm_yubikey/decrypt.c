@@ -71,26 +71,26 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, cha
 	/*
 	 *	Private ID used for validation purposes
 	 */
-	MEM(vp = pair_update_request(attr_yubikey_private_id, TAG_ANY));
+	MEM(pair_update_request(&vp, attr_yubikey_private_id) >= 0);
 	fr_pair_value_memcpy(vp, token.uid, YUBIKEY_UID_SIZE);
 
 	/*
 	 *	Token timestamp
 	 */
-	MEM(vp = pair_update_request(attr_yubikey_timestamp, TAG_ANY));
+	MEM(pair_update_request(&vp, attr_yubikey_timestamp) >= 0);
 	vp->vp_uint32 = timestamp;
 
 	/*
 	 *	Token random
 	 */
-	MEM(vp = pair_update_request(attr_yubikey_random, TAG_ANY));
+	MEM(pair_update_request(&vp, attr_yubikey_random) >= 0);
 	vp->vp_uint32 = token.rnd;
 
 	/*
 	 *	Combine the two counter fields together so we can do
 	 *	replay attack checks.
 	 */
-	MEM(vp = pair_update_request(attr_yubikey_counter, TAG_ANY));
+	MEM(pair_update_request(&vp, attr_yubikey_counter) >= 0);
 	vp->vp_uint32 = counter;
 
 	/*

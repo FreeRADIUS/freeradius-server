@@ -195,7 +195,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 */
 	RDEBUG("Login within allowed time-slot, %d seconds left in this session", left);
 
-	MEM(vp = pair_update_reply(attr_session_timeout, TAG_ANY));
+	MEM(pair_update_reply(&vp, attr_session_timeout) >= 0);
 	vp = fr_pair_find_by_da(request->reply->vps, attr_session_timeout, TAG_ANY);
 	if (vp) {	/* just update... */
 		if (vp->vp_uint32 > (uint32_t)left) {
@@ -203,7 +203,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			RDEBUG("&reply:Session-vp := %pV", &vp->data);
 		}
 	} else {
-		vp = pair_add_reply(attr_session_timeout, 0);
+		MEM(pair_add_reply(&vp, attr_session_timeout) >= 0);
 		vp->vp_uint32 = (uint32_t)left;
 		RDEBUG("&reply:Session-vp := %pV", &vp->data);
 	}

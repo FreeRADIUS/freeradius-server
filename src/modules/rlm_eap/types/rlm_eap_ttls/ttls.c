@@ -761,7 +761,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	MEM(vp = fr_pair_add_by_da(fake->packet, &fake->packet->vps, attr_freeradius_proxied_to, 0));
+	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"));
 
 	RDEBUG("Got tunneled request");

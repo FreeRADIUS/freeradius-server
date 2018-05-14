@@ -974,7 +974,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				 *	EAP-Message into another set
 				 *	of attributes.
 				 */
-				fr_pair_delete_by_da(&fake->packet->vps, attr_eap_message, TAG_ANY);
+				fr_pair_delete_by_da(&fake->packet->vps, attr_eap_message);
 			}
 
 			RDEBUG2("Tunnelled authentication will be proxied to %s", vp->vp_strvalue);
@@ -994,10 +994,8 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			request->proxy = request_alloc_proxy(request);
 
 			request->proxy->packet = talloc_steal(request->proxy, fake->packet);
-			memset(&request->proxy->packet->src_ipaddr, 0,
-			       sizeof(request->proxy->packet->src_ipaddr));
-			memset(&request->proxy->packet->dst_ipaddr, 0,
-			       sizeof(request->proxy->packet->dst_ipaddr));
+			memset(&request->proxy->packet->src_ipaddr, 0, sizeof(request->proxy->packet->src_ipaddr));
+			memset(&request->proxy->packet->dst_ipaddr, 0, sizeof(request->proxy->packet->dst_ipaddr));
 			request->proxy->packet->src_port = 0;
 			request->proxy->packet->dst_port = 0;
 			fake->packet = NULL;
@@ -1079,7 +1077,7 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	MEM(vp = fr_pair_add_by_da(fake->packet, &fake->packet->vps, attr_freeradius_proxied_to, 0));
+	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"));
 
 	if (t->username) {

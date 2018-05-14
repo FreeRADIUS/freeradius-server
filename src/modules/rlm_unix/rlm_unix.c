@@ -331,7 +331,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	if (encrypted_pass[0] == 0)
 		return RLM_MODULE_NOOP;
 
-	MEM(vp = pair_update_control(attr_crypt_password, TAG_ANY));
+	MEM(pair_update_control(&vp, attr_crypt_password) >= 0);
 	fr_pair_value_strcpy(vp, encrypted_pass);
 
 	return RLM_MODULE_UPDATED;

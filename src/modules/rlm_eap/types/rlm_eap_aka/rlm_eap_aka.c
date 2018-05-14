@@ -322,7 +322,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	if (eap_aka_session->type == FR_EAP_AKA_PRIME) {
 		uint8_t	amf_buff[2] = { 0x80, 0x00 };	/* Set the AMF separation bit high */
 
-		MEM(vp = pair_update_control(attr_sim_amf, 0));
+		MEM(pair_update_control(&vp, attr_sim_amf) >= 0);
 		fr_pair_value_memcpy(vp, amf_buff, sizeof(amf_buff));
 	}
 
@@ -338,7 +338,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Don't leave the AMF hanging around
 	 */
-	if (eap_aka_session->type == FR_EAP_AKA_PRIME) fr_pair_delete_by_da(&request->control, attr_sim_amf, TAG_ANY);
+	if (eap_aka_session->type == FR_EAP_AKA_PRIME) pair_delete_control(attr_sim_amf);
 
 	/*
 	 *	All set, calculate keys!

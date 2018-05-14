@@ -647,21 +647,12 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 		return -1;
 	}
 
-	vp = fr_pair_afrom_da(request->packet, inst->sql_user);
-	if (!vp) {
-		talloc_free(expanded);
-		return -1;
-	}
-
+	/*
+	 *	Replace any existing SQL-User-Name with outs
+	 */
+	MEM(pair_update_request(&vp, inst->sql_user) >= 0);
 	fr_pair_value_strsteal(vp, expanded);
 	RDEBUG2("SQL-User-Name set to '%s'", vp->vp_strvalue);
-	vp->op = T_OP_SET;
-
-	/*
-	 *	Delete any existing SQL-User-Name, and replace it with ours.
-	 */
-	fr_pair_delete_by_num(&request->packet->vps, fr_dict_vendor_num_by_da(vp->da), vp->da->attr, TAG_ANY);
-	fr_pair_add(&request->packet->vps, vp);
 
 	return 0;
 }
@@ -669,7 +660,7 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 /*
  *	Do a set/unset user, so it's a bit clearer what's going on.
  */
-#define sql_unset_user(_i, _r) fr_pair_delete_by_num(&_r->packet->vps, fr_dict_vendor_num_by_da(_i->sql_user), _i->sql_user->attr, TAG_ANY)
+#define sql_unset_user(_i, _r) fr_pair_delete_by_da(&_r->packet->vps, _i->sql_user)
 
 static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, REQUEST *request,
 			     rlm_sql_grouplist_t **phead)
@@ -956,7 +947,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 
 finish:
 	talloc_free(head);
-	fr_pair_delete_by_num(&request->packet->vps, 0, inst->group_da->attr, TAG_ANY);
+	pair_delete_request(inst->group_da);
 
 	return rcode;
 }

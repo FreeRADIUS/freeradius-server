@@ -129,10 +129,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		return RLM_MODULE_OK;
 	}
 
-	MEM(vp = pair_update_reply(attr_reply_message, TAG_ANY));
+	MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
 	if (vp->vp_length == 0) fr_pair_value_strcpy(vp, "This is a challenge");
 
-	MEM(vp = pair_add_reply(attr_state, TAG_ANY));
+	MEM(pair_add_reply(&vp, attr_state) >= 0);
 	fr_pair_value_memcpy(vp, (uint8_t *){ 0x00 }, 1);
 
 	/*

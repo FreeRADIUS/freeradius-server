@@ -408,7 +408,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	/*
 	 *	Remove server internal parameters.
 	 */
-	fr_pair_delete_by_da(&reply_packet->vps, attr_fall_through, TAG_ANY);
+	fr_pair_delete_by_da(&reply_packet->vps, attr_fall_through);
 
 	/*
 	 *	See if we succeeded.

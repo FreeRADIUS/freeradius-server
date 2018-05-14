@@ -183,10 +183,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *	the WiMAX-MSK so that the client has a key available.
 	 */
 	if (inst->delete_mppe_keys) {
-		fr_pair_delete_by_da(&request->reply->vps, attr_ms_mppe_send_key, TAG_ANY);
-		fr_pair_delete_by_da(&request->reply->vps, attr_ms_mppe_recv_key, TAG_ANY);
+		pair_delete_reply(attr_ms_mppe_send_key);
+		pair_delete_reply(attr_ms_mppe_recv_key);
 
-		MEM(vp = pair_update_reply(attr_wimax_msk, TAG_ANY));
+		MEM(pair_update_reply(&vp, attr_wimax_msk) >= 0);
 		fr_pair_value_memcpy(vp, msk->vp_octets, msk->vp_length);
 	}
 
@@ -296,13 +296,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		/*
 		 *	Put MN-HA-PMIP4 into WiMAX-MN-hHA-MIP4-Key
 		 */
-		MEM(vp = pair_update_reply(attr_wimax_mn_hha_mip4_key, TAG_ANY));
+		MEM(pair_update_reply(&vp, attr_wimax_mn_hha_mip4_key) >= 0);
 		fr_pair_value_memcpy(vp, &mip_rk_1[0], rk1_len);
 
 		/*
 		 *	Put MN-HA-PMIP4-SPI into WiMAX-MN-hHA-MIP4-SPI
 		 */
-		MEM(vp = pair_update_reply(attr_wimax_mn_hha_mip4_spi, TAG_ANY));
+		MEM(pair_update_reply(&vp, attr_wimax_mn_hha_mip4_spi) >= 0);
 		vp->vp_uint32 = mip_spi + 1;
 		break;
 
@@ -330,13 +330,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		/*
 		 *	Put MN-HA-CMIP4 into WiMAX-MN-hHA-MIP4-Key
 		 */
-		MEM(vp = pair_update_reply(attr_wimax_mn_hha_mip4_key, TAG_ANY));
+		MEM(pair_update_reply(&vp, attr_wimax_mn_hha_mip4_key) >= 0);
 		fr_pair_value_memcpy(vp, &mip_rk_1[0], rk1_len);
 
 		/*
 		 *	Put MN-HA-CMIP4-SPI into WiMAX-MN-hHA-MIP4-SPI
 		 */
-		MEM(vp = pair_update_reply(attr_wimax_mn_hha_mip4_spi, TAG_ANY));
+		MEM(pair_update_reply(&vp, attr_wimax_mn_hha_mip4_spi) >= 0);
 		vp->vp_uint32 = mip_spi;
 		break;
 
@@ -364,13 +364,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		/*
 		 *	Put MN-HA-CMIP6 into WiMAX-MN-hHA-MIP6-Key
 		 */
-		MEM(pair_update_reply(attr_wimax_mn_hha_mip6_key, TAG_ANY));
+		MEM(pair_update_reply(&vp, attr_wimax_mn_hha_mip6_key) >= 0);
 		fr_pair_value_memcpy(vp, &mip_rk_1[0], rk1_len);
 
 		/*
 		 *	Put MN-HA-CMIP6-SPI into WiMAX-MN-hHA-MIP6-SPI
 		 */
-		MEM(pair_update_reply(attr_wimax_mn_hha_mip6_spi, TAG_ANY));
+		MEM(pair_update_reply(&vp, attr_wimax_mn_hha_mip6_spi) >= 0);
 		vp->vp_uint32 = mip_spi + 2;
 		break;
 
@@ -399,7 +399,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *	really MIP-SPI.  Clear?  Of course.  This is WiMAX.
 	 */
 	if (fa_rk) {
-		MEM(vp = pair_update_reply(attr_wimax_fa_rk_spi, TAG_ANY));
+		MEM(pair_update_reply(&vp, attr_wimax_fa_rk_spi) >= 0);
 		vp->vp_uint32 = mip_spi;
 	}
 

@@ -611,7 +611,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 	RDEBUG("&control:%s = %s", attr_auth_type->name, inst->auth_type->alias);
 
-	MEM(vp = pair_update_control(attr_auth_type, TAG_ANY));
+	MEM(pair_update_control(&vp, attr_auth_type) >= 0);
 	fr_value_box_copy(vp, &vp->data, inst->auth_type->value);
 	vp->data.enumv = vp->da;
 

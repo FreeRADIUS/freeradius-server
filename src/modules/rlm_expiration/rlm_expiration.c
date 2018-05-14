@@ -83,17 +83,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		 *	Else the account hasn't expired, but it may do so
 		 *	in the future.  Set Session-Timeout.
 		 */
-		MEM(vp = pair_update_reply(attr_session_timeout, TAG_ANY));
-		vp = fr_pair_find_by_da(request->reply->vps, attr_session_timeout, TAG_ANY);
-		if (vp) {	/* just update... */
+		switch (pair_update_reply(&vp, attr_session_timeout)) {
+		case 1:
+			/* just update... */
 			if (vp->vp_uint32 > (uint32_t)left) {
 				vp->vp_uint32 = (uint32_t)left;
 				RDEBUG("&reply:Session-vp := %pV", &vp->data);
 			}
-		} else {
-			vp = pair_add_reply(attr_session_timeout, 0);
+			break;
+
+		case 0:	/* no pre-existing */
 			vp->vp_uint32 = (uint32_t)left;
 			RDEBUG("&reply:Session-vp := %pV", &vp->data);
+			break;
+
+		default: /* malloc failure */
+			MEM(NULL);
 		}
 	} else {
 		return RLM_MODULE_NOOP;

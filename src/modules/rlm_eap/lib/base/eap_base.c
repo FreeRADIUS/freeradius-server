@@ -356,7 +356,7 @@ void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *va
 {
 	VALUE_PAIR *vp;
 
-	MEM(vp = pair_update_reply(da, 0));
+	MEM(pair_update_reply(&vp, da) >= 0);
 	fr_pair_value_memcpy(vp, value, len);
 
 	RINDENT();
