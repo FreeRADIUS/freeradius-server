@@ -572,6 +572,7 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 
 /** Return or allocate a VALUE_PAIR in the control list
  *
+ * @param[in] _attr	allocated or found.
  * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
  * @return
  *	- 1 if attribute already existed.
