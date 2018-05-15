@@ -360,14 +360,6 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
-	 *  Must be called before display_version to ensure relevant engines are loaded.
-	 */
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_global_init(main_config.dictionary_dir) < 0) fr_exit(EXIT_FAILURE);
-#endif
-
-	/*
 	 *  Better here, so it doesn't matter whether we get passed -xv or -vx.
 	 */
 	if (display_version) {
@@ -405,6 +397,14 @@ int main(int argc, char *argv[])
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init() < 0) exit(EXIT_FAILURE);
+
+	/*
+	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
+	 *  Must be called before display_version to ensure relevant engines are loaded.
+	 */
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	if (tls_global_init(main_config.dictionary_dir) < 0) fr_exit(EXIT_FAILURE);
+#endif
 
 	/*
 	 *  Set panic_action from the main config if one wasn't specified in the
@@ -835,15 +835,15 @@ cleanup:
 	 */
 	map_proc_free();
 
+#if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
+	tls_global_cleanup();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
+#endif
+
 	/*
 	 *	And now nothing should be left anywhere except the
 	 *	parsed configuration items.
 	 */
 	main_config_free();
-
-#if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
-	tls_global_cleanup();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
-#endif
 
 	talloc_free(autofree);		/* Cleanup everything else */
 
