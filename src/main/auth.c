@@ -414,10 +414,6 @@ autz_redo:
 		}
 	}
 
-#ifdef WITH_PROXY
-authenticate:
-#endif
-
 	/*
 	 *	Validate the user
 	 */
