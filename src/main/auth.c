@@ -356,61 +356,8 @@ rlm_rcode_t rad_authenticate(REQUEST *request)
 
 #ifdef WITH_PROXY
 	/*
-	 *	If this request got proxied to another server, we need
-	 *	to check whether it authenticated the request or not.
-	 *
-	 *	request->proxy gets set only AFTER authorization, so
-	 *	it's safe to check it here.  If it exists, it means
-	 *	we're doing a second pass through rad_authenticate().
+	 *	Old proxy code removed, see v3.0.x for details
 	 */
-	if (request->proxy) {
-		int code = 0;
-
-		if (request->proxy->reply) code = request->proxy->reply->code;
-
-		switch (code) {
-		/*
-		 *	Reply of ACCEPT means accept, thus set Auth-Type
-		 *	accordingly.
-		 */
-		case FR_CODE_ACCESS_ACCEPT:
-			tmp = radius_pair_create(request,
-						&request->control,
-						FR_AUTH_TYPE, 0);
-			if (tmp) tmp->vp_uint32 = FR_AUTH_TYPE_ACCEPT;
-			rcode = RLM_MODULE_OK;
-			goto authenticate;
-
-		/*
-		 *	Challenges are punted back to the NAS without any
-		 *	further processing.
-		 */
-		case FR_CODE_ACCESS_CHALLENGE:
-			request->reply->code = FR_CODE_ACCESS_CHALLENGE;
-			fr_request_to_state(global_state, request, request->packet, request->reply);
-			return RLM_MODULE_OK;
-
-		/*
-		 *	ALL other replies mean reject. (this is fail-safe)
-		 *
-		 *	Do NOT do any authorization or authentication. They
-		 *	are being rejected, so we minimize the amount of work
-		 *	done by the server, by rejecting them here.
-		 */
-		case FR_CODE_ACCESS_REJECT:
-			rad_authlog("Login incorrect (Home Server says so)",
-				    request, 0);
-			request->reply->code = FR_CODE_ACCESS_REJECT;
-			fr_state_discard(global_state, request, request->packet);
-			return RLM_MODULE_REJECT;
-
-		default:
-			rad_authlog("Login incorrect (Home Server failed to respond)",
-				    request, 0);
-			fr_state_discard(global_state, request, request->packet);
-			return RLM_MODULE_REJECT;
-		}
-	}
 #endif
 	/*
 	 *	Look for, and cache, passwords.
