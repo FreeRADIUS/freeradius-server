@@ -113,7 +113,7 @@ fr_dict_attr_autoload_t radsnmp_dict_attr[] = {
 	{ .out = &attr_freeradius_snmp_operation, .name = "FreeRADIUS-SNMP-Operation", .type = FR_TYPE_UINT8, .dict = &dict_radius },
 	{ .out = &attr_freeradius_snmp_type, .name = "FreeRADIUS-SNMP-Type", .type = FR_TYPE_UINT8, .dict = &dict_radius },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_VENDOR_SPECIFIC, .dict = &dict_radius },
+	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
 	{ NULL }
 };
 
