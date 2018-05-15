@@ -177,7 +177,8 @@ static int digest_fix(REQUEST *request)
 			 *	Too short.
 			 */
 			if (attrlen < 3) {
-				REDEBUG("Received Digest-Attributes with short sub-attribute %d, of length %d", p[0], attrlen);
+				REDEBUG("Received Digest-Attributes with short sub-attribute %d, of length %d",
+					p[0], attrlen);
 				return RLM_MODULE_INVALID;
 			}
 
@@ -185,7 +186,8 @@ static int digest_fix(REQUEST *request)
 			 *	Too long.
 			 */
 			if (attrlen > length) {
-				REDEBUG("Received Digest-Attributes with long sub-attribute %d, of length %d", p[0], attrlen);
+				REDEBUG("Received Digest-Attributes with long sub-attribute %d, of length %d",
+					p[0], attrlen);
 				return RLM_MODULE_INVALID;
 			}
 
@@ -195,9 +197,10 @@ static int digest_fix(REQUEST *request)
 			 *
 			 *	Didn't they know that VSA's exist?
 			 */
-			sub = radius_pair_create(request->packet, &request->packet->vps,
-						FR_DIGEST_REALM - 1 + p[0], 0);
+			MEM(sub = fr_pair_afrom_child_num(request->packet,
+							  fr_dict_root(dict_freeradius), FR_DIGEST_REALM - 1 + p[0]));
 			fr_pair_value_bstrncpy(sub, p + 2, attrlen - 2);
+			fr_pair_add(&request->packet->vps, sub);
 
 			RINDENT();
 			rdebug_pair(L_DBG_LVL_2, request, sub, "&request:");
