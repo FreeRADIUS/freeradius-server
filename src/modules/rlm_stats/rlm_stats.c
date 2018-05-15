@@ -414,8 +414,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	return 0;
 }
 
-
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *conf)
+static int mod_instantiate(UNUSED void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_stats_t	*inst = instance;
 
