@@ -843,7 +843,7 @@ static inline VALUE_PAIR *tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *re
 					    	    int attr, int attr_index, char const *value)
 {
 	VALUE_PAIR *vp;
-	fr_dict_attr_t const *da = *(cert_attr_names[IDX_EXPIRATION][attr_index]);
+	fr_dict_attr_t const *da = *(cert_attr_names[attr][attr_index]);
 
 	MEM(vp = fr_pair_afrom_da(ctx, da));
 	if (value) {
