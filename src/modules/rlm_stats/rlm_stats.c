@@ -90,6 +90,26 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t rlm_stats_dict[];
+fr_dict_autoload_t rlm_stats_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_freeradius_stats4_ipv4_address;
+static fr_dict_attr_t const *attr_freeradius_stats4_ipv6_address;
+static fr_dict_attr_t const *attr_freeradius_stats4_type;
+
+extern fr_dict_attr_autoload_t rlm_stats_dict_attr[];
+fr_dict_attr_autoload_t rlm_stats_dict_attr[] = {
+	{ .out = &attr_freeradius_stats4_ipv4_address, .name = "FreeRADIUS-Stats4-IPv4-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "FreeRADIUS-Stats4-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_type, .name = "FreeRADIUS-Stats4-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
+
 static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_t *t,
 		     UNUSED size_t mutex_offset, size_t tree_offset,
 		     rlm_stats_data_t *mydata)
@@ -159,7 +179,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 	rlm_stats_t *inst = instance;
 	VALUE_PAIR *vp;
 	rlm_stats_data_t mydata, *stats;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	char buffer[64];
 	uint64_t local_stats[sizeof(inst->stats) / sizeof(inst->stats[0])];
 
@@ -248,9 +268,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		return RLM_MODULE_NOOP;
 	}
 
-	vp = fr_pair_find_by_da(request->packet->vps, inst->type_da, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_type, TAG_ANY);
 	if (!vp) {
-		stats_type = 1;
+		stats_type = FR_FREERADIUS_STATS4_TYPE_VALUE_GLOBAL;
 	} else {
 		stats_type = vp->vp_uint32;
 	}
@@ -258,13 +278,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 	/*
 	 *	Create attributes based on the statistics.
 	 */
-	fr_pair_cursor_init(&cursor, &request->reply->vps);
-	vp = pair_make_reply("FreeRADIUS-Stats4-Type", "Global", T_OP_EQ);
-	if (!vp) return RLM_MODULE_FAIL;
+	fr_cursor_init(&cursor, &request->reply->vps);
+
+	MEM(pair_update_reply(&vp, attr_freeradius_stats4_type) >= 0);
 	vp->vp_uint32 = stats_type;
 
 	switch (stats_type) {
-	case 1:			/* global */
+	case FR_FREERADIUS_STATS4_TYPE_VALUE_GLOBAL:			/* global */
 		/*
 		 *	Merge our stats with the global stats, and then copy
 		 *	the global stats to a thread-local variable.
@@ -281,9 +301,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		vp = NULL;
 		break;
 
-	case 2:			/* src */
-		vp = fr_pair_find_by_da(request->packet->vps, inst->ipv4_da, TAG_ANY);
-		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, inst->ipv6_da, TAG_ANY);
+	case FR_FREERADIUS_STATS4_TYPE_VALUE_CLIENT:			/* src */
+		vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv4_address, TAG_ANY);
+		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv6_address, TAG_ANY);
 		if (!vp) return RLM_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
@@ -292,9 +312,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 			 &mydata);
 		break;
 
-	case 3:			/* dst */
-		vp = fr_pair_find_by_da(request->packet->vps, inst->ipv4_da, TAG_ANY);
-		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, inst->ipv6_da, TAG_ANY);
+	case FR_FREERADIUS_STATS4_TYPE_VALUE_LISTENER:			/* dst */
+		vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv4_address, TAG_ANY);
+		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv6_address, TAG_ANY);
 		if (!vp) return RLM_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
@@ -304,16 +324,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		break;
 
 	default:
-		REDEBUG("Invalid value '%d' for FreeRADIUS-Stats4-type",
-			stats_type);
+		REDEBUG("Invalid value '%d' for FreeRADIUS-Stats4-type", stats_type);
 		return RLM_MODULE_FAIL;
 	}
 
 	if (vp ) {
 		vp = fr_pair_copy(request->reply, vp);
 		if (vp) {
-			fr_pair_cursor_append(&cursor, vp);
-			(void) fr_pair_cursor_last(&cursor);
+			fr_cursor_append(&cursor, vp);
+			(void) fr_cursor_tail(&cursor);
 		}
 	}
 
@@ -333,8 +352,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 
 		vp->vp_uint64 = local_stats[i];
 
-		fr_pair_cursor_append(&cursor, vp);
-		(void) fr_pair_cursor_last(&cursor);
+		fr_cursor_append(&cursor, vp);
+		(void) fr_cursor_tail(&cursor);
 	}
 
 	return RLM_MODULE_OK;
@@ -403,24 +422,6 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *conf)
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_init(&inst->mutex, NULL);
 #endif
-
-	inst->type_da = fr_dict_attr_by_name(NULL, "FreeRADIUS-Stats4-Type");
-	if (!inst->type_da) {
-		cf_log_err(conf, "Dictionaries are missing 'FreeRADIUS-Stats4-Type'");
-		return -1;
-	}
-
-	inst->ipv4_da = fr_dict_attr_by_name(NULL, "FreeRADIUS-Stats4-IPv4-Address");
-	if (!inst->type_da) {
-		cf_log_err(conf, "Dictionaries are missing 'FreeRADIUS-IPv4-Address'");
-		return -1;
-	}
-
-	inst->ipv6_da = fr_dict_attr_by_name(NULL, "FreeRADIUS-Stats4-IPv6-Address");
-	if (!inst->type_da) {
-		cf_log_err(conf, "Dictionaries are missing 'FreeRADIUS-Stats4-IPv6-Address'");
-		return -1;
-	}
 
 	FR_DLIST_INIT(inst->entry);
 
