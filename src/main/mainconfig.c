@@ -1103,7 +1103,7 @@ int main_config_free(void)
 	 *	Frees current config and any previous configs.
 	 */
 	TALLOC_FREE(main_config.config);
-	TALLOC_FREE(main_config.dict);
+	talloc_decrease_ref_count(main_config.dict);
 
 	return 0;
 }

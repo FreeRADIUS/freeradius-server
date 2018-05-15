@@ -1,8 +1,4 @@
 /*
- * unit_test_module.c	Unit test wrapper for the RADIUS daemon.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,11 +12,17 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * @copyright 2000-2013  The FreeRADIUS server project
- * @copyright 2013  Alan DeKok <aland@ox.org>
  */
-
+/**
+ * $Id$
+ *
+ * @file unit_test_module.c
+ * @brief Module test framework
+ *
+ * @copyright 2000-2018  The FreeRADIUS server project
+ * @copyright 2013  Alan DeKok <aland@ox.org>
+ * @copyright 2018  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
@@ -46,6 +48,68 @@ bool log_stripped_names = false;
 static bool filedone = false;
 
 char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
+
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t unit_test_module_dict[];
+fr_dict_autoload_t unit_test_module_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_digest_algorithm;
+static fr_dict_attr_t const *attr_digest_body_digest;
+static fr_dict_attr_t const *attr_digest_cnonce;
+static fr_dict_attr_t const *attr_digest_method;
+static fr_dict_attr_t const *attr_digest_nonce;
+static fr_dict_attr_t const *attr_digest_nonce_count;
+static fr_dict_attr_t const *attr_digest_qop;
+static fr_dict_attr_t const *attr_digest_realm;
+static fr_dict_attr_t const *attr_digest_uri;
+static fr_dict_attr_t const *attr_digest_user_name;
+static fr_dict_attr_t const *attr_packet_dst_ip_address;
+static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
+static fr_dict_attr_t const *attr_packet_dst_port;
+static fr_dict_attr_t const *attr_packet_src_ip_address;
+static fr_dict_attr_t const *attr_packet_src_ipv6_address;
+static fr_dict_attr_t const *attr_packet_src_port;
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_response_packet_type;
+static fr_dict_attr_t const *attr_chap_password;
+static fr_dict_attr_t const *attr_digest_attributes;
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t unit_test_module_dict_attr[];
+fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_digest_algorithm, .name = "Digest-Algorithm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_digest_body_digest, .name = "Digest-Body-Digest", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_digest_cnonce, .name = "Digest-CNonce", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_digest_method, .name = "Digest-Method", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_digest_nonce, .name = "Digest-Nonce", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_digest_nonce_count, .name = "Digest-Nonce-Count", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_digest_qop, .name = "Digest-QOP", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_digest_realm, .name = "Digest-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_digest_uri, .name = "Digest-URI", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_digest_user_name, .name = "Digest-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_response_packet_type, .name = "Response-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_digest_attributes, .name = "Digest-Attributes", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
 
 /*
  *	Static functions.
@@ -158,10 +222,6 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	request->packet->dst_port = 1812;
 
 	/*
-	 *	Copied from radclient
-	 */
-#if 1
-	/*
 	 *	Fix up Digest-Attributes issues
 	 */
 	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
@@ -177,37 +237,19 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 			vp->type = VT_DATA;
 		}
 
-		if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
-		default:
-			break;
-
-			/*
-			 *	Allow it to set the packet type in
-			 *	the attributes read from the file.
-			 */
-		case FR_PACKET_TYPE:
+		if (vp->da == attr_packet_type) {
 			request->packet->code = vp->vp_uint32;
-			break;
-
-		case FR_PACKET_DST_PORT:
+		} else if (vp->da == attr_packet_dst_port) {
 			request->packet->dst_port = vp->vp_uint16;
-			break;
-
-		case FR_PACKET_DST_IP_ADDRESS:
-		case FR_PACKET_DST_IPV6_ADDRESS:
+		} else if ((vp->da == attr_packet_dst_ip_address) ||
+			   (vp->da == attr_packet_dst_ipv6_address)) {
 			memcpy(&request->packet->dst_ipaddr, &vp->vp_ip, sizeof(request->packet->dst_ipaddr));
-			break;
-
-		case FR_PACKET_SRC_PORT:
+		} else if (vp->da == attr_packet_src_port) {
 			request->packet->src_port = vp->vp_uint16;
-			break;
-
-		case FR_PACKET_SRC_IP_ADDRESS:
-		case FR_PACKET_SRC_IPV6_ADDRESS:
+		} else if ((vp->da == attr_packet_src_ip_address) ||
+			   (vp->da == attr_packet_src_ipv6_address)) {
 			memcpy(&request->packet->src_ipaddr, &vp->vp_ip, sizeof(request->packet->src_ipaddr));
-			break;
-
-		case FR_CHAP_PASSWORD: {
+		} else if (vp->da == attr_chap_password) {
 			int i, already_hex = 0;
 
 			/*
@@ -244,34 +286,25 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 				vp->vp_octets = p;
 				vp->vp_length = 17;
 			}
-		}
-			break;
-
-		case FR_DIGEST_REALM:
-		case FR_DIGEST_NONCE:
-		case FR_DIGEST_METHOD:
-		case FR_DIGEST_URI:
-		case FR_DIGEST_QOP:
-		case FR_DIGEST_ALGORITHM:
-		case FR_DIGEST_BODY_DIGEST:
-		case FR_DIGEST_CNONCE:
-		case FR_DIGEST_NONCE_COUNT:
-		case FR_DIGEST_USER_NAME:
-			/* overlapping! */
-		{
-			fr_dict_attr_t const *da;
+		} else if ((vp->da == attr_digest_realm) ||
+			   (vp->da == attr_digest_nonce) ||
+			   (vp->da == attr_digest_method) ||
+			   (vp->da == attr_digest_uri) ||
+			   (vp->da == attr_digest_qop) ||
+			   (vp->da == attr_digest_algorithm) ||
+			   (vp->da == attr_digest_body_digest) ||
+			   (vp->da == attr_digest_cnonce) ||
+			   (vp->da == attr_digest_user_name)) {
 			uint8_t *p, *q;
 
 			p = talloc_array(vp, uint8_t, vp->vp_length + 2);
 
 			memcpy(p + 2, vp->vp_octets, vp->vp_length);
-			p[0] = vp->da->attr - FR_DIGEST_REALM + 1;
+			p[0] = vp->da->attr - attr_digest_realm->attr + 1;
 			vp->vp_length += 2;
 			p[1] = vp->vp_length;
 
-			da = fr_dict_attr_by_num(NULL, 0, FR_DIGEST_ATTRIBUTES);
-			rad_assert(da != NULL);
-			vp->da = da;
+			vp->da = attr_digest_attributes;
 
 			/*
 			 *	Re-do fr_pair_value_memsteal ourselves,
@@ -292,11 +325,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 
 			VP_VERIFY(vp);
 		}
-
-		break;
-		}
 	} /* loop over the VP's we read in */
-#endif
 
 	if (rad_debug_lvl) {
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
@@ -342,8 +371,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	request->reply->src_port = request->packet->dst_port;
 	request->reply->id = request->packet->id;
 	request->reply->code = 0; /* UNKNOWN code */
-	memcpy(request->reply->vector, request->packet->vector,
-	       sizeof(request->reply->vector));
+	memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
 	request->reply->vps = NULL;
 	request->reply->data = NULL;
 	request->reply->data_len = 0;
@@ -357,8 +385,8 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 
 	request->log.lvl = rad_debug_lvl;
 
-	request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
-	request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
+	request->username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	request->password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 
 	fr_request_async_bootstrap(request, el);
 
@@ -582,13 +610,15 @@ static bool do_xlats(char const *filename, FILE *fp)
 			slen = xlat_tokenize_ephemeral(fmt, request, fmt, &head);
 			if (slen <= 0) {
 				talloc_free(fmt);
-				snprintf(output, sizeof(output), "ERROR offset %d '%s'", (int) -slen, fr_strerror());
+				snprintf(output, sizeof(output), "ERROR offset %d '%s'", (int) -slen,
+					 fr_strerror());
 				continue;
 			}
 
 			if (input[slen + 5] != '\0') {
 				talloc_free(fmt);
-				snprintf(output, sizeof(output), "ERROR offset %d 'Too much text' ::%s::", (int) slen, input + slen + 5);
+				snprintf(output, sizeof(output), "ERROR offset %d 'Too much text' ::%s::",
+					 (int) slen, input + slen + 5);
 				continue;
 			}
 
@@ -776,6 +806,17 @@ int main(int argc, char *argv[])
 	}
 
 	dl_init();
+
+	if (fr_dict_autoload(main_config.dictionary_dir, unit_test_module_dict) < 0) {
+		fr_perror("%s", main_config.name);
+		rcode = EXIT_FAILURE;
+		goto finish;
+	}
+	if (fr_dict_attr_autoload(unit_test_module_dict_attr) < 0) {
+		fr_perror("%s", main_config.name);
+		rcode = EXIT_FAILURE;
+		goto finish;
+	}
 
 	/*
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
@@ -1004,7 +1045,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Simulate an authenticate section
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
 	if (!vp) goto done;
 
 	switch (vp->vp_int32) {
@@ -1060,9 +1101,8 @@ done:
 	/*
 	 *	Update the list with the response type.
 	 */
-	vp = radius_pair_create(request->reply, &request->reply->vps, FR_RESPONSE_PACKET_TYPE, 0);
+	MEM(pair_add_reply(&vp, attr_response_packet_type) >= 0);
 	vp->vp_uint32 = request->reply->code;
-
 	{
 		VALUE_PAIR const *failed[2];
 
@@ -1121,6 +1161,11 @@ finish:
 	 *	parsed configuration items.
 	 */
 	main_config_free();
+
+	/*
+	 *	Free any autoload dictionaries
+	 */
+	fr_dict_autofree(unit_test_module_dict);
 
 	/*
 	 *	Free the strerror buffer.
