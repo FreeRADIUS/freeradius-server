@@ -91,6 +91,32 @@ typedef struct radsnmp_conf {
 	char			*secret;		//!< Shared secret.
 } radsnmp_conf_t;
 
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t radsnmp_dict[];
+fr_dict_autoload_t radsnmp_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_extended_attribute_1;
+static fr_dict_attr_t const *attr_freeradius_snmp_failure;
+static fr_dict_attr_t const *attr_freeradius_snmp_operation;
+static fr_dict_attr_t const *attr_freeradius_snmp_type;
+static fr_dict_attr_t const *attr_message_authenticator;
+static fr_dict_attr_t const *attr_vendor_specific;
+
+extern fr_dict_attr_autoload_t radsnmp_dict_attr[];
+fr_dict_attr_autoload_t radsnmp_dict_attr[] = {
+	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_EXTENDED, .dict = &dict_radius },
+	{ .out = &attr_freeradius_snmp_failure, .name = "FreeRADIUS-SNMP-Failure", .type = FR_TYPE_UINT8, .dict = &dict_radius },
+	{ .out = &attr_freeradius_snmp_operation, .name = "FreeRADIUS-SNMP-Operation", .type = FR_TYPE_UINT8, .dict = &dict_radius },
+	{ .out = &attr_freeradius_snmp_type, .name = "FreeRADIUS-SNMP-Type", .type = FR_TYPE_UINT8, .dict = &dict_radius },
+	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_VENDOR_SPECIFIC, .dict = &dict_radius },
+	{ NULL }
+};
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: radsnmp [options] server[:port] [<secret>]\n");
@@ -332,7 +358,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 		goto error;
 	}
 
-	vp = fr_pair_afrom_da(ctx, conf->snmp_type);
+	vp = fr_pair_afrom_da(ctx, attr_freeradius_snmp_type);
 	if (!vp) {
 		slen = -(slen);
 		goto error;
@@ -679,7 +705,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 			strlcpy(type_str, value, (p - value) + 1);
 
-			type = fr_dict_enum_by_alias(conf->snmp_type, type_str);
+			type = fr_dict_enum_by_alias(attr_freeradius_snmp_type, type_str);
 			if (!type) {
 				ERROR("Unknown type \"%s\"", type_str);
 				RESPOND_STATIC("NONE");
@@ -726,7 +752,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 *	Now add an attribute indicating what the
 		 *	SNMP operation was
 		 */
-		vp = fr_pair_afrom_da(request, conf->snmp_op);
+		vp = fr_pair_afrom_da(request, attr_freeradius_snmp_operation);
 		if (!vp) {
 			ERROR("Failed allocating SNMP operation attribute");
 			return EXIT_FAILURE;
@@ -738,11 +764,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 *	Add message authenticator or the stats
 		 *	request will be rejected.
 		 */
-		vp = fr_pair_afrom_num(request, 0, FR_MESSAGE_AUTHENTICATOR);
-		if (!vp) {
-			ERROR("Failed allocating Message-Authenticator attribute");
-			return EXIT_FAILURE;
-		}
+		MEM(vp = fr_pair_afrom_da(request, attr_message_authenticator));
 		fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1);
 		fr_pair_cursor_append(&cursor, vp);
 
@@ -843,7 +865,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			case RADSNMP_GET:
 			case RADSNMP_GETNEXT:
 				ret = radsnmp_get_response(STDOUT_FILENO, conf->snmp_oid_root,
-							   conf->snmp_type, reply->vps);
+							   attr_freeradius_snmp_type, reply->vps);
 				switch (ret) {
 				case -1:
 					ERROR("Failed converting pairs to varbind response: %s", fr_strerror());
@@ -860,7 +882,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 				break;
 
 			case RADSNMP_SET:
-				if (radsnmp_set_response(STDOUT_FILENO, conf->snmp_failure, reply->vps) < 0) {
+				if (radsnmp_set_response(STDOUT_FILENO, attr_freeradius_snmp_failure, reply->vps) < 0) {
 					ERROR("Failed writing SET response: %s", fr_strerror());
 					return EXIT_FAILURE;
 				}
@@ -1031,14 +1053,25 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (fr_dict_from_file(conf, &conf->dict, conf->dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_autoload(conf->dict_dir, radsnmp_dict) < 0) {
 		fr_perror("radsnmp");
-		return EXIT_FAILURE;
+		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(conf->dict, conf->radius_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
-		return EXIT_FAILURE;
+	if (fr_dict_attr_autoload(radsnmp_dict_attr) < 0) {
+		fr_perror("radsnmp");
+		exit(EXIT_FAILURE);
+	}
+
+	{
+		fr_dict_t *mutable;
+
+		memcpy(&mutable, &dict_radius, sizeof(mutable));
+
+		if (fr_dict_read(mutable, conf->radius_dir, FR_DICTIONARY_FILE) == -1) {
+			fr_perror("radsnmp");
+			exit(EXIT_FAILURE);
+		}
 	}
 	fr_strerror();	/* Clear the error buffer */
 
@@ -1076,57 +1109,25 @@ int main(int argc, char **argv)
 		conf->secret = talloc_strdup(conf, argv[3]);
 	}
 
-	{
-		fr_dict_attr_t const *parent;
-
-		parent = fr_dict_attr_child_by_num(fr_dict_root(conf->dict), FR_EXTENDED_ATTRIBUTE_1);
-		if (!parent) {
-			ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1");
-		dict_error:
-			talloc_free(conf);
-			exit(EXIT_FAILURE);
-		}
-		parent = fr_dict_attr_child_by_num(parent, FR_VENDOR_SPECIFIC);
-		if (!parent) {
-			ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1(%i)."
-			      "Vendor-Specific(%i)", FR_EXTENDED_ATTRIBUTE_1, FR_VENDOR_SPECIFIC);
-			goto dict_error;
-		}
-
-		parent = fr_dict_attr_child_by_num(parent, VENDORPEC_FREERADIUS);
-		if (!parent) {
-			ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1(%i)."
-			      "Vendor-Specific(%i).FreeRADIUS(%i)", FR_EXTENDED_ATTRIBUTE_1, FR_VENDOR_SPECIFIC,
-			      VENDORPEC_FREERADIUS);
-			goto dict_error;
-		}
-		conf->snmp_root = parent;
-
-		conf->snmp_oid_root = fr_dict_attr_child_by_num(conf->snmp_root, 1);
-		if (!conf->snmp_oid_root) {
-			ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1(%i)."
-			      "Vendor-Specific(%i).FreeRADIUS(%i).FreeRADIUS-Iso(%i)",
-			      FR_EXTENDED_ATTRIBUTE_1, FR_VENDOR_SPECIFIC,
-			      VENDORPEC_FREERADIUS, 1);
-			goto dict_error;
-		}
+	conf->snmp_root = fr_dict_attr_child_by_num(attr_vendor_specific, VENDORPEC_FREERADIUS);
+	if (!conf->snmp_root) {
+		ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1(%i)."
+		      "Vendor-Specific(%i).FreeRADIUS(%i)",
+		      attr_extended_attribute_1->attr,
+		      attr_vendor_specific->attr,
+		      VENDORPEC_FREERADIUS);
+	dict_error:
+		talloc_free(conf);
+		exit(EXIT_FAILURE);
 	}
 
-	conf->snmp_op = fr_dict_attr_by_name(conf->dict, "FreeRADIUS-SNMP-Operation");
-	if (!conf->snmp_op) {
-		ERROR("Incomplete dictionary: Missing definition for \"FreeRADIUS-SNMP-Operation\"");
-		goto dict_error;
-	}
-
-	conf->snmp_type = fr_dict_attr_by_name(conf->dict, "FreeRADIUS-SNMP-Type");
-	if (!conf->snmp_type) {
-		ERROR("Incomplete dictionary: Missing definition for \"FreeRADIUS-SNMP-Type\"");
-		goto dict_error;
-	}
-
-	conf->snmp_failure = fr_dict_attr_by_name(conf->dict, "FreeRADIUS-SNMP-Failure");
-	if (!conf->snmp_failure) {
-		ERROR("Incomplete dictionary: Missing definition for \"FreeRADIUS-SNMP-Failure\"");
+	conf->snmp_oid_root = fr_dict_attr_child_by_num(conf->snmp_root, 1);
+	if (!conf->snmp_oid_root) {
+		ERROR("Incomplete dictionary: Missing definition for 1.Extended-Attribute-1(%i)."
+		      "Vendor-Specific(%i).FreeRADIUS(%i).FreeRADIUS-Iso(%i)",
+		      attr_extended_attribute_1->attr,
+		      attr_vendor_specific->attr,
+		      VENDORPEC_FREERADIUS, 1);
 		goto dict_error;
 	}
 
@@ -1166,6 +1167,11 @@ finish:
 	 *	Everything should be parented from conf
 	 */
 	talloc_free(conf);
+
+	/*
+	 *	...except the dictionaries
+	 */
+	fr_dict_autofree(radsnmp_dict);
 
 	return ret;
 }
