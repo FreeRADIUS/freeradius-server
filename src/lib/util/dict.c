@@ -4890,14 +4890,18 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 	static bool	defined_cast_types;
 	fr_dict_t	*dict;
 
+	/*
+	 *	If we've already loaded the dictionary, increase the reference count
+	 *	so the resolve/free pairs match up.
+	 */
+	if (fr_dict_internal) {
+		*out = fr_dict_internal;
+		talloc_increase_ref_count(*out);
+		return 0;
+	}
+
 	dict = dict_alloc(ctx);
 	if (!dict) return -1;
-
-	/*
-	 *	Free the old dictionaries
-	 */
-	if (*out == fr_dict_internal) fr_dict_internal = dict;
-	TALLOC_FREE(*out);
 
 	/*
 	 *	Remove this at some point...
@@ -5303,7 +5307,7 @@ int fr_dict_autoload(char const *dir, fr_dict_autoload_t const *to_load)
 		 *	Load the internal dictionary
 		 */
 		if (strcmp(p->proto, "freeradius") == 0) {
-			if (fr_dict_internal_afrom_file(NULL, &dict, my_dir, NULL) < 0) return -1;
+			if (fr_dict_from_file(NULL, &dict, my_dir, FR_DICTIONARY_FILE, "radius") < 0) return -1;
 		} else {
 			/*
 			 *	FIXME - Temporarily disabled

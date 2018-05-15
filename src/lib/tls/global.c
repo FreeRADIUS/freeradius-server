@@ -34,6 +34,87 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
+#include "tls_attrs.h"
+
+fr_dict_t const *dict_freeradius;
+fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t tls_dict[];
+fr_dict_autoload_t tls_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_allow_session_resumption;
+fr_dict_attr_t const *attr_eap_session_resumed;
+
+fr_dict_attr_t const *attr_tls_cert_common_name;
+fr_dict_attr_t const *attr_tls_cert_expiration;
+fr_dict_attr_t const *attr_tls_cert_issuer;
+fr_dict_attr_t const *attr_tls_cert_serial;
+fr_dict_attr_t const *attr_tls_cert_subject;
+fr_dict_attr_t const *attr_tls_cert_subject_alt_name_dns;
+fr_dict_attr_t const *attr_tls_cert_subject_alt_name_email;
+fr_dict_attr_t const *attr_tls_cert_subject_alt_name_upn;
+
+fr_dict_attr_t const *attr_tls_client_cert_common_name;
+fr_dict_attr_t const *attr_tls_client_cert_expiration;
+fr_dict_attr_t const *attr_tls_client_cert_issuer;
+fr_dict_attr_t const *attr_tls_client_cert_serial;
+fr_dict_attr_t const *attr_tls_client_cert_subject;
+fr_dict_attr_t const *attr_tls_client_cert_subject_alt_name_dns;
+fr_dict_attr_t const *attr_tls_client_cert_subject_alt_name_email;
+fr_dict_attr_t const *attr_tls_client_cert_subject_alt_name_upn;
+
+fr_dict_attr_t const *attr_tls_client_cert_filename;
+fr_dict_attr_t const *attr_tls_client_error_code;
+fr_dict_attr_t const *attr_tls_ocsp_cert_valid;
+fr_dict_attr_t const *attr_tls_ocsp_next_update;
+fr_dict_attr_t const *attr_tls_ocsp_response;
+fr_dict_attr_t const *attr_tls_psk_identity;
+fr_dict_attr_t const *attr_tls_session_cert_file;
+fr_dict_attr_t const *attr_tls_session_data;
+fr_dict_attr_t const *attr_tls_session_id;
+
+fr_dict_attr_t const *attr_framed_mtu;
+
+extern fr_dict_attr_autoload_t tls_dict_attr[];
+fr_dict_attr_autoload_t tls_dict_attr[] = {
+	{ .out = &attr_allow_session_resumption, .name = "Allow-Session-Resumption", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_eap_session_resumed, .name = "EAP-Session-Resumed", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+
+	{ .out = &attr_tls_cert_common_name, .name = "TLS-Cert-Common-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_cert_expiration, .name = "TLS-Cert-Expiration", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_tls_cert_issuer, .name = "TLS-Cert-Issuer", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_cert_serial, .name = "TLS-Cert-Serial", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_cert_subject, .name = "TLS-Cert-Subject", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_cert_subject_alt_name_dns, .name = "TLS-Cert-Subject-Alt-Name-Dns", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_cert_subject_alt_name_email, .name = "TLS-Cert-Subject-Alt-Name-Email", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_cert_subject_alt_name_upn, .name = "TLS-Cert-Subject-Alt-Name-Upn", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_tls_client_cert_common_name, .name = "TLS-Client-Cert-Common-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_cert_expiration, .name = "TLS-Client-Cert-Expiration", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_cert_issuer, .name = "TLS-Client-Cert-Issuer", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_cert_serial, .name = "TLS-Client-Cert-Serial", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_cert_subject, .name = "TLS-Client-Cert-Subject", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_cert_subject_alt_name_dns, .name = "TLS-Client-Cert-Subject-Alt-Name-Dns", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_cert_subject_alt_name_email, .name = "TLS-Client-Cert-Subject-Alt-Name-Email", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_cert_subject_alt_name_upn, .name = "TLS-Client-Cert-Subject-Alt-Name-Upn", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_tls_client_cert_filename, .name = "TLS-Client-Cert-Filename", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_error_code, .name = "TLS-Client-Error-Code", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
+	{ .out = &attr_tls_ocsp_cert_valid, .name = "TLS-OCSP-Cert-Valid", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_tls_ocsp_next_update, .name = "TLS-OCSP-Next-Update", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_tls_ocsp_response, .name = "TLS-OCSP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_tls_psk_identity, .name = "TLS-PSK-Identity", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_session_cert_file, .name = "TLS-Session-Cert-File", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_session_data, .name = "TLS-Session-Data", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_tls_session_id, .name = "TLS-Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+
+	{ .out = &attr_framed_mtu, .name = "Framed-MTU", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
 
 /*
  *	Updated by threads.c in the server, and left alone for everyone else.
@@ -364,7 +445,7 @@ static void openssl_free(void *to_free)
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
-int tls_global_init(void)
+int tls_global_init(char const *dictionary_dir)
 {
 	ENGINE *rand_engine;
 
@@ -394,7 +475,8 @@ int tls_global_init(void)
 	 */
 	global_mutexes = global_mutexes_init(NULL);
 	if (!global_mutexes) {
-		ERROR("FATAL: Failed to set up SSL mutexes");
+		ERROR("Failed to set up SSL mutexes");
+		tls_global_cleanup();
 		return -1;
 	}
 
@@ -411,6 +493,19 @@ int tls_global_init(void)
 	rand_engine = ENGINE_get_default_RAND();
 	if (rand_engine && (strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0)) ENGINE_unregister_RAND(rand_engine);
 	ENGINE_register_all_complete();
+
+
+	if (fr_dict_autoload(dictionary_dir, tls_dict) < 0) {
+		PERROR("Failed loading dictionary");
+		tls_global_cleanup();
+		return -1;
+	}
+
+	if (fr_dict_attr_autoload(tls_dict_attr) < 0) {
+		PERROR("Failed resolving attributes");
+		tls_global_cleanup();
+		return -1;
+	}
 
 	tls_done_init = true;
 
@@ -432,6 +527,8 @@ void tls_global_cleanup(void)
 	CRYPTO_cleanup_all_ex_data();
 
 	TALLOC_FREE(global_mutexes);
+
+	fr_dict_autofree(tls_dict);
 
 	tls_done_init = false;
 }

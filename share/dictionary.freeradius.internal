@@ -210,16 +210,8 @@ ATTRIBUTE	FreeRADIUS-Client-NAS-Type		1125	string
 ATTRIBUTE	FreeRADIUS-Client-Virtual-Server	1126	string
 
 # For session resumption
-ATTRIBUTE	Allow-Session-Resumption		1127	integer
-
-VALUE	Allow-Session-Resumption	no			0
-VALUE	Allow-Session-Resumption	yes			1
-
-ATTRIBUTE	EAP-Session-Resumed			1128	integer
-
-VALUE	EAP-Session-Resumed		no			0
-VALUE	EAP-Session-Resumed		yes			1
-
+ATTRIBUTE	Allow-Session-Resumption		1127	bool
+ATTRIBUTE	EAP-Session-Resumed			1128	bool
 #
 #	Expose EAP keys in the reply.
 #
@@ -639,7 +631,7 @@ ATTRIBUTE	Log-Type				1896	integer
 ATTRIBUTE	WiMAX-MN-NAI				1900	string
 
 ATTRIBUTE	TLS-Cert-Serial				1910	string
-ATTRIBUTE	TLS-Cert-Expiration			1911	string
+ATTRIBUTE	TLS-Cert-Expiration			1911	date
 ATTRIBUTE	TLS-Cert-Issuer				1912	string
 ATTRIBUTE	TLS-Cert-Subject			1913	string
 ATTRIBUTE	TLS-Cert-Common-Name			1914	string
@@ -648,7 +640,7 @@ ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Dns		1916	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Upn		1917	string
 # 1918 - 1919: reserved for future cert attributes
 ATTRIBUTE	TLS-Client-Cert-Serial			1920	string
-ATTRIBUTE	TLS-Client-Cert-Expiration		1921	string
+ATTRIBUTE	TLS-Client-Cert-Expiration		1921	date
 ATTRIBUTE	TLS-Client-Cert-Issuer			1922	string
 ATTRIBUTE	TLS-Client-Cert-Subject			1923	string
 ATTRIBUTE	TLS-Client-Cert-Common-Name		1924	string
@@ -662,7 +654,6 @@ ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Dns	1931	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string
 ATTRIBUTE	TLS-PSK-Identity			1933	string
 ATTRIBUTE	TLS-Session-Cert-File			1934	string
-ATTRIBUTE	TLS-Client-Cert-Expiration-Time		1935	date
 
 # 1936 - 1939: reserved for future cert attributes
 

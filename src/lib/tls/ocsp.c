@@ -33,6 +33,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 #include <openssl/ocsp.h>
+#include "tls_attrs.h"
 
 /** Rcodes returned by the OCSP check function
  */
@@ -141,15 +142,13 @@ static int ocsp_staple_to_pair(VALUE_PAIR **out, REQUEST *request, OCSP_RESPONSE
 		return -1;
 	}
 
-	vp = pair_make_request("TLS-OCSP-Response", NULL, T_OP_SET);
-
-	MEM(p = buff = talloc_array(vp, uint8_t, len));			/* Alloc transitively in context of request */
+	MEM(p = buff = talloc_array(request, uint8_t, len));	/* Alloc in context of request - steal later */
 	len = i2d_OCSP_RESPONSE(resp, &p);
 	if (len <= 0) {
 		REDEBUG("Failed serialising OCSP response");
-		talloc_free(vp);					/* Also frees buff */
 		return -1;
 	}
+	MEM(pair_update_request(&vp, attr_tls_ocsp_response) >= 0);
 	fr_pair_value_memsteal(vp, buff);
 
 	RDEBUG2("Serializing OCSP response");
@@ -295,7 +294,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 	/*
 	 *	Allow us to cache the OCSP verified state externally
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_TLS_OCSP_CERT_VALID, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_tls_ocsp_cert_valid, TAG_ANY);
 	if (vp) switch (vp->vp_uint32) {
 	case 0:	/* no */
 		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
@@ -309,7 +308,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		 *	we need to run the full OCSP check.
 		 */
 		if (staple_response) {
-			vp = fr_pair_find_by_num(request->control, 0, FR_TLS_OCSP_RESPONSE, TAG_ANY);
+			vp = fr_pair_find_by_da(request->control, attr_tls_ocsp_response, TAG_ANY);
 			if (!vp) {
 				RDEBUG2("No &control:TLS-OCSP-Response attribute found, performing full OCSP check");
 				break;
@@ -552,9 +551,10 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		}
 		if (now.tv_sec < next){
 			RDEBUG2("Adding OCSP TTL attribute");
-			RINDENT();
-			vp = pair_make_request("TLS-OCSP-Next-Update", NULL, T_OP_SET);
+
+			MEM(pair_update_request(&vp, attr_tls_ocsp_next_update) >= 0);
 			vp->vp_uint32 = next - now.tv_sec;
+			RINDENT();
 			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 			REXDENT();
 		} else {
@@ -609,7 +609,7 @@ finish:
 			vp = NULL;	/* It's in the request, don't need to free it! */
 		}
 
-		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
+		MEM(pair_update_request(&vp, attr_tls_ocsp_cert_valid) >= 0);
 		vp->vp_uint32 = 1;	/* yes */
 		ocsp_status = OCSP_STATUS_OK;
 
@@ -618,7 +618,7 @@ finish:
 	case OCSP_STATUS_SKIPPED:
 	skipped:
 		SSL_DRAIN_ERROR_QUEUE(RWDEBUG, "", ssl_log);
-		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
+		MEM(pair_update_request(&vp, attr_tls_ocsp_cert_valid) >= 0);
 		vp->vp_uint32 = 2;	/* skipped */
 		if (conf->softfail) {
 			RWDEBUG("Unable to check certificate: %s",
@@ -638,7 +638,7 @@ finish:
 
 	default:
 		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
-		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
+		MEM(pair_update_request(&vp, attr_tls_ocsp_cert_valid) >= 0);
 		vp->vp_uint32 = 0;	/* no */
 		REDEBUG("Failed to validate certificate");
 		break;

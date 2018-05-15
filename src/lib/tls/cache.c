@@ -32,13 +32,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
+#include "tls_attrs.h"
 
 /** Add attributes identifying the TLS session to be acted upon, and the action to be performed
  *
  * Adds the following attributes to the request:
  *
  *	- &request:TLS-Session-Id
- *	- &control:TLS-Session-Cache-Action
  *
  * Session identity will contain the binary session key used to create, retrieve
  * and delete cache entries related to the SSL session.
@@ -51,9 +51,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  * @todo Move adding TLS-Session-Cache-Action to tls_cache_process and remove it again after calling
  *	the virtual server.
  *
- * @param[in] request The current request.
- * @param[in] key Identifier for the session.
- * @param[in] key_len Length of the key.
+ * @param[in] request		The current request.
+ * @param[in] key Identifier	for the session.
+ * @param[in] key_len		Length of the key.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -62,18 +62,12 @@ static int tls_cache_session_id_to_vp(REQUEST *request, uint8_t const *key, size
 {
 	VALUE_PAIR *vp;
 
-	fr_pair_delete_by_num(&request->packet->vps, 0, FR_TLS_SESSION_ID, TAG_ANY);
-
-	vp = fr_pair_afrom_num(request->packet, 0, FR_TLS_SESSION_ID);
-	if (!vp) return -1;
-
+	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
 	fr_pair_value_memcpy(vp, key, key_len);
-	fr_pair_add(&request->packet->vps, vp);
+
 	RINDENT();
 	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	REXDENT();
-
-	rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
 
 	return 0;
 }
@@ -290,7 +284,7 @@ int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
 	/*
 	 *	Put the SSL data into an attribute.
 	 */
-	vp = fr_pair_afrom_num(request->state_ctx, 0, FR_TLS_SESSION_DATA);
+	vp = fr_pair_afrom_da(request->state_ctx, attr_tls_session_data);
 	if (!vp) {
 		RPEDEBUG("Failed allocating &TLS-Session-Data");
 		return -1;
@@ -319,7 +313,7 @@ int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
-	fr_pair_delete_by_num(&request->state, 0, FR_TLS_SESSION_DATA, TAG_ANY);
+	fr_pair_delete_by_da(&request->state, attr_tls_session_data);
 
 	return ret;
 }
@@ -374,7 +368,7 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 		return NULL;
 	}
 
-	vp = fr_pair_find_by_num(request->state, 0, FR_TLS_SESSION_DATA, TAG_ANY);
+	vp = fr_pair_find_by_da(request->state, attr_tls_session_data, TAG_ANY);
 	if (!vp) {
 		RWDEBUG("No cached session found");
 		return NULL;
@@ -420,7 +414,7 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
-	fr_pair_delete_by_num(&request->state, 0, FR_TLS_SESSION_DATA, TAG_ANY);
+	fr_pair_delete_by_da(&request->state, attr_tls_session_data);
 
 	return sess;
 }
@@ -550,7 +544,7 @@ int tls_cache_disable_cb(SSL *ssl,
 	 */
 	if (!session->allow_session_resumption) goto disable;
 
-	vp = fr_pair_find_by_num(request->control, 0, FR_ALLOW_SESSION_RESUMPTION, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_allow_session_resumption, TAG_ANY);
 	if (vp && (vp->vp_uint32 == 0)) {
 		RDEBUG2("&control:Allow-Session-Resumption == no, disabling session resumption");
 	disable:

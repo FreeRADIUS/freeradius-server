@@ -30,6 +30,7 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
+#include "tls_attrs.h"
 
 /** Validates a certificate using custom logic
  *
@@ -71,7 +72,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	int		my_ok = ok;
 
 	VALUE_PAIR	*cert_vps = NULL;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 
 	char const	**identity_p;
 	char const	*identity = NULL;
@@ -131,7 +132,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	client's cert in SSL_CTX's X509_STORE.
 	 */
 	if (identity && (depth <= 1) && !SSL_session_reused(ssl)) {
-		fr_pair_cursor_init(&cursor, &cert_vps);
+		fr_cursor_init(&cursor, &cert_vps);
 		tls_session_pairs_from_x509_cert(&cursor, request, tls_session, cert, depth);
 
 		/*
@@ -144,7 +145,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		 *	tls_session_pairs_from_x509_cert contains a
 		 *	reference to cert_vps.
 		 */
-		cert_vps = fr_pair_cursor_current(&cursor);
+		cert_vps = fr_cursor_current(&cursor);
 		if (cert_vps) {
 			/*
 			 *	Print out all the pairs we have so far
@@ -256,9 +257,10 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	} /* check_cert_cn */
 
 	while (conf->verify_client_cert_cmd) {
-		char	filename[256];
-		int	fd;
-		FILE	*fp;
+		char		filename[256];
+		int		fd;
+		FILE		*fp;
+		VALUE_PAIR	*vp;
 
 		snprintf(filename, sizeof(filename), "%s/client.XXXXXXXX", conf->verify_tmp_dir);
 
@@ -292,11 +294,8 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		}
 		fclose(fp);
 
-		if (!pair_make_request("TLS-Client-Cert-Filename", filename, T_OP_SET)) {
-			RDEBUG("Failed creating TLS-Client-Cert-Filename");
-
-			goto do_unlink;
-		}
+		MEM(pair_update_request(&vp, attr_tls_client_cert_filename) >= 0);
+		fr_pair_value_strcpy(vp, filename);
 
 		RDEBUG2("Verifying client certificate with cmd");
 		if (radius_exec_program(request, NULL, 0, NULL, request, conf->verify_client_cert_cmd,

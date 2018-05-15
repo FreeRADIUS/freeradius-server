@@ -364,7 +364,7 @@ int main(int argc, char *argv[])
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_global_init() < 0) fr_exit(EXIT_FAILURE);
+	if (tls_global_init(main_config.dictionary_dir) < 0) fr_exit(EXIT_FAILURE);
 #endif
 
 	/*

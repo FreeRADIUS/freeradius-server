@@ -32,29 +32,30 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 #include <openssl/x509v3.h>
+#include "tls_attrs.h"
 
 /*
  *	For creating certificate attributes.
  */
-static char const *cert_attr_names[8][2] = {
-	{ "TLS-Client-Cert-Serial",			"TLS-Cert-Serial" },
-	{ "TLS-Client-Cert-Expiration",			"TLS-Cert-Expiration" },
-	{ "TLS-Client-Cert-Subject",			"TLS-Cert-Subject" },
-	{ "TLS-Client-Cert-Issuer",			"TLS-Cert-Issuer" },
-	{ "TLS-Client-Cert-Common-Name",		"TLS-Cert-Common-Name" },
-	{ "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
-	{ "TLS-Client-Cert-Subject-Alt-Name-Dns",	"TLS-Cert-Subject-Alt-Name-Dns" },
-	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" }
+static fr_dict_attr_t const **cert_attr_names[][2] = {
+	{ &attr_tls_client_cert_common_name,			&attr_tls_cert_common_name },
+	{ &attr_tls_client_cert_expiration,			&attr_tls_cert_expiration },
+	{ &attr_tls_client_cert_issuer,				&attr_tls_cert_issuer },
+	{ &attr_tls_client_cert_serial,				&attr_tls_cert_serial },
+	{ &attr_tls_client_cert_subject,			&attr_tls_cert_subject },
+	{ &attr_tls_client_cert_subject_alt_name_dns,		&attr_tls_cert_subject_alt_name_dns },
+	{ &attr_tls_client_cert_subject_alt_name_email,		&attr_tls_cert_subject_alt_name_email },
+	{ &attr_tls_client_cert_subject_alt_name_upn,		&attr_tls_cert_subject_alt_name_upn }
 };
 
-#define FR_TLS_SERIAL		(0)
-#define FR_TLS_EXPIRATION	(1)
-#define FR_TLS_SUBJECT		(2)
-#define FR_TLS_ISSUER		(3)
-#define FR_TLS_CN		(4)
-#define FR_TLS_SAN_EMAIL       	(5)
-#define FR_TLS_SAN_DNS          (6)
-#define FR_TLS_SAN_UPN          (7)
+#define IDX_COMMON_NAME			(0)
+#define IDX_EXPIRATION			(1)
+#define IDX_ISSUER			(2)
+#define IDX_SERIAL			(3)
+#define IDX_SUBJECT			(4)
+#define IDX_SUBJECT_ALT_NAME_DNS	(5)
+#define IDX_SUBJECT_ALT_NAME_EMAIL	(6)
+#define IDX_SUBJECT_ALT_NAME_UPN	(7)
 
 /** Clear a record buffer
  *
@@ -242,11 +243,14 @@ unsigned int tls_session_psk_server_cb(SSL *ssl, const char *identity,
 			return 0;
 		}
 
-		vp = pair_make_request("TLS-PSK-Identity", identity, T_OP_SET);
-		if (!vp) return 0;
+		MEM(pair_update_request(&vp, attr_tls_psk_identity) >= 0);
+		if (fr_pair_value_from_str(vp, identity, -1) < 0) {
+			RPWDEBUG2("Failed parsing TLS PSK Identity");
+			talloc_free(vp);
+			return 0;
+		}
 
-		hex_len = xlat_eval(buffer, sizeof(buffer), request, conf->psk_query,
-				      NULL, NULL);
+		hex_len = xlat_eval(buffer, sizeof(buffer), request, conf->psk_query, NULL, NULL);
 		if (!hex_len) {
 			RWDEBUG("PSK expansion returned an empty string.");
 			return 0;
@@ -340,9 +344,7 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 		if ((ret & 0xff) == SSL_AD_CLOSE_NOTIFY) return;
 
 		if (where & SSL_CB_READ) {
-			TALLOC_CTX	*ctx;
-			VALUE_PAIR	**list;
-			fr_value_box_t	value;
+			VALUE_PAIR *vp;
 
 			REDEBUG("Client sent %s TLS alert: %s", SSL_alert_type_string_long(ret),
 			        SSL_alert_desc_string_long(ret));
@@ -359,20 +361,9 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 				break;
 			}
 
-			RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-
-			memset(&value, 0, sizeof(value));
-			value.type = FR_TYPE_UINT8;
-			value.vb_uint8 = ret & 0xff;
-			value.enumv = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
-								FR_TLS_CLIENT_ERROR_CODE);
-
-			if (!list || (fr_pair_update_by_num(ctx, list, 0,
-			    				    FR_TLS_CLIENT_ERROR_CODE, TAG_ANY, &value) < 0)) {
-				RWDEBUG("Failed updating &TLS-Client-Error-Code");
-			} else {
-				RDEBUG2("&TLS-Client-Error-Code := %pV", &value);
-			}
+			MEM(pair_update_request(&vp, attr_tls_client_error_code) >= 0);
+			vp->vp_uint8 = ret & 0xff;
+			RDEBUG2("&TLS-Client-Error-Code := %pV", &vp->data);
 		} else {
 			REDEBUG("Sending client %s TLS alert: %s %i", SSL_alert_type_string_long(ret),
 				SSL_alert_desc_string_long(ret), ret & 0xff);
@@ -848,6 +839,25 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	session_msg_log(request, session);
 }
 
+static inline VALUE_PAIR *tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *request, fr_cursor_t *cursor,
+					    	    int attr, int attr_index, char const *value)
+{
+	VALUE_PAIR *vp;
+	fr_dict_attr_t const *da = *(cert_attr_names[IDX_EXPIRATION][attr_index]);
+
+	MEM(vp = fr_pair_afrom_da(ctx, da));
+	if (value) {
+		if (fr_pair_value_from_str(vp, value, -1) < 0) {
+			RPWDEBUG("Failed creating attribute %s", da->name);
+			talloc_free(vp);
+			return NULL;
+		}
+	}
+	fr_cursor_append(cursor, vp);
+
+	return vp;
+}
+
 /** Extract attributes from an X509 certificate
  *
  * @param cursor	to copy attributes to.
@@ -859,7 +869,7 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
  *	- 0 on success.
  *	- < 0 on failure.
  */
-int tls_session_pairs_from_x509_cert(vp_cursor_t *cursor, TALLOC_CTX *ctx,
+int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 				     tls_session_t *session, X509 *cert, int depth)
 {
 	char		buffer[1024];
@@ -881,19 +891,10 @@ int tls_session_pairs_from_x509_cert(vp_cursor_t *cursor, TALLOC_CTX *ctx,
 
 	REQUEST		*request;
 
+#define CERT_ATTR_ADD(_attr, _attr_index, _value) tls_session_cert_attr_add(ctx, request, cursor, _attr, _attr_index, _value)
+
 	attr_index = depth;
 	if (attr_index > 1) attr_index = 1;
-
-#define ADD_CERT_ATTR(_name, _value) \
-do { \
-	VALUE_PAIR *_vp; \
-	_vp = fr_pair_make(ctx, NULL, _name, _value, T_OP_SET); \
-	if (_vp) { \
-		fr_pair_cursor_append(cursor, _vp); \
-	} else { \
-		RPWDEBUG("Failed creating attribute %s", _name); \
-	} \
-} while (0)
 
 	request = (REQUEST *)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_REQUEST);
 	rad_assert(request != NULL);
@@ -914,7 +915,8 @@ do { \
 			sprintf(p, "%02x", (unsigned int)sn->data[i]);
 			p += 2;
 		}
-		ADD_CERT_ATTR(cert_attr_names[FR_TLS_SERIAL][attr_index], buffer);
+
+		CERT_ATTR_ADD(IDX_SERIAL, attr_index, buffer);
 	}
 
 	/*
@@ -925,19 +927,14 @@ do { \
 	if (identity && asn_time && (asn_time->length < (int)sizeof(buffer))) {
 		time_t expires;
 
-		memcpy(buffer, (char *)asn_time->data, asn_time->length);
-		buffer[asn_time->length] = '\0';
-		ADD_CERT_ATTR(cert_attr_names[FR_TLS_EXPIRATION][attr_index], buffer);
-
 		/*
 		 *	Add expiration as a time since the epoch
 		 */
-		if ((attr_index == 0) && (tls_utils_asn1time_to_epoch(&expires, asn_time) == 0)) {
-			vp = fr_pair_afrom_num(ctx, 0, FR_TLS_CLIENT_CERT_EXPIRATION_TIME);
-			if (vp) {
-				vp->vp_date = expires;
-				fr_pair_cursor_append(cursor, vp);
-			}
+		if (tls_utils_asn1time_to_epoch(&expires, asn_time) < 0) {
+			RPWDEBUG("Failed parsing certificate expiry time");
+		} else {
+			vp = CERT_ATTR_ADD(IDX_EXPIRATION, attr_index, NULL);
+			vp->vp_date = expires;
 		}
 	}
 
@@ -948,7 +945,7 @@ do { \
 	X509_NAME_oneline(X509_get_subject_name(cert), buffer, sizeof(buffer));
 	buffer[sizeof(buffer) - 1] = '\0';
 	if (identity && buffer[0]) {
-		ADD_CERT_ATTR(cert_attr_names[FR_TLS_SUBJECT][attr_index], buffer);
+		CERT_ATTR_ADD(IDX_SUBJECT, attr_index, buffer);
 
 		/*
 		 *	Get the Common Name, if there is a subject.
@@ -958,14 +955,14 @@ do { \
 		buffer[sizeof(buffer) - 1] = '\0';
 
 		if (buffer[0]) {
-			ADD_CERT_ATTR(cert_attr_names[FR_TLS_CN][attr_index], buffer);
+			CERT_ATTR_ADD(IDX_COMMON_NAME, attr_index, buffer);
 		}
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(cert), buffer, sizeof(buffer));
 	buffer[sizeof(buffer) - 1] = '\0';
 	if (identity && buffer[0]) {
-		ADD_CERT_ATTR(cert_attr_names[FR_TLS_ISSUER][attr_index], buffer);
+		CERT_ATTR_ADD(IDX_ISSUER, attr_index, buffer);
 	}
 
 	/*
@@ -991,7 +988,7 @@ do { \
 					char *rfc822Name = (char *)ASN1_STRING_data(name->d.rfc822Name);
 #endif
 
-					ADD_CERT_ATTR(cert_attr_names[FR_TLS_SAN_EMAIL][attr_index], rfc822Name);
+					CERT_ATTR_ADD(IDX_SUBJECT_ALT_NAME_EMAIL, attr_index, rfc822Name);
 					break;
 				}
 #endif	/* GEN_EMAIL */
@@ -1002,7 +999,7 @@ do { \
 #else
 					char *dNSName = (char *)ASN1_STRING_data(name->d.dNSName);
 #endif
-					ADD_CERT_ATTR(cert_attr_names[FR_TLS_SAN_DNS][attr_index], dNSName);
+					CERT_ATTR_ADD(IDX_SUBJECT_ALT_NAME_DNS, attr_index, dNSName);
 					break;
 				}
 #endif	/* GEN_DNS */
@@ -1013,8 +1010,8 @@ do { \
 
 					/* we've got a UPN - Must be ASN1-encoded UTF8 string */
 					if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
-						ADD_CERT_ATTR(cert_attr_names[FR_TLS_SAN_UPN][attr_index],
-							      (char *)name->d.otherName->value->value.utf8string);
+						CERT_ATTR_ADD(IDX_SUBJECT_ALT_NAME_UPN, attr_index,
+								  (char *)name->d.otherName->value->value.utf8string);
 						break;
 					}
 
@@ -1053,9 +1050,10 @@ do { \
 			strlcpy(attribute, "TLS-Client-Cert-", sizeof(attribute));
 
 			for (i = 0; i < sk_X509_EXTENSION_num(ext_list); i++) {
-				char value[1024];
-				ASN1_OBJECT	*obj;
-				X509_EXTENSION	*ext;
+				char			value[1024];
+				ASN1_OBJECT		*obj;
+				X509_EXTENSION		*ext;
+				fr_dict_attr_t const	*da;
 
 				ext = sk_X509_EXTENSION_value(ext_list, i);
 
@@ -1075,12 +1073,21 @@ do { \
 
 				value[len] = '\0';
 
-				vp = fr_pair_make(request, NULL, attribute, value, T_OP_ADD);
-				if (!vp) {
-					RDEBUG3("Skipping: %s += '%s'", attribute, value);
-				} else {
-					fr_pair_cursor_append(cursor, vp);
+				da = fr_dict_attr_by_name(dict_freeradius, attribute);
+				if (!da) {
+					RWDEBUG3("Skipping attribute %s: "
+						 "Add dictionary definition if you want to access it", attribute);
+					continue;
 				}
+
+				MEM(vp = fr_pair_afrom_da(request, da));
+				if (fr_pair_value_from_str(vp, value, -1) < 0) {
+					RPWDEBUG3("Skipping: %s += '%s'", attribute, value);
+					talloc_free(vp);
+					continue;
+				}
+
+				fr_cursor_append(cursor, vp);
 			}
 			BIO_free_all(out);
 		}
@@ -1370,10 +1377,13 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 		 *	Session was resumed, add attribute to mark it as such.
 		 */
 		if (SSL_session_reused(session->ssl)) {
+			VALUE_PAIR *vp;
+
 			/*
 			 *	Mark the request as resumed.
 			 */
-			pair_make_request("EAP-Session-Resumed", "1", T_OP_SET);
+			MEM(pair_update_request(&vp, attr_eap_session_resumed) >= 0);
+			vp->vp_bool = true;
 		}
 	}
 
@@ -1651,7 +1661,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	/*
 	 *	Add the session certificate to the session.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_TLS_SESSION_CERT_FILE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_tls_session_cert_file, TAG_ANY);
 	if (vp) {
 		RDEBUG2("Loading TLS session certificate \"%s\"", vp->vp_strvalue);
 
@@ -1728,9 +1738,9 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	 *	just too much.
 	 */
 	session->mtu = conf->fragment_size;
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_FRAMED_MTU, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_framed_mtu, TAG_ANY);
 	if (vp && (vp->vp_uint32 > 100) && (vp->vp_uint32 < session->mtu)) {
-		RDEBUG2("Setting fragment_len from &Framed-MTU");
+		RDEBUG2("Setting fragment_len to %u from &Framed-MTU", vp->vp_uint32);
 		session->mtu = vp->vp_uint32;
 	}
 
