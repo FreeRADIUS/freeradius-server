@@ -9,6 +9,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* The session-state list is no longer cleaned in the
 	  inner-tunnel.  This lets the outer Access-Reject
 	  section access session-state.
+	* Fix typo lock initialization for TLS sockets
+	  Found by Sergio NNX.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
