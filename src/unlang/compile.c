@@ -609,7 +609,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 		}
 
 		/*
-		 *	These guys can't have a paircompare fixup applied.
+		 *	These guys can't have a paircmp fixup applied.
 		 */
 		c->pass2_fixup = PASS2_FIXUP_NONE;
 		return true;
@@ -789,7 +789,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 	 */
 
 	/*
-	 *	Only attributes can have a paircompare registered, and
+	 *	Only attributes can have a paircmp registered, and
 	 *	they can only be with the current REQUEST, and only
 	 *	with the request pairs.
 	 */
@@ -799,7 +799,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 		return true;
 	}
 
-	if (!radius_find_compare(map->lhs->tmpl_da)) return true;
+	if (!paircmp_find(map->lhs->tmpl_da)) return true;
 
 	if (map->rhs->type == TMPL_TYPE_REGEX) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex",
@@ -820,7 +820,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 	}
 
 	/*
-	 *	Mark it as requiring a paircompare() call, instead of
+	 *	Mark it as requiring a paircmp() call, instead of
 	 *	fr_pair_cmp().
 	 */
 	c->pass2_fixup = PASS2_PAIRCOMPARE;

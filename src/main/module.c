@@ -733,7 +733,7 @@ int modules_instantiate(CONF_SECTION *root)
 	return 0;
 }
 
-/** Free module's instance data, and any xlats or paircompares
+/** Free module's instance data, and any xlats or paircmps
  *
  * @param[in] mi to free.
  * @return 0
@@ -755,9 +755,9 @@ static int _module_instance_free(module_instance_t *mi)
 	if (mi->dl_inst && mi->dl_inst->data) {
 		xlat_unregister(mi->name);
 		/*
-		 *	Remove any registered paircompares.
+		 *	Remove any registered paircmps.
 		 */
-		paircompare_unregister_instance(mi->dl_inst->data);
+		paircmp_unregister_instance(mi->dl_inst->data);
 		xlat_unregister_module(mi->dl_inst->data);
 	}
 

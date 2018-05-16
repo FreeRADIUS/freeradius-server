@@ -589,6 +589,11 @@ int main(int argc, char *argv[])
 	if (xlat_instantiate() < 0) exit(EXIT_FAILURE);
 
 	/*
+	 *	Instantiate "permanent" paircmps
+	 */
+	if (paircmp_init(main_config.dict_dir) < 0) exit(EXIT_FAILURE);
+
+	/*
 	 *  Everything seems to have loaded OK, exit gracefully.
 	 */
 	if (check_config) {
@@ -824,9 +829,14 @@ cleanup:
 	xlat_instances_free();
 
 	/*
-	 *	Detach modules, connection pools, registered xlats / paircompares / maps.
+	 *	Detach modules, connection pools, registered xlats / paircmps / maps.
 	 */
 	modules_free();
+
+	/*
+	 *	The only paircmps remaining are the ones registered by the server core.
+	 */
+	paircmp_free();
 
 	/*
 	 *	The only xlats remaining are the ones registered by the server core.

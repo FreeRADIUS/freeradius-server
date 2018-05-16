@@ -1463,7 +1463,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		group_attribute = "LDAP-Group";
 	}
 
-	if (paircompare_register_byname(group_attribute, attr_user_name, false, rlm_ldap_groupcmp, inst) < 0) {
+	if (paircmp_register_by_name(group_attribute, attr_user_name, false, rlm_ldap_groupcmp, inst) < 0) {
 		PERROR("Error registering group comparison");
 		goto error;
 	}

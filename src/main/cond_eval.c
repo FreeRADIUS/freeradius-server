@@ -294,7 +294,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, fr_value_box_t 
 
 		fr_value_box_copy(vp, &vp->data, rhs);
 
-		rcode = paircompare(request, request->packet->vps, vp, NULL);
+		rcode = paircmp(request, request->packet->vps, vp, NULL);
 		rcode = (rcode == 0) ? 1 : 0;
 		talloc_free(vp);
 		goto finish;
@@ -435,7 +435,7 @@ do {\
 	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
 		rad_assert(!c->cast);
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
-		rad_assert((map->rhs->type != TMPL_TYPE_ATTR) || !radius_find_compare(map->rhs->tmpl_da)); /* expensive assert */
+		rad_assert((map->rhs->type != TMPL_TYPE_ATTR) || !paircmp_find(map->rhs->tmpl_da)); /* expensive assert */
 
 		cast = map->lhs->tmpl_da;
 
@@ -609,12 +609,12 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 		VALUE_PAIR *vp;
 		fr_cursor_t cursor;
 		/*
-		 *	Legacy paircompare call, skip processing the magic attribute
+		 *	Legacy paircmp call, skip processing the magic attribute
 		 *	if it's the LHS and cast RHS to the same type.
 		 */
 		if ((c->pass2_fixup == PASS2_PAIRCOMPARE) && (map->op != T_OP_REG_EQ)) {
 #ifndef NDEBUG
-			rad_assert(radius_find_compare(map->lhs->tmpl_da)); /* expensive assert */
+			rad_assert(paircmp_find(map->lhs->tmpl_da)); /* expensive assert */
 #endif
 			rcode = cond_normalise_and_cmp(request, c, NULL);
 			break;
@@ -925,7 +925,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 				 *	If equal, delete the one in
 				 *	the "to" list.
 				 */
-				rcode = radius_compare_vps(NULL, from_list[i],
+				rcode = paircmp_pairs(NULL, from_list[i],
 							   to_list[j]);
 				/*
 				 *	We may want to do more

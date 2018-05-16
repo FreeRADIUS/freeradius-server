@@ -82,7 +82,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, key_attr), .dflt = "&request:User-Name", .quote = T_BARE_WORD },
 
-	/* Just used to register a paircompare against */
+	/* Just used to register a paircmp against */
 	{ FR_CONF_OFFSET("counter_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_sqlcounter_t, paircmp_attr) },
 	{ FR_CONF_OFFSET("check_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_sqlcounter_t, limit_attr) },
 
@@ -608,7 +608,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		cf_log_err(conf, "Counter attribute %s MUST be uint64", inst->paircmp_attr->tmpl_da->name);
 		return -1;
 	}
-	if (paircompare_register_byname(inst->paircmp_attr->tmpl_da->name, NULL, true,
+	if (paircmp_register_by_name(inst->paircmp_attr->tmpl_da->name, NULL, true,
 					counter_cmp, inst) < 0) {
 		cf_log_perr(conf, "Failed registering comparison function for counter attribute %s",
 			    inst->paircmp_attr->tmpl_da->name);

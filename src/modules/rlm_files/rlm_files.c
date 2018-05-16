@@ -385,7 +385,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			}
 		}
 
-		if (paircompare(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
+		if (paircmp(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
 			RDEBUG2("Found match \"%s\" one line %d of %s", pl->name, pl->lineno, filename);
 			found = true;
 

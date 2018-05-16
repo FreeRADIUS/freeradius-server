@@ -229,7 +229,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_test_t *inst = instance;
 
-	if (paircompare_register_byname("test-Paircmp", attr_user_name, false,
+	if (paircmp_register_by_name("test-Paircmp", attr_user_name, false,
 					rlm_test_cmp, inst) < 0) {
 		PERROR("Failed registering \"test-Paircmp\"");
 		return -1;

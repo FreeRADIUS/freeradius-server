@@ -871,7 +871,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			 *	process the reply rows
 			 */
 			if ((rows > 0) &&
-			    (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
+			    (paircmp(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
 				fr_pair_list_free(&check_tmp);
 				entry = entry->next;
 
@@ -901,7 +901,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 
 		if (inst->config->authorize_group_reply_query) {
 			/*
-			 *	Now get the reply pairs since the paircompare matched
+			 *	Now get the reply pairs since the paircmp matched
 			 */
 			if (xlat_aeval(request, &expanded, request, inst->config->authorize_group_reply_query,
 					 inst->sql_escape_func, *handle) < 0) {
@@ -1056,7 +1056,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		/*
 		 *	Checks if attribute already exists.
 		 */
-		if (paircompare_register_byname(group_attribute, attr_user_name,
+		if (paircmp_register_by_name(group_attribute, attr_user_name,
 						false, sql_groupcmp, inst) < 0) {
 			PERROR("Failed registering group comparison");
 			goto error;
@@ -1250,7 +1250,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		 */
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
-		if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0) {
+		if (paircmp(request, request->packet->vps, check_tmp, &request->reply->vps) != 0) {
 			fr_pair_list_free(&check_tmp);
 			check_tmp = NULL;
 			goto skipreply;
@@ -1273,7 +1273,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 
 	if (inst->config->authorize_reply_query) {
 		/*
-		 *	Now get the reply pairs since the paircompare matched
+		 *	Now get the reply pairs since the paircmp matched
 		 */
 		if (xlat_aeval(request, &expanded, request, inst->config->authorize_reply_query,
 				 inst->sql_escape_func, handle) < 0) {

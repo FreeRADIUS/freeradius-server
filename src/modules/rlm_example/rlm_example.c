@@ -103,7 +103,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (paircompare_register_byname("Example-Paircmp", attr_user_name, false, rlm_example_cmp, inst) < 0) {
+	if (paircmp_register_by_name("Example-Paircmp", attr_user_name, false, rlm_example_cmp, inst) < 0) {
 		return -1;
 	}
 

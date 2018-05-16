@@ -175,12 +175,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	/* FIXME - delay these until a group file has been read so we know
 	 * groupcmp can actually do something */
-	paircompare_register(attr_group, attr_user_name, false, groupcmp, inst);
+	paircmp_register(attr_group, attr_user_name, false, groupcmp, inst);
 
 	/* Compat */
-	paircompare_register(attr_group_name, attr_user_name, true, groupcmp, inst);
+	paircmp_register(attr_group_name, attr_user_name, true, groupcmp, inst);
 
-	if (paircompare_register_byname("Unix-Group", attr_user_name, false, groupcmp, inst) < 0) {
+	if (paircmp_register_by_name("Unix-Group", attr_user_name, false, groupcmp, inst) < 0) {
 		PERROR("Failed registering Unix-Group");
 		return -1;
 	}

@@ -544,10 +544,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	xlat_register(inst, inst->xlat_name, expr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
-	/*
-	 *	Initialize various paircompare functions
-	 */
-	pair_builtincompare_add(instance);
 	return 0;
 }
 

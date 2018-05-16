@@ -66,7 +66,7 @@ typedef struct {
 
 	unsigned int		virtual : 1;			//!< for dynamic expansion
 
-	unsigned int		compare : 1;			//!< has a paircompare registered
+	unsigned int		compare : 1;			//!< has a paircmp registered
 
 	unsigned int		named : 1;			//!< compare attributes by name.
 

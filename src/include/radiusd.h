@@ -315,7 +315,7 @@ struct rad_request {
 #define DEAD_TIME		120
 #define EXEC_TIMEOUT		10
 
-/* for paircompare_register */
+/* for paircmp_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
 typedef enum request_fail {
@@ -477,22 +477,29 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 void trigger_exec_free(void);
 VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
 
-/* valuepair.c */
-int paircompare_register_byname(char const *name, fr_dict_attr_t const *from,
-				bool first_only, RAD_COMPARE_FUNC func, void *instance);
-int paircompare_register(fr_dict_attr_t const *attribute, fr_dict_attr_t const *from,
-			 bool first_only, RAD_COMPARE_FUNC func, void *instance);
-void		paircompare_unregister(fr_dict_attr_t const *attr, RAD_COMPARE_FUNC func);
-void		paircompare_unregister_instance(void *instance);
-int		paircompare(REQUEST *request, VALUE_PAIR *req_list,
-			    VALUE_PAIR *check, VALUE_PAIR **rep_list);
 vp_tmpl_t	*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
-xlat_exp_t		*xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt);
-int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
-int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
-			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
-			    VALUE_PAIR **reply_pairs);
-int radius_find_compare(fr_dict_attr_t const *attribute);
+xlat_exp_t	*xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt);
+
+/* paircmp.c */
+int		paircmp_pairs(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
+
+int		paircmp(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check, VALUE_PAIR **rep_list);
+
+int		paircmp_find(fr_dict_attr_t const *da);
+
+int		paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
+					 bool first_only, RAD_COMPARE_FUNC func, void *instance);
+
+int		paircmp_register(fr_dict_attr_t const *attribute, fr_dict_attr_t const *from,
+				 bool first_only, RAD_COMPARE_FUNC func, void *instance);
+
+void		paircmp_unregister(fr_dict_attr_t const *attr, RAD_COMPARE_FUNC func);
+
+void		paircmp_unregister_instance(void *instance);
+
+int		paircmp_init(char const *dict_dir);
+
+void		paircmp_free(void);
 
 /*
  *	Less code == fewer bugs

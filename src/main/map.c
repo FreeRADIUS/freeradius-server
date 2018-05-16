@@ -2533,7 +2533,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			     vp;
 			     vp = fr_pair_cursor_next(&src_list)) {
 				head->op = T_OP_CMP_EQ;
-				rcode = radius_compare_vps(request, vp, dst);
+				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
 					dst = fr_pair_cursor_remove(&dst_list);
 					fr_pair_list_free(&dst);
@@ -2556,7 +2556,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			     vp;
 			     vp = fr_pair_cursor_next(&src_list)) {
 				head->op = T_OP_CMP_EQ;
-				rcode = radius_compare_vps(request, vp, dst);
+				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
 					dst = fr_pair_cursor_remove(&dst_list);
 					fr_pair_list_free(&dst);

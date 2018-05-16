@@ -474,13 +474,13 @@ finish:
  */
 void vlog_module_failure_msg(REQUEST *request, char const *msg, va_list ap)
 {
-	char *p;
-	VALUE_PAIR *vp;
-	va_list aq;
+	char		*p;
+	VALUE_PAIR	*vp;
+	va_list		aq;
 
-	if (!msg || !request || !request->packet) {
-		return;
-	}
+	if (!msg || !request || !request->packet) return;
+
+	rad_assert(attr_module_failure_message);
 
 	/*
 	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
@@ -492,7 +492,7 @@ void vlog_module_failure_msg(REQUEST *request, char const *msg, va_list ap)
 	 *  running unit tests which generate errors under CI.
 	 */
 	va_copy(aq, ap);
-	p = talloc_vasprintf(request, msg, aq);
+	p = fr_vasprintf(request, msg, aq);
 	va_end(aq);
 
 	MEM(pair_add_request(&vp, attr_module_failure_message) >= 0);

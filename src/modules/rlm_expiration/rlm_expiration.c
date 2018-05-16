@@ -138,7 +138,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	Register the expiration comparison operation.
 	 */
-	paircompare_register(attr_expiration, NULL, false, expirecmp, instance);
+	paircmp_register(attr_expiration, NULL, false, expirecmp, instance);
 	return 0;
 }
 

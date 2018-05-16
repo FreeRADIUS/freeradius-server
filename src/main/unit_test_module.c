@@ -923,6 +923,11 @@ int main(int argc, char *argv[])
 	if (xlat_instantiate() < 0) exit(EXIT_FAILURE);
 
 	/*
+	 *	Instantiate "permanent" paircmps
+	 */
+	if (paircmp_init(main_config.dict_dir) < 0) exit(EXIT_FAILURE);
+
+	/*
 	 *	Simulate thread specific instantiation
 	 */
 	if (modules_thread_instantiate(thread_ctx, main_config.config, el) < 0) goto exit_failure;
@@ -1149,9 +1154,14 @@ finish:
 	xlat_unregister("poke");
 
 	/*
-	 *	Detach modules, connection pools, registered xlats / paircompares / maps.
+	 *	Detach modules, connection pools, registered xlats / paircmps / maps.
 	 */
 	modules_free();
+
+	/*
+	 *	The only paircmps remaining are the ones registered by the server core.
+	 */
+	paircmp_free();
 
 	/*
 	 *	The only xlats remaining are the ones registered by the server core.

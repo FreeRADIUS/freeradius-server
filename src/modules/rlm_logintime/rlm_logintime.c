@@ -239,8 +239,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 * Register a Current-Time comparison function
 	 */
-	paircompare_register(attr_current_time, NULL, true, timecmp, inst);
-	paircompare_register(attr_time_of_day, NULL, true, time_of_day, inst);
+	paircmp_register(attr_current_time, NULL, true, timecmp, inst);
+	paircmp_register(attr_time_of_day, NULL, true, time_of_day, inst);
 
 	return 0;
 }
