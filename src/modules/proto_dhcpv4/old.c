@@ -364,9 +364,9 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 		VALUE_PAIR *relay;
 
 		/* DHCP-Relay-IP-Address */
-		relay = radius_pair_create(request->reply, &request->reply->vps,
-					  272, DHCP_MAGIC_VENDOR);
-		if (relay) relay->vp_ipv4addr = vp->vp_ipv4addr;
+		MEM(relay = fr_pair_afrom_num(request->reply, DHCP_MAGIC_VENDOR, 222));
+		relay->vp_ipv4addr = vp->vp_ipv4addr;
+		fr_pair_add(&request->reply->vps, relay);
 	}
 
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 53, TAG_ANY); /* DHCP-Message-Type */
