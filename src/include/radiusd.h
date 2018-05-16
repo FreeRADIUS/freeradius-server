@@ -500,10 +500,6 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 int radius_find_compare(fr_dict_attr_t const *attribute);
 VALUE_PAIR	*radius_pair_create(TALLOC_CTX *ctx, VALUE_PAIR **vps, unsigned int attribute, unsigned int vendor);
 
-void log_module_failure_msg(REQUEST *request, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
-void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0));
-
-
 /*
  *	Less code == fewer bugs
  *

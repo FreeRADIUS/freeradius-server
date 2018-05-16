@@ -72,6 +72,12 @@ void	vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char c
 void	log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
 
+void	log_module_failure_msg(REQUEST *request, char const *fmt, ...)
+	CC_HINT(format (printf, 2, 3));
+
+void	vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
+	CC_HINT(format (printf, 2, 0));
+
 void	log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
 
