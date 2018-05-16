@@ -160,7 +160,7 @@ the pre-compiled module is called.  The module may succeed or fail,
 and will return a status to "unlang" if so.  This status can be tested
 in a condition.  See the "Simple Conditions" text in the CONDITIONS
 section, and MODULE RETURN CODES, below.
-If a section-name is provided, it will cause the module to execute 
+If a section-name is provided, it will cause the module to execute
 as if it were listed in the named section.
 
 .DS
@@ -237,7 +237,7 @@ the same request.
 
 Redundant-load-balance sections can contain only a list of modules, and cannot
 contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list. Please see raddb/radiusd.conf 
+or update an attribute list. Please see raddb/radiusd.conf
 "instantiate" section for more configuration examples.
 
 Redundant-load-balance sections can optionally take a key.  The key is expanded
@@ -792,6 +792,182 @@ values.
 
 e.g. If a response contains "Reply-Message = 'Hello', Reply-Message = 'bob'
 the expansion of "%{reply:Reply-Message[*]} will yield "Hello\\nbob"
+.RE
+.PP
+Other built in expansions
+.RS
+.IP ${rand:<num>}
+Get random number from 0 to n-1.
+
+.IP ${randstr:<char_sequence>}
+Get random string built from character classes.  Each character in the input
+char_sequence is substituted for a random character from the specified class.
+
+e.g. "%{randstr:CCCC!!cccnnn}" == "IPFL>{saf874"
+
+.RS
+.IP c
+Lowercase letters - [a-z].
+
+.IP C
+Uppercase letters - [A-Z].
+
+.IP n
+Numbers - [0-9].
+
+.IP a
+Alphanumeric - [a-zA-Z0-9].
+
+.IP !
+Punctuation - [!\\"#$%&'()*+,\-./:;<=>?@[\\]^_`{|}~].
+
+.IP .
+Alphanumeric + punctuation - [a-zA-Z0-9!\"#$%&'()*+,\\-./:;<=>?@[\\]^_`{|}~].
+
+.IP s
+Salt - Alphanumeric + "./" - [a-zA-Z0-9].
+
+.IP o
+Characters suitable for OTP (those easily confused omitted) - [469ACGHJKLMNPQRUVWXYabdfhijkprstuvwxyz]
+
+.IP h
+Binary data as lowercase hex - [0-9a-f].
+
+.IP H
+Binary data as uppercase hex - [0-9A-F].
+.RE
+
+.IP %{urlquote:<uri>}
+Quote special characters in URI.
+
+e.g. "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47".
+
+.IP %{urlunquote:<quoted_uri>}
+Unquote URL special characters.
+
+e.g. "%{urlunquote:http%%3A%%47%%47example.org%%47}" == "http://example.org/"
+
+.IP %{tolower:<string>}
+Convert string to lowercase.
+
+e.g. "%{tolower:Bar}" == "bar"
+
+.IP %{toupper:<string>}
+Convert string to uppercase.
+
+e.g. "%{toupper:Foo}" == "FOO"
+
+.IP %{md5:<string>}
+Get the md5 hash of the input string.
+
+e.g. "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
+
+.IP %{sha1:<string>}
+Get the sha1 hash of the input string.
+
+e.g. "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+
+.IP %{sha224:<string>}
+Get the sha2-224 hash of the input string.
+
+e.g. "%{sha224:foo}" == "0808f64e60d58979fcb676c96ec938270dea42445aeefcd3a4e6f8db"
+
+.IP %{sha256:<string>}
+Get the sha2-256 hash of the input string.
+
+e.g. "%{sha256:foo}" == "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+
+.IP %{sha384:<string>}
+Get the sha2-384 hash of the input string.
+
+e.g. "%{sha384:foo}" == "98c11ffdfdd540676b1a137cb1a22b2a70350c9a44171d6b1180c6be5cbb2ee3f79d532c8a1dd9ef2e8e08e752a3babb"
+
+.IP %{sha512:<string>}
+Get the sha2-512 hash of the input string.
+
+e.g. "%{sha512:foo}" == "f7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7"
+
+.IP %{sha3_224:<string>}
+Get the sha3-224 hash of the input string.
+
+e.g. "%{sha3_224:foo}" == "f4f6779e153c391bbd29c95e72b0708e39d9166c7cea51d1f10ef58a"
+
+.IP %{sha3_256:<string>}
+Get the sha3-256 hash of the input string.
+
+e.g. "%{sha3_256:foo}" == "76d3bc41c9f588f7fcd0d5bf4718f8f84b1c41b20882703100b9eb9413807c01"
+
+.IP %{sha3_384:<string>}
+Get the sha3-384 hash of the input string.
+
+e.g. "%{sha3_384:foo}" == "665551928d13b7d84ee02734502b018d896a0fb87eed5adb4c87ba91bbd6489410e11b0fbcc06ed7d0ebad559e5d3bb5"
+
+.IP %{sha3_512:<string>}
+Get the sha3-512 hash of the input string.
+
+e.g. "%{sha3_512:foo}" == "4bca2b137edc580fe50a88983ef860ebaca36c857b1f492839d6d7392452a63c82cbebc68e3b70a2a1480b4bb5d437a7cba6ecf9d89f9ff3ccd14cd6146ea7e7"
+
+.IP %{hmacmd5:&<value_ref>\ &<key_ref>}
+Generate HMAC-MD5 of input data.
+
+e.g. "%{hmacmd5:foo bar}" == "31b6db9e5eb4addb42f1a6ca07367adc"
+
+.IP %{hmacsha1:&<value_ref>\ &<key_ref>}
+Generate HMAC-SHA1 of input data.
+
+"%{hmacsha1:foo bar}" == "85d155c55ed286a300bd1cf124de08d87e914f3a"
+
+.IP %{pairs:<list_or_attr_ref>}
+Serialize attributes as comma-delimited string
+
+e.g. "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar', ..."
+
+.IP %{base64:<string>}
+Encode string as base64.
+
+e.g. "%{base64:foo}" == "Zm9v"
+
+.IP %{base64tohex:<string>}
+Convert base64 to hex.
+
+e.g. "%{base64tohex:Zm9v}" == "666f6f"
+
+.IP %{explode:&<value_ref>\ <delim>}
+Split an attribute into multiple new attributes based on a delimiter
+
+.IP %{nexttime:<epoch>}
+Calculate number of seconds until the end of the next epoch.
+
+e.g. if it were 16:18, %{nexttime:1h} would expand to 2520
+
+.RS
+.IP <num>h
+Number of seconds remaining in the current hour + <num - 1> * 60 * 60.
+
+.IP <num>d
+Number of seconds remaining in the current day + <num - 1> * 60 * 60 * 24.
+
+.IP <num>w
+Number of seconds remaining in the current week + <num - 1> * 60 * 60 * 24 * 7.
+
+.IP <num>m
+Number of seconds remaining in the current month + if <num> > 1, the number
+of seconds in the additional months specified.
+
+.IP <num>y
+Number of seconds remaining in the current year + if <num> > 1, the number of
+seconds in the additional years specified.
+.RE
+
+.IP %{lpad:&{<value_ref>\ <rep>\ <pad>}}
+Left-pad a string.
+
+e.g. if User-Name is "foo": "%{lpad:&User-Name 6 x}" == "xxxfoo"
+
+.IP %{rpad:&{<value_ref>\ <rep>\ <pad>}}
+Right-pad a string.
+
+e.g. if User-Name is "foo": "%{rpad:&User-Name 5 -}" == "foo--"
 
 .SH ATTRIBUTE ASSIGNMENTS
 The attribute lists described above may be edited by listing one or
