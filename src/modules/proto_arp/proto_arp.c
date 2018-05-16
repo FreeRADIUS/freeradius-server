@@ -206,7 +206,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 			fr_pair_value_memcpy(vp, p, len);
 		}
 
-		debug_pair(vp);
+		DEBUG2("&%pP", vp);
 		fr_cursor_insert(&cursor, vp);
 	}
 

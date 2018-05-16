@@ -153,7 +153,7 @@ static int ocsp_staple_to_pair(VALUE_PAIR **out, REQUEST *request, OCSP_RESPONSE
 
 	RDEBUG2("Serializing OCSP response");
 	RINDENT();
-	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+	RDEBUG2("&%pP", vp);
 	REXDENT();
 
 	*out = vp;
@@ -555,7 +555,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 			MEM(pair_update_request(&vp, attr_tls_ocsp_next_update) >= 0);
 			vp->vp_uint32 = next - now.tv_sec;
 			RINDENT();
-			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+			RDEBUG2("&%pP", vp);
 			REXDENT();
 		} else {
 			RDEBUG2("Update time is in the past.  Not adding &TLS-OCSP-Next-Update");

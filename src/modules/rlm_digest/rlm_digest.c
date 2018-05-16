@@ -203,7 +203,7 @@ static int digest_fix(REQUEST *request)
 			fr_pair_add(&request->packet->vps, sub);
 
 			RINDENT();
-			rdebug_pair(L_DBG_LVL_2, request, sub, "&request:");
+			RDEBUG2("&%pP", sub);
 			REXDENT();
 
 			/*

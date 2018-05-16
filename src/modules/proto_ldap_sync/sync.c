@@ -90,6 +90,7 @@ FR_NAME_NUMBER sync_info_tag_table[] = {
 static int sync_new_cookie(bool *new_cookie, sync_state_t *sync, BerElement *ber)
 {
 	struct berval	cookie;
+	size_t		cookie_len;
 	ber_tag_t	bv_ret;
 	ber_len_t	len;
 
@@ -114,8 +115,10 @@ static int sync_new_cookie(bool *new_cookie, sync_state_t *sync, BerElement *ber
 
 	if (sync->cookie) {
 		if (talloc_array_length(sync->cookie) == cookie.bv_len) {
+			cookie_len = talloc_array_length(sync->cookie);
 			if (memcmp(sync->cookie, cookie.bv_val, cookie.bv_len)) {
-				WARN("Ignoring new cookie \"%pS\": Identical to old cookie", sync->cookie);
+				WARN("Ignoring new cookie \"%pV\": Identical to old cookie",
+				     fr_box_strvalue_len((char const *)sync->cookie, cookie_len));
 				return 0;
 			}
 		}
@@ -123,7 +126,9 @@ static int sync_new_cookie(bool *new_cookie, sync_state_t *sync, BerElement *ber
 
 	talloc_free(sync->cookie);
 	sync->cookie = fr_ldap_berval_to_bin(sync, &cookie);
-	DEBUG3("Got new cookie value \"%pS\" (%zu)", sync->cookie, talloc_array_length(sync->cookie));
+	cookie_len = talloc_array_length(sync->cookie);
+	DEBUG3("Got new cookie value \"%pV\" (%zu)",
+	       fr_box_strvalue_len((char const *)sync->cookie, cookie_len), cookie_len);
 
 	if (new_cookie) *new_cookie = true;
 

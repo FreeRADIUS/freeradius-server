@@ -751,8 +751,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				str[0] = '\0';	/* Be sure the string is \0 terminated */
 			}
 
-			XLAT_DEBUG("** [%i] %s(func) - %%{%s:%pS}", unlang_stack_depth(request), __FUNCTION__,
-				   node->fmt, result_str);
+			XLAT_DEBUG("** [%i] %s(func) - %%{%s:%pV}", unlang_stack_depth(request), __FUNCTION__,
+				   node->fmt,
+				   fr_box_strvalue_len(result_str, talloc_array_length(result_str) - 1));
 
 			slen = node->xlat->func.sync(ctx, &str, node->xlat->buf_len,
 						     node->xlat->mod_inst, NULL, request, result_str);

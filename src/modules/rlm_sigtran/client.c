@@ -311,17 +311,17 @@ static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *inst
 				RINDENT();
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_SIM_RAND);
 				fr_pair_value_memsteal(vp, vec->sim.rand);
-				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_SIM_SRES);
 				fr_pair_value_memsteal(vp, vec->sim.sres);
-				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_SIM_KC);
 				fr_pair_value_memsteal(vp, vec->sim.kc);
-				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 				REXDENT();
 
@@ -349,27 +349,27 @@ static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *inst
 				RINDENT();
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_RAND);
 				fr_pair_value_memsteal(vp, vec->umts.rand);
-				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_XRES);
 				fr_pair_value_memsteal(vp, vec->umts.xres);
-				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_CK);
 				fr_pair_value_memsteal(vp, vec->umts.ck);
-				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_IK);
 				fr_pair_value_memsteal(vp, vec->umts.ik);
-				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_AUTN);
 				fr_pair_value_memsteal(vp, vec->umts.authn);
-				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 				REXDENT();
 

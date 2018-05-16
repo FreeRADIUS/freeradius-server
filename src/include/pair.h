@@ -73,7 +73,7 @@ typedef enum value_type {
  * They also specify what behaviour should be used when the attribute is merged into a new list/tree.
  */
 typedef struct value_pair {
-	fr_dict_attr_t const		*da;				//!< Dictionary attribute defines the attribute
+	fr_dict_attr_t const	*da;				//!< Dictionary attribute defines the attribute
 								//!< number, vendor and type of the attribute.
 
 	struct value_pair	*next;
@@ -127,7 +127,7 @@ typedef struct value_pair_raw {
 
 #define vp_strvalue		data.vb_strvalue
 #define vp_octets		data.vb_octets
-#define vp_ptr			data.datum.ptr				//!< Either octets or strvalue
+#define vp_ptr			data.datum.ptr			//!< Either octets or strvalue
 #define vp_length		data.datum.length
 
 #define vp_ipv4addr		data.vb_ip.addr.v4.s_addr
@@ -160,11 +160,6 @@ typedef struct value_pair_raw {
 
 #define vp_type			data.type
 #define vp_tainted		data.tainted
-
-#  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \
-					fr_pair_fprint(fr_log_fp, vp); \
-				     } \
-				} while(0)
 
 #define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
 #define TAG_VALID_ZERO(x)      	((x) >= 0 && (x) < 0x20)

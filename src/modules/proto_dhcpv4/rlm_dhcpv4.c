@@ -113,7 +113,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	for (vp = fr_cursor_head(&cursor);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		rdebug_pair(L_DBG_LVL_2, request, vp, "dhcp_options: ");
+		RDEBUG2("dhcp_option: &%pP", vp);
 		decoded++;
 	}
 

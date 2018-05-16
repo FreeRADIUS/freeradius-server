@@ -81,7 +81,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 
 		MEM(vp = fr_pair_afrom_da(ctx, da));
 		if (fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1) < 0) {
-			RWDEBUG("Failed parsing value \"%pS\" for attribute %s: %s", value,
+			RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue(value),
 				map->lhs->tmpl_da->name, fr_strerror());
 			fr_pair_list_free(&head);
 			talloc_free(vp);

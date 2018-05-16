@@ -534,7 +534,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			return RLM_MODULE_OK;
 		}
 		reply_item->vp_uint64 = res;
-		rdebug_pair(L_DBG_LVL_2, request, reply_item, NULL);
+		RDEBUG2("&%pP", reply_item);
 
 		return RLM_MODULE_UPDATED;
 	}

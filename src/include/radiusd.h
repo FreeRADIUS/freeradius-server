@@ -362,9 +362,6 @@ typedef enum {
 
 
 /* radiusd.c */
-#undef debug_pair
-void		debug_pair(VALUE_PAIR *vp);
-void		rdebug_pair(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
 void		rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
 void		rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
 int		log_err (char *);

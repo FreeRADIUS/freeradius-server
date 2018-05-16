@@ -63,7 +63,7 @@ static ssize_t sim_xlat_id_method(TALLOC_CTX *ctx, char **out, UNUSED size_t out
 
 	id_len = talloc_array_length(id) - 1;
 	if (fr_sim_id_type(&type_hint, &method_hint, id, id_len) < 0) {
-		RPEDEBUG2("SIM ID \"%pS\" has unrecognised format", id);
+		RPEDEBUG2("SIM ID \"%pV\" has unrecognised format", fr_box_strvalue_len(id, id_len));
 		goto error;
 	}
 
@@ -120,7 +120,7 @@ static ssize_t sim_xlat_id_type(TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 
 	id_len = talloc_array_length(id) - 1;
 	if (fr_sim_id_type(&type_hint, &method_hint, id, id_len) < 0) {
-		RPEDEBUG2("SIM ID \"%pS\" has unrecognised format", id);
+		RPEDEBUG2("SIM ID \"%pV\" has unrecognised format", fr_box_strvalue_len(id, id_len));
 		goto error;
 	}
 
@@ -264,11 +264,11 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt(TALLOC_CTX *ctx, char **out, UNUS
 		break;
 
 	default:
-		REDEBUG2("Unexpected tag value (%u) in SIM ID \"%pS\"", tag, id);
+		REDEBUG2("Unexpected tag value (%u) in SIM ID \"%pV\"", tag, fr_box_strvalue_len(id, id_len));
 		goto error;
 	}
 
-	RDEBUG2("Decrypting \"%pS\"", id);
+	RDEBUG2("Decrypting \"%pV\"", fr_box_strvalue_len(id, id_len));
 	if (fr_sim_id_3gpp_pseudonym_decrypt(decrypted, id, key) < 0) {
 		RPEDEBUG2("Failed decrypting SIM ID");
 		goto error;
@@ -378,12 +378,12 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUS
 	}
 
 	if (fr_sim_id_type(&type_hint, &method_hint, id, id_len) < 0) {
-		RPEDEBUG2("SIM ID \"%pS\" has unrecognised format", id);
+		RPEDEBUG2("SIM ID \"%pV\" has unrecognised format", fr_box_strvalue_len(id, id_len));
 		goto error;
 	}
 
 	if (type_hint != SIM_ID_TYPE_PERMANENT) {
-		REDEBUG2("SIM ID \"%pS\" is not a permanent identity (IMSI)", id);
+		REDEBUG2("SIM ID \"%pV\" is not a permanent identity (IMSI)", fr_box_strvalue_len(id, id_len));
 		goto error;
 	}
 
@@ -401,7 +401,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUS
 		break;
 
 	case SIM_METHOD_HINT_UNKNOWN:
-		REDEBUG2("SIM ID \"%pS\" does not contain a method hint", id);
+		REDEBUG2("SIM ID \"%pV\" does not contain a method hint", fr_box_strvalue_len(id, id_len));
 		goto error;
 	}
 
@@ -411,7 +411,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUS
 	 *	Strip existing tag from the permanent id
 	 */
 	if (fr_sim_id_3gpp_pseudonym_encrypt(encrypted, id + 1, id_len - 1, tag, (uint8_t)key_index, key) < 0) {
-		RPEDEBUG2("Failed encrypting SIM ID \"%pS\"", id);
+		RPEDEBUG2("Failed encrypting SIM ID \"%pV\"", fr_box_strvalue_len(id, id_len));
 		return -1;
 	}
 

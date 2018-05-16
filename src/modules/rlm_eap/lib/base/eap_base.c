@@ -360,7 +360,7 @@ void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *va
 	fr_pair_value_memcpy(vp, value, len);
 
 	RINDENT();
-	rdebug_pair(L_DBG_LVL_2, request, vp, "&reply:");
+	RDEBUG2("&reply:%pP", vp);
 	REXDENT();
 }
 

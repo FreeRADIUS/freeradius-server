@@ -231,9 +231,9 @@ static void cond_print_operands(fr_value_box_t const *lhs, fr_value_box_t const 
 {
 	if (lhs) {
 		if (lhs->type == FR_TYPE_STRING) {
-			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->vb_strvalue, lhs->datum.length);
+			EVAL_DEBUG("LHS: \"%oV\" (%zu)" , &lhs->datum, lhs->datum.length);
 		} else {
-			EVAL_DEBUG("LHS: 0x%pH (%zu)", lhs->vb_octets, lhs->datum.length);
+			EVAL_DEBUG("LHS: 0x%pH (%zu)", &lhs->datum, lhs->datum.length);
 		}
 	} else {
 		EVAL_DEBUG("LHS: VIRTUAL");
@@ -241,9 +241,9 @@ static void cond_print_operands(fr_value_box_t const *lhs, fr_value_box_t const 
 
 	if (rhs) {
 		if (rhs->type == FR_TYPE_STRING) {
-			EVAL_DEBUG("RHS: \"%s\" (%zu)", rhs->vb_strvalue, rhs->datum.length);
+			EVAL_DEBUG("RHS: \"%pV\" (%zu)", &rhs->datum, rhs->datum.length);
 		} else {
-			EVAL_DEBUG("RHS: 0x%pH (%zu)", rhs->vb_octets, rhs->datum.length);
+			EVAL_DEBUG("RHS: 0x%pH (%zu)", &rhs->datum, rhs->datum.length);
 		}
 	} else {
 		EVAL_DEBUG("RHS: COMPILED");

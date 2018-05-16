@@ -22,18 +22,13 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/udp.h>
 
 #include "vqp.h"
 
 #define MAX_VMPS_LEN (FR_MAX_STRING_LEN - 1)
 
-/* @todo: this is a hack */
-#  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \
-					fr_pair_fprint(fr_log_fp, vp); \
-				     } \
-				} while(0)
 /*
  *  http://www.openbsd.org/cgi-bin/cvsweb/src/usr.sbin/tcpdump/print-vqp.c
  *
@@ -291,7 +286,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_uint32 = packet->data[1];
 	vp->vp_tainted = true;
-	debug_pair(vp);
+	DEBUG2("&%pP", vp);
 	fr_pair_cursor_append(&cursor, vp);
 
 	vp = fr_pair_afrom_num(packet, 0, FR_VQP_ERROR_CODE);
@@ -301,7 +296,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_uint32 = packet->data[2];
 	vp->vp_tainted = true;
-	debug_pair(vp);
+	DEBUG2("&%pP", vp);
 	fr_pair_cursor_append(&cursor, vp);
 
 	vp = fr_pair_afrom_num(packet, 0, FR_VQP_SEQUENCE_NUMBER);
@@ -311,7 +306,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_uint32 = packet->id; /* already set by vqp_recv */
 	vp->vp_tainted = true;
-	debug_pair(vp);
+	DEBUG2("&%pP", vp);
 	fr_pair_cursor_append(&cursor, vp);
 
 	ptr = packet->data + VQP_HDR_LEN;
@@ -361,7 +356,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 		ptr += attr_len;
 		vp->vp_tainted = true;
-		debug_pair(vp);
+		DEBUG2("&%pP", vp);
 		fr_pair_cursor_append(&cursor, vp);
 	}
 
@@ -448,7 +443,7 @@ ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 
 		if (attr >= (buffer + buflen)) break;
 
-		debug_pair(vp);
+		DEBUG2("&%pP", vp);
 
 		switch (vp->vp_type) {
 		case FR_TYPE_IPV4_ADDR:
@@ -647,7 +642,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 		vp = vps[i];
 
-		debug_pair(vp);
+		DEBUG2("&%pP", vp);
 
 		switch (vp->vp_type) {
 		case FR_TYPE_IPV4_ADDR:

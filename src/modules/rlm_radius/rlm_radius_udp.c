@@ -1491,7 +1491,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		fr_pair_add(&u->extra, vp);
 
 		RINDENT();
-		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		RDEBUG2("&%pP", vp);
 		REXDENT();
 
 		packet_len += 6;
@@ -1578,7 +1578,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		fr_pair_add(&u->extra, vp);
 
 		RINDENT();
-		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		RDEBUG2("&%pP", vp);
 		REXDENT();
 	}
 

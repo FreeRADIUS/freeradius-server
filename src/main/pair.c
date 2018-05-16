@@ -722,37 +722,6 @@ VALUE_PAIR *radius_pair_create(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	return vp;
 }
 
-/** Print a single valuepair to stderr or error log.
- *
- * @param[in] vp list to print.
- */
-void debug_pair(VALUE_PAIR *vp)
-{
-	if (!vp || !rad_debug_lvl || !fr_log_fp) return;
-
-	fr_pair_fprint(fr_log_fp, vp);
-}
-
-/** Print a single valuepair to stderr or error log.
- *
- * @param[in] level Debug level (1-4).
- * @param[in] request to read logging params from.
- * @param[in] vp to print.
- * @param[in] prefix (optional).
- */
-void rdebug_pair(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
-{
-	char *value;
-
-	if (!vp || !request || !request->log.dst) return;
-	if (!log_debug_enabled(L_DBG, level, request)) return;
-
-
-	value = fr_pair_asprint(request, vp, '"');
-	RDEBUGX(level, "%s%s", prefix ? prefix : "&", value);
-	talloc_free(value);
-}
-
 /** Print a list of VALUE_PAIRs.
  *
  * @param[in] level Debug level (1-4).
@@ -763,7 +732,6 @@ void rdebug_pair(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char cons
 void rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	fr_cursor_t cursor;
-	char *value;
 
 	if (!vp || !request || !request->log.dst) return;
 
@@ -775,9 +743,7 @@ void rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 
-		value = fr_pair_asprint(request, vp, '"');
-		RDEBUGX(level, "%s%s", prefix ? prefix : "&", value);
-		talloc_free(value);
+		RDEBUGX(level, "%s%pP", prefix ? prefix : "&", vp);
 	}
 	REXDENT();
 }
@@ -792,7 +758,6 @@ void rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char
 void rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	fr_cursor_t cursor;
-	char *value;
 
 	if (!vp || !request || !request->log.dst) return;
 
@@ -805,9 +770,7 @@ void rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp
 		VP_VERIFY(vp);
 		if (vp->da->flags.internal) continue;
 
-		value = fr_pair_asprint(request, vp, '"');
-		RDEBUGX(level, "%s%s", prefix ? prefix : "", value);
-		talloc_free(value);
+		RDEBUGX(level, "%s%pP", prefix ? prefix : "&", vp);
 	}
 	REXDENT();
 }
