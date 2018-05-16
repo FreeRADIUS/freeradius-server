@@ -231,7 +231,7 @@ static void cond_print_operands(fr_value_box_t const *lhs, fr_value_box_t const 
 {
 	if (lhs) {
 		if (lhs->type == FR_TYPE_STRING) {
-			EVAL_DEBUG("LHS: \"%oV\" (%zu)" , &lhs->datum, lhs->datum.length);
+			EVAL_DEBUG("LHS: \"%pV\" (%zu)" , &lhs->datum, lhs->datum.length);
 		} else {
 			EVAL_DEBUG("LHS: 0x%pH (%zu)", &lhs->datum, lhs->datum.length);
 		}
