@@ -44,7 +44,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	case REQUEST_INIT:
 		log_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %08x",
 			       dhcp_message_types[request->packet->code], request->packet->id);
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "dhcpv4";
 

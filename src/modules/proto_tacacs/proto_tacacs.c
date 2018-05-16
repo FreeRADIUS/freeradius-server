@@ -56,7 +56,7 @@ static void tacacs_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 	       packet->dst_port,
 	       packet->data_len);
 
-	rdebug_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
 }
 
 static void tacacs_status(REQUEST * const request, rlm_rcode_t rcode)

@@ -612,7 +612,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	if (request->state) {
 		RDEBUG2("Restored &session-state");
-		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
+		log_request_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 	}
 
 	/*
@@ -645,7 +645,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET 
 
 	if (request->state) {
 		RDEBUG2("Saving &session-state");
-		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
+		log_request_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 	}
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);

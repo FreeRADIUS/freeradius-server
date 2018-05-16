@@ -170,7 +170,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	}
 
 	RDEBUG2("Encoding EAP-AKA attributes");
-	rdebug_pair_list(L_DBG_LVL_2, request, head, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, head, NULL);
 
 	eap_session->this_round->request->type.num = eap_aka_session->type;
 	eap_session->this_round->request->id = eap_aka_session->aka_id++ & 0xff;
@@ -919,7 +919,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	vp = fr_cursor_current(&cursor);
 	if (vp && RDEBUG_ENABLED2) {
 		RDEBUG2("EAP-AKA decoded attributes");
-		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, vp, NULL);
 	}
 
 	subtype_vp = fr_pair_find_by_da(vps, attr_eap_aka_subtype, TAG_ANY);

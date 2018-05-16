@@ -70,7 +70,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		RDEBUG("Received %s ID %i",
 		       fr_dict_enum_alias_by_value(attr_packet_type, fr_box_uint32(request->reply->code)),
 		       request->packet->id);
-		rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "radius";
 
@@ -192,7 +192,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			       request->reply->id);
 		}
 
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 		break;
 
 	default:

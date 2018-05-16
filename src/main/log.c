@@ -495,7 +495,7 @@ void vlog_module_failure_msg(REQUEST *request, char const *msg, va_list ap)
 	p = talloc_vasprintf(request, msg, aq);
 	va_end(aq);
 
-	MEM(vp = pair_make_request("Module-Failure-Message", NULL, T_OP_ADD));
+	MEM(pair_add_request(&vp, attr_module_failure_message) >= 0);
 	if (request->module && (request->module[0] != '\0')) {
 		fr_pair_value_snprintf(vp, "%s: %s", request->module, p);
 	} else {
@@ -637,6 +637,59 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, 
 	}
 }
 
+/** Print a list of VALUE_PAIRs.
+ *
+ * @param[in] lvl	Debug lvl (1-4).
+ * @param[in] request	to read logging params from.
+ * @param[in] vp	to print.
+ * @param[in] prefix	(optional).
+ */
+void log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
+{
+	fr_cursor_t cursor;
+
+	if (!vp || !request || !request->log.dst) return;
+
+	if (!log_debug_enabled(L_DBG, lvl, request)) return;
+
+	RINDENT();
+	for (vp = fr_cursor_init(&cursor, &vp);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		VP_VERIFY(vp);
+
+		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "&", vp);
+	}
+	REXDENT();
+}
+
+/** Print a list of protocol VALUE_PAIRs.
+ *
+ * @param[in] lvl	Debug lvl (1-4).
+ * @param[in] request	to read logging params from.
+ * @param[in] vp	to print.
+ * @param[in] prefix	(optional).
+ */
+void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
+{
+	fr_cursor_t cursor;
+
+	if (!vp || !request || !request->log.dst) return;
+
+	if (!log_debug_enabled(L_DBG, lvl, request)) return;
+
+	RINDENT();
+	for (vp = fr_cursor_init(&cursor, &vp);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		VP_VERIFY(vp);
+		if (vp->da->flags.internal) continue;
+
+		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "&", vp);
+	}
+	REXDENT();
+}
+
 /** Write the string being parsed, and a marker showing where the parse error occurred
  *
  * @param[in] type	the log category.
@@ -647,7 +700,7 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, 
  * @param[in] error	What the parse error was.
  */
 void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
-			   char const *msg, size_t idx, char const *error)
+			char const *msg, size_t idx, char const *error)
 {
 	char const *prefix = "";
 	uint8_t unlang_indent;

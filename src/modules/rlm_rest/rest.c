@@ -2140,7 +2140,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 			/*
 			 *	Print out all the pairs we have so far
 			 */
-			rdebug_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
+			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
 			fr_pair_cursor_merge(&list, cert_vps);
 			cert_vps = NULL;
 		}

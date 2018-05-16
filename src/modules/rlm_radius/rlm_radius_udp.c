@@ -1040,7 +1040,7 @@ check_active:
 
 		RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
 		       fr_packet_codes[code], code, packet_len, c->name);
-		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, vp, NULL);
 
 		/*
 		 *	@todo - make this programmatic?  i.e. run a
@@ -1203,8 +1203,8 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	RDEBUG("%s %s ID %d length %ld over connection %s",
 	       (c->status_u != u) ? "sending" : "status_check",
 	       fr_packet_codes[u->code], u->rr->id, u->packet_len, c->name);
-	rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
-	if (u->extra) rdebug_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
+	if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
 
 	if (u->manual_delay_time && u->acct_delay_time) {
 		uint32_t delay;
@@ -1450,7 +1450,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 	RDEBUG("Sending %s ID %d length %ld over connection %s",
 	       fr_packet_codes[u->code], u->rr->id, packet_len, c->name);
-	rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 
 	/*
 	 *	Might have been sent and then given up on... free the
@@ -2098,7 +2098,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 		}
 
 		DEBUG3("Status check packet will be %s", fr_packet_codes[u->code]);
-		rdebug_pair_list(L_DBG_LVL_3, request, request->packet->vps, NULL);
+		log_request_pair_list(L_DBG_LVL_3, request, request->packet->vps, NULL);
 
 		/*
 		 *	Initialize the link.  Note that we don't set

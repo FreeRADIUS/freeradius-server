@@ -397,7 +397,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		} else {
 			RDEBUG2("Got tunneled reply code %i", reply->code);
 		}
-		rdebug_pair_list(L_DBG_LVL_2, request, reply->vps, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, reply->vps, NULL);
 	}
 
 	switch (reply->code) {
@@ -509,7 +509,7 @@ static int CC_HINT(nonnull) eap_peap_postproxy(eap_session_t *eap_session, void 
 			fprintf(fr_log_fp, "} # server %s\n", cf_section_name2(fake->server_cs));
 
 			RDEBUG("Final reply from tunneled session code %d", fake->reply->code);
-			rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
+			log_request_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 		}
 
 		/*
@@ -859,7 +859,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	}
 
 	RDEBUG2("Got tunneled request");
-	rdebug_pair_list(L_DBG_LVL_2, request, fake->packet->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, fake->packet->vps, NULL);
 
 	/*
 	 *	Update other items in the REQUEST data structure.

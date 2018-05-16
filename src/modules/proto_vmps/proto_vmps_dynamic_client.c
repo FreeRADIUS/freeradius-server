@@ -52,7 +52,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		RDEBUG("Received %s ID %i", fr_vmps_codes[request->packet->code], request->packet->id);
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "vmps";
 
@@ -163,7 +163,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		} else {
 			RDEBUG("Denying client");
 		}
-		if (RDEBUG_ENABLED) rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
+		if (RDEBUG_ENABLED) log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
 		break;
 
 	default:

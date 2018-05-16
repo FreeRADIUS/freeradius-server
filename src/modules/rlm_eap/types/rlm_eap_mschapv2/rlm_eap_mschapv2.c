@@ -505,7 +505,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 			}
 
 			RDEBUG2("Built change password packet");
-			rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
+			log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 
 			/*
 			 * jump to "authentication"

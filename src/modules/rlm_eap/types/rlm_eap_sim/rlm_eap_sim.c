@@ -174,7 +174,7 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 	}
 
 	RDEBUG2("Encoding EAP-SIM attributes");
-	rdebug_pair_list(L_DBG_LVL_2, request, head, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, head, NULL);
 
 	eap_session->this_round->request->type.num = FR_EAP_SIM;
 	eap_session->this_round->request->id = eap_sim_session->sim_id++ & 0xff;
@@ -908,7 +908,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	vp = fr_cursor_current(&cursor);
 	if (vp && RDEBUG_ENABLED2) {
 		RDEBUG2("Decoded EAP-SIM attributes");
-		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, vp, NULL);
 	}
 
 	subtype_vp = fr_pair_find_by_da(from_peer, attr_eap_sim_subtype, TAG_ANY);
