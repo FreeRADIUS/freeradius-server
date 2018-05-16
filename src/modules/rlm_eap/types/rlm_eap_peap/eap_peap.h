@@ -24,7 +24,7 @@
 RCSIDH(eap_peap_h, "$Id$")
 
 #include "eap_tls.h"
-#include <freeradius-devel/soh.h>
+#include <freeradius-devel/soh/soh.h>
 
 typedef enum {
 	PEAP_STATUS_INVALID,

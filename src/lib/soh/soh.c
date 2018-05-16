@@ -26,8 +26,46 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/soh.h>
 #include <freeradius-devel/rad_assert.h>
+#include "soh.h"
+
+static fr_dict_t const *dict_freeradius;
+
+extern fr_dict_autoload_t soh_dict[];
+fr_dict_autoload_t soh_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_soh_ms_correlation_id;
+static fr_dict_attr_t const *attr_soh_ms_health_other;
+static fr_dict_attr_t const *attr_soh_ms_machine_name;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_build;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_release;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_vendor;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_version;
+static fr_dict_attr_t const *attr_soh_ms_machine_processor;
+static fr_dict_attr_t const *attr_soh_ms_machine_role;
+static fr_dict_attr_t const *attr_soh_ms_machine_sp_release;
+static fr_dict_attr_t const *attr_soh_ms_machine_sp_version;
+static fr_dict_attr_t const *attr_soh_ms_windows_health_status;
+
+extern fr_dict_attr_autoload_t soh_dict_attr[];
+fr_dict_attr_autoload_t soh_dict_attr[] = {
+	{ .out = &attr_soh_ms_correlation_id, .name = "SoH-MS-Correlation-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_health_other, .name = "SoH-MS-Health-Other", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_name, .name = "SoH-MS-Machine-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_build, .name = "SoH-MS-Machine-OS-build", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_release, .name = "SoH-MS-Machine-OS-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_vendor, .name = "SoH-MS-Machine-OS-vendor", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_version, .name = "SoH-MS-Machine-OS-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_processor, .name = "SoH-MS-Machine-Processor", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_role, .name = "SoH-MS-Machine-Role", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_sp_release, .name = "SoH-MS-Machine-SP-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_sp_version, .name = "SoH-MS-Machine-SP-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_windows_health_status, .name = "SoH-MS-Windows-Health-Status", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ NULL }
+};
 
 /*
  * This code implements parsing of MS-SOH data into FreeRadius AVPs
@@ -153,60 +191,56 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
 		data_len--;
 
 		switch (c) {
+		/*
+	         *	MS-Machine-Inventory-Packet
+		 *	MS-SOH section 2.2.4.1
+		 */
 		case 1:
-			/* MS-Machine-Inventory-Packet
-			 * MS-SOH section 2.2.4.1
-			 */
 			if (data_len < 18) {
 				RDEBUG("insufficient data for MS-Machine-Inventory-Packet");
 				return 0;
 			}
 			data_len -= 18;
 
-			vp = pair_make_request("SoH-MS-Machine-OS-vendor", "Microsoft", T_OP_EQ);
-			if (!vp) return 0;
+			MEM(pair_update_request(&vp, attr_soh_ms_machine_os_vendor) >= 0);
+			fr_pair_value_from_str(vp, "Microsoft", -1);
 
-			vp = pair_make_request("SoH-MS-Machine-OS-version", NULL, T_OP_EQ);
-			if (!vp) return 0;
+			MEM(pair_update_request(&vp, attr_soh_ms_machine_os_version) >= 0);
+			vp->vp_uint32 = soh_pull_be_32(p);
+			p += 4;
 
-			vp->vp_uint32 = soh_pull_be_32(p); p+=4;
+			MEM(pair_update_request(&vp, attr_soh_ms_machine_os_release) >= 0);
+			vp->vp_uint32 = soh_pull_be_32(p);
+			p += 4;
 
-			vp = pair_make_request("SoH-MS-Machine-OS-release", NULL, T_OP_EQ);
-			if (!vp) return 0;
+			MEM(pair_update_request(&vp, attr_soh_ms_machine_os_build) >= 0);
+			vp->vp_uint32 = soh_pull_be_32(p);
+			p += 4;
 
-			vp->vp_uint32 = soh_pull_be_32(p); p+=4;
+			MEM(pair_update_request(&vp, attr_soh_ms_machine_sp_version) >= 0);
+			vp->vp_uint32 = soh_pull_be_16(p);
+			p += 2;
 
-			vp = pair_make_request("SoH-MS-Machine-OS-build", NULL, T_OP_EQ);
-			if (!vp) return 0;
+			MEM(pair_update_request(&vp, attr_soh_ms_machine_sp_release) >= 0)
+			vp->vp_uint32 = soh_pull_be_16(p);
+			p += 2;
 
-			vp->vp_uint32 = soh_pull_be_32(p); p+=4;
-
-			vp = pair_make_request("SoH-MS-Machine-SP-version", NULL, T_OP_EQ);
-			if (!vp) return 0;
-
-			vp->vp_uint32 = soh_pull_be_16(p); p+=2;
-
-			vp = pair_make_request("SoH-MS-Machine-SP-release", NULL, T_OP_EQ);
-			if (!vp) return 0;
-
-			vp->vp_uint32 = soh_pull_be_16(p); p+=2;
-
-			vp = pair_make_request("SoH-MS-Machine-Processor", NULL, T_OP_EQ);
-			if (!vp) return 0;
-
-			vp->vp_uint32 = soh_pull_be_16(p); p+=2;
+			MEM(pair_update_request(&vp, attr_soh_ms_machine_processor) >= 0);
+			vp->vp_uint32 = soh_pull_be_16(p);
+			p += 2;
 			break;
-
+		/*
+		 *	MS-Quarantine-State - FIXME: currently unhandled
+		 *	MS-SOH 2.2.4.1
+		 *
+		 *	1 byte reserved
+		 *	1 byte flags
+		 *	8 bytes NT Time field (100-nanosec since 1 Jan 1601)
+		 *	2 byte urilen
+		 *	N bytes uri
+		 */
 		case 2:
-			/* MS-Quarantine-State - FIXME: currently unhandled
-			 * MS-SOH 2.2.4.1
-			 *
-			 * 1 byte reserved
-			 * 1 byte flags
-			 * 8 bytes NT Time field (100-nanosec since 1 Jan 1601)
-			 * 2 byte urilen
-			 * N bytes uri
-			 */
+
 			p += 10;
 			t = soh_pull_be_16(p);	/* t == uri len */
 			p += 2;
@@ -214,86 +248,89 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
 			data_len -= 12 + t;
 			break;
 
+		/*
+		 *	MS-Packet-Info
+		 *	MS-SOH 2.2.4.3
+		 */
 		case 3:
-			/* MS-Packet-Info
-			 * MS-SOH 2.2.4.3
-			 */
+
 			RDEBUG3("SoH MS-Packet-Info %s vers=%i", *p & 0x10 ? "request" : "response", *p & 0xf);
 			p++;
 			data_len--;
 			break;
 
+		/*
+		 *	MS-SystemGenerated-Ids - FIXME: currently unhandled
+		 *	MS-SOH 2.2.4.4
+		 *
+		 *	2 byte length
+		 *	N bytes (3 bytes IANA enterprise# + 1 byte component id#)
+		 */
 		case 4:
-			/* MS-SystemGenerated-Ids - FIXME: currently unhandled
-			 * MS-SOH 2.2.4.4
-			 *
-			 * 2 byte length
-			 * N bytes (3 bytes IANA enterprise# + 1 byte component id#)
-			 */
+
 			t = soh_pull_be_16(p);
 			p += 2;
 			p += t;
 			data_len -= 2 + t;
 			break;
 
+		/*
+		 *	MS-MachineName
+		 *	MS-SOH 2.2.4.5
+		 *
+		 *	1 byte namelen
+		 *	N bytes name
+		 */
 		case 5:
-			/* MS-MachineName
-			 * MS-SOH 2.2.4.5
-			 *
-			 * 1 byte namelen
-			 * N bytes name
-			 */
+
 			t = soh_pull_be_16(p);
 			p += 2;
 
-			vp = pair_make_request("SoH-MS-Machine-Name", NULL, T_OP_EQ);
-			if (!vp) return 0;
-
+			MEM(pair_update_request(&vp, attr_soh_ms_machine_name) >= 0);
 			fr_pair_value_bstrncpy(vp, p, t);
 
 			p += t;
 			data_len -= 2 + t;
 			break;
 
+		/*
+		 *	MS-CorrelationId
+		 *	MS-SOH 2.2.4.6
+		 *
+		 *	24 bytes opaque binary which we might, in future, have
+		 *	to echo back to the client in a final SoHR
+		 */
 		case 6:
-			/* MS-CorrelationId
-			 * MS-SOH 2.2.4.6
-			 *
-			 * 24 bytes opaque binary which we might, in future, have
-			 * to echo back to the client in a final SoHR
-			 */
-			vp = pair_make_request("SoH-MS-Correlation-Id", NULL, T_OP_EQ);
-			if (!vp) return 0;
-
+			MEM(pair_update_request(&vp, attr_soh_ms_correlation_id) >= 0);
 			fr_pair_value_memcpy(vp, p, 24);
 			p += 24;
 			data_len -= 24;
 			break;
 
+		/*
+		 *	MS-Installed-Shvs - FIXME: currently unhandled
+		 *	MS-SOH 2.2.4.7
+		 *
+		 *	2 bytes length
+		 *	N bytes (3 bytes IANA enterprise# + 1 byte component id#)
+		 */
 		case 7:
-			/* MS-Installed-Shvs - FIXME: currently unhandled
-			 * MS-SOH 2.2.4.7
-			 *
-			 * 2 bytes length
-			 * N bytes (3 bytes IANA enterprise# + 1 byte component id#)
-			 */
 			t = soh_pull_be_16(p);
 			p += 2;
 			p += t;
 			data_len -= 2 + t;
 			break;
 
+		/*
+		 *	MS-Machine-Inventory-Ex
+		 *	MS-SOH 2.2.4.8
+		 *
+		 *	4 bytes reserved
+		 *	1 byte product type (client=1 domain_controller=2 server=3)
+		 */
 		case 8:
-			/* MS-Machine-Inventory-Ex
-			 * MS-SOH 2.2.4.8
-			 *
-			 * 4 bytes reserved
-			 * 1 byte product type (client=1 domain_controller=2 server=3)
-			 */
 			p += 4;
-			vp = pair_make_request("SoH-MS-Machine-Role", NULL, T_OP_EQ);
-			if (!vp) return 0;
-
+			MEM(pair_update_request(&vp, attr_soh_ms_machine_role));
 			vp->vp_uint32 = *p;
 			p++;
 			data_len -= 5;
@@ -310,7 +347,7 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
  *
  * Tedious, really, really tedious...
  */
-static char const* clientstatus2str(uint32_t hcstatus) {
+static char const *clientstatus2str(uint32_t hcstatus) {
 	switch (hcstatus) {
 	/* this lot should all just be for windows updates */
 	case 0xff0005:
@@ -350,7 +387,7 @@ static char const* clientstatus2str(uint32_t hcstatus) {
 /** Convert a Health Class into a string
  *
  */
-static char const* healthclass2str(uint8_t hc) {
+static char const *healthclass2str(uint8_t hc) {
 	switch (hc) {
 	case 0:
 		return "firewall";
@@ -384,12 +421,12 @@ static char const* healthclass2str(uint8_t hc) {
  */
 int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 
-	VALUE_PAIR *vp;
-	eap_soh hdr;
-	soh_response resp;
-	soh_mode_subheader mode;
-	soh_tlv tlv;
-	int curr_shid=-1, curr_shid_c=-1, curr_hc=-1;
+	VALUE_PAIR		*vp;
+	eap_soh			hdr;
+	soh_response		resp;
+	soh_mode_subheader	mode;
+	soh_tlv			tlv;
+	int			curr_shid =- 1, curr_shid_c =- 1, curr_hc =- 1;
 
 	rad_assert(request->packet != NULL);
 
@@ -417,7 +454,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 	resp.inner_len = soh_pull_be_16(data); data += 2;
 
 
-	if (resp.outer_type!=7 || resp.vendor != 0x137) {
+	if ((resp.outer_type != 7) || (resp.vendor != 0x137)) {
 		RDEBUG("SoH response outer type %i/vendor %08x not recognised", resp.outer_type, resp.vendor);
 		return -1;
 	}
@@ -436,8 +473,9 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 		mode.content_type = data[1];
 		data += 2;
 
-		if (mode.outer_type != 7 || mode.vendor != 0x137 || mode.content_type != 0) {
-			RDEBUG3("SoH mode subheader outer type %i/vendor %08x/content type %i invalid", mode.outer_type, mode.vendor, mode.content_type);
+		if ((mode.outer_type != 7) || (mode.vendor != 0x137) || (mode.content_type != 0)) {
+			RDEBUG3("SoH mode subheader outer type %i/vendor %08x/content type %i invalid",
+				mode.outer_type, mode.vendor, mode.content_type);
 			return -1;
 		}
 		RDEBUG3("SoH with mode subheader");
@@ -541,9 +579,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 
 				RDEBUG2("SoH Health-Class-Status microsoft DWORD=%08x", hcstatus);
 
-				vp = pair_make_request("SoH-MS-Windows-Health-Status", NULL, T_OP_EQ);
-				if (!vp) return 0;
-
+				MEM(pair_update_request(&vp, attr_soh_ms_windows_health_status) >= 0);
 				switch (curr_hc) {
 				case 4:
 					/* security updates */
@@ -657,8 +693,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 					break;
 				}
 			} else {
-				vp = pair_make_request("SoH-MS-Health-Other", NULL, T_OP_EQ);
-				if (!vp) return 0;
+				MEM(pair_update_request(&vp, attr_soh_ms_health_other) >= 0);
 
 				/* FIXME: what to do with the payload? */
 				fr_pair_value_snprintf(vp, "%08x/%i ?", curr_shid, curr_shid_c);
@@ -675,4 +710,24 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 	}
 
 	return 0;
+}
+
+int soh_init(char const *dict_dir)
+{
+	if (fr_dict_autoload(dict_dir, soh_dict) < 0) {
+		PERROR("Failed loading dictionary");
+		return -1;
+	}
+
+	if (fr_dict_attr_autoload(soh_dict_attr) < 0) {
+		PERROR("Failed resolving attributes");
+		return -1;
+	}
+
+	return 0;
+}
+
+void soh_free(void)
+{
+	fr_dict_autofree(soh_dict);
 }

@@ -366,6 +366,18 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
+static int mod_load(void)
+{
+	if (soh_init(main_config.dict_dir) < 0) return -1;
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	soh_free();
+}
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -378,6 +390,8 @@ rlm_eap_submodule_t rlm_eap_peap = {
 	.provides	= { FR_EAP_PEAP },
 	.inst_size	= sizeof(rlm_eap_peap_t),
 	.config		= submodule_config,
+	.load		= mod_load,
+	.unload		= mod_unload,
 	.instantiate	= mod_instantiate,
 
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */

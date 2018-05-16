@@ -9,7 +9,6 @@ SOURCES := \
     radiusd.c \
     state.c \
     stats.c \
-    soh.c \
     snmp.c \
     process.c
 

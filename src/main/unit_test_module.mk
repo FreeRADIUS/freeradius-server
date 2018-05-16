@@ -6,7 +6,6 @@ SOURCES := \
 	users_file.c \
 	mainconfig.c \
 	unit_test_module.c \
-	soh.c \
 	state.c \
 
 TGT_INSTALLDIR  :=

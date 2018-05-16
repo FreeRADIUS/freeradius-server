@@ -23,11 +23,10 @@
  */
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/dhcpv4/dhcpv4.h>
-#include	<freeradius-devel/soh.h>
-
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/dhcpv4/dhcpv4.h>
+#include <freeradius-devel/soh/soh.h>
 
 typedef struct rlm_soh_t {
 	char const *xlat_name;
@@ -136,22 +135,6 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	char const	*name;
-	rlm_soh_t	*inst = instance;
-
-	name = cf_section_name2(conf);
-	if (!name) name = cf_section_name1(conf);
-	inst->xlat_name = name;
-	if (!inst->xlat_name) return -1;
-
-	xlat_register(inst, inst->xlat_name, soh_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
-	return 0;
-}
-
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
 #ifdef WITH_DHCP
@@ -239,6 +222,33 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	return RLM_MODULE_OK;
 }
 
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	char const	*name;
+	rlm_soh_t	*inst = instance;
+
+	name = cf_section_name2(conf);
+	if (!name) name = cf_section_name1(conf);
+	inst->xlat_name = name;
+	if (!inst->xlat_name) return -1;
+
+	xlat_register(inst, inst->xlat_name, soh_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+
+	return 0;
+}
+
+static int mod_load(void)
+{
+	if (soh_init(main_config.dict_dir) < 0) return -1;
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	soh_free();
+}
+
 extern rad_module_t rlm_soh;
 rad_module_t rlm_soh = {
 	.magic		= RLM_MODULE_INIT,
@@ -246,6 +256,8 @@ rad_module_t rlm_soh = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_soh_t),
 	.config		= module_config,
+	.load		= mod_load,
+	.unload		= mod_unload,
 	.bootstrap	= mod_bootstrap,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
