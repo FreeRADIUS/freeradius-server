@@ -468,7 +468,6 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	do {
 		char const	*q;
 		char		len[2] = { '\0', '\0' };
-		long		precision = 0;
 		char		*subst = NULL;
 
 		if ((*p != '%') || (*++p == '%')) {
