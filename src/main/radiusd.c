@@ -230,7 +230,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'D':
-			main_config.dictionary_dir = talloc_typed_strdup(autofree, optarg);
+			main_config.dict_dir = talloc_typed_strdup(autofree, optarg);
 			break;
 
 		case 'f':
@@ -403,7 +403,7 @@ int main(int argc, char *argv[])
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_global_init(main_config.dictionary_dir) < 0) fr_exit(EXIT_FAILURE);
+	if (tls_global_init(main_config.dict_dir) < 0) fr_exit(EXIT_FAILURE);
 #endif
 
 	/*
@@ -616,10 +616,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Redirect stderr/stdout as appropriate.
 	 */
-	if (fr_log_init(&default_log, main_config.daemonize) < 0) {
-		PERROR("Failed initialising log");
-		fr_exit(EXIT_FAILURE);
-	}
+	if (log_init(&default_log, main_config.daemonize, main_config.dict_dir) < 0) fr_exit(EXIT_FAILURE);
 
 	/*
 	 *  Initialise the state rbtree (used to link multiple rounds of challenges).
@@ -811,6 +808,12 @@ int main(int argc, char *argv[])
 	 *	SEGVs.
 	 */
 	radius_event_free();		/* Free the requests */
+
+	/*
+	 *	Frees request specific logging resources which is OK
+	 *	because all the requests will have been stopped.
+	 */
+	log_free();
 
 	talloc_free(global_state);	/* Free state entries */
 

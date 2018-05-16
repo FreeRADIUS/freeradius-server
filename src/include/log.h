@@ -91,6 +91,10 @@ void	log_hex(fr_log_t const *log, fr_log_type_t type, fr_log_lvl_t lvl, uint8_t 
 
 void	log_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(nonnull) NEVER_RETURNS;
 
+int	log_init(fr_log_t *log, bool daemonize, char const *dict_dir);
+
+void	log_free(void);
+
 /** Prefix for global log messages
  *
  * Should be defined in source file (before including radius.h) to add prefix to

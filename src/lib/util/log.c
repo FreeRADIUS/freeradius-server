@@ -616,7 +616,6 @@ bool fr_rate_limit_enabled(void)
 	return false;
 }
 
-
 void fr_printf_log(char const *fmt, ...)
 {
 	va_list ap;

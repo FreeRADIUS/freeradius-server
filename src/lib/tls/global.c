@@ -445,7 +445,7 @@ static void openssl_free(void *to_free)
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
-int tls_global_init(char const *dictionary_dir)
+int tls_global_init(char const *dict_dir)
 {
 	ENGINE *rand_engine;
 
@@ -495,7 +495,7 @@ int tls_global_init(char const *dictionary_dir)
 	ENGINE_register_all_complete();
 
 
-	if (fr_dict_autoload(dictionary_dir, tls_dict) < 0) {
+	if (fr_dict_autoload(dict_dir, tls_dict) < 0) {
 		PERROR("Failed loading dictionary");
 		tls_global_cleanup();
 		return -1;

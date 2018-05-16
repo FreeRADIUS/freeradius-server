@@ -135,7 +135,7 @@ typedef struct main_config {
 	char const	*log_file;
 	int		syslog_facility;
 
-	char const	*dictionary_dir;		//!< Where to load dictionaries from.
+	char const	*dict_dir;		//!< Where to load dictionaries from.
 
 	struct timeval	init_delay;			//!< Initial request processing delay.
 
@@ -500,8 +500,8 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 int radius_find_compare(fr_dict_attr_t const *attribute);
 VALUE_PAIR	*radius_pair_create(TALLOC_CTX *ctx, VALUE_PAIR **vps, unsigned int attribute, unsigned int vendor);
 
-void module_failure_msg(REQUEST *request, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
-void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0));
+void log_module_failure_msg(REQUEST *request, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0));
 
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
 int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name);

@@ -865,46 +865,4 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 	return rcode;
 }
 
-void module_failure_msg(REQUEST *request, char const *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	vmodule_failure_msg(request, fmt, ap);
-	va_end(ap);
-}
-
-/** Add a module failure message VALUE_PAIR to the request
- */
-void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
-{
-	char *p;
-	VALUE_PAIR *vp;
-	va_list aq;
-
-	if (!fmt || !request || !request->packet) {
-		return;
-	}
-
-	/*
-	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
-	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
-	 *  ap is passed into another function. See here:
-	 *  http://julipedia.meroh.net/2011/09/using-vacopy-to-safely-pass-ap.html
-	 *
-	 *  I don't buy that explanation, but doing a va_copy here does prevent SEGVs seen when
-	 *  running unit tests which generate errors under CI.
-	 */
-	va_copy(aq, ap);
-	p = talloc_vasprintf(request, fmt, aq);
-	va_end(aq);
-
-	MEM(vp = pair_make_request("Module-Failure-Message", NULL, T_OP_ADD));
-	if (request->module && (request->module[0] != '\0')) {
-		fr_pair_value_snprintf(vp, "%s: %s", request->module, p);
-	} else {
-		fr_pair_value_snprintf(vp, "%s", p);
-	}
-	talloc_free(p);
-}
 

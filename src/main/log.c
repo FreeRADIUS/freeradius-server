@@ -160,6 +160,22 @@ const FR_NAME_NUMBER log_str2dst[] = {
 
 static char const spaces[] = "                                                                                                                        ";
 
+static fr_dict_t const *dict_freeradius;
+
+extern fr_dict_autoload_t log_dict[];
+fr_dict_autoload_t log_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_module_failure_message;
+
+extern fr_dict_attr_autoload_t log_dict_attr[];
+fr_dict_attr_autoload_t log_dict_attr[] = {
+	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 /** Send a server log message to its destination without evaluating its debug level
  *
  * @param log	destination.
@@ -450,15 +466,68 @@ finish:
 	talloc_free(msg_prefix);
 }
 
+/** Add a module failure message VALUE_PAIR to the request
+ *
+ * @param[in] request	The current request.
+ * @param[in] msg	with printf style substitution tokens.
+ * @param[in] ap	Substitution arguments.
+ */
+void vlog_module_failure_msg(REQUEST *request, char const *msg, va_list ap)
+{
+	char *p;
+	VALUE_PAIR *vp;
+	va_list aq;
+
+	if (!msg || !request || !request->packet) {
+		return;
+	}
+
+	/*
+	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
+	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
+	 *  ap is passed into another function. See here:
+	 *  http://julipedia.meroh.net/2011/09/using-vacopy-to-safely-pass-ap.html
+	 *
+	 *  I don't buy that explanation, but doing a va_copy here does prevent SEGVs seen when
+	 *  running unit tests which generate errors under CI.
+	 */
+	va_copy(aq, ap);
+	p = talloc_vasprintf(request, msg, aq);
+	va_end(aq);
+
+	MEM(vp = pair_make_request("Module-Failure-Message", NULL, T_OP_ADD));
+	if (request->module && (request->module[0] != '\0')) {
+		fr_pair_value_snprintf(vp, "%s: %s", request->module, p);
+	} else {
+		fr_pair_value_snprintf(vp, "%s", p);
+	}
+	talloc_free(p);
+}
+
+/** Add a module failure message VALUE_PAIRE to the request
+ *
+ * @param[in] request	The current request.
+ * @param[in] msg	with printf style substitution tokens.
+ * @param[in] ...	Substitution arguments.
+ */
+void log_module_failure_msg(REQUEST *request, char const *msg, ...)
+{
+	va_list ap;
+
+	va_start(ap, msg);
+	vlog_module_failure_msg(request, msg, ap);
+	va_end(ap);
+}
+
 /** Martial variadic log arguments into a va_list and pass to normal logging functions
  *
  * @see log_request_error for more details.
  *
- * @param type the log category.
- * @param lvl of debugging this message should be logged at.
- * @param request The current request.
- * @param msg with printf style substitution tokens.
- * @param ... Substitution arguments.
+ * @param[in] type	the log category.
+ * @param[in] lvl	of debugging this message should be logged at.
+ * @param[in] request	The current request.
+ * @param[in] msg	with printf style substitution tokens.
+ * @param[in] ...	Substitution arguments.
  */
 void log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
@@ -484,11 +553,11 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char co
  * So, we use this small wrapper function instead, which will hopefully guarantee
  * consistent behaviour.
  *
- * @param type the log category.
- * @param lvl of debugging this message should be logged at.
- * @param request The current request.
- * @param msg with printf style substitution tokens.
- * @param ... Substitution arguments.
+ * @param[in] type	the log category.
+ * @param[in] lvl	of debugging this message should be logged at.
+ * @param[in] request	The current request.
+ * @param[in] msg	with printf style substitution tokens.
+ * @param[in] ...	Substitution arguments.
  */
 void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
@@ -501,7 +570,7 @@ void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, c
 	for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
 		dst_p->func(type, lvl, request, msg, ap, dst_p->uctx);
 	}
-	vmodule_failure_msg(request, msg, ap);
+	vlog_module_failure_msg(request, msg, ap);
 	va_end(ap);
 }
 
@@ -510,11 +579,11 @@ void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, c
  * This function drains any messages from fr_strerror buffer adding a prefix (msg)
  * to the first message.
  *
- * @param type the log category.
- * @param lvl of debugging this message should be logged at.
- * @param request The current request.
- * @param msg with printf style substitution tokens.
- * @param ... Substitution arguments.
+ * @param[in] type	the log category.
+ * @param[in] lvl	of debugging this message should be logged at.
+ * @param[in] request	The current request.
+ * @param[in] msg	with printf style substitution tokens.
+ * @param[in] ...	Substitution arguments.
  */
 void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
@@ -570,12 +639,12 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, 
 
 /** Write the string being parsed, and a marker showing where the parse error occurred
  *
- * @param type the log category.
- * @param lvl of debugging this message should be logged at.
- * @param request The current request.
- * @param msg string we were parsing.
- * @param idx The position of the marker relative to the string.
- * @param error What the parse error was.
+ * @param[in] type	the log category.
+ * @param[in] lvl	of debugging this message should be logged at.
+ * @param[in] request	The current request.
+ * @param[in] msg	string we were parsing.
+ * @param[in] idx	The position of the marker relative to the string.
+ * @param[in] error	What the parse error was.
  */
 void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 			   char const *msg, size_t idx, char const *error)
@@ -654,3 +723,37 @@ void log_fatal(char const *fmt, ...)
 	fr_exit_now(1);
 }
 
+/** Initialises the server logging functionality, and the underlying libfreeradius log
+ *
+ * @note Call log free when the server is done to fix any spurious memory leaks.
+ *
+ * @param[in] log	Logging parameters.
+ * @paran[in] daemonize	Changes what we do with stdout/stderr.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int log_init(fr_log_t *log, bool daemonize, char const *dict_dir)
+{
+	int ret;
+
+	ret = fr_log_init(log, daemonize);
+	if (ret < 0) return ret;
+
+	if (fr_dict_autoload(dict_dir, log_dict) < 0) {
+		fr_perror("log_init");
+		return -1;
+	}
+
+	if (fr_dict_attr_autoload(log_dict_attr) < 0) {
+		fr_perror("log_init");
+		return -1;
+	}
+
+	return ret;
+}
+
+void log_free(void)
+{
+	fr_dict_autofree(log_dict);
+}

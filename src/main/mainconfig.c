@@ -274,7 +274,7 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
 	DEBUG("Loading dictionary %s", module->name);
 
 #if 0
-	if (fr_dict_autoload(main_config.dictionary_dir, (fr_dict_autoload_t const *)symbol) < 0) {
+	if (fr_dict_autoload(main_config.dict_dir, (fr_dict_autoload_t const *)symbol) < 0) {
 		WARN("Failed loading dictionary: %s", fr_strerror());
 		return 0;
 	}
@@ -295,7 +295,7 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
 		 *	-1  == error on load
 		 *	-2  == non-existent
 		 */
-		if (fr_dict_read(main_config.dict, main_config.dictionary_dir, buffer) == -1) {
+		if (fr_dict_read(main_config.dict, main_config.dict_dir, buffer) == -1) {
 			return -1;
 		}
 
@@ -741,7 +741,7 @@ int main_config_init(void)
 	 *	pre-compilation in conf_file.c.  That should probably
 	 *	be fixed to be done as a second stage.
 	 */
-	if (!main_config.dictionary_dir) main_config.dictionary_dir = talloc_typed_strdup(NULL, DICTDIR);
+	if (!main_config.dict_dir) main_config.dict_dir = talloc_typed_strdup(NULL, DICTDIR);
 
 	/*
 	 *	About sizeof(REQUEST) + sizeof(RADIUS_PACKET) * 2 + sizeof(VALUE_PAIR) * 400
@@ -754,8 +754,8 @@ int main_config_init(void)
 	 *	Read the distribution dictionaries first, then
 	 *	the ones in raddb.
 	 */
-	DEBUG2("Including dictionary file \"%s/%s\"", main_config.dictionary_dir, FR_DICTIONARY_FILE);
-	if (fr_dict_from_file(NULL, &main_config.dict, main_config.dictionary_dir, FR_DICTIONARY_FILE, "radius") != 0) {
+	DEBUG2("Including dictionary file \"%s/%s\"", main_config.dict_dir, FR_DICTIONARY_FILE);
+	if (fr_dict_from_file(NULL, &main_config.dict, main_config.dict_dir, FR_DICTIONARY_FILE, "radius") != 0) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return -1;
 	}

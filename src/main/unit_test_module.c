@@ -741,7 +741,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'D':
-				main_config.dictionary_dir = talloc_typed_strdup(NULL, optarg);
+				main_config.dict_dir = talloc_typed_strdup(NULL, optarg);
 				break;
 
 			case 'f':
@@ -797,6 +797,8 @@ int main(int argc, char *argv[])
 	if (rad_debug_lvl) dependency_version_print();
 	fr_debug_lvl = rad_debug_lvl;
 
+	if (log_init(&default_log, false, main_config.dict_dir) < 0) exit(EXIT_FAILURE);
+
 	/*
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
@@ -807,7 +809,7 @@ int main(int argc, char *argv[])
 
 	dl_init();
 
-	if (fr_dict_autoload(main_config.dictionary_dir, unit_test_module_dict) < 0) {
+	if (fr_dict_autoload(main_config.dict_dir, unit_test_module_dict) < 0) {
 		fr_perror("%s", main_config.name);
 		rcode = EXIT_FAILURE;
 		goto finish;
@@ -822,7 +824,7 @@ int main(int argc, char *argv[])
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_global_init(main_config.dictionary_dir) < 0) {
+	if (tls_global_init(main_config.dict_dir) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
@@ -1130,6 +1132,11 @@ finish:
 	 *	Free the event list.
 	 */
 	talloc_free(el);
+
+	/*
+	 *	Free request specific logging infrastructure
+	 */
+	log_free();
 
 	/*
 	 *	Free xlat instance data, and call any detach methods
