@@ -728,7 +728,8 @@ void log_fatal(char const *fmt, ...)
  * @note Call log free when the server is done to fix any spurious memory leaks.
  *
  * @param[in] log	Logging parameters.
- * @paran[in] daemonize	Changes what we do with stdout/stderr.
+ * @param[in] daemonize	Changes what we do with stdout/stderr.
+ * @param[in] dict_dir	Containing the dictionaries.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
