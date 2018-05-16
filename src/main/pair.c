@@ -693,35 +693,6 @@ int xlat_eval_do(REQUEST *request, VALUE_PAIR *vp)
 	return 0;
 }
 
-/** Create a #VALUE_PAIR and add it to a list of #VALUE_PAIR s
- *
- * @note This function ALWAYS returns. If we're OOM, then it causes the
- * @note server to exit, so you don't need to check the return value.
- *
- * @param[in] ctx for talloc
- * @param[out] vps List to add new #VALUE_PAIR to, if NULL will just
- *	return #VALUE_PAIR.
- * @param[in] attribute number.
- * @param[in] vendor number.
- * @return a new #VALUE_PAIR or causes server to exit on error.
- */
-VALUE_PAIR *radius_pair_create(TALLOC_CTX *ctx, VALUE_PAIR **vps,
-			      unsigned int attribute, unsigned int vendor)
-{
-	VALUE_PAIR *vp;
-
-	vp = fr_pair_afrom_num(ctx, vendor, attribute);
-	if (!vp) {
-		ERROR("No memory!");
-		rad_assert("No memory" == NULL);
-		fr_exit_now(1);
-	}
-
-	if (vps) fr_pair_add(vps, vp);
-
-	return vp;
-}
-
 /** Print a list of VALUE_PAIRs.
  *
  * @param[in] level Debug level (1-4).
