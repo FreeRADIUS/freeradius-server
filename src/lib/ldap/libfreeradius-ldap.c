@@ -456,7 +456,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
  * Performs a simple bind to the LDAP directory, and handles any errors that occur.
  *
  * @param[in] request		Current request, this may be NULL, in which case all
- *				debug logging is done with radlog.
+ *				debug logging is done with log.
  * @param[in,out] pconn		to use. May change as this function calls functions
  *				which auto re-connect.
  * @param[in] dn		of the user, may be NULL to bind anonymously.

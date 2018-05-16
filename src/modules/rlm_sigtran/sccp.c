@@ -252,7 +252,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 //	sigtran_conn_t *conn = talloc_get_type_abort(ctx, sigtran_conn_t);
 
 	DEBUG3("Got %zu bytes of L4 data", (size_t)msgb_l3len(msg));
-//	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, msg->l3h, (size_t)msgb_l3len(msg));
+//	log_request_hex(L_DBG, L_DBG_LVL_3, request, msg->l3h, (size_t)msgb_l3len(msg));
 
 	find.ctx.otid = *(msg->l3h + 0x5);
 

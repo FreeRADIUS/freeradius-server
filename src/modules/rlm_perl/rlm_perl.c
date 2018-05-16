@@ -272,14 +272,14 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 
 /*
  *	This is wrapper for fr_log
- *	Now users can call radiusd::radlog(level,msg) wich is the same
+ *	Now users can call radiusd::log(level,msg) wich is the same
  *	as calling fr_log from C code.
  */
-static XS(XS_radiusd_radlog)
+static XS(XS_radiusd_log)
 {
 	dXSARGS;
 	if (items !=2)
-		croak("Usage: radiusd::radlog(level, message)");
+		croak("Usage: radiusd::log(level, message)");
 	{
 		int     level;
 		char    *msg;
@@ -335,7 +335,7 @@ static void xs_init(pTHX)
 	/* DynaLoader is a special case */
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
 
-	newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
+	newXS("radiusd::log",XS_radiusd_log, "rlm_perl");
 	newXS("radiusd::xlat",XS_radiusd_xlat, "rlm_perl");
 }
 

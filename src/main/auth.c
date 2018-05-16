@@ -684,7 +684,7 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	if (!RDEBUG_ENABLED) return;
 
 
-	radlog_request(L_DBG, L_DBG_LVL_1, request, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
+	log_request(L_DBG, L_DBG_LVL_1, request, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 		       "%s%s%s"
 #endif

@@ -340,7 +340,7 @@ typedef enum request_fail {
 extern fr_log_lvl_t	rad_debug_lvl;
 extern fr_log_lvl_t	req_debug_lvl;
 extern char const	*radacct_dir;
-extern char const	*radlog_dir;
+extern char const	*log_dir;
 extern char const	*radlib_dir;
 extern bool		log_stripped_names;
 extern char const	*radiusd_version;

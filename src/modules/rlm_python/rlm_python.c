@@ -175,7 +175,7 @@ static struct {
 /** Allow fr_log to be called from python
  *
  */
-static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
+static PyObject *mod_log(UNUSED PyObject *module, PyObject *args)
 {
 	int status;
 	char *msg;
@@ -191,8 +191,8 @@ static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
 }
 
 static PyMethodDef module_methods[] = {
-	{ "radlog", &mod_radlog, METH_VARARGS,
-	  "radiusd.radlog(level, msg)\n\n" \
+	{ "log", &mod_log, METH_VARARGS,
+	  "radiusd.log(level, msg)\n\n" \
 	  "Print a message using radiusd logging system. level should be one of the\n" \
 	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY\n"
 	},

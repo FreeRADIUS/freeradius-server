@@ -47,7 +47,7 @@ static int showname = -1;
 static int showptype = 0;
 static int showcid = 0;
 static char const *progname = "radwho";
-char const *radlog_dir = NULL;
+char const *log_dir = NULL;
 
 static char const *radutmp_file = NULL;
 static char const *raddb_dir = RADDBDIR;

@@ -42,7 +42,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %08x",
+		log_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %08x",
 			       dhcp_message_types[request->packet->code], request->packet->id);
 		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 

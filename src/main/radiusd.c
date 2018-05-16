@@ -63,7 +63,7 @@ RCSID("$Id$")
  *  Global variables.
  */
 char const	*radacct_dir = NULL;
-char const	*radlog_dir = NULL;
+char const	*log_dir = NULL;
 
 bool		log_stripped_names;
 

@@ -42,7 +42,7 @@ RCSID("$Id$")
  *  Global variables.
  */
 char const *radacct_dir = NULL;
-char const *radlog_dir = NULL;
+char const *log_dir = NULL;
 bool log_stripped_names = false;
 
 static bool filedone = false;
@@ -380,7 +380,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	 *	Debugging
 	 */
 	request->log.dst = talloc_zero(request, log_dst_t);
-	request->log.dst->func = vradlog_request;
+	request->log.dst->func = vlog_request;
 	request->log.dst->uctx = &default_log;
 
 	request->log.lvl = rad_debug_lvl;
@@ -569,7 +569,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 	gettimeofday(&now, NULL);
 
 	request->log.dst = talloc_zero(request, log_dst_t);
-	request->log.dst->func = vradlog_request;
+	request->log.dst->func = vlog_request;
 	request->log.dst->uctx = &default_log;
 
 	request->log.lvl = rad_debug_lvl;

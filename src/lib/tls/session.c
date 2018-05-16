@@ -1171,7 +1171,7 @@ int tls_session_recv(REQUEST *request, tls_session_t *session)
 	session->clean_out.used = ret;
 
 	RDEBUG2("Decrypted TLS application data (%zu bytes)", session->clean_out.used);
-	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, session->clean_out.data, session->clean_out.used);
+	log_request_hex(L_DBG, L_DBG_LVL_3, request, session->clean_out.data, session->clean_out.used);
 
 	return 0;
 }
@@ -1209,7 +1209,7 @@ int tls_session_send(REQUEST *request, tls_session_t *session)
 		int ret;
 
 		RDEBUG2("TLS application data to encrypt (%zu bytes)", session->clean_in.used);
-		radlog_request_hex(L_DBG, L_DBG_LVL_3, request, session->clean_in.data, session->clean_in.used);
+		log_request_hex(L_DBG, L_DBG_LVL_3, request, session->clean_in.data, session->clean_in.used);
 
 		ret = SSL_write(session->ssl, session->clean_in.data, session->clean_in.used);
 		record_to_buff(&session->clean_in, NULL, ret);

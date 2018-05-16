@@ -56,7 +56,7 @@ fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
  *	file.
  */
 static char const *chroot_dir = NULL;
-static char const *radlog_dest = NULL;
+static char const *log_dest = NULL;
 
 /*
  *	These are not used anywhere else..
@@ -90,11 +90,11 @@ static char const	*radius_dir = NULL;	//!< Path to raddb directory
  *	Log destinations
  */
 static const CONF_PARSER initial_log_subsection_config[] = {
-	{ FR_CONF_POINTER("destination", FR_TYPE_STRING, &radlog_dest), .dflt = "files" },
+	{ FR_CONF_POINTER("destination", FR_TYPE_STRING, &log_dest), .dflt = "files" },
 	{ FR_CONF_POINTER("syslog_facility", FR_TYPE_STRING, &syslog_facility), .dflt = STRINGIFY(0) },
 
 	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
-	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &radlog_dir), .dflt = "${localstatedir}/log"},
+	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &log_dir), .dflt = "${localstatedir}/log"},
 	{ FR_CONF_POINTER("file", FR_TYPE_STRING, &main_config.log_file), .dflt = "${logdir}/radius.log" },
 	{ FR_CONF_POINTER("requests", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &default_log.file) },
 	CONF_PARSER_TERMINATOR
@@ -169,7 +169,7 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
 	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
 	{ FR_CONF_POINTER("sbindir", FR_TYPE_STRING, &sbindir), .dflt = "${prefix}/sbin"},
-	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &radlog_dir), .dflt = "${localstatedir}/log"},
+	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &log_dir), .dflt = "${localstatedir}/log"},
 	{ FR_CONF_POINTER("run_dir", FR_TYPE_STRING, &run_dir), .dflt = "${localstatedir}/run/${name}"},
 	{ FR_CONF_POINTER("libdir", FR_TYPE_STRING, &radlib_dir), .dflt = "${prefix}/lib"},
 	{ FR_CONF_POINTER("radacctdir", FR_TYPE_STRING, &radacct_dir), .dflt = "${logdir}/radacct" },
@@ -599,7 +599,7 @@ static int switch_users(CONF_SECTION *cs)
 		talloc_free(my_dir);
 	}
 
-	if ((default_log.dst == L_DST_FILES) && radlog_dir) {
+	if ((default_log.dst == L_DST_FILES) && log_dir) {
 		char *my_dir;
 
 		/*
@@ -608,7 +608,7 @@ static int switch_users(CONF_SECTION *cs)
 		 *	mean the actual files should be world
 		 *	readable.
 		 */
-		my_dir = talloc_typed_strdup(NULL, radlog_dir);
+		my_dir = talloc_typed_strdup(NULL, log_dir);
 		if (rad_mkdir(my_dir, 0755, main_config.server_uid, main_config.server_gid) < 0) {
 			DEBUG("Failed to create logdir %s: %s",
 			      my_dir, strerror(errno));
@@ -912,18 +912,18 @@ do {\
 			return -1;
 		}
 
-		if (!radlog_dest) {
+		if (!log_dest) {
 			fprintf(stderr, "%s: Error: No log destination specified.\n",
 				main_config.name);
 			cf_file_free(cs);
 			return -1;
 		}
 
-		default_log.dst = fr_str2int(log_str2dst, radlog_dest,
+		default_log.dst = fr_str2int(log_str2dst, log_dest,
 					      L_DST_NUM_DEST);
 		if (default_log.dst == L_DST_NUM_DEST) {
 			fprintf(stderr, "%s: Error: Unknown log_destination %s\n",
-				main_config.name, radlog_dest);
+				main_config.name, log_dest);
 			cf_file_free(cs);
 			return -1;
 		}
@@ -1069,9 +1069,9 @@ do {\
 	 *	Ensure cwd is inside the chroot.
 	 */
 	if (chroot_dir) {
-		if (chdir(radlog_dir) < 0) {
+		if (chdir(log_dir) < 0) {
 			ERROR("Failed to 'chdir %s' after chroot: %s",
-			       radlog_dir, fr_syserror(errno));
+			       log_dir, fr_syserror(errno));
 			return -1;
 		}
 	}

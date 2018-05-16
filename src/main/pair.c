@@ -745,7 +745,7 @@ void rdebug_pair(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char cons
 	char *value;
 
 	if (!vp || !request || !request->log.dst) return;
-	if (!radlog_debug_enabled(L_DBG, level, request)) return;
+	if (!log_debug_enabled(L_DBG, level, request)) return;
 
 
 	value = fr_pair_asprint(request, vp, '"');
@@ -767,7 +767,7 @@ void rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char
 
 	if (!vp || !request || !request->log.dst) return;
 
-	if (!radlog_debug_enabled(L_DBG, level, request)) return;
+	if (!log_debug_enabled(L_DBG, level, request)) return;
 
 	RINDENT();
 	for (vp = fr_cursor_init(&cursor, &vp);
@@ -796,7 +796,7 @@ void rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp
 
 	if (!vp || !request || !request->log.dst) return;
 
-	if (!radlog_debug_enabled(L_DBG, level, request)) return;
+	if (!log_debug_enabled(L_DBG, level, request)) return;
 
 	RINDENT();
 	for (vp = fr_cursor_init(&cursor, &vp);

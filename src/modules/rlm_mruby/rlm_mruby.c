@@ -57,7 +57,7 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static mrb_value mruby_radlog(mrb_state *mrb, UNUSED mrb_value self)
+static mrb_value mruby_log(mrb_state *mrb, UNUSED mrb_value self)
 {
 	mrb_int level;
 	char *msg = NULL;
@@ -150,8 +150,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	/* Define the radlog method */
-	mrb_define_class_method(mrb, inst->mruby_module, "radlog", mruby_radlog, MRB_ARGS_REQ(2));
+	/* Define the log method */
+	mrb_define_class_method(mrb, inst->mruby_module, "log", mruby_log, MRB_ARGS_REQ(2));
 
 #define A(x) mrb_define_const(mrb, inst->mruby_module, #x, mrb_fixnum_value(x));
 	/* Define the logging constants */
