@@ -527,7 +527,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			char *r;
 
 			p++;
-			precision = strtoul(p, &r, 10);
+			strtoul(p, &r, 10);
 			p = r;
 		}
 
