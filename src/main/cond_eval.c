@@ -845,7 +845,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 
 		RDEBUG4("::: Examining %s", from_list[i]->da->name);
 
-		if (do_xlat) xlat_eval_do(request, from_list[i]);
+		if (do_xlat) xlat_eval_pair(request, from_list[i]);
 
 		/*
 		 *	Attribute should be appended, OR the "to" list

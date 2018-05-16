@@ -582,7 +582,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		 *	We've got to xlat the string before doing
 		 *	the comparison.
 		 */
-		xlat_eval_do(request, check_item);
+		xlat_eval_pair(request, check_item);
 
 		/*
 		 *	OK it is present now compare them.
@@ -643,52 +643,4 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	} /* for every entry in the check item list */
 
 	return result;
-}
-
-/** Expands an attribute marked with fr_pair_mark_xlat
- *
- * Writes the new value to the vp.
- *
- * @param request Current request.
- * @param vp to expand.
- * @return On failure pair will still no longer be marked for xlat expansion.
- *	- 0 if successful.
- *	- -1 On xlat failure.
- *	- -2 On parse failure.
- */
-int xlat_eval_do(REQUEST *request, VALUE_PAIR *vp)
-{
-	ssize_t slen;
-
-	char *expanded = NULL;
-	if (vp->type != VT_XLAT) return 0;
-
-	vp->type = VT_DATA;
-
-	slen = xlat_aeval(request, &expanded, request, vp->xlat, NULL, NULL);
-	talloc_const_free(vp->xlat);
-	vp->xlat = NULL;
-	if (slen < 0) {
-		return -1;
-	}
-
-	/*
-	 *	Parse the string into a new value.
-	 *
-	 *	If the VALUE_PAIR is being used in a regular expression
-	 *	then we just want to copy the new value in unmolested.
-	 */
-	if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
-		fr_pair_value_strsteal(vp, expanded);
-		return 0;
-	}
-
-	if (fr_pair_value_from_str(vp, expanded, -1) < 0){
-		talloc_free(expanded);
-		return -2;
-	}
-
-	talloc_free(expanded);
-
-	return 0;
 }

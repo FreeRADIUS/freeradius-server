@@ -547,7 +547,7 @@ done:
  *	- #XLAT_ACTION_FAIL		we failed getting a value for the attribute.
  *	- #XLAT_ACTION_DONE		we
  */
-static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
+static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
 {
 	VALUE_PAIR	*vp = NULL;
 	fr_value_box_t	*value;
@@ -963,7 +963,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 				   node->fmt);
 
 			xlat_debug_log_expansion(request, node, NULL);
-			if (xlat_eval_pair(ctx, out, request, node->attr) == XLAT_ACTION_FAIL) goto fail;
+			if (xlat_eval_pair_real(ctx, out, request, node->attr) == XLAT_ACTION_FAIL) goto fail;
 			xlat_debug_log_result(request, fr_cursor_current(out));
 			continue;
 
@@ -1103,7 +1103,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	case XLAT_ATTRIBUTE:
 		XLAT_DEBUG("xlat_aprint ATTR");
-		if (xlat_eval_pair(ctx, &cursor, request, node->attr) == XLAT_ACTION_FAIL) return NULL;
+		if (xlat_eval_pair_real(ctx, &cursor, request, node->attr) == XLAT_ACTION_FAIL) return NULL;
 
 		value = fr_cursor_head(&cursor);
 		if (!value) return NULL;
@@ -1499,6 +1499,54 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
 {
 	*out = NULL;
 	return _xlat_eval_compiled(ctx, out, 0, request, xlat, escape, escape_ctx);
+}
+
+/** Expands an attribute marked with fr_pair_mark_xlat
+ *
+ * Writes the new value to the vp.
+ *
+ * @param request Current request.
+ * @param vp to expand.
+ * @return On failure pair will still no longer be marked for xlat expansion.
+ *	- 0 if successful.
+ *	- -1 On xlat failure.
+ *	- -2 On parse failure.
+ */
+int xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp)
+{
+	ssize_t slen;
+
+	char *expanded = NULL;
+	if (vp->type != VT_XLAT) return 0;
+
+	vp->type = VT_DATA;
+
+	slen = xlat_aeval(request, &expanded, request, vp->xlat, NULL, NULL);
+	talloc_const_free(vp->xlat);
+	vp->xlat = NULL;
+	if (slen < 0) {
+		return -1;
+	}
+
+	/*
+	 *	Parse the string into a new value.
+	 *
+	 *	If the VALUE_PAIR is being used in a regular expression
+	 *	then we just want to copy the new value in unmolested.
+	 */
+	if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
+		fr_pair_value_strsteal(vp, expanded);
+		return 0;
+	}
+
+	if (fr_pair_value_from_str(vp, expanded, -1) < 0){
+		talloc_free(expanded);
+		return -2;
+	}
+
+	talloc_free(expanded);
+
+	return 0;
 }
 
 /** Walk over all xlat nodes (depth first) in a xlat expansion, calling a callback

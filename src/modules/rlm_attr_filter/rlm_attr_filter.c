@@ -245,7 +245,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 				vp = fr_pair_copy(packet, check_item);
 				if (!vp) goto error;
 
-				xlat_eval_do(request, vp);
+				xlat_eval_pair(request, vp);
 				fr_pair_cursor_append(&out, vp);
 			}
 		}
