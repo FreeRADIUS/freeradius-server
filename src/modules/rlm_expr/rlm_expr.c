@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file rlm_expr.c
- * @brief Register many xlat expansions including the expr expansion.
+ * @brief Register an xlat expansion to perform basic mathematical operations.
  *
  * @copyright 2001,2006  The FreeRADIUS server project
  * @copyright 2002  Alan DeKok <aland@ox.org>
@@ -39,15 +39,7 @@ USES_APPLE_DEPRECATED_API
  */
 typedef struct rlm_expr_t {
 	char const *xlat_name;
-	char const *allowed_chars;
 } rlm_expr_t;
-
-static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("safe_characters", FR_TYPE_STRING, rlm_expr_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
-	CONF_PARSER_TERMINATOR
-};
-
-static char const hextab[] = "0123456789abcdef";
 
 /** Calculate powers
  *
@@ -531,112 +523,6 @@ static ssize_t expr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	return strlen(*out);
 }
 
-/** Equivalent to the old safe_characters functionality in rlm_sql but with utf8 support
- *
- * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
- */
-static ssize_t escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   void const *mod_inst, UNUSED void const *xlat_inst,
-			   UNUSED REQUEST *request, char const *fmt)
-{
-	rlm_expr_t const *inst = mod_inst;
-	char const *p = fmt;
-	char *out_p = *out;
-	size_t freespace = outlen;
-
-	while (p[0]) {
-		int chr_len = 1;
-		int ret = 1;	/* -Werror=uninitialized */
-
-		if (fr_utf8_strchr(&chr_len, inst->allowed_chars, p) == NULL) {
-			/*
-			 *	'=' 1 + ([hex]{2}) * chr_len)
-			 */
-			if (freespace <= (size_t)(1 + (chr_len * 3))) break;
-
-			switch (chr_len) {
-			case 4:
-				ret = snprintf(out_p, freespace, "=%02X=%02X=%02X=%02X",
-					       (uint8_t)p[0], (uint8_t)p[1], (uint8_t)p[2], (uint8_t)p[3]);
-				break;
-
-			case 3:
-				ret = snprintf(out_p, freespace, "=%02X=%02X=%02X",
-					       (uint8_t)p[0], (uint8_t)p[1], (uint8_t)p[2]);
-				break;
-
-			case 2:
-				ret = snprintf(out_p, freespace, "=%02X=%02X", (uint8_t)p[0], (uint8_t)p[1]);
-				break;
-
-			case 1:
-				ret = snprintf(out_p, freespace, "=%02X", (uint8_t)p[0]);
-				break;
-			}
-
-			p += chr_len;
-			out_p += ret;
-			freespace -= ret;
-			continue;
-		}
-
-		/*
-		 *	Only one byte left.
-		 */
-		if (freespace <= 1) break;
-
-		/*
-		 *	Allowed character (copy whole mb chars at once)
-		 */
-		memcpy(out_p, p, chr_len);
-		out_p += chr_len;
-		p += chr_len;
-		freespace -= chr_len;
-	}
-	*out_p = '\0';
-
-	return outlen - freespace;
-}
-
-/** Equivalent to the old safe_characters functionality in rlm_sql
- *
- * @verbatim Example: "%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>" @endverbatim
- */
-static ssize_t unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     UNUSED REQUEST *request, char const *fmt)
-{
-	char const *p;
-	char *out_p = *out;
-	char *c1, *c2, c3;
-	size_t	freespace = outlen;
-
-	if (outlen <= 1) return 0;
-
-	p = fmt;
-	while (*p && (--freespace > 0)) {
-		if (*p != '=') {
-		next:
-
-			*out_p++ = *p++;
-			continue;
-		}
-
-		/* Is a = char */
-
-		if (!(c1 = memchr(hextab, tolower(*(p + 1)), 16)) ||
-		    !(c2 = memchr(hextab, tolower(*(p + 2)), 16))) goto next;
-		c3 = ((c1 - hextab) << 4) + (c2 - hextab);
-
-		*out_p++ = c3;
-		p += 3;
-	}
-
-	*out_p = '\0';
-
-	return outlen - freespace;
-}
-
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -657,8 +543,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	xlat_register(inst, inst->xlat_name, expr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(inst, "escape", escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(inst, "unescape", unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	/*
 	 *	Initialize various paircompare functions
@@ -681,6 +565,5 @@ rad_module_t rlm_expr = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "expr",
 	.inst_size	= sizeof(rlm_expr_t),
-	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 };
