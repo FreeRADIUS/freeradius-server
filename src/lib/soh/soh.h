@@ -18,8 +18,8 @@
 /**
  * $Id$
  *
- * @file include/soh.h
- * @brief Microsoft SoH support
+ * @file src/lib/soh/soh.h
+ * @brief Common libraries for parsing Microsoft SOH data
  *
  * @copyright 2010 Phil Mayers <p.mayers@imperial.ac.uk>
  */
