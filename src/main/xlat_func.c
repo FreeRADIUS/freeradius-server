@@ -1088,11 +1088,15 @@ static ssize_t _md##_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,\
 	return evp_md_xlat(ctx, out, outlen, mod_inst, xlat_inst, request, fmt, EVP_##_md());\
 }
 
+EVP_MD_XLAT(sha224)
 EVP_MD_XLAT(sha256)
+EVP_MD_XLAT(sha384)
 EVP_MD_XLAT(sha512)
 
 #  ifdef HAVE_EVP_SHA3_512
+EVP_MD_XLAT(sha3_224)
 EVP_MD_XLAT(sha3_256)
+EVP_MD_XLAT(sha3_384)
 EVP_MD_XLAT(sha3_512)
 #  endif
 #endif
@@ -2390,8 +2394,17 @@ int xlat_init(void)
 	xlat_register(NULL, "md5", md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "sha1", sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 #ifdef HAVE_OPENSSL_EVP_H
+	xlat_register(NULL, "sha224", sha224_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "sha256", sha256_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(NULL, "sha384", sha384_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "sha512", sha512_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+
+#  ifdef HAVE_EVP_SHA3_512
+	xlat_register(NULL, "sha3_224", sha3_224_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(NULL, "sha3_256", sha3_256_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(NULL, "sha3_384", sha3_384_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(NULL, "sha3_512", sha3_512_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);#  endif
+#  endif
 #endif
 	xlat_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
