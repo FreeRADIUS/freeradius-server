@@ -20,7 +20,7 @@ SOURCES	:=	cond_eval.c \
 		tmpl.c \
 		util.c \
 		virtual_servers.c \
-		pair.c \
+		paircmp.c \
 		pool.c \
 		xlat_eval.c \
 		xlat_func.c \

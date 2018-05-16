@@ -35,12 +35,12 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 struct cmp {
-	fr_dict_attr_t const *attribute;
-	fr_dict_attr_t const *from;
-	bool	first_only;
-	void *instance; /* module instance */
-	RAD_COMPARE_FUNC compare;
-	struct cmp *next;
+	fr_dict_attr_t const	*attribute;
+	fr_dict_attr_t const	*from;
+	bool			first_only;
+	void			*instance; /* module instance */
+	RAD_COMPARE_FUNC	compare;
+	struct cmp		*next;
 };
 static struct cmp *cmp;
 
