@@ -90,7 +90,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	Attribute reference
 	 */
 	if (*data_name == '&') {
-		if (radius_get_vp(&vp, request, data_name) < 0) goto nothing;
+		if (xlat_fmt_get_vp(&vp, request, data_name) < 0) goto nothing;
 
 		if ((vp->vp_type != FR_TYPE_OCTETS) &&
 		    (vp->vp_type != FR_TYPE_STRING)) {

@@ -97,7 +97,7 @@ static ssize_t xlat_vendor(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	vendor = fr_dict_vendor_by_da(vp->da);
 	if (!vendor) return 0;
@@ -117,7 +117,7 @@ static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	*out = talloc_typed_asprintf(ctx, "%i", fr_dict_vendor_num_by_da(vp->da));
 	return talloc_array_length(*out) - 1;
@@ -134,7 +134,7 @@ static ssize_t xlat_attr(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 	strlcpy(*out, vp->da->name, outlen);
 
 	*out = talloc_typed_strdup(ctx, vp->da->name);
@@ -152,7 +152,7 @@ static ssize_t xlat_attr_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	*out = talloc_typed_asprintf(ctx, "%i", vp->da->attr);
 	return talloc_array_length(*out) - 1;

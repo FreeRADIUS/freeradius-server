@@ -503,9 +503,6 @@ VALUE_PAIR	*radius_pair_create(TALLOC_CTX *ctx, VALUE_PAIR **vps, unsigned int a
 void log_module_failure_msg(REQUEST *request, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0));
 
-int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
-int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name);
-
 
 /*
  *	Less code == fewer bugs

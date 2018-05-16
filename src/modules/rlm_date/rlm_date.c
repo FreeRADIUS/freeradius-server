@@ -104,7 +104,7 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		return date_encode_strftime(out, outlen, inst, request, now.tv_sec);
 	}
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	switch (vp->vp_type) {
 	/*

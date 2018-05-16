@@ -140,7 +140,7 @@ static ssize_t dhcp_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_copy_vp(request, &vp, request, fmt) < 0) || !vp) return 0;
+	if ((xlat_fmt_copy_vp(request, &vp, request, fmt) < 0) || !vp) return 0;
 	fr_cursor_init(&cursor, &vp);
 
 	len = fr_dhcpv4_encode_option(binbuf, sizeof(binbuf), &cursor, NULL);

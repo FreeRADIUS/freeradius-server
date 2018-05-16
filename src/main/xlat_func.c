@@ -71,6 +71,59 @@ static char const hextab[] = "0123456789abcdef";
 
 static int xlat_foreach_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
 
+/** Return a VP from the specified request.
+ *
+ * @param out where to write the pointer to the resolved VP. Will be NULL if the attribute couldn't
+ *	be resolved.
+ * @param request current request.
+ * @param name attribute name including qualifiers.
+ * @return
+ *	- -4 if either the attribute or qualifier were invalid.
+ *	- The same error codes as #tmpl_find_vp for other error conditions.
+ */
+int xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
+{
+	int rcode;
+	vp_tmpl_t *vpt;
+
+	*out = NULL;
+
+	if (tmpl_afrom_attr_str(request, &vpt, name,
+				REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) return -4;
+
+	rcode = tmpl_find_vp(out, request, vpt);
+	talloc_free(vpt);
+
+	return rcode;
+}
+
+/** Copy VP(s) from the specified request.
+ *
+ * @param ctx to alloc new VALUE_PAIRs in.
+ * @param out where to write the pointer to the copied VP. Will be NULL if the attribute couldn't be
+ *	resolved.
+ * @param request current request.
+ * @param name attribute name including qualifiers.
+ * @return
+ *	- -4 if either the attribute or qualifier were invalid.
+ *	- The same error codes as #tmpl_find_vp for other error conditions.
+ */
+int xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name)
+{
+	int rcode;
+	vp_tmpl_t *vpt;
+
+	*out = NULL;
+
+	if (tmpl_afrom_attr_str(request, &vpt, name,
+				REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) return -4;
+
+	rcode = tmpl_copy_vps(ctx, out, request, vpt);
+	talloc_free(vpt);
+
+	return rcode;
+}
+
 /** Print length of its RHS.
  *
  */
@@ -93,7 +146,7 @@ static ssize_t xlat_length(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	snprintf(*out, outlen, "%zu", fr_value_box_network_length(&vp->data));
 	return strlen(*out);
@@ -113,7 +166,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	switch (vp->vp_type) {
 	case FR_TYPE_OCTETS:
@@ -193,7 +246,7 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) {
 	error:
 		return -1;
 	}
@@ -246,7 +299,7 @@ static ssize_t xlat_tag(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	if (!vp->da->flags.has_tag || !TAG_VALID(vp->tag)) return 0;
 
@@ -452,7 +505,7 @@ static ssize_t xlat_foreach(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	/*
 	 *	See modcall, "FOREACH" for how this works.
 	 */
-	pvp = (VALUE_PAIR **) request_data_reference(request, (void *)radius_get_vp, *(int const *) mod_inst);
+	pvp = (VALUE_PAIR **) request_data_reference(request, (void *)xlat_fmt_get_vp, *(int const *) mod_inst);
 	if (!pvp || !*pvp) return 0;
 
 	*out = fr_pair_value_asprint(ctx, *pvp, '\0');
@@ -481,7 +534,7 @@ static ssize_t xlat_string(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		return 0;
 	}
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
 	/*
 	 *	These are printed specially.
@@ -524,7 +577,7 @@ static ssize_t xlat_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 		return 0;
 	}
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
 	RDEBUG2("EXPAND %s", fmt);
 	RINDENT();
@@ -932,7 +985,7 @@ static int fr_value_box_from_fmt(TALLOC_CTX *ctx, fr_value_box_t *out, REQUEST *
 	 *	attribute, and then store the data in network byte
 	 *	order.
 	 */
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return -1;
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return -1;
 
 	fr_value_box_copy(ctx, out, &vp->data);
 
