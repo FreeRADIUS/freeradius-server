@@ -396,18 +396,6 @@ static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, 
 		if (data_len > 0) return data_len;
 	}
 
-#ifdef WITH_UDPFROMTO
-	/*
-	 *	Overwrite the src ip address on the outbound packet
-	 *	with the one specified by the client.  This is useful
-	 *	to work around broken DSR implementations and other
-	 *	routing issues.
-	 */
-	if (client->src_ipaddr.af != AF_UNSPEC) {
-		request->reply->src_ipaddr = client->src_ipaddr;
-	}
-#endif
-
 	data_len = fr_dhcpv4_encode(buffer, buffer_len,
 				    request->reply->code, request->reply->id, request->reply->vps);
 	if (data_len < 0) {
