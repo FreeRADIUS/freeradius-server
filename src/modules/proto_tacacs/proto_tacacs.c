@@ -620,6 +620,8 @@ int mod_load(void)
 		PERROR("Failed initialising tacacs");
 		return -1;
 	}
+
+	return 0;
 }
 
 void mod_unload(void)
