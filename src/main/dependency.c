@@ -626,6 +626,9 @@ void dependency_version_print(void)
 			       (int)(max - talloc_array_length(attr)), spaces, cf_pair_value(cp));
 		}
 
+		talloc_free(features);
+		talloc_free(versions);
+
 #ifdef WITH_TLS
 		DEBUG3("OpenSSL engines:");
 		for (engine = ENGINE_get_first();
