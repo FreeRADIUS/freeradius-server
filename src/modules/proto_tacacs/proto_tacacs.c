@@ -28,7 +28,7 @@
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
 
-#include "tacacs.h"
+#include <freeradius-devel/tacacs/tacacs.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
@@ -44,54 +44,20 @@ fr_dict_autoload_t proto_tacacs_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
-
+static fr_dict_attr_t const *attr_tacacs_accounting_status;
+static fr_dict_attr_t const *attr_tacacs_authentication_status;
+static fr_dict_attr_t const *attr_tacacs_authorization_status;
+static fr_dict_attr_t const *attr_tacacs_sequence_number;
 static fr_dict_attr_t const *attr_state;
-
-fr_dict_attr_t const *attr_tacacs_accounting_flags;
-fr_dict_attr_t const *attr_tacacs_accounting_status;
-fr_dict_attr_t const *attr_tacacs_action;
-fr_dict_attr_t const *attr_tacacs_authentication_flags;
-fr_dict_attr_t const *attr_tacacs_authentication_method;
-fr_dict_attr_t const *attr_tacacs_authentication_service;
-fr_dict_attr_t const *attr_tacacs_authentication_status;
-fr_dict_attr_t const *attr_tacacs_authentication_type;
-fr_dict_attr_t const *attr_tacacs_authorization_status;
-fr_dict_attr_t const *attr_tacacs_client_port;
-fr_dict_attr_t const *attr_tacacs_data;
-fr_dict_attr_t const *attr_tacacs_packet_type;
-fr_dict_attr_t const *attr_tacacs_privilege_level;
-fr_dict_attr_t const *attr_tacacs_remote_address;
-fr_dict_attr_t const *attr_tacacs_sequence_number;
-fr_dict_attr_t const *attr_tacacs_server_message;
-fr_dict_attr_t const *attr_tacacs_session_id;
-fr_dict_attr_t const *attr_tacacs_user_message;
-fr_dict_attr_t const *attr_tacacs_user_name;
-fr_dict_attr_t const *attr_tacacs_version_minor;
 
 extern fr_dict_attr_autoload_t proto_tacacs_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_tacacs_accounting_flags, .name = "TACACS-Accounting-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_accounting_status, .name = "TACACS-Accounting-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_action, .name = "TACACS-Action", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_flags, .name = "TACACS-Authentication-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_method, .name = "TACACS-Authentication-Method", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_service, .name = "TACACS-Authentication-Service", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_authentication_status, .name = "TACACS-Authentication-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_type, .name = "TACACS-Authentication-Type", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_authorization_status, .name = "TACACS-Authorization-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_client_port, .name = "TACACS-Client-Port", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_packet_type, .name = "TACACS-Packet-Type", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_privilege_level, .name = "TACACS-Privilege-Level", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_remote_address, .name = "TACACS-Remote-Address", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_sequence_number, .name = "TACACS-Sequence-Number", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_server_message, .name = "TACACS-Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_session_id, .name = "TACACS-Session-Id", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_user_message, .name = "TACACS-User-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_user_name, .name = "TACACS-User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_version_minor, .name = "TACACS-Version-Minor", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ NULL }
 };
 
@@ -648,10 +614,25 @@ static int tacacs_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 	return 0;
 }
 
+int mod_load(void)
+{
+	if (tacacs_init(main_config.dict_dir) < 0) {
+		PERROR("Failed initialising tacacs");
+		return -1;
+	}
+}
+
+void mod_unload(void)
+{
+	tacacs_free();
+}
+
 extern rad_protocol_t proto_tacacs;
 rad_protocol_t proto_tacacs = {
 	.name		= "tacacs",
 	.magic		= RLM_MODULE_INIT,
+	.load		= mod_load,
+	.unload		= mod_unload,
 	.inst_size	= sizeof(listen_socket_t),
 	.transports	= TRANSPORT_TCP,
 	.tls		= false,

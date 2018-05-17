@@ -41,7 +41,7 @@ typedef struct REQUEST REQUEST;
 #include <freeradius-devel/io/test_point.h>
 
 #ifdef WITH_TACACS
-#include "../modules/proto_tacacs/tacacs.h"
+#include <freeradius-devel/tacacs/tacacs.h>
 #endif
 
 #include <ctype.h>

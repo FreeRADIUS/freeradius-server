@@ -31,7 +31,60 @@
 
 #include "tacacs.h"
 
-fr_dict_attr_t const *dict_tacacs_root = NULL;
+static fr_dict_t const *dict_tacacs;
+
+extern fr_dict_autoload_t libfreeradius_tacacs_dict[];
+fr_dict_autoload_t libfreeradius_tacacs_dict[] = {
+	{ .out = &dict_tacacs, .proto = "tacacs" },
+
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_tacacs_accounting_flags;
+static fr_dict_attr_t const *attr_tacacs_accounting_status;
+static fr_dict_attr_t const *attr_tacacs_action;
+static fr_dict_attr_t const *attr_tacacs_authentication_flags;
+static fr_dict_attr_t const *attr_tacacs_authentication_method;
+static fr_dict_attr_t const *attr_tacacs_authentication_service;
+static fr_dict_attr_t const *attr_tacacs_authentication_status;
+static fr_dict_attr_t const *attr_tacacs_authentication_type;
+static fr_dict_attr_t const *attr_tacacs_authorization_status;
+static fr_dict_attr_t const *attr_tacacs_client_port;
+static fr_dict_attr_t const *attr_tacacs_data;
+static fr_dict_attr_t const *attr_tacacs_packet_type;
+static fr_dict_attr_t const *attr_tacacs_privilege_level;
+static fr_dict_attr_t const *attr_tacacs_remote_address;
+static fr_dict_attr_t const *attr_tacacs_sequence_number;
+static fr_dict_attr_t const *attr_tacacs_server_message;
+static fr_dict_attr_t const *attr_tacacs_session_id;
+static fr_dict_attr_t const *attr_tacacs_user_message;
+static fr_dict_attr_t const *attr_tacacs_user_name;
+static fr_dict_attr_t const *attr_tacacs_version_minor;
+
+extern fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[];
+fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
+	{ .out = &attr_tacacs_accounting_flags, .name = "TACACS-Accounting-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_accounting_status, .name = "TACACS-Accounting-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_action, .name = "TACACS-Action", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_flags, .name = "TACACS-Authentication-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_method, .name = "TACACS-Authentication-Method", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_service, .name = "TACACS-Authentication-Service", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_status, .name = "TACACS-Authentication-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authentication_type, .name = "TACACS-Authentication-Type", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authorization_status, .name = "TACACS-Authorization-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_client_port, .name = "TACACS-Client-Port", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_data, .name = "TACACS-Data", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_packet_type, .name = "TACACS-Packet-Type", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_privilege_level, .name = "TACACS-Privilege-Level", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_remote_address, .name = "TACACS-Remote-Address", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_sequence_number, .name = "TACACS-Sequence-Number", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_server_message, .name = "TACACS-Server-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_session_id, .name = "TACACS-Session-Id", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_user_message, .name = "TACACS-User-Message", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_user_name, .name = "TACACS-User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_version_minor, .name = "TACACS-Version-Minor", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ NULL }
+};
 
 tacacs_type_t tacacs_type(RADIUS_PACKET const * const packet)
 {
@@ -441,8 +494,6 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 	uint8_t *p;
 	uint32_t session_id;
 	size_t remaining;
-
-	if (!dict_tacacs_root) return -1;
 
 	fr_pair_cursor_init(&cursor, &packet->vps);
 
@@ -930,4 +981,17 @@ int tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const origin
 	 *	@fixme: EINTR and retry
 	 */
 	return write(packet->sockfd, packet->data, packet->data_len);
+}
+
+int tacacs_init(char const *dict_dir)
+{
+	if (fr_dict_autoload(dict_dir, libfreeradius_tacacs_dict) < 0) return -1;
+	if (fr_dict_attr_autoload(libfreeradius_tacacs_dict_attr) < 0) return -1;
+
+	return 0;
+}
+
+void tacacs_free(void)
+{
+	fr_dict_autofree(libfreeradius_tacacs_dict);
 }

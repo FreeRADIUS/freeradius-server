@@ -231,27 +231,6 @@ typedef struct CC_HINT(__packed__) tacacs_packet {
 	};
 } tacacs_packet_t;
 
-extern fr_dict_attr_t const *attr_tacacs_accounting_flags;
-extern fr_dict_attr_t const *attr_tacacs_accounting_status;
-extern fr_dict_attr_t const *attr_tacacs_action;
-extern fr_dict_attr_t const *attr_tacacs_authentication_flags;
-extern fr_dict_attr_t const *attr_tacacs_authentication_method;
-extern fr_dict_attr_t const *attr_tacacs_authentication_service;
-extern fr_dict_attr_t const *attr_tacacs_authentication_status;
-extern fr_dict_attr_t const *attr_tacacs_authentication_type;
-extern fr_dict_attr_t const *attr_tacacs_authorization_status;
-extern fr_dict_attr_t const *attr_tacacs_client_port;
-extern fr_dict_attr_t const *attr_tacacs_data;
-extern fr_dict_attr_t const *attr_tacacs_packet_type;
-extern fr_dict_attr_t const *attr_tacacs_privilege_level;
-extern fr_dict_attr_t const *attr_tacacs_remote_address;
-extern fr_dict_attr_t const *attr_tacacs_sequence_number;
-extern fr_dict_attr_t const *attr_tacacs_server_message;
-extern fr_dict_attr_t const *attr_tacacs_session_id;
-extern fr_dict_attr_t const *attr_tacacs_user_message;
-extern fr_dict_attr_t const *attr_tacacs_user_name;
-extern fr_dict_attr_t const *attr_tacacs_version_minor;
-
 tacacs_type_t	tacacs_type(RADIUS_PACKET const * const packet);
 
 char const	*tacacs_lookup_packet_code(RADIUS_PACKET const * const packet);
@@ -265,3 +244,7 @@ int		tacacs_decode(RADIUS_PACKET * const packet);
 int		tacacs_encode(RADIUS_PACKET * const packet, char const * const secret);
 
 int		tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const original, char const * const secret);
+
+int		tacacs_init(char const *dict_dir);
+
+void		tacacs_free(void);
