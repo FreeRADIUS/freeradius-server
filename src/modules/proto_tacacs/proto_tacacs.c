@@ -614,7 +614,7 @@ static int tacacs_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 	return 0;
 }
 
-int mod_load(void)
+static int mod_load(void)
 {
 	if (tacacs_init(main_config.dict_dir) < 0) {
 		PERROR("Failed initialising tacacs");
@@ -624,7 +624,7 @@ int mod_load(void)
 	return 0;
 }
 
-void mod_unload(void)
+static void mod_unload(void)
 {
 	tacacs_free();
 }
