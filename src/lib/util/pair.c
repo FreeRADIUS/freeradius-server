@@ -2128,43 +2128,6 @@ void fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src)
 	VP_VERIFY(vp);
 }
 
-/** Reparent an allocated char buffer to a VALUE_PAIR reallocating the buffer to the correct size
- *
- * If len is larger than the current buffer, the additional space will be filled with '\0'
- *
- * @note vp->da must be of type FR_TYPE_STRING.
- *
- * @param[in,out] vp	to update
- * @param[in] src	buffer to steal.
- * @param[in] len	of data in buffer.
- */
-void fr_pair_value_strnsteal(VALUE_PAIR *vp, char *src, size_t len)
-{
-	char	*p;
-	size_t	buf_len;
-
-	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return;
-
-	fr_value_box_clear(&vp->data);
-
-	buf_len = talloc_array_length(src);
-	if (buf_len > (len + 1)) {
-		vp->vp_strvalue = talloc_realloc_size(vp, src, len + 1);
-	} else if (buf_len < (len + 1)) {
-		vp->vp_strvalue = p = talloc_realloc_size(vp, src, len + 1);
-		memset(p + (buf_len - 1), '\0', (len + 1) - (buf_len - 1));
-	} else {
-		vp->vp_strvalue = talloc_steal(vp, src);
-	}
-	vp->vp_length = len;
-	vp->vp_type = FR_TYPE_STRING;
-	talloc_set_type(vp->vp_ptr, char);
-
-	vp->type = VT_DATA;
-
-	VP_VERIFY(vp);
-}
-
 /** Copy data into an "string" data type.
  *
  * @note vp->da must be of type FR_TYPE_STRING.
@@ -2218,6 +2181,43 @@ void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
 	fr_value_box_clear(&vp->data);
 
 	vp->vp_strvalue = p;
+	vp->vp_length = len;
+	vp->vp_type = FR_TYPE_STRING;
+	talloc_set_type(vp->vp_ptr, char);
+
+	vp->type = VT_DATA;
+
+	VP_VERIFY(vp);
+}
+
+/** Reparent an allocated char buffer to a VALUE_PAIR reallocating the buffer to the correct size
+ *
+ * If len is larger than the current buffer, the additional space will be filled with '\0'
+ *
+ * @note vp->da must be of type FR_TYPE_STRING.
+ *
+ * @param[in,out] vp	to update
+ * @param[in] src	buffer to steal.
+ * @param[in] len	of data in buffer.
+ */
+void fr_pair_value_bstrnsteal(VALUE_PAIR *vp, char *src, size_t len)
+{
+	char	*p;
+	size_t	buf_len;
+
+	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return;
+
+	fr_value_box_clear(&vp->data);
+
+	buf_len = talloc_array_length(src);
+	if (buf_len > (len + 1)) {
+		vp->vp_strvalue = talloc_realloc_size(vp, src, len + 1);
+	} else if (buf_len < (len + 1)) {
+		vp->vp_strvalue = p = talloc_realloc_size(vp, src, len + 1);
+		memset(p + (buf_len - 1), '\0', (len + 1) - (buf_len - 1));
+	} else {
+		vp->vp_strvalue = talloc_steal(vp, src);
+	}
 	vp->vp_length = len;
 	vp->vp_type = FR_TYPE_STRING;
 	talloc_set_type(vp->vp_ptr, char);

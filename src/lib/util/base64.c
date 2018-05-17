@@ -184,10 +184,10 @@ char const fr_base64_sextet[0x100] = {
  *
  * Base64 encode IN array of size INLEN into OUT array of size OUTLEN.
  *
- * @param[out] out Where to write Base64 string.
- * @param[in] outlen size of buffer including NULL byte.
- * @param[in] in Data to encode.
- * @param[in] inlen Length of data to encode.
+ * @param[out] out	Where to write Base64 string.
+ * @param[in] outlen	size of buffer including NULL byte.
+ * @param[in] in	Data to encode.
+ * @param[in] inlen	Length of data to encode.
  * @return
  *	- Amount of data we wrote to the buffer.
  *	- -1 if output buffer was too small.
@@ -195,8 +195,10 @@ char const fr_base64_sextet[0x100] = {
 size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen)
 {
 	char *p = out;
+	size_t need = FR_BASE64_ENC_LENGTH(inlen) + 1;
 
-	if (outlen < (FR_BASE64_ENC_LENGTH(inlen) + 1)) {
+	if (outlen < need) {
+		fr_strerror_printf("Output buffer too small, exected %zu bytes, got %zu bytes", need, outlen);
 		*out = '\0';
 		return -1;
 	}

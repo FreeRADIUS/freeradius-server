@@ -779,7 +779,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			 *	output of the function to a box.
 			 */
 			MEM(value = fr_value_box_alloc_null(ctx));
-			fr_value_box_strsteal(value, value, NULL, str, false);
+			fr_value_box_bstrsteal(value, value, NULL, str, false);
 			fr_cursor_append(out, value);			/* Append the result of the expansion */
 			talloc_free(result_str);
 			xlat_debug_log_result(request, value);
@@ -982,7 +982,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			if (slen == 0) continue;
 
 			MEM(value = fr_value_box_alloc_null(ctx));
-			fr_value_box_strsteal(value, value, NULL, str, false);
+			fr_value_box_bstrsteal(value, value, NULL, str, false);
 			fr_cursor_append(out, value);
 			fr_cursor_next(out);
 
@@ -1031,7 +1031,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			 *	and box it.
 			 */
 			MEM(value = fr_value_box_alloc_null(ctx));
-			fr_value_box_strsteal(value, value, NULL, str, false);
+			fr_value_box_bstrsteal(value, value, NULL, str, false);
 			fr_cursor_append(out, value);
 		}
 			continue;
