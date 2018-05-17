@@ -61,6 +61,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
 	fr_dict_attr_t const *da = NULL;
+	VALUE_PAIR *vp;
 
 	REQUEST_VERIFY(request);
 	rad_assert(request->packet->code > 0);
@@ -104,6 +105,18 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		rad_assert(request->log.unlang_indent == 0);
 
+		if (!da) da = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCP_MESSAGE_TYPE);
+		rad_assert(da != NULL);
+
+		/*
+		 *	Allow the admin to explicitly set the reply
+		 *	type.
+		 */
+		vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, FR_DHCP_MESSAGE_TYPE, TAG_ANY);
+		if (vp) {
+			request->reply->code = vp->vp_uint8;
+		} else
+
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
@@ -121,9 +134,6 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			if (!request->reply->code) request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND;
 			break;
 		}
-
-		if (!da) da = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCP_MESSAGE_TYPE);
-		rad_assert(da != NULL);
 
 		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
