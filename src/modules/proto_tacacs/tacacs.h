@@ -231,26 +231,26 @@ typedef struct CC_HINT(__packed__) tacacs_packet {
 	};
 } tacacs_packet_t;
 
-fr_dict_attr_t const *attr_tacacs_accounting_flags;
-fr_dict_attr_t const *attr_tacacs_accounting_status;
-fr_dict_attr_t const *attr_tacacs_action;
-fr_dict_attr_t const *attr_tacacs_authentication_flags;
-fr_dict_attr_t const *attr_tacacs_authentication_method;
-fr_dict_attr_t const *attr_tacacs_authentication_service;
-fr_dict_attr_t const *attr_tacacs_authentication_status;
-fr_dict_attr_t const *attr_tacacs_authentication_type;
-fr_dict_attr_t const *attr_tacacs_authorization_status;
-fr_dict_attr_t const *attr_tacacs_client_port;
-fr_dict_attr_t const *attr_tacacs_data;
-fr_dict_attr_t const *attr_tacacs_packet_type;
-fr_dict_attr_t const *attr_tacacs_privilege_level;
-fr_dict_attr_t const *attr_tacacs_remote_address;
-fr_dict_attr_t const *attr_tacacs_sequence_number;
-fr_dict_attr_t const *attr_tacacs_server_message;
-fr_dict_attr_t const *attr_tacacs_session_id;
-fr_dict_attr_t const *attr_tacacs_user_message;
-fr_dict_attr_t const *attr_tacacs_user_name;
-fr_dict_attr_t const *attr_tacacs_version_minor;
+extern fr_dict_attr_t const *attr_tacacs_accounting_flags;
+extern fr_dict_attr_t const *attr_tacacs_accounting_status;
+extern fr_dict_attr_t const *attr_tacacs_action;
+extern fr_dict_attr_t const *attr_tacacs_authentication_flags;
+extern fr_dict_attr_t const *attr_tacacs_authentication_method;
+extern fr_dict_attr_t const *attr_tacacs_authentication_service;
+extern fr_dict_attr_t const *attr_tacacs_authentication_status;
+extern fr_dict_attr_t const *attr_tacacs_authentication_type;
+extern fr_dict_attr_t const *attr_tacacs_authorization_status;
+extern fr_dict_attr_t const *attr_tacacs_client_port;
+extern fr_dict_attr_t const *attr_tacacs_data;
+extern fr_dict_attr_t const *attr_tacacs_packet_type;
+extern fr_dict_attr_t const *attr_tacacs_privilege_level;
+extern fr_dict_attr_t const *attr_tacacs_remote_address;
+extern fr_dict_attr_t const *attr_tacacs_sequence_number;
+extern fr_dict_attr_t const *attr_tacacs_server_message;
+extern fr_dict_attr_t const *attr_tacacs_session_id;
+extern fr_dict_attr_t const *attr_tacacs_user_message;
+extern fr_dict_attr_t const *attr_tacacs_user_name;
+extern fr_dict_attr_t const *attr_tacacs_version_minor;
 
 tacacs_type_t	tacacs_type(RADIUS_PACKET const * const packet);
 
