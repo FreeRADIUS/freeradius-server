@@ -16,8 +16,8 @@
 
 /**
  * $Id$
- * @file proto_dhcpv4/proto_dhcpv4_all.c
- * @brief DHCPV4 processing.
+ * @file proto_dhcpv4/proto_dhcpv4_base.c
+ * @brief Base DORA, etc. DHCPV4 processing.
  *
  * @copyright 2018 The Freeradius server project.
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
@@ -211,9 +211,9 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 }
 
 
-extern fr_app_process_t proto_dhcpv4_all;
-fr_app_process_t proto_dhcpv4_all = {
+extern fr_app_process_t proto_dhcpv4_base;
+fr_app_process_t proto_dhcpv4_base = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "dhcpv4_all",
+	.name		= "dhcpv4_base",
 	.process	= mod_process,
 };

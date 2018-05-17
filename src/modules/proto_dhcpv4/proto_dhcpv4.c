@@ -132,13 +132,27 @@ static const CONF_PARSER priority_config[] = {
  */
 static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
+	static char const *type_lib_table[] = {
+		[FR_DHCP_DISCOVER]	= "base",
+		[FR_DHCP_OFFER]		= "base",
+		[FR_DHCP_REQUEST]	= "base",
+		[FR_DHCP_DECLINE]	= "base",
+		[FR_DHCP_ACK]		= "base",
+		[FR_DHCP_NAK]		= "base",
+		[FR_DHCP_RELEASE]	= "base",
+		[FR_DHCP_INFORM]	= "base",
+		[FR_DHCP_MAX]		= NULL,
+	};
+
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
 	proto_dhcpv4_t		*inst;
 	dl_instance_t		*parent_inst;
+	char const		*name = NULL;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
+	size_t			i;
 
 	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
@@ -161,7 +175,20 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	}
 
 	if (!priorities[code]) {
-		cf_log_err(ci, "Cannot listen for 'type = %s'.  The packet MUST be a request.", type_str);
+		cf_log_err(ci, "Cannot listen for unsupported 'type = %s'", type_str);
+		return -1;
+	}
+
+	for (i = 0; i < (sizeof(type_lib_table) / sizeof(*type_lib_table)); i++) {
+		name = type_lib_table[i];
+		if (name && (strcmp(name, type_str) == 0)) {
+			type_enum = fr_dict_enum_by_value(attr_dhcpv4_message_type, fr_box_uint32(i));
+			break;
+		}
+	}
+
+	if (!name || !type_enum) {
+		cf_log_err(ci, "Cannot listen for unsupported 'type = %s'", type_str);
 		return -1;
 	}
 
@@ -188,7 +215,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
 	 */
-	return dl_instance(ctx, out, listen_cs,	parent_inst, "all", DL_TYPE_SUBMODULE);
+	return dl_instance(ctx, out, listen_cs,	parent_inst, name, DL_TYPE_SUBMODULE);
 }
 
 /** Wrapper around dl_instance
