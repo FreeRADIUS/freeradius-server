@@ -1353,7 +1353,7 @@ static xlat_action_t xlat_base64(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	rad_assert(elen <= alen);
+	rad_assert((size_t)elen <= alen);
 
 	if (fr_value_box_bstrsnteal(vb, vb, NULL, &buff, elen, false) < 0) {
 		RPEDEBUG("Failed assigning encoded data buffer to box");
