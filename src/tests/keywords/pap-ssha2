@@ -50,7 +50,7 @@ update {
 
 # To Base64
 update {
-	control:Tmp-String-1 := "%{base64:&control:Tmp-Octets-0}"
+	control:Tmp-String-1 := "%{base64:%{&control:Tmp-Octets-0}}"
 }
 
 update {
@@ -83,11 +83,11 @@ update {
 
 # To Base64
 update {
-	control:Tmp-String-1 := "{ssha512}%{base64:&control:Tmp-Octets-0}"
+	control:Tmp-String-1 := "{ssha512}%{base64:%{control:Tmp-Octets-0}}"
 }
 
 update {
-	control:Password-With-Header += "%{base64:&control:Tmp-String-1}"
+	control:Password-With-Header += "%{base64:%{&control:Tmp-String-1}}"
 }
 
 pap.authorize

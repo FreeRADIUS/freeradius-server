@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/base64.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/sha1.h>
+#include <freeradius-devel/value.h>
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>
 #endif
@@ -1323,33 +1324,46 @@ static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
  *
  * Example: "%{base64:foo}" == "Zm9v"
  */
-static ssize_t base64_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+static xlat_action_t xlat_base64(TALLOC_CTX *ctx, fr_cursor_t *out,
+				 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				 fr_value_box_t **in)
 {
-	size_t		inlen;
-	uint8_t		*p;
-	TALLOC_CTX	*tmp_ctx = NULL;
-	ssize_t		ret;
-
-	VALUE_FROM_FMT(tmp_ctx, p, inlen, request, fmt);
-
+	size_t		alen;
+	ssize_t		elen;
+	char		*buff;
+	fr_value_box_t	*vb;
 	/*
-	 *  We can accurately calculate the length of the output string
-	 *  if it's larger than outlen, the output would be useless so abort.
+	 *	If there's no input, there's no output
 	 */
-	if ((FR_BASE64_ENC_LENGTH(inlen) + 1) > outlen) {
-		REDEBUG("xlat failed");
+	if (!in) return XLAT_ACTION_DONE;
 
-		talloc_free(tmp_ctx);
-
-		return -1;
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
 	}
 
-	ret = fr_base64_encode(*out, outlen, p, inlen);
-	talloc_free(tmp_ctx);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	alen = FR_BASE64_ENC_LENGTH((*in)->vb_length);
+	MEM(buff = talloc_array(ctx, char, alen + 1));
 
-	return ret;
+	elen = fr_base64_encode(buff, alen + 1, (*in)->vb_octets, (*in)->vb_length);
+	if (elen < 0) {
+		RPEDEBUG("Base64 encoding failed");
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	rad_assert(elen <= alen);
+
+	if (fr_value_box_bstrsnteal(vb, vb, NULL, &buff, elen, false) < 0) {
+		RPEDEBUG("Failed assigning encoded data buffer to box");
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Convert base64 to hex
@@ -2149,7 +2163,7 @@ static xlat_action_t xlat_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	buff = fr_value_box_list_asprint(result, *in, ",", '\0');
 	if (!buff) goto error;
 
-	fr_value_box_strsteal(result, result, NULL, buff, fr_value_box_list_tainted(*in));
+	fr_value_box_bstrsteal(result, result, NULL, buff, fr_value_box_list_tainted(*in));
 
 	fr_cursor_insert(out, result);
 
@@ -2463,7 +2477,7 @@ int xlat_init(void)
 	xlat_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "pairs", pairs_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
-	xlat_register(NULL, "base64", base64_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+
 	xlat_register(NULL, "base64tohex", base64_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	xlat_register(NULL, "explode", explode_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2477,6 +2491,7 @@ int xlat_init(void)
 	rad_assert(c != NULL);
 	c->internal = true;
 
+	xlat_async_register(NULL, "base64", xlat_base64, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "concat", xlat_concat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "bin", xlat_bin, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
