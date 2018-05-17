@@ -31,6 +31,30 @@
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/dhcpv4.h>
 
+static int reply_ok[FR_DHCP_INFORM + 1] = {
+	[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_DISCOVER]	= FR_DHCP_OFFER,
+	[FR_DHCP_OFFER]		= FR_DHCP_OFFER,
+	[FR_DHCP_REQUEST]	= FR_DHCP_ACK,
+	[FR_DHCP_DECLINE]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_ACK]		= FR_DHCP_ACK,
+	[FR_DHCP_NAK]		= FR_DHCP_NAK,
+	[FR_DHCP_RELEASE]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_INFORM]	= FR_DHCP_ACK,
+};
+
+static int reply_fail[FR_DHCP_INFORM + 1] = {
+	[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_DISCOVER]	= FR_DHCP_NAK,
+	[FR_DHCP_OFFER]		= FR_DHCP_NAK,
+	[FR_DHCP_REQUEST]	= FR_DHCP_NAK,
+	[FR_DHCP_DECLINE]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_ACK]		= FR_DHCP_NAK,
+	[FR_DHCP_NAK]		= FR_DHCP_NAK,
+	[FR_DHCP_RELEASE]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_INFORM]	= FR_DHCP_NAK,
+};
+
 static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 {
 	rlm_rcode_t rcode;
@@ -39,6 +63,8 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	fr_dict_attr_t const *da = NULL;
 
 	REQUEST_VERIFY(request);
+	rad_assert(request->packet->code > 0);
+	rad_assert(request->packet->code <= FR_DHCP_INFORM);
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
@@ -82,22 +108,17 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			if (request->packet->code == FR_DHCP_DISCOVER) {
-				request->reply->code = FR_DHCP_OFFER;
-
-			} else if (request->packet->code == FR_DHCP_REQUEST) {
-				request->reply->code = FR_DHCP_ACK;
-
-			} else {
-				request->reply->code = FR_DHCP_NAK;
-			}
+			request->reply->code = reply_ok[request->packet->code];
 			break;
 
 		default:
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_FAIL:
+			request->reply->code = reply_fail[request->packet->code];
+			break;
+
 		case RLM_MODULE_HANDLED:
-			request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND;
+			if (!request->reply->code) request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND;
 			break;
 		}
 
