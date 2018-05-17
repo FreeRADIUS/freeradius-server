@@ -74,7 +74,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		request->component = "dhcpv4";
 
-		da = fr_dict_attr_by_num(NULL, 0, FR_DHCP_MESSAGE_TYPE);
+		da = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCP_MESSAGE_TYPE);
 		rad_assert(da != NULL);
 		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->packet->code));
 		if (!dv) {
@@ -122,7 +122,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			break;
 		}
 
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_DHCP_MESSAGE_TYPE);
+		if (!da) da = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCP_MESSAGE_TYPE);
 		rad_assert(da != NULL);
 
 		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
@@ -161,7 +161,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			 *	the NAK section.
 			 */
 			if (request->reply->code != FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND) {
-				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_DHCP_MESSAGE_TYPE);
+				if (!da) da = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCP_MESSAGE_TYPE);
 				rad_assert(da != NULL);
 
 				dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
