@@ -498,8 +498,10 @@ int		fr_value_box_append_bstr(fr_value_box_t *dst,
 
 int		fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					   char const *src, bool tainted);
-int		fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				      char *src, bool tainted);
+int		fr_value_box_bstrsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				       char *src, bool tainted);
+int		fr_value_box_bstrsnteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				        char **src, size_t inlen, bool tainted);
 int		fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					    char const *src, bool tainted);
 int		fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,

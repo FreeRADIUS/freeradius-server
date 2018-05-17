@@ -270,9 +270,9 @@ int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t len);
 void		fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t len);
 void		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src);
-void		fr_pair_value_strnsteal(VALUE_PAIR *vp, char *src, size_t len);
 void		fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src);
 void		fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len);
+void		fr_pair_value_bstrnsteal(VALUE_PAIR *vp, char *src, size_t len);
 void		fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
 /* Printing functions */

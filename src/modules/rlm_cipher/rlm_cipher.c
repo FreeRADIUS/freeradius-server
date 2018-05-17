@@ -680,7 +680,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_strsteal(vb, vb, NULL, plaintext, false);
+	fr_value_box_bstrsteal(vb, vb, NULL, plaintext, false);
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
