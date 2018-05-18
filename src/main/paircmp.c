@@ -330,6 +330,11 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	if (check->op == T_OP_CMP_TRUE)  return 0;
 	if (check->op == T_OP_CMP_FALSE) return 1;
 
+	if (!vp) {
+		REDEBUG("Non-Unary operations require two operands");
+		return -2;
+	}
+
 #ifdef HAVE_REGEX
 	if ((check->op == T_OP_REG_EQ) || (check->op == T_OP_REG_NE)) {
 		ssize_t		slen;
