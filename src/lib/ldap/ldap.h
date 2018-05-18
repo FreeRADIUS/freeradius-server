@@ -1,12 +1,8 @@
 #pragma once
 /**
  * $Id$
- * @file lib/ldap/libfreeradius-ldap.h
+ * @file lib/ldap/ldap.h
  * @brief Common utility functions for interacting with LDAP directories
- *
- * @note Do not rename to ldap.h.  This causes configure checks to break
- *	in stupid ways, where the configure script will use the local ldap.h
- *	file, instead of the one from libldap.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  *
