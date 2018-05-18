@@ -21,7 +21,7 @@
  * @copyright 2017 Network RADIUS SARL <info@networkradius.com>
  */
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/net.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/md5.h>

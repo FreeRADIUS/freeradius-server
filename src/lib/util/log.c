@@ -22,7 +22,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 
 /*
  *	Are we using glibc or a close relative?

@@ -22,7 +22,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 
 #ifdef WITH_DHCP
 #  include <freeradius-devel/dhcpv4/dhcpv4.h>

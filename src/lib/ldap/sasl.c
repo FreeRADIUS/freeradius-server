@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#include "libfreeradius-ldap.h"
+#include <freeradius-devel/ldap/ldap.h>
 #include <freeradius-devel/rad_assert.h>
 #include <sasl/sasl.h>
 

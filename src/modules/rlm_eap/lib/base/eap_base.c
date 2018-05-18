@@ -61,7 +61,7 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_eap - "
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/rad_assert.h>
 #include "eap_types.h"
 #include "eap_attrs.h"

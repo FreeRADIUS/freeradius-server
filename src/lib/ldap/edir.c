@@ -29,7 +29,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
-#include "libfreeradius-ldap.h"
+#include <freeradius-devel/ldap/ldap.h>
 
 /* NMAS error codes */
 #define NMAS_E_BASE	(-1600)

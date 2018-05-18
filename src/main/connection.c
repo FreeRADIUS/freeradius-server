@@ -34,7 +34,7 @@
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/connection.h>
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/radiusd.h>
 
 FR_NAME_NUMBER const fr_connection_states[] = {

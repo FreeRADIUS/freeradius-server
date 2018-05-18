@@ -27,11 +27,11 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/sha1.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/tls.h>
+#include <freeradius-devel/tls/tls.h>
 #include <freeradius-devel/io/test_point.h>
 
 #include "eap_types.h"

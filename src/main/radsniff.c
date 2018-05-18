@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define _LIBRADIUS 1
 #include <time.h>
 #include <math.h>
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/event.h>
 
 #include <freeradius-devel/radpaths.h>

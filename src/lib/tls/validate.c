@@ -30,6 +30,7 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
+#include "tls.h"
 #include "tls_attrs.h"
 
 /** Validates a certificate using custom logic

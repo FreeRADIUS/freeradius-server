@@ -134,7 +134,7 @@ typedef struct home_server {
 	uint32_t		coa_mrt;
 	uint32_t		coa_mrd;
 #endif
-#ifdef WITH_TLS
+#if 0
 	fr_tls_conf_t	*tls;
 #endif
 

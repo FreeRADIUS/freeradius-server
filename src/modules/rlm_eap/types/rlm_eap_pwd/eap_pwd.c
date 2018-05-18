@@ -34,10 +34,11 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-#include "eap_pwd.h"
-
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/tls/tls.h>
 #include <freeradius-devel/modules.h>
+
+#include "eap_pwd.h"
 
 static uint8_t allzero[SHA256_DIGEST_LENGTH] = { 0x00 };
 

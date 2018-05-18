@@ -28,7 +28,7 @@
 
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/radiusd.h>
-#include "libfreeradius-ldap.h"
+#include <freeradius-devel/ldap/ldap.h>
 
 #include <sasl/sasl.h>
 

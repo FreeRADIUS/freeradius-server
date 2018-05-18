@@ -26,7 +26,7 @@
  */
 RCSIDH(pcap_h, "$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/net.h>
 
 #include <sys/types.h>

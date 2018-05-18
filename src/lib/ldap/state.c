@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#include "libfreeradius-ldap.h"
+#include <freeradius-devel/ldap/ldap.h>
 
 #define STATE_TRANSITION(_new) \
 do { \

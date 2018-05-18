@@ -23,7 +23,7 @@
  */
 
 #ifdef HAVE_REGEX
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/regex.h>
 
 /*

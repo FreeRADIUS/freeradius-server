@@ -31,7 +31,7 @@
 #define LOG_PREFIX_ARGS handle_config->name
 
 #include <freeradius-devel/radiusd.h>
-#include "libfreeradius-ldap.h"
+#include <freeradius-devel/ldap/ldap.h>
 
 LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
 static int instance_count = 0;

@@ -27,7 +27,7 @@
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS (*pconn)->config->name
 
-#include "libfreeradius-ldap.h"
+#include <freeradius-devel/ldap/ldap.h>
 
 static FR_NAME_NUMBER const fr_ldap_directory_type_table[] = {
 	{ "Unknown",			FR_LDAP_DIRECTORY_UNKNOWN	},

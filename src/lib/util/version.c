@@ -22,7 +22,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 
 static uint64_t libmagic = RADIUSD_MAGIC_NUMBER;
 

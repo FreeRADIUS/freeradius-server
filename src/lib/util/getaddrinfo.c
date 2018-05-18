@@ -29,7 +29,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 
 #include <ctype.h>
 #include <sys/param.h>

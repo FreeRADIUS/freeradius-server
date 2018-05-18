@@ -23,7 +23,7 @@
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2017 The FreeRADIUS Server Project.
  */
-#include "libfreeradius-ldap.h"
+#include <freeradius-devel/ldap/ldap.h>
 
 #include <stdarg.h>
 #include <ctype.h>

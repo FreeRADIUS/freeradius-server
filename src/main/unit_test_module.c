@@ -31,9 +31,10 @@ RCSID("$Id$")
 #include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/tls/tls.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #include <ctype.h>

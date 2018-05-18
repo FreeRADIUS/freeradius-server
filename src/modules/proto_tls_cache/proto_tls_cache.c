@@ -25,6 +25,7 @@
 #include <freeradius-devel/unlang.h>
 #include <freeradius-devel/dl.h>
 #include <freeradius-devel/io/application.h>
+#include <freeradius-devel/tls/tls.h>
 
 /** Compile various unlang sections
  *

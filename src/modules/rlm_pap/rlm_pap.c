@@ -26,15 +26,16 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
+#include <ctype.h>
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/base64.h>
 #include <freeradius-devel/rad_assert.h>
 
-#include <ctype.h>
-
-#include "../../include/md5.h"
-#include "../../include/sha1.h"
+#include <freeradius-devel/md5.h>
+#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/tls/tls.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>

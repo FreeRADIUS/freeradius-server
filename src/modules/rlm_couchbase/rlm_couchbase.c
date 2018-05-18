@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_couchbase - "
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 

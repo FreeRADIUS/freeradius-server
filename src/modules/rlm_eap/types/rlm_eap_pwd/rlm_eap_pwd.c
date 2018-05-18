@@ -35,9 +35,20 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #define LOG_PREFIX "rlm_eap_pwd - "
 
-#include "rlm_eap_pwd.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/tls/tls.h>
+#include <freeradius-devel/modules.h>
 
 #include "eap_pwd.h"
+
+typedef struct rlm_eap_pwd {
+    BN_CTX *bnctx;
+
+    uint32_t	group;
+    uint32_t	fragment_size;
+    char const	*server_id;
+    char const	*virtual_server;
+} rlm_eap_pwd_t;
 
 #define MPPE_KEY_LEN    32
 #define MSK_EMSK_LEN    (2 * MPPE_KEY_LEN)

@@ -90,7 +90,7 @@ struct rad_listen {
 #endif
 	bool			nodup;
 
-#ifdef WITH_TLS
+#if 0
 	fr_tls_conf_t	*tls;
 #endif
 
@@ -170,7 +170,7 @@ typedef struct listen_socket_t {
 	RADIUS_PACKET  	 	*packet; /* for reading partial packets */
 #endif
 
-#ifdef WITH_TLS
+#if 0
 	tls_session_t		*tls_session;
 	REQUEST			*request; /* horrible hacks */
 	VALUE_PAIR		*cert_vps;

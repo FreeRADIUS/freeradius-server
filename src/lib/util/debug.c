@@ -34,7 +34,7 @@
 #include <sys/wait.h>
 
 #include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 
 #if defined(HAVE_MALLOPT) && defined(HAVE_MALLOC_H)
 #  include <malloc.h>

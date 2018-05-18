@@ -25,7 +25,7 @@
  * @copyright 2015 The FreeRADIUS server project
  */
 RCSID("$Id$")
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/cf_parse.h>
 #include <freeradius-devel/rad_assert.h>
 

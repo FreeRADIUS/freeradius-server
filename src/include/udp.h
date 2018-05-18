@@ -25,7 +25,7 @@
  */
 RCSIDH(udp_h, "$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 
 #ifdef WITH_UDPFROMTO
 #include <freeradius-devel/udpfromto.h>

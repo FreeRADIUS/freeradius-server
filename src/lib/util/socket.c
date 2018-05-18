@@ -24,7 +24,7 @@
  *
  * @copyright 2015 The FreeRADIUS project
  */
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/udpfromto.h>
 
 #include <fcntl.h>

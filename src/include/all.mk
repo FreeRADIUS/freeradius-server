@@ -12,7 +12,7 @@
 #  The rest of the headers are static.
 #
 
-HEADERS_DY	:= attributes.h features.h missing.h radpaths.h tls.h
+HEADERS_DY	:= attributes.h features.h missing.h radpaths.h
 
 HEADERS	= \
 	build.h \
@@ -20,7 +20,6 @@ HEADERS	= \
 	event.h \
 	hash.h \
 	heap.h \
-	libradius.h \
 	md4.h \
 	md5.h \
 	modules.h \
@@ -117,10 +116,6 @@ src/include/features.h: src/include/features-h src/include/autoconf.h
 #  of definitions in missing-h to build missing.h
 #
 src/include/missing.h: src/include/missing-h src/include/autoconf.sed
-	${Q}$(ECHO) HEADER $@
-	${Q}sed -f src/include/autoconf.sed < $< > $@
-
-src/include/tls.h: src/include/tls-h src/include/autoconf.sed
 	${Q}$(ECHO) HEADER $@
 	${Q}sed -f src/include/autoconf.sed < $< > $@
 

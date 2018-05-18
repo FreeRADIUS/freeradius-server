@@ -26,7 +26,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <pthread.h>
 
 /** Standard thread safe circular buffer

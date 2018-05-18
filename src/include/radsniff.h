@@ -29,7 +29,7 @@ RCSIDH(radsniff_h, "$Id$")
 
 #include <sys/types.h>
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/util.h>
 #include <freeradius-devel/pcap.h>
 #include <freeradius-devel/event.h>
 

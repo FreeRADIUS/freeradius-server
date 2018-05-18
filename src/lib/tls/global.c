@@ -34,6 +34,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
+#include "tls.h"
 #include "tls_attrs.h"
 
 fr_dict_t const *dict_freeradius;
