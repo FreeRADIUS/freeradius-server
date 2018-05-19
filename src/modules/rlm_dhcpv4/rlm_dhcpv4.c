@@ -16,10 +16,10 @@
 
 /**
  * $Id$
- * @file proto_dhcpv4/rlm_dhcpv4.c
- * @brief Will contain dhcp listener code.
+ * @file src/modules/rlm_dhcpv4.c
+ * @brief DHCP client and relay
  *
- * @copyright 2012  The FreeRADIUS server project
+ * @copyright 2012-2018 The FreeRADIUS server project
  */
 RCSID("$Id$")
 
