@@ -103,10 +103,14 @@ fr_dict_autoload_t rlm_rest_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_rest_http_status_code;
+fr_dict_attr_t const *attr_rest_http_body;
+fr_dict_attr_t const *attr_rest_http_header;
+fr_dict_attr_t const *attr_rest_http_status_code;
 
 extern fr_dict_attr_autoload_t rlm_rest_dict_attr[];
 fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
+	{ .out = &attr_rest_http_body, .name = "REST-HTTP-Body", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_rest_http_header, .name = "REST-HTTP-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_rest_http_status_code, .name = "REST-HTTP-Status-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ NULL }
 };

@@ -265,6 +265,10 @@ typedef struct {
 	rlm_rest_handle_t		*handle;	//!< curl easy handle servicing our request.
 } rlm_rest_xlat_rctx_t;
 
+extern fr_dict_attr_t const *attr_rest_http_body;
+extern fr_dict_attr_t const *attr_rest_http_header;
+extern fr_dict_attr_t const *attr_rest_http_status_code;
+
 /*
  *	Function prototype for rest_read_wrapper. Matches CURL's
  *	CURLOPT_READFUNCTION prototype.

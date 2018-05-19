@@ -677,7 +677,8 @@ static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx)
 static int rest_decode_plain(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 			     REQUEST *request, UNUSED void *handle, char *raw, size_t rawlen)
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR		*vp;
+	rlm_rest_t const	*inst = instance;
 
 	/*
 	 *  Empty response?
@@ -687,10 +688,10 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_
 	/*
 	 *  Use rawlen to protect against overrun, and to cope with any binary data
 	 */
-	vp = pair_make_request("REST-HTTP-Body", NULL, T_OP_ADD);
+	MEM(pair_update_request(&vp, attr_rest_http_body) >= 0);
 	fr_pair_value_bstrncpy(vp, raw, rawlen);
 
-	RDEBUG2("Adding &REST-HTTP-Body += \"%s\"", vp->vp_strvalue);
+	RDEBUG2("&%pP", vp);
 
 	return 1;
 }
@@ -1716,7 +1717,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	char const	*content_type;
 
 	VALUE_PAIR 	*header;
-	vp_cursor_t	headers;
+	fr_cursor_t	headers;
 
 	char buffer[512];
 
@@ -1769,9 +1770,11 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	fr_pair_cursor_init(&headers, &request->control);
-	while (fr_pair_cursor_next_by_num(&headers, 0, FR_REST_HTTP_HEADER, TAG_ANY)) {
-		header = fr_pair_cursor_remove(&headers);
+	for (header = fr_cursor_talloc_iter_init(&headers, &request->control,
+						 fr_pair_iter_next_by_da, attr_rest_http_header, VALUE_PAIR);
+	     header;
+	     header = fr_cursor_next(&headers)) {
+		header = fr_cursor_remove(&headers);
 		if (!strchr(header->vp_strvalue, ':')) {
 			RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
 				header->vp_strvalue);
@@ -1959,9 +1962,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 */
 	switch (type) {
 	case HTTP_BODY_NONE:
-		if (rest_request_config_body(inst, section, request, handle, NULL) < 0) {
-			return -1;
-		}
+		if (rest_request_config_body(inst, section, request, handle, NULL) < 0) return -1;
 
 		break;
 
@@ -1999,8 +2000,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(inst, section, request, handle,
-					     rest_encode_custom) < 0) {
+		if (rest_request_config_body(inst, section, request, handle, rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
 		}
