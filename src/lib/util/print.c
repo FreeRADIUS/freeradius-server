@@ -768,6 +768,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 					goto do_splice;
 				}
 
+				VP_VERIFY(in);
 				subst = fr_pair_asprint(NULL, in, '"');
 			}
 				goto do_splice;
