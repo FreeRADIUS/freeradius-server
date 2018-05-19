@@ -34,37 +34,67 @@
 #define USEC (1000000)
 #endif
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t proto_radius_auth_dict[];
+fr_dict_autoload_t proto_radius_auth_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_module_failure_message;
+static fr_dict_attr_t const *attr_module_success_message;
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_chap_password;
+static fr_dict_attr_t const *attr_service_type;
+static fr_dict_attr_t const *attr_state;
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t proto_radius_auth_dict_attr[];
+fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_service_type, .name = "Service-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
 /*
  *	Make sure user/pass are clean and then create an attribute
  *	which contains the log message.
  */
-static void auth_message(char const *msg, REQUEST *request, int goodpass)
+static void CC_HINT(format (printf, 3, 4)) auth_message(REQUEST *request, bool goodpass, char const *fmt, ...)
 {
-	int logit;
-	char const *extra_msg = NULL;
-	char clean_password[1024];
-	char clean_username[1024];
-	char buf[1024];
-	char extra[1024];
-	char *p;
-	VALUE_PAIR *username = NULL;
+	va_list		 ap;
+
+	bool		logit;
+	char const	*extra_msg = NULL;
+
+	char		password_buff[128];
+	char const	*password_str = NULL;
+
+	char		buf[1024];
+	char		extra[1024];
+	char		*p;
+	char		*msg;
+	VALUE_PAIR	*username = NULL;
 
 	/*
 	 * Get the correct username based on the configured value
 	 */
 	if (!log_stripped_names) {
-		username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+		username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	} else {
 		username = request->username;
-	}
-
-	/*
-	 *	Clean up the username
-	 */
-	if (!username) {
-		strcpy(clean_username, "<no User-Name attribute>");
-	} else {
-		fr_snprint(clean_username, sizeof(clean_username), username->vp_strvalue, username->vp_length, '\0');
 	}
 
 	/*
@@ -74,18 +104,16 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 		if (!request->password) {
 			VALUE_PAIR *auth_type;
 
-			auth_type = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
+			auth_type = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
 			if (auth_type) {
-				snprintf(clean_password, sizeof(clean_password), "<via Auth-Type = %s>",
+				snprintf(password_buff, sizeof(password_buff), "<via Auth-Type = %s>",
 					 fr_dict_enum_alias_by_value(auth_type->da, &auth_type->data));
+				password_str = password_buff;
 			} else {
-				strcpy(clean_password, "<no User-Password attribute>");
+				password_str = "<no User-Password attribute>";
 			}
-		} else if (fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY)) {
-			strcpy(clean_password, "<CHAP-Password>");
-		} else {
-			fr_snprint(clean_password, sizeof(clean_password),
-				  request->password->vp_strvalue, request->password->vp_length, '\0');
+		} else if (fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY)) {
+			password_str = "<CHAP-Password>";
 		}
 	}
 
@@ -100,20 +128,27 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 	if (extra_msg) {
 		extra[0] = ' ';
 		p = extra + 1;
-		if (xlat_eval(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL) < 0) {
-			return;
-		}
+		if (xlat_eval(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL) < 0) return;
 	} else {
 		*extra = '\0';
 	}
 
-	RAUTH("%s: [%s%s%s] (%s)%s",
-		       msg,
-		       clean_username,
-		       logit ? "/" : "",
-		       logit ? clean_password : "",
-		       auth_name(buf, sizeof(buf), request, 1),
-		       extra);
+	/*
+	 *	Expand the input message
+	 */
+	va_start(ap, fmt);
+	msg = fr_vasprintf(request, fmt, ap);
+	va_end(ap);
+
+	RAUTH("%s: [%pV%s%pV] (%s)%s",
+	      msg,
+	      username ? &username->data : fr_box_strvalue("<no User-Name attribute>"),
+	      logit ? "/" : "",
+	      logit ? (password_str ? fr_box_strvalue(password_str) : &request->password->data) : fr_box_strvalue(""),
+	      auth_name(buf, sizeof(buf), request, 1),
+	      extra);
+
+	talloc_free(msg);
 }
 
 static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
@@ -122,8 +157,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	rlm_rcode_t		rcode;
 	CONF_SECTION		*unlang;
 	fr_dict_enum_t const	*dv = NULL;
-	fr_dict_attr_t const 	*da = NULL;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 
 	REQUEST_VERIFY(request);
 
@@ -153,8 +187,8 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		/*
 		 *	Do various setups.
 		 */
-		request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
-		request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
+		request->username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+		request->password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 
 		/*
 		 *	Grab the VPS and data associated with the State attribute.
@@ -194,14 +228,11 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL) {
-				char msg[FR_MAX_STRING_LEN + 16];
-
-				snprintf(msg, sizeof(msg), "Invalid user (%s)",
-					 vp->vp_strvalue);
-				auth_message(msg, request, 0);
+			if ((vp = fr_pair_find_by_da(request->packet->vps,
+						     attr_module_failure_message, TAG_ANY)) != NULL) {
+				auth_message(request, false, "Invalid user (%pV)", &vp->data);
 			} else {
-				auth_message("Invalid user", request, 0);
+				auth_message(request, false, "Invalid user");
 			}
 
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -211,16 +242,17 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		/*
 		 *	Find Auth-Type, and complain if they have too many.
 		 */
-		fr_pair_cursor_init(&cursor, &request->control);
 		auth_type = NULL;
-		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_AUTH_TYPE, TAG_ANY)) != NULL) {
+		for (vp = fr_cursor_talloc_iter_init(&cursor, &request->control,
+						      fr_pair_iter_next_by_da, attr_auth_type, VALUE_PAIR);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
 			if (!auth_type) {
 				auth_type = vp;
 				continue;
 			}
 
-			RWDEBUG("Ignoring extra Auth-Type = %s",
-				fr_dict_enum_alias_by_value(auth_type->da, &vp->data));
+			RWDEBUG("Ignoring extra %pP", vp);
 		}
 
 		/*
@@ -234,9 +266,9 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			 *	the "recv Access-Request" section
 			 *	should have returned reject.
 			 */
-			vp = fr_pair_find_by_num(request->packet->vps, 0, FR_SERVICE_TYPE, TAG_ANY);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_service_type, TAG_ANY);
 			if (vp && (vp->vp_uint32 == FR_SERVICE_TYPE_VALUE_AUTHORIZE_ONLY)) {
-				RDEBUG("Skipping authenticate as we have found Service-Type = Authorize-Only");
+				RDEBUG("Skipping authenticate as we have found %pP", vp);
 				request->reply->code = FR_CODE_ACCESS_ACCEPT;
 				goto setup_send;
 			}
@@ -244,12 +276,11 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			/*
 			 *	Allow for over-ride of reply code.
 			 */
-			vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
+			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 			if (vp) {
 				request->reply->code = vp->vp_uint32;
 				goto setup_send;
 			}
-
 
 			REDEBUG2("No Auth-Type available: rejecting the user.");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -260,13 +291,13 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 *	Handle hard-coded Accept and Reject.
 		 */
 		if (auth_type->vp_uint32 == FR_AUTH_TYPE_ACCEPT) {
-			RDEBUG2("Auth-Type = Accept, allowing user");
+			RDEBUG2("%pP, allowing user", auth_type);
 			request->reply->code = FR_CODE_ACCESS_ACCEPT;
 			goto setup_send;
 		}
 
 		if (auth_type->vp_uint32 == FR_AUTH_TYPE_REJECT) {
-			RDEBUG2("Auth-Type = Reject, rejecting user");
+			RDEBUG2("%pP, rejecting user", auth_type);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
@@ -322,14 +353,11 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			RDEBUG2("Failed to authenticate the user");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 
-			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL){
-				char msg[FR_MAX_STRING_LEN+19];
-
-				snprintf(msg, sizeof(msg), "Login incorrect (%s)",
-					 vp->vp_strvalue);
-				auth_message(msg, request, 0);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_module_failure_message, TAG_ANY);
+			if (vp) {
+				auth_message(request, false, "Login incorrect (%pV)", &vp->data);
 			} else {
-				auth_message("Login incorrect", request, 0);
+				auth_message(request, false, "Login incorrect");
 			}
 
 			/*
@@ -338,7 +366,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			if (request->password) {
 				VP_VERIFY(request->password);
 
-				if ((rad_debug_lvl > 1) && (request->password->da->attr == FR_USER_PASSWORD)) {
+				if ((rad_debug_lvl > 1) && (request->password->da == attr_user_password)) {
 					uint8_t const *p;
 
 					p = (uint8_t const *) request->password->vp_strvalue;
@@ -347,8 +375,9 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 
 						size = fr_utf8_char(p, -1);
 						if (!size) {
-							RWDEBUG("Unprintable characters in the password.  Double-check the "
-								"shared secret on the server and the NAS!");
+							RWDEBUG("Unprintable characters in the password. "
+								"Double-check the shared secret on the server "
+								"and the NAS!");
 							break;
 						}
 						p += size;
@@ -368,27 +397,21 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
-			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_MODULE_SUCCESS_MESSAGE, TAG_ANY)) != NULL){
-				char msg[FR_MAX_STRING_LEN+12];
-
-				snprintf(msg, sizeof(msg), "Login OK (%s)",
-					 vp->vp_strvalue);
-				auth_message(msg, request, 1);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_module_success_message, TAG_ANY);
+			if (vp){
+				auth_message(request, true, "Login OK (%pV)", &vp->data);
 			} else {
-				auth_message("Login OK", request, 1);
+				auth_message(request, true, "Login OK");
 			}
 		}
 
 	setup_send:
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-		rad_assert(da != NULL);
-
 		if (!request->reply->code) {
-			vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
+			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 			if (vp) {
 				request->reply->code = vp->vp_uint32;
 			} else {
@@ -397,7 +420,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			}
 		}
 
-		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
+		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
 
@@ -411,16 +434,13 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 *	"send Access-Challenge" section.
 		 */
 		if ((request->reply->code == FR_CODE_ACCESS_CHALLENGE) &&
-		    !(vp = fr_pair_find_by_num(request->reply->vps, 0, FR_STATE, TAG_ANY))) {
+		    !(vp = fr_pair_find_by_da(request->reply->vps, attr_state, TAG_ANY))) {
 			uint8_t buffer[16];
 
 			fr_rand_buffer(buffer, sizeof(buffer));
 
-			vp = fr_pair_afrom_num(request->reply, 0, FR_STATE);
-			if (vp) {
-				fr_pair_value_memcpy(vp, buffer, sizeof(buffer));
-				fr_pair_add(&request->reply->vps, vp);
-			}
+			MEM(pair_update_reply(&vp, attr_state) >= 0);
+			fr_pair_value_memcpy(vp, buffer, sizeof(buffer));
 		}
 
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
@@ -455,15 +475,12 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			 *	the NAK section.
 			 */
 			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
-				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-				rad_assert(da != NULL);
-
-				dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
-				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'.", dv->alias);
+				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv->alias);
 
 				request->reply->code = FR_CODE_ACCESS_REJECT;
 
-				dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
@@ -540,20 +557,14 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *listen_cs)
 {
 	CONF_SECTION		*server_cs;
-	fr_dict_attr_t const	*da;
 
 	rad_assert(listen_cs);
 
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
-	da = fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE);
-	if (!da) {
-		cf_log_err(server_cs, "Failed finding dictionary definition for Auth-Type");
-		return -1;
-	}
 
-	if (virtual_server_section_attribute_define(server_cs, "authenticate", da) < 0) return -1;
+	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;
 }
