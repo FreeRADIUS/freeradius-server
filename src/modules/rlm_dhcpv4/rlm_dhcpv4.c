@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file src/modules/rlm_dhcpv4.c
+ * @file src/modules/rlm_dhcpv4/rlm_dhcpv4.c
  * @brief DHCP client and relay
  *
  * @copyright 2012-2018 The FreeRADIUS server project

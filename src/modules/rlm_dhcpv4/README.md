@@ -1,4 +1,4 @@
-# proto_dhcp
+# rlm_dhcpv4
 ## Metadata
 <dl>
   <dt>category</dt><dd>io</dd>
