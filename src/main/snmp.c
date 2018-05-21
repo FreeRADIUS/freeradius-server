@@ -432,9 +432,9 @@ static fr_snmp_map_t snmp_iso[] = {
 	SNMP_MAP_TERMINATOR
 };
 
-static ssize_t snmp_process(vp_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
 			    fr_dict_attr_t const *tlv_stack[], unsigned int depth,
-			    vp_cursor_t *cursor,
+			    fr_cursor_t *cursor,
 			    fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op);
 
 /** Perform a binary search to find a map matching a da
@@ -496,9 +496,9 @@ static void snmp_next_leaf(fr_dict_attr_t const *tlv_stack[], unsigned int depth
 	tlv_stack[i] = NULL;
 }
 
-static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process_index(fr_cursor_t *out, REQUEST *request,
 				  fr_dict_attr_t const *tlv_stack[], unsigned int depth,
-				  vp_cursor_t cursor,
+				  fr_cursor_t cursor,
 				  fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op,
 				  uint32_t index_num)
 {
@@ -539,8 +539,10 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 			return ret;		/* no more entries at this level, findNext at lower level */
 		}
 
-		ret = snmp_process(out, request, tlv_stack, depth + 1, &cursor, map->child,
-				   this_snmp_ctx, snmp_op);
+		ret = snmp_process(out, request,
+				   tlv_stack, depth + 1,
+				   &cursor,
+				   map->child, this_snmp_ctx, snmp_op);
 		TALLOC_FREE(tmp_ctx);
 
 		if (ret < 0) return ret;	/* error */
@@ -577,7 +579,7 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 		if (!vp) return 0;
 
 		vp->vp_uint32 = i;
-		fr_pair_cursor_prepend(out, vp);
+		fr_cursor_prepend(out, vp);
 
 		return 0;			/* done */
 	}
@@ -587,9 +589,9 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 	return -(depth);
 }
 
-static ssize_t snmp_process_index_attr(vp_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process_index_attr(fr_cursor_t *out, REQUEST *request,
 				       fr_dict_attr_t const *tlv_stack[], unsigned int depth,
-				       vp_cursor_t *cursor,
+				       fr_cursor_t *cursor,
 				       fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
 	VALUE_PAIR	*next;
@@ -625,25 +627,30 @@ static ssize_t snmp_process_index_attr(vp_cursor_t *out, REQUEST *request,
 	/*
 	 *	Get the index from the index attribute's value.
 	 */
-	vp = fr_pair_cursor_current(cursor);
+	vp = fr_cursor_current(cursor);
 	index_num = vp->vp_uint32;
 
 	/*
 	 *	Advance the cursor to the next index attribute
 	 *	if it is an index attribute...
 	 */
-	next = fr_pair_cursor_next_peek(cursor);
+	next = fr_cursor_next_peek(cursor);
 	if (next && fr_dict_parent_common(vp->da, next->da, true)) {
 		fr_proto_tlv_stack_build(tlv_stack, next->da);
-		fr_pair_cursor_next_by_ancestor(cursor, vp->da, TAG_ANY);
+
+		while ((next = fr_cursor_next(cursor))) if (fr_dict_parent_common(vp->da, next->da, true)) break;
 	}
 
-	return snmp_process_index(out, request, tlv_stack, depth, *cursor, &map[1], snmp_ctx, snmp_op, index_num);
+	return snmp_process_index(out, request,
+				  tlv_stack, depth,
+				  *cursor,
+				  &map[1], snmp_ctx, snmp_op,
+				  index_num);
 }
 
-static ssize_t snmp_process_tlv(vp_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process_tlv(fr_cursor_t *out, REQUEST *request,
 				fr_dict_attr_t const *tlv_stack[], unsigned int depth,
-				vp_cursor_t *cursor,
+				fr_cursor_t *cursor,
 				fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
 	fr_snmp_map_t const	*map_p;
@@ -681,13 +688,18 @@ static ssize_t snmp_process_tlv(vp_cursor_t *out, REQUEST *request,
 	 *	fake index attributes
 	 */
 	if (map_p->index) {
-		return snmp_process_index(out, request, tlv_stack, depth, *cursor,
-					  map_p, snmp_ctx, snmp_op, tlv_stack[depth]->attr);
+		return snmp_process_index(out, request,
+					  tlv_stack, depth,
+					  *cursor,
+					  map_p, snmp_ctx, snmp_op,
+					  tlv_stack[depth]->attr);
 	}
 
 	for (;;) {
-		ret = snmp_process(out, request, tlv_stack, depth + 1, cursor, map_p->child,
-				   snmp_ctx, snmp_op);
+		ret = snmp_process(out, request,
+				   tlv_stack, depth + 1,
+				   cursor,
+				   map_p->child, snmp_ctx, snmp_op);
 		if (ret < 0) return ret;	/* error */
 		if (ret > 0) {			/* findNext */
 			if (snmp_op != FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) goto invalid;
@@ -698,9 +710,9 @@ static ssize_t snmp_process_tlv(vp_cursor_t *out, REQUEST *request,
 	}
 }
 
-static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 				 fr_dict_attr_t const *tlv_stack[], unsigned int depth,
-				 vp_cursor_t *cursor,
+				 fr_cursor_t *cursor,
 				 fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
 	VALUE_PAIR		*vp;
@@ -708,7 +720,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	vp = fr_pair_cursor_current(cursor);
+	vp = fr_cursor_current(cursor);
 
 	/*
 	 *	Return element in map that matches the da at this
@@ -737,8 +749,10 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 			 *	to a non-leaf map.
 			 */
 			if (map_p->type == FR_FREERADIUS_SNMP_TYPE_OBJECT) {
-				return snmp_process(out, request, tlv_stack, depth + 1,
-						    cursor, map_p->child, snmp_ctx, snmp_op);
+				return snmp_process(out, request,
+						    tlv_stack, depth + 1,
+						    cursor,
+						    map_p->child, snmp_ctx, snmp_op);
 			}
 		}
 		/* FALL-THROUGH */
@@ -775,12 +789,12 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		vp = fr_pair_afrom_da(request->reply, map_p->da);
 		if (!vp) return 0;
 		fr_value_box_steal(vp, &vp->data, &data);
-		fr_pair_cursor_append(out, vp);
+		fr_cursor_append(out, vp);
 
 		vp = fr_pair_afrom_da(request->reply, fr_snmp_type);
 		if (!vp) return 0;
 		vp->vp_uint32 = map_p->type;
-		fr_pair_cursor_append(out, vp);
+		fr_cursor_append(out, vp);
 	}
 		return 0;
 
@@ -792,11 +806,11 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
 			if (!vp) return 0;
 			vp->vp_uint32 = FR_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE;
-			fr_pair_cursor_append(out, vp);
+			fr_cursor_append(out, vp);
 			return 0;
 		}
 
-		vp = fr_pair_cursor_current(cursor);
+		vp = fr_cursor_current(cursor);
 		ret = map_p->set(map_p, snmp_ctx, &vp->data);
 		if (ret < 0) switch (-(ret)) {
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE:
@@ -808,7 +822,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 			if (!vp) break;
 
 			vp->vp_uint32 = -(ret);
-			fr_pair_cursor_append(out, vp);
+			fr_cursor_append(out, vp);
 			break;
 
 		default:
@@ -825,23 +839,23 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 
 /** Traverse a tree of SNMP maps
  *
- * @param[out] out Where to write response attributes.
- * @param[in] request The current request.
- * @param[in,out] tlv_stack we're traversing.
- * @param[in] depth we're currently at in the tlv_stack.
- * @param[in] cursor representing the current attribute we're processing.
- * @param[in] map matching the current depth in the tlv_stack.
- * @param[in] snmp_ctx allocated by the previous index traversal function.
- * @param[in] snmp_op we're performing.
+ * @param[out] out		Where to write response attributes.
+ * @param[in] request		The current request.
+ * @param[in,out] tlv_stack	we're traversing.
+ * @param[in] depth		we're currently at in the tlv_stack.
+ * @param[in] cursor		representing the current attribute we're processing.
+ * @param[in] map		matching the current depth in the tlv_stack.
+ * @param[in] snmp_ctx		allocated by the previous index traversal function.
+ * @param[in] snmp_op		we're performing.
  * @return
  *	- 0 on success.
  *	- 1 to signal caller that it should find the next OID at this level
  *	and recurse again.
  *	- <0 the depth at which an error occurred, as a negative integer.
  */
-static ssize_t snmp_process(vp_cursor_t *out, REQUEST *request,
+static ssize_t snmp_process(fr_cursor_t *out, REQUEST *request,
 			    fr_dict_attr_t const *tlv_stack[], unsigned int depth,
-			    vp_cursor_t *cursor,
+			    fr_cursor_t *cursor,
 			    fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
 	rad_assert(map);
@@ -865,7 +879,9 @@ static ssize_t snmp_process(vp_cursor_t *out, REQUEST *request,
 	 *	It's an index attribute, use the value of
 	 *	the index attribute to traverse the index.
 	 */
-	if (tlv_stack[depth]->attr == 0) return snmp_process_index_attr(out, request, tlv_stack, depth, cursor,
+	if (tlv_stack[depth]->attr == 0) return snmp_process_index_attr(out, request,
+									tlv_stack, depth,
+									cursor,
 									map, snmp_ctx, snmp_op);
 
 	/*
@@ -873,19 +889,24 @@ static ssize_t snmp_process(vp_cursor_t *out, REQUEST *request,
 	 *	matching the next deepest DA in the
 	 *	tlv_stack.
 	 */
-	if (tlv_stack[depth]->type == FR_TYPE_TLV) return snmp_process_tlv(out, request, tlv_stack, depth, cursor,
+	if (tlv_stack[depth]->type == FR_TYPE_TLV) return snmp_process_tlv(out, request,
+									   tlv_stack, depth,
+									   cursor,
 									   map, snmp_ctx, snmp_op);
 
 	/*
 	 *	Must be a leaf, call the appropriate get/set function
 	 *	and create attributes for the response.
 	 */
-	return snmp_process_leaf(out, request, tlv_stack, depth, cursor, map, snmp_ctx, snmp_op);
+	return snmp_process_leaf(out, request,
+				 tlv_stack, depth,
+				 cursor,
+				 map, snmp_ctx, snmp_op);
 }
 
 int fr_snmp_process(REQUEST *request)
 {
-	vp_cursor_t		request_cursor, op_cursor, out_cursor, reply_cursor;
+	fr_cursor_t		request_cursor, op_cursor, out_cursor, reply_cursor;
 	VALUE_PAIR		*head = NULL, *vp;
 
 	char			oid_str[FR_DICT_MAX_TLV_STACK * 4];	/* .<num>{1,3} */
@@ -897,10 +918,11 @@ int fr_snmp_process(REQUEST *request)
 
 	VALUE_PAIR		*op;
 
-	fr_pair_cursor_init(&request_cursor, &request->packet->vps);
-	fr_pair_cursor_init(&op_cursor, &request->packet->vps);
-	fr_pair_cursor_init(&reply_cursor, &request->reply->vps);
-	fr_pair_cursor_init(&out_cursor, &head);
+	fr_cursor_init(&request_cursor, &request->packet->vps);
+	fr_cursor_talloc_iter_init(&op_cursor, &request->packet->vps,
+				   fr_pair_iter_next_by_da, fr_snmp_op_attr, VALUE_PAIR);
+	fr_cursor_init(&reply_cursor, &request->reply->vps);
+	fr_cursor_init(&out_cursor, &head);
 
 	RDEBUG2("Processing SNMP stats request");
 
@@ -912,9 +934,9 @@ int fr_snmp_process(REQUEST *request)
 	 *	not allowed in the RADIUS protocol, so we
 	 *	encode the TLV as an octet type attribute
 	 */
-	for (vp = fr_pair_cursor_first(&request_cursor);
+	for (vp = fr_cursor_head(&request_cursor);
 	     vp;
-	     vp = fr_pair_cursor_next(&request_cursor)) {
+	     vp = fr_cursor_next(&request_cursor)) {
 		fr_dict_attr_t const *da;
 
 		if (!vp->da->flags.is_unknown) continue;
@@ -943,9 +965,11 @@ int fr_snmp_process(REQUEST *request)
 		}
 		vp->da = da;
 	}
-	fr_pair_cursor_first(&request_cursor);
 
-	while ((vp = fr_pair_cursor_next_by_ancestor(&request_cursor, fr_snmp_root, TAG_ANY))) {
+	for (vp = fr_cursor_talloc_iter_init(&request_cursor, &request->packet->vps,
+					     fr_pair_iter_next_by_ancestor, fr_snmp_root, VALUE_PAIR);
+	     vp;
+	     vp = fr_cursor_next(&request_cursor)) {
 		fr_proto_tlv_stack_build(tlv_stack, vp->da);
 
 		/*
@@ -955,7 +979,7 @@ int fr_snmp_process(REQUEST *request)
 		for (depth = 0; tlv_stack[depth]; depth++) if (fr_snmp_root == tlv_stack[depth]) break;
 
 		/*
-		 *	Any attribute returned by fr_pair_cursor_next_by_ancestor
+		 *	Any attribute returned by fr_cursor_next_by_ancestor
 		 *	should have the SNMP root attribute as an ancestor.
 		 */
 		rad_assert(tlv_stack[depth]);
@@ -964,11 +988,12 @@ int fr_snmp_process(REQUEST *request)
 		/*
 		 *	Operator attribute acts as a request delimiter
 		 */
-		op = fr_pair_cursor_next_by_da(&op_cursor, fr_snmp_op_attr, TAG_ANY);
+		op = fr_cursor_current(&op_cursor);
 		if (!op) {
 			ERROR("Missing operation (%s)", fr_snmp_op_attr->name);
 			return -1;
 		}
+		fr_cursor_next(&op_cursor);
 
 		switch (op->vp_uint32) {
 		case FR_FREERADIUS_SNMP_OPERATION_VALUE_PING:
@@ -985,8 +1010,10 @@ int fr_snmp_process(REQUEST *request)
 		/*
 		 *	Returns depth (as negative integer) at which the error occurred
 		 */
-		ret = snmp_process(&out_cursor, request, tlv_stack, depth,
-				   &request_cursor, snmp_iso, NULL, op->vp_uint32);
+		ret = snmp_process(&out_cursor, request,
+				   tlv_stack, depth,
+				   &request_cursor,
+				   snmp_iso, NULL, op->vp_uint32);
 		if (ret < 0) {
 			fr_pair_list_free(&head);
 
@@ -1006,7 +1033,8 @@ int fr_snmp_process(REQUEST *request)
 		}
 	}
 
-	fr_pair_cursor_merge(&reply_cursor, head);
+	fr_cursor_head(&out_cursor);
+	fr_cursor_merge(&reply_cursor, &out_cursor);
 
 	return 0;
 }
