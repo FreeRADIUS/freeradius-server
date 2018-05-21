@@ -942,8 +942,19 @@ int fr_ldap_global_init(void)
 		INFO("ldap - libldap vendor: %s, version: %i", info.ldapai_vendor_name,
 		     info.ldapai_vendor_version);
 
+		if (info.ldapai_extensions) {
+			char **p;
+
+			for (p = info.ldapai_extensions; *p != NULL; p++) {
+				INFO("ldap - extension: %s", *p);
+				ldap_memfree(*p);
+			}
+
+			ldap_memfree(info.ldapai_extensions);
+		}
+
 		ldap_memfree(info.ldapai_vendor_name);
-		ldap_memfree(info.ldapai_extensions);
+
 	} else {
 		DEBUG("ldap - Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
 		      "returned: %i", ldap_errno);
