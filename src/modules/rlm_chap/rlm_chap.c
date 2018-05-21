@@ -188,7 +188,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_REJECT;
 	}
 
-	RDEBUG("CHAP user \"%s\" authenticated successfully", request->username->vp_strvalue);
+	RDEBUG("CHAP user \"%pV\" authenticated successfully", &request->username->data);
 
 	return RLM_MODULE_OK;
 }

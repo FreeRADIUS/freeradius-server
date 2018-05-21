@@ -421,7 +421,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		 *	We check for "MD5-sess" and "MD5".
 		 *	Anything else is an error.
 		 */
-		REDEBUG("Unknown Digest-Algorithm \"%s\": Cannot perform Digest authentication", vp->vp_strvalue);
+		REDEBUG("%pP - Unknown Digest-Algorithm: Cannot perform Digest authentication", vp);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -479,7 +479,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 			a2_len += body->vp_length;
 
 		} else if (strcasecmp(qop->vp_strvalue, "auth") != 0) {
-			REDEBUG("Unknown Digest-QOP \"%s\": Cannot perform Digest authentication", qop->vp_strvalue);
+			REDEBUG("%pP - Unknown value: Cannot perform Digest authentication", qop);
 			return RLM_MODULE_INVALID;
 		}
 	}

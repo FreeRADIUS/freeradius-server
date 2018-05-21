@@ -329,7 +329,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	}
 
 	if (ret != RLM_MODULE_OK) {
-		RDEBUG("[%s]: Invalid password", request->username->vp_strvalue);
+		RDEBUG("Invalid password: %pV", &request->username->data);
 		return ret;
 	}
 

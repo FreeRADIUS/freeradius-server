@@ -1073,7 +1073,7 @@ int main(int argc, char *argv[])
 	unlang = cf_section_find(request->server_cs, "authenticate", auth_type);
 	talloc_free(auth_type);
 	if (!unlang) {
-		REDEBUG("Failed to find 'recv %s' section", auth_type);
+		REDEBUG("Failed to find 'recv %pV' section", &vp->data);
 		request->reply->code = FR_CODE_ACCESS_REJECT;
 		goto done;
 	}

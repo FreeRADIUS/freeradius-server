@@ -1422,13 +1422,8 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	}
 
 #ifndef NDEBUG
-	if (DEBUG_ENABLED2) {
-		char buffer[1024];
-
-			fr_pair_value_snprint(buffer, sizeof(buffer), vp, '"');
-			RDEBUG2("");
-			RDEBUG2("# looping with: Foreach-Variable-%d = %s", foreach->depth, buffer);
-		}
+	RDEBUG2("");
+	RDEBUG2("# looping with: Foreach-Variable-%d = %pV", foreach->depth, &vp->data);
 #endif
 
 	rad_assert(vp);

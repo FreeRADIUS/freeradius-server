@@ -797,7 +797,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
-				RDEBUG("Got tunneled identity of %s", t->username->vp_strvalue);
+				RDEBUG("Got tunneled identity of %pV", &t->username->data);
 			} else {
 				/*
 				 *	Don't reject the request outright,
@@ -867,7 +867,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
 
-			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);
+			RDEBUG("Tunneled authentication will be proxied to %pV", &vp->data);
 
 			/*
 			 *	Tell the original request that it's going

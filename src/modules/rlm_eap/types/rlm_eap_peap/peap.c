@@ -694,7 +694,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 		fr_pair_value_bstrncpy(t->username, data + 1, data_len - 1);
 
-		RDEBUG("Got inner identity '%s'", t->username->vp_strvalue);
+		RDEBUG("Got inner identity \"%pV\"", &t->username->data);
 		if (t->soh) {
 			t->status = PEAP_STATUS_WAIT_FOR_SOH_RESPONSE;
 			RDEBUG2("Requesting SoH from client");

@@ -591,7 +591,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 	rad_assert(inst->groupobj_base_dn);
 
-	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
+	RDEBUG("Searching for user in group \"%pV\"", &check->data);
 
 	if (check->vp_length == 0) {
 		REDEBUG("Cannot do comparison (group name is empty)");
@@ -682,7 +682,7 @@ finish:
 	if (conn) mod_conn_release(inst, request, conn);
 
 	if (!found) {
-		RDEBUG("User is not a member of \"%s\"", check->vp_strvalue);
+		RDEBUG("User is not a member of \"%pV\"", &check->data);
 
 		return 1;
 	}
@@ -770,7 +770,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		}
 	}
 
-	RDEBUG("Login attempt by \"%s\"", request->username->vp_strvalue);
+	RDEBUG("Login attempt by \"%pV\"", &request->username->data);
 
 	/*
 	 *	Get the DN by doing a search.

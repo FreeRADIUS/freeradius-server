@@ -677,7 +677,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
 
-			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);
+			RDEBUG("Tunneled authentication will be proxied to %pV", &vp->data);
 
 			/*
 			 *	Tell the original request that it's going to be proxied.

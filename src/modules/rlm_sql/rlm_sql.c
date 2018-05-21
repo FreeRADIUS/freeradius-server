@@ -780,7 +780,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	talloc_free(head);
 	fr_pool_connection_release(inst->pool, request, handle);
 
-	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s", check->vp_strvalue);
+	RDEBUG("sql_groupcmp finished: User is NOT a member of group %pV", &check->data);
 
 	return 1;
 }

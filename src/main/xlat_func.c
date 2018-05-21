@@ -342,24 +342,21 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 	     vp = fr_cursor_next(&cursor)) {
 		fr_dict_vendor_t const	*vendor;
 		FR_NAME_NUMBER const	*type;
-		char			*value;
 
-		value = fr_pair_value_asprint(vp, vp, '\'');
 		if (vp->da->flags.has_tag) {
-			RIDEBUG2("&%s:%s:%i %s %s",
+			RIDEBUG2("&%s:%s:%i %s %pV",
 				fr_int2str(pair_lists, vpt->tmpl_list, "<INVALID>"),
 				vp->da->name,
 				vp->tag,
 				fr_int2str(fr_tokens_table, vp->op, "<INVALID>"),
-				value);
+				&vp->data);
 		} else {
-			RIDEBUG2("&%s:%s %s %s",
+			RIDEBUG2("&%s:%s %s %pV",
 				fr_int2str(pair_lists, vpt->tmpl_list, "<INVALID>"),
 				vp->da->name,
 				fr_int2str(fr_tokens_table, vp->op, "<INVALID>"),
-				value);
+				&vp->data);
 		}
-		talloc_free(value);
 
 		if (!RDEBUG_ENABLED3) continue;
 
@@ -399,21 +396,16 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 				break;
 			}
 
-			dst = talloc_zero(vp, fr_value_box_t);
+			dst = fr_value_box_alloc_null(vp);
 			/* We expect some to fail */
 			if (fr_value_box_cast(dst, dst, type->number, NULL, &vp->data) < 0) {
 				goto next_type;
 			}
 
-			value = fr_value_box_asprint(dst, dst, '\'');
-			if (!value) goto next_type;
-
-			if ((pad = (11 - strlen(type->name))) < 0) {
-				pad = 0;
-			}
+			if ((pad = (11 - strlen(type->name))) < 0) pad = 0;
 
 			RINDENT();
-			RDEBUG2("as %s%*s: %s", type->name, pad, " ", value);
+			RDEBUG2("as %s%*s: %pV", type->name, pad, " ", dst);
 			REXDENT();
 
 		next_type:

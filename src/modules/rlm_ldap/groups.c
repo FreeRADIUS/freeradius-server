@@ -385,7 +385,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 		for (vp = fr_pair_cursor_first(&groups_cursor);
 		     vp;
 		     vp = fr_pair_cursor_next(&groups_cursor)) {
-			RDEBUG("&control:%s += \"%s\"", inst->cache_da->name, vp->vp_strvalue);
+			RDEBUG("&control:%s += \"%pV\"", inst->cache_da->name, &vp->data);
 		}
 	}
 
@@ -396,7 +396,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 		fr_pair_value_strcpy(vp, *dn_p);
 		fr_pair_cursor_append(&list_cursor, vp);
 
-		RDEBUG("&control:%s += \"%s\"", inst->cache_da->name, vp->vp_strvalue);
+		RDEBUG("&control:%s += \"%pV\"", inst->cache_da->name, &vp->data);
 		ldap_memfree(*dn_p);
 	}
 	REXDENT();
