@@ -804,9 +804,9 @@ finish:
 
 /** Check group membership attributes to see if a user is a member.
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request.
- * @param[in] check vp containing the group value (name or dn).
+ * @param[in] inst	rlm_ldap configuration.
+ * @param[in] request	Current request.
+ * @param[in] check	vp containing the group value (name or dn).
  *
  * @return One of the RLM_MODULE_* values.
  */
@@ -814,32 +814,29 @@ rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALU
 {
 	VALUE_PAIR	*vp;
 	int		ret;
-	vp_cursor_t	cursor;
-
-	fr_pair_cursor_init(&cursor, &request->control);
+	fr_cursor_t	cursor;
 
 	/*
 	 *	We return RLM_MODULE_INVALID here as an indication
 	 *	the caller should try a dynamic group lookup instead.
 	 */
-	vp = fr_pair_cursor_next_by_num(&cursor, fr_dict_vendor_num_by_da(inst->cache_da),
-					inst->cache_da->attr, TAG_ANY);
+	vp = fr_cursor_talloc_iter_init(&cursor, &request->control,
+					fr_pair_iter_next_by_da, inst->cache_da, VALUE_PAIR);
 	if (!vp) return RLM_MODULE_INVALID;
-	fr_pair_cursor_first(&cursor);
 
-	while ((vp = fr_pair_cursor_next_by_num(&cursor, fr_dict_vendor_num_by_da(inst->cache_da),
-						inst->cache_da->attr, TAG_ANY))) {
+	for (vp = fr_cursor_current(&cursor);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
 		ret = fr_pair_cmp_op(T_OP_CMP_EQ, vp, check);
 		if (ret == 1) {
 			RDEBUG2("User found. Matched cached membership");
 			return RLM_MODULE_OK;
 		}
 
-		if (ret < -1) {
-			return RLM_MODULE_FAIL;
-		}
+		if (ret < -1) return RLM_MODULE_FAIL;
 	}
 
 	RDEBUG2("Cached membership not found");
+
 	return RLM_MODULE_NOTFOUND;
 }

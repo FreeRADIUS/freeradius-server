@@ -233,14 +233,24 @@ fr_dict_autoload_t rlm_ldap_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_cleartext_password;
+fr_dict_attr_t const *attr_cleartext_password;
+fr_dict_attr_t const *attr_crypt_password;
+fr_dict_attr_t const *attr_ldap_userdn;
+fr_dict_attr_t const *attr_nt_password;
+fr_dict_attr_t const *attr_password_with_header;
 
-static fr_dict_attr_t const *attr_user_name;
+fr_dict_attr_t const *attr_user_password;
+fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_ldap_dict_attr[];
 fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
 	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ldap_userdn, .name = "LDAP-UserDN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_nt_password, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_password_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
@@ -706,8 +716,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	}
 
 	if (!request->password ||
-	    (request->password->da->attr != FR_USER_PASSWORD)) {
+	    (request->password->da != attr_user_password)) {
 		RWDEBUG("You have set \"Auth-Type := LDAP\" somewhere");
+		RWDEBUG("without checking if User-Password is present");
 		RWDEBUG("*********************************************");
 		RWDEBUG("* THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
 		RWDEBUG("* YOU ARE PREVENTING THE SERVER FROM WORKING");

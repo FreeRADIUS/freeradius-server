@@ -148,6 +148,15 @@ struct ldap_inst_s {
 	uint32_t	ldap_debug;			//!< Debug flag for the SDK.
 };
 
+extern fr_dict_attr_t const *attr_cleartext_password;
+extern fr_dict_attr_t const *attr_crypt_password;
+extern fr_dict_attr_t const *attr_ldap_userdn;
+extern fr_dict_attr_t const *attr_nt_password;
+extern fr_dict_attr_t const *attr_password_with_header;
+
+extern fr_dict_attr_t const *attr_user_password;
+extern fr_dict_attr_t const *attr_user_name;
+
 /*
  *	user.c - User lookup functions
  */

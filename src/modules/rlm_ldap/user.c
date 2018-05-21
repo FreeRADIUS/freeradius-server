@@ -86,9 +86,9 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 	 *	If the caller isn't looking for the result we can just return the current userdn value.
 	 */
 	if (!force) {
-		vp = fr_pair_find_by_num(request->control, 0, FR_LDAP_USERDN, TAG_ANY);
+		vp = fr_pair_find_by_da(request->control, attr_ldap_userdn, TAG_ANY);
 		if (vp) {
-			RDEBUG("Using user DN from request \"%s\"", vp->vp_strvalue);
+			RDEBUG("Using user DN from request \"%pV\"", &vp->data);
 			*rcode = RLM_MODULE_OK;
 			return vp->vp_strvalue;
 		}
@@ -199,11 +199,11 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 	 *	we pass the string back to libldap we must not alter it.
 	 */
 	RDEBUG("User object found at DN \"%s\"", dn);
-	vp = fr_pair_make(request, &request->control, "LDAP-UserDN", NULL, T_OP_EQ);
-	if (vp) {
-		fr_pair_value_strcpy(vp, dn);
-		*rcode = RLM_MODULE_OK;
-	}
+
+	MEM(pair_update_control(&vp, attr_ldap_userdn) >= 0);
+	fr_pair_value_strcpy(vp, dn);
+	*rcode = RLM_MODULE_OK;
+
 	ldap_memfree(dn);
 
 finish:
@@ -271,11 +271,11 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 	*/
 	if (!inst->expect_password || (rad_debug_lvl < L_DBG_LVL_2)) return;
 
-	if (!fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->control, 0, FR_NT_PASSWORD, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->control, 0, FR_USER_PASSWORD, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->control, 0, FR_PASSWORD_WITH_HEADER, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->control, 0, FR_CRYPT_PASSWORD, TAG_ANY)) {
+	if (!fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY) &&
+	    !fr_pair_find_by_da(request->control, attr_nt_password, TAG_ANY) &&
+	    !fr_pair_find_by_da(request->control, attr_user_password, TAG_ANY) &&
+	    !fr_pair_find_by_da(request->control, attr_password_with_header, TAG_ANY) &&
+	    !fr_pair_find_by_da(request->control, attr_crypt_password, TAG_ANY)) {
 		switch (conn->directory->type) {
 		case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
 			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
