@@ -1479,23 +1479,26 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		goto error;
 	}
 
-	inst->group_da = fr_dict_attr_by_name(NULL, group_attribute);
+	inst->group_da = fr_dict_attr_by_name(dict_freeradius, group_attribute);
 
 	/*
 	 *	Setup the cache attribute
 	 */
 	if (inst->cache_attribute) {
-		fr_dict_attr_flags_t flags;
+		fr_dict_attr_flags_t	flags;
+		fr_dict_t		*mutable;
+
+		memcpy(&mutable, &dict_freeradius, sizeof(mutable));
 
 		memset(&flags, 0, sizeof(flags));
-		if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), inst->cache_attribute, -1, FR_TYPE_STRING,
-				     &flags) < 0) {
+		if (fr_dict_attr_add(mutable, fr_dict_root(mutable),
+				     inst->cache_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
 			PERROR("Error creating cache attribute");
 		error:
 			return -1;
 
 		}
-		inst->cache_da = fr_dict_attr_by_name(NULL, inst->cache_attribute);
+		inst->cache_da = fr_dict_attr_by_name(dict_freeradius, inst->cache_attribute);
 	} else {
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}
