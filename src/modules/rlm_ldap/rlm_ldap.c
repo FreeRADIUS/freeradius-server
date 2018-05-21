@@ -1597,6 +1597,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 #endif
 
 	/*
+	 *	Initialise server with zero length string to
+	 *	make code below simpler.
+	 */
+	inst->handle_config.server = talloc_strdup(inst, "");
+
+	/*
 	 *	Now iterate over all the 'server' config items
 	 */
 	for (i = 0; i < talloc_array_length(inst->handle_config.server_str); i++) {
@@ -1712,7 +1718,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 					cf_log_err(conf, "Failed recombining URL components");
 					goto ldap_url_error;
 				}
-				inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "%s ", url);
+				inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
+										    "%s ", url);
 				free(url);
 			}
 #  else
@@ -1739,8 +1746,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			}
 
 			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "%s:%i ",
-							      ldap_url->lud_host ? ldap_url->lud_host : "localhost",
-							      ldap_url->lud_port);
+									    ldap_url->lud_host ? ldap_url->lud_host :
+									   			 "localhost",
+									    ldap_url->lud_port);
 #  endif
 			/*
 			 *	@todo We could set a few other top level
@@ -1792,7 +1800,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			}
 			if (port == 0) port = LDAP_PORT;
 
-			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "ldap://%.*s:%i ", (int) len, value, port);
+			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
+									    "ldap://%.*s:%i ",
+									    (int) len, value, port);
 #else
 			/*
 			 *	ldap_init takes port, which can be overridden by :port so
