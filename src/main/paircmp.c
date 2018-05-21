@@ -535,6 +535,8 @@ static int paircmp_func(REQUEST *request,
 {
 	paircmp_t *c;
 
+	VP_VERIFY(check);
+
 	/*
 	 *      Check for =* and !* and return appropriately
 	 */
@@ -661,9 +663,7 @@ int paircmp(REQUEST *request,
 		 *	Else we found it, but we were trying to not
 		 *	find it, so we failed.
 		 */
-		if (check_item->op == T_OP_CMP_FALSE) {
-			return -1;
-		}
+		if (check_item->op == T_OP_CMP_FALSE) return -1;
 
 		/*
 		 *	We've got to xlat the string before doing
@@ -674,9 +674,7 @@ int paircmp(REQUEST *request,
 		/*
 		 *	OK it is present now compare them.
 		 */
-		compare = paircmp_func(request, auth_item,
-						  check_item, check, reply_list);
-
+		compare = paircmp_func(request, auth_item, check_item, check, reply_list);
 		switch (check_item->op) {
 		case T_OP_EQ:
 		default:
