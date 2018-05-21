@@ -208,7 +208,7 @@ typedef struct {
 	REQUEST			*request;	//!< Current request.
 	read_state_t		state;		//!< Encoder state
 
-	vp_cursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
+	fr_cursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
 
 	size_t			chunk;		//!< Chunk size
 
@@ -264,6 +264,8 @@ typedef struct {
 	rlm_rest_section_t		section;	//!< Our mutated section config.
 	rlm_rest_handle_t		*handle;	//!< curl easy handle servicing our request.
 } rlm_rest_xlat_rctx_t;
+
+extern fr_dict_t const *dict_freeradius;
 
 extern fr_dict_attr_t const *attr_rest_http_body;
 extern fr_dict_attr_t const *attr_rest_http_header;

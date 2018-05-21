@@ -396,7 +396,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	if (ctx->state == READ_STATE_INIT) ctx->state = READ_STATE_ATTR_BEGIN;
 
 	while (freespace > 0) {
-		vp = fr_pair_cursor_current(&ctx->cursor);
+		vp = fr_cursor_current(&ctx->cursor);
 		if (!vp) {
 			ctx->state = READ_STATE_END;
 
@@ -467,7 +467,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		/*
 		 *  there are more attributes, insert a separator
 		 */
-		if (fr_pair_cursor_next(&ctx->cursor)) {
+		if (fr_cursor_next(&ctx->cursor)) {
 			if (freespace < 1) goto no_space;
 			*p++ = '&';
 			freespace--;
@@ -2028,7 +2028,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 
 	case HTTP_BODY_POST:
 		rest_request_init(request, &ctx->request);
-		fr_pair_cursor_init(&(ctx->request.cursor), &request->packet->vps);
+		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
 
 		if (rest_request_config_body(inst, section, request, handle,
 					     rest_encode_post) < 0) {
@@ -2057,7 +2057,7 @@ error_header:
 	return -1;
 }
 
-int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+int rest_response_certinfo(rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
 			   REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
@@ -2066,7 +2066,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 	int			i;
 	char		 	buffer[265];
 	char			*p , *q, *attr = buffer;
-	vp_cursor_t		cursor, list;
+	fr_cursor_t		cursor, list;
 	VALUE_PAIR		*cert_vps = NULL;
 
 	/*
@@ -2082,7 +2082,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 	} ptr;
 	ptr.to_info = NULL;
 
-	fr_pair_cursor_init(&list, &request->packet->vps);
+	fr_cursor_init(&list, &request->packet->vps);
 
 	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
 	if (ret != CURLE_OK) {
@@ -2098,12 +2098,13 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 		struct curl_slist *cert_attrs;
 
 		RDEBUG2("Processing certificate %i",i);
-		fr_pair_cursor_init(&cursor, &cert_vps);
+		fr_cursor_init(&cursor, &cert_vps);
 
 		for (cert_attrs = ptr.to_certinfo->certinfo[i];
 		     cert_attrs;
 		     cert_attrs = cert_attrs->next) {
-		     	VALUE_PAIR *vp;
+		     	VALUE_PAIR		*vp;
+		     	fr_dict_attr_t const	*da;
 
 		     	q = strchr(cert_attrs->data, ':');
 			if (!q) {
@@ -2112,17 +2113,18 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 			}
 
 			strlcpy(attr, cert_attrs->data, (q - cert_attrs->data) + 1);
-			for (p = attr; *p != '\0'; p++) {
-				if (*p == ' ') *p = '-';
-			}
+			for (p = attr; *p != '\0'; p++) if (*p == ' ') *p = '-';
 
-			vp = fr_pair_make(request->packet, NULL, buffer, q + 1, T_OP_ADD);
-			if (!vp) {
+			da = fr_dict_attr_by_name(dict_freeradius, buffer);
+			if (!da) {
 				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
 				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);
-			} else {
-				fr_pair_cursor_append(&cursor, vp);
+				continue;
 			}
+			MEM(vp = fr_pair_afrom_da(request->packet, da));
+			fr_pair_value_from_str(vp, q + 1, -1);
+
+			fr_cursor_append(&cursor, vp);
 		}
 
 		/*
@@ -2135,13 +2137,13 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 		 *	tls_session_pairs_from_x509_cert contains a
 		 *	reference to cert_vps.
 		 */
-		cert_vps = fr_pair_cursor_current(&cursor);
+		cert_vps = fr_cursor_current(&cursor);
 		if (cert_vps) {
 			/*
 			 *	Print out all the pairs we have so far
 			 */
 			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
-			fr_pair_cursor_merge(&list, cert_vps);
+			fr_cursor_merge(&list, &cursor);
 			cert_vps = NULL;
 		}
 	}
