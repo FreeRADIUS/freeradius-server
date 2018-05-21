@@ -516,6 +516,8 @@ do {\
 		ssize_t ret;
 		fr_value_box_t data;
 
+		memset(&data, 0, sizeof(data));
+
 		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
 			char *p;
 
