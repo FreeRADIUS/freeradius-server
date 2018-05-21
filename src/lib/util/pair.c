@@ -2727,6 +2727,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 	}
 
 	fr_dict_verify(file, line, vp->da);
+	if (vp->data.enumv) fr_dict_verify(file, line, vp->data.enumv);
 
 	if (vp->vp_ptr) switch (vp->vp_type) {
 	case FR_TYPE_OCTETS:
