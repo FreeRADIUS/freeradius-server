@@ -893,34 +893,31 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 
 	vp = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	if (!vp) {
-	       /*
-		*	NAS did not set the User-Name
-		*	attribute, so we set it here and
-		*	prepend it to the beginning of the
-		*	request vps so that autz's work
-		*	correctly
-		*/
-	       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
-	       vp = fr_pair_make(request->packet, &request->packet->vps,
-				 "User-Name", eap_session->identity, T_OP_EQ);
-	       if (!vp) {
-		       goto error_round;
-	       }
+		/*
+		 *	NAS did not set the User-Name
+		 *	attribute, so we set it here and
+		 *	prepend it to the beginning of the
+		 *	request vps so that autz's work
+		 *	correctly
+		 */
+		RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
+		MEM(pair_add_request(&vp, attr_user_name) >= 0);
+		fr_pair_value_bstrncpy(vp, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
 	} else {
-	       /*
-		*      A little more paranoia.  If the NAS
-		*      *did* set the User-Name, and it doesn't
-		*      match the identity, (i.e. If they
-		*      change their User-Name part way through
-		*      the EAP transaction), then reject the
-		*      request as the NAS is doing something
-		*      funny.
-		*/
-	       if (talloc_memcmp_bstr(eap_session->identity, vp->vp_strvalue) != 0) {
-		       REDEBUG("Identity from EAP Identity-Response \"%s\" does not match User-Name attribute \"%s\"",
-		       	       eap_session->identity, vp->vp_strvalue);
-		       goto error_round;
-	       }
+		/*
+		 *      A little more paranoia.  If the NAS
+		 *      *did* set the User-Name, and it doesn't
+		 *      match the identity, (i.e. If they
+		 *      change their User-Name part way through
+		 *      the EAP transaction), then reject the
+		 *      request as the NAS is doing something
+		 *      funny.
+		 */
+		if (talloc_memcmp_bstr(eap_session->identity, vp->vp_strvalue) != 0) {
+			REDEBUG("Identity from EAP Identity-Response \"%s\" does not match User-Name attribute \"%s\"",
+				eap_session->identity, vp->vp_strvalue);
+			goto error_round;
+		}
 	}
 
 	eap_session->this_round = eap_round_build(eap_session, eap_packet_p);
