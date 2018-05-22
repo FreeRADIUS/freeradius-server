@@ -732,7 +732,6 @@ static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *co
 		entry_dn = ldap_get_dn(conn->handle, msg);
 
 		MEM(pair_update_request(&vp, attr_ldap_sync_entry_dn) >= 0);
-		pair_make_request("LDAP-Sync-Entry-DN", entry_dn, T_OP_SET);
 		ldap_memfree(entry_dn);
 
 		MEM(pair_update_request(&vp, attr_ldap_sync_entry_uuid) >= 0);
