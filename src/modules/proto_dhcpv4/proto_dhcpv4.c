@@ -858,11 +858,29 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
+static int mod_load(void)
+{
+	if (fr_dhcpv4_init() < 0) {
+		PERROR("Failed initialising DHCP");
+		return -1;
+	}
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	fr_dhcpv4_free();
+}
+
 fr_app_t proto_dhcpv4 = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcpv4",
 	.config		= proto_dhcpv4_config,
 	.inst_size	= sizeof(proto_dhcpv4_t),
+
+	.load		= mod_load,
+	.unload		= mod_unload,
 
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
