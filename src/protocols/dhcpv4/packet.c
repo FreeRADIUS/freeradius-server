@@ -61,7 +61,7 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 				field = DHCP_FILE_FIELD;
 				continue;
 
-			} else if ((field == DHCP_FILE_FIELD) && (overload & DHCP_SNAME_FIELD)) {
+			} else if ((field == DHCP_FILE_FIELD || field == DHCP_OPTION_FIELD) && (overload & DHCP_SNAME_FIELD)) {
 				data = packet->sname;
 				where = 0;
 				size = sizeof(packet->sname);
@@ -90,7 +90,7 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 		if (data[0] == option) return data;
 
 		if (data[0] == 52) { /* overload sname and/or file */
-			overload = data[3];
+			overload = data[2];
 		}
 
 		where += data[1] + 2;
