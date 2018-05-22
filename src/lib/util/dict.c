@@ -4850,9 +4850,7 @@ static int dict_from_file(fr_dict_t *dict,
  * @param[out] out		Where to write a pointer to the new dictionary.
  *				Will free existing dictionary if files have
  *				changed and *out is not NULL.
- * @param[in] dir		to read dictionary files from.
  * @param[in] fn		file name to read.
- * @param[in] name		to use for the root attributes.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
