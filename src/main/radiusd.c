@@ -395,6 +395,11 @@ int main(int argc, char *argv[])
 	dl_init();
 
 	/*
+	 *  Read the configuration files, BEFORE doing anything else.
+	 */
+	if (main_config_init() < 0) exit(EXIT_FAILURE);
+
+	/*
 	 *	Initialise the top level dictionary hashes which hold
 	 *	the protocols.
 	 */
@@ -402,11 +407,6 @@ int main(int argc, char *argv[])
 		fr_perror("radiusd");
 		fr_exit(EXIT_FAILURE);
 	}
-
-	/*
-	 *  Read the configuration files, BEFORE doing anything else.
-	 */
-	if (main_config_init() < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
