@@ -177,6 +177,7 @@ $INCLUDE dictionary.compatible
 $INCLUDE dictionary.cosine
 $INCLUDE dictionary.dante
 $INCLUDE dictionary.dellemc
+$INCLUDE dictionary.dhcpv4
 $INCLUDE dictionary.dlink
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.dragonwave
