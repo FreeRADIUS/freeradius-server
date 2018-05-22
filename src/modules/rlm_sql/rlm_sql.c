@@ -831,12 +831,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 	 *	Add the Sql-Group attribute to the request list so we know
 	 *	which group we're retrieving attributes for
 	 */
-	sql_group = pair_make_request(inst->group_da->name, NULL, T_OP_EQ);
-	if (!sql_group) {
-		REDEBUG("Error creating %s attribute", inst->group_da->name);
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
+	MEM(pair_update_request(&sql_group, inst->group_da) >= 0);
 
 	entry = head;
 	do {
