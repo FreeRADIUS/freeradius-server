@@ -487,11 +487,11 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 			}
 			fr_ldap_util_normalise_dn(dn, dn);
 
-			MEM(vp = pair_make_config(inst->cache_da->name, NULL, T_OP_ADD));
+			MEM(pair_add_control(&vp, inst->cache_da) == 0);
 			fr_pair_value_strcpy(vp, dn);
 
 			RINDENT();
-			RDEBUG("&control:%s += \"%s\"", inst->cache_da->name, dn);
+			RDEBUG("&control:%pP", vp);
 			REXDENT();
 			ldap_memfree(dn);
 		}
@@ -502,12 +502,11 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 			values = ldap_get_values_len((*pconn)->handle, entry, inst->groupobj_name_attr);
 			if (!values) continue;
 
-			MEM(vp = pair_make_config(inst->cache_da->name, NULL, T_OP_ADD));
+			MEM(pair_add_control(&vp, inst->cache_da) == 0);
 			fr_pair_value_bstrncpy(vp, values[0]->bv_val, values[0]->bv_len);
 
 			RINDENT();
-			RDEBUG("&control:%s += \"%.*s\"", inst->cache_da->name,
-			       (int)values[0]->bv_len, values[0]->bv_val);
+			RDEBUG("&control:%pP", vp);
 			REXDENT();
 
 			ldap_value_free_len(values);

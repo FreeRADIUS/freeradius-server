@@ -190,14 +190,6 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 	}
 	fr_ldap_util_normalise_dn(dn, dn);
 
-	/*
-	 *	We can't use fr_pair_make here to copy the value into the
-	 *	attribute, as the dn must be copied into the attribute
-	 *	verbatim (without de-escaping).
-	 *
-	 *	Special chars are pre-escaped by libldap, and because
-	 *	we pass the string back to libldap we must not alter it.
-	 */
 	RDEBUG("User object found at DN \"%s\"", dn);
 
 	MEM(pair_update_control(&vp, attr_ldap_userdn) >= 0);
