@@ -1,5 +1,5 @@
 AC_PREREQ([2.53])
-AC_INIT(libfreeradius-ldap.c)
+AC_INIT(base.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[libfreeradius-ldap])
 

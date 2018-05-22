@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file lib/ldap/libfreeradius-ldap.c
+ * @file lib/ldap/base.c
  * @brief LDAP module library functions.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>

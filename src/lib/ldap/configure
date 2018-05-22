@@ -582,7 +582,7 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
-ac_unique_file="libfreeradius-ldap.c"
+ac_unique_file="base.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
