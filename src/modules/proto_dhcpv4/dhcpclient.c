@@ -669,6 +669,11 @@ int main(int argc, char **argv)
 	fr_strerror();	/* Clear the error buffer */
 
 	/*
+	 *	Initialise the DHCPv4 library
+	 */
+	fr_dhcpv4_init();
+
+	/*
 	 *	Ensure that dictionary.dhcp is loaded.
 	 */
 	da = fr_dict_attr_by_name(NULL, "DHCP-Message-Type");
@@ -788,7 +793,9 @@ int main(int argc, char **argv)
 		}
 		dhcp_packet_debug(reply, true);
 	}
-	talloc_free(dict);
+
+	fr_dhcpv4_free();
+
 	talloc_free(autofree);
 
 	return ret < 0 ? 1 : 0;
