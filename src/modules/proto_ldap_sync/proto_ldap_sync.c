@@ -1239,22 +1239,20 @@ static int proto_ldap_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTIO
 	return 0;
 }
 
-/** Setup dictionary attributes for the proto_ldap_sync module
- *
- * Sets enumv values for various dictionary values, from the name/number tables.
- * This ensures the dictionaries don't get out of sync with the code.
- */
-static int proto_ldap_bootstrap(UNUSED CONF_SECTION *a, UNUSED CONF_SECTION *b)
-{
-	fr_dict_enum_from_name_number(attr_ldap_sync_scope, fr_ldap_scope);
-	fr_dict_enum_from_name_number(attr_ldap_sync_entry_state, sync_state_table);
-
-	return 0;
-}
-
 static int proto_ldap_load(void)
 {
 	fr_ldap_global_init();
+
+	/*
+	 *	Setup dictionary attributes for the proto_ldap_sync module
+	 *
+	 *	Sets enumv values for various dictionary values,
+	 *	from the name/number tables.
+	 *	This ensures the dictionaries don't get out of
+	 *	sync with the code.
+	 */
+	fr_dict_enum_from_name_number(attr_ldap_sync_scope, fr_ldap_scope);
+	fr_dict_enum_from_name_number(attr_ldap_sync_entry_state, sync_state_table);
 
 	return 0;
 }
@@ -1271,7 +1269,6 @@ rad_protocol_t proto_ldap_sync = {
 	.inst_size	= sizeof(proto_ldap_inst_t),
 	.transports	= TRANSPORT_NONE,
 	.tls		= false,
-	.bootstrap	= proto_ldap_bootstrap,
 	.load		= proto_ldap_load,
 	.unload		= proto_ldap_unload,
 	.compile	= proto_ldap_listen_compile,
