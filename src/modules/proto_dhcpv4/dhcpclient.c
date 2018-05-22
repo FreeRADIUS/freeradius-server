@@ -93,6 +93,9 @@ static fr_dict_attr_t const *attr_packet_src_ip_address;
 static fr_dict_attr_t const *attr_packet_src_ipv6_address;
 static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_dhcp_message_type;
+static fr_dict_attr_t const *attr_dhcp_dhcp_server_identifier;
+static fr_dict_attr_t const *attr_dhcp_your_ip_address;
 
 extern fr_dict_attr_autoload_t dhcpclient_dict_attr[];
 fr_dict_attr_autoload_t dhcpclient_dict_attr[] = {
@@ -103,6 +106,9 @@ fr_dict_attr_autoload_t dhcpclient_dict_attr[] = {
 	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_dhcp_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
+	{ .out = &attr_dhcp_dhcp_server_identifier, .name = "DHCP-DHCP-Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_your_ip_address, .name = "DHCP-Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
@@ -179,38 +185,30 @@ static RADIUS_PACKET *request_init(char const *filename)
 		/*
 		 *	Allow to set packet type using DHCP-Message-Type
 		 */
-		if ((fr_dict_vendor_num_by_da(vp->da) == DHCP_MAGIC_VENDOR) && vp->da->attr == FR_DHCP_MESSAGE_TYPE) {
-			request->code = vp->vp_uint32;
-		} else if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
+	     	if (vp->da == attr_dhcp_message_type) {
+	     		request->code = vp->vp_uint8;
+
 		/*
 		 *	Allow it to set the packet type in
 		 *	the attributes read from the file.
 		 *	(this takes precedence over the command argument.)
 		 */
-		case FR_PACKET_TYPE:
-			request->code = vp->vp_uint32;
-			break;
+	     	} else if (vp->da == attr_packet_type) {
+	     		request->code = vp->vp_uint32;
 
-		case FR_PACKET_DST_PORT:
+		} else if (vp->da == attr_packet_dst_port) {
 			request->dst_port = vp->vp_uint16;
-			break;
 
-		case FR_PACKET_DST_IP_ADDRESS:
-		case FR_PACKET_DST_IPV6_ADDRESS:
+		} else if ((vp->da == attr_packet_dst_ip_address) ||
+			   (vp->da == attr_packet_dst_ipv6_address)) {
 			memcpy(&request->dst_ipaddr, &vp->vp_ip, sizeof(request->src_ipaddr));
-			break;
 
-		case FR_PACKET_SRC_PORT:
+		} else if (vp->da == attr_packet_src_port) {
 			request->src_port = vp->vp_uint16;
-			break;
 
-		case FR_PACKET_SRC_IP_ADDRESS:
-		case FR_PACKET_SRC_IPV6_ADDRESS:
+		} else if ((vp->da == attr_packet_src_ip_address) ||
+			   (vp->da == attr_packet_src_ipv6_address)) {
 			memcpy(&request->src_ipaddr, &vp->vp_ip, sizeof(request->src_ipaddr));
-			break;
-
-		default:
-			break;
 		} /* switch over the attribute */
 
 	} /* loop over the VP's we read in */
@@ -293,14 +291,14 @@ static RADIUS_PACKET *fr_dhcpv4_recv_raw_loop(int lsockfd,
 #endif
 					    RADIUS_PACKET *request_p)
 {
-	struct timeval tval;
-	RADIUS_PACKET *reply_p = NULL;
-	RADIUS_PACKET *cur_reply_p = NULL;
-	int nb_reply = 0;
-	int nb_offer = 0;
-	dc_offer_t *offer_list = NULL;
-	fd_set read_fd;
-	int retval;
+	struct timeval	tval;
+	RADIUS_PACKET	*reply_p = NULL;
+	RADIUS_PACKET	*cur_reply_p = NULL;
+	int		nb_reply = 0;
+	int		nb_offer = 0;
+	dc_offer_t	*offer_list = NULL;
+	fd_set		read_fd;
+	int		retval;
 
 	memcpy(&tval, &tv_timeout, sizeof(struct timeval));
 
@@ -350,11 +348,15 @@ static RADIUS_PACKET *fr_dhcpv4_recv_raw_loop(int lsockfd,
 			if (!reply_p) reply_p = cur_reply_p;
 
 			if (cur_reply_p->code == FR_DHCP_OFFER) {
-				VALUE_PAIR *vp1 = fr_pair_find_by_num(cur_reply_p->vps, DHCP_MAGIC_VENDOR, 54, TAG_ANY); /* DHCP-DHCP-Server-Identifier */
-				VALUE_PAIR *vp2 = fr_pair_find_by_num(cur_reply_p->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY); /* DHCP-Your-IP-address */
+				VALUE_PAIR *vp1 = fr_pair_find_by_da(cur_reply_p->vps,
+								     attr_dhcp_dhcp_server_identifier,
+								     TAG_ANY);
+				VALUE_PAIR *vp2 = fr_pair_find_by_da(cur_reply_p->vps,
+								     attr_dhcp_your_ip_address,
+								     TAG_ANY);
 
 				if (vp1 && vp2) {
-					nb_offer ++;
+					nb_offer++;
 					offer_list = talloc_realloc(request_p, offer_list, dc_offer_t, nb_offer);
 					offer_list[nb_offer - 1].server_addr = vp1->vp_ipv4addr;
 					offer_list[nb_offer - 1].offered_addr = vp2->vp_ipv4addr;
@@ -589,8 +591,6 @@ int main(int argc, char **argv)
 	char const		*raddb_dir = RADDBDIR;
 	char const		*dict_dir = DICTDIR;
 	char const		*filename = NULL;
-	fr_dict_attr_t const	*da;
-	fr_dict_t		*dict = NULL;
 
 	RADIUS_PACKET		*request = NULL;
 	RADIUS_PACKET		*reply = NULL;
@@ -659,14 +659,25 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
+	if (fr_dict_autoload(dhcpclient_dict) < 0) {
 		fr_perror("dhcpclient");
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
+	if (fr_dict_attr_autoload(dhcpclient_dict_attr) < 0) {
+		fr_perror("dhcpclient");
 		exit(EXIT_FAILURE);
+	}
+
+	{
+		fr_dict_t *mutable;
+
+		memcpy(&mutable, &dict_freeradius, sizeof(mutable));
+
+		if (fr_dict_read(mutable, raddb_dir, FR_DICTIONARY_FILE) == -1) {
+			fr_perror("dhcpclient");
+			exit(EXIT_FAILURE);
+		}
 	}
 	fr_strerror();	/* Clear the error buffer */
 
@@ -674,17 +685,6 @@ int main(int argc, char **argv)
 	 *	Initialise the DHCPv4 library
 	 */
 	fr_dhcpv4_init();
-
-	/*
-	 *	Ensure that dictionary.dhcp is loaded.
-	 */
-	da = fr_dict_attr_by_name(NULL, "DHCP-Message-Type");
-	if (!da) {
-		if (fr_dict_read(dict, dict_dir, "dictionary.dhcpv4") < 0) {
-			ERROR("Failed reading dictionary.dhcpv4");
-			exit(EXIT_FAILURE);
-		}
-	}
 
 	/*
 	 *	Resolve hostname.
@@ -797,6 +797,7 @@ int main(int argc, char **argv)
 	}
 
 	fr_dhcpv4_free();
+	fr_dict_autofree(dhcpclient_dict);
 
 	talloc_free(autofree);
 
