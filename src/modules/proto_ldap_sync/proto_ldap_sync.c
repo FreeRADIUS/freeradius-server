@@ -195,6 +195,36 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+
+extern fr_dict_autoload_t proto_ldap_sync_dict[];
+fr_dict_autoload_t proto_ldap_sync_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_ldap_sync_attr;
+static fr_dict_attr_t const *attr_ldap_sync_cookie;
+static fr_dict_attr_t const *attr_ldap_sync_dn;
+static fr_dict_attr_t const *attr_ldap_sync_entry_dn;
+static fr_dict_attr_t const *attr_ldap_sync_entry_state;
+static fr_dict_attr_t const *attr_ldap_sync_entry_uuid;
+static fr_dict_attr_t const *attr_ldap_sync_filter;
+static fr_dict_attr_t const *attr_ldap_sync_scope;
+
+extern fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[];
+fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
+	{ .out = &attr_ldap_sync_attr, .name = "LDAP-Sync-Attr", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ldap_sync_cookie, .name = "LDAP-Sync-Cookie", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ldap_sync_dn, .name = "LDAP-Sync-DN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ldap_sync_entry_dn, .name = "LDAP-Sync-Entry-DN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ldap_sync_entry_state, .name = "LDAP-Sync-Entry-State", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_ldap_sync_entry_uuid, .name = "LDAP-Sync-Entry-UUID", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ldap_sync_filter, .name = "LDAP-Sync-Filter", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ldap_sync_scope, .name = "LDAP-Sync-Scope", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 /** Add dict enumv from a FR_NAME_NUMBER table
  *
  * @param[in] da	to add enumv to.
@@ -494,15 +524,21 @@ static REQUEST *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t
  */
 static int proto_ldap_attributes_add(REQUEST *request, sync_config_t const *config)
 {
-	pair_make_request("LDAP-Sync-DN", config->base_dn, T_OP_SET);
-	rad_assert(config->base_dn);
+	VALUE_PAIR *vp;
 
-	if (config->filter) pair_make_request("LDAP-Sync-Filter", config->filter, T_OP_SET);
+	MEM(pair_add_request(&vp, attr_ldap_sync_dn) == 0);
+	fr_pair_value_strcpy(vp, config->base_dn);
+
+	if (config->filter) {
+		MEM(pair_update_request(&vp, attr_ldap_sync_filter) >= 0);
+		fr_pair_value_strcpy(vp, config->filter);
+	}
 	if (config->attrs) {
 		char const *attrs_p;
 
 		for (attrs_p = *config->attrs; *attrs_p; attrs_p++) {
-			pair_make_request("LDAP-Sync-Attr", attrs_p, T_OP_ADD);
+			MEM(pair_add_request(&vp, attr_ldap_sync_attr) == 0);
+			fr_pair_value_strcpy(vp, attrs_p);
 		}
 	}
 
@@ -643,7 +679,7 @@ static int _proto_ldap_cookie_store(UNUSED fr_ldap_connection_t *conn, sync_conf
 
 	proto_ldap_attributes_add(request, config);
 
-	vp = pair_make_request("LDAP-Sync-Cookie", NULL, T_OP_SET);
+	MEM(pair_update_request(&vp, attr_ldap_sync_cookie) >= 0);
 	fr_pair_value_memcpy(vp, cookie, talloc_array_length(cookie));
 
 	request->packet->code = LDAP_SYNC_CODE_COOKIE_STORE;
@@ -694,10 +730,12 @@ static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *co
 		VALUE_PAIR *vp;
 
 		entry_dn = ldap_get_dn(conn->handle, msg);
+
+		MEM(pair_update_request(&vp, attr_ldap_sync_entry_dn) >= 0);
 		pair_make_request("LDAP-Sync-Entry-DN", entry_dn, T_OP_SET);
 		ldap_memfree(entry_dn);
 
-		vp = pair_make_request("LDAP-Sync-Entry-UUID", NULL, T_OP_SET);
+		MEM(pair_update_request(&vp, attr_ldap_sync_entry_uuid) >= 0);
 		fr_pair_value_memcpy(vp, uuid, SYNC_UUID_LENGTH);
 	}
 
@@ -795,11 +833,9 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	{
-		fr_dict_attr_t const *da;
 		VALUE_PAIR *vp;
 
-		da = fr_dict_attr_by_name(NULL, "LDAP-Sync-Cookie");
-		vp = fr_pair_find_by_da(request->reply->vps, da, TAG_ANY);
+		vp = fr_pair_find_by_da(request->reply->vps, attr_ldap_sync_cookie, TAG_ANY);
 		if (!vp) {
 			if (config->allow_refresh) RDEBUG2("No &reply:Cookie attribute found.  All entries matching "
 							   "sync configuration will be returned");
@@ -1210,23 +1246,8 @@ static int proto_ldap_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTIO
  */
 static int proto_ldap_bootstrap(UNUSED CONF_SECTION *a, UNUSED CONF_SECTION *b)
 {
-	fr_dict_attr_t const *da;
-
-	da = fr_dict_attr_by_name(NULL, "LDAP-Sync-Scope");
-	if (!da) {
-		ERROR("LDAP-Sync-Scope does not exist");
-		return -1;
-	}
-
-	fr_dict_enum_from_name_number(da, fr_ldap_scope);
-
-	da = fr_dict_attr_by_name(NULL, "LDAP-Sync-Entry-State");
-	if (!da) {
-		ERROR("LDAP-Sync-Entry-State does not exist");
-		return -1;
-	}
-
-	fr_dict_enum_from_name_number(da, sync_state_table);
+	fr_dict_enum_from_name_number(attr_ldap_sync_scope, fr_ldap_scope);
+	fr_dict_enum_from_name_number(attr_ldap_sync_entry_state, sync_state_table);
 
 	return 0;
 }
