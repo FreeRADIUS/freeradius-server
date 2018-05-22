@@ -180,12 +180,15 @@ fr_dict_autoload_t rlm_sqlippool_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_pool_name;
+static fr_dict_attr_t const *attr_module_success_message;
 static fr_dict_attr_t const *attr_acct_status_type;
 
 extern fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
+	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_pool_name, .name = "Pool-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
 	{ NULL }
 };
 
@@ -445,19 +448,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	If we have something to log, then we log it.
  *	Otherwise we return the retcode as soon as possible
  */
-static int do_logging(REQUEST *request, char const *str, int rcode)
+static int do_logging(rlm_sqlippool_t *inst, REQUEST *request, char const *str, int rcode)
 {
-	char *expanded = NULL;
+	char		*expanded = NULL;
+	VALUE_PAIR	*vp;
 
 	if (!str || !*str) return rcode;
 
-	if (xlat_aeval(request, &expanded, request, str, NULL, NULL) < 0) {
-		return rcode;
-	}
+	if (xlat_aeval(request, &expanded, request, str, NULL, NULL) < 0) return rcode;
 
-	pair_make_config("Module-Success-Message", expanded, T_OP_SET);
-
-	talloc_free(expanded);
+	MEM(pair_add_request(&vp, attr_module_success_message) == 0);
+	fr_pair_value_strsteal(vp, expanded);
 
 	return rcode;
 }
@@ -481,13 +482,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	if (fr_pair_find_by_da(request->reply->vps, inst->framed_ip_address, TAG_ANY) != NULL) {
 		RDEBUG("Framed-IP-Address already exists");
 
-		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
+		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
 	if (fr_pair_find_by_da(request->control, attr_pool_name, TAG_ANY) == NULL) {
 		RDEBUG("No Pool-Name defined");
 
-		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);
+		return do_logging(inst, request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
 
 	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
@@ -554,7 +555,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 				 *	NOTFOUND
 				 */
 				RDEBUG("pool appears to be full");
-				return do_logging(request, inst->log_failed, RLM_MODULE_NOTFOUND);
+				return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
 
 			}
 
@@ -572,7 +573,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
 		RDEBUG("IP address could not be allocated");
-		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
+		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
 	/*
@@ -585,7 +586,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
 		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
+		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
 	RDEBUG("Allocated IP %s", allocation);
@@ -601,7 +602,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 	fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
-	return do_logging(request, inst->log_success, RLM_MODULE_OK);
+	return do_logging(inst, request, inst->log_success, RLM_MODULE_OK);
 }
 
 static int mod_accounting_start(rlm_sql_handle_t **handle,
@@ -630,7 +631,7 @@ static int mod_accounting_stop(rlm_sql_handle_t **handle,
 	DO(stop_clear);
 	DO(stop_commit);
 
-	return do_logging(request, inst->log_clear, RLM_MODULE_OK);
+	return do_logging(inst, request, inst->log_clear, RLM_MODULE_OK);
 }
 
 static int mod_accounting_on(rlm_sql_handle_t **handle,
