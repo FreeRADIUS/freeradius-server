@@ -1261,7 +1261,7 @@ static void usage(void)
 int main(int argc, char *argv[])
 {
 	int		c;
-	char const	*radius_dir = RADDBDIR;
+	char const	*raddb_dir = RADDBDIR;
 	char const	*dict_dir = DICTDIR;
 	int		*inst = &c;
 	CONF_SECTION	*cs, *features;
@@ -1286,7 +1286,7 @@ int main(int argc, char *argv[])
 
 	while ((c = getopt(argc, argv, "d:D:fxMh")) != EOF) switch (c) {
 		case 'd':
-			radius_dir = optarg;
+			raddb_dir = optarg;
 			break;
 
 		case 'D':
@@ -1335,13 +1335,18 @@ int main(int argc, char *argv[])
 		goto done;
 	}
 
-	if (fr_dict_from_file(autofree, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+		fr_perror("unit_test_attribute");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
 		fr_perror("unit_test_attribute");
 		ret = EXIT_FAILURE;
 		goto done;
 	}
 
-	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		ret = EXIT_FAILURE;
 		goto done;

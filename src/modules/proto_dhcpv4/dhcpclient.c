@@ -76,6 +76,34 @@ typedef struct dc_offer {
 	uint32_t offered_addr;
 } dc_offer_t;
 
+static fr_dict_t const *dict_freeradius;
+
+extern fr_dict_autoload_t dhcpclient_dict[];
+fr_dict_autoload_t dhcpclient_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_packet_dst_ip_address;
+static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
+static fr_dict_attr_t const *attr_packet_dst_port;
+static fr_dict_attr_t const *attr_packet_src_ip_address;
+static fr_dict_attr_t const *attr_packet_src_ipv6_address;
+static fr_dict_attr_t const *attr_packet_src_port;
+static fr_dict_attr_t const *attr_packet_type;
+
+extern fr_dict_attr_autoload_t dhcpclient_dict_attr[];
+fr_dict_attr_autoload_t dhcpclient_dict_attr[] = {
+	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 static const FR_NAME_NUMBER request_types[] = {
 	{ "discover", FR_DHCP_DISCOVER },
 	{ "request",  FR_DHCP_REQUEST },
@@ -210,7 +238,7 @@ static void print_hex(RADIUS_PACKET *packet)
 
 	p = packet->data;
 	for (i = 0; i < 14; i++) {
-		printf("%s = 0x", dhcp_header_names[i]);
+		printf("%s = 0x", (*dhcp_header_attrs[i])->name);
 		for (j = 0; j < dhcp_header_sizes[i]; j++) {
 			printf("%02x", p[j]);
 
@@ -556,7 +584,7 @@ int main(int argc, char **argv)
 	static fr_ipaddr_t	client_ipaddr;
 
 	int			c;
-	char const		*radius_dir = RADDBDIR;
+	char const		*raddb_dir = RADDBDIR;
 	char const		*dict_dir = DICTDIR;
 	char const		*filename = NULL;
 	fr_dict_attr_t const	*da;
@@ -580,7 +608,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			radius_dir = optarg;
+			raddb_dir = optarg;
 			break;
 
 		case 'f':
@@ -624,12 +652,17 @@ int main(int argc, char **argv)
 	tv_timeout.tv_sec = timeout;
 	tv_timeout.tv_usec = ((timeout - (float) tv_timeout.tv_sec) * USEC);
 
-	if (fr_dict_from_file(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_global_init(autofree, dict_dir) < 0) {
 		fr_perror("dhcpclient");
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
+		fr_perror("dhcpclient");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		exit(EXIT_FAILURE);
 	}

@@ -698,6 +698,7 @@ int main(int argc, char *argv[])
 	char			*auth_type;
 
 	TALLOC_CTX		*thread_ctx = talloc_init("thread_ctx");
+	TALLOC_CTX		*autofree = talloc_init("autofree");
 	fr_talloc_fault_setup();
 
 	/*
@@ -798,8 +799,6 @@ int main(int argc, char *argv[])
 	if (rad_debug_lvl) dependency_version_print();
 	fr_debug_lvl = rad_debug_lvl;
 
-	if (log_init(&default_log, false, main_config.dict_dir) < 0) exit(EXIT_FAILURE);
-
 	/*
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
@@ -810,7 +809,13 @@ int main(int argc, char *argv[])
 
 	dl_init();
 
-	if (fr_dict_autoload(main_config.dict_dir, unit_test_module_dict) < 0) {
+	if (fr_dict_global_init(autofree, main_config.dict_dir) < 0) {
+		fr_perror("%s", main_config.name);
+		rcode = EXIT_FAILURE;
+		goto finish;
+	}
+
+	if (fr_dict_autoload(unit_test_module_dict) < 0) {
 		fr_perror("%s", main_config.name);
 		rcode = EXIT_FAILURE;
 		goto finish;
@@ -821,11 +826,16 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
+	if (log_init(&default_log, false) < 0) {
+		rcode = EXIT_FAILURE;
+		goto finish;
+	}
+
 	/*
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_global_init(main_config.dict_dir) < 0) {
+	if (tls_global_init() < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
@@ -1189,6 +1199,11 @@ finish:
 	 *	Free the strerror buffer.
 	 */
 	fr_strerror_free();
+
+	/*
+	 *	Cleanup anything in the autofree ctx
+	 */
+	talloc_free(autofree);
 
 	return rcode;
 }

@@ -180,27 +180,28 @@ static void NEVER_RETURNS usage(int status)
  */
 int main(int argc, char **argv)
 {
-	CONF_SECTION *maincs, *cs;
-	FILE *fp;
-	struct radutmp rt;
-	char othername[256];
-	char nasname[1024];
-	char session_id[sizeof(rt.session_id)+1];
-	int hideshell = 0;
-	int showsid = 0;
-	int rawoutput = 0;
-	int radiusoutput = 0;	/* Radius attributes */
-	char const *portind;
-	int c;
-	unsigned int portno;
-	char buffer[2048];
-	char const *user = NULL;
-	int user_cmp = 0;
-	time_t now = 0;
-	uint32_t nas_port = ~0;
-	uint32_t nas_ip_address = INADDR_NONE;
-	int zap = 0;
-	fr_dict_t *dict = NULL;
+	CONF_SECTION		*maincs, *cs;
+	FILE			*fp;
+	struct			radutmp rt;
+	char			othername[256];
+	char			nasname[1024];
+	char			session_id[sizeof(rt.session_id)+1];
+	int			hideshell = 0;
+	int			showsid = 0;
+	int			rawoutput = 0;
+	int			radiusoutput = 0;	/* Radius attributes */
+	char const		*portind;
+	int			c;
+	unsigned int		portno;
+	char			buffer[2048];
+	char const		*user = NULL;
+	int			user_cmp = 0;
+	time_t			now = 0;
+	uint32_t		nas_port = ~0;
+	uint32_t		nas_ip_address = INADDR_NONE;
+	int			zap = 0;
+	fr_dict_t		*dict = NULL;
+	TALLOC_CTX		*autofree = talloc_init("autofree");
 
 	raddb_dir = RADIUS_DIR;
 
@@ -284,7 +285,12 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fr_dict_from_file(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+		fr_perror("radwho");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
 		fr_perror("radwho");
 		return 1;
 	}
@@ -537,7 +543,7 @@ int main(int argc, char **argv)
 		}
 	}
 	fclose(fp);
-	talloc_free(dict);
+	talloc_free(autofree);
 
 	return 0;
 }

@@ -1184,6 +1184,7 @@ int main(int argc, char **argv)
 	rc_request_t	*this;
 	int		force_af = AF_UNSPEC;
 	fr_dict_t	*dict = NULL;
+	TALLOC_CTX	*autofree = talloc_init("autofree");
 
 	/*
 	 *	It's easier having two sets of flags to set the
@@ -1373,7 +1374,12 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fr_dict_autoload(dict_dir, radclient_dict) < 0) {
+	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+		fr_perror("radclient");
+		return 1;
+	}
+
+	if (fr_dict_autoload(radclient_dict) < 0) {
 		fr_perror("radclient");
 		return 1;
 	}
@@ -1653,6 +1659,8 @@ int main(int argc, char **argv)
 	talloc_free(secret);
 
 	fr_dict_autofree(radclient_dict);
+
+	talloc_free(autofree);
 
 	if (do_summary) {
 		DEBUG("Packet summary:\n"

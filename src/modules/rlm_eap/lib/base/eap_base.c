@@ -442,7 +442,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
  */
 int eap_base_init(void)
 {
-	if (fr_dict_autoload(main_config.dict_dir, eap_base_dict) < 0) {
+	if (fr_dict_autoload(eap_base_dict) < 0) {
 		PERROR("Failed loading dictionary");
 		return -1;
 	}

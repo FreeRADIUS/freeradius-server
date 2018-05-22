@@ -1097,15 +1097,17 @@ static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
 
 static int dhcp_load(void)
 {
-	int ret;
-
-	ret = fr_dict_read(main_config.dict, main_config.dict_dir, "dictionary.dhcpv4");
 	if (fr_dhcpv4_init() < 0) {
 		PERROR("Failed initialising DHCP");
 		return -1;
 	}
 
 	return ret;
+}
+
+static void dhcp_unload(void)
+{
+	fr_dhcpv4_free();
 }
 
 
@@ -1118,6 +1120,7 @@ rad_protocol_t proto_dhcp = {
 	.tls		= false,
 
 	.load		= dhcp_load,
+	.unload		= dhcp_unload,
 	.compile	= dhcp_listen_compile,
 	.parse		= dhcp_socket_parse,
 	.open		= common_socket_open,

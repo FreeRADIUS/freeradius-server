@@ -274,7 +274,7 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
 	DEBUG("Loading dictionary %s", module->name);
 
 #if 0
-	if (fr_dict_autoload(main_config.dict_dir, (fr_dict_autoload_t const *)symbol) < 0) {
+	if (fr_dict_autoload((fr_dict_autoload_t const *)symbol) < 0) {
 		WARN("Failed loading dictionary: %s", fr_strerror());
 		return 0;
 	}
@@ -755,7 +755,7 @@ int main_config_init(void)
 	 *	the ones in raddb.
 	 */
 	DEBUG2("Including dictionary file \"%s/%s\"", main_config.dict_dir, FR_DICTIONARY_FILE);
-	if (fr_dict_from_file(NULL, &main_config.dict, main_config.dict_dir, FR_DICTIONARY_FILE, "radius") != 0) {
+	if (fr_dict_from_file(&main_config.dict, FR_DICTIONARY_FILE) != 0) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return -1;
 	}

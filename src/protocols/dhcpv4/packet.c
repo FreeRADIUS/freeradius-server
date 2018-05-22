@@ -121,7 +121,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	Decode the header.
 	 */
 	for (i = 0; i < 14; i++) {
-		vp = fr_pair_make(packet, NULL, dhcp_header_names[i], NULL, T_OP_EQ);
+		vp = fr_pair_afrom_da(packet, *dhcp_header_attrs[i]);
 		if (!vp) {
 			fr_strerror_printf_push("Cannot decode packet due to internal error");
 		error:

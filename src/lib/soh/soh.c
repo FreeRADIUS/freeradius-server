@@ -712,9 +712,9 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 	return 0;
 }
 
-int soh_init(char const *dict_dir)
+int soh_init(void)
 {
-	if (fr_dict_autoload(dict_dir, soh_dict) < 0) {
+	if (fr_dict_autoload(soh_dict) < 0) {
 		PERROR("Failed loading dictionary");
 		return -1;
 	}

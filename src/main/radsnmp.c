@@ -1053,7 +1053,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (fr_dict_autoload(conf->dict_dir, radsnmp_dict) < 0) {
+	if (fr_dict_autoload(radsnmp_dict) < 0) {
 		fr_perror("radsnmp");
 		exit(EXIT_FAILURE);
 	}

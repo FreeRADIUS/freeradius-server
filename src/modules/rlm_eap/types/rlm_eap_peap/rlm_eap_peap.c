@@ -368,7 +368,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 static int mod_load(void)
 {
-	if (soh_init(main_config.dict_dir) < 0) return -1;
+	if (soh_init() < 0) return -1;
 
 	return 0;
 }

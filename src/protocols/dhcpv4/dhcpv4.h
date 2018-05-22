@@ -107,11 +107,11 @@ typedef struct dhcp_packet_t {
 #  define ETH_ADDR_LEN   6
 #endif
 
-extern char const *dhcp_header_names[];
-extern char const *dhcp_message_types[];
-extern int dhcp_header_sizes[];
-extern uint8_t eth_bcast[ETH_ADDR_LEN];
-extern fr_dict_attr_t const *dhcp_option_82;
+extern fr_dict_attr_t const	**dhcp_header_attrs[];
+extern char const		*dhcp_message_types[];
+extern int			dhcp_header_sizes[];
+extern uint8_t			eth_bcast[ETH_ADDR_LEN];
+extern fr_dict_attr_t const 	*dhcp_option_82;
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 #  define ETH_HDR_SIZE   14
@@ -146,6 +146,7 @@ bool		fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type,
 RADIUS_PACKET	*fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len);
 ssize_t		fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, uint32_t xid, VALUE_PAIR *vps);
 int		fr_dhcpv4_init(void);
+void		fr_dhcpv4_free(void);
 
 /*
  *	decode.c

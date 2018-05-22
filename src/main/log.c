@@ -782,19 +782,18 @@ void log_fatal(char const *fmt, ...)
  *
  * @param[in] log	Logging parameters.
  * @param[in] daemonize	Changes what we do with stdout/stderr.
- * @param[in] dict_dir	Containing the dictionaries.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int log_init(fr_log_t *log, bool daemonize, char const *dict_dir)
+int log_init(fr_log_t *log, bool daemonize)
 {
 	int ret;
 
 	ret = fr_log_init(log, daemonize);
 	if (ret < 0) return ret;
 
-	if (fr_dict_autoload(dict_dir, log_dict) < 0) {
+	if (fr_dict_autoload(log_dict) < 0) {
 		fr_perror("log_init");
 		return -1;
 	}

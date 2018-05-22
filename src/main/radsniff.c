@@ -2170,21 +2170,21 @@ static void NEVER_RETURNS usage(int status)
 
 int main(int argc, char *argv[])
 {
-	fr_pcap_t *in = NULL, *in_p;
-	fr_pcap_t **in_head = &in;
-	fr_pcap_t *out = NULL;
+	fr_pcap_t	*in = NULL, *in_p;
+	fr_pcap_t	**in_head = &in;
+	fr_pcap_t	*out = NULL;
 
-	int ret = 1;					/* Exit status */
+	int		ret = 1;					/* Exit status */
 
-	char errbuf[PCAP_ERRBUF_SIZE];			/* Error buffer */
-	int port = FR_AUTH_UDP_PORT;
+	char		errbuf[PCAP_ERRBUF_SIZE];			/* Error buffer */
+	int		port = FR_AUTH_UDP_PORT;
 
-	int opt;
-	char const *radius_dir = RADDBDIR;
-	char const *dict_dir = DICTDIR;
-	fr_dict_t *dict = NULL;
+	int		opt;
+	char const	*raddb_dir = RADDBDIR;
+	char const	*dict_dir = DICTDIR;
+	fr_dict_t	*dict = NULL;
 
-	rs_stats_t *stats;
+	rs_stats_t	*stats;
 
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
@@ -2289,7 +2289,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'd':
-			radius_dir = optarg;
+			raddb_dir = optarg;
 			break;
 
 		case 'D':
@@ -2532,13 +2532,18 @@ int main(int argc, char *argv[])
 							 conf->pcap_filter, conf->pcap_filter);
 	}
 
-	if (fr_dict_from_file(conf, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_global_init(conf, dict_dir) < 0) {
+		fr_perror("radsniff");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
 		fr_perror("radsniff");
 		ret = 64;
 		goto finish;
 	}
 
-	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		ret = 64;
 		goto finish;

@@ -398,8 +398,10 @@ int main(int argc, char **argv)
 	char const	*server = NULL;
 	fr_dict_t	*dict = NULL;
 
-	char const	*radius_dir = RADIUS_DIR;
+	char const	*raddb_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;
+
+	TALLOC_CTX	*autofree = talloc_init("autofree");
 
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
@@ -434,7 +436,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "%s: -d and -s cannot be used together.\n", progname);
 				exit(EXIT_FAILURE);
 			}
-			radius_dir = optarg;
+			raddb_dir = optarg;
 			break;
 
 		case 'D':
@@ -457,7 +459,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'f':
-			radius_dir = NULL;
+			raddb_dir = NULL;
 			file = optarg;
 			break;
 
@@ -490,7 +492,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "%s: -s and -f cannot be used together.\n", progname);
 				usage(1);
 			}
-			radius_dir = NULL;
+			raddb_dir = NULL;
 			server = optarg;
 			break;
 
@@ -512,7 +514,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (radius_dir) {
+	if (raddb_dir) {
 		int		rcode;
 		CONF_SECTION	*cs, *subcs;
 		uid_t		uid;
@@ -524,18 +526,25 @@ int main(int argc, char **argv)
 
 		file = NULL;	/* MUST read it from the conf_file now */
 
-		snprintf(buffer, sizeof(buffer), "%s/%s.conf", radius_dir, name);
+		snprintf(buffer, sizeof(buffer), "%s/%s.conf", raddb_dir, name);
+
+
 
 		/*
 		 *	Need to read in the dictionaries, else we may get
 		 *	validation errors when we try and parse the config.
 		 */
-		if (fr_dict_from_file(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+		if (fr_dict_global_init(autofree, dict_dir) < 0) {
 			fr_perror("radmin");
 			exit(64);
 		}
 
-		if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
+		if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
+			fr_perror("radmin");
+			exit(64);
+		}
+
+		if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 			fr_perror("radmin");
 			exit(64);
 		}
@@ -866,7 +875,7 @@ int main(int argc, char **argv)
 
 	if (radmin_log.dst == L_DST_FILES) close(radmin_log.fd);
 
-	talloc_free(dict);
+	talloc_free(autofree);
 
 	return exit_status;
 }

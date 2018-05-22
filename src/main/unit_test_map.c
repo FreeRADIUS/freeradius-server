@@ -1,5 +1,5 @@
 /*
- * unit_test_attribute.c	Map debugging tool.
+ * unit_test_map.c	Map debugging tool.
  *
  * Version:	$Id$
  *
@@ -39,7 +39,7 @@ RCSID("$Id$")
 #include <freeradius-devel/log.h>
 
 /* Linker hacks */
-char const *get_radius_dir(void)
+char const *get_raddb_dir(void)
 {
 	return NULL;
 }
@@ -137,7 +137,7 @@ static int process_file(char const *filename)
 int main(int argc, char *argv[])
 {
 	int			c, rcode = 0;
-	char const		*radius_dir = RADDBDIR;
+	char const		*raddb_dir = RADDBDIR;
 	char const		*dict_dir = DICTDIR;
 	fr_dict_t		*dict = NULL;
 
@@ -145,14 +145,14 @@ int main(int argc, char *argv[])
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
-		fr_perror("unit_test_attribute");
+		fr_perror("unit_test_map");
 		exit(EXIT_FAILURE);
 	}
 #endif
 
 	while ((c = getopt(argc, argv, "d:D:xMh")) != EOF) switch (c) {
 		case 'd':
-			radius_dir = optarg;
+			raddb_dir = optarg;
 			break;
 
 		case 'D':
@@ -179,16 +179,21 @@ int main(int argc, char *argv[])
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("unit_test_attribute");
+		fr_perror("unit_test_map");
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_from_file(autofree, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
-		fr_perror("unit_test_attribute");
+	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+		fr_perror("unit_test_map");
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
+		fr_perror("unit_test_map");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		exit(EXIT_FAILURE);
 	}

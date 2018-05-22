@@ -884,7 +884,7 @@ void paircmp_unregister_instance(void *instance)
  */
 int paircmp_init(char const *dict_dir)
 {
-	if (fr_dict_autoload(dict_dir, paircmp_dict) < 0) return -1;
+	if (fr_dict_autoload(paircmp_dict) < 0) return -1;
 	if (fr_dict_attr_autoload(paircmp_dict_attr) < 0) return -1;
 
 	paircmp_register(attr_prefix, attr_user_name, false, prefix_suffix_cmp, NULL);

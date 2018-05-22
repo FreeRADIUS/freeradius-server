@@ -205,15 +205,17 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 
 static int dhcp_load(void)
 {
-	int ret;
-
-	ret = fr_dict_read(main_config.dict, main_config.dict_dir, "dictionary.dhcpv4");
 	if (fr_dhcpv4_init() < 0) {
 		PERROR("Failed loading DHCP dictionary");
 		return -1;
 	}
 
-	return ret;
+	return 0;
+}
+
+static void dhcp_unload(void)
+{
+	fr_dhcpv4_free();
 }
 
 /*
@@ -232,5 +234,6 @@ rad_module_t rlm_dhcpv4 = {
 	.inst_size	= sizeof(rlm_dhcpv4_t),
 
 	.load		= dhcp_load,
+	.unload		= dhcp_unload,
 	.bootstrap	= mod_bootstrap,
 };

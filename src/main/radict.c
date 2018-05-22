@@ -105,8 +105,7 @@ static int load_dicts(TALLOC_CTX *ctx, char const *dict_dir)
 					goto error;
 				}
 				INFO("Loading dictionary: %s/%s", dict_dir, dp->d_name);
-				if (fr_dict_protocol_afrom_file(ctx, dict_end++,
-								dict_dir, dp->d_name) < 0) goto error;
+				if (fr_dict_protocol_afrom_file(dict_end++, dp->d_name) < 0) goto error;
 			/*
 			 *	...otherwise recurse to process sub-protocols (maybe?)
 			 */
@@ -185,9 +184,15 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
+	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+		fr_perror("radict");
+		ret = 1;
+		goto finish;
+	}
+
 	INFO("Loading dictionary: %s/%s", dict_dir, FR_DICTIONARY_FILE);
 
-	if (fr_dict_internal_afrom_file(autofree, dict_end++, dict_dir, NULL) < 0) {
+	if (fr_dict_internal_afrom_file(dict_end++, NULL) < 0) {
 		fr_perror("radict");
 		ret = 1;
 		goto finish;

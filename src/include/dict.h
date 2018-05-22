@@ -332,16 +332,13 @@ fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *ali
  *
  * @{
  */
-int			fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out,
-					  char const *dir, char const *fn, char const *name);
+int			fr_dict_from_file(fr_dict_t **out, char const *fn);
 
-int			fr_dict_internal_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
-						    char const *dir, char const *internal_name);
+int			fr_dict_internal_afrom_file(fr_dict_t **out, char const *internal_name);
 
-int			fr_dict_protocol_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
-						    char const *dir, char const *proto_name);
+int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name);
 
-int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
+int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename);
 /** @} */
 
 /** @name Autoloader interface
@@ -350,9 +347,15 @@ int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
  */
 int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load);
 
-int			fr_dict_autoload(char const *dir, fr_dict_autoload_t const *to_load);
+int			fr_dict_autoload(fr_dict_autoload_t const *to_load);
 
 void			fr_dict_autofree(fr_dict_autoload_t const *to_free);
+
+/** @name Initialisation
+ *
+ * @{
+ */
+ int			fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir);
 /** @} */
 
 /** @name Dictionary testing and validation

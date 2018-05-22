@@ -395,6 +395,15 @@ int main(int argc, char *argv[])
 	dl_init();
 
 	/*
+	 *	Initialise the top level dictionary hashes which hold
+	 *	the protocols.
+	 */
+	if (fr_dict_global_init(autofree, main_config.dict_dir) < 0) {
+		fr_perror("radiusd");
+		fr_exit(EXIT_FAILURE);
+	}
+
+	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init() < 0) exit(EXIT_FAILURE);
@@ -404,7 +413,7 @@ int main(int argc, char *argv[])
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_global_init(main_config.dict_dir) < 0) fr_exit(EXIT_FAILURE);
+	if (tls_global_init() < 0) fr_exit(EXIT_FAILURE);
 #endif
 
 	/*
@@ -413,7 +422,7 @@ int main(int argc, char *argv[])
 	 */
 	if (main_config.panic_action && !getenv("PANIC_ACTION") &&
 	    (fr_fault_setup(main_config.panic_action, argv[0]) < 0)) {
-		fr_perror("Failed configuring panic action: %s", main_config.name);
+		fr_perror("radiusd - Failed configuring panic action: %s", main_config.name);
 		fr_exit(EXIT_FAILURE);
 	}
 
@@ -622,7 +631,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Redirect stderr/stdout as appropriate.
 	 */
-	if (log_init(&default_log, main_config.daemonize, main_config.dict_dir) < 0) fr_exit(EXIT_FAILURE);
+	if (log_init(&default_log, main_config.daemonize) < 0) fr_exit(EXIT_FAILURE);
 
 	/*
 	 *  Initialise the state rbtree (used to link multiple rounds of challenges).

@@ -239,7 +239,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 static int mod_load(void)
 {
-	if (soh_init(main_config.dict_dir) < 0) return -1;
+	if (soh_init() < 0) return -1;
 
 	return 0;
 }

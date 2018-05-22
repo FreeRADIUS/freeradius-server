@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 	conf = talloc_zero(NULL, sync_touch_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
-	conf->radius_dir = RADDBDIR;
+	conf->raddb_dir = RADDBDIR;
 	conf->secret = talloc_strdup(conf, "testing123");
 	conf->timeout.tv_sec = 3;
 	conf->retries = 5;
@@ -129,17 +129,22 @@ int main(int argc, char **argv)
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("sync_touch");
-		return EXIT_FAILURE;
+		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_from_file(conf, &conf->dict, conf->dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_global_init(autofree, dict_dir) < 0) {
 		fr_perror("sync_touch");
-		return EXIT_FAILURE;
+		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(conf->dict, conf->radius_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_from_file(&conf->dict, FR_DICTIONARY_FILE) < 0) {
+		fr_perror("sync_touch");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fr_dict_read(conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
-		return EXIT_FAILURE;
+		exit(EXIT_FAILURE);
 	}
 	fr_strerror();	/* Clear the error buffer */
 
