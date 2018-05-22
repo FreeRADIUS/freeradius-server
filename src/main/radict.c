@@ -49,6 +49,7 @@ fr_dict_t **dict_end = dicts;
 static void usage(void)
 {
 	fprintf(stderr, "usage: radict [OPTS] <attribute> [attribute...]\n");
+	fprintf(stderr, "  -E               Export dictionary definitions.\n");
 	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x               Debugging mode.\n");
 	fprintf(stderr, "");
@@ -140,6 +141,7 @@ int main(int argc, char *argv[])
 	char		c;
 	int		ret = 0;
 	bool		found = false;
+	bool		export = false;
 
 	TALLOC_CTX	*autofree = talloc_init("main");
 
@@ -152,7 +154,11 @@ int main(int argc, char *argv[])
 
 	fr_debug_lvl = 1;
 
-	while ((c = getopt(argc, argv, "D:xh")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "ED:xh")) != EOF) switch (c) {
+		case 'E':
+			export = true;
+			break;
+
 		case 'D':
 			dict_dir = optarg;
 			break;
@@ -197,6 +203,14 @@ int main(int argc, char *argv[])
 		fr_perror("radict: No dictionaries loaded");
 		ret = 1;
 		goto finish;
+	}
+
+	if (export) {
+		fr_dict_t	**dict_p = dicts;
+
+		do {
+			fr_dict_dump(*dict_p);
+		} while (++dict_p < dict_end);
 	}
 
 	while (argc-- > 0) {
