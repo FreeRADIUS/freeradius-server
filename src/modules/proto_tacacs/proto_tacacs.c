@@ -616,7 +616,7 @@ static int tacacs_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 
 static int mod_load(void)
 {
-	if (tacacs_init(main_config.dict_dir) < 0) {
+	if (tacacs_init() < 0) {
 		PERROR("Failed initialising tacacs");
 		return -1;
 	}

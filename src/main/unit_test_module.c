@@ -936,7 +936,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Instantiate "permanent" paircmps
 	 */
-	if (paircmp_init(main_config.dict_dir) < 0) exit(EXIT_FAILURE);
+	if (paircmp_init() < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	Simulate thread specific instantiation

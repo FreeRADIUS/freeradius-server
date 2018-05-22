@@ -493,7 +493,7 @@ void		paircmp_unregister(fr_dict_attr_t const *attr, RAD_COMPARE_FUNC func);
 
 void		paircmp_unregister_instance(void *instance);
 
-int		paircmp_init(char const *dict_dir);
+int		paircmp_init(void);
 
 void		paircmp_free(void);
 

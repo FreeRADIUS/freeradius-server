@@ -245,6 +245,6 @@ int		tacacs_encode(RADIUS_PACKET * const packet, char const * const secret);
 
 int		tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const original, char const * const secret);
 
-int		tacacs_init(char const *dict_dir);
+int		tacacs_init(void);
 
 void		tacacs_free(void);
