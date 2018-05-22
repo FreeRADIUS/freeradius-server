@@ -124,9 +124,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = fr_pair_make(request->reply, &request->reply->vps, "State", NULL, T_OP_EQ);
-	if (!state) return -1;
-
+	MEM(pair_update_reply(&state, attr_state) >= 0);
 	fr_pair_value_memcpy(state, session->state, sizeof(session->state));
 
 	status = rbtree_insert(inst->session_tree, session);
@@ -185,7 +183,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	/*
 	 *	We key the sessions off of the 'state' attribute
 	 */
-	state = fr_pair_find_by_num(request->packet->vps, 0, FR_STATE, TAG_ANY);
+	state = fr_pair_find_by_da(request->packet->vps, attr_state, TAG_ANY);
 	if (!state) {
 		return NULL;
 	}

@@ -49,6 +49,27 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t mem_dict[];
+fr_dict_autoload_t mem_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_prompt;
+fr_dict_attr_t const *attr_reply_message;
+fr_dict_attr_t const *attr_state;
+fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t mem_dict_attr[];
+fr_dict_attr_autoload_t mem_dict_attr[] = {
+	{ .out = &attr_prompt, .name = "Prompt", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
 
 static SD_CHAR empty_pin[] = "";
 
@@ -444,11 +465,11 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	int rcode;
-	rlm_securid_t const *inst = instance;
-	char  buffer[FR_MAX_STRING_LEN]="";
-	char const *username=NULL, *password=NULL;
-	VALUE_PAIR *vp;
+	int		rcode;
+	rlm_securid_t	const *inst = instance;
+	char		 buffer[FR_MAX_STRING_LEN]="";
+	char const	*username=NULL, *password=NULL;
+	VALUE_PAIR	*vp;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -467,7 +488,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	/*
 	 *	Clear-text passwords are the only ones we support.
 	 */
-	if (request->password->da->attr != FR_USER_PASSWORD) {
+	if (request->password->da != attr_user_password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication. Cannot use \"%s\"",
 			request->password->da->name);
 		return RLM_MODULE_INVALID;
@@ -505,11 +526,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		/* reply with Access-challenge message code (11) */
 
 		/* Generate Prompt attribute */
-		vp = fr_pair_afrom_num(request->reply, 0, FR_PROMPT);
-
-		rad_assert(vp != NULL);
+		MEM(pair_update_reply(&vp, attr_prompt) >= 0);
 		vp->vp_uint32 = 0; /* no echo */
-		fr_pair_add(&request->reply->vps, vp);
 
 		/* Mark the packet as a Acceess-Challenge Packet */
 		request->reply->code = FR_CODE_ACCESS_CHALLENGE;
@@ -525,8 +543,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		break;
 	}
 
-	if (*buffer) pair_make_reply("Reply-Message", buffer, T_OP_EQ);
-
+	if (*buffer) {
+		MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
+		fr_pair_value_strcpy(vp, buffer);
+	}
 	return rcode;
 }
 

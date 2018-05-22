@@ -76,6 +76,11 @@ typedef struct rlm_securid_t {
 	uint32_t	max_trips_per_session;
 } rlm_securid_t;
 
+extern fr_dict_attr_t const *attr_prompt;
+extern fr_dict_attr_t const *attr_reply_message;
+extern fr_dict_attr_t const *attr_state;
+extern fr_dict_attr_t const *attr_user_password;
+
 /* Memory Management */
 SECURID_SESSION*     securid_session_alloc(void);
 void		     securid_session_free(rlm_securid_t *inst, REQUEST *request,SECURID_SESSION *session)
