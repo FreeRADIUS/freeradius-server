@@ -239,14 +239,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 static int mod_load(void)
 {
-	if (soh_init() < 0) return -1;
+	if (fr_soh_init() < 0) return -1;
 
 	return 0;
 }
 
 static void mod_unload(void)
 {
-	soh_free();
+	fr_soh_free();
 }
 
 extern rad_module_t rlm_soh;

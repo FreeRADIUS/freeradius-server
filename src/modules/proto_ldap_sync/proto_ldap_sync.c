@@ -1240,7 +1240,7 @@ static int proto_ldap_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTIO
 
 static int proto_ldap_load(void)
 {
-	fr_ldap_global_init();
+	fr_ldap_init();
 
 	/*
 	 *	Setup dictionary attributes for the proto_ldap_sync module
@@ -1258,7 +1258,7 @@ static int proto_ldap_load(void)
 
 static void proto_ldap_unload(void)
 {
-	fr_ldap_global_free();
+	fr_ldap_free();
 }
 
 extern rad_protocol_t proto_ldap_sync;

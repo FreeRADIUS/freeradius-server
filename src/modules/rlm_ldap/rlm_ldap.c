@@ -1954,7 +1954,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Set global options
 	 */
-	if (fr_ldap_global_init() < 0) goto error;
+	if (fr_ldap_init() < 0) goto error;
 
 	/*
 	 *	Initialize the socket pool.
@@ -1973,14 +1973,14 @@ error:
 
 static int mod_load(void)
 {
-	fr_ldap_global_init();
+	fr_ldap_init();
 
 	return 0;
 }
 
 static void mod_unload(void)
 {
-	fr_ldap_global_free();;
+	fr_ldap_free();;
 }
 
 /* globally exported name */

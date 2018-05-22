@@ -5,10 +5,10 @@ TARGET		:= $(TARGETNAME).a
 endif
 
 SOURCES	:= \
+	base.c \
 	cache.c \
 	conf.c \
 	ctx.c \
-	global.c \
 	log.c \
 	ocsp.c \
 	session.c \

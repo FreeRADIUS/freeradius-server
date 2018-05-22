@@ -77,10 +77,12 @@ typedef struct dc_offer {
 } dc_offer_t;
 
 static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_dhcpv4;
 
 extern fr_dict_autoload_t dhcpclient_dict[];
 fr_dict_autoload_t dhcpclient_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
 	{ NULL }
 };
 

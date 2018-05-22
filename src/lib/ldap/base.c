@@ -34,6 +34,7 @@
 #include <freeradius-devel/ldap/ldap.h>
 
 LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
+
 static int instance_count = 0;
 
 /** Used to set the global log prefix for functions which don't operate on connections
@@ -891,7 +892,7 @@ int fr_ldap_global_config(int debug_level, char const *tls_random_file)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_global_init(void)
+int fr_ldap_init(void)
 {
 	int			ldap_errno;
 	static LDAPAPIInfo	info = { .ldapai_info_version = LDAP_API_INFO_VERSION };	/* static to quiet valgrind about this being uninitialised */
@@ -899,7 +900,6 @@ int fr_ldap_global_init(void)
 
 	if (instance_count > 0) {
 		instance_count++;
-
 		return 0;
 	}
 
@@ -970,7 +970,7 @@ int fr_ldap_global_init(void)
 /** Free any global libldap resources
  *
  */
-void fr_ldap_global_free(void)
+void fr_ldap_free(void)
 {
 	if (--instance_count > 0) return;
 

@@ -422,9 +422,9 @@ fr_ldap_rcode_t	fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 
 int		fr_ldap_global_config(int debug_level, char const *tls_random_file);
 
-int		fr_ldap_global_init(void);
+int		fr_ldap_init(void);
 
-void		fr_ldap_global_free(void);
+void		fr_ldap_free(void);
 
 /*
  *	control.c - Connection based client/server controls

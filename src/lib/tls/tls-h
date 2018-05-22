@@ -468,10 +468,10 @@ SSL_CTX		*tls_ctx_alloc(fr_tls_conf_t const *conf, bool client);
 int		tls_global_version_check(char const *acknowledged);
 #endif
 
-int		tls_global_init(void);
+int		fr_tls_init(void);
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-void		tls_global_cleanup(void);
+void		fr_tls_free(void);
 #endif
 
 /*

@@ -29,44 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include "soh.h"
 
-static fr_dict_t const *dict_freeradius;
-
-extern fr_dict_autoload_t soh_dict[];
-fr_dict_autoload_t soh_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
-};
-
-static fr_dict_attr_t const *attr_soh_ms_correlation_id;
-static fr_dict_attr_t const *attr_soh_ms_health_other;
-static fr_dict_attr_t const *attr_soh_ms_machine_name;
-static fr_dict_attr_t const *attr_soh_ms_machine_os_build;
-static fr_dict_attr_t const *attr_soh_ms_machine_os_release;
-static fr_dict_attr_t const *attr_soh_ms_machine_os_vendor;
-static fr_dict_attr_t const *attr_soh_ms_machine_os_version;
-static fr_dict_attr_t const *attr_soh_ms_machine_processor;
-static fr_dict_attr_t const *attr_soh_ms_machine_role;
-static fr_dict_attr_t const *attr_soh_ms_machine_sp_release;
-static fr_dict_attr_t const *attr_soh_ms_machine_sp_version;
-static fr_dict_attr_t const *attr_soh_ms_windows_health_status;
-
-extern fr_dict_attr_autoload_t soh_dict_attr[];
-fr_dict_attr_autoload_t soh_dict_attr[] = {
-	{ .out = &attr_soh_ms_correlation_id, .name = "SoH-MS-Correlation-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_health_other, .name = "SoH-MS-Health-Other", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_machine_name, .name = "SoH-MS-Machine-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_machine_os_build, .name = "SoH-MS-Machine-OS-build", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_machine_os_release, .name = "SoH-MS-Machine-OS-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_machine_os_vendor, .name = "SoH-MS-Machine-OS-vendor", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_machine_os_version, .name = "SoH-MS-Machine-OS-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_machine_processor, .name = "SoH-MS-Machine-Processor", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_machine_role, .name = "SoH-MS-Machine-Role", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_machine_sp_release, .name = "SoH-MS-Machine-SP-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_machine_sp_version, .name = "SoH-MS-Machine-SP-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_soh_ms_windows_health_status, .name = "SoH-MS-Windows-Health-Status", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
-};
-
 /*
  * This code implements parsing of MS-SOH data into FreeRadius AVPs
  * allowing for FreeRadius MS-NAP policies
@@ -121,6 +83,47 @@ typedef struct {
 	uint16_t tlv_type;
 	uint16_t tlv_len;
 } soh_tlv;
+
+static fr_dict_t const *dict_freeradius;
+
+extern fr_dict_autoload_t soh_dict[];
+fr_dict_autoload_t soh_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_soh_ms_correlation_id;
+static fr_dict_attr_t const *attr_soh_ms_health_other;
+static fr_dict_attr_t const *attr_soh_ms_machine_name;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_build;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_release;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_vendor;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_version;
+static fr_dict_attr_t const *attr_soh_ms_machine_processor;
+static fr_dict_attr_t const *attr_soh_ms_machine_role;
+static fr_dict_attr_t const *attr_soh_ms_machine_sp_release;
+static fr_dict_attr_t const *attr_soh_ms_machine_sp_version;
+static fr_dict_attr_t const *attr_soh_ms_windows_health_status;
+
+extern fr_dict_attr_autoload_t soh_dict_attr[];
+fr_dict_attr_autoload_t soh_dict_attr[] = {
+	{ .out = &attr_soh_ms_correlation_id, .name = "SoH-MS-Correlation-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_health_other, .name = "SoH-MS-Health-Other", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_name, .name = "SoH-MS-Machine-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_build, .name = "SoH-MS-Machine-OS-build", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_release, .name = "SoH-MS-Machine-OS-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_vendor, .name = "SoH-MS-Machine-OS-vendor", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_version, .name = "SoH-MS-Machine-OS-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_processor, .name = "SoH-MS-Machine-Processor", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_role, .name = "SoH-MS-Machine-Role", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_sp_release, .name = "SoH-MS-Machine-SP-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_sp_version, .name = "SoH-MS-Machine-SP-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_windows_health_status, .name = "SoH-MS-Windows-Health-Status", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ NULL }
+};
+
+static int instance_count = 0;
+
 
 /** Read big-endian 2-byte unsigned from p
  *
@@ -712,8 +715,13 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 	return 0;
 }
 
-int soh_init(void)
+int fr_soh_init(void)
 {
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
+
 	if (fr_dict_autoload(soh_dict) < 0) {
 		PERROR("Failed loading dictionary");
 		return -1;
@@ -727,7 +735,9 @@ int soh_init(void)
 	return 0;
 }
 
-void soh_free(void)
+void fr_soh_free(void)
 {
+	if (--instance_count > 0) return;
+
 	fr_dict_autofree(soh_dict);
 }

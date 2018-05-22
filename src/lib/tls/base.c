@@ -37,6 +37,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "tls.h"
 #include "tls_attrs.h"
 
+static int instance_count = 0;
+
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
 
@@ -179,8 +181,6 @@ static libssl_defect_t libssl_defects[] =
 	},
 };
 #endif /* ENABLE_OPENSSL_VERSION_CHECK */
-
-static bool tls_done_init = false;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 /*
@@ -446,11 +446,14 @@ static void openssl_free(void *to_free)
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
-int tls_global_init(void)
+int fr_tls_init(void)
 {
 	ENGINE *rand_engine;
 
-	if (tls_done_init) return 0;
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
 
 	if (CRYPTO_set_mem_functions(openssl_talloc, openssl_realloc, openssl_free) != 1) {
 		WARN("Failed to set OpenSSL memory allocation functions.  OpenSSL mallocs will not be tracked");
@@ -477,7 +480,7 @@ int tls_global_init(void)
 	global_mutexes = global_mutexes_init(NULL);
 	if (!global_mutexes) {
 		ERROR("Failed to set up SSL mutexes");
-		tls_global_cleanup();
+		fr_tls_free();
 		return -1;
 	}
 
@@ -495,20 +498,17 @@ int tls_global_init(void)
 	if (rand_engine && (strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0)) ENGINE_unregister_RAND(rand_engine);
 	ENGINE_register_all_complete();
 
-
 	if (fr_dict_autoload(tls_dict) < 0) {
 		PERROR("Failed loading dictionary");
-		tls_global_cleanup();
+		fr_tls_free();
 		return -1;
 	}
 
 	if (fr_dict_attr_autoload(tls_dict_attr) < 0) {
 		PERROR("Failed resolving attributes");
-		tls_global_cleanup();
+		fr_tls_free();
 		return -1;
 	}
-
-	tls_done_init = true;
 
 	return 0;
 }
@@ -518,7 +518,7 @@ int tls_global_init(void)
  *
  * OpenSSL >= 1.1.0 uses an atexit handler to automatically free memory
  */
-void tls_global_cleanup(void)
+void fr_tls_free(void)
 {
 	FR_TLS_REMOVE_THREAD_STATE();
 	ENGINE_cleanup();
@@ -530,8 +530,6 @@ void tls_global_cleanup(void)
 	TALLOC_FREE(global_mutexes);
 
 	fr_dict_autofree(tls_dict);
-
-	tls_done_init = false;
 }
 #endif
 #endif /* WITH_TLS */

@@ -34,8 +34,8 @@ uint16_t	soh_pull_be_16(uint8_t const *p);
 uint32_t	soh_pull_be_24(uint8_t const *p);
 uint32_t	soh_pull_be_32(uint8_t const *p);
 
-int		soh_init(void);
-void		soh_free(void);
+int		fr_soh_init(void);
+void		fr_soh_free(void);
 #ifdef __cplusplus
 }
 #endif
