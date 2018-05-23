@@ -95,6 +95,11 @@ int		map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN
 				 request_refs_t dst_request_def, pair_lists_t dst_list_def,
 				 request_refs_t src_request_def, pair_lists_t src_list_def);
 
+int		map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
+				    char const *lhs, FR_TOKEN lhs_type,
+				    FR_TOKEN op,
+				    fr_value_box_t *rhs, bool steal_rhs_buffs,
+				    request_refs_t dst_request_def, pair_lists_t dst_list_def);
 
 int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
 				   request_refs_t dst_request_def, pair_lists_t dst_list_def,

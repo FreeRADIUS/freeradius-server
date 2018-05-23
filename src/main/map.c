@@ -467,6 +467,54 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
 	return 0;
 }
 
+/** Convert a value box to a map
+ *
+ * This is mainly used in IO modules, where another function is used to convert
+ * between the foreign value type and internal values, and the destination
+ * attribute is provided as a string.
+ *
+ * @param[in] ctx		for talloc
+ * @param[out] out		Where to store the head of the map.
+ * @param[in] lhs		of the operation
+ * @param[in] lhs_type		type of the LHS string
+ * @param[in] op		the operation to perform
+ * @param[in] rhs		of the operation
+ * @param[in] steal_rhs_buffs	Whether we attempt to save allocs by stealing the buffers
+ *				from the rhs #fr_value_box_t.
+ * @param[in] dst_request_def	to insert unqualified attributes into.
+ * @param[in] dst_list_def	to insert unqualified attributes into.
+ * @return
+ *	- #vp_map_t if successful.
+ *	- NULL on error.
+ */
+int map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
+			char const *lhs, FR_TOKEN lhs_type,
+			FR_TOKEN op,
+			fr_value_box_t *rhs, bool steal_rhs_buffs,
+			request_refs_t dst_request_def, pair_lists_t dst_list_def)
+{
+	ssize_t slen;
+	vp_map_t *map;
+
+	map = talloc_zero(ctx, vp_map_t);
+
+	slen = tmpl_afrom_str(map, &map->lhs, lhs, strlen(lhs), lhs_type, dst_request_def, dst_list_def, true);
+	if (slen < 0) {
+	error:
+		talloc_free(map);
+		return -1;
+	}
+
+	map->op = op;
+
+	if (tmpl_afrom_value_box(map, &map->rhs, rhs, steal_rhs_buffs) < 0) goto error;
+
+	MAP_VERIFY(map);
+	*out = map;
+
+	return 0;
+}
+
 /** Convert a value pair string to valuepair map
  *
  * Takes a valuepair string with list and request qualifiers and converts it into a
