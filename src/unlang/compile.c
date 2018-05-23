@@ -1237,7 +1237,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
 				    fr_int2str(dict_attr_types, FR_TYPE_STRING, "<INVALID>"),
-				    fr_int2str(dict_attr_types, map->lhs->tmpl_value_type, "<INVALID>"));
+				    fr_int2str(dict_attr_types, map->lhs->tmpl_da->type, "<INVALID>"));
 			return -1;
 		}
 
