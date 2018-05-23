@@ -497,17 +497,6 @@ int		paircmp_init(void);
 
 void		paircmp_free(void);
 
-/*
- *	Less code == fewer bugs
- *
- * @param _a attribute
- * @param _b value
- * @param _c op
- */
-#define pair_make_request(_a, _b, _c) fr_pair_make(request->packet, &request->packet->vps, _a, _b, _c)
-#define pair_make_reply(_a, _b, _c) fr_pair_make(request->reply, &request->reply->vps, _a, _b, _c)
-#define pair_make_config(_a, _b, _c) fr_pair_make(request, &request->control, _a, _b, _c)
-
 /** Allocate a VALUE_PAIR in the request list
  *
  * @param[in] _attr	allocated.
