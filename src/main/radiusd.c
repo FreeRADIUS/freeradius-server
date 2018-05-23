@@ -418,7 +418,7 @@ int main(int argc, char *argv[])
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (fr_tls_init() < 0) fr_exit(EXIT_FAILURE);
+	if (tls_init() < 0) fr_exit(EXIT_FAILURE);
 #endif
 
 	/*
@@ -453,7 +453,7 @@ int main(int argc, char *argv[])
 	 *  Check for vulnerabilities in the version of libssl were linked against.
 	 */
 #if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
-	if (tls_global_version_check(main_config.allow_vulnerable_openssl) < 0) exit(EXIT_FAILURE);
+	if (tls_version_check(main_config.allow_vulnerable_openssl) < 0) exit(EXIT_FAILURE);
 #endif
 
 	/*
@@ -864,7 +864,7 @@ cleanup:
 	map_proc_free();
 
 #if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
-	fr_tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
+	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
 
 	/*

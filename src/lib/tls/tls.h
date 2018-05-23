@@ -465,13 +465,13 @@ SSL_CTX		*tls_ctx_alloc(fr_tls_conf_t const *conf, bool client);
  */
 
 #if 1
-int		tls_global_version_check(char const *acknowledged);
+int		tls_version_check(char const *acknowledged);
 #endif
 
-int		fr_tls_init(void);
+int		tls_init(void);
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-void		fr_tls_free(void);
+void		tls_free(void);
 #endif
 
 /*

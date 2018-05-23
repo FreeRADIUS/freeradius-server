@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file tls/global.c
+ * @file tls/base.c
  * @brief Initialise OpenSSL
  *
  * @copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
@@ -349,7 +349,7 @@ static pthread_mutex_t *global_mutexes_init(TALLOC_CTX *ctx)
  *	libssl.
  * @return 0 if the CVE specified by the user matches the most recent CVE we have, else -1.
  */
-int tls_global_version_check(char const *acknowledged)
+int tls_version_check(char const *acknowledged)
 {
 	uint64_t v;
 	bool bad = false;
@@ -446,7 +446,7 @@ static void openssl_free(void *to_free)
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
-int fr_tls_init(void)
+int tls_init(void)
 {
 	ENGINE *rand_engine;
 
@@ -480,7 +480,7 @@ int fr_tls_init(void)
 	global_mutexes = global_mutexes_init(NULL);
 	if (!global_mutexes) {
 		ERROR("Failed to set up SSL mutexes");
-		fr_tls_free();
+		tls_free();
 		return -1;
 	}
 
@@ -500,13 +500,13 @@ int fr_tls_init(void)
 
 	if (fr_dict_autoload(tls_dict) < 0) {
 		PERROR("Failed loading dictionary");
-		fr_tls_free();
+		tls_free();
 		return -1;
 	}
 
 	if (fr_dict_attr_autoload(tls_dict_attr) < 0) {
 		PERROR("Failed resolving attributes");
-		fr_tls_free();
+		tls_free();
 		return -1;
 	}
 
@@ -518,7 +518,7 @@ int fr_tls_init(void)
  *
  * OpenSSL >= 1.1.0 uses an atexit handler to automatically free memory
  */
-void fr_tls_free(void)
+void tls_free(void)
 {
 	FR_TLS_REMOVE_THREAD_STATE();
 	ENGINE_cleanup();
