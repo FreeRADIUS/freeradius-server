@@ -338,7 +338,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 	case JPATH_SELECTOR_ROOT:
 	case JPATH_SELECTOR_CURRENT:
 		rad_assert(0);
-		return -1;	/* Not yet implemented */
+		return -1;		/* Not yet implemented */
 	}
 
 	/*
@@ -346,11 +346,17 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 	 *	we now attempt conversion of the leaf to
 	 *	the specified value.
 	 */
-	value = talloc_zero(ctx, fr_value_box_t);
-	if (fr_json_object_to_value_box(value, value, object, dst_type, dst_enumv) < 0) {
+	value = fr_value_box_alloc_null(ctx);
+	if (fr_json_object_to_value_box(value, value, object, dst_enumv, true) < 0) {
 		talloc_free(value);
 		return -1;
 	}
+
+	if (fr_value_box_cast_in_place(value, value, dst_type, dst_enumv) < 0) {
+		talloc_free(value);
+		return -1;
+	}
+
 	**tail = value;
 	*tail = &(**tail)->next;
 	return 1;
