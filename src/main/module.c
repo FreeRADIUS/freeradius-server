@@ -318,6 +318,33 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	return pool;
 }
 
+/** Set the next section type if it's not already set
+ *
+ * @param[in] request		The current request.
+ * @param[in] type_da		to use.  Usually attr_auth_type.
+ * @param[in] enumv		Enumeration value of the specified type_da.
+ */
+bool module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv)
+{
+	VALUE_PAIR *vp;
+
+	switch (pair_update_control(&vp, type_da)) {
+	case 0:
+		fr_value_box_copy(vp, &vp->data, enumv->value);
+		vp->data.enumv = vp->da;	/* So we get the correct string alias */
+		RDEBUG("Setting &control:%pP", vp);
+		return true;
+
+	case 1:
+		RDEBUG2("&control:%s already set.  Not setting to %s", vp->da->name, enumv->alias);
+		return false;
+
+	default:
+		MEM(0);
+		return false;
+	}
+}
+
 /** Mark module instance data as being read only
  *
  * This still allows memory to be modified, but not allocated

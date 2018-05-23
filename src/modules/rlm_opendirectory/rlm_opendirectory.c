@@ -44,6 +44,11 @@ USES_APPLE_DEPRECATED_API
 #include <DirectoryService/DirectoryService.h>
 #include <membership.h>
 
+typedef struct {
+	char const		*name;		//!< Auth-Type value for this module instance.
+	fr_dict_enum_t		*auth_type;
+} rlm_opendirectory_t;
+
 #ifndef HAVE_DECL_MBR_CHECK_SERVICE_MEMBERSHIP
 int mbr_check_service_membership(uuid_t const user, char const *servicename, int *ismember);
 #endif
@@ -55,7 +60,25 @@ int mbr_check_membership_refresh(uuid_t const user, uuid_t group, int *ismember)
 #define kRadiusSACLName		"com.apple.access_radius"
 #define kRadiusServiceName	"radius"
 
-#define kAuthType		   "opendirectory"
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_opendirectory_dict[];
+fr_dict_autoload_t rlm_opendirectory_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t rlm_opendirectory_dict_attr[];
+fr_dict_attr_autoload_t rlm_opendirectory_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
 
 /*
  *	od_check_passwd
@@ -298,8 +321,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	/*
 	 *	Can't do OpenDirectory if there's no password.
 	 */
-	if (!request->password ||
-		(request->password->da->attr != FR_USER_PASSWORD)) {
+	if (!request->password || (request->password->da != attr_user_password)) {
 		REDEBUG("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
@@ -342,15 +364,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	struct passwd *userdata = NULL;
-	int ismember = 0;
-	RADCLIENT *rad_client = NULL;
-	uuid_t uuid;
-	uuid_t guid_sacl;
-	uuid_t guid_nasgroup;
-	int err;
-	char host_ipaddr[128] = {0};
-	gid_t gid;
+	rlm_opendirectory_t	*inst = instance;
+	struct passwd		*userdata = NULL;
+	int			ismember = 0;
+	RADCLIENT		*rad_client = NULL;
+	uuid_t			uuid;
+	uuid_t			guid_sacl;
+	uuid_t			guid_nasgroup;
+	int			err;
+	char			host_ipaddr[128] = {0};
+	gid_t			gid;
 
 	if (!request->username) {
 		RDEBUG("OpenDirectory requires a User-Name attribute");
@@ -375,8 +398,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 
 	rad_client = request->client;
 #if 0
-	if (rad_client->community[0] != '\0' )
-	{
+	if (rad_client->community[0] != '\0' ) {
 		/*
 		 *	The "community" can be a GUID (Globally Unique ID) or
 		 *	a group name
@@ -409,10 +431,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
 		RDEBUG("No access control groups, all users allowed");
-		if (fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY) == NULL) {
-			pair_make_config("Auth-Type", kAuthType, T_OP_EQ);
-			RDEBUG("Setting Auth-Type = %s", kAuthType);
-		}
+
+		if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
+
 		return RLM_MODULE_OK;
 	}
 
@@ -458,14 +479,27 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		}
 	}
 
-	if (fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY) == NULL) {
-		pair_make_config("Auth-Type", kAuthType, T_OP_EQ);
-		RDEBUG("Setting Auth-Type = %s", kAuthType);
-	}
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
 
 	return RLM_MODULE_OK;
 }
 
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	rlm_opendirectory_t	*inst = instance;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
+		PERROR("Failed adding %s alias", attr_auth_type->name);
+		return -1;
+	}
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name);
+	rad_assert(inst->auth_type);
+
+	return 0;
+}
 
 /* globally exported name */
 extern rad_module_t rlm_opendirectory;
@@ -473,6 +507,7 @@ rad_module_t rlm_opendirectory = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "opendirectory",
 	.type		= RLM_TYPE_THREAD_SAFE,
+	.bootstrap	= mod_bootstrap,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize

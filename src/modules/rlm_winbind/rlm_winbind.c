@@ -466,15 +466,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
-		RWDEBUG2("Auth-Type already set, not setting to %s", inst->auth_type->alias);
-		return RLM_MODULE_NOOP;
-	}
-
-	RDEBUG("Setting Auth-Type to winbind");
-	MEM(pair_add_control(&vp, attr_auth_type) >= 0);
-	fr_value_box_copy(vp, &vp->data, inst->auth_type->value);
-	vp->data.enumv = vp->da;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
 
 	return RLM_MODULE_OK;
 }

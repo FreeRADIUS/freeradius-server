@@ -1316,7 +1316,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 {
 	rlm_mschap_t const 	*inst = instance;
 	VALUE_PAIR		*challenge = NULL;
-	VALUE_PAIR		*vp;
 
 	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
 	if (!challenge) return RLM_MODULE_NOOP;
@@ -1328,20 +1327,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY)) {
-		RWDEBUG2("Auth-Type already set.  Not setting to %s", inst->auth_type->alias);
-		return RLM_MODULE_NOOP;
-	}
-
-	/*
-	 *	Set Auth-Type to MS-CHAP.  The authentication code
-	 *	will take care of turning cleartext passwords into
-	 *	NT/LM passwords.
-	 */
-	RDEBUG2("Found MS-CHAP attributes.  Setting 'Auth-Type = %s'", inst->auth_type->alias);
-	MEM(pair_add_control(&vp, attr_auth_type) >= 0);
-	MEM(fr_value_box_copy(vp, &vp->data, inst->auth_type->value) == 0);
-	vp->data.enumv = vp->da;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
 
 	return RLM_MODULE_OK;
 }

@@ -272,6 +272,7 @@ int		modules_thread_instantiate(TALLOC_CTX *ctx, CONF_SECTION *root, fr_event_li
 int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_free(void);
+bool		module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv);
 int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
 
 /*
