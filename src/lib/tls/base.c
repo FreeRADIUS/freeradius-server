@@ -520,6 +520,8 @@ int tls_init(void)
  */
 void tls_free(void)
 {
+	if (--instance_count > 0) return;
+
 	FR_TLS_REMOVE_THREAD_STATE();
 	ENGINE_cleanup();
 	CONF_modules_unload(1);
