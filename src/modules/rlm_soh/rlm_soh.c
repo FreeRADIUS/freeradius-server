@@ -33,8 +33,8 @@ typedef struct rlm_soh_t {
 	bool dhcp;
 } rlm_soh_t;
 
-static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t rlm_soh_dict[];
 fr_dict_autoload_t rlm_soh_dict[] = {

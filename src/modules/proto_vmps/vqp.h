@@ -31,7 +31,7 @@ RCSIDH(vqp_h, "$Id$")
 extern "C" {
 #endif
 
-extern fr_dict_t const *dict_vqp;
+extern fr_dict_t *dict_vqp;
 
 #define FR_MAX_VMPS_CODE (5)
 

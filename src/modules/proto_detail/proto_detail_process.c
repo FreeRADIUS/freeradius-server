@@ -31,7 +31,7 @@
 #include <freeradius-devel/rad_assert.h>
 #include "proto_detail.h"
 
-static fr_dict_t const *dict_freeradius;
+static fr_dict_t *dict_freeradius;
 
 extern fr_dict_autoload_t proto_detail_process_dict[];
 fr_dict_autoload_t proto_detail_process_dict[] = {

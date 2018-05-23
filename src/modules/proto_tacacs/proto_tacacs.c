@@ -30,9 +30,9 @@
 
 #include <freeradius-devel/tacacs/tacacs.h>
 
-static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
-static fr_dict_t const *dict_tacacs;
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+static fr_dict_t *dict_tacacs;
 
 extern fr_dict_autoload_t proto_tacacs_dict[];
 fr_dict_autoload_t proto_tacacs_dict[] = {

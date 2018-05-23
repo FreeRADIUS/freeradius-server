@@ -35,7 +35,7 @@ typedef struct dhcp_option_t {
 	uint8_t		length;
 } dhcp_option_t;
 
-static fr_dict_t const *dict_dhcpv4;
+static fr_dict_t *dict_dhcpv4;
 
 extern fr_dict_autoload_t dhcpv4_dict[];
 fr_dict_autoload_t dhcpv4_dict[] = {

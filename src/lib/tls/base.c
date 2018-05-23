@@ -39,8 +39,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 static int instance_count = 0;
 
-fr_dict_t const *dict_freeradius;
-fr_dict_t const *dict_radius;
+fr_dict_t *dict_freeradius;
+fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t tls_dict[];
 fr_dict_autoload_t tls_dict[] = {

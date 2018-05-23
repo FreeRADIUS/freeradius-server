@@ -64,7 +64,7 @@ typedef struct rlm_files_t {
 	rbtree_t *postauth_users;
 } rlm_files_t;
 
-static fr_dict_t const *dict_freeradius;
+static fr_dict_t *dict_freeradius;
 
 extern fr_dict_autoload_t rlm_files_dict[];
 fr_dict_autoload_t rlm_files_dict[] = {

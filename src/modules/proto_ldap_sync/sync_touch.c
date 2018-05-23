@@ -142,8 +142,8 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
+	if (fr_dict_read(dict_freeradius, conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
+		fr_perror("sync_touch");
 		exit(EXIT_FAILURE);
 	}
 	fr_strerror();	/* Clear the error buffer */

@@ -160,7 +160,7 @@ const FR_NAME_NUMBER log_str2dst[] = {
 
 static char const spaces[] = "                                                                                                                        ";
 
-static fr_dict_t const *dict_freeradius;
+static fr_dict_t *dict_freeradius;
 
 extern fr_dict_autoload_t log_dict[];
 fr_dict_autoload_t log_dict[] = {

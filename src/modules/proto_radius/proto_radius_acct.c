@@ -30,7 +30,7 @@
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
 
-static fr_dict_t const *dict_freeradius;
+static fr_dict_t *dict_freeradius;
 
 extern fr_dict_autoload_t proto_radius_acct_dict[];
 fr_dict_autoload_t proto_radius_acct_dict[] = {

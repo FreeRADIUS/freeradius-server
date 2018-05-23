@@ -228,7 +228,7 @@ typedef struct bfd_socket_t {
 	rbtree_t	*session_tree;
 } bfd_socket_t;
 
-static fr_dict_t const *dict_bfd;
+static fr_dict_t *dict_bfd;
 
 extern fr_dict_autoload_t proto_bfd_dict[];
 fr_dict_autoload_t proto_bfd_dict[] = {

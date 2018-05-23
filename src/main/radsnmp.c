@@ -91,10 +91,12 @@ typedef struct radsnmp_conf {
 	char			*secret;		//!< Shared secret.
 } radsnmp_conf_t;
 
-static fr_dict_t const *dict_radius;
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t radsnmp_dict[];
 fr_dict_autoload_t radsnmp_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
@@ -1063,15 +1065,9 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	{
-		fr_dict_t *mutable;
-
-		memcpy(&mutable, &dict_radius, sizeof(mutable));
-
-		if (fr_dict_read(mutable, conf->radius_dir, FR_DICTIONARY_FILE) == -1) {
-			fr_perror("radsnmp");
-			exit(EXIT_FAILURE);
-		}
+	if (fr_dict_read(dict_freeradius, conf->radius_dir, FR_DICTIONARY_FILE) == -1) {
+		fr_perror("radsnmp");
+		exit(EXIT_FAILURE);
 	}
 	fr_strerror();	/* Clear the error buffer */
 

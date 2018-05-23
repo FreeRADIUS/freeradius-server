@@ -223,8 +223,8 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t rlm_ldap_dict[];
 fr_dict_autoload_t rlm_ldap_dict[] = {
@@ -1486,12 +1486,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	if (inst->cache_attribute) {
 		fr_dict_attr_flags_t	flags;
-		fr_dict_t		*mutable;
-
-		memcpy(&mutable, &dict_freeradius, sizeof(mutable));
 
 		memset(&flags, 0, sizeof(flags));
-		if (fr_dict_attr_add(mutable, fr_dict_root(mutable),
+		if (fr_dict_attr_add(dict_freeradius, fr_dict_root(dict_freeradius),
 				     inst->cache_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
 			PERROR("Error creating cache attribute");
 		error:

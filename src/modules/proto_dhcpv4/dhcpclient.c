@@ -76,8 +76,8 @@ typedef struct dc_offer {
 	uint32_t offered_addr;
 } dc_offer_t;
 
-static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_dhcpv4;
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_dhcpv4;
 
 extern fr_dict_autoload_t dhcpclient_dict[];
 fr_dict_autoload_t dhcpclient_dict[] = {
@@ -669,15 +669,9 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	{
-		fr_dict_t *mutable;
-
-		memcpy(&mutable, &dict_freeradius, sizeof(mutable));
-
-		if (fr_dict_read(mutable, raddb_dir, FR_DICTIONARY_FILE) == -1) {
-			fr_perror("dhcpclient");
-			exit(EXIT_FAILURE);
-		}
+	if (fr_dict_read(dict_freeradius, raddb_dir, FR_DICTIONARY_FILE) == -1) {
+		fr_perror("dhcpclient");
+		exit(EXIT_FAILURE);
 	}
 	fr_strerror();	/* Clear the error buffer */
 
