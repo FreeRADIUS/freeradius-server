@@ -160,7 +160,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(attr_dhcpv4_message_type, type_str);
+	type_enum = fr_dict_enum_by_alias(attr_dhcpv4_message_type, type_str, -1);
 	if (!type_enum) {
 		cf_log_err(ci, "Invalid type \"%s\"", type_str);
 		return -1;
@@ -603,7 +603,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	Check that the packet type is known.
 		 */
 		packet_type = cf_section_name2(subcs);
-		dv = fr_dict_enum_by_alias(attr_dhcpv4_message_type, packet_type);
+		dv = fr_dict_enum_by_alias(attr_dhcpv4_message_type, packet_type, -1);
 		if (!dv || ((dv->value->vb_uint32 > FR_DHCP_MAX) &&
 			    (dv->value->vb_uint32 == FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND))) {
 			cf_log_err(subcs, "Invalid DHCPV4 packet type in '%s %s {...}'",

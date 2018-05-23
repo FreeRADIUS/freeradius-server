@@ -1510,7 +1510,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		PERROR("Failed adding %s alias", attr_auth_type->name);
 		return -1;
 	}
-	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name);
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name, -1);
 	rad_assert(inst->auth_type);
 
 	return 0;

@@ -336,7 +336,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		fr_pair_value_bstrncpy(vp, passcode, inst->id_len);
 	}
 
-	dval = fr_dict_enum_by_alias(attr_auth_type, inst->name);
+	dval = fr_dict_enum_by_alias(attr_auth_type, inst->name, -1);
 	if (dval) {
 		MEM(pair_add_control(&vp, attr_auth_type) >= 0);
 		fr_value_box_copy(NULL, &vp->data, dval->value);

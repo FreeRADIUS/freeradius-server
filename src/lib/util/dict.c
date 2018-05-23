@@ -276,17 +276,19 @@ static void hash_pool_free(void *to_free)
  * @param[in] name	of the attribute, vendor or protocol.
  * @return the hashed derived from the name.
  */
-static uint32_t dict_hash_name(char const *name)
+static uint32_t dict_hash_name(char const *name, size_t len)
 {
 	uint32_t hash = FNV_MAGIC_INIT;
-	char const *p;
 
-	for (p = name; *p != '\0'; p++) {
+	char const *p = name, *q = name + len;
+
+	while (p < q) {
 		int c = *(unsigned char const *)p;
 		if (isalpha(c)) c = tolower(c);
 
 		hash *= FNV_MAGIC_PRIME;
 		hash ^= (uint32_t)(c & 0xff);
+		p++;
 	}
 
 	return hash;
@@ -299,7 +301,11 @@ static uint32_t dict_hash_name(char const *name)
  */
 static uint32_t dict_protocol_name_hash(void const *data)
 {
-	return dict_hash_name(((fr_dict_t const *)data)->root->name);
+	char const *name;
+
+	name = ((fr_dict_t const *)data)->root->name;
+
+	return dict_hash_name(name, strlen(name));
 }
 
 /** Compare two protocol names
@@ -339,7 +345,11 @@ static int dict_protocol_num_cmp(void const *one, void const *two)
  */
 static uint32_t dict_attr_name_hash(void const *data)
 {
-	return dict_hash_name(((fr_dict_attr_t const *)data)->name);
+	char const *name;
+
+	name = ((fr_dict_attr_t const *)data)->name;
+
+	return dict_hash_name(name, strlen(name));
 }
 
 /** Compare two attribute names
@@ -389,7 +399,11 @@ static int dict_attr_combo_cmp(void const *one, void const *two)
  */
 static uint32_t dict_vendor_name_hash(void const *data)
 {
-	return dict_hash_name(((fr_dict_vendor_t const *)data)->name);
+	char const *name;
+
+	name = ((fr_dict_vendor_t const *)data)->name;
+
+	return dict_hash_name(name, strlen(name));
 }
 
 /** Compare two attribute names
@@ -431,7 +445,8 @@ static uint32_t dict_enum_alias_hash(void const *data)
 	uint32_t hash;
 	fr_dict_enum_t const *enumv = data;
 
-	hash = dict_hash_name(enumv->alias);
+	hash = dict_hash_name((void const *)enumv->alias, enumv->alias_len);
+
 	return fr_hash_update(&enumv->da, sizeof(enumv->da), hash);		//-V568
 }
 
@@ -1798,6 +1813,7 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 		return -1;
 	}
 	enumv->alias = talloc_typed_strdup(enumv, alias);
+	enumv->alias_len = strlen(alias);
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL, false);
 
 	if (da->type != value->type) {
@@ -1842,7 +1858,7 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 			 *	name and value.  There are lots in
 			 *	dictionary.ascend.
 			 */
-			old = fr_dict_enum_by_alias(da, alias);
+			old = fr_dict_enum_by_alias(da, alias, -1);
 			if (!fr_cond_assert(old)) return -1;
 
 			if (fr_value_box_cmp(old->value, enumv->value) == 0) {
@@ -1897,7 +1913,7 @@ int fr_dict_enum_add_alias_next(fr_dict_attr_t const *da, char const *alias)
 				.type = da->type
 			};
 
-	if (fr_dict_enum_by_alias(da, alias)) return 0;
+	if (fr_dict_enum_by_alias(da, alias, -1)) return 0;
 
 	switch (da->type) {
 	case FR_TYPE_INT8:
@@ -3447,6 +3463,7 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 	 */
 	enumv.da = da;
 	enumv.alias = "";
+	enumv.alias_len = 0;
 
 	/*
 	 *	Look up the attribute alias target, and use
@@ -3490,7 +3507,7 @@ char const *fr_dict_enum_alias_by_value(fr_dict_attr_t const *da, fr_value_box_t
 /*
  *	Get a value by its name, keyed off of an attribute.
  */
-fr_dict_enum_t *fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alias)
+fr_dict_enum_t *fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alias, ssize_t len)
 {
 	fr_dict_enum_t	*found;
 	fr_dict_enum_t	find = {
@@ -3506,6 +3523,9 @@ fr_dict_enum_t *fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alia
 		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
 		return NULL;
 	}
+
+	if (len < 0) len = strlen(alias);
+	find.alias_len = (size_t)len;
 
 	/*
 	 *	Look up the attribute alias target, and use

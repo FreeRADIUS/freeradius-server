@@ -403,7 +403,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 		 *	If the value already exists, don't
 		 *	create it again.
 		 */
-		dv = fr_dict_enum_by_alias(da, name2);
+		dv = fr_dict_enum_by_alias(da, name2, -1);
 		if (dv) continue;
 
 		cf_log_debug(subcs, "Creating %s = %s", da->name, name2);

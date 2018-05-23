@@ -123,7 +123,7 @@ eap_type_t eap_name2type(char const *name)
 {
 	fr_dict_enum_t	*dv;
 
-	dv = fr_dict_enum_by_alias(attr_eap_type, name);
+	dv = fr_dict_enum_by_alias(attr_eap_type, name, -1);
 	if (!dv) return FR_EAP_INVALID;
 
 	if (dv->value->vb_uint32 >= FR_EAP_MAX_TYPES) return FR_EAP_INVALID;

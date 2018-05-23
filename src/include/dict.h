@@ -116,6 +116,8 @@ typedef struct {
 typedef struct {
 	fr_dict_attr_t const	*da;				//!< Dictionary attribute enum is associated with.
 	char const		*alias;				//!< Enum name.
+	size_t			alias_len;			//!< Allows for efficient alias lookups when operating
+								///< on partial buffers.
 	fr_value_box_t const	*value;				//!< Enum value (what name maps to).
 } fr_dict_enum_t;
 
@@ -327,7 +329,7 @@ fr_dict_enum_t		*fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t 
 
 char const		*fr_dict_enum_alias_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 
-fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alias);
+fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alias, ssize_t len);
 /** @} */
 
 /** @name Dictionary and protocol loading

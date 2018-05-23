@@ -1079,7 +1079,7 @@ static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
 			cf_log_debug(subcs, "Loading dhcp {...}");
 		}
 
-		dv = fr_dict_enum_by_alias(da, name2);
+		dv = fr_dict_enum_by_alias(da, name2, -1);
 		if (!dv) {
 			cf_log_err(subcs, "Server contains 'dhcp %s {...}, but there is no such value for "
 				   "DHCP-Message-Type", name2);

@@ -3441,7 +3441,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			goto parse;
 		}
 
-		enumv = fr_dict_enum_by_alias(dst_enumv, alias);
+		enumv = fr_dict_enum_by_alias(dst_enumv, alias, alias_len);
 		if (tmp) talloc_free(tmp);
 		if (!enumv) goto parse;
 

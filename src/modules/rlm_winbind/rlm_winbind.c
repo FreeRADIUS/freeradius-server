@@ -335,7 +335,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		PERROR("Failed adding %s alias", inst->name);
 		return -1;
 	}
-	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name);
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name, -1);
 
 	if (inst->group_attribute) {
 		group_attribute = inst->group_attribute;
