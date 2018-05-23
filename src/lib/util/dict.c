@@ -2877,6 +2877,55 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 	return dict->root;
 }
 
+/** Look up a protocol name embedded in another string
+ *
+ * @param[in,out] name		string start.
+ * @return
+ * 	- Attribute matching name.
+ *  	- NULL if no matching attribute could be found.
+ */
+fr_dict_t *fr_dict_by_protocol_substr(char const **name)
+{
+	fr_dict_attr_t		root;
+	fr_dict_t		find = { .root = &root };
+
+	fr_dict_t		*dict;
+	char const		*p;
+	size_t			len;
+
+	if (!protocol_by_name || !name || !*name) return NULL;
+
+	memset(&root, 0, sizeof(root));
+
+	/*
+	 *	Advance p until we get something that's not part of
+	 *	the dictionary attribute name.
+	 */
+	for (p = *name; fr_dict_attr_allowed_chars[(int)*p] && (*p != '.'); p++);
+
+	len = p - *name;
+	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
+		fr_strerror_printf("Attribute name too long");
+		return NULL;
+	}
+
+	root.name = talloc_bstrndup(NULL, *name, len);
+	if (!root.name) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+	dict = fr_hash_table_finddata(protocol_by_name, &find);
+	talloc_const_free(root.name);
+
+	if (!dict) {
+		fr_strerror_printf("Unknown protocol '%.*s'", (int) len, *name);
+		return NULL;
+	}
+	*name = p;
+
+	return dict;
+}
+
 /** Lookup a protocol by its name
  *
  * @param[in] name of the protocol to locate.

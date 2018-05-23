@@ -256,6 +256,8 @@ ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
  */
 fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
 
+fr_dict_t		*fr_dict_by_protocol_substr(char const **name);
+
 fr_dict_t		*fr_dict_by_protocol_name(char const *name);
 
 fr_dict_t		*fr_dict_by_protocol_num(unsigned int num);
