@@ -308,15 +308,15 @@ error:
  *
  * Uses 'name2' of section to set default request and lists.
  *
- * @param[in] cs the update section
- * @param[out] out Where to store the head of the map.
- * @param[in] dst_list_def The default destination list, usually dictated by
- * 	the section the module is being called in.
- * @param[in] src_list_def The default source list, usually dictated by the
- *	section the module is being called in.
- * @param[in] validate map using this callback (may be NULL).
- * @param[in] ctx to pass to callback.
- * @param[in] max number of mappings to process.
+ * @param[out] out		Where to store the allocated map.
+ * @param[in] cs		the update section
+ * @param[in] dst_list_def	The default destination list, usually dictated by
+ * 				the section the module is being called in.
+ * @param[in] src_list_def	The default source list, usually dictated by the
+ *				section the module is being called in.
+ * @param[in] validate		map using this callback (may be NULL).
+ * @param[in] ctx		to pass to callback.
+ * @param[in] max		number of mappings to process.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -415,25 +415,27 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
  *
  * Return must be freed with talloc_free
  *
- * @param[in] ctx for talloc
- * @param[out] out Where to store the head of the map.
- * @param[in] lhs of the operation
- * @param[in] lhs_type type of the LHS string
- * @param[in] op the operation to perform
- * @param[in] rhs of the operation
- * @param[in] rhs_type type of the RHS string
- * @param[in] dst_request_def The default request to insert unqualified attributes into.
- * @param[in] dst_list_def The default list to insert unqualified attributes into.
- * @param[in] src_request_def The default request to resolve attribute references in.
- * @param[in] src_list_def The default list to resolve unqualified attributes in.
- * @return #vp_map_t if successful or NULL on error.
+ * @param[in] ctx		for talloc.
+ * @param[out] out		Where to store the head of the map.
+ * @param[in] lhs		of the operation
+ * @param[in] lhs_type		type of the LHS string
+ * @param[in] op		the operation to perform
+ * @param[in] rhs		of the operation
+ * @param[in] rhs_type		type of the RHS string
+ * @param[in] dst_request_def	to insert unqualified attributes into.
+ * @param[in] dst_list_def	to insert unqualified attributes into.
+ * @param[in] src_request_def	to resolve attribute references in.
+ * @param[in] src_list_def	to resolve unqualified attributes in.
+ * @return
+ *	- #vp_map_t if successful.
+ *	- NULL on error.
  */
-int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN lhs_type,
-		     FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
-		     request_refs_t dst_request_def,
-		     pair_lists_t dst_list_def,
-		     request_refs_t src_request_def,
-		     pair_lists_t src_list_def)
+int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
+		     char const *lhs, FR_TOKEN lhs_type,
+		     FR_TOKEN op,
+		     char const *rhs, FR_TOKEN rhs_type,
+		     request_refs_t dst_request_def, pair_lists_t dst_list_def,
+		     request_refs_t src_request_def, pair_lists_t src_list_def)
 {
 	ssize_t slen;
 	vp_map_t *map;
@@ -470,13 +472,18 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN 
  * Takes a valuepair string with list and request qualifiers and converts it into a
  * #vp_map_t.
  *
- * @param ctx			where to allocate the map.
- * @param out			Where to write the new map (must be freed with talloc_free()).
- * @param vp_str		string to parse.
- * @param dst_request_def	to use if attribute isn't qualified.
- * @param dst_list_def		to use if attribute isn't qualified.
- * @param src_request_def	to use if attribute isn't qualified.
- * @param src_list_def		to use if attribute isn't qualified.
+ * Attribute string is in the format (where <qu> is a quotation char ['"]):
+ @verbatim
+   [<list>:][<qu>]<attribute>[<qu>] <op> [<qu>]<value>[<qu>]
+ @endverbatim
+ *
+ * @param[in] ctx		where to allocate the map.
+ * @param[out] out		Where to write the new map.
+ * @param[in] vp_str		string to parse.
+ * @param[in] dst_request_def	to insert unqualified attributes into.
+ * @param[in] dst_list_def	to insert unqualified attributes into.
+ * @param[in] src_request_def	to resolve attribute references in.
+ * @param[in] src_list_def	to resolve unqualified attributes in.
  * @return
  *	- 0 on success.
  *	- < 0 on error.
@@ -532,8 +539,8 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
  * @param[in] ctx		where to allocate the map.
  * @param[out] out		Where to write the new map (must be freed with talloc_free()).
  * @param[in] vp		to convert.
- * @param[in] request_def	request context to assign to LHS.
- * @param[in] list_def		list context to assign to RHS.
+ * @param[in] request_def	to insert attributes into.
+ * @param[in] list_def		to insert attributes into.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
