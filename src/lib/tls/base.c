@@ -510,6 +510,8 @@ int tls_init(void)
 		return -1;
 	}
 
+	instance_count++;
+
 	return 0;
 }
 

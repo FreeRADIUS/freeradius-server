@@ -732,6 +732,8 @@ int fr_soh_init(void)
 		return -1;
 	}
 
+	instance_count++;
+
 	return 0;
 }
 
