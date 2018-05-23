@@ -28,6 +28,11 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/md5.h>
 
+typedef struct {
+	char const		*name;		//!< Auth-Type value for this module instance.
+	fr_dict_enum_t		*auth_type;
+} rlm_digest_t;
+
 static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
 
@@ -198,7 +203,8 @@ static int digest_fix(REQUEST *request)
 			 *	Didn't they know that VSA's exist?
 			 */
 			MEM(sub = fr_pair_afrom_child_num(request->packet,
-							  fr_dict_root(dict_freeradius), FR_DIGEST_REALM - 1 + p[0]));
+							  fr_dict_root(dict_freeradius),
+							  attr_digest_realm->attr - 1 + p[0]));
 			fr_pair_value_bstrncpy(sub, p + 2, attrlen - 2);
 			fr_pair_add(&request->packet->vps, sub);
 
@@ -221,7 +227,8 @@ static int digest_fix(REQUEST *request)
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_rcode_t rcode;
+	rlm_digest_t	*inst = instance;
+	rlm_rcode_t	rcode;
 
 	/*
 	 *	Double-check and fix the attributes.
@@ -229,17 +236,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	rcode = digest_fix(request);
 	if (rcode != RLM_MODULE_OK) return rcode;
 
-
-	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY)) {
-		RWDEBUG2("Auth-Type already set.  Not setting to DIGEST");
-		return RLM_MODULE_NOOP;
-	}
-
 	/*
 	 *	Everything's OK, add a digest authentication type.
 	 */
-	RDEBUG("Adding Auth-Type = DIGEST");
-	pair_make_config("Auth-Type", "DIGEST", T_OP_EQ);
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
 
 	return RLM_MODULE_OK;
 }
@@ -362,7 +362,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		/*
 		 *	Set A1 to Digest-HA1 if no User-Password found
 		 */
-		if (passwd->da->attr == FR_DIGEST_HA1) {
+		if (passwd->da == attr_digest_ha1) {
 			if (fr_hex2bin(&a1[0], sizeof(a1), passwd->vp_strvalue, passwd->vp_length) != 16) {
 				RDEBUG2("Invalid text in Digest-HA1");
 				return RLM_MODULE_INVALID;
@@ -623,6 +623,28 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	return RLM_MODULE_REJECT;
 }
 
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	char const		*name;
+	rlm_digest_t		*inst = instance;
+
+	/*
+	 *	Create the dynamic translation.
+	 */
+	name = cf_section_name2(conf);
+	if (!name) name = cf_section_name1(conf);
+	inst->name = name;
+
+	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
+		PERROR("Failed adding %s alias", attr_auth_type->name);
+		return -1;
+	}
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name);
+	rad_assert(inst->auth_type);
+
+	return 0;
+}
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -636,6 +658,8 @@ extern rad_module_t rlm_digest;
 rad_module_t rlm_digest = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "digest",
+	.inst_size	= sizeof(rlm_digest_t),
+	.bootstrap	= mod_bootstrap,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize
