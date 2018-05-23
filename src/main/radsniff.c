@@ -85,6 +85,24 @@ static const FR_NAME_NUMBER rs_events[] = {
 	{  NULL , -1 }
 };
 
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t radsniff_dict[];
+fr_dict_autoload_t radsniff_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_freeradius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_packet_type;
+
+extern fr_dict_attr_autoload_t radsniff_dict_attr[];
+fr_dict_attr_autoload_t radsniff_dict_attr[] = {
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 static void NEVER_RETURNS usage(int status);
 
 /** Fork and kill the parent process, writing out our PID
@@ -1930,7 +1948,8 @@ static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(NULL, tok);
+		da = fr_dict_attr_by_name(dict_radius, tok);
+		if (!da) da = fr_dict_attr_by_name(dict_freeradius, tok);
 		if (!da) {
 			ERROR("Error parsing attribute name \"%s\"", tok);
 			return -1;
@@ -2182,7 +2201,6 @@ int main(int argc, char *argv[])
 	int		opt;
 	char const	*raddb_dir = RADDBDIR;
 	char const	*dict_dir = DICTDIR;
-	fr_dict_t	*dict = NULL;
 
 	rs_stats_t	*stats;
 
@@ -2537,14 +2555,20 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
+	if (fr_dict_autoload(radsniff_dict) < 0) {
 		fr_perror("radsniff");
 		ret = 64;
 		goto finish;
 	}
 
-	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
+	if (fr_dict_attr_autoload(radsniff_dict_attr) < 0) {
+		fr_perror("radsniff");
+		ret = 64;
+		goto finish;
+	}
+
+	if (fr_dict_read(dict_freeradius, raddb_dir, FR_DICTIONARY_FILE) == -1) {
+		fr_perror("radsniff");
 		ret = 64;
 		goto finish;
 	}
@@ -2583,7 +2607,7 @@ int main(int argc, char *argv[])
 		}
 
 		fr_pair_cursor_init(&cursor, &conf->filter_request_vps);
-		type = fr_pair_cursor_next_by_num(&cursor, 0, FR_PACKET_TYPE, TAG_ANY);
+		type = fr_pair_cursor_next_by_da(&cursor, attr_packet_type, TAG_ANY);
 		if (type) {
 			fr_pair_cursor_remove(&cursor);
 			conf->filter_request_code = type->vp_uint32;
@@ -2600,7 +2624,7 @@ int main(int argc, char *argv[])
 		}
 
 		fr_pair_cursor_init(&cursor, &conf->filter_response_vps);
-		type = fr_pair_cursor_next_by_num(&cursor, 0, FR_PACKET_TYPE, TAG_ANY);
+		type = fr_pair_cursor_next_by_da(&cursor, attr_packet_type, TAG_ANY);
 		if (type) {
 			fr_pair_cursor_remove(&cursor);
 			conf->filter_response_code = type->vp_uint32;
@@ -2928,6 +2952,8 @@ finish:
 	cleanup = true;
 
 	if (conf->daemonize) unlink(conf->pidfile);
+
+	fr_dict_autofree(radsniff_dict);
 
 	/*
 	 *	Free all the things! This also closes all the sockets and file descriptors
