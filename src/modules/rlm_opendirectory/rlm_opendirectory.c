@@ -506,6 +506,7 @@ extern rad_module_t rlm_opendirectory;
 rad_module_t rlm_opendirectory = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "opendirectory",
+	.inst_size	= sizeof(rlm_opendirectory_t),
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.bootstrap	= mod_bootstrap,
 	.methods = {
