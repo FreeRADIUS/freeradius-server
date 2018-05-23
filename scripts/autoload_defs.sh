@@ -32,11 +32,11 @@ for i in ${RESOLVED[*]}; do
 done
 
 if $NEED_INTERNAL; then
-	echo "static fr_dict_t const *dict_freeradius;"
+	echo "static fr_dict_t *dict_freeradius;"
 fi
 
 if $NEED_RADIUS; then
-	echo "static fr_dict_t const *dict_radius;"
+	echo "static fr_dict_t *dict_radius;"
 fi
 
 echo
