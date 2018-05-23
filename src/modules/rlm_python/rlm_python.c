@@ -444,7 +444,6 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	PyObject	*pArgs = NULL;
 	int		ret;
 	int 		i;
-	VALUE_PAIR *proxy_reply_vps = NULL;
 
 	/* Default return value is "OK, continue" */
 	ret = RLM_MODULE_OK;
@@ -470,16 +469,21 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 
 		/* fill proxy vps */
 		if (request->proxy) {
-			proxy_reply_vps = request->proxy_reply == NULL ? NULL : request->proxy_reply->vps;
-			if (!mod_populate_vps(pArgs, 4, request->proxy->vps) ||
-			    !mod_populate_vps(pArgs, 5, proxy_reply_vps)) {
+			if (!mod_populate_vps(pArgs, 4, request->proxy->vps)) {
 				ret = RLM_MODULE_FAIL;
 				goto finish;
 			}
-		}
-		/* If there are no proxy lists */
-		else {
+		} else {
 			mod_populate_vps(pArgs, 4, NULL);
+		}
+
+		/* fill proxy_reply vps */
+		if (request->proxy_reply) {
+			if (!mod_populate_vps(pArgs, 5, request->proxy_reply->vps)) {
+				ret = RLM_MODULE_FAIL;
+				goto finish;
+			}
+		} else {
 			mod_populate_vps(pArgs, 5, NULL);
 		}
 
