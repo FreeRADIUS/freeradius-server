@@ -2217,6 +2217,8 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
  *
  * If you want to convert from PRESENTATION format, use #fr_value_box_from_str.
  *
+ * @note src and dst must not be the same box.  We do not support casting in place.
+ *
  * @param ctx		to allocate buffers in (usually the same as dst)
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
@@ -2234,6 +2236,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 {
 	if (!fr_cond_assert(dst_type != FR_TYPE_INVALID)) return -1;
 	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(src != dst)) return -1;
 
 	if (fr_dict_non_data_types[dst_type]) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types.",
@@ -2243,9 +2246,30 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	}
 
 	/*
-	 *	If it's the same type, copy.
+	 *	If it's the same type, copy, but set the enumv
+	 *	in the destination box to be the one provided.
+	 *
+	 *	The theory here is that the attribute value isn't
+	 *	being converted into its presentation format and
+	 *	re-parsed, and the enumv aliases only get applied
+	 *	when converting internal values to/from strings,
+	 *	so it's OK just to swap out the enumv.
+	 *
+	 *	If there's a compelling case in the future we
+	 *	might revisit this, but it'd likely mean fixing
+	 *	all the casting functions to treat any value
+	 *	with an enumv as a string, which seems weird.
 	 */
-	if (dst_type == src->type) return fr_value_box_copy(ctx, dst, src);
+	if (dst_type == src->type) {
+		int ret;
+
+		ret = fr_value_box_copy(ctx, dst, src);
+		if (ret < 0) return ret;
+
+		dst->enumv = dst_enumv;
+
+		return ret;
+	}
 
 	/*
 	 *	Initialise dst
@@ -2495,6 +2519,51 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	dst->type = dst_type;
 	dst->enumv = dst_enumv;
+
+	return 0;
+}
+
+/** Convert one type of fr_value_box_t to another in place
+ *
+ * This should be the canonical function used to convert between INTERNAL data formats.
+ *
+ * If you want to convert from PRESENTATION format, use #fr_value_box_from_str.
+ *
+ * @param ctx		to allocate buffers in (usually the same as dst)
+ * @param vb		to cast.
+ * @param dst_type	to cast to.
+ * @param dst_enumv	Aliases for values contained within this fr_value_box_t.
+ *			If #fr_value_box_t is passed to #fr_value_box_asprint
+ *			aliases will be printed instead of actual value.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
+			       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
+{
+	fr_value_box_t tmp;
+
+	/*
+	 *	Simple case, destination type and current
+	 *	type are the same.
+	 */
+	if (vb->type == dst_type) {
+		vb->enumv = dst_enumv;	/* Update the enumv as this may be different */
+		return 0;
+	}
+
+	/*
+	 *	Copy meta data and any existing buffers to
+	 *	a temporary box.  We then clear that value
+	 *	box after the cast has been completed,
+	 *	freeing any old buffers.
+	 */
+	fr_value_box_copy_shallow(ctx, &tmp, vb, false);
+
+	if (fr_value_box_cast(vb, vb, dst_type, dst_enumv, &tmp) < 0) return -1;
+
+	fr_value_box_clear(&tmp);	/* Clear out any old buffers */
 
 	return 0;
 }

@@ -474,6 +474,9 @@ int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				  fr_value_box_t const *src);
 
+int		fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
+					   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv);
+
 int		fr_value_box_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					 fr_ipaddr_t const *ipaddr, bool tainted);
 
