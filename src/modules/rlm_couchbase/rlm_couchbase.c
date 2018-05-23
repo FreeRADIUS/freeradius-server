@@ -97,13 +97,13 @@ fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
  */
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_couchbase_t const *inst = instance;       /* our module instance */
-	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
-	char buffer[MAX_KEY_SIZE];
-	char const *dockey;            		/* our document key */
-	lcb_error_t cb_error = LCB_SUCCESS;     /* couchbase error holder */
-	rlm_rcode_t rcode = RLM_MODULE_OK;      /* return code */
-	ssize_t slen;
+	rlm_couchbase_t const	*inst = instance;		/* our module instance */
+	rlm_couchbase_handle_t	*handle = NULL;			/* connection pool handle */
+	char			buffer[MAX_KEY_SIZE];
+	char const		*dockey;			/* our document key */
+	lcb_error_t		cb_error = LCB_SUCCESS;		/* couchbase error holder */
+	rlm_rcode_t		rcode = RLM_MODULE_OK;		/* return code */
+	ssize_t			slen;
 
 	/* assert packet as not null */
 	rad_assert(request->packet != NULL);
@@ -144,14 +144,67 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	/* debugging */
 	RDEBUG3("parsed user document == %s", json_object_to_json_string(cookie->jobj));
 
-	/* inject config value pairs defined in this json oblect */
-	mod_json_object_to_value_pairs(cookie->jobj, "config", request);
+	{
+		TALLOC_CTX	*pool = talloc_pool(request, 1024);	/* We need to do lots of allocs */
+		fr_cursor_t	maps, vlms;
+		vp_map_t	*map_head = NULL, *map;
+		vp_list_mod_t	*vlm_head = NULL, *vlm;
 
-	/* inject reply value pairs defined in this json oblect */
-	mod_json_object_to_value_pairs(cookie->jobj, "reply", request);
+		fr_cursor_init(&maps, &map_head);
 
-	finish:
+		/*
+		 *	Convert JSON data into maps
+		 */
+		if ((mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_CONTROL) < 0) ||
+		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_REPLY) < 0) ||
+		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_REQUEST) < 0) ||
+		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_STATE) < 0)) {
+		invalid:
+			talloc_free(pool);
+			rcode = RLM_MODULE_INVALID;
+			goto finish;
+		}
 
+		fr_cursor_init(&vlms, &vlm_head);
+
+		/*
+		 *	Convert all the maps into list modifications,
+		 *	which are guaranteed to succeed.
+		 */
+		for (map = fr_cursor_head(&maps);
+		     map;
+		     map = fr_cursor_next(&maps)) {
+			if (map_to_list_mod(pool, &vlm, request, map, NULL, NULL) < 0) goto invalid;
+			fr_cursor_insert(&vlms, vlm);
+		}
+
+		if (!vlm_head) {
+			RDEBUG2("Nothing to update");
+			talloc_free(pool);
+			rcode = RLM_MODULE_NOOP;
+			goto finish;
+		}
+
+		/*
+		 *	Apply the list of modifications
+		 */
+		for (vlm = fr_cursor_head(&vlms);
+		     vlm;
+		     vlm = fr_cursor_next(&vlms)) {
+			int ret;
+
+			ret = map_list_mod_apply(request, vlm);	/* SHOULD NOT FAIL */
+			if (!fr_cond_assert(ret == 0)) {
+				talloc_free(pool);
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
+		}
+
+		talloc_free(pool);
+	}
+
+finish:
 	/* free json object */
 	if (cookie->jobj) {
 		json_object_put(cookie->jobj);
@@ -159,9 +212,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	}
 
 	/* release handle */
-	if (handle) {
-		fr_pool_connection_release(inst->pool, request, handle);
-	}
+	if (handle) fr_pool_connection_release(inst->pool, request, handle);
 
 	/* return */
 	return rcode;
