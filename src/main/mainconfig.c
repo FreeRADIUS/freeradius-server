@@ -736,14 +736,6 @@ int main_config_init(void)
 	INFO("Starting - reading configuration files ...");
 
 	/*
-	 *	We need to load the dictionaries before reading the
-	 *	configuration files.  This is because of the
-	 *	pre-compilation in conf_file.c.  That should probably
-	 *	be fixed to be done as a second stage.
-	 */
-	if (!main_config.dict_dir) main_config.dict_dir = talloc_typed_strdup(NULL, DICTDIR);
-
-	/*
 	 *	About sizeof(REQUEST) + sizeof(RADIUS_PACKET) * 2 + sizeof(VALUE_PAIR) * 400
 	 *
 	 *	Which should be enough for many configurations.
@@ -751,8 +743,10 @@ int main_config_init(void)
 	main_config.talloc_pool_size = 8 * 1024; /* default */
 
 	/*
-	 *	Read the distribution dictionaries first, then
-	 *	the ones in raddb.
+	 *	We need to load the dictionaries before reading the
+	 *	configuration files.  This is because of the
+	 *	pre-compilation in conf_file.c.  That should probably
+	 *	be fixed to be done as a second stage.
 	 */
 	DEBUG2("Including dictionary file \"%s/%s\"", main_config.dict_dir, FR_DICTIONARY_FILE);
 	if (fr_dict_from_file(&main_config.dict, FR_DICTIONARY_FILE) != 0) {
@@ -919,8 +913,7 @@ do {\
 			return -1;
 		}
 
-		default_log.dst = fr_str2int(log_str2dst, log_dest,
-					      L_DST_NUM_DEST);
+		default_log.dst = fr_str2int(log_str2dst, log_dest, L_DST_NUM_DEST);
 		if (default_log.dst == L_DST_NUM_DEST) {
 			fprintf(stderr, "%s: Error: Unknown log_destination %s\n",
 				main_config.name, log_dest);

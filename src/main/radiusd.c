@@ -211,6 +211,11 @@ int main(int argc, char *argv[])
 	main_config.log_file = NULL;
 
 	/*
+	 *	Set the default dictionary directory
+	 */
+	main_config.dict_dir = DICTDIR;
+
+	/*
 	 *  Set the panic action and enable other debugging facilities
 	 */
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -395,11 +400,6 @@ int main(int argc, char *argv[])
 	dl_init();
 
 	/*
-	 *  Read the configuration files, BEFORE doing anything else.
-	 */
-	if (main_config_init() < 0) exit(EXIT_FAILURE);
-
-	/*
 	 *	Initialise the top level dictionary hashes which hold
 	 *	the protocols.
 	 */
@@ -407,6 +407,11 @@ int main(int argc, char *argv[])
 		fr_perror("radiusd");
 		fr_exit(EXIT_FAILURE);
 	}
+
+	/*
+	 *  Read the configuration files, BEFORE doing anything else.
+	 */
+	if (main_config_init() < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
