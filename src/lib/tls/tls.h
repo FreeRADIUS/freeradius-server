@@ -461,7 +461,7 @@ fr_tls_conf_t	*tls_conf_parse_client(CONF_SECTION *cs);
 SSL_CTX		*tls_ctx_alloc(fr_tls_conf_t const *conf, bool client);
 
 /*
- *	tls/global.c
+ *	tls/base.c
  */
 
 #if 1
