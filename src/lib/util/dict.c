@@ -3679,9 +3679,12 @@ static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	}
 
 	/*
-	 *	Pre-Allocate 5MB of pool memory for rapid startup
+	 *	Pre-Allocate 2MB of pool memory for rapid startup
+	 *	This is about what's reported for all current dictionary
+	 *	attributes in the monolithic dictionary, and will go
+	 *	down once the dictionaries are split.
 	 */
-	dict->pool = talloc_pool(dict, (1024 * 1024 * 5));
+	dict->pool = talloc_pool(dict, (1024 * 1024 * 2));
 	if (!dict->pool) goto error;
 
 	/*
@@ -5382,8 +5385,12 @@ static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)
 	unsigned int		i;
 	size_t			len;
 	fr_dict_attr_t const	*p;
+	char			flags[256];
 
-	printf("%p - %s (%u) %s\n", da, da->name, da->attr, fr_int2str(dict_attr_types, da->type, "<INVALID>"));
+	fr_dict_snprint_flags(flags, sizeof(flags), &da->flags);
+
+	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
+	       da->name, da->attr, fr_int2str(dict_attr_types, da->type, "<INVALID>"), flags);
 
 	len = talloc_array_length(da->children);
 	for (i = 0; i < len; i++) {
@@ -5391,7 +5398,6 @@ static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)
 			_fr_dict_dump(p, lvl + 1);
 		}
 	}
-
 }
 
 void fr_dict_dump(fr_dict_t *dict)
