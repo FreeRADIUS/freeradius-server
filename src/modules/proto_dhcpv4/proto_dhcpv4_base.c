@@ -55,7 +55,7 @@ static int reply_ok[FR_DHCP_INFORM + 1] = {
 	[FR_DHCP_DECLINE]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
 	[FR_DHCP_ACK]		= FR_DHCP_ACK,
 	[FR_DHCP_NAK]		= FR_DHCP_NAK,
-	[FR_DHCP_RELEASE]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_RELEASE]	= 0,
 	[FR_DHCP_INFORM]	= FR_DHCP_ACK,
 };
 
@@ -67,7 +67,7 @@ static int reply_fail[FR_DHCP_INFORM + 1] = {
 	[FR_DHCP_DECLINE]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
 	[FR_DHCP_ACK]		= FR_DHCP_NAK,
 	[FR_DHCP_NAK]		= FR_DHCP_NAK,
-	[FR_DHCP_RELEASE]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_RELEASE]	= 0,
 	[FR_DHCP_INFORM]	= FR_DHCP_NAK,
 };
 
@@ -141,6 +141,13 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		case RLM_MODULE_HANDLED:
 			if (!request->reply->code) request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND;
 			break;
+		}
+
+		/*
+		 *	DHCP-Release doesn't send a reply, and doesn't run "send DHCP-Do-Not-Respond"
+		 */
+		if (!request->reply->code) {
+			return FR_IO_DONE;
 		}
 
 		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
