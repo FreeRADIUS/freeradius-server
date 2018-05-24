@@ -31,9 +31,9 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/json/json.h>
 
 #include <ctype.h>
-#include "json.h"
 
 #ifndef HAVE_JSON
 #  error "rlm_json should not be built unless json-c is available"

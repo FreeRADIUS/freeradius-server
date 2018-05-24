@@ -2,7 +2,7 @@
 #  might not always be available, and the TARGETNAME from the previous
 #  target may stick around.
 TARGETNAME	:=
--include $(top_builddir)/src/modules/rlm_json/libfreeradius-json.mk
+-include $(top_builddir)/src/lib/json/all.mk
 
 ifneq "${TARGETNAME}" ""
   TARGETNAME	:= rlm_json
@@ -14,5 +14,5 @@ SOURCES		:= $(TARGETNAME).c
 #
 #  Append SRC_CFLAGS and leave TGT_LDLIBS alone
 #
-SRC_CFLAGS	+= -I$(top_builddir)/src/modules/rlm_json
+SRC_CFLAGS	+= -I$(top_builddir)/src/lib/json/
 TGT_PREREQS	:= libfreeradius-json.a
