@@ -74,12 +74,12 @@ static void NEVER_RETURNS usage(void)
 
 int main(int argc, char *argv[])
 {
-	int c, i, rcode = 0;
-	int size;
-	intptr_t val;
-	void *data;
-	fr_atomic_queue_t *aq;
-	TALLOC_CTX	*autofree = talloc_init("main");
+	int			c, i, rcode = 0;
+	int			size;
+	intptr_t		val;
+	void			*data;
+	fr_atomic_queue_t	*aq;
+	TALLOC_CTX		*autofree = talloc_autofree_context();
 
 	size = 4;
 
@@ -189,8 +189,6 @@ int main(int argc, char *argv[])
 		fr_atomic_queue_debug(aq, stdout);
 	}
 #endif
-
-	talloc_free(autofree);
 
 	return rcode;
 }

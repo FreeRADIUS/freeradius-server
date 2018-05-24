@@ -193,13 +193,12 @@ static void NEVER_RETURNS usage(void)
 
 int main(int argc, char *argv[])
 {
-	int c;
+	int			c;
+	int			i, start, end, rcode;
+	fr_message_set_t	*ms;
+	uint32_t		seed;
 
-	int i, start, end, rcode;
-	fr_message_set_t *ms;
-	uint32_t	seed;
-
-	TALLOC_CTX	*autofree = talloc_init("main");
+	TALLOC_CTX		*autofree = talloc_autofree_context();
 
 	memset(array, 0, sizeof(array));
 	memset(messages, 0, sizeof(messages));
@@ -420,8 +419,6 @@ int main(int argc, char *argv[])
 	 */
 	rcode = fr_message_set_messages_used(ms);
 	rad_assert(rcode == 0);
-
-	talloc_free(autofree);
 
 	return rcode;
 }

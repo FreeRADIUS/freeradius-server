@@ -492,11 +492,11 @@ static void *channel_worker(void *arg)
 
 int main(int argc, char *argv[])
 {
-	int c;
-	fr_channel_t	*channel;
-	TALLOC_CTX	*autofree = talloc_init("main");
-	pthread_attr_t	attr;
-	pthread_t	master_id, worker_id;
+	int			c;
+	fr_channel_t		*channel;
+	TALLOC_CTX		*autofree = talloc_autofree_context();
+	pthread_attr_t		attr;
+	pthread_t		master_id, worker_id;
 
 	fr_time_start();
 
@@ -579,7 +579,5 @@ int main(int argc, char *argv[])
 
 	fr_channel_debug(channel, stdout);
 
-	talloc_free(autofree);
-
-	return 0;
+	exit(EXIT_SUCCESS);
 }

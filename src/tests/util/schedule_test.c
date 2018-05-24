@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
 	int c;
 	int num_networks = 1;
 	int num_workers = 2;
-	TALLOC_CTX	*autofree = talloc_init("main");
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 	fr_schedule_t	*sched;
 
 	fr_time_start();
@@ -100,8 +100,6 @@ int main(int argc, char *argv[])
 	sleep(1);
 
 	(void) fr_schedule_destroy(sched);
-
-	talloc_free(autofree);
 
 	return 0;
 }

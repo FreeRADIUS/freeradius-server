@@ -595,14 +595,12 @@ int main(int argc, char **argv)
 	RADIUS_PACKET		*request = NULL;
 	RADIUS_PACKET		*reply = NULL;
 
-	TALLOC_CTX		*autofree;
+	TALLOC_CTX		*autofree = talloc_autofree_context();
 
 	int			ret;
 
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
-
-	autofree = talloc_init("main");
 
 	while ((c = getopt(argc, argv, "d:D:f:hr:t:vxi:")) != EOF) switch(c) {
 		case 'D':
@@ -792,8 +790,6 @@ int main(int argc, char **argv)
 
 	fr_dhcpv4_free();
 	fr_dict_autofree(dhcpclient_dict);
-
-	talloc_free(autofree);
 
 	return ret < 0 ? 1 : 0;
 }

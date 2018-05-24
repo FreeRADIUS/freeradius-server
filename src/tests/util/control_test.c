@@ -184,10 +184,10 @@ retry:
 
 int main(int argc, char *argv[])
 {
-	int c;
-	TALLOC_CTX	*autofree = talloc_init("main");
-	pthread_attr_t	attr;
-	pthread_t	master_id, worker_id;
+	int 			c;
+	TALLOC_CTX		*autofree = talloc_autofree_context();
+	pthread_attr_t		attr;
+	pthread_t		master_id, worker_id;
 
 	fr_time_start();
 
@@ -239,7 +239,5 @@ int main(int argc, char *argv[])
 
 	close(kq);
 
-	talloc_free(autofree);
-
-	return 0;
+	exit(EXIT_SUCCESS);
 }

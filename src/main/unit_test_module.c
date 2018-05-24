@@ -697,8 +697,9 @@ int main(int argc, char *argv[])
 	CONF_SECTION		*unlang;
 	char			*auth_type;
 
-	TALLOC_CTX		*thread_ctx = talloc_init("thread_ctx");
-	TALLOC_CTX		*autofree = talloc_init("autofree");
+	TALLOC_CTX		*autofree = talloc_autofree_context();
+	TALLOC_CTX		*thread_ctx = talloc_new(autofree);
+
 	fr_talloc_fault_setup();
 
 	/*

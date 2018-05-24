@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 	fr_ring_buffer_t *rb;
 	uint32_t	seed;
 
-	TALLOC_CTX	*autofree = talloc_init("main");
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	while ((c = getopt(argc, argv, "hs:x")) != EOF) switch (c) {
 		case 's':
@@ -199,7 +199,5 @@ int main(int argc, char *argv[])
 	rad_assert(used == 0);
 	rad_assert(fr_ring_buffer_used(rb) == used);
 
-	talloc_free(autofree);
-
-	return 0;
+	exit(EXIT_SUCCESS);
 }

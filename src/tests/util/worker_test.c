@@ -486,7 +486,7 @@ static void sig_ignore(int sig)
 int main(int argc, char *argv[])
 {
 	int c;
-	TALLOC_CTX	*autofree = talloc_init("main");
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	if (fr_time_start() < 0) {
 		fprintf(stderr, "Failed to start time: %s\n", strerror(errno));
@@ -562,7 +562,5 @@ int main(int argc, char *argv[])
 
 	close(kq_master);
 
-	talloc_free(autofree);
-
-	return 0;
+	exit(EXIT_SUCCESS);
 }
