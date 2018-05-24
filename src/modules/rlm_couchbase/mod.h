@@ -29,7 +29,7 @@ RCSIDH(mod_h, "$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/pool.h>
 #include <libcouchbase/couchbase.h>
-#include "../rlm_json/json.h"
+#include <freeradius-devel/json/json.h>
 
 /* maximum size of a stored value */
 #define MAX_VALUE_SIZE 20480

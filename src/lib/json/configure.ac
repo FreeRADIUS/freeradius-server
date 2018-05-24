@@ -1,5 +1,5 @@
 AC_PREREQ([2.53])
-AC_INIT(rlm_json.c)
+AC_INIT(json.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[libfreeradius-json])
 AC_CONFIG_HEADER(config.h)
@@ -146,5 +146,5 @@ AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)
-AC_OUTPUT(libfreeradius-json.mk)
+AC_OUTPUT(all.mk)
 

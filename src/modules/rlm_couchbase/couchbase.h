@@ -27,7 +27,7 @@
 RCSIDH(couchbase_h, "$Id$")
 
 #include <libcouchbase/couchbase.h>
-#include "../rlm_json/json.h"
+#include <freeradius-devel/json/json.h>
 
 /** Information relating to the parsing of Couchbase document payloads
  *
