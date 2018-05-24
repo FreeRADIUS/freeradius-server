@@ -125,6 +125,14 @@ static int lsan_test_pipe[2] = {-1, -1};
 static int lsan_test_pid = -1;
 static int lsan_state = INT_MAX;
 
+/*
+ *	Some versions of lsan_interface.h are broken and don't declare
+ *	the prototypes of the functions properly, omitting the zero argument
+ *	specifier (void), so we need to disable the warning.
+ *
+ *	Observed with clang 5.
+ */
+DIAG_OFF(missing-prototypes)
 /** Callback for LSAN - do not rename
  *
  */
@@ -132,6 +140,7 @@ const char CC_HINT(used) *__lsan_default_suppressions(void)
 {
 	return
 #ifdef __APPLE__
+		"leak:_gai_nat64_synthesis\n"		/* Observed in calls to getaddrinfo */
 		"leak:*gmtsub*\n"
 		"leak:tzsetwall_basic\n"
 		"leak:ImageLoaderMachO::doImageInit\n"
@@ -158,6 +167,7 @@ int CC_HINT(used) __lsan_is_turned_off(void)
 	close(lsan_test_pipe[1]);
 	return 0;
 }
+DIAG_ON(missing-prototypes)
 
 /** Determine if we're running under LSAN (Leak Sanitizer)
  *
