@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 	bool		found = false;
 	bool		export = false;
 
-	TALLOC_CTX	*autofree = talloc_init("main");
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -244,7 +244,5 @@ int main(int argc, char *argv[])
 	}
 
 finish:
-	talloc_free(autofree);
-
 	return found ? ret : 64;
 }

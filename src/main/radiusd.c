@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 	 *  directly, so we'll allocate a new context beneath it, and
 	 *  free that before any leak reports.
 	 */
-	TALLOC_CTX *autofree = talloc_init("main");
+	TALLOC_CTX *autofree = talloc_new(talloc_autofree_context());
 
 #ifdef OSFC2
 	set_auth_parameters(argc, argv);

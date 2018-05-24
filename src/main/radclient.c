@@ -1182,7 +1182,7 @@ int main(int argc, char **argv)
 	rc_request_t	*this;
 	int		force_af = AF_UNSPEC;
 	fr_dict_t	*dict = NULL;
-	TALLOC_CTX	*autofree = talloc_init("autofree");
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	/*
 	 *	It's easier having two sets of flags to set the
@@ -1658,8 +1658,6 @@ int main(int argc, char **argv)
 
 	fr_dict_autofree(radclient_dict);
 
-	talloc_free(autofree);
-
 	if (do_summary) {
 		DEBUG("Packet summary:\n"
 		      "\tAccepted      : %" PRIu64 "\n"
@@ -1678,5 +1676,6 @@ int main(int argc, char **argv)
 	if ((stats.lost > 0) || (stats.failed > 0)) {
 		exit(1);
 	}
-	exit(0);
+
+	exit(EXIT_SUCCESS);
 }

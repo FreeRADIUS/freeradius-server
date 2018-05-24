@@ -401,7 +401,7 @@ int main(int argc, char **argv)
 	char const	*raddb_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;
 
-	TALLOC_CTX	*autofree = talloc_init("autofree");
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
@@ -874,8 +874,6 @@ int main(int argc, char **argv)
 	if (inputfp != stdin) fclose(inputfp);
 
 	if (radmin_log.dst == L_DST_FILES) close(radmin_log.fd);
-
-	talloc_free(autofree);
 
 	return exit_status;
 }

@@ -1268,7 +1268,7 @@ int main(int argc, char *argv[])
 	fr_dict_t	*dict = NULL;
 	int		ret = EXIT_SUCCESS;
 
-	TALLOC_CTX	*autofree = talloc_init("main");
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -1371,7 +1371,6 @@ int main(int argc, char *argv[])
 done:
 	xlat_free();
 	fr_strerror_free();
-	talloc_free(autofree);
 
 	return ret;
 }

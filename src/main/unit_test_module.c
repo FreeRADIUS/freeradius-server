@@ -1201,11 +1201,6 @@ finish:
 	 */
 	fr_strerror_free();
 
-	/*
-	 *	Cleanup anything in the autofree ctx
-	 */
-	talloc_free(autofree);
-
 	return rcode;
 }
 

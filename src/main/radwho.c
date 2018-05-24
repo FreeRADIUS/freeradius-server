@@ -201,7 +201,7 @@ int main(int argc, char **argv)
 	uint32_t		nas_ip_address = INADDR_NONE;
 	int			zap = 0;
 	fr_dict_t		*dict = NULL;
-	TALLOC_CTX		*autofree = talloc_init("autofree");
+	TALLOC_CTX		*autofree = talloc_autofree_context();
 
 	raddb_dir = RADIUS_DIR;
 
@@ -543,7 +543,6 @@ int main(int argc, char **argv)
 		}
 	}
 	fclose(fp);
-	talloc_free(autofree);
 
 	return 0;
 }

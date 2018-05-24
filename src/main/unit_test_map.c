@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 	char const		*dict_dir = DICTDIR;
 	fr_dict_t		*dict = NULL;
 
-	TALLOC_CTX		*autofree = talloc_init("main");
+	TALLOC_CTX		*autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -213,7 +213,6 @@ int main(int argc, char *argv[])
 	 */
 	xlat_free();
 	fr_strerror_free();
-	talloc_free(autofree);
 
 	return rcode;
 }
