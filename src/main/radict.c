@@ -132,7 +132,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 	fr_dict_snprint_flags(flags, sizeof(flags), &da->flags);
 
 	/* Protocol Name Type */
-	printf("%p, %s\t%s\t%s\t%s\t%s\n", da, fr_dict_root(dict)->name, oid_str, da->name,
+	printf("%s\t%s\t%s\t%s\t%s\n", fr_dict_root(dict)->name, oid_str, da->name,
 	       fr_int2str(dict_attr_types, da->type, "?Unknown?"), flags);
 }
 
