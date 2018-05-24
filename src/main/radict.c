@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
 
 			fr_dict_export(&count, &low, &high, *dict_p);
 			DEBUG2("Attribute count %" PRIu64, count);
-			DEBUG2("Memory alloc %zu (bytes)", talloc_total_size(*dict_p));
+			DEBUG2("Memory allocd %zu (bytes)", talloc_total_size(*dict_p));
 			DEBUG2("Memory spread %zu (bytes)", (high - low));
 		} while (++dict_p < dict_end);
 	}
