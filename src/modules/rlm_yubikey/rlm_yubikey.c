@@ -165,6 +165,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 #endif
 
+	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
+		PERROR("Failed adding %s alias", inst->name);
+		return -1;
+	}
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name, -1);
+
 	if (!cf_section_name2(conf)) return 0;
 
 	xlat_register(inst, "modhextohex", modhex_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -238,13 +244,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 {
 	rlm_yubikey_t const *inst = instance;
 
-	fr_dict_enum_t *dval;
-	char const *passcode;
-	size_t len;
-	VALUE_PAIR *vp;
-	char const *otp;
-	size_t password_len;
-	int ret;
+	char const	*passcode;
+	size_t		len;
+	VALUE_PAIR	*vp;
+	char const	*otp;
+	size_t		password_len;
+	int		ret;
 
 	/*
 	 *	Can't do yubikey auth if there's no password.
@@ -336,11 +341,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		fr_pair_value_bstrncpy(vp, passcode, inst->id_len);
 	}
 
-	dval = fr_dict_enum_by_alias(attr_auth_type, inst->name, -1);
-	if (dval) {
-		MEM(pair_add_control(&vp, attr_auth_type) >= 0);
-		fr_value_box_copy(NULL, &vp->data, dval->value);
-	}
+	module_section_type_set(request, attr_auth_type, inst->auth_type);
 
 	return RLM_MODULE_OK;
 }

@@ -21,9 +21,9 @@
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct rlm_yubikey_t {
+typedef struct {
 	char const 		*name;			//!< Instance name.
-	int			auth_type;		//!< Our Auth-Type.
+	fr_dict_enum_t		*auth_type;		//!< Our Auth-Type.
 	unsigned int		id_len;			//!< The length of the Public ID portion of the OTP string.
 	bool			split;			//!< Split password string into components.
 	bool			decrypt;		//!< Decrypt the OTP string using the yubikey library.
