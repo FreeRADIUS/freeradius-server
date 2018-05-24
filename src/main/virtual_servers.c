@@ -97,12 +97,15 @@ static fr_virtual_server_t **virtual_servers;
  */
 static CONF_SECTION *virtual_server_root;
 
+#if 0
 static int listen_on_read(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_on_read(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+#endif
 
 static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
+#if 0
 static const CONF_PARSER listen_on_read_config[] = {
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING | FR_TYPE_ON_READ,
 			 fr_virtual_server_t, listener), \
@@ -112,7 +115,7 @@ static const CONF_PARSER listen_on_read_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-const CONF_PARSER virtual_servers_on_read_config[] = {
+static const CONF_PARSER virtual_servers_on_read_config[] = {
 	/*
 	 *	Not really ok if it's missing but we want to
 	 *	let logic elsewhere handle the issue.
@@ -124,6 +127,7 @@ const CONF_PARSER virtual_servers_on_read_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
+#endif
 
 static const CONF_PARSER server_config[] = {
 	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace) },
@@ -149,7 +153,7 @@ const CONF_PARSER virtual_servers_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
+#if 0
 /** dl_open a proto_* module
  *
  * @param[in] ctx	to allocate data in.
@@ -195,7 +199,7 @@ static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED CONF_
 
 	return 0;
 }
-
+#endif
 
 /** dl_open a proto_* module
  *

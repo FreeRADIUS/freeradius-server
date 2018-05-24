@@ -362,7 +362,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 /*
  *	member of the radius group?
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_opendirectory_t	*inst = instance;
 	struct passwd		*userdata = NULL;

@@ -1637,7 +1637,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 	return ret;
 }
 
-static void *encode_test_ctx (UNUSED TALLOC_CTX *ctx)
+static void *encode_test_ctx (TALLOC_CTX *ctx)
 {
 	static uint8_t vector[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 

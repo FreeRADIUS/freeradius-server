@@ -389,7 +389,7 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, CONF_ITE
  *	- -1 on failure.
  *	- 0 on success.
  */
-static int cipher_rsa_certificate_file_load(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci,
+static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci,
 					    UNUSED CONF_PARSER const *rule)
 {
 	FILE		*fp;
@@ -528,7 +528,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * If multiple arguments are provided they will be concatenated.
  */
-static xlat_action_t cipher_rsa_sign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 					  REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
 					  fr_value_box_t **in)
 {
@@ -622,7 +622,7 @@ static xlat_action_t cipher_rsa_sign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_curs
  *
  * If multiple arguments are provided they will be concatenated.
  */
-static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 					     REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
@@ -694,7 +694,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t
  * If multiple arguments are provided (after @verbatim<signature>@endverbatim)
  * they will be concatenated.
  */
-static xlat_action_t cipher_rsa_verify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 					    REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
 					    fr_value_box_t **in)
 {

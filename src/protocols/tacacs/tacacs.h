@@ -24,6 +24,7 @@
 #define TAC_PLUS_MINOR_VER_ONE		1
 
 typedef enum {
+	TAC_PLUS_INVALID		= 0x00,
 	TAC_PLUS_AUTHEN			= 0x01,
 	TAC_PLUS_AUTHOR			= 0x02,
 	TAC_PLUS_ACCT			= 0x03

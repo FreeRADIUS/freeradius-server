@@ -260,7 +260,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 /** Decode the packet
  *
  */
-static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
@@ -330,7 +330,7 @@ static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUS
 	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
+static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);

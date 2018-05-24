@@ -48,6 +48,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
+extern fr_app_t proto_tls_cache;
 fr_app_t proto_tls_cache = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "tls_cache",

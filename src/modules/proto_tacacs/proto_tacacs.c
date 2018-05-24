@@ -95,6 +95,9 @@ static void tacacs_status(REQUEST * const request, rlm_rcode_t rcode)
 	VALUE_PAIR *vp;
 
 	switch (tacacs_type(request->packet)) {
+	default:
+		return;
+
 	case TAC_PLUS_AUTHEN:
 		switch (rcode) {
 		case RLM_MODULE_OK:

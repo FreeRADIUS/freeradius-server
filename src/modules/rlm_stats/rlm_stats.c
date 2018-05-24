@@ -111,7 +111,7 @@ fr_dict_attr_autoload_t rlm_stats_dict_attr[] = {
 };
 
 static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_t *t,
-		     UNUSED size_t mutex_offset, size_t tree_offset,
+		     size_t mutex_offset, size_t tree_offset,
 		     rlm_stats_data_t *mydata)
 {
 	rlm_stats_data_t *stats;
@@ -414,7 +414,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	return 0;
 }
 
-static int mod_instantiate(UNUSED void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_stats_t	*inst = instance;
 

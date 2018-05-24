@@ -42,6 +42,7 @@
 #error proto_detail_file requires <glob.h>
 #endif
 
+DIAG_OFF(unused-macros)
 #if 0
 /*
  *	When we want detailed debugging here, without detailed server
@@ -51,6 +52,7 @@
 #else
 #define MPRINT DEBUG3
 #endif
+DIAG_ON(unused-macros)
 
 /*
  *	For talloc names, ".name = detail_file", and dl.c prepends "proto_", and appends "_t".

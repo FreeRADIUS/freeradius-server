@@ -106,7 +106,7 @@ static CONF_PARSER ocsp_config[] = {
 };
 #endif
 
-CONF_PARSER tls_chain_config[] = {
+static CONF_PARSER tls_chain_config[] = {
 	{ FR_CONF_OFFSET("format", FR_TYPE_VOID, fr_tls_chain_conf_t, file_format), .dflt = "pem", .func = certificate_format_type_parse },
 	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED , fr_tls_chain_conf_t, certificate_file) },
 	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_tls_chain_conf_t, password) },

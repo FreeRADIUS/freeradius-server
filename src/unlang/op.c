@@ -539,7 +539,7 @@ static void unlang_subrequest_signal(UNUSED REQUEST *request, void *ctx, fr_stat
 /** Resume a subrequest
  *
  */
-static unlang_action_t unlang_subrequest_resume(UNUSED REQUEST *request, rlm_rcode_t *presult, void *rctx)
+static unlang_action_t unlang_subrequest_resume(REQUEST *request, rlm_rcode_t *presult, void *rctx)
 {
 	REQUEST			*child = talloc_get_type_abort(rctx, REQUEST);
 	unlang_stack_t		*stack = request->stack;
@@ -705,7 +705,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	server_cs = request->server_cs;
 	request->server_cs = g->server_cs;
 
-	request->async->process = g->process;
+	memcpy(&request->async->process, &g->process, sizeof(request->async->process));
 
 	RDEBUG("server %s {", cf_section_name2(g->server_cs));
 

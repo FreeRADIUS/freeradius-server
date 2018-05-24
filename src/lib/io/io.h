@@ -41,7 +41,7 @@ typedef struct fr_trie_t fr_trie_t;
 /**
  *  Tell an async process function if it should run or exit.
  */
-typedef enum fr_io_action_t {
+typedef enum {
 	FR_IO_ACTION_INVALID = 0,
 	FR_IO_ACTION_RUN,
 	FR_IO_ACTION_DONE,
@@ -52,7 +52,7 @@ typedef enum fr_io_action_t {
  *  Answer from an async process function if the worker should yield,
  *  reply, or drop the request.
  */
-typedef enum fr_io_final_t {
+typedef enum {
 	FR_IO_YIELD,		//!< yielded, request can continue processing
 	FR_IO_REPLY,		//!< please send a reply
 	FR_IO_FAIL,		//!< processing failed somehow, cannot send a reply

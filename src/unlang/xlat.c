@@ -285,7 +285,7 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 	switch (frame->instruction->type) {
 	case UNLANG_TYPE_XLAT:
 	{
-		mr = unlang_resume_alloc(request, callback, signal, rctx);
+		mr = unlang_resume_alloc(request, (void *)callback, (void *)signal, rctx);
 		if (!fr_cond_assert(mr)) {
 			return XLAT_ACTION_FAIL;
 		}
@@ -300,8 +300,8 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 		 *	Re-use the current RESUME frame, but override
 		 *	the callbacks and context.
 		 */
-		mr->callback = callback;
-		mr->signal = signal;
+		mr->callback = (void *)callback;
+		mr->signal = (void *)signal;
 		mr->rctx = rctx;
 		return XLAT_ACTION_YIELD;
 
@@ -333,7 +333,8 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
 
-	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, mr->callback, xs->exp, request, &xs->rhead, rctx);
+	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, (xlat_func_resume_t)mr->callback,
+				    xs->exp, request, &xs->rhead, rctx);
 	switch (xa) {
 	case XLAT_ACTION_YIELD:
 		*presult = RLM_MODULE_YIELD;

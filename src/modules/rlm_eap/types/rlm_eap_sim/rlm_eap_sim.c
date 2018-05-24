@@ -39,7 +39,7 @@ RCSID("$Id$")
 #  define EAP_TLS_MPPE_KEY_LEN     32
 #endif
 
-FR_NAME_NUMBER const sim_state_table[] = {
+static FR_NAME_NUMBER const sim_state_table[] = {
 	{ "START",				EAP_SIM_SERVER_START				},
 	{ "CHALLENGE",				EAP_SIM_SERVER_CHALLENGE			},
 	{ "REAUTHENTICATE",			EAP_SIM_SERVER_REAUTHENTICATE			},
@@ -1064,15 +1064,13 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 		return RLM_MODULE_HANDLED;				/* We need to process more packets */
 	}
-
-	return RLM_MODULE_FAIL;
 }
 
 /*
  *	Initiate the EAP-SIM session by starting the state machine
  *      and initiating the state.
  */
-static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	REQUEST				*request = eap_session->request;
 	eap_sim_session_t		*eap_sim_session;

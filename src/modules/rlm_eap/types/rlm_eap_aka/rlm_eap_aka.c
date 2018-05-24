@@ -37,7 +37,7 @@ RCSID("$Id$")
 #  define EAP_TLS_MPPE_KEY_LEN     32
 #endif
 
-FR_NAME_NUMBER const aka_state_table[] = {
+static FR_NAME_NUMBER const aka_state_table[] = {
 	{ "IDENTITY",				EAP_AKA_SERVER_IDENTITY				},
 	{ "CHALLENGE",				EAP_AKA_SERVER_CHALLENGE			},
 	{ "SUCCESS-NOTIFICATION",		EAP_AKA_SERVER_SUCCESS_NOTIFICATION 		},
@@ -1008,8 +1008,6 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 			return RLM_MODULE_HANDLED;				/* We need to process more packets */
 		}
-
-		break;
 
 	/*
 	 *	Process the response to our previous challenge.

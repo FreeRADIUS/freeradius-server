@@ -1707,7 +1707,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 }
 
 
-static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, unlang_compile_t *unlang_ctx,
+static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_compile_t *unlang_ctx,
 				  unlang_group_type_t group_type, unlang_group_type_t parentgroup_type)
 {
 	CONF_ITEM *ci = NULL;
@@ -2728,7 +2728,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 
-	g->process = *process_p;
+	g->process = (void *)*process_p;
 	g->server_cs = server_cs;
 
 	c = unlang_group_to_generic(g);

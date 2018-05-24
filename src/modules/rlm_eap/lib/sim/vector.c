@@ -500,7 +500,6 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 		REDEBUG("Unknown/unsupported algorithm %i", version);
 		return -1;
 	}
-	return 0;
 }
 
 /** Get one set of quintuplets from the request

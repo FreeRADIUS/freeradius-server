@@ -545,7 +545,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 // @todo - allow for "wildcard" clients, which allow anything
 // and then rely on "networks" to filter source IPs...
 // which means we probably want to filter on "networks" even if there are no dynamic clients
-static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipaddr, int ipproto)
+static RADCLIENT *mod_client_find(void *instance, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	proto_vmps_udp_t	*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
 	RADCLIENT		*client;

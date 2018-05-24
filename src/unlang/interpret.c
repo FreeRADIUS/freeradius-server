@@ -105,7 +105,7 @@ unlang_op_t unlang_ops[UNLANG_TYPE_MAX];
  * @param[in] request		The current request.
  * @param[in] callback		to call on unlang_resumable().
  * @param[in] signal		call on unlang_action().
- * @param[in] rctx	to pass to the callbacks.
+ * @param[in] rctx		to pass to the callbacks.
  * @return
  *	unlang_resume_t on success
  *	NULL on error
@@ -138,8 +138,8 @@ unlang_resume_t *unlang_resume_alloc(REQUEST *request, void *callback, void *sig
 	/*
 	 *	Fill in the signal handlers and resumption ctx
 	 */
-	mr->callback = callback;
-	mr->signal = signal;
+	mr->callback = (void *)callback;
+	mr->signal = (void *)signal;
 	mr->rctx = rctx;
 
 	/*
@@ -457,7 +457,6 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 				rad_assert(0);
 				return UNLANG_FRAME_ACTION_YIELD;
 			}
-			break;	/* Static analysis tools are stupid */
 
 		/*
 		 *	Instruction finished execution,
@@ -1206,7 +1205,7 @@ static void unlang_signal_frames(REQUEST *request, fr_state_signal_t action, int
  */
 void unlang_signal(REQUEST *request, fr_state_signal_t action)
 {
-	return unlang_signal_frames(request, action, 0);
+	unlang_signal_frames(request, action, 0);
 }
 
 int unlang_stack_depth(REQUEST *request)
@@ -1462,7 +1461,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 
 	switch (frame->instruction->type) {
 	case UNLANG_TYPE_MODULE:
-		mr = unlang_resume_alloc(request, callback, cancel, rctx);
+		mr = unlang_resume_alloc(request, (void *)callback, (void *)cancel, rctx);
 		if (!fr_cond_assert(mr)) {
 			return RLM_MODULE_FAIL;
 		}
@@ -1476,8 +1475,8 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 		 *	Re-use the current RESUME frame, but over-ride
 		 *	the callbacks and context.
 		 */
-		mr->callback = callback;
-		mr->signal = signal;
+		mr->callback = (void *)callback;
+		mr->signal = (void *)signal;
 		mr->rctx = rctx;
 
 		return RLM_MODULE_YIELD;

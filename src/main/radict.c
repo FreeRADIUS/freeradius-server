@@ -39,12 +39,14 @@ RCSID("$Id$")
 #endif
 #include <assert.h>
 
-fr_dict_t *dicts[255];
-fr_dict_t **dict_end = dicts;
+static fr_dict_t *dicts[255];
+static fr_dict_t **dict_end = dicts;
 
+DIAG_OFF(unused-macros)
 #define DEBUG2(fmt, ...)	if (fr_log_fp && (fr_debug_lvl > 2)) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 #define DEBUG(fmt, ...)		if (fr_log_fp && (fr_debug_lvl > 1)) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 #define INFO(fmt, ...)		if (fr_log_fp && (fr_debug_lvl > 0)) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
+DIAG_ON(unused-macros)
 
 static void usage(void)
 {

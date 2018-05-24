@@ -399,7 +399,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 }
 
 
-static int mod_priority(void const *instance, UNUSED uint8_t const *buffer, UNUSED size_t buflen)
+static int mod_priority(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
 {
 	proto_vmps_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_t);
 

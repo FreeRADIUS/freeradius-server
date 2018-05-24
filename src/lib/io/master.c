@@ -844,7 +844,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 {
 	fr_io_instance_t *inst;
 	ssize_t packet_len = -1;
-	fr_time_t recv_time;
+	fr_time_t recv_time = 0;
 	fr_io_client_t *client;
 	fr_io_address_t address;
 	fr_io_connection_t my_connection, *connection;

@@ -126,7 +126,7 @@ static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 /** Return the attribute name of an attribute reference
  *
  */
-static ssize_t xlat_attr(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
+static ssize_t xlat_attr(TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {

@@ -113,8 +113,8 @@ static int delay_add(REQUEST *request, struct timeval *resume_at, struct timeval
 /** Called resume_at the delay is complete, and we're running from the interpreter
  *
  */
-static rlm_rcode_t mod_delay_return(UNUSED REQUEST *request,
-				    UNUSED void *instance, UNUSED void *thread, UNUSED void *ctx)
+static rlm_rcode_t mod_delay_return(REQUEST *request,
+				    UNUSED void *instance, UNUSED void *thread, void *ctx)
 {
 	struct timeval *yielded = talloc_get_type_abort(ctx, struct timeval);
 
@@ -182,9 +182,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *threa
 }
 
 static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       UNUSED REQUEST *request,
+				       REQUEST *request,
 				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				       UNUSED fr_value_box_t **in, UNUSED void *rctx)
+				       UNUSED fr_value_box_t **in, void *rctx)
 {
 	struct timeval	*yielded_at = talloc_get_type_abort(rctx, struct timeval);
 	struct timeval	delayed, now;

@@ -225,7 +225,7 @@ static int digest_fix(REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_digest_t	*inst = instance;
 	rlm_rcode_t	rcode;

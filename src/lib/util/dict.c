@@ -36,9 +36,9 @@ RCSID("$Id$")
 
 #define MAX_ARGV (16)
 
-TALLOC_CTX		*dict_ctx;
-fr_hash_table_t		*protocol_by_name = NULL;	//!< Hash containing names of all the registered protocols.
-fr_hash_table_t		*protocol_by_num = NULL;	//!< Hash containing numbers of all the registered protocols.
+static TALLOC_CTX	*dict_ctx;
+static fr_hash_table_t	*protocol_by_name = NULL;	//!< Hash containing names of all the registered protocols.
+static fr_hash_table_t	*protocol_by_num = NULL;	//!< Hash containing numbers of all the registered protocols.
 static char		*default_dict_dir;		//!< The default location for loading dictionaries if one
 							///< wasn't provided.
 
@@ -72,9 +72,6 @@ typedef struct dict_enum_fixup_t {
 
 	struct dict_enum_fixup_t *next;	//!< Next in the linked list of fixups.
 } dict_enum_fixup_t;
-
-#define FR_PROTOCOL_UNSET	0		//!< No protocol specified.
-#define FR_PROTOCOL_INTERNAL	UINT32_MAX	//!< Magic internal protocol number.
 
 /** Vendors and attribute names
  *
@@ -1978,8 +1975,7 @@ int fr_dict_enum_add_alias_next(fr_dict_attr_t const *da, char const *alias)
 
 		if (!fr_dict_enum_by_value(da, &v)) goto add;
 	}
-
-	return 0;
+	/* NEVER REACHED */
 }
 
 /** Copy a known or unknown attribute to produce an unknown attribute

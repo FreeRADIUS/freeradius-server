@@ -2153,8 +2153,6 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 			return fc;
 		}
 
-		break;
-
 	default:
 		rad_assert(0);
 	}

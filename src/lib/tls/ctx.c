@@ -625,14 +625,14 @@ post_ca:
 #  endif
 #  ifdef SSL_OP_NO_TLSv1_1
 		if (conf->tls_min_version > (float) 1.1) ctx_options |= SSL_OP_NO_TLSv1_1;
-		if ((conf->tls_max_version != (float) 0.0) && (conf->tls_max_version < (float) 1.1)) {
+		if ((conf->tls_max_version > (float) 0.0) && (conf->tls_max_version < (float) 1.1)) {
 			ctx_options |= SSL_OP_NO_TLSv1_1;
 		}
 		ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
 #  endif
 #  ifdef SSL_OP_NO_TLSv1_2
 		if (conf->tls_min_version > (float) 1.2) ctx_options |= SSL_OP_NO_TLSv1_2;
-		if ((conf->tls_max_version != (float) 0.0) && (conf->tls_max_version < (float) 1.2)) {
+		if ((conf->tls_max_version > (float) 0.0) && (conf->tls_max_version < (float) 1.2)) {
 			ctx_options |= SSL_OP_NO_TLSv1_2;
 		}
 		ctx_tls_versions |= SSL_OP_NO_TLSv1_2;

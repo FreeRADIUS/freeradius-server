@@ -486,8 +486,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 					vp = fr_cursor_current(&cursor);
 					if (!vp) break;
 					goto again;
-				} else {
-					break;
 				}
 			}
 

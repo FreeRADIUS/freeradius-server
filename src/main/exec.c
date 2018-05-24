@@ -57,7 +57,7 @@ typedef struct fr_child_t {
 	pid_t		pid;
 } fr_child_t;
 
-fr_thread_local_setup(fr_dlist_t *, fr_children); /* macro */
+fr_thread_local_setup(fr_dlist_t *, fr_children) /* macro */
 
 static void _fr_children_free(void *arg)
 {

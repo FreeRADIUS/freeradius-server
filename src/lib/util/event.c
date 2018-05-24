@@ -101,7 +101,7 @@ typedef struct {
 	int16_t			filter;			//!< Filter to apply.
 	uint16_t		flags;			//!< Flags to use for inserting event.
 	uint32_t		fflags;			//!< fflags to pass to filter.
-	fr_event_fd_type_t	type;			//!< Type this filter applies to.
+	int			type;			//!< Type this filter applies to.
 	bool			coalesce;		//!< Coalesce this map with the next.
 } fr_event_func_map_t;
 

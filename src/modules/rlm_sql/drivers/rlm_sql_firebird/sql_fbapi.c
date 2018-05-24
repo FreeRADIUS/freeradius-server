@@ -211,7 +211,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		case SQL_FLOAT:
 			snprintf(conn->row[i], conn->row_sizes[i], "%15g",
-				 *(float ISC_FAR *) (var->sqldata));
+				 *(double ISC_FAR *) (var->sqldata));
 			break;
 
 		case SQL_SHORT:

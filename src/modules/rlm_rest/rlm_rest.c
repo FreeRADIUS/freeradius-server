@@ -257,7 +257,7 @@ finish:
 /*
  *	Simple xlat to read text data from a URL
  */
-static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 			       REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 			       fr_value_box_t **in)
 {
@@ -329,7 +329,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	while (isspace(*p) && p++);
 
 	handle = rctx->handle = fr_pool_connection_get(t->pool, request);
-	if (!handle) return -1;
+	if (!handle) return XLAT_ACTION_FAIL;
 
 	/*
 	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
@@ -342,7 +342,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 		fr_pool_connection_release(t->pool, request, handle);
 		talloc_free(section);
 
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	/*

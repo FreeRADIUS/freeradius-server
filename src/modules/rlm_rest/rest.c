@@ -664,7 +664,7 @@ static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx)
 
 /** Converts plain response into a single VALUE_PAIR
  *
- * @param[in] instance configuration data.
+ * @param[in] inst configuration data.
  * @param[in] section configuration data.
  * @param[in] handle rlm_rest_handle_t to use.
  * @param[in] request Current request.
@@ -674,11 +674,10 @@ static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx)
  *	- Number of VALUE_PAIR processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_plain(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+static int rest_decode_plain(rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
 			     REQUEST *request, UNUSED void *handle, char *raw, size_t rawlen)
 {
 	VALUE_PAIR		*vp;
-	rlm_rest_t const	*inst = instance;
 
 	/*
 	 *  Empty response?

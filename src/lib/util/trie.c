@@ -92,19 +92,20 @@ RCSID("$Id$")
  *  verification routines are likely to catch some of the more
  *  egregious issues.
  */
+DIAG_OFF(unused-macros)
 #ifdef TESTING
-#define WITH_TRIE_VERIFY
-#define MPRINT(...) fprintf(stderr, ## __VA_ARGS__)
+#  define WITH_TRIE_VERIFY
+#  define MPRINT(...) fprintf(stderr, ## __VA_ARGS__)
 #else
-#define MPRINT(...)
+#  define MPRINT(...)
 #endif
 
 #ifndef WITH_TRIE_VERIFY
-#define fr_trie_node_verify(_x)
-#define fr_trie_verify(_x)
-#ifdef WITH_PATH_COMPRESSION
-#define fr_trie_path_verify(_x)
-#endif
+#  define fr_trie_node_verify(_x)
+#  define fr_trie_verify(_x)
+#  ifdef WITH_PATH_COMPRESSION
+#    define fr_trie_path_verify(_x)
+#  endif
 #endif
 
 // @todo - do level compression
@@ -133,6 +134,7 @@ RCSID("$Id$")
 #define	BITSOF(_x)	((_x) * 8)
 #define BYTEOF(_x)	((_x) >> 3)
 #define BYTES(_x)	(((_x) + 0x07) >> 3)
+DIAG_ON(unused-macros)
 
 /** A data structure which holds a path-compressed key.
  *
@@ -2517,7 +2519,7 @@ static int command_keys(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, char
  *
  *  @todo - allow printing to a file.
  */
-static int command_dump(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, UNUSED char *out, UNUSED size_t outlen)
+static int command_dump(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, char *out, size_t outlen)
 {
 	fr_trie_callback_t my_cb;
 
@@ -2532,8 +2534,6 @@ static int command_dump(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, UNUS
 	 *	Call the internal walk function to do the work.
 	 */
 	return fr_trie_key_walk(ft->trie, &my_cb, 0, false);
-
-	return 0;
 }
 
 
@@ -2721,7 +2721,7 @@ static int command_print(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, cha
  *  Sometimes it's more useful to do insert / lookup / remove for
  *  simple keys.
  */
-static int command_path(fr_trie_t *ft, UNUSED int argc, char **argv, char *out, size_t outlen)
+static int command_path(fr_trie_t *ft, int argc, char **argv, char *out, size_t outlen)
 {
 	void *data;
 	void *answer;
@@ -2776,7 +2776,7 @@ static int command_path(fr_trie_t *ft, UNUSED int argc, char **argv, char *out, 
  *  look confusing.  And, we want to be able to specify a common start
  *  bit.
  */
-static int command_lcp(UNUSED fr_trie_t *ft, UNUSED int argc, char **argv, char *out, size_t outlen)
+static int command_lcp(UNUSED fr_trie_t *ft, int argc, char **argv, char *out, size_t outlen)
 {
 	int lcp;
 	int keylen1, keylen2;

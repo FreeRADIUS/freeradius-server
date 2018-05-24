@@ -244,6 +244,9 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 			break;
 
 		case FR_TYPE_BOOL:
+#ifndef NDEBUG
+			to_cast = mrb_nil_value();	/* Not needed but clang flags it */
+#endif
 			break;
 
 		default:
@@ -424,7 +427,10 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 		mruby_set_vps(request, mrb, mruby_request, "@proxy_reply", &request->proxy->reply->vps);
 	}
 #endif
+
+DIAG_OFF(class-varargs)
 	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), function_name, 1, mruby_request);
+DIAG_ON(class-varargs)
 
 	/* Two options for the return value:
 	 * - a fixnum: convert to rlm_rcode_t, and return that
@@ -438,7 +444,7 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 		/* If it is a Fixnum: return that value */
 		case MRB_TT_FIXNUM:
 			return (rlm_rcode_t)mrb_int(mrb, mruby_result);
-			break;
+
 		case MRB_TT_ARRAY:
 			/* Must have exactly three items */
 			if (RARRAY_LEN(mruby_result) != 3) {
@@ -464,12 +470,11 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 			add_vp_tuple(request->reply, request, &request->reply->vps, mrb, mrb_ary_entry(mruby_result, 1), function_name);
 			add_vp_tuple(request, request, &request->control, mrb, mrb_ary_entry(mruby_result, 2), function_name);
 			return (rlm_rcode_t)mrb_int(mrb, mrb_ary_entry(mruby_result, 0));
-			break;
+
 		default:
 			/* Invalid return type */
 			ERROR("Expected return to be a Fixnum or an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mruby_result)));
 			return RLM_MODULE_FAIL;
-			break;
 	}
 }
 

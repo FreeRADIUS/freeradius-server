@@ -91,7 +91,7 @@ tacacs_type_t tacacs_type(RADIUS_PACKET const * const packet)
 	VALUE_PAIR const *vp;
 
 	vp = fr_pair_find_by_da(packet->vps, attr_tacacs_packet_type, TAG_ANY);
-	if (!vp) return 0;
+	if (!vp) return TAC_PLUS_INVALID;
 
 	return (tacacs_type_t)vp->vp_uint8;
 }
@@ -132,6 +132,10 @@ static bool tacacs_ok(RADIUS_PACKET const * const packet, bool from_client)
 	hdr_len = ntohl(pkt->hdr.length);
 
 	switch (pkt->hdr.type) {
+	default:
+		fr_strerror_printf("Invalid packet type %i", pkt->hdr.type);
+		return false;
+
 	case TAC_PLUS_AUTHEN:
 		if ((from_client && pkt->hdr.seq_no % 2 != 1) || (!from_client && pkt->hdr.seq_no % 2 != 0)) {
 bad_seqno:
@@ -152,10 +156,13 @@ bad_seqno:
 	}
 
 	/* this occurs when we want to indicate we do not support the request */
-	if (hdr_len == 0)
-		return true;
+	if (hdr_len == 0) return true;
 
 	switch (pkt->hdr.type) {
+	default:
+		rad_assert(0);	/* Should have been caught above */
+		return false;
+
 	case TAC_PLUS_AUTHEN:
 		switch (pkt->hdr.seq_no) {
 		case 1:
@@ -414,11 +421,15 @@ cook:
 	ptr = packet->data;
 	ptr += length_hdr;
 
-	if (!length_body)
-		goto skip_fields;
+	if (!length_body) goto skip_fields;
 
 	if (field.server_msg) {
 		switch (pkt->hdr.type) {
+		default:
+			fr_strerror_printf("Invalid packet type %i", pkt->hdr.type);
+			talloc_free(packet->data);
+			return -1;
+
 		case TAC_PLUS_AUTHEN:
 			pkt->authen.reply.server_msg_len = htons(field.server_msg->vp_length);
 			break;
@@ -432,8 +443,13 @@ cook:
 		memcpy(ptr, field.server_msg->vp_octets, field.server_msg->vp_length);
 		ptr += field.server_msg->vp_length;
 	}
+
 	if (field.data) {
 		switch (pkt->hdr.type) {
+		default:
+			rad_assert(0);
+			break;
+
 		case TAC_PLUS_AUTHEN:
 			pkt->authen.reply.data_len = htons(field.data->vp_length);
 			break;
@@ -446,8 +462,8 @@ cook:
 		}
 		memcpy(ptr, field.data->vp_octets, field.data->vp_length);
 	}
-skip_fields:
 
+skip_fields:
 	return 0;
 }
 
