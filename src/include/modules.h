@@ -288,7 +288,9 @@ rlm_rcode_t	process_post_auth(int type, REQUEST *request);
 #else
 #  define MODULE_NULL_COA_FUNCS
 #endif
+
 extern const CONF_PARSER virtual_servers_config[];
+extern const CONF_PARSER virtual_servers_on_read_config[];
 
 typedef int (*fr_virtual_server_compile_t)(CONF_SECTION *server);
 

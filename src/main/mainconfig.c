@@ -257,9 +257,6 @@ static const CONF_PARSER switch_users_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
-extern const CONF_PARSER virtual_servers_on_read_config[];
-
 /** Callback to automatically load dictionaries required by modules
  *
  * @param[in] module	being loaded.
