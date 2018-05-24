@@ -88,13 +88,6 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 #else
 		int32_t num;
 #endif
-#ifndef HAVE_JSON_OBJECT_GET_INT64
-		if (dst_type == FR_TYPE_UINT64) {
-			fr_strerror_printf("64bit integers are not supported by linked json-c.  "
-					   "Upgrade to json-c > 0.10 to use this feature");
-			return -1;
-		}
-#endif
 
 #ifndef HAVE_JSON_OBJECT_GET_INT64
 		num = json_object_get_int(object);
