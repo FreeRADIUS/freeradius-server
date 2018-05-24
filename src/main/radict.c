@@ -132,11 +132,11 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 	fr_dict_snprint_flags(flags, sizeof(flags), &da->flags);
 
 	/* Protocol Name Type */
-	printf("%s\t%s\t%s\t%s\t%s\n", fr_dict_root(dict)->name, oid_str, da->name,
+	printf("%p, %s\t%s\t%s\t%s\t%s\n", da, fr_dict_root(dict)->name, oid_str, da->name,
 	       fr_int2str(dict_attr_types, da->type, "?Unknown?"), flags);
 }
 
-static void _fr_dict_export(uint64_t *count, fr_dict_attr_t const *da, unsigned int lvl)
+static void _fr_dict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_attr_t const *da, unsigned int lvl)
 {
 	unsigned int		i;
 	size_t			len;
@@ -145,24 +145,38 @@ static void _fr_dict_export(uint64_t *count, fr_dict_attr_t const *da, unsigned 
 
 	fr_dict_snprint_flags(flags, sizeof(flags), &da->flags);
 
-	if (!da->flags.is_root) da_print_info_td(fr_dict_by_da(da), da);
-	(*count)++;
+	/*
+	 *	Root attributes are allocated outside of the pool
+	 *	so it's not helpful to include them in the calculation.
+	 */
+	if (!da->flags.is_root) {
+		if (low && ((uintptr_t)da < *low)) {
+			*low = da;
+		}
+		if (high && ((uintptr_t)da > *high)) {
+			*high = da;
+		}
+
+		da_print_info_td(fr_dict_by_da(da), da);
+	}
+
+	if (count) (*count)++;
 
 	len = talloc_array_length(da->children);
 	for (i = 0; i < len; i++) {
 		for (p = da->children[i]; p; p = p->next) {
-			_fr_dict_export(count, p, lvl + 1);
+			_fr_dict_export(count, low, high, p, lvl + 1);
 		}
 	}
 }
 
-static uint64_t fr_dict_export(fr_dict_t *dict)
+static void fr_dict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_t *dict)
 {
-	uint64_t count = 0;
+	if (count) *count = 0;
+	if (low) *low = UINTPTR_MAX;
+	if (high) *high = 0;
 
-	_fr_dict_export(&count, fr_dict_root(dict), 0);
-
-	return count;
+	_fr_dict_export(count, low, high, fr_dict_root(dict), 0);
 }
 
 int main(int argc, char *argv[])
@@ -245,11 +259,14 @@ int main(int argc, char *argv[])
 		fr_dict_t	**dict_p = dicts;
 
 		do {
-			uint64_t count;
+			uint64_t	count;
+			uintptr_t	high;
+			uintptr_t	low;
 
-			count = fr_dict_export(*dict_p);
-			DEBUG2("Total attr %" PRIu64, count);
-			DEBUG2("Total size %zu (bytes)", talloc_total_size(*dict_p));
+			fr_dict_export(&count, &low, &high, *dict_p);
+			DEBUG2("Attribute count %" PRIu64, count);
+			DEBUG2("Memory alloc %zu (bytes)", talloc_total_size(*dict_p));
+			DEBUG2("Memory spread %zu (bytes)", (high - low));
 		} while (++dict_p < dict_end);
 	}
 
