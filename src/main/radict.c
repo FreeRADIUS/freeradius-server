@@ -151,10 +151,10 @@ static void _fr_dict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr
 	 */
 	if (!da->flags.is_root) {
 		if (low && ((uintptr_t)da < *low)) {
-			*low = da;
+			*low = (uintptr_t)da;
 		}
 		if (high && ((uintptr_t)da > *high)) {
-			*high = da;
+			*high = (uintptr_t)da;
 		}
 
 		da_print_info_td(fr_dict_by_da(da), da);
