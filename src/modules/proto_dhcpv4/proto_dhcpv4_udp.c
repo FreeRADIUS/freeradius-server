@@ -46,6 +46,8 @@ typedef struct proto_dhcpv4_udp_t {
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
+	fr_ipaddr_t			src_ipaddr;    		//!< IP address to source replies
+
 	char const			*interface;		//!< Interface to bind to.
 	char const			*port_name;		//!< Name of the port for getservent().
 
@@ -85,6 +87,8 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_dhcpv4_udp_t, ipaddr) },
 	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, proto_dhcpv4_udp_t, ipaddr) },
 	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, proto_dhcpv4_udp_t, ipaddr) },
+
+	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_dhcpv4_udp_t, src_ipaddr) },
 
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, proto_dhcpv4_udp_t, interface) },
 	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, proto_dhcpv4_udp_t, port_name) },
@@ -397,6 +401,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 */
 	if (inst->ipaddr.af == AF_UNSPEC) {
 		cf_log_err(cs, "No 'ipaddr' was specified in the 'udp' section");
+		return -1;
+	}
+
+	/*
+	 *	If src_ipaddr is defined, it must be of the same address family as "ipaddr"
+	 */
+	if ((inst->src_ipaddr.af != AF_UNSPEC) &&
+	    (inst->src_ipaddr.af != inst->ipaddr.af)) {
+		cf_log_err(cs, "Both 'ipaddr' and 'src_ipaddr' must be from the same address family");
 		return -1;
 	}
 
