@@ -520,7 +520,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
  * Takes a valuepair string with list and request qualifiers and converts it into a
  * #vp_map_t.
  *
- * Attribute string is in the format (where <qu> is a quotation char ['"]):
+ * Attribute string is in the format (where @verbatim <qu> @endverbatim is a quotation char ['"]):
  @verbatim
    [<list>:][<qu>]<attribute>[<qu>] <op> [<qu>]<value>[<qu>]
  @endverbatim

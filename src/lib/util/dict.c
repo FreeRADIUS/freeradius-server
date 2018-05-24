@@ -274,6 +274,8 @@ static void hash_pool_free(void *to_free)
 /** Apply a simple (case insensitive) hashing function to the name of an attribute, vendor or protocol
  *
  * @param[in] name	of the attribute, vendor or protocol.
+ * @param[in] len	length of the input string.
+ *
  * @return the hashed derived from the name.
  */
 static uint32_t dict_hash_name(char const *name, size_t len)
@@ -296,7 +298,7 @@ static uint32_t dict_hash_name(char const *name, size_t len)
 
 /** Wrap name hash function for fr_dict_protocol_t
  *
- * @param data fr_dict_attr_t to hash.
+ * @param[in]	data fr_dict_attr_t to hash.
  * @return the hash derived from the name of the attribute.
  */
 static uint32_t dict_protocol_name_hash(void const *data)
