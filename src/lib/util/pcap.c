@@ -401,6 +401,8 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 		return -1;
 	}
 
+	pcap_freecode(&fp);	/* Free the filter, it's not longer needed after its been applied */
+
 	return 0;
 }
 
