@@ -1610,10 +1610,14 @@ if test "x$developer" = "xyes"; then
   dnl #
   AX_CC_WEVERYTHING_FLAG
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devcflags="$devflags -W -Weverything -Wformat=2 -DWITH_VERIFY_PTR=1" \
-    	-Wno-disabled-macro-expansion \
-    	-Wno-missing-field-initializers \
-    	-Wno-date-time \
+    devcflags="$devflags \
+	-W \
+	-Weverything \
+	-Wformat=2 \
+	-DWITH_VERIFY_PTR=1 \
+	-Wno-disabled-macro-expansion \
+	-Wno-missing-field-initializers \
+	-Wno-date-time \
     	-Wno-padded \
     	-Wno-gnu-zero-variadic-macro-arguments \
     	-Wno-shorten-64-to-32 \
@@ -1627,10 +1631,31 @@ if test "x$developer" = "xyes"; then
     	-Wno-covered-switch-default \
     	-Wno-packed \
     	-Wno-reserved-id-macro \
-    	-Wno-format-pedantic
+    	-Wno-format-pedantic"
   else
     if test "x$GCC" = "xyes"; then
-      devcflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-missing-field-initializers -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
+      devcflags="$devflags \
+      	-Wshadow \
+      	-Wpointer-arith \
+      	-Wcast-qual \
+      	-Wcast-align \
+      	-Wwrite-strings \
+      	-Wstrict-prototypes \
+      	-Wmissing-prototypes \
+      	-Wmissing-declarations \
+      	-Wnested-externs \
+      	-W \
+      	-Wredundant-decls \
+      	-Wundef \
+      	-Wformat-y2k \
+      	-Wno-missing-field-initializers \
+      	-Wno-format-extra-args \
+      	-Wno-format-zero-length \
+      	-Wno-cast-align \
+      	-Wformat-nonliteral \
+      	-Wformat-security \
+      	-Wformat=2 \
+      	-DWITH_VERIFY_PTR=1"
       INSTALLSTRIP=""
     fi
   fi
@@ -1652,17 +1677,23 @@ if test "x$developer" = "xyes"; then
     dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
     dnl #  -fno-optimize-sibling-calls	- Don't optimize away tail recursion.
     dnl #
-    CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
     AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG
     if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
-      cflags="$CFLAGS -fsanitize-address-use-after-scope"
+      devcflags="$devcflags -fsanitize-address-use-after-scope"
     fi
 
     AC_CHECK_HEADERS(sanitizer/lsan_interface.h)
 
-    LDFLAGS="$LDFLAGS -fsanitize=address"
+    devldflags="$devldflags -fsanitize=address"
   fi
+
+  dnl #
+  dnl # Clean the flags up
+  dnl #
+  devcflags="$(echo $devcflags | sed -e 's/\\t//g;s/  //g')"
+  devldflags="$(echo $devldflags | sed -e 's/\\t//g;s/  //g')"
 
   AC_MSG_NOTICE([Developer CFLAGS are "$devcflags"])
   AC_MSG_NOTICE([Developer LDFLAGS are "$devldflags"])
