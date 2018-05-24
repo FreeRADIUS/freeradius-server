@@ -188,15 +188,32 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 	case FR_TYPE_UINT16:
 		return json_object_new_int(data->vb_uint16);
 
+#ifdef HAVE_JSON_OBJECT_GET_INT64
 	case FR_TYPE_UINT32:
 		return json_object_new_int64((int64_t)data->vb_uint64);	/* uint32_t (max) > int32_t (max) */
 
 	case FR_TYPE_UINT64:
 		if (data->vb_uint64 > INT64_MAX) goto do_string;
 		return json_object_new_int64(data->vb_uint64);
+#else
+	case FR_TYPE_UINT32:
+		if (data->vb_uint32 > INT32_MAX) goto do_string;
+		return json_object_new_in(data->vb_uint32);
+#endif
+
+	case FR_TYPE_INT8:
+		return json_object_new_int(data->vb_int8);
+
+	case FR_TYPE_INT16:
+		return json_object_new_int(data->vb_int16);
 
 	case FR_TYPE_INT32:
 		return json_object_new_int(data->vb_int32);
+
+#ifdef HAVE_JSON_OBJECT_GET_INT64
+	case FR_TYPE_INT64:
+		return json_object_new_int64(data->vb_int16);
+#endif
 	}
 }
 
