@@ -827,7 +827,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (log_init(&default_log, false) < 0) {
+	if (log_global_init(&default_log, false) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
@@ -1153,7 +1153,7 @@ finish:
 	/*
 	 *	Free request specific logging infrastructure
 	 */
-	log_free();
+	log_global_free();
 
 	/*
 	 *	Free xlat instance data, and call any detach methods

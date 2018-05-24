@@ -636,7 +636,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Redirect stderr/stdout as appropriate.
 	 */
-	if (log_init(&default_log, main_config.daemonize) < 0) fr_exit(EXIT_FAILURE);
+	if (log_global_init(&default_log, main_config.daemonize) < 0) fr_exit(EXIT_FAILURE);
 
 	/*
 	 *  Initialise the state rbtree (used to link multiple rounds of challenges).
@@ -833,7 +833,7 @@ int main(int argc, char *argv[])
 	 *	Frees request specific logging resources which is OK
 	 *	because all the requests will have been stopped.
 	 */
-	log_free();
+	log_global_free();
 
 	talloc_free(global_state);	/* Free state entries */
 

@@ -2151,7 +2151,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 /*
  *	Tidy up instance
  */
-static int mod_detach(UNUSED void *instance)
+static int mod_detach(
+#ifndef WITH_AUTH_WINBIND
+		      UNUSED
+#endif
+		      void *instance)
 {
 #ifdef WITH_AUTH_WINBIND
 	rlm_mschap_t *inst = instance;
