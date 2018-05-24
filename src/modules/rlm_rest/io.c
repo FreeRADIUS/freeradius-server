@@ -88,6 +88,7 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 
 			unlang_resumable(request);
 		}
+			break;
 
 		default:
 #ifndef NDEBUG
