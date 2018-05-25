@@ -56,63 +56,66 @@ extern bool	log_dates_utc;
 extern const FR_NAME_NUMBER fr_log_levels[];
 
 typedef enum fr_log_type {
-	L_AUTH = 2,			//!< Authentication message.
-	L_INFO = 3,			//!< Informational message.
-	L_ERR = 4,			//!< Error message.
-	L_WARN = 5,			//!< Warning.
-	L_PROXY	= 6,			//!< Proxy messages
-	L_ACCT = 7,			//!< Accounting messages
+	L_AUTH = 2,				//!< Authentication message.
+	L_INFO = 3,				//!< Informational message.
+	L_ERR = 4,				//!< Error message.
+	L_WARN = 5,				//!< Warning.
+	L_PROXY	= 6,				//!< Proxy messages
+	L_ACCT = 7,				//!< Accounting messages
 
-	L_DBG = 16,			//!< Only displayed when debugging is enabled.
-	L_DBG_INFO = 17,		//!< Info only displayed when debugging is enabled.
-	L_DBG_WARN = 18,		//!< Warning only displayed when debugging is enabled.
-	L_DBG_ERR = 19,			//!< Error only displayed when debugging is enabled.
-	L_DBG_WARN_REQ = 20,		//!< Less severe warning only displayed when debugging is enabled.
-	L_DBG_ERR_REQ = 21		//!< Less severe error only displayed when debugging is enabled.
+	L_DBG = 16,				//!< Only displayed when debugging is enabled.
+	L_DBG_INFO = 17,			//!< Info only displayed when debugging is enabled.
+	L_DBG_WARN = 18,			//!< Warning only displayed when debugging is enabled.
+	L_DBG_ERR = 19,				//!< Error only displayed when debugging is enabled.
+	L_DBG_WARN_REQ = 20,			//!< Less severe warning only displayed when debugging is enabled.
+	L_DBG_ERR_REQ = 21			//!< Less severe error only displayed when debugging is enabled.
 } fr_log_type_t;
 
-typedef enum fr_log_lvl {
-	L_DBG_LVL_DISABLE = -1,		//!< Don't print messages.
-	L_DBG_LVL_OFF = 0,		//!< No debug messages.
-	L_DBG_LVL_1,			//!< Highest priority debug messages (-x).
-	L_DBG_LVL_2,			//!< 2nd highest priority debug messages (-xx | -X).
-	L_DBG_LVL_3,			//!< 3rd highest priority debug messages (-xxx | -Xx).
-	L_DBG_LVL_4,			//!< 4th highest priority debug messages (-xxxx | -Xxx).
-	L_DBG_LVL_MAX			//!< Lowest priority debug messages (-xxxxx | -Xxxx).
+typedef enum {
+	L_DBG_LVL_DISABLE = -1,			//!< Don't print messages.
+	L_DBG_LVL_OFF = 0,			//!< No debug messages.
+	L_DBG_LVL_1,				//!< Highest priority debug messages (-x).
+	L_DBG_LVL_2,				//!< 2nd highest priority debug messages (-xx | -X).
+	L_DBG_LVL_3,				//!< 3rd highest priority debug messages (-xxx | -Xx).
+	L_DBG_LVL_4,				//!< 4th highest priority debug messages (-xxxx | -Xxx).
+	L_DBG_LVL_MAX				//!< Lowest priority debug messages (-xxxxx | -Xxxx).
 } fr_log_lvl_t;
 
-typedef enum fr_log_dst {
-	L_DST_STDOUT = 0,		//!< Log to stdout.
-	L_DST_FILES,			//!< Log to a file on disk.
-	L_DST_SYSLOG,			//!< Log to syslog.
-	L_DST_STDERR,			//!< Log to stderr.
-	L_DST_EXTRA,			//!< Send log messages to a FILE*, via fopencookie()
-	L_DST_NULL,			//!< Discard log messages.
+typedef enum {
+	L_DST_STDOUT = 0,			//!< Log to stdout.
+	L_DST_FILES,				//!< Log to a file on disk.
+	L_DST_SYSLOG,				//!< Log to syslog.
+	L_DST_STDERR,				//!< Log to stderr.
+	L_DST_EXTRA,				//!< Send log messages to a FILE*, via fopencookie()
+	L_DST_NULL,				//!< Discard log messages.
 	L_DST_NUM_DEST
 } fr_log_dst_t;
 
 typedef enum {
-	L_TIMESTAMP_AUTO = 0,		//!< Timestamp logging preference not specified. Do it based on
-					//!< debug level and destination.
-	L_TIMESTAMP_ON,			//!< Always log timestamps.
-	L_TIMESTAMP_OFF			//!< Never log timestamps.
+	L_TIMESTAMP_AUTO = 0,			//!< Timestamp logging preference not specified. Do it based on
+						//!< debug level and destination.
+	L_TIMESTAMP_ON,				//!< Always log timestamps.
+	L_TIMESTAMP_OFF				//!< Never log timestamps.
 } fr_log_timestamp_t;
 
 typedef struct fr_log_t {
-	fr_log_dst_t	dst;		//!< Log destination.
+	fr_log_dst_t		dst;		//!< Log destination.
 
-	bool		colourise;	//!< Prefix log messages with VT100 escape codes to change text
-					//!< colour.
+	bool			colourise;	//!< Prefix log messages with VT100 escape codes to change text
+						//!< colour.
+
+	bool			dates_utc;	//!< Whether timestamps should be UTC or local timezone.
+
 	fr_log_timestamp_t	timestamp;	//!< Prefix log messages with timestamps.
 
-	int		fd;		//!< File descriptor to write messages to.
-	char const	*file;		//!< Path to log file.
+	int			fd;		//!< File descriptor to write messages to.
+	char const		*file;		//!< Path to log file.
 
-	void		*cookie;	//!< for fopencookie()
+	void			*cookie;	//!< for fopencookie()
 #ifdef HAVE_FOPENCOOKIE
-	ssize_t		(*cookie_write)(void *, char const *, size_t); //!< write function
+	ssize_t			(*cookie_write)(void *, char const *, size_t);	//!< write function
 #else
-	int		(*cookie_write)(void *, char const *, int); //!< write function
+	int			(*cookie_write)(void *, char const *, int);	//!< write function
 #endif
 } fr_log_t;
 
