@@ -32,9 +32,41 @@
  */
 typedef struct fr_schedule_t fr_schedule_t;
 
-typedef int (*fr_app_open_t)(void *instance, fr_schedule_t *sc, CONF_SECTION *cs);
-typedef int (*fr_app_instantiate_t)(void *instance, CONF_SECTION *cs);
+/** Bootstrap the #fr_app_t
+ *
+ * Primarily used to allow the #fr_app_t to load its submodules.
+ *
+ * @param[in] instance	of the #fr_app_t.
+ * @param[in] cs	of the listen section that created this #fr_appt_t.
+ * @return
+ *	- 0 on success.
+ *	- <0 on failure.
+ */
 typedef int (*fr_app_bootstrap_t)( void *instance, CONF_SECTION *cs);
+
+/** Instantiate the #fr_app_t
+ *
+ * Primarily used to allow the #fr_appt_t to validate its config
+ * and to allow its submodules to validate their configurations.
+ *
+ * @param[in] instance	of the #fr_app_t.
+ * @param[in] cs	of the listen section that created this #fr_appt_t.
+ * @return
+ *	- 0 on success.
+ *	- <0 on failure.
+ */
+typedef int (*fr_app_instantiate_t)(void *instance, CONF_SECTION *cs);
+
+/** Open a new socket or other packet source
+ *
+ * @param[in] instance  of the #fr_app_t.
+ * @param[in] sc	we should register sockets with.
+ * @param[in] cs	of the listen section that created this #fr_appt_t.
+ * @return
+ *	- 0 on success.
+ *	- <0 on failure.
+ */
+typedef int (*fr_app_open_t)(void *instance, fr_schedule_t *sc, CONF_SECTION *cs);
 
 /** Set the next state executed by the request to be one of the application subtype's entry points
  *
@@ -61,13 +93,24 @@ typedef void (*fr_app_event_list_set_t)(void *instance, fr_event_list_t *el, voi
 
 /** Describes a new application (protocol)
  *
+ * This is the main application structure.  It contains different callbacks that
+ * are run at different points during the server lifecycle and are called by the IO
+ * framework.
+ *
+ * How the fr_app_t operates is specific to each protocol.
  */
 typedef struct {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
-	fr_app_bootstrap_t		bootstrap;
-	fr_app_instantiate_t		instantiate;
-	fr_app_open_t			open;		//!< Open listen sockets.
+	fr_app_bootstrap_t		bootstrap;	//!< Bootstrap function to allow the fr_app_t to load the
+							///< various submodules it requires.
+
+	fr_app_instantiate_t		instantiate;	//!< Instantiate function to perform config validation and
+							///< massaging.
+
+	fr_app_open_t			open;		//!< Callback to allow the #fr_app_t to build an #fr_listen_t
+							///< and register it with the scheduler so we can receive
+							///< data.
 
 	fr_io_decode_t			decode;		//!< Translate raw bytes into VALUE_PAIRs and metadata.
 							///< May be NULL.
@@ -78,16 +121,21 @@ typedef struct {
 							///< May be NULL.
 							///< Here for convenience, so that encode operations common
 							///< to all #fr_app_io_t can be performed by the #fr_app_t.
-	fr_app_process_set_t		process_set;
-	fr_app_priority_get_t		priority;	//!< function to get priority of a packet
+
+	fr_app_process_set_t		process_set;	//!< Sets the entry point into the state machine provided
+							///< by the fr_app_process_t.  We need a function this
+							///< as the #fr_app_process_t might change based on the
+							///< packet we received.
+
+	fr_app_priority_get_t		priority;	//!< Assign a priority to the packet.
 } fr_app_t;
 
 /** Public structure describing an application (protocol) specialisation
  *
- * Some protocols perform multiple distinct functions, and use
- * different state machines to perform those functions.
+ * The fr_app_process_t provides the state machine that's used to process
+ * the packet after its been decoded.
  */
-typedef struct fr_app_process_t {
+typedef struct {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	fr_app_bootstrap_t		bootstrap;
@@ -99,7 +147,7 @@ typedef struct fr_app_process_t {
  *
  * This structure is exported by I/O modules e.g. proto_radius_udp.
  */
-typedef struct fr_app_io_t {
+typedef struct {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	fr_app_bootstrap_t		bootstrap;
@@ -115,19 +163,29 @@ typedef struct fr_app_io_t {
 							//!< connection.
 	fr_io_get_fd_t			fd;		//!< Return the file descriptor from the instance.
 	fr_io_set_fd_t			fd_set;		//!< Set the file descriptor to the instance.
+
 	fr_io_data_read_t		read;		//!< Read from a socket to a data buffer
 	fr_io_data_write_t		write;		//!< Write from a data buffer to a socket
+
 	fr_io_data_inject_t		inject;		//!< Inject a packet into a socket.
+
 	fr_io_data_vnode_t		vnode;		//!< Handle notifications that the VNODE has changed
+
 	fr_io_decode_t			decode;		//!< Translate raw bytes into VALUE_PAIRs and metadata.
 	fr_io_encode_t			encode;		//!< Pack VALUE_PAIRs back into a byte array.
+
 	fr_io_signal_t			flush;		//!< Flush the data when the socket is ready for writing.
+
 	fr_io_signal_t			error;		//!< There was an error on the socket.
 	fr_io_open_t			close;		//!< Close the transport.
+
 	fr_io_nak_t			nak;		//!< Function to send a NAK.
+
 	fr_io_data_cmp_t		compare;	//!< compare two packets
+
 	fr_io_connection_set_t		connection_set;	//!< set src/dst IP/port of a connection
 	fr_io_network_get_t		network_get;	//!< get dynamic network information
 	fr_io_client_find_t		client_find;	//!< find radclient
+
 	void				*private;	//!< any private APIs it needs to export.
 } fr_app_io_t;
