@@ -1955,7 +1955,7 @@ int fr_dict_enum_add_alias_next(fr_dict_attr_t const *da, char const *alias)
 	for (;;) {
 		fr_value_box_increment(&v);
 
-		if (fr_value_box_cmp_op(T_OP_EQ, &v, &s) == 0) {
+		if (fr_value_box_cmp_op(T_OP_CMP_EQ, &v, &s) == 0) {
 			fr_strerror_printf("No free integer values for enumeration");
 			return -1;
 		}
