@@ -1,5 +1,5 @@
 AC_PREREQ([2.61])
-AC_INIT(rlm_redis.c)
+AC_INIT(redis.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[libfreeradius-redis])
 
@@ -110,9 +110,4 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(libfreeradius-redis.mk)
-
-dnl # This is needed so that all.mk is not created unless configure is run
-dnl # so that it doesn't attempt to include libfreeradius-redis.mk which
-dnl # is also dependent on configure being run.
 AC_OUTPUT(all.mk)

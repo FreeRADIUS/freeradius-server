@@ -46,8 +46,8 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
 
-#include "redis.h"
-#include "cluster.h"
+#include <freeradius-devel/redis/redis.h>
+#include <freeradius-devel/redis/cluster.h>
 #include "redis_ippool.h"
 
 /** rlm_redis module instance

@@ -27,9 +27,8 @@
 #include <freeradius-devel/rad_assert.h>
 
 #include "../../rlm_cache.h"
-#include "../../../rlm_redis/redis.h"
-#include "../../../rlm_redis/cluster.h"
-
+#include <freeradius-devel/redis/redis.h>
+#include <freeradius-devel/redis/cluster.h>
 static CONF_PARSER driver_config[] = {
 	REDIS_COMMON_CONFIG,
 	CONF_PARSER_TERMINATOR

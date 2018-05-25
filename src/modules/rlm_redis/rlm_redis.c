@@ -33,8 +33,8 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
 
-#include "redis.h"
-#include "cluster.h"
+#include <freeradius-devel/redis/redis.h>
+#include <freeradius-devel/redis/cluster.h>
 
 #define MAX_QUERY_LEN	4096			//!< Maximum command length.
 #define MAX_REDIS_ARGS	16			//!< Maximum number of arguments.

@@ -33,8 +33,8 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
 
-#include "../rlm_redis/redis.h"
-#include "../rlm_redis/cluster.h"
+#include <freeradius-devel/redis/redis.h>
+#include <freeradius-devel/redis/cluster.h>
 
 typedef struct rlm_rediswho {
 	fr_redis_conf_t		*conf;		//!< Connection parameters for the Redis server.
