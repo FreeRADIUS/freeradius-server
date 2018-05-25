@@ -230,7 +230,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *msg, va_list ap
 
 		timeval = time(NULL);
 #ifdef HAVE_GMTIME_R
-		if (log_dates_utc) {
+		if (log->dates_utc) {
 			struct tm utc;
 			gmtime_r(&timeval, &utc);
 			ASCTIME_R(&utc, buffer + len, sizeof(buffer) - len - 1);
