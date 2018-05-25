@@ -98,19 +98,22 @@ static CONF_PARSER const proto_radius_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
+static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t proto_radius_dict[];
 fr_dict_autoload_t proto_radius_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
+static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t proto_radius_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius},
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ NULL }
 };
@@ -156,23 +159,16 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	proto_radius_t		*inst;
 	dl_instance_t		*parent_inst;
 	char const		*name = NULL;
-	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
 
 	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
-	da = fr_dict_attr_by_name(NULL, "Packet-Type");
-	if (!da) {
-		ERROR("Missing definiton for Packet-Type");
-		return -1;
-	}
-
 	/*
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(da, type_str, -1);
+	type_enum = fr_dict_enum_by_alias(attr_packet_type, type_str, -1);
 	if (!type_enum) {
 		size_t i;
 
