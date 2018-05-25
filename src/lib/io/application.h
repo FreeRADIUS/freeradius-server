@@ -37,7 +37,7 @@ typedef struct fr_schedule_t fr_schedule_t;
  * Primarily used to allow the #fr_app_t to load its submodules.
  *
  * @param[in] instance	of the #fr_app_t.
- * @param[in] cs	of the listen section that created this #fr_appt_t.
+ * @param[in] cs	of the listen section that created this #fr_app_t.
  * @return
  *	- 0 on success.
  *	- <0 on failure.
@@ -46,11 +46,11 @@ typedef int (*fr_app_bootstrap_t)( void *instance, CONF_SECTION *cs);
 
 /** Instantiate the #fr_app_t
  *
- * Primarily used to allow the #fr_appt_t to validate its config
+ * Primarily used to allow the #fr_app_t to validate its config
  * and to allow its submodules to validate their configurations.
  *
  * @param[in] instance	of the #fr_app_t.
- * @param[in] cs	of the listen section that created this #fr_appt_t.
+ * @param[in] cs	of the listen section that created this #fr_app_t.
  * @return
  *	- 0 on success.
  *	- <0 on failure.
@@ -61,7 +61,7 @@ typedef int (*fr_app_instantiate_t)(void *instance, CONF_SECTION *cs);
  *
  * @param[in] instance  of the #fr_app_t.
  * @param[in] sc	we should register sockets with.
- * @param[in] cs	of the listen section that created this #fr_appt_t.
+ * @param[in] cs	of the listen section that created this #fr_app_t.
  * @return
  *	- 0 on success.
  *	- <0 on failure.
