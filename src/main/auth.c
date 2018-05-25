@@ -507,7 +507,7 @@ static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
 	}
 
 	RDEBUG("server %s {", cf_section_name2(request->server_cs));
-	final = request->async->process(request, FR_IO_ACTION_RUN);
+	final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
 	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
 	fr_cond_assert(final == FR_IO_REPLY);

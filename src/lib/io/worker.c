@@ -584,7 +584,7 @@ finished:
 static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t now)
 {
 	fr_time_tracking_resume(&request->async->tracking, now);
-	(void) request->async->process(request, FR_IO_ACTION_DONE);
+	(void) request->async->process(request->async->process_inst, request, FR_IO_ACTION_DONE);
 
 	/*
 	 *	The request is ALWAYS in the time_order list.  It MAY
@@ -943,7 +943,7 @@ nak:
 			 *	running, but is yielded.  It MAY clean
 			 *	itself up, or do something...
 			 */
-			(void) old->async->process(old, FR_IO_ACTION_DUP);
+			(void) old->async->process(request->async->process_inst, old, FR_IO_ACTION_DUP);
 			return NULL;
 		}
 
@@ -1014,10 +1014,10 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	if ((*request->async->original_recv_time == request->async->recv_time) &&
 	    (request->async->detached ||
 	     fr_channel_active(request->async->channel))) {
-		final = request->async->process(request, FR_IO_ACTION_RUN);
+		final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
 
 	} else {
-		final = request->async->process(request, FR_IO_ACTION_DONE);
+		final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_DONE);
 
 		rad_assert(final == FR_IO_DONE);
 	}

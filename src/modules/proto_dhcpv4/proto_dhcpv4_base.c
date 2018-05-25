@@ -71,7 +71,7 @@ static int reply_fail[FR_DHCP_INFORM + 1] = {
 	[FR_DHCP_INFORM]	= FR_DHCP_NAK,
 };
 
-static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
+static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, UNUSED fr_io_action_t action)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;

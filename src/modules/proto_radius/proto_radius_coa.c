@@ -45,7 +45,7 @@ fr_dict_attr_autoload_t proto_radius_coa_dict_attr[] = {
 	{ NULL }
 };
 
-static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
+static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
 {
 	VALUE_PAIR *vp;
 	rlm_rcode_t rcode;

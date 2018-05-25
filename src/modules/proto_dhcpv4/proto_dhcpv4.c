@@ -415,9 +415,9 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 
 static void mod_entry_point_set(void const *instance, REQUEST *request)
 {
-	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
-	fr_io_process_t process;
-	fr_io_track_t *track = request->async->packet_ctx;
+	proto_dhcpv4_t const	*inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
+	dl_instance_t		*type_submodule;
+	fr_io_track_t		*track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
 	rad_assert(request->packet->code < FR_DHCP_MAX);
@@ -437,13 +437,14 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 		return;
 	}
 
-	process = inst->entry_point_by_code[request->packet->code];
-	if (!process) {
-		REDEBUG("proto_dhcpv4 - No module available to handle packet code %i", request->packet->code);
+	type_submodule = inst->type_submodule_by_code[request->packet->code];
+	if (!type_submodule) {
+		REDEBUG("No module available to handle packet code %i", request->packet->code);
 		return;
 	}
 
-	request->async->process = process;
+	request->async->process = ((fr_app_process_t const *)type_submodule->module->common)->entry_point;
+	request->async->process_inst = type_submodule->data;
 }
 
 
@@ -459,7 +460,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 	 */
 	if (!inst->priorities[buffer[0]]) return 0;
 
-	if (!inst->entry_point_by_code[buffer[0]]) return -1;
+	if (!inst->type_submodule_by_code[buffer[0]]) return -1;
 
 	/*
 	 *	@todo - if we cared, we could also return -1 for "this
@@ -666,7 +667,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		if (!fr_cond_assert(enumv)) return -1;
 
 		code = enumv->value->vb_uint32;
-		inst->entry_point_by_code[code] = app_process->entry_point;	/* Store the process function */
+		inst->type_submodule_by_code[code] = inst->type_submodule[i];
 
 		rad_assert(inst->code_allowed[code] == true);
 		i++;

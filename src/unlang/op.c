@@ -433,7 +433,7 @@ static unlang_action_t unlang_group(REQUEST *request,
  *
  *  Just run some "unlang", but don't do anything else.
  */
-static fr_io_final_t unlang_process_continue(REQUEST *request, fr_io_action_t action)
+static fr_io_final_t unlang_process_continue(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
 {
 	rlm_rcode_t rcode;
 
@@ -717,7 +717,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 *	(e.g. Access-Request -> Accounting-Request) unless
 	 *	we're in a subrequest.
 	 */
-	final = request->async->process(request, FR_IO_ACTION_RUN);
+	final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
 
 	RDEBUG("} # server %s", cf_section_name2(g->server_cs));
 

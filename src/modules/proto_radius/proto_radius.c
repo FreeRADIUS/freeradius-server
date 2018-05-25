@@ -488,7 +488,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 static void mod_entry_point_set(void const *instance, REQUEST *request)
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	fr_io_process_t		process;
+	dl_instance_t		*type_submodule;
 	fr_io_track_t		*track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
@@ -505,17 +505,19 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 		app_process = (fr_app_process_t const *) inst->dynamic_submodule->module->common;
 
 		request->async->process = app_process->entry_point;
+		request->async->process_inst = inst->dynamic_submodule;
 		track->dynamic = 0;
 		return;
 	}
 
-	process = inst->entry_point_by_code[request->packet->code];
-	if (!process) {
-		REDEBUG("proto_radius - No module available to handle packet code %i", request->packet->code);
+	type_submodule = inst->type_submodule_by_code[request->packet->code];
+	if (!type_submodule) {
+		REDEBUG("No module available to handle packet code %i", request->packet->code);
 		return;
 	}
 
-	request->async->process = process;
+	request->async->process = ((fr_app_process_t const *)type_submodule->module->common)->entry_point;
+	request->async->process_inst = type_submodule->data;
 }
 
 
@@ -531,7 +533,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 	 */
 	if (!inst->priorities[buffer[0]]) return 0;
 
-	if (!inst->entry_point_by_code[buffer[0]]) return -1;
+	if (!inst->type_submodule_by_code[buffer[0]]) return -1;
 
 	/*
 	 *	@todo - if we cared, we could also return -1 for "this
@@ -766,7 +768,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		if (!fr_cond_assert(enumv)) return -1;
 
 		code = enumv->value->vb_uint32;
-		inst->entry_point_by_code[code] = app_process->entry_point;	/* Store the process function */
+		inst->type_submodule_by_code[code] = inst->type_submodule[i];	/* Store the process function */
 
 		rad_assert(inst->code_allowed[code] == true);
 		i++;
@@ -946,16 +948,16 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 }
 
 fr_app_t proto_radius = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "radius",
-	.config		= proto_radius_config,
-	.inst_size	= sizeof(proto_radius_t),
+	.magic			= RLM_MODULE_INIT,
+	.name			= "radius",
+	.config			= proto_radius_config,
+	.inst_size		= sizeof(proto_radius_t),
 
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.open		= mod_open,
-	.decode		= mod_decode,
-	.encode		= mod_encode,
+	.bootstrap		= mod_bootstrap,
+	.instantiate		= mod_instantiate,
+	.open			= mod_open,
+	.decode			= mod_decode,
+	.encode			= mod_encode,
 	.entry_point_set	= mod_entry_point_set,
-	.priority	= mod_priority_set
+	.priority		= mod_priority_set
 };

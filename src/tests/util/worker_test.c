@@ -99,7 +99,7 @@ static void NEVER_RETURNS usage(void)
 	exit(EXIT_FAILURE);
 }
 
-static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
+static fr_io_final_t test_process(UNUSED void const *inst, REQUEST *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
 	return FR_IO_REPLY;

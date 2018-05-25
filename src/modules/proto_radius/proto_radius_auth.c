@@ -151,7 +151,7 @@ static void CC_HINT(format (printf, 3, 4)) auth_message(REQUEST *request, bool g
 	talloc_free(msg);
 }
 
-static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
+static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
 {
 	VALUE_PAIR		*vp, *auth_type;
 	rlm_rcode_t		rcode;

@@ -306,8 +306,11 @@ typedef int (*fr_io_signal_t)(void const *instance);
 
 /** Process a request through the transport async state machine.
  *
+ * @param[in] instance		Usually the #fr_app_process_t instance data.
+ *				for the #fr_app_process_t that gave us the
+ *				entry point.
  */
-typedef	fr_io_final_t (*fr_io_process_t)(REQUEST *request, fr_io_action_t action);
+typedef	fr_io_final_t (*fr_io_process_t)(void const *instance, REQUEST *request, fr_io_action_t action);
 
 /*
  *	Structures and definitions for the master IO handler.

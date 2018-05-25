@@ -122,7 +122,7 @@ typedef struct {
 							///< Here for convenience, so that encode operations common
 							///< to all #fr_app_io_t can be performed by the #fr_app_t.
 
-	fr_app_entry_point_set_t		entry_point_set;	//!< Callback to Set the entry point into the state machine
+	fr_app_entry_point_set_t	entry_point_set;//!< Callback to Set the entry point into the state machine
 							///< provided by the fr_app_process_t.
 							///< We need a function this as the #fr_app_process_t might
 							///< change based on the packet we received.
