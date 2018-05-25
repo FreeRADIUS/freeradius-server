@@ -152,11 +152,11 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
-static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 {
 	int			rcode;
 	eap_tls_status_t	status;
-	rlm_eap_peap_t		*inst = (rlm_eap_peap_t *) arg;
+	rlm_eap_peap_t		*inst = (rlm_eap_peap_t *)instance;
 
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;

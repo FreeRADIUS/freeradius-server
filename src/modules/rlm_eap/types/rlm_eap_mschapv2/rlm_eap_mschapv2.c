@@ -426,7 +426,7 @@ static rlm_rcode_t mod_process_auth_type(void *instance, eap_session_t *eap_sess
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session)
 {
 	rlm_rcode_t		rcode;
 	int			ccode;
@@ -436,7 +436,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t		*eap_round = eap_session->this_round;
 	VALUE_PAIR		*auth_challenge, *response, *name;
-	rlm_eap_mschapv2_t	*inst = (rlm_eap_mschapv2_t *) arg;
+	rlm_eap_mschapv2_t	*inst = (rlm_eap_mschapv2_t *)instance;
 	REQUEST			*request = eap_session->request;
 	CONF_SECTION		*unlang;
 
@@ -673,7 +673,7 @@ packet_ready:
 		 */
 		tunnel = talloc_zero(request, eap_tunnel_data_t);
 
-		tunnel->tls_session = arg;
+		tunnel->tls_session = instance;
 		tunnel->callback = mschap_postproxy;
 
 		/*

@@ -47,7 +47,7 @@ static FR_NAME_NUMBER const aka_state_table[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
+static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session);
 
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("network_name", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_aka_t, network_name ) },
@@ -868,7 +868,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 /** Process the Peer's response and advantage the state machine
  *
  */
-static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session)
 {
 	REQUEST			*request = eap_session->request;
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);

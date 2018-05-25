@@ -449,11 +449,11 @@ error:
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 {
 	int rcode;
 	eap_tls_status_t status;
-	rlm_eap_fast_t *inst			= (rlm_eap_fast_t *) arg;
+	rlm_eap_fast_t *inst			= (rlm_eap_fast_t *)instance;
 	eap_tls_session_t *eap_tls_session	= talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t *tls_session		= eap_tls_session->tls_session;
 	eap_fast_tunnel_t *t			= (eap_fast_tunnel_t *) tls_session->opaque;
