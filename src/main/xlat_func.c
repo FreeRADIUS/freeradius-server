@@ -1024,34 +1024,37 @@ static int fr_value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out,
  *
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
-static ssize_t md5_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			REQUEST *request, char const *fmt)
+static xlat_action_t xlat_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
+			      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			      fr_value_box_t **in)
 {
-	uint8_t		digest[16];
-	size_t		i, len, inlen;
-	uint8_t		*p;
+	uint8_t		digest[MD5_DIGEST_LENGTH];
 	FR_MD5_CTX	md5_ctx;
-	TALLOC_CTX	*tmp_ctx = NULL;
-
-	VALUE_FROM_FMT(tmp_ctx, p, inlen, request, fmt);
-
-	fr_md5_init(&md5_ctx);
-	fr_md5_update(&md5_ctx, p, inlen);
-	fr_md5_final(digest, &md5_ctx);
+	fr_value_box_t	*vb;
 
 	/*
-	 *	Each digest octet takes two hex digits, plus one for
-	 *	the terminating NUL.
+	 * Concatenate all input if there is some
 	 */
-	len = (outlen / 2) - 1;
-	if (len > 16) len = 16;
+	if (*in && fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
-	for (i = 0; i < len; i++) snprintf((*out) + (i * 2), 3, "%02x", digest[i]);
+	fr_md5_init(&md5_ctx);
+	if (*in) {
+		fr_md5_update(&md5_ctx, (*in)->vb_octets, (*in)->vb_length);
+	} else {
+		/* MD5 of empty string */
+		fr_md5_update(&md5_ctx, NULL, 0);
+	}
+	fr_md5_final(digest, &md5_ctx);
 
-	talloc_free(tmp_ctx);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
-	return strlen(*out);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Calculate the SHA1 hash of a string or attribute.
@@ -2450,7 +2453,6 @@ int xlat_init(void)
 	xlat_register(NULL, "urlunquote", urlunquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "tolower", tolower_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "toupper", toupper_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "md5", md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "sha1", sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 #ifdef HAVE_OPENSSL_EVP_H
 	xlat_register(NULL, "sha224", sha224_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2486,6 +2488,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "base64", xlat_base64, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "concat", xlat_concat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "bin", xlat_bin, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "md5", xlat_md5, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }
