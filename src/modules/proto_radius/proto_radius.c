@@ -31,8 +31,10 @@
 #include "proto_radius.h"
 
 extern fr_app_t proto_radius;
+
 static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int priority_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 static CONF_PARSER const limit_config[] = {
 	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_TIMEVAL, proto_radius_t, io.cleanup_delay), .dflt = "5.0" } ,
@@ -48,6 +50,29 @@ static CONF_PARSER const limit_config[] = {
 	 */
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_radius_t, max_packet_size) } ,
 	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_radius_t, num_messages) } ,
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const FR_NAME_NUMBER priorities[] = {
+	{ "now",	PRIORITY_NOW },
+	{ "high",	PRIORITY_HIGH },
+	{ "normal",	PRIORITY_NORMAL },
+	{ "low",	PRIORITY_LOW },
+	{ NULL,		-1 }
+};
+
+static const CONF_PARSER priority_config[] = {
+	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCESS_REQUEST]),
+	  .func = priority_parse, .dflt = "high" },
+	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCOUNTING_REQUEST]),
+	  .func = priority_parse, .dflt = "low" },
+	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_COA_REQUEST]),
+	  .func = priority_parse, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_DISCONNECT_REQUEST]),
+	  .func = priority_parse, .dflt = "low" },
+	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_STATUS_SERVER]),
+	  .func = priority_parse, .dflt = "now" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -68,6 +93,7 @@ static CONF_PARSER const proto_radius_config[] = {
 	{ FR_CONF_OFFSET("tunnel_password_zeros", FR_TYPE_BOOL, proto_radius_t, tunnel_password_zeros) } ,
 
 	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
+	{ FR_CONF_POINTER("priority", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) priority_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -89,32 +115,16 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
 	{ NULL }
 };
 
-/*
- *	Allow configurable priorities for each listener.
- */
-static uint32_t priorities[FR_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_REQUEST] = PRIORITY_HIGH,
-	[FR_CODE_ACCOUNTING_REQUEST] = PRIORITY_LOW,
-	[FR_CODE_COA_REQUEST] = PRIORITY_NORMAL,
-	[FR_CODE_DISCONNECT_REQUEST] = PRIORITY_NORMAL,
-	[FR_CODE_STATUS_SERVER] = PRIORITY_NOW,
-};
+static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	int32_t priority;
 
+	if (cf_pair_in_table(&priority, priorities, cf_item_to_pair(ci)) < 0) return -1;
 
-static const CONF_PARSER priority_config[] = {
-	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCESS_REQUEST]),
-	  .dflt = STRINGIFY(PRIORITY_HIGH) },
-	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCOUNTING_REQUEST]),
-	  .dflt = STRINGIFY(PRIORITY_LOW) },
-	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_COA_REQUEST]),
-	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
-	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_DISCONNECT_REQUEST]),
-	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
-	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_STATUS_SERVER]),
-	  .dflt = STRINGIFY(PRIORITY_NOW) },
+	*((uint32_t *)out) = (uint32_t)priority;
 
-	CONF_PARSER_TERMINATOR
-};
+	return 0;
+}
 
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
@@ -701,8 +711,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		dv = fr_dict_enum_by_alias(da, packet_type, -1);
 		if (!dv || (dv->value->vb_uint32 > FR_CODE_DO_NOT_RESPOND) ||
 		    !code2component[dv->value->vb_uint32]) {
-			cf_log_err(subcs, "Invalid RADIUS packet type in '%s %s {...}'",
-				   name, packet_type);
+			cf_log_err(subcs, "Invalid RADIUS packet type in '%s %s {...}'", name, packet_type);
 			return -1;
 		}
 
@@ -833,7 +842,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	proto_radius_t 		*inst = talloc_get_type_abort(instance, proto_radius_t);
 	size_t			i = 0;
 	CONF_PAIR		*cp = NULL;
-	CONF_SECTION		*subcs;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
@@ -899,20 +907,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (!inst->code_allowed[FR_CODE_ACCESS_REQUEST]) {
 		inst->io.cleanup_delay.tv_sec = 0;
 		inst->io.cleanup_delay.tv_usec = 0;
-	}
-
-	/*
-	 *	Hide this for now.  It's only for people who know what
-	 *	they're doing.
-	 */
-	subcs = cf_section_find(conf, "priority", NULL);
-	if (subcs) {
-		if (cf_section_rules_push(subcs, priority_config) < 0) return -1;
-		if (cf_section_parse(NULL, NULL, subcs) < 0) return -1;
-
-	} else {
-		rad_assert(sizeof(inst->priorities) == sizeof(priorities));
-		memcpy(&inst->priorities, &priorities, sizeof(priorities));
 	}
 
 	/*

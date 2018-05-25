@@ -191,6 +191,11 @@ void		*_cf_data_remove(CONF_ITEM *ci, CONF_DATA const *_cd);
 int		_cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx);
 
 /*
+ *	Validation
+ */
+int		cf_pair_in_table(int32_t *out, FR_NAME_NUMBER const *table, CONF_PAIR *cp);
+
+/*
  *	Error logging
  */
 #define		cf_log_err(_cf, _fmt, ...) _cf_log_err(CF_TO_ITEM(_cf), _fmt, ## __VA_ARGS__)
