@@ -105,15 +105,6 @@ typedef struct main_config {
 	char const	*name;				//!< Name of the daemon, usually 'radiusd'.
 	CONF_SECTION	*config;			//!< Root of the server config.
 
-	bool		log_auth;			//!< Log authentication attempts.
-	bool		log_auth_badpass;		//!< Log successful authentications.
-	bool		log_auth_goodpass;		//!< Log failed authentications.
-	char const	*auth_badpass_msg;		//!< Additional text to append to successful auth messages.
-	char const	*auth_goodpass_msg;		//!< Additional text to append to failed auth messages.
-
-	char const	*denied_msg;			//!< Additional text to append if the user is already logged
-							//!< in (simultaneous use check failed).
-
 	bool		daemonize;			//!< Should the server daemonize on startup.
 	bool		spawn_workers;			//!< Should the server spawn threads.
 	char const      *pid_file;			//!< Path to write out PID file.
@@ -131,7 +122,7 @@ typedef struct main_config {
 	char const	*log_file;
 	int		syslog_facility;
 
-	char const	*dict_dir;		//!< Where to load dictionaries from.
+	char const	*dict_dir;			//!< Where to load dictionaries from.
 
 	struct timeval	init_delay;			//!< Initial request processing delay.
 
@@ -338,7 +329,6 @@ extern fr_log_lvl_t	req_debug_lvl;
 extern char const	*radacct_dir;
 extern char const	*log_dir;
 extern char const	*radlib_dir;
-extern bool		log_stripped_names;
 extern char const	*radiusd_version;
 extern char const	*radiusd_version_short;
 void			radius_signal_self(int flag);

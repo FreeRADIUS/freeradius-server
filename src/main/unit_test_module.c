@@ -44,7 +44,7 @@ RCSID("$Id$")
  */
 char const *radacct_dir = NULL;
 char const *log_dir = NULL;
-bool log_stripped_names = false;
+
 
 static bool filedone = false;
 
@@ -782,9 +782,6 @@ int main(int argc, char *argv[])
 
 			case 'X':
 				rad_debug_lvl += 2;
-				main_config.log_auth = true;
-				main_config.log_auth_badpass = true;
-				main_config.log_auth_goodpass = true;
 				break;
 
 			case 'x':

@@ -34,6 +34,30 @@
 #define USEC (1000000)
 #endif
 
+typedef struct {
+	bool		log_stripped_names;
+	bool		log_auth;			//!< Log authentication attempts.
+	bool		log_auth_badpass;		//!< Log successful authentications.
+	bool		log_auth_goodpass;		//!< Log failed authentications.
+	char const	*auth_badpass_msg;		//!< Additional text to append to successful auth messages.
+	char const	*auth_goodpass_msg;		//!< Additional text to append to failed auth messages.
+
+	char const	*denied_msg;			//!< Additional text to append if the user is already logged
+							//!< in (simultaneous use check failed).
+} proto_radius_auth_t;
+
+static const CONF_PARSER proto_radius_auth_config[] = {
+	{ FR_CONF_OFFSET("log_stripped_names", FR_TYPE_BOOL, proto_radius_auth_t, log_stripped_names), .dflt = "no" },
+	{ FR_CONF_OFFSET("log_auth", FR_TYPE_BOOL, proto_radius_auth_t, log_auth), .dflt = "no" },
+	{ FR_CONF_OFFSET("log_auth_badpass", FR_TYPE_BOOL, proto_radius_auth_t, log_auth_badpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("log_auth_goodpass", FR_TYPE_BOOL,proto_radius_auth_t,  log_auth_goodpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("msg_badpass", FR_TYPE_STRING, proto_radius_auth_t, auth_badpass_msg) },
+	{ FR_CONF_OFFSET("msg_goodpass", FR_TYPE_STRING, proto_radius_auth_t, auth_goodpass_msg) },
+	{ FR_CONF_OFFSET("msg_denied", FR_TYPE_STRING, proto_radius_auth_t, denied_msg), .dflt = "You are already logged in - access denied" },
+
+	CONF_PARSER_TERMINATOR
+};
+
 static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
 
@@ -72,7 +96,8 @@ fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
  *	Make sure user/pass are clean and then create an attribute
  *	which contains the log message.
  */
-static void CC_HINT(format (printf, 3, 4)) auth_message(REQUEST *request, bool goodpass, char const *fmt, ...)
+static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t const *inst,
+							REQUEST *request, bool goodpass, char const *fmt, ...)
 {
 	va_list		 ap;
 
@@ -91,7 +116,7 @@ static void CC_HINT(format (printf, 3, 4)) auth_message(REQUEST *request, bool g
 	/*
 	 * Get the correct username based on the configured value
 	 */
-	if (!log_stripped_names) {
+	if (!inst->log_stripped_names) {
 		username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	} else {
 		username = request->username;
@@ -100,7 +125,7 @@ static void CC_HINT(format (printf, 3, 4)) auth_message(REQUEST *request, bool g
 	/*
 	 *	Clean up the password
 	 */
-	if (request->root->log_auth_badpass || request->root->log_auth_goodpass) {
+	if (inst->log_auth_badpass || inst->log_auth_goodpass) {
 		if (!request->password) {
 			VALUE_PAIR *auth_type;
 
@@ -118,11 +143,11 @@ static void CC_HINT(format (printf, 3, 4)) auth_message(REQUEST *request, bool g
 	}
 
 	if (goodpass) {
-		logit = request->root->log_auth_goodpass;
-		extra_msg = request->root->auth_goodpass_msg;
+		logit = inst->log_auth_goodpass;
+		extra_msg = inst->auth_goodpass_msg;
 	} else {
-		logit = request->root->log_auth_badpass;
-		extra_msg = request->root->auth_badpass_msg;
+		logit = inst->log_auth_badpass;
+		extra_msg = inst->auth_badpass_msg;
 	}
 
 	if (extra_msg) {
@@ -151,13 +176,14 @@ static void CC_HINT(format (printf, 3, 4)) auth_message(REQUEST *request, bool g
 	talloc_free(msg);
 }
 
-static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
+static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_action_t action)
 {
-	VALUE_PAIR		*vp, *auth_type;
-	rlm_rcode_t		rcode;
-	CONF_SECTION		*unlang;
-	fr_dict_enum_t const	*dv = NULL;
-	fr_cursor_t		cursor;
+	proto_radius_auth_t const	*inst = instance;
+	VALUE_PAIR			*vp, *auth_type;
+	rlm_rcode_t			rcode;
+	CONF_SECTION			*unlang;
+	fr_dict_enum_t const		*dv = NULL;
+	fr_cursor_t			cursor;
 
 	REQUEST_VERIFY(request);
 
@@ -230,9 +256,9 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		default:
 			if ((vp = fr_pair_find_by_da(request->packet->vps,
 						     attr_module_failure_message, TAG_ANY)) != NULL) {
-				auth_message(request, false, "Invalid user (%pV)", &vp->data);
+				auth_message(inst, request, false, "Invalid user (%pV)", &vp->data);
 			} else {
-				auth_message(request, false, "Invalid user");
+				auth_message(inst, request, false, "Invalid user");
 			}
 
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -355,9 +381,9 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 			vp = fr_pair_find_by_da(request->packet->vps, attr_module_failure_message, TAG_ANY);
 			if (vp) {
-				auth_message(request, false, "Login incorrect (%pV)", &vp->data);
+				auth_message(inst, request, false, "Login incorrect (%pV)", &vp->data);
 			} else {
-				auth_message(request, false, "Login incorrect");
+				auth_message(inst, request, false, "Login incorrect");
 			}
 
 			/*
@@ -403,9 +429,9 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
 			vp = fr_pair_find_by_da(request->packet->vps, attr_module_success_message, TAG_ANY);
 			if (vp){
-				auth_message(request, true, "Login OK (%pV)", &vp->data);
+				auth_message(inst, request, true, "Login OK (%pV)", &vp->data);
 			} else {
-				auth_message(request, true, "Login OK");
+				auth_message(inst, request, true, "Login OK");
 			}
 		}
 
@@ -554,8 +580,9 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 }
 
 
-static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *listen_cs)
+static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
 {
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
 	CONF_SECTION		*server_cs;
 
 	rad_assert(listen_cs);
@@ -563,16 +590,16 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *listen_cs)
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
-
 	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;
 }
 
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
+static int mod_instantiate(UNUSED void *instance, CONF_SECTION *process_app_cs)
 {
-	CONF_SECTION		*subcs = NULL;;
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
 	CONF_SECTION		*server_cs;
+	CONF_SECTION		*subcs = NULL;
 
 	rad_assert(listen_cs);
 
@@ -603,6 +630,9 @@ extern fr_app_process_t proto_radius_auth;
 fr_app_process_t proto_radius_auth = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_auth",
+	.config		= proto_radius_auth_config,
+	.inst_size	= sizeof(proto_radius_auth_t),
+
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.entry_point	= mod_process,

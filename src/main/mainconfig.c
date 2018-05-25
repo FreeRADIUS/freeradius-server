@@ -122,16 +122,9 @@ static const CONF_PARSER initial_logging_config[] = {
  *
  **********************************************************************/
 static const CONF_PARSER log_config[] = {
-	{ FR_CONF_POINTER("stripped_names", FR_TYPE_BOOL, &log_stripped_names), .dflt = "no" },
-	{ FR_CONF_POINTER("auth", FR_TYPE_BOOL, &main_config.log_auth), .dflt = "no" },
-	{ FR_CONF_POINTER("auth_badpass", FR_TYPE_BOOL, &main_config.log_auth_badpass), .dflt = "no" },
-	{ FR_CONF_POINTER("auth_goodpass", FR_TYPE_BOOL, &main_config.log_auth_goodpass), .dflt = "no" },
-	{ FR_CONF_POINTER("msg_badpass", FR_TYPE_STRING, &main_config.auth_badpass_msg) },
-	{ FR_CONF_POINTER("msg_goodpass", FR_TYPE_STRING, &main_config.auth_goodpass_msg) },
 	{ FR_CONF_POINTER("colourise", FR_TYPE_BOOL, &do_colourise) },
 	{ FR_CONF_POINTER("timestamp", FR_TYPE_BOOL, &log_timestamp) },
 	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOL, &log_dates_utc) },
-	{ FR_CONF_POINTER("msg_denied", FR_TYPE_STRING, &main_config.denied_msg), .dflt = "You are already logged in - access denied" },
 #ifdef WITH_CONF_WRITE
 	{ FR_CONF_POINTER("write_dir", FR_TYPE_STRING, &main_config.write_dir), .dflt = NULL },
 #endif
@@ -196,10 +189,10 @@ static const CONF_PARSER server_config[] = {
 	 *	DON'T exist in radiusd.conf, then the previously parsed
 	 *	values for "log { foo = bar}" will be used.
 	 */
-	{ FR_CONF_POINTER("log_auth", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &main_config.log_auth) },
-	{ FR_CONF_POINTER("log_auth_badpass", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &main_config.log_auth_badpass) },
-	{ FR_CONF_POINTER("log_auth_goodpass", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &main_config.log_auth_goodpass) },
-	{ FR_CONF_POINTER("log_stripped_names", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &log_stripped_names) },
+	{ FR_CONF_DEPRECATED("log_auth", FR_TYPE_BOOL, NULL, NULL) },
+	{ FR_CONF_DEPRECATED("log_auth_badpass", FR_TYPE_BOOL, NULL, NULL) },
+	{ FR_CONF_DEPRECATED("log_auth_goodpass", FR_TYPE_BOOL, NULL, NULL ) },
+	{ FR_CONF_DEPRECATED("log_stripped_names", FR_TYPE_BOOL, NULL, NULL) },
 
 	CONF_PARSER_TERMINATOR
 };

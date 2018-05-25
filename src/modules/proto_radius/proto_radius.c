@@ -155,6 +155,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*process_app_cs;
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
 	proto_radius_t		*inst;
 	dl_instance_t		*parent_inst;
@@ -231,10 +232,21 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 		inst->code_allowed[FR_CODE_DISCONNECT_REQUEST] = true;
 	}
 
+	process_app_cs = cf_section_find(listen_cs, name, NULL);
+
+	/*
+	 *	Allocate an empty section if one doesn't exist
+	 *	this is so defaults get parsed.
+	 */
+	if (!process_app_cs) {
+		process_app_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
+		cf_section_add(listen_cs, process_app_cs);
+	}
+
 	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
 	 */
-	return dl_instance(ctx, out, listen_cs,	parent_inst, name, DL_TYPE_SUBMODULE);
+	return dl_instance(ctx, out, cf_section_find(listen_cs, name, NULL), parent_inst, name, DL_TYPE_SUBMODULE);
 }
 
 /** Wrapper around dl_instance
@@ -261,7 +273,10 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	 *	Allocate an empty section if one doesn't exist
 	 *	this is so defaults get parsed.
 	 */
-	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
+	if (!transport_cs) {
+		transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
+		cf_section_add(listen_cs, transport_cs);
+	}
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
 	rad_assert(parent_inst);

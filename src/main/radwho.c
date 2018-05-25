@@ -55,8 +55,6 @@ static char const *dict_dir = DICTDIR;
 
 char const *radacct_dir = NULL;
 
-bool log_stripped_names;
-
 /*
  *	Global, for log.c to use.
  */

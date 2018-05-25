@@ -265,43 +265,6 @@ log {
 	#  don't want to change this.
 	#
 	syslog_facility = daemon
-
-	#  Log the full User-Name attribute, as it was found in the request.
-	#
-	# allowed values: {no, yes}
-	#
-	stripped_names = no
-
-	#  Log authentication requests to the log file.
-	#
-	#  allowed values: {no, yes}
-	#
-	auth = no
-
-	#  Log passwords with the authentication requests.
-	#  auth_badpass  - logs password if it's rejected
-	#  auth_goodpass - logs password if it's correct
-	#
-	#  allowed values: {no, yes}
-	#
-	auth_badpass = no
-	auth_goodpass = no
-
-	#  Log additional text at the end of the "Login OK" messages.
-	#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-	#  configurations above have to be set to "yes".
-	#
-	#  The strings below are dynamically expanded, which means that
-	#  you can put anything you want in them.  However, note that
-	#  this expansion can be slow, and can negatively impact server
-	#  performance.
-	#
-#	msg_goodpass = ""
-#	msg_badpass = ""
-
-	#  The message when the user exceeds the Simultaneous-Use limit.
-	#
-	msg_denied = "You are already logged in - access denied"
 }
 
 # ENVIRONMENT VARIABLES

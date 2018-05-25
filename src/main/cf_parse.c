@@ -666,7 +666,7 @@ static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			}
 
 			/*
-			 *	Switch between customer parsing function
+			 *	Switch between custom parsing function
 			 *	and the standard value parsing function.
 			 */
 			if (rule->func) {

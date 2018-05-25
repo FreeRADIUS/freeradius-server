@@ -66,8 +66,6 @@ RCSID("$Id$")
 char const	*radacct_dir = NULL;
 char const	*log_dir = NULL;
 
-bool		log_stripped_names;
-
 char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("FreeRADIUS");
 static pid_t radius_pid;
 
@@ -315,9 +313,6 @@ int main(int argc, char *argv[])
 			main_config.spawn_workers = false;
 			main_config.daemonize = false;
 			rad_debug_lvl += 2;
-			main_config.log_auth = true;
-			main_config.log_auth_badpass = true;
-			main_config.log_auth_goodpass = true;
 	do_stdout:
 			fr_log_fp = stdout;
 			default_log.dst = L_DST_STDOUT;
