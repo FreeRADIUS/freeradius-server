@@ -99,7 +99,7 @@ typedef struct rlm_eap_submodule {
 
 	module_instantiate_t	instantiate;			//!< Create a new submodule instance.
 	eap_process_t		session_init;			//!< Callback for creating a new #eap_session_t.
-	eap_process_t		process;			//!< Callback for processing the next #eap_round_t of an
+	eap_process_t		entry_point;			//!< Callback for processing the next #eap_round_t of an
 								//!< #eap_session_t.
 } rlm_eap_submodule_t;
 

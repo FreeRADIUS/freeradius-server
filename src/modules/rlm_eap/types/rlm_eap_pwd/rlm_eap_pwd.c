@@ -584,6 +584,6 @@ rlm_eap_submodule_t rlm_eap_pwd = {
 	.detach		= mod_detach,
 
 	.session_init	= mod_session_init,	/* Create the initial request */
-	.process	= mod_process,		/* Process next round of EAP method */
+	.entry_point	= mod_process,		/* Process next round of EAP method */
 };
 
