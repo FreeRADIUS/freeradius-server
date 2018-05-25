@@ -48,10 +48,10 @@ fr_dict_attr_autoload_t proto_radius_acct_dict_attr[] = {
 
 static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 {
-	VALUE_PAIR *vp;
-	rlm_rcode_t rcode;
-	CONF_SECTION *unlang;
-	fr_dict_enum_t const *dv;
+	VALUE_PAIR 	*vp;
+	rlm_rcode_t	rcode;
+	CONF_SECTION	*unlang;
+	fr_dict_enum_t	const *dv;
 
 	REQUEST_VERIFY(request);
 

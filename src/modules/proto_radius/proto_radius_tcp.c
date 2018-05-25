@@ -34,7 +34,8 @@
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
-typedef struct proto_radius_tcp_t {
+
+typedef struct {
 	char const			*name;			//!< socket name
 	CONF_SECTION			*cs;			//!< our configuration
 

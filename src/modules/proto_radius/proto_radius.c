@@ -116,8 +116,10 @@ static const CONF_PARSER priority_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
+ *
+ * If we found a Packet-Type = Access-Request CONF_PAIR for example, here's we'd load
+ * the proto_radius_auth module.
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
  * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
@@ -273,10 +275,10 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
  */
 static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t *address = track->address;
-	RADCLIENT const *client;
+	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
+	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t		*address = track->address;
+	RADCLIENT const		*client;
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
@@ -379,11 +381,11 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
-	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t *address = track->address;
-	ssize_t data_len;
-	RADCLIENT const *client;
+	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
+	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t		*address = track->address;
+	ssize_t			data_len;
+	RADCLIENT const		*client;
 
 	/*
 	 *	The packet timed out.  Tell the network side that the packet is dead.
@@ -479,9 +481,9 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 
 static void mod_process_set(void const *instance, REQUEST *request)
 {
-	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	fr_io_process_t process;
-	fr_io_track_t *track = request->async->packet_ctx;
+	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
+	fr_io_process_t		process;
+	fr_io_track_t		*track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
 	rad_assert(request->packet->code <= FR_CODE_MAX);
@@ -549,12 +551,12 @@ static int mod_priority(void const *instance, uint8_t const *buffer, UNUSED size
  */
 static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
-	fr_listen_t	*listen;
 	proto_radius_t 	*inst = talloc_get_type_abort(instance, proto_radius_t);
+	fr_listen_t	*listen;
 
 	/*
 	 *	Build the #fr_listen_t.  This describes the complete
-	 *	path, data takes from the socket to the decoder and
+	 *	path data takes from the socket to the decoder and
 	 *	back again.
 	 */
 	listen = talloc_zero(inst, fr_listen_t);
@@ -646,7 +648,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	fr_dict_attr_t const	*da;
 	CONF_PAIR		*cp = NULL;
-	CONF_ITEM		*ci;
+	CONF_ITEM		*ci = NULL;
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
 
 	/*
@@ -663,12 +665,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	This is so that the submodules don't need to do this.
 	 */
 	i = 0;
-	for (ci = cf_item_next(server, NULL);
-	     ci != NULL;
-	     ci = cf_item_next(server, ci)) {
-		fr_dict_enum_t const *dv;
-		char const *name, *packet_type;
-		CONF_SECTION *subcs;
+	while((ci = cf_item_next(server, ci))) {
+		fr_dict_enum_t const	*dv;
+		char const		*name, *packet_type;
+		CONF_SECTION		*subcs;
 
 		if (!cf_item_is_section(ci)) continue;
 
@@ -681,9 +681,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	"authenticate" sections.
 		 */
 		if ((strcmp(name, "recv") != 0) &&
-		    (strcmp(name, "send") != 0)) {
-			continue;
-		}
+		    (strcmp(name, "send") != 0)) continue;
 
 		/*
 		 *	One more "recv" or "send" section has been
@@ -747,11 +745,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		fr_app_process_t const	*app_process;
 		fr_dict_enum_t const	*enumv;
-		int code;
+		int			code;
 
 		app_process = (fr_app_process_t const *)inst->type_submodule[i]->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule[i]->data,
-									  inst->type_submodule[i]->conf) < 0)) {
+		if (app_process->instantiate &&
+		    (app_process->instantiate(inst->type_submodule[i]->data, inst->type_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
 		}
@@ -796,10 +794,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the master io submodule
 	 */
-	if (fr_master_app_io.instantiate(&inst->io, conf) < 0) {
-		return -1;
-
-	}
+	if (fr_master_app_io.instantiate(&inst->io, conf) < 0) return -1;
 
 	/*
 	 *	No dynamic clients, nothing more to do.
@@ -865,7 +860,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		 *	Add handlers for the virtual server calls.
 		 *	This is so that when one virtual server wants
 		 *	to call another, it just looks up the data
-		 *	here by packet name, and doesn't need to troll
+		 *	here by packet name, and doesn't need to trawl
 		 *	through all of the listeners.
 		 */
 		if (!cf_data_find(inst->io.server_cs, fr_io_process_t, value)) {
@@ -935,9 +930,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Bootstrap the master IO handler.
 	 */
-	if (fr_master_app_io.bootstrap(&inst->io, conf) < 0) {
-		return -1;
-	}
+	if (fr_master_app_io.bootstrap(&inst->io, conf) < 0) return -1;
 
 	/*
 	 *	proto_radius_udp determines if we have dynamic clients
