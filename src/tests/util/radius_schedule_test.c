@@ -64,7 +64,7 @@ static int			my_port;
 static char const		*secret = "testing123";
 static fr_test_packet_ctx_t	tpc;
 
-static fr_io_final_t test_process(void const *instance, REQUEST *request, fr_io_action_t action)
+static fr_io_final_t test_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
 	return FR_IO_REPLY;
