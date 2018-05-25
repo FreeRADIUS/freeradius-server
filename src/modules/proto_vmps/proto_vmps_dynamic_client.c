@@ -209,5 +209,5 @@ fr_app_process_t proto_vmps_dynamic_client = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "vmps_dynamic_client",
 	.instantiate	= mod_instantiate,
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

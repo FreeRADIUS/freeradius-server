@@ -240,5 +240,5 @@ extern fr_app_process_t proto_radius_coa;
 fr_app_process_t proto_radius_coa = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_coa",
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

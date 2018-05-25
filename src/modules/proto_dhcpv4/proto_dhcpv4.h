@@ -35,7 +35,7 @@ typedef struct proto_dhcpv4_t {
 	dl_instance_t			**type_submodule;		//!< Instance of the various types
 	dl_instance_t			*dynamic_submodule;		//!< proto_dhcpv4_dynamic_client
 									//!< only one instance per type allowed.
-	fr_io_process_t			process_by_code[FR_DHCP_MAX];  	//!< Lookup process entry point by code.
+	fr_io_process_t			entry_point_by_code[FR_DHCP_MAX];  	//!< Lookup process entry point by code.
 
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.

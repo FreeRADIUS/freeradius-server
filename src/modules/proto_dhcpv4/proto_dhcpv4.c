@@ -413,7 +413,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	return data_len;
 }
 
-static void mod_process_set(void const *instance, REQUEST *request)
+static void mod_entry_point_set(void const *instance, REQUEST *request)
 {
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 	fr_io_process_t process;
@@ -432,12 +432,12 @@ static void mod_process_set(void const *instance, REQUEST *request)
 
 		app_process = (fr_app_process_t const *) inst->dynamic_submodule->module->common;
 
-		request->async->process = app_process->process;
+		request->async->process = app_process->entry_point;
 		track->dynamic = 0;
 		return;
 	}
 
-	process = inst->process_by_code[request->packet->code];
+	process = inst->entry_point_by_code[request->packet->code];
 	if (!process) {
 		REDEBUG("proto_dhcpv4 - No module available to handle packet code %i", request->packet->code);
 		return;
@@ -447,7 +447,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 }
 
 
-static int mod_priority(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
+static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
 {
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 
@@ -459,7 +459,7 @@ static int mod_priority(void const *instance, uint8_t const *buffer, UNUSED size
 	 */
 	if (!inst->priorities[buffer[0]]) return 0;
 
-	if (!inst->process_by_code[buffer[0]]) return -1;
+	if (!inst->entry_point_by_code[buffer[0]]) return -1;
 
 	/*
 	 *	@todo - if we cared, we could also return -1 for "this
@@ -666,7 +666,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		if (!fr_cond_assert(enumv)) return -1;
 
 		code = enumv->value->vb_uint32;
-		inst->process_by_code[code] = app_process->process;	/* Store the process function */
+		inst->entry_point_by_code[code] = app_process->entry_point;	/* Store the process function */
 
 		rad_assert(inst->code_allowed[code] == true);
 		i++;
@@ -780,7 +780,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			rad_assert(inst->io.server_cs);	/* Ensure we don't leak memory */
 
 			process_p = talloc(inst->io.server_cs, fr_io_process_t);
-			*process_p = app_process->process;
+			*process_p = app_process->entry_point;
 
 			(void) cf_data_add(inst->io.server_cs, process_p, value, NULL);
 		}
@@ -874,19 +874,19 @@ static void mod_unload(void)
 }
 
 fr_app_t proto_dhcpv4 = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "dhcpv4",
-	.config		= proto_dhcpv4_config,
-	.inst_size	= sizeof(proto_dhcpv4_t),
+	.magic			= RLM_MODULE_INIT,
+	.name			= "dhcpv4",
+	.config			= proto_dhcpv4_config,
+	.inst_size		= sizeof(proto_dhcpv4_t),
 
-	.load		= mod_load,
-	.unload		= mod_unload,
+	.load			= mod_load,
+	.unload			= mod_unload,
 
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.open		= mod_open,
-	.decode		= mod_decode,
-	.encode		= mod_encode,
-	.process_set	= mod_process_set,
-	.priority	= mod_priority
+	.bootstrap		= mod_bootstrap,
+	.instantiate		= mod_instantiate,
+	.open			= mod_open,
+	.decode			= mod_decode,
+	.encode			= mod_encode,
+	.entry_point_set	= mod_entry_point_set,
+	.priority		= mod_priority_set
 };

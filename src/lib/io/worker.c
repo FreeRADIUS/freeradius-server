@@ -871,7 +871,7 @@ nak:
 	 *	Call the main protocol handler to set the right async
 	 *	process function.
 	 */
-	listen->app->process_set(listen->app_instance, request);
+	listen->app->entry_point_set(listen->app_instance, request);
 
 	if (!request->async->process) {
 		RERROR("Protocol failed to set 'process' function");

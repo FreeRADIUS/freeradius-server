@@ -189,5 +189,5 @@ extern fr_app_process_t proto_radius_acct;
 fr_app_process_t proto_radius_acct = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_acct",
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

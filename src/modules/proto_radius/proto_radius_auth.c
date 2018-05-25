@@ -605,5 +605,5 @@ fr_app_process_t proto_radius_auth = {
 	.name		= "radius_auth",
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

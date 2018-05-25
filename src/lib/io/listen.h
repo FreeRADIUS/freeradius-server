@@ -42,7 +42,7 @@ struct fr_async_t {
 	fr_time_t		recv_time;
 	fr_time_t		*original_recv_time;
 	fr_event_list_t		*el;
-	fr_io_process_t		process;
+	fr_io_process_t		process;		//!< The current state function.
 	fr_time_tracking_t	tracking;
 	fr_channel_t		*channel;
 

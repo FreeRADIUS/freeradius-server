@@ -386,7 +386,7 @@ static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t
 	return 1;
 }
 
-static void mod_process_set(void const *instance, REQUEST *request)
+static void mod_entry_point_set(void const *instance, REQUEST *request)
 {
 	proto_detail_t const *inst = talloc_get_type_abort_const(instance, proto_detail_t);
 	fr_app_process_t const *app_process;
@@ -397,7 +397,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 	app_process = (fr_app_process_t const *)inst->type_submodule->module->common;
 
 	request->server_cs = inst->server_cs;
-	request->async->process = app_process->process;
+	request->async->process = app_process->entry_point;
 }
 
 /** Open listen sockets/connect to external event source
@@ -688,16 +688,16 @@ static int mod_detach(void *instance)
 }
 
 fr_app_t proto_detail = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "detail",
-	.config		= proto_detail_config,
-	.inst_size	= sizeof(proto_detail_t),
+	.magic			= RLM_MODULE_INIT,
+	.name			= "detail",
+	.config			= proto_detail_config,
+	.inst_size		= sizeof(proto_detail_t),
 
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
-	.open		= mod_open,
-	.decode		= mod_decode,
-	.encode		= mod_encode,
-	.process_set	= mod_process_set
+	.bootstrap		= mod_bootstrap,
+	.instantiate		= mod_instantiate,
+	.detach			= mod_detach,
+	.open			= mod_open,
+	.decode			= mod_decode,
+	.encode			= mod_encode,
+	.entry_point_set	= mod_entry_point_set
 };

@@ -201,5 +201,5 @@ extern fr_app_process_t proto_radius_status;
 fr_app_process_t proto_radius_status = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_status",
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

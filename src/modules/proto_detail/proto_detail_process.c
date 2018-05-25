@@ -237,5 +237,5 @@ fr_app_process_t proto_detail_process = {
 	.name		= "detail_process",
 	.inst_size	= sizeof(proto_detail_process_t),
 	.instantiate	= mod_instantiate,
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

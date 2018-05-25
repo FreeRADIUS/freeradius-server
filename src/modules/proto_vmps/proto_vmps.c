@@ -371,7 +371,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	return data_len;
 }
 
-static void mod_process_set(void const *instance, REQUEST *request)
+static void mod_entry_point_set(void const *instance, REQUEST *request)
 {
 	proto_vmps_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_t);
 	fr_io_track_t *track = request->async->packet_ctx;
@@ -389,7 +389,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 
 		app_process = (fr_app_process_t const *) inst->dynamic_submodule->module->common;
 
-		request->async->process = app_process->process;
+		request->async->process = app_process->entry_point;
 		track->dynamic = 0;
 		return;
 	}
@@ -399,7 +399,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 }
 
 
-static int mod_priority(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
+static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
 {
 	proto_vmps_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_t);
 
@@ -605,7 +605,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
 		if (!fr_cond_assert(enumv)) return -1;
 
-		inst->process = app_process->process;		/* Store the process function */
+		inst->process = app_process->entry_point;		/* Store the state function */
 
 		rad_assert(inst->code_allowed[enumv->value->vb_uint32] == true);
 		i++;
@@ -719,7 +719,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			rad_assert(inst->io.server_cs);	/* Ensure we don't leak memory */
 
 			process_p = talloc(inst->io.server_cs, fr_io_process_t);
-			*process_p = app_process->process;
+			*process_p = app_process->entry_point;
 
 			(void) cf_data_add(inst->io.server_cs, process_p, value, NULL);
 		}
@@ -807,6 +807,6 @@ fr_app_t proto_vmps = {
 	.open		= mod_open,
 	.decode		= mod_decode,
 	.encode		= mod_encode,
-	.process_set	= mod_process_set,
-	.priority	= mod_priority
+	.entry_point_set	= mod_entry_point_set,
+	.priority	= mod_priority_set
 };

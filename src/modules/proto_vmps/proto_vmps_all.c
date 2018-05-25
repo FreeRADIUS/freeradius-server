@@ -197,5 +197,5 @@ extern fr_app_process_t proto_vmps_all;
 fr_app_process_t proto_vmps_all = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "vmps_all",
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

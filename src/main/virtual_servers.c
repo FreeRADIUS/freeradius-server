@@ -744,5 +744,5 @@ void fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el)
 
 	request->async->listen = NULL;
 	request->async->packet_ctx = NULL;
-	listener[0]->app->process_set(listener[0]->proto_module->data, request);
+	listener[0]->app->entry_point_set(listener[0]->proto_module->data, request);
 }

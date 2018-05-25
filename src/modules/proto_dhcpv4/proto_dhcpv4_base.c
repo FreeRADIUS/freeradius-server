@@ -220,5 +220,5 @@ extern fr_app_process_t proto_dhcpv4_base;
 fr_app_process_t proto_dhcpv4_base = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcpv4_base",
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

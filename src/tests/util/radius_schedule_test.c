@@ -195,13 +195,13 @@ static fr_app_io_t app_io = {
 	.decode = test_decode
 };
 
-static void process_set(UNUSED void const *ctx, REQUEST *request)
+static void entry_point_set(UNUSED void const *ctx, REQUEST *request)
 {
 	request->async->process = test_process;
 }
 
 static fr_app_t test_app = {
-	.process_set = process_set,
+	.entry_point_set = entry_point_set,
 };
 
 static void NEVER_RETURNS usage(void)
