@@ -1629,6 +1629,48 @@ static inline void truncate_filename(char const **e, char const **p, int *len, c
 	*e = "...";
 }
 
+/** Check to see if the CONF_PAIR value is present in the specified table
+ *
+ * If it's not present, return an error and produce a helpful log message
+ *
+ * @param[out] out	The result of parsing the pair value.
+ * @param[in] table	to look for string values in.
+ * @param[in] cp	to parse.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int cf_pair_in_table(int32_t *out, FR_NAME_NUMBER const *table, CONF_PAIR *cp)
+{
+	FR_NAME_NUMBER const	*t_p;
+	char			*list = NULL;
+	int32_t			res;
+
+	res = fr_str2int(table, cf_pair_value(cp), FR_NAME_NUMBER_NOT_FOUND);
+	if (res != FR_NAME_NUMBER_NOT_FOUND) {
+		*out = res;
+		return 0;
+	}
+
+	for (t_p = table; t_p->name != NULL; t_p++) {
+		MEM(list = talloc_asprintf_append_buffer(list, "'%s', ", t_p->name));
+	}
+
+	if (!list) {
+		cf_log_err(cp, "Internal error parsing %s: Table was empty", cf_pair_attr(cp));
+		return -1;
+	}
+
+	/*
+	 *	Trim the final ", "
+	 */
+	MEM(list = talloc_realloc_bstr(list, talloc_array_length(list) - 3));
+
+	cf_log_err(cp, "Invalid value \"%s\". Expected one of %s", cf_pair_value(cp), list);
+
+	return -1;
+}
+
 /** Log an error message relating to a #CONF_ITEM
  *
  * @param[in] ci	#CONF_ITEM to print file/lineno for.

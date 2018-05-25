@@ -70,6 +70,11 @@ typedef struct FR_NAME_NUMBER {
 	int32_t		number;
 } FR_NAME_NUMBER;
 
+/** Macro to use as dflt
+ *
+ */
+#define FR_NAME_NUMBER_NOT_FOUND	INT32_MIN
+
 extern const FR_NAME_NUMBER fr_tokens_table[];
 extern const FR_NAME_NUMBER fr_token_quotes_table[];
 extern const char *fr_tokens[];
