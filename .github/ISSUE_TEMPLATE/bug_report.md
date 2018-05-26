@@ -1,11 +1,10 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-
+name: Bug Report
+about: Used to report a defect in server source code, default configuration files, documentation, scripts etc...  Post questions about usage to the user's mailing list (http://freeradius.org/support/).
 ---
 
 # Issue type
-- **Questions about the server or its usage MUST be posted to the [users mailing list](http://freeradius.org/list/users.html).  If you post those issues here, they will be closed and locked.**
+- **Questions about the server or its usage MUST be posted to the [users mailing list](http://freeradius.org/list/users.html).  If you post those issues here, they will be closed and locked. Repeat offenders will be BANNED**.
 - **Remote security exploits MUST be sent to security@freeradius.org.**
 
 ***
