@@ -198,33 +198,39 @@ int 		fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value);
 
 /* Searching and list modification */
 
-/** Initialise a cursor that will return only attributes matching the specified _da
- *
- * @param[in] _cursor	to initialise.
- * @param[in] _list	to iterate over.
- * @param[in] _da	to search for.
- * @return
- *	- The first matching pair.
- *	- NULL if no pairs match.
- */
-#define fr_cursor_iter_by_da_init(_cursor, _list, _da) \
-	fr_cursor_talloc_iter_init((_cursor), (_list), fr_pair_iter_next_by_da, (_da), VALUE_PAIR)
-
-/** Initialise a cursor that will return only attributes descended from the specified _da
- *
- * @param[in] _cursor	to initialise.
- * @param[in] _list	to iterate over.
- * @param[in] _da	who's decentness to search for.
- * @return
- *	- The first matching pair.
- *	- NULL if no pairs match.
- */
-#define fr_cursor_iter_by_ancestor_init(_cursor, _list, _da) \
-	fr_cursor_talloc_iter_init((_cursor), (_list), fr_pair_iter_next_by_ancestor, (_da), VALUE_PAIR)
-
 void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
 
 void		*fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx);
+
+/** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
+ *
+ * @param[in] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] da	to search for.
+ * @return
+ *	- The first matching pair.
+ *	- NULL if no pairs match.
+ */
+static inline VALUE_PAIR *fr_cursor_iter_by_da_init(fr_cursor_t *cursor,
+						    VALUE_PAIR **list, fr_dict_attr_t const *da)
+{
+	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_da, da, VALUE_PAIR);
+}
+
+/** Initialise a cursor that will return only attributes descended from the specified #fr_dict_attr_t
+ *
+ * @param[in] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] da	who's decentness to search for.
+ * @return
+ *	- The first matching pair.
+ *	- NULL if no pairs match.
+ */
+static inline VALUE_PAIR *fr_cursor_iter_by_ancestor_init(fr_cursor_t *cursor,
+							  VALUE_PAIR **list, fr_dict_attr_t const *da)
+{
+	return fr_cursor_talloc_iter_init(cursor, list, fr_pair_iter_next_by_ancestor, da, VALUE_PAIR);
+}
 
 VALUE_PAIR	*fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag);
 
