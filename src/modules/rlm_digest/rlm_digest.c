@@ -157,7 +157,7 @@ static int digest_fix(REQUEST *request)
 	 *	Convert them to something sane.
 	 */
 	RDEBUG("Digest-Attributes look OK.  Converting them to something more useful");
-	fr_pair_cursor_first(&cursor);
+	fr_pair_cursor_head(&cursor);
 	while ((i = fr_pair_cursor_next_by_da(&cursor, attr_digest_attributes, TAG_ANY))) {
 		int length = i->vp_length;
 		int attrlen;

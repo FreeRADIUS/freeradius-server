@@ -340,7 +340,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	ptr = (unsigned char *)eap_packet;
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
-	fr_pair_cursor_first(&cursor);
+	fr_pair_cursor_head(&cursor);
 	while ((i = fr_pair_cursor_next_by_da(&cursor, attr_eap_message, TAG_ANY))) {
 		memcpy(ptr, i->vp_strvalue, i->vp_length);
 		ptr += i->vp_length;

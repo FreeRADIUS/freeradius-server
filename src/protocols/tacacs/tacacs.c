@@ -626,7 +626,7 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 			 */
 			if (pkt->authen.cont.flags & TAC_PLUS_CONTINUE_FLAG_ABORT) {
 				if (!ntohs(pkt->authen.cont.data_len) ||
-				    !(vp = fr_pair_cursor_last(&cursor))) {
+				    !(vp = fr_pair_cursor_tail(&cursor))) {
 					fr_strerror_printf("Client aborted authentication session %u "
 							   "with no message", session_id);
 					return -2;

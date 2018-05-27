@@ -386,7 +386,7 @@ error:
 		goto error;
 	}
 
-	for (vp = fr_pair_cursor_first(&cursor); vp; vp = fr_pair_cursor_next(&cursor)) {
+	for (vp = fr_pair_cursor_head(&cursor); vp; vp = fr_pair_cursor_next(&cursor)) {
 		char *value;
 
 		if (vp->da == attr_eap_fast_pac_info_pac_type) {

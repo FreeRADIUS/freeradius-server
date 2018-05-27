@@ -101,7 +101,7 @@ void fr_pair_cursor_copy(vp_cursor_t *out, vp_cursor_t *in)
  * @param cursor to operate on.
  * @return #VALUE_PAIR at the start of the list.
  */
-VALUE_PAIR *fr_pair_cursor_first(vp_cursor_t *cursor)
+VALUE_PAIR *fr_pair_cursor_head(vp_cursor_t *cursor)
 {
 	if (!cursor->first) return NULL;
 
@@ -122,12 +122,12 @@ VALUE_PAIR *fr_pair_cursor_first(vp_cursor_t *cursor)
  * @param cursor to operate on.
  * @return #VALUE_PAIR at the end of the list.
  */
-VALUE_PAIR *fr_pair_cursor_last(vp_cursor_t *cursor)
+VALUE_PAIR *fr_pair_cursor_tail(vp_cursor_t *cursor)
 {
 	if (!cursor->first || !*cursor->first) return NULL;
 
 	/* Need to start at the start */
-	if (!cursor->current) fr_pair_cursor_first(cursor);
+	if (!cursor->current) fr_pair_cursor_head(cursor);
 
 	/* Wind to the end */
 	while (cursor->next) fr_pair_cursor_next(cursor);
@@ -168,7 +168,7 @@ void fr_pair_cursor_end(vp_cursor_t *cursor)
 	if (!cursor->current && cursor->last && !cursor->last->next) return;
 
 	/* Need to start at the start */
-	if (!cursor->current) fr_pair_cursor_first(cursor);
+	if (!cursor->current) fr_pair_cursor_head(cursor);
 
 	/* Wind to the end */
 	while (cursor->next) fr_pair_cursor_next(cursor);

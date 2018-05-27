@@ -28,8 +28,8 @@ RCSIDH(pair_cursor_h, "$Id$")
 
 VALUE_PAIR	*fr_pair_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *node);
 void		fr_pair_cursor_copy(vp_cursor_t *out, vp_cursor_t *in);
-VALUE_PAIR	*fr_pair_cursor_first(vp_cursor_t *cursor);
-VALUE_PAIR	*fr_pair_cursor_last(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_pair_cursor_head(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_pair_cursor_tail(vp_cursor_t *cursor);
 void		fr_pair_cursor_end(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr, int8_t tag);
 

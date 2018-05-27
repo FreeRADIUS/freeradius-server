@@ -2584,7 +2584,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		 *	Instance specific[n] delete
 		 */
 		if (map->lhs->tmpl_num != NUM_ANY) {
-			for (vp = fr_pair_cursor_first(&src_list);
+			for (vp = fr_pair_cursor_head(&src_list);
 			     vp;
 			     vp = fr_pair_cursor_next(&src_list)) {
 				head->op = T_OP_CMP_EQ;
@@ -2607,7 +2607,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		for (dst = fr_pair_cursor_current(&dst_list);
 		     dst;
 		     dst = fr_pair_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag)) {
-			for (vp = fr_pair_cursor_first(&src_list);
+			for (vp = fr_pair_cursor_head(&src_list);
 			     vp;
 			     vp = fr_pair_cursor_next(&src_list)) {
 				head->op = T_OP_CMP_EQ;
@@ -2648,7 +2648,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		}
 
 		/* Insert first instance (if multiple) */
-		fr_pair_cursor_first(&src_list);
+		fr_pair_cursor_head(&src_list);
 		fr_pair_cursor_append(&dst_list, fr_pair_cursor_remove(&src_list));
 		/* Free any we didn't insert */
 		fr_pair_list_free(&head);
@@ -2659,7 +2659,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 */
 	case T_OP_SET:
 		/* Wind to last instance */
-		fr_pair_cursor_last(&src_list);
+		fr_pair_cursor_tail(&src_list);
 		if (dst) {
 			DEBUG_OVERWRITE(dst, fr_pair_cursor_current(&src_list));
 			dst = fr_pair_cursor_replace(&dst_list, fr_pair_cursor_remove(&src_list));
@@ -2695,9 +2695,9 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		fr_pair_list_sort(&head, fr_pair_cmp_by_da_tag);
 		fr_pair_list_sort(list, fr_pair_cmp_by_da_tag);
 
-		fr_pair_cursor_first(&dst_list);
+		fr_pair_cursor_head(&dst_list);
 
-		for (b = fr_pair_cursor_first(&src_list);
+		for (b = fr_pair_cursor_head(&src_list);
 		     b;
 		     b = fr_pair_cursor_next(&src_list)) {
 			for (a = fr_pair_cursor_current(&dst_list);

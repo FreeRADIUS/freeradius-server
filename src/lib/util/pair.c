@@ -1472,7 +1472,7 @@ bool fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, V
 		/*
 		 *	Now iterate over all attributes of the same type.
 		 */
-		for (match = fr_pair_cursor_first(&list_cursor);
+		for (match = fr_pair_cursor_head(&list_cursor);
 		     ATTRIBUTE_EQ(match, check);
 		     match = fr_pair_cursor_next(&list_cursor)) {
 			/*
@@ -1623,7 +1623,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 
 error:
 	*pfiledone = false;
-	vp = fr_pair_cursor_first(&cursor);
+	vp = fr_pair_cursor_head(&cursor);
 	if (vp) fr_pair_list_free(&vp);
 
 	return -1;

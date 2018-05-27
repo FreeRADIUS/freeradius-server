@@ -266,7 +266,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 			/*
 			 *  Reset the check_item pointer to beginning of the list
 			 */
-			for (check_item = fr_pair_cursor_first(&check);
+			for (check_item = fr_pair_cursor_head(&check);
 			     check_item;
 			     check_item = fr_pair_cursor_next(&check)) {
 				/*
