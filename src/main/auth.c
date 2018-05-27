@@ -256,7 +256,6 @@ rlm_rcode_t rad_postauth(REQUEST *request)
  */
 rlm_rcode_t rad_authenticate(REQUEST *request)
 {
-	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	int		result;
 	rlm_rcode_t    	rcode;
