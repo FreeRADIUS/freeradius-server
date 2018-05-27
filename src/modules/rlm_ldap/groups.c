@@ -382,7 +382,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 	RDEBUG("Adding cacheable user object memberships");
 	RINDENT();
 	if (RDEBUG_ENABLED) {
-		for (vp = fr_cursor_first(&groups_cursor);
+		for (vp = fr_cursor_head(&groups_cursor);
 		     vp;
 		     vp = fr_cursor_next(&groups_cursor)) {
 			RDEBUG("&control:%s += \"%pV\"", inst->cache_da->name, &vp->data);
@@ -390,7 +390,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 	}
 
 	fr_cursor_head(&groups_cursor);
-	fr_cursor_merge(&list_cursor, &groups_Cursor);
+	fr_cursor_merge(&list_cursor, &groups_cursor);
 
 	for (dn_p = group_dn; *dn_p; dn_p++) {
 		MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
