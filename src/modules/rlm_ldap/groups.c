@@ -280,7 +280,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 
 	VALUE_PAIR *vp, **list, *groups = NULL;
 	TALLOC_CTX *list_ctx, *value_ctx;
-	vp_cursor_t list_cursor, groups_cursor;
+	fr_cursor_t list_cursor, groups_cursor;
 
 	int is_dn, i, count;
 
@@ -311,7 +311,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 	 *	once all group info has been gathered/resolved
 	 *	successfully.
 	 */
-	fr_pair_cursor_init(&groups_cursor, &groups);
+	fr_cursor_init(&groups_cursor, &groups);
 
 	for (i = 0; (i < LDAP_MAX_CACHEABLE) && (i < count); i++) {
 		is_dn = fr_ldap_util_is_dn(values[i]->bv_val, values[i]->bv_len);
@@ -323,7 +323,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 			if (is_dn) {
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 				fr_pair_value_bstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
-				fr_pair_cursor_append(&groups_cursor, vp);
+				fr_cursor_append(&groups_cursor, vp);
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve
 			 *	this to a DN. Store all the group names in an array so we can do one query.
@@ -340,7 +340,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 			if (!is_dn) {
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 				fr_pair_value_bstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
-				fr_pair_cursor_append(&groups_cursor, vp);
+				fr_cursor_append(&groups_cursor, vp);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve
 			 *	this to a name.
@@ -363,7 +363,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 				fr_pair_value_bstrncpy(vp, name, talloc_array_length(name) - 1);
-				fr_pair_cursor_append(&groups_cursor, vp);
+				fr_cursor_append(&groups_cursor, vp);
 				talloc_free(name);
 			}
 		}
@@ -377,24 +377,25 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 
 	if (rcode != RLM_MODULE_OK) return rcode;
 
-	fr_pair_cursor_init(&list_cursor, list);
+	fr_cursor_init(&list_cursor, list);
 
 	RDEBUG("Adding cacheable user object memberships");
 	RINDENT();
 	if (RDEBUG_ENABLED) {
-		for (vp = fr_pair_cursor_first(&groups_cursor);
+		for (vp = fr_cursor_first(&groups_cursor);
 		     vp;
-		     vp = fr_pair_cursor_next(&groups_cursor)) {
+		     vp = fr_cursor_next(&groups_cursor)) {
 			RDEBUG("&control:%s += \"%pV\"", inst->cache_da->name, &vp->data);
 		}
 	}
 
-	fr_pair_cursor_merge(&list_cursor, groups);
+	fr_cursor_head(&groups_cursor);
+	fr_cursor_merge(&list_cursor, &groups_Cursor);
 
 	for (dn_p = group_dn; *dn_p; dn_p++) {
 		MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 		fr_pair_value_strcpy(vp, *dn_p);
-		fr_pair_cursor_append(&list_cursor, vp);
+		fr_cursor_append(&list_cursor, vp);
 
 		RDEBUG("&control:%s += \"%pV\"", inst->cache_da->name, &vp->data);
 		ldap_memfree(*dn_p);
@@ -819,8 +820,7 @@ rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALU
 	 *	We return RLM_MODULE_INVALID here as an indication
 	 *	the caller should try a dynamic group lookup instead.
 	 */
-	vp = fr_cursor_talloc_iter_init(&cursor, &request->control,
-					fr_pair_iter_next_by_da, inst->cache_da, VALUE_PAIR);
+	vp =  fr_cursor_iter_by_da_init(&cursor, &request->control, inst->cache_da);
 	if (!vp) return RLM_MODULE_INVALID;
 
 	for (vp = fr_cursor_current(&cursor);

@@ -205,7 +205,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 				    vp_map_t const *map, void *uctx)
 {
 	VALUE_PAIR			*vp;
-	vp_cursor_t			cursor;
+	fr_cursor_t			cursor;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
 	fr_value_box_t			*head, *value;
 	int				ret;
@@ -221,9 +221,9 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 	if (ret == 0) return 0;
 	rad_assert(head);
 
-	for (fr_pair_cursor_init(&cursor, out), value = head;
+	for (fr_cursor_init(&cursor, out), value = head;
 	     value;
-	     fr_pair_cursor_append(&cursor, vp), value = value->next) {
+	     fr_cursor_append(&cursor, vp), value = value->next) {
 		vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!vp) {
 		error:

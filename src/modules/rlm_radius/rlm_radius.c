@@ -456,10 +456,11 @@ static void radius_fixups(rlm_radius_t *inst, REQUEST *request)
 	 *	Check for proxy loops.
 	 */
 	if (RDEBUG_ENABLED) {
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 
-		fr_pair_cursor_init(&cursor, &request->packet->vps);
-		while ((vp = fr_pair_cursor_next_by_da(&cursor, attr_proxy_state, TAG_ANY)) != NULL) {
+		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, attr_proxy_state);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
 			if (vp->vp_length != 4) continue;
 
 			if (memcmp(&inst->proxy_state, vp->vp_octets, 4) == 0) {
