@@ -228,7 +228,7 @@ typedef struct {
  *
  */
 typedef struct {
-	vp_cursor_t		cursor;				//!< Used to track our place in the list
+	fr_cursor_t		cursor;				//!< Used to track our place in the list
 								///< we're iterating over.
 	VALUE_PAIR 		*vps;				//!< List containing the attribute(s) we're
 								///< iterating over.

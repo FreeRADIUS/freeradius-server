@@ -1362,7 +1362,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 		 *	behaviour if someone decides to add or remove VPs in the set we're
 		 *	iterating over.
 		 */
-		if (tmpl_copy_vps(request, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
+		if (tmpl_copy_vps(stack, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
 			*presult = RLM_MODULE_NOOP;
 			*priority = instruction->actions[RLM_MODULE_NOOP];
 			return UNLANG_ACTION_CALCULATE_RESULT;
@@ -1371,20 +1371,19 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 		MEM(frame->state = foreach = talloc_zero(stack, unlang_frame_state_foreach_t));
 
 		rad_assert(vps != NULL);
-		fr_pair_cursor_init(&foreach->cursor, &vps);
 
 		foreach->depth = foreach_depth;
 		foreach->vps = vps;
+		fr_cursor_talloc_init(&foreach->cursor, &foreach->vps, VALUE_PAIR);
 #ifndef NDEBUG
 		foreach->indent = request->log.unlang_indent;
 #endif
 
-		vp = fr_pair_cursor_first(&foreach->cursor);
-
+		vp = fr_cursor_head(&foreach->cursor);
 	} else {
 		foreach = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 
-		vp = fr_pair_cursor_next(&foreach->cursor);
+		vp = fr_cursor_next(&foreach->cursor);
 
 		/*
 		 *	We've been asked to unwind to the
