@@ -947,7 +947,7 @@ int fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR **list, f
 	fr_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 
-	vp = fr_cursor_talloc_iter_init(&cursor, list, fr_pair_iter_next_by_da, da, VALUE_PAIR);
+	vp = fr_cursor_iter_by_da_init(&cursor, list, da);
 	if (vp) {
 		VP_VERIFY(vp);
 		if (out) *out = vp;
@@ -980,7 +980,7 @@ int fr_pair_delete_by_da(VALUE_PAIR **list, fr_dict_attr_t const *da)
 	VALUE_PAIR	*vp;
 	int		cnt;
 
-	for (vp = fr_cursor_talloc_iter_init(&cursor, list, fr_pair_iter_next_by_da, da, VALUE_PAIR), cnt = 0;
+	for (vp = fr_cursor_iter_by_da_init(&cursor, list, da), cnt = 0;
 	     vp;
 	     vp = fr_cursor_next(&cursor), cnt++) fr_cursor_free_item(&cursor);
 
@@ -1701,7 +1701,7 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,
 	}
 
 	fr_cursor_talloc_init(&tmp, &head, VALUE_PAIR);
-	for (vp = fr_cursor_talloc_iter_init(&src, &from, fr_pair_iter_next_by_da, da, VALUE_PAIR);
+	for (vp = fr_cursor_iter_by_da_init(&src, &from, da);
 	     vp;
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);
@@ -1754,7 +1754,7 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
 	}
 
 	fr_cursor_talloc_init(&tmp, &head, VALUE_PAIR);
-	for (vp = fr_cursor_talloc_iter_init(&src, &from, fr_pair_iter_next_by_ancestor, parent_da, VALUE_PAIR);
+	for (vp = fr_cursor_iter_by_ancestor_init(&src, &from, parent_da);
 	     vp;
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);
@@ -1957,7 +1957,7 @@ int fr_pair_list_move_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,
 	}
 
 	fr_cursor_talloc_init(&dst, to, VALUE_PAIR);
-	for (vp = fr_cursor_talloc_iter_init(&src, from, fr_pair_iter_next_by_da, da, VALUE_PAIR);
+	for (vp = fr_cursor_iter_by_da_init(&src, from, da);
 	     vp;
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);
@@ -1996,7 +1996,7 @@ int fr_pair_list_move_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
 	}
 
 	fr_cursor_talloc_init(&dst, to, VALUE_PAIR);
-	for (vp = fr_cursor_talloc_iter_init(&src, from, fr_pair_iter_next_by_ancestor, parent_da, VALUE_PAIR);
+	for (vp = fr_cursor_iter_by_ancestor_init(&src, from, parent_da);
 	     vp;
 	     vp = fr_cursor_next(&src), cnt++) {
 		VP_VERIFY(vp);

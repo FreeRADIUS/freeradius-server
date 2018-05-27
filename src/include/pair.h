@@ -197,6 +197,31 @@ int		fr_pair_to_unknown(VALUE_PAIR *vp);
 int 		fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value);
 
 /* Searching and list modification */
+
+/** Initialise a cursor that will return only attributes matching the specified _da
+ *
+ * @param[in] _cursor	to initialise.
+ * @param[in] _list	to iterate over.
+ * @param[in] _da	to search for.
+ * @return
+ *	- The first matching pair.
+ *	- NULL if no pairs match.
+ */
+#define fr_cursor_iter_by_da_init(_cursor, _list, _da) \
+	fr_cursor_talloc_iter_init((_cursor), (_list), fr_pair_iter_next_by_da, (_da), VALUE_PAIR)
+
+/** Initialise a cursor that will return only attributes descended from the specified _da
+ *
+ * @param[in] _cursor	to initialise.
+ * @param[in] _list	to iterate over.
+ * @param[in] _da	who's decentness to search for.
+ * @return
+ *	- The first matching pair.
+ *	- NULL if no pairs match.
+ */
+#define fr_cursor_iter_by_ancestor_init(_cursor, _list, _da) \
+	fr_cursor_talloc_iter_init((_cursor), (_list), fr_pair_iter_next_by_ancestor, (_da), VALUE_PAIR)
+
 void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
 
 void		*fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx);

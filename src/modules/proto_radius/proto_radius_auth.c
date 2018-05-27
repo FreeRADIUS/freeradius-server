@@ -269,8 +269,7 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 		 *	Find Auth-Type, and complain if they have too many.
 		 */
 		auth_type = NULL;
-		for (vp = fr_cursor_talloc_iter_init(&cursor, &request->control,
-						      fr_pair_iter_next_by_da, attr_auth_type, VALUE_PAIR);
+		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, attr_auth_type);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (!auth_type) {

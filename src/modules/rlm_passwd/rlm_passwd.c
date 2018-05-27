@@ -533,7 +533,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, UNUSED void *
 	key = fr_pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
 	if (!key) return RLM_MODULE_NOTFOUND;
 
-	for (i = fr_cursor_talloc_iter_init(&cursor, &key, fr_pair_iter_next_by_da, inst->keyattr, VALUE_PAIR);
+	for (i = fr_cursor_iter_by_da_init(&cursor, &key, inst->keyattr);
 	     i;
 	     i = fr_cursor_next(&cursor)) {
 		/*
