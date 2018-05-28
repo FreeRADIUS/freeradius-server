@@ -59,6 +59,7 @@ static fr_dict_attr_t const *attr_dhcp_transaction_id;
 static fr_dict_attr_t const *attr_dhcp_your_ip_address;
 static fr_dict_attr_t const *attr_dhcp_dhcp_maximum_msg_size;
 static fr_dict_attr_t const *attr_dhcp_message_type;
+static fr_dict_attr_t const *attr_dhcp_parameter_request_list;
 
 extern fr_dict_attr_autoload_t dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
@@ -78,6 +79,7 @@ fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
 	{ .out = &attr_dhcp_your_ip_address, .name = "DHCP-Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_dhcp_maximum_msg_size, .name = "DHCP-DHCP-Maximum-Msg-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_parameter_request_list, .name = "DHCP-Parameter-Request-List", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
@@ -479,8 +481,28 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, uint32_t xid,
  */
 int fr_dhcpv4_init(void)
 {
+	fr_value_box_t		value = { .type = FR_TYPE_UINT8 };
+	uint8_t			i;
+
 	if (fr_dict_autoload(dhcpv4_dict) < 0) return -1;
 	if (fr_dict_attr_autoload(dhcpv4_dict_attr) < 0) return -1;
+
+	/*
+	 *	Fixup dictionary entry for DHCP-Paramter-Request-List adding all the options
+	 */
+	for (i = 1; i < 255; i++) {
+		fr_dict_attr_t const *attr;
+
+		attr = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), i);
+		if (!attr) {
+			continue;
+		}
+		value.vb_uint8 = i;
+
+		if (fr_dict_enum_add_alias(attr_dhcp_parameter_request_list, attr->name, &value, true, false) < 0) {
+			return -1;
+		}
+	}
 
 	return 0;
 }
