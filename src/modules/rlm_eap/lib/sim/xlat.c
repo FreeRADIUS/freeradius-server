@@ -23,6 +23,7 @@
 
 #include <freeradius-devel/radiusd.h>
 #include "sim_proto.h"
+#include "sim_attrs.h"
 
 static int sim_xlat_refs = 0;
 
@@ -41,7 +42,6 @@ static ssize_t sim_xlat_id_method(TALLOC_CTX *ctx, char **out, UNUSED size_t out
 	char const		*p = fmt, *id, *method;
 	fr_sim_id_type_t	type_hint;
 	fr_sim_method_hint_t	method_hint;
-	fr_dict_attr_t const	*da;
 
 	/*
 	 *  Trim whitespace
@@ -67,13 +67,7 @@ static ssize_t sim_xlat_id_method(TALLOC_CTX *ctx, char **out, UNUSED size_t out
 		goto error;
 	}
 
-	da = fr_dict_attr_by_num(NULL, 0, FR_SIM_METHOD_HINT);
-	if (!da) {
-		REDEBUG("Missing Sim-Method-Hint attribute");
-		goto error;
-	}
-
-	method = fr_dict_enum_alias_by_value(da, fr_box_uint32(method_hint));
+	method = fr_dict_enum_alias_by_value(attr_sim_method_hint, fr_box_uint32(method_hint));
 	if (!method) {
 		REDEBUG("Missing Sim-Method-Hint value");
 		goto error;
@@ -98,7 +92,6 @@ static ssize_t sim_xlat_id_type(TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	char const		*p = fmt, *id, *method;
 	fr_sim_id_type_t	type_hint;
 	fr_sim_method_hint_t	method_hint;
-	fr_dict_attr_t const	*da;
 
 	/*
 	 *  Trim whitespace
@@ -124,13 +117,7 @@ static ssize_t sim_xlat_id_type(TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 		goto error;
 	}
 
-	da = fr_dict_attr_by_num(NULL, 0, FR_SIM_IDENTITY_TYPE);
-	if (!da) {
-		REDEBUG("Missing Sim-Method-Hint attribute");
-		goto error;
-	}
-
-	method = fr_dict_enum_alias_by_value(da, fr_box_uint32(type_hint));
+	method = fr_dict_enum_alias_by_value(attr_sim_identity_type, fr_box_uint32(type_hint));
 	if (!method) {
 		REDEBUG("Missing Sim-Method-Hint value");
 		goto error;
