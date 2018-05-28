@@ -447,6 +447,8 @@ do { \
 	fr_pair_add(&request->reply->vps, vp); \
 } while (0)
 
+static fr_dict_attr_t const *freeradius_vendor_root;
+
 static void request_stats_addvp(REQUEST *request,
 				fr_stats2vp *table, fr_stats_t *stats)
 {

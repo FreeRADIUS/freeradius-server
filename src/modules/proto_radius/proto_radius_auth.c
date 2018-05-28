@@ -88,6 +88,7 @@ fr_dict_autoload_t proto_radius_auth_dict[] = {
 	{ NULL }
 };
 
+static fr_dict_attr_t const *attr_calling_station_id;
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_module_failure_message;
 static fr_dict_attr_t const *attr_module_success_message;
@@ -97,6 +98,7 @@ static fr_dict_attr_t const *attr_service_type;
 static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_nas_port;
 
 extern fr_dict_attr_autoload_t proto_radius_auth_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
@@ -104,13 +106,44 @@ fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
 	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
+	{ .out = &attr_calling_station_id, .name = "Calling-Station-Id", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_service_type, .name = "Service-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_nas_port, .name = "NAS-Port", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
 	{ NULL }
 };
+
+/*
+ *	Return a short string showing the terminal server, port
+ *	and calling station ID.
+ */
+static char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
+{
+	VALUE_PAIR	*cli;
+	VALUE_PAIR	*pair;
+	uint32_t	port = 0;	/* RFC 2865 NAS-Port is 4 bytes */
+	char const	*tls = "";
+
+	cli = fr_pair_find_by_da(request->packet->vps, attr_calling_station_id, TAG_ANY);
+	if (!cli) do_cli = false;
+
+	pair = fr_pair_find_by_da(request->packet->vps, attr_nas_port, TAG_ANY);
+	if (pair != NULL) port = pair->vp_uint32;
+
+	if (request->packet->dst_port == 0) tls = " via proxy to virtual server";
+
+	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
+		 request->client->shortname, port,
+		 (do_cli ? " cli " : ""), (do_cli ? cli->vp_strvalue : ""),
+		 tls);
+
+	return buf;
+}
 
 /*
  *	Make sure user/pass are clean and then create an attribute

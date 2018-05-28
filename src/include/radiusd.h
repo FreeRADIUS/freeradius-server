@@ -437,7 +437,6 @@ int		pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int comp
 void		pairlist_free(PAIR_LIST **);
 
 /* auth.c */
-char	*auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli);
 rlm_rcode_t    	rad_authenticate (REQUEST *);
 rlm_rcode_t    	rad_postauth(REQUEST *);
 rlm_rcode_t    	rad_virtual_server(REQUEST *);

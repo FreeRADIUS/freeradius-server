@@ -668,19 +668,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	proto_radius_t		*inst = talloc_get_type_abort(instance, proto_radius_t);
 	size_t			i;
 
-	fr_dict_attr_t const	*da;
 	CONF_PAIR		*cp = NULL;
 	CONF_ITEM		*ci = NULL;
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
-
-	/*
-	 *	Needed to populate the code array
-	 */
-	da = fr_dict_attr_by_name(NULL, "Packet-Type");
-	if (!da) {
-		ERROR("Missing definition for Packet-Type");
-		return -1;
-	}
 
 	/*
 	 *	Compile each "send/recv + RADIUS packet type" section.
@@ -720,7 +710,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	Check that the packet type is known.
 		 */
 		packet_type = cf_section_name2(subcs);
-		dv = fr_dict_enum_by_alias(da, packet_type, -1);
+		dv = fr_dict_enum_by_alias(attr_packet_type, packet_type, -1);
 		if (!dv || (dv->value->vb_uint32 > FR_CODE_DO_NOT_RESPOND) ||
 		    !code2component[dv->value->vb_uint32]) {
 			cf_log_err(subcs, "Invalid RADIUS packet type in '%s %s {...}'", name, packet_type);

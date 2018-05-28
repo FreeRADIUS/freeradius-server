@@ -34,37 +34,6 @@ RCSID("$Id$")
 #include <ctype.h>
 
 /*
- *	Return a short string showing the terminal server, port
- *	and calling station ID.
- */
-char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
-{
-	VALUE_PAIR	*cli;
-	VALUE_PAIR	*pair;
-	uint32_t	port = 0;	/* RFC 2865 NAS-Port is 4 bytes */
-	char const	*tls = "";
-
-	if ((cli = fr_pair_find_by_num(request->packet->vps, 0, FR_CALLING_STATION_ID, TAG_ANY)) == NULL) {
-		do_cli = false;
-	}
-
-	if ((pair = fr_pair_find_by_num(request->packet->vps, 0, FR_NAS_PORT, TAG_ANY)) != NULL) {
-		port = pair->vp_uint32;
-	}
-
-	if (request->packet->dst_port == 0) {
-		tls = " via proxy to virtual server";
-	}
-
-	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
-			request->client->shortname, port,
-		 (do_cli ? " cli " : ""), (do_cli ? cli->vp_strvalue : ""),
-		 tls);
-
-	return buf;
-}
-
-/*
  *	Check password.
  *
  *	Returns:	0  OK
@@ -523,9 +492,9 @@ skip:
 	rcode = rad_authenticate(request);
 
 	if (request->reply->code == FR_CODE_ACCESS_REJECT) {
-		fr_pair_delete_by_num(&request->control, 0, FR_POST_AUTH_TYPE, TAG_ANY);
+		fr_pair_delete_by_child_num(&request->control, fr_dict_root(fr_dict_internal), FR_POST_AUTH_TYPE, TAG_ANY);
 
-		MEM(vp = fr_pair_afrom_num(request, 0, FR_POST_AUTH_TYPE));
+		MEM(vp = fr_pair_afrom_child_num(request, fr_dict_root(fr_dict_internal), FR_POST_AUTH_TYPE));
 		fr_pair_value_from_str(vp, "Reject", -1);
 		fr_pair_add(&request->control, vp);
 
