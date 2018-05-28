@@ -51,7 +51,6 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
-	fr_dict_attr_t const *da = NULL;
 
 	REQUEST_VERIFY(request);
 
@@ -74,9 +73,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		/*
 		 *	We can run CoA-Request or Disconnect-Request sections here
 		 */
-		da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-		rad_assert(da != NULL);
-		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->packet->code));
+		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:Packet-Type");
 			return FR_IO_FAIL;
@@ -176,15 +173,12 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 			 *	the NAK section.
 			 */
 			if (request->reply->code == request->packet->code + 1) {
-				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-				rad_assert(da != NULL);
-
-				dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying corresponding NAK section.", dv->alias);
 
 				request->reply->code = request->packet->code + 2;
 
-				dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
