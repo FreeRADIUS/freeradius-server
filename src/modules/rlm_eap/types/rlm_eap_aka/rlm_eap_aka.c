@@ -1337,7 +1337,8 @@ static int mod_load(void)
 {
 	if (virtual_server_namespace_register("eap-aka", mod_namespace_load) < 0) return -1;
 
-	if (fr_sim_global_init() < 0) return -1;
+	if (fr_sim_init() < 0) return -1;
+
 	sim_xlat_register();
 
 	return 0;
@@ -1346,6 +1347,8 @@ static int mod_load(void)
 static void mod_unload(void)
 {
 	sim_xlat_unregister();
+
+	fr_sim_free();
 }
 
 /*

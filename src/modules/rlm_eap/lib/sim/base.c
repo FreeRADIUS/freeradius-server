@@ -36,9 +36,87 @@ RCSID("$Id$")
 #include "eap_types.h"
 #include "eap_sim_common.h"
 #include "sim_proto.h"
+#include "sim_attrs.h"
 
-fr_dict_attr_t const *dict_sim_root;
-fr_dict_attr_t const *dict_aka_root;
+static int instance_count = 0;
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t libfreeradius_sim_dict[];
+fr_dict_autoload_t libfreeradius_sim_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_eap_aka_ak;
+fr_dict_attr_t const *attr_eap_aka_ck;
+fr_dict_attr_t const *attr_eap_aka_ik;
+fr_dict_attr_t const *attr_eap_aka_root;
+fr_dict_attr_t const *attr_eap_aka_subtype;
+fr_dict_attr_t const *attr_eap_aka_xres;
+fr_dict_attr_t const *attr_eap_sim_kc;
+fr_dict_attr_t const *attr_eap_sim_root;
+fr_dict_attr_t const *attr_eap_sim_sres;
+fr_dict_attr_t const *attr_eap_sim_subtype;
+fr_dict_attr_t const *attr_sim_amf;
+fr_dict_attr_t const *attr_sim_algo_version;
+fr_dict_attr_t const *attr_sim_identity_type;
+fr_dict_attr_t const *attr_sim_ki;
+fr_dict_attr_t const *attr_sim_method_hint;
+fr_dict_attr_t const *attr_sim_op;
+fr_dict_attr_t const *attr_sim_opc;
+fr_dict_attr_t const *attr_sim_sqn;
+fr_dict_attr_t const *attr_eap_aka_autn;
+fr_dict_attr_t const *attr_eap_aka_checkcode;
+fr_dict_attr_t const *attr_eap_aka_iv;
+fr_dict_attr_t const *attr_eap_aka_identity;
+fr_dict_attr_t const *attr_eap_aka_mac;
+fr_dict_attr_t const *attr_eap_aka_padding;
+fr_dict_attr_t const *attr_eap_aka_rand;
+fr_dict_attr_t const *attr_eap_aka_res;
+fr_dict_attr_t const *attr_eap_sim_iv;
+fr_dict_attr_t const *attr_eap_sim_identity;
+fr_dict_attr_t const *attr_eap_sim_mac;
+fr_dict_attr_t const *attr_eap_sim_padding;
+fr_dict_attr_t const *attr_eap_sim_rand;
+
+extern fr_dict_attr_autoload_t libfreeradius_sim_dict_attr[];
+fr_dict_attr_autoload_t libfreeradius_sim_dict_attr[] = {
+	{ .out = &attr_eap_aka_ak, .name = "EAP-AKA-AK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_eap_aka_ck, .name = "EAP-AKA-CK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_eap_aka_ik, .name = "EAP-AKA-IK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_eap_aka_root, .name = "EAP-AKA-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_eap_aka_subtype, .name = "EAP-AKA-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_eap_aka_xres, .name = "EAP-AKA-XRES", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_eap_sim_kc, .name = "EAP-SIM-KC", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_eap_sim_root, .name = "EAP-SIM-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_eap_sim_sres, .name = "EAP-SIM-SRES", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_sim_amf, .name = "SIM-AMF", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sim_algo_version, .name = "SIM-Algo-Version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_sim_identity_type, .name = "SIM-Identity-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_sim_ki, .name = "SIM-Ki", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sim_method_hint, .name = "SIM-Method-Hint", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_sim_op, .name = "SIM-OP", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sim_opc, .name = "SIM-OPc", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_sim_sqn, .name = "SIM-SQN", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_eap_aka_autn, .name = "EAP-AKA-AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_aka_checkcode, .name = "EAP-AKA-Checkcode", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_aka_iv, .name = "EAP-AKA-IV", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_aka_identity, .name = "EAP-AKA-Identity", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_eap_aka_mac, .name = "EAP-AKA-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_aka_padding, .name = "EAP-AKA-Padding", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_aka_rand, .name = "EAP-AKA-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_aka_res, .name = "EAP-AKA-RES", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_sim_iv, .name = "EAP-SIM-IV", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_sim_identity, .name = "EAP-SIM-Identity", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_eap_sim_mac, .name = "EAP-SIM-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_sim_padding, .name = "EAP-SIM-Padding", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_sim_rand, .name = "EAP-SIM-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ NULL }
+};
 
 /** SIM AT on-the-wire format attribute sizes
  *
@@ -95,26 +173,23 @@ size_t fr_sim_octets_prefix_len(fr_dict_attr_t const *da)
 	return 0;				/* Everything else has zero padding bytes */
 }
 
-int fr_sim_global_init(void)
+int fr_sim_init(void)
 {
-	static bool done_init;
-
-	if (done_init) return 0;
-
-	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_AKA_ROOT);
-	if (!dict_aka_root) {
-		fr_strerror_printf("Missing AKA root");
-		return -1;
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
 	}
 
-	dict_sim_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_SIM_ROOT);
-	if (!dict_sim_root) {
-		fr_strerror_printf("Missing SIM root");
-		return -1;
-	}
-
-	done_init = true;
+	if (fr_dict_autoload(libfreeradius_sim_dict) < 0) return -1;
+	if (fr_dict_attr_autoload(libfreeradius_sim_dict_attr) < 0) return -1;
 
 	return 0;
+}
+
+void fr_sim_free(void)
+{
+	if (--instance_count > 0) return;
+
+	fr_dict_autofree(libfreeradius_sim_dict);
 }
 

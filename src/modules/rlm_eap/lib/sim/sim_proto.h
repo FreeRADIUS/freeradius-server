@@ -29,7 +29,6 @@
 RCSIDH(sim_h, "$Id$")
 
 #include <assert.h>
-#include "dict.h"
 #include "id.h"
 #include "eap_types.h"
 #include "eap_sim_common.h"
@@ -248,7 +247,9 @@ size_t		fr_sim_attr_len(VALUE_PAIR const *vp);
 
 size_t		fr_sim_octets_prefix_len(fr_dict_attr_t const *da);
 
-int		fr_sim_global_init(void);
+int		fr_sim_init(void);
+
+void		fr_sim_free(void);
 
 /*
  *	crypto.c

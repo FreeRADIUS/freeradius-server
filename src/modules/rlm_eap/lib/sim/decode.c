@@ -37,6 +37,7 @@ RCSID("$Id$")
 #include "eap_types.h"
 #include "eap_sim_common.h"
 #include "sim_proto.h"
+#include "sim_attrs.h"
 
 /*
  *  EAP-SIM/AKA/AKA' PACKET FORMAT
@@ -1031,12 +1032,15 @@ static void *decode_test_ctx_sim(UNUSED TALLOC_CTX *ctx)
 						.k_encr = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
 							    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f }
 					};
-	fr_sim_global_init();
+
+	fr_sim_init();
 
 	test_ctx.root = dict_sim_root;
 	test_ctx.keys = &keys;
 	memset(&test_ctx.iv, 0, sizeof(test_ctx.iv));
 	test_ctx.have_iv = true;	/* Ensures IV is all zeros */
+
+	fr_sim_free();
 
 	return &test_ctx;
 }
@@ -1048,12 +1052,15 @@ static void *decode_test_ctx_aka(UNUSED TALLOC_CTX *ctx)
 						.k_encr = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
 							    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f }
 					};
-	fr_sim_global_init();
+
+	fr_sim_init();
 
 	test_ctx.root = dict_aka_root;
 	test_ctx.keys = &keys;
 	memset(&test_ctx.iv, 0, sizeof(test_ctx.iv));
 	test_ctx.have_iv = true;	/* Ensures IV is all zeros */
+
+	fr_sim_free();
 
 	return &test_ctx;
 }
@@ -1065,10 +1072,13 @@ static void *decode_test_ctx_sim_rfc4186(UNUSED TALLOC_CTX *ctx)
 						.k_encr = { 0x53, 0x6e, 0x5e, 0xbc, 0x44 ,0x65, 0x58, 0x2a,
 							    0xa6, 0xa8, 0xec, 0x99, 0x86, 0xeb, 0xb6, 0x20 }
 					};
-	fr_sim_global_init();
+
+	fr_sim_init();
 
 	test_ctx.root = dict_sim_root;
 	test_ctx.keys = &keys;
+
+	fr_sim_free();
 
 	return &test_ctx;
 }
