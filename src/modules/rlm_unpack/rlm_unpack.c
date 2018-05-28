@@ -28,6 +28,22 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <ctype.h>
 
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_unpack_dict[];
+fr_dict_autoload_t rlm_unpack_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_cast_base;
+
+extern fr_dict_attr_autoload_t rlm_unpack_dict_attr[];
+fr_dict_attr_autoload_t rlm_unpack_dict_attr[] = {
+	{ .out = &attr_cast_base, .name = "Cast-Base", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 #define GOTO_ERROR do { REDEBUG("Unexpected text at '%s'", p); goto error;} while (0)
 
 /** Unpack data
@@ -142,7 +158,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto nothing;
 	}
 
-	da = fr_dict_attr_by_num(NULL, 0, FR_CAST_BASE + type);
+	da = fr_dict_attr_child_by_num(fr_dict_root(dict_freeradius), attr_cast_base->attr + type);
 	if (!da) {
 		REDEBUG("Cannot decode type '%s'", data_type);
 		goto nothing;
