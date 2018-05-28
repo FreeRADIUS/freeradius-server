@@ -30,26 +30,38 @@
 #include <freeradius-devel/rad_assert.h>
 #include "vqp.h"
 
+static fr_dict_t *dict_vmps;
+
+extern fr_dict_autoload_t proto_vmps_all_dict[];
+fr_dict_autoload_t proto_vmps_all_dict[] = {
+	{ .out = &dict_vmps, .proto = "vmps" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_vmps_packet_type;
+
+extern fr_dict_attr_autoload_t proto_vmps_all_dict_attr[];
+fr_dict_attr_autoload_t proto_vmps_all_dict_attr[] = {
+	{ .out = &attr_vmps_packet_type, .name = "VMPS-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
+	{ NULL }
+};
+
 static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, UNUSED fr_io_action_t action)
 {
-	rlm_rcode_t rcode;
-	CONF_SECTION *unlang;
-	fr_dict_enum_t const *dv;
-	fr_dict_attr_t const *da = NULL;
+	rlm_rcode_t		rcode;
+	CONF_SECTION		*unlang;
+	fr_dict_enum_t const	*dv;
 
 	REQUEST_VERIFY(request);
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		log_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %08x",
-			       fr_vmps_codes[request->packet->code], request->packet->id);
+		RDEBUG("Received %s ID %08x", fr_vmps_codes[request->packet->code], request->packet->id);
 		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "vmps";
 
-		da = fr_dict_attr_by_num(NULL, 0, FR_VMPS_PACKET_TYPE);
-		rad_assert(da != NULL);
-		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->packet->code));
+		dv = fr_dict_enum_by_value(attr_vmps_packet_type, fr_box_uint32(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:VMPS-Packet-Type");
 			return FR_IO_FAIL;
@@ -100,10 +112,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 			break;
 		}
 
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_VMPS_PACKET_TYPE);
-		rad_assert(da != NULL);
-
-		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
+		dv = fr_dict_enum_by_value(attr_vmps_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
 
@@ -139,15 +148,14 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 			 *	the NAK section.
 			 */
 			if (request->reply->code != FR_VMPS_PACKET_TYPE_VALUE_DO_NOT_RESPOND) {
-				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_VMPS_PACKET_TYPE);
-				rad_assert(da != NULL);
-
-				dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_vmps_packet_type,
+							   fr_box_uint32(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'.", dv->alias);
 
 				request->reply->code = FR_VMPS_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
 
-				dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_vmps_packet_type,
+							   fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 

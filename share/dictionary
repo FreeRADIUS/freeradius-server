@@ -177,7 +177,6 @@ $INCLUDE dictionary.compatible
 $INCLUDE dictionary.cosine
 $INCLUDE dictionary.dante
 $INCLUDE dictionary.dellemc
-$INCLUDE dictionary.dhcpv4
 $INCLUDE dictionary.dlink
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.dragonwave
@@ -302,6 +301,8 @@ $INCLUDE dictionary.zyxel
 #  This should be auto-loaded in the future.
 #
 $INCLUDE dictionary.arp
+$INCLUDE dictionary.vqp
+$INCLUDE dictionary.dhcpv4
 
 #
 #	And finally the server internal attributes.
