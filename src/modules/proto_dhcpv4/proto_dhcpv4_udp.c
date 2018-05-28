@@ -118,7 +118,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	size_t				packet_len = -1; /* @todo -fixme */
 	struct timeval			timestamp;
 	uint8_t				message_type;
-	uint32_t			xid;
+	uint32_t			xid, ipaddr;
+	dhcp_packet_t		*packet;
 
 	fr_time_t			*recv_time_p;
 
@@ -157,6 +158,18 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		return 0;
 	}
 
+	/*
+	 *	We've seen a server reply to this port, but the giaddr
+	 *	is *not* our address.  Drop it.
+	 */
+	packet = (dhcp_packet_t *) buffer;
+	memcpy(&ipaddr, &packet->giaddr, 4);
+	if ((packet->opcode == 2) && (ipaddr != address->dst_ipaddr.addr.v4.s_addr)) {
+		DEBUG2("Ignoring server reply which was not meant for us (was for 0x%x).",
+			ntohl(address->dst_ipaddr.addr.v4.s_addr));
+		return 0;
+	}
+
 	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
 
@@ -180,7 +193,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 {
 	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-	fr_io_address_t			*address = track->address;
+	fr_io_address_t			address = *track->address;
 
 	int				flags;
 	ssize_t				data_size;
@@ -197,13 +210,145 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	rad_assert(track->reply_len == 0);
 
 	/*
-	 *	Only write replies if they're DHCPV4 packets.
-	 *	sometimes we want to NOT send a reply...
+	 *	Figure out which kind of packet we're sending.
+	 */
+	if (!inst->connection) {
+		uint8_t const *code;
+		uint32_t ipaddr;
+		dhcp_packet_t *packet = (dhcp_packet_t *) buffer;
+		dhcp_packet_t *request = (dhcp_packet_t *) track->packet; /* only 20 bytes tho! */
+
+		/*
+		 *	This isn't available in the packet header.
+		 */
+		code = fr_dhcpv4_packet_get_option(packet, buffer_len, FR_DHCP_MESSAGE_TYPE);
+		if (!code || (code[1] < 1) || (code[2] == 0) || (code[2] >= FR_DHCP_INFORM)) {
+			DEBUG("WARNING - silently discarding reply due to invalid or missing message type");
+			return 0;
+		}
+
+		/*
+		 *	We have GIADDR in the packet, so send it
+		 *	there.  The packet is FROM our IP address and
+		 *	port, TO the destination IP address, at the
+		 *	same (i.e. server) port.
+		 */
+		memcpy(&ipaddr, &packet->giaddr, 4);
+		if (ipaddr != INADDR_ANY) {
+			address.dst_ipaddr.addr.v4.s_addr = ipaddr;
+			address.dst_port = inst->port;
+			address.src_ipaddr = inst->src_ipaddr;
+			address.dst_port = inst->port;
+
+			/*
+			 *	Increase the hop count for client
+			 *	packets sent to the next gateway.
+			 */
+			if ((code[2] == FR_DHCP_DISCOVER) ||
+			    (code[2] == FR_DHCP_REQUEST)) {
+				packet->hops++;
+			}
+
+			goto send_reply;
+		}
+
+		/*
+		 *	If there's no GIADDR, we don't know where to
+		 *	send client packets.
+		 */
+		if ((code[2] == FR_DHCP_DISCOVER) || (code[2] == FR_DHCP_REQUEST)) {
+			DEBUG("WARNING - silently discarding client reply, as there is no GIADDR to send it to.");
+			return 0;
+		}
+
+		/*
+		 *	The original packet requested a broadcast
+		 *	reply, and CIADDR is empty, go broadcast the
+		 *	reply.  RFC 2131 page 23.
+		 */
+		if (((request->flags & FR_DHCP_FLAGS_VALUE_BROADCAST) != 0) &&
+		    (request->ciaddr == INADDR_ANY)) {
+			DEBUG("Reply will be broadcast");
+			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+			goto send_reply;
+		}
+
+		/*
+		 *	The original packet has CIADDR, so we unicast
+		 *	the reply there.  RFC 2131 page 23.
+		 */
+		if (request->ciaddr != INADDR_ANY) {
+			DEBUG("Reply will be unicast to CIADDR from original packet.");
+			memcpy(&address.dst_ipaddr.addr.v4.s_addr, &request->ciaddr, 4);
+			goto send_reply;
+		}
+
+		switch (code[2]) {
+			/*
+			 *	Offers are sent to YIADDR if we
+			 *	received a unicast packet from YIADDR.
+			 *	Otherwise, they are unicast to YIADDR
+			 *	(if we can update ARP), otherwise they
+			 *	are broadcast.
+			 */
+		case FR_DHCP_OFFER:
+			/*
+			 *	The master_io automatically swaps
+			 *	src/dst ip/port before calling us.  So
+			 *	if we received the request from
+			 *	YIADDR, then the reply will
+			 *	automatically be sent there as well.
+			 */
+			if (memcmp(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4) == 0) {
+				DEBUG("Reply will be unicast to YIADDR.");
+
+#ifdef SIOCSARP
+			} else if (inst->broadcast && inst->interface) {
+				if (fr_dhcpv4_udp_add_arp_entry(inst->sockfd, inst->interface,
+								&packet->yiaddr, &packet->chaddr) < 0) {
+					DEBUG("Failed adding ARP entry.  Reply will be broadcast.");
+					address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+				} else {
+					DEBUG("Reply will be unicast to YIADDR after ARP table updates.");
+				}
+
+#endif
+			} else {
+				DEBUG("Reply will be broadcast.");
+				address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+			}
+			break;
+
+			/*
+			 *	ACKs are unicast to YIADDR
+			 */
+		case FR_DHCP_ACK:
+			DEBUG("Reply will be unicast to YIADDR.");
+			memcpy(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
+			break;
+
+			/*
+			 *	NAKs are broadcast.
+			 */
+		case FR_DHCP_NAK:
+			DEBUG("Reply will be broadcast.");
+			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+			break;
+
+		default:
+			DEBUG("WARNING - silently discarding reply due to invalid message type %d", code[2]);
+			return 0;
+		}
+	}
+
+send_reply:
+	/*
+	 *	proto_radius_dhcpv4 takes care of suppressing do-not-respond, etc.
 	 */
 	data_size = udp_send(inst->sockfd, buffer, buffer_len, flags,
-			     &address->dst_ipaddr, address->dst_port,
-			     address->if_index,
-			     &address->src_ipaddr, address->src_port);
+			     &address.dst_ipaddr, address.dst_port,
+			     address.if_index,
+			     &address.src_ipaddr, address.src_port);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -437,6 +582,16 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 		inst->port = ntohl(s->s_port);
 	}
+
+#ifdef SIOCSARP
+	/*
+	 *	If we're listening for broadcast requests, we MUST
+	 */
+	if (inst->broadcast && !inst->interface) {
+		cf_log_warn("You SHOULD set 'interface' if you have set 'broadcast = yes'.");
+		cf_log_warn("All replies will be broadcast, as ARP updates require 'interface' to be set.")
+	}
+#endif
 
 	/*
 	 *	Parse and create the trie for dynamic clients, even if
