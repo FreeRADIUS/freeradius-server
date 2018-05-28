@@ -484,12 +484,6 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 		rad_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
-			/*
-			 *	We need to send CoA-NAK back if Service-Type
-			 *	is Authorize-Only.  Rely on the user's policy
-			 *	to do that.  We're not a real NAS, so this
-			 *	restriction doesn't (ahem) apply to us.
-			 */
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_REJECT:
