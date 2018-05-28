@@ -128,8 +128,22 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr)
 {
 	fr_dict_attr_t const *da;
+	fr_dict_attr_t const *parent;
 
-	da = fr_dict_attr_by_num(NULL, vendor, attr);
+	if (vendor == 0) {
+		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), attr);
+		goto alloc;
+	}
+
+	parent = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_VENDOR_SPECIFIC);
+	if (!parent) return NULL;
+
+	parent = fr_dict_attr_child_by_num(parent, vendor);
+	if (!parent) return NULL;
+
+	da = fr_dict_attr_child_by_num(parent, attr);
+
+alloc:
 	if (!da) {
 		VALUE_PAIR *vp;
 

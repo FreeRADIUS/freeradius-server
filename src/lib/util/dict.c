@@ -3280,35 +3280,6 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
 	return fr_hash_table_finddata(dict->attributes_by_name, &find);
 }
 
-/** Lookup a #fr_dict_attr_t by its vendor and attribute numbers
- *
- * @note This is a deprecated function, new code should use #fr_dict_attr_child_by_num.
- *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
- * @param[in] vendor		number of the attribute.
- * @param[in] attr		number of the attribute.
- * @return
- * 	- Attribute matching vendor/attr.
- * 	- NULL if no matching attribute could be found.
- */
-fr_dict_attr_t const *fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, unsigned int attr)
-{
-	fr_dict_attr_t const *parent;
-
-	INTERNAL_IF_NULL(dict);
-
-	if (vendor == 0) return fr_dict_attr_child_by_num(dict->root, attr);
-
-	parent = fr_dict_attr_child_by_num(dict->root, FR_VENDOR_SPECIFIC);
-	if (!parent) return NULL;
-
-	parent = fr_dict_attr_child_by_num(parent, vendor);
-	if (!parent) return NULL;
-
-	return fr_dict_attr_child_by_num(parent, attr);
-}
-
 /** Lookup a attribute by its its vendor and attribute numbers and data type
  *
  * @note Only works with FR_TYPE_COMBO_IP
