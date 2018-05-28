@@ -30,6 +30,28 @@
 #include <freeradius-devel/rad_assert.h>
 #include "vqp.h"
 
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t proto_vmps_dynamic_client_dict[];
+fr_dict_autoload_t proto_vmps_dynamic_client_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_freeradius_client_ip_address;
+static fr_dict_attr_t const *attr_freeradius_client_ip_prefix;
+static fr_dict_attr_t const *attr_freeradius_client_ipv6_address;
+static fr_dict_attr_t const *attr_freeradius_client_ipv6_prefix;
+
+extern fr_dict_attr_autoload_t proto_vmps_dynamic_client_dict_attr[];
+fr_dict_attr_autoload_t proto_vmps_dynamic_client_dict_attr[] = {
+	{ .out = &attr_freeradius_client_ip_address, .name = "FreeRADIUS-Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_freeradius_client_ip_prefix, .name = "FreeRADIUS-Client-IP-Prefix", .type = FR_TYPE_IPV4_PREFIX, .dict = &dict_freeradius },
+	{ .out = &attr_freeradius_client_ipv6_address, .name = "FreeRADIUS-Client-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_freeradius_client_ipv6_prefix, .name = "FreeRADIUS-Client-IPv6-Prefix", .type = FR_TYPE_IPV6_PREFIX, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 #define CLIENT_ADD	(1)
 #define CLIENT_NAK	(257)
 
@@ -144,10 +166,10 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		if (request->reply->code == CLIENT_ADD) {
 			VALUE_PAIR *vp;
 
-			vp = fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_IP_ADDRESS, TAG_ANY);
-			if (!vp) fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_IPV6_ADDRESS, TAG_ANY);
-			if (!vp) fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_IP_PREFIX, TAG_ANY);
-			if (!vp) fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_IPV6_PREFIX, TAG_ANY);
+			vp = fr_pair_find_by_da(request->control, attr_freeradius_client_ip_address, TAG_ANY);
+			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ipv6_address, TAG_ANY);
+			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ip_prefix, TAG_ANY);
+			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ipv6_prefix, TAG_ANY);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client.. IP address attribute");
 				goto deny;
