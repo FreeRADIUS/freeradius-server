@@ -1681,12 +1681,12 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 			if (search.link_vps) {
 				bool ret;
-				vp_cursor_t cursor;
+				fr_cursor_t cursor;
 				VALUE_PAIR *vp;
 
-				for (vp = fr_pair_cursor_init(&cursor, &search.link_vps);
+				for (vp = fr_cursor_init(&cursor, &search.link_vps);
 				     vp;
-				     vp = fr_pair_cursor_next(&cursor)) {
+				     vp = fr_cursor_next(&cursor)) {
 					fr_pair_steal(original, search.link_vps);
 				}
 				original->link_vps = search.link_vps;
@@ -1969,7 +1969,7 @@ static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list
 
 static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 {
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	VALUE_PAIR *vp;
 	FR_TOKEN code;
 
@@ -1984,9 +1984,9 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 		return -1;
 	}
 
-	for (vp = fr_pair_cursor_init(&cursor, out);
+	for (vp = fr_cursor_init(&cursor, out);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	xlat expansion isn't supported here
 		 */
@@ -2599,34 +2599,28 @@ int main(int argc, char *argv[])
 	}
 
 	if (conf->filter_request) {
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		VALUE_PAIR *type;
 
-		if (rs_build_filter(&conf->filter_request_vps, conf->filter_request) < 0) {
-			usage(64);
-		}
+		if (rs_build_filter(&conf->filter_request_vps, conf->filter_request) < 0) usage(64);
 
-		fr_pair_cursor_init(&cursor, &conf->filter_request_vps);
-		type = fr_pair_cursor_next_by_da(&cursor, attr_packet_type, TAG_ANY);
+		type = fr_cursor_iter_by_da_init(&cursor, &conf->filter_request_vps, attr_packet_type);
 		if (type) {
-			fr_pair_cursor_remove(&cursor);
+			fr_cursor_remove(&cursor);
 			conf->filter_request_code = type->vp_uint32;
 			talloc_free(type);
 		}
 	}
 
 	if (conf->filter_response) {
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		VALUE_PAIR *type;
 
-		if (rs_build_filter(&conf->filter_response_vps, conf->filter_response) < 0) {
-			usage(64);
-		}
+		if (rs_build_filter(&conf->filter_response_vps, conf->filter_response) < 0) usage(64);
 
-		fr_pair_cursor_init(&cursor, &conf->filter_response_vps);
-		type = fr_pair_cursor_next_by_da(&cursor, attr_packet_type, TAG_ANY);
+		type = fr_cursor_iter_by_da_init(&cursor, &conf->filter_response_vps, attr_packet_type);
 		if (type) {
-			fr_pair_cursor_remove(&cursor);
+			fr_cursor_remove(&cursor);
 			conf->filter_response_code = type->vp_uint32;
 			talloc_free(type);
 		}

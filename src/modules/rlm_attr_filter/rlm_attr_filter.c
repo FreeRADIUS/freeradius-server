@@ -111,7 +111,7 @@ static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *rep
 
 static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list)
 {
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	int rcode;
 	PAIR_LIST *attrs = NULL;
 	PAIR_LIST *entry;
@@ -131,9 +131,9 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST 
 		entry->check = entry->reply;
 		entry->reply = NULL;
 
-		for (vp = fr_pair_cursor_init(&cursor, &entry->check);
+		for (vp = fr_cursor_init(&cursor, &entry->check);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 		    /*
 		     * If it's NOT a vendor attribute,
 		     * and it's NOT a wire protocol
@@ -181,7 +181,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 {
 	rlm_attr_filter_t const *inst = instance;
 	VALUE_PAIR	*vp;
-	vp_cursor_t	input, check, out;
+	fr_cursor_t	input, check, out;
 	VALUE_PAIR	*input_item, *check_item, *output;
 	PAIR_LIST	*pl;
 	int		found = 0;
@@ -203,7 +203,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	 *	Head of the output list
 	 */
 	output = NULL;
-	fr_pair_cursor_init(&out, &output);
+	fr_cursor_init(&out, &output);
 
 	/*
 	 *      Find the attr_filter profile entry for the entry.
@@ -225,9 +225,9 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		RDEBUG2("Matched entry %s at line %d", pl->name, pl->lineno);
 		found = 1;
 
-		for (check_item = fr_pair_cursor_init(&check, &pl->check);
+		for (check_item = fr_cursor_init(&check, &pl->check);
 		     check_item;
-		     check_item = fr_pair_cursor_next(&check)) {
+		     check_item = fr_cursor_next(&check)) {
 		     	if (check_item->da == attr_fall_through) {
 				if (check_item->vp_uint32 == 1) {
 					fall_through = 1;
@@ -246,7 +246,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 				if (!vp) goto error;
 
 				xlat_eval_pair(request, vp);
-				fr_pair_cursor_append(&out, vp);
+				fr_cursor_append(&out, vp);
 			}
 		}
 
@@ -258,17 +258,17 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		 *	only if it matches all rules that describe an
 		 *	Idle-Timeout.
 		 */
-		for (input_item = fr_pair_cursor_init(&input, &packet->vps);
+		for (input_item = fr_cursor_init(&input, &packet->vps);
 		     input_item;
-		     input_item = fr_pair_cursor_next(&input)) {
+		     input_item = fr_cursor_next(&input)) {
 			pass = fail = 0; /* reset the pass,fail vars for each reply item */
 
 			/*
 			 *  Reset the check_item pointer to beginning of the list
 			 */
-			for (check_item = fr_pair_cursor_head(&check);
+			for (check_item = fr_cursor_head(&check);
 			     check_item;
-			     check_item = fr_pair_cursor_next(&check)) {
+			     check_item = fr_cursor_next(&check)) {
 				/*
 				 *  Vendor-Specific is special, and matches any VSA if the
 				 *  comparison is always true.
@@ -299,7 +299,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 				if (!vp) {
 					goto error;
 				}
-				fr_pair_cursor_append(&out, vp);
+				fr_cursor_append(&out, vp);
 			}
 		}
 
