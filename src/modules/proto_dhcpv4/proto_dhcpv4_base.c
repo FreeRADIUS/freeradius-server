@@ -90,7 +90,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 		request->component = "dhcpv4";
 
-		dv = fr_dict_enum_by_value(attr_dhcpv4_message_type, fr_box_uint32(request->packet->code));
+		dv = fr_dict_enum_by_value(attr_dhcpv4_message_type, fr_box_uint8(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:DHCP-Message-Type");
 			return FR_IO_FAIL;
@@ -150,7 +150,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 			return FR_IO_DONE;
 		}
 
-		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
+		dv = fr_dict_enum_by_value(da, fr_box_uint8(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
 
@@ -186,12 +186,12 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 			 *	the NAK section.
 			 */
 			if (request->reply->code != FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND) {
-				dv = fr_dict_enum_by_value(attr_dhcpv4_message_type, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_dhcpv4_message_type, fr_box_uint8(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'", dv->alias);
 
 				request->reply->code = FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND;
 
-				dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(da, fr_box_uint8(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
