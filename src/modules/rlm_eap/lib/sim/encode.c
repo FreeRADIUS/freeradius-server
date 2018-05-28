@@ -1092,7 +1092,7 @@ static void *encode_test_ctx_sim(UNUSED TALLOC_CTX *ctx)
 
 	fr_sim_init();
 
-	test_ctx.root = dict_sim_root;
+	test_ctx.root = attr_eap_sim_root;
 	test_ctx.keys = &keys;
 	memset(&test_ctx.iv, 0, sizeof(test_ctx.iv));
 	test_ctx.iv_included = true;	/* Ensures IV is all zeros */
@@ -1112,7 +1112,7 @@ static void *encode_test_ctx_aka(UNUSED TALLOC_CTX *ctx)
 
 	fr_sim_init();
 
-	test_ctx.root = dict_aka_root;
+	test_ctx.root = attr_eap_aka_root;
 	test_ctx.keys = &keys;
 	memset(&test_ctx.iv, 0, sizeof(test_ctx.iv));
 	test_ctx.iv_included = true;	/* Ensures IV is all zeros */
@@ -1131,7 +1131,7 @@ static void *encode_test_ctx_sim_rfc4186(UNUSED TALLOC_CTX *ctx)
 					};
 	fr_sim_init();
 
-	test_ctx.root = dict_sim_root;
+	test_ctx.root = attr_eap_sim_root;
 	test_ctx.keys = &keys;
 
 	fr_sim_free();

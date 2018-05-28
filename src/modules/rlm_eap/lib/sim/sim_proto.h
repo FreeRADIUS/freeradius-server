@@ -221,8 +221,6 @@ typedef struct {
 typedef struct _eap_session eap_session_t;
 
 extern size_t const fr_sim_attr_sizes[FR_TYPE_MAX + 1][2];
-extern fr_dict_attr_t const *dict_sim_root;
-extern fr_dict_attr_t const *dict_aka_root;
 
 /*
  *	decode.c

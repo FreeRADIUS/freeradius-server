@@ -42,11 +42,16 @@ static int instance_count = 0;
 
 static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
+static fr_dict_t *dict_eap_sim;
+static fr_dict_t *dict_eap_aka;
 
 extern fr_dict_autoload_t libfreeradius_sim_dict[];
 fr_dict_autoload_t libfreeradius_sim_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_eap_sim, .proto = "eap-sim" },
+	{ .out = &dict_eap_aka, .proto = "eap-aka" },
+
 	{ NULL }
 };
 
@@ -102,19 +107,19 @@ fr_dict_attr_autoload_t libfreeradius_sim_dict_attr[] = {
 	{ .out = &attr_sim_op, .name = "SIM-OP", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_sim_opc, .name = "SIM-OPc", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_sim_sqn, .name = "SIM-SQN", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
-	{ .out = &attr_eap_aka_autn, .name = "EAP-AKA-AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_aka_checkcode, .name = "EAP-AKA-Checkcode", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_aka_iv, .name = "EAP-AKA-IV", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_aka_identity, .name = "EAP-AKA-Identity", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_eap_aka_mac, .name = "EAP-AKA-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_aka_padding, .name = "EAP-AKA-Padding", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_aka_rand, .name = "EAP-AKA-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_aka_res, .name = "EAP-AKA-RES", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_sim_iv, .name = "EAP-SIM-IV", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_sim_identity, .name = "EAP-SIM-Identity", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_eap_sim_mac, .name = "EAP-SIM-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_sim_padding, .name = "EAP-SIM-Padding", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_sim_rand, .name = "EAP-SIM-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_aka_autn, .name = "EAP-AKA-AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_checkcode, .name = "EAP-AKA-Checkcode", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_iv, .name = "EAP-AKA-IV", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_identity, .name = "EAP-AKA-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_mac, .name = "EAP-AKA-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_padding, .name = "EAP-AKA-Padding", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_rand, .name = "EAP-AKA-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_res, .name = "EAP-AKA-RES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_sim_iv, .name = "EAP-SIM-IV", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_identity, .name = "EAP-SIM-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_mac, .name = "EAP-SIM-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_padding, .name = "EAP-SIM-Padding", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_rand, .name = "EAP-SIM-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
 	{ NULL }
 };
 
