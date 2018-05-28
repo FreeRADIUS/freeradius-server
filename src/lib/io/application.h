@@ -123,8 +123,8 @@ typedef struct {
 							///< to all #fr_app_io_t can be performed by the #fr_app_t.
 
 	fr_app_entry_point_set_t	entry_point_set;//!< Callback to Set the entry point into the state machine
-							///< provided by the fr_app_process_t.
-							///< We need a function this as the #fr_app_process_t might
+							///< provided by the fr_app_worker_t.
+							///< We need a function this as the #fr_app_worker_t might
 							///< change based on the packet we received.
 
 	fr_app_priority_get_t		priority;	//!< Assign a priority to the packet.
@@ -132,7 +132,7 @@ typedef struct {
 
 /** Public structure describing an application (protocol) specialisation
  *
- * The fr_app_process_t provides the state machine that's used to process
+ * The fr_app_worker_t provides the state machine that's used to process
  * the packet after its been decoded.
  */
 typedef struct {
@@ -141,7 +141,7 @@ typedef struct {
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
 	fr_io_process_t			entry_point;	//!< Entry point into the protocol subtype's state machine.
-} fr_app_process_t;
+} fr_app_worker_t;
 
 /** Public structure describing an I/O path for a protocol
  *

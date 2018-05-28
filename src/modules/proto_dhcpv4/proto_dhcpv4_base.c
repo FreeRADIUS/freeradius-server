@@ -223,8 +223,8 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 }
 
 
-extern fr_app_process_t proto_dhcpv4_base;
-fr_app_process_t proto_dhcpv4_base = {
+extern fr_app_worker_t proto_dhcpv4_base;
+fr_app_worker_t proto_dhcpv4_base = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcpv4_base",
 	.entry_point	= mod_process,

@@ -231,8 +231,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 	return 0;
 }
 
-extern fr_app_process_t proto_detail_process;
-fr_app_process_t proto_detail_process = {
+extern fr_app_worker_t proto_detail_process;
+fr_app_worker_t proto_detail_process = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "detail_process",
 	.inst_size	= sizeof(proto_detail_process_t),

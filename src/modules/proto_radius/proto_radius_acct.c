@@ -185,8 +185,8 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 }
 
 
-extern fr_app_process_t proto_radius_acct;
-fr_app_process_t proto_radius_acct = {
+extern fr_app_worker_t proto_radius_acct;
+fr_app_worker_t proto_radius_acct = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_acct",
 	.entry_point	= mod_process,

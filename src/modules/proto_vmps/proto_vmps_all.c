@@ -193,8 +193,8 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 }
 
 
-extern fr_app_process_t proto_vmps_all;
-fr_app_process_t proto_vmps_all = {
+extern fr_app_worker_t proto_vmps_all;
+fr_app_worker_t proto_vmps_all = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "vmps_all",
 	.entry_point	= mod_process,

@@ -625,8 +625,8 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *process_app_cs)
 	return 0;
 }
 
-extern fr_app_process_t proto_radius_auth;
-fr_app_process_t proto_radius_auth = {
+extern fr_app_worker_t proto_radius_auth;
+fr_app_worker_t proto_radius_auth = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_auth",
 	.config		= proto_radius_auth_config,

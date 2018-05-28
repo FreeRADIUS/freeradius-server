@@ -385,9 +385,9 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 	 *	'track' can be NULL when there's no network listener.
 	 */
 	if (inst->io.app_io && (track->dynamic == request->async->recv_time)) {
-		fr_app_process_t const	*app_process;
+		fr_app_worker_t const	*app_process;
 
-		app_process = (fr_app_process_t const *) inst->dynamic_submodule->module->common;
+		app_process = (fr_app_worker_t const *) inst->dynamic_submodule->module->common;
 
 		request->async->process = app_process->entry_point;
 		track->dynamic = 0;
@@ -589,10 +589,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	i = 0;
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_process_t const	*app_process;
+		fr_app_worker_t const	*app_process;
 		fr_dict_enum_t const	*enumv;
 
-		app_process = (fr_app_process_t const *)inst->type_submodule[i]->module->common;
+		app_process = (fr_app_worker_t const *)inst->type_submodule[i]->module->common;
 		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule[i]->data,
 									  inst->type_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
@@ -652,9 +652,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Instantiate proto_vmps_dynamic_client
 	 */
 	{
-		fr_app_process_t const	*app_process;
+		fr_app_worker_t const	*app_process;
 
-		app_process = (fr_app_process_t const *)inst->dynamic_submodule->module->common;
+		app_process = (fr_app_worker_t const *)inst->dynamic_submodule->module->common;
 		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_submodule->data, conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
@@ -696,7 +696,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		char const		*value;
 		dl_t const		*module = talloc_get_type_abort_const(inst->type_submodule[i]->module, dl_t);
-		fr_app_process_t const	*app_process = (fr_app_process_t const *)module->common;
+		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)module->common;
 
 		if (app_process->bootstrap && (app_process->bootstrap(inst->type_submodule[i]->data,
 								      inst->type_submodule[i]->conf) < 0)) {

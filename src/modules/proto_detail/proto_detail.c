@@ -389,12 +389,12 @@ static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t
 static void mod_entry_point_set(void const *instance, REQUEST *request)
 {
 	proto_detail_t const *inst = talloc_get_type_abort_const(instance, proto_detail_t);
-	fr_app_process_t const *app_process;
+	fr_app_worker_t const *app_process;
 
 	/*
 	 *	Only one "process" function: proto_detail_process.
 	 */
-	app_process = (fr_app_process_t const *)inst->type_submodule->module->common;
+	app_process = (fr_app_worker_t const *)inst->type_submodule->module->common;
 
 	request->server_cs = inst->server_cs;
 	request->async->process = app_process->entry_point;
@@ -522,9 +522,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Instantiate the process module.
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_process_t const *app_process;
+		fr_app_worker_t const *app_process;
 
-		app_process = (fr_app_process_t const *)inst->type_submodule->module->common;
+		app_process = (fr_app_worker_t const *)inst->type_submodule->module->common;
 		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule->data,
 									  inst->type_submodule->conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
@@ -588,7 +588,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		dl_t const		*module = talloc_get_type_abort_const(inst->type_submodule->module, dl_t);
-		fr_app_process_t const	*app_process = (fr_app_process_t const *)module->common;
+		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)module->common;
 
 		if (app_process->bootstrap && (app_process->bootstrap(inst->type_submodule->data,
 								      inst->type_submodule->conf) < 0)) {
