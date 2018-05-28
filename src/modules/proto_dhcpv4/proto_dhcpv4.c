@@ -582,8 +582,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 		/*
 		 *	We only process recv/send sections.
-		 *	proto_dhcpv4_auth will handle the
-		 *	"authenticate" sections.
 		 */
 		if ((strcmp(name, "recv") != 0) &&
 		    (strcmp(name, "send") != 0)) {
@@ -611,19 +609,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			cf_log_err(subcs, "Invalid DHCPV4 packet type in '%s %s {...}'",
 				   name, packet_type);
 			return -1;
-		}
-
-		/*
-		 *	Skip 'recv foo' when it's a request packet
-		 *	that isn't used by this instance.  Note that
-		 *	we DO compile things like 'recv
-		 *	Access-Accept', so that rlm_dhcpv4 can use it.
-		 */
-		if ((strcmp(name, "recv") == 0) && (dv->value->vb_uint32 <= FR_DHCP_MAX) &&
-		    fr_request_packets[dv->value->vb_uint32] &&
-		    !inst->code_allowed[dv->value->vb_uint32]) {
-			cf_log_warn(subcs, "Skipping %s %s { ...}", name, packet_type);
-			continue;
 		}
 
 		/*
