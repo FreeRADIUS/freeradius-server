@@ -252,7 +252,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			 */
 			if ((code[2] == FR_DHCP_DISCOVER) ||
 			    (code[2] == FR_DHCP_REQUEST)) {
-				packet->hops++;
+				packet->opcode = 1; /* client message */
+				packet->hops = request->hops + 1;
+			} else {
+				packet->opcode = 2; /* server message */
 			}
 
 			goto send_reply;
@@ -266,6 +269,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			DEBUG("WARNING - silently discarding client reply, as there is no GIADDR to send it to.");
 			return 0;
 		}
+
+		packet->opcode = 2; /* server message */
 
 		/*
 		 *	The original packet requested a broadcast
