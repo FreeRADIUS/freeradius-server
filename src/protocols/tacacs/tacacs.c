@@ -298,7 +298,7 @@ int tacacs_encode(RADIUS_PACKET * const packet, char const * const secret)
 	uint16_t		length_hdr;
 	uint16_t		length_body;
 	VALUE_PAIR const	*vp;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	tacacs_packet_t		*pkt;
 	struct {
 		VALUE_PAIR const	*server_msg;
@@ -325,7 +325,9 @@ int tacacs_encode(RADIUS_PACKET * const packet, char const * const secret)
 		: TAC_PLUS_UNENCRYPTED_FLAG;
 
 	length_body = 0;
-	for (vp = fr_pair_cursor_init(&cursor, &packet->vps); vp != NULL; vp = fr_pair_cursor_next(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, &packet->vps);
+	     vp != NULL;
+	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 
 		if (!vp->da->flags.internal) continue;
@@ -468,7 +470,7 @@ skip_fields:
 }
 
 
-static int tacacs_decode_field(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *da,
+static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
 			       char const *field_name, uint8_t **field_data, size_t field_len, size_t *remaining)
 {
 	uint8_t *p;
@@ -492,7 +494,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_att
 	fr_pair_value_bstrncpy(vp, p, field_len);
 	p += field_len;
 	*remaining -= field_len;
-	fr_pair_cursor_append(cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	*field_data = p;
 
@@ -505,13 +507,13 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 {
 	int i;
 	tacacs_packet_t *pkt;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	VALUE_PAIR *vp;
 	uint8_t *p;
 	uint32_t session_id;
 	size_t remaining;
 
-	fr_pair_cursor_init(&cursor, &packet->vps);
+	fr_cursor_init(&cursor, &packet->vps);
 
 	/*
 	 *	There MUST be at least a TACACS packert header, and
@@ -524,21 +526,21 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_version_minor));
 	vp->vp_uint8 = pkt->hdr.ver.minor;
-	fr_pair_cursor_append(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_packet_type));
 	vp->vp_uint8 = pkt->hdr.type;
-	fr_pair_cursor_append(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	packet->code = pkt->hdr.type;
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_sequence_number));
 	vp->vp_uint8 = pkt->hdr.seq_no;
-	fr_pair_cursor_append(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_session_id));
 	vp->vp_uint32 = ntohl(pkt->hdr.session_id);
-	fr_pair_cursor_append(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 	session_id = vp->vp_uint32;
 
 	switch ((tacacs_type_t)pkt->hdr.type) {
@@ -557,20 +559,20 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 			 */
 			MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_action));
 			vp->vp_uint8 = pkt->authen.start.action;
-			fr_pair_cursor_append(&cursor, vp);
+			fr_cursor_append(&cursor, vp);
 
 			MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level));
 			vp->vp_uint8 = pkt->authen.start.priv_lvl;
-			fr_pair_cursor_append(&cursor, vp);
+			fr_cursor_append(&cursor, vp);
 
 			MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type));
 			vp->vp_uint8 = pkt->authen.start.authen_type;
-			fr_pair_cursor_append(&cursor, vp);
+			fr_cursor_append(&cursor, vp);
 
 			MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service));
 			if (!vp) return -1;
 			vp->vp_uint8 = pkt->authen.start.authen_service;
-			fr_pair_cursor_append(&cursor, vp);
+			fr_cursor_append(&cursor, vp);
 
 			/*
 			 *	Decode 4 fields, based on their "length"
@@ -626,7 +628,7 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 			 */
 			if (pkt->authen.cont.flags & TAC_PLUS_CONTINUE_FLAG_ABORT) {
 				if (!ntohs(pkt->authen.cont.data_len) ||
-				    !(vp = fr_pair_cursor_tail(&cursor))) {
+				    !(vp = fr_cursor_tail(&cursor))) {
 					fr_strerror_printf("Client aborted authentication session %u "
 							   "with no message", session_id);
 					return -2;
@@ -671,19 +673,19 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 		 */
 		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_method));
 		vp->vp_uint8 = pkt->author.req.authen_method;
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level));
 		vp->vp_uint8 = pkt->author.req.priv_lvl;
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type));
 		vp->vp_uint8 = pkt->author.req.authen_type;
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service));
 		vp->vp_uint8 = pkt->author.req.authen_service;
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		/*
 		 *	Decode 3 fields, based on their "length"
@@ -741,23 +743,23 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 		 */
 		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_accounting_flags));
 		vp->vp_uint8 = pkt->acct.req.flags;
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_method));
 		vp->vp_uint8 = pkt->acct.req.authen_method;
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level));
 		vp->vp_uint8 = pkt->acct.req.priv_lvl;
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type));
 		vp->vp_uint8 = pkt->acct.req.authen_type;
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		MEM(vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service));
 		vp->vp_uint8 = pkt->acct.req.authen_service;
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		/*
 		 *	Decode 3 fields, based on their "length"

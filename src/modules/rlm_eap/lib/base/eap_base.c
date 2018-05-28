@@ -223,7 +223,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 	uint8_t const *ptr;
 	VALUE_PAIR	*head = NULL;
 	VALUE_PAIR	*vp;
-	vp_cursor_t	out;
+	fr_cursor_t	out;
 
 	total = eap->length[0] * 256 + eap->length[1];
 
@@ -234,7 +234,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 
 	ptr = (uint8_t const *) eap;
 
-	fr_pair_cursor_init(&out, &head);
+	fr_cursor_init(&out, &head);
 	do {
 		size = total;
 		if (size > 253) size = 253;
@@ -246,7 +246,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 		}
 		fr_pair_value_memcpy(vp, ptr, size);
 
-		fr_pair_cursor_append(&out, vp);
+		fr_cursor_append(&out, vp);
 
 		ptr += size;
 		total -= size;
@@ -265,18 +265,18 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
  */
 eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 {
-	VALUE_PAIR *first, *i;
-	eap_packet_raw_t *eap_packet;
-	unsigned char *ptr;
-	uint16_t len;
-	int total_len;
-	vp_cursor_t cursor;
+	VALUE_PAIR		*vp;
+	eap_packet_raw_t	*eap_packet;
+	unsigned char		*ptr;
+	uint16_t		len;
+	int			total_len;
+	fr_cursor_t		cursor;
 
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	first = fr_pair_find_by_da(vps, attr_eap_message, TAG_ANY);
-	if (!first) {
+	vp = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_message);
+	if (!vp) {
 		fr_strerror_printf("EAP-Message not found");
 		return NULL;
 	}
@@ -284,7 +284,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	/*
 	 *	Sanity check the length before doing anything.
 	 */
-	if (first->vp_length < 4) {
+	if (vp->vp_length < 4) {
 		fr_strerror_printf("EAP packet is too short");
 		return NULL;
 	}
@@ -293,7 +293,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Get the Actual length from the EAP packet
 	 *	First EAP-Message contains the EAP packet header
 	 */
-	memcpy(&len, first->vp_strvalue + 2, sizeof(len));
+	memcpy(&len, vp->vp_strvalue + 2, sizeof(len));
 	len = ntohs(len);
 
 	/*
@@ -308,9 +308,10 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Sanity check the length, BEFORE allocating  memory.
 	 */
 	total_len = 0;
-	fr_pair_cursor_init(&cursor, &first);
-	while ((i = fr_pair_cursor_next_by_da(&cursor, attr_eap_message, TAG_ANY))) {
-		total_len += i->vp_length;
+	for (vp = fr_cursor_head(&cursor);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		total_len += vp->vp_length;
 
 		if (total_len > len) {
 			fr_strerror_printf("Malformed EAP packet.  Length in packet header %i, "
@@ -340,10 +341,11 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	ptr = (unsigned char *)eap_packet;
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
-	fr_pair_cursor_head(&cursor);
-	while ((i = fr_pair_cursor_next_by_da(&cursor, attr_eap_message, TAG_ANY))) {
-		memcpy(ptr, i->vp_strvalue, i->vp_length);
-		ptr += i->vp_length;
+	for (vp = fr_cursor_head(&cursor);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		memcpy(ptr, vp->vp_strvalue, vp->vp_length);
+		ptr += vp->vp_length;
 	}
 
 	return eap_packet;

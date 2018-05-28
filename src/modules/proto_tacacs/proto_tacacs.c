@@ -198,7 +198,7 @@ static void tacacs_running(REQUEST *request, fr_state_signal_t action)
 	CONF_SECTION		*unlang;
 	fr_dict_enum_t const	*dv = NULL;
 	VALUE_PAIR *vp,		*auth_type;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	int			rc;
 
 	REQUEST_VERIFY(request);
@@ -281,9 +281,10 @@ stop_processing:
 		/*
 		 *	Find Auth-Type, and complain if they have too many.
 		 */
-		fr_pair_cursor_init(&cursor, &request->control);
 		auth_type = NULL;
-		while ((vp = fr_pair_cursor_next_by_da(&cursor, attr_auth_type, TAG_ANY)) != NULL) {
+		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, attr_auth_type);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
 			if (!auth_type) {
 				auth_type = vp;
 				continue;

@@ -39,10 +39,10 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 {
 	fr_ldap_result_t *self = uctx;
 	VALUE_PAIR *head = NULL, *vp;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor, to_append;
 	int i;
 
-	fr_pair_cursor_init(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 
 	switch (map->lhs->type) {
 	/*
@@ -93,7 +93,8 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 				goto next_pair;
 			}
 
-			fr_pair_cursor_merge(&cursor, vp);
+			fr_cursor_init(&to_append, &vp);
+			fr_cursor_merge(&cursor, &to_append);
 			talloc_free(attr);
 
 			/*

@@ -406,13 +406,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  */
 static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
 {
-	char const *str = uctx;
-	VALUE_PAIR *head = NULL, *vp;
-	vp_cursor_t cursor;
-	fr_dict_attr_t const *da;
+	char const		*str = uctx;
+	VALUE_PAIR		*head = NULL, *vp;
+	fr_cursor_t		cursor;
+	fr_dict_attr_t		const *da;
 
 	rad_assert(ctx != NULL);
-	fr_pair_cursor_init(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 
 	/*
 	 *	FIXME: allow multiple entries.
@@ -452,7 +452,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	}
 
 	vp->op = map->op;
-	fr_pair_cursor_merge(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	*out = head;
 	return 0;

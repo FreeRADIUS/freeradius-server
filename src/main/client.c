@@ -886,7 +886,7 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 	static int	cnt;
 	CONF_SECTION	*cs;
 	char		src_buf[128], buffer[256];
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 	RADCLIENT	*c;
 
@@ -898,14 +898,14 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 
 	cs = cf_section_alloc(ctx, NULL, "client", buffer);
 
-	fr_pair_cursor_init(&cursor, &request->control);
+	fr_cursor_init(&cursor, &request->control);
 
 	RDEBUG2("Converting &request:control to client {...} section");
 	RINDENT();
 
-	for (vp = fr_pair_cursor_init(&cursor, &request->control);
+	for (vp = fr_cursor_init(&cursor, &request->control);
 	     vp != NULL;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		CONF_PAIR	*cp = NULL;
 		char const	*value;
 		char const	*attr;

@@ -211,13 +211,10 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	int			num, lineno;
 	uint8_t const		*p, *end;
 	VALUE_PAIR		*vp;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	time_t			timestamp = 0;
 
-	if (DEBUG_ENABLED3) {
-		RDEBUG("proto_detail decode packet");
-//		fr_radius_print_hex(fr_log_fp, data, data_len);
-	}
+	RHEXDUMP(L_DBG_LVL_3, data, data_len, "proto_detail decode packet");
 
 	request->packet->code = inst->code;
 
@@ -249,7 +246,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	}
 
 	lineno = 1;
-	fr_pair_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_init(&cursor, &request->packet->vps);
 
 	/*
 	 *	Parse each individual line.
@@ -295,7 +292,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 			if (vp) {
 				vp->vp_date = (uint32_t) timestamp;
 				vp->type = VT_DATA;
-				fr_pair_cursor_append(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 			}
 			goto next;
 		}
@@ -315,7 +312,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		 */
 		vp = NULL;
 		if ((fr_pair_list_afrom_str(request->packet, (char const *) p, &vp) > 0) && vp) {
-			fr_pair_cursor_append(&cursor, vp);
+			fr_cursor_append(&cursor, vp);
 		} else {
 			RWDEBUG("Ignoring line %d - :%s", lineno, p);
 		}

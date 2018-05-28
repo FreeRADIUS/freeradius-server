@@ -2160,7 +2160,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 	return NULL;
 }
 
-/** Initialise a #vp_cursor_t to the #VALUE_PAIR specified by a #vp_tmpl_t
+/** Initialise a #fr_cursor_t to the #VALUE_PAIR specified by a #vp_tmpl_t
  *
  * This makes iterating over the one or more #VALUE_PAIR specified by a #vp_tmpl_t
  * significantly easier.

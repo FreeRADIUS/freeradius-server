@@ -423,7 +423,7 @@ unexpected:
  *
  * FIXME do something with mandatory
  */
-ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 			     uint8_t const *data, size_t data_len,
 			     void *decoder_ctx)
 {
@@ -461,7 +461,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_
 			fr_pair_to_unknown(vp);
 			fr_pair_value_memcpy(vp, p, len);
 		}
-		fr_pair_cursor_append(cursor, vp);
+		fr_cursor_append(cursor, vp);
 		p += len;
 	}
 
@@ -478,7 +478,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 {
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR			*vp;
-	vp_cursor_t			cursor;
+	fr_cursor_t			cursor;
 
 	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
@@ -501,7 +501,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		 * Copy what we need into the TTLS tunnel and leave
 		 * the rest to be cleaned up.
 		 */
-		for (vp = fr_pair_cursor_init(&cursor, &reply->vps); vp; vp = fr_pair_cursor_next(&cursor)) {
+		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
 			if (fr_dict_vendor_num_by_da(vp->da) != VENDORPEC_MICROSOFT) continue;
 
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
@@ -538,9 +538,11 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		/*
 		 *	Copy the EAP-Message back to the tunnel.
 		 */
-		(void) fr_pair_cursor_init(&cursor, &reply->vps);
+		(void) fr_cursor_init(&cursor, &reply->vps);
 
-		while ((vp = fr_pair_cursor_next_by_da(&cursor, attr_eap_message, TAG_ANY)) != NULL) {
+		for (vp = fr_cursor_iter_by_da_init(&cursor, &reply->vps, attr_eap_message);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
 			eap_fast_tlv_append(tls_session, attr_eap_fast_eap_payload, true, vp->vp_length, vp->vp_octets);
 		}
 
@@ -798,12 +800,14 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	VALUE_PAIR			*vp;
-	vp_cursor_t			cursor;
+	fr_cursor_t			cursor;
 	eap_tlv_crypto_binding_tlv_t	my_binding, *binding = NULL;
 
 	memset(&my_binding, 0, sizeof(my_binding));
 
-	for (vp = fr_pair_cursor_init(&cursor, &fast_vps); vp; vp = fr_pair_cursor_next(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, &fast_vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
 		FR_CODE code = FR_CODE_ACCESS_REJECT;
 		char *value;
 
@@ -902,7 +906,7 @@ FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	FR_CODE			code;
 	VALUE_PAIR		*fast_vps = NULL;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	uint8_t const		*data;
 	size_t			data_len;
 	eap_fast_tunnel_t	*t;
@@ -955,7 +959,7 @@ FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		return FR_CODE_ACCESS_CHALLENGE;
 	}
 
-	fr_pair_cursor_init(&cursor, &fast_vps);
+	fr_cursor_init(&cursor, &fast_vps);
 	if (eap_fast_decode_pair(request, &cursor, attr_eap_fast_tlv,
 				 data, data_len, NULL) < 0) return FR_CODE_ACCESS_REJECT;
 

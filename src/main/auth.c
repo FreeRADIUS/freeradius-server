@@ -76,24 +76,31 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
  */
 static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 {
-	vp_cursor_t	cursor;
-	VALUE_PAIR	*auth_type_pair;
-	int		auth_type = -1;
-	int		result;
-	int		auth_type_count = 0;
+	fr_cursor_t		cursor;
+	VALUE_PAIR		*auth_type_pair;
+	int			auth_type = -1;
+	int			result;
+	int			auth_type_count = 0;
+	fr_dict_attr_t const	*da;
+
+	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_AUTH_TYPE);
+	if (!da) {
+		RERROR("Missing definition for Auth-Type");
+		return -1;
+	}
 
 	/*
 	 *	Look for matching check items. We skip the whole lot
 	 *	if the authentication type is FR_AUTH_TYPE_ACCEPT or
 	 *	FR_AUTH_TYPE_REJECT.
 	 */
-	fr_pair_cursor_init(&cursor, &request->control);
-	while ((auth_type_pair = fr_pair_cursor_next_by_num(&cursor, 0, FR_AUTH_TYPE, TAG_ANY))) {
+	for (auth_type_pair = fr_cursor_iter_by_da_init(&cursor, &request->control, da);
+	     auth_type_pair;
+	     auth_type_pair = fr_cursor_next(&cursor)) {
 		auth_type = auth_type_pair->vp_uint32;
 		auth_type_count++;
 
-		RDEBUG2("Using 'Auth-Type = %s' for authenticate {...}",
-			fr_dict_enum_alias_by_value(auth_type_pair->da, fr_box_uint32(auth_type)));
+		RDEBUG2("Using '%pP' for authenticate {...}", auth_type_pair);
 		if (auth_type == FR_AUTH_TYPE_REJECT) {
 			RDEBUG2("Auth-Type = Reject, rejecting user");
 

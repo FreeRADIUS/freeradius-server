@@ -93,7 +93,7 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 	FR_TOKEN parsecode;
 #ifdef HAVE_REGEX_H
 	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 #endif
 	char newfile[8192];
 
@@ -231,9 +231,9 @@ parse_again:
 			/*
 			 *	Do some more sanity checks.
 			 */
-			for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
+			for (vp = fr_cursor_init(&cursor, &check_tmp);
 			     vp;
-			     vp = fr_pair_cursor_next(&cursor)) {
+			     vp = fr_cursor_next(&cursor)) {
 				if (((vp->op == T_OP_REG_EQ) ||
 				     (vp->op == T_OP_REG_NE)) &&
 				    (vp->vp_type != FR_TYPE_STRING)) {

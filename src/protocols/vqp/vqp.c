@@ -274,32 +274,32 @@ int vqp_decode(RADIUS_PACKET *packet)
 	uint8_t		*ptr, *end;
 	int		attr;
 	size_t		attr_len;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 
 	if (!packet || !packet->data) return -1;
 
 	if (packet->data_len < VQP_HDR_LEN) return -1;
 
-	fr_pair_cursor_init(&cursor, &packet->vps);
+	fr_cursor_init(&cursor, &packet->vps);
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_vqp_packet_type));
 	vp->vp_uint32 = packet->data[1];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_pair_cursor_append(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_vqp_error_code));
 	vp->vp_uint32 = packet->data[2];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_pair_cursor_append(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_vqp_sequence_number));
 	vp->vp_uint32 = packet->id; /* already set by vqp_recv */
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_pair_cursor_append(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	ptr = packet->data + VQP_HDR_LEN;
 	end = packet->data + packet->data_len;
@@ -349,7 +349,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		ptr += attr_len;
 		vp->vp_tainted = true;
 		DEBUG2("&%pP", vp);
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 	}
 
 	/*

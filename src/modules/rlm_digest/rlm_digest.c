@@ -85,7 +85,7 @@ fr_dict_attr_autoload_t rlm_digest_dict_attr[] = {
 static int digest_fix(REQUEST *request)
 {
 	VALUE_PAIR *first, *i;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 
 	/*
 	 *	We need both of these attributes to do the authentication.
@@ -107,15 +107,14 @@ static int digest_fix(REQUEST *request)
 	 */
 	RDEBUG("Checking for correctly formatted Digest-Attributes");
 
-	first = fr_pair_find_by_da(request->packet->vps, attr_digest_attributes, TAG_ANY);
-	if (!first) {
-		return RLM_MODULE_NOOP;
-	}
+	first = fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, attr_digest_attributes);
+	if (!first) return RLM_MODULE_NOOP;
 
-	fr_pair_cursor_init(&cursor, &first);
-	while ((i = fr_pair_cursor_next_by_da(&cursor, attr_digest_attributes, TAG_ANY))) {
-		int length = i->vp_length;
-		int attrlen;
+	for (i = fr_cursor_head(&cursor);
+	     i;
+	     i = fr_cursor_next(&cursor)) {
+		size_t length = i->vp_length;
+		size_t attrlen;
 		uint8_t const *p = i->vp_octets;
 
 		/*
@@ -157,12 +156,14 @@ static int digest_fix(REQUEST *request)
 	 *	Convert them to something sane.
 	 */
 	RDEBUG("Digest-Attributes look OK.  Converting them to something more useful");
-	fr_pair_cursor_head(&cursor);
-	while ((i = fr_pair_cursor_next_by_da(&cursor, attr_digest_attributes, TAG_ANY))) {
-		int length = i->vp_length;
-		int attrlen;
-		uint8_t const *p = &i->vp_octets[0];
-		VALUE_PAIR *sub;
+	fr_cursor_head(&cursor);
+	for (i = fr_cursor_head(&cursor);
+	     i;
+	     i = fr_cursor_next(&cursor)) {
+		size_t		length = i->vp_length;
+		size_t		attrlen;
+		uint8_t const	*p = &i->vp_octets[0];
+		VALUE_PAIR	*sub;
 
 		/*
 		 *	Until this stupidly encoded attribute is exhausted.
@@ -182,7 +183,7 @@ static int digest_fix(REQUEST *request)
 			 *	Too short.
 			 */
 			if (attrlen < 3) {
-				REDEBUG("Received Digest-Attributes with short sub-attribute %d, of length %d",
+				REDEBUG("Received Digest-Attributes with short sub-attribute %d, of length %zu",
 					p[0], attrlen);
 				return RLM_MODULE_INVALID;
 			}
@@ -191,7 +192,7 @@ static int digest_fix(REQUEST *request)
 			 *	Too long.
 			 */
 			if (attrlen > length) {
-				REDEBUG("Received Digest-Attributes with long sub-attribute %d, of length %d",
+				REDEBUG("Received Digest-Attributes with long sub-attribute %d, of length %zu",
 					p[0], attrlen);
 				return RLM_MODULE_INVALID;
 			}

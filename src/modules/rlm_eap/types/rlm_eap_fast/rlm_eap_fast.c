@@ -319,7 +319,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	REQUEST			*request = (REQUEST *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 	eap_fast_tunnel_t	*t;
 	VALUE_PAIR		*fast_vps = NULL, *vp;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	char const		*errmsg;
 	int			dlen, plen;
 	uint16_t		length;
@@ -380,13 +380,15 @@ error:
 
 	RHEXDUMP(L_DBG_LVL_MAX, (uint8_t const *)&opaque_plaintext, plen, "PAC-Opaque plaintext data section");
 
-	fr_pair_cursor_init(&cursor, &fast_vps);
+	fr_cursor_init(&cursor, &fast_vps);
 	if (eap_fast_decode_pair(tls_session, &cursor, attr_eap_fast_pac_opaque_tlv, (uint8_t *)&opaque_plaintext, plen, NULL) < 0) {
 		errmsg = fr_strerror();
 		goto error;
 	}
 
-	for (vp = fr_pair_cursor_head(&cursor); vp; vp = fr_pair_cursor_next(&cursor)) {
+	for (vp = fr_cursor_head(&cursor);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
 		char *value;
 
 		if (vp->da == attr_eap_fast_pac_info_pac_type) {

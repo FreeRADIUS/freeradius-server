@@ -147,7 +147,7 @@ static void NEVER_RETURNS usage(void)
 static RADIUS_PACKET *request_init(char const *filename)
 {
 	FILE *fp;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	VALUE_PAIR *vp;
 	bool filedone = false;
 	RADIUS_PACKET *request;
@@ -179,9 +179,9 @@ static RADIUS_PACKET *request_init(char const *filename)
 	/*
 	 *	Fix / set various options
 	 */
-	for (vp = fr_pair_cursor_init(&cursor, &request->vps);
+	for (vp = fr_cursor_init(&cursor, &request->vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Allow to set packet type using DHCP-Message-Type
 		 */
@@ -524,7 +524,7 @@ static int send_with_pcap(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 
 static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 {
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	char		buffer[256];
 
 	char		src_ipaddr[INET6_ADDRSTRLEN];
@@ -569,9 +569,9 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 #endif
 	       packet->data_len);
 
-	for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
+	for (vp = fr_cursor_init(&cursor, &packet->vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 
 		fr_pair_snprint(buffer, sizeof(buffer), vp);

@@ -727,7 +727,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 	char		*p;
 	VALUE_PAIR	*vp;
 	eap_session_t	*eap_session;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	rlm_eap_t const	*inst = instance;
 
 	/*
@@ -822,8 +822,9 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 	 *	This is vendor Cisco (9), Cisco-AVPair
 	 *	attribute (1)
 	 */
-	fr_pair_cursor_init(&cursor, &request->proxy->reply->vps);
-	while ((vp = fr_pair_cursor_next_by_da(&cursor, attr_cisco_avpair, TAG_ANY))) {
+	for (vp = fr_cursor_iter_by_da_init(&cursor, &request->proxy->reply->vps, attr_cisco_avpair);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	If it's "leap:session-key", then stop.
 		 *

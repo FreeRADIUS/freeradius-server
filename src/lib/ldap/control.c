@@ -181,14 +181,14 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *re
 	LDAPControl		*acctmultisessionid_control = NULL;
 	struct berval		tracking_id;
 
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	VALUE_PAIR const	*vp;
 
 	memcpy(&hostname, &main_config.name, sizeof(hostname)); /* const / non-const issues */
 
-	for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 		case FR_NAS_IP_ADDRESS:
 		case FR_NAS_IPV6_ADDRESS:

@@ -313,7 +313,7 @@ VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint1
 	fr_dict_attr_t const	*server_da;
 	fr_dict_attr_t const	*port_da;
 	VALUE_PAIR		*out = NULL, *vp;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 
 	server_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CONNECTION_POOL_SERVER);
 	if (!server_da) {
@@ -327,15 +327,15 @@ VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint1
 		return NULL;
 	}
 
-	fr_pair_cursor_init(&cursor, &out);
+	fr_cursor_init(&cursor, &out);
 
 	MEM(vp = fr_pair_afrom_da(ctx, server_da));
 	fr_pair_value_strcpy(vp, server);
-	fr_pair_cursor_append(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	MEM(vp = fr_pair_afrom_da(ctx, port_da));
 	vp->vp_uint16 = port;
-	fr_pair_cursor_append(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	return out;
 }

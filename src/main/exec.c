@@ -183,9 +183,10 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	envp[0] = NULL;
 
 	if (input_pairs) {
-		char		*p;
-		vp_cursor_t	cursor;
-		char		buffer[1024];
+		char			*p;
+		fr_cursor_t		cursor;
+		char			buffer[1024];
+		fr_dict_attr_t const	*da;
 
 		input_ctx = talloc_new(request);
 
@@ -195,9 +196,9 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	hold mutexes.  They might be locked when we fork,
 		 *	and will remain locked in the child.
 		 */
-		for (vp = fr_pair_cursor_init(&cursor, &input_pairs);
+		for (vp = fr_cursor_init(&cursor, &input_pairs);
 		     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
 			 *	user's password in an environment
@@ -221,10 +222,16 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			envp[envlen++] = talloc_typed_strdup(input_ctx, buffer);
 		}
 
-		fr_pair_cursor_init(&cursor, radius_list(request, PAIR_LIST_CONTROL));
-		while ((envlen < ((sizeof(envp) / sizeof(*envp)) - 1)) &&
-		       (vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_EXEC_EXPORT, TAG_ANY))) {
-			DEBUG3("export %s", vp->vp_strvalue);
+		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EXEC_EXPORT);
+		if (!da) {
+			ERROR("Missing Exec-Export definition");
+			return -1;
+		}
+
+		for (vp = fr_cursor_iter_by_da_init(&cursor, radius_list(request, PAIR_LIST_CONTROL), da);
+		     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
+		     vp = fr_cursor_next(&cursor)) {
+			DEBUG3("export %pV", &vp->data);
 			memcpy(&envp[envlen++], &vp->vp_strvalue, sizeof(*envp));
 		}
 

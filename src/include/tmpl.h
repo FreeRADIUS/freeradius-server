@@ -252,7 +252,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
  * Example:
  @code{.c}
    static vp_tmpl_t list = tmpl_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
-   vp_cursor_t cursor;
+   fr_cursor_t cursor;
    VALUE_PAIR *vp;
 
    // Iterate over all pairs in the request list
@@ -298,8 +298,6 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
 
    value.strvalue = talloc_typed_strdup(NULL, "my new username");
    value.length = talloc_array_length(value.strvalue) - 1;
-
-   if (fr_pair_update_by_num(ctx, head, FR_USERNAME, 0, TAG_ANY, FR_TYPE_STRING, &value) < 0) return -1; // error
  @endcode
  *
  * @param _ctx new #VALUE_PAIR s should be allocated in for the specified list.

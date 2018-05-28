@@ -652,12 +652,23 @@ void *fr_pair_iter_next_by_ancestor(void **prev, void *to_eval, void *uctx)
  */
 VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag)
 {
-	vp_cursor_t 	cursor;
+	fr_cursor_t 	cursor;
+	VALUE_PAIR	*vp;
 
-	if (!fr_cond_assert(da)) return NULL;
+	/* List head may be NULL if it contains no VPs */
+	if (!head) return NULL;
 
-	(void) fr_pair_cursor_init(&cursor, &head);
-	return fr_pair_cursor_next_by_da(&cursor, da, tag);
+	LIST_VERIFY(head);
+
+	if (!da) return NULL;
+
+	for (vp = fr_cursor_init(&cursor, &head);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if ((da == vp->da) && TAG_EQ(tag, vp->tag)) return vp;
+	}
+
+	return NULL;
 }
 
 
@@ -667,15 +678,32 @@ VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_
  */
 VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned int attr, int8_t tag)
 {
-	vp_cursor_t 	cursor;
+	fr_cursor_t 	cursor;
+	VALUE_PAIR	*vp;
 
 	/* List head may be NULL if it contains no VPs */
 	if (!head) return NULL;
 
 	LIST_VERIFY(head);
 
-	(void) fr_pair_cursor_init(&cursor, &head);
-	return fr_pair_cursor_next_by_num(&cursor, vendor, attr, tag);
+	for (vp = fr_cursor_init(&cursor, &head);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if (!fr_dict_attr_is_top_level(vp->da)) continue;
+
+	     	if (vendor > 0) {
+	     		fr_dict_vendor_t const *dv;
+
+	     		dv = fr_dict_vendor_by_da(vp->da);
+	     		if (!dv) continue;
+
+	     		if (dv->pen != vendor) continue;
+	     	}
+
+		if ((attr == vp->da->attr) && TAG_EQ(tag, vp->tag)) return vp;
+	}
+
+	return NULL;
 }
 
 /** Find the pair with the matching attribute
@@ -683,15 +711,25 @@ VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned 
  */
 VALUE_PAIR *fr_pair_find_by_child_num(VALUE_PAIR *head, fr_dict_attr_t const *parent, unsigned int attr, int8_t tag)
 {
-	vp_cursor_t 	cursor;
+	fr_cursor_t 		cursor;
+	fr_dict_attr_t const	*da;
+	VALUE_PAIR		*vp;
 
 	/* List head may be NULL if it contains no VPs */
 	if (!head) return NULL;
 
 	LIST_VERIFY(head);
 
-	(void) fr_pair_cursor_init(&cursor, &head);
-	return fr_pair_cursor_next_by_child_num(&cursor, parent, attr, tag);
+	da = fr_dict_attr_child_by_num(parent, attr);
+	if (!da) return NULL;
+
+	for (vp = fr_cursor_init(&cursor, &head);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if ((da == vp->da) && TAG_EQ(tag, vp->tag)) return vp;
+	}
+
+	return NULL;
 }
 
 
@@ -786,46 +824,6 @@ void fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *replace)
 	 *	stopped at the last item, which we just append to.
 	 */
 	*prev = replace;
-}
-
-/** Create a new VALUE_PAIR or replace the value of the head pair in the specified list
- *
- * @note Any buffers associated with value, will be stolen to the context of the
- *	VALUE_PAIR we create, or find.
- *
- * @param[in] ctx	to allocate new #VALUE_PAIR in.
- * @param[in,out] list	in search and insert into it.
- * @param[in] attr	Number of attribute to update.
- * @param[in] vendor	of attribute to update.
- * @param[in] tag	of attribute to update.
- * @param[in] value	to set.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
-			  unsigned int vendor, unsigned int attr, int8_t tag,
-			  fr_value_box_t *value)
-{
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
-
-	(void)fr_pair_cursor_init(&cursor, list);
-	vp = fr_pair_cursor_next_by_num(&cursor, vendor, attr, tag);
-	if (vp) {
-		VP_VERIFY(vp);
-		if (fr_value_box_steal(vp, &vp->data, value) < 0) return -1;
-		return 0;
-	}
-
-	vp = fr_pair_afrom_num(ctx, vendor, attr);
-	if (!vp) return -1;
-	vp->tag = tag;
-	if (fr_value_box_steal(vp, &vp->data, value) < 0) return -1;
-
-	fr_pair_cursor_append(&cursor, vp);
-
-	return 0;
 }
 
 /** Delete matching pairs
@@ -1429,8 +1427,8 @@ mismatch:
  */
 bool fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list)
 {
-	vp_cursor_t filter_cursor;
-	vp_cursor_t list_cursor;
+	vp_cursor_t	filter_cursor;
+	vp_cursor_t	list_cursor;
 
 	VALUE_PAIR *check, *last_check = NULL, *match = NULL;
 
@@ -1581,10 +1579,10 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 	char buf[8192];
 	FR_TOKEN last_token = T_EOL;
 
-	vp_cursor_t cursor;
+	fr_cursor_t cursor, to_append;
 
 	VALUE_PAIR *vp = NULL;
-	fr_pair_cursor_init(&cursor, out);
+	fr_cursor_init(&cursor, out);
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		/*
@@ -1614,7 +1612,8 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 			break;
 		}
 
-		fr_pair_cursor_merge(&cursor, vp);
+		fr_cursor_init(&to_append, &vp);
+		fr_cursor_merge(&cursor, &to_append);
 		buf[0] = '\0';
 	}
 	*pfiledone = true;
@@ -1623,7 +1622,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 
 error:
 	*pfiledone = false;
-	vp = fr_pair_cursor_head(&cursor);
+	vp = fr_cursor_head(&cursor);
 	if (vp) fr_pair_list_free(&vp);
 
 	return -1;
@@ -2478,11 +2477,11 @@ void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
 void fr_pair_list_fprint(FILE *fp, VALUE_PAIR const *const_vp)
 {
 	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 
 	memcpy(&vp, &const_vp, sizeof(vp)); /* const work-arounds */
 
-	for (vp = fr_pair_cursor_init(&cursor, &vp); vp; vp = fr_pair_cursor_next(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, &vp); vp; vp = fr_cursor_next(&cursor)) {
 		fr_pair_fprint(fp, vp);
 	}
 }
@@ -2901,23 +2900,23 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
  */
 void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, VALUE_PAIR *vps)
 {
-	vp_cursor_t		slow_cursor, fast_cursor;
+	fr_cursor_t		slow_cursor, fast_cursor;
 	VALUE_PAIR		*slow, *fast;
 	TALLOC_CTX		*parent;
 
 	if (!vps) return;	/* Fast path */
 
-	fr_pair_cursor_init(&fast_cursor, &vps);
+	fr_cursor_init(&fast_cursor, &vps);
 
-	for (slow = fr_pair_cursor_init(&slow_cursor, &vps), fast = fr_pair_cursor_init(&fast_cursor, &vps);
+	for (slow = fr_cursor_init(&slow_cursor, &vps), fast = fr_cursor_init(&fast_cursor, &vps);
 	     slow && fast;
-	     slow = fr_pair_cursor_next(&fast_cursor), fast = fr_pair_cursor_next(&fast_cursor)) {
+	     slow = fr_cursor_next(&fast_cursor), fast = fr_cursor_next(&fast_cursor)) {
 		VP_VERIFY(slow);
 
 		/*
 		 *	Advances twice as fast as slow...
 		 */
-		fast = fr_pair_cursor_next(&fast_cursor);
+		fast = fr_cursor_next(&fast_cursor);
 		if (fast == slow) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Looping list found.  Fast pointer hit "
 				     "slow pointer at \"%s\"", file, line, slow->da->name);
@@ -2946,15 +2945,13 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 void fr_pair_list_tainted(VALUE_PAIR *vps)
 {
 	VALUE_PAIR	*vp;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 
-	if (!vps) {
-		return;
-	}
+	if (!vps) return;
 
-	for (vp = fr_pair_cursor_init(&cursor, &vps);
+	for (vp = fr_cursor_init(&cursor, &vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 		vp->vp_tainted = true;
 	}
