@@ -157,7 +157,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 				q = memchr(p, '\0', dhcp_header_sizes[i]);
 				fr_pair_value_bstrncpy(vp, p, q ? q - p : dhcp_header_sizes[i]);
 			}
-			if (vp->vp_length == 0) talloc_free(vp);
+			if (vp->vp_length == 0) TALLOC_FREE(vp);
 			break;
 
 		case FR_TYPE_OCTETS:
