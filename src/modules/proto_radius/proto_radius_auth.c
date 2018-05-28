@@ -44,16 +44,36 @@ typedef struct {
 
 	char const	*denied_msg;			//!< Additional text to append if the user is already logged
 							//!< in (simultaneous use check failed).
+
+	uint32_t	session_timeout;		//!< Maximum time between the last response and next request.
+	uint32_t	max_session;			//!< Maximum ongoing session allowed.
+
+	fr_state_tree_t	*state_tree;			//!< State tree to link multiple requests/responses.
 } proto_radius_auth_t;
 
-static const CONF_PARSER proto_radius_auth_config[] = {
-	{ FR_CONF_OFFSET("log_stripped_names", FR_TYPE_BOOL, proto_radius_auth_t, log_stripped_names), .dflt = "no" },
-	{ FR_CONF_OFFSET("log_auth", FR_TYPE_BOOL, proto_radius_auth_t, log_auth), .dflt = "no" },
-	{ FR_CONF_OFFSET("log_auth_badpass", FR_TYPE_BOOL, proto_radius_auth_t, log_auth_badpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("log_auth_goodpass", FR_TYPE_BOOL,proto_radius_auth_t,  log_auth_goodpass), .dflt = "no" },
+static const CONF_PARSER session_config[] = {
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, proto_radius_auth_t, session_timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, proto_radius_auth_t, max_session), .dflt = "4096" },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER log_config[] = {
+	{ FR_CONF_OFFSET("stripped_names", FR_TYPE_BOOL, proto_radius_auth_t, log_stripped_names), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth", FR_TYPE_BOOL, proto_radius_auth_t, log_auth), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_badpass", FR_TYPE_BOOL, proto_radius_auth_t, log_auth_badpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_goodpass", FR_TYPE_BOOL,proto_radius_auth_t,  log_auth_goodpass), .dflt = "no" },
 	{ FR_CONF_OFFSET("msg_badpass", FR_TYPE_STRING, proto_radius_auth_t, auth_badpass_msg) },
 	{ FR_CONF_OFFSET("msg_goodpass", FR_TYPE_STRING, proto_radius_auth_t, auth_goodpass_msg) },
 	{ FR_CONF_OFFSET("msg_denied", FR_TYPE_STRING, proto_radius_auth_t, denied_msg), .dflt = "You are already logged in - access denied" },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER proto_radius_auth_config[] = {
+	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
+
+	{ FR_CONF_POINTER("session", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) session_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -219,7 +239,7 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 		/*
 		 *	Grab the VPS and data associated with the State attribute.
 		 */
-		if (!request->parent) fr_state_to_request(global_state, request);
+		if (!request->parent) fr_state_to_request(inst->state_tree, request);
 
 		/*
 		 *	Push the conf section into the unlang stack.
@@ -535,12 +555,12 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 				/*
 				 *	We can't create a valid response
 				 */
-				if (fr_request_to_state(global_state, request) < 0) {
+				if (fr_request_to_state(inst->state_tree, request) < 0) {
 					request->reply->code = FR_CODE_DO_NOT_RESPOND;
 					return FR_IO_REPLY;
 				}
 			} else {
-				fr_state_discard(global_state, request);
+				fr_state_discard(inst->state_tree, request);
 			}
 		}
 
@@ -572,25 +592,9 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 	return FR_IO_REPLY;
 }
 
-
-static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
+static int mod_instantiate(void *instance, CONF_SECTION *process_app_cs)
 {
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
-	CONF_SECTION		*server_cs;
-
-	rad_assert(process_app_cs);
-	rad_assert(listen_cs);
-
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
-
-	return 0;
-}
-
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *process_app_cs)
-{
+	proto_radius_auth_t	*inst = instance;
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
 	CONF_SECTION		*server_cs;
 	CONF_SECTION		*subcs = NULL;
@@ -616,6 +620,24 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *process_app_cs)
 			return -1;
 		}
 	}
+
+	inst->state_tree = fr_state_tree_init(inst, attr_state, inst->max_session, inst->session_timeout);
+
+	return 0;
+}
+
+static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
+{
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
+	CONF_SECTION		*server_cs;
+
+	rad_assert(process_app_cs);
+	rad_assert(listen_cs);
+
+	server_cs = cf_item_to_section(cf_parent(listen_cs));
+	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+
+	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;
 }

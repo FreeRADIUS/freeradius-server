@@ -111,8 +111,6 @@ typedef struct main_config {
 
 	uint32_t	max_request_time;		//!< How long a request can be processed for before
 							//!< timing out.
-	uint32_t	continuation_timeout;		//!< How long to wait before cleaning up state entries.
-	uint32_t	max_requests;
 
 	uint32_t	num_networks;			//!< number of network threads
 	uint32_t	num_workers;			//!< number of network threads
@@ -296,7 +294,6 @@ struct rad_request {
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30
 #define CLEANUP_DELAY		5
-#define MAX_REQUESTS		256
 #define RETRY_DELAY		5
 #define RETRY_COUNT		3
 #define DEAD_TIME		120

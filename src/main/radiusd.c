@@ -634,11 +634,6 @@ int main(int argc, char *argv[])
 	if (log_global_init(&default_log, main_config.daemonize) < 0) fr_exit(EXIT_FAILURE);
 
 	/*
-	 *  Initialise the state rbtree (used to link multiple rounds of challenges).
-	 */
-	global_state = fr_state_tree_init(autofree, main_config.max_requests * 2, main_config.continuation_timeout);
-
-	/*
 	 *	Start the network / worker threads.
 	 */
 	if (1) {
@@ -829,8 +824,6 @@ int main(int argc, char *argv[])
 	 *	because all the requests will have been stopped.
 	 */
 	log_global_free();
-
-	talloc_free(global_state);	/* Free state entries */
 
 cleanup:
 	/*

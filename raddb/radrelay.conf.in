@@ -55,7 +55,6 @@ pidfile = ${run_dir}/${name}.pid
 #
 max_request_time = 30
 cleanup_delay = 5
-max_requests = 65536
 
 #
 #  Logging section.

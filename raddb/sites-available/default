@@ -266,43 +266,63 @@ server default {
 		#  needed for other packet types.
 		#
 		Access-Request {
-			#  Log the full User-Name attribute, as it was found in the request.
-			#
-			# allowed values: {no, yes}
-			#
-			stripped_names = no
+			log {
+				#  Log the full User-Name attribute, as it was found in the request.
+				#
+				# allowed values: {no, yes}
+				#
+				stripped_names = no
 
-			#  Log authentication requests to the log file.
-			#
-			#  allowed values: {no, yes}
-			#
-			auth = no
+				#  Log authentication requests to the log file.
+				#
+				#  allowed values: {no, yes}
+				#
+				auth = no
 
-			#  Log passwords with the authentication requests.
-			#
-			#  auth_badpass  - logs password if it's rejected
-			#  auth_goodpass - logs password if it's correct
-			#
-			#  allowed values: {no, yes}
-			#
-			auth_badpass = no
-			auth_goodpass = no
+				#  Log passwords with the authentication requests.
+				#
+				#  auth_badpass  - logs password if it's rejected
+				#  auth_goodpass - logs password if it's correct
+				#
+				#  allowed values: {no, yes}
+				#
+				auth_badpass = no
+				auth_goodpass = no
 
-			#  Log additional text at the end of the "Login OK" messages.
-			#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-			#  configurations above have to be set to "yes".
-			#
-			#  The strings below are dynamically expanded, which means that
-			#  you can put anything you want in them.  However, note that
-			#  this expansion can be slow, and can negatively impact server
-			#  performance.
-			#
-#			msg_goodpass = ""
-#			msg_badpass = ""
+				#  Log additional text at the end of the "Login OK" messages.
+				#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
+				#  configurations above have to be set to "yes".
+				#
+				#  The strings below are dynamically expanded, which means that
+				#  you can put anything you want in them.  However, note that
+				#  this expansion can be slow, and can negatively impact server
+				#  performance.
+				#
+#				msg_goodpass = ""
+#				msg_badpass = ""
 
-			#  The message when the user exceeds the Simultaneous-Use limit.
+				#  The message when the user exceeds the Simultaneous-Use limit.
+				#
+				msg_denied = "You are already logged in - access denied"
+			}
+
 			#
-			msg_denied = "You are already logged in - access denied"
+			#  Controls how ongoing (multi-round) sessions are handled
+			#  This is primarily useful for EAP to control the number
+			#  of EAP authentication attempts that can occur concurrently.
+			#
+			session {
+				#  The maximum number of ongoing sessions
+				#
+#				max = 4096
+
+				#  Timeout (in seconds) - How long to wait before expiring a
+				#  session.  The timer starts when a response with a state
+				#  value is sent, and stops when a request containing the
+				#  previously sent state value is received.
+				#
+#				timeout = 15
+			}
 		}
 	}
 
