@@ -52,7 +52,7 @@ static int reply_ok[FR_DHCP_INFORM + 1] = {
 	[FR_DHCP_DISCOVER]	= FR_DHCP_OFFER,
 	[FR_DHCP_OFFER]		= FR_DHCP_OFFER,
 	[FR_DHCP_REQUEST]	= FR_DHCP_ACK,
-	[FR_DHCP_DECLINE]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_DECLINE]	= 0,
 	[FR_DHCP_ACK]		= FR_DHCP_ACK,
 	[FR_DHCP_NAK]		= FR_DHCP_NAK,
 	[FR_DHCP_RELEASE]	= 0,
@@ -64,11 +64,11 @@ static int reply_fail[FR_DHCP_INFORM + 1] = {
 	[FR_DHCP_DISCOVER]	= FR_DHCP_NAK,
 	[FR_DHCP_OFFER]		= FR_DHCP_NAK,
 	[FR_DHCP_REQUEST]	= FR_DHCP_NAK,
-	[FR_DHCP_DECLINE]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_DECLINE]	= 0,
 	[FR_DHCP_ACK]		= FR_DHCP_NAK,
 	[FR_DHCP_NAK]		= FR_DHCP_NAK,
 	[FR_DHCP_RELEASE]	= 0,
-	[FR_DHCP_INFORM]	= FR_DHCP_NAK,
+	[FR_DHCP_INFORM]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
 };
 
 static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, UNUSED fr_io_action_t action)
@@ -144,7 +144,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		}
 
 		/*
-		 *	DHCP-Release doesn't send a reply, and doesn't run "send DHCP-Do-Not-Respond"
+		 *	DHCP-Release / Decline doesn't send a reply, and doesn't run "send DHCP-Do-Not-Respond"
 		 */
 		if (!request->reply->code) {
 			return FR_IO_DONE;
