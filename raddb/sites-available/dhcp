@@ -42,7 +42,7 @@ listen {
 	type = DHCP-Discover
 	type = DHCP-Decline
 
-	protocol = udp
+	transport = udp
 
 	udp {
 		#  IP address to listen on. Will usually be the IP of the
