@@ -2875,6 +2875,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsi
  */
 fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 {
+	if (!dict) return fr_dict_internal->root;	/* Remove me when dictionaries are done */
 	return dict->root;
 }
 

@@ -296,7 +296,7 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 		fr_dict_enum_t const *dv;
 		CONF_SECTION *subcs;
 
-		da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
+		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), section_type_value[comp].attr);
 		if (!da) return RLM_MODULE_FAIL;
 
 		dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t)idx));
