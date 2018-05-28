@@ -347,10 +347,11 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	}
 
 	/*
-	 *	"Do not respond"
+	 *	"Do not respond".  We also never send replies to a release.
 	 */
 	if ((request->reply->code == FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_DHCP_MAX)) {
+	    (request->reply->code == 0) || (request->reply->code >= FR_DHCP_MAX) ||
+	    (request->packet->code == FR_DHCP_RELEASE)) {
 		*buffer = false;
 		return 1;
 	}
