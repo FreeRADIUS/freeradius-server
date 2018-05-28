@@ -15,7 +15,7 @@
  */
 
 /**
- * @file rlm_eap/lib/sim/dict.h
+ * @file rlm_eap/lib/sim/sim_attrs.h
  * @brief Attributes to EAP-SIM/AKA/AKA' clients and servers.
  *
  * @copyright 2003-2016 The FreeRADIUS server project
