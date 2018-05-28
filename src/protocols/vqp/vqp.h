@@ -33,20 +33,34 @@ extern "C" {
 
 extern fr_dict_t *dict_vqp;
 
+extern fr_dict_attr_t const *attr_vqp_error_code;
+extern fr_dict_attr_t const *attr_vqp_packet_type;
+extern fr_dict_attr_t const *attr_vqp_sequence_number;
+
 #define FR_MAX_VMPS_CODE (5)
 
-RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd);
-bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len);
-int vqp_send(RADIUS_PACKET *packet);
-int vqp_decode(RADIUS_PACKET *packet);
-int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
-ssize_t vqp_packet_size(uint8_t const *data, size_t data_len);
-void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
+RADIUS_PACKET		*vqp_recv(TALLOC_CTX *ctx, int sockfd);
 
-ssize_t fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
-		       int code, uint32_t id, VALUE_PAIR *vps) CC_HINT(nonnull(1));
+bool			fr_vqp_ok(uint8_t const *packet, size_t *packet_len);
 
-extern char const *fr_vmps_codes[FR_MAX_VMPS_CODE];
+int			vqp_send(RADIUS_PACKET *packet);
+
+int			vqp_decode(RADIUS_PACKET *packet);
+
+int			vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
+
+ssize_t			vqp_packet_size(uint8_t const *data, size_t data_len);
+
+void			fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
+
+ssize_t			fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
+				       int code, uint32_t id, VALUE_PAIR *vps) CC_HINT(nonnull(1));
+
+extern char const	*fr_vmps_codes[FR_MAX_VMPS_CODE];
+
+int			fr_vqp_init(void);
+
+void			fr_vqp_free(void);
 
 #ifdef __cplusplus
 }

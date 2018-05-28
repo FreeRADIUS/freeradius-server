@@ -1,21 +1,24 @@
 /*
- * vqp.c	Functions to send/receive VQP packets.
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
  *
- * Version:	$Id$
- *
- *   This library is free software; you can redistribute it and/or
- *   modify it under the terms of the GNU Lesser General Public
- *   License as published by the Free Software Foundation; either
- *   version 2.1 of the License, or (at your option) any later version.
- *
- *   This library is distributed in the hope that it will be useful,
+ *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *   Lesser General Public License for more details.
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU Lesser General Public
- *   License along with this library; if not, write to the Free Software
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ *
+ * @file src/protocols/vqp/vqp.c
+ * @brief Functions to send/receive VQP packets.
  *
  * @copyright 2007 Alan DeKok <aland@deployingradius.com>
  */
@@ -279,31 +282,20 @@ int vqp_decode(RADIUS_PACKET *packet)
 	if (packet->data_len < VQP_HDR_LEN) return -1;
 
 	fr_pair_cursor_init(&cursor, &packet->vps);
-	vp = fr_pair_afrom_num(packet, 0, FR_VQP_PACKET_TYPE);
-	if (!vp) {
-		fr_strerror_printf("No memory");
-		return -1;
-	}
+
+	MEM(vp = fr_pair_afrom_da(packet, attr_vqp_packet_type));
 	vp->vp_uint32 = packet->data[1];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
 	fr_pair_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_num(packet, 0, FR_VQP_ERROR_CODE);
-	if (!vp) {
-		fr_strerror_printf("No memory");
-		return -1;
-	}
+	MEM(vp = fr_pair_afrom_da(packet, attr_vqp_error_code));
 	vp->vp_uint32 = packet->data[2];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
 	fr_pair_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_num(packet, 0, FR_VQP_SEQUENCE_NUMBER);
-	if (!vp) {
-		fr_strerror_printf("No memory");
-		return -1;
-	}
+	MEM(vp = fr_pair_afrom_da(packet, attr_vqp_sequence_number));
 	vp->vp_uint32 = packet->id; /* already set by vqp_recv */
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
@@ -335,7 +327,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		 *	Hack to get the dictionaries to work correctly.
 		 */
 		attr |= 0x2000;
-		vp = fr_pair_afrom_num(packet, 0, attr);
+		vp = fr_pair_afrom_child_num(packet, fr_dict_root(dict_vqp), attr);
 		if (!vp) {
 			fr_strerror_printf("No memory");
 
@@ -530,22 +522,22 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	code = packet->code;
 	if (!code) {
-		vp = fr_pair_find_by_num(packet->vps, 0, FR_VQP_PACKET_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_da(packet->vps, attr_vqp_packet_type, TAG_ANY);
 		if (!vp) {
-			fr_strerror_printf("Failed to find VQP-Packet-Type in response packet");
+			fr_strerror_printf("Failed to find %s in response packet", attr_vqp_packet_type->name);
 			return -1;
 		}
 
 		code = vp->vp_uint32;
 		if ((code < 1) || (code > 4)) {
-			fr_strerror_printf("Invalid value %d for VQP-Packet-Type", code);
+			fr_strerror_printf("Invalid value %d for %s", code, attr_vqp_packet_type->name);
 			return -1;
 		}
 	}
 
 	length = VQP_HDR_LEN;
 
-	vp = fr_pair_find_by_num(packet->vps, 0, FR_VQP_ERROR_CODE, TAG_ANY);
+	vp = fr_pair_find_by_da(packet->vps, attr_vqp_error_code, TAG_ANY);
 	if (vp) {
 		packet->data = talloc_array(packet, uint8_t, length);
 		if (!packet->data) {
@@ -578,7 +570,8 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
 		if (!contents[code][i]) break;
 
-		vps[i] = fr_pair_find_by_num(packet->vps, 0, contents[code][i] | 0x2000, TAG_ANY);
+		vps[i] = fr_pair_find_by_child_num(packet->vps, fr_dict_root(dict_vqp),
+						   contents[code][i] | 0x2000, TAG_ANY);
 
 		/*
 		 *	FIXME: Print the name...

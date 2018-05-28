@@ -28,7 +28,7 @@
 #include <freeradius-devel/unlang.h>
 #include <freeradius-devel/dict.h>
 #include <freeradius-devel/rad_assert.h>
-#include "vqp.h"
+#include <freeradius-devel/vqp/vqp.h>
 
 static fr_dict_t *dict_freeradius;
 

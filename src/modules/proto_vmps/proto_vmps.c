@@ -796,17 +796,31 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-fr_app_t proto_vmps = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "vmps",
-	.config		= proto_vmps_config,
-	.inst_size	= sizeof(proto_vmps_t),
+static int mod_load(void)
+{
+	if (fr_vqp_init() < 0) return -1;
 
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.open		= mod_open,
-	.decode		= mod_decode,
-	.encode		= mod_encode,
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	fr_vqp_free();
+}
+
+fr_app_t proto_vmps = {
+	.magic			= RLM_MODULE_INIT,
+	.name			= "vmps",
+	.config			= proto_vmps_config,
+	.inst_size		= sizeof(proto_vmps_t),
+
+	.load			= mod_load,
+	.unload			= mod_unload,
+	.bootstrap		= mod_bootstrap,
+	.instantiate		= mod_instantiate,
+	.open			= mod_open,
+	.decode			= mod_decode,
+	.encode			= mod_encode,
 	.entry_point_set	= mod_entry_point_set,
-	.priority	= mod_priority_set
+	.priority		= mod_priority_set
 };

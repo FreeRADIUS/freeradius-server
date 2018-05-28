@@ -30,6 +30,8 @@ RCSID("$Id$")
 #include <freeradius-devel/net.h>
 #include <freeradius-devel/pcap.h>
 
+static int instance_count = 0;
+
 typedef struct dhcp_option_t {
 	uint8_t		code;
 	uint8_t		length;
@@ -484,6 +486,11 @@ int fr_dhcpv4_init(void)
 	fr_value_box_t		value = { .type = FR_TYPE_UINT8 };
 	uint8_t			i;
 
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
+
 	if (fr_dict_autoload(dhcpv4_dict) < 0) return -1;
 	if (fr_dict_attr_autoload(dhcpv4_dict_attr) < 0) return -1;
 
@@ -504,11 +511,15 @@ int fr_dhcpv4_init(void)
 		}
 	}
 
+	instance_count++;
+
 	return 0;
 }
 
 void fr_dhcpv4_free(void)
 {
+	if (--instance_count > 0) return;
+
 	fr_dict_autofree(dhcpv4_dict);
 }
 
