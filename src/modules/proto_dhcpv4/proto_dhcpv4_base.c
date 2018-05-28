@@ -41,8 +41,8 @@ fr_dict_autoload_t proto_dhcpv4_dict[] = {
 
 static fr_dict_attr_t const *attr_dhcpv4_message_type;
 
-extern fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[];
-fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
+extern fr_dict_attr_autoload_t proto_dhcpv4_base_dict_attr[];
+fr_dict_attr_autoload_t proto_dhcpv4_base_dict_attr[] = {
 	{ .out = &attr_dhcpv4_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ NULL }
 };
