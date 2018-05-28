@@ -181,7 +181,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 			}
 		}
 
-		if (!name || !type_enum) {
+		if (!type_enum) {
 			cf_log_err(ci, "Invalid type \"%s\"", type_str);
 			return -1;
 		}
@@ -232,21 +232,20 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 		inst->code_allowed[FR_CODE_DISCONNECT_REQUEST] = true;
 	}
 
-	process_app_cs = cf_section_find(listen_cs, name, NULL);
+	process_app_cs = cf_section_find(listen_cs, type_enum->alias, NULL);
 
 	/*
 	 *	Allocate an empty section if one doesn't exist
 	 *	this is so defaults get parsed.
 	 */
 	if (!process_app_cs) {
-		process_app_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
-		cf_section_add(listen_cs, process_app_cs);
+		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->alias, NULL));
 	}
 
 	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
 	 */
-	return dl_instance(ctx, out, cf_section_find(listen_cs, name, NULL), parent_inst, name, DL_TYPE_SUBMODULE);
+	return dl_instance(ctx, out, process_app_cs, parent_inst, name, DL_TYPE_SUBMODULE);
 }
 
 /** Wrapper around dl_instance

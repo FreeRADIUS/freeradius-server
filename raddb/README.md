@@ -44,6 +44,11 @@ last in any `send Access-Reject section.
 
 `status_server` - see `type = Status-Server` in a new `listen` section.
 
+The `log` section has been updated to remove many configuration items
+which are specific to RADIUS, and to Access-Request packets.  Please
+see `sites-available/default`, and look for the `Access-Request`
+subsection there.
+
 ## Virtual Servers
 
 There are some changes to the virtual servers in v4.  First, every

@@ -578,6 +578,7 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
 	CONF_SECTION		*server_cs;
 
+	rad_assert(process_app_cs);
 	rad_assert(listen_cs);
 
 	server_cs = cf_item_to_section(cf_parent(listen_cs));

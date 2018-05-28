@@ -256,7 +256,16 @@ server default {
 			}
 		}
 
-		auth {
+		#
+		#  This section contains items related to configuring
+		#  logging for Access-Request packets.
+		#
+		#  Similar sections can be added, but are not
+		#  necessary for Accounting-Request (and other)
+		#  packets.  At this time, there is no configuration
+		#  needed for other packet types.
+		#
+		Access-Request {
 			#  Log the full User-Name attribute, as it was found in the request.
 			#
 			# allowed values: {no, yes}
