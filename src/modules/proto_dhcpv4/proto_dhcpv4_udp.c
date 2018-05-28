@@ -115,11 +115,11 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	int				flags;
 	ssize_t				data_size;
-	size_t				packet_len = -1; /* @todo -fixme */
+	size_t				packet_len;
 	struct timeval			timestamp;
 	uint8_t				message_type;
 	uint32_t			xid, ipaddr;
-	dhcp_packet_t		*packet;
+	dhcp_packet_t			*packet;
 
 	fr_time_t			*recv_time_p;
 
@@ -152,11 +152,17 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		return 0;
 	}
 
+	/*
+	 *	@todo - make this take "&packet_len", as the DHCPv4
+	 *	packet may be smaller than the parent UDP packet.
+	 */
 	if (!fr_dhcpv4_ok(buffer, data_size, &message_type, &xid)) {
 		DEBUG2("proto_dhcpv4_udp got invalid packet, ignoring it - %s",
 			fr_strerror());
 		return 0;
 	}
+
+	packet_len = data_size;
 
 	/*
 	 *	We've seen a server reply to this port, but the giaddr
