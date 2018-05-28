@@ -34,11 +34,13 @@ typedef struct rlm_soh_t {
 } rlm_soh_t;
 
 static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_dhcp;
 static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t rlm_soh_dict[];
 fr_dict_autoload_t rlm_soh_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "dhcp" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
@@ -51,6 +53,7 @@ static fr_dict_attr_t const *attr_soh_ms_machine_os_build;
 static fr_dict_attr_t const *attr_soh_ms_machine_sp_version;
 static fr_dict_attr_t const *attr_soh_ms_machine_sp_release;
 static fr_dict_attr_t const *attr_ms_quarantine_soh;
+static fr_dict_attr_t const *attr_dhcp_vendor;
 
 extern fr_dict_attr_autoload_t rlm_soh_dict_attr[];
 fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
@@ -62,6 +65,7 @@ fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
 	{ .out = &attr_soh_ms_machine_sp_version, .name = "SoH-MS-Machine-SP-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_soh_ms_machine_sp_release, .name = "SoH-MS-Machine-SP-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_ms_quarantine_soh, .name = "MS-Quarantine-SOH", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_dhcp_vendor, .name = "DHCP-Vendor", .type = FR_TYPE_OCTETS, .dict = &dict_dhcp },
 	{ NULL }
 };
 
@@ -144,7 +148,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 	if (!inst->dhcp) return RLM_MODULE_NOOP;
 
-	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 43, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_dhcp_vendor, TAG_ANY);
 	if (vp) {
 		/*
 		 * vendor-specific options contain
@@ -168,7 +172,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 					RDEBUG("SoH adding NAP marker to DHCP reply");
 					/* client probe; send "NAP" in the reply */
-					vp = fr_pair_afrom_num(request->reply, DHCP_MAGIC_VENDOR, 43);
+					vp = fr_pair_afrom_da(request->reply, attr_dhcp_vendor);
 					p = talloc_array(vp, uint8_t, 5);
 					p[0] = 220;
 					p[1] = 3;
