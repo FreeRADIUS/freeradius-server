@@ -332,6 +332,8 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t *address = track->address;
+	dhcp_packet_t *reply = (dhcp_packet_t *) buffer;
+	dhcp_packet_t *original = (dhcp_packet_t *) request->packet->data;
 	ssize_t data_len;
 	RADCLIENT const *client;
 
@@ -384,6 +386,20 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		memcpy(buffer, &new_client, sizeof(new_client));
 		return sizeof(new_client);
 	}
+
+	memset(reply, 0, sizeof(*reply));
+
+	/*
+	 *	Initialize the output packet from the input packet.
+	 */
+#define COPY(_x) reply->_x = original->_x
+#define MEMCPY(_x) memcpy(&reply->_x, &original->_x, sizeof(reply->_x))
+
+	COPY(htype);
+	COPY(hlen);
+	COPY(xid);
+	COPY(xid);
+	MEMCPY(chaddr);
 
 	/*
 	 *	If the app_io encodes the packet, then we don't need
