@@ -219,7 +219,6 @@ rlm_rcode_t rad_postauth(REQUEST *request)
 	case RLM_MODULE_USERLOCK:
 	default:
 		request->reply->code = FR_CODE_ACCESS_REJECT;
-		fr_state_discard(global_state, request, request->packet);
 		rcode = RLM_MODULE_REJECT;
 		break;
 	/*
@@ -236,13 +235,6 @@ rlm_rcode_t rad_postauth(REQUEST *request)
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		rcode = RLM_MODULE_OK;
-
-		if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
-			fr_request_to_state(global_state, request, request->packet, request->reply);
-
-		} else {
-			fr_state_discard(global_state, request, request->packet);
-		}
 		break;
 	}
 	return rcode;
@@ -276,11 +268,6 @@ rlm_rcode_t rad_authenticate(REQUEST *request)
 	if (!request->password) {
 		request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY);
 	}
-
-	/*
-	 *	Grab the VPS and data associated with the State attribute.
-	 */
-	fr_state_to_request(global_state, request, request->packet);
 
 	/*
 	 *	Get the user's authorization information from the database
