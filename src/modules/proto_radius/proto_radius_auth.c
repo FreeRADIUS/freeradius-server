@@ -219,7 +219,7 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 		/*
 		 *	Grab the VPS and data associated with the State attribute.
 		 */
-		if (!request->parent) fr_state_to_request(global_state, request, request->packet);
+		if (!request->parent) fr_state_to_request(global_state, request);
 
 		/*
 		 *	Push the conf section into the unlang stack.
@@ -535,12 +535,12 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 				/*
 				 *	We can't create a valid response
 				 */
-				if (fr_request_to_state(global_state, request, request->packet, request->reply) < 0) {
+				if (fr_request_to_state(global_state, request) < 0) {
 					request->reply->code = FR_CODE_DO_NOT_RESPOND;
 					return FR_IO_REPLY;
 				}
 			} else {
-				fr_state_discard(global_state, request, request->packet);
+				fr_state_discard(global_state, request);
 			}
 		}
 

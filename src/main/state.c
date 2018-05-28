@@ -530,12 +530,12 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 /** Called when sending an Access-Accept/Access-Reject to discard state information
  *
  */
-void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original)
+void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 {
 	fr_state_entry_t *entry;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, request, original);
+	entry = state_entry_find(state, request, request->packet);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return;
@@ -568,7 +568,7 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *o
  *
  * @note Called with the mutex free.
  */
-void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *packet)
+void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 {
 	fr_state_entry_t *entry;
 	TALLOC_CTX *old_ctx = NULL;
@@ -586,7 +586,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
-	entry = state_entry_find(state, request, packet);
+	entry = state_entry_find(state, request, request->packet);
 	if (entry) {
 		(void)talloc_get_type_abort(entry, fr_state_entry_t);
 		if (entry->thawed) {
@@ -634,7 +634,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
  *
  * Also creates a new state entry.
  */
-int fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet)
+int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 {
 	fr_state_entry_t *entry, *old;
 	request_data_t *data;
@@ -650,9 +650,9 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET 
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
-	old = original ? state_entry_find(state, request, original) : NULL;
+	old = request->packet ? state_entry_find(state, request, request->packet) : NULL;
 
-	entry = state_entry_create(state, request, packet, old);
+	entry = state_entry_create(state, request, request->reply, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RERROR("Creating state entry failed");

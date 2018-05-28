@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/stats.h
+ * @file include/state.h
  * @brief Track overarching 'state' of the authentication session over multiple packets.
  *
  * @copyright 2014 The FreeRADIUS server project
@@ -35,10 +35,10 @@ extern fr_state_tree_t *global_state;
 
 fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, uint32_t max_sessions, uint32_t timeout);
 
-void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original);
+void fr_state_discard(fr_state_tree_t *state, REQUEST *request);
 
-void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *packet);
-int fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet);
+void fr_state_to_request(fr_state_tree_t *state, REQUEST *request);
+int fr_request_to_state(fr_state_tree_t *state, REQUEST *request);
 
 /*
  *	Stats

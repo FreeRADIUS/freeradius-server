@@ -236,7 +236,7 @@ static void tacacs_running(REQUEST *request, fr_state_signal_t action)
 		/* FIXME only for seq_id greater than 1 */
 		if (tacacs_type(request->packet) == TAC_PLUS_AUTHEN) {
 			state_add(request, request->packet);
-			fr_state_to_request(global_state, request, request->packet);
+			fr_state_to_request(global_state, request);
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
@@ -251,7 +251,7 @@ static void tacacs_running(REQUEST *request, fr_state_signal_t action)
 		if (request->master_state == REQUEST_STOP_PROCESSING) {
 stop_processing:
 			if (tacacs_type(request->packet) == TAC_PLUS_AUTHEN)
-				fr_state_discard(global_state, request, request->packet);
+				fr_state_discard(global_state, request);
 			goto done;
 		}
 
@@ -413,7 +413,7 @@ send_reply:
 				case TAC_PLUS_AUTHEN_STATUS_RESTART:
 				case TAC_PLUS_AUTHEN_STATUS_ERROR:
 				case TAC_PLUS_AUTHEN_STATUS_FOLLOW:
-					fr_state_discard(global_state, request, request->packet);
+					fr_state_discard(global_state, request);
 					break;
 				default:
 					vp = fr_pair_find_by_da(request->packet->vps,
@@ -426,7 +426,7 @@ send_reply:
 					/* authentication would continue but seq_no cannot continue */
 					if (vp->vp_uint8 == 253) {
 						RWARN("Sequence number would wrap, restarting authentication");
-						fr_state_discard(global_state, request, request->packet);
+						fr_state_discard(global_state, request);
 						fr_pair_list_free(&request->reply->vps);
 
 						MEM(pair_update_reply(&vp, attr_tacacs_authentication_status) >= 0);
@@ -434,12 +434,11 @@ send_reply:
 					} else {
 						state_add(request, request->reply);
 						request->reply->code = 1;	/* FIXME: util.c:request_verify() */
-						fr_request_to_state(global_state, request,
-								    request->packet, request->reply);
+						fr_request_to_state(global_state, request);
 					}
 				}
 			} else {
-				fr_state_discard(global_state, request, request->packet);
+				fr_state_discard(global_state, request);
 			}
 		}
 
