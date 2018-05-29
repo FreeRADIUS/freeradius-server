@@ -446,7 +446,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 	/*
 	 *	We default to milenage
 	 */
-	version_vp = fr_pair_find_by_num(vps, 0, FR_SIM_ALGO_VERSION, TAG_ANY);
+	version_vp = fr_pair_find_by_da(vps, attr_sim_algo_version, TAG_ANY);
 	if (version_vp) version = version_vp->vp_uint32;
 
 	for (i = 0; i < SIM_VECTOR_UMTS_RAND_SIZE; i += sizeof(uint32_t)) {
