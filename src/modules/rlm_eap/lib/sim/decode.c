@@ -155,8 +155,13 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 				return -1;
 			}
 
+			if ((p + sim_at_len) > end) {
+				fr_strerror_printf("%s: Invalid IV length, longer than remaining data", __FUNCTION__);
+				return -1;
+			}
+
 			if (sim_at == FR_SIM_IV) {
-				if (sim_iv_extract(&(packet_ctx->iv[0]), p, sim_at_len) < 0) return -1;
+				if (sim_iv_extract(&(packet_ctx->iv[0]), p + 2, sim_at_len - 2) < 0) return -1;
 				packet_ctx->have_iv = true;
 				break;
 			}
