@@ -151,4 +151,6 @@ int		unlang_stack_depth(REQUEST *request);
 
 rlm_rcode_t	unlang_stack_result(REQUEST *request);
 
-int		unlang_initialize(void);
+int		unlang_init(void);
+
+void		unlang_free(void);

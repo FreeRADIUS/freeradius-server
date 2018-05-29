@@ -39,6 +39,22 @@ RCSID("$Id$")
 #define unlang_policy unlang_group
 #define unlang_break unlang_return
 
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t op_dict[];
+fr_dict_autoload_t op_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_request_lifetime;
+
+extern fr_dict_attr_autoload_t op_dict_attr[];
+fr_dict_attr_autoload_t op_dict_attr[] = {
+	{ .out = &attr_request_lifetime, .name = "Request-Lifetime", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 /*
  *	Recursively collect active callers.  Slow, but correct.
  */
@@ -1642,8 +1658,11 @@ static unlang_action_t unlang_if(REQUEST *request,
 	return unlang_group(request, presult, priority);
 }
 
-void unlang_op_initialize(void)
+int unlang_op_init(void)
 {
+	if (fr_dict_autoload(op_dict) < 0) return -1;
+	if (fr_dict_attr_autoload(op_dict_attr) < 0) return -1;
+
 	unlang_op_register(UNLANG_TYPE_FUNCTION,
 			   &(unlang_op_t){
 				.name = "function",
@@ -1769,4 +1788,11 @@ void unlang_op_initialize(void)
 	unlang_map_init();
 	unlang_module_init();
 #endif
+
+	return 0;
+}
+
+void unlang_op_free(void)
+{
+	fr_dict_autofree(op_dict);
 }

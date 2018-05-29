@@ -445,7 +445,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 int eap_base_init(void)
 {
 	if (fr_dict_autoload(eap_base_dict) < 0) {
-		PERROR("Failed loading dictionary");
+		PERROR("Failed initialising protocol library");
 		return -1;
 	}
 

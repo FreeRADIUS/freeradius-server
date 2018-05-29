@@ -34,6 +34,7 @@ typedef struct ttls_tunnel_t {
 extern fr_dict_attr_t const *attr_eap_tls_require_client_cert;
 extern fr_dict_attr_t const *attr_proxy_to_realm;
 extern fr_dict_attr_t const *attr_chap_challenge;
+extern fr_dict_attr_t const *attr_ms_chap2_success;
 extern fr_dict_attr_t const *attr_eap_message;
 extern fr_dict_attr_t const *attr_freeradius_proxied_to;
 extern fr_dict_attr_t const *attr_ms_chap_challenge;

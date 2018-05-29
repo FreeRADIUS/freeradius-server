@@ -76,6 +76,22 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_rediswho_dict[];
+fr_dict_autoload_t rlm_rediswho_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_acct_status_type;
+
+extern fr_dict_attr_autoload_t rlm_rediswho_dict_attr[];
+fr_dict_attr_autoload_t rlm_rediswho_dict_attr[] = {
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
+
 /*
  *	Query the database executing a command with no result rows
  */
@@ -177,7 +193,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	CONF_SECTION		*cs;
 	char const		*insert, *trim, *expire;
 
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 	if (!vp) {
 		RDEBUG("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;

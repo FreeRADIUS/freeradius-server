@@ -38,7 +38,7 @@ RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 	packet->sockfd = sockfd;
 
 	if (fr_tcp_read_packet(packet, RADIUS_MAX_ATTRIBUTES, flags) != 1) {
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 

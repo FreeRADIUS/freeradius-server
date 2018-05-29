@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/util.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/io/test_point.h>
+#include "attrs.h"
 
 static unsigned int salt_offset = 0;
 
@@ -111,7 +112,7 @@ int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int i
 	 *	Use Chap-Challenge pair if present,
 	 *	Request Authenticator otherwise.
 	 */
-	challenge = fr_pair_find_by_num(packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY);
+	challenge = fr_pair_find_by_da(packet->vps, attr_chap_challenge, TAG_ANY);
 	if (challenge) {
 		memcpy(ptr, challenge->vp_strvalue, challenge->vp_length);
 		i += challenge->vp_length;
@@ -1462,8 +1463,8 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	 *	Only CUI is allowed to have zero length.
 	 *	Thank you, WiMAX!
 	 */
-	if ((vp->da->attr == FR_CHARGEABLE_USER_IDENTITY) && (vp->vp_length == 0)) {
-		out[0] = FR_CHARGEABLE_USER_IDENTITY;
+	if ((vp->da == attr_chargeable_user_identity) && (vp->vp_length == 0)) {
+		out[0] = (uint8_t)vp->da->attr;
 		out[1] = 2;
 
 		vp = next_encodable(cursor);
@@ -1474,10 +1475,10 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	/*
 	 *	Message-Authenticator is hard-coded.
 	 */
-	if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
+	if (vp->da == attr_message_authenticator) {
 		if (outlen < 18) return -1;
 
-		out[0] = FR_MESSAGE_AUTHENTICATOR;
+		out[0] = (uint8_t)vp->da->attr;
 		out[1] = 18;
 		memset(out + 2, 0, 16);
 #ifndef NDEBUG
@@ -1637,18 +1638,29 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 	return ret;
 }
 
-static void *encode_test_ctx (TALLOC_CTX *ctx)
+static int _test_ctx_free(UNUSED fr_radius_ctx_t *ctx)
 {
-	static uint8_t vector[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+	fr_radius_free();
 
-	static fr_radius_ctx_t	test_ctx = {
-		.vector = vector
-	};
+	return 0;
+}
 
-	test_ctx.secret = talloc_strdup(ctx, "testing123");
-	test_ctx.root = fr_dict_root(fr_dict_internal);
+static void *encode_test_ctx(TALLOC_CTX *ctx)
+{
+	static uint8_t vector[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+				    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
-	return &test_ctx;
+	fr_radius_ctx_t	*test_ctx;
+
+	test_ctx = talloc_zero(ctx, fr_radius_ctx_t);
+	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
+	test_ctx->root = fr_dict_root(dict_radius);
+	test_ctx->vector = vector;
+	talloc_set_destructor(test_ctx, _test_ctx_free);
+
+	fr_radius_init();
+
+	return test_ctx;
 }
 
 /*

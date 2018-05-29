@@ -483,32 +483,20 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		for (vp = fr_cursor_init(&cursor, &reply->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-		     	switch (fr_dict_vendor_num_by_da(vp->da)) {
-			case VENDORPEC_MICROSOFT:
-				if (vp->da->attr == FR_MSCHAP2_SUCCESS) {
-					RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
+			if (vp->da == attr_ms_chap2_success) {
+				RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
 
-					rcode = RLM_MODULE_HANDLED;
-					t->authenticated = true;
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-				}
-				break;
-
-			case VENDORPEC_UKERNA:
-				if (vp->da->attr == FR_UKERNA_CHBIND) {
-					rcode = RLM_MODULE_HANDLED;
-					t->authenticated = true;
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-				}
-				break;
-
-			default:
-				break;
+				rcode = RLM_MODULE_HANDLED;
+				t->authenticated = true;
+				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+			} else if (vp->da == attr_eap_channel_binding_message) {
+				rcode = RLM_MODULE_HANDLED;
+				t->authenticated = true;
+				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 			}
 		}
 	}
 		break;
-
 
 	case FR_CODE_ACCESS_REJECT:
 		RDEBUG("Got tunneled Access-Reject");
@@ -889,7 +877,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			request->proxy->packet->src_port = 0;
 			request->proxy->packet->dst_port = 0;
 			fake->packet = NULL;
-			fr_radius_free(&fake->reply);
+			fr_radius_packet_free(&fake->reply);
 			fake->reply = NULL;
 
 			/*

@@ -825,7 +825,7 @@ static void deallocate_id(rc_request_t *request)
 	 *	authentication vector.
 	 */
 	if (request->packet->data) TALLOC_FREE(request->packet->data);
-	if (request->reply) fr_radius_free(&request->reply);
+	if (request->reply) fr_radius_packet_free(&request->reply);
 }
 
 /*
@@ -1073,7 +1073,7 @@ static int recv_one_packet(int wait_time)
 	if (!packet_p) {
 		ERROR("Received reply to request we did not send. (id=%d socket %d)",
 		      reply->id, reply->sockfd);
-		fr_radius_free(&reply);
+		fr_radius_packet_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
 	request = fr_packet2myptr(rc_request_t, packet, packet_p);
@@ -1163,8 +1163,8 @@ static int recv_one_packet(int wait_time)
 	}
 
 packet_done:
-fr_radius_free(&request->reply);
-	fr_radius_free(&reply);	/* may be NULL */
+fr_radius_packet_free(&request->reply);
+	fr_radius_packet_free(&reply);	/* may be NULL */
 
 	return 0;
 }

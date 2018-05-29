@@ -66,6 +66,41 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_radutmp_dict[];
+fr_dict_autoload_t rlm_radutmp_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_acct_delay_time;
+static fr_dict_attr_t const *attr_acct_session_id;
+static fr_dict_attr_t const *attr_acct_session_time;
+static fr_dict_attr_t const *attr_acct_status_type;
+static fr_dict_attr_t const *attr_calling_station_id;
+static fr_dict_attr_t const *attr_framed_ip_address;
+static fr_dict_attr_t const *attr_framed_protocol;
+static fr_dict_attr_t const *attr_login_ip_host;
+static fr_dict_attr_t const *attr_nas_ip_address;
+static fr_dict_attr_t const *attr_nas_port;
+static fr_dict_attr_t const *attr_nas_port_type;
+
+extern fr_dict_attr_autoload_t rlm_radutmp_dict_attr[];
+fr_dict_attr_autoload_t rlm_radutmp_dict_attr[] = {
+	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_session_id, .name = "Acct-Session-Id", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_acct_session_time, .name = "Acct-Session-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_calling_station_id, .name = "Calling-Station-Id", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_framed_ip_address, .name = "Framed-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_framed_protocol, .name = "Framed-Protocol", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_login_ip_host, .name = "Login-IP-Host", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_nas_ip_address, .name = "NAS-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_nas_port, .name = "NAS-Port", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_nas_port_type, .name = "NAS-Port-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
 
 #ifdef WITH_ACCOUNTING
 /*
@@ -171,7 +206,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY)) == NULL) {
+	if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY)) == NULL) {
 		RDEBUG2("No Accounting-Status-Type record");
 		return RLM_MODULE_NOOP;
 	}
@@ -194,10 +229,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		int check1 = 0;
 		int check2 = 0;
 
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_SESSION_TIME, TAG_ANY))
+		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_session_time, TAG_ANY))
 		     == NULL || vp->vp_date == 0)
 			check1 = 1;
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_SESSION_ID, TAG_ANY))
+		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_session_id, TAG_ANY))
 		     != NULL && vp->vp_length == 8 &&
 		     memcmp(vp->vp_strvalue, "00000000", 8) == 0)
 			check2 = 1;
@@ -220,32 +255,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		if (!fr_dict_attr_is_top_level(vp->da)) continue;
-
-		switch (vp->da->attr) {
-		case FR_LOGIN_IP_HOST:
-		case FR_FRAMED_IP_ADDRESS:
+		if ((vp->da == attr_login_ip_host) ||
+		    (vp->da == attr_framed_ip_address)) {
 			ut.framed_address = vp->vp_ipv4addr;
-			break;
-
-		case FR_FRAMED_PROTOCOL:
+		} else if (vp->da == attr_framed_protocol) {
 			protocol = vp->vp_uint32;
-			break;
-
-		case FR_NAS_IP_ADDRESS:
+		} else if (vp->da == attr_nas_ip_address) {
 			ut.nas_address = vp->vp_ipv4addr;
-			break;
-
-		case FR_NAS_PORT:
+		} else if (vp->da == attr_nas_port) {
 			ut.nas_port = vp->vp_uint32;
 			port_seen = true;
-			break;
-
-		case FR_ACCT_DELAY_TIME:
+		} else if (vp->da == attr_acct_delay_time) {
 			ut.delay = vp->vp_uint32;
-			break;
-
-		case FR_ACCT_SESSION_ID:
+		} else if (vp->da == attr_acct_session_id) {
 			/*
 			 *	If length > 8, only store the
 			 *	last 8 bytes.
@@ -256,22 +278,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			 * 	to the end of any string.
 			 * 	Compensate.
 			 */
-			if (vp->vp_length > 0 &&
-			    vp->vp_strvalue[vp->vp_length - 1] == 0)
-				off--;
+			if ((vp->vp_length > 0) && (vp->vp_strvalue[vp->vp_length - 1] == 0)) off--;
 			if (off < 0) off = 0;
-			memcpy(ut.session_id, vp->vp_strvalue + off,
-				sizeof(ut.session_id));
+			memcpy(ut.session_id, vp->vp_strvalue + off, sizeof(ut.session_id));
 			break;
-
-		case FR_NAS_PORT_TYPE:
-			if (vp->vp_uint32 <= 4)
-				ut.porttype = porttypes[vp->vp_uint32];
-			break;
-
-		case FR_CALLING_STATION_ID:
+		} else if (vp->da == attr_nas_port_type) {
+			if (vp->vp_uint32 <= 4) ut.porttype = porttypes[vp->vp_uint32];
+		} else if (vp->da == attr_calling_station_id) {
 			if (inst->caller_id_ok) strlcpy(ut.caller_id, vp->vp_strvalue, sizeof(ut.caller_id));
-			break;
 		}
 	}
 

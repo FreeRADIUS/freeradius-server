@@ -106,34 +106,35 @@ fr_dict_autoload_t rlm_expiration_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_cleartext_password;
-static fr_dict_attr_t const *attr_nt_password;
-static fr_dict_attr_t const *attr_lm_password;
-static fr_dict_attr_t const *attr_ms_chap_use_ntlm_auth;
+fr_dict_attr_t const *attr_auth_type;
+fr_dict_attr_t const *attr_cleartext_password;
+fr_dict_attr_t const *attr_nt_password;
+fr_dict_attr_t const *attr_lm_password;
+fr_dict_attr_t const *attr_ms_chap_use_ntlm_auth;
 
 fr_dict_attr_t const *attr_ms_chap_user_name;
 
-static fr_dict_attr_t const *attr_ms_chap_peer_challenge;
-static fr_dict_attr_t const *attr_ms_chap_new_nt_password;
-static fr_dict_attr_t const *attr_ms_chap_new_cleartext_password;
-static fr_dict_attr_t const *attr_smb_account_ctrl;
-static fr_dict_attr_t const *attr_smb_account_ctrl_text;
+fr_dict_attr_t const *attr_ms_chap_peer_challenge;
+fr_dict_attr_t const *attr_ms_chap_new_nt_password;
+fr_dict_attr_t const *attr_ms_chap_new_cleartext_password;
+fr_dict_attr_t const *attr_smb_account_ctrl;
+fr_dict_attr_t const *attr_smb_account_ctrl_text;
 
-static fr_dict_attr_t const *attr_user_name;
-static fr_dict_attr_t const *attr_ms_chap_error;
+fr_dict_attr_t const *attr_user_name;
+fr_dict_attr_t const *attr_user_password;
+fr_dict_attr_t const *attr_ms_chap_error;
 
 fr_dict_attr_t const *attr_ms_chap_challenge;
 fr_dict_attr_t const *attr_ms_chap_response;
 fr_dict_attr_t const *attr_ms_chap2_response;
 fr_dict_attr_t const *attr_ms_chap2_success;
 
-static fr_dict_attr_t const *attr_ms_chap_mppe_keys;
-static fr_dict_attr_t const *attr_ms_mppe_encryption_policy;
-static fr_dict_attr_t const *attr_ms_mppe_recv_key;
-static fr_dict_attr_t const *attr_ms_mppe_send_key;
-static fr_dict_attr_t const *attr_ms_mppe_encryption_types;
-static fr_dict_attr_t const *attr_ms_chap2_cpw;
+fr_dict_attr_t const *attr_ms_chap_mppe_keys;
+fr_dict_attr_t const *attr_ms_mppe_encryption_policy;
+fr_dict_attr_t const *attr_ms_mppe_recv_key;
+fr_dict_attr_t const *attr_ms_mppe_send_key;
+fr_dict_attr_t const *attr_ms_mppe_encryption_types;
+fr_dict_attr_t const *attr_ms_chap2_cpw;
 
 extern fr_dict_attr_autoload_t rlm_mschap_dict_attr[];
 fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
@@ -150,6 +151,7 @@ fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
 	{ .out = &attr_smb_account_ctrl_text, .name = "SMB-Account-Ctrl-Text", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_error, .name = "MS-CHAP-Error", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_response, .name = "MS-CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -1088,10 +1090,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 , 6)) do_mschap(rlm_mschap_t const *inst,
 		 *	then calculate the hash of the NT hash.  Doing this
 		 *	here minimizes work for later.
 		 */
-		if (fr_dict_attr_is_top_level(password->da) && (password->da->attr == FR_NT_PASSWORD)) {
-			fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
-		}
-
+		if (password->da == attr_nt_password) fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
 		break;
 		}
 	case AUTH_NTLMAUTH_EXEC:
@@ -1680,15 +1679,14 @@ static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t const *inst
  *	or in configured passwd file.
  *	If one is found we will check paraneters given by NAS.
  *
- *	If FR_SMB_ACCOUNT_CTRL is not set to ACB_PWNOTREQ we must have
+ *	If SMB-Account-Ctrl is not set to ACB_PWNOTREQ we must have
  *	one of:
- *		PAP:      FR_USER_PASSWORD or
- *		MS-CHAP:  FR_MSCHAP_CHALLENGE and FR_MSCHAP_RESPONSE or
- *		MS-CHAP2: FR_MSCHAP_CHALLENGE and FR_MSCHAP2_RESPONSE
+ *		PAP:      User-Password or
+ *		MS-CHAP:  MS-CHAP-Challenge and MS-CHAP-Response or
+ *		MS-CHAP2: MS-CHAP-Challenge and MS-CHAP2-Response
  *	In case of password mismatch or locked account we MAY return
- *	FR_MSCHAP_ERROR for MS-CHAP or MS-CHAP v2
- *	If MS-CHAP2 succeeds we MUST return
- *	FR_MSCHAP2_SUCCESS
+ *	MS-CHAP-Error for MS-CHAP or MS-CHAP v2
+ *	If MS-CHAP2 succeeds we MUST return MS-CHAP2-Success
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {

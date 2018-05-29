@@ -374,7 +374,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_
 	data_len = rad_recvfrom(fd, packet, flags);
 	if (data_len < 0) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
@@ -387,7 +387,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_
 	    (packet->dst_ipaddr.af == AF_UNSPEC) ||
 	    (packet->dst_port == 0)) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 #endif
@@ -401,7 +401,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
 		FR_DEBUG_STRERROR_PRINTF("Discarding packet: Larger than RFC limitation of 4096 bytes");
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
@@ -413,7 +413,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_
 	 */
 	if ((packet->data_len == 0) || !packet->data) {
 		FR_DEBUG_STRERROR_PRINTF("Empty packet: Socket is not ready");
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
@@ -421,7 +421,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_
 	 *	See if it's a well-formed RADIUS packet.
 	 */
 	if (!fr_radius_packet_ok(packet, max_attributes, require_ma, NULL)) {
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 

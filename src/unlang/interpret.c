@@ -1613,12 +1613,19 @@ void unlang_op_register(int type, unlang_op_t *op)
  *
  *  For now, just register the magic xlat function.
  */
-int unlang_initialize(void)
+int unlang_init(void)
 {
 	(void) xlat_register(NULL, "interpreter", xlat_interpreter, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	unlang_op_register(UNLANG_TYPE_RESUME, &(unlang_op_t){ .name = "resume", .func = unlang_resume });
-	unlang_op_initialize();	/* Register operations for the default keywords */
+
+	/* Register operations for the default keywords */
+	if (unlang_op_init() < 0) return -1;
 
 	return 0;
+}
+
+void unlang_free(void)
+{
+	unlang_op_free();
 }

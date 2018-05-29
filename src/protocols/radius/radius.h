@@ -99,13 +99,17 @@ ssize_t		fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, u
 
 void		fr_radius_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 
+int		fr_radius_init(void);
+
+void		fr_radius_free(void);
+
 /*
  *	protocols/radius/packet.c
  */
 RADIUS_PACKET	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);
 RADIUS_PACKET	*fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
 RADIUS_PACKET	*fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in);
-void		fr_radius_free(RADIUS_PACKET **);
+void		fr_radius_packet_free(RADIUS_PACKET **);
 
 int		fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 					char const *secret) CC_HINT(nonnull (1,3));

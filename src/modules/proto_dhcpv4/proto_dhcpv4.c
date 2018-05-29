@@ -79,11 +79,11 @@ fr_dict_autoload_t proto_dhcpv4_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_dhcpv4_message_type;
+static fr_dict_attr_t const *attr_dhcp_message_type;
 
 extern fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
-	{ .out = &attr_dhcpv4_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
+	{ .out = &attr_dhcp_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ NULL }
 };
 
@@ -160,7 +160,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(attr_dhcpv4_message_type, type_str, -1);
+	type_enum = fr_dict_enum_by_alias(attr_dhcp_message_type, type_str, -1);
 	if (!type_enum) {
 		cf_log_err(ci, "Invalid type \"%s\"", type_str);
 		return -1;
@@ -616,7 +616,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	Check that the packet type is known.
 		 */
 		packet_type = cf_section_name2(subcs);
-		dv = fr_dict_enum_by_alias(attr_dhcpv4_message_type, packet_type, -1);
+		dv = fr_dict_enum_by_alias(attr_dhcp_message_type, packet_type, -1);
 		if (!dv || ((dv->value->vb_uint32 > FR_DHCP_MAX) &&
 			    (dv->value->vb_uint32 == FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND))) {
 			cf_log_err(subcs, "Invalid DHCPV4 packet type in '%s %s {...}'",
@@ -749,7 +749,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
 	rad_assert(dict_dhcpv4 != NULL);
-	rad_assert(attr_dhcpv4_message_type != NULL);
+	rad_assert(attr_dhcp_message_type != NULL);
 
 	/*
 	 *	Bootstrap the process modules
@@ -861,7 +861,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 static int mod_load(void)
 {
 	if (fr_dhcpv4_init() < 0) {
-		PERROR("Failed initialising DHCP");
+		PERROR("Failed initialising protocol library");
 		return -1;
 	}
 

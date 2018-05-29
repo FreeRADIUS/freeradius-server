@@ -44,6 +44,24 @@ typedef struct rlm_cache_redis {
 	fr_redis_cluster_t	*cluster;
 } rlm_cache_redis_t;
 
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_cache_redis_dict[];
+fr_dict_autoload_t rlm_cache_redis_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_cache_created;
+static fr_dict_attr_t const *attr_cache_expires;
+
+extern fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[];
+fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[] = {
+	{ .out = &attr_cache_created, .name = "Cache-Created", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_cache_expires, .name = "Cache-Expires", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 /** Create a new rlm_cache_redis instance
  *
  * @copydetails cache_instantiate_t
@@ -206,7 +224,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache created date
 	 */
-	if (fr_dict_attr_is_top_level(head->lhs->tmpl_da) && (head->lhs->tmpl_da->attr == FR_CACHE_CREATED)) {
+	if (head->lhs->tmpl_da == attr_cache_created) {
 		vp_map_t *map;
 
 		c->created = head->rhs->tmpl_value.vb_date;
@@ -219,7 +237,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache expires date
 	 */
-	if (fr_dict_attr_is_top_level(head->lhs->tmpl_da) && (head->lhs->tmpl_da->attr == FR_CACHE_EXPIRES)) {
+	if (head->lhs->tmpl_da == attr_cache_expires) {
 		vp_map_t *map;
 
 		c->expires = head->rhs->tmpl_value.vb_date;

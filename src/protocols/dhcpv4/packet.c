@@ -29,14 +29,15 @@
 #include <freeradius-devel/util/util.h>
 #include <freeradius-devel/pair.h>
 #include <freeradius-devel/types.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/dhcpv4.h>
+#include "dhcpv4.h"
+#include "attrs.h"
 
 /** Retrieve a DHCP option from a raw packet buffer
  *
  *
  */
-uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t packet_size, unsigned int option)
+uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t packet_size, fr_dict_attr_t const *da)
 {
 	int overload = 0;
 	int field = DHCP_OPTION_FIELD;
@@ -87,7 +88,7 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 			return NULL;
 		}
 
-		if (data[0] == option) return data;
+		if (data[0] == da->attr) return data;
 
 		if (data[0] == 52) { /* overload sname and/or file */
 			overload = data[2];
@@ -198,7 +199,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	{
 		uint8_t const		*end;
 		ssize_t			len;
-		fr_dhcp_decoder_ctx_t	packet_ctx = {
+		fr_dhcp_ctx_t	packet_ctx = {
 						.root = fr_dict_root(fr_dict_internal)
 					};
 
@@ -222,7 +223,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		 *	If option Overload is present in the 'options' field, then fields 'file' and/or 'sname'
 		 *	are used to hold more options. They are partitioned and must be interpreted in sequence.
 		 */
-		vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, FR_DHCP_OVERLOAD, TAG_ANY);
+		vp = fr_pair_find_by_da(head, attr_dhcp_overload, TAG_ANY);
 		if (vp) {
 			if ((vp->vp_uint8 & 1) == 1) {
 				/*
@@ -239,7 +240,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 					}
 					p += len;
 				}
-				fr_pair_delete_by_num(&head, DHCP_MAGIC_VENDOR, FR_DHCP_BOOT_FILENAME, TAG_ANY);
+				fr_pair_delete_by_da(&head, attr_dhcp_boot_filename);
 			}
 			if ((vp->vp_uint8 & 2) == 2) {
 				/*
@@ -255,7 +256,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 					}
 					p += len;
 				}
-				fr_pair_delete_by_num(&head, DHCP_MAGIC_VENDOR, FR_DHCP_SERVER_HOST_NAME, TAG_ANY);
+				fr_pair_delete_by_da(&head, attr_dhcp_server_host_name);
 			}
 		}
 	}
@@ -273,14 +274,14 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		/*
 		 *	DHCP Opcode is request
 		 */
-		vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, FR_DHCP_OPCODE, TAG_ANY);
+		vp = fr_pair_find_by_da(head, attr_dhcp_opcode, TAG_ANY);
 		if (vp && vp->vp_uint8 == 1) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
-			vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, FR_DHCP_VENDOR_CLASS_IDENTIFIER, TAG_ANY);
+			vp = fr_pair_find_by_da(head, attr_dhcp_vendor_class_identifier, TAG_ANY);
 			if (vp && (strcmp(vp->vp_strvalue, "MSFT 98") == 0)) {
-				vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, FR_DHCP_FLAGS, TAG_ANY);
+				vp = fr_pair_find_by_da(head, attr_dhcp_flags, TAG_ANY);
 
 				/*
 				 *	Reply should be broadcast.
@@ -301,8 +302,8 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	Client can request a LARGER size, but not a smaller
 	 *	one.  They also cannot request a size larger than MTU.
 	 */
-	maxms = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, FR_DHCP_DHCP_MAXIMUM_MSG_SIZE, TAG_ANY);
-	mtu = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, FR_DHCP_INTERFACE_MTU_SIZE, TAG_ANY);
+	maxms = fr_pair_find_by_da(packet->vps, attr_dhcp_dhcp_maximum_msg_size, TAG_ANY);
+	mtu = fr_pair_find_by_da(packet->vps, attr_dhcp_interface_mtu_size, TAG_ANY);
 
 	if (mtu && (mtu->vp_uint16 < DEFAULT_PACKET_SIZE)) {
 		fr_strerror_printf("Client says MTU is smaller than minimum permitted by the specification");
@@ -337,7 +338,7 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 	if (packet->code == 0) packet->code = FR_DHCP_NAK;
 
 	/* store xid */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, FR_DHCP_TRANSACTION_ID, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_da(packet->vps, attr_dhcp_transaction_id, TAG_ANY))) {
 		packet->id = vp->vp_uint32;
 	} else {
 		packet->id = fr_rand();
@@ -357,7 +358,7 @@ RADIUS_PACKET *fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len)
 	uint32_t	magic;
 	uint8_t const	*code;
 
-	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, FR_DHCP_MESSAGE_TYPE);
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
 	if (!code) return NULL;
 
 	if (data_len < MIN_PACKET_SIZE) return NULL;

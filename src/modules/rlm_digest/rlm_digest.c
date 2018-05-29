@@ -342,7 +342,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	a1[a1_len] = ':';
 	a1_len++;
 
-	if (passwd->da->attr == FR_CLEARTEXT_PASSWORD) {
+	if (passwd->da == attr_cleartext_password) {
 		memcpy(&a1[a1_len], passwd->vp_octets, passwd->vp_length);
 		a1_len += passwd->vp_length;
 		a1[a1_len] = '\0';
@@ -377,7 +377,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		 *	If we find Digest-HA1, we assume it contains
 		 *	H(A1).
 		 */
-		if (passwd->da->attr == FR_CLEARTEXT_PASSWORD) {
+		if (passwd->da == attr_cleartext_password) {
 			fr_md5_calc(hash, &a1[0], a1_len);
 			fr_bin2hex((char *) &a1[0], hash, 16);
 		} else {	/* MUST be Digest-HA1 */
@@ -493,9 +493,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	 *     Compute MD5 if Digest-Algorithm == "MD5-Sess",
 	 *     or if we found a User-Password.
 	 */
-	if (((algo != NULL) &&
-	     (strcasecmp(algo->vp_strvalue, "MD5-Sess") == 0)) ||
-	    (passwd->da->attr == FR_CLEARTEXT_PASSWORD)) {
+	if (((algo != NULL) && (strcasecmp(algo->vp_strvalue, "MD5-Sess") == 0)) ||
+	    (passwd->da == attr_cleartext_password)) {
 		a1[a1_len] = '\0';
 		fr_md5_calc(&hash[0], &a1[0], a1_len);
 	} else {

@@ -122,7 +122,7 @@ extern fr_dict_attr_t const 	*dhcp_option_82;
 		fprintf(stdout, ## __VA_ARGS__); \
 		fprintf(stdout, "\n"); \
 	} \
-	fr_radius_free(&packet); \
+	fr_radius_packet_free(&packet); \
 	return NULL; \
 }
 #endif
@@ -132,7 +132,7 @@ extern fr_dict_attr_t const 	*dhcp_option_82;
  */
 typedef struct {
 	fr_dict_attr_t const *root;
-} fr_dhcp_decoder_ctx_t;
+} fr_dhcp_ctx_t;
 
 RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd);
 int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet);
@@ -163,7 +163,7 @@ ssize_t		fr_dhcpv4_encode_option(uint8_t *out, size_t outlen,
 /*
  *	packet.c
  */
-uint8_t const	*fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t packet_size, unsigned int option);
+uint8_t const	*fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t packet_size, fr_dict_attr_t const *da);
 
 int		fr_dhcpv4_packet_decode(RADIUS_PACKET *packet);
 

@@ -118,6 +118,28 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_perl_dict[];
+fr_dict_autoload_t rlm_perl_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_acct_status_type;
+static fr_dict_attr_t const *attr_chap_password;
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t rlm_perl_dict_attr[];
+fr_dict_attr_autoload_t rlm_perl_dict_attr[] = {
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
 /*
  * man perlembed
  */
@@ -938,11 +960,11 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			/*
 			 *	Update cached copies
 			 */
-			request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
-			request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
-			if (!request->password)
-				request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD,
-									TAG_ANY);
+			request->username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+			request->password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+			if (!request->password) request->password = fr_pair_find_by_da(request->packet->vps,
+										       attr_chap_password,
+										       TAG_ANY);
 		}
 
 		if ((get_hv_content(request->reply, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) == 0) {
@@ -1013,16 +1035,17 @@ RLM_PERL_FUNC(preacct)
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR	*pair;
-	int 		acctstatustype = 0;
+	int 		acct_status_type = 0;
 
-	if ((pair = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY)) != NULL) {
-		acctstatustype = pair->vp_uint32;
+	pair = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
+	if (pair != NULL) {
+		acct_status_type = pair->vp_uint32;
 	} else {
 		RDEBUG("Invalid Accounting Packet");
 		return RLM_MODULE_INVALID;
 	}
 
-	switch (acctstatustype) {
+	switch (acct_status_type) {
 	case FR_STATUS_START:
 		if (((rlm_perl_t const *)instance)->func_start_accounting) {
 			return do_perl(instance, request,

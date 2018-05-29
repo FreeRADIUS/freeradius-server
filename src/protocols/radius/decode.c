@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/util.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/io/test_point.h>
+#include "attrs.h"
 
 static void memcpy_bounded(void * restrict dst, const void * restrict src, size_t n, const void * restrict end)
 {
@@ -1576,18 +1577,29 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	return 2 + rcode;
 }
 
+static int _test_ctx_free(UNUSED fr_radius_ctx_t *ctx)
+{
+	fr_radius_free();
+
+	return 0;
+}
+
 static void *decode_test_ctx(TALLOC_CTX *ctx)
 {
-	static uint8_t vector[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+	static uint8_t vector[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+				    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
-	static fr_radius_ctx_t	test_ctx = {
-		.vector = vector
-	};
+	fr_radius_ctx_t	*test_ctx;
 
-	test_ctx.secret = talloc_strdup(ctx, "testing123");
-	test_ctx.root = fr_dict_root(fr_dict_internal);
+	test_ctx = talloc_zero(ctx, fr_radius_ctx_t);
+	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
+	test_ctx->root = fr_dict_root(dict_radius);
+	test_ctx->vector = vector;
+	talloc_set_destructor(test_ctx, _test_ctx_free);
 
-	return &test_ctx;
+	fr_radius_init();
+
+	return test_ctx;
 }
 
 /*

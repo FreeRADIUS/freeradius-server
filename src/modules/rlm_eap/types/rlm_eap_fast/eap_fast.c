@@ -701,7 +701,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			request->proxy->packet->src_port = 0;
 			request->proxy->packet->dst_port = 0;
 			fake->packet = NULL;
-			fr_radius_free(&fake->reply);
+			fr_radius_packet_free(&fake->reply);
 			fake->reply = NULL;
 
 			/*

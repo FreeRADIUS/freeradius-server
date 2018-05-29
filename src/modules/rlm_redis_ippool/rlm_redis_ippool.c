@@ -133,6 +133,26 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_redis_ippool_dict[];
+fr_dict_autoload_t rlm_redis_ippool_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_pool_action;
+static fr_dict_attr_t const *attr_acct_status_type;
+
+extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
+fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
+	{ .out = &attr_pool_action, .name = "Pool-Action", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
+
 #define EOL "\n"
 
 /** Lua script for allocating new leases
@@ -1232,13 +1252,13 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	/*
 	 *	Pool-Action override
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_POOL_ACTION, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
 	if (vp) return mod_action(inst, request, vp->vp_uint32);
 
 	/*
 	 *	Otherwise, guess the action by Acct-Status-Type
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 	if (!vp) {
 		RDEBUG2("Couldn't find &request:Acct-Status-Type or &control:Pool-Action, doing nothing...");
 		return RLM_MODULE_NOOP;
@@ -1271,7 +1291,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_POOL_ACTION, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
 	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
@@ -1285,7 +1305,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_POOL_ACTION, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
 	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 

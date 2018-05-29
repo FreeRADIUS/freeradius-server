@@ -263,7 +263,7 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
 
 #if 0
 	if (fr_dict_autoload((fr_dict_autoload_t const *)symbol) < 0) {
-		WARN("Failed loading dictionary: %s", fr_strerror());
+		WARN("Failed initialising protocol library: %s", fr_strerror());
 		return 0;
 	}
 #else

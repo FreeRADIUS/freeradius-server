@@ -210,7 +210,7 @@ RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd)
 	packet->data_len = data_len;
 	packet->data = talloc_array(packet, uint8_t, data_len);
 	if (!packet->data_len) {
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
@@ -219,7 +219,7 @@ RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd)
 			    &packet->dst_ipaddr, &packet->dst_port,
 			    &packet->if_index, &packet->timestamp);
 	if (data_len <= 0) {
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
@@ -239,7 +239,7 @@ RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd)
 	packet->id = ntohl(id);
 
 	if (!fr_vqp_ok(packet->data, &packet->data_len)) {
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 

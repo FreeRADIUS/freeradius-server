@@ -370,7 +370,9 @@ unlang_resume_t *unlang_resume_alloc(REQUEST *request, void *callback, void *sig
 
 void		unlang_map_init(void);
 
-void		unlang_op_initialize(void);
+int		unlang_op_init(void);
+
+void		unlang_op_free(void);
 
 #ifdef __cplusplus
 }

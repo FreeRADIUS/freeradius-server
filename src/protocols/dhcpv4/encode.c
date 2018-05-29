@@ -30,8 +30,9 @@
 #include <freeradius-devel/pair.h>
 #include <freeradius-devel/types.h>
 #include <freeradius-devel/proto.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/io/test_point.h>
+#include "dhcpv4.h"
+#include "attrs.h"
 
 /** Write DHCP option value into buffer
  *
@@ -294,7 +295,7 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	if (!vp) return -1;
 
 	if (fr_dict_vendor_num_by_da(vp->da) != DHCP_MAGIC_VENDOR) goto next; /* not a DHCP option */
-	if (vp->da->attr == FR_DHCP_MESSAGE_TYPE) goto next; /* already done */
+	if (vp->da == attr_dhcp_message_type) goto next; /* already done */
 	if ((vp->da->attr > 255) && (DHCP_BASE_ATTR(vp->da->attr) != FR_DHCP_OPTION_82)) {
 	next:
 		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
@@ -334,10 +335,31 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	return len;
 }
 
+static int _encode_test_ctx(UNUSED fr_dhcp_ctx_t *test_ctx)
+{
+	fr_dhcpv4_free();
+
+	return 0;
+}
+
+static void *encode_test_ctx(TALLOC_CTX *ctx)
+{
+	fr_dhcp_ctx_t *test_ctx;
+
+	test_ctx = talloc_zero(ctx, fr_dhcp_ctx_t);
+	test_ctx->root = fr_dict_root(fr_dict_internal);
+	talloc_set_destructor(test_ctx, _encode_test_ctx);
+
+	fr_dhcpv4_init();
+
+	return test_ctx;
+}
+
 /*
  *	Test points
  */
 extern fr_test_point_pair_encode_t dhcpv4_tp_encode;
 fr_test_point_pair_encode_t dhcpv4_tp_encode = {
+	.test_ctx	= encode_test_ctx,
 	.func		= fr_dhcpv4_encode_option
 };

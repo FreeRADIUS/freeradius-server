@@ -194,14 +194,11 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		}
 
 		result = RLM_MODULE_OK;
-	}
-	while (0);
+	} while (0);
 
-	if (pRecEntry != NULL)
-		dsDeallocRecordEntry(dsRef, pRecEntry);
+	if (pRecEntry != NULL) dsDeallocRecordEntry(dsRef, pRecEntry);
 
-	if (tDataBuff != NULL)
-		dsDataBufferDeAllocate(dsRef, tDataBuff);
+	if (tDataBuff != NULL) dsDataBufferDeAllocate(dsRef, tDataBuff);
 
 	if (pUserLocation != NULL)
 		talloc_free(pUserLocation);
@@ -218,8 +215,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		dsDataListDeallocate(dsRef, pAttrType);
 		free(pAttrType);
 	}
-	if (nodeRef != 0)
-		dsCloseDirNode(nodeRef);
+	if (nodeRef != 0) dsCloseDirNode(nodeRef);
 
 	return  result;
 }
@@ -237,15 +233,15 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	uint32_t		user_id_len		 = 0;
 	char			*username_string = NULL;
 	char			*short_user_name	 = NULL;
-	VALUE_PAIR		*response	 = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT,
-									  FR_MSCHAP2_RESPONSE, TAG_ANY);
+	VALUE_PAIR		*response;
 #ifndef NDEBUG
 	unsigned int t;
 #endif
 
+	response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY);
+
 	username_string = talloc_array(request, char, usernamepair->vp_length + 1);
-	if (!username_string)
-		return RLM_MODULE_FAIL;
+	if (!username_string) return RLM_MODULE_FAIL;
 
 	strlcpy(username_string, usernamepair->vp_strvalue, usernamepair->vp_length + 1);
 
@@ -350,8 +346,8 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	user_id_len =  24; /* strlen(&(response->vp_strvalue[26])); may contain NULL byte in the middle. */
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &user_id_len, sizeof(user_id_len));
 	uiCurr += sizeof(user_id_len);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[26]),
-	       user_id_len);
+
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[26]), user_id_len);
 	uiCurr += user_id_len;
 
 	/* Client generated use name (short name?) */
@@ -363,8 +359,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 
 	tDataBuff->fBufferLength = uiCurr;
 
-	status = dsDoDirNodeAuth(userNodeRef, pAuthType, 1, tDataBuff,
-				 pStepBuff, NULL);
+	status = dsDoDirNodeAuth(userNodeRef, pAuthType, 1, tDataBuff, pStepBuff, NULL);
 	if (status == eDSNoErr) {
 		if (pStepBuff->fBufferLength > 4) {
 			size_t len;

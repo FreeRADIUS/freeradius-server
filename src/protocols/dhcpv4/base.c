@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/net.h>
 #include <freeradius-devel/pcap.h>
+#include "attrs.h"
 
 static int instance_count = 0;
 
@@ -45,23 +46,27 @@ fr_dict_autoload_t dhcpv4_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_dhcp_boot_filename;
-static fr_dict_attr_t const *attr_dhcp_client_hardware_address;
-static fr_dict_attr_t const *attr_dhcp_client_ip_address;
-static fr_dict_attr_t const *attr_dhcp_flags;
-static fr_dict_attr_t const *attr_dhcp_gateway_ip_address;
-static fr_dict_attr_t const *attr_dhcp_hardware_address_length;
-static fr_dict_attr_t const *attr_dhcp_hardware_type;
-static fr_dict_attr_t const *attr_dhcp_hop_count;
-static fr_dict_attr_t const *attr_dhcp_number_of_seconds;
-static fr_dict_attr_t const *attr_dhcp_opcode;
-static fr_dict_attr_t const *attr_dhcp_server_host_name;
-static fr_dict_attr_t const *attr_dhcp_server_ip_address;
-static fr_dict_attr_t const *attr_dhcp_transaction_id;
-static fr_dict_attr_t const *attr_dhcp_your_ip_address;
-static fr_dict_attr_t const *attr_dhcp_dhcp_maximum_msg_size;
-static fr_dict_attr_t const *attr_dhcp_message_type;
-static fr_dict_attr_t const *attr_dhcp_parameter_request_list;
+fr_dict_attr_t const *attr_dhcp_boot_filename;
+fr_dict_attr_t const *attr_dhcp_client_hardware_address;
+fr_dict_attr_t const *attr_dhcp_client_ip_address;
+fr_dict_attr_t const *attr_dhcp_flags;
+fr_dict_attr_t const *attr_dhcp_gateway_ip_address;
+fr_dict_attr_t const *attr_dhcp_hardware_address_length;
+fr_dict_attr_t const *attr_dhcp_hardware_type;
+fr_dict_attr_t const *attr_dhcp_hop_count;
+fr_dict_attr_t const *attr_dhcp_number_of_seconds;
+fr_dict_attr_t const *attr_dhcp_opcode;
+fr_dict_attr_t const *attr_dhcp_server_host_name;
+fr_dict_attr_t const *attr_dhcp_server_ip_address;
+fr_dict_attr_t const *attr_dhcp_transaction_id;
+fr_dict_attr_t const *attr_dhcp_your_ip_address;
+fr_dict_attr_t const *attr_dhcp_dhcp_maximum_msg_size;
+fr_dict_attr_t const *attr_dhcp_interface_mtu_size;
+fr_dict_attr_t const *attr_dhcp_message_type;
+fr_dict_attr_t const *attr_dhcp_parameter_request_list;
+fr_dict_attr_t const *attr_dhcp_overload;
+fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
+fr_dict_attr_t const *attr_vendor_specific;
 
 extern fr_dict_attr_autoload_t dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
@@ -80,8 +85,12 @@ fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
 	{ .out = &attr_dhcp_transaction_id, .name = "DHCP-Transaction-Id", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_your_ip_address, .name = "DHCP-Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_dhcp_maximum_msg_size, .name = "DHCP-DHCP-Maximum-Msg-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_interface_mtu_size, .name = "DHCP-Interface-MTU-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_parameter_request_list, .name = "DHCP-Parameter-Request-List", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_overload, .name = "DHCP-Overload", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_vendor_class_identifier, .name = "DHCP-Vendor-Class-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
+	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
@@ -171,10 +180,10 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	/*
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
-	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da->attr == FR_DHCP_MESSAGE_TYPE)) &&
-	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da->attr != FR_DHCP_MESSAGE_TYPE))) return -1;
-	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da->attr != FR_DHCP_MESSAGE_TYPE)) &&
-	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da->attr == FR_DHCP_MESSAGE_TYPE))) return +1;
+	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da == attr_dhcp_message_type)) &&
+	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da != attr_dhcp_message_type))) return -1;
+	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da != attr_dhcp_message_type)) &&
+	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da == attr_dhcp_message_type))) return +1;
 
 	/*
 	 *	Relay-Agent is last.
@@ -234,7 +243,7 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 		return false;
 	}
 
-	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, FR_DHCP_MESSAGE_TYPE);
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		return false;

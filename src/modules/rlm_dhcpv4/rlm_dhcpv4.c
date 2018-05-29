@@ -56,7 +56,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	VALUE_PAIR	*vp, *head = NULL;
 	int		decoded = 0;
 	ssize_t		slen;
-	fr_dhcp_decoder_ctx_t	packet_ctx = {
+	fr_dhcp_ctx_t	packet_ctx = {
 				.root = fr_dict_root(fr_dict_internal)
 			};
 
@@ -177,7 +177,7 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 static int dhcp_load(void)
 {
 	if (fr_dhcpv4_init() < 0) {
-		PERROR("Failed loading DHCP dictionary");
+		PERROR("Failed initialising protocol library");
 		return -1;
 	}
 

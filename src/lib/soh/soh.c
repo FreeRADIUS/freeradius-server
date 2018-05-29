@@ -723,7 +723,7 @@ int fr_soh_init(void)
 	}
 
 	if (fr_dict_autoload(soh_dict) < 0) {
-		PERROR("Failed loading dictionary");
+		PERROR("Failed initialising protocol library");
 		return -1;
 	}
 

@@ -895,7 +895,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
-	if (unlang_initialize() < 0) exit(EXIT_FAILURE);
+	if (unlang_init() < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
@@ -1183,6 +1183,11 @@ finish:
 	 *	The only maps remaining are the ones registered by the server core.
 	 */
 	map_proc_free();
+
+	/*
+	 *	Free any resources used by the unlang interpreter.
+	 */
+	unlang_free();
 
 	/*
 	 *	And now nothing should be left anywhere except the

@@ -947,8 +947,21 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Don't bootstrap the dynamic submodule.  We're
 	 *	not even sure what that means...
 	 */
-
 	return 0;
+}
+
+static int mod_load(void)
+{
+	if (fr_radius_init() < 0) {
+		PERROR("Failed initialising protocol library");
+		return -1;
+	}
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	fr_radius_free();
 }
 
 fr_app_t proto_radius = {
@@ -957,6 +970,8 @@ fr_app_t proto_radius = {
 	.config			= proto_radius_config,
 	.inst_size		= sizeof(proto_radius_t),
 
+	.load			= mod_load,
+	.unload			= mod_unload,
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 	.open			= mod_open,

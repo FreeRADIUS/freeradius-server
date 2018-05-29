@@ -559,7 +559,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
-	if (unlang_initialize() < 0) exit(EXIT_FAILURE);
+	if (unlang_init() < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
@@ -850,6 +850,11 @@ cleanup:
 	 *	The only maps remaining are the ones registered by the server core.
 	 */
 	map_proc_free();
+
+	/*
+	 *	Free any resources used by the unlang interpreter.
+	 */
+	unlang_free();
 
 #if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
 	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */

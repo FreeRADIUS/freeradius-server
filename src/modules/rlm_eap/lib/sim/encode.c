@@ -902,7 +902,7 @@ ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, voi
 		return PAIR_ENCODE_ERROR;
 	}
 
-	if (vp->da->attr == FR_EAP_SIM_MAC) {
+	if (vp->da->attr == FR_SIM_MAC) {
 		next_encodable(cursor, encoder_ctx);
 		return 0;
 	}

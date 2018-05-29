@@ -53,9 +53,6 @@ typedef struct rlm_radius_udp_t {
 
 	uint32_t		max_packet_size;	//!< Maximum packet size.
 
-	fr_dict_attr_t const	*response_length;	//!< Cached Response-Length attribute.
-	fr_dict_attr_t const	*error_cause;		//!< Cache Error-Cause attribute.
-
 	bool			recv_buff_is_set;	//!< Whether we were provided with a recv_buf
 	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
 	bool			replicate;		//!< Copied from parent->replicate
@@ -201,22 +198,26 @@ fr_dict_autoload_t rlm_radius_udp_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_acct_delay_time;
+static fr_dict_attr_t const *attr_error_cause;
 static fr_dict_attr_t const *attr_event_timestamp;
 static fr_dict_attr_t const *attr_extended_attribute_1;
 static fr_dict_attr_t const *attr_message_authenticator;
 static fr_dict_attr_t const *attr_nas_identifier;
 static fr_dict_attr_t const *attr_original_packet_code;
 static fr_dict_attr_t const *attr_proxy_state;
+static fr_dict_attr_t const *attr_response_length;
 
 extern fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[];
 fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius},
+	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius},
 	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_EXTENDED, .dict = &dict_radius},
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_nas_identifier, .name = "NAS-Identifier", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ .out = &attr_original_packet_code, .name = "Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius},
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_response_length, .name = "Response-Length", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -615,12 +616,12 @@ static void protocol_error_reply(rlm_radius_udp_connection_t *c, REQUEST *reques
 {
 	VALUE_PAIR *vp, *error_cause;
 
-	error_cause = fr_pair_find_by_da(request->reply->vps, c->inst->error_cause, TAG_ANY);
+	error_cause = fr_pair_find_by_da(request->reply->vps, attr_error_cause, TAG_ANY);
 	if (!error_cause) return;
 
 	if ((error_cause->vp_uint32 == 601) &&
-	    c->inst->response_length &&
-	    ((vp = fr_pair_find_by_da(request->reply->vps, c->inst->response_length, TAG_ANY)) != NULL)) {
+	    attr_response_length &&
+	    ((vp = fr_pair_find_by_da(request->reply->vps, attr_response_length, TAG_ANY)) != NULL)) {
 
 		if (vp->vp_uint32 > c->buflen) {
 			request->module = c->inst->parent->name;
@@ -654,8 +655,8 @@ static void status_check_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_re
 	 *	Allow Response-Length in replies to Status-Server
 	 *	packets.
 	 */
-	if (c->inst->response_length &&
-	    ((vp = fr_pair_find_by_da(request->reply->vps, c->inst->response_length, TAG_ANY)) != NULL)) {
+	if (attr_response_length &&
+	    ((vp = fr_pair_find_by_da(request->reply->vps, attr_response_length, TAG_ANY)) != NULL)) {
 		if (vp->vp_uint32 > c->buflen) {
 			request->module = c->inst->parent->name;
 			RDEBUG("Increasing buffer size to %u for connection %s", vp->vp_uint32, c->name);
@@ -2537,9 +2538,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	(void) talloc_set_type(inst, rlm_radius_udp_t);
 	inst->config = conf;
-
-	inst->response_length = fr_dict_attr_by_name(NULL, "Response-Length");
-	inst->error_cause = fr_dict_attr_by_name(NULL, "Error-Cause");
 
 	return 0;
 }

@@ -96,7 +96,7 @@ RADIUS_PACKET *fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 /** Free a RADIUS_PACKET
  *
  */
-void fr_radius_free(RADIUS_PACKET **radius_packet_ptr)
+void fr_radius_packet_free(RADIUS_PACKET **radius_packet_ptr)
 {
 	RADIUS_PACKET *radius_packet;
 

@@ -90,8 +90,6 @@ fr_dict_autoload_t rlm_detail_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_packet_type;
-
 static fr_dict_attr_t const *attr_packet_src_ipv4_address;
 static fr_dict_attr_t const *attr_packet_dst_ipv4_address;
 static fr_dict_attr_t const *attr_packet_src_ipv6_address;
@@ -99,16 +97,20 @@ static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
 static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_dst_port;
 
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_user_password;
+
 extern fr_dict_attr_autoload_t rlm_detail_dict_attr[];
 fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-
 	{ .out = &attr_packet_src_ipv4_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ipv4_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -334,7 +336,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 			/*
 			 *	Don't print passwords in old format...
 			 */
-			if (compat && fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_USER_PASSWORD)) continue;
+			if (compat && (vp->da == attr_user_password)) continue;
 
 			/*
 			 *	Print all of the attributes, operator should always be '='.

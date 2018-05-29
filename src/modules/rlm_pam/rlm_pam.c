@@ -51,17 +51,37 @@ typedef struct rlm_pam_t {
 	char const *pam_auth_name;
 } rlm_pam_t;
 
-static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("pam_auth", FR_TYPE_STRING, rlm_pam_t, pam_auth_name) },
-	CONF_PARSER_TERMINATOR
-};
-
-typedef struct rlm_pam_data_t {
+typedef struct {
 	REQUEST		*request;	//!< The current request.
 	char const	*username;	//!< Username to provide to PAM when prompted.
 	char const	*password;	//!< Password to provide to PAM when prompted.
 	bool		error;		//!< True if pam_conv failed.
 } rlm_pam_data_t;
+
+static const CONF_PARSER module_config[] = {
+	{ FR_CONF_OFFSET("pam_auth", FR_TYPE_STRING, rlm_pam_t, pam_auth_name) },
+	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_pam_dict[];
+fr_dict_autoload_t rlm_pam_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_pam_auth;
+static fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t rlm_pam_dict_attr[];
+fr_dict_attr_autoload_t rlm_pam_dict_attr[] = {
+	{ .out = &attr_pam_auth, .name = "Pam-Auth", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
 
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
@@ -79,10 +99,10 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  */
 static int pam_conv(int num_msg, struct pam_message const **msg, struct pam_response **resp, void *appdata_ptr)
 {
-	int count;
-	struct pam_response *reply;
-	REQUEST *request;
-	rlm_pam_data_t *pam_config = (rlm_pam_data_t *) appdata_ptr;
+	int		count;
+	struct		pam_response *reply;
+	REQUEST		*request;
+	rlm_pam_data_t	*pam_config = (rlm_pam_data_t *) appdata_ptr;
 
 	request = pam_config->request;
 
@@ -219,8 +239,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *  Ensure that we're being passed a plain-text password,
 	 *  and not anything else.
 	 */
-	if (request->password->da->attr != FR_USER_PASSWORD) {
-		RAUTH("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->da->name);
+	if (request->password->da != attr_user_password) {
+		RAUTH("Attribute \"%s\" is required for authentication.  Cannot use \"%s\".",
+		      attr_user_password->name, request->password->da->name);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -228,7 +249,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	Let the 'users' file over-ride the PAM auth name string,
 	 *	for backwards compatibility.
 	 */
-	pair = fr_pair_find_by_num(request->control, 0, FR_PAM_AUTH, TAG_ANY);
+	pair = fr_pair_find_by_da(request->control, attr_pam_auth, TAG_ANY);
 	if (pair) pam_auth_string = pair->vp_strvalue;
 
 	ret = do_pam(request, request->username->vp_strvalue, request->password->vp_strvalue, pam_auth_string);

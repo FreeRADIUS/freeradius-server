@@ -499,7 +499,7 @@ int tls_init(void)
 	ENGINE_register_all_complete();
 
 	if (fr_dict_autoload(tls_dict) < 0) {
-		PERROR("Failed loading dictionary");
+		PERROR("Failed initialising protocol library");
 		tls_free();
 		return -1;
 	}

@@ -25,13 +25,47 @@
 
 RCSID("$Id$")
 
+#include <fcntl.h>
+#include <ctype.h>
+
 #include <freeradius-devel/util/util.h>
 
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/udp.h>
+#include "attrs.h"
 
-#include <fcntl.h>
-#include <ctype.h>
+static int instance_count = 0;
+
+fr_dict_t *dict_freeradius;
+fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t libfreeradius_radius_dict[];
+fr_dict_autoload_t libfreeradius_radius_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_raw_attribute;
+fr_dict_attr_t const *attr_chap_challenge;
+fr_dict_attr_t const *attr_chargeable_user_identity;
+fr_dict_attr_t const *attr_eap_message;
+fr_dict_attr_t const *attr_message_authenticator;
+fr_dict_attr_t const *attr_state;
+fr_dict_attr_t const *attr_vendor_specific;
+
+extern fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[];
+fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
+	{ .out = &attr_raw_attribute, .name = "Raw-Attribute", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_chargeable_user_identity, .name = "Chargeable-User-Identity", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+
+	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
+	{ NULL }
+};
 
 /** RADIUS on-the-wire format attribute sizes
  *
@@ -931,7 +965,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 			 *	Permit the admin to send BADLY formatted
 			 *	attributes with a debug build.
 			 */
-			if (vp->da->attr == FR_RAW_ATTRIBUTE) {
+			if (vp->da == attr_raw_attribute) {
 				if (vp->vp_length > room) {
 					len = room;
 				} else {
@@ -951,7 +985,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		 *	Set the Message-Authenticator to the correct
 		 *	length and initial value.
 		 */
-		if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
+		if (vp->da == attr_message_authenticator) {
 			last_len = 16;
 		} else {
 			last_len = vp->vp_length;
@@ -1055,6 +1089,25 @@ static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
 }
 
+int fr_radius_init(void)
+{
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
+
+	if (fr_dict_autoload(libfreeradius_radius_dict) < 0) return -1;
+	if (fr_dict_attr_autoload(libfreeradius_radius_dict_attr) < 0) return -1;
+
+	return 0;
+}
+
+void fr_radius_free(void)
+{
+	if (--instance_count > 0) return;
+
+	fr_dict_autofree(libfreeradius_radius_dict);
+}
 
 /** Print a raw RADIUS packet as hex.
  *

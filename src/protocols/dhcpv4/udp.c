@@ -31,7 +31,8 @@
 #include <freeradius-devel/types.h>
 #include <freeradius-devel/proto.h>
 #include <freeradius-devel/udpfromto.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
+#include "dhcpv4.h"
+#include "attrs.h"
 
 #ifndef __MINGW32__
 #  include <sys/ioctl.h>

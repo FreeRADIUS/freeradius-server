@@ -109,10 +109,6 @@ typedef struct {
 
 	struct timeval		connection_timeout;	//!< How long to wait to open a socket.
 	struct timeval		reconnection_delay;	//!< How long to wait to retry.
-
-	fr_dict_attr_t const	*msg_da;		//!< Log-Message attribute.
-	fr_dict_attr_t const	*type_da;		//!< Log-Type attribute.
-	fr_dict_attr_t const	*lvl_da;		//!< Log-Level attribute.
 } rlm_logtee_t;
 
 /** Per-thread instance data
@@ -181,6 +177,26 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("reconnection_delay", FR_TYPE_TIMEVAL, rlm_logtee_t, reconnection_delay), .dflt = "1.0" },
 
 	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_logtee_dict[];
+fr_dict_autoload_t rlm_logtee_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_log_level;
+static fr_dict_attr_t const *attr_log_message;
+static fr_dict_attr_t const *attr_log_type;
+
+extern fr_dict_attr_autoload_t rlm_logtee_dict_attr[];
+fr_dict_attr_autoload_t rlm_logtee_dict_attr[] = {
+	{ .out = &attr_log_level, .name = "Log-Level", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_log_message, .name = "Log-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_log_type, .name = "Log-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
 };
 
 static void logtee_fd_idle(rlm_logtee_thread_t *t);
@@ -434,7 +450,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 	 *	None of this should involve mallocs unless msg > 1k
 	 */
 	msg = talloc_typed_vasprintf(t->msg, fmt, ap);
-	fr_value_box_strdup_buffer_shallow(NULL, &t->msg->data, inst->msg_da, msg, true);
+	fr_value_box_strdup_buffer_shallow(NULL, &t->msg->data, attr_log_message, msg, true);
 
 	t->type->vp_uint32 = (uint32_t) type;
 	t->lvl->vp_uint32 = (uint32_t) lvl;
@@ -534,9 +550,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	 *	Pre-allocate temporary attributes
 	 */
 	MEM(t->msg_pool = talloc_pool(t, 1024));
-	MEM(t->msg = fr_pair_afrom_da(t->msg_pool, inst->msg_da));
-	MEM(t->type = fr_pair_afrom_da(t, inst->type_da));
-	MEM(t->lvl = fr_pair_afrom_da(t, inst->lvl_da));
+	MEM(t->msg = fr_pair_afrom_da(t->msg_pool, attr_log_message));
+	MEM(t->type = fr_pair_afrom_da(t, attr_log_type));
+	MEM(t->lvl = fr_pair_afrom_da(t, attr_log_level));
 
 	/*
 	 *	This opens the outbound connection
@@ -558,25 +574,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_logtee_t	*inst = instance;
-	char			prefix[100];
-
-	inst->msg_da = fr_dict_attr_by_name(NULL, "Log-Message");
-	if (!inst->msg_da) {
-		ERROR("Missing definition for \"Log-Message\"");
-		return -1;
-	}
-
-	inst->type_da = fr_dict_attr_by_name(NULL, "Log-Type");
-	if (!inst->type_da) {
-		ERROR("Missing definition for \"Log-Type\"");
-		return -1;
-	}
-
-	inst->lvl_da = fr_dict_attr_by_name(NULL, "Log-Level");
-	if (!inst->lvl_da) {
-		ERROR("Missing definition for \"Log-Level\"");
-		return -1;
-	}
+	char		prefix[100];
 
 	/*
 	 *	Escape filenames only if asked.

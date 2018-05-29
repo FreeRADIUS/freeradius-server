@@ -107,6 +107,21 @@ static const CONF_PARSER udp_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_dhcpv4;
+
+extern fr_dict_autoload_t proto_dhcpv4_dict[];
+fr_dict_autoload_t proto_dhcpv4_dict[] = {
+	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_dhcp_message_type;
+
+extern fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[];
+fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
+	{ .out = &attr_dhcp_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
+	{ NULL }
+};
 
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
@@ -227,7 +242,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		/*
 		 *	This isn't available in the packet header.
 		 */
-		code = fr_dhcpv4_packet_get_option(packet, buffer_len, FR_DHCP_MESSAGE_TYPE);
+		code = fr_dhcpv4_packet_get_option(packet, buffer_len, attr_dhcp_message_type);
 		if (!code || (code[1] < 1) || (code[2] == 0) || (code[2] >= FR_DHCP_INFORM)) {
 			DEBUG("WARNING - silently discarding reply due to invalid or missing message type");
 			return 0;

@@ -363,7 +363,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	ssize_t			ret;
 	uint8_t const		*p = data;
 	fr_dict_attr_t const	*child;
-	fr_dhcp_decoder_ctx_t	*packet_ctx = decoder_ctx;
+	fr_dhcp_ctx_t	*packet_ctx = decoder_ctx;
 	fr_dict_attr_t const	*parent;
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
@@ -434,13 +434,24 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	return ret;
 }
 
-static void *decode_test_ctx(UNUSED TALLOC_CTX *ctx)
+static int _decode_test_ctx(UNUSED fr_dhcp_ctx_t *test_ctx)
 {
-	static fr_dhcp_decoder_ctx_t test_ctx;
+	fr_dhcpv4_free();
 
-	test_ctx.root = fr_dict_root(fr_dict_internal);
+	return 0;
+}
 
-	return &test_ctx;
+static void *decode_test_ctx(TALLOC_CTX *ctx)
+{
+	fr_dhcp_ctx_t *test_ctx;
+
+	test_ctx = talloc_zero(ctx, fr_dhcp_ctx_t);
+	test_ctx->root = fr_dict_root(fr_dict_internal);
+	talloc_set_destructor(test_ctx, _decode_test_ctx);
+
+	fr_dhcpv4_init();
+
+	return test_ctx;
 }
 
 /*
