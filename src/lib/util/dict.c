@@ -2238,11 +2238,9 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	/*
 	 *	The config files may reference the unknown by name.
 	 *	If so, use the pre-defined name instead of an unknown
-	 *	one.
-	 *
-	 *	@fixme: pass the root into this function!
+	 *	one.!
 	 */
-	da = fr_dict_attr_by_name(NULL, n->name);
+	da = fr_dict_attr_by_name(fr_dict_by_da(parent), n->name);
 	if (da) {
 		fr_dict_unknown_free(&parent);
 		parent = n;
