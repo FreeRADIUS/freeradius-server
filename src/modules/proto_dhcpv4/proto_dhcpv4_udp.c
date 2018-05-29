@@ -109,16 +109,16 @@ static const CONF_PARSER udp_listen_config[] = {
 
 static fr_dict_t *dict_dhcpv4;
 
-extern fr_dict_autoload_t proto_dhcpv4_dict[];
-fr_dict_autoload_t proto_dhcpv4_dict[] = {
+extern fr_dict_autoload_t proto_dhcpv4_udp_dict[];
+fr_dict_autoload_t proto_dhcpv4_udp_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
 	{ NULL }
 };
 
 static fr_dict_attr_t const *attr_dhcp_message_type;
 
-extern fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[];
-fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
+extern fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[];
+fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
 	{ .out = &attr_dhcp_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ NULL }
 };
