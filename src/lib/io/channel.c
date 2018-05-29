@@ -137,6 +137,14 @@ typedef struct fr_channel_t {
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
 } fr_channel_t;
 
+const FR_NAME_NUMBER channel_packet_priority[] = {
+	{ "now",	PRIORITY_NOW },
+	{ "high",	PRIORITY_HIGH },
+	{ "normal",	PRIORITY_NORMAL },
+	{ "low",	PRIORITY_LOW },
+	{ NULL,		-1 }
+};
+
 
 /** Create a new channel
  *

@@ -31,8 +31,18 @@
 #include "proto_vmps.h"
 
 extern fr_app_t proto_vmps;
+static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static const CONF_PARSER priority_config[] = {
+	{ FR_CONF_OFFSET("VMPS-Join-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST]),
+	   .func = priority_parse, .dflt = "low" },
+	{ FR_CONF_OFFSET("VMPS-Reconfirm-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST]),
+	   .func = priority_parse, .dflt = "low" },
+
+	CONF_PARSER_TERMINATOR
+};
 
 static CONF_PARSER const limit_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, proto_vmps_t, io.idle_timeout), .dflt = "30.0" } ,
@@ -61,25 +71,7 @@ static CONF_PARSER const proto_vmps_config[] = {
 	  .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
-
-	CONF_PARSER_TERMINATOR
-};
-
-
-/*
- *	Allow configurable priorities for each listener.
- */
-static uint32_t priorities[FR_MAX_VMPS_CODE] = {
-	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST] = PRIORITY_LOW,
-	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST] = PRIORITY_LOW,
-};
-
-static const CONF_PARSER priority_config[] = {
-	{ FR_CONF_OFFSET("VMPS-Join-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST]),
-	  .dflt = STRINGIFY(PRIORITY_LOW) },
-	{ FR_CONF_OFFSET("VMPS-Reconfirm-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST]),
-	  .dflt = STRINGIFY(PRIORITY_LOW) },
-
+	{ FR_CONF_POINTER("priority", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) priority_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -99,6 +91,16 @@ fr_dict_attr_autoload_t proto_vmps_dict_attr[] = {
 	{ NULL }
 };
 
+static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	int32_t priority;
+
+	if (cf_pair_in_table(&priority, channel_packet_priority, cf_item_to_pair(ci)) < 0) return -1;
+
+	*((uint32_t *)out) = (uint32_t)priority;
+
+	return 0;
+}
 
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
@@ -680,7 +682,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	proto_vmps_t 		*inst = talloc_get_type_abort(instance, proto_vmps_t);
 	size_t			i = 0;
 	CONF_PAIR		*cp = NULL;
-	CONF_SECTION		*subcs;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
@@ -740,19 +741,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->io.nak_lifetime, >=, 1, 0);
 	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->io.nak_lifetime, <=, 600, 0);
-
-	/*
-	 *	Hide this for now.  It's only for people who know what
-	 *	they're doing.
-	 */
-	subcs = cf_section_find(conf, "priority", NULL);
-	if (subcs) {
-		if (cf_section_rules_push(subcs, priority_config) < 0) return -1;
-		if (cf_section_parse(NULL, NULL, subcs) < 0) return -1;
-	} else {
-		rad_assert(sizeof(inst->priorities) == sizeof(priorities));
-		memcpy(&inst->priorities, &priorities, sizeof(priorities));
-	}
 
 	/*
 	 *	Tell the master handler about the main protocol instance.

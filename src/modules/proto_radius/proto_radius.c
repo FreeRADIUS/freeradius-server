@@ -54,14 +54,6 @@ static CONF_PARSER const limit_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const FR_NAME_NUMBER priorities[] = {
-	{ "now",	PRIORITY_NOW },
-	{ "high",	PRIORITY_HIGH },
-	{ "normal",	PRIORITY_NORMAL },
-	{ "low",	PRIORITY_LOW },
-	{ NULL,		-1 }
-};
-
 static const CONF_PARSER priority_config[] = {
 	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCESS_REQUEST]),
 	  .func = priority_parse, .dflt = "high" },
@@ -122,7 +114,7 @@ static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUS
 {
 	int32_t priority;
 
-	if (cf_pair_in_table(&priority, priorities, cf_item_to_pair(ci)) < 0) return -1;
+	if (cf_pair_in_table(&priority, channel_packet_priority, cf_item_to_pair(ci)) < 0) return -1;
 
 	*((uint32_t *)out) = (uint32_t)priority;
 

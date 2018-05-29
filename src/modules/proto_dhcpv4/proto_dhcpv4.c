@@ -30,8 +30,27 @@
 #include "proto_dhcpv4.h"
 
 extern fr_app_t proto_dhcpv4;
+static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static const CONF_PARSER priority_config[] = {
+	{ FR_CONF_OFFSET("DHCP-Discover", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_DISCOVER]),
+	  .func = priority_parse, .dflt = "normal" },
+	{ FR_CONF_OFFSET("DHCP-Request", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_REQUEST]),
+	  .func = priority_parse, .dflt = "normal" },
+	{ FR_CONF_OFFSET("DHCP-Decline", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_DECLINE]),
+	  .func = priority_parse, .dflt = "normal" },
+	{ FR_CONF_OFFSET("DHCP-Release", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_RELEASE]),
+	  .func = priority_parse, .dflt = "normal" },
+	{ FR_CONF_OFFSET("DHCP-Inform", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_INFORM]),
+	  .func = priority_parse, .dflt = "normal" },
+	{ FR_CONF_OFFSET("DHCP-Lease-Query", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_LEASE_QUERY]),
+	  .func = priority_parse, .dflt = "low" },
+	{ FR_CONF_OFFSET("DHCP-Bulk-Lease-Query", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_BULK_LEASE_QUERY]),
+	  .func = priority_parse, .dflt = "low" },
+	CONF_PARSER_TERMINATOR
+};
 
 static CONF_PARSER const limit_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, proto_dhcpv4_t, io.idle_timeout), .dflt = "30.0" } ,
@@ -46,6 +65,7 @@ static CONF_PARSER const limit_config[] = {
 	 */
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_dhcpv4_t, max_packet_size) } ,
 	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_dhcpv4_t, num_messages) } ,
+	{ FR_CONF_POINTER("priority", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) priority_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -87,38 +107,16 @@ fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
 	{ NULL }
 };
 
-/*
- *	Allow configurable priorities for each listener.
- */
-static uint32_t priorities[FR_DHCP_MAX] = {
-	[FR_DHCP_DISCOVER] = PRIORITY_NORMAL,
-	[FR_DHCP_REQUEST] = PRIORITY_NORMAL,
-	[FR_DHCP_DECLINE] = PRIORITY_NORMAL,
-	[FR_DHCP_RELEASE] = PRIORITY_NORMAL,
-	[FR_DHCP_INFORM] = PRIORITY_NORMAL,
-	[FR_DHCP_LEASE_QUERY] = PRIORITY_LOW,
-	[FR_DHCP_BULK_LEASE_QUERY] = PRIORITY_LOW,
-};
+static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	int32_t priority;
 
+	if (cf_pair_in_table(&priority, channel_packet_priority, cf_item_to_pair(ci)) < 0) return -1;
 
-static const CONF_PARSER priority_config[] = {
-	{ FR_CONF_OFFSET("DHCP-Discover", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_DISCOVER]),
-	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
-	{ FR_CONF_OFFSET("DHCP-Request", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_REQUEST]),
-	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
-	{ FR_CONF_OFFSET("DHCP-Decline", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_DECLINE]),
-	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
-	{ FR_CONF_OFFSET("DHCP-Release", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_RELEASE]),
-	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
-	{ FR_CONF_OFFSET("DHCP-Inform", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_INFORM]),
-	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
-	{ FR_CONF_OFFSET("DHCP-Lease-Query", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_LEASE_QUERY]),
-	  .dflt = STRINGIFY(PRIORITY_LOW) },
-	{ FR_CONF_OFFSET("DHCP-Bulk-Lease-Query", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_BULK_LEASE_QUERY]),
-	  .dflt = STRINGIFY(PRIORITY_LOW) },
-	CONF_PARSER_TERMINATOR
-};
+	*((uint32_t *)out) = (uint32_t)priority;
 
+	return 0;
+}
 
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
@@ -174,7 +172,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 		return -1;
 	}
 
-	if (!priorities[code]) {
+	if (!type_lib_table[code]) {
 		cf_log_err(ci, "Cannot listen for unsupported 'type = %s'", type_str);
 		return -1;
 	}
@@ -741,7 +739,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	proto_dhcpv4_t 		*inst = talloc_get_type_abort(instance, proto_dhcpv4_t);
 	size_t			i = 0;
 	CONF_PAIR		*cp = NULL;
-	CONF_SECTION		*subcs;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
@@ -801,20 +798,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->io.nak_lifetime, >=, 1, 0);
 	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->io.nak_lifetime, <=, 600, 0);
-
-	/*
-	 *	Hide this for now.  It's only for people who know what
-	 *	they're doing.
-	 */
-	subcs = cf_section_find(conf, "priority", NULL);
-	if (subcs) {
-		if (cf_section_rules_push(subcs, priority_config) < 0) return -1;
-		if (cf_section_parse(NULL, NULL, subcs) < 0) return -1;
-
-	} else {
-		rad_assert(sizeof(inst->priorities) == sizeof(priorities));
-		memcpy(&inst->priorities, &priorities, sizeof(priorities));
-	}
 
 	/*
 	 *	Tell the master handler about the main protocol instance.
