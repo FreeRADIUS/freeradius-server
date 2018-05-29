@@ -1022,65 +1022,67 @@ int fr_sim_decode(REQUEST *request, fr_cursor_t *decoded,
 	return 0;
 }
 
+static int _test_ctx_free(UNUSED fr_sim_decode_ctx_t *ctx)
+{
+	fr_sim_free();
+
+	return 0;
+}
+
+static fr_sim_decode_ctx_t *test_ctx_init(TALLOC_CTX *ctx, uint8_t const *k_encr, size_t k_encr_len)
+{
+	fr_sim_decode_ctx_t	*test_ctx;
+	fr_sim_keys_t		*keys;
+
+	test_ctx = talloc_zero(ctx, fr_sim_decode_ctx_t);
+	test_ctx->keys = keys = talloc_zero(test_ctx, fr_sim_keys_t);
+	memcpy(keys->k_encr, k_encr, k_encr_len);
+	talloc_set_destructor(test_ctx, _test_ctx_free);
+
+	fr_sim_init();
+
+	return test_ctx;
+}
 /*
  *	Test ctx data
  */
-static void *decode_test_ctx_sim(UNUSED TALLOC_CTX *ctx)
+static void *decode_test_ctx_sim(TALLOC_CTX *ctx)
 {
-	static fr_sim_decode_ctx_t	test_ctx;
-	static fr_sim_keys_t		keys = {
-						.k_encr = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
-							    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f }
-					};
+	fr_sim_decode_ctx_t	*test_ctx;
+	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
+					     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
-	fr_sim_init();
+	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
+	test_ctx->root = attr_eap_sim_root;
+	test_ctx->have_iv = true;	/* Ensures IV is all zeros */
 
-	test_ctx.root = attr_eap_sim_root;
-	test_ctx.keys = &keys;
-	memset(&test_ctx.iv, 0, sizeof(test_ctx.iv));
-	test_ctx.have_iv = true;	/* Ensures IV is all zeros */
-
-	fr_sim_free();
-
-	return &test_ctx;
+	return test_ctx;
 }
 
-static void *decode_test_ctx_aka(UNUSED TALLOC_CTX *ctx)
+
+static void *decode_test_ctx_aka(TALLOC_CTX *ctx)
 {
-	static fr_sim_decode_ctx_t	test_ctx;
-	static fr_sim_keys_t		keys = {
-						.k_encr = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
-							    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f }
-					};
+	fr_sim_decode_ctx_t *test_ctx;
+	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
+					     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
-	fr_sim_init();
+	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
+	test_ctx->root = attr_eap_aka_root;
+	test_ctx->have_iv = true;	/* Ensures IV is all zeros */
 
-	test_ctx.root = attr_eap_aka_root;
-	test_ctx.keys = &keys;
-	memset(&test_ctx.iv, 0, sizeof(test_ctx.iv));
-	test_ctx.have_iv = true;	/* Ensures IV is all zeros */
-
-	fr_sim_free();
-
-	return &test_ctx;
+	return test_ctx;
 }
 
-static void *decode_test_ctx_sim_rfc4186(UNUSED TALLOC_CTX *ctx)
+static void *decode_test_ctx_sim_rfc4186(TALLOC_CTX *ctx)
 {
-	static fr_sim_decode_ctx_t	test_ctx;
-	static fr_sim_keys_t		keys = {
-						.k_encr = { 0x53, 0x6e, 0x5e, 0xbc, 0x44 ,0x65, 0x58, 0x2a,
-							    0xa6, 0xa8, 0xec, 0x99, 0x86, 0xeb, 0xb6, 0x20 }
-					};
+	fr_sim_decode_ctx_t *test_ctx;
+	static uint8_t		k_encr[] = { 0x53, 0x6e, 0x5e, 0xbc, 0x44 ,0x65, 0x58, 0x2a,
+					     0xa6, 0xa8, 0xec, 0x99, 0x86, 0xeb, 0xb6, 0x20 };
 
-	fr_sim_init();
+	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
+	test_ctx->root = attr_eap_sim_root;
 
-	test_ctx.root = attr_eap_sim_root;
-	test_ctx.keys = &keys;
-
-	fr_sim_free();
-
-	return &test_ctx;
+	return test_ctx;
 }
 
 /*
