@@ -158,7 +158,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			     &address->dst_ipaddr, &address->dst_port,
 			     &address->if_index, &timestamp);
 	if (data_size < 0) {
-		DEBUG2("proto_dhcpv4_udp got read error %zd: %s", data_size, fr_strerror());
+		DEBUG2("proto_dhvpv4_udp got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
 	}
 
@@ -214,7 +214,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 {
 	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-	fr_io_address_t			address = *track->address;
+	fr_io_address_t			address;
 
 	int				flags;
 	ssize_t				data_size;
@@ -231,13 +231,25 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	rad_assert(track->reply_len == 0);
 
 	/*
+	 *	Swap src/dst IP/port
+	 */
+	address.src_ipaddr = track->address->dst_ipaddr;
+	address.src_port = track->address->dst_port;
+	address.dst_ipaddr = track->address->src_ipaddr;
+	address.dst_port = track->address->src_port;
+	address.if_index = track->address->if_index;
+
+	/*
 	 *	Figure out which kind of packet we're sending.
 	 */
 	if (!inst->connection) {
-		uint8_t const *code;
+		uint8_t const *code, *sid;
 		uint32_t ipaddr;
 		dhcp_packet_t *packet = (dhcp_packet_t *) buffer;
 		dhcp_packet_t *request = (dhcp_packet_t *) track->packet; /* only 20 bytes tho! */
+#ifdef WITH_IFINDEX_IPADDR_RESOLUTION
+		fr_ipaddr_t primary;
+#endif
 
 		/*
 		 *	This isn't available in the packet header.
@@ -246,6 +258,33 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		if (!code || (code[1] < 1) || (code[2] == 0) || (code[2] >= FR_DHCP_INFORM)) {
 			DEBUG("WARNING - silently discarding reply due to invalid or missing message type");
 			return 0;
+		}
+
+		/*
+		 *	Set the source IP of the packet.
+		 *
+		 *	- if src_ipaddr is unicast, use that
+		 *	- else if socket wasn't bound to *, then use that
+		 *	- else if we have if_index, get main IP from that interface and use that.
+		 *	- else for offer/ack, look at option 54, for Server Identification and use that
+		 *	- else leave source IP as whatever is already in "address.src_ipaddr".
+		 */
+		if (inst->src_ipaddr.addr.v4.s_addr != INADDR_ANY) {
+			address.src_ipaddr = inst->src_ipaddr;
+
+		} else if (inst->ipaddr.addr.v4.s_addr != INADDR_ANY) {
+			address.src_ipaddr = inst->ipaddr;
+
+#ifdef WITH_IFINDEX_IPADDR_RESOLUTION
+		} else if ((address->if_index > 0) &&
+			   (fr_ipaddr_from_ifindex(&primary, inst->sockfd, &address.dst_ipaddr.af,
+						   &address.if_index) == 0)) {
+			address.src_ipaddr = primary;
+#endif
+		} else if (((code[2] == FR_DHCP_OFFER) || (code[2] == FR_DHCP_ACK)) &&
+			   ((sid = fr_dhcpv4_packet_get_option(packet, buffer_len, FR_DHCP_DHCP_SERVER_IDENTIFIER)) != NULL) &&
+			   (sid[1] == 4)) {
+			memcpy(&address.src_ipaddr.addr.v4.s_addr, sid + 2, 4);
 		}
 
 		/*
@@ -258,8 +297,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		if (ipaddr != INADDR_ANY) {
 			address.dst_ipaddr.addr.v4.s_addr = ipaddr;
 			address.dst_port = inst->port;
-			address.src_ipaddr = inst->src_ipaddr;
-			address.dst_port = inst->port;
+			address.src_port = inst->port;
 
 			/*
 			 *	Increase the hop count for client
@@ -294,7 +332,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 */
 		if (((request->flags & FR_DHCP_FLAGS_VALUE_BROADCAST) != 0) &&
 		    (request->ciaddr == INADDR_ANY)) {
-			DEBUG("Reply will be broadcast");
+			DEBUG("Reply will be broadcast due to client request.");
 			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			goto send_reply;
 		}
@@ -309,6 +347,17 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			goto send_reply;
 		}
 
+		/*
+		 *	The original packet was unicast to us, such as
+		 *	via a relay.  We have a unicast destination
+		 *	address, so we just use that.
+		 */
+		if ((packet->yiaddr == htonl(INADDR_ANY)) &&
+		    (address.dst_ipaddr.addr.v4.s_addr != htonl(INADDR_BROADCAST))) {
+			DEBUG("Reply will be unicast to source IP from original packet.");
+			goto send_reply;
+		}
+
 		switch (code[2]) {
 			/*
 			 *	Offers are sent to YIADDR if we
@@ -319,11 +368,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			 */
 		case FR_DHCP_OFFER:
 			/*
-			 *	The master_io automatically swaps
-			 *	src/dst ip/port before calling us.  So
-			 *	if we received the request from
-			 *	YIADDR, then the reply will
-			 *	automatically be sent there as well.
+			 *	If the packet was unicast from the
+			 *	client, unicast it back.
 			 */
 			if (memcmp(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4) == 0) {
 				DEBUG("Reply will be unicast to YIADDR.");
@@ -340,7 +386,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 
 #endif
 			} else {
-				DEBUG("Reply will be broadcast.");
+				DEBUG("Reply will be broadcast due to OFFER.");
 				address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			}
 			break;
@@ -357,7 +403,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			 *	NAKs are broadcast.
 			 */
 		case FR_DHCP_NAK:
-			DEBUG("Reply will be broadcast.");
+			DEBUG("Reply will be broadcast due to NAK.");
 			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			break;
 
@@ -372,9 +418,9 @@ send_reply:
 	 *	proto_radius_dhcpv4 takes care of suppressing do-not-respond, etc.
 	 */
 	data_size = udp_send(inst->sockfd, buffer, buffer_len, flags,
-			     &address.dst_ipaddr, address.dst_port,
+			     &address.src_ipaddr, address.src_port,
 			     address.if_index,
-			     &address.src_ipaddr, address.src_port);
+			     &address.dst_ipaddr, address.dst_port);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -575,6 +621,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
+	if (inst->ipaddr.af != AF_INET) {
+		cf_log_err(cs, "DHCPv4 transport cannot use IPv6 for 'ipaddr'");
+		return -1;
+	}
+
 	/*
 	 *	If src_ipaddr is defined, it must be of the same address family as "ipaddr"
 	 */
@@ -582,6 +633,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	    (inst->src_ipaddr.af != inst->ipaddr.af)) {
 		cf_log_err(cs, "Both 'ipaddr' and 'src_ipaddr' must be from the same address family");
 		return -1;
+	}
+
+	/*
+	 *	Set src_ipaddr to INADDR_NONE if not otherwise specified
+	 */
+	if (inst->src_ipaddr.af == AF_UNSPEC) {
+		memset(&inst->src_ipaddr, 0, sizeof(inst->src_ipaddr));
+		inst->src_ipaddr.af = AF_INET;
 	}
 
 	if (inst->recv_buff_is_set) {
