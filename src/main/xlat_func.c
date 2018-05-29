@@ -632,25 +632,33 @@ done:
 /** Generate a random integer value
  *
  */
-static ssize_t rand_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 UNUSED REQUEST *request, char const *fmt)
+static xlat_action_t xlat_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
+			       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			       fr_value_box_t **in)
 {
 	int64_t		result;
+	fr_value_box_t*	vb;
 
-	result = atoi(fmt);
+	/* Make sure input can be converted to an unsigned 32 bit integer */
+	if (fr_value_box_cast_in_place(ctx, (*in), FR_TYPE_UINT32, NULL) < 0) {
+		RPEDEBUG("Failed converting input to uint32");
+		return XLAT_ACTION_FAIL;
+	}
 
-	/*
-	 *	Too small or too big.
-	 */
-	if (result <= 0) return -1;
-	if (result >= (1 << 30)) result = (1 << 30);
+	result = (*in)->vb_uint32;
+
+	/* Make sure it isn't too big */
+	if (result > (1 << 30)) result = (1 << 30);
 
 	result *= fr_rand();	/* 0..2^32-1 */
 	result >>= 32;
 
-	snprintf(*out, outlen, "%ld", (long int) result);
-	return strlen(*out);
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+	vb->vb_uint64 = result;
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Generate a string of random chars
@@ -2447,7 +2455,6 @@ int xlat_init(void)
 	XLAT_REGISTER(regex);
 #endif
 
-	xlat_register(NULL, "rand", rand_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "randstr", randstr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "urlquote", urlquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "urlunquote", urlunquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2489,6 +2496,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "concat", xlat_concat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "bin", xlat_bin, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "md5", xlat_md5, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "rand", xlat_rand, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }
