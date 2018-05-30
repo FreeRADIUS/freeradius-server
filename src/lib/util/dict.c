@@ -2893,7 +2893,7 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t **out, char const *name)
 	char const		*p;
 	size_t			len;
 
-	if (!protocol_by_name || !name || !*name) return NULL;
+	if (!protocol_by_name || !name || !*name) return 0;
 
 	memset(&root, 0, sizeof(root));
 
@@ -3224,7 +3224,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_t const **out, fr_dict_t const 
 	char const		*p;
 	size_t			len;
 
-	if (!name || !*name) return NULL;
+	if (!name || !*name) return 0;
 	INTERNAL_IF_NULL(dict);
 
 	memset(&find, 0, sizeof(find));
