@@ -1520,7 +1520,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1622,7 +1622,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
 		break;
 
 
@@ -1737,7 +1737,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1821,7 +1821,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1872,7 +1872,7 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 	switch (src->type) {
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1926,7 +1926,7 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 	switch (src->type) {
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
 		break;
 
 	default:
@@ -1967,7 +1967,7 @@ static inline int fr_value_box_cast_to_uint8(TALLOC_CTX *ctx, fr_value_box_t *ds
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -2025,7 +2025,7 @@ static inline int fr_value_box_cast_to_uint16(TALLOC_CTX *ctx, fr_value_box_t *d
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -2101,7 +2101,7 @@ static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *d
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -2191,7 +2191,7 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -2355,7 +2355,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 */
 	if (src->type == FR_TYPE_STRING) return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
 								      src->vb_strvalue,
-								      src->datum.length, '\0', false);
+								      src->datum.length, '\0', src->tainted);
 
 	if ((src->type == FR_TYPE_IFID) &&
 	    (dst_type == FR_TYPE_UINT64)) {

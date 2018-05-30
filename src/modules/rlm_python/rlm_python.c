@@ -321,7 +321,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 
 
 		vp->op = op;
-		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
+		if (fr_pair_value_from_str(vp, s2, -1, '\0', false) < 0) {
 			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
 			      fr_int2str(fr_tokens_table, op, "="), s2);
 		} else {

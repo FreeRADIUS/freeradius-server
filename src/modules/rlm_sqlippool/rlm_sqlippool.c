@@ -581,7 +581,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *	error out.  If so, add it to the list.
 	 */
 	MEM(vp = fr_pair_afrom_da(request->reply, inst->framed_ip_address));
-	if (fr_pair_value_from_str(vp, allocation, allocation_len) < 0) {
+	if (fr_pair_value_from_str(vp, allocation, allocation_len, '\0', true) < 0) {
 		DO_PART(allocate_commit);
 
 		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);

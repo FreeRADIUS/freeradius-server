@@ -200,7 +200,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 			return -1;
 		}
 	} else {
-		if (fr_pair_value_from_str(vp, value, -1) < 0) {
+		if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
 			RPEDEBUG("Error parsing value");
 
 			talloc_free(vp);

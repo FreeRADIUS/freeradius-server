@@ -797,7 +797,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 		break;
 
 	default:
-		if (fr_pair_value_from_str(vp, val, len) < 0) goto fail;
+		if (fr_pair_value_from_str(vp, val, len, '\0', false) < 0) goto fail;
 	}
 
 	VP_VERIFY(vp);

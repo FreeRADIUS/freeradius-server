@@ -278,7 +278,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 				REDEBUG("Unmarshalling failed: Lua string was NULL");
 				return -1;
 			}
-			if (fr_pair_value_from_str(vp, p, strlen(p)) < 0) {
+			if (fr_pair_value_from_str(vp, p, strlen(p), '\0', false) < 0) {
 				RPEDEBUG("Unmarshalling failed");
 				return -1;
 			}

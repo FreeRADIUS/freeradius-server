@@ -186,14 +186,26 @@ void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected
 
 /* Allocation and management */
 VALUE_PAIR	*fr_pair_alloc(TALLOC_CTX *ctx);
+
 VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
+
 VALUE_PAIR	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr);
+
 VALUE_PAIR	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr);
+
+ssize_t		fr_pair_afrom_substr(TALLOC_CTX *ctx, VALUE_PAIR **out,
+				     fr_dict_t const *dict, char const *in, char const term[], bool tainted);
+
 VALUE_PAIR	*fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
+
 void		fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp);
+
 VALUE_PAIR	*fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, char const *value, FR_TOKEN op);
+
 void		fr_pair_list_free(VALUE_PAIR **);
+
 int		fr_pair_to_unknown(VALUE_PAIR *vp);
+
 int 		fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value);
 
 /* Searching and list modification */
@@ -293,7 +305,7 @@ int		fr_pair_list_move_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
 					      VALUE_PAIR **from, fr_dict_attr_t const *da);
 
 /* Value manipulation */
-int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t len);
+int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t len, char quote, bool tainted);
 void		fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t len);
 void		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src);

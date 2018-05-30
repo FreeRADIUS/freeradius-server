@@ -122,19 +122,19 @@ static void tacacs_status(REQUEST * const request, rlm_rcode_t rcode)
 		switch (rcode) {
 		case RLM_MODULE_OK:
 			MEM(pair_update_reply(&vp, attr_tacacs_authentication_status) >= 0);
-			fr_pair_value_from_str(vp, "Pass", -1);
+			fr_pair_value_from_str(vp, "Pass", -1, '\0', false);
 			break;
 
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 			MEM(pair_update_reply(&vp, attr_tacacs_authentication_status) >= 0);
-			fr_pair_value_from_str(vp, "Fail", -1);
+			fr_pair_value_from_str(vp, "Fail", -1, '\0', false);
 			break;
 
 		case RLM_MODULE_INVALID:
 			MEM(pair_update_reply(&vp, attr_tacacs_authentication_status) >= 0);
-			fr_pair_value_from_str(vp, "Error", -1);
+			fr_pair_value_from_str(vp, "Error", -1, '\0', false);
 			break;
 
 		case RLM_MODULE_HANDLED:	/* unlang set status */
@@ -151,19 +151,19 @@ noop:
 		switch (rcode) {
 		case RLM_MODULE_OK:
 			MEM(pair_update_reply(&vp, attr_tacacs_authorization_status) >= 0);
-			fr_pair_value_from_str(vp, "Pass-Repl", -1);
+			fr_pair_value_from_str(vp, "Pass-Repl", -1, '\0', false);
 			break;
 
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 			MEM(pair_update_reply(&vp, attr_tacacs_authorization_status) >= 0);
-			fr_pair_value_from_str(vp, "Fail", -1);
+			fr_pair_value_from_str(vp, "Fail", -1, '\0', false);
 			break;
 
 		case RLM_MODULE_INVALID:
 			MEM(pair_update_reply(&vp, attr_tacacs_authorization_status) >= 0);
-			fr_pair_value_from_str(vp, "Error", -1);
+			fr_pair_value_from_str(vp, "Error", -1, '\0', false);
 			break;
 
 		default:
@@ -175,7 +175,7 @@ noop:
 		switch (rcode) {
 		case RLM_MODULE_OK:
 			MEM(pair_update_reply(&vp, attr_tacacs_accounting_status) >= 0);
-			fr_pair_value_from_str(vp, "Success", -1);
+			fr_pair_value_from_str(vp, "Success", -1, '\0', false);
 			break;
 
 		case RLM_MODULE_FAIL:
@@ -183,7 +183,7 @@ noop:
 		case RLM_MODULE_USERLOCK:
 		case RLM_MODULE_INVALID:
 			MEM(pair_update_reply(&vp, attr_tacacs_accounting_status) >= 0);
-			fr_pair_value_from_str(vp, "Error", -1);
+			fr_pair_value_from_str(vp, "Error", -1, '\0', false);
 			break;
 
 		default:

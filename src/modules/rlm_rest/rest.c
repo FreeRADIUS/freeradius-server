@@ -838,7 +838,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			goto error;
 		}
 
-		ret = fr_pair_value_from_str(vp, expanded, -1);
+		ret = fr_pair_value_from_str(vp, expanded, -1, '\0', true);
 		TALLOC_FREE(expanded);
 		if (ret < 0) {
 			RWDEBUG("Incompatible value assignment, skipping");
@@ -2120,7 +2120,7 @@ int rest_response_certinfo(rlm_rest_t const *inst, UNUSED rlm_rest_section_t con
 				continue;
 			}
 			MEM(vp = fr_pair_afrom_da(request->packet, da));
-			fr_pair_value_from_str(vp, q + 1, -1);
+			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
 
 			fr_cursor_append(&cursor, vp);
 		}

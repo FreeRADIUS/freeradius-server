@@ -352,7 +352,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 		return NULL;
 	}
 
-	if (fr_pair_value_from_str(vp, value, -1) < 0) {
+	if (fr_pair_value_from_str(vp, value, -1, '"', false) < 0) {
 		talloc_free(vp);
 		return NULL;
 	}
@@ -516,7 +516,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 *	We probably want to fix fr_pair_value_from_str to accept
 	 *	octets as values for any attribute.
 	 */
-	if (value && (fr_pair_value_from_str(vp, value, -1) < 0)) {
+	if (value && (fr_pair_value_from_str(vp, value, -1, '\"', true) < 0)) {
 		talloc_free(vp);
 		return NULL;
 	}
@@ -2028,11 +2028,13 @@ int fr_pair_list_move_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
  * @param[in] inlen	may be < 0 in which case strlen(len) is used
  *			to determine length, else inlen should be the
  *			length of the string or sub string to parse.
+ * @param[in] quote	character used set unescape mode.  @see value_str_unescape.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t inlen)
+int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t inlen, char quote, bool tainted)
 {
 	fr_type_t type;
 
@@ -2042,9 +2044,9 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t inlen)
 
 	/*
 	 *	We presume that the input data is from a double quoted
-	 *	string, and needs escaping
+	 *	string, and needs unescaping
 	 */
-	if (fr_value_box_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"', false) < 0) return -1;
+	if (fr_value_box_from_str(vp, &vp->data, &type, vp->da, value, inlen, quote, tainted) < 0) return -1;
 
 	/*
 	 *	If we parsed to a different type than the DA associated with

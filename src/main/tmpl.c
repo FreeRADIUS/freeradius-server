@@ -1241,10 +1241,9 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	 *	New escapes: strings are in binary form.
 	 */
 	if (vp->vp_type == FR_TYPE_STRING) {
-		vp->data.datum.ptr = talloc_steal(vp, data.datum.ptr);
-		vp->vp_length = rcode;
-	} else if (fr_pair_value_from_str(vp, data.vb_strvalue, rcode) < 0) {
-		talloc_free(data.datum.ptr);
+		fr_pair_value_strcpy(vp, data.datum.ptr);
+	} else if (fr_pair_value_from_str(vp, data.vb_strvalue, rcode, '\0', false) < 0) {
+		fr_value_box_clear(&data);
 		fr_pair_list_free(&vp);
 		return -1;
 	}

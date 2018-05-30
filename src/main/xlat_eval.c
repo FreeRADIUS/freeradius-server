@@ -1539,7 +1539,7 @@ int xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp)
 		return 0;
 	}
 
-	if (fr_pair_value_from_str(vp, expanded, -1) < 0){
+	if (fr_pair_value_from_str(vp, expanded, -1, '"', true) < 0){
 		talloc_free(expanded);
 		return -2;
 	}

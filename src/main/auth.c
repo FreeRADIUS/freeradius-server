@@ -495,7 +495,7 @@ skip:
 		fr_pair_delete_by_child_num(&request->control, fr_dict_root(fr_dict_internal), FR_POST_AUTH_TYPE, TAG_ANY);
 
 		MEM(vp = fr_pair_afrom_child_num(request, fr_dict_root(fr_dict_internal), FR_POST_AUTH_TYPE));
-		fr_pair_value_from_str(vp, "Reject", -1);
+		fr_pair_value_from_str(vp, "Reject", -1, '\0', false);
 		fr_pair_add(&request->control, vp);
 
 		rad_postauth(request);

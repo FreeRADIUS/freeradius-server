@@ -245,7 +245,7 @@ unsigned int tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		}
 
 		MEM(pair_update_request(&vp, attr_tls_psk_identity) >= 0);
-		if (fr_pair_value_from_str(vp, identity, -1) < 0) {
+		if (fr_pair_value_from_str(vp, identity, -1, '\0', true) < 0) {
 			RPWDEBUG2("Failed parsing TLS PSK Identity");
 			talloc_free(vp);
 			return 0;
@@ -848,7 +848,7 @@ static inline VALUE_PAIR *tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *re
 
 	MEM(vp = fr_pair_afrom_da(ctx, da));
 	if (value) {
-		if (fr_pair_value_from_str(vp, value, -1) < 0) {
+		if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
 			RPWDEBUG("Failed creating attribute %s", da->name);
 			talloc_free(vp);
 			return NULL;
@@ -1082,7 +1082,7 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 				}
 
 				MEM(vp = fr_pair_afrom_da(request, da));
-				if (fr_pair_value_from_str(vp, value, -1) < 0) {
+				if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
 					RPWDEBUG3("Skipping: %s += '%s'", attribute, value);
 					talloc_free(vp);
 					continue;

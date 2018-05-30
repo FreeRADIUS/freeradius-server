@@ -386,7 +386,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		talloc_free(dst);
 
 		vp->op = op;
-		if (fr_pair_value_from_str(vp, cval, -1) < 0) {
+		if (fr_pair_value_from_str(vp, cval, -1, '\0', false) < 0) {
 			REDEBUG("%s: %s %s %s failed", function_name, ckey, fr_int2str(fr_tokens_table, op, "="), cval);
 		} else {
 			DEBUG("%s: %s %s %s OK", function_name, ckey, fr_int2str(fr_tokens_table, op, "="), cval);
