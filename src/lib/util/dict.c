@@ -2881,10 +2881,10 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
  *
  * @param[in,out] name		string start.
  * @return
- * 	- Attribute matching name.
- *  	- NULL if no matching attribute could be found.
+ *	- <= 0 on error (offset as negative integer)
+ *	- > 0 on success (number of bytes parsed).
  */
-fr_dict_t *fr_dict_by_protocol_substr(char const **name)
+ssize_t fr_dict_by_protocol_substr(fr_dict_t **out, char const *name)
 {
 	fr_dict_attr_t		root;
 	fr_dict_t		find = { .root = &root };
@@ -2901,29 +2901,29 @@ fr_dict_t *fr_dict_by_protocol_substr(char const **name)
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
 	 */
-	for (p = *name; fr_dict_attr_allowed_chars[(int)*p] && (*p != '.'); p++);
+	for (p = name; fr_dict_attr_allowed_chars[(int)*p] && (*p != '.'); p++);
 
-	len = p - *name;
+	len = p - name;
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
-		return NULL;
+		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
 
 	root.name = talloc_bstrndup(NULL, *name, len);
 	if (!root.name) {
 		fr_strerror_printf("Out of memory");
-		return NULL;
+		return 0;
 	}
 	dict = fr_hash_table_finddata(protocol_by_name, &find);
 	talloc_const_free(root.name);
 
 	if (!dict) {
-		fr_strerror_printf("Unknown protocol '%.*s'", (int) len, *name);
-		return NULL;
+		fr_strerror_printf("Unknown protocol '%.*s'", (int) len, name);
+		return 0;
 	}
-	*name = p;
+	*out = dict;
 
-	return dict;
+	return p - name;
 }
 
 /** Lookup a protocol by its name
@@ -3209,14 +3209,15 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
  * If the attribute does not exist, don't advance the pointer and return
  * NULL.
  *
+ * @param[out] out		Where to store the resolve attribute.
  * @param[in] dict		of protocol context we're operating in.
  *				If NULL the internal dictionary will be used.
- * @param[in,out] name		string start.
+ * @param[in] name		string start.
  * @return
- * 	- Attribute matching name.
- *  	- NULL if no matching attribute could be found.
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
  */
-fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t const *dict, char const **name)
+ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_t const **out, fr_dict_t const *dict, char const *name)
 {
 	fr_dict_attr_t		find;
 	fr_dict_attr_t const	*da;
@@ -3232,29 +3233,30 @@ fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t const *dict, char co
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
 	 */
-	for (p = *name; fr_dict_attr_allowed_chars[(int)*p]; p++);
+	for (p = name; fr_dict_attr_allowed_chars[(int)*p]; p++);
 
-	len = p - *name;
+	len = p - name;
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
-		return NULL;
+		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
 
-	find.name = talloc_bstrndup(NULL, *name, len);
+	find.name = talloc_bstrndup(NULL, name, len);
 	if (!find.name) {
 		fr_strerror_printf("Out of memory");
-		return NULL;
+		return 0;
 	}
 	da = fr_hash_table_finddata(dict->attributes_by_name, &find);
 	talloc_const_free(find.name);
 
 	if (!da) {
-		fr_strerror_printf("Unknown attribute '%.*s'", (int) len, *name);
-		return NULL;
+		fr_strerror_printf("Unknown attribute '%.*s'", (int) len, name);
+		return 0;
 	}
-	*name = p;
 
-	return da;
+	*out = da;
+
+	return p - name;
 }
 
 /** Locate a #fr_dict_attr_t by its name
@@ -3703,6 +3705,7 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
 	char const		*p = ref, *q, *end = p + strlen(ref);
 	fr_dict_t		*proto_dict;
 	fr_dict_attr_t const	*da;
+	ssize_t			slen;
 
 	/*
 	 *	If the reference does not begin with .
@@ -3746,11 +3749,13 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
 	if (*p == '.') {
 		p++;
 
-		da = fr_dict_attr_by_name_substr(proto_dict, &p);
-		if (!da) {
+		slen = fr_dict_attr_by_name_substr(&da, proto_dict, p);
+		if (slen <= 0) {
 			fr_strerror_printf("Referenced attribute \"%s\" not found", p);
 			return NULL;
 		}
+
+		p += slen;
 	}
 
 	da = fr_dict_root(proto_dict);

@@ -666,8 +666,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	 *	Look up by name, *including* any Attr-1.2.3.4 which was created when
 	 *	parsing the configuration files.
 	 */
-	vpt->tmpl_da = fr_dict_attr_by_name_substr(NULL, &p);
-	if (!vpt->tmpl_da) {
+	slen = fr_dict_attr_by_name_substr(&vpt->tmpl_da, NULL, p);
+	if (slen <= 0) {
 		char const *q;
 
 		fr_strerror();	/* Clear out any existing errors */
@@ -736,13 +736,18 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	}
 
 	/*
+	 *	Parsing was successful, so advance the pointer
+	 */
+	p += slen;
+
+	/*
 	 *	If it's an attribute, look for a tag.
 	 *
 	 *	Note that we check for tags even if the attribute
 	 *	isn't tagged.  This lets us print more useful error
 	 *	messages.
 	 */
-	else if (*p == ':') {
+	if (*p == ':') {
 		char *q;
 
 		if (!vpt->tmpl_da->flags.has_tag) { /* Lists don't have a da */
@@ -770,12 +775,12 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 			p = q;
 		}
 
-		/*
-		 *	The attribute is tagged, but the admin didn't
-		 *	specify one.  This means it's likely a
-		 *	"search" thingy.. i.e. "find me ANY attribute,
-		 *	no matter what the tag".
-		 */
+	/*
+	 *	The attribute is tagged, but the admin didn't
+	 *	specify one.  This means it's likely a
+	 *	"search" thingy.. i.e. "find me ANY attribute,
+	 *	no matter what the tag".
+	 */
 	} else if (vpt->tmpl_da->flags.has_tag) {
 		vpt->tmpl_tag = TAG_ANY;
 	}
