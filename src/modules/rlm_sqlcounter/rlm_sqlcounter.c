@@ -91,10 +91,12 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t rlm_sqlcounter_dict[];
 fr_dict_autoload_t rlm_sqlcounter_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
@@ -599,13 +601,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	memset(&flags, 0, sizeof(flags));
 	flags.compare = 1;	/* ugly hack */
-	if (tmpl_define_undefined_attr(inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
+	if (tmpl_define_undefined_attr(dict_freeradius, inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining counter attribute");
 		return -1;
 	}
 
 	flags.compare = 0;
-	if (tmpl_define_undefined_attr(inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
+	if (tmpl_define_undefined_attr(dict_freeradius, inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining check attribute");
 		return -1;
 	}

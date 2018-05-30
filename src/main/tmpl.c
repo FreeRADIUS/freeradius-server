@@ -1283,17 +1283,22 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  *	passed to this function to be fixed up, so long as the type and flags
  *	are identical.
  *
- * @param vpt specifying undefined attribute to add. ``tmpl_da`` pointer will be
- *	updated to point to the #fr_dict_attr_t inserted into the dictionary.
- *	Lists and requests will be preserved.
- * @param type to define undefined attribute as.
- * @param flags to define undefined attribute with.
+ * @param[in] def_dict	Default dictionary to use if none is
+ *			specified by the tmpl_unknown_name.
+ * @param[in] vpt	specifying undefined attribute to add.
+ *			``tmpl_da`` pointer will be updated to
+ *			point to the #fr_dict_attr_t inserted
+ *			into the dictionary. Lists and requests
+ *			will be preserved.
+ * @param[in] type	to define undefined attribute as.
+ * @param[in] flags	to define undefined attribute with.
  * @return
  *	- 1 noop (did nothing) - Not possible to convert tmpl.
  *	- 0 on success.
  *	- -1 on failure.
  */
-int tmpl_define_undefined_attr(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_flags_t const *flags)
+int tmpl_define_undefined_attr(fr_dict_t *def_dict, vp_tmpl_t *vpt,
+			       fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t const *da;
 
@@ -1303,10 +1308,10 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_flag
 
 	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
 
-	if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), vpt->tmpl_unknown_name, -1, type, flags) < 0) {
+	if (fr_dict_attr_add(def_dict, fr_dict_root(fr_dict_internal), vpt->tmpl_unknown_name, -1, type, flags) < 0) {
 		return -1;
 	}
-	da = fr_dict_attr_by_name(NULL, vpt->tmpl_unknown_name);
+	da = fr_dict_attr_by_name(def_dict, vpt->tmpl_unknown_name);
 	if (!da) return -1;
 
 	if (type != da->type) {
