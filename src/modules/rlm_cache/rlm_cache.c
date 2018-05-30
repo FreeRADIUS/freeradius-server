@@ -220,13 +220,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, 
 			break;
 
 		case CACHE_MISS:
-			if (RDEBUG_ENABLED2) {
-				char *p;
-
-				p = fr_asprint(request, (char const *)key, key_len, '"');
-				RDEBUG("No cache entry found for \"%s\"", p);
-				talloc_free(p);
-			}
+			RDEBUG2("No cache entry found for \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
 			return RLM_MODULE_NOTFOUND;
 
 		/* FALL-THROUGH */
@@ -243,27 +237,16 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, 
 	 *	passed.  Delete it, and pretend it doesn't exist.
 	 */
 	if ((c->expires < request->packet->timestamp.tv_sec) || (c->created < inst->config.epoch)) {
-		if (RDEBUG_ENABLED2) {
-			char *p;
-
-			p = fr_asprint(request, (char const *)key, key_len, '"');
-			RDEBUG2("Found entry for \"%s\", but it expired %li seconds ago.  Removing it", p,
-				request->packet->timestamp.tv_sec - c->expires);
-			talloc_free(p);
-		}
+		RDEBUG2("Found entry for \"%pV\", but it expired %li seconds ago.  Removing it",
+			fr_box_strvalue_len((char const *)key, key_len),
+			request->packet->timestamp.tv_sec - c->expires);
 
 		inst->driver->expire(&inst->config, inst->driver_inst->data, request, handle, c->key, c->key_len);
 		cache_free(inst, &c);
 		return RLM_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
 
-	if (RDEBUG_ENABLED2) {
-		char *p;
-
-		p = fr_asprint(request, (char const *)key, key_len, '"');
-		RDEBUG2("Found entry for \"%s\"", p);
-		talloc_free(p);
-	}
+	RDEBUG2("Found entry for \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
 
 	c->hits++;
 	*out = c;

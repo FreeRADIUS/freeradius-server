@@ -144,22 +144,12 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		 *	Grab all the data for this hash, should return an array
 		 *	of alternating keys/values which we then convert into maps.
 		 */
-		if (RDEBUG_ENABLED3) {
-			char *p;
-
-			p = fr_asprint(NULL, (char const *)key, key_len, '"');
-			RDEBUG3("LRANGE %s 0 -1", key);
-			talloc_free(p);
-		}
+		RDEBUG3("LRANGE %pV 0 -1", fr_box_strvalue_len((char const *)key, key_len));
 		reply = redisCommand(conn->handle, "LRANGE %b 0 -1", key, key_len);
 		status = fr_redis_command_status(conn, reply);
 	}
 	if (s_ret != REDIS_RCODE_SUCCESS) {
-		char *p;
-
-		p = fr_asprint(NULL, (char const *)key, key_len, '"');
-		RERROR("Failed retrieving entry for key \"%s\"", p);
-		talloc_free(p);
+		RERROR("Failed retrieving entry for key \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
 
 	error:
 		fr_redis_reply_free(reply);
@@ -284,7 +274,6 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	redisReply		*replies[5];	/* Should have the same number of elements as pipelined commands */
 	size_t			reply_num = 0, i;
 
-	char			*p;
 	int			cnt;
 
 	vp_tmpl_t		expires_value;
@@ -372,12 +361,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 			pipelined++;
 		}
 
-		if (RDEBUG_ENABLED3) {
-			p = fr_asprint(request, (char const *)c->key, c->key_len, '\0');
-			RDEBUG3("DEL \"%s\"", p);
-			talloc_free(p);
-
-		}
+		RDEBUG3("DEL \"%pV\"", fr_box_strvalue_len((char const *)c->key, c->key_len));
 
 		if (redisAppendCommand(conn->handle, "DEL %b", c->key, c->key_len) != REDIS_OK) goto append_error;
 		pipelined++;
@@ -386,9 +370,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 			RDEBUG3("argv command");
 			RINDENT();
 			for (i = 0; i < talloc_array_length(argv); i++) {
-				p = fr_asprint(request, argv[i], argv_len[i], '\0');
-				RDEBUG3("%s", p);
-				talloc_free(p);
+				RDEBUG3("%pV", fr_box_strvalue_len(argv[i], argv_len[i]));
 			}
 			REXDENT();
 		}
@@ -399,11 +381,8 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		 *	Set the expiry time and close out the transaction.
 		 */
 		if (c->expires > 0) {
-			if (RDEBUG_ENABLED3) {
-				p = fr_asprint(request, (char const *)c->key, c->key_len, '\"');
-				RDEBUG3("EXPIREAT \"%s\" %li", p, (long)c->expires);
-				talloc_free(p);
-			}
+			RDEBUG3("EXPIREAT \"%pV\" %li",
+				fr_box_strvalue_len((char const *)c->key, c->key_len), (long)c->expires);
 			if (redisAppendCommand(conn->handle, "EXPIREAT %b %i", c->key,
 					       c->key_len, c->expires) != REDIS_OK) goto append_error;
 			pipelined++;

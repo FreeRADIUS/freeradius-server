@@ -1583,13 +1583,8 @@ static cluster_key_slot_t *cluster_slot_by_key(fr_redis_cluster_t *cluster, REQU
 	 */
 	if (rbtree_num_elements(cluster->used_nodes) > 1) {
 		key_slot = &cluster->key_slot[cluster_key_hash(key, key_len)];
-		if (RDEBUG_ENABLED2) {
-			char *p;
-
-			p = fr_asprint(request, (char const *)key, key_len, '"');
-			RDEBUG2("Key \"%s\" -> slot %zu", p, key_slot - cluster->key_slot);
-			talloc_free(p);
-		}
+		RDEBUG2("Key \"%pV\" -> slot %zu",
+			fr_box_strvalue_len((char const *)key, key_len), key_slot - cluster->key_slot);
 
 		return key_slot;
 	}

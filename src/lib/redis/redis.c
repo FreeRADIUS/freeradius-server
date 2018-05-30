@@ -286,14 +286,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 
 	RDEBUG3("Got key   : %s", key->str);
 	RDEBUG3("Got op    : %s", op->str);
-
-	if (RDEBUG_ENABLED3) {
-		char *p;
-
-		p = fr_asprint(NULL, value->str, value->len, '"');
-		RDEBUG3("Got value : %s", p);
-		talloc_free(p);
-	}
+	RDEBUG3("Got value : %pV", fr_box_strvalue_len(value->str, value->len));
 
 	map = talloc_zero(ctx, vp_map_t);
 	slen = tmpl_afrom_attr_str(map, &map->lhs, key->str, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);

@@ -182,12 +182,8 @@ fr_ldap_rcode_t  fr_ldap_sasl_interactive(REQUEST *request,
 			struct berval *srv_cred;
 
 			if (ldap_parse_sasl_bind_result(conn->handle, result, &srv_cred, 0) == 0) {
-				char *escaped;
-
-				escaped = fr_asprint(request, srv_cred->bv_val, srv_cred->bv_len, '\0');
-				ROPTIONAL(RDEBUG3, DEBUG3, "SASL response  : %s", escaped);
-
-				talloc_free(escaped);
+				ROPTIONAL(RDEBUG3, DEBUG3, "SASL response  : %pV",
+					  fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
 				ldap_memfree(srv_cred);
 			}
 		}

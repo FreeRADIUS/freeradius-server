@@ -279,12 +279,10 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out,
 	 *	Buffer not always talloced, sometimes it's
 	 *	just a pointer to a field in a result struct.
 	 */
-	if (fr_pair_value_from_str(vp, value, strlen(value)) < 0) {
-		char *escaped;
-
-		escaped = fr_asprint(vp, value, talloc_array_length(value) - 1, '"');
-		RPEDEBUG("Failed parsing value \"%s\" for attribute %s", escaped, map->lhs->tmpl_da->name);
-		talloc_free(vp); /* also frees escaped */
+	if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
+		RPEDEBUG("Failed parsing value \"%pV\" for attribute %s",
+			 fr_box_strvalue_buffer(value), map->lhs->tmpl_da->name);
+		talloc_free(vp);
 
 		return -1;
 	}
