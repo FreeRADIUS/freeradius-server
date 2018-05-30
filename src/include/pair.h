@@ -194,7 +194,7 @@ VALUE_PAIR	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int
 VALUE_PAIR	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr);
 
 ssize_t		fr_pair_afrom_substr(TALLOC_CTX *ctx, VALUE_PAIR **out,
-				     fr_dict_t const *dict, char const *in, char const term[], bool tainted);
+				     fr_dict_t const *dict, char const *in, bool tainted);
 
 VALUE_PAIR	*fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 

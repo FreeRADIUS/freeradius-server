@@ -211,6 +211,105 @@ VALUE_PAIR *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 	return fr_pair_afrom_da(ctx, da);
 }
 
+/** Deserialise a value pair from a string
+ *
+ * Input must be in the format:
+ * @verbatim <attribute> = [<qu>]<value>[<qu>] @endverbatim
+ *
+ * This is intended to be use as a light weight way of deserialising complete
+ * attribute/value pairs.  For more complex operations see the map API.
+ *
+ * This is the companion function for #fr_pair_snprint and #fr_pair_asprint.
+ *
+ * @param[in] ctx	to allocate pair in.
+ * @param[out] out	the VALUE_PAIR we allocated.
+ * @param[in] dict	to search for attributes in.
+ * @param[in] in	string to convert to VALUE_PAIR.
+ * @param[in] tainted	Whether the source of in was untrusted.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+ssize_t fr_pair_afrom_substr(TALLOC_CTX *ctx, VALUE_PAIR **out,
+			     fr_dict_t const *dict, char const *in, bool tainted)
+{
+	ssize_t			slen;
+	VALUE_PAIR		*vp;
+	fr_dict_attr_t const	*da;
+	char const		*p, *q;
+	char			quote;
+
+	p = in;
+
+	slen = fr_dict_attr_by_name_substr(&da, dict, p);
+	if (slen <= 0) return slen;
+
+	p += slen;
+
+	while (isspace(*p)) p++;
+	if (*p != '=') {
+		fr_strerror_printf("Invalid operator '%c'", *p);
+		return -(p - in);
+	}
+	while (isspace(*p)) p++;
+
+	switch (*p) {
+
+	/*
+	 *	Note - Unescaping is handled by fr_pair_value_from_str
+	 */
+	case '"':
+	case '\'':
+		quote = *p++;
+
+		/*
+		 *	Figure out the end of the quoted string
+		 *	ignoring escaped quotes.
+		 */
+		for (q = p; *q != '\0'; q++) {
+			if (*q == '\'') {
+				switch (*(q + 1)) {
+				case '\\':
+				case '"':
+				case '\'':
+					q++;
+					continue;
+
+				default:
+					break;
+				}
+			}
+		}
+
+		if (*q != quote) {
+			fr_strerror_printf("No matching terminating quote");
+			return -(p - in);
+		}
+		break;
+
+	default:
+		quote = '\0';
+		q = p;
+
+		while (fr_dict_attr_allowed_chars[(int)*q] != '\0') q++;
+		break;
+	}
+
+	vp = fr_pair_afrom_da(ctx, da);
+	if (!vp) return 0;
+
+	if (fr_pair_value_from_str(vp, p, q - p, quote, tainted) < 0) {
+		talloc_free(vp);
+		return -(p - in);
+	}
+
+	if (quote != '\0') q++;	/* Advance past trailing quote */
+
+	*out = vp;
+
+	return (q - in);
+}
+
 /** Copy a single valuepair
  *
  * Allocate a new valuepair and copy the da from the old vp.
