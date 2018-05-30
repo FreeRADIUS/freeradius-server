@@ -788,7 +788,10 @@ static int pending_free(fr_io_pending_packet_t *pending)
 	 *	delete it.
 	 */
 	if (track->packets == 0) {
-		if (track->client->inst->app_io->track_duplicates) (void) rbtree_deletebydata(track->client->table, track);
+		if (track->client->inst->app_io->track_duplicates) {
+			rad_assert(track->client->table != NULL);
+			(void) rbtree_deletebydata(track->client->table, track);
+		}
 
 		// @todo - put this into a slab allocator
 		talloc_free(track);
@@ -1909,8 +1912,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (buffer_len == 1) {
 		client->state = PR_CLIENT_NAK;
-		if (client->table) talloc_free(client->table);
 		talloc_free(client->pending);
+		if (client->table) TALLOC_FREE(client->table);
 		rad_assert(client->packets == 0);
 
 		/*
