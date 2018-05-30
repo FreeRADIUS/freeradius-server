@@ -544,7 +544,7 @@ static int _lua_pair_accessor_init(lua_State *L)
 		return -1;
 	}
 
-	da = fr_dict_attr_by_name(NULL, attr);
+	da = fr_dict_attr_by_name(request->dict, attr);
 	if (!da) {
 		REDEBUG("Unknown or invalid attribute name \"%s\"", attr);
 		return -1;

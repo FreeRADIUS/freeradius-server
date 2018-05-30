@@ -264,6 +264,13 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
+	/*
+	 *	Set the request dictionary so that we can do
+	 *	generic->protocol attribute conversions as
+	 *	the request runs through the server.
+	 */
+	request->dict = dict_dhcpv4;
+
 #if 0
 	/*
 	 *	@todo - print hex packets here!

@@ -2506,7 +2506,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			/*
 			 *	Attribute may be present with multiple names
 			 */
-			da = fr_dict_attr_by_name(NULL, vpt->tmpl_da->name);
+			da = fr_dict_attr_by_name(fr_dict_by_da(vpt->tmpl_da), vpt->tmpl_da->name);
 			if (!da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "attribute \"%s\" (%s) not found in global dictionary",

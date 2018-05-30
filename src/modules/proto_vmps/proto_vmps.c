@@ -229,6 +229,13 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		fr_vmps_print_hex(fr_log_fp, data, data_len);
 	}
 
+	/*
+	 *	Set the request dictionary so that we can do
+	 *	generic->protocol attribute conversions as
+	 *	the request runs through the server.
+	 */
+	request->dict = dict_vqp;
+
 	client = address->radclient;
 
 	/*

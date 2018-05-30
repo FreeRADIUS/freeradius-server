@@ -212,6 +212,8 @@ struct rad_request {
 	uint64_t		child_number; 	//!< Monotonically increasing number for children of this request
 	char const		*name;		//!< for debug printing, as (%d) is no longer sufficient
 
+	fr_dict_t const		*dict;		//!< Dictionary of the protocol that this request belongs to.
+
 	fr_event_list_t		*el;		//!< thread-specific event list.
 	fr_heap_t		*backlog;	//!< thread-specific backlog
 	fr_request_state_t	request_state;	//!< state for the various protocol handlers.

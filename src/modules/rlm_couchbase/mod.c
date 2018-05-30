@@ -369,7 +369,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
 		 *	Lookup the string attr_name in the
 		 *	request dictionary.
 		 */
-		da = fr_dict_attr_by_name(NULL, attr_name);
+		da = fr_dict_attr_by_name(request->dict, attr_name);
 		if (!da) {
 			RPERROR("Invalid attribute \"%s\"", attr_name);
 			goto error;

@@ -67,7 +67,7 @@ static ssize_t xlat_trigger(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t ou
 	 */
 	if (!head) return -1;
 
-	da = fr_dict_attr_by_name(NULL, fmt);
+	da = fr_dict_attr_by_name(request->dict, fmt);
 	if (!da) {
 		ERROR("Unknown attribute \"%s\"", fmt);
 		return -1;

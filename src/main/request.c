@@ -123,6 +123,7 @@ static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
 	fake->seq_start = 0;	/* children always start with their own sequence */
 
 	fake->parent = request;
+	fake->dict = request->dict;
 	fake->root = request->root;
 	fake->client = request->client;
 

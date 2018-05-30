@@ -428,7 +428,8 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(NULL, attr);
+
+		da = fr_dict_attr_by_name(request->dict, attr);
 		if (!da) {
 			RWDEBUG("No such attribute '%s'", attr);
 			return -1;

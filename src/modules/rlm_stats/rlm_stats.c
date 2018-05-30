@@ -344,7 +344,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		if (!local_stats[i]) continue;
 
 		strlcpy(buffer + 18, fr_packet_codes[i], sizeof(buffer) - 18);
-		da = fr_dict_attr_by_name(NULL, buffer);
+		da = fr_dict_attr_by_name(dict_radius, buffer);
 		if (!da) continue;
 
 		vp = fr_pair_afrom_da(request->reply, da);
