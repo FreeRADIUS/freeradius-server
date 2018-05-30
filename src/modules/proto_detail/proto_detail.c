@@ -80,15 +80,31 @@ fr_dict_autoload_t proto_detail_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_packet_dst_ip_address;
+static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
+static fr_dict_attr_t const *attr_packet_dst_port;
 static fr_dict_attr_t const *attr_packet_original_timestamp;
+static fr_dict_attr_t const *attr_packet_src_ip_address;
+static fr_dict_attr_t const *attr_packet_src_ipv6_address;
+static fr_dict_attr_t const *attr_packet_src_port;
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_protocol;
+
 static fr_dict_attr_t const *attr_event_timestamp;
 static fr_dict_attr_t const *attr_acct_delay_time;
 
 extern fr_dict_attr_autoload_t proto_detail_dict_attr[];
 fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_packet_original_timestamp, .name = "Packet-Original-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
 	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius },
 	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
@@ -320,27 +336,24 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		/*
 		 *	Set the original src/dst ip/port
 		 */
-		if (vp && fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
-			default:
-				break;
-
-			case FR_PACKET_SRC_IP_ADDRESS:
-			case FR_PACKET_SRC_IPV6_ADDRESS:
+		if (vp) {
+			if ((vp->da == attr_packet_src_ip_address) ||
+			    (vp->da == attr_packet_src_ipv6_address)) {
 				request->packet->src_ipaddr = vp->vp_ip;
-				break;
-
-			case FR_PACKET_DST_IP_ADDRESS:
-			case FR_PACKET_DST_IPV6_ADDRESS:
+			} else if ((vp->da == attr_packet_dst_ip_address) ||
+				   (vp->da == attr_packet_dst_ipv6_address)) {
 				request->packet->dst_ipaddr = vp->vp_ip;
-				break;
-
-			case FR_PACKET_SRC_PORT:
+			} else if (vp->da == attr_packet_src_port) {
 				request->packet->src_port = vp->vp_uint16;
-				break;
-
-			case FR_PACKET_DST_PORT:
+			} else if (vp->da == attr_packet_dst_port) {
 				request->packet->dst_port = vp->vp_uint16;
-				break;
+			} else if (vp->da == attr_protocol) {
+				request->dict = fr_dict_by_protocol_num(vp->vp_uint32);
+				if (!request->dict) {
+					REDEBUG("Invalid protocol: %pP", vp);
+					goto error;
+				}
+			}
 		}
 
 	next:
