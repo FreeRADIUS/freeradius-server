@@ -250,7 +250,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	MPRINT("HEADER %s", data);
 
 	if (sscanf((char const *) data, "%*s %*s %*d %*d:%*d:%*d %d", &num) != 1) {
-		RDEBUG("Malformed header '%s'", (char const *) data);
+		REDEBUG("Malformed header '%s'", (char const *) data);
 		return -1;
 	}
 
@@ -263,6 +263,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 	lineno = 1;
 	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_tail(&cursor);	/* Ensure we only free what we add on error */
 
 	/*
 	 *	Parse each individual line.
@@ -281,7 +282,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		 *	doesn't hurt to re-check it here.
 		 */
 		if ((*p != '\0') && (*p != '\t')) {
-			RDEBUG("Malformed line %d", lineno);
+			REDEBUG("Malformed line %d", lineno);
+			fr_cursor_free_list(&cursor);
 			return -1;
 		}
 
