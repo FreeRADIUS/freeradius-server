@@ -182,7 +182,7 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	/*
 	 *	Trim whitespace for the prefix check
 	 */
-	for (p = fmt; is_whitespace(p); p++);
+	for (p = fmt; isspace(*p); p++);
 
 	/*
 	 *	If the query starts with any of the following prefixes,
@@ -266,7 +266,8 @@ finish:
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
+static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out,
+				   REQUEST *request, vp_map_t const *map, void *uctx)
 {
 	VALUE_PAIR	*vp;
 	char const	*value = uctx;
