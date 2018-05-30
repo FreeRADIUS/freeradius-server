@@ -283,6 +283,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		 */
 		if ((*p != '\0') && (*p != '\t')) {
 			REDEBUG("Malformed line %d", lineno);
+		error:
 			fr_cursor_free_list(&cursor);
 			return -1;
 		}
