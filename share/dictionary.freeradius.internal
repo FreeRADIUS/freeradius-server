@@ -37,6 +37,9 @@ ATTRIBUTE	Relax-Filter				501	bool
 #	Non-Protocol Attributes
 #	These attributes are usedly by the server
 #
+
+# Fixme - Should be attribute 1 when this becomes a separate dictionary
+ATTRIBUTE	Protocol				999	integer
 ATTRIBUTE	Auth-Type				1000	integer
 ATTRIBUTE	Menu					1001	string
 ATTRIBUTE	Termination-Menu			1002	string

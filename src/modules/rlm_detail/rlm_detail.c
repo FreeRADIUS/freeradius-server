@@ -96,6 +96,7 @@ static fr_dict_attr_t const *attr_packet_src_ipv6_address;
 static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
 static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_dst_port;
+static fr_dict_attr_t const *attr_protocol;
 
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_user_password;
@@ -108,6 +109,7 @@ fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
 	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
@@ -362,6 +364,13 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		}
 #endif
 	}
+
+	/*
+	 *	Add the original protocol of the request, this should
+	 *	be used by the detail reader to set the default
+	 *	dictionary used for decoding.
+	 */
+//	WRITE("\t%s = %s", attr_protocol->name, fr_dict_root(request->dict)->name);
 	WRITE("\tTimestamp = %ld\n", (unsigned long) request->packet->timestamp.tv_sec);
 
 	WRITE("\n");
