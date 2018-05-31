@@ -2911,7 +2911,7 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t **out, char const *name)
 		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
 
-	root.name = talloc_bstrndup(NULL, *name, len);
+	root.name = talloc_bstrndup(NULL, name, len);
 	if (!root.name) {
 		fr_strerror_printf("Out of memory");
 		return 0;
