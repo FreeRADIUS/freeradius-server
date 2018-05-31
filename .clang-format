@@ -1,0 +1,116 @@
+---
+Language: Cpp
+Standard: Cpp11
+
+# Basic dimensions
+IndentWidth: 8
+TabWidth: 8
+UseTab: Always
+ColumnLimit: 120
+ConstructorInitializerIndentWidth: 8
+
+SortIncludes: false
+
+#
+# Indents braced list initialisers correctly, with a space
+# after the opening brace, and before the closing brace.
+#
+# static CONF_PARSER group_config[] = {
+#	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, rlm_ldap_t, groupobj_filter) }
+# };
+#
+ContinuationIndentWidth: 8
+Cpp11BracedListStyle: false
+
+AlignAfterOpenBracket: true
+
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+
+AlignEscapedNewlines: true
+AlignOperands: true
+AlignTrailingComments: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+
+#
+#  Allows `if (foo) bar;`
+#
+AllowShortIfStatementsOnASingleLine: true
+
+#
+#  Allows `while (foo) bar;`
+#
+AllowShortLoopsOnASingleLine: true
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterControlStatement: false
+  AfterEnum: false
+  AfterFunction: true
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeElse: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+
+
+#
+#  Place binary operators at the end of the lines of a multiline condition
+#
+BreakBeforeBinaryOperators: None
+
+#
+#  Ensures the operators are placed at the end of the terms
+#
+BreakBeforeTernaryOperators: false
+
+#
+#  "breaks really long strings that would"
+#  "exceed the maximum column width into"
+#  "nice blocks like this"
+#
+BreakStringLiterals: true
+
+BinPackArguments: true
+BinPackParameters: true
+
+#
+#  switch (foo) {
+#  case 'bar':
+#  	break;
+#
+#  case 'baz':
+#	break;
+#  }
+#
+IndentCaseLabels: false
+
+#
+#  #ifdef foo
+#  #	error bar
+#  #endif
+#
+IndentPPDirectives: AfterHash
+
+#
+#  Ensures pointers '*' are placed next to the variable name
+#  instead of the type.
+#
+PointerAlignment: Right
+
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 8
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+MaxEmptyLinesToKeep: 1
