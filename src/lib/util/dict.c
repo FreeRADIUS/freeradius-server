@@ -2480,7 +2480,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
 	 */
-	for (p = name; fr_dict_attr_allowed_chars[(int)*p] || (*p == '.') || (*p == '-'); p++);
+	for (p = name; fr_dict_attr_allowed_chars[(uint8_t)*p] || (*p == '.') || (*p == '-'); p++);
 
 	len = p - name;
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
@@ -2903,7 +2903,7 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t **out, char const *name)
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
 	 */
-	for (p = name; fr_dict_attr_allowed_chars[(int)*p] && (*p != '.'); p++);
+	for (p = name; fr_dict_attr_allowed_chars[(uint8_t)*p] && (*p != '.'); p++);
 
 	len = p - name;
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
@@ -3235,7 +3235,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_t const **out, fr_dict_t const 
 	 *	Advance p until we get something that's not part of
 	 *	the dictionary attribute name.
 	 */
-	for (p = name; fr_dict_attr_allowed_chars[(int)*p]; p++);
+	for (p = name; fr_dict_attr_allowed_chars[(uint8_t)*p]; p++);
 
 	len = p - name;
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {

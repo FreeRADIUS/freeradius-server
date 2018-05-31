@@ -1183,7 +1183,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 					 *	e.g. LDAP-Group and SQL-Group.
 					 */
 					for (i = 0; i < c->data.map->lhs->len; i++) {
-						if (!fr_dict_attr_allowed_chars[(unsigned char) c->data.map->lhs->name[i]]) {
+						if (!fr_dict_attr_allowed_chars[(uint8_t) c->data.map->lhs->name[i]]) {
 							may_be_attr = false;
 							break;
 						}

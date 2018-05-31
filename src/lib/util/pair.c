@@ -291,7 +291,7 @@ ssize_t fr_pair_afrom_substr(TALLOC_CTX *ctx, VALUE_PAIR **out,
 		quote = '\0';
 		q = p;
 
-		while (fr_dict_attr_allowed_chars[(int)*q] != '\0') q++;
+		while (fr_dict_attr_allowed_chars[(uint8_t)*q] != '\0') q++;
 		break;
 	}
 
@@ -2660,10 +2660,8 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		 *	This is arguably easier than trying to figure
 		 *	out which operators come after the attribute
 		 *	name.  Yes, our "lexer" is bad.
-		 *
-		 *  sizeof() is for coverity.
 		 */
-		if ((*t >= sizeof(fr_dict_attr_allowed_chars)) || !fr_dict_attr_allowed_chars[*t]) break;
+		if (!fr_dict_attr_allowed_chars[(uint8_t)*t]) break;
 
 		/*
 		 *	Attribute:=value is NOT

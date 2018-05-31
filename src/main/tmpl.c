@@ -717,7 +717,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		 *	Copy the name to a field for later resolution
 		 */
 		vpt->type = TMPL_TYPE_ATTR_UNDEFINED;
-		for (q = p; fr_dict_attr_allowed_chars[(int) *q]; q++);
+		for (q = p; fr_dict_attr_allowed_chars[(uint8_t) *q]; q++);
 		if (q == p) {
 			fr_strerror_printf("Invalid attribute name");
 			slen = -(p - name);
@@ -2042,7 +2042,7 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 		for (p = vpt->name; *p != '\0'; p++) {
 			if (*p == ' ') break;
 			if (*p == '\'') break;
-			if (!fr_dict_attr_allowed_chars[(int) *p]) break;
+			if (!fr_dict_attr_allowed_chars[(uint8_t) *p]) break;
 		}
 		c = *p ? '"' : '\0';
 
