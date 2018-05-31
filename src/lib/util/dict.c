@@ -5458,19 +5458,17 @@ int fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir)
  */
 ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 {
-	uint8_t const *p = (uint8_t const *)name, *end;
+	char const *p = name, *end;
 
 	if (len < 0) len = strlen(name);
 	end = p + len;
 
 	do {
 		if (!fr_dict_attr_allowed_chars[(int)*p]) {
-			char buff[5];
+			fr_strerror_printf("Invalid character '%pV' in attribute name \"%pV\"",
+					   fr_box_strvalue_len(p, 1), fr_box_strvalue_len(name, len));
 
-			fr_snprint(buff, sizeof(buff), (char const *)p, 1, '\'');
-			fr_strerror_printf("Invalid character '%s' in attribute name", buff);
-
-			return -(p - (uint8_t const *)name);
+			return -(p - name);
 		}
 		p++;
 	} while (p < end);
