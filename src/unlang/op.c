@@ -636,7 +636,7 @@ static unlang_action_t unlang_detach(REQUEST *request,
 	/*
 	 *	Set Request Lifetime
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_REQUEST_LIFETIME, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_request_lifetime, TAG_ANY);
 	if (!vp || (vp->vp_uint32 > 0)) {
 		struct timeval when;
 		const fr_event_timer_t **ev_p;
