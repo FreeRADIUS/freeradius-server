@@ -116,10 +116,12 @@ fr_dict_autoload_t proto_dhcpv4_udp_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_message_type;
+static fr_dict_attr_t const *attr_dhcp_server_identifier;
 
 extern fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
 	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
+	{ .out = &attr_dhcp_server_identifier, .name = "DHCP-Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ NULL }
 };
 
@@ -282,7 +284,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			address.src_ipaddr = primary;
 #endif
 		} else if (((code[2] == FR_DHCP_OFFER) || (code[2] == FR_DHCP_ACK)) &&
-			   ((sid = fr_dhcpv4_packet_get_option(packet, buffer_len, FR_DHCP_DHCP_SERVER_IDENTIFIER)) != NULL) &&
+			   ((sid = fr_dhcpv4_packet_get_option(packet, buffer_len, attr_dhcp_server_identifier)) != NULL) &&
 			   (sid[1] == 4)) {
 			memcpy(&address.src_ipaddr.addr.v4.s_addr, sid + 2, 4);
 		}
