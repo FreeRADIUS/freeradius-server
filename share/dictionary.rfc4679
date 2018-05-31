@@ -15,11 +15,11 @@ BEGIN-VENDOR	ADSL-Forum
 #  Glue attribute to allow decoding of ADSL-Form vendor specific
 #  DHCP options.
 #
-ATTRIBUTE	ADSL-Forum-DHCP-Vendor-Specific		0	tlv
-ATTRIBUTE	ADSL-Forum-Device-Manufacturer-OUI	0.1	octets
-ATTRIBUTE	ADSL-Forum-Device-Serial-Number		0.2	string
-ATTRIBUTE	ADSL-Forum-Device-Product-Class		0.3	string
-ATTRIBUTE	ADSL-Forum-Gateway-Manufacturer-OUI	0.4	octets
+ATTRIBUTE	ADSL-Forum-DHCP-Vendor-Specific		255	tlv
+ATTRIBUTE	ADSL-Forum-Device-Manufacturer-OUI	255.1	octets
+ATTRIBUTE	ADSL-Forum-Device-Serial-Number		255.2	string
+ATTRIBUTE	ADSL-Forum-Device-Product-Class		255.3	string
+ATTRIBUTE	ADSL-Forum-Gateway-Manufacturer-OUI	255.4	octets
 
 #
 #  The first two attributes are prefixed with "ADSL-" because of

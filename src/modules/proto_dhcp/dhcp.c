@@ -921,6 +921,26 @@ ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const 
 		}
 
 		/*
+		 *	Decode ADSL Forum vendor-specific options.
+		 */
+		if ((p[0] == 125) && (p[1] > 6) && (p[2] == 0) && (p[3] == 0) && (p[4] == 0x0d) && (p[5] == 0xe9) &&
+		    (p[6] + 5 == p[1])) {
+			da = dict_attrbyvalue(255, 0x0de9);
+			if (!da) goto normal;
+
+			vp = fr_pair_afrom_da(ctx, da);
+			if (!vp) {
+				fr_pair_list_free(out);
+				return -1;
+			}
+
+			(void) fr_dhcp_decode_suboption(ctx, &vp, p + 7, p[6]);
+			if (vp) fr_cursor_merge(&cursor, vp);
+			goto next;
+		}
+
+	normal:
+		/*
 		 *	Array type sub-option create a new VALUE_PAIR
 		 *	for each array element.
 		 */
