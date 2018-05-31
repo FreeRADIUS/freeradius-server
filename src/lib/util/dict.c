@@ -5464,7 +5464,7 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 	end = p + len;
 
 	do {
-		if (!fr_dict_attr_allowed_chars[(int)*p]) {
+		if (!fr_dict_attr_allowed_chars[(uint8_t)*p]) {
 			fr_strerror_printf("Invalid character '%pV' in attribute name \"%pV\"",
 					   fr_box_strvalue_len(p, 1), fr_box_strvalue_len(name, len));
 
