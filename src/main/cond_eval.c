@@ -799,7 +799,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	 *	Also, the previous implementation did NOT implement
 	 *	"-=" correctly.  If two of the same attributes existed
 	 *	in the "to" list, and you tried to subtract something
-	 *	matching the *second* value, then the fr_pair_delete_by_num()
+	 *	matching the *second* value, then the fr_pair_delete_by_da()
 	 *	function was called, and the *all* attributes of that
 	 *	number were deleted.  With this implementation, only
 	 *	the matching attributes are deleted.

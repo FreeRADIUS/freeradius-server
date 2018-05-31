@@ -255,8 +255,6 @@ void		fr_pair_add(VALUE_PAIR **head, VALUE_PAIR *vp);
 
 void		fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *add);
 
-void		fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int attr, int8_t tag);
-
 void		fr_pair_delete_by_child_num(VALUE_PAIR **head, fr_dict_attr_t const *parent,
 					    unsigned int attr, int8_t tag);
 

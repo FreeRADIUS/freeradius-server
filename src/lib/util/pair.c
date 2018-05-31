@@ -945,49 +945,6 @@ void fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *replace)
  *
  * @param[in,out] head	VP in list.
  * @param[in] attr	to match.
- * @param[in] vendor	to match.
- * @param[in] tag	to match. TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
- *
- * @todo should take DAs and do a point comparison.
- */
-void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int attr, int8_t tag)
-{
-	VALUE_PAIR *i, *next;
-	VALUE_PAIR **last = head;
-
-	if (!vendor) {
-		for (i = *head; i; i = next) {
-			VP_VERIFY(i);
-			next = i->next;
-			if (fr_dict_attr_is_top_level(i->da) && (i->da->attr == attr) && ATTR_TAG_MATCH(i, tag)) {
-				*last = next;
-				talloc_free(i);
-			} else {
-				last = &i->next;
-			}
-		}
-	} else {
-		for (i = *head; i; i = next) {
-			VP_VERIFY(i);
-			next = i->next;
-			if ((i->da->parent->type == FR_TYPE_VENDOR) &&
-			    (i->da->attr == attr) && (fr_dict_vendor_num_by_da(i->da) == vendor) &&
-			    ATTR_TAG_MATCH(i, tag)) {
-				*last = next;
-				talloc_free(i);
-			} else {
-				last = &i->next;
-			}
-		}
-	}
-}
-
-/** Delete matching pairs
- *
- * Delete matching pairs from the attribute list.
- *
- * @param[in,out] head	VP in list.
- * @param[in] attr	to match.
  * @param[in] parent	to match.
  * @param[in] tag	to match. TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  */
@@ -1976,7 +1933,7 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			if (!found) goto do_add;
 
 			/*
-			 *	Do NOT call fr_pair_delete_by_num() here,
+			 *	Do NOT call fr_pair_delete_by_da() here,
 			 *	due to issues with re-writing
 			 *	"request->username".
 			 *
@@ -2009,8 +1966,7 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			 *	Delete *all* of the attributes
 			 *	of the same number.
 			 */
-			fr_pair_delete_by_num(&found->next,
-					      fr_dict_vendor_num_by_da(found->da), found->da->attr, TAG_ANY);
+			fr_pair_delete_by_da(&found->next, found->da);
 
 			/*
 			 *	Remove this attribute from the
