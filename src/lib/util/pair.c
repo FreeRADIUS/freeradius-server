@@ -1649,7 +1649,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 	char buf[8192];
 	FR_TOKEN last_token = T_EOL;
 
-	fr_cursor_t cursor, to_append;
+	fr_cursor_t cursor;
 
 	VALUE_PAIR *vp = NULL;
 	fr_cursor_init(&cursor, out);
@@ -1657,7 +1657,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		/*
 		 *      If we get a '\n' by itself, we assume that's
-		 *      the end of that VP
+		 *      the end of that VP list.
 		 */
 		if (buf[0] == '\n') {
 			if (vp) {
@@ -1682,8 +1682,10 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 			break;
 		}
 
-		fr_cursor_init(&to_append, &vp);
-		fr_cursor_merge(&cursor, &to_append);
+		do {
+			fr_cursor_append(&cursor, vp);
+		} while (vp->next && (vp = vp->next));
+
 		buf[0] = '\0';
 	}
 	*pfiledone = true;
