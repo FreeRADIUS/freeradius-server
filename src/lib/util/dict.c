@@ -3726,7 +3726,6 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
 		}
 
 		strlcpy(buffer, p, (q - p + 1));
-		p = q;
 
 		dict = fr_dict_by_protocol_name(buffer);
 		if (!dict) {
@@ -3756,8 +3755,6 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
 			fr_strerror_printf("Referenced attribute \"%s\" not found", p);
 			return NULL;
 		}
-
-		p += slen;
 	}
 
 	da = fr_dict_root(proto_dict);
