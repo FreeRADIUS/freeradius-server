@@ -1032,6 +1032,16 @@ int main(int argc, char *argv[])
 		}
 
 		/*
+		 *	Filter files can't be empty.
+		 */
+		if (!filter_vps) {
+			fprintf(stderr, "No attributes in filter file %s\n",
+				filter_file);
+			rcode = EXIT_FAILURE;
+			goto finish;
+		}
+
+		/*
 		 *	FIXME: loop over input packets.
 		 */
 		fclose(fp);
