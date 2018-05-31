@@ -2681,9 +2681,9 @@ int main(int argc, char *argv[])
 			/* Don't use the any device, it's horribly broken */
 			if (!strcmp(dev_p->name, "any")) continue;
 
-			link_layer = fr_pcap_if_link_layer(errbuf, dev_p);
+			link_layer = fr_pcap_if_link_layer(dev_p);
 			if (link_layer < 0) {
-				DEBUG2("Skipping %s: %s", dev_p->name, errbuf);
+				DEBUG2("Skipping %s: %s", dev_p->name, fr_strerror());
 				continue;
 			}
 

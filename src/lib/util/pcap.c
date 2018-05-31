@@ -80,19 +80,22 @@ static int _free_pcap(fr_pcap_t *pcap)
  * unfortunately when we're trying to find useful interfaces
  * this is too late.
  *
- * @param errbuff Error message.
  * @param dev to get link layer for.
  * @return
  *	- Datalink layer.
  *	- -1 on failure.
  */
-int fr_pcap_if_link_layer(char *errbuff, pcap_if_t *dev)
+int fr_pcap_if_link_layer(pcap_if_t *dev)
 {
-	pcap_t *pcap;
-	int data_link;
+	char	errbuf[PCAP_ERRBUF_SIZE];
+	pcap_t	*pcap;
+	int	data_link;
 
-	pcap = pcap_open_live(dev->name, 0, 0, 0, errbuff);
-	if (!pcap) return -1;
+	pcap = pcap_open_live(dev->name, 0, 0, 0, errbuf);
+	if (!pcap) {
+		fr_strerror_printf("%s", errbuf);
+		return -1;
+	}
 
 	data_link = pcap_datalink(pcap);
 	pcap_close(pcap);

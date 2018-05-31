@@ -97,7 +97,7 @@ struct fr_pcap {
 	fr_pcap_t		*next;				//!< Next handle in collection.
 };
 
-int		fr_pcap_if_link_layer(char *errbuff, pcap_if_t *dev);
+int		fr_pcap_if_link_layer(pcap_if_t *dev);
 fr_pcap_t	*fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type);
 int		fr_pcap_open(fr_pcap_t *handle);
 int		fr_pcap_apply_filter(fr_pcap_t *handle, char const *expression);
