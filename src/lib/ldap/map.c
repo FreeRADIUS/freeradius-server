@@ -118,9 +118,9 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 
 			if (fr_pair_value_from_str(vp, self->values[i]->bv_val,
 						   self->values[i]->bv_len, '\0', true) < 0) {
-				RPWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s",
+				RPWDEBUG("Failed parsing value \"%pV\" for attribute %s",
 					 fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					 map->lhs->tmpl_da->name, fr_strerror());
+					 map->lhs->tmpl_da->name);
 
 				talloc_free(vp); /* also frees escaped */
 				continue;
