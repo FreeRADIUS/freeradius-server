@@ -1860,8 +1860,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	has timed out, and we don't respond.
 		 */
 		if (buffer_len < 20) {
-			packet_expiry_timer(connection ? connection->el : inst->el, NULL, track);
 			track->reply_len = 1; /* don't respond */
+			packet_expiry_timer(connection ? connection->el : inst->el, NULL, track);
 			return buffer_len;
 		}
 
