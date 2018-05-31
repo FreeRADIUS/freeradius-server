@@ -58,7 +58,7 @@ dictionary ATTRIBUTE	Unit-Integer	255		integer[1]
 data Definition for 'Unit-Integer' is invalid: The 'length' flag can only be set for attributes of type 'octets' or 'struct'
 
 dictionary ATTRIBUTE	Unit-$bad$stuff	255		integer
-data Invalid character '$' in attribute name
+data Invalid character '$' in attribute name "Unit-$bad$stuff"
 
 #
 # flags
