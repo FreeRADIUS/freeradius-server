@@ -1126,6 +1126,8 @@ static int recv_one_packet(int wait_time)
 		stats.rejected++;
 	}
 
+	fr_strerror();	/* Clear strerror buffer */
+
 	/*
 	 *	If we had an expected response code, check to see if the
 	 *	packet matched that.
