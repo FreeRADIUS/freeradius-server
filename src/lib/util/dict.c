@@ -2882,6 +2882,7 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
  * @param[out] out		the resolve dictionary or NULL if the dictionary
  *				couldn't be resolved.
  * @param[in] name		string start.
+ * @param[in] dict_def		The dictionary to return if no dictionary qualifier was found.
  * @return
  *	- <= 0 on error (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
