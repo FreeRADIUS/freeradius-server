@@ -258,7 +258,7 @@ ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
  */
 fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
 
-ssize_t			fr_dict_by_protocol_substr(fr_dict_t **out, char const *name);
+ssize_t			fr_dict_by_protocol_substr(fr_dict_t **out, char const *name, fr_dict_t const *dict_def);
 
 fr_dict_t		*fr_dict_by_protocol_name(char const *name);
 
@@ -317,6 +317,12 @@ ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_t const **out,
 						    fr_dict_t const *dict, char const *name);
 
 fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *attr);
+
+ssize_t			fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **out,
+							      fr_dict_t const *dict_def, char const *attr);
+
+int			fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out,
+						       fr_dict_t const *dict_def, char const *attr);
 
 fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type);
 

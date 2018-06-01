@@ -2886,7 +2886,7 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
  *	- <= 0 on error (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  */
-ssize_t fr_dict_by_protocol_substr(fr_dict_t **out, char const *name)
+ssize_t fr_dict_by_protocol_substr(fr_dict_t **out, char const *name, fr_dict_t const *dict_def)
 {
 	fr_dict_attr_t		root;
 	fr_dict_t		find = { .root = &root };
@@ -2905,6 +2905,15 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t **out, char const *name)
 	 */
 	for (p = name; fr_dict_attr_allowed_chars[(uint8_t)*p] && (*p != '.'); p++);
 
+	/*
+	 *	If what we stopped at wasn't a '.', then there
+	 *	can't be a protocol name in this string.
+	 */
+	if (*p != '.') {
+		memcpy(out, &dict_def, sizeof(*out));
+		return 0;
+	}
+
 	len = p - name;
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
@@ -2921,6 +2930,7 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t **out, char const *name)
 
 	if (!dict) {
 		fr_strerror_printf("Unknown protocol '%.*s'", (int) len, name);
+		*out = NULL;
 		return 0;
 	}
 	*out = dict;
@@ -3280,6 +3290,80 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
 	INTERNAL_IF_NULL(dict);
 
 	return fr_hash_table_finddata(dict->attributes_by_name, &find);
+}
+
+/** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				- 0 success.
+ *				- -1 if the attribute can't be found.
+ *				- -2 if the protocol can't be found.
+ * @param[out] out		Dictionary found attribute.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] attr		Dictionary/Attribute name.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **out,
+					      fr_dict_t const *dict_def, char const *attr)
+{
+	fr_dict_t	*dict;
+	char const	*p = attr;
+	ssize_t		slen;
+
+	INTERNAL_IF_NULL(dict_def);
+
+	if (err) *err = 0;
+
+	/*
+	 *	Figure out if we should use the default dictionary
+	 *	or if the string was qualified.
+	 */
+	slen = fr_dict_by_protocol_substr(&dict, p, dict_def);
+	if ((slen <= 0) || !dict) {
+		if (err) *err = -2;
+		return 0;
+	}
+
+	p += slen;
+
+	slen = fr_dict_attr_by_name_substr(out, dict, p);
+	if (slen <= 0) {
+		if (err) *err = -1;
+		return -(p - attr);
+	}
+
+	p += slen;
+
+	return p - attr;
+}
+
+/** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
+ *
+ * @param[out] out		Dictionary found attribute.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] attr		Dictionary/Attribute name.
+ * @return
+ *	- 0 on success.
+ *	- -1 if the attribute can't be found.
+ *	- -2 if the protocol can't be found.
+ *	- -3 trailing garbage in attr atring.
+ */
+int fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr_dict_t const *dict_def, char const *attr)
+{
+	ssize_t slen;
+	int	err = 0;
+
+	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, attr);
+	if (slen <= 0) return err;
+
+	if ((size_t)slen != strlen(attr)) {
+		fr_strerror_printf("Trailing garbage after attr string \"%s\"", attr);
+		return -3;
+	}
+
+	return 0;
 }
 
 /** Lookup a attribute by its its vendor and attribute numbers and data type
