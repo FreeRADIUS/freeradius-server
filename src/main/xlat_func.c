@@ -815,6 +815,7 @@ static xlat_action_t xlat_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 		default:
 			REDEBUG("Invalid character class '%c'", *p);
+			talloc_free(buff);
 
 			return XLAT_ACTION_FAIL;
 		}
