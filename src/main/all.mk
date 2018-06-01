@@ -3,7 +3,6 @@ SUBMAKEFILES := \
     radict.mk \
     radiusd.mk \
     radsniff.mk \
-    radmin.mk \
     radwho.mk \
     radsnmp.mk \
     radlast.mk \

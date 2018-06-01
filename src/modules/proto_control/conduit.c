@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/conduit.h>
+#include "conduit.h"
 
 typedef struct rconduit_t {
 	uint32_t	conduit;

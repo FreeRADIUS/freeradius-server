@@ -1,7 +1,6 @@
 TARGET	:= radiusd
 SOURCES := \
     auth.c \
-    conduit.c \
     client.c \
     crypt.c \
     users_file.c \

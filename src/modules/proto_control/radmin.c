@@ -66,8 +66,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/md5.h>
-#include <freeradius-devel/conduit.h>
 #include <freeradius-devel/cf_parse.h>
+#include "conduit.h"
 
 /*
  *	For configuration file stuff.
