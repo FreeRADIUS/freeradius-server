@@ -106,6 +106,7 @@ static int digest_fix(REQUEST *request)
 	 *	Check for proper format of the Digest-Attributes
 	 */
 	RDEBUG("Checking for correctly formatted Digest-Attributes");
+	rad_assert(attr_digest_attributes);
 
 	first = fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, attr_digest_attributes);
 	if (!first) return RLM_MODULE_NOOP;
@@ -113,28 +114,29 @@ static int digest_fix(REQUEST *request)
 	for (i = fr_cursor_head(&cursor);
 	     i;
 	     i = fr_cursor_next(&cursor)) {
-		size_t length = i->vp_length;
-		size_t attrlen;
-		uint8_t const *p = i->vp_octets;
+		size_t attr_len;
+		uint8_t const *p = i->vp_octets, *end = i->vp_octets + i->vp_length;
+
+		RHEXDUMP(L_DBG_LVL_3, p, i->vp_length, "Validating digest attribute");
 
 		/*
 		 *	Until this stupidly encoded attribute is exhausted.
 		 */
-		while (length > 0) {
+		while (p < end) {
 			/*
 			 *	The attribute type must be valid
 			 */
 			if ((p[0] == 0) || (p[0] > 10)) {
-				RDEBUG("Not formatted as Digest-Attributes: TLV type (%u) invalid", (unsigned int) p[0]);
+				RDEBUG("Not formatted as Digest-Attributes: subtlv (%u) invalid", (unsigned int) p[0]);
 				return RLM_MODULE_NOOP;
 			}
 
-			attrlen = p[1];	/* stupid VSA format */
+			attr_len = p[1];	/* stupid VSA format */
 
 			/*
 			 *	Too short.
 			 */
-			if (attrlen < 3) {
+			if (attr_len < 3) {
 				RDEBUG("Not formatted as Digest-Attributes: TLV too short");
 				return RLM_MODULE_NOOP;
 			}
@@ -142,60 +144,35 @@ static int digest_fix(REQUEST *request)
 			/*
 			 *	Too long.
 			 */
-			if (attrlen > length) {
+			if (p + attr_len > end) {
 				RDEBUG("Not formatted as Digest-Attributes: TLV too long)");
 				return RLM_MODULE_NOOP;
 			}
 
-			length -= attrlen;
-			p += attrlen;
+
+			RHEXDUMP(L_DBG_LVL_3, p, attr_len, "Found valid sub TLV %u, length %zu", p[0], attr_len);
+
+			p += attr_len;
 		} /* loop over this one attribute */
 	}
 
 	/*
 	 *	Convert them to something sane.
 	 */
-	RDEBUG("Digest-Attributes look OK.  Converting them to something more useful");
+	RDEBUG("Digest-Attributes validated, unpacking into interal attributes");
 	fr_cursor_head(&cursor);
 	for (i = fr_cursor_head(&cursor);
 	     i;
 	     i = fr_cursor_next(&cursor)) {
-		size_t		length = i->vp_length;
-		size_t		attrlen;
-		uint8_t const	*p = &i->vp_octets[0];
+		size_t		attr_len;
+		uint8_t const	*p = i->vp_octets, *end = i->vp_octets + i->vp_length;
 		VALUE_PAIR	*sub;
 
 		/*
 		 *	Until this stupidly encoded attribute is exhausted.
 		 */
-		while (length > 0) {
-			/*
-			 *	The attribute type must be valid
-			 */
-			if ((p[0] == 0) || (p[0] > 10)) {
-				REDEBUG("Received Digest-Attributes with invalid sub-attribute %d", p[0]);
-				return RLM_MODULE_INVALID;
-			}
-
-			attrlen = p[1];	/* stupid VSA format */
-
-			/*
-			 *	Too short.
-			 */
-			if (attrlen < 3) {
-				REDEBUG("Received Digest-Attributes with short sub-attribute %d, of length %zu",
-					p[0], attrlen);
-				return RLM_MODULE_INVALID;
-			}
-
-			/*
-			 *	Too long.
-			 */
-			if (attrlen > length) {
-				REDEBUG("Received Digest-Attributes with long sub-attribute %d, of length %zu",
-					p[0], attrlen);
-				return RLM_MODULE_INVALID;
-			}
+		while (p < end) {
+			attr_len = p[1];	/* stupid VSA format */
 
 			/*
 			 *	Create a new attribute, broken out of
@@ -206,20 +183,14 @@ static int digest_fix(REQUEST *request)
 			MEM(sub = fr_pair_afrom_child_num(request->packet,
 							  fr_dict_root(dict_freeradius),
 							  attr_digest_realm->attr - 1 + p[0]));
-			fr_pair_value_bstrncpy(sub, p + 2, attrlen - 2);
+			fr_pair_value_bstrncpy(sub, p + 2, attr_len - 2);
 			fr_pair_add(&request->packet->vps, sub);
 
 			RINDENT();
 			RDEBUG2("&%pP", sub);
 			REXDENT();
 
-			/*
-			 *	FIXME: Check for the existence
-			 *	of the necessary attributes!
-			 */
-
-			length -= attrlen;
-			p += attrlen;
+			p += attr_len;
 		} /* loop over this one attribute */
 	}
 
