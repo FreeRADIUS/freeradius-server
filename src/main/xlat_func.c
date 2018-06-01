@@ -666,20 +666,59 @@ static xlat_action_t xlat_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
  *  Build strings of random chars, useful for generating tokens and passcodes
  *  Format similar to String::Random.
  */
-static ssize_t randstr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			    REQUEST *request, char const *fmt)
+static xlat_action_t xlat_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
+				  REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				  fr_value_box_t **in)
 {
-	char const 	*p;
-	char		*out_p = *out;
+	char const 	*p, *end;
+	char		*endptr;
+	char		*buff, *buff_p;
 	unsigned int	result;
 	unsigned int	number;
-	size_t		freespace = outlen;
+	size_t		outlen = 0;
+	fr_value_box_t*	vb;
 
-	if (outlen <= 1) return 0;
+	/*
+	 * Nothing to do if input is empty
+	 */
+	if (!(*in)) {
+		return XLAT_ACTION_DONE;
+	}
 
-	p = fmt;
-	while (*p && (--freespace > 0)) {
+	/*
+	 * Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	p = (*in)->vb_strvalue;
+	end = p + (*in)->vb_length;
+
+	/*
+	 * Calculate size of output
+	 */
+	while (p < end) {
+		if (isdigit((int) *p)) {
+			number = strtol(p, &endptr, 10);
+			if (number > 100) number = 100;
+			/* hexits take up 2 characters */
+			if (*endptr == 'h' || *endptr == 'H') number *= 2;
+			outlen += number;
+			p = endptr;
+		} else {
+			outlen++;
+		}
+		p++;
+	}
+
+	buff = buff_p = talloc_zero_size(NULL, sizeof(char) * (outlen + 1));
+
+	/* Reset p to start position */
+	p = (*in)->vb_strvalue;
+
+	while (p < end) {
 		number = 0;
 
 		/*
@@ -688,15 +727,10 @@ static ssize_t randstr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 *	But we limit it to 100, because we don't want
 		 *	utter stupidity.
 		 */
-		while (isdigit((int) *p)) {
-			if (number >= 100) {
-				p++;
-				continue;
-			}
-
-			number *= 10;
-			number += *p - '0';
-			p++;
+		if (isdigit((int) *p)) {
+			number = strtol(p, &endptr, 10);
+			p = endptr;
+			if (number > 100) number = 100;
 		}
 
 	redo:
@@ -707,49 +741,49 @@ static ssize_t randstr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 *  Lowercase letters
 		 */
 		case 'c':
-			*out_p++ = 'a' + (result % 26);
+			*buff_p++ = 'a' + (result % 26);
 			break;
 
 		/*
 		 *  Uppercase letters
 		 */
 		case 'C':
-			*out_p++ = 'A' + (result % 26);
+			*buff_p++ = 'A' + (result % 26);
 			break;
 
 		/*
 		 *  Numbers
 		 */
 		case 'n':
-			*out_p++ = '0' + (result % 10);
+			*buff_p++ = '0' + (result % 10);
 			break;
 
 		/*
 		 *  Alpha numeric
 		 */
 		case 'a':
-			*out_p++ = randstr_salt[result % (sizeof(randstr_salt) - 3)];
+			*buff_p++ = randstr_salt[result % (sizeof(randstr_salt) - 3)];
 			break;
 
 		/*
 		 *  Punctuation
 		 */
 		case '!':
-			*out_p++ = randstr_punc[result % (sizeof(randstr_punc) - 1)];
+			*buff_p++ = randstr_punc[result % (sizeof(randstr_punc) - 1)];
 			break;
 
 		/*
 		 *  Alpa numeric + punctuation
 		 */
 		case '.':
-			*out_p++ = '!' + (result % 95);
+			*buff_p++ = '!' + (result % 95);
 			break;
 
 		/*
 		 *  Alpha numeric + salt chars './'
 		 */
 		case 's':
-			*out_p++ = randstr_salt[result % (sizeof(randstr_salt) - 1)];
+			*buff_p++ = randstr_salt[result % (sizeof(randstr_salt) - 1)];
 			break;
 
 		/*
@@ -757,7 +791,7 @@ static ssize_t randstr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 *  Alpha numeric with easily confused char pairs removed.
 		 */
 		case 'o':
-			*out_p++ = randstr_otp[result % (sizeof(randstr_otp) - 1)];
+			*buff_p++ = randstr_otp[result % (sizeof(randstr_otp) - 1)];
 			break;
 
 		/*
@@ -765,39 +799,27 @@ static ssize_t randstr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 *  non printable chars).
 		 */
 		case 'h':
-			if (freespace < 2) {
-				break;
-			}
+			snprintf(buff_p, 3, "%02x", result % 256);
 
-			snprintf(out_p, 3, "%02x", result % 256);
-
-			/* Already decremented */
-			freespace -= 1;
-			out_p += 2;
+			buff_p += 2;
 			break;
 
 		/*
 		 *  Binary data with uppercase hexits
 		 */
 		case 'H':
-			if (freespace < 2) {
-				break;
-			}
+			snprintf(buff_p, 3, "%02X", result % 256);
 
-			snprintf(out_p, 3, "%02X", result % 256);
-
-			/* Already decremented */
-			freespace -= 1;
-			out_p += 2;
+			buff_p += 2;
 			break;
 
 		default:
 			REDEBUG("Invalid character class '%c'", *p);
 
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
 
-		if (number > 0) {
+		if (number > 1) {
 			number--;
 			goto redo;
 		}
@@ -805,9 +827,14 @@ static ssize_t randstr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		p++;
 	}
 
-	*out_p++ = '\0';
+	*buff_p++ = '\0';
 
-	return outlen - freespace;
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** URLencode special characters
@@ -2455,7 +2482,6 @@ int xlat_init(void)
 	XLAT_REGISTER(regex);
 #endif
 
-	xlat_register(NULL, "randstr", randstr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "urlquote", urlquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "urlunquote", urlunquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "tolower", tolower_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2497,6 +2523,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "bin", xlat_bin, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "md5", xlat_md5, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "rand", xlat_rand, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "randstr", xlat_randstr, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }
