@@ -1183,7 +1183,6 @@ int main(int argc, char **argv)
 	int		parallel = 1;
 	rc_request_t	*this;
 	int		force_af = AF_UNSPEC;
-	fr_dict_t	*dict = NULL;
 	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	/*
@@ -1389,7 +1388,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(dict_freeradius, radius_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return 1;
 	}
