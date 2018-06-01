@@ -55,7 +55,7 @@ static ssize_t lo_read(int fd, void *out, size_t outlen)
  *	A non-blocking copy of fr_conduit_read().
  */
 ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *out, size_t outlen,
-			      ssize_t *leftover)
+			      size_t *leftover)
 {
 	ssize_t r;
 	size_t data_len;

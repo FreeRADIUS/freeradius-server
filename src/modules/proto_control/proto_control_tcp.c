@@ -102,16 +102,16 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 {
 	proto_control_tcp_t		*inst = talloc_get_type_abort(instance, proto_control_tcp_t);
 	ssize_t				data_size;
-	size_t				packet_len = -1;
 
 	fr_time_t			*recv_time_p;
+	fr_conduit_type_t		conduit;
 
 	recv_time_p = *recv_time;
 
 	/*
 	 *      Read data into the buffer.
 	 */
-	data_size = read(inst->sockfd, buffer + *leftover, buffer_len - *leftover);
+	data_size = fr_conduit_read_async(inst->sockfd, &conduit, buffer, buffer_len, leftover);
 	if (data_size < 0) {
 		DEBUG2("proto_control_tcp got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
@@ -125,37 +125,12 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 	 */
 
 	/*
-	 *	TCP read of zero means the socket is dead.
+	 *	Not enough for a full packet, ask the caller to read more.
 	 */
-	if (!data_size) {
-		DEBUG2("proto_control_tcp - other side closed the socket.");
-		return -1;
-	}
-
-	// @todo - check authentication, etc. on the socket.
-	// we will need a state machine for this..
-
-	/*
-	 *	Not enough for one packet.  Tell the caller that we need to read more.
-	 */
-	if (data_size < 20) {
-		*leftover = data_size;
+	if (conduit == FR_CONDUIT_WANT_MORE) {
 		return 0;
 	}
 
-#if 0
-	/*
-	 *      If it's not a RADIUS packet, ignore it.
-	 */
-	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, &reason)) {
-		/*
-		 *      @todo - check for F5 load balancer packets.  <sigh>
-		 */
-		DEBUG2("proto_control_tcp got a packet which isn't RADIUS");
-		inst->stats.total_malformed_requests++;
-		return -1;
-	}
-#endif
 
 	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
@@ -167,11 +142,10 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_control_tcp - Received %s ID %d length %d %s",
-	       fr_packet_codes[buffer[0]], buffer[1],
-	       (int) packet_len, inst->name);
+	DEBUG2("proto_control_tcp - Received command packet length on %s",
+	       inst->name);
 
-	return packet_len;
+	return data_size;
 }
 
 
@@ -190,25 +164,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	inst->stats.total_responses++;
 
 	/*
-	 *	This handles the race condition where we get a DUP,
-	 *	but the original packet replies before we're run.
-	 *	i.e. this packet isn't marked DUP, so we have to
-	 *	discover it's a dup later...
-	 *
-	 *	As such, if there's already a reply, then we ignore
-	 *	the encoded reply (which is probably going to be a
-	 *	NAK), and instead just ignore the DUP and don't reply.
-	 */
-	if (track->reply_len) {
-		return buffer_len;
-	}
-
-	/*
-	 *	We only write RADIUS packets.
-	 */
-	rad_assert(buffer_len >= 20);
-
-	/*
 	 *	Only write replies if they're RADIUS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
@@ -221,14 +176,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	This socket is dead.  That's an error...
 	 */
 	if (data_size <= 0) return data_size;
-
-	/*
-	 *	Root through the reply to determine any
-	 *	connection-level negotiation data.
-	 */
-	if (track->packet[0] == FR_CODE_STATUS_SERVER) {
-//		status_check_reply(inst, buffer, buffer_len);
-	}
 
 	return data_size;
 }

@@ -68,7 +68,7 @@ typedef struct fr_conduit_hdr_t {
 } fr_conduit_hdr_t;
 
 
-ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen, ssize_t *have_read);
+ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen, size_t *leftover);
 ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *buffer, size_t buflen);
 ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *buffer, size_t buflen);
 

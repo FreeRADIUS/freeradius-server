@@ -145,11 +145,10 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 }
 
 
-static ssize_t mod_write(void *instance, void *packet_ctx,
+static ssize_t mod_write(void *instance, UNUSED void *packet_ctx,
 			 UNUSED fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
 	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
-	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	ssize_t				data_size;
 
 	/*
@@ -158,25 +157,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	can update them, too.. <sigh>
 	 */
 	inst->stats.total_responses++;
-
-	/*
-	 *	This handles the race condition where we get a DUP,
-	 *	but the original packet replies before we're run.
-	 *	i.e. this packet isn't marked DUP, so we have to
-	 *	discover it's a dup later...
-	 *
-	 *	As such, if there's already a reply, then we ignore
-	 *	the encoded reply (which is probably going to be a
-	 *	NAK), and instead just ignore the DUP and don't reply.
-	 */
-	if (track->reply_len) {
-		return buffer_len;
-	}
-
-	/*
-	 *	We only write RADIUS packets.
-	 */
-	rad_assert(buffer_len >= 20);
 
 	/*
 	 *	Only write replies if they're RADIUS packets.
@@ -191,14 +171,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	This socket is dead.  That's an error...
 	 */
 	if (data_size <= 0) return data_size;
-
-	/*
-	 *	Root through the reply to determine any
-	 *	connection-level negotiation data.
-	 */
-	if (track->packet[0] == FR_CODE_STATUS_SERVER) {
-//		status_check_reply(inst, buffer, buffer_len);
-	}
 
 	return data_size;
 }
