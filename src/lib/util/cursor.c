@@ -136,7 +136,19 @@ void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in)
  */
 void *fr_cursor_head(fr_cursor_t *cursor)
 {
-	if (!cursor) return NULL;
+	if (unlikely(!cursor)) return NULL;
+
+	/*
+	 *	If we have a custom iterator, the head attribute
+	 *	may not be in the subset the iterator would
+	 *	return, so set everything to NULL and have
+	 *	cursor_next figure it out.
+	 */
+	if (cursor->iter) {
+		cursor->prev = NULL;
+		cursor->current = cursor_next(&cursor->prev, cursor, NULL);
+		return cursor->current;
+	}
 
 	cursor->current = *cursor->head;
 	cursor->prev = NULL;
@@ -217,7 +229,7 @@ void *fr_cursor_next_peek(fr_cursor_t *cursor)
  */
 void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
 {
-	if (!cursor) return NULL;
+	if (unlikely(!cursor)) return NULL;
 
 	return cursor->prev;
 }
@@ -231,7 +243,7 @@ void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
  */
 void * CC_HINT(hot) fr_cursor_current(fr_cursor_t *cursor)
 {
-	if (!cursor) return NULL;
+	if (unlikely(!cursor)) return NULL;
 
 	return cursor->current;
 }
