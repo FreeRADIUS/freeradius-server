@@ -927,21 +927,54 @@ static xlat_action_t xlat_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Remember to escape % with %% in strings, else xlat will try to parse it.
  */
-static ssize_t urlunquote_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			       REQUEST *request, char const *fmt)
+static xlat_action_t xlat_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
+				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   fr_value_box_t **in)
 {
-	char const *p;
-	char *out_p = *out;
+	char const 	*p, *end;
+	char		*buff, *buff_p;
 	char *c1, *c2;
-	size_t	freespace = outlen;
+	size_t		outlen = 0;
+	fr_value_box_t	*vb;
 
-	if (outlen <= 1) return 0;
+	/*
+	 * Nothing to do if input is empty
+	 */
+	if (!(*in)) {
+		return XLAT_ACTION_DONE;
+	}
 
-	p = fmt;
-	while (*p && (--freespace > 0)) {
+	/*
+	 * Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	p = (*in)->vb_strvalue;
+	end = p + (*in)->vb_length;
+
+	/*
+	 * Calculate size of output
+	 */
+	while (p < end) {
+		if (*p == '%') {
+			p += 3;
+		} else {
+			p++;
+		}
+		outlen++;
+	}
+
+	buff = buff_p = talloc_array(NULL, char, outlen + 1);
+
+	/* Reset p to start position */
+	p = (*in)->vb_strvalue;
+
+	while (p < end) {
 		if (*p != '%') {
-			*out_p++ = *p++;
+			*buff_p++ = *p++;
 			continue;
 		}
 		/* Is a % char */
@@ -949,16 +982,23 @@ static ssize_t urlunquote_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen
 		/* Don't need \0 check, as it won't be in the hextab */
 		if (!(c1 = memchr(hextab, tolower(*++p), 16)) ||
 		    !(c2 = memchr(hextab, tolower(*++p), 16))) {
-			REMARKER(fmt, p - fmt, "Non-hex char in % sequence");
-		   	return -1;
+			REMARKER((*in)->vb_strvalue, p - (*in)->vb_strvalue, "Non-hex char in % sequence");
+			talloc_free(buff);
+
+			return XLAT_ACTION_FAIL;
 		}
 		p++;
-		*out_p++ = ((c1 - hextab) << 4) + (c2 - hextab);
+		*buff_p++ = ((c1 - hextab) << 4) + (c2 - hextab);
 	}
 
-	*out_p = '\0';
+	*buff_p = '\0';
 
-	return outlen - freespace;
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 
@@ -2519,7 +2559,6 @@ int xlat_init(void)
 	XLAT_REGISTER(regex);
 #endif
 
-	xlat_register(NULL, "urlunquote", urlunquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "tolower", tolower_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "toupper", toupper_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "sha1", sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2561,6 +2600,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "rand", xlat_rand, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "randstr", xlat_randstr, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "urlquote", xlat_urlquote, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "urlunquote", xlat_urlunquote, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }
