@@ -629,6 +629,18 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			return;
 		}
 
+		/*
+		 *
+		 We MUST have written all of the data.  It is
+		 *	up to the app_io->write() function to track
+		 *	any partially written data.
+		 */
+		rad_assert((size_t) rcode == cd->m.data_size);
+		s->pending = NULL;
+
+		/*
+		 *	Reset for the next message.
+		 */
 		fr_message_done(&cd->m);
 
 		/*
