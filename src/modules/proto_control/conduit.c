@@ -28,12 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include "conduit.h"
 
-typedef struct rconduit_t {
-	uint32_t	conduit;
-	uint32_t	length;
-} rconduit_t;
-
-
 static ssize_t lo_read(int fd, void *out, size_t outlen)
 {
 	size_t total;
@@ -60,14 +54,14 @@ static ssize_t lo_read(int fd, void *out, size_t outlen)
 /*
  *	A non-blocking copy of fr_conduit_read().
  */
-ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *out, size_t outlen,
-			 uint8_t **outbuf, ssize_t *have_read)
+ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *out, size_t outlen,
+			      ssize_t *leftover)
 {
 	ssize_t r;
 	size_t data_len;
 	uint8_t *buffer = out;
-	rconduit_t hdr;
-	size_t offset = *have_read;
+	fr_conduit_hdr_t hdr;
+	size_t offset = *leftover;
 
 	/*
 	 *	If we can't even read a header, die.
@@ -86,10 +80,14 @@ ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *out, size_t 
 		r = lo_read(fd, buffer + offset, sizeof(hdr) - offset);
 		if (r <= 0) return r;
 
-		*have_read += r;
+		*leftover += r;
 		offset += r;
 
-		if (offset < sizeof(hdr)) return *have_read;
+		/*
+		 *	We have leftover data, but no *packet* to
+		 *	return.
+		 */
+		if (offset < sizeof(hdr)) return 0;
 	}
 
 	/*
@@ -119,13 +117,20 @@ ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *out, size_t 
 
 	if (offset == outlen) {
 		*pconduit = ntohl(hdr.conduit);
-		*outbuf = buffer + sizeof(hdr);
-		return data_len;
+
+		/*
+		 *	The other end can't set this.
+		 */
+		if (*pconduit == FR_CONDUIT_WANT_MORE) {
+			return -1;
+		}
+
+		return outlen;
 	}
 
 	*pconduit = FR_CONDUIT_WANT_MORE;
-	*have_read = offset;
-	return offset;
+	*leftover = offset;
+	return 0;
 }
 
 ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *out, size_t outlen)
@@ -133,7 +138,7 @@ ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *out, size_t o
 	ssize_t r;
 	size_t data_len;
 	uint8_t *buffer = out;
-	rconduit_t hdr;
+	fr_conduit_hdr_t hdr;
 
 	/*
 	 *	Read the header
@@ -213,7 +218,7 @@ static ssize_t lo_write(int fd, void const *out, size_t outlen)
 ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *out, size_t outlen)
 {
 	ssize_t r;
-	rconduit_t hdr;
+	fr_conduit_hdr_t hdr;
 	uint8_t const *buffer = out;
 
 	if (outlen > UINT32_MAX) {

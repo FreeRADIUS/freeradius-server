@@ -37,8 +37,8 @@ typedef enum fr_conduit_type_t {
 	FR_CONDUIT_INIT_ACK,
 	FR_CONDUIT_AUTH_CHALLENGE,
 	FR_CONDUIT_AUTH_RESPONSE,
+	FR_CONDUIT_NOTIFY,
 	FR_CONDUIT_WANT_MORE,
-	FR_CONDUIT_NOTIFY
 } fr_conduit_type_t;
 
 typedef enum fr_conduit_result_t {
@@ -62,7 +62,13 @@ typedef struct fr_cs_buffer_t {
 	char		buffer[COMMAND_BUFFER_SIZE];
 } fr_cs_buffer_t;
 
-ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen, uint8_t **outbuf, ssize_t *have_read);
+typedef struct fr_conduit_hdr_t {
+	uint32_t	conduit;
+	uint32_t	length;
+} fr_conduit_hdr_t;
+
+
+ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen, ssize_t *have_read);
 ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *buffer, size_t buflen);
 ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *buffer, size_t buflen);
 
