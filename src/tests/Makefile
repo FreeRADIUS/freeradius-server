@@ -64,13 +64,13 @@ radiusd.pid: test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
 	@printf "TEST-SERVER Starting server... "
 	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxl $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -D $(TEST_PATH); then\
-		echo "TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxl $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -D $(TEST_PATH)"; \
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
 		echo "Last entries in server log $(TEST_PATH)/radius.log"; \
 	fi
 	@echo "ok"
+	@echo "TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pfxxxxl stdout -d ${top_builddir}/src/tests -n test -D $(TEST_PATH)";
 	@echo "Server logging to \"$(TEST_PATH)/radius.log\""
 
 # We can't make this depend on radiusd.pid, because then make will create
