@@ -536,10 +536,11 @@ void tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
 
 /** Create a #vp_tmpl_t from a #fr_value_box_t
  *
- * @param[in,out] ctx to allocate #vp_tmpl_t in.
- * @param[out] out Where to write pointer to new #vp_tmpl_t.
- * @param[in] data to convert.
- * @param[in] steal If true, any buffers are moved to the new ctx instead of being duplicated.
+ * @param[in,out] ctx	to allocate #vp_tmpl_t in.
+ * @param[out] out	Where to write pointer to new #vp_tmpl_t.
+ * @param[in] data	to convert.
+ * @param[in] steal	If true, any buffers are moved to the new
+ *			ctx instead of being duplicated.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -895,29 +896,32 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
  *
  * @note For details of attribute parsing see #tmpl_afrom_attr_substr.
  *
- * @param[in,out] ctx	To allocate #vp_tmpl_t in.
- * @param[out] out	Where to write the pointer to the new #vp_tmpl_t.
- * @param[in] in	String to convert to a #vp_tmpl_t.
- * @param[in] inlen	length of string to convert.
- * @param[in] type	of quoting around value. May be one of:
- *	- #T_BARE_WORD - If string begins with ``&`` produces #TMPL_TYPE_ATTR,
- *	  #TMPL_TYPE_ATTR_UNDEFINED, #TMPL_TYPE_LIST or error.
- *	  If string does not begin with ``&`` produces #TMPL_TYPE_UNPARSED,
- *	  #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
- *	- #T_SINGLE_QUOTED_STRING - Produces #TMPL_TYPE_UNPARSED
- *	- #T_DOUBLE_QUOTED_STRING - Produces #TMPL_TYPE_XLAT or #TMPL_TYPE_UNPARSED (if
- *	  string doesn't contain ``%``).
- *	- #T_BACK_QUOTED_STRING - Produces #TMPL_TYPE_EXEC
- *	- #T_OP_REG_EQ - Produces #TMPL_TYPE_REGEX
- * @param[in] request_def The default #REQUEST to set if no #request_refs qualifiers are
- *	found in name.
- * @param[in] list_def The default list to set if no #pair_lists qualifiers are found in
- *	name.
- * @param[in] do_unescape whether or not we should do unescaping. Should be false if the
- *	caller already did it.
- * @return <= 0 on error (offset as negative integer), > 0 on success
- *	(number of bytes parsed).
- *	@see REMARKER to produce pretty error markers from the return value.
+ * @param[in,out] ctx		To allocate #vp_tmpl_t in.
+ * @param[out] out		Where to write the pointer to the new #vp_tmpl_t.
+ * @param[in] in		String to convert to a #vp_tmpl_t.
+ * @param[in] inlen		length of string to convert.
+ * @param[in] type		of quoting around value. May be one of:
+ *				- #T_BARE_WORD - If string begins with ``&``
+ *				  produces #TMPL_TYPE_ATTR,
+ *	  			  #TMPL_TYPE_ATTR_UNDEFINED, #TMPL_TYPE_LIST or error.
+ *	  			  If string does not begin with ``&`` produces
+ *				  #TMPL_TYPE_UNPARSED, #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
+ *				- #T_SINGLE_QUOTED_STRING - Produces #TMPL_TYPE_UNPARSED
+ *				- #T_DOUBLE_QUOTED_STRING - Produces #TMPL_TYPE_XLAT or
+ *				  #TMPL_TYPE_UNPARSED (if string doesn't contain ``%``).
+ *				- #T_BACK_QUOTED_STRING - Produces #TMPL_TYPE_EXEC
+ *				- #T_OP_REG_EQ - Produces #TMPL_TYPE_REGEX
+ * @param[in] request_def	The default #REQUEST to set if no #request_refs
+ *				qualifiers are found in name.
+ * @param[in] list_def		The default list to set if no #pair_lists
+ *				qualifiers are found in name.
+ * @param[in] do_unescape	whether or not we should do unescaping.
+ *				Should be false if the caller already did it.
+ * @return
+ *	- <= 0 on error (offset as negative integer)
+ *	- > 0 on success (number of bytes parsed).
+ *
+ * @see REMARKER to produce pretty error markers from the return value.
  *
  * @see tmpl_afrom_attr_substr
  */
