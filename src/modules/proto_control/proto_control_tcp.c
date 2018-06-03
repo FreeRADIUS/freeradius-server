@@ -153,7 +153,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t requ
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	proto_control_tcp_t		*inst = talloc_get_type_abort(instance, proto_control_tcp_t);
-	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
+//	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	ssize_t				data_size;
 
 	/*
