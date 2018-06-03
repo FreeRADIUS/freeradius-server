@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/conduit.h
+ * @file conduit.h
  * @brief API to provide distinct communication conduits for the radmin protocol.
  *
  * @copyright 2015 Alan DeKok <aland@deployingradius.com>

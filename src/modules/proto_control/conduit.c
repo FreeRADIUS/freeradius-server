@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file main/conduit.c
+ * @file conduit.c
  * @brief Channels for communicating with radmin
  *
  * @copyright 2015   The FreeRADIUS server project
