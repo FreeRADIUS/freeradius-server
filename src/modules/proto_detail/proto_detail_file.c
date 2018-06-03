@@ -83,12 +83,12 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	return inst->parent->work_io->decode(inst->parent->work_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_write(void *instance, void *packet_ctx,
-			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_time,
+			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
 	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_file_t);
 
-	return inst->parent->work_io->write(inst->parent->work_io_instance, packet_ctx, request_time, buffer, buffer_len);
+	return inst->parent->work_io->write(inst->parent->work_io_instance, packet_ctx, request_time, buffer, buffer_len, written);
 }
 
 static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)

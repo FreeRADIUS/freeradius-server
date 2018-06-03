@@ -556,8 +556,8 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 #endif
 }
 
-static ssize_t mod_write(void *instance, void *packet_ctx,
-			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_time,
+			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	proto_detail_work_t		*inst = talloc_get_type_abort(instance, proto_detail_work_t);
 	fr_detail_entry_t		*track = packet_ctx;

@@ -211,21 +211,27 @@ typedef ssize_t (*fr_io_data_read_t)(void *instance, void **packet_ctx, fr_time_
  *  write packets to the transport context.  The data may or may not
  *  go out to the network right away.
  *
- *  If the writer returns LESS THAN buffer_len, that's a special case
- *  saying "I took saved the data, but the socket wasn't ready, so you
- *  need to call me again at a later point".
+ *  If the write function does a partial write, it should return a
+ *  value smaller than buffer_len to indicate this.  The network
+ *  functions will then pass that value to a subsequent write call, in
+ *  the "written" argument.
+ *
+ *  The reason for this odd API is that read/write should be writing
+ *  *packets*, not raw streams of bytes.  This API allows the "buffer"
+ *  parameter to always contain a full packet.
  *
  * @param[in] instance		the context for this function
  * @param[in] packet_ctx	Request specific data.
  * @param[in] request_time	when the original request was received
  * @param[in] buffer		the buffer where the raw packet will be written from
  * @param[in] buffer_len	the length of the buffer
+ * @param[in] written		total number of bytes written in previous calls for this packet.
  * @return
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
 typedef ssize_t (*fr_io_data_write_t)(void *instance, void *packet_ctx, fr_time_t request_time,
-				      uint8_t *buffer, size_t buffer_len);
+				      uint8_t *buffer, size_t buffer_len, size_t written);
 
 /** Inject data into a socket.
  *

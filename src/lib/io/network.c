@@ -600,7 +600,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		rad_assert(listen == cd->listen);
 
 		rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx,
-					      cd->reply.request_time, cd->m.data, cd->m.data_size);
+					      cd->reply.request_time,
+					      cd->m.data, cd->m.data_size, 0);
 		if (rcode < 0) {
 
 			/*
@@ -1198,7 +1199,8 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 *	that NAKs are not written to the network.
 		 */
 		rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx,
-					      cd->reply.request_time, cd->m.data, cd->m.data_size);
+					      cd->reply.request_time,
+					      cd->m.data, cd->m.data_size, 0);
 		if (rcode < 0) {
 			if (errno == EWOULDBLOCK) {
 				if (fr_event_fd_insert(nr, nr->el, s->fd,

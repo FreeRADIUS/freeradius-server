@@ -196,8 +196,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 }
 
 
-static ssize_t mod_write(void *instance, void *packet_ctx,
-			 UNUSED fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t request_time,
+			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	proto_vmps_udp_t		*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);

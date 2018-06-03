@@ -1807,8 +1807,8 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	}
 }
 
-static ssize_t mod_write(void *instance, void *packet_ctx,
-			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_time,
+			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
@@ -1871,7 +1871,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 */
 
 		packet_len = inst->app_io->write(app_io_instance, track, request_time,
-						 buffer, buffer_len);
+						 buffer, buffer_len, written);
 		if (packet_len > 0) {
 			rad_assert(buffer_len == (size_t) packet_len);
 			MEM(track->reply = talloc_memdup(track, buffer, buffer_len));

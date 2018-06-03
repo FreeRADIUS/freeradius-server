@@ -159,7 +159,7 @@ static ssize_t test_read(void *ctx, UNUSED void **packet_ctx, fr_time_t **recv_t
 
 
 static ssize_t test_write(void *ctx, UNUSED void *packet_ctx,  UNUSED fr_time_t request_time,
-			  uint8_t *buffer, size_t buffer_len)
+			  uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	ssize_t			data_size;
 	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
