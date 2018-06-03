@@ -145,8 +145,8 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 }
 
 
-static ssize_t mod_write(void *instance, UNUSED void *packet_ctx,
-			 UNUSED fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_write(void *instance, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
+			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
 	ssize_t				data_size;
