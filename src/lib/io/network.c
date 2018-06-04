@@ -592,7 +592,10 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	/*
 	 *	@todo - this code is much the same as in
 	 *	fr_network_post_event().  Fix it so we only have one
-	 *	copy!
+	 *	copy!  Also, fix it so that if we get EWOULDBLOCK, we
+	 *	localize *all* pending and waiting messages.  That is
+	 *	so the waiting messages don't block the ring buffers
+	 *	on the worker side.
 	 */
 
 	/*
