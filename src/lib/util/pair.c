@@ -658,6 +658,8 @@ int fr_pair_to_unknown(VALUE_PAIR *vp)
 	VP_VERIFY(vp);
 	if (vp->da->flags.is_unknown) return 0;
 
+	(void) fr_cond_assert(vp->da->parent != NULL);
+
 	da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, fr_dict_vendor_num_by_da(vp->da), vp->da->attr);
 	if (!da) return -1;
 
