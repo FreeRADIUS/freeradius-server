@@ -713,7 +713,7 @@ static xlat_action_t xlat_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 		p++;
 	}
 
-	buff = buff_p = talloc_zero_size(NULL, sizeof(char) * (outlen + 1));
+	buff = buff_p = talloc_array(NULL, char, outlen + 1);
 
 	/* Reset p to start position */
 	p = (*in)->vb_strvalue;
