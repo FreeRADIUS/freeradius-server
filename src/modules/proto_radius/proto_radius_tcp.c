@@ -204,7 +204,7 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 
 
 static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t request_time,
-			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
+			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
 	proto_radius_tcp_t		*inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
@@ -235,15 +235,13 @@ static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t requ
 	 *	We only write RADIUS packets.
 	 */
 	rad_assert(buffer_len >= 20);
+	rad_assert(written < buffer_len);
 
 	/*
 	 *	Only write replies if they're RADIUS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
-	data_size = write(inst->sockfd, buffer, buffer_len);
-
-	// @todo - catch EWOULDBLOCK
-	// @todo - catch partial writes
+	data_size = write(inst->sockfd, buffer + written, buffer_len - written);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -252,13 +250,17 @@ static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t requ
 
 	/*
 	 *	Root through the reply to determine any
-	 *	connection-level negotiation data.
+	 *	connection-level negotiation data, but only the first
+	 *	time the packet is being written.
 	 */
-	if (track->packet[0] == FR_CODE_STATUS_SERVER) {
+	if ((written == 0) && (track->packet[0] == FR_CODE_STATUS_SERVER)) {
 //		status_check_reply(inst, buffer, buffer_len);
 	}
 
-	return data_size;
+	/*
+	 *	Add in previously written data to the response.
+	 */
+	return data_size + written;
 }
 
 
