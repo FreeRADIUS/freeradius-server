@@ -1067,24 +1067,11 @@ static xlat_action_t xlat_tolower(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Probably only works for ASCII
  */
-static ssize_t toupper_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			    UNUSED REQUEST *request, char const *fmt)
+static xlat_action_t xlat_toupper(TALLOC_CTX *ctx, fr_cursor_t *out,
+				  REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				  fr_value_box_t **in)
 {
-	char *q;
-	char const *p;
-
-	if (outlen <= 1) return 0;
-
-	for (p = fmt, q = *out; *p != '\0'; p++, outlen--) {
-		if (outlen <= 1) break;
-
-		*(q++) = toupper((int) *p);
-	}
-
-	*q = '\0';
-
-	return strlen(*out);
+	return _xlat_change_case(true, ctx, out, request, in);
 }
 
 /** Decodes data or &Attr-Name to data
@@ -2592,7 +2579,6 @@ int xlat_init(void)
 	XLAT_REGISTER(regex);
 #endif
 
-	xlat_register(NULL, "toupper", toupper_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "sha1", sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 #ifdef HAVE_OPENSSL_EVP_H
 	xlat_register(NULL, "sha224", sha224_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2634,6 +2620,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "urlquote", xlat_urlquote, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "urlunquote", xlat_urlunquote, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "tolower", xlat_tolower, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "toupper", xlat_toupper, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }
