@@ -101,6 +101,12 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 //	fr_dict_enum_t const	*type_enum;
 
 	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
+
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_control"));
+	rad_assert(parent_inst);
+
+//	inst = talloc_get_type_abort(parent_inst->data, proto_control_t);
+
 	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
 	 *
