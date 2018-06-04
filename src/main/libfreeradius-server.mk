@@ -14,6 +14,7 @@ SOURCES	:=	cond_eval.c \
 		map_proc.c \
 		map.c \
 		module.c \
+		pairmove.c \
 		regex.c \
 		request.c \
 		trigger.c \
