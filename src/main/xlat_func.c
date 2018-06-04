@@ -1003,6 +1003,50 @@ static xlat_action_t xlat_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+/** Change case of a string
+ *
+ * If upper is true, change to uppercase, otherwise, change to lowercase
+ *
+ */
+static xlat_action_t _xlat_change_case(bool upper, TALLOC_CTX *ctx, fr_cursor_t *out,
+				       REQUEST *request, fr_value_box_t **in)
+{
+	char *buff, *buff_p;
+	char const *p, *end;
+	fr_value_box_t* vb;
+
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!*in) return XLAT_ACTION_DONE;
+
+	/*
+	 * Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	p = (*in)->vb_strvalue;
+	end = p + (*in)->vb_length;
+
+	buff = buff_p = talloc_array(NULL, char, (*in)->vb_length + 1);
+
+	while (p < end) {
+		*(buff_p++) = upper ? toupper ((int) *(p++)) : tolower((int) *(p++));
+	}
+
+	*buff_p = '\0';
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 
 /** Convert a string to lowercase
  *
@@ -1010,24 +1054,11 @@ static xlat_action_t xlat_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Probably only works for ASCII
  */
-static ssize_t tolower_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			    UNUSED REQUEST *request, char const *fmt)
+static xlat_action_t xlat_tolower(TALLOC_CTX *ctx, fr_cursor_t *out,
+				  REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				  fr_value_box_t **in)
 {
-	char *q;
-	char const *p;
-
-	if (outlen <= 1) return 0;
-
-	for (p = fmt, q = *out; *p != '\0'; p++, outlen--) {
-		if (outlen <= 1) break;
-
-		*(q++) = tolower((int) *p);
-	}
-
-	*q = '\0';
-
-	return strlen(*out);
+	return _xlat_change_case(false, ctx, out, request, in);
 }
 
 /** Convert a string to uppercase
@@ -2561,7 +2592,6 @@ int xlat_init(void)
 	XLAT_REGISTER(regex);
 #endif
 
-	xlat_register(NULL, "tolower", tolower_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "toupper", toupper_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "sha1", sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 #ifdef HAVE_OPENSSL_EVP_H
@@ -2603,6 +2633,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "randstr", xlat_randstr, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "urlquote", xlat_urlquote, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "urlunquote", xlat_urlunquote, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "tolower", xlat_tolower, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }

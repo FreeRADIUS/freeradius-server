@@ -2,20 +2,6 @@ update request {
 	&Tmp-String-0 := 'foo'
 }
 
-switch "%{tolower:%{request:Tmp-String-0}}" {
-	case 'foo' {
-		success
-	}
-
-	case '' {
-		test_fail
-	}
-
-	case {
-		test_fail
-	}
-}
-
 switch "%{request:Tmp-String-0}" {
 	case 'foo' {
 		success
