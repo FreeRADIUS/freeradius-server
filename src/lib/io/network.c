@@ -605,6 +605,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		int rcode;
 
 		rad_assert(listen == cd->listen);
+		rad_assert(cd->m.status == FR_MESSAGE_LOCALIZED);
 
 		rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx,
 					      cd->reply.request_time,
@@ -616,23 +617,6 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			 *	pending message to the current one.
 			 */
 			if (errno == EWOULDBLOCK) {
-				s->pending = 0;
-
-			save_pending:
-				/*
-				 *	s->pending MUST be localized.
-				 *	Other messages in the list
-				 *	MUST NOT have been localized
-				 *	yet.
-				 */
-				if (cd->m.status != FR_MESSAGE_LOCALIZED) {
-					fr_message_t *lm;
-
-					MEM(lm = fr_message_localize(s, &cd->m, sizeof(*cd)));
-					fr_message_done(&cd->m);
-
-					cd = (fr_channel_data_t *) lm;
-				}
 				s->pending = cd;
 				return;
 			}
@@ -659,7 +643,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		 */
 		if ((rcode > 0) && ((size_t) rcode < cd->m.data_size)) {
 			s->written = rcode;
-			goto save_pending;
+			s->pending = cd;
+			return;
 		}
 
 		s->pending = NULL;
@@ -1230,8 +1215,8 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		if (rcode < 0) {
 			s->pending = 0;
 
-		save_pending:
 			if (errno == EWOULDBLOCK) {
+			save_pending:
 				if (fr_event_fd_insert(nr, nr->el, s->fd,
 						       fr_network_read,
 						       fr_network_write,
