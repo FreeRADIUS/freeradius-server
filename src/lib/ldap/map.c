@@ -63,7 +63,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]->bv_val);
 			if (map_afrom_attr_str(ctx, &attr, self->values[i]->bv_val,
 					       map->lhs->tmpl_request, map->lhs->tmpl_list,
-					       &{vp_tmpl_rules_t){ .dict_def = request->dict }} < 0) {
+					       &{vp_tmpl_rules_t){ .dict_def = request->dict }) < 0) {
 				RWDEBUG("Failed parsing \"%s\" as valuepair (%s), skipping...", fr_strerror(),
 					self->values[i]->bv_val);
 				continue;
