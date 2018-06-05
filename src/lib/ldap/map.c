@@ -58,20 +58,48 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 	 */
 	case TMPL_TYPE_LIST:
 		for (i = 0; i < self->count; i++) {
-			vp_map_t *attr = NULL;
+			vp_map_t	*attr = NULL;
+			char		*attr_str;
 
-			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]->bv_val);
-			if (map_afrom_attr_str(ctx, &attr, self->values[i]->bv_val,
-					       map->lhs->tmpl_request, map->lhs->tmpl_list,
-					       &{vp_tmpl_rules_t){ .dict_def = request->dict }) < 0) {
-				RWDEBUG("Failed parsing \"%s\" as valuepair (%s), skipping...", fr_strerror(),
-					self->values[i]->bv_val);
+			vp_tmpl_rules_t	lhs_rules = {
+				.dict_def = request->dict,
+				.request_def = map->lhs->tmpl_request,
+				.list_def = map->lhs->tmpl_list
+			};
+
+			vp_tmpl_rules_t rhs_rules = {
+				.dict_def = request->dict
+			};
+
+			RDEBUG3("Parsing valuepair string \"%pV\"",
+				fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
+
+			/*
+			 *	bv_val is NOT \0 terminated, so we need to make it
+			 *	safe (\0 terminate it) before passing it to any
+			 *	functions which take C strings and no lengths.
+			 */
+			attr_str = talloc_bstrndup(NULL, self->values[i]->bv_val, self->values[i]->bv_len);
+			if (!attr_str) {
+				RWDEBUG("Failed making attribute string safe");
 				continue;
 			}
 
+			if (map_afrom_attr_str(ctx, &attr,
+					       attr_str,
+					       &lhs_rules, &rhs_rules) < 0) {
+				RWDEBUG("Failed parsing \"%pV\" as valuepair (%s), skipping...",
+					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
+					fr_strerror());
+				talloc_free(attr_str);
+				continue;
+			}
+
+			talloc_free(attr_str);
+
 			if (attr->lhs->tmpl_request != map->lhs->tmpl_request) {
-				RWDEBUG("valuepair \"%s\" has conflicting request qualifier (%s vs %s), skipping...",
-					self->values[i]->bv_val,
+				RWDEBUG("valuepair \"%pV\" has conflicting request qualifier (%s vs %s), skipping...",
+					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
 					fr_int2str(request_refs, attr->lhs->tmpl_request, "<INVALID>"),
 					fr_int2str(request_refs, map->lhs->tmpl_request, "<INVALID>"));
 			next_pair:
@@ -80,16 +108,16 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 			}
 
 			if ((attr->lhs->tmpl_list != map->lhs->tmpl_list)) {
-				RWDEBUG("valuepair \"%s\" has conflicting list qualifier (%s vs %s), skipping...",
-					self->values[i]->bv_val,
+				RWDEBUG("valuepair \"%pV\" has conflicting list qualifier (%s vs %s), skipping...",
+					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
 					fr_int2str(pair_lists, attr->lhs->tmpl_list, "<INVALID>"),
 					fr_int2str(pair_lists, map->lhs->tmpl_list, "<INVALID>"));
 				goto next_pair;
 			}
 
 			if (map_to_vp(request, &vp, request, attr, NULL) < 0) {
-				RWDEBUG("Failed creating attribute for valuepair \"%s\", skipping...",
-					self->values[i]->bv_val);
+				RWDEBUG("Failed creating attribute for valuepair \"%pV\", skipping...",
+					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 				goto next_pair;
 			}
 

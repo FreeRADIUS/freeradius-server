@@ -327,7 +327,6 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request, fr_ldap_co
 	return 0;
 }
 
-
 /** Convert a berval to a talloced string
  *
  * The ldap_get_values function is deprecated, and ldap_get_values_len

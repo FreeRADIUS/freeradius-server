@@ -688,8 +688,9 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 	for (i = 0; i < count; i++) {
 		value_is_dn = fr_ldap_util_is_dn(values[i]->bv_val, values[i]->bv_len);
 
-		RDEBUG2("Processing %s value \"%.*s\" as a %s", inst->userobj_membership_attr,
-			(int)values[i]->bv_len, values[i]->bv_val, value_is_dn ? "DN" : "group name");
+		RDEBUG2("Processing %s value \"%pV\" as a %s", inst->userobj_membership_attr,
+			fr_box_strvalue_len(values[i]->bv_val, values[i]->bv_len),
+			value_is_dn ? "DN" : "group name");
 
 		/*
 		 *	Both literal group names, do case sensitive comparison
@@ -749,9 +750,9 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 			    (memcmp(values[i]->bv_val, resolved, values[i]->bv_len) == 0)) eq = true;
 			talloc_free(resolved);
 			if (eq) {
-				RDEBUG("User found in group \"%.*s\". Comparison between membership: name, check: name "
-				       "(resolved from DN \"%s\")", (int)values[i]->bv_len,
-				       values[i]->bv_val, check->vp_strvalue);
+				RDEBUG("User found in group \"%pV\". Comparison between membership: name, check: name "
+				       "(resolved from DN \"%s\")",
+				       fr_box_strvalue_len(values[i]->bv_val, values[i]->bv_len), check->vp_strvalue);
 				rcode = RLM_MODULE_OK;
 
 				goto finish;
