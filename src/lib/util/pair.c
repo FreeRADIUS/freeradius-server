@@ -1687,6 +1687,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 
 		fr_cursor_init(&to_append, &vp);
 		fr_cursor_merge(&cursor, &to_append);
+		(void) fr_cursor_tail(&cursor);
 
 		buf[0] = '\0';
 	}
