@@ -295,7 +295,8 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	- '[' - Which is an attribute index, so it must be an attribute.
 	 *      - '}' - The end of the expansion, which means it was a bareword.
 	 */
-	slen = tmpl_afrom_attr_substr(node, &node->attr, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, true, true);
+	slen = tmpl_afrom_attr_substr(node, &node->attr, p,
+				      &(vp_tmpl_rules_t){ .allow_undefined = true, .allow_unknown = true });
 	if (slen <= 0) {
 		/*
 		 *	If the parse error occurred before the ':'

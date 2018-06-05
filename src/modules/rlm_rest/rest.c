@@ -1068,7 +1068,11 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		 */
 		RDEBUG2("Parsing attribute \"%s\"", name);
 
-		if (tmpl_afrom_attr_str(request, &dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
+		if (tmpl_afrom_attr_str(request, &dst, name,
+					&(vp_tmpl_rules_t){
+						.dict_def = request->dict,
+						.list_def = PAIR_LIST_REPLY
+					}) <= 0) {
 			RPWDEBUG("Failed parsing attribute (skipping)");
 			continue;
 		}

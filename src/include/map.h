@@ -82,28 +82,24 @@ typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST 
 				     vp_map_t const *map, void *uctx);
 
 int		map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
-			     request_refs_t dst_request_def, pair_lists_t dst_list_def,
-			     request_refs_t src_request_def, pair_lists_t src_list_def);
+			     vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules);
 
 int		map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
-			     pair_lists_t dst_list_def, pair_lists_t src_list_def,
+			     vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules,
 			     map_validate_t validate, void *ctx, unsigned int max) CC_HINT(nonnull(1, 2));
 
-int		map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN lhs_type,
+int		map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
+				 char const *lhs, FR_TOKEN lhs_type, vp_tmpl_rules_t const *lhs_rules,
 				 FR_TOKEN op,
-				 char const *rhs, FR_TOKEN rhs_type,
-				 request_refs_t dst_request_def, pair_lists_t dst_list_def,
-				 request_refs_t src_request_def, pair_lists_t src_list_def);
+				 char const *rhs, FR_TOKEN rhs_type, vp_tmpl_rules_t const *rhs_rules);
 
 int		map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
-				    char const *lhs, FR_TOKEN lhs_type,
+				    char const *lhs, FR_TOKEN lhs_type, vp_tmpl_rules_t const *lhs_rules,
 				    FR_TOKEN op,
-				    fr_value_box_t *rhs, bool steal_rhs_buffs,
-				    request_refs_t dst_request_def, pair_lists_t dst_list_def);
+				    fr_value_box_t *rhs, bool steal_rhs_buffs);
 
 int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
-				   request_refs_t dst_request_def, pair_lists_t dst_list_def,
-				   request_refs_t src_request_def, pair_lists_t src_list_def);
+				   vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules);
 
 int		map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp,
 			     request_refs_t request_def, pair_lists_t list_def);

@@ -26,4 +26,4 @@
 RCSIDH(serialize_h, "$Id$")
 
 int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c);
-int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen);
+int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssize_t inlen);

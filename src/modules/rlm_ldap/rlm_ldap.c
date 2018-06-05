@@ -1941,11 +1941,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Build the attribute map
 	 */
-	update = cf_section_find(inst->cs, "update", NULL);
-	if (update && (map_afrom_cs(&inst->user_map, update,
-				    PAIR_LIST_REPLY, PAIR_LIST_REQUEST, fr_ldap_map_verify, NULL,
-				    LDAP_MAX_ATTRMAP) < 0)) {
-		return -1;
+	{
+		vp_tmpl_rules_t	parse_rules = {
+			.allow_foreign = true	/* Because we don't know where we'll be called */
+		};
+
+		update = cf_section_find(inst->cs, "update", NULL);
+		if (update && (map_afrom_cs(&inst->user_map, update,
+					    &parse_rules, &parse_rules, fr_ldap_map_verify, NULL,
+					    LDAP_MAX_ATTRMAP) < 0)) {
+			return -1;
+		}
 	}
 
 	/*

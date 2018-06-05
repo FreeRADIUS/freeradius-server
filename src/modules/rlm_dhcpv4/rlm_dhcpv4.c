@@ -62,7 +62,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 
 	while (isspace((int) *fmt)) fmt++;
 
-	slen = tmpl_afrom_attr_str(request, &src, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_str(request, &src, fmt, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		REMARKER(fmt, slen, fr_strerror());
 	error:

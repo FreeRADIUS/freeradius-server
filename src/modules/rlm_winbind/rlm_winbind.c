@@ -415,7 +415,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 		tmpl_afrom_str(instance, &inst->wb_domain, wb_info->netbios_domain,
 			       strlen(wb_info->netbios_domain), T_SINGLE_QUOTED_STRING,
-			       REQUEST_CURRENT, PAIR_LIST_REQUEST, false);
+			       &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, false);
 
 		cf_log_err(conf, "Using winbind_domain '%s'", inst->wb_domain->name);
 

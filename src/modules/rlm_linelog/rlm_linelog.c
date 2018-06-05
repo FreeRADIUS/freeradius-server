@@ -535,7 +535,8 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 		 *	using request as the context (which will hopefully avoid an alloc).
 		 */
 		slen = tmpl_afrom_str(request, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
-				      cf_pair_value_quote(cp), REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+				      cf_pair_value_quote(cp),
+				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
 		if (slen <= 0) {
 			REMARKER(tmpl_str, -slen, fr_strerror());
 			return RLM_MODULE_FAIL;

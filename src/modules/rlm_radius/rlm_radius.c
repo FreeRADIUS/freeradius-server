@@ -346,11 +346,17 @@ static int status_check_update_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITE
 	/*
 	 *	Compile the "update" section.
 	 */
-	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, unlang_fixup_update, NULL, 128);
-	if (rcode < 0) return -1; /* message already printed */
-	if (!head) {
-		cf_log_err(cs, "'update' sections cannot be empty");
-		return -1;
+	{
+		vp_tmpl_rules_t	parse_rules = {
+			.allow_foreign = true	/* Because we don't know where we'll be called */
+		};
+
+		rcode = map_afrom_cs(&head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
+		if (rcode < 0) return -1; /* message already printed */
+		if (!head) {
+			cf_log_err(cs, "'update' sections cannot be empty");
+			return -1;
+		}
 	}
 
 	/*

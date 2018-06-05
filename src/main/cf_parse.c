@@ -178,8 +178,11 @@ static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *
 		 *	xlat strings.
 		 */
 		if (attribute) {
-			slen = tmpl_afrom_attr_str(cp, &vpt, cp->value, REQUEST_CURRENT, PAIR_LIST_REQUEST,
-						   true, true);
+			slen = tmpl_afrom_attr_str(cp, &vpt, cp->value,
+						   &(vp_tmpl_rules_t){
+							.allow_unknown = true,
+							.allow_undefined = true
+						   });
 			if (slen < 0) {
 				char *spaces, *text;
 
@@ -1348,7 +1351,8 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 			slen = tmpl_afrom_str(cs, &vpt, cp->value, talloc_array_length(cp->value) - 1,
 					      cf_pair_value_quote(cp),
-					      REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+					      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true },
+					      true);
 			if (slen < 0) {
 				char *spaces, *text;
 

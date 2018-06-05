@@ -48,6 +48,13 @@ struct hashtable {
 	char delimiter;
 };
 
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_passwd_dict[];
+fr_dict_autoload_t rlm_passwd_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
 
 #ifdef TEST
 
@@ -427,7 +434,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			num_fields++;
 		}
 		s++;
-	}while(*s);
+	} while(*s);
+
 	if(key_field < 0) {
 		cf_log_err(conf, "no field marked as key in format: %s",
 			      inst->format);
@@ -470,8 +478,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		inst->ht = NULL;
 		return -1;
 	}
-	if (!(da = fr_dict_attr_by_name(NULL, inst->pwd_fmt->field[key_field]))) {
-		ERROR("Unable to resolve attribute: %s", inst->pwd_fmt->field[key_field]);
+
+	if (fr_dict_attr_by_qualified_name(&da, dict_freeradius, inst->pwd_fmt->field[key_field]) < 0) {
+		PERROR("Unable to resolve attribute");
 		release_ht(inst->ht);
 		inst->ht = NULL;
 		return -1;

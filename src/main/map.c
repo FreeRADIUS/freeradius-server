@@ -186,26 +186,19 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
  * @param[in] ctx		for talloc.
  * @param[in] out		Where to write the pointer to the new #vp_map_t.
  * @param[in] cp		to convert to map.
- * @param[in] dst_request_def	The default request to insert unqualified
- *				attributes into.
- * @param[in] dst_list_def	The default list to insert unqualified attributes
- *				into.
- * @param[in] src_request_def	The default request to resolve attribute
- *				references in.
- * @param[in] src_list_def	The default list to resolve unqualified attributes
- *				in.
+ * @param[in] lhs_rules		rules for parsing LHS attribute references.
+ * @param[in] rhs_rules		rules for parsing RHS attribute references.
  * @return
  *	- #vp_map_t if successful.
  *	- NULL on error.
  */
 int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
-		 request_refs_t dst_request_def, pair_lists_t dst_list_def,
-		 request_refs_t src_request_def, pair_lists_t src_list_def)
+		 vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules)
 {
-	vp_map_t *map;
-	char const *attr, *value;
-	ssize_t slen;
-	FR_TOKEN type;
+	vp_map_t	*map;
+	char const	*attr, *value;
+	ssize_t		slen;
+	FR_TOKEN	type;
 
 	*out = NULL;
 
@@ -230,8 +223,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	switch (type) {
 	case T_DOUBLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
-		slen = tmpl_afrom_str(ctx, &map->lhs, attr, talloc_array_length(attr) - 1,
-				      type, dst_request_def, dst_list_def, true);
+		slen = tmpl_afrom_str(ctx, &map->lhs, attr, talloc_array_length(attr) - 1, type, lhs_rules, true);
 		if (slen <= 0) {
 			char *spaces, *text;
 
@@ -247,7 +239,8 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		break;
 
 	default:
-		slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, dst_request_def, dst_list_def, true, true);
+		slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, lhs_rules);
+
 		if (slen <= 0) {
 			cf_log_err(cp, "Failed parsing attribute reference");
 
@@ -271,7 +264,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	    map_cast_from_hex(map, type, value)) {
 		/* do nothing */
 	} else {
-		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, src_request_def, src_list_def, true);
+		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, rhs_rules, true);
 		if (slen < 0) goto marker;
 		if (tmpl_define_unknown_attr(map->rhs) < 0) {
 			cf_log_perr(cp, "Failed creating attribute %s", map->rhs->name);
@@ -310,10 +303,8 @@ error:
  *
  * @param[out] out		Where to store the allocated map.
  * @param[in] cs		the update section
- * @param[in] dst_list_def	The default destination list, usually dictated by
- * 				the section the module is being called in.
- * @param[in] src_list_def	The default source list, usually dictated by the
- *				section the module is being called in.
+ * @param[in] lhs_rules		rules for parsing LHS attribute references.
+ * @param[in] rhs_rules		rules for parsing RHS attribute references.
  * @param[in] validate		map using this callback (may be NULL).
  * @param[in] ctx		to pass to callback.
  * @param[in] max		number of mappings to process.
@@ -322,20 +313,20 @@ error:
  *	- -1 on failure.
  */
 int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
-		 pair_lists_t dst_list_def, pair_lists_t src_list_def,
+		 vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules,
 		 map_validate_t validate, void *ctx,
 		 unsigned int max)
 {
-	char const *cs_list, *p;
+	char const	*cs_list, *p;
 
-	request_refs_t request_def = REQUEST_CURRENT;
+	CONF_ITEM 	*ci;
+	CONF_PAIR 	*cp;
 
-	CONF_ITEM *ci;
-	CONF_PAIR *cp;
+	unsigned int 	total = 0;
+	vp_map_t	**tail, *map;
+	TALLOC_CTX	*parent;
 
-	unsigned int total = 0;
-	vp_map_t **tail, *map;
-	TALLOC_CTX *parent;
+	vp_tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
 
 	*out = NULL;
 	tail = out;
@@ -353,16 +344,15 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 	 */
 	cs_list = p = cf_section_name2(cs);
 	if (cs_list && (strcmp(cf_section_name1(cs), "update") == 0)) {
-		p += radius_request_name(&request_def, p, REQUEST_CURRENT);
-		if (request_def == REQUEST_UNKNOWN) {
+		p += radius_request_name(&our_lhs_rules.request_def, p, REQUEST_CURRENT);
+		if (our_lhs_rules.request_def == REQUEST_UNKNOWN) {
 			cf_log_err(ci, "Default request specified in mapping section is invalid");
 			return -1;
 		}
 
-		dst_list_def = fr_str2int(pair_lists, p, PAIR_LIST_UNKNOWN);
-		if (dst_list_def == PAIR_LIST_UNKNOWN) {
-			cf_log_err(ci, "Default list \"%s\" specified "
-				   "in mapping section is invalid", p);
+		our_lhs_rules.list_def = fr_str2int(pair_lists, p, PAIR_LIST_UNKNOWN);
+		if (our_lhs_rules.list_def == PAIR_LIST_UNKNOWN) {
+			cf_log_err(ci, "Default list \"%s\" specified in mapping section is invalid", p);
 			return -1;
 		}
 	}
@@ -385,7 +375,7 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 		cp = cf_item_to_pair(ci);
 		rad_assert(cp != NULL);
 
-		if (map_afrom_cp(parent, &map, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def) < 0) {
+		if (map_afrom_cp(parent, &map, cp, &our_lhs_rules, rhs_rules) < 0) {
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
@@ -417,32 +407,28 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
  *
  * @param[in] ctx		for talloc.
  * @param[out] out		Where to store the head of the map.
- * @param[in] lhs		of the operation
- * @param[in] lhs_type		type of the LHS string
+ * @param[in] lhs		of the tuple.
+ * @param[in] lhs_type		type of quoting around the LHS string
+ * @param[in] lhs_rules		rules that control parsing of the LHS string.
  * @param[in] op		the operation to perform
- * @param[in] rhs		of the operation
- * @param[in] rhs_type		type of the RHS string
- * @param[in] dst_request_def	to insert unqualified attributes into.
- * @param[in] dst_list_def	to insert unqualified attributes into.
- * @param[in] src_request_def	to resolve attribute references in.
- * @param[in] src_list_def	to resolve unqualified attributes in.
+ * @param[in] rhs		of the tuple.
+ * @param[in] rhs_type		type of quoting aounrd the RHS string.
+ * @param[in] rhs_rules		rules that control parsing of the RHS string.
  * @return
  *	- #vp_map_t if successful.
  *	- NULL on error.
  */
 int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
-		     char const *lhs, FR_TOKEN lhs_type,
+		     char const *lhs, FR_TOKEN lhs_type, vp_tmpl_rules_t const *lhs_rules,
 		     FR_TOKEN op,
-		     char const *rhs, FR_TOKEN rhs_type,
-		     request_refs_t dst_request_def, pair_lists_t dst_list_def,
-		     request_refs_t src_request_def, pair_lists_t src_list_def)
+		     char const *rhs, FR_TOKEN rhs_type, vp_tmpl_rules_t const *rhs_rules)
 {
 	ssize_t slen;
 	vp_map_t *map;
 
 	map = talloc_zero(ctx, vp_map_t);
 
-	slen = tmpl_afrom_str(map, &map->lhs, lhs, strlen(lhs), lhs_type, dst_request_def, dst_list_def, true);
+	slen = tmpl_afrom_str(map, &map->lhs, lhs, strlen(lhs), lhs_type, lhs_rules, true);
 	if (slen < 0) {
 	error:
 		talloc_free(map);
@@ -457,7 +443,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
 		return 0;
 	}
 
-	slen = tmpl_afrom_str(map, &map->rhs, rhs, strlen(rhs), rhs_type, src_request_def, src_list_def, true);
+	slen = tmpl_afrom_str(map, &map->rhs, rhs, strlen(rhs), rhs_type, rhs_rules, true);
 	if (slen < 0) goto error;
 
 	MAP_VERIFY(map);
@@ -477,28 +463,26 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out,
  * @param[out] out		Where to store the head of the map.
  * @param[in] lhs		of the operation
  * @param[in] lhs_type		type of the LHS string
+ * @param[in] lhs_rules		rules that control parsing of the LHS string.
  * @param[in] op		the operation to perform
  * @param[in] rhs		of the operation
  * @param[in] steal_rhs_buffs	Whether we attempt to save allocs by stealing the buffers
  *				from the rhs #fr_value_box_t.
- * @param[in] dst_request_def	to insert unqualified attributes into.
- * @param[in] dst_list_def	to insert unqualified attributes into.
  * @return
  *	- #vp_map_t if successful.
  *	- NULL on error.
  */
 int map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
-			char const *lhs, FR_TOKEN lhs_type,
+			char const *lhs, FR_TOKEN lhs_type, vp_tmpl_rules_t const *lhs_rules,
 			FR_TOKEN op,
-			fr_value_box_t *rhs, bool steal_rhs_buffs,
-			request_refs_t dst_request_def, pair_lists_t dst_list_def)
+			fr_value_box_t *rhs, bool steal_rhs_buffs)
 {
 	ssize_t slen;
 	vp_map_t *map;
 
 	map = talloc_zero(ctx, vp_map_t);
 
-	slen = tmpl_afrom_str(map, &map->lhs, lhs, strlen(lhs), lhs_type, dst_request_def, dst_list_def, true);
+	slen = tmpl_afrom_str(map, &map->lhs, lhs, strlen(lhs), lhs_type, lhs_rules, true);
 	if (slen < 0) {
 	error:
 		talloc_free(map);
@@ -528,17 +512,14 @@ int map_afrom_value_box(TALLOC_CTX *ctx, vp_map_t **out,
  * @param[in] ctx		where to allocate the map.
  * @param[out] out		Where to write the new map.
  * @param[in] vp_str		string to parse.
- * @param[in] dst_request_def	to insert unqualified attributes into.
- * @param[in] dst_list_def	to insert unqualified attributes into.
- * @param[in] src_request_def	to resolve attribute references in.
- * @param[in] src_list_def	to resolve unqualified attributes in.
+ * @param[in] lhs_rules		rules for parsing LHS attribute references.
+ * @param[in] rhs_rules		rules for parsing RHS attribute references.
  * @return
  *	- 0 on success.
  *	- < 0 on error.
  */
 int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
-		       request_refs_t dst_request_def, pair_lists_t dst_list_def,
-		       request_refs_t src_request_def, pair_lists_t src_list_def)
+		       vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules)
 {
 	char const *p = vp_str;
 	FR_TOKEN quote;
@@ -570,8 +551,10 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 		return -1;
 	}
 
-	if ((map_afrom_fields(ctx, &map, raw.l_opand, T_BARE_WORD, raw.op, raw.r_opand, raw.quote,
-			      dst_request_def, dst_list_def, src_request_def, src_list_def) < 0) || !map) {
+	if ((map_afrom_fields(ctx, &map,
+			      raw.l_opand, T_BARE_WORD, lhs_rules,
+			      raw.op,
+			      raw.r_opand, raw.quote, rhs_rules) < 0) || !map) {
 		return -1;
 	}
 
@@ -1070,7 +1053,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		}
 
 		slen = tmpl_afrom_attr_str(tmp_ctx, &map_tmp.lhs, (*lhs_result)->vb_strvalue,
-					   REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+					   &(vp_tmpl_rules_t){ .dict_def = request->dict });
 		if (slen <= 0) {
 			RPEDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference",
 				(int)original->lhs->len, original->lhs->name, (*lhs_result)->vb_strvalue);
@@ -1107,8 +1090,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			goto error;
 		}
 
-		slen = tmpl_afrom_attr_str(tmp_ctx, &map_tmp.lhs, attr_str,
-					   REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+		slen = tmpl_afrom_attr_str(tmp_ctx, &map_tmp.lhs, attr_str, NULL);
 		if (slen <= 0) {
 			RPEDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference",
 				(int)original->lhs->len, original->lhs->name, attr_str);
@@ -2383,7 +2365,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		}
 
 		slen = tmpl_afrom_attr_str(tmp_ctx, &exp_lhs, attr_str,
-					   REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+					   &(vp_tmpl_rules_t){ .dict_def = request->dict });
 		if (slen <= 0) {
 			RPEDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference",
 				(int)map->lhs->len, map->lhs->name, attr_str);

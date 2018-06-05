@@ -79,6 +79,10 @@ static int process_file(char const *filename)
 	vp_map_t	*head, *map;
 	char		buffer[8192];
 
+	vp_tmpl_rules_t	parse_rules = {
+		.allow_foreign = true	/* Because we don't know what protocol we're operating with */
+	};
+
 	memset(&main_config, 0, sizeof(main_config));
 
 	main_config.config = cf_section_alloc(NULL, NULL, "main", NULL);
@@ -100,7 +104,7 @@ static int process_file(char const *filename)
 	/*
 	 *	Convert the update section to a list of maps.
 	 */
-	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, unlang_fixup_update, NULL, 128);
+	rcode = map_afrom_cs(&head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) {
 		cf_log_err(cs, "map_afrom_cs failed: %s", fr_strerror());
 		return -1; /* message already printed */

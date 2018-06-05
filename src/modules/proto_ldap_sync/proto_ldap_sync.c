@@ -1152,7 +1152,7 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 		 */
 		map_cs = cf_section_find(sync_cs, "update", NULL);
 		if (map_cs && map_afrom_cs(&inst->sync_config[i]->entry_map, map_cs,
-					   PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, fr_ldap_map_verify, NULL,
+					   NULL, NULL, fr_ldap_map_verify, NULL,
 					   LDAP_MAX_ATTRMAP) < 0) {
 			return -1;
 		}

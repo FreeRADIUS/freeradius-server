@@ -41,13 +41,13 @@ typedef struct REQUEST REQUEST;
 #include <freeradius-devel/io/test_point.h>
 
 #ifdef WITH_TACACS
-#include <freeradius-devel/tacacs/tacacs.h>
+#  include <freeradius-devel/tacacs/tacacs.h>
 #endif
 
 #include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #include <assert.h>

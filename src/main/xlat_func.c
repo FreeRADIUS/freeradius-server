@@ -89,8 +89,7 @@ int xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 
 	*out = NULL;
 
-	if (tmpl_afrom_attr_str(request, &vpt, name,
-				REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) return -4;
+	if (tmpl_afrom_attr_str(request, &vpt, name, &(vp_tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
 
 	rcode = tmpl_find_vp(out, request, vpt);
 	talloc_free(vpt);
@@ -116,8 +115,7 @@ int xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char c
 
 	*out = NULL;
 
-	if (tmpl_afrom_attr_str(request, &vpt, name,
-				REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) return -4;
+	if (tmpl_afrom_attr_str(request, &vpt, name, &(vp_tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
 
 	rcode = tmpl_copy_vps(ctx, out, request, vpt);
 	talloc_free(vpt);
@@ -329,7 +327,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if (tmpl_afrom_attr_str(request, &vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
+	if (tmpl_afrom_attr_str(request, &vpt, fmt, &(vp_tmpl_rules_t){ .dict_def = request->dict }) <= 0) {
 		RPEDEBUG("Invalid input");
 		return -1;
 	}
@@ -431,12 +429,15 @@ static ssize_t xlat_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			REQUEST *request, char const *fmt)
 {
-	vp_map_t *map = NULL;
-	int ret;
+	vp_map_t	*map = NULL;
+	int		ret;
 
-	if (map_afrom_attr_str(request, &map, fmt,
-			       REQUEST_CURRENT, PAIR_LIST_REQUEST,
-			       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	vp_tmpl_rules_t parse_rules = {
+		.dict_def = request->dict
+	};
+
+
+	if (map_afrom_attr_str(request, &map, fmt, &parse_rules, &parse_rules) < 0) {
 		RPEDEBUG("Failed parsing \"%s\" as map", fmt);
 		return -1;
 	}
@@ -1309,7 +1310,7 @@ static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	VALUE_PAIR *vp;
 
-	if (tmpl_afrom_attr_str(ctx, &vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
+	if (tmpl_afrom_attr_str(ctx, &vpt, fmt, &(vp_tmpl_rules_t){ .dict_def = request->dict }) <= 0) {
 		RPEDEBUG("Invalid input");
 		return -1;
 	}
@@ -1449,7 +1450,7 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	while (isspace(*p) && p++);
 
-	slen = tmpl_afrom_attr_substr(ctx, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(ctx, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid input");
 		return -1;
@@ -1679,7 +1680,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 		return 0;
 	}
 
-	slen = tmpl_afrom_attr_substr(request, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(request, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Failed parsing input string");
 		return slen;

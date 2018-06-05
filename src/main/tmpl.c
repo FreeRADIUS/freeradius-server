@@ -571,6 +571,18 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data,
 	return 0;
 }
 
+/** Default parser rules
+ *
+ * Because this is getting to be a ridiculous number of parsing rules
+ * to pass in via arguments.
+ *
+ * Defaults are used if a NULL rules pointer is passed to the parsing function.
+ */
+static vp_tmpl_rules_t const default_rules = {
+	.request_def = REQUEST_CURRENT,
+	.list_def = PAIR_LIST_REQUEST
+};
+
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
  *
  * @param[in,out] ctx		to allocate #vp_tmpl_t in.
@@ -578,24 +590,31 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data,
  * @param[in] name		of attribute including #request_refs and #pair_lists qualifiers.
  *				If only #request_refs #pair_lists qualifiers are found,
  *				a #TMPL_TYPE_LIST #vp_tmpl_t will be produced.
- * @param[in] request_def	The default #REQUEST to set if no #request_refs qualifiers
- *				are found in name.
- * @param[in] list_def		The default list to set if no #pair_lists qualifiers are found in
- *				name.
- * @param[in] allow_unknown	If true attributes in the format accepted by
- *				#fr_dict_unknown_afrom_oid_substr will be allowed,
- *				even if they're not in the main dictionaries.
- *				If an unknown attribute is found a #TMPL_TYPE_ATTR
- *				#vp_tmpl_t will be produced.
- *				If #tmpl_afrom_attr_substr is being called on startup,
- *				the #vp_tmpl_t may be passed to #tmpl_define_unknown_attr to
- *				add the unknown attribute to the main dictionary.
- *				If the unknown attribute is not added to the main dictionary
- *				the #vp_tmpl_t cannot be used to search for a #VALUE_PAIR in
- *				a #REQUEST.
- * @param[in] allow_undefined	If true, we don't generate a parse error on unknown attributes.
- *				If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED
- *				#vp_tmpl_t will be produced.
+ * @param[in] rules		Rules which control parsing:
+ *				- dict_def		The default dictionary to use if attributes
+ *							are unqualified.
+ *				- request_def		The default #REQUEST to set if no
+ *							#request_refs qualifiers are found in name.
+ *				- list_def		The default list to set if no #pair_lists
+ *							qualifiers are found in the name.
+ *				- allow_unknown		If true attributes in the format accepted by
+ *							#fr_dict_unknown_afrom_oid_substr will be allowed,
+ *							even if they're not in the main dictionaries.
+ *							If an unknown attribute is found a #TMPL_TYPE_ATTR
+ *							#vp_tmpl_t will be produced.
+ *							If #tmpl_afrom_attr_substr is being called on
+ *							startup, the #vp_tmpl_t may be passed to
+ *							#tmpl_define_unknown_attr to
+ *							add the unknown attribute to the main dictionary.
+ *							If the unknown attribute is not added to
+ *							the main dictionary the #vp_tmpl_t cannot be used
+ *							to search for a #VALUE_PAIR in a #REQUEST.
+ *				- allow_undefined	If true, we don't generate a parse error on
+ *							unknown attributes. If an unknown attribute is
+ *							found a #TMPL_TYPE_ATTR_UNDEFINED
+ *							#vp_tmpl_t will be produced.
+ *				- allow_foreign		If true, allow attribute names to be qualified
+ *							with a protocol outside of the passed #dict_def.
  *
  * @see REMARKER to produce pretty error markers from the return value.
  *
@@ -603,14 +622,14 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data,
  *	- <= 0 on error (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  */
-ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
-			       request_refs_t request_def, pair_lists_t list_def,
-			       bool allow_unknown, bool allow_undefined)
+ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, vp_tmpl_rules_t const *rules)
 {
 	char const	*p;
 	long		num;
 	ssize_t		slen;
 	vp_tmpl_t	*vpt;
+
+	if (!rules) rules = &default_rules;	/* Use the defaults */
 
 	p = name;
 
@@ -623,23 +642,34 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 
 	MEM(vpt = talloc_zero(ctx, vp_tmpl_t));
 
-	p += radius_request_name(&vpt->tmpl_request, p, request_def);
-	if (vpt->tmpl_request == REQUEST_UNKNOWN) {
-		fr_strerror_printf("Invalid request qualifier");
+	/*
+	 *	Search for a recognised list
+	 *
+	 *	There may be multiple '.' separated
+	 *	components, so don't error out if
+	 *	the first one doesn't match a known list.
+	 *
+	 *	The next check for a list qualifier
+	 */
+	p += radius_request_name(&vpt->tmpl_request, p, rules->request_def);
+	if (vpt->tmpl_request == REQUEST_UNKNOWN) vpt->tmpl_request = rules->request_def;
+
+	/*
+	 *	Finding a list qualifier is optional
+	 *
+	 *	Because the list name parser can
+	 *	determine if something was a tag
+	 *	or a list, we trust that when it
+	 *	returns PAIR_LIST_UNKOWN that
+	 *	the input string is invalid.
+	 */
+	p += radius_list_name(&vpt->tmpl_list, p, rules->list_def);
+	if (vpt->tmpl_list == PAIR_LIST_UNKNOWN) {
+		fr_strerror_printf("Invalid list qualifier");
 		slen = -(p - name);
 	error:
 		talloc_free(vpt);
 		return slen;
-	}
-
-	/*
-	 *	Finding a list qualifier is optional
-	 */
-	p += radius_list_name(&vpt->tmpl_list, p, list_def);
-	if (vpt->tmpl_list == PAIR_LIST_UNKNOWN) {
-		fr_strerror_printf("Invalid list qualifier");
-		slen = -(p - name);
-		goto error;
 	}
 
 	vpt->tmpl_tag = TAG_NONE;
@@ -667,7 +697,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	 *	Look up by name, *including* any Attr-1.2.3.4 which was created when
 	 *	parsing the configuration files.
 	 */
-	slen = fr_dict_attr_by_name_substr(&vpt->tmpl_da, NULL, p);
+	slen = fr_dict_attr_by_qualified_name_substr(NULL, &vpt->tmpl_da, rules->dict_def, p);
 	if (slen <= 0) {
 		char const *q;
 
@@ -678,12 +708,12 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		 *	not previously used.
 		 */
 		slen = fr_dict_unknown_afrom_oid_substr(vpt, &vpt->tmpl_unknown,
-						    	fr_dict_root(fr_dict_internal), p);
+						    	fr_dict_root(rules->dict_def), p);
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
 		if (slen > 0) {
-			if (!allow_unknown) {
+			if (!rules->allow_unknown) {
 				fr_strerror_printf("Unknown attribute");
 				slen = -(p - name);
 				goto error;
@@ -708,7 +738,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		 *	Don't alter the fr_strerror buffer, should contain the parse
 		 *	error from fr_dict_unknown_from_suboid.
 		 */
-		if (!allow_undefined) {
+		if (!rules->allow_undefined) {
 			fr_strerror_printf("Undefined attributes not allowed here");
 			slen = -(p - name);
 			goto error;
@@ -734,6 +764,15 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		p = q;
 
 		goto do_num;
+	}
+
+	/*
+	 *	Check that the attribute we resolved was from an allowed dictionary
+	 */
+	if (!rules->allow_foreign && rules->dict_def && (fr_dict_by_da(vpt->tmpl_da) != rules->dict_def)) {
+		fr_strerror_printf("Only attribute from protocol \"%s\" allowed", fr_dict_root(rules->dict_def)->name);
+		slen = -(p - name);
+		goto error;
 	}
 
 	/*
@@ -863,13 +902,13 @@ finish:
  *
  * @copydetails tmpl_afrom_attr_substr
  */
-ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
-			    request_refs_t request_def, pair_lists_t list_def,
-			    bool allow_unknown, bool allow_undefined)
+ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, vp_tmpl_rules_t const *rules)
 {
 	ssize_t slen;
 
-	slen = tmpl_afrom_attr_substr(ctx, out, name, request_def, list_def, allow_unknown, allow_undefined);
+	if (!rules) rules = &default_rules;	/* Use the defaults */
+
+	slen = tmpl_afrom_attr_substr(ctx, out, name, rules);
 	if (slen <= 0) return slen;
 
 	if (!fr_cond_assert(*out)) return -1;
@@ -911,10 +950,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
  *				  #TMPL_TYPE_UNPARSED (if string doesn't contain ``%``).
  *				- #T_BACK_QUOTED_STRING - Produces #TMPL_TYPE_EXEC
  *				- #T_OP_REG_EQ - Produces #TMPL_TYPE_REGEX
- * @param[in] request_def	The default #REQUEST to set if no #request_refs
- *				qualifiers are found in name.
- * @param[in] list_def		The default list to set if no #pair_lists
- *				qualifiers are found in name.
+ * @param[in] rules		Parsing rules for attribute references.
  * @param[in] do_unescape	whether or not we should do unescaping.
  *				Should be false if the caller already did it.
  * @return
@@ -925,19 +961,26 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
  *
  * @see tmpl_afrom_attr_substr
  */
-ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t inlen, FR_TOKEN type,
-		       request_refs_t request_def, pair_lists_t list_def, bool do_unescape)
+ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
+		       char const *in, size_t inlen, FR_TOKEN type, vp_tmpl_rules_t const *rules, bool do_unescape)
 {
-	bool do_xlat;
-	char quote;
-	char const *p;
-	ssize_t slen;
-	fr_type_t data_type = FR_TYPE_STRING;
-	vp_tmpl_t *vpt = NULL;
-	fr_value_box_t data;
+	bool		do_xlat;
+	char		quote;
+	char const	*p;
+	ssize_t		slen;
+	fr_type_t	data_type = FR_TYPE_STRING;
+	vp_tmpl_t	*vpt = NULL;
+	fr_value_box_t	data;
+
+	if (!rules) rules = &default_rules;	/* Use the defaults */
 
 	switch (type) {
 	case T_BARE_WORD:
+	{
+		vp_tmpl_rules_t	mrules;
+
+		memcpy(&mrules, rules, sizeof(mrules));
+
 		/*
 		 *  No attribute names start with 0x, and if they did, the user
 		 *  can just use the explicit & prefix.
@@ -981,9 +1024,12 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 		 */
 		quote = '\0';
 
-		slen = tmpl_afrom_attr_str(ctx, &vpt, in, request_def, list_def, true, (in[0] == '&'));
-		if ((in[0] == '&') && (slen <= 0)) return slen;
+		mrules.allow_undefined = (in[0] == '&');
+
+		slen = tmpl_afrom_attr_str(ctx, &vpt, in, &mrules);
+		if (mrules.allow_undefined && (slen <= 0)) return slen;
 		if (slen > 0) break;
+	}
 		goto parse;
 
 	case T_SINGLE_QUOTED_STRING:
@@ -1291,7 +1337,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  *	passed to this function to be fixed up, so long as the type and flags
  *	are identical.
  *
- * @param[in] def_dict	Default dictionary to use if none is
+ * @param[in] dict_def	Default dictionary to use if none is
  *			specified by the tmpl_unknown_name.
  * @param[in] vpt	specifying undefined attribute to add.
  *			``tmpl_da`` pointer will be updated to
@@ -1305,7 +1351,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int tmpl_define_undefined_attr(fr_dict_t *def_dict, vp_tmpl_t *vpt,
+int tmpl_define_undefined_attr(fr_dict_t *dict_def, vp_tmpl_t *vpt,
 			       fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t const *da;
@@ -1316,10 +1362,10 @@ int tmpl_define_undefined_attr(fr_dict_t *def_dict, vp_tmpl_t *vpt,
 
 	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
 
-	if (fr_dict_attr_add(def_dict, fr_dict_root(fr_dict_internal), vpt->tmpl_unknown_name, -1, type, flags) < 0) {
+	if (fr_dict_attr_add(dict_def, fr_dict_root(fr_dict_internal), vpt->tmpl_unknown_name, -1, type, flags) < 0) {
 		return -1;
 	}
-	da = fr_dict_attr_by_name(def_dict, vpt->tmpl_unknown_name);
+	da = fr_dict_attr_by_name(dict_def, vpt->tmpl_unknown_name);
 	if (!da) return -1;
 
 	if (type != da->type) {

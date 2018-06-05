@@ -300,7 +300,11 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 			}
 		}
 
-		if (tmpl_afrom_attr_str(ctx, &dst, s1, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
+		if (tmpl_afrom_attr_str(ctx, &dst, s1,
+					&(vp_tmpl_rules_t){
+						.dict_def = request->dict,
+						.list_def = PAIR_LIST_REPLY
+					}) <= 0) {
 			ERROR("%s - Failed to find attribute %s:%s", funcname, list_name, s1);
 			continue;
 		}

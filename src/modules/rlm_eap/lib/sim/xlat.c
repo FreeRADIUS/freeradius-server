@@ -48,7 +48,7 @@ static ssize_t sim_xlat_id_method(TALLOC_CTX *ctx, char **out, UNUSED size_t out
 	 */
 	while (isspace(*p) && p++);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(our_ctx, &vpt, p, NULL);
 	if (slen <= 0) {
 		RPEDEBUG("Invalid attribute reference");
 	error:
@@ -98,7 +98,7 @@ static ssize_t sim_xlat_id_type(TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 */
 	while (isspace(*p) && p++);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(our_ctx, &vpt, p, NULL);
 	if (slen <= 0) {
 		RPEDEBUG("Invalid attribute reference");
 	error:
@@ -147,7 +147,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_key_index(TALLOC_CTX *ctx, char **out, UN
 	 */
 	while (isspace(*p) && p++);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(our_ctx, &vpt, p, NULL);
 	if (slen <= 0) {
 		RPEDEBUG("Invalid attribute reference");
 	error:
@@ -191,7 +191,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt(TALLOC_CTX *ctx, char **out, UNUS
 	 */
 	while (isspace(*p) && p++);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &id_vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(our_ctx, &id_vpt, p, NULL);
 	if (slen <= 0) {
 		RPEDEBUG("Invalid ID attribute reference");
 	error:
@@ -206,7 +206,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt(TALLOC_CTX *ctx, char **out, UNUS
 	}
 	p++;
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &key_vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(our_ctx, &key_vpt, p, NULL);
 	if (slen <= 0) {
 		RPEDEBUG("Invalid key attribute reference");
 		goto error;
@@ -294,7 +294,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUS
 	 */
 	while (isspace(*p) && p++);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &id_vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(our_ctx, &id_vpt, p, NULL);
 	if (slen <= 0) {
 		RPEDEBUG("Invalid ID attribute reference");
 	error:
@@ -309,7 +309,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUS
 	}
 	p++;
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &key_vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(our_ctx, &key_vpt, p, NULL);
 	if (slen <= 0) {
 		RPEDEBUG("Invalid key attribute reference");
 		goto error;

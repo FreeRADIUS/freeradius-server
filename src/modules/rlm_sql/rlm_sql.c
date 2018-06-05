@@ -1058,9 +1058,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			goto error;
 		}
 
-		inst->group_da = fr_dict_attr_by_name(fr_dict_internal, group_attribute);
-		if (!inst->group_da) {
-			ERROR("Failed resolving group attribute \"%s\"", group_attribute);
+		if (fr_dict_attr_by_qualified_name(&inst->group_da, dict_freeradius, group_attribute) < 0) {
+			PERROR("Failed resolving group attribute");
 			goto error;
 		}
 	}

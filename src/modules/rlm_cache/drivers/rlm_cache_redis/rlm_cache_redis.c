@@ -88,14 +88,12 @@ static int mod_instantiate(rlm_cache_config_t const *config, void *instance, CON
 	/*
 	 *	These never change, so do it once on instantiation
 	 */
-	if (tmpl_afrom_attr_str(driver, &driver->created_attr, "&Cache-Created",
-			        REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) < 0) {
+	if (tmpl_afrom_attr_str(driver, &driver->created_attr, "&Cache-Created", NULL) < 0) {
 		ERROR("Cache-Created attribute not defined");
 		return -1;
 	}
 
-	if (tmpl_afrom_attr_str(driver, &driver->expires_attr, "&Cache-Expires",
-			        REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) < 0) {
+	if (tmpl_afrom_attr_str(driver, &driver->expires_attr, "&Cache-Expires", NULL) < 0) {
 		ERROR("Cache-Expires attribute not defined");
 		return -1;
 	}

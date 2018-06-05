@@ -63,7 +63,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]->bv_val);
 			if (map_afrom_attr_str(ctx, &attr, self->values[i]->bv_val,
 					       map->lhs->tmpl_request, map->lhs->tmpl_list,
-					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+					       &{vp_tmpl_rules_t){ .dict_def = request->dict }} < 0) {
 				RWDEBUG("Failed parsing \"%s\" as valuepair (%s), skipping...", fr_strerror(),
 					self->values[i]->bv_val);
 				continue;
@@ -327,14 +327,17 @@ int fr_ldap_map_do(REQUEST *request, fr_ldap_connection_t *conn,
 		count = ldap_count_values_len(values);
 
 		for (i = 0; i < count; i++) {
-			vp_map_t *attr;
-			char *value;
+			vp_map_t	*attr;
+			char		*value;
+
+			vp_tmpl_rules_t parse_rules = {
+				.dict_def = request->dict
+			};
 
 			value = fr_ldap_berval_to_string(request, values[i]);
 			RDEBUG3("Parsing attribute string '%s'", value);
 			if (map_afrom_attr_str(request, &attr, value,
-					       REQUEST_CURRENT, PAIR_LIST_REPLY,
-					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+					       &parse_rules, &parse_rules) < 0) {
 				RWDEBUG("Failed parsing '%s' value \"%s\" as valuepair (%s), skipping...",
 					fr_strerror(), valuepair_attr, value);
 				talloc_free(value);

@@ -521,9 +521,11 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 
 	rad_assert(vpt->type == TMPL_TYPE_ATTR_UNDEFINED);
 
-	da = fr_dict_attr_by_name(NULL, vpt->tmpl_unknown_name);
-	if (!da) {
-		cf_log_err(ci, "Unknown attribute '%s'", vpt->tmpl_unknown_name);
+	/*
+	 *	@fixme - Default should be set by virtual server.
+	 */
+	if (fr_dict_attr_by_qualified_name(&da, fr_dict_internal, vpt->tmpl_unknown_name) < 0) {
+		cf_log_perr(ci, "Failed resolving undefined attribute");
 		return false;
 	}
 
@@ -741,8 +743,8 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 		ssize_t slen;
 
 		fmt = talloc_typed_asprintf(map->lhs, "%%{%s}", map->lhs->name);
-		slen = tmpl_afrom_str(map, &vpt, fmt, talloc_array_length(fmt) - 1,
-				      T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+		slen = tmpl_afrom_str(map, &vpt, fmt, talloc_array_length(fmt) - 1, T_DOUBLE_QUOTED_STRING,
+				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
 		if (slen < 0) {
 			char *spaces, *text;
 
@@ -1376,6 +1378,11 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	char const	*name2 = cf_section_name2(cs);
 
+	vp_tmpl_rules_t	parse_rules = {
+				.allow_unknown = true
+			};
+
+
 	modules = cf_section_find(cf_root(cs), "modules", NULL);
 	if (!modules) {
 		cf_log_err(cs, "'map' sections require a 'modules' section");
@@ -1402,8 +1409,8 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		/*
 		 *	Try to parse the template.
 		 */
-		slen = tmpl_afrom_str(cs, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
-				      type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+		slen = tmpl_afrom_str(cs, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1, type,
+				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
 		if (slen < 0) {
 			cf_log_perr(cs, "Failed parsing map");
 			return NULL;
@@ -1430,7 +1437,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_map, NULL, 256);
+	rcode = map_afrom_cs(&head, cs, &parse_rules, &parse_rules, modcall_fixup_map, NULL, 256);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
 		cf_log_err(cs, "'map' sections cannot be empty");
@@ -1477,19 +1484,24 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 }
 
 static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
-				   CONF_SECTION *cs, unlang_group_type_t group_type, UNUSED unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
+				CONF_SECTION *cs, unlang_group_type_t group_type,
+				UNUSED unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
 {
-	int rcode;
-	unlang_group_t *g;
-	unlang_t *c;
-	char const *name2 = cf_section_name2(cs);
+	int		rcode;
+	unlang_group_t	*g;
+	unlang_t	*c;
+	char const	*name2 = cf_section_name2(cs);
 
-	vp_map_t *head;
+	vp_map_t	*head;
+
+	vp_tmpl_rules_t	parse_rules = {
+				.allow_unknown = true
+			};
 
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, unlang_fixup_update, NULL, 128);
+	rcode = map_afrom_cs(&head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
 		cf_log_err(cs, "'update' sections cannot be empty");
@@ -1872,7 +1884,8 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	defined by now.
 	 */
 	type = cf_section_name2_quote(cs);
-	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type,
+			      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
 	if (slen < 0) {
 		char *spaces, *text;
 
@@ -1972,7 +1985,8 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 		type = cf_section_name2_quote(cs);
 
-		slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+		slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type,
+				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
 		if (slen < 0) {
 			char *spaces, *text;
 
@@ -2096,7 +2110,8 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_quote(cs);
-	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type,
+			      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
 	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 		char *spaces, *text;
 
@@ -2488,7 +2503,8 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 		 *	defined by now.
 		 */
 		type = cf_section_name2_quote(cs);
-		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type,
+				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
 		if (slen < 0) {
 			char *spaces, *text;
 
@@ -2668,7 +2684,9 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
-	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type,
+			      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
+
 	if (slen < 0) {
 		char *spaces, *text;
 

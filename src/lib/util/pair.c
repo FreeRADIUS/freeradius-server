@@ -656,6 +656,7 @@ int fr_pair_to_unknown(VALUE_PAIR *vp)
 	fr_dict_attr_t const *da;
 
 	VP_VERIFY(vp);
+
 	if (vp->da->flags.is_unknown) return 0;
 
 	if (!fr_cond_assert(vp->da->parent != NULL)) return -1;

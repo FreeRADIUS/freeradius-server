@@ -823,7 +823,7 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 			      request, inst->config.key, NULL, NULL);
 	if (key_len < 0) return -1;
 
-	slen = tmpl_afrom_attr_substr(ctx, &target, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(ctx, &target, fmt, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid key");
 		return -1;
@@ -989,9 +989,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Make sure the users don't screw up too badly.
 	 */
-	if (map_afrom_cs(&inst->maps, update,
-			 PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, cache_verify, NULL, MAX_ATTRMAP) < 0) {
-		return -1;
+	{
+		vp_tmpl_rules_t	parse_rules = {
+			.allow_foreign = true	/* Because we don't know where we'll be called */
+		};
+
+		if (map_afrom_cs(&inst->maps, update,
+				 &parse_rules, &parse_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
+			return -1;
+		}
 	}
 
 	if (!inst->maps) {

@@ -91,15 +91,16 @@ finish:
 
 /** Converts a serialized cache entry back into a structure
  *
- * @param c Cache entry to populate (should already be allocated)
- * @param in String representation of cache entry.
- * @param inlen Length of string. May be < 0 in which case strlen will be
- *	used to calculate the length of the string.
+ * @param[in] c		Cache entry to populate (should already be allocated)
+ * @param[in] dict	to use for unqualified attributes.
+ * @param[in] in	String representation of cache entry.
+ * @param[in] inlen	Length of string. May be < 0 in which case strlen will be
+ *			used to calculate the length of the string.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
+int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssize_t inlen)
 {
 	vp_map_t	**last = &c->maps;
 	char		*p, *q;
@@ -110,14 +111,15 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 
 	while (((size_t)(p - in)) < (size_t)inlen) {
 		vp_map_t	*map = NULL;
+		vp_tmpl_rules_t parse_rules = {
+					.dict_def = dict
+				};
 
 		q = strchr(p, '\n');
 		if (!q) break;	/* List should also be terminated with a \n */
 		*q = '\0';
 
-		if (map_afrom_attr_str(c, &map, p,
-				       REQUEST_CURRENT, PAIR_LIST_REQUEST,
-				       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		if (map_afrom_attr_str(c, &map, p, &parse_rules, &parse_rules) < 0) {
 			fr_strerror_printf("Failed parsing pair: %s", p);
 		error:
 			talloc_free(map);

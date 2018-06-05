@@ -2884,7 +2884,8 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
  * @param[in] name		string start.
  * @param[in] dict_def		The dictionary to return if no dictionary qualifier was found.
  * @return
- *	- <= 0 on error (offset as negative integer)
+ *	- 0 and *out != NULL.  Couldn't find a dictionary qualifier, so returned dict_def.
+ *	- <= 0 on error and (*out == NULL) (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  */
 ssize_t fr_dict_by_protocol_substr(fr_dict_t **out, char const *name, fr_dict_t const *dict_def)
@@ -3295,6 +3296,9 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
  *
+ * @note If calling this function from the server any list or request qualifiers
+ *  should be stripped first.
+ *
  * @param[out] err		Why parsing failed. May be NULL.
  *				- 0 success.
  *				- -1 if the attribute can't be found.
@@ -3322,7 +3326,7 @@ ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **o
 	 *	or if the string was qualified.
 	 */
 	slen = fr_dict_by_protocol_substr(&dict, p, dict_def);
-	if ((slen <= 0) || !dict) {
+	if ((slen <= 0) && !dict) {
 		if (err) *err = -2;
 		return 0;
 	}

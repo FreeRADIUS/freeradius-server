@@ -186,9 +186,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			attr = cf_pair_attr(cf_item_to_pair(ci));
 			if (!attr) continue; /* pair-anoia */
 
-			da = fr_dict_attr_by_name(NULL, attr);
-			if (!da) {
-				cf_log_err(conf, "No such attribute '%s'", attr);
+			if (fr_dict_attr_by_qualified_name(&da, dict_freeradius, attr) < 0) {
+				cf_log_perr(conf, "Failed resolving attribute");
 				return -1;
 			}
 
