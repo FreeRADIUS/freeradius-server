@@ -1378,6 +1378,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if (fr_radius_init() < 0) {
+		fr_perror("radclient");
+		return 1;
+	}
+
 	if (fr_dict_autoload(radclient_dict) < 0) {
 		fr_perror("radclient");
 		return 1;
@@ -1656,6 +1661,8 @@ int main(int argc, char **argv)
 	while (request_head) TALLOC_FREE(request_head);
 
 	talloc_free(secret);
+
+	fr_radius_free();
 
 	fr_dict_autofree(radclient_dict);
 
