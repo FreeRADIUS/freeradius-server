@@ -1652,7 +1652,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 	char buf[8192];
 	FR_TOKEN last_token = T_EOL;
 
-	fr_cursor_t cursor;
+	fr_cursor_t cursor, to_append;
 
 	VALUE_PAIR *vp = NULL;
 	fr_cursor_init(&cursor, out);
@@ -1685,9 +1685,8 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 			break;
 		}
 
-		do {
-			fr_cursor_append(&cursor, vp);
-		} while (vp->next && (vp = vp->next));
+		fr_cursor_init(&to_append, &vp);
+		fr_cursor_merge(&cursor, &to_append);
 
 		buf[0] = '\0';
 	}
