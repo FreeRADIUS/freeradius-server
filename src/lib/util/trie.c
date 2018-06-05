@@ -606,10 +606,8 @@ static CC_HINT(nonnull) fr_trie_path_t *fr_trie_path_alloc(fr_trie_t *ft, TALLOC
 	rad_assert(start_bit < end_bit);
 	rad_assert(!IS_PATH(trie));
 
-	path = talloc_zero_size(ctx, sizeof(*path));
+	path = talloc_zero(ctx, fr_trie_path_t);
 	if (!path) return NULL;
-
-	(void) talloc_set_name_const(path, "fr_trie_path_t");
 
 	path->start_bit = start_bit & 0x07;
 	path->length = end_bit - start_bit;
@@ -1927,7 +1925,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void *data)
 		return -1;
 	}
 
-	user = talloc_zero_size(ft, sizeof(*user));
+	user = talloc_zero(ft, fr_trie_user_t);
 	if (!user) return -1;
 
 	user->data = data;
