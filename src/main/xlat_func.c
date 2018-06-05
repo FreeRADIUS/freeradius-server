@@ -232,59 +232,45 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 /** Print data as hex, not as VALUE.
  *
  */
-static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			REQUEST *request, char const *fmt)
+static xlat_action_t xlat_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
+			      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			      fr_value_box_t **in)
 {
-	size_t i;
-	VALUE_PAIR *vp;
-	uint8_t const *p;
-	size_t	len;
-	fr_value_box_t dst;
-	uint8_t const *buff = NULL;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) {
-	error:
-		return -1;
-	}
+	char *buff, *buff_p;
+	uint8_t const *p, *end;
+	fr_value_box_t* vb;
 
 	/*
-	 *	The easy case.
+	 *	If there's no input, there's no output
 	 */
-	if (vp->vp_type == FR_TYPE_OCTETS) {
-		p = vp->vp_octets;
-		len = vp->vp_length;
-	/*
-	 *	Cast the fr_value_box_t of the VP to an octets string and
-	 *	print that as hex.
-	 */
-	} else {
-		if (fr_value_box_cast(request, &dst, FR_TYPE_OCTETS, NULL, &vp->data) < 0) {
-			RPEDEBUG("Invalid cast");
-			goto error;
-		}
-		len = (size_t)dst.datum.length;
-		p = buff = dst.vb_octets;
-	}
-
-	rad_assert(p);
+	if (!*in) return XLAT_ACTION_DONE;
 
 	/*
-	 *	Don't truncate the data.
+	 * Concatenate all input
 	 */
-	if (outlen < (len * 2)) {
-		talloc_const_free(buff);
-		goto error;
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
 	}
 
-	for (i = 0; i < len; i++) {
-		snprintf((*out) + (2 * i), 3, "%02x", p[i]);
-	}
-	talloc_const_free(buff);
+	p = (*in)->vb_octets;
+	end = p + (*in)->vb_length;
 
-	return len * 2;
+	buff = buff_p = talloc_array(NULL, char, ((*in)->vb_length * 2) + 1);
+
+	while (p < end) {
+		snprintf(buff_p, 3, "%02x", *(p++));
+		buff_p += 2;
+	}
+
+	*buff_p = '\0';
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Return the tag of an attribute reference
@@ -2568,10 +2554,15 @@ int xlat_init(void)
 	rad_assert(c != NULL); \
 	c->internal = true
 
+#define XLAT_ASYNC_REGISTER(_x) xlat_async_register(NULL, STRINGIFY(_x), xlat_ ## _x, NULL, NULL, NULL, NULL, NULL, NULL, NULL); \
+	c = xlat_func_find(STRINGIFY(_x)); \
+	rad_assert(c != NULL); \
+	c->internal = true
+
 	XLAT_REGISTER(integer);
 	XLAT_REGISTER(strlen);
 	XLAT_REGISTER(length);
-	XLAT_REGISTER(hex);
+	XLAT_ASYNC_REGISTER(hex);
 	XLAT_REGISTER(tag);
 	XLAT_REGISTER(string);
 	XLAT_REGISTER(xlat);

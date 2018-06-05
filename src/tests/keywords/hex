@@ -19,16 +19,16 @@ update request {
 }
 
 update request {
-	Tmp-String-0		:= "%{hex:Tmp-String-0}"
-	Tmp-String-1		:= "%{hex:Tmp-Octets-0}"
-	Tmp-String-2		:= "%{hex:Tmp-IP-Address-0}"
-	Tmp-String-3		:= "%{hex:Tmp-Date-0}"
-	Tmp-String-4		:= "%{hex:Tmp-Integer-0}"
-	Tmp-String-5		:= "%{hex:Tmp-Cast-Abinary}"
-	Tmp-String-6		:= "%{hex:Tmp-Cast-Ifid}"
-	Tmp-String-7		:= "%{hex:Tmp-Cast-IPv6Addr}"
-	Tmp-String-8		:= "%{hex:Tmp-Cast-IPv6Prefix}"
-	Tmp-String-9		:= "%{hex:Tmp-Cast-Byte}"
+	Tmp-String-0		:= "%{hex:%{Tmp-String-0}}"
+	Tmp-String-1		:= "%{hex:%{Tmp-Octets-0}}"
+	Tmp-String-2		:= "%{hex:%{Tmp-IP-Address-0}}"
+	Tmp-String-3		:= "%{hex:%{Tmp-Date-0}}"
+	Tmp-String-4		:= "%{hex:%{Tmp-Integer-0}}"
+	Tmp-String-5		:= "%{hex:%{Tmp-Cast-Abinary}}"
+	Tmp-String-6		:= "%{hex:%{Tmp-Cast-Ifid}}"
+	Tmp-String-7		:= "%{hex:%{Tmp-Cast-IPv6Addr}}"
+	Tmp-String-8		:= "%{hex:%{Tmp-Cast-IPv6Prefix}}"
+	Tmp-String-9		:= "%{hex:%{Tmp-Cast-Byte}}"
 }
 
 # String
@@ -82,10 +82,11 @@ if (Tmp-String-9 != '3a') {
 }
 
 update request {
-	Tmp-String-0        := "%{hex:Tmp-Cast-Short}"
-	Tmp-String-1        := "%{hex:Tmp-Cast-Ether}"
-	Tmp-String-2        := "%{hex:Tmp-Cast-Integer64}"
-	Tmp-String-3        := "%{hex:Tmp-Cast-IPv4Prefix}"
+	Tmp-String-0        := "%{hex:%{Tmp-Cast-Short}}"
+	Tmp-String-1        := "%{hex:%{Tmp-Cast-Ether}}"
+	Tmp-String-2        := "%{hex:%{Tmp-Cast-Integer64}}"
+	Tmp-String-3        := "%{hex:%{Tmp-Cast-IPv4Prefix}}"
+	Tmp-String-4        := "%{hex:%{Tmp-Octets-9}}"
 }
 
 # short
@@ -105,6 +106,11 @@ if (Tmp-String-2 != '100000003938373d') {
 
 # ipv4prefix
 if (Tmp-String-3 != '203938373e') {
+	test_fail
+}
+
+# Empty input
+if (Tmp-String-4 != '') {
 	test_fail
 }
 
