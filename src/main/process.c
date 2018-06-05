@@ -431,7 +431,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		RDEBUG("%s %s Id %i from %s%s%s:%i to %s%s%s:%i length %zu",
+		RDEBUG("%s %s Id %u from %s%s%s:%i to %s%s%s:%i length %zu",
 		       received ? "Received" : "Sent",
 		       fr_packet_codes[packet->code],
 		       packet->id,
@@ -449,7 +449,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 		       packet->dst_port,
 		       packet->data_len);
 	} else {
-		RDEBUG("%s code %u Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
+		RDEBUG("%s code %u Id %u from %s%s%s:%i to %s%s%s:%i length %zu\n",
 		       received ? "Received" : "Sent",
 		       packet->code,
 		       packet->id,
