@@ -1217,57 +1217,59 @@ static xlat_action_t xlat_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
  * Example: "%{sha256:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
 #ifdef HAVE_OPENSSL_EVP_H
-static ssize_t evp_md_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt, EVP_MD const *md)
+static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_cursor_t *out,
+			         REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			         fr_value_box_t **in, EVP_MD const *md)
 {
 	uint8_t		digest[EVP_MAX_MD_SIZE];
-	unsigned int	digestlen, i, len;
-	size_t		inlen;
-	uint8_t		*p;
+	unsigned int	digestlen;
 	EVP_MD_CTX	*md_ctx;
-	TALLOC_CTX	*tmp_ctx = NULL;
+	fr_value_box_t	*vb;
 
-	VALUE_FROM_FMT(tmp_ctx, p, inlen, request, fmt);
+	/*
+	 * Concatenate all input if there is some
+	 */
+	if (*in && fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
 	md_ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(md_ctx, md, NULL);
-	EVP_DigestUpdate(md_ctx, p, inlen);
+	if (*in) {
+		EVP_DigestUpdate(md_ctx, (*in)->vb_octets, (*in)->vb_length);
+	} else {
+		EVP_DigestUpdate(md_ctx, NULL, 0);
+	}
 	EVP_DigestFinal_ex(md_ctx, digest, &digestlen);
 	EVP_MD_CTX_destroy(md_ctx);
 
-	/*
-	 *      Each digest octet takes two hex digits, plus one for
-	 *      the terminating NUL.
-	 */
-	len = (outlen / 2) - 1;
-	if (len > digestlen) len = digestlen;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_memdup(vb, vb, NULL, digest, digestlen, false);
 
-	for (i = 0; i < len; i++) snprintf((*out) + (i * 2), 3, "%02x", digest[i]);
+	fr_cursor_append(out, vb);
 
-	talloc_free(tmp_ctx);
-
-	return strlen(*out);
+	return XLAT_ACTION_DONE;
 }
 
-#  define EVP_MD_XLAT(_md) \
-static ssize_t _md##_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,\
-			  void const *mod_inst, void const *xlat_inst,\
-			  REQUEST *request, char const *fmt)\
+#  define XLAT_EVP_MD(_md) \
+static xlat_action_t xlat_##_md(TALLOC_CTX *ctx, fr_cursor_t *out,\
+				 REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,\
+				 fr_value_box_t **in)\
 {\
-	return evp_md_xlat(ctx, out, outlen, mod_inst, xlat_inst, request, fmt, EVP_##_md());\
+	return xlat_evp_md(ctx, out, request, xlat_inst, xlat_thread_inst, in, EVP_##_md());\
 }
 
-EVP_MD_XLAT(sha224)
-EVP_MD_XLAT(sha256)
-EVP_MD_XLAT(sha384)
-EVP_MD_XLAT(sha512)
+XLAT_EVP_MD(sha224)
+XLAT_EVP_MD(sha256)
+XLAT_EVP_MD(sha384)
+XLAT_EVP_MD(sha512)
 
 #  ifdef HAVE_EVP_SHA3_512
-EVP_MD_XLAT(sha3_224)
-EVP_MD_XLAT(sha3_256)
-EVP_MD_XLAT(sha3_384)
-EVP_MD_XLAT(sha3_512)
+XLAT_EVP_MD(sha3_224)
+XLAT_EVP_MD(sha3_256)
+XLAT_EVP_MD(sha3_384)
+XLAT_EVP_MD(sha3_512)
 #  endif
 #endif
 
@@ -2573,19 +2575,6 @@ int xlat_init(void)
 	XLAT_REGISTER(regex);
 #endif
 
-#ifdef HAVE_OPENSSL_EVP_H
-	xlat_register(NULL, "sha224", sha224_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha256", sha256_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha384", sha384_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha512", sha512_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
-#  ifdef HAVE_EVP_SHA3_512
-	xlat_register(NULL, "sha3_224", sha3_224_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha3_256", sha3_256_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha3_384", sha3_384_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha3_512", sha3_512_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);#  endif
-#  endif
-#endif
 	xlat_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "pairs", pairs_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2615,6 +2604,20 @@ int xlat_init(void)
 	xlat_async_register(NULL, "tolower", xlat_tolower, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "toupper", xlat_toupper, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "sha1", xlat_sha1, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+#ifdef HAVE_OPENSSL_EVP_H
+	xlat_async_register(NULL, "sha224", xlat_sha224, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha256", xlat_sha256, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha384", xlat_sha384, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha512", xlat_sha512, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+#  ifdef HAVE_EVP_SHA3_512
+	xlat_async_register(NULL, "sha3_224", xlat_sha3_224, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha3_256", xlat_sha3_256, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha3_384", xlat_sha3_384, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha3_512", xlat_sha3_512, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+#  endif
+#endif
 
 	return 0;
 }
