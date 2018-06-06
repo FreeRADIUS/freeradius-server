@@ -614,7 +614,7 @@ static vp_tmpl_rules_t const default_rules = {
  *							found a #TMPL_TYPE_ATTR_UNDEFINED
  *							#vp_tmpl_t will be produced.
  *				- allow_foreign		If true, allow attribute names to be qualified
- *							with a protocol outside of the passed #dict_def.
+ *							with a protocol outside of the passed dict_def.
  *
  * @see REMARKER to produce pretty error markers from the return value.
  *
