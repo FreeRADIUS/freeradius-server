@@ -1661,11 +1661,11 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 		VALUE_PAIR *next;
 
 		/*
-		 *      If we get a '\n' by itself, we assume that's
-		 *      the end of that VP list.
+		 *	If we get a '\n' by itself, we assume that's
+		 *	the end of that VP list.
 		 */
 		if (buf[0] == '\n') {
-			if (vp) {
+			if (*out) {
 				*pfiledone = false;
 				return 0;
 			}
