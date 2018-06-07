@@ -1027,8 +1027,6 @@ do_read:
 			return packet_len;
 		}
 
-		rad_assert(packet_len >= 20);
-
 		/*
 		 *	Not allowed?  Discard it.  The other function
 		 *	has done any complaining, if necessary.
