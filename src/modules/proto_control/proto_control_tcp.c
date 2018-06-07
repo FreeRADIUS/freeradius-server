@@ -131,7 +131,6 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 		return 0;
 	}
 
-
 	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
 

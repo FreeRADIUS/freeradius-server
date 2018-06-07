@@ -102,57 +102,36 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 	size_t				packet_len = -1;
 
 	fr_time_t			*recv_time_p;
+	fr_conduit_type_t		conduit;
 
 	recv_time_p = *recv_time;
 
 	/*
 	 *      Read data into the buffer.
 	 */
-	data_size = read(inst->sockfd, buffer + *leftover, buffer_len - *leftover);
+	data_size = fr_conduit_read_async(inst->sockfd, &conduit, buffer, buffer_len, leftover);
 	if (data_size < 0) {
-		DEBUG2("proto_control_unix got read error %zd: %s", data_size, fr_strerror());
+		DEBUG2("proto_control_tcp got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
 	}
 
 	/*
 	 *	Note that we return ERROR for all bad packets, as
-	 *	there's no point in reading packets from a UNIX
+	 *	there's no point in reading packets from a TCP
 	 *	connection which isn't sending us properly formatted
 	 *	packets.
 	 */
 
 	/*
-	 *	UNIX read of zero means the socket is dead.
+	 *	Not enough for a full packet, ask the caller to read more.
 	 */
-	if (!data_size) {
-		DEBUG2("proto_control_unix - other side closed the socket.");
-		return -1;
+	if (conduit == FR_CONDUIT_WANT_MORE) {
+		return 0;
 	}
 
 	// @todo - check authentication, etc. on the socket.
 	// we will need a state machine for this..
-
-	/*
-	 *	Not enough for one packet.  Tell the caller that we need to read more.
-	 */
-	if (data_size < 20) {
-		*leftover = data_size;
-		return 0;
-	}
-
-#if 0
-	/*
-	 *      If it's not a RADIUS packet, ignore it.
-	 */
-	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, &reason)) {
-		/*
-		 *      @todo - check for F5 load balancer packets.  <sigh>
-		 */
-		DEBUG2("proto_control_unix got a packet which isn't RADIUS");
-		inst->stats.total_malformed_requests++;
-		return -1;
-	}
-#endif
+	packet_len = data_size;
 
 	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
@@ -918,6 +897,9 @@ static int mod_fd_set(void *instance, int fd)
 #endif
 
 	inst->sockfd = fd;
+
+	// @todo - start the negotiation
+	// We probably want a way to read / write initial data in the connection...
 
 	return 0;
 }
