@@ -426,6 +426,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 
 	MEM(connection->client = talloc_zero(connection, fr_io_client_t));
 	MEM(connection->client->radclient = radclient = radclient_clone(connection->client, client->radclient));
+
 	connection->client->heap_id = -1;
 	connection->client->connected = true;
 
@@ -972,15 +973,19 @@ redo:
 			return 0;
 		}
 
-		(void) fr_ipaddr_from_sockaddr(&saremote, salen, &address.src_ipaddr, &address.src_port);
-
-		salen = sizeof(saremote);
-
 		/*
-		 *	@todo - only if the local listen address is "*".
+		 *	Get IP addresses only if we have IP addresses.
 		 */
-		(void) getsockname(accept_fd, (struct sockaddr *) &saremote, &salen);
-		(void) fr_ipaddr_from_sockaddr(&saremote, salen, &address.dst_ipaddr, &address.dst_port);
+		if ((saremote.ss_family == AF_INET) || (saremote.ss_family == AF_INET6)) {
+			(void) fr_ipaddr_from_sockaddr(&saremote, salen, &address.src_ipaddr, &address.src_port);
+			salen = sizeof(saremote);
+
+			/*
+			 *	@todo - only if the local listen address is "*".
+			 */
+			(void) getsockname(accept_fd, (struct sockaddr *) &saremote, &salen);
+			(void) fr_ipaddr_from_sockaddr(&saremote, salen, &address.dst_ipaddr, &address.dst_port);
+		}
 
 	} else {
 		fr_io_address_t *local_address;
@@ -1028,6 +1033,9 @@ do_read:
 		if (value <= 0) {
 			char src_buf[128];
 
+			/*
+			 *	@todo - unix sockets
+			 */
 			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 			DEBUG2("proto_%s - ignoring packet %d from IP %s. It is not configured as 'type = ...'",
 			       inst->app_io->name, buffer[0], src_buf);
