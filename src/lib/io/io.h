@@ -93,7 +93,7 @@ typedef int (*fr_io_get_fd_t)(void const *instance);
  * @param[in] instance	containing the configuration
  * @param[in] fd	the FD to set
  */
-typedef void (*fr_io_set_fd_t)(void *instance, int fd);
+typedef int (*fr_io_set_fd_t)(void *instance, int fd);
 
 /** Decode a raw packet and convert it into a request.
  *

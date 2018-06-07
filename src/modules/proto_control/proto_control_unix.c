@@ -235,26 +235,6 @@ static void mod_network_get(UNUSED void *instance, int *ipproto, bool *dynamic_c
 	*trie = NULL;
 }
 
-#if !defined(HAVE_GETPEEREID) && defined(SO_PEERCRED)
-static int getpeereid(int s, uid_t *euid, gid_t *egid)
-{
-	struct ucred cr;
-	socklen_t cl = sizeof(cr);
-
-	if (getsockopt(s, SOL_SOCKET, SO_PEERCRED, &cr, &cl) < 0) {
-		return -1;
-	}
-
-	*euid = cr.uid;
-	*egid = cr.gid;
-	return 0;
-}
-
-/* we now have getpeereid() in this file */
-#define HAVE_GETPEEREID (1)
-
-#endif /* HAVE_GETPEEREID */
-
 /** Initialise a socket for use with peercred authentication
  *
  * This function initialises a socket and path in a way suitable for use with
@@ -864,16 +844,82 @@ static int mod_fd(void const *instance)
 	return inst->sockfd;
 }
 
+#if !defined(HAVE_GETPEEREID) && defined(SO_PEERCRED)
+static int getpeereid(int s, uid_t *euid, gid_t *egid)
+{
+	struct ucred cr;
+	socklen_t cl = sizeof(cr);
+
+	if (getsockopt(s, SOL_SOCKET, SO_PEERCRED, &cr, &cl) < 0) {
+		return -1;
+	}
+
+	*euid = cr.uid;
+	*egid = cr.gid;
+	return 0;
+}
+
+/* we now have getpeereid() in this file */
+#define HAVE_GETPEEREID (1)
+
+#endif /* HAVE_GETPEEREID */
+
 /** Set the file descriptor for this socket.
  *
  * @param[in] instance of the RADIUS UNIX I/O path.
  * @param[in] fd the FD to set
  */
-static void mod_fd_set(void *instance, int fd)
+static int mod_fd_set(void *instance, int fd)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
 
+
+#ifdef HAVE_GETPEEREID
+	/*
+	 *	Perform user authentication.
+	 */
+	if (inst->peercred && (inst->uid_name || inst->gid_name)) {
+		uid_t uid;
+		gid_t gid;
+
+		if (getpeereid(fd, &uid, &gid) < 0) {
+			ERROR("Failed getting peer credentials for %s: %s",
+			       inst->path, fr_syserror(errno));
+			return -1;
+		}
+
+		/*
+		 *	Only do UID checking if the caller is
+		 *	non-root.  The superuser can do anything, so
+		 *	we might as well let them.
+		 */
+		if (uid != 0) do {
+			/*
+			 *	Allow entry if UID or GID matches.
+			 */
+			if (inst->uid_name && (inst->uid == uid)) break;
+			if (inst->gid_name && (inst->gid == gid)) break;
+
+			if (inst->uid_name && (inst->uid != uid)) {
+				ERROR("Unauthorized connection to %s from uid %ld",
+
+				       inst->path, (long int) uid);
+				return -1;
+			}
+
+			if (inst->gid_name && (inst->gid != gid)) {
+				ERROR("Unauthorized connection to %s from gid %ld",
+				       inst->path, (long int) gid);
+				return -1;
+			}
+
+		} while (0);
+	}
+#endif
+
 	inst->sockfd = fd;
+
+	return 0;
 }
 
 

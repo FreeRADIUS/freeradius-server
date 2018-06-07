@@ -565,7 +565,11 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 				return NULL;
 			}
 		} else {
-			inst->app_io->fd_set(connection->app_io_instance, fd);
+			if (inst->app_io->fd_set(connection->app_io_instance, fd) < 0) {
+				DEBUG3("Failed setting FD to %s", inst->app_io->name);
+				close(fd);
+				return NULL;
+			}
 		}
 
 		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(connection->address->src_ipaddr), 0);

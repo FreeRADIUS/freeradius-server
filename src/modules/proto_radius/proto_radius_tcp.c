@@ -370,11 +370,13 @@ static int mod_fd(void const *instance)
  * @param[in] instance of the RADIUS TCP I/O path.
  * @param[in] fd the FD to set
  */
-static void mod_fd_set(void *instance, int fd)
+static int mod_fd_set(void *instance, int fd)
 {
 	proto_radius_tcp_t *inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
 
 	inst->sockfd = fd;
+
+	return 0;
 }
 
 static int mod_compare(UNUSED void const *instance, void const *one, void const *two)
