@@ -541,7 +541,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	No IO module, it's an empty listener.
 	 */
-	if (!i || !inst->io.submodule) return 0;
+	if (!inst->io.submodule) return 0;
 
 	/*
 	 *	These configuration items are not printed by default,

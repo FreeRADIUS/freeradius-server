@@ -76,14 +76,16 @@ typedef struct {
 	bool				peercred;		//!< whether we use peercred or not
 
 	fr_io_address_t			*connection;		//!< for connected sockets.
+	RADCLIENT			radclient;		//!< for faking out clients
 
 } proto_control_unix_t;
 
 static const CONF_PARSER unix_listen_config[] = {
-	{ FR_CONF_OFFSET("path", FR_TYPE_STRING, proto_control_unix_t, path) },
+	{ FR_CONF_OFFSET("path", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_control_unix_t, path),
+	.dflt = "${run_dir}/radiusd.sock}" },
 	{ FR_CONF_OFFSET("uid", FR_TYPE_STRING, proto_control_unix_t, uid_name) },
 	{ FR_CONF_OFFSET("git", FR_TYPE_STRING, proto_control_unix_t, gid_name) },
-	{ FR_CONF_OFFSET("peercred", FR_TYPE_BOOL, proto_control_unix_t, peercred) },
+	{ FR_CONF_OFFSET("peercred", FR_TYPE_BOOL, proto_control_unix_t, peercred), .dflt = "yes" },
 
 	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_control_unix_t, recv_buff) },
 
@@ -220,9 +222,18 @@ static int mod_connection_set(void *instance, fr_io_address_t *connection)
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
 
 	inst->connection = connection;
+
+	// @todo - set name to path + peer ID of other end?
+
 	return 0;
 }
 
+static void mod_network_get(UNUSED void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie)
+{
+	*ipproto = IPPROTO_TCP;
+	*dynamic_clients = false;
+	*trie = NULL;
+}
 
 #if !defined(HAVE_GETPEEREID) && defined(SO_PEERCRED)
 static int getpeereid(int s, uid_t *euid, gid_t *egid)
@@ -807,6 +818,8 @@ static int mod_open(void *instance)
 
 	rad_assert(!inst->connection);
 
+	rad_assert(inst->name != NULL);
+
 	if (inst->peercred) {
 		sockfd = fr_server_domain_socket_peercred(inst->path, inst->uid, inst->gid);
 	} else {
@@ -867,11 +880,10 @@ static void mod_fd_set(void *instance, int fd)
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
-	char		    dst_buf[128];
 
 	if (!inst->connection) {
 		inst->name = talloc_typed_asprintf(inst, "proto unix server %s path %s",
-						   dst_buf, inst->path);
+						   "???", inst->path);
 
 	} else {
 		inst->name = talloc_typed_asprintf(inst, "proto unix from client ??? to server path %s",
@@ -925,13 +937,25 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 20);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
 
+	/*
+	 *	Set up the fake client
+	 */
+	inst->radclient.longname = inst->path;
+	inst->radclient.ipaddr.af = AF_INET;
+	inst->radclient.src_ipaddr.af = AF_INET;
+
+	inst->radclient.server_cs = cf_item_to_section(cf_parent(cf_parent(cs)));
+	rad_assert(inst->radclient.server_cs != NULL);
+	inst->radclient.server = cf_section_name2(inst->radclient.server_cs);
+
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipaddr, int ipproto)
+static RADCLIENT *mod_client_find(void *instance, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
 {
-	// @todo - stream sockets?
-	return client_find(NULL, ipaddr, ipproto);
+	proto_control_unix_t	*inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return &inst->radclient;
 }
 
 #if 0
@@ -957,7 +981,6 @@ fr_app_io_t proto_control_unix = {
 	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
-	.track_duplicates	= true,
 
 	.open			= mod_open,
 	.read			= mod_read,
@@ -966,5 +989,6 @@ fr_app_io_t proto_control_unix = {
 	.fd			= mod_fd,
 	.fd_set			= mod_fd_set,
 	.connection_set		= mod_connection_set,
+	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,
 };
