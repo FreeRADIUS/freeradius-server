@@ -84,7 +84,7 @@ fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
 /*
  *	Debug the packet if requested - cribbed from common_packet_debug
  */
-static void tacacs_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
+static void fr_tacacs_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 {
 	char src_ipaddr[FR_IPADDR_STRLEN];
 	char dst_ipaddr[FR_IPADDR_STRLEN];
@@ -95,7 +95,7 @@ static void tacacs_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 	RDEBUG("%s %s Id %u from %s%s%s:%i to %s%s%s:%i "
 	       "length %zu",
 	       received ? "Received" : "Sending",
-	       tacacs_lookup_packet_code(request->packet),
+	       tacacs_packet_code(request->packet),
 	       tacacs_session_id(request->packet),
 	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 	       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
@@ -233,7 +233,7 @@ static void tacacs_running(REQUEST *request, fr_state_signal_t action)
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		rc = tacacs_decode(request->packet);
+		rc = fr_tacacs_packet_decode(request->packet);
 		if (rc == -2)	/* client abort no reply */
 			goto done;
 		else if (rc < 0) {
@@ -241,12 +241,12 @@ static void tacacs_running(REQUEST *request, fr_state_signal_t action)
 			goto setup_send;
 		}
 
-		if (RDEBUG_ENABLED) tacacs_packet_debug(request, request->packet, true);
+		if (RDEBUG_ENABLED) fr_tacacs_packet_debug(request, request->packet, true);
 
 		request->server_cs = request->listener->server_cs;
 		request->component = "tacacs";
 
-		unlang = cf_section_find(request->server_cs, "recv", tacacs_lookup_packet_code(request->packet));
+		unlang = cf_section_find(request->server_cs, "recv", tacacs_packet_code(request->packet));
 		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv' section");
@@ -405,7 +405,7 @@ stop_processing:
 setup_send:
 		unlang = NULL;
 		if (dv) {
-			unlang = cf_section_find(request->server_cs, "send", tacacs_lookup_packet_code(request->packet));
+			unlang = cf_section_find(request->server_cs, "send", tacacs_packet_code(request->packet));
 		}
 		if (!unlang) unlang = cf_section_find(request->server_cs, "send", "*");
 		if (!unlang) goto send_reply;
@@ -476,9 +476,9 @@ send_reply:
 #endif
 		}
 
-		if (RDEBUG_ENABLED) tacacs_packet_debug(request, request->reply, false);
+		if (RDEBUG_ENABLED) fr_tacacs_packet_debug(request, request->reply, false);
 
-		if (tacacs_send(request->reply, request->packet, request->client->secret) < 0) {
+		if (fr_tacacs_packet_send(request->reply, request->packet, request->client->secret) < 0) {
 			RPEDEBUG("Failed sending TACACS reply");
 			goto done;
 		}
@@ -556,7 +556,7 @@ static int tacacs_socket_recv(rad_listen_t *listener)
 	 */
 	packet = sock->packet;
 
-	rcode = tacacs_read_packet(packet, client->secret);
+	rcode = fr_tacacs_packet_recv(packet, client->secret);
 	if (rcode == 0) return 0;	/* partial packet */
 	if (rcode == -1) {		/* error reading packet */
 		char buffer[256];
@@ -653,7 +653,7 @@ static int tacacs_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 
 static int mod_load(void)
 {
-	if (tacacs_init() < 0) {
+	if (fr_tacacs_init() < 0) {
 		PERROR("Failed initialising tacacs");
 		return -1;
 	}
@@ -663,7 +663,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	tacacs_free();
+	fr_tacacs_free();
 }
 
 extern rad_protocol_t proto_tacacs;
@@ -684,7 +684,7 @@ rad_protocol_t proto_tacacs = {
 	.send		= NULL,
 	.error		= tacacs_socket_error,
 	.print		= common_socket_print,
-	.debug		= tacacs_packet_debug,
+	.debug		= fr_tacacs_packet_debug,
 	.encode		= NULL,
 	.decode		= NULL,
 };

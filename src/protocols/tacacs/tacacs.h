@@ -36,7 +36,7 @@ typedef enum {
 	TAC_PLUS_SINGLE_CONNECT_FLAG			= 0x04
 } tacacs_flags_t;
 
-typedef struct CC_HINT(__packed__) tacacs_packet_hdr {
+typedef struct CC_HINT(__packed__) fr_tacacs_packet_hdr {
 	union {
 		uint8_t	version;
 		struct CC_HINT(__packed__) {
@@ -54,7 +54,7 @@ typedef struct CC_HINT(__packed__) tacacs_packet_hdr {
 	tacacs_flags_t		flags:8;
 	uint32_t 		session_id;
 	uint32_t 		length;
-} tacacs_packet_hdr_t;
+} fr_tacacs_packet_hdr_t;
 
 typedef enum {
 	TAC_PLUS_AUTHEN_LOGIN		= 0x01,
@@ -91,7 +91,7 @@ typedef enum {
 	TAC_PLUS_AUTHEN_SVC_FWPROXY	= 0x09
 } tacacs_authenservice_t;
 
-typedef struct CC_HINT(__packed__) tacacs_packet_authen_start_hdr {
+typedef struct CC_HINT(__packed__) fr_tacacs_packet_authen_start_hdr {
 	tacacs_action_t		action:8;
 	tacacs_privlvl_t	priv_lvl:8;
 	tacacs_authentype_t	authen_type:8;
@@ -101,7 +101,7 @@ typedef struct CC_HINT(__packed__) tacacs_packet_authen_start_hdr {
 	uint8_t			rem_addr_len;
 	uint8_t			data_len;
 	uint8_t			body[1];
-} tacacs_packet_authen_start_hdr_t;
+} fr_tacacs_packet_authen_start_hdr_t;
 
 typedef enum {
 	TAC_PLUS_AUTHEN_STATUS_PASS	= 0x01,
@@ -119,25 +119,25 @@ typedef enum {
 	TAC_PLUS_REPLY_FLAG_NOECHO	= 0x01
 } tacacs_authen_reply_flags_t;
 
-typedef struct CC_HINT(__packed__) tacacs_packet_authen_reply_hdr {
+typedef struct CC_HINT(__packed__) fr_tacacs_packet_authen_reply_hdr {
 	tacacs_authen_reply_status_t	status:8;
 	tacacs_authen_reply_flags_t	flags:8;
 	uint16_t			server_msg_len;
 	uint16_t			data_len;
 	uint8_t				body[1];
-} tacacs_packet_authen_reply_hdr_t;
+} fr_tacacs_packet_authen_reply_hdr_t;
 
 typedef enum {
 	TAC_PLUS_CONTINUE_FLAG_UNSET	= 0x00,	/* gdb candy */
 	TAC_PLUS_CONTINUE_FLAG_ABORT	= 0x01
 } tacacs_authen_cont_flags_t;
 
-typedef struct CC_HINT(__packed__) tacacs_packet_authen_cont_hdr {
+typedef struct CC_HINT(__packed__) fr_tacacs_packet_authen_cont_hdr {
 	uint16_t			user_msg_len;
 	uint16_t			data_len;
 	tacacs_authen_cont_flags_t	flags:8;
 	uint8_t				body[1];
-} tacacs_packet_authen_cont_hdr_t;
+} fr_tacacs_packet_authen_cont_hdr_t;
 
 typedef enum {
 	TAC_PLUS_AUTHEN_METH_NOT_SET	= 0x00,
@@ -153,7 +153,7 @@ typedef enum {
 	TAC_PLUS_AUTHEN_METH_RCMD	= 0x20
 } tacacs_author_authen_method_t;
 
-typedef struct CC_HINT(__packed__) tacacs_packet_author_req_hdr {
+typedef struct CC_HINT(__packed__) fr_tacacs_packet_author_req_hdr {
 	tacacs_author_authen_method_t	authen_method:8;
 	tacacs_privlvl_t		priv_lvl:8;
 	tacacs_authentype_t		authen_type:8;
@@ -163,7 +163,7 @@ typedef struct CC_HINT(__packed__) tacacs_packet_author_req_hdr {
 	uint8_t				rem_addr_len;
 	uint8_t				arg_cnt;
 	uint8_t				body[1];
-} tacacs_packet_author_req_hdr_t;
+} fr_tacacs_packet_author_req_hdr_t;
 
 typedef enum {
 	TAC_PLUS_AUTHOR_STATUS_PASS_ADD		= 0x01,
@@ -173,13 +173,13 @@ typedef enum {
 	TAC_PLUS_AUTHOR_STATUS_FOLLOW		= 0x21
 } tacacs_author_res_status_t;
 
-typedef struct CC_HINT(__packed__) tacacs_packet_author_res_hdr {
+typedef struct CC_HINT(__packed__) fr_tacacs_packet_author_res_hdr {
 	tacacs_author_res_status_t	status:8;
 	uint8_t				arg_cnt;
 	uint16_t			server_msg_len;
 	uint16_t			data_len;
 	uint8_t				body[1];
-} tacacs_packet_author_res_hdr_t;
+} fr_tacacs_packet_author_res_hdr_t;
 
 typedef enum {
 	TAC_PLUS_ACCT_FLAG_START	= 0x02,
@@ -187,7 +187,7 @@ typedef enum {
 	TAC_PLUS_ACCT_FLAG_WATCHDOG	= 0x08
 } tacacs_acct_req_flags_t;
 
-typedef struct CC_HINT(__packed__) tacacs_packet_acct_req_hdr {
+typedef struct CC_HINT(__packed__) fr_tacacs_packet_acct_req_hdr {
 	tacacs_acct_req_flags_t		flags:8;
 	tacacs_author_authen_method_t	authen_method:8;
 	tacacs_privlvl_t		priv_lvl:8;
@@ -198,7 +198,7 @@ typedef struct CC_HINT(__packed__) tacacs_packet_acct_req_hdr {
 	uint8_t				rem_addr_len;
 	uint8_t				arg_cnt;
 	uint8_t				body[1];
-} tacacs_packet_acct_req_hdr_t;
+} fr_tacacs_packet_acct_req_hdr_t;
 
 typedef enum {
 	TAC_PLUS_ACCT_STATUS_SUCCESS	= 0x01,
@@ -206,46 +206,46 @@ typedef enum {
 	TAC_PLUS_ACCT_STATUS_FOLLOW	= 0x21
 } tacacs_acct_reply_status_t;
 
-typedef struct CC_HINT(__packed__) tacacs_packet_acct_res_hdr {
+typedef struct CC_HINT(__packed__) fr_tacacs_packet_acct_res_hdr {
 	uint16_t			server_msg_len;
 	uint16_t			data_len;
 	tacacs_acct_reply_status_t	status:8;
 	uint8_t				body[1];
-} tacacs_packet_acct_res_hdr_t;
+} fr_tacacs_packet_acct_res_hdr_t;
 
-typedef struct CC_HINT(__packed__) tacacs_packet {
-	tacacs_packet_hdr_t					hdr;
+typedef struct CC_HINT(__packed__) fr_tacacs_packet {
+	fr_tacacs_packet_hdr_t					hdr;
 	union {
 		union {
-			tacacs_packet_authen_start_hdr_t	start;
-			tacacs_packet_authen_reply_hdr_t	reply;
-			tacacs_packet_authen_cont_hdr_t		cont;
+			fr_tacacs_packet_authen_start_hdr_t	start;
+			fr_tacacs_packet_authen_reply_hdr_t	reply;
+			fr_tacacs_packet_authen_cont_hdr_t		cont;
 		} authen;
 		union {
-			tacacs_packet_author_req_hdr_t		req;
-			tacacs_packet_author_res_hdr_t		res;
+			fr_tacacs_packet_author_req_hdr_t		req;
+			fr_tacacs_packet_author_res_hdr_t		res;
 		} author;
 		union {
-			tacacs_packet_acct_req_hdr_t		req;
-			tacacs_packet_acct_res_hdr_t		res;
+			fr_tacacs_packet_acct_req_hdr_t		req;
+			fr_tacacs_packet_acct_res_hdr_t		res;
 		} acct;
 	};
-} tacacs_packet_t;
+} fr_tacacs_packet_t;
 
 tacacs_type_t	tacacs_type(RADIUS_PACKET const * const packet);
 
-char const	*tacacs_lookup_packet_code(RADIUS_PACKET const * const packet);
+char const	*tacacs_packet_code(RADIUS_PACKET const * const packet);
 
 uint32_t	tacacs_session_id(RADIUS_PACKET const * const packet);
 
-int		tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret);
+int		fr_tacacs_packet_recv(RADIUS_PACKET * const packet, char const * const secret);
 
-int		tacacs_decode(RADIUS_PACKET * const packet);
+int		fr_tacacs_packet_decode(RADIUS_PACKET * const packet);
 
-int		tacacs_encode(RADIUS_PACKET * const packet, char const * const secret);
+int		fr_tacacs_packet_encode(RADIUS_PACKET * const packet, char const * const secret);
 
-int		tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const original, char const * const secret);
+int		fr_tacacs_packet_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const original, char const * const secret);
 
-int		tacacs_init(void);
+int		fr_tacacs_init(void);
 
-void		tacacs_free(void);
+void		fr_tacacs_free(void);

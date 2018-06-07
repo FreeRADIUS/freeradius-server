@@ -843,7 +843,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			}
 
 			packet->vps = head;
-			if (tacacs_encode(packet, NULL) < 0) {
+			if (fr_tacacs_packet_encode(packet, NULL) < 0) {
 				strerror_concat(output, sizeof(output));
 				talloc_free(packet);
 				continue;
@@ -877,7 +877,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			packet->data = attr;
 			packet->data_len = len;
 
-			if (tacacs_decode(packet) < 0) {
+			if (fr_tacacs_packet_decode(packet) < 0) {
 				strerror_concat(output, sizeof(output));
 				talloc_free(packet);
 				continue;
@@ -951,84 +951,6 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			parse_xlat(p, output, sizeof(output));
 			continue;
 		}
-
-#ifdef WITH_TACACS
-		/*
-		 *	And some TACACS tests
-		 */
-		if (strcmp(test_type, "encode-tacacs") == 0) {
-			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
-
-			if (strcmp(p + 14, "-") == 0) {
-				WARN("cannot encode as client");
-				p = output;
-			} else {
-				p += 14;
-			}
-
-			if (fr_pair_list_afrom_str(packet, p, &head) != T_EOL) {
-				strerror_concat(output, sizeof(output));
-				talloc_free(packet);
-				continue;
-			}
-
-			packet->vps = head;
-			if (tacacs_encode(packet, NULL) < 0) {
-				strerror_concat(output, sizeof(output));
-				talloc_free(packet);
-				continue;
-			}
-
-			outlen = packet->data_len;
-			memcpy(data, packet->data, outlen);
-			talloc_free(packet);
-
-			goto print_hex;
-		}
-
-		if (strcmp(test_type, "decode-tacacs") == 0) {
-			fr_cursor_t cursor;
-			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
-
-			if (strcmp(p + 14, "-") == 0) {
-				WARN("cannot decode as client");
-				attr = data;
-				len = data_len;
-			} else {
-				attr = data;
-				len = encode_hex(p + 14, data, sizeof(data));
-				if (len == 0) {
-					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
-					goto error;
-				}
-			}
-
-			packet->vps = NULL;
-			packet->data = attr;
-			packet->data_len = len;
-
-			if (tacacs_decode(packet) < 0) {
-				strerror_concat(output, sizeof(output));
-				talloc_free(packet);
-				continue;
-			}
-
-			fr_cursor_init(&cursor, &packet->vps);
-			p = output;
-			for (vp = fr_cursor_head(&cursor); vp; vp = fr_cursor_next(&cursor)) {
-				fr_pair_snprint(p, sizeof(output) - (p - output), vp);
-				p += strlen(p);
-
-				if (vp->next) {
-					strcpy(p, ", ");
-					p += 2;
-				}
-			}
-
-			talloc_free(packet);
-			continue;
-		}
-#endif	/* WITH_TACACS */
 
 		if (strcmp(test_type, "attribute") == 0) {
 			p += 10;

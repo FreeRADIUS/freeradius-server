@@ -1,3 +1,3 @@
 TARGET		:= libfreeradius-tacacs.a
 
-SOURCES		:= tacacs.c
+SOURCES		:= base.c decode.c encode.c
