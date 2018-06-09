@@ -1,0 +1,58 @@
+#!/usr/bin/env perl
+#
+#  $Id$
+#
+#  Convert conf files to Asciidoc
+#
+#
+
+$raw = 0;
+
+while (<>) {
+
+    # Skip ###### banners
+    if (/^##+$/) {
+	next;
+    }
+
+    if (/^\s*$/) {
+	next;
+    }
+
+    #
+    #  Comments in the configuration files get converted to plain
+    #  text.
+    #
+    if (/^\s*#/) {
+	s/^\s*#[\t ]*//;
+
+	#
+	#  If we WERE printing blocks of raw output, end that, and
+	#  reset the "raw" flag.
+	#
+	if ($raw == 1) {
+	    print "```\n";
+	    $raw = 0;
+	}
+
+	print;
+	next;
+    }
+
+    #
+    #  No comment at the start of the line.  It must be configuration.
+    #  Convert that to raw text.
+    #
+    #  If we were printing normal text, print out the "raw" header.
+    #
+    if ($raw == 0) {
+	print "```\n";
+	$raw = 1;
+    }
+
+    #
+    #  And print out the raw text.
+    #
+    print;
+}
+
