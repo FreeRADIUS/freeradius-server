@@ -336,3 +336,13 @@ warnings:
 whitespace:
 	@for x in $$(git ls-files raddb/ src/); do unexpand $$x > $$x.bak; cp $$x.bak $$x; rm -f $$x.bak;done
 	@perl -p -i -e 'trim' $$(git ls-files src/)
+
+CONF_FILES := $(wildcard raddb/radiusd.conf raddb/mods-available/* raddb/sites-available/*)
+ADOC_FILES := $(patsubst raddb/%,asciidoc/%.adoc,$(CONF_FILES))
+
+asciidoc/%.adoc: raddb/%
+	@echo ADOC $^
+	@mkdir -p $(dir $@)
+	@./scripts/conf2adoc < $^ > $@
+
+asciidoc: $(ADOC_FILES)

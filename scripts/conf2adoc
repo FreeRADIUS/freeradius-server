@@ -9,6 +9,12 @@
 $raw = 0;
 
 while (<>) {
+    #
+    #  Skip editor commands
+    #
+    if (/^# -\*- text -\*-/) {
+	next;
+    }
 
     # Skip ###### banners
     if (/^##+$/) {
