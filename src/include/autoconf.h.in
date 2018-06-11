@@ -215,7 +215,8 @@
 /* Define to 1 if you have the `nsl' library (-lnsl). */
 #undef HAVE_LIBNSL
 
-/* Define to 1 if you have the `pcap' library (-lpcap). */
+/* Define to 1 if you have the `pcap' library (-lpcap) and header file
+   <pcap.h>. */
 #undef HAVE_LIBPCAP
 
 /* Define if you have a readline compatible library */
@@ -310,9 +311,6 @@
 
 /* Define to 1 if you have the `pcap_fopen_offline' function. */
 #undef HAVE_PCAP_FOPEN_OFFLINE
-
-/* Define to 1 if you have the <pcap.h> header file. */
-#undef HAVE_PCAP_H
 
 /* define this if we have libpcre */
 #undef HAVE_PCRE

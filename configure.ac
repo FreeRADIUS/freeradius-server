@@ -893,10 +893,6 @@ FR_SMART_CHECK_LIB(pcap, pcap_open_live)
 if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
   AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>.])
 else
-  AC_DEFINE(HAVE_LIBPCAP, 1,
-    [Define to 1 if you have the `pcap' library (-lpcap).]
-  )
-
   AC_CHECK_FUNCS(\
     pcap_fopen_offline \
     pcap_dump_fopen \
@@ -1180,7 +1176,7 @@ else
   smart_try_dir="$pcap_include_dir"
   FR_SMART_CHECK_INCLUDE([pcap.h])
   if test "x$ac_cv_header_pcap_h" = "xyes"; then
-    AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
+    AC_DEFINE(HAVE_LIBPCAP, 1, [Define to 1 if you have the `pcap' library (-lpcap) and header file <pcap.h>.])
     AC_SUBST(PCAP_LIBS)
     AC_SUBST(PCAP_LDFLAGS)
   else
