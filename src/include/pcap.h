@@ -94,5 +94,8 @@ fr_pcap_t	*fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type);
 int		fr_pcap_open(fr_pcap_t *handle);
 int		fr_pcap_apply_filter(fr_pcap_t *handle, char const *expression);
 char		*fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c);
+
+bool		fr_pcap_link_layer_supported(int link_layer);
+ssize_t		fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_layer);
 #endif
 #endif
