@@ -100,7 +100,7 @@ typedef struct dhcp_packet_t {
 #  define INADDR_BROADCAST INADDR_NONE
 #endif
 
-#if defined(HAVE_PCAP_H) || defined(HAVE_LINUX_IF_PACKET_H)
+#if defined(HAVE_LIBPCAP) || defined(HAVE_LINUX_IF_PACKET_H)
 #  define ETH_TYPE_IP    0x0800
 #  define IP_HDR_SIZE    20
 #  define UDP_HDR_SIZE   8
@@ -184,7 +184,7 @@ RADIUS_PACKET	*fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *p_ll, RA
 /*
  *	pcap.c
  */
-#ifdef HAVE_PCAP_H
+#ifdef HAVE_LIBPCAP
 /*
  *	Use fr_pcap_init and fr_pcap_open to create/open handles.
  */

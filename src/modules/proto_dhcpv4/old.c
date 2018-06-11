@@ -717,7 +717,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
  *	We allow using PCAP, but only if there's no SO_BINDTODEVICE
  */
 #ifndef SO_BINDTODEVICE
-#ifdef HAVE_PCAP_H
+#ifdef HAVE_LIBPCAP
 #define PCAP_RAW_SOCKETS (1)
 #endif
 #endif
