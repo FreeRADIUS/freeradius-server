@@ -101,7 +101,7 @@ static int arp_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	link_len = fr_link_layer_offset(data, header->caplen, sock->lsock.pcap->link_layer);
+	link_len = fr_pcap_link_layer_offset(data, header->caplen, sock->lsock.pcap->link_layer);
 	if (link_len < 0) {
 		PERROR("Failed determining link layer header offset");
 		return 0;

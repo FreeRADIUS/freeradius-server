@@ -145,8 +145,6 @@ extern FR_NAME_NUMBER const fr_net_ip_proto_table[];
 extern FR_NAME_NUMBER const fr_net_sock_type_table[];
 extern FR_NAME_NUMBER const fr_net_af_table[];
 
-bool		fr_link_layer_supported(int link_layer);
-ssize_t		fr_link_layer_offset(uint8_t const *data, size_t len, int link_layer);
 uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 	struct in_addr const src_addr, struct in_addr const dst_addr);
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
