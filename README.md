@@ -23,10 +23,10 @@ but be sure to address any warnings when starting v3.0.x before
 attempting to use en existing configuration with v4.0.x.
 
 For a list of changes in version 4.0, please see
-[doc/ChangeLog](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/ChangeLog)
+[doc/ChangeLog](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/ChangeLog)
 
 See 
-[raddb/README.md](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/raddb/README.md)
+[raddb/README.md](https://github.com/FreeRADIUS/freeradius-server/blob/master/raddb/README.md)
 for information on what to do to update your configuration.
 
 Administrators upgrading from a previous version should install this
@@ -41,7 +41,7 @@ more information.
 
 ## Installation
 To install the server, please see the 
-[INSTALL.md](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/INSTALL.md) file in this directory.
+[INSTALL.md](https://github.com/FreeRADIUS/freeradius-server/blob/master/INSTALL.md) file in this directory.
 
 ## Configuring the server
 We understand that the server may be difficult to configure,
