@@ -4,6 +4,7 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  with proxies which have packet loss.
 	* Do-Not-Respond policies can now be set in the
 	  "post-auth" section, too.
+	* Encode / Decode ADSL Forum DHCP options.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -11,6 +12,13 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  section access session-state.
 	* Fix typo lock initialization for TLS sockets
 	  Found by Sergio NNX.
+	* Add check for crash when home server down.
+	  Fixes #2233.
+	* Add username key for postauth table.
+	* Better libpcap checks, when the header files or
+	  libraries are missing.  Fixes #2245.
+	* Allow building with old versions of OpenSSL.
+	  Fixes #2247.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
