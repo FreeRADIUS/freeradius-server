@@ -2986,12 +2986,16 @@ post_ca:
 		/*
 		 *	Set these for the rest of the code.
 		 */
+#ifdef TLS1_2_VERSION
 		if (max_version < TLS1_2_VERSION) {
 			conf->disable_tlsv1_2 = true;
 		}
+#endif
+#ifdef TLS1_1_VERSION
 		if (max_version < TLS1_1_VERSION) {
 			conf->disable_tlsv1_1 = true;
 		}
+#endif
 
 		/*
 		 *	Get the min version.
