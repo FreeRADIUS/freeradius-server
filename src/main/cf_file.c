@@ -1372,6 +1372,11 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	word, well... too bad.
 			 */
 			switch (*ptr) {
+			case '{':
+				ERROR("%s[%d]: Syntax error: Unexpected '{'.",
+				      filename, *lineno);
+				goto error;
+
 			case '"':
 			case '\'':
 			case '`':
