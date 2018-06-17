@@ -2345,6 +2345,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 */
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_GROUP:
 	case FR_TYPE_INVALID:
 	case FR_TYPE_MAX:
 		if (!fr_cond_assert(0)) return -1;
@@ -3881,6 +3882,7 @@ parse:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VARIABLE_SIZE:	/* Should have been dealt with above */
 	case FR_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
+	case FR_TYPE_GROUP:
 	case FR_TYPE_BAD:
 		fr_strerror_printf("Unknown attribute dst_type %d", *dst_type);
 		return -1;
@@ -4097,6 +4099,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_GROUP:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_BAD:
 		(void)fr_cond_assert(0);
@@ -4539,6 +4542,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_STRUCT:
+	case FR_TYPE_GROUP:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
 		(void)fr_cond_assert(0);

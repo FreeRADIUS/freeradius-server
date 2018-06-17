@@ -153,6 +153,7 @@ FR_NAME_NUMBER const dict_attr_types[] = {
 	{ "vsa",          	FR_TYPE_VSA },
 	{ "evs",           	FR_TYPE_EVS },
 	{ "vendor",        	FR_TYPE_VENDOR },
+	{ "group",        	FR_TYPE_GROUP },
 
 	/*
 	 *	Alternative names
