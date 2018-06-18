@@ -734,7 +734,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 */
 		cf_log_debug(subcs, "compiling - %s %s {...}", name, packet_type);
 
-		if (unlang_compile(subcs, code2component[dv->value->vb_uint32]) < 0) {
+		if (unlang_compile(subcs, code2component[dv->value->vb_uint32], NULL) < 0) {
 			cf_log_err(subcs, "Failed compiling '%s %s { ... }' section", name, packet_type);
 			return -1;
 		}

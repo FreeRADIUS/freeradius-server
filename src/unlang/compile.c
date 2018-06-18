@@ -72,6 +72,7 @@ typedef struct unlang_compile_t {
 	char const		*section_name1;
 	char const		*section_name2;
 	unlang_action_table_t	*actions;
+	vp_tmpl_rules_t const	*rules;
 } unlang_compile_t;
 
 static char const modcall_spaces[] = "                                                                                                                                                                                                                                                                ";
@@ -3220,7 +3221,7 @@ fail:
 	return NULL;
 }
 
-int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
+int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules)
 {
 	char const *name1, *name2;
 	unlang_t *c;
@@ -3231,6 +3232,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	unlang_ctx.section_name1 = cf_section_name1(cs);
 	unlang_ctx.section_name2 = cf_section_name2(cs);
 	unlang_ctx.actions = &defaultactions[component];
+	unlang_ctx.rules = rules;
 
 	c = compile_group(NULL, &unlang_ctx, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP);
 	if (!c) return -1;
@@ -3290,7 +3292,7 @@ int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char c
 
 	cf_log_debug(cs, "Compiling policies - %s %s {...}", name1, name2);
 
-	if (unlang_compile(cs, component) < 0) {
+	if (unlang_compile(cs, component, NULL) < 0) {
 		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
 		return -1;
 	}

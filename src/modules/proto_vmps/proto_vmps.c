@@ -579,7 +579,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 		if (strcmp(name, "send") == 0) component = MOD_POST_AUTH;
 
-		if (unlang_compile(subcs, component) < 0) {
+		if (unlang_compile(subcs, component, NULL) < 0) {
 			cf_log_err(subcs, "Failed compiling '%s %s { ... }' section", name, packet_type);
 			return -1;
 		}

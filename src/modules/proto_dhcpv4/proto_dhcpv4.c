@@ -634,7 +634,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 */
 		cf_log_debug(subcs, "compiling - %s %s {...}", name, packet_type);
 
-		if (unlang_compile(subcs, MOD_POST_AUTH) < 0) {
+		if (unlang_compile(subcs, MOD_POST_AUTH, NULL) < 0) {
 			cf_log_err(subcs, "Failed compiling '%s %s { ... }' section", name, packet_type);
 			return -1;
 		}
