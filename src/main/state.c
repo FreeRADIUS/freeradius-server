@@ -411,7 +411,16 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 			WARN("State too long, will be truncated.  Expected <= %zd bytes, got %zu bytes",
 			     sizeof(entry->state), vp->vp_length);
 		}
-		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
+
+		/*
+		 *	Be tolerant of variable State attributes
+		 */
+		if (vp->vp_length >= sizeof(entry->state)) {
+			memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
+		} else {
+			memcpy(entry->state, vp->vp_octets, vp->vp_length);
+			memset(&entry->state[vp->vp_length], 0, sizeof(entry->state) - vp->vp_length);
+		}
 	} else {
 		/*
 		 *	16 octets of randomness should be enough to
