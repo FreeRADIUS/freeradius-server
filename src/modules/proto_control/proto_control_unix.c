@@ -900,6 +900,7 @@ static int mod_fd_set(void *instance, int fd)
 
 	// @todo - start the negotiation
 	// We probably want a way to read / write initial data in the connection...
+	// the negotiation && state machine should be in libfreeradius-control.a
 
 	return 0;
 }
