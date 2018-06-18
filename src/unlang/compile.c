@@ -1379,10 +1379,13 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	char const	*name2 = cf_section_name2(cs);
 
-	vp_tmpl_rules_t	parse_rules = {
-				.allow_unknown = true
-			};
+	vp_tmpl_rules_t	parse_rules;
 
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	parse_rules = *(unlang_ctx->rules);
+	parse_rules.allow_unknown = true;
 
 	modules = cf_section_find(cf_root(cs), "modules", NULL);
 	if (!modules) {
@@ -1495,9 +1498,13 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	vp_map_t	*head;
 
-	vp_tmpl_rules_t	parse_rules = {
-				.allow_unknown = true
-			};
+	vp_tmpl_rules_t	parse_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	parse_rules = *(unlang_ctx->rules);
+	parse_rules.allow_unknown = true;
 
 	/*
 	 *	This looks at cs->name2 to determine which list to update
@@ -3226,12 +3233,21 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 	char const *name1, *name2;
 	unlang_t *c;
 	unlang_compile_t unlang_ctx;
+	vp_tmpl_rules_t my_rules;
 
 	unlang_ctx.component = component;
 	unlang_ctx.name = comp2str[component];
 	unlang_ctx.section_name1 = cf_section_name1(cs);
 	unlang_ctx.section_name2 = cf_section_name2(cs);
 	unlang_ctx.actions = &defaultactions[component];
+
+	/*
+	 *	Ensure that all complie functions get valid rules.
+	 */
+	if (!rules) {
+		memset(&my_rules, 0, sizeof(my_rules));
+		rules = &my_rules;
+	}
 	unlang_ctx.rules = rules;
 
 	c = compile_group(NULL, &unlang_ctx, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP);
