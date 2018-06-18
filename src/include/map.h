@@ -102,7 +102,7 @@ int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
 				   vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules);
 
 int		map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp,
-			     request_refs_t request_def, pair_lists_t list_def);
+			     vp_tmpl_rules_t const *rules);
 
 void		map_sort(vp_map_t **maps, fr_cmp_t cmp);
 

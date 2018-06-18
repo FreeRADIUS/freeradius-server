@@ -570,13 +570,12 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
  * @param[in] ctx		where to allocate the map.
  * @param[out] out		Where to write the new map (must be freed with talloc_free()).
  * @param[in] vp		to convert.
- * @param[in] request_def	to insert attributes into.
- * @param[in] list_def		to insert attributes into.
+ * @param[in] rules		to insert attributes into.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp, request_refs_t request_def, pair_lists_t list_def)
+int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp, vp_tmpl_rules_t const *rules)
 {
 	char buffer[256];
 
@@ -593,8 +592,8 @@ int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp, request_refs_t
 	if (!map->lhs) goto oom;
 
 	map->lhs->tmpl_da = vp->da;
-	map->lhs->tmpl_request = request_def;
-	map->lhs->tmpl_list = list_def;
+	map->lhs->tmpl_request = rules->request_def;
+	map->lhs->tmpl_list = rules->list_def;
 	map->lhs->tmpl_num = NUM_ANY;
 	map->lhs->tmpl_tag = vp->tag;
 
@@ -1444,8 +1443,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		(void)fr_cursor_init(&from, &vp_head);
 		while ((vp = fr_cursor_remove(&from))) {
 			vp_map_t *mod;
+			vp_tmpl_rules_t rules;
 
-			if (map_afrom_vp(n, &mod, vp, mutated->lhs->tmpl_request, mutated->lhs->tmpl_list) < 0) {
+			memset(&rules, 0, sizeof(rules));
+			rules.request_def = mutated->lhs->tmpl_request;
+			rules.list_def = mutated->lhs->tmpl_list;
+
+			if (map_afrom_vp(n, &mod, vp, &rules) < 0) {
 				RPEDEBUG("Failed converting VP to map");
 				fr_cursor_head(&from);
 				fr_cursor_free_item(&from);
