@@ -2944,7 +2944,8 @@ static modcall_compile_t compile_table[] = {
 	unlang_ctx2.name = comp2str[component]; \
 	unlang_ctx2.actions = unlang_ctx->actions; \
 	unlang_ctx2.section_name1 = unlang_ctx->section_name1; \
-	unlang_ctx2.section_name2 = unlang_ctx->section_name2
+	unlang_ctx2.section_name2 = unlang_ctx->section_name2; \
+	unlang_ctx2.rules = unlang_ctx->rules
 
 /*
  *	Compile one entry of a module call.
