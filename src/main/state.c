@@ -293,8 +293,16 @@ static state_entry_t *fr_state_create(fr_state_t *state, const char *server, RAD
 			WARN("State should be %zd octets!",
 			     sizeof(entry->state));
 		}
-		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
 
+		/*
+		 *	Be tolerant of variable State attributes
+		 */
+		if (vp->vp_length >= sizeof(entry->state)) {
+			memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
+		} else {
+			memcpy(entry->state, vp->vp_octets, vp->vp_length);
+			memset(&entry->state[vp->vp_length], 0, sizeof(entry->state) - vp->vp_length);
+		}
 	} else {
 		vp = fr_pair_afrom_num(packet, PW_STATE, 0);
 		fr_pair_value_memcpy(vp, entry->state, sizeof(entry->state));
@@ -342,9 +350,12 @@ static state_entry_t *fr_state_find(fr_state_t *state, const char *server, RADIU
 	vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!vp) return NULL;
 
-	if (vp->vp_length != sizeof(my_entry.state)) return NULL;
-
-	memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
+	if (vp->vp_length >= sizeof(my_entry.state)) {
+		memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
+	} else {
+		memcpy(my_entry.state, vp->vp_octets, vp->vp_length);
+		memset(&my_entry.state[vp->vp_length], 0, sizeof(my_entry.state) - vp->vp_length);
+	}
 
 	/*	Make unique for different virtual servers handling same request
 	 */
