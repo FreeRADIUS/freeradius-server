@@ -280,7 +280,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 			return -1;
 		}
 
-		ret = unlang_compile_subsection(server_cs, "recv", "Access-Request", MOD_AUTHORIZE);
+		ret = unlang_compile_subsection(server_cs, "recv", "Access-Request", MOD_AUTHORIZE, NULL);
 		if (ret == 0) {
 			cf_log_err(server_cs, "Failed finding 'recv Access-Request { ... }' "
 				   "section of virtual server %s", cf_section_name2(server_cs));

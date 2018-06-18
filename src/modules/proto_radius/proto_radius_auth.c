@@ -647,7 +647,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *process_app_cs)
 			return -1;
 		}
 
-		rcode = unlang_compile_subsection(server_cs, "authenticate", name2, MOD_AUTHENTICATE);
+		rcode = unlang_compile_subsection(server_cs, "authenticate", name2, MOD_AUTHENTICATE, NULL);
 		if (rcode < 0) {
 			cf_log_err(subcs, "Failed compiling 'authenticate %s { ... }' section", name2);
 			return -1;

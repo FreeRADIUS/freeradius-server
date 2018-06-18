@@ -3270,13 +3270,15 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
  * @param name1 the first name of the subsection to compile
  * @param name2 the second name of the subsection to compile.
  * @param component the component to compile
+ * @param rules the rules to follow
  * @return
  *	- <0 on error
  *	- 0 on section was not found
  *	- 1 on successfully compiled
  *
  */
-int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
+int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component,
+			      vp_tmpl_rules_t const *rules)
 {
 	CONF_SECTION *cs;
 
@@ -3292,7 +3294,7 @@ int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char c
 
 	cf_log_debug(cs, "Compiling policies - %s %s {...}", name1, name2);
 
-	if (unlang_compile(cs, component, NULL) < 0) {
+	if (unlang_compile(cs, component, rules) < 0) {
 		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
 		return -1;
 	}

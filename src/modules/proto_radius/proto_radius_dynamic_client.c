@@ -217,7 +217,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
-	rcode = unlang_compile_subsection(server_cs, "new", "client", MOD_AUTHORIZE);
+	rcode = unlang_compile_subsection(server_cs, "new", "client", MOD_AUTHORIZE, NULL);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err(server_cs, "Failed finding 'new client { ... }' section of virtual server %s",
@@ -225,10 +225,10 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		return -1;
 	}
 
-	rcode = unlang_compile_subsection(server_cs, "add", "client", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "add", "client", MOD_POST_AUTH, NULL);
 	if (rcode < 0) return rcode;
 
-	rcode = unlang_compile_subsection(server_cs, "deny", "client", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "deny", "client", MOD_POST_AUTH, NULL);
 	if (rcode < 0) return rcode;
 
 	return 0;
