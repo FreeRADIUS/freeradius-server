@@ -524,9 +524,12 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 	vp = fr_pair_find_by_da(packet->vps, state->da, TAG_ANY);
 	if (!vp) return NULL;
 
-	if (vp->vp_length != sizeof(my_entry.state)) return NULL;
-
-	memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
+	if (vp->vp_length >= sizeof(my_entry.state)) {
+		memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
+	} else {
+		memcpy(my_entry.state, vp->vp_octets, vp->vp_length);
+		memset(&my_entry.state[vp->vp_length], 0, sizeof(my_entry.state) - vp->vp_length);
+	}
 
 	/*
 	 *	Make it unique for different virtual servers handling the same request
