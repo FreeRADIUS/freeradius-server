@@ -222,23 +222,22 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			envp[envlen++] = talloc_typed_strdup(input_ctx, buffer);
 		}
 
-		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EXEC_EXPORT);
-		if (!da) {
-			ERROR("Missing Exec-Export definition");
-			return -1;
-		}
+		if (request) {
+			da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EXEC_EXPORT);
+			if (da) {
+				for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, da);
+				     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
+				     vp = fr_cursor_next(&cursor)) {
+					DEBUG3("export %pV", &vp->data);
+					memcpy(&envp[envlen++], &vp->vp_strvalue, sizeof(*envp));
+				}
 
-		for (vp = fr_cursor_iter_by_da_init(&cursor, radius_list(request, PAIR_LIST_CONTROL), da);
-		     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
-		     vp = fr_cursor_next(&cursor)) {
-			DEBUG3("export %pV", &vp->data);
-			memcpy(&envp[envlen++], &vp->vp_strvalue, sizeof(*envp));
+				/*
+				 *	NULL terminate for execve
+				 */
+				envp[envlen] = NULL;
+			}
 		}
-
-		/*
-		 *	NULL terminate for execve
-		 */
-		envp[envlen] = NULL;
 	}
 
 	if (exec_wait) {
