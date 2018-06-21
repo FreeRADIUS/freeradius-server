@@ -347,7 +347,7 @@ static int do_connect(int *out, char const *file, char const *server)
 	/*
 	 *	Set up the initial header data.
 	 */
-	magic = 0xf7eead16;
+	magic = FR_CONDUIT_MAGIC;
 	magic = htonl(magic);
 	memcpy(buffer, &magic, sizeof(magic));
 	memset(buffer + sizeof(magic), 0, sizeof(magic));
