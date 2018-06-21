@@ -96,6 +96,27 @@ static const CONF_PARSER unix_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+
+/*
+ *	Process an initial connection request.
+ */
+static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED fr_time_t **recv_time, uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup
+)
+{
+	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
+	uint32_t			status;
+
+	DEBUG("Received text '%.*s'", (int) htonl(hdr->length), buffer + sizeof(*hdr));
+
+	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, "\n", 1);
+
+	status = FR_CONDUIT_SUCCESS;
+	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_CMD_STATUS, &status, sizeof(status));
+
+	return 0;
+}
+
 /*
  *	Process an initial connection request.
  */
@@ -131,13 +152,13 @@ static ssize_t mod_read_init(void *instance, UNUSED void **packet_ctx, UNUSED fr
 	/*
 	 *	Next 4 bytes are zero, we ignore them.
 	 */
-
 	if (write(inst->sockfd, buffer, buffer_len) < (ssize_t) buffer_len) {
 		DEBUG("ERROR: Blocking write to socket... oops");
 		return -1;
 	}
 
-	DEBUG("Control connection seems OK");
+	inst->read = mod_read_command;
+
 	return 0;
 }
 
