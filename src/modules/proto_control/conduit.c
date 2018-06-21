@@ -78,7 +78,18 @@ ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *out, si
 		*pconduit = FR_CONDUIT_WANT_MORE;
 
 		r = lo_read(fd, buffer + offset, sizeof(hdr) - offset);
-		if (r <= 0) return r;
+		if (r == 0) return 0; /* closed */
+
+		if (r < 0) {
+#ifdef EWOULDBLOCK
+			if (errno == EWOULDBLOCK) return 0;
+#endif
+#ifdef EAGAIN
+			if (errno == EAGAIN) return 0;
+#endif
+
+			return r;
+		}
 
 		*leftover += r;
 		offset += r;
