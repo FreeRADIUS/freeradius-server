@@ -20,62 +20,76 @@
 #	$Id$
 #
 ######################################################################
-listen {
-	#
-	#  Listen on the control socket.
-	#
-	type = control
+server control {
+	namespace = control
 
-	#
-	#  Socket location.
-	#
-	#  Most operating systems (other than Linux), do not respect
-	#  permissions set on socket files.
-	#
-	#  To work around this issue, we ensure the permissions on the
-	#  directory containing the socket, are sufficiently restrictive
-	#  to only allow access by the FreeRADIUS user, or the gid
-	#  below (if set).
-	#	
-	#  It is recommended to house the socket in its own sub-directory.
-	#  FreeRADIUS will create this sub-directory if it doesn't exist
-	#  and set the appropriate ownership and permissions.
-	#
-	socket = ${run_dir}/control/${name}.sock
+	listen {
+#		type = all
+		transport = unix
 
-	#
-	#  Peercred is enabled by default, and offers an additional layer
-	#  of security.  When enabled FreeRADIUS will check the euid and
-	#  egid of the process connecting to the control socket. 
-	#
-	#  The client process is allowed to connect if any of the following
-	#  are true:
-	#
-	#  - The client processes' euid matches FreeRADIUS' euid.
-	#  - The client processes' euid is 0 (root).
-	#  - gid is set (below), and the client processes' egid matches the
-	#    configured gid.
-	#
-	#  Note: With peercred enabled, auxiliary groups of the client process
-	#  are not considered.  If you have multiple users and need to control
-	#  control socket authorization via group membership, you should set
-	#  'peercred = no', and rely on filesystem permissions for enforcement.
-	# 
-#	peercred = no
+		# @todo - add "limit" section
 
-	#
-	#  Name of group that is allowed to connect to the control socket.
-	#
-#	gid = radius
+		unix {
+			#
+			#  Socket location.
+			#
+			#  Most operating systems (other than Linux), do not respect
+			#  permissions set on socket files.
+			#
+			#  To work around this issue, we ensure the
+			#  permissions on the directory containing the socket,
+			#  are sufficiently restrictive to only allow access
+			#  by the FreeRADIUS user, or the gid below (if set).
+			#
+			#  It is recommended to house the socket in its own
+			#  sub-directory.  FreeRADIUS will create this sub-directory
+			#  if it doesn't exist and set the appropriate ownership and
+			#  permissions.
+			#
+			filename = ${run_dir}/control/${name}.sock
 
-	#
-	#  Access mode.
-	#
-	#  This can be used to give *some* administrators access to
-	#  monitor the system, but not to change it.
-	#
-	#	ro = read only access (default)
-	#	rw = read/write access.
-	#
-#	mode = rw
+			#
+			#  Peercred is enabled by default, and offers an additional layer
+			#  of security.  When enabled FreeRADIUS will check the euid and
+			#  egid of the process connecting to the control socket.
+			#
+			#  The client process is allowed to connect if any of the following
+			#  are true:
+			#
+			#  - The client processes' euid matches FreeRADIUS' euid.
+			#  - The client processes' euid is 0 (root).
+			#  - gid is set (below), and the client processes' egid matches the
+			#    configured gid.
+			#
+			#  Note: With peercred enabled, auxiliary groups of the client process
+			#  are not considered.  If you have multiple users and need to control
+			#  control socket authorization via group membership, you should set
+			#  'peercred = no', and rely on filesystem permissions for enforcement.
+			#
+#			peercred = no
+
+			#
+			#  Name of user who is allowed to connect to the control socket.
+			#
+#			uid = radius
+
+
+			#
+			#  Name of group that is allowed to connect to the control socket.
+			#
+#			gid = radius
+		}
+	}
+
+#
+#  These don't do anything for now
+#
+recv {
+	ok
+}
+
+send {
+	ok
+}
+
 }
