@@ -183,6 +183,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
+	*leftover = 0;
 
 	/*
 	 *	proto_control sets the priority
