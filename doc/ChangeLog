@@ -5,6 +5,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Do-Not-Respond policies can now be set in the
 	  "post-auth" section, too.
 	* Encode / Decode ADSL Forum DHCP options.
+	* Fix module ordering issues.  e.g. when "sqlippool" needs
+	  "sql".  See the "modules" section of radiusd.conf.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -19,6 +21,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  libraries are missing.  Fixes #2245.
 	* Allow building with old versions of OpenSSL.
 	  Fixes #2247.
+	* Allow non-FreeRADIUS State attributes to be used with
+	  the "session-state" list.  i.e. State length != 16.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
