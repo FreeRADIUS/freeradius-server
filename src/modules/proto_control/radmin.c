@@ -814,7 +814,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		if (memcmp(line, "secret ", 7) == 0) {
+		if (strncmp(line, "secret ", 7) == 0) {
 			if (!secret) {
 				secret = line + 7;
 				do_challenge(sockfd);
