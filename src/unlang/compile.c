@@ -72,6 +72,7 @@ typedef struct unlang_compile_t {
 	char const		*section_name1;
 	char const		*section_name2;
 	unlang_action_table_t	*actions;
+	vp_tmpl_rules_t const	*rules;
 } unlang_compile_t;
 
 static char const modcall_spaces[] = "                                                                                                                                                                                                                                                                ";
@@ -1378,10 +1379,13 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	char const	*name2 = cf_section_name2(cs);
 
-	vp_tmpl_rules_t	parse_rules = {
-				.allow_unknown = true
-			};
+	vp_tmpl_rules_t	parse_rules;
 
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	parse_rules = *(unlang_ctx->rules);
+	parse_rules.allow_unknown = true;
 
 	modules = cf_section_find(cf_root(cs), "modules", NULL);
 	if (!modules) {
@@ -1494,9 +1498,13 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	vp_map_t	*head;
 
-	vp_tmpl_rules_t	parse_rules = {
-				.allow_unknown = true
-			};
+	vp_tmpl_rules_t	parse_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	parse_rules = *(unlang_ctx->rules);
+	parse_rules.allow_unknown = true;
 
 	/*
 	 *	This looks at cs->name2 to determine which list to update
@@ -2936,7 +2944,8 @@ static modcall_compile_t compile_table[] = {
 	unlang_ctx2.name = comp2str[component]; \
 	unlang_ctx2.actions = unlang_ctx->actions; \
 	unlang_ctx2.section_name1 = unlang_ctx->section_name1; \
-	unlang_ctx2.section_name2 = unlang_ctx->section_name2
+	unlang_ctx2.section_name2 = unlang_ctx->section_name2; \
+	unlang_ctx2.rules = unlang_ctx->rules
 
 /*
  *	Compile one entry of a module call.
@@ -3220,17 +3229,27 @@ fail:
 	return NULL;
 }
 
-int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
+int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules)
 {
 	char const *name1, *name2;
 	unlang_t *c;
 	unlang_compile_t unlang_ctx;
+	vp_tmpl_rules_t my_rules;
 
 	unlang_ctx.component = component;
 	unlang_ctx.name = comp2str[component];
 	unlang_ctx.section_name1 = cf_section_name1(cs);
 	unlang_ctx.section_name2 = cf_section_name2(cs);
 	unlang_ctx.actions = &defaultactions[component];
+
+	/*
+	 *	Ensure that all complie functions get valid rules.
+	 */
+	if (!rules) {
+		memset(&my_rules, 0, sizeof(my_rules));
+		rules = &my_rules;
+	}
+	unlang_ctx.rules = rules;
 
 	c = compile_group(NULL, &unlang_ctx, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP);
 	if (!c) return -1;
@@ -3268,13 +3287,15 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
  * @param name1 the first name of the subsection to compile
  * @param name2 the second name of the subsection to compile.
  * @param component the component to compile
+ * @param rules the rules to follow
  * @return
  *	- <0 on error
  *	- 0 on section was not found
  *	- 1 on successfully compiled
  *
  */
-int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
+int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component,
+			      vp_tmpl_rules_t const *rules)
 {
 	CONF_SECTION *cs;
 
@@ -3290,7 +3311,7 @@ int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char c
 
 	cf_log_debug(cs, "Compiling policies - %s %s {...}", name1, name2);
 
-	if (unlang_compile(cs, component) < 0) {
+	if (unlang_compile(cs, component, rules) < 0) {
 		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
 		return -1;
 	}

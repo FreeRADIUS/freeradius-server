@@ -516,6 +516,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	CONF_PAIR		*cp = NULL;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_vmps;
 
 	/*
 	 *	Compile each "send/recv + VMPS packet type" section.
@@ -579,7 +583,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 		if (strcmp(name, "send") == 0) component = MOD_POST_AUTH;
 
-		if (unlang_compile(subcs, component) < 0) {
+		if (unlang_compile(subcs, component, &parse_rules) < 0) {
 			cf_log_err(subcs, "Failed compiling '%s %s { ... }' section", name, packet_type);
 			return -1;
 		}

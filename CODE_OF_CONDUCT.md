@@ -24,7 +24,7 @@ The following behaviours are expected and requested of all community members:
 
 - Ensure that the rules of the community resource you're using have been reviewed in full, [mailing
   list guidelines](https://freeradius.org/support/) for the mailing lists, [the guidelines for
-  contributing](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/.github/contributing.md)
+  contributing](https://github.com/FreeRADIUS/freeradius-server/blob/master/.github/contributing.md)
   for GitHub.
 - Use a neutral tone with a focus on technical arguments and technical discussion.
 - Evaluate contributions, ideas and feedback on technical merit only.  The personal attributes of

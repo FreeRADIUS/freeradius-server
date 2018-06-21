@@ -180,9 +180,9 @@ install-arch: build-arch-stamp
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius-config
 
 	for mod in ${modulelist}; do \
-	  pkg=$${mod##sql_} ; \
-	  dh_install --sourcedir=$(freeradius_dir) -p freeradius-$$pkg ; \
+	  dh_install --sourcedir=$(freeradius_dir) -p freeradius-$$mod ; \
 	  rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_$$mod*.so ; \
+	  rm -f $(freeradius_dir)/usr/lib/freeradius/proto_$$mod*.so ; \
 	done
 
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius-memcached

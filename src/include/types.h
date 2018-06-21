@@ -80,6 +80,7 @@ typedef enum {
 	FR_TYPE_EVS,				//!< Extended attribute, vendor specific.
 	FR_TYPE_VENDOR,				//!< Attribute that represents a vendor in the attribute tree.
 
+	FR_TYPE_GROUP,				//!< A grouping of other attributes
 	FR_TYPE_VALUE_BOX,			//!< A boxed value.
 
 	FR_TYPE_MAX				//!< Number of defined data types.
@@ -175,6 +176,7 @@ typedef enum {
 	FR_TYPE_COMBO_IP_ADDR: \
 	case FR_TYPE_COMBO_IP_PREFIX: \
 	case FR_TYPE_STRUCTURAL: \
+	case FR_TYPE_GROUP: \
 	case FR_TYPE_VALUE_BOX: \
 	case FR_TYPE_BAD
 

@@ -1851,7 +1851,7 @@ static int bfd_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 
 	cf_log_debug(cs, "Loading bfd {...}");
 
-	if (unlang_compile(cs, MOD_AUTHORIZE) < 0) {
+	if (unlang_compile(cs, MOD_AUTHORIZE, NULL) < 0) {
 		cf_log_err(cs, "Failed compiling 'bfd' section");
 		return -1;
 	}

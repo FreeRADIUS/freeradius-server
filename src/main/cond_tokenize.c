@@ -432,12 +432,13 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
  *  @param[out] pcond pointer to the returned condition structure
  *  @param[out] error the parse error (if any)
  *  @param[in] flags do one/two pass
+ *  @param[in] rules for attribute parsing
  *  @return
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
 static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, bool brace,
-			     fr_cond_t **pcond, char const **error, int flags)
+			     fr_cond_t **pcond, char const **error, int flags, vp_tmpl_rules_t const *rules)
 {
 	ssize_t			slen, tlen;
 	char const		*p = start;
@@ -446,10 +447,14 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 	char			*lhs, *rhs;
 	FR_TOKEN		op, lhs_type, rhs_type;
 
-	vp_tmpl_rules_t		parse_rules = {
-					.allow_unknown = true,
-					.allow_undefined = true
-				};
+	vp_tmpl_rules_t		parse_rules;
+
+	/*
+	 *	We allow unknown and undefined attributes here
+	 */
+	parse_rules = *rules;
+	parse_rules.allow_unknown = true;
+	parse_rules.allow_undefined = true;
 
 	c = talloc_zero(ctx, fr_cond_t);
 
@@ -491,7 +496,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 		 */
 		c->type = COND_TYPE_CHILD;
 		c->ci = ci;
-		slen = cond_tokenize(c, ci, p, true, &c->data.child, error, flags);
+		slen = cond_tokenize(c, ci, p, true, &c->data.child, error, flags, rules);
 		if (slen <= 0) return_SLEN;
 
 		if (!c->data.child) {
@@ -1265,7 +1270,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	slen = cond_tokenize(c, ci, p, brace, &c->next, error, flags);
+	slen = cond_tokenize(c, ci, p, brace, &c->next, error, flags, rules);
 	if (slen <= 0) {
 	return_slen:
 		if (lhs) talloc_free(lhs);
@@ -1723,7 +1728,11 @@ done:
 ssize_t fr_cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start,
 			 fr_cond_t **head, char const **error, int flags)
 {
-	return cond_tokenize(ctx, ci, start, false, head, error, flags);
+	vp_tmpl_rules_t parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+
+	return cond_tokenize(ctx, ci, start, false, head, error, flags, &parse_rules);
 }
 
 /*

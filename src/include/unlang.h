@@ -137,9 +137,10 @@ void		*unlang_stack_alloc(TALLOC_CTX *ctx);
 
 void		unlang_op_register(int type, unlang_op_t *op);
 
-int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
+int		unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules);
 
-int		unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component);
+int		unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component,
+					  vp_tmpl_rules_t const *rules);
 
 bool		unlang_keyword(const char *name);
 

@@ -580,6 +580,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	CONF_PAIR		*cp = NULL;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_dhcpv4;
 
 	/*
 	 *	Compile each "send/recv + DHCPV4 packet type" section.
@@ -634,7 +638,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 */
 		cf_log_debug(subcs, "compiling - %s %s {...}", name, packet_type);
 
-		if (unlang_compile(subcs, MOD_POST_AUTH) < 0) {
+		if (unlang_compile(subcs, MOD_POST_AUTH, &parse_rules) < 0) {
 			cf_log_err(subcs, "Failed compiling '%s %s { ... }' section", name, packet_type);
 			return -1;
 		}

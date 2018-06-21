@@ -631,6 +631,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *process_app_cs)
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
 	CONF_SECTION		*server_cs;
 	CONF_SECTION		*subcs = NULL;
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_radius;
 
 	rad_assert(listen_cs);
 
@@ -647,7 +651,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *process_app_cs)
 			return -1;
 		}
 
-		rcode = unlang_compile_subsection(server_cs, "authenticate", name2, MOD_AUTHENTICATE);
+		rcode = unlang_compile_subsection(server_cs, "authenticate", name2, MOD_AUTHENTICATE, &parse_rules);
 		if (rcode < 0) {
 			cf_log_err(subcs, "Failed compiling 'authenticate %s { ... }' section", name2);
 			return -1;

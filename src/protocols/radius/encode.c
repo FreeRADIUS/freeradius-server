@@ -738,6 +738,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_DATE_MILLISECONDS:
 	case FR_TYPE_DATE_MICROSECONDS:
 	case FR_TYPE_DATE_NANOSECONDS:
+	case FR_TYPE_GROUP:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("Unsupported attribute type %d", da->type);

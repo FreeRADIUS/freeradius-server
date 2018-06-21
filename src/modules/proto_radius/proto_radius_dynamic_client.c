@@ -211,13 +211,17 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 {
 	int rcode;
 	CONF_SECTION *server_cs;
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_freeradius;
 
 	rad_assert(listen_cs);
 
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
-	rcode = unlang_compile_subsection(server_cs, "new", "client", MOD_AUTHORIZE);
+	rcode = unlang_compile_subsection(server_cs, "new", "client", MOD_AUTHORIZE, &parse_rules);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err(server_cs, "Failed finding 'new client { ... }' section of virtual server %s",
@@ -225,10 +229,10 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		return -1;
 	}
 
-	rcode = unlang_compile_subsection(server_cs, "add", "client", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "add", "client", MOD_POST_AUTH, &parse_rules);
 	if (rcode < 0) return rcode;
 
-	rcode = unlang_compile_subsection(server_cs, "deny", "client", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "deny", "client", MOD_POST_AUTH, &parse_rules);
 	if (rcode < 0) return rcode;
 
 	return 0;

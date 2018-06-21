@@ -670,6 +670,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	CONF_PAIR		*cp = NULL;
 	CONF_ITEM		*ci = NULL;
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_radius;
 
 	/*
 	 *	Compile each "send/recv + RADIUS packet type" section.
@@ -734,7 +738,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 */
 		cf_log_debug(subcs, "compiling - %s %s {...}", name, packet_type);
 
-		if (unlang_compile(subcs, code2component[dv->value->vb_uint32]) < 0) {
+		if (unlang_compile(subcs, code2component[dv->value->vb_uint32], &parse_rules) < 0) {
 			cf_log_err(subcs, "Failed compiling '%s %s { ... }' section", name, packet_type);
 			return -1;
 		}
