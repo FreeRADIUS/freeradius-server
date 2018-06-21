@@ -655,14 +655,14 @@ modules {
 
 # Instantiation
 #
-#  This section orders the loading of the modules.  Modules
-#  listed here will get loaded BEFORE the later sections like
-#  authorize, authenticate, etc. get examined.
+#  This section sets the instantiation order of the modules.  listed
+#  here will get started up BEFORE the sections like authorize,
+#  authenticate, etc. get examined.
 #
-#  This section is not strictly needed.  When a section like
-#  authorize refers to a module, it's automatically loaded and
-#  initialized.  However, some modules may not be listed in any
-#  of the following sections, so they can be listed here.
+#  This section is not strictly needed.  When a section like authorize
+#  refers to a module, the module is automatically loaded and
+#  initialized.  However, some modules may not be listed in any of the
+#  processing sections, so they should be listed here.
 #
 #  Also, listing modules here ensures that you have control over
 #  the order in which they are initialized.  If one module needs
