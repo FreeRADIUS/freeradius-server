@@ -23,6 +23,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  Fixes #2247.
 	* Allow non-FreeRADIUS State attributes to be used with
 	  the "session-state" list.  i.e. State length != 16.
+	* Be more aggressive about cleaning up zombie children
+	  when running in debug mode.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
