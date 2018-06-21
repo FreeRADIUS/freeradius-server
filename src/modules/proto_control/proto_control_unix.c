@@ -59,7 +59,7 @@ typedef struct {
 	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
 	fr_network_t			*nr;			//!< for fr_network_listen_read();
 
-	char const     			*path;			//!< path to socket name
+	char const     			*filename;     		//!< filename of control socket
 	char const     			*uid_name;		//!< name of UID to require
 	char const     			*gid_name;     		//!< name of GID to require
 	uid_t				uid;			//!< UID value
@@ -78,10 +78,12 @@ typedef struct {
 	fr_io_address_t			*connection;		//!< for connected sockets.
 	RADCLIENT			radclient;		//!< for faking out clients
 
+	fr_io_data_read_t		read;			//!< function to process data *after* reading
+
 } proto_control_unix_t;
 
 static const CONF_PARSER unix_listen_config[] = {
-	{ FR_CONF_OFFSET("path", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_control_unix_t, path),
+	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_control_unix_t, filename),
 	.dflt = "${run_dir}/radiusd.sock}" },
 	{ FR_CONF_OFFSET("uid", FR_TYPE_STRING, proto_control_unix_t, uid_name) },
 	{ FR_CONF_OFFSET("git", FR_TYPE_STRING, proto_control_unix_t, gid_name) },
@@ -94,8 +96,52 @@ static const CONF_PARSER unix_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *	Process an initial connection request.
+ */
+static ssize_t mod_read_init(void *instance, UNUSED void **packet_ctx, UNUSED fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup
+)
+{
+	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
+	uint32_t			magic;
 
-static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+	if (htonl(hdr->conduit) != FR_CONDUIT_INIT_ACK) {
+		DEBUG("ERROR: Connection is missing initial ACK packet.");
+		return -1;
+	}
+
+	if (buffer_len < sizeof(*hdr)) {
+		DEBUG("ERROR: Initial ACK is malformed");
+		return -1;
+	}
+
+	if (htonl(hdr->length) != 8) {
+		DEBUG("ERROR: Initial ACK has wrong length (%lu).", (size_t) htonl(hdr->length));
+		return -1;
+	}
+
+	memcpy(&magic, buffer + sizeof(*hdr), sizeof(magic));
+	magic = htonl(magic);
+	if (magic != FR_CONDUIT_MAGIC) {
+		DEBUG("ERROR: Connection from incompatible version of radmin.");
+		return -1;
+	}
+
+	/*
+	 *	Next 4 bytes are zero, we ignore them.
+	 */
+
+	if (write(inst->sockfd, buffer, buffer_len) < (ssize_t) buffer_len) {
+		DEBUG("ERROR: Blocking write to socket... oops");
+		return -1;
+	}
+
+	DEBUG("Control connection seems OK");
+	return 0;
+}
+
+static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
 	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
 	ssize_t				data_size;
@@ -141,7 +187,10 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 	DEBUG2("proto_control_unix - Received command packet length %d on %s",
 	       (int) data_size, inst->name);
 
-	return data_size;
+	/*
+	 *	Run the state machine to process the rest of the packet.
+	 */
+	return inst->read(instance, packet_ctx, recv_time, buffer, (size_t) data_size, leftover, priority, is_dup);
 }
 
 
@@ -774,7 +823,7 @@ static int mod_open(void *instance)
 	rad_assert(inst->name != NULL);
 
 	if (inst->peercred) {
-		sockfd = fr_server_domain_socket_peercred(inst->path, inst->uid, inst->gid);
+		sockfd = fr_server_domain_socket_peercred(inst->filename, inst->uid, inst->gid);
 	} else {
 		uid_t uid = inst->uid;
 		gid_t gid = inst->gid;
@@ -782,10 +831,10 @@ static int mod_open(void *instance)
 		if (uid == ((uid_t)-1)) uid = 0;
 		if (gid == ((gid_t)-1)) gid = 0;
 
-		sockfd = fr_server_domain_socket_perm(inst->path, uid, gid);
+		sockfd = fr_server_domain_socket_perm(inst->filename, uid, gid);
 	}
 	if (sockfd < 0) {
-		PERROR("Failed opening UNIX path %s", inst->path);
+		PERROR("Failed opening UNIX path %s", inst->filename);
 		return -1;
 	}
 
@@ -857,7 +906,7 @@ static int mod_fd_set(void *instance, int fd)
 
 		if (getpeereid(fd, &uid, &gid) < 0) {
 			ERROR("Failed getting peer credentials for %s: %s",
-			       inst->path, fr_syserror(errno));
+			       inst->filename, fr_syserror(errno));
 			return -1;
 		}
 
@@ -876,13 +925,13 @@ static int mod_fd_set(void *instance, int fd)
 			if (inst->uid_name && (inst->uid != uid)) {
 				ERROR("Unauthorized connection to %s from uid %ld",
 
-				       inst->path, (long int) uid);
+				       inst->filename, (long int) uid);
 				return -1;
 			}
 
 			if (inst->gid_name && (inst->gid != gid)) {
 				ERROR("Unauthorized connection to %s from gid %ld",
-				       inst->path, (long int) gid);
+				       inst->filename, (long int) gid);
 				return -1;
 			}
 
@@ -891,10 +940,7 @@ static int mod_fd_set(void *instance, int fd)
 #endif
 
 	inst->sockfd = fd;
-
-	// @todo - start the negotiation
-	// We probably want a way to read / write initial data in the connection...
-	// the negotiation && state machine should be in libfreeradius-control.a
+	inst->read= mod_read_init;
 
 	return 0;
 }
@@ -905,12 +951,12 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
 
 	if (!inst->connection) {
-		inst->name = talloc_typed_asprintf(inst, "proto unix server %s path %s",
-						   "???", inst->path);
+		inst->name = talloc_typed_asprintf(inst, "proto unix server %s filename %s",
+						   "???", inst->filename);
 
 	} else {
-		inst->name = talloc_typed_asprintf(inst, "proto unix from client ??? to server path %s",
-						   inst->path);
+		inst->name = talloc_typed_asprintf(inst, "proto unix via filename %s",
+						   inst->filename);
 	}
 
 	return 0;
@@ -963,7 +1009,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	/*
 	 *	Set up the fake client
 	 */
-	inst->radclient.longname = inst->path;
+	inst->radclient.longname = inst->filename;
 	inst->radclient.ipaddr.af = AF_INET;
 	inst->radclient.src_ipaddr.af = AF_INET;
 
