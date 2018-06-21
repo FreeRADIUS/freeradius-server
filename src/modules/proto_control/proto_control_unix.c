@@ -99,7 +99,6 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 {
 	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
 	ssize_t				data_size;
-	size_t				packet_len = -1;
 
 	fr_time_t			*recv_time_p;
 	fr_conduit_type_t		conduit;
@@ -129,10 +128,6 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 		return 0;
 	}
 
-	// @todo - check authentication, etc. on the socket.
-	// we will need a state machine for this..
-	packet_len = data_size;
-
 	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
 
@@ -143,11 +138,10 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_control_unix - Received %s ID %d length %d %s",
-	       fr_packet_codes[buffer[0]], buffer[1],
-	       (int) packet_len, inst->name);
+	DEBUG2("proto_control_unix - Received command packet length %d on %s",
+	       (int) data_size, inst->name);
 
-	return packet_len;
+	return data_size;
 }
 
 
