@@ -4665,10 +4665,6 @@ static void event_poll_detail(void *ctx)
 
 static void event_status(struct timeval *wake)
 {
-#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
-	int argval;
-#endif
-
 	if (rad_debug_lvl == 0) {
 		if (just_started) {
 			INFO("Ready to process requests");
@@ -4692,18 +4688,19 @@ static void event_status(struct timeval *wake)
 	 *	all of the time...
 	 */
 
-#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
-	/*
-	 *	If there are no child threads, then there may
-	 *	be child processes.  In that case, wait for
-	 *	their exit status, and throw that exit status
-	 *	away.  This helps get rid of zxombie children.
-	 */
-	while (waitpid(-1, &argval, WNOHANG) > 0) {
-		/* do nothing */
-	}
-#endif
+	if (!spawn_flag) {
+		int argval;
 
+		/*
+		 *	If there are no child threads, then there may
+		 *	be child processes.  In that case, wait for
+		 *	their exit status, and throw that exit status
+		 *	away.  This helps get rid of zxombie children.
+		 */
+		while (waitpid(-1, &argval, WNOHANG) > 0) {
+			/* do nothing */
+		}
+	}
 }
 
 #ifdef WITH_TCP
