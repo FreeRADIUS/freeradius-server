@@ -1603,7 +1603,7 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
 #endif
 			   CONF_INCLUDE_TYPE file_type, char *buff[7], bool from_dir)
 {
-	FILE		*fp;
+	FILE		*fp = NULL;
 	int		lineno = 0;
 	char const	*filename;
 
