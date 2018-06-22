@@ -119,6 +119,8 @@ struct fr_state_tree_t {
 	uint32_t		timeout;			//!< How long to wait before cleaning up state entires.
 	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
 
+	uint8_t			server_id;			//!< ID to use for load balancing.
+
 	fr_dict_attr_t const	*da;				//!< State attribute used.
 };
 
@@ -175,12 +177,13 @@ static int _state_tree_free(fr_state_tree_t *state)
  * @param[in] da		Attribute used to store and retrieve state from.
  * @param[in] max_sessions	we track state for.
  * @param[in] timeout		How long to wait before cleaning up entries.
+ * @param[in] server_id		ID byte to use in load-balancing operations.
  * @return
  *	- A new state tree.
  *	- NULL on failure.
  */
 fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
-				    uint32_t max_sessions, uint32_t timeout)
+				    uint32_t max_sessions, uint32_t timeout, uint8_t server_id)
 {
 	fr_state_tree_t *state;
 
@@ -218,6 +221,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
 	talloc_set_destructor(state, _state_tree_free);
 
 	state->da = da;		/* Remember which attribute we use to load/store state */
+	state->tree = server_id;
 
 	return state;
 }
@@ -454,7 +458,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 *	Allow a portion of the State attribute to be set,
 		 *	this is useful for debugging purposes.
 		 */
-		entry->state_comp.server_id = main_config.state_server_id;
+		entry->state_comp.server_id = state->server_id;
 
 		vp = fr_pair_afrom_da(packet, state->da);
 		fr_pair_value_memcpy(vp, entry->state, sizeof(entry->state));

@@ -221,7 +221,6 @@ static const CONF_PARSER security_config[] = {
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ FR_CONF_POINTER("allow_vulnerable_openssl", FR_TYPE_STRING, &main_config.allow_vulnerable_openssl), .dflt = "no" },
 #endif
-	{ FR_CONF_POINTER("server_id", FR_TYPE_UINT8, &main_config.state_server_id) },
 
 	CONF_PARSER_TERMINATOR
 };

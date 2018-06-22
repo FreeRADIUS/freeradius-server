@@ -944,7 +944,7 @@ int main(int argc, char *argv[])
 	if (modules_thread_instantiate(thread_ctx, main_config.config, el) < 0) goto exit_failure;
 	if (xlat_thread_instantiate(thread_ctx) < 0) goto exit_failure;
 
-	state = fr_state_tree_init(autofree, attr_state, 256, 10);
+	state = fr_state_tree_init(autofree, attr_state, 256, 10, 0);
 
 	/*
 	 *  Set the panic action (if required)

@@ -126,10 +126,6 @@ typedef struct main_config {
 
 	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #REQUEST.
 
-	uint8_t       	state_server_id;		//!< Sets a specific byte in the state to allow the
-							//!< authenticating server to be identified in packet
-							//!< captures.
-
 	bool		write_pid;			//!< write the PID file
 
 #ifdef HAVE_SETUID
