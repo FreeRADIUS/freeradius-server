@@ -221,7 +221,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
 	talloc_set_destructor(state, _state_tree_free);
 
 	state->da = da;		/* Remember which attribute we use to load/store state */
-	state->tree = server_id;
+	state->server_id = server_id;
 
 	return state;
 }
