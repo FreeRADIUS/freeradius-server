@@ -71,7 +71,7 @@ static const FR_NAME_NUMBER conf_property_name[] = {
 	{  NULL , -1 }
 };
 
-static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLUDE_TYPE file_type, char *buff[7]);
+static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLUDE_TYPE file_type, char *buff[7], bool from_dir);
 
 /*
  *	Expand the variables in an input string.
@@ -418,7 +418,7 @@ static int _filename_cmp(void const *a, void const *b)
 	return (one->buf.st_ino < two->buf.st_ino) - (one->buf.st_ino > two->buf.st_ino);
 }
 
-static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
+static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, FILE **fp_p)
 {
 	cf_file_t *file;
 	CONF_SECTION *top;
@@ -430,10 +430,30 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	tree = cf_data_value(cf_data_find(top, rbtree_t, "filename"));
 	rad_assert(tree);
 
+	/*
+	 *	If we're including a wildcard directory, then ignore
+	 *	any files the users has already explicitly loaded in
+	 *	that directory.
+	 */
+	if (from_dir) {
+		cf_file_t my_file;
+
+		my_file.cs = cs;
+		my_file.filename = filename;
+
+		if (stat(filename, &my_file.buf) < 0) goto error;
+
+		file = rbtree_finddata(tree, &my_file);
+		if (file) return 0;
+	}
+
+	DEBUG2("including configuration file %s", filename);
+
 	fp = fopen(filename, "r");
 	if (!fp) {
+error:
 		ERROR("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
-		return NULL;
+		return -1;
 	}
 
 	fd = fileno(fp);
@@ -451,7 +471,7 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 
 			fclose(fp);
 			talloc_free(file);
-			return NULL;
+			return -1;
 		}
 #endif
 	}
@@ -464,7 +484,8 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	 */
 	if (!rbtree_insert(tree, file)) talloc_free(file);
 
-	return fp;
+	*fp_p = fp;
+	return 0;
 }
 
 /** Do some checks on the file as an "input" file.  i.e. one read by a module.
@@ -1036,7 +1057,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					 *	Read the file into the current
 					 *	configuration section.
 					 */
-					if (cf_file_include(this, buff[2], CONF_INCLUDE_FROMDIR, buff) < 0) {
+					if (cf_file_include(this, buff[2], CONF_INCLUDE_FROMDIR, buff, true) < 0) {
 						closedir(dir);
 						goto error;
 					}
@@ -1056,7 +1077,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					}
 				}
 
-				if (cf_file_include(this, value, CONF_INCLUDE_FILE, buff) < 0) goto error;
+				if (cf_file_include(this, value, CONF_INCLUDE_FILE, buff, false) < 0) goto error;
 			}
 			continue;
 		} /* we were in an include */
@@ -1580,7 +1601,7 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
 #ifndef WITH_CONF_WRITE
 			   UNUSED
 #endif
-			   CONF_INCLUDE_TYPE file_type, char *buff[7])
+			   CONF_INCLUDE_TYPE file_type, char *buff[7], bool from_dir)
 {
 	FILE		*fp;
 	int		lineno = 0;
@@ -1591,10 +1612,7 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
 	 */
 	filename = talloc_strdup(cs, filename_in);
 
-	DEBUG2("Including configuration file \"%s\"", filename);
-
-	fp = cf_file_open(cs, filename);
-	if (!fp) return -1;
+	if (cf_file_open(cs, filename, from_dir, &fp) < 0) return -1;
 
 	if (!cs->item.filename) cs->item.filename = filename;
 
@@ -1657,7 +1675,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	buff = talloc_array(cs, char *, 7);
 	for (i = 0; i < 7; i++) MEM(buff[i] = talloc_array(buff, char, 8192));
 
-	if (cf_file_include(cs, filename, CONF_INCLUDE_FILE, buff) < 0) {
+	if (cf_file_include(cs, filename, CONF_INCLUDE_FILE, buff, false) < 0) {
 		talloc_free(buff);
 		return -1;
 	}
