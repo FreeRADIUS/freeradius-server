@@ -307,30 +307,30 @@ static inline int fr_value_box_ethernet_addr(fr_value_box_t *dst, fr_dict_attr_t
 	return 0;
 }
 
-#define FR_VALUE_BOX(_ctype, _field, _type) \
+#define DEF_BOXING_FUNC(_ctype, _field, _type) \
 static inline int fr_value_box_##_field(fr_value_box_t *dst, fr_dict_attr_t const *enumv, _ctype const value, bool tainted) { \
 	fr_value_box_init(dst, _type, enumv, tainted); \
 	dst->vb_##_field = value; \
 	return 0; \
 }
 
-FR_VALUE_BOX(uint8_t, uint8, FR_TYPE_UINT8)
-FR_VALUE_BOX(uint16_t, uint16, FR_TYPE_UINT16)
-FR_VALUE_BOX(uint32_t, uint32, FR_TYPE_UINT32)
-FR_VALUE_BOX(uint64_t, uint64, FR_TYPE_UINT64)
+DEF_BOXING_FUNC(uint8_t, uint8, FR_TYPE_UINT8)
+DEF_BOXING_FUNC(uint16_t, uint16, FR_TYPE_UINT16)
+DEF_BOXING_FUNC(uint32_t, uint32, FR_TYPE_UINT32)
+DEF_BOXING_FUNC(uint64_t, uint64, FR_TYPE_UINT64)
 
-FR_VALUE_BOX(int8_t, int8, FR_TYPE_INT8)
-FR_VALUE_BOX(int16_t, int16, FR_TYPE_INT16)
-FR_VALUE_BOX(int32_t, int32, FR_TYPE_INT32)
-FR_VALUE_BOX(int64_t, int64, FR_TYPE_INT64)
+DEF_BOXING_FUNC(int8_t, int8, FR_TYPE_INT8)
+DEF_BOXING_FUNC(int16_t, int16, FR_TYPE_INT16)
+DEF_BOXING_FUNC(int32_t, int32, FR_TYPE_INT32)
+DEF_BOXING_FUNC(int64_t, int64, FR_TYPE_INT64)
 
-FR_VALUE_BOX(float, float32, FR_TYPE_FLOAT32)
-FR_VALUE_BOX(double, float64, FR_TYPE_FLOAT64)
+DEF_BOXING_FUNC(float, float32, FR_TYPE_FLOAT32)
+DEF_BOXING_FUNC(double, float64, FR_TYPE_FLOAT64)
 
-FR_VALUE_BOX(uint64_t, date, FR_TYPE_DATE)
-FR_VALUE_BOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
-FR_VALUE_BOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
-FR_VALUE_BOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
+DEF_BOXING_FUNC(uint64_t, date, FR_TYPE_DATE)
+DEF_BOXING_FUNC(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
+DEF_BOXING_FUNC(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
+DEF_BOXING_FUNC(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
 
 /** Automagically fill in a box, determining the value type from the type of the C variable
  *
@@ -392,7 +392,7 @@ static inline int fr_value_unbox_ethernet_addr(uint8_t dst[6], fr_value_box_t *s
 	return 0;
 }
 
-#define FR_VALUE_UNBOX(_ctype, _field, _type) \
+#define DEF_UNBOXING_FUNC(_ctype, _field, _type) \
 static inline int fr_value_unbox_##_field(_ctype *var, fr_value_box_t const *src) { \
 	if (unlikely(src->type != _type)) { \
 		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s", \
@@ -404,23 +404,23 @@ static inline int fr_value_unbox_##_field(_ctype *var, fr_value_box_t const *src
 	return 0; \
 }
 
-FR_VALUE_UNBOX(uint8_t, uint8, FR_TYPE_UINT8)
-FR_VALUE_UNBOX(uint16_t, uint16, FR_TYPE_UINT16)
-FR_VALUE_UNBOX(uint32_t, uint32, FR_TYPE_UINT32)
-FR_VALUE_UNBOX(uint64_t, uint64, FR_TYPE_UINT64)
+DEF_UNBOXING_FUNC(uint8_t, uint8, FR_TYPE_UINT8)
+DEF_UNBOXING_FUNC(uint16_t, uint16, FR_TYPE_UINT16)
+DEF_UNBOXING_FUNC(uint32_t, uint32, FR_TYPE_UINT32)
+DEF_UNBOXING_FUNC(uint64_t, uint64, FR_TYPE_UINT64)
 
-FR_VALUE_UNBOX(int8_t, int8, FR_TYPE_INT8)
-FR_VALUE_UNBOX(int16_t, int16, FR_TYPE_INT16)
-FR_VALUE_UNBOX(int32_t, int32, FR_TYPE_INT32)
-FR_VALUE_UNBOX(int64_t, int64, FR_TYPE_INT64)
+DEF_UNBOXING_FUNC(int8_t, int8, FR_TYPE_INT8)
+DEF_UNBOXING_FUNC(int16_t, int16, FR_TYPE_INT16)
+DEF_UNBOXING_FUNC(int32_t, int32, FR_TYPE_INT32)
+DEF_UNBOXING_FUNC(int64_t, int64, FR_TYPE_INT64)
 
-FR_VALUE_UNBOX(float, float32, FR_TYPE_FLOAT32)
-FR_VALUE_UNBOX(double, float64, FR_TYPE_FLOAT64)
+DEF_UNBOXING_FUNC(float, float32, FR_TYPE_FLOAT32)
+DEF_UNBOXING_FUNC(double, float64, FR_TYPE_FLOAT64)
 
-FR_VALUE_UNBOX(uint64_t, date, FR_TYPE_DATE)
-FR_VALUE_UNBOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
-FR_VALUE_UNBOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
-FR_VALUE_UNBOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
+DEF_UNBOXING_FUNC(uint64_t, date, FR_TYPE_DATE)
+DEF_UNBOXING_FUNC(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
+DEF_UNBOXING_FUNC(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
+DEF_UNBOXING_FUNC(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
 
 /** Unbox simple types peforming type checks
  *
