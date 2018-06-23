@@ -144,6 +144,7 @@ const char CC_HINT(used) *__lsan_default_suppressions(void)
 		"leak:*gmtsub*\n"
 		"leak:tzsetwall_basic\n"
 		"leak:ImageLoaderMachO::doImageInit\n"
+		"leak:libSystem_atfork_child"
 #else
 		""
 #endif
