@@ -101,9 +101,10 @@ typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(REQUEST *);
  *
  * The parsed version of the main server config.
  */
-typedef struct main_config {
+typedef struct {
+	char const	*my_name;
 	char const	*name;				//!< Name of the daemon, usually 'radiusd'.
-	CONF_SECTION	*config;			//!< Root of the server config.
+	CONF_SECTION	*root_cs;			//!< Root of the server config.
 
 	bool		daemonize;			//!< Should the server daemonize on startup.
 	bool		spawn_workers;			//!< Should the server spawn threads.
@@ -117,7 +118,34 @@ typedef struct main_config {
 
 	bool		drop_requests;			//!< Administratively disable request processing.
 
+	char const	*log_dir;
+	char const	*local_state_dir;
+	char const	*chroot_dir;
+#ifdef WITH_CONF_WRITE
+	char const	*write_dir;			//!< where the normalized config is written
+#endif
+
+	bool		reverse_lookups;
+	bool		hostname_lookups;
+
+	char const	*radacct_dir;
+	char const	*lib_dir;
+	char const	*sbin_dir;
+	char const	*run_dir;
+	char const	*raddb_dir;			//!< Path to raddb directory
+
+	char const	*prefix;
+
+	char const	*log_dest;
+
 	char const	*log_file;
+	char const	*syslog_facility_str;
+	bool		do_colourise;
+
+	bool		log_dates_utc;
+	bool		*log_timestamp;
+	bool		log_timestamp_is_set;
+
 	int		syslog_facility;
 
 	char const	*dict_dir;			//!< Where to load dictionaries from.
@@ -139,9 +167,6 @@ typedef struct main_config {
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
 
-#ifdef WITH_CONF_WRITE
-	char const	*write_dir;			//!< where the normalized config is written
-#endif
 
 	fr_dict_t	*dict;				//!< Main dictionary.
 
@@ -263,7 +288,7 @@ struct rad_request {
 	int32_t			runnable_id;	//!< entry in the queue / heap of runnable packets
 	int32_t			time_order_id;	//!< entry in the queue / heap of time ordered packets
 
-	main_config_t		*root;		//!< Pointer to the main config hack to try and deal with hup.
+	main_config_t const	*config;	//!< Pointer to the main config hack to try and deal with hup.
 
 	struct {
 		log_dst_t	*dst;		//!< First in a list of log destinations.
@@ -321,9 +346,6 @@ typedef enum request_fail {
  */
 extern fr_log_lvl_t	rad_debug_lvl;
 extern fr_log_lvl_t	req_debug_lvl;
-extern char const	*radacct_dir;
-extern char const	*log_dir;
-extern char const	*radlib_dir;
 extern char const	*radiusd_version;
 extern char const	*radiusd_version_short;
 void			radius_signal_self(int flag);
@@ -386,7 +408,7 @@ char const	*rad_default_lib_dir(void);
 char const	*rad_default_raddb_dir(void);
 char const	*rad_default_run_dir(void);
 char const	*rad_default_sbin_dir(void);
-char const	*rad_radacct_dir(void);
+char const	*rad_default_radacct_dir(void);
 
 #ifdef WITH_VERIFY_PTR
 void		request_verify(char const *file, int line, REQUEST const *request);	/* only for special debug builds */
@@ -590,14 +612,17 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 
 /* main_config.c */
 /* Define a global config structure */
-extern main_config_t		main_config;
+extern main_config_t const	*main_config;
 
-void set_radius_dir(TALLOC_CTX *ctx, char const *path);
-char const *get_radius_dir(void);
-int main_config_init(void);
-int main_config_free(void);
-void main_config_hup(void);
-void hup_logfile(void);
+void			main_config_name_set(main_config_t *config, char const *name);
+void			main_config_raddb_dir_set(main_config_t *config, char const *path);
+void			main_config_dict_dir_set(main_config_t *config, char const *path);
+
+main_config_t		*main_config_alloc(TALLOC_CTX *ctx);
+int			main_config_init(main_config_t *config);
+int			main_config_free(main_config_t **config);
+void			main_config_hup(main_config_t *config);
+void			hup_logfile(main_config_t *config);
 
 
 /* process.c */

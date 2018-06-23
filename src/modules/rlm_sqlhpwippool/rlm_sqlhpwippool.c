@@ -292,7 +292,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	inst->sincesync = 0;
 
-	sql_inst = module_find(cf_section_find(main_config.config, "modules", NULL), inst->sql_instance_name);
+	sql_inst = module_find(cf_section_find(main_config->root_cs, "modules", NULL), inst->sql_instance_name);
 	if (!sql_inst) {
 		cf_log_err(conf, "Cannot find SQL module instance named \"%s\"",
 			      inst->sql_instance_name);

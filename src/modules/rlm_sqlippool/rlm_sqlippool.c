@@ -407,7 +407,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	} else {
 		inst->pool_name = talloc_typed_strdup(inst, "ippool");
 	}
-	sql_inst = module_find(cf_section_find(main_config.config, "modules", NULL), inst->sql_instance_name);
+	sql_inst = module_find(cf_section_find(main_config->root_cs, "modules", NULL), inst->sql_instance_name);
 	if (!sql_inst) {
 		cf_log_err(conf, "failed to find sql instance named %s",
 			   inst->sql_instance_name);

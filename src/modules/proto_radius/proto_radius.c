@@ -347,7 +347,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	request->reply->dst_ipaddr = address->src_ipaddr;
 	request->reply->dst_port = address->src_port;
 
-	request->root = &main_config;
+	request->config = main_config;
 	REQUEST_VERIFY(request);
 
 	/*

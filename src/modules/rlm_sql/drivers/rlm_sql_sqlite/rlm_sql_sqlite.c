@@ -685,7 +685,8 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 	struct stat		buf;
 
 	if (!inst->filename) {
-		MEM(inst->filename = talloc_typed_asprintf(inst, "%s/%s", get_radius_dir(), config->sql_db));
+		MEM(inst->filename = talloc_typed_asprintf(inst, "%s/%s",
+							   main_config->raddb_dir, config->sql_db));
 	}
 
 	if (stat(inst->filename, &buf) == 0) {

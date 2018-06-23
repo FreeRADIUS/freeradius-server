@@ -60,12 +60,6 @@ RCSID("$Id$")
 #  include <systemd/sd-daemon.h>
 #endif
 
-/*
- *  Global variables.
- */
-char const	*radacct_dir = NULL;
-char const	*log_dir = NULL;
-
 char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("FreeRADIUS");
 static pid_t radius_pid;
 
@@ -81,7 +75,7 @@ struct timeval sd_watchdog_interval;
 /*
  *	Static functions.
  */
-static void usage(int);
+static void usage(main_config_t const *config, int status);
 
 static void sig_fatal (int);
 #ifdef SIGHUP
@@ -155,17 +149,44 @@ int main(int argc, char *argv[])
 	char		*p;
 	fr_schedule_t	*sc = NULL;
 
+	main_config_t	*config;
+
+	bool		talloc_memory_report;
+
 	/*
 	 *	Setup talloc callbacks so we get useful errors
 	 */
 	(void) fr_talloc_fault_setup();
 
 	/*
-	 *  We probably don't want to free the talloc autofree context
-	 *  directly, so we'll allocate a new context beneath it, and
-	 *  free that before any leak reports.
+	 * 	We probably don't want to free the talloc autofree context
+	 * 	directly, so we'll allocate a new context beneath it, and
+	 *	free that before any leak reports.
 	 */
 	TALLOC_CTX *autofree = talloc_new(talloc_autofree_context());
+
+	/*
+	 *	Allocate the main config structure.
+	 *	It's allocating so we can hang talloced buffers off it.
+	 */
+	config = main_config_alloc(autofree);
+	if (!config) {
+		fprintf(stderr, "Failed allocating main config");
+		exit(EXIT_FAILURE);
+	}
+
+	/*
+	 *	Set some default values
+	 */
+	p = strrchr(argv[0], FR_DIR_SEP);
+	if (!p) {
+		main_config_name_set(config, argv[0]);
+	} else {
+		main_config_name_set(config, p + 1);
+	}
+
+	config->daemonize = true;
+	config->spawn_workers = true;
 
 #ifdef OSFC2
 	set_auth_parameters(argc, argv);
@@ -175,30 +196,15 @@ int main(int argc, char *argv[])
 	{
 		WSADATA wsaData;
 		if (WSAStartup(MAKEWORD(2, 0), &wsaData)) {
-			fprintf(stderr, "%s: Unable to initialize socket library.\n",
-				main_config.name);
+			fprintf(stderr, "%s: Unable to initialize socket library.\n", config->name);
 			exit(EXIT_FAILURE);
 		}
 	}
 #endif
 
 	rad_debug_lvl = 0;
-	set_radius_dir(autofree, RADIUS_DIR);
 	fr_time_start();
 
-	/*
-	 *	Ensure that the configuration is initialized.
-	 */
-	memset(&main_config, 0, sizeof(main_config));
-	main_config.daemonize = true;
-	main_config.spawn_workers = true;
-
-	p = strrchr(argv[0], FR_DIR_SEP);
-	if (!p) {
-		main_config.name = argv[0];
-	} else {
-		main_config.name = p + 1;
-	}
 
 	/*
 	 *	Don't put output anywhere until we get told a little
@@ -206,12 +212,6 @@ int main(int argc, char *argv[])
 	 */
 	default_log.dst = L_DST_NULL;
 	default_log.fd = -1;
-	main_config.log_file = NULL;
-
-	/*
-	 *	Set the default dictionary directory
-	 */
-	main_config.dict_dir = DICTDIR;
 
 	/*
 	 *  Set the panic action and enable other debugging facilities
@@ -225,38 +225,36 @@ int main(int argc, char *argv[])
 		switch (argval) {
 		case 'C':
 			check_config = true;
-			main_config.spawn_workers = false;
-			main_config.daemonize = false;
+			config->spawn_workers = false;
+			config->daemonize = false;
 			break;
 
 		case 'd':
-			set_radius_dir(autofree, optarg);
+			main_config_raddb_dir_set(config, optarg);
 			break;
 
 		case 'D':
-			main_config.dict_dir = talloc_typed_strdup(autofree, optarg);
+			main_config_dict_dir_set(config, optarg);
 			break;
 
 		case 'f':
-			main_config.daemonize = false;
+			config->daemonize = false;
 			break;
 
 		case 'h':
-			usage(0);
+			usage(config, EXIT_SUCCESS);
 			break;
 
 		case 'l':
-			if (strcmp(optarg, "stdout") == 0) {
-				goto do_stdout;
-			}
+			if (strcmp(optarg, "stdout") == 0) goto do_stdout;
 
-			main_config.log_file = talloc_typed_strdup(autofree, optarg);
+			config->log_file = talloc_typed_strdup(autofree, optarg);
 			default_log.file = talloc_typed_strdup(autofree, optarg);
 			default_log.dst = L_DST_FILES;
-			default_log.fd = open(main_config.log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
+			default_log.fd = open(config->log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
 			if (default_log.fd < 0) {
 				fprintf(stderr, "%s: Failed to open log file %s: %s\n",
-					main_config.name, main_config.log_file, fr_syserror(errno));
+					config->name, config->log_file, fr_syserror(errno));
 				exit(EXIT_FAILURE);
 			}
 			fr_log_fp = fdopen(default_log.fd, "a");
@@ -267,38 +265,38 @@ int main(int argc, char *argv[])
 			size_t limit;
 
 			if (fr_size_from_str(&limit, optarg) < 0) {
-				fr_perror("%s: Invalid memory limit", main_config.name);
+				fr_perror("%s: Invalid memory limit", config->name);
 				exit(EXIT_FAILURE);
 			}
 
 			if ((limit > (((size_t)((1024 * 1024) * 1024)) * 16) || (limit < ((1024 * 1024) * 10)))) {
-				fprintf(stderr, "%s: Memory limit must be between 10M-16G\n", main_config.name);
+				fprintf(stderr, "%s: Memory limit must be between 10M-16G\n", config->name);
 				exit(EXIT_FAILURE);
 			}
 
-			main_config.talloc_memory_limit = limit;
+			config->talloc_memory_limit = limit;
 		}
 			break;
 
 		case 'n':
-			main_config.name = optarg;
+			main_config_name_set(config, optarg);
 			break;
 
 		case 'M':
-			main_config.talloc_memory_report = true;
+			config->talloc_memory_report = true;
 			break;
 
 		case 'P':	/* Force the PID to be written, even in -f mode */
-			main_config.write_pid = true;
+			config->write_pid = true;
 			break;
 
 		case 's':	/* Single process mode */
-			main_config.spawn_workers = false;
-			main_config.daemonize = false;
+			config->spawn_workers = false;
+			config->daemonize = false;
 			break;
 
 		case 't':	/* no child threads */
-			main_config.spawn_workers = false;
+			config->spawn_workers = false;
 			break;
 
 		case 'T':	/* enable timestamps */
@@ -310,8 +308,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'X':
-			main_config.spawn_workers = false;
-			main_config.daemonize = false;
+			config->spawn_workers = false;
+			config->daemonize = false;
 			rad_debug_lvl += 2;
 	do_stdout:
 			fr_log_fp = stdout;
@@ -324,18 +322,18 @@ int main(int argc, char *argv[])
 			break;
 
 		default:
-			usage(1);
+			usage(config, EXIT_FAILURE);
 			break;
 		}
 	}
 
-	fr_debug_lvl = req_debug_lvl = main_config.debug_level = rad_debug_lvl;
+	fr_debug_lvl = req_debug_lvl = config->debug_level = rad_debug_lvl;
 
 	/*
 	 *  Mismatch between the binary and the libraries it depends on.
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("%s", main_config.name);
+		fr_perror("%s", config->name);
 		fr_exit(EXIT_FAILURE);
 	}
 
@@ -355,8 +353,8 @@ int main(int argc, char *argv[])
 	 *
 	 *  So we can't run with a null context and threads.
 	 */
-	if (talloc_config_set(&main_config) != 0) {
-		fr_perror("%s", main_config.name);
+	if (talloc_config_set(config) != 0) {
+		fr_perror("%s", config->name);
 		fr_exit(EXIT_FAILURE);
 	}
 
@@ -369,7 +367,7 @@ int main(int argc, char *argv[])
 		default_log.dst = L_DST_STDOUT;
 		default_log.fd = STDOUT_FILENO;
 
-		INFO("%s: %s", main_config.name, radiusd_version);
+		INFO("%s - %s", config->name, radiusd_version);
 		dependency_version_print();
 		exit(EXIT_SUCCESS);
 	}
@@ -386,19 +384,19 @@ int main(int argc, char *argv[])
 	/*
 	 *  Write the PID always if we're running as a daemon.
 	 */
-	if (main_config.daemonize) main_config.write_pid = true;
+	if (config->daemonize) config->write_pid = true;
 
 	/*
 	 *	Initialize the DL infrastructure, which is used by the
 	 *	config file parser.
 	 */
-	dl_init();
+	dl_init(config->lib_dir);
 
 	/*
 	 *	Initialise the top level dictionary hashes which hold
 	 *	the protocols.
 	 */
-	if (fr_dict_global_init(autofree, main_config.dict_dir) < 0) {
+	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
 		fr_perror("radiusd");
 		fr_exit(EXIT_FAILURE);
 	}
@@ -406,7 +404,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
-	if (main_config_init() < 0) exit(EXIT_FAILURE);
+	if (main_config_init(config) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
@@ -420,9 +418,9 @@ int main(int argc, char *argv[])
 	 *  Set panic_action from the main config if one wasn't specified in the
 	 *  environment.
 	 */
-	if (main_config.panic_action && !getenv("PANIC_ACTION") &&
-	    (fr_fault_setup(main_config.panic_action, argv[0]) < 0)) {
-		fr_perror("radiusd - Failed configuring panic action: %s", main_config.name);
+	if (config->panic_action && !getenv("PANIC_ACTION") &&
+	    (fr_fault_setup(config->panic_action, argv[0]) < 0)) {
+		fr_perror("radiusd - Failed configuring panic action: %s", config->name);
 		fr_exit(EXIT_FAILURE);
 	}
 
@@ -434,13 +432,13 @@ int main(int argc, char *argv[])
 	/*
 	 *  Initialise trigger rate limiting
 	 */
-	trigger_exec_init(main_config.config);
+	trigger_exec_init(config->root_cs);
 
 	/*
 	 *  Call this again now we've loaded the configuration. Yes I know...
 	 */
-	if (talloc_config_set(&main_config) < 0) {
-		fr_perror("%s", main_config.name);
+	if (talloc_config_set(config) < 0) {
+		fr_perror("%s", config->name);
 		fr_exit(EXIT_FAILURE);
 	}
 
@@ -448,7 +446,7 @@ int main(int argc, char *argv[])
 	 *  Check for vulnerabilities in the version of libssl were linked against.
 	 */
 #if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
-	if (tls_version_check(main_config.allow_vulnerable_openssl) < 0) exit(EXIT_FAILURE);
+	if (tls_version_check(config->allow_vulnerable_openssl) < 0) exit(EXIT_FAILURE);
 #endif
 
 	/*
@@ -474,7 +472,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Disconnect from session
 	 */
-	if (main_config.daemonize) {
+	if (config->daemonize) {
 		pid_t pid;
 		int devnull;
 
@@ -566,7 +564,7 @@ int main(int argc, char *argv[])
 	 *	before loading the modules.  Some modules need those
 	 *	to be defined.
 	 */
-	if (virtual_servers_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
+	if (virtual_servers_bootstrap(config->root_cs) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	Bootstrap the modules.  This links to them, and runs
@@ -574,7 +572,7 @@ int main(int argc, char *argv[])
 	 *
 	 *	After this step, all dynamic attributes, xlats, etc. are defined.
 	 */
-	if (modules_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
+	if (modules_bootstrap(config->root_cs) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	And then load the virtual servers.
@@ -591,7 +589,7 @@ int main(int argc, char *argv[])
 	 *	Call the module's initialisation methods.  These create
 	 *	connection pools and open connections to external resources.
 	 */
-	if (modules_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
+	if (modules_instantiate(config->root_cs) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	Instantiate "permanent" xlats
@@ -631,14 +629,14 @@ int main(int argc, char *argv[])
 	/*
 	 *  Redirect stderr/stdout as appropriate.
 	 */
-	if (log_global_init(&default_log, main_config.daemonize) < 0) fr_exit(EXIT_FAILURE);
+	if (log_global_init(&default_log, config->daemonize) < 0) fr_exit(EXIT_FAILURE);
 
 	/*
 	 *	Start the network / worker threads.
 	 */
 	if (1) {
-		int networks = main_config.num_networks;
-		int workers = main_config.num_workers;
+		int networks = config->num_networks;
+		int workers = config->num_workers;
 		fr_event_list_t *el = NULL;
 
 		/*
@@ -646,7 +644,7 @@ int main(int argc, char *argv[])
 		 *	Otherwise, each network thread will create
 		 *	it's own event list.
 		 */
-		if (!main_config.spawn_workers) {
+		if (!config->spawn_workers) {
 			networks = 0;
 			workers = 0;
 			el = fr_global_event_list();
@@ -655,7 +653,7 @@ int main(int argc, char *argv[])
 		sc = fr_schedule_create(NULL, el, &default_log, rad_debug_lvl,
 					networks, workers,
 					thread_instantiate,
-					main_config.config);
+					config->root_cs);
 		if (!sc) {
 			exit(EXIT_FAILURE);
 		}
@@ -670,9 +668,9 @@ int main(int argc, char *argv[])
 	{
 		size_t size;
 
-		size = talloc_total_size(main_config.config);
+		size = talloc_total_size(config->root_cs);
 
-		if (talloc_set_memlimit(main_config.config, size)) {
+		if (talloc_set_memlimit(config->root_cs, size)) {
 			PERROR("Failed setting memory limit for global configuration");
 		} else {
 			DEBUG3("Memory limit for global configuration is set to %zd bytes", size);
@@ -683,7 +681,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Start the main event loop.
 	 */
-	if (radius_event_start(main_config.spawn_workers) < 0) {
+	if (radius_event_start(config->spawn_workers) < 0) {
 		ERROR("Failed starting event loop");
 		fr_exit(EXIT_FAILURE);
 	}
@@ -722,10 +720,10 @@ int main(int argc, char *argv[])
 	/*
 	 *  Write the PID after we've forked, so that we write the correct one.
 	 */
-	if (main_config.write_pid) {
+	if (config->write_pid) {
 		FILE *fp;
 
-		fp = fopen(main_config.pid_file, "w");
+		fp = fopen(config->pid_file, "w");
 		if (fp != NULL) {
 			/*
 			 *  @fixme What about following symlinks,
@@ -734,7 +732,7 @@ int main(int argc, char *argv[])
 			fprintf(fp, "%d\n", (int) radius_pid);
 			fclose(fp);
 		} else {
-			ERROR("Failed creating PID file %s: %s", main_config.pid_file, fr_syserror(errno));
+			ERROR("Failed creating PID file %s: %s", config->pid_file, fr_syserror(errno));
 			fr_exit(EXIT_FAILURE);
 		}
 	}
@@ -747,7 +745,7 @@ int main(int argc, char *argv[])
 	 *  If we don't get this far, then we just close the pipe on exit, and the
 	 *  parent gets a read failure.
 	 */
-	if (main_config.daemonize) {
+	if (config->daemonize) {
 		if (write(from_child[1], "\001", 1) < 0) {
 			WARN("Failed informing parent of successful start: %s",
 			     fr_syserror(errno));
@@ -767,7 +765,7 @@ int main(int argc, char *argv[])
 #ifdef WITH_STATS
 		radius_stats_init(1);
 #endif
-		main_config_hup();
+		main_config_hup(config);
 	}
 
 	if (status < 0) {
@@ -795,14 +793,14 @@ int main(int argc, char *argv[])
 	 *  (including us, which gets ignored.)
 	 */
 #ifndef __MINGW32__
-	if (main_config.spawn_workers) kill(-radius_pid, SIGTERM);
+	if (config->spawn_workers) kill(-radius_pid, SIGTERM);
 #endif
 
 	/*
 	 *  We're exiting, so we can delete the PID file.
 	 *  (If it doesn't exist, we can ignore the error returned by unlink)
 	 */
-	if (main_config.daemonize) unlink(main_config.pid_file);
+	if (config->daemonize) unlink(config->pid_file);
 
 	/*
 	 *	Stop the scheduler
@@ -860,11 +858,13 @@ cleanup:
 	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
 
+	talloc_memory_report = config->talloc_memory_report;
+
 	/*
 	 *	And now nothing should be left anywhere except the
 	 *	parsed configuration items.
 	 */
-	main_config_free();
+	main_config_free(&config);
 
 	talloc_free(autofree);		/* Cleanup everything else */
 
@@ -874,7 +874,7 @@ cleanup:
 	 *  Anything not cleaned up by the above is allocated in the NULL
 	 *  top level context, and is likely leaked memory.
 	 */
-	if (main_config.talloc_memory_report) fr_log_talloc_report(NULL);
+	if (talloc_memory_report) fr_log_talloc_report(NULL);
 
 	return rcode;
 }
@@ -882,11 +882,11 @@ cleanup:
 /*
  *  Display the syntax for starting this program.
  */
-static void NEVER_RETURNS usage(int status)
+static void NEVER_RETURNS usage(main_config_t const *config, int status)
 {
-	FILE *output = status?stderr:stdout;
+	FILE *output = status ? stderr : stdout;
 
-	fprintf(output, "Usage: %s [options]\n", main_config.name);
+	fprintf(output, "Usage: %s [options]\n", config->name);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -C            Check configuration and exit.\n");
 	fprintf(stderr, "  -d <raddb>    Set configuration directory (defaults to " RADDBDIR ").\n");

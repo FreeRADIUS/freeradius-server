@@ -1,10 +1,8 @@
 TARGET	:= radiusd
 SOURCES := \
     auth.c \
-    client.c \
     crypt.c \
     users_file.c \
-    mainconfig.c \
     radiusd.c \
     state.c \
     stats.c \

@@ -585,8 +585,6 @@ int fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN + 1],
 #include <stdbool.h>
 #include <freeradius-devel/cutest.h>
 
-main_config_t main_config;
-
 void test_encrypt_decypt_key0(void)
 {
 	char const	id[] = "001234554321001";

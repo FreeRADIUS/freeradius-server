@@ -52,8 +52,6 @@ RCSID("$Id$")
 #  define DL_EXTENSION ".so"
 #endif
 
-char const	*radlib_dir;
-
 /** Symbol dependent initialisation callback
  *
  * Call this function when the module is loaded for the first time.
@@ -84,6 +82,8 @@ struct dl_symbol_free {
  *
  */
 typedef struct dl_loader {
+	char const		*lib_dir;	//!< Where the libraries live.
+
 	/** Linked list of symbol init callbacks
 	 *
 	 * @note Is linked list to retain insertion order.  We don't expect huge numbers
@@ -556,7 +556,7 @@ void *dl_by_name(char const *name)
 		DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
 		search_path = env;
 	} else {
-		search_path = radlib_dir;
+		search_path = dl->lib_dir;
 	}
 
 	/*
@@ -888,7 +888,7 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 /** Initialise structures needed by the dynamic linker
  *
  */
-int dl_init(void)
+int dl_init(char const *lib_dir)
 {
 	if (dl) return 0;
 
@@ -913,6 +913,14 @@ int dl_init(void)
 	if (dl_symbol_free_cb_register(DL_INSTANTIATE_PRIORITY, NULL, dl_unload_func, NULL) < 0) {
 		ERROR("Failed registering unload() callback");
 		return -1;
+	}
+
+	if (lib_dir) {
+		dl->lib_dir = talloc_strdup(dl, lib_dir);
+		if (!dl->lib_dir) {
+			ERROR("Failed recording log dir");
+			return -1;
+		}
 	}
 
 	return 0;

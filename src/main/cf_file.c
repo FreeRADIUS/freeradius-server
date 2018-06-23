@@ -90,7 +90,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 
 	/*
 	 *	Find the master parent conf section.
-	 *	We can't use main_config.config, because we're in the
+	 *	We can't use main_config->root_cs, because we're in the
 	 *	process of re-building it, and it isn't set up yet...
 	 */
 	parent_cs = cf_root(outer_cs);
@@ -1798,7 +1798,7 @@ static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
 	q = filename;
 	if ((q[0] == '.') && (q[1] == '/')) q += 2;
 
-	snprintf(buffer, sizeof(buffer), "%s/%s", main_config.write_dir, q);
+	snprintf(buffer, sizeof(buffer), "%s/%s", main_config->write_dir, q);
 
 	p = strrchr(buffer, '/');
 	*p = '\0';
@@ -1812,7 +1812,7 @@ static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
 	/*
 	 *	And again, because rad_mkdir() butchers the buffer.
 	 */
-	snprintf(buffer, sizeof(buffer), "%s/%s", main_config.write_dir, q);
+	snprintf(buffer, sizeof(buffer), "%s/%s", main_config->write_dir, q);
 
 	fp = fopen(buffer, "a");
 	if (!fp) {

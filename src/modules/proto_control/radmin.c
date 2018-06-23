@@ -115,13 +115,6 @@ typedef struct radmin_state {
  */
 //static radmin_state_t state;
 
-/*
- *	The rest of this is because the conf_file.c, etc. assume
- *	they're running inside of the server.  And we don't (yet)
- *	have a "libfreeradius-server", or "libfreeradius-util".
- */
-main_config_t main_config;
-
 static bool echo = false;
 static char const *secret = "testing123";
 static bool unbuffered = false;

@@ -243,8 +243,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Blocking a request longer than max_request_time isn't going to help anyone.
 	 */
-	if (inst->timeout > main_config.max_request_time) {
-		cf_log_err(conf, "Timeout '%d' is too large (maximum: %d)", inst->timeout, main_config.max_request_time);
+	if (inst->timeout > main_config->max_request_time) {
+		cf_log_err(conf, "Timeout '%d' is too large (maximum: %d)",
+			   inst->timeout, main_config->max_request_time);
 		return -1;
 	}
 

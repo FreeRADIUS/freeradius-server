@@ -452,6 +452,8 @@ struct CONF_PARSER {
 /*
  *	Type validation and conversion
  */
+int		cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+		CC_HINT(nonnull(2, 3, 4));
 int		cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
 			      unsigned int type, void *data, char const *dflt, FR_TOKEN dflt_quote) CC_HINT(nonnull(2,3));
 int		cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs);

@@ -663,7 +663,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *process_app_cs)
 		}
 	}
 
-	inst->state_tree = fr_state_tree_init(inst, attr_state, inst->max_session,
+	inst->state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->max_session,
 					      inst->session_timeout, inst->state_server_id);
 
 	return 0;

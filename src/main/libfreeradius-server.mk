@@ -1,6 +1,7 @@
 TARGET		:= libfreeradius-server.a
 
-SOURCES	:=	cond_eval.c \
+SOURCES	:=	client.c \
+		cond_eval.c \
 		cond_tokenize.c \
 		cf_file.c \
 		cf_parse.c \
@@ -11,6 +12,7 @@ SOURCES	:=	cond_eval.c \
 		exec.c \
 		exfile.c \
 		log.c \
+		mainconfig.c \
 		map_proc.c \
 		map.c \
 		module.c \

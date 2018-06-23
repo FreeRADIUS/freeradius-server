@@ -800,7 +800,8 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 	if (fr_timeval_isset(&c->response_window)) {
 		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, >=, 0, 1000);
 		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, 60, 0);
-		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, main_config.max_request_time, 0);
+		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=,
+				       main_config->max_request_time, 0);
 	}
 
 #ifdef WITH_TLS

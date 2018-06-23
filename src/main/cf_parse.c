@@ -115,8 +115,7 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *out,
-							 CONF_ITEM *ci, CONF_PARSER const *rule)
+int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		rcode = 0;
 	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists;

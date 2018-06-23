@@ -587,7 +587,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, UNUSED void 
 	 *	We're not changing UID, etc.  Start processing the
 	 *	detail files now.
 	 */
-	if (!main_config.allow_core_dumps) {
+	if (!main_config->allow_core_dumps) {
 		work_init(inst);
 		return;
 	}
@@ -637,9 +637,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	we check for this situation, and give them a
 	 *	descriptive message telling them what to do.
 	 */
-	if (!main_config.allow_core_dumps &&
-	    main_config.uid_name && *main_config.uid_name &&
-	    main_config.server_uid != 0) {
+	if (!main_config->allow_core_dumps &&
+	    main_config->uid_name && *main_config->uid_name &&
+	    main_config->server_uid != 0) {
 		cf_log_err(cs, "Cannot start detail file reader due to Linux limitations.");
 		cf_log_err(cs, "Please set 'allow_core_dumps = true' in the main configuration file.");
 		return -1;
