@@ -66,6 +66,16 @@ fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
 static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
+static int num_networks_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static int max_request_time_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static int name_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+
 /*
  *	Log destinations
  */
@@ -79,7 +89,6 @@ static const CONF_PARSER initial_log_subsection_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
 /*
  *	Basic configuration for the server.
  */
@@ -92,7 +101,6 @@ static const CONF_PARSER initial_logging_config[] = {
 	{ FR_CONF_IS_SET_OFFSET("timestamp", FR_TYPE_BOOL, main_config_t, log_timestamp) },
 	CONF_PARSER_TERMINATOR
 };
-
 
 /**********************************************************************
  *
@@ -111,8 +119,10 @@ static const CONF_PARSER log_config[] = {
 };
 
 static const CONF_PARSER thread_config[] = {
-	{ FR_CONF_OFFSET("num_networks", FR_TYPE_UINT32, main_config_t, num_networks), .dflt = STRINGIFY(1) },
-	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, main_config_t, num_workers), .dflt = STRINGIFY(4) },
+	{ FR_CONF_OFFSET("num_networks", FR_TYPE_UINT32, main_config_t, num_networks), .dflt = STRINGIFY(1),
+	  .func = num_networks_parse },
+	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, main_config_t, num_workers), .dflt = STRINGIFY(4),
+	  .func = num_workers_parse },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -124,9 +134,9 @@ static const CONF_PARSER resources[] = {
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
 	 *	it exists.
 	 */
-	{ FR_CONF_OFFSET("talloc_pool_size", FR_TYPE_SIZE, main_config_t, talloc_pool_size) },			/* DO NOT SET DEFAULT */
-	{ FR_CONF_OFFSET("talloc_memory_limit", FR_TYPE_SIZE, main_config_t, talloc_memory_limit) },		/* DO NOT SET DEFAULT */
-	{ FR_CONF_OFFSET("talloc_memory_report", FR_TYPE_BOOL, main_config_t, talloc_memory_report) },		/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET("talloc_pool_size", FR_TYPE_SIZE, main_config_t, talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET("talloc_memory_limit", FR_TYPE_SIZE, main_config_t, talloc_memory_limit), .func = talloc_memory_limit_parse },		/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET("talloc_memory_report", FR_TYPE_BOOL, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
 
@@ -148,7 +158,7 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_OFFSET("panic_action", FR_TYPE_STRING, main_config_t, panic_action) },
 	{ FR_CONF_OFFSET("reverse_lookups", FR_TYPE_BOOL, main_config_t, reverse_lookups), .dflt = "no", .func = reverse_lookups_parse },
 	{ FR_CONF_OFFSET("hostname_lookups", FR_TYPE_BOOL, main_config_t, hostname_lookups), .dflt = "no", .func = hostname_lookups_parse },
-	{ FR_CONF_OFFSET("max_request_time", FR_TYPE_UINT32, main_config_t, max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME) },
+	{ FR_CONF_OFFSET("max_request_time", FR_TYPE_UINT32, main_config_t, max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
 	{ FR_CONF_OFFSET("pidfile", FR_TYPE_STRING, main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
 	{ FR_CONF_OFFSET("debug_level", FR_TYPE_UINT32, main_config_t, debug_level), .dflt = "0" },
@@ -208,7 +218,7 @@ static const CONF_PARSER security_config[] = {
 static const CONF_PARSER switch_users_config[] = {
 	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) security_config },
 
-	{ FR_CONF_OFFSET("name", FR_TYPE_STRING, main_config_t, my_name), .dflt = "radiusd" },
+	{ FR_CONF_OFFSET("name", FR_TYPE_STRING, main_config_t, my_name), .func = name_parse },							/* DO NOT SET DEFAULT */
 
 	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, main_config_t, prefix), .dflt = "/usr/local" },
 	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
@@ -231,8 +241,7 @@ static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF
 {
 	int	ret;
 
-	ret = cf_pair_parse_value(ctx, out, ci, rule);
-	if (ret < 0) return ret;
+	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
 
 	memcpy(&fr_reverse_lookups, out, sizeof(fr_reverse_lookups));
 
@@ -243,12 +252,110 @@ static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CON
 {
 	int	ret;
 
-	ret = cf_pair_parse_value(ctx, out, ci, rule);
-	if (ret < 0) return ret;
+	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
 
 	memcpy(&fr_hostname_lookups, out, sizeof(fr_hostname_lookups));
 
 	return 0;
+}
+
+static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int	ret;
+	size_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	if (value) {
+		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", value, >=,
+				    (size_t)1024 * 1024 * 10);
+
+		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", value, <=,
+				    ((((size_t)1024) * 1024 * 1024) * 16));
+	}
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int	ret;
+	size_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", value, >=, (size_t)(2 * 1024));
+	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", value, <=, (size_t)(1024 * 1024));
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static int max_request_time_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int		ret;
+	uint32_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	FR_INTEGER_COND_CHECK("max_request_time", value, (value != 0), 100);
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+
+static int num_networks_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int		ret;
+	uint32_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	FR_INTEGER_BOUND_CHECK("thread.num_networks", value, ==, 1);
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int		ret;
+	uint32_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, >, 0);
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <, 1024);
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+/** Configured server name takes precedence over default values
+ *
+ */
+static int name_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	if (*((char **)out)) talloc_free(*((char **)out));	/* Free existing buffer */
+
+	return cf_pair_parse_value(ctx, out, ci, rule);		/* Set new value */
 }
 
 
@@ -518,7 +625,8 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	 *	Set the user/group we're going to use
 	 *	to check read permissions on configuration files.
 	 */
-	cf_file_check_user(config->server_uid ? config->server_uid : (uid_t)-1, config->server_gid ? config->server_gid : (gid_t)-1);
+	cf_file_check_user(config->server_uid ? config->server_uid : (uid_t)-1,
+			   config->server_gid ? config->server_gid : (gid_t)-1);
 
 	/*
 	 *	Do chroot BEFORE changing UIDs.
@@ -728,9 +836,6 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 		fr_strerror_printf("Failed allocating main config");
 		return NULL;
 	}
-
-	main_config_raddb_dir_set(config, RADIUS_DIR);
-	main_config_dict_dir_set(config, DICTDIR);
 
 	main_config = config;
 
@@ -1045,27 +1150,6 @@ do {\
 	fr_debug_lvl = req_debug_lvl = rad_debug_lvl;
 
 	INFO("Switching to configured log settings");
-
-	FR_INTEGER_COND_CHECK("max_request_time", config->max_request_time,
-			      (config->max_request_time != 0), 100);
-
-	/*
-	 *	For now we don't do connected sockets.
-	 */
-	FR_INTEGER_BOUND_CHECK("thread.num_networks", config->num_networks, ==, 1);
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", config->num_workers, >, 0);
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", config->num_workers, <, 1024);
-
-	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", config->talloc_pool_size, >=, (size_t)(2 * 1024));
-	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", config->talloc_pool_size, <=, (size_t)(1024 * 1024));
-
-	if (config->talloc_memory_limit) {
-		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", config->talloc_memory_limit, >=,
-				    (size_t)1024 * 1024 * 10);
-
-		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", config->talloc_memory_limit, <=,
-				    ((((size_t)1024) * 1024 * 1024) * 16));
-	}
 
 	/*
 	 *	Set default initial request processing delay to 1/3 of a second.
