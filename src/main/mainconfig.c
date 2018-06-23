@@ -969,7 +969,7 @@ do {\
 				return -1;
 			}
 			config->syslog_facility = fr_str2int(syslog_facility_table,
-								  config->syslog_facility, -1);
+							     config->syslog_facility_str, -1);
 			if (config->syslog_facility < 0) {
 				fprintf(stderr, "%s: Error: Unknown syslog_facility %s\n",
 					config->name, config->syslog_facility_str);
