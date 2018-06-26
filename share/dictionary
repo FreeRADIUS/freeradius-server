@@ -146,6 +146,7 @@ $INCLUDE dictionary.aruba
 $INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
+$INCLUDE dictionary.bigswitch
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.bluecoat
 $INCLUDE dictionary.boingo
