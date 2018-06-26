@@ -88,6 +88,7 @@ $INCLUDE dictionary.aruba
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.asn
 $INCLUDE dictionary.bay
+$INCLUDE dictionary.bigswitch
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cabletron
