@@ -66,7 +66,12 @@ static fr_cmd_t *fr_command_find(fr_cmd_t **head, char const *name, fr_cmd_t ***
 {
 	fr_cmd_t *cmd, **where = head;
 
-	if (!head || !*head || !name) return NULL;
+	if (!head || !name) return NULL;
+
+	if (!*head) {
+		if (insert) *insert = head;
+		return NULL;
+	}
 
 	for (cmd = *head; cmd != NULL; cmd = cmd->next) {
 		int status;
@@ -183,8 +188,6 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		return -1;
 	}
 
-	ERROR("COMMAND syntax %s", table->syntax);
-
 	memset(argv, 0, sizeof(argv));
 	memset(types, 0, sizeof(types));
 
@@ -216,7 +219,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 				continue;
 			}
 
-			cmd = fr_command_alloc(talloc_ctx, insert, table->parents[i]);
+			cmd = fr_command_alloc(talloc_ctx, head, table->parents[i]);
 			cmd->intermediate = true;
 			cmd->auto_allocated = true;
 
@@ -382,7 +385,8 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		/*
 		 *	Allocate cmd and insert it into the current point.
 		 */
-		cmd = fr_command_alloc(talloc_ctx, head, name);
+		rad_assert(insert != NULL);
+		cmd = fr_command_alloc(talloc_ctx, insert, name);
 	}
 
 	/*
