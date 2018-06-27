@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file radmin.c
+ * @file proto_control/radmin.c
  * @brief Control a running radiusd process.
  *
  * @copyright 2012-2016 The FreeRADIUS server project
