@@ -588,9 +588,9 @@ check_child:
 	 *	the next command at the current level.
 	 */
 	if (cmd->child) {
+		rad_assert(stack->depth < MAX_STACK);
 		info.parents[stack->depth] = cmd->name;
 		stack->depth++;
-		rad_assert(stack->depth < MAX_STACK);
 		stack->entry[stack->depth] = cmd->child;
 
 		/*
