@@ -645,16 +645,6 @@ int cond_eval(REQUEST *request, int modreturn, int depth,
 			 fr_cond_t const *c);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat) CC_HINT(nonnull);
 
-#ifdef WITH_TLS
-/*
- *	For run-time patching of which function handles which socket.
- */
-int dual_tls_recv(rad_listen_t *listener);
-int dual_tls_send(rad_listen_t *listener, REQUEST *request);
-int proxy_tls_recv(rad_listen_t *listener);
-int proxy_tls_send(rad_listen_t *listener, REQUEST *request);
-#endif
-
 /*
  *	For radmin over TCP.
  */
