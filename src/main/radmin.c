@@ -151,11 +151,6 @@ static void *fr_radmin(UNUSED void *ctx)
 			continue;
 		}
 
-		if (strcmp(line, "help") == 0) {
-			fr_command_debug(stdout, radmin_cmd);
-			continue;
-		}
-
 		add_history(line);
 
 		argc = fr_dict_str_to_argv(line, argv, MAX_ARGV);
@@ -188,6 +183,24 @@ static int cmd_exit(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED c
 	return 0;
 }
 
+static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char const *argv[])
+{
+	char const *help;
+
+	if (argc == 0) {
+		fr_command_debug(fp, radmin_cmd);
+		return 0;
+	}
+
+	help = fr_command_help(radmin_cmd, argc - 1, &argv[1]);
+	if (help) {
+		fprintf(fp, "%s\n", help);
+		return 0;
+	}
+
+	return 0;
+}
+
 static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
 {
 	struct timeval now;
@@ -208,6 +221,13 @@ static fr_cmd_table_t cmd_table[] = {
 		.func = cmd_exit,
 		.help = "Tell the server to exit immediately.",
 		.read_only = false
+	},
+
+	{
+		.syntax = "help",
+		.func = cmd_help,
+		.help = "Display list of commands and their help text.",
+		.read_only = true
 	},
 
 	{
