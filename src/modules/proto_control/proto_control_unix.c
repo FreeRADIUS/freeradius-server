@@ -106,11 +106,23 @@ static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED
 	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
 	uint32_t			status;
+	uint8_t				*cmd = buffer + sizeof(*hdr);
 
-	DEBUG("Received text '%.*s'", (int) htonl(hdr->length), buffer + sizeof(*hdr));
+	hdr->length = ntohl(hdr->length);
+
+	DEBUG("Received text length %d '%.*s'", hdr->length, (int) hdr->length, cmd);
+
+	if ((hdr->length == 9) && (memcmp(cmd, "terminate", 9) == 0)) {
+		radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
+		goto success;
+	}
+
+	// if the command starts with "worker ...", then return it
+	// otherwise run the command here.
 
 	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, "\n", 1);
 
+success:
 	status = FR_CONDUIT_SUCCESS;
 	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_CMD_STATUS, &status, sizeof(status));
 
