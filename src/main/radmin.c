@@ -151,12 +151,6 @@ static void *fr_radmin(UNUSED void *ctx)
 			continue;
 		}
 
-		if (strcmp(line, "exit") == 0) {
-			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
-			stop = true;
-			break;
-		}
-
 		if (strcmp(line, "help") == 0) {
 			fr_command_debug(stdout, radmin_cmd);
 			continue;
@@ -180,10 +174,63 @@ static void *fr_radmin(UNUSED void *ctx)
 	return NULL;
 }
 
+
+/** radmin functions, tables, and callbacks
+ *
+ */
+static struct timeval start_time;
+
+static int cmd_exit(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
+{
+	radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
+	stop = true;
+
+	return 0;
+}
+
+static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
+{
+	struct timeval now;
+
+	gettimeofday(&now, NULL);
+	fr_timeval_subtract(&now, &now, &start_time);
+
+	fprintf(fp, "Uptime: %u.%06u seconds\n",
+		(int) now.tv_sec,
+		(int) now.tv_usec);
+
+	return 0;
+}
+
+static fr_cmd_table_t cmd_table[] = {
+	{
+		.syntax = "exit",
+		.func = cmd_exit,
+		.help = "Tell the server to exit immediately.",
+		.read_only = false
+	},
+
+	{
+		.syntax = "uptime",
+		.func = cmd_uptime,
+		.help = "Show uptime since the server started.",
+		.read_only = true
+	},
+
+	CMD_TABLE_END
+};
+
 void fr_radmin_start(void)
 {
 	int rcode;
 	pthread_attr_t attr;
+
+	gettimeofday(&start_time, NULL);
+
+	if (fr_radmin_register(NULL, NULL, cmd_table) < 0) {
+		PERROR("Failed initializing radmin");
+		fr_exit(EXIT_FAILURE);
+	}
 
 	(void) pthread_attr_init(&attr);
 	(void) pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);

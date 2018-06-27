@@ -123,36 +123,6 @@ static int talloc_config_set(main_config_t *config)
 	return 0;
 }
 
-/** radmin functions, tables, and callbacks
- *
- */
-static struct timeval start_time;
-
-static int fr_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
-{
-	struct timeval now;
-
-	gettimeofday(&now, NULL);
-	fr_timeval_subtract(&now, &now, &start_time);
-
-	fprintf(fp, "Uptime: %u.%06u seconds\n",
-		(int) now.tv_sec,
-		(int) now.tv_usec);
-
-	return 0;
-}
-
-static fr_cmd_table_t radmin_radiusd[] = {
-	{
-		.syntax = "uptime",
-		.func = fr_uptime,
-		.help = "Show uptime since the server started",
-		.read_only = true
-	},
-
-	CMD_TABLE_END
-};
-/* end of radmin functions, tables, and callbacks */
 
 /** Create module and xlat per-thread instances
  *
@@ -236,7 +206,6 @@ int main(int argc, char *argv[])
 
 	rad_debug_lvl = 0;
 	fr_time_start();
-	gettimeofday(&start_time, NULL);
 
 
 	/*
@@ -654,13 +623,6 @@ int main(int argc, char *argv[])
 	if (fr_snmp_init() < 0) {
 		PERROR("Failed initialising SNMP");
 		fr_exit(EXIT_FAILURE);
-	}
-
-	if (radmin) {
-		if (fr_radmin_register(NULL, NULL, radmin_radiusd) < 0) {
-			PERROR("Failed initializing radmin");
-			fr_exit(EXIT_FAILURE);
-		}
 	}
 
 	/*
