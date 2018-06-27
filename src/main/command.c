@@ -955,7 +955,7 @@ char const *fr_command_help(fr_cmd_t *head, int argc, char const *argv[])
 		cmd = fr_command_find(&start, argv[i], NULL);
 		if (!cmd) return NULL;
 
-		if (!cmd->syntax) {
+		if (!cmd->syntax && !cmd->func) {
 			rad_assert(cmd->child != NULL);
 			start = cmd->child;
 			continue;
