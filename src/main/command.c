@@ -844,14 +844,15 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, int argc, char const 
 
 /** Run a particular command
  *
- * @param head the head of the hierarchy.
+ * @param fp   where the output is sent
+ * @param head the head of the command hierarchy.
  * @param argc the number of arguments in the argv array
  * @param argv the commands leading up to this one.
  * @return
  *	- <0 on error
  *	- 0 the command was run successfully
  */
-int fr_command_run(fr_cmd_t *head, int argc, char const *argv[])
+int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 {
 	int i;
 	fr_cmd_t *cmd, *start;
@@ -874,7 +875,7 @@ int fr_command_run(fr_cmd_t *head, int argc, char const *argv[])
 		if (!cmd->syntax) {
 			if (cmd->func) {
 				rad_assert(cmd->func != NULL);
-				return cmd->func(cmd->ctx, argc - i, &argv[i]);
+				return cmd->func(fp, cmd->ctx, argc - i, &argv[i]);
 			}
 
 			rad_assert(cmd->child != NULL);
@@ -924,7 +925,7 @@ int fr_command_run(fr_cmd_t *head, int argc, char const *argv[])
 			fr_value_box_clear(&box);
 		}
 
-		return cmd->func(cmd->ctx, argc - i, &argv[i]);
+		return cmd->func(fp, cmd->ctx, argc - i, &argv[i]);
 	}
 
 	return 0;
@@ -969,26 +970,26 @@ char const *fr_command_help(fr_cmd_t *head, int argc, char const *argv[])
 
 static const char *tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
-static void fr_command_debug_node(fr_cmd_t *cmd, FILE *fp, int depth)
+static void fr_command_debug_node(FILE *fp, fr_cmd_t *cmd, int depth)
 {
 	fprintf(fp, "%.*s%s\n", depth, tabs, cmd->name);
 	if (cmd->syntax) fprintf(fp, "%.*s  -> %s\n", depth, tabs, cmd->syntax);
 	if (cmd->help) fprintf(fp,   "%.*s   ? %s\n", depth, tabs, cmd->help);
 }
 
-static void fr_command_debug_internal(fr_cmd_t *head, FILE *fp, int depth)
+static void fr_command_debug_internal(FILE *fp, fr_cmd_t *head, int depth)
 {
 	fr_cmd_t *cmd;
 
 	for (cmd = head; cmd != NULL; cmd = cmd->next) {
-		fr_command_debug_node(cmd, fp, depth);
+		fr_command_debug_node(fp, cmd, depth);
 		if (cmd->child) {
-			fr_command_debug_internal(cmd->child, fp, depth + 1);
+			fr_command_debug_internal(fp, cmd->child, depth + 1);
 		}
 	}
 }
 
-void fr_command_debug(fr_cmd_t *head, FILE *fp)
+void fr_command_debug(FILE *fp, fr_cmd_t *head)
 {
-	fr_command_debug_internal(head, fp, 0);
+	fr_command_debug_internal(fp, head, 0);
 }

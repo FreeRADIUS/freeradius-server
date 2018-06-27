@@ -158,7 +158,7 @@ static void *fr_radmin(UNUSED void *ctx)
 		}
 
 		if (strcmp(line, "help") == 0) {
-			fr_command_debug(radmin_cmd, stdout);
+			fr_command_debug(stdout, radmin_cmd);
 			continue;
 		}
 
@@ -166,7 +166,7 @@ static void *fr_radmin(UNUSED void *ctx)
 
 		argc = fr_dict_str_to_argv(line, argv, MAX_ARGV);
 
-		if (fr_command_run(radmin_cmd, argc, const_argv) < 0) {
+		if (fr_command_run(stdout, radmin_cmd, argc, const_argv) < 0) {
 			fprintf(stderr, "Failing running command: %s\n", fr_strerror());
 		}
 

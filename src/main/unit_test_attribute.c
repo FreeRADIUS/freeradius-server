@@ -667,7 +667,7 @@ static size_t load_test_point_by_command(void **symbol, char *command, size_t of
 
 static fr_cmd_t *command_head = NULL;
 
-static int command_func(UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
+static int command_func(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
 {
 	return 0;
 }
@@ -692,7 +692,7 @@ static void command_print(void)
 	void *walk_ctx = NULL;
 
 	printf("Command hierarchy --------\n");
-	fr_command_debug(command_head, stdout);
+	fr_command_debug(stdout, command_head);
 
 	printf("Command list --------\n");
 	while (fr_command_walk(command_head, &walk_ctx, NULL, command_walk) == 1) {

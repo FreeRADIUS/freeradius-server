@@ -31,7 +31,7 @@ extern "C" {
 
 typedef struct fr_cmd_t fr_cmd_t;
 
-typedef int (*fr_cmd_func_t)(void *ctx, int argc, char const *argv[]);
+typedef int (*fr_cmd_func_t)(FILE *fp, void *ctx, int argc, char const *argv[]);
 
 typedef struct fr_cmd_tab_info_t {
 	int		argc;
@@ -66,8 +66,8 @@ int fr_command_add_multi(TALLOC_CTX *talloc_ctx, fr_cmd_t **heap_p, char const *
 int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t callback);
 int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, int argc, char const *argv[], int max_expansions, char const **expansions);
 char const *fr_command_help(fr_cmd_t *head, int argc, char const *argv[]);
-int fr_command_run(fr_cmd_t *head, int argc, char const *argv[]);
-void fr_command_debug(fr_cmd_t *head, FILE *fp);
+int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[]);
+void fr_command_debug(FILE *fp, fr_cmd_t *head);
 
 #ifdef __cplusplus
 }

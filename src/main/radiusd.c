@@ -128,17 +128,16 @@ static int talloc_config_set(main_config_t *config)
  */
 static struct timeval start_time;
 
-static int fr_uptime(UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
+static int fr_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
 {
 	struct timeval now;
 
 	gettimeofday(&now, NULL);
 	fr_timeval_subtract(&now, &now, &start_time);
 
-
-	printf("Uptime: %u.%06u seconds\n",
-	       (int) now.tv_sec,
-	       (int) now.tv_usec);
+	fprintf(fp, "Uptime: %u.%06u seconds\n",
+		(int) now.tv_sec,
+		(int) now.tv_usec);
 
 	return 0;
 }
