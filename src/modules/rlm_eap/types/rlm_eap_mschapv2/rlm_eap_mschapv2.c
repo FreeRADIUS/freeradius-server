@@ -30,7 +30,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
-static int auth_type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 typedef struct {
 	bool			with_ntdomain_hack;
@@ -42,7 +43,7 @@ typedef struct {
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOL, rlm_eap_mschapv2_t, with_ntdomain_hack), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("auth_type", FR_TYPE_VOID, rlm_eap_mschapv2_t, auth_type), .func = auth_type_parse,  .dflt = "mschap" },
+	{ FR_CONF_OFFSET("auth_type", FR_TYPE_VOID, rlm_eap_mschapv2_t, auth_type), .func = auth_type_parse, .dflt = "mschap" },
 	{ FR_CONF_OFFSET("send_error", FR_TYPE_BOOL, rlm_eap_mschapv2_t, send_error), .dflt = "no" },
 	{ FR_CONF_OFFSET("identity", FR_TYPE_STRING, rlm_eap_mschapv2_t, identity) },
 	CONF_PARSER_TERMINATOR
@@ -110,13 +111,15 @@ static void fix_mppe_keys(eap_session_t *eap_session, mschapv2_opaque_t *data)
  *
  * @param[in] ctx	to allocate data.
  * @param[out] out	Where to write the auth_type we created or resolved.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the auth_type.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
 

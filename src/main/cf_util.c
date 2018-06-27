@@ -762,7 +762,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 					    ((rule_p->type & FR_TYPE_ON_READ) != 0) &&
 					    (strcmp(rule_p->name, name1) == 0)) {
 						(void) _cf_section_rule_push(cs, rule_p, cd->item.filename, cd->item.lineno);
-						(void) rule_p->func(ctx, NULL, cf_section_to_item(cs), rule_p);
+						(void) rule_p->func(ctx, NULL, NULL, cf_section_to_item(cs), rule_p);
 						return cs;
 					}
 				}
@@ -782,7 +782,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 			    ((rule->type & FR_TYPE_ON_READ) != 0)) {
 				(void) cf_section_rules_push(cs, rule);
 
-				(void) rule->func(ctx, NULL, cf_section_to_item(cs), rule);
+				(void) rule->func(ctx, NULL, NULL, cf_section_to_item(cs), rule);
 			}
 		}
 	}

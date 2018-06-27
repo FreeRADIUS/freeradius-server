@@ -26,7 +26,8 @@ RCSID("$Id$")
 
 #include "eap_peap.h"
 
-static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 typedef struct rlm_eap_peap_t {
 	char const		*tls_conf_name;		//!< TLS configuration.
@@ -109,13 +110,15 @@ fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[] = {
  *
  * @param[in] ctx	to allocate data.
  * @param[out] out	Where to write the auth_type we created or resolved.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the auth_type.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
 

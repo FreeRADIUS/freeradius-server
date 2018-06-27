@@ -63,18 +63,18 @@ fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
  *
  **********************************************************************/
 
-static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,CONF_ITEM *ci, CONF_PARSER const *rule);
+static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static int num_networks_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int num_workers_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static int max_request_time_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static int name_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 /*
  *	Log destinations
@@ -237,34 +237,37 @@ static const CONF_PARSER switch_users_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				 CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int	ret;
 
-	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
 
 	memcpy(&fr_reverse_lookups, out, sizeof(fr_reverse_lookups));
 
 	return 0;
 }
 
-static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				  CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int	ret;
 
-	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
 
 	memcpy(&fr_hostname_lookups, out, sizeof(fr_hostname_lookups));
 
 	return 0;
 }
 
-static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				     CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int	ret;
 	size_t	value;
 
-	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
 
 	memcpy(&value, out, sizeof(value));
 
@@ -281,12 +284,13 @@ static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, 
 	return 0;
 }
 
-static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				  CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int	ret;
 	size_t	value;
 
-	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
 
 	memcpy(&value, out, sizeof(value));
 
@@ -298,12 +302,13 @@ static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CON
 	return 0;
 }
 
-static int max_request_time_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				  CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		ret;
 	uint32_t	value;
 
-	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
 
 	memcpy(&value, out, sizeof(value));
 
@@ -315,12 +320,13 @@ static int max_request_time_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CON
 }
 
 
-static int num_networks_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
+			      CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		ret;
 	uint32_t	value;
 
-	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
 
 	memcpy(&value, out, sizeof(value));
 
@@ -331,12 +337,13 @@ static int num_networks_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PA
 	return 0;
 }
 
-static int num_workers_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
+			     CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		ret;
 	uint32_t	value;
 
-	if ((ret = cf_pair_parse_value(ctx, out, ci, rule)) < 0) return ret;
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
 
 	memcpy(&value, out, sizeof(value));
 
@@ -351,11 +358,12 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PAR
 /** Configured server name takes precedence over default values
  *
  */
-static int name_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int name_parse(TALLOC_CTX *ctx, void *out, void *parent,
+		      CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	if (*((char **)out)) talloc_free(*((char **)out));	/* Free existing buffer */
 
-	return cf_pair_parse_value(ctx, out, ci, rule);		/* Set new value */
+	return cf_pair_parse_value(ctx, out, parent, ci, rule);		/* Set new value */
 }
 
 
