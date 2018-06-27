@@ -462,7 +462,7 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 {
 	int rcode;
 	fr_cmd_stack_t *stack;
-	fr_cmd_t *cmd;
+	fr_cmd_t *cmd = NULL;
 	fr_cmd_walk_info_t info;
 
 	if (!walk_ctx || !callback) {
