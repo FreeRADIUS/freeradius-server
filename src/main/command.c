@@ -921,7 +921,7 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 			/*
 			 *	Parse the data to be sure it's well formed.
 			 */
-			if (fr_value_box_from_str(NULL, &box, cmd->syntax_types[j],
+			if (fr_value_box_from_str(NULL, &box, &cmd->syntax_types[j],
 						  NULL, argv[i + j], -1, quote, true) < 0) {
 				return -(i + j);
 			}
