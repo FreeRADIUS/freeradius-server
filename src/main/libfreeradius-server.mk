@@ -7,6 +7,7 @@ SOURCES	:=	client.c \
 		cf_parse.c \
 		cf_util.c \
 		connection.c \
+		command.c \
 		dl.c \
 		dependency.c \
 		exec.c \

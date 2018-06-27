@@ -34,8 +34,9 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang.h>
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/map_proc.h>
-#include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/tls/tls.h>
+#include <freeradius-devel/command.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/file.h>
 
@@ -66,7 +67,6 @@ static pid_t radius_pid;
 #ifdef HAVE_SYSTEMD_WATCHDOG
 struct timeval sd_watchdog_interval;
 #endif
-
 
 /*
  *  Configuration items.
@@ -123,6 +123,38 @@ static int talloc_config_set(main_config_t *config)
 	return 0;
 }
 
+/** radmin functions, tables, and callbacks
+ *
+ */
+static struct timeval start_time;
+
+static int fr_uptime(UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
+{
+	struct timeval now;
+
+	gettimeofday(&now, NULL);
+	fr_timeval_subtract(&now, &now, &start_time);
+
+
+	printf("Uptime: %u.%06u seconds\n",
+	       (int) now.tv_sec,
+	       (int) now.tv_usec);
+
+	return 0;
+}
+
+static fr_cmd_table_t radmin_radiusd[] = {
+	{
+		.syntax = "uptime",
+		.func = fr_uptime,
+		.help = "Show uptime since the server started",
+		.read_only = true
+	},
+
+	CMD_TABLE_END
+};
+/* end of radmin functions, tables, and callbacks */
+
 /** Create module and xlat per-thread instances
  *
  */
@@ -145,6 +177,7 @@ int main(int argc, char *argv[])
 	int		status;
 	int		argval;
 	bool		display_version = false;
+	bool		radmin = false;
 	int		from_child[2] = {-1, -1};
 	char		*p;
 	fr_schedule_t	*sc = NULL;
@@ -204,6 +237,7 @@ int main(int argc, char *argv[])
 
 	rad_debug_lvl = 0;
 	fr_time_start();
+	gettimeofday(&start_time, NULL);
 
 
 	/*
@@ -221,7 +255,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:L:Mn:p:PstTvxX")) != EOF) {
+	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:L:Mn:p:PrstTvxX")) != EOF) {
 		switch (argval) {
 		case 'C':
 			check_config = true;
@@ -288,6 +322,12 @@ int main(int argc, char *argv[])
 
 		case 'P':	/* Force the PID to be written, even in -f mode */
 			config->write_pid = true;
+			break;
+
+		case 'r':	/* internal radmin-style control interface */
+			config->spawn_workers = false;
+			config->daemonize = false;
+			radmin = true;
 			break;
 
 		case 's':	/* Single process mode */
@@ -617,6 +657,13 @@ int main(int argc, char *argv[])
 		fr_exit(EXIT_FAILURE);
 	}
 
+	if (radmin) {
+		if (fr_radmin_register(NULL, NULL, radmin_radiusd) < 0) {
+			PERROR("Failed initializing radmin");
+			fr_exit(EXIT_FAILURE);
+		}
+	}
+
 	/*
 	 *  Initialize the global event loop which handles things like
 	 *  systemd, and single-server mode.
@@ -758,6 +805,8 @@ int main(int argc, char *argv[])
 	 */
 	fr_strerror();
 
+	if (radmin) fr_radmin_start();
+
 	/*
 	 *  Process requests until HUP or exit.
 	 */
@@ -775,6 +824,8 @@ int main(int argc, char *argv[])
 		INFO("Exiting normally");
 		rcode = EXIT_SUCCESS;
 	}
+
+	if (radmin) fr_radmin_stop();
 
 	/*
 	 *  Ignore the TERM signal: we're about to die.
