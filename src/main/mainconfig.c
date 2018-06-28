@@ -856,6 +856,13 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 		return NULL;
 	}
 
+	/*
+	 *	Set the defaults from compile time arguments
+	 *	these can be overridden later on the command line.
+	 */
+	main_config_raddb_dir_set(config, RADDBDIR);
+	main_config_dict_dir_set(config, DICTDIR);
+
 	main_config = config;
 
 	return config;
