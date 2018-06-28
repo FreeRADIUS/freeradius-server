@@ -874,7 +874,7 @@ int main_config_init(main_config_t *config)
 	char			buffer[1024];
 
 	if (stat(config->raddb_dir, &statbuf) < 0) {
-		ERROR("Error reading %s: %s", config->raddb_dir, fr_syserror(errno));
+		ERROR("Error checking raddb_dir \"%s\": %s", config->raddb_dir, fr_syserror(errno));
 		return -1;
 	}
 
@@ -918,7 +918,7 @@ int main_config_init(main_config_t *config)
 do {\
 	switch (fr_dict_read(config->dict, _d, _n)) {\
 	case -1:\
-		PERROR("Error reading %s/%s", _d, _n);\
+		PERROR("Error reading dictionary \"%s/%s\"", _d, _n);\
 		return -1;\
 	case 0:\
 		DEBUG2("Including dictionary file \"%s/%s\"", _d,_n);\
