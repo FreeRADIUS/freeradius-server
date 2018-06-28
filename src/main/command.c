@@ -911,8 +911,8 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 		 *	@todo - allow varargs
 		 *	@todo - return which argument was broken?
 		 */
-		if (argc != (i + cmd->syntax_argc)) {
-			fr_strerror_printf("Input has too many or too few parameters for command.");
+		if (argc != (i + 1 + cmd->syntax_argc)) {
+			fr_strerror_printf("Input has too many or too few parameters for command");
 			return -1;
 		}
 
@@ -922,6 +922,7 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 		for (j = 0; j < cmd->syntax_argc; j++) {
 			fr_value_box_t box;
 			char quote;
+			int offset = i + 1 + j;
 
 			if (cmd->syntax_types[j] == FR_TYPE_INVALID) {
 				continue;
@@ -929,9 +930,9 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 
 			quote = '\0';
 			if (cmd->syntax_types[j] == FR_TYPE_STRING) {
-				if ((argv[i + j][0] == '"') ||
-				    (argv[i + j][0] == '\'')) {
-					quote = argv[i + j][0];
+				if ((argv[offset][0] == '"') ||
+				    (argv[offset][0] == '\'')) {
+					quote = argv[offset][0];
 				}
 			}
 
@@ -939,8 +940,8 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 			 *	Parse the data to be sure it's well formed.
 			 */
 			if (fr_value_box_from_str(NULL, &box, &cmd->syntax_types[j],
-						  NULL, argv[i + j], -1, quote, true) < 0) {
-				return -(i + j);
+						  NULL, argv[offset], -1, quote, true) < 0) {
+				return -(offset);
 			}
 
 			fr_value_box_clear(&box);
