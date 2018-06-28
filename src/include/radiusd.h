@@ -102,8 +102,9 @@ typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(REQUEST *);
  * The parsed version of the main server config.
  */
 typedef struct {
-	char const	*my_name;
 	char const	*name;				//!< Name of the daemon, usually 'radiusd'.
+	bool		overwrite_config_name;		//!< Overwrite the configured name, as this
+							///< was specified by the user on the command line.
 	CONF_SECTION	*root_cs;			//!< Root of the server config.
 
 	bool		daemonize;			//!< Should the server daemonize on startup.
@@ -614,7 +615,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 /* Define a global config structure */
 extern main_config_t const	*main_config;
 
-void			main_config_name_set(main_config_t *config, char const *name);
+void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
 void			main_config_raddb_dir_set(main_config_t *config, char const *path);
 void			main_config_dict_dir_set(main_config_t *config, char const *path);
 

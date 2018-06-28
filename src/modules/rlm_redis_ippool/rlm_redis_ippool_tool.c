@@ -1450,7 +1450,7 @@ do { \
 		break;
 
 	case 'f':
-		if (cf_file_read(conf->cs, optarg) < 0) exit(EXIT_FAILURE);
+		if (cf_file_read(conf->cs, optarg) < 0 || (cf_section_pass2(conf->cs) < 0)) exit(EXIT_FAILURE);
 		break;
 
 	default:

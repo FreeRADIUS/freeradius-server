@@ -182,9 +182,9 @@ int main(int argc, char *argv[])
 	 */
 	p = strrchr(argv[0], FR_DIR_SEP);
 	if (!p) {
-		main_config_name_set(config, argv[0]);
+		main_config_name_set_default(config, argv[0], false);
 	} else {
-		main_config_name_set(config, p + 1);
+		main_config_name_set_default(config, p + 1, false);
 	}
 
 	config->daemonize = true;
@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'n':
-			main_config_name_set(config, optarg);
+			main_config_name_set_default(config, optarg, true);
 			break;
 
 		case 'M':

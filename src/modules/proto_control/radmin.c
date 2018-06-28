@@ -545,7 +545,7 @@ int main(int argc, char **argv)
 		cs = cf_section_alloc(NULL, NULL, "main", NULL);
 		if (!cs) exit(EXIT_FAILURE);
 
-		if (cf_file_read(cs, buffer) < 0) {
+		if ((cf_file_read(cs, buffer) < 0) || (cf_section_pass2(cs) < 0)) {
 			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, buffer);
 			talloc_free(cs);
 			usage(1);

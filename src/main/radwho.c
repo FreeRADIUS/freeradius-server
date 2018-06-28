@@ -216,9 +216,9 @@ int main(int argc, char **argv)
 
 	p = strrchr(argv[0], FR_DIR_SEP);
 	if (!p) {
-		main_config_name_set(config, argv[0]);
+		main_config_name_set_default(config, argv[0], false);
 	} else {
-		main_config_name_set(config, p + 1);
+		main_config_name_set_default(config, p + 1, false);
 	}
 
 	while((c = getopt(argc, argv, "d:D:fF:nN:sSipP:crRu:U:Z")) != EOF) switch (c) {
@@ -336,7 +336,7 @@ int main(int argc, char **argv)
 	if (!maincs) exit(EXIT_FAILURE);
 
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", config->raddb_dir);
-	if (cf_file_read(maincs, buffer) < 0) {
+	if ((cf_file_read(maincs, buffer) < 0) || (cf_section_pass2(maincs) < 0)) {
 		fr_perror("%s: Error reading or parsing radiusd.conf\n", argv[0]);
 		talloc_free(maincs);
 		exit(EXIT_FAILURE);

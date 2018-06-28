@@ -1012,7 +1012,7 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 	cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!cs) return NULL;
 
-	if (cf_file_read(cs, filename) < 0) {
+	if ((cf_file_read(cs, filename) < 0) || (cf_section_pass2(cs) < 0)) {
 		talloc_free(cs);
 		return NULL;
 	}

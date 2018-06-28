@@ -218,7 +218,7 @@ static const CONF_PARSER security_config[] = {
 static const CONF_PARSER switch_users_config[] = {
 	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) security_config },
 
-	{ FR_CONF_OFFSET("name", FR_TYPE_STRING, main_config_t, my_name), .func = name_parse },							/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET("name", FR_TYPE_STRING, main_config_t, name), .func = name_parse },							/* DO NOT SET DEFAULT */
 
 	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, main_config_t, prefix), .dflt = "/usr/local" },
 	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
@@ -361,7 +361,13 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
 static int name_parse(TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, CONF_PARSER const *rule)
 {
-	if (*((char **)out)) talloc_free(*((char **)out));	/* Free existing buffer */
+	main_config_t *config = parent;
+
+	if (*((char **)out)) {
+		if (config->overwrite_config_name) return 0;		/* Don't change */
+
+		talloc_free(*((char **)out));				/* Free existing buffer */
+	}
 
 	return cf_pair_parse_value(ctx, out, parent, ci, rule);		/* Set new value */
 }
@@ -783,10 +789,13 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 
 /** Set the server name
  *
- * @param[in] config	to alter.
- * @param[in] name	to set e.g. "radiusd".
+ * @note Will only add pair if one does not already exist
+ *
+ * @param[in] config		to alter.
+ * @param[in] name		to set e.g. "radiusd".
+ * @param[in] overwrite_config	replace any CONF_PAIRs with this value.
  */
-void main_config_name_set(main_config_t *config, char const *name)
+void main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config)
 {
 	if (config->name) {
 		char *p;
@@ -796,6 +805,8 @@ void main_config_name_set(main_config_t *config, char const *name)
 		config->name = NULL;
 	}
 	if (name) config->name = talloc_typed_strdup(config, name);
+
+	config->overwrite_config_name = overwrite_config;
 }
 
 /** Set the global radius config directory.
@@ -978,6 +989,30 @@ do {\
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->raddb_dir, config->name);
 	if (cf_file_read(cs, buffer) < 0) {
 		ERROR("Error reading or parsing %s", buffer);
+		talloc_free(cs);
+		return -1;
+	}
+
+	/*
+	 *	Do any fixups here that might be used in references
+	 */
+	if (config->name) {
+		CONF_PAIR *cp;
+
+		cp = cf_pair_find(cs, "name");
+		if (cp){
+			if (config->overwrite_config_name && (cf_pair_replace(cs, cp, config->name) < 0)) {
+				ERROR("Failed adding/replacing \"name\" config item");
+				talloc_free(cs);
+				return -1;
+			}
+		} else {
+			MEM(cp = cf_pair_alloc(cs, "name", config->name, T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING));
+			cf_pair_add(cs, cp);
+		}
+	}
+
+	if (cf_section_pass2(cs) < 0) {
 		talloc_free(cs);
 		return -1;
 	}

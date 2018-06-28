@@ -82,13 +82,13 @@ static int process_file(char const *filename)
 		fprintf(stderr, "Failed allocating main config");
 		exit(EXIT_FAILURE);
 	}
-	main_config_name_set(config, "unit_test_map");
-
 	config->root_cs = cf_section_alloc(config, NULL, "main", NULL);
-	if (cf_file_read(config->root_cs, filename) < 0) {
+	if ((cf_file_read(config->root_cs, filename) < 0) || (cf_section_pass2(config->root_cs) < 0)) {
 		fprintf(stderr, "unit_test_map: Failed parsing %s\n", filename);
 		exit(EXIT_FAILURE);
 	}
+
+	main_config_name_set_default(config, "unit_test_map", false);
 
 	/*
 	 *	Always has to be an "update" section.

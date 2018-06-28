@@ -634,7 +634,7 @@ static int _file_callback(void *ctx, void *data)
  *
  *	This is a breadth-first expansion.  "deep
  */
-static int cf_section_pass2(CONF_SECTION *cs)
+int cf_section_pass2(CONF_SECTION *cs)
 {
 	CONF_ITEM *ci;
 
