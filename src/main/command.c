@@ -1095,6 +1095,66 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
 	fr_command_debug_internal(fp, head, 0);
 }
 
+static char *split(char **input)
+{
+	char *str = *input;
+	char *word;
+
+	/*
+	 *	String is empty, we're done.
+	 */
+	if (!*str) return NULL;
+
+	/*
+	 *	Skip leading whitespace.
+	 */
+	while ((*str == ' ') ||
+	       (*str == '\t') ||
+	       (*str == '\r') ||
+	       (*str == '\n'))
+		*(str++) = '\0';
+
+	/*
+	 *	String is empty, we're done.
+	 */
+	if (!*str) return NULL;
+
+	/*
+	 *	String is only comments, we're done.
+	 */
+	if (*str == '#') {
+		*str = '\0';
+		return NULL;
+	}
+
+	/*
+	 *	Remember the start of the word.
+	 */
+	word = str;
+
+	/*
+	 *	Skip the next non-space characters.
+	 */
+	while (*str &&
+	       (*str != ' ') &&
+	       (*str != '#') &&
+	       (*str != '\t') &&
+	       (*str != '\r') &&
+	       (*str != '\n'))
+		str++;
+
+	/*
+	 *	One of the above characters is after the word.
+	 *	Over-write it with NUL.  If *str==0, then we leave it
+	 *	alone, so that the next call to split() discovers it,
+	 *	and returns NULL.
+	 */
+	if (*str) *(str++) = '\0';
+
+	*input = str;
+	return word;
+}
+
 /** Split a string in-place, updating argv[]
  *
  *  This function also respects the various data types (mostly).
@@ -1107,45 +1167,168 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
  * @param argv the commands leading up to this string
  * @param max_argc the maximum number of entries in the argv array
  * @param str the string to split
+ * @param[out] runnable whether or not the command is runnable.
  * @return
- *	- <0 on error
+ *	- <0 on error.
  *	- total number of arguments in the argv[] array.  Always >= argc.
  */
-int fr_command_str_to_argv(UNUSED fr_cmd_t *head, int argc, char *argv[], int max_argc, char *str)
+int fr_command_str_to_argv(fr_cmd_t *head, int argc, char *argv[], int max_argc, char *str, bool *runnable)
 {
-	int my_argc = argc;
+	int i, offset;
+	char *p, *word;
+	fr_cmd_t *cmd, *start;
 
-	if ((argc < 0) || (max_argc == 0) || !str) return -1;
-
-	while (*str) {
-		if (my_argc >= max_argc) break;
-
-		/*
-		 *	Chop out comments early.
-		 */
-		if (*str == '#') {
-			*str = '\0';
-			break;
-		}
-
-		while ((*str == ' ') ||
-		       (*str == '\t') ||
-		       (*str == '\r') ||
-		       (*str == '\n'))
-			*(str++) = '\0';
-
-		if (!*str) break;
-
-		argv[my_argc] = str;
-		my_argc++;
-
-		while (*str &&
-		       (*str != ' ') &&
-		       (*str != '\t') &&
-		       (*str != '\r') &&
-		       (*str != '\n'))
-			str++;
+	if ((argc < 0) || (max_argc == 0) || !str) {
+		fr_strerror_printf("Invalid arguments passed to parse routine.");
+		return -1;
 	}
 
-	return my_argc;
+	/*
+	 *	Must have something to check.
+	 */
+	if (!head) {
+		fr_strerror_printf("No commands to parse.");
+		return -1;
+	}
+
+	start = head;
+	cmd = NULL;
+	p = str;
+	*runnable = false;
+	offset = 0;
+
+	/*
+	 *	Either walk down the input argc, or keep splitting
+	 *	'str' until we reach a command with a callback
+	 *	function.
+	 */
+	for (i = 0; i < max_argc; i++) {
+		if (i < argc) {
+			word = argv[i];
+		} else {
+			word = split(&p);
+
+			/*
+			 *	No more strings to parse, we're done.
+			 */
+			if (!word) {
+				rad_assert(cmd->func == NULL);
+//				DEBUG("RETURN %d - %d !runnable", __LINE__, i);
+				return i;
+			}
+
+			/*
+			 *	Save the parsed word.  Note that it
+			 *	MUST be a command name.
+			 */
+			argv[i] = word;
+		}
+
+		/*
+		 *	We have more arguments, but we've run out of
+		 *	commands to run.  That's an error.
+		 */
+		if (!start) {
+		too_many:
+			fr_strerror_printf("Input has too many parameters for command.");
+			return -1;
+		}
+
+		/*
+		 *	Search the current list for the given name.
+		 */
+		cmd = fr_command_find(&start, word, NULL);
+		if (!cmd) {
+			if (i == 1) {
+				fr_strerror_printf("No such command '%s'", word);
+			} else {
+				fr_strerror_printf("No such command '... %s'", word);
+			}
+			return -1;
+		}
+
+		/*
+		 *	This node has a child.  Continue parsing with
+		 *	that one.
+		 */
+		if (cmd->child) {
+			rad_assert(cmd->func == NULL);
+			start = cmd->child;
+			continue;
+		}
+
+		/*
+		 *	This node has no children.  It MUST be a leaf
+		 *	node, so we stop.
+		 *
+		 *	If it isn't a leaf node, then someone managed
+		 *	to add a node where func==NULL, which means
+		 *	that fr_command_add() has failed to do it's
+		 *	job.
+		 */
+		rad_assert(cmd->func != NULL);
+		offset = i;
+		break;
+	}
+
+	/*
+	 *	We've run out of space to store the arguments, return that.
+	 */
+	if (i == max_argc) {
+		return max_argc;
+	}
+
+	rad_assert(cmd != NULL);
+	rad_assert(cmd->func != NULL);
+
+	/*
+	 *	This command doesn't take arguments (that's a good
+	 *	attitude!).  See if there is any text left in the
+	 *	input string.
+	 */
+	if (!cmd->syntax) {
+		word = split(&p);
+
+		/*
+		 *	Oops... there's text after what should be the
+		 *	last argument.  That's bad.
+		 */
+		if (word) goto too_many;
+
+		*runnable = (cmd->func != NULL);
+//		DEBUG("RETURN %d - %d runnable=%d", __LINE__, i + 1, *runnable);
+		return i + 1;
+	}
+
+	/*
+	 *	We now keep splitting the input, but this time we
+	 *	check it against syntax_types[] and syntax_argc.
+	 */
+	for (i = 0; i < cmd->syntax_argc; i++) {
+		if ((offset + i) >= max_argc) return max_argc;
+
+		word = split(&p);
+
+		/*
+		 *	If there's no more text, return whatever the
+		 *	caller sent us.
+		 */
+		if (!word) {
+//			DEBUG("RETURN %d - %d !runnable", __LINE__, offset + i + 1);
+			return (offset + i + 1);
+		}
+
+		argv[offset + i] = word;
+	}
+
+	/*
+	 *	One last check for "too much" data.
+	 */
+	word = split(&p);
+	if (word) goto too_many;
+
+	*runnable = true;
+
+//	DEBUG("RETURN %d - %d runnable", __LINE__, offset + cmd->syntax_argc);
+	return offset + cmd->syntax_argc;
 }

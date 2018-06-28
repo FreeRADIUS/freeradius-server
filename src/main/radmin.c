@@ -133,10 +133,12 @@ static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char const *argv[]);
 static void *fr_radmin(UNUSED void *input_ctx)
 {
 	int argc, context;
+	bool runnable;
 	char **argv;
 	char const **const_argv;
 	char *argv_buffer;
-	char *current;
+	char *current_argv;
+	int *context_exit;
 	char const *prompt;
 	size_t size, room;
 	TALLOC_CTX *ctx;
@@ -148,16 +150,17 @@ static void *fr_radmin(UNUSED void *input_ctx)
 
 	size = room = 8192;
 	argv_buffer = talloc_array(ctx, char, size);
-	current = argv_buffer;
+	current_argv = argv_buffer;
 
 	/* -Wincompatible-pointer-types-discards-qualifiers */
-	argv = talloc_zero_array(ctx, char *, 32);
+	argv = talloc_zero_array(ctx, char *, MAX_ARGV);
 	memcpy(&const_argv, &argv, sizeof(argv));
+
+	context_exit = talloc_zero_array(ctx, int, MAX_ARGV + 1);
 
 	fflush(stdout);
 
 	while (true) {
-		int rcode;
 		char *line;
 
 		line = readline(prompt);
@@ -188,11 +191,11 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	Allow exiting from the current context.
 			 */
 			if (strcmp(line, "exit") == 0) {
-				context--;
+				talloc_const_free(prompt);
+				context = context_exit[context];
 				if (context == 0) {
 					prompt = "radmin> ";
 				} else {
-					talloc_const_free(prompt);
 					prompt = talloc_asprintf(ctx, "... %s> ", argv[context - 1]);
 				}
 				goto next;
@@ -200,21 +203,27 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		}
 
 		/*
-		 *	Splitting the line into words mangles it
-		 *	in-place.  So we need to copy the line to an
-		 *	intermediate buffer.
+		 *	"line" is dynamically allocated and we don't
+		 *	want argv[] pointing to it.  Also, splitting
+		 *	the line mangles it in-place.  So we need to
+		 *	copy the line to "current_argv" for splitting.
+		 *	We also copy it to "current_line" for adding
+		 *	to the history.
 		 *
-		 *	@todo - add the *full* line to the history,
-		 *	not the partial line.
+		 *	@todo - we need a smart history which adds the
+		 *	FULL line to the history, and then on
+		 *	up-arrow, only produces the RELEVANT line from
+		 *	the current context.
 		 */
-		strlcpy(current, line, room);
-		argc = fr_command_str_to_argv(radmin_cmd, context, argv, MAX_ARGV, current);
+		strlcpy(current_argv, line, room);
+		argc = fr_command_str_to_argv(radmin_cmd, context, argv, MAX_ARGV, current_argv, &runnable);
 
 		/*
-		 *	@todo - show parse error
+		 *	Parse error!  Oops..
 		 */
 		if (argc < 0) {
-			fprintf(stderr, "Failed parsing line\n");
+			fprintf(stderr, "Failed parsing line: %s\n", fr_strerror());
+			add_history(line); /* let them up-arrow and retype it */
 			continue;
 		}
 
@@ -223,26 +232,15 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 */
 		if (argc == context) continue;
 
-		/*
-		 *	Having split the RHS of the arguments, we now
-		 *	pass the whole argument list to see if it's
-		 *	runnable.
-		 */
-		rcode = fr_command_runnable(radmin_cmd, argc, const_argv);
-		if (rcode < 0) {
-			fprintf(stderr, "Unknown command: %s\n", fr_strerror());
-			add_history(line); /* let them up-arrow and retype it */
-			goto next;
-		}
 
 		/*
 		 *	It's a partial command.  Add it to the context
 		 *	and continue.
 		 *
-		 *	Note that we have to update `current`, because
+		 *	Note that we have to update `current_argv`, because
 		 *	argv[context] currently points there...
 		 */
-		if (rcode == 0) {
+		if (!runnable) {
 			size_t len;
 
 			len = strlen(argv[argc - 1]) + 1;
@@ -259,13 +257,25 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	Move the pointer down the buffer and
 			 *	keep reading more.
 			 */
-			current = current + len;
-			room -= len;
+			current_argv = current_argv + len + 1;
+			room -= (len + 1);
 
 			if (context > 0) {
 				talloc_const_free(prompt);
 			}
 
+			/*
+			 *	Remember how many arguments we
+			 *	added in this context, and go back up
+			 *	that number of arguments when entering
+			 *	'exit'.
+			 *
+			 *	Otherwise, entering a partial command
+			 *	"foo bar baz" would require you to
+			 *	type "exit" 3 times in order to get
+			 *	back to the root.
+			 */
+			context_exit[argc] = context;
 			context = argc;
 			prompt = talloc_asprintf(ctx, "... %s> ", argv[context - 1]);
 			goto next;
@@ -365,9 +375,9 @@ static fr_cmd_table_t cmd_table[] = {
 	},
 
 	{
-		.syntax = "foo",
+		.syntax = "foo IPADDR bar INTEGER",
 		.func = cmd_test,
-		.help = "test foo.",
+		.help = "test foo IPADDR bar INTEGER",
 		.read_only = false,
 		.parents = parents,
 	},
