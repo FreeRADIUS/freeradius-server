@@ -172,7 +172,7 @@ static bool fr_command_valid_name(char const *name)
  */
 int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, void *ctx, fr_cmd_table_t const *table)
 {
-	fr_cmd_t *cmd;
+	fr_cmd_t *cmd, **start;
 	fr_cmd_t **insert;
 	int argc = 0;
 	char *argv[MAX_ARGV];
@@ -190,6 +190,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 
 	memset(argv, 0, sizeof(argv));
 	memset(types, 0, sizeof(types));
+	start = head;
 
 	/*
 	 *	If there are parent commands, ensure that entries for
@@ -213,13 +214,13 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			 *	Find the head command.  If found,
 			 *	go downwards into the child command.
 			 */
-			cmd = fr_command_find(head, table->parents[i], &insert);
+			cmd = fr_command_find(start, table->parents[i], &insert);
 			if (cmd) {
-				head = &(cmd->child);
+				start = &(cmd->child);
 				continue;
 			}
 
-			cmd = fr_command_alloc(talloc_ctx, head, table->parents[i]);
+			cmd = fr_command_alloc(talloc_ctx, insert, table->parents[i]);
 			cmd->intermediate = true;
 			cmd->auto_allocated = true;
 
@@ -228,7 +229,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			 *	to the child and recurse to the next
 			 *	table.
 			 */
-			head = &(cmd->child);
+			start = &(cmd->child);
 		}
 	}
 
@@ -341,7 +342,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	 *	this new command.  We now see if the "name" currently
 	 *	exists.
 	 */
-	cmd = fr_command_find(head, name, &insert);
+	cmd = fr_command_find(start, name, &insert);
 
 	/*
 	 *	The command exists already.  We can't have TWO
