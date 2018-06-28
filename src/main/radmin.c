@@ -160,6 +160,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		char *line;
 
 		line = readline(prompt);
+		if (stop) break;
+
 		if (!line) continue;
 
 		if (!*line) {
@@ -388,7 +390,6 @@ void fr_radmin_start(void)
 void fr_radmin_stop(void)
 {
 	stop = true;
-	close(stdin);
 
 	if (pthread_join(pthread_id, NULL) != 0) {
 		fprintf(stderr, "Failed joining radmin thread: %s", fr_syserror(errno));
