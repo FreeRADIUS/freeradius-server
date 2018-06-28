@@ -200,23 +200,34 @@ static void *fr_radmin(UNUSED void *input_ctx)
 
 		/*
 		 *	Splitting the line into words mangles it
-		 *	in-place.  So we need to copy it to an
+		 *	in-place.  So we need to copy the line to an
 		 *	intermediate buffer.
+		 *
+		 *	@todo - add the *full* line to the history,
+		 *	not the partial line.
 		 */
 		strlcpy(current, line, room);
-		argc = fr_dict_str_to_argv(current, &argv[context], MAX_ARGV - context);
+		argc = fr_command_str_to_argv(radmin_cmd, context, argv, MAX_ARGV, current);
+
+		/*
+		 *	@todo - show parse error
+		 */
+		if (argc < 0) {
+			fprintf(stderr, "Failed parsing line\n");
+			continue;
+		}
 
 		/*
 		 *	Skip blank lines.
 		 */
-		if (argc == 0) continue;
+		if (argc == context) continue;
 
 		/*
 		 *	Having split the RHS of the arguments, we now
 		 *	pass the whole argument list to see if it's
 		 *	runnable.
 		 */
-		rcode = fr_command_runnable(radmin_cmd, context + argc, const_argv);
+		rcode = fr_command_runnable(radmin_cmd, argc, const_argv);
 		if (rcode < 0) {
 			fprintf(stderr, "Unknown command: %s\n", fr_strerror());
 			add_history(line); /* let them up-arrow and retype it */
@@ -233,7 +244,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		if (rcode == 0) {
 			size_t len;
 
-			len = strlen(argv[context + argc - 1]) + 1;
+			len = strlen(argv[argc - 1]) + 1;
 
 			/*
 			 *	Not enough room for more commands, refuse to do it.
@@ -254,7 +265,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 				talloc_free(prompt);
 			}
 
-			context += argc;
+			context = argc;
 			prompt = talloc_asprintf(ctx, "... %s> ", argv[context - 1]);
 			goto next;
 		}
@@ -265,7 +276,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 */
 		add_history(line);
 
-		if (fr_command_run(stdout, radmin_cmd, argc + context, const_argv) < 0) {
+		if (fr_command_run(stdout, radmin_cmd, argc, const_argv) < 0) {
 			fprintf(stderr, "Failing running command: %s\n", fr_strerror());
 		}
 

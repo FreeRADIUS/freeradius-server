@@ -1080,3 +1080,58 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
 {
 	fr_command_debug_internal(fp, head, 0);
 }
+
+/** Split a string in-place, updating argv[]
+ *
+ *  This function also respects the various data types (mostly).
+ *  Strings can have quotes.  Nothing else can have quotes.
+ *  Non-string data types are skipped and only parsed to data types by
+ *  fr_command_run().
+ *
+ * @param head the head of the hierarchy.
+ * @param argc the number of arguments already in the argv array
+ * @param argv the commands leading up to this string
+ * @param max_argc the maximum number of entries in the argv array
+ * @param str the string to split
+ * @return
+ *	- <0 on error
+ *	- total number of arguments in the argv[] array.  Always >= argc.
+ */
+int fr_command_str_to_argv(UNUSED fr_cmd_t *head, int argc, char *argv[], int max_argc, char *str)
+{
+	int my_argc = argc;
+
+	if ((argc < 0) || (max_argc == 0) || !str) return -1;
+
+	while (*str) {
+		if (my_argc >= max_argc) break;
+
+		/*
+		 *	Chop out comments early.
+		 */
+		if (*str == '#') {
+			*str = '\0';
+			break;
+		}
+
+		while ((*str == ' ') ||
+		       (*str == '\t') ||
+		       (*str == '\r') ||
+		       (*str == '\n'))
+			*(str++) = '\0';
+
+		if (!*str) break;
+
+		argv[my_argc] = str;
+		my_argc++;
+
+		while (*str &&
+		       (*str != ' ') &&
+		       (*str != '\t') &&
+		       (*str != '\r') &&
+		       (*str != '\n'))
+			str++;
+	}
+
+	return my_argc;
+}

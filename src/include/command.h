@@ -68,6 +68,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, int argc, char const 
 char const *fr_command_help(fr_cmd_t *head, int argc, char const *argv[]);
 int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[]);
 void fr_command_debug(FILE *fp, fr_cmd_t *head);
+int fr_command_str_to_argv(UNUSED fr_cmd_t *head, int argc, char *argv[], int max_argc, char *str);
 int fr_command_runnable(fr_cmd_t *head, int argc, char const *argv[]);
 
 #ifdef __cplusplus
