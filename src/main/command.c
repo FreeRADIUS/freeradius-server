@@ -188,6 +188,11 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		return -1;
 	}
 
+	if (!table->func) {
+		fr_strerror_printf("Command tables MUST define a callback function.");
+		return -1;
+	}
+
 	memset(argv, 0, sizeof(argv));
 	memset(types, 0, sizeof(types));
 	start = head;
