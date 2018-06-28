@@ -865,6 +865,11 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 
 	start = head;
 
+	/*
+	 *	Asked to do nothing, do nothing.
+	 */
+	if (argc == 0) return 0;
+
 	for (i = 0; i < argc; i++) {
 		int j;
 
@@ -881,7 +886,7 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 		if (!cmd->syntax) {
 			if (cmd->func) {
 				rad_assert(cmd->func != NULL);
-				return cmd->func(fp, cmd->ctx, argc - i, &argv[i]);
+				return cmd->func(fp, cmd->ctx, argc - i - 1, &argv[i + 1]);
 			}
 
 			rad_assert(cmd->child != NULL);
@@ -931,7 +936,7 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 			fr_value_box_clear(&box);
 		}
 
-		return cmd->func(fp, cmd->ctx, argc - i, &argv[i]);
+		return cmd->func(fp, cmd->ctx, argc - i - 1, &argv[i + 1]);
 	}
 
 	return 0;
