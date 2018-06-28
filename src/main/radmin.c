@@ -207,6 +207,11 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		argc = fr_dict_str_to_argv(current, &argv[context], MAX_ARGV - context);
 
 		/*
+		 *	Skip blank lines.
+		 */
+		if (argc == 0) continue;
+
+		/*
 		 *	Having split the RHS of the arguments, we now
 		 *	pass the whole argument list to see if it's
 		 *	runnable.
