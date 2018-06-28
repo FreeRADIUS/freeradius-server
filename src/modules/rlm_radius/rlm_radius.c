@@ -327,6 +327,7 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
  * @param[out] out	Where to write our parsed data
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_SECTION specifying the things to update
  * @param[in] rule	unused.
  * @return

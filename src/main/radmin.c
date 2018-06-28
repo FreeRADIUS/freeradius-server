@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file radmin.c
+ * @file src/main/radmin.c
  * @brief Internal implementation of radmin
  *
  * @copyright 2018 The FreeRADIUS server project
