@@ -886,6 +886,10 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 
 		if (!cmd->syntax) {
 			if (cmd->func) {
+				if (argc > (i + 1)) {
+					fr_strerror_printf("Input has too many parameters for command.");
+					return -1;
+				}
 				rad_assert(cmd->func != NULL);
 				return cmd->func(fp, cmd->ctx, argc - i - 1, &argv[i + 1]);
 			}
@@ -903,7 +907,7 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 		 *	@todo - return which argument was broken?
 		 */
 		if (argc != (i + cmd->syntax_argc)) {
-			fr_strerror_printf("Input has too many or too few parameters for command");
+			fr_strerror_printf("Input has too many or too few parameters for command.");
 			return -1;
 		}
 
@@ -979,6 +983,11 @@ int fr_command_runnable(fr_cmd_t *head, int argc, char const *argv[])
 
 		if (!cmd->syntax) {
 			if (cmd->func) {
+				if (argc > (i + 1)) {
+					fr_strerror_printf("Input has too many parameters for command.");
+					return -1;
+				}
+
 				rad_assert(cmd->func != NULL);
 				return 1;
 			}
