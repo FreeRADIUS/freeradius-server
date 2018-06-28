@@ -192,7 +192,7 @@ static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char const *argv[])
 		return 0;
 	}
 
-	help = fr_command_help(radmin_cmd, argc - 1, &argv[1]);
+	help = fr_command_help(radmin_cmd, argc, argv);
 	if (help) {
 		fprintf(fp, "%s\n", help);
 		return 0;
