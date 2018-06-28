@@ -445,6 +445,7 @@ int fr_command_add_multi(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *na
  */
 typedef struct fr_cmd_stack_t {
 	int		depth;
+	char const     	**parents;
 	fr_cmd_t	*entry[32];
 } fr_cmd_stack_t;
 
@@ -504,7 +505,7 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 		stack->depth = 0;
 		*walk_ctx = stack;
 
-		info.parents = talloc_zero_array(stack, char const *, MAX_ARGV);
+		stack->parents = info.parents = talloc_zero_array(stack, char const *, MAX_ARGV);
 
 		/*
 		 *	If the head was auto-allocated, find the first
@@ -551,6 +552,7 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 
 	} else {
 		stack = *walk_ctx;
+		info.parents = stack->parents;
 	}
 
 
