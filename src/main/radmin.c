@@ -136,7 +136,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	char **argv;
 	char const **const_argv;
 	char *argv_buffer;
-	char *current, *prompt;
+	char *current;
+	char const *prompt;
 	size_t size, room;
 	TALLOC_CTX *ctx;
 
@@ -191,7 +192,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 				if (context == 0) {
 					prompt = "radmin> ";
 				} else {
-					talloc_free(prompt);
+					talloc_const_free(prompt);
 					prompt = talloc_asprintf(ctx, "... %s> ", argv[context - 1]);
 				}
 				goto next;
@@ -262,7 +263,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			room -= len;
 
 			if (context > 0) {
-				talloc_free(prompt);
+				talloc_const_free(prompt);
 			}
 
 			context = argc;
