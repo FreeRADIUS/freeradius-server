@@ -128,22 +128,38 @@ static fr_cmd_t *radmin_cmd = NULL;
 
 #define MAX_ARGV (32)
 
-static void *fr_radmin(UNUSED void *ctx)
+static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char const *argv[]);
+
+static void *fr_radmin(UNUSED void *input_ctx)
 {
+	int argc, context;
 	char **argv;
 	char const **const_argv;
+	char *argv_buffer;
+	char *current, *prompt;
+	size_t size, room;
+	TALLOC_CTX *ctx;
+
+	context = 0;
+	prompt = "radmin> ";
+
+	ctx = talloc_init("radmin");
+
+	size = room = 8192;
+	argv_buffer = talloc_array(ctx, char, size);
+	current = argv_buffer;
 
 	/* -Wincompatible-pointer-types-discards-qualifiers */
-	argv = talloc_zero_array(NULL, char *, 32);
+	argv = talloc_zero_array(ctx, char *, 32);
 	memcpy(&const_argv, &argv, sizeof(argv));
+
 	fflush(stdout);
 
 	while (true) {
+		int rcode;
 		char *line;
-		int argc;
 
-
-		line = readline("radmin> ");
+		line = readline(prompt);
 		if (!line) continue;
 
 		if (!*line) {
@@ -151,14 +167,102 @@ static void *fr_radmin(UNUSED void *ctx)
 			continue;
 		}
 
+		/*
+		 *	Special-case commands in sub-contexts.
+		 */
+		if (context > 0) {
+			/*
+			 *	We're in a nested command and the user typed
+			 *	"help".  Act as if they typed "help ...".
+			 *	It's just polite.
+			 */
+			if (strcmp(line, "help") == 0) {
+				cmd_help(stdout, NULL, context, const_argv);
+				goto next;
+			}
+
+			/*
+			 *	Allow exiting from the current context.
+			 */
+			if (strcmp(line, "exit") == 0) {
+				context--;
+				if (context == 0) {
+					prompt = "radmin> ";
+				} else {
+					talloc_free(prompt);
+					prompt = talloc_asprintf(ctx, "... %s> ", argv[context - 1]);
+				}
+				goto next;
+			}
+		}
+
+		/*
+		 *	Splitting the line into words mangles it
+		 *	in-place.  So we need to copy it to an
+		 *	intermediate buffer.
+		 */
+		strlcpy(current, line, room);
+		argc = fr_dict_str_to_argv(current, &argv[context], MAX_ARGV - context);
+
+		/*
+		 *	Having split the RHS of the arguments, we now
+		 *	pass the whole argument list to see if it's
+		 *	runnable.
+		 */
+		rcode = fr_command_runnable(radmin_cmd, context + argc, const_argv);
+		if (rcode < 0) {
+			fprintf(stderr, "Unknown command: %s\n", fr_strerror());
+			add_history(line); /* let them up-arrow and retype it */
+			goto next;
+		}
+
+		/*
+		 *	It's a partial command.  Add it to the context
+		 *	and continue.
+		 *
+		 *	Note that we have to update `current`, because
+		 *	argv[context] currently points there...
+		 */
+		if (rcode == 0) {
+			size_t len;
+
+			len = strlen(argv[context + argc - 1]) + 1;
+
+			/*
+			 *	Not enough room for more commands, refuse to do it.
+			 */
+			if (room < (len + 80)) {
+				fprintf(stderr, "Too many commands!\n");
+				goto next;
+			}
+
+			/*
+			 *	Move the pointer down the buffer and
+			 *	keep reading more.
+			 */
+			current = current + len;
+			room -= len;
+
+			if (context > 0) {
+				talloc_free(prompt);
+			}
+
+			context += argc;
+			prompt = talloc_asprintf(ctx, "... %s> ", argv[context - 1]);
+			goto next;
+		}
+
+		/*
+		 *	Else it's a runnable command.  Add it to the
+		 *	history
+		 */
 		add_history(line);
 
-		argc = fr_dict_str_to_argv(line, argv, MAX_ARGV);
-
-		if (fr_command_run(stdout, radmin_cmd, argc, const_argv) < 0) {
+		if (fr_command_run(stdout, radmin_cmd, argc + context, const_argv) < 0) {
 			fprintf(stderr, "Failing running command: %s\n", fr_strerror());
 		}
 
+	next:
 		radmin_free(line);
 
 		if (stop) break;
@@ -215,6 +319,17 @@ static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char c
 	return 0;
 }
 
+static int cmd_test(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
+{
+	fprintf(fp, "woo!\n");
+	return 0;
+}
+
+static char const *parents[] = {
+	"test",
+	NULL
+};
+
 static fr_cmd_table_t cmd_table[] = {
 	{
 		.syntax = "exit",
@@ -228,6 +343,14 @@ static fr_cmd_table_t cmd_table[] = {
 		.func = cmd_help,
 		.help = "Display list of commands and their help text.",
 		.read_only = true
+	},
+
+	{
+		.syntax = "foo",
+		.func = cmd_test,
+		.help = "test foo.",
+		.read_only = false,
+		.parents = parents,
 	},
 
 	{
