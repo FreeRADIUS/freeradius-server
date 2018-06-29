@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <ctype.h>
+#include <unistd.h>
 #include <freeradius-devel/dl.h>
 #include <freeradius-devel/cursor.h>
 #include <freeradius-devel/rad_assert.h>
@@ -571,6 +572,8 @@ void *dl_by_name(char const *name)
 
 		ctx = paths = talloc_typed_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {
+			int access_mode = R_OK | X_OK;
+
 			/*
 			 *	Trim the trailing slash
 			 */
@@ -588,6 +591,12 @@ void *dl_by_name(char const *name)
 			}
 			error = dlerror();
 
+#ifdef AT_ACCESS
+			access_mode |= AT_ACCESS;
+#endif
+
+			if (access(path, access_mode) < 0) fr_strerror_printf_push("%s", fr_syserror(errno));
+
 			fr_strerror_printf_push("%s", error);
 #ifndef __COVERITY__
 			/*
@@ -596,7 +605,7 @@ void *dl_by_name(char const *name)
 			 *	this TOCTOU.
 			 */
 			DEBUG4("Loading %s failed: %s - %s", name, error,
-			       (access(path, R_OK) < 0) ? fr_syserror(errno) : "No access errors");
+			       (errno == 0) ? "No access errors" : fr_syserror(errno));
 			talloc_free(path);
 #endif
 		}
