@@ -232,7 +232,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 */
 		if (argc == context) continue;
 
-
 		/*
 		 *	It's a partial command.  Add it to the context
 		 *	and continue.
@@ -243,6 +242,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		if (!runnable) {
 			size_t len;
 
+			rad_assert(argc > 0);
+			rad_assert(argv[argc - 1] != NULL);
 			len = strlen(argv[argc - 1]) + 1;
 
 			/*
@@ -257,7 +258,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	Move the pointer down the buffer and
 			 *	keep reading more.
 			 */
-			current_argv = current_argv + len + 1;
+			current_argv = argv[argc - 1] + len + 1;
 			room -= (len + 1);
 
 			if (context > 0) {
