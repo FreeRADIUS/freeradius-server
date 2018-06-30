@@ -400,7 +400,7 @@ int dl_symbol_init_cb_register(unsigned int priority, char const *symbol, dl_ini
 
 	dl_symbol_init_cb_unregister(symbol, func);
 
-	MEM(n = talloc(NULL, dl_symbol_init_t));
+	MEM(n = talloc(dl, dl_symbol_init_t));
 	n->priority = priority;
 	n->symbol = symbol;
 	n->func = func;
@@ -456,7 +456,7 @@ int dl_symbol_free_cb_register(unsigned int priority, char const *symbol, dl_fre
 
 	dl_symbol_free_cb_unregister(symbol, func);
 
-	MEM(n = talloc(NULL, dl_symbol_free_t));
+	MEM(n = talloc(dl, dl_symbol_free_t));
 	n->priority = priority;
 	n->symbol = symbol;
 	n->func = func;
@@ -897,11 +897,11 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 /** Initialise structures needed by the dynamic linker
  *
  */
-int dl_init(char const *lib_dir)
+int dl_init(TALLOC_CTX *ctx, char const *lib_dir)
 {
 	if (dl) return 0;
 
-	dl = talloc_zero(NULL, dl_loader_t);
+	dl = talloc_zero(ctx, dl_loader_t);
 	dl->tree = rbtree_talloc_create(dl, dl_handle_cmp, dl_t, NULL, 0);
 	if (!dl->tree) {
 		ERROR("Failed initialising dl->tree");

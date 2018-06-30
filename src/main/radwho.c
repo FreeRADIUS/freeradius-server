@@ -196,7 +196,7 @@ int main(int argc, char **argv)
 
 
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("%s", main_config->name);
 		exit(EXIT_FAILURE);
 	}

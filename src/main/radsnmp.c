@@ -912,10 +912,11 @@ int main(int argc, char **argv)
 	radsnmp_conf_t *conf;
 	int		ret;
 	int		sockfd;
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	fr_log_fp = stderr;
 
-	conf = talloc_zero(NULL, radsnmp_conf_t);
+	conf = talloc_zero(autofree, radsnmp_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
 	conf->raddb_dir = RADDBDIR;
@@ -924,7 +925,7 @@ int main(int argc, char **argv)
 	conf->retries = 5;
 
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radsnmp");
 		exit(EXIT_FAILURE);
 	}

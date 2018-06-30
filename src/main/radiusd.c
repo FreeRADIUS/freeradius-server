@@ -137,12 +137,23 @@ static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx)
 	return 0;
 }
 
+#define EXIT_WITH_FAILURE \
+do { \
+	ret = EXIT_FAILURE; \
+	goto cleanup; \
+} while (0)
+
+#define EXIT_WITH_SUCCESS \
+do { \
+	ret = EXIT_SUCCESS; \
+	goto cleanup; \
+} while (0)
+
 /*
  *	The main guy.
  */
 int main(int argc, char *argv[])
 {
-	int		rcode = EXIT_SUCCESS;
 	int		status;
 	int		argval;
 	bool		display_version = false;
@@ -150,6 +161,7 @@ int main(int argc, char *argv[])
 	int		from_child[2] = {-1, -1};
 	char		*p;
 	fr_schedule_t	*sc = NULL;
+	int		ret = EXIT_SUCCESS;
 
 	main_config_t	*config;
 
@@ -174,7 +186,7 @@ int main(int argc, char *argv[])
 	config = main_config_alloc(autofree);
 	if (!config) {
 		fprintf(stderr, "Failed allocating main config");
-		exit(EXIT_FAILURE);
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -199,14 +211,13 @@ int main(int argc, char *argv[])
 		WSADATA wsaData;
 		if (WSAStartup(MAKEWORD(2, 0), &wsaData)) {
 			fprintf(stderr, "%s: Unable to initialize socket library.\n", config->name);
-			exit(EXIT_FAILURE);
+			EXIT_WITH_FAILURE;
 		}
 	}
 #endif
 
 	rad_debug_lvl = 0;
 	fr_time_start();
-
 
 	/*
 	 *	Don't put output anywhere until we get told a little
@@ -218,7 +229,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Set the panic action and enable other debugging facilities
 	 */
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("Failed installing fault handlers... continuing");
 	}
 
@@ -257,7 +268,7 @@ int main(int argc, char *argv[])
 			if (default_log.fd < 0) {
 				fprintf(stderr, "%s: Failed to open log file %s: %s\n",
 					config->name, config->log_file, fr_syserror(errno));
-				exit(EXIT_FAILURE);
+				EXIT_WITH_FAILURE;
 			}
 			fr_log_fp = fdopen(default_log.fd, "a");
 			break;
@@ -268,12 +279,12 @@ int main(int argc, char *argv[])
 
 			if (fr_size_from_str(&limit, optarg) < 0) {
 				fr_perror("%s: Invalid memory limit", config->name);
-				exit(EXIT_FAILURE);
+				EXIT_WITH_FAILURE;
 			}
 
 			if ((limit > (((size_t)((1024 * 1024) * 1024)) * 16) || (limit < ((1024 * 1024) * 10)))) {
 				fprintf(stderr, "%s: Memory limit must be between 10M-16G\n", config->name);
-				exit(EXIT_FAILURE);
+				EXIT_WITH_FAILURE;
 			}
 
 			config->talloc_memory_limit = limit;
@@ -342,17 +353,17 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("%s", config->name);
-		fr_exit(EXIT_FAILURE);
+		EXIT_WITH_FAILURE;
 	}
 
-	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) fr_exit(EXIT_FAILURE);
+	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Mismatch between build time OpenSSL and linked SSL, better to die
 	 *  here than segfault later.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (ssl_check_consistency() < 0) fr_exit(EXIT_FAILURE);
+	if (ssl_check_consistency() < 0) EXIT_WITH_FAILURE;
 #endif
 
 	/*
@@ -363,7 +374,7 @@ int main(int argc, char *argv[])
 	 */
 	if (talloc_config_set(config) != 0) {
 		fr_perror("%s", config->name);
-		fr_exit(EXIT_FAILURE);
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -377,7 +388,7 @@ int main(int argc, char *argv[])
 
 		INFO("%s - %s", config->name, radiusd_version);
 		dependency_version_print();
-		exit(EXIT_SUCCESS);
+		EXIT_WITH_SUCCESS;
 	}
 
 	if (rad_debug_lvl) dependency_version_print();
@@ -398,7 +409,7 @@ int main(int argc, char *argv[])
 	 *	Initialize the DL infrastructure, which is used by the
 	 *	config file parser.
 	 */
-	dl_init(config->lib_dir);
+	dl_init(autofree, config->lib_dir);
 
 	/*
 	 *	Initialise the top level dictionary hashes which hold
@@ -406,20 +417,20 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
 		fr_perror("radiusd");
-		fr_exit(EXIT_FAILURE);
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
-	if (main_config_init(config) < 0) exit(EXIT_FAILURE);
+	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_init() < 0) fr_exit(EXIT_FAILURE);
+	if (tls_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
 	/*
@@ -427,9 +438,9 @@ int main(int argc, char *argv[])
 	 *  environment.
 	 */
 	if (config->panic_action && !getenv("PANIC_ACTION") &&
-	    (fr_fault_setup(config->panic_action, argv[0]) < 0)) {
+	    (fr_fault_setup(autofree, config->panic_action, argv[0]) < 0)) {
 		fr_perror("radiusd - Failed configuring panic action: %s", config->name);
-		fr_exit(EXIT_FAILURE);
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -447,14 +458,14 @@ int main(int argc, char *argv[])
 	 */
 	if (talloc_config_set(config) < 0) {
 		fr_perror("%s", config->name);
-		fr_exit(EXIT_FAILURE);
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
 	 *  Check for vulnerabilities in the version of libssl were linked against.
 	 */
 #if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
-	if (tls_version_check(config->allow_vulnerable_openssl) < 0) exit(EXIT_FAILURE);
+	if (tls_version_check(config->allow_vulnerable_openssl) < 0) EXIT_WITH_FAILURE;
 #endif
 
 	/*
@@ -491,7 +502,7 @@ int main(int argc, char *argv[])
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
 			ERROR("Failed opening /dev/null: %s", fr_syserror(errno));
-			fr_exit(EXIT_FAILURE);
+			EXIT_WITH_FAILURE;
 		}
 		dup2(devnull, STDIN_FILENO);
 
@@ -499,13 +510,13 @@ int main(int argc, char *argv[])
 
 		if (pipe(from_child) != 0) {
 			ERROR("Couldn't open pipe for child status: %s", fr_syserror(errno));
-			fr_exit(EXIT_FAILURE);
+			EXIT_WITH_FAILURE;
 		}
 
 		pid = fork();
 		if (pid < 0) {
 			ERROR("Couldn't fork: %s", fr_syserror(errno));
-			fr_exit(EXIT_FAILURE);
+			EXIT_WITH_FAILURE;
 		}
 
 		/*
@@ -518,7 +529,7 @@ int main(int argc, char *argv[])
 		 *  or failure message to the parent, via the pipe.
 		 */
 		if (pid > 0) {
-			uint8_t ret = 0;
+			uint8_t child_ret = 0;
 			int stat_loc;
 
 			/* So the pipe is correctly widowed if the child exits */
@@ -529,7 +540,7 @@ int main(int argc, char *argv[])
 			 *  the pipe on error.
 			 */
 			if ((read(from_child[0], &ret, 1) < 0)) {
-				ret = 0;
+				child_ret = 0;
 			}
 
 			/* For cleanliness... */
@@ -565,14 +576,14 @@ int main(int argc, char *argv[])
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
-	if (unlang_init() < 0) exit(EXIT_FAILURE);
+	if (unlang_init() < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
 	 *	before loading the modules.  Some modules need those
 	 *	to be defined.
 	 */
-	if (virtual_servers_bootstrap(config->root_cs) < 0) exit(EXIT_FAILURE);
+	if (virtual_servers_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	Bootstrap the modules.  This links to them, and runs
@@ -580,7 +591,7 @@ int main(int argc, char *argv[])
 	 *
 	 *	After this step, all dynamic attributes, xlats, etc. are defined.
 	 */
-	if (modules_bootstrap(config->root_cs) < 0) exit(EXIT_FAILURE);
+	if (modules_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	And then load the virtual servers.
@@ -591,23 +602,23 @@ int main(int argc, char *argv[])
 	 *	we will discover it here and exit BEFORE opening
 	 *	connections to back-end DBs.
 	 */
-	if (virtual_servers_instantiate() < 0) exit(EXIT_FAILURE);
+	if (virtual_servers_instantiate() < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	Call the module's initialisation methods.  These create
 	 *	connection pools and open connections to external resources.
 	 */
-	if (modules_instantiate(config->root_cs) < 0) exit(EXIT_FAILURE);
+	if (modules_instantiate(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	Instantiate "permanent" xlats
 	 */
-	if (xlat_instantiate() < 0) exit(EXIT_FAILURE);
+	if (xlat_instantiate() < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	Instantiate "permanent" paircmps
 	 */
-	if (paircmp_init() < 0) exit(EXIT_FAILURE);
+	if (paircmp_init() < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Everything seems to have loaded OK, exit gracefully.
@@ -622,7 +633,7 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_snmp_init() < 0) {
 		PERROR("Failed initialising SNMP");
-		fr_exit(EXIT_FAILURE);
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -632,12 +643,12 @@ int main(int argc, char *argv[])
 	 *  This has to be done post-fork in case we're using kqueue, where the
 	 *  queue isn't inherited by the child process.
 	 */
-	if (!radius_event_init(autofree)) exit(EXIT_FAILURE);
+	if (!radius_event_init(autofree)) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Redirect stderr/stdout as appropriate.
 	 */
-	if (log_global_init(&default_log, config->daemonize) < 0) fr_exit(EXIT_FAILURE);
+	if (log_global_init(&default_log, config->daemonize) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	Start the network / worker threads.
@@ -662,14 +673,12 @@ int main(int argc, char *argv[])
 					networks, workers,
 					thread_instantiate,
 					config->root_cs);
-		if (!sc) {
-			exit(EXIT_FAILURE);
-		}
+		if (!sc) EXIT_WITH_FAILURE;
 
 		/*
 		 *	Tell the virtual servers to open their sockets.
 		 */
-		if (virtual_servers_open(sc) < 0) exit(EXIT_FAILURE);
+		if (virtual_servers_open(sc) < 0) EXIT_WITH_FAILURE;
 	}
 
 #ifndef NDEBUG
@@ -691,7 +700,7 @@ int main(int argc, char *argv[])
 	 */
 	if (radius_event_start(config->spawn_workers) < 0) {
 		ERROR("Failed starting event loop");
-		fr_exit(EXIT_FAILURE);
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -702,7 +711,7 @@ int main(int argc, char *argv[])
 	if (fr_set_signal(SIGINT, sig_fatal) < 0) {
 	set_signal_error:
 		PERROR("Failed installing signal handler");
-		fr_exit(EXIT_FAILURE);
+		EXIT_WITH_FAILURE;
 	}
 
 #ifdef SIGQUIT
@@ -741,7 +750,7 @@ int main(int argc, char *argv[])
 			fclose(fp);
 		} else {
 			ERROR("Failed creating PID file %s: %s", config->pid_file, fr_syserror(errno));
-			fr_exit(EXIT_FAILURE);
+			EXIT_WITH_FAILURE;
 		}
 	}
 
@@ -780,10 +789,10 @@ int main(int argc, char *argv[])
 
 	if (status < 0) {
 		PERROR("Exiting due to internal error");
-		rcode = EXIT_FAILURE;
+		ret = EXIT_FAILURE;
 	} else {
 		INFO("Exiting normally");
-		rcode = EXIT_SUCCESS;
+		ret = EXIT_SUCCESS;
 	}
 
 	if (radmin) fr_radmin_stop();
@@ -829,13 +838,13 @@ int main(int argc, char *argv[])
 	 */
 	radius_event_free();		/* Free the requests */
 
+cleanup:
 	/*
 	 *	Frees request specific logging resources which is OK
 	 *	because all the requests will have been stopped.
 	 */
 	log_global_free();
 
-cleanup:
 	/*
 	 *	Free xlat instance data, and call any detach methods
 	 */
@@ -883,12 +892,19 @@ cleanup:
 	trigger_exec_free();		/* Now we're sure no more triggers can fire, free the trigger tree */
 
 	/*
+	 *	Clean out the main thread's log buffers
+	 *	These would be free on exit anyway but this
+	 *	stops them showing up in the memory report.
+	 */
+	fr_strerror_free();
+
+	/*
 	 *  Anything not cleaned up by the above is allocated in the NULL
 	 *  top level context, and is likely leaked memory.
 	 */
 	if (talloc_memory_report) fr_log_talloc_report(NULL);
 
-	return rcode;
+	return ret;
 }
 
 /*

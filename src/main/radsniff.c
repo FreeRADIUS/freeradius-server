@@ -2201,6 +2201,7 @@ int main(int argc, char *argv[])
 	int		opt;
 	char const	*raddb_dir = RADDBDIR;
 	char const	*dict_dir = DICTDIR;
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	rs_stats_t	*stats;
 
@@ -2211,7 +2212,7 @@ int main(int argc, char *argv[])
 	 *	Useful if using radsniff as a long running stats daemon
 	 */
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radsniff");
 		exit(EXIT_FAILURE);
 	}

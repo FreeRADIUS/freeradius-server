@@ -721,7 +721,7 @@ int main(int argc, char *argv[])
 	 *	the basic fatal signal handlers.
 	 */
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("%s", config->name);
 		exit(EXIT_FAILURE);
 	}
@@ -812,7 +812,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	dl_init(config->lib_dir);
+	dl_init(autofree, config->lib_dir);
 
 	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
 		fr_perror("%s", config->name);
@@ -960,7 +960,7 @@ int main(int argc, char *argv[])
 		panic_action = getenv("PANIC_ACTION");
 		if (!panic_action) panic_action = config->panic_action;
 
-		if (panic_action && (fr_fault_setup(panic_action, argv[0]) < 0)) {
+		if (panic_action && (fr_fault_setup(autofree, panic_action, argv[0]) < 0)) {
 			fr_perror("%s", config->name);
 			exit(EXIT_FAILURE);
 		}

@@ -953,7 +953,11 @@ do {\
 	subcs = cf_section_find(cs, "feature", NULL);
 	if (!subcs) {
 		subcs = cf_section_alloc(cs, cs, "feature", NULL);
-		if (!subcs) return -1;
+		if (!subcs) {
+		failure:
+			talloc_free(cs);
+			return -1;
+		}
 	}
 	dependency_init_features(subcs);
 
@@ -965,7 +969,7 @@ do {\
 	subcs = cf_section_find(cs, "version", NULL);
 	if (!subcs) {
 		subcs = cf_section_alloc(cs, cs, "version", NULL);
-		if (!subcs) return -1;
+		if (!subcs) goto failure;
 	}
 	dependency_version_numbers_init(subcs);
 
@@ -983,7 +987,7 @@ do {\
 	 *	And then all of the modules have to be updated to use
 	 *	their local dict pointer, instead of NULL.
 	 */
-	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) return -1;
+	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) goto failure;
 
 	/*
 	 *	Register dictionary autoload callbacks
@@ -996,8 +1000,7 @@ do {\
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->raddb_dir, config->name);
 	if (cf_file_read(cs, buffer) < 0) {
 		ERROR("Error reading or parsing %s", buffer);
-		talloc_free(cs);
-		return -1;
+		goto failure;
 	}
 
 	/*
@@ -1010,8 +1013,7 @@ do {\
 		if (cp){
 			if (config->overwrite_config_name && (cf_pair_replace(cs, cp, config->name) < 0)) {
 				ERROR("Failed adding/replacing \"name\" config item");
-				talloc_free(cs);
-				return -1;
+				goto failure;
 			}
 		} else {
 			MEM(cp = cf_pair_alloc(cs, "name", config->name, T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING));
@@ -1019,10 +1021,7 @@ do {\
 		}
 	}
 
-	if (cf_section_pass2(cs) < 0) {
-		talloc_free(cs);
-		return -1;
-	}
+	if (cf_section_pass2(cs) < 0) goto failure;
 
 	/*
 	 *	Parse environment variables first.
@@ -1038,28 +1037,27 @@ do {\
 		     ci = cf_item_next(subcs, ci)) {
 			if (!cf_item_is_pair(ci)) {
 				cf_log_err(ci, "Unexpected item in ENV section");
-				talloc_free(cs);
-				return -1;
+				goto failure;
 			}
 
 			cp = cf_item_to_pair(ci);
 			if (cf_pair_operator(cp) != T_OP_EQ) {
 				cf_log_err(ci, "Invalid operator for item in ENV section");
-				talloc_free(cs);
-				return -1;
+				goto failure;
 			}
 
 			attr = cf_pair_attr(cp);
 			value = cf_pair_value(cp);
 			if (!value) {
 				if (unsetenv(attr) < 0) {
-					cf_log_err(ci, "Failed deleting environment variable %s: %s", attr, fr_syserror(errno));
-					talloc_free(cs);
-					return -1;
+					cf_log_err(ci, "Failed deleting environment variable %s: %s",
+						   attr, fr_syserror(errno));
+					goto failure;
 				}
 			} else {
 				if (setenv(attr, value, 1) < 0) {
-					cf_log_err(ci, "Failed setting environment variable %s: %s", attr, fr_syserror(errno));
+					cf_log_err(ci, "Failed setting environment variable %s: %s",
+						   attr, fr_syserror(errno));
 					talloc_free(cs);
 					return -1;
 				}
@@ -1070,8 +1068,7 @@ do {\
 				if ((strcmp(attr, "LD_PRELOAD") == 0) &&
 				    (dlopen(value, RTLD_NOW | RTLD_GLOBAL) == NULL)) {
 					cf_log_err(ci, "Failed loading library %s: %s", value, dlerror());
-					talloc_free(cs);
-					return -1;
+					goto failure;
 				}
 			}
 		} /* loop over pairs in ENV */
@@ -1085,31 +1082,27 @@ do {\
 		if (cf_section_rules_push(cs, initial_logging_config) < 0) {
 			fprintf(stderr, "%s: Error: Failed pushing rules for log {} section.\n",
 				config->name);
-			cf_file_free(cs);
-			return -1;
+			goto failure;
 		}
 
 		DEBUG("Parsing initial logging configuration.");
 		if (cf_section_parse(config, config, cs) < 0) {
 			fprintf(stderr, "%s: Error: Failed to parse log{} section.\n",
 				config->name);
-			cf_file_free(cs);
-			return -1;
+			goto failure;
 		}
 
 		if (!config->log_dest) {
 			fprintf(stderr, "%s: Error: No log destination specified.\n",
 				config->name);
-			cf_file_free(cs);
-			return -1;
+			goto failure;
 		}
 
 		default_log.dst = fr_str2int(log_str2dst, config->log_dest, L_DST_NUM_DEST);
 		if (default_log.dst == L_DST_NUM_DEST) {
 			fprintf(stderr, "%s: Error: Unknown log_destination %s\n",
 				config->name, config->log_dest);
-			cf_file_free(cs);
-			return -1;
+			goto failure;
 		}
 
 		if (default_log.dst == L_DST_SYSLOG) {
@@ -1120,16 +1113,14 @@ do {\
 			if (!config->syslog_facility) {
 				fprintf(stderr, "%s: Error: Syslog chosen but no facility was specified\n",
 					config->name);
-				cf_file_free(cs);
-				return -1;
+				goto failure;
 			}
 			config->syslog_facility = fr_str2int(syslog_facility_table,
 							     config->syslog_facility_str, -1);
 			if (config->syslog_facility < 0) {
 				fprintf(stderr, "%s: Error: Unknown syslog_facility %s\n",
 					config->name, config->syslog_facility_str);
-				cf_file_free(cs);
-				return -1;
+				goto failure;
 			}
 
 #ifdef HAVE_SYSLOG_H
@@ -1144,8 +1135,7 @@ do {\
 			if (!config->log_file) {
 				fprintf(stderr, "%s: Error: Specified \"files\" as a log destination, but no log filename was given!\n",
 					config->name);
-				cf_file_free(cs);
-				return -1;
+				goto failure;
 			}
 		}
 	}
@@ -1162,18 +1152,18 @@ do {\
 	/*
 	 *	Switch users as early as possible.
 	 */
-	if (!switch_users(config, cs)) fr_exit(EXIT_FAILURE);
+	if (!switch_users(config, cs)) goto failure;
 #endif
 
 	/*
 	 *	This allows us to figure out where, relative to
 	 *	radiusd.conf, the other configuration files exist.
 	 */
-	if (cf_section_rules_push(cs, server_config) < 0) return -1;
-	if (cf_section_rules_push(cs, virtual_servers_config) < 0) return -1;
+	if (cf_section_rules_push(cs, server_config) < 0) goto failure;
+	if (cf_section_rules_push(cs, virtual_servers_config) < 0) goto failure;
 
 	DEBUG("Parsing main configuration.");
-	if (cf_section_parse(config, config, cs) < 0) return -1;
+	if (cf_section_parse(config, config, cs) < 0) goto failure;
 
 	/*
 	 *	We ignore colourization of output until after the
@@ -1220,9 +1210,7 @@ do {\
 	config->root_cs = cs;
 
 	DEBUG2("%s: #### Loading Clients ####", config->name);
-	if (!client_list_parse_section(cs, false)) {
-		return -1;
-	}
+	if (!client_list_parse_section(cs, false)) goto failure;
 
 	/*
 	 *	Register the %{config:section.subsection} xlat function.
@@ -1235,7 +1223,7 @@ do {\
 	if (config->chroot_dir) {
 		if (chdir(config->log_dir) < 0) {
 			ERROR("Failed to 'chdir %s' after chroot: %s", config->log_dir, fr_syserror(errno));
-			return -1;
+			goto failure;
 		}
 	}
 

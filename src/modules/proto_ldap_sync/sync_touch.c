@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 	conf->retries = 5;
 
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("sync_touch");
 		exit(EXIT_FAILURE);
 	}
