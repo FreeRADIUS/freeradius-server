@@ -2220,7 +2220,7 @@ int main(int argc, char *argv[])
 
 	talloc_set_log_stderr();
 
-	conf = talloc_zero(NULL, rs_t);
+	conf = talloc_zero(autofree, rs_t);
 	RS_ASSERT(conf);
 
 	stats = talloc_zero(conf, rs_stats_t);
