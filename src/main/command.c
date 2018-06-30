@@ -1290,8 +1290,6 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 				continue;
 			}
 
-			printf("CHECKING argv[%d] = %s\n", i, argv[i]);
-
 			quote = '\0';
 			if (type == FR_TYPE_STRING) {
 				if ((argv[i][0] == '"') ||
