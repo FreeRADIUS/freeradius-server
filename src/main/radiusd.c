@@ -529,7 +529,6 @@ int main(int argc, char *argv[])
 		 *  or failure message to the parent, via the pipe.
 		 */
 		if (pid > 0) {
-			uint8_t child_ret = 0;
 			int stat_loc;
 
 			/* So the pipe is correctly widowed if the child exits */
@@ -540,7 +539,7 @@ int main(int argc, char *argv[])
 			 *  the pipe on error.
 			 */
 			if ((read(from_child[0], &ret, 1) < 0)) {
-				child_ret = 0;
+				ret = EXIT_FAILURE;
 			}
 
 			/* For cleanliness... */
