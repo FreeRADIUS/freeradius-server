@@ -1103,15 +1103,16 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
 	fr_command_debug_internal(fp, head, 0);
 }
 
-static char *split(char **input)
+static int split(char **input, char **output)
 {
+	char quote;
 	char *str = *input;
 	char *word;
 
 	/*
 	 *	String is empty, we're done.
 	 */
-	if (!*str) return NULL;
+	if (!*str) return 0;
 
 	/*
 	 *	Skip leading whitespace.
@@ -1125,14 +1126,14 @@ static char *split(char **input)
 	/*
 	 *	String is empty, we're done.
 	 */
-	if (!*str) return NULL;
+	if (!*str) return 0;
 
 	/*
 	 *	String is only comments, we're done.
 	 */
 	if (*str == '#') {
 		*str = '\0';
-		return NULL;
+		return 0;
 	}
 
 	/*
@@ -1141,15 +1142,63 @@ static char *split(char **input)
 	word = str;
 
 	/*
-	 *	Skip the next non-space characters.
+	 *	Quoted string?  Skip to the trailing quote.
 	 */
-	while (*str &&
-	       (*str != ' ') &&
-	       (*str != '#') &&
-	       (*str != '\t') &&
-	       (*str != '\r') &&
-	       (*str != '\n'))
+	if ((*str == '"') || (*str == '\'')) {
+		quote = *(str++);
+
+		while (*str != quote) {
+			if (!*str) {
+				fr_strerror_printf("String is not terminated with a quotation character.");
+				return -1;
+			}
+
+			/*
+			 *	Skip backslashes and the following character
+			 */
+			if (*str == '\\') {
+				str++;
+				if (!*str) {
+					fr_strerror_printf("Invalid backslash at end of string.");
+					return -1;
+				};
+				str++;
+				continue;
+			}
+
+			str++;
+		}
+
+		/*
+		 *	Skip the final quotation mark.
+		 */
 		str++;
+
+		/*
+		 *	"foo"bar is invalid.
+		 */
+		if ((*str != '\0') &&
+		    (*str != ' ') &&
+		    (*str != '#') &&
+		    (*str != '\t') &&
+		    (*str != '\r') &&
+		    (*str != '\n')) {
+			fr_strerror_printf("Invalid text after quoted string.");
+			return -1;
+		}
+
+	} else {
+		/*
+		 *	Skip the next non-space characters.
+		 */
+		while (*str &&
+		       (*str != ' ') &&
+		       (*str != '#') &&
+		       (*str != '\t') &&
+		       (*str != '\r') &&
+		       (*str != '\n'))
+			str++;
+	}
 
 	/*
 	 *	One of the above characters is after the word.
@@ -1160,7 +1209,8 @@ static char *split(char **input)
 	if (*str) *(str++) = '\0';
 
 	*input = str;
-	return word;
+	*output = word;
+	return 1;
 }
 
 /** Split a string in-place, updating argv[]
@@ -1171,7 +1221,7 @@ static char *split(char **input)
  *  fr_command_run().
  *
  * @param head the head of the hierarchy.
- * @param argc the number of arguments already in the argv array
+ * @param input_argc the number of arguments already in the argv array
  * @param argv the commands leading up to this string
  * @param max_argc the maximum number of entries in the argv array
  * @param str the string to split
@@ -1180,13 +1230,13 @@ static char *split(char **input)
  *	- <0 on error.
  *	- total number of arguments in the argv[] array.  Always >= argc.
  */
-int fr_command_str_to_argv(fr_cmd_t *head, int argc, char *argv[], int max_argc, char *str, bool *runnable)
+int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max_argc, char *str, bool *runnable)
 {
-	int i, offset;
-	char *p, *word;
+	int i, argc, cmd_argc, syntax_argc;
+	char *p;
 	fr_cmd_t *cmd, *start;
 
-	if ((argc < 0) || (max_argc == 0) || !str) {
+	if ((input_argc < 0) || (max_argc == 0) || !str) {
 		fr_strerror_printf("Invalid arguments passed to parse routine.");
 		return -1;
 	}
@@ -1199,144 +1249,158 @@ int fr_command_str_to_argv(fr_cmd_t *head, int argc, char *argv[], int max_argc,
 		return -1;
 	}
 
-	start = head;
-	cmd = NULL;
 	p = str;
 	*runnable = false;
-	offset = 0;
 
 	/*
-	 *	Either walk down the input argc, or keep splitting
-	 *	'str' until we reach a command with a callback
-	 *	function.
+	 *	Split the input.
 	 */
-	for (i = 0; i < max_argc; i++) {
-		if (i < argc) {
-			word = argv[i];
-		} else {
-			word = split(&p);
+	for (i = input_argc; i < max_argc; i++) {
+		int rcode;
 
-			/*
-			 *	No more strings to parse, we're done.
-			 */
-			if (!word) {
-				rad_assert(cmd->func == NULL);
-//				DEBUG("RETURN %d - %d !runnable", __LINE__, i);
-				return i;
-			}
+		rcode = split(&p, &argv[i]);
+		if (rcode < 0) return -1;
+		if (!rcode) break;
+	}
 
-			/*
-			 *	Save the parsed word.  Note that it
-			 *	MUST be a command name.
-			 */
-			argv[i] = word;
-		}
+	if (i == max_argc) {
+	too_many:
+		fr_strerror_printf("Too many arguments for command.");
+		return -1;
+	}
 
+	argc = i;
+	cmd_argc = -1;
+
+	start = head;
+	cmd = NULL;
+
+	/*
+	 *	Find the matching command.
+6	 */
+	for (i = 0; i < argc; i++) {
 		/*
-		 *	We have more arguments, but we've run out of
-		 *	commands to run.  That's an error.
+		 *	Look for a child command.
 		 */
-		if (!start) {
-		too_many:
-			fr_strerror_printf("Input has too many parameters for command.");
-			return -1;
-		}
-
-		/*
-		 *	Search the current list for the given name.
-		 */
-		cmd = fr_command_find(&start, word, NULL);
+		cmd = fr_command_find(&start, argv[i], NULL);
 		if (!cmd) {
-			if (i == 1) {
-				fr_strerror_printf("No such command '%s'", word);
-			} else {
-				fr_strerror_printf("No such command '... %s'", word);
-			}
+			fr_strerror_printf("No matching command: %s", argv[i]);
 			return -1;
 		}
 
 		/*
-		 *	This node has a child.  Continue parsing with
-		 *	that one.
+		 *	There's a child.  Go match it.
 		 */
 		if (cmd->child) {
-			rad_assert(cmd->func == NULL);
 			start = cmd->child;
 			continue;
 		}
 
-		/*
-		 *	This node has no children.  It MUST be a leaf
-		 *	node, so we stop.
-		 *
-		 *	If it isn't a leaf node, then someone managed
-		 *	to add a node where func==NULL, which means
-		 *	that fr_command_add() has failed to do it's
-		 *	job.
-		 */
 		rad_assert(cmd->func != NULL);
-		offset = i;
+		cmd_argc = i;
 		break;
 	}
 
 	/*
-	 *	We've run out of space to store the arguments, return that.
+	 *	Walked the entire input without finding a runnable
+	 *	command.  Ask for more input.
 	 */
-	if (i == max_argc) {
-		return max_argc;
-	}
+	if (i == argc) return argc;
 
 	rad_assert(cmd != NULL);
 	rad_assert(cmd->func != NULL);
+	rad_assert(cmd->child == NULL);
+	rad_assert(cmd_argc >= 0);
 
 	/*
-	 *	This command doesn't take arguments (that's a good
-	 *	attitude!).  See if there is any text left in the
-	 *	input string.
+	 *	Number of argv left, minus one for the command name.
+	 */
+	syntax_argc = (argc - i) - 1;
+
+	/*
+	 *	The command doesn't take any arguments.  Error out if
+	 *	there are any.  Otherwise, return that the command is
+	 *	runnable.
 	 */
 	if (!cmd->syntax) {
-		word = split(&p);
+		if (syntax_argc > 0) goto too_many;
 
-		/*
-		 *	Oops... there's text after what should be the
-		 *	last argument.  That's bad.
-		 */
-		if (word) goto too_many;
-
-		*runnable = (cmd->func != NULL);
-//		DEBUG("RETURN %d - %d runnable=%d", __LINE__, i + 1, *runnable);
-		return i + 1;
+		*runnable = true;
+		return argc;
 	}
 
 	/*
-	 *	We now keep splitting the input, but this time we
-	 *	check it against syntax_types[] and syntax_argc.
+	 *	Too many arguments for the command.  That's an error.
+	 *
+	 *	@todo - allow varargs
 	 */
-	for (i = 0; i < cmd->syntax_argc; i++) {
-		if ((offset + i) >= max_argc) return max_argc;
+	if (syntax_argc > cmd->syntax_argc) goto too_many;
 
-		word = split(&p);
+	/*
+	 *	If there are enough arguments to pass anything to the
+	 *	command, and there are more arguments than we had on
+	 *	input, do syntax checks on the new arguments.
+	 */
+	if ((argc > cmd_argc) && (argc > input_argc)) {
+		int start_argc;
 
 		/*
-		 *	If there's no more text, return whatever the
-		 *	caller sent us.
+		 *	Start checking at the first argument.  But
+		 *	skip the arguments we were given on input.
 		 */
-		if (!word) {
-//			DEBUG("RETURN %d - %d !runnable", __LINE__, offset + i + 1);
-			return (offset + i + 1);
+		start_argc = cmd_argc + 1;
+		if (start_argc < input_argc) start_argc = input_argc;
+
+		for (i = start_argc; i < argc; i++) {
+			int j;
+			char quote;
+			fr_type_t type;
+			fr_value_box_t box;
+
+			j = i - start_argc;
+
+			/*
+			 *	May be written to for things like
+			 *	"combo_ipaddr".
+			 */
+			type = cmd->syntax_types[j];
+
+			if (type == FR_TYPE_INVALID) {
+				continue;
+			}
+
+			printf("CHECKING argv[%d] = %s\n", i, argv[i]);
+
+			quote = '\0';
+			if (type == FR_TYPE_STRING) {
+				if ((argv[i][0] == '"') ||
+				    (argv[i][0] == '\'')) {
+					quote = argv[i][0];
+				}
+			}
+
+			/*
+			 *	Parse the data to be sure it's well formed.
+			 */
+			if (fr_value_box_from_str(NULL, &box, &type,
+						  NULL, argv[i], -1, quote, true) < 0) {
+				fr_strerror_printf("Failed parsing argument %d - %s",
+						   i, fr_strerror());
+				return -1;
+			}
+
+			fr_value_box_clear(&box);
 		}
-
-		argv[offset + i] = word;
 	}
 
 	/*
-	 *	One last check for "too much" data.
+	 *	Too few arguments to run the command.
 	 */
-	word = split(&p);
-	if (word) goto too_many;
+	if (syntax_argc < cmd->syntax_argc) return argc;
 
+	/*
+	 *	It's just right.
+	 */
 	*runnable = true;
-
-//	DEBUG("RETURN %d - %d runnable", __LINE__, offset + cmd->syntax_argc);
-	return offset + cmd->syntax_argc;
+	return argc;
 }
