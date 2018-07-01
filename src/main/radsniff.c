@@ -2953,7 +2953,7 @@ finish:
 	/*
 	 *	Free all the things! This also closes all the sockets and file descriptors
 	 */
-	talloc_free(conf);
+	talloc_free(autofree);
 
 	return ret;
 }
