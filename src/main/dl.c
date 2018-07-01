@@ -61,7 +61,7 @@ typedef struct dl_symbol_init dl_symbol_init_t;
 struct dl_symbol_init {
 	unsigned int		priority;	//!< Call priority
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
-	dl_init_t		func;		//!< to call when symbol is found in a module's symbol table.
+	dl_loader_init_t	func;		//!< to call when symbol is found in a module's symbol table.
 	void			*ctx;		//!< User data to pass to func.
 	dl_symbol_init_t	*next;
 };
@@ -109,7 +109,8 @@ typedef struct dl_loader {
 	 */
 	rbtree_t		*tree;
 } dl_loader_t;
-static dl_loader_t *dl;
+
+static dl_loader_t *dl_loader;
 
 /** Name prefixes matching the types of loadable module
  */
@@ -285,7 +286,7 @@ static int dl_symbol_init_walk(dl_t const *dl_module)
 	void			*sym = NULL;
 	char			buffer[256];
 
-	for (init = fr_cursor_init(&cursor, &dl->sym_init);
+	for (init = fr_cursor_init(&cursor, &dl_loader->sym_init);
 	     init;
 	     init = fr_cursor_next(&cursor)) {
 		if (init->symbol) {
@@ -320,7 +321,7 @@ static void dl_symbol_free_walk(dl_t const *dl_module)
 	fr_cursor_t		cursor;
 	void			*sym = NULL;
 
-	for (free = fr_cursor_init(&cursor, &dl->sym_free);
+	for (free = fr_cursor_init(&cursor, &dl_loader->sym_free);
 	     free;
 	     free = fr_cursor_next(&cursor)) {
 		if (free->symbol) {
@@ -364,14 +365,14 @@ static int _dl_free(dl_t *module)
 
 	module->handle = NULL;
 
-	rbtree_deletebydata(dl->tree, module);
+	rbtree_deletebydata(dl_loader->tree, module);
 
 	/*
 	 *	If everything has been freed, autofree the tree.
 	 *	dl *MUST* be set to NULL, so that if the server decides to
 	 *	load more modules, the tree is recreated.
 	 */
-	if (rbtree_num_elements(dl->tree) == 0) TALLOC_FREE(dl);
+	if (rbtree_num_elements(dl_loader->tree) == 0) TALLOC_FREE(dl_loader);
 
 	return 0;
 }
@@ -393,20 +394,20 @@ static int _dl_free(dl_t *module)
  *	- 0 on success (or already registered).
  *	- -1 on failure.
  */
-int dl_symbol_init_cb_register(unsigned int priority, char const *symbol, dl_init_t func, void *ctx)
+int dl_symbol_init_cb_register(unsigned int priority, char const *symbol, dl_loader_init_t func, void *ctx)
 {
 	dl_symbol_init_t	*n, *p;
 	fr_cursor_t		cursor;
 
 	dl_symbol_init_cb_unregister(symbol, func);
 
-	MEM(n = talloc(dl, dl_symbol_init_t));
+	MEM(n = talloc(dl_loader, dl_symbol_init_t));
 	n->priority = priority;
 	n->symbol = symbol;
 	n->func = func;
 	n->ctx = ctx;
 
-	for (p = fr_cursor_init(&cursor, &dl->sym_init); p && (p->priority >= priority); fr_cursor_next(&cursor));
+	for (p = fr_cursor_init(&cursor, &dl_loader->sym_init); p && (p->priority >= priority); fr_cursor_next(&cursor));
 	fr_cursor_insert(&cursor, n);
 
 	return 0;
@@ -417,7 +418,7 @@ int dl_symbol_init_cb_register(unsigned int priority, char const *symbol, dl_ini
  * @param[in] symbol	the callback is attached to.
  * @param[in] func	the callback.
  */
-void dl_symbol_init_cb_unregister(char const *symbol, dl_init_t func)
+void dl_symbol_init_cb_unregister(char const *symbol, dl_loader_init_t func)
 {
 	dl_symbol_init_t	*found, find;
 	fr_cursor_t	cursor;
@@ -425,7 +426,7 @@ void dl_symbol_init_cb_unregister(char const *symbol, dl_init_t func)
 	find.symbol = symbol;
 	find.func = func;
 
-	for (found = fr_cursor_init(&cursor, &dl->sym_init);
+	for (found = fr_cursor_init(&cursor, &dl_loader->sym_init);
 	     found && (dl_symbol_init_cmp(&find, found) != 0);
 	     found = fr_cursor_next(&cursor));
 
@@ -456,13 +457,13 @@ int dl_symbol_free_cb_register(unsigned int priority, char const *symbol, dl_fre
 
 	dl_symbol_free_cb_unregister(symbol, func);
 
-	MEM(n = talloc(dl, dl_symbol_free_t));
+	MEM(n = talloc(dl_loader, dl_symbol_free_t));
 	n->priority = priority;
 	n->symbol = symbol;
 	n->func = func;
 	n->ctx = ctx;
 
-	for (p = fr_cursor_init(&cursor, &dl->sym_free); p && (p->priority >= priority); fr_cursor_next(&cursor));
+	for (p = fr_cursor_init(&cursor, &dl_loader->sym_free); p && (p->priority >= priority); fr_cursor_next(&cursor));
 	fr_cursor_insert(&cursor, n);
 
 	return 0;
@@ -481,7 +482,7 @@ void dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func)
 	find.symbol = symbol;
 	find.func = func;
 
-	for (found = fr_cursor_init(&cursor, &dl->sym_free);
+	for (found = fr_cursor_init(&cursor, &dl_loader->sym_free);
 	     found && (dl_symbol_free_cmp(&find, found) != 0);
 	     found = fr_cursor_next(&cursor));
 
@@ -495,7 +496,7 @@ dl_instance_t const *dl_instance_find(void *data)
 {
 	dl_instance_t find = { .data = data };
 
-	return rbtree_finddata(dl->inst_tree, &find);
+	return rbtree_finddata(dl_loader->inst_tree, &find);
 }
 
 /** Allocate module instance data, and parse the module's configuration
@@ -557,7 +558,7 @@ void *dl_by_name(char const *name)
 		DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
 		search_path = env;
 	} else {
-		search_path = dl->lib_dir;
+		search_path = dl_loader->lib_dir;
 	}
 
 	/*
@@ -705,7 +706,7 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	/*
 	 *	If the module's already been loaded, increment the reference count.
 	 */
-	dl_module = rbtree_finddata(dl->tree, &to_find);
+	dl_module = rbtree_finddata(dl_loader->tree, &to_find);
 	if (dl_module) {
 		talloc_free(module_name);
 		talloc_increase_ref_count(dl_module);
@@ -743,7 +744,7 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	DEBUG3("%s validated.  Handle address %p, symbol address %p", module_name, handle, module);
 
 	/* make room for the module type */
-	dl_module = talloc_zero(dl->tree, dl_t);
+	dl_module = talloc_zero(dl_loader->tree, dl_t);
 	dl_module->parent = parent;
 	dl_module->common = module;
 	dl_module->handle = handle;
@@ -763,7 +764,7 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	/*
 	 *	Add the module to the dlhandle cache
 	 */
-	if (!rbtree_insert(dl->tree, dl_module)) {
+	if (!rbtree_insert(dl_loader->tree, dl_module)) {
 		cf_log_err(conf, "Failed to cache module \"%s\"", module_name);
 		goto error;
 	}
@@ -790,7 +791,7 @@ static int _dl_instance_free(dl_instance_t *dl_inst)
 	/*
 	 *	Remove this instance from the tracking tree.
 	 */
-	rbtree_deletebydata(dl->inst_tree, dl_inst);
+	rbtree_deletebydata(dl_loader->inst_tree, dl_inst);
 
 	/*
 	 *	Ensure sane free order, and that all destructors
@@ -851,6 +852,7 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 		char const *name, dl_type_t type)
 {
 	dl_instance_t	*dl_inst;
+	char const	*name2;
 
 	MEM(dl_inst = talloc_zero(ctx, dl_instance_t));
 	talloc_set_destructor(dl_inst, _dl_instance_free);
@@ -884,53 +886,113 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 		}
 	}
 
+	name2 = cf_section_name2(conf);
+	if (name2) {
+		dl_inst->name = talloc_typed_strdup(dl_inst, name2);
+	} else {
+		dl_inst->name = talloc_typed_strdup(dl_inst, cf_section_name1(conf));
+	}
+
 	dl_inst->conf = conf;
 	dl_inst->parent = parent;
 
-	rbtree_insert(dl->inst_tree, dl_inst);	/* Duplicates not possible */
+	rbtree_insert(dl_loader->inst_tree, dl_inst);	/* Duplicates not possible */
 
 	*out = dl_inst;
 
 	return 0;
 }
 
+static int _dl_walk_print(UNUSED void *context, void *data)
+{
+	dl_t *dl = talloc_get_type_abort(data, dl_t);
+
+	WARN("  %s", dl->name);
+
+	return 0;
+}
+
+static int _dl_inst_walk_print(UNUSED void *context, void *data)
+{
+	dl_instance_t *dl_instance = talloc_get_type_abort(data, dl_instance_t);
+
+	WARN("  %s", dl_instance->name);
+
+	return 0;
+}
+
+static int _dl_loader_free(dl_loader_t *dl_l)
+{
+	int ret = 0;
+
+	/*
+	 *	Prevent freeing if we still have modules loaded
+	 *	We do reference counting, we know exactly what
+	 *	should still be active.
+	 */
+	if (rbtree_num_elements(dl_l->tree) > 0) {
+		ret = -1;
+#ifndef NDEBUG
+		WARN("Refusing to cleanup dl loader, the following modules are still in use:");
+		rbtree_walk(dl_l->tree, RBTREE_IN_ORDER, _dl_walk_print, NULL);
+#endif
+
+	}
+
+	if (rbtree_num_elements(dl_l->inst_tree) > 0) {
+		ret = -1;
+#ifndef NDEBUG
+		WARN("Refusing to cleanup dl loader, the following module instances are still in use:");
+		rbtree_walk(dl_l->inst_tree, RBTREE_IN_ORDER, _dl_inst_walk_print, NULL);
+#endif
+	}
+
+	if (ret != 0) WARN("This may appear as a leak in talloc memory reports");
+
+	return ret;
+}
+
 /** Initialise structures needed by the dynamic linker
  *
  */
-int dl_init(TALLOC_CTX *ctx, char const *lib_dir)
+int dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
 {
-	if (dl) return 0;
+	if (dl_loader) return 0;
 
-	dl = talloc_zero(ctx, dl_loader_t);
-	dl->tree = rbtree_talloc_create(dl, dl_handle_cmp, dl_t, NULL, 0);
-	if (!dl->tree) {
+	dl_loader = talloc_zero(ctx, dl_loader_t);
+	dl_loader->tree = rbtree_talloc_create(dl_loader, dl_handle_cmp, dl_t, NULL, 0);
+	if (!dl_loader->tree) {
 		ERROR("Failed initialising dl->tree");
+	error:
+		talloc_free(dl_loader);
 		return -1;
 	}
 
-	dl->inst_tree = rbtree_talloc_create(dl, dl_inst_cmp, dl_instance_t, NULL, 0);
-	if (!dl->inst_tree) {
+	dl_loader->inst_tree = rbtree_talloc_create(dl_loader, dl_inst_cmp, dl_instance_t, NULL, 0);
+	if (!dl_loader->inst_tree) {
 		ERROR("Failed initialising dl->inst_tree");
-		return -1;
+		goto error;
 	}
 
 	if (dl_symbol_init_cb_register(DL_INSTANTIATE_PRIORITY, NULL, dl_load_func, NULL) < 0) {
 		ERROR("Failed registering load() callback");
-		return -1;
+		goto error;
 	}
 
 	if (dl_symbol_free_cb_register(DL_INSTANTIATE_PRIORITY, NULL, dl_unload_func, NULL) < 0) {
 		ERROR("Failed registering unload() callback");
-		return -1;
+		goto error;
 	}
 
 	if (lib_dir) {
-		dl->lib_dir = talloc_strdup(dl, lib_dir);
-		if (!dl->lib_dir) {
+		dl_loader->lib_dir = talloc_strdup(dl_loader, lib_dir);
+		if (!dl_loader->lib_dir) {
 			ERROR("Failed recording log dir");
-			return -1;
+			goto error;
 		}
 	}
+
+	talloc_set_destructor(dl_loader, _dl_loader_free);
 
 	return 0;
 }

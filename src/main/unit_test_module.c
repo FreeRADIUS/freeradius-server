@@ -812,7 +812,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	dl_init(autofree, config->lib_dir);
+	dl_loader_init(autofree, config->lib_dir);
 
 	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
 		fr_perror("%s", config->name);
@@ -1179,11 +1179,12 @@ finish:
 	 */
 	xlat_unregister("poke");
 
+	ERROR("MODULES FREE");
 	/*
 	 *	Detach modules, connection pools, registered xlats / paircmps / maps.
 	 */
 	modules_free();
-
+	ERROR("MODULES DONE");
 	/*
 	 *	The only paircmps remaining are the ones registered by the server core.
 	 */

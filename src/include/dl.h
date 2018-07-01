@@ -94,19 +94,19 @@ typedef int (*module_detach_t)(void *instance);
  *
  * @param[in] module	being loaded.
  * @param[in] symbol	which, if present, will trigger this callback.
- * @param[in] user_ctx	passed to dl_init_register.
+ * @param[in] user_ctx	passed to dl_loader_init_register.
  * @return
  *	- 0 on success.
  *	- -1 on failure
  */
-typedef int (*dl_init_t)(dl_t const *module, void *symbol, void *user_ctx);
+typedef int (*dl_loader_init_t)(dl_t const *module, void *symbol, void *user_ctx);
 
 
 /** Callback when a module is destroyed
  *
  * @param[in] module	being loaded.
  * @param[in] symbol	which, if present, will trigger this callback.
- * @param[in] user_ctx	passed to dl_init_register
+ * @param[in] user_ctx	passed to dl_loader_init_register
  */
 typedef void (*dl_free_t)(dl_t const *module, void *symbol, void *user_ctx);
 
@@ -166,12 +166,12 @@ struct dl_instance {
 #define DL_INSTANTIATE_PRIORITY	5		//!< Callback priority for bootstrap callback
 
 
-int			dl_init(TALLOC_CTX *ctx, char const *lib_dir);
+int			dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir);
 
 int			dl_symbol_init_cb_register(unsigned int priority, char const *symbol,
-						   dl_init_t func, void *ctx);
+						   dl_loader_init_t func, void *ctx);
 
-void			dl_symbol_init_cb_unregister(char const *symbol, dl_init_t func);
+void			dl_symbol_init_cb_unregister(char const *symbol, dl_loader_init_t func);
 
 int			dl_symbol_free_cb_register(unsigned int priority, char const *symbol,
 						   dl_free_t func, void *ctx);

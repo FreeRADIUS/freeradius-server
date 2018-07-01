@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
 	 *	Initialize the DL infrastructure, which is used by the
 	 *	config file parser.
 	 */
-	dl_init(autofree, config->lib_dir);
+	dl_loader_init(autofree, config->lib_dir);
 
 	/*
 	 *	Initialise the top level dictionary hashes which hold
