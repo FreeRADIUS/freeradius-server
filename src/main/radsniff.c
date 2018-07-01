@@ -2671,6 +2671,7 @@ int main(int argc, char *argv[])
 		if (!all_devices) {
 			ERROR("No capture files specified and no live interfaces available");
 			ret = 64;
+			pcap_freealldevs(all_devices);
 			goto finish;
 		}
 
@@ -2697,6 +2698,8 @@ int main(int argc, char *argv[])
 			*in_head = fr_pcap_init(conf, dev_p->name, PCAP_INTERFACE_IN);
 			in_head = &(*in_head)->next;
 		}
+		pcap_freealldevs(all_devices);
+
 		conf->from_auto = true;
 		conf->from_dev = true;
 		INFO("Defaulting to capture on all interfaces");
