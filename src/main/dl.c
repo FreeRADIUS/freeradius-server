@@ -907,6 +907,7 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 	return 0;
 }
 
+#ifndef NDEBUG
 static int _dl_walk_print(UNUSED void *context, void *data)
 {
 	dl_t *dl = talloc_get_type_abort(data, dl_t);
@@ -915,7 +916,9 @@ static int _dl_walk_print(UNUSED void *context, void *data)
 
 	return 0;
 }
+#endif
 
+#ifndef NDEBUG
 static int _dl_inst_walk_print(UNUSED void *context, void *data)
 {
 	dl_instance_t *dl_inst = talloc_get_type_abort(data, dl_instance_t);
@@ -924,6 +927,7 @@ static int _dl_inst_walk_print(UNUSED void *context, void *data)
 
 	return 0;
 }
+#endif
 
 static int _dl_loader_free(dl_loader_t *dl_l)
 {
