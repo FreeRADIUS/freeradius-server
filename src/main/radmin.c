@@ -55,13 +55,15 @@ static pthread_t pthread_id;
 static bool stop = false;
 
 #ifndef USE_READLINE
+/*
+ *	@todo - use thread-local storage
+ */
 static char *readline_buffer[1024];
 
 static char *readline(char const *prompt)
 {
 	char *line, *p;
 
-redo:
 	puts(prompt);
 	fflush(stdout);
 
@@ -70,8 +72,7 @@ redo:
 
 	p = strchr(line, '\n');
 	if (!p) {
-		fprintf(stderr, "%s: Input line too long\n",
-			"XXX");
+		fprintf(stderr, "Input line too long\n");
 		fr_exit_now(EXIT_FAILURE);
 	}
 
@@ -98,7 +99,7 @@ redo:
 	/*
 	 *	Comments: keep going.
 	 */
-	if (!line) goto redo;
+	if (!line) return line;
 
 	/*
 	 *	Strip off CR / LF
