@@ -111,6 +111,7 @@ typedef struct dl_loader {
 } dl_loader_t;
 
 static dl_loader_t *dl_loader;
+static bool do_dlclose = true;	/* Sometimes we need to leave libraries loaded for debugging */
 
 /** Name prefixes matching the types of loadable module
  */
@@ -361,7 +362,7 @@ static int _dl_free(dl_t *module)
 	 *	Only dlclose() handle if we're *NOT* running under valgrind
 	 *	as it unloads the symbols valgrind needs.
 	 */
-	if (!RUNNING_ON_VALGRIND && (fr_get_lsan_state() != 1)) dlclose(module->handle);        /* ignore any errors */
+	if (do_dlclose) dlclose(module->handle);        /* ignore any errors */
 
 	module->handle = NULL;
 
@@ -372,7 +373,10 @@ static int _dl_free(dl_t *module)
 	 *	dl *MUST* be set to NULL, so that if the server decides to
 	 *	load more modules, the tree is recreated.
 	 */
-	if (rbtree_num_elements(dl_loader->tree) == 0) TALLOC_FREE(dl_loader);
+	if (rbtree_num_elements(dl_loader->tree) == 0) {
+		ERROR("Freeing dl loader");
+		TALLOC_FREE(dl_loader);
+	}
 
 	return 0;
 }
@@ -907,16 +911,16 @@ static int _dl_walk_print(UNUSED void *context, void *data)
 {
 	dl_t *dl = talloc_get_type_abort(data, dl_t);
 
-	WARN("  %s", dl->name);
+	WARN("  %s (%zu)", dl->name, talloc_reference_count(dl));
 
 	return 0;
 }
 
 static int _dl_inst_walk_print(UNUSED void *context, void *data)
 {
-	dl_instance_t *dl_instance = talloc_get_type_abort(data, dl_instance_t);
+	dl_instance_t *dl_inst = talloc_get_type_abort(data, dl_instance_t);
 
-	WARN("  %s", dl_instance->name);
+	WARN("  %s", dl_inst->name);
 
 	return 0;
 }
@@ -964,7 +968,7 @@ int dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
 	if (!dl_loader->tree) {
 		ERROR("Failed initialising dl->tree");
 	error:
-		talloc_free(dl_loader);
+		TALLOC_FREE(dl_loader);
 		return -1;
 	}
 
@@ -993,6 +997,13 @@ int dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
 	}
 
 	talloc_set_destructor(dl_loader, _dl_loader_free);
+
+	/*
+	 *	Run this now to avoid bizarre issues
+	 *	with the talloc atexit handlers firing
+	 *	in the child, and that causing issues.
+	 */
+	do_dlclose = (!RUNNING_ON_VALGRIND && (fr_get_lsan_state() != 1));
 
 	return 0;
 }

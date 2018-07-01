@@ -1179,12 +1179,11 @@ finish:
 	 */
 	xlat_unregister("poke");
 
-	ERROR("MODULES FREE");
 	/*
 	 *	Detach modules, connection pools, registered xlats / paircmps / maps.
 	 */
 	modules_free();
-	ERROR("MODULES DONE");
+
 	/*
 	 *	The only paircmps remaining are the ones registered by the server core.
 	 */
