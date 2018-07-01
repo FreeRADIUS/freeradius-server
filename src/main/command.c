@@ -916,43 +916,9 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 		}
 
 		/*
-		 *	Verify the data types.
+		 *	The arguments have already been verified by
+		 *	fr_command_str_to_argv().
 		 */
-		for (j = 0; j < cmd->syntax_argc; j++) {
-			fr_value_box_t box;
-			char quote;
-			int offset = i + 1 + j;
-			fr_type_t type;
-
-			/*
-			 *	May be written to for things like
-			 *	"combo_ipaddr".
-			 */
-			type = cmd->syntax_types[j];
-
-			if (type == FR_TYPE_INVALID) {
-				continue;
-			}
-
-			quote = '\0';
-			if (type == FR_TYPE_STRING) {
-				if ((argv[offset][0] == '"') ||
-				    (argv[offset][0] == '\'')) {
-					quote = argv[offset][0];
-				}
-			}
-
-			/*
-			 *	Parse the data to be sure it's well formed.
-			 */
-			if (fr_value_box_from_str(NULL, &box, &type,
-						  NULL, argv[offset], -1, quote, true) < 0) {
-				return -(offset);
-			}
-
-			fr_value_box_clear(&box);
-		}
-
 		return cmd->func(fp, cmd->ctx, argc - i - 1, &argv[i + 1]);
 	}
 
