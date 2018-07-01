@@ -876,8 +876,6 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 	if (argc == 0) return 0;
 
 	for (i = 0; i < argc; i++) {
-		int j;
-
 		cmd = fr_command_find(&start, argv[i], NULL);
 		if (!cmd) {
 			if (argc == 1) {
