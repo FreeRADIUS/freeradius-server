@@ -127,7 +127,7 @@ static void add_history(UNUSED char *line)
 
 static fr_cmd_t *radmin_cmd = NULL;
 
-#define MAX_ARGV (32)
+#define CMD_MAX_ARGV (32)
 
 static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char const *argv[]);
 
@@ -154,10 +154,10 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	current_argv = argv_buffer;
 
 	/* -Wincompatible-pointer-types-discards-qualifiers */
-	argv = talloc_zero_array(ctx, char *, MAX_ARGV);
+	argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
 	memcpy(&const_argv, &argv, sizeof(argv));
 
-	context_exit = talloc_zero_array(ctx, int, MAX_ARGV + 1);
+	context_exit = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
 
 	fflush(stdout);
 
@@ -217,7 +217,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	the current context.
 		 */
 		strlcpy(current_argv, line, room);
-		argc = fr_command_str_to_argv(radmin_cmd, context, argv, MAX_ARGV, current_argv, &runnable);
+		argc = fr_command_str_to_argv(radmin_cmd, context, argv, CMD_MAX_ARGV, current_argv, &runnable);
 
 		/*
 		 *	Parse error!  Oops..
@@ -350,9 +350,9 @@ static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char c
 	return 0;
 }
 
-static int cmd_test(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
+static int cmd_test(FILE *fp, UNUSED void *ctx, UNUSED int argc, char const *argv[])
 {
-	fprintf(fp, "woo!\n");
+	fprintf(fp, "woo! %s %s\n", argv[0], argv[2]);
 	return 0;
 }
 
@@ -377,9 +377,9 @@ static fr_cmd_table_t cmd_table[] = {
 	},
 
 	{
-		.syntax = "foo IPADDR bar INTEGER",
+		.syntax = "foo INTEGER bar INTEGER",
 		.func = cmd_test,
-		.help = "test foo IPADDR bar INTEGER",
+		.help = "test foo INTEGER bar INTEGER",
 		.read_only = false,
 		.parents = parents,
 	},

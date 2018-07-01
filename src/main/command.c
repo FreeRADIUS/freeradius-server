@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #define MAX_STACK	(32)
-#define MAX_ARGV	(16)
 
 struct fr_cmd_t {
 	struct fr_cmd_t		*next;
@@ -40,8 +39,8 @@ struct fr_cmd_t {
 	char const		*help;				//!< @todo - long / short help ala recli
 
 	int			syntax_argc;			//!< syntax split out into arguments
-	char const		*syntax_argv[MAX_ARGV];		//!< syntax split out into arguments
-	fr_type_t		syntax_types[MAX_ARGV];		//!< types for each argument
+	char const		*syntax_argv[CMD_MAX_ARGV];		//!< syntax split out into arguments
+	fr_type_t		syntax_types[CMD_MAX_ARGV];		//!< types for each argument
 
 	void			*ctx;
 	fr_cmd_func_t		func;
@@ -175,9 +174,9 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	fr_cmd_t *cmd, **start;
 	fr_cmd_t **insert;
 	int argc = 0;
-	char *argv[MAX_ARGV];
+	char *argv[CMD_MAX_ARGV];
 	char *syntax;
-	fr_type_t types[MAX_ARGV];
+	fr_type_t types[CMD_MAX_ARGV];
 
 	if (name && !fr_command_valid_name(name)) {
 		return -1;
@@ -261,7 +260,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 
 		syntax = talloc_strdup(talloc_ctx, table->syntax);
 
-		argc = fr_dict_str_to_argv(syntax, argv, MAX_ARGV);
+		argc = fr_dict_str_to_argv(syntax, argv, CMD_MAX_ARGV);
 
 		/*
 		 *	Empty syntax should be NULL
@@ -511,7 +510,7 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 		stack->depth = 0;
 		*walk_ctx = stack;
 
-		stack->parents = info.parents = talloc_zero_array(stack, char const *, MAX_ARGV);
+		stack->parents = info.parents = talloc_zero_array(stack, char const *, CMD_MAX_ARGV);
 
 		/*
 		 *	If the head was auto-allocated, find the first

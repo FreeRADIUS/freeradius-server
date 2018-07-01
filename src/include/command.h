@@ -29,6 +29,8 @@ RCSIDH(command_h, "$Id$")
 extern "C" {
 #endif
 
+#define CMD_MAX_ARGV (32)
+
 typedef struct fr_cmd_t fr_cmd_t;
 
 typedef int (*fr_cmd_func_t)(FILE *fp, void *ctx, int argc, char const *argv[]);
