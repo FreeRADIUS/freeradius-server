@@ -856,6 +856,7 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, fr_cmd_info_t *info)
 
 	for (i = 0; i < info->argc; i++) {
 		int rcode;
+		fr_cmd_info_t my_info;
 
 		cmd = fr_command_find(&start, info->argv[i], NULL);
 		if (!cmd) {
@@ -899,7 +900,12 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, fr_cmd_info_t *info)
 		 *	fr_command_str_to_argv().
 		 */
 	run:
-		rcode = cmd->func(fp, cmd->ctx, info->argc - i - 1, &info->argv[i + 1]);
+		my_info.argc = info->argc - i - 1;
+		my_info.max_argc = info->max_argc - info->argc;
+		my_info.runnable = true;
+		my_info.argv = &info->argv[i + 1];
+		my_info.box = &info->box[i + 1];
+		rcode = cmd->func(fp, cmd->ctx, &my_info);
 
 		// @todo - clean up value boxes, too!
 		info->argc = 0;

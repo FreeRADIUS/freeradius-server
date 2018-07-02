@@ -667,7 +667,7 @@ static size_t load_test_point_by_command(void **symbol, char *command, size_t of
 
 static fr_cmd_t *command_head = NULL;
 
-static int command_func(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char *argv[])
+static int command_func(UNUSED FILE *fp, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	return 0;
 }

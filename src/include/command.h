@@ -33,8 +33,6 @@ extern "C" {
 
 typedef struct fr_cmd_t fr_cmd_t;
 
-typedef int (*fr_cmd_func_t)(FILE *fp, void *ctx, int argc, char *argv[]);
-
 typedef struct fr_cmd_info_t {
 	int		argc;				//!< current argument count
 	int		max_argc;			//!< maximum number of arguments
@@ -42,6 +40,8 @@ typedef struct fr_cmd_info_t {
 	char		**argv;				//!< text version of commands
 	fr_value_box_t	**box;				//!< value_box version of commands.
 } fr_cmd_info_t;
+
+typedef int (*fr_cmd_func_t)(FILE *fp, void *ctx, fr_cmd_info_t const *info);
 
 typedef int (*fr_cmd_tab_t)(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions);
 

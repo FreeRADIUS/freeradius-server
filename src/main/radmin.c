@@ -129,7 +129,7 @@ static fr_cmd_t *radmin_cmd = NULL;
 
 #define CMD_MAX_ARGV (32)
 
-static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char *argv[]);
+static int cmd_help(FILE *fp, UNUSED void *ctx, fr_cmd_info_t const *info);
 
 static void *fr_radmin(UNUSED void *input_ctx)
 {
@@ -183,7 +183,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	It's just polite.
 			 */
 			if (strcmp(line, "help") == 0) {
-				cmd_help(stdout, NULL, context, info.argv);
+				cmd_help(stdout, NULL, &info);
 				goto next;
 			}
 
@@ -311,7 +311,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
  */
 static struct timeval start_time;
 
-static int cmd_exit(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char *argv[])
+static int cmd_exit(UNUSED FILE *fp, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 	stop = true;
@@ -319,16 +319,16 @@ static int cmd_exit(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED c
 	return 0;
 }
 
-static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char *argv[])
+static int cmd_help(FILE *fp, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	char const *help;
 
-	if (argc == 0) {
+	if (info->argc == 0) {
 		fr_command_debug(fp, radmin_cmd);
 		return 0;
 	}
 
-	help = fr_command_help(radmin_cmd, argc, argv);
+	help = fr_command_help(radmin_cmd, info->argc, info->argv);
 	if (help) {
 		fprintf(fp, "%s\n", help);
 		return 0;
@@ -337,7 +337,7 @@ static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char *argv[])
 	return 0;
 }
 
-static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char *argv[])
+static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	struct timeval now;
 
@@ -351,9 +351,9 @@ static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char *
 	return 0;
 }
 
-static int cmd_test(FILE *fp, UNUSED void *ctx, UNUSED int argc, char *argv[])
+static int cmd_test(FILE *fp, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
-	fprintf(fp, "woo! %s %s\n", argv[0], argv[2]);
+	fprintf(fp, "woo! %s %s\n", info->argv[0], info->argv[2]);
 	return 0;
 }
 
