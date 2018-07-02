@@ -979,12 +979,12 @@ int dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
 		goto error;
 	}
 
-	if (dl_symbol_init_cb_register(DL_PRIORITY_INSTANTIATE, NULL, dl_load_func, NULL) < 0) {
+	if (dl_symbol_init_cb_register(DL_PRIORITY_BOOTSTRAP, NULL, dl_load_func, NULL) < 0) {
 		ERROR("Failed registering load() callback");
 		goto error;
 	}
 
-	if (dl_symbol_free_cb_register(DL_PRIORITY_INSTANTIATE, NULL, dl_unload_func, NULL) < 0) {
+	if (dl_symbol_free_cb_register(DL_PRIORITY_BOOTSTRAP, NULL, dl_unload_func, NULL) < 0) {
 		ERROR("Failed registering unload() callback");
 		goto error;
 	}

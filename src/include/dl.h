@@ -167,7 +167,7 @@ struct dl_instance {
  */
 #define DL_PRIORITY_DICT	30		//!< Callback priority for dictionary autoloading
 #define DL_PRIORITY_DICT_ATTR	20		//!< Callback priority for attribute resolution
-#define DL_PRIORITY_INSTANTIATE	10		//!< Callback priority for bootstrap callback
+#define DL_PRIORITY_BOOTSTRAP	10		//!< Callback priority for bootstrap callback
 
 int			dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir);
 
