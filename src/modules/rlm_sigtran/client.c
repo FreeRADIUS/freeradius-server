@@ -200,7 +200,7 @@ int sigtran_client_thread_unregister(fr_event_list_t *el, int req_pipe_fd)
 	}
 	talloc_free(txn);
 
-	fr_event_fd_delete(el, req_pipe_fd, EVFILT_READ);
+	fr_event_fd_delete(el, req_pipe_fd, FR_EVENT_FILTER_IO);
 	close(req_pipe_fd);
 
 	return 0;
