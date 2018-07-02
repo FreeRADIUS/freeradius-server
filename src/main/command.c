@@ -667,15 +667,18 @@ static int fr_command_tab_expand_partial(fr_cmd_t *head, char const *partial, in
 
 
 /*
- *	We're at a leaf command, which has a syntaxx.  Walk down the
+ *	We're at a leaf command, which has a syntax.  Walk down the
  *	syntax argv checking if it matches.  If we get a matching
  *	command, add that to the expansions array and return.  If we
  *	get a data type instead, do the callback to ask the caller to
  *	expand it.
  */
-static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_info_t *info, int max_expansions, char const **expansions)
+static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int syntax_offset, fr_cmd_info_t *info,
+					int max_expansions, char const **expansions)
 {
 	int i;
+	char *p;
+	char const *q;
 
 	/*
 	 *	If there are more input arguments than this command
@@ -683,82 +686,74 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_i
 	 *
 	 *	@todo - allow for varargs
 	 */
-	if (info->argc > cmd->syntax_argc) return 0;
-	rad_assert(info->argc > 0);
+	if (info->argc > (syntax_offset + cmd->syntax_argc)) {
+		return 0;
+	}
 
-	for (i = 0; i < info->argc; i++) {
-		char const *p, *q;
+	/*
+	 *	Double-check intermediate strings, but skip
+	 *	intermediate data types.
+	 */
+	for (i = syntax_offset; i < (info->argc - 1); i++) {
+		int j = i - syntax_offset;
 
-		/*
-		 *	Skip intermediate commands which are data
-		 *	types.  But stop on the last one, which
-		 *	MAY be expanded.
-		 */
-		if (cmd->syntax_types[i] != FR_TYPE_INVALID) {
-			if (i < (info->argc - 1)) {
-				continue;
-			}
+		if (cmd->syntax_types[j] != FR_TYPE_INVALID) continue;
 
-			if (!cmd->tab_expand) {
-				expansions[0] = cmd->syntax_argv[i];
-				return 1;
-			}
+		if (strcmp(info->argv[i], cmd->syntax_argv[j]) != 0) return -1;
+	}
 
-			return cmd->tab_expand(ctx, cmd->ctx, info, max_expansions, expansions);
+	/*
+	 *	If it's a real data type, run the defined callback to
+	 *	expand it.
+	 */
+	if (cmd->syntax_types[i - syntax_offset] != FR_TYPE_INVALID) {
+		if (!cmd->tab_expand) {
+			expansions[0] = cmd->syntax_argv[i - syntax_offset];
+			return 1;
 		}
 
+		return cmd->tab_expand(ctx, cmd->ctx, info, max_expansions, expansions);
+	}
+
+	/*
+	 *	Not a full match, but we're at the last
+	 *	keyword in the list.  Maybe it's a partial
+	 *	match?
+	 *
+	 *	@todo - allow for (a|b) in syntax,
+	 *	which means creating a tree of allowed
+	 *	syntaxes.  <sigh>
+	 */
+	for (p = info->argv[i], q = cmd->syntax_argv[i - syntax_offset];
+	     (*p != '\0') && (*q != '\0');
+	     p++, q++) {
 		/*
-		 *	Match intermediate commands exactly.
+		 *	Mismatch, can't expand.
 		 */
-		if (strcmp(cmd->syntax_argv[i], info->argv[i]) == 0) continue;
+		if (*p != *q) return 0;
 
 		/*
-		 *	We're not yet at the end of the input syntax,
-		 *	but we don't have a match.  There's clearly no
-		 *	more tab expansions to have.
+		 *	Input is longer than string we're
+		 *	trying to match.  We can't expand
+		 *	that.
 		 */
-		if (i < (info->argc - 1)) return 0;
+		if (p[1] && !q[1]) return 0;
 
 		/*
-		 *	Not a full match, but we're at the last
-		 *	keyword in the list.  Maybe it's a partial
-		 *	match?
+		 *	Input is shorter than the string we're
+		 *	trying to match.  Return the syntax
+		 *	string as a suggested expansion.
 		 *
-		 *	@todo - allow for (a|b) in syntax,
-		 *	which means creating a tree of allowed
-		 *	syntaxes.  <sigh>
+		 *	@todo - return a string which is ALL
+		 *	of the fixed strings.
+		 *
+		 *	e.g. "foo bar IPADDR". If they enter
+		 *	"f<tab>", we should likely return "foo
+		 *	bar", instead of just "foo".
 		 */
-		for (p = info->argv[i], q = cmd->syntax_argv[i];
-		     (*p != '\0') && (*q != '\0');
-		     p++, q++) {
-			/*
-			 *	Mismatch, can't expand.
-			 */
-			if (*p != *q) return 0;
-
-			/*
-			 *	Input is longer than string we're
-			 *	trying to match.  We can't expand
-			 *	that.
-			 */
-			if (p[1] && !q[1]) return 0;
-
-			/*
-			 *	Inout is shorter than the string we're
-			 *	trying to match.  Return the syntax
-			 *	string as a suggested expansion.
-			 *
-			 *	@todo - return a string which is ALL
-			 *	of the fixed strings.
-			 *
-			 *	e.g. "foo bar IPADDR". If they enter
-			 *	"f<tab>", we should likely return "foo
-			 *	bar", instead of just "foo".
-			 */
-			if (!p[1] && q[1]) {
-				expansions[0] = cmd->syntax_argv[i];
-				return 1;
-			}
+		if (!p[1] && q[1]) {
+			expansions[0] = cmd->syntax_argv[i - syntax_offset];
+			return 1;
 		}
 	}
 
@@ -813,10 +808,8 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 			/*
 			 *	Skip the name
 			 */
-			i++;
-
 			rad_assert(cmd->child == NULL);
-			return fr_command_tab_expand_syntax(ctx, cmd, info, max_expansions, expansions);
+			return fr_command_tab_expand_syntax(ctx, cmd, i + 1, info, max_expansions, expansions);
 		}
 
 		rad_assert(cmd->child != NULL);
