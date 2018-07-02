@@ -166,13 +166,16 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
+	dl_t const		*module;
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading proto_%s", cf_pair_value(namespace));
 
-	if (!dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO)) {
+	module = dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO);
+	if (!module) {
 		cf_log_err(listen_cs, "Failed loading proto_%s module", cf_pair_value(namespace));
 		return -1;
 	}
+	cf_data_add(listen_cs, module, "proto module", true);
 
 	return 0;
 }

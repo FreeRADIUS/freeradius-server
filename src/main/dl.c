@@ -373,10 +373,7 @@ static int _dl_free(dl_t *module)
 	 *	dl *MUST* be set to NULL, so that if the server decides to
 	 *	load more modules, the tree is recreated.
 	 */
-	if (rbtree_num_elements(dl_loader->tree) == 0) {
-		ERROR("Freeing dl loader");
-		TALLOC_FREE(dl_loader);
-	}
+	if (rbtree_num_elements(dl_loader->tree) == 0) TALLOC_FREE(dl_loader);
 
 	return 0;
 }

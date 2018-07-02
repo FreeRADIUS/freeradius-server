@@ -1327,7 +1327,7 @@ static int _cd_free(CONF_DATA *cd)
 
 	memcpy(&to_free, &cd->data, sizeof(to_free));
 
-	if (cd->free) talloc_free(to_free);
+	if (cd->free) talloc_decrease_ref_count(to_free);	/* Also works OK for non-reference counted chunks */
 
 	return 0;
 }
