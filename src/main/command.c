@@ -1184,7 +1184,11 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 		return argc;
 	}
 
-	rad_assert(cmd != NULL);
+	/*
+	 *	Not found, that's an error.
+	 */
+	if (!cmd) return -1;
+
 	rad_assert(cmd->func != NULL);
 	rad_assert(cmd->child == NULL);
 	rad_assert(cmd_argc >= 0);
