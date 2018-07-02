@@ -1147,7 +1147,6 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 	 *	Find the matching command.
 	 */
 	for (i = 0; i < argc; i++) {
-		printf("argv[%d] = %s\n", i, info->argv[i]);
 		/*
 		 *	Look for a child command.
 		 */
