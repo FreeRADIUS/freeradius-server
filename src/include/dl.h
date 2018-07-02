@@ -161,10 +161,13 @@ struct dl_instance {
 	dl_instance_t const	*parent;	//!< Parent module's instance (if any).
 };
 
-#define DL_DICT_PRIORITY	11		//!< Callback priority for dictionary autoloading
-#define DL_DICT_ATTR_PRIORITY	10		//!< Callback priority for attribute resolution
-#define DL_INSTANTIATE_PRIORITY	5		//!< Callback priority for bootstrap callback
-
+/** Callback priorities
+ *
+ * The higher the priority, the earlier in callback gets called.
+ */
+#define DL_PRIORITY_DICT	30		//!< Callback priority for dictionary autoloading
+#define DL_PRIORITY_DICT_ATTR	20		//!< Callback priority for attribute resolution
+#define DL_PRIORITY_INSTANTIATE	10		//!< Callback priority for bootstrap callback
 
 int			dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir);
 

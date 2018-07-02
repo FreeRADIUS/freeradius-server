@@ -992,9 +992,9 @@ do {\
 	/*
 	 *	Register dictionary autoload callbacks
 	 */
-	dl_symbol_init_cb_register(DL_DICT_ATTR_PRIORITY, "dict_attr", _module_dict_attr_autoload, NULL);
-	dl_symbol_init_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autoload, NULL);
-	dl_symbol_free_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autofree, NULL);
+	dl_symbol_init_cb_register(DL_PRIORITY_DICT_ATTR, "dict_attr", _module_dict_attr_autoload, NULL);
+	dl_symbol_init_cb_register(DL_PRIORITY_DICT, "dict", _module_dict_autoload, NULL);
+	dl_symbol_free_cb_register(DL_PRIORITY_DICT, "dict", _module_dict_autofree, NULL);
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->raddb_dir, config->name);
