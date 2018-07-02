@@ -129,33 +129,32 @@ static fr_cmd_t *radmin_cmd = NULL;
 
 #define CMD_MAX_ARGV (32)
 
-static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char const *argv[]);
+static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char *argv[]);
 
 static void *fr_radmin(UNUSED void *input_ctx)
 {
 	int argc, context;
-	bool runnable;
-	char **argv;
-	char const **const_argv;
 	char *argv_buffer;
-	char *current_argv;
+	char *current_str;
 	int *context_exit;
 	char const *prompt;
 	size_t size, room;
 	TALLOC_CTX *ctx;
+	fr_cmd_info_t info;
 
 	context = 0;
 	prompt = "radmin> ";
+	info.max_argc = CMD_MAX_ARGV;
 
 	ctx = talloc_init("radmin");
 
 	size = room = 8192;
 	argv_buffer = talloc_array(ctx, char, size);
-	current_argv = argv_buffer;
+	current_str = argv_buffer;
 
-	/* -Wincompatible-pointer-types-discards-qualifiers */
-	argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
-	memcpy(&const_argv, &argv, sizeof(argv));
+	info.max_argc = CMD_MAX_ARGV;
+	info.argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
+	info.box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
 
 	context_exit = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
 
@@ -184,7 +183,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	It's just polite.
 			 */
 			if (strcmp(line, "help") == 0) {
-				cmd_help(stdout, NULL, context, const_argv);
+				cmd_help(stdout, NULL, context, info.argv);
 				goto next;
 			}
 
@@ -197,8 +196,9 @@ static void *fr_radmin(UNUSED void *input_ctx)
 				if (context == 0) {
 					prompt = "radmin> ";
 				} else {
-					prompt = talloc_asprintf(ctx, "... %s> ", argv[context - 1]);
+					prompt = talloc_asprintf(ctx, "... %s> ", info.argv[context - 1]);
 				}
+				info.runnable = false;
 				goto next;
 			}
 		}
@@ -207,7 +207,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	"line" is dynamically allocated and we don't
 		 *	want argv[] pointing to it.  Also, splitting
 		 *	the line mangles it in-place.  So we need to
-		 *	copy the line to "current_argv" for splitting.
+		 *	copy the line to "current_str" for splitting.
 		 *	We also copy it to "current_line" for adding
 		 *	to the history.
 		 *
@@ -216,8 +216,9 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	up-arrow, only produces the RELEVANT line from
 		 *	the current context.
 		 */
-		strlcpy(current_argv, line, room);
-		argc = fr_command_str_to_argv(radmin_cmd, context, argv, CMD_MAX_ARGV, current_argv, &runnable);
+		strlcpy(current_str, line, room);
+		info.argc = context;
+		argc = fr_command_str_to_argv(radmin_cmd, &info, current_str);
 
 		/*
 		 *	Parse error!  Oops..
@@ -237,15 +238,15 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	It's a partial command.  Add it to the context
 		 *	and continue.
 		 *
-		 *	Note that we have to update `current_argv`, because
+		 *	Note that we have to update `current_str`, because
 		 *	argv[context] currently points there...
 		 */
-		if (!runnable) {
+		if (!info.runnable) {
 			size_t len;
 
 			rad_assert(argc > 0);
-			rad_assert(argv[argc - 1] != NULL);
-			len = strlen(argv[argc - 1]) + 1;
+			rad_assert(info.argv[argc - 1] != NULL);
+			len = strlen(info.argv[argc - 1]) + 1;
 
 			/*
 			 *	Not enough room for more commands, refuse to do it.
@@ -259,7 +260,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	Move the pointer down the buffer and
 			 *	keep reading more.
 			 */
-			current_argv = argv[argc - 1] + len + 1;
+			current_str = info.argv[argc - 1] + len + 1;
 			room -= (len + 1);
 
 			if (context > 0) {
@@ -279,17 +280,17 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 */
 			context_exit[argc] = context;
 			context = argc;
-			prompt = talloc_asprintf(ctx, "... %s> ", argv[context - 1]);
+			prompt = talloc_asprintf(ctx, "... %s> ", info.argv[context - 1]);
 			goto next;
 		}
 
 		/*
-		 *	Else it's a runnable command.  Add it to the
+		 *	Else it's a info.runnable command.  Add it to the
 		 *	history
 		 */
 		add_history(line);
 
-		if (fr_command_run(stdout, radmin_cmd, argc, const_argv) < 0) {
+		if (fr_command_run(stdout, radmin_cmd, &info) < 0) {
 			fprintf(stderr, "Failing running command: %s\n", fr_strerror());
 		}
 
@@ -299,7 +300,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		if (stop) break;
 	}
 
-	talloc_free(argv);
+	talloc_free(ctx);
 
 	return NULL;
 }
@@ -310,7 +311,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
  */
 static struct timeval start_time;
 
-static int cmd_exit(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
+static int cmd_exit(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char *argv[])
 {
 	radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 	stop = true;
@@ -318,7 +319,7 @@ static int cmd_exit(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED c
 	return 0;
 }
 
-static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char const *argv[])
+static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char *argv[])
 {
 	char const *help;
 
@@ -336,7 +337,7 @@ static int cmd_help(FILE *fp, UNUSED void *ctx, int argc, char const *argv[])
 	return 0;
 }
 
-static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
+static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char *argv[])
 {
 	struct timeval now;
 
@@ -350,7 +351,7 @@ static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char c
 	return 0;
 }
 
-static int cmd_test(FILE *fp, UNUSED void *ctx, UNUSED int argc, char const *argv[])
+static int cmd_test(FILE *fp, UNUSED void *ctx, UNUSED int argc, char *argv[])
 {
 	fprintf(fp, "woo! %s %s\n", argv[0], argv[2]);
 	return 0;

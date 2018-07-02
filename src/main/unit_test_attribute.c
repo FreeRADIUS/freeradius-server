@@ -667,7 +667,7 @@ static size_t load_test_point_by_command(void **symbol, char *command, size_t of
 
 static fr_cmd_t *command_head = NULL;
 
-static int command_func(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char const *argv[])
+static int command_func(UNUSED FILE *fp, UNUSED void *ctx, UNUSED int argc, UNUSED char *argv[])
 {
 	return 0;
 }
@@ -770,24 +770,24 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
  */
 static void command_tab(TALLOC_CTX *ctx, char *input, char *output, size_t outlen)
 {
-	int i, argc;
-	char **argv;
+	int i;
 	int num_expansions;
-	char const *expansions[32];
+	char const *expansions[CMD_MAX_ARGV];
 	char *p;
-	char const **const_argv;
+	fr_cmd_info_t info;
 
 	/* -Wincompatible-pointer-types-discards-qualifiers */
-	argv = talloc_zero_array(ctx, char *, 32);
-	memcpy(&const_argv, &argv, sizeof(argv));
+	info.argc = 0;
+	info.argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
+	info.box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
 
-	argc = fr_dict_str_to_argv(input, argv, 32);
-	if (argc <= 0) {
+	info.argc = fr_dict_str_to_argv(input, info.argv, CMD_MAX_ARGV);
+	if (info.argc <= 0) {
 		snprintf(output, outlen, "Failed splitting input");
 		return;
 	}
 
-	num_expansions = fr_command_tab_expand(ctx, command_head, argc, const_argv, 32, expansions);
+	num_expansions = fr_command_tab_expand(ctx, command_head, &info, CMD_MAX_ARGV, expansions);
 
 	snprintf(output, outlen, "%d - ", num_expansions);
 	p = output + strlen(output);

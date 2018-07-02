@@ -673,7 +673,7 @@ static int fr_command_tab_expand_partial(fr_cmd_t *head, char const *partial, in
  *	get a data type instead, do the callback to ask the caller to
  *	expand it.
  */
-static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int argc, char const *argv[], int max_expansions, char const **expansions)
+static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_info_t *info, int max_expansions, char const **expansions)
 {
 	int i;
 
@@ -683,10 +683,10 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int argc
 	 *
 	 *	@todo - allow for varargs
 	 */
-	if (argc > cmd->syntax_argc) return 0;
-	rad_assert(argc > 0);
+	if (info->argc > cmd->syntax_argc) return 0;
+	rad_assert(info->argc > 0);
 
-	for (i = 0; i < argc; i++) {
+	for (i = 0; i < info->argc; i++) {
 		char const *p, *q;
 
 		/*
@@ -695,9 +695,7 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int argc
 		 *	MAY be expanded.
 		 */
 		if (cmd->syntax_types[i] != FR_TYPE_INVALID) {
-			fr_cmd_tab_info_t info;
-
-			if (i < (argc - 1)) {
+			if (i < (info->argc - 1)) {
 				continue;
 			}
 
@@ -706,30 +704,20 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int argc
 				return 1;
 			}
 
-			/*
-			 *	Set up the callback structure and ask
-			 *	the callback to fill out the
-			 *	expansions.  Note that we pass the
-			 *	callback the FULL argv.  The callback
-			 *	should verify
-			 */
-			info.argc = argc;
-			info.argv = argv;
-
-			return cmd->tab_expand(ctx, cmd->ctx, &info, max_expansions, expansions);
+			return cmd->tab_expand(ctx, cmd->ctx, info, max_expansions, expansions);
 		}
 
 		/*
 		 *	Match intermediate commands exactly.
 		 */
-		if (strcmp(cmd->syntax_argv[i], argv[i]) == 0) continue;
+		if (strcmp(cmd->syntax_argv[i], info->argv[i]) == 0) continue;
 
 		/*
 		 *	We're not yet at the end of the input syntax,
 		 *	but we don't have a match.  There's clearly no
 		 *	more tab expansions to have.
 		 */
-		if (i < (argc - 1)) return 0;
+		if (i < (info->argc - 1)) return 0;
 
 		/*
 		 *	Not a full match, but we're at the last
@@ -740,7 +728,7 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int argc
 		 *	which means creating a tree of allowed
 		 *	syntaxes.  <sigh>
 		 */
-		for (p = argv[i], q = cmd->syntax_argv[i];
+		for (p = info->argv[i], q = cmd->syntax_argv[i];
 		     (*p != '\0') && (*q != '\0');
 		     p++, q++) {
 			/*
@@ -783,15 +771,14 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int argc
  * @param ctx talloc context for dynamically allocated expansions.  The caller should free it to free all expansions it created.
  *            Expansions added by this function are "const char *", and are managed by the command hierarchy.
  * @param head the head of the hierarchy.
- * @param argc the number of arguments in the argv array
- * @param argv the commands leading up to this one.
+ * @param info the structure describing the command to expand
  * @param max_expansions the maximum number of entries in the expansions array
  * @param expansions where the expansions will be stored.
  * @return
  *	- <0 on error
  *	- number of entries in the expansions array
  */
-int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, int argc, char const *argv[], int max_expansions, char const **expansions)
+int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, int max_expansions, char const **expansions)
 {
 	int i;
 	fr_cmd_t *cmd, *start;
@@ -804,8 +791,8 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, int argc, char const 
 	 *	Walk down the children until we find the correct
 	 *	location.
 	 */
-	for (i = 0; i < argc; i++) {
-		cmd = fr_command_find(&start, argv[i], NULL);
+	for (i = 0; i < info->argc; i++) {
+		cmd = fr_command_find(&start, info->argv[i], NULL);
 
 		/*
 		 *	The command wasn't found in the list.  Walk
@@ -813,7 +800,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, int argc, char const 
 		 *	any partial matches.
 		 */
 		if (!cmd) {
-			return fr_command_tab_expand_partial(start, argv[i], max_expansions, expansions);
+			return fr_command_tab_expand_partial(start, info->argv[i], max_expansions, expansions);
 		}
 
 		start = cmd;
@@ -829,7 +816,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, int argc, char const 
 			i++;
 
 			rad_assert(cmd->child == NULL);
-			return fr_command_tab_expand_syntax(ctx, cmd, argc - i, &argv[i], max_expansions, expansions);
+			return fr_command_tab_expand_syntax(ctx, cmd, info, max_expansions, expansions);
 		}
 
 		rad_assert(cmd->child != NULL);
@@ -843,7 +830,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, int argc, char const 
 	 *	be child commands under that hierarchy.  In which
 	 *	case, show them as expansions.
 	 */
-	rad_assert(i == argc);
+	rad_assert(i == info->argc);
 	rad_assert(cmd->child != NULL);
 
 	for (i = 0, cmd = cmd->child; (i < max_expansions) && (cmd != NULL); i++, cmd = cmd->next) {
@@ -857,13 +844,12 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, int argc, char const 
  *
  * @param fp   where the output is sent
  * @param head the head of the command hierarchy.
- * @param argc the number of arguments in the argv array
- * @param argv the commands leading up to this one.
+ * @param info the structure describing the command to expand
  * @return
  *	- <0 on error
  *	- 0 the command was run successfully
  */
-int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
+int fr_command_run(FILE *fp, fr_cmd_t *head, fr_cmd_info_t *info)
 {
 	int i;
 	fr_cmd_t *cmd, *start;
@@ -873,27 +859,29 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 	/*
 	 *	Asked to do nothing, do nothing.
 	 */
-	if (argc == 0) return 0;
+	if (info->argc == 0) return 0;
 
-	for (i = 0; i < argc; i++) {
-		cmd = fr_command_find(&start, argv[i], NULL);
+	for (i = 0; i < info->argc; i++) {
+		int rcode;
+
+		cmd = fr_command_find(&start, info->argv[i], NULL);
 		if (!cmd) {
-			if (argc == 1) {
-				fr_strerror_printf("No such command '%s'", argv[i]);
+			if (info->argc == 1) {
+				fr_strerror_printf("No such command '%s'", info->argv[i]);
 			} else {
-				fr_strerror_printf("No such command '... %s'", argv[i]);
+				fr_strerror_printf("No such command '... %s'", info->argv[i]);
 			}
 			return -1;
 		}
 
 		if (!cmd->syntax) {
 			if (cmd->func) {
-				if (argc > (i + 1)) {
+				if (info->argc > (i + 1)) {
 					fr_strerror_printf("Input has too many parameters for command.");
 					return -1;
 				}
-				rad_assert(cmd->func != NULL);
-				return cmd->func(fp, cmd->ctx, argc - i - 1, &argv[i + 1]);
+
+				goto run;
 			}
 
 			rad_assert(cmd->child != NULL);
@@ -908,7 +896,7 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 		 *	@todo - allow varargs
 		 *	@todo - return which argument was broken?
 		 */
-		if (argc != (i + 1 + cmd->syntax_argc)) {
+		if (info->argc != (i + 1 + cmd->syntax_argc)) {
 			fr_strerror_printf("Input has too many or too few parameters for command");
 			return -1;
 		}
@@ -917,7 +905,12 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 		 *	The arguments have already been verified by
 		 *	fr_command_str_to_argv().
 		 */
-		return cmd->func(fp, cmd->ctx, argc - i - 1, &argv[i + 1]);
+	run:
+		rcode = cmd->func(fp, cmd->ctx, info->argc - i - 1, &info->argv[i + 1]);
+
+		// @todo - clean up value boxes, too!
+		info->argc = 0;
+		return rcode;
 	}
 
 	return 0;
@@ -927,13 +920,13 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, int argc, char const *argv[])
 /** Get help text for a particular command.
  *
  * @param head the head of the hierarchy.
- * @param argc the number of arguments in the argv array
- * @param argv the commands leading up to this one.
+ * @param argc the number of arguments in argv
+ * @param argv the arguments
  * @return
  *	- NULL on "no help text"
  *	- !NULL is the help text.  Do not free or access it.
  */
-char const *fr_command_help(fr_cmd_t *head, int argc, char const *argv[])
+char const *fr_command_help(fr_cmd_t *head, int argc, char *argv[])
 {
 	int i;
 	fr_cmd_t *cmd, *start;
@@ -1105,22 +1098,19 @@ static int split(char **input, char **output)
  *  fr_command_run().
  *
  * @param head the head of the hierarchy.
- * @param input_argc the number of arguments already in the argv array
- * @param argv the commands leading up to this string
- * @param max_argc the maximum number of entries in the argv array
+ * @param info the structure describing the command to expand
  * @param str the string to split
- * @param[out] runnable whether or not the command is runnable.
  * @return
  *	- <0 on error.
  *	- total number of arguments in the argv[] array.  Always >= argc.
  */
-int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max_argc, char *str, bool *runnable)
+int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 {
 	int i, argc, cmd_argc, syntax_argc;
 	char *p;
 	fr_cmd_t *cmd, *start;
 
-	if ((input_argc < 0) || (max_argc == 0) || !str) {
+	if ((info->argc < 0) || (info->max_argc <= 0) || !str) {
 		fr_strerror_printf("Invalid arguments passed to parse routine.");
 		return -1;
 	}
@@ -1134,20 +1124,21 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 	}
 
 	p = str;
-	*runnable = false;
+	info->runnable = false;
 
 	/*
 	 *	Split the input.
 	 */
-	for (i = input_argc; i < max_argc; i++) {
+	for (i = info->argc; i < info->max_argc; i++) {
 		int rcode;
 
-		rcode = split(&p, &argv[i]);
+		rcode = split(&p, &info->argv[i]);
 		if (rcode < 0) return -1;
 		if (!rcode) break;
 	}
 
-	if (i == max_argc) {
+	if (i == info->max_argc) {
+		fprintf(stderr, "HERE %d\n", __LINE__);
 	too_many:
 		fr_strerror_printf("Too many arguments for command.");
 		return -1;
@@ -1161,14 +1152,15 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 
 	/*
 	 *	Find the matching command.
-6	 */
+	 */
 	for (i = 0; i < argc; i++) {
+		printf("argv[%d] = %s\n", i, info->argv[i]);
 		/*
 		 *	Look for a child command.
 		 */
-		cmd = fr_command_find(&start, argv[i], NULL);
+		cmd = fr_command_find(&start, info->argv[i], NULL);
 		if (!cmd) {
-			fr_strerror_printf("No matching command: %s", argv[i]);
+			fr_strerror_printf("No matching command: %s", info->argv[i]);
 			return -1;
 		}
 
@@ -1189,7 +1181,10 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 	 *	Walked the entire input without finding a runnable
 	 *	command.  Ask for more input.
 	 */
-	if (i == argc) return argc;
+	if (i == argc) {
+		info->argc = argc;
+		return argc;
+	}
 
 	rad_assert(cmd != NULL);
 	rad_assert(cmd->func != NULL);
@@ -1207,9 +1202,13 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 	 *	runnable.
 	 */
 	if (!cmd->syntax) {
-		if (syntax_argc > 0) goto too_many;
+		if (syntax_argc > 0) {
+			fprintf(stderr, "HERE %d\n", __LINE__);
+			goto too_many;
+		}
 
-		*runnable = true;
+		info->runnable = true;
+		info->argc = argc;
 		return argc;
 	}
 
@@ -1218,14 +1217,17 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 	 *
 	 *	@todo - allow varargs
 	 */
-	if (syntax_argc > cmd->syntax_argc) goto too_many;
+	if (syntax_argc > cmd->syntax_argc) {
+		fprintf(stderr, "HERE %d - %d > %d\n", __LINE__, syntax_argc, cmd->syntax_argc);
+		goto too_many;
+	}
 
 	/*
 	 *	If there are enough arguments to pass anything to the
 	 *	command, and there are more arguments than we had on
 	 *	input, do syntax checks on the new arguments.
 	 */
-	if ((argc > cmd_argc) && (argc > input_argc)) {
+	if ((argc > cmd_argc) && (argc > info->argc)) {
 		int start_argc;
 
 		/*
@@ -1233,7 +1235,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 		 *	skip the arguments we were given on input.
 		 */
 		start_argc = cmd_argc + 1;
-		if (start_argc < input_argc) start_argc = input_argc;
+		if (start_argc < info->argc) start_argc = info->argc;
 
 		for (i = start_argc; i < argc; i++) {
 			int j;
@@ -1241,7 +1243,10 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 			fr_type_t type;
 			fr_value_box_t box;
 
-			j = i - start_argc;
+			/*
+			 *	Offset from the argument after the command.
+			 */
+			j = i - (cmd_argc + 1);
 
 			/*
 			 *	May be written to for things like
@@ -1255,9 +1260,9 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 
 			quote = '\0';
 			if (type == FR_TYPE_STRING) {
-				if ((argv[i][0] == '"') ||
-				    (argv[i][0] == '\'')) {
-					quote = argv[i][0];
+				if ((info->argv[i][0] == '"') ||
+				    (info->argv[i][0] == '\'')) {
+					quote = info->argv[i][0];
 				}
 			}
 
@@ -1265,7 +1270,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 			 *	Parse the data to be sure it's well formed.
 			 */
 			if (fr_value_box_from_str(NULL, &box, &type,
-						  NULL, argv[i], -1, quote, true) < 0) {
+						  NULL, info->argv[i], -1, quote, true) < 0) {
 				fr_strerror_printf("Failed parsing argument %d - %s",
 						   i, fr_strerror());
 				return -1;
@@ -1278,11 +1283,15 @@ int fr_command_str_to_argv(fr_cmd_t *head, int input_argc, char *argv[], int max
 	/*
 	 *	Too few arguments to run the command.
 	 */
-	if (syntax_argc < cmd->syntax_argc) return argc;
+	if (syntax_argc < cmd->syntax_argc) {
+		info->argc = argc;
+		return argc;
+	}
 
 	/*
 	 *	It's just right.
 	 */
-	*runnable = true;
+	info->runnable = true;
+	info->argc = argc;
 	return argc;
 }
