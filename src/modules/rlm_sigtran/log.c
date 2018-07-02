@@ -62,7 +62,7 @@ static void do_log(UNUSED struct log_target *target, unsigned int level, const c
 void sigtran_log_init(TALLOC_CTX *ctx)
 {
 	struct log_target	*log;
-	static struct log_info	info = {};
+	static struct log_info	info;
 
 	log_init(&info, ctx);
 

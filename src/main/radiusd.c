@@ -65,6 +65,7 @@ char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("FreeRADIUS");
 static pid_t radius_pid;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
+extern struct timeval sd_watchdog_interval;
 struct timeval sd_watchdog_interval;
 #endif
 
