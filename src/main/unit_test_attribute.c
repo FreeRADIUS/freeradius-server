@@ -776,8 +776,8 @@ static void command_tab(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 	char *p;
 	fr_cmd_info_t info;
 
-	/* -Wincompatible-pointer-types-discards-qualifiers */
 	info.argc = 0;
+	info.max_argc = CMD_MAX_ARGV;
 	info.argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
 	info.box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
 
