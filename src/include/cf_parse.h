@@ -355,13 +355,14 @@ typedef struct CONF_PARSER CONF_PARSER;
  *
  * @param[in] ctx	to allocate any data in.
  * @param[out] out	Where to write the result of parsing.
+ * @param[in] parent	The base address of the structure.
  * @param[in] ci	The #CONF_SECTION or #CONF_PAIR to parse.
  * @param[in] rule	Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (* cf_parse_t)(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+typedef int (* cf_parse_t)(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 /** Defines a #CONF_PAIR to C data type mapping
  *
@@ -452,6 +453,8 @@ struct CONF_PARSER {
 /*
  *	Type validation and conversion
  */
+int		cf_pair_parse_value(TALLOC_CTX *ctx, void *out, void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
+		CC_HINT(nonnull(2, 4, 5));
 int		cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
 			      unsigned int type, void *data, char const *dflt, FR_TOKEN dflt_quote) CC_HINT(nonnull(2,3));
 int		cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs);

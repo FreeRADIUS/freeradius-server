@@ -38,19 +38,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/log.h>
 
-/* Linker hacks */
-char const *get_radius_dir(void)
-{
-	return NULL;
-}
-
 module_instance_t *module_find_with_method(UNUSED rlm_components_t *method,
 					   UNUSED CONF_SECTION *modules, UNUSED char const *name)
 {
 	return NULL;
 }
-
-main_config_t		main_config;				//!< Main server configuration.
 
 module_thread_instance_t *module_thread_instance_find(UNUSED module_instance_t *mi)
 {
@@ -79,25 +71,31 @@ static int process_file(char const *filename)
 	vp_map_t	*head, *map;
 	char		buffer[8192];
 
+	main_config_t	*config;
+
 	vp_tmpl_rules_t	parse_rules = {
 		.allow_foreign = true	/* Because we don't know what protocol we're operating with */
 	};
 
-	memset(&main_config, 0, sizeof(main_config));
-
-	main_config.config = cf_section_alloc(NULL, NULL, "main", NULL);
-	if (cf_file_read(main_config.config, filename) < 0) {
-		fprintf(stderr, "unit_test_map: Failed parsing %s\n",
-			filename);
+	config = main_config_alloc(NULL);
+	if (!config) {
+		fprintf(stderr, "Failed allocating main config");
 		exit(EXIT_FAILURE);
 	}
+	config->root_cs = cf_section_alloc(config, NULL, "main", NULL);
+	if ((cf_file_read(config->root_cs, filename) < 0) || (cf_section_pass2(config->root_cs) < 0)) {
+		fprintf(stderr, "unit_test_map: Failed parsing %s\n", filename);
+		exit(EXIT_FAILURE);
+	}
+
+	main_config_name_set_default(config, "unit_test_map", false);
 
 	/*
 	 *	Always has to be an "update" section.
 	 */
-	cs = cf_section_find(main_config.config, "update", CF_IDENT_ANY);
+	cs = cf_section_find(config->root_cs, "update", CF_IDENT_ANY);
 	if (!cs) {
-		talloc_free(main_config.config);
+		talloc_free(config->root_cs);
 		return -1;
 	}
 
@@ -134,7 +132,9 @@ static int process_file(char const *filename)
 	}
 	printf("}\n");
 
-	talloc_free(main_config.config);
+	talloc_free(config->root_cs);
+	talloc_free(config);
+
 	return 0;
 }
 
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 	TALLOC_CTX		*autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("unit_test_map");
 		exit(EXIT_FAILURE);
 	}

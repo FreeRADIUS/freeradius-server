@@ -32,7 +32,8 @@ extern "C" {
 
 typedef struct fr_state_tree_t fr_state_tree_t;
 
-fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, uint32_t max_sessions, uint32_t timeout);
+fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, bool thread_safe,
+				    uint32_t max_sessions, uint32_t timeout, uint8_t server_id);
 
 void fr_state_discard(fr_state_tree_t *state, REQUEST *request);
 

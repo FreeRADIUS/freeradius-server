@@ -47,18 +47,8 @@ static int showname = -1;
 static int showptype = 0;
 static int showcid = 0;
 static char const *progname = "radwho";
-char const *log_dir = NULL;
 
 static char const *radutmp_file = NULL;
-static char const *raddb_dir = RADDBDIR;
-static char const *dict_dir = DICTDIR;
-
-char const *radacct_dir = NULL;
-
-/*
- *	Global, for log.c to use.
- */
-main_config_t main_config;
 
 static struct radutmp_config_t {
 	char const *radutmp_fn;
@@ -201,23 +191,42 @@ int main(int argc, char **argv)
 	fr_dict_t		*dict = NULL;
 	TALLOC_CTX		*autofree = talloc_autofree_context();
 
-	raddb_dir = RADIUS_DIR;
+	char const		*p;
+	main_config_t		*config;
+
 
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
-		fr_perror("radwho");
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+		fr_perror("%s", main_config->name);
 		exit(EXIT_FAILURE);
 	}
 #endif
 
 	talloc_set_log_stderr();
 
+	/*
+	 *	Allocate the main config structure.
+	 *	It's allocating so we can hang talloced buffers off it.
+	 */
+	config = main_config_alloc(autofree);
+	if (!config) {
+		fr_perror("Failed allocating main config");
+		exit(EXIT_FAILURE);
+	}
+
+	p = strrchr(argv[0], FR_DIR_SEP);
+	if (!p) {
+		main_config_name_set_default(config, argv[0], false);
+	} else {
+		main_config_name_set_default(config, p + 1, false);
+	}
+
 	while((c = getopt(argc, argv, "d:D:fF:nN:sSipP:crRu:U:Z")) != EOF) switch (c) {
 		case 'd':
-			raddb_dir = optarg;
+			main_config_raddb_dir_set(config, optarg);
 			break;
 		case 'D':
-			dict_dir = optarg;
+			main_config_dict_dir_set(config, optarg);
 			break;
 		case 'F':
 			radutmp_file = optarg;
@@ -279,21 +288,21 @@ int main(int argc, char **argv)
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("radwho");
+		fr_perror("%s", main_config->name);
 		return 1;
 	}
 
-	if (fr_dict_global_init(autofree, dict_dir) < 0) {
-		fr_perror("radwho");
+	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
+		fr_perror("%s", main_config->name);
 		exit(EXIT_FAILURE);
 	}
 
 	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
-		fr_perror("radwho");
+		fr_perror("%s", main_config->name);
 		return 1;
 	}
 
-	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(dict, config->raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return 1;
 	}
@@ -322,31 +331,26 @@ int main(int argc, char **argv)
 
 	if (radutmp_file) goto have_radutmp;
 
-	/*
-	 *	Initialize main_config
-	 */
-	memset(&main_config, 0, sizeof(main_config));
-
 	/* Read radiusd.conf */
 	maincs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!maincs) exit(EXIT_FAILURE);
 
-	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", raddb_dir);
-	if (cf_file_read(maincs, buffer) < 0) {
-		fprintf(stderr, "%s: Error reading or parsing radiusd.conf\n", argv[0]);
+	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", config->raddb_dir);
+	if ((cf_file_read(maincs, buffer) < 0) || (cf_section_pass2(maincs) < 0)) {
+		fr_perror("%s: Error reading or parsing radiusd.conf\n", argv[0]);
 		talloc_free(maincs);
 		exit(EXIT_FAILURE);
 	}
 
 	cs = cf_section_find(maincs, "modules", NULL);
 	if (!cs) {
-		fprintf(stderr, "%s: No modules section found in radiusd.conf\n", argv[0]);
+		fr_perror("%s: No modules section found in radiusd.conf\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	/* Read the radutmp section of radiusd.conf */
 	cs = cf_section_find(cs, "radutmp", NULL);
 	if (!cs) {
-		fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf\n", argv[0]);
+		fr_perror("%s: No configuration information in radutmp section of radiusd.conf\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -363,7 +367,7 @@ int main(int argc, char **argv)
 	 *	Show the users logged in on the terminal server(s).
 	 */
 	if ((fp = fopen(radutmp_file, "r")) == NULL) {
-		fprintf(stderr, "%s: Error reading %s: %s\n",
+		fr_perror("%s: Error reading %s: %s\n",
 			progname, radutmp_file, fr_syserror(errno));
 		return 0;
 	}
@@ -541,6 +545,8 @@ int main(int argc, char **argv)
 		}
 	}
 	fclose(fp);
+
+	main_config_free(&config);
 
 	return 0;
 }

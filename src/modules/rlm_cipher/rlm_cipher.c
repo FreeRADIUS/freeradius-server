@@ -38,12 +38,17 @@ RCSID("$Id$")
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
-static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
-static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+					 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
-static int cipher_rsa_private_key_file_load(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
-static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int cipher_rsa_private_key_file_load(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 typedef enum {
 	RLM_CIPHER_TYPE_INVALID = 0,
@@ -189,13 +194,15 @@ static const CONF_PARSER module_config[] = {
  *
  * @param[in] ctx	to allocate data in.
  * @param[out] out	EVP_MD representing the OpenSSL digest type.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the digest.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	EVP_MD const	*md;
 	char const	*type_str;
@@ -216,14 +223,15 @@ static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, U
  *
  * @param[in] ctx	to allocate data in.
  * @param[out] out	Padding type.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the padding type..
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci,
-					 UNUSED CONF_PARSER const *rule)
+static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+					 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	int		type;
 	char const	*type_str;
@@ -244,13 +252,14 @@ static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF
  *
  * @param[in] ctx	to allocate data in.
  * @param[out] out	Cipher enumeration type.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	cipher_type_t	type;
 	char const	*type_str;
@@ -323,14 +332,15 @@ static int _evp_pkey_free(EVP_PKEY *pkey)
  *			function anyway.
  * @param[out] out	Where to write the EVP_PKEY * representing the
  *			certificate we just loaded.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	Config item containing the certificate path.
  * @param[in] rule	this callback was attached to.
  * @return
  *	- -1 on failure.
  *	- 0 on success.
  */
-static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci,
-					    UNUSED CONF_PARSER const *rule)
+static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	FILE		*fp;
 	char const	*filename;
@@ -383,14 +393,15 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, CONF_ITE
  *			function anyway.
  * @param[out] out	Where to write the EVP_PKEY * representing the
  *			certificate we just loaded.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	Config item containing the certificate path.
  * @param[in] rule	this callback was attached to.
  * @return
  *	- -1 on failure.
  *	- 0 on success.
  */
-static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci,
-					    UNUSED CONF_PARSER const *rule)
+static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	FILE		*fp;
 	char const	*filename;

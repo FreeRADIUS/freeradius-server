@@ -42,10 +42,6 @@ RCSID("$Id$")
 /*
  *  Global variables.
  */
-char const *radacct_dir = NULL;
-char const *log_dir = NULL;
-
-
 static bool filedone = false;
 
 char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
@@ -117,7 +113,7 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 /*
  *	Static functions.
  */
-static void usage(int);
+static void usage(main_config_t const *config, int status);
 
 
 static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name)
@@ -198,13 +194,13 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	request->server_cs = virtual_server_find("default");
 	rad_assert(request->server_cs != NULL);
 
-	request->root = &main_config;
+	request->config = main_config;
 
 	/*
 	 *	Read packet from fp
 	 */
 	if (fr_pair_list_afrom_file(request->packet, &request->packet->vps, fp, &filedone) < 0) {
-		fr_perror("unit_test_module");
+		fr_perror("%s", main_config->name);
 		talloc_free(request);
 		return NULL;
 	}
@@ -453,7 +449,7 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 	rad_assert(out != NULL);
 	rad_assert(*out);
 
-	modules = cf_section_find(request->root->config, "modules", NULL);
+	modules = cf_section_find(request->config->root_cs, "modules", NULL);
 	if (!modules) return 0;
 
 	buffer = talloc_strdup(request, fmt);
@@ -702,6 +698,22 @@ int main(int argc, char *argv[])
 	TALLOC_CTX		*autofree = talloc_autofree_context();
 	TALLOC_CTX		*thread_ctx = talloc_new(autofree);
 
+	char			*p;
+	main_config_t		*config;
+
+	config = main_config_alloc(autofree);
+	if (!config) {
+		fr_perror("unit_test_module");
+		exit(EXIT_FAILURE);
+	}
+
+	p = strrchr(argv[0], FR_DIR_SEP);
+	if (!p) {
+		main_config_name_set_default(config, argv[0], false);
+	} else {
+		main_config_name_set_default(config, p + 1, false);
+	}
+
 	fr_talloc_fault_setup();
 
 	/*
@@ -709,21 +721,14 @@ int main(int argc, char *argv[])
 	 *	the basic fatal signal handlers.
 	 */
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
-		fr_perror("unit_test_module");
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+		fr_perror("%s", config->name);
 		exit(EXIT_FAILURE);
 	}
 #endif
 
 	rad_debug_lvl = 0;
-	set_radius_dir(NULL, RADIUS_DIR);
 	fr_time_start();
-
-	/*
-	 *	Ensure that the configuration is initialized.
-	 */
-	memset(&main_config, 0, sizeof(main_config));
-	main_config.name = "unit_test_module";
 
 	/*
 	 *	The tests should have only IPs, not host names.
@@ -742,11 +747,11 @@ int main(int argc, char *argv[])
 
 		switch (argval) {
 			case 'd':
-				set_radius_dir(NULL, optarg);
+				main_config_raddb_dir_set(config, optarg);
 				break;
 
 			case 'D':
-				main_config.dict_dir = talloc_typed_strdup(NULL, optarg);
+				main_config_dict_dir_set(config, optarg);
 				break;
 
 			case 'f':
@@ -754,7 +759,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'h':
-				usage(0);
+				usage(config, EXIT_SUCCESS);
 				break;
 
 			case 'i':
@@ -766,7 +771,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'n':
-				main_config.name = optarg;
+				config->name = optarg;
 				break;
 
 			case 'o':
@@ -791,7 +796,7 @@ int main(int argc, char *argv[])
 				break;
 
 			default:
-				usage(1);
+				usage(config, EXIT_FAILURE);
 				break;
 		}
 	}
@@ -803,25 +808,25 @@ int main(int argc, char *argv[])
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("%s", main_config.name);
+		fr_perror("%s", config->name);
 		exit(EXIT_FAILURE);
 	}
 
-	dl_init();
+	dl_loader_init(autofree, config->lib_dir);
 
-	if (fr_dict_global_init(autofree, main_config.dict_dir) < 0) {
-		fr_perror("%s", main_config.name);
+	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
+		fr_perror("%s", config->name);
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
 
 	if (fr_dict_autoload(unit_test_module_dict) < 0) {
-		fr_perror("%s", main_config.name);
+		fr_perror("%s", config->name);
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
 	if (fr_dict_attr_autoload(unit_test_module_dict_attr) < 0) {
-		fr_perror("%s", main_config.name);
+		fr_perror("%s", config->name);
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
@@ -852,7 +857,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
-	if (main_config_init() < 0) {
+	if (main_config_init(config) < 0) {
 	exit_failure:
 		rcode = EXIT_FAILURE;
 		goto finish;
@@ -884,10 +889,10 @@ int main(int argc, char *argv[])
 		CONF_SECTION	*server;
 		CONF_PAIR	*namespace;
 
-		server = cf_section_alloc(main_config.config, main_config.config, "server", "unit_test");
-		cf_section_add(main_config.config, server);
+		server = cf_section_alloc(config->root_cs, config->root_cs, "server", "unit_test");
+		cf_section_add(config->root_cs, server);
 
-		namespace = cf_pair_alloc(main_config.config, "namespace", "unit_test_module",
+		namespace = cf_pair_alloc(config->root_cs, "namespace", "unit_test_module",
 					  T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 		cf_pair_add(server, namespace);
 	}
@@ -902,7 +907,7 @@ int main(int argc, char *argv[])
 	 *	before loading the modules.  Some modules need those
 	 *	to be defined.
 	 */
-	if (virtual_servers_bootstrap(main_config.config) < 0) goto exit_failure;
+	if (virtual_servers_bootstrap(config->root_cs) < 0) goto exit_failure;
 
 	/*
 	 *	Bootstrap the modules.  This links to them, and runs
@@ -910,12 +915,12 @@ int main(int argc, char *argv[])
 	 *
 	 *	After this step, all dynamic attributes, xlats, etc. are defined.
 	 */
-	if (modules_bootstrap(main_config.config) < 0) goto exit_failure;
+	if (modules_bootstrap(config->root_cs) < 0) goto exit_failure;
 
 	/*
 	 *	Instantiate the modules
 	 */
-	if (modules_instantiate(main_config.config) < 0) goto exit_failure;
+	if (modules_instantiate(config->root_cs) < 0) goto exit_failure;
 
 	/*
 	 *	Create a dummy event list
@@ -941,10 +946,10 @@ int main(int argc, char *argv[])
 	/*
 	 *	Simulate thread specific instantiation
 	 */
-	if (modules_thread_instantiate(thread_ctx, main_config.config, el) < 0) goto exit_failure;
+	if (modules_thread_instantiate(thread_ctx, config->root_cs, el) < 0) goto exit_failure;
 	if (xlat_thread_instantiate(thread_ctx) < 0) goto exit_failure;
 
-	state = fr_state_tree_init(autofree, attr_state, 256, 10);
+	state = fr_state_tree_init(autofree, attr_state, false, 256, 10, 0);
 
 	/*
 	 *  Set the panic action (if required)
@@ -953,10 +958,10 @@ int main(int argc, char *argv[])
 		char const *panic_action = NULL;
 
 		panic_action = getenv("PANIC_ACTION");
-		if (!panic_action) panic_action = main_config.panic_action;
+		if (!panic_action) panic_action = config->panic_action;
 
-		if (panic_action && (fr_fault_setup(panic_action, argv[0]) < 0)) {
-			fr_perror("%s", main_config.name);
+		if (panic_action && (fr_fault_setup(autofree, panic_action, argv[0]) < 0)) {
+			fr_perror("%s", config->name);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -1203,7 +1208,7 @@ finish:
 	 *	And now nothing should be left anywhere except the
 	 *	parsed configuration items.
 	 */
-	main_config_free();
+	main_config_free(&config);
 
 	/*
 	 *	Free any autoload dictionaries
@@ -1222,11 +1227,11 @@ finish:
 /*
  *  Display the syntax for starting this program.
  */
-static void NEVER_RETURNS usage(int status)
+static void NEVER_RETURNS usage(main_config_t const *config, int status)
 {
-	FILE *output = status?stderr:stdout;
+	FILE *output = status ? stderr : stdout;
 
-	fprintf(output, "Usage: %s [options]\n", main_config.name);
+	fprintf(output, "Usage: %s [options]\n", config->name);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -d raddb_dir  Configuration files are in \"raddb_dir/*\".\n");
 	fprintf(output, "  -D dict_dir   Dictionary files are in \"dict_dir/*\".\n");

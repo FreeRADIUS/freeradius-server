@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file radmin.c
+ * @file proto_control/radmin.c
  * @brief Control a running radiusd process.
  *
  * @copyright 2012-2016 The FreeRADIUS server project
@@ -114,13 +114,6 @@ typedef struct radmin_state {
  *
  */
 //static radmin_state_t state;
-
-/*
- *	The rest of this is because the conf_file.c, etc. assume
- *	they're running inside of the server.  And we don't (yet)
- *	have a "libfreeradius-server", or "libfreeradius-util".
- */
-main_config_t main_config;
 
 static bool echo = false;
 static char const *secret = "testing123";
@@ -347,7 +340,7 @@ static int do_connect(int *out, char const *file, char const *server)
 	/*
 	 *	Set up the initial header data.
 	 */
-	magic = 0xf7eead16;
+	magic = FR_CONDUIT_MAGIC;
 	magic = htonl(magic);
 	memcpy(buffer, &magic, sizeof(magic));
 	memset(buffer + sizeof(magic), 0, sizeof(magic));
@@ -409,7 +402,7 @@ int main(int argc, char **argv)
 	int exit_status = EXIT_SUCCESS;
 
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radmin");
 		exit(EXIT_FAILURE);
 	}
@@ -552,7 +545,7 @@ int main(int argc, char **argv)
 		cs = cf_section_alloc(NULL, NULL, "main", NULL);
 		if (!cs) exit(EXIT_FAILURE);
 
-		if (cf_file_read(cs, buffer) < 0) {
+		if ((cf_file_read(cs, buffer) < 0) || (cf_section_pass2(cs) < 0)) {
 			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, buffer);
 			talloc_free(cs);
 			usage(1);
@@ -814,7 +807,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		if (memcmp(line, "secret ", 7) == 0) {
+		if (strncmp(line, "secret ", 7) == 0) {
 			if (!secret) {
 				secret = line + 7;
 				do_challenge(sockfd);

@@ -2,12 +2,11 @@ FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
 	Feature improvements
 	* For upgrade instructions, see raddb/README.rst
 	* "authorize", "authenticate", "preacct", etc.
-	  are deprecated.  We now use "recv Access-Request"
-	  See raddb/README.rst.
+	  are no longer used.
 	* Dropped support for -i and -p flags in radiusd
 	* New "map" function in unlang.  See "man unlang".
 	* The "load-balance" and "redundant-load-balance"
-	  sections accept a key.  See "man unlang".
+	  sections now accept a key.  See "man unlang".
 	* The EAP module tracks certificates in a different
 	  attribute list.  See the upgrade instructions.
 	* The EAP module produces much better messages
@@ -15,15 +14,9 @@ FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
 	* The MySQL and Postgresql modules now call the
 	  database string escape functions, instead of
 	  using "safe_characters".
-	* radmin / raddebug can now stream debug output
-	  directly to radmin, instead of using an intermediary
-	  file.
 	* radsniff stats (-W) now operates on PCAP files too.
 	* radsniff stats can be printed in CSV format.
 	* radsniff processes .1Q tagged packets by default.
-	* Improved internal state API, to simplify multiround
-	  authentication.
-	* ipaddr = * 'just works' for most DHCP configurations.
 	* Redis cluster support for all Redis modules.
 	* TLV Attributes can now be nested to nearly any depth.
 	* radsnmp client which can listen on Net-SNMP "pass persist"

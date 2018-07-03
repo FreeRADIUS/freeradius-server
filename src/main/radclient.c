@@ -1174,7 +1174,7 @@ fr_radius_packet_free(&request->reply);
 int main(int argc, char **argv)
 {
 	int		c;
-	char		const *radius_dir = RADDBDIR;
+	char		const *raddb_dir = RADDBDIR;
 	char		const *dict_dir = DICTDIR;
 	char		filesecret[256];
 	FILE		*fp;
@@ -1194,7 +1194,7 @@ int main(int argc, char **argv)
 	fr_log_fp = stdout;
 
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radclient");
 		exit(EXIT_FAILURE);
 	}
@@ -1233,7 +1233,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			radius_dir = optarg;
+			raddb_dir = optarg;
 			break;
 
 		case 'f':
@@ -1393,7 +1393,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fr_dict_read(dict_freeradius, radius_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(dict_freeradius, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return 1;
 	}

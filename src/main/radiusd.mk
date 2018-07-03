@@ -1,11 +1,10 @@
 TARGET	:= radiusd
 SOURCES := \
     auth.c \
-    client.c \
     crypt.c \
     users_file.c \
-    mainconfig.c \
     radiusd.c \
+    radmin.c \
     state.c \
     stats.c \
     snmp.c \
@@ -14,6 +13,6 @@ SOURCES := \
 SRC_CFLAGS	:=
 
 TGT_INSTALLDIR  := ${sbindir}
-TGT_LDLIBS	:= $(LIBS) $(LCRYPT) $(SYSTEMD_LIBS)
+TGT_LDLIBS	:= $(LIBS) $(LCRYPT) $(SYSTEMD_LIBS) $(LIBREADLINE)
 TGT_LDFLAGS	:= $(LDFLAGS) $(SYSTEMD_LDFLAGS)
 TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-io.a libfreeradius-util.a

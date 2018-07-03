@@ -97,11 +97,11 @@ static fr_virtual_server_t **virtual_servers;
  */
 static CONF_SECTION *virtual_server_root;
 
-static int listen_on_read(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int server_on_read(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int listen_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
-static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int server_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 static const CONF_PARSER listen_on_read_config[] = {
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING | FR_TYPE_ON_READ,
@@ -153,24 +153,29 @@ const CONF_PARSER virtual_servers_config[] = {
  *
  * @param[in] ctx	to allocate data in.
  * @param[out] out	always NULL
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_SECTION containing the listen section.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
+	dl_t const		*module;
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading proto_%s", cf_pair_value(namespace));
 
-	if (!dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO)) {
+	module = dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO);
+	if (!module) {
 		cf_log_err(listen_cs, "Failed loading proto_%s module", cf_pair_value(namespace));
 		return -1;
 	}
+	cf_data_add(listen_cs, module, "proto module", true);
 
 	return 0;
 }
@@ -179,13 +184,15 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, CONF_ITEM *c
  *
  * @param[in] ctx	to allocate data in.
  * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_server_t structure.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_SECTION containing the listen section.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+			  UNUSED CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 
 	/*
@@ -199,13 +206,14 @@ static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED CONF_
  *
  * @param[in] ctx	to allocate data in.
  * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_listen_t structure.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_SECTION containing the listen section.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	fr_virtual_listen_t	*listen = talloc_get_type_abort(out, fr_virtual_listen_t); /* Pre-allocated for us */
 	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
@@ -226,13 +234,15 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_P
  *
  * @param[in] ctx	to allocate data in.
  * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_server_t structure.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_SECTION containing the listen section.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	fr_virtual_server_t	*server = talloc_get_type_abort(out, fr_virtual_server_t);
 	CONF_SECTION		*server_cs = cf_item_to_section(ci);

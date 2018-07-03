@@ -76,7 +76,7 @@ typedef struct radsnmp_conf {
 	fr_dict_attr_t const	*snmp_op;		//!< SNMP operation.
 	fr_dict_attr_t const	*snmp_type;		//!< SNMP type attribute.
 	fr_dict_attr_t const	*snmp_failure;		//!< SNMP set error attribute.
-	char const		*radius_dir;		//!< Radius dictionary directory.
+	char const		*raddb_dir;		//!< Radius dictionary directory.
 	char const		*dict_dir;		//!< Dictionary director.
 	unsigned int		code;			//!< Request type.
 	int			proto;			//!< Protocol TCP/UDP.
@@ -912,19 +912,20 @@ int main(int argc, char **argv)
 	radsnmp_conf_t *conf;
 	int		ret;
 	int		sockfd;
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	fr_log_fp = stderr;
 
-	conf = talloc_zero(NULL, radsnmp_conf_t);
+	conf = talloc_zero(autofree, radsnmp_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
-	conf->radius_dir = RADDBDIR;
+	conf->raddb_dir = RADDBDIR;
 	conf->secret = talloc_strdup(conf, "testing123");
 	conf->timeout.tv_sec = 3;
 	conf->retries = 5;
 
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radsnmp");
 		exit(EXIT_FAILURE);
 	}
@@ -950,7 +951,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			conf->radius_dir = optarg;
+			conf->raddb_dir = optarg;
 			break;
 
 		case 'l':
@@ -1065,7 +1066,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(dict_freeradius, conf->radius_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(dict_freeradius, conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("radsnmp");
 		exit(EXIT_FAILURE);
 	}

@@ -109,14 +109,15 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
  *
  * @param[in] ctx	to allocate any dynamic buffers in.
  * @param[out] out	Where to write the parsed value.
+ * @param[in] base	address of the structure out points into.
+ *			May be NULL in the case of manual parsing.
  * @param[in] ci	to parse.
  * @param[in] rule	to parse to.  May contain flags.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *out,
-							 CONF_ITEM *ci, CONF_PARSER const *rule)
+int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		rcode = 0;
 	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists;
@@ -505,6 +506,8 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  *
  * @param[in] ctx	To allocate arrays and values in.
  * @param[out] out	Where to write the result.
+ * @param[in] base	address of the structure out points into.
+ *			May be NULL in the case of manual parsing.
  * @param[in] cs	to search for matching #CONF_PAIR in.
  * @param[in] rule	to parse #CONF_PAIR with.
  * @return
@@ -513,7 +516,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  *	- -1 on error.
  *	- -2 if deprecated.
  */
-static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out,
+static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, void *base,
 							CONF_SECTION *cs, CONF_PARSER const *rule)
 {
 	bool		multi, required, deprecated;
@@ -681,7 +684,7 @@ static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 				func = cf_pair_parse_value;
 			}
 
-			ret = func(value_ctx, entry, cf_pair_to_item(cp), rule);
+			ret = func(value_ctx, entry, base, cf_pair_to_item(cp), rule);
 			if (ret < 0) {
 				talloc_free(array);
 				talloc_free(dflt_cp);
@@ -731,7 +734,7 @@ static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			func = rule->func;
 		}
 
-		ret = func(ctx, out, cf_pair_to_item(cp), rule);
+		ret = func(ctx, out, base, cf_pair_to_item(cp), rule);
 		if (ret < 0) {
 			talloc_free(dflt_cp);
 			return -1;
@@ -831,7 +834,7 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
 		.quote = dflt_quote
 	};
 
-	return cf_pair_parse_internal(ctx, data, cs, &rule);
+	return cf_pair_parse_internal(ctx, data, NULL, cs, &rule);
 }
 
 /** Pre-allocate a config section structure to allow defaults to be set
@@ -958,16 +961,18 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
  *	For now we have a horrible hack where only multi-subsections get an array of structures
  *	of the appropriate size.
  *
- * @param[in] ctx		to allocate any additional structures under.
- * @param[out] out		pointer to a struct/pointer to fill with data.
- * @param[in] cs		to parse.
- * @param[in] rule		to parse the subcs with.
+ * @param[in] ctx	to allocate any additional structures under.
+ * @param[out] out	pointer to a struct/pointer to fill with data.
+ * @param[in] base	address of the structure out points into.
+ *			May be NULL in the case of manual parsing.
+ * @param[in] cs	to parse.
+ * @param[in] rule	to parse the subcs with.
  * @return
  *	- 0 on success.
  *	- -1 on general error.
  *	- -2 if a deprecated #CONF_ITEM was found.
  */
-static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CONF_PARSER const *rule)
+static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECTION *cs, CONF_PARSER const *rule)
 {
 	CONF_SECTION		*subcs = NULL;
 	int			count = 0, i = 0, ret;
@@ -997,7 +1002,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		 *	if it wants to continue after doing its stuff.
 		 */
 		if (cf_section_rules_push(subcs, rules) < 0) return -1;
-		if (rule->func) return rule->func(ctx, out, cf_section_to_item(subcs), rule);
+		if (rule->func) return rule->func(ctx, out, base, cf_section_to_item(subcs), rule);
 
 		/*
 		 *	FIXME: We shouldn't allow nested structures like this.
@@ -1067,7 +1072,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 			return -1;
 		}
 		if (rule->func) {
-			ret = rule->func(ctx, buff, cf_section_to_item(subcs), rule);
+			ret = rule->func(ctx, buff, base, cf_section_to_item(subcs), rule);
 			if (ret < 0) {
 				talloc_free(array);
 				return ret;
@@ -1136,7 +1141,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 		 *	Handle subsections specially
 		 */
 		if (FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) {
-			ret = cf_subsection_parse(ctx, data, cs, rule);
+			ret = cf_subsection_parse(ctx, data, base, cs, rule);
 			if (ret < 0) goto finish;
 			continue;
 		} /* else it's a CONF_PAIR */
@@ -1162,7 +1167,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		ret = cf_pair_parse_internal(ctx, data, cs, rule);
+		ret = cf_pair_parse_internal(ctx, data, base, cs, rule);
 		switch (ret) {
 		case 1:		/* Used default (or not present) */
 			if (is_set) *is_set = false;

@@ -532,7 +532,7 @@ static int tacacs_socket_recv(rad_listen_t *listener)
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
-	ctx = talloc_pool(listener, main_config.talloc_pool_size);
+	ctx = talloc_pool(listener, main_config->talloc_pool_size);
 	if (!ctx) return 0;
 	talloc_set_name_const(ctx, "tacacs_listener_pool");
 

@@ -184,7 +184,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *re
 	fr_cursor_t		cursor;
 	VALUE_PAIR const	*vp;
 
-	memcpy(&hostname, &main_config.name, sizeof(hostname)); /* const / non-const issues */
+	memcpy(&hostname, main_config->name, sizeof(hostname)); /* const / non-const issues */
 
 	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;

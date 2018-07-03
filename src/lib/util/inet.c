@@ -25,8 +25,8 @@
 #include <freeradius-devel/util/util.h>
 #include <ctype.h>
 
-bool		fr_dns_lookups = false;	    //!< IP -> hostname lookups?
-bool		fr_hostname_lookups = true; //!< hostname -> IP lookups?
+bool		fr_reverse_lookups = false;		//!< IP -> hostname lookups?
+bool		fr_hostname_lookups = true;		//!< hostname -> IP lookups?
 
 /** Determine if an address is the INADDR_ANY address for its address family
  *
@@ -288,7 +288,7 @@ char const *fr_inet_ntoh(fr_ipaddr_t const *src, char *out, size_t outlen)
 	/*
 	 *	No DNS lookups
 	 */
-	if (!fr_dns_lookups) {
+	if (!fr_reverse_lookups) {
 		return inet_ntop(src->af, &(src->addr), out, outlen);
 	}
 

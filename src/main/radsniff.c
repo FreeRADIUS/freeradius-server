@@ -2201,6 +2201,7 @@ int main(int argc, char *argv[])
 	int		opt;
 	char const	*raddb_dir = RADDBDIR;
 	char const	*dict_dir = DICTDIR;
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	rs_stats_t	*stats;
 
@@ -2211,7 +2212,7 @@ int main(int argc, char *argv[])
 	 *	Useful if using radsniff as a long running stats daemon
 	 */
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radsniff");
 		exit(EXIT_FAILURE);
 	}
@@ -2219,7 +2220,7 @@ int main(int argc, char *argv[])
 
 	talloc_set_log_stderr();
 
-	conf = talloc_zero(NULL, rs_t);
+	conf = talloc_zero(autofree, rs_t);
 	RS_ASSERT(conf);
 
 	stats = talloc_zero(conf, rs_stats_t);
@@ -2670,6 +2671,7 @@ int main(int argc, char *argv[])
 		if (!all_devices) {
 			ERROR("No capture files specified and no live interfaces available");
 			ret = 64;
+			pcap_freealldevs(all_devices);
 			goto finish;
 		}
 
@@ -2696,6 +2698,8 @@ int main(int argc, char *argv[])
 			*in_head = fr_pcap_init(conf, dev_p->name, PCAP_INTERFACE_IN);
 			in_head = &(*in_head)->next;
 		}
+		pcap_freealldevs(all_devices);
+
 		conf->from_auto = true;
 		conf->from_dev = true;
 		INFO("Defaulting to capture on all interfaces");

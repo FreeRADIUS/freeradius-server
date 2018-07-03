@@ -124,7 +124,7 @@ static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
 
 	fake->parent = request;
 	fake->dict = request->dict;
-	fake->root = request->root;
+	fake->config = request->config;
 	fake->client = request->client;
 
 	/*
@@ -286,7 +286,7 @@ REQUEST *request_alloc_proxy(REQUEST *request)
 	request->proxy->parent = request;
 	request->proxy->number = request->number;
 	request->proxy->seq_start = request->seq_start;
-	request->proxy->root = request->root;
+	request->proxy->config = request->config;
 
 	return request->proxy;
 }

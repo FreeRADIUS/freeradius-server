@@ -31,8 +31,8 @@
 #include "proto_detail.h"
 
 extern fr_app_t proto_detail;
-static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 #if 0
 /*
@@ -114,13 +114,14 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
  *
  * @param[in] ctx	to allocate data in (instance of proto_detail).
  * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
@@ -191,13 +192,15 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
  *
  * @param[in] ctx	to allocate data in (instance of proto_detail).
  * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_instance_t	*parent_inst;

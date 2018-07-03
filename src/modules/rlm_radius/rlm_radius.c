@@ -31,10 +31,10 @@ RCSID("$Id$")
 
 #include "rlm_radius.h"
 
-static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int status_check_type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int status_check_update_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int status_check_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static CONF_PARSER const status_checks_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, rlm_radius_t, status_check),
@@ -174,14 +174,16 @@ fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
 /** Set which types of packets we can parse
  *
  * @param[in] ctx	to allocate data in (instance of rlm_radius).
- * @param[out] out	Where to write the parsed data
+ * @param[out] out	Where to write the parsed data.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
@@ -233,13 +235,15 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED C
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
  * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_instance_t	*parent_inst;
@@ -264,14 +268,16 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 /** Allow for Status-Server ping checks
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
- * @param[out] out	Where to write our parsed data
+ * @param[out] out	Where to write our parsed data.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
@@ -321,13 +327,15 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM 
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
  * @param[out] out	Where to write our parsed data
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_SECTION specifying the things to update
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int status_check_update_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int status_check_update_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	int			rcode;
 	CONF_SECTION		*cs;

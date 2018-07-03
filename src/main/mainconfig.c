@@ -43,36 +43,13 @@ RCSID("$Id$")
 #  include <fcntl.h>
 #endif
 
-main_config_t		main_config;				//!< Main server configuration.
+main_config_t const	*main_config;				//!< Main server configuration.
 
 extern fr_cond_t	*debug_condition;
 extern fr_log_t		debug_log;
 
 fr_cond_t		*debug_condition = NULL;		//!< Condition used to mark packets up for checking.
 fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
-
-/*
- *	Temporary local variables for parsing the configuration
- *	file.
- */
-static char const *chroot_dir = NULL;
-static char const *log_dest = NULL;
-
-/*
- *	These are not used anywhere else..
- */
-static char const	*localstatedir = NULL;
-static char const	*prefix = NULL;
-static char const	*my_name = NULL;
-static char const	*sbindir = NULL;
-static char const	*run_dir = NULL;
-static char const	*syslog_facility = NULL;
-static bool		do_colourise = false;
-
-static bool		*log_timestamp = false;
-static bool		log_timestamp_is_set = false;
-
-static char const	*radius_dir = NULL;	//!< Path to raddb directory
 
 /**********************************************************************
  *
@@ -86,20 +63,31 @@ static char const	*radius_dir = NULL;	//!< Path to raddb directory
  *
  **********************************************************************/
 
+static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,CONF_ITEM *ci, CONF_PARSER const *rule);
+static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+
 /*
  *	Log destinations
  */
 static const CONF_PARSER initial_log_subsection_config[] = {
-	{ FR_CONF_POINTER("destination", FR_TYPE_STRING, &log_dest), .dflt = "files" },
-	{ FR_CONF_POINTER("syslog_facility", FR_TYPE_STRING, &syslog_facility), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING, main_config_t, log_dest), .dflt = "files" },
+	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_STRING, main_config_t, syslog_facility_str), .dflt = STRINGIFY(0) },
 
-	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
-	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &log_dir), .dflt = "${localstatedir}/log"},
-	{ FR_CONF_POINTER("file", FR_TYPE_STRING, &main_config.log_file), .dflt = "${logdir}/radius.log" },
-	{ FR_CONF_POINTER("requests", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &default_log.file) },
+	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
+	{ FR_CONF_OFFSET("logdir", FR_TYPE_STRING, main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
+	{ FR_CONF_OFFSET("file", FR_TYPE_STRING, main_config_t, log_file), .dflt = "${logdir}/radius.log" },
 	CONF_PARSER_TERMINATOR
 };
-
 
 /*
  *	Basic configuration for the server.
@@ -107,13 +95,12 @@ static const CONF_PARSER initial_log_subsection_config[] = {
 static const CONF_PARSER initial_logging_config[] = {
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) initial_log_subsection_config },
 
-	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
+	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, main_config_t, prefix), .dflt = "/usr/local" },
 
-	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOL, &log_dates_utc) },
-	{ FR_CONF_IS_SET_POINTER("timestamp", FR_TYPE_BOOL, &log_timestamp) },
+	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, main_config_t, log_dates_utc) },
+	{ FR_CONF_IS_SET_OFFSET("timestamp", FR_TYPE_BOOL, main_config_t, log_timestamp) },
 	CONF_PARSER_TERMINATOR
 };
-
 
 /**********************************************************************
  *
@@ -122,18 +109,20 @@ static const CONF_PARSER initial_logging_config[] = {
  *
  **********************************************************************/
 static const CONF_PARSER log_config[] = {
-	{ FR_CONF_POINTER("colourise", FR_TYPE_BOOL, &do_colourise) },
-	{ FR_CONF_POINTER("timestamp", FR_TYPE_BOOL, &log_timestamp) },
-	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOL, &log_dates_utc) },
+	{ FR_CONF_OFFSET("colourise", FR_TYPE_BOOL, main_config_t, do_colourise) },
+	{ FR_CONF_OFFSET("timestamp", FR_TYPE_BOOL, main_config_t, log_timestamp) },
+	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, main_config_t, log_dates_utc) },
 #ifdef WITH_CONF_WRITE
-	{ FR_CONF_POINTER("write_dir", FR_TYPE_STRING, &main_config.write_dir), .dflt = NULL },
+	{ FR_CONF_OFFSET("write_dir", FR_TYPE_STRING, main_config_t, write_dir), .dflt = NULL },
 #endif
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER thread_config[] = {
-	{ FR_CONF_POINTER("num_networks", FR_TYPE_UINT32, &main_config.num_networks), .dflt = STRINGIFY(1) },
-	{ FR_CONF_POINTER("num_workers", FR_TYPE_UINT32, &main_config.num_workers), .dflt = STRINGIFY(4) },
+	{ FR_CONF_OFFSET("num_networks", FR_TYPE_UINT32, main_config_t, num_networks), .dflt = STRINGIFY(1),
+	  .func = num_networks_parse },
+	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, main_config_t, num_workers), .dflt = STRINGIFY(4),
+	  .func = num_workers_parse },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -145,9 +134,9 @@ static const CONF_PARSER resources[] = {
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
 	 *	it exists.
 	 */
-	{ FR_CONF_POINTER("talloc_pool_size", FR_TYPE_SIZE, &main_config.talloc_pool_size) },			/* DO NOT SET DEFAULT */
-	{ FR_CONF_POINTER("talloc_memory_limit", FR_TYPE_SIZE, &main_config.talloc_memory_limit) },		/* DO NOT SET DEFAULT */
-	{ FR_CONF_POINTER("talloc_memory_report", FR_TYPE_BOOL, &main_config.talloc_memory_report) },	/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET("talloc_pool_size", FR_TYPE_SIZE, main_config_t, talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET("talloc_memory_limit", FR_TYPE_SIZE, main_config_t, talloc_memory_limit), .func = talloc_memory_limit_parse },		/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET("talloc_memory_report", FR_TYPE_BOOL, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
 
@@ -159,19 +148,20 @@ static const CONF_PARSER server_config[] = {
 	 *	hard-coded defines for the locations of the various
 	 *	files.
 	 */
-	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
-	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
-	{ FR_CONF_POINTER("sbindir", FR_TYPE_STRING, &sbindir), .dflt = "${prefix}/sbin"},
-	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &log_dir), .dflt = "${localstatedir}/log"},
-	{ FR_CONF_POINTER("run_dir", FR_TYPE_STRING, &run_dir), .dflt = "${localstatedir}/run/${name}"},
-	{ FR_CONF_POINTER("libdir", FR_TYPE_STRING, &radlib_dir), .dflt = "${prefix}/lib"},
-	{ FR_CONF_POINTER("radacctdir", FR_TYPE_STRING, &radacct_dir), .dflt = "${logdir}/radacct" },
-	{ FR_CONF_POINTER("panic_action", FR_TYPE_STRING, &main_config.panic_action) },
-	{ FR_CONF_POINTER("hostname_lookups", FR_TYPE_BOOL, &fr_dns_lookups), .dflt = "no" },
-	{ FR_CONF_POINTER("max_request_time", FR_TYPE_UINT32, &main_config.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME) },
-	{ FR_CONF_POINTER("pidfile", FR_TYPE_STRING, &main_config.pid_file), .dflt = "${run_dir}/radiusd.pid"},
+	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, main_config_t, prefix), .dflt = "/usr/local" },
+	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
+	{ FR_CONF_OFFSET("sbin_dir", FR_TYPE_STRING, main_config_t, sbin_dir), .dflt = "${prefix}/sbin"},
+	{ FR_CONF_OFFSET("logdir", FR_TYPE_STRING, main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
+	{ FR_CONF_OFFSET("run_dir", FR_TYPE_STRING, main_config_t, run_dir), .dflt = "${local_state_dir}/run/${name}"},
+	{ FR_CONF_OFFSET("libdir", FR_TYPE_STRING, main_config_t, lib_dir), .dflt = "${prefix}/lib"},
+	{ FR_CONF_OFFSET("radacctdir", FR_TYPE_STRING, main_config_t, radacct_dir), .dflt = "${logdir}/radacct" },
+	{ FR_CONF_OFFSET("panic_action", FR_TYPE_STRING, main_config_t, panic_action) },
+	{ FR_CONF_OFFSET("reverse_lookups", FR_TYPE_BOOL, main_config_t, reverse_lookups), .dflt = "no", .func = reverse_lookups_parse },
+	{ FR_CONF_OFFSET("hostname_lookups", FR_TYPE_BOOL, main_config_t, hostname_lookups), .dflt = "no", .func = hostname_lookups_parse },
+	{ FR_CONF_OFFSET("max_request_time", FR_TYPE_UINT32, main_config_t, max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
+	{ FR_CONF_OFFSET("pidfile", FR_TYPE_STRING, main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
-	{ FR_CONF_POINTER("debug_level", FR_TYPE_UINT32, &main_config.debug_level), .dflt = "0" },
+	{ FR_CONF_OFFSET("debug_level", FR_TYPE_UINT32, main_config_t, debug_level), .dflt = "0" },
 
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
@@ -212,16 +202,15 @@ static const CONF_PARSER server_config[] = {
  **********************************************************************/
 static const CONF_PARSER security_config[] = {
 #ifdef HAVE_SETUID
-	{ FR_CONF_POINTER("user", FR_TYPE_STRING, &main_config.uid_name) },
-	{ FR_CONF_POINTER("group", FR_TYPE_STRING, &main_config.gid_name) },
+	{ FR_CONF_OFFSET("user", FR_TYPE_STRING, main_config_t, uid_name) },
+	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, main_config_t, gid_name) },
 #endif
-	{ FR_CONF_POINTER("chroot", FR_TYPE_STRING, &chroot_dir) },
-	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOL, &main_config.allow_core_dumps), .dflt = "no" },
+	{ FR_CONF_OFFSET("chroot", FR_TYPE_STRING, main_config_t, chroot_dir) },
+	{ FR_CONF_OFFSET("allow_core_dumps", FR_TYPE_BOOL, main_config_t, allow_core_dumps), .dflt = "no" },
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
-	{ FR_CONF_POINTER("allow_vulnerable_openssl", FR_TYPE_STRING, &main_config.allow_vulnerable_openssl), .dflt = "no" },
+	{ FR_CONF_OFFSET("allow_vulnerable_openssl", FR_TYPE_STRING, main_config_t, allow_vulnerable_openssl), .dflt = "no" },
 #endif
-	{ FR_CONF_POINTER("server_id", FR_TYPE_UINT8, &main_config.state_server_id) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -229,24 +218,160 @@ static const CONF_PARSER security_config[] = {
 static const CONF_PARSER switch_users_config[] = {
 	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) security_config },
 
-	{ FR_CONF_POINTER("name", FR_TYPE_STRING, &my_name), .dflt = "radiusd" },
+	{ FR_CONF_OFFSET("name", FR_TYPE_STRING, main_config_t, name), .func = name_parse },							/* DO NOT SET DEFAULT */
 
-	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
-	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
+	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, main_config_t, prefix), .dflt = "/usr/local" },
+	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
 
-	{ FR_CONF_POINTER("run_dir", FR_TYPE_STRING, &run_dir), .dflt = "${localstatedir}/run/${name}"},
+	{ FR_CONF_OFFSET("run_dir", FR_TYPE_STRING, main_config_t, run_dir), .dflt = "${local_state_dir}/run/${name}"},
 
 	/*
 	 *	For backwards compatibility.
 	 */
 #ifdef HAVE_SETUID
-	{ FR_CONF_POINTER("user", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &main_config.uid_name) },
-	{ FR_CONF_POINTER("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &main_config.gid_name) },
+	{ FR_CONF_OFFSET("user", FR_TYPE_STRING | FR_TYPE_DEPRECATED, main_config_t, uid_name) },
+	{ FR_CONF_OFFSET("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, main_config_t, gid_name) },
 #endif
-	{ FR_CONF_POINTER("chroot", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &chroot_dir) },
-	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &main_config.allow_core_dumps) },
+	{ FR_CONF_DEPRECATED("chroot", FR_TYPE_STRING, main_config_t, NULL) },
+	{ FR_CONF_DEPRECATED("allow_core_dumps", FR_TYPE_BOOL, main_config_t, NULL) },
 	CONF_PARSER_TERMINATOR
 };
+
+static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				 CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int	ret;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&fr_reverse_lookups, out, sizeof(fr_reverse_lookups));
+
+	return 0;
+}
+
+static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				  CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int	ret;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&fr_hostname_lookups, out, sizeof(fr_hostname_lookups));
+
+	return 0;
+}
+
+static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				     CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int	ret;
+	size_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	if (value) {
+		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", value, >=,
+				    (size_t)1024 * 1024 * 10);
+
+		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", value, <=,
+				    ((((size_t)1024) * 1024 * 1024) * 16));
+	}
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				  CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int	ret;
+	size_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", value, >=, (size_t)(2 * 1024));
+	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", value, <=, (size_t)(1024 * 1024));
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				  CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int		ret;
+	uint32_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	FR_INTEGER_COND_CHECK("max_request_time", value, (value != 0), 100);
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+
+static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
+			      CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int		ret;
+	uint32_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	FR_INTEGER_BOUND_CHECK("thread.num_networks", value, ==, 1);
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
+			     CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int		ret;
+	uint32_t	value;
+
+	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
+
+	memcpy(&value, out, sizeof(value));
+
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, >, 0);
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <, 1024);
+
+	memcpy(out, &value, sizeof(value));
+
+	return 0;
+}
+
+/** Configured server name takes precedence over default values
+ *
+ */
+static int name_parse(TALLOC_CTX *ctx, void *out, void *parent,
+		      CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	main_config_t *config = parent;
+
+	if (*((char **)out)) {
+		if (config->overwrite_config_name) return 0;		/* Don't change */
+
+		talloc_free(*((char **)out));				/* Free existing buffer */
+	}
+
+	return cf_pair_parse_value(ctx, out, parent, ci, rule);		/* Set new value */
+}
+
 
 /** Callback to automatically load dictionaries required by modules
  *
@@ -283,11 +408,9 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
 		 *	-1  == error on load
 		 *	-2  == non-existent
 		 */
-		if (fr_dict_read(main_config.dict, main_config.dict_dir, buffer) == -1) {
-			return -1;
-		}
+		if (fr_dict_read(main_config->dict, main_config->dict_dir, buffer) == -1) return -1;
 
-		if (p->out) *(p->out) = main_config.dict;
+		if (p->out) *(p->out) = main_config->dict;
 	}
 #endif
 
@@ -393,8 +516,8 @@ static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	if (xlat_eval(buffer, sizeof(buffer), request, fmt, config_escape_func, NULL) < 0) return 0;
 
-	ci = cf_reference_item(request->root->config,
-			       request->root->config, buffer);
+	ci = cf_reference_item(request->config->root_cs,
+			       request->config->root_cs, buffer);
 	if (!ci || !cf_item_is_pair(ci)) {
 		REDEBUG("Config item \"%s\" does not exist", fmt);
 		return -1;
@@ -423,7 +546,7 @@ static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  *
  *  Switch UID and GID to what is specified in the config file
  */
-static int switch_users(CONF_SECTION *cs)
+static int switch_users(main_config_t *config, CONF_SECTION *cs)
 {
 	bool do_suid = false;
 	bool do_sgid = false;
@@ -434,20 +557,20 @@ static int switch_users(CONF_SECTION *cs)
 	 *	initialized.
 	 */
 	if (fr_set_dumpable_init() < 0) {
-		fr_perror("%s", main_config.name);
+		fr_perror("%s", config->name);
 		return 0;
 	}
 
 	if (cf_section_rules_push(cs, switch_users_config) < 0) {
 		fprintf(stderr, "%s: Error: Failed pushing parse rules for user/group information.\n",
-			main_config.name);
+			config->name);
 		return 0;
 	}
 
 	DEBUG("Parsing security rules to bootstrap UID / GID / chroot / etc.");
-	if (cf_section_parse(NULL, NULL, cs) < 0) {
+	if (cf_section_parse(config, config, cs) < 0) {
 		fprintf(stderr, "%s: Error: Failed to parse user/group information.\n",
-			main_config.name);
+			config->name);
 		return 0;
 	}
 
@@ -461,20 +584,20 @@ static int switch_users(CONF_SECTION *cs)
 	/*
 	 *	Get the correct GID for the server.
 	 */
-	main_config.server_gid = getgid();
+	config->server_gid = getgid();
 
-	if (main_config.gid_name) {
+	if (config->gid_name) {
 		struct group *gr;
 
-		gr = getgrnam(main_config.gid_name);
+		gr = getgrnam(config->gid_name);
 		if (!gr) {
 			fprintf(stderr, "%s: Cannot get ID for group %s: %s\n",
-				main_config.name, main_config.gid_name, fr_syserror(errno));
+				config->name, config->gid_name, fr_syserror(errno));
 			return 0;
 		}
 
-		if (main_config.server_gid != gr->gr_gid) {
-			main_config.server_gid = gr->gr_gid;
+		if (config->server_gid != gr->gr_gid) {
+			config->server_gid = gr->gr_gid;
 			do_sgid = true;
 		}
 	}
@@ -483,26 +606,26 @@ static int switch_users(CONF_SECTION *cs)
 	/*
 	 *	Get the correct UID for the server.
 	 */
-	main_config.server_uid = getuid();
+	config->server_uid = getuid();
 
-	if (main_config.uid_name) {
+	if (config->uid_name) {
 		struct passwd *user;
 
-		if (rad_getpwnam(cs, &user, main_config.uid_name) < 0) {
-			fr_perror("Cannot get passwd entry for user %s: %s", main_config.name, main_config.uid_name);
+		if (rad_getpwnam(cs, &user, config->uid_name) < 0) {
+			fr_perror("Cannot get passwd entry for user %s: %s", config->name, config->uid_name);
 			return 0;
 		}
 
 		/*
 		 *	We're not the correct user.  Go set that.
 		 */
-		if (main_config.server_uid != user->pw_uid) {
-			main_config.server_uid = user->pw_uid;
+		if (config->server_uid != user->pw_uid) {
+			config->server_uid = user->pw_uid;
 			do_suid = true;
 #ifdef HAVE_INITGROUPS
-			if (initgroups(main_config.uid_name, main_config.server_gid) < 0) {
+			if (initgroups(config->uid_name, config->server_gid) < 0) {
 				fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
-					main_config.name, main_config.uid_name, fr_syserror(errno));
+					config->name, config->uid_name, fr_syserror(errno));
 				talloc_free(user);
 				return 0;
 			}
@@ -516,15 +639,16 @@ static int switch_users(CONF_SECTION *cs)
 	 *	Set the user/group we're going to use
 	 *	to check read permissions on configuration files.
 	 */
-	cf_file_check_user(main_config.server_uid ? main_config.server_uid : (uid_t)-1, main_config.server_gid ? main_config.server_gid : (gid_t)-1);
+	cf_file_check_user(config->server_uid ? config->server_uid : (uid_t)-1,
+			   config->server_gid ? config->server_gid : (gid_t)-1);
 
 	/*
 	 *	Do chroot BEFORE changing UIDs.
 	 */
-	if (chroot_dir) {
-		if (chroot(chroot_dir) < 0) {
+	if (config->chroot_dir) {
+		if (chroot(config->chroot_dir) < 0) {
 			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
-				main_config.name, chroot_dir, fr_syserror(errno));
+				config->name, config->chroot_dir, fr_syserror(errno));
 			return 0;
 		}
 
@@ -550,9 +674,9 @@ static int switch_users(CONF_SECTION *cs)
 	 *	Set the GID.  Don't bother checking it.
 	 */
 	if (do_sgid) {
-		if (setgid(main_config.server_gid) < 0){
+		if (setgid(config->server_gid) < 0){
 			fprintf(stderr, "%s: Failed setting group to %s: %s",
-				main_config.name, main_config.gid_name, fr_syserror(errno));
+				config->name, config->gid_name, fr_syserror(errno));
 			return 0;
 		}
 	}
@@ -567,7 +691,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	fail.
 	 *
 	 */
-	if (main_config.write_pid) {
+	if (config->write_pid) {
 		char *my_dir;
 
 		/*
@@ -579,15 +703,15 @@ static int switch_users(CONF_SECTION *cs)
 		 *	The freeradius user should be the only one
 		 *	allowed to write to this directory however.
 		 */
-		my_dir = talloc_typed_strdup(NULL, run_dir);
-		if (rad_mkdir(my_dir, 0755, main_config.server_uid, main_config.server_gid) < 0) {
+		my_dir = talloc_typed_strdup(NULL, config->run_dir);
+		if (rad_mkdir(my_dir, 0755, config->server_uid, config->server_gid) < 0) {
 			DEBUG("Failed to create run_dir %s: %s",
 			      my_dir, strerror(errno));
 		}
 		talloc_free(my_dir);
 	}
 
-	if ((default_log.dst == L_DST_FILES) && log_dir) {
+	if ((default_log.dst == L_DST_FILES) && config->log_dir) {
 		char *my_dir;
 
 		/*
@@ -596,8 +720,8 @@ static int switch_users(CONF_SECTION *cs)
 		 *	mean the actual files should be world
 		 *	readable.
 		 */
-		my_dir = talloc_typed_strdup(NULL, log_dir);
-		if (rad_mkdir(my_dir, 0755, main_config.server_uid, main_config.server_gid) < 0) {
+		my_dir = talloc_typed_strdup(config, config->log_dir);
+		if (rad_mkdir(my_dir, 0755, config->server_uid, config->server_gid) < 0) {
 			DEBUG("Failed to create logdir %s: %s",
 			      my_dir, strerror(errno));
 		}
@@ -611,11 +735,11 @@ static int switch_users(CONF_SECTION *cs)
 	 */
 	if ((default_log.dst == L_DST_FILES) &&
 	    (default_log.fd < 0)) {
-		default_log.fd = open(main_config.log_file,
+		default_log.fd = open(config->log_file,
 				      O_WRONLY | O_APPEND | O_CREAT, 0640);
 		if (default_log.fd < 0) {
 			fprintf(stderr, "%s: Failed to open log file %s: %s\n",
-				main_config.name, main_config.log_file, fr_syserror(errno));
+				config->name, config->log_file, fr_syserror(errno));
 			return 0;
 		}
 	}
@@ -630,9 +754,9 @@ static int switch_users(CONF_SECTION *cs)
 	 */
 	if ((do_suid || do_sgid) &&
 	    (default_log.dst == L_DST_FILES)) {
-		if (fchown(default_log.fd, main_config.server_uid, main_config.server_gid) < 0) {
+		if (fchown(default_log.fd, config->server_uid, config->server_gid) < 0) {
 			fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n",
-				main_config.name, main_config.log_file, fr_syserror(errno));
+				config->name, config->log_file, fr_syserror(errno));
 			return 0;
 		}
 	}
@@ -642,7 +766,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	permanently change the UID.
 	 */
 	if (do_suid) {
-		rad_suid_set_down_uid(main_config.server_uid);
+		rad_suid_set_down_uid(config->server_uid);
 		rad_suid_down();
 	}
 
@@ -650,11 +774,11 @@ static int switch_users(CONF_SECTION *cs)
 	 *	This also clears the dumpable flag if core dumps
 	 *	aren't allowed.
 	 */
-	if (fr_set_dumpable(main_config.allow_core_dumps) < 0) {
+	if (fr_set_dumpable(config->allow_core_dumps) < 0) {
 		PERROR("Failed enabling core dumps");
 	}
 
-	if (main_config.allow_core_dumps) {
+	if (config->allow_core_dumps) {
 		INFO("Core dumps are enabled");
 	}
 
@@ -662,30 +786,86 @@ static int switch_users(CONF_SECTION *cs)
 }
 #endif	/* HAVE_SETUID */
 
-/** Set the global radius config directory.
+
+/** Set the server name
  *
- * @param ctx Where to allocate the memory for the path string.
- * @param path to config dir root e.g. /usr/local/etc/raddb
+ * @note Will only add pair if one does not already exist
+ *
+ * @param[in] config		to alter.
+ * @param[in] name		to set e.g. "radiusd".
+ * @param[in] overwrite_config	replace any CONF_PAIRs with this value.
  */
-void set_radius_dir(TALLOC_CTX *ctx, char const *path)
+void main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config)
 {
-	if (radius_dir) {
+	if (config->name) {
 		char *p;
 
-		memcpy(&p, &radius_dir, sizeof(p));
+		memcpy(&p, &config->name, sizeof(p));
 		talloc_free(p);
-		radius_dir = NULL;
+		config->name = NULL;
 	}
-	if (path) radius_dir = talloc_typed_strdup(ctx, path);
+	if (name) config->name = talloc_typed_strdup(config, name);
+
+	config->overwrite_config_name = overwrite_config;
 }
 
-/** Get the global radius config directory.
+/** Set the global radius config directory.
  *
- * @return the global radius config directory.
+ * @param[in] config	to alter.
+ * @param[in] name	to config dir root e.g. /usr/local/etc/raddb
  */
-char const *get_radius_dir(void)
+void main_config_raddb_dir_set(main_config_t *config, char const *name)
 {
-	return radius_dir;
+	if (config->raddb_dir) {
+		char *p;
+
+		memcpy(&p, &config->raddb_dir, sizeof(p));
+		talloc_free(p);
+		config->raddb_dir = NULL;
+	}
+	if (name) config->raddb_dir = talloc_typed_strdup(config, name);
+}
+
+/** Set the global dictionary directory.
+ *
+ * @param[in] config	to alter.
+ * @param[in] name	to config dir root e.g. /usr/local/share/freeradius
+ */
+void main_config_dict_dir_set(main_config_t *config, char const *name)
+{
+	if (config->dict_dir) {
+		char *p;
+
+		memcpy(&p, &config->dict_dir, sizeof(p));
+		talloc_free(p);
+		config->dict_dir = NULL;
+	}
+	if (name) config->dict_dir = talloc_typed_strdup(config, name);
+}
+
+/** Allocate a main_config_t struct, setting defaults
+ *
+ */
+main_config_t *main_config_alloc(TALLOC_CTX *ctx)
+{
+	main_config_t *config;
+
+	config = talloc_zero(ctx, main_config_t);
+	if (!config) {
+		fr_strerror_printf("Failed allocating main config");
+		return NULL;
+	}
+
+	/*
+	 *	Set the defaults from compile time arguments
+	 *	these can be overridden later on the command line.
+	 */
+	main_config_raddb_dir_set(config, RADDBDIR);
+	main_config_dict_dir_set(config, DICTDIR);
+
+	main_config = config;
+
+	return config;
 }
 
 /*
@@ -693,31 +873,30 @@ char const *get_radius_dir(void)
  *
  *	This function can ONLY be called from the main server process.
  */
-int main_config_init(void)
+int main_config_init(main_config_t *config)
 {
 	char const		*p = NULL;
 	CONF_SECTION		*cs, *subcs;
 	struct stat		statbuf;
 	char			buffer[1024];
 
-	if (stat(radius_dir, &statbuf) < 0) {
-		ERROR("Error reading %s: %s",
-		       radius_dir, fr_syserror(errno));
+	if (stat(config->raddb_dir, &statbuf) < 0) {
+		ERROR("Error checking raddb_dir \"%s\": %s", config->raddb_dir, fr_syserror(errno));
 		return -1;
 	}
 
 #ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
-		ERROR("Configuration directory %s is globally writable.  Refusing to start due to insecure configuration.",
-		       radius_dir);
-	  return -1;
+		ERROR("Configuration directory %s is globally writable. "
+		      "Refusing to start due to insecure configuration", config->raddb_dir);
+		return -1;
 	}
 #endif
 
 #if 0 && defined(S_IROTH)
 	if (statbuf.st_mode & S_IROTH != 0) {
-		ERROR("Configuration directory %s is globally readable.  Refusing to start due to insecure configuration.",
-		       radius_dir);
+		ERROR("Configuration directory %s is globally readable. "
+		      "Refusing to start due to insecure configuration", config->raddb_dir);
 		return -1;
 	}
 #endif
@@ -728,7 +907,7 @@ int main_config_init(void)
 	 *
 	 *	Which should be enough for many configurations.
 	 */
-	main_config.talloc_pool_size = 8 * 1024; /* default */
+	config->talloc_pool_size = 8 * 1024; /* default */
 
 	/*
 	 *	We need to load the dictionaries before reading the
@@ -736,17 +915,17 @@ int main_config_init(void)
 	 *	pre-compilation in conf_file.c.  That should probably
 	 *	be fixed to be done as a second stage.
 	 */
-	DEBUG2("Including dictionary file \"%s/%s\"", main_config.dict_dir, FR_DICTIONARY_FILE);
-	if (fr_dict_from_file(&main_config.dict, FR_DICTIONARY_FILE) != 0) {
+	DEBUG2("Including dictionary file \"%s/%s\"", config->dict_dir, FR_DICTIONARY_FILE);
+	if (fr_dict_from_file(&config->dict, FR_DICTIONARY_FILE) != 0) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return -1;
 	}
 
 #define DICT_READ_OPTIONAL(_d, _n) \
 do {\
-	switch (fr_dict_read(main_config.dict, _d, _n)) {\
+	switch (fr_dict_read(config->dict, _d, _n)) {\
 	case -1:\
-		PERROR("Error reading %s/%s", _d, _n);\
+		PERROR("Error reading dictionary \"%s/%s\"", _d, _n);\
 		return -1;\
 	case 0:\
 		DEBUG2("Including dictionary file \"%s/%s\"", _d,_n);\
@@ -759,7 +938,7 @@ do {\
 	/*
 	 *	It's OK if this one doesn't exist.
 	 */
-	DICT_READ_OPTIONAL(radius_dir, FR_DICTIONARY_FILE);
+	DICT_READ_OPTIONAL(config->raddb_dir, FR_DICTIONARY_FILE);
 
 	cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!cs) return -1;
@@ -774,7 +953,11 @@ do {\
 	subcs = cf_section_find(cs, "feature", NULL);
 	if (!subcs) {
 		subcs = cf_section_alloc(cs, cs, "feature", NULL);
-		if (!subcs) return -1;
+		if (!subcs) {
+		failure:
+			talloc_free(cs);
+			return -1;
+		}
 	}
 	dependency_init_features(subcs);
 
@@ -786,15 +969,15 @@ do {\
 	subcs = cf_section_find(cs, "version", NULL);
 	if (!subcs) {
 		subcs = cf_section_alloc(cs, cs, "version", NULL);
-		if (!subcs) return -1;
+		if (!subcs) goto failure;
 	}
 	dependency_version_numbers_init(subcs);
 
 	/*
 	 *	@todo - not quite done yet... these dictionaries have
-	 *	to be loaded from radius_dir.  But the
+	 *	to be loaded from raddb_dir.  But the
 	 *	fr_dict_autoload_t has a base_dir pointer
-	 *	there... it's probably best to pass radius_dir into
+	 *	there... it's probably best to pass raddb_dir into
 	 *	fr_dict_autoload() and have it use that instead.
 	 *
 	 *	Once that's done, the proto_foo dictionaries SHOULD be
@@ -804,22 +987,41 @@ do {\
 	 *	And then all of the modules have to be updated to use
 	 *	their local dict pointer, instead of NULL.
 	 */
-	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) return -1;
+	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) goto failure;
 
 	/*
 	 *	Register dictionary autoload callbacks
 	 */
-	dl_symbol_init_cb_register(DL_DICT_ATTR_PRIORITY, "dict_attr", _module_dict_attr_autoload, NULL);
-	dl_symbol_init_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autoload, NULL);
-	dl_symbol_free_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autofree, NULL);
+	dl_symbol_init_cb_register(DL_PRIORITY_DICT_ATTR, "dict_attr", _module_dict_attr_autoload, NULL);
+	dl_symbol_init_cb_register(DL_PRIORITY_DICT, "dict", _module_dict_autoload, NULL);
+	dl_symbol_free_cb_register(DL_PRIORITY_DICT, "dict", _module_dict_autofree, NULL);
 
 	/* Read the configuration file */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->raddb_dir, config->name);
 	if (cf_file_read(cs, buffer) < 0) {
 		ERROR("Error reading or parsing %s", buffer);
-		talloc_free(cs);
-		return -1;
+		goto failure;
 	}
+
+	/*
+	 *	Do any fixups here that might be used in references
+	 */
+	if (config->name) {
+		CONF_PAIR *cp;
+
+		cp = cf_pair_find(cs, "name");
+		if (cp){
+			if (config->overwrite_config_name && (cf_pair_replace(cs, cp, config->name) < 0)) {
+				ERROR("Failed adding/replacing \"name\" config item");
+				goto failure;
+			}
+		} else {
+			MEM(cp = cf_pair_alloc(cs, "name", config->name, T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING));
+			cf_pair_add(cs, cp);
+		}
+	}
+
+	if (cf_section_pass2(cs) < 0) goto failure;
 
 	/*
 	 *	Parse environment variables first.
@@ -835,28 +1037,27 @@ do {\
 		     ci = cf_item_next(subcs, ci)) {
 			if (!cf_item_is_pair(ci)) {
 				cf_log_err(ci, "Unexpected item in ENV section");
-				talloc_free(cs);
-				return -1;
+				goto failure;
 			}
 
 			cp = cf_item_to_pair(ci);
 			if (cf_pair_operator(cp) != T_OP_EQ) {
 				cf_log_err(ci, "Invalid operator for item in ENV section");
-				talloc_free(cs);
-				return -1;
+				goto failure;
 			}
 
 			attr = cf_pair_attr(cp);
 			value = cf_pair_value(cp);
 			if (!value) {
 				if (unsetenv(attr) < 0) {
-					cf_log_err(ci, "Failed deleting environment variable %s: %s", attr, fr_syserror(errno));
-					talloc_free(cs);
-					return -1;
+					cf_log_err(ci, "Failed deleting environment variable %s: %s",
+						   attr, fr_syserror(errno));
+					goto failure;
 				}
 			} else {
 				if (setenv(attr, value, 1) < 0) {
-					cf_log_err(ci, "Failed setting environment variable %s: %s", attr, fr_syserror(errno));
+					cf_log_err(ci, "Failed setting environment variable %s: %s",
+						   attr, fr_syserror(errno));
 					talloc_free(cs);
 					return -1;
 				}
@@ -867,8 +1068,7 @@ do {\
 				if ((strcmp(attr, "LD_PRELOAD") == 0) &&
 				    (dlopen(value, RTLD_NOW | RTLD_GLOBAL) == NULL)) {
 					cf_log_err(ci, "Failed loading library %s: %s", value, dlerror());
-					talloc_free(cs);
-					return -1;
+					goto failure;
 				}
 			}
 		} /* loop over pairs in ENV */
@@ -881,32 +1081,28 @@ do {\
 	if (default_log.dst == L_DST_NULL) {
 		if (cf_section_rules_push(cs, initial_logging_config) < 0) {
 			fprintf(stderr, "%s: Error: Failed pushing rules for log {} section.\n",
-				main_config.name);
-			cf_file_free(cs);
-			return -1;
+				config->name);
+			goto failure;
 		}
 
 		DEBUG("Parsing initial logging configuration.");
-		if (cf_section_parse(NULL, NULL, cs) < 0) {
+		if (cf_section_parse(config, config, cs) < 0) {
 			fprintf(stderr, "%s: Error: Failed to parse log{} section.\n",
-				main_config.name);
-			cf_file_free(cs);
-			return -1;
+				config->name);
+			goto failure;
 		}
 
-		if (!log_dest) {
+		if (!config->log_dest) {
 			fprintf(stderr, "%s: Error: No log destination specified.\n",
-				main_config.name);
-			cf_file_free(cs);
-			return -1;
+				config->name);
+			goto failure;
 		}
 
-		default_log.dst = fr_str2int(log_str2dst, log_dest, L_DST_NUM_DEST);
+		default_log.dst = fr_str2int(log_str2dst, config->log_dest, L_DST_NUM_DEST);
 		if (default_log.dst == L_DST_NUM_DEST) {
 			fprintf(stderr, "%s: Error: Unknown log_destination %s\n",
-				main_config.name, log_dest);
-			cf_file_free(cs);
-			return -1;
+				config->name, config->log_dest);
+			goto failure;
 		}
 
 		if (default_log.dst == L_DST_SYSLOG) {
@@ -914,18 +1110,17 @@ do {\
 			 *	Make sure syslog_facility isn't NULL
 			 *	before using it
 			 */
-			if (!syslog_facility) {
+			if (!config->syslog_facility) {
 				fprintf(stderr, "%s: Error: Syslog chosen but no facility was specified\n",
-					main_config.name);
-				cf_file_free(cs);
-				return -1;
+					config->name);
+				goto failure;
 			}
-			main_config.syslog_facility = fr_str2int(syslog_facility_table, syslog_facility, -1);
-			if (main_config.syslog_facility < 0) {
+			config->syslog_facility = fr_str2int(syslog_facility_table,
+							     config->syslog_facility_str, -1);
+			if (config->syslog_facility < 0) {
 				fprintf(stderr, "%s: Error: Unknown syslog_facility %s\n",
-					main_config.name, syslog_facility);
-				cf_file_free(cs);
-				return -1;
+					config->name, config->syslog_facility_str);
+				goto failure;
 			}
 
 #ifdef HAVE_SYSLOG_H
@@ -933,15 +1128,14 @@ do {\
 			 *	Call openlog only once, when the
 			 *	program starts.
 			 */
-			openlog(main_config.name, LOG_PID, main_config.syslog_facility);
+			openlog(config->name, LOG_PID, config->syslog_facility);
 #endif
 
 		} else if (default_log.dst == L_DST_FILES) {
-			if (!main_config.log_file) {
+			if (!config->log_file) {
 				fprintf(stderr, "%s: Error: Specified \"files\" as a log destination, but no log filename was given!\n",
-					main_config.name);
-				cf_file_free(cs);
-				return -1;
+					config->name);
+				goto failure;
 			}
 		}
 	}
@@ -950,33 +1144,33 @@ do {\
 	 *	Only set timestamp logging from the config file if no value was
 	 *	specified on the command line.
 	 */
-	if (log_timestamp_is_set && (default_log.timestamp == L_TIMESTAMP_AUTO)) {
-		default_log.timestamp = log_timestamp ? L_TIMESTAMP_ON : L_TIMESTAMP_OFF;
+	if (config->log_timestamp_is_set && (default_log.timestamp == L_TIMESTAMP_AUTO)) {
+		default_log.timestamp = config->log_timestamp ? L_TIMESTAMP_ON : L_TIMESTAMP_OFF;
 	}
 
 #ifdef HAVE_SETUID
 	/*
 	 *	Switch users as early as possible.
 	 */
-	if (!switch_users(cs)) fr_exit(1);
+	if (!switch_users(config, cs)) goto failure;
 #endif
 
 	/*
 	 *	This allows us to figure out where, relative to
 	 *	radiusd.conf, the other configuration files exist.
 	 */
-	if (cf_section_rules_push(cs, server_config) < 0) return -1;
-	if (cf_section_rules_push(cs, virtual_servers_config) < 0) return -1;
+	if (cf_section_rules_push(cs, server_config) < 0) goto failure;
+	if (cf_section_rules_push(cs, virtual_servers_config) < 0) goto failure;
 
 	DEBUG("Parsing main configuration.");
-	if (cf_section_parse(NULL, NULL, cs) < 0) return -1;
+	if (cf_section_parse(config, config, cs) < 0) goto failure;
 
 	/*
 	 *	We ignore colourization of output until after the
 	 *	configuration files have been parsed.
 	 */
 	p = getenv("TERM");
-	if (do_colourise && p && isatty(default_log.fd) && strstr(p, "xterm")) {
+	if (config->do_colourise && p && isatty(default_log.fd) && strstr(p, "xterm")) {
 		default_log.colourise = true;
 	} else {
 		default_log.colourise = false;
@@ -987,7 +1181,7 @@ do {\
 	 *	command-line: use whatever is in the config
 	 *	file.
 	 */
-	if (rad_debug_lvl == 0) rad_debug_lvl = main_config.debug_level;
+	if (rad_debug_lvl == 0) rad_debug_lvl = config->debug_level;
 
 	/*
 	 *	Set the same debug level for the global log
@@ -997,34 +1191,13 @@ do {\
 
 	INFO("Switching to configured log settings");
 
-	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time,
-			      (main_config.max_request_time != 0), 100);
-
-	/*
-	 *	For now we don't do connected sockets.
-	 */
-	FR_INTEGER_BOUND_CHECK("thread.num_networks", main_config.num_networks, ==, 1);
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", main_config.num_workers, >, 0);
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", main_config.num_workers, <, 1024);
-
-	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, (size_t)(2 * 1024));
-	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, (size_t)(1024 * 1024));
-
-	if (main_config.talloc_memory_limit) {
-		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", main_config.talloc_memory_limit, >=,
-				    (size_t)1024 * 1024 * 10);
-
-		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", main_config.talloc_memory_limit, <=,
-				    ((((size_t)1024) * 1024 * 1024) * 16));
-	}
-
 	/*
 	 *	Set default initial request processing delay to 1/3 of a second.
 	 *	Will be updated by the lowest response window across all home servers,
 	 *	if it is less than this.
 	 */
-	main_config.init_delay.tv_sec = 0;
-	main_config.init_delay.tv_usec = 2* (1000000 / 3);
+	config->init_delay.tv_sec = 0;
+	config->init_delay.tv_usec = 2* (1000000 / 3);
 
 	/*
 	 *	Free the old configuration items, and replace them
@@ -1033,13 +1206,11 @@ do {\
 	 *	Note that where possible, we do atomic switch-overs,
 	 *	to ensure that the pointers are always valid.
 	 */
-	rad_assert(main_config.config == NULL);
-	main_config.config = cs;
+	rad_assert(config->root_cs == NULL);
+	config->root_cs = cs;
 
-	DEBUG2("%s: #### Loading Clients ####", main_config.name);
-	if (!client_list_parse_section(cs, false)) {
-		return -1;
-	}
+	DEBUG2("%s: #### Loading Clients ####", config->name);
+	if (!client_list_parse_section(cs, false)) goto failure;
 
 	/*
 	 *	Register the %{config:section.subsection} xlat function.
@@ -1049,16 +1220,15 @@ do {\
 	/*
 	 *	Ensure cwd is inside the chroot.
 	 */
-	if (chroot_dir) {
-		if (chdir(log_dir) < 0) {
-			ERROR("Failed to 'chdir %s' after chroot: %s",
-			       log_dir, fr_syserror(errno));
-			return -1;
+	if (config->chroot_dir) {
+		if (chdir(config->log_dir) < 0) {
+			ERROR("Failed to 'chdir %s' after chroot: %s", config->log_dir, fr_syserror(errno));
+			goto failure;
 		}
 	}
 
 #ifdef WITH_CONF_WRITE
-	if (main_config.write_dir) {
+	if (config->write_dir) {
 		cf_section_write(NULL, cs, -1);
 	}
 #endif
@@ -1072,7 +1242,7 @@ do {\
 /*
  *	Free the configuration.  Called only when the server is exiting.
  */
-int main_config_free(void)
+int main_config_free(main_config_t **config)
 {
 	/*
 	 *	Clean up the configuration data
@@ -1083,20 +1253,20 @@ int main_config_free(void)
 	/*
 	 *	Frees current config and any previous configs.
 	 */
-	TALLOC_FREE(main_config.config);
-	talloc_decrease_ref_count(main_config.dict);
+	TALLOC_FREE((*config)->root_cs);
+	talloc_decrease_ref_count((*config)->dict);
+	TALLOC_FREE(*config);
 
 	return 0;
 }
 
-void hup_logfile(void)
+void hup_logfile(main_config_t *config)
 {
 	int fd, old_fd;
 
 	if (default_log.dst != L_DST_FILES) return;
 
-	fd = open(main_config.log_file,
-		  O_WRONLY | O_APPEND | O_CREAT, 0640);
+	fd = open(config->log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
 	if (fd >= 0) {
 		/*
 		 *	Atomic swap. We'd like to keep the old
@@ -1112,7 +1282,7 @@ void hup_logfile(void)
 	}
 }
 
-void main_config_hup(void)
+void main_config_hup(main_config_t *config)
 {
 	time_t		when;
 
@@ -1125,7 +1295,7 @@ void main_config_hup(void)
 	 *	The "open log file" code is here rather than in log.c,
 	 *	because it makes that function MUCH simpler.
 	 */
-	hup_logfile();
+	hup_logfile(config);
 
 	/*
 	 *	Only check the config files every few seconds.

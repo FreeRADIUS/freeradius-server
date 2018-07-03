@@ -28,7 +28,8 @@ FILES  := \
 	escape.txt \
 	condition.txt \
 	xlat.txt \
-	ethernet.txt
+	ethernet.txt \
+	command.txt
 
 #
 #  Create the output directory

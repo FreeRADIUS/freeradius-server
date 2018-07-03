@@ -488,7 +488,7 @@ static REQUEST *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t
 	RADIUS_PACKET		*packet;
 	REQUEST			*request;
 
-	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
+	ctx = talloc_pool(NULL, main_config->talloc_pool_size);
 	if (!ctx) return NULL;
 	talloc_set_name_const(ctx, "ldap_inst_pool");
 

@@ -1182,8 +1182,6 @@ void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys)
 #include <stdbool.h>
 #include <freeradius-devel/cutest.h>
 
-main_config_t main_config;
-
 /*
  *	EAP-SIM (RFC4186) GSM authentication vectors
  */

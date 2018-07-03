@@ -141,8 +141,8 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_control_tcp - Received command packet length on %s",
-	       inst->name);
+	DEBUG2("proto_control_tcp - Received command packet length %d on %s",
+	       (int) data_size, inst->name);
 
 	return data_size;
 }

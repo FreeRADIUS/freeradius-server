@@ -29,6 +29,8 @@ RCSIDH(conduit_h, "$Id$")
 extern "C" {
 #endif
 
+#define FR_CONDUIT_MAGIC (0xf7eead17)
+
 typedef enum fr_conduit_type_t {
 	FR_CONDUIT_STDIN = 0,
 	FR_CONDUIT_STDOUT,

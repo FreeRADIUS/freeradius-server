@@ -48,12 +48,17 @@ typedef struct {
 	uint32_t	session_timeout;		//!< Maximum time between the last response and next request.
 	uint32_t	max_session;			//!< Maximum ongoing session allowed.
 
+	uint8_t       	state_server_id;		//!< Sets a specific byte in the state to allow the
+							//!< authenticating server to be identified in packet
+							//!< captures.
+
 	fr_state_tree_t	*state_tree;			//!< State tree to link multiple requests/responses.
 } proto_radius_auth_t;
 
 static const CONF_PARSER session_config[] = {
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, proto_radius_auth_t, session_timeout), .dflt = "15" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, proto_radius_auth_t, max_session), .dflt = "4096" },
+	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, proto_radius_auth_t, state_server_id) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -658,7 +663,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *process_app_cs)
 		}
 	}
 
-	inst->state_tree = fr_state_tree_init(inst, attr_state, inst->max_session, inst->session_timeout);
+	inst->state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->max_session,
+					      inst->session_timeout, inst->state_server_id);
 
 	return 0;
 }

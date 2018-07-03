@@ -38,7 +38,7 @@ while (<>) {
 	$firstcol = 0;
     }
 
-    if (($firstcol == 1) && ($oldcol == 0)) {
+    if (($firstcol == 1) && ($oldcol == 0) && ($raw == 0)) {
 	s/^#//;
     }
 
@@ -64,6 +64,15 @@ while (<>) {
 	if (/^\s*\*/) {
 	    print "  ";
 	}
+
+	#
+	#  @todo - load up www.freeradius.org/rfc/refs
+	#
+	#  Split the input line on spaces, into a hash array (for
+	#  uniqueness) and check each word against "refs".  If found,
+	#  the word is an attribute.  Replace the word in $_ with a
+	#  reference to the attribute definition.
+	#
 
 	print;
 	next;

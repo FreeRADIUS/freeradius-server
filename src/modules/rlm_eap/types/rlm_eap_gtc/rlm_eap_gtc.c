@@ -33,7 +33,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
-static int auth_type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 /*
  *	EAP-GTC is just ASCII data carried inside of the EAP session.
@@ -77,13 +78,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *e
  *
  * @param[in] ctx	to allocate data.
  * @param[out] out	Where to write the auth_type we created or resolved.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the auth_type.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
 

@@ -144,6 +144,7 @@ const char CC_HINT(used) *__lsan_default_suppressions(void)
 		"leak:*gmtsub*\n"
 		"leak:tzsetwall_basic\n"
 		"leak:ImageLoaderMachO::doImageInit\n"
+		"leak:libSystem_atfork_child"
 #else
 		""
 #endif
@@ -1014,15 +1015,16 @@ void fr_talloc_fault_setup(void)
  *
  * May be called multiple time to change the panic_action/program.
  *
- * @param cmd to execute on fault. If present %p will be substituted
- *        for the parent PID before the command is executed, and %e
- *        will be substituted for the currently running program.
+ * @param[in] ctx	to allocate autofreeable resources in.
+ * @param[in] cmd	to execute on fault. If present %p will be substituted
+ *      		for the parent PID before the command is executed, and %e
+ *      		will be substituted for the currently running program.
  * @param program Name of program currently executing (argv[0]).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_fault_setup(char const *cmd, char const *program)
+int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 {
 	static bool setup = false;
 
@@ -1124,8 +1126,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 			/*
 			 *  Disable null tracking on exit, else valgrind complains
 			 */
-			talloc_autofree_ctx = talloc_autofree_context();
-			marker = talloc(talloc_autofree_ctx, bool);
+			marker = talloc(ctx, bool);
 			talloc_set_destructor(marker, _fr_disable_null_tracking);
 		}
 

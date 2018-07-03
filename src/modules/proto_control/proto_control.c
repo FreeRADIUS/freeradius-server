@@ -30,8 +30,8 @@
 #include "proto_control.h"
 
 extern fr_app_t proto_control;
-static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static CONF_PARSER const limit_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, proto_control_t, io.idle_timeout), .dflt = "30.0" } ,
@@ -85,13 +85,14 @@ fr_dict_attr_autoload_t proto_control_dict_attr[] = {
  *
  * @param[in] ctx	to allocate data in (instance of proto_control).
  * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 //	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
@@ -121,13 +122,14 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
  *
  * @param[in] ctx	to allocate data in (instance of proto_control).
  * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_instance_t	*parent_inst;
@@ -218,7 +220,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	request->reply->dst_ipaddr = address->src_ipaddr;
 	request->reply->dst_port = address->src_port;
 
-	request->root = &main_config;
+	request->config = main_config;
 	REQUEST_VERIFY(request);
 
 	if (!inst->io.app_io->decode) return 0;

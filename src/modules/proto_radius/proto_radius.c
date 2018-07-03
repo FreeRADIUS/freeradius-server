@@ -32,9 +32,9 @@
 
 extern fr_app_t proto_radius;
 
-static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int priority_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int priority_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 static CONF_PARSER const limit_config[] = {
 	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_TIMEVAL, proto_radius_t, io.cleanup_delay), .dflt = "5.0" } ,
@@ -110,7 +110,7 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
 	{ NULL }
 };
 
-static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	int32_t priority;
 
@@ -128,13 +128,14 @@ static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUS
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
  * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	static char const *type_lib_table[] = {
 		[FR_CODE_ACCESS_REQUEST]	= "auth",
@@ -244,13 +245,14 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
  * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_instance_t	*parent_inst;
@@ -347,7 +349,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	request->reply->dst_ipaddr = address->src_ipaddr;
 	request->reply->dst_port = address->src_port;
 
-	request->root = &main_config;
+	request->config = main_config;
 	REQUEST_VERIFY(request);
 
 	/*

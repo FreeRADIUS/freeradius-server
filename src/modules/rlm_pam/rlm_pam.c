@@ -87,7 +87,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_pam_t *inst = instance;
 
-	if (!inst->pam_auth_name) inst->pam_auth_name = main_config.name;
+	if (!inst->pam_auth_name) inst->pam_auth_name = main_config->name;
 
 	return 0;
 }

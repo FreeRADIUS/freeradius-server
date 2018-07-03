@@ -117,13 +117,17 @@ struct fr_state_tree_t {
 
 	fr_state_entry_t	*head, *tail;			//!< Entries to expire.
 	uint32_t		timeout;			//!< How long to wait before cleaning up state entires.
+
+	bool			thread_safe;			//!< Whether we lock the tree whilst modifying it.
 	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
+
+	uint8_t			server_id;			//!< ID to use for load balancing.
 
 	fr_dict_attr_t const	*da;				//!< State attribute used.
 };
 
-#define PTHREAD_MUTEX_LOCK if (main_config.spawn_workers) pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK if (main_config.spawn_workers) pthread_mutex_unlock
+#define PTHREAD_MUTEX_LOCK if (state->thread_safe) pthread_mutex_lock
+#define PTHREAD_MUTEX_UNLOCK if (state->thread_safe) pthread_mutex_unlock
 
 static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry);
 
@@ -144,7 +148,7 @@ static int _state_tree_free(fr_state_tree_t *state)
 {
 	fr_state_entry_t *this;
 
-	if (main_config.spawn_workers) pthread_mutex_destroy(&state->mutex);
+	if (main_config->spawn_workers) pthread_mutex_destroy(&state->mutex);
 
 	DEBUG4("Freeing state tree %p", state);
 
@@ -173,14 +177,16 @@ static int _state_tree_free(fr_state_tree_t *state)
  *
  * @param[in] ctx		to link the lifecycle of the state tree to.
  * @param[in] da		Attribute used to store and retrieve state from.
+ * @param[in] thread_safe		Whether we should mutex protect the state tree.
  * @param[in] max_sessions	we track state for.
  * @param[in] timeout		How long to wait before cleaning up entries.
+ * @param[in] server_id		ID byte to use in load-balancing operations.
  * @return
  *	- A new state tree.
  *	- NULL on failure.
  */
-fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
-				    uint32_t max_sessions, uint32_t timeout)
+fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, bool thread_safe,
+				    uint32_t max_sessions, uint32_t timeout, uint8_t server_id)
 {
 	fr_state_tree_t *state;
 
@@ -199,7 +205,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
 	 */
 	fr_talloc_link_ctx(ctx, state);
 
-	if (main_config.spawn_workers && (pthread_mutex_init(&state->mutex, NULL) != 0)) {
+	if (thread_safe && (pthread_mutex_init(&state->mutex, NULL) != 0)) {
 		talloc_free(state);
 		return NULL;
 	}
@@ -218,6 +224,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
 	talloc_set_destructor(state, _state_tree_free);
 
 	state->da = da;		/* Remember which attribute we use to load/store state */
+	state->server_id = server_id;
 
 	return state;
 }
@@ -454,7 +461,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 *	Allow a portion of the State attribute to be set,
 		 *	this is useful for debugging purposes.
 		 */
-		entry->state_comp.server_id = main_config.state_server_id;
+		entry->state_comp.server_id = state->server_id;
 
 		vp = fr_pair_afrom_da(packet, state->da);
 		fr_pair_value_memcpy(vp, entry->state, sizeof(entry->state));

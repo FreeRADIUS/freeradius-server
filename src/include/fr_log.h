@@ -48,7 +48,7 @@ void		fr_strerror_free(void);
 void		fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *msg);
 
 char const	*fr_syserror(int num);
-extern bool	fr_dns_lookups;	/* do IP -> hostname lookups? */
+extern bool	fr_reverse_lookups;	/* do IP -> hostname lookups? */
 extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
 extern int	fr_debug_lvl;	/* 0 = no debugging information */
 extern bool	log_dates_utc;

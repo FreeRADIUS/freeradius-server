@@ -61,9 +61,11 @@ static const FR_NAME_NUMBER chain_verify_mode_table[] = {
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 #endif
-static int certificate_format_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int certificate_format_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+					 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, fr_tls_conf_t, session_cache_server) },
@@ -227,7 +229,8 @@ CONF_PARSER tls_client_config[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	fr_tls_chain_verify_mode_t	type;
 	char const			*type_str;
@@ -255,7 +258,8 @@ static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM 
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int certificate_format_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int certificate_format_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+					 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	int		type;
 	char const	*type_str;

@@ -1037,14 +1037,17 @@ static int mod_load(void)
 	 */
 #if PY_VERSION_HEX > 0x03050000
 	{
-		wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
+		wide_name = Py_DecodeLocale(main_config->name, strlen(main_config->name));
 		Py_SetProgramName(wide_name);		/* The value of argv[0] as a wide char string */
 	}
 #else
 	{
+		char const *const_name;
 		char *name;
 
-		memcpy(&name, &main_config.name, sizeof(name));
+		const_name = main_config->name;
+
+		memcpy(&name, &const_name, sizeof(name));
 		Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
 	}
 #endif

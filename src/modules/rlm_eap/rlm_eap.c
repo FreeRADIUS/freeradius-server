@@ -45,8 +45,10 @@ typedef struct {
 	rlm_rcode_t	rcode;			//!< The result of the submodule.
 } eap_auth_rctx_t;
 
-static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
-static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int submodule_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("default_eap_type", FR_TYPE_VOID, rlm_eap_t, default_method),
@@ -106,13 +108,15 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
  *
  * @param[in] ctx	to allocate data in (instance of rlm_eap_t).
  * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int submodule_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const			*name = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION			*eap_cs = cf_item_to_section(cf_parent(ci));
@@ -217,13 +221,15 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
  *
  * @param[in] ctx	unused.
  * @param[out] out	Where to write the #eap_type_t value we found.
+ * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the EAP method.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*default_method_name = cf_pair_value(cf_item_to_pair(ci));
 	eap_type_t	method;

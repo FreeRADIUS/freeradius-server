@@ -38,6 +38,7 @@ typedef struct REQUEST REQUEST;
 #include <freeradius-devel/cf_util.h>
 #include <freeradius-devel/dl.h>
 #include <freeradius-devel/dependency.h>
+#include <freeradius-devel/command.h>
 #include <freeradius-devel/io/test_point.h>
 
 #ifdef WITH_TACACS
@@ -664,6 +665,161 @@ static size_t load_test_point_by_command(void **symbol, char *command, size_t of
 	return p - command;
 }
 
+static fr_cmd_t *command_head = NULL;
+
+static int command_func(UNUSED FILE *fp, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	return 0;
+}
+
+static int command_walk(UNUSED void *ctx, fr_cmd_walk_info_t *info)
+{
+	int i;
+
+	for (i = 0; i < info->num_parents; i++) {
+		printf("%s ", info->parents[i]);
+	}
+
+	printf(":%s ", info->name);
+	if (info->syntax) printf("%s", info->syntax);
+	printf("\n");
+
+	return 1;
+}
+
+static void command_print(void)
+{
+	void *walk_ctx = NULL;
+
+	printf("Command hierarchy --------\n");
+	fr_command_debug(stdout, command_head);
+
+	printf("Command list --------\n");
+	while (fr_command_walk(command_head, &walk_ctx, NULL, command_walk) == 1) {
+		// do nothing
+	}
+}
+
+/*
+ *	Add a command by talloc'ing a table for it.
+ */
+static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outlen)
+{
+	int num_parents;
+	char *p, *name;
+	char **parents;
+	fr_cmd_table_t *table;
+
+	table = talloc_zero(ctx, fr_cmd_table_t);
+
+	p = strchr(input, ':');
+	if (!p) {
+		snprintf(output, outlen, "no ':name' specified");
+		return;
+	}
+
+	*p = '\0';
+	p++;
+
+	parents = talloc_zero_array(table, char *, 32);
+
+	num_parents = fr_dict_str_to_argv(input, parents, 31);
+
+	if (num_parents > 0) {
+		parents[num_parents + 1] = NULL;
+
+		/* -Wincompatible-pointer-types-discards-qualifiers */
+		memcpy(&table->parents, &parents, sizeof(parents));
+	}
+
+	/*
+	 *	Set the name and try to find the syntax.
+	 */
+	name = p;
+	while (*p && !isspace((int) *p)) p++;
+
+	if (isspace(*p)) {
+		*p = '\0';
+		p++;
+	}
+
+	while (*p && isspace((int) *p)) p++;
+
+	if (*p) {
+		table->syntax = talloc_strdup(table, p);
+	}
+	table->help = NULL;
+	table->func = command_func;
+	table->tab_expand = NULL;
+	table->read_only = true;
+
+	if (fr_command_add(ctx, &command_head, name, NULL, table) < 0) {
+		printf("SHIT adding %s\n", name);
+		snprintf(output, outlen, "ERROR: failed adding command ???");
+		return;
+	}
+
+	command_print();
+
+	snprintf(output, outlen, "ok");
+	fflush(stdout);
+}
+
+/*
+ *	Do tab completion on a command
+ */
+static void command_tab(TALLOC_CTX *ctx, char *input, char *output, size_t outlen)
+{
+	int i;
+	int num_expansions;
+	char const *expansions[CMD_MAX_ARGV];
+	char *p;
+	fr_cmd_info_t info;
+
+	info.argc = 0;
+	info.max_argc = CMD_MAX_ARGV;
+	info.argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
+	info.box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
+
+	info.argc = fr_dict_str_to_argv(input, info.argv, CMD_MAX_ARGV);
+	if (info.argc <= 0) {
+		snprintf(output, outlen, "Failed splitting input");
+		return;
+	}
+
+	num_expansions = fr_command_tab_expand(ctx, command_head, &info, CMD_MAX_ARGV, expansions);
+
+	snprintf(output, outlen, "%d - ", num_expansions);
+	p = output + strlen(output);
+
+	for (i = 0; i < num_expansions; i++) {
+		snprintf(p, outlen - (p - output), "'%s', ", expansions[i]);
+		p += strlen(p);
+	}
+
+	/*
+	 *	Remove the trailing ", "
+	 */
+	if (num_expansions > 0) {
+		p -= 2;
+		*p = '\0';
+	}
+}
+
+static void command_parse(TALLOC_CTX *ctx, char *input, char *output, size_t outlen)
+{
+	if (strncmp(input, "add ", 4) == 0) {
+		command_add(ctx, input + 4, output, outlen);
+		return;
+	}
+
+	if (strncmp(input, "tab ", 4) == 0) {
+		command_tab(ctx, input + 4, output, outlen);
+		return;
+	}
+	snprintf(output, outlen, "Unknown command '%s'", input);
+}
+
 static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *root_dir, char const *filename)
 {
 	int		lineno;
@@ -1154,6 +1310,15 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			continue;
 		}
 
+		/*
+		 *	Test the command API
+		 */
+		if (strcmp(test_type, "command") == 0) {
+			p += 8;
+			command_parse(tp_ctx, p, output, sizeof(output));
+			continue;
+		}
+
 		fprintf(stderr, "Unknown input at line %d of %s: %s\n", lineno, directory, p);
 
 		goto error;
@@ -1193,7 +1358,7 @@ int main(int argc, char *argv[])
 	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
-	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("unit_test_attribute");
 		goto done;
 	}

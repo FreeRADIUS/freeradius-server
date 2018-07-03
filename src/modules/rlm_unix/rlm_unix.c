@@ -45,16 +45,6 @@ USES_APPLE_DEPRECATED_API
 #  include	<shadow.h>
 #endif
 
-#ifdef OSFC2
-#  include	<sys/security.h>
-#  include	<prot.h>
-#endif
-
-#ifdef OSFSIA
-#  include	<sia.h>
-#  include	<siad.h>
-#endif
-
 #include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/sysutmp.h>
 
@@ -201,11 +191,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 #ifdef HAVE_GETSPNAM
 	struct spwd	*spwd = NULL;
 #endif
-#ifdef OSFC2
-	struct pr_passwd *pr_pw;
-#else
 	struct passwd	*pwd;
-#endif
 #ifdef HAVE_GETUSERSHELL
 	char		*shell;
 #endif
@@ -222,24 +208,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	name = request->username->vp_strvalue;
 	encrypted_pass = NULL;
 
-#ifdef OSFC2
-	if ((pr_pw = getprpwnam(name)) == NULL)
-		return RLM_MODULE_NOTFOUND;
-	encrypted_pass = pr_pw->ufld.fd_encrypt;
-
-	/*
-	 *	Check if account is locked.
-	 */
-	if (pr_pw->uflg.fg_lock!=1) {
-		REDEBUG("Account locked");
-		return RLM_MODULE_USERLOCK;
-	}
-#else /* OSFC2 */
 	if ((pwd = getpwnam(name)) == NULL) {
 		return RLM_MODULE_NOTFOUND;
 	}
 	encrypted_pass = pwd->pw_passwd;
-#endif /* OSFC2 */
 
 #ifdef HAVE_GETSPNAM
 	/*
@@ -259,10 +231,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	}
 #endif	/* HAVE_GETSPNAM */
 
-/*
- *	These require 'pwd != NULL', which isn't true on OSFC2
- */
-#ifndef OSFC2
 #ifdef DENY_SHELL
 	/*
 	 *	Users with a particular shell are denied access
@@ -291,7 +259,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		return RLM_MODULE_REJECT;
 	}
 #endif
-#endif /* OSFC2 */
 
 #if defined(HAVE_GETSPNAM) && !defined(M_UNIX)
 	/*

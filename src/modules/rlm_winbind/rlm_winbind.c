@@ -434,11 +434,12 @@ no_domain:
  * @param[in] instance This module's instance (unused)
  * @return 0
  */
-static int mod_detach(UNUSED void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_winbind_t *inst = instance;
 
 	fr_pool_free(inst->wb_pool);
+
 	return 0;
 }
 
@@ -459,7 +460,6 @@ static int mod_detach(UNUSED void *instance)
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_winbind_t const *inst = instance;
-	VALUE_PAIR *vp;
 
 	if (!request->password || (request->password->da != attr_user_password)) {
 		RDEBUG("No User-Password found in the request; not doing winbind authentication.");

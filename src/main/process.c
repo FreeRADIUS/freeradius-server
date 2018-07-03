@@ -94,7 +94,7 @@ static int event_status(UNUSED void *ctx, struct timeval *wake)
 	}
 
 	if (!wake) {
-		if (main_config.drop_requests) return 0;
+		if (main_config->drop_requests) return 0;
 		INFO("Ready to process requests");
 	} else if ((wake->tv_sec != 0) ||
 		   (wake->tv_usec >= 100000)) {
@@ -354,8 +354,7 @@ int radius_event_start(UNUSED bool have_children)
 	time(&fr_start_time);
 
 	if (check_config) {
-		DEBUG("%s: #### Skipping IP addresses and Ports ####",
-		       main_config.name);
+		DEBUG("%s: #### Skipping IP addresses and Ports ####", main_config->name);
 		return 0;
 	}
 
