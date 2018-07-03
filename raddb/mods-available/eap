@@ -668,10 +668,7 @@ eap {
 		#  through a virtual server constructed
 		#  specifically for this purpose.
 		#
-		#  If this entry is commented out, the inner
-		#  tunneled request will be sent through
-		#  the virtual server that processed the
-		#  outer requests.
+		#  A virtual server MUST be specified.
 		#
 		virtual_server = "inner-tunnel"
 
@@ -793,10 +790,7 @@ eap {
 		#  through a virtual server constructed
 		#  specifically for this purpose.
 		#
-		#  If this entry is commented out, the inner
-		#  tunneled request will be sent through
-		#  the virtual server that processed the
-		#  outer requests.
+		#  A virtual server MUST be specified.
 		#
 		virtual_server = "inner-tunnel"
 

@@ -431,7 +431,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		RDEBUG("%s %s Id %i from %s%s%s:%i to %s%s%s:%i length %zu",
+		RDEBUG("%s %s Id %u from %s%s%s:%i to %s%s%s:%i length %zu",
 		       received ? "Received" : "Sent",
 		       fr_packet_codes[packet->code],
 		       packet->id,
@@ -449,7 +449,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 		       packet->dst_port,
 		       packet->data_len);
 	} else {
-		RDEBUG("%s code %u Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
+		RDEBUG("%s code %u Id %u from %s%s%s:%i to %s%s%s:%i length %zu\n",
 		       received ? "Received" : "Sent",
 		       packet->code,
 		       packet->id,
@@ -4665,10 +4665,6 @@ static void event_poll_detail(void *ctx)
 
 static void event_status(struct timeval *wake)
 {
-#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
-	int argval;
-#endif
-
 	if (rad_debug_lvl == 0) {
 		if (just_started) {
 			INFO("Ready to process requests");
@@ -4692,18 +4688,19 @@ static void event_status(struct timeval *wake)
 	 *	all of the time...
 	 */
 
-#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
-	/*
-	 *	If there are no child threads, then there may
-	 *	be child processes.  In that case, wait for
-	 *	their exit status, and throw that exit status
-	 *	away.  This helps get rid of zxombie children.
-	 */
-	while (waitpid(-1, &argval, WNOHANG) > 0) {
-		/* do nothing */
-	}
-#endif
+	if (!spawn_flag) {
+		int argval;
 
+		/*
+		 *	If there are no child threads, then there may
+		 *	be child processes.  In that case, wait for
+		 *	their exit status, and throw that exit status
+		 *	away.  This helps get rid of zxombie children.
+		 */
+		while (waitpid(-1, &argval, WNOHANG) > 0) {
+			/* do nothing */
+		}
+	}
 }
 
 #ifdef WITH_TCP

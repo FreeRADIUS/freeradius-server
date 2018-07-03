@@ -2426,6 +2426,8 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
+
 RADIUSD_MAJOR_VERSION=`cat VERSION | cut -f1 -d.`
 RADIUSD_MINOR_VERSION=`cat VERSION | cut -f2 -d.`
 RADIUSD_INCRM_VERSION=`cat VERSION | cut -f3 -d. | sed 's/[\.-].*$//'`
@@ -6888,10 +6890,6 @@ if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>." >&2;}
 else
-
-$as_echo "#define HAVE_LIBPCAP 1" >>confdefs.h
-
-
   for ac_func in \
     pcap_fopen_offline \
     pcap_dump_fopen \
@@ -9168,9 +9166,9 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_pcap_h" = "xyes"; then
+  if test "x$ac_cv_header_pcap_h" = "xyes" && test "x$ac_cv_lib_pcap_pcap_open_live" = "xyes"; then
 
-$as_echo "#define HAVE_PCAP_H 1" >>confdefs.h
+$as_echo "#define HAVE_LIBPCAP 1" >>confdefs.h
 
 
 

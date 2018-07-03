@@ -1045,7 +1045,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		rs_time_print(timestr, sizeof(timestr), &header->ts);
 	}
 
-	len = fr_link_layer_offset(data, header->caplen, event->in->link_layer);
+	len = fr_pcap_link_layer_offset(data, header->caplen, event->in->link_layer);
 	if (len < 0) {
 		REDEBUG("Failed determining link layer header offset");
 		return;
@@ -2404,7 +2404,7 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
-			if (!fr_link_layer_supported(link_layer)) {
+			if (!fr_pcap_link_layer_supported(link_layer)) {
 				DEBUG2("Skipping %s: datalink type %s not supported",
 				       dev_p->name, pcap_datalink_val_to_name(link_layer));
 				continue;
@@ -2504,7 +2504,7 @@ int main(int argc, char *argv[])
 				goto finish;
 			}
 
-			if (!fr_link_layer_supported(in_p->link_layer)) {
+			if (!fr_pcap_link_layer_supported(in_p->link_layer)) {
 				ERROR("Failed opening pcap handle (%s): Datalink type %s not supported",
 				      in_p->name, pcap_datalink_val_to_name(in_p->link_layer));
 				goto finish;

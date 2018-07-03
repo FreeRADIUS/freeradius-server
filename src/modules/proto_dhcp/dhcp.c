@@ -1,4 +1,3 @@
-
 /*
  * dhcp.c	Functions to send/receive dhcp packets.
  *
@@ -82,6 +81,8 @@ static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 	return NULL; \
 }
 #endif
+
+#define VENDORPEC_ADSL 3561
 
 typedef struct dhcp_packet_t {
 	uint8_t		opcode;
@@ -921,6 +922,26 @@ ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const 
 		}
 
 		/*
+		 *	Decode ADSL Forum vendor-specific options.
+		 */
+		if ((p[0] == 125) && (p[1] > 6) && (p[2] == 0) && (p[3] == 0) && (p[4] == 0x0d) && (p[5] == 0xe9) &&
+		    (p[6] + 5 == p[1])) {
+			da = dict_attrbyvalue(255, VENDORPEC_ADSL);
+			if (!da) goto normal;
+
+			vp = fr_pair_afrom_da(ctx, da);
+			if (!vp) {
+				fr_pair_list_free(out);
+				return -1;
+			}
+
+			(void) fr_dhcp_decode_suboption(ctx, &vp, p + 7, p[6]);
+			if (vp) fr_cursor_merge(&cursor, vp);
+			goto next;
+		}
+
+	normal:
+		/*
 		 *	Array type sub-option create a new VALUE_PAIR
 		 *	for each array element.
 		 */
@@ -1335,6 +1356,67 @@ static ssize_t fr_dhcp_vp2data_tlv(uint8_t *out, ssize_t outlen, vp_cursor_t *cu
 	return p - out;
 }
 
+static ssize_t fr_dhcp_encode_adsl(uint8_t *out, size_t outlen, vp_cursor_t *cursor)
+{
+	VALUE_PAIR *vp;
+	uint8_t *p;
+	size_t room;
+
+	if (outlen <= (2 + 4 + 1)) return -1;
+
+	out[0] = 125;		/* Vendor-Specific */
+	out[1] = 5;		/* vendorpec + 1 octet of length */
+	out[2] = 0;
+	out[3] = 0;
+	out[4] = 0x0d;
+	out[5] = 0xe9;		/* ADSL forum vendorpec */
+	out[6] = 0;		/* vendor-specific length */
+
+	p = out + 7;
+	room = outlen - 7;
+
+	for (vp = fr_cursor_current(cursor);
+	     ((vp != NULL) && (vp->da->vendor == VENDORPEC_ADSL) &&
+	      (vp->da->attr > 255) && ((vp->da->attr & 0xff) == 0xff));
+	     vp = fr_cursor_next(cursor)) {
+		ssize_t length;
+
+		/*
+		 *	Silently discard options when there isn't enough room.
+		 */
+		if (room < 2) break;
+
+		p[0] = (vp->da->attr >> 8) & 0xff;
+
+		length = fr_dhcp_vp2data(p + 2, room - 2, vp);
+		if (length < 0) break; /* not enough room */
+		if (length > 255) break; /* too much data */
+
+		p[1] = length;
+
+		length += 2;	/* include the attribute header */
+
+		/*
+		 *	We don't (yet) split Vendor-Specific.  So if
+		 *	there's too much data, just discard the extra
+		 *	data.
+		 */
+		if ((out[1] + length) > 255) break;
+
+		out[1] += length;
+		out[6] += length;
+		p += length;
+		room -= length;
+	}
+
+	/*
+	 *	Don't encode options with no data.
+	 */
+	if (out[1] == 5) return 0;
+
+	return out[1];
+}
+
 /** Encode a DHCP option and any sub-options.
  *
  * @param out Where to write encoded DHCP attributes.
@@ -1354,7 +1436,13 @@ ssize_t fr_dhcp_encode_option(UNUSED TALLOC_CTX *ctx, uint8_t *out, size_t outle
 	vp = fr_cursor_current(cursor);
 	if (!vp) return -1;
 
-	if (vp->da->vendor != DHCP_MAGIC_VENDOR) goto next; /* not a DHCP option */
+	if (vp->da->vendor != DHCP_MAGIC_VENDOR) {
+		if ((vp->da->vendor == VENDORPEC_ADSL) &&
+		    (vp->da->attr > 255) && ((vp->da->attr & 0xff) == 0xff)) {
+			return fr_dhcp_encode_adsl(out, outlen, cursor);
+		}
+		goto next; /* not a DHCP option */
+	}
 	if (vp->da->attr == PW_DHCP_MESSAGE_TYPE) goto next; /* already done */
 	if ((vp->da->attr > 255) && (DHCP_BASE_ATTR(vp->da->attr) != PW_DHCP_OPTION_82)) goto next;
 
