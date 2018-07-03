@@ -32,7 +32,7 @@ RCSID("$Id$")
 #define MAX_STACK	(32)
 
 typedef struct fr_cmd_argv_t {
-	char const	*name;
+	char		*name;
 	fr_type_t	type;
 } fr_cmd_argv_t;
 
@@ -172,19 +172,19 @@ static bool fr_command_valid_name(char const *name)
 	return true;
 }
 
-static bool fr_command_valid_syntax(char const *name, fr_type_t *type_p)
+static bool fr_command_valid_syntax(fr_cmd_argv_t *argv)
 {
 	char const *p;
 	bool lowercase = false;
 	bool uppercase = false;
 
-	*type_p = FR_TYPE_FIXED;
+	argv->type = FR_TYPE_FIXED;
 
-	if (!fr_command_valid_name(name)) {
+	if (!fr_command_valid_name(argv->name)) {
 		return false;
 	}
 
-	for (p = name; *p != '\0'; p++) {
+	for (p = argv->name; *p != '\0'; p++) {
 		if (isupper((int) *p)) uppercase = true;
 		if (islower((int) *p)) lowercase = true;
 	}
@@ -194,8 +194,7 @@ static bool fr_command_valid_syntax(char const *name, fr_type_t *type_p)
 	 *	problem.
 	 */
 	if (!uppercase && !lowercase) {
-		fr_strerror_printf("Syntax command '%s' has no alphabetical characters", name);
-		return -1;
+		fr_strerror_printf("Syntax command '%s' has no alphabetical characters", argv->name);
 		return false;
 	}
 
@@ -203,8 +202,8 @@ static bool fr_command_valid_syntax(char const *name, fr_type_t *type_p)
 	 *	Mixed case is not allowed in a syntax.
 	 */
 	if (uppercase && lowercase) {
-		fr_strerror_printf("Syntax command '%s' has invalid mixed case", name);
-		return -1;
+		fr_strerror_printf("Syntax command '%s' has invalid mixed case", argv->name);
+		return false;
 	}
 
 	/*
@@ -214,23 +213,133 @@ static bool fr_command_valid_syntax(char const *name, fr_type_t *type_p)
 	if (uppercase) {
 		fr_type_t type;
 
-		type = fr_str2int(dict_attr_types, name, FR_TYPE_INVALID);
+		type = fr_str2int(dict_attr_types, argv->name, FR_TYPE_INVALID);
 		switch (type) {
 		case FR_TYPE_ABINARY:
 		case FR_TYPE_VALUE_BOX:
 		case FR_TYPE_BAD:
 		case FR_TYPE_STRUCTURAL:
-			fr_strerror_printf("Syntax command '%s' has unknown data type", name);
-			return -1;
+			fr_strerror_printf("Syntax command '%s' has unknown data type", argv->name);
+			return false;
 
 		default:
 			break;
 		}
 
-		*type_p = type;
+		argv->type = type;
 	}
 
 	return true;
+}
+
+static int split(char **input, char **output)
+{
+	char quote;
+	char *str = *input;
+	char *word;
+
+	/*
+	 *	String is empty, we're done.
+	 */
+	if (!*str) return 0;
+
+	/*
+	 *	Skip leading whitespace.
+	 */
+	while ((*str == ' ') ||
+	       (*str == '\t') ||
+	       (*str == '\r') ||
+	       (*str == '\n'))
+		*(str++) = '\0';
+
+	/*
+	 *	String is empty, we're done.
+	 */
+	if (!*str) return 0;
+
+	/*
+	 *	String is only comments, we're done.
+	 */
+	if (*str == '#') {
+		*str = '\0';
+		return 0;
+	}
+
+	/*
+	 *	Remember the start of the word.
+	 */
+	word = str;
+
+	/*
+	 *	Quoted string?  Skip to the trailing quote.
+	 */
+	if ((*str == '"') || (*str == '\'')) {
+		quote = *(str++);
+
+		while (*str != quote) {
+			if (!*str) {
+				fr_strerror_printf("String is not terminated with a quotation character.");
+				return -1;
+			}
+
+			/*
+			 *	Skip backslashes and the following character
+			 */
+			if (*str == '\\') {
+				str++;
+				if (!*str) {
+					fr_strerror_printf("Invalid backslash at end of string.");
+					return -1;
+				};
+				str++;
+				continue;
+			}
+
+			str++;
+		}
+
+		/*
+		 *	Skip the final quotation mark.
+		 */
+		str++;
+
+		/*
+		 *	"foo"bar is invalid.
+		 */
+		if ((*str != '\0') &&
+		    (*str != ' ') &&
+		    (*str != '#') &&
+		    (*str != '\t') &&
+		    (*str != '\r') &&
+		    (*str != '\n')) {
+			fr_strerror_printf("Invalid text after quoted string.");
+			return -1;
+		}
+
+	} else {
+		/*
+		 *	Skip the next non-space characters.
+		 */
+		while (*str &&
+		       (*str != ' ') &&
+		       (*str != '#') &&
+		       (*str != '\t') &&
+		       (*str != '\r') &&
+		       (*str != '\n'))
+			str++;
+	}
+
+	/*
+	 *	One of the above characters is after the word.
+	 *	Over-write it with NUL.  If *str==0, then we leave it
+	 *	alone, so that the next call to split() discovers it,
+	 *	and returns NULL.
+	 */
+	if (*str) *(str++) = '\0';
+
+	*input = str;
+	*output = word;
+	return 1;
 }
 
 /**  Add one command to the global command tree
@@ -253,10 +362,9 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	fr_cmd_t *cmd, **start;
 	fr_cmd_t **insert;
 	int argc = 0;
-	char *argv[CMD_MAX_ARGV];
+	fr_cmd_argv_t argv[CMD_MAX_ARGV];
 	char *syntax;
 	bool varargs = false;
-	fr_type_t types[CMD_MAX_ARGV];
 
 	if (name && !fr_command_valid_name(name)) {
 		return -1;
@@ -273,7 +381,6 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	}
 
 	memset(argv, 0, sizeof(argv));
-	memset(types, 0, sizeof(types));
 	start = head;
 
 	/*
@@ -333,21 +440,41 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	 *	Sanity check the syntax.
 	 */
 	if (table->syntax) {
-		int i;
+		int i, rcode;
+		char *p;
 
-		syntax = talloc_strdup(talloc_ctx, table->syntax);
+		p = syntax = talloc_strdup(talloc_ctx, table->syntax);
 
-		argc = fr_dict_str_to_argv(syntax, argv, CMD_MAX_ARGV);
+		for (i = 0; i < CMD_MAX_ARGV; i++) {
+			rcode = split(&p, &argv[i].name);
+			if (rcode < 0) {
+				talloc_free(syntax);
+				return -1;
+			}
+
+			if (rcode == 0) break;
+		}
 
 		/*
-		 *	Empty syntax should be NULL
+		 *	Empty syntax should have table.syntax == NULLx
 		 */
-		if (argc == 0) {
+		if (i == 0) {
 			talloc_free(syntax);
 			fr_strerror_printf("Invalid empty string was supplied for syntax");
 			return  -1;
 		}
 
+		if (i == CMD_MAX_ARGV) {
+			talloc_free(syntax);
+			fr_strerror_printf("Too many arguments were supplied to the command.");
+			return  -1;
+		}
+
+		argc = i;
+
+		/*
+		 *	Walk over the input again, checking data types.
+		 */
 		for (i = 0; i < argc; i++) {
 			/*
 			 *	Check for varargs.  Which MUST NOT be
@@ -355,7 +482,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			 *	last argument, and MUST be preceded by
 			 *	a known data type.
 			 */
-			if (strcmp(argv[i], "...") == 0) {
+			if (strcmp(argv[i].name, "...") == 0) {
 				if ((i == 0) || (i != (argc - 1))) {
 				invalid:
 					fr_strerror_printf("Syntax command %d does not contain alphabetical characters", i);
@@ -366,13 +493,13 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 				 *	The thing BEFORE the varags
 				 *	MUST be a known data type.
 				 */
-				if (types[i - 1] >= FR_TYPE_FIXED) goto invalid;
+				if (argv[i - 1].type >= FR_TYPE_FIXED) goto invalid;
 
 				varargs = true;
 				break;
 			}
 
-			if (!fr_command_valid_syntax(argv[i], &types[i])) {
+			if (!fr_command_valid_syntax(&argv[i])) {
 				return -1;
 			}
 		}
@@ -381,16 +508,15 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		 *	Handle top-level names.
 		 */
 		if (!name) {
-			if (types[0] < FR_TYPE_FIXED) {
+			if (argv[0].type < FR_TYPE_FIXED) {
 				talloc_free(syntax);
 				fr_strerror_printf("Top-level commands MUST NOT start with a data type");
 				return -1;
 			}
 
-			name = argv[0];
+			name = argv[0].name;
 			for (i = 0; i < (argc - 1); i++) {
 				argv[i] = argv[i + 1];
-				types[i] = types[i + 1];
 			}
 
 			argc--;
@@ -480,8 +606,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 
 		cmd->syntax_argc = argc;
 		for (i = 0; i < argc; i++) {
-			cmd->syntax_argv[i].name = argv[i];
-			cmd->syntax_argv[i].type = types[i];
+			cmd->syntax_argv[i] = argv[i];
 		}
 	}
 
@@ -1064,115 +1189,6 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
 	fr_command_debug_internal(fp, head, 0);
 }
 
-static int split(char **input, char **output)
-{
-	char quote;
-	char *str = *input;
-	char *word;
-
-	/*
-	 *	String is empty, we're done.
-	 */
-	if (!*str) return 0;
-
-	/*
-	 *	Skip leading whitespace.
-	 */
-	while ((*str == ' ') ||
-	       (*str == '\t') ||
-	       (*str == '\r') ||
-	       (*str == '\n'))
-		*(str++) = '\0';
-
-	/*
-	 *	String is empty, we're done.
-	 */
-	if (!*str) return 0;
-
-	/*
-	 *	String is only comments, we're done.
-	 */
-	if (*str == '#') {
-		*str = '\0';
-		return 0;
-	}
-
-	/*
-	 *	Remember the start of the word.
-	 */
-	word = str;
-
-	/*
-	 *	Quoted string?  Skip to the trailing quote.
-	 */
-	if ((*str == '"') || (*str == '\'')) {
-		quote = *(str++);
-
-		while (*str != quote) {
-			if (!*str) {
-				fr_strerror_printf("String is not terminated with a quotation character.");
-				return -1;
-			}
-
-			/*
-			 *	Skip backslashes and the following character
-			 */
-			if (*str == '\\') {
-				str++;
-				if (!*str) {
-					fr_strerror_printf("Invalid backslash at end of string.");
-					return -1;
-				};
-				str++;
-				continue;
-			}
-
-			str++;
-		}
-
-		/*
-		 *	Skip the final quotation mark.
-		 */
-		str++;
-
-		/*
-		 *	"foo"bar is invalid.
-		 */
-		if ((*str != '\0') &&
-		    (*str != ' ') &&
-		    (*str != '#') &&
-		    (*str != '\t') &&
-		    (*str != '\r') &&
-		    (*str != '\n')) {
-			fr_strerror_printf("Invalid text after quoted string.");
-			return -1;
-		}
-
-	} else {
-		/*
-		 *	Skip the next non-space characters.
-		 */
-		while (*str &&
-		       (*str != ' ') &&
-		       (*str != '#') &&
-		       (*str != '\t') &&
-		       (*str != '\r') &&
-		       (*str != '\n'))
-			str++;
-	}
-
-	/*
-	 *	One of the above characters is after the word.
-	 *	Over-write it with NUL.  If *str==0, then we leave it
-	 *	alone, so that the next call to split() discovers it,
-	 *	and returns NULL.
-	 */
-	if (*str) *(str++) = '\0';
-
-	*input = str;
-	*output = word;
-	return 1;
-}
 
 /** Split a string in-place, updating argv[]
  *
