@@ -936,8 +936,6 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 		j = i - syntax_offset;
 
 		if (cmd->varargs && (j >= cmd->syntax_argc)) {
-			j = cmd->syntax_argc - 1;
-			rad_assert(cmd->syntax_argv[j].type < FR_TYPE_FIXED);
 			break;
 		}
 
@@ -951,6 +949,7 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 	 */
 	if (cmd->varargs && ((i - syntax_offset) >= cmd->syntax_argc)) {
 		j = cmd->syntax_argc - 1;
+		rad_assert(cmd->syntax_argv[j].type < FR_TYPE_FIXED);
 	} else {
 		j = i - syntax_offset;
 	}
