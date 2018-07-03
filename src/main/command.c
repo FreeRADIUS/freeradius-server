@@ -328,9 +328,16 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 				fr_type_t type;
 
 				type = fr_str2int(dict_attr_types, argv[i], FR_TYPE_INVALID);
-				if (type == FR_TYPE_INVALID) {
+				switch (type) {
+				case FR_TYPE_ABINARY:
+				case FR_TYPE_VALUE_BOX:
+				case FR_TYPE_BAD:
+				case FR_TYPE_STRUCTURAL:
 					fr_strerror_printf("Syntax command %d has unknown data type", i);
 					return -1;
+
+				default:
+					break;
 				}
 
 				types[i] = type;
