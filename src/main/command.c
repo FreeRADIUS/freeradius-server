@@ -57,9 +57,12 @@ struct fr_cmd_t {
  *	Hacks for simplicity.  These data types aren't allowed as
  *	parameters, so we can re-use them for something else.
  */
-//#define FR_TYPE_ALTERNATE	FR_TYPE_GROUP
-//#define FR_TYPE_OPTIONAL	FR_TYPE_ABINARY
 
+// our fixed string.  Any data type LESS than this must be a real data type
+#define FR_TYPE_FIXED		FR_TYPE_ABINARY
+
+//#define FR_TYPE_ALTERNATE	FR_TYPE_TLV
+//#define FR_TYPE_OPTIONAL	FR_TYPE_STRUCT
 
 /** Find a command
  *
@@ -171,7 +174,7 @@ static bool fr_command_valid_syntax(char const *name, fr_type_t *type_p)
 	bool lowercase = false;
 	bool uppercase = false;
 
-	*type_p = FR_TYPE_INVALID;
+	*type_p = FR_TYPE_FIXED;
 
 	if (!fr_command_valid_name(name)) {
 		return false;
@@ -359,7 +362,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 				 *	The thing BEFORE the varags
 				 *	MUST be a known data type.
 				 */
-				if (types[i - 1] == FR_TYPE_INVALID) goto invalid;
+				if (types[i - 1] >= FR_TYPE_FIXED) goto invalid;
 
 				varargs = true;
 				break;
@@ -374,7 +377,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		 *	Handle top-level names.
 		 */
 		if (!name) {
-			if (types[0] != FR_TYPE_INVALID) {
+			if (types[0] < FR_TYPE_FIXED) {
 				talloc_free(syntax);
 				fr_strerror_printf("Top-level commands MUST NOT start with a data type");
 				return -1;
@@ -759,11 +762,11 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 
 		if (cmd->varargs && (j >= cmd->syntax_argc)) {
 			j = cmd->syntax_argc - 1;
-			rad_assert(cmd->syntax_types[j] != FR_TYPE_INVALID);
+			rad_assert(cmd->syntax_types[j] < FR_TYPE_FIXED);
 			break;
 		}
 
-		if (cmd->syntax_types[j] != FR_TYPE_INVALID) continue;
+		if (cmd->syntax_types[j] < FR_TYPE_FIXED) continue;
 
 		if (strcmp(info->argv[i], cmd->syntax_argv[j]) != 0) return -1;
 	}
@@ -781,7 +784,7 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 	 *	If it's a real data type, run the defined callback to
 	 *	expand it.
 	 */
-	if (cmd->syntax_types[j] != FR_TYPE_INVALID) {
+	if (cmd->syntax_types[j] < FR_TYPE_FIXED) {
 		if (!cmd->tab_expand) {
 			expansions[0] = cmd->syntax_argv[j];
 			return 1;
@@ -1330,7 +1333,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 			 */
 			if (cmd->varargs && (j >= cmd->syntax_argc)) {
 				j = cmd->syntax_argc - 1;
-				rad_assert(cmd->syntax_types[j] != FR_TYPE_INVALID);
+				rad_assert(cmd->syntax_types[j] < FR_TYPE_FIXED);
 			}
 
 			/*
@@ -1339,7 +1342,11 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 			 */
 			type = cmd->syntax_types[j];
 
-			if (type == FR_TYPE_INVALID) {
+			/*
+			 *	Fixed strings, etc. that we don't do
+			 *	syntax checks on.
+			 */
+			if (type >= FR_TYPE_FIXED) {
 				continue;
 			}
 
