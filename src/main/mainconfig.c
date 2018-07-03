@@ -1207,7 +1207,6 @@ do {\
 	 *	to ensure that the pointers are always valid.
 	 */
 	rad_assert(config->root_cs == NULL);
-	config->root_cs = cs;
 
 	DEBUG2("%s: #### Loading Clients ####", config->name);
 	if (!client_list_parse_section(cs, false)) goto failure;
@@ -1232,6 +1231,8 @@ do {\
 		cf_section_write(NULL, cs, -1);
 	}
 #endif
+
+	config->root_cs = cs;	/* Do this last to avoid dangling pointers on error */
 
 	/* Clear any unprocessed configuration errors */
 	(void) fr_strerror();
