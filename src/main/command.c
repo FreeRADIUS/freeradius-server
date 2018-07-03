@@ -53,6 +53,14 @@ struct fr_cmd_t {
 };
 
 
+/*
+ *	Hacks for simplicity.  These data types aren't allowed as
+ *	parameters, so we can re-use them for something else.
+ */
+//#define FR_TYPE_ALTERNATE	FR_TYPE_GROUP
+//#define FR_TYPE_OPTIONAL	FR_TYPE_ABINARY
+
+
 /** Find a command
  *
  * @param head the head of the list
@@ -276,9 +284,34 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			bool lowercase = false;
 			bool uppercase = false;
 
+			/*
+			 *	Check for varargs.  Which MUST NOT be
+			 *	the first argument, and MUST be the
+			 *	last argument, and MUST be preceded by
+			 *	a known data type.
+			 */
+			if (strcmp(argv[i], "...") == 0) {
+				if ((i == 0) || (i != (argc - 1))) {
+				invalid:
+					fr_strerror_printf("Syntax command %d does not contain alphabetical characters", i);
+					return -1;
+				}
+
+				/*
+				 *	The thing BEFORE the varags
+				 *	MUST be a known data type.
+				 */
+				if (types[i - 1] == FR_TYPE_INVALID) goto invalid;
+
+				varargs = true;
+				break;
+			}
+
 			if (!fr_command_valid_name(argv[i])) {
 				return -1;
 			}
+
+			types[i] = FR_TYPE_INVALID;
 
 			for (p = argv[i]; *p != '\0'; p++) {
 				if (isupper((int) *p)) uppercase = true;
@@ -287,30 +320,9 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 
 			/*
 			 *	No alphabetical characters, that's a
-			 *	problem, except for varargs.
+			 *	problem.
 			 */
-			if (!uppercase && !lowercase) {
-				if (strcmp(argv[i], "...") != 0) {
-				invalid:
-					fr_strerror_printf("Syntax command %d does not contain alphabetical characters", i);
-					return -1;
-				}
-
-				/*
-				 *	Varargs MUST NOT be the first
-				 *	one, and MUST be the last one
-				 *	in the list.
-				 */
-				if ((i == 0) || (i != (argc - 1))) goto invalid;
-
-				/*
-				 *	The thing BEFORE the varags
-				 *	MUST be a data type.
-				 */
-				if (types[i - 1] == FR_TYPE_INVALID) goto invalid;
-
-				varargs = true;
-			}
+			if (!uppercase && !lowercase) goto invalid;
 
 			/*
 			 *	Mixed case is not allowed in a syntax.
@@ -341,8 +353,6 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 				}
 
 				types[i] = type;
-			} else {
-				types[i] = FR_TYPE_INVALID;
 			}
 		}
 
