@@ -154,11 +154,73 @@ static bool fr_command_valid_name(char const *name)
 		}
 
 		if ((*p == '[') || (*p == ']') ||
+		    (*p == '"') || (*p == '\'') ||
 		    (*p == '(') || (*p == ')') ||
 		    (*p == '|') || (*p == '#')) {
 			fr_strerror_printf("Invalid special character");
 			return false;
 		}
+	}
+
+	return true;
+}
+
+static bool fr_command_valid_syntax(char const *name, fr_type_t *type_p)
+{
+	char const *p;
+	bool lowercase = false;
+	bool uppercase = false;
+
+	*type_p = FR_TYPE_INVALID;
+
+	if (!fr_command_valid_name(name)) {
+		return false;
+	}
+
+	for (p = name; *p != '\0'; p++) {
+		if (isupper((int) *p)) uppercase = true;
+		if (islower((int) *p)) lowercase = true;
+	}
+
+	/*
+	 *	No alphabetical characters, that's a
+	 *	problem.
+	 */
+	if (!uppercase && !lowercase) {
+		fr_strerror_printf("Syntax command '%s' has no alphabetical characters", name);
+		return -1;
+		return false;
+	}
+
+	/*
+	 *	Mixed case is not allowed in a syntax.
+	 */
+	if (uppercase && lowercase) {
+		fr_strerror_printf("Syntax command '%s' has invalid mixed case", name);
+		return -1;
+	}
+
+	/*
+	 *	All-uppercase words MUST be valid data
+	 *	types.
+	 */
+	if (uppercase) {
+		fr_type_t type;
+
+		type = fr_str2int(dict_attr_types, name, FR_TYPE_INVALID);
+		switch (type) {
+		case FR_TYPE_ABINARY:
+		case FR_TYPE_VALUE_BOX:
+		case FR_TYPE_BAD:
+		case FR_TYPE_STRUCTURAL:
+			fr_strerror_printf("Syntax command '%s' has unknown data type", name);
+			return -1;
+
+		default:
+			break;
+		}
+
+		*type_p = type;
 	}
 
 	return true;
@@ -280,10 +342,6 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		}
 
 		for (i = 0; i < argc; i++) {
-			char *p;
-			bool lowercase = false;
-			bool uppercase = false;
-
 			/*
 			 *	Check for varargs.  Which MUST NOT be
 			 *	the first argument, and MUST be the
@@ -307,52 +365,8 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 				break;
 			}
 
-			if (!fr_command_valid_name(argv[i])) {
+			if (!fr_command_valid_syntax(argv[i], &types[i])) {
 				return -1;
-			}
-
-			types[i] = FR_TYPE_INVALID;
-
-			for (p = argv[i]; *p != '\0'; p++) {
-				if (isupper((int) *p)) uppercase = true;
-				if (islower((int) *p)) lowercase = true;
-			}
-
-			/*
-			 *	No alphabetical characters, that's a
-			 *	problem.
-			 */
-			if (!uppercase && !lowercase) goto invalid;
-
-			/*
-			 *	Mixed case is not allowed in a syntax.
-			 */
-			if (uppercase && lowercase) {
-				fr_strerror_printf("Syntax command %d has invalid mixed case", i);
-				return -1;
-			}
-
-			/*
-			 *	All-uppercase words MUST be valid data
-			 *	types.
-			 */
-			if (uppercase) {
-				fr_type_t type;
-
-				type = fr_str2int(dict_attr_types, argv[i], FR_TYPE_INVALID);
-				switch (type) {
-				case FR_TYPE_ABINARY:
-				case FR_TYPE_VALUE_BOX:
-				case FR_TYPE_BAD:
-				case FR_TYPE_STRUCTURAL:
-					fr_strerror_printf("Syntax command %d has unknown data type", i);
-					return -1;
-
-				default:
-					break;
-				}
-
-				types[i] = type;
 			}
 		}
 
