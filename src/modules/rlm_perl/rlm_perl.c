@@ -644,7 +644,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 	}
 
 	if (!sv) return;
-	SvTAINT(sv);
+	SvTAINTED_on(sv);
 	av_push(av, sv);
 	(*i)++;
 }
