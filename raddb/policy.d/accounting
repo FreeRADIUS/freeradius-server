@@ -77,3 +77,12 @@ acct_counters64.preacct {
 	}
 }
 
+#
+#	Empty accounting sessions can be created during post-auth.
+#	This adds robustness to the simultaneous check as it becomes impossible to start multiple sessions in parallel.
+#	(see SQL query configuration for details)
+#
+sql_accounting.post-auth {
+	acct_unique
+	sql.accounting
+}
