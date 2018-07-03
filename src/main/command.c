@@ -118,6 +118,7 @@ static fr_cmd_t *fr_command_alloc(TALLOC_CTX *ctx, fr_cmd_t **head, char const *
 
 	MEM(cmd = talloc_zero(ctx, fr_cmd_t));
 	cmd->name = talloc_strdup(ctx, name);
+	cmd->intermediate = true;
 
 	cmd->next = *head;
 	*head = cmd;
@@ -219,20 +220,17 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			 *	go downwards into the child command.
 			 */
 			cmd = fr_command_find(start, table->parents[i], &insert);
-			if (cmd) {
-				start = &(cmd->child);
-				continue;
+			if (!cmd) {
+				cmd = fr_command_alloc(talloc_ctx, insert, table->parents[i]);
+				cmd->auto_allocated = true;
 			}
 
-			cmd = fr_command_alloc(talloc_ctx, insert, table->parents[i]);
-			cmd->intermediate = true;
-			cmd->auto_allocated = true;
+			if (!cmd->intermediate) {
+				fr_strerror_printf("Cannot add a subcommand to a pre-existing command.");
+				return -1;
+			}
 
-			/*
-			 *	The entry now exists, point "head"
-			 *	to the child and recurse to the next
-			 *	table.
-			 */
+			rad_assert(cmd->func == NULL);
 			start = &(cmd->child);
 		}
 	}
@@ -376,8 +374,8 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		 *	command which already has a
 		 *	pre-defined syntax.
 		 */
-		if (cmd->syntax) {
-			fr_strerror_printf("Cannot change syntax of existing command '%s'", cmd->name);
+		if (!cmd->intermediate) {
+			fr_strerror_printf("Cannot modify a pre-existing command '%s'", cmd->name);
 			return -1;
 		}
 
@@ -405,6 +403,9 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	cmd->ctx = ctx;
 	cmd->help = table->help;
 	cmd->func = table->func;
+
+	cmd->intermediate = (cmd->func == NULL);
+
 	cmd->tab_expand = table->tab_expand;
 	cmd->read_only = table->read_only;
 
@@ -867,30 +868,38 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
 			return -1;
 		}
 
-		if (!cmd->syntax) {
-			if (cmd->func) {
-				if (info->argc > (i + 1)) {
-					fr_strerror_printf("Input has too many parameters for command.");
-					return -1;
-				}
-
-				goto run;
-			}
-
+		/*
+		 *	Intermediate nodes must have children, and
+		 *	must not have callbacks.
+		 */
+		if (cmd->intermediate) {
 			rad_assert(cmd->child != NULL);
+			rad_assert(cmd->func == NULL);
 			start = cmd->child;
 			continue;
 		}
 
 		/*
-		 *	Too many or too few commands.  That's an
-		 *	error.
+		 *	Leaf nodes must have a callback.
+		 */
+		rad_assert(cmd->func != NULL);
+
+		/*
+		 *	Too few arguments for the command.  The caller
+		 *	should really have checked this.
+		 */
+		if (info->argc < (i + 1 + cmd->syntax_argc)) {
+			fr_strerror_printf("Input has too few parameters for command");
+			return -1;
+		}
+
+		/*
+		 *	Too many arguments for the command.
 		 *
 		 *	@todo - allow varargs
-		 *	@todo - return which argument was broken?
 		 */
-		if (info->argc != (i + 1 + cmd->syntax_argc)) {
-			fr_strerror_printf("Input has too many or too few parameters for command");
+		if (info->argc > (i + 1 + cmd->syntax_argc)) {
+			fr_strerror_printf("Input has too many parameters for command");
 			return -1;
 		}
 
@@ -898,7 +907,6 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
 		 *	The arguments have already been verified by
 		 *	fr_command_str_to_argv().
 		 */
-	run:
 		my_info.argc = info->argc - i - 1;
 		my_info.max_argc = info->max_argc - info->argc;
 		my_info.runnable = true;
@@ -906,7 +914,6 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
 		my_info.box = &info->box[i + 1];
 		rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
 
-		// @todo - clean up value boxes, too!
 		info->argc = 0;
 		return rcode;
 	}
@@ -1163,7 +1170,9 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 		/*
 		 *	There's a child.  Go match it.
 		 */
-		if (cmd->child) {
+		if (cmd->intermediate) {
+			rad_assert(cmd->child != NULL);
+			rad_assert(cmd->func == NULL);
 			start = cmd->child;
 			continue;
 		}
