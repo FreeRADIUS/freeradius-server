@@ -41,7 +41,7 @@ struct fr_cmd_t {
 	struct fr_cmd_t		*child;				//!< if there are subcommands
 	char const		*name;
 	char const		*syntax;			//!< only for terminal nodes
-	char const		*help;				//!< @todo - long / short help ala recli
+	char const		*help;				//!< @todo - long / short help
 
 	int			syntax_argc;			//!< syntax split out into arguments
 	fr_cmd_argv_t		syntax_argv[CMD_MAX_ARGV];	//!< arguments and types
@@ -232,7 +232,7 @@ static bool fr_command_valid_syntax(fr_cmd_argv_t *argv)
 	return true;
 }
 
-static int split(char **input, char **output)
+static int split(char **input, char **output, bool syntax_string)
 {
 	char quote;
 	char *str = *input;
@@ -272,8 +272,10 @@ static int split(char **input, char **output)
 
 	/*
 	 *	Quoted string?  Skip to the trailing quote.
+	 *
+	 *	But only if we're not parsing a syntax string.
 	 */
-	if ((*str == '"') || (*str == '\'')) {
+	if (!syntax_string && ((*str == '"') || (*str == '\''))) {
 		quote = *(str++);
 
 		while (*str != quote) {
@@ -316,6 +318,40 @@ static int split(char **input, char **output)
 			return -1;
 		}
 
+	} else if (syntax_string && ((*str == '[') || (*str == '('))) {
+		quote = *(str++);
+
+		/*
+		 *	Don't allow backslashes here.  This piece is
+		 *	only for parsing syntax strings, which CANNOT
+		 *	have quotes in them.
+		 */
+		while (*str != quote) {
+			if (!*str) {
+				fr_strerror_printf("String is not terminated with a quotation character.");
+				return -1;
+			}
+
+			str++;
+		}
+
+		/*
+		 *	Skip the final "quotation" mark.
+		 */
+		str++;
+
+		/*
+		 *	[foo bar]baz is invalid.
+		 */
+		if ((*str != '\0') &&
+		    (*str != ' ') &&
+		    (*str != '#') &&
+		    (*str != '\t') &&
+		    (*str != '\r') &&
+		    (*str != '\n')) {
+			fr_strerror_printf("Invalid text after quoted string.");
+			return -1;
+		}
 	} else {
 		/*
 		 *	Skip the next non-space characters.
@@ -335,7 +371,17 @@ static int split(char **input, char **output)
 	 *	alone, so that the next call to split() discovers it,
 	 *	and returns NULL.
 	 */
-	if (*str) *(str++) = '\0';
+	if (*str) {
+		/*
+		 *	Skip trailing whitespace so that the caller
+		 *	can peek at the next argument.
+		 */
+		while ((*str == ' ') ||
+		       (*str == '\t') ||
+		       (*str == '\r') ||
+		       (*str == '\n'))
+			*(str++) = '\0';
+	}
 
 	*input = str;
 	*output = word;
@@ -446,7 +492,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		p = syntax = talloc_strdup(talloc_ctx, table->syntax);
 
 		for (i = 0; i < CMD_MAX_ARGV; i++) {
-			rcode = split(&p, &argv[i].name);
+			rcode = split(&p, &argv[i].name, true);
 			if (rcode < 0) {
 				talloc_free(syntax);
 				return -1;
@@ -1232,7 +1278,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 	for (i = info->argc; i < info->max_argc; i++) {
 		int rcode;
 
-		rcode = split(&p, &info->argv[i]);
+		rcode = split(&p, &info->argv[i], false);
 		if (rcode < 0) return -1;
 		if (!rcode) break;
 	}
