@@ -1137,7 +1137,6 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 	}
 
 	if (i == info->max_argc) {
-		fprintf(stderr, "HERE %d\n", __LINE__);
 	too_many:
 		fr_strerror_printf("Too many arguments for command.");
 		return -1;
@@ -1205,7 +1204,6 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 	 */
 	if (!cmd->syntax) {
 		if (syntax_argc > 0) {
-			fprintf(stderr, "HERE %d\n", __LINE__);
 			goto too_many;
 		}
 
@@ -1220,7 +1218,6 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 	 *	@todo - allow varargs
 	 */
 	if (syntax_argc > cmd->syntax_argc) {
-		fprintf(stderr, "HERE %d - %d > %d\n", __LINE__, syntax_argc, cmd->syntax_argc);
 		goto too_many;
 	}
 
