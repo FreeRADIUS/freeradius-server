@@ -719,9 +719,13 @@ post-auth {
 	#  Uncomment the line below if *returning* the CUI.
 #	cui
 
-	# Create empty accounting session to make simultaneous check more robust
-	# See Accounting queries configuration for details.
-#	sql_accounting
+	#  Create empty accounting session to make simultaneous check
+	#  more robust. See the accounting queries configuration in
+	#  raddb/mods-config/sql/main/*/queries.conf for details.
+	#
+	#  The "sql_session_start" policy is defined in
+	#  raddb/policy.d/accounting.  See that file for more details.
+#	sql_session_start
 
 	#
 	#  If you want to have a log of authentication replies,
