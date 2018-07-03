@@ -31,6 +31,11 @@ RCSID("$Id$")
 
 #define MAX_STACK	(32)
 
+typedef struct fr_cmd_argv_t {
+	char const	*name;
+	fr_type_t	type;
+} fr_cmd_argv_t;
+
 struct fr_cmd_t {
 	struct fr_cmd_t		*next;
 	struct fr_cmd_t		*child;				//!< if there are subcommands
@@ -39,8 +44,7 @@ struct fr_cmd_t {
 	char const		*help;				//!< @todo - long / short help ala recli
 
 	int			syntax_argc;			//!< syntax split out into arguments
-	char const		*syntax_argv[CMD_MAX_ARGV];	//!< syntax split out into arguments
-	fr_type_t		syntax_types[CMD_MAX_ARGV];	//!< types for each argument
+	fr_cmd_argv_t		syntax_argv[CMD_MAX_ARGV];	//!< arguments and types
 
 	void			*ctx;
 	fr_cmd_func_t		func;
@@ -464,6 +468,8 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	cmd->read_only = table->read_only;
 
 	if (table->syntax && (argc > 0)) {
+		int i;
+
 		cmd->syntax = table->syntax;
 		(void) talloc_steal(cmd, syntax);
 
@@ -473,12 +479,10 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		}
 
 		cmd->syntax_argc = argc;
-
-		/*
-		 *	@todo - ensure argv[argc] == NULL
-		 */
-		memcpy(cmd->syntax_argv, argv, sizeof(cmd->syntax_argv));
-		memcpy(cmd->syntax_types, types, sizeof(cmd->syntax_types));
+		for (i = 0; i < argc; i++) {
+			cmd->syntax_argv[i].name = argv[i];
+			cmd->syntax_argv[i].type = types[i];
+		}
 	}
 
 	return 0;
@@ -762,13 +766,13 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 
 		if (cmd->varargs && (j >= cmd->syntax_argc)) {
 			j = cmd->syntax_argc - 1;
-			rad_assert(cmd->syntax_types[j] < FR_TYPE_FIXED);
+			rad_assert(cmd->syntax_argv[j].type < FR_TYPE_FIXED);
 			break;
 		}
 
-		if (cmd->syntax_types[j] < FR_TYPE_FIXED) continue;
+		if (cmd->syntax_argv[j].type < FR_TYPE_FIXED) continue;
 
-		if (strcmp(info->argv[i], cmd->syntax_argv[j]) != 0) return -1;
+		if (strcmp(info->argv[i], cmd->syntax_argv[j].name) != 0) return -1;
 	}
 
 	/*
@@ -784,9 +788,9 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 	 *	If it's a real data type, run the defined callback to
 	 *	expand it.
 	 */
-	if (cmd->syntax_types[j] < FR_TYPE_FIXED) {
+	if (cmd->syntax_argv[j].type < FR_TYPE_FIXED) {
 		if (!cmd->tab_expand) {
-			expansions[0] = cmd->syntax_argv[j];
+			expansions[0] = cmd->syntax_argv[j].name;
 			return 1;
 		}
 
@@ -802,7 +806,7 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 	 *	which means creating a tree of allowed
 	 *	syntaxes.  <sigh>
 	 */
-	for (p = info->argv[i], q = cmd->syntax_argv[i - syntax_offset];
+	for (p = info->argv[i], q = cmd->syntax_argv[i - syntax_offset].name;
 	     (*p != '\0') && (*q != '\0');
 	     p++, q++) {
 		/*
@@ -830,7 +834,7 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 		 *	bar", instead of just "foo".
 		 */
 		if (!p[1] && q[1]) {
-			expansions[0] = cmd->syntax_argv[i - syntax_offset];
+			expansions[0] = cmd->syntax_argv[i - syntax_offset].name;
 			return 1;
 		}
 	}
@@ -1333,14 +1337,14 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 			 */
 			if (cmd->varargs && (j >= cmd->syntax_argc)) {
 				j = cmd->syntax_argc - 1;
-				rad_assert(cmd->syntax_types[j] < FR_TYPE_FIXED);
+				rad_assert(cmd->syntax_argv[j].type < FR_TYPE_FIXED);
 			}
 
 			/*
 			 *	May be written to for things like
 			 *	"combo_ipaddr".
 			 */
-			type = cmd->syntax_types[j];
+			type = cmd->syntax_argv[j].type;
 
 			/*
 			 *	Fixed strings, etc. that we don't do
