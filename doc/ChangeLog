@@ -7,6 +7,13 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Encode / Decode ADSL Forum DHCP options.
 	* Fix module ordering issues.  e.g. when "sqlippool" needs
 	  "sql".  See the "modules" section of radiusd.conf.
+	* Add Big Switch dictionary.  Fixes #2252.
+	* Add sql_session_start policy (raddb/policy.d/accounting)
+	  This minimizes race conditions when using Simultaneous-Use
+	  Patch from Philippe Wooding (#2257).
+	* For rlm_perl, all variables are now tainted by default.
+	  This should only affect people who are using variables
+	  in insecure ways.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
