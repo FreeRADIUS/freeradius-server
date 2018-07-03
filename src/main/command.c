@@ -798,8 +798,6 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 			return fr_command_tab_expand_partial(start, info->argv[i], max_expansions, expansions);
 		}
 
-		start = cmd;
-
 		/*
 		 *	If there is a syntax, the command MUST be a
 		 *	leaf node.
