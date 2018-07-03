@@ -660,7 +660,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 			       list_name, vp->da->name, hex);
 			talloc_free(hex);
 		}
-		av_push(av, newSVpvn((char const *)vp->vp_octets, vp->vp_length));
+		sv = newSVpvn((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
 	default:
