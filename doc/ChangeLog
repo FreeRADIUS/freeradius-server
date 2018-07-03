@@ -30,6 +30,8 @@ FreeRADIUS 2.2.10 Monday 17 Jul 2017 09:00:00 EDT, urgency=high
 	  Fix by Ean Pasternak.
 	* Allow non-FIPS for MD5.
 	  Fix by Ean Pasternak.
+	* For rlm_perl, document: perl_flags = "-T", and set all
+	  variables to "tainted".
 
 FreeRADIUS 2.2.9 Wednesday 30 Sep 2015 17:00:00 EDT, urgency=medium
 	Feature improvements

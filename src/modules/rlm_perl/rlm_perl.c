@@ -542,6 +542,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 {
 	VALUE_PAIR	*nvp, *vpa, *vpn;
 	AV		*av;
+	SV		*sv;
 	char		namebuf[256];
 	const char 	*name;
 	char	    	buffer[1024];
@@ -581,15 +582,20 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 			for (vpn = vpa; vpn != NULL; vpn = vpn->next) {
 				len = vp_prints_value(buffer, sizeof(buffer),
 						vpn, FALSE);
-				av_push(av, newSVpv(buffer, len));
+				sv = newSVpv(buffer, len);
+				if (!sv) continue;
+				SvTAINTED_on(sv);
+				av_push(av, sv);
 			}
 			hv_store(rad_hv, name, namelen,
 					newRV_noinc((SV *) av), 0);
 		} else {
 			len = vp_prints_value(buffer, sizeof(buffer),
 					      vpa, FALSE);
+			sv = newSVpv(buffer, len);
+			if (sv) SvTAINTED_on(sv);
 			hv_store(rad_hv, name, namelen,
-				 newSVpv(buffer, len), 0);
+				 sv, 0);
 		}
 
 		pairfree(&vpa);
