@@ -129,7 +129,7 @@ static fr_cmd_t *radmin_cmd = NULL;
 
 #define CMD_MAX_ARGV (32)
 
-static int cmd_help(FILE *fp, UNUSED void *ctx, fr_cmd_info_t const *info);
+static int cmd_help(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
 
 static void *fr_radmin(UNUSED void *input_ctx)
 {
@@ -183,7 +183,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	It's just polite.
 			 */
 			if (strcmp(line, "help") == 0) {
-				cmd_help(stdout, NULL, &info);
+				cmd_help(stdout, stderr, NULL, &info);
 				goto next;
 			}
 
@@ -290,7 +290,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 */
 		add_history(line);
 
-		if (fr_command_run(stdout, radmin_cmd, &info) < 0) {
+		if (fr_command_run(stdout, stderr, radmin_cmd, &info) < 0) {
 			fprintf(stderr, "Failing running command: %s\n", fr_strerror());
 		}
 
@@ -311,7 +311,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
  */
 static struct timeval start_time;
 
-static int cmd_exit(UNUSED FILE *fp, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
+static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 	stop = true;
@@ -319,7 +319,7 @@ static int cmd_exit(UNUSED FILE *fp, UNUSED void *ctx, UNUSED fr_cmd_info_t cons
 	return 0;
 }
 
-static int cmd_help(FILE *fp, UNUSED void *ctx, fr_cmd_info_t const *info)
+static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	char const *help;
 
@@ -337,7 +337,7 @@ static int cmd_help(FILE *fp, UNUSED void *ctx, fr_cmd_info_t const *info)
 	return 0;
 }
 
-static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
+static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	struct timeval now;
 
@@ -351,7 +351,7 @@ static int cmd_uptime(FILE *fp, UNUSED void *ctx, UNUSED fr_cmd_info_t const *in
 	return 0;
 }
 
-static int cmd_test(FILE *fp, UNUSED void *ctx, fr_cmd_info_t const *info)
+static int cmd_test(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	fprintf(fp, "woo! %s %s\n", info->argv[0], info->argv[2]);
 	return 0;

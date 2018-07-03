@@ -836,13 +836,14 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 /** Run a particular command
  *
  * @param fp   where the output is sent
+ * @param fp_err  where the error output is sent
  * @param head the head of the command hierarchy.
  * @param info the structure describing the command to expand
  * @return
  *	- <0 on error
  *	- 0 the command was run successfully
  */
-int fr_command_run(FILE *fp, fr_cmd_t *head, fr_cmd_info_t *info)
+int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
 {
 	int i;
 	fr_cmd_t *cmd, *start;
@@ -905,7 +906,7 @@ int fr_command_run(FILE *fp, fr_cmd_t *head, fr_cmd_info_t *info)
 		my_info.runnable = true;
 		my_info.argv = &info->argv[i + 1];
 		my_info.box = &info->box[i + 1];
-		rcode = cmd->func(fp, cmd->ctx, &my_info);
+		rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
 
 		// @todo - clean up value boxes, too!
 		info->argc = 0;
