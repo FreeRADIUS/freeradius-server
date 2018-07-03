@@ -719,6 +719,10 @@ post-auth {
 	#  Uncomment the line below if *returning* the CUI.
 #	cui
 
+	# Create empty accounting session to make simultaneous check more robust
+	# See Accounting queries configuration for details.
+#	sql_accounting
+
 	#
 	#  If you want to have a log of authentication replies,
 	#  un-comment the following line, and enable the
