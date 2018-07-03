@@ -11,9 +11,10 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Add sql_session_start policy (raddb/policy.d/accounting)
 	  This minimizes race conditions when using Simultaneous-Use
 	  Patch from Philippe Wooding (#2257).
-	* For rlm_perl, all variables are now tainted by default.
-	  This should only affect people who are using variables
-	  in insecure ways.
+	* For rlm_perl, all variables are now tainted by default.  See
+	  raddb/mods-available/perl, and the "perl_flags" configuration
+	  item.  This change should only affect people who are using
+	  variables in insecure ways.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the

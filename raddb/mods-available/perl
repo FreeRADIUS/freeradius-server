@@ -14,6 +14,17 @@ perl {
 	filename = ${modconfdir}/${.:instance}/example.pl
 
 	#
+	#  Options which are passed to the Perl interpreter.
+	#  These are (mostly) the same options as are passed
+	#  to the "perl" command line.
+	#
+	#  The most useful flag is "-T".  This sets tainting on.  And
+	#  as of 3.0.18, makes it impossible to leverage bad
+	#  User-Names into local command execution.
+	#
+	perl_flags = "-T"
+
+	#
 	#  The following hashes are given to the module and
 	#  filled with value-pairs (Attribute names and values)
 	#
