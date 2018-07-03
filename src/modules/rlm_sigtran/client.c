@@ -240,7 +240,7 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 {
 	sigtran_transaction_t	*txn;
 
-	if (!*conn->mtp3_link) return 0;	/* Ignore if there is no link */
+	if (!(*conn)->mtp3_link) return 0;	/* Ignore if there is no link */
 
 	txn = talloc_zero(NULL, sigtran_transaction_t);
 	txn->request.type = SIGTRAN_REQUEST_LINK_DOWN;
