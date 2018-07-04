@@ -68,8 +68,8 @@ struct fr_cmd_t {
 #define FR_TYPE_FIXED		FR_TYPE_ABINARY
 
 #define FR_TYPE_VARARGS		FR_TYPE_TLV
-//#define FR_TYPE_ALTERNATE	FR_TYPE_TLV
-//#define FR_TYPE_OPTIONAL	FR_TYPE_STRUCT
+#define FR_TYPE_OPTIONAL	FR_TYPE_STRUCT
+//#define FR_TYPE_ALTERNATE	FR_TYPE_STRUCT
 
 /** Find a command
  *
@@ -322,16 +322,28 @@ static int split(char **input, char **output, bool syntax_string)
 		}
 
 	} else if (syntax_string && ((*str == '[') || (*str == '('))) {
+		char end;
 		quote = *(str++);
+
+		if (quote == '[') {
+			end = ']';
+		} else {
+			end = ')';
+		}
 
 		/*
 		 *	Don't allow backslashes here.  This piece is
 		 *	only for parsing syntax strings, which CANNOT
 		 *	have quotes in them.
 		 */
-		while (*str != quote) {
+		while (*str != end) {
 			if (!*str) {
-				fr_strerror_printf("String is not terminated with a quotation character.");
+				fr_strerror_printf("String ends before closing brace.");
+				return -1;
+			}
+
+			if (*str == quote) {
+				fr_strerror_printf("Nested braces are not allowed.");
 				return -1;
 			}
 
@@ -434,10 +446,39 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			argv->name = name;
 			argv->type = FR_TYPE_VARARGS;
 
+		} else if (name[0] == '[') {
+			/*
+			 *	Optional things.  e.g. [foo bar]
+			 */
+			char *option = talloc_strdup(ctx, name + 1);
+			char *q;
+			fr_cmd_argv_t *child;
+
+			q = strchr(option, ']');
+			if (!q) {
+				fr_strerror_printf("Optional string is not properly terminated");
+				return -1;
+			}
+
+			*q = '\0';
+			child = NULL;
+
+			rcode = fr_command_add_syntax(option, option, &child);
+			if (rcode < 0) return rcode;
+
+			argv = talloc_zero(ctx, fr_cmd_argv_t);
+			argv->name = name;
+			argv->type = FR_TYPE_OPTIONAL;
+
+			argv->child = child;
+
 		} else {
 			argv = talloc_zero(ctx, fr_cmd_argv_t);
 			argv->name = name;
 
+			/*
+			 *	Validates argv->name and sets argv->type
+			 */
 			if (!fr_command_valid_syntax(argv)) {
 				talloc_free(argv);
 				return -1;
@@ -939,6 +980,14 @@ static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_inf
 	}
 
 	/*
+	 *	Don't expand "[foo]", instead see if we can expand the
+	 *	"foo".
+	 */
+	if (argv->type == FR_TYPE_OPTIONAL) {
+		return fr_command_tab_expand_argv(ctx, cmd, info, name, argv->child, max_expansions, expansions);
+	}
+
+	/*
 	 *	Not a full match, but we're at the last
 	 *	keyword in the list.  Maybe it's a partial
 	 *	match?
@@ -1006,6 +1055,9 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 			if (strcmp(info->argv[i], argv->name) != 0) return -1;
 
 			argv = argv->next;
+
+		} else if (argv->type == FR_TYPE_OPTIONAL) {
+			rad_assert(0 == 1); /* can only be the last one for now */
 
 		} else if (!argv->next || (argv->next && (argv->next->type != FR_TYPE_VARARGS))) {
 			/*
@@ -1149,16 +1201,7 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
 		 */
 		rad_assert(cmd->func != NULL);
 
-		/*
-		 *	Too few arguments for the command.  The caller
-		 *	should really have checked this.
-		 */
-		if (info->argc < (i + 1 + cmd->syntax_argc)) {
-			fr_strerror_printf("Input has too few parameters for command");
-			return -1;
-		}
-
-		// @todo - add cmd->max_argc, to track optional things, varargs, etc.
+		// @todo - add cmd->min_argc && cmd->max_argc, to track optional things, varargs, etc.
 
 		/*
 		 *	The arguments have already been verified by
@@ -1243,26 +1286,112 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
 }
 
 
-static int fr_command_verify_argv(char const *name, fr_cmd_argv_t *argv) CC_HINT(nonnull);
+static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, int argc, fr_cmd_argv_t **argv_p, bool optional) CC_HINT(nonnull);
 
-static int fr_command_verify_argv(char const *name, fr_cmd_argv_t *argv)
+static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, int argc, fr_cmd_argv_t **argv_p, bool optional)
 {
 	char quote;
+	int used = 0;
 	fr_type_t type;
 	fr_value_box_t box;
+	char const *name;
+	fr_cmd_argv_t *argv = *argv_p;
+
+redo:
+	/*
+	 *	Don't eat too many arguments.
+	 */
+	if ((start + used) >= argc) {
+		rad_assert(argv != NULL);
+
+		/*
+		 *	Skip trailing optional pieces.
+		 */
+		while (argv && (argv->type == FR_TYPE_OPTIONAL)) {
+			argv = argv->next;
+		}
+
+		*argv_p = argv;
+
+		return used;
+	}
 
 	/*
 	 *	May be written to for things like
 	 *	"combo_ipaddr".
 	 */
 	type = argv->type;
+	name = info->argv[start + used];
 
 	/*
-	 *	Fixed strings, etc. that we don't do
-	 *	syntax checks on.
+	 *	Fixed strings.
+	 *
+	 *	Note that for optional parameters, we assume that they
+	 *	always begin with fixed strings.
 	 */
-	if (type == FR_TYPE_FIXED) return 1;
+	if (type == FR_TYPE_FIXED) {
+		if (strcmp(argv->name, info->argv[start + used]) != 0) {
 
+			/*
+			 *	This one didn't match, so we return
+			 *	"no match", even if we consumed many
+			 *	inputs.
+			 */
+			if (optional) return 0;
+
+			return -1;
+		}
+
+		used++;
+		goto next;
+	}
+
+	/*
+	 *	Optional.  It's OK if there's no match.
+	 */
+	if (type == FR_TYPE_OPTIONAL) {
+		int rcode;
+		fr_cmd_argv_t *child = argv->child;
+
+		rcode = fr_command_verify_argv(info, start + used, verify, argc, &child, true);
+		if (rcode < 0) return rcode;
+
+		/*
+		 *	No match, that's OK.  Skip it.
+		 */
+		if (rcode == 0) {
+			goto next;
+		}
+
+		/*
+		 *	We've used SOME of the input.
+		 */
+		used += rcode;
+
+		/*
+		 *	But perhaps not all of it.  If so, remember
+		 *	how much we've used, and return that.
+		 */
+		if (child) {
+			*argv_p = argv;
+			return used;
+		}
+
+		/*
+		 *	If we have used all of the optional thing, keep going.
+		 */
+		goto next;
+	}
+
+	rad_assert(type < FR_TYPE_FIXED);
+
+	/*
+	 *	Don't re-verify things we've already verified.
+	 */
+	if ((start + used) < verify) {
+		used++;
+		goto next;
+	}
 
 	quote = '\0';
 	if (type == FR_TYPE_STRING) {
@@ -1283,8 +1412,25 @@ static int fr_command_verify_argv(char const *name, fr_cmd_argv_t *argv)
 	}
 
 	fr_value_box_clear(&box);
+	used++;
 
-	return 1;
+next:
+	/*
+	 *	Go to the next one, but only if we don't have varargs.
+	 */
+	if (!argv->next || (argv->next->type != FR_TYPE_VARARGS)) {
+		argv = argv->next;
+	}
+
+	if (argv) goto redo;
+
+	if ((start + used) < argc) {
+		fr_strerror_printf("No match for command %s", info->argv[start + used]);
+		return -1;
+	}
+
+	*argv_p = NULL;
+	return used;
 }
 
 /** Split a string in-place, updating argv[]
@@ -1306,6 +1452,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 	int i, argc, cmd_argc, syntax_argc;
 	char *p;
 	fr_cmd_t *cmd, *start;
+	fr_cmd_argv_t *argv;
 
 	if ((info->argc < 0) || (info->max_argc <= 0) || !str) {
 		fr_strerror_printf("Invalid arguments passed to parse routine.");
@@ -1412,57 +1559,24 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 		return argc;
 	}
 
+	argv = cmd->syntax_argv;
 
 	/*
 	 *	If there are enough arguments to pass anything to the
 	 *	command, and there are more arguments than we had on
 	 *	input, do syntax checks on the new arguments.
 	 */
-	if ((argc > cmd_argc) && (argc > info->argc)) {
-		int start_checks;
-		fr_cmd_argv_t *argv;
-
-		argv = cmd->syntax_argv;
+	if ((argc > (cmd_argc + 1)) && (argc > info->argc)) {
+		int rcode;
 
 		/*
-		 *	Skip the arguments we already processed.
+		 *	This verifies the arguments, and updates argv
 		 */
-		for (i = cmd_argc + 1; (i < info->argc) && argv; i++) {
-			if (!argv->next || (argv->next->type != FR_TYPE_VARARGS)) {
-				argv = argv->next;
-			}
-		}
-
-		start_checks = i;
-		for (i = start_checks; (i < argc) && argv; i++) {
-			int rcode;
-
-			rcode = fr_command_verify_argv(info->argv[i], argv);
-			if (rcode < 0) return rcode;
-
-			rad_assert(rcode >= 1);
-
-			/*
-			 *	Go to the next one, but only if we don't have varargs.
-			 */
-			if (!argv->next || (argv->next->type != FR_TYPE_VARARGS)) {
-				argv = argv->next;
-			}
-		}
+		rcode = fr_command_verify_argv(info, cmd_argc + 1, info->argc, argc, &argv, false);
+		if (rcode < 0) return rcode;
 	}
 
-	/*
-	 *	Too few arguments to run the command.
-	 */
-	if (syntax_argc < cmd->syntax_argc) {
-		info->argc = argc;
-		return argc;
-	}
-
-	/*
-	 *	It's just right.
-	 */
-	info->runnable = true;
+	info->runnable = (argv == NULL);
 	info->argc = argc;
 	return argc;
 }
