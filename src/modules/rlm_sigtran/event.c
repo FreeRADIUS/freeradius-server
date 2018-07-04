@@ -62,6 +62,7 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/io/schedule.h>
 #include <unistd.h>
 #include <semaphore.h>
 
