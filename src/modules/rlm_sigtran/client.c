@@ -196,7 +196,12 @@ int sigtran_client_thread_unregister(fr_event_list_t *el, int req_pipe_fd)
 	txn = talloc_zero(NULL, sigtran_transaction_t);
 	txn->request.type = SIGTRAN_REQUEST_THREAD_UNREGISTER;
 
-	if ((sigtran_client_do_ctrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
+	/*
+	 *	The signal to unregister *MUST* be sent on the
+	 *	request pipe itself, so that the osmocom thread
+	 *	knows *WHICH* pipe to close on its side.
+	 */
+	if ((sigtran_client_do_transaction(req_pipe_fd, txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
 		ERROR("worker - Failed unregistering thread");
 		talloc_free(txn);
 		return -1;
