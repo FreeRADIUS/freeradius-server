@@ -350,7 +350,7 @@ static int event_process_request(struct osmo_fd *ofd, unsigned int what)
 		return -1;
 	}
 	if (len == 0) {
-		DEBUG3("Ignoring zero length read");
+		DEBUG4("Ignoring zero length read");
 		return 0;
 	}
 	if (len != sizeof(ptr)) {
