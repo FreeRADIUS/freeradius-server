@@ -24,6 +24,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#define LOG_PREFIX "rlm_sigtran - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/eap.aka.h>

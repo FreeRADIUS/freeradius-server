@@ -541,7 +541,7 @@ int sigtran_event_exit(void)
 	txn->request.type = SIGTRAN_REQUEST_EXIT;
 
 	if ((sigtran_client_do_transaction(ctrl_pipe[0], txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-		ERROR("Failed signalling osmocom thread to exit");
+		ERROR("worker - Failed signalling osmocom thread to exit");
 		talloc_free(txn);
 		return -1;
 	}
