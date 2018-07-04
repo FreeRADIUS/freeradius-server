@@ -323,7 +323,6 @@ static void *bfd_child_thread(void *ctx)
 
 static int bfd_pthread_create(bfd_state_t *session)
 {
-	int rcode;
 	pthread_attr_t attr;
 
 	if (pipe(session->pipefd) < 0) {
@@ -365,12 +364,10 @@ static int bfd_pthread_create(bfd_state_t *session)
 	 *	Note that the function returns non-zero on error, NOT
 	 *	-1.  The return code is the error, and errno isn't set.
 	 */
-	rcode = pthread_create(&session->pthread_id, &attr,
-			       bfd_child_thread, session);
-	if (rcode != 0) {
+	if (fr_schedule_pthread_create(&session->pthread_id, bfd_child_thread, session) < 0) {
 		talloc_free(session->el);
 		session->el = NULL;
-		ERROR("Thread create failed: %s", fr_syserror(rcode));
+		ERROR("Thread create failed: %s", fr_strerror());
 		goto close_pipes;
 	}
 	pthread_attr_destroy(&attr);

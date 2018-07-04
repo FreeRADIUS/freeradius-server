@@ -497,12 +497,12 @@ int sigtran_event_start(void)
 	sem_init(&event_thread_running, 0, 0);
 
 	if (sigtran_sccp_global_init() < 0) {
-		ERROR("osmocom thread - Failed initialising SCCP layer");
+		ERROR("main thread - Failed initialising SCCP layer");
 		return -1;
 	}
 
-	if (pthread_create(&event_thread, NULL, sigtran_event_loop, NULL) < 0) {
-		ERROR("osmocom thread - Failed spawning thread for multiplexer event loop: %s", fr_syserror(errno));
+	if (fr_schedule_pthread_create(&event_thread, sigtran_event_loop, NULL) < 0) {
+		ERROR("main thread - Failed spawning thread for multiplexer event loop: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -517,13 +517,13 @@ int sigtran_event_start(void)
 
 		if ((sigtran_client_do_transaction(ctrl_pipe[0], txn) < 0) ||
 		    (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-			ERROR("osmocom thread - libosmo thread died");
+			ERROR("main thread - libosmo thread died");
 			talloc_free(txn);
 			return -1;
 		}
 		talloc_free(txn);
 
-		DEBUG2("osmocom thread - libosmo thread responding");
+		DEBUG2("main thread - libosmo thread responding");
 	}
 #endif
 

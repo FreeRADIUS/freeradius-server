@@ -303,16 +303,67 @@ fail:
 }
 
 
+/** Creates a new thread using our standard set of options
+ *
+ * New threads are:
+ * - Joinable, i.e. you can call pthread_join on them to confirm they've exited
+ * - Immune to catchable signals.
+ *
+ * @param[out] thread	handled that was created by pthread_create.
+ * @param[in] func	entry point for the thread.
+ * @param[in] arg	Argument to pass to func.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *arg)
+{
+	pthread_attr_t	attr;
+	sigset_t	sig_mask;  	/* signals to block */
+	int		ret;
+
+	/*
+	 *	Set the thread to wait around after it's exited
+	 *	so it can be joined.  This is more of a useful
+	 *	mechanism for the parent to determine if all
+	 *	the threads have exited so it can continue with
+	 *	a graceful shutdown.
+	 */
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+	/*
+	 *	We generally use kqueue to signal threads so we
+	 *	need to mask all the signals to prevent them from
+	 *	being delivered to something that shouldn't be
+	 *	processing them.
+	 */
+	sigfillset(&sig_mask);
+
+	if (pthread_sigmask(SIG_BLOCK, &sig_mask, NULL) != 0) {
+		fr_strerror_printf("Failed blocking child signals: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	ret = pthread_create(thread, &attr, func, arg);
+	if (ret != 0) {
+		fr_strerror_printf("Failed creating thread: %s", fr_syserror(ret));
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Create a scheduler and spawn the child threads.
  *
- * @param[in] ctx the talloc context
- * @param[in] el the event list, only for single-threaded mode.
- * @param[in] logger the destination for all logging messages
- * @param[in] lvl the log level
- * @param[in] max_networks the number of network threads
- * @param[in] max_workers the number of worker threads
- * @param[in] worker_thread_instantiate callback for new worker threads
- * @param[in] worker_thread_ctx context for callback
+ * @param[in] ctx		talloc context.
+ * @param[in] el		event list, only for single-threaded mode.
+ * @param[in] logger		destination for all logging messages.
+ * @param[in] lvl		log level.
+ * @param[in] max_networks	number of network threads.
+ * @param[in] max_workers	number of worker threads.
+ * @param[in] worker_thread_instantiate		callback for new worker threads.
+ * @param[in] worker_thread_ctx	context for callback.
  * @return
  *	- NULL on error
  *	- fr_schedule_t new scheduler
@@ -325,8 +376,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 {
 #ifdef HAVE_PTHREAD_H
 	int i;
-	int rcode;
-	pthread_attr_t attr;
 	fr_dlist_t *entry, *next;
 #endif
 	fr_schedule_t *sc;
@@ -401,9 +450,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	}
 
 #ifdef HAVE_PTHREAD_H
-	(void) pthread_attr_init(&attr);
-	(void) pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
 	/*
 	 *	Create the list which holds the workers.
 	 */
@@ -411,7 +457,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	memset(&sc->semaphore, 0, sizeof(sc->semaphore));
 	if (sem_init(&sc->semaphore, 0, SEMAPHORE_LOCKED) != 0) {
-		fr_strerror_printf("Failed creating semaphore: %s", fr_syserror(errno));
+		fr_log(sc->log, L_ERR, "Failed creating semaphore: %s", fr_syserror(errno));
 		talloc_free(sc);
 		return NULL;
 	}
@@ -424,9 +470,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	sc->sn->sc = sc;
 	sc->sn->id = 0;
 
-	rcode = pthread_create(&sc->sn->pthread_id, &attr, fr_schedule_network_thread, sc->sn);
-	if (rcode != 0) {
-		fr_strerror_printf("Failed creating network thread: %s", fr_syserror(errno));
+	if (fr_schedule_pthread_create(&sc->sn->pthread_id, fr_schedule_network_thread, sc->sn) < 0) {
+		fr_log(sc->log, L_ERR, "Failed creating network thread %s", fr_strerror());
 		goto fail;
 	}
 
@@ -461,14 +506,14 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sw->status = FR_CHILD_INITIALIZING;
 		fr_dlist_insert_head(&sc->workers, &sw->entry);
 
-		rcode = pthread_create(&sw->pthread_id, &attr, fr_schedule_worker_thread, sw);
-		if (rcode != 0) {
-			fr_log(sc->log, L_ERR, "Failed creating worker %d: %s\n", i, fr_syserror(errno));
+		if (fr_schedule_pthread_create(&sw->pthread_id, fr_schedule_worker_thread, sw) < 0) {
+			fr_log(sc->log, L_ERR, "Failed creating worker %d: %s\n", i, fr_strerror());
 			break;
 		}
 
 		sc->num_workers++;
 	}
+
 
 	/*
 	 *	Wait for all of the workers to signal us that either
