@@ -157,7 +157,7 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_OFFSET("radacctdir", FR_TYPE_STRING, main_config_t, radacct_dir), .dflt = "${logdir}/radacct" },
 	{ FR_CONF_OFFSET("panic_action", FR_TYPE_STRING, main_config_t, panic_action) },
 	{ FR_CONF_OFFSET("reverse_lookups", FR_TYPE_BOOL, main_config_t, reverse_lookups), .dflt = "no", .func = reverse_lookups_parse },
-	{ FR_CONF_OFFSET("hostname_lookups", FR_TYPE_BOOL, main_config_t, hostname_lookups), .dflt = "no", .func = hostname_lookups_parse },
+	{ FR_CONF_OFFSET("hostname_lookups", FR_TYPE_BOOL, main_config_t, hostname_lookups), .dflt = "yes", .func = hostname_lookups_parse },
 	{ FR_CONF_OFFSET("max_request_time", FR_TYPE_UINT32, main_config_t, max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
 	{ FR_CONF_OFFSET("pidfile", FR_TYPE_STRING, main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
