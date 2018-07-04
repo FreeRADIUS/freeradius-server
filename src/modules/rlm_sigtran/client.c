@@ -112,12 +112,12 @@ static void _sigtran_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fl
 
 	len = read(fd, &ptr, sizeof(ptr));
 	if (len < 0) {
-		ERROR("ctrl_pipe (%i) read failed : %s", fd, fr_syserror(errno));
+		ERROR("worker - ctrl_pipe (%i) read failed : %s", fd, fr_syserror(errno));
 		return;
 	}
 
 	if (len != sizeof(ptr)) {
-		ERROR("ctrl_pipe (%i) data too short, expected %zu bytes, got %zi bytes",
+		ERROR("worker - ctrl_pipe (%i) data too short, expected %zu bytes, got %zi bytes",
 		      fd, sizeof(ptr), len);
 		return;
 	}
@@ -148,7 +148,7 @@ int sigtran_client_thread_register(fr_event_list_t *el)
 	 *	the remote end to be registered.
 	 */
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, req_pipe) < 0) {
-		ERROR("Failed creating req_pipe: %s", fr_syserror(errno));
+		ERROR("worker - Failed creating req_pipe: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -159,13 +159,14 @@ int sigtran_client_thread_register(fr_event_list_t *el)
 	txn->request.data = &req_pipe[1];
 
 	if ((sigtran_client_do_ctrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-		ERROR("Failed registering thread");
+		ERROR("worker - Failed registering thread");
 	error:
 		close(req_pipe[0]);
 		close(req_pipe[1]);
 		talloc_free(txn);
 		return -1;
 	}
+	DEBUG3("worker - Thread register acked by osmocom thread");
 	talloc_free(txn);
 
 	/*
@@ -174,7 +175,7 @@ int sigtran_client_thread_register(fr_event_list_t *el)
 	 *	waiting.
 	 */
 	if (fr_event_fd_insert(NULL, el, req_pipe[0], _sigtran_pipe_read, NULL, _sigtran_pipe_error, NULL) < 0) {
-		ERROR("Failed listening on osmocom pipe");
+		ERROR("worker - Failed listening on osmocom pipe");
 		goto error;
 	}
 
@@ -194,10 +195,11 @@ int sigtran_client_thread_unregister(fr_event_list_t *el, int req_pipe_fd)
 	txn->request.type = SIGTRAN_REQUEST_THREAD_UNREGISTER;
 
 	if ((sigtran_client_do_ctrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-		ERROR("Failed unregistering thread");
+		ERROR("worker - Failed unregistering thread");
 		talloc_free(txn);
 		return -1;
 	}
+	DEBUG3("worker - Thread unregister acked by osmocom thread");
 	talloc_free(txn);
 
 	fr_event_fd_delete(el, req_pipe_fd, FR_EVENT_FILTER_IO);
@@ -221,10 +223,11 @@ int sigtran_client_link_up(sigtran_conn_t const **out, sigtran_conn_conf_t const
 	memcpy(&txn->request.data, &conn_conf, sizeof(txn->request.data));
 
 	if ((sigtran_client_do_ctrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-		ERROR("Failed bringing up link");
+		ERROR("worker - Failed bringing up link");
 		talloc_free(txn);
 		return -1;
 	}
+	DEBUG3("worker - Link up acked by osmocom thread");
 	*out = talloc_get_type_abort(txn->response.data, sigtran_conn_t);
 	talloc_free(txn);
 
@@ -247,10 +250,11 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 	memcpy(&txn->request.data, conn, sizeof(txn->request.data));
 
 	if ((sigtran_client_do_ctrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-		ERROR("Failed taking down the link");
+		ERROR("worker - Failed taking down the link");
 		talloc_free(txn);
 		return -1;
 	}
+	DEBUG3("worker - Link down acked by osmocom thread");
 	talloc_free(txn);
 	*conn = NULL;
 
@@ -471,7 +475,7 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST
 	 *	FIXME - We shouldn't assume the pipe is always writable
 	 */
 	if (write(fd, &txn, sizeof(txn)) < 0) {
-		ERROR("ctrl_pipe (%i) write failed: %s", fd, fr_syserror(errno));
+		ERROR("worker - ctrl_pipe (%i) write failed: %s", fd, fr_syserror(errno));
 		goto error;
 	}
 
