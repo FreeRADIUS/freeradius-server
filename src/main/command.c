@@ -920,48 +920,10 @@ static int fr_command_tab_expand_partial(fr_cmd_t *head, char const *partial, in
 }
 
 
-/*
- *	We're at a leaf command, which has a syntax.  Walk down the
- *	syntax argv checking if it matches.  If we get a matching
- *	command, add that to the expansions array and return.  If we
- *	get a data type instead, do the callback to ask the caller to
- *	expand it.
- */
-static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int syntax_offset, fr_cmd_info_t *info,
-					int max_expansions, char const **expansions)
+static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_info_t *info, char const *name, fr_cmd_argv_t *argv,
+				      int max_expansions, char const **expansions)
 {
-	int i;
-	char *p;
-	char const *q;
-	fr_cmd_argv_t *argv = cmd->syntax_argv;
-
-	/*
-	 *	Double-check intermediate strings, but skip
-	 *	intermediate data types.
-	 */
-	for (i = syntax_offset; i < (info->argc - 1); i++) {
-		rad_assert(argv->type != FR_TYPE_VARARGS);
-
-		/*
-		 *	Double-check that fixed strings match.
-		 */
-		if (argv->type == FR_TYPE_FIXED) {
-			if (strcmp(info->argv[i], argv->name) != 0) return -1;
-
-			argv = argv->next;
-
-		} else if (!argv->next || (argv->next && (argv->next->type != FR_TYPE_VARARGS))) {
-			/*
-			 *	Go to the next entry, but only if it isn't varargs
-			 */
-			argv = argv->next;
-		}
-
-		/*
-		 *	Run out of things to check, we can't expand anything.
-		 */
-		if (!argv) return 0;
-	}
+	char const *p, *q;
 
 	/*
 	 *	If it's a real data type, run the defined callback to
@@ -980,12 +942,8 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 	 *	Not a full match, but we're at the last
 	 *	keyword in the list.  Maybe it's a partial
 	 *	match?
-	 *
-	 *	@todo - allow for (a|b) in syntax,
-	 *	which means creating a tree of allowed
-	 *	syntaxes.  <sigh>
 	 */
-	for (p = info->argv[i], q = argv->name;
+	for (p = name, q = argv->name;
 	     (*p != '\0') && (*q != '\0');
 	     p++, q++) {
 		/*
@@ -1019,6 +977,53 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 	}
 
 	return 0;
+}
+
+/*
+ *	We're at a leaf command, which has a syntax.  Walk down the
+ *	syntax argv checking if it matches.  If we get a matching
+ *	command, add that to the expansions array and return.  If we
+ *	get a data type instead, do the callback to ask the caller to
+ *	expand it.
+ */
+static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int syntax_offset, fr_cmd_info_t *info,
+					int max_expansions, char const **expansions)
+{
+	int i;
+	fr_cmd_argv_t *argv = cmd->syntax_argv;
+
+	/*
+	 *	Double-check intermediate strings, but skip
+	 *	intermediate data types.
+	 */
+	for (i = syntax_offset; i < (info->argc - 1); i ++) {
+		rad_assert(argv->type != FR_TYPE_VARARGS);
+
+		/*
+		 *	Double-check that fixed strings match.
+		 */
+		if (argv->type == FR_TYPE_FIXED) {
+			if (strcmp(info->argv[i], argv->name) != 0) return -1;
+
+			argv = argv->next;
+
+		} else if (!argv->next || (argv->next && (argv->next->type != FR_TYPE_VARARGS))) {
+			/*
+			 *	Go to the next entry, but only if it isn't varargs
+			 */
+			argv = argv->next;
+		}
+
+		/*
+		 *	Run out of things to check, we can't expand anything.
+		 */
+		if (!argv) return 0;
+	}
+
+	/*
+	 *	We've found the last argv.  See if we need to expand it.
+	 */
+	return fr_command_tab_expand_argv(ctx, cmd, info, info->argv[i], argv, max_expansions, expansions);
 }
 
 
@@ -1238,6 +1243,8 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
 }
 
 
+static int fr_command_verify_argv(char const *name, fr_cmd_argv_t *argv) CC_HINT(nonnull);
+
 static int fr_command_verify_argv(char const *name, fr_cmd_argv_t *argv)
 {
 	char quote;
@@ -1420,14 +1427,14 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 		/*
 		 *	Skip the arguments we already processed.
 		 */
-		for (i = cmd_argc + 1; i < info->argc; i++) {
+		for (i = cmd_argc + 1; (i < info->argc) && argv; i++) {
 			if (!argv->next || (argv->next->type != FR_TYPE_VARARGS)) {
 				argv = argv->next;
 			}
 		}
 
 		start_checks = i;
-		for (i = start_checks; i < argc; i++) {
+		for (i = start_checks; (i < argc) && argv; i++) {
 			int rcode;
 
 			rcode = fr_command_verify_argv(info->argv[i], argv);
