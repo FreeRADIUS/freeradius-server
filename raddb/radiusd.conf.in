@@ -191,7 +191,7 @@ max_request_time = 30
 #
 max_requests = 16384
 
-#  hostname_lookups: Log the names of clients or just their IP addresses
+#  reverse_lookups: Log the names of clients or just their IP addresses
 #  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
 #
 #  The default is 'off' because it would be overall better for the net
@@ -207,7 +207,18 @@ max_requests = 16384
 #
 #  allowed values: {no, yes}
 #
-hostname_lookups = no
+reverse_lookups = no
+
+#  hostname_lookups: Global toggle for preventing hostname resolution
+#
+#  The default is 'on' because people often use hostnames in configuration
+#  files.  The main disadvantage of enabling this is the server may block
+#  at inopportune moments (like opening new connections) if the DNS servers
+#  are unavailable
+#
+#  allowed values: {no, yes}
+#
+hostname_lookups = yes
 
 #
 #  Logging section.  The various "log_*" configuration items
