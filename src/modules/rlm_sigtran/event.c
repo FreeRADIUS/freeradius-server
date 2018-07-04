@@ -293,7 +293,7 @@ int sigtran_event_submit(struct osmo_fd *ofd, sigtran_transaction_t *txn)
 			fd_set	error_set;
 			fd_set	write_set;
 
-			DEBUG3("Got EAGAIN (no buffer space left), waiting for pipe to become writable");
+			DEBUG3("Server core - Got EAGAIN (no buffer space left), waiting for pipe to become writable");
 
 			FD_ZERO(&error_set);
 			FD_ZERO(&write_set);
@@ -314,7 +314,7 @@ int sigtran_event_submit(struct osmo_fd *ofd, sigtran_transaction_t *txn)
 			if ((ret > 0) && !FD_ISSET(ofd->fd, &error_set)) continue;
 		}
 
-		ERROR("Failed writing to pipe (%i): %s", ofd->fd, fr_syserror(errno));
+		ERROR("Server core - Failed writing to pipe (%i): %s", ofd->fd, fr_syserror(errno));
 		return -1;
 	}
 
@@ -329,7 +329,7 @@ int sigtran_event_submit(struct osmo_fd *ofd, sigtran_transaction_t *txn)
  *	- 0 on success, with pointer written to registration pipe for new osmo_fd.
  *	- -1 on error, with NULL pointer written to registration pipe.
  */
-static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
+static int event_process_request(struct osmo_fd *ofd, unsigned int what)
 {
 	sigtran_transaction_t	*txn;
 
@@ -337,7 +337,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 	ssize_t			len;
 
 	if (what & BSC_FD_EXCEPT) {
-		ERROR("pipe (%i) closed by server, eventer thread exiting", ofd->fd);
+		ERROR("pipe (%i) closed by osmocom thread, event thread exiting", ofd->fd);
 		do_exit = true;
 		return -1;
 	}
@@ -346,12 +346,12 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 
 	len = read(ofd->fd, &ptr, sizeof(ptr));
 	if (len < 0) {
-		ERROR("Failed reading from pipe (%i): %s", ofd->fd, fr_syserror(errno));
+		ERROR("osmocom thread - Failed reading from pipe (%i): %s", ofd->fd, fr_syserror(errno));
 		return -1;
 	}
 	if (len != sizeof(ptr)) {
-		ERROR("Data from pipe (%i) too short, expected %zu bytes, got %zu bytes",
-		      ofd->fd, sizeof(ptr), len);
+		ERROR("osmocom thread - Failed reading data from pipe (%i): Too short, "
+		      "expected %zu bytes, got %zu bytes", ofd->fd, sizeof(ptr), len);
 		ptr = NULL;
 
 		if (sigtran_event_submit(ofd, NULL) < 0) {
@@ -364,7 +364,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		return -1;
 	}
 
-	DEBUG3("Read %zu bytes from pipe %i (%p)", len, ofd->fd, ptr);
+	DEBUG3("osmocom thread - Read %zu bytes from pipe %i (%p)", len, ofd->fd, ptr);
 
 	txn = talloc_get_type_abort(ptr, sigtran_transaction_t);
 	txn->ctx.ofd = ofd;
@@ -376,9 +376,9 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 
 		fd = *((int *)txn->request.data);	/* Not talloced */
 
-		DEBUG3("Registering req_pipe (%i)", fd);
+		DEBUG3("osmocom thread - Registering req_pipe (%i)", fd);
 
-		req_ofd = ofd_create(ofd->data, fd, event_request_handle, NULL);
+		req_ofd = ofd_create(ofd->data, fd, event_process_request, NULL);
 		if (!req_ofd) {
 			txn->response.type = SIGTRAN_RESPONSE_FAIL;
 		} else {
@@ -388,7 +388,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		break;
 
 	case SIGTRAN_REQUEST_THREAD_UNREGISTER:
-		DEBUG3("Deregistering req_pipe (%i).  Signalled by worker", ofd->fd);
+		DEBUG3("osmocom thread - Deregistering req_pipe (%i).  Signalled by worker", ofd->fd);
 		txn->response.type = SIGTRAN_RESPONSE_OK;
 
 		if (sigtran_event_submit(ofd, txn) < 0) goto fatal_error;
@@ -396,7 +396,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		return 0;
 
 	case SIGTRAN_REQUEST_LINK_UP:
-		DEBUG3("Bringing link up");
+		DEBUG3("osmocom thread - Bringing link up");
 		if (event_link_up(ofd->data, (sigtran_conn_t **)&txn->response.data, txn->request.data) < 0) {	/* Struct not talloced */
 			txn->response.type = SIGTRAN_RESPONSE_FAIL;
 		} else {
@@ -405,7 +405,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		break;
 
 	case SIGTRAN_REQUEST_LINK_DOWN:
-		DEBUG3("Taking link down");
+		DEBUG3("osmocom thread - Taking link down");
 		if (event_link_down(talloc_get_type_abort(txn->request.data, sigtran_conn_t)) < 0) {
 			txn->response.type = SIGTRAN_RESPONSE_FAIL;
 		} else {
@@ -417,7 +417,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 	{
 		sigtran_map_send_auth_info_req_t *req = talloc_get_type_abort(txn->request.data,
 									      sigtran_map_send_auth_info_req_t);
-		DEBUG3("Processing map send auth info");
+		DEBUG3("osmocom thread - Processing map send auth info");
 		if (sigtran_tcap_outgoing(NULL, req->conn, txn, ofd) < 0) {
 			txn->response.type = SIGTRAN_RESPONSE_FAIL;
 		} else {
@@ -427,7 +427,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		break;
 
 	case SIGTRAN_REQUEST_EXIT:
-		DEBUG3("Event loop will exit");
+		DEBUG3("osmocom thread - Event loop will exit");
 		do_exit = true;
 		txn->response.type = SIGTRAN_RESPONSE_OK;
 		break;
@@ -464,12 +464,12 @@ static void *sigtran_event_loop(UNUSED void *instance)
 	sigtran_log_init(ctx);
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, ctrl_pipe) < 0) {
-		ERROR("Failed creating ctrl_pipe: %s", fr_syserror(errno));
+		ERROR("osmocom thread - Failed creating ctrl_pipe: %s", fr_syserror(errno));
 		return NULL;
 	}
-	if (!ofd_create(ctx, ctrl_pipe[1], event_request_handle, ctx)) return NULL;
+	if (!ofd_create(ctx, ctrl_pipe[1], event_process_request, ctx)) return NULL;
 
-	DEBUG2("Entering oscmocore event loop, listening on fd %i (client fd %i)", ctrl_pipe[1], ctrl_pipe[0]);
+	DEBUG2("osmocom thread - Entering event loop, listening on fd %i (client fd %i)", ctrl_pipe[1], ctrl_pipe[0]);
 
 	sem_post(&event_thread_running);		/* Up enough to be ok! */
 
@@ -480,7 +480,7 @@ static void *sigtran_event_loop(UNUSED void *instance)
 
 	talloc_free(ctx);	/* Also frees ctrl pipe ofd (which closes ctrl_pipe[1]) */
 
-	DEBUG2("osmocore event loop exiting");
+	DEBUG2("osmocom thread - Event loop exiting");
 
 	return NULL;
 }
@@ -493,12 +493,12 @@ int sigtran_event_start(void)
 	sem_init(&event_thread_running, 0, 0);
 
 	if (sigtran_sccp_global_init() < 0) {
-		ERROR("Failed initialising SCCP layer");
+		ERROR("osmocom thread - Failed initialising SCCP layer");
 		return -1;
 	}
 
 	if (pthread_create(&event_thread, NULL, sigtran_event_loop, NULL) < 0) {
-		ERROR("Failed spawning thread for multiplexer event loop: %s", fr_syserror(errno));
+		ERROR("osmocom thread - Failed spawning thread for multiplexer event loop: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -513,13 +513,13 @@ int sigtran_event_start(void)
 
 		if ((sigtran_client_do_transaction(ctrl_pipe[0], txn) < 0) ||
 		    (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-			ERROR("libosmo thread died");
+			ERROR("osmocom thread - libosmo thread died");
 			talloc_free(txn);
 			return -1;
 		}
 		talloc_free(txn);
 
-		DEBUG2("libosmo thread responding");
+		DEBUG2("osmocom thread - libosmo thread responding");
 	}
 #endif
 
@@ -537,7 +537,7 @@ int sigtran_event_exit(void)
 	txn->request.type = SIGTRAN_REQUEST_EXIT;
 
 	if ((sigtran_client_do_transaction(ctrl_pipe[0], txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-		ERROR("Failed signalling libosmo loop to exit");
+		ERROR("Failed signalling osmocom thread to exit");
 		talloc_free(txn);
 		return -1;
 	}
