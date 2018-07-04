@@ -139,6 +139,11 @@ struct fr_schedule_t {
 	fr_schedule_network_t *sn;		//!< pointer to the (one) network thread
 };
 
+typedef struct {
+	void *(*func)(void *);
+	void *arg;
+} fr_schedule_entry_point_t;
+
 static _Thread_local int worker_id;		//!< Internal ID of the current worker thread.
 
 /** Return the worker id for the current thread
@@ -302,35 +307,13 @@ fail:
 	return NULL;
 }
 
-
-/** Creates a new thread using our standard set of options
+/** Wrapper to set the signal mask on newly created threads
  *
- * New threads are:
- * - Joinable, i.e. you can call pthread_join on them to confirm they've exited
- * - Immune to catchable signals.
- *
- * @param[out] thread	handled that was created by pthread_create.
- * @param[in] func	entry point for the thread.
- * @param[in] arg	Argument to pass to func.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
  */
-int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *arg)
+static void *schedule_pthread_entry(void *arg)
 {
-	pthread_attr_t	attr;
-	sigset_t	sig_mask;  	/* signals to block */
-	int		ret;
-
-	/*
-	 *	Set the thread to wait around after it's exited
-	 *	so it can be joined.  This is more of a useful
-	 *	mechanism for the parent to determine if all
-	 *	the threads have exited so it can continue with
-	 *	a graceful shutdown.
-	 */
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	fr_schedule_entry_point_t	*ep = arg;
+	sigset_t			sig_mask;  	/* signals to block */
 
 	/*
 	 *	We generally use kqueue to signal threads so we
@@ -342,10 +325,41 @@ int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *a
 
 	if (pthread_sigmask(SIG_BLOCK, &sig_mask, NULL) != 0) {
 		fr_strerror_printf("Failed blocking child signals: %s", fr_syserror(errno));
-		return -1;
+		return NULL;
 	}
 
-	ret = pthread_create(thread, &attr, func, arg);
+	return ep->func(ep->arg);
+}
+
+/** Creates a new thread using our standard set of options
+ *
+ * New threads are:
+ * - Joinable, i.e. you can call pthread_join on them to confirm they've exited
+ * - Immune to catchable signals.
+ *
+ * @param[out] thread		handled that was created by pthread_create.
+ * @param[in] func		entry point for the thread.
+ * @param[in] arg		Argument to pass to func.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *arg)
+{
+	pthread_attr_t			attr;
+	int				ret;
+	fr_schedule_entry_point_t	ep = { .func = func, .arg = arg };
+	/*
+	 *	Set the thread to wait around after it's exited
+	 *	so it can be joined.  This is more of a useful
+	 *	mechanism for the parent to determine if all
+	 *	the threads have exited so it can continue with
+	 *	a graceful shutdown.
+	 */
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+	ret = pthread_create(thread, &attr, schedule_pthread_entry, &ep);
 	if (ret != 0) {
 		fr_strerror_printf("Failed creating thread: %s", fr_syserror(ret));
 		return -1;
