@@ -754,8 +754,7 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 	table->read_only = true;
 
 	if (fr_command_add(ctx, &command_head, name, NULL, table) < 0) {
-		printf("SHIT adding %s\n", name);
-		snprintf(output, outlen, "ERROR: failed adding command ???");
+		snprintf(output, outlen, "ERROR: failed adding command - %s", fr_strerror());
 		return;
 	}
 
