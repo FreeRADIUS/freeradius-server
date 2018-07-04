@@ -1312,7 +1312,6 @@ redo:
 		}
 
 		*argv_p = argv;
-
 		return used;
 	}
 
@@ -1566,7 +1565,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 	 *	command, and there are more arguments than we had on
 	 *	input, do syntax checks on the new arguments.
 	 */
-	if ((argc > (cmd_argc + 1)) && (argc > info->argc)) {
+	if ((argc > cmd_argc) && (argc > info->argc)) {
 		int rcode;
 
 		/*
