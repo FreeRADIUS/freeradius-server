@@ -45,7 +45,7 @@ int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
 	void		*ptr;
 
 	if (write(fd, &txn, sizeof(txn)) < 0) {
-		ERROR("ctrl_pipe (%i) write failed: %s", fd, fr_syserror(errno));
+		ERROR("worker - ctrl_pipe (%i) write failed: %s", fd, fr_syserror(errno));
 		return -1;
 	}
 
@@ -54,18 +54,18 @@ int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
 	 */
 	len = read(fd, &ptr, sizeof(ptr));
 	if (len < 0) {
-		ERROR("ctrl_pipe (%i) read failed : %s", fd, fr_syserror(errno));
+		ERROR("worker - ctrl_pipe (%i) read failed : %s", fd, fr_syserror(errno));
 		return -1;
 	}
 
 	if (len != sizeof(ptr)) {
-		ERROR("ctrl_pipe (%i) data too short, expected %zu bytes, got %zi bytes",
+		ERROR("worker - ctrl_pipe (%i) data too short, expected %zu bytes, got %zi bytes",
 		      fd, sizeof(ptr), len);
 		return -1;
 	}
 
 	if (ptr != txn) {
-		ERROR("ctrl_pipe (%i) response ptr (%p) does not match request (%p)", fd, ptr, txn);
+		ERROR("worker - ctrl_pipe (%i) response ptr (%p) does not match request (%p)", fd, ptr, txn);
 		return -1;
 	}
 
@@ -95,7 +95,7 @@ static int sigtran_client_do_ctrl_transaction(sigtran_transaction_t *txn)
  */
 static void _sigtran_pipe_error(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, int fd_errno, UNUSED void *uctx)
 {
-	ERROR("ctrl_pipe (%i) read failed : %s", fd, fr_syserror(fd_errno));
+	ERROR("worker - ctrl_pipe (%i) read failed : %s", fd, fr_syserror(fd_errno));
 	rad_assert(0);
 }
 

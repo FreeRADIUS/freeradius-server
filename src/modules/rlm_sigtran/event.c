@@ -349,6 +349,10 @@ static int event_process_request(struct osmo_fd *ofd, unsigned int what)
 		ERROR("osmocom thread - Failed reading from pipe (%i): %s", ofd->fd, fr_syserror(errno));
 		return -1;
 	}
+	if (len == 0) {
+		DEBUG3("Ignoring zero length read");
+		return 0;
+	}
 	if (len != sizeof(ptr)) {
 		ERROR("osmocom thread - Failed reading data from pipe (%i): Too short, "
 		      "expected %zu bytes, got %zu bytes", ofd->fd, sizeof(ptr), len);
