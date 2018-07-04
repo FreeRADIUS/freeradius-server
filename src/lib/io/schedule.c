@@ -140,8 +140,8 @@ struct fr_schedule_t {
 };
 
 typedef struct {
-	void *(*func)(void *);
-	void *arg;
+	void		*(*func)(void *);
+	void		*arg;
 } fr_schedule_entry_point_t;
 
 static _Thread_local int worker_id;		//!< Internal ID of the current worker thread.
@@ -314,6 +314,7 @@ static void *schedule_pthread_entry(void *arg)
 {
 	fr_schedule_entry_point_t	*ep = arg;
 	sigset_t			sig_mask;  	/* signals to block */
+	void				*ret;
 
 	/*
 	 *	We generally use kqueue to signal threads so we
@@ -324,11 +325,14 @@ static void *schedule_pthread_entry(void *arg)
 	sigfillset(&sig_mask);
 
 	if (pthread_sigmask(SIG_BLOCK, &sig_mask, NULL) != 0) {
-		fr_strerror_printf("Failed blocking child signals: %s", fr_syserror(errno));
+		free(arg);		/* Free memory our parent allocated */
 		return NULL;
 	}
 
-	return ep->func(ep->arg);
+	ret = ep->func(ep->arg);
+	free(arg);			/* Free memory our parent allocated */
+
+	return ret;
 }
 
 /** Creates a new thread using our standard set of options
@@ -348,7 +352,8 @@ int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *a
 {
 	pthread_attr_t			attr;
 	int				ret;
-	fr_schedule_entry_point_t	ep = { .func = func, .arg = arg };
+	fr_schedule_entry_point_t	*ep;
+
 	/*
 	 *	Set the thread to wait around after it's exited
 	 *	so it can be joined.  This is more of a useful
@@ -359,8 +364,13 @@ int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *a
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-	ret = pthread_create(thread, &attr, schedule_pthread_entry, &ep);
+	ep = malloc(sizeof(fr_schedule_entry_point_t));		/* MUST be malloc - would corrupt NULL ctx */
+	ep->func = func;
+	ep->arg = arg;
+
+	ret = pthread_create(thread, &attr, schedule_pthread_entry, ep);
 	if (ret != 0) {
+		free(ep);
 		fr_strerror_printf("Failed creating thread: %s", fr_syserror(ret));
 		return -1;
 	}
