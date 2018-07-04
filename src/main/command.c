@@ -34,6 +34,9 @@ RCSID("$Id$")
 typedef struct fr_cmd_argv_t {
 	char		*name;
 	fr_type_t	type;
+	struct fr_cmd_argv_t *parent;
+	struct fr_cmd_argv_t *next;
+	struct fr_cmd_argv_t *child;
 } fr_cmd_argv_t;
 
 struct fr_cmd_t {
@@ -44,7 +47,7 @@ struct fr_cmd_t {
 	char const		*help;				//!< @todo - long / short help
 
 	int			syntax_argc;			//!< syntax split out into arguments
-	fr_cmd_argv_t		syntax_argv[CMD_MAX_ARGV];	//!< arguments and types
+	fr_cmd_argv_t		*syntax_argv;			//!< arguments and types
 
 	void			*ctx;
 	fr_cmd_func_t		func;
@@ -53,7 +56,6 @@ struct fr_cmd_t {
 	bool			read_only;
 	bool			intermediate;			//!< intermediate commands can't have callbacks
 	bool			auto_allocated;
-	bool			varargs;       			//!< we can have many arguments after the last one
 };
 
 
@@ -65,6 +67,7 @@ struct fr_cmd_t {
 // our fixed string.  Any data type LESS than this must be a real data type
 #define FR_TYPE_FIXED		FR_TYPE_ABINARY
 
+#define FR_TYPE_VARARGS		FR_TYPE_TLV
 //#define FR_TYPE_ALTERNATE	FR_TYPE_TLV
 //#define FR_TYPE_OPTIONAL	FR_TYPE_STRUCT
 
@@ -388,6 +391,72 @@ static int split(char **input, char **output, bool syntax_string)
 	return 1;
 }
 
+static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **head)
+{
+	int i, rcode;
+	char *name, *p;
+	fr_cmd_argv_t **last, *prev;
+
+	p = syntax;
+	*head = NULL;
+	last = head;
+	prev = NULL;
+
+	for (i = 0; i < CMD_MAX_ARGV; i++) {
+		fr_cmd_argv_t *argv;
+
+		rcode = split(&p, &name, true);
+		if (rcode < 0) return rcode;
+
+		if (rcode == 0) return i;
+
+		/*
+		 *	Check for varargs.  Which MUST NOT be
+		 *	the first argument, and MUST be the
+		 *	last argument, and MUST be preceded by
+		 *	a known data type.
+		 */
+		if (strcmp(name, "...") == 0) {
+			if (!prev || *p) {
+				fr_strerror_printf("Varargs MUST be the last argument in the syntax list");
+				return -1;
+			}
+
+			/*
+			 *	The thing BEFORE the varags
+			 *	MUST be a known data type.
+			 */
+			if (prev->type >= FR_TYPE_FIXED) {
+				fr_strerror_printf("Varargs MUST be preceded by a data type.");
+				return -1;
+			}
+			argv = talloc_zero(ctx, fr_cmd_argv_t);
+			argv->name = name;
+			argv->type = FR_TYPE_VARARGS;
+
+		} else {
+			argv = talloc_zero(ctx, fr_cmd_argv_t);
+			argv->name = name;
+
+			if (!fr_command_valid_syntax(argv)) {
+				talloc_free(argv);
+				return -1;
+			}
+		}
+
+		*last = argv;
+		last = &(argv->next);
+		prev = argv;
+	}
+
+	if (*p) {
+		fr_strerror_printf("Too many arguments passed in syntax string");
+		return -1;
+	}
+
+	return i;
+}
+
 /**  Add one command to the global command tree
  *
  *  We do not do any sanity checks on "name".  If it has spaces in it,
@@ -408,9 +477,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	fr_cmd_t *cmd, **start;
 	fr_cmd_t **insert;
 	int argc = 0;
-	fr_cmd_argv_t argv[CMD_MAX_ARGV];
-	char *syntax;
-	bool varargs = false;
+	fr_cmd_argv_t *syntax_argv;
 
 	if (name && !fr_command_valid_name(name)) {
 		return -1;
@@ -426,8 +493,8 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		return -1;
 	}
 
-	memset(argv, 0, sizeof(argv));
 	start = head;
+	syntax_argv = NULL;
 
 	/*
 	 *	If there are parent commands, ensure that entries for
@@ -486,85 +553,43 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	 *	Sanity check the syntax.
 	 */
 	if (table->syntax) {
-		int i, rcode;
-		char *p;
+		char *syntax = talloc_strdup(talloc_ctx, table->syntax);
 
-		p = syntax = talloc_strdup(talloc_ctx, table->syntax);
-
-		for (i = 0; i < CMD_MAX_ARGV; i++) {
-			rcode = split(&p, &argv[i].name, true);
-			if (rcode < 0) {
-				talloc_free(syntax);
-				return -1;
-			}
-
-			if (rcode == 0) break;
-		}
+		argc = fr_command_add_syntax(syntax, syntax, &syntax_argv);
+		if (argc < 0) return -1;
 
 		/*
-		 *	Empty syntax should have table.syntax == NULLx
+		 *	Empty syntax should have table.syntax == NULL
 		 */
-		if (i == 0) {
+		if (argc == 0) {
 			talloc_free(syntax);
 			fr_strerror_printf("Invalid empty string was supplied for syntax");
 			return  -1;
 		}
 
-		if (i == CMD_MAX_ARGV) {
+		if (argc == CMD_MAX_ARGV) {
 			talloc_free(syntax);
 			fr_strerror_printf("Too many arguments were supplied to the command.");
 			return  -1;
 		}
 
-		argc = i;
-
 		/*
-		 *	Walk over the input again, checking data types.
-		 */
-		for (i = 0; i < argc; i++) {
-			/*
-			 *	Check for varargs.  Which MUST NOT be
-			 *	the first argument, and MUST be the
-			 *	last argument, and MUST be preceded by
-			 *	a known data type.
-			 */
-			if (strcmp(argv[i].name, "...") == 0) {
-				if ((i == 0) || (i != (argc - 1))) {
-				invalid:
-					fr_strerror_printf("Syntax command %d does not contain alphabetical characters", i);
-					return -1;
-				}
-
-				/*
-				 *	The thing BEFORE the varags
-				 *	MUST be a known data type.
-				 */
-				if (argv[i - 1].type >= FR_TYPE_FIXED) goto invalid;
-
-				varargs = true;
-				break;
-			}
-
-			if (!fr_command_valid_syntax(&argv[i])) {
-				return -1;
-			}
-		}
-
-		/*
-		 *	Handle top-level names.
+		 *	Handle top-level names.  The name is in the
+		 *	syntax, not passed in to us.
 		 */
 		if (!name) {
-			if (argv[0].type < FR_TYPE_FIXED) {
+			fr_cmd_argv_t *next;
+
+			if (syntax_argv->type < FR_TYPE_FIXED) {
 				talloc_free(syntax);
 				fr_strerror_printf("Top-level commands MUST NOT start with a data type");
 				return -1;
 			}
 
-			name = argv[0].name;
-			for (i = 0; i < (argc - 1); i++) {
-				argv[i] = argv[i + 1];
-			}
-
+			name = syntax_argv->name;
+			next = syntax_argv->next;
+			talloc_free(syntax_argv);
+			syntax_argv = next;
 			argc--;
 		}
 	}
@@ -639,21 +664,10 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	cmd->tab_expand = table->tab_expand;
 	cmd->read_only = table->read_only;
 
-	if (table->syntax && (argc > 0)) {
-		int i;
-
+	if (syntax_argv) {
 		cmd->syntax = table->syntax;
-		(void) talloc_steal(cmd, syntax);
-
-		if (varargs) {
-			argc--;
-			cmd->varargs = true;
-		}
-
 		cmd->syntax_argc = argc;
-		for (i = 0; i < argc; i++) {
-			cmd->syntax_argv[i] = argv[i];
-		}
+		cmd->syntax_argv = talloc_steal(cmd, syntax_argv);
 	}
 
 	return 0;
@@ -916,51 +930,46 @@ static int fr_command_tab_expand_partial(fr_cmd_t *head, char const *partial, in
 static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int syntax_offset, fr_cmd_info_t *info,
 					int max_expansions, char const **expansions)
 {
-	int i, j;
+	int i;
 	char *p;
 	char const *q;
-
-	/*
-	 *	If there are more input arguments than this command
-	 *	has, then we can't do tab expansions.
-	 */
-	if (!cmd->varargs && (info->argc > (syntax_offset + cmd->syntax_argc))) {
-		return 0;
-	}
+	fr_cmd_argv_t *argv = cmd->syntax_argv;
 
 	/*
 	 *	Double-check intermediate strings, but skip
 	 *	intermediate data types.
 	 */
 	for (i = syntax_offset; i < (info->argc - 1); i++) {
-		j = i - syntax_offset;
+		rad_assert(argv->type != FR_TYPE_VARARGS);
 
-		if (cmd->varargs && (j >= cmd->syntax_argc)) {
-			break;
+		/*
+		 *	Double-check that fixed strings match.
+		 */
+		if (argv->type == FR_TYPE_FIXED) {
+			if (strcmp(info->argv[i], argv->name) != 0) return -1;
+
+			argv = argv->next;
+
+		} else if (!argv->next || (argv->next && (argv->next->type != FR_TYPE_VARARGS))) {
+			/*
+			 *	Go to the next entry, but only if it isn't varargs
+			 */
+			argv = argv->next;
 		}
 
-		if (cmd->syntax_argv[j].type < FR_TYPE_FIXED) continue;
-
-		if (strcmp(info->argv[i], cmd->syntax_argv[j].name) != 0) return -1;
-	}
-
-	/*
-	 *	One last check for varargs.
-	 */
-	if (cmd->varargs && ((i - syntax_offset) >= cmd->syntax_argc)) {
-		j = cmd->syntax_argc - 1;
-		rad_assert(cmd->syntax_argv[j].type < FR_TYPE_FIXED);
-	} else {
-		j = i - syntax_offset;
+		/*
+		 *	Run out of things to check, we can't expand anything.
+		 */
+		if (!argv) return 0;
 	}
 
 	/*
 	 *	If it's a real data type, run the defined callback to
 	 *	expand it.
 	 */
-	if (cmd->syntax_argv[j].type < FR_TYPE_FIXED) {
+	if (argv->type < FR_TYPE_FIXED) {
 		if (!cmd->tab_expand) {
-			expansions[0] = cmd->syntax_argv[j].name;
+			expansions[0] = argv->name;
 			return 1;
 		}
 
@@ -976,7 +985,7 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 	 *	which means creating a tree of allowed
 	 *	syntaxes.  <sigh>
 	 */
-	for (p = info->argv[i], q = cmd->syntax_argv[i - syntax_offset].name;
+	for (p = info->argv[i], q = argv->name;
 	     (*p != '\0') && (*q != '\0');
 	     p++, q++) {
 		/*
@@ -1004,7 +1013,7 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 		 *	bar", instead of just "foo".
 		 */
 		if (!p[1] && q[1]) {
-			expansions[0] = cmd->syntax_argv[i - syntax_offset].name;
+			expansions[0] = argv->name;
 			return 1;
 		}
 	}
@@ -1144,13 +1153,7 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
 			return -1;
 		}
 
-		/*
-		 *	Too many arguments for the command.
-		 */
-		if (!cmd->varargs && (info->argc > (i + 1 + cmd->syntax_argc))) {
-			fr_strerror_printf("Input has too many parameters for command");
-			return -1;
-		}
+		// @todo - add cmd->max_argc, to track optional things, varargs, etc.
 
 		/*
 		 *	The arguments have already been verified by
@@ -1234,6 +1237,48 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
 	fr_command_debug_internal(fp, head, 0);
 }
 
+
+static int fr_command_verify_argv(char const *name, fr_cmd_argv_t *argv)
+{
+	char quote;
+	fr_type_t type;
+	fr_value_box_t box;
+
+	/*
+	 *	May be written to for things like
+	 *	"combo_ipaddr".
+	 */
+	type = argv->type;
+
+	/*
+	 *	Fixed strings, etc. that we don't do
+	 *	syntax checks on.
+	 */
+	if (type == FR_TYPE_FIXED) return 1;
+
+
+	quote = '\0';
+	if (type == FR_TYPE_STRING) {
+		if ((name[0] == '"') ||
+		    (name[0] == '\'')) {
+			quote = name[0];
+		}
+	}
+
+	/*
+	 *	Parse the data to be sure it's well formed.
+	 */
+	if (fr_value_box_from_str(NULL, &box, &type,
+				  NULL, name, -1, quote, true) < 0) {
+		fr_strerror_printf("Failed parsing argument '%s' - %s",
+				   name, fr_strerror());
+		return -1;
+	}
+
+	fr_value_box_clear(&box);
+
+	return 1;
+}
 
 /** Split a string in-place, updating argv[]
  *
@@ -1360,12 +1405,6 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 		return argc;
 	}
 
-	/*
-	 *	Too many arguments for the command.  That's an error.
-	 */
-	if (!cmd->varargs && (syntax_argc > cmd->syntax_argc)) {
-		goto too_many;
-	}
 
 	/*
 	 *	If there are enough arguments to pass anything to the
@@ -1373,67 +1412,35 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 	 *	input, do syntax checks on the new arguments.
 	 */
 	if ((argc > cmd_argc) && (argc > info->argc)) {
-		int start_argc;
+		int start_checks;
+		fr_cmd_argv_t *argv;
+
+		argv = cmd->syntax_argv;
 
 		/*
-		 *	Start checking at the first argument.  But
-		 *	skip the arguments we were given on input.
+		 *	Skip the arguments we already processed.
 		 */
-		start_argc = cmd_argc + 1;
-		if (start_argc < info->argc) start_argc = info->argc;
-
-		for (i = start_argc; i < argc; i++) {
-			int j;
-			char quote;
-			fr_type_t type;
-			fr_value_box_t box;
-
-			/*
-			 *	Offset from the argument after the command.
-			 */
-			j = i - (cmd_argc + 1);
-
-			/*
-			 *	Point to the last data type if it's varargs.
-			 */
-			if (cmd->varargs && (j >= cmd->syntax_argc)) {
-				j = cmd->syntax_argc - 1;
-				rad_assert(cmd->syntax_argv[j].type < FR_TYPE_FIXED);
+		for (i = cmd_argc + 1; i < info->argc; i++) {
+			if (!argv->next || (argv->next->type != FR_TYPE_VARARGS)) {
+				argv = argv->next;
 			}
+		}
+
+		start_checks = i;
+		for (i = start_checks; i < argc; i++) {
+			int rcode;
+
+			rcode = fr_command_verify_argv(info->argv[i], argv);
+			if (rcode < 0) return rcode;
+
+			rad_assert(rcode >= 1);
 
 			/*
-			 *	May be written to for things like
-			 *	"combo_ipaddr".
+			 *	Go to the next one, but only if we don't have varargs.
 			 */
-			type = cmd->syntax_argv[j].type;
-
-			/*
-			 *	Fixed strings, etc. that we don't do
-			 *	syntax checks on.
-			 */
-			if (type >= FR_TYPE_FIXED) {
-				continue;
+			if (!argv->next || (argv->next->type != FR_TYPE_VARARGS)) {
+				argv = argv->next;
 			}
-
-			quote = '\0';
-			if (type == FR_TYPE_STRING) {
-				if ((info->argv[i][0] == '"') ||
-				    (info->argv[i][0] == '\'')) {
-					quote = info->argv[i][0];
-				}
-			}
-
-			/*
-			 *	Parse the data to be sure it's well formed.
-			 */
-			if (fr_value_box_from_str(NULL, &box, &type,
-						  NULL, info->argv[i], -1, quote, true) < 0) {
-				fr_strerror_printf("Failed parsing argument %d - %s",
-						   i, fr_strerror());
-				return -1;
-			}
-
-			fr_value_box_clear(&box);
 		}
 	}
 
