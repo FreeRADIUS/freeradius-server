@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/command.h>
+#include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_LIBREADLINE
@@ -395,26 +396,21 @@ static fr_cmd_table_t cmd_table[] = {
 	CMD_TABLE_END
 };
 
-void fr_radmin_start(void)
+int fr_radmin_start(void)
 {
-	int rcode;
-	pthread_attr_t attr;
-
 	gettimeofday(&start_time, NULL);
 
 	if (fr_radmin_register(NULL, NULL, cmd_table) < 0) {
 		PERROR("Failed initializing radmin");
-		fr_exit(EXIT_FAILURE);
+		return -1;
 	}
 
-	(void) pthread_attr_init(&attr);
-	(void) pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-	rcode = pthread_create(&pthread_id, &attr, fr_radmin, NULL);
-	if (rcode != 0) {
-		fprintf(stderr, "Failed creating radmin thread: %s", fr_syserror(errno));
-		fr_exit(EXIT_FAILURE);
+	if (fr_schedule_pthread_create(&pthread_id, fr_radmin, NULL) < 0) {
+		PERROR("Failed creating radmin thread");
+		return -1;
 	}
+
+	return 0;
 }
 
 void fr_radmin_stop(void)

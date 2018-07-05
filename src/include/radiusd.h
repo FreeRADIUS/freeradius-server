@@ -650,7 +650,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
  *	For radmin over TCP.
  */
 #define FR_RADMIN_PORT 18120
-void fr_radmin_start(void);
+int fr_radmin_start(void);
 void fr_radmin_stop(void);
 
 typedef struct fr_cmd_table_t fr_cmd_table_t;

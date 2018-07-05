@@ -774,7 +774,7 @@ int main(int argc, char *argv[])
 	 */
 	fr_strerror();
 
-	if (radmin) fr_radmin_start();
+	if (radmin && (fr_radmin_start() < 0)) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Process requests until HUP or exit.
