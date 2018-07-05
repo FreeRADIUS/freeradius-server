@@ -435,7 +435,10 @@ static int event_process_request(struct osmo_fd *ofd, unsigned int what)
 		DEBUG3("osmocom thread - Event loop will exit");
 		do_exit = true;
 		txn->response.type = SIGTRAN_RESPONSE_OK;
-		break;
+
+		if (sigtran_event_submit(ofd, txn) < 0) goto fatal_error;
+		talloc_free(ofd);	/* Ordering is important */
+		return 0;
 
 #ifndef NDEBUG
 	case SIGTRAN_REQUEST_TEST:
