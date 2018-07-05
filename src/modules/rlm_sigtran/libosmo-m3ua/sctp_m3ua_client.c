@@ -106,9 +106,9 @@ static void m3ua_send_beat(void *data);
 static int clear_link(struct mtp_m3ua_client_link *link);
 static int m3ua_shutdown(struct mtp_link *mtp_link);
 static void m3ua_start(void *data);
-static void aspac_ack_timeout(void *data)
+static void aspac_ack_timeout(void *data);
 static void aspup_ack_timeout(void *data);
-static void aspdn_ack_timeout(void *data)
+static void aspdn_ack_timeout(void *data);
 
 static int m3ua_setnonblocking(int fd)
 {
@@ -167,7 +167,7 @@ static void schedule_t_beat(struct mtp_m3ua_client_link *link)
 static void schedule_aspup_t_ack(struct mtp_m3ua_client_link *link)
 {
 	link->t_ack.data = link;
-	link->t_ack.cb = asup_ack_timeout;
+	link->t_ack.cb = aspup_ack_timeout;
 	osmo_timer_schedule(&link->t_ack, link->ack_timeout, 0);
 }
 
@@ -556,11 +556,12 @@ static int m3ua_shutdown(struct mtp_link *mtp_link)
 {
 	struct mtp_m3ua_client_link *link = mtp_link->data;
 
-	if (link->asptm_active)
+	if (link->asptm_active) {
 		/* need to allow the event loop to actually send the message */
 		m3ua_send_aspdn(link);
-	else
-		m3ua_free(mtp_link);
+		schedule_aspdn_t_ack(link);
+	} else
+		clear_link(link);
 
 	return 0;
 }
@@ -1048,11 +1049,11 @@ static void m3ua_handle_aspsm(struct mtp_m3ua_client_link *link, struct xua_msg 
 		schedule_aspac_t_ack(link);
 		break;
 
-	case M3UA_ASPM_DOWN_ACK:
+	case M3UA_ASPSM_DOWN_ACK:
 		LOGP(DINP, LOGL_NOTICE, "Received ASP_DOWN_ACK.. Cleaning up link\n");
 		link->aspsm_active = 0;
 		osmo_timer_del(&link->t_ack);
-		link_clear(link);
+		clear_link(link);
 		break;
 
 	case M3UA_ASPSM_BEAT_ACK:
