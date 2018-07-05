@@ -69,7 +69,7 @@ struct fr_cmd_t {
 
 #define FR_TYPE_VARARGS		FR_TYPE_TLV
 #define FR_TYPE_OPTIONAL	FR_TYPE_STRUCT
-//#define FR_TYPE_ALTERNATE	FR_TYPE_STRUCT
+#define FR_TYPE_ALTERNATE	FR_TYPE_EXTENDED
 
 /** Find a command
  *
@@ -233,6 +233,122 @@ static bool fr_command_valid_syntax(fr_cmd_argv_t *argv)
 	}
 
 	return true;
+}
+
+/*
+ *	Like split, but is alternation aware.
+ */
+static int split_alternation(char **input, char **output)
+{
+	char quote;
+	char *str = *input;
+	char *word;
+
+	/*
+	 *	String is empty, we're done.
+	 */
+	if (!*str) return 0;
+
+	/*
+	 *	Skip leading whitespace.
+	 */
+	while ((*str == ' ') ||
+	       (*str == '\t') ||
+	       (*str == '\r') ||
+	       (*str == '\n'))
+		*(str++) = '\0';
+
+	/*
+	 *	String is empty, we're done.
+	 */
+	if (!*str) return 0;
+
+	/*
+	 *	Remember the start of the word.
+	 */
+	word = str;
+
+	if ((*str == '[') || (*str == '(')) {
+		char end;
+		quote = *(str++);
+		int count = 0;
+
+		if (quote == '[') {
+			end = ']';
+		} else {
+			end = ')';
+		}
+
+		/*
+		 *	Don't allow backslashes here.  This piece is
+		 *	only for parsing syntax strings, which CANNOT
+		 *	have quotes in them.
+		 */
+		while ((*str != end) || (count > 0)) {
+			if (!*str) {
+				fr_strerror_printf("String ends before closing brace.");
+				return -1;
+			}
+
+			if (*str == quote) count++;
+			if (*str == end) count--;
+
+			str++;
+		}
+
+		/*
+		 *	Skip the final "quotation" mark.
+		 */
+		str++;
+
+		/*
+		 *	[foo bar]baz is invalid.
+		 */
+		if ((*str != '\0') &&
+		    (*str != ' ') &&
+		    (*str != '#') &&
+		    (*str != '\t') &&
+		    (*str != '\r') &&
+		    (*str != '\n')) {
+			fr_strerror_printf("Invalid text after quoted string.");
+			return -1;
+		}
+	} else {
+		/*
+		 *	Skip the next non-space characters.
+		 */
+		while (*str &&
+		       (*str != ' ') &&
+		       (*str != '|') &&
+		       (*str != '#') &&
+		       (*str != '\t') &&
+		       (*str != '\r') &&
+		       (*str != '\n'))
+			str++;
+	}
+
+	/*
+	 *	One of the above characters is after the word.
+	 *	Over-write it with NUL.  If *str==0, then we leave it
+	 *	alone, so that the next call to split() discovers it,
+	 *	and returns NULL.
+	 */
+	if (*str) {
+		/*
+		 *	Skip trailing whitespace so that the caller
+		 *	can peek at the next argument.
+		 */
+		while ((*str == ' ') ||
+		       (*str == '|') ||
+		       (*str == '\t') ||
+		       (*str == '\r') ||
+		       (*str == '\n'))
+			*(str++) = '\0';
+	}
+
+	*input = str;
+	*output = word;
+	return 1;
 }
 
 static int split(char **input, char **output, bool syntax_string)
@@ -468,7 +584,43 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			argv = talloc_zero(ctx, fr_cmd_argv_t);
 			argv->name = name;
 			argv->type = FR_TYPE_OPTIONAL;
+			argv->child = child;
 
+		} else if (name[0] == '(') {
+			/*
+			 *	Alternate things.  e.g. [foo bar]
+			 */
+			char *option = talloc_strdup(ctx, name + 1);
+			char *q, *word;
+			fr_cmd_argv_t *child, **last_child;
+
+			q = option + strlen(option) - 1;
+			if (*q != ')') {
+				fr_strerror_printf("Alternate syntax is not properly terminated");
+				return -1;
+			}
+
+			*q = '\0';
+			child = NULL;
+			last_child = &child;
+
+			/*
+			 *	@todo - split it on '|' instead of spaces
+			 */
+			q = option;
+			while (true) {
+				rcode = split_alternation(&q, &word);
+				if (rcode < 0) return rcode;
+				if (rcode == 0) break;
+
+				rcode = fr_command_add_syntax(option, word, last_child);
+				if (rcode < 0) return rcode;
+				last_child = &((*last_child)->next);
+			}
+
+			argv = talloc_zero(ctx, fr_cmd_argv_t);
+			argv->name = name;
+			argv->type = FR_TYPE_ALTERNATE;
 			argv->child = child;
 
 		} else {
@@ -987,6 +1139,29 @@ static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_inf
 	}
 
 	/*
+	 *	Don't expand (foo|bar), instead see if we can expand
+	 *	"foo" and "bar".
+	 */
+	if (argv->type == FR_TYPE_ALTERNATE) {
+		int count, rcode;
+		fr_cmd_argv_t *child;
+
+		count = 0;
+		for (child = argv->child; child != NULL; child = child->next) {
+			if (count >= max_expansions) return count;
+
+			rcode = fr_command_tab_expand_argv(ctx, cmd, info, name, child, max_expansions - count, &expansions[count]);
+			if (!rcode) continue;
+
+			count++;
+		}
+
+		return count;
+	}
+
+	rad_assert(argv->type == FR_TYPE_FIXED);
+
+	/*
 	 *	Not a full match, but we're at the last
 	 *	keyword in the list.  Maybe it's a partial
 	 *	match?
@@ -1037,8 +1212,10 @@ static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_inf
 static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int syntax_offset, fr_cmd_info_t *info,
 					int max_expansions, char const **expansions)
 {
-	int i;
+	int i, count, rcode;
 	fr_cmd_argv_t *argv = cmd->syntax_argv;
+
+	count = 0;
 
 	/*
 	 *	Double-check intermediate strings, but skip
@@ -1053,10 +1230,18 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 		if (argv->type == FR_TYPE_FIXED) {
 			if (strcmp(info->argv[i], argv->name) != 0) return -1;
 
+			count++;
 			argv = argv->next;
 
 		} else if (argv->type == FR_TYPE_OPTIONAL) {
-			rad_assert(0 == 1); /* can only be the last one for now */
+			rcode = fr_command_tab_expand_argv(ctx, cmd, info, info->argv[i], argv->child, max_expansions - count, &expansions[count]);
+			if (rcode > 0) count += rcode;
+			argv = argv->next;
+
+		} else if (argv->type == FR_TYPE_ALTERNATE) {
+			rcode = fr_command_tab_expand_argv(ctx, cmd, info, info->argv[i], argv->child, max_expansions - count, &expansions[count]);
+			if (rcode > 0) count += rcode;
+			argv = argv->next;
 
 		} else if (!argv->next || (argv->next && (argv->next->type != FR_TYPE_VARARGS))) {
 			/*
@@ -1066,15 +1251,20 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 		}
 
 		/*
-		 *	Run out of things to check, we can't expand anything.
+		 *	We've run out of things to check, we can't expand anything.
 		 */
-		if (!argv) return 0;
+		if (!argv) return count;
+
+		/*
+		 *	We've run out of room to store expansions, stop.
+		 */
+		if (count == max_expansions) return count;
 	}
 
 	/*
 	 *	We've found the last argv.  See if we need to expand it.
 	 */
-	return fr_command_tab_expand_argv(ctx, cmd, info, info->argv[i], argv, max_expansions, expansions);
+	return fr_command_tab_expand_argv(ctx, cmd, info, info->argv[i], argv, max_expansions - count, &expansions[count]);
 }
 
 
@@ -1290,11 +1480,12 @@ static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, in
 static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, int argc, fr_cmd_argv_t **argv_p, bool optional)
 {
 	char quote;
-	int used = 0;
+	int used = 0, rcode;
 	fr_type_t type;
 	fr_value_box_t box;
 	char const *name;
 	fr_cmd_argv_t *argv = *argv_p;
+	fr_cmd_argv_t *child;
 
 redo:
 	/*
@@ -1348,8 +1539,7 @@ redo:
 	 *	Optional.  It's OK if there's no match.
 	 */
 	if (type == FR_TYPE_OPTIONAL) {
-		int rcode;
-		fr_cmd_argv_t *child = argv->child;
+		child = argv->child;
 
 		rcode = fr_command_verify_argv(info, start + used, verify, argc, &child, true);
 		if (rcode < 0) return rcode;
@@ -1379,6 +1569,47 @@ redo:
 		 *	If we have used all of the optional thing, keep going.
 		 */
 		goto next;
+	}
+
+	/*
+	 *	Try the alternates until we find a match.
+	 */
+	if (type == FR_TYPE_ALTERNATE) {
+		rcode = 0;
+		child = NULL;
+
+		for (child = argv->child; child != NULL; child = child->next) {
+			fr_cmd_argv_t *sub, my_sub;
+
+			/*
+			 *	Hack so that match doesn't go to the
+			 *	"next" one.
+			 */
+			memcpy(&my_sub, child, sizeof(my_sub));
+			my_sub.next = NULL;
+			sub = &my_sub;
+
+			       info->argv[start + used], child->name);
+			rcode = fr_command_verify_argv(info, start + used, verify, argc, &sub, true);
+			if (rcode <= 0) continue;
+
+			/*
+			 *	Only a partial match.  Return that.
+			 */
+			if (sub) {
+				*argv_p = argv;
+				return used + rcode;
+			}
+
+			used += rcode;
+			goto next;
+		}
+
+		/*
+		 *	We've gone through all of the alternates
+		 *	without a match, that's an error.
+		 */
+		goto no_match;
 	}
 
 	rad_assert(type < FR_TYPE_FIXED);
@@ -1423,6 +1654,7 @@ next:
 	if (argv) goto redo;
 
 	if ((start + used) < argc) {
+no_match:
 		fr_strerror_printf("No match for command %s", info->argv[start + used]);
 		return -1;
 	}
