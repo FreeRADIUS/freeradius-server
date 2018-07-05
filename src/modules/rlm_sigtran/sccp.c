@@ -155,7 +155,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 
 		*(msg->l3h + 0x3a) = talloc_array_length(req->imsi);
 		memcpy(msg->l3h + 0x3b, req->imsi, talloc_array_length(req->imsi));
-		RHEXDUMP(0, msg->l3h, sizeof(tcap_map_raw_v2), "MAPv2 Request");
+//		RHEXDUMP(0, msg->l3h, sizeof(tcap_map_raw_v2), "MAPv2 Request");
 
 		break;
 
@@ -167,7 +167,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 
 		*(msg->l3h + 0x3c) = talloc_array_length(req->imsi);
 		memcpy(msg->l3h + 0x3d, req->imsi, talloc_array_length(req->imsi));
-		RHEXDUMP(0, msg->l3h, sizeof(tcap_map_raw_v3), "MAPv3 Request");
+//		RHEXDUMP(0, msg->l3h, sizeof(tcap_map_raw_v3), "MAPv3 Request");
 
 		break;
 
