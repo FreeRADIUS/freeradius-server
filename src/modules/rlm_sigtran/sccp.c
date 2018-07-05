@@ -281,7 +281,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 		p++; \
 		DEBUG4("Start 0x%02x len %u", (unsigned int)(tcap - p), p[0]); \
 		if (p[0] >= (len - (p - tcap))) { \
-			REDEBUG("Invalid length %u specified for vector component", p[0]); \
+			ERROR("Invalid length %u specified for vector component", p[0]); \
 			return -1; \
 		} \
 		vec->_x = talloc_memdup(vec, p + 1, p[0]); \
