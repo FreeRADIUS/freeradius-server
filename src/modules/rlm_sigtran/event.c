@@ -496,6 +496,7 @@ static void *sigtran_event_loop(UNUSED void *instance)
 	while (true) {
 		osmo_select_main(0);
 		if (do_exit) {
+#if 0
 			fd_set	readset, writeset, exceptset;
 			int	high_fd;
 
@@ -507,6 +508,9 @@ static void *sigtran_event_loop(UNUSED void *instance)
 			if (high_fd == 0) break;
 
 			DEBUG3("osmocom thread - Deferring exit, waiting for fd %i", high_fd);
+#else
+			break;
+#endif
 		}
 	}
 
