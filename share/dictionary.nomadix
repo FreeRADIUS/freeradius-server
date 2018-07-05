@@ -21,6 +21,7 @@ ATTRIBUTE	Nomadix-Subnet				6	string
 ATTRIBUTE	Nomadix-MaxBytesUp			7	integer
 ATTRIBUTE	Nomadix-MaxBytesDown			8	integer
 ATTRIBUTE	Nomadix-EndofSession			9	integer
+ATTRIBUTE	Nomadix-Session-Terminate-End-Of-Day		9	integer
 ATTRIBUTE	Nomadix-Logoff-URL			10	string
 ATTRIBUTE	Nomadix-Net-VLAN			11	integer
 ATTRIBUTE	Nomadix-Config-URL			12	string
@@ -31,8 +32,15 @@ ATTRIBUTE	Nomadix-Centralized-Mgmt		18	string
 ATTRIBUTE	Nomadix-Group-Policy-Id			19	integer
 ATTRIBUTE	Nomadix-Group-Bw-Max-Up			20	integer
 ATTRIBUTE	Nomadix-Group-Bw-Max-Down		21	integer
+ATTRIBUTE	Nomadix-MaxGigaWords-Up		22	integer
+ATTRIBUTE	Nomadix-MaxGigaWords-Down		23	integer
+ATTRIBUTE	Nomadix-Preferred-WAN		24	string
+ATTRIBUTE	Nomadix-Bw-Class-Name		27	string
+ATTRIBUTE	Nomadix-MaxBytesTotal		28	integer
+ATTRIBUTE	Nomadix-MaxGigawordsTotal		29	integer
 
 VALUE	Nomadix-IP-Upsell		PrivatePool		0
 VALUE	Nomadix-IP-Upsell		PublicPool		1
 
 END-VENDOR	Nomadix
+
