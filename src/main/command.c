@@ -1589,7 +1589,6 @@ redo:
 			my_sub.next = NULL;
 			sub = &my_sub;
 
-			       info->argv[start + used], child->name);
 			rcode = fr_command_verify_argv(info, start + used, verify, argc, &sub, true);
 			if (rcode <= 0) continue;
 
