@@ -454,9 +454,9 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			char *q;
 			fr_cmd_argv_t *child;
 
-			q = strchr(option, ']');
-			if (!q) {
-				fr_strerror_printf("Optional string is not properly terminated");
+			q = option + strlen(option) - 1;
+			if (*q != ']') {
+				fr_strerror_printf("Optional syntax is not properly terminated");
 				return -1;
 			}
 
