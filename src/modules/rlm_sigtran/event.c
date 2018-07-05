@@ -481,7 +481,22 @@ static void *sigtran_event_loop(UNUSED void *instance)
 	/*
 	 *	The main event loop.
 	 */
-	while (!do_exit) osmo_select_main(0);
+	while (true) {
+		osmo_select_main(0);
+		if (do_exit) {
+			fd_set	readset, writeset, exceptset;
+			int	high_fd;
+
+			FD_ZERO(&readset);
+			FD_ZERO(&writeset);
+			FD_ZERO(&exceptset);
+
+			high_fd = osmo_fd_fill_fds(&readset, &writeset, &exceptset);
+			if (high_fd == 0) break;
+
+			DEBUG3("osmocom thread - Deferring exit, waiting for fd %i", high_fd);
+		}
+	}
 
 	talloc_free(ctx);	/* Also frees ctrl pipe ofd (which closes ctrl_pipe[1]) */
 
