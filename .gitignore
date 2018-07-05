@@ -68,3 +68,6 @@ appendonly*.aof
 
 # Analyzer output
 *.plist
+
+# Local scripts
+run.sh
