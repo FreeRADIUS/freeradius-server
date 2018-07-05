@@ -203,7 +203,7 @@ static int event_link_up(TALLOC_CTX *ctx, sigtran_conn_t **out, sigtran_conn_con
 
 	conn = talloc_zero(ctx, sigtran_conn_t);
 	conn->conf = conf;
-	conn->bsc_data = bsc_data_alloc(conn;
+	conn->bsc_data = bsc_data_alloc(conn);
 	talloc_set_destructor(conn, _conn_free);
 
 	/*
