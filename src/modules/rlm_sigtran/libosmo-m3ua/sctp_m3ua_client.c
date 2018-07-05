@@ -557,14 +557,8 @@ static int m3ua_shutdown(struct mtp_link *mtp_link)
 	struct mtp_m3ua_client_link *link = mtp_link->data;
 
 	if (link->asptm_active) {
-		/* clear pending events */
-		osmo_timer_del(&link->connect_timer);
-		osmo_timer_del(&link->t_beat);
-		osmo_timer_del(&link->t_ack);
-
-		m3ua_send_aspdn(link);
-
 		/* need to allow the event loop to actually send the message */
+		m3ua_send_aspdn(link);
 		schedule_aspdn_t_ack(link);
 	} else
 		clear_link(link);

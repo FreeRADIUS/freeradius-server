@@ -132,14 +132,6 @@ static int _mtp3_link_free(struct mtp_link *mtp3_link)
 	return 0;
 }
 
-static int _conn_free(sigtran_conn_t *conn)
-{
-	talloc_free(conn->mtp3_link);
-	talloc_free(conn->mtp3_link_set);
-
-	return 0;
-}
-
 /** Add a route to an m3ua_association
  *
  */
@@ -203,9 +195,14 @@ static int event_link_up(TALLOC_CTX *ctx, sigtran_conn_t **out, sigtran_conn_con
 
 	conn = talloc_zero(ctx, sigtran_conn_t);
 	conn->conf = conf;
+
+	/* Temporarily disable until we can fix the osmocom select loop */
+#if 0
 	conn->bsc_data = bsc_data_alloc(conn);
 	talloc_set_destructor(conn, _conn_free);
-
+#else
+	conn->bsc_data = bsc_data_alloc(ctx);
+#endif
 	/*
 	 *	Create a new link.  This will run over SCTP/M3UA
 	 */
