@@ -105,6 +105,12 @@ int	milenage_auts(uint64_t sqn,
 		      uint8_t const rand[MILENAGE_RAND_SIZE],
 		      uint8_t const auts[MILENAGE_AUTS_SIZE]);
 
+void	milenage_gsm_from_umts(uint8_t sres[MILENAGE_SRES_SIZE],
+			       uint8_t kc[MILENAGE_KC_SIZE],
+			       uint8_t const ik[MILENAGE_IK_SIZE],
+			       uint8_t const ck[MILENAGE_CK_SIZE],
+			       uint8_t const res[MILENAGE_RES_SIZE]);
+
 int	milenage_gsm_generate(uint8_t sres[MILENAGE_SRES_SIZE], uint8_t kc[MILENAGE_KC_SIZE],
 			      uint8_t const opc[MILENAGE_OPC_SIZE],
 			      uint8_t const ki[MILENAGE_KI_SIZE],

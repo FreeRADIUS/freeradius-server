@@ -219,11 +219,6 @@ static int vector_gsm_from_triplets(eap_session_t *eap_session, VALUE_PAIR *vps,
 
 /** Derive triplets from quintuplets
  *
- * c1: RAND[gsm] = RAND
- * c2: SRES[gsm] = (XRES*[0]...XRES*[31]) ⊕ (XRES*[32]...XRES*[63]) ⊕
- *		   (XRES*[64]...XRES*[95]) ⊕ (XRES*[96]...XRES*[127)
- * c3:   Kc[gsm] = (CK[0]...CK[63]) ⊕ (CK[64]...CK[127]) ⊕
- *		   (IK[0]...IK[63]) ⊕ (IK[64]...IK[127)
  */
 static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *vps,
 				       int idx, fr_sim_keys_t *keys)
@@ -232,11 +227,6 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 	fr_cursor_t	cursor;
 
 	VALUE_PAIR	*ck = NULL, *ik = NULL, *rand = NULL, *xres = NULL;
-
-	uint64_t const	*ck_ptr;
-	uint64_t const	*ik_ptr;
-	uint8_t		xres_buff[16];
-	uint32_t const	*xres_ptr;
 
 	int		i;
 
@@ -293,29 +283,11 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 
 	memcpy(keys->gsm.vector[idx].rand, rand->vp_octets, SIM_VECTOR_GSM_RAND_SIZE);
 
-	/*
-	 *	Fold CK and IK in 64bit quantities to produce Kc
-	 */
-	ck_ptr = (uint64_t const *)ck->vp_octets;
-	ik_ptr = (uint64_t const *)ik->vp_octets;
-	keys->gsm.vector[idx].kc_uint64 = ((ck_ptr[0] ^ ck_ptr[1]) ^ ik_ptr[0]) ^ ik_ptr[1];
-
-	/*
-	 *	Have to pad XRES out to 16 octets if it's shorter than that.
-	 */
-	if (xres->vp_length < 16) {
-		memset(&xres_buff, 0, sizeof(xres_buff));
-		memcpy(&xres_buff, &xres->vp_octets, xres->vp_length);
-		xres_ptr = (uint32_t const *)&xres_buff[0];
-	} else {
-		xres_ptr = (uint32_t const *)xres->vp_octets;
-	}
-
-	/*
-	 *	Fold XRES into itself in 32bit quantities using xor to
-	 *	produce SRES.
-	 */
-	keys->gsm.vector[idx].sres_uint32 = ((xres_ptr[0] ^ xres_ptr[1]) ^ xres_ptr[2]) ^ xres_ptr[3];
+	milenage_gsm_from_umts(keys->gsm.vector[idx].sres,
+			       keys->gsm.vector[idx].kc,
+			       ik->vp_octets,
+			       ck->vp_octets,
+			       xres->vp_octets);
 
 	return 0;
 }

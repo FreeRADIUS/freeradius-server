@@ -343,6 +343,31 @@ int milenage_auts(uint64_t sqn,
 	return 0;
 }
 
+/** Generate GSM-Milenage (3GPP TS 55.205) authentication triplet from a quintuplet
+ *
+ * @param[out] sres	Buffer for SRES = 32-bit SRES.
+ * @param[out] kc	64-bit Kc.
+ * @param[in] ik	128-bit integrity.
+ * @param[in] ck	Confidentiality key.
+ * @param[in] res	64-bit signed response.
+ */
+void milenage_gsm_from_umts(uint8_t sres[MILENAGE_SRES_SIZE],
+			    uint8_t kc[MILENAGE_KC_SIZE],
+			    uint8_t const ik[MILENAGE_IK_SIZE],
+			    uint8_t const ck[MILENAGE_CK_SIZE],
+			    uint8_t const res[MILENAGE_RES_SIZE])
+{
+	int i;
+
+	for (i = 0; i < 8; i++) kc[i] = ck[i] ^ ck[i + 8] ^ ik[i] ^ ik[i + 8];
+
+#ifdef GSM_MILENAGE_ALT_SRES
+	memcpy(sres, res, 4);
+#else	/* GSM_MILENAGE_ALT_SRES */
+	for (i = 0; i < 4; i++) sres[i] = res[i] ^ res[i + 4];
+#endif	/* GSM_MILENAGE_ALT_SRES */
+}
+
 /** Generate GSM-Milenage (3GPP TS 55.205) authentication triplet
  *
  * @param[out] sres	Buffer for SRES = 32-bit SRES.
@@ -361,17 +386,10 @@ int milenage_gsm_generate(uint8_t sres[MILENAGE_SRES_SIZE],
 			  uint8_t const rand[MILENAGE_RAND_SIZE])
 {
 	uint8_t		res[MILENAGE_RES_SIZE], ck[MILENAGE_CK_SIZE], ik[MILENAGE_IK_SIZE];
-	int		i;
 
 	if (milenage_f2345(res, ik, ck, NULL, NULL, opc, ki, rand)) return -1;
 
-	for (i = 0; i < 8; i++) kc[i] = ck[i] ^ ck[i + 8] ^ ik[i] ^ ik[i + 8];
-
-#ifdef GSM_MILENAGE_ALT_SRES
-	memcpy(sres, res, 4);
-#else /* GSM_MILENAGE_ALT_SRES */
-	for (i = 0; i < 4; i++) sres[i] = res[i] ^ res[i + 4];
-#endif /* GSM_MILENAGE_ALT_SRES */
+	milenage_gsm_from_umts(sres, kc, ik, ck, res);
 
 	return 0;
 }
