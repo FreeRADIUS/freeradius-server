@@ -324,6 +324,7 @@ static int split(char **input, char **output, bool syntax_string)
 	} else if (syntax_string && ((*str == '[') || (*str == '('))) {
 		char end;
 		quote = *(str++);
+		int count = 0;
 
 		if (quote == '[') {
 			end = ']';
@@ -336,16 +337,14 @@ static int split(char **input, char **output, bool syntax_string)
 		 *	only for parsing syntax strings, which CANNOT
 		 *	have quotes in them.
 		 */
-		while (*str != end) {
+		while ((*str != end) || (count > 0)) {
 			if (!*str) {
 				fr_strerror_printf("String ends before closing brace.");
 				return -1;
 			}
 
-			if (*str == quote) {
-				fr_strerror_printf("Nested braces are not allowed.");
-				return -1;
-			}
+			if (*str == quote) count++;
+			if (*str == end) count--;
 
 			str++;
 		}
