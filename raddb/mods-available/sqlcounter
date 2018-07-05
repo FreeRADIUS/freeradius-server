@@ -38,6 +38,12 @@
 #  DEFAULT  Max-Daily-Session > 3600, Auth-Type = Reject
 #      Reply-Message = "You've used up more than one hour today"
 #
+#  The "dailycounter" (or any other sqlcounter module) should be added
+#  to "post-auth" section.  It will then update the Session-Timeout
+#  attribute in the reply.  If there is no Session-Timeout attribute,
+#  the module will add one.  If there is an attribute, the sqlcounter
+#  module will make sure that the value is no higher than the limit.
+#
 sqlcounter dailycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
