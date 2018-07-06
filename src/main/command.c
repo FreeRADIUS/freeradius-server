@@ -34,7 +34,6 @@ RCSID("$Id$")
 typedef struct fr_cmd_argv_t {
 	char		*name;
 	fr_type_t	type;
-	struct fr_cmd_argv_t *parent;
 	struct fr_cmd_argv_t *next;
 	struct fr_cmd_argv_t *child;
 } fr_cmd_argv_t;
@@ -70,6 +69,7 @@ struct fr_cmd_t {
 #define FR_TYPE_VARARGS		FR_TYPE_TLV
 #define FR_TYPE_OPTIONAL	FR_TYPE_STRUCT
 #define FR_TYPE_ALTERNATE	FR_TYPE_EXTENDED
+#define FR_TYPE_ALTERNATE_CHOICE FR_TYPE_LONG_EXTENDED
 
 /** Find a command
  *
@@ -306,25 +306,29 @@ static int split_alternation(char **input, char **output)
 		 */
 		if ((*str != '\0') &&
 		    (*str != ' ') &&
-		    (*str != '#') &&
-		    (*str != '\t') &&
-		    (*str != '\r') &&
-		    (*str != '\n')) {
+		    (*str != '|') &&
+		    (*str != '\t')) {
 			fr_strerror_printf("Invalid text after quoted string.");
 			return -1;
 		}
 	} else {
+		int count = 0;
+
 		/*
-		 *	Skip the next non-space characters.
+		 *	Skip until we reach the next alternation,
+		 *	ignoring | in nested alternation.
+		 *
 		 */
-		while (*str &&
-		       (*str != ' ') &&
-		       (*str != '|') &&
-		       (*str != '#') &&
-		       (*str != '\t') &&
-		       (*str != '\r') &&
-		       (*str != '\n'))
+		while (*str) {
+			if (*str == '(') {
+				count++;
+			} else if (*str == ')') {
+				count--;
+			} else if (count == 0) {
+				if (*str == '|') break;
+			}
 			str++;
+		}
 	}
 
 	/*
@@ -340,10 +344,9 @@ static int split_alternation(char **input, char **output)
 		 */
 		while ((*str == ' ') ||
 		       (*str == '|') ||
-		       (*str == '\t') ||
-		       (*str == '\r') ||
-		       (*str == '\n'))
+		       (*str == '\t')) {
 			*(str++) = '\0';
+		}
 	}
 
 	*input = str;
@@ -605,17 +608,30 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			last_child = &child;
 
 			/*
-			 *	@todo - split it on '|' instead of spaces
+			 *	Walk over the choices, creating
+			 *	intermediate nodes for each one.  Then
+			 *	placing the actual choices into
+			 *	child->child.
 			 */
 			q = option;
 			while (true) {
+				fr_cmd_argv_t *choice, *sub;
+
 				rcode = split_alternation(&q, &word);
 				if (rcode < 0) return rcode;
 				if (rcode == 0) break;
 
-				rcode = fr_command_add_syntax(option, word, last_child);
+				sub = NULL;
+				rcode = fr_command_add_syntax(option, word, &sub);
 				if (rcode < 0) return rcode;
-				last_child = &((*last_child)->next);
+
+				choice = talloc_zero(option, fr_cmd_argv_t);
+				choice->name = word;
+				choice->type = FR_TYPE_ALTERNATE_CHOICE;
+				choice->child = sub;
+
+				*last_child = choice;
+				last_child = &(choice->next);
 			}
 
 			argv = talloc_zero(ctx, fr_cmd_argv_t);
@@ -1488,6 +1504,8 @@ static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, in
 	fr_cmd_argv_t *child;
 
 redo:
+	rad_assert(argv->type != FR_TYPE_ALTERNATE_CHOICE);
+
 	/*
 	 *	Don't eat too many arguments.
 	 */
@@ -1579,15 +1597,11 @@ redo:
 		child = NULL;
 
 		for (child = argv->child; child != NULL; child = child->next) {
-			fr_cmd_argv_t *sub, my_sub;
+			fr_cmd_argv_t *sub;
 
-			/*
-			 *	Hack so that match doesn't go to the
-			 *	"next" one.
-			 */
-			memcpy(&my_sub, child, sizeof(my_sub));
-			my_sub.next = NULL;
-			sub = &my_sub;
+			rad_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
+			rad_assert(child->child != NULL);
+			sub = child->child;
 
 			rcode = fr_command_verify_argv(info, start + used, verify, argc, &sub, true);
 			if (rcode <= 0) continue;
@@ -1650,7 +1664,9 @@ next:
 		argv = argv->next;
 	}
 
-	if (argv) goto redo;
+	if (argv) {
+		goto redo;
+	}
 
 	if ((start + used) < argc) {
 no_match:
