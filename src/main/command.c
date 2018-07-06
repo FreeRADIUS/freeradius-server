@@ -1464,6 +1464,53 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
 }
 
 
+static void fr_command_list_node(FILE *fp, fr_cmd_t *cmd, int depth, char const **argv)
+{
+	int i;
+
+	if (depth == 0) {
+		if (!cmd->syntax) {
+			fprintf(fp, "%s\n", cmd->name);
+		} else {
+			fprintf(fp, "%s %s\n", cmd->name, cmd->syntax);
+		}
+
+		return;
+	}
+
+	for (i = 0; i < depth; i++) {
+		fprintf(fp, "%s ", argv[i]);
+	}
+
+	if (!cmd->syntax) {
+		fprintf(fp, "\n");
+	} else {
+		fprintf(fp, "%s\n", cmd->syntax);
+	}
+}
+
+static void fr_command_list_internal(FILE *fp, fr_cmd_t *head, int depth, char const **argv)
+{
+	fr_cmd_t *cmd;
+
+	for (cmd = head; cmd != NULL; cmd = cmd->next) {
+		if (cmd->child) {
+			argv[depth] = cmd->name;
+			fr_command_list_internal(fp, cmd->child, depth + 1, argv);
+		} else {
+			fr_command_list_node(fp, cmd, depth, argv);
+		}
+	}
+}
+
+void fr_command_list(FILE *fp, fr_cmd_t *head)
+{
+	char const *argv[CMD_MAX_ARGV];
+
+	fr_command_list_internal(fp, head, 0, argv);
+}
+
+
 static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, int argc, fr_cmd_argv_t **argv_p, bool optional)
 {
 	char quote;
