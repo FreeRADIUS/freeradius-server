@@ -1826,53 +1826,41 @@ static int cf_pair_write(FILE *fp, CONF_PAIR *cp)
 }
 
 
-int cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
+int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 {
 	bool		prev = false;
 	CONF_ITEM	*ci;
-	FILE		*fp = NULL;
-	FILE		*array[32];
 
 	/*
-	 *	Default to writing to the FP we're given.
+	 *	Print the section name1, etc.
 	 */
-	fp = in_fp;
-	array[0] = fp;
+	fwrite(parse_tabs, depth, 1, fp);
+	cf_string_write(fp, cs->name1, strlen(cs->name1), T_BARE_WORD);
 
 	/*
-	 *	If we have somewhere to print, then print the section
-	 *	name1, etc.
-	 */
-	if (fp) {
-		fwrite(parse_tabs, depth, 1, fp);
-		cf_string_write(fp, cs->name1, strlen(cs->name1), T_BARE_WORD);
+	 *	FIXME: check for "if" or "elsif".  And if so, print
+	 *	out the parsed condition, instead of the input text
+	 *
+	 *	cf_data_find(cs, CF_DATA_TYPE_UNLANG, "if");
+	 */	
+	if (cs->name2) {
+		fr_cond_t *c;
 
-		/*
-		 *	FIXME: check for "if" or "elsif".  And if so, print
-		 *	out the parsed condition, instead of the input text
-		 *
-		 *	cf_data_find(cs, CF_DATA_TYPE_UNLANG, "if");
-		 */
+		fputs(" ", fp);
 
-		if (cs->name2) {
-			fr_cond_t *c;
+		c = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
+		if (c) {
+			char buffer[1024];
 
-			fputs(" ", fp);
+			cond_snprint(buffer, sizeof(buffer), c);
+			fprintf(fp, "(%s)", buffer);
 
-			c = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
-			if (c) {
-				char buffer[1024];
-
-				cond_snprint(buffer, sizeof(buffer), c);
-				fprintf(fp, "(%s)", buffer);
-
-			} else {	/* dump the string as-is */
-				cf_string_write(fp, cs->name2, strlen(cs->name2), cs->name2_quote);
-			}
+		} else {	/* dump the string as-is */
+			cf_string_write(fp, cs->name2, strlen(cs->name2), cs->name2_quote);
 		}
-
-		fputs(" {\n", fp);
 	}
+
+	fputs(" {\n", fp);
 
 	/*
 	 *	Loop over the children.  Either recursing, or opening
@@ -1905,10 +1893,8 @@ int cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 		}
 	}
 
-	if (fp) {
-		fwrite(parse_tabs, depth, 1, fp);
-		fputs("}\n\n", fp);
-	}
+	fwrite(parse_tabs, depth, 1, fp);
+	fputs("}\n\n", fp);
 
 	return 1;
 }
