@@ -58,6 +58,8 @@ struct fr_cmd_t {
 };
 
 
+static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, int argc, fr_cmd_argv_t **argv_p, bool optional) CC_HINT(nonnull);
+
 /*
  *	Hacks for simplicity.  These data types aren't allowed as
  *	parameters, so we can re-use them for something else.
@@ -1228,16 +1230,15 @@ static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_inf
 static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int syntax_offset, fr_cmd_info_t *info,
 					int max_expansions, char const **expansions)
 {
-	int i, count, rcode;
+	int i, rcode;
 	fr_cmd_argv_t *argv = cmd->syntax_argv;
-
-	count = 0;
 
 	/*
 	 *	Double-check intermediate strings, but skip
 	 *	intermediate data types.
 	 */
-	for (i = syntax_offset; i < (info->argc - 1); i ++) {
+	i = syntax_offset;
+	while (i < (info->argc - 1)) {
 		rad_assert(argv->type != FR_TYPE_VARARGS);
 
 		/*
@@ -1245,42 +1246,39 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 		 */
 		if (argv->type == FR_TYPE_FIXED) {
 			if (strcmp(info->argv[i], argv->name) != 0) return -1;
-
-			count++;
-			argv = argv->next;
+			goto next;
 
 		} else if (argv->type == FR_TYPE_OPTIONAL) {
-			rcode = fr_command_tab_expand_argv(ctx, cmd, info, info->argv[i], argv->child, max_expansions - count, &expansions[count]);
-			if (rcode > 0) count += rcode;
-			argv = argv->next;
+			rcode = fr_command_verify_argv(info, i, info->argc - 1, info->argc - 1, &argv, true);
+			if (rcode < 0) return -1;
+			i += rcode;
 
 		} else if (argv->type == FR_TYPE_ALTERNATE) {
-			rcode = fr_command_tab_expand_argv(ctx, cmd, info, info->argv[i], argv->child, max_expansions - count, &expansions[count]);
-			if (rcode > 0) count += rcode;
-			argv = argv->next;
+			rcode = fr_command_verify_argv(info, i, info->argc - 1, info->argc - 1, &argv, false);
+			if (rcode < 0) return -1;
+			i += rcode;
 
 		} else if (!argv->next || (argv->next && (argv->next->type != FR_TYPE_VARARGS))) {
+			rad_assert(argv->type < FR_TYPE_FIXED);
+
 			/*
 			 *	Go to the next entry, but only if it isn't varargs
 			 */
+		next:
+			i++;
 			argv = argv->next;
 		}
 
 		/*
 		 *	We've run out of things to check, we can't expand anything.
 		 */
-		if (!argv) return count;
-
-		/*
-		 *	We've run out of room to store expansions, stop.
-		 */
-		if (count == max_expansions) return count;
+		if (!argv) return 0;
 	}
 
 	/*
 	 *	We've found the last argv.  See if we need to expand it.
 	 */
-	return fr_command_tab_expand_argv(ctx, cmd, info, info->argv[i], argv, max_expansions - count, &expansions[count]);
+	return fr_command_tab_expand_argv(ctx, cmd, info, info->argv[i], argv, max_expansions, expansions);
 }
 
 
@@ -1490,8 +1488,6 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
 	fr_command_debug_internal(fp, head, 0);
 }
 
-
-static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, int argc, fr_cmd_argv_t **argv_p, bool optional) CC_HINT(nonnull);
 
 static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, int argc, fr_cmd_argv_t **argv_p, bool optional)
 {
