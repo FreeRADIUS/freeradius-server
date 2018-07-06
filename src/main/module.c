@@ -32,6 +32,8 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/unlang.h>
+#include <freeradius-devel/command.h>
+#include <freeradius-devel/cf_file.h>
 
 static _Thread_local rbtree_t *module_thread_inst_tree;
 
@@ -631,6 +633,7 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, CONF_SECTION *root, fr_event_lis
 	return 0;
 }
 
+
 /** Complete module setup by calling its instantiate function
  *
  * @param[in] instance	of module to complete instantiation for.
@@ -722,6 +725,69 @@ static int module_instantiate(CONF_SECTION *root, char const *name)
 	return _module_instantiate(mi, NULL);
 }
 
+
+static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+{
+	module_instance_t *mi;
+	CONF_SECTION *modules = (CONF_SECTION *) ctx;
+
+	mi = cf_data_value(cf_data_find(modules, module_instance_t, info->argv[0]));
+	if (!mi) return -1;
+
+	rad_assert(mi->dl_inst->conf != NULL);
+
+	(void) cf_section_write(fp, mi->dl_inst->conf, 0);
+
+	return 0;
+}
+
+static int _module_list(void *instance, void *ctx)
+{
+	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
+	FILE *fp = ctx;
+
+	fprintf(fp, "\t%s\n", mi->name);
+
+	return 0;
+}
+
+static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	CONF_SECTION *modules = (CONF_SECTION *) ctx;
+
+	(void) cf_data_walk(modules, module_instance_t, _module_list, fp);
+
+	return 0;
+}
+
+static char const *show_module_parents[] = {
+	"show",
+	"module",
+	NULL
+};
+
+static fr_cmd_table_t cmd_module_table[] = {
+	{
+		.syntax = "config STRING",
+		.func = cmd_show_module_config,
+		.help = "show module config :name",
+		// @todo - do tab expand, by walking over the whole module list...
+		.read_only = true,
+		.parents = show_module_parents,
+	},
+
+	{
+		.syntax = "list",
+		.func = cmd_show_module_list,
+		.help = "show module listx",
+		.read_only = true,
+		.parents = show_module_parents,
+	},
+
+	CMD_TABLE_END
+
+};
+
 /** Completes instantiation of modules
  *
  * Allows the module to initialise connection pools, and complete any registrations that depend on
@@ -740,6 +806,12 @@ int modules_instantiate(CONF_SECTION *root)
 	if (!modules) return 0;
 
 	DEBUG2("#### Instantiating modules ####");
+
+	if (fr_radmin_register(NULL, modules, cmd_module_table) < 0) {
+		ERROR("Failed registering radmin commands for modules - %s",
+		      fr_strerror());
+		return -1;
+	}
 
 	if (cf_data_walk(modules, module_instance_t, _module_instantiate, NULL) < 0) return -1;
 
