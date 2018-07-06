@@ -729,13 +729,16 @@ static int module_instantiate(CONF_SECTION *root, char const *name)
 }
 
 
-static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+static int cmd_show_module_config(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
 {
 	module_instance_t *mi;
 	CONF_SECTION *modules = (CONF_SECTION *) ctx;
 
 	mi = cf_data_value(cf_data_find(modules, module_instance_t, info->argv[0]));
-	if (!mi) return -1;
+	if (!mi) {
+		fprintf(fp_err, "No such module '%s'\n", info->argv[0]);
+		return -1;
+	}
 
 	rad_assert(mi->dl_inst->conf != NULL);
 
@@ -763,6 +766,54 @@ static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED
 	return 0;
 }
 
+
+static int cmd_show_module_status(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+{
+	module_instance_t *mi;
+	CONF_SECTION *modules = (CONF_SECTION *) ctx;
+
+	mi = cf_data_value(cf_data_find(modules, module_instance_t, info->argv[0]));
+	if (!mi) {
+		fprintf(fp_err, "No such module '%s'\n", info->argv[0]);
+		return -1;
+	}
+
+	if (!mi->force) {
+		fprintf(fp, "alive\n");
+		return 0;
+	}
+
+	fprintf(fp, "%s\n", fr_int2str(modreturn_table, mi->code, "<invalid>"));
+
+	return 0;
+}
+
+static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+{
+	module_instance_t *mi;
+	CONF_SECTION *modules = (CONF_SECTION *) ctx;
+	rlm_rcode_t rcode;
+
+	mi = cf_data_value(cf_data_find(modules, module_instance_t, info->argv[0]));
+	if (!mi) {
+		fprintf(fp_err, "No such module '%s'\n", info->argv[0]);
+		return -1;
+	}
+
+	if (strcmp(info->argv[0], "alive") == 0) {
+		mi->force = false;
+		return 0;
+	}
+
+	rcode = fr_str2int(modreturn_table, info->argv[1], RLM_MODULE_UNKNOWN);
+	rad_assert(rcode != RLM_MODULE_UNKNOWN);
+
+	mi->code = rcode;
+	mi->force = true;
+
+	return 0;
+}
+
 static fr_cmd_table_t cmd_module_table[] = {
 	{
 		.parent = "show module",
@@ -777,8 +828,24 @@ static fr_cmd_table_t cmd_module_table[] = {
 		.parent = "show module",
 		.syntax = "list",
 		.func = cmd_show_module_list,
-		.help = "show module listx",
+		.help = "show module list",
 		.read_only = true,
+	},
+
+	{
+		.parent = "show module",
+		.syntax = "status STRING",
+		.func = cmd_show_module_status,
+		.help = "show module status STRING",
+		.read_only = true,
+	},
+
+	{
+		.parent = "set module",
+		.syntax = "status STRING (alive|ok|fail|reject|handled|invalid|userlock|notfound|noop|updated)",
+		.func = cmd_set_module_status,
+		.help = "set module status STRING (alive|ok|fail|reject|handled|invalid|userlock|notfound|noop|updated)",
+		.read_only = false,
 	},
 
 	CMD_TABLE_END
