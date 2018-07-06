@@ -352,14 +352,52 @@ static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr
 	return 0;
 }
 
+static int cmd_stats_memory(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
+{
+	if (strcmp(info->argv[0], "total") == 0) {
+		fprintf(fp, "%zd\n", talloc_total_size(NULL));
+		return 0;
+	}
+
+	if (strcmp(info->argv[0], "blocks") == 0) {
+		fprintf(fp, "%zd\n", talloc_total_blocks(NULL));
+		return 0;
+	}
+
+	if (strcmp(info->argv[0], "full") == 0) {
+		fprintf(fp, "see stdout of the server for the full report.\n");
+		fr_log_talloc_report(NULL);
+		return 0;
+	}
+
+	/*
+	 *	Should never reach here.  The command parser will
+	 *	ensure that.
+	 */
+	fprintf(fp_err, "Must use 'stats memory (blocks|full|total)'\n");
+	return -1;
+}
+
 static int cmd_test(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
-	fprintf(fp, "woo! %s %s\n", info->argv[0], info->argv[2]);
+	int i;
+
+	fprintf(fp, "TEST\n");
+
+	for (i = 0; i < info->argc; i++) {
+		fprintf(fp, "\t%s\n", info->argv[i]);
+	}
+
 	return 0;
 }
 
-static char const *parents[] = {
+static char const *test_parents[] = {
 	"test",
+	NULL
+};
+
+static char const *stats_parents[] = {
+	"stats",
 	NULL
 };
 
@@ -379,11 +417,11 @@ static fr_cmd_table_t cmd_table[] = {
 	},
 
 	{
-		.syntax = "foo INTEGER bar INTEGER",
+		.syntax = "foo (bar|(a|b)|xxx [INTEGER])",
 		.func = cmd_test,
-		.help = "test foo INTEGER bar INTEGER",
+		.help = "test foo (bar|(a|b)|xxx [INTEGER])",
 		.read_only = false,
-		.parents = parents,
+		.parents = test_parents,
 	},
 
 	{
@@ -391,6 +429,14 @@ static fr_cmd_table_t cmd_table[] = {
 		.func = cmd_uptime,
 		.help = "Show uptime since the server started.",
 		.read_only = true
+	},
+
+	{
+		.syntax = "memory (blocks|full|total)",
+		.func = cmd_stats_memory,
+		.help = "stats memory (blocks|full|total)",
+		.read_only = true,
+		.parents = stats_parents,
 	},
 
 	CMD_TABLE_END
