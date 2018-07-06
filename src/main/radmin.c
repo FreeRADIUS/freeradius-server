@@ -498,11 +498,14 @@ void fr_radmin_stop(void)
 	}
 }
 
+extern fr_radmin_register_hook_t radmin_register_module;
 
 /*
  *	MUST be called before fr_radmin_start()
  */
 int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
 {
+	radmin_register_module = fr_radmin_register;
+
 	return fr_command_add_multi(NULL, &radmin_cmd, name, ctx, table);
 }

@@ -488,6 +488,8 @@ int main(int argc, char *argv[])
 	}
 #endif
 
+	if (radmin && (fr_radmin_start() < 0)) EXIT_WITH_FAILURE;
+
 #ifndef __MINGW32__
 	/*
 	 *  Disconnect from session
@@ -773,8 +775,6 @@ int main(int argc, char *argv[])
 	 *  Clear the libfreeradius error buffer.
 	 */
 	fr_strerror();
-
-	if (radmin && (fr_radmin_start() < 0)) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Process requests until HUP or exit.

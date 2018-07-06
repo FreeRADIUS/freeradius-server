@@ -35,6 +35,9 @@ RCSID("$Id$")
 #include <freeradius-devel/command.h>
 #include <freeradius-devel/cf_file.h>
 
+extern fr_radmin_register_hook_t radmin_register_module;
+fr_radmin_register_hook_t radmin_register_module = NULL;
+
 static _Thread_local rbtree_t *module_thread_inst_tree;
 
 static TALLOC_CTX *instance_ctx = NULL;
@@ -801,7 +804,7 @@ int modules_instantiate(CONF_SECTION *root)
 
 	DEBUG2("#### Instantiating modules ####");
 
-	if (fr_radmin_register(NULL, modules, cmd_module_table) < 0) {
+	if (radmin_register_module && (radmin_register_module(NULL, modules, cmd_module_table) < 0)) {
 		ERROR("Failed registering radmin commands for modules - %s",
 		      fr_strerror());
 		return -1;

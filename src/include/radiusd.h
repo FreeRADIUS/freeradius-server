@@ -654,6 +654,7 @@ int fr_radmin_start(void);
 void fr_radmin_stop(void);
 
 typedef struct fr_cmd_table_t fr_cmd_table_t;
+typedef int (*fr_radmin_register_hook_t)(char const *name, void *ctx, fr_cmd_table_t *table);
 int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table);
 
 #ifdef __cplusplus
