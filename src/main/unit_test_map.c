@@ -49,7 +49,6 @@ module_thread_instance_t *module_thread_instance_find(UNUSED module_instance_t *
 	return NULL;
 }
 
-int fr_radmin_register(UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table);
 int fr_radmin_register(UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table)
 {
 	return 0;

@@ -70,7 +70,6 @@ pid_t rad_waitpid(pid_t pid, int *status)
 	return waitpid(pid, status, 0);
 }
 
-int fr_radmin_register(UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table);
 int fr_radmin_register(UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table)
 {
 	return 0;
