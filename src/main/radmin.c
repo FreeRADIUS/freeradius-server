@@ -325,7 +325,7 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 	char const *help;
 
 	if (info->argc == 0) {
-		fr_command_debug(fp, radmin_cmd);
+		fr_command_list(fp, radmin_cmd);
 		return 0;
 	}
 
@@ -378,6 +378,7 @@ static int cmd_stats_memory(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_inf
 	return -1;
 }
 
+#ifdef CMD_TEST
 static int cmd_test(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	int i;
@@ -395,6 +396,7 @@ static char const *test_parents[] = {
 	"test",
 	NULL
 };
+#endif
 
 static char const *stats_parents[] = {
 	"stats",
@@ -416,6 +418,8 @@ static fr_cmd_table_t cmd_table[] = {
 		.read_only = true
 	},
 
+
+#ifdef CMD_TEST
 	{
 		.syntax = "foo (bar|(a|b)|xxx [INTEGER])",
 		.func = cmd_test,
@@ -423,6 +427,7 @@ static fr_cmd_table_t cmd_table[] = {
 		.read_only = false,
 		.parents = test_parents,
 	},
+#endif
 
 	{
 		.syntax = "uptime",
