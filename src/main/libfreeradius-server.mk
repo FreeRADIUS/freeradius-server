@@ -26,6 +26,7 @@ SOURCES	:=	client.c \
 		virtual_servers.c \
 		paircmp.c \
 		pool.c \
+		radmin.c \
 		xlat_eval.c \
 		xlat_func.c \
 		xlat_inst.c \

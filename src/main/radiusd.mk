@@ -4,7 +4,6 @@ SOURCES := \
     crypt.c \
     users_file.c \
     radiusd.c \
-    radmin.c \
     state.c \
     stats.c \
     snmp.c \
