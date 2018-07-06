@@ -1593,7 +1593,6 @@ redo:
 	 *	Try the alternates until we find a match.
 	 */
 	if (type == FR_TYPE_ALTERNATE) {
-		rcode = 0;
 		child = NULL;
 
 		for (child = argv->child; child != NULL; child = child->next) {
