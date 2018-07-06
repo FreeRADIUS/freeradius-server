@@ -54,9 +54,7 @@ int		cf_file_changed(CONF_SECTION *cs, rb_walker_t callback);
 /*
  *	Config file writing
  */
-#ifdef WITH_CONF_WRITE
-size_t		cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);
-#endif
+int		cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);
 
 /*
  *	Misc

@@ -1738,56 +1738,6 @@ int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
 }
 
 #ifdef WITH_CONF_WRITE
-static char const parse_tabs[] = "																																																																																																																																																																																																								";
-
-static ssize_t cf_string_write(FILE *fp, char const *string, size_t len, FR_TOKEN t)
-{
-	size_t	outlen;
-	char	c;
-	char	buffer[2048];
-
-	switch (t) {
-	default:
-		c = '\0';
-		break;
-
-	case T_DOUBLE_QUOTED_STRING:
-		c = '"';
-		break;
-
-	case T_SINGLE_QUOTED_STRING:
-		c = '\'';
-		break;
-
-	case T_BACK_QUOTED_STRING:
-		c = '`';
-		break;
-	}
-
-	if (c) fprintf(fp, "%c", c);
-
-	outlen = fr_snprint(buffer, sizeof(buffer), string, len, c);
-	fwrite(buffer, outlen, 1, fp);
-
-	if (c) fprintf(fp, "%c", c);
-	return 1;
-}
-
-static size_t cf_pair_write(FILE *fp, CONF_PAIR *cp)
-{
-	if (!cp->value) {
-		fprintf(fp, "%s\n", cp->attr);
-		return 0;
-	}
-
-	cf_string_write(fp, cp->attr, strlen(cp->attr), cp->lhs_quote);
-	fprintf(fp, " %s ", fr_int2str(fr_tokens_table, cp->op, "<INVALID>"));
-	cf_string_write(fp, cp->orig_value, strlen(cp->orig_value), cp->rhs_quote);
-	fprintf(fp, "\n");
-
-	return 1;		/* FIXME */
-}
-
 static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
 {
 	FILE	*fp;
@@ -1823,8 +1773,60 @@ static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
 
 	return fp;
 }
+#endif	/* WITH_CONF_WRITE */
 
-size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
+static char const parse_tabs[] = "																																																																																																																																																																																																								";
+
+static ssize_t cf_string_write(FILE *fp, char const *string, size_t len, FR_TOKEN t)
+{
+	size_t	outlen;
+	char	c;
+	char	buffer[2048];
+
+	switch (t) {
+	default:
+		c = '\0';
+		break;
+
+	case T_DOUBLE_QUOTED_STRING:
+		c = '"';
+		break;
+
+	case T_SINGLE_QUOTED_STRING:
+		c = '\'';
+		break;
+
+	case T_BACK_QUOTED_STRING:
+		c = '`';
+		break;
+	}
+
+	if (c) fprintf(fp, "%c", c);
+
+	outlen = fr_snprint(buffer, sizeof(buffer), string, len, c);
+	fwrite(buffer, outlen, 1, fp);
+
+	if (c) fprintf(fp, "%c", c);
+	return 1;
+}
+
+static int cf_pair_write(FILE *fp, CONF_PAIR *cp)
+{
+	if (!cp->value) {
+		fprintf(fp, "%s\n", cp->attr);
+		return 0;
+	}
+
+	cf_string_write(fp, cp->attr, strlen(cp->attr), cp->lhs_quote);
+	fprintf(fp, " %s ", fr_int2str(fr_tokens_table, cp->op, "<INVALID>"));
+	cf_string_write(fp, cp->value, strlen(cp->value), cp->rhs_quote);
+	fprintf(fp, "\n");
+
+	return 1;		/* FIXME */
+}
+
+
+int cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 {
 	bool		prev = false;
 	CONF_ITEM	*ci;
@@ -1900,60 +1902,6 @@ size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 			prev = true;
 			break;
 
-		case CONF_ITEM_COMMENT:
-			rad_assert(fp != NULL);
-
-			prev = false;
-			fwrite(parse_tabs, depth + 1, 1, fp);
-			fprintf(fp, "#%s", ((CONF_COMMENT *)ci)->comment);
-			break;
-
-		case CONF_ITEM_INCLUDE:
-			/*
-			 *	Filename == open the new filename and use that.
-			 *
-			 *	NULL == close the previous filename
-			 */
-			if (((CONF_INCLUDE *) ci)->filename) {
-				CONF_INCLUDE *cc = (CONF_INCLUDE *) ci;
-
-				/*
-				 *	Print out
-				 *
-				 *	$INCLUDE foo.conf
-				 *	$INCLUDE foo/
-				 *
-				 *	but not the files included from the last one.
-				 */
-				if (fp && (cc->file_type != CONF_INCLUDE_FROMDIR)) {
-					fprintf(fp, "$INCLUDE %s\n", ((CONF_INCLUDE *)ci)->filename);
-				}
-
-				/*
-				 *	If it's a file, we write the
-				 *	file.  We ignore the
-				 *	directories.  They're just for printing.
-				 */
-				if (cc->file_type != CONF_INCLUDE_DIR) {
-					fp = cf_file_write(cs, ((CONF_INCLUDE *) ci)->filename);
-					if (!fp) return 0;
-
-					fp_max++;
-					array[fp_max] = fp;
-				}
-			} else {
-				/*
-				 *	We're done the current file.
-				 */
-				rad_assert(fp != NULL);
-				rad_assert(fp_max > 0);
-				fclose(fp);
-
-				fp_max--;
-				fp = array[fp_max];
-			}
-			break;
-
 		default:
 			break;
 		}
@@ -1966,7 +1914,6 @@ size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 
 	return 1;
 }
-#endif	/* WITH_CONF_WRITE */
 
 
 
