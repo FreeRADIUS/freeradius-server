@@ -1227,58 +1227,26 @@ static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_inf
  *	get a data type instead, do the callback to ask the caller to
  *	expand it.
  */
+/*
+ *	We're at a leaf command, which has a syntax.  Walk down the
+ *	syntax argv checking if it matches.  If we get a matching
+ *	command, add that to the expansions array and return.  If we
+ *	get a data type instead, do the callback to ask the caller to
+ *	expand it.
+ */
 static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int syntax_offset, fr_cmd_info_t *info,
 					int max_expansions, char const **expansions)
 {
-	int i, rcode;
+	int rcode;
 	fr_cmd_argv_t *argv = cmd->syntax_argv;
 
-	/*
-	 *	Double-check intermediate strings, but skip
-	 *	intermediate data types.
-	 */
-	i = syntax_offset;
-	while (i < (info->argc - 1)) {
-		rad_assert(argv->type != FR_TYPE_VARARGS);
-
-		/*
-		 *	Double-check that fixed strings match.
-		 */
-		if (argv->type == FR_TYPE_FIXED) {
-			if (strcmp(info->argv[i], argv->name) != 0) return -1;
-			goto next;
-
-		} else if (argv->type == FR_TYPE_OPTIONAL) {
-			rcode = fr_command_verify_argv(info, i, info->argc - 1, info->argc - 1, &argv, true);
-			if (rcode < 0) return -1;
-			i += rcode;
-
-		} else if (argv->type == FR_TYPE_ALTERNATE) {
-			rcode = fr_command_verify_argv(info, i, info->argc - 1, info->argc - 1, &argv, false);
-			if (rcode < 0) return -1;
-			i += rcode;
-
-		} else if (!argv->next || (argv->next && (argv->next->type != FR_TYPE_VARARGS))) {
-			rad_assert(argv->type < FR_TYPE_FIXED);
-
-			/*
-			 *	Go to the next entry, but only if it isn't varargs
-			 */
-		next:
-			i++;
-			argv = argv->next;
-		}
-
-		/*
-		 *	We've run out of things to check, we can't expand anything.
-		 */
-		if (!argv) return 0;
-	}
+	rcode = fr_command_verify_argv(info, syntax_offset, info->argc - 1, info->argc - 1, &argv, true);
+	if (rcode < 0) return -1;
 
 	/*
 	 *	We've found the last argv.  See if we need to expand it.
 	 */
-	return fr_command_tab_expand_argv(ctx, cmd, info, info->argv[i], argv, max_expansions, expansions);
+	return fr_command_tab_expand_argv(ctx, cmd, info, info->argv[syntax_offset + rcode], argv, max_expansions, expansions);
 }
 
 
