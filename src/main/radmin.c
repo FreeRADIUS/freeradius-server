@@ -498,6 +498,9 @@ void fr_radmin_stop(void)
 	}
 }
 
+/*
+ *	Hook into things in libfreeradius-server.
+ */
 extern fr_radmin_register_hook_t radmin_register_module;
 
 /*

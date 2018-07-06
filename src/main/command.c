@@ -29,8 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/command.h>
 #include <freeradius-devel/rad_assert.h>
 
-#define MAX_STACK	(32)
-
 typedef struct fr_cmd_argv_t {
 	char		*name;
 	fr_type_t	type;
@@ -927,7 +925,7 @@ int fr_command_add_multi(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *na
 typedef struct fr_cmd_stack_t {
 	int		depth;
 	char const     	**parents;
-	fr_cmd_t	*entry[32];
+	fr_cmd_t	*entry[CMD_MAX_ARGV];
 } fr_cmd_stack_t;
 
 
@@ -1021,7 +1019,7 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 				 */
 				info.parents[stack->depth] = cmd->name;
 				stack->depth++;
-				rad_assert(stack->depth < MAX_STACK);
+				rad_assert(stack->depth < CMD_MAX_ARGV);
 				cmd = cmd->child;
 			}
 
@@ -1071,7 +1069,7 @@ check_child:
 	 *	the next command at the current level.
 	 */
 	if (cmd->child) {
-		rad_assert(stack->depth < MAX_STACK);
+		rad_assert(stack->depth < CMD_MAX_ARGV);
 		info.parents[stack->depth] = cmd->name;
 		stack->depth++;
 		stack->entry[stack->depth] = cmd->child;
