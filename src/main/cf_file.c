@@ -1831,7 +1831,6 @@ int cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 	bool		prev = false;
 	CONF_ITEM	*ci;
 	FILE		*fp = NULL;
-	int		fp_max = 0;
 	FILE		*array[32];
 
 	/*
@@ -1839,7 +1838,6 @@ int cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 	 */
 	fp = in_fp;
 	array[0] = fp;
-	fp_max = 0;
 
 	/*
 	 *	If we have somewhere to print, then print the section
