@@ -1473,22 +1473,12 @@ static void fr_command_list_node(FILE *fp, fr_cmd_t *cmd, int depth, char const 
 {
 	int i;
 
-	if (depth == 0) {
-		if (!cmd->syntax) {
-			fprintf(fp, "%s\n", cmd->name);
-		} else {
-			fprintf(fp, "%s %s\n", cmd->name, cmd->syntax);
-		}
-
-		return;
-	}
-
 	for (i = 0; i < depth; i++) {
 		fprintf(fp, "%s ", argv[i]);
 	}
 
 	if (!cmd->syntax) {
-		fprintf(fp, "\n");
+		fprintf(fp, "%s\n", cmd->name);
 	} else {
 		fprintf(fp, "%s\n", cmd->syntax);
 	}
