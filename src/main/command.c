@@ -59,6 +59,7 @@ struct fr_cmd_t {
 
 
 static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, int argc, fr_cmd_argv_t **argv_p, bool optional) CC_HINT(nonnull);
+static bool fr_command_valid_name(char const *name);
 
 /*
  *	Hacks for simplicity.  These data types aren't allowed as
@@ -724,6 +725,12 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 				return -1;
 			}
 
+			if (!fr_command_valid_name(table->parents[i])) {
+				fr_strerror_printf("Invalid parent name '%s'", table->parents[i]);
+				return -1;
+			}
+
+
 			/*
 			 *	Find the head command.  If found,
 			 *	go downwards into the child command.
@@ -790,9 +797,9 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		if (!name) {
 			fr_cmd_argv_t *next;
 
-			if (syntax_argv->type < FR_TYPE_FIXED) {
+			if (syntax_argv->type != FR_TYPE_FIXED) {
 				talloc_free(syntax);
-				fr_strerror_printf("Top-level commands MUST NOT start with a data type");
+				fr_strerror_printf("Top-level commands MUST start with a fixed string.");
 				return -1;
 			}
 
@@ -1240,7 +1247,7 @@ static int fr_command_tab_expand_syntax(TALLOC_CTX *ctx, fr_cmd_t *cmd, int synt
 	int rcode;
 	fr_cmd_argv_t *argv = cmd->syntax_argv;
 
-	rcode = fr_command_verify_argv(info, syntax_offset, info->argc - 1, info->argc - 1, &argv, true);
+	rcode = fr_command_verify_argv(info, syntax_offset, info->argc - 1, info->argc - 1, &argv, false);
 	if (rcode < 0) return -1;
 
 	/*
