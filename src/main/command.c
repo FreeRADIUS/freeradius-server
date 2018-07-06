@@ -60,6 +60,7 @@ struct fr_cmd_t {
 
 static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, int argc, fr_cmd_argv_t **argv_p, bool optional) CC_HINT(nonnull);
 static bool fr_command_valid_name(char const *name);
+static int split(char **input, char **output, bool syntax_string);
 
 /*
  *	Hacks for simplicity.  These data types aren't allowed as
@@ -713,31 +714,30 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	 *	"foo" to add "show module foo", even if "show module"
 	 *	does not yet exist.
 	 */
-	if (table->parents) {
-		int i;
+	if (table->parent) {
+		int i, rcode;
+		char *p;
+		char *parents[CMD_MAX_ARGV];
 
-		for (i = 0; table->parents[i] != NULL; i++) {
-			/*
-			 *	Don't go too deep.
-			 */
-			if (i >= MAX_STACK) {
-				fr_strerror_printf("Commands are too deep (max is %d)", MAX_STACK);
+		p = talloc_strdup(talloc_ctx, table->parent);
+
+		for (i = 0; i < CMD_MAX_ARGV; i++) {
+			rcode = split(&p, &parents[i], true);
+			if (rcode < 0) return -1;
+			if (rcode == 0) break;
+
+			if (!fr_command_valid_name(parents[i])) {
+				fr_strerror_printf("Invalid command name '%s'", parents[i]);
 				return -1;
 			}
-
-			if (!fr_command_valid_name(table->parents[i])) {
-				fr_strerror_printf("Invalid parent name '%s'", table->parents[i]);
-				return -1;
-			}
-
 
 			/*
 			 *	Find the head command.  If found,
 			 *	go downwards into the child command.
 			 */
-			cmd = fr_command_find(start, table->parents[i], &insert);
+			cmd = fr_command_find(start, parents[i], &insert);
 			if (!cmd) {
-				cmd = fr_command_alloc(talloc_ctx, insert, table->parents[i]);
+				cmd = fr_command_alloc(talloc_ctx, insert, parents[i]);
 				cmd->auto_allocated = true;
 			}
 
@@ -748,6 +748,11 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 
 			rad_assert(cmd->func == NULL);
 			start = &(cmd->child);
+		}
+
+		if (i == CMD_MAX_ARGV) {
+			fr_strerror_printf("Commands are too deep (max is %d)", CMD_MAX_ARGV);
+			return -1;
 		}
 	}
 

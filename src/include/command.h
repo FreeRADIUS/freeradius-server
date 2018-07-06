@@ -46,7 +46,7 @@ typedef int (*fr_cmd_func_t)(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t co
 typedef int (*fr_cmd_tab_t)(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions);
 
 typedef struct fr_cmd_table_t {
-	char const		**parents;		//!< e.g. "show module"
+	char const		*parent;		//!< e.g. "show module"
 	char const		*syntax;		//!< e.g. "stats FOO"
 	char const		*help;			//!< help text
 	fr_cmd_func_t		func;			//!< function to process this command

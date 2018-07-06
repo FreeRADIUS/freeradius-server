@@ -378,7 +378,7 @@ static int cmd_stats_memory(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_inf
 	return -1;
 }
 
-static int cmd_set_debug_level(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
+static int cmd_set_debug_level(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	int level = atoi(info->argv[0]);
 
@@ -391,7 +391,7 @@ static int cmd_set_debug_level(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_
 	return 0;
 }
 
-static int cmd_show_debug_level(FILE *fp, FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
+static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	fprintf(fp, "%d\n", rad_debug_lvl);
 	return 0;
@@ -410,27 +410,7 @@ static int cmd_test(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 
 	return 0;
 }
-
-static char const *test_parents[] = {
-	"test",
-	NULL
-};
 #endif
-
-static char const *stats_parents[] = {
-	"stats",
-	NULL
-};
-
-static char const *set_debug_parents[] = {
-	"set", "debug",
-	NULL
-};
-
-static char const *show_debug_parents[] = {
-	"show", "debug",
-	NULL
-};
 
 static fr_cmd_table_t cmd_table[] = {
 	{
@@ -450,11 +430,11 @@ static fr_cmd_table_t cmd_table[] = {
 
 #ifdef CMD_TEST
 	{
+		.parent = "test",
 		.syntax = "foo (bar|(a|b)|xxx [INTEGER])",
 		.func = cmd_test,
 		.help = "test foo (bar|(a|b)|xxx [INTEGER])",
 		.read_only = false,
-		.parents = test_parents,
 	},
 #endif
 
@@ -466,27 +446,27 @@ static fr_cmd_table_t cmd_table[] = {
 	},
 
 	{
+		.parent = "stats",
 		.syntax = "memory (blocks|full|total)",
 		.func = cmd_stats_memory,
 		.help = "stats memory (blocks|full|total)",
 		.read_only = true,
-		.parents = stats_parents,
 	},
 
 	{
+		.parent = "set debug",
 		.syntax = "level INTEGER",
 		.func = cmd_set_debug_level,
 		.help = "set debug level INTEGER",
 		.read_only = true,
-		.parents = set_debug_parents,
 	},
 
 	{
+		.parent = "show debug",
 		.syntax = "level",
 		.func = cmd_show_debug_level,
 		.help = "show debug level",
 		.read_only = false,
-		.parents = show_debug_parents,
 	},
 
 	CMD_TABLE_END

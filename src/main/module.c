@@ -760,28 +760,22 @@ static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED
 	return 0;
 }
 
-static char const *show_module_parents[] = {
-	"show",
-	"module",
-	NULL
-};
-
 static fr_cmd_table_t cmd_module_table[] = {
 	{
+		.parent = "show module",
 		.syntax = "config STRING",
 		.func = cmd_show_module_config,
 		.help = "show module config :name",
 		// @todo - do tab expand, by walking over the whole module list...
 		.read_only = true,
-		.parents = show_module_parents,
 	},
 
 	{
+		.parent = "show module",
 		.syntax = "list",
 		.func = cmd_show_module_list,
 		.help = "show module listx",
 		.read_only = true,
-		.parents = show_module_parents,
 	},
 
 	CMD_TABLE_END

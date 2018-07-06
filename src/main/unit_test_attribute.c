@@ -705,9 +705,8 @@ static void command_print(void)
  */
 static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outlen)
 {
-	int num_parents;
 	char *p, *name;
-	char **parents;
+	char *parent = NULL;
 	fr_cmd_table_t *table;
 
 	table = talloc_zero(ctx, fr_cmd_table_t);
@@ -721,16 +720,8 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 	*p = '\0';
 	p++;
 
-	parents = talloc_zero_array(table, char *, 32);
 
-	num_parents = fr_dict_str_to_argv(input, parents, 31);
-
-	if (num_parents > 0) {
-		parents[num_parents + 1] = NULL;
-
-		/* -Wincompatible-pointer-types-discards-qualifiers */
-		memcpy(&table->parents, &parents, sizeof(parents));
-	}
+	if (input) parent = talloc_strdup(ctx, input);
 
 	/*
 	 *	Set the name and try to find the syntax.
@@ -748,6 +739,7 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 	if (*p) {
 		table->syntax = talloc_strdup(table, p);
 	}
+	table->parent = parent;
 	table->help = NULL;
 	table->func = command_func;
 	table->tab_expand = NULL;
