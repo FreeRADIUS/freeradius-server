@@ -59,11 +59,6 @@ static const CONF_PARSER module_config[] = {
   CONF_PARSER_TERMINATOR
 };
 
-int fr_radmin_register(UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table)
-{
-	return 0;
-}
-
 /*
  *	Get fullname of a user.
  */
