@@ -170,8 +170,9 @@ static int vector_gsm_from_triplets(eap_session_t *eap_session, VALUE_PAIR *vps,
 	fr_cursor_t	cursor;
 	int		i;
 
-	for (i = 0, fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_sim_kc);
-	     (i <= idx) && (kc = fr_cursor_next(&cursor)); i++);
+	for (i = 0, (kc = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_sim_kc));
+	     (i < idx) && (kc = fr_cursor_next(&cursor));
+	     i++);
 	if (!kc) {
 		RDEBUG3("No &control:%s[%i] attribute found, not using GSM triplets",
 			attr_eap_sim_kc->name, idx);
@@ -183,8 +184,8 @@ static int vector_gsm_from_triplets(eap_session_t *eap_session, VALUE_PAIR *vps,
 		return -1;
 	}
 
-	for (i = 0, fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_sim_rand);
-	     (i <= idx) && (rand = fr_cursor_next(&cursor));
+	for (i = 0, (rand = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_sim_rand));
+	     (i < idx) && (rand = fr_cursor_next(&cursor));
 	     i++);
 	if (!rand) {
 		RDEBUG3("No &control:%s[%i] attribute found, not using GSM triplets",
@@ -197,8 +198,9 @@ static int vector_gsm_from_triplets(eap_session_t *eap_session, VALUE_PAIR *vps,
 		return -1;
 	}
 
-	for (i = 0, fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_sim_sres);
-	     (i <= idx) && (sres = fr_cursor_next(&cursor)); i++);
+	for (i = 0, (sres = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_sim_sres));
+	     (i < idx) && (sres = fr_cursor_next(&cursor));
+	     i++);
 	if (!sres) {
 		RDEBUG3("No &control:%s[%i] attribute found, not using GSM triplets",
 			attr_eap_sim_sres->name, idx);
@@ -233,8 +235,9 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 	/*
 	 *	Fetch CK
 	 */
-	for (i = 0, fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_ck);
-	     (i <= idx) && (ck = fr_cursor_next(&cursor)); i++);
+	for (i = 0, (ck = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_ck));
+	     (i < idx) && (ck = fr_cursor_next(&cursor));
+	     i++);
 	if (!ck) {
 		RDEBUG3("No &control:%s[%i] attribute found, not using quintuplet derivation",
 			attr_eap_aka_ck->name, idx);
@@ -244,8 +247,9 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 	/*
 	 *	Fetch IK
 	 */
-	for (i = 0, fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_ik);
-	     (i <= idx) && (ik = fr_cursor_next(&cursor)); i++);
+	for (i = 0, (ik = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_ik));
+	     (i < idx) && (ik = fr_cursor_next(&cursor));
+	     i++);
 	if (!ik) {
 		RDEBUG3("No &control:%s[%i] attribute found, not using quintuplet derivation",
 			attr_eap_aka_ik->name, idx);
@@ -255,8 +259,9 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 	/*
 	 *	Fetch RAND
 	 */
-	for (i = 0, fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_rand); (i <= idx) &&
-	     (rand = fr_cursor_next(&cursor)); i++);
+	for (i = 0, (rand = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_rand));
+	     (i < idx) && (rand = fr_cursor_next(&cursor));
+	     i++);
 	if (!rand) {
 		RDEBUG3("No &control:%s[%i] attribute found, not using quintuplet derivation",
 			attr_eap_aka_rand->name, idx);
@@ -273,8 +278,9 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 	/*
 	 *	Fetch XRES
 	 */
-	for (i = 0, fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_xres);
-	     (i <= idx) && (xres = fr_cursor_next(&cursor)); i++);
+	for (i = 0, (xres = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_xres));
+	     (i < idx) && (xres = fr_cursor_next(&cursor));
+	     i++);
 	if (!xres) {
 		RDEBUG3("No &control:%s[%i] attribute found, not using quintuplet derivation",
 			attr_eap_aka_xres->name, idx);
