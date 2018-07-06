@@ -110,6 +110,11 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ NULL }
 };
 
+int fr_radmin_register(UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table)
+{
+	return 0;
+}
+
 /*
  *	Static functions.
  */

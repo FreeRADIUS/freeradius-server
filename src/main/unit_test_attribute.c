@@ -70,6 +70,11 @@ pid_t rad_waitpid(pid_t pid, int *status)
 	return waitpid(pid, status, 0);
 }
 
+int fr_radmin_register(UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table)
+{
+	return 0;
+}
+
 static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 UNUSED REQUEST *request, UNUSED char const *fmt)
