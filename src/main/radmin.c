@@ -54,6 +54,8 @@ RCSID("$Id$")
 
 static pthread_t pthread_id;
 static bool stop = false;
+static int context = 0;
+static fr_cmd_info_t radmin_info;
 
 #ifndef USE_READLINE
 /*
@@ -134,18 +136,18 @@ static int cmd_help(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t cons
 
 static void *fr_radmin(UNUSED void *input_ctx)
 {
-	int argc, context;
+	int argc;
 	char *argv_buffer;
 	char *current_str;
 	int *context_exit;
 	char const *prompt;
 	size_t size, room;
 	TALLOC_CTX *ctx;
-	fr_cmd_info_t info;
+	fr_cmd_info_t *info = &radmin_info;
 
 	context = 0;
 	prompt = "radmin> ";
-	info.max_argc = CMD_MAX_ARGV;
+	info->max_argc = CMD_MAX_ARGV;
 
 	ctx = talloc_init("radmin");
 
@@ -153,9 +155,11 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	argv_buffer = talloc_array(ctx, char, size);
 	current_str = argv_buffer;
 
-	info.max_argc = CMD_MAX_ARGV;
-	info.argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
-	info.box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
+	info->argc = 0;
+	info->max_argc = CMD_MAX_ARGV;
+	info->argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
+	info->box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
+	info->cmd = talloc_zero_array(ctx, fr_cmd_t *, CMD_MAX_ARGV);
 
 	context_exit = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
 
@@ -184,7 +188,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	It's just polite.
 			 */
 			if (strcmp(line, "help") == 0) {
-				cmd_help(stdout, stderr, NULL, &info);
+				cmd_help(stdout, stderr, NULL, info);
 				goto next;
 			}
 
@@ -197,9 +201,9 @@ static void *fr_radmin(UNUSED void *input_ctx)
 				if (context == 0) {
 					prompt = "radmin> ";
 				} else {
-					prompt = talloc_asprintf(ctx, "... %s> ", info.argv[context - 1]);
+					prompt = talloc_asprintf(ctx, "... %s> ", info->argv[context - 1]);
 				}
-				info.runnable = false;
+				info->runnable = false;
 				goto next;
 			}
 		}
@@ -218,8 +222,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	the current context.
 		 */
 		strlcpy(current_str, line, room);
-		info.argc = context;
-		argc = fr_command_str_to_argv(radmin_cmd, &info, current_str);
+		info->argc = context;
+		argc = fr_command_str_to_argv(radmin_cmd, info, current_str);
 
 		/*
 		 *	Parse error!  Oops..
@@ -242,12 +246,12 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	Note that we have to update `current_str`, because
 		 *	argv[context] currently points there...
 		 */
-		if (!info.runnable) {
+		if (!info->runnable) {
 			size_t len;
 
 			rad_assert(argc > 0);
-			rad_assert(info.argv[argc - 1] != NULL);
-			len = strlen(info.argv[argc - 1]) + 1;
+			rad_assert(info->argv[argc - 1] != NULL);
+			len = strlen(info->argv[argc - 1]) + 1;
 
 			/*
 			 *	Not enough room for more commands, refuse to do it.
@@ -261,7 +265,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	Move the pointer down the buffer and
 			 *	keep reading more.
 			 */
-			current_str = info.argv[argc - 1] + len + 1;
+			current_str = info->argv[argc - 1] + len + 1;
 			room -= (len + 1);
 
 			if (context > 0) {
@@ -281,17 +285,17 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 */
 			context_exit[argc] = context;
 			context = argc;
-			prompt = talloc_asprintf(ctx, "... %s> ", info.argv[context - 1]);
+			prompt = talloc_asprintf(ctx, "... %s> ", info->argv[context - 1]);
 			goto next;
 		}
 
 		/*
-		 *	Else it's a info.runnable command.  Add it to the
+		 *	Else it's a info->runnable command.  Add it to the
 		 *	history
 		 */
 		add_history(line);
 
-		if (fr_command_run(stdout, stderr, radmin_cmd, &info) < 0) {
+		if (fr_command_run(stdout, stderr, radmin_cmd, info) < 0) {
 			fprintf(stderr, "Failing running command: %s\n", fr_strerror());
 		}
 
@@ -475,6 +479,7 @@ static fr_cmd_table_t cmd_table[] = {
 int fr_radmin_start(void)
 {
 	gettimeofday(&start_time, NULL);
+	memset(&radmin_info, 0, sizeof(radmin_info));
 
 	if (fr_radmin_register(NULL, NULL, cmd_table) < 0) {
 		PERROR("Failed initializing radmin");
