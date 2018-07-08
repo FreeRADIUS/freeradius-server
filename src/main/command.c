@@ -698,11 +698,6 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		return -1;
 	}
 
-	if (!table->func) {
-		fr_strerror_printf("Command tables MUST define a callback function.");
-		return -1;
-	}
-
 	start = head;
 	syntax_argv = NULL;
 
@@ -1504,7 +1499,12 @@ void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, bool is_head)
 	if (max_depth > CMD_MAX_ARGV) max_depth = CMD_MAX_ARGV;
 
 	if (!is_head) {
-		if (!head->child) return;
+		if (!head->child) {
+			rad_assert(head->func != NULL);
+			// @todo - skip syntax_argv as necessary
+			fr_command_list_node(fp, head, 0, argv);
+			return;
+		}
 		head = head->child;
 	}
 
