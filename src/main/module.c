@@ -816,6 +816,13 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 
 static fr_cmd_table_t cmd_module_table[] = {
 	{
+		.parent = "show",
+		.syntax = "module",
+		.help = "Show module settings.",
+		.read_only = true,
+	},
+
+	{
 		.parent = "show module",
 		.syntax = "config STRING",
 		.func = cmd_show_module_config,
@@ -828,7 +835,7 @@ static fr_cmd_table_t cmd_module_table[] = {
 		.parent = "show module",
 		.syntax = "list",
 		.func = cmd_show_module_list,
-		.help = "show module list",
+		.help = "Show the list of modules loaded in the server.",
 		.read_only = true,
 	},
 
@@ -836,15 +843,22 @@ static fr_cmd_table_t cmd_module_table[] = {
 		.parent = "show module",
 		.syntax = "status STRING",
 		.func = cmd_show_module_status,
-		.help = "show module status STRING",
+		.help = "show module status NAME",
 		.read_only = true,
+	},
+
+	{
+		.parent = "set",
+		.syntax = "module",
+		.help = "Change module settings.",
+		.read_only = false,
 	},
 
 	{
 		.parent = "set module",
 		.syntax = "status STRING (alive|ok|fail|reject|handled|invalid|userlock|notfound|noop|updated)",
 		.func = cmd_set_module_status,
-		.help = "set module status STRING (alive|ok|fail|reject|handled|invalid|userlock|notfound|noop|updated)",
+		.help = "Change module status to fixed value.",
 		.read_only = false,
 	},
 

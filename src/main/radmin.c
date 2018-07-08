@@ -362,8 +362,6 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 		if ((cmd = radmin_info.cmd[i]) != NULL) break;
 	}
 
-	printf("FOUND cmd %p\n", cmd);
-
 	/*
 	 *	List the current command, but it's children instead of
 	 *	itself.
@@ -518,16 +516,30 @@ static fr_cmd_table_t cmd_table[] = {
 		.parent = "stats",
 		.syntax = "memory (blocks|full|total)",
 		.func = cmd_stats_memory,
-		.help = "stats memory (blocks|full|total)",
+		.help = "Show memory statistics.",
 		.read_only = true,
+	},
+
+	{
+		.parent = "set",
+		.syntax = "debug",
+		.help = "Change debug settings.",
+		.read_only = false
 	},
 
 	{
 		.parent = "set debug",
 		.syntax = "level INTEGER",
 		.func = cmd_set_debug_level,
-		.help = "set debug level INTEGER",
+		.help = "Change the debug level.",
 		.read_only = true,
+	},
+
+	{
+		.parent = "show",
+		.syntax = "debug",
+		.help = "Show debug settings.",
+		.read_only = true
 	},
 
 	{

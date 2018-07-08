@@ -827,7 +827,11 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		 */
 		if (!table->func) {
 			rad_assert(table->help != NULL);
-			rad_assert(cmd->help == NULL);
+			if (cmd->help != NULL) {
+				fr_strerror_printf("Cannot change help for command %s %s",
+						   table->parent, cmd->name);
+				return -1;
+			}
 			rad_assert(cmd->intermediate);
 			cmd->help = table->help;
 			cmd->read_only = table->read_only;
@@ -1474,6 +1478,10 @@ static void fr_command_list_node(FILE *fp, fr_cmd_t *cmd, int depth, char const 
 		fprintf(fp, "%s\n", cmd->name);
 	} else {
 		fprintf(fp, "%s\n", cmd->syntax);
+	}
+
+	if (cmd->help) {
+		fprintf(fp, "\t%s\n", cmd->help);
 	}
 }
 
