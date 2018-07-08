@@ -336,7 +336,8 @@ static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUS
 
 static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
-//	char const *help;
+	int i;
+	fr_cmd_t *cmd = NULL;
 
 	if (info->argc == 0) {
 		/*
@@ -346,14 +347,28 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 			fr_command_list(fp, 1, radmin_cmd, true);
 			return 0;
 		}
-
 	}
+
+	if (strcmp(info->argv[0], "all") == 0) {
+		if (radmin_info.argc == 1) {
+			fr_command_list(fp, CMD_MAX_ARGV, radmin_cmd, true);
+		} else {
+			fr_command_list(fp, CMD_MAX_ARGV, radmin_info.cmd[radmin_info.argc - 1], false);
+		}
+		return 0;
+	}
+
+	for (i = radmin_info.argc - 1; i >= 0; i--) {
+		if ((cmd = radmin_info.cmd[i]) != NULL) break;
+	}
+
+	printf("FOUND cmd %p\n", cmd);
 
 	/*
 	 *	List the current command, but it's children instead of
 	 *	itself.
 	 */
-	fr_command_list(fp, 1, radmin_info.cmd[radmin_info.argc - 1], false);
+	fr_command_list(fp, 1, cmd, false);
 
 #if 0
 	// @todo - print out actual help from the above commands
@@ -446,18 +461,18 @@ static fr_cmd_table_t cmd_table[] = {
 		.syntax = "exit",
 		.func = cmd_exit,
 		.help = "Exit from the current context.",
-		.read_only = false
+		.read_only = true
 	},
 
 	{
 		.syntax = "quit",
 		.func = cmd_exit,
 		.help = "Quit and close the command line immediately.",
-		.read_only = false
+		.read_only = true
 	},
 
 	{
-		.syntax = "help",
+		.syntax = "help [all]",
 		.func = cmd_help,
 		.help = "Display list of commands and their help text.",
 		.read_only = true
@@ -478,6 +493,24 @@ static fr_cmd_table_t cmd_table[] = {
 		.syntax = "uptime",
 		.func = cmd_uptime,
 		.help = "Show uptime since the server started.",
+		.read_only = true
+	},
+
+	{
+		.syntax = "set",
+		.help = "Change settings in the server.",
+		.read_only = false
+	},
+
+	{
+		.syntax = "show",
+		.help = "Show settings in the server.",
+		.read_only = true
+	},
+
+	{
+		.syntax = "stats",
+		.help = "Show statistics in the server.",
 		.read_only = true
 	},
 
