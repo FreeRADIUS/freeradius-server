@@ -39,6 +39,7 @@ typedef struct fr_cmd_info_t {
 	bool		runnable;			//!< is the command runnable?
 	char		**argv;				//!< text version of commands
 	fr_value_box_t	**box;				//!< value_box version of commands.
+	fr_cmd_t	**cmd;				//!< cached commands at each offset
 } fr_cmd_info_t;
 
 typedef int (*fr_cmd_func_t)(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info);
@@ -73,7 +74,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 char const *fr_command_help(fr_cmd_t *head, int argc, char *argv[]);
 int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info);
 void fr_command_debug(FILE *fp, fr_cmd_t *head);
-void fr_command_list(FILE *fp, fr_cmd_t *head);
+void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, bool is_head);
 int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str);
 
 #ifdef __cplusplus

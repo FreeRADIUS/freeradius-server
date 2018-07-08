@@ -54,7 +54,7 @@ RCSID("$Id$")
 
 static pthread_t pthread_id;
 static bool stop = false;
-static int context = 0;
+static int context;
 static fr_cmd_info_t radmin_info;
 
 #ifndef USE_READLINE
@@ -133,6 +133,7 @@ static fr_cmd_t *radmin_cmd = NULL;
 #define CMD_MAX_ARGV (32)
 
 static int cmd_help(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
+static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
 
 static void *fr_radmin(UNUSED void *input_ctx)
 {
@@ -189,6 +190,15 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 */
 			if (strcmp(line, "help") == 0) {
 				cmd_help(stdout, stderr, NULL, info);
+				goto next;
+			}
+
+			/*
+			 *	Special-case "quit", which works everywhere.
+			 *	It closes the CLI immediately.
+			 */
+			if (strcmp(line, "quit") == 0) {
+				cmd_exit(stdout, stderr, NULL, info);
 				goto next;
 			}
 
@@ -326,18 +336,33 @@ static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUS
 
 static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
-	char const *help;
+//	char const *help;
 
 	if (info->argc == 0) {
-		fr_command_list(fp, radmin_cmd);
-		return 0;
+		/*
+		 *	List only the top-level commands
+		 */
+		if (radmin_info.argc == 1) {
+			fr_command_list(fp, 1, radmin_cmd, true);
+			return 0;
+		}
+
 	}
 
+	/*
+	 *	List the current command, but it's children instead of
+	 *	itself.
+	 */
+	fr_command_list(fp, 1, radmin_info.cmd[radmin_info.argc - 1], false);
+
+#if 0
+	// @todo - print out actual help from the above commands
 	help = fr_command_help(radmin_cmd, info->argc, info->argv);
 	if (help) {
 		fprintf(fp, "%s\n", help);
 		return 0;
 	}
+#endif
 
 	return 0;
 }
@@ -420,7 +445,14 @@ static fr_cmd_table_t cmd_table[] = {
 	{
 		.syntax = "exit",
 		.func = cmd_exit,
-		.help = "Tell the server to exit immediately.",
+		.help = "Exit from the current context.",
+		.read_only = false
+	},
+
+	{
+		.syntax = "quit",
+		.func = cmd_exit,
+		.help = "Quit and close the command line immediately.",
 		.read_only = false
 	},
 

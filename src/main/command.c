@@ -1482,25 +1482,33 @@ static void fr_command_list_node(FILE *fp, fr_cmd_t *cmd, int depth, char const 
 	}
 }
 
-static void fr_command_list_internal(FILE *fp, fr_cmd_t *head, int depth, char const **argv)
+static void fr_command_list_internal(FILE *fp, fr_cmd_t *head, int depth, int max_depth, char const **argv)
 {
 	fr_cmd_t *cmd;
 
 	for (cmd = head; cmd != NULL; cmd = cmd->next) {
-		if (cmd->child) {
+		if (cmd->child && ((depth + 1) < max_depth)) {
 			argv[depth] = cmd->name;
-			fr_command_list_internal(fp, cmd->child, depth + 1, argv);
+			fr_command_list_internal(fp, cmd->child, depth + 1, max_depth, argv);
 		} else {
 			fr_command_list_node(fp, cmd, depth, argv);
 		}
 	}
 }
 
-void fr_command_list(FILE *fp, fr_cmd_t *head)
+void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, bool is_head)
 {
 	char const *argv[CMD_MAX_ARGV];
 
-	fr_command_list_internal(fp, head, 0, argv);
+	if ((max_depth <= 0) || !head) return;
+	if (max_depth > CMD_MAX_ARGV) max_depth = CMD_MAX_ARGV;
+
+	if (!is_head) {
+		if (!head->child) return;
+		head = head->child;
+	}
+
+	fr_command_list_internal(fp, head, 0, max_depth, argv);
 }
 
 
@@ -1709,7 +1717,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 	fr_cmd_t *cmd, *start;
 	fr_cmd_argv_t *argv;
 
-	if ((info->argc < 0) || (info->max_argc <= 0) || !str) {
+	if ((info->argc < 0) || (info->max_argc <= 0) || !str || !head) {
 		fr_strerror_printf("Invalid arguments passed to parse routine.");
 		return -1;
 	}
@@ -1760,6 +1768,11 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 			fr_strerror_printf("No matching command: %s", info->argv[i]);
 			return -1;
 		}
+
+		/*
+		 *	Cache the command for later consumption.
+		 */
+		if (info->cmd) info->cmd[i] = cmd;
 
 		/*
 		 *	There's a child.  Go match it.
