@@ -78,6 +78,9 @@ void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, bool is_head);
 int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str);
 int fr_command_clear(int new_argc, fr_cmd_info_t *info) CC_HINT(nonnull);
 
+typedef int (*fr_command_register_hook_t)(char const *name, void *ctx, fr_cmd_table_t *table);
+extern fr_command_register_hook_t fr_command_register_hook;
+
 #ifdef __cplusplus
 }
 #endif

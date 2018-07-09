@@ -29,6 +29,16 @@ RCSID("$Id$")
 #include <freeradius-devel/command.h>
 #include <freeradius-devel/rad_assert.h>
 
+/*
+ *	Registration hooks for radmin.
+ */
+static int fr_command_register(UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table)
+{
+	return 0;
+}
+
+fr_command_register_hook_t fr_command_register_hook = fr_command_register;
+
 typedef struct fr_cmd_argv_t {
 	char		*name;
 	fr_type_t	type;

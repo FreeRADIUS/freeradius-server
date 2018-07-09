@@ -37,21 +37,9 @@ extern "C" {
  */
 #define FR_RADMIN_PORT 18120
 
-/*
- *	Export symbols which radmin will know about.  Magically.
- *
- *	We could use the dl structure, but that's only for libraries
- *	which we open as the application.  It's not for libraries
- *	which are automatically linked to the application.
- */
-#define RADMIN_EXPORT(name) extern fr_radmin_register_hook_t radmin_register_ ##name; \
-		fr_radmin_register_hook_t radmin_register_ ##name = NULL
-
 int fr_radmin_start(void);
 void fr_radmin_stop(void);
 
-typedef struct fr_cmd_table_t fr_cmd_table_t;
-typedef int (*fr_radmin_register_hook_t)(char const *name, void *ctx, fr_cmd_table_t *table);
 int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table);
 
 #ifdef __cplusplus

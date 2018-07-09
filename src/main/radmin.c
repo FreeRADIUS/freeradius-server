@@ -148,6 +148,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 
 	context = 0;
 	prompt = "radmin> ";
+
+	memset(info, 0, sizeof(*info));
 	info->max_argc = CMD_MAX_ARGV;
 
 	ctx = talloc_init("radmin");
@@ -568,7 +570,8 @@ static fr_cmd_table_t cmd_table[] = {
 int fr_radmin_start(void)
 {
 	gettimeofday(&start_time, NULL);
-	memset(&radmin_info, 0, sizeof(radmin_info));
+
+	fr_command_register_hook = fr_radmin_register;
 
 	if (fr_radmin_register(NULL, NULL, cmd_table) < 0) {
 		PERROR("Failed initializing radmin");
@@ -593,16 +596,9 @@ void fr_radmin_stop(void)
 }
 
 /*
- *	Hook into things in libfreeradius-server.
- */
-extern fr_radmin_register_hook_t radmin_register_module;
-
-/*
  *	MUST be called before fr_radmin_start()
  */
 int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
 {
-	radmin_register_module = fr_radmin_register;
-
 	return fr_command_add_multi(NULL, &radmin_cmd, name, ctx, table);
 }
