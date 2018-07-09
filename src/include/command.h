@@ -76,6 +76,7 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info);
 void fr_command_debug(FILE *fp, fr_cmd_t *head);
 void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, bool is_head);
 int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str);
+int fr_command_clear(int new_argc, fr_cmd_info_t *info) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

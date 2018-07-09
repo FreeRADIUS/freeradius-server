@@ -232,7 +232,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	the current context.
 		 */
 		strlcpy(current_str, line, room);
-		info->argc = context;
 		argc = fr_command_str_to_argv(radmin_cmd, info, current_str);
 
 		/*
@@ -313,7 +312,10 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		/*
 		 *	Reset this to the current context.
 		 */
-		info->argc = context;
+		if (fr_command_clear(context, info) < 0) {
+			fprintf(stderr, "Failing clearing buffers: %s\n", fr_strerror());
+			break;
+		}
 
 		radmin_free(line);
 

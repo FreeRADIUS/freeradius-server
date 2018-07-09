@@ -1331,6 +1331,10 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 
 /** Run a particular command
  *
+ *  info->argc is left alone, as are all other fields.
+ *  If you want to run multiple commands, call fr_command_clear(0, info)
+ *  to zero out the relevant information.
+ *
  * @param fp   where the output is sent
  * @param fp_err  where the error output is sent
  * @param head the head of the command hierarchy.
@@ -1393,8 +1397,6 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
 		my_info.argv = &info->argv[i + 1];
 		my_info.box = &info->box[i + 1];
 		rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
-
-		info->argc = 0;
 		return rcode;
 	}
 
@@ -1855,4 +1857,33 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 	info->runnable = (argv == NULL);
 	info->argc = argc;
 	return argc;
+}
+
+/** Clear out any value boxes etc.
+ *
+ * @param new_argc the argc to set inside of info
+ * @param info the information with the current argc
+ */
+int fr_command_clear(int new_argc, fr_cmd_info_t *info)
+{
+	int i;
+
+	if ((new_argc < 0) || (new_argc >= CMD_MAX_ARGV) ||
+	    (new_argc > info->argc)) {
+		fr_strerror_printf("Invalid argument");
+		return -1;
+	}
+
+	if (new_argc == info->argc) return 0;
+
+	for (i = new_argc; i < info->argc; i++) {
+		if (info->box[i]) {
+			fr_value_box_clear(info->box[i]);
+		}
+		if (info->cmd && info->cmd[i]) info->cmd[i] = NULL;
+		info->argv[i] = NULL;
+	}
+
+	info->argc = new_argc;
+	return 0;
 }

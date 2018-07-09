@@ -35,8 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radmin.h>
 #include <freeradius-devel/cf_file.h>
 
-extern fr_radmin_register_hook_t radmin_register_module;
-fr_radmin_register_hook_t radmin_register_module = NULL;
+RADMIN_EXPORT(module);
 
 static _Thread_local rbtree_t *module_thread_inst_tree;
 
