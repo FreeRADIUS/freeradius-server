@@ -305,7 +305,12 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		add_history(line);
 
 		if (fr_command_run(stdout, stderr, radmin_cmd, info) < 0) {
-			fprintf(stderr, "Failing running command: %s\n", fr_strerror());
+			/*
+			 *	@todo - send return code to radmin The
+			 *	command MUST have already printed the
+			 *	error to fp_err.
+			 */
+			fprintf(stderr, "Failed running command.\n");
 		}
 
 	next:
@@ -357,7 +362,7 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 	}
 
 	if (strcmp(info->argv[0], "all") == 0) {
-		if (radmin_info.argc == 1) {
+		if (radmin_info.argc == 2) {
 			fr_command_list(fp, CMD_MAX_ARGV, radmin_cmd, true);
 		} else {
 			fr_command_list(fp, CMD_MAX_ARGV, radmin_info.cmd[radmin_info.argc - 1], false);
