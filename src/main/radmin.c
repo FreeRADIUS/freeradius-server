@@ -180,6 +180,11 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		}
 
 		/*
+		 *	Reset this to the current context.
+		 */
+		info->argc = context;
+
+		/*
 		 *	Special-case commands in sub-contexts.
 		 */
 		if (context > 0) {
