@@ -63,6 +63,7 @@ struct fr_cmd_t {
 	bool			read_only;
 	bool			intermediate;			//!< intermediate commands can't have callbacks
 	bool			auto_allocated;
+	bool			live;				//!< is this entry live?
 };
 
 
@@ -150,6 +151,7 @@ static fr_cmd_t *fr_command_alloc(TALLOC_CTX *ctx, fr_cmd_t **head, char const *
 	MEM(cmd = talloc_zero(ctx, fr_cmd_t));
 	cmd->name = talloc_strdup(ctx, name);
 	cmd->intermediate = true;
+	cmd->live = false;
 
 	cmd->next = *head;
 	*head = cmd;
@@ -899,6 +901,8 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		cmd->syntax_argv = talloc_steal(cmd, syntax_argv);
 	}
 
+	cmd->live = true;
+
 	return 0;
 }
 
@@ -1306,6 +1310,8 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 			return fr_command_tab_expand_partial(start, info->argv[i], max_expansions, expansions);
 		}
 
+		if (!cmd->live) return 0;
+
 		/*
 		 *	If there is a syntax, the command MUST be a
 		 *	leaf node.
@@ -1371,6 +1377,7 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
 
 		cmd = fr_command_find(&start, info->argv[i], NULL);
 		if (!cmd) {
+		no_such_command:
 			if (info->argc == 1) {
 				fr_strerror_printf("No such command '%s'", info->argv[i]);
 			} else {
@@ -1389,6 +1396,8 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
 			start = cmd->child;
 			continue;
 		}
+
+		if (!cmd->live) goto no_such_command;
 
 		/*
 		 *	Leaf nodes must have a callback.
@@ -1800,9 +1809,12 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 		 */
 		cmd = fr_command_find(&start, info->argv[i], NULL);
 		if (!cmd) {
-			fr_strerror_printf("No matching command: %s", info->argv[i]);
+		no_such_command:
+			fr_strerror_printf("No such command: %s", info->argv[i]);
 			return -1;
 		}
+
+		if (!cmd->live) goto no_such_command;
 
 		/*
 		 *	Cache the command for later consumption.

@@ -578,6 +578,13 @@ int fr_radmin_start(void)
 		return -1;
 	}
 
+	/*
+	 *	Note that the commands are registered by the main
+	 *	thread.  That registration is done in a (mostly)
+	 *	thread-safe manner.  So that asynchronous searches
+	 *	won't go into la-la-land.  They might find unfinished
+	 *	commands, but they don't crash.
+	 */
 	if (fr_schedule_pthread_create(&pthread_id, fr_radmin, NULL) < 0) {
 		PERROR("Failed creating radmin thread");
 		return -1;
@@ -596,7 +603,7 @@ void fr_radmin_stop(void)
 }
 
 /*
- *	MUST be called before fr_radmin_start()
+ *	Public registration hooks.
  */
 int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
 {
