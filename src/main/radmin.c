@@ -306,7 +306,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 */
 		add_history(line);
 
-		if (fr_command_run(stdout, stderr, radmin_cmd, info) < 0) {
+		if (fr_command_run(stdout, stderr, info) < 0) {
 			/*
 			 *	@todo - send return code to radmin The
 			 *	command MUST have already printed the

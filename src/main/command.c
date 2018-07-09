@@ -1353,18 +1353,18 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
  *
  * @param fp   where the output is sent
  * @param fp_err  where the error output is sent
- * @param head the head of the command hierarchy.
  * @param info the structure describing the command to expand
  * @return
  *	- <0 on error
  *	- 0 the command was run successfully
  */
-int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
+int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info)
 {
-	int i;
-	fr_cmd_t *cmd, *start;
+	int i, rcode;
+	fr_cmd_t *cmd;
+	fr_cmd_info_t my_info;
 
-	start = head;
+	cmd = NULL;
 
 	/*
 	 *	Asked to do nothing, do nothing.
@@ -1372,54 +1372,35 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_t *head, fr_cmd_info_t *info)
 	if (info->argc == 0) return 0;
 
 	for (i = 0; i < info->argc; i++) {
-		int rcode;
-		fr_cmd_info_t my_info;
+		cmd = info->cmd[i];
+		rad_assert(cmd != NULL);
 
-		cmd = fr_command_find(&start, info->argv[i], NULL);
-		if (!cmd) {
-		no_such_command:
-			if (info->argc == 1) {
-				fr_strerror_printf("No such command '%s'", info->argv[i]);
-			} else {
-				fr_strerror_printf("No such command '... %s'", info->argv[i]);
-			}
-			return -1;
-		}
+		if (!cmd->live) return 0;
 
-		/*
-		 *	Intermediate nodes must have children, and
-		 *	must not have callbacks.
-		 */
-		if (cmd->intermediate) {
-			rad_assert(cmd->child != NULL);
-			rad_assert(cmd->func == NULL);
-			start = cmd->child;
-			continue;
-		}
-
-		if (!cmd->live) goto no_such_command;
-
-		/*
-		 *	Leaf nodes must have a callback.
-		 */
-		rad_assert(cmd->func != NULL);
-
-		// @todo - add cmd->min_argc && cmd->max_argc, to track optional things, varargs, etc.
-
-		/*
-		 *	The arguments have already been verified by
-		 *	fr_command_str_to_argv().
-		 */
-		my_info.argc = info->argc - i - 1;
-		my_info.max_argc = info->max_argc - info->argc;
-		my_info.runnable = true;
-		my_info.argv = &info->argv[i + 1];
-		my_info.box = &info->box[i + 1];
-		rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
-		return rcode;
+		if (cmd->intermediate) continue;
+		break;
 	}
 
-	return 0;
+	if (!cmd) return 0;
+
+	/*
+	 *	Leaf nodes must have a callback.
+	 */
+	rad_assert(cmd->func != NULL);
+
+	// @todo - add cmd->min_argc && cmd->max_argc, to track optional things, varargs, etc.
+
+	/*
+	 *	The arguments have already been verified by
+	 *	fr_command_str_to_argv().
+	 */
+	my_info.argc = info->argc - i - 1;
+	my_info.max_argc = info->max_argc - info->argc;
+	my_info.runnable = true;
+	my_info.argv = &info->argv[i + 1];
+	my_info.box = &info->box[i + 1];
+	rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
+	return rcode;
 }
 
 
@@ -1819,7 +1800,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 		/*
 		 *	Cache the command for later consumption.
 		 */
-		if (info->cmd) info->cmd[i] = cmd;
+		info->cmd[i] = cmd;
 
 		/*
 		 *	There's a child.  Go match it.
