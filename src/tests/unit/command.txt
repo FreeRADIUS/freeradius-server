@@ -24,11 +24,21 @@ data 1 - 'have'
 command tab foo did have 1
 data 1 - 'INTEGER'
 
-#command add foo :bar baz IPADDR
-#data ok
+#
+#  Alternate parameters
+#
+command add show module :sql (alive|dead)
+data ok
 
-#command add foo :fuck doo
-#data ok
+command add show module :file (alive|(foo bar))
+data ok
 
-#command add foo :shit poop INTEGER
-#data ok
+#
+#  Optional parameters
+#
+command add set home server :localhost IPADDR [INTEGER]
+data ok
+
+command add set home server :remote [state INTEGER]
+data ok
+
