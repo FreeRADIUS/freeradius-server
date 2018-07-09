@@ -799,7 +799,7 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 		return -1;
 	}
 
-	if (strcmp(info->argv[0], "alive") == 0) {
+	if (strcmp(info->argv[1], "alive") == 0) {
 		mi->force = false;
 		return 0;
 	}
