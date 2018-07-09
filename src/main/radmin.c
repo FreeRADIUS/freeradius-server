@@ -180,11 +180,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		}
 
 		/*
-		 *	Reset this to the current context.
-		 */
-		info->argc = context;
-
-		/*
 		 *	Special-case commands in sub-contexts.
 		 */
 		if (context > 0) {
@@ -246,7 +241,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		if (argc < 0) {
 			fprintf(stderr, "Failed parsing line: %s\n", fr_strerror());
 			add_history(line); /* let them up-arrow and retype it */
-			continue;
+			goto next;
 		}
 
 		/*
@@ -306,7 +301,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 
 		/*
 		 *	Else it's a info->runnable command.  Add it to the
-		 *	history
+		 *	history.
 		 */
 		add_history(line);
 
@@ -315,6 +310,11 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		}
 
 	next:
+		/*
+		 *	Reset this to the current context.
+		 */
+		info->argc = context;
+
 		radmin_free(line);
 
 		if (stop) break;
