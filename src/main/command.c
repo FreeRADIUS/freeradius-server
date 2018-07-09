@@ -1527,10 +1527,11 @@ static int fr_command_verify_argv(fr_cmd_info_t *info, int start, int verify, in
 	char quote;
 	int used = 0, rcode;
 	fr_type_t type;
-	fr_value_box_t box;
+	fr_value_box_t *box, my_box;
 	char const *name;
 	fr_cmd_argv_t *argv = *argv_p;
 	fr_cmd_argv_t *child;
+	TALLOC_CTX *ctx = NULL;
 
 redo:
 	rad_assert(argv->type != FR_TYPE_ALTERNATE_CHOICE);
@@ -1672,16 +1673,30 @@ redo:
 	}
 
 	/*
+	 *	Set up and/or cache value boxes
+	 */
+	if (info->box) {
+		ctx = info->box;
+		if (!info->box[start + used]) {
+			info->box[start + used] = talloc_zero(ctx, fr_value_box_t);
+		}
+
+		box = info->box[start + used];
+	} else {
+		box = &my_box;
+	}
+
+	/*
 	 *	Parse the data to be sure it's well formed.
 	 */
-	if (fr_value_box_from_str(NULL, &box, &type,
+	if (fr_value_box_from_str(ctx, box, &type,
 				  NULL, name, -1, quote, true) < 0) {
 		fr_strerror_printf("Failed parsing argument '%s' - %s",
 				   name, fr_strerror());
 		return -1;
 	}
 
-	fr_value_box_clear(&box);
+	if (box == &my_box) fr_value_box_clear(box);
 	used++;
 
 next:
@@ -1877,7 +1892,7 @@ int fr_command_clear(int new_argc, fr_cmd_info_t *info)
 	if (new_argc == info->argc) return 0;
 
 	for (i = new_argc; i < info->argc; i++) {
-		if (info->box[i]) {
+		if (info->box && info->box[i]) {
 			fr_value_box_clear(info->box[i]);
 		}
 		if (info->cmd && info->cmd[i]) info->cmd[i] = NULL;
