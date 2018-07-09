@@ -1310,22 +1310,28 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 			return fr_command_tab_expand_partial(start, info->argv[i], max_expansions, expansions);
 		}
 
+		if (cmd->intermediate) {
+			rad_assert(cmd->child != NULL);
+			start = cmd->child;
+			continue;
+		}
+
+		if (!cmd->syntax) {
+			if ((i + 1) == info->argc) return 0;
+
+			return -1;
+		}
+
 		if (!cmd->live) return 0;
 
 		/*
 		 *	If there is a syntax, the command MUST be a
 		 *	leaf node.
+		 *
+		 *	Skip the name
 		 */
-		if (cmd->syntax) {
-			/*
-			 *	Skip the name
-			 */
-			rad_assert(cmd->child == NULL);
-			return fr_command_tab_expand_syntax(ctx, cmd, i + 1, info, max_expansions, expansions);
-		}
-
-		rad_assert(cmd->child != NULL);
-		start = cmd->child;
+		rad_assert(cmd->func != NULL);
+		return fr_command_tab_expand_syntax(ctx, cmd, i + 1, info, max_expansions, expansions);
 	}
 
 	cmd = start;
