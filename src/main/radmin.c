@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/command.h>
+#include <freeradius-devel/radmin.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rad_assert.h>
 

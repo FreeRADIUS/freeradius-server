@@ -646,17 +646,6 @@ int cond_eval(REQUEST *request, int modreturn, int depth,
 			 fr_cond_t const *c);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat) CC_HINT(nonnull);
 
-/*
- *	For radmin over TCP.
- */
-#define FR_RADMIN_PORT 18120
-int fr_radmin_start(void);
-void fr_radmin_stop(void);
-
-typedef struct fr_cmd_table_t fr_cmd_table_t;
-typedef int (*fr_radmin_register_hook_t)(char const *name, void *ctx, fr_cmd_table_t *table);
-int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table);
-
 #ifdef __cplusplus
 }
 #endif

@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/unlang.h>
-#include <freeradius-devel/command.h>
+#include <freeradius-devel/radmin.h>
 #include <freeradius-devel/cf_file.h>
 
 extern fr_radmin_register_hook_t radmin_register_module;
