@@ -63,6 +63,7 @@ fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
  *
  **********************************************************************/
 
+static int syslog_facility_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,CONF_ITEM *ci, CONF_PARSER const *rule);
 static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
@@ -81,7 +82,8 @@ static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, C
  */
 static const CONF_PARSER initial_log_subsection_config[] = {
 	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING, main_config_t, log_dest), .dflt = "files" },
-	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_STRING, main_config_t, syslog_facility_str), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_INT32, main_config_t, syslog_facility), .dflt = "daemon",
+	  .func = syslog_facility_parse },
 
 	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
 	{ FR_CONF_OFFSET("logdir", FR_TYPE_STRING, main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
@@ -236,6 +238,19 @@ static const CONF_PARSER switch_users_config[] = {
 	{ FR_CONF_DEPRECATED("allow_core_dumps", FR_TYPE_BOOL, main_config_t, NULL) },
 	CONF_PARSER_TERMINATOR
 };
+
+static int syslog_facility_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	int32_t facility;
+
+	if (cf_pair_in_table(&facility, syslog_facility_table, cf_item_to_pair(ci)) < 0) return -1;
+
+	*((uint32_t *)out) = (uint32_t)facility;
+
+	return 0;
+}
+
 
 static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,
 				 CONF_ITEM *ci, CONF_PARSER const *rule)
@@ -1099,44 +1114,33 @@ do {\
 		}
 
 		default_log.dst = fr_str2int(log_str2dst, config->log_dest, L_DST_NUM_DEST);
-		if (default_log.dst == L_DST_NUM_DEST) {
+
+		switch (default_log.dst) {
+		case L_DST_NUM_DEST:
 			fprintf(stderr, "%s: Error: Unknown log_destination %s\n",
 				config->name, config->log_dest);
 			goto failure;
-		}
-
-		if (default_log.dst == L_DST_SYSLOG) {
-			/*
-			 *	Make sure syslog_facility isn't NULL
-			 *	before using it
-			 */
-			if (!config->syslog_facility) {
-				fprintf(stderr, "%s: Error: Syslog chosen but no facility was specified\n",
-					config->name);
-				goto failure;
-			}
-			config->syslog_facility = fr_str2int(syslog_facility_table,
-							     config->syslog_facility_str, -1);
-			if (config->syslog_facility < 0) {
-				fprintf(stderr, "%s: Error: Unknown syslog_facility %s\n",
-					config->name, config->syslog_facility_str);
-				goto failure;
-			}
 
 #ifdef HAVE_SYSLOG_H
+		case L_DST_SYSLOG:
 			/*
 			 *	Call openlog only once, when the
 			 *	program starts.
 			 */
 			openlog(config->name, LOG_PID, config->syslog_facility);
+			break;
 #endif
 
-		} else if (default_log.dst == L_DST_FILES) {
+		case L_DST_FILES:
 			if (!config->log_file) {
 				fprintf(stderr, "%s: Error: Specified \"files\" as a log destination, but no log filename was given!\n",
 					config->name);
 				goto failure;
 			}
+			break;
+
+		default:
+			break;
 		}
 	}
 

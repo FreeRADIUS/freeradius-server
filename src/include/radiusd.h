@@ -140,14 +140,13 @@ typedef struct {
 	char const	*log_dest;
 
 	char const	*log_file;
-	char const	*syslog_facility_str;
 	bool		do_colourise;
 
 	bool		log_dates_utc;
 	bool		*log_timestamp;
 	bool		log_timestamp_is_set;
 
-	int		syslog_facility;
+	int32_t		syslog_facility;
 
 	char const	*dict_dir;			//!< Where to load dictionaries from.
 
