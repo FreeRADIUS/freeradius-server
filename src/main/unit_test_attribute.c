@@ -750,7 +750,7 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 		return;
 	}
 
-	command_print();
+	if (rad_debug_lvl) command_print();
 
 	snprintf(output, outlen, "ok");
 	fflush(stdout);
