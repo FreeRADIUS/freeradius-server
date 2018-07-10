@@ -603,22 +603,19 @@ int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
  * @param ctx the talloc ctx used to allocate memory for this command
  * @param fp standard output
  * @param fp_err error output
- * @param command the command to run
+ * @param str the command to run.  Note that this command is mangled in-place!
  * @return
  *	- <0 on error
  *	- 0 on insufficient arguments to run command
  *	- 1 for successfully running the command
  */
-int fr_radmin_run(TALLOC_CTX *ctx, FILE *fp, FILE *fp_err, char const *command)
+int fr_radmin_run(TALLOC_CTX *ctx, FILE *fp, FILE *fp_err, char *str)
 {
 	int argc, rcode;
-	char *str;
 	fr_cmd_info_t *info;
 
 	info = talloc_zero(ctx, fr_cmd_info_t);
 	fr_radmin_info_init(info, info);
-
-	str = talloc_strdup(info, command);
 
 	argc = fr_command_str_to_argv(radmin_cmd, info, str);
 	if (argc < 0) {
