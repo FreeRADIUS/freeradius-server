@@ -66,6 +66,8 @@ typedef struct fr_cmd_walk_info_t {
 } fr_cmd_walk_info_t;
 
 typedef int (*fr_cmd_walk_t)(void *ctx, fr_cmd_walk_info_t *);
+typedef int (*fr_command_register_hook_t)(char const *name, void *ctx, fr_cmd_table_t *table);
+extern fr_command_register_hook_t fr_command_register_hook;
 
 int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head_p, char const *name, void *ctx, fr_cmd_table_t const *table);
 int fr_command_add_multi(TALLOC_CTX *talloc_ctx, fr_cmd_t **heap_p, char const *name, void *ctx, fr_cmd_table_t const *table);
@@ -74,12 +76,15 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 char const *fr_command_help(fr_cmd_t *head, int argc, char *argv[]);
 int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info);
 void fr_command_debug(FILE *fp, fr_cmd_t *head);
-void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, bool is_head);
 int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str);
 int fr_command_clear(int new_argc, fr_cmd_info_t *info) CC_HINT(nonnull);
 
-typedef int (*fr_command_register_hook_t)(char const *name, void *ctx, fr_cmd_table_t *table);
-extern fr_command_register_hook_t fr_command_register_hook;
+
+#define FR_COMMAND_OPTION_NONE		(0)
+#define FR_COMMAND_OPTION_LIST_CHILD	(1 << 0)
+#define FR_COMMAND_OPTION_NAME		(1 << 1)
+
+void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, int options);
 
 #ifdef __cplusplus
 }

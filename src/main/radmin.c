@@ -358,16 +358,17 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 		 *	List only the top-level commands
 		 */
 		if (radmin_info.argc == 1) {
-			fr_command_list(fp, 1, radmin_cmd, true);
+			fr_command_list(fp, 1, radmin_cmd, FR_COMMAND_OPTION_NONE);
 			return 0;
 		}
 	}
 
 	if (strcmp(info->argv[0], "all") == 0) {
 		if (radmin_info.argc == 2) {
-			fr_command_list(fp, CMD_MAX_ARGV, radmin_cmd, true);
+			fr_command_list(fp, CMD_MAX_ARGV, radmin_cmd, FR_COMMAND_OPTION_NONE);
 		} else {
-			fr_command_list(fp, CMD_MAX_ARGV, radmin_info.cmd[radmin_info.argc - 1], false);
+			fr_command_list(fp, CMD_MAX_ARGV, radmin_info.cmd[radmin_info.argc - 1],
+					FR_COMMAND_OPTION_LIST_CHILD);
 		}
 		return 0;
 	}
@@ -380,7 +381,7 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 	 *	List the current command, but it's children instead of
 	 *	itself.
 	 */
-	fr_command_list(fp, 1, cmd, false);
+	fr_command_list(fp, 1, cmd, FR_COMMAND_OPTION_LIST_CHILD);
 
 #if 0
 	// @todo - print out actual help from the above commands

@@ -1474,12 +1474,16 @@ void fr_command_debug(FILE *fp, fr_cmd_t *head)
 }
 
 
-static void fr_command_list_node(FILE *fp, fr_cmd_t *cmd, int depth, char const **argv)
+static void fr_command_list_node(FILE *fp, fr_cmd_t *cmd, int depth, char const **argv, int options)
 {
 	int i;
 
 	for (i = 0; i < depth; i++) {
 		fprintf(fp, "%s ", argv[i]);
+	}
+
+	if ((options & FR_COMMAND_OPTION_NAME) != 0) {
+		fprintf(fp, ":");
 	}
 
 	if (!cmd->syntax) {
@@ -1493,38 +1497,38 @@ static void fr_command_list_node(FILE *fp, fr_cmd_t *cmd, int depth, char const 
 	}
 }
 
-static void fr_command_list_internal(FILE *fp, fr_cmd_t *head, int depth, int max_depth, char const **argv)
+static void fr_command_list_internal(FILE *fp, fr_cmd_t *head, int depth, int max_depth, char const **argv, int options)
 {
 	fr_cmd_t *cmd;
 
 	for (cmd = head; cmd != NULL; cmd = cmd->next) {
 		if (cmd->child && ((depth + 1) < max_depth)) {
 			argv[depth] = cmd->name;
-			fr_command_list_internal(fp, cmd->child, depth + 1, max_depth, argv);
+			fr_command_list_internal(fp, cmd->child, depth + 1, max_depth, argv, options);
 		} else {
-			fr_command_list_node(fp, cmd, depth, argv);
+			fr_command_list_node(fp, cmd, depth, argv, options);
 		}
 	}
 }
 
-void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, bool is_head)
+void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, int options)
 {
 	char const *argv[CMD_MAX_ARGV];
 
 	if ((max_depth <= 0) || !head) return;
 	if (max_depth > CMD_MAX_ARGV) max_depth = CMD_MAX_ARGV;
 
-	if (!is_head) {
+	if ((options & FR_COMMAND_OPTION_LIST_CHILD) != 0) {
 		if (!head->child) {
 			rad_assert(head->func != NULL);
 			// @todo - skip syntax_argv as necessary
-			fr_command_list_node(fp, head, 0, argv);
+			fr_command_list_node(fp, head, 0, argv, options);
 			return;
 		}
 		head = head->child;
 	}
 
-	fr_command_list_internal(fp, head, 0, max_depth, argv);
+	fr_command_list_internal(fp, head, 0, max_depth, argv, options);
 }
 
 
