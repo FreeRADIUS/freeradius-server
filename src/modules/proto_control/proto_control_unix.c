@@ -1001,23 +1001,20 @@ static int mod_fd_set(void *instance, int fd)
 }
 
 #undef INT
-#undef CONST
 #ifdef HAVE_FUNOPEN
 #define INT int
-#define CONST const
 #else
 #define INT size_t
-#define CONST
 #endif
 
-static int write_stdout(void *instance, char CONST *buffer, INT buffer_size)
+static int write_stdout(void *instance, char const *buffer, INT buffer_size)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
 
 	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, buffer, buffer_size);
 }
 
-static int write_stderr(void *instance, char CONST *buffer, INT buffer_size)
+static int write_stderr(void *instance, char const *buffer, INT buffer_size)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
 
