@@ -855,7 +855,7 @@ static inline VALUE_PAIR *tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *re
 		}
 	}
 	RINDENT();
-	RDEBUG2("%pP", vp);
+	RDEBUG3("%pP", vp);
 	REXDENT();
 	fr_cursor_append(cursor, vp);
 
@@ -904,11 +904,11 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 
 	identity = (char **)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_IDENTITY);
 
-	if (RDEBUG_ENABLED2) {
+	if (RDEBUG_ENABLED3) {
 		buffer[0] = '\0';
 		X509_NAME_oneline(X509_get_subject_name(cert), buffer, sizeof(buffer));
 		buffer[sizeof(buffer) - 1] = '\0';
-		RDEBUG2("Creating attributes for \"%s\":", buffer[0] ? buffer : "Cert missing subject OID");
+		RDEBUG3("Creating attributes for \"%s\":", buffer[0] ? buffer : "Cert missing subject OID");
 	}
 
 	/*
