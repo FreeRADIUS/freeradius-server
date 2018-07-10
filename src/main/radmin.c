@@ -132,8 +132,19 @@ static fr_cmd_t *radmin_cmd = NULL;
 
 #define CMD_MAX_ARGV (32)
 
-static int cmd_help(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
+static int cmd_help(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info);
 static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
+
+static void fr_radmin_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info)
+{
+	memset(info, 0, sizeof(*info));
+
+	info->argc = 0;
+	info->max_argc = CMD_MAX_ARGV;
+	info->argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
+	info->box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
+	info->cmd = talloc_zero_array(ctx, fr_cmd_t *, CMD_MAX_ARGV);
+}
 
 static void *fr_radmin(UNUSED void *input_ctx)
 {
@@ -149,20 +160,13 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	context = 0;
 	prompt = "radmin> ";
 
-	memset(info, 0, sizeof(*info));
-	info->max_argc = CMD_MAX_ARGV;
-
 	ctx = talloc_init("radmin");
 
 	size = room = 8192;
 	argv_buffer = talloc_array(ctx, char, size);
 	current_str = argv_buffer;
 
-	info->argc = 0;
-	info->max_argc = CMD_MAX_ARGV;
-	info->argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
-	info->box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
-	info->cmd = talloc_zero_array(ctx, fr_cmd_t *, CMD_MAX_ARGV);
+	fr_radmin_info_init(ctx, info);
 
 	context_exit = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
 
@@ -191,7 +195,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	It's just polite.
 			 */
 			if (strcmp(line, "help") == 0) {
-				cmd_help(stdout, stderr, NULL, info);
+				cmd_help(stdout, stderr, &radmin_info, info);
 				goto next;
 			}
 
@@ -348,49 +352,32 @@ static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUS
 	return 0;
 }
 
-static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
+static int cmd_help(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
 {
-	int i;
+	int max = 1;
 	fr_cmd_t *cmd = NULL;
 
-	if (info->argc == 0) {
-		/*
-		 *	List only the top-level commands
-		 */
-		if (radmin_info.argc == 1) {
-			fr_command_list(fp, 1, radmin_cmd, FR_COMMAND_OPTION_NONE);
-			return 0;
-		}
-	}
-
-	if (strcmp(info->argv[0], "all") == 0) {
-		if (radmin_info.argc == 2) {
-			fr_command_list(fp, CMD_MAX_ARGV, radmin_cmd, FR_COMMAND_OPTION_NONE);
-		} else {
-			fr_command_list(fp, CMD_MAX_ARGV, radmin_info.cmd[radmin_info.argc - 1],
-					FR_COMMAND_OPTION_LIST_CHILD);
-		}
-		return 0;
-	}
-
-	for (i = radmin_info.argc - 1; i >= 0; i--) {
-		if ((cmd = radmin_info.cmd[i]) != NULL) break;
-	}
-
 	/*
-	 *	List the current command, but it's children instead of
-	 *	itself.
+	 *	We're called in a context from `radiusd -r`.  Do magic.
 	 */
-	fr_command_list(fp, 1, cmd, FR_COMMAND_OPTION_LIST_CHILD);
+	if (ctx == &radmin_info) {
+		int i;
 
-#if 0
-	// @todo - print out actual help from the above commands
-	help = fr_command_help(radmin_cmd, info->argc, info->argv);
-	if (help) {
-		fprintf(fp, "%s\n", help);
+		rad_assert(radmin_info.argc > 0);
+
+		for (i = radmin_info.argc - 1; i >= 0; i--) {
+			if ((cmd = radmin_info.cmd[i]) != NULL) break;
+		}
+
+		fr_command_list(fp, 1, cmd, FR_COMMAND_OPTION_LIST_CHILD);
 		return 0;
 	}
-#endif
+
+	if ((info->argc > 0) && (strcmp(info->argv[0], "all") == 0)) {
+		max = CMD_MAX_ARGV;
+	}
+
+	fr_command_list(fp, max, radmin_cmd, FR_COMMAND_OPTION_NONE);
 
 	return 0;
 }
@@ -609,4 +596,46 @@ void fr_radmin_stop(void)
 int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
 {
 	return fr_command_add_multi(NULL, &radmin_cmd, name, ctx, table);
+}
+
+/** Run a command from an input string.
+ *
+ * @param ctx the talloc ctx used to allocate memory for this command
+ * @param fp standard output
+ * @param fp_err error output
+ * @param command the command to run
+ * @return
+ *	- <0 on error
+ *	- 0 on insufficient arguments to run command
+ *	- 1 for successfully running the command
+ */
+int fr_radmin_run(TALLOC_CTX *ctx, FILE *fp, FILE *fp_err, char const *command)
+{
+	int argc;
+	char *str;
+	fr_cmd_info_t *info;
+
+	info = talloc_zero(ctx, fr_cmd_info_t);
+	fr_radmin_info_init(info, info);
+
+	str = talloc_strdup(info, command);
+
+	argc = fr_command_str_to_argv(radmin_cmd, info, str);
+	if (argc < 0) {
+		talloc_free(info);
+		return -1;
+	}
+
+	if (!info->runnable) {
+		talloc_free(info);
+		return 0;
+	}
+
+	if (fr_command_run(fp, fp_err, info) < 0) {
+		talloc_free(info);
+		return -1;
+	}
+
+	talloc_free(info);
+	return 1;
 }

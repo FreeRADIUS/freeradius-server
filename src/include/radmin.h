@@ -41,6 +41,7 @@ int fr_radmin_start(void);
 void fr_radmin_stop(void);
 
 int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table);
+int fr_radmin_run(TALLOC_CTX *ctx, FILE *fp, FILE *fp_err, char const *command);
 
 #ifdef __cplusplus
 }
