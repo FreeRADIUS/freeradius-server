@@ -854,6 +854,9 @@ static inline VALUE_PAIR *tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *re
 			return NULL;
 		}
 	}
+	RINDENT();
+	RDEBUG2("%pP", vp);
+	REXDENT();
 	fr_cursor_append(cursor, vp);
 
 	return vp;
@@ -876,6 +879,7 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 	char		buffer[1024];
 	char		attribute[256];
 	char		**identity;
+	char		*subject;
 
 	int		attr_index, loc;
 
@@ -902,7 +906,8 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 
 	identity = (char **)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_IDENTITY);
 
-	RDEBUG2("Creating attributes from certificate OIDs");
+	subject = X509_get_subject_name(cert);
+	RDEBUG2("Creating attributes for \"%s\":", subject ? : subject : "Cert missing subject OID");
 
 	/*
 	 *	Get the Serial Number
