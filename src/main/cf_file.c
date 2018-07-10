@@ -557,7 +557,7 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 		fd = open(filename, O_RDONLY);
 		if (conf_check_uid != euid) {
 			if (seteuid(euid) < 0) {
-				ERROR("Failed restoring effective user ID (%i) after file check",
+				ERROR("Failed restoring effective user ID (%i) after file check: %s",
 				      euid, fr_syserror(errno));
 
 				goto error;
@@ -565,7 +565,7 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 		}
 		if (conf_check_gid != egid) {
 			if (setegid(egid) < 0) {
-				ERROR("Failed restoring effective group ID (%i) after file check",
+				ERROR("Failed restoring effective group ID (%i) after file check: %s",
 				      egid, fr_syserror(errno));
 				goto error;
 			}
