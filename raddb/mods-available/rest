@@ -83,10 +83,13 @@ rest {
 	#
 	#  Additional HTTP headers may be specified with control:REST-HTTP-Header.
 	#  The values of those attributes should be in the format:
-	#    <attribute>: <value>
 	#
-	#  control:REST-HTTP-Header attributes will be consumed after each call
-	#  to the rest module, and each %{rest:} expansion.
+	#    control:REST-HTTP-Header := "<HTTP attribute>: <value>"
+	#
+	#  The control:REST-HTTP-Header attributes will be consumed
+	#  (i.e. deleted) after each call to the rest module, and each
+	#  %{rest:} expansion.  This is so that headers from one REST
+	#  call do not affect headers from a different REST call.
 
 	#
 	#  Body encodings are the same for requests and responses
