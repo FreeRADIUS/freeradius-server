@@ -534,7 +534,10 @@ if test "$vl_cv_lib_readline" != "no"; then
     AC_CHECK_HEADERS(history.h readline/history.h)
   fi
 fi
+LIBREADLINE_PREFIX=$(brew --prefix readline 2>/dev/null)
+
 AC_SUBST(LIBREADLINE)
+AC_SUBST(LIBREADLINE_PREFIX)
 ])dnl
 
 AC_INCLUDE(aclocal.m4)
