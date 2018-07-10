@@ -879,8 +879,6 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 	char		buffer[1024];
 	char		attribute[256];
 	char		**identity;
-	char		*subject;
-
 	int		attr_index, loc;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -906,8 +904,12 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 
 	identity = (char **)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_IDENTITY);
 
-	subject = X509_get_subject_name(cert);
-	RDEBUG2("Creating attributes for \"%s\":", subject ? : subject : "Cert missing subject OID");
+	if (RDEBUG_ENABLED2) {
+		buffer[0] = '\0';
+		X509_NAME_oneline(X509_get_subject_name(cert), buffer, sizeof(buffer));
+		buffer[sizeof(buffer) - 1] = '\0';
+		RDEBUG2("Creating attributes for \"%s\":", buffer[0] ? buffer : "Cert missing subject OID");
+	}
 
 	/*
 	 *	Get the Serial Number
