@@ -646,9 +646,9 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	 *	Get the correct GID for the server.
 	 */
 	config->server_gid = getgid();
-	if (config->gid_is_set) {
+	if (config->gid_is_set && (config->server_gid != config->gid)) {
 		config->server_gid = config->gid;
-		if (config->server_gid != config->gid) do_sgid = true;
+		do_sgid = true;
 	}
 #endif
 
