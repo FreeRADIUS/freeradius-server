@@ -299,7 +299,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 */
 		add_history(line);
 
-		if (fr_command_run(stdout, stderr, info) < 0) {
+		if (fr_command_run(stdout, stderr, info, false) < 0) {
 			/*
 			 *	@todo - send return code to radmin The
 			 *	command MUST have already printed the
@@ -474,7 +474,7 @@ static fr_cmd_table_t cmd_table[] = {
 		.syntax = "foo (bar|(a|b)|xxx [INTEGER])",
 		.func = cmd_test,
 		.help = "test foo (bar|(a|b)|xxx [INTEGER])",
-		.read_only = false,
+		.read_only = true,
 	},
 #endif
 
@@ -523,7 +523,7 @@ static fr_cmd_table_t cmd_table[] = {
 		.syntax = "level INTEGER",
 		.func = cmd_set_debug_level,
 		.help = "Change the debug level.",
-		.read_only = true,
+		.read_only = false,
 	},
 
 	{
@@ -538,7 +538,7 @@ static fr_cmd_table_t cmd_table[] = {
 		.syntax = "level",
 		.func = cmd_show_debug_level,
 		.help = "show debug level",
-		.read_only = false,
+		.read_only = true,
 	},
 
 	CMD_TABLE_END
@@ -598,7 +598,7 @@ int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
  *	- 0 on insufficient arguments to run command
  *	- 1 for successfully running the command
  */
-int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str)
+int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool read_only)
 {
 	int argc, rcode;
 
@@ -609,7 +609,7 @@ int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str)
 		return 0;
 	}
 
-	rcode = fr_command_run(fp, fp_err, info);
+	rcode = fr_command_run(fp, fp_err, info, read_only);
 	fflush(fp);
 	fflush(fp_err);
 

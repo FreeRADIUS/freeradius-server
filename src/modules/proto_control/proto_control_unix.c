@@ -71,6 +71,9 @@ typedef struct {
 
 	fr_stats_t			stats;			//!< statistics for this socket
 
+	char const			*mode_name;
+	bool				read_only;
+
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
 								//!< buffer value.
 	bool				peercred;		//!< whether we use peercred or not
@@ -88,7 +91,8 @@ static const CONF_PARSER unix_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_control_unix_t, filename),
 	.dflt = "${run_dir}/radiusd.sock}" },
 	{ FR_CONF_OFFSET("uid", FR_TYPE_STRING, proto_control_unix_t, uid_name) },
-	{ FR_CONF_OFFSET("git", FR_TYPE_STRING, proto_control_unix_t, gid_name) },
+	{ FR_CONF_OFFSET("gid", FR_TYPE_STRING, proto_control_unix_t, gid_name) },
+	{ FR_CONF_OFFSET("mode", FR_TYPE_STRING, proto_control_unix_t, mode_name) },
 	{ FR_CONF_OFFSET("peercred", FR_TYPE_BOOL, proto_control_unix_t, peercred), .dflt = "yes" },
 
 	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_control_unix_t, recv_buff) },
@@ -96,6 +100,17 @@ static const CONF_PARSER unix_listen_config[] = {
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_control_unix_t, max_packet_size), .dflt = "4096" } ,
 
 	CONF_PARSER_TERMINATOR
+};
+
+#define FR_READ  (1)
+#define FR_WRITE (2)
+
+static FR_NAME_NUMBER mode_names[] = {
+	{ "ro", FR_READ },
+	{ "read-only", FR_READ },
+	{ "read-write", FR_READ | FR_WRITE },
+	{ "rw", FR_READ | FR_WRITE },
+	{ NULL, 0 }
 };
 
 
@@ -121,7 +136,7 @@ static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED
 	memcpy(string, cmd, hdr->length);
 	string[hdr->length] = '\0';
 
-	if (fr_radmin_run(inst->info, inst->stdout, inst->stderr, string) == 1) {
+	if (fr_radmin_run(inst->info, inst->stdout, inst->stderr, string, inst->read_only) == 1) {
 		status = FR_CONDUIT_SUCCESS;
 	}
 
@@ -1084,6 +1099,25 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		}
 	} else {
 		inst->gid = -1;
+	}
+
+	if (!inst->mode_name) {
+		inst->read_only = true;
+	} else {
+		int mode;
+
+		mode = fr_str2int(mode_names, inst->mode_name, 0);
+		if (!mode) {
+			ERROR("Invalid mode name \"%s\"",
+			      inst->mode_name);
+			return -1;
+		}
+
+		if ((mode & FR_WRITE) == 0) {
+			inst->read_only = true;
+		} else {
+			inst->read_only = false;
+		}
 	}
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 20);

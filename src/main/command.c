@@ -1360,11 +1360,12 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
  * @param fp   where the output is sent
  * @param fp_err  where the error output is sent
  * @param info the structure describing the command to expand
+ * @param read_only whether or not this command should be run in read-only mode.
  * @return
  *	- <0 on error
  *	- 0 the command was run successfully
  */
-int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info)
+int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 {
 	int i, rcode;
 	fr_cmd_t *cmd;
@@ -1380,6 +1381,11 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info)
 	for (i = 0; i < info->argc; i++) {
 		cmd = info->cmd[i];
 		rad_assert(cmd != NULL);
+
+		if (!cmd->read_only && read_only) {
+			fr_strerror_printf("No permissions to run command '%s'", cmd->name);
+			return -1;
+		}
 
 		if (!cmd->live) return 0;
 

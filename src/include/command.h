@@ -74,7 +74,7 @@ int fr_command_add_multi(TALLOC_CTX *talloc_ctx, fr_cmd_t **heap_p, char const *
 int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t callback);
 int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, int max_expansions, char const **expansions);
 char const *fr_command_help(fr_cmd_t *head, int argc, char *argv[]);
-int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info);
+int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only);
 void fr_command_debug(FILE *fp, fr_cmd_t *head);
 int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str);
 int fr_command_clear(int new_argc, fr_cmd_info_t *info) CC_HINT(nonnull);
