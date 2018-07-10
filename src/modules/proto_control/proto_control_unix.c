@@ -79,7 +79,9 @@ typedef struct {
 	RADCLIENT			radclient;		//!< for faking out clients
 
 	fr_io_data_read_t		read;			//!< function to process data *after* reading
-
+	FILE				*stdout;
+	FILE				*stderr;
+	fr_cmd_info_t			*info;			//!< for running commands
 } proto_control_unix_t;
 
 static const CONF_PARSER unix_listen_config[] = {
@@ -105,25 +107,26 @@ static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED
 {
 	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
-	uint32_t			status;
+	uint32_t			status = FR_CONDUIT_FAIL;
 	uint8_t				*cmd = buffer + sizeof(*hdr);
+	char				string[1024];
 
 	hdr->length = ntohl(hdr->length);
 
-	DEBUG("Received text length %d '%.*s'", hdr->length, (int) hdr->length, cmd);
+	DEBUG("radmin-remote> %.*s", (int) hdr->length, cmd);
 
-	if ((hdr->length == 9) && (memcmp(cmd, "terminate", 9) == 0)) {
-		radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
-		goto success;
+	/*
+	 *	fr_command_run() expects a zero-terminated string...
+	 */
+	memcpy(string, cmd, hdr->length);
+	string[hdr->length] = '\0';
+
+	if (fr_radmin_run(inst->info, inst->stdout, inst->stderr, string) == 1) {
+		status = FR_CONDUIT_SUCCESS;
 	}
 
-	// if the command starts with "worker ...", then return it
-	// otherwise run the command here.
+	fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, "\n", 1);
 
-	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, "\n", 1);
-
-success:
-	status = FR_CONDUIT_SUCCESS;
 	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_CMD_STATUS, &status, sizeof(status));
 
 	return 0;
@@ -269,6 +272,9 @@ static int mod_close(void *instance)
 
 	close(inst->sockfd);
 	inst->sockfd = -1;
+
+	fclose(inst->stdout);
+	fclose(inst->stderr);
 
 	return 0;
 }
@@ -980,18 +986,61 @@ static int mod_fd_set(void *instance, int fd)
 }
 
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
+static int write_stdout(void *instance, char const *buffer, int buffer_size)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
 
+	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, buffer, buffer_size);
+}
+
+static int write_stderr(void *instance, char const *buffer, int buffer_size)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDERR, buffer, buffer_size);
+}
+
+
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+#ifndef HAVE_FUNOPEN
+	cookie_io_functions_t io;
+#endif
+
+	/*
+	 *	Just listen, but don't do anything with the socket.
+	 */
 	if (!inst->connection) {
 		inst->name = talloc_typed_asprintf(inst, "proto unix server %s filename %s",
 						   "???", inst->filename);
-
 	} else {
 		inst->name = talloc_typed_asprintf(inst, "proto unix via filename %s",
 						   inst->filename);
 	}
+
+#ifdef HAVE_FUNOPEN
+	inst->stdout = funopen(instance, NULL, write_stdout, NULL, NULL);
+	rad_assert(inst->stdout != NULL);
+	inst->stderr = funopen(instance, NULL, write_stderr, NULL, NULL);
+	rad_assert(inst->stderr != NULL);
+#else
+	/*
+	 *	These must be set separately as they have different prototypes.
+	 */
+	io.read = NULL;
+	io.seek = NULL;
+	io.close = NULL;
+	io.write = write_stdout;
+
+	inst->stdout = fopencookie(instance, "w", io);
+
+	io.write = write_stderr;
+	inst->stderr = fopencookie(instance, "w", io);
+#endif
+
+	inst->info = talloc_zero(instance, fr_cmd_info_t);
+	fr_command_info_init(instance, inst->info);
 
 	return 0;
 }
