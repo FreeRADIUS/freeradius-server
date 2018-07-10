@@ -55,7 +55,7 @@ static ssize_t lo_read(int fd, void *out, size_t outlen)
  *	A non-blocking copy of fr_conduit_read().
  */
 ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit,
-			      void *out, size_t outlen, size_t *leftover)
+			      void *out, size_t outlen, size_t *leftover, bool *want_more)
 {
 	ssize_t r;
 	size_t data_len;
@@ -71,12 +71,12 @@ ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit,
 		return -1;
 	}
 
+	*want_more = true;
+
 	/*
 	 *	Ensure that we read the header first.
 	 */
 	if (offset < sizeof(hdr)) {
-		*pconduit = FR_CONDUIT_WANT_MORE;
-
 		r = lo_read(fd, buffer + offset, sizeof(hdr) - offset);
 		if (r == 0) return 0; /* closed */
 
@@ -127,19 +127,11 @@ ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit,
 	offset += r;
 
 	if (offset == outlen) {
+		*want_more = false;
 		*pconduit = ntohs(hdr.conduit);
-
-		/*
-		 *	The other end can't set this.
-		 */
-		if (*pconduit == FR_CONDUIT_WANT_MORE) {
-			return -1;
-		}
-
 		return outlen;
 	}
 
-	*pconduit = FR_CONDUIT_WANT_MORE;
 	*leftover = offset;
 	return 0;
 }
