@@ -236,7 +236,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_control_unix - Received command packet length %d on %s",
+	DEBUG3("proto_control_unix - Received command packet length %d on %s",
 	       (int) data_size, inst->name);
 
 	/*
@@ -1060,6 +1060,15 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	io.write = write_stderr;
 	inst->stderr = fopencookie(instance, "w", io);
 #endif
+
+	/*
+	 *	@todo - if we move to a binary protocol, then we
+	 *	should change this to a small (i.e. 1K) buffer.  The
+	 *	data should be sent over to the remote side as quickly
+	 *	as possible.
+	 */
+	(void) setvbuf(inst->stdout, NULL, _IOLBF, 0);
+	(void) setvbuf(inst->stderr, NULL, _IOLBF, 0);
 
 	inst->info = talloc_zero(instance, fr_cmd_info_t);
 	fr_command_info_init(instance, inst->info);
