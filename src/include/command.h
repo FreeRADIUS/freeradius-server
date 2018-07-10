@@ -85,6 +85,7 @@ int fr_command_clear(int new_argc, fr_cmd_info_t *info) CC_HINT(nonnull);
 #define FR_COMMAND_OPTION_NAME		(1 << 1)
 
 void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, int options);
+void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info);
 
 #ifdef __cplusplus
 }

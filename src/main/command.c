@@ -1915,3 +1915,17 @@ int fr_command_clear(int new_argc, fr_cmd_info_t *info)
 	info->argc = new_argc;
 	return 0;
 }
+
+/** Initialize an fr_cmd_info_t structure.
+ *
+ */
+void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info)
+{
+	memset(info, 0, sizeof(*info));
+
+	info->argc = 0;
+	info->max_argc = CMD_MAX_ARGV;
+	info->argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
+	info->box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
+	info->cmd = talloc_zero_array(ctx, fr_cmd_t *, CMD_MAX_ARGV);
+}

@@ -135,17 +135,6 @@ static fr_cmd_t *radmin_cmd = NULL;
 static int cmd_help(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info);
 static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
 
-static void fr_radmin_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info)
-{
-	memset(info, 0, sizeof(*info));
-
-	info->argc = 0;
-	info->max_argc = CMD_MAX_ARGV;
-	info->argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
-	info->box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
-	info->cmd = talloc_zero_array(ctx, fr_cmd_t *, CMD_MAX_ARGV);
-}
-
 static void *fr_radmin(UNUSED void *input_ctx)
 {
 	int argc;
@@ -166,7 +155,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	argv_buffer = talloc_array(ctx, char, size);
 	current_str = argv_buffer;
 
-	fr_radmin_info_init(ctx, info);
+	fr_command_info_init(ctx, info);
 
 	context_exit = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
 
@@ -600,7 +589,7 @@ int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
 
 /** Run a command from an input string.
  *
- * @param ctx the talloc ctx used to allocate memory for this command
+ * @param info used to stor
  * @param fp standard output
  * @param fp_err error output
  * @param str the command to run.  Note that this command is mangled in-place!
@@ -609,29 +598,25 @@ int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
  *	- 0 on insufficient arguments to run command
  *	- 1 for successfully running the command
  */
-int fr_radmin_run(TALLOC_CTX *ctx, FILE *fp, FILE *fp_err, char *str)
+int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str)
 {
 	int argc, rcode;
-	fr_cmd_info_t *info;
-
-	info = talloc_zero(ctx, fr_cmd_info_t);
-	fr_radmin_info_init(info, info);
 
 	argc = fr_command_str_to_argv(radmin_cmd, info, str);
-	if (argc < 0) {
-		talloc_free(info);
-		return -1;
-	}
+	if (argc < 0) return -1;
 
 	if (!info->runnable) {
-		talloc_free(info);
 		return 0;
 	}
 
 	rcode = fr_command_run(fp, fp_err, info);
 	fflush(fp);
 	fflush(fp_err);
-	talloc_free(info);
+
+	/*
+	 *	reset "info" to be a top-level context again.
+	 */
+	(void) fr_command_clear(0, info);
 
 	if (rcode < 0) return rcode;
 
