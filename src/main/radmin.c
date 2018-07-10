@@ -611,7 +611,7 @@ int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
  */
 int fr_radmin_run(TALLOC_CTX *ctx, FILE *fp, FILE *fp_err, char const *command)
 {
-	int argc;
+	int argc, rcode;
 	char *str;
 	fr_cmd_info_t *info;
 
@@ -631,11 +631,12 @@ int fr_radmin_run(TALLOC_CTX *ctx, FILE *fp, FILE *fp_err, char const *command)
 		return 0;
 	}
 
-	if (fr_command_run(fp, fp_err, info) < 0) {
-		talloc_free(info);
-		return -1;
-	}
-
+	rcode = fr_command_run(fp, fp_err, info);
+	fflush(fp);
+	fflush(fp_err);
 	talloc_free(info);
+
+	if (rcode < 0) return rcode;
+
 	return 1;
 }
