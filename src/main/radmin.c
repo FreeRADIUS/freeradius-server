@@ -593,6 +593,7 @@ int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
  * @param fp standard output
  * @param fp_err error output
  * @param str the command to run.  Note that this command is mangled in-place!
+ * @param read_only permissions for the administrator trying to run the command.
  * @return
  *	- <0 on error
  *	- 0 on insufficient arguments to run command
