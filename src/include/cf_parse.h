@@ -192,7 +192,7 @@ _Generic((_ct), \
 	.name = _n, \
 	.type = _t, \
 	.offset = FR_CONF_TYPE_CHECK((_t), &(((_s *)NULL)->_f), offsetof(_s, _f))
-#  define FR_CONF_IS_SET_OFFSET(_n, _t, _s, _f) \
+#  define FR_CONF_OFFSET_IS_SET(_n, _t, _s, _f) \
 	.name = _n, \
 	.type = (_t) | FR_TYPE_IS_SET, \
 	.offset = FR_CONF_TYPE_CHECK((_t), &(((_s *)NULL)->_f), offsetof(_s, _f)), \
@@ -202,7 +202,7 @@ _Generic((_ct), \
 	.type = _t, \
 	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p)
 
-#  define FR_CONF_IS_SET_POINTER(_n, _t, _p) \
+#  define FR_CONF_POINTER_ISSET(_n, _t, _p) \
 	.name = _n, \
 	.type = (_t) | FR_TYPE_IS_SET, \
 	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p), \
@@ -230,7 +230,7 @@ _Generic((_ct), \
 	.name = _n, \
 	.type = _t, \
 	.offset = offsetof(_s, _f)
-#  define FR_CONF_IS_SET_OFFSET(_n, _t, _s, _f) \
+#  define FR_CONF_OFFSET_IS_SET(_n, _t, _s, _f) \
 	.name = _n, \
 	.type = (_t) | FR_TYPE_IS_SET, \
 	.offset = offsetof(_s, _f), \
@@ -239,7 +239,7 @@ _Generic((_ct), \
 	.name = _n, \
 	.type = _t, \
 	.data = _p
-#  define FR_CONF_IS_SET_POINTER(_n, _t, _p) \
+#  define FR_CONF_POINTER_ISSET(_n, _t, _p) \
 	.name = _n, \
 	.type = (_t) | FR_TYPE_IS_SET, \
 	.data = _p, \

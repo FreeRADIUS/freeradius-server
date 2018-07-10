@@ -94,7 +94,7 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, proto_dhcpv4_udp_t, port_name) },
 
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_dhcpv4_udp_t, port) },
-	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_dhcpv4_udp_t, recv_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_dhcpv4_udp_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("broadcast", FR_TYPE_BOOL, proto_dhcpv4_udp_t, broadcast) } ,
 

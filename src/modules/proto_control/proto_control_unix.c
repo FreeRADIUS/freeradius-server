@@ -95,7 +95,7 @@ static const CONF_PARSER unix_listen_config[] = {
 	{ FR_CONF_OFFSET("mode", FR_TYPE_STRING, proto_control_unix_t, mode_name) },
 	{ FR_CONF_OFFSET("peercred", FR_TYPE_BOOL, proto_control_unix_t, peercred), .dflt = "yes" },
 
-	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_control_unix_t, recv_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_control_unix_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_control_unix_t, max_packet_size), .dflt = "4096" } ,
 

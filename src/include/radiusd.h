@@ -157,10 +157,12 @@ typedef struct {
 	bool		write_pid;			//!< write the PID file
 
 #ifdef HAVE_SETUID
-	uid_t		server_uid;			//!< UID we run as
-	gid_t		server_gid;			//!< GID we run as
-	char const	*uid_name;
-	char const	*gid_name;
+	uid_t		server_uid;			//!< UID we're running as.
+	gid_t		server_gid;			//!< GID we're runing as.
+	uid_t		uid;				//!< UID we should run as.
+	bool		uid_is_set;
+	gid_t		gid;				//!< GID we should run as.
+	bool		gid_is_set;
 #endif
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
