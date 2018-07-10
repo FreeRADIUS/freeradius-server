@@ -542,27 +542,31 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 
 		if ((conf_check_gid != (gid_t)-1) && ((egid = getegid()) != conf_check_gid)) {
 			if (setegid(conf_check_gid) < 0) {
-				ERROR("Failed setting effective group ID (%i) for file check: %s", fr_syserror(errno));
+				ERROR("Failed setting effective group ID (%i) for file check: %s",
+				      conf_check_gid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		if ((conf_check_uid != (uid_t)-1) && ((euid = geteuid()) != conf_check_uid)) {
 			if (seteuid(conf_check_uid) < 0) {
-				ERROR("Failed setting effective user ID (%i) for file check: %s", fr_syserror(errno));
+				ERROR("Failed setting effective user ID (%i) for file check: %s",
+				      conf_check_uid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		fd = open(filename, O_RDONLY);
 		if (conf_check_uid != euid) {
 			if (seteuid(euid) < 0) {
-				ERROR("Failed restoring effective user ID (%i) after file check", fr_syserror(errno));
+				ERROR("Failed restoring effective user ID (%i) after file check",
+				      euid, fr_syserror(errno));
 
 				goto error;
 			}
 		}
 		if (conf_check_gid != egid) {
 			if (setegid(egid) < 0) {
-				ERROR("Failed restoring effective group ID (%i) after file check", fr_syserror(errno));
+				ERROR("Failed restoring effective group ID (%i) after file check",
+				      egid, fr_syserror(errno));
 				goto error;
 			}
 		}
