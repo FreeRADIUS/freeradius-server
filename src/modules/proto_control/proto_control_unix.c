@@ -288,8 +288,8 @@ static int mod_close(void *instance)
 	close(inst->sockfd);
 	inst->sockfd = -1;
 
-	fclose(inst->stdout);
-	fclose(inst->stderr);
+	if (inst->stdout) fclose(inst->stdout);
+	if (inst->stderr) fclose(inst->stderr);
 
 	return 0;
 }
@@ -1035,10 +1035,11 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	if (!inst->connection) {
 		inst->name = talloc_typed_asprintf(inst, "proto unix server %s filename %s",
 						   "???", inst->filename);
-	} else {
-		inst->name = talloc_typed_asprintf(inst, "proto unix via filename %s",
-						   inst->filename);
+		return 0;
 	}
+
+	inst->name = talloc_typed_asprintf(inst, "proto unix via filename %s",
+					   inst->filename);
 
 #ifdef HAVE_FUNOPEN
 	inst->stdout = funopen(instance, NULL, write_stdout, NULL, NULL);
