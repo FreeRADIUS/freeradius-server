@@ -157,7 +157,7 @@ static ssize_t mod_read_init(void *instance, UNUSED void **packet_ctx, UNUSED fr
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
 	uint32_t			magic;
 
-	if (htonl(hdr->conduit) != FR_CONDUIT_INIT_ACK) {
+	if (htons(hdr->conduit) != FR_CONDUIT_INIT_ACK) {
 		DEBUG("ERROR: Connection is missing initial ACK packet.");
 		return -1;
 	}
