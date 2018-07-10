@@ -656,36 +656,34 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	 *	Get the correct UID for the server.
 	 */
 	config->server_uid = getuid();
-	if (config->uid_is_set) {
+	if (config->uid_is_set && (config->server_uid != config->uid)) {
 		/*
 		 *	We're not the correct user.  Go set that.
 		 */
-		if (config->server_uid != config->uid) {
-			config->server_uid = config->uid;
-			do_suid = true;
+		config->server_uid = config->uid;
+		do_suid = true;
 
 #ifdef HAVE_INITGROUPS
-			{
-				struct passwd *user;
+		{
+			struct passwd *user;
 
-				if (rad_getpwuid(config, &user, config->uid) < 0) {
-					fprintf(stderr, "%s: Failed resolving UID %i: %s\n",
-						config->name, (int)config->uid, fr_syserror(errno));
-					return -1;
-				}
-
-				if (initgroups(user->pw_name, config->server_gid) < 0) {
-					fprintf(stderr, "%s: Cannot initialize supplementary group list "
-						"for user %s: %s\n",
-						config->name, user->pw_name, fr_syserror(errno));
-					talloc_free(user);
-					return -1;
-				}
-
-				talloc_free(user);
+			if (rad_getpwuid(config, &user, config->uid) < 0) {
+				fprintf(stderr, "%s: Failed resolving UID %i: %s\n",
+					config->name, (int)config->uid, fr_syserror(errno));
+				return -1;
 			}
-#endif
+
+			if (initgroups(user->pw_name, config->server_gid) < 0) {
+				fprintf(stderr, "%s: Cannot initialize supplementary group list "
+					"for user %s: %s\n",
+					config->name, user->pw_name, fr_syserror(errno));
+				talloc_free(user);
+				return -1;
+			}
+
+			talloc_free(user);
 		}
+#endif
 	}
 
 	/*
