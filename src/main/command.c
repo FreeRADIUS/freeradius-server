@@ -2116,7 +2116,6 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 			int max_expansions, char **expansions)
 {
-	int count;
 	char const *word, *p, *q;
 	fr_cmd_t *cmd;
 	int count;
