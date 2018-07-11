@@ -1986,6 +1986,65 @@ static int expand_thing(fr_cmd_argv_t *argv, int count, int max_expansions, char
 	return count + 1;
 }
 
+static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char const *word,
+			 int count, int max_expansions, char **expansions)
+{
+	char const *p, *q;
+
+	/*
+	 *	Loop over syntax_argv, looking for matches.
+	 */
+	while (argv) {
+		while (isspace((int) *word)) word++;
+
+		if (!*word) {
+		expand_syntax:
+			return expand_thing(argv, count, max_expansions, expansions);
+		}
+
+		/*
+		 *	@todo - handle optional, alternate, data
+		 *	types, etc.
+		 */
+		if (argv->type != FR_TYPE_FIXED) return count;
+
+		/*
+		 *	Try to find a matching argv
+		 */
+		p = word;
+		q = argv->name;
+
+		while (*p == *q) {
+			p++;
+			q++;
+		}
+
+		/*
+		 *	We're supposed to expand the text at this
+		 *	location, go do so.  Even if it doesn't match.
+		 */
+		if (((text + start) >= word) && ((text + start) <= p)) {
+			goto expand_syntax;
+		}
+
+		/*
+		 *	The only matching exit condition is *p is a
+		 *	space, and *q is the NUL character.
+		 */
+		if (isspace((int) *p) && !*q) {
+			argv = argv->next;
+			continue;
+		}
+
+		/*
+		 *	No match, stop here.
+		 */
+		break;
+	}
+
+	return count;
+}
+
 
 /** Do readline-style command completions
  *
@@ -2001,9 +2060,9 @@ static int expand_thing(fr_cmd_argv_t *argv, int count, int max_expansions, char
 int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 			int max_expansions, char **expansions)
 {
+	int count;
 	char const *word, *p, *q;
 	fr_cmd_t *cmd;
-	fr_cmd_argv_t *argv;
 	int count;
 
 	cmd = head;
@@ -2081,58 +2140,5 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	 */
 	if (!cmd->syntax) return count;
 
-	argv = cmd->syntax_argv;
-
-	/*
-	 *	Loop over syntax_argv, looking for matches.
-	 */
-	while (argv) {
-		while (isspace((int) *word)) word++;
-
-		if (!*word) {
-		expand_syntax:
-			return expand_thing(argv, count, max_expansions, expansions);
-		}
-
-		/*
-		 *	@todo - handle optional, alternate, data
-		 *	types, etc.
-		 */
-		if (argv->type != FR_TYPE_FIXED) return count;
-
-		/*
-		 *	Try to find a matching argv
-		 */
-		p = word;
-		q = argv->name;
-
-		while (*p == *q) {
-			p++;
-			q++;
-		}
-
-		/*
-		 *	We're supposed to expand the text at this
-		 *	location, go do so.  Even if it doesn't match.
-		 */
-		if (((text + start) >= word) && ((text + start) <= p)) {
-			goto expand_syntax;
-		}
-
-		/*
-		 *	The only matching exit condition is *p is a
-		 *	space, and *q is the NUL character.
-		 */
-		if (isspace((int) *p) && !*q) {
-			argv = argv->next;
-			continue;
-		}
-
-		/*
-		 *	No match, stop here.
-		 */
-		break;
-	}
-
-	return count;
+	return expand_syntax(cmd->syntax_argv, text, start, word, count, max_expansions, expansions);
 }
