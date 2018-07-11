@@ -131,9 +131,51 @@ static void add_history(UNUSED char *line)
 static fr_cmd_t *radmin_cmd = NULL;
 
 #define CMD_MAX_ARGV (32)
+#define CMD_MAX_EXPANSIONS (128)
 
 static int cmd_help(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info);
 static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
+
+static int radmin_num_expansions;
+static char const *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
+
+static char *
+radmin_expansion_walk(const char *text, int state)
+{
+    static int current, len;
+    char const *name;
+
+    if (!state) {
+	    current = 0;
+	    len = strlen(text);
+    }
+
+    if (current >= radmin_num_expansions) return 0;
+
+    while ((name = radmin_expansions[current++])) {
+        if (strncmp(name, text, len) == 0) {
+            return strdup(name);
+        }
+    }
+
+    return NULL;
+}
+
+
+static char **
+radmin_completion(const char *text, int start, UNUSED int end)
+{
+	int num;
+
+	rl_attempted_completion_over = 1;
+
+	num = fr_command_complete(radmin_cmd, rl_line_buffer, start, CMD_MAX_EXPANSIONS, radmin_expansions);
+	if (num <= 0) return NULL;
+
+	radmin_num_expansions = num;
+
+	return rl_completion_matches(text, radmin_expansion_walk);
+}
 
 static void *fr_radmin(UNUSED void *input_ctx)
 {
@@ -160,6 +202,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	context_exit = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
 
 	fflush(stdout);
+
+	rl_attempted_completion_function = radmin_completion;
 
 	while (true) {
 		char *line;

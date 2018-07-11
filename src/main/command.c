@@ -1935,3 +1935,103 @@ void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info)
 	info->box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
 	info->cmd = talloc_zero_array(ctx, fr_cmd_t *, CMD_MAX_ARGV);
 }
+
+
+/** Do readline-style command completions
+ *
+ *  Most useful as part of readline tab expansions.
+ *
+ *  @todo - call strdup() on the names, because that's what readline
+ *  expects.  <sigh>
+ *
+ * @param head of the command tree
+ * @param text the text to check
+ * @param start offset in the text where the completions should start
+ * @param max_expansions how many entries in the "expansions" array.
+ * @param expansions where the expansions are stored.
+ */
+int fr_command_complete(fr_cmd_t *head, char const *text, int start,
+			int max_expansions, char const **expansions)
+{
+	int count;
+	char const *word, *p, *q;
+	fr_cmd_t *cmd;
+
+	cmd = head;
+	word = text;
+	count = 0;
+
+	/*
+	 *	Try to do this without mangling "text".
+	 */
+	while (cmd) {
+		while (isspace((int) *word)) word++;
+
+		/*
+		 *	End of the input.  Tab expand everything here.
+		 */
+		if (!*word) {
+		expand:
+			while (cmd && (count < max_expansions)) {
+				expansions[count] = cmd->name;
+				count++;
+				cmd = cmd->next;
+			}
+			return count;
+		}
+
+		/*
+		 *	Try to find a matching cmd->name
+		 */
+		p = word;
+		q = cmd->name;
+
+		while (*p == *q) {
+			p++;
+			q++;
+		}
+
+		/*
+		 *	We're supposed to expand the text at this
+		 *	location, go do so.  Even if it doesn't match.
+		 */
+		if (((text + start) >= word) && ((text + start) <= p)) {
+			goto expand;
+		}
+
+		/*
+		 *	The only matching exit condition is *p is a
+		 *	space, and *q is the NUL character.
+		 */
+		if (!(isspace((int) *p) && !*q)) {
+			cmd = cmd->next;
+			continue;
+		}
+
+		if (cmd->intermediate) {
+			rad_assert(cmd->child != NULL);
+			word = p;
+			cmd = cmd->child;
+			continue;
+		}
+
+		break;
+	}
+
+	/*
+	 *	No match, can't do anything.
+	 */
+	if (!cmd) return count;
+
+	/*
+	 *	No syntax, can't do anything.
+	 */
+	if (!cmd->syntax) return count;
+
+	/*
+	 *	@todo - loop over the command syntax, looking for
+	 *	matches.
+	 */
+
+	return count;
+}
