@@ -236,8 +236,12 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 {
 	fr_state_entry_t *prev, *next;
 
-	prev = entry->prev;
-	next = entry->next;
+	/*
+	 *	Check the memory is still valid
+	 */
+	(void) talloc_get_type_abort(entry, fr_state_entry_t);
+	prev = entry->prev ? talloc_get_type_abort(entry->prev, fr_state_entry_t) : NULL;
+	next = entry->next ? talloc_get_type_abort(entry->next, fr_state_entry_t) : NULL;
 
 	if (prev) {
 		rad_assert(state->head != entry);
