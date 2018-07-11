@@ -1008,14 +1008,14 @@ static int mod_fd_set(void *instance, int fd)
 #define INT size_t
 #endif
 
-static size_t write_stdout(void *instance, char const *buffer, INT buffer_size)
+static ssize_t write_stdout(void *instance, char const *buffer, INT buffer_size)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
 
 	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, buffer, buffer_size);
 }
 
-static size_t write_stderr(void *instance, char const *buffer, INT buffer_size)
+static ssize_t write_stderr(void *instance, char const *buffer, INT buffer_size)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
 
