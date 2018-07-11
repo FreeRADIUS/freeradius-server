@@ -1485,7 +1485,7 @@ void fr_worker(fr_worker_t *worker)
 		if (num_events < 0) {
 			if (worker->exiting) return; /* don't complain if we're exiting */
 
-			PERROR("Failed corraling events");
+			PERROR("Failed corralling events");
 			break;
 		}
 
