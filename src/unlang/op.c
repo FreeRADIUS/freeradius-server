@@ -143,7 +143,6 @@ static unlang_action_t unlang_function_call(REQUEST *request,
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
-	unlang_t			*instruction = frame->instruction;
 	unlang_action_t			ua;
 	char const 			*caller;
 
