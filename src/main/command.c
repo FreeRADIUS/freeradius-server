@@ -1986,15 +1986,16 @@ static int expand_thing(fr_cmd_argv_t *argv, int count, int max_expansions, char
 	return count + 1;
 }
 
-static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char const *word,
+static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char const **word_p,
 			 int count, int max_expansions, char **expansions)
 {
 	char const *p, *q;
+	char const *word = *word_p;
 
 	/*
 	 *	Loop over syntax_argv, looking for matches.
 	 */
-	while (argv) {
+	for (/* nothing */ ; argv != NULL; argv = argv->next) {
 		while (isspace((int) *word)) word++;
 
 		if (!*word) {
@@ -2002,11 +2003,65 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 			return expand_thing(argv, count, max_expansions, expansions);
 		}
 
+		if (argv->type == FR_TYPE_VARARGS) return count;
+
 		/*
-		 *	@todo - handle optional, alternate, data
-		 *	types, etc.
+		 *	Optional gets expanded, too.
 		 */
-		if (argv->type != FR_TYPE_FIXED) return count;
+		if (argv->type == FR_TYPE_OPTIONAL) {
+			char const *my_word;
+
+			my_word = word;
+
+			count = expand_syntax(argv->child, text, start, &my_word, count, max_expansions, expansions);
+
+			if (word != my_word) *word_p = word;
+			continue;
+		}
+
+		if (argv->type == FR_TYPE_ALTERNATE) {
+			fr_cmd_argv_t *child;
+
+			for (child = argv->child; child != NULL; child = child->next) {
+				fr_cmd_argv_t *sub;
+				char const *my_word = word;
+
+				rad_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
+				rad_assert(child->child != NULL);
+				sub = child->child;
+
+				/*
+				 *	See if the child eats any of
+				 *	the input.  If so, use it.
+				 */
+				count = expand_syntax(sub, text, start, &my_word, count, max_expansions, expansions);
+				if (my_word != word) {
+					*word_p = word;
+					break;
+				}
+			}
+
+			continue;
+		}
+
+		/*
+		 *	Skip data types (for now)
+		 */
+		if (argv->type < FR_TYPE_FIXED) {
+			while (*word && !isspace((int) *word)) {
+				word++;
+			}
+
+			if (!*word) return count;
+
+			*word_p = word;
+			continue;
+		}
+
+		/*
+		 *	This should be the only remaining data type.
+		 */
+		rad_assert(argv->type == FR_TYPE_FIXED);
 
 		/*
 		 *	Try to find a matching argv
@@ -2032,7 +2087,7 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		 *	space, and *q is the NUL character.
 		 */
 		if (isspace((int) *p) && !*q) {
-			argv = argv->next;
+			*word_p = word;
 			continue;
 		}
 
@@ -2042,6 +2097,7 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		break;
 	}
 
+	*word_p = word;
 	return count;
 }
 
@@ -2133,12 +2189,16 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	/*
 	 *	No match, can't do anything.
 	 */
-	if (!cmd) return count;
+	if (!cmd) {
+		return count;
+	}
 
 	/*
 	 *	No syntax, can't do anything.
 	 */
-	if (!cmd->syntax) return count;
+	if (!cmd->syntax) {
+		return count;
+	}
 
-	return expand_syntax(cmd->syntax_argv, text, start, word, count, max_expansions, expansions);
+	return expand_syntax(cmd->syntax_argv, text, start, &word, count, max_expansions, expansions);
 }
