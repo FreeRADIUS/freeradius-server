@@ -1014,7 +1014,7 @@ do {\
 			return -1;
 		}
 	}
-	dependency_init_features(subcs);
+	dependency_features_init(subcs);
 
 	/*
 	 *	Add a 'version' subsection off the main config

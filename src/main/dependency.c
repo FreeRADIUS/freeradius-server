@@ -316,7 +316,7 @@ int dependency_version_number_add(CONF_SECTION *cs, char const *name, char const
  * @param cs Where to add the CONF_PAIRS, if null pairs will be added
  *	to the 'feature' section of the main config.
  */
-void dependency_init_features(CONF_SECTION *cs)
+void dependency_features_init(CONF_SECTION *cs)
 {
 	dependency_feature_add(cs, "accounting",
 #ifdef WITH_ACCOUNTING
@@ -570,7 +570,7 @@ void dependency_version_print(void)
 		int max = 0, len;
 
 		MEM(features = cf_section_alloc(NULL, NULL, "feature", NULL));
-		dependency_init_features(features);
+		dependency_features_init(features);
 
 		MEM(versions = cf_section_alloc(NULL, NULL, "version", NULL));
 		dependency_version_numbers_init(versions);
