@@ -311,11 +311,12 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	/*
 	 *	Clean up old entries.
 	 */
-	for (next = FR_DLIST_FIRST(state->to_expire);
-	     next;
-	     next = FR_DLIST_NEXT(state->to_expire, next)) {
+	next = FR_DLIST_FIRST(state->to_expire);
+	while (next) {
 		entry = fr_ptr_to_type(fr_state_entry_t, list, next);
 		(void)talloc_get_type_abort(entry, fr_state_entry_t);	/* Allow examination */
+		next = FR_DLIST_NEXT(state->to_expire, next);		/* Advance *before* potential unlinking */
+
 		if (entry == old) continue;
 
 		/*
