@@ -292,6 +292,12 @@ static int _state_entry_free(fr_state_entry_t *entry)
 	 *	so we know it'll be cleaned up.
 	 */
 	if (entry->data) (void)fr_cond_assert(request_data_verify_parent(entry->ctx, entry->data));
+
+	/*
+	 *	Verify the state entry is no longer linked
+	 */
+	rad_assert(!entry->prev);
+	rad_assert(!entry->next);
 #endif
 
 	/*
@@ -382,6 +388,9 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	for (next = free_head; next;) {
 		entry = next;
 		next = entry->next;
+#ifdef WITH_VERIFY_PTR
+		entry->next = NULL;
+#endif
 		talloc_free(entry);
 	}
 
