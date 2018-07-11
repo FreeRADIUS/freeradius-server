@@ -2004,6 +2004,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	char const *word, *p, *q;
 	fr_cmd_t *cmd;
 	fr_cmd_argv_t *argv;
+	int count;
 
 	cmd = head;
 	word = text;
