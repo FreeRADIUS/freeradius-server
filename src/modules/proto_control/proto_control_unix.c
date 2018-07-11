@@ -122,8 +122,9 @@ static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED
 {
 	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
-	uint32_t			status = FR_CONDUIT_FAIL;
+	uint32_t			status;
 	uint8_t				*cmd = buffer + sizeof(*hdr);
+	int				rcode;
 	char				string[1024];
 
 	hdr->length = ntohl(hdr->length);
@@ -136,12 +137,23 @@ static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED
 	memcpy(string, cmd, hdr->length);
 	string[hdr->length] = '\0';
 
-	if (fr_radmin_run(inst->info, inst->stdout, inst->stderr, string, inst->read_only) == 1) {
+	rcode = fr_radmin_run(inst->info, inst->stdout, inst->stderr, string, inst->read_only);
+	if (rcode < 0) {
+		status = FR_CONDUIT_FAIL;
+	} else if (rcode == 0) {
+		/*
+		 *	The other end should keep track of it's
+		 *	context, and send us full lines.
+		 */
+		(void) fr_command_clear(0, inst->info);
+		status = FR_CONDUIT_PARTIAL;
+	} else {
 		status = FR_CONDUIT_SUCCESS;
 	}
 
 	fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, "\n", 1);
 
+	status = htonl(status);
 	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_CMD_STATUS, &status, sizeof(status));
 
 	return 0;

@@ -50,6 +50,7 @@ typedef enum fr_conduit_origin_t {
 
 typedef enum fr_conduit_result_t {
 	FR_CONDUIT_FAIL = 0,
+	FR_CONDUIT_PARTIAL,
 	FR_CONDUIT_SUCCESS
 } fr_conduit_result_t;
 

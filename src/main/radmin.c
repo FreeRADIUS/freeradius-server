@@ -658,7 +658,10 @@ int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool r
 	int argc, rcode;
 
 	argc = fr_command_str_to_argv(radmin_cmd, info, str);
-	if (argc < 0) return -1;
+	if (argc < 0) {
+		fprintf(fp_err, "%s\n", fr_strerror());
+		return -1;
+	}
 
 	if (!info->runnable) {
 		return 0;

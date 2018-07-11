@@ -856,7 +856,10 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 
 		} else if (len == FR_CONDUIT_SUCCESS) {
-			break;
+			continue;
+
+		} else if (len == FR_CONDUIT_PARTIAL) {
+			continue;
 
 		} else if (len == FR_CONDUIT_FAIL) {
 			exit_status = EXIT_FAILURE;
