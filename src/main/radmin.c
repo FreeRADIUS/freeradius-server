@@ -136,26 +136,32 @@ static fr_cmd_t *radmin_cmd = NULL;
 static int cmd_help(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info);
 static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
 
+/*
+ *	Global variables because readline() is stupid.
+ */
 static int radmin_num_expansions;
-static char const *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
+static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
 
 static char *
 radmin_expansion_walk(const char *text, int state)
 {
     static int current, len;
-    char const *name;
+    char *name;
 
     if (!state) {
 	    current = 0;
 	    len = strlen(text);
     }
 
-    if (current >= radmin_num_expansions) return 0;
+    if (current >= radmin_num_expansions) return NULL;
 
-    while ((name = radmin_expansions[current++])) {
-        if (strncmp(name, text, len) == 0) {
-            return strdup(name);
-        }
+    while ((name = radmin_expansions[current])) {
+	    radmin_expansions[current++] = NULL;
+
+	    if (strncmp(name, text, len) == 0) {
+		    return name;
+	    }
+	    free(name);
     }
 
     return NULL;

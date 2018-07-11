@@ -1939,21 +1939,19 @@ void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info)
 
 /** Do readline-style command completions
  *
- *  Most useful as part of readline tab expansions.
- *
- *  @todo - call strdup() on the names, because that's what readline
- *  expects.  <sigh>
+ *  Most useful as part of readline tab expansions.  The expansions
+ *  are strdup() strings, and MUST be free'd by the caller.
  *
  * @param head of the command tree
  * @param text the text to check
  * @param start offset in the text where the completions should start
  * @param max_expansions how many entries in the "expansions" array.
- * @param expansions where the expansions are stored.
+ * @param[in,out] expansions where the expansions are stored.
  */
 int fr_command_complete(fr_cmd_t *head, char const *text, int start,
-			int max_expansions, char const **expansions)
+			int max_expansions, char **expansions)
 {
-	int count;
+	int count, i;
 	char const *word, *p, *q;
 	fr_cmd_t *cmd;
 
@@ -1973,7 +1971,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		if (!*word) {
 		expand:
 			while (cmd && (count < max_expansions)) {
-				expansions[count] = cmd->name;
+				expansions[count] = strdup(cmd->name);
 				count++;
 				cmd = cmd->next;
 			}
@@ -2015,6 +2013,10 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 			continue;
 		}
 
+		/*
+		 *	Skip the command name we matched.
+		 */
+		word = p;
 		break;
 	}
 
@@ -2032,6 +2034,53 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	 *	@todo - loop over the command syntax, looking for
 	 *	matches.
 	 */
+	for (i = 0; i < cmd->syntax_argc; i++) {
+		while (isspace((int) *word)) word++;
+
+		/*
+		 *	@todo - handle optional, alternate, data
+		 *	types, etc.
+		 */
+		if (cmd->syntax_argv[i].type != FR_TYPE_FIXED) return 0;
+
+		if (!*word) {
+		expand_syntax:
+			expansions[0] = strdup(cmd->syntax_argv[i].name);
+			return 1;
+		}
+
+		/*
+		 *	Try to find a matching argv
+		 */
+		p = word;
+		q = cmd->syntax_argv[i].name;
+
+		while (*p == *q) {
+			p++;
+			q++;
+		}
+
+		/*
+		 *	We're supposed to expand the text at this
+		 *	location, go do so.  Even if it doesn't match.
+		 */
+		if (((text + start) >= word) && ((text + start) <= p)) {
+			goto expand_syntax;
+		}
+
+		/*
+		 *	The only matching exit condition is *p is a
+		 *	space, and *q is the NUL character.
+		 */
+		if (isspace((int) *p) && !*q) {
+			continue;
+		}
+
+		/*
+		 *	No match, stop here.
+		 */
+		break;
+	}
 
 	return count;
 }
