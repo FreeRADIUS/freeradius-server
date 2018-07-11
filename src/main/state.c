@@ -313,7 +313,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	for (next = FR_DLIST_FIRST(state->to_expire);
 	     next;
 	     next = FR_DLIST_NEXT(state->to_expire, next)) {
-		entry = talloc_get_type_abort(fr_ptr_to_type(fr_state_entry_t, list, next), fr_state_entry_t);
+		entry = fr_ptr_to_type(fr_state_entry_t, list, next);
+		(void)talloc_get_type_abort(entry, fr_state_entry_t);	/* Allow examination */
 		if (entry == old) continue;
 
 		/*
