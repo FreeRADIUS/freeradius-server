@@ -2001,9 +2001,9 @@ static int expand_thing(fr_cmd_argv_t *argv, int count, int max_expansions, char
 int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 			int max_expansions, char **expansions)
 {
-	int count, i;
 	char const *word, *p, *q;
 	fr_cmd_t *cmd;
+	fr_cmd_argv_t *argv;
 
 	cmd = head;
 	word = text;
@@ -2080,29 +2080,30 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	 */
 	if (!cmd->syntax) return count;
 
+	argv = cmd->syntax_argv;
+
 	/*
-	 *	@todo - loop over the command syntax, looking for
-	 *	matches.
+	 *	Loop over syntax_argv, looking for matches.
 	 */
-	for (i = 0; i < cmd->syntax_argc; i++) {
+	while (argv) {
 		while (isspace((int) *word)) word++;
 
 		if (!*word) {
 		expand_syntax:
-			return expand_thing(&cmd->syntax_argv[i], count, max_expansions, expansions);
+			return expand_thing(argv, count, max_expansions, expansions);
 		}
 
 		/*
 		 *	@todo - handle optional, alternate, data
 		 *	types, etc.
 		 */
-		if (cmd->syntax_argv[i].type != FR_TYPE_FIXED) return count;
+		if (argv->type != FR_TYPE_FIXED) return count;
 
 		/*
 		 *	Try to find a matching argv
 		 */
 		p = word;
-		q = cmd->syntax_argv[i].name;
+		q = argv->name;
 
 		while (*p == *q) {
 			p++;
@@ -2122,6 +2123,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		 *	space, and *q is the NUL character.
 		 */
 		if (isspace((int) *p) && !*q) {
+			argv = argv->next;
 			continue;
 		}
 
