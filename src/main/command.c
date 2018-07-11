@@ -1937,6 +1937,56 @@ void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info)
 }
 
 
+static int expand_thing(fr_cmd_argv_t *argv, int count, int max_expansions, char **expansions)
+{
+	fr_cmd_argv_t *child;
+
+	if (count >= max_expansions) return count;
+
+	if (argv->type == FR_TYPE_ALTERNATE) {
+		child = NULL;
+
+		for (child = argv->child; child != NULL; child = child->next) {
+			fr_cmd_argv_t *sub;
+
+			rad_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
+			rad_assert(child->child != NULL);
+			sub = child->child;
+
+			count = expand_thing(sub, count, max_expansions, expansions);
+		}
+
+		return count;
+	}
+
+	if (argv->type == FR_TYPE_ALTERNATE) {
+		for (child = argv->child; child != NULL; child = child->next) {
+			fr_cmd_argv_t *sub;
+
+			rad_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
+			rad_assert(child->child != NULL);
+			sub = child->child;
+
+			count = expand_thing(sub, count, max_expansions, expansions);
+		}
+
+		return count;
+	}
+
+	/*
+	 *	@todo - might want to do something smarter here?
+	 */
+	if (argv->type == FR_TYPE_OPTIONAL) {
+		return expand_thing(argv->child, count, max_expansions, expansions);
+	}
+
+	if (argv->type != FR_TYPE_FIXED) return count;
+
+	expansions[count] = strdup(argv->name);
+	return count + 1;
+}
+
+
 /** Do readline-style command completions
  *
  *  Most useful as part of readline tab expansions.  The expansions
@@ -2037,17 +2087,16 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	for (i = 0; i < cmd->syntax_argc; i++) {
 		while (isspace((int) *word)) word++;
 
+		if (!*word) {
+		expand_syntax:
+			return expand_thing(&cmd->syntax_argv[i], count, max_expansions, expansions);
+		}
+
 		/*
 		 *	@todo - handle optional, alternate, data
 		 *	types, etc.
 		 */
-		if (cmd->syntax_argv[i].type != FR_TYPE_FIXED) return 0;
-
-		if (!*word) {
-		expand_syntax:
-			expansions[0] = strdup(cmd->syntax_argv[i].name);
-			return 1;
-		}
+		if (cmd->syntax_argv[i].type != FR_TYPE_FIXED) return count;
 
 		/*
 		 *	Try to find a matching argv
