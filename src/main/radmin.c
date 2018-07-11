@@ -544,9 +544,13 @@ static fr_cmd_table_t cmd_table[] = {
 	CMD_TABLE_END
 };
 
-int fr_radmin_start(void)
+int fr_radmin_start(main_config_t *config)
 {
 	gettimeofday(&start_time, NULL);
+
+#ifdef USE_READLINE
+	memcpy(&rl_readline_name, &config->name, sizeof(rl_readline_name)); /* const issues on OSX */
+#endif
 
 	fr_command_register_hook = fr_radmin_register;
 

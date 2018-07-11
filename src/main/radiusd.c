@@ -488,7 +488,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	if (radmin && (fr_radmin_start() < 0)) EXIT_WITH_FAILURE;
+	if (radmin && (fr_radmin_start(config) < 0)) EXIT_WITH_FAILURE;
 
 #ifndef __MINGW32__
 	/*
