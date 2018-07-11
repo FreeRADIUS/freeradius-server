@@ -147,8 +147,6 @@ static unlang_action_t unlang_function_call(REQUEST *request,
 	unlang_action_t			ua;
 	char const 			*caller;
 
-	*priority = instruction->actions[*presult];
-
 	/*
 	 *	Don't let the callback mess with the current
 	 *	module permanently.
