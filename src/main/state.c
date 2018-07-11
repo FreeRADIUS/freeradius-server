@@ -320,6 +320,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 
 	uint8_t			old_state[sizeof(old->state)];
 	int			old_tries = 0;
+	bool			too_many = false;
+
 
 	/*
 	 *	Clean up old entries.
@@ -343,11 +345,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		break;
 	}
 
-	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) {
-		RERROR("Failed inserting state entry - At maximum ongoing session limit (%u)",
-		       state->max_sessions);
-		return NULL;
-	}
+	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) too_many = true;
 
 	/*
 	 *	Record the information from the old state, we may base the
@@ -385,6 +383,17 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		entry = next;
 		next = entry->next;
 		talloc_free(entry);
+	}
+
+	/*
+	 *	Have to do this post-cleanup, else we end up returning with
+	 *	a list full of entries to free with none of them being
+	 *	freed which is bad...
+	 */
+	if (too_many) {
+		RERROR("Failed inserting state entry - At maximum ongoing session limit (%u)",
+		       state->max_sessions);
+		return NULL;
 	}
 
 	/*
