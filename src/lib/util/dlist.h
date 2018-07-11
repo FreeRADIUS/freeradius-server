@@ -92,6 +92,20 @@ static inline void fr_dlist_remove(fr_dlist_t *entry)
 #define FR_DLIST_NEXT(head, p_entry) ((p_entry->next == &head) ? NULL : p_entry->next)
 #define FR_DLIST_TAIL(head) ((head.prev == &head) ? NULL : head.prev)
 
+#ifdef WITH_VERIFY_PTR
+#  define FR_DLIST_VERIFY(_head, _type, _member) \
+do { \
+	fr_dlist_t *_next; \
+	for (_next = FR_DLIST_FIRST(_head); \
+	     _next; \
+	     _next = FR_DLIST_NEXT(_head, _next)) { \
+		(void)talloc_get_type_abort(fr_ptr_to_type(_type, _member, _next), _type); \
+	} \
+} while(0)
+#else
+#  define FR_DLIST_VERIFY(_head, _type, _member)
+#endif
+
 /** Convert a pointer to a member into a pointer to the parent structure.
  *
  */
