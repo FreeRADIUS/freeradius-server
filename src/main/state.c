@@ -302,6 +302,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 
 	uint8_t			old_state[sizeof(old->state)];
 	int			old_tries = 0;
+	uint64_t		timed_out = 0;
 	bool			too_many = false;
 	fr_dlist_t		to_free, *next;
 
@@ -323,12 +324,14 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		if (entry->cleanup < now) {
 			state_entry_unlink(state, entry);
 			fr_dlist_insert_tail(&to_free, &entry->list);
-			state->timed_out++;
+			timed_out++;
 			continue;
 		}
 
 		break;
 	}
+
+	state->timed_out += timed_out;
 
 	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) too_many = true;
 
@@ -353,6 +356,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		}
 	}
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	if (timed_out > 0) RWDEBUG("Cleaning up %"PRIu64" timed out state entries", timed_out);
 
 	/*
 	 *	Now free the unlinked entries.
