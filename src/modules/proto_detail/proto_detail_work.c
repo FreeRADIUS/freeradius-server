@@ -29,6 +29,7 @@
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_detail.h"
 

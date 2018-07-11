@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/io/time.h>
+#include <freeradius-devel/util/dlist.h>
 #include <sys/stat.h>
 
 #define FR_EV_BATCH_FDS (256)

@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/connection.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/unlang.h>
 

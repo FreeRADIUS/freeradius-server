@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/io/time.h>
+#include <freeradius-devel/util/dlist.h>
 
 /*
  *	Avoid too many ifdef's later in the code.

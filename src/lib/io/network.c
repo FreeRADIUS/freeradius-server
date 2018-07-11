@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/network.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/util/dlist.h>
 
 /*
  *	Define our own debugging.

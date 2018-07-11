@@ -25,6 +25,8 @@
  */
 
 #include "rlm_radius.h"
+#include <freeradius-devel/util/dlist.h>
+
 typedef struct rlm_radius_retransmit_t {
 	struct timeval		start;		//!< when we started sending the packet
 	uint32_t		count;		//!< how many times we sent this packet

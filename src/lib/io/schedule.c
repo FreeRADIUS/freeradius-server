@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/autoconf.h>
 
 #include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/rbtree.h>
 
 #ifdef HAVE_PTHREAD_H

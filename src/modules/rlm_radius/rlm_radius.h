@@ -16,6 +16,7 @@
  */
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/util/dlist.h>
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>

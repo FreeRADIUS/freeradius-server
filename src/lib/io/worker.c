@@ -66,6 +66,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/util/dlist.h>
 
 /**
  *  Track things by priority and time.
