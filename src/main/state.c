@@ -48,6 +48,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/state.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/rad_assert.h>
 
 /** Holds a state value, and associated VALUE_PAIRs and data
@@ -94,8 +95,7 @@ typedef struct state_entry {
 
 	uint64_t		seq_start;			//!< Number of first request in this sequence.
 	time_t			cleanup;			//!< When this entry should be cleaned up.
-	struct state_entry	*prev;				//!< Previous entry in the cleanup list.
-	struct state_entry	*next;				//!< Next entry in the cleanup list.
+	fr_dlist_t		dlist;				//!< Entry in the list of things to expire.
 
 	int			tries;
 
@@ -114,8 +114,8 @@ struct fr_state_tree_t {
 								//!< timeout.
 	uint32_t		max_sessions;			//!< Maximum number of sessions we track.
 	rbtree_t		*tree;				//!< rbtree used to lookup state value.
+	fr_dlist_t		to_expire;			//!< Linked list of entries to free.
 
-	fr_state_entry_t	*head, *tail;			//!< Entries to expire.
 	uint32_t		timeout;			//!< How long to wait before cleaning up state entires.
 
 	bool			thread_safe;			//!< Whether we lock the tree whilst modifying it.
@@ -146,24 +146,19 @@ static int state_entry_cmp(void const *one, void const *two)
  */
 static int _state_tree_free(fr_state_tree_t *state)
 {
-	fr_state_entry_t *this;
+	fr_dlist_t		*next;
 
 	if (main_config->spawn_workers) pthread_mutex_destroy(&state->mutex);
 
 	DEBUG4("Freeing state tree %p", state);
 
-	while (state->head) {
-		this = state->head;
-		state_entry_unlink(state, this);
-		talloc_free(this);
+	while ((next = FR_DLIST_FIRST(state->to_expire))) {
+		fr_state_entry_t	*entry;
+
+		entry = fr_ptr_to_type(fr_state_entry_t, dlist, next);
+		state_entry_unlink(state, entry);
+		talloc_free(entry);
 	}
-
-	for (this = state->head; this; this = this->next) DEBUG4("State %" PRIu64 " needs freeing prev was %" PRIu64 "", this->id, this->prev ? this->prev->id : 100000);
-
-	/*
-	 *	Ensure we got *all* the entries
-	 */
-	rad_assert(!state->head);
 
 	/*
 	 *	Free the rbtree
@@ -210,6 +205,8 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 		return NULL;
 	}
 
+	FR_DLIST_INIT(state->to_expire);
+
 	/*
 	 *	We need to do controlled freeing of the
 	 *	rbtree, so that all the state entries
@@ -234,32 +231,12 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
  */
 static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 {
-	fr_state_entry_t *prev, *next;
-
 	/*
 	 *	Check the memory is still valid
 	 */
 	(void) talloc_get_type_abort(entry, fr_state_entry_t);
-	prev = entry->prev ? talloc_get_type_abort(entry->prev, fr_state_entry_t) : NULL;
-	next = entry->next ? talloc_get_type_abort(entry->next, fr_state_entry_t) : NULL;
 
-	if (prev) {
-		rad_assert(state->head != entry);
-		prev->next = next;
-	} else if (state->head) {
-		rad_assert(state->head == entry);
-		state->head = next;
-	}
-
-	if (next) {
-		rad_assert(state->tail != entry);
-		next->prev = prev;
-	} else if (state->tail) {
-		rad_assert(state->tail == entry);
-		state->tail = prev;
-	}
-	entry->next = NULL;
-	entry->prev = NULL;
+	fr_dlist_remove(&entry->dlist);
 
 	rbtree_deletebydata(state->tree, entry);
 
@@ -296,8 +273,8 @@ static int _state_entry_free(fr_state_entry_t *entry)
 	/*
 	 *	Verify the state entry is no longer linked
 	 */
-	rad_assert(!entry->prev);
-	rad_assert(!entry->next);
+	rad_assert(entry->dlist.prev == &entry->dlist);
+	rad_assert(entry->dlist.next == &entry->dlist);
 #endif
 
 	/*
@@ -321,20 +298,22 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	uint32_t		x;
 	time_t			now = time(NULL);
 	VALUE_PAIR		*vp;
-	fr_state_entry_t	*entry, *next;
-	fr_state_entry_t	*free_head = NULL, **free_next = &free_head;
+	fr_state_entry_t	*entry;
 
 	uint8_t			old_state[sizeof(old->state)];
 	int			old_tries = 0;
 	bool			too_many = false;
+	fr_dlist_t		to_free, *next;
 
+	FR_DLIST_INIT(to_free);
 
 	/*
 	 *	Clean up old entries.
 	 */
-	for (entry = state->head; entry != NULL; entry = next) {
-		next = entry->next;
-
+	for (next = FR_DLIST_FIRST(state->to_expire);
+	     next;
+	     next = FR_DLIST_NEXT(state->to_expire, next)) {
+		entry = fr_ptr_to_type(fr_state_entry_t, dlist, next);
 		if (entry == old) continue;
 
 		/*
@@ -342,8 +321,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 */
 		if (entry->cleanup < now) {
 			state_entry_unlink(state, entry);
-			*free_next = entry;
-			free_next = &(entry->next);
+			fr_dlist_insert_tail(&to_free, &entry->dlist);
 			state->timed_out++;
 			continue;
 		}
@@ -370,7 +348,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 */
 		if (!old->data) {
 			state_entry_unlink(state, old);
-			*free_next = old;
+			fr_dlist_insert_tail(&to_free, &old->dlist);
 		}
 	}
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
@@ -385,13 +363,9 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	be freed also, and it may have complex destructors associated
 	 *	with it.
 	 */
-	for (next = free_head; next;) {
-		entry = next;
-		next = entry->next;
-#ifdef WITH_VERIFY_PTR
-		entry->next = NULL;
-#endif
-		talloc_free(entry);
+	while ((next = FR_DLIST_FIRST(to_free)) != NULL) {
+		fr_dlist_remove(next);
+		talloc_free(fr_ptr_to_type(fr_state_entry_t, dlist, next));
 	}
 
 	/*
@@ -526,18 +500,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	Link it to the end of the list, which is implicitely
 	 *	ordered by cleanup time.
 	 */
-	if (!state->head) {
-		entry->prev = entry->next = NULL;
-		state->head = state->tail = entry;
-	} else {
-		rad_assert(state->tail != NULL);
-
-		entry->prev = state->tail;
-		state->tail->next = entry;
-
-		entry->next = NULL;
-		state->tail = entry;
-	}
+	fr_dlist_insert_tail(&state->to_expire, &entry->dlist);
 
 	return entry;
 }
