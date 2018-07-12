@@ -2112,6 +2112,9 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
  * @param start offset in the text where the completions should start
  * @param max_expansions how many entries in the "expansions" array.
  * @param[in,out] expansions where the expansions are stored.
+ * @return
+ *	- <0 on error
+ *	- >= 0 number of expansions in the array
  */
 int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 			int max_expansions, char **expansions)
@@ -2200,4 +2203,91 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	}
 
 	return expand_syntax(cmd->syntax_argv, text, start, &word, count, max_expansions, expansions);
+}
+
+/** Do readline-style command completions
+ *
+ *  Most useful as part of readline tab expansions.  The expansions
+ *  are strdup() strings, and MUST be free'd by the caller.
+ *
+ * @param head of the command tree
+ * @param text the text to check
+ */
+int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
+{
+	char const *word, *p, *q;
+	fr_cmd_t *cmd;
+
+	cmd = head;
+	word = text;
+
+	/*
+	 *	Try to do this without mangling "text".
+	 */
+	while (cmd) {
+		while (isspace((int) *word)) word++;
+
+		/*
+		 *	End of the input.  Tab expand everything here.
+		 */
+		if (!*word) {
+			while (cmd) {
+				if (!cmd->help) {
+					fprintf(fp, "%s\n", cmd->name);
+				} else {
+					fprintf(fp, "%-30s%s\n", cmd->name, cmd->help);
+				}
+				cmd = cmd->next;
+			}
+			return 0;
+		}
+
+		/*
+		 *	Try to find a matching cmd->name
+		 */
+		p = word;
+		q = cmd->name;
+
+		while (*p == *q) {
+			p++;
+			q++;
+		}
+
+		/*
+		 *	The only matching exit condition is *p is a
+		 *	space, and *q is the NUL character.
+		 */
+		if (!(isspace((int) *p) && !*q)) {
+			cmd = cmd->next;
+			continue;
+		}
+
+		if (cmd->intermediate) {
+			rad_assert(cmd->child != NULL);
+			word = p;
+			cmd = cmd->child;
+			continue;
+		}
+
+		/*
+		 *	Skip the command name we matched.
+		 */
+		word = p;
+		break;
+	}
+
+	/*
+	 *	No match, can't do anything.
+	 */
+	if (!cmd) {
+		return 0;
+	}
+
+	if (!cmd->help) {
+		fprintf(fp, "%s\n", cmd->name);
+	} else {
+		fprintf(fp, "%-30s%s\n", cmd->name, cmd->help);
+	}
+
+	return 0;
 }

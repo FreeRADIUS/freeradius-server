@@ -137,6 +137,7 @@ static char *radmin_buffer = NULL;
 static int cmd_help(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info);
 static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
 
+#ifdef USE_READLINE
 /*
  *	Global variables because readline() is stupid.
  */
@@ -184,6 +185,27 @@ radmin_completion(const char *text, int start, UNUSED int end)
 	return rl_completion_matches(text, radmin_expansion_walk);
 }
 
+static int radmin_help(UNUSED int count, UNUSED int key)
+{
+	char buffer[8192];
+
+	printf("\n");
+
+	/*
+	 *	@todo make this not retarded.
+	 */
+	strlcpy(buffer, radmin_buffer, sizeof(buffer));
+	strlcat(buffer, " ", sizeof(buffer));
+	strlcat(buffer, rl_line_buffer, sizeof(buffer));
+
+	(void) fr_command_print_help(stdout, radmin_cmd, buffer);
+	rl_on_new_line();
+	return 0;
+}
+
+#endif	/* USE_READLINE */
+
+
 static void *fr_radmin(UNUSED void *input_ctx)
 {
 	int argc;
@@ -201,8 +223,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	ctx = talloc_init("radmin");
 
 	size = room = 8192;
-	radmin_buffer = talloc_array(ctx, char, size);
-	argv_buffer = talloc_array(ctx, char, size);
+	radmin_buffer = talloc_zero_array(ctx, char, size);
+	argv_buffer = talloc_zero_array(ctx, char, size);
 	current_str = argv_buffer;
 
 	fr_command_info_init(ctx, info);
@@ -213,7 +235,11 @@ static void *fr_radmin(UNUSED void *input_ctx)
 
 	fflush(stdout);
 
+#ifdef USE_READLINE
 	rl_attempted_completion_function = radmin_completion;
+
+	(void) rl_bind_key('?', radmin_help);
+#endif
 
 	while (true) {
 		char *line;
