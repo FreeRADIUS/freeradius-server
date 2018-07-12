@@ -148,7 +148,7 @@ static int _state_tree_free(fr_state_tree_t *state)
 {
 	fr_state_entry_t *entry;
 
-	if (main_config->spawn_workers) pthread_mutex_destroy(&state->mutex);
+	if (state->thread_safe) pthread_mutex_destroy(&state->mutex);
 
 	DEBUG4("Freeing state tree %p", state);
 
