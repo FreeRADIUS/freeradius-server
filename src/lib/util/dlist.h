@@ -76,10 +76,9 @@ static inline void fr_dlist_entry_init(fr_dlist_t *entry)
  @endcode
  *
  * @param[in] _head	structure to initialise.
- * @param[in] _type	of structure being stored in the list,
- *			e.g. fr_value_box_t, fr_dict_attr_t etc...
- * @param[in] _field	Containing the #fr_dlist_t structure within
- *			structure being stored.
+ * @param[in] _type	of item being stored in the list, e.g. fr_value_box_t,
+ *			fr_dict_attr_t etc...
+ * @param[in] _field	Containing the #fr_dlist_t structure within item being stored.
  */
 #define fr_dlist_init(_head, _type, _field) _fr_dlist_init(_head, offsetof(_type, _field), NULL)
 
@@ -91,10 +90,9 @@ static inline void fr_dlist_entry_init(fr_dlist_t *entry)
  * @copybrief fr_dlist_init.
  *
  * @param[in] _head	structure to initialise.
- * @param[in] _type	of structure being stored in the list,
- *			e.g. fr_value_box_t, fr_dict_attr_t etc...
- * @param[in] _field	Containing the #fr_dlist_t within
- *			structure being stored.
+ * @param[in] _type	of item being stored in the list, e.g. fr_value_box_t,
+ *			fr_dict_attr_t etc...
+ * @param[in] _field	Containing the #fr_dlist_t within item being stored.
  */
 #define fr_dlist_talloc_init(_head, _type, _field) _fr_dlist_init(_head, offsetof(_type, _field), STRINGIFY(_type))
 
