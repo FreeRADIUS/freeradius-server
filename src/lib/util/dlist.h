@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file io/dlist.h
+ * @file util/dlist.h
  * @brief Doubly linked list implementation
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
