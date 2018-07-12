@@ -1,12 +1,5 @@
 TARGET	:= unit_test_module
-SOURCES := \
-	auth.c \
-	client.c \
-	crypt.c \
-	users_file.c \
-	mainconfig.c \
-	unit_test_module.c \
-	state.c \
+SOURCES := unit_test_module.c
 
 TGT_INSTALLDIR  :=
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT)

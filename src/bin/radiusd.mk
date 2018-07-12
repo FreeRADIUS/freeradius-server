@@ -1,14 +1,7 @@
 TARGET	:= radiusd
 SOURCES := \
-    auth.c \
-    crypt.c \
-    users_file.c \
     radiusd.c \
-    radmin.c \
-    state.c \
-    stats.c \
-    snmp.c \
-    process.c
+    radmin.c
 
 SRC_CFLAGS	:= $(LIBREADLINE_CFLAGS)
 
