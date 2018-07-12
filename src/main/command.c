@@ -2210,6 +2210,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
  *  Most useful as part of readline tab expansions.  The expansions
  *  are strdup() strings, and MUST be free'd by the caller.
  *
+ * @param fp where the help is printed
  * @param head of the command tree
  * @param text the text to check
  */
