@@ -180,7 +180,7 @@ static inline void *fr_dlist_head(fr_dlist_head_t *list_head)
 
 /** Return the TAIL item of a list or NULL if the list is empty
  *
- * @param[in] list_head		to return the HEAD item from.
+ * @param[in] list_head		to return the TAIL item from.
  * @return
  *	- The TAIL item.
  *	- NULL if no items exist in the list.
