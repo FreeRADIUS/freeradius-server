@@ -34,7 +34,7 @@ RCSID("$Id$")
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
 #else
-#  include <freeradius-devel/stdatomic.h>
+#  include <freeradius-devel/util/stdatomic.h>
 #endif
 
 #include <freeradius-devel/io/atomic_queue.h>

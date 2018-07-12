@@ -28,7 +28,7 @@
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
 #else
-#  include <freeradius-devel/stdatomic.h>
+#  include <freeradius-devel/util/stdatomic.h>
 #endif
 #include <talloc.h>
 #include <freeradius-devel/server/rad_assert.h>
