@@ -2049,7 +2049,7 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		 */
 		if ((argv->type == FR_TYPE_STRING) &&
 		    ((*word == '"') || (*word == '\''))) {
-			char quote = word++;
+			char quote = *word++;
 
 			while (*word && (*word != quote)) {
 				if (*word == '\\') {
