@@ -202,7 +202,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 		return NULL;
 	}
 
-	fr_dlist_init(&state->to_expire, fr_state_entry_t, list);
+	fr_dlist_talloc_init(&state->to_expire, fr_state_entry_t, list);
 
 	/*
 	 *	We need to do controlled freeing of the
