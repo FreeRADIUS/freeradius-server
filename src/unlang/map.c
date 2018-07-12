@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/map.h>
 #include <freeradius-devel/xlat.h>
 
-#include "../main/map_proc_priv.h"
+#include <freeradius-devel/server/map_proc_priv.h>
 #include "unlang_priv.h"
 
 typedef enum {

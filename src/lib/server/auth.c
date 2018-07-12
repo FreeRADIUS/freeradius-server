@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file main/auth.c
+ * @file src/lib/server/auth.c
  * @brief The old authentication state machine.
  *
  * @copyright 2000,2006  The FreeRADIUS server project

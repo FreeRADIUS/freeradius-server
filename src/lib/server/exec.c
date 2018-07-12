@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file main/exec.c
+ * @file src/lib/server/exec.c
  * @brief Execute external programs.
  *
  * @copyright 2000-2004,2006  The FreeRADIUS server project

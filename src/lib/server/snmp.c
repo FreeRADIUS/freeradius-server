@@ -17,7 +17,7 @@
 /*
  * $Id$
  *
- * @file main/snmp.c
+ * @file src/lib/server/snmp.c
  * @brief Implements an SNMP-like interface using FreeRADIUS attributes
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>

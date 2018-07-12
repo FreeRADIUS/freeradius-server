@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file main/cond_eval.c
+ * @file src/lib/server/cond_eval.c
  * @brief Evaluate complex conditions
  *
  * @copyright 2007  The FreeRADIUS server project

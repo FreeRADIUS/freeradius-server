@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file main/pairmove.c
+ * @file src/lib/server/pairmove.c
  * @brief Old style mapping code
  *
  * @copyright 2007  The FreeRADIUS server project

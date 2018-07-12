@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief Multi-packet state handling
- * @file main/state.c
+ * @file src/lib/server/state.c
  *
  * @ingroup AVP
  *

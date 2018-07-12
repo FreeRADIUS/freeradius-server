@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file main/crypt.c
+ * @file src/lib/server/crypt.c
  * @brief A thread safe crypt wrapper.
  *
  * @copyright 2000-2006,2016  The FreeRADIUS server project.

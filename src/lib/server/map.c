@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief map / template functions
- * @file main/map.c
+ * @file src/lib/server/map.c
  *
  * @ingroup AVP
  *

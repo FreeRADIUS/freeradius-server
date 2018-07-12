@@ -6,6 +6,5 @@ SUBMAKEFILES := include/all.mk \
 	bin/all.mk \
 	protocols/all.mk \
 	modules/all.mk \
-	main/all.mk \
 	unlang/all.mk \
 	tests/all.mk

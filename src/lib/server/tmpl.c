@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief #VALUE_PAIR template functions
- * @file main/tmpl.c
+ * @file src/lib/server/tmpl.c
  *
  * @ingroup AVP
  *

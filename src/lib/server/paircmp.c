@@ -19,7 +19,7 @@
  *
  * @brief Valuepair functions that are radiusd-specific and as such do not
  * 	  belong in the library.
- * @file main/paircmp.c
+ * @file src/lib/server/paircmp.c
  *
  * @ingroup AVP
  *

@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file main/dependency.c
+ * @file src/lib/server/dependency.c
  * @brief Check version numbers of dependencies.
  *
  * @copyright 1999-2014  The FreeRADIUS server project

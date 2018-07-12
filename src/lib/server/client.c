@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file main/client.c
+ * @file src/lib/server/client.c
  * @brief Manage clients allowed to communicate with the server.
  *
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

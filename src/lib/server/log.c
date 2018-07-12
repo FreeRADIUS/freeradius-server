@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief Logging functions used by the server core.
- * @file main/log.c
+ * @file src/lib/server/log.c
  *
  * @copyright 2000,2006  The FreeRADIUS server project
  * @copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>

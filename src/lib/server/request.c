@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief Functions for allocating requests and storing internal data in them.
- * @file main/request.c
+ * @file src/lib/server/request.c
  *
  * @copyright 2015 The FreeRADIUS server project
  */
