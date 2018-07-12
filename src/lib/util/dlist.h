@@ -105,7 +105,7 @@ static inline void _fr_dlist_init(fr_dlist_head_t *head, size_t offset, char con
 	head->type = type;
 }
 
-/** Insert an item into the head of the list
+/** Insert an item into the head of a list
  *
  * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
  *	 ptr must be a talloced chunk of the type passed to #fr_dlist_talloc_init.
@@ -134,7 +134,7 @@ static inline void fr_dlist_insert_head(fr_dlist_head_t *list_head, void *ptr)
 	head->next = entry;
 }
 
-/** Insert an item into the tail of the list
+/** Insert an item into the tail of a list
  *
  * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
  *	 ptr must be a talloced chunk of the type passed to #fr_dlist_talloc_init.
