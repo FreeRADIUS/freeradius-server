@@ -1213,7 +1213,7 @@ int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t callback, 
 {
 	fr_event_user_t *user, *next;
 
-	for (user = fr_dlist_first(&el->user_callbacks);
+	for (user = fr_dlist_head(&el->user_callbacks);
 	     user != NULL;
 	     user = next) {
 		next = fr_dlist_next(&el->user_callbacks, user);
@@ -1267,7 +1267,7 @@ int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void
 {
 	fr_event_pre_t *pre, *next;
 
-	for (pre = fr_dlist_first(&el->pre_callbacks);
+	for (pre = fr_dlist_head(&el->pre_callbacks);
 	     pre != NULL;
 	     pre = next) {
 		next = fr_dlist_next(&el->pre_callbacks, pre);
@@ -1321,7 +1321,7 @@ int fr_event_post_delete(fr_event_list_t *el, fr_event_cb_t callback, void *uctx
 {
 	fr_event_post_t *post, *next;
 
-	for (post = fr_dlist_first(&el->post_callbacks);
+	for (post = fr_dlist_head(&el->post_callbacks);
 	     post != NULL;
 	     post = next) {
 		next = fr_dlist_next(&el->post_callbacks, post);
@@ -1452,7 +1452,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	 *	application has more work to do, in which case we
 	 *	re-set the timeout to be instant.
 	 */
-	for (pre = fr_dlist_first(&el->pre_callbacks);
+	for (pre = fr_dlist_head(&el->pre_callbacks);
 	     pre != NULL;
 	     pre = fr_dlist_next(&el->pre_callbacks, pre)) {
 		if (pre->callback(pre->uctx, wake) > 0) {
@@ -1712,7 +1712,7 @@ service:
 	/*
 	 *	Run all of the post-processing events.
 	 */
-	for (post = fr_dlist_first(&el->post_callbacks);
+	for (post = fr_dlist_head(&el->post_callbacks);
 	     post != NULL;
 	     post = fr_dlist_next(&el->post_callbacks, post)) {
 		when = el->now;
@@ -1833,9 +1833,9 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		goto error;
 	}
 
-	fr_dlist_init(&el->pre_callbacks, offsetof(fr_event_pre_t, entry));
-	fr_dlist_init(&el->post_callbacks, offsetof(fr_event_post_t, entry));
-	fr_dlist_init(&el->user_callbacks, offsetof(fr_event_user_t, entry));
+	fr_dlist_init(&el->pre_callbacks, fr_event_pre_t, entry);
+	fr_dlist_init(&el->post_callbacks, fr_event_post_t, entry);
+	fr_dlist_init(&el->user_callbacks, fr_event_user_t, entry);
 
 	if (status) (void) fr_event_pre_insert(el, status, status_uctx);
 

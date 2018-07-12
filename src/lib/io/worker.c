@@ -166,7 +166,7 @@ static void fr_worker_post_event(fr_event_list_t *el, struct timeval *now, void 
  *	the same code.
  */
 #define WORKER_HEAP_INIT(_name, _func) do { \
-		fr_dlist_init(&worker->_name.list, offsetof(fr_channel_data_t, request.entry)); \
+		fr_dlist_init(&worker->_name.list, fr_channel_data_t, request.entry); \
 		worker->_name.heap = fr_heap_create(worker, _func, fr_channel_data_t, channel.heap_id); \
 		if (!worker->_name.heap) { \
 			(void) fr_event_user_delete(worker->el, fr_worker_evfilt_user, worker); \
@@ -1307,7 +1307,7 @@ nomem:
 	 *	the worker thread is running.
 	 */
 	memset(&worker->tracking, 0, sizeof(worker->tracking));
-	fr_dlist_init(&worker->tracking.list, offsetof(fr_time_tracking_t, list.entry));
+	fr_dlist_init(&worker->tracking.list, fr_time_tracking_t, list.entry);
 
 	worker->kq = fr_event_list_kq(worker->el);
 	rad_assert(worker->kq >= 0);

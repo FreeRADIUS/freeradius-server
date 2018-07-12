@@ -140,7 +140,7 @@ static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_
 	 *	Loop over all of the other thread instances, locking
 	 *	them, and adding their statistics in.
 	 */
-	for (other = fr_dlist_first(&t->inst->list);
+	for (other = fr_dlist_head(&t->inst->list);
 	     other != NULL;
 	     other = fr_dlist_next(&t->inst->list, other)) {
 		int i;
@@ -421,7 +421,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	pthread_mutex_init(&inst->mutex, NULL);
 #endif
 
-	fr_dlist_init(&inst->list, offsetof(rlm_stats_thread_t, entry));
+	fr_dlist_init(&inst->list, rlm_stats_thread_t, entry);
 
 	return 0;
 }

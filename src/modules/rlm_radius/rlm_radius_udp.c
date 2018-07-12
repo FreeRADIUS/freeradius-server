@@ -299,7 +299,7 @@ static void conn_check_idle(rlm_radius_udp_connection_t *c)
 		/*
 		 *	No outstanding packets, we're idle.
 		 */
-		if (fr_dlist_first(&c->sent) == NULL) {
+		if (fr_dlist_head(&c->sent) == NULL) {
 			break;
 		}
 
@@ -2002,7 +2002,7 @@ static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t s
 		/*
 		 *	Move "sent" packets back to the thread queue,
 		 */
-		while ((u = fr_dlist_first(&c->sent)) != NULL) {
+		while ((u = fr_dlist_head(&c->sent)) != NULL) {
 			state_transition(u, PACKET_STATE_THREAD);
 		}
 	}
@@ -2044,7 +2044,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 
 	rad_assert(c->zombie_ev == NULL);
 	memset(&c->zombie_start, 0, sizeof(c->zombie_start));
-	fr_dlist_init(&c->sent, offsetof(rlm_radius_udp_request_t, entry));
+	fr_dlist_init(&c->sent, rlm_radius_udp_request_t, entry);
 
 	/*
 	 *	Status-Server checks.  Manually build the packet, and
@@ -2250,7 +2250,7 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 	/*
 	 *	Move "sent" packets back to the main thread queue
 	 */
-	while ((u = fr_dlist_first(&c->sent)) != NULL) {
+	while ((u = fr_dlist_head(&c->sent)) != NULL) {
 		rad_assert(u->state == PACKET_STATE_SENT);
 		rad_assert(u->c == c);
 
@@ -2333,7 +2333,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 		talloc_free(c);
 		return;
 	}
-	fr_dlist_init(&c->sent, offsetof(rlm_radius_udp_request_t, entry));
+	fr_dlist_init(&c->sent, rlm_radius_udp_request_t, entry);
 
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
 				      _conn_init,
@@ -2452,7 +2452,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		/*
 		 *	Only open one new connection at a time.
 		 */
-		if (!fr_dlist_first(&t->opening)) conn_alloc(inst, t);
+		if (!fr_dlist_head(&t->opening)) conn_alloc(inst, t);
 
 		/*
 		 *	Add the request to the backlog.  It will be
@@ -2615,10 +2615,10 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->el = el;
 
 	t->queued = fr_heap_talloc_create(t, queue_cmp, rlm_radius_udp_request_t, heap_id);
-	fr_dlist_init(&t->blocked, offsetof(rlm_radius_udp_connection_t, entry));
-	fr_dlist_init(&t->full, offsetof(rlm_radius_udp_connection_t, entry));
-	fr_dlist_init(&t->zombie, offsetof(rlm_radius_udp_connection_t, entry));
-	fr_dlist_init(&t->opening, offsetof(rlm_radius_udp_connection_t, entry));
+	fr_dlist_init(&t->blocked, rlm_radius_udp_connection_t, entry);
+	fr_dlist_init(&t->full, rlm_radius_udp_connection_t, entry);
+	fr_dlist_init(&t->zombie, rlm_radius_udp_connection_t, entry);
+	fr_dlist_init(&t->opening, rlm_radius_udp_connection_t, entry);
 
 	t->active = fr_heap_talloc_create(t, conn_cmp, rlm_radius_udp_connection_t, heap_id);
 
@@ -2644,7 +2644,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	 */
 	talloc_free_children(t);
 
-	if (fr_dlist_first(&t->opening) != NULL) {
+	if (fr_dlist_head(&t->opening) != NULL) {
 		ERROR("There are still partially open sockets");
 		return -1;
 	}

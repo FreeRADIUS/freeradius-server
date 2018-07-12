@@ -439,7 +439,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Create the list which holds the workers.
 	 */
-	fr_dlist_init(&sc->workers, offsetof(fr_schedule_worker_t, entry));
+	fr_dlist_init(&sc->workers, fr_schedule_worker_t, entry);
 
 	memset(&sc->semaphore, 0, sizeof(sc->semaphore));
 	if (sem_init(&sc->semaphore, 0, SEMAPHORE_LOCKED) != 0) {
@@ -512,7 +512,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	See if all of the workers have started.
 	 */
-	for (sw = fr_dlist_first(&sc->workers);
+	for (sw = fr_dlist_head(&sc->workers);
 	     sw != NULL;
 	     sw = next) {
 
@@ -585,7 +585,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	/*
 	 *	Signal all of the workers to exit.
 	 */
-	for (sw = fr_dlist_first(&sc->workers);
+	for (sw = fr_dlist_head(&sc->workers);
 	     sw != NULL;
 	     sw = fr_dlist_next(&sc->workers, sw)) {
 		fr_worker_exit(sw->worker);
@@ -604,7 +604,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	/*
 	 *	Clean up the exited workers.
 	 */
-	while ((sw = fr_dlist_first(&sc->workers)) != NULL) {
+	while ((sw = fr_dlist_head(&sc->workers)) != NULL) {
 		sc->num_workers--;
 
 		fr_dlist_remove(&sc->workers, sw);

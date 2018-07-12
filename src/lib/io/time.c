@@ -157,7 +157,7 @@ void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when, fr_time_trac
 	tt->start = when;
 	tt->resumed = when;
 
-	fr_dlist_init(&(worker->list), offsetof(fr_time_tracking_t, list.entry));
+	fr_dlist_init(&(worker->list), fr_time_tracking_t, list.entry);
 	fr_dlist_entry_init(&tt->list.entry);
 }
 

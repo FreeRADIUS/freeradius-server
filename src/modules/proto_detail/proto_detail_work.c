@@ -155,7 +155,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	Process retransmissions before anything else in the
 	 *	file.
 	 */
-	track = fr_dlist_first(&inst->list);
+	track = fr_dlist_head(&inst->list);
 	if (track) {
 		fr_dlist_remove(&inst->list, track);
 
@@ -814,7 +814,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 	RADCLIENT *client;
 
-	fr_dlist_init(&inst->list, offsetof(fr_detail_entry_t, entry));
+	fr_dlist_init(&inst->list, fr_detail_entry_t, entry);
 
 	client = inst->client = talloc_zero(inst, RADCLIENT);
 	if (!inst->client) return 0;

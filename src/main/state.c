@@ -152,7 +152,7 @@ static int _state_tree_free(fr_state_tree_t *state)
 
 	DEBUG4("Freeing state tree %p", state);
 
-	while ((entry = fr_dlist_first(&state->to_expire))) {
+	while ((entry = fr_dlist_head(&state->to_expire))) {
 		state_entry_unlink(state, entry);
 		talloc_free(entry);
 	}
@@ -202,7 +202,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 		return NULL;
 	}
 
-	fr_dlist_init(&state->to_expire, offsetof(fr_state_entry_t, list));
+	fr_dlist_init(&state->to_expire, fr_state_entry_t, list);
 
 	/*
 	 *	We need to do controlled freeing of the
@@ -297,12 +297,12 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	bool			too_many = false;
 	fr_dlist_head_t		to_free;
 
-	fr_dlist_init(&to_free, offsetof(fr_state_entry_t, list));
+	fr_dlist_init(&to_free, fr_state_entry_t, list);
 
 	/*
 	 *	Clean up old entries.
 	 */
-	for (entry = fr_dlist_first(&state->to_expire);
+	for (entry = fr_dlist_head(&state->to_expire);
 	     entry != NULL;
 	     entry = next) {
 		(void)talloc_get_type_abort(entry, fr_state_entry_t);	/* Allow examination */
@@ -361,7 +361,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	be freed also, and it may have complex destructors associated
 	 *	with it.
 	 */
-	while ((entry = fr_dlist_first(&to_free)) != NULL) {
+	while ((entry = fr_dlist_head(&to_free)) != NULL) {
 		fr_dlist_remove(&to_free, entry);
 		talloc_free(entry);
 	}

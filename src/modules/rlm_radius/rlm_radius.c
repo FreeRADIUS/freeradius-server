@@ -819,7 +819,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->inst = instance;
 	t->el = el;
 
-	fr_dlist_init(&t->running, offsetof(rlm_radius_link_t, entry));
+	fr_dlist_init(&t->running, rlm_radius_link_t, entry);
 
 	/*
 	 *	Allocate thread-specific data.  The connections should
@@ -866,7 +866,7 @@ static int mod_thread_detach(fr_event_list_t *el, void *thread)
 	 *	marked DONE, and (in an ideal world) resumed / cleaned
 	 *	up before this memory is freed.
 	 */
-	if (fr_dlist_first(&t->running) != NULL) {
+	if (fr_dlist_head(&t->running) != NULL) {
 		ERROR("Module still has running requests!");
 		return -1;
 	}

@@ -68,7 +68,7 @@ rlm_radius_id_t *rr_track_create(TALLOC_CTX *ctx)
 	id = talloc_zero(ctx, rlm_radius_id_t);
 	if (!id) return NULL;
 
-	fr_dlist_init(&id->free_list, offsetof(rlm_radius_request_t, entry));
+	fr_dlist_init(&id->free_list, rlm_radius_request_t, entry);
 
 	for (i = 0; i < 256; i++) {
 		id->id[i].id = i;
@@ -112,7 +112,7 @@ rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int 
 	rlm_radius_request_t *rr;
 
 retry:
-	rr = fr_dlist_first(&id->free_list);
+	rr = fr_dlist_head(&id->free_list);
 	if (rr) {
 		rad_assert(id->num_free > 0);
 

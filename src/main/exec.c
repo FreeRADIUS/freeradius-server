@@ -129,7 +129,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			return -1;
 		}
 
-		fr_dlist_init(list, offsetof(fr_child_t, entry));
+		fr_dlist_init(list, fr_child_t, entry);
 
 		fr_thread_local_set_destructor(fr_children, _fr_children_free, list);
 	} else {
@@ -139,7 +139,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	Clean up the children.  ALL of them.  This is
 		 *	slow as heck, but correct. :(
 		 */
-		for (child = fr_dlist_first(fr_children);
+		for (child = fr_dlist_head(fr_children);
 		     child != NULL;
 		     child = next) {
 			int status;

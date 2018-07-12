@@ -529,7 +529,7 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 	 *	Instead, all of it is done in the context of the
 	 *	parent.
 	 */
-	fr_dlist_init(&child->async->tracking.list, 0);
+	fr_dlist_init(&child->async->tracking.list, fr_time_tracking_t, list.entry);
 
 	/*
 	 *	create {...} creates an empty copy.
