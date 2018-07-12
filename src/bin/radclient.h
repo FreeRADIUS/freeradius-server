@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/radclient.h
+ * @file radclient.h
  * @brief Structures for the radclient utility.
  *
  * @copyright 2014  The FreeRADIUS server project

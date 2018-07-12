@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/radsniff.h
+ * @file radsniff.h
  * @brief Structures and prototypes for the RADIUS sniffer.
  *
  * @copyright 2013 Arran Cudbard-Bell <arran.cudbardb@freeradius.org>
