@@ -127,7 +127,7 @@ typedef struct rlm_radius_thread_t {
 	rlm_radius_t const	*inst;			//!< Instance of the module.
 	fr_event_list_t		*el;			//!< This thread's event list.
 
-	fr_dlist_t		running;		//!< running requests
+	fr_dlist_head_t		running;		//!< running requests
 
 	void			*thread_io_ctx;		//!< thread context for the IO submodule
 } rlm_radius_thread_t;

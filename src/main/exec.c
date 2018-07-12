@@ -57,7 +57,7 @@ typedef struct fr_child_t {
 	pid_t		pid;
 } fr_child_t;
 
-fr_thread_local_setup(fr_dlist_t *, fr_children) /* macro */
+fr_thread_local_setup(fr_dlist_head_t *, fr_children) /* macro */
 
 static void _fr_children_free(void *arg)
 {
@@ -102,7 +102,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	char		*envp[MAX_ENVP];
 	size_t		envlen = 0;
 	TALLOC_CTX	*input_ctx = NULL;
-	fr_dlist_t	*list;
+	fr_dlist_head_t *list;
 
 	/*
 	 *	Stupid array decomposition...
@@ -123,38 +123,33 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 
 	list = fr_children;
 	if (!list) {
-		list = talloc_zero(NULL, fr_dlist_t);
+		list = talloc_zero(NULL, fr_dlist_head_t);
 		if (!list) {
 			ERROR("Out of memory");
 			return -1;
 		}
 
-		list->prev = list->next = list;
+		fr_dlist_init(list, offsetof(fr_child_t, entry));
 
 		fr_thread_local_set_destructor(fr_children, _fr_children_free, list);
 	} else {
-		fr_dlist_t *entry, *next;
-
-		entry = list->next;
+		fr_child_t *child, *next;
 
 		/*
 		 *	Clean up the children.  ALL of them.  This is
 		 *	slow as heck, but correct. :(
 		 */
-		while (entry != list) {
+		for (child = fr_dlist_first(fr_children);
+		     child != NULL;
+		     child = next) {
 			int status;
-			fr_child_t *child;
 
-			next = entry->next;
-
-			child = fr_ptr_to_type(fr_child_t, entry, entry);
+			next = fr_dlist_next(fr_children, child);
 			pid = waitpid(child->pid, &status, WNOHANG);
 			if (pid != 0) {
-				fr_dlist_remove(entry);
+				fr_dlist_remove(fr_children, child);
 				talloc_free(child);
 			}
-
-			entry = next;
 		}
 	}
 
@@ -378,7 +373,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		fr_child_t *child;
 
 		MEM(child = talloc_zero(fr_children, fr_child_t));
-		fr_dlist_insert_tail(fr_children, &child->entry);
+		fr_dlist_insert_tail(fr_children, child);
 		child->pid = pid;
 	}
 

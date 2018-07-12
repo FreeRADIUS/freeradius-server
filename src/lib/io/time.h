@@ -68,7 +68,7 @@ typedef struct fr_time_tracking_t {
 	fr_time_t	running;		//!< total time spent running
 	fr_time_t	waiting;		//!< total time spent waiting
 
-	fr_dlist_t	list;			//!< for linking a request to various lists
+	fr_dlist_head_t	list;			//!< for linking a request to various lists
 } fr_time_tracking_t;
 
 #define NANOSEC (1000000000)
@@ -78,10 +78,10 @@ int fr_time_start(void);
 fr_time_t fr_time(void);
 void fr_time_to_timeval(struct timeval *tv, fr_time_t when) CC_HINT(nonnull);
 
-void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when) CC_HINT(nonnull);
+void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
-void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when) CC_HINT(nonnull);
+void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp) CC_HINT(nonnull);
 
 #ifdef __cplusplus

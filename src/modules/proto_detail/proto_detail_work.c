@@ -146,7 +146,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	uint8_t				*partial, *end, *next, *p, *record_end;
 	uint8_t				*stopped_search;
 	off_t				done_offset;
-	fr_dlist_t			*entry;
 
 	rad_assert(*leftover < buffer_len);
 	rad_assert(inst->fd >= 0);
@@ -156,11 +155,9 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	Process retransmissions before anything else in the
 	 *	file.
 	 */
-	entry = FR_DLIST_FIRST(inst->list);
-	if (entry) {
-		track = fr_ptr_to_type(fr_detail_entry_t, entry, entry);
-
-		fr_dlist_remove(&track->entry);
+	track = fr_dlist_first(&inst->list);
+	if (track) {
+		fr_dlist_remove(&inst->list, track);
 
 		/*
 		 *	Don't over-write "leftover" bytes!
@@ -534,7 +531,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 	DEBUG("%s - retransmitting packet %d", inst->name, track->id);
 	track->count++;
 
-	fr_dlist_insert_tail(&inst->list, &track->entry);
+	fr_dlist_insert_tail(&inst->list, &track);
 
 	if (inst->paused && (inst->outstanding < inst->max_outstanding)) {
 		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, resume_read);
@@ -817,7 +814,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 	RADCLIENT *client;
 
-	FR_DLIST_INIT(inst->list);
+	fr_dlist_init(&inst->list, offsetof(fr_detail_entry_t, entry));
 
 	client = inst->client = talloc_zero(inst, RADCLIENT);
 	if (!inst->client) return 0;

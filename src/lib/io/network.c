@@ -34,7 +34,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/network.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/util/dlist.h>
 
 /*
  *	Define our own debugging.
@@ -85,8 +84,6 @@ typedef struct fr_network_socket_t {
 
 	fr_channel_data_t	*pending;		//!< the currently pending partial packet
 	fr_heap_t		*waiting;		//!< packets waiting to be written
-
-	fr_dlist_t		entry;			//!< for deleted sockets
 } fr_network_socket_t;
 
 /*
@@ -741,7 +738,6 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	memcpy(&s->listen, data, sizeof(s->listen));
 
 	MEM(s->waiting = fr_heap_create(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
-	FR_DLIST_INIT(s->entry);
 
 	talloc_set_destructor(s, _network_socket_free);
 
@@ -815,7 +811,6 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	memcpy(&s->listen, data, sizeof(s->listen));
 
 	MEM(s->waiting = fr_heap_create(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
-	FR_DLIST_INIT(s->entry);
 
 	talloc_set_destructor(s, _network_socket_free);
 

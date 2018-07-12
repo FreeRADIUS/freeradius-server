@@ -95,7 +95,7 @@ typedef struct state_entry {
 
 	uint64_t		seq_start;			//!< Number of first request in this sequence.
 	time_t			cleanup;			//!< When this entry should be cleaned up.
-	fr_dlist_t		list;				//!< Entry in the list of things to expire.
+	fr_dlist_t		entry;				//!< Entry in the list of things to expire.
 
 	int			tries;
 
@@ -114,7 +114,7 @@ struct fr_state_tree_t {
 								//!< timeout.
 	uint32_t		max_sessions;			//!< Maximum number of sessions we track.
 	rbtree_t		*tree;				//!< rbtree used to lookup state value.
-	fr_dlist_t		to_expire;			//!< Linked list of entries to free.
+	fr_dlist_head_t		to_expire;			//!< Linked list of entries to free.
 
 	uint32_t		timeout;			//!< How long to wait before cleaning up state entires.
 
@@ -146,16 +146,13 @@ static int state_entry_cmp(void const *one, void const *two)
  */
 static int _state_tree_free(fr_state_tree_t *state)
 {
-	fr_dlist_t		*next;
+	fr_state_entry_t *entry;
 
 	if (main_config->spawn_workers) pthread_mutex_destroy(&state->mutex);
 
 	DEBUG4("Freeing state tree %p", state);
 
-	while ((next = FR_DLIST_FIRST(state->to_expire))) {
-		fr_state_entry_t	*entry;
-
-		entry = fr_ptr_to_type(fr_state_entry_t, list, next);
+	while ((entry = fr_dlist_first(&state->to_expire))) {
 		state_entry_unlink(state, entry);
 		talloc_free(entry);
 	}
@@ -205,7 +202,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 		return NULL;
 	}
 
-	FR_DLIST_INIT(state->to_expire);
+	fr_dlist_init(&state->to_expire, offsetof(fr_state_entry_t, entry));
 
 	/*
 	 *	We need to do controlled freeing of the
@@ -236,7 +233,7 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 	 */
 	(void) talloc_get_type_abort(entry, fr_state_entry_t);
 
-	fr_dlist_remove(&entry->list);
+	fr_dlist_remove(&state->to_expire, entry);
 
 	rbtree_deletebydata(state->tree, entry);
 
@@ -269,12 +266,6 @@ static int _state_entry_free(fr_state_entry_t *entry)
 	 *	so we know it'll be cleaned up.
 	 */
 	if (entry->data) (void)fr_cond_assert(request_data_verify_parent(entry->ctx, entry->data));
-
-	/*
-	 *	Verify the state entry is no longer linked
-	 */
-	rad_assert(entry->list.prev == &entry->list);
-	rad_assert(entry->list.next == &entry->list);
 #endif
 
 	/*
@@ -298,24 +289,24 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	uint32_t		x;
 	time_t			now = time(NULL);
 	VALUE_PAIR		*vp;
-	fr_state_entry_t	*entry;
+	fr_state_entry_t	*entry, *next;
 
 	uint8_t			old_state[sizeof(old->state)];
 	int			old_tries = 0;
 	uint64_t		timed_out = 0;
 	bool			too_many = false;
-	fr_dlist_t		to_free, *next;
+	fr_dlist_head_t		to_free;
 
-	FR_DLIST_INIT(to_free);
+	fr_dlist_init(&to_free, offsetof(fr_state_entry_t, entry));
 
 	/*
 	 *	Clean up old entries.
 	 */
-	next = FR_DLIST_FIRST(state->to_expire);
-	while (next) {
-		entry = fr_ptr_to_type(fr_state_entry_t, list, next);
+	for (entry = fr_dlist_first(&state->to_expire);
+	     entry != NULL;
+	     entry = next) {
 		(void)talloc_get_type_abort(entry, fr_state_entry_t);	/* Allow examination */
-		next = FR_DLIST_NEXT(state->to_expire, next);		/* Advance *before* potential unlinking */
+		next = fr_dlist_next(&state->to_expire, entry);		/* Advance *before* potential unlinking */
 
 		if (entry == old) continue;
 
@@ -324,7 +315,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 */
 		if (entry->cleanup < now) {
 			state_entry_unlink(state, entry);
-			fr_dlist_insert_tail(&to_free, &entry->list);
+			fr_dlist_insert_tail(&to_free, entry);
 			timed_out++;
 			continue;
 		}
@@ -353,7 +344,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 */
 		if (!old->data) {
 			state_entry_unlink(state, old);
-			fr_dlist_insert_tail(&to_free, &old->list);
+			fr_dlist_insert_tail(&to_free, old);
 		}
 	}
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
@@ -370,9 +361,9 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	be freed also, and it may have complex destructors associated
 	 *	with it.
 	 */
-	while ((next = FR_DLIST_FIRST(to_free)) != NULL) {
-		fr_dlist_remove(next);
-		talloc_free(fr_ptr_to_type(fr_state_entry_t, list, next));
+	while ((entry = fr_dlist_first(&to_free)) != NULL) {
+		fr_dlist_remove(&to_free, entry);
+		talloc_free(entry);
 	}
 
 	/*
@@ -507,7 +498,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	Link it to the end of the list, which is implicitely
 	 *	ordered by cleanup time.
 	 */
-	fr_dlist_insert_tail(&state->to_expire, &entry->list);
+	fr_dlist_insert_tail(&state->to_expire, entry);
 
 	return entry;
 }

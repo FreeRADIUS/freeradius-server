@@ -33,12 +33,30 @@ typedef struct fr_dlist_t {
 	struct fr_dlist_t *next;
 } fr_dlist_t;
 
+typedef struct fr_dlist_head_t {
+	size_t		offset;
+	fr_dlist_t	entry;
+} fr_dlist_head_t;
+
 /*
  *	Functions to manage a doubly linked list.
  */
-#define FR_DLIST_INIT(head) do { head.prev = head.next = &head; } while (0)
-static inline void fr_dlist_insert_head(fr_dlist_t *head, fr_dlist_t *entry)
+static inline void fr_dlist_entry_init(fr_dlist_t *entry)
 {
+	entry->prev = entry->next = entry;
+}
+
+static inline void fr_dlist_init(fr_dlist_head_t *head, size_t offset)
+{
+	fr_dlist_entry_init(&head->entry);
+	head->offset = offset;
+}
+
+static inline void fr_dlist_insert_head(fr_dlist_head_t *list_head, void *ptr)
+{
+	fr_dlist_t *entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	fr_dlist_t *head = &(list_head->entry);
+
 	if (!fr_cond_assert(head->next != NULL)) return;
 	if (!fr_cond_assert(head->prev != NULL)) return;
 
@@ -48,8 +66,11 @@ static inline void fr_dlist_insert_head(fr_dlist_t *head, fr_dlist_t *entry)
 	head->next = entry;
 }
 
-static inline void fr_dlist_insert_tail(fr_dlist_t *head, fr_dlist_t *entry)
+static inline void fr_dlist_insert_tail(fr_dlist_head_t *list_head, void *ptr)
 {
+	fr_dlist_t *entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	fr_dlist_t *head = &(list_head->entry);
+
 	if (!fr_cond_assert(head->next != NULL)) return;
 	if (!fr_cond_assert(head->prev != NULL)) return;
 
@@ -63,8 +84,10 @@ static inline void fr_dlist_insert_tail(fr_dlist_t *head, fr_dlist_t *entry)
 /*
  *	Insert one list into the tail of another
  */
-static inline void fr_dlist_insert_tail_list(fr_dlist_t *head, fr_dlist_t *list)
+static inline void fr_dlist_insert_tail_list(fr_dlist_head_t *list_head, fr_dlist_t *list)
 {
+	fr_dlist_t *head = &(list_head->entry);
+
 	if (!fr_cond_assert(head->next != NULL)) return;
 	if (!fr_cond_assert(head->prev != NULL)) return;
 
@@ -78,8 +101,10 @@ static inline void fr_dlist_insert_tail_list(fr_dlist_t *head, fr_dlist_t *list)
 }
 #endif
 
-static inline void fr_dlist_remove(fr_dlist_t *entry)
+static inline void fr_dlist_remove(fr_dlist_head_t *list_head, void *ptr)
 {
+	fr_dlist_t *entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+
 	if (!fr_cond_assert(entry->next != NULL)) return;
 	if (!fr_cond_assert(entry->prev != NULL)) return;
 
@@ -88,10 +113,37 @@ static inline void fr_dlist_remove(fr_dlist_t *entry)
 	entry->prev = entry->next = entry;
 }
 
-#define FR_DLIST_FIRST(head) ((head.next == &head) ? NULL : head.next)
-#define FR_DLIST_NEXT(head, p_entry) ((p_entry->next == &head) ? NULL : p_entry->next)
-#define FR_DLIST_TAIL(head) ((head.prev == &head) ? NULL : head.prev)
+static inline void *fr_dlist_next(fr_dlist_head_t *list_head, void *ptr)
+{
+	fr_dlist_t *entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	fr_dlist_t *head = &(list_head->entry);
 
+	if (entry->next == head) return NULL;
+	entry = entry->next;
+	return (void *) (((uint8_t *) entry) - list_head->offset);
+}
+
+static inline void *fr_dlist_first(fr_dlist_head_t *list_head)
+{
+	fr_dlist_t *head = &(list_head->entry);
+
+	if (head->next == head) return NULL;
+
+	return (void *) (((uint8_t *) head->next) - list_head->offset);
+
+}
+
+static inline void *fr_dlist_tail(fr_dlist_head_t *list_head)
+{
+	fr_dlist_t *head = &(list_head->entry);
+
+	if (head->prev == head) return NULL;
+
+	return (void *) (((uint8_t *) head->prev) - list_head->offset);
+
+}
+
+#if 0
 #ifdef WITH_VERIFY_PTR
 #  define FR_DLIST_VERIFY(_head, _type, _member) \
 do { \
@@ -104,6 +156,7 @@ do { \
 } while(0)
 #else
 #  define FR_DLIST_VERIFY(_head, _type, _member)
+#endif
 #endif
 
 /** Convert a pointer to a member into a pointer to the parent structure.

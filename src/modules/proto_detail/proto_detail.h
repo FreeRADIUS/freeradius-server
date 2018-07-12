@@ -99,7 +99,7 @@ typedef struct proto_detail_work_t {
 	uint32_t			max_outstanding;	//!< number of packets to run in parallel
 	uint32_t       			outstanding;		//!< number of currently outstanding records;
 
-	fr_dlist_t			list;			//!< for retransmissions
+	fr_dlist_head_t			list;			//!< for retransmissions
 
 	bool				vnode;			//!< are we the vnode instance,
 								//!< or the filename_work instance?

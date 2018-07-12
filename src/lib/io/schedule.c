@@ -132,7 +132,7 @@ struct fr_schedule_t {
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
 	void					*worker_instantiate_ctx;	//!< thread instantiation context
 
-	fr_dlist_t	workers;		//!< list of workers
+	fr_dlist_head_t	workers;		//!< list of workers
 
 	fr_network_t	*single_network;	//!< for single-threaded mode
 	fr_worker_t	*single_worker;		//!< for single-threaded mode
@@ -362,7 +362,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 {
 #ifdef HAVE_PTHREAD_H
 	int i;
-	fr_dlist_t *entry, *next;
+	fr_schedule_worker_t *sw, *next;
 #endif
 	fr_schedule_t *sc;
 
@@ -439,7 +439,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Create the list which holds the workers.
 	 */
-	FR_DLIST_INIT(sc->workers);
+	fr_dlist_init(&sc->workers, offsetof(fr_schedule_worker_t, entry));
 
 	memset(&sc->semaphore, 0, sizeof(sc->semaphore));
 	if (sem_init(&sc->semaphore, 0, SEMAPHORE_LOCKED) != 0) {
@@ -474,8 +474,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	Create all of the workers.
 	 */
 	for (i = 0; i < sc->max_workers; i++) {
-		fr_schedule_worker_t *sw;
-
 		fr_log(sc->log, L_DBG, "Creating %d/%d workers\n", i, sc->max_workers);
 
 		/*
@@ -490,7 +488,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sw->id = i;
 		sw->sc = sc;
 		sw->status = FR_CHILD_INITIALIZING;
-		fr_dlist_insert_head(&sc->workers, &sw->entry);
+		fr_dlist_insert_head(&sc->workers, sw);
 
 		if (fr_schedule_pthread_create(&sw->pthread_id, fr_schedule_worker_thread, sw) < 0) {
 			fr_log(sc->log, L_ERR, "Failed creating worker %d: %s\n", i, fr_strerror());
@@ -514,18 +512,15 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	See if all of the workers have started.
 	 */
-	for (entry = FR_DLIST_FIRST(sc->workers);
-	     entry != NULL;
-	     entry = next) {
-		fr_schedule_worker_t *sw;
+	for (sw = fr_dlist_first(&sc->workers);
+	     sw != NULL;
+	     sw = next) {
 
-		next = FR_DLIST_NEXT(sc->workers, entry);
-
-		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
+		next = fr_dlist_next(&sc->workers, sw);
 
 		if (sw->status != FR_CHILD_RUNNING) {
 			sc->num_workers--;
-			fr_dlist_remove(entry);
+			fr_dlist_remove(&sc->workers, sw);
 			continue;
 		}
 	}
@@ -560,8 +555,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	sc->running = false;
 
 #ifdef HAVE_PTHREAD_H
-	fr_dlist_t	*entry;
-
 	/*
 	 *	Single threaded mode: kill the only network / worker we have.
 	 */
@@ -592,10 +585,9 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	/*
 	 *	Signal all of the workers to exit.
 	 */
-	for (entry = FR_DLIST_FIRST(sc->workers);
-	     entry != NULL;
-	     entry = FR_DLIST_NEXT(sc->workers, entry)) {
-		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
+	for (sw = fr_dlist_first(&sc->workers);
+	     sw != NULL;
+	     sw = fr_dlist_next(&sc->workers, sw)) {
 		fr_worker_exit(sw->worker);
 	}
 
@@ -612,9 +604,10 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	/*
 	 *	Clean up the exited workers.
 	 */
-	while ((entry = FR_DLIST_FIRST(sc->workers)) != NULL) {
+	while ((sw = fr_dlist_first(&sc->workers)) != NULL) {
 		sc->num_workers--;
-		fr_dlist_remove(entry);
+
+		fr_dlist_remove(&sc->workers, sw);
 
 		/*
 		 *	Ensure that the thread has exited before
@@ -624,7 +617,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		 *	exited before the main thread cleans up the
 		 *	module instances.
 		 */
-		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 		if (pthread_join(sw->pthread_id, NULL) != 0) {
 			fr_log(sc->log, L_ERR, "Failed joining worker %i: %s", sw->id, fr_syserror(errno));
 		} else {
