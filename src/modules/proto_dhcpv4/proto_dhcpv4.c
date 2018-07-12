@@ -22,7 +22,7 @@
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freedhcpv4.org)
  * @copyright 2016 Alan DeKok (aland@freedhcpv4.org)
  */
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/unlang/unlang.h>

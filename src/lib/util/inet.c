@@ -22,7 +22,7 @@
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include <freeradius-devel/util/inet.h>
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/base.h>
 #include <ctype.h>
 
 bool		fr_reverse_lookups = false;		//!< IP -> hostname lookups?

@@ -22,7 +22,7 @@
  * @brief Public interface to the interpreter
  *
  */
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/components.h>
 #include <freeradius-devel/server/signal.h>
 

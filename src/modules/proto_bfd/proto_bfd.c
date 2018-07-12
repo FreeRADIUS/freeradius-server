@@ -20,7 +20,7 @@
  * @copyright 2012 Network RADIUS SARL <info@networkradius.com>
  */
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/unlang/unlang.h>

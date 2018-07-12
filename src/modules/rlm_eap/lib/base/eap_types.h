@@ -26,7 +26,7 @@
  */
 RCSIDH(eap_methods_h, "$Id$")
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modules.h>
 
 /* Code (1) + Identifier (1) + Length (2) */

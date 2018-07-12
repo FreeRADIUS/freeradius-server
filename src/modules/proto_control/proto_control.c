@@ -21,7 +21,7 @@
  *
  * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/modules.h>

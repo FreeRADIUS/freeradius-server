@@ -25,7 +25,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include "conduit.h"
 
 static ssize_t lo_read(int fd, void *out, size_t outlen)

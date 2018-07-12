@@ -18,7 +18,7 @@
 /*
  * $Id$
  *
- * @file src/lib/util/util.h
+ * @file src/lib/util/base.h
  * @brief Structures and prototypes for the radius library.
  *
  * @copyright 1999-2014 The FreeRADIUS server project

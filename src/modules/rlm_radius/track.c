@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/util/dlist.h>

@@ -25,7 +25,7 @@
  */
 RCSIDH(radclient_h, "$Id$")
 
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/base.h>
 
 #ifdef __cplusplus
 extern "C" {

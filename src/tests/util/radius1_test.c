@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/fr_log.h>
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H

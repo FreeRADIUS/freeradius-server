@@ -9,7 +9,7 @@
  * @copyright 2017 The FreeRADIUS Server Project.
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/connection.h>
 #include <lber.h>
 #include <ldap.h>

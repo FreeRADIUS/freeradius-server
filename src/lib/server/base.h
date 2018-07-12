@@ -18,14 +18,14 @@
 /**
  * $Id$
  *
- * @file lib/server/server.h
+ * @file lib/server/base.h
  * @brief Structures, prototypes and global variables for the FreeRADIUS server.
  *
  * @copyright 1999-2000,2002-2008  The FreeRADIUS server project
  */
 RCSIDH(radiusd_h, "$Id$")
 
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/util/event.h>

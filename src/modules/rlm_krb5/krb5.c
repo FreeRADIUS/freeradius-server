@@ -28,7 +28,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include "krb5.h"
 
 #ifdef HAVE_KRB5_GET_ERROR_MESSAGE

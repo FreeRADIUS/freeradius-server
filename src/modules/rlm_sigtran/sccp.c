@@ -38,7 +38,7 @@
 
 #include <osmocom/core/talloc.h>
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/utils.h>

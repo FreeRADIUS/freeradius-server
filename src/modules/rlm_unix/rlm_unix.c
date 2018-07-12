@@ -33,7 +33,7 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX "rlm_unix (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 
 #include <grp.h>
 #include <pwd.h>

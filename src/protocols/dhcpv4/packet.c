@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <talloc.h>
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/dhcpv4.h>

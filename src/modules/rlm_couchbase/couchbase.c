@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_couchbase - "
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 
 #include <libcouchbase/couchbase.h>
 #include <freeradius-devel/json/json.h>

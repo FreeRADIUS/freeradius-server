@@ -20,7 +20,7 @@
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Network RADIUS SARL <info@networkradius.com>
  */
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/unlang/unlang.h>
 #include <freeradius-devel/server/protocol.h>

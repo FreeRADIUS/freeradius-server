@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/base.h>
 
 #ifdef HAVE_CRYPT_H
 #  include <crypt.h>

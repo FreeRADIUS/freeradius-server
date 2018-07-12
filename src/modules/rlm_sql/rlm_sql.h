@@ -32,7 +32,7 @@ RCSIDH(rlm_sql_h, "$Id$")
 #  define LOG_PREFIX_ARGS inst->name
 #endif
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/exfile.h>

@@ -26,7 +26,7 @@
  */
 #define LOG_PREFIX "rlm_sigtran - "
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/eap.aka.h>
 #include <freeradius-devel/eap.sim.h>

@@ -13,7 +13,7 @@
  * @copyright 2013 Network RADIUS SARL<info@networkradius.com>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/ldap/ldap.h>
 

@@ -21,7 +21,7 @@
  *
  * @copyright 2014 The FreeRADIUS server project
  */
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include "../../rlm_cache.h"

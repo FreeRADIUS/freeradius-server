@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/dl.h>
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 
 #ifdef HAVE_VALGRIND_H
 #  include <valgrind.h>

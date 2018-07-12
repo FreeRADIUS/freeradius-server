@@ -32,7 +32,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/base.h>
 
 /*
  *	A reasonable number of buckets to start off with.

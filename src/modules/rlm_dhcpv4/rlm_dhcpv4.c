@@ -23,9 +23,9 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/base.h>
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 

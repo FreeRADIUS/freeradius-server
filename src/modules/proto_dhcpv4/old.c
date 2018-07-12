@@ -45,7 +45,7 @@
  */
 
 
-#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/unlang/unlang.h>
 #include <freeradius-devel/server/protocol.h>
