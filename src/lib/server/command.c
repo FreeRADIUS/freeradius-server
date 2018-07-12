@@ -2059,6 +2059,10 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 				word++;
 			}
 
+			if (!*word || !isspace((int) *word)) return count;
+
+			*word_p = word;
+			continue;
 		}
 
 		/*
