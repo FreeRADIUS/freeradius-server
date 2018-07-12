@@ -187,7 +187,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 {
 	int argc;
 	char *argv_buffer;
-	char *current_str;
+	char *current_str, **context_str;
 	int *context_exit;
 	char const *prompt;
 	size_t size, room;
@@ -206,6 +206,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	fr_command_info_init(ctx, info);
 
 	context_exit = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
+	context_str = talloc_zero_array(ctx, char *, CMD_MAX_ARGV + 1);
+	context_str[0] = argv_buffer;
 
 	fflush(stdout);
 
@@ -253,6 +255,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			if (strcmp(line, "exit") == 0) {
 				talloc_const_free(prompt);
 				context = context_exit[context];
+				current_str = context_str[context];
 				if (context == 0) {
 					prompt = "radmin> ";
 				} else {
@@ -319,8 +322,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	Move the pointer down the buffer and
 			 *	keep reading more.
 			 */
-			current_str = info->argv[argc - 1] + len + 1;
-			room -= (len + 1);
+			current_str = info->argv[argc - 1] + len;
+			room -= len;
 
 			if (context > 0) {
 				talloc_const_free(prompt);
@@ -338,6 +341,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	back to the root.
 			 */
 			context_exit[argc] = context;
+			context_str[argc] = current_str;
 			context = argc;
 			prompt = talloc_asprintf(ctx, "... %s> ", info->argv[context - 1]);
 			goto next;
