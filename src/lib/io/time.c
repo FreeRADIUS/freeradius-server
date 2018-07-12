@@ -147,6 +147,7 @@ void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
  *
  * @param[in] tt the time tracking structure.
  * @param[in] when the event happened
+ * @param[out] worker time tracking for the worker thread
  */
 void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker)
 {
@@ -224,6 +225,7 @@ void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_trac
  *
  * @param[in] tt the time tracking structure.
  * @param[in] when the event happened
+ * @param[out] worker time tracking for the worker thread
  */
 void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker)
 {
