@@ -17,8 +17,8 @@
 /*
  * $Id$
  *
- * @brief map / template functions
- * @file main/radsnmp.c
+ * @brief SNMP to request utility
+ * @file src/bin/radsnmp.c
  *
  * @copyright 2015-2016 The FreeRADIUS server project
  * @copyright 2015-2016 Network RADIUS SARL <info@networkradius.com>

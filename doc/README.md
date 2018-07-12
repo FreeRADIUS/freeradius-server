@@ -76,10 +76,11 @@ Please do not raise general configuration issues there.
 | Directory			| Description
 |---				|---
 | ``src/``			| Source code
-| ``src/main/``			| Source code for the daemon and associated utilities.
-| ``src/lib/``			| Source code for the RADIUS library.
+| ``src/bin/``			| Source code for the daemon and associated utilities.
+| ``src/lib/``			| Source code for various utility libraries.
 | ``src/include/``		| Header files.
-| ``src/modules/``		| Dynamic plug-in modules.
+| ``src/protocols/``		| Dynamic frontend plug-in modules.
+| ``src/modules/``		| Dynamic backend plug-in modules.
 
 # Debugging
 

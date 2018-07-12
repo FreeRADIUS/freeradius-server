@@ -24,7 +24,7 @@ AC_PREREQ([2.59])
 export CFLAGS LIBS LDFLAGS CPPFLAGS
 
 AC_INIT([freeradius],[$]Id[$],[http://bugs.freeradius.org],,[http://www.freeradius.org])
-AC_CONFIG_SRCDIR([src/main/radiusd.c])
+AC_CONFIG_SRCDIR([src/bin/radiusd.c])
 AC_CONFIG_HEADER([src/include/autoconf.h])
 m4_include([m4/ax_cc.m4])
 m4_include([m4/ax_with_lib_args.m4])
@@ -2286,7 +2286,7 @@ dnl #
 dnl #############################################################
 AC_CONFIG_COMMANDS([stamp-h], [echo timestamp > src/include/stamp-h])
 AC_CONFIG_COMMANDS([build-radpaths-h], [(cd ./src/include && /bin/sh ./build-radpaths-h)])
-AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/main && chmod +x checkrad radlast radtest)])
+AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/bin && chmod +x checkrad radlast radtest)])
 AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly cryptpasswd)])
 
 dnl #
@@ -2298,10 +2298,10 @@ AC_SUBST(INSTALLSTRIP)
 AC_OUTPUT(\
   ./Make.inc \
   ./src/include/build-radpaths-h \
-  ./src/main/radsniff.mk \
-  ./src/main/checkrad \
-  ./src/main/radlast \
-  ./src/main/radtest \
+  ./src/bin/radsniff.mk \
+  ./src/bin/checkrad \
+  ./src/bin/radlast \
+  ./src/bin/radtest \
   ./scripts/rc.radiusd \
   ./scripts/cron/radiusd.cron.daily \
   ./scripts/cron/radiusd.cron.monthly \

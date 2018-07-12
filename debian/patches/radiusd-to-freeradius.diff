@@ -57,8 +57,8 @@
  
  	#
  	#  Access mode.
---- a/src/main/radiusd.c
-+++ b/src/main/radiusd.c
+--- a/src/bin/radiusd.c
++++ b/src/bin/radiusd.c
 @@ -126,12 +126,11 @@ int main(int argc, char *argv[])
  	main_config.daemonize = true;
  	main_config.spawn_workers = true;

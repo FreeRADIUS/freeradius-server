@@ -12,4 +12,4 @@ SUBMAKEFILES := \
     unit_test_map.mk \
     unit_test_module.mk \
     checkrad.mk \
-    $(wildcard ${top_builddir}/src/main/*_ext/all.mk)
+    $(wildcard ${top_builddir}/src/bin/*_ext/all.mk)

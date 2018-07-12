@@ -222,7 +222,7 @@ Configuring FreeRADIUS for EAP under CygWin.
 
    ::
 
-    src/main/Makefile.in
+    src/bin/Makefile.in
 
     145,148c145,148
     <       $(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP)
