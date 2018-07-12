@@ -95,7 +95,7 @@ typedef struct state_entry {
 
 	uint64_t		seq_start;			//!< Number of first request in this sequence.
 	time_t			cleanup;			//!< When this entry should be cleaned up.
-	fr_dlist_t		entry;				//!< Entry in the list of things to expire.
+	fr_dlist_t		list;				//!< Entry in the list of things to expire.
 
 	int			tries;
 
@@ -202,7 +202,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 		return NULL;
 	}
 
-	fr_dlist_init(&state->to_expire, offsetof(fr_state_entry_t, entry));
+	fr_dlist_init(&state->to_expire, offsetof(fr_state_entry_t, list));
 
 	/*
 	 *	We need to do controlled freeing of the
@@ -297,7 +297,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	bool			too_many = false;
 	fr_dlist_head_t		to_free;
 
-	fr_dlist_init(&to_free, offsetof(fr_state_entry_t, entry));
+	fr_dlist_init(&to_free, offsetof(fr_state_entry_t, list));
 
 	/*
 	 *	Clean up old entries.
