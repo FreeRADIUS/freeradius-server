@@ -42,7 +42,7 @@ typedef struct {
 	size_t		offset;		//!< Positive offset from start of structure to #fr_dlist_t.
 	char const	*type;		//!< of items contained within the list.  Used for talloc
 					///< validation.
-	fr_dlist_t	entry;		//!< Struct holding the head and fail of the list.
+	fr_dlist_t	entry;		//!< Struct holding the head and tail of the list.
 } fr_dlist_head_t;
 
 /** Initialise a linked list without metadata
