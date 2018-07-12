@@ -2045,6 +2045,23 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		}
 
 		/*
+		 *	Handle quoted strings.
+		 */
+		if ((argv->type == FR_TYPE_STRING) &&
+		    ((*word == '"') || (*word == '\''))) {
+			char quote = word++;
+
+			while (*word && (*word != quote)) {
+				if (*word == '\\') {
+					if (!word[1]) return count;
+					word++;
+				}
+				word++;
+			}
+
+		}
+
+		/*
 		 *	Skip data types (for now)
 		 */
 		if (argv->type < FR_TYPE_FIXED) {
