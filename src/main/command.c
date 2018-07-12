@@ -2272,7 +2272,6 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 		/*
 		 *	Skip the command name we matched.
 		 */
-		word = p;
 		break;
 	}
 
