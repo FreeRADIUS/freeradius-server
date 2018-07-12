@@ -23,11 +23,11 @@
 RCSID("$Id$")
 
 
-#include <freeradius-devel/trie.h>
-#include <freeradius-devel/dict.h>
-#include <freeradius-devel/talloc.h>
+#include <freeradius-devel/util/trie.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/talloc.h>
 #ifdef TESTING
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 #else
 #define rad_assert(_x)
 #endif

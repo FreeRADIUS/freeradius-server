@@ -24,10 +24,10 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/sysutmp.h>
-#include <freeradius-devel/radutmp.h>
-#include <freeradius-devel/cf_parse.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/radutmp.h>
+#include <freeradius-devel/server/sysutmp.h>
 
 #include <pwd.h>
 #include <sys/stat.h>

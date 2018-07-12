@@ -30,16 +30,17 @@ RCSID("$Id$")
 #include <time.h>
 #include <math.h>
 #include <freeradius-devel/util/util.h>
-#include <freeradius-devel/event.h>
+#include <freeradius-devel/util/event.h>
 
-#include <freeradius-devel/radpaths.h>
-#include <freeradius-devel/conf.h>
-#include <freeradius-devel/pcap.h>
-#include <freeradius-devel/radsniff.h>
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/pcap.h>
 
 #ifdef HAVE_COLLECTDC_H
 #  include <collectd/client.h>
 #endif
+
+#include "radsniff.h"
 
 #define RS_ASSERT(_x) if (!(_x) && !fr_cond_assert(_x)) exit(1)
 

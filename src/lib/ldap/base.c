@@ -25,12 +25,12 @@
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
 
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/server.h>
 #include <freeradius-devel/ldap/ldap.h>
 
 LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation.

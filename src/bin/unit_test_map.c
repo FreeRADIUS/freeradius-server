@@ -24,9 +24,9 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/util.h>
 
-#include <freeradius-devel/conf.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/modules.h>
 
 #include <ctype.h>
 
@@ -36,7 +36,7 @@ RCSID("$Id$")
 
 #include <assert.h>
 
-#include <freeradius-devel/log.h>
+#include <freeradius-devel/server/log.h>
 
 module_instance_t *module_find_with_method(UNUSED rlm_components_t *method,
 					   UNUSED CONF_SECTION *modules, UNUSED char const *name)

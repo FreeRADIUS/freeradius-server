@@ -147,4 +147,5 @@ AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)
+AH_BOTTOM([#include <freeradius-devel/automask.h>])
 

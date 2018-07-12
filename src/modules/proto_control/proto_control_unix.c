@@ -23,15 +23,15 @@
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/trie.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "proto_control.h"
 
 #ifdef HAVE_SYS_UN_H

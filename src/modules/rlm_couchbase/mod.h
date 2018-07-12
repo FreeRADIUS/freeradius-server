@@ -26,8 +26,8 @@
  */
 RCSIDH(mod_h, "$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/pool.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/pool.h>
 #include <libcouchbase/couchbase.h>
 #include <freeradius-devel/json/json.h>
 

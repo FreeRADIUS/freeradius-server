@@ -24,7 +24,7 @@
  */
 RCSIDH(other_h, "$Id$")
 
-#include <freeradius-devel/pool.h>
+#include <freeradius-devel/server/pool.h>
 #include "config.h"
 
 #define CURL_NO_OLDIES 1

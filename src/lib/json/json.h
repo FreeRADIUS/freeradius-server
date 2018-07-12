@@ -40,7 +40,7 @@ RCSIDH(json_h, "$Id$")
 #  endif
 #  include "json_missing.h"
 
-#  include <freeradius-devel/radiusd.h>
+#  include <freeradius-devel/server/server.h>
 
 /* jpath .c */
 typedef struct fr_jpath_node fr_jpath_node_t;

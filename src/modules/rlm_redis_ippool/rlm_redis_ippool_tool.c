@@ -26,8 +26,8 @@
  */
 RCSID("$Id$")
 #include <freeradius-devel/util/util.h>
-#include <freeradius-devel/cf_parse.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "redis.h"
 #include "cluster.h"

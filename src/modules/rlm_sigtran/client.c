@@ -26,12 +26,12 @@
  */
 #define LOG_PREFIX "rlm_sigtran - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/eap.aka.h>
 #include <freeradius-devel/eap.sim.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/server/modules.h>
 #include "sigtran.h"
 
 static pthread_mutex_t ctrl_pipe_mutex = PTHREAD_MUTEX_INITIALIZER;

@@ -28,8 +28,8 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/util.h>
-#include <freeradius-devel/heap.h>
-#include <freeradius-devel/event.h>
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/util/event.h>
 #include <freeradius-devel/io/time.h>
 #include <freeradius-devel/util/dlist.h>
 #include <sys/stat.h>

@@ -34,12 +34,6 @@
 RCSIDH(libradius_h, "$Id$")
 
 /*
- *  Let any external program building against the library know what
- *  features the library was built with.
- */
-#include <freeradius-devel/features.h>
-
-/*
  *  Talloc'd memory must be used throughout the librarys and server.
  *  This allows us to track allocations in the NULL context and makes
  *  root causing memory leaks easier.
@@ -64,27 +58,27 @@ RCSIDH(libradius_h, "$Id$")
 #  include <limits.h>
 #endif
 
-#include <freeradius-devel/threads.h>
-#include <freeradius-devel/inet.h>
-#include <freeradius-devel/dict.h>
-#include <freeradius-devel/token.h>
-#include <freeradius-devel/pair.h>
-#include <freeradius-devel/pair_cursor.h>
+#include <freeradius-devel/util/threads.h>
+#include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/pair_cursor.h>
 
-#include <freeradius-devel/packet.h>
-#include <freeradius-devel/radius.h>
+#include <freeradius-devel/util/packet.h>
+#include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/talloc.h>
-#include <freeradius-devel/hash.h>
-#include <freeradius-devel/regex.h>
-#include <freeradius-devel/proto.h>
-#include <freeradius-devel/conf.h>
-#include <freeradius-devel/radpaths.h>
-#include <freeradius-devel/rbtree.h>
-#include <freeradius-devel/fr_log.h>
-#include <freeradius-devel/version.h>
-#include <freeradius-devel/value.h>
-#include <freeradius-devel/debug.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/regex.h>
+#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/fr_log.h>
+#include <freeradius-devel/util/version.h>
+#include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/debug.h>
 
 #ifdef SIZEOF_UNSIGNED_INT
 #  if SIZEOF_UNSIGNED_INT != 4
@@ -95,8 +89,8 @@ RCSIDH(libradius_h, "$Id$")
 /*
  *  Include for modules.
  */
-#include <freeradius-devel/sha1.h>
-#include <freeradius-devel/md4.h>
+#include <freeradius-devel/util/sha1.h>
+#include <freeradius-devel/util/md4.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -361,5 +355,5 @@ int		fr_socket_bind(int sockfd, fr_ipaddr_t const *ipaddr, uint16_t *port, char 
 
 
 #ifdef WITH_TCP
-#  include <freeradius-devel/tcp.h>
+#  include <freeradius-devel/server/tcp.h>
 #endif

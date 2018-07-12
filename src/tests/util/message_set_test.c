@@ -25,8 +25,8 @@ RCSID("$Id$")
 #include <freeradius-devel/io/message.h>
 #include <string.h>
 #include <sys/time.h>
-#include <freeradius-devel/hash.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>

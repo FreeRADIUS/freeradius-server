@@ -23,11 +23,11 @@
  *
  * @author Alan DeKok <aland@freeradius.org>
  */
-#include <freeradius-devel/cf_util.h> /* Need CONF_* definitions */
-#include <freeradius-devel/map_proc.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/cf_util.h> /* Need CONF_* definitions */
+#include <freeradius-devel/server/map_proc.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #ifdef __cplusplus
 extern "C" {

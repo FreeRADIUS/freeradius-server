@@ -23,11 +23,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rbtree.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "track.h"
 #include "rlm_radius.h"

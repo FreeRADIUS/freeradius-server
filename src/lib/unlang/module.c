@@ -26,11 +26,11 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/parser.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/xlat.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/parser.h>
+#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/server/xlat.h>
 #include "unlang_priv.h"
 
 /*

@@ -23,8 +23,8 @@
  *
  * @copyright 2017 The FreeRADIUS project
  */
-#include <freeradius-devel/cf_util.h>
-#include <freeradius-devel/dl.h>
+#include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/dl.h>
 #include <freeradius-devel/io/io.h>
 
 /*

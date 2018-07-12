@@ -28,12 +28,12 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/parser.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/radmin.h>
-#include <freeradius-devel/cf_file.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/parser.h>
+#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/server/radmin.h>
+#include <freeradius-devel/server/cf_file.h>
 
 static _Thread_local rbtree_t *module_thread_inst_tree;
 

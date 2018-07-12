@@ -30,8 +30,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/util.h>
 
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/udp.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/udp.h>
 #include "attrs.h"
 
 static int instance_count = 0;

@@ -26,13 +26,13 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/parser.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/base64.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/sha1.h>
-#include <freeradius-devel/value.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/parser.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/base64.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/sha1.h>
+#include <freeradius-devel/util/value.h>
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>
 #endif

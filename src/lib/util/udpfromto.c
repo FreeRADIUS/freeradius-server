@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/udpfromto.h>
+#include <freeradius-devel/util/udpfromto.h>
 
 #ifdef WITH_UDPFROMTO
 

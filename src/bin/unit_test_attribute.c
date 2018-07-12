@@ -26,19 +26,19 @@ RCSID("$Id$")
 
 typedef struct REQUEST REQUEST;
 
-#include <freeradius-devel/tmpl.h>
-#include <freeradius-devel/map.h>
+#include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/server/map.h>
 
-#include <freeradius-devel/parser.h>
-#include <freeradius-devel/xlat.h>
-#include <freeradius-devel/conf.h>
-#include <freeradius-devel/radpaths.h>
+#include <freeradius-devel/server/parser.h>
+#include <freeradius-devel/server/xlat.h>
+#include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
-#include <freeradius-devel/cf_parse.h>
-#include <freeradius-devel/cf_util.h>
-#include <freeradius-devel/dl.h>
-#include <freeradius-devel/dependency.h>
-#include <freeradius-devel/command.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/dependency.h>
+#include <freeradius-devel/server/command.h>
 #include <freeradius-devel/io/test_point.h>
 
 #ifdef WITH_TACACS
@@ -53,7 +53,7 @@ typedef struct REQUEST REQUEST;
 
 #include <assert.h>
 
-#include <freeradius-devel/log.h>
+#include <freeradius-devel/server/log.h>
 extern fr_log_lvl_t rad_debug_lvl;
 
 #include <sys/wait.h>

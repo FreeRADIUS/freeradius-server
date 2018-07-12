@@ -28,10 +28,10 @@ RCSID("$Id$")
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS pool->log_prefix
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/heap.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 typedef struct fr_pool_connection fr_pool_connection_t;
 

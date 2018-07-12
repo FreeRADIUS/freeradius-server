@@ -26,8 +26,8 @@ RCSID("$Id$")
 
 #include <talloc.h>
 
-#include <freeradius-devel/event.h>
-#include <freeradius-devel/rbtree.h>
+#include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/io/queue.h>
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/control.h>

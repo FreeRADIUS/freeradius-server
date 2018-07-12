@@ -22,7 +22,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/server.h>
 
 #include	"rlm_sql.h"
 

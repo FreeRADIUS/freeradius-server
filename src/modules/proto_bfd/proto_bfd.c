@@ -20,14 +20,14 @@
  * @copyright 2012 Network RADIUS SARL <info@networkradius.com>
  */
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/event.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/sha1.h>
 
 #define USEC (1000000)
 #define BFD_MAX_SECRET_LENGTH 20

@@ -28,13 +28,13 @@ USES_APPLE_DEPRECATED_API
 
 #include <ctype.h>
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/base64.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/util/base64.h>
+#include <freeradius-devel/server/rad_assert.h>
 
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/tls/tls.h>
 
 #ifdef HAVE_OPENSSL_EVP_H

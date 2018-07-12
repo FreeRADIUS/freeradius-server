@@ -23,8 +23,8 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/modules.h>
 
 /*
  *	Reject any non-UTF8 data.

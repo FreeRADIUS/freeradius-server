@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <talloc.h>
 #include <string.h>
 #include <stdint.h>
-#include <freeradius-devel/cursor.h>
+#include <freeradius-devel/util/cursor.h>
 
 #define NEXT_PTR(_v) ((void **)(((uint8_t *)(_v)) + cursor->offset))
 
@@ -601,7 +601,7 @@ void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, siz
  *  cc cursor.c -g3 -Wall -DTESTING_CURSOR -I../../ -I../ -include ../include/build.h -l talloc -o test_cursor && ./test_cursor
  */
 #include <stddef.h>
-#include <freeradius-devel/cutest.h>
+#include <freeradius-devel/util/cutest.h>
 
 typedef struct {
 	char const *name;

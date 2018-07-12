@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include "comp128.h"
 #include "milenage.h"
 
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 static int vector_opc_from_op(REQUEST *request, uint8_t const **out, uint8_t opc_buff[MILENAGE_OPC_SIZE],
 			      VALUE_PAIR *list, uint8_t const ki[MILENAGE_KI_SIZE])

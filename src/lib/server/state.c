@@ -46,10 +46,10 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/state.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/state.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 /** Holds a state value, and associated VALUE_PAIRs and data
  *

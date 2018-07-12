@@ -21,9 +21,9 @@
  *
  * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/dl.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/server/dl.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/tls/tls.h>
 

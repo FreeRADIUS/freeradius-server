@@ -3,7 +3,7 @@
 
 #include "config.h"
 #include <wbclient.h>
-#include <freeradius-devel/pool.h>
+#include <freeradius-devel/server/pool.h>
 
 /*
  *      Structure for the module configuration.

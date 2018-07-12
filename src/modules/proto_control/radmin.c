@@ -64,10 +64,10 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "radmin - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/cf_parse.h>
-#include <freeradius-devel/radmin.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/radmin.h>
 #include "conduit.h"
 
 /*

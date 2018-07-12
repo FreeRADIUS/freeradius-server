@@ -20,8 +20,8 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <freeradius-devel/tls_log.h>
-#include <freeradius-devel/proto.h>
+#include <freeradius-devel/tls/tls_log.h>
+#include <freeradius-devel/util/proto.h>
 #include <openssl/evp.h>
 #include "milenage.h"
 
@@ -474,7 +474,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 /*
  *  cc milenage.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_MILENAGE -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_milenage && ./test_milenage
  */
-#include <freeradius-devel/cutest.h>
+#include <freeradius-devel/util/cutest.h>
 
 void test_set_1(void)
 {

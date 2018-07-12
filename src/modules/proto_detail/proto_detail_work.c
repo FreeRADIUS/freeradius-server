@@ -23,14 +23,14 @@
  * @copyright 2017 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "proto_detail.h"
 
 #include <fcntl.h>

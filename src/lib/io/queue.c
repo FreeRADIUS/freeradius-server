@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <stdint.h>
 #include <string.h>
 
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/io/queue.h>
 
 struct fr_queue_t {

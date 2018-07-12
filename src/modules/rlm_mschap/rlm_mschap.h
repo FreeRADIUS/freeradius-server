@@ -7,7 +7,7 @@ RCSIDH(rlm_mschap_h, "$Id$")
 #ifdef WITH_AUTH_WINBIND
 #  include <wbclient.h>
 
-#include <freeradius-devel/pool.h>
+#include <freeradius-devel/server/pool.h>
 #endif
 
 /* Method of authentication we are going to use */

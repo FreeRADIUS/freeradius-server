@@ -20,8 +20,8 @@
  *
  * @copyright 2003-2016 The FreeRADIUS server project
  */
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/dict.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/eap.sim.h>
 #include <freeradius-devel/eap.aka.h>
 

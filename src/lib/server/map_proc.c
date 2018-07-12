@@ -26,8 +26,8 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "map_proc_priv.h"
 
 static rbtree_t *map_proc_root = NULL;

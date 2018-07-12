@@ -21,7 +21,7 @@
  * @copyright 2017 The FreeRADIUS server project
  */
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/server.h>
 #include "sim_proto.h"
 #include "sim_attrs.h"
 

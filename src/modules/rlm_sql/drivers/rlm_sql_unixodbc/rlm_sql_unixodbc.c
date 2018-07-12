@@ -23,8 +23,8 @@ USES_APPLE_DEPRECATED_API
 
 #define LOG_PREFIX "rlm_sql_unixodbc - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <sqltypes.h>
 #include "rlm_sql.h"

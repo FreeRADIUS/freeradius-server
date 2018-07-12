@@ -28,9 +28,9 @@ RCSIDH(cf_priv_h, "$Id$")
 #include <stdint.h>
 #include <sys/stat.h>
 
-#include <freeradius-devel/cf_parse.h>
-#include <freeradius-devel/rbtree.h>
-#include <freeradius-devel/cursor.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/cursor.h>
 
 typedef enum conf_type {
 	CONF_ITEM_INVALID = 0,

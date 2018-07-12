@@ -24,7 +24,7 @@
 
 #ifdef HAVE_REGEX
 #include <freeradius-devel/util/util.h>
-#include <freeradius-devel/regex.h>
+#include <freeradius-devel/util/regex.h>
 
 /*
  *	Wrapper functions for libpcre. Much more powerful, and guaranteed

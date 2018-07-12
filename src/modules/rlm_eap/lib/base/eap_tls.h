@@ -45,7 +45,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include <unistd.h>
 #endif
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/server.h>
 #include <freeradius-devel/tls/tls.h>
 
 #include "eap.h"

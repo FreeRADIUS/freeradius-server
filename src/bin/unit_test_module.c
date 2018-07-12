@@ -25,12 +25,12 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/map_proc.h>
-#include <freeradius-devel/state.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/server/map_proc.h>
+#include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/tls/tls.h>
 
 #ifdef HAVE_GETOPT_H
@@ -424,7 +424,7 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 }
 
 
-#include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/server/modpriv.h>
 
 /*
  *	%{poke:sql.foo=bar}

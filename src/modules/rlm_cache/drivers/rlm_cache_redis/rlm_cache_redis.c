@@ -23,8 +23,8 @@
  */
 #define LOG_PREFIX "rlm_cache_redis - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "../../rlm_cache.h"
 #include <freeradius-devel/redis/redis.h>

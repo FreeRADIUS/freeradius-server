@@ -26,7 +26,7 @@
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/ldap/ldap.h>
 
 /** Callback for map_to_request

@@ -24,13 +24,13 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/udp.h>
-#include <freeradius-devel/heap.h>
-#include <freeradius-devel/connection.h>
+#include <freeradius-devel/util/udp.h>
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/unlang.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/unlang/unlang.h>
 
 #include "rlm_radius.h"
 #include "track.h"

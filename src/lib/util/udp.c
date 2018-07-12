@@ -25,7 +25,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/udp.h>
+#include <freeradius-devel/util/udp.h>
 
 /*
  *	This is easier than ifdef's in the function definition.

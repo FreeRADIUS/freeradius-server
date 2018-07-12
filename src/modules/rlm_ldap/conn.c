@@ -28,7 +28,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "rlm_ldap.h"
 

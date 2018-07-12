@@ -28,10 +28,10 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <freeradius-devel/redis/redis.h>
 #include <freeradius-devel/redis/cluster.h>

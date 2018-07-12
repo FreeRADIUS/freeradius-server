@@ -25,10 +25,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/unlang.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/unlang/unlang.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "rlm_radius.h"
 

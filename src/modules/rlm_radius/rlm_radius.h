@@ -14,8 +14,8 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/util/dlist.h>
 
 #ifdef HAVE_STDATOMIC_H

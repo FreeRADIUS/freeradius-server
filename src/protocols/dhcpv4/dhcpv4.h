@@ -30,8 +30,8 @@ RCSIDH(dhcp_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/pcap.h>
-#include <freeradius-devel/packet.h>
+#include <freeradius-devel/util/pcap.h>
+#include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/dhcpv4.h>
 
 #define DHCP_CHADDR_LEN	(16)

@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/tls.h
+ * @file lib/tls/tls.h
  * @brief Structures and prototypes for TLS wrappers
  *
  * @copyright 2010 Network RADIUS SARL <info@networkradius.com>
@@ -26,9 +26,9 @@
  */
 RCSIDH(tls_h, "$Id$")
 
-#include <freeradius-devel/cf_parse.h>
-#include <freeradius-devel/tmpl.h>
-#include <freeradius-devel/tls_log.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/tls/tls_log.h>
 
 /*
  *	This changed in OpenSSL 1.1.0 (they allow deprecated interfaces)

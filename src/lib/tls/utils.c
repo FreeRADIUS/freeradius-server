@@ -24,7 +24,7 @@
  */
 
 #include <openssl/ssl.h>
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/server.h>
 #include "tls.h"
 
 /** PKEY types (friendly names)

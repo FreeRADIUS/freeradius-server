@@ -31,8 +31,8 @@
 
 RCSIDH(redis_h, "$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/modules.h>
 #include <hiredis/hiredis.h>
 
 #define MAX_REDIS_COMMAND_LEN		4096

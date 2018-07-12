@@ -28,8 +28,8 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_sql_mysql - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <sys/stat.h>
 

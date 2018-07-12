@@ -28,10 +28,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/process.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "tls.h"
 #include "tls_attrs.h"
 

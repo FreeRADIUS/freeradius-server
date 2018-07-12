@@ -27,10 +27,10 @@ RCSID("$Id$")
 
 #include <ctype.h>
 #include <unistd.h>
-#include <freeradius-devel/dl.h>
-#include <freeradius-devel/cursor.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/server.h>
 
 #ifdef HAVE_VALGRIND_H
 #  include <valgrind.h>

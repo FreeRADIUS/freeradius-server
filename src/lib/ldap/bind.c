@@ -24,7 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/ldap/ldap.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 /** Holds arguments for the bind operation
  *

@@ -25,9 +25,9 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/cf_parse.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/server.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 static CONF_SECTION const	*trigger_exec_main, *trigger_exec_subcs;
 static rbtree_t			*trigger_last_fired_tree;

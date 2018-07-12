@@ -27,9 +27,9 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/conf.h>
+#include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/util.h>
-#include <freeradius-devel/udp.h>
+#include <freeradius-devel/util/udp.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/uio.h>

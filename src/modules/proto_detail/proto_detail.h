@@ -25,7 +25,7 @@
  */
 RCSIDH(detail_h, "$Id$")
 
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/util/dlist.h>
 
 #ifdef __cplusplus

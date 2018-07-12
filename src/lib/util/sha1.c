@@ -9,8 +9,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/util.h>
-
-#include "../../include/sha1.h"
+#include <freeradius-devel/util/sha1.h>
 
 #ifndef WITH_OPENSSL_SHA1
 #  define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
