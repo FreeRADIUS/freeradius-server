@@ -129,6 +129,7 @@ static void add_history(UNUSED char *line)
 #endif
 
 static fr_cmd_t *radmin_cmd = NULL;
+static char *radmin_buffer = NULL;
 
 #define CMD_MAX_ARGV (32)
 #define CMD_MAX_EXPANSIONS (128)
@@ -200,6 +201,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	ctx = talloc_init("radmin");
 
 	size = room = 8192;
+	radmin_buffer = talloc_array(ctx, char, size);
 	argv_buffer = talloc_array(ctx, char, size);
 	current_str = argv_buffer;
 
@@ -280,6 +282,15 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	the current context.
 		 */
 		strlcpy(current_str, line, room);
+
+		/*
+		 *	Keep a copy of the full string entered.
+		 */
+		if (current_str > argv_buffer) {
+			radmin_buffer[(current_str - argv_buffer) - 1] = ' ';
+		}
+		strlcpy(radmin_buffer + (current_str - argv_buffer), line, room);
+
 		argc = fr_command_str_to_argv(radmin_cmd, info, current_str);
 
 		/*
@@ -377,6 +388,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	}
 
 	talloc_free(ctx);
+	radmin_buffer = NULL;
 
 	return NULL;
 }
