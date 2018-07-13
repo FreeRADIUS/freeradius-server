@@ -219,6 +219,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 
 	state->da = da;		/* Remember which attribute we use to load/store state */
 	state->server_id = server_id;
+	state->thread_safe = thread_safe;
 
 	return state;
 }
