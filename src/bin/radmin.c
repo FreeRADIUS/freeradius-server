@@ -32,6 +32,10 @@ RCSID("$Id$")
 
 #ifdef HAVE_LIBREADLINE
 
+/*
+ *	Readline headers aren't compliant
+ */
+DIAG_OFF(strict-prototypes)
 # include <stdio.h>
 #if defined(HAVE_READLINE_READLINE_H)
 #  include <readline/readline.h>
@@ -51,6 +55,7 @@ RCSID("$Id$")
 #endif /* defined(HAVE_READLINE_HISTORY_H) */
 #endif /* HAVE_READLINE_HISTORY */
 #endif /* HAVE_LIBREADLINE */
+DIAG_ON(strict-prototypes)
 
 static pthread_t pthread_id;
 static bool stop = false;
