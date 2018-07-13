@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/rad_assert.h>
 
-#include "redis.h"
+#include "base.h"
 #include "cluster.h"
 #include "redis_ippool.h"
 

@@ -30,7 +30,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/server/dl.h>
-#include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/base.h>
 
 /*
  *	We'll use this below.

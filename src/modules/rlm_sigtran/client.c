@@ -30,7 +30,7 @@
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/eap.aka.h>
 #include <freeradius-devel/eap.sim.h>
-#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/modules.h>
 #include "sigtran.h"
 

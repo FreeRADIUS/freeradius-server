@@ -22,10 +22,10 @@
  * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/dl.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/tls/tls.h>
+#include <freeradius-devel/tls/base.h>
 
 /** Compile various unlang sections
  *

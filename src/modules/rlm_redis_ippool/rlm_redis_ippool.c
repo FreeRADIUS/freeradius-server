@@ -46,7 +46,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/rad_assert.h>
 
-#include <freeradius-devel/redis/redis.h>
+#include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
 #include "redis_ippool.h"
 

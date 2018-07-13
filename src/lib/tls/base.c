@@ -34,7 +34,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
-#include "tls.h"
+#include "base.h"
 #include "tls_attrs.h"
 
 static int instance_count = 0;

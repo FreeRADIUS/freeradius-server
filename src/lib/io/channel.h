@@ -27,7 +27,7 @@ RCSIDH(channel_h, "$Id$")
 
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/util/dlist.h>
 
 #include <sys/types.h>

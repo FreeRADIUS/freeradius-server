@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/tls/tls.h
+ * @file lib/tls/base.h
  * @brief Structures and prototypes for TLS wrappers
  *
  * @copyright 2010 Network RADIUS SARL <info@networkradius.com>

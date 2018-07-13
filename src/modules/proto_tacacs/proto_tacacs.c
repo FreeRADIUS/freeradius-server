@@ -22,7 +22,7 @@
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/state.h>

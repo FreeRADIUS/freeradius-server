@@ -23,7 +23,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/md5.h>

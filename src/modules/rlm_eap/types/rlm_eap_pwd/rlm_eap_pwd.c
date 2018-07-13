@@ -36,7 +36,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define LOG_PREFIX "rlm_eap_pwd - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/tls/tls.h>
+#include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/server/modules.h>
 
 #include "eap_pwd.h"

@@ -41,7 +41,7 @@ RCSID("$Id$")
 #include "milenage.h"
 
 #include <freeradius-devel/util/sha1.h>
-#include <freeradius-devel/tls/tls.h>
+#include <freeradius-devel/tls/base.h>
 #include <openssl/evp.h>
 
 

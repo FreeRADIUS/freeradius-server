@@ -24,7 +24,7 @@
  *
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/ldap/ldap.h>
+#include <freeradius-devel/ldap/base.h>
 #include <lber.h>
 
 #define SYNC_UUID_LENGTH		16

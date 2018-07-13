@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/unlang/base.h>
 #include "eap.h"
 
 #include <freeradius-devel/server/rad_assert.h>

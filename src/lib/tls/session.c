@@ -32,7 +32,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <openssl/x509v3.h>
-#include "tls.h"
+#include "base.h"
 #include "tls_attrs.h"
 
 /*

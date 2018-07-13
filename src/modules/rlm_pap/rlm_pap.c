@@ -35,7 +35,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/sha1.h>
-#include <freeradius-devel/tls/tls.h>
+#include <freeradius-devel/tls/base.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>

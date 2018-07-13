@@ -32,7 +32,7 @@ RCSIDH(modules_h, "$Id$")
 #include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/components.h>
-#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/unlang/base.h>
 
 #ifdef __cplusplus
 extern "C" {

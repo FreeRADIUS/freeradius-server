@@ -21,8 +21,8 @@ TGT_PREREQS := libfreeradius-util.la
 TGT_LDLIBS  := $(LIBS) $(OPENSSL_LIBS) $(GPERFTOOLS_LIBS)
 TGT_LDFLAGS := $(OPENSSL_FLAGS) $(GPERFTOOL_FLAGS)
 
-src/lib/tls/tls.h: src/lib/tls/tls-h src/include/autoconf.sed src/include/autoconf.h
+src/lib/tls/base.h: src/lib/tls/base-h src/include/autoconf.sed src/include/autoconf.h
 	${Q}$(ECHO) HEADER $@
 	${Q}sed -f src/include/autoconf.sed < $< > $@
 
-src/freeradius-devel: | src/lib/tls/tls.h
+src/freeradius-devel: | src/lib/tls/base.h

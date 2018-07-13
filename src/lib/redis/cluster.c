@@ -145,7 +145,7 @@
  *   after some time.  This time is configurable.
  *
  */
-#include "redis.h"
+#include "base.h"
 #include "cluster.h"
 #include "crc16.h"
 #include <freeradius-devel/server/rad_assert.h>

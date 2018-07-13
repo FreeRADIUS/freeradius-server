@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/unlang/unlang.h
+ * @file lib/unlang/base.h
  * @brief Public interface to the interpreter
  *
  */

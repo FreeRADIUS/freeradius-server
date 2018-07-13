@@ -33,7 +33,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <openssl/ocsp.h>
-#include "tls.h"
+#include "base.h"
 #include "tls_attrs.h"
 
 /** Rcodes returned by the OCSP check function

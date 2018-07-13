@@ -27,7 +27,7 @@
 #include <freeradius-devel/server/rad_assert.h>
 
 #include "../../rlm_cache.h"
-#include <freeradius-devel/redis/redis.h>
+#include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
 static CONF_PARSER driver_config[] = {
 	REDIS_COMMON_CONFIG,

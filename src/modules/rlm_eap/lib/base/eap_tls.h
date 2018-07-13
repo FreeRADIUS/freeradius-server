@@ -46,7 +46,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #endif
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/tls/tls.h>
+#include <freeradius-devel/tls/base.h>
 
 #include "eap.h"
 

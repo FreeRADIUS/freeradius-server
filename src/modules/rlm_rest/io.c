@@ -24,7 +24,7 @@
 #include "rest.h"
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/unlang/unlang.h>
+#include <freeradius-devel/unlang/base.h>
 
 /*
  *  CURL headers do:

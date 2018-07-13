@@ -33,7 +33,7 @@ RCSIDH(other_h, "$Id$")
 /*
  *	The common JSON library (also tells us if we have json-c)
  */
-#include <freeradius-devel/json/json.h>
+#include <freeradius-devel/json/base.h>
 
 #define REST_URI_MAX_LEN		2048
 #define REST_BODY_MAX_LEN		8192

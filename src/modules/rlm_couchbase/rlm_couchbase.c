@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 
 #include <libcouchbase/couchbase.h>
-#include <freeradius-devel/json/json.h>
+#include <freeradius-devel/json/base.h>
 
 #include "mod.h"
 #include "couchbase.h"

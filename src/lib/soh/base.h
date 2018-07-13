@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file src/lib/soh/soh.h
+ * @file src/lib/soh/base.h
  * @brief Common libraries for parsing Microsoft SOH data
  *
  * @copyright 2010 Phil Mayers <p.mayers@imperial.ac.uk>

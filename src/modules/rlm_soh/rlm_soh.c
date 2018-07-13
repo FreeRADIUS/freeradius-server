@@ -26,7 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
-#include <freeradius-devel/soh/soh.h>
+#include <freeradius-devel/soh/base.h>
 
 typedef struct rlm_soh_t {
 	char const *xlat_name;

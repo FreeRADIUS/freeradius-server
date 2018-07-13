@@ -17,7 +17,7 @@
 
 /**
  * $Id$
- * @file jpath.c
+ * @file lib/json/base.h
  * @brief Implements the evaluation and parsing functions for the FreeRADIUS version of jpath.
  *
  * @author Arran Cudbard-Bell

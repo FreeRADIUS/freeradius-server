@@ -15,7 +15,7 @@
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/ldap/ldap.h>
+#include <freeradius-devel/ldap/base.h>
 
 typedef struct ldap_inst_s rlm_ldap_t;
 
