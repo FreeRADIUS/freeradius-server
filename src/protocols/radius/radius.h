@@ -26,7 +26,7 @@
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/packet.h>
-#include <freeradius-devel/util/fr_log.h>
+#include <freeradius-devel/util/log.h>
 
 #define AUTH_VECTOR_LEN		16
 #define CHAP_VALUE_LENGTH       16

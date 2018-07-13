@@ -26,7 +26,7 @@
  */
 RCSIDH(log_h, "$Id$")
 
-#include <freeradius-devel/util/fr_log.h>
+#include <freeradius-devel/util/log.h>
 
 #ifdef __cplusplus
 extern "C" {

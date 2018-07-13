@@ -33,7 +33,7 @@ extern "C" {
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/fr_log.h>
+#include <freeradius-devel/util/log.h>
 
 /*
  *	Avoid circular type references.

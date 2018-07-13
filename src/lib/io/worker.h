@@ -29,7 +29,7 @@ RCSIDH(worker_h, "$Id$")
 
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/fr_log.h>
+#include <freeradius-devel/util/log.h>
 
 #include <freeradius-devel/io/base.h>
 

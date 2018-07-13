@@ -27,7 +27,7 @@ RCSIDH(schedule_h, "$Id$")
 
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/network.h>
-#include <freeradius-devel/util/fr_log.h>
+#include <freeradius-devel/util/log.h>
 
 #ifdef __cplusplus
 extern "C" {

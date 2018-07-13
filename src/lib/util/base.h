@@ -75,7 +75,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/util/rbtree.h>
-#include <freeradius-devel/util/fr_log.h>
+#include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/version.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/debug.h>

@@ -23,7 +23,7 @@
 /**
  * $Id$
  *
- * @file lib/util/fr_log.h
+ * @file lib/util/log.h
  * @brief libfreeradius logging functions
  *
  * @copyright 2016  The FreeRADIUS server project
