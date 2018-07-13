@@ -30,7 +30,7 @@ RCSIDH(jsonc_missing_h, "$Id$")
 #  if defined(HAVE_JSONMC_JSON_H)
 #    include <json-c/json.h>
 #  elif defined(HAVE_JSON_JSON_H)
-#    include <json/base.h>
+#    include <json/json.h>
 #  else
 #    error "Need json-c headers"
 #  endif
