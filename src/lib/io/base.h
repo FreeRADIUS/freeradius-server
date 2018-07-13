@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file io/io.h
+ * @file lib/io/base.h
  * @brief Transport-specific functions.
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>

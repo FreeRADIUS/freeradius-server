@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file redis.h
+ * @file lib/redis/base.h
  * @brief Common functions for interacting with Redis via hiredis
  *
  * @author Arran Cudbard-Bell

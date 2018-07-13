@@ -1,7 +1,7 @@
 #pragma once
 /**
  * $Id$
- * @file lib/ldap/ldap.h
+ * @file lib/ldap/base.h
  * @brief Common utility functions for interacting with LDAP directories
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
