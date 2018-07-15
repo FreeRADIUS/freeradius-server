@@ -153,6 +153,7 @@ static int _state_tree_free(fr_state_tree_t *state)
 	DEBUG4("Freeing state tree %p", state);
 
 	while ((entry = fr_dlist_head(&state->to_expire))) {
+		DEBUG4("Freeing state entry %p (%"PRIu64")", entry, entry->id);
 		state_entry_unlink(state, entry);
 		talloc_free(entry);
 	}
@@ -551,17 +552,25 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	/*
-	 *	The state and request must be in the same state
-	 *	as if we'd called fr_request_to_state, before
-	 *	we free the state entry, otherwise we leak memory.
+	 *	If fr_state_to_request was never called, this ensures
+	 *	the state owned by entry is freed, otherwise this is
+	 *	mostly a NOOP, other than freeing the memory held by
+	 *	the memory.
 	 */
-	entry->ctx = request->state_ctx;
-	entry->vps = request->state;
-	request_data_by_persistance(&entry->data, request, true);
-
-	request->state_ctx = NULL;
-	request->state = NULL;
 	TALLOC_FREE(entry);
+
+	/*
+	 *	If fr_state_to_request was called, then the request
+	 *	holds the state data, and we need to destroy it
+	 *	and return the request to the state it was in when
+	 *	it was first alloced, just in case a user does something
+	 *	stupid like add additional session-state attributes
+	 *	in  one of the later sections.
+	 */
+	TALLOC_FREE(request->state_ctx);
+	request->state = NULL;
+
+	MEM(request->state_ctx = talloc_init("session-state"));
 
 	RDEBUG3("RADIUS State - discarded");
 
