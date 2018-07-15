@@ -336,7 +336,8 @@ static int _request_data_free(request_data_t *this)
 int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, void *opaque,
 		     bool free_on_replace, bool free_on_parent, bool persist)
 {
-	request_data_t *this, **last, *next;
+	fr_cursor_t	cursor;
+	request_data_t	*rd;
 
 	/*
 	 *	Request must have a state ctx
@@ -348,29 +349,30 @@ int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, v
 		   (talloc_parent(opaque) == talloc_null_ctx()));
 	rad_assert(!free_on_parent || (talloc_parent(opaque) != request));
 
-	this = next = NULL;
-	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
-		*last = talloc_get_type_abort(*last, request_data_t);
-		if (((*last)->unique_ptr == unique_ptr) && ((*last)->unique_int == unique_int)) {
-			this = *last;
-			next = this->next;
+	fr_cursor_talloc_init(&cursor, &request->data, request_data_t);
+
+	for (rd = fr_cursor_current(&cursor);
+	     rd;
+	     rd = fr_cursor_next(&cursor)) {
+		if ((rd->unique_ptr == unique_ptr) && (rd->unique_int == unique_int)) {
+			fr_cursor_remove(&cursor);	/* Unlink from the list */
 
 			/*
 			 *	If caller requires custom behaviour on free
 			 *	they must set a destructor.
 			 */
-			if (this->free_on_replace && this->opaque) {
+			if (rd->free_on_replace && rd->opaque) {
 				RDEBUG4("Freeing request data %p at %p:%i via replacement",
-					this->opaque, this->unique_ptr, this->unique_int);
-				talloc_free(this->opaque);
+					rd->opaque, rd->unique_ptr, rd->unique_int);
+				talloc_free(rd->opaque);
 			}
 			/*
-			 *	Need a new one, this one's parent is wrong.
+			 *	Need a new one, rd one's parent is wrong.
 			 *	And no, we can't just steal.
 			 */
-			if (this->persist != persist) {
-				this->free_on_parent = false;
-				TALLOC_FREE(this);
+			if (rd->persist != persist) {
+				rd->free_on_parent = false;
+				TALLOC_FREE(rd);
 			}
 
 			break;	/* replace the existing entry */
@@ -385,29 +387,28 @@ int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, v
 	 *	or the request, depending on whether it should
 	 *	persist or not.
 	 */
-	if (!this) {
+	if (!rd) {
 		if (persist) {
 			rad_assert(request->state_ctx);
-			this = talloc_zero(request->state_ctx, request_data_t);
+			rd = talloc_zero(request->state_ctx, request_data_t);
 		} else {
-			this = talloc_zero(request, request_data_t);
+			rd = talloc_zero(request, request_data_t);
 		}
-		talloc_set_destructor(this, _request_data_free);
+		talloc_set_destructor(rd, _request_data_free);
 	}
-	if (!this) return -1;
+	if (!rd) return -1;
 
-	this->next = next;
-	this->unique_ptr = unique_ptr;
-	this->unique_int = unique_int;
-	this->opaque = opaque;
-	this->free_on_replace = free_on_replace;
-	this->free_on_parent = free_on_parent;
-	this->persist = persist;
+	rd->unique_ptr = unique_ptr;
+	rd->unique_int = unique_int;
+	rd->opaque = opaque;
+	rd->free_on_replace = free_on_replace;
+	rd->free_on_parent = free_on_parent;
+	rd->persist = persist;
 
-	*last = this;
+	fr_cursor_prepend(&cursor, rd);
 
 	RDEBUG4("Added request data %p at %p:%i, free_on_replace: %s, free_on_parent: %s, persist: %s",
-		this->opaque, this->unique_ptr, this->unique_int,
+		rd->opaque, rd->unique_ptr, rd->unique_int,
 		free_on_replace ? "yes" : "no",
 		free_on_parent ? "yes" : "no",
 		persist ? "yes" : "no");
@@ -429,25 +430,23 @@ int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, v
  */
 void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
 {
-	request_data_t **last;
+	fr_cursor_t	cursor;
+	request_data_t	*rd;
 
 	if (!request) return NULL;
 
-	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
-		*last = talloc_get_type_abort(*last, request_data_t);
-		if (((*last)->unique_ptr == unique_ptr) && ((*last)->unique_int == unique_int)) {
-			request_data_t	*this;
-			void		*ptr;
+	fr_cursor_talloc_init(&cursor, &request->data, request_data_t);
 
-			this = *last;
-			ptr = this->opaque;
+	for (rd = fr_cursor_current(&cursor);
+	     rd;
+	     rd = fr_cursor_next(&cursor)) {
+		if ((rd->unique_ptr == unique_ptr) && (rd->unique_int == unique_int)) {
+			void *ptr;
 
-			/*
-			 *	Remove the entry from the list, and free it.
-			 */
-			*last = this->next;
-			this->free_on_parent = false;	/* Don't free opaque data we're handing back */
-			talloc_free(this);
+			ptr = rd->opaque;
+
+			rd->free_on_parent = false;	/* Don't free opaque data we're handing back */
+			fr_cursor_free_item(&cursor);
 
 			return ptr;
 		}
@@ -519,11 +518,18 @@ void request_data_restore(REQUEST *request, request_data_t *in)
  */
 void *request_data_reference(REQUEST *request, void const *unique_ptr, int unique_int)
 {
-	request_data_t **last;
+	fr_cursor_t	cursor;
+	request_data_t	*rd;
 
-	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
-		if (((*last)->unique_ptr == unique_ptr) &&
-		    ((*last)->unique_int == unique_int)) return (*last)->opaque;
+	if (!request) return NULL;
+
+	fr_cursor_talloc_init(&cursor, &request->data, request_data_t);
+
+	for (rd = fr_cursor_current(&cursor);
+	     rd;
+	     rd = fr_cursor_next(&cursor)) {
+		if ((rd->unique_ptr == unique_ptr) &&
+		    (rd->unique_int == unique_int)) return rd->opaque;
 	}
 
 	return NULL;		/* wasn't found, too bad... */
@@ -542,9 +548,14 @@ void *request_data_reference(REQUEST *request, void const *unique_ptr, int uniqu
  */
 bool request_data_verify_parent(TALLOC_CTX *parent, request_data_t *entry)
 {
-	request_data_t **last;
+	fr_cursor_t	cursor;
+	request_data_t	*rd;
 
-	for (last = &entry; *last != NULL; last = &((*last)->next)) if (talloc_parent(entry) != parent) return false;
+	fr_cursor_talloc_init(&cursor, &entry, request_data_t);
+
+	for (rd = fr_cursor_current(&cursor);
+	     rd;
+	     rd = fr_cursor_next(&cursor)) if (talloc_parent(rd) != parent) return false;
 	return true;
 }
 #endif
