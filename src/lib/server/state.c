@@ -555,7 +555,7 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 	 *	If fr_state_to_request was never called, this ensures
 	 *	the state owned by entry is freed, otherwise this is
 	 *	mostly a NOOP, other than freeing the memory held by
-	 *	the memory.
+	 *	the entry.
 	 */
 	TALLOC_FREE(entry);
 
