@@ -175,7 +175,19 @@ static inline void *fr_dlist_head(fr_dlist_head_t *list_head)
 	if (head->next == head) return NULL;
 
 	return (void *) (((uint8_t *) head->next) - list_head->offset);
+}
 
+/** Check whether a list has any items.
+ *
+ * @return
+ *	- True if it does not.
+ *	- False if it does.
+ */
+static inline bool fr_dlist_empty(fr_dlist_head_t *list_head)
+{
+	fr_dlist_t *head = &(list_head->entry);
+
+	return (head->prev == head);
 }
 
 /** Return the TAIL item of a list or NULL if the list is empty
@@ -213,12 +225,11 @@ static inline void *fr_dlist_next(fr_dlist_head_t *list_head, void *ptr)
 	fr_dlist_t *entry;
 	fr_dlist_t *head;
 
+	if (!ptr) return fr_dlist_head(list_head);
+
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
-
-	if (!ptr) return fr_dlist_head(list_head);
-
 	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
 	head = &(list_head->entry);
 
@@ -245,11 +256,11 @@ static inline void *fr_dlist_prev(fr_dlist_head_t *list_head, void *ptr)
 	fr_dlist_t *entry;
 	fr_dlist_t *head;
 
+	if (!ptr) return fr_dlist_tail(list_head);
+
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
-
-	if (!ptr) return fr_dlist_tail(list_head);
 
 	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
 	head = &(list_head->entry);
@@ -300,9 +311,10 @@ static inline void *fr_dlist_remove(fr_dlist_head_t *list_head, void *ptr)
 	if (!ptr) return NULL;
 
 	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	head = &(list_head->entry);
 
-	if (!fr_cond_assert(entry->next != NULL)) return;
-	if (!fr_cond_assert(entry->prev != NULL)) return;
+	if (!fr_cond_assert(entry->next != NULL)) return NULL;
+	if (!fr_cond_assert(entry->prev != NULL)) return NULL;
 
 	entry->prev->next = entry->next;
 	entry->next->prev = prev = entry->prev;
@@ -340,31 +352,31 @@ static inline void fr_dlist_verify(fr_dlist_head_t *list_head)
 /** Merge two lists, inserting the tail of one into the other
  *
  */
-static inline void fr_dlist_insert_tail_list(fr_dlist_head_t *list_head_a, fr_dlist_head_t *list_head_b)
+static inline void fr_dlist_move(fr_dlist_head_t *list_dst, fr_dlist_head_t *list_src)
 {
-	fr_dlist_t *head_a = &(list_head_a->entry);
-	fr_dlist_t *head_b = &(list_head_b->entry);
+	fr_dlist_t *dst = &(list_dst->entry);
+	fr_dlist_t *src = &(list_src->entry);
 
 #ifdef WITH_VERIFY_PTR
 	/*
 	 *	Must be both talloced or both not
 	 */
-	if (!fr_cond_assert(list_head_a->type == list_head_b->type)) return;
+	if (!fr_cond_assert(list_dst->type == list_src->type)) return;
 
 	/*
 	 *	Must be of the same type
 	 */
-	if (!fr_cond_assert(!list_head_a->type) || (strcmp(list_head_a->type, list_head_b->type) == 0)) return;
+	if (!fr_cond_assert(!list_dst->type) || (strcmp(list_dst->type, list_src->type) == 0)) return;
 #endif
 
-	if (!fr_cond_assert(head_a->next != NULL)) return;
-	if (!fr_cond_assert(head_a->prev != NULL)) return;
+	if (!fr_cond_assert(dst->next != NULL)) return;
+	if (!fr_cond_assert(dst->prev != NULL)) return;
 
-	head_b->prev->next = head_a;
-	head_b->next->prev = head_a->prev;
+	src->prev->next = dst;
+	src->next->prev = dst->prev;
 
-	head_a->prev->next = head_b->next;
-	head_a->prev = head_b->prev;
+	dst->prev->next = src->next;
+	dst->prev = src->prev;
 
-	head_b->prev = head_b->next = head_b;
+	fr_dlist_entry_init(src);
 }
