@@ -382,9 +382,6 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	/*
 	 *	Allocation doesn't need to occur inside the critical region
 	 *	and would add significantly to contention.
-	 *
-	 *	We reparent the talloc chunk later (when we hold the mutex again)
-	 *	we can't do it now due to thread safety issues with talloc.
 	 */
 	entry = talloc_zero(NULL, fr_state_entry_t);
 	if (!entry) {
