@@ -683,7 +683,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 	RDEBUG3("RADIUS State - saved");
 	REQUEST_VERIFY(request);
 
-	return true;
+	return 0;
 }
 
 /** Return number of entries created
