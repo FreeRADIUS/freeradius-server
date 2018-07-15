@@ -66,7 +66,7 @@ static int _request_free(REQUEST *request)
 	 *	moved to a fr_state_entry_t, with the state pointers in the
 	 *	request being set to NULL, before the request is freed.
 	 */
-	if (request->state_ctx) talloc_free(request->state_ctx);
+	if (request->state_ctx) TALLOC_FREE(request->state_ctx);
 
 	talloc_free_children(request);
 
@@ -465,30 +465,23 @@ void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
  */
 int request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist)
 {
-	int count = 0;
+	int		count = 0;
+	fr_cursor_t	cursor_req, cursor_out;
 
-	request_data_t **last, *head = NULL, **next;
+	request_data_t *rd;
 
-	next = &head;
+	*out = NULL;
 
-	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
-		*last = talloc_get_type_abort(*last, request_data_t);
-		if ((*last)->persist == persist) {
-			request_data_t	*this;
+	fr_cursor_talloc_init(&cursor_req, &request->data, request_data_t);
+	fr_cursor_talloc_init(&cursor_out, out, request_data_t);
 
-			/* Unlink it from the list */
-			this = *last;
-			*last = this->next;
+	for (rd = fr_cursor_current(&cursor_req), count = 0;
+	     rd;
+	     rd = fr_cursor_next(&cursor_req), count++) {
+		if (rd->persist != persist) continue;
 
-			/* Add it to our list of data to return */
-			this->next = NULL;
-			*next = this;
-			next = &this->next;
-			count++;
-		}
-		if (!*last) break;
+		fr_cursor_append(&cursor_out, fr_cursor_remove(&cursor_req));
 	}
-	*out = head;
 
 	return count;
 }
@@ -499,23 +492,17 @@ int request_data_by_persistance(request_data_t **out, REQUEST *request, bool per
  * @note Will not check for duplicates.
  *
  * @param request	to add data to.
- * @param entry		the data to add.
+ * @param in		Data to add.
  */
-void request_data_restore(REQUEST *request, request_data_t *entry)
+void request_data_restore(REQUEST *request, request_data_t *in)
 {
-	request_data_t **last;
+	fr_cursor_t	cursor_req, cursor_in;
 
-	/*
-	 *	Wind to the end of the current request data
-	 */
-	for (last = &(request->data); *last != NULL; last = &((*last)->next)) if (!(*last)->next) break;
-	*last = entry;
+	fr_cursor_talloc_init(&cursor_req, &request->data, request_data_t);
+	fr_cursor_tail(&cursor_req);	/* Wind to the end */
+	fr_cursor_talloc_init(&cursor_in, &in, request_data_t);
 
-	{
-		request_data_t *this;
-
-		for (this = request->data; this; this = this->next) this = talloc_get_type_abort(this, request_data_t);
-	}
+	fr_cursor_merge(&cursor_req, &cursor_in);
 }
 
 /** Get opaque data from a request without removing it
