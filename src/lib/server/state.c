@@ -499,19 +499,15 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 /** Find the entry, based on the State attribute
  *
  */
-static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *packet)
+static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *request, fr_value_box_t const *vb)
 {
-	VALUE_PAIR *vp;
 	fr_state_entry_t *entry, my_entry;
 
-	vp = fr_pair_find_by_da(packet->vps, state->da, TAG_ANY);
-	if (!vp) return NULL;
-
-	if (vp->vp_length >= sizeof(my_entry.state)) {
-		memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
+	if (vb->vb_length >= sizeof(my_entry.state)) {
+		memcpy(my_entry.state, vb->vb_octets, sizeof(my_entry.state));
 	} else {
-		memcpy(my_entry.state, vp->vp_octets, vp->vp_length);
-		memset(&my_entry.state[vp->vp_length], 0, sizeof(my_entry.state) - vp->vp_length);
+		memcpy(my_entry.state, vb->vb_octets, vb->vb_length);
+		memset(&my_entry.state[vb->vb_length], 0, sizeof(my_entry.state) - vb->vb_length);
 	}
 
 	/*
@@ -531,10 +527,14 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
  */
 void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 {
-	fr_state_entry_t *entry;
+	fr_state_entry_t	*entry;
+	VALUE_PAIR		*vp;
+
+	vp = fr_pair_find_by_da(request->packet->vps, state->da, TAG_ANY);
+	if (!vp) return;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, request, request->packet);
+	entry = state_entry_find(state, request, &vp->data);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return;
@@ -577,23 +577,24 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
  */
 void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 {
-	fr_state_entry_t *entry;
-	TALLOC_CTX *old_ctx = NULL;
+	fr_state_entry_t	*entry;
+	TALLOC_CTX		*old_ctx = NULL;
+	VALUE_PAIR		*vp;
 
 	rad_assert(request->state == NULL);
 
 	/*
 	 *	No State, don't do anything.
 	 */
-	if (!fr_pair_find_by_da(request->packet->vps, state->da, TAG_ANY)) {
+	vp = fr_pair_find_by_da(request->packet->vps, state->da, TAG_ANY);
+	if (!vp) {
 		RDEBUG3("No &request:State attribute, can't restore &session-state");
 		if (request->seq_start == 0) request->seq_start = request->number;	/* Need check for fake requests */
 		return;
 	}
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-
-	entry = state_entry_find(state, request, request->packet);
+	entry = state_entry_find(state, request, &vp->data);
 	if (entry) {
 		(void)talloc_get_type_abort(entry, fr_state_entry_t);
 		if (entry->thawed) {
@@ -614,7 +615,6 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 		entry->data = NULL;
 		entry->thawed = request;
 	}
-
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	if (request->state) {
@@ -643,8 +643,9 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
  */
 int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 {
-	fr_state_entry_t *entry, *old;
-	request_data_t *data;
+	fr_state_entry_t	*entry, *old = NULL;
+	request_data_t		*data;
+	VALUE_PAIR		*vp;
 
 	request_data_by_persistance(&data, request, true);
 
@@ -655,9 +656,10 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 		log_request_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 	}
 
-	PTHREAD_MUTEX_LOCK(&state->mutex);
+	vp = fr_pair_find_by_da(request->packet->vps, state->da, TAG_ANY);
 
-	old = request->packet ? state_entry_find(state, request, request->packet) : NULL;
+	PTHREAD_MUTEX_LOCK(&state->mutex);
+	if (vp) old = state_entry_find(state, request, &vp->data);
 
 	entry = state_entry_create(state, request, request->reply, old);
 	if (!entry) {
