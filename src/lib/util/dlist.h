@@ -202,6 +202,11 @@ static inline void *fr_dlist_tail(fr_dlist_head_t *list_head)
  *
  * @param[in] list_head		containing ptr.
  * @param[in] ptr		to retrieve the next item from.
+ *				If ptr is NULL, the HEAD of the list will be returned.
+ * @return
+ *	- The next item in the list if ptr is not NULL.
+ *	- The head of the list if ptr is NULL.
+ *	- NULL if ptr is the tail of the list (no more items).
  */
 static inline void *fr_dlist_next(fr_dlist_head_t *list_head, void *ptr)
 {
@@ -212,6 +217,8 @@ static inline void *fr_dlist_next(fr_dlist_head_t *list_head, void *ptr)
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
 
+	if (!ptr) return fr_dlist_head(list_head);
+
 	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
 	head = &(list_head->entry);
 
@@ -220,21 +227,77 @@ static inline void *fr_dlist_next(fr_dlist_head_t *list_head, void *ptr)
 	return (void *) (((uint8_t *) entry) - list_head->offset);
 }
 
+/** Get the previous item in a list
+ *
+ * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
+ *	 ptr must be a talloced chunk of the type passed to #fr_dlist_talloc_init.
+ *
+ * @param[in] list_head		containing ptr.
+ * @param[in] ptr		to retrieve the next item from.
+ *				If ptr is NULL, the TAIL of the list will be returned.
+ * @return
+ *	- The previous item in the list if ptr is not NULL.
+ *	- The tail of the list if ptr is NULL.
+ *	- NULL if ptr is the head of the list (no more items).
+ */
+static inline void *fr_dlist_prev(fr_dlist_head_t *list_head, void *ptr)
+{
+	fr_dlist_t *entry;
+	fr_dlist_t *head;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
+#endif
+
+	if (!ptr) return fr_dlist_tail(list_head);
+
+	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	head = &(list_head->entry);
+
+	if (entry->prev == head) return NULL;
+	entry = entry->prev;
+	return (void *) (((uint8_t *) entry) - list_head->offset);
+}
+
 /** Remove an item from the list
  *
  * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
  *	 ptr must be a talloced chunk of the type passed to #fr_dlist_talloc_init.
  *
+ * When removing items in an iteration loop, the iterator variable must be
+ * assigned the item returned by this function.
+ *
+ * If the iterator variable is not updated, the item removed will be the last item
+ * iterated over, as its next/prev pointers are set to point to itself.
+ @code{.c}
+	my_item_t *item = NULL;
+
+	while ((item = fr_dlist_next(&head, item))) {
+		if (item->should_be_removed) {
+   			...do things with item
+   			item = fr_dlist_remove(&head, item);
+   			continue;
+   		}
+	}
+ @endcode
+ *
  * @param[in] list_head	to remove ptr from.
  * @param[in] ptr	to remove.
+ * @return
+ *	- The previous item in the list (makes iteration easier).
+ *	- NULL if we just removed the head of the list.
  */
-static inline void fr_dlist_remove(fr_dlist_head_t *list_head, void *ptr)
+static inline void *fr_dlist_remove(fr_dlist_head_t *list_head, void *ptr)
 {
 	fr_dlist_t *entry;
+	fr_dlist_t *head;
+	fr_dlist_t *prev;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
+
+	if (!ptr) return NULL;
 
 	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
 
@@ -242,8 +305,12 @@ static inline void fr_dlist_remove(fr_dlist_head_t *list_head, void *ptr)
 	if (!fr_cond_assert(entry->prev != NULL)) return;
 
 	entry->prev->next = entry->next;
-	entry->next->prev = entry->prev;
+	entry->next->prev = prev = entry->prev;
 	entry->prev = entry->next = entry;
+
+	if (prev == head) return NULL;	/* Works with fr_dlist_next so that the next item is the list HEAD */
+
+	return (void *) (((uint8_t *) prev) - list_head->offset);
 }
 
 /** Check all items in the list are valid
