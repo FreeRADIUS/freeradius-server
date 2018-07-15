@@ -327,7 +327,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 
 	state->timed_out += timed_out;
 
-	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) too_many = true;
+	if (!old && (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions)) too_many = true;
 
 	/*
 	 *	Record the information from the old state, we may base the
