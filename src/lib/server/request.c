@@ -406,7 +406,11 @@ int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, v
 
 	*last = this;
 
-	RDEBUG4("Added request data %p at %p:%i", this->opaque, this->unique_ptr, this->unique_int);
+	RDEBUG4("Added request data %p at %p:%i, free_on_replace: %s, free_on_parent: %s, persist: %s",
+		this->opaque, this->unique_ptr, this->unique_int,
+		free_on_replace ? "yes" : "no",
+		free_on_parent ? "yes" : "no",
+		persist ? "yes" : "no");
 
 	return 0;
 }
