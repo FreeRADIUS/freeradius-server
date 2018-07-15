@@ -474,14 +474,6 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	}
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	if (rbtree_num_elements(state->tree) >= (uint32_t)state->max_sessions) {
-		RERROR("Failed inserting state entry (post alloc) - At maximum ongoing session limit (%u)",
-		       state->max_sessions);
-	failed:
-		fr_pair_delete_by_da(&packet->vps, state->da);
-		talloc_free(entry);
-		return NULL;
-	}
 
 	/*
 	 *	XOR the server hash with four bytes of random data.
@@ -493,7 +485,9 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 
 	if (!rbtree_insert(state->tree, entry)) {
 		RERROR("Failed inserting state entry - Insertion into state tree failed");
-		goto failed;
+		fr_pair_delete_by_da(&packet->vps, state->da);
+		talloc_free(entry);
+		return NULL;
 	}
 
 	/*
