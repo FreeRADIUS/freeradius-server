@@ -25,7 +25,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 #include "conduit.h"
 
 static ssize_t lo_read(int fd, void *out, size_t outlen)
@@ -54,8 +54,8 @@ static ssize_t lo_read(int fd, void *out, size_t outlen)
 /*
  *	A non-blocking copy of fr_conduit_read().
  */
-ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *out, size_t outlen,
-			      size_t *leftover)
+ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit,
+			      void *out, size_t outlen, size_t *leftover, bool *want_more)
 {
 	ssize_t r;
 	size_t data_len;
@@ -71,12 +71,12 @@ ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *out, si
 		return -1;
 	}
 
+	*want_more = true;
+
 	/*
 	 *	Ensure that we read the header first.
 	 */
 	if (offset < sizeof(hdr)) {
-		*pconduit = FR_CONDUIT_WANT_MORE;
-
 		r = lo_read(fd, buffer + offset, sizeof(hdr) - offset);
 		if (r == 0) return 0; /* closed */
 
@@ -127,19 +127,11 @@ ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *out, si
 	offset += r;
 
 	if (offset == outlen) {
-		*pconduit = ntohl(hdr.conduit);
-
-		/*
-		 *	The other end can't set this.
-		 */
-		if (*pconduit == FR_CONDUIT_WANT_MORE) {
-			return -1;
-		}
-
+		*want_more = false;
+		*pconduit = ntohs(hdr.conduit);
 		return outlen;
 	}
 
-	*pconduit = FR_CONDUIT_WANT_MORE;
 	*leftover = offset;
 	return 0;
 }
@@ -160,7 +152,7 @@ ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *out, size_t o
 	/*
 	 *	Read the data into the buffer.
 	 */
-	*pconduit = ntohl(hdr.conduit);
+	*pconduit = ntohs(hdr.conduit);
 	data_len = ntohl(hdr.length);
 	if (data_len == 0) return 0;
 	if (data_len > UINT32_MAX) data_len = UINT32_MAX;	/* For Coverity */
@@ -237,7 +229,7 @@ ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *out, siz
 		return -1;
 	}
 
-	hdr.conduit = htonl(conduit);
+	hdr.conduit = htons(conduit);
 	hdr.length = htonl(outlen);
 
 #if 0

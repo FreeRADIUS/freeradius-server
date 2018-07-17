@@ -37,8 +37,8 @@
 #include <osmocom/core/utils.h>
 #include <osmocom/sccp/sccp.h>
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "sigtran.h"
 

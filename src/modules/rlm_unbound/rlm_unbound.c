@@ -26,9 +26,9 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_unbound - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/log.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/log.h>
 #include <fcntl.h>
 #include <unbound.h>
 

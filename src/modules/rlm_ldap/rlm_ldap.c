@@ -29,11 +29,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "rlm_ldap.h"
 
-#include <freeradius-devel/map_proc.h>
+#include <freeradius-devel/server/map_proc.h>
 
 static CONF_PARSER sasl_mech_dynamic[] = {
 	{ FR_CONF_OFFSET("mech", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t_dynamic_t, mech) },

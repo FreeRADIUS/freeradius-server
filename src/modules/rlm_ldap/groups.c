@@ -24,7 +24,7 @@
  * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <ctype.h>
 
 #define LOG_PREFIX "rlm_ldap (%s) - "

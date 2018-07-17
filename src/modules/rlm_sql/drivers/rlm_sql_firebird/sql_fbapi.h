@@ -25,7 +25,7 @@ RCSIDH(sql_fbapi_h, "$Id$")
 #include <string.h>
 #include <ibase.h>
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 #include "rlm_sql.h"
 
 #define IS_ISC_ERROR(status)  ((status[0] == 1) && (status[1] > 0))

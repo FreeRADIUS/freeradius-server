@@ -25,8 +25,8 @@
  * @copyright 2015  Network RADIUS SARL <info@networkradius.com>
  * @copyright 2015  The FreeRADIUS Server Project
  */
-#include <freeradius-devel/rad_assert.h>
-#include "json.h"
+#include <freeradius-devel/server/rad_assert.h>
+#include "base.h"
 
 #define	SELECTOR_INDEX_UNSET			INT32_MAX
 

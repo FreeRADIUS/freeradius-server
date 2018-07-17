@@ -27,10 +27,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/util.h>
-#include <freeradius-devel/heap.h>
-#include <freeradius-devel/event.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/util/event.h>
 #include <freeradius-devel/io/time.h>
+#include <freeradius-devel/util/dlist.h>
 #include <sys/stat.h>
 
 #define FR_EV_BATCH_FDS (256)
@@ -299,9 +300,9 @@ struct fr_event_list {
 
 	int			kq;			//!< instance associated with this event list.
 
-	fr_dlist_t		pre_callbacks;		//!< callbacks when we may be idle...
-	fr_dlist_t		user_callbacks;		//!< EVFILT_USER callbacks
-	fr_dlist_t		post_callbacks;		//!< post-processing callbacks
+	fr_dlist_head_t		pre_callbacks;		//!< callbacks when we may be idle...
+	fr_dlist_head_t		user_callbacks;		//!< EVFILT_USER callbacks
+	fr_dlist_head_t		post_callbacks;		//!< post-processing callbacks
 
 	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
 
@@ -1194,7 +1195,7 @@ uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t call
 	user->uctx = uctx;
 	user->ident = (uintptr_t) user;
 
-	fr_dlist_insert_tail(&el->user_callbacks, &user->entry);
+	fr_dlist_insert_tail(&el->user_callbacks, user);
 
 	return user->ident;;
 }
@@ -1210,19 +1211,16 @@ uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t call
  */
 int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t callback, void *uctx)
 {
-	fr_dlist_t *entry, *next;
+	fr_event_user_t *user, *next;
 
-	for (entry = FR_DLIST_FIRST(el->user_callbacks);
-	     entry != NULL;
-	     entry = next) {
-		fr_event_user_t *user;
+	for (user = fr_dlist_head(&el->user_callbacks);
+	     user != NULL;
+	     user = next) {
+		next = fr_dlist_next(&el->user_callbacks, user);
 
-		next = FR_DLIST_NEXT(el->user_callbacks, entry);
-
-		user = fr_ptr_to_type(fr_event_user_t, entry, entry);
 		if ((user->callback == callback) &&
 		    (user->uctx == uctx)) {
-			fr_dlist_remove(entry);
+			fr_dlist_remove(&el->user_callbacks, user);
 			talloc_free(user);
 			return 0;
 		}
@@ -1251,7 +1249,7 @@ int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void
 	pre->callback = callback;
 	pre->uctx = uctx;
 
-	fr_dlist_insert_tail(&el->pre_callbacks, &pre->entry);
+	fr_dlist_insert_tail(&el->pre_callbacks, pre);
 
 	return 0;
 }
@@ -1267,19 +1265,16 @@ int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void
  */
 int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx)
 {
-	fr_dlist_t *entry, *next;
+	fr_event_pre_t *pre, *next;
 
-	for (entry = FR_DLIST_FIRST(el->pre_callbacks);
-	     entry != NULL;
-	     entry = next) {
-		fr_event_pre_t *pre;
+	for (pre = fr_dlist_head(&el->pre_callbacks);
+	     pre != NULL;
+	     pre = next) {
+		next = fr_dlist_next(&el->pre_callbacks, pre);
 
-		next = FR_DLIST_NEXT(el->pre_callbacks, entry);
-
-		pre = fr_ptr_to_type(fr_event_pre_t, entry, entry);
 		if ((pre->callback == callback) &&
 		    (pre->uctx == uctx)) {
-			fr_dlist_remove(entry);
+			fr_dlist_remove(&el->pre_callbacks, pre);
 			talloc_free(pre);
 			return 0;
 		}
@@ -1308,7 +1303,7 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_cb_t callback, void *uctx
 	post->callback = callback;
 	post->uctx = uctx;
 
-	fr_dlist_insert_tail(&el->post_callbacks, &post->entry);
+	fr_dlist_insert_tail(&el->post_callbacks, post);
 
 	return 0;
 }
@@ -1324,19 +1319,16 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_cb_t callback, void *uctx
  */
 int fr_event_post_delete(fr_event_list_t *el, fr_event_cb_t callback, void *uctx)
 {
-	fr_dlist_t *entry, *next;
+	fr_event_post_t *post, *next;
 
-	for (entry = FR_DLIST_FIRST(el->post_callbacks);
-	     entry != NULL;
-	     entry = next) {
-		fr_event_post_t *post;
+	for (post = fr_dlist_head(&el->post_callbacks);
+	     post != NULL;
+	     post = next) {
+		next = fr_dlist_next(&el->post_callbacks, post);
 
-		next = FR_DLIST_NEXT(el->post_callbacks, entry);
-
-		post = fr_ptr_to_type(fr_event_post_t, entry, entry);
 		if ((post->callback == callback) &&
 		    (post->uctx == uctx)) {
-			fr_dlist_remove(entry);
+			fr_dlist_remove(&el->post_callbacks, post);
 			talloc_free(post);
 			return 0;
 		}
@@ -1411,7 +1403,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 {
 	struct timeval		when, *wake;
 	struct timespec		ts_when, *ts_wake;
-	fr_dlist_t		*entry;
+	fr_event_pre_t		*pre;
 	int			num_fd_events, num_timer_events;
 
 	el->num_fd_events = 0;
@@ -1460,12 +1452,9 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	 *	application has more work to do, in which case we
 	 *	re-set the timeout to be instant.
 	 */
-	for (entry = FR_DLIST_FIRST(el->pre_callbacks);
-	     entry != NULL;
-	     entry = FR_DLIST_NEXT(el->pre_callbacks, entry)) {
-		fr_event_pre_t *pre;
-
-		pre = fr_ptr_to_type(fr_event_pre_t, entry, entry);
+	for (pre = fr_dlist_head(&el->pre_callbacks);
+	     pre != NULL;
+	     pre = fr_dlist_next(&el->pre_callbacks, pre)) {
 		if (pre->callback(pre->uctx, wake) > 0) {
 			num_timer_events++;
 			wake = &when;
@@ -1513,7 +1502,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 void fr_event_service(fr_event_list_t *el)
 {
 	int		i;
-	fr_dlist_t	*entry;
+	fr_event_post_t	*post;
 	struct timeval	when;
 
 	if (unlikely(el->exit)) return;
@@ -1723,14 +1712,11 @@ service:
 	/*
 	 *	Run all of the post-processing events.
 	 */
-	for (entry = FR_DLIST_FIRST(el->post_callbacks);
-	     entry != NULL;
-	     entry = FR_DLIST_NEXT(el->post_callbacks, entry)) {
-		fr_event_post_t *post;
-
+	for (post = fr_dlist_head(&el->post_callbacks);
+	     post != NULL;
+	     post = fr_dlist_next(&el->post_callbacks, post)) {
 		when = el->now;
 
-		post = fr_ptr_to_type(fr_event_post_t, entry, entry);
 		post->callback(el, &when, post->uctx);
 	}
 }
@@ -1847,9 +1833,9 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		goto error;
 	}
 
-	FR_DLIST_INIT(el->pre_callbacks);
-	FR_DLIST_INIT(el->post_callbacks);
-	FR_DLIST_INIT(el->user_callbacks);
+	fr_dlist_init(&el->pre_callbacks, fr_event_pre_t, entry);
+	fr_dlist_init(&el->post_callbacks, fr_event_post_t, entry);
+	fr_dlist_init(&el->user_callbacks, fr_event_user_t, entry);
 
 	if (status) (void) fr_event_pre_insert(el, status, status_uctx);
 

@@ -95,17 +95,20 @@ static void m3ua_handle_trans(struct mtp_m3ua_client_link *link, struct xua_msg 
 static void m3ua_handle_reg_rsp(struct mtp_m3ua_client_link *link, struct xua_msg *m3ua);
 static void m3ua_send_daud(struct mtp_m3ua_client_link *link, uint32_t pc);
 static void m3ua_send_aspup(struct mtp_m3ua_client_link *link);
-static void m3ua_send_aspdown(struct mtp_m3ua_client_link *link);
 static void m3ua_send_aspac(struct mtp_m3ua_client_link *link);
+static void m3ua_send_aspdn(struct mtp_m3ua_client_link *link);
 static void m3ua_send_reg_req(struct mtp_m3ua_client_link *link, struct mtp_m3ua_reg_req *route);
 static void m3ua_send_beat(void *data);
 
 /*
  * boilerplate
  */
+static int clear_link(struct mtp_m3ua_client_link *link);
 static int m3ua_shutdown(struct mtp_link *mtp_link);
 static void m3ua_start(void *data);
-static void ack_timeout(void *data);
+static void aspac_ack_timeout(void *data);
+static void aspup_ack_timeout(void *data);
+static void aspdn_ack_timeout(void *data);
 
 static int m3ua_setnonblocking(int fd)
 {
@@ -161,11 +164,41 @@ static void schedule_t_beat(struct mtp_m3ua_client_link *link)
 	osmo_timer_schedule(&link->t_beat, link->use_beat, 0);
 }
 
-static void schedule_t_ack(struct mtp_m3ua_client_link *link)
+static void schedule_aspup_t_ack(struct mtp_m3ua_client_link *link)
 {
 	link->t_ack.data = link;
-	link->t_ack.cb = ack_timeout;
+	link->t_ack.cb = aspup_ack_timeout;
 	osmo_timer_schedule(&link->t_ack, link->ack_timeout, 0);
+}
+
+static void schedule_aspac_t_ack(struct mtp_m3ua_client_link *link)
+{
+	link->t_ack.data = link;
+	link->t_ack.cb = aspac_ack_timeout;
+	osmo_timer_schedule(&link->t_ack, link->ack_timeout, 0);
+}
+
+static void schedule_aspdn_t_ack(struct mtp_m3ua_client_link *link)
+{
+	link->t_ack.data = link;
+	link->t_ack.cb = aspdn_ack_timeout;
+	osmo_timer_schedule(&link->t_ack, link->ack_timeout, 0);
+}
+
+static int clear_link(struct mtp_m3ua_client_link *link)
+{
+	if (link->queue.bfd.fd >= 0) {
+		osmo_fd_unregister(&link->queue.bfd);
+		close(link->queue.bfd.fd);
+		link->queue.bfd.fd = -1;
+	}
+	osmo_wqueue_clear(&link->queue);
+	link->aspsm_active = 0;
+	link->asptm_active = 0;
+	osmo_timer_del(&link->connect_timer);
+	osmo_timer_del(&link->t_beat);
+	osmo_timer_del(&link->t_ack);
+	return 0;
 }
 
 static void fail_link(struct mtp_m3ua_client_link *link)
@@ -176,12 +209,28 @@ static void fail_link(struct mtp_m3ua_client_link *link)
 	schedule_restart(link);
 }
 
-static void ack_timeout(void *data)
+static void aspac_ack_timeout(void *data)
 {
 	struct mtp_m3ua_client_link *link = data;
 
-	LOGP(DINP, LOGL_ERROR, "ASP ACK not received. Closing it down.\n");
+	LOGP(DINP, LOGL_ERROR, "ASPAC ACK not received. Closing it down.\n");
 	fail_link(link);
+}
+
+static void aspup_ack_timeout(void *data)
+{
+	struct mtp_m3ua_client_link *link = data;
+
+	LOGP(DINP, LOGL_ERROR, "ASPUP ACK not received. Closing it down.\n");
+	fail_link(link);
+}
+
+static void aspdn_ack_timeout(void *data)
+{
+	struct mtp_m3ua_client_link *link = data;
+
+	LOGP(DINP, LOGL_ERROR, "ASPDN ACK not received.  Cleaning up link\n");
+	clear_link(link);
 }
 
 static void reg_rsp_timeout(void *data)
@@ -359,7 +408,7 @@ static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
 
 	LOGP(DINP, LOGL_NOTICE, "Sending ASPUP\n");
 	m3ua_send_aspup(link);
-	schedule_t_ack(link);
+	schedule_aspup_t_ack(link);
 
 	return 0;
 }
@@ -507,18 +556,13 @@ static int m3ua_shutdown(struct mtp_link *mtp_link)
 {
 	struct mtp_m3ua_client_link *link = mtp_link->data;
 
-	if (link->asptm_active) m3ua_send_aspdown(link);
-	if (link->queue.bfd.fd >= 0) {
-		osmo_fd_unregister(&link->queue.bfd);
-		close(link->queue.bfd.fd);
-		link->queue.bfd.fd = -1;
-	}
-	osmo_wqueue_clear(&link->queue);
-	link->aspsm_active = 0;
-	link->asptm_active = 0;
-	osmo_timer_del(&link->connect_timer);
-	osmo_timer_del(&link->t_beat);
-	osmo_timer_del(&link->t_ack);
+	if (link->asptm_active) {
+		/* need to allow the event loop to actually send the message */
+		m3ua_send_aspdn(link);
+		schedule_aspdn_t_ack(link);
+	} else
+		clear_link(link);
+
 	return 0;
 }
 
@@ -532,7 +576,7 @@ static int m3ua_reset(struct mtp_link *mtp_link)
 	return 0;
 }
 
-static int m3ua_clear_queue(struct mtp_link *mtp_link)
+static int clear_link_queue(struct mtp_link *mtp_link)
 {
 	struct mtp_m3ua_client_link *link = mtp_link->data;
 	osmo_wqueue_clear(&link->queue);
@@ -560,7 +604,7 @@ struct mtp_m3ua_client_link *mtp_m3ua_client_link_init(struct mtp_link *blnk)
 	lnk->base->write = m3ua_write;
 	lnk->base->shutdown = m3ua_shutdown;
 	lnk->base->reset = m3ua_reset;
-	lnk->base->clear_queue = m3ua_clear_queue;
+	lnk->base->clear_queue = clear_link_queue;
 
 	osmo_wqueue_init(&lnk->queue, 10);
 	lnk->queue.bfd.fd = -1;
@@ -635,26 +679,6 @@ static void m3ua_send_aspup(struct mtp_m3ua_client_link *link)
 	xua_msg_free(aspup);
 }
 
-static void m3ua_send_aspdown(struct mtp_m3ua_client_link *link)
-{
-	struct sctp_sndrcvinfo info;
-	struct xua_msg *aspdown;
-
-	aspdown = xua_msg_alloc();
-	if (!aspdown) return;
-
-	memset(&info, 0, sizeof(info));
-	info.sinfo_stream = 0;
-	info.sinfo_assoc_id = 1;
-	info.sinfo_ppid = htonl(SCTP_PPID_M3UA);
-
-	aspdown->hdr.msg_class = M3UA_CLS_ASPSM;
-	aspdown->hdr.msg_type = M3UA_ASPSM_DOWN;
-
-	m3ua_conn_send(link, aspdown, &info);
-	xua_msg_free(aspdown);
-}
-
 static void m3ua_send_aspac(struct mtp_m3ua_client_link *link)
 {
 	struct sctp_sndrcvinfo info;
@@ -686,6 +710,26 @@ static void m3ua_send_aspac(struct mtp_m3ua_client_link *link)
 
 	m3ua_conn_send(link, aspac, &info);
 	xua_msg_free(aspac);
+}
+
+static void m3ua_send_aspdn(struct mtp_m3ua_client_link *link)
+{
+	struct sctp_sndrcvinfo info;
+	struct xua_msg *aspdn;
+
+	aspdn = xua_msg_alloc();
+	if (!aspdn) return;
+
+	memset(&info, 0, sizeof(info));
+	info.sinfo_stream = 0;
+	info.sinfo_assoc_id = 1;
+	info.sinfo_ppid = htonl(SCTP_PPID_M3UA);
+
+	aspdn->hdr.msg_class = M3UA_CLS_ASPSM;
+	aspdn->hdr.msg_type = M3UA_ASPSM_DOWN;
+
+	m3ua_conn_send(link, aspdn, &info);
+	xua_msg_free(aspdn);
 }
 
 static void m3ua_send_daud(struct mtp_m3ua_client_link *link, uint32_t dpc)
@@ -953,7 +997,7 @@ static void m3ua_handle_reg_rsp(struct mtp_m3ua_client_link *link, struct xua_ms
 			LOGP(DINP, LOGL_NOTICE, "All REG_REQ complete.. sending ASPAC\n");
 
 			m3ua_send_aspac(link);
-			schedule_t_ack(link);
+			schedule_aspac_t_ack(link);
 		}
 		break;
 	default:
@@ -1002,7 +1046,14 @@ static void m3ua_handle_aspsm(struct mtp_m3ua_client_link *link, struct xua_msg 
 		LOGP(DINP, LOGL_NOTICE, "Received ASP_UP_ACK.. sending ASPAC\n");
 
 		m3ua_send_aspac(link);
-		schedule_t_ack(link);
+		schedule_aspac_t_ack(link);
+		break;
+
+	case M3UA_ASPSM_DOWN_ACK:
+		LOGP(DINP, LOGL_NOTICE, "Received ASP_DOWN_ACK.. Cleaning up link\n");
+		link->aspsm_active = 0;
+		osmo_timer_del(&link->t_ack);
+		clear_link(link);
 		break;
 
 	case M3UA_ASPSM_BEAT_ACK:

@@ -25,11 +25,11 @@
  * @copyright 2015 The FreeRADIUS server project
  */
 RCSID("$Id$")
-#include <freeradius-devel/util/util.h>
-#include <freeradius-devel/cf_parse.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/rad_assert.h>
 
-#include "redis.h"
+#include "base.h"
 #include "cluster.h"
 #include "redis_ippool.h"
 

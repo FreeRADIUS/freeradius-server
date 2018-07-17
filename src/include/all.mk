@@ -16,34 +16,6 @@ HEADERS_DY	:= attributes.h features.h missing.h radpaths.h
 
 HEADERS	= \
 	build.h \
-	conf.h \
-	event.h \
-	hash.h \
-	heap.h \
-	md4.h \
-	md5.h \
-	modules.h \
-	packet.h \
-	rad_assert.h \
-	radius.h \
-	radiusd.h \
-	radutmp.h \
-	realms.h \
-	sha1.h \
-	stats.h \
-	sysutmp.h \
-	token.h \
-	udpfromto.h \
-	base64.h \
-	map.h \
-	udp.h \
-	tcp.h \
-	threads.h \
-	regex.h \
-	inet.h \
-	dict.h \
-	pair.h \
-	proto.h \
 	$(HEADERS_DY)
 
 #

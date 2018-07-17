@@ -32,7 +32,7 @@
  */
 #define LOG_PREFIX "rlm_sigtran - "
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 #include <osmocom/core/logging.h>
 #include "sigtran.h"
 

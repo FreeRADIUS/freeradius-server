@@ -112,7 +112,12 @@ RADIR		= ${radacctdir}
 bm_shared_libs  = yes
 bm_static_libs  = yes
 
-LIBREADLINE	= @LIBREADLINE@
+LIBREADLINE		= @LIBREADLINE@
+LIBREADLINE_PREFIX	= @LIBREADLINE_PREFIX@
+ifneq "$(LIBREADLINE_PREFIX)" ""
+LIBREADLINE_CFLAGS	= -I$(LIBREADLINE_PREFIX)/include
+LIBREADLINE_LDFLAGS	= -L$(LIBREADLINE_PREFIX)/lib
+endif
 
 #
 #  Version to use for packaging and other Make related things

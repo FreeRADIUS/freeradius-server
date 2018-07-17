@@ -28,7 +28,7 @@ RCSIDH(eap_chbind_h, "$Id$")
 #include <sys/types.h>
 #include <ctype.h>
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 
 #include "eap.h"
 

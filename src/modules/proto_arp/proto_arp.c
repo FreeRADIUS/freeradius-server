@@ -20,13 +20,13 @@
  * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
  */
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/process.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/pcap.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/pcap.h>
 #include <net/if_arp.h>
 
 typedef struct arp_socket_t {

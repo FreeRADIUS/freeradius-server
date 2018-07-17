@@ -23,15 +23,15 @@
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/trie.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "proto_control.h"
 
 #ifdef HAVE_SYS_UN_H
@@ -71,6 +71,9 @@ typedef struct {
 
 	fr_stats_t			stats;			//!< statistics for this socket
 
+	char const			*mode_name;
+	bool				read_only;
+
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
 								//!< buffer value.
 	bool				peercred;		//!< whether we use peercred or not
@@ -79,21 +82,35 @@ typedef struct {
 	RADCLIENT			radclient;		//!< for faking out clients
 
 	fr_io_data_read_t		read;			//!< function to process data *after* reading
-
+	FILE				*stdout;
+	FILE				*stderr;
+	fr_cmd_info_t			*info;			//!< for running commands
 } proto_control_unix_t;
 
 static const CONF_PARSER unix_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_control_unix_t, filename),
 	.dflt = "${run_dir}/radiusd.sock}" },
 	{ FR_CONF_OFFSET("uid", FR_TYPE_STRING, proto_control_unix_t, uid_name) },
-	{ FR_CONF_OFFSET("git", FR_TYPE_STRING, proto_control_unix_t, gid_name) },
+	{ FR_CONF_OFFSET("gid", FR_TYPE_STRING, proto_control_unix_t, gid_name) },
+	{ FR_CONF_OFFSET("mode", FR_TYPE_STRING, proto_control_unix_t, mode_name) },
 	{ FR_CONF_OFFSET("peercred", FR_TYPE_BOOL, proto_control_unix_t, peercred), .dflt = "yes" },
 
-	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_control_unix_t, recv_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_control_unix_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_control_unix_t, max_packet_size), .dflt = "4096" } ,
 
 	CONF_PARSER_TERMINATOR
+};
+
+#define FR_READ  (1)
+#define FR_WRITE (2)
+
+static FR_NAME_NUMBER mode_names[] = {
+	{ "ro", FR_READ },
+	{ "read-only", FR_READ },
+	{ "read-write", FR_READ | FR_WRITE },
+	{ "rw", FR_READ | FR_WRITE },
+	{ NULL, 0 }
 };
 
 
@@ -107,23 +124,36 @@ static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
 	uint32_t			status;
 	uint8_t				*cmd = buffer + sizeof(*hdr);
+	int				rcode;
+	char				string[1024];
 
 	hdr->length = ntohl(hdr->length);
 
-	DEBUG("Received text length %d '%.*s'", hdr->length, (int) hdr->length, cmd);
+	DEBUG("radmin-remote> %.*s", (int) hdr->length, cmd);
 
-	if ((hdr->length == 9) && (memcmp(cmd, "terminate", 9) == 0)) {
-		radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
-		goto success;
+	/*
+	 *	fr_command_run() expects a zero-terminated string...
+	 */
+	memcpy(string, cmd, hdr->length);
+	string[hdr->length] = '\0';
+
+	rcode = fr_radmin_run(inst->info, inst->stdout, inst->stderr, string, inst->read_only);
+	if (rcode < 0) {
+		status = FR_CONDUIT_FAIL;
+	} else if (rcode == 0) {
+		/*
+		 *	The other end should keep track of it's
+		 *	context, and send us full lines.
+		 */
+		(void) fr_command_clear(0, inst->info);
+		status = FR_CONDUIT_PARTIAL;
+	} else {
+		status = FR_CONDUIT_SUCCESS;
 	}
 
-	// if the command starts with "worker ...", then return it
-	// otherwise run the command here.
+	fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, "\n", 1);
 
-	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, "\n", 1);
-
-success:
-	status = FR_CONDUIT_SUCCESS;
+	status = htonl(status);
 	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_CMD_STATUS, &status, sizeof(status));
 
 	return 0;
@@ -139,7 +169,7 @@ static ssize_t mod_read_init(void *instance, UNUSED void **packet_ctx, UNUSED fr
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
 	uint32_t			magic;
 
-	if (htonl(hdr->conduit) != FR_CONDUIT_INIT_ACK) {
+	if (htons(hdr->conduit) != FR_CONDUIT_INIT_ACK) {
 		DEBUG("ERROR: Connection is missing initial ACK packet.");
 		return -1;
 	}
@@ -181,13 +211,14 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	fr_time_t			*recv_time_p;
 	fr_conduit_type_t		conduit;
+	bool				want_more;
 
 	recv_time_p = *recv_time;
 
 	/*
 	 *      Read data into the buffer.
 	 */
-	data_size = fr_conduit_read_async(inst->sockfd, &conduit, buffer, buffer_len, leftover);
+	data_size = fr_conduit_read_async(inst->sockfd, &conduit, buffer, buffer_len, leftover, &want_more);
 	if (data_size < 0) {
 		DEBUG2("proto_control_unix got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
@@ -203,7 +234,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	/*
 	 *	Not enough for a full packet, ask the caller to read more.
 	 */
-	if (conduit == FR_CONDUIT_WANT_MORE) {
+	if (want_more) {
 		return 0;
 	}
 
@@ -218,7 +249,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_control_unix - Received command packet length %d on %s",
+	DEBUG3("proto_control_unix - Received command packet length %d on %s",
 	       (int) data_size, inst->name);
 
 	/*
@@ -269,6 +300,9 @@ static int mod_close(void *instance)
 
 	close(inst->sockfd);
 	inst->sockfd = -1;
+
+	if (inst->stdout) fclose(inst->stdout);
+	if (inst->stderr) fclose(inst->stderr);
 
 	return 0;
 }
@@ -979,19 +1013,80 @@ static int mod_fd_set(void *instance, int fd)
 	return 0;
 }
 
+#undef INT
+#ifdef HAVE_FUNOPEN
+#define INT int
+#define SINT int
+#else
+#define INT size_t
+#define SINT ssize_t
+#endif
+
+static SINT write_stdout(void *instance, char const *buffer, INT buffer_size)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, buffer, buffer_size);
+}
+
+static SINT write_stderr(void *instance, char const *buffer, INT buffer_size)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDERR, buffer, buffer_size);
+}
+
 
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+#ifndef HAVE_FUNOPEN
+	cookie_io_functions_t io;
+#endif
 
+	/*
+	 *	Just listen, but don't do anything with the socket.
+	 */
 	if (!inst->connection) {
 		inst->name = talloc_typed_asprintf(inst, "proto unix server %s filename %s",
 						   "???", inst->filename);
-
-	} else {
-		inst->name = talloc_typed_asprintf(inst, "proto unix via filename %s",
-						   inst->filename);
+		return 0;
 	}
+
+	inst->name = talloc_typed_asprintf(inst, "proto unix via filename %s",
+					   inst->filename);
+
+#ifdef HAVE_FUNOPEN
+	inst->stdout = funopen(instance, NULL, write_stdout, NULL, NULL);
+	rad_assert(inst->stdout != NULL);
+	inst->stderr = funopen(instance, NULL, write_stderr, NULL, NULL);
+	rad_assert(inst->stderr != NULL);
+#else
+	/*
+	 *	These must be set separately as they have different prototypes.
+	 */
+	io.read = NULL;
+	io.seek = NULL;
+	io.close = NULL;
+	io.write = write_stdout;
+
+	inst->stdout = fopencookie(instance, "w", io);
+
+	io.write = write_stderr;
+	inst->stderr = fopencookie(instance, "w", io);
+#endif
+
+	/*
+	 *	@todo - if we move to a binary protocol, then we
+	 *	should change this to a small (i.e. 1K) buffer.  The
+	 *	data should be sent over to the remote side as quickly
+	 *	as possible.
+	 */
+	(void) setvbuf(inst->stdout, NULL, _IOLBF, 0);
+	(void) setvbuf(inst->stderr, NULL, _IOLBF, 0);
+
+	inst->info = talloc_zero(instance, fr_cmd_info_t);
+	fr_command_info_init(instance, inst->info);
 
 	return 0;
 }
@@ -1035,6 +1130,25 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		}
 	} else {
 		inst->gid = -1;
+	}
+
+	if (!inst->mode_name) {
+		inst->read_only = true;
+	} else {
+		int mode;
+
+		mode = fr_str2int(mode_names, inst->mode_name, 0);
+		if (!mode) {
+			ERROR("Invalid mode name \"%s\"",
+			      inst->mode_name);
+			return -1;
+		}
+
+		if ((mode & FR_WRITE) == 0) {
+			inst->read_only = true;
+		} else {
+			inst->read_only = false;
+		}
 	}
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 20);

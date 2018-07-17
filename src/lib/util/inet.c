@@ -21,8 +21,8 @@
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/inet.h>
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/util/base.h>
 #include <ctype.h>
 
 bool		fr_reverse_lookups = false;		//!< IP -> hostname lookups?
@@ -187,11 +187,7 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 	 *	Avoid alloc for IP addresses.  This helps us debug
 	 *	memory errors when using talloc.
 	 */
-#ifdef TALLOC_DEBUG
-	if (true) {
-#else
 	if (!fr_hostname_lookups) {
-#endif
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 		if (af == AF_UNSPEC) {
 			char const *p;
@@ -209,8 +205,11 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 
 		if (af == AF_UNSPEC) af = AF_INET;
 
-		if (!inet_pton(af, hostname, &(out->addr))) return -1;
-
+		if (inet_pton(af, hostname, &(out->addr)) == 0) {
+			fr_strerror_printf("\"%s\" is not a valid IP address and "
+					   "hostname lookups are disabled", hostname);
+			return -1;
+		}
 		out->af = af;
 		out->prefix = 32;
 		out->scope_id = 0;
@@ -389,13 +388,17 @@ static int ip_prefix_addr_from_str(struct in_addr *out, char const *str)
 
 /** Parse an IPv4 address or IPv4 prefix in presentation format (and others)
  *
- * @param out Where to write the ip address value.
- * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY)
- *	or an FQDN if resolve is true.
- * @param inlen Length of value, if value is \0 terminated inlen may be -1.
- * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
- * @param fallback to IPv6 resolution if no A records can be found.
- * @param mask_bits If true, set address bits to zero.
+ * @param[out] out	Where to write the ip address value.
+ * @param[in] value	to parse, may be:
+ *			- dotted quad [+ prefix]
+ *			- integer
+ *			- octal number
+ *			- '*' (INADDR_ANY)
+ *			- FQDN if resolve is true.
+ * @param[in] inlen	Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] resolve	If true and value doesn't look like an IP address, try and resolve value as a hostname.
+ * @param[in] fallback	to IPv6 resolution if no A records can be found.
+ * @param[in] mask_bits	If true, set address bits to zero.
  * @return
  *	- 0 if ip address was parsed successfully.
  *	- -1 on failure.
@@ -511,13 +514,16 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 
 /** Parse an IPv6 address or IPv6 prefix in presentation format (and others)
  *
- * @param out Where to write the ip address value.
- * @param value to parse, may IPv6 hexits [+ prefix], or '*' (INADDR_ANY)
- *	or an FQDN if resolve is true.
- * @param inlen Length of value, if value is \0 terminated inlen may be -1.
- * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
- * @param fallback to IPv4 resolution if no AAAA records can be found.
- * @param mask If true, set address bits to zero.
+ * @param[out] out	Where to write the ip address value.
+ * @param[in] value	to parse, may be:
+ *				- IPv6 hexits [+ prefix].
+ *				- '*' wildcard.
+ *				- FQDN if resolve is true.
+ * @param[in] inlen	Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] resolve	If true and value doesn't look like an IP address,
+ *			try and resolve value as a hostname.
+ * @param[in] fallback	to IPv4 resolution if no AAAA records can be found.
+ * @param[in] mask	If true, set address bits to zero.
  * @return
  *	- 0 if ip address was parsed successfully.
  *	- -1 on failure.

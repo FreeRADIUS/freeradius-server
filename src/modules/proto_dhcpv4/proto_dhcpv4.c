@@ -22,11 +22,11 @@
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freedhcpv4.org)
  * @copyright 2016 Alan DeKok (aland@freedhcpv4.org)
  */
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "proto_dhcpv4.h"
 
 extern fr_app_t proto_dhcpv4;

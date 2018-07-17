@@ -23,8 +23,8 @@
  *
  * @copyright 2017 The FreeRADIUS project
  */
-#include <freeradius-devel/dl.h>
-#include <freeradius-devel/value.h>
+#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/util/value.h>
 
 #define FR_PROTO_STACK_MAX	10
 

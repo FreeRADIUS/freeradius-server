@@ -25,6 +25,8 @@
  */
 
 #include "rlm_radius.h"
+#include <freeradius-devel/util/dlist.h>
+
 typedef struct rlm_radius_retransmit_t {
 	struct timeval		start;		//!< when we started sending the packet
 	uint32_t		count;		//!< how many times we sent this packet
@@ -56,7 +58,7 @@ typedef struct rlm_radius_id_t {
 	int			num_requests;  	//!< number of requests in the allocation
 	int			num_free;	//!< number of entries in the free list
 
-	fr_dlist_t		free_list;     	//!< so we allocate by least recently used
+	fr_dlist_head_t		free_list;     	//!< so we allocate by least recently used
 
 	bool			use_authenticator; //!< whether to use the request authenticator as an ID
 	int			next_id;	//!< next ID to allocate

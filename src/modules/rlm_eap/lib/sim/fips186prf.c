@@ -49,7 +49,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/util/sha1.h>
 #include "sim_proto.h"
 
 /*
@@ -169,7 +169,7 @@ void fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
 /*
  *  cc fips186prf.c -g3 -Wall -DTESTING_FIPS186_PRF -DHAVE_DLFCN_H -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_fips186prf && ./test_fips186prf
  */
-#include <freeradius-devel/cutest.h>
+#include <freeradius-devel/util/cutest.h>
 
 /*
  * test vectors

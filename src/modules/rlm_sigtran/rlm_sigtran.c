@@ -42,9 +42,9 @@ RCSID("$Id$")
 #include "libosmo-m3ua/include/bsc_data.h"
 #include "libosmo-m3ua/include/sctp_m3ua.h"
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "sigtran.h"
 #include <assert.h>
@@ -82,7 +82,7 @@ static const CONF_PARSER sctp_config[] = {
 };
 
 static const CONF_PARSER m3ua_route[] = {
-	{ FR_CONF_IS_SET_OFFSET("dpc", FR_TYPE_UINT32, sigtran_m3ua_route_t, dpc) },
+	{ FR_CONF_OFFSET_IS_SET("dpc", FR_TYPE_UINT32, sigtran_m3ua_route_t, dpc) },
 	{ FR_CONF_OFFSET("opc", FR_TYPE_UINT32 | FR_TYPE_MULTI, sigtran_m3ua_route_t, opc) },
 	{ FR_CONF_OFFSET("si", FR_TYPE_UINT32 | FR_TYPE_MULTI, sigtran_m3ua_route_t, si) },
 
@@ -96,7 +96,7 @@ static const CONF_PARSER m3ua_config[] = {
 	{ FR_CONF_OFFSET("ack_timeout", FR_TYPE_UINT32, rlm_sigtran_t, conn_conf.m3ua_ack_timeout), .dflt = "2" },
 	{ FR_CONF_OFFSET("beat_interval", FR_TYPE_UINT32, rlm_sigtran_t, conn_conf.m3ua_beat_interval), .dflt = "0" },
 
-	{ FR_CONF_IS_SET_OFFSET("route", FR_TYPE_SUBSECTION, rlm_sigtran_t, conn_conf.m3ua_routes), .subcs = (void const *) m3ua_route },
+	{ FR_CONF_OFFSET_IS_SET("route", FR_TYPE_SUBSECTION, rlm_sigtran_t, conn_conf.m3ua_routes), .subcs = (void const *) m3ua_route },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -110,18 +110,18 @@ static const CONF_PARSER mtp3_config[] = {
 
 static const CONF_PARSER sccp_global_title[] = {
 	{ FR_CONF_OFFSET("address", FR_TYPE_STRING, sigtran_sccp_global_title_t, address) },
-	{ FR_CONF_IS_SET_OFFSET("tt", FR_TYPE_UINT8, sigtran_sccp_global_title_t, tt) },
-	{ FR_CONF_IS_SET_OFFSET("nai", FR_TYPE_UINT8, sigtran_sccp_global_title_t, nai) },
-	{ FR_CONF_IS_SET_OFFSET("np", FR_TYPE_UINT8, sigtran_sccp_global_title_t, np) },
-	{ FR_CONF_IS_SET_OFFSET("es", FR_TYPE_UINT8, sigtran_sccp_global_title_t, es) },
+	{ FR_CONF_OFFSET_IS_SET("tt", FR_TYPE_UINT8, sigtran_sccp_global_title_t, tt) },
+	{ FR_CONF_OFFSET_IS_SET("nai", FR_TYPE_UINT8, sigtran_sccp_global_title_t, nai) },
+	{ FR_CONF_OFFSET_IS_SET("np", FR_TYPE_UINT8, sigtran_sccp_global_title_t, np) },
+	{ FR_CONF_OFFSET_IS_SET("es", FR_TYPE_UINT8, sigtran_sccp_global_title_t, es) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER sccp_address[] = {
-	{ FR_CONF_IS_SET_OFFSET("pc", FR_TYPE_UINT32, sigtran_sccp_address_t, pc) },
-	{ FR_CONF_IS_SET_OFFSET("ssn", FR_TYPE_UINT8, sigtran_sccp_address_t, ssn) },
-	{ FR_CONF_IS_SET_OFFSET("gt", FR_TYPE_SUBSECTION, sigtran_sccp_address_t, gt), .subcs = (void const *) sccp_global_title },
+	{ FR_CONF_OFFSET_IS_SET("pc", FR_TYPE_UINT32, sigtran_sccp_address_t, pc) },
+	{ FR_CONF_OFFSET_IS_SET("ssn", FR_TYPE_UINT8, sigtran_sccp_address_t, ssn) },
+	{ FR_CONF_OFFSET_IS_SET("gt", FR_TYPE_SUBSECTION, sigtran_sccp_address_t, gt), .subcs = (void const *) sccp_global_title },
 
 	CONF_PARSER_TERMINATOR
 };

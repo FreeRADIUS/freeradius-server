@@ -23,8 +23,8 @@
  * @copyright 2000,2006,2015  The FreeRADIUS server project
  * @copyright 2011 TekSavvy Solutions <gabe@teksavvy.com>
  */
-#include "redis.h"
-#include <freeradius-devel/rad_assert.h>
+#include "base.h"
+#include <freeradius-devel/server/rad_assert.h>
 
 FR_NAME_NUMBER const redis_reply_types[] = {
 	{ "string",	REDIS_REPLY_STRING },

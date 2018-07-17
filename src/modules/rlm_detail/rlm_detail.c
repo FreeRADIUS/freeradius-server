@@ -26,10 +26,10 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_detail (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/exfile.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/exfile.h>
 
 #include <ctype.h>
 #include <fcntl.h>

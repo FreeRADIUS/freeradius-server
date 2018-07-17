@@ -23,12 +23,12 @@
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)
  */
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/dict.h>
-#include <freeradius-devel/state.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #ifndef USEC
 #define USEC (1000000)

@@ -27,11 +27,11 @@ RCSIDH(worker_h, "$Id$")
 
 #include <talloc.h>
 
-#include <freeradius-devel/heap.h>
-#include <freeradius-devel/event.h>
-#include <freeradius-devel/fr_log.h>
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/log.h>
 
-#include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/base.h>
 
 #ifdef __cplusplus
 extern "C" {

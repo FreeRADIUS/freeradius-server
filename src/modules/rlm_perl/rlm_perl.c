@@ -26,9 +26,9 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_perl - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #ifdef INADDR_ANY
 #  undef INADDR_ANY
@@ -641,14 +641,14 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 				     int *i, const char *hash_name, const char *list_name)
 {
 	size_t len;
-
+	SV *sv;
 	char buffer[1024];
 
 	switch (vp->vp_type) {
 	case FR_TYPE_STRING:
 		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, vp->vp_strvalue);
-		av_push(av, newSVpvn(vp->vp_strvalue, vp->vp_length));
+		sv = newSVpvn(vp->vp_strvalue, vp->vp_length);
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -660,16 +660,20 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 			       list_name, vp->da->name, hex);
 			talloc_free(hex);
 		}
-		av_push(av, newSVpvn((char const *)vp->vp_octets, vp->vp_length));
+		sv = newSVpvn((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
 	default:
 		len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, 0);
 		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, buffer);
-		av_push(av, newSVpvn(buffer, truncate_len(len, sizeof(buffer))));
+		sv = newSVpvn(buffer, truncate_len(len, sizeof(buffer)));
 		break;
 	}
+
+	if (!sv) return;
+	SvTAINT(sv);
+	av_push(av, sv);
 	(*i)++;
 }
 

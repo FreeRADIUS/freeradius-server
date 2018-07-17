@@ -61,8 +61,8 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_eap - "
 
-#include <freeradius-devel/util/util.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "eap_types.h"
 #include "eap_attrs.h"
 #include "eap.h"
@@ -404,7 +404,8 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	 */
 	if (eap_session->child) {
 		RDEBUG4("Adding eap_session_t %p to fake request", eap_session->child);
-		request_data_add(fake, NULL, REQUEST_DATA_EAP_SESSION, eap_session->child, false, false, false);
+		request_data_talloc_add(fake, NULL, REQUEST_DATA_EAP_SESSION,
+					eap_session_t, eap_session->child, false, false, false);
 	}
 
 	rcode = rad_virtual_server(fake);

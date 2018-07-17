@@ -24,12 +24,13 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/udp.h>
-#include <freeradius-devel/heap.h>
-#include <freeradius-devel/connection.h>
+#include <freeradius-devel/util/udp.h>
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/unlang.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/unlang/base.h>
 
 #include "rlm_radius.h"
 #include "track.h"
@@ -70,10 +71,10 @@ typedef struct rlm_radius_udp_thread_t {
 	fr_heap_t		*queued;		//!< Queued requests for some new connection.
 
 	fr_heap_t		*active;   		//!< Active connections.
-	fr_dlist_t		blocked;      		//!< blocked connections, waiting for writable
-	fr_dlist_t		full;      		//!< Full connections.
-	fr_dlist_t		zombie;      		//!< Zombie connections.
-	fr_dlist_t		opening;      		//!< Opening connections.
+	fr_dlist_head_t		blocked;      		//!< blocked connections, waiting for writable
+	fr_dlist_head_t		full;      		//!< Full connections.
+	fr_dlist_head_t		zombie;      		//!< Zombie connections.
+	fr_dlist_head_t		opening;      		//!< Opening connections.
 } rlm_radius_udp_thread_t;
 
 typedef enum rlm_radius_udp_connection_state_t {
@@ -109,7 +110,7 @@ typedef struct rlm_radius_udp_connection_t {
 	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
 	struct timeval		zombie_start;		//!< When the zombie period started.
 
-	fr_dlist_t		sent;			//!< List of sent packets.
+	fr_dlist_head_t		sent;			//!< List of sent packets.
 
 	uint32_t		max_packet_size;	//!< Our max packet size. may be different from the parent.
 	int			fd;			//!< File descriptor.
@@ -177,8 +178,8 @@ static const CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, rlm_radius_udp_t, interface) },
 
-	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, rlm_radius_udp_t, recv_buff) },
-	{ FR_CONF_IS_SET_OFFSET("send_buff", FR_TYPE_UINT32, rlm_radius_udp_t, send_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, rlm_radius_udp_t, recv_buff) },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, rlm_radius_udp_t, send_buff) },
 
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, rlm_radius_udp_t, max_packet_size), .dflt = "4096" },
 
@@ -298,7 +299,7 @@ static void conn_check_idle(rlm_radius_udp_connection_t *c)
 		/*
 		 *	No outstanding packets, we're idle.
 		 */
-		if (FR_DLIST_FIRST(c->sent) == NULL) {
+		if (fr_dlist_head(&c->sent) == NULL) {
 			break;
 		}
 
@@ -493,7 +494,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		rad_assert(u->rr != NULL);
 		rad_assert(u->c != NULL);
 		(void) rr_track_delete(u->c->id, u->rr);
-		fr_dlist_remove(&u->entry);
+		fr_dlist_remove(&u->c->sent, u);
 		u->rr = NULL;
 		u->c = NULL;
 		break;
@@ -519,7 +520,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 	case PACKET_STATE_SENT:
 		rad_assert(u->rr != NULL);
 		rad_assert(u->c != NULL);
-		fr_dlist_insert_tail(&u->c->sent, &u->entry);
+		fr_dlist_insert_tail(&u->c->sent, u);
 		break;
 
 	case PACKET_STATE_RESUMABLE:
@@ -694,7 +695,7 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 	case CONN_OPENING:
 	case CONN_FULL:
 	case CONN_BLOCKED:
-		fr_dlist_remove(&c->entry);
+		fr_dlist_remove(&c->thread->blocked, c); /* we only need 'offset' from the list */
 		break;
 
 	case CONN_ACTIVE:
@@ -711,7 +712,7 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 		 */
 		if (state == CONN_BLOCKED) return;
 
-		fr_dlist_remove(&c->entry);
+		fr_dlist_remove(&c->thread->blocked, c);
 		if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
 		break;
 	}
@@ -725,7 +726,7 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 		break;
 
 	case CONN_OPENING:
-		fr_dlist_insert_head(&c->thread->opening, &c->entry);
+		fr_dlist_insert_head(&c->thread->opening, c);
 		break;
 
 	case CONN_ACTIVE:
@@ -737,19 +738,19 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 	case CONN_BLOCKED:
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
-		fr_dlist_insert_head(&c->thread->blocked, &c->entry);
+		fr_dlist_insert_head(&c->thread->blocked, c);
 		break;
 
 	case CONN_FULL:
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
-		fr_dlist_insert_head(&c->thread->full, &c->entry);
+		fr_dlist_insert_head(&c->thread->full, c);
 		break;
 
 	case CONN_ZOMBIE:
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
-		fr_dlist_insert_head(&c->thread->zombie, &c->entry);
+		fr_dlist_insert_head(&c->thread->zombie, c);
 
 		gettimeofday(&when, NULL);
 		c->zombie_start = when;
@@ -1973,13 +1974,13 @@ static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t s
 	 *	timer events before reconnecting.
 	 */
 	if (state == FR_CONNECTION_STATE_CONNECTED) {
-		fr_dlist_t *entry;
+		rlm_radius_udp_request_t *u;
 
 		/*
 		 *	Reset the Status-Server checks.
 		 */
 		if (c->status_u) {
-			rlm_radius_udp_request_t *u = c->status_u;
+			u = c->status_u;
 
 			if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
 
@@ -2001,10 +2002,7 @@ static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t s
 		/*
 		 *	Move "sent" packets back to the thread queue,
 		 */
-		while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
-			rlm_radius_udp_request_t *u;
-
-			u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
+		while ((u = fr_dlist_head(&c->sent)) != NULL) {
 			state_transition(u, PACKET_STATE_THREAD);
 		}
 	}
@@ -2046,7 +2044,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 
 	rad_assert(c->zombie_ev == NULL);
 	memset(&c->zombie_start, 0, sizeof(c->zombie_start));
-	FR_DLIST_INIT(c->sent);
+	fr_dlist_init(&c->sent, rlm_radius_udp_request_t, entry);
 
 	/*
 	 *	Status-Server checks.  Manually build the packet, and
@@ -2105,14 +2103,12 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 		 *	Initialize the link.  Note that we don't set
 		 *	destructors.
 		 */
-		FR_DLIST_INIT(link->entry);
 		link->request = request;
 		link->request_io_ctx = u;
 
 		/*
 		 *	Unitialize the UDP link.
 		 */
-		FR_DLIST_INIT(u->entry);
 		u->code = c->inst->parent->status_check;
 		request->packet->code = u->code;
 		u->c = c;
@@ -2229,7 +2225,6 @@ static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
  */
 static int _conn_free(rlm_radius_udp_connection_t *c)
 {
-	fr_dlist_t			*entry;
 	rlm_radius_udp_request_t	*u;
 	rlm_radius_udp_thread_t		*t = talloc_get_type_abort(c->thread, rlm_radius_udp_thread_t);
 
@@ -2255,9 +2250,7 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 	/*
 	 *	Move "sent" packets back to the main thread queue
 	 */
-	while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
-		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
-
+	while ((u = fr_dlist_head(&c->sent)) != NULL) {
 		rad_assert(u->state == PACKET_STATE_SENT);
 		rad_assert(u->c == c);
 
@@ -2282,7 +2275,7 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 	case CONN_OPENING:
 	case CONN_FULL:
 	case CONN_ZOMBIE:
-		fr_dlist_remove(&c->entry);
+		fr_dlist_remove(&c->thread->blocked, c);
 		break;
 
 	case CONN_ACTIVE:
@@ -2340,7 +2333,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 		talloc_free(c);
 		return;
 	}
-	FR_DLIST_INIT(c->sent);
+	fr_dlist_init(&c->sent, rlm_radius_udp_request_t, entry);
 
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
 				      _conn_init,
@@ -2410,7 +2403,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	u->thread = t;
 	u->heap_id = -1;
 	u->timer.retry = &inst->parent->retry[u->code];
-	FR_DLIST_INIT(u->entry);
+	fr_dlist_entry_init(&u->entry);
 
 	talloc_set_destructor(u, udp_request_free);
 
@@ -2456,13 +2449,10 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	 */
 	c = fr_heap_peek(t->active);
 	if (!c) {
-		fr_dlist_t *entry;
-
 		/*
 		 *	Only open one new connection at a time.
 		 */
-		entry = FR_DLIST_FIRST(t->opening);
-		if (!entry) conn_alloc(inst, t);
+		if (!fr_dlist_head(&t->opening)) conn_alloc(inst, t);
 
 		/*
 		 *	Add the request to the backlog.  It will be
@@ -2625,10 +2615,10 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->el = el;
 
 	t->queued = fr_heap_talloc_create(t, queue_cmp, rlm_radius_udp_request_t, heap_id);
-	FR_DLIST_INIT(t->blocked);
-	FR_DLIST_INIT(t->full);
-	FR_DLIST_INIT(t->zombie);
-	FR_DLIST_INIT(t->opening);
+	fr_dlist_init(&t->blocked, rlm_radius_udp_connection_t, entry);
+	fr_dlist_init(&t->full, rlm_radius_udp_connection_t, entry);
+	fr_dlist_init(&t->zombie, rlm_radius_udp_connection_t, entry);
+	fr_dlist_init(&t->opening, rlm_radius_udp_connection_t, entry);
 
 	t->active = fr_heap_talloc_create(t, conn_cmp, rlm_radius_udp_connection_t, heap_id);
 
@@ -2643,7 +2633,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_radius_udp_thread_t *t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
-	fr_dlist_t *entry;
 
 	if (fr_heap_num_elements(t->queued) != 0) {
 		ERROR("There are still queued requests");
@@ -2655,8 +2644,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	 */
 	talloc_free_children(t);
 
-	entry = FR_DLIST_FIRST(t->opening);
-	if (entry != NULL) {
+	if (fr_dlist_head(&t->opening) != NULL) {
 		ERROR("There are still partially open sockets");
 		return -1;
 	}

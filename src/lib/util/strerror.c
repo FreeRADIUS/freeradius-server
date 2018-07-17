@@ -23,8 +23,8 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/util.h>
-#include <freeradius-devel/cursor.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/cursor.h>
 
 #define FR_STRERROR_BUFSIZE (2048)
 
@@ -332,7 +332,7 @@ void fr_strerror_free(void)
  *  cc strerror.c -g3 -Wall -DTESTING_STRERROR -L/usr/local/lib -L ../../../build/lib/local/.libs/ -lfreeradius-util -I/usr/local/include -I../../ -I../ -include ../include/build.h -l talloc -o test_strerror && ./test_strerror
  */
 #include <stddef.h>
-#include <freeradius-devel/cutest.h>
+#include <freeradius-devel/util/cutest.h>
 
 void test_strerror_uninit(void)
 {

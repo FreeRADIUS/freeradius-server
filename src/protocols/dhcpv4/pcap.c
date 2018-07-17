@@ -25,7 +25,7 @@
  */
 
 #ifdef HAVE_LIBPCAP
-#include <freeradius-devel/pcap.h>
+#include <freeradius-devel/util/pcap.h>
 #include "dhcpv4.h"
 
 /** Send DHCP packet using PCAP

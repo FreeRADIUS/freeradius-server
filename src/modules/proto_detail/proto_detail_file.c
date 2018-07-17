@@ -23,14 +23,14 @@
  * @copyright 2017 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "proto_detail.h"
 
 #include <fcntl.h>
@@ -638,7 +638,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	descriptive message telling them what to do.
 	 */
 	if (!main_config->allow_core_dumps &&
-	    main_config->uid_name && *main_config->uid_name &&
+	    main_config->uid_is_set &&
 	    main_config->server_uid != 0) {
 		cf_log_err(cs, "Cannot start detail file reader due to Linux limitations.");
 		cf_log_err(cs, "Please set 'allow_core_dumps = true' in the main configuration file.");

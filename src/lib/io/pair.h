@@ -23,7 +23,7 @@
  *
  * @copyright 2017 The FreeRADIUS project
  */
-#include <freeradius-devel/value.h>
+#include <freeradius-devel/util/value.h>
 
 #define PAIR_ENCODE_SKIP	SSIZE_MIN + 1
 #define PAIR_ENCODE_ERROR	SSIZE_MIN

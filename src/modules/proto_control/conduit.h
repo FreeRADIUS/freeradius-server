@@ -40,11 +40,17 @@ typedef enum fr_conduit_type_t {
 	FR_CONDUIT_AUTH_CHALLENGE,
 	FR_CONDUIT_AUTH_RESPONSE,
 	FR_CONDUIT_NOTIFY,
-	FR_CONDUIT_WANT_MORE,
 } fr_conduit_type_t;
+
+typedef enum fr_conduit_origin_t {
+	FR_ORIGIN_SIGNAL = 0,
+	FR_ORIGIN_DEBUG,
+	FR_ORIGIN_WORKER,
+} fr_conduit_origin_t;
 
 typedef enum fr_conduit_result_t {
 	FR_CONDUIT_FAIL = 0,
+	FR_CONDUIT_PARTIAL,
 	FR_CONDUIT_SUCCESS
 } fr_conduit_result_t;
 
@@ -65,12 +71,14 @@ typedef struct fr_cs_buffer_t {
 } fr_cs_buffer_t;
 
 typedef struct fr_conduit_hdr_t {
-	uint32_t	conduit;
+	uint16_t	origin;
+	uint16_t	conduit;
 	uint32_t	length;
 } fr_conduit_hdr_t;
 
 
-ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen, size_t *leftover);
+ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen,
+			      size_t *leftover, bool *want_more);
 ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *buffer, size_t buflen);
 ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *buffer, size_t buflen);
 

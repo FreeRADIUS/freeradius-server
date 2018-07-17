@@ -20,13 +20,13 @@
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Network RADIUS SARL <info@networkradius.com>
  */
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/process.h>
-#include <freeradius-devel/state.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <freeradius-devel/tacacs/tacacs.h>
 

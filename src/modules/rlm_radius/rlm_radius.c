@@ -25,9 +25,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "rlm_radius.h"
 
@@ -385,7 +386,7 @@ static int status_check_update_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED v
  */
 static int mod_link_free(rlm_radius_link_t *link)
 {
-	fr_dlist_remove(&link->entry);
+	fr_dlist_remove(&link->t->running, link);
 
 	/*
 	 *	Free the child's request io context.  That will call
@@ -563,7 +564,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	radius_fixups(inst, request);
 
-	fr_dlist_insert_tail(&t->running, &link->entry);
+	fr_dlist_insert_tail(&t->running, link);
 	talloc_set_destructor(link, mod_link_free);
 
 	/*
@@ -818,7 +819,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->inst = instance;
 	t->el = el;
 
-	FR_DLIST_INIT(t->running);
+	fr_dlist_init(&t->running, rlm_radius_link_t, entry);
 
 	/*
 	 *	Allocate thread-specific data.  The connections should
@@ -848,7 +849,6 @@ static int mod_thread_detach(fr_event_list_t *el, void *thread)
 {
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 	rlm_radius_t const *inst = t->inst;
-	fr_dlist_t *entry;
 
 	/*
 	 *	Tell the submodule to shut down all of its
@@ -866,8 +866,7 @@ static int mod_thread_detach(fr_event_list_t *el, void *thread)
 	 *	marked DONE, and (in an ideal world) resumed / cleaned
 	 *	up before this memory is freed.
 	 */
-	entry = FR_DLIST_FIRST(t->running);
-	if (entry != NULL) {
+	if (fr_dlist_head(&t->running) != NULL) {
 		ERROR("Module still has running requests!");
 		return -1;
 	}

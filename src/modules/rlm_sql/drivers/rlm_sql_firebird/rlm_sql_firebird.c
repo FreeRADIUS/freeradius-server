@@ -23,7 +23,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql_firebird - "
 
 #include "sql_fbapi.h"
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 
 /* Forward declarations */

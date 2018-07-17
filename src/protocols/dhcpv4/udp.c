@@ -27,10 +27,10 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <talloc.h>
-#include <freeradius-devel/pair.h>
-#include <freeradius-devel/types.h>
-#include <freeradius-devel/proto.h>
-#include <freeradius-devel/udpfromto.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/udpfromto.h>
 #include "dhcpv4.h"
 #include "attrs.h"
 

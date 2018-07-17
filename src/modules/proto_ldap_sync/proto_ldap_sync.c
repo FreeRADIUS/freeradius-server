@@ -23,12 +23,12 @@
  *
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/ldap/ldap.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/process.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/ldap/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <sys/socket.h>
 
 #include "sync.h"

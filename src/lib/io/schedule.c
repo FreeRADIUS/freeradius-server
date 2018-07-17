@@ -27,7 +27,8 @@ RCSID("$Id$")
 #include <freeradius-devel/autoconf.h>
 
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/rbtree.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/rbtree.h>
 
 #ifdef HAVE_PTHREAD_H
 #include <pthread.h>
@@ -131,7 +132,7 @@ struct fr_schedule_t {
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
 	void					*worker_instantiate_ctx;	//!< thread instantiation context
 
-	fr_dlist_t	workers;		//!< list of workers
+	fr_dlist_head_t	workers;		//!< list of workers
 
 	fr_network_t	*single_network;	//!< for single-threaded mode
 	fr_worker_t	*single_worker;		//!< for single-threaded mode
@@ -302,17 +303,53 @@ fail:
 	return NULL;
 }
 
+/** Creates a new thread using our standard set of options
+ *
+ * New threads are:
+ * - Joinable, i.e. you can call pthread_join on them to confirm they've exited
+ * - Immune to catchable signals.
+ *
+ * @param[out] thread		handled that was created by pthread_create.
+ * @param[in] func		entry point for the thread.
+ * @param[in] arg		Argument to pass to func.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *arg)
+{
+	pthread_attr_t			attr;
+	int				ret;
+
+	/*
+	 *	Set the thread to wait around after it's exited
+	 *	so it can be joined.  This is more of a useful
+	 *	mechanism for the parent to determine if all
+	 *	the threads have exited so it can continue with
+	 *	a graceful shutdown.
+	 */
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+	ret = pthread_create(thread, &attr, func, arg);
+	if (ret != 0) {
+		fr_strerror_printf("Failed creating thread: %s", fr_syserror(ret));
+		return -1;
+	}
+
+	return 0;
+}
 
 /** Create a scheduler and spawn the child threads.
  *
- * @param[in] ctx the talloc context
- * @param[in] el the event list, only for single-threaded mode.
- * @param[in] logger the destination for all logging messages
- * @param[in] lvl the log level
- * @param[in] max_networks the number of network threads
- * @param[in] max_workers the number of worker threads
- * @param[in] worker_thread_instantiate callback for new worker threads
- * @param[in] worker_thread_ctx context for callback
+ * @param[in] ctx		talloc context.
+ * @param[in] el		event list, only for single-threaded mode.
+ * @param[in] logger		destination for all logging messages.
+ * @param[in] lvl		log level.
+ * @param[in] max_networks	number of network threads.
+ * @param[in] max_workers	number of worker threads.
+ * @param[in] worker_thread_instantiate		callback for new worker threads.
+ * @param[in] worker_thread_ctx	context for callback.
  * @return
  *	- NULL on error
  *	- fr_schedule_t new scheduler
@@ -325,9 +362,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 {
 #ifdef HAVE_PTHREAD_H
 	int i;
-	int rcode;
-	pthread_attr_t attr;
-	fr_dlist_t *entry, *next;
+	fr_schedule_worker_t *sw, *next;
 #endif
 	fr_schedule_t *sc;
 
@@ -401,17 +436,14 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	}
 
 #ifdef HAVE_PTHREAD_H
-	(void) pthread_attr_init(&attr);
-	(void) pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
 	/*
 	 *	Create the list which holds the workers.
 	 */
-	FR_DLIST_INIT(sc->workers);
+	fr_dlist_init(&sc->workers, fr_schedule_worker_t, entry);
 
 	memset(&sc->semaphore, 0, sizeof(sc->semaphore));
 	if (sem_init(&sc->semaphore, 0, SEMAPHORE_LOCKED) != 0) {
-		fr_strerror_printf("Failed creating semaphore: %s", fr_syserror(errno));
+		fr_log(sc->log, L_ERR, "Failed creating semaphore: %s", fr_syserror(errno));
 		talloc_free(sc);
 		return NULL;
 	}
@@ -424,9 +456,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	sc->sn->sc = sc;
 	sc->sn->id = 0;
 
-	rcode = pthread_create(&sc->sn->pthread_id, &attr, fr_schedule_network_thread, sc->sn);
-	if (rcode != 0) {
-		fr_strerror_printf("Failed creating network thread: %s", fr_syserror(errno));
+	if (fr_schedule_pthread_create(&sc->sn->pthread_id, fr_schedule_network_thread, sc->sn) < 0) {
+		fr_log(sc->log, L_ERR, "Failed creating network thread %s", fr_strerror());
 		goto fail;
 	}
 
@@ -443,8 +474,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	Create all of the workers.
 	 */
 	for (i = 0; i < sc->max_workers; i++) {
-		fr_schedule_worker_t *sw;
-
 		fr_log(sc->log, L_DBG, "Creating %d/%d workers\n", i, sc->max_workers);
 
 		/*
@@ -459,16 +488,16 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sw->id = i;
 		sw->sc = sc;
 		sw->status = FR_CHILD_INITIALIZING;
-		fr_dlist_insert_head(&sc->workers, &sw->entry);
+		fr_dlist_insert_head(&sc->workers, sw);
 
-		rcode = pthread_create(&sw->pthread_id, &attr, fr_schedule_worker_thread, sw);
-		if (rcode != 0) {
-			fr_log(sc->log, L_ERR, "Failed creating worker %d: %s\n", i, fr_syserror(errno));
+		if (fr_schedule_pthread_create(&sw->pthread_id, fr_schedule_worker_thread, sw) < 0) {
+			fr_log(sc->log, L_ERR, "Failed creating worker %d: %s\n", i, fr_strerror());
 			break;
 		}
 
 		sc->num_workers++;
 	}
+
 
 	/*
 	 *	Wait for all of the workers to signal us that either
@@ -483,18 +512,15 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	See if all of the workers have started.
 	 */
-	for (entry = FR_DLIST_FIRST(sc->workers);
-	     entry != NULL;
-	     entry = next) {
-		fr_schedule_worker_t *sw;
+	for (sw = fr_dlist_head(&sc->workers);
+	     sw != NULL;
+	     sw = next) {
 
-		next = FR_DLIST_NEXT(sc->workers, entry);
-
-		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
+		next = fr_dlist_next(&sc->workers, sw);
 
 		if (sw->status != FR_CHILD_RUNNING) {
 			sc->num_workers--;
-			fr_dlist_remove(entry);
+			fr_dlist_remove(&sc->workers, sw);
 			continue;
 		}
 	}
@@ -529,8 +555,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	sc->running = false;
 
 #ifdef HAVE_PTHREAD_H
-	fr_dlist_t	*entry;
-
 	/*
 	 *	Single threaded mode: kill the only network / worker we have.
 	 */
@@ -561,10 +585,9 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	/*
 	 *	Signal all of the workers to exit.
 	 */
-	for (entry = FR_DLIST_FIRST(sc->workers);
-	     entry != NULL;
-	     entry = FR_DLIST_NEXT(sc->workers, entry)) {
-		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
+	for (sw = fr_dlist_head(&sc->workers);
+	     sw != NULL;
+	     sw = fr_dlist_next(&sc->workers, sw)) {
 		fr_worker_exit(sw->worker);
 	}
 
@@ -581,9 +604,10 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	/*
 	 *	Clean up the exited workers.
 	 */
-	while ((entry = FR_DLIST_FIRST(sc->workers)) != NULL) {
+	while ((sw = fr_dlist_head(&sc->workers)) != NULL) {
 		sc->num_workers--;
-		fr_dlist_remove(entry);
+
+		fr_dlist_remove(&sc->workers, sw);
 
 		/*
 		 *	Ensure that the thread has exited before
@@ -593,7 +617,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		 *	exited before the main thread cleans up the
 		 *	module instances.
 		 */
-		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 		if (pthread_join(sw->pthread_id, NULL) != 0) {
 			fr_log(sc->log, L_ERR, "Failed joining worker %i: %s", sw->id, fr_syserror(errno));
 		} else {

@@ -26,9 +26,9 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_test - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 /*
  *	Define a structure for our module configuration.

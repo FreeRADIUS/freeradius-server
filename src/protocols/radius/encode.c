@@ -24,8 +24,8 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/util.h>
-#include <freeradius-devel/md5.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/io/test_point.h>
 #include "attrs.h"
 

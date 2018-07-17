@@ -28,9 +28,9 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_eap (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/dl.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/dl.h>
 #include "rlm_eap.h"
 
 extern rad_module_t rlm_eap;
@@ -660,10 +660,7 @@ static rlm_rcode_t mod_authenticate(void *instance, void *thread, REQUEST *reque
 	 *	data.
 	 */
 	eap_session = eap_session_continue(&eap_packet, inst, request);
-	if (!eap_session) {
-		REDEBUG("Failed allocating or retrieving EAP session");
-		return RLM_MODULE_INVALID;
-	}
+	if (!eap_session) return RLM_MODULE_INVALID;	/* Don't emit error here, it will mask the real issue */
 
 	/*
 	 *	Call an EAP submodule to process the request,

@@ -41,7 +41,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include <sys/stat.h>
 #endif
 
-#include <freeradius-devel/unlang.h>
+#include <freeradius-devel/unlang/base.h>
 
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_tls_t, tls_conf_name) },

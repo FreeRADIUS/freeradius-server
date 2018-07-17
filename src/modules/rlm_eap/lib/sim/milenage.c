@@ -20,8 +20,8 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <freeradius-devel/tls_log.h>
-#include <freeradius-devel/proto.h>
+#include <freeradius-devel/tls/tls_log.h>
+#include <freeradius-devel/util/proto.h>
 #include <openssl/evp.h>
 #include "milenage.h"
 
@@ -343,6 +343,31 @@ int milenage_auts(uint64_t sqn,
 	return 0;
 }
 
+/** Generate GSM-Milenage (3GPP TS 55.205) authentication triplet from a quintuplet
+ *
+ * @param[out] sres	Buffer for SRES = 32-bit SRES.
+ * @param[out] kc	64-bit Kc.
+ * @param[in] ik	128-bit integrity.
+ * @param[in] ck	Confidentiality key.
+ * @param[in] res	64-bit signed response.
+ */
+void milenage_gsm_from_umts(uint8_t sres[MILENAGE_SRES_SIZE],
+			    uint8_t kc[MILENAGE_KC_SIZE],
+			    uint8_t const ik[MILENAGE_IK_SIZE],
+			    uint8_t const ck[MILENAGE_CK_SIZE],
+			    uint8_t const res[MILENAGE_RES_SIZE])
+{
+	int i;
+
+	for (i = 0; i < 8; i++) kc[i] = ck[i] ^ ck[i + 8] ^ ik[i] ^ ik[i + 8];
+
+#ifdef GSM_MILENAGE_ALT_SRES
+	memcpy(sres, res, 4);
+#else	/* GSM_MILENAGE_ALT_SRES */
+	for (i = 0; i < 4; i++) sres[i] = res[i] ^ res[i + 4];
+#endif	/* GSM_MILENAGE_ALT_SRES */
+}
+
 /** Generate GSM-Milenage (3GPP TS 55.205) authentication triplet
  *
  * @param[out] sres	Buffer for SRES = 32-bit SRES.
@@ -361,17 +386,10 @@ int milenage_gsm_generate(uint8_t sres[MILENAGE_SRES_SIZE],
 			  uint8_t const rand[MILENAGE_RAND_SIZE])
 {
 	uint8_t		res[MILENAGE_RES_SIZE], ck[MILENAGE_CK_SIZE], ik[MILENAGE_IK_SIZE];
-	int		i;
 
 	if (milenage_f2345(res, ik, ck, NULL, NULL, opc, ki, rand)) return -1;
 
-	for (i = 0; i < 8; i++) kc[i] = ck[i] ^ ck[i + 8] ^ ik[i] ^ ik[i + 8];
-
-#ifdef GSM_MILENAGE_ALT_SRES
-	memcpy(sres, res, 4);
-#else /* GSM_MILENAGE_ALT_SRES */
-	for (i = 0; i < 4; i++) sres[i] = res[i] ^ res[i + 4];
-#endif /* GSM_MILENAGE_ALT_SRES */
+	milenage_gsm_from_umts(sres, kc, ik, ck, res);
 
 	return 0;
 }
@@ -456,7 +474,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 /*
  *  cc milenage.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_MILENAGE -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_milenage && ./test_milenage
  */
-#include <freeradius-devel/cutest.h>
+#include <freeradius-devel/util/cutest.h>
 
 void test_set_1(void)
 {

@@ -29,9 +29,9 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_krb5 (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "krb5.h"
 
 static const CONF_PARSER module_config[] = {

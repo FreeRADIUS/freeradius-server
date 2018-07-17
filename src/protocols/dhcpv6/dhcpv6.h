@@ -28,7 +28,7 @@
  */
 RCSIDH(dhcpv6_h, "$Id$")
 
-#include <freeradius-devel/dict.h>
+#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/attributes.h>
 #include <freeradius-devel/dhcpv6.h>
 

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <netdb.h>
 
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/base.h>
 
 /*
  *	We need knowlege of the internal structures.

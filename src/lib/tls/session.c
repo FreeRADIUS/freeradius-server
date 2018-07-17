@@ -29,10 +29,10 @@
 #define LOG_PREFIX "tls - "
 
 #include <ctype.h>
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <openssl/x509v3.h>
-#include "tls.h"
+#include "base.h"
 #include "tls_attrs.h"
 
 /*
@@ -854,6 +854,9 @@ static inline VALUE_PAIR *tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *re
 			return NULL;
 		}
 	}
+	RINDENT();
+	RDEBUG3("%pP", vp);
+	REXDENT();
 	fr_cursor_append(cursor, vp);
 
 	return vp;
@@ -876,7 +879,6 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 	char		buffer[1024];
 	char		attribute[256];
 	char		**identity;
-
 	int		attr_index, loc;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -902,7 +904,12 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 
 	identity = (char **)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_IDENTITY);
 
-	RDEBUG2("Creating attributes from certificate OIDs");
+	if (RDEBUG_ENABLED3) {
+		buffer[0] = '\0';
+		X509_NAME_oneline(X509_get_subject_name(cert), buffer, sizeof(buffer));
+		buffer[sizeof(buffer) - 1] = '\0';
+		RDEBUG3("Creating attributes for \"%s\":", buffer[0] ? buffer : "Cert missing subject OID");
+	}
 
 	/*
 	 *	Get the Serial Number

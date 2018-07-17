@@ -21,8 +21,8 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/util.h>
-#include <freeradius-devel/heap.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/heap.h>
 
 /*
  *	A heap entry is made of a pointer to the object, which

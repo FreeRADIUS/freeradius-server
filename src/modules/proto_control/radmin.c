@@ -64,9 +64,10 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "radmin - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/cf_parse.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/radmin.h>
 #include "conduit.h"
 
 /*
@@ -855,7 +856,10 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 
 		} else if (len == FR_CONDUIT_SUCCESS) {
-			break;
+			continue;
+
+		} else if (len == FR_CONDUIT_PARTIAL) {
+			continue;
 
 		} else if (len == FR_CONDUIT_FAIL) {
 			exit_status = EXIT_FAILURE;

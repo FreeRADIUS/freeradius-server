@@ -57,7 +57,7 @@ autom4te.cache
 config.guess
 config.sub
 config.h
-src/main/unit_test_attribute
+src/bin/unit_test_attribute
 src/modules/lib/
 warnings.txt
 
@@ -68,3 +68,6 @@ appendonly*.aof
 
 # Analyzer output
 *.plist
+
+# Local scripts
+run.sh

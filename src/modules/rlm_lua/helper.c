@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 
 #include "config.h"
 #include "lua.h"

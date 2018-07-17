@@ -33,9 +33,9 @@
   #include <net/if.h>
 #endif
 
-#include <freeradius-devel/pcap.h>
-#include <freeradius-devel/net.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/util/pcap.h>
+#include <freeradius-devel/util/net.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 /** Talloc destructor to free pcap resources associated with a handle.
  *

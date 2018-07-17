@@ -27,10 +27,10 @@ RCSIDH(master_h, "$Id$")
 
 #include <talloc.h>
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/trie.h>
+#include <freeradius-devel/util/trie.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include "eap_fast.h"
 #include "eap_fast_crypto.h"
-#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/util/sha1.h>
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 

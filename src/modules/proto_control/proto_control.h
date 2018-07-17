@@ -24,6 +24,7 @@
  * @copyright 2018 Alan DeKok <aland@freeradius.org>
  */
 #include <freeradius-devel/io/master.h>
+#include <freeradius-devel/server/radmin.h>
 #include "conduit.h"
 
 /** An instance of a proto_control listen section

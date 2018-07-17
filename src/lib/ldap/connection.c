@@ -23,8 +23,8 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/ldap/ldap.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/ldap/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #if LDAP_SET_REBIND_PROC_ARGS == 3
 /** Callback for OpenLDAP to rebind and chase referrals

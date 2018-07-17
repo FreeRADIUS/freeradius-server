@@ -24,8 +24,8 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
 
 typedef struct {
 	char const		*name;		//!< Auth-Type value for this module instance.

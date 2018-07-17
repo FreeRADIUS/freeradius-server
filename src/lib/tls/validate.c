@@ -28,9 +28,9 @@
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
-#include "tls.h"
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include "base.h"
 #include "tls_attrs.h"
 
 /** Validates a certificate using custom logic
@@ -146,8 +146,10 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		 *	tls_session_pairs_from_x509_cert contains a
 		 *	reference to cert_vps.
 		 */
-		cert_vps = fr_cursor_current(&cursor);
+		cert_vps = fr_cursor_head(&cursor);
 		if (cert_vps) {
+			RDEBUG2("Adding certificate attributes to session-state");
+
 			/*
 			 *	Print out all the pairs we have so far
 			 */

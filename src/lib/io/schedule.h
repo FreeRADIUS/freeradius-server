@@ -27,7 +27,7 @@ RCSIDH(schedule_h, "$Id$")
 
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/network.h>
-#include <freeradius-devel/fr_log.h>
+#include <freeradius-devel/util/log.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,6 +48,7 @@ typedef int (*fr_schedule_thread_instantiate_t)(TALLOC_CTX *ctx, fr_event_list_t
 
 int			fr_schedule_worker_id(void);
 
+int			fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *arg);
 fr_schedule_t		*fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *log, fr_log_lvl_t lvl,
 					    int max_inputs, int max_workers,
 					    fr_schedule_thread_instantiate_t worker_thread_instantiate,

@@ -23,10 +23,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 /*
  *	@todo - also get the statistics from the network side for
@@ -53,7 +54,7 @@ typedef struct rlm_stats_t {
 	fr_dict_attr_t const	*type_da;			//!< FreeRADIUS-Stats4-Type
 	fr_dict_attr_t const	*ipv4_da;			//!< FreeRADIUS-Stats4-IPv4-Address
 	fr_dict_attr_t const	*ipv6_da;			//!< FreeRADIUS-Stats4-IPv6-Address
-	fr_dlist_t		entry;				//!< for threads to know about each other
+	fr_dlist_head_t		list;				//!< for threads to know about each other
 
 	uint64_t		stats[FR_MAX_PACKET_CODE];
 } rlm_stats_t;
@@ -115,7 +116,6 @@ static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_
 		     rlm_stats_data_t *mydata)
 {
 	rlm_stats_data_t *stats;
-	fr_dlist_t *entry;
 	rlm_stats_thread_t *other;
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t *mutex;
@@ -140,10 +140,9 @@ static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_
 	 *	Loop over all of the other thread instances, locking
 	 *	them, and adding their statistics in.
 	 */
-	for (entry = FR_DLIST_FIRST(t->inst->entry);
-	     entry != NULL;
-	     entry = FR_DLIST_NEXT(t->inst->entry, entry)) {
-		other = fr_ptr_to_type(rlm_stats_thread_t, entry, entry);
+	for (other = fr_dlist_head(&t->inst->list);
+	     other != NULL;
+	     other = fr_dlist_next(&t->inst->list, other)) {
 		int i;
 
 		if (other == t) continue;
@@ -388,7 +387,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->dst = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_NONE);
 
 	PTHREAD_MUTEX_LOCK(&inst->mutex);
-	fr_dlist_insert_head(&inst->entry, &t->entry);
+	fr_dlist_insert_head(&inst->list, t);
 	PTHREAD_MUTEX_UNLOCK(&inst->mutex);
 
 	return 0;
@@ -408,7 +407,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
 		inst->stats[i] += t->stats[i];
 	}
-	fr_dlist_remove(&t->entry);
+	fr_dlist_remove(&inst->list, t);
 	PTHREAD_MUTEX_UNLOCK(&inst->mutex);
 
 	return 0;
@@ -422,7 +421,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	pthread_mutex_init(&inst->mutex, NULL);
 #endif
 
-	FR_DLIST_INIT(inst->entry);
+	fr_dlist_init(&inst->list, rlm_stats_thread_t, entry);
 
 	return 0;
 }

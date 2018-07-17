@@ -22,9 +22,9 @@
  * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include "rest.h"
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/unlang.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
 
 /*
  *  CURL headers do:

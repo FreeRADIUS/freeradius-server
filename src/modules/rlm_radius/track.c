@@ -23,10 +23,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rbtree.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "track.h"
 #include "rlm_radius.h"
@@ -67,11 +68,11 @@ rlm_radius_id_t *rr_track_create(TALLOC_CTX *ctx)
 	id = talloc_zero(ctx, rlm_radius_id_t);
 	if (!id) return NULL;
 
-	FR_DLIST_INIT(id->free_list);
+	fr_dlist_init(&id->free_list, rlm_radius_request_t, entry);
 
 	for (i = 0; i < 256; i++) {
 		id->id[i].id = i;
-		fr_dlist_insert_tail(&id->free_list, &id->id[i].entry);
+		fr_dlist_insert_tail(&id->free_list, &id->id[i]);
 		id->num_free++;
 	}
 
@@ -108,22 +109,19 @@ static int rr_cmp(void const *one, void const *two)
 rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code, rlm_radius_link_t *link,
 				     rlm_radius_retransmit_t *timer)
 {
-	fr_dlist_t *entry;
 	rlm_radius_request_t *rr;
 
 retry:
-	entry = FR_DLIST_FIRST(id->free_list);
-	if (entry) {
+	rr = fr_dlist_head(&id->free_list);
+	if (rr) {
 		rad_assert(id->num_free > 0);
-
-		rr = fr_ptr_to_type(rlm_radius_request_t, entry, entry);
 
 		rad_assert(rr->request == NULL);
 
 		/*
 		 *	Mark it as used, and remove it from the free list.
 		 */
-		fr_dlist_remove(&rr->entry);
+		fr_dlist_remove(&id->free_list, rr);
 		id->num_free--;
 
 		/*
@@ -166,7 +164,6 @@ retry:
 	 *	Allocate a new one, and insert it into the appropriate subtree.
 	 */
 	rr = talloc_zero(id, rlm_radius_request_t);
-	FR_DLIST_INIT(rr->entry);
 	rr->id = id->next_id;
 
 done:
@@ -283,7 +280,7 @@ int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr)
 	 *	Otherwise put it back on the free list.
 	 */
 done:
-	fr_dlist_insert_tail(&id->free_list, &rr->entry);
+	fr_dlist_insert_tail(&id->free_list, rr);
 	id->num_free++;
 
 	return 0;

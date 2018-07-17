@@ -23,10 +23,10 @@
  *
  * @copyright 1999-2017 The FreeRADIUS server project
  */
-#include <freeradius-devel/radius.h>
-#include <freeradius-devel/cursor.h>
-#include <freeradius-devel/packet.h>
-#include <freeradius-devel/fr_log.h>
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/packet.h>
+#include <freeradius-devel/util/log.h>
 
 #define AUTH_VECTOR_LEN		16
 #define CHAP_VALUE_LENGTH       16

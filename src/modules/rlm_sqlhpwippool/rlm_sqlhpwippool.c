@@ -33,9 +33,9 @@
  * @copyright 2005-2006 Pawel Foremski <pjf@asn.pl>,
  * @copyright 2000-2006 The FreeRADIUS server project
  */
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/modpriv.h>
 
 #include <ctype.h>
 

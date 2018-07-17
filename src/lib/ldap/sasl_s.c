@@ -26,9 +26,9 @@
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/ldap/ldap.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/ldap/base.h>
 
 #include <sasl/sasl.h>
 

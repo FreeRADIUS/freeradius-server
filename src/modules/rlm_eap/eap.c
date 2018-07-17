@@ -54,7 +54,7 @@
  *
  */
 #define LOG_PREFIX "rlm_eap - "
-#include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/server/modpriv.h>
 
 RCSID("$Id$")
 
@@ -888,7 +888,8 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		 *	tunneled EAP, where the inner EAP module is
 		 *	a different instance to the outer one.
 		 */
-		request_data_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session, true, true, true);
+		request_data_talloc_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session_t,
+					eap_session, true, true, true);
 	}
 
 	vp = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);

@@ -40,8 +40,8 @@ RCSID("$Id$")
 #include "sim_attrs.h"
 #include "milenage.h"
 
-#include <freeradius-devel/sha1.h>
-#include <freeradius-devel/tls/tls.h>
+#include <freeradius-devel/util/sha1.h>
+#include <freeradius-devel/tls/base.h>
 #include <openssl/evp.h>
 
 
@@ -1180,7 +1180,7 @@ void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys)
  */
 #include <stddef.h>
 #include <stdbool.h>
-#include <freeradius-devel/cutest.h>
+#include <freeradius-devel/util/cutest.h>
 
 /*
  *	EAP-SIM (RFC4186) GSM authentication vectors

@@ -24,11 +24,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/util.h>
-#include <freeradius-devel/udp.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/udp.h>
 
 #ifdef WITH_UDPFROMTO
-#include <freeradius-devel/udpfromto.h>
+#include <freeradius-devel/util/udpfromto.h>
 #endif
 
 #include <fcntl.h>

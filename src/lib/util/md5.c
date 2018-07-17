@@ -9,13 +9,13 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/util/util.h>
+#include <freeradius-devel/util/base.h>
 
 /*
  *  FORCE MD5 TO USE OUR MD5 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD5.
  */
-#include <freeradius-devel/md5.h>
+#include <freeradius-devel/util/md5.h>
 
 /** Calculate the MD5 hash of the contents of a buffer
  *

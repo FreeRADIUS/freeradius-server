@@ -24,7 +24,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/talloc.h>
+#include <freeradius-devel/util/talloc.h>
 #include <string.h>
 
 /** Retrieve the current talloc NULL ctx

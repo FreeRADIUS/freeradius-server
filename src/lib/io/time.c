@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/io/time.h>
+#include <freeradius-devel/util/dlist.h>
 
 /*
  *	Avoid too many ifdef's later in the code.
@@ -146,8 +147,9 @@ void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
  *
  * @param[in] tt the time tracking structure.
  * @param[in] when the event happened
+ * @param[out] worker time tracking for the worker thread
  */
-void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when)
+void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker)
 {
 	memset(tt, 0, sizeof(*tt));
 
@@ -155,7 +157,8 @@ void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when)
 	tt->start = when;
 	tt->resumed = when;
 
-	FR_DLIST_INIT(tt->list);
+	fr_dlist_init(&(worker->list), fr_time_tracking_t, list.entry);
+	fr_dlist_entry_init(&tt->list.entry);
 }
 
 
@@ -179,8 +182,8 @@ void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracki
 	/*
 	 *	This request cannot be in any list.
 	 */
-	rad_assert(tt->list.prev == &tt->list);
-	rad_assert(tt->list.next == &tt->list);
+	rad_assert(tt->list.entry.prev == &(tt->list.entry));
+	rad_assert(tt->list.entry.next == &(tt->list.entry));
 
 	/*
 	 *	Update the time that the worker spent processing the request.
@@ -214,7 +217,7 @@ void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_trac
 	 *	Insert this request into the TAIL of the worker's list
 	 *	of waiting requests.
 	 */
-	fr_dlist_insert_head(&worker->list, &tt->list);
+	fr_dlist_insert_head(&worker->list, tt);
 }
 
 
@@ -222,8 +225,9 @@ void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_trac
  *
  * @param[in] tt the time tracking structure.
  * @param[in] when the event happened
+ * @param[out] worker time tracking for the worker thread
  */
-void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when)
+void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker)
 {
 	tt->when = when;
 	tt->resumed = when;
@@ -236,7 +240,7 @@ void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when)
 	 *	Remove this request into the workers list of waiting
 	 *	requests.
 	 */
-	fr_dlist_remove(&tt->list);
+	fr_dlist_remove(&worker->list, tt);
 }
 
 

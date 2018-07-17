@@ -23,8 +23,8 @@
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include <freeradius-devel/ldap/ldap.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/ldap/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 typedef struct {
 	uint64_t	id;		//!< Bitfield ID.

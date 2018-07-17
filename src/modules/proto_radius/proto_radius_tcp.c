@@ -23,16 +23,16 @@
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/tcp.h>
-#include <freeradius-devel/trie.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/tcp.h>
+#include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "proto_radius.h"
 
 typedef struct {
@@ -88,7 +88,7 @@ static const CONF_PARSER tcp_listen_config[] = {
 	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, proto_radius_tcp_t, port_name) },
 
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_radius_tcp_t, port) },
-	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_radius_tcp_t, recv_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_radius_tcp_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_BOOL, proto_radius_tcp_t, dynamic_clients) } ,
 	{ FR_CONF_POINTER("networks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) networks_config },

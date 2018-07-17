@@ -22,7 +22,7 @@
  * @copyright 2017 The FreeRADIUS server project
  */
 #include <sys/types.h>
-#include <freeradius-devel/token.h>
+#include <freeradius-devel/util/token.h>
 
 #define SIM_3GPP_PSEUDONYM_LEN			23	//!< Length of a base64 encoded 3gpp pseudonym.
 #define SIM_IMSI_MAX_LEN			15	//!< Length of an IMSI number in ASCII.

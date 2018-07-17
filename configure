@@ -585,7 +585,7 @@ PACKAGE_STRING='freeradius $Id$'
 PACKAGE_BUGREPORT='http://bugs.freeradius.org'
 PACKAGE_URL='http://www.freeradius.org'
 
-ac_unique_file="src/main/radiusd.c"
+ac_unique_file="src/bin/radiusd.c"
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>
@@ -641,6 +641,7 @@ PCAP_LIBS
 OPENSSL_CPPFLAGS
 OPENSSL_LDFLAGS
 OPENSSL_LIBS
+LIBREADLINE_PREFIX
 LIBREADLINE
 KQUEUE_LDFLAGS
 KQUEUE_LIBS
@@ -9242,6 +9243,9 @@ done
 
   fi
 fi
+LIBREADLINE_PREFIX=$(brew --prefix readline 2>/dev/null)
+
+
 
 
 
@@ -15051,7 +15055,7 @@ ac_config_commands="$ac_config_commands scripts-chmod"
 unset ac_cv_env_LIBS_set
 unset ac_cv_env_LIBS_value
 
-ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/radsniff.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
+ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/bin/radsniff.mk ./src/bin/checkrad ./src/bin/radlast ./src/bin/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -15755,10 +15759,10 @@ do
     "scripts-chmod") CONFIG_COMMANDS="$CONFIG_COMMANDS scripts-chmod" ;;
     "./Make.inc") CONFIG_FILES="$CONFIG_FILES ./Make.inc" ;;
     "./src/include/build-radpaths-h") CONFIG_FILES="$CONFIG_FILES ./src/include/build-radpaths-h" ;;
-    "./src/main/radsniff.mk") CONFIG_FILES="$CONFIG_FILES ./src/main/radsniff.mk" ;;
-    "./src/main/checkrad") CONFIG_FILES="$CONFIG_FILES ./src/main/checkrad" ;;
-    "./src/main/radlast") CONFIG_FILES="$CONFIG_FILES ./src/main/radlast" ;;
-    "./src/main/radtest") CONFIG_FILES="$CONFIG_FILES ./src/main/radtest" ;;
+    "./src/bin/radsniff.mk") CONFIG_FILES="$CONFIG_FILES ./src/bin/radsniff.mk" ;;
+    "./src/bin/checkrad") CONFIG_FILES="$CONFIG_FILES ./src/bin/checkrad" ;;
+    "./src/bin/radlast") CONFIG_FILES="$CONFIG_FILES ./src/bin/radlast" ;;
+    "./src/bin/radtest") CONFIG_FILES="$CONFIG_FILES ./src/bin/radtest" ;;
     "./scripts/rc.radiusd") CONFIG_FILES="$CONFIG_FILES ./scripts/rc.radiusd" ;;
     "./scripts/cron/radiusd.cron.daily") CONFIG_FILES="$CONFIG_FILES ./scripts/cron/radiusd.cron.daily" ;;
     "./scripts/cron/radiusd.cron.monthly") CONFIG_FILES="$CONFIG_FILES ./scripts/cron/radiusd.cron.monthly" ;;
@@ -16317,7 +16321,7 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
   case $ac_file$ac_mode in
     "stamp-h":C) echo timestamp > src/include/stamp-h ;;
     "build-radpaths-h":C) (cd ./src/include && /bin/sh ./build-radpaths-h) ;;
-    "main-chmod":C) (cd ./src/main && chmod +x checkrad radlast radtest) ;;
+    "main-chmod":C) (cd ./src/bin && chmod +x checkrad radlast radtest) ;;
     "scripts-chmod":C) (cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly cryptpasswd) ;;
 
   esac

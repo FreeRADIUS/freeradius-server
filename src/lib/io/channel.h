@@ -27,7 +27,8 @@ RCSIDH(channel_h, "$Id$")
 
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/base.h>
+#include <freeradius-devel/util/dlist.h>
 
 #include <sys/types.h>
 #include <sys/event.h>
@@ -95,7 +96,7 @@ typedef struct fr_channel_data_t {
 	union {
 		struct {
 			fr_time_t		*recv_time;	//!< time original request was received (network -> worker)
-			fr_dlist_t		list;		//!< list of unprocessed packets for the worker
+			fr_dlist_t		entry;		//!< list of unprocessed packets for the worker
 			bool			is_dup;		//!< dup, new, etc.
 		} request;
 

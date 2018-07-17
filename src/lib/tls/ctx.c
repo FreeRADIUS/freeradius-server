@@ -33,9 +33,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/rand.h>
 #include <openssl/dh.h>
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
-#include "tls.h"
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include "base.h"
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #  ifndef OPENSSL_NO_ECDH

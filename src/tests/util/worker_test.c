@@ -25,7 +25,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>

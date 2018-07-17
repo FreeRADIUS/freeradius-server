@@ -23,16 +23,16 @@
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/tcp.h>
-#include <freeradius-devel/trie.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/tcp.h>
+#include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "proto_control.h"
 
 typedef struct {
@@ -87,7 +87,7 @@ static const CONF_PARSER tcp_listen_config[] = {
 	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, proto_control_tcp_t, port_name) },
 
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_control_tcp_t, port) },
-	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_control_tcp_t, recv_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_control_tcp_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_BOOL, proto_control_tcp_t, dynamic_clients) } ,
 	{ FR_CONF_POINTER("networks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) networks_config },
@@ -105,13 +105,14 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 
 	fr_time_t			*recv_time_p;
 	fr_conduit_type_t		conduit;
+	bool				want_more;
 
 	recv_time_p = *recv_time;
 
 	/*
 	 *      Read data into the buffer.
 	 */
-	data_size = fr_conduit_read_async(inst->sockfd, &conduit, buffer, buffer_len, leftover);
+	data_size = fr_conduit_read_async(inst->sockfd, &conduit, buffer, buffer_len, leftover, &want_more);
 	if (data_size < 0) {
 		DEBUG2("proto_control_tcp got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
@@ -127,7 +128,7 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 	/*
 	 *	Not enough for a full packet, ask the caller to read more.
 	 */
-	if (conduit == FR_CONDUIT_WANT_MORE) {
+	if (want_more) {
 		return 0;
 	}
 

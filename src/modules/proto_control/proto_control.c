@@ -21,12 +21,12 @@
  *
  * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/unlang.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include "proto_control.h"
 
 extern fr_app_t proto_control;

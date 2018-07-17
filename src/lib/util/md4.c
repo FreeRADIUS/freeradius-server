@@ -12,7 +12,7 @@ RCSID("$Id$")
  *  FORCE MD4 TO USE OUR MD4 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD4.
  */
-#include <freeradius-devel/md4.h>
+#include <freeradius-devel/util/md4.h>
 
 /** Calculate the MD4 hash of the contents of a buffer
  *

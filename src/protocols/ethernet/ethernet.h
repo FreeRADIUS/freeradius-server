@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/net.h
+ * @file protocols/ethernet/ethernet.h
  * @brief Structures and functions for parsing ethernet headers.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)

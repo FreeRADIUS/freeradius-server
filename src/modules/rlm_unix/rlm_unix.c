@@ -33,20 +33,20 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX "rlm_unix (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
-#include	<freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 
-#include	<grp.h>
-#include	<pwd.h>
-#include	<sys/stat.h>
+#include <grp.h>
+#include <pwd.h>
+#include <sys/stat.h>
 
 #include "config.h"
 
 #ifdef HAVE_SHADOW_H
-#  include	<shadow.h>
+#  include <shadow.h>
 #endif
 
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/sysutmp.h>
+#include<freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/sysutmp.h>
 
 static char trans[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define ENC(c) trans[c]
