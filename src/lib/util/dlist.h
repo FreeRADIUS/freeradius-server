@@ -80,7 +80,8 @@ static inline void fr_dlist_entry_init(fr_dlist_t *entry)
  *			fr_dict_attr_t etc...
  * @param[in] _field	Containing the #fr_dlist_t within item being stored.
  */
-#define fr_dlist_init(_head, _type, _field) _fr_dlist_init(_head, offsetof(_type, _field), NULL)
+#define fr_dlist_init(_head, _type, _field) \
+	_Generic((((_type *)0)->_field), fr_dlist_t: _fr_dlist_init(_head, offsetof(_type, _field), NULL))
 
 /** Initialise the head structure of a doubly linked list
  *
@@ -94,7 +95,8 @@ static inline void fr_dlist_entry_init(fr_dlist_t *entry)
  *			fr_dict_attr_t etc...
  * @param[in] _field	Containing the #fr_dlist_t within item being stored.
  */
-#define fr_dlist_talloc_init(_head, _type, _field) _fr_dlist_init(_head, offsetof(_type, _field), STRINGIFY(_type))
+#define fr_dlist_talloc_init(_head, _type, _field) \
+	_Generic((((_type *)0)->_field), fr_dlist_t: _fr_dlist_init(_head, offsetof(_type, _field), #_type))
 
 static inline void _fr_dlist_init(fr_dlist_head_t *head, size_t offset, char const *type)
 {
