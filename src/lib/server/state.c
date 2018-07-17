@@ -428,17 +428,17 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 *	16 octets of randomness should be enough to
 		 *	have a globally unique state.
 		 */
-		if (!old) {
-			for (i = 0; i < sizeof(entry->state) / sizeof(x); i++) {
-				x = fr_rand();
-				memcpy(entry->state + (i * 4), &x, sizeof(x));
-			}
+		if (old) {
+			memcpy(entry->state, old_state, sizeof(entry->state));
+			entry->tries = old_tries + 1;
 		/*
 		 *	Base the new state on the old state if we had one.
 		 */
 		} else {
-			memcpy(entry->state, old_state, sizeof(entry->state));
-			entry->tries = old_tries + 1;
+			for (i = 0; i < sizeof(entry->state) / sizeof(x); i++) {
+				x = fr_rand();
+				memcpy(entry->state + (i * 4), &x, sizeof(x));
+			}
 		}
 
 		entry->state_comp.tries = entry->tries + 1;
