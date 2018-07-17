@@ -48,7 +48,7 @@ extern pid_t radius_pid;
 extern fr_cond_t *debug_condition;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
-extern struct timeval sd_watchdog_interval;
+struct timeval sd_watchdog_interval;
 static fr_event_timer_t const *sd_watchdog_ev;
 #endif
 

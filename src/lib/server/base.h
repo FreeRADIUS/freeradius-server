@@ -623,6 +623,7 @@ void		thread_pool_stop(void);
 void request_enqueue(REQUEST *request);
 void request_queue_extract(REQUEST *request);
 
+extern struct timeval sd_watchdog_interval;
 REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		       RADCLIENT *client, RAD_REQUEST_FUNP fun);
 
