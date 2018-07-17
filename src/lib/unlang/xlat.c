@@ -163,7 +163,7 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 		return -1;
 	}
 
-	(void) request_data_add(request, ctx, -1, ev, true, false, false);
+	(void) request_data_talloc_add(request, ctx, -1, unlang_xlat_event_t, ev, true, false, false);
 
 	talloc_set_destructor(ev, _unlang_xlat_event_free);
 

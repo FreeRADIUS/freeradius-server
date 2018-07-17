@@ -32,10 +32,11 @@ RCSID("$Id$")
  *
  */
 struct request_data_t {
-	request_data_t	*next;			//!< Next opaque request data struct linked to this request.
+	fr_dlist_t	list;			//!< Next opaque request data struct linked to this request.
 
 	void const	*unique_ptr;		//!< Key to lookup request data.
 	int		unique_int;		//!< Alternative key to lookup request data.
+	char const	*type;			//!< Opaque type e.g. VALUE_PAIR, fr_dict_attr_t etc...
 	void		*opaque;		//!< Opaque data.
 	bool		free_on_replace;	//!< Whether to talloc_free(opaque) when the request data is removed.
 	bool		free_on_parent;		//!< Whether to talloc_free(opaque) when the request is freed
@@ -111,6 +112,11 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->time_order_id = -1;
 
 	request->state_ctx = talloc_init("session-state");
+
+	/*
+	 *	Initialise the request data list
+	 */
+	fr_dlist_talloc_init(&request->data, request_data_t, list);
 
 	return request;
 }
@@ -238,7 +244,7 @@ REQUEST *request_alloc_detachable(REQUEST *request)
 	 *	goes away, but don't persist it across
 	 *	challenge-response boundaries.
 	 */
-	if (request_data_add(request, fake, 0, fake, true, true, false) < 0) {
+	if (request_data_talloc_add(request, fake, 0, REQUEST, fake, true, true, false) < 0) {
 		talloc_free(fake);
 		return NULL;
 	}
@@ -291,21 +297,33 @@ REQUEST *request_alloc_proxy(REQUEST *request)
 	return request->proxy;
 }
 
+/* Initialise a dlist for storing request data
+ *
+ * @param[in] list to initialise.
+ */
+void request_data_list_init(fr_dlist_head_t *data)
+{
+	fr_dlist_talloc_init(data, request_data_t, list);
+}
 
 /** Ensure opaque data is freed by binding its lifetime to the request_data_t
  *
- * @param this Request data being freed.
- * @return 0, or whatever the destructor for the opaque data returned.
+ * @param rd	Request data being freed.
+ * @return
+ *	- 0 if free on parent is false or there's no opaque data.
+ *	- ...else whatever the destructor for the opaque data returned.
  */
-static int _request_data_free(request_data_t *this)
+static int _request_data_free(request_data_t *rd)
 {
-	if (this->free_on_parent && this->opaque) {
+	if (rd->free_on_parent && rd->opaque) {
 		int ret;
 
-		DEBUG4("Freeing request data %p (%s) at %p:%i via destructor",
-		       this->opaque, talloc_get_name(this->opaque), this->unique_ptr, this->unique_int);
-		ret = talloc_free(this->opaque);
-		this->opaque = NULL;
+		DEBUG4("%s: Freeing request data %s%s%p at %p:%i via destructor",
+			__FUNCTION__,
+			rd->type ? rd->type : "", rd->type ? " " : "",
+		       rd->opaque, rd->unique_ptr, rd->unique_int);
+		ret = talloc_free(rd->opaque);
+		rd->opaque = NULL;
 
 		return ret;
 	}
@@ -320,6 +338,7 @@ static int _request_data_free(request_data_t *this)
  * @param[in] request		to associate data with.
  * @param[in] unique_ptr	Identifier for the data.
  * @param[in] unique_int	Qualifier for the identifier.
+ * @param[in] type		Type of data (if talloced)
  * @param[in] opaque		Data to associate with the request.  May be NULL.
  * @param[in] free_on_replace	Free opaque data if this request_data is replaced.
  * @param[in] free_on_parent	Free opaque data if the request is freed.
@@ -333,11 +352,10 @@ static int _request_data_free(request_data_t *this)
  *	- -1 on memory allocation error.
  *	- 0 on success.
  */
-int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, void *opaque,
-		     bool free_on_replace, bool free_on_parent, bool persist)
+int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, char const *type, void *opaque,
+		      bool free_on_replace, bool free_on_parent, bool persist)
 {
-	fr_cursor_t	cursor;
-	request_data_t	*rd;
+	request_data_t	*rd = NULL;
 
 	/*
 	 *	Request must have a state ctx
@@ -349,34 +367,36 @@ int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, v
 		   (talloc_parent(opaque) == talloc_null_ctx()));
 	rad_assert(!free_on_parent || (talloc_parent(opaque) != request));
 
-	fr_cursor_talloc_init(&cursor, &request->data, request_data_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (type) opaque = _talloc_get_type_abort(opaque, type, __location__);
+#endif
 
-	for (rd = fr_cursor_current(&cursor);
-	     rd;
-	     rd = fr_cursor_next(&cursor)) {
-		if ((rd->unique_ptr == unique_ptr) && (rd->unique_int == unique_int)) {
-			fr_cursor_remove(&cursor);	/* Unlink from the list */
+	while ((rd = fr_dlist_next(&request->data, rd))) {
+		if ((rd->unique_ptr != unique_ptr) || (rd->unique_int != unique_int)) continue;
 
-			/*
-			 *	If caller requires custom behaviour on free
-			 *	they must set a destructor.
-			 */
-			if (rd->free_on_replace && rd->opaque) {
-				RDEBUG4("Freeing request data %p at %p:%i via replacement",
-					rd->opaque, rd->unique_ptr, rd->unique_int);
-				talloc_free(rd->opaque);
-			}
-			/*
-			 *	Need a new one, rd one's parent is wrong.
-			 *	And no, we can't just steal.
-			 */
-			if (rd->persist != persist) {
-				rd->free_on_parent = false;
-				TALLOC_FREE(rd);
-			}
+		fr_dlist_remove(&request->data, rd);	/* Unlink from the list */
 
-			break;	/* replace the existing entry */
+		/*
+		 *	If caller requires custom behaviour on free
+		 *	they must set a destructor.
+		 */
+		if (rd->free_on_replace && rd->opaque) {
+			RDEBUG4("%s: Freeing %s%s%p at %p:%i via replacement",
+				__FUNCTION__,
+				rd->type ? rd->type : "", rd->type ? " " : "",
+				rd->opaque, rd->unique_ptr, rd->unique_int);
+			talloc_free(rd->opaque);
 		}
+		/*
+		 *	Need a new one, rd one's parent is wrong.
+		 *	And no, we can't just steal.
+		 */
+		if (rd->persist != persist) {
+			rd->free_on_parent = false;
+			TALLOC_FREE(rd);
+		}
+
+		break;	/* replace the existing entry */
 	}
 
 	/*
@@ -400,14 +420,17 @@ int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, v
 
 	rd->unique_ptr = unique_ptr;
 	rd->unique_int = unique_int;
+	rd->type = type;
 	rd->opaque = opaque;
 	rd->free_on_replace = free_on_replace;
 	rd->free_on_parent = free_on_parent;
 	rd->persist = persist;
 
-	fr_cursor_prepend(&cursor, rd);
+	fr_dlist_insert_head(&request->data, rd);
 
-	RDEBUG4("Added request data %p at %p:%i, free_on_replace: %s, free_on_parent: %s, persist: %s",
+	RDEBUG4("%s: %s%s%p at %p:%i, free_on_replace: %s, free_on_parent: %s, persist: %s",
+		__FUNCTION__,
+		rd->type ? rd->type : "", rd->type ? " " : "",
 		rd->opaque, rd->unique_ptr, rd->unique_int,
 		free_on_replace ? "yes" : "no",
 		free_on_parent ? "yes" : "no",
@@ -430,78 +453,37 @@ int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, v
  */
 void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
 {
-	fr_cursor_t	cursor;
-	request_data_t	*rd;
+	request_data_t	*rd = NULL;
 
 	if (!request) return NULL;
 
-	fr_cursor_talloc_init(&cursor, &request->data, request_data_t);
+	while ((rd = fr_dlist_next(&request->data, rd))) {
+		void *ptr;
 
-	for (rd = fr_cursor_current(&cursor);
-	     rd;
-	     rd = fr_cursor_next(&cursor)) {
-		if ((rd->unique_ptr == unique_ptr) && (rd->unique_int == unique_int)) {
-			void *ptr;
+		if ((rd->unique_ptr != unique_ptr) || (rd->unique_int != unique_int)) continue;
 
-			ptr = rd->opaque;
+		ptr = rd->opaque;
 
-			rd->free_on_parent = false;	/* Don't free opaque data we're handing back */
-			fr_cursor_free_item(&cursor);
+		rd->free_on_parent = false;	/* Don't free opaque data we're handing back */
+		fr_dlist_remove(&request->data, rd);
 
-			return ptr;
-		}
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+		if (rd->type) ptr = _talloc_get_type_abort(ptr, rd->type, __location__);
+#endif
+
+		RDEBUG4("%s: %s%s%p at %p:%i retrieved and unlinked",
+			__FUNCTION__,
+			rd->type ? rd->type : "", rd->type ? " " : "",
+			rd->opaque, rd->unique_ptr, rd->unique_int);
+
+		talloc_free(rd);
+
+		return ptr;
 	}
+
+	RDEBUG4("%s: No request data found at %p:%i", __FUNCTION__, unique_ptr, unique_int);
 
 	return NULL;		/* wasn't found, too bad... */
-}
-
-/** Loop over all the request data, pulling out ones matching persist state
- *
- * @param[out] out	Head of result list.
- * @param[in] request	to search for request_data_t in.
- * @param[in] persist	Whether to pull persistable or non-persistable data.
- * @return number of request_data_t retrieved.
- */
-int request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist)
-{
-	int		count = 0;
-	fr_cursor_t	cursor_req, cursor_out;
-
-	request_data_t *rd;
-
-	*out = NULL;
-
-	fr_cursor_talloc_init(&cursor_req, &request->data, request_data_t);
-	fr_cursor_talloc_init(&cursor_out, out, request_data_t);
-
-	for (rd = fr_cursor_current(&cursor_req), count = 0;
-	     rd;
-	     rd = fr_cursor_next(&cursor_req), count++) {
-		if (rd->persist != persist) continue;
-
-		fr_cursor_append(&cursor_out, fr_cursor_remove(&cursor_req));
-	}
-
-	return count;
-}
-
-/** Add request data back to a request
- *
- * @note May add multiple entries (if they're linked).
- * @note Will not check for duplicates.
- *
- * @param request	to add data to.
- * @param in		Data to add.
- */
-void request_data_restore(REQUEST *request, request_data_t *in)
-{
-	fr_cursor_t	cursor_req, cursor_in;
-
-	fr_cursor_talloc_init(&cursor_req, &request->data, request_data_t);
-	fr_cursor_tail(&cursor_req);	/* Wind to the end */
-	fr_cursor_talloc_init(&cursor_in, &in, request_data_t);
-
-	fr_cursor_merge(&cursor_req, &cursor_in);
 }
 
 /** Get opaque data from a request without removing it
@@ -518,21 +500,64 @@ void request_data_restore(REQUEST *request, request_data_t *in)
  */
 void *request_data_reference(REQUEST *request, void const *unique_ptr, int unique_int)
 {
-	fr_cursor_t	cursor;
-	request_data_t	*rd;
+	request_data_t	*rd = NULL;
 
 	if (!request) return NULL;
 
-	fr_cursor_talloc_init(&cursor, &request->data, request_data_t);
+	while ((rd = fr_dlist_next(&request->data, rd))) {
+		if ((rd->unique_ptr != unique_ptr) || (rd->unique_int != unique_int)) continue;
 
-	for (rd = fr_cursor_current(&cursor);
-	     rd;
-	     rd = fr_cursor_next(&cursor)) {
-		if ((rd->unique_ptr == unique_ptr) &&
-		    (rd->unique_int == unique_int)) return rd->opaque;
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+		if (rd->type) rd->opaque = _talloc_get_type_abort(rd->opaque, rd->type, __location__);
+#endif
+
+		RDEBUG4("%s: %s%s%p at %p:%i retrieved",
+			__FUNCTION__,
+			rd->type ? rd->type : "", rd->type ? " " : "",
+			rd->opaque, rd->unique_ptr, rd->unique_int);
+
+		return rd->opaque;
 	}
 
+	RDEBUG4("%s: No request data found at %p:%i", __FUNCTION__, unique_ptr, unique_int);
+
 	return NULL;		/* wasn't found, too bad... */
+}
+
+/** Loop over all the request data, pulling out ones matching persist state
+ *
+ * @param[out] out	Head of result list.
+ * @param[in] request	to search for request_data_t in.
+ * @param[in] persist	Whether to pull persistable or non-persistable data.
+ * @return number of request_data_t retrieved.
+ */
+int request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool persist)
+{
+	int		count = 0;
+	request_data_t	*rd = NULL, *prev;
+
+	while ((rd = fr_dlist_next(&request->data, rd))) {
+		if (rd->persist != persist) continue;
+
+		prev = fr_dlist_remove(&request->data, rd);
+		fr_dlist_insert_tail(out, rd);
+		rd = prev;
+	}
+
+	return count;
+}
+
+/** Add request data back to a request
+ *
+ * @note May add multiple entries (if they're linked).
+ * @note Will not check for duplicates.
+ *
+ * @param request	to add data to.
+ * @param in		Data to add.
+ */
+void request_data_restore(REQUEST *request, fr_dlist_head_t *in)
+{
+	fr_dlist_move(&request->data, in);
 }
 
 #ifdef WITH_VERIFY_PTR
@@ -546,16 +571,12 @@ void *request_data_reference(REQUEST *request, void const *unique_ptr, int uniqu
  *	- true if chunk lineage is correct.
  *	- false if one of the chunks is parented by something else.
  */
-bool request_data_verify_parent(TALLOC_CTX *parent, request_data_t *entry)
+bool request_data_verify_parent(TALLOC_CTX *parent, fr_dlist_head_t *entry)
 {
-	fr_cursor_t	cursor;
-	request_data_t	*rd;
+	request_data_t	*rd = NULL;
 
-	fr_cursor_talloc_init(&cursor, &entry, request_data_t);
+	while ((rd = fr_dlist_next(entry, rd))) if (talloc_parent(rd) != parent) return false;
 
-	for (rd = fr_cursor_current(&cursor);
-	     rd;
-	     rd = fr_cursor_next(&cursor)) if (talloc_parent(rd) != parent) return false;
 	return true;
 }
 #endif

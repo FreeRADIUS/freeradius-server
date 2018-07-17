@@ -368,7 +368,7 @@ static inline void fr_dlist_move(fr_dlist_head_t *list_dst, fr_dlist_head_t *lis
 	/*
 	 *	Must be of the same type
 	 */
-	if (!fr_cond_assert(!list_dst->type) || (strcmp(list_dst->type, list_src->type) == 0)) return;
+	if (!fr_cond_assert(!list_dst->type || (strcmp(list_dst->type, list_src->type) == 0))) return;
 #endif
 
 	if (!fr_cond_assert(dst->next != NULL)) return;

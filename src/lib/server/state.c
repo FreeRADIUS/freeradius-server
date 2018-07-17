@@ -103,7 +103,7 @@ typedef struct state_entry {
 								//!< tied to the lifetime of the request progression.
 	VALUE_PAIR		*vps;				//!< session-state VALUE_PAIRs, parented by ctx.
 
-	request_data_t		*data;				//!< Persistable request data, also parented ctx.
+	fr_dlist_head_t		data;				//!< Persistable request data, also parented ctx.
 
 	REQUEST			*thawed;			//!< The request that thawed this entry.
 } fr_state_entry_t;
@@ -267,7 +267,7 @@ static int _state_entry_free(fr_state_entry_t *entry)
 	 *	Ensure any request data is parented by us
 	 *	so we know it'll be cleaned up.
 	 */
-	if (entry->data) (void)fr_cond_assert(request_data_verify_parent(entry->ctx, entry->data));
+	(void)fr_cond_assert(request_data_verify_parent(entry->ctx, &entry->data));
 #endif
 
 	/*
@@ -344,7 +344,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		/*
 		 *	The old one isn't used any more, so we can free it.
 		 */
-		if (!old->data) {
+		if (fr_dlist_empty(&old->data)) {
 			state_entry_unlink(state, old);
 			fr_dlist_insert_tail(&to_free, old);
 		}
@@ -388,6 +388,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		PTHREAD_MUTEX_LOCK(&state->mutex);	/* Caller expects this to be locked */
 		return NULL;
 	}
+
+	request_data_list_init(&entry->data);
 	talloc_set_destructor(entry, _state_entry_free);
 	entry->id = state->id++;
 
@@ -608,11 +610,10 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 		request->seq_start = entry->seq_start;
 		request->state_ctx = entry->ctx;
 		request->state = entry->vps;
-		request_data_restore(request, entry->data);
+		request_data_restore(request, &entry->data);
 
 		entry->ctx = NULL;
 		entry->vps = NULL;
-		entry->data = NULL;
 		entry->thawed = request;
 	}
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
@@ -644,12 +645,13 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 {
 	fr_state_entry_t	*entry, *old = NULL;
-	request_data_t		*data;
+	fr_dlist_head_t		data;
 	VALUE_PAIR		*vp;
 
+	request_data_list_init(&data);
 	request_data_by_persistance(&data, request, true);
 
-	if (!request->state && !data) return 0;
+	if (!request->state && fr_dlist_empty(&data)) return 0;
 
 	if (request->state) {
 		RDEBUG2("Saving &session-state");
@@ -665,7 +667,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RERROR("Creating state entry failed");
-		request_data_restore(request, data);	/* Put it back again */
+		request_data_restore(request, &data);	/* Put it back again */
 		return -1;
 	}
 
@@ -675,7 +677,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 	entry->seq_start = request->seq_start;
 	entry->ctx = request->state_ctx;
 	entry->vps = request->state;
-	entry->data = data;
+	fr_dlist_move(&entry->data, &data);
 
 	request->state_ctx = NULL;
 	request->state = NULL;

@@ -248,7 +248,7 @@ struct rad_request {
 	fr_heap_t		*backlog;	//!< thread-specific backlog
 	fr_request_state_t	request_state;	//!< state for the various protocol handlers.
 
-	request_data_t		*data;		//!< Request metadata.
+	fr_dlist_head_t		data;		//!< Request metadata.
 
 	rad_listen_t		*listener;	//!< The listener that received the request.
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
@@ -392,16 +392,26 @@ REQUEST		*request_alloc_proxy(REQUEST *request);
 REQUEST		*request_alloc_detachable(REQUEST *request);
 int		request_detach(REQUEST *fake);
 
-int		request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, void *opaque,
-				 bool free_on_replace, bool free_on_parent, bool persist);
+void		request_data_list_init(fr_dlist_head_t *data);
+
+#define request_data_add(_request, _unique_ptr, _unique_int, _opaque, _free_on_replace, _free_on_parent, _persist) \
+		_request_data_add(_request, _unique_ptr, _unique_int, NULL, _opaque,  \
+				  _free_on_replace, _free_on_parent, _persist)
+
+#define request_data_talloc_add(_request, _unique_ptr, _unique_int, _type, _opaque, _free_on_replace, _free_on_parent, _persist) \
+		_request_data_add(_request, _unique_ptr, _unique_int, STRINGIFY(_type), _opaque, \
+				  _free_on_replace, _free_on_parent, _persist)
+
+int		_request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, char const *type, void *opaque,
+				  bool free_on_replace, bool free_on_parent, bool persist);
 void		*request_data_get(REQUEST *request, void const *unique_ptr, int unique_int);
 void		*request_data_reference(REQUEST *request, void const *unique_ptr, int unique_int);
 
-int		request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist);
-void		request_data_restore(REQUEST *request, request_data_t *entry);
+int		request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool persist);
+void		request_data_restore(REQUEST *request, fr_dlist_head_t *in);
 
 #ifdef WITH_VERIFY_PTR
-bool		request_data_verify_parent(TALLOC_CTX *parent, request_data_t *entry);
+bool		request_data_verify_parent(TALLOC_CTX *parent, fr_dlist_head_t *entry);
 #endif
 
 int		rad_copy_string(char *dst, char const *src);
