@@ -1393,6 +1393,8 @@ void rad_suid_down(void)
 		talloc_free(passwd);
 		fr_exit_now(1);
 	}
+
+	fr_reset_dumpable();
 }
 
 void rad_suid_down_permanent(void)

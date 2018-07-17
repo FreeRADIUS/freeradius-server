@@ -873,7 +873,7 @@ cleanup:
 	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
 
-	talloc_memory_report = config->talloc_memory_report;
+	talloc_memory_report = config->talloc_memory_report;	/* Grab this before we free the config */
 
 	/*
 	 *	And now nothing should be left anywhere except the
