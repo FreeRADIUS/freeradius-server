@@ -78,8 +78,6 @@ extern "C" {
  */
 typedef struct request_data_t request_data_t;
 
-
-
 /** Return codes indicating the result of the module call
  *
  * All module functions must return one of the codes listed below (apart from
@@ -449,6 +447,7 @@ void		rad_suid_set_down_uid(uid_t uid);
 void		rad_suid_down(void);
 void		rad_suid_up(void);
 void		rad_suid_down_permanent(void);
+bool		rad_suid_is_down_permanent(void);
 /* regex.c */
 
 #ifdef HAVE_REGEX

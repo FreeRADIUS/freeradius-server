@@ -893,10 +893,18 @@ cleanup:
 	fr_strerror_free();
 
 	/*
-	 *  Anything not cleaned up by the above is allocated in the NULL
-	 *  top level context, and is likely leaked memory.
+	 *	Anything not cleaned up by the above is
+	 *	allocated in the NULL top level context,
+	 *	and is likely leaked memory.
 	 */
 	if (talloc_memory_report) fr_log_talloc_report(NULL);
+
+	/*
+	 *	If we're running under LSAN, try and SUID
+	 *	back up so we don't inteferere with the
+	 *	onexit() handler.
+	 */
+	if (!rad_suid_is_down_permanent() && (fr_get_lsan_state() == 1)) rad_suid_up();
 
 	return ret;
 }

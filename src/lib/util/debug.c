@@ -947,8 +947,8 @@ int fr_log_talloc_report(TALLOC_CTX const *ctx)
 {
 #define TALLOC_REPORT_MAX_DEPTH 20
 
-	FILE *log;
-	int fd;
+	FILE	*log;
+	int	fd;
 
 	fd = dup(fr_fault_log_fd);
 	if (fd < 0) {
