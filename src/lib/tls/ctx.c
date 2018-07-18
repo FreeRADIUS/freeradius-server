@@ -312,7 +312,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	int		ctx_options = 0;
 	void		*app_data_index;
 
-	ctx = SSL_CTX_new(SSLv23_method()); /* which is really "all known SSL / TLS methods".  Idiots. */
+	SSL_BIND_MEMORY(ctx = SSL_CTX_new(SSLv23_method())); /* which is really "all known SSL / TLS methods".  Idiots. */
 	if (!ctx) {
 		tls_log_error(NULL, "Failed creating TLS context");
 		return NULL;

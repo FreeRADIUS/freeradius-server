@@ -39,8 +39,14 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 static int instance_count = 0;
 
-fr_dict_t *dict_freeradius;
-fr_dict_t *dict_radius;
+/** The context which holds any memory OpenSSL allocates
+ *
+ * This should be used to work around memory leaks in the OpenSSL.
+ */
+_Thread_local TALLOC_CTX 	*ssl_talloc_ctx;
+
+fr_dict_t			*dict_freeradius;
+fr_dict_t			*dict_radius;
 
 extern fr_dict_autoload_t tls_dict[];
 fr_dict_autoload_t tls_dict[] = {
