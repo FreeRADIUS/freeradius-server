@@ -395,6 +395,11 @@ enum HandshakeType {
 extern int fr_tls_ex_index_vps;
 extern int fr_tls_max_threads;
 
+/** Holds the temporary context
+ *
+ */
+extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
+
 /** Drain log messages from an OpenSSL bio and print them using the specified logging macro
  *
  * @param _macro Logging macro e.g. RDEBUG.
@@ -452,6 +457,10 @@ extern CONF_PARSER tls_client_config[];
 #define SSL_BIND_MEMORY(_expr) \
 do { \
 	void *_nmem; \
+/** Holds the temporary context
+ *
+ */
+extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
 	MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_expr))); \
 	_nmem = (_expr);\
 	if (!_nmem) { \
