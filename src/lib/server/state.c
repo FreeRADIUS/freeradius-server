@@ -601,6 +601,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 		(void)talloc_get_type_abort(entry, fr_state_entry_t);
 		if (entry->thawed) {
 			REDEBUG("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
+			PTHREAD_MUTEX_UNLOCK(&state->mutex);
 			return;
 		}
 		if (request->state_ctx) old_ctx = request->state_ctx;	/* Store for later freeing */
