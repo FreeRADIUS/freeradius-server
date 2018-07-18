@@ -473,7 +473,7 @@ do { \
  */
 #define SSL_BIND_MEMORY_BEGIN(_obj) \
 do { \
-	if (!fr_cond_assert(!ssl_talloc_ctx && (_obj))) { \
+	if (fr_cond_assert(!ssl_talloc_ctx && (_obj))) { \
 		MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_obj))); \
 		talloc_steal(_obj, ssl_talloc_ctx); \
 	} \
