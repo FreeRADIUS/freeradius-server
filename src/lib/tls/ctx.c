@@ -30,6 +30,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls - "
 
+#ifndef SSL_CTX_free_app_data
+#  define SSL_CTX_free_app_data(ctx) (CRYPTO_free_ex_data(0, NULL, &ctx->ex_data))
+#endif
+
 #include <openssl/rand.h>
 #include <openssl/dh.h>
 
@@ -272,6 +276,18 @@ static void _tls_ctx_print_cert_line(int index, X509 *cert)
 }
 #endif
 
+/** Run any additional cleanup logic for SSL_CTX
+ *
+ * @param[in] ctx	to free.
+ * @return 0
+ */
+static int _ssl_ctx_free(SSL_CTX *ctx)
+{
+	SSL_CTX_free_app_data(ctx);	/* This shouldn't actually free the data, it just frees the index */
+
+	return 0;
+}
+
 /** Create SSL context
  *
  * - Load the trusted CAs
@@ -301,10 +317,11 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		tls_log_error(NULL, "Failed creating TLS context");
 		return NULL;
 	}
+	talloc_set_destructor(ctx, _ssl_ctx_free);
 
 	/*
 	 *	Save the config on the context so that callbacks which
-	 *	only get SSL_CTX* e.g. session persistence, can get it
+	 *	only get SSL_CTX * e.g. session persistence, can get it
 	 */
 	memcpy(&app_data_index, &conf, sizeof(app_data_index));
 	SSL_CTX_set_app_data(ctx, app_data_index);
