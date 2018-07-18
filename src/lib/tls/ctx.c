@@ -31,7 +31,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define LOG_PREFIX "tls - "
 
 #ifndef SSL_CTX_free_app_data
-#  define SSL_CTX_free_app_data(ctx) (CRYPTO_free_ex_data(0, NULL, &ctx->ex_data))
+#  define SSL_CTX_free_app_data(ctx) (CRYPTO_free_ex_data(0, ctx, &ctx->ex_data))
 #endif
 
 #include <openssl/rand.h>
