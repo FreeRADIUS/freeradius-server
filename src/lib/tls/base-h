@@ -454,7 +454,7 @@ extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
  * @param _expr		The call to the OpenSSL function and storage of the
  *			result.
  */
-#define SSL_BIND_MEMORY(_expr) \
+#define SSL_BIND_OBJ_MEMORY(_expr) \
 do { \
 	void *_nmem; \
 	MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_expr))); \
@@ -466,6 +466,20 @@ do { \
 	} \
 	ssl_talloc_ctx = NULL; \
 } while (0)
+
+/** Bind all memory allocated from this point until the next instance of SSL_BIND_MEMORY_END to _obj
+ *
+ * @param[in] _obj	to bind memory to.
+ */
+#define SSL_BIND_MEMORY_BEGIN(_obj) \
+do { \
+	if (!fr_cond_assert(!ssl_talloc_ctx && (_obj))) { \
+		MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_obj))); \
+		talloc_steal(_obj, ssl_talloc_ctx); \
+	} \
+} while(0)
+
+#define SSL_BIND_MEMORY_END ssl_talloc_ctx = NULL
 
 /*
  *	tls/cache.c
