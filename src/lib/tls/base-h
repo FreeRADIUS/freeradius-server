@@ -436,6 +436,11 @@ do {\
 extern CONF_PARSER tls_server_config[];
 extern CONF_PARSER tls_client_config[];
 
+/** Holds the temporary context
+ *
+ */
+extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
+
 /** Bind any memory allocated by an OpenSSL function to the object it created
  *
  * This is a horrible workaround for OpenSSL memory leaks.  But should always
@@ -457,10 +462,6 @@ extern CONF_PARSER tls_client_config[];
 #define SSL_BIND_MEMORY(_expr) \
 do { \
 	void *_nmem; \
-/** Holds the temporary context
- *
- */
-extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
 	MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_expr))); \
 	_nmem = (_expr);\
 	if (!_nmem) { \
