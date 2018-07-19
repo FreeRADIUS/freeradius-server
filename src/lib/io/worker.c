@@ -142,9 +142,9 @@ struct fr_worker_t {
 	fr_heap_t		*time_order;	//!< time ordered heap of requests
 	rbtree_t		*dedup;		//!< de-dup tree
 
-	int			num_requests;	//!< number of requests processed by this worker
+	fr_io_stats_t		stats;
+
 	int			num_decoded;	//!< number of messages which have been decoded
-	int			num_replies;	//!< number of messages which were replied to
 	int			num_timeouts;	//!< number of messages which timed out
 	int			num_active;	//!< number of active requests
 
@@ -208,8 +208,8 @@ static bool fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 	}
 
 	do {
-		worker->num_requests++;
-		DEBUG3("\t%sreceived request %d", worker->name, worker->num_requests);
+		worker->stats.in++;
+		DEBUG3("\t%sreceived request %" PRIu64 "", worker->name, worker->stats.in);
 		cd->channel.ch = ch;
 		WORKER_HEAP_INSERT(to_decode, cd);
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
@@ -430,7 +430,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 		cd = NULL;
 	}
 
-	worker->num_replies++;
+	worker->stats.out++;
 
 	if (cd) (void) fr_worker_drain_input(worker, ch, cd);
 }
@@ -545,7 +545,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 		cd = NULL;
 	}
 
-	worker->num_replies++;
+	worker->stats.out++;
 
 	/*
 	 *	Drain the incoming TO_WORKER queue.  We do this every
@@ -940,6 +940,7 @@ nak:
 			 *	itself up, or do something...
 			 */
 			(void) old->async->process(request->async->process_inst, old, FR_IO_ACTION_DUP);
+			worker->stats.dup++;
 			return NULL;
 		}
 
@@ -947,11 +948,12 @@ nak:
 		 *	Stop the old request, and decrement the number
 		 *	of active requests.
 		 */
-		RWARN("Got duplicate of request (%" PRIu64 "), telling old request to stop", old->number);
+		RWARN("Got conflicting packet for request (%" PRIu64 "), telling old request to stop", old->number);
 
 		worker_stop_request(worker, old, now);
 		rad_assert(worker->num_active > 0);
 		worker->num_active--;
+		worker->stats.dropped++;
 		talloc_free(old);
 
 	insert_new:
@@ -1103,9 +1105,9 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	       fr_heap_num_elements(worker->runnable),
 	       fr_heap_num_elements(worker->localized.heap),
 	       fr_heap_num_elements(worker->to_decode.heap));
-	DEBUG3("\t%srequests %d, decoded %d, replied %d active %d",
-	       worker->name, worker->num_requests, worker->num_decoded,
-	       worker->num_replies, worker->num_active);
+	DEBUG3("\t%srequests %" PRIu64 ", decoded %d, replied %" PRIu64 " active %d",
+	       worker->name, worker->stats.in, worker->num_decoded,
+	       worker->stats.out, worker->num_active);
 
 	/*
 	 *	We were sleeping, don't send another signal that we
@@ -1507,12 +1509,12 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 
 	fprintf(fp, "\tkq = %d\n", worker->kq);
 	fprintf(fp, "\tnum_channels = %d\n", worker->num_channels);
-	fprintf(fp, "\tnum_requests = %d\n", worker->num_requests);
+	fprintf(fp, "\tstats.in = %" PRIu64 "\n", worker->stats.in);
 
 	fprintf(fp, "\tcalculated (predicted) total CPU time = %" PRIu64 "\n",
-		worker->tracking.predicted * worker->num_requests);
+		worker->tracking.predicted * worker->stats.in);
 	fprintf(fp, "\tcalculated (counted) per request time = %" PRIu64 "\n",
-		worker->tracking.running / worker->num_requests);
+		worker->tracking.running / worker->stats.in);
 
 	fr_time_tracking_debug(&worker->tracking, fp);
 

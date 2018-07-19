@@ -38,6 +38,13 @@ extern "C" {
 typedef struct fr_listen fr_listen_t;
 typedef struct fr_trie_t fr_trie_t;
 
+typedef struct fr_io_stats_t {
+	uint64_t	in;
+	uint64_t	out;
+	uint64_t	dup;
+	uint64_t	dropped;
+} fr_io_stats_t;
+
 /**
  *  Tell an async process function if it should run or exit.
  */

@@ -66,6 +66,7 @@ typedef struct fr_network_worker_t {
 
 	fr_channel_t		*channel;		//!< channel to the worker
 	fr_worker_t		*worker;		//!< worker pointer
+	fr_io_stats_t		stats;
 } fr_network_worker_t;
 
 typedef struct fr_network_socket_t {
@@ -84,6 +85,7 @@ typedef struct fr_network_socket_t {
 
 	fr_channel_data_t	*pending;		//!< the currently pending partial packet
 	fr_heap_t		*waiting;		//!< packets waiting to be written
+	fr_io_stats_t		stats;
 } fr_network_socket_t;
 
 /*
@@ -117,8 +119,7 @@ struct fr_network_t {
 
 	fr_heap_t		*replies;		//!< replies from the worker, ordered by priority / origin time
 
-	uint64_t		num_requests;		//!< number of requests we sent
-	uint64_t		num_replies;		//!< number of replies we received
+	fr_io_stats_t		stats;
 
 	rbtree_t		*sockets;		//!< list of sockets we're managing
 
@@ -213,15 +214,13 @@ static void fr_network_drain_input(fr_network_t *nr, fr_channel_t *ch, fr_channe
 	}
 
 	do {
-		nr->num_replies++;
-		DEBUG3("received reply %" PRIu64, nr->num_replies);
-
 		cd->channel.ch = ch;
 
 		/*
 		 *	Update stats for the worker.
 		 */
 		worker = fr_channel_master_ctx_get(ch);
+		worker->stats.out++;
 		worker->cpu_time = cd->reply.cpu_time;
 		if (!worker->predicted) {
 			worker->predicted = cd->reply.processing_time;
@@ -328,8 +327,11 @@ static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	 *	thing falls over.
 	 */
 	if (fr_channel_send_request(worker->channel, cd, &reply) < 0) {
+		worker->stats.dropped++;
 		return false;
 	}
+
+	worker->stats.in++;
 
 	/*
 	 *	We're projecting that the worker will use more CPU
@@ -462,6 +464,8 @@ next_message:
 	s->cd = NULL;
 
 	DEBUG("Network received packet size %zd", data_size);
+	nr->stats.in++;
+	s->stats.in++;
 
 	/*
 	 *	Initialize the rest of the fields of the channel data.
@@ -500,12 +504,14 @@ next_message:
 	if (!fr_network_send_request(nr, cd)) {
 		fr_log(nr->log, L_ERR, "Failed sending packet to worker");
 		fr_message_done(&cd->m);
+		nr->stats.dropped++;
+		s->stats.dropped++;
+	} else {
+		/*
+		 *	One more packet sent to a worker.
+		 */
+		s->outstanding++;
 	}
-
-	/*
-	 *	One more packet sent to a worker.
-	 */
-	s->outstanding++;
 
 	/*
 	 *	If there is a next message, go read it from the buffer.
@@ -652,6 +658,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		 *	Reset for the next message.
 		 */
 		fr_message_done(&cd->m);
+		nr->stats.out++;
+		s->stats.out++;
 
 		/*
 		 *	As a special case, allow write() to return
