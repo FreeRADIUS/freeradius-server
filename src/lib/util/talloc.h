@@ -14,6 +14,14 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
+
+/** Functions which we wish were included in the standard talloc distribution
+ *
+ * @file src/lib/util/talloc.h
+ *
+ * @copyright 2017 The FreeRADIUS server project
+ * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ */
 #include <talloc.h>
 #include <stdbool.h>
 #include <stdint.h>

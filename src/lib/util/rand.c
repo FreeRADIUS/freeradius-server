@@ -14,15 +14,12 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Functions to get randomness
  *
- * @file rand.c
- * @brief Functions to get randomness
+ * @file src/lib/util/rand.c
  *
- * @copyright 1999-2017  The FreeRADIUS server project
+ * @copyright 1999-2017 The FreeRADIUS server project
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
@@ -31,7 +28,6 @@ RCSID("$Id$")
 
 static _Thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
 static _Thread_local bool fr_rand_initialized = false;
-
 
 /** Seed the random number generator
  *

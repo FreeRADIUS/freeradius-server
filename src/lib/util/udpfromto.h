@@ -15,11 +15,11 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** API for sending and receiving packets on unconnected UDP sockets
  *
- * @file lib/util/udpfromto.h
- * @brief Abstract API for sending and receiving packets on unconnected UDP sockets.
+ * Like recvfrom, but also stores the destination IP address. Useful on multihomed hosts.
+ *
+ * @file src/lib/util/udpfromto.h
  *
  * @copyright 2015  The FreeRADIUS server project
  */

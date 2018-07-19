@@ -1,9 +1,11 @@
 #pragma once
-/**
- * $Id$
+/** Local implementation of the SHA1 hashing scheme
  *
- * @file lib/util/sha1.h
- * @brief Local implementation of the SHA1 hashing scheme.
+ * SHA-1 in C 100% Public Domain
+ *
+ * @file src/lib/util/sha1.h
+ *
+ * @author Steve Reid <steve@edmweb.com>
  */
 #ifdef WITH_OPENSSL_SHA1
 #  include <openssl/sha.h>

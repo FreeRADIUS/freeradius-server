@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 #ifdef HAVE_LIBPCAP
-/**
- * $Id$
+/** Prototypes and constants for PCAP functions
  *
- * @file lib/util/pcap.h
- * @brief Prototypes and constants for PCAP functions.
+ * @file src/lib/util/pcap.h
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

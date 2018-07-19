@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Path-compressed prefix tries
  *
- * @file lib/util/trie.h
- * @brief Prefix trie.
+ * @file src/lib/util/trie.h
  *
  * @copyright 2017 Alan DeKok <aland@freeradius.org>
  */

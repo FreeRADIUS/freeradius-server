@@ -13,10 +13,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file inet.c
- * @brief Functions to parse, print, mask and retrieve IP addresses
+/** Functions for parsing, printing, masking and retrieving IP addresses
+ *
+ * @file src/lib/util/inet.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

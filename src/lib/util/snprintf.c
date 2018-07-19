@@ -1,53 +1,56 @@
-
 /*
-	 Unix snprintf implementation.
-	 Version 1.4
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
 
-	 This program is free software; you can redistribute it and/or modify
-	 it under the terms of the GNU Library General Public License as published by
-	 the Free Software Foundation; either version 2 of the License, or
-	 (at your option) any later version.
-
-	 This program is distributed in the hope that it will be useful,
-	 but WITHOUT ANY WARRANTY; without even the implied warranty of
-	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
-	 GNU Library General Public License for more details.
-
-	 You should have received a copy of the GNU Library General Public License
-	 along with this program; if not, write to the Free Software
-	 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-	 Revision History:
-
-	 1.4:
-			*	integrate in FreeRADIUS's libradius:
-		*	Fetched from: http://savannah.gnu.org/cgi-bin/viewcvs/mailutils/mailutils/lib/snprintf.c?rev=1.4
-		*	Fetched from: http://savannah.gnu.org/cgi-bin/viewcvs/mailutils/mailutils/lib/snprintf.h?rev=1.4
-		*	Replace config.h with autoconf.h
-		*	Protect with HAVE_SNPRINTF and HAVE_VSNPRINTF
-	 1.3:
-			*	add #include <config.h> ifdef HAVE_CONFIG_H
-			*	cosmetic change, when exponent is 0 print xxxE+00
-	 instead of xxxE-00
-	 1.2:
-			*	put the program under LGPL.
-	 1.1:
-			*	added changes from Miles Bader
-			*	corrected a bug with %f
-			*	added support for %#g
-			*	added more comments :-)
-	 1.0:
-			*	supporting must ANSI syntaxic_sugars
-	 0.0:
-			*	suppot %s %c %d
-
- THANKS(for the patches and ideas):
-		 Miles Bader
-		 Cyrille Rustom
-		 Jacek Slabocewiz
-		 Mike Parker(mouse)
-
-*/
+/** Unix snprintf implementation
+ *
+ * Version 1.4
+ *
+ *	 1.4:
+ *		*	integrate in FreeRADIUS's libradius:
+ *		*	Fetched from: http://savannah.gnu.org/cgi-bin/viewcvs/mailutils/mailutils/lib/snprintf.c?rev=1.4
+ *		*	Fetched from: http://savannah.gnu.org/cgi-bin/viewcvs/mailutils/mailutils/lib/snprintf.h?rev=1.4
+ *		*	Replace config.h with autoconf.h
+ *		*	Protect with HAVE_SNPRINTF and HAVE_VSNPRINTF
+ *	 1.3:
+ *		*	add #include <config.h> ifdef HAVE_CONFIG_H
+ *		*	cosmetic change, when exponent is 0 print xxxE+00
+ *	 instead of xxxE-00
+ *	 1.2:
+ *		*	put the program under LGPL.
+ *
+ *	 1.1:
+ *		*	added changes from Miles Bader
+ *		*	corrected a bug with %f
+ *		*	added support for %#g
+ *		*	added more comments :-)
+ *	 1.0:
+ *		*	supporting must ANSI syntaxic_sugars
+ *	 0.0:
+ *		*	suppot %s %c %d
+ *
+ * THANKS(for the patches and ideas):
+ *		 Miles Bader
+ *		 Cyrille Rustom
+ *		 Jacek Slabocewiz
+ *		 Mike Parker(mouse)
+ *
+ * @file src/lib/util/snprintf.h
+ *
+ * @copyright Alain Magloire: alainm@rcsm.ee.mcgill.ca
+ */
 
 RCSID("$Id$")
 

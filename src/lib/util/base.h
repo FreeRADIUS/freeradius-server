@@ -15,21 +15,13 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
- * $Id$
+/** Structures and prototypes for this utility library
  *
  * @file src/lib/util/base.h
- * @brief Structures and prototypes for the radius library.
  *
  * @copyright 1999-2014 The FreeRADIUS server project
  */
 
-/*
- *  Compiler hinting macros.  Included here for 3rd party consumers
- *  of libradius.h.
- *
- *  @note Defines RCSIDH.
- */
 #include <freeradius-devel/build.h>
 RCSIDH(libradius_h, "$Id$")
 

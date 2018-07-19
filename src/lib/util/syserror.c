@@ -14,10 +14,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/syserror.c
- * @brief Support functions to allow libraries to get system errors in a threadsafe
- *	and easily debuggable way.
+/** Support functions to allow libraries to get system errors in a threadsafe and easily debuggable way
+ *
+ * @file src/lib/util/syserror.c
  *
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

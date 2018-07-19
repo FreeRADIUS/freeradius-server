@@ -14,10 +14,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file socket.c
- * @brief Functions for establishing and managing low level sockets.
+/** Functions for establishing and managing low level sockets
+ *
+ * @file src/lib/util/socket.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @author Alan DeKok <aland@freeradius.org>

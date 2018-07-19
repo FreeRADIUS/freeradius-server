@@ -15,11 +15,11 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Macros to abstract Thread Local Storage
+ *
+ * Simplifies creating destructors, called when the thread exits
  *
  * @file lib/util/threads.h
- * @brief Macros to abstract Thread Local Storage
  *
  * @copyright 2013-2016 The FreeRADIUS server project
  */

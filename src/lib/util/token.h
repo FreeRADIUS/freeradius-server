@@ -15,11 +15,11 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Tokenisation code and constants
  *
- * @file lib/util/token.h
- * @brief Tokenisation code and constants.
+ * This is mostly for the attribute filter and user files.
+ *
+ * @file src/lib/util/token.h
  *
  * @copyright 2001,2006  The FreeRADIUS server project
  */

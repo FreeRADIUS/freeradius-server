@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Structures and functions for parsing raw network packets
  *
- * @file lib/util/net.h
- * @brief Structures and functions for parsing raw network packets.
+ * @file src/lib/util/net.h
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2014 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

@@ -15,11 +15,9 @@
  *  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/**
- * $Id$
+/** Structures and functions for parsing, printing, masking and retrieving IP addresses
  *
- * @file lib/util/inet.h
- * @brief Structures and functions for parsing, printing, masking and retrieving IP addresses.
+ * @file src/lib/util/inet.h
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

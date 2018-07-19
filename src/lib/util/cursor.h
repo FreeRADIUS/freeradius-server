@@ -17,11 +17,9 @@
 #include <stddef.h>
 #include <freeradius-devel/build.h>
 
-/**
- * $Id$
+/** Functions to iterate over a sets and subsets of items
  *
- * @file lib/util/cursor.h
- * @brief Generic linked list cursor.
+ * @file src/lib/util/cursor.h
  *
  * @copyright 2016  The FreeRADIUS server project
  */

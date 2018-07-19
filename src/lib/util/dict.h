@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Multi-protocol AVP dictionary API
  *
- * @file lib/util/dict.h
- * @brief Multi-protocol attribute dictionary API.
+ * @file src/lib/util/dict.h
  *
  * @copyright 2015  The FreeRADIUS server project
  */

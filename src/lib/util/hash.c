@@ -14,19 +14,19 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/hash.c
- * @brief Resizable hash tables.
+/** Resizable hash tables
  *
- *  The weird "reverse" function is based on an idea from
- *  "Split-Ordered Lists - Lock-free Resizable Hash Tables", with
- *  modifications so that they're not lock-free. :(
+ * The weird "reverse" function is based on an idea from
+ * "Split-Ordered Lists - Lock-free Resizable Hash Tables", with
+ * modifications so that they're not lock-free. :(
  *
- *  However, the split-order idea allows a fast & easy splitting of the
- *  hash bucket chain when the hash table is resized.  Without it, we'd
- *  have to check & update the pointers for every node in the buck chain,
- *  rather than being able to move 1/2 of the entries in the chain with
- *  one update.
+ * However, the split-order idea allows a fast & easy splitting of the
+ * hash bucket chain when the hash table is resized.  Without it, we'd
+ * have to check & update the pointers for every node in the buck chain,
+ * rather than being able to move 1/2 of the entries in the chain with
+ * one update.
+ *
+ * @file src/lib/util/hash.c
  *
  * @copyright 2005,2006  The FreeRADIUS server project
  */

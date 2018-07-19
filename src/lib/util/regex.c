@@ -14,13 +14,14 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/regex.c
- * @brief regex abstraction functions
+/** Wrappers around various regular expression libraries
+ *
+ * @file src/lib/util/regex.c
  *
  * @copyright 2014  The FreeRADIUS server project
  * @copyright 2014  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+RCSID("$Id$")
 
 #ifdef HAVE_REGEX
 #include <freeradius-devel/util/base.h>

@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Encode and decode data in base64 format
  *
- * @file lib/util/base64.h
- * @brief Encode and decode data in base64 format.
+ * @file src/lib/util/base64.h
  *
  * @author Simon Josefsson
  * @copyright 2004, 2005, 2006 Free Software Foundation, Inc.

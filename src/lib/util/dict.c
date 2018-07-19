@@ -14,9 +14,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/dict.c
- * @brief Functions to parse FreeRADIUS dictionary file(s).
+/** Multi-protocol AVP dictionary API
+ *
+ * @file src/lib/util/dict.c
  *
  * @copyright 2000,2006 The FreeRADIUS server project
  */

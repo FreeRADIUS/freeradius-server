@@ -14,10 +14,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file value.c
- * @brief Manipulate boxed values representing all internal data types.
+/** Boxed value structures and functions to manipulate them
+ *
+ * @file src/lib/util/value.c
  *
  * There are three notional data formats used in the server:
  *

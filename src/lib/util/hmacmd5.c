@@ -14,9 +14,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/hmacmd5.c
- * @brief MD5 HMAC not dependent on OpenSSL.
+/** MD5 HMAC not dependent on OpenSSL
+ *
+ * @file src/lib/util/hmacmd5.c
  *
  * @note New code that needs fast or incremental HMACs should use the OpenSSL EVP_* HMAC
  *	interface instead, as that can take advantage of acceleration instructions provided

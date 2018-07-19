@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
- * $Id$
+/** Simple ring buffer with fixed element sizes
  *
- * @file lib/util/fring_buffer.h
- * @brief Simple ring buffer with fixed element sizes.
+ * @file src/lib/util/fring_buffer.h
  *
  * @copyright 2015-2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */

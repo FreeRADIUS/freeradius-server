@@ -14,11 +14,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Protocol encoder/decoder support functions
  *
- * @file proto.c
- * @brief functions common to protocol encoders/decoders.
+ * @file src/lib/util/proto.c
  *
  * @copyright 2015 The FreeRADIUS server project
  */

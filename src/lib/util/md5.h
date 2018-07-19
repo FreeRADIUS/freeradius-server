@@ -1,11 +1,9 @@
 #pragma once
-/**
- * $Id$
+/** Structures and prototypes for our local MD5 implementation
  *
  * @note license is LGPL, but largely derived from a public domain source.
  *
- * @file lib/util/md5.h
- * @brief Structures and prototypes for md5.
+ * @file src/lib/util/md5.h
  */
 RCSIDH(md5_h, "$Id$")
 

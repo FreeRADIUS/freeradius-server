@@ -14,11 +14,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Functions to iterate over collections of VALUE_PAIRs
  *
- * @file lib/util/cursor.h
- * @brief Generic linked list cursor.
+ * @file src/lib/util/pair_cursor.h
  *
  * @copyright 2016  The FreeRADIUS server project
  */

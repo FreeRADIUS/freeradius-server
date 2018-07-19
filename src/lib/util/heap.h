@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Structures and prototypes for binary heaps
  *
- * @file lib/util/heap.h
- * @brief Structures and prototypes for binary heaps.
+ * @file src/lib/util/heap.h
  *
  * @copyright 2007  Alan DeKok
  */

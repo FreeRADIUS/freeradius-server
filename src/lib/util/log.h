@@ -20,15 +20,12 @@
 
 #include <freeradius-devel/util/token.h>
 
-/**
- * $Id$
+/** libfreeradius logging functions
  *
- * @file lib/util/log.h
- * @brief libfreeradius logging functions
+ * @file src/lib/util/log.h
  *
  * @copyright 2016  The FreeRADIUS server project
  */
-
 extern FILE	*fr_log_fp;
 
 /*

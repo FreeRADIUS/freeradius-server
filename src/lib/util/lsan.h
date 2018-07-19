@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Integration with the leak sanitizer interface
  *
- * @file lib/util/lsan.h
- * @brief Integration with the leak sanitizer interface
+ * @file src/lib/util/lsan.h
  *
  * @copyright 2018 The FreeRADIUS server project
  */

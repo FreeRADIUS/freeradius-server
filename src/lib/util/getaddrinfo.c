@@ -14,9 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/getaddrinfo.c
- * @brief Replacement getaddrinfo functions.
+/** Replacement getaddrinfo functions
  *
  * These functions are defined and used only if the configure
  * cannot detect the standard getaddrinfo(), freeaddrinfo(),
@@ -24,6 +22,8 @@
  *
  * FIXME: getaddrinfo() & getnameinfo() should
  *	return all IPv4 addresses provided by DNS lookup.
+ *
+ * @file src/lib/util/getaddrinfo.c
  *
  * @copyright 2016  The FreeRADIUS server project
  */

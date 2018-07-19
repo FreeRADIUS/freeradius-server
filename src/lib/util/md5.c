@@ -1,12 +1,9 @@
-/**
- * $Id$
+/** A local MD5 implementation
  *
  * @note license is LGPL, but largely derived from a public domain source.
  *
- * @file md5.c
- * @brief md5 digest functions.
+ * @file src/lib/util/md5.c
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>

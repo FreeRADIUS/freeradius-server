@@ -1,8 +1,4 @@
 /*
- * trie.c	Path-compressed tries
- *
- * Version:	$Id$
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -16,21 +12,21 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/** Path-compressed prefix tries
+ *
+ * @file src/lib/util/trie.c
  *
  * @copyright 2017 Alan DeKok <aland@freeradius.org>
  */
-
 RCSID("$Id$")
-
 
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/talloc.h>
-#ifdef TESTING
 #include <freeradius-devel/server/rad_assert.h>
-#else
-#define rad_assert(_x)
-#endif
+
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>

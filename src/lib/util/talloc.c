@@ -14,14 +14,13 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/talloc.c
- * @brief Functions which we wish were included in the standard talloc distribution.
+/** Functions which we wish were included in the standard talloc distribution
+ *
+ * @file src/lib/util/talloc.c
  *
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/util/talloc.h>

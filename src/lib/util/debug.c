@@ -14,14 +14,13 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/debug.c
- * @brief Various functions to aid in debugging
+/** Functions to help with debugging
+ *
+ * @file src/lib/util/debug.c
  *
  * @copyright 2013  The FreeRADIUS server project
  * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>

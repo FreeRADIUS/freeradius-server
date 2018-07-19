@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Doubly linked list implementation
  *
- * @file util/dlist.h
- * @brief Doubly linked list implementation
+ * @file src/lib/util/dlist.h
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  */

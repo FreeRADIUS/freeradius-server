@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Boxed value structures and functions to manipulate them
  *
- * @file lib/util/value.h
- * @brief Boxed values and functions to manipulate them.
+ * @file src/lib/util/value.h
  *
  * @copyright 2015-2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */

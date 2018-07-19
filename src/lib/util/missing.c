@@ -1,9 +1,4 @@
 /*
- * missing.c	Replacements for functions that are or can be
- *		missing on some platforms.
- *
- * Version:	$Id$
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -17,10 +12,14 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/** Replacements for functions that are or can be missing on some platforms
+ *
+ * @file src/lib/util/missing.c
  *
  * @copyright 2000,2006  The FreeRADIUS server project
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>

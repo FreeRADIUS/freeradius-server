@@ -13,10 +13,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file lib/util/pcap.c
- * @brief Wrappers around libpcap functions
+/** Wrappers around libpcap functions
+ *
+ * @file src/lib/util/pcap.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

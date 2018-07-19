@@ -14,9 +14,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/log.c
- * @brief Support functions for logging in FreeRADIUS libraries.
+/** Support functions for logging in FreeRADIUS libraries
+ *
+ * @file src/lib/util/log.c
  *
  * @copyright 2003,2006  The FreeRADIUS server project
  */

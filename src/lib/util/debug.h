@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
- * $Id$
+/** Debugging function definitions and structures
  *
- * @file lib/util/debug.h
- * @brief Debugging function definitions and structures.
+ * @file src/lib/util/debug.h
  *
  * @copyright 2015-2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */

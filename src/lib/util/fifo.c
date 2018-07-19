@@ -14,9 +14,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/fifo.c
- * @brief Non-thread-safe fifo (FIFO) implementation.
+/** Non-thread-safe fifo (FIFO) implementation
+ *
+ * @file src/lib/util/fifo.c
  *
  * @copyright 2005,2006  The FreeRADIUS server project
  * @copyright 2005  Alan DeKok <aland@ox.org>

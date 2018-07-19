@@ -1,10 +1,9 @@
 #pragma once
-/**
- * $Id$
+/** Structures and prototypes for our local MD4 implementation
  *
  * @note license is LGPL, but largely derived from a public domain source.
  *
- * @file lib/util/md4.h
+ * @file src/lib/util/md4.h
  * @brief Structures and prototypes for md4.
  */
 RCSIDH(md4_h, "$Id$")

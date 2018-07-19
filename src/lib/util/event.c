@@ -14,12 +14,14 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/event.c
- * @brief Non-thread-safe event handling specific to FreeRADIUS
+/**  Wrapper around libkqueue to make managing events easier
  *
- * @note By non-thread-safe we mean multiple threads can't insert/delete events concurrently
- *	into the same event list without synchronization.
+ * Non-thread-safe event handling specific to FreeRADIUS.
+ *
+ * By non-thread-safe we mean multiple threads can't insert/delete
+ * events concurrently into the same event list without synchronization.
+ *
+ * @file src/lib/util/event.c
  *
  * @copyright 2007-2016 The FreeRADIUS server project
  * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

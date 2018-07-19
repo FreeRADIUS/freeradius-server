@@ -1,10 +1,8 @@
-/**
- * $Id$
+/** A local MD4 implementation
  *
  * @note license is LGPL, but largely derived from a public domain source.
  *
- * @file md4.c
- * @brief md4 digest functions.
+ * @file src/lib/util/md4.c
  */
 RCSID("$Id$")
 

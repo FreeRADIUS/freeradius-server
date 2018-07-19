@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Structures and functions for packet manipulation
  *
- * @file lib/util/packet.h
- * @brief Structures and functions for packet manipulation
+ * @file src/lib/util/packet.h
  *
  * @copyright 2001, 2002, 2003, 2004, 2005, 2006 The FreeRADIUS server project
  */

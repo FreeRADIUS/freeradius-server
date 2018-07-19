@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Utility functions for managing UDP sockets
  *
- * @file lib/util/udp.h
- * @brief Abstraction API for sending and receiving packets on UDP sockets.
+ * @file src/lib/util/udp.h
  *
  * @copyright 2015  The FreeRADIUS server project
  */

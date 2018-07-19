@@ -17,12 +17,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/**
- * @file lib/util/base64.c
+/** Encode/decode binary data using printable characters
  *
  * @see RFC 3548 <http://www.ietf.org/rfc/rfc3548.txt>.
  *
- * @brief Encode/decode binary data using printable characters.
+ * @file src/lib/util/base64.c
  * @author Simon Josefsson.
  */
 RCSID("$Id$")
