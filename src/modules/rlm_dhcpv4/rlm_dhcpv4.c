@@ -77,7 +77,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 
 	if (src->tmpl_da->type != FR_TYPE_OCTETS) {
 		REDEBUG("dhcp_options got a %s attribute needed octets",
-			fr_int2str(dict_attr_types, src->tmpl_da->type, "<INVALID>"));
+			fr_int2str(fr_value_box_type_names, src->tmpl_da->type, "<INVALID>"));
 		goto error;
 	}
 

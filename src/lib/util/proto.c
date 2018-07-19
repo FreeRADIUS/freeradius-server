@@ -81,7 +81,7 @@ void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_d
 	for (i--; i >= 0; i--) {
 		fprintf(fr_log_fp, "stk: %s%.*s: %s [%i] %s: %s, vendor: 0x%x (%u), attr: 0x%x (%u)\n",
 			prefix, (int)(proto_log_indent - len), spaces, (i == (int)depth) ? ">" : " ", i,
-			fr_int2str(dict_attr_types, tlv_stack[i]->type, "?Unknown?"),
+			fr_int2str(fr_value_box_type_names, tlv_stack[i]->type, "?Unknown?"),
 			tlv_stack[i]->name,
 			fr_dict_vendor_num_by_da(tlv_stack[i]), fr_dict_vendor_num_by_da(tlv_stack[i]),
 			tlv_stack[i]->attr, tlv_stack[i]->attr);

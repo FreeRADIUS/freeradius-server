@@ -38,7 +38,6 @@ extern "C" {
  */
 typedef struct dict_attr fr_dict_attr_t;
 typedef struct fr_dict fr_dict_t;
-extern const FR_NAME_NUMBER dict_attr_types[];	/* Fixme - Should probably move to value.c */
 
 #include <freeradius-devel/util/value.h>
 

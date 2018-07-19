@@ -675,7 +675,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 
 					if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 						cf_log_err(map->ci, "Failed to parse data type %s from string: %s",
-							   fr_int2str(dict_attr_types, map->lhs->tmpl_da->type, "<UNKNOWN>"),
+							   fr_int2str(fr_value_box_type_names, map->lhs->tmpl_da->type, "<UNKNOWN>"),
 							   map->rhs->name);
 						return false;
 					} /* else the cast was successful */
@@ -1239,8 +1239,8 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 */
 		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
-				    fr_int2str(dict_attr_types, FR_TYPE_STRING, "<INVALID>"),
-				    fr_int2str(dict_attr_types, map->lhs->tmpl_da->type, "<INVALID>"));
+				    fr_int2str(fr_value_box_type_names, FR_TYPE_STRING, "<INVALID>"),
+				    fr_int2str(fr_value_box_type_names, map->lhs->tmpl_da->type, "<INVALID>"));
 			return -1;
 		}
 
@@ -1254,7 +1254,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 			da = fr_dict_attr_by_type(map->lhs->tmpl_da, map->rhs->tmpl_value_type);
 			if (!da) {
 				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-						   fr_int2str(dict_attr_types, map->rhs->tmpl_value_type,
+						   fr_int2str(fr_value_box_type_names, map->rhs->tmpl_value_type,
 						   "<INVALID>"), map->lhs->tmpl_da->name);
 				return -1;
 			}

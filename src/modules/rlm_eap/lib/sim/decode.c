@@ -542,7 +542,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	FR_PROTO_TRACE("Parent %s len %zu", parent->name, attr_len);
 	FR_PROTO_HEX_DUMP(__FUNCTION__ , data, attr_len);
 
-	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
+	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(fr_value_box_type_names, parent->type, "?Unknown?"), parent->type);
 
 	/*
 	 *	Special cases, attributes that either have odd formats, or need
