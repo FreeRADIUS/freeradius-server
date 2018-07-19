@@ -196,7 +196,7 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_IFID]				= offsetof(fr_value_box_t, vb_ifid),
 	[FR_TYPE_ETHERNET]			= offsetof(fr_value_box_t, vb_ether),
 
-	[FR_TYPE_BOOL]				= offsetof(fr_value_box_t, datum.boolean),
+	[FR_TYPE_BOOL]				= offsetof(fr_value_box_t, vb_bool),
 	[FR_TYPE_UINT8]				= offsetof(fr_value_box_t, vb_uint8),
 	[FR_TYPE_UINT16]			= offsetof(fr_value_box_t, vb_uint16),
 	[FR_TYPE_UINT32]			= offsetof(fr_value_box_t, vb_uint32),
@@ -215,8 +215,8 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_DATE_MICROSECONDS]		= offsetof(fr_value_box_t, vb_date_microseconds),
 	[FR_TYPE_DATE_NANOSECONDS]		= offsetof(fr_value_box_t, vb_date_nanoseconds),
 
-	[FR_TYPE_TIMEVAL]			= offsetof(fr_value_box_t, datum.timeval),
-	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, datum.size),
+	[FR_TYPE_TIMEVAL]			= offsetof(fr_value_box_t, vb_timeval),
+	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, vb_size),
 
 	[FR_TYPE_ABINARY]			= offsetof(fr_value_box_t, datum.filter),
 
