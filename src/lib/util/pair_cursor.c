@@ -26,6 +26,8 @@
  */
 #include "pair_cursor.h"
 
+#include <freeradius-devel/missing.h>
+
 /** Internal function to update cursor state
  *
  * @param cursor to operate on.

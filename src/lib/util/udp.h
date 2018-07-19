@@ -27,6 +27,8 @@ RCSIDH(udp_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #ifdef WITH_UDPFROMTO
 #  include <freeradius-devel/util/udpfromto.h>
 #endif

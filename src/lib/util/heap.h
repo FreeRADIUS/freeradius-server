@@ -27,6 +27,9 @@ RCSIDH(heap_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #include <stdint.h>
 #include <sys/types.h>
 #include <talloc.h>

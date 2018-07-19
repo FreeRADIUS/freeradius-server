@@ -32,6 +32,8 @@ extern "C" {
 #  include <pcap.h>
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/token.h>

@@ -23,6 +23,8 @@
  */
 RCSIDH(pair_h, "$Id$")
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/value.h>
 

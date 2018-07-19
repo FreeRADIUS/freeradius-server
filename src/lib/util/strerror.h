@@ -28,6 +28,9 @@ RCSIDH(strerror_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #include <string.h>
 
 void		fr_strerror_printf(char const *, ...) CC_HINT(format (printf, 1, 2));

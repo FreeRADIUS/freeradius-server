@@ -23,8 +23,6 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/talloc.h>
-
 #include <string.h>
 
 typedef struct fr_talloc_link  fr_talloc_link_t;

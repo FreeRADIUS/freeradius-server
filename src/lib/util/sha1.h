@@ -13,6 +13,9 @@ RCSIDH(sha1_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #ifdef WITH_OPENSSL_SHA1
 #  include <openssl/sha.h>
 #endif

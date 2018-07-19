@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/types.h>
 

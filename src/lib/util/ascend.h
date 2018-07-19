@@ -27,6 +27,8 @@ extern "C" {
 #endif
 
 #ifdef WITH_ASCEND_BINARY
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/value.h>
 
 /* filters.c */

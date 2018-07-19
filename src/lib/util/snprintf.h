@@ -37,6 +37,9 @@ RCSIDH(snprintf_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #if __STDC__
 #include <stdarg.h>
 #else

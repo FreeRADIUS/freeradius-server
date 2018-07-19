@@ -28,6 +28,9 @@ RCSIDH(fifo_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #include <talloc.h>
 
 typedef struct	fr_fifo_t fr_fifo_t;

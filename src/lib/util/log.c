@@ -24,7 +24,6 @@ RCSID("$Id$")
 
 #include "log.h"
 
-#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/strerror.h>

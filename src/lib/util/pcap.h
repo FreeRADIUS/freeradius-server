@@ -30,6 +30,8 @@ extern "C" {
 
 #include "pcap.h"
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/net.h>
 
 #include <pcap.h>

@@ -28,6 +28,9 @@ RCSIDH(syserror_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>

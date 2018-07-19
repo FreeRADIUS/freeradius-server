@@ -31,6 +31,8 @@ RCSIDH(socket_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/inet.h>
 
 #include <stdbool.h>

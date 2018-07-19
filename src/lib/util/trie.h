@@ -27,6 +27,9 @@ RCSIDH(trie_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

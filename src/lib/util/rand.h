@@ -26,6 +26,9 @@ RCSIDH(rand_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #include <stddef.h>
 #include <stdint.h>
 

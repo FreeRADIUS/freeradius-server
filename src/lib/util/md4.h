@@ -12,6 +12,9 @@ RCSIDH(md4_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #ifdef HAVE_INTTYPES_H
 #  include <inttypes.h>
 #endif

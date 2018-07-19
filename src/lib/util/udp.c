@@ -22,10 +22,11 @@
  */
 RCSID("$Id$")
 
+#include "udp.h"
+
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/udp.h>
 
 /*
  *	This is easier than ifdef's in the function definition.

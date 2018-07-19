@@ -28,6 +28,9 @@ RCSIDH(version_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #include <stdint.h>
 
 #ifndef NDEBUG

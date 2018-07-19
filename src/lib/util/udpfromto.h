@@ -30,6 +30,9 @@ extern "C" {
 #endif
 
 #ifdef WITH_UDPFROMTO
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #include <netinet/in.h>
 #include <stddef.h>
 #include <stdlib.h>

@@ -29,6 +29,9 @@ RCSIDH(thread_local_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #include <errno.h>
 
 typedef void (*pthread_destructor_t)(void*);

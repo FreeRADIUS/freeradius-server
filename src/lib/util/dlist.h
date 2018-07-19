@@ -27,6 +27,9 @@ RCSIDH(dlist_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 /** Entry in a doubly linked list
  *
  */
