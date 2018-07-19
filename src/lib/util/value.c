@@ -46,14 +46,14 @@ RCSID("$Id$")
 
 #include "value.h"
 
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/ascend.h>
+#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/talloc.h>
 
-#include <ctype.h>
 #include <assert.h>
+#include <ctype.h>
 
 /** Sanity checks
  *
