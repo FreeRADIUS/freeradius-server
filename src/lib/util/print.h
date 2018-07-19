@@ -23,6 +23,8 @@
  */
 RCSIDH(print_h, "$Id$")
 
+#include <stddef.h>
+#include <stdint.h>
 #include <talloc.h>
 
 size_t		fr_utf8_char(uint8_t const *str, ssize_t inlen);
