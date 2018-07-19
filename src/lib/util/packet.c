@@ -16,7 +16,7 @@
 
 /** RADIUS_PACKET alloc/free functions
  *
- * @file src/lib/util/mem.c
+ * @file src/lib/util/packet.c
  *
  * @copyright 2000,2006  The FreeRADIUS server project
  */

@@ -16,7 +16,7 @@
 
 /** Routines to parse Ascend's filter attributes
  *
- * @file src/lib/util/filters.c
+ * @file src/lib/util/ascend.c
  *
  * @copyright 2003,2006  The FreeRADIUS server project
  */
