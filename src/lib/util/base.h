@@ -50,6 +50,11 @@ RCSIDH(libradius_h, "$Id$")
 #  include <limits.h>
 #endif
 
+#include <freeradius-devel/autoconf.h>
+
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/threads.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/dict.h>
@@ -58,19 +63,22 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/pair_cursor.h>
 
 #include <freeradius-devel/util/packet.h>
-#include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/regex.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/autoconf.h>
+
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/version.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/fifo.h>
+
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/radius/radius.h>
 
 #ifdef SIZEOF_UNSIGNED_INT
 #  if SIZEOF_UNSIGNED_INT != 4
@@ -97,55 +105,9 @@ typedef void (*sig_t)(int);
 #endif
 
 /*
- *	Printing functions.
- */
-size_t		fr_utf8_char(uint8_t const *str, ssize_t inlen);
-ssize_t		fr_utf8_str(uint8_t const *str, ssize_t inlen);
-char const     	*fr_utf8_strchr(int *chr_len, char const *str, char const *chr);
-size_t		fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char quote);
-size_t		fr_snprint_len(char const *in, ssize_t inlen, char quote);
-char		*fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
-char		*fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap);
-char		*fr_asprintf(TALLOC_CTX *ctx, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
-
-#define		is_truncated(_ret, _max) ((_ret) >= (size_t)(_max))
-#define		truncate_len(_ret, _max) (((_ret) >= (size_t)(_max)) ? (((size_t)(_max)) - 1) : _ret)
-
-/** Boilerplate for checking truncation
- *
- * If truncation has occurred, advance _p as far as possible without
- * overrunning the output buffer, and \0 terminate.  Then return the length
- * of the buffer we would have needed to write the full value.
- *
- * If truncation has not occurred, advance _p by whatever the copy or print
- * function returned.
- */
-#define RETURN_IF_TRUNCATED(_p, _ret, _max) \
-do { \
-	if (is_truncated(_ret, _max)) { \
-		size_t _r = (_p - out) + _ret; \
-		_p += truncate_len(_ret, _max); \
-		*_p = '\0'; \
-		return _r; \
-	} \
-	_p += _ret; \
-} while (0)
-
-/*
  *	Several handy miscellaneous functions.
  */
-int		fr_set_signal(int sig, sig_t func);
-int		fr_talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
-int		fr_unset_signal(int sig);
-int		rad_lockfd(int fd, int lock_len);
-int		rad_lockfd_nonblock(int fd, int lock_len);
-int		rad_unlockfd(int fd, int lock_len);
-char		*fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen);
-size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
-size_t		fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen);
-uint64_t	fr_strtoull(char const *value, char **end);
-int64_t		fr_strtoll(char const *value, char **end);
-char		*fr_trim(char const *str, size_t size);
+
 
 /** Check whether the string is all whitespace
  *
@@ -216,31 +178,6 @@ static inline bool is_zero(char const *value)
 	return true;
 }
 
-int		fr_nonblock(int fd);
-int		fr_blocking(int fd);
-ssize_t		fr_writev(int fd, struct iovec[], int iovcnt, struct timeval *timeout);
-
-ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
-size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
-int		fr_time_from_str(time_t *date, char const *date_str);
-void		fr_timeval_from_ms(struct timeval *out, uint64_t ms);
-void		fr_timeval_from_usec(struct timeval *out, uint64_t usec);
-void		fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct timeval const *start);
-void		fr_timeval_add(struct timeval *out, struct timeval const *a, struct timeval const *b);
-void		fr_timeval_divide(struct timeval *out, struct timeval const *in, int divisor);
-
-int		fr_timeval_cmp(struct timeval const *a, struct timeval const *b);
-int		fr_timeval_from_str(struct timeval *out, char const *in);
-bool		fr_timeval_isset(struct timeval const *tv);
-
-void		fr_timespec_subtract(struct timespec *out, struct timespec const *end, struct timespec const *start);
-
-bool		fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs);
-int		fr_size_from_str(size_t *out, char const *str);
-int8_t		fr_pointer_cmp(void const *a, void const *b);
-void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
-int		fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length) CC_HINT(nonnull);
-
 /*
  *	Define TALLOC_DEBUG to check overflows with talloc.
  *	we can't use valgrind, because the memory used by
@@ -281,49 +218,6 @@ void		fr_rand_seed(void const *, size_t ); /* seed the random pool */
 
 /* crypt wrapper from crypt.c */
 int		fr_crypt_check(char const *password, char const *reference_crypt);
-
-/*
- *	FIFOs
- */
-typedef struct	fr_fifo_t fr_fifo_t;
-typedef void (*fr_fifo_free_t)(void *);
-
-/** Creates a fifo that verifies elements are of a specific talloc type
- *
- * @param[in] _ctx		to tie fifo lifetime to.
- *				If ctx is freed, fifo will free any nodes, calling the
- *				free function if set.
- * @param[in] _max_entries	Maximum number of entries.
- * @param[in] _talloc_type	of elements.
- * @param[in] _node_free	Optional function used to free data if tree nodes are
- *				deleted or replaced.
- * @return
- *	- A new fifo on success.
- *	- NULL on failure.
- */
-#define fr_fifo_talloc_create(_ctx, _talloc_type, _max_entries, _node_free) \
-	_fr_fifo_create(_ctx, #_talloc_type, _max_entries, _node_free)
-
-/** Creates a fifo
- *
- * @param[in] _ctx		to tie fifo lifetime to.
- *				If ctx is freed, fifo will free any nodes, calling the
- *				free function if set.
- * @param[in] _max_entries	Maximum number of entries.
- * @param[in] _node_free	Optional function used to free data if tree nodes are
- *				deleted or replaced.
- * @return
- *	- A new fifo on success.
- *	- NULL on failure.
- */
-#define fr_fifo_create(_ctx, _max_entries, _node_free) \
-	_fr_fifo_create(_ctx, NULL, _max_entries, _node_free)
-
-fr_fifo_t	*_fr_fifo_create(TALLOC_CTX *ctx, char const *type, int max_entries, fr_fifo_free_t free_node);
-int		fr_fifo_push(fr_fifo_t *fi, void *data);
-void		*fr_fifo_pop(fr_fifo_t *fi);
-void		*fr_fifo_peek(fr_fifo_t *fi);
-unsigned int	fr_fifo_num_elements(fr_fifo_t *fi);
 
 /*
  *	socket.c

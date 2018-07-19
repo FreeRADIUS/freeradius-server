@@ -21,6 +21,8 @@
  *
  * @copyright 2015-2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+RCSIDH(fring_h, "$Id$")
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <talloc.h>

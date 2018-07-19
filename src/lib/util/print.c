@@ -22,8 +22,17 @@
  */
 RCSID("$Id$")
 
-#include	<freeradius-devel/util/base.h>
-#include	<ctype.h>
+#include "print.h"
+
+#include <ctype.h>
+#include <string.h>
+#include <talloc.h>
+
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
 
 /** Checks for utf-8, taken from http://www.w3.org/International/questions/qa-forms-utf-8
  *

@@ -32,6 +32,7 @@ extern "C" {
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/strerror.h>
 
 /*
  *	Avoid circular type references.

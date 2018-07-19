@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_PTHREAD_H
 #include <pthread.h>

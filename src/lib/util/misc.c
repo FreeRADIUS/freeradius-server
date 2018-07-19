@@ -22,7 +22,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "misc.h"
 
 #include <ctype.h>
 #include <sys/file.h>
@@ -30,10 +30,17 @@ RCSID("$Id$")
 #include <grp.h>
 #include <pwd.h>
 #include <sys/uio.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdio.h>
+#include <errno.h>
+
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/debug.h>
 
 #ifdef HAVE_DIRENT_H
-#include <dirent.h>
-
+#  include <dirent.h>
 /*
  *	Some versions of Linux don't have closefrom(), but they will
  *	have /proc.
@@ -43,23 +50,21 @@ RCSID("$Id$")
  *	OSX doesn't have closefrom() or /proc/self/fd, but it does
  *	have /dev/fd
  */
-#ifdef __linux__
-#define CLOSEFROM_DIR "/proc/self/fd"
-#elif defined(__APPLE__)
-#define CLOSEFROM_DIR "/dev/fd"
-#else
-#undef HAVE_DIRENT_H
+#  ifdef __linux__
+#    define CLOSEFROM_DIR "/proc/self/fd"
+#  elif defined(__APPLE__)
+#    define CLOSEFROM_DIR "/dev/fd"
+#  else
+#    undef HAVE_DIRENT_H
+#  endif
 #endif
 
-#endif
 
 #define FR_PUT_LE16(a, val)\
 	do {\
 		a[1] = ((uint16_t) (val)) >> 8;\
 		a[0] = ((uint16_t) (val)) & 0xff;\
 	} while (0)
-
-int	fr_debug_lvl = 0;
 
 static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",

@@ -37,7 +37,8 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 
-FILE *fr_log_fp = NULL;
+FILE	*fr_log_fp = NULL;
+int	fr_debug_lvl = 0;
 
 /** Canonicalize error strings, removing tabs, and generate spaces for error marker
  *

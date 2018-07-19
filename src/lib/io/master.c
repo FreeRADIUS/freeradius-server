@@ -27,6 +27,7 @@
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/io/master.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/server/rad_assert.h>
 
 #define PR_CONNECTION_MAGIC (0x434f4e4e)

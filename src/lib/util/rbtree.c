@@ -22,8 +22,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/rbtree.h>
+#include "rbtree.h"
+
 #include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/strerror.h>
+
 #include <pthread.h>
 
 /* Red-Black tree description */
