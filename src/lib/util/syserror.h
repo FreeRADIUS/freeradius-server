@@ -24,4 +24,16 @@
  */
 RCSIDH(syserror_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <errno.h>
+#include <stdint.h>
+#include <string.h>
+
 char const	*fr_syserror(int num);
+
+#ifdef __cplusplus
+}
+#endif

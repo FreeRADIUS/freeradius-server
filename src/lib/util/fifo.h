@@ -24,6 +24,10 @@
  */
 RCSIDH(fifo_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <talloc.h>
 
 typedef struct	fr_fifo_t fr_fifo_t;
@@ -65,3 +69,7 @@ int		fr_fifo_push(fr_fifo_t *fi, void *data);
 void		*fr_fifo_pop(fr_fifo_t *fi);
 void		*fr_fifo_peek(fr_fifo_t *fi);
 unsigned int	fr_fifo_num_elements(fr_fifo_t *fi);
+
+#ifdef __cplusplus
+}
+#endif

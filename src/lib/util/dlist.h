@@ -23,6 +23,10 @@
  */
 RCSIDH(dlist_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Entry in a doubly linked list
  *
  */
@@ -380,3 +384,7 @@ static inline void fr_dlist_move(fr_dlist_head_t *list_dst, fr_dlist_head_t *lis
 
 	fr_dlist_entry_init(src);
 }
+
+#ifdef __cplusplus
+}
+#endif

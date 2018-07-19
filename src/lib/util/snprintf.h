@@ -33,14 +33,18 @@
 
 RCSIDH(snprintf_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if __STDC__
 #include <stdarg.h>
 #else
 #include <varargs.h>
 #endif
 
-#include <stdlib.h>    /* for atoi() */
 #include <ctype.h>
+#include <stdlib.h>    /* for atoi() */
 
 #define PRIVATE static
 #define PUBLIC
@@ -212,3 +216,8 @@ struct DATA {
 	      (p)->precision = va_arg(args, int)
 
 #endif /* HAVE_VSNPRINTF */
+
+#ifdef __cplusplus
+}
+#endif
+

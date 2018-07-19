@@ -10,7 +10,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/rand.h>
 
 #define RANDSIZL   (8)  /* I recommend 8 for crypto, 4 for simulations */
 #define RANDSIZ    (1 << RANDSIZL)

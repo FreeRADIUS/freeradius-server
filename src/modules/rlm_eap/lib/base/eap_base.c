@@ -419,7 +419,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 		if (!eap_session->child || (eap_session->child != eap_session_inner)) {
 			RDEBUG4("Binding lifetime of child eap_session %p to parent eap_session %p",
 				eap_session_inner, eap_session);
-			fr_talloc_link_ctx(eap_session, eap_session_inner);
+			talloc_link_ctx(eap_session, eap_session_inner);
 			eap_session->child = eap_session_inner;
 		} else {
 			RDEBUG4("Got eap_session_t %p back unmolested", eap_session->child);

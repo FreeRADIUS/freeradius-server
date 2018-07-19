@@ -22,7 +22,13 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "packet.h"
+
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/talloc.h>
+
+#include <talloc.h>
 
 /** Allocate a new RADIUS_PACKET
  *
@@ -147,4 +153,3 @@ RADIUS_PACKET *fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 
 	return out;
 }
-

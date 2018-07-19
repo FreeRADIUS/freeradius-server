@@ -23,6 +23,10 @@
  */
 RCSIDH(misc_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/print.h>
 
@@ -117,7 +121,6 @@ static inline bool is_zero(char const *value)
 }
 
 int		fr_set_signal(int sig, sig_t func);
-int		fr_talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
 int		fr_unset_signal(int sig);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
@@ -153,3 +156,7 @@ int		fr_size_from_str(size_t *out, char const *str);
 int8_t		fr_pointer_cmp(void const *a, void const *b);
 void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
 int		fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length) CC_HINT(nonnull);
+
+#ifdef __cplusplus
+}
+#endif

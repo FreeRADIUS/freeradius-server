@@ -112,7 +112,7 @@ static int mod_instantiate(UNUSED rlm_cache_config_t const *config, void *instan
 		ERROR("Failed to create cache");
 		return -1;
 	}
-	fr_talloc_link_ctx(driver, driver->cache);
+	talloc_link_ctx(driver, driver->cache);
 
 	/*
 	 *	The heap of entries to expire.

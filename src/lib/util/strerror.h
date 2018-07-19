@@ -24,6 +24,12 @@
  */
 RCSIDH(strerror_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <string.h>
+
 void		fr_strerror_printf(char const *, ...) CC_HINT(format (printf, 1, 2));
 void		fr_strerror_printf_push(char const *fmt, ...)  CC_HINT(format (printf, 1, 2));
 
@@ -33,3 +39,7 @@ char const	*fr_strerror_pop(void);
 
 void		fr_perror(char const *, ...) CC_HINT(format (printf, 1, 2));
 void		fr_strerror_free(void);
+
+#ifdef __cplusplus
+}
+#endif

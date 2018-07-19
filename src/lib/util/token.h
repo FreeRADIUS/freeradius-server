@@ -29,8 +29,8 @@ RCSIDH(token_h, "$Id$")
 extern "C" {
 #endif
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef enum fr_token {
 	T_INVALID = 0,			/* invalid token */

@@ -196,7 +196,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 	 *	safe, and multiple threads could be using the
 	 *	tree.
 	 */
-	fr_talloc_link_ctx(ctx, state);
+	talloc_link_ctx(ctx, state);
 
 	if (thread_safe && (pthread_mutex_init(&state->mutex, NULL) != 0)) {
 		talloc_free(state);

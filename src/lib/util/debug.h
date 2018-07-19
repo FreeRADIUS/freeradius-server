@@ -21,6 +21,10 @@
  *
  * @copyright 2015-2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <freeradius-devel/util/fring.h>
 
 #define MEM(x) if (!(x)) { ERROR("%s[%u] OUT OF MEMORY", __FILE__, __LINE__); _fr_exit_now(__FILE__, __LINE__, EXIT_FAILURE); }
@@ -107,8 +111,18 @@ bool		fr_cond_assert_fail(char const *file, int line, char const *expr, char con
  */
 #define		fr_cond_assert_msg(_x, _fmt, ...) likely((bool)((_x) ? true : (fr_cond_assert_fail(__FILE__, __LINE__, #_x, _fmt, ## __VA_ARGS__) && false)))
 
+#ifndef NDEBUG
+bool		fr_assert_exit(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
+#else
+bool		fr_assert_exit(char const *file, unsigned int line, char const *expr);
+#endif
+
 void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
 #  define	fr_exit(_x) _fr_exit(__FILE__, __LINE__, (_x))
 
 void		NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
 #  define	fr_exit_now(_x) _fr_exit_now(__FILE__, __LINE__, (_x))
+
+#ifdef __cplusplus
+}
+#endif

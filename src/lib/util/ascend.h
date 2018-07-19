@@ -16,11 +16,11 @@
 
 /** Routines to parse Ascend's filter attributes
  *
- * @file src/lib/util/filters.h
+ * @file src/lib/util/ascend.h
  *
  * @copyright 2003,2006  The FreeRADIUS server project
  */
-RCSIDH(filters_h, "$Id$")
+RCSIDH(ascend_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {

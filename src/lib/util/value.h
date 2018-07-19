@@ -27,12 +27,12 @@ RCSIDH(value_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/missing.h>		/* For uint128_t */
-#include <freeradius-devel/util/inet.h>
-#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/types.h>
 
 /*
  *	Avoid circular type references.

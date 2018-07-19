@@ -146,7 +146,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 	ef = talloc_zero(NULL, exfile_t);
 	if (!ef) return NULL;
 
-	fr_talloc_link_ctx(ctx, ef);
+	talloc_link_ctx(ctx, ef);
 
 	ef->max_entries = max_entries;
 	ef->max_idle = max_idle;

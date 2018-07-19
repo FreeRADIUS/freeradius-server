@@ -24,6 +24,10 @@
  */
 RCSIDH(version_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #ifndef NDEBUG
@@ -83,3 +87,7 @@ RCSIDH(version_h, "$Id$")
  *	Version check.
  */
 int fr_check_lib_magic(uint64_t magic);
+
+#ifdef __cplusplus
+}
+#endif

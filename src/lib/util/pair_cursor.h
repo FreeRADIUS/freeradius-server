@@ -22,6 +22,10 @@
  */
 RCSIDH(pair_cursor_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <freeradius-devel/util/pair.h>
 
 VALUE_PAIR	*fr_pair_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *node);
@@ -50,3 +54,7 @@ void		fr_pair_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *vp);
 VALUE_PAIR	*fr_pair_cursor_remove(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		fr_pair_cursor_free(vp_cursor_t *cursor);
+
+#ifdef __cplusplus
+}
+#endif

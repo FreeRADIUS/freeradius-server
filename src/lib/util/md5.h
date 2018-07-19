@@ -7,6 +7,10 @@
  */
 RCSIDH(md5_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef HAVE_INTTYPES_H
 #  include <inttypes.h>
 #endif
@@ -23,10 +27,6 @@ RCSIDH(md5_h, "$Id$")
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 #ifndef MD5_DIGEST_LENGTH

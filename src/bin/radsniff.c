@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/pcap.h>
+#include <freeradius-devel/radius/list.h>
 
 #ifdef HAVE_COLLECTDC_H
 #  include <collectd/client.h>

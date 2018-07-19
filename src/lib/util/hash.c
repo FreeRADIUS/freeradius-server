@@ -32,7 +32,9 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "hash.h"
+
+#include <freeradius-devel/util/talloc.h>
 
 /*
  *	A reasonable number of buckets to start off with.
@@ -288,7 +290,7 @@ fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
 	ht = talloc_zero(NULL, fr_hash_table_t);
 	if (!ht) return NULL;
 	talloc_set_destructor(ht, _fr_hash_table_free);
-	fr_talloc_link_ctx(ctx, ht);
+	talloc_link_ctx(ctx, ht);
 
 	ht->free = freeNode;
 	ht->hash = hashNode;

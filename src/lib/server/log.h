@@ -24,7 +24,7 @@
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Alan DeKok <aland@freeradius.org>
  */
-RCSIDH(log_h, "$Id$")
+RCSIDH(server_log_h, "$Id$")
 
 #include <freeradius-devel/util/log.h>
 

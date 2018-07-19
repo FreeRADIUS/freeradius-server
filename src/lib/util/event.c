@@ -29,11 +29,19 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/heap.h>
-#include <freeradius-devel/util/event.h>
+#include "event.h"
+
 #include <freeradius-devel/io/time.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/token.h>
+
 #include <sys/stat.h>
 
 #define FR_EV_BATCH_FDS (256)
@@ -1076,7 +1084,7 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 		 *	talloc ctx.  If the talloc ctx is freed, the
 		 *	event will also be freed.
 		 */
-		if (ctx) fr_talloc_link_ctx(ctx, ev);
+		if (ctx) talloc_link_ctx(ctx, ev);
 
 		talloc_set_destructor(ev, _event_timer_free);
 	} else {

@@ -22,9 +22,10 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-#include <pthread.h>
+#include <freeradius-devel/missing.h>
+
 #include <ctype.h>
+#include <pthread.h>
 
 #if !defined(HAVE_CLOCK_GETTIME) && defined(__MACH__)
 #  include <mach/mach_time.h>

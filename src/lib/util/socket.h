@@ -27,12 +27,16 @@
  */
 RCSIDH(socket_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <freeradius-devel/util/inet.h>
 
-#include <sys/time.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/time.h>
 
 bool		fr_socket_is_valid_proto(int proto);
 int		fr_socket_client_unix(char const *path, bool async);
@@ -45,3 +49,7 @@ int		fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout);
 int		fr_socket_server_udp(fr_ipaddr_t const *ipaddr, uint16_t *port, char const *port_name, bool async);
 int		fr_socket_server_tcp(fr_ipaddr_t const *ipaddr, uint16_t *port, char const *port_name, bool async);
 int		fr_socket_bind(int sockfd, fr_ipaddr_t const *ipaddr, uint16_t *port, char const *interface);
+
+#ifdef __cplusplus
+}
+#endif

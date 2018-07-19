@@ -23,7 +23,16 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "syserror.h"
+
+#include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/thread_local.h>
+
+#include <errno.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <talloc.h>
 
 #define FR_SYSERROR_BUFSIZE (2048)
 

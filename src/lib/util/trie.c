@@ -22,14 +22,14 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/trie.h>
-#include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/trie.h>
 
-#include <string.h>
 #include <ctype.h>
-#include <errno.h>
+#include <string.h>
 
 /*
  *	This file implements path-compressed, level-compressed

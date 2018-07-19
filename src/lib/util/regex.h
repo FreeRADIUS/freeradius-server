@@ -26,6 +26,12 @@ RCSIDH(regex_h, "$Id$")
 #  ifdef __cplusplus
 extern "C" {
 #  endif
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <talloc.h>
+#include <unistd.h>
+
 #  ifdef HAVE_PCRE
 #    include <pcre.h>
 /*

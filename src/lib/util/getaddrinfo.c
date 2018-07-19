@@ -29,9 +29,8 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-
 #include <ctype.h>
+#include <pthread.h>
 #include <sys/param.h>
 
 #ifndef HAVE_GETNAMEINFO
@@ -51,8 +50,6 @@ RCSID("$Id$")
 #    define LOCAL_GETHOSTBYADDRR 1
 #  endif /* GETHOSTBYADDRRSTYLE */
 #endif
-
-#include <pthread.h>
 
 /* Thread safe DNS lookups */
 /*

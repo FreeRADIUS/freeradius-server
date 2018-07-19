@@ -23,6 +23,10 @@
  */
 RCSIDH(print_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stddef.h>
 #include <stdint.h>
 #include <talloc.h>
@@ -58,3 +62,7 @@ do { \
 	} \
 	_p += _ret; \
 } while (0)
+
+#ifdef __cplusplus
+}
+#endif

@@ -22,14 +22,22 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "dict.h"
 
 #ifdef WITH_DHCP
 #  include <freeradius-devel/dhcpv4/dhcpv4.h>
 #endif
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/rfc2865.h>
+#include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <ctype.h>
-
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
 #endif

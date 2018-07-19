@@ -23,12 +23,13 @@
  */
 RCSIDH(heap_h, "$Id$")
 
-#include <stdint.h>
-#include <sys/types.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <stdint.h>
+#include <sys/types.h>
+#include <talloc.h>
 
 /*
  *  Return negative numbers to put 'a' at the top of the heap.

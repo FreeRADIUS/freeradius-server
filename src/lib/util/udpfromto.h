@@ -25,22 +25,26 @@
  */
 RCSIDH(udpfromto_h, "$Id$")
 
-#include <freeradius-devel/util/base.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifdef WITH_UDPFROMTO
-int udpfromto_init(int s);
-int recvfromto(int s, void *buf, size_t len, int flags,
-	       struct sockaddr *from, socklen_t *fromlen,
-	       struct sockaddr *to, socklen_t *tolen,
-	       int *if_index, struct timeval *when);
-int sendfromto(int s, void *buf, size_t len, int flags,
-	       struct sockaddr *from, socklen_t fromlen,
-	       struct sockaddr *to, socklen_t tolen,
-	       int if_index);
+#include <netinet/in.h>
+#include <stddef.h>
+#include <stdlib.h>
+
+int	udpfromto_init(int s);
+
+int	recvfromto(int s, void *buf, size_t len, int flags,
+	       	   struct sockaddr *from, socklen_t *fromlen,
+		   struct sockaddr *to, socklen_t *tolen,
+		   int *if_index, struct timeval *when);
+
+int	sendfromto(int s, void *buf, size_t len, int flags,
+		   struct sockaddr *from, socklen_t fromlen,
+		   struct sockaddr *to, socklen_t tolen,
+		   int if_index);
 #endif
 
 #ifdef __cplusplus

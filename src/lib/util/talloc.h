@@ -22,13 +22,22 @@
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <talloc.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <ctype.h>
+RCSIDH(talloc_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <freeradius-devel/missing.h>
 
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <talloc.h>
+
 void		*talloc_null_ctx(void);
+
+int		talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
 
 char		*talloc_typed_strdup(void const *t, char const *p);
 
@@ -108,4 +117,8 @@ static inline void *_talloc_list_get_type_abort(void *head, size_t offset, char 
 #  define talloc_get_type_abort_const(ptr, type) (const type *)(ptr)
 #else
 #  define talloc_get_type_abort_const talloc_get_type_abort
+#endif
+
+#ifdef __cplusplus
+}
 #endif

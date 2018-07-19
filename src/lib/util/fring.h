@@ -23,6 +23,10 @@
  */
 RCSIDH(fring_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <talloc.h>
@@ -33,3 +37,7 @@ fr_fring_t		*fr_fring_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock);
 int			fr_fring_overwrite(fr_fring_t *fring, void *obj);
 int			fr_fring_insert(fr_fring_t *fring, void *obj);
 void			*fr_fring_next(fr_fring_t *fring);
+
+#ifdef __cplusplus
+}
+#endif

@@ -22,20 +22,24 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "log.h"
 
-/*
- *	Are we using glibc or a close relative?
- */
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+
+#include <fcntl.h>
 #ifdef HAVE_FEATURES_H
 #  include <features.h>
 #endif
-
+#include <stdio.h>
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
 #endif
-
-#include <fcntl.h>
+#include <time.h>
+#include <unistd.h>
 
 FILE	*fr_log_fp = NULL;
 int	fr_debug_lvl = 0;

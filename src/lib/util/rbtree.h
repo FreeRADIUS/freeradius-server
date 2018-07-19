@@ -23,8 +23,12 @@
  */
 RCSIDH(rbtree_h, "$Id$")
 
-#include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h>
+#include <stdint.h>
 #include <talloc.h>
 
 /* rbtree.c */
@@ -110,3 +114,7 @@ void		*rbtree_node2data(rbtree_t *tree, rbnode_t *node);
  *	used to batch-delete select nodes from a locked rbtree.
  */
 int		rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *context);
+
+#ifdef __cplusplus
+}
+#endif

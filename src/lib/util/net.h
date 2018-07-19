@@ -24,16 +24,21 @@
  */
 RCSIDH(net_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef HAVE_LIBPCAP
 #  include <pcap.h>
 #endif
 
+#include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/token.h>
-#include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <netinet/in.h>
+#include <stdint.h>
+#include <sys/socket.h>
 
 /*
  *	If we don't have libpcap, we still need an enumeration of link layers.
@@ -77,6 +82,7 @@ typedef enum {
  */
 #define MAX_RADIUS_LEN	4096
 #define MIN_RADIUS_LEN	20
+#define AUTH_VECTOR_LEN	16
 
 
 #define IP_V(ip)	(((ip)->ip_vhl & 0xf0) >> 4)
@@ -151,3 +157,7 @@ uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 	struct in_addr const src_addr, struct in_addr const dst_addr);
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
 uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
+
+#ifdef __cplusplus
+}
+#endif

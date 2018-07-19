@@ -24,13 +24,15 @@
  */
 RCSIDH(event_h, "$Id$")
 
-#include <freeradius-devel/missing.h>
-#include <stdbool.h>
-#include <sys/event.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <freeradius-devel/missing.h>
+
+#include <stdbool.h>
+#include <sys/event.h>
+#include <talloc.h>
 
 /** An opaque file descriptor handle
  */

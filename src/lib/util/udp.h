@@ -23,15 +23,14 @@
  */
 RCSIDH(udp_h, "$Id$")
 
-#include <freeradius-devel/util/base.h>
-
-#ifdef WITH_UDPFROMTO
-#include <freeradius-devel/util/udpfromto.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#ifdef WITH_UDPFROMTO
+#  include <freeradius-devel/util/udpfromto.h>
+#endif
+#include <freeradius-devel/util/inet.h>
 
 #define UDP_FLAGS_NONE		(0)
 #define UDP_FLAGS_CONNECTED	(1 << 0)

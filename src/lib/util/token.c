@@ -24,9 +24,13 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "token.h"
+
+#include <freeradius-devel/util/strerror.h>
 
 #include <ctype.h>
+#include <stdio.h>
+#include <string.h>
 
 const FR_NAME_NUMBER fr_tokens_table[] = {
 	{ "=~", T_OP_REG_EQ,	}, /* order is important! */

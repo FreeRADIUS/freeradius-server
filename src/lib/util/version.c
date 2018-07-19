@@ -23,7 +23,9 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "version.h"
+
+#include <freeradius-devel/util/strerror.h>
 
 static uint64_t libmagic = RADIUSD_MAGIC_NUMBER;
 

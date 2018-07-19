@@ -21,19 +21,25 @@
  * @copyright 2013  The FreeRADIUS server project
  * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+#include "debug.h"
+
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
+
+#include <assert.h>
+#include <limits.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <unistd.h>
 #include <string.h>
-#include <errno.h>
-#include <assert.h>
-#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/util/base.h>
+#include <unistd.h>
 
 #if defined(HAVE_MALLOPT) && defined(HAVE_MALLOC_H)
 #  include <malloc.h>
@@ -53,6 +59,7 @@
 
 #ifdef HAVE_SYS_PTRACE_H
 #  include <sys/ptrace.h>
+#  include <sys/types.h>
 #  if !defined(PT_ATTACH) && defined(PTRACE_ATTACH)
 #    define PT_ATTACH PTRACE_ATTACH
 #  endif
@@ -292,6 +299,13 @@ int fr_get_debug_state(void)
 	if (pid == 0) {
 		int8_t	ret = DEBUGGER_STATE_NOT_ATTACHED;
 		int	ppid = getppid();
+		int	flags;
+
+#ifdef PT_ATTACHEXC
+		flags = PT_ATTACHEXC;
+#else
+		flags = PT_ATTACH;
+#endif
 
 		/* Close parent's side */
 		close(from_child[0]);
@@ -304,7 +318,8 @@ int fr_get_debug_state(void)
 		 *	If we don't do it in that order the read in the parent triggers
 		 *	a SIGKILL.
 		 */
-		if (_PTRACE(PT_ATTACH, ppid) == 0) {
+
+		if (_PTRACE(flags, ppid) == 0) {
 			/* Wait for the parent to stop */
 			waitpid(ppid, NULL, 0);
 

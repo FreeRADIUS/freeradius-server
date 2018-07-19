@@ -8,6 +8,10 @@
  */
 RCSIDH(md4_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef HAVE_INTTYPES_H
 #  include <inttypes.h>
 #endif
@@ -26,9 +30,6 @@ RCSIDH(md4_h, "$Id$")
 #  include <openssl/evp.h>
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifndef MD4_DIGEST_LENGTH
 #  define MD4_DIGEST_LENGTH 16

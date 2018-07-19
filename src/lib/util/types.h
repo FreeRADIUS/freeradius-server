@@ -25,6 +25,10 @@
  */
 RCSIDH(types_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Internal data types used within libfreeradius
  *
  */
@@ -211,3 +215,7 @@ typedef enum {
 	FR_TYPE_STRING: \
 	case FR_TYPE_DATE: \
 	case FR_TYPE_ABINARY
+
+#ifdef __cplusplus
+}
+#endif

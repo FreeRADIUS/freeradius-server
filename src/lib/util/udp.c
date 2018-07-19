@@ -22,6 +22,9 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/udp.h>
 
 /*

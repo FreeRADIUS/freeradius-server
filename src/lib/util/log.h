@@ -14,18 +14,26 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#include <stdint.h>
-#include <string.h>
-#include <stdbool.h>
-
-#include <freeradius-devel/util/token.h>
-
 /** libfreeradius logging functions
  *
  * @file src/lib/util/log.h
  *
  * @copyright 2016  The FreeRADIUS server project
  */
+RCSIDH(util_log_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <freeradius-devel/util/token.h>
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <talloc.h>
+
 extern FILE	*fr_log_fp;
 
 /*
@@ -34,8 +42,6 @@ extern FILE	*fr_log_fp;
 void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
 void		fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *msg);
 
-extern bool	fr_reverse_lookups;	/* do IP -> hostname lookups? */
-extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
 extern int	fr_debug_lvl;	/* 0 = no debugging information */
 extern bool	log_dates_utc;
 
@@ -119,3 +125,7 @@ int	fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *msg, ...)
 	CC_HINT(format (printf, 3, 4)) CC_HINT(nonnull (1));
 
 bool	fr_rate_limit_enabled(void);
+
+#ifdef __cplusplus
+}
+#endif

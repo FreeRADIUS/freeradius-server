@@ -24,15 +24,16 @@
  */
 RCSIDH(pcap_h, "$Id$")
 
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/net.h>
-
-#include <sys/types.h>
-#include <pcap.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "pcap.h"
+
+#include <freeradius-devel/util/net.h>
+
+#include <pcap.h>
+#include <sys/types.h>
 
 #define SNAPLEN ETHER_HDR_LEN + IP_HDR_LEN + sizeof(struct udp_header) + MAX_RADIUS_LEN
 #define PCAP_BUFFER_DEFAULT (10000)

@@ -20,7 +20,7 @@
  *
  * @copyright 2015 The FreeRADIUS server project
  */
-#include <freeradius-devel/util/base.h>
+#include "proto.h"
 
 static unsigned int proto_log_indent = 30;
 static char spaces[] = "                                                 ";

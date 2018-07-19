@@ -23,11 +23,11 @@
  */
 RCSIDH(proto_h, "$Id$")
 
-#include <freeradius-devel/util/dict.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <freeradius-devel/util/dict.h>
 
 #define CHECK_FREESPACE(_have, _need) \
 do { \

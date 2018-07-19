@@ -24,8 +24,11 @@
 RCSID("$Id$")
 
 #ifdef HAVE_REGEX
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/regex.h>
+#include "regex.h"
+
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/token.h>
 
 /*
  *	Wrapper functions for libpcre. Much more powerful, and guaranteed

@@ -469,7 +469,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 
 		return NULL;
 	}
-	fr_talloc_link_ctx(this, ctx);
+	talloc_link_ctx(this, ctx);
 
 	this->created = now;
 	this->connection = conn;
@@ -967,7 +967,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	Ensure the pool is freed at the same time
 	 *	as its parent.
 	 */
-	if (fr_talloc_link_ctx(ctx, pool) < 0) {
+	if (talloc_link_ctx(ctx, pool) < 0) {
 		ERROR("%s: Failed linking pool ctx", __FUNCTION__);
 		talloc_free(pool);
 

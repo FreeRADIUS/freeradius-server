@@ -26,8 +26,9 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/base64.h>
+#include "base64.h"
+
+#include <freeradius-devel/util/strerror.h>
 
 #define us(x) (uint8_t) x
 

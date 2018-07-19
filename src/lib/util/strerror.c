@@ -23,8 +23,13 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "strerror.h"
+
 #include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/thread_local.h>
+
+#include <stdbool.h>
 
 #define FR_STRERROR_BUFSIZE (2048)
 

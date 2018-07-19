@@ -22,8 +22,12 @@
  */
 RCSIDH(rand_h, "$Id$")
 
-#include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stddef.h>
+#include <stdint.h>
 
 /* random numbers in isaac.c */
 /* context of random number generator */
@@ -41,3 +45,7 @@ void		fr_rand_init(fr_randctx *ctx, int flag);
 uint32_t	fr_rand(void);	/* like rand(), but better. */
 void		fr_rand_buffer(void *start, size_t length) CC_HINT(nonnull);
 void		fr_rand_seed(void const *, size_t ); /* seed the random pool */
+
+#ifdef __cplusplus
+}
+#endif

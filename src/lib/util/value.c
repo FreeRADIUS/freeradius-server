@@ -44,10 +44,16 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "value.h"
+
 #include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/ascend.h>
+
 #include <ctype.h>
+#include <assert.h>
 
 /** Sanity checks
  *
@@ -1289,8 +1295,7 @@ static int fr_value_box_fixed_size_from_ocets(fr_value_box_t *dst,
 		break;
 
 	default:
-		rad_assert(0);
-		return -1;
+		if (!fr_cond_assert(false)) return -1;
 	}
 
 	if (src->datum.length < fr_value_box_network_sizes[dst_type][0]) {
@@ -2851,7 +2856,7 @@ int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, b
 	}
 
 	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
-	rad_assert(ptr);
+	if (!fr_cond_assert(ptr)) return -1;
 
 	if (talloc_reference_count(ptr) > 0) {
 		fr_strerror_printf("%s: Boxed value has two many references", __FUNCTION__);
@@ -3132,7 +3137,7 @@ int fr_value_box_append_mem(fr_value_box_t *dst, uint8_t const *src, size_t len,
 	}
 
 	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
-	rad_assert(ptr);
+	if (!fr_cond_assert(ptr)) return -1;
 
 	if (talloc_reference_count(ptr) > 0) {
 		fr_strerror_printf("%s: Boxed value has two many references", __FUNCTION__);

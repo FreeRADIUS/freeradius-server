@@ -20,12 +20,21 @@
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/util/inet.h>
-#include <freeradius-devel/util/base.h>
-#include <ctype.h>
+#include "inet.h"
 
-bool		fr_reverse_lookups = false;		//!< IP -> hostname lookups?
-bool		fr_hostname_lookups = true;		//!< hostname -> IP lookups?
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+
+#include <ctype.h>
+#include <netdb.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
+bool fr_reverse_lookups = false;		//!< IP -> hostname lookups?
+bool fr_hostname_lookups = true;		//!< hostname -> IP lookups?
 
 /** Determine if an address is the INADDR_ANY address for its address family
  *
