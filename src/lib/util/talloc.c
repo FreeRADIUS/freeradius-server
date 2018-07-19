@@ -23,6 +23,8 @@
  */
 RCSID("$Id$")
 
+#include "talloc.h"
+
 #include <string.h>
 
 typedef struct fr_talloc_link  fr_talloc_link_t;
