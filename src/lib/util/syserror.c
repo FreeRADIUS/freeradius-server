@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <talloc.h>
 
 #define FR_SYSERROR_BUFSIZE (2048)
