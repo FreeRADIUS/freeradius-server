@@ -23,12 +23,98 @@
  */
 RCSIDH(misc_h, "$Id$")
 
-#include <talloc.h>
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/print.h>
+
+#include <ctype.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <freeradius-devel/missing.h>
+#include <talloc.h>
 
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
+
+/*
+ *	Define TALLOC_DEBUG to check overflows with talloc.
+ *	we can't use valgrind, because the memory used by
+ *	talloc is valid memory... just not for us.
+ */
+#ifdef TALLOC_DEBUG
+void		fr_talloc_verify_cb(const void *ptr, int depth,
+				    int max_depth, int is_ref,
+				    void *private_data);
+#  define VERIFY_ALL_TALLOC talloc_report_depth_cb(NULL, 0, -1, fr_talloc_verify_cb, NULL)
+#else
+#  define VERIFY_ALL_TALLOC
+#endif
+
+/** Check whether the string is all whitespace
+ *
+ * @return
+ *	- true if the entirety of the string is whitespace.
+ *	- false if the string contains non whitespace.
+ */
+static inline bool is_whitespace(char const *value)
+{
+	do {
+		if (!isspace(*value)) return false;
+	} while (*++value);
+
+	return true;
+}
+
+/** Check whether the string is made up of printable UTF8 chars
+ *
+ * @param value to check.
+ * @param len of value.
+ *
+ * @return
+ *	- true if the string is printable.
+ *	- false if the string contains non printable chars
+ */
+ static inline bool is_printable(void const *value, size_t len)
+ {
+ 	uint8_t	const *p = value;
+ 	int	clen;
+ 	size_t	i;
+
+ 	for (i = 0; i < len; i++) {
+ 		clen = fr_utf8_char(p, len - i);
+ 		if (clen == 0) return false;
+ 		i += (size_t)clen;
+ 		p += clen;
+ 	}
+ 	return true;
+ }
+
+/** Check whether the string is all numbers
+ *
+ * @return
+ *	- true if the entirety of the string is number chars.
+ *	- false if string contains no number chars.
+ */
+static inline bool is_integer(char const *value)
+{
+	do {
+		if (!isdigit(*value)) return false;
+	} while (*++value);
+
+	return true;
+}
+
+/** Check whether the string is all zeros
+ *
+ * @return
+ *	- true if the entirety of the string is all zeros.
+ *	- false if string contains no zeros.
+ */
+static inline bool is_zero(char const *value)
+{
+	do {
+		if (*value != '0') return false;
+	} while (*++value);
+
+	return true;
+}
 
 int		fr_set_signal(int sig, sig_t func);
 int		fr_talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);

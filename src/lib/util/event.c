@@ -1908,7 +1908,7 @@ int main(int argc, char **argv)
 	memset(&rand_pool, 0, sizeof(rand_pool));
 	rand_pool.randrsl[1] = time(NULL);
 
-	fr_randinit(&rand_pool, 1);
+	fr_rand_init(&rand_pool, 1);
 	rand_pool.randcnt = 0;
 
 	gettimeofday(&array[0], NULL);

@@ -117,6 +117,10 @@ RCSIDH(missing_h, "$Id$")
 extern "C" {
 #endif
 
+#ifndef HAVE_SIG_T
+typedef void (*sig_t)(int);
+#endif
+
 /*
  *	Functions from missing.c
  */

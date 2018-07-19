@@ -19,7 +19,7 @@
  *
  * Simplifies creating destructors, called when the thread exits
  *
- * @file lib/util/threads.h
+ * @file lib/util/thread_local.h
  *
  * @copyright 2013-2016 The FreeRADIUS server project
  */

@@ -22,9 +22,12 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-
 #ifdef WITH_ASCEND_BINARY
+#include "filters.h"
+
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/talloc.h>
+
 #include <ctype.h>
 
 /*

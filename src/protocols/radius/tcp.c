@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/server/tcp.h>
 
 #ifdef WITH_TCP
 

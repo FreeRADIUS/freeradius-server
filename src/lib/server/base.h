@@ -73,6 +73,10 @@ typedef struct rad_request REQUEST;
 extern "C" {
 #endif
 
+#ifdef WITH_TCP
+#  include <freeradius-devel/server/tcp.h>
+#endif
+
 /*
  *	See util.c
  */
@@ -372,6 +376,7 @@ typedef enum {
 
 
 /* radiusd.c */
+int		fr_crypt_check(char const *password, char const *reference_crypt);
 
 int		log_err (char *);
 

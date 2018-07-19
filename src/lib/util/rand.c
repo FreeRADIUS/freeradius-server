@@ -22,9 +22,16 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "rand.h"
 
+#include <freeradius-devel/util/hash.h>
+
+#include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 static _Thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
 static _Thread_local bool fr_rand_initialized = false;
@@ -64,7 +71,7 @@ void fr_rand_seed(void const *data, size_t size)
 			fr_rand_pool.randrsl[2] = errno;
 		}
 
-		fr_randinit(&fr_rand_pool, 1);
+		fr_rand_init(&fr_rand_pool, 1);
 		fr_rand_pool.randcnt = 0;
 		fr_rand_initialized = 1;
 	}

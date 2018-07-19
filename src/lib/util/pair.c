@@ -27,6 +27,10 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+#ifndef NDEBUG
+#  define FREE_MAGIC (0xF4EEF4EE)
+#endif
+
 /** Free a VALUE_PAIR
  *
  * @note Do not call directly, use talloc_free instead.

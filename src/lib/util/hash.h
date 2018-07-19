@@ -27,6 +27,10 @@ RCSIDH(hash_h, "$Id$")
 extern "C" {
 #endif
 
+#include <talloc.h>
+#include <stdint.h>
+#include <stddef.h>
+
 /*
  *	Fast hash, which isn't too bad.  Don't use for cryptography,
  *	just for hashing internal data.
