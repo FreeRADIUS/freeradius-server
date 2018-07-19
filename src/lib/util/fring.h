@@ -17,7 +17,7 @@
 
 /** Simple ring buffer with fixed element sizes
  *
- * @file src/lib/util/fring_buffer.h
+ * @file src/lib/util/fring.h
  *
  * @copyright 2015-2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
