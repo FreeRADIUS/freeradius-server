@@ -28,9 +28,13 @@ RCSIDH(net_h, "$Id$")
 #  include <pcap.h>
 #endif
 
+#include <freeradius-devel/util/token.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 /*
  *	If we don't have libpcap, we still need an enumeration of link layers.
  */
