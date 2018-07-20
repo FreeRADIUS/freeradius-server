@@ -1196,7 +1196,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 		for (i = 0; i < (1 << node1->size); i++) {
 			uint16_t j;
 
-			fr_cond_assert(bits < 8);
+			if (!fr_cond_assert(bits < 8)) return -1;
 
 			for (j = 0; j < (1 << bits); j++) {
 				void *subtrie;
@@ -1216,7 +1216,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 				 */
 				subtrie = fr_trie_path_prefix_add(ft, node1, node2->trie[(i << bits) | j],
 								  bits, j, depth);
-				fr_cond_assert(subtrie != NULL);
+				if (!fr_cond_assert(subtrie != NULL)) return -1;
 
 				if (fr_trie_merge(ft, node1, &node1->trie[i],
 						  node1->trie[i], subtrie, depth) < 0) {
@@ -1231,30 +1231,30 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 				 */
 				if (!node1->trie[i]) {
 					subnode = node1->trie[i] = fr_trie_node_alloc(ft, node1, bits);
-					fr_cond_assert(subnode != NULL);
+					if (!fr_cond_assert(subnode != NULL)) return -1;
 
 				} else if (IS_NODE(node1->trie[i])) {
 					subnode = node1->trie[i];
-					fr_cond_assert(IS_NODE(subnode));
+					if (!fr_cond_assert(IS_NODE(subnode))) return -1;
 
 				} else {
 					fr_trie_user_t *user;
 
-					fr_cond_assert(IS_USER(node1->trie[i]));
+					if (!fr_cond_assert(IS_USER(node1->trie[i]))) return -1;
 					user = GET_USER(node1->trie[i]);
 
 					subtrie = user->trie;
 					if (!subtrie) {
 						subnode = user->trie = fr_trie_node_alloc(ft, user, bits);
-						fr_cond_assert(subnode != NULL);
+						if (!fr_cond_assert(subnode != NULL)) return -1;
 
 					} else {
 						/*
 						 *	No path compression here.
 						 */
-						fr_cond_assert(IS_NODE(subtrie));
+						if (!fr_cond_assert(IS_NODE(subtrie))) return -1;
 						subnode = subtrie;
-						fr_cond_assert(subnode->size == bits);
+						if (!fr_cond_assert(subnode->size == bits)) return -1;
 					}
 				}
 
@@ -1272,7 +1272,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 		return 0;
 	}
 
-	fr_cond_assert(0 == 1);
+	fr_cond_assert(0);
 
 	return -1;
 }
