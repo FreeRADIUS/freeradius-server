@@ -168,6 +168,9 @@ fr_dlhandle fr_dlopenext(char const *name)
 	} else
 #endif
 		flags |= RTLD_LOCAL;
+#ifdef RTLD_DEEPBIND
+		flags |= RTLD_DEEPBIND;
+#endif
 
 #ifndef NDEBUG
 	/*
