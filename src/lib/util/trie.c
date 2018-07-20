@@ -272,7 +272,7 @@ static void *trie_parent(void *trie)
 	}
 #endif
 
-	if (!fr_cond_assert(IS_NODE(trie)) return NULL;
+	if (!fr_cond_assert(IS_NODE(trie))) return NULL;
 	return talloc_parent(trie);
 }
 #endif
