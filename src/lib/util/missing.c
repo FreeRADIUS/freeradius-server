@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 #include <pthread.h>
+#include <stdbool.h>
 
 #if !defined(HAVE_CLOCK_GETTIME) && defined(__MACH__)
 #  include <mach/mach_time.h>
