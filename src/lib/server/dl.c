@@ -542,14 +542,23 @@ void *dl_by_name(char const *name)
 		flags |= RTLD_GLOBAL;
 	} else
 #endif
-		flags |= RTLD_LOCAL;
+	flags |= RTLD_LOCAL;
 
-#ifndef NDEBUG
+	/*
+	 *	Forces dlopened libraries to resolve symbols within
+	 *	their local symbol tables instead of the global symbol
+	 *	table.
+	 *
+	 *	May help resolve issues with symbol conflicts.
+	 */
+#ifdef RTLD_DEEPBIND
+	flags |= RTLD_DEEPBIND;
+#endif
+
 	/*
 	 *	Bind all the symbols *NOW* so we don't hit errors later
 	 */
 	flags |= RTLD_NOW;
-#endif
 
 	/*
 	 *	Apple removed support for DYLD_LIBRARY_PATH in rootless mode.
