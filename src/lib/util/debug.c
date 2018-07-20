@@ -301,11 +301,9 @@ int fr_get_debug_state(void)
 		int	ppid = getppid();
 		int	flags;
 
-#ifdef PT_ATTACHEXC
-		flags = PT_ATTACHEXC;
-#else
+DIAG_OFF(deprecated-declarations);
 		flags = PT_ATTACH;
-#endif
+DIAG_ON(deprecated-declarations);
 
 		/* Close parent's side */
 		close(from_child[0]);
