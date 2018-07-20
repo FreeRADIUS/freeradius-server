@@ -1456,3 +1456,19 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t cons
 
 	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_INJECT, &my_inject, sizeof(my_inject));
 }
+
+int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats)
+{
+	if (num < 0) return -1;
+	if (num == 0) return 0;
+
+	if (num >= 1) stats[0] = nr->stats.in;
+	if (num >= 2) stats[1] = nr->stats.out;
+	if (num >= 3) stats[2] = nr->stats.dup;
+	if (num >= 4) stats[3] = nr->stats.dropped;
+	if (num >= 5) stats[4] = nr->num_workers;
+
+	if (num <= 5) return num;
+
+	return 5;
+}

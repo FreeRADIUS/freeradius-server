@@ -144,9 +144,9 @@ struct fr_worker_t {
 
 	fr_io_stats_t		stats;
 
-	int			num_decoded;	//!< number of messages which have been decoded
-	int			num_timeouts;	//!< number of messages which timed out
-	int			num_active;	//!< number of active requests
+	uint64_t       		num_decoded;	//!< number of messages which have been decoded
+	uint64_t    		num_timeouts;	//!< number of messages which timed out
+	uint64_t    		num_active;	//!< number of active requests
 
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
@@ -617,7 +617,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	REQUEST *request;
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 
-	DEBUG2("TIMER - worker max_request_time - %d active requests", worker->num_active);
+	DEBUG2("TIMER - worker max_request_time - %" PRIu64 " active requests", worker->num_active);
 
 	/*
 	 *	Look at the oldest requests, and see if they need to
@@ -1105,7 +1105,7 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	       fr_heap_num_elements(worker->runnable),
 	       fr_heap_num_elements(worker->localized.heap),
 	       fr_heap_num_elements(worker->to_decode.heap));
-	DEBUG3("\t%srequests %" PRIu64 ", decoded %d, replied %" PRIu64 " active %d",
+	DEBUG3("\t%srequests %" PRIu64 ", decoded %" PRIu64 ", replied %" PRIu64 " active %" PRIu64 "",
 	       worker->name, worker->stats.in, worker->num_decoded,
 	       worker->stats.out, worker->num_active);
 
@@ -1604,3 +1604,21 @@ static void fr_worker_verify(fr_worker_t *worker)
 	}
 }
 #endif
+
+int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
+{
+	if (num < 0) return -1;
+	if (num == 0) return 0;
+
+	if (num >= 1) stats[0] = worker->stats.in;
+	if (num >= 2) stats[1] = worker->stats.out;
+	if (num >= 3) stats[2] = worker->stats.dup;
+	if (num >= 4) stats[3] = worker->stats.dropped;
+	if (num >= 5) stats[4] = worker->num_decoded;
+	if (num >= 6) stats[5] = worker->num_timeouts;
+	if (num >= 7) stats[6] = worker->num_active;
+
+	if (num <= 7) return num;
+
+	return 7;
+}
