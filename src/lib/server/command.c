@@ -2047,7 +2047,6 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 	info->runnable = false;
 	cmd = head;
 	word = text;
-	argc = 0;
 
 	/*
 	 *	Double-check the commands we may have already parsed.
