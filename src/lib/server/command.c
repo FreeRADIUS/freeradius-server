@@ -1763,7 +1763,8 @@ static char const *skip_word(char const *text)
 		return word;
 	}
 
-	quote = word++;
+	quote = *word;
+	word++;
 	while (*word && (*word != quote)) {
 		if (*word != '\\') {
 			word++;
