@@ -1746,11 +1746,11 @@ no_match:
  */
 #define SKIP_SPACES while (isspace((int) *word)) word++
 
-#define SKIP_WORD(name) do { p = word; q = name; while (*p && *q && (*p == *q)) { \
+#define SKIP_NAME(name) do { p = word; q = name; while (*p && *q && (*p == *q)) { \
 				p++; \
 				q++; \
 			} } while (0)
-#define MATCHED_WORD ((!*p || isspace((int) *p)) && !*q)
+#define MATCHED_NAME ((!*p || isspace((int) *p)) && !*q)
 #define MATCHED_START ((text + start) >= word) && ((text + start) <= p)
 
 static char const *skip_word(char const *text)
@@ -1883,7 +1883,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 		 *	heck of it.
 		 */
 		if (argv->type == FR_TYPE_FIXED) {
-			SKIP_WORD(argv->name);
+			SKIP_NAME(argv->name);
 
 			/*
 			 *	End of input text before we matched
@@ -1898,7 +1898,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 			 *	The only matching exit condition is *p is a
 			 *	space, and *q is the NUL character.
 			 */
-			if (!MATCHED_WORD) {
+			if (!MATCHED_NAME) {
 				fr_strerror_printf("Unknown command at: %s", p);
 				return -1;
 			}
@@ -2058,13 +2058,13 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 
 		SKIP_SPACES;
 
-		SKIP_WORD(cmd->name);
+		SKIP_NAME(cmd->name);
 
 		/*
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
-		if (!MATCHED_WORD) {
+		if (!MATCHED_NAME) {
 			goto invalid;
 		}
 
@@ -2105,13 +2105,13 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 			}
 		}
 
-		SKIP_WORD(cmd->name);
+		SKIP_NAME(cmd->name);
 
 		/*
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
-		if (!MATCHED_WORD) {
+		if (!MATCHED_NAME) {
 			if (argc < info->argc) {
 			invalid:
 				fr_strerror_printf("Invalid internal state");
@@ -2353,35 +2353,12 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		}
 
 		/*
-		 *	Handle quoted strings.
-		 */
-		if ((argv->type == FR_TYPE_STRING) &&
-		    ((*word == '"') || (*word == '\''))) {
-			char quote = *word++;
-
-			// @todo p = skip_word(word) ?
-
-			while (*word && (*word != quote)) {
-				if (*word == '\\') {
-					if (!word[1]) return count;
-					word++;
-				}
-				word++;
-			}
-
-			if (!*word || !isspace((int) *word)) return count;
-
-			*word_p = word;
-			continue;
-		}
-
-		/*
 		 *	Check data types.
 		 */
 		if (argv->type < FR_TYPE_FIXED) {
 			p = skip_word(word);
 
-			if (!p || !*p) return count;
+			if (!p) return count;
 
 			if (MATCHED_START) {
 				// @todo call tab expand callback
@@ -2397,7 +2374,7 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		 */
 		rad_assert(argv->type == FR_TYPE_FIXED);
 
-		SKIP_WORD(argv->name);
+		SKIP_NAME(argv->name);
 
 		/*
 		 *	We're supposed to expand the text at this
@@ -2411,7 +2388,7 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
-		if MATCHED_WORD {
+		if MATCHED_NAME {
 			*word_p = word;
 			continue;
 		}
@@ -2471,7 +2448,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 			return count;
 		}
 
-		SKIP_WORD(cmd->name);
+		SKIP_NAME(cmd->name);
 
 		/*
 		 *	We're supposed to expand the text at this
@@ -2485,7 +2462,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
-		if (!MATCHED_WORD) {
+		if (!MATCHED_NAME) {
 			cmd = cmd->next;
 			continue;
 		}
@@ -2563,13 +2540,13 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 		/*
 		 *	Try to find a matching cmd->name
 		 */
-		SKIP_WORD(cmd->name);
+		SKIP_NAME(cmd->name);
 
 		/*
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
-		if (!MATCHED_WORD) {
+		if (!MATCHED_NAME) {
 			cmd = cmd->next;
 			continue;
 		}
