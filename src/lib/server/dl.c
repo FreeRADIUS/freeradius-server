@@ -552,7 +552,9 @@ void *dl_by_name(char const *name)
 	 *	May help resolve issues with symbol conflicts.
 	 */
 #ifdef RTLD_DEEPBIND
-	flags |= RTLD_DEEPBIND;
+	if (fr_get_lsan_state() != 1) {
+		flags |= RTLD_DEEPBIND;
+	}
 #endif
 
 	/*
