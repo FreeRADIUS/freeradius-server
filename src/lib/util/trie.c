@@ -255,7 +255,6 @@ static fr_trie_node_t *fr_trie_node_alloc(fr_trie_t *ft, TALLOC_CTX *ctx, int si
 
 
 #ifdef WITH_TRIE_VERIFY
-#ifndef NDEBUG
 static void *trie_parent(void *trie)
 {
 	/*
@@ -275,7 +274,6 @@ static void *trie_parent(void *trie)
 	fr_cond_assert(IS_NODE(trie));
 	return talloc_parent(trie);
 }
-#endif
 
 /** Verifies that a node is correct, without recursion
  *
