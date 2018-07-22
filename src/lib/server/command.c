@@ -1753,10 +1753,10 @@ no_match:
 #define MATCHED_WORD ((!*p || isspace((int) *p)) && !*q)
 #define MATCHED_START ((text + start) >= word) && ((text + start) <= p)
 
-static char *skip_word(char *text)
+static char const *skip_word(char const *text)
 {
 	char quote;
-	char *word = text;
+	char const *word = text;
 
 	if ((*word != '"') && (*word != '\'')) {
 		while (*word && !isspace((int) *word)) word++;
@@ -1785,13 +1785,12 @@ static char *skip_word(char *text)
  *  commands.  So we MUST re-parse the ENTIRE input every time.
  */
 static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_t *info,
-			      char **text, bool *runnable)
+			      char const **text, bool *runnable)
 {
 	int argc = start_argc;
 	int rcode;
 	bool child_done;
-	char *word, *my_word, *p;
-	char const *q;
+	char const *word, *my_word, *p, *q;
 	fr_cmd_argv_t *argv = start;
 	fr_cmd_argv_t *child;
 
@@ -1807,8 +1806,8 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 		 *	Parse / check data types.
 		 */
 		if (argv->type < FR_TYPE_FIXED) {
-			size_t len;
-			char quote;
+			size_t len, offset;
+			char quote, *str;
 			fr_type_t type;
 
 			p = skip_word(word);
@@ -1837,37 +1836,16 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 				return -1;
 			}
 
-			/*
-			 *	Strings MAY be quoted.
-			 */
-			if ((argv->type == FR_TYPE_STRING) &&
-			    ((*word == '"') || (*word == '\''))) {
+			p = skip_word(word);
+			if (!p) goto invalid;
+
+			len = p - word;
+			if ((*word == '"') || (*word == '\'')) {
 				quote = *word;
-				p = word + 1;
-				while (*p && !isspace((int) *p)) {
-					if (*p == quote) {
-						break;
-					}
-
-					if (*p == '\\') {
-						if (p[1]) goto invalid;
-						p++;
-					}
-
-					p++;
-				}
-
-				if (*p != quote) goto invalid;
-
-				word++;
-				len = p - word;
-				p++;
-
+				offset = 1;
 			} else {
-				p = word;
 				quote = 0;
-				while (*p && !isspace((int) *p)) p++;
-				len = p - word;
+				offset = 0;
 			}
 
 			type = argv->type;
@@ -1882,7 +1860,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 
 			rcode = fr_value_box_from_str(info->box[argc], info->box[argc],
 						      &type, NULL,
-						      word, len, quote, false);
+						      word + offset, len - (offset << 1), quote, false);
 			if (rcode < 0) return -1;
 
 			/*
@@ -1891,13 +1869,8 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 			 *	The called function MUST check box[i]
 			 *	for the actual value.
 			 */
-			if (quote) { /* account for quotes */
-				word--;
-				len += 2;
-			}
-
-			info->argv[argc] = talloc_memdup(info->argv, word, len + 1);
-			info->argv[argc][len] = '\0';
+			info->argv[argc] = str = talloc_memdup(info->argv, word + offset, len + 1);
+			str[len] = '\0';
 
 			word = p;
 			argc++;
@@ -2051,11 +2024,10 @@ done:
  *	- <0 on error.
  *	- total number of arguments in the argv[] array.  Always >= argc.
  */
-int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *text)
+int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text)
 {
 	int argc, rcode;
-	char *word, *p;
-	char const *q;
+	char const *word, *p, *q;
 	fr_cmd_t *cmd;
 
 	if ((info->argc < 0) || (info->max_argc <= 0) || !text || !head) {
@@ -2247,7 +2219,7 @@ int fr_command_clear(int new_argc, fr_cmd_info_t *info)
 	for (i = new_argc; i < info->argc; i++) {
 		if (info->box && info->box[i]) {
 			fr_value_box_clear(info->box[i]);
-			talloc_free(info->argv[i]);
+			talloc_const_free(info->argv[i]);
 		}
 		if (info->cmd && info->cmd[i]) info->cmd[i] = NULL;
 		info->argv[i] = NULL;
@@ -2266,7 +2238,7 @@ void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info)
 
 	info->argc = 0;
 	info->max_argc = CMD_MAX_ARGV;
-	info->argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
+	info->argv = talloc_zero_array(ctx, char const *, CMD_MAX_ARGV);
 	info->box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
 	info->cmd = talloc_zero_array(ctx, fr_cmd_t *, CMD_MAX_ARGV);
 }
@@ -2403,14 +2375,19 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		}
 
 		/*
-		 *	Skip data types (for now)
+		 *	Check data types.
 		 */
 		if (argv->type < FR_TYPE_FIXED) {
-			while (*word && !isspace((int) *word)) word++;
+			p = skip_word(word);
 
-			if (!*word) return count;
+			if (!p || !*p) return count;
 
-			*word_p = word;
+			if (MATCHED_START) {
+				// @todo call tab expand callback
+				rad_assert(0 == 1);
+			}
+
+			*word_p = p;
 			continue;
 		}
 
