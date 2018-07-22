@@ -59,7 +59,7 @@ DIAG_ON(strict-prototypes)
 
 static pthread_t pthread_id;
 static bool stop = false;
-static int context;
+static int context = 0;
 static fr_cmd_info_t radmin_info;
 
 #ifndef USE_READLINE
@@ -134,6 +134,7 @@ static void add_history(UNUSED char *line)
 #endif
 
 static fr_cmd_t *radmin_cmd = NULL;
+static char *radmin_partial_line = NULL;
 static char *radmin_buffer = NULL;
 
 #define CMD_MAX_ARGV (32)
@@ -179,10 +180,20 @@ static char **
 radmin_completion(const char *text, int start, UNUSED int end)
 {
 	int num;
+	size_t offset;
 
 	rl_attempted_completion_over = 1;
 
-	num = fr_command_complete(radmin_cmd, rl_line_buffer, start, CMD_MAX_EXPANSIONS, radmin_expansions);
+	rad_assert(radmin_buffer != NULL);
+	rad_assert(radmin_partial_line != NULL);
+	rad_assert(radmin_partial_line >= radmin_buffer);
+	rad_assert(radmin_partial_line < (radmin_buffer + 8192));
+
+	offset = (radmin_partial_line - radmin_buffer);
+
+	strlcpy(radmin_partial_line, rl_line_buffer, 8192 - offset);
+	num = fr_command_complete(radmin_cmd, radmin_buffer, start + offset,
+				  CMD_MAX_EXPANSIONS, radmin_expansions);
 	if (num <= 0) return NULL;
 
 	radmin_num_expansions = num;
@@ -192,18 +203,13 @@ radmin_completion(const char *text, int start, UNUSED int end)
 
 static int radmin_help(UNUSED int count, UNUSED int key)
 {
-	char buffer[8192];
-
+	size_t offset;
 	printf("\n");
 
-	/*
-	 *	@todo make this not retarded.
-	 */
-	strlcpy(buffer, radmin_buffer, sizeof(buffer));
-	strlcat(buffer, " ", sizeof(buffer));
-	strlcat(buffer, rl_line_buffer, sizeof(buffer));
+	offset = (radmin_partial_line - radmin_buffer);
+	strlcpy(radmin_partial_line, rl_line_buffer, 8192 - offset);
 
-	(void) fr_command_print_help(stdout, radmin_cmd, buffer);
+	(void) fr_command_print_help(stdout, radmin_cmd, radmin_buffer);
 	rl_on_new_line();
 	return 0;
 }
@@ -213,12 +219,10 @@ static int radmin_help(UNUSED int count, UNUSED int key)
 
 static void *fr_radmin(UNUSED void *input_ctx)
 {
-	int argc;
-	char *argv_buffer;
-	char *current_str, **context_str;
-	int *context_exit;
+	int argc = 0;
+	int *context_exit, *context_offset;
 	char const *prompt;
-	size_t size, room;
+	size_t size;
 	TALLOC_CTX *ctx;
 	fr_cmd_info_t *info = &radmin_info;
 
@@ -227,16 +231,14 @@ static void *fr_radmin(UNUSED void *input_ctx)
 
 	ctx = talloc_init("radmin");
 
-	size = room = 8192;
+	size = 8192;
 	radmin_buffer = talloc_zero_array(ctx, char, size);
-	argv_buffer = talloc_zero_array(ctx, char, size);
-	current_str = argv_buffer;
 
 	fr_command_info_init(ctx, info);
 
 	context_exit = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
-	context_str = talloc_zero_array(ctx, char *, CMD_MAX_ARGV + 1);
-	context_str[0] = argv_buffer;
+	context_offset = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
+	context_offset[0] = 0;
 
 	fflush(stdout);
 
@@ -249,6 +251,9 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	while (true) {
 		char *line;
 
+		rad_assert(context >= 0);
+		rad_assert(context_offset[context] >= 0);
+		radmin_partial_line = radmin_buffer + context_offset[context];
 		line = readline(prompt);
 		if (stop) break;
 
@@ -288,7 +293,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			if (strcmp(line, "exit") == 0) {
 				talloc_const_free(prompt);
 				context = context_exit[context];
-				current_str = context_str[context];
 				if (context == 0) {
 					prompt = "radmin> ";
 				} else {
@@ -312,17 +316,9 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	up-arrow, only produces the RELEVANT line from
 		 *	the current context.
 		 */
-		strlcpy(current_str, line, room);
-
-		/*
-		 *	Keep a copy of the full string entered.
-		 */
-		if (current_str > argv_buffer) {
-			radmin_buffer[(current_str - argv_buffer) - 1] = ' ';
-		}
-		strlcpy(radmin_buffer + (current_str - argv_buffer), line, room);
-
-		argc = fr_command_str_to_argv(radmin_cmd, info, current_str);
+		strlcpy(radmin_buffer + context_offset[context], line,
+			size - context_offset[context]);
+		argc = fr_command_str_to_argv(radmin_cmd, info, radmin_buffer);
 
 		/*
 		 *	Parse error!  Oops..
@@ -349,13 +345,12 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			size_t len;
 
 			rad_assert(argc > 0);
-			rad_assert(info->argv[argc - 1] != NULL);
-			len = strlen(info->argv[argc - 1]) + 1;
+			len = strlen(line);
 
 			/*
 			 *	Not enough room for more commands, refuse to do it.
 			 */
-			if (room < (len + 80)) {
+			if ((context_offset[context] + len + 80) >= size) {
 				fprintf(stderr, "Too many commands!\n");
 				goto next;
 			}
@@ -364,8 +359,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	Move the pointer down the buffer and
 			 *	keep reading more.
 			 */
-			current_str = info->argv[argc - 1] + len;
-			room -= len;
 
 			if (context > 0) {
 				talloc_const_free(prompt);
@@ -383,7 +376,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	back to the root.
 			 */
 			context_exit[argc] = context;
-			context_str[argc] = current_str;
+			context_offset[argc] = context_offset[context] + len + 1;
+			radmin_buffer[context_offset[context] + len] = ' ';
 			context = argc;
 			prompt = talloc_asprintf(ctx, "... %s> ", info->argv[context - 1]);
 			goto next;
@@ -396,11 +390,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		add_history(line);
 
 		if (fr_command_run(stdout, stderr, info, false) < 0) {
-			/*
-			 *	@todo - send return code to radmin The
-			 *	command MUST have already printed the
-			 *	error to fp_err.
-			 */
 			fprintf(stderr, "Failed running command.\n");
 		}
 
@@ -420,6 +409,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 
 	talloc_free(ctx);
 	radmin_buffer = NULL;
+	radmin_partial_line = NULL;
 
 	return NULL;
 }
@@ -527,6 +517,8 @@ static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 	return 0;
 }
 
+#define CMD_TEST
+
 #ifdef CMD_TEST
 static int cmd_test(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
@@ -568,9 +560,9 @@ static fr_cmd_table_t cmd_table[] = {
 #ifdef CMD_TEST
 	{
 		.parent = "test",
-		.syntax = "foo (bar|(a|b)|xxx [INTEGER])",
+		.syntax = "foo bar",
 		.func = cmd_test,
-		.help = "test foo (bar|(a|b)|xxx [INTEGER])",
+		.help = "test foo bar",
 		.read_only = true,
 	},
 #endif
