@@ -1391,13 +1391,13 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 			return -1;
 		}
 
-		if (!cmd->live) return 0;
-
 		if (cmd->intermediate) continue;
 		break;
 	}
 
 	if (!cmd) return 0;
+
+	if (!cmd->live) return 0;
 
 	/*
 	 *	Leaf nodes must have a callback.
