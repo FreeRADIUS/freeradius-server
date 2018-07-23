@@ -177,6 +177,8 @@ radmin_completion(const char *text, int start, UNUSED int end)
 {
 	int num;
 	size_t offset;
+	char **expansions = &radmin_expansions[0];
+	char const **expansions_const;
 
 	rl_attempted_completion_over = 1;
 
@@ -188,8 +190,10 @@ radmin_completion(const char *text, int start, UNUSED int end)
 	offset = (radmin_partial_line - radmin_buffer);
 
 	strlcpy(radmin_partial_line, rl_line_buffer, 8192 - offset);
+
+	memcpy(&expansions_const, &expansions, sizeof(expansions)); /* const issues */
 	num = fr_command_complete(radmin_cmd, radmin_buffer, start + offset,
-				  CMD_MAX_EXPANSIONS, radmin_expansions);
+				  CMD_MAX_EXPANSIONS, expansions_const);
 	if (num <= 0) return NULL;
 
 	radmin_num_expansions = num;
@@ -513,20 +517,52 @@ static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 	return 0;
 }
 
-#define CMD_TEST
+//#define CMD_TEST (1)
 
 #ifdef CMD_TEST
 static int cmd_test(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	int i;
 
-	fprintf(fp, "TEST\n");
+	fprintf(fp, "TEST %d\n", info->argc);
 
 	for (i = 0; i < info->argc; i++) {
 		fprintf(fp, "\t%s\n", info->argv[i]);
 	}
 
 	return 0;
+}
+
+static int cmd_test_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_cmd_info_t *info, UNUSED int max_expansions, char const **expansions)
+{
+	char const *text;
+	char *p;
+
+	if (info->argc == 0) return 0;
+
+	text = info->argv[info->argc - 1];
+
+	/*
+	 *	Expand a list of things
+	 */
+	if (!*text) {
+		expansions[0] = strdup("0");
+		expansions[1] = strdup("1");
+		return 2;
+	}
+
+	if ((text[0] < '0') || (text[0] > '9')) {
+		return 0;
+	}
+
+	/*
+	 *	If the user enters a digit, allow it.
+	 */
+	expansions[0] = p = malloc(2);
+	p[0] = text[0];
+	p[1] = '\0';
+
+	return 1;
 }
 #endif
 
@@ -556,9 +592,10 @@ static fr_cmd_table_t cmd_table[] = {
 #ifdef CMD_TEST
 	{
 		.parent = "test",
-		.syntax = "foo bar",
+		.syntax = "foo INTEGER",
 		.func = cmd_test,
-		.help = "test foo bar",
+		.tab_expand = cmd_test_tab_expand,
+		.help = "test foo INTEGER",
 		.read_only = true,
 	},
 #endif

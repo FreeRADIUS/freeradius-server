@@ -88,7 +88,7 @@ void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, int options);
 void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info);
 
 int fr_command_complete(fr_cmd_t *head, char const *text, int start,
-			int max_expansions, char **expansions);
+			int max_expansions, char const **expansions);
 int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text);
 
 #ifdef __cplusplus

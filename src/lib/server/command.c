@@ -2244,7 +2244,7 @@ void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info)
 }
 
 
-static int expand_all(fr_cmd_t *cmd, fr_cmd_argv_t *argv, int count, int max_expansions, char **expansions)
+static int expand_all(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, int count, int max_expansions, char const **expansions)
 {
 	fr_cmd_argv_t *child;
 
@@ -2260,7 +2260,7 @@ static int expand_all(fr_cmd_t *cmd, fr_cmd_argv_t *argv, int count, int max_exp
 			rad_assert(child->child != NULL);
 			sub = child->child;
 
-			count = expand_all(cmd, sub, count, max_expansions, expansions);
+			count = expand_all(cmd, info, sub, count, max_expansions, expansions);
 		}
 
 		return count;
@@ -2274,7 +2274,7 @@ static int expand_all(fr_cmd_t *cmd, fr_cmd_argv_t *argv, int count, int max_exp
 			rad_assert(child->child != NULL);
 			sub = child->child;
 
-			count = expand_all(cmd, sub, count, max_expansions, expansions);
+			count = expand_all(cmd, info, sub, count, max_expansions, expansions);
 		}
 
 		return count;
@@ -2284,20 +2284,29 @@ static int expand_all(fr_cmd_t *cmd, fr_cmd_argv_t *argv, int count, int max_exp
 	 *	@todo - might want to do something smarter here?
 	 */
 	if (argv->type == FR_TYPE_OPTIONAL) {
-		return expand_all(cmd, argv->child, count, max_expansions, expansions);
+		return expand_all(cmd, info, argv->child, count, max_expansions, expansions);
 	}
 
 	if ((argv->type < FR_TYPE_FIXED) && cmd->tab_expand) {
-		rad_assert(0 == 1);
-		return count;
+		int rcode;
+
+		info->argv[info->argc] = "";
+		info->box[info->argc] = NULL;
+		info->argc++;
+
+		rad_assert(count == 0);
+		rcode = cmd->tab_expand(NULL, cmd->ctx, info, max_expansions - count, expansions + count);
+		if (rcode < 0) return rcode;
+
+		return count + rcode;
 	}
 
 	expansions[count] = strdup(argv->name);
 	return count + 1;
 }
 
-static int expand_syntax(fr_cmd_t *cmd, fr_cmd_argv_t *argv, char const *text, int start, char const **word_p,
-			 int count, int max_expansions, char **expansions)
+static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, char const *text, int start,
+			 char const **word_p, int count, int max_expansions, char const **expansions)
 {
 	char const *p, *q;
 	char const *word = *word_p;
@@ -2309,7 +2318,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_argv_t *argv, char const *text, i
 		SKIP_SPACES;
 
 		if (!*word) {
-			return expand_all(cmd, argv, count, max_expansions, expansions);
+			return expand_all(cmd, info, argv, count, max_expansions, expansions);
 		}
 
 		if (argv->type == FR_TYPE_VARARGS) return count;
@@ -2324,7 +2333,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_argv_t *argv, char const *text, i
 
 			my_word = word;
 
-			count = expand_syntax(cmd, argv->child, text, start, &my_word, count, max_expansions, expansions);
+			count = expand_syntax(cmd, info, argv->child, text, start, &my_word, count, max_expansions, expansions);
 
 			if (word != my_word) *word_p = word;
 			continue;
@@ -2345,7 +2354,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_argv_t *argv, char const *text, i
 				 *	See if the child eats any of
 				 *	the input.  If so, use it.
 				 */
-				count = expand_syntax(cmd, sub, text, start, &my_word, count, max_expansions, expansions);
+				count = expand_syntax(cmd, info, sub, text, start, &my_word, count, max_expansions, expansions);
 				if (my_word != word) {
 					*word_p = word;
 					break;
@@ -2359,6 +2368,11 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_argv_t *argv, char const *text, i
 		 *	Check data types.
 		 */
 		if (argv->type < FR_TYPE_FIXED) {
+			int rcode;
+			size_t len, offset;
+			char quote, *my_word;
+			fr_type_t type = argv->type;
+
 			p = skip_word(word);
 
 			if (!p) return count;
@@ -2370,11 +2384,48 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_argv_t *argv, char const *text, i
 					return count + 1;
 				}
 
-				// @todo call tab expand callback
-				rad_assert(0 == 1);
+				/*
+				 *	Give the function the partial
+				 *	text which should be expanded.
+				 */
+				info->argv[info->argc] = text;
+				info->box[info->argc] = NULL;
+				info->argc++;
+
+				/*
+				 *	Expand this thing.
+				 */
+				rad_assert(count == 0);
+				rcode = cmd->tab_expand(NULL, cmd->ctx, info, max_expansions - count, expansions + count);
+				if (rcode < 0) return rcode;
+				return count + rcode;
 			}
 
 			*word_p = p;
+
+			len = p - word;
+
+			info->argv[info->argc] = my_word = talloc_zero_array(info->argv, char *, len + 1);
+			memcpy(my_word, word, len);
+			my_word[len] = '\0';
+
+			if (!info->box[info->argc]) {
+				info->box[info->argc] = talloc_zero(info->box, fr_value_box_t);
+			}
+
+			if ((*word == '"') || (*word == '\'')) {
+				quote = *word;
+				offset = 1;
+			} else {
+				quote = 0;
+				offset = 0;
+			}
+
+			rcode = fr_value_box_from_str(info->box[info->argc], info->box[info->argc],
+						      &type, NULL,
+						      word + offset, len - (offset << 1), quote, false);
+			if (rcode < 0) return -1;
+			info->argc++;
 			continue;
 		}
 
@@ -2398,6 +2449,9 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_argv_t *argv, char const *text, i
 		 */
 		if (MATCHED_NAME) {
 			*word_p = word;
+			info->argv[info->argc] = word;
+			info->box[info->argc] = NULL;
+			info->argc++;
 			continue;
 		}
 
@@ -2407,6 +2461,9 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_argv_t *argv, char const *text, i
 		break;
 	}
 
+	/*
+	 *	Ran out of words to match.
+	 */
 	*word_p = word;
 	return count;
 }
@@ -2427,15 +2484,19 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_argv_t *argv, char const *text, i
  *	- >= 0 number of expansions in the array
  */
 int fr_command_complete(fr_cmd_t *head, char const *text, int start,
-			int max_expansions, char **expansions)
+			int max_expansions, char const **expansions)
 {
 	char const *word, *p, *q;
 	fr_cmd_t *cmd;
 	int count;
+	fr_cmd_info_t *info;
 
 	cmd = head;
 	word = text;
 	count = 0;
+
+	info = talloc_zero(head, fr_cmd_info_t);
+	fr_command_info_init(head, info);
 
 	/*
 	 *	Try to do this without mangling "text".
@@ -2461,6 +2522,8 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 				}
 				cmd = cmd->next;
 			}
+
+			talloc_free(info);
 			return count;
 		}
 
@@ -2487,6 +2550,8 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 			rad_assert(cmd->child != NULL);
 			word = p;
 			cmd = cmd->child;
+			info->argv[info->argc] = cmd->name;
+			info->argc++;
 			continue;
 		}
 
@@ -2494,7 +2559,6 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		 *	Skip the command name we matched.
 		 */
 		word = p;
-		// expand this?
 		break;
 	}
 
@@ -2502,6 +2566,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	 *	No match, can't do anything.
 	 */
 	if (!cmd) {
+		talloc_free(info);
 		return count;
 	}
 
@@ -2509,10 +2574,14 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	 *	No syntax, can't do anything.
 	 */
 	if (!cmd->syntax) {
+		talloc_free(info);
 		return count;
 	}
 
-	return expand_syntax(cmd, cmd->syntax_argv, text, start, &word, count, max_expansions, expansions);
+	count = expand_syntax(cmd, info, cmd->syntax_argv, text, start, &word, count, max_expansions, expansions);
+	fr_command_clear(0, info);
+	talloc_free(info);
+	return count;
 }
 
 /** Do readline-style command completions
