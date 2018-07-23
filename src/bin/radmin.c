@@ -151,28 +151,24 @@ static int radmin_num_expansions;
 static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
 
 static char *
-radmin_expansion_walk(const char *text, int state)
+radmin_expansion_walk(UNUSED const char *text, int state)
 {
-    static int current, len;
+    static int current;
     char *name;
 
     if (!state) {
 	    current = 0;
-	    len = strlen(text);
     }
 
+    /*
+     *	fr_command_completions() takes care of comparing things to
+     *	suppress expansions which don't match "text"
+     */
     if (current >= radmin_num_expansions) return NULL;
 
-    while ((name = radmin_expansions[current])) {
-	    radmin_expansions[current++] = NULL;
-
-	    if (strncmp(name, text, len) == 0) {
-		    return name;
-	    }
-	    free(name);
-    }
-
-    return NULL;
+    name = radmin_expansions[current];
+    radmin_expansions[current++] = NULL;
+    return name;
 }
 
 
