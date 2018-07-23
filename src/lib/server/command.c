@@ -2405,7 +2405,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 
 			len = p - word;
 
-			info->argv[info->argc] = my_word = talloc_zero_array(info->argv, char *, len + 1);
+			info->argv[info->argc] = my_word = talloc_zero_array(info->argv, char, len + 1);
 			memcpy(my_word, word, len);
 			my_word[len] = '\0';
 
