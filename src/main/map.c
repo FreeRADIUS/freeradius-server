@@ -1109,7 +1109,10 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	}
 
 	parent = radius_list_ctx(context, map->lhs->tmpl_list);
-	rad_assert(parent);
+	if (!parent) {
+		REDEBUG("Unable to set parent list");
+		return -1;
+	}
 
 	/*
 	 *	The callback should either return -1 to signify operations error,
