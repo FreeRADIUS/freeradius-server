@@ -744,6 +744,62 @@ static int cmd_show_module_config(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info
 	return 0;
 }
 
+typedef struct module_tab_expand_t {
+	char const *text;
+	int count;
+	int max_expansions;
+	char const **expansions;
+} module_tab_expand_t;
+
+
+static int _module_tab_expand(void *instance, void *ctx)
+{
+	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
+	module_tab_expand_t *mt = ctx;
+	char const *p, *q;
+
+	if (mt->count >= mt->max_expansions) return 1;
+
+	if (!*mt->text) {
+	matched:
+		mt->expansions[mt->count] = strdup(mi->name);
+		mt->count++;
+		return 0;
+	}
+
+	/*
+	 *	@todo - put this in a helper function.
+	 */
+	p = mt->text;
+	q = mi->name;
+	while (*p && *q && (*p == *q)) {
+		p++;
+		q++;
+	}
+
+	if (!*p) goto matched;
+
+	return 0;
+}
+
+static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
+{
+	module_tab_expand_t mt;
+	CONF_SECTION *modules = (CONF_SECTION *) ctx;
+
+	if (info->argc <= 0) return 0;
+
+	mt.text = info->argv[info->argc - 1];
+	mt.count = 0;
+	mt.max_expansions = max_expansions;
+	mt.expansions = expansions;
+
+	(void) cf_data_walk(modules, module_instance_t, _module_tab_expand, &mt);
+
+	return mt.count;
+}
+
+
 static int _module_list(void *instance, void *ctx)
 {
 	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
@@ -821,15 +877,6 @@ static fr_cmd_table_t cmd_module_table[] = {
 
 	{
 		.parent = "show module",
-		.syntax = "config STRING",
-		.func = cmd_show_module_config,
-		.help = "show module config :name",
-		// @todo - do tab expand, by walking over the whole module list...
-		.read_only = true,
-	},
-
-	{
-		.parent = "show module",
 		.syntax = "list",
 		.func = cmd_show_module_list,
 		.help = "Show the list of modules loaded in the server.",
@@ -838,8 +885,19 @@ static fr_cmd_table_t cmd_module_table[] = {
 
 	{
 		.parent = "show module",
+		.syntax = "config STRING",
+		.func = cmd_show_module_config,
+		.tab_expand = module_name_tab_expand,
+		.help = "show module config NAME",
+		// @todo - do tab expand, by walking over the whole module list...
+		.read_only = true,
+	},
+
+	{
+		.parent = "show module",
 		.syntax = "status STRING",
 		.func = cmd_show_module_status,
+		.tab_expand = module_name_tab_expand,
 		.help = "show module status NAME",
 		.read_only = true,
 	},
