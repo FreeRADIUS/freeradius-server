@@ -119,6 +119,10 @@ int fr_unset_signal(int sig)
 #endif
 }
 
+#ifndef F_WRLCK
+#error "missing definition for F_WRLCK, all file locks will fail"
+#endif
+
 /*
  *	cppcheck apparently can't pick this up from the system headers.
  */
@@ -126,78 +130,50 @@ int fr_unset_signal(int sig)
 #define F_WRLCK
 #endif
 
-/*
- *	Internal wrapper for locking, to minimize the number of ifdef's
- *
- *	Use fcntl or error
- */
-int rad_lockfd(int fd, int lock_len)
+static int rad_lock(int fd, int lock_len, int cmd, int type)
 {
-#ifdef F_WRLCK
 	struct flock fl;
 
 	fl.l_start = 0;
 	fl.l_len = lock_len;
 	fl.l_pid = getpid();
-	fl.l_type = F_WRLCK;
+	fl.l_type = type;
 	fl.l_whence = SEEK_CUR;
 
-	return fcntl(fd, F_SETLKW, (void *)&fl);
-#else
-#error "missing definition for F_WRLCK, all file locks will fail"
+	return fcntl(fd, cmd, (void *)&fl);
+}
 
-	return -1;
-#endif
+/*
+ *	Internal wrapper for locking, to minimize the number of ifdef's
+ */
+int rad_lockfd(int fd, int lock_len)
+{
+	return rad_lock(fd, lock_len, F_SETLKW, F_WRLCK);
 }
 
 /*
  *	Internal wrapper for locking, to minimize the number of ifdef's
  *
- *	Lock an fd, prefer lockf() over flock()
  *	Nonblocking version.
  */
 int rad_lockfd_nonblock(int fd, int lock_len)
 {
-#ifdef F_WRLCK
-	struct flock fl;
-
-	fl.l_start = 0;
-	fl.l_len = lock_len;
-	fl.l_pid = getpid();
-	fl.l_type = F_WRLCK;
-	fl.l_whence = SEEK_CUR;
-
-	return fcntl(fd, F_SETLK, (void *)&fl);
-#else
-#error "missing definition for F_WRLCK, all file locks will fail"
-
-	return -1;
-#endif
+	/*
+	 *	Note that there's no "W" on SETLK
+	 */
+	return rad_lock(fd, lock_len, F_SETLK, F_WRLCK);
 }
 
 /*
  *	Internal wrapper for unlocking, to minimize the number of ifdef's
  *	in the source.
- *
- *	Unlock an fd, prefer lockf() over flock()
  */
 int rad_unlockfd(int fd, int lock_len)
 {
-#ifdef F_WRLCK
-	struct flock fl;
-
-	fl.l_start = 0;
-	fl.l_len = lock_len;
-	fl.l_pid = getpid();
-	fl.l_type = F_UNLCK;
-	fl.l_whence = SEEK_CUR;
-
-	return fcntl(fd, F_SETLK, (void *)&fl);
-#else
-#error "missing definition for F_WRLCK, all file locks will fail"
-
-	return -1;
-#endif
+	/*
+	 *	Note UNLOCK.
+	 */
+	return rad_lock(fd, lock_len, F_SETLK, F_UNLCK);
 }
 
 static char const hextab[] = "0123456789abcdef";
