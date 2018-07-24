@@ -149,6 +149,7 @@ static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t cons
  */
 static int radmin_num_expansions;
 static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
+static main_config_t *radmin_main_config = NULL;
 
 static char *
 radmin_expansion_walk(UNUSED const char *text, int state)
@@ -517,6 +518,42 @@ static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 	return 0;
 }
 
+static int cmd_show_config_section(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
+{
+	CONF_ITEM *item;
+
+	rad_assert(info->argc > 0);
+
+	item = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs,
+				 info->box[0]->vb_strvalue);
+	if (!item || !cf_item_is_section(item)) {
+		fprintf(fp_err, "No such configuration section.\n");
+		return -1;
+	}
+
+	(void) cf_section_write(fp, cf_item_to_section(item), 0);
+
+	return 0;
+}
+
+static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
+{
+	CONF_ITEM *item;
+
+	rad_assert(info->argc > 0);
+
+	item = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs,
+				 info->box[0]->vb_strvalue);
+	if (!item || !cf_item_is_pair(item)) {
+		fprintf(fp_err, "No such configuration item.\n");
+		return -1;
+	}
+
+	fprintf(fp, "%s\n", cf_pair_value(cf_item_to_pair(item)));
+
+	return 0;
+}
+
 //#define CMD_TEST (1)
 
 #ifdef CMD_TEST
@@ -627,6 +664,22 @@ static fr_cmd_table_t cmd_table[] = {
 	},
 
 	{
+		.parent = "show config",
+		.syntax = "section STRING",
+		.help = "Show a named configuration section",
+		.func = cmd_show_config_section,
+		.read_only = true
+	},
+
+	{
+		.parent = "show config",
+		.syntax = "item STRING",
+		.help = "Show a named configuration item",
+		.func = cmd_show_config_item,
+		.read_only = true
+	},
+
+	{
 		.syntax = "stats",
 		.help = "Show statistics in the server.",
 		.read_only = true
@@ -682,6 +735,7 @@ int fr_radmin_start(main_config_t *config)
 #endif
 
 	fr_command_register_hook = fr_radmin_register;
+	radmin_main_config = config;
 
 	if (fr_radmin_register(NULL, NULL, cmd_table) < 0) {
 		PERROR("Failed initializing radmin");
