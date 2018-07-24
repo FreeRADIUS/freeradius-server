@@ -854,13 +854,6 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 
 static fr_cmd_table_t cmd_module_table[] = {
 	{
-		.parent = "show",
-		.syntax = "module",
-		.help = "Show module settings.",
-		.read_only = true,
-	},
-
-	{
 		.parent = "show module",
 		.syntax = "list",
 		.func = cmd_show_module_list,
@@ -869,8 +862,8 @@ static fr_cmd_table_t cmd_module_table[] = {
 	},
 
 	{
-		.parent = "show module",
-		.syntax = "config STRING",
+		.parent = "show config",
+		.syntax = "module STRING",
 		.func = cmd_show_module_config,
 		.tab_expand = module_name_tab_expand,
 		.help = "show module config NAME",

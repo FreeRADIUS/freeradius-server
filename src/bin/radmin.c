@@ -620,6 +620,13 @@ static fr_cmd_table_t cmd_table[] = {
 	},
 
 	{
+		.parent = "show",
+		.syntax = "config",
+		.help = "Show configuration settings in the server.",
+		.read_only = true
+	},
+
+	{
 		.syntax = "stats",
 		.help = "Show statistics in the server.",
 		.read_only = true
