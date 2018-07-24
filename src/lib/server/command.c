@@ -2394,7 +2394,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 				 *	Give the function the partial
 				 *	text which should be expanded.
 				 */
-				info->argv[info->argc] = text;
+				info->argv[info->argc] = word;
 				info->box[info->argc] = NULL;
 				info->argc++;
 
