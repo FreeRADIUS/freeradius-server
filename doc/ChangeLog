@@ -15,6 +15,7 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  raddb/mods-available/perl, and the "perl_flags" configuration
 	  item.  This change should only affect people who are using
 	  variables in insecure ways.
+	* Allow "sqlcounter" module to be listed in "post-auth".
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -33,6 +34,10 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  the "session-state" list.  i.e. State length != 16.
 	* Be more aggressive about cleaning up zombie children
 	  when running in debug mode.
+	* Use LTDL_DEEPBIND, which fixes issues with Oracle
+	  libraries exporting LDAP API functions.
+	* unlock files when asked to unlock them.
+	* return error instead of asserting in map code.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
