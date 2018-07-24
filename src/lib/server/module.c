@@ -756,28 +756,13 @@ static int _module_tab_expand(void *instance, void *ctx)
 {
 	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
 	module_tab_expand_t *mt = ctx;
-	char const *p, *q;
 
 	if (mt->count >= mt->max_expansions) return 1;
 
-	if (!*mt->text) {
-	matched:
+	if (fr_command_strncmp(mt->text, mi->name)) {
 		mt->expansions[mt->count] = strdup(mi->name);
 		mt->count++;
-		return 0;
 	}
-
-	/*
-	 *	@todo - put this in a helper function.
-	 */
-	p = mt->text;
-	q = mi->name;
-	while (*p && *q && (*p == *q)) {
-		p++;
-		q++;
-	}
-
-	if (!*p) goto matched;
 
 	return 0;
 }

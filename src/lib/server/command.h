@@ -90,6 +90,7 @@ void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info);
 int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 			int max_expansions, char const **expansions);
 int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text);
+bool fr_command_strncmp(const char *text, const char *name) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

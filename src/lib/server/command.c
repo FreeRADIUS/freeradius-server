@@ -2670,3 +2670,26 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 
 	return 0;
 }
+
+/* See if partial string matches a full string.
+ *
+ * @param word the partial word to match
+ * @param name the name which "word" might match
+ * @return
+ *	- false if they do not match
+ *	- true if "word" is a prefix of "name"
+ *
+ */
+bool fr_command_strncmp(const char *word, const char *name)
+{
+	char const *p, *q;
+
+	if (!*word) return true;
+
+	SKIP_NAME(name);
+
+	/*
+	 *	If we're done P (partial or full), that's a match.
+	 */
+	return (*p == '\0');
+}
