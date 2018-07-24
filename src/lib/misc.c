@@ -818,7 +818,7 @@ int rad_unlockfd(int fd, int lock_len)
 	fl.l_type = F_UNLCK;
 	fl.l_whence = SEEK_CUR;
 
-	return fcntl(fd, F_UNLCK, (void *)&fl);
+	return fcntl(fd, F_SETLK, (void *)&fl);
 #else
 #error "missing definition for F_WRLCK, all file locks will fail"
 
