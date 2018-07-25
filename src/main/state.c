@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/state.h>
+#include <freeradius-devel/md5.h>
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct state_entry_t {
@@ -289,16 +290,23 @@ static state_entry_t *fr_state_create(fr_state_t *state, const char *server, RAD
 	 *	one we created above.
 	 */
 	if (vp) {
-		if (rad_debug_lvl && (vp->vp_length > sizeof(entry->state))) {
-			WARN("State should be %zd octets!",
-			     sizeof(entry->state));
-		}
-
 		/*
-		 *	Be tolerant of variable State attributes
+		 *	Assume our own State first.
 		 */
-		if (vp->vp_length >= sizeof(entry->state)) {
+		if (vp->vp_length == sizeof(entry->state)) {
 			memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
+
+			/*
+			 *	Too big?  Get the MD5 hash, in order
+			 *	to depend on the entire contents of State.
+			 */
+		} else if (vp->vp_length > sizeof(entry->state)) {
+			fr_md5_calc(entry->state, vp->vp_octets, vp->vp_length);
+
+			/*
+			 *	Too small?  Use the whole thing, and
+			 *	set the rest of entry->state to zero.
+			 */
 		} else {
 			memcpy(entry->state, vp->vp_octets, vp->vp_length);
 			memset(&entry->state[vp->vp_length], 0, sizeof(entry->state) - vp->vp_length);
