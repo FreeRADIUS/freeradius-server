@@ -2521,7 +2521,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	/*
 	 *	No syntax, can't do anything.
 	 */
-	if (!cmd->syntax) {
+	if (!cmd->syntax_argv) {
 		talloc_free(info);
 		return count;
 	}
