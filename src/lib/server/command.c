@@ -63,7 +63,6 @@ struct fr_cmd_t {
 
 	bool			read_only;
 	bool			intermediate;			//!< intermediate commands can't have callbacks
-	bool			auto_allocated;
 	bool			live;				//!< is this entry live?
 };
 
@@ -743,7 +742,6 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			cmd = fr_command_find(start, parents[i], &insert);
 			if (!cmd) {
 				cmd = fr_command_alloc(talloc_ctx, insert, parents[i]);
-				cmd->auto_allocated = true;
 			}
 
 			if (!cmd->intermediate) {
@@ -856,11 +854,6 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			return 0;
 		}
 
-		if (!cmd->auto_allocated) {
-			fr_strerror_printf("Cannot add duplicate command '%s'", cmd->name);
-			return -1;
-		}
-
 		/*
 		 *	Can't add new sub-commands to a
 		 *	command which already has a
@@ -870,12 +863,6 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			fr_strerror_printf("Cannot modify a pre-existing command '%s'", cmd->name);
 			return -1;
 		}
-
-		/*
-		 *	Convert the auto-allocated node to a
-		 *	user-allocated one, and fill in the fields.
-		 */
-		cmd->auto_allocated = false;
 	} else {
 		/*
 		 *	Allocate cmd and insert it into the current point.
@@ -1014,11 +1001,6 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 	cmd = stack->entry[stack->depth];
 
 	/*
-	 *	Don't run the callback for auto-allocated entries.
-	 */
-	if (cmd->auto_allocated) goto check_child;
-
-	/*
 	 *	Fill in the structure.
 	 */
 	info.num_parents = stack->depth;
@@ -1036,7 +1018,6 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 		return rcode;
 	}
 
-check_child:
 	/*
 	 *	This command has children.  Go do those before running
 	 *	the next command at the current level.
@@ -1046,14 +1027,6 @@ check_child:
 		info.parents[stack->depth] = cmd->name;
 		stack->depth++;
 		stack->entry[stack->depth] = cmd->child;
-
-		/*
-		 *	Skip auto-allocated children.
-		 */
-		if (cmd->child->auto_allocated) {
-			cmd = cmd->child;
-			goto check_child;
-		}
 		return 1;
 	}
 
