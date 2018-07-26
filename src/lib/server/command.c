@@ -47,13 +47,14 @@ typedef struct fr_cmd_argv_t {
 } fr_cmd_argv_t;
 
 struct fr_cmd_t {
+	char const		*name;
+
 	struct fr_cmd_t		*next;
 	struct fr_cmd_t		*child;				//!< if there are subcommands
-	char const		*name;
+
 	char const		*syntax;			//!< only for terminal nodes
 	char const		*help;				//!< @todo - long / short help
 
-	int			syntax_argc;			//!< syntax split out into arguments
 	fr_cmd_argv_t		*syntax_argv;			//!< arguments and types
 
 	void			*ctx;
@@ -903,7 +904,6 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 
 	if (syntax_argv) {
 		cmd->syntax = table->syntax;
-		cmd->syntax_argc = argc;
 		cmd->syntax_argv = talloc_steal(cmd, syntax_argv);
 	}
 
@@ -2181,7 +2181,7 @@ check_syntax:
 	 *	there are any.  Otherwise, return that the command is
 	 *	runnable.
 	 */
-	if (cmd->syntax_argc == 0) {
+	if (!cmd->syntax_argv) {
 		SKIP_SPACES;
 
 		if (*word > 0) goto too_many;
