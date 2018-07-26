@@ -518,6 +518,91 @@ static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 	return 0;
 }
 
+
+static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions,
+				   UNUSED bool section)
+{
+	int count;
+	size_t reflen;
+	char *ref, *text;
+	CONF_ITEM *ci;
+	CONF_SECTION *cs;
+
+	if (info->argc <= 0) return 0;
+
+	ref = talloc_strdup(talloc_ctx, info->argv[info->argc - 1]);
+	text = strrchr(ref, '.');
+	if (!text) {
+		cs = radmin_main_config->root_cs;
+		text = ref;
+		reflen = 0;
+
+	} else {
+		reflen = (text - ref);
+		*text = '\0';
+		text++;
+
+		ci = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs, ref);
+		if (!ci) {
+		none:
+			talloc_free(ref);
+			return 0;
+		}
+
+		/*
+		 *	The ref is to a pair.  Don't allow further
+		 *	expansions.
+		 */
+		if (cf_item_is_pair(ci)) goto none;
+		cs = cf_item_to_section(ci);
+	}
+
+	count = 0;
+
+	/*
+	 *	Walk the reference, allowing for additional expansions.
+	 */
+	for (ci = cf_item_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_next(cs, ci)) {
+		char const *name1;
+//		char const *name2;
+		char *str;
+
+		if (cf_item_is_section(ci)) {
+			name1 = cf_section_name1(cf_item_to_section(ci));
+//			name2 = cf_section_name2(cf_item_to_section(ci));
+
+		} else if (!cf_item_is_pair(ci)) {
+			continue;
+		} else {
+			name1 = cf_pair_attr(cf_item_to_pair(ci));
+//			name2 = NULL;
+		}
+
+		/*
+		 *	@todo - check for server[foo].bar, too!
+		 */
+		if (!fr_command_strncmp(text, name1)) continue;
+
+		if (reflen) {
+			expansions[count] = str = malloc(reflen + strlen(name1) + 2);
+			memcpy(str, ref, reflen);
+			str[reflen] = '.';
+			strcpy(str + reflen + 1, name1);
+		} else {
+			expansions[count] = str = malloc(reflen + strlen(name1) + 1);
+			memcpy(str, ref, reflen);
+			strcpy(str + reflen, name1);
+		}
+		count++;
+
+		if (count >= max_expansions) break;
+	}
+
+	return count;
+}
+
 static int cmd_show_config_section(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	CONF_ITEM *item;
@@ -534,6 +619,17 @@ static int cmd_show_config_section(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_
 	(void) cf_section_write(fp, cf_item_to_section(item), 0);
 
 	return 0;
+}
+
+
+static int tab_expand_config_section(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
+{
+	return tab_expand_config_thing(talloc_ctx, ctx, info, max_expansions, expansions, true);
+}
+
+static int tab_expand_config_item(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
+{
+	return tab_expand_config_thing(talloc_ctx, ctx, info, max_expansions, expansions, false);
 }
 
 static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
@@ -668,6 +764,7 @@ static fr_cmd_table_t cmd_table[] = {
 		.syntax = "section STRING",
 		.help = "Show a named configuration section",
 		.func = cmd_show_config_section,
+		.tab_expand = tab_expand_config_section,
 		.read_only = true
 	},
 
@@ -676,6 +773,7 @@ static fr_cmd_table_t cmd_table[] = {
 		.syntax = "item STRING",
 		.help = "Show a named configuration item",
 		.func = cmd_show_config_item,
+		.tab_expand = tab_expand_config_item,
 		.read_only = true
 	},
 
