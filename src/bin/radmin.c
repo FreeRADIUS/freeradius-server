@@ -596,7 +596,7 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 		}
 
 		/*
-		 *	Check for name1/name2.
+		 *	Check for a matching name.
 		 */
 		if (!fr_command_strncmp(text, check)) continue;
 
@@ -606,7 +606,7 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 		strcpy(str + reflen + offset, check);
 
 		count++;
-		if (count >= max_expansions) break;
+		if (count >= max_expansions) return count;
 	}
 
 	return count;
