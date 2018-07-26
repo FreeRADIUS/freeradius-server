@@ -2624,8 +2624,15 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 		return 0;
 	}
 
-	print_help(fp, cmd);
-
+	/*
+	 *	For one command, try to print out the syntax, as it's
+	 *	generally more useful than the help.
+	 */
+	if (!cmd->syntax) {
+		print_help(fp, cmd);
+	} else {
+		fprintf(fp, "%-30s%s\n", cmd->name, cmd->syntax);
+	}
 	return 0;
 }
 
