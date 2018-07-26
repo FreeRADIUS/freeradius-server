@@ -520,7 +520,7 @@ static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 
 
 static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions,
-				   UNUSED bool section)
+				   bool want_section)
 {
 	int count;
 	size_t reflen, offset;
@@ -586,6 +586,10 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 
 		} else if (!cf_item_is_pair(ci)) {
 			continue;
+
+		} else if (want_section) {
+			continue;
+
 		} else {
 			name1 = cf_pair_attr(cf_item_to_pair(ci));
 			check = name1;
