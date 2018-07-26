@@ -1003,55 +1003,10 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 		*walk_ctx = stack;
 
 		stack->parents = info.parents = talloc_zero_array(stack, char const *, CMD_MAX_ARGV);
-
-		/*
-		 *	If the head was auto-allocated, find the first
-		 *	child which was user-defined.  Note that there
-		 *	MUST be a child which is user-defined.
-		 */
-		if (head->auto_allocated) {
-			cmd = head;
-
-			while (cmd) {
-				stack->entry[stack->depth] = cmd;
-
-				/*
-				 *	Finally a real child, stop.
-				 */
-				if (!cmd->auto_allocated) break;
-
-				/*
-				 *	This command was
-				 *	auto-allocated, but it has no
-				 *	real children which caused
-				 *	that allocation.  What's that
-				 *	all about?
-				 */
-				if (!cmd->child){
-					fr_strerror_printf("Command '%s' has no children", cmd->name);
-					return -1;
-				}
-
-				/*
-				 *	One of the children MUST be real!
-				 */
-				info.parents[stack->depth] = cmd->name;
-				stack->depth++;
-				rad_assert(stack->depth < CMD_MAX_ARGV);
-				cmd = cmd->child;
-			}
-
-			if (!cmd) {
-				fr_strerror_printf("Failed to find real command on walk");
-				return -1;
-			}
-		}
-
 	} else {
 		stack = *walk_ctx;
 		info.parents = stack->parents;
 	}
-
 
 	/*
 	 *	Grab this entry, which MUST exist.
