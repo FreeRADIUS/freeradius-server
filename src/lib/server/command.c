@@ -686,7 +686,7 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
  *  things in the server will sanity check them.
  *
  * @param talloc_ctx the talloc context
- * @param head pointer to the head of the table pointer.  Should point to NULL at the start.
+ * @param head pointer to the head of the command table.
  * @param name of the command to allocate.  Can be NULL for "top level" commands
  * @param ctx for any callback function
  * @param table of information about the current command
@@ -919,7 +919,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
  *  etc.
  *
  * @param talloc_ctx the talloc context
- * @param head pointer to the head of the table pointer.  Should point to NULL at the start.
+ * @param head pointer to the head of the command table.
  * @param name of the command to allocate
  * @param ctx for any callback function
  * @param table array of tables, terminated by "help == NULL"
@@ -1752,8 +1752,9 @@ no_match:
 				p++; \
 				q++; \
 			} } while (0)
-#define MATCHED_NAME ((!*p || isspace((int) *p)) && !*q)
-#define MATCHED_START ((text + start) >= word) && ((text + start) <= p)
+#define MATCHED_NAME	((!*p || isspace((int) *p)) && !*q)
+#define TOO_FAR		(*p && (*q > *p))
+#define MATCHED_START	((text + start) >= word) && ((text + start) <= p)
 
 static char const *skip_word(char const *text)
 {
@@ -2592,10 +2593,18 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	return count;
 }
 
-/** Do readline-style command completions
+static void print_help(FILE *fp, fr_cmd_t *cmd)
+{
+	if (!cmd->help) {
+		fprintf(fp, "%s\n", cmd->name);
+	} else {
+		fprintf(fp, "%-30s%s\n", cmd->name, cmd->help);
+	}
+}
+
+/** Do readline-style help completions
  *
- *  Most useful as part of readline tab expansions.  The expansions
- *  are strdup() strings, and MUST be free'd by the caller.
+ *  Most useful as part of readline.
  *
  * @param fp where the help is printed
  * @param head of the command tree
@@ -2620,11 +2629,7 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 		 */
 		if (!*word) {
 			while (cmd) {
-				if (!cmd->help) {
-					fprintf(fp, "%s\n", cmd->name);
-				} else {
-					fprintf(fp, "%-30s%s\n", cmd->name, cmd->help);
-				}
+				print_help(fp, cmd);
 				cmd = cmd->next;
 			}
 			return 0;
@@ -2636,12 +2641,28 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 		SKIP_NAME(cmd->name);
 
 		/*
+		 *	Matched part of the name.  Print out help for this one.
+		 */
+		if (!*p && *q) {
+			print_help(fp, cmd);
+		}
+
+		/*
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
 		if (!MATCHED_NAME) {
+			if (TOO_FAR) return 0;
+
 			cmd = cmd->next;
 			continue;
+		}
+
+		/*
+		 *	Done the input, but not the commands.
+		 */
+		if (!*p) {
+			break;
 		}
 
 		if (cmd->intermediate) {
@@ -2664,11 +2685,7 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 		return 0;
 	}
 
-	if (!cmd->help) {
-		fprintf(fp, "%s\n", cmd->name);
-	} else {
-		fprintf(fp, "%-30s%s\n", cmd->name, cmd->help);
-	}
+	print_help(fp, cmd);
 
 	return 0;
 }
