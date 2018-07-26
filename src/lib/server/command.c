@@ -1322,7 +1322,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 			continue;
 		}
 
-		if (!cmd->syntax) {
+		if (!cmd->syntax_argv) {
 			if ((i + 1) == info->argc) return 0;
 
 			return -1;
@@ -1442,7 +1442,7 @@ char const *fr_command_help(fr_cmd_t *head, int argc, char *argv[])
 		cmd = fr_command_find(&start, argv[i], NULL);
 		if (!cmd) return NULL;
 
-		if (!cmd->syntax && !cmd->func) {
+		if (cmd->intermediate) {
 			rad_assert(cmd->child != NULL);
 			start = cmd->child;
 			continue;
