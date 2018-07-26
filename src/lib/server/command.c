@@ -72,16 +72,17 @@ static bool fr_command_valid_name(char const *name);
 static int split(char **input, char **output, bool syntax_string);
 
 /*
- *	Hacks for simplicity.  Non-data types aren't allowed as
+ *	Hacks for simplicity.  These data types aren't allowed as
  *	parameters, so we can re-use them for something else.
  */
-enum {
-	FR_TYPE_FIXED = FR_TYPE_ABINARY,
-	FR_TYPE_VARARGS,
-	FR_TYPE_OPTIONAL,
-	FR_TYPE_ALTERNATE,
-	FR_TYPE_ALTERNATE_CHOICE,
-};
+
+// our fixed string.  Any data type LESS than this must be a real data type
+#define FR_TYPE_FIXED		FR_TYPE_ABINARY
+
+#define FR_TYPE_VARARGS		FR_TYPE_TLV
+#define FR_TYPE_OPTIONAL	FR_TYPE_STRUCT
+#define FR_TYPE_ALTERNATE	FR_TYPE_EXTENDED
+#define FR_TYPE_ALTERNATE_CHOICE FR_TYPE_LONG_EXTENDED
 
 /** Find a command
  *
