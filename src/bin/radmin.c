@@ -523,7 +523,7 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 				   UNUSED bool section)
 {
 	int count;
-	size_t reflen;
+	size_t reflen, offset;
 	char *ref, *text;
 	CONF_ITEM *ci;
 	CONF_SECTION *cs;
@@ -534,11 +534,13 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 	text = strrchr(ref, '.');
 	if (!text) {
 		cs = radmin_main_config->root_cs;
-		text = ref;
 		reflen = 0;
+		offset = 0;
+		text = ref;
 
 	} else {
 		reflen = (text - ref);
+		offset = 1;
 		*text = '\0';
 		text++;
 
@@ -565,38 +567,41 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 	for (ci = cf_item_next(cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(cs, ci)) {
-		char const *name1;
-//		char const *name2;
+		char const *name1, *check;
 		char *str;
+		char buffer[256];
 
 		if (cf_item_is_section(ci)) {
+			char const *name2;
+
 			name1 = cf_section_name1(cf_item_to_section(ci));
-//			name2 = cf_section_name2(cf_item_to_section(ci));
+			name2 = cf_section_name2(cf_item_to_section(ci));
+
+			if (name2) {
+				snprintf(buffer, sizeof(buffer), "%s[%s]", name1, name2);
+				check = buffer;
+			} else {
+				check = name1;
+			}
 
 		} else if (!cf_item_is_pair(ci)) {
 			continue;
 		} else {
 			name1 = cf_pair_attr(cf_item_to_pair(ci));
-//			name2 = NULL;
+			check = name1;
 		}
 
 		/*
-		 *	@todo - check for server[foo].bar, too!
+		 *	Check for name1/name2.
 		 */
-		if (!fr_command_strncmp(text, name1)) continue;
+		if (!fr_command_strncmp(text, check)) continue;
 
-		if (reflen) {
-			expansions[count] = str = malloc(reflen + strlen(name1) + 2);
-			memcpy(str, ref, reflen);
-			str[reflen] = '.';
-			strcpy(str + reflen + 1, name1);
-		} else {
-			expansions[count] = str = malloc(reflen + strlen(name1) + 1);
-			memcpy(str, ref, reflen);
-			strcpy(str + reflen, name1);
-		}
+		expansions[count] = str = malloc(reflen + strlen(check) + offset + 1);
+		memcpy(str, ref, reflen);
+		str[reflen] = '.';
+		strcpy(str + reflen + offset, check);
+
 		count++;
-
 		if (count >= max_expansions) break;
 	}
 
