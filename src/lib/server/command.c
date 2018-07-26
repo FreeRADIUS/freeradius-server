@@ -2121,6 +2121,16 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 			}
 
 			/*
+			 *	We're looking for "abc" and we found
+			 *	"def".  We know that "abc" can't occur
+			 *	any more, so stop.
+			 */
+			if (TOO_FAR) {
+				cmd = NULL;
+				break;
+			}
+
+			/*
 			 *	Otherwise keep searching for it.
 			 */
 			cmd = cmd->next;
@@ -2551,6 +2561,8 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		 *	space, and *q is the NUL character.
 		 */
 		if (!MATCHED_NAME) {
+			if (TOO_FAR) return count;
+
 			cmd = cmd->next;
 			continue;
 		}
