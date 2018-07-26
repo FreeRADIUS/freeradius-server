@@ -698,7 +698,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 {
 	fr_cmd_t *cmd, **start;
 	fr_cmd_t **insert;
-	int argc = 0;
+	int argc = 0, depth = 0;
 	fr_cmd_argv_t *syntax_argv;
 
 	if (name && !fr_command_valid_name(name)) {
@@ -759,6 +759,8 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			fr_strerror_printf("Commands are too deep (max is %d)", CMD_MAX_ARGV);
 			return -1;
 		}
+
+		depth = i;
 	}
 
 	/*
@@ -798,7 +800,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			return  -1;
 		}
 
-		if (argc == CMD_MAX_ARGV) {
+		if ((depth + argc) >= CMD_MAX_ARGV) {
 			talloc_free(syntax);
 			fr_strerror_printf("Too many arguments were supplied to the command.");
 			return  -1;
