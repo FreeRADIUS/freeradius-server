@@ -2634,6 +2634,7 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 	} else {
 		fprintf(fp, "%-30s%s\n", cmd->name, cmd->syntax);
 	}
+
 	return 0;
 }
 
