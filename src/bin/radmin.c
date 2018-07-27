@@ -538,6 +538,17 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 		offset = 0;
 		text = ref;
 
+		/*
+		 *	If it's a good ref, use that for expansions.
+		 */
+		ci = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs, ref);
+		if (ci && cf_item_is_section(ci)) {
+			cs = cf_item_to_section(ci);
+			text = "";
+			reflen = strlen(ref);
+			offset = 1;
+		}
+
 	} else {
 		reflen = (text - ref);
 		offset = 1;
@@ -571,8 +582,10 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 		char *str;
 		char buffer[256];
 
-		if (cf_item_is_section(ci)) {
+		if (want_section) {
 			char const *name2;
+
+			if (!cf_item_is_section(ci)) continue;
 
 			name1 = cf_section_name1(cf_item_to_section(ci));
 			name2 = cf_section_name2(cf_item_to_section(ci));
@@ -584,13 +597,9 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 				check = name1;
 			}
 
-		} else if (!cf_item_is_pair(ci)) {
-			continue;
-
-		} else if (want_section) {
-			continue;
-
 		} else {
+			if (!cf_item_is_pair(ci)) continue;
+
 			name1 = cf_pair_attr(cf_item_to_pair(ci));
 			check = name1;
 		}
