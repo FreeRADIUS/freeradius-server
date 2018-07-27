@@ -2318,13 +2318,16 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 				if (!cmd->tab_expand) {
 					/*
 					 *	Partial word on input.
-					 *	Don't over-write it.
+					 *	Tell the caller the
+					 *	full name.
 					 */
-					if (*word) return count;
+					if (!*p || (isspace((int) *p))) {
+					expand_name:
+						expansions[count] = strdup(argv->name);
+						count++;
+					}
 
-				expand_name:
-					expansions[count] = strdup(argv->name);
-					return count + 1;
+					return count;
 				}
 
 				/*
