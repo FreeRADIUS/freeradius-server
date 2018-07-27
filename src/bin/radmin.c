@@ -643,7 +643,9 @@ static int tab_expand_config_item(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info
 
 static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
+	FR_TOKEN token;
 	CONF_ITEM *item;
+	CONF_PAIR *cp;
 
 	rad_assert(info->argc > 0);
 
@@ -654,7 +656,37 @@ static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd
 		return -1;
 	}
 
-	fprintf(fp, "%s\n", cf_pair_value(cf_item_to_pair(item)));
+	cp = cf_item_to_pair(item);
+	token = cf_pair_value_quote(cp);
+
+	if (token == T_BARE_WORD) {
+	bare:
+		fprintf(fp, "%s\n", cf_pair_value(cp));
+	} else {
+		char quote;
+		char *value;
+
+		switch (token) {
+		case T_DOUBLE_QUOTED_STRING:
+			quote = '"';
+			break;
+
+		case T_SINGLE_QUOTED_STRING:
+			quote = '\'';
+			break;
+
+		case T_BACK_QUOTED_STRING:
+			quote = '`';
+			break;
+
+		default:
+			goto bare;
+		}
+
+		value = fr_asprint(NULL, cf_pair_value(cp), -1, quote);
+		fprintf(fp, "%c%s%c\n", quote, value, quote);
+		talloc_free(value);
+	}
 
 	return 0;
 }
