@@ -1763,13 +1763,9 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 			 */
 			if ((argv->type != FR_TYPE_STRING) &&
 			    ((*word == '"') || (*word == '\''))) {
-			invalid:
 				fr_strerror_printf("Invalid quoted string at %s", word);
 				return -1;
 			}
-
-			p = skip_word(word);
-			if (!p) goto invalid;
 
 			len = p - word;
 			if ((*word == '"') || (*word == '\'')) {
