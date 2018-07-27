@@ -2388,7 +2388,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 		 *	matching all of the name.  The input is a
 		 *	PARTIAL match.  Go fill it in.
 		 */
-		if (!*p) goto expand_name;
+		if (!*p || isspace((int) *p)) goto expand_name;
 
 		/*
 		 *	The only matching exit condition is *p is a
@@ -2463,7 +2463,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 				 *	Matched all of the input to
 				 *	part of cmd->name.
 				 */
-				if (!*p) {
+				if (!*p || isspace((int) *p)) {
 					expansions[count] = strdup(cmd->name);
 					count++;
 				}
