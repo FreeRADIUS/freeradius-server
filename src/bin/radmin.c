@@ -140,7 +140,6 @@ static char *radmin_buffer = NULL;
 #define CMD_MAX_ARGV (32)
 #define CMD_MAX_EXPANSIONS (128)
 
-static int cmd_help(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info);
 static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
 
 #ifdef USE_READLINE
@@ -269,16 +268,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	Special-case commands in sub-contexts.
 		 */
 		if (context > 0) {
-			/*
-			 *	We're in a nested command and the user typed
-			 *	"help".  Act as if they typed "help ...".
-			 *	It's just polite.
-			 */
-			if (strcmp(line, "help") == 0) {
-				cmd_help(stdout, stderr, &radmin_info, info);
-				goto next;
-			}
-
 			/*
 			 *	Special-case "quit", which works everywhere.
 			 *	It closes the CLI immediately.
@@ -433,22 +422,6 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t cons
 {
 	int max = 1;
 	fr_cmd_t *cmd = NULL;
-
-	/*
-	 *	We're called in a context from `radiusd -r`.  Do magic.
-	 */
-	if (ctx == &radmin_info) {
-		int i;
-
-		rad_assert(radmin_info.argc > 0);
-
-		for (i = radmin_info.argc - 1; i >= 0; i--) {
-			if ((cmd = radmin_info.cmd[i]) != NULL) break;
-		}
-
-		fr_command_list(fp, 1, cmd, FR_COMMAND_OPTION_LIST_CHILD);
-		return 0;
-	}
 
 	if ((info->argc > 0) && (strcmp(info->argv[0], "all") == 0)) {
 		max = CMD_MAX_ARGV;
