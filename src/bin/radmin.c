@@ -555,10 +555,14 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 		char *str;
 		char buffer[256];
 
-		if (want_section) {
+		/*
+		 *	@todo - if we want a config pair, AND we have
+		 *	partial input, THEN check if the section name
+		 *	matches the partial input.  If so, allow it as
+		 *	an expansion.
+		 */
+		if (cf_item_is_section(ci)) {
 			char const *name2;
-
-			if (!cf_item_is_section(ci)) continue;
 
 			name1 = cf_section_name1(cf_item_to_section(ci));
 			name2 = cf_section_name2(cf_item_to_section(ci));
@@ -570,8 +574,20 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 				check = name1;
 			}
 
+			if (!want_section) {
+				if (*text && fr_command_strncmp(text, check)) {
+					expansions[count] = strdup(check);
+					count++;
+				}
+
+				continue;
+			}
+
+		} else if (!cf_item_is_pair(ci)) {
+			continue;
+
 		} else {
-			if (!cf_item_is_pair(ci)) continue;
+			if (want_section) continue;
 
 			name1 = cf_pair_attr(cf_item_to_pair(ci));
 			check = name1;
