@@ -27,7 +27,7 @@ mandir          = /usr/share/man
 libdir          = /usr/lib/$(package)
 logdir          = /var/log/$(package)
 pkgdocdir       = /usr/share/doc/$(package)
-raddbdir        = /etc/$(package)
+raddbdir        = /etc/$(package)/3.0
 
 modulelist=krb5 ldap sql_mysql sql_iodbc sql_postgresql dhcp redis rest yubikey
 pkgs=$(shell dh_listpackages)
