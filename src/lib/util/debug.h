@@ -125,6 +125,40 @@ void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
 void		NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
 #  define	fr_exit_now(_x) _fr_exit_now(__FILE__, __LINE__, (_x))
 
+void fr_sign_struct(void *ptr, size_t size, size_t offset);
+void fr_verify_struct(void *ptr, size_t size, size_t offset);
+
+/** Manual validation of structures.
+ *
+ *	typedef struct foo_t {
+ *		char *a;
+ *		int b;
+ *		FR_SIGNATURE		// no semicolon!
+ *	} foo_t;
+ *
+ *  and then once the structure is initialized (and will never be changed)
+ *
+ *	foo_t *ptr;
+ *	FR_STRUCT_SIGN(ptr);
+ *
+ *  and some time later...
+ *
+ *	foo_t *ptr;
+ *	FR_STRUCT_VERIFY(ptr);
+ *
+ *  Note that the structure can't contain variable elements such as fr_dlist_t.
+ *  And that we're not verifying the contents of the fields which are pointers.
+ */
+#ifndef NDEBUG
+#define FR_STRUCT_SIGN(ptr)	fr_sign_struct(ptr, sizeof(__typeof__(*ptr)), offsetof(__typeof__(*ptr), _signature));
+#define FR_STRUCT_VERIFY(ptr)	fr_verify_struct(ptr, sizeof(__typeof__(*ptr)), offsetof(__typeof__(*ptr), _signature))
+#define FR_STRUCT_SIGNATURE	 uint32_t _signature;
+#else
+#define FR_SIGN_STRUCT(ptr)
+#define FR_VERIFY_STRUCT(ptr)
+#define FR_SIGNATURE
+#endif
+
 #ifdef __cplusplus
 }
 #endif

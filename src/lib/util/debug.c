@@ -27,6 +27,7 @@
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/hash.h>
 
 #include <assert.h>
 #include <limits.h>
@@ -1332,3 +1333,36 @@ void NEVER_RETURNS _fr_exit_now(UNUSED char const *file, UNUSED int line, int st
 	_exit(status);
 }
 #endif
+
+/*
+ *	Sign a structure, but skip _signature at "offset".
+ */
+static uint32_t fr_hash_struct(void *ptr, size_t size, size_t offset)
+{
+	uint32_t hash;
+
+	/*
+	 *	Hash entry is at the end of the structure, that's
+	 *	best...
+	 */
+	if ((size + 4) == offset) {
+		return fr_hash(ptr, size);
+	}
+
+	hash = fr_hash(ptr, offset);
+	return fr_hash_update(((uint8_t *) ptr) + offset + 4, size - (offset + 4), hash);
+}
+
+void fr_sign_struct(void *ptr, size_t size, size_t offset)
+{
+	*(uint32_t *) (((uint8_t *) ptr) + offset) = fr_hash_struct(ptr, size, offset);
+}
+
+void fr_verify_struct(void *ptr, size_t size, size_t offset)
+{
+	uint32_t hash;
+
+	hash = fr_hash_struct(ptr, size, offset);
+
+	(void) fr_cond_assert(hash == *(uint32_t *) (((uint8_t *) ptr) + offset));
+}
