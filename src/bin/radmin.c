@@ -418,10 +418,9 @@ static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUS
 	return 0;
 }
 
-static int cmd_help(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	int max = 1;
-	fr_cmd_t *cmd = NULL;
 
 	if ((info->argc > 0) && (strcmp(info->argv[0], "all") == 0)) {
 		max = CMD_MAX_ARGV;
@@ -431,6 +430,7 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t cons
 
 	return 0;
 }
+
 
 static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
