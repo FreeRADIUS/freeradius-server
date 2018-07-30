@@ -1366,3 +1366,11 @@ void fr_verify_struct(void *ptr, size_t size, size_t offset)
 
 	(void) fr_cond_assert(hash == *(uint32_t *) (((uint8_t *) ptr) + offset));
 }
+
+void fr_verify_struct_member(void *ptr, size_t len, uint32_t *signature)
+{
+	uint32_t hash;
+
+	hash = fr_hash(ptr, len);
+	(void) fr_cond_assert(hash == *signature);
+}
