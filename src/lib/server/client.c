@@ -331,6 +331,9 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	 */
 	(void) talloc_steal(clients, client); /* reparent it */
 
+	FR_STRUCT_MEMBER_SIGN(client, secret, talloc_array_length(client->secret));
+	FR_STRUCT_SIGN(client);
+
 	return true;
 }
 
@@ -408,6 +411,8 @@ RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 		fr_ipaddr_mask(&my_client.ipaddr, i);
 		client = rbtree_finddata(clients->tree[i], &my_client);
 		if (client) {
+			FR_STRUCT_MEMBER_VERIFY(client, secret, talloc_array_length(client->secret));
+			FR_STRUCT_VERIFY(client);
 			return client;
 		}
 	}
