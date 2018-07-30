@@ -161,7 +161,7 @@ void fr_verify_struct_member(void const *ptr, size_t len, uint32_t *signature);
 #else
 #define FR_SIGN_STRUCT(_ptr)
 #define FR_VERIFY_STRUCT(_ptr)
-#define FR_SIGNATURE
+#define FR_STRUCT_SIGNATURE
 
 #define FR_STRUCT_MEMBER_SIGN(_ptr, _member, _len)
 #define FR_STRUCT_MEMBER_VERIFY(_ptr, _member, _len)
