@@ -126,8 +126,8 @@ void		NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
 #  define	fr_exit_now(_x) _fr_exit_now(__FILE__, __LINE__, (_x))
 
 void fr_sign_struct(void *ptr, size_t size, size_t offset);
-void fr_verify_struct(void *ptr, size_t size, size_t offset);
-void fr_verify_struct_member(void *ptr, size_t len, uint32_t *signature);
+void fr_verify_struct(void const *ptr, size_t size, size_t offset);
+void fr_verify_struct_member(void const *ptr, size_t len, uint32_t *signature);
 
 /** Manual validation of structures.
  *

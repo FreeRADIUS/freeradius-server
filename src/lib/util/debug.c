@@ -1337,7 +1337,7 @@ void NEVER_RETURNS _fr_exit_now(UNUSED char const *file, UNUSED int line, int st
 /*
  *	Sign a structure, but skip _signature at "offset".
  */
-static uint32_t fr_hash_struct(void *ptr, size_t size, size_t offset)
+static uint32_t fr_hash_struct(void const *ptr, size_t size, size_t offset)
 {
 	uint32_t hash;
 
@@ -1350,7 +1350,7 @@ static uint32_t fr_hash_struct(void *ptr, size_t size, size_t offset)
 	}
 
 	hash = fr_hash(ptr, offset);
-	return fr_hash_update(((uint8_t *) ptr) + offset + 4, size - (offset + 4), hash);
+	return fr_hash_update(((uint8_t const *) ptr) + offset + 4, size - (offset + 4), hash);
 }
 
 void fr_sign_struct(void *ptr, size_t size, size_t offset)
@@ -1358,16 +1358,16 @@ void fr_sign_struct(void *ptr, size_t size, size_t offset)
 	*(uint32_t *) (((uint8_t *) ptr) + offset) = fr_hash_struct(ptr, size, offset);
 }
 
-void fr_verify_struct(void *ptr, size_t size, size_t offset)
+void fr_verify_struct(void const *ptr, size_t size, size_t offset)
 {
 	uint32_t hash;
 
 	hash = fr_hash_struct(ptr, size, offset);
 
-	(void) fr_cond_assert(hash == *(uint32_t *) (((uint8_t *) ptr) + offset));
+	(void) fr_cond_assert(hash == *(uint32_t const *) (((uint8_t const *) ptr) + offset));
 }
 
-void fr_verify_struct_member(void *ptr, size_t len, uint32_t *signature)
+void fr_verify_struct_member(void const *ptr, size_t len, uint32_t *signature)
 {
 	uint32_t hash;
 
