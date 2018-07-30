@@ -497,7 +497,8 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 {
 	int count;
 	size_t reflen, offset;
-	char *ref, *text;
+	char *ref;
+	char const *text;
 	CONF_ITEM *ci;
 	CONF_SECTION *cs;
 
@@ -525,7 +526,7 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 	} else {
 		reflen = (text - ref);
 		offset = 1;
-		*text = '\0';
+		ref[reflen] = '\0';
 		text++;
 
 		ci = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs, ref);
