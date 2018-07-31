@@ -686,7 +686,8 @@ int main(int argc, char **argv)
 
 			pwd = getpwnam(uid_name);
 			if (!pwd) {
-				fprintf(stderr, "%s: Failed getting UID for user %s: %s\n", progname, uid_name, strerror(errno));
+				fprintf(stderr, "%s: Failed getting UID for user %s: %s\n", progname, uid_name,
+					fr_syserror(errno));
 				exit(EXIT_FAILURE);
 			}
 
@@ -704,7 +705,7 @@ int main(int argc, char **argv)
 			grp = getgrnam(gid_name);
 			if (!grp) {
 				fprintf(stderr, "%s: Failed resolving gid of group %s: %s\n",
-					progname, gid_name, strerror(errno));
+					progname, gid_name, fr_syserror(errno));
 				exit(EXIT_FAILURE);
 			}
 

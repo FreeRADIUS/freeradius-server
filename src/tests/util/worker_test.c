@@ -307,7 +307,7 @@ static void master_process(void)
 			MPRINT1("Master sent message %d to worker %d\n", num_messages, which_worker);
 			rcode = fr_channel_send_request(workers[which_worker].ch, cd, &reply);
 			if (rcode < 0) {
-				fprintf(stderr, "Failed sending request: %s\n", strerror(errno));
+				fprintf(stderr, "Failed sending request: %s\n", fr_syserror(errno));
 			}
 			which_worker++;
 			if (which_worker >= num_workers) which_worker = 0;
@@ -338,7 +338,7 @@ check_close:
 				rcode = fr_channel_signal_worker_close(workers[i].ch);
 				MPRINT1("Master asked exit for worker %d.\n", workers[i].id);
 				if (rcode < 0) {
-					fprintf(stderr, "Failed signaling close %d: %s\n", i, strerror(errno));
+					fprintf(stderr, "Failed signaling close %d: %s\n", i, fr_syserror(errno));
 					exit(EXIT_FAILURE);
 				}
 			}
@@ -354,7 +354,7 @@ check_close:
 		if (num_events < 0) {
 			if (errno == EINTR) continue;
 
-			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
+			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -489,7 +489,7 @@ int main(int argc, char *argv[])
 	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	if (fr_time_start() < 0) {
-		fprintf(stderr, "Failed to start time: %s\n", strerror(errno));
+		fprintf(stderr, "Failed to start time: %s\n", fr_syserror(errno));
 		exit(EXIT_FAILURE);
 	}
 

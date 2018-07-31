@@ -765,7 +765,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		my_dir = talloc_typed_strdup(NULL, config->run_dir);
 		if (rad_mkdir(my_dir, 0755, config->server_uid, config->server_gid) < 0) {
 			DEBUG("Failed to create run_dir %s: %s",
-			      my_dir, strerror(errno));
+			      my_dir, fr_syserror(errno));
 		}
 		talloc_free(my_dir);
 	}
@@ -782,7 +782,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		my_dir = talloc_typed_strdup(config, config->log_dir);
 		if (rad_mkdir(my_dir, 0755, config->server_uid, config->server_gid) < 0) {
 			DEBUG("Failed to create logdir %s: %s",
-			      my_dir, strerror(errno));
+			      my_dir, fr_syserror(errno));
 		}
 		talloc_free(my_dir);
 	}

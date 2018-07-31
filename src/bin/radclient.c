@@ -370,7 +370,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	if (strcmp(files->packets, "-") != 0) {
 		packets = fopen(files->packets, "r");
 		if (!packets) {
-			ERROR("Error opening %s: %s", files->packets, strerror(errno));
+			ERROR("Error opening %s: %s", files->packets, fr_syserror(errno));
 			return 0;
 		}
 
@@ -380,7 +380,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		if (files->filters) {
 			filters = fopen(files->filters, "r");
 			if (!filters) {
-				ERROR("Error opening %s: %s", files->filters, strerror(errno));
+				ERROR("Error opening %s: %s", files->filters, fr_syserror(errno));
 				fclose(packets);
 				return 0;
 			}

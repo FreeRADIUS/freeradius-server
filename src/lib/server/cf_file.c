@@ -1759,7 +1759,7 @@ static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
 	if ((rad_mkdir(buffer, 0700, -1, -1) < 0) &&
 	    (errno != EEXIST)) {
 		cf_log_err(cs, "Failed creating directory %s: %s",
-			      buffer, strerror(errno));
+			      buffer, fr_syserror(errno));
 		return NULL;
 	}
 
@@ -1771,7 +1771,7 @@ static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
 	fp = fopen(buffer, "a");
 	if (!fp) {
 		cf_log_err(cs, "Failed creating file %s: %s",
-			      buffer, strerror(errno));
+			      buffer, fr_syserror(errno));
 		return NULL;
 	}
 

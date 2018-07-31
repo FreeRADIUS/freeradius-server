@@ -974,7 +974,7 @@ int main(int argc, char *argv[])
 		fp = fopen(input_file, "r");
 		if (!fp) {
 			fprintf(stderr, "Failed reading %s: %s\n",
-				input_file, strerror(errno));
+				input_file, fr_syserror(errno));
 			rcode = EXIT_FAILURE;
 			goto finish;
 		}
@@ -1023,7 +1023,7 @@ int main(int argc, char *argv[])
 		if (!fp) {
 			fp = fopen(filter_file, "r");
 			if (!fp) {
-				fprintf(stderr, "Failed reading %s: %s\n", filter_file, strerror(errno));
+				fprintf(stderr, "Failed reading %s: %s\n", filter_file, fr_syserror(errno));
 				rcode = EXIT_FAILURE;
 				goto finish;
 			}
@@ -1122,7 +1122,7 @@ done:
 		fp = fopen(output_file, "w");
 		if (!fp) {
 			fprintf(stderr, "Failed writing %s: %s\n",
-				output_file, strerror(errno));
+				output_file, fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}

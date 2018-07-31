@@ -112,7 +112,7 @@ static void *control_master(UNUSED void *arg)
 
 		num_events = kevent(kq, NULL, 0, &kev, 1, NULL);
 		if (num_events < 0) {
-			fprintf(stderr, "Failed reading kevent: %s\n", strerror(errno));
+			fprintf(stderr, "Failed reading kevent: %s\n", fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 

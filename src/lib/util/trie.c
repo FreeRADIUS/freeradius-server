@@ -2873,7 +2873,7 @@ int main(int argc, char **argv)
 
 	fp = fopen(argv[1], "r");
 	if (!fp) {
-		fprintf(stderr, "Failed opening %s: %s\n", argv[1], strerror(errno));
+		fprintf(stderr, "Failed opening %s: %s\n", argv[1], fr_syserror(errno));
 		exit(1);
 	}
 

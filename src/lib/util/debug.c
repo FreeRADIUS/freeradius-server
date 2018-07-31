@@ -170,7 +170,7 @@ int CC_HINT(used) __lsan_is_turned_off(void)
 
 	/* Child */
 	if (write(lsan_test_pipe[1], &ret, sizeof(ret)) < 0) {
-		fprintf(stderr, "Writing LSAN status failed: %s", strerror(errno));
+		fprintf(stderr, "Writing LSAN status failed: %s", fr_syserror(errno));
 	}
 	close(lsan_test_pipe[1]);
 	return 0;
