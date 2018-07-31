@@ -72,7 +72,7 @@ static char *readline(char const *prompt)
 {
 	char *line, *p;
 
-	puts(prompt);
+	if (prompt && *prompt) puts(prompt);
 	fflush(stdout);
 
 	line = fgets(readline_buffer, sizeof(readline_buffer), stdin);
@@ -950,4 +950,12 @@ int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool r
 	if (rcode < 0) return rcode;
 
 	return 1;
+}
+
+/*
+ *	Get help for a particular line of text.
+ */
+void fr_radmin_help(FILE *fp, char const *text)
+{
+	fr_command_print_help(fp, radmin_cmd, text);
 }
