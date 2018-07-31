@@ -115,7 +115,7 @@ static FR_NAME_NUMBER mode_names[] = {
 
 
 /*
- *	Process an initial connection request.
+ *	Run a command.
  */
 static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED fr_time_t **recv_time, uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup
 )
@@ -137,9 +137,21 @@ static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED
 	memcpy(string, cmd, hdr->length);
 	string[hdr->length] = '\0';
 
+	if (htons(hdr->conduit) == FR_CONDUIT_HELP) {
+		fr_radmin_help(inst->stdout, string);
+		status = FR_CONDUIT_SUCCESS;
+		goto done;
+	}
+
+	if (htons(hdr->conduit) != FR_CONDUIT_STDIN) {
+		DEBUG("ERROR: Ignoring data which is from wrong input");
+		return 0;
+	}
+
 	rcode = fr_radmin_run(inst->info, inst->stdout, inst->stderr, string, inst->read_only);
 	if (rcode < 0) {
 		status = FR_CONDUIT_FAIL;
+
 	} else if (rcode == 0) {
 		/*
 		 *	The other end should keep track of it's
@@ -151,8 +163,7 @@ static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED
 		status = FR_CONDUIT_SUCCESS;
 	}
 
-	fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, "\n", 1);
-
+done:
 	status = htonl(status);
 	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_CMD_STATUS, &status, sizeof(status));
 
@@ -1008,7 +1019,7 @@ static int mod_fd_set(void *instance, int fd)
 #endif
 
 	inst->sockfd = fd;
-	inst->read= mod_read_init;
+	inst->read = mod_read_init;
 
 	return 0;
 }
@@ -1059,6 +1070,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 #ifdef HAVE_FUNOPEN
 	inst->stdout = funopen(instance, NULL, write_stdout, NULL, NULL);
 	rad_assert(inst->stdout != NULL);
+
 	inst->stderr = funopen(instance, NULL, write_stderr, NULL, NULL);
 	rad_assert(inst->stderr != NULL);
 #else
