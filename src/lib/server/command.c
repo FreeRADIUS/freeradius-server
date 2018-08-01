@@ -1324,7 +1324,7 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 		rad_assert(cmd != NULL);
 
 		if (!cmd->read_only && read_only) {
-			fr_strerror_printf("No permissions to run command '%s'", cmd->name);
+			fprintf(fp_err, "No permissions to run command '%s' help %s\n", cmd->name, cmd->help);
 			return -1;
 		}
 
