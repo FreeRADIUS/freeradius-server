@@ -143,7 +143,12 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 	VALUE_PAIR	**last = &first;
 	VALUE_PAIR	*vp;
 
-	while (data_left > 0) {
+	/*
+	 *	Parse while there's still data.
+	 */
+	while (data_left >= 9) {
+		size_t attr_len;
+
 		rad_assert(data_left <= data_len);
 		memcpy(&attr, data, sizeof(attr));
 		data += 4;
@@ -152,6 +157,14 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		memcpy(&length, data, sizeof(length));
 		data += 4;
 		length = ntohl(length);
+
+		/*
+		 *	Length is *value* length.  The actual
+		 *	attributes are aligned on 4 octets.
+		 */
+		attr_len = length & 0x00ffffff;
+		attr_len += 0x03;
+		attr_len &= ~(uint32_t) 0x03;
 
 		/*
 		 *	A "vendor" flag, with a vendor ID of zero,
@@ -168,8 +181,14 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 			offset += 4; /* offset to value field */
 			length &= 0x00ffffff;
 
-			if (attr > 65535) goto next_attr;
-			if (vendor > 65535) goto next_attr;
+			if (attr > 65535) {
+				DEBUG("Skipping Diameter attribute %08x", attr);
+				goto next_attr;
+			}
+			if (vendor > 65535) {
+				DEBUG("Skipping large vendor ID %08x", vendor);
+				goto next_attr;
+			}
 
 			attr |= (vendor << 16);
 		}
@@ -405,22 +424,10 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		last = &(vp->next);
 
 	next_attr:
-		/*
-		 *	Catch non-aligned attributes.
-		 */
-		if (data_left == length) break;
+		if (data_left <= attr_len) break;
 
-		/*
-		 *	The length does NOT include the padding, so
-		 *	we've got to account for it here by rounding up
-		 *	to the nearest 4-byte boundary.
-		 */
-		length += 0x03;
-		length &= ~0x03;
-
-		rad_assert(data_left >= length);
-		data_left -= length;
-		data += length - offset; /* already updated */
+		data_left -= attr_len;
+		data += (attr_len - offset);
 	}
 
 	/*
