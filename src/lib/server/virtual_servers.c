@@ -447,7 +447,7 @@ static int cmd_show_server_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 	return 0;
 }
 
-static fr_cmd_table_t cmd_server_table[] = {
+static fr_cmd_table_t cmd_table[] = {
 	{
 		.parent = "show",
 		.syntax = "server",
@@ -528,7 +528,7 @@ int virtual_servers_instantiate(void)
 
 	DEBUG2("#### Instantiating listeners ####");
 
-	if (fr_command_register_hook(NULL, virtual_server_root, cmd_server_table) < 0) {
+	if (fr_command_register_hook(NULL, virtual_server_root, cmd_table) < 0) {
 		ERROR("Failed registering radmin commands for virtual servers - %s",
 		      fr_strerror());
 		return -1;

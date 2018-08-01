@@ -852,7 +852,7 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 	return 0;
 }
 
-static fr_cmd_table_t cmd_module_table[] = {
+static fr_cmd_table_t cmd_table[] = {
 	{
 		.parent = "show",
 		.syntax = "module",
@@ -903,7 +903,6 @@ static fr_cmd_table_t cmd_module_table[] = {
 	},
 
 	CMD_TABLE_END
-
 };
 
 /** Completes instantiation of modules
@@ -925,7 +924,7 @@ int modules_instantiate(CONF_SECTION *root)
 
 	DEBUG2("#### Instantiating modules ####");
 
-	if (fr_command_register_hook(NULL, modules, cmd_module_table) < 0) {
+	if (fr_command_register_hook(NULL, modules, cmd_table) < 0) {
 		ERROR("Failed registering radmin commands for modules - %s",
 		      fr_strerror());
 		return -1;
