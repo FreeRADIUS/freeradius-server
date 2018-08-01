@@ -280,6 +280,7 @@ static int m3ua_conn_handle(struct mtp_m3ua_client_link *link,
 static int m3ua_conn_write(struct osmo_fd *ofd, struct msgb *msg)
 {
 	size_t ret;
+	char strerrbuf[256];
 	struct sctp_sndrcvinfo info;
 	memcpy(&info, msg->data, sizeof(info));
 
@@ -287,8 +288,12 @@ static int m3ua_conn_write(struct osmo_fd *ofd, struct msgb *msg)
 	ret = sctp_send(ofd->fd, msg->l2h, msgb_l2len(msg), &info, 0);
 
 	if (ret != msgb_l2len(msg)) {
+		/* Needs to be thread safe for library use in threaded programs */
+		strerrbuf[0] = '\0';
+		strerror_r(errno, strerrbuf, sizeof(strerrbuf));
+
 		LOGP(DINP, LOGL_ERROR, "Failed writing to fd %i (only wrote %zu bytes): %s.\n",
-		     ofd->fd, strerror(errno));
+		     ofd->fd, strerrbuf));
 	} else {
 		LOGP(DINP, LOGL_DEBUG, "Wrote %zu bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
 	}
