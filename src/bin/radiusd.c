@@ -483,7 +483,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	if (radmin && (fr_radmin_start(config) < 0)) EXIT_WITH_FAILURE;
+	if (fr_radmin_start(config, radmin) < 0) EXIT_WITH_FAILURE;
 
 #ifndef __MINGW32__
 	/*
@@ -789,7 +789,7 @@ int main(int argc, char *argv[])
 		ret = EXIT_SUCCESS;
 	}
 
-	if (radmin) fr_radmin_stop();
+	fr_radmin_stop();
 
 	/*
 	 *  Ignore the TERM signal: we're about to die.

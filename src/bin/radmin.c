@@ -864,7 +864,7 @@ static fr_cmd_table_t cmd_table[] = {
 	CMD_TABLE_END
 };
 
-int fr_radmin_start(main_config_t *config)
+int fr_radmin_start(main_config_t *config, bool cli)
 {
 	gettimeofday(&start_time, NULL);
 
@@ -879,6 +879,8 @@ int fr_radmin_start(main_config_t *config)
 		PERROR("Failed initializing radmin");
 		return -1;
 	}
+
+	if (!cli) return 0;
 
 	/*
 	 *	Note that the commands are registered by the main
