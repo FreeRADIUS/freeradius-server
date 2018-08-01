@@ -901,9 +901,7 @@ void fr_radmin_stop(void)
 {
 	stop = true;
 
-	if (pthread_join(pthread_id, NULL) != 0) {
-		fprintf(stderr, "Failed joining radmin thread: %s", fr_syserror(errno));
-	}
+	(void) pthread_join(pthread_id, NULL);
 }
 
 /*
