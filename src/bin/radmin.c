@@ -959,3 +959,19 @@ void fr_radmin_help(FILE *fp, char const *text)
 {
 	fr_command_print_help(fp, radmin_cmd, text);
 }
+
+void fr_radmin_complete(FILE *fp, const char *text, int start)
+{
+	int i, num;
+	char *expansions[CMD_MAX_EXPANSIONS];
+
+
+	num = fr_command_complete(radmin_cmd, text, start,
+				  CMD_MAX_EXPANSIONS, expansions);
+	if (num <= 0) return;
+
+	for (i = 0; i < num; i++) {
+		fprintf(fp, "%s\n", expansions[i]);
+		free(expansions[i]);
+	}
+}
