@@ -132,6 +132,12 @@ static fr_log_t radmin_log = {
 static int sockfd = -1;
 static char io_buffer[65536];
 
+#ifdef USE_READLINE
+#define CMD_MAX_EXPANSIONS (128)
+static int radmin_num_expansions = 0;
+static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
+#endif
+
 static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
@@ -224,6 +230,7 @@ static ssize_t do_challenge(int fd)
 static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 {
 	ssize_t r;
+	char *p, *str;
 	uint32_t status;
 	fr_conduit_type_t conduit;
 
@@ -260,6 +267,29 @@ static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 			if (notify == FR_NOTIFY_UNBUFFERED) unbuffered = true;
 			if (notify == FR_NOTIFY_BUFFERED) unbuffered = false;
 
+			break;
+
+		case FR_CONDUIT_COMPLETE:
+			// @todo - deal with partial text?  For now, it's not really relevant...
+			str = buffer;
+
+			for (p = buffer; p < (buffer + r); p++) {
+				if (*p == '\n') {
+					size_t len;
+
+					len = p - str;
+
+					radmin_expansions[radmin_num_expansions] = malloc(len + 1);
+					memcpy(radmin_expansions[radmin_num_expansions], str, len);
+					radmin_expansions[radmin_num_expansions][len] = '\0';
+
+					radmin_num_expansions++;
+
+					str = p + 1;
+				}
+
+				if (radmin_num_expansions >= CMD_MAX_EXPANSIONS) break;
+			}
 			break;
 
 		default:
@@ -455,6 +485,58 @@ static int radmin_help(UNUSED int count, UNUSED int key)
 
 	rl_on_new_line();
 	return 0;
+}
+
+static char *
+radmin_expansion_walk(UNUSED const char *text, int state)
+{
+    static int current;
+    char *name;
+
+    if (!state) {
+	    current = 0;
+    }
+
+    /*
+     *	fr_command_completions() takes care of comparing things to
+     *	suppress expansions which don't match "text"
+     */
+    if (current >= radmin_num_expansions) return NULL;
+
+    name = radmin_expansions[current];
+
+    radmin_expansions[current++] = NULL;
+
+    return name;
+}
+
+static char **
+radmin_completion(const char *text, int start, UNUSED int end)
+{
+	size_t len;
+
+	rl_attempted_completion_over = 1;
+
+	radmin_num_expansions = 0;
+
+	if (start > 65535) return NULL;
+
+	io_buffer[0] = (start >> 8) & 0xff;
+	io_buffer[1] = start & 0xff;
+	len = strlen(rl_line_buffer);
+
+	/*
+	 *	Note that "text" is the PARTIAL thing we're trying to complete.
+	 *	And "start" is the OFFSET from rl_line_buffer where we want to
+	 *	do the completion.  It's all rather idiotic.
+	 */
+	memcpy(io_buffer + 2, rl_line_buffer, len);
+
+	(void) fr_conduit_write(sockfd, FR_CONDUIT_COMPLETE, io_buffer, len + 2);
+
+	(void) flush_conduits(sockfd, io_buffer, sizeof(io_buffer));
+
+	return rl_completion_matches(text, radmin_expansion_walk);
 }
 
 #endif
@@ -775,12 +857,7 @@ int main(int argc, char **argv)
 		using_history();
 #endif
 #ifdef USE_READLINE
-		/*
-		 *	Don't expand filenames.
-		 *
-		 *	@todo - call the server for this.
-		 */
-		rl_bind_key('\t', rl_insert);
+		rl_attempted_completion_function = radmin_completion;
 #endif
 	} else {
 		prompt = NULL;

@@ -963,11 +963,14 @@ void fr_radmin_help(FILE *fp, char const *text)
 void fr_radmin_complete(FILE *fp, const char *text, int start)
 {
 	int i, num;
-	char *expansions[CMD_MAX_EXPANSIONS];
+	char *my_expansions[CMD_MAX_EXPANSIONS];
+	char **expansions = &my_expansions[0];
+	char const **expansions_const;
 
+	memcpy(&expansions_const, &expansions, sizeof(expansions)); /* const issues */
 
 	num = fr_command_complete(radmin_cmd, text, start,
-				  CMD_MAX_EXPANSIONS, expansions);
+				  CMD_MAX_EXPANSIONS, expansions_const);
 	if (num <= 0) return;
 
 	for (i = 0; i < num; i++) {
