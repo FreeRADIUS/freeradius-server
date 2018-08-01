@@ -154,6 +154,7 @@ static fr_cmd_t *fr_command_alloc(TALLOC_CTX *ctx, fr_cmd_t **head, char const *
 	cmd->live = false;
 
 	cmd->next = *head;
+	cmd->read_only = true;
 	*head = cmd;
 
 	return cmd;
