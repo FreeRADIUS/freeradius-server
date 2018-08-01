@@ -1964,8 +1964,19 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 	char const *word, *p, *q;
 	fr_cmd_t *cmd;
 
-	if ((info->argc < 0) || (info->max_argc <= 0) || !text || !head) {
-		fr_strerror_printf("Invalid arguments passed to parse routine.");
+	if ((info->argc < 0) || (info->max_argc <= 0)) {
+		fr_strerror_printf("argc / max_argc must be greater than zero");
+		return -1;
+	}
+
+	if (!text) {
+		fr_strerror_printf("No string to split.");
+		return -1;
+	}
+
+
+	if (!head) {
+		fr_strerror_printf("No commands to run.");
 		return -1;
 	}
 
