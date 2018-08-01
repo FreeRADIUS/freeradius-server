@@ -844,9 +844,15 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		 */
 		if (!table->func) {
 			rad_assert(table->help != NULL);
+
+			/*
+			 *	Suppress duplicates.
+			 */
+			if (cmd->help == table->help) return 0;
+
 			if (cmd->help != NULL) {
 				fr_strerror_printf("Cannot change help for command %s %s",
-						   table->parent, cmd->name);
+						   name , cmd->name);
 				return -1;
 			}
 			rad_assert(cmd->intermediate);
