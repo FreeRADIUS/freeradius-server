@@ -1257,6 +1257,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 /** Create a worker
  *
  * @param[in] ctx the talloc context
+ * @param[in] name the name of this worker
  * @param[in] el the event list
  * @param[in] logger the destination for all logging messages
  * @param[in] lvl log level
@@ -1264,7 +1265,7 @@ void fr_worker_destroy(fr_worker_t *worker)
  *	- NULL on error
  *	- fr_worker_t on success
  */
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger, fr_log_lvl_t lvl)
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, char const *name, fr_event_list_t *el, fr_log_t const *logger, fr_log_lvl_t lvl)
 {
 	int max_channels = 64;
 	fr_worker_t *worker;
@@ -1276,7 +1277,7 @@ nomem:
 		return NULL;
 	}
 
-	worker->name = "";
+	worker->name = talloc_strdup(worker, name); /* thread locality */
 
 	worker->channel = talloc_zero_array(worker, fr_channel_t *, max_channels);
 	if (!worker->channel) {

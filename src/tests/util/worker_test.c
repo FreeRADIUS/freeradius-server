@@ -160,6 +160,7 @@ static void *worker_thread(void *arg)
 	fr_worker_t *worker;
 	fr_schedule_worker_t *sw;
 	fr_event_list_t *el;
+	char buffer[16];
 
 	sw = (fr_schedule_worker_t *) arg;
 
@@ -173,7 +174,8 @@ static void *worker_thread(void *arg)
 		exit(EXIT_FAILURE);
 	}
 
-	worker = sw->worker = fr_worker_create(ctx, el, &default_log, L_DBG_LVL_MAX);
+	snprintf(buffer, sizeof(buffer), "%d", sw->id);
+	worker = sw->worker = fr_worker_create(ctx, buffer, el, &default_log, L_DBG_LVL_MAX);
 	if (!worker) {
 		fprintf(stderr, "worker_test: Failed to create the worker\n");
 		exit(EXIT_FAILURE);

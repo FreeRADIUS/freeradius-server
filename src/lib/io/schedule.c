@@ -182,7 +182,8 @@ static void *fr_schedule_worker_thread(void *arg)
 		goto fail;
 	}
 
-	sw->worker = fr_worker_create(ctx, sw->el, sc->log, sc->lvl);
+	snprintf(buffer, sizeof(buffer), "%d", worker_id);
+	sw->worker = fr_worker_create(ctx, buffer, sw->el, sc->log, sc->lvl);
 	if (!sw->worker) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
@@ -415,7 +416,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			return NULL;
 		}
 
-		sc->single_worker = fr_worker_create(sc, el, sc->log, sc->lvl);
+		sc->single_worker = fr_worker_create(sc, "0", el, sc->log, sc->lvl);
 		if (!sc->single_worker) {
 			fr_log(sc->log, L_ERR, "Failed creating worker: %s", fr_strerror());
 			goto st_fail;
