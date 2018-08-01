@@ -1623,3 +1623,35 @@ int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
 
 	return 7;
 }
+
+static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	fr_worker_t const *worker = ctx;
+
+	fprintf(fp, "in\t\t%" PRIu64 "\n", worker->stats.in);
+	fprintf(fp, "out\t\t%" PRIu64 "\n", worker->stats.out);
+	fprintf(fp, "dup\t\t%" PRIu64 "\n", worker->stats.dup);
+	fprintf(fp, "dropped\t\t%" PRIu64 "\n", worker->stats.dropped);
+	fprintf(fp, "decoded\t\t%" PRIu64 "\n", worker->num_decoded);
+	fprintf(fp, "timeouts\t%" PRIu64 "\n", worker->num_timeouts);
+	fprintf(fp, "active\t\t%" PRIu64 "\n", worker->num_active);
+
+	return 0;
+}
+
+fr_cmd_table_t cmd_worker_table[] = {
+	{
+		.parent = "stats worker",
+		.help = "Statistics for workers.",
+		.read_only = true
+	},
+
+	{
+		.parent = "stats worker",
+		.func = cmd_stats_worker,
+		.help = "Show statistics for a specific worker",
+		.read_only = true
+	},
+
+	CMD_TABLE_END
+};
