@@ -25,6 +25,8 @@
  */
 RCSIDH(command_h, "$Id$")
 
+#include <freeradius-devel/util/value.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
