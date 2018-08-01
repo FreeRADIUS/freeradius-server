@@ -1627,14 +1627,26 @@ int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
 static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	fr_worker_t const *worker = ctx;
+	fr_time_t when;
 
-	fprintf(fp, "in\t\t%" PRIu64 "\n", worker->stats.in);
-	fprintf(fp, "out\t\t%" PRIu64 "\n", worker->stats.out);
-	fprintf(fp, "dup\t\t%" PRIu64 "\n", worker->stats.dup);
-	fprintf(fp, "dropped\t\t%" PRIu64 "\n", worker->stats.dropped);
-	fprintf(fp, "decoded\t\t%" PRIu64 "\n", worker->num_decoded);
-	fprintf(fp, "timeouts\t%" PRIu64 "\n", worker->num_timeouts);
-	fprintf(fp, "active\t\t%" PRIu64 "\n", worker->num_active);
+	fprintf(fp, "count.in\t%" PRIu64 "\n", worker->count.in);
+	fprintf(fp, "count.out\t%" PRIu64 "\n", worker->count.out);
+	fprintf(fp, "stats,dup\t%" PRIu64 "\n", worker->count.dup);
+	fprintf(fp, "count.dropped\t%" PRIu64 "\n", worker->count.dropped);
+	fprintf(fp, "count.decoded\t%" PRIu64 "\n", worker->num_decoded);
+	fprintf(fp, "count.timeouts\t%" PRIu64 "\n", worker->num_timeouts);
+	fprintf(fp, "count.active\t%" PRIu64 "\n", worker->num_active);
+	fprintf(fp, "count.runnable\t%u\n", fr_heap_num_elements(worker->runnable));
+
+
+	when = worker->tracking.predicted;
+	fprintf(fp, "cpu.predicted\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+
+	when = worker->tracking.running;
+	fprintf(fp, "cpu.running\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+
+	when = worker->tracking.waiting;
+	fprintf(fp, "cpu.waiting\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
 
 	return 0;
 }
