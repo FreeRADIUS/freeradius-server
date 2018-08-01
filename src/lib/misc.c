@@ -148,7 +148,7 @@ int rad_unlockfd(int fd, int lock_len)
 	fl.l_start = 0;
 	fl.l_len = lock_len;
 	fl.l_pid = getpid();
-	fl.l_type = F_WRLCK;
+	fl.l_type = F_UNLCK;
 	fl.l_whence = SEEK_CUR;
 	return fcntl(fd, F_UNLCK, (void *)&fl);
 #else
