@@ -23,11 +23,11 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/ring_buffer.h>
-#include <string.h>
-#include <freeradius-devel/util/hash.h>
-#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/syserror.h>
+#include <string.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>

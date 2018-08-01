@@ -22,16 +22,17 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/channel.h>
+#include <freeradius-devel/io/control.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#include <pthread.h>
+#  include <pthread.h>
 #endif
 
 #include <sys/event.h>

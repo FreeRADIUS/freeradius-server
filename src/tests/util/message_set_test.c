@@ -23,13 +23,15 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/message.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/syserror.h>
+
 #include <string.h>
 #include <sys/time.h>
-#include <freeradius-devel/util/hash.h>
-#include <freeradius-devel/server/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #define MPRINT1 if (debug_lvl) printf

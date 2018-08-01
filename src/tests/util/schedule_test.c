@@ -24,21 +24,22 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/time.h>
-#include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <sys/event.h>
 #include <stdio.h>
 #include <string.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#include <pthread.h>
+#  include <pthread.h>
 #endif
 
 static int		debug_lvl = 0;

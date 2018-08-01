@@ -25,6 +25,8 @@ RCSID("$Id$")
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/time.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/time.h>
 
 #include <sys/event.h>
 #include <stdio.h>
