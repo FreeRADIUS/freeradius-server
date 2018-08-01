@@ -43,6 +43,8 @@ RCSID("$Id$")
 #ifdef HAVE_LIBREADLINE
 
 # include <stdio.h>
+
+DIAG_OFF(strict-prototypes)
 #if defined(HAVE_READLINE_READLINE_H)
 #  include <readline/readline.h>
 #  define USE_READLINE (1)
@@ -50,6 +52,7 @@ RCSID("$Id$")
 #  include <readline.h>
 #  define USE_READLINE (1)
 #endif /* !defined(HAVE_READLINE_H) */
+DIAG_ON(strict-prototypes)
 
 #ifdef HAVE_READLINE_HISTORY
 #  if defined(HAVE_READLINE_HISTORY_H)
