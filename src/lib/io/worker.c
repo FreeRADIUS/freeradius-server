@@ -1629,10 +1629,10 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 	fr_worker_t const *worker = ctx;
 	fr_time_t when;
 
-	fprintf(fp, "count.in\t%" PRIu64 "\n", worker->count.in);
-	fprintf(fp, "count.out\t%" PRIu64 "\n", worker->count.out);
-	fprintf(fp, "stats,dup\t%" PRIu64 "\n", worker->count.dup);
-	fprintf(fp, "count.dropped\t%" PRIu64 "\n", worker->count.dropped);
+	fprintf(fp, "count.in\t%" PRIu64 "\n", worker->stats.in);
+	fprintf(fp, "count.out\t%" PRIu64 "\n", worker->stats.out);
+	fprintf(fp, "stats,dup\t%" PRIu64 "\n", worker->stats.dup);
+	fprintf(fp, "count.dropped\t%" PRIu64 "\n", worker->stats.dropped);
 	fprintf(fp, "count.decoded\t%" PRIu64 "\n", worker->num_decoded);
 	fprintf(fp, "count.timeouts\t%" PRIu64 "\n", worker->num_timeouts);
 	fprintf(fp, "count.active\t%" PRIu64 "\n", worker->num_active);
