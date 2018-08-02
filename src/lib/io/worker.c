@@ -1638,12 +1638,11 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 	fprintf(fp, "count.active\t%" PRIu64 "\n", worker->num_active);
 	fprintf(fp, "count.runnable\t%u\n", fr_heap_num_elements(worker->runnable));
 
-
 	when = worker->tracking.predicted;
 	fprintf(fp, "cpu.predicted\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
 
 	when = worker->tracking.running;
-	fprintf(fp, "cpu.running\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+	fprintf(fp, "cpu.used\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
 
 	when = worker->tracking.waiting;
 	fprintf(fp, "cpu.waiting\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
