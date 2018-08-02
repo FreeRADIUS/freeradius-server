@@ -2410,7 +2410,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 		 *	space, and *q is the NUL character.
 		 */
 		if (MATCHED_NAME) {
-			*word_p = word;
+			*word_p = word = p;
 			info->argv[info->argc] = word;
 			info->box[info->argc] = NULL;
 			info->argc++;
