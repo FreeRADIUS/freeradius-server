@@ -1083,6 +1083,13 @@ static SINT write_misc(void *instance, char const *buffer, INT buffer_size)
 }
 
 
+static char const *mod_name(void *instance)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return inst->name;
+}
+
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
@@ -1262,4 +1269,5 @@ fr_app_io_t proto_control_unix = {
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,
+	.get_name      		= mod_name,
 };

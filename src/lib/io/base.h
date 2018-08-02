@@ -347,6 +347,9 @@ typedef RADCLIENT *(*fr_io_client_find_t)(void *instance, fr_ipaddr_t const *ipa
 
 typedef void (*fr_io_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
 
+typedef char const *(*fr_io_name_t)(void *instance);
+
+
 #ifdef __cplusplus
 }
 #endif

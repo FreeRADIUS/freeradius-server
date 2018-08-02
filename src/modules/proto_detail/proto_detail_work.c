@@ -809,6 +809,13 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 }
 
 
+static char const *mod_name(void *instance)
+{
+	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
+
+	return inst->name;
+}
+
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
 	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
@@ -917,4 +924,5 @@ fr_app_io_t proto_detail_work = {
 	.write			= mod_write,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
+	.get_name		= mod_name,
 };

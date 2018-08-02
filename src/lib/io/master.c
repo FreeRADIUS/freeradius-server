@@ -2272,6 +2272,17 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 	return 0;
 }
 
+
+static char const *mod_name(void *instance)
+{
+	fr_io_instance_t		*inst = instance;
+
+	if (!inst->app_io->get_name) return inst->app_io->name;
+
+	return inst->app_io->get_name(inst->app_io_instance);
+}
+
+
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	fr_io_instance_t		*inst = instance;
@@ -2483,4 +2494,5 @@ fr_app_io_t fr_master_app_io = {
 	.close			= mod_close,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
+	.get_name		= mod_name,
 };
