@@ -12,17 +12,17 @@ command add :bar a
 
 command add foo :did have INTEGER
 
-command tab f
-data 1 - 'foo'
+#command tab f
+#data 1 - 'foo'
 
-command tab foo d
-data 1 - 'did'
+#command tab foo d
+#data 1 - 'did'
 
-command tab foo did ha
-data 1 - 'have'
+#command tab foo did ha
+#data 1 - 'have'
 
-command tab foo did have 1
-data 1 - 'INTEGER'
+#command tab foo did have 1
+#data 1 - 'INTEGER'
 
 #
 #  Alternate parameters
