@@ -546,6 +546,25 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	}
 #endif
 
+	for (sw = fr_dlist_head(&sc->workers), i = 0;
+	     sw != NULL;
+	     sw = next, i++) {
+		char buffer[32];
+
+		next = fr_dlist_next(&sc->workers, sw);
+
+		snprintf(buffer, sizeof(buffer), "%d", i);
+		if (fr_command_register_hook(buffer, sw->worker, cmd_worker_table) < 0) {
+			fr_log(sc->log, L_ERR, "Failed adding worker commands: %s", fr_strerror());
+			goto st_fail;
+		}
+	}
+
+	if (fr_command_register_hook("0", sc->sn, cmd_network_table) < 0) {
+		fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
+		goto st_fail;
+	}
+
 	if (sc) fr_log(sc->log, L_INFO, "Scheduler created successfully with %d networks and %d workers",
 		       sc->max_networks, sc->num_workers);
 
