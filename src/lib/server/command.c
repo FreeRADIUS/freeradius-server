@@ -1323,10 +1323,10 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 		cmd = info->cmd[i];
 		rad_assert(cmd != NULL);
 
-		if (!cmd->read_only && read_only) {
-			fprintf(fp_err, "No permissions to run command '%s' help %s\n", cmd->name, cmd->help);
-			return -1;
-		}
+		/*
+		 *	Ignore read-only on intermediate commands.
+		 *	Some may have been automatically allocated
+		 */
 
 		if (cmd->intermediate) continue;
 		break;
@@ -1335,6 +1335,11 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 	if (!cmd) return 0;
 
 	if (!cmd->live) return 0;
+
+	if (!cmd->read_only && read_only) {
+		fprintf(fp_err, "No permissions to run command '%s' help %s\n", cmd->name, cmd->help);
+		return -1;
+	}
 
 	/*
 	 *	Leaf nodes must have a callback.
