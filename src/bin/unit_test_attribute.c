@@ -740,12 +740,13 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 		table->syntax = talloc_strdup(table, p);
 	}
 	table->parent = parent;
+	table->name = name;
 	table->help = NULL;
 	table->func = command_func;
 	table->tab_expand = NULL;
 	table->read_only = true;
 
-	if (fr_command_add(ctx, &command_head, name, NULL, table) < 0) {
+	if (fr_command_add(ctx, &command_head, NULL, NULL, table) < 0) {
 		snprintf(output, outlen, "ERROR: failed adding command - %s", fr_strerror());
 		return;
 	}
