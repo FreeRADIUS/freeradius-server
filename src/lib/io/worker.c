@@ -1631,7 +1631,7 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 
 	fprintf(fp, "count.in\t%" PRIu64 "\n", worker->stats.in);
 	fprintf(fp, "count.out\t%" PRIu64 "\n", worker->stats.out);
-	fprintf(fp, "stats,dup\t%" PRIu64 "\n", worker->stats.dup);
+	fprintf(fp, "count.dup\t%" PRIu64 "\n", worker->stats.dup);
 	fprintf(fp, "count.dropped\t%" PRIu64 "\n", worker->stats.dropped);
 	fprintf(fp, "count.decoded\t%" PRIu64 "\n", worker->num_decoded);
 	fprintf(fp, "count.timeouts\t%" PRIu64 "\n", worker->num_timeouts);
@@ -1652,13 +1652,16 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 
 fr_cmd_table_t cmd_worker_table[] = {
 	{
-		.parent = "stats worker",
+		.parent = "stats",
+		.name = "worker",
 		.help = "Statistics for workers threads.",
 		.read_only = true
 	},
 
 	{
 		.parent = "stats worker",
+		.add_name = true,
+		.name = "self",
 		.func = cmd_stats_worker,
 		.help = "Show statistics for a specific worker thread.",
 		.read_only = true

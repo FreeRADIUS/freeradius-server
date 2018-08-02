@@ -702,12 +702,17 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	int argc = 0, depth = 0;
 	fr_cmd_argv_t *syntax_argv;
 
-	if (name && !fr_command_valid_name(name)) {
+	if (!table->name) {
+		fr_strerror_printf("A name MUST be specified for table with parent %s syntax %s", table->parent, table->syntax);
 		return -1;
 	}
 
-	if (!name && !table->name) {
-		fr_strerror_printf("A name MUST be specified");
+	if (!name && table->add_name) {
+		fr_strerror_printf("An additional name must be specified");
+		return -1;
+	}
+
+	if (name && !fr_command_valid_name(name)) {
 		return -1;
 	}
 
@@ -764,6 +769,19 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	}
 
 	/*
+	 *	Add an intermediate name, e.g. "network X"
+	 */
+	if (table->add_name) {
+		cmd = fr_command_find(start, name, &insert);
+		if (!cmd) {
+			cmd = fr_command_alloc(talloc_ctx, insert, name);
+		}
+
+		start = &(cmd->child);
+		depth++;
+	}
+
+	/*
 	 *	@todo - check syntax, too!
 	 *
 	 *	i.e. we have a command "foo" which accepts syntax "bar
@@ -808,17 +826,11 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	}
 
 	/*
-	 *	"name" is used only when the table doesn't specify a name.
-	 */
-	if (table->name) name = table->name;
-
-	/*
 	 *	"head" is now pointing to the list where we insert
 	 *	this new command.  We now see if the "name" currently
 	 *	exists.
 	 */
-
-	cmd = fr_command_find(start, name, &insert);
+	cmd = fr_command_find(start, table->name, &insert);
 
 	/*
 	 *	The command exists already.  We can't have TWO
@@ -838,8 +850,8 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			if (cmd->help == table->help) return 0;
 
 			if (cmd->help != NULL) {
-				fr_strerror_printf("Cannot change help for command %s %s",
-						   name , cmd->name);
+				fr_strerror_printf("Cannot change help for command %s",
+						   cmd->name);
 				return -1;
 			}
 			rad_assert(cmd->intermediate);
@@ -862,7 +874,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		 *	Allocate cmd and insert it into the current point.
 		 */
 		rad_assert(insert != NULL);
-		cmd = fr_command_alloc(talloc_ctx, insert, name);
+		cmd = fr_command_alloc(talloc_ctx, insert, table->name);
 	}
 
 	/*

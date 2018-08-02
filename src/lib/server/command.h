@@ -56,6 +56,7 @@ typedef struct fr_cmd_table_t {
 	fr_cmd_func_t		func;			//!< function to process this command
 	fr_cmd_tab_t		tab_expand;		//!< tab expand things in the syntax string
 	bool			read_only;
+	bool			add_name;		//!< do we add a name here?
 } fr_cmd_table_t;
 
 #define CMD_TABLE_END { .help = NULL }

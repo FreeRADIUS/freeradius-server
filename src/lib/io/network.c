@@ -1496,13 +1496,13 @@ int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats)
 	return 5;
 }
 
-static int cmd_stats_network(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+static int cmd_stats_self(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	fr_network_t const *nr = ctx;
 
 	fprintf(fp, "count.in\t%" PRIu64 "\n", nr->stats.in);
 	fprintf(fp, "count.out\t%" PRIu64 "\n", nr->stats.out);
-	fprintf(fp, "stats,dup\t%" PRIu64 "\n", nr->stats.dup);
+	fprintf(fp, "count.dup\t%" PRIu64 "\n", nr->stats.dup);
 	fprintf(fp, "count.dropped\t%" PRIu64 "\n", nr->stats.dropped);
 	fprintf(fp, "count.sockets\t%d\n", rbtree_num_elements(nr->sockets));
 
@@ -1519,7 +1519,7 @@ static int socket_list(void *ctx, void *data)
 		return 0;
 	}
 
-	fprintf(fp, "%s\n", s->listen->app_io->get_name(s->listen->app_io_instance));
+	fprintf(fp, "%d\t%s\n", s->number, s->listen->app_io->get_name(s->listen->app_io_instance));
 	return 0;
 }
 
@@ -1531,30 +1531,67 @@ static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_c
 	return 0;
 }
 
+static int cmd_stats_socket(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+{
+	fr_network_t const *nr = ctx;
+	fr_network_socket_t *s, my_s;
+
+	my_s.number = info->box[0]->vb_uint32;
+
+	s = rbtree_finddata(nr->sockets_by_num, &my_s);
+	if (!s) {
+		fprintf(fp_err, "No such socket number '%s'.\n", info->argv[0]);
+		return -1;
+	}
+
+	fprintf(fp, "count.in\t%" PRIu64 "\n", s->stats.in);
+	fprintf(fp, "count.out\t%" PRIu64 "\n", s->stats.out);
+	fprintf(fp, "count.dup\t%" PRIu64 "\n", s->stats.dup);
+	fprintf(fp, "count.dropped\t%" PRIu64 "\n", s->stats.dropped);
+
+	return 0;
+}
+
+
 fr_cmd_table_t cmd_network_table[] = {
 	{
-		.parent = "stats network",
+		.parent = "stats",
+		.name = "network",
 		.help = "Statistics for network threads.",
 		.read_only = true
 	},
 
 	{
 		.parent = "stats network",
-		.syntax = "self",
-		.func = cmd_stats_network,
+		.add_name = true,
+		.name = "self",
+		.func = cmd_stats_self,
 		.help = "Show statistics for a specific network thread.",
 		.read_only = true
 	},
 
 	{
-		.parent = "show network",
+		.parent = "stats network",
+		.add_name = true,
+		.name = "socket",
+		.syntax = "INTEGER",
+		.func = cmd_stats_socket,
+		.help = "Show statistics for a specific socket",
+		.read_only = true
+	},
+
+	{
+		.parent = "show",
+		.name = "network",
 		.help = "Show information about network threads.",
 		.read_only = true
 	},
 
 	{
 		.parent = "show network",
-		.syntax = "socket list",
+		.add_name = true,
+		.name = "socket",
+		.syntax = "list",
 		.func = cmd_socket_list,
 		.help = "List the sockets associated with this network thread.",
 		.read_only = true
