@@ -2401,13 +2401,6 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 		SKIP_NAME(argv->name);
 
 		/*
-		 *	Ran off of the end of the input before
-		 *	matching all of the name.  The input is a
-		 *	PARTIAL match.  Go fill it in.
-		 */
-		if (!*p || isspace((int) *p)) goto expand_name;
-
-		/*
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
@@ -2417,6 +2410,15 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 			info->box[info->argc] = NULL;
 			info->argc++;
 			continue;
+		}
+
+		/*
+		 *	Ran off of the end of the input before
+		 *	matching all of the name.  The input is a
+		 *	PARTIAL match.  Go fill it in.
+		 */
+		if (!*p || isspace((int) *p)) {
+			goto expand_name;
 		}
 
 		/*
