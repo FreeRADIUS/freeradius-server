@@ -2004,7 +2004,11 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 		}
 
 		word = p;
-		if (!cmd->intermediate) goto check_syntax;
+
+		if (!cmd->intermediate) {
+			argc++;
+			goto check_syntax;
+		}
 	}
 
 	/*
