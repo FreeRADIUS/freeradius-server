@@ -1653,14 +1653,14 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 fr_cmd_table_t cmd_worker_table[] = {
 	{
 		.parent = "stats worker",
-		.help = "Statistics for workers.",
+		.help = "Statistics for workers threads.",
 		.read_only = true
 	},
 
 	{
 		.parent = "stats worker",
 		.func = cmd_stats_worker,
-		.help = "Show statistics for a specific worker",
+		.help = "Show statistics for a specific worker thread.",
 		.read_only = true
 	},
 
