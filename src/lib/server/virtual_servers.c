@@ -450,14 +450,14 @@ static int cmd_show_server_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 static fr_cmd_table_t cmd_table[] = {
 	{
 		.parent = "show",
-		.syntax = "server",
+		.name = "server",
 		.help = "Show virtual server settings.",
 		.read_only = true,
 	},
 
 	{
 		.parent = "show server",
-		.syntax = "list",
+		.name = "list",
 		.func = cmd_show_server_list,
 		.help = "Show the list of virtual servers loaded in the server.",
 		.read_only = true,

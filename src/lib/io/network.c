@@ -1486,6 +1486,28 @@ static int cmd_stats_network(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr
 	return 0;
 }
 
+static int socket_list(void *ctx, void *data)
+{
+	FILE *fp = ctx;
+	fr_network_socket_t *s = data;
+
+	if (!s->listen->app_io->get_name) {
+		fprintf(fp, "%s\n", s->listen->app_io->name);
+		return 0;
+	}
+
+	fprintf(fp, "%s\n", s->listen->app_io->get_name(s->listen->app_io_instance));
+	return 0;
+}
+
+static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	fr_network_t const *nr = ctx;
+
+	(void) rbtree_walk(nr->sockets, RBTREE_IN_ORDER, socket_list, fp);
+	return 0;
+}
+
 fr_cmd_table_t cmd_network_table[] = {
 	{
 		.parent = "stats network",
@@ -1495,8 +1517,23 @@ fr_cmd_table_t cmd_network_table[] = {
 
 	{
 		.parent = "stats network",
+		.syntax = "self",
 		.func = cmd_stats_network,
 		.help = "Show statistics for a specific network thread.",
+		.read_only = true
+	},
+
+	{
+		.parent = "show network",
+		.help = "Show information about network threads.",
+		.read_only = true
+	},
+
+	{
+		.parent = "show network",
+		.syntax = "socket list",
+		.func = cmd_socket_list,
+		.help = "List the sockets associated with this network thread.",
 		.read_only = true
 	},
 

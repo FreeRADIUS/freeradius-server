@@ -50,7 +50,8 @@ typedef int (*fr_cmd_tab_t)(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *in
 
 typedef struct fr_cmd_table_t {
 	char const		*parent;		//!< e.g. "show module"
-	char const		*syntax;		//!< e.g. "stats FOO"
+	char const		*name;			//!< e.g. "stats"
+	char const		*syntax;		//!< e.g. "STRING"
 	char const		*help;			//!< help text
 	fr_cmd_func_t		func;			//!< function to process this command
 	fr_cmd_tab_t		tab_expand;		//!< tab expand things in the syntax string

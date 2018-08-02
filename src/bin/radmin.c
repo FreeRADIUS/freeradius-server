@@ -742,21 +742,22 @@ static int cmd_test_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *ctx, 
 
 static fr_cmd_table_t cmd_table[] = {
 	{
-		.syntax = "exit",
+		.name = "exit",
 		.func = cmd_exit,
 		.help = "Exit from the current context.",
 		.read_only = true
 	},
 
 	{
-		.syntax = "quit",
+		.name = "quit",
 		.func = cmd_exit,
 		.help = "Quit and close the command line immediately.",
 		.read_only = true
 	},
 
 	{
-		.syntax = "help [all]",
+		.name = "help",
+		.syntax = "[all]",
 		.func = cmd_help,
 		.help = "Display list of commands and their help text.",
 		.read_only = true
@@ -766,7 +767,8 @@ static fr_cmd_table_t cmd_table[] = {
 #ifdef CMD_TEST
 	{
 		.parent = "test",
-		.syntax = "foo INTEGER",
+		.name = "foo"
+		.syntax = "INTEGER",
 		.func = cmd_test,
 		.tab_expand = cmd_test_tab_expand,
 		.help = "test foo INTEGER",
@@ -775,34 +777,35 @@ static fr_cmd_table_t cmd_table[] = {
 #endif
 
 	{
-		.syntax = "uptime",
+		.name = "uptime",
 		.func = cmd_uptime,
 		.help = "Show uptime since the server started.",
 		.read_only = true
 	},
 
 	{
-		.syntax = "set",
+		.name = "set",
 		.help = "Change settings in the server.",
 		.read_only = false
 	},
 
 	{
-		.syntax = "show",
+		.name = "show",
 		.help = "Show settings in the server.",
 		.read_only = true
 	},
 
 	{
 		.parent = "show",
-		.syntax = "config",
+		.name = "config",
 		.help = "Show configuration settings in the server.",
 		.read_only = true
 	},
 
 	{
 		.parent = "show config",
-		.syntax = "section STRING",
+		.name = "section",
+		.syntax = "STRING",
 		.help = "Show a named configuration section",
 		.func = cmd_show_config_section,
 		.tab_expand = tab_expand_config_section,
@@ -811,7 +814,8 @@ static fr_cmd_table_t cmd_table[] = {
 
 	{
 		.parent = "show config",
-		.syntax = "item STRING",
+		.name = "item",
+		.syntax = "STRING",
 		.help = "Show a named configuration item",
 		.func = cmd_show_config_item,
 		.tab_expand = tab_expand_config_item,
@@ -819,14 +823,15 @@ static fr_cmd_table_t cmd_table[] = {
 	},
 
 	{
-		.syntax = "stats",
+		.name = "stats",
 		.help = "Show statistics in the server.",
 		.read_only = true
 	},
 
 	{
 		.parent = "stats",
-		.syntax = "memory (blocks|full|total)",
+		.name = "memory",
+		.syntax = "(blocks|full|total)",
 		.func = cmd_stats_memory,
 		.help = "Show memory statistics.",
 		.read_only = true,
@@ -834,14 +839,15 @@ static fr_cmd_table_t cmd_table[] = {
 
 	{
 		.parent = "set",
-		.syntax = "debug",
+		.name = "debug",
 		.help = "Change debug settings.",
 		.read_only = false
 	},
 
 	{
 		.parent = "set debug",
-		.syntax = "level INTEGER",
+		.name = "level",
+		.syntax = "INTEGER",
 		.func = cmd_set_debug_level,
 		.help = "Change the debug level.",
 		.read_only = false,
@@ -849,14 +855,14 @@ static fr_cmd_table_t cmd_table[] = {
 
 	{
 		.parent = "show",
-		.syntax = "debug",
+		.name = "debug",
 		.help = "Show debug settings.",
 		.read_only = true
 	},
 
 	{
 		.parent = "show debug",
-		.syntax = "level",
+		.name = "level",
 		.func = cmd_show_debug_level,
 		.help = "show debug level",
 		.read_only = true,

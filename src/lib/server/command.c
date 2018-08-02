@@ -706,8 +706,8 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		return -1;
 	}
 
-	if (!name && !table->syntax) {
-		fr_strerror_printf("Top-level commands MUST have a syntax");
+	if (!name && !table->name) {
+		fr_strerror_printf("A name MUST be specified");
 		return -1;
 	}
 
@@ -805,33 +805,19 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			fr_strerror_printf("Too many arguments were supplied to the command.");
 			return  -1;
 		}
-
-		/*
-		 *	Handle top-level names.  The name is in the
-		 *	syntax, not passed in to us.
-		 */
-		if (!name) {
-			fr_cmd_argv_t *next;
-
-			if (syntax_argv->type != FR_TYPE_FIXED) {
-				talloc_free(syntax);
-				fr_strerror_printf("Top-level commands MUST start with a fixed string.");
-				return -1;
-			}
-
-			name = syntax_argv->name;
-			next = syntax_argv->next;
-			talloc_free(syntax_argv);
-			syntax_argv = next;
-			argc--;
-		}
 	}
+
+	/*
+	 *	"name" is used only when the table doesn't specify a name.
+	 */
+	if (table->name) name = table->name;
 
 	/*
 	 *	"head" is now pointing to the list where we insert
 	 *	this new command.  We now see if the "name" currently
 	 *	exists.
 	 */
+
 	cmd = fr_command_find(start, name, &insert);
 
 	/*
@@ -1441,7 +1427,7 @@ static void fr_command_list_node(FILE *fp, fr_cmd_t *cmd, int depth, char const 
 	if (!cmd->syntax) {
 		fprintf(fp, "%s\n", cmd->name);
 	} else {
-		fprintf(fp, "%s\n", cmd->syntax);
+		fprintf(fp, "%s %s\n", cmd->name, cmd->syntax);
 	}
 
 	if (cmd->help) {
