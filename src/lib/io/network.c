@@ -71,6 +71,9 @@ typedef struct fr_network_worker_t {
 
 typedef struct fr_network_socket_t {
 	int			fd;			//!< file descriptor
+	int			number;			//!< unique ID
+	int			heap_id;		//!< for the sockets_by_num heap
+
 	fr_event_filter_t	filter;			//!< what type of filter it is
 
 	bool			dead;			//!< is it dead?
@@ -121,10 +124,12 @@ struct fr_network_t {
 
 	fr_io_stats_t		stats;
 
-	rbtree_t		*sockets;		//!< list of sockets we're managing
+	rbtree_t		*sockets;		//!< list of sockets we're managing, ordered by the listener
+	rbtree_t		*sockets_by_num;       	//!< ordered by number;
 
 	int			num_workers;		//!< number of active workers
 	int			max_workers;		//!< maximum number of allowed workers
+	int			num_sockets;		//!< actually a counter...
 
 	fr_network_worker_t	*workers[MAX_WORKERS]; 	//!< each worker
 };
@@ -153,11 +158,18 @@ static int waiting_cmp(void const *one, void const *two)
 	return (a->reply.request_time > b->reply.request_time) - (a->reply.request_time < b->reply.request_time);
 }
 
-static int socket_cmp(void const *one, void const *two)
+static int socket_listen_cmp(void const *one, void const *two)
 {
 	fr_network_socket_t const *a = one, *b = two;
 
 	return (a->listen > b->listen) - (a->listen < b->listen);
+}
+
+static int socket_num_cmp(void const *one, void const *two)
+{
+	fr_network_socket_t const *a = one, *b = two;
+
+	return (a->number > b->number) - (a->number < b->number);
 }
 
 
@@ -698,6 +710,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	}
 
 	rbtree_deletebydata(nr->sockets, s);
+	rbtree_deletebydata(nr->sockets_by_num, s);
 
 	if (s->listen->app_io->close) {
 		s->listen->app_io->close(s->listen->app_io_instance);
@@ -744,6 +757,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	s = talloc_zero(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
 	memcpy(&s->listen, data, sizeof(s->listen));
+	s->number = nr->num_sockets++;
 
 	MEM(s->waiting = fr_heap_create(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
 
@@ -791,6 +805,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el, nr);
 
 	(void) rbtree_insert(nr->sockets, s);
+	(void) rbtree_insert(nr->sockets_by_num, s);
 
 	DEBUG3("Using new socket with FD %d", s->fd);
 }
@@ -817,6 +832,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	s = talloc_zero(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
 	memcpy(&s->listen, data, sizeof(s->listen));
+	s->number = nr->num_sockets++;
 
 	MEM(s->waiting = fr_heap_create(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
 
@@ -855,6 +871,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	}
 
 	(void) rbtree_insert(nr->sockets, s);
+	(void) rbtree_insert(nr->sockets_by_num, s);
 
 	DEBUG3("Using new socket with FD %d", s->fd);
 }
@@ -1055,9 +1072,15 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 	/*
 	 *	Create the various heaps.
 	 */
-	nr->sockets = rbtree_talloc_create(nr, socket_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
+	nr->sockets = rbtree_talloc_create(nr, socket_listen_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets) {
-		fr_strerror_printf_push("Failed creating tree for sockets");
+		fr_strerror_printf_push("Failed creating listen tree for sockets");
+		goto fail2;
+	}
+
+	nr->sockets_by_num = rbtree_talloc_create(nr, socket_num_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
+	if (!nr->sockets_by_num) {
+		fr_strerror_printf_push("Failed creating number tree for sockets");
 		goto fail2;
 	}
 
