@@ -1472,3 +1472,33 @@ int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats)
 
 	return 5;
 }
+
+static int cmd_stats_network(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	fr_network_t const *nr = ctx;
+
+	fprintf(fp, "count.in\t%" PRIu64 "\n", nr->stats.in);
+	fprintf(fp, "count.out\t%" PRIu64 "\n", nr->stats.out);
+	fprintf(fp, "stats,dup\t%" PRIu64 "\n", nr->stats.dup);
+	fprintf(fp, "count.dropped\t%" PRIu64 "\n", nr->stats.dropped);
+	fprintf(fp, "count.sockets\t%d\n", rbtree_num_elements(nr->sockets));
+
+	return 0;
+}
+
+fr_cmd_table_t cmd_network_table[] = {
+	{
+		.parent = "stats network",
+		.help = "Statistics for network threads.",
+		.read_only = true
+	},
+
+	{
+		.parent = "stats network",
+		.func = cmd_stats_network,
+		.help = "Show statistics for a specific network thread.",
+		.read_only = true
+	},
+
+	CMD_TABLE_END
+};

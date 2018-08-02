@@ -436,6 +436,11 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			goto st_fail;
 		}
 
+		if (fr_command_register_hook("0", sc->single_network, cmd_network_table) < 0) {
+			fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
+			goto st_fail;
+		}
+
 		(void) fr_network_worker_add(sc->single_network, sc->single_worker);
 		fr_log(sc->log, L_DBG, "Scheduler created in single-threaded mode");
 
