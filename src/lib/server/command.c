@@ -2051,7 +2051,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 		if (argc < info->argc) {
 			cmd = info->cmd[argc];
 			if (!cmd) {
-				fprintf(stderr, "No cmd at offset %d\n", argc);
+				fr_strerror_printf("No cmd at offset %d", argc);
 				goto invalid;
 			}
 		}
@@ -2372,8 +2372,6 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 				return count + rcode;
 			}
 
-			*word_p = p;
-
 			len = p - word;
 
 			info->argv[info->argc] = my_word = talloc_zero_array(info->argv, char, len + 1);
@@ -2397,6 +2395,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 						      word + offset, len - (offset << 1), quote, false);
 			if (rcode < 0) return -1;
 			info->argc++;
+			*word_p = word = p;
 			continue;
 		}
 
