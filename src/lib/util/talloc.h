@@ -40,6 +40,8 @@ void		*talloc_null_ctx(void);
 
 int		talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
 
+TALLOC_CTX	*talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, size_t size);
+
 char		*talloc_typed_strdup(void const *t, char const *p);
 
 char		*talloc_typed_asprintf(void const *t, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
