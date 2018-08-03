@@ -713,13 +713,15 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 
 	if (ssn->invalid_hb_used) return 0;
 
-	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
-	if (err != (int) ssn->dirty_in.used) {
-		REDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+	if (ssn->dirty_in.used > 0) {
+		err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
+		if (err != (int) ssn->dirty_in.used) {
+			REDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+			record_init(&ssn->dirty_in);
+			return 0;
+		}
 		record_init(&ssn->dirty_in);
-		return 0;
 	}
-	record_init(&ssn->dirty_in);
 
 	err = SSL_read(ssn->ssl, ssn->clean_out.data + ssn->clean_out.used,
 		       sizeof(ssn->clean_out.data) - ssn->clean_out.used);
@@ -3662,12 +3664,14 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	/*
 	 *	Decrypt the complete record.
 	 */
-	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data,
-			ssn->dirty_in.used);
-	if (err != (int) ssn->dirty_in.used) {
-		record_init(&ssn->dirty_in);
-		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
-		return FR_TLS_FAIL;
+	if (ssn->dirty_in.used > 0) {
+		err = BIO_write(ssn->into_ssl, ssn->dirty_in.data,
+				ssn->dirty_in.used);
+		if (err != (int) ssn->dirty_in.used) {
+			record_init(&ssn->dirty_in);
+			RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+			return FR_TLS_FAIL;
+		}
 	}
 
 	/*
