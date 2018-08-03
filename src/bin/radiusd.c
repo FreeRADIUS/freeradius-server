@@ -483,6 +483,11 @@ int main(int argc, char *argv[])
 	}
 #endif
 
+	/*
+	 *	Don't allow radmin when checking the config.
+	 */
+	if (check_config) radmin = false;
+
 	if (fr_radmin_start(config, radmin) < 0) EXIT_WITH_FAILURE;
 
 #ifndef __MINGW32__
