@@ -691,6 +691,30 @@ static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd
 	return 0;
 }
 
+static int cmd_show_client(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
+{
+	int proto = IPPROTO_UDP;
+	RADCLIENT *client;
+
+	if (info->argc >= 2) {
+		if (strcmp(info->argv[1], "tcp") == 0) {
+			proto = IPPROTO_TCP;
+		}
+		/* else it MUST be "udp" */
+	}
+
+	client = client_find(NULL, &info->box[0]->vb_ip, proto);
+	if (!client) {
+		fprintf(fp_err, "No such client.");
+		return -1;
+	}
+
+	fprintf(fp, "shortname\t%s\n", client->shortname);
+	fprintf(fp, "secret\t\t%s\n", client->secret);
+
+	return 0;
+}
+
 //#define CMD_TEST (1)
 
 #ifdef CMD_TEST
@@ -819,6 +843,22 @@ static fr_cmd_table_t cmd_table[] = {
 		.help = "Show a named configuration item",
 		.func = cmd_show_config_item,
 		.tab_expand = tab_expand_config_item,
+		.read_only = true
+	},
+
+	{
+		.parent = "show",
+		.name = "client",
+		.help = "Show information about a client or clients.",
+		.read_only = true
+	},
+
+	{
+		.parent = "show client",
+		.name = "config",
+		.syntax = "IPADDR [(udp|tcp)]",
+		.help = "Show the configuration for a given client.",
+		.func = cmd_show_client,
 		.read_only = true
 	},
 
