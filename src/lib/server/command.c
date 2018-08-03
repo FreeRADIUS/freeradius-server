@@ -64,6 +64,7 @@ struct fr_cmd_t {
 	bool			read_only;
 	bool			intermediate;			//!< intermediate commands can't have callbacks
 	bool			live;				//!< is this entry live?
+	bool			added_name;			//!< was this name added?
 };
 
 
@@ -702,8 +703,11 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	int argc = 0, depth = 0;
 	fr_cmd_argv_t *syntax_argv;
 
+	/*
+	 *	This is a place-holder for tab expansion.
+	 */
 	if (!table->name) {
-		fr_strerror_printf("A name MUST be specified for table with parent %s syntax %s", table->parent, table->syntax);
+		fr_strerror_printf("A name MUST be specified.");
 		return -1;
 	}
 
@@ -749,6 +753,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			cmd = fr_command_find(start, parents[i], &insert);
 			if (!cmd) {
 				cmd = fr_command_alloc(talloc_ctx, insert, parents[i]);
+				cmd->live = true;
 			}
 
 			if (!cmd->intermediate) {
@@ -772,9 +777,37 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	 *	Add an intermediate name, e.g. "network X"
 	 */
 	if (table->add_name) {
+		fr_cmd_t **added_insert;
+
+		/*
+		 *	See if we need to create the automatic
+		 *	place-holder command for help text.
+		 */
+		cmd = fr_command_find(start, "STRING", &added_insert);
+		if (!cmd) {
+			cmd = fr_command_alloc(talloc_ctx, added_insert, "STRING");
+		}
+
+		/*
+		 *	In the place-holders children, see if we need
+		 *	to add this subcommand.
+		 */
+		cmd = fr_command_find(&(cmd->child), table->name, &added_insert);
+		if (!cmd) {
+			cmd = fr_command_alloc(talloc_ctx, added_insert, table->name);
+
+			if (table->syntax) cmd->syntax = talloc_strdup(cmd, table->syntax);
+			if (table->help) cmd->help = talloc_strdup(cmd, table->help);
+		}
+
+		/*
+		 *	Now insert or add the extended name to the command hierarchy.
+		 */
 		cmd = fr_command_find(start, name, &insert);
 		if (!cmd) {
 			cmd = fr_command_alloc(talloc_ctx, insert, name);
+			cmd->added_name = true;
+			cmd->live = true;
 		}
 
 		start = &(cmd->child);
@@ -1442,7 +1475,7 @@ static void fr_command_list_node(FILE *fp, fr_cmd_t *cmd, int depth, char const 
 		fprintf(fp, "%s %s\n", cmd->name, cmd->syntax);
 	}
 
-	if (cmd->help) {
+	if (cmd->help && ((options & FR_COMMAND_OPTION_HELP) != 0)) {
 		fprintf(fp, "\t%s\n", cmd->help);
 	}
 }
@@ -1452,6 +1485,10 @@ static void fr_command_list_internal(FILE *fp, fr_cmd_t *head, int depth, int ma
 	fr_cmd_t *cmd;
 
 	for (cmd = head; cmd != NULL; cmd = cmd->next) {
+		if (cmd->added_name) continue;
+
+		// We DO print out commands are !cmd->live
+
 		if (cmd->child && ((depth + 1) < max_depth)) {
 			argv[depth] = cmd->name;
 			fr_command_list_internal(fp, cmd->child, depth + 1, max_depth, argv, options);
@@ -2038,6 +2075,14 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 		SKIP_SPACES;
 
 		/*
+		 *	Skip commands which we shouldn't know about...
+		 */
+		if (!cmd->live) {
+			cmd = cmd->next;
+			continue;
+		}
+
+		/*
 		 *	End of the input.  Tab expand everything here.
 		 */
 		if (!*word) {
@@ -2477,11 +2522,21 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		SKIP_SPACES;
 
 		/*
+		 *	Skip commands which we shouldn't know about...
+		 */
+		if (!cmd->live) {
+			cmd = cmd->next;
+			continue;
+		}
+
+		/*
 		 *	End of the input.  Tab expand everything here.
 		 */
 		if (!*word) {
 		expand:
 			while (cmd && (count < max_expansions)) {
+				if (!cmd->live) goto next;
+
 				SKIP_NAME(cmd->name);
 
 				/*
@@ -2492,6 +2547,8 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 					expansions[count] = strdup(cmd->name);
 					count++;
 				}
+
+			next:
 				cmd = cmd->next;
 			}
 

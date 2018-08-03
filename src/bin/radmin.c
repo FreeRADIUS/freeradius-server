@@ -421,12 +421,19 @@ static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUS
 static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	int max = 1;
+	int options = FR_COMMAND_OPTION_HELP;
 
-	if ((info->argc > 0) && (strcmp(info->argv[0], "all") == 0)) {
-		max = CMD_MAX_ARGV;
+	if (info->argc > 0) {
+		if (strcmp(info->argv[0], "all") == 0) {
+			max = CMD_MAX_ARGV;
+		}
+		else if (strcmp(info->argv[0], "commands") == 0) {
+			max = CMD_MAX_ARGV;
+			options = FR_COMMAND_OPTION_NONE;
+		}
 	}
 
-	fr_command_list(fp, max, radmin_cmd, FR_COMMAND_OPTION_NONE);
+	fr_command_list(fp, max, radmin_cmd, options);
 
 	return 0;
 }
@@ -781,7 +788,7 @@ static fr_cmd_table_t cmd_table[] = {
 
 	{
 		.name = "help",
-		.syntax = "[all]",
+		.syntax = "[(all|commands)]",
 		.func = cmd_help,
 		.help = "Display list of commands and their help text.",
 		.read_only = true
