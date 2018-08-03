@@ -38,6 +38,7 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  libraries exporting LDAP API functions.
 	* unlock files when asked to unlock them.
 	* return error instead of asserting in map code.
+	* Don't write 0 bytes to SSL.  Fixes #2270.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
