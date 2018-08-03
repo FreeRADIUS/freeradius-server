@@ -1414,15 +1414,6 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 	return 0;
 }
 
-/*
- *	Fixme? Swapout with an iterative API.
- */
-const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs)
-{
-	if (!cs) return NULL;
-
-	return cs->variables;
-}
 
 /** Add a single rule to a #CONF_SECTION
  *

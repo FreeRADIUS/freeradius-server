@@ -102,7 +102,6 @@ struct cf_section {
 	int			depth;
 
 	CONF_SECTION		*template;
-	CONF_PARSER const	*variables;	//!< the section was parsed with.
 };
 
 /** Internal data that is associated with a configuration section
