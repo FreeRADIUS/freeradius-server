@@ -1922,7 +1922,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 	return 0;
 }
 
-/** Convert any supported type to a bool
+/** Convert any supported type to an ethernet address
  *
  * Allowed input types are:
  * - FR_TYPE_STRING ("00:11:22:33:44:55")
@@ -3800,15 +3800,7 @@ parse:
 		break;
 
 	case FR_TYPE_SIZE:
-	{
-		size_t i;
-
-		if (sscanf(in, "%zu", &i) != 1) {
-			fr_strerror_printf("Failed parsing \"%s\" as a file or memory size", in);
-			return -1;
-		}
-		dst->datum.size = i;
-	}
+		if (fr_size_from_str(&dst->datum.size, in) < 0) return -1;
 		break;
 
 	case FR_TYPE_TIMEVAL:
