@@ -30,18 +30,17 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/tls/base.h>
-#include <freeradius-devel/server/radmin.h>
+#include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/radmin.h>
+#include <freeradius-devel/server/state.h>
+#include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/unlang/base.h>
 
-#include <sys/file.h>
-
-#include <fcntl.h>
 #include <ctype.h>
+#include <fcntl.h>
+#include <sys/file.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -654,7 +653,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Start the network / worker threads.
 	 */
-	if (1) {
+	{
 		int networks = config->num_networks;
 		int workers = config->num_workers;
 		fr_event_list_t *el = NULL;
@@ -772,7 +771,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *  Clear the libfreeradius error buffer.
+	 *	Clear the libfreeradius error buffer.
 	 */
 	fr_strerror();
 
@@ -823,54 +822,58 @@ int main(int argc, char *argv[])
 	if (config->daemonize) unlink(config->pid_file);
 
 	/*
-	 *	Stop the scheduler
+	 *  Stop the scheduler
 	 */
 	(void) fr_schedule_destroy(sc);
 
 	/*
-	 *	Free memory in an explicit and consistent order
+	 *  Free memory in an explicit and consistent order
 	 *
-	 *	We could let everything be freed by the autofree
-	 *	context, but in some cases there are odd interactions
-	 *	with destructors that may cause double frees and
-	 *	SEGVs.
+	 *  We could let everything be freed by the global_ctx
+	 *  context, but in some cases there are odd interactions
+	 *  with destructors that may cause double frees and
+	 *  SEGVs.
 	 */
 	radius_event_free();		/* Free the requests */
 
 cleanup:
 	/*
-	 *	Frees request specific logging resources which is OK
-	 *	because all the requests will have been stopped.
+	 *  Frees request specific logging resources which is OK
+	 *  because all the requests will have been stopped.
 	 */
 	log_global_free();
 
 	/*
-	 *	Free xlat instance data, and call any detach methods
+	 *  Free xlat instance data, and call any detach methods
 	 */
 	xlat_instances_free();
 
 	/*
-	 *	Detach modules, connection pools, registered xlats / paircmps / maps.
+	 *  Detach modules, connection pools, registered xlats
+	 *  paircmps / maps.
 	 */
 	modules_free();
 
 	/*
-	 *	The only paircmps remaining are the ones registered by the server core.
+	 *  The only paircmps remaining are the ones registered
+	 *  by the server core.
 	 */
 	paircmp_free();
 
 	/*
-	 *	The only xlats remaining are the ones registered by the server core.
+	 *  The only xlats remaining are the ones registered by
+	 *  the server core.
 	 */
 	xlat_free();
 
 	/*
-	 *	The only maps remaining are the ones registered by the server core.
+	 *  The only maps remaining are the ones registered by
+	 *  the server core.
 	 */
 	map_proc_free();
 
 	/*
-	 *	Free any resources used by the unlang interpreter.
+	 *  Free any resources used by the unlang interpreter.
 	 */
 	unlang_free();
 
@@ -878,36 +881,41 @@ cleanup:
 	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
 
-	talloc_memory_report = config->talloc_memory_report;	/* Grab this before we free the config */
+	if (config) talloc_memory_report = config->talloc_memory_report;	/* Grab this before we free the config */
 
 	/*
-	 *	And now nothing should be left anywhere except the
-	 *	parsed configuration items.
+	 *  And now nothing should be left anywhere except the
+	 *  parsed configuration items.
 	 */
 	main_config_free(&config);
 
-	talloc_free(autofree);		/* Cleanup everything else */
-
-	trigger_exec_free();		/* Now we're sure no more triggers can fire, free the trigger tree */
+	/*
+	 *  Cleanup everything else
+	 */
+	talloc_free(global_ctx);
 
 	/*
-	 *	Clean out the main thread's log buffers
-	 *	These would be free on exit anyway but this
-	 *	stops them showing up in the memory report.
+	 *  Now we're sure no more triggers can fire, free the
+	 *  trigger tree
+	 */
+	trigger_exec_free();
+
+	/*
+	 *  Clean out the main thread's log buffers these would
+	 *  be free on exit anyway but this stops them showing
+	 *  up in the memory report.
 	 */
 	fr_strerror_free();
 
 	/*
-	 *	Anything not cleaned up by the above is
-	 *	allocated in the NULL top level context,
-	 *	and is likely leaked memory.
+	 *  Anything not cleaned up by the above is allocated in
+	 *  the NULL top level context, and is likely leaked memory.
 	 */
 	if (talloc_memory_report) fr_log_talloc_report(NULL);
 
 	/*
-	 *	If we're running under LSAN, try and SUID
-	 *	back up so we don't inteferere with the
-	 *	onexit() handler.
+	 *  If we're running under LSAN, try and SUID back up so
+	 *  we don't inteferere with the onexit() handler.
 	 */
 	if (!rad_suid_is_down_permanent() && (fr_get_lsan_state() == 1)) rad_suid_up();
 
