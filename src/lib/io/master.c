@@ -324,6 +324,9 @@ static RADCLIENT *radclient_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
 	COPY_FIELD(tls_required);
 #endif
 
+	FR_STRUCT_MEMBER_SIGN(c, secret, talloc_array_length(c->secret));
+	FR_STRUCT_SIGN(c);
+
 	return c;
 
 	/*
@@ -1256,6 +1259,9 @@ have_client:
 	 *	Track this packet and return it if necessary.
 	 */
 	if (connection || !client->use_connected) {
+		FR_STRUCT_MEMBER_VERIFY(client->radclient, secret, talloc_array_length(client->radclient->secret));
+		FR_STRUCT_VERIFY(client->radclient);
+
 		/*
 		 *	Add the packet to the tracking table, if it's
 		 *	not already there.  Pending packets will be in
