@@ -41,6 +41,7 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/file.h>
+#include <sys/mman.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -158,9 +159,13 @@ int main(int argc, char *argv[])
 	fr_schedule_t	*sc = NULL;
 	int		ret = EXIT_SUCCESS;
 
-	main_config_t	*config;
+	TALLOC_CTX	*global_ctx = NULL;
+	main_config_t	*config = NULL;
+	bool		talloc_memory_report = false;
 
-	bool		talloc_memory_report;
+	size_t		pool_size = 0;
+	void		*pool_page_start = NULL, *pool_page_end = NULL;
+	bool		do_mprotect;
 
 	/*
 	 *	Setup talloc callbacks so we get useful errors
@@ -168,17 +173,53 @@ int main(int argc, char *argv[])
 	(void) fr_talloc_fault_setup();
 
 	/*
-	 * 	We probably don't want to free the talloc autofree context
+	 * 	We probably don't want to free the talloc global_ctx context
 	 * 	directly, so we'll allocate a new context beneath it, and
 	 *	free that before any leak reports.
 	 */
-	TALLOC_CTX *autofree = talloc_new(talloc_autofree_context());
+	{
+		char *env;
+
+		/*
+		 *	If a FR_GLOBAL_POOL value is provided and
+		 *	is of a valid size, we pre-allocate a global
+		 *	memory pool, and mprotect() it once we're done
+		 *	parsing the global config.
+		 *
+		 *	This lets us catch stray writes into global
+		 *	memory.
+		 */
+		env = getenv("FR_GLOBAL_POOL");
+		if (env) {
+			if (fr_size_from_str(&pool_size, env) < 0) {
+				fprintf(stderr, "Invalid pool size string \"%s\": %s\n", env, fr_strerror());
+				EXIT_WITH_FAILURE;
+			}
+
+			/*
+			 *	Pre-allocate a global memory pool for the static
+			 *	config to exist in.  We mprotect() this later to
+			 *	catch any stray writes.
+			 */
+			global_ctx = talloc_page_aligned_pool(talloc_autofree_context(),
+							      &pool_page_start, &pool_page_end, pool_size);
+			do_mprotect = true;
+		} else {
+	 		global_ctx = talloc_new(talloc_autofree_context());
+	 		do_mprotect = false;
+		}
+
+		if (!global_ctx) {
+			fprintf(stderr, "Failed allocating global context\n");
+			EXIT_WITH_FAILURE;
+		}
+	}
 
 	/*
 	 *	Allocate the main config structure.
 	 *	It's allocating so we can hang talloced buffers off it.
 	 */
-	config = main_config_alloc(autofree);
+	config = main_config_alloc(global_ctx);
 	if (!config) {
 		fprintf(stderr, "Failed allocating main config");
 		EXIT_WITH_FAILURE;
@@ -224,7 +265,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Set the panic action and enable other debugging facilities
 	 */
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(global_ctx, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("Failed installing fault handlers... continuing");
 	}
 
@@ -256,8 +297,8 @@ int main(int argc, char *argv[])
 		case 'l':
 			if (strcmp(optarg, "stdout") == 0) goto do_stdout;
 
-			config->log_file = talloc_typed_strdup(autofree, optarg);
-			default_log.file = talloc_typed_strdup(autofree, optarg);
+			config->log_file = talloc_typed_strdup(global_ctx, optarg);
+			default_log.file = talloc_typed_strdup(global_ctx, optarg);
 			default_log.dst = L_DST_FILES;
 			default_log.fd = open(config->log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
 			if (default_log.fd < 0) {
@@ -404,13 +445,13 @@ int main(int argc, char *argv[])
 	 *	Initialize the DL infrastructure, which is used by the
 	 *	config file parser.
 	 */
-	dl_loader_init(autofree, config->lib_dir);
+	dl_loader_init(global_ctx, config->lib_dir);
 
 	/*
 	 *	Initialise the top level dictionary hashes which hold
 	 *	the protocols.
 	 */
-	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
+	if (fr_dict_global_init(global_ctx, config->dict_dir) < 0) {
 		fr_perror("radiusd");
 		EXIT_WITH_FAILURE;
 	}
@@ -433,7 +474,7 @@ int main(int argc, char *argv[])
 	 *  environment.
 	 */
 	if (config->panic_action && !getenv("PANIC_ACTION") &&
-	    (fr_fault_setup(autofree, config->panic_action, argv[0]) < 0)) {
+	    (fr_fault_setup(global_ctx, config->panic_action, argv[0]) < 0)) {
 		fr_perror("radiusd - Failed configuring panic action: %s", config->name);
 		EXIT_WITH_FAILURE;
 	}
@@ -643,7 +684,7 @@ int main(int argc, char *argv[])
 	 *  This has to be done post-fork in case we're using kqueue, where the
 	 *  queue isn't inherited by the child process.
 	 */
-	if (!radius_event_init(autofree)) EXIT_WITH_FAILURE;
+	if (!radius_event_init(global_ctx)) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Redirect stderr/stdout as appropriate.
@@ -776,6 +817,16 @@ int main(int argc, char *argv[])
 	fr_strerror();
 
 	/*
+	 *  Protect global memory - If something attempts
+	 *  to write to this memory we get a SIGBUS.
+	 */
+	if (do_mprotect &&
+	    (mprotect(pool_page_start, (uintptr_t)pool_page_end - (uintptr_t)pool_page_start, PROT_READ) < 0)) {
+		PERROR("Protecting global memory failed: %s", fr_syserror(errno));
+		EXIT_WITH_FAILURE;
+	}
+
+	/*
 	 *  Process requests until HUP or exit.
 	 */
 	while ((status = radius_event_process()) == 0x80) {
@@ -783,6 +834,16 @@ int main(int argc, char *argv[])
 		radius_stats_init(1);
 #endif
 		main_config_hup(config);
+	}
+
+	/*
+	 *  Unprotect global memory
+	 */
+	if (do_mprotect &&
+	    (mprotect(pool_page_start, (uintptr_t)pool_page_end - (uintptr_t)pool_page_start,
+	    	      PROT_READ | PROT_WRITE) < 0)) {
+		PERROR("Unprotecting global memory failed: %s", fr_syserror(errno));
+		EXIT_WITH_FAILURE;
 	}
 
 	if (status < 0) {
