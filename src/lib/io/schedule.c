@@ -431,12 +431,12 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			goto st_fail;
 		}
 
-		if (fr_command_register_hook("0", sc->single_worker, cmd_worker_table) < 0) {
+		if (fr_command_register_hook(NULL, "0", sc->single_worker, cmd_worker_table) < 0) {
 			fr_log(sc->log, L_ERR, "Failed adding worker commands: %s", fr_strerror());
 			goto st_fail;
 		}
 
-		if (fr_command_register_hook("0", sc->single_network, cmd_network_table) < 0) {
+		if (fr_command_register_hook(NULL, "0", sc->single_network, cmd_network_table) < 0) {
 			fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
 			goto st_fail;
 		}
@@ -554,13 +554,13 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		next = fr_dlist_next(&sc->workers, sw);
 
 		snprintf(buffer, sizeof(buffer), "%d", i);
-		if (fr_command_register_hook(buffer, sw->worker, cmd_worker_table) < 0) {
+		if (fr_command_register_hook(NULL, buffer, sw->worker, cmd_worker_table) < 0) {
 			fr_log(sc->log, L_ERR, "Failed adding worker commands: %s", fr_strerror());
 			goto st_fail;
 		}
 	}
 
-	if (fr_command_register_hook("0", sc->sn, cmd_network_table) < 0) {
+	if (fr_command_register_hook(NULL, "0", sc->sn, cmd_network_table) < 0) {
 		fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
 		goto st_fail;
 	}

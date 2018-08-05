@@ -933,7 +933,7 @@ int fr_radmin_start(main_config_t *config, bool cli)
 	fr_command_register_hook = fr_radmin_register;
 	radmin_main_config = config;
 
-	if (fr_radmin_register(radmin_ctx, NULL, cmd_table) < 0) {
+	if (fr_radmin_register(radmin_ctx, NULL, NULL, cmd_table) < 0) {
 		PERROR("Failed initializing radmin");
 		return -1;
 	}
@@ -967,9 +967,9 @@ void fr_radmin_stop(void)
 /*
  *	Public registration hooks.
  */
-int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
+int fr_radmin_register(UNUSED TALLOC_CTX *talloc_ctx, char const *name, void *ctx, fr_cmd_table_t *table)
 {
-	return fr_command_add_multi(NULL, &radmin_cmd, name, ctx, table);
+	return fr_command_add_multi(radmin_ctx, &radmin_cmd, name, ctx, table);
 }
 
 /** Run a command from an input string.

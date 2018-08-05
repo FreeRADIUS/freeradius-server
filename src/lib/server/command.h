@@ -70,7 +70,7 @@ typedef struct fr_cmd_walk_info_t {
 } fr_cmd_walk_info_t;
 
 typedef int (*fr_cmd_walk_t)(void *ctx, fr_cmd_walk_info_t *);
-typedef int (*fr_command_register_hook_t)(char const *name, void *ctx, fr_cmd_table_t *table);
+typedef int (*fr_command_register_hook_t)(TALLOC_CTX *talloc_ctx, char const *name, void *ctx, fr_cmd_table_t *table);
 extern fr_command_register_hook_t fr_command_register_hook;
 
 int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head_p, char const *name, void *ctx, fr_cmd_table_t const *table);

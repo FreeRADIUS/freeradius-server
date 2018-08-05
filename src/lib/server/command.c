@@ -32,7 +32,7 @@ RCSID("$Id$")
 /*
  *	Registration hooks for radmin.
  */
-static int fr_command_register(UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table)
+static int fr_command_register(UNUSED TALLOC_CTX *talloc_ctx, UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table)
 {
 	return 0;
 }

@@ -649,7 +649,7 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 
 	if (mi->instantiated) return 0;
 
-	if (fr_command_register_hook(mi->name, mi, cmd_module_table) < 0) {
+	if (fr_command_register_hook(NULL, mi->name, mi, cmd_module_table) < 0) {
 		ERROR("Failed registering radmin commands for module %s - %s",
 		      mi->name, fr_strerror());
 		return -1;
@@ -921,7 +921,7 @@ int modules_instantiate(CONF_SECTION *root)
 
 	DEBUG2("#### Instantiating modules ####");
 
-	if (fr_command_register_hook(NULL, modules, cmd_table) < 0) {
+	if (fr_command_register_hook(NULL, NULL, modules, cmd_table) < 0) {
 		ERROR("Failed registering radmin commands for modules - %s",
 		      fr_strerror());
 		return -1;
