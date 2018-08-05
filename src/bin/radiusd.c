@@ -820,10 +820,12 @@ int main(int argc, char *argv[])
 	 *  Protect global memory - If something attempts
 	 *  to write to this memory we get a SIGBUS.
 	 */
-	if (do_mprotect &&
-	    (mprotect(pool_page_start, (uintptr_t)pool_page_end - (uintptr_t)pool_page_start, PROT_READ) < 0)) {
-		PERROR("Protecting global memory failed: %s", fr_syserror(errno));
-		EXIT_WITH_FAILURE;
+	if (do_mprotect) {
+	    	if (mprotect(pool_page_start, (uintptr_t)pool_page_end - (uintptr_t)pool_page_start, PROT_READ) < 0) {
+			PERROR("Protecting global memory failed: %s", fr_syserror(errno));
+			EXIT_WITH_FAILURE;
+		}
+		DEBUG("Global memory protected");
 	}
 
 	/*
@@ -839,11 +841,13 @@ int main(int argc, char *argv[])
 	/*
 	 *  Unprotect global memory
 	 */
-	if (do_mprotect &&
-	    (mprotect(pool_page_start, (uintptr_t)pool_page_end - (uintptr_t)pool_page_start,
-	    	      PROT_READ | PROT_WRITE) < 0)) {
-		PERROR("Unprotecting global memory failed: %s", fr_syserror(errno));
-		EXIT_WITH_FAILURE;
+	if (do_mprotect) {
+		if (mprotect(pool_page_start, (uintptr_t)pool_page_end - (uintptr_t)pool_page_start,
+			     PROT_READ | PROT_WRITE) < 0) {
+			PERROR("Unprotecting global memory failed: %s", fr_syserror(errno));
+			EXIT_WITH_FAILURE;
+		}
+		DEBUG("Global memory unprotected");
 	}
 
 	if (status < 0) {
