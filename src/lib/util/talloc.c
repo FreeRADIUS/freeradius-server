@@ -185,7 +185,7 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
 		talloc_free(pool);
 		return NULL;
 	}
-	hdr_size = (uintptr_t)pool - (uintptr_t)chunk;
+	hdr_size = (uintptr_t)chunk - (uintptr_t)pool;
 
 	next = (void *)ROUND_UP((uintptr_t)chunk, page_size);	/* Round up address to the next page */
 
