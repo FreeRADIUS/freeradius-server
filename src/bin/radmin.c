@@ -61,6 +61,7 @@ static pthread_t pthread_id;
 static bool stop = false;
 static int context = 0;
 static fr_cmd_info_t radmin_info;
+static TALLOC_CTX *radmin_ctx;
 
 #ifndef USE_READLINE
 /*
@@ -920,6 +921,9 @@ static fr_cmd_table_t cmd_table[] = {
 
 int fr_radmin_start(main_config_t *config, bool cli)
 {
+	radmin_ctx = talloc_init("radmin");
+	if (!radmin_ctx) return -1;
+
 	gettimeofday(&start_time, NULL);
 
 #ifdef USE_READLINE
@@ -929,7 +933,7 @@ int fr_radmin_start(main_config_t *config, bool cli)
 	fr_command_register_hook = fr_radmin_register;
 	radmin_main_config = config;
 
-	if (fr_radmin_register(NULL, NULL, cmd_table) < 0) {
+	if (fr_radmin_register(radmin_ctx, NULL, cmd_table) < 0) {
 		PERROR("Failed initializing radmin");
 		return -1;
 	}
@@ -956,6 +960,8 @@ void fr_radmin_stop(void)
 	stop = true;
 
 	(void) pthread_join(pthread_id, NULL);
+
+	TALLOC_FREE(radmin_ctx);
 }
 
 /*
