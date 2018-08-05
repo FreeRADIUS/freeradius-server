@@ -146,7 +146,7 @@ DIAG_OFF(missing-prototypes)
 const char CC_HINT(used) *__lsan_default_suppressions(void)
 {
 	return
-#if deifned(__APPLE__)
+#if defined(__APPLE__)
 		"leak:_gai_nat64_synthesis\n"		/* Observed in calls to getaddrinfo */
 		"leak:*gmtsub*\n"
 		"leak:tzsetwall_basic\n"
