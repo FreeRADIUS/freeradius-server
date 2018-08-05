@@ -146,14 +146,14 @@ DIAG_OFF(missing-prototypes)
 const char CC_HINT(used) *__lsan_default_suppressions(void)
 {
 	return
-#ifdef __APPLE__
+#if deifned(__APPLE__)
 		"leak:_gai_nat64_synthesis\n"		/* Observed in calls to getaddrinfo */
 		"leak:*gmtsub*\n"
 		"leak:tzsetwall_basic\n"
 		"leak:ImageLoaderMachO::doImageInit\n"
 		"leak:libSystem_atfork_child"
-#else
-		""
+#elif defined(__linux__)
+		"leak:kqueue"
 #endif
 		;
 }
