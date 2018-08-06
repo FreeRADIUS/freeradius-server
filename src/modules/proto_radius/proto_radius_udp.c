@@ -228,6 +228,14 @@ static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t requ
 
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
 
+#if 0
+			if (fr_radius_verify(track->reply, track->packet,
+					     (uint8_t const *) track->address->radclient->secret,
+					     talloc_array_length(track->address->radclient->secret) - 1) < 0) {
+				rad_assert("packet is corrupted before sending" == NULL);
+			}
+#endif
+
 			(void) udp_send(inst->sockfd, packet, track->reply_len, flags,
 					&address->dst_ipaddr, address->dst_port,
 					address->if_index,
