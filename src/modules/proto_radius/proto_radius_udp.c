@@ -243,7 +243,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 	rad_assert(buffer_len >= 20);
 
 #if 0
-	if (fr_radius_verify(track->reply, track->packet,
+	if (fr_radius_verify(buffer, track->packet,
 			     (uint8_t const *) track->address->radclient->secret,
 			     talloc_array_length(track->address->radclient->secret) - 1) < 0) {
 		rad_assert("packet is corrupted before sending" == NULL);
@@ -255,7 +255,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 	 */
 	if (request_time != track->timestamp) {
 		ERROR("Dropping packet");
-		return data_size;
+		return buffer_len;
 	}
 
 	/*
