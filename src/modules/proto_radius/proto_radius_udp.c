@@ -193,7 +193,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 }
 
 
-static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t request_time,
+static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
@@ -228,14 +228,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t requ
 
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
 
-#if 0
-			if (fr_radius_verify(track->reply, track->packet,
-					     (uint8_t const *) track->address->radclient->secret,
-					     talloc_array_length(track->address->radclient->secret) - 1) < 0) {
-				rad_assert("packet is corrupted before sending" == NULL);
-			}
-#endif
-
 			(void) udp_send(inst->sockfd, packet, track->reply_len, flags,
 					&address->dst_ipaddr, address->dst_port,
 					address->if_index,
@@ -249,6 +241,22 @@ static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t requ
 	 *	We only write RADIUS packets.
 	 */
 	rad_assert(buffer_len >= 20);
+
+#if 0
+	if (fr_radius_verify(track->reply, track->packet,
+			     (uint8_t const *) track->address->radclient->secret,
+			     talloc_array_length(track->address->radclient->secret) - 1) < 0) {
+		rad_assert("packet is corrupted before sending" == NULL);
+	}
+#endif
+
+	/*
+	 *	Drop packet if it's too late.
+	 */
+	if (request_time != track->timestamp) {
+		ERROR("Dropping packet");
+		return data_size;
+	}
 
 	/*
 	 *	Only write replies if they're RADIUS packets.
