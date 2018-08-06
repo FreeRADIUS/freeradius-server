@@ -684,7 +684,7 @@ int main(int argc, char *argv[])
 	 *  This has to be done post-fork in case we're using kqueue, where the
 	 *  queue isn't inherited by the child process.
 	 */
-	if (!radius_event_init(global_ctx)) EXIT_WITH_FAILURE;
+	if (!radius_event_init()) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Redirect stderr/stdout as appropriate.

@@ -651,7 +651,7 @@ void			hup_logfile(main_config_t *config);
 
 /* process.c */
 fr_event_list_t *fr_global_event_list(void);
-int radius_event_init(TALLOC_CTX *ctx);
+int radius_event_init(void);
 int radius_event_start(bool spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);
