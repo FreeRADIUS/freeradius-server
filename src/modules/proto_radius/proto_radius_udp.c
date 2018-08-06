@@ -242,22 +242,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 	 */
 	rad_assert(buffer_len >= 20);
 
-#if 0
-	if (fr_radius_verify(buffer, track->packet,
-			     (uint8_t const *) track->address->radclient->secret,
-			     talloc_array_length(track->address->radclient->secret) - 1) < 0) {
-		rad_assert("packet is corrupted before sending" == NULL);
-	}
-#endif
-
-	/*
-	 *	Drop packet if it's too late.
-	 */
-	if (request_time != track->timestamp) {
-		ERROR("Dropping packet");
-		return buffer_len;
-	}
-
 	/*
 	 *	Only write replies if they're RADIUS packets.
 	 *	sometimes we want to NOT send a reply...
