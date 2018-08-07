@@ -1385,6 +1385,11 @@ static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, b
 		}
 
 		/*
+		 *	Not found, die.
+		 */
+		if (!cmd) return 0;
+
+		/*
 		 *	Ignore read-only on intermediate commands.
 		 *	Some may have been automatically allocated
 		 */
