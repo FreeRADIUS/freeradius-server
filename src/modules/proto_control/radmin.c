@@ -479,7 +479,14 @@ static int radmin_help(UNUSED int count, UNUSED int key)
 {
 	printf("\n");
 
-	(void) fr_conduit_write(sockfd, FR_CONDUIT_HELP, rl_line_buffer, strlen(rl_line_buffer));
+	if (*rl_line_buffer) {
+		(void) fr_conduit_write(sockfd, FR_CONDUIT_HELP, rl_line_buffer, strlen(rl_line_buffer));
+	} else {
+		/*
+		 *	Don't write zero bytes to the other side...
+		 */
+		(void) fr_conduit_write(sockfd, FR_CONDUIT_HELP, " ", 1);
+	}
 
 	(void) flush_conduits(sockfd, io_buffer, sizeof(io_buffer));
 
