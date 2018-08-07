@@ -1666,7 +1666,7 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 	fprintf(fp, "cpu.event_loop_serviced\t\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	fr_time_elapsed_fprint(fp, &worker->cpu_time, "cpu.requests", 1);
-	fr_time_elapsed_fprint(fp, &worker->wall_clock, "elapsed.requests", 1);
+	fr_time_elapsed_fprint(fp, &worker->wall_clock, "time.requests", 1);
 
 	return 0;
 }
