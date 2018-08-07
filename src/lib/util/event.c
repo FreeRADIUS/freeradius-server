@@ -1396,6 +1396,7 @@ int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
 	 *	Delete the event before calling it.
 	 */
 	fr_event_timer_delete(el, ev->parent);
+//	(void) talloc_free(ev);
 
 	callback(el, when, uctx);
 
