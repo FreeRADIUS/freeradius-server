@@ -1643,7 +1643,7 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 	fprintf(fp, "count.runnable\t%u\n", fr_heap_num_elements(worker->runnable));
 
 	when = worker->tracking.predicted;
-	fprintf(fp, "cpu.predicted\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+	fprintf(fp, "cpu.average_request_time\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	when = worker->tracking.running;
 	fprintf(fp, "cpu.used\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
@@ -1652,7 +1652,7 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 	fprintf(fp, "cpu.waiting\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	when = fr_time() - worker->last_event;
-	fprintf(fp, "cpu.serviced\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+	fprintf(fp, "cpu.event_loop_serviced\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	return 0;
 }
