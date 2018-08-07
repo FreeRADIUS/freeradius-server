@@ -1527,6 +1527,8 @@ static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_c
 {
 	fr_network_t const *nr = ctx;
 
+	// @todo - note that this isn't thread-safe!
+
 	(void) rbtree_walk(nr->sockets, RBTREE_IN_ORDER, socket_list, fp);
 	return 0;
 }
