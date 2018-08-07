@@ -133,7 +133,6 @@ struct fr_worker_t {
 
 	size_t			talloc_pool_size; //!< for each REQUEST
 
-	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
 
 	fr_worker_heap_t	to_decode;	//!< messages from the master, to be decoded or localized
 	fr_worker_heap_t       	localized;	//!< localized messages to be decoded
@@ -152,6 +151,9 @@ struct fr_worker_t {
 
 	bool			was_sleeping;	//!< used to suppress multiple sleep signals in a row
 	bool			exiting;	//!< are we exiting?
+
+	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
+	fr_time_t		last_event;	//!< last time we ran the event loop
 
 	fr_time_t		next_cleanup;	//!< when we next do the max_request_time checks
 	fr_event_timer_t const	*ev_cleanup;	//!< timer for max_request_time
@@ -1466,6 +1468,8 @@ void fr_worker(fr_worker_t *worker)
 
 		WORKER_VERIFY;
 
+		worker->last_event = fr_time();
+
 		/*
 		 *	There are runnable requests.  We still service
 		 *	the event loop, but we don't wait for events.
@@ -1639,13 +1643,16 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 	fprintf(fp, "count.runnable\t%u\n", fr_heap_num_elements(worker->runnable));
 
 	when = worker->tracking.predicted;
-	fprintf(fp, "cpu.predicted\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+	fprintf(fp, "cpu.predicted\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	when = worker->tracking.running;
-	fprintf(fp, "cpu.used\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+	fprintf(fp, "cpu.used\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	when = worker->tracking.waiting;
-	fprintf(fp, "cpu.waiting\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+	fprintf(fp, "cpu.waiting\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+
+	when = fr_time() - worker->last_event;
+	fprintf(fp, "cpu.serviced\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	return 0;
 }
