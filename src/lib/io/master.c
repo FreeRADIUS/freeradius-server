@@ -324,9 +324,6 @@ static RADCLIENT *radclient_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
 	COPY_FIELD(tls_required);
 #endif
 
-	FR_STRUCT_MEMBER_SIGN(c, secret, talloc_array_length(c->secret));
-	FR_STRUCT_SIGN(c);
-
 	return c;
 
 	/*
@@ -449,7 +446,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	 */
 	radclient->dynamic = true;
 	radclient->active = true;
-	FR_STRUCT_SIGN(radclient);
 
 	/*
 	 *	address->client points to a "static" client.  We want
@@ -506,7 +502,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 *	that define a dynamic client.
 		 */
 		radclient->active = false;
-		FR_STRUCT_SIGN(radclient);
 		break;
 
 	case PR_CLIENT_STATIC:
@@ -1120,7 +1115,6 @@ do_read:
 			 */
 			MEM(radclient = radclient_clone(inst, radclient));
 			radclient->active = true;
-			FR_STRUCT_SIGN(radclient);
 
 		} else if (inst->dynamic_clients) {
 			if (inst->max_clients && (inst->num_clients >= inst->max_clients)) {
@@ -1262,8 +1256,6 @@ have_client:
 	 *	Track this packet and return it if necessary.
 	 */
 	if (connection || !client->use_connected) {
-		FR_STRUCT_MEMBER_VERIFY(client->radclient, secret, talloc_array_length(client->radclient->secret));
-		FR_STRUCT_VERIFY(client->radclient);
 
 		/*
 		 *	Add the packet to the tracking table, if it's
@@ -2077,8 +2069,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 	radclient->server_cs = inst->server_cs;
 	radclient->server = cf_section_name2(inst->server_cs);
 	radclient->cs = NULL;
-	FR_STRUCT_MEMBER_SIGN(radclient, secret, talloc_array_length(radclient->secret));
-	FR_STRUCT_SIGN(radclient);
 
 	/*
 	 *	This is a connected socket, and it's just been
@@ -2093,7 +2083,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		client->state = PR_CLIENT_CONNECTED;
 
 		radclient->active = true;
-		FR_STRUCT_SIGN(radclient);
 
 		/*
 		 *	Connections can't spawn new connections.
@@ -2157,7 +2146,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		 */
 		client->state = PR_CLIENT_DYNAMIC;
 		client->radclient->active = true;
-		FR_STRUCT_SIGN(radclient);
 	}
 
 	/*
