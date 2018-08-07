@@ -25,6 +25,8 @@
  */
 RCSIDH(command_h, "$Id$")
 
+#include <freeradius-devel/util/value.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -37,7 +39,7 @@ typedef struct fr_cmd_info_t {
 	int		argc;				//!< current argument count
 	int		max_argc;			//!< maximum number of arguments
 	bool		runnable;			//!< is the command runnable?
-	char		**argv;				//!< text version of commands
+	char const     	**argv;				//!< text version of commands
 	fr_value_box_t	**box;				//!< value_box version of commands.
 	fr_cmd_t	**cmd;				//!< cached commands at each offset
 } fr_cmd_info_t;
@@ -48,11 +50,13 @@ typedef int (*fr_cmd_tab_t)(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *in
 
 typedef struct fr_cmd_table_t {
 	char const		*parent;		//!< e.g. "show module"
-	char const		*syntax;		//!< e.g. "stats FOO"
+	char const		*name;			//!< e.g. "stats"
+	char const		*syntax;		//!< e.g. "STRING"
 	char const		*help;			//!< help text
 	fr_cmd_func_t		func;			//!< function to process this command
 	fr_cmd_tab_t		tab_expand;		//!< tab expand things in the syntax string
 	bool			read_only;
+	bool			add_name;		//!< do we add a name here?
 } fr_cmd_table_t;
 
 #define CMD_TABLE_END { .help = NULL }
@@ -66,7 +70,7 @@ typedef struct fr_cmd_walk_info_t {
 } fr_cmd_walk_info_t;
 
 typedef int (*fr_cmd_walk_t)(void *ctx, fr_cmd_walk_info_t *);
-typedef int (*fr_command_register_hook_t)(char const *name, void *ctx, fr_cmd_table_t *table);
+typedef int (*fr_command_register_hook_t)(TALLOC_CTX *talloc_ctx, char const *name, void *ctx, fr_cmd_table_t *table);
 extern fr_command_register_hook_t fr_command_register_hook;
 
 int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head_p, char const *name, void *ctx, fr_cmd_table_t const *table);
@@ -76,20 +80,22 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 char const *fr_command_help(fr_cmd_t *head, int argc, char *argv[]);
 int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only);
 void fr_command_debug(FILE *fp, fr_cmd_t *head);
-int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str);
+int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *str);
 int fr_command_clear(int new_argc, fr_cmd_info_t *info) CC_HINT(nonnull);
 
 
 #define FR_COMMAND_OPTION_NONE		(0)
 #define FR_COMMAND_OPTION_LIST_CHILD	(1 << 0)
 #define FR_COMMAND_OPTION_NAME		(1 << 1)
+#define FR_COMMAND_OPTION_HELP		(1 << 2)
 
 void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, int options);
 void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info);
 
 int fr_command_complete(fr_cmd_t *head, char const *text, int start,
-			int max_expansions, char **expansions);
+			int max_expansions, char const **expansions);
 int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text);
+bool fr_command_strncmp(const char *text, const char *name) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

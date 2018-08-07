@@ -84,6 +84,9 @@ typedef struct {
 	fr_io_data_read_t		read;			//!< function to process data *after* reading
 	FILE				*stdout;
 	FILE				*stderr;
+
+	fr_conduit_type_t      		misc_conduit;
+	FILE				*misc;
 	fr_cmd_info_t			*info;			//!< for running commands
 } proto_control_unix_t;
 
@@ -115,7 +118,7 @@ static FR_NAME_NUMBER mode_names[] = {
 
 
 /*
- *	Process an initial connection request.
+ *	Run a command.
  */
 static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED fr_time_t **recv_time, uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup
 )
@@ -129,17 +132,54 @@ static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED
 
 	hdr->length = ntohl(hdr->length);
 
-	DEBUG("radmin-remote> %.*s", (int) hdr->length, cmd);
-
 	/*
 	 *	fr_command_run() expects a zero-terminated string...
 	 */
 	memcpy(string, cmd, hdr->length);
 	string[hdr->length] = '\0';
 
+	/*
+	 *	Content is the string we need help for.
+	 */
+	if (htons(hdr->conduit) == FR_CONDUIT_HELP) {
+		fr_radmin_help(inst->stdout, string);
+		// @todo - have in-band signalling saying that the help is done?
+		// we want to be able to say that *this* help is done.
+		// the best way to do that is to have a token, and every command
+		// from the other end sends a token, and we echo it back here...
+		// Or, since we currently can't do streaming commands, it's OK?
+		// Or, we assume that origin 0 is for interactive commands,
+		// and that the other origins are for streaming output...
+		status = FR_CONDUIT_SUCCESS;
+		goto done;
+	}
+
+	if (htons(hdr->conduit) == FR_CONDUIT_COMPLETE) {
+		uint16_t start;
+
+		if (hdr->length < 2) goto fail;
+
+		start = (string[0] << 8) | string[1];
+
+		inst->misc_conduit = FR_CONDUIT_COMPLETE;
+		fr_radmin_complete(inst->misc, string + 2, start);
+		inst->misc_conduit = FR_CONDUIT_STDOUT;
+		status = FR_CONDUIT_SUCCESS;
+		goto done;
+	}
+
+	if (htons(hdr->conduit) != FR_CONDUIT_STDIN) {
+		DEBUG("ERROR: Ignoring data which is from wrong input");
+		return 0;
+	}
+
+	DEBUG("radmin-remote> %.*s", (int) hdr->length, cmd);
+
 	rcode = fr_radmin_run(inst->info, inst->stdout, inst->stderr, string, inst->read_only);
 	if (rcode < 0) {
+fail:
 		status = FR_CONDUIT_FAIL;
+
 	} else if (rcode == 0) {
 		/*
 		 *	The other end should keep track of it's
@@ -151,8 +191,7 @@ static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED
 		status = FR_CONDUIT_SUCCESS;
 	}
 
-	fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, "\n", 1);
-
+done:
 	status = htonl(status);
 	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_CMD_STATUS, &status, sizeof(status));
 
@@ -1008,7 +1047,7 @@ static int mod_fd_set(void *instance, int fd)
 #endif
 
 	inst->sockfd = fd;
-	inst->read= mod_read_init;
+	inst->read = mod_read_init;
 
 	return 0;
 }
@@ -1036,6 +1075,20 @@ static SINT write_stderr(void *instance, char const *buffer, INT buffer_size)
 	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDERR, buffer, buffer_size);
 }
 
+static SINT write_misc(void *instance, char const *buffer, INT buffer_size)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return fr_conduit_write(inst->sockfd, inst->misc_conduit, buffer, buffer_size);
+}
+
+
+static char const *mod_name(void *instance)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return inst->name;
+}
 
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
@@ -1059,8 +1112,12 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 #ifdef HAVE_FUNOPEN
 	inst->stdout = funopen(instance, NULL, write_stdout, NULL, NULL);
 	rad_assert(inst->stdout != NULL);
+
 	inst->stderr = funopen(instance, NULL, write_stderr, NULL, NULL);
 	rad_assert(inst->stderr != NULL);
+
+	inst->misc = funopen(instance, NULL, write_misc, NULL, NULL);
+	rad_assert(inst->misc != NULL);
 #else
 	/*
 	 *	These must be set separately as they have different prototypes.
@@ -1074,6 +1131,9 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 
 	io.write = write_stderr;
 	inst->stderr = fopencookie(instance, "w", io);
+
+	io.write = write_misc;
+	inst->misc = fopencookie(instance, "w", io);
 #endif
 
 	/*
@@ -1084,6 +1144,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	 */
 	(void) setvbuf(inst->stdout, NULL, _IOLBF, 0);
 	(void) setvbuf(inst->stderr, NULL, _IOLBF, 0);
+	(void) setvbuf(inst->misc, NULL, _IOLBF, 0);
 
 	inst->info = talloc_zero(instance, fr_cmd_info_t);
 	fr_command_info_init(instance, inst->info);
@@ -1208,4 +1269,5 @@ fr_app_io_t proto_control_unix = {
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,
+	.get_name      		= mod_name,
 };

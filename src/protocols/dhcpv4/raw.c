@@ -23,17 +23,19 @@
  * @copyright 2008,2017 The FreeRADIUS server project
  * @copyright 2008 Alan DeKok <aland@deployingradius.com>
  */
-
-#include <stdint.h>
-#include <stddef.h>
-#include <talloc.h>
-#include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/udpfromto.h>
-#include <freeradius-devel/util/net.h>
-#include "dhcpv4.h"
 #include "attrs.h"
+#include "dhcpv4.h"
+
+#include <freeradius-devel/util/net.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/udpfromto.h>
+
+#include <stddef.h>
+#include <stdint.h>
+#include <talloc.h>
 
 #ifndef __MINGW32__
 #  include <sys/ioctl.h>

@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/command.h>
 #include <freeradius-devel/io/application.h>
 
 /*
@@ -431,6 +432,40 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 	return 0;
 }
 
+
+static int cmd_show_server_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
+
+	if (!server_cnt) return 0;
+
+	for (i = 0; i < server_cnt; i++) {
+		fprintf(fp, "%-30snamespace = %s\n", cf_section_name2(virtual_servers[i]->server_cs),
+			virtual_servers[i]->namespace);
+	}
+
+	return 0;
+}
+
+static fr_cmd_table_t cmd_table[] = {
+	{
+		.parent = "show",
+		.name = "server",
+		.help = "Show virtual server settings.",
+		.read_only = true,
+	},
+
+	{
+		.parent = "show server",
+		.name = "list",
+		.func = cmd_show_server_list,
+		.help = "Show the list of virtual servers loaded in the server.",
+		.read_only = true,
+	},
+
+	CMD_TABLE_END
+
+};
 /** Open all the listen sockets
  *
  * @param[in] sc	Scheduler to add I/O paths to.
@@ -492,6 +527,12 @@ int virtual_servers_instantiate(void)
 	rad_assert(virtual_servers);
 
 	DEBUG2("#### Instantiating listeners ####");
+
+	if (fr_command_register_hook(NULL, NULL, virtual_server_root, cmd_table) < 0) {
+		ERROR("Failed registering radmin commands for virtual servers - %s",
+		      fr_strerror());
+		return -1;
+	}
 
 	for (i = 0; i < server_cnt; i++) {
 		fr_virtual_listen_t	**listener;

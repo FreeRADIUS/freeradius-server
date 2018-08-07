@@ -14,12 +14,14 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/event.c
- * @brief Non-thread-safe event handling specific to FreeRADIUS
+/**  Wrapper around libkqueue to make managing events easier
  *
- * @note By non-thread-safe we mean multiple threads can't insert/delete events concurrently
- *	into the same event list without synchronization.
+ * Non-thread-safe event handling specific to FreeRADIUS.
+ *
+ * By non-thread-safe we mean multiple threads can't insert/delete
+ * events concurrently into the same event list without synchronization.
+ *
+ * @file src/lib/util/event.c
  *
  * @copyright 2007-2016 The FreeRADIUS server project
  * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
@@ -27,11 +29,19 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/heap.h>
-#include <freeradius-devel/util/event.h>
+#include "event.h"
+
 #include <freeradius-devel/io/time.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/token.h>
+
 #include <sys/stat.h>
 
 #define FR_EV_BATCH_FDS (256)
@@ -1074,7 +1084,7 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 		 *	talloc ctx.  If the talloc ctx is freed, the
 		 *	event will also be freed.
 		 */
-		if (ctx) fr_talloc_link_ctx(ctx, ev);
+		if (ctx) talloc_link_ctx(ctx, ev);
 
 		talloc_set_destructor(ev, _event_timer_free);
 	} else {
@@ -1906,7 +1916,7 @@ int main(int argc, char **argv)
 	memset(&rand_pool, 0, sizeof(rand_pool));
 	rand_pool.randrsl[1] = time(NULL);
 
-	fr_randinit(&rand_pool, 1);
+	fr_rand_init(&rand_pool, 1);
 	rand_pool.randcnt = 0;
 
 	gettimeofday(&array[0], NULL);

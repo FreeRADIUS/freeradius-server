@@ -15,21 +15,21 @@
  *  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/**
- * $Id$
+/** Structures and functions for parsing, printing, masking and retrieving IP addresses
  *
- * @file lib/util/inet.h
- * @brief Structures and functions for parsing, printing, masking and retrieving IP addresses.
+ * @file src/lib/util/inet.h
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSIDH(inet_h, "$Id$")
 
-#include <net/if.h>		/* SIOCGIFADDR et al */
-#include <arpa/inet.h>
-#include <netinet/in.h>		/* in6?_addr */
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 
+#include <arpa/inet.h>
+#include <net/if.h>		/* SIOCGIFADDR et al */
+#include <netinet/in.h>		/* in6?_addr */
 #include <stdbool.h>
 
 #ifdef __cplusplus
@@ -85,6 +85,9 @@ extern struct in6_addr fr_inet_link_local6;
 /** Like FR_IPADDR_STRLEN but with space for a prefix
  */
 #define FR_IPADDR_PREFIX_STRLEN (FR_IPADDR_STRLEN + 1 + 3)
+
+extern bool	fr_reverse_lookups;	/* do IP -> hostname lookups? */
+extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
 
 /*
  *	Utility functions

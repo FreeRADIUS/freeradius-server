@@ -417,6 +417,13 @@ static int mod_compare(UNUSED void const *instance, void const *one, void const 
 }
 
 
+static char const *mod_name(void *instance)
+{
+	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+
+	return inst->name;
+}
+
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
@@ -591,4 +598,5 @@ fr_app_io_t proto_radius_udp = {
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,
+	.get_name      		= mod_name,
 };

@@ -1129,18 +1129,21 @@ int tls_session_recv(REQUEST *request, tls_session_t *session)
 	/*
 	 *	Decrypt the complete record.
 	 */
-	ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
-	if (ret != (int) session->dirty_in.used) {
+	if (session->dirty_in.used) {
+		ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
+		if (ret != (int) session->dirty_in.used) {
+			record_init(&session->dirty_in);
+			REDEBUG("Failed writing %zd bytes to SSL BIO: %d", session->dirty_in.used, ret);
+			return -1;
+		}
+
 		record_init(&session->dirty_in);
-		REDEBUG("Failed writing %zd bytes to SSL BIO: %d", session->dirty_in.used, ret);
-		return -1;
 	}
 
 	/*
 	 *      Clear the dirty buffer now that we are done with it
 	 *      and init the clean_out buffer to store decrypted data
 	 */
-	record_init(&session->dirty_in);
 	record_init(&session->clean_out);
 
 	/*
@@ -1285,13 +1288,15 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 	 *	process it as Application data (decrypting it)
 	 *	or continue the TLS handshake.
 	 */
-	ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
-	if (ret != (int)session->dirty_in.used) {
-		REDEBUG("Failed writing %zd bytes to TLS BIO: %d", session->dirty_in.used, ret);
+	if (session->dirty_in.used) {
+		ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
+		if (ret != (int)session->dirty_in.used) {
+			REDEBUG("Failed writing %zd bytes to TLS BIO: %d", session->dirty_in.used, ret);
+			record_init(&session->dirty_in);
+			return 0;
+		}
 		record_init(&session->dirty_in);
-		return 0;
 	}
-	record_init(&session->dirty_in);
 
 	/*
 	 *	Magic/More magic? Although SSL_read is normally

@@ -15,14 +15,25 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Macros to abstract Thread Local Storage
  *
- * @file lib/util/threads.h
- * @brief Macros to abstract Thread Local Storage
+ * Simplifies calling thread local destructors (called when the thread exits).
+ *
+ * @file lib/util/thread_local.h
  *
  * @copyright 2013-2016 The FreeRADIUS server project
  */
+RCSIDH(thread_local_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
+#include <errno.h>
+
 typedef void (*pthread_destructor_t)(void*);
 
 /*
@@ -104,4 +115,8 @@ static int __fr_thread_local_set_destructor_##_n(pthread_destructor_t func, void
  * @param _v	Memory to free.
  */
 #  define fr_thread_local_set_destructor(_n, _f, _v) __fr_thread_local_set_destructor_##_n(_f, _v)
+#endif
+
+#ifdef __cplusplus
+}
 #endif

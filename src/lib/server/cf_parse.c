@@ -423,7 +423,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		rad_assert(type < FR_TYPE_MAX);
 
 		cf_log_err(cp, "type '%s' (%i) is not supported in the configuration files",
-			   fr_int2str(dict_attr_types, type, "?Unknown?"), type);
+			   fr_int2str(fr_value_box_type_names, type, "?Unknown?"), type);
 		rcode = -1;
 		goto error;
 	}
@@ -1414,15 +1414,6 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 	return 0;
 }
 
-/*
- *	Fixme? Swapout with an iterative API.
- */
-const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs)
-{
-	if (!cs) return NULL;
-
-	return cs->variables;
-}
 
 /** Add a single rule to a #CONF_SECTION
  *

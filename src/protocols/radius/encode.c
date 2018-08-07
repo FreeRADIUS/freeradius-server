@@ -426,7 +426,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 
 	if (tlv_stack[depth]->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -556,7 +556,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 
 	if (tlv_stack[depth]->type != FR_TYPE_TLV) {
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -643,7 +643,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 
 	default:
@@ -904,7 +904,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 
 	if ((tlv_stack[depth]->type != FR_TYPE_EXTENDED) && (tlv_stack[depth]->type != FR_TYPE_LONG_EXTENDED)) {
 		fr_strerror_printf("%s : Called for non-extended attribute type %s",
-				   __FUNCTION__, fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   __FUNCTION__, fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -1096,7 +1096,7 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 	switch (tlv_stack[depth]->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 
 	default:
@@ -1371,7 +1371,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 
 	if (da->type != FR_TYPE_VSA) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, da->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -1401,7 +1401,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 
 	if (da->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, da->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -1444,7 +1444,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	switch (tlv_stack[depth]->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Expected leaf type got \"%s\"", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 
 	default:

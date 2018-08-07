@@ -25,9 +25,11 @@
 
 RCSID("$Id$")
 
+#include "list.h"
+
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/udp.h>
-
+#include <freeradius-devel/server/tcp.h>
 #include <fcntl.h>
 
 /*

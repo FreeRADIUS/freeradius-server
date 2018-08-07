@@ -128,7 +128,7 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		return date_convert_string(request, out, outlen, vp->vp_strvalue, inst->fmt);
 
 	default:
-		REDEBUG("Can't convert type %s into date", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+		REDEBUG("Can't convert type %s into date", fr_int2str(fr_value_box_type_names, vp->da->type, "<INVALID>"));
 	}
 
 	return -1;

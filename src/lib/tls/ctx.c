@@ -296,11 +296,17 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	int		ctx_options = 0;
 	void		*app_data_index;
 
-	ctx = SSL_CTX_new(SSLv23_method()); /* which is really "all known SSL / TLS methods".  Idiots. */
+	SSL_BIND_OBJ_MEMORY(ctx = SSL_CTX_new(SSLv23_method())); /* which is really "all known SSL / TLS methods".  Idiots. */
 	if (!ctx) {
 		tls_log_error(NULL, "Failed creating TLS context");
 		return NULL;
 	}
+
+	/*
+	 *	Bind any other memory to the ctx to fix
+	 *	leaks on exit.
+	 */
+	SSL_BIND_MEMORY_BEGIN(ctx);
 
 	/*
 	 *	Save the config on the context so that callbacks which
@@ -321,6 +327,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		if (conf->psk_query && !*conf->psk_query) {
 			ERROR("Invalid PSK Configuration: psk_query cannot be empty");
 		error:
+			SSL_BIND_MEMORY_END;
 			SSL_CTX_free(ctx);
 			return NULL;
 		}
@@ -804,11 +811,6 @@ post_ca:
 	}
 
 	/*
-	 *	Setup session caching
-	 */
-	tls_cache_init(ctx, conf->session_cache_server ? true : false, conf->session_cache_lifetime);
-
-	/*
 	 *	Load dh params
 	 */
 	if (conf->dh_file) {
@@ -817,6 +819,16 @@ post_ca:
 		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
 		if (ctx_dh_params_load(ctx, dh_file) < 0) goto error;
 	}
+
+	/*
+	 *	We're done configuring the ctx.
+	 */
+	SSL_BIND_MEMORY_END;
+
+	/*
+	 *	Setup session caching
+	 */
+	tls_cache_init(ctx, conf->session_cache_server ? true : false, conf->session_cache_lifetime);
 
 	return ctx;
 }

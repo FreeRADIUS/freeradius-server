@@ -966,7 +966,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	 *	Create our own random pool.
 	 */
 	for (i = 0; i < 256; i++) inst->rand_pool.randrsl[i] = fr_rand();
-	fr_randinit(&inst->rand_pool, 1);
+	fr_rand_init(&inst->rand_pool, 1);
 	inst->rand_pool.randcnt = 0;
 
 	loaded = talloc_array_length(inst->submodule_instances);

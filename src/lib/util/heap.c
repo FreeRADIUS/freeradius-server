@@ -14,15 +14,17 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/heap.c
- * @brief Basic heap
+/** Functions for a basic binary heaps
+ *
+ * @file src/lib/util/heap.c
+ *
  * @copyright 2005,2006  The FreeRADIUS server project
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/heap.h>
+#include "heap.h"
+
+#include <freeradius-devel/util/strerror.h>
 
 /*
  *	A heap entry is made of a pointer to the object, which

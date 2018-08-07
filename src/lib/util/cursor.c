@@ -13,11 +13,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Functions to iterate over a sets and subsets of items
  *
- * @file lib/util/cursor.c
- * @brief Functions to iterate over a sets and subsets of items.
+ * @file src/lib/util/cursor.c
  *
  * @note Do not modify collections of items pointed to by a cursor
  *	 with none fr_cursor_* functions over the lifetime of that cursor.

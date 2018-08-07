@@ -142,11 +142,11 @@ struct fr_worker_t {
 	fr_heap_t		*time_order;	//!< time ordered heap of requests
 	rbtree_t		*dedup;		//!< de-dup tree
 
-	int			num_requests;	//!< number of requests processed by this worker
-	int			num_decoded;	//!< number of messages which have been decoded
-	int			num_replies;	//!< number of messages which were replied to
-	int			num_timeouts;	//!< number of messages which timed out
-	int			num_active;	//!< number of active requests
+	fr_io_stats_t		stats;
+
+	uint64_t       		num_decoded;	//!< number of messages which have been decoded
+	uint64_t    		num_timeouts;	//!< number of messages which timed out
+	uint64_t    		num_active;	//!< number of active requests
 
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
@@ -208,8 +208,8 @@ static bool fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 	}
 
 	do {
-		worker->num_requests++;
-		DEBUG3("\t%sreceived request %d", worker->name, worker->num_requests);
+		worker->stats.in++;
+		DEBUG3("\t%sreceived request %" PRIu64 "", worker->name, worker->stats.in);
 		cd->channel.ch = ch;
 		WORKER_HEAP_INSERT(to_decode, cd);
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
@@ -430,7 +430,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 		cd = NULL;
 	}
 
-	worker->num_replies++;
+	worker->stats.out++;
 
 	if (cd) (void) fr_worker_drain_input(worker, ch, cd);
 }
@@ -545,7 +545,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 		cd = NULL;
 	}
 
-	worker->num_replies++;
+	worker->stats.out++;
 
 	/*
 	 *	Drain the incoming TO_WORKER queue.  We do this every
@@ -617,7 +617,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	REQUEST *request;
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 
-	DEBUG2("TIMER - worker max_request_time - %d active requests", worker->num_active);
+	DEBUG2("TIMER - worker max_request_time - %" PRIu64 " active requests", worker->num_active);
 
 	/*
 	 *	Look at the oldest requests, and see if they need to
@@ -940,6 +940,7 @@ nak:
 			 *	itself up, or do something...
 			 */
 			(void) old->async->process(request->async->process_inst, old, FR_IO_ACTION_DUP);
+			worker->stats.dup++;
 			return NULL;
 		}
 
@@ -947,11 +948,12 @@ nak:
 		 *	Stop the old request, and decrement the number
 		 *	of active requests.
 		 */
-		RWARN("Got duplicate of request (%" PRIu64 "), telling old request to stop", old->number);
+		RWARN("Got conflicting packet for request (%" PRIu64 "), telling old request to stop", old->number);
 
 		worker_stop_request(worker, old, now);
 		rad_assert(worker->num_active > 0);
 		worker->num_active--;
+		worker->stats.dropped++;
 		talloc_free(old);
 
 	insert_new:
@@ -1103,9 +1105,9 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	       fr_heap_num_elements(worker->runnable),
 	       fr_heap_num_elements(worker->localized.heap),
 	       fr_heap_num_elements(worker->to_decode.heap));
-	DEBUG3("\t%srequests %d, decoded %d, replied %d active %d",
-	       worker->name, worker->num_requests, worker->num_decoded,
-	       worker->num_replies, worker->num_active);
+	DEBUG3("\t%srequests %" PRIu64 ", decoded %" PRIu64 ", replied %" PRIu64 " active %" PRIu64 "",
+	       worker->name, worker->stats.in, worker->num_decoded,
+	       worker->stats.out, worker->num_active);
 
 	/*
 	 *	We were sleeping, don't send another signal that we
@@ -1255,6 +1257,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 /** Create a worker
  *
  * @param[in] ctx the talloc context
+ * @param[in] name the name of this worker
  * @param[in] el the event list
  * @param[in] logger the destination for all logging messages
  * @param[in] lvl log level
@@ -1262,7 +1265,7 @@ void fr_worker_destroy(fr_worker_t *worker)
  *	- NULL on error
  *	- fr_worker_t on success
  */
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger, fr_log_lvl_t lvl)
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, char const *name, fr_event_list_t *el, fr_log_t const *logger, fr_log_lvl_t lvl)
 {
 	int max_channels = 64;
 	fr_worker_t *worker;
@@ -1274,7 +1277,7 @@ nomem:
 		return NULL;
 	}
 
-	worker->name = "";
+	worker->name = talloc_strdup(worker, name); /* thread locality */
 
 	worker->channel = talloc_zero_array(worker, fr_channel_t *, max_channels);
 	if (!worker->channel) {
@@ -1507,12 +1510,12 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 
 	fprintf(fp, "\tkq = %d\n", worker->kq);
 	fprintf(fp, "\tnum_channels = %d\n", worker->num_channels);
-	fprintf(fp, "\tnum_requests = %d\n", worker->num_requests);
+	fprintf(fp, "\tstats.in = %" PRIu64 "\n", worker->stats.in);
 
 	fprintf(fp, "\tcalculated (predicted) total CPU time = %" PRIu64 "\n",
-		worker->tracking.predicted * worker->num_requests);
+		worker->tracking.predicted * worker->stats.in);
 	fprintf(fp, "\tcalculated (counted) per request time = %" PRIu64 "\n",
-		worker->tracking.running / worker->num_requests);
+		worker->tracking.running / worker->stats.in);
 
 	fr_time_tracking_debug(&worker->tracking, fp);
 
@@ -1602,3 +1605,67 @@ static void fr_worker_verify(fr_worker_t *worker)
 	}
 }
 #endif
+
+int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
+{
+	if (num < 0) return -1;
+	if (num == 0) return 0;
+
+	if (num >= 1) stats[0] = worker->stats.in;
+	if (num >= 2) stats[1] = worker->stats.out;
+	if (num >= 3) stats[2] = worker->stats.dup;
+	if (num >= 4) stats[3] = worker->stats.dropped;
+	if (num >= 5) stats[4] = worker->num_decoded;
+	if (num >= 6) stats[5] = worker->num_timeouts;
+	if (num >= 7) stats[6] = worker->num_active;
+
+	if (num <= 7) return num;
+
+	return 7;
+}
+
+static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	fr_worker_t const *worker = ctx;
+	fr_time_t when;
+
+	fprintf(fp, "count.in\t%" PRIu64 "\n", worker->stats.in);
+	fprintf(fp, "count.out\t%" PRIu64 "\n", worker->stats.out);
+	fprintf(fp, "count.dup\t%" PRIu64 "\n", worker->stats.dup);
+	fprintf(fp, "count.dropped\t%" PRIu64 "\n", worker->stats.dropped);
+	fprintf(fp, "count.decoded\t%" PRIu64 "\n", worker->num_decoded);
+	fprintf(fp, "count.timeouts\t%" PRIu64 "\n", worker->num_timeouts);
+	fprintf(fp, "count.active\t%" PRIu64 "\n", worker->num_active);
+	fprintf(fp, "count.runnable\t%u\n", fr_heap_num_elements(worker->runnable));
+
+	when = worker->tracking.predicted;
+	fprintf(fp, "cpu.predicted\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+
+	when = worker->tracking.running;
+	fprintf(fp, "cpu.used\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+
+	when = worker->tracking.waiting;
+	fprintf(fp, "cpu.waiting\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+
+	return 0;
+}
+
+fr_cmd_table_t cmd_worker_table[] = {
+	{
+		.parent = "stats",
+		.name = "worker",
+		.help = "Statistics for workers threads.",
+		.read_only = true
+	},
+
+	{
+		.parent = "stats worker",
+		.add_name = true,
+		.name = "self",
+		.func = cmd_stats_worker,
+		.help = "Show statistics for a specific worker thread.",
+		.read_only = true
+	},
+
+	CMD_TABLE_END
+};

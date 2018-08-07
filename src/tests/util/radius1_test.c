@@ -23,17 +23,18 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/io/worker.h>
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/log.h>
-#include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #include <pthread.h>
@@ -169,7 +170,7 @@ static void *worker_thread(void *arg)
 		exit(EXIT_FAILURE);
 	}
 
-	worker = sw->worker = fr_worker_create(ctx, el, &default_log, L_DBG_LVL_MAX);
+	worker = sw->worker = fr_worker_create(ctx, "test", el, &default_log, L_DBG_LVL_MAX);
 	if (!worker) {
 		fprintf(stderr, "radius_test: Failed to create the worker\n");
 		exit(EXIT_FAILURE);
@@ -193,7 +194,7 @@ static void send_reply(int sockfd, fr_channel_data_t *reply)
 	MPRINT1("Master got reply %d size %zd\n", pc->id, reply->m.data_size);
 
 	if (sendto(sockfd, reply->m.data, reply->m.data_size, 0, (struct sockaddr *) &pc->src, pc->salen) < 0) {
-		fprintf(stderr, "Failed sending reply: %s\n", strerror(errno));
+		fprintf(stderr, "Failed sending reply: %s\n", fr_syserror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -314,7 +315,7 @@ static void master_process(TALLOC_CTX *ctx)
 		if (num_events < 0) {
 			if (errno == EINTR) continue;
 
-			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
+			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -404,7 +405,7 @@ static void master_process(TALLOC_CTX *ctx)
 
 			rcode = fr_channel_send_request(workers[which_worker].ch, cd, &reply);
 			if (rcode < 0) {
-				fprintf(stderr, "Failed sending request: %s\n", strerror(errno));
+				fprintf(stderr, "Failed sending request: %s\n", fr_syserror(errno));
 				exit(EXIT_FAILURE);
 			}
 			which_worker++;

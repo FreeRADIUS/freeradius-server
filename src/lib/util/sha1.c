@@ -1,15 +1,16 @@
-/*
- *  SHA-1 in C
- *  By Steve Reid <steve@edmweb.com>
- *  100% Public Domain
+/** Local implementation of the SHA1 hashing scheme
  *
- *  Version:	$Id$
+ * SHA-1 in C 100% Public Domain
+ *
+ * @file src/lib/util/sha1.c
+ *
+ * @author Steve Reid <steve@edmweb.com>
  */
-
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/sha1.h>
+#include "sha1.h"
+
+#include <arpa/inet.h>
 
 #ifndef WITH_OPENSSL_SHA1
 #  define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))

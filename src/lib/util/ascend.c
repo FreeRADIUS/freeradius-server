@@ -14,17 +14,20 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/filters.c
- * @brief Routines to parse Ascend's filter attributes.
+/** Routines to parse Ascend's filter attributes
+ *
+ * @file src/lib/util/ascend.c
  *
  * @copyright 2003,2006  The FreeRADIUS server project
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-
 #ifdef WITH_ASCEND_BINARY
+#include "ascend.h"
+
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/talloc.h>
+
 #include <ctype.h>
 
 /*

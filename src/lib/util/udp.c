@@ -14,18 +14,19 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Utility functions for managing UDP sockets
  *
- * @file util/udp.c
- * @brief Functions to send/receive UDP packets.
+ * @file src/lib/util/udp.c
  *
  * @copyright 2000-2003,2006  The FreeRADIUS server project
  */
-
 RCSID("$Id$")
 
-#include <freeradius-devel/util/udp.h>
+#include "udp.h"
+
+#include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
 
 /*
  *	This is easier than ifdef's in the function definition.

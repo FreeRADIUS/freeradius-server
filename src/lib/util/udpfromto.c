@@ -14,10 +14,11 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file udpfromto.c
- * @brief Like recvfrom, but also stores the destination IP address. Useful on multihomed hosts.
+/** API for sending and receiving packets on unconnected UDP sockets
+ *
+ * Like recvfrom, but also stores the destination IP address. Useful on multihomed hosts.
+ *
+ * @file src/lib/util/udpfromto.c
  *
  * @copyright 2007 Alan DeKok <aland@deployingradius.com>
  * @copyright 2002 Miquel van Smoorenburg
@@ -32,7 +33,13 @@ RCSID("$Id$")
 #  include <sys/uio.h>
 #endif
 
+#include <errno.h>
 #include <fcntl.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <time.h>
+#include <unistd.h>
 
 /*
  *	More portability idiocy

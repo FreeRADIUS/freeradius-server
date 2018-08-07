@@ -13,20 +13,20 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- *
- * @file lib/util/cursor.c
- * @brief Functions to iterate over collections of VALUE_PAIRs
+/** Functions to iterate over collections of VALUE_PAIRs
  *
  * @note Do not modify collections of VALUE_PAIRs pointed to by a cursor
  *	 with none fr_pair_cursor_* functions, during the lifetime of that cursor.
+ *
+ * @file src/lib/util/pair_cursor.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013-2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
-#include <freeradius-devel/util/base.h>
+#include "pair_cursor.h"
+
+#include <freeradius-devel/missing.h>
 
 /** Internal function to update cursor state
  *

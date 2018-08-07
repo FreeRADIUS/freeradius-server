@@ -25,6 +25,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/time.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <sys/event.h>
 #include <stdio.h>
@@ -112,7 +113,7 @@ static void *control_master(UNUSED void *arg)
 
 		num_events = kevent(kq, NULL, 0, &kev, 1, NULL);
 		if (num_events < 0) {
-			fprintf(stderr, "Failed reading kevent: %s\n", strerror(errno));
+			fprintf(stderr, "Failed reading kevent: %s\n", fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 

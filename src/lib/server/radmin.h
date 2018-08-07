@@ -37,11 +37,13 @@ extern "C" {
  */
 #define FR_RADMIN_PORT 18120
 
-int fr_radmin_start(main_config_t *config);
+int fr_radmin_start(main_config_t *config, bool cli);
 void fr_radmin_stop(void);
 
-int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table);
+int fr_radmin_register(TALLOC_CTX *talloc_ctx, char const *name, void *ctx, fr_cmd_table_t *table);
 int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *command, bool read_only);
+void fr_radmin_help(FILE *fp, char const *text);
+void fr_radmin_complete(FILE *fp, const char *text, int start);
 
 #ifdef __cplusplus
 }

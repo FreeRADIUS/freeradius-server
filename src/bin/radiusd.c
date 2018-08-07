@@ -30,18 +30,18 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/tls/base.h>
-#include <freeradius-devel/server/radmin.h>
+#include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/radmin.h>
+#include <freeradius-devel/server/state.h>
+#include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/unlang/base.h>
 
-#include <sys/file.h>
-
-#include <fcntl.h>
 #include <ctype.h>
+#include <fcntl.h>
+#include <sys/file.h>
+#include <sys/mman.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -63,11 +63,6 @@ RCSID("$Id$")
 
 char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("FreeRADIUS");
 static pid_t radius_pid;
-
-#ifdef HAVE_SYSTEMD_WATCHDOG
-extern struct timeval sd_watchdog_interval;
-struct timeval sd_watchdog_interval;
-#endif
 
 /*
  *  Configuration items.
@@ -164,9 +159,13 @@ int main(int argc, char *argv[])
 	fr_schedule_t	*sc = NULL;
 	int		ret = EXIT_SUCCESS;
 
-	main_config_t	*config;
+	TALLOC_CTX	*global_ctx = NULL;
+	main_config_t	*config = NULL;
+	bool		talloc_memory_report = false;
 
-	bool		talloc_memory_report;
+	size_t		pool_size = 0;
+	void		*pool_page_start = NULL, *pool_page_end = NULL;
+	bool		do_mprotect;
 
 	/*
 	 *	Setup talloc callbacks so we get useful errors
@@ -174,17 +173,53 @@ int main(int argc, char *argv[])
 	(void) fr_talloc_fault_setup();
 
 	/*
-	 * 	We probably don't want to free the talloc autofree context
+	 * 	We probably don't want to free the talloc global_ctx context
 	 * 	directly, so we'll allocate a new context beneath it, and
 	 *	free that before any leak reports.
 	 */
-	TALLOC_CTX *autofree = talloc_new(talloc_autofree_context());
+	{
+		char *env;
+
+		/*
+		 *	If a FR_GLOBAL_POOL value is provided and
+		 *	is of a valid size, we pre-allocate a global
+		 *	memory pool, and mprotect() it once we're done
+		 *	parsing the global config.
+		 *
+		 *	This lets us catch stray writes into global
+		 *	memory.
+		 */
+		env = getenv("FR_GLOBAL_POOL");
+		if (env) {
+			if (fr_size_from_str(&pool_size, env) < 0) {
+				fprintf(stderr, "Invalid pool size string \"%s\": %s\n", env, fr_strerror());
+				EXIT_WITH_FAILURE;
+			}
+
+			/*
+			 *	Pre-allocate a global memory pool for the static
+			 *	config to exist in.  We mprotect() this later to
+			 *	catch any stray writes.
+			 */
+			global_ctx = talloc_page_aligned_pool(talloc_autofree_context(),
+							      &pool_page_start, &pool_page_end, pool_size);
+			do_mprotect = true;
+		} else {
+	 		global_ctx = talloc_new(talloc_autofree_context());
+	 		do_mprotect = false;
+		}
+
+		if (!global_ctx) {
+			fprintf(stderr, "Failed allocating global context\n");
+			EXIT_WITH_FAILURE;
+		}
+	}
 
 	/*
 	 *	Allocate the main config structure.
 	 *	It's allocating so we can hang talloced buffers off it.
 	 */
-	config = main_config_alloc(autofree);
+	config = main_config_alloc(global_ctx);
 	if (!config) {
 		fprintf(stderr, "Failed allocating main config");
 		EXIT_WITH_FAILURE;
@@ -230,7 +265,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Set the panic action and enable other debugging facilities
 	 */
-	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
+	if (fr_fault_setup(global_ctx, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("Failed installing fault handlers... continuing");
 	}
 
@@ -262,8 +297,8 @@ int main(int argc, char *argv[])
 		case 'l':
 			if (strcmp(optarg, "stdout") == 0) goto do_stdout;
 
-			config->log_file = talloc_typed_strdup(autofree, optarg);
-			default_log.file = talloc_typed_strdup(autofree, optarg);
+			config->log_file = talloc_typed_strdup(global_ctx, optarg);
+			default_log.file = talloc_typed_strdup(global_ctx, optarg);
 			default_log.dst = L_DST_FILES;
 			default_log.fd = open(config->log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
 			if (default_log.fd < 0) {
@@ -410,13 +445,13 @@ int main(int argc, char *argv[])
 	 *	Initialize the DL infrastructure, which is used by the
 	 *	config file parser.
 	 */
-	dl_loader_init(autofree, config->lib_dir);
+	dl_loader_init(global_ctx, config->lib_dir);
 
 	/*
 	 *	Initialise the top level dictionary hashes which hold
 	 *	the protocols.
 	 */
-	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
+	if (fr_dict_global_init(global_ctx, config->dict_dir) < 0) {
 		fr_perror("radiusd");
 		EXIT_WITH_FAILURE;
 	}
@@ -439,7 +474,7 @@ int main(int argc, char *argv[])
 	 *  environment.
 	 */
 	if (config->panic_action && !getenv("PANIC_ACTION") &&
-	    (fr_fault_setup(autofree, config->panic_action, argv[0]) < 0)) {
+	    (fr_fault_setup(global_ctx, config->panic_action, argv[0]) < 0)) {
 		fr_perror("radiusd - Failed configuring panic action: %s", config->name);
 		EXIT_WITH_FAILURE;
 	}
@@ -488,7 +523,12 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	if (radmin && (fr_radmin_start(config) < 0)) EXIT_WITH_FAILURE;
+	/*
+	 *	Don't allow radmin when checking the config.
+	 */
+	if (check_config) radmin = false;
+
+	if (fr_radmin_start(config, radmin) < 0) EXIT_WITH_FAILURE;
 
 #ifndef __MINGW32__
 	/*
@@ -644,7 +684,7 @@ int main(int argc, char *argv[])
 	 *  This has to be done post-fork in case we're using kqueue, where the
 	 *  queue isn't inherited by the child process.
 	 */
-	if (!radius_event_init(autofree)) EXIT_WITH_FAILURE;
+	if (!radius_event_init()) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Redirect stderr/stdout as appropriate.
@@ -654,7 +694,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Start the network / worker threads.
 	 */
-	if (1) {
+	{
 		int networks = config->num_networks;
 		int workers = config->num_workers;
 		fr_event_list_t *el = NULL;
@@ -772,9 +812,21 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *  Clear the libfreeradius error buffer.
+	 *	Clear the libfreeradius error buffer.
 	 */
 	fr_strerror();
+
+	/*
+	 *  Protect global memory - If something attempts
+	 *  to write to this memory we get a SIGBUS.
+	 */
+	if (do_mprotect) {
+	    	if (mprotect(pool_page_start, (uintptr_t)pool_page_end - (uintptr_t)pool_page_start, PROT_READ) < 0) {
+			PERROR("Protecting global memory failed: %s", fr_syserror(errno));
+			EXIT_WITH_FAILURE;
+		}
+		DEBUG("Global memory protected");
+	}
 
 	/*
 	 *  Process requests until HUP or exit.
@@ -786,6 +838,18 @@ int main(int argc, char *argv[])
 		main_config_hup(config);
 	}
 
+	/*
+	 *  Unprotect global memory
+	 */
+	if (do_mprotect) {
+		if (mprotect(pool_page_start, (uintptr_t)pool_page_end - (uintptr_t)pool_page_start,
+			     PROT_READ | PROT_WRITE) < 0) {
+			PERROR("Unprotecting global memory failed: %s", fr_syserror(errno));
+			EXIT_WITH_FAILURE;
+		}
+		DEBUG("Global memory unprotected");
+	}
+
 	if (status < 0) {
 		PERROR("Exiting due to internal error");
 		ret = EXIT_FAILURE;
@@ -794,7 +858,7 @@ int main(int argc, char *argv[])
 		ret = EXIT_SUCCESS;
 	}
 
-	if (radmin) fr_radmin_stop();
+	fr_radmin_stop();
 
 	/*
 	 *  Ignore the TERM signal: we're about to die.
@@ -823,54 +887,58 @@ int main(int argc, char *argv[])
 	if (config->daemonize) unlink(config->pid_file);
 
 	/*
-	 *	Stop the scheduler
+	 *  Stop the scheduler
 	 */
 	(void) fr_schedule_destroy(sc);
 
 	/*
-	 *	Free memory in an explicit and consistent order
+	 *  Free memory in an explicit and consistent order
 	 *
-	 *	We could let everything be freed by the autofree
-	 *	context, but in some cases there are odd interactions
-	 *	with destructors that may cause double frees and
-	 *	SEGVs.
+	 *  We could let everything be freed by the global_ctx
+	 *  context, but in some cases there are odd interactions
+	 *  with destructors that may cause double frees and
+	 *  SEGVs.
 	 */
 	radius_event_free();		/* Free the requests */
 
 cleanup:
 	/*
-	 *	Frees request specific logging resources which is OK
-	 *	because all the requests will have been stopped.
+	 *  Frees request specific logging resources which is OK
+	 *  because all the requests will have been stopped.
 	 */
 	log_global_free();
 
 	/*
-	 *	Free xlat instance data, and call any detach methods
+	 *  Free xlat instance data, and call any detach methods
 	 */
 	xlat_instances_free();
 
 	/*
-	 *	Detach modules, connection pools, registered xlats / paircmps / maps.
+	 *  Detach modules, connection pools, registered xlats
+	 *  paircmps / maps.
 	 */
 	modules_free();
 
 	/*
-	 *	The only paircmps remaining are the ones registered by the server core.
+	 *  The only paircmps remaining are the ones registered
+	 *  by the server core.
 	 */
 	paircmp_free();
 
 	/*
-	 *	The only xlats remaining are the ones registered by the server core.
+	 *  The only xlats remaining are the ones registered by
+	 *  the server core.
 	 */
 	xlat_free();
 
 	/*
-	 *	The only maps remaining are the ones registered by the server core.
+	 *  The only maps remaining are the ones registered by
+	 *  the server core.
 	 */
 	map_proc_free();
 
 	/*
-	 *	Free any resources used by the unlang interpreter.
+	 *  Free any resources used by the unlang interpreter.
 	 */
 	unlang_free();
 
@@ -878,30 +946,43 @@ cleanup:
 	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
 
-	talloc_memory_report = config->talloc_memory_report;
+	if (config) talloc_memory_report = config->talloc_memory_report;	/* Grab this before we free the config */
 
 	/*
-	 *	And now nothing should be left anywhere except the
-	 *	parsed configuration items.
+	 *  And now nothing should be left anywhere except the
+	 *  parsed configuration items.
 	 */
 	main_config_free(&config);
 
-	talloc_free(autofree);		/* Cleanup everything else */
-
-	trigger_exec_free();		/* Now we're sure no more triggers can fire, free the trigger tree */
+	/*
+	 *  Cleanup everything else
+	 */
+	talloc_free(global_ctx);
 
 	/*
-	 *	Clean out the main thread's log buffers
-	 *	These would be free on exit anyway but this
-	 *	stops them showing up in the memory report.
+	 *  Now we're sure no more triggers can fire, free the
+	 *  trigger tree
+	 */
+	trigger_exec_free();
+
+	/*
+	 *  Clean out the main thread's log buffers these would
+	 *  be free on exit anyway but this stops them showing
+	 *  up in the memory report.
 	 */
 	fr_strerror_free();
 
 	/*
-	 *  Anything not cleaned up by the above is allocated in the NULL
-	 *  top level context, and is likely leaked memory.
+	 *  Anything not cleaned up by the above is allocated in
+	 *  the NULL top level context, and is likely leaked memory.
 	 */
 	if (talloc_memory_report) fr_log_talloc_report(NULL);
+
+	/*
+	 *  If we're running under LSAN, try and SUID back up so
+	 *  we don't inteferere with the onexit() handler.
+	 */
+	if (!rad_suid_is_down_permanent() && (fr_get_lsan_state() == 1)) rad_suid_up();
 
 	return ret;
 }

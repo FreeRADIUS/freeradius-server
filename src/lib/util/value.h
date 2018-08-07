@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Boxed value structures and functions to manipulate them
  *
- * @file lib/util/value.h
- * @brief Boxed values and functions to manipulate them.
+ * @file src/lib/util/value.h
  *
  * @copyright 2015-2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
@@ -29,11 +27,13 @@ RCSIDH(value_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/missing.h>		/* For uint128_t */
-#include <freeradius-devel/util/inet.h>
-#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/types.h>
 
 /*
  *	Avoid circular type references.
@@ -42,6 +42,7 @@ typedef struct value_box fr_value_box_t;
 
 #include <freeradius-devel/util/dict.h>
 
+extern const FR_NAME_NUMBER fr_value_box_type_names[];
 extern size_t const fr_value_box_field_sizes[];
 extern size_t const fr_value_box_offsets[];
 
@@ -384,8 +385,8 @@ static inline int fr_value_unbox_ethernet_addr(uint8_t dst[6], fr_value_box_t *s
 {
 	if (unlikely(src->type != FR_TYPE_ETHERNET)) { \
 		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s",
-				   fr_int2str(dict_attr_types, FR_TYPE_ETHERNET, "?Unknown?"),
-				   fr_int2str(dict_attr_types, src->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, FR_TYPE_ETHERNET, "?Unknown?"),
+				   fr_int2str(fr_value_box_type_names, src->type, "?Unknown?"));
 		return -1; \
 	}
 	memcpy(dst, src->vb_ether, sizeof(src->vb_ether));	/* Must be src, dst is a pointer */
@@ -396,8 +397,8 @@ static inline int fr_value_unbox_ethernet_addr(uint8_t dst[6], fr_value_box_t *s
 static inline int fr_value_unbox_##_field(_ctype *var, fr_value_box_t const *src) { \
 	if (unlikely(src->type != _type)) { \
 		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s", \
-				   fr_int2str(dict_attr_types, _type, "?Unknown?"), \
-				   fr_int2str(dict_attr_types, src->type, "?Unknown?")); \
+				   fr_int2str(fr_value_box_type_names, _type, "?Unknown?"), \
+				   fr_int2str(fr_value_box_type_names, src->type, "?Unknown?")); \
 		return -1; \
 	} \
 	*var = src->vb_##_field; \

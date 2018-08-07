@@ -1,21 +1,16 @@
-/**
- * $Id$
+/** A local MD5 implementation
  *
  * @note license is LGPL, but largely derived from a public domain source.
  *
- * @file md5.c
- * @brief md5 digest functions.
+ * @file src/lib/util/md5.c
  */
-
 RCSID("$Id$")
-
-#include <freeradius-devel/util/base.h>
 
 /*
  *  FORCE MD5 TO USE OUR MD5 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD5.
  */
-#include <freeradius-devel/util/md5.h>
+#include "md5.h"
 
 /** Calculate the MD5 hash of the contents of a buffer
  *

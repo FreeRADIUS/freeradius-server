@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Structures and prototypes for resizable hash tables
  *
- * @file lib/util/hash.h
- * @brief Structures and prototypes for fast hashing.
+ * @file src/lib/util/hash.h
  *
  * @copyright 2005,2006  The FreeRADIUS server project
  */
@@ -28,6 +26,13 @@ RCSIDH(hash_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
+#include <stddef.h>
+#include <stdint.h>
+#include <talloc.h>
 
 /*
  *	Fast hash, which isn't too bad.  Don't use for cryptography,

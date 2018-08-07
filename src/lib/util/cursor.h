@@ -13,19 +13,24 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#include <talloc.h>
-#include <stddef.h>
-#include <freeradius-devel/build.h>
 
-/**
- * $Id$
+/** Functions to iterate over a sets and subsets of items
  *
- * @file lib/util/cursor.h
- * @brief Generic linked list cursor.
+ * @file src/lib/util/cursor.h
  *
  * @copyright 2016  The FreeRADIUS server project
  */
 RCSIDH(cursor_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
+#include <stddef.h>
+#include <talloc.h>
 
 /** Callback for implementing custom iterators
  *
@@ -149,3 +154,7 @@ static inline void fr_cursor_free_item(fr_cursor_t *cursor)
 
 	talloc_free(fr_cursor_remove(cursor));
 }
+
+#ifdef __cplusplus
+}
+#endif

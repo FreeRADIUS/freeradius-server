@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_PTHREAD_H
 #include <pthread.h>
@@ -181,7 +182,8 @@ static void *fr_schedule_worker_thread(void *arg)
 		goto fail;
 	}
 
-	sw->worker = fr_worker_create(ctx, sw->el, sc->log, sc->lvl);
+	snprintf(buffer, sizeof(buffer), "%d", worker_id);
+	sw->worker = fr_worker_create(ctx, buffer, sw->el, sc->log, sc->lvl);
 	if (!sw->worker) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
@@ -414,7 +416,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			return NULL;
 		}
 
-		sc->single_worker = fr_worker_create(sc, el, sc->log, sc->lvl);
+		sc->single_worker = fr_worker_create(sc, "0", el, sc->log, sc->lvl);
 		if (!sc->single_worker) {
 			fr_log(sc->log, L_ERR, "Failed creating worker: %s", fr_strerror());
 			goto st_fail;
@@ -426,6 +428,16 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		if (sc->worker_thread_instantiate &&
 		    (sc->worker_thread_instantiate(sc->single_worker, el, sc->worker_instantiate_ctx) < 0)) {
 			fr_log(sc->log, L_ERR, "Failed calling thread instantiate: %s", fr_strerror());
+			goto st_fail;
+		}
+
+		if (fr_command_register_hook(NULL, "0", sc->single_worker, cmd_worker_table) < 0) {
+			fr_log(sc->log, L_ERR, "Failed adding worker commands: %s", fr_strerror());
+			goto st_fail;
+		}
+
+		if (fr_command_register_hook(NULL, "0", sc->single_network, cmd_network_table) < 0) {
+			fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
 			goto st_fail;
 		}
 
@@ -533,6 +545,25 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sc = NULL;
 	}
 #endif
+
+	for (sw = fr_dlist_head(&sc->workers), i = 0;
+	     sw != NULL;
+	     sw = next, i++) {
+		char buffer[32];
+
+		next = fr_dlist_next(&sc->workers, sw);
+
+		snprintf(buffer, sizeof(buffer), "%d", i);
+		if (fr_command_register_hook(NULL, buffer, sw->worker, cmd_worker_table) < 0) {
+			fr_log(sc->log, L_ERR, "Failed adding worker commands: %s", fr_strerror());
+			goto st_fail;
+		}
+	}
+
+	if (fr_command_register_hook(NULL, "0", sc->sn, cmd_network_table) < 0) {
+		fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
+		goto st_fail;
+	}
 
 	if (sc) fr_log(sc->log, L_INFO, "Scheduler created successfully with %d networks and %d workers",
 		       sc->max_networks, sc->num_workers);

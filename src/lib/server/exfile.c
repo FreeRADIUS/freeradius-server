@@ -146,7 +146,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 	ef = talloc_zero(NULL, exfile_t);
 	if (!ef) return NULL;
 
-	fr_talloc_link_ctx(ctx, ef);
+	talloc_link_ctx(ctx, ef);
 
 	ef->max_entries = max_entries;
 	ef->max_idle = max_idle;
@@ -237,8 +237,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		if ((dirperm & 0006) != 0) dirperm |= 0001;
 
 		if (rad_mkdir(dir, dirperm, -1, -1) < 0) {
-			fr_strerror_printf("Failed to create directory %s: %s",
-					   dir, strerror(errno));
+			fr_strerror_printf("Failed to create directory %s: %s", dir, fr_syserror(errno));
 			talloc_free(dir);
 			return -1;
 		}
@@ -246,8 +245,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 
 		fd = open(filename, O_RDWR | O_CREAT, permissions);
 		if (fd < 0) {
-			fr_strerror_printf("Failed to open file %s: %s",
-					   filename, strerror(errno));
+			fr_strerror_printf("Failed to open file %s: %s", filename, fr_syserror(errno));
 			return -1;
 		}
 	}
@@ -404,7 +402,7 @@ try_lock:
 	 *	Lock from the start of the file.
 	 */
 	if (lseek(ef->entries[i].fd, 0, SEEK_SET) < 0) {
-		fr_strerror_printf("Failed to seek in file %s: %s", filename, strerror(errno));
+		fr_strerror_printf("Failed to seek in file %s: %s", filename, fr_syserror(errno));
 
 	error:
 		exfile_cleanup_entry(ef, request, &ef->entries[i]);
@@ -423,15 +421,14 @@ try_lock:
 			if (rad_lockfd_nonblock(ef->entries[i].fd, 0) >= 0) break;
 
 			if (errno != EAGAIN) {
-				fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
+				fr_strerror_printf("Failed to lock file %s: %s", filename, fr_syserror(errno));
 				goto error;
 			}
 
 			close(ef->entries[i].fd);
 			ef->entries[i].fd = open(filename, O_RDWR | O_CREAT, permissions);
 			if (ef->entries[i].fd < 0) {
-				fr_strerror_printf("Failed to open file %s: %s",
-						   filename, strerror(errno));
+				fr_strerror_printf("Failed to open file %s: %s", filename, fr_syserror(errno));
 				goto error;
 			}
 		}
@@ -447,7 +444,7 @@ try_lock:
 	 *	for the lock.  If so, re-open it.
 	 */
 	if (fstat(ef->entries[i].fd, &st) < 0) {
-		fr_strerror_printf("Failed to stat file %s: %s", filename, strerror(errno));
+		fr_strerror_printf("Failed to stat file %s: %s", filename, fr_syserror(errno));
 		goto reopen;
 	}
 

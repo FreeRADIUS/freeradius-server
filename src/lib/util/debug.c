@@ -14,27 +14,33 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/debug.c
- * @brief Various functions to aid in debugging
+/** Functions to help with debugging
+ *
+ * @file src/lib/util/debug.c
  *
  * @copyright 2013  The FreeRADIUS server project
  * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+#include "debug.h"
 
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/hash.h>
+
+#include <assert.h>
+#include <limits.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <unistd.h>
 #include <string.h>
-#include <errno.h>
-#include <assert.h>
-#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/util/base.h>
+#include <unistd.h>
 
 #if defined(HAVE_MALLOPT) && defined(HAVE_MALLOC_H)
 #  include <malloc.h>
@@ -54,6 +60,7 @@
 
 #ifdef HAVE_SYS_PTRACE_H
 #  include <sys/ptrace.h>
+#  include <sys/types.h>
 #  if !defined(PT_ATTACH) && defined(PTRACE_ATTACH)
 #    define PT_ATTACH PTRACE_ATTACH
 #  endif
@@ -139,14 +146,14 @@ DIAG_OFF(missing-prototypes)
 const char CC_HINT(used) *__lsan_default_suppressions(void)
 {
 	return
-#ifdef __APPLE__
+#if defined(__APPLE__)
 		"leak:_gai_nat64_synthesis\n"		/* Observed in calls to getaddrinfo */
 		"leak:*gmtsub*\n"
 		"leak:tzsetwall_basic\n"
 		"leak:ImageLoaderMachO::doImageInit\n"
 		"leak:libSystem_atfork_child"
-#else
-		""
+#elif defined(__linux__)
+		"leak:kqueue"
 #endif
 		;
 }
@@ -163,7 +170,7 @@ int CC_HINT(used) __lsan_is_turned_off(void)
 
 	/* Child */
 	if (write(lsan_test_pipe[1], &ret, sizeof(ret)) < 0) {
-		fprintf(stderr, "Writing LSAN status failed: %s", strerror(errno));
+		fprintf(stderr, "Writing LSAN status failed: %s", fr_syserror(errno));
 	}
 	close(lsan_test_pipe[1]);
 	return 0;
@@ -293,6 +300,11 @@ int fr_get_debug_state(void)
 	if (pid == 0) {
 		int8_t	ret = DEBUGGER_STATE_NOT_ATTACHED;
 		int	ppid = getppid();
+		int	flags;
+
+DIAG_OFF(deprecated-declarations);
+		flags = PT_ATTACH;
+DIAG_ON(deprecated-declarations);
 
 		/* Close parent's side */
 		close(from_child[0]);
@@ -305,7 +317,8 @@ int fr_get_debug_state(void)
 		 *	If we don't do it in that order the read in the parent triggers
 		 *	a SIGKILL.
 		 */
-		if (_PTRACE(PT_ATTACH, ppid) == 0) {
+
+		if (_PTRACE(flags, ppid) == 0) {
 			/* Wait for the parent to stop */
 			waitpid(ppid, NULL, 0);
 
@@ -947,8 +960,8 @@ int fr_log_talloc_report(TALLOC_CTX const *ctx)
 {
 #define TALLOC_REPORT_MAX_DEPTH 20
 
-	FILE *log;
-	int fd;
+	FILE	*log;
+	int	fd;
 
 	fd = dup(fr_fault_log_fd);
 	if (fd < 0) {
@@ -1320,3 +1333,44 @@ void NEVER_RETURNS _fr_exit_now(UNUSED char const *file, UNUSED int line, int st
 	_exit(status);
 }
 #endif
+
+/*
+ *	Sign a structure, but skip _signature at "offset".
+ */
+static uint32_t fr_hash_struct(void const *ptr, size_t size, size_t offset)
+{
+	uint32_t hash;
+
+	/*
+	 *	Hash entry is at the end of the structure, that's
+	 *	best...
+	 */
+	if ((size + 4) == offset) {
+		return fr_hash(ptr, size);
+	}
+
+	hash = fr_hash(ptr, offset);
+	return fr_hash_update(((uint8_t const *) ptr) + offset + 4, size - (offset + 4), hash);
+}
+
+void fr_sign_struct(void *ptr, size_t size, size_t offset)
+{
+	*(uint32_t *) (((uint8_t *) ptr) + offset) = fr_hash_struct(ptr, size, offset);
+}
+
+void fr_verify_struct(void const *ptr, size_t size, size_t offset)
+{
+	uint32_t hash;
+
+	hash = fr_hash_struct(ptr, size, offset);
+
+	(void) fr_cond_assert(hash == *(uint32_t const *) (((uint8_t const *) ptr) + offset));
+}
+
+void fr_verify_struct_member(void const *ptr, size_t len, uint32_t *signature)
+{
+	uint32_t hash;
+
+	hash = fr_hash(ptr, len);
+	(void) fr_cond_assert(hash == *signature);
+}

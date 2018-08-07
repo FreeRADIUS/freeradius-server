@@ -15,26 +15,27 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 #ifdef HAVE_LIBPCAP
-/**
- * $Id$
+/** Prototypes and constants for PCAP functions
  *
- * @file lib/util/pcap.h
- * @brief Prototypes and constants for PCAP functions.
+ * @file src/lib/util/pcap.h
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSIDH(pcap_h, "$Id$")
 
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/net.h>
-
-#include <sys/types.h>
-#include <pcap.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "pcap.h"
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/net.h>
+
+#include <pcap.h>
+#include <sys/types.h>
 
 #define SNAPLEN ETHER_HDR_LEN + IP_HDR_LEN + sizeof(struct udp_header) + MAX_RADIUS_LEN
 #define PCAP_BUFFER_DEFAULT (10000)

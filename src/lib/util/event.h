@@ -15,24 +15,25 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Wrapper around libkqueue to make managing events easier
  *
- * @file lib/util/event.h
- * @brief A simple event queue.
+ * @file src/lib/util/event.h
  *
  * @copyright 2007  The FreeRADIUS server project
  * @copyright 2007  Alan DeKok <aland@deployingradius.com>
  */
 RCSIDH(event_h, "$Id$")
 
-#include <freeradius-devel/missing.h>
-#include <stdbool.h>
-#include <sys/event.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
+#include <stdbool.h>
+#include <sys/event.h>
+#include <talloc.h>
 
 /** An opaque file descriptor handle
  */

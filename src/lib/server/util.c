@@ -31,6 +31,8 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #include <fcntl.h>
 
+static bool suid_down_permanent = false;	//!< Record whether we've permanently dropped privilledges
+
 /*
  *	The signal() function in Solaris 2.5.1 sets SA_NODEFER in
  *	sa_flags, which causes grief if signal() is called in the
@@ -1362,6 +1364,8 @@ void rad_suid_down_permanent(void)
 	}
 
 	fr_reset_dumpable();
+
+	suid_down_permanent = true;
 }
 #  else
 /*
@@ -1393,6 +1397,8 @@ void rad_suid_down(void)
 		talloc_free(passwd);
 		fr_exit_now(1);
 	}
+
+	fr_reset_dumpable();
 }
 
 void rad_suid_down_permanent(void)
@@ -1423,24 +1429,40 @@ void rad_suid_down_permanent(void)
 	}
 
 	fr_reset_dumpable();
+
+	suid_down_permanent = true;
 }
 #  endif /* HAVE_SETRESUID && HAVE_GETRESUID */
 #else  /* HAVE_SETUID */
 void rad_suid_set_down_uid(uid_t uid)
 {
 }
+
 void rad_suid_up(void)
 {
 }
+
 void rad_suid_down(void)
 {
 	fr_reset_dumpable();
 }
+
 void rad_suid_down_permanent(void)
 {
 	fr_reset_dumpable();
 }
 #endif /* HAVE_SETUID */
+
+/** Return whether we've permanently dropped root privileges
+ *
+ * @return
+ *	- true if root privileges have been dropped.
+ *	- false if root privileges have not been dropped.
+ */
+bool rad_suid_is_down_permanent(void)
+{
+	return suid_down_permanent;
+}
 
 /** Alter the effective user id
  *

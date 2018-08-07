@@ -15,15 +15,20 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Doubly linked list implementation
  *
- * @file util/dlist.h
- * @brief Doubly linked list implementation
+ * @file src/lib/util/dlist.h
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  */
 RCSIDH(dlist_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 
 /** Entry in a doubly linked list
  *
@@ -382,3 +387,7 @@ static inline void fr_dlist_move(fr_dlist_head_t *list_dst, fr_dlist_head_t *lis
 
 	fr_dlist_entry_init(src);
 }
+
+#ifdef __cplusplus
+}
+#endif

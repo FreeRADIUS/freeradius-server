@@ -15,32 +15,39 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** API for sending and receiving packets on unconnected UDP sockets
  *
- * @file lib/util/udpfromto.h
- * @brief Abstract API for sending and receiving packets on unconnected UDP sockets.
+ * Like recvfrom, but also stores the destination IP address. Useful on multihomed hosts.
+ *
+ * @file src/lib/util/udpfromto.h
  *
  * @copyright 2015  The FreeRADIUS server project
  */
 RCSIDH(udpfromto_h, "$Id$")
-
-#include <freeradius-devel/util/base.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifdef WITH_UDPFROMTO
-int udpfromto_init(int s);
-int recvfromto(int s, void *buf, size_t len, int flags,
-	       struct sockaddr *from, socklen_t *fromlen,
-	       struct sockaddr *to, socklen_t *tolen,
-	       int *if_index, struct timeval *when);
-int sendfromto(int s, void *buf, size_t len, int flags,
-	       struct sockaddr *from, socklen_t fromlen,
-	       struct sockaddr *to, socklen_t tolen,
-	       int if_index);
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
+#include <netinet/in.h>
+#include <stddef.h>
+#include <stdlib.h>
+
+int	udpfromto_init(int s);
+
+int	recvfromto(int s, void *buf, size_t len, int flags,
+	       	   struct sockaddr *from, socklen_t *fromlen,
+		   struct sockaddr *to, socklen_t *tolen,
+		   int *if_index, struct timeval *when);
+
+int	sendfromto(int s, void *buf, size_t len, int flags,
+		   struct sockaddr *from, socklen_t fromlen,
+		   struct sockaddr *to, socklen_t tolen,
+		   int if_index);
 #endif
 
 #ifdef __cplusplus

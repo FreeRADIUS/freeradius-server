@@ -80,6 +80,9 @@ typedef struct radclient {
 #ifdef WITH_TCP
 	fr_socket_limit_t	limit;			//!< Connections per client (TCP clients only).
 #endif
+
+	FR_STRUCT_MEMBER_SIGNATURE(secret)
+	FR_STRUCT_SIGNATURE
 } RADCLIENT;
 
 typedef struct radclient_list RADCLIENT_LIST;

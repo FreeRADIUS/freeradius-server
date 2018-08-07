@@ -40,6 +40,8 @@ typedef enum fr_conduit_type_t {
 	FR_CONDUIT_AUTH_CHALLENGE,
 	FR_CONDUIT_AUTH_RESPONSE,
 	FR_CONDUIT_NOTIFY,
+	FR_CONDUIT_HELP,
+	FR_CONDUIT_COMPLETE,
 } fr_conduit_type_t;
 
 typedef enum fr_conduit_origin_t {

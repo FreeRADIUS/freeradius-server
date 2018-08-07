@@ -40,6 +40,7 @@ static _Thread_local rbtree_t *module_thread_inst_tree;
 static TALLOC_CTX *instance_ctx = NULL;
 
 static int module_instantiate(CONF_SECTION *root, char const *name);
+static fr_cmd_table_t cmd_module_table[];
 
 /** Initialise a module specific exfile handle
  *
@@ -648,6 +649,12 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 
 	if (mi->instantiated) return 0;
 
+	if (fr_command_register_hook(NULL, mi->name, mi, cmd_module_table) < 0) {
+		ERROR("Failed registering radmin commands for module %s - %s",
+		      mi->name, fr_strerror());
+		return -1;
+	}
+
 	/*
 	 *	Now that ALL modules are instantiated, and ALL xlats
 	 *	are defined, go compile the config items marked as XLAT.
@@ -726,16 +733,9 @@ static int module_instantiate(CONF_SECTION *root, char const *name)
 }
 
 
-static int cmd_show_module_config(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	module_instance_t *mi;
-	CONF_SECTION *modules = (CONF_SECTION *) ctx;
-
-	mi = cf_data_value(cf_data_find(modules, module_instance_t, info->argv[0]));
-	if (!mi) {
-		fprintf(fp_err, "No such module '%s'\n", info->argv[0]);
-		return -1;
-	}
+	module_instance_t *mi = ctx;
 
 	rad_assert(mi->dl_inst->conf != NULL);
 
@@ -743,6 +743,47 @@ static int cmd_show_module_config(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info
 
 	return 0;
 }
+
+typedef struct module_tab_expand_t {
+	char const *text;
+	int count;
+	int max_expansions;
+	char const **expansions;
+} module_tab_expand_t;
+
+
+static int _module_tab_expand(void *instance, void *ctx)
+{
+	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
+	module_tab_expand_t *mt = ctx;
+
+	if (mt->count >= mt->max_expansions) return 1;
+
+	if (fr_command_strncmp(mt->text, mi->name)) {
+		mt->expansions[mt->count] = strdup(mi->name);
+		mt->count++;
+	}
+
+	return 0;
+}
+
+static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
+{
+	module_tab_expand_t mt;
+	CONF_SECTION *modules = (CONF_SECTION *) ctx;
+
+	if (info->argc <= 0) return 0;
+
+	mt.text = info->argv[info->argc - 1];
+	mt.count = 0;
+	mt.max_expansions = max_expansions;
+	mt.expansions = expansions;
+
+	(void) cf_data_walk(modules, module_instance_t, _module_tab_expand, &mt);
+
+	return mt.count;
+}
+
 
 static int _module_list(void *instance, void *ctx)
 {
@@ -763,17 +804,9 @@ static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED
 	return 0;
 }
 
-
-static int cmd_show_module_status(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+static int cmd_show_module_status(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	module_instance_t *mi;
-	CONF_SECTION *modules = (CONF_SECTION *) ctx;
-
-	mi = cf_data_value(cf_data_find(modules, module_instance_t, info->argv[0]));
-	if (!mi) {
-		fprintf(fp_err, "No such module '%s'\n", info->argv[0]);
-		return -1;
-	}
+	module_instance_t *mi = ctx;
 
 	if (!mi->force) {
 		fprintf(fp, "alive\n");
@@ -785,17 +818,10 @@ static int cmd_show_module_status(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info
 	return 0;
 }
 
-static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+static int cmd_set_module_status(UNUSED FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
 {
-	module_instance_t *mi;
-	CONF_SECTION *modules = (CONF_SECTION *) ctx;
+	module_instance_t *mi = ctx;
 	rlm_rcode_t rcode;
-
-	mi = cf_data_value(cf_data_find(modules, module_instance_t, info->argv[0]));
-	if (!mi) {
-		fprintf(fp_err, "No such module '%s'\n", info->argv[0]);
-		return -1;
-	}
 
 	if (strcmp(info->argv[1], "alive") == 0) {
 		mi->force = false;
@@ -811,56 +837,69 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 	return 0;
 }
 
+
 static fr_cmd_table_t cmd_module_table[] = {
 	{
-		.parent = "show",
-		.syntax = "module",
-		.help = "Show module settings.",
+		.parent = "show module",
+		.add_name = true,
+		.name = "status",
+		.func = cmd_show_module_status,
+		.help = "Show the status of a particular module.",
 		.read_only = true,
 	},
 
 	{
 		.parent = "show module",
-		.syntax = "config STRING",
+		.add_name = true,
+		.name = "config",
 		.func = cmd_show_module_config,
-		.help = "show module config :name",
+		.help = "Show configuration for a module",
 		// @todo - do tab expand, by walking over the whole module list...
 		.read_only = true,
 	},
 
 	{
-		.parent = "show module",
-		.syntax = "list",
-		.func = cmd_show_module_list,
-		.help = "Show the list of modules loaded in the server.",
-		.read_only = true,
-	},
-
-	{
-		.parent = "show module",
-		.syntax = "status STRING",
-		.func = cmd_show_module_status,
-		.help = "show module status NAME",
-		.read_only = true,
-	},
-
-	{
-		.parent = "set",
-		.syntax = "module",
-		.help = "Change module settings.",
-		.read_only = false,
-	},
-
-	{
 		.parent = "set module",
-		.syntax = "status STRING (alive|ok|fail|reject|handled|invalid|userlock|notfound|noop|updated)",
+		.add_name = true,
+		.name = "status",
+		.syntax = "(alive|ok|fail|reject|handled|invalid|userlock|notfound|noop|updated)",
 		.func = cmd_set_module_status,
 		.help = "Change module status to fixed value.",
 		.read_only = false,
 	},
 
 	CMD_TABLE_END
+};
 
+
+static fr_cmd_table_t cmd_table[] = {
+	{
+		.parent = "show",
+		.name = "module",
+		.help = "Show information about modules.",
+		.tab_expand = module_name_tab_expand,
+		.read_only = true,
+	},
+
+	// @todo - what if there's a module called "list" ?
+	{
+		.parent = "show module",
+		.name = "list",
+		.func = cmd_show_module_list,
+		.help = "Show the list of modules loaded in the server.",
+		.read_only = true,
+	},
+
+	{
+		.parent = "set",
+		.name = "module",
+		.help = "Change module settings.",
+		.tab_expand = module_name_tab_expand,
+		.read_only = false,
+	},
+
+
+	CMD_TABLE_END
 };
 
 /** Completes instantiation of modules
@@ -882,7 +921,7 @@ int modules_instantiate(CONF_SECTION *root)
 
 	DEBUG2("#### Instantiating modules ####");
 
-	if (fr_command_register_hook(NULL, modules, cmd_module_table) < 0) {
+	if (fr_command_register_hook(NULL, NULL, modules, cmd_table) < 0) {
 		ERROR("Failed registering radmin commands for modules - %s",
 		      fr_strerror());
 		return -1;

@@ -59,8 +59,9 @@ DIAG_ON(strict-prototypes)
 
 static pthread_t pthread_id;
 static bool stop = false;
-static int context;
+static int context = 0;
 static fr_cmd_info_t radmin_info;
+static TALLOC_CTX *radmin_ctx;
 
 #ifndef USE_READLINE
 /*
@@ -72,7 +73,7 @@ static char *readline(char const *prompt)
 {
 	char *line, *p;
 
-	puts(prompt);
+	if (prompt && *prompt) puts(prompt);
 	fflush(stdout);
 
 	line = fgets(readline_buffer, sizeof(readline_buffer), stdin);
@@ -134,12 +135,12 @@ static void add_history(UNUSED char *line)
 #endif
 
 static fr_cmd_t *radmin_cmd = NULL;
+static char *radmin_partial_line = NULL;
 static char *radmin_buffer = NULL;
 
 #define CMD_MAX_ARGV (32)
 #define CMD_MAX_EXPANSIONS (128)
 
-static int cmd_help(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info);
 static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
 
 #ifdef USE_READLINE
@@ -148,30 +149,27 @@ static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t cons
  */
 static int radmin_num_expansions;
 static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
+static main_config_t *radmin_main_config = NULL;
 
 static char *
-radmin_expansion_walk(const char *text, int state)
+radmin_expansion_walk(UNUSED const char *text, int state)
 {
-    static int current, len;
+    static int current;
     char *name;
 
     if (!state) {
 	    current = 0;
-	    len = strlen(text);
     }
 
+    /*
+     *	fr_command_completions() takes care of comparing things to
+     *	suppress expansions which don't match "text"
+     */
     if (current >= radmin_num_expansions) return NULL;
 
-    while ((name = radmin_expansions[current])) {
-	    radmin_expansions[current++] = NULL;
-
-	    if (strncmp(name, text, len) == 0) {
-		    return name;
-	    }
-	    free(name);
-    }
-
-    return NULL;
+    name = radmin_expansions[current];
+    radmin_expansions[current++] = NULL;
+    return name;
 }
 
 
@@ -179,10 +177,24 @@ static char **
 radmin_completion(const char *text, int start, UNUSED int end)
 {
 	int num;
+	size_t offset;
+	char **expansions = &radmin_expansions[0];
+	char const **expansions_const;
 
 	rl_attempted_completion_over = 1;
 
-	num = fr_command_complete(radmin_cmd, rl_line_buffer, start, CMD_MAX_EXPANSIONS, radmin_expansions);
+	rad_assert(radmin_buffer != NULL);
+	rad_assert(radmin_partial_line != NULL);
+	rad_assert(radmin_partial_line >= radmin_buffer);
+	rad_assert(radmin_partial_line < (radmin_buffer + 8192));
+
+	offset = (radmin_partial_line - radmin_buffer);
+
+	strlcpy(radmin_partial_line, rl_line_buffer, 8192 - offset);
+
+	memcpy(&expansions_const, &expansions, sizeof(expansions)); /* const issues */
+	num = fr_command_complete(radmin_cmd, radmin_buffer, start + offset,
+				  CMD_MAX_EXPANSIONS, expansions_const);
 	if (num <= 0) return NULL;
 
 	radmin_num_expansions = num;
@@ -192,18 +204,13 @@ radmin_completion(const char *text, int start, UNUSED int end)
 
 static int radmin_help(UNUSED int count, UNUSED int key)
 {
-	char buffer[8192];
-
+	size_t offset;
 	printf("\n");
 
-	/*
-	 *	@todo make this not retarded.
-	 */
-	strlcpy(buffer, radmin_buffer, sizeof(buffer));
-	strlcat(buffer, " ", sizeof(buffer));
-	strlcat(buffer, rl_line_buffer, sizeof(buffer));
+	offset = (radmin_partial_line - radmin_buffer);
+	strlcpy(radmin_partial_line, rl_line_buffer, 8192 - offset);
 
-	(void) fr_command_print_help(stdout, radmin_cmd, buffer);
+	(void) fr_command_print_help(stdout, radmin_cmd, radmin_buffer);
 	rl_on_new_line();
 	return 0;
 }
@@ -213,12 +220,10 @@ static int radmin_help(UNUSED int count, UNUSED int key)
 
 static void *fr_radmin(UNUSED void *input_ctx)
 {
-	int argc;
-	char *argv_buffer;
-	char *current_str, **context_str;
-	int *context_exit;
+	int argc = 0;
+	int *context_exit, *context_offset;
 	char const *prompt;
-	size_t size, room;
+	size_t size;
 	TALLOC_CTX *ctx;
 	fr_cmd_info_t *info = &radmin_info;
 
@@ -227,16 +232,14 @@ static void *fr_radmin(UNUSED void *input_ctx)
 
 	ctx = talloc_init("radmin");
 
-	size = room = 8192;
+	size = 8192;
 	radmin_buffer = talloc_zero_array(ctx, char, size);
-	argv_buffer = talloc_zero_array(ctx, char, size);
-	current_str = argv_buffer;
 
 	fr_command_info_init(ctx, info);
 
 	context_exit = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
-	context_str = talloc_zero_array(ctx, char *, CMD_MAX_ARGV + 1);
-	context_str[0] = argv_buffer;
+	context_offset = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
+	context_offset[0] = 0;
 
 	fflush(stdout);
 
@@ -249,6 +252,9 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	while (true) {
 		char *line;
 
+		rad_assert(context >= 0);
+		rad_assert(context_offset[context] >= 0);
+		radmin_partial_line = radmin_buffer + context_offset[context];
 		line = readline(prompt);
 		if (stop) break;
 
@@ -264,16 +270,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 */
 		if (context > 0) {
 			/*
-			 *	We're in a nested command and the user typed
-			 *	"help".  Act as if they typed "help ...".
-			 *	It's just polite.
-			 */
-			if (strcmp(line, "help") == 0) {
-				cmd_help(stdout, stderr, &radmin_info, info);
-				goto next;
-			}
-
-			/*
 			 *	Special-case "quit", which works everywhere.
 			 *	It closes the CLI immediately.
 			 */
@@ -288,7 +284,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			if (strcmp(line, "exit") == 0) {
 				talloc_const_free(prompt);
 				context = context_exit[context];
-				current_str = context_str[context];
 				if (context == 0) {
 					prompt = "radmin> ";
 				} else {
@@ -312,17 +307,9 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	up-arrow, only produces the RELEVANT line from
 		 *	the current context.
 		 */
-		strlcpy(current_str, line, room);
-
-		/*
-		 *	Keep a copy of the full string entered.
-		 */
-		if (current_str > argv_buffer) {
-			radmin_buffer[(current_str - argv_buffer) - 1] = ' ';
-		}
-		strlcpy(radmin_buffer + (current_str - argv_buffer), line, room);
-
-		argc = fr_command_str_to_argv(radmin_cmd, info, current_str);
+		strlcpy(radmin_buffer + context_offset[context], line,
+			size - context_offset[context]);
+		argc = fr_command_str_to_argv(radmin_cmd, info, radmin_buffer);
 
 		/*
 		 *	Parse error!  Oops..
@@ -349,13 +336,12 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			size_t len;
 
 			rad_assert(argc > 0);
-			rad_assert(info->argv[argc - 1] != NULL);
-			len = strlen(info->argv[argc - 1]) + 1;
+			len = strlen(line);
 
 			/*
 			 *	Not enough room for more commands, refuse to do it.
 			 */
-			if (room < (len + 80)) {
+			if ((context_offset[context] + len + 80) >= size) {
 				fprintf(stderr, "Too many commands!\n");
 				goto next;
 			}
@@ -364,8 +350,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	Move the pointer down the buffer and
 			 *	keep reading more.
 			 */
-			current_str = info->argv[argc - 1] + len;
-			room -= len;
 
 			if (context > 0) {
 				talloc_const_free(prompt);
@@ -383,7 +367,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	back to the root.
 			 */
 			context_exit[argc] = context;
-			context_str[argc] = current_str;
+			context_offset[argc] = context_offset[context] + len + 1;
+			radmin_buffer[context_offset[context] + len] = ' ';
 			context = argc;
 			prompt = talloc_asprintf(ctx, "... %s> ", info->argv[context - 1]);
 			goto next;
@@ -396,11 +381,6 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		add_history(line);
 
 		if (fr_command_run(stdout, stderr, info, false) < 0) {
-			/*
-			 *	@todo - send return code to radmin The
-			 *	command MUST have already printed the
-			 *	error to fp_err.
-			 */
 			fprintf(stderr, "Failed running command.\n");
 		}
 
@@ -420,6 +400,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 
 	talloc_free(ctx);
 	radmin_buffer = NULL;
+	radmin_partial_line = NULL;
 
 	return NULL;
 }
@@ -438,35 +419,26 @@ static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUS
 	return 0;
 }
 
-static int cmd_help(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	int max = 1;
-	fr_cmd_t *cmd = NULL;
+	int options = FR_COMMAND_OPTION_HELP;
 
-	/*
-	 *	We're called in a context from `radiusd -r`.  Do magic.
-	 */
-	if (ctx == &radmin_info) {
-		int i;
-
-		rad_assert(radmin_info.argc > 0);
-
-		for (i = radmin_info.argc - 1; i >= 0; i--) {
-			if ((cmd = radmin_info.cmd[i]) != NULL) break;
+	if (info->argc > 0) {
+		if (strcmp(info->argv[0], "all") == 0) {
+			max = CMD_MAX_ARGV;
 		}
-
-		fr_command_list(fp, 1, cmd, FR_COMMAND_OPTION_LIST_CHILD);
-		return 0;
+		else if (strcmp(info->argv[0], "commands") == 0) {
+			max = CMD_MAX_ARGV;
+			options = FR_COMMAND_OPTION_NONE;
+		}
 	}
 
-	if ((info->argc > 0) && (strcmp(info->argv[0], "all") == 0)) {
-		max = CMD_MAX_ARGV;
-	}
-
-	fr_command_list(fp, max, radmin_cmd, FR_COMMAND_OPTION_NONE);
+	fr_command_list(fp, max, radmin_cmd, options);
 
 	return 0;
 }
+
 
 static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
@@ -527,12 +499,238 @@ static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 	return 0;
 }
 
+
+static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions,
+				   bool want_section)
+{
+	int count;
+	size_t reflen, offset;
+	char *ref;
+	char const *text;
+	CONF_ITEM *ci;
+	CONF_SECTION *cs;
+
+	if (info->argc <= 0) return 0;
+
+	ref = talloc_strdup(talloc_ctx, info->argv[info->argc - 1]);
+	text = strrchr(ref, '.');
+	if (!text) {
+		cs = radmin_main_config->root_cs;
+		reflen = 0;
+		offset = 0;
+		text = ref;
+
+		/*
+		 *	If it's a good ref, use that for expansions.
+		 */
+		ci = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs, ref);
+		if (ci && cf_item_is_section(ci)) {
+			cs = cf_item_to_section(ci);
+			text = "";
+			reflen = strlen(ref);
+			offset = 1;
+		}
+
+	} else {
+		reflen = (text - ref);
+		offset = 1;
+		ref[reflen] = '\0';
+		text++;
+
+		ci = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs, ref);
+		if (!ci) {
+		none:
+			talloc_free(ref);
+			return 0;
+		}
+
+		/*
+		 *	The ref is to a pair.  Don't allow further
+		 *	expansions.
+		 */
+		if (cf_item_is_pair(ci)) goto none;
+		cs = cf_item_to_section(ci);
+	}
+
+	count = 0;
+
+	/*
+	 *	Walk the reference, allowing for additional expansions.
+	 */
+	for (ci = cf_item_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_next(cs, ci)) {
+		char const *name1, *check;
+		char *str;
+		char buffer[256];
+
+		/*
+		 *	@todo - if we want a config pair, AND we have
+		 *	partial input, THEN check if the section name
+		 *	matches the partial input.  If so, allow it as
+		 *	an expansion.
+		 */
+		if (cf_item_is_section(ci)) {
+			char const *name2;
+
+			name1 = cf_section_name1(cf_item_to_section(ci));
+			name2 = cf_section_name2(cf_item_to_section(ci));
+
+			if (name2) {
+				snprintf(buffer, sizeof(buffer), "%s[%s]", name1, name2);
+				check = buffer;
+			} else {
+				check = name1;
+			}
+
+			if (!want_section) {
+				if (*text && fr_command_strncmp(text, check)) {
+					// @todo - expand the pairs in this section
+					goto add;
+				}
+
+				continue;
+			}
+
+		} else if (!cf_item_is_pair(ci)) {
+			continue;
+
+		} else {
+			if (want_section) continue;
+
+			name1 = cf_pair_attr(cf_item_to_pair(ci));
+			check = name1;
+		}
+
+		/*
+		 *	Check for a matching name.
+		 */
+		if (!fr_command_strncmp(text, check)) continue;
+
+	add:
+		expansions[count] = str = malloc(reflen + strlen(check) + offset + 1);
+		memcpy(str, ref, reflen);
+		str[reflen] = '.';
+		strcpy(str + reflen + offset, check);
+
+		count++;
+		if (count >= max_expansions) return count;
+	}
+
+	return count;
+}
+
+static int cmd_show_config_section(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
+{
+	CONF_ITEM *item;
+
+	rad_assert(info->argc > 0);
+
+	item = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs,
+				 info->box[0]->vb_strvalue);
+	if (!item || !cf_item_is_section(item)) {
+		fprintf(fp_err, "No such configuration section.\n");
+		return -1;
+	}
+
+	(void) cf_section_write(fp, cf_item_to_section(item), 0);
+
+	return 0;
+}
+
+
+static int tab_expand_config_section(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
+{
+	return tab_expand_config_thing(talloc_ctx, ctx, info, max_expansions, expansions, true);
+}
+
+static int tab_expand_config_item(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
+{
+	return tab_expand_config_thing(talloc_ctx, ctx, info, max_expansions, expansions, false);
+}
+
+static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
+{
+	FR_TOKEN token;
+	CONF_ITEM *item;
+	CONF_PAIR *cp;
+
+	rad_assert(info->argc > 0);
+
+	item = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs,
+				 info->box[0]->vb_strvalue);
+	if (!item || !cf_item_is_pair(item)) {
+		fprintf(fp_err, "No such configuration item.\n");
+		return -1;
+	}
+
+	cp = cf_item_to_pair(item);
+	token = cf_pair_value_quote(cp);
+
+	if (token == T_BARE_WORD) {
+	bare:
+		fprintf(fp, "%s\n", cf_pair_value(cp));
+	} else {
+		char quote;
+		char *value;
+
+		switch (token) {
+		case T_DOUBLE_QUOTED_STRING:
+			quote = '"';
+			break;
+
+		case T_SINGLE_QUOTED_STRING:
+			quote = '\'';
+			break;
+
+		case T_BACK_QUOTED_STRING:
+			quote = '`';
+			break;
+
+		default:
+			goto bare;
+		}
+
+		value = fr_asprint(NULL, cf_pair_value(cp), -1, quote);
+		fprintf(fp, "%c%s%c\n", quote, value, quote);
+		talloc_free(value);
+	}
+
+	return 0;
+}
+
+static int cmd_show_client(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
+{
+	int proto = IPPROTO_UDP;
+	RADCLIENT *client;
+
+	if (info->argc >= 2) {
+		if (strcmp(info->argv[1], "tcp") == 0) {
+			proto = IPPROTO_TCP;
+		}
+		/* else it MUST be "udp" */
+	}
+
+	client = client_find(NULL, &info->box[0]->vb_ip, proto);
+	if (!client) {
+		fprintf(fp_err, "No such client.");
+		return -1;
+	}
+
+	fprintf(fp, "shortname\t%s\n", client->shortname);
+	fprintf(fp, "secret\t\t%s\n", client->secret);
+
+	return 0;
+}
+
+//#define CMD_TEST (1)
+
 #ifdef CMD_TEST
 static int cmd_test(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	int i;
 
-	fprintf(fp, "TEST\n");
+	fprintf(fp, "TEST %d\n", info->argc);
 
 	for (i = 0; i < info->argc; i++) {
 		fprintf(fp, "\t%s\n", info->argv[i]);
@@ -540,25 +738,58 @@ static int cmd_test(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 
 	return 0;
 }
+
+static int cmd_test_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_cmd_info_t *info, UNUSED int max_expansions, char const **expansions)
+{
+	char const *text;
+	char *p;
+
+	if (info->argc == 0) return 0;
+
+	text = info->argv[info->argc - 1];
+
+	/*
+	 *	Expand a list of things
+	 */
+	if (!*text) {
+		expansions[0] = strdup("0");
+		expansions[1] = strdup("1");
+		return 2;
+	}
+
+	if ((text[0] < '0') || (text[0] > '9')) {
+		return 0;
+	}
+
+	/*
+	 *	If the user enters a digit, allow it.
+	 */
+	expansions[0] = p = malloc(2);
+	p[0] = text[0];
+	p[1] = '\0';
+
+	return 1;
+}
 #endif
 
 static fr_cmd_table_t cmd_table[] = {
 	{
-		.syntax = "exit",
+		.name = "exit",
 		.func = cmd_exit,
 		.help = "Exit from the current context.",
 		.read_only = true
 	},
 
 	{
-		.syntax = "quit",
+		.name = "quit",
 		.func = cmd_exit,
 		.help = "Quit and close the command line immediately.",
 		.read_only = true
 	},
 
 	{
-		.syntax = "help [all]",
+		.name = "help",
+		.syntax = "[(all|commands)]",
 		.func = cmd_help,
 		.help = "Display list of commands and their help text.",
 		.read_only = true
@@ -568,41 +799,87 @@ static fr_cmd_table_t cmd_table[] = {
 #ifdef CMD_TEST
 	{
 		.parent = "test",
-		.syntax = "foo (bar|(a|b)|xxx [INTEGER])",
+		.name = "foo"
+		.syntax = "INTEGER",
 		.func = cmd_test,
-		.help = "test foo (bar|(a|b)|xxx [INTEGER])",
+		.tab_expand = cmd_test_tab_expand,
+		.help = "test foo INTEGER",
 		.read_only = true,
 	},
 #endif
 
 	{
-		.syntax = "uptime",
+		.name = "uptime",
 		.func = cmd_uptime,
 		.help = "Show uptime since the server started.",
 		.read_only = true
 	},
 
 	{
-		.syntax = "set",
+		.name = "set",
 		.help = "Change settings in the server.",
 		.read_only = false
 	},
 
 	{
-		.syntax = "show",
+		.name = "show",
 		.help = "Show settings in the server.",
 		.read_only = true
 	},
 
 	{
-		.syntax = "stats",
+		.parent = "show",
+		.name = "config",
+		.help = "Show configuration settings in the server.",
+		.read_only = true
+	},
+
+	{
+		.parent = "show config",
+		.name = "section",
+		.syntax = "STRING",
+		.help = "Show a named configuration section",
+		.func = cmd_show_config_section,
+		.tab_expand = tab_expand_config_section,
+		.read_only = true
+	},
+
+	{
+		.parent = "show config",
+		.name = "item",
+		.syntax = "STRING",
+		.help = "Show a named configuration item",
+		.func = cmd_show_config_item,
+		.tab_expand = tab_expand_config_item,
+		.read_only = true
+	},
+
+	{
+		.parent = "show",
+		.name = "client",
+		.help = "Show information about a client or clients.",
+		.read_only = true
+	},
+
+	{
+		.parent = "show client",
+		.name = "config",
+		.syntax = "IPADDR [(udp|tcp)]",
+		.help = "Show the configuration for a given client.",
+		.func = cmd_show_client,
+		.read_only = true
+	},
+
+	{
+		.name = "stats",
 		.help = "Show statistics in the server.",
 		.read_only = true
 	},
 
 	{
 		.parent = "stats",
-		.syntax = "memory (blocks|full|total)",
+		.name = "memory",
+		.syntax = "(blocks|full|total)",
 		.func = cmd_stats_memory,
 		.help = "Show memory statistics.",
 		.read_only = true,
@@ -610,14 +887,15 @@ static fr_cmd_table_t cmd_table[] = {
 
 	{
 		.parent = "set",
-		.syntax = "debug",
+		.name = "debug",
 		.help = "Change debug settings.",
 		.read_only = false
 	},
 
 	{
 		.parent = "set debug",
-		.syntax = "level INTEGER",
+		.name = "level",
+		.syntax = "INTEGER",
 		.func = cmd_set_debug_level,
 		.help = "Change the debug level.",
 		.read_only = false,
@@ -625,14 +903,14 @@ static fr_cmd_table_t cmd_table[] = {
 
 	{
 		.parent = "show",
-		.syntax = "debug",
+		.name = "debug",
 		.help = "Show debug settings.",
 		.read_only = true
 	},
 
 	{
 		.parent = "show debug",
-		.syntax = "level",
+		.name = "level",
 		.func = cmd_show_debug_level,
 		.help = "show debug level",
 		.read_only = true,
@@ -641,8 +919,11 @@ static fr_cmd_table_t cmd_table[] = {
 	CMD_TABLE_END
 };
 
-int fr_radmin_start(main_config_t *config)
+int fr_radmin_start(main_config_t *config, bool cli)
 {
+	radmin_ctx = talloc_init("radmin");
+	if (!radmin_ctx) return -1;
+
 	gettimeofday(&start_time, NULL);
 
 #ifdef USE_READLINE
@@ -650,11 +931,14 @@ int fr_radmin_start(main_config_t *config)
 #endif
 
 	fr_command_register_hook = fr_radmin_register;
+	radmin_main_config = config;
 
-	if (fr_radmin_register(NULL, NULL, cmd_table) < 0) {
+	if (fr_radmin_register(radmin_ctx, NULL, NULL, cmd_table) < 0) {
 		PERROR("Failed initializing radmin");
 		return -1;
 	}
+
+	if (!cli) return 0;
 
 	/*
 	 *	Note that the commands are registered by the main
@@ -675,17 +959,17 @@ void fr_radmin_stop(void)
 {
 	stop = true;
 
-	if (pthread_join(pthread_id, NULL) != 0) {
-		fprintf(stderr, "Failed joining radmin thread: %s", fr_syserror(errno));
-	}
+	(void) pthread_join(pthread_id, NULL);
+
+	TALLOC_FREE(radmin_ctx);
 }
 
 /*
  *	Public registration hooks.
  */
-int fr_radmin_register(char const *name, void *ctx, fr_cmd_table_t *table)
+int fr_radmin_register(UNUSED TALLOC_CTX *talloc_ctx, char const *name, void *ctx, fr_cmd_table_t *table)
 {
-	return fr_command_add_multi(NULL, &radmin_cmd, name, ctx, table);
+	return fr_command_add_multi(radmin_ctx, &radmin_cmd, name, ctx, table);
 }
 
 /** Run a command from an input string.
@@ -726,4 +1010,31 @@ int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool r
 	if (rcode < 0) return rcode;
 
 	return 1;
+}
+
+/*
+ *	Get help for a particular line of text.
+ */
+void fr_radmin_help(FILE *fp, char const *text)
+{
+	fr_command_print_help(fp, radmin_cmd, text);
+}
+
+void fr_radmin_complete(FILE *fp, const char *text, int start)
+{
+	int i, num;
+	char *my_expansions[CMD_MAX_EXPANSIONS];
+	char **expansions = &my_expansions[0];
+	char const **expansions_const;
+
+	memcpy(&expansions_const, &expansions, sizeof(expansions)); /* const issues */
+
+	num = fr_command_complete(radmin_cmd, text, start,
+				  CMD_MAX_EXPANSIONS, expansions_const);
+	if (num <= 0) return;
+
+	for (i = 0; i < num; i++) {
+		fprintf(fp, "%s\n", expansions[i]);
+		free(expansions[i]);
+	}
 }

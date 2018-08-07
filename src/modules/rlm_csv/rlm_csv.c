@@ -374,7 +374,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	fp = fopen(inst->filename, "r");
 	if (!fp) {
-		cf_log_err(conf, "Error opening filename %s: %s", inst->filename, strerror(errno));
+		cf_log_err(conf, "Error opening filename %s: %s", inst->filename, fr_syserror(errno));
 		return -1;
 	}
 

@@ -1759,7 +1759,7 @@ static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
 	if ((rad_mkdir(buffer, 0700, -1, -1) < 0) &&
 	    (errno != EEXIST)) {
 		cf_log_err(cs, "Failed creating directory %s: %s",
-			      buffer, strerror(errno));
+			      buffer, fr_syserror(errno));
 		return NULL;
 	}
 
@@ -1771,7 +1771,7 @@ static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
 	fp = fopen(buffer, "a");
 	if (!fp) {
 		cf_log_err(cs, "Failed creating file %s: %s",
-			      buffer, strerror(errno));
+			      buffer, fr_syserror(errno));
 		return NULL;
 	}
 
@@ -1832,7 +1832,6 @@ static int cf_pair_write(FILE *fp, CONF_PAIR *cp)
 
 int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 {
-	bool		prev = false;
 	CONF_ITEM	*ci;
 
 	/*
@@ -1888,8 +1887,6 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 
 			fwrite(parse_tabs, depth + 1, 1, fp);
 			cf_pair_write(fp, cf_item_to_pair(ci));
-			if (!prev) fputs("\n", fp);
-			prev = true;
 			break;
 
 		default:

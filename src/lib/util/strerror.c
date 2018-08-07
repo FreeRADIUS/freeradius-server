@@ -14,17 +14,22 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/strerror.c
- * @brief Support functions to allow libraries to provide errors to their callers.
+/** Support functions to allow libraries to provide errors to their callers
+ *
+ * @file src/lib/util/strerror.c
  *
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "strerror.h"
+
 #include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/thread_local.h>
+
+#include <stdbool.h>
 
 #define FR_STRERROR_BUFSIZE (2048)
 

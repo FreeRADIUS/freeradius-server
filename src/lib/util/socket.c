@@ -14,20 +14,26 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file socket.c
- * @brief Functions for establishing and managing low level sockets.
+/** Functions for establishing and managing low level sockets
+ *
+ * @file src/lib/util/socket.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @author Alan DeKok <aland@freeradius.org>
  *
  * @copyright 2015 The FreeRADIUS project
  */
-#include <freeradius-devel/util/base.h>
+#include "socket.h"
+
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/udpfromto.h>
 
 #include <fcntl.h>
+#include <netdb.h>
+#include <unistd.h>
 
 /** Resolve a named service to a port
  *

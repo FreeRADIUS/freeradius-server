@@ -15,32 +15,33 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Multi-protocol AVP dictionary API
  *
- * @file lib/util/dict.h
- * @brief Multi-protocol attribute dictionary API.
+ * @file src/lib/util/dict.h
  *
  * @copyright 2015  The FreeRADIUS server project
  */
-#include <talloc.h>
-#include <stdint.h>
-#include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/types.h>
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <talloc.h>
 
 /*
  *	Avoid circular type references.
  */
 typedef struct dict_attr fr_dict_attr_t;
 typedef struct fr_dict fr_dict_t;
-extern const FR_NAME_NUMBER dict_attr_types[];	/* Fixme - Should probably move to value.c */
 
 #include <freeradius-devel/util/value.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifdef WITH_VERIFY_PTR
 #  define DA_VERIFY(_x)		fr_dict_verify(__FILE__, __LINE__, _x)

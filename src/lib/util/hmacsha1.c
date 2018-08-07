@@ -14,17 +14,15 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/hmacsha1.c
- * @brief SHA1 HMAC not dependent on OpenSSL.
+/** SHA1 HMAC not dependent on OpenSSL
  *
  * @note New code that needs fast or incremental HMACs should use the OpenSSL EVP_* HMAC
  *	interface instead, as that can take advantage of acceleration instructions provided
  *	by various CPUs (and provides an incremental hashing interface).
  *
- * Adapted from hmacmd5.c (HMAC-MD5).
+ * Adapted from hmacmd5.c (HMAC-MD5).  Test cases from RFC2202.
  *
- * Test cases from RFC2202.
+ * @file src/lib/util/hmacsha1.c
  *
  * @author Michael Richardson <mcr@sandelman.ottawa.on.ca>
  *
@@ -33,7 +31,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/sha1.h>
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
 unsigned int sha1_data_problems = 0;

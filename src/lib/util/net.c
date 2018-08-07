@@ -13,16 +13,14 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file net.c
- * @brief Functions to parse raw packets.
+/** Functions for parsing raw network packets
+ *
+ * @file src/lib/util/net.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2014-2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/net.h>
+#include "net.h"
 
 /** Strings for L4 protocols
  *

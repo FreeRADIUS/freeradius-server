@@ -224,7 +224,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		break;
 	}
 
-	REDEBUG("Type '%s' cannot be converted to integer", fr_int2str(dict_attr_types, vp->vp_type, "???"));
+	REDEBUG("Type '%s' cannot be converted to integer", fr_int2str(fr_value_box_type_names, vp->vp_type, "???"));
 
 	return -1;
 }
@@ -360,7 +360,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 
 		vendor = fr_dict_vendor_by_da(vp->da);
 		if (vendor) RIDEBUG2("Vendor : %i (%s)", vendor->pen, vendor->name);
-		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
+		RIDEBUG2("Type   : %s", fr_int2str(fr_value_box_type_names, vp->vp_type, "<INVALID>"));
 
 		switch (vp->vp_type) {
 		case FR_TYPE_VARIABLE_SIZE:
@@ -373,7 +373,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 
 		if (!RDEBUG_ENABLED4) continue;
 
-		type = dict_attr_types;
+		type = fr_value_box_type_names;
 		while (type->name) {
 			int pad;
 

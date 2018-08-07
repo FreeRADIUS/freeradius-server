@@ -32,7 +32,7 @@ RCSID("$Id$")
 /*
  *	Registration hooks for radmin.
  */
-static int fr_command_register(UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table)
+static int fr_command_register(UNUSED TALLOC_CTX *talloc_ctx, UNUSED char const *name, UNUSED void *ctx, UNUSED fr_cmd_table_t *table)
 {
 	return 0;
 }
@@ -40,20 +40,21 @@ static int fr_command_register(UNUSED char const *name, UNUSED void *ctx, UNUSED
 fr_command_register_hook_t fr_command_register_hook = fr_command_register;
 
 typedef struct fr_cmd_argv_t {
-	char		*name;
+	char const     	*name;
 	fr_type_t	type;
 	struct fr_cmd_argv_t *next;
 	struct fr_cmd_argv_t *child;
 } fr_cmd_argv_t;
 
 struct fr_cmd_t {
+	char const		*name;
+
 	struct fr_cmd_t		*next;
 	struct fr_cmd_t		*child;				//!< if there are subcommands
-	char const		*name;
+
 	char const		*syntax;			//!< only for terminal nodes
 	char const		*help;				//!< @todo - long / short help
 
-	int			syntax_argc;			//!< syntax split out into arguments
 	fr_cmd_argv_t		*syntax_argv;			//!< arguments and types
 
 	void			*ctx;
@@ -62,8 +63,8 @@ struct fr_cmd_t {
 
 	bool			read_only;
 	bool			intermediate;			//!< intermediate commands can't have callbacks
-	bool			auto_allocated;
 	bool			live;				//!< is this entry live?
+	bool			added_name;			//!< was this name added?
 };
 
 
@@ -154,6 +155,7 @@ static fr_cmd_t *fr_command_alloc(TALLOC_CTX *ctx, fr_cmd_t **head, char const *
 	cmd->live = false;
 
 	cmd->next = *head;
+	cmd->read_only = true;
 	*head = cmd;
 
 	return cmd;
@@ -230,7 +232,7 @@ static bool fr_command_valid_syntax(fr_cmd_argv_t *argv)
 	if (uppercase) {
 		fr_type_t type;
 
-		type = fr_str2int(dict_attr_types, argv->name, FR_TYPE_INVALID);
+		type = fr_str2int(fr_value_box_type_names, argv->name, FR_TYPE_INVALID);
 		switch (type) {
 		case FR_TYPE_ABINARY:
 		case FR_TYPE_VALUE_BOX:
@@ -686,7 +688,7 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
  *  things in the server will sanity check them.
  *
  * @param talloc_ctx the talloc context
- * @param head pointer to the head of the table pointer.  Should point to NULL at the start.
+ * @param head pointer to the head of the command table.
  * @param name of the command to allocate.  Can be NULL for "top level" commands
  * @param ctx for any callback function
  * @param table of information about the current command
@@ -698,15 +700,23 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 {
 	fr_cmd_t *cmd, **start;
 	fr_cmd_t **insert;
-	int argc = 0;
+	int argc = 0, depth = 0;
 	fr_cmd_argv_t *syntax_argv;
 
-	if (name && !fr_command_valid_name(name)) {
+	/*
+	 *	This is a place-holder for tab expansion.
+	 */
+	if (!table->name) {
+		fr_strerror_printf("A name MUST be specified.");
 		return -1;
 	}
 
-	if (!name && !table->syntax) {
-		fr_strerror_printf("Top-level commands MUST have a syntax");
+	if (!name && table->add_name) {
+		fr_strerror_printf("An additional name must be specified");
+		return -1;
+	}
+
+	if (name && !fr_command_valid_name(name)) {
 		return -1;
 	}
 
@@ -743,7 +753,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			cmd = fr_command_find(start, parents[i], &insert);
 			if (!cmd) {
 				cmd = fr_command_alloc(talloc_ctx, insert, parents[i]);
-				cmd->auto_allocated = true;
+				cmd->live = true;
 			}
 
 			if (!cmd->intermediate) {
@@ -759,6 +769,49 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			fr_strerror_printf("Commands are too deep (max is %d)", CMD_MAX_ARGV);
 			return -1;
 		}
+
+		depth = i;
+	}
+
+	/*
+	 *	Add an intermediate name, e.g. "network X"
+	 */
+	if (table->add_name) {
+		fr_cmd_t **added_insert;
+
+		/*
+		 *	See if we need to create the automatic
+		 *	place-holder command for help text.
+		 */
+		cmd = fr_command_find(start, "STRING", &added_insert);
+		if (!cmd) {
+			cmd = fr_command_alloc(talloc_ctx, added_insert, "STRING");
+		}
+
+		/*
+		 *	In the place-holders children, see if we need
+		 *	to add this subcommand.
+		 */
+		cmd = fr_command_find(&(cmd->child), table->name, &added_insert);
+		if (!cmd) {
+			cmd = fr_command_alloc(talloc_ctx, added_insert, table->name);
+
+			if (table->syntax) cmd->syntax = talloc_strdup(cmd, table->syntax);
+			if (table->help) cmd->help = talloc_strdup(cmd, table->help);
+		}
+
+		/*
+		 *	Now insert or add the extended name to the command hierarchy.
+		 */
+		cmd = fr_command_find(start, name, &insert);
+		if (!cmd) {
+			cmd = fr_command_alloc(talloc_ctx, insert, name);
+			cmd->added_name = true;
+			cmd->live = true;
+		}
+
+		start = &(cmd->child);
+		depth++;
 	}
 
 	/*
@@ -774,6 +827,10 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	 *	The simple answer, of course, is "don't do that".  The
 	 *	harder solution is to check for it and error out.  But
 	 *	we're lazy, so too bad.
+	 *
+	 *	The simple solution is to create a command line from
+	 *	the parents + name + syntax, and then look it up.  If
+	 *	it's found, that's an error.
 	 */
 
 	/*
@@ -794,30 +851,10 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			return  -1;
 		}
 
-		if (argc == CMD_MAX_ARGV) {
+		if ((depth + argc) >= CMD_MAX_ARGV) {
 			talloc_free(syntax);
 			fr_strerror_printf("Too many arguments were supplied to the command.");
 			return  -1;
-		}
-
-		/*
-		 *	Handle top-level names.  The name is in the
-		 *	syntax, not passed in to us.
-		 */
-		if (!name) {
-			fr_cmd_argv_t *next;
-
-			if (syntax_argv->type != FR_TYPE_FIXED) {
-				talloc_free(syntax);
-				fr_strerror_printf("Top-level commands MUST start with a fixed string.");
-				return -1;
-			}
-
-			name = syntax_argv->name;
-			next = syntax_argv->next;
-			talloc_free(syntax_argv);
-			syntax_argv = next;
-			argc--;
 		}
 	}
 
@@ -826,7 +863,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	 *	this new command.  We now see if the "name" currently
 	 *	exists.
 	 */
-	cmd = fr_command_find(start, name, &insert);
+	cmd = fr_command_find(start, table->name, &insert);
 
 	/*
 	 *	The command exists already.  We can't have TWO
@@ -839,20 +876,21 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		 */
 		if (!table->func) {
 			rad_assert(table->help != NULL);
+
+			/*
+			 *	Suppress duplicates.
+			 */
+			if (cmd->help == table->help) return 0;
+
 			if (cmd->help != NULL) {
-				fr_strerror_printf("Cannot change help for command %s %s",
-						   table->parent, cmd->name);
+				fr_strerror_printf("Cannot change help for command %s",
+						   cmd->name);
 				return -1;
 			}
 			rad_assert(cmd->intermediate);
 			cmd->help = table->help;
 			cmd->read_only = table->read_only;
 			return 0;
-		}
-
-		if (!cmd->auto_allocated) {
-			fr_strerror_printf("Cannot add duplicate command '%s'", cmd->name);
-			return -1;
 		}
 
 		/*
@@ -864,28 +902,22 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			fr_strerror_printf("Cannot modify a pre-existing command '%s'", cmd->name);
 			return -1;
 		}
-
-		/*
-		 *	Convert the auto-allocated node to a
-		 *	user-allocated one, and fill in the fields.
-		 */
-		cmd->auto_allocated = false;
 	} else {
 		/*
 		 *	Allocate cmd and insert it into the current point.
 		 */
 		rad_assert(insert != NULL);
-		cmd = fr_command_alloc(talloc_ctx, insert, name);
+		cmd = fr_command_alloc(talloc_ctx, insert, table->name);
 	}
 
 	/*
-	 *	@todo - strdup / memdup all of these??
+	 *	Assume that the commands are loaded from static
+	 *	structures.
 	 *
-	 *	Even tho "help" can be long.  TBH, memory is cheap.
-	 *	But we really only need these dup'd for the test
-	 *	suite.  For everything else, they can be static.
+	 *	@todo - add "delete command" for unloading modules?
+	 *	otherwise after a module is removed, the command
+	 *	remains, and points to nothing.
 	 */
-
 	cmd->ctx = ctx;
 	cmd->help = table->help;
 	cmd->func = table->func;
@@ -897,7 +929,6 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 
 	if (syntax_argv) {
 		cmd->syntax = table->syntax;
-		cmd->syntax_argc = argc;
 		cmd->syntax_argv = talloc_steal(cmd, syntax_argv);
 	}
 
@@ -913,7 +944,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
  *  etc.
  *
  * @param talloc_ctx the talloc context
- * @param head pointer to the head of the table pointer.  Should point to NULL at the start.
+ * @param head pointer to the head of the command table.
  * @param name of the command to allocate
  * @param ctx for any callback function
  * @param table array of tables, terminated by "help == NULL"
@@ -998,65 +1029,15 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 		*walk_ctx = stack;
 
 		stack->parents = info.parents = talloc_zero_array(stack, char const *, CMD_MAX_ARGV);
-
-		/*
-		 *	If the head was auto-allocated, find the first
-		 *	child which was user-defined.  Note that there
-		 *	MUST be a child which is user-defined.
-		 */
-		if (head->auto_allocated) {
-			cmd = head;
-
-			while (cmd) {
-				stack->entry[stack->depth] = cmd;
-
-				/*
-				 *	Finally a real child, stop.
-				 */
-				if (!cmd->auto_allocated) break;
-
-				/*
-				 *	This command was
-				 *	auto-allocated, but it has no
-				 *	real children which caused
-				 *	that allocation.  What's that
-				 *	all about?
-				 */
-				if (!cmd->child){
-					fr_strerror_printf("Command '%s' has no children", cmd->name);
-					return -1;
-				}
-
-				/*
-				 *	One of the children MUST be real!
-				 */
-				info.parents[stack->depth] = cmd->name;
-				stack->depth++;
-				rad_assert(stack->depth < CMD_MAX_ARGV);
-				cmd = cmd->child;
-			}
-
-			if (!cmd) {
-				fr_strerror_printf("Failed to find real command on walk");
-				return -1;
-			}
-		}
-
 	} else {
 		stack = *walk_ctx;
 		info.parents = stack->parents;
 	}
 
-
 	/*
 	 *	Grab this entry, which MUST exist.
 	 */
 	cmd = stack->entry[stack->depth];
-
-	/*
-	 *	Don't run the callback for auto-allocated entries.
-	 */
-	if (cmd->auto_allocated) goto check_child;
 
 	/*
 	 *	Fill in the structure.
@@ -1076,7 +1057,6 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 		return rcode;
 	}
 
-check_child:
 	/*
 	 *	This command has children.  Go do those before running
 	 *	the next command at the current level.
@@ -1086,14 +1066,6 @@ check_child:
 		info.parents[stack->depth] = cmd->name;
 		stack->depth++;
 		stack->entry[stack->depth] = cmd->child;
-
-		/*
-		 *	Skip auto-allocated children.
-		 */
-		if (cmd->child->auto_allocated) {
-			cmd = cmd->child;
-			goto check_child;
-		}
 		return 1;
 	}
 
@@ -1316,7 +1288,7 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 			continue;
 		}
 
-		if (!cmd->syntax) {
+		if (!cmd->syntax_argv) {
 			if ((i + 1) == info->argc) return 0;
 
 			return -1;
@@ -1382,18 +1354,23 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 		cmd = info->cmd[i];
 		rad_assert(cmd != NULL);
 
-		if (!cmd->read_only && read_only) {
-			fr_strerror_printf("No permissions to run command '%s'", cmd->name);
-			return -1;
-		}
-
-		if (!cmd->live) return 0;
+		/*
+		 *	Ignore read-only on intermediate commands.
+		 *	Some may have been automatically allocated
+		 */
 
 		if (cmd->intermediate) continue;
 		break;
 	}
 
 	if (!cmd) return 0;
+
+	if (!cmd->live) return 0;
+
+	if (!cmd->read_only && read_only) {
+		fprintf(fp_err, "No permissions to run command '%s' help %s\n", cmd->name, cmd->help);
+		return -1;
+	}
 
 	/*
 	 *	Leaf nodes must have a callback.
@@ -1436,7 +1413,7 @@ char const *fr_command_help(fr_cmd_t *head, int argc, char *argv[])
 		cmd = fr_command_find(&start, argv[i], NULL);
 		if (!cmd) return NULL;
 
-		if (!cmd->syntax && !cmd->func) {
+		if (cmd->intermediate) {
 			rad_assert(cmd->child != NULL);
 			start = cmd->child;
 			continue;
@@ -1495,10 +1472,10 @@ static void fr_command_list_node(FILE *fp, fr_cmd_t *cmd, int depth, char const 
 	if (!cmd->syntax) {
 		fprintf(fp, "%s\n", cmd->name);
 	} else {
-		fprintf(fp, "%s\n", cmd->syntax);
+		fprintf(fp, "%s %s\n", cmd->name, cmd->syntax);
 	}
 
-	if (cmd->help) {
+	if (cmd->help && ((options & FR_COMMAND_OPTION_HELP) != 0)) {
 		fprintf(fp, "\t%s\n", cmd->help);
 	}
 }
@@ -1508,6 +1485,10 @@ static void fr_command_list_internal(FILE *fp, fr_cmd_t *head, int depth, int ma
 	fr_cmd_t *cmd;
 
 	for (cmd = head; cmd != NULL; cmd = cmd->next) {
+		if (cmd->added_name) continue;
+
+		// We DO print out commands are !cmd->live
+
 		if (cmd->child && ((depth + 1) < max_depth)) {
 			argv[depth] = cmd->name;
 			fr_command_list_internal(fp, cmd->child, depth + 1, max_depth, argv, options);
@@ -1737,6 +1718,273 @@ no_match:
 	return used;
 }
 
+/*
+ *	Magic parsing macros
+ */
+#define SKIP_SPACES while (isspace((int) *word)) word++
+
+#define SKIP_NAME(name) do { p = word; q = name; while (*p && *q && (*p == *q)) { \
+				p++; \
+				q++; \
+			} } while (0)
+#define MATCHED_NAME	((!*p || isspace((int) *p)) && !*q)
+#define TOO_FAR		(*p && (*q > *p))
+#define MATCHED_START	((text + start) >= word) && ((text + start) <= p)
+
+static char const *skip_word(char const *text)
+{
+	char quote;
+	char const *word = text;
+
+	if ((*word != '"') && (*word != '\'')) {
+		while (*word && !isspace((int) *word)) word++;
+		return word;
+	}
+
+	quote = *word;
+	word++;
+	while (*word && (*word != quote)) {
+		if (*word != '\\') {
+			word++;
+			continue;
+		}
+
+		word++;
+		if (!*word) return NULL;
+		word++;
+	}
+
+	return word;
+}
+
+
+/** Check the syntax of a command, starting at `*text`
+ *
+ *  Note that we don't keep a stack of where we are for partial
+ *  commands.  So we MUST re-parse the ENTIRE input every time.
+ */
+static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_t *info,
+			      char const **text, bool *runnable)
+{
+	int argc = start_argc;
+	int rcode;
+	bool child_done;
+	char const *word, *my_word, *p, *q;
+	fr_cmd_argv_t *argv = start;
+	fr_cmd_argv_t *child;
+
+	word = *text;
+	*runnable = false;
+
+	while (argv) {
+		SKIP_SPACES;
+
+		if (!*word) goto done;
+
+		/*
+		 *	Parse / check data types.
+		 */
+		if (argv->type < FR_TYPE_FIXED) {
+			size_t len, offset;
+			char quote, *str;
+			fr_type_t type;
+
+			p = skip_word(word);
+			if (!p) {
+				fr_strerror_printf("Invalid string");
+				return -1;
+			}
+
+			/*
+			 *	An already-parsed data type.  Skip it.
+			 */
+			if (argc < info->argc) {
+				rad_assert(info->box[argc] != NULL);
+				word = p;
+				argc++;
+				goto next;
+			}
+
+			/*
+			 *	Non-strings MUST not be quoted.
+			 */
+			if ((argv->type != FR_TYPE_STRING) &&
+			    ((*word == '"') || (*word == '\''))) {
+				fr_strerror_printf("Invalid quoted string at %s", word);
+				return -1;
+			}
+
+			len = p - word;
+			if ((*word == '"') || (*word == '\'')) {
+				quote = *word;
+				offset = 1;
+			} else {
+				quote = 0;
+				offset = 0;
+			}
+
+			type = argv->type;
+			if (!info->box) {
+				fr_strerror_printf("No array defined for values");
+				return -1;
+			}
+
+			if (!info->box[argc]) {
+				info->box[argc] = talloc_zero(info->box, fr_value_box_t);
+			}
+
+			rcode = fr_value_box_from_str(info->box[argc], info->box[argc],
+						      &type, NULL,
+						      word + offset, len - (offset << 1), quote, false);
+			if (rcode < 0) return -1;
+
+			/*
+			 *	Note that argv[i] is the *input* string.
+			 *
+			 *	The called function MUST check box[i]
+			 *	for the actual value.
+			 */
+			info->argv[argc] = str = talloc_memdup(info->argv, word + offset, len + 1);
+			str[len] = '\0';
+
+			word = p;
+			argc++;
+			goto next;
+		}
+
+		/*
+		 *	Fixed strings.  We re-validate these for the
+		 *	heck of it.
+		 */
+		if (argv->type == FR_TYPE_FIXED) {
+			SKIP_NAME(argv->name);
+
+			/*
+			 *	End of input text before we matched
+			 *	the whole command.
+			 */
+			if (!*p && *q) {
+				fr_strerror_printf("Input is too short for command: %s", argv->name);
+				return -1;
+			}
+
+			/*
+			 *	The only matching exit condition is *p is a
+			 *	space, and *q is the NUL character.
+			 */
+			if (!MATCHED_NAME) {
+				fr_strerror_printf("Unknown command at: %s", p);
+				return -1;
+			}
+
+			/*
+			 *	Otherwise keep looking for the next option.
+			 */
+			info->argv[argc] = argv->name;
+			info->cmd[argc] = NULL;
+			// assume that the value box has already been cleared
+
+			word = p;
+			argc++;
+			goto next;
+		}
+
+		/*
+		 *	Evaluate alternates in sequence until one
+		 *	matches.  If none match, that's an error.
+		 */
+		if (argv->type == FR_TYPE_ALTERNATE) {
+			my_word = word;
+
+			for (child = argv->child; child != NULL; child = child->next) {
+				fr_cmd_argv_t *sub;
+
+				rad_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
+				rad_assert(child->child != NULL);
+				sub = child->child;
+
+				/*
+				 *	This can fail on things like
+				 *	"(INTEGER|IPADDR)" where
+				 *	"192.168.0.1" is not a valid
+				 *	INTEGER, but it is a valid IPADDR.
+				 */
+				rcode = syntax_str_to_argv(argc, sub, info, &my_word, &child_done);
+				if (rcode <= 0) continue;
+
+				goto skip_child;
+			}
+
+			/*
+			 *	We've gone through all of the alternates
+			 *	without a match, that's an error.
+			 */
+			fr_strerror_printf("No matching command for input string %s", word);
+			return -1;
+		}
+
+		/*
+		 *	Evaluate an optional argument.  If nothing
+		 *	matches, that's OK.
+		 */
+		if (argv->type == FR_TYPE_OPTIONAL) {
+			child = argv->child;
+			my_word = word;
+
+			rcode = syntax_str_to_argv(argc, child, info, &my_word, &child_done);
+			if (rcode < 0) return rcode;
+
+			/*
+			 *	Didn't match anything, skip it.
+			 */
+			if (rcode == 0) goto next;
+
+		skip_child:
+			/*
+			 *	We've eaten more input, remember that,
+			 */
+			argc += rcode;
+			word = my_word;
+
+			/*
+			 *	We used only *part* of it.  We're done here.
+			 */
+			if (!child_done) {
+				word = my_word;
+				goto done;
+			}
+
+			goto next;
+		}
+
+		/*
+		 *	Not done yet!
+		 */
+		fr_strerror_printf("Internal sanity check failed");
+		return -1;
+
+	next:
+		/*
+		 *	Go to the next one, but only if we don't have varargs.
+		 */
+		if (!argv->next || (argv->next->type != FR_TYPE_VARARGS)) {
+			argv = argv->next;
+		}
+	}
+
+done:
+	/*
+	 *	End of input.  Skip any trailing optional pieces.
+	 */
+	if (!*word) {
+		while (argv && (argv->type == FR_TYPE_OPTIONAL)) argv = argv->next;
+	}
+
+	if (!argv) *runnable = true;
+	*text = word;
+	return (argc - start_argc);
+}
+
 /** Split a string in-place, updating argv[]
  *
  *  This function also respects the various data types (mostly).
@@ -1746,20 +1994,30 @@ no_match:
  *
  * @param head the head of the hierarchy.
  * @param info the structure describing the command to expand
- * @param str the string to split
+ * @param text the string to split
  * @return
  *	- <0 on error.
  *	- total number of arguments in the argv[] array.  Always >= argc.
  */
-int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
+int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text)
 {
-	int i, argc, cmd_argc, syntax_argc;
-	char *p;
-	fr_cmd_t *cmd, *start;
-	fr_cmd_argv_t *argv;
+	int argc, rcode;
+	char const *word, *p, *q;
+	fr_cmd_t *cmd;
 
-	if ((info->argc < 0) || (info->max_argc <= 0) || !str || !head) {
-		fr_strerror_printf("Invalid arguments passed to parse routine.");
+	if ((info->argc < 0) || (info->max_argc <= 0)) {
+		fr_strerror_printf("argc / max_argc must be greater than zero");
+		return -1;
+	}
+
+	if (!text) {
+		fr_strerror_printf("No string to split.");
+		return -1;
+	}
+
+
+	if (!head) {
+		fr_strerror_printf("No commands to run.");
 		return -1;
 	}
 
@@ -1771,124 +2029,179 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char *str)
 		return -1;
 	}
 
-	p = str;
 	info->runnable = false;
+	cmd = head;
+	word = text;
 
 	/*
-	 *	Split the input.
+	 *	Double-check the commands we may have already parsed.
 	 */
-	for (i = info->argc; i < info->max_argc; i++) {
-		int rcode;
+	for (argc = 0; argc < info->argc; argc++) {
+		cmd = info->cmd[argc];
+		rad_assert(cmd != NULL);
 
-		rcode = split(&p, &info->argv[i], false);
-		if (rcode < 0) return -1;
-		if (!rcode) break;
+		SKIP_SPACES;
+
+		SKIP_NAME(cmd->name);
+
+		/*
+		 *	The only matching exit condition is *p is a
+		 *	space, and *q is the NUL character.
+		 */
+		if (!MATCHED_NAME) {
+			goto invalid;
+		}
+
+		word = p;
+
+		if (!cmd->intermediate) {
+			argc++;
+			goto check_syntax;
+		}
 	}
 
-	if (i == info->max_argc) {
+	/*
+	 *	If we've found a cached command, go parse it's
+	 *	children.
+	 */
+	if ((argc > 0) && cmd->intermediate) {
+		cmd = cmd->child;
+	}
+
+	/*
+	 *	Search the remaining text for matching commands.
+	 */
+	while (cmd) {
+		SKIP_SPACES;
+
+		/*
+		 *	Skip commands which we shouldn't know about...
+		 */
+		if (!cmd->live) {
+			cmd = cmd->next;
+			continue;
+		}
+
+		/*
+		 *	End of the input.  Tab expand everything here.
+		 */
+		if (!*word) {
+			info->argc = argc;
+			return argc;
+		}
+
+		/*
+		 *	Double-check using the cached cmd.
+		 */
+		if (argc < info->argc) {
+			cmd = info->cmd[argc];
+			if (!cmd) {
+				fr_strerror_printf("No cmd at offset %d", argc);
+				goto invalid;
+			}
+		}
+
+		SKIP_NAME(cmd->name);
+
+		/*
+		 *	The only matching exit condition is *p is a
+		 *	space, and *q is the NUL character.
+		 */
+		if (!MATCHED_NAME) {
+			if (argc < info->argc) {
+			invalid:
+				fr_strerror_printf("Invalid internal state");
+				return -1;
+			}
+
+			/*
+			 *	We're looking for "abc" and we found
+			 *	"def".  We know that "abc" can't occur
+			 *	any more, so stop.
+			 */
+			if (TOO_FAR) {
+				cmd = NULL;
+				break;
+			}
+
+			/*
+			 *	Otherwise keep searching for it.
+			 */
+			cmd = cmd->next;
+			continue;
+		}
+
+		if (cmd->intermediate) {
+			rad_assert(cmd->child != NULL);
+			info->argv[argc] = cmd->name;
+			info->cmd[argc] = cmd;
+			word = p;
+			cmd = cmd->child;
+			argc++;
+			continue;
+		}
+
+		/*
+		 *	Skip the command name we matched.
+		 */
+		word = p;
+		info->argv[argc] = cmd->name;
+		info->cmd[argc] = cmd;
+		argc++;
+		break;
+	}
+
+	if (argc == info->max_argc) {
 	too_many:
 		fr_strerror_printf("Too many arguments for command.");
 		return -1;
 	}
 
-	argc = i;
-	cmd_argc = -1;
-
-	start = head;
-	cmd = NULL;
-
 	/*
-	 *	Find the matching command.
+	 *	We've walked off of the end of the list without
+	 *	finding anything.
 	 */
-	for (i = 0; i < argc; i++) {
-		/*
-		 *	Look for a child command.
-		 */
-		cmd = fr_command_find(&start, info->argv[i], NULL);
-		if (!cmd) {
-		no_such_command:
-			fr_strerror_printf("No such command: %s", info->argv[i]);
-			return -1;
-		}
-
-		if (!cmd->live) goto no_such_command;
-
-		/*
-		 *	Cache the command for later consumption.
-		 */
-		info->cmd[i] = cmd;
-
-		/*
-		 *	There's a child.  Go match it.
-		 */
-		if (cmd->intermediate) {
-			rad_assert(cmd->child != NULL);
-			rad_assert(cmd->func == NULL);
-			start = cmd->child;
-			continue;
-		}
-
-		rad_assert(cmd->func != NULL);
-		cmd_argc = i;
-		break;
+	if (!cmd) {
+		fr_strerror_printf("No such command: %s", word);
+		return -1;
 	}
-
-	/*
-	 *	Walked the entire input without finding a runnable
-	 *	command.  Ask for more input.
-	 */
-	if (i == argc) {
-		info->argc = argc;
-		return argc;
-	}
-
-	/*
-	 *	Not found, that's an error.
-	 */
-	if (!cmd) return -1;
 
 	rad_assert(cmd->func != NULL);
 	rad_assert(cmd->child == NULL);
-	rad_assert(cmd_argc >= 0);
 
-	/*
-	 *	Number of argv left, minus one for the command name.
-	 */
-	syntax_argc = (argc - i) - 1;
-
+check_syntax:
 	/*
 	 *	The command doesn't take any arguments.  Error out if
 	 *	there are any.  Otherwise, return that the command is
 	 *	runnable.
 	 */
-	if (!cmd->syntax) {
-		if (syntax_argc > 0) {
-			goto too_many;
-		}
+	if (!cmd->syntax_argv) {
+		SKIP_SPACES;
+
+		if (*word > 0) goto too_many;
 
 		info->runnable = true;
 		info->argc = argc;
 		return argc;
 	}
 
-	argv = cmd->syntax_argv;
+	/*
+	 *	Do recursive checks on the input string.
+	 */
+	rcode = syntax_str_to_argv(argc, cmd->syntax_argv, info, &word, &info->runnable);
+	if (rcode < 0) return rcode;
+
+	argc += rcode;
 
 	/*
-	 *	If there are enough arguments to pass anything to the
-	 *	command, and there are more arguments than we had on
-	 *	input, do syntax checks on the new arguments.
+	 *	Run out of options to parse, but there's still more
+	 *	input.
 	 */
-	if ((argc > cmd_argc) && (argc > info->argc)) {
-		int rcode;
-
-		/*
-		 *	This verifies the arguments, and updates argv
-		 */
-		rcode = fr_command_verify_argv(info, cmd_argc + 1, info->argc, argc, &argv, false);
-		if (rcode < 0) return rcode;
+	if (!info->runnable && *word) {
+		SKIP_SPACES;
+		if (*word) goto too_many;
 	}
 
-	info->runnable = (argv == NULL);
 	info->argc = argc;
 	return argc;
 }
@@ -1913,6 +2226,7 @@ int fr_command_clear(int new_argc, fr_cmd_info_t *info)
 	for (i = new_argc; i < info->argc; i++) {
 		if (info->box && info->box[i]) {
 			fr_value_box_clear(info->box[i]);
+			talloc_const_free(info->argv[i]);
 		}
 		if (info->cmd && info->cmd[i]) info->cmd[i] = NULL;
 		info->argv[i] = NULL;
@@ -1931,13 +2245,13 @@ void fr_command_info_init(TALLOC_CTX *ctx, fr_cmd_info_t *info)
 
 	info->argc = 0;
 	info->max_argc = CMD_MAX_ARGV;
-	info->argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
+	info->argv = talloc_zero_array(ctx, char const *, CMD_MAX_ARGV);
 	info->box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
 	info->cmd = talloc_zero_array(ctx, fr_cmd_t *, CMD_MAX_ARGV);
 }
 
 
-static int expand_thing(fr_cmd_argv_t *argv, int count, int max_expansions, char **expansions)
+static int expand_all(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, int count, int max_expansions, char const **expansions)
 {
 	fr_cmd_argv_t *child;
 
@@ -1953,7 +2267,7 @@ static int expand_thing(fr_cmd_argv_t *argv, int count, int max_expansions, char
 			rad_assert(child->child != NULL);
 			sub = child->child;
 
-			count = expand_thing(sub, count, max_expansions, expansions);
+			count = expand_all(cmd, info, sub, count, max_expansions, expansions);
 		}
 
 		return count;
@@ -1967,7 +2281,7 @@ static int expand_thing(fr_cmd_argv_t *argv, int count, int max_expansions, char
 			rad_assert(child->child != NULL);
 			sub = child->child;
 
-			count = expand_thing(sub, count, max_expansions, expansions);
+			count = expand_all(cmd, info, sub, count, max_expansions, expansions);
 		}
 
 		return count;
@@ -1977,17 +2291,29 @@ static int expand_thing(fr_cmd_argv_t *argv, int count, int max_expansions, char
 	 *	@todo - might want to do something smarter here?
 	 */
 	if (argv->type == FR_TYPE_OPTIONAL) {
-		return expand_thing(argv->child, count, max_expansions, expansions);
+		return expand_all(cmd, info, argv->child, count, max_expansions, expansions);
 	}
 
-	if (argv->type != FR_TYPE_FIXED) return count;
+	if ((argv->type < FR_TYPE_FIXED) && cmd->tab_expand) {
+		int rcode;
+
+		info->argv[info->argc] = "";
+		info->box[info->argc] = NULL;
+		info->argc++;
+
+		rad_assert(count == 0);
+		rcode = cmd->tab_expand(NULL, cmd->ctx, info, max_expansions - count, expansions + count);
+		if (rcode < 0) return rcode;
+
+		return count + rcode;
+	}
 
 	expansions[count] = strdup(argv->name);
 	return count + 1;
 }
 
-static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char const **word_p,
-			 int count, int max_expansions, char **expansions)
+static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, char const *text, int start,
+			 char const **word_p, int count, int max_expansions, char const **expansions)
 {
 	char const *p, *q;
 	char const *word = *word_p;
@@ -1996,14 +2322,15 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 	 *	Loop over syntax_argv, looking for matches.
 	 */
 	for (/* nothing */ ; argv != NULL; argv = argv->next) {
-		while (isspace((int) *word)) word++;
+		SKIP_SPACES;
 
 		if (!*word) {
-		expand_syntax:
-			return expand_thing(argv, count, max_expansions, expansions);
+			return expand_all(cmd, info, argv, count, max_expansions, expansions);
 		}
 
 		if (argv->type == FR_TYPE_VARARGS) return count;
+
+		if (count >= max_expansions) return count;
 
 		/*
 		 *	Optional gets expanded, too.
@@ -2013,7 +2340,7 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 
 			my_word = word;
 
-			count = expand_syntax(argv->child, text, start, &my_word, count, max_expansions, expansions);
+			count = expand_syntax(cmd, info, argv->child, text, start, &my_word, count, max_expansions, expansions);
 
 			if (word != my_word) *word_p = word;
 			continue;
@@ -2034,7 +2361,7 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 				 *	See if the child eats any of
 				 *	the input.  If so, use it.
 				 */
-				count = expand_syntax(sub, text, start, &my_word, count, max_expansions, expansions);
+				count = expand_syntax(cmd, info, sub, text, start, &my_word, count, max_expansions, expansions);
 				if (my_word != word) {
 					*word_p = word;
 					break;
@@ -2045,37 +2372,75 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		}
 
 		/*
-		 *	Handle quoted strings.
-		 */
-		if ((argv->type == FR_TYPE_STRING) &&
-		    ((*word == '"') || (*word == '\''))) {
-			char quote = *word++;
-
-			while (*word && (*word != quote)) {
-				if (*word == '\\') {
-					if (!word[1]) return count;
-					word++;
-				}
-				word++;
-			}
-
-			if (!*word || !isspace((int) *word)) return count;
-
-			*word_p = word;
-			continue;
-		}
-
-		/*
-		 *	Skip data types (for now)
+		 *	Check data types.
 		 */
 		if (argv->type < FR_TYPE_FIXED) {
-			while (*word && !isspace((int) *word)) {
-				word++;
+			int rcode;
+			size_t len, offset;
+			char quote, *my_word;
+			fr_type_t type = argv->type;
+
+			p = skip_word(word);
+
+			if (!p) return count;
+
+			if (MATCHED_START) {
+				if (!cmd->tab_expand) {
+					/*
+					 *	Partial word on input.
+					 *	Tell the caller the
+					 *	full name.
+					 */
+					if (!*p || (isspace((int) *p))) {
+					expand_name:
+						expansions[count] = strdup(argv->name);
+						count++;
+					}
+
+					return count;
+				}
+
+				/*
+				 *	Give the function the partial
+				 *	text which should be expanded.
+				 */
+				info->argv[info->argc] = word;
+				info->box[info->argc] = NULL;
+				info->argc++;
+
+				/*
+				 *	Expand this thing.
+				 */
+				rad_assert(count == 0);
+				rcode = cmd->tab_expand(NULL, cmd->ctx, info, max_expansions - count, expansions + count);
+				if (rcode < 0) return rcode;
+				return count + rcode;
 			}
 
-			if (!*word) return count;
+			len = p - word;
 
-			*word_p = word;
+			info->argv[info->argc] = my_word = talloc_zero_array(info->argv, char, len + 1);
+			memcpy(my_word, word, len);
+			my_word[len] = '\0';
+
+			if (!info->box[info->argc]) {
+				info->box[info->argc] = talloc_zero(info->box, fr_value_box_t);
+			}
+
+			if ((*word == '"') || (*word == '\'')) {
+				quote = *word;
+				offset = 1;
+			} else {
+				quote = 0;
+				offset = 0;
+			}
+
+			rcode = fr_value_box_from_str(info->box[info->argc], info->box[info->argc],
+						      &type, NULL,
+						      word + offset, len - (offset << 1), quote, false);
+			if (rcode < 0) return -1;
+			info->argc++;
+			*word_p = word = p;
 			continue;
 		}
 
@@ -2084,32 +2449,27 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		 */
 		rad_assert(argv->type == FR_TYPE_FIXED);
 
-		/*
-		 *	Try to find a matching argv
-		 */
-		p = word;
-		q = argv->name;
-
-		while (*p == *q) {
-			p++;
-			q++;
-		}
-
-		/*
-		 *	We're supposed to expand the text at this
-		 *	location, go do so.  Even if it doesn't match.
-		 */
-		if (((text + start) >= word) && ((text + start) <= p)) {
-			goto expand_syntax;
-		}
+		SKIP_NAME(argv->name);
 
 		/*
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
-		if (isspace((int) *p) && !*q) {
-			*word_p = word;
+		if (MATCHED_NAME) {
+			*word_p = word = p;
+			info->argv[info->argc] = word;
+			info->box[info->argc] = NULL;
+			info->argc++;
 			continue;
+		}
+
+		/*
+		 *	Ran off of the end of the input before
+		 *	matching all of the name.  The input is a
+		 *	PARTIAL match.  Go fill it in.
+		 */
+		if (!*p || isspace((int) *p)) {
+			goto expand_name;
 		}
 
 		/*
@@ -2118,6 +2478,9 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
 		break;
 	}
 
+	/*
+	 *	Ran out of words to match.
+	 */
 	*word_p = word;
 	return count;
 }
@@ -2138,21 +2501,33 @@ static int expand_syntax(fr_cmd_argv_t *argv, char const *text, int start, char 
  *	- >= 0 number of expansions in the array
  */
 int fr_command_complete(fr_cmd_t *head, char const *text, int start,
-			int max_expansions, char **expansions)
+			int max_expansions, char const **expansions)
 {
 	char const *word, *p, *q;
 	fr_cmd_t *cmd;
 	int count;
+	fr_cmd_info_t *info;
 
 	cmd = head;
 	word = text;
 	count = 0;
 
+	info = talloc_zero(head, fr_cmd_info_t);
+	fr_command_info_init(head, info);
+
 	/*
 	 *	Try to do this without mangling "text".
 	 */
 	while (cmd) {
-		while (isspace((int) *word)) word++;
+		SKIP_SPACES;
+
+		/*
+		 *	Skip commands which we shouldn't know about...
+		 */
+		if (!cmd->live) {
+			cmd = cmd->next;
+			continue;
+		}
 
 		/*
 		 *	End of the input.  Tab expand everything here.
@@ -2160,29 +2535,34 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		if (!*word) {
 		expand:
 			while (cmd && (count < max_expansions)) {
-				expansions[count] = strdup(cmd->name);
-				count++;
+				if (!cmd->live) goto next;
+
+				SKIP_NAME(cmd->name);
+
+				/*
+				 *	Matched all of the input to
+				 *	part of cmd->name.
+				 */
+				if (!*p || isspace((int) *p)) {
+					expansions[count] = strdup(cmd->name);
+					count++;
+				}
+
+			next:
 				cmd = cmd->next;
 			}
+
+			talloc_free(info);
 			return count;
 		}
 
-		/*
-		 *	Try to find a matching cmd->name
-		 */
-		p = word;
-		q = cmd->name;
-
-		while (*p == *q) {
-			p++;
-			q++;
-		}
+		SKIP_NAME(cmd->name);
 
 		/*
 		 *	We're supposed to expand the text at this
 		 *	location, go do so.  Even if it doesn't match.
 		 */
-		if (((text + start) >= word) && ((text + start) <= p)) {
+		if (MATCHED_START) {
 			goto expand;
 		}
 
@@ -2190,7 +2570,9 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
-		if (!(isspace((int) *p) && !*q)) {
+		if (!MATCHED_NAME) {
+			if (TOO_FAR) return count;
+
 			cmd = cmd->next;
 			continue;
 		}
@@ -2199,6 +2581,8 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 			rad_assert(cmd->child != NULL);
 			word = p;
 			cmd = cmd->child;
+			info->argv[info->argc] = cmd->name;
+			info->argc++;
 			continue;
 		}
 
@@ -2213,23 +2597,36 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	 *	No match, can't do anything.
 	 */
 	if (!cmd) {
+		talloc_free(info);
 		return count;
 	}
 
 	/*
 	 *	No syntax, can't do anything.
 	 */
-	if (!cmd->syntax) {
+	if (!cmd->syntax_argv) {
+		talloc_free(info);
 		return count;
 	}
 
-	return expand_syntax(cmd->syntax_argv, text, start, &word, count, max_expansions, expansions);
+	count = expand_syntax(cmd, info, cmd->syntax_argv, text, start, &word, count, max_expansions, expansions);
+	fr_command_clear(0, info);
+	talloc_free(info);
+	return count;
 }
 
-/** Do readline-style command completions
+static void print_help(FILE *fp, fr_cmd_t *cmd)
+{
+	if (!cmd->help) {
+		fprintf(fp, "%s\n", cmd->name);
+	} else {
+		fprintf(fp, "%-30s%s\n", cmd->name, cmd->help);
+	}
+}
+
+/** Do readline-style help completions
  *
- *  Most useful as part of readline tab expansions.  The expansions
- *  are strdup() strings, and MUST be free'd by the caller.
+ *  Most useful as part of readline.
  *
  * @param fp where the help is printed
  * @param head of the command tree
@@ -2247,18 +2644,14 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 	 *	Try to do this without mangling "text".
 	 */
 	while (cmd) {
-		while (isspace((int) *word)) word++;
+		SKIP_SPACES;
 
 		/*
 		 *	End of the input.  Tab expand everything here.
 		 */
 		if (!*word) {
 			while (cmd) {
-				if (!cmd->help) {
-					fprintf(fp, "%s\n", cmd->name);
-				} else {
-					fprintf(fp, "%-30s%s\n", cmd->name, cmd->help);
-				}
+				print_help(fp, cmd);
 				cmd = cmd->next;
 			}
 			return 0;
@@ -2267,21 +2660,31 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 		/*
 		 *	Try to find a matching cmd->name
 		 */
-		p = word;
-		q = cmd->name;
+		SKIP_NAME(cmd->name);
 
-		while (*p == *q) {
-			p++;
-			q++;
+		/*
+		 *	Matched part of the name.  Print out help for this one.
+		 */
+		if (!*p && *q) {
+			print_help(fp, cmd);
 		}
 
 		/*
 		 *	The only matching exit condition is *p is a
 		 *	space, and *q is the NUL character.
 		 */
-		if (!(isspace((int) *p) && !*q)) {
+		if (!MATCHED_NAME) {
+			if (TOO_FAR) return 0;
+
 			cmd = cmd->next;
 			continue;
+		}
+
+		/*
+		 *	Done the input, but not the commands.
+		 */
+		if (!*p) {
+			break;
 		}
 
 		if (cmd->intermediate) {
@@ -2304,11 +2707,38 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 		return 0;
 	}
 
-	if (!cmd->help) {
-		fprintf(fp, "%s\n", cmd->name);
+	/*
+	 *	For one command, try to print out the syntax, as it's
+	 *	generally more useful than the help.
+	 */
+	if (!cmd->syntax) {
+		print_help(fp, cmd);
 	} else {
-		fprintf(fp, "%-30s%s\n", cmd->name, cmd->help);
+		fprintf(fp, "%-30s%s\n", cmd->name, cmd->syntax);
 	}
 
 	return 0;
+}
+
+/* See if partial string matches a full string.
+ *
+ * @param word the partial word to match
+ * @param name the name which "word" might match
+ * @return
+ *	- false if they do not match
+ *	- true if "word" is a prefix of "name"
+ *
+ */
+bool fr_command_strncmp(const char *word, const char *name)
+{
+	char const *p, *q;
+
+	if (!*word) return true;
+
+	SKIP_NAME(name);
+
+	/*
+	 *	If we're done P (partial or full), that's a match.
+	 */
+	return (*p == '\0');
 }

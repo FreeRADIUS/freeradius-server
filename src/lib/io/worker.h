@@ -30,6 +30,7 @@ RCSIDH(worker_h, "$Id$")
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/log.h>
+#include <freeradius-devel/server/command.h>
 
 #include <freeradius-devel/io/base.h>
 
@@ -44,7 +45,7 @@ extern "C" {
  */
 typedef struct fr_worker_t fr_worker_t;
 
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger, fr_log_lvl_t lvl) CC_HINT(nonnull(2,3));
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, char const *name, fr_event_list_t *el, fr_log_t const *logger, fr_log_lvl_t lvl) CC_HINT(nonnull(2,3,4));
 void fr_worker_destroy(fr_worker_t *worker) CC_HINT(nonnull);
 int fr_worker_kq(fr_worker_t *worker) CC_HINT(nonnull);
 fr_event_list_t *fr_worker_el(fr_worker_t *worker) CC_HINT(nonnull);
@@ -53,6 +54,8 @@ void fr_worker_exit(fr_worker_t *worker) CC_HINT(nonnull);
 void fr_worker_debug(fr_worker_t *worker, FILE *fp) CC_HINT(nonnull);
 void fr_worker_name(fr_worker_t *worker, char const *name) CC_HINT(nonnull);
 fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master) CC_HINT(nonnull);
+int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats) CC_HINT(nonnull);
+extern fr_cmd_table_t cmd_worker_table[];
 
 #ifdef __cplusplus
 }

@@ -285,8 +285,8 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 			child = unknown_child;
 		}
 		FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
-			       fr_int2str(dict_attr_types, parent->type, "<invalid>"), parent->name,
-			       fr_int2str(dict_attr_types, child->type, "<invalid>"), child->name);
+			       fr_int2str(fr_value_box_type_names, parent->type, "<invalid>"), parent->name,
+			       fr_int2str(fr_value_box_type_names, child->type, "<invalid>"), child->name);
 
 		tlv_len = decode_value(ctx, cursor, child, p + 2, p[1]);
 		if (tlv_len <= 0) {
@@ -421,8 +421,8 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		if (!child) return -1;
 	}
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
-		       fr_int2str(dict_attr_types, parent->type, "<invalid>"), parent->name,
-		       fr_int2str(dict_attr_types, child->type, "<invalid>"), child->name);
+		       fr_int2str(fr_value_box_type_names, parent->type, "<invalid>"), parent->name,
+		       fr_int2str(fr_value_box_type_names, child->type, "<invalid>"), child->name);
 
 	ret = decode_value(ctx, cursor, child, data + 2, data[1]);
 	if (ret < 0) {

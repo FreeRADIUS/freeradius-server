@@ -26,16 +26,12 @@
 RCSIDH(rad_assert_h, "$Id$")
 
 #include <stdbool.h>
+#include <freeradius-devel/util/debug.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef NDEBUG
-bool fr_assert_exit(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
-#else
-bool fr_assert_exit(char const *file, unsigned int line, char const *expr);
-#endif
 
 
 #ifdef NDEBUG

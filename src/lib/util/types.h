@@ -15,15 +15,19 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Types of values contained within an #fr_value_box_t
  *
- * @file lib/util/types.h
- * @brief #fr_value_box_t types
+ * These are in a separate header file to avoid circular dependencies.
+ *
+ * @file src/lib/util/types.h
  *
  * @copyright 2017  The FreeRADIUS server project
  */
 RCSIDH(types_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Internal data types used within libfreeradius
  *
@@ -211,3 +215,7 @@ typedef enum {
 	FR_TYPE_STRING: \
 	case FR_TYPE_DATE: \
 	case FR_TYPE_ABINARY
+
+#ifdef __cplusplus
+}
+#endif

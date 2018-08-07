@@ -740,12 +740,13 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 		table->syntax = talloc_strdup(table, p);
 	}
 	table->parent = parent;
+	table->name = name;
 	table->help = NULL;
 	table->func = command_func;
 	table->tab_expand = NULL;
 	table->read_only = true;
 
-	if (fr_command_add(ctx, &command_head, name, NULL, table) < 0) {
+	if (fr_command_add(ctx, &command_head, NULL, NULL, table) < 0) {
 		snprintf(output, outlen, "ERROR: failed adding command - %s", fr_strerror());
 		return;
 	}
@@ -764,15 +765,16 @@ static void command_tab(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 	int i;
 	int num_expansions;
 	char const *expansions[CMD_MAX_ARGV];
-	char *p;
+	char *p, **argv;
 	fr_cmd_info_t info;
 
 	info.argc = 0;
 	info.max_argc = CMD_MAX_ARGV;
-	info.argv = talloc_zero_array(ctx, char *, CMD_MAX_ARGV);
+	info.argv = talloc_zero_array(ctx, char const *, CMD_MAX_ARGV);
 	info.box = talloc_zero_array(ctx, fr_value_box_t *, CMD_MAX_ARGV);
 
-	info.argc = fr_dict_str_to_argv(input, info.argv, CMD_MAX_ARGV);
+	memcpy(&argv, &info.argv, sizeof(argv)); /* const issues */
+	info.argc = fr_dict_str_to_argv(input, argv, CMD_MAX_ARGV);
 	if (info.argc <= 0) {
 		snprintf(output, outlen, "Failed splitting input");
 		return;

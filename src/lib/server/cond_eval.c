@@ -393,8 +393,8 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, fr_value
 do {\
 	if ((cast_type != FR_TYPE_INVALID) && _s && (_s ->type != FR_TYPE_INVALID) && (cast_type != _s->type)) {\
 		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
-			   fr_int2str(dict_attr_types, _s->type, "<INVALID>"),\
-			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));\
+			   fr_int2str(fr_value_box_type_names, _s->type, "<INVALID>"),\
+			   fr_int2str(fr_value_box_type_names, cast_type, "<INVALID>"));\
 		if (fr_value_box_cast(request, &_s ## _cast, cast_type, cast, _s) < 0) {\
 			RPEDEBUG("Failed casting " #_s " operand");\
 			rcode = -1;\
@@ -440,7 +440,7 @@ do {\
 		cast = map->lhs->tmpl_da;
 
 		EVAL_DEBUG("NORMALISATION TYPE %s (PAIRCMP TYPE)",
-			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
+			   fr_int2str(fr_value_box_type_names, cast->type, "<INVALID>"));
 	/*
 	 *	Otherwise we use the explicit cast, or implicit
 	 *	cast (from an attribute reference).
@@ -450,23 +450,23 @@ do {\
 	} else if (c->cast) {
 		cast = c->cast;
 		EVAL_DEBUG("NORMALISATION TYPE %s (EXPLICIT CAST)",
-			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
+			   fr_int2str(fr_value_box_type_names, cast->type, "<INVALID>"));
 	} else if (map->lhs->type == TMPL_TYPE_ATTR) {
 		cast = map->lhs->tmpl_da;
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS REF)",
-			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
+			   fr_int2str(fr_value_box_type_names, cast->type, "<INVALID>"));
 	} else if (map->rhs->type == TMPL_TYPE_ATTR) {
 		cast = map->rhs->tmpl_da;
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS REF)",
-			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
+			   fr_int2str(fr_value_box_type_names, cast->type, "<INVALID>"));
 	} else if (map->lhs->type == TMPL_TYPE_DATA) {
 		cast_type = map->lhs->tmpl_value_type;
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS DATA)",
-			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));
+			   fr_int2str(fr_value_box_type_names, cast_type, "<INVALID>"));
 	} else if (map->rhs->type == TMPL_TYPE_DATA) {
 		cast_type = map->rhs->tmpl_value_type;
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS DATA)",
-			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));
+			   fr_int2str(fr_value_box_type_names, cast_type, "<INVALID>"));
 	}
 
 	if (cast) cast_type = cast->type;

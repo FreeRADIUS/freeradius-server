@@ -431,6 +431,56 @@ do {\
 extern CONF_PARSER tls_server_config[];
 extern CONF_PARSER tls_client_config[];
 
+/** Holds the temporary context
+ *
+ */
+extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
+
+/** Bind any memory allocated by an OpenSSL function to the object it created
+ *
+ * This is a horrible workaround for OpenSSL memory leaks.  But should always
+ * work, unless OpenSSL allocates memory for global structures whilst allocating
+ * non-global ones.
+ *
+ * It is technically threadsafe as ssl_talloc_ctx is thread specific.
+ *
+ * This should always work so long as OpenSSL does not become talloc aware and
+ * so will free the allocated object last, after doing manual cleanups.
+ *
+ @code{.c}
+   SSL_BIND_MEMORY(ctx = SSL_CTX_new(SSLv23_method()));
+   if (!ctx) ..error
+ @endcode
+ * @param _expr		The call to the OpenSSL function and storage of the
+ *			result.
+ */
+#define SSL_BIND_OBJ_MEMORY(_expr) \
+do { \
+	void *_nmem; \
+	MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_expr))); \
+	_nmem = (_expr);\
+	if (!_nmem) { \
+		TALLOC_FREE(ssl_talloc_ctx); \
+	} else { \
+		talloc_steal(_nmem, ssl_talloc_ctx); \
+	} \
+	ssl_talloc_ctx = NULL; \
+} while (0)
+
+/** Bind all memory allocated from this point until the next instance of SSL_BIND_MEMORY_END to _obj
+ *
+ * @param[in] _obj	to bind memory to.
+ */
+#define SSL_BIND_MEMORY_BEGIN(_obj) \
+do { \
+	if (fr_cond_assert(!ssl_talloc_ctx && (_obj))) { \
+		MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_obj))); \
+		talloc_steal(_obj, ssl_talloc_ctx); \
+	} \
+} while(0)
+
+#define SSL_BIND_MEMORY_END ssl_talloc_ctx = NULL
+
 /*
  *	tls/cache.c
  */

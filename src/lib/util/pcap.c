@@ -13,29 +13,38 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file lib/util/pcap.c
- * @brief Wrappers around libpcap functions
+/** Wrappers around libpcap functions
+ *
+ * @file src/lib/util/pcap.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #ifdef HAVE_LIBPCAP
 
+#include "pcap.h"
+
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/net.h>
+#include <freeradius-devel/util/pcap.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
+
+#include <net/if.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <unistd.h>
 
 #ifndef SIOCGIFHWADDR
-  #include <net/if_dl.h>
-  #include <ifaddrs.h>
+#  include <ifaddrs.h>
+#  include <net/if_dl.h>
 #else
-  #include <net/if.h>
+#  include <net/if.h>
 #endif
 
-#include <freeradius-devel/util/pcap.h>
-#include <freeradius-devel/util/net.h>
-#include <freeradius-devel/server/rad_assert.h>
 
 /** Talloc destructor to free pcap resources associated with a handle.
  *

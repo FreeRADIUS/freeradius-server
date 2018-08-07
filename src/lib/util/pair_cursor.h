@@ -14,16 +14,20 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Functions to iterate over collections of VALUE_PAIRs
  *
- * @file lib/util/cursor.h
- * @brief Generic linked list cursor.
+ * @file src/lib/util/pair_cursor.h
  *
  * @copyright 2016  The FreeRADIUS server project
  */
 RCSIDH(pair_cursor_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/pair.h>
 
 VALUE_PAIR	*fr_pair_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *node);
@@ -52,3 +56,7 @@ void		fr_pair_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *vp);
 VALUE_PAIR	*fr_pair_cursor_remove(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		fr_pair_cursor_free(vp_cursor_t *cursor);
+
+#ifdef __cplusplus
+}
+#endif

@@ -66,10 +66,14 @@ typedef struct fr_network_worker_t {
 
 	fr_channel_t		*channel;		//!< channel to the worker
 	fr_worker_t		*worker;		//!< worker pointer
+	fr_io_stats_t		stats;
 } fr_network_worker_t;
 
 typedef struct fr_network_socket_t {
 	int			fd;			//!< file descriptor
+	int			number;			//!< unique ID
+	int			heap_id;		//!< for the sockets_by_num heap
+
 	fr_event_filter_t	filter;			//!< what type of filter it is
 
 	bool			dead;			//!< is it dead?
@@ -84,6 +88,7 @@ typedef struct fr_network_socket_t {
 
 	fr_channel_data_t	*pending;		//!< the currently pending partial packet
 	fr_heap_t		*waiting;		//!< packets waiting to be written
+	fr_io_stats_t		stats;
 } fr_network_socket_t;
 
 /*
@@ -117,13 +122,14 @@ struct fr_network_t {
 
 	fr_heap_t		*replies;		//!< replies from the worker, ordered by priority / origin time
 
-	uint64_t		num_requests;		//!< number of requests we sent
-	uint64_t		num_replies;		//!< number of replies we received
+	fr_io_stats_t		stats;
 
-	rbtree_t		*sockets;		//!< list of sockets we're managing
+	rbtree_t		*sockets;		//!< list of sockets we're managing, ordered by the listener
+	rbtree_t		*sockets_by_num;       	//!< ordered by number;
 
 	int			num_workers;		//!< number of active workers
 	int			max_workers;		//!< maximum number of allowed workers
+	int			num_sockets;		//!< actually a counter...
 
 	fr_network_worker_t	*workers[MAX_WORKERS]; 	//!< each worker
 };
@@ -152,11 +158,18 @@ static int waiting_cmp(void const *one, void const *two)
 	return (a->reply.request_time > b->reply.request_time) - (a->reply.request_time < b->reply.request_time);
 }
 
-static int socket_cmp(void const *one, void const *two)
+static int socket_listen_cmp(void const *one, void const *two)
 {
 	fr_network_socket_t const *a = one, *b = two;
 
 	return (a->listen > b->listen) - (a->listen < b->listen);
+}
+
+static int socket_num_cmp(void const *one, void const *two)
+{
+	fr_network_socket_t const *a = one, *b = two;
+
+	return (a->number > b->number) - (a->number < b->number);
 }
 
 
@@ -213,15 +226,13 @@ static void fr_network_drain_input(fr_network_t *nr, fr_channel_t *ch, fr_channe
 	}
 
 	do {
-		nr->num_replies++;
-		DEBUG3("received reply %" PRIu64, nr->num_replies);
-
 		cd->channel.ch = ch;
 
 		/*
 		 *	Update stats for the worker.
 		 */
 		worker = fr_channel_master_ctx_get(ch);
+		worker->stats.out++;
 		worker->cpu_time = cd->reply.cpu_time;
 		if (!worker->predicted) {
 			worker->predicted = cd->reply.processing_time;
@@ -328,8 +339,11 @@ static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	 *	thing falls over.
 	 */
 	if (fr_channel_send_request(worker->channel, cd, &reply) < 0) {
+		worker->stats.dropped++;
 		return false;
 	}
+
+	worker->stats.in++;
 
 	/*
 	 *	We're projecting that the worker will use more CPU
@@ -462,6 +476,8 @@ next_message:
 	s->cd = NULL;
 
 	DEBUG("Network received packet size %zd", data_size);
+	nr->stats.in++;
+	s->stats.in++;
 
 	/*
 	 *	Initialize the rest of the fields of the channel data.
@@ -500,12 +516,14 @@ next_message:
 	if (!fr_network_send_request(nr, cd)) {
 		fr_log(nr->log, L_ERR, "Failed sending packet to worker");
 		fr_message_done(&cd->m);
+		nr->stats.dropped++;
+		s->stats.dropped++;
+	} else {
+		/*
+		 *	One more packet sent to a worker.
+		 */
+		s->outstanding++;
 	}
-
-	/*
-	 *	One more packet sent to a worker.
-	 */
-	s->outstanding++;
 
 	/*
 	 *	If there is a next message, go read it from the buffer.
@@ -652,6 +670,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		 *	Reset for the next message.
 		 */
 		fr_message_done(&cd->m);
+		nr->stats.out++;
+		s->stats.out++;
 
 		/*
 		 *	As a special case, allow write() to return
@@ -690,6 +710,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	}
 
 	rbtree_deletebydata(nr->sockets, s);
+	rbtree_deletebydata(nr->sockets_by_num, s);
 
 	if (s->listen->app_io->close) {
 		s->listen->app_io->close(s->listen->app_io_instance);
@@ -736,6 +757,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	s = talloc_zero(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
 	memcpy(&s->listen, data, sizeof(s->listen));
+	s->number = nr->num_sockets++;
 
 	MEM(s->waiting = fr_heap_create(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
 
@@ -783,6 +805,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el, nr);
 
 	(void) rbtree_insert(nr->sockets, s);
+	(void) rbtree_insert(nr->sockets_by_num, s);
 
 	DEBUG3("Using new socket with FD %d", s->fd);
 }
@@ -809,6 +832,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	s = talloc_zero(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
 	memcpy(&s->listen, data, sizeof(s->listen));
+	s->number = nr->num_sockets++;
 
 	MEM(s->waiting = fr_heap_create(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
 
@@ -847,6 +871,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	}
 
 	(void) rbtree_insert(nr->sockets, s);
+	(void) rbtree_insert(nr->sockets_by_num, s);
 
 	DEBUG3("Using new socket with FD %d", s->fd);
 }
@@ -1047,9 +1072,15 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 	/*
 	 *	Create the various heaps.
 	 */
-	nr->sockets = rbtree_talloc_create(nr, socket_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
+	nr->sockets = rbtree_talloc_create(nr, socket_listen_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets) {
-		fr_strerror_printf_push("Failed creating tree for sockets");
+		fr_strerror_printf_push("Failed creating listen tree for sockets");
+		goto fail2;
+	}
+
+	nr->sockets_by_num = rbtree_talloc_create(nr, socket_num_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
+	if (!nr->sockets_by_num) {
+		fr_strerror_printf_push("Failed creating number tree for sockets");
 		goto fail2;
 	}
 
@@ -1448,3 +1479,123 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t cons
 
 	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_INJECT, &my_inject, sizeof(my_inject));
 }
+
+int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats)
+{
+	if (num < 0) return -1;
+	if (num == 0) return 0;
+
+	if (num >= 1) stats[0] = nr->stats.in;
+	if (num >= 2) stats[1] = nr->stats.out;
+	if (num >= 3) stats[2] = nr->stats.dup;
+	if (num >= 4) stats[3] = nr->stats.dropped;
+	if (num >= 5) stats[4] = nr->num_workers;
+
+	if (num <= 5) return num;
+
+	return 5;
+}
+
+static int cmd_stats_self(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	fr_network_t const *nr = ctx;
+
+	fprintf(fp, "count.in\t%" PRIu64 "\n", nr->stats.in);
+	fprintf(fp, "count.out\t%" PRIu64 "\n", nr->stats.out);
+	fprintf(fp, "count.dup\t%" PRIu64 "\n", nr->stats.dup);
+	fprintf(fp, "count.dropped\t%" PRIu64 "\n", nr->stats.dropped);
+	fprintf(fp, "count.sockets\t%d\n", rbtree_num_elements(nr->sockets));
+
+	return 0;
+}
+
+static int socket_list(void *ctx, void *data)
+{
+	FILE *fp = ctx;
+	fr_network_socket_t *s = data;
+
+	if (!s->listen->app_io->get_name) {
+		fprintf(fp, "%s\n", s->listen->app_io->name);
+		return 0;
+	}
+
+	fprintf(fp, "%d\t%s\n", s->number, s->listen->app_io->get_name(s->listen->app_io_instance));
+	return 0;
+}
+
+static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	fr_network_t const *nr = ctx;
+
+	(void) rbtree_walk(nr->sockets, RBTREE_IN_ORDER, socket_list, fp);
+	return 0;
+}
+
+static int cmd_stats_socket(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+{
+	fr_network_t const *nr = ctx;
+	fr_network_socket_t *s, my_s;
+
+	my_s.number = info->box[0]->vb_uint32;
+
+	s = rbtree_finddata(nr->sockets_by_num, &my_s);
+	if (!s) {
+		fprintf(fp_err, "No such socket number '%s'.\n", info->argv[0]);
+		return -1;
+	}
+
+	fprintf(fp, "count.in\t%" PRIu64 "\n", s->stats.in);
+	fprintf(fp, "count.out\t%" PRIu64 "\n", s->stats.out);
+	fprintf(fp, "count.dup\t%" PRIu64 "\n", s->stats.dup);
+	fprintf(fp, "count.dropped\t%" PRIu64 "\n", s->stats.dropped);
+
+	return 0;
+}
+
+
+fr_cmd_table_t cmd_network_table[] = {
+	{
+		.parent = "stats",
+		.name = "network",
+		.help = "Statistics for network threads.",
+		.read_only = true
+	},
+
+	{
+		.parent = "stats network",
+		.add_name = true,
+		.name = "self",
+		.func = cmd_stats_self,
+		.help = "Show statistics for a specific network thread.",
+		.read_only = true
+	},
+
+	{
+		.parent = "stats network",
+		.add_name = true,
+		.name = "socket",
+		.syntax = "INTEGER",
+		.func = cmd_stats_socket,
+		.help = "Show statistics for a specific socket",
+		.read_only = true
+	},
+
+	{
+		.parent = "show",
+		.name = "network",
+		.help = "Show information about network threads.",
+		.read_only = true
+	},
+
+	{
+		.parent = "show network",
+		.add_name = true,
+		.name = "socket",
+		.syntax = "list",
+		.func = cmd_socket_list,
+		.help = "List the sockets associated with this network thread.",
+		.read_only = true
+	},
+
+	CMD_TABLE_END
+};

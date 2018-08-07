@@ -14,24 +14,27 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Functions to get randomness
  *
- * @file rand.c
- * @brief Functions to get randomness
+ * @file src/lib/util/rand.c
  *
- * @copyright 1999-2017  The FreeRADIUS server project
+ * @copyright 1999-2017 The FreeRADIUS server project
  */
-
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "rand.h"
 
+#include <freeradius-devel/util/hash.h>
+
+#include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 static _Thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
 static _Thread_local bool fr_rand_initialized = false;
-
 
 /** Seed the random number generator
  *
@@ -68,7 +71,7 @@ void fr_rand_seed(void const *data, size_t size)
 			fr_rand_pool.randrsl[2] = errno;
 		}
 
-		fr_randinit(&fr_rand_pool, 1);
+		fr_rand_init(&fr_rand_pool, 1);
 		fr_rand_pool.randcnt = 0;
 		fr_rand_initialized = 1;
 	}

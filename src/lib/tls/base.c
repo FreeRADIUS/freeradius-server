@@ -39,8 +39,14 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 static int instance_count = 0;
 
-fr_dict_t *dict_freeradius;
-fr_dict_t *dict_radius;
+/** The context which holds any memory OpenSSL allocates
+ *
+ * This should be used to work around memory leaks in the OpenSSL.
+ */
+_Thread_local TALLOC_CTX 	*ssl_talloc_ctx;
+
+fr_dict_t			*dict_freeradius;
+fr_dict_t			*dict_radius;
 
 extern fr_dict_autoload_t tls_dict[];
 fr_dict_autoload_t tls_dict[] = {
@@ -410,7 +416,7 @@ static void *openssl_talloc(size_t len, UNUSED char const *file, UNUSED int line
 static void *openssl_talloc(size_t len)
 #endif
 {
-	return talloc_array(NULL, uint8_t, len);
+	return talloc_array(ssl_talloc_ctx, uint8_t, len);
 }
 
 /** Reallocate memory for OpenSSL in the NULL context
@@ -425,7 +431,7 @@ static void *openssl_realloc(void *old, size_t len, UNUSED char const *file, UNU
 static void *openssl_realloc(void *old, size_t len)
 #endif
 {
-	return talloc_realloc_size(NULL, old, len);
+	return talloc_realloc_size(ssl_talloc_ctx, old, len);
 }
 
 /** Free memory allocated by OpenSSL

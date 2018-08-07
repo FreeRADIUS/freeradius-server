@@ -49,6 +49,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/server/rad_assert.h>
 
 /** Holds a state value, and associated VALUE_PAIRs and data
@@ -196,7 +197,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 	 *	safe, and multiple threads could be using the
 	 *	tree.
 	 */
-	fr_talloc_link_ctx(ctx, state);
+	talloc_link_ctx(ctx, state);
 
 	if (thread_safe && (pthread_mutex_init(&state->mutex, NULL) != 0)) {
 		talloc_free(state);
@@ -415,10 +416,22 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		}
 
 		/*
-		 *	Be tolerant of variable State attributes
+		 *	Assume our own State first.
 		 */
-		if (vp->vp_length >= sizeof(entry->state)) {
+		if (vp->vp_length == sizeof(entry->state)) {
 			memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
+
+		/*
+		 *	Too big?  Get the MD5 hash, in order
+		 *	to depend on the entire contents of State.
+		 */
+		} else if (vp->vp_length > sizeof(entry->state)) {
+			fr_md5_calc(entry->state, vp->vp_octets, vp->vp_length);
+
+			/*
+			 *	Too small?  Use the whole thing, and
+			 *	set the rest of my_entry.state to zero.
+			 */
 		} else {
 			memcpy(entry->state, vp->vp_octets, vp->vp_length);
 			memset(&entry->state[vp->vp_length], 0, sizeof(entry->state) - vp->vp_length);
@@ -428,17 +441,17 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 *	16 octets of randomness should be enough to
 		 *	have a globally unique state.
 		 */
-		if (!old) {
-			for (i = 0; i < sizeof(entry->state) / sizeof(x); i++) {
-				x = fr_rand();
-				memcpy(entry->state + (i * 4), &x, sizeof(x));
-			}
+		if (old) {
+			memcpy(entry->state, old_state, sizeof(entry->state));
+			entry->tries = old_tries + 1;
 		/*
 		 *	Base the new state on the old state if we had one.
 		 */
 		} else {
-			memcpy(entry->state, old_state, sizeof(entry->state));
-			entry->tries = old_tries + 1;
+			for (i = 0; i < sizeof(entry->state) / sizeof(x); i++) {
+				x = fr_rand();
+				memcpy(entry->state + (i * 4), &x, sizeof(x));
+			}
 		}
 
 		entry->state_comp.tries = entry->tries + 1;
@@ -505,8 +518,23 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 {
 	fr_state_entry_t *entry, my_entry;
 
-	if (vb->vb_length >= sizeof(my_entry.state)) {
+	/*
+	 *	Assume our own State first.
+	 */	
+	if (vb->vb_length == sizeof(my_entry.state)) {
 		memcpy(my_entry.state, vb->vb_octets, sizeof(my_entry.state));
+
+		/*
+		 *	Too big?  Get the MD5 hash, in order
+		 *	to depend on the entire contents of State.
+		 */
+	} else if (vb->vb_length > sizeof(my_entry.state)) {
+		fr_md5_calc(my_entry.state, vb->vb_octets, vb->vb_length);
+
+		/*
+		 *	Too small?  Use the whole thing, and
+		 *	set the rest of my_entry.state to zero.
+		 */
 	} else {
 		memcpy(my_entry.state, vb->vb_octets, vb->vb_length);
 		memset(&my_entry.state[vb->vb_length], 0, sizeof(my_entry.state) - vb->vb_length);
@@ -601,6 +629,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 		(void)talloc_get_type_abort(entry, fr_state_entry_t);
 		if (entry->thawed) {
 			REDEBUG("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
+			PTHREAD_MUTEX_UNLOCK(&state->mutex);
 			return;
 		}
 		if (request->state_ctx) old_ctx = request->state_ctx;	/* Store for later freeing */

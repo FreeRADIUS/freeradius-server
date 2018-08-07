@@ -804,7 +804,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		rad_assert(vps);
 
 		RINDENT();
-		RDEBUG3("Type  : %s", fr_int2str(dict_attr_types, da->type, "<INVALID>"));
+		RDEBUG3("Type  : %s", fr_int2str(fr_value_box_type_names, da->type, "<INVALID>"));
 
 		ctx = radius_list_ctx(reference, list_name);
 

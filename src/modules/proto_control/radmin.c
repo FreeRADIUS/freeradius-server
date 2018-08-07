@@ -43,6 +43,8 @@ RCSID("$Id$")
 #ifdef HAVE_LIBREADLINE
 
 # include <stdio.h>
+
+DIAG_OFF(strict-prototypes)
 #if defined(HAVE_READLINE_READLINE_H)
 #  include <readline/readline.h>
 #  define USE_READLINE (1)
@@ -50,6 +52,7 @@ RCSID("$Id$")
 #  include <readline.h>
 #  define USE_READLINE (1)
 #endif /* !defined(HAVE_READLINE_H) */
+DIAG_ON(strict-prototypes)
 
 #ifdef HAVE_READLINE_HISTORY
 #  if defined(HAVE_READLINE_HISTORY_H)
@@ -126,7 +129,14 @@ static fr_log_t radmin_log = {
 	.fd = -1,
 	.file = NULL,
 };
+static int sockfd = -1;
+static char io_buffer[65536];
 
+#ifdef USE_READLINE
+#define CMD_MAX_EXPANSIONS (128)
+static int radmin_num_expansions = 0;
+static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
+#endif
 
 static void NEVER_RETURNS usage(int status)
 {
@@ -148,7 +158,7 @@ static void NEVER_RETURNS usage(int status)
 
 static int client_socket(char const *server)
 {
-	int sockfd;
+	int fd;
 	uint16_t port;
 	fr_ipaddr_t ipaddr;
 	char *p, buffer[1024];
@@ -169,17 +179,17 @@ static int client_socket(char const *server)
 		exit(EXIT_FAILURE);
 	}
 
-	sockfd = fr_socket_client_tcp(NULL, &ipaddr, port, false);
-	if (sockfd < 0) {
+	fd = fr_socket_client_tcp(NULL, &ipaddr, port, false);
+	if (fd < 0) {
 		fprintf(stderr, "%s: Failed opening socket %s: %s\n",
 			progname, server, fr_syserror(errno));
 		exit(EXIT_FAILURE);
 	}
 
-	return sockfd;
+	return fd;
 }
 
-static ssize_t do_challenge(int sockfd)
+static ssize_t do_challenge(int fd)
 {
 	ssize_t r;
 	fr_conduit_type_t conduit;
@@ -190,7 +200,7 @@ static ssize_t do_challenge(int sockfd)
 	/*
 	 *	When connecting over a socket, the server challenges us.
 	 */
-	r = fr_conduit_read(sockfd, &conduit, challenge, sizeof(challenge));
+	r = fr_conduit_read(fd, &conduit, challenge, sizeof(challenge));
 	if (r <= 0) return r;
 
 	if ((r != 16) || (conduit != FR_CONDUIT_AUTH_CHALLENGE)) {
@@ -202,7 +212,7 @@ static ssize_t do_challenge(int sockfd)
 	fr_hmac_md5(challenge, (uint8_t const *) secret, strlen(secret),
 		    challenge, sizeof(challenge));
 
-	r = fr_conduit_write(sockfd, FR_CONDUIT_AUTH_RESPONSE, challenge, sizeof(challenge));
+	r = fr_conduit_write(fd, FR_CONDUIT_AUTH_RESPONSE, challenge, sizeof(challenge));
 	if (r <= 0) return r;
 
 	/*
@@ -217,16 +227,17 @@ static ssize_t do_challenge(int sockfd)
 /*
  *	Returns -1 on failure.  0 on connection failed.  +1 on OK.
  */
-static ssize_t flush_conduits(int sockfd, char *buffer, size_t bufsize)
+static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 {
 	ssize_t r;
+	char *p, *str;
 	uint32_t status;
 	fr_conduit_type_t conduit;
 
 	while (true) {
 		uint32_t notify;
 
-		r = fr_conduit_read(sockfd, &conduit, buffer, bufsize - 1);
+		r = fr_conduit_read(fd, &conduit, buffer, bufsize - 1);
 		if (r <= 0) return r;
 
 		buffer[r] = '\0';	/* for C strings */
@@ -258,6 +269,29 @@ static ssize_t flush_conduits(int sockfd, char *buffer, size_t bufsize)
 
 			break;
 
+		case FR_CONDUIT_COMPLETE:
+			// @todo - deal with partial text?  For now, it's not really relevant...
+			str = buffer;
+
+			for (p = buffer; p < (buffer + r); p++) {
+				if (*p == '\n') {
+					size_t len;
+
+					len = p - str;
+
+					radmin_expansions[radmin_num_expansions] = malloc(len + 1);
+					memcpy(radmin_expansions[radmin_num_expansions], str, len);
+					radmin_expansions[radmin_num_expansions][len] = '\0';
+
+					radmin_num_expansions++;
+
+					str = p + 1;
+				}
+
+				if (radmin_num_expansions >= CMD_MAX_EXPANSIONS) break;
+			}
+			break;
+
 		default:
 			fprintf(stderr, "Unexpected response %02x\n", conduit);
 			return -1;
@@ -271,7 +305,7 @@ static ssize_t flush_conduits(int sockfd, char *buffer, size_t bufsize)
 /*
  *	Returns -1 on failure.  0 on connection failed.  +1 on OK.
  */
-static ssize_t run_command(int sockfd, char const *command,
+static ssize_t run_command(int fd, char const *command,
 			   char *buffer, size_t bufsize)
 {
 	ssize_t r;
@@ -283,15 +317,15 @@ static ssize_t run_command(int sockfd, char const *command,
 	/*
 	 *	Write the text to the socket.
 	 */
-	r = fr_conduit_write(sockfd, FR_CONDUIT_STDIN, command, strlen(command));
+	r = fr_conduit_write(fd, FR_CONDUIT_STDIN, command, strlen(command));
 	if (r <= 0) return r;
 
-	return flush_conduits(sockfd, buffer, bufsize);
+	return flush_conduits(fd, buffer, bufsize);
 }
 
 static int do_connect(int *out, char const *file, char const *server)
 {
-	int sockfd;
+	int fd;
 	ssize_t r;
 	fr_conduit_type_t conduit;
 	char buffer[65536];
@@ -310,8 +344,8 @@ static int do_connect(int *out, char const *file, char const *server)
 		/*
 		 *	FIXME: Get destination from command line, if possible?
 		 */
-		sockfd = fr_socket_client_unix(file, false);
-		if (sockfd < 0) {
+		fd = fr_socket_client_unix(file, false);
+		if (fd < 0) {
 			fr_perror("radmin");
 			if (errno == ENOENT) {
 					fprintf(stderr, "Perhaps you need to run the commands:");
@@ -323,7 +357,7 @@ static int do_connect(int *out, char const *file, char const *server)
 			return -1;
 		}
 	} else {
-		sockfd = client_socket(server);
+		fd = client_socket(server);
 	}
 
 	/*
@@ -334,7 +368,7 @@ static int do_connect(int *out, char const *file, char const *server)
 	{
 		int set = 1;
 
-		setsockopt(sockfd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
+		setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
 	}
 #endif
 
@@ -346,34 +380,173 @@ static int do_connect(int *out, char const *file, char const *server)
 	memcpy(buffer, &magic, sizeof(magic));
 	memset(buffer + sizeof(magic), 0, sizeof(magic));
 
-	r = fr_conduit_write(sockfd, FR_CONDUIT_INIT_ACK, buffer, 8);
+	r = fr_conduit_write(fd, FR_CONDUIT_INIT_ACK, buffer, 8);
 	if (r <= 0) {
 	do_close:
 		fprintf(stderr, "%s: Error in socket: %s\n",
 			progname, fr_syserror(errno));
-		close(sockfd);
-			return -1;
+		close(fd);
+		return -1;
 	}
 
-	r = fr_conduit_read(sockfd, &conduit, buffer + 8, 8);
+	r = fr_conduit_read(fd, &conduit, buffer + 8, 8);
 	if (r <= 0) goto do_close;
 
 	if ((r != 8) || (conduit != FR_CONDUIT_INIT_ACK) ||
 	    (memcmp(buffer, buffer + 8, 8) != 0)) {
 		fprintf(stderr, "%s: Incompatible versions\n", progname);
-		close(sockfd);
+		close(fd);
 		return -1;
 	}
 
 	if (server && secret) {
-		r = do_challenge(sockfd);
+		r = do_challenge(fd);
 		if (r <= 0) goto do_close;
 	}
 
-	*out = sockfd;
+	*out = fd;
 
 	return 0;
 }
+
+
+#ifndef USE_READLINE
+/*
+ *	@todo - use thread-local storage
+ */
+static char *readline_buffer[1024];
+
+static char *readline(char const *prompt)
+{
+	char *line, *p;
+
+	if (prompt && *prompt) puts(prompt);
+	fflush(stdout);
+
+	line = fgets(readline_buffer, sizeof(readline_buffer), stdin);
+	if (!line) return NULL;
+
+	p = strchr(line, '\n');
+	if (!p) {
+		fprintf(stderr, "Input line too long\n");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	*p = '\0';
+
+	/*
+	 *	Strip off leading spaces.
+	 */
+	for (p = line; *p != '\0'; p++) {
+		if ((p[0] == ' ') ||
+		    (p[0] == '\t')) {
+			line = p + 1;
+			continue;
+		}
+
+		if (p[0] == '#') {
+			line = NULL;
+			break;
+		}
+
+		break;
+	}
+
+	/*
+	 *	Comments: keep going.
+	 */
+	if (!line) return line;
+
+	/*
+	 *	Strip off CR / LF
+	 */
+	for (p = line; *p != '\0'; p++) {
+		if ((p[0] == '\r') ||
+		    (p[0] == '\n')) {
+			p[0] = '\0';
+			break;
+		}
+	}
+
+	return line;
+}
+
+#define radmin_free(_x)
+#else
+#define radmin_free free
+
+static int radmin_help(UNUSED int count, UNUSED int key)
+{
+	printf("\n");
+
+	(void) fr_conduit_write(sockfd, FR_CONDUIT_HELP, rl_line_buffer, strlen(rl_line_buffer));
+
+	(void) flush_conduits(sockfd, io_buffer, sizeof(io_buffer));
+
+	rl_on_new_line();
+	return 0;
+}
+
+static char *
+radmin_expansion_walk(UNUSED const char *text, int state)
+{
+    static int current;
+    char *name;
+
+    if (!state) {
+	    current = 0;
+    }
+
+    /*
+     *	fr_command_completions() takes care of comparing things to
+     *	suppress expansions which don't match "text"
+     */
+    if (current >= radmin_num_expansions) return NULL;
+
+    name = radmin_expansions[current];
+
+    radmin_expansions[current++] = NULL;
+
+    return name;
+}
+
+static char **
+radmin_completion(const char *text, int start, UNUSED int end)
+{
+	size_t len;
+
+	rl_attempted_completion_over = 1;
+
+	radmin_num_expansions = 0;
+
+	if (start > 65535) return NULL;
+
+	io_buffer[0] = (start >> 8) & 0xff;
+	io_buffer[1] = start & 0xff;
+	len = strlen(rl_line_buffer);
+
+	/*
+	 *	Note that "text" is the PARTIAL thing we're trying to complete.
+	 *	And "start" is the OFFSET from rl_line_buffer where we want to
+	 *	do the completion.  It's all rather idiotic.
+	 */
+	memcpy(io_buffer + 2, rl_line_buffer, len);
+
+	(void) fr_conduit_write(sockfd, FR_CONDUIT_COMPLETE, io_buffer, len + 2);
+
+	(void) flush_conduits(sockfd, io_buffer, sizeof(io_buffer));
+
+	return rl_completion_matches(text, radmin_expansion_walk);
+}
+
+#endif
+
+#ifndef USE_READLINE_HISTORY
+static void add_history(UNUSED char *line)
+{
+}
+#endif
+
 
 #define MAX_COMMANDS (4)
 
@@ -381,12 +554,10 @@ int main(int argc, char **argv)
 {
 	int		argval;
 	bool		quiet = false;
-	int		sockfd = -1;
 	char		*line = NULL;
 	ssize_t		len;
 	char const	*file = NULL;
 	char const	*name = "radiusd";
-	char		*p, buffer[65536];
 	char const	*input_file = NULL;
 	FILE		*inputfp = stdin;
 	char const	*server = NULL;
@@ -394,6 +565,7 @@ int main(int argc, char **argv)
 
 	char const	*raddb_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;
+	char const	*prompt = "radmin> ";
 
 	TALLOC_CTX	*autofree = talloc_autofree_context();
 
@@ -520,9 +692,7 @@ int main(int argc, char **argv)
 
 		file = NULL;	/* MUST read it from the conf_file now */
 
-		snprintf(buffer, sizeof(buffer), "%s/%s.conf", raddb_dir, name);
-
-
+		snprintf(io_buffer, sizeof(io_buffer), "%s/%s.conf", raddb_dir, name);
 
 		/*
 		 *	Need to read in the dictionaries, else we may get
@@ -546,8 +716,8 @@ int main(int argc, char **argv)
 		cs = cf_section_alloc(NULL, NULL, "main", NULL);
 		if (!cs) exit(EXIT_FAILURE);
 
-		if ((cf_file_read(cs, buffer) < 0) || (cf_section_pass2(cs) < 0)) {
-			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, buffer);
+		if ((cf_file_read(cs, io_buffer) < 0) || (cf_section_pass2(cs) < 0)) {
+			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, io_buffer);
 			talloc_free(cs);
 			usage(1);
 		}
@@ -601,7 +771,8 @@ int main(int argc, char **argv)
 
 			pwd = getpwnam(uid_name);
 			if (!pwd) {
-				fprintf(stderr, "%s: Failed getting UID for user %s: %s\n", progname, uid_name, strerror(errno));
+				fprintf(stderr, "%s: Failed getting UID for user %s: %s\n", progname, uid_name,
+					fr_syserror(errno));
 				exit(EXIT_FAILURE);
 			}
 
@@ -619,7 +790,7 @@ int main(int argc, char **argv)
 			grp = getgrnam(gid_name);
 			if (!grp) {
 				fprintf(stderr, "%s: Failed resolving gid of group %s: %s\n",
-					progname, gid_name, strerror(errno));
+					progname, gid_name, fr_syserror(errno));
 				exit(EXIT_FAILURE);
 			}
 
@@ -629,7 +800,7 @@ int main(int argc, char **argv)
 		}
 
 		if (!file) {
-			fprintf(stderr, "%s: Could not find control socket in %s\n", progname, buffer);
+			fprintf(stderr, "%s: Could not find control socket in %s\n", progname, io_buffer);
 			exit(EXIT_FAILURE);
 		}
 
@@ -679,16 +850,18 @@ int main(int argc, char **argv)
 	/*
 	 *	Check if stdin is a TTY only if input is from stdin
 	 */
-	if (input_file && !quiet && !isatty(STDIN_FILENO)) quiet = true;
+	if (input_file || !isatty(STDIN_FILENO)) quiet = true;
 
-#ifdef USE_READLINE
 	if (!quiet) {
 #ifdef USE_READLINE_HISTORY
 		using_history();
 #endif
-		rl_bind_key('\t', rl_insert);
-	}
+#ifdef USE_READLINE
+		rl_attempted_completion_function = radmin_completion;
 #endif
+	} else {
+		prompt = NULL;
+	}
 
 	/*
 	 *	Prevent SIGPIPEs from terminating the process
@@ -698,20 +871,20 @@ int main(int argc, char **argv)
 	if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
 
 	/*
-	 *	Run commans from the command-line.
+	 *	Run commands from the command-line.
 	 */
 	if (num_commands >= 0) {
 		int i;
 
 		for (i = 0; i <= num_commands; i++) {
-			len = run_command(sockfd, commands[i], buffer, sizeof(buffer));
+			len = run_command(sockfd, commands[i], io_buffer, sizeof(io_buffer));
 			if (len < 0) exit(EXIT_FAILURE);
 
 			if (len == FR_CONDUIT_FAIL) exit_status = EXIT_FAILURE;
 		}
 
 		if (unbuffered) {
-			while (true) flush_conduits(sockfd, buffer, sizeof(buffer));
+			while (true) flush_conduits(sockfd, io_buffer, sizeof(io_buffer));
 		}
 
 		exit(exit_status);
@@ -730,81 +903,27 @@ int main(int argc, char **argv)
 	 *	FIXME: Do login?
 	 */
 
+#ifdef USE_READLINE
+	(void) rl_bind_key('?', radmin_help);
+#endif
+
 	while (1) {
 		int retries;
 
-#ifndef USE_READLINE
-		if (!quiet) {
-			printf("radmin> ");
-			fflush(stdout);
+		line = readline(prompt);
+
+		if (!line) break;
+
+		if (!*line) {
+			radmin_free(line);
+			continue;
 		}
-#else
-		if (!quiet) {
-			line = readline("radmin> ");
 
-			if (!line) break;
-
-			if (!*line) {
-				free(line);
-				continue;
-			}
-
-#ifdef USE_READLINE_HISTORY
-			add_history(line);
-#endif
-		} else		/* quiet, or no readline */
-#endif
-		{
-			line = fgets(buffer, sizeof(buffer), inputfp);
-			if (!line) break;
-
-			p = strchr(buffer, '\n');
-			if (!p) {
-				fprintf(stderr, "%s: Input line too long\n",
-					progname);
-				exit(EXIT_FAILURE);
-			}
-
-			*p = '\0';
-
-			/*
-			 *	Strip off leading spaces.
-			 */
-			for (p = line; *p != '\0'; p++) {
-				if ((p[0] == ' ') ||
-				    (p[0] == '\t')) {
-					line = p + 1;
-					continue;
-				}
-
-				if (p[0] == '#') {
-					line = NULL;
-					break;
-				}
-
-				break;
-			}
-
-			/*
-			 *	Comments: keep going.
-			 */
-			if (!line) continue;
-
-			/*
-			 *	Strip off CR / LF
-			 */
-			for (p = line; *p != '\0'; p++) {
-				if ((p[0] == '\r') ||
-				    (p[0] == '\n')) {
-					p[0] = '\0';
-					break;
-				}
-			}
-		}
+		if (!quiet) add_history(line);
 
 		if (strcmp(line, "reconnect") == 0) {
 			if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
-			line = NULL;
+			radmin_free(line);
 			continue;
 		}
 
@@ -813,7 +932,7 @@ int main(int argc, char **argv)
 				secret = line + 7;
 				do_challenge(sockfd);
 			}
-			line = NULL;
+			radmin_free(line);
 			continue;
 		}
 
@@ -827,7 +946,7 @@ int main(int argc, char **argv)
 
 		if (server && !secret) {
 			fprintf(stderr, "ERROR: You must enter 'secret <SECRET>' before running any commands\n");
-			line = NULL;
+			radmin_free(line);
 			continue;
 		}
 
@@ -841,7 +960,7 @@ int main(int argc, char **argv)
 		}
 
 	retry:
-		len = run_command(sockfd, line, buffer, sizeof(buffer));
+		len = run_command(sockfd, line, io_buffer, sizeof(io_buffer));
 		if (len < 0) {
 			if (!quiet) fprintf(stderr, "... reconnecting ...\n");
 
@@ -856,17 +975,18 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 
 		} else if (len == FR_CONDUIT_SUCCESS) {
+			radmin_free(line);
 			continue;
 
 		} else if (len == FR_CONDUIT_PARTIAL) {
+			radmin_free(line);
 			continue;
 
 		} else if (len == FR_CONDUIT_FAIL) {
+			radmin_free(line);
 			exit_status = EXIT_FAILURE;
 		}
 	}
-
-	fprintf(stdout, "\n");
 
 	if (inputfp != stdin) fclose(inputfp);
 
@@ -874,4 +994,3 @@ int main(int argc, char **argv)
 
 	return exit_status;
 }
-

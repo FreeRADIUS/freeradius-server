@@ -610,10 +610,18 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, UNUSED void 
 }
 
 
-static int mod_instantiate(UNUSED void *instance, UNUSED CONF_SECTION *cs)
+static char const *mod_name(void *instance)
 {
-//	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
 
+	return inst->name;
+}
+
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
+{
+	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+
+	inst->name = talloc_asprintf(inst, "detail polling for files matching %s", inst->filename);
 
 	return 0;
 }
@@ -741,4 +749,5 @@ fr_app_io_t proto_detail_file = {
 	.write			= mod_write,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
+	.get_name		= mod_name,
 };

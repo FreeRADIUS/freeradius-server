@@ -14,19 +14,20 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/fring.c
- * @brief Implementation of a circular buffer with fixed element size.
+/** Implementation of a circular buffer with fixed element size
  *
  * This offers similar functionality to ring_buffer.c, but uses a fixed
  * element size, and expects all elements to be talloced.
+ *
+ * @file src/lib/util/fring.c
  *
  * @copyright 2013  The FreeRADIUS server project
  * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "fring.h"
+
 #include <pthread.h>
 
 /** Standard thread safe circular buffer

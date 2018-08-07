@@ -121,7 +121,7 @@ static int mod_instantiate(rlm_cache_config_t const *config, void *instance, CON
 						   buffer, "modules.rlm_cache.pool", NULL);
 	if (!driver->pool) return -1;
 
-	fr_talloc_link_ctx(driver, driver->pool);	/* Ensure pool is freed */
+	talloc_link_ctx(driver, driver->pool);	/* Ensure pool is freed */
 
 	if (config->max_entries > 0) {
 		ERROR("max_entries is not supported by this driver");

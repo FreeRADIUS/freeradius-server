@@ -15,11 +15,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Encode and decode data in base64 format
  *
- * @file lib/util/base64.h
- * @brief Encode and decode data in base64 format.
+ * @file src/lib/util/base64.h
  *
  * @author Simon Josefsson
  * @copyright 2004, 2005, 2006 Free Software Foundation, Inc.
@@ -30,8 +28,11 @@ RCSIDH(base64_h, "$Id$")
 extern "C" {
 #endif
 
-#include <stddef.h>
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -43,11 +44,10 @@ extern "C" {
 extern char const fr_base64_str[];
 extern char const fr_base64_sextet[];
 
-bool fr_is_base64(char c);
+bool		fr_is_base64(char c);
 
-size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen);
-
-ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inlen);
+size_t		fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen);
+ssize_t		fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 
 #ifdef __cplusplus
 }

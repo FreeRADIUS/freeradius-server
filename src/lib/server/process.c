@@ -48,7 +48,7 @@ extern pid_t radius_pid;
 extern fr_cond_t *debug_condition;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
-extern struct timeval sd_watchdog_interval;
+struct timeval sd_watchdog_interval;
 static fr_event_timer_t const *sd_watchdog_ev;
 #endif
 
@@ -323,9 +323,9 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 /*
  *	Externally-visibly functions.
  */
-int radius_event_init(TALLOC_CTX *ctx)
+int radius_event_init(void)
 {
-	event_list = fr_event_list_alloc(ctx, event_status, NULL);
+	event_list = fr_event_list_alloc(NULL, event_status, NULL);	/* Must not be allocated in mprotected ctx */
 	if (!event_list) return 0;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG

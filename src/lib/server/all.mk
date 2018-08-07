@@ -40,8 +40,8 @@ SOURCES	:= \
 	xlat_tokenize.c
 
 # This lets the linker determine which version of the SSLeay functions to use.
-TGT_LDLIBS	:= $(LIBS) $(LCRYPT) $(GPERFTOOLS_LIBS)
-TGT_LDFLAGS	:= $(LDFLAGS) $(GPERFTOOLS_FLAGS)
+TGT_LDLIBS	:= $(LIBS) $(SYSTEMD_LIBS) $(GPERFTOOLS_LIBS) $(LCRYPT)
+TGT_LDFLAGS	:= $(LDFLAGS) $(SYSTEMD_LDFLAGS) $(GPERFTOOLS_FLAGS)
 
 ifneq ($(OPENSSL_LIBS),)
 TGT_PREREQS	:= libfreeradius-tls.a

@@ -15,25 +15,24 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Utility functions for managing UDP sockets
  *
- * @file lib/util/udp.h
- * @brief Abstraction API for sending and receiving packets on UDP sockets.
+ * @file src/lib/util/udp.h
  *
  * @copyright 2015  The FreeRADIUS server project
  */
 RCSIDH(udp_h, "$Id$")
 
-#include <freeradius-devel/util/base.h>
-
-#ifdef WITH_UDPFROMTO
-#include <freeradius-devel/util/udpfromto.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+#ifdef WITH_UDPFROMTO
+#  include <freeradius-devel/util/udpfromto.h>
+#endif
+#include <freeradius-devel/util/inet.h>
 
 #define UDP_FLAGS_NONE		(0)
 #define UDP_FLAGS_CONNECTED	(1 << 0)

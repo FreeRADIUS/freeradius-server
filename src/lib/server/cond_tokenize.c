@@ -71,7 +71,7 @@ next:
 	case COND_TYPE_EXISTS:
 		rad_assert(c->data.vpt != NULL);
 		if (c->cast) {
-			len = snprintf(p, end - p, "<%s>", fr_int2str(dict_attr_types,
+			len = snprintf(p, end - p, "<%s>", fr_int2str(fr_value_box_type_names,
 								      c->cast->type, "??"));
 			p += len;
 		}
@@ -86,7 +86,7 @@ next:
 		*(p++) = '[';	/* for extra-clear debugging */
 #endif
 		if (c->cast) {
-			len = snprintf(p, end - p, "<%s>", fr_int2str(dict_attr_types, c->cast->type, "??"));
+			len = snprintf(p, end - p, "<%s>", fr_int2str(fr_value_box_type_names, c->cast->type, "??"));
 			RETURN_IF_TRUNCATED(p, len, end - p);
 		}
 
@@ -302,7 +302,7 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 	q = p;
 	while (*q && *q != '>') q++;
 
-	cast = fr_substr2int(dict_attr_types, p, FR_TYPE_INVALID, q - p);
+	cast = fr_substr2int(fr_value_box_type_names, p, FR_TYPE_INVALID, q - p);
 	if (cast == FR_TYPE_INVALID) {
 		*error = "Invalid data type in cast";
 		return -(p - start);

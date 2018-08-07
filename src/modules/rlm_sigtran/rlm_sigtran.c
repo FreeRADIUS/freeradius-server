@@ -328,6 +328,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 					    &inst->conn_conf.sccp_calling, conf) < 0) return -1;
 
 	/*
+	 *	Don't bother starting the sigtran thread if we're
+	 *	just checking the config.
+	 */
+	if (check_config) return 0;
+
+	/*
 	 *	If this is the first instance of rlm_sigtran
 	 *	We spawn a new thread to run all the libosmo-* I/O
 	 *	and events.
@@ -356,6 +362,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static int mod_detach(UNUSED void *instance)
 {
 	rlm_sigtran_t *inst = instance;
+
+	/*
+	 *	If we're just checking the config we didn't start the
+	 *	thread.
+	 */
+	if (check_config) return 0;
 
 	sigtran_client_link_down(&inst->conn);
 

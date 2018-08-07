@@ -1,8 +1,4 @@
 /*
- * print.c	Routines to print stuff.
- *
- * Version:	$Id$
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -16,15 +12,27 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/** Functions to produce and parse the FreeRADIUS presentation format
+ *
+ * @file src/lib/util/print.c
  *
  * @copyright 2000,2006  The FreeRADIUS server project
  */
-
 RCSID("$Id$")
 
-#include	<freeradius-devel/util/base.h>
+#include "print.h"
 
-#include	<ctype.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/talloc.h>
+
+#include <ctype.h>
+#include <string.h>
+#include <talloc.h>
 
 /** Checks for utf-8, taken from http://www.w3.org/International/questions/qa-forms-utf-8
  *

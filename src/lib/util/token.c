@@ -1,9 +1,4 @@
 /*
- * token.c	Read the next token from a string.
- *		Yes it's pretty primitive but effective.
- *
- * Version:	$Id$
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -17,15 +12,25 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * @copyright 2000,2006  The FreeRADIUS server project
  */
 
+/** Tokenisation code and constants
+ *
+ * This is mostly for the attribute filter and user files.
+ *
+ * @file src/lib/util/token.c
+ *
+ * @copyright 2001,2006  The FreeRADIUS server project
+ */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "token.h"
+
+#include <freeradius-devel/util/strerror.h>
 
 #include <ctype.h>
+#include <stdio.h>
+#include <string.h>
 
 const FR_NAME_NUMBER fr_tokens_table[] = {
 	{ "=~", T_OP_REG_EQ,	}, /* order is important! */

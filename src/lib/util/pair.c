@@ -1,8 +1,4 @@
 /*
- * pair.c	Functions to handle VALUE_PAIRs
- *
- * Version:	$Id$
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -16,16 +12,32 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * @copyright 2000,2006  The FreeRADIUS server project
  */
 
+/** AVP manipulation and search API
+ *
+ * @file src/lib/util/pair.c
+ *
+ * @copyright 2000,2006,2015 The FreeRADIUS server project
+ */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "pair.h"
+
+#include <freeradius-devel/rfc2865.h>
+#include <freeradius-devel/attributes.h>
 #include <freeradius-devel/util/regex.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/pair_cursor.h>
 
 #include <ctype.h>
+
+#ifndef NDEBUG
+#  define FREE_MAGIC (0xF4EEF4EE)
+#endif
 
 /** Free a VALUE_PAIR
  *
@@ -2126,7 +2138,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t inlen, cha
 		da = fr_dict_attr_by_type(vp->da, type);
 		if (!da) {
 			fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-					   fr_int2str(dict_attr_types, type, "<INVALID>"), vp->da->name);
+					   fr_int2str(fr_value_box_type_names, type, "<INVALID>"), vp->da->name);
 			return -1;
 		}
 		vp->da = da;
@@ -2921,7 +2933,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" (%s) "
 				     "not found in global dictionary",
 				     file, line, vp->da, vp->da->name,
-				     fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
+				     fr_int2str(fr_value_box_type_names, vp->vp_type, "<INVALID>"));
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
@@ -2931,7 +2943,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
 					     "variant (%s) not found in global dictionary",
 					     file, line, vp->da, vp->da->name,
-					     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+					     fr_int2str(fr_value_box_type_names, vp->da->type, "<INVALID>"));
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
 		}
@@ -2942,8 +2954,8 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 				     "dictionary pointer %p \"%s\" (%s) "
 				     "and global dictionary pointer %p \"%s\" (%s) differ",
 				     file, line, vp->da, vp->da->name,
-				     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"),
-				     da, da->name, fr_int2str(dict_attr_types, da->type, "<INVALID>"));
+				     fr_int2str(fr_value_box_type_names, vp->da->type, "<INVALID>"),
+				     da, da->name, fr_int2str(fr_value_box_type_names, da->type, "<INVALID>"));
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 	}
@@ -2953,8 +2965,8 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR (raw/unknown) attribute %p \"%s\" "
 				     "data type incorrect.  Expected %s, got %s",
 				     file, line, vp->da, vp->da->name,
-				     fr_int2str(dict_attr_types, FR_TYPE_OCTETS, "<INVALID>"),
-				     fr_int2str(dict_attr_types, vp->data.type, "<INVALID>"));
+				     fr_int2str(fr_value_box_type_names, FR_TYPE_OCTETS, "<INVALID>"),
+				     fr_int2str(fr_value_box_type_names, vp->data.type, "<INVALID>"));
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 	} else if (vp->da->type != vp->data.type) {
@@ -2966,8 +2978,8 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
 			     "data type (%s) does not match da type (%s)",
 			     file, line, vp->da, vp->da->name,
-			     fr_int2str(dict_attr_types, vp->data.type, data_type_int),
-			     fr_int2str(dict_attr_types, vp->da->type, da_type_int));
+			     fr_int2str(fr_value_box_type_names, vp->data.type, data_type_int),
+			     fr_int2str(fr_value_box_type_names, vp->da->type, da_type_int));
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 }

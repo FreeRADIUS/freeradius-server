@@ -15,18 +15,18 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** AVP manipulation and search API
  *
- * @file lib/util/pair.h
- * @brief AVP manipulation and search API.
+ * @file src/lib/util/pair.h
  *
  * @copyright 2015 The FreeRADIUS server project
  */
 RCSIDH(pair_h, "$Id$")
 
-#include <freeradius-devel/util/value.h>
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/value.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,7 +35,6 @@ extern "C" {
 #ifdef WITH_VERIFY_PTR
 #  define VP_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
 #  define LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
-#  define PACKET_VERIFY(_x)	(void) talloc_get_type_abort_const(_x, RADIUS_PACKET)
 #else
 /*
  *	Even if were building without WITH_VERIFY_PTR
@@ -48,7 +47,6 @@ extern "C" {
  *	valid to have an empty list.
  */
 #  define LIST_VERIFY(_x)
-#  define PACKET_VERIFY(_x)	fr_cond_assert(_x)
 #endif
 
 /** The type of value a VALUE_PAIR contains

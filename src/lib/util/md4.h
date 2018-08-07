@@ -1,13 +1,19 @@
 #pragma once
-/**
- * $Id$
+/** Structures and prototypes for our local MD4 implementation
  *
  * @note license is LGPL, but largely derived from a public domain source.
  *
- * @file lib/util/md4.h
+ * @file src/lib/util/md4.h
  * @brief Structures and prototypes for md4.
  */
 RCSIDH(md4_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 
 #ifdef HAVE_INTTYPES_H
 #  include <inttypes.h>
@@ -27,9 +33,6 @@ RCSIDH(md4_h, "$Id$")
 #  include <openssl/evp.h>
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifndef MD4_DIGEST_LENGTH
 #  define MD4_DIGEST_LENGTH 16

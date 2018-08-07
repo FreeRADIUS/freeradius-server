@@ -73,12 +73,14 @@ typedef struct rad_request REQUEST;
 extern "C" {
 #endif
 
+#ifdef WITH_TCP
+#  include <freeradius-devel/server/tcp.h>
+#endif
+
 /*
  *	See util.c
  */
 typedef struct request_data_t request_data_t;
-
-
 
 /** Return codes indicating the result of the module call
  *
@@ -374,6 +376,7 @@ typedef enum {
 
 
 /* radiusd.c */
+int		fr_crypt_check(char const *password, char const *reference_crypt);
 
 int		log_err (char *);
 
@@ -449,6 +452,7 @@ void		rad_suid_set_down_uid(uid_t uid);
 void		rad_suid_down(void);
 void		rad_suid_up(void);
 void		rad_suid_down_permanent(void);
+bool		rad_suid_is_down_permanent(void);
 /* regex.c */
 
 #ifdef HAVE_REGEX
@@ -623,6 +627,7 @@ void		thread_pool_stop(void);
 void request_enqueue(REQUEST *request);
 void request_queue_extract(REQUEST *request);
 
+extern struct timeval sd_watchdog_interval;
 REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		       RADCLIENT *client, RAD_REQUEST_FUNP fun);
 
@@ -646,7 +651,7 @@ void			hup_logfile(main_config_t *config);
 
 /* process.c */
 fr_event_list_t *fr_global_event_list(void);
-int radius_event_init(TALLOC_CTX *ctx);
+int radius_event_init(void);
 int radius_event_start(bool spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);

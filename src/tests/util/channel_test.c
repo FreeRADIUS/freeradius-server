@@ -22,16 +22,17 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/channel.h>
+#include <freeradius-devel/io/control.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#include <pthread.h>
+#  include <pthread.h>
 #endif
 
 #include <sys/event.h>
@@ -114,7 +115,7 @@ static void *channel_master(void *arg)
 	 */
 	rcode = fr_channel_signal_open(channel);
 	if (rcode < 0) {
-		fprintf(stderr, "Failed signaling open: %s\n", strerror(errno));
+		fprintf(stderr, "Failed signaling open: %s\n", fr_syserror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -182,7 +183,7 @@ static void *channel_master(void *arg)
 			MPRINT1("Master sent message %d\n", num_messages);
 			rcode = fr_channel_send_request(channel, cd, &reply);
 			if (rcode < 0) {
-				fprintf(stderr, "Failed sending request: %s\n", strerror(errno));
+				fprintf(stderr, "Failed sending request: %s\n", fr_syserror(errno));
 			}
 			rad_assert(rcode == 0);
 			if (reply) {
@@ -203,7 +204,7 @@ check_close:
 			MPRINT1("Master signaling worker to exit.\n");
 			rcode = fr_channel_signal_worker_close(channel);
 			if (rcode < 0) {
-				fprintf(stderr, "Failed signaling close: %s\n", strerror(errno));
+				fprintf(stderr, "Failed signaling close: %s\n", fr_syserror(errno));
 				exit(EXIT_FAILURE);
 			}
 
@@ -219,7 +220,7 @@ check_close:
 		if (num_events < 0) {
 			if (num_events == EINTR) continue;
 
-			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
+			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -348,7 +349,7 @@ static void *channel_worker(void *arg)
 		if (num_events < 0) {
 			if (errno == EINTR) continue;
 
-			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
+			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -439,7 +440,7 @@ static void *channel_worker(void *arg)
 					MPRINT1("\tWorker sending reply to messages %d\n", worker_messages);
 					rcode = fr_channel_send_reply(channel, reply, &cd);
 					if (rcode < 0) {
-						fprintf(stderr, "Failed sending reply: %s\n", strerror(errno));
+						fprintf(stderr, "Failed sending reply: %s\n", fr_syserror(errno));
 					}
 					rad_assert(rcode == 0);
 				}

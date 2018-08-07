@@ -38,6 +38,13 @@ extern "C" {
 typedef struct fr_listen fr_listen_t;
 typedef struct fr_trie_t fr_trie_t;
 
+typedef struct fr_io_stats_t {
+	uint64_t	in;
+	uint64_t	out;
+	uint64_t	dup;
+	uint64_t	dropped;
+} fr_io_stats_t;
+
 /**
  *  Tell an async process function if it should run or exit.
  */
@@ -339,6 +346,9 @@ typedef struct radclient RADCLIENT;
 typedef RADCLIENT *(*fr_io_client_find_t)(void *instance, fr_ipaddr_t const *ipaddr, int ipproto);
 
 typedef void (*fr_io_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
+
+typedef char const *(*fr_io_name_t)(void *instance);
+
 
 #ifdef __cplusplus
 }

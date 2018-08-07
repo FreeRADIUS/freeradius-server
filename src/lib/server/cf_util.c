@@ -842,7 +842,6 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 		new->template = cs->template;
 		new->base = cs->base;
 		new->depth = cs->depth;
-		new->variables = cs->variables;
 	}
 
 	new->item.lineno = cs->item.lineno;

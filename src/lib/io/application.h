@@ -143,6 +143,7 @@ typedef struct {
 	fr_io_process_t			entry_point;	//!< Entry point into the protocol subtype's state machine.
 } fr_app_worker_t;
 
+
 /** Public structure describing an I/O path for a protocol
  *
  * This structure is exported by I/O modules e.g. proto_radius_udp.
@@ -186,6 +187,7 @@ typedef struct {
 	fr_io_connection_set_t		connection_set;	//!< set src/dst IP/port of a connection
 	fr_io_network_get_t		network_get;	//!< get dynamic network information
 	fr_io_client_find_t		client_find;	//!< find radclient
+	fr_io_name_t			get_name;	//!< get the socket name
 
 	void				*private;	//!< any private APIs it needs to export.
 } fr_app_io_t;

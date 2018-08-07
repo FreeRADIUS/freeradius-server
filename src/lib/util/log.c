@@ -14,30 +14,34 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/log.c
- * @brief Support functions for logging in FreeRADIUS libraries.
+/** Support functions for logging in FreeRADIUS libraries
+ *
+ * @file src/lib/util/log.c
  *
  * @copyright 2003,2006  The FreeRADIUS server project
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include "log.h"
 
-/*
- *	Are we using glibc or a close relative?
- */
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+
+#include <fcntl.h>
 #ifdef HAVE_FEATURES_H
 #  include <features.h>
 #endif
-
+#include <stdio.h>
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
 #endif
+#include <time.h>
+#include <unistd.h>
 
-#include <fcntl.h>
-
-FILE *fr_log_fp = NULL;
+FILE	*fr_log_fp = NULL;
+int	fr_debug_lvl = 0;
 
 /** Canonicalize error strings, removing tabs, and generate spaces for error marker
  *

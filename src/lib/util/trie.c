@@ -1,8 +1,4 @@
 /*
- * trie.c	Path-compressed tries
- *
- * Version:	$Id$
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -16,24 +12,23 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/** Path-compressed prefix tries
+ *
+ * @file src/lib/util/trie.c
  *
  * @copyright 2017 Alan DeKok <aland@freeradius.org>
  */
-
 RCSID("$Id$")
 
-
-#include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
-#ifdef TESTING
-#include <freeradius-devel/server/rad_assert.h>
-#else
-#define rad_assert(_x)
-#endif
-#include <string.h>
+#include <freeradius-devel/util/trie.h>
+
 #include <ctype.h>
-#include <errno.h>
+#include <string.h>
 
 /*
  *	This file implements path-compressed, level-compressed
@@ -218,7 +213,7 @@ static void *reparent(TALLOC_CTX *ctx, void *trie)
 	}
 #endif
 
-	rad_assert(IS_NODE(trie));
+	fr_cond_assert(IS_NODE(trie));
 	(void) talloc_steal(ctx, trie);
 	return trie;
 }
@@ -260,7 +255,6 @@ static fr_trie_node_t *fr_trie_node_alloc(fr_trie_t *ft, TALLOC_CTX *ctx, int si
 
 
 #ifdef WITH_TRIE_VERIFY
-#ifndef NDEBUG
 static void *trie_parent(void *trie)
 {
 	/*
@@ -277,10 +271,9 @@ static void *trie_parent(void *trie)
 	}
 #endif
 
-	rad_assert(IS_NODE(trie));
+	fr_cond_assert(IS_NODE(trie));
 	return talloc_parent(trie);
 }
-#endif
 
 /** Verifies that a node is correct, without recursion
  *
@@ -291,10 +284,10 @@ static void fr_trie_node_verify(fr_trie_node_t const *node)
 
 	(void) talloc_get_type_abort_const(node, fr_trie_node_t);
 
-	rad_assert(node->size > 0);
-	rad_assert(node->size <= 8);
-	rad_assert(node->used >= 0);
-	rad_assert(node->used <= (1 << node->size));
+	fr_cond_assert(node->size > 0);
+	fr_cond_assert(node->size <= 8);
+	fr_cond_assert(node->used >= 0);
+	fr_cond_assert(node->used <= (1 << node->size));
 
 	used = 0;
 	for (i = 0; i < (1 << node->size); i++) {
@@ -303,7 +296,7 @@ static void fr_trie_node_verify(fr_trie_node_t const *node)
 		used++;
 	}
 
-	rad_assert(used == node->used);
+	fr_cond_assert(used == node->used);
 }
 
 #ifdef WITH_PATH_COMPRESSION
@@ -314,20 +307,20 @@ static void fr_trie_path_verify(fr_trie_path_t const *path)
 {
 	(void) talloc_get_type_abort_const(path, fr_trie_path_t);
 
-	rad_assert(path->start_bit >= 0);
-	rad_assert(path->start_bit < 8);
-	rad_assert(path->length > 0);
-	rad_assert(path->length < (1 << 20));
-	rad_assert(path->end_bit > 0);
-	rad_assert(path->length < (1 << 20));
-	rad_assert((path->start_bit + path->length) == path->end_bit);
+	fr_cond_assert(path->start_bit >= 0);
+	fr_cond_assert(path->start_bit < 8);
+	fr_cond_assert(path->length > 0);
+	fr_cond_assert(path->length < (1 << 20));
+	fr_cond_assert(path->end_bit > 0);
+	fr_cond_assert(path->length < (1 << 20));
+	fr_cond_assert((path->start_bit + path->length) == path->end_bit);
 
-	rad_assert(path->key != NULL);
-	rad_assert(talloc_parent(path->key) == path);
+	fr_cond_assert(path->key != NULL);
+	fr_cond_assert(talloc_parent(path->key) == path);
 
 	if ((path->start_bit == 0) && (path->length >= 8)) {
-		rad_assert(path->key[0] > ' ');
-		rad_assert(path->key[0] < 0x7f);
+		fr_cond_assert(path->key[0] > ' ');
+		fr_cond_assert(path->key[0] < 0x7f);
 	}
 
 	/*
@@ -337,12 +330,12 @@ static void fr_trie_path_verify(fr_trie_path_t const *path)
 		int i;
 
 		for (i = 1; i < BYTEOF(path->end_bit); i++) {
-			rad_assert(path->key[i] > ' ');
-			rad_assert(path->key[i] < 0x7f);
+			fr_cond_assert(path->key[i] > ' ');
+			fr_cond_assert(path->key[i] < 0x7f);
 		}
 	}
 
-	rad_assert(trie_parent(path->trie) == path);
+	fr_cond_assert(trie_parent(path->trie) == path);
 }
 #endif	/* WITH_PATH_COMPRESSION */
 
@@ -363,7 +356,7 @@ static void fr_trie_verify(void *trie)
 
 		fr_trie_path_verify(path);
 
-		rad_assert(trie_parent(path->trie) == path);
+		fr_cond_assert(trie_parent(path->trie) == path);
 		fr_trie_verify(path->trie);
 		return;
 	}
@@ -375,7 +368,7 @@ static void fr_trie_verify(void *trie)
 	for (i = 0; i < (1 << node->size); i++) {
 		if (!node->trie[i]) continue;
 
-		rad_assert(trie_parent(node->trie[i]) == node);
+		fr_cond_assert(trie_parent(node->trie[i]) == node);
 
 		fr_trie_verify(node->trie[i]);
 	}
@@ -468,7 +461,7 @@ static int fr_trie_path_lcp(uint8_t const *key1, int keylen1, uint8_t const *key
 	int start_byte, end_byte;
 
 	if (!keylen1 || !keylen2) return 0;
-	rad_assert((start_bit & 0x07) == start_bit);
+	fr_cond_assert((start_bit & 0x07) == start_bit);
 
 	end_bit = keylen1;
 	if (end_bit > keylen2) end_bit = keylen2;
@@ -486,7 +479,7 @@ static int fr_trie_path_lcp(uint8_t const *key1, int keylen1, uint8_t const *key
 		}
 
 		s2 = start_bit;
-		rad_assert(s2 <= e2);
+		fr_cond_assert(s2 <= e2);
 
 		xor = key1[0] ^ key2[0];
 
@@ -527,7 +520,7 @@ static int fr_trie_path_lcp(uint8_t const *key1, int keylen1, uint8_t const *key
 	 *	do a separate bit check for the last byte.
 	 */
 	end_byte = BYTEOF(end_bit);
-	rad_assert(start_byte <= end_byte);
+	fr_cond_assert(start_byte <= end_byte);
 
 	bytes = 0;
 
@@ -575,7 +568,7 @@ static int fr_trie_path_lcp(uint8_t const *key1, int keylen1, uint8_t const *key
 		s2 = 0;
 		e2 = 8;
 	} else {
-		rad_assert(end_bit > s2);
+		fr_cond_assert(end_bit > s2);
 		e2 = end_bit - s2;
 		s2 = 0;
 	}
@@ -586,8 +579,8 @@ static int fr_trie_path_lcp(uint8_t const *key1, int keylen1, uint8_t const *key
 	lcp += xor2lcp[xor];
 
 done:
-	rad_assert(lcp <= keylen1);
-	rad_assert(lcp <= keylen2);
+	fr_cond_assert(lcp <= keylen1);
+	fr_cond_assert(lcp <= keylen2);
 	return lcp;
 }
 
@@ -601,10 +594,10 @@ static CC_HINT(nonnull) fr_trie_path_t *fr_trie_path_alloc(fr_trie_t *ft, TALLOC
 	fr_trie_path_t *path;
 	uint8_t *p;
 
-	rad_assert(end_bit < MAX_KEY_BITS);
-	rad_assert(end_bit > 0);
-	rad_assert(start_bit < end_bit);
-	rad_assert(!IS_PATH(trie));
+	fr_cond_assert(end_bit < MAX_KEY_BITS);
+	fr_cond_assert(end_bit > 0);
+	fr_cond_assert(start_bit < end_bit);
+	fr_cond_assert(!IS_PATH(trie));
 
 	path = talloc_zero(ctx, fr_trie_path_t);
 	if (!path) return NULL;
@@ -612,7 +605,7 @@ static CC_HINT(nonnull) fr_trie_path_t *fr_trie_path_alloc(fr_trie_t *ft, TALLOC
 	path->start_bit = start_bit & 0x07;
 	path->length = end_bit - start_bit;
 	path->end_bit = path->start_bit + path->length;
-	rad_assert(path->length > 0);
+	fr_cond_assert(path->length > 0);
 	path->number = ft->number++;
 
 	path->key = p = talloc_memdup(path, key + BYTEOF(start_bit), BYTES(path->end_bit));
@@ -697,7 +690,7 @@ static int fr_trie_path_merge(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_node_t **n
 			return -1;
 		}
 
-		rad_assert(trie == small);
+		fr_cond_assert(trie == small);
 		fr_trie_node_verify(small);
 
 		if (fr_trie_merge(ft, ctx, &trie, small, node, depth) < 0) {
@@ -705,7 +698,7 @@ static int fr_trie_path_merge(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_node_t **n
 			return -1;
 		}
 
-		rad_assert(trie == small);
+		fr_cond_assert(trie == small);
 		fr_trie_node_verify(small);
 		*node_p = small;
 
@@ -738,7 +731,7 @@ static fr_trie_node_t *fr_trie_path_merge_disjoint(fr_trie_t *ft, TALLOC_CTX *ct
 	fr_trie_path_verify(path1);
 	fr_trie_path_verify(path2);
 
-	rad_assert(path1->start_bit == path2->start_bit);
+	fr_cond_assert(path1->start_bit == path2->start_bit);
 
 	/*
 	 *	Figure out which is the shorter of the two paths.
@@ -757,8 +750,8 @@ static fr_trie_node_t *fr_trie_path_merge_disjoint(fr_trie_t *ft, TALLOC_CTX *ct
 	 */
 	size = DEFAULT_SIZE;
 	if (size > td_short->length) size = td_short->length;
-	rad_assert(size > 0);
-	rad_assert(size <= 8);
+	fr_cond_assert(size > 0);
+	fr_cond_assert(size <= 8);
 
 	node = fr_trie_node_alloc(ft, ctx, size);
 	if (!node) {
@@ -814,13 +807,13 @@ static void *fr_trie_path_merge_paths(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_pa
 	fr_trie_path_verify(path1);
 	fr_trie_path_verify(path2);
 
-	rad_assert(path2->length > 0);
-	rad_assert(path1->start_bit == path2->start_bit);
+	fr_cond_assert(path2->length > 0);
+	fr_cond_assert(path1->start_bit == path2->start_bit);
 
 	/*
 	 *	path1 is from the existing trie.  path2 is the path we're trying to insert.
 	 */
-	rad_assert(IS_USER(path2->trie));
+	fr_cond_assert(IS_USER(path2->trie));
 
 	(void) talloc_get_type_abort(path1, fr_trie_path_t);
 
@@ -878,7 +871,7 @@ static void *fr_trie_path_merge_paths(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_pa
 	}
 
 	if (!suffix1) {
-		rad_assert(!IS_PATH(path1->trie));
+		fr_cond_assert(!IS_PATH(path1->trie));
 
 		if (fr_trie_merge(ft, prefix, &prefix->trie, path1->trie, PUT_PATH(suffix2), depth + prefix->length) < 0) {
 			talloc_free(prefix);
@@ -932,7 +925,7 @@ static int fr_trie_path_concatenate(fr_trie_path_t *path,
 {
 	uint8_t *p, *q;
 
-	rad_assert(((start_bit1 + keylen1) & 0x07) == start_bit2);
+	fr_cond_assert(((start_bit1 + keylen1) & 0x07) == start_bit2);
 
 	p = talloc_array(path, uint8_t, BYTES(start_bit1 + keylen1 + keylen2));
 	if (!p) return -1;
@@ -1003,7 +996,7 @@ static void *fr_trie_path_prefix_add(fr_trie_t *ft, TALLOC_CTX *ctx, void *trie,
 		return PUT_PATH(path);
 	}
 
-	rad_assert(IS_PATH(trie));
+	fr_cond_assert(IS_PATH(trie));
 	path = GET_PATH(trie);
 
 	fr_trie_path_verify(path);
@@ -1022,9 +1015,9 @@ static uint16_t get_chunk(uint8_t const *key, int num_bits, int start_bit, int e
 {
 	uint16_t chunk;
 
-	rad_assert(num_bits > 0);
-	rad_assert(num_bits <= 8);
-	rad_assert(start_bit < end_bit);
+	fr_cond_assert(num_bits > 0);
+	fr_cond_assert(num_bits <= 8);
+	fr_cond_assert(start_bit < end_bit);
 
 	/*
 	 *	Load the byte
@@ -1201,7 +1194,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 		for (i = 0; i < (1 << node1->size); i++) {
 			uint16_t j;
 
-			rad_assert(bits < 8);
+			if (!fr_cond_assert(bits < 8)) return -1;
 
 			for (j = 0; j < (1 << bits); j++) {
 				void *subtrie;
@@ -1221,7 +1214,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 				 */
 				subtrie = fr_trie_path_prefix_add(ft, node1, node2->trie[(i << bits) | j],
 								  bits, j, depth);
-				rad_assert(subtrie != NULL);
+				if (!fr_cond_assert(subtrie != NULL)) return -1;
 
 				if (fr_trie_merge(ft, node1, &node1->trie[i],
 						  node1->trie[i], subtrie, depth) < 0) {
@@ -1236,30 +1229,30 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 				 */
 				if (!node1->trie[i]) {
 					subnode = node1->trie[i] = fr_trie_node_alloc(ft, node1, bits);
-					rad_assert(subnode != NULL);
+					if (!fr_cond_assert(subnode != NULL)) return -1;
 
 				} else if (IS_NODE(node1->trie[i])) {
 					subnode = node1->trie[i];
-					rad_assert(IS_NODE(subnode));
+					if (!fr_cond_assert(IS_NODE(subnode))) return -1;
 
 				} else {
 					fr_trie_user_t *user;
 
-					rad_assert(IS_USER(node1->trie[i]));
+					if (!fr_cond_assert(IS_USER(node1->trie[i]))) return -1;
 					user = GET_USER(node1->trie[i]);
 
 					subtrie = user->trie;
 					if (!subtrie) {
 						subnode = user->trie = fr_trie_node_alloc(ft, user, bits);
-						rad_assert(subnode != NULL);
+						if (!fr_cond_assert(subnode != NULL)) return -1;
 
 					} else {
 						/*
 						 *	No path compression here.
 						 */
-						rad_assert(IS_NODE(subtrie));
+						if (!fr_cond_assert(IS_NODE(subtrie))) return -1;
 						subnode = subtrie;
-						rad_assert(subnode->size == bits);
+						if (!fr_cond_assert(subnode->size == bits)) return -1;
 					}
 				}
 
@@ -1277,7 +1270,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 		return 0;
 	}
 
-	rad_assert(0 == 1);
+	fr_cond_assert(0);
 
 	return -1;
 }
@@ -1550,7 +1543,7 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p,
 
 		path = GET_PATH(trie);
 
-		rad_assert((start_bit & 0x07) == path->start_bit);
+		fr_cond_assert((start_bit & 0x07) == path->start_bit);
 
 		/*
 		 *	See how long the common prefix is.
@@ -1565,7 +1558,7 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p,
 		 *	path, and insert the key into it's child.
 		 */
 		if (lcp == path->length) {
-			rad_assert(!IS_PATH(path->trie));
+			fr_cond_assert(!IS_PATH(path->trie));
 
 			return fr_trie_key_insert(ft, path, &path->trie,
 						  key, start_bit + lcp, end_bit, subtrie);
@@ -1592,7 +1585,7 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p,
 insert_node:
 #endif
 
-	rad_assert(IS_NODE(trie));
+	fr_cond_assert(IS_NODE(trie));
 	node = trie;
 	fr_trie_node_verify(node);
 
@@ -1612,7 +1605,7 @@ insert_node:
 
 		node2 = fr_trie_node_alloc(ft, node, size);
 		if (!node2) {
-			rad_assert(0 == 1);
+			fr_cond_assert(0 == 1);
 			MPRINT("FAILED %d\n", __LINE__);
 			return -1;
 		}
@@ -1632,14 +1625,14 @@ insert_node:
 	}
 
 	chunk = get_chunk(key, node->size, start_bit, end_bit);
-	rad_assert(chunk < (1 << node->size));
+	fr_cond_assert(chunk < (1 << node->size));
 
 	incr = (node->trie[chunk] == NULL);
 
 	rcode = fr_trie_key_insert(ft, node, &node->trie[chunk], key, next, end_bit, subtrie);
 	if (rcode < 0) return rcode;
 
-	rad_assert(node->trie[chunk] != NULL);
+	fr_cond_assert(node->trie[chunk] != NULL);
 	node->used += incr;
 
 	return 0;
@@ -1771,7 +1764,7 @@ static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p,
 				}
 			}
 
-			rad_assert(i < (1 << node->size));
+			fr_cond_assert(i < (1 << node->size));
 
 			/*
 			 *	Convert the node to a PATH.
@@ -2034,7 +2027,7 @@ static int fr_trie_key_walk(void *trie, fr_trie_callback_t *cb, int depth, bool 
 	 *	Nothing more to do, retun.
 	 */
 	if (!trie) {
-		rad_assert(depth == 0);
+		fr_cond_assert(depth == 0);
 		return 0;
 	}
 
@@ -2092,7 +2085,7 @@ static int fr_trie_key_walk(void *trie, fr_trie_callback_t *cb, int depth, bool 
 		fr_trie_path_verify(path);
 
 		if (path->start_bit == 0) {
-			rad_assert((depth & 0x07) == 0);
+			fr_cond_assert((depth & 0x07) == 0);
 			memcpy(out, path->key, BYTES(path->length));
 
 		} else {
@@ -2479,7 +2472,7 @@ static int command_verify(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, UN
 #ifdef WITH_TRIE_VERIFY
 	fr_trie_verify(ft->trie);
 #else
-	rad_assert(ft != NULL);
+	fr_cond_assert(ft != NULL);
 #endif
 	return 0;
 }
@@ -2880,7 +2873,7 @@ int main(int argc, char **argv)
 
 	fp = fopen(argv[1], "r");
 	if (!fp) {
-		fprintf(stderr, "Failed opening %s: %s\n", argv[1], strerror(errno));
+		fprintf(stderr, "Failed opening %s: %s\n", argv[1], fr_syserror(errno));
 		exit(1);
 	}
 

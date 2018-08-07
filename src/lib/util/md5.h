@@ -1,13 +1,18 @@
 #pragma once
-/**
- * $Id$
+/** Structures and prototypes for our local MD5 implementation
  *
  * @note license is LGPL, but largely derived from a public domain source.
  *
- * @file lib/util/md5.h
- * @brief Structures and prototypes for md5.
+ * @file src/lib/util/md5.h
  */
 RCSIDH(md5_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 
 #ifdef HAVE_INTTYPES_H
 #  include <inttypes.h>
@@ -25,10 +30,6 @@ RCSIDH(md5_h, "$Id$")
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 #ifndef MD5_DIGEST_LENGTH
