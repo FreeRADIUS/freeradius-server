@@ -303,9 +303,9 @@ void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time
 }
 
 static const char *names[8] = {
-	"us", "10us", "100us",
-	"ms", "10ms", "100ms",
-	"s", "10s"
+	"1us", "10us", "100us",
+	"1ms", "10ms", "100ms",
+	"1s", "10s"
 };
 
 static char const *tab_string = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
