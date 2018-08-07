@@ -1633,26 +1633,26 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 	fr_worker_t const *worker = ctx;
 	fr_time_t when;
 
-	fprintf(fp, "count.in\t%" PRIu64 "\n", worker->stats.in);
-	fprintf(fp, "count.out\t%" PRIu64 "\n", worker->stats.out);
-	fprintf(fp, "count.dup\t%" PRIu64 "\n", worker->stats.dup);
-	fprintf(fp, "count.dropped\t%" PRIu64 "\n", worker->stats.dropped);
-	fprintf(fp, "count.decoded\t%" PRIu64 "\n", worker->num_decoded);
-	fprintf(fp, "count.timeouts\t%" PRIu64 "\n", worker->num_timeouts);
-	fprintf(fp, "count.active\t%" PRIu64 "\n", worker->num_active);
-	fprintf(fp, "count.runnable\t%u\n", fr_heap_num_elements(worker->runnable));
+	fprintf(fp, "count.in\t\t\t%" PRIu64 "\n", worker->stats.in);
+	fprintf(fp, "count.out\t\t\t%" PRIu64 "\n", worker->stats.out);
+	fprintf(fp, "count.dup\t\t\t%" PRIu64 "\n", worker->stats.dup);
+	fprintf(fp, "count.dropped\t\t\t%" PRIu64 "\n", worker->stats.dropped);
+	fprintf(fp, "count.decoded\t\t\t%" PRIu64 "\n", worker->num_decoded);
+	fprintf(fp, "count.timeouts\t\t\t%" PRIu64 "\n", worker->num_timeouts);
+	fprintf(fp, "count.active\t\t\t%" PRIu64 "\n", worker->num_active);
+	fprintf(fp, "count.runnable\t\t\t%u\n", fr_heap_num_elements(worker->runnable));
 
 	when = worker->tracking.predicted;
 	fprintf(fp, "cpu.average_request_time\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	when = worker->tracking.running;
-	fprintf(fp, "cpu.used\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+	fprintf(fp, "cpu.used\t\t\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	when = worker->tracking.waiting;
-	fprintf(fp, "cpu.waiting\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+	fprintf(fp, "cpu.waiting\t\t\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	when = fr_time() - worker->last_event;
-	fprintf(fp, "cpu.event_loop_serviced\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+	fprintf(fp, "cpu.event_loop_serviced\t\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
 	return 0;
 }
