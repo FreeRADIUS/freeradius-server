@@ -1639,34 +1639,38 @@ int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
 	return 7;
 }
 
-static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
 {
 	fr_worker_t const *worker = ctx;
 	fr_time_t when;
 
-	fprintf(fp, "count.in\t\t\t%" PRIu64 "\n", worker->stats.in);
-	fprintf(fp, "count.out\t\t\t%" PRIu64 "\n", worker->stats.out);
-	fprintf(fp, "count.dup\t\t\t%" PRIu64 "\n", worker->stats.dup);
-	fprintf(fp, "count.dropped\t\t\t%" PRIu64 "\n", worker->stats.dropped);
-	fprintf(fp, "count.decoded\t\t\t%" PRIu64 "\n", worker->num_decoded);
-	fprintf(fp, "count.timeouts\t\t\t%" PRIu64 "\n", worker->num_timeouts);
-	fprintf(fp, "count.active\t\t\t%" PRIu64 "\n", worker->num_active);
-	fprintf(fp, "count.runnable\t\t\t%u\n", fr_heap_num_elements(worker->runnable));
+	if ((info->argc == 0) || (strcmp(info->argv[0], "count") == 0)) {
+		fprintf(fp, "count.in\t\t\t%" PRIu64 "\n", worker->stats.in);
+		fprintf(fp, "count.out\t\t\t%" PRIu64 "\n", worker->stats.out);
+		fprintf(fp, "count.dup\t\t\t%" PRIu64 "\n", worker->stats.dup);
+		fprintf(fp, "count.dropped\t\t\t%" PRIu64 "\n", worker->stats.dropped);
+		fprintf(fp, "count.decoded\t\t\t%" PRIu64 "\n", worker->num_decoded);
+		fprintf(fp, "count.timeouts\t\t\t%" PRIu64 "\n", worker->num_timeouts);
+		fprintf(fp, "count.active\t\t\t%" PRIu64 "\n", worker->num_active);
+		fprintf(fp, "count.runnable\t\t\t%u\n", fr_heap_num_elements(worker->runnable));
+	}
 
-	when = worker->tracking.predicted;
-	fprintf(fp, "cpu.average_request_time\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+	if ((info->argc == 0) || (strcmp(info->argv[0], "cpu") == 0)) {
+		when = worker->tracking.predicted;
+		fprintf(fp, "cpu.average_request_time\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
-	when = worker->tracking.running;
-	fprintf(fp, "cpu.used\t\t\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+		when = worker->tracking.running;
+		fprintf(fp, "cpu.used\t\t\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
-	when = worker->tracking.waiting;
-	fprintf(fp, "cpu.waiting\t\t\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+		when = worker->tracking.waiting;
+		fprintf(fp, "cpu.waiting\t\t\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
-	when = fr_time() - worker->last_event;
-	fprintf(fp, "cpu.event_loop_serviced\t\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+		when = fr_time() - worker->last_event;
+		fprintf(fp, "cpu.event_loop_serviced\t\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
-	fr_time_elapsed_fprint(fp, &worker->cpu_time, "cpu.requests", 1);
-	fr_time_elapsed_fprint(fp, &worker->wall_clock, "time.requests", 1);
+		fr_time_elapsed_fprint(fp, &worker->cpu_time, "cpu.requests", 1);
+		fr_time_elapsed_fprint(fp, &worker->wall_clock, "time.requests", 1);
+	}
 
 	return 0;
 }
@@ -1683,6 +1687,7 @@ fr_cmd_table_t cmd_worker_table[] = {
 		.parent = "stats worker",
 		.add_name = true,
 		.name = "self",
+		.syntax = "[(count|cpu)]",
 		.func = cmd_stats_worker,
 		.help = "Show statistics for a specific worker thread.",
 		.read_only = true
