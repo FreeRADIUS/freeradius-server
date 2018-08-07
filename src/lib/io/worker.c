@@ -141,7 +141,9 @@ struct fr_worker_t {
 	fr_heap_t		*time_order;	//!< time ordered heap of requests
 	rbtree_t		*dedup;		//!< de-dup tree
 
-	fr_io_stats_t		stats;
+	fr_io_stats_t		stats;		//!< input / output stats
+	fr_time_elapsed_t	cpu_time;	//!< histogram of total CPU time per request
+	fr_time_elapsed_t	wall_clock;	//!< histogram of wall clock time per request
 
 	uint64_t       		num_decoded;	//!< number of messages which have been decoded
 	uint64_t    		num_timeouts;	//!< number of messages which timed out
@@ -453,6 +455,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	fr_channel_data_t *reply, *cd;
 	fr_channel_t *ch;
 	fr_message_set_t *ms;
+	fr_time_t now;
 
 	REQUEST_VERIFY(request);
 
@@ -461,12 +464,14 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 */
 	rad_assert(request->runnable_id < 0);
 
+	now = fr_time();
+
 	/*
 	 *	If it's a detached request, don't send a real reply.
 	 *	Just toss the request.
 	 */
 	if (request->async->detached) {
-		fr_time_tracking_end(&request->async->tracking, fr_time(), &worker->tracking);
+		fr_time_tracking_end(&request->async->tracking, now, &worker->tracking);
 		goto finished;
 	}
 
@@ -512,7 +517,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	/*
 	 *	The request is done.  Track that.
 	 */
-	fr_time_tracking_end(&request->async->tracking, fr_time(), &worker->tracking);
+	fr_time_tracking_end(&request->async->tracking, now, &worker->tracking);
 	rad_assert(worker->num_active > 0);
 	worker->num_active--;
 
@@ -536,6 +541,12 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 
 	reply->listen = request->async->listen;
 	reply->packet_ctx = request->async->packet_ctx;
+
+	/*
+	 *	Update the various timers.
+	 */
+	fr_time_elapsed_update(&worker->cpu_time, now, now + reply->reply.processing_time);
+	fr_time_elapsed_update(&worker->wall_clock, reply->reply.request_time, now);
 
 	RDEBUG("finished request.");
 
@@ -1653,6 +1664,9 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_
 
 	when = fr_time() - worker->last_event;
 	fprintf(fp, "cpu.event_loop_serviced\t\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+
+	fr_time_elapsed_fprint(fp, &worker->cpu_time, "cpu", 2);
+	fr_time_elapsed_fprint(fp, &worker->wall_clock, "elapsed", 2);
 
 	return 0;
 }
