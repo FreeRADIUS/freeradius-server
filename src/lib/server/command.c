@@ -164,28 +164,35 @@ static fr_cmd_t *fr_command_alloc(TALLOC_CTX *ctx, fr_cmd_t **head, char const *
 
 /*
  *	Validate a name (or syntax)
+ *
+ *	We have to be careful here, because some commands are taken
+ *	from module names, which can be almost anything.
  */
 static bool fr_command_valid_name(char const *name)
 {
-	char const *p;
+	uint8_t const *p;
 
-	for (p = name; *p != '\0'; p++) {
-		if (*p <= ' ') {
+	for (p = (uint8_t const *) name; *p != '\0'; p++) {
+		if (*p < ' ') {
 			fr_strerror_printf("Invalid control character in name");
 			return false;
 		}
-		if (*p > 0x7e) {
-			fr_strerror_printf("Invalid non-ASCII character");
-			return false;
-		}
 
-		if ((*p == '[') || (*p == ']') ||
-		    (*p == '"') || (*p == '\'') ||
-		    (*p == '(') || (*p == ')') ||
-		    (*p == '|') || (*p == '#')) {
+		if (((*p >= ' ') && (*p <= ',')) ||
+		    ((*p >= ':') && (*p <= '@')) ||
+		    ((*p >= '[') && (*p <= '^')) ||
+		    ((*p > 'z') && (*p <= 0xf7)) ||
+		    (*p == '`')) {
 			fr_strerror_printf("Invalid special character");
 			return false;
 		}
+
+		/*
+		 *	Allow valid UTF-8 characters.
+		 */
+		if (fr_utf8_char(p, -1)) continue;
+
+		fr_strerror_printf("Invalid non-UTF8 character in name");
 	}
 
 	return true;
@@ -717,6 +724,10 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	}
 
 	if (name && !fr_command_valid_name(name)) {
+		return -1;
+	}
+
+	if (!fr_command_valid_name(table->name)) {
 		return -1;
 	}
 
