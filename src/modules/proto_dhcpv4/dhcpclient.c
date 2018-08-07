@@ -182,6 +182,16 @@ static RADIUS_PACKET *request_init(char const *filename)
 	for (vp = fr_cursor_init(&cursor, &request->vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
+
+		/*
+		 *	Xlat expansions are not supported. Provide a string value instead.
+		 */
+		if (vp->type == VT_XLAT) {
+			vp->type = VT_DATA;
+			vp->vp_strvalue = vp->xlat;
+			vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
+		}
+
 		/*
 		 *	Allow to set packet type using DHCP-Message-Type
 		 */
