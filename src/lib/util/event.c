@@ -1091,6 +1091,7 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 		memcpy(&ev, ev_p, sizeof(ev));	/* Not const to us */
 
 		rad_assert(*ev_p == ev);
+		rad_assert(talloc_parent(ev) == el);
 
 		/*
 		 *	We can't disarm the linking context due to
