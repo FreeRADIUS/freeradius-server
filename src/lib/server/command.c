@@ -1323,34 +1323,19 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 	return i;
 }
 
-/** Run a particular command
- *
- *  info->argc is left alone, as are all other fields.
- *  If you want to run multiple commands, call fr_command_clear(0, info)
- *  to zero out the relevant information.
- *
- * @param fp   where the output is sent
- * @param fp_err  where the error output is sent
- * @param info the structure describing the command to expand
- * @param read_only whether or not this command should be run in read-only mode.
- * @return
- *	- <0 on error
- *	- 0 the command was run successfully
- */
-int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
+
+static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only, int start, fr_cmd_t *head)
 {
 	int i, rcode;
 	fr_cmd_t *cmd;
 	fr_cmd_info_t my_info;
 
-	cmd = NULL;
+	cmd = head;
 
 	/*
-	 *	Asked to do nothing, do nothing.
+	 *	Loop from "start", trying to find a matching command.
 	 */
-	if (info->argc == 0) return 0;
-
-	for (i = 0; i < info->argc; i++) {
+	for (i = start + 1; i < info->argc; i++) {
 		cmd = info->cmd[i];
 		rad_assert(cmd != NULL);
 
@@ -1358,7 +1343,6 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 		 *	Ignore read-only on intermediate commands.
 		 *	Some may have been automatically allocated
 		 */
-
 		if (cmd->intermediate) continue;
 		break;
 	}
@@ -1389,7 +1373,64 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 	my_info.argv = &info->argv[i + 1];
 	my_info.box = &info->box[i + 1];
 	rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
+
 	return rcode;
+}
+
+
+/** Run a particular command
+ *
+ *  info->argc is left alone, as are all other fields.
+ *  If you want to run multiple commands, call fr_command_clear(0, info)
+ *  to zero out the relevant information.
+ *
+ * @param fp   where the output is sent
+ * @param fp_err  where the error output is sent
+ * @param info the structure describing the command to expand
+ * @param read_only whether or not this command should be run in read-only mode.
+ * @return
+ *	- <0 on error
+ *	- 0 the command was run successfully
+ */
+int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
+{
+	int i, rcode;
+	fr_cmd_t *cmd;
+
+	cmd = NULL;
+
+	/*
+	 *	Asked to do nothing, do nothing.
+	 */
+	if (info->argc == 0) return 0;
+
+	for (i = 0; i < info->argc; i++) {
+		cmd = info->cmd[i];
+		rad_assert(cmd != NULL);
+
+		if (cmd->added_name && (info->argv[i][0] == '*')) {
+			rad_assert(i > 0);
+
+			for (; cmd != NULL; cmd = cmd->next) {
+				if (!cmd->live) continue;
+
+				fprintf(fp, "%s %s\n", info->argv[i - 1], cmd->name);
+				rcode = fr_command_run_partial(fp, fp_err, info, read_only, i, cmd);
+				if (rcode < 0) return rcode;
+			}
+
+			return 0;
+		}
+
+		/*
+		 *	Ignore read-only on intermediate commands.
+		 *	Some may have been automatically allocated
+		 */
+		if (cmd->intermediate) continue;
+		break;
+	}
+
+	return fr_command_run_partial(fp, fp_err, info, read_only, i, cmd);
 }
 
 
@@ -2042,6 +2083,11 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 
 		SKIP_SPACES;
 
+		if ((word[0] == '*') && isspace(word[1]) && cmd->added_name) {
+			p = word + 1;
+			goto skip_matched;
+		}
+
 		SKIP_NAME(cmd->name);
 
 		/*
@@ -2052,6 +2098,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 			goto invalid;
 		}
 
+skip_matched:
 		word = p;
 
 		if (!cmd->intermediate) {
@@ -2099,6 +2146,22 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 				fr_strerror_printf("No cmd at offset %d", argc);
 				goto invalid;
 			}
+		}
+
+		/*
+		 *	Allow wildcards as a primitive "for" loop in
+		 *	some special circumstances.
+		 */
+		if ((word[0] == '*') && isspace(word[1]) && cmd->added_name) {
+			rad_assert(cmd->intermediate);
+			rad_assert(cmd->child != NULL);
+
+			info->argv[argc] = "*";
+			info->cmd[argc] = cmd;
+			word++;
+			cmd = cmd->child;
+			argc++;
+			continue;
 		}
 
 		SKIP_NAME(cmd->name);
