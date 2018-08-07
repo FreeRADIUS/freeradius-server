@@ -71,6 +71,10 @@ typedef struct fr_time_tracking_t {
 	fr_dlist_head_t	list;			//!< for linking a request to various lists
 } fr_time_tracking_t;
 
+typedef struct fr_time_elapsed_t {
+	uint64_t	array[8];		//!< 100ns to 100s
+} fr_time_elapsed_t;
+
 #define NANOSEC (1000000000)
 #define USEC	(1000000)
 
@@ -83,6 +87,8 @@ void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracki
 void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp) CC_HINT(nonnull);
+void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end);
+void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs);
 
 #ifdef __cplusplus
 }
