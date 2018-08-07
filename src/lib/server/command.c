@@ -1324,20 +1324,65 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 }
 
 
-static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only, int start, fr_cmd_t *head)
+/*
+ *	Magic parsing macros
+ */
+#define SKIP_SPACES while (isspace((int) *word)) word++
+
+#define SKIP_NAME(name) do { p = word; q = name; while (*p && *q && (*p == *q)) { \
+				p++; \
+				q++; \
+			} } while (0)
+#define MATCHED_NAME	((!*p || isspace((int) *p)) && !*q)
+#define TOO_FAR		(*p && (*q > *p))
+#define MATCHED_START	((text + start) >= word) && ((text + start) <= p)
+
+static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only, int offset, fr_cmd_t *head)
 {
 	int i, rcode;
-	fr_cmd_t *cmd;
+	fr_cmd_t *start, *cmd = NULL;
 	fr_cmd_info_t my_info;
 
-	cmd = head;
+	rad_assert(head->intermediate);
+	rad_assert(head->child != NULL);
+
+	start = head->child;
+
+	/*
+	 *	Wildcard '*' is at 'offset + 1'.  Then the command to run is at 'offset + 2'.
+	 */
+	rad_assert(info->argc >= (offset + 2));
 
 	/*
 	 *	Loop from "start", trying to find a matching command.
 	 */
-	for (i = start + 1; i < info->argc; i++) {
-		cmd = info->cmd[i];
-		rad_assert(cmd != NULL);
+	for (i = offset + 1; i < info->argc; i++) {
+		char const *p, *q, *word;
+
+		/*
+		 *	Re-parse the input because "*" only picked up
+		 *	the first command, not the rest of them.
+		 */
+		for (cmd = start; cmd != NULL; cmd = cmd->next) {
+			if (!cmd->live) continue;
+
+			word = info->argv[i];
+			SKIP_NAME(cmd->name);
+
+			if (!MATCHED_NAME) continue;
+
+			if (cmd->intermediate) {
+				info->cmd[i] = cmd;
+				start = cmd->child;
+				break;
+			}
+
+			/*
+			 *	Not an intermediate command, we've got
+			 *	to run it.
+			 */
+			break;
+		}
 
 		/*
 		 *	Ignore read-only on intermediate commands.
@@ -1396,6 +1441,7 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 {
 	int i, rcode;
 	fr_cmd_t *cmd;
+	fr_cmd_info_t my_info;
 
 	cmd = NULL;
 
@@ -1415,6 +1461,7 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 				if (!cmd->live) continue;
 
 				fprintf(fp, "%s %s\n", info->argv[i - 1], cmd->name);
+				info->argv[i] = cmd->name;
 				rcode = fr_command_run_partial(fp, fp_err, info, read_only, i, cmd);
 				if (rcode < 0) return rcode;
 			}
@@ -1430,7 +1477,34 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 		break;
 	}
 
-	return fr_command_run_partial(fp, fp_err, info, read_only, i, cmd);
+	if (!cmd) return 0;
+
+	if (!cmd->live) return 0;
+
+	if (!cmd->read_only && read_only) {
+		fprintf(fp_err, "No permissions to run command '%s' help %s\n", cmd->name, cmd->help);
+		return -1;
+	}
+
+	/*
+	 *	Leaf nodes must have a callback.
+	 */
+	rad_assert(cmd->func != NULL);
+
+	// @todo - add cmd->min_argc && cmd->max_argc, to track optional things, varargs, etc.
+
+	/*
+	 *	The arguments have already been verified by
+	 *	fr_command_str_to_argv().
+	 */
+	my_info.argc = info->argc - i - 1;
+	my_info.max_argc = info->max_argc - info->argc;
+	my_info.runnable = true;
+	my_info.argv = &info->argv[i + 1];
+	my_info.box = &info->box[i + 1];
+	rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
+
+	return rcode;
 }
 
 
@@ -1758,19 +1832,6 @@ no_match:
 	*argv_p = NULL;
 	return used;
 }
-
-/*
- *	Magic parsing macros
- */
-#define SKIP_SPACES while (isspace((int) *word)) word++
-
-#define SKIP_NAME(name) do { p = word; q = name; while (*p && *q && (*p == *q)) { \
-				p++; \
-				q++; \
-			} } while (0)
-#define MATCHED_NAME	((!*p || isspace((int) *p)) && !*q)
-#define TOO_FAR		(*p && (*q > *p))
-#define MATCHED_START	((text + start) >= word) && ((text + start) <= p)
 
 static char const *skip_word(char const *text)
 {
