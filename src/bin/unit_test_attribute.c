@@ -862,7 +862,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			if (!feof(fp)) {
 				fprintf(stderr, "Line %d too long in %s\n",
 					lineno, directory);
-				exit(EXIT_FAILURE);
+				goto error;
 			}
 		} else {
 			*p = '\0';
@@ -886,7 +886,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 		q = strchr(p, ' ');
 		if (q && ((size_t)(q - p) > (sizeof(test_type) - 1))) {
 			fprintf(stderr, "Verb \"%.*s\" is too long\n", (int)(q - p), p);
-			exit(EXIT_FAILURE);
+			goto error;
 		}
 
 		if (!q) q = p + strlen(p);
@@ -905,7 +905,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 
 			if (*p != ' ') {
 				fprintf(stderr, "Prerequisite syntax is \"need-feature <feature>\".  Use -f to print features");
-				exit(EXIT_FAILURE);
+				goto error;
 			}
 			p++;
 
