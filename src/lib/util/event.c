@@ -41,6 +41,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/token.h>
+#ifdef DEBUG_THREAD
+#include <pthread.h>
+#endif
 
 #include <sys/stat.h>
 
@@ -296,6 +299,9 @@ typedef struct {
  *
  */
 struct fr_event_list {
+#ifdef DEBUG_THREAD
+	pthread_t		thread;
+#endif
 	fr_heap_t		*times;			//!< of timer events to be executed.
 	rbtree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
 
@@ -984,6 +990,13 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
 {
 	fr_event_timer_t *ev;
 
+#ifdef DEBUG_THREAD
+	pthread_t thread;
+
+	thread = pthread_self();
+	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
+#endif
+
 	if (unlikely(!*ev_p)) return 0;
 	if (!fr_cond_assert(talloc_parent(*ev_p) == el)) return -1;
 
@@ -1043,6 +1056,9 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 			  struct timeval *when, fr_event_cb_t callback, void const *uctx)
 {
 	fr_event_timer_t *ev;
+#ifdef DEBUG_THREAD
+	pthread_t thread;
+#endif
 
 	if (unlikely(!el)) {
 		fr_strerror_printf("Invalid arguments: NULL event list");
@@ -1068,6 +1084,11 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 		fr_strerror_printf("Event loop exiting");
 		return -1;
 	}
+
+#ifdef DEBUG_THREAD
+	thread = pthread_self();
+	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
+#endif
 
 	/*
 	 *	If there is an event, re-use it instead of freeing it
@@ -1823,6 +1844,10 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	}
 	el->kq = -1;	/* So destructor can be used before kqueue() provides us with fd */
 	talloc_set_destructor(el, _event_list_free);
+
+#ifndef NDEBUG
+	el->thread = pthread_self();
+#endif
 
 	el->times = fr_heap_talloc_create(el, fr_event_timer_cmp, fr_event_timer_t, heap_id);
 	if (!el->times) {
