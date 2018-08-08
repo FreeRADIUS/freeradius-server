@@ -544,7 +544,7 @@ static int split(char **input, char **output, bool syntax_string)
 	return 1;
 }
 
-static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **head)
+static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **head, bool allow_varargs)
 {
 	int i, rcode;
 	char *name, *p;
@@ -570,8 +570,13 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 		 *	a known data type.
 		 */
 		if (strcmp(name, "...") == 0) {
+			if (!allow_varargs) {
+				fr_strerror_printf("Varargs MUST NOT be in an [...] or (...) syntax.");
+				return -1;
+			}
+
 			if (!prev || *p) {
-				fr_strerror_printf("Varargs MUST be the last argument in the syntax list");
+				fr_strerror_printf("Varargs MUST be the last argument in the syntax list.");
 				return -1;
 			}
 
@@ -586,6 +591,7 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			argv = talloc_zero(ctx, fr_cmd_argv_t);
 			argv->name = name;
 			argv->type = FR_TYPE_VARARGS;
+			allow_varargs = false;
 
 		} else if (name[0] == '[') {
 			/*
@@ -604,7 +610,10 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			*q = '\0';
 			child = NULL;
 
-			rcode = fr_command_add_syntax(option, option, &child);
+			/*
+			 *	varargs can't be inside an optional block
+			 */
+			rcode = fr_command_add_syntax(option, option, &child, false);
 			if (rcode < 0) return rcode;
 
 			argv = talloc_zero(ctx, fr_cmd_argv_t);
@@ -645,7 +654,11 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 				if (rcode == 0) break;
 
 				sub = NULL;
-				rcode = fr_command_add_syntax(option, word, &sub);
+
+				/*
+				 *	varargs can't be inside an alternation block
+				 */
+				rcode = fr_command_add_syntax(option, word, &sub, false);
 				if (rcode < 0) return rcode;
 
 				choice = talloc_zero(option, fr_cmd_argv_t);
@@ -850,7 +863,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	if (table->syntax) {
 		char *syntax = talloc_strdup(talloc_ctx, table->syntax);
 
-		argc = fr_command_add_syntax(syntax, syntax, &syntax_argv);
+		argc = fr_command_add_syntax(syntax, syntax, &syntax_argv, true);
 		if (argc < 0) return -1;
 
 		/*
