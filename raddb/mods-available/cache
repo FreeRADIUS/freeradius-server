@@ -50,7 +50,7 @@ cache {
 #			start = ${thread[pool].num_workers}
 #			min = ${thread[pool].num_workers}
 #			max = ${thread[pool].num_workers}
-#			spare = ${thread[pool].max_spare_servers}
+#			spare = 1
 #			uses = 0
 #			lifetime = 0
 #			idle_timeout = 60
@@ -87,7 +87,7 @@ cache {
 #			start = ${thread[pool].num_workers}
 #			min = ${thread[pool].num_workers}
 #			max = ${thread[pool].num_workers}
-#			spare = ${thread[pool].max_spare_servers}
+#			spare = 1
 #			uses = 0
 #			lifetime = 0
 #			idle_timeout = 60

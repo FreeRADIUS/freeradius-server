@@ -520,7 +520,7 @@ ldap {
 		#
 		#  NOTE: Idle connections WILL be closed if "idle_timeout"
 		#  is set.  This should be less than or equal to "max" above.
-		spare = ${thread[pool].max_spare_servers}
+		spare = 1
 
 		#  Number of uses before the connection is closed
 		#
