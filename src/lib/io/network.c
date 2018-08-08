@@ -48,7 +48,7 @@ RCSID("$Id$")
 #define DEBUG3(fmt, ...) if (nr->lvl >= L_DBG_LVL_3) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
 #define ERROR(fmt, ...) fr_log(nr->log, L_ERR, fmt, ## __VA_ARGS__)
 
-#define MAX_WORKERS 32
+#define MAX_WORKERS 64
 
 fr_thread_local_setup(fr_ring_buffer_t *, fr_network_rb)	/* macro */
 

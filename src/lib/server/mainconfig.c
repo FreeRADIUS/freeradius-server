@@ -368,7 +368,7 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	memcpy(&value, out, sizeof(value));
 
 	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, >, 0);
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <, 1024);
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <, 64);
 
 	memcpy(out, &value, sizeof(value));
 
