@@ -1921,7 +1921,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	el->kq = -1;	/* So destructor can be used before kqueue() provides us with fd */
 	talloc_set_destructor(el, _event_list_free);
 
-#ifndef NDEBUG
+#ifdef DEBUG_THREAD
 	el->thread = pthread_self();
 #endif
 
