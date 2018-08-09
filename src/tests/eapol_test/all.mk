@@ -123,7 +123,9 @@ $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.
 	${Q}printf "Starting EAP test server... "
 	${Q}if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
 		echo "FAILED STARTING RADIUSD"; \
-		tail -n 40 "$(RADIUS_LOG)"; \
+		echo "---------- log ----------"; \
+		cat "$(RADIUS_LOG)"; \
+		echo "---------- log ----------"; \
 		echo "Last entries in server log ($(RADIUS_LOG)):"; \
 	else \
 		echo "ok"; \
