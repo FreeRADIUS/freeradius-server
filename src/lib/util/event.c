@@ -83,6 +83,7 @@ static FR_NAME_NUMBER const kevent_filter_table[] = {
  *
  */
 struct fr_event_timer {
+	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
 	struct timeval		when;			//!< When this timer should fire.
 	fr_event_cb_t		callback;		//!< Callback to execute when the timer fires.
 	void const		*uctx;			//!< Context pointer to pass to the callback.
@@ -985,7 +986,7 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
 	fr_event_timer_t *ev;
 
 	if (unlikely(!*ev_p)) return 0;
-	if (!fr_cond_assert(talloc_parent(*ev_p) == el)) return -1;
+	if (!fr_cond_assert((*ev_p)->el == el)) return -1;
 
 	memcpy(&ev, ev_p, sizeof(ev));
 	return talloc_free(ev);
@@ -1000,7 +1001,7 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
  */
 static int _event_timer_free(fr_event_timer_t *ev)
 {
-	fr_event_list_t	*el = talloc_parent(ev);
+	fr_event_list_t	*el = ev->el;
 	fr_event_timer_t const **ev_p;
 	int		ret;
 
@@ -1113,6 +1114,7 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 		(void) fr_heap_extract(el->times, ev);
 	}
 
+	ev->el = el;
 	ev->when = *when;
 	ev->callback = callback;
 	ev->uctx = uctx;
