@@ -382,7 +382,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	non-zero networks and workers.
 	 */
 	if (!el && (!max_networks || !max_workers)) {
-		fr_strerror_printf("Must specify the number of networks and workers");
+		fr_strerror_printf("Must specify the number of networks (%d >= 0) and workers (%d > 0)",
+			max_networks, max_workers);
 		return NULL;
 	}
 
