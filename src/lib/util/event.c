@@ -41,9 +41,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/token.h>
-#ifdef DEBUG_THREAD
-#include <pthread.h>
-#endif
 
 #include <sys/stat.h>
 
@@ -299,9 +296,6 @@ typedef struct {
  *
  */
 struct fr_event_list {
-#ifdef DEBUG_THREAD
-	pthread_t		thread;
-#endif
 	fr_heap_t		*times;			//!< of timer events to be executed.
 	rbtree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
 
@@ -623,13 +617,6 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 	fr_event_list_t		*el = talloc_get_type_abort(talloc_parent(ef), fr_event_list_t);
 	fr_event_funcs_t	funcs;
 
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
-
 	/*
 	 *	Already been removed from the various trees and
 	 *	the event loop.
@@ -709,13 +696,6 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 {
 	fr_event_fd_t	*ef, find;
-
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
 
 	memset(&find, 0, sizeof(find));
 	find.fd = fd;
@@ -846,13 +826,6 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	fr_event_fd_t		find, *ef;
 	fr_event_funcs_t	active;
 	struct kevent		evset[10];
-
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
 
 	if (unlikely(!el)) {
 		fr_strerror_printf("Invalid argument: NULL event list");
@@ -990,13 +963,6 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 {
 	fr_event_io_func_t funcs =  { .read = read_fn, .write = write_fn };
 
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
-
 	if (unlikely(!read_fn && !write_fn)) {
 		fr_strerror_printf("Invalid arguments: All callbacks are NULL");
 		return -1;
@@ -1017,13 +983,6 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
 {
 	fr_event_timer_t *ev;
-
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
 
 	if (unlikely(!*ev_p)) return 0;
 	if (!fr_cond_assert(talloc_parent(*ev_p) == el)) return -1;
@@ -1084,13 +1043,6 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 			  struct timeval *when, fr_event_cb_t callback, void const *uctx)
 {
 	fr_event_timer_t *ev;
-
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
 
 	if (unlikely(!el)) {
 		fr_strerror_printf("Invalid arguments: NULL event list");
@@ -1249,13 +1201,6 @@ uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t call
 {
 	fr_event_user_t *user;
 
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
-
 	user = talloc(el, fr_event_user_t);
 	user->callback = callback;
 	user->uctx = uctx;
@@ -1278,13 +1223,6 @@ uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t call
 int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t callback, void *uctx)
 {
 	fr_event_user_t *user, *next;
-
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
 
 	for (user = fr_dlist_head(&el->user_callbacks);
 	     user != NULL;
@@ -1318,13 +1256,6 @@ int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void
 {
 	fr_event_pre_t *pre;
 
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
-
 	pre = talloc(el, fr_event_pre_t);
 	pre->callback = callback;
 	pre->uctx = uctx;
@@ -1346,13 +1277,6 @@ int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void
 int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx)
 {
 	fr_event_pre_t *pre, *next;
-
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
 
 	for (pre = fr_dlist_head(&el->pre_callbacks);
 	     pre != NULL;
@@ -1386,13 +1310,6 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_cb_t callback, void *uctx
 {
 	fr_event_post_t *post;
 
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
-
 	post = talloc(el, fr_event_post_t);
 	post->callback = callback;
 	post->uctx = uctx;
@@ -1414,13 +1331,6 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_cb_t callback, void *uctx
 int fr_event_post_delete(fr_event_list_t *el, fr_event_cb_t callback, void *uctx)
 {
 	fr_event_post_t *post, *next;
-
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
 
 	for (post = fr_dlist_head(&el->post_callbacks);
 	     post != NULL;
@@ -1883,13 +1793,6 @@ static int _event_list_free(fr_event_list_t *el)
 {
 	fr_event_timer_t const *ev;
 
-#ifdef DEBUG_THREAD
-	pthread_t thread;
-
-	thread = pthread_self();
-	rad_assert(pthread_equal(thread, el->thread) != 0); /* 0 means not equal */
-#endif
-
 	while ((ev = fr_heap_peek(el->times)) != NULL) fr_event_timer_delete(el, &ev);
 
 	talloc_free_children(el);
@@ -1920,10 +1823,6 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	}
 	el->kq = -1;	/* So destructor can be used before kqueue() provides us with fd */
 	talloc_set_destructor(el, _event_list_free);
-
-#ifdef DEBUG_THREAD
-	el->thread = pthread_self();
-#endif
 
 	el->times = fr_heap_talloc_create(el, fr_event_timer_cmp, fr_event_timer_t, heap_id);
 	if (!el->times) {
