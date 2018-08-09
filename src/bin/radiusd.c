@@ -714,7 +714,10 @@ int main(int argc, char *argv[])
 					networks, workers,
 					thread_instantiate,
 					config->root_cs);
-		if (!sc) EXIT_WITH_FAILURE;
+		if (!sc) {
+			PERROR("Failed starting the scheduler: %s", fr_strerror());
+			EXIT_WITH_FAILURE;
+		}
 
 		/*
 		 *	Tell the virtual servers to open their sockets.
