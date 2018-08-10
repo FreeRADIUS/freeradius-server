@@ -70,6 +70,7 @@ typedef struct fr_network_worker_t {
 } fr_network_worker_t;
 
 typedef struct fr_network_socket_t {
+	fr_network_t		*nr;			//!< O(N) issues in talloc
 	int			fd;			//!< file descriptor
 	int			number;			//!< unique ID
 	int			heap_id;		//!< for the sockets_by_num heap
@@ -404,7 +405,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 {
 	int num_messages = 0;
 	fr_network_socket_t *s = ctx;
-	fr_network_t *nr = talloc_parent(s);
+	fr_network_t *nr = s->nr;
 	ssize_t data_size;
 	fr_channel_data_t *cd, *next;
 	fr_time_t *recv_time;
@@ -551,7 +552,7 @@ next_message:
 static void fr_network_vnode_extend(UNUSED fr_event_list_t *el, int sockfd, int fflags, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
-	fr_network_t *nr = talloc_parent(s);
+	fr_network_t *nr = s->nr;
 
 	fr_cond_assert(s->fd == sockfd);
 
@@ -582,7 +583,7 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		s->listen->app_io->error(s->listen->app_io_instance);
 	}
 
-	fr_network_socket_dead(talloc_parent(s), s);
+	fr_network_socket_dead(s->nr, s);
 }
 
 
@@ -597,10 +598,9 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 {
 	fr_network_socket_t *s = ctx;
 	fr_listen_t const *listen = s->listen;
-	fr_network_t *nr;
+	fr_network_t *nr = s->nr;
 	fr_channel_data_t *cd;
 
-	nr = talloc_parent(s);
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
 	rad_assert(s->pending != NULL);
@@ -699,7 +699,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 
 static int _network_socket_free(fr_network_socket_t *s)
 {
-	fr_network_t *nr = talloc_parent(s);
+	fr_network_t *nr = s->nr;
 	fr_channel_data_t *cd;
 
 	if (!s->dead) {
@@ -756,6 +756,8 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	s = talloc_zero(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
+
+	s->nr = nr;
 	memcpy(&s->listen, data, sizeof(s->listen));
 	s->number = nr->num_sockets++;
 
@@ -831,6 +833,8 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 
 	s = talloc_zero(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
+
+	s->nr = nr;
 	memcpy(&s->listen, data, sizeof(s->listen));
 	s->number = nr->num_sockets++;
 
