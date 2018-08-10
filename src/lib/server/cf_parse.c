@@ -941,7 +941,7 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
 			CONF_PAIR *cp;
 
 			cp = cf_item_to_pair(ci);
-			if (cp->parsed || (ci->lineno < 0)) continue;
+			if (cp->parsed || cp->referenced || (ci->lineno < 0)) continue;
 
 			WARN("%s[%d]: The item '%s' is defined, but is unused by the configuration",
 			     ci->filename, ci->lineno,
