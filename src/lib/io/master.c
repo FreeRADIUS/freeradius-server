@@ -62,6 +62,7 @@ typedef enum {
  *
  */
 typedef struct fr_io_client_t {
+	void				*parent;	//!< talloc parent sucks
 	fr_io_client_state_t		state;		//!< state of this client
 	fr_ipaddr_t			src_ipaddr;	//!< packets come from this address
 	fr_ipaddr_t			network;	//!< network for dynamic clients
@@ -439,6 +440,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 
 	MEM(connection->client = talloc_named(NULL, sizeof(fr_io_client_t), "fr_io_client_t"));
 	memset(connection->client, 0, sizeof(*connection->client));
+
+	connection->client->parent = connection;
 	MEM(connection->client->radclient = radclient = radclient_clone(connection->client, client->radclient));
 
 	talloc_set_destructor(connection, connection_free);
@@ -726,7 +729,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 		track->client = client;
 		if (client->connected) {
-			fr_io_connection_t *connection = talloc_parent(client);
+			fr_io_connection_t *connection = client->parent;
 
 			track->address = connection->address;
 		}
@@ -1194,6 +1197,7 @@ do_read:
 		MEM(client = talloc_named(NULL, sizeof(fr_io_client_t), "fr_io_client_t"));
 		memset(client, 0, sizeof(*client));
 
+		client->parent = inst;
 		client->state = state;
 		client->src_ipaddr = radclient->ipaddr;
 		client->radclient = radclient;
@@ -1591,7 +1595,7 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 
 	// @todo - print out what we plan on doing next
 
-	get_inst(talloc_parent(client), &inst, &connection, NULL);
+	get_inst(client->parent, &inst, &connection, NULL);
 
 	rad_assert(client->state != PR_CLIENT_STATIC);
 
