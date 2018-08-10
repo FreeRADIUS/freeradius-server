@@ -105,6 +105,7 @@ typedef struct fr_io_instance_t {
 	fr_trie_t			*trie;				//!< trie of clients
 	fr_trie_t const			*networks;     			//!< trie of allowed networks
 	fr_heap_t			*pending_clients;		//!< heap of pending clients
+	fr_heap_t			*alive_clients;			//!< heap of active clients
 } fr_io_instance_t;
 
 extern fr_app_io_t fr_master_app_io;
