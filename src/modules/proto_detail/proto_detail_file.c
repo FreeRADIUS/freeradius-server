@@ -393,7 +393,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	}
 	opened = true;
 
-	if (!fr_schedule_socket_add(inst->parent->sc, listen)) {
+	if (!fr_schedule_listen_add(inst->parent->sc, listen)) {
 	error:
 		if (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
 			PERROR("Failed removing DELETE callback when opening work file");

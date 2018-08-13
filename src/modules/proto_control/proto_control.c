@@ -413,7 +413,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		 *	Add the socket to the scheduler, which might
 		 *	end up in a different thread.
 		 */
-		if (!fr_schedule_socket_add(sc, listen)) {
+		if (!fr_schedule_listen_add(sc, listen)) {
 			talloc_free(listen);
 			return -1;
 		}

@@ -628,7 +628,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	}
 
 	DEBUG("proto_%s - starting connection %s", inst->app_io->name, connection->name);
-	connection->nr = fr_schedule_socket_add(inst->sc, connection->listen);
+	connection->nr = fr_schedule_listen_add(inst->sc, connection->listen);
 	if (!connection->nr) {
 		ERROR("proto_%s - Failed inserting connection into scheduler.  Closing it, and diuscarding all packets for connection %s.", inst->app_io->name, connection->name);
 		pthread_mutex_lock(&client->mutex);

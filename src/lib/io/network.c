@@ -1358,12 +1358,12 @@ void fr_network_exit(fr_network_t *nr)
 	fr_event_loop_exit(nr->el, 1);
 }
 
-/** Add a socket to a network
+/** Add a fr_listen_t to a network
  *
  * @param nr		the network
  * @param listen	Functions and context.
  */
-int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *listen)
+int fr_network_listen_add(fr_network_t *nr, fr_listen_t const *listen)
 {
 	fr_ring_buffer_t *rb;
 

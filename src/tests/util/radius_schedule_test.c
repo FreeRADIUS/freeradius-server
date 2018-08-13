@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
 #endif
 
 	(void) fr_fault_setup(autofree, NULL, argv[0]);
-	(void) fr_schedule_socket_add(sched, &listen);
+	(void) fr_schedule_listen_add(sched, &listen);
 
 	sleep(10);
 
