@@ -945,9 +945,7 @@ cleanup:
 	 */
 	unlang_free();
 
-#if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
 	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
-#endif
 
 	if (config) talloc_memory_report = config->talloc_memory_report;	/* Grab this before we free the config */
 

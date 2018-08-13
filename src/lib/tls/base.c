@@ -467,8 +467,6 @@ void tls_free(void)
 
 	fr_dict_autofree(tls_dict);
 }
-#else
-#define tls_free()
 #endif
 
 
