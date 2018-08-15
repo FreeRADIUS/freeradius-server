@@ -178,7 +178,7 @@ typedef struct {
 	fr_io_signal_t			flush;		//!< Flush the data when the socket is ready for writing.
 
 	fr_io_signal_t			error;		//!< There was an error on the socket.
-	fr_io_open_t			close;		//!< Close the transport.
+	fr_io_close_t			close;		//!< Close the transport.
 
 	fr_io_nak_t			nak;		//!< Function to send a NAK.
 

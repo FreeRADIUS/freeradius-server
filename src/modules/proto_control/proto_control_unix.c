@@ -913,11 +913,12 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 /** Open a UNIX listener for RADIUS
  *
  * @param[in] instance of the RADIUS UNIX I/O path.
+ * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(void *instance, UNUSED void const *master_instance)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
 

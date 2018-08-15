@@ -114,6 +114,7 @@ typedef struct {
 	bool				dead;		//!< roundabout way to get the network side to close a socket
 	bool				paused;		//!< event filter doesn't like resuming something that isn't paused
 	void				*app_io_instance; //!< as described
+	void				*socket_instance; //!< as described
 	fr_event_list_t			*el;		//!< event list for this connection
 	fr_network_t			*nr;		//!< network for this connection
 } fr_io_connection_t;
@@ -556,15 +557,28 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 *	Glue in the connection to the listener.
 		 */
 		listen->app_io = &fr_master_app_io;
-		listen->app_io_instance = connection;
+		listen->app_io_instance = inst->app_io_instance;
 
 		connection->app_io_instance = dl_inst->data;
 
 		/*
 		 *	Bootstrap the configuration.  There shouldn't
 		 *	be need to re-parse it.
+		 *
+		 *	@todo - ATD thread - allocate thread-specific data, and call thread instantiate,
+		 *	instead of app_io->instantiate again.
 		 */
 		memcpy(connection->app_io_instance, inst->app_io_instance, inst->app_io->inst_size);
+
+#if 0
+		/*
+		 *	@todo - start using socket_instance (socket
+		 *	data) as different from app_io_instance
+		 *	(parsed configuration data).
+		 */
+		listen->socket_instance = talloc_memdup(listen, listen->app_io_instance, listen->app_io->inst_size);
+#endif
+
 
 		/*
 		 *	Instantiate the child, and open the socket.
@@ -579,7 +593,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		}
 
 		if (fd < 0) {
-			if (inst->app_io->open(connection->app_io_instance) < 0) {
+			if (inst->app_io->open(connection->app_io_instance, inst->app_io_instance) < 0) {
 				DEBUG("Failed opening connected socket.");
 				talloc_free(dl_inst);
 				return NULL;
@@ -677,7 +691,6 @@ static void get_inst(void *instance, fr_io_instance_t **inst, fr_io_connection_t
 		*connection = instance;
 		*inst = (*connection)->client ->inst;
 		if (app_io_instance) *app_io_instance = (*connection)->app_io_instance;
-
 	}
 }
 
@@ -863,7 +876,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 }
 
 
-/**  Implement 99% of the RADIUS read routines.
+/**  Implement 99% of the read routines.
  *
  *  The app_io->read does the transport-specific data read.
  */
@@ -1503,9 +1516,39 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 	return 0;
 }
 
+/** Open a new listener
+ *
+ * @param[in] instance of the IO path.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+static int mod_open(void *instance, void const *app_instance)
+{
+	fr_io_instance_t *inst;
+	fr_io_connection_t *connection;
+	void *app_io_instance;
+	int rcode;
+
+	get_inst(instance, &inst, &connection, &app_io_instance);
+
+	/*
+	 *	One connection can't open another one.
+	 */
+	rad_assert(connection == NULL);
+
+	rad_assert(app_instance == inst->app_instance);
+
+	rcode = inst->app_io->open(app_io_instance, app_instance);
+	if (rcode < 0) return rcode;
+
+	return rcode;
+}
+
+
 /** Get the file descriptor for this socket.
  *
- * @param[in] const_instance of the RADIUS I/O path.
+ * @param[in] const_instance of the IO path.
  * @return the file descriptor
  */
 static int mod_fd(void const *const_instance)
@@ -1524,7 +1567,7 @@ static int mod_fd(void const *const_instance)
 
 /** Set the event list for a new socket
  *
- * @param[in] instance of the RADIUS I/O path.
+ * @param[in] instance of the IO path.
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
@@ -1918,8 +1961,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		}
 
 		/*
-		 *	We have a real RADIUS packet, write it to the
-		 *	network via the underlying transport write.
+		 *	We have a real packet, write it to the network
+		 *	via the underlying transport write.
 		 */
 
 		packet_len = inst->app_io->write(app_io_instance, track, request_time,
@@ -2225,7 +2268,7 @@ reread:
 
 /** Close the socket.
  *
- * @param[in] instance of the RADIUS I/O path.
+ * @param[in] instance of the IO path.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -2297,9 +2340,8 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 	 */
 	inst->app_io = (fr_app_io_t const *) inst->submodule->module->common;
 
-	inst->app_io_instance = inst->submodule->data;
 	inst->app_io_conf = inst->submodule->conf;
-
+	inst->app_io_instance = inst->submodule->data;
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"proto_%s\"", inst->app_io->name);
@@ -2347,7 +2389,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 						 fr_io_client_t, alive_id));
 	if (inst->app_io->instantiate &&
 	    (inst->app_io->instantiate(inst->app_io_instance,
-					  inst->app_io_conf) < 0)) {
+				       inst->app_io_conf) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"proto_%s\"", inst->app_io->name);
 		return -1;
 	}
@@ -2538,6 +2580,7 @@ fr_app_io_t fr_master_app_io = {
 	.write			= mod_write,
 	.inject			= mod_inject,
 
+	.open			= mod_open,
 	.close			= mod_close,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,

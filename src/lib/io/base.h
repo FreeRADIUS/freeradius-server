@@ -79,12 +79,13 @@ typedef struct fr_channel_t fr_channel_t;
  *
  * No data will be read from or written to the fd, except by the io_data callbacks here.
  *
- * @param[in] instance the context for this function
+ * @param[in] instance the instance carrying socket-specific information.
+ * @param[in] master_instance the master configuration for this socket
  * @return
  *	- 0 on success
  *	- <0 on error
  */
-typedef int (*fr_io_open_t)(void *instance);
+typedef int (*fr_io_open_t)(void *instance, void const *master_instance);
 
 /** Return a selectable file descriptor for this I/O path
  *
@@ -303,7 +304,7 @@ typedef void (*fr_io_data_vnode_t)(void *instance, uint32_t fflags);
  */
 typedef int (*fr_io_data_cmp_t)(void const *instance, void const *packet1, void const *packet2);
 
-/**  Handle a close or error on the socket.
+/**  Handle an error on the socket.
  *
  *  In general, the only thing to do on errors is to close the
  *  transport.  But on error, the "error" function will be called
@@ -316,6 +317,20 @@ typedef int (*fr_io_data_cmp_t)(void const *instance, void const *packet1, void 
  *	- <0 on error
  */
 typedef int (*fr_io_signal_t)(void const *instance);
+
+/**  Handle a close on the socket.
+ *
+ *  In general, the only thing to do on errors is to close the
+ *  transport.  But on error, the "error" function will be called
+ *  before "close".  On normal finish, the "close" function will be
+ *  called.
+ *
+ * @param[in] instance		the context for this function
+ * @return
+ *	- 0 on success
+ *	- <0 on error
+ */
+typedef int (*fr_io_close_t)(void *instance);
 
 /** Process a request through the transport async state machine.
  *

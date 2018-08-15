@@ -308,11 +308,12 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
 /** Open a UDP listener for RADIUS
  *
  * @param[in] instance of the RADIUS UDP I/O path.
+ * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(void *instance, UNUSED void const *master_instance)
 {
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 

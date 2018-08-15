@@ -135,6 +135,9 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
 
+	// @todo - copy the rest of the code from proto_control_unix,
+	// or put it into a library and deal with it there...
+
 	/*
 	 *	proto_control sets the priority
 	 */
@@ -217,11 +220,12 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
 /** Open a TCP listener for RADIUS
  *
  * @param[in] instance of the RADIUS TCP I/O path.
+ * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(void *instance, UNUSED void const *master_instance)
 {
 	proto_control_tcp_t *inst = talloc_get_type_abort(instance, proto_control_tcp_t);
 
