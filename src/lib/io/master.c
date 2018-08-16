@@ -1027,6 +1027,7 @@ redo:
 		socklen_t salen;
 
 		salen = sizeof(saremote);
+#
 
 		/*
 		 *	We're a TCP socket but are NOT connected.  We
@@ -1045,6 +1046,10 @@ redo:
 			      inst->app->name, inst->transport, fr_syserror(errno));
 			return 0;
 		}
+
+#ifdef __clang_analyzer__
+		saremote.ss_family = AF_INET; /* clang doesn't know that accept() initializes this */
+#endif
 
 		/*
 		 *	Get IP addresses only if we have IP addresses.
