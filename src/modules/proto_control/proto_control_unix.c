@@ -1227,25 +1227,12 @@ static RADCLIENT *mod_client_find(void *instance, UNUSED fr_ipaddr_t const *ipad
 	return &inst->radclient;
 }
 
-#if 0
-static int mod_detach(void *instance)
-{
-	proto_control_unix_t	*inst = talloc_get_type_abort(instance, proto_control_unix_t);
-
-	if (inst->sockfd >= 0) close(inst->sockfd);
-	inst->sockfd = -1;
-
-	return 0;
-}
-#endif
-
 extern fr_app_io_t proto_control_unix;
 fr_app_io_t proto_control_unix = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "control_unix",
 	.config			= unix_listen_config,
 	.inst_size		= sizeof(proto_control_unix_t),
-//	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,

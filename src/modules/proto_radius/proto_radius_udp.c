@@ -561,25 +561,12 @@ static RADCLIENT *mod_client_find(void *instance, fr_ipaddr_t const *ipaddr, int
 	return client_find(NULL, ipaddr, ipproto);
 }
 
-#if 0
-static int mod_detach(void *instance)
-{
-	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
-
-	if (inst->sockfd >= 0) close(inst->sockfd);
-	inst->sockfd = -1;
-
-	return 0;
-}
-#endif
-
 extern fr_app_io_t proto_radius_udp;
 fr_app_io_t proto_radius_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_udp",
 	.config			= udp_listen_config,
 	.inst_size		= sizeof(proto_radius_udp_t),
-//	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,

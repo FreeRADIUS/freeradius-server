@@ -535,25 +535,12 @@ static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipad
 	return client_find(NULL, ipaddr, ipproto);
 }
 
-#if 0
-static int mod_detach(void *instance)
-{
-	proto_control_tcp_t	*inst = talloc_get_type_abort(instance, proto_control_tcp_t);
-
-	if (inst->sockfd >= 0) close(inst->sockfd);
-	inst->sockfd = -1;
-
-	return 0;
-}
-#endif
-
 extern fr_app_io_t proto_control_tcp;
 fr_app_io_t proto_control_tcp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "control_tcp",
 	.config			= tcp_listen_config,
 	.inst_size		= sizeof(proto_control_tcp_t),
-//	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,

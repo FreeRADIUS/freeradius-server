@@ -736,25 +736,12 @@ static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipad
 	return client_find(NULL, ipaddr, ipproto);
 }
 
-#if 0
-static int mod_detach(void *instance)
-{
-	proto_dhcpv4_udp_t	*inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
-
-	if (inst->sockfd >= 0) close(inst->sockfd);
-	inst->sockfd = -1;
-
-	return 0;
-}
-#endif
-
 extern fr_app_io_t proto_dhcpv4_udp;
 fr_app_io_t proto_dhcpv4_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "dhcpv4_udp",
 	.config			= udp_listen_config,
 	.inst_size		= sizeof(proto_dhcpv4_udp_t),
-//	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 
