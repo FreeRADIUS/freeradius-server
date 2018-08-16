@@ -191,3 +191,10 @@ typedef struct {
 
 	void				*private;	//!< any private APIs it needs to export.
 } fr_app_io_t;
+
+/*
+ *	A common function to get a socket name.
+ */
+char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
+				  fr_ipaddr_t const *src_ipaddr, int src_port,
+				  fr_ipaddr_t const *dst_ipaddr, int dst_port);
