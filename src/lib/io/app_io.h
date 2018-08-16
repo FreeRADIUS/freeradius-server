@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file io/app_.h
+ * @file io/app_io.h
  * @brief Application IO interfaces.
  *
  * @copyright 2018 The FreeRADIUS project
