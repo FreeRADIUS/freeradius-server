@@ -464,7 +464,7 @@ static void request_stats_addvp(REQUEST *request,
 				fr_stats2vp *table, fr_stats_t *stats)
 {
 	int i;
-	fr_uint_t counter;
+	uint64_t counter;
 	VALUE_PAIR *vp;
 
 	for (i = 0; table[i].attribute != 0; i++) {
@@ -472,7 +472,7 @@ static void request_stats_addvp(REQUEST *request,
 				       table[i].attribute, VENDORPEC_FREERADIUS);
 		if (!vp) continue;
 
-		counter = *(fr_uint_t *) (((uint8_t *) stats) + table[i].offset);
+		counter = *(uint64_t *) (((uint8_t *) stats) + table[i].offset);
 		vp->vp_integer = counter;
 	}
 }

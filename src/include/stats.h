@@ -29,29 +29,23 @@ RCSIDH(stats_h, "$Id$")
 extern "C" {
 #endif
 
-#ifdef WITH_STATS_64BIT
-typedef uint64_t fr_uint_t;
-#else
-typedef uint32_t fr_uint_t;
-#endif
-
 #ifdef WITH_STATS
 typedef struct fr_stats_t {
-	fr_uint_t	total_requests;
-	fr_uint_t	total_invalid_requests;
-	fr_uint_t	total_dup_requests;
-	fr_uint_t	total_responses;
-	fr_uint_t	total_access_accepts;
-	fr_uint_t	total_access_rejects;
-	fr_uint_t	total_access_challenges;
-	fr_uint_t	total_malformed_requests;
-	fr_uint_t	total_bad_authenticators;
-	fr_uint_t	total_packets_dropped;
-	fr_uint_t	total_no_records;
-	fr_uint_t	total_unknown_types;
-	fr_uint_t	total_timeouts;
+	uint64_t	total_requests;
+	uint64_t	total_invalid_requests;
+	uint64_t	total_dup_requests;
+	uint64_t	total_responses;
+	uint64_t	total_access_accepts;
+	uint64_t	total_access_rejects;
+	uint64_t	total_access_challenges;
+	uint64_t	total_malformed_requests;
+	uint64_t	total_bad_authenticators;
+	uint64_t	total_packets_dropped;
+	uint64_t	total_no_records;
+	uint64_t	total_unknown_types;
+	uint64_t	total_timeouts;
 	time_t		last_packet;
-	fr_uint_t	elapsed[8];
+	uint64_t	elapsed[8];
 } fr_stats_t;
 
 typedef struct fr_stats_ema_t {
