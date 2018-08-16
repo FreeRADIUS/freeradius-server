@@ -365,7 +365,7 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 	}
 
 	inst->name = fr_app_io_socket_name(inst, &proto_radius_tcp,
-					   NULL, NULL,
+					   NULL, 0,
 					   &inst->ipaddr, inst->port);
 
 	// @todo - also print out auth / acct / coa, etc.
