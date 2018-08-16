@@ -1560,11 +1560,12 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 /** Open a new listener
  *
  * @param[in] instance of the IO path.
+ * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance, void const *app_instance)
+static int mod_open(void *instance, void const *master_instance)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
@@ -1578,9 +1579,9 @@ static int mod_open(void *instance, void const *app_instance)
 	 */
 	rad_assert(connection == NULL);
 
-	rad_assert(app_instance == inst->app_instance);
+	rad_assert(master_instance == inst->app_instance);
 
-	rcode = inst->app_io->open(app_io_instance, app_instance);
+	rcode = inst->app_io->open(app_io_instance, master_instance);
 	if (rcode < 0) return rcode;
 
 	return rcode;
