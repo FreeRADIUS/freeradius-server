@@ -524,27 +524,6 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 		goto error;
 	}
 
-	/*
-	 *	Connect to the client for child sockets.
-	 */
-	if (inst->connection) {
-		socklen_t salen;
-		struct sockaddr_storage src;
-
-		if (fr_ipaddr_to_sockaddr(&inst->connection->src_ipaddr, inst->connection->src_port,
-					  &src, &salen) < 0) {
-			close(sockfd);
-			ERROR("Failed getting IP address");
-			goto error;
-		}
-
-		if (connect(sockfd, (struct sockaddr *) &src, salen) < 0) {
-			close(sockfd);
-			ERROR("Failed in connect: %s", fr_syserror(errno));
-			goto error;
-		}
-	}
-
 	inst->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */

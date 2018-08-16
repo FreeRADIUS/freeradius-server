@@ -598,18 +598,45 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 			return NULL;
 		}
 
+		/*
+		 *	UDP sockets: open a new socket, and then
+		 *	connect it to the client.  This emulates the
+		 *	behavior of accept().
+		 */
 		if (fd < 0) {
+			socklen_t salen;
+			struct sockaddr_storage src;
+
 			if (inst->app_io->open(connection->app_io_instance, inst->app_io_instance) < 0) {
 				DEBUG("Failed opening connected socket.");
 				talloc_free(dl_inst);
 				return NULL;
 			}
-		} else {
-			if (inst->app_io->fd_set(connection->app_io_instance, fd) < 0) {
-				DEBUG3("Failed setting FD to %s", inst->app_io->name);
+			
+
+			fd = inst->app_io->fd(connection->app_io_instance);
+
+			if (fr_ipaddr_to_sockaddr(&connection->address->src_ipaddr, connection->address->src_port, &src, &salen) < 0) {
+				DEBUG("Failed getting IP address");
+				talloc_free(dl_inst);
+				return -1;
+			}
+
+			if (connect(fd, (struct sockaddr *) &src, salen) < 0) {
 				close(fd);
+				ERROR("Failed in connect: %s", fr_syserror(errno));
+				talloc_free(dl_inst);
 				return NULL;
 			}
+		}
+
+		/*
+		 *	Set the new FD, and get the module to set it's connection name.
+		 */
+		if (inst->app_io->fd_set(connection->app_io_instance, fd) < 0) {
+			DEBUG3("Failed setting FD to %s", inst->app_io->name);
+			close(fd);
+			return NULL;
 		}
 
 		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(connection->address->src_ipaddr), 0);
