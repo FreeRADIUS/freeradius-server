@@ -56,8 +56,8 @@ server control {
 			#  The client process is allowed to connect if any of the following
 			#  are true:
 			#
-			#  - The client processes' euid matches FreeRADIUS' euid.
 			#  - The client processes' euid is 0 (root).
+			#  - The client processes' euid matches FreeRADIUS' euid.
 			#  - gid is set (below), and the client processes' egid matches the
 			#    configured gid.
 			#
