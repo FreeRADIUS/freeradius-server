@@ -379,6 +379,40 @@ static int mod_fd(void const *instance)
 	return inst->sockfd;
 }
 
+/** Set the file descriptor for this socket.
+ *
+ * @param[in] instance of the UDP I/O path.
+ * @param[in] fd the FD to set
+ */
+static int mod_fd_set(void *instance, int fd)
+{
+	proto_vmps_udp_t *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	char dst_buf[128], src_buf[128];
+
+	inst->sockfd = fd;
+
+	/*
+	 *	Get our name.
+	 */
+	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
+		if (inst->ipaddr.af == AF_INET) {
+			strlcpy(dst_buf, "*", sizeof(dst_buf));
+		} else {
+			rad_assert(inst->ipaddr.af == AF_INET6);
+			strlcpy(dst_buf, "::", sizeof(dst_buf));
+		}
+	} else {
+		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
+	}
+
+	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
+
+	inst->name = talloc_typed_asprintf(inst, "proto vmps from client %s port %u to ipaddr %s port %u",
+					   src_buf, inst->connection->src_port, dst_buf, inst->port);
+
+	return 0;
+}
+
 static int mod_compare(UNUSED void const *instance, void const *one, void const *two)
 {
 	int rcode;
@@ -571,6 +605,7 @@ fr_app_io_t proto_vmps_udp = {
 	.write			= mod_write,
 	.close			= mod_close,
 	.fd			= mod_fd,
+	.fd_set			= mod_fd_set,
 	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
