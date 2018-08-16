@@ -615,10 +615,14 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(connection->address->src_ipaddr), 0);
 		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(connection->address->dst_ipaddr), 0);
 
-		connection->name = talloc_typed_asprintf(inst, "proto_%s from client %s port %u to server %s port %u",
-							 inst->app_io->name,
-							 src_buf, connection->address->src_port,
-							 dst_buf, connection->address->dst_port);
+		if (!inst->app_io->get_name) {
+			connection->name = talloc_typed_asprintf(inst, "proto_%s from client %s port %u to server %s port %u",
+								 inst->app_io->name,
+								 src_buf, connection->address->src_port,
+								 dst_buf, connection->address->dst_port);
+		} else {
+			connection->name = inst->app_io->get_name(connection->app_io_instance);
+		}
 	}
 
 	/*
