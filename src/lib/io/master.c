@@ -582,12 +582,18 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 
 		/*
 		 *	Instantiate the child, and open the socket.
-		 *
-		 *	This also sets connection->name.
 		 */
-		if ((inst->app_io->connection_set(connection->app_io_instance, connection->address) < 0) ||
+		rad_assert(inst->app_io->connection_set != NULL);
+
+		if (inst->app_io->connection_set(connection->app_io_instance, connection->address) < 0) {
+			DEBUG("Failed setting connection for socket.");
+			talloc_free(dl_inst);
+			return NULL;
+		}
+
+		if (inst->app_io->instantiate &&
 		    (inst->app_io->instantiate(connection->app_io_instance, inst->app_io_conf) < 0)) {
-			DEBUG("Failed opening initializing socket.");
+			DEBUG("Failed instantiating socket.");
 			talloc_free(dl_inst);
 			return NULL;
 		}
@@ -2344,7 +2350,7 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 	inst->app_io_instance = inst->submodule->data;
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
-		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"proto_%s\"", inst->app_io->name);
+		cf_log_err(inst->app_io_conf, "Bootstrap failed for proto_%s", inst->app_io->name);
 		return -1;
 	}
 
@@ -2355,6 +2361,11 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 	 *	application IO module.
 	 */
 	inst->app_io->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
+
+	if (inst->ipproto && !inst->app_io->connection_set) {
+		cf_log_err(inst->app_io_conf, "Cannot set TCP for proto_%s - internal set error", inst->app_io->name);
+		return -1;
+	}
 
 	return 0;
 }
