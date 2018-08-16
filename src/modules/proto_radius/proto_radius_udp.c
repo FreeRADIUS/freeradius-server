@@ -425,8 +425,6 @@ static int mod_fd_set(void *instance, int fd)
 	inst->name = talloc_typed_asprintf(inst, "proto udp from client %s port %u to ipaddr %s port %u",
 					   src_buf, inst->connection->src_port, dst_buf, inst->port);
 
-	ERROR("UDP is %s", inst->name);
-
 	return 0;
 }
 
