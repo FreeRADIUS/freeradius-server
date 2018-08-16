@@ -618,7 +618,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 			if (fr_ipaddr_to_sockaddr(&connection->address->src_ipaddr, connection->address->src_port, &src, &salen) < 0) {
 				DEBUG("Failed getting IP address");
 				talloc_free(dl_inst);
-				return -1;
+				return NULL;
 			}
 
 			if (connect(fd, (struct sockaddr *) &src, salen) < 0) {
