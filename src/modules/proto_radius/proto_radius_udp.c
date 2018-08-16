@@ -34,6 +34,9 @@
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include "proto_radius.h"
+
+extern fr_app_io_t proto_radius_udp;
+
 typedef struct proto_radius_udp_t {
 	char const			*name;			//!< socket name
 	CONF_SECTION			*cs;			//!< our configuration
@@ -372,8 +375,9 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
 	}
 
-	inst->name = talloc_typed_asprintf(inst, "proto udp ipaddr %s port %u",
-					   dst_buf, inst->port);
+	inst->name = fr_app_io_socket_name(inst, &proto_radius_udp,
+					   NULL, NULL,
+					   &inst->ipaddr, inst->port);
 
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on radius address %s bound to virtual server %s",
@@ -402,28 +406,12 @@ static int mod_fd(void const *instance)
 static int mod_fd_set(void *instance, int fd)
 {
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
-	char dst_buf[128], src_buf[128];
 
 	inst->sockfd = fd;
 
-	/*
-	 *	Get our name.
-	 */
-	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
-		if (inst->ipaddr.af == AF_INET) {
-			strlcpy(dst_buf, "*", sizeof(dst_buf));
-		} else {
-			rad_assert(inst->ipaddr.af == AF_INET6);
-			strlcpy(dst_buf, "::", sizeof(dst_buf));
-		}
-	} else {
-		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
-	}
-
-	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
-
-	inst->name = talloc_typed_asprintf(inst, "proto udp from client %s port %u to ipaddr %s port %u",
-					   src_buf, inst->connection->src_port, dst_buf, inst->port);
+	inst->name = fr_app_io_socket_name(inst, &proto_radius_udp,
+					   &inst->connection->src_ipaddr, inst->connection->src_port,
+					   &inst->ipaddr, inst->port);
 
 	return 0;
 }
@@ -561,7 +549,6 @@ static RADCLIENT *mod_client_find(void *instance, fr_ipaddr_t const *ipaddr, int
 	return client_find(NULL, ipaddr, ipproto);
 }
 
-extern fr_app_io_t proto_radius_udp;
 fr_app_io_t proto_radius_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_udp",

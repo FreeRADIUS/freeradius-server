@@ -16,8 +16,8 @@
 
 /**
  * $Id$
- * @file proto_radius_udp.c
- * @brief RADIUS handler for UDP.
+ * @file proto_dhcpv4_udp.c
+ * @brief DHCPv4 handler for UDP.
  *
  * @copyright 2018 The FreeRADIUS server project.
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
@@ -34,6 +34,8 @@
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include "proto_dhcpv4.h"
+
+extern fr_app_io_t proto_dhcpv4_udp;
 
 typedef struct proto_dhcpv4_udp_t {
 	char const			*name;			//!< socket name
@@ -533,7 +535,10 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 
 	server_cs = cf_item_to_section(ci);
 
-	// @todo - also print out auth / acct / coa, etc.
+	inst->name = fr_app_io_socket_name(inst, &proto_dhcpv4_udp,
+					   NULL, 0,
+					   &inst->ipaddr, inst->port);
+
 	DEBUG("Listening on dhcpv4 address %s bound to virtual server %s",
 	      inst->name, cf_section_name2(server_cs));
 
@@ -561,28 +566,12 @@ static int mod_fd(void const *instance)
 static int mod_fd_set(void *instance, int fd)
 {
 	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
-	char dst_buf[128], src_buf[128];
 
 	inst->sockfd = fd;
 
-	/*
-	 *	Get our name.
-	 */
-	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
-		if (inst->ipaddr.af == AF_INET) {
-			strlcpy(dst_buf, "*", sizeof(dst_buf));
-		} else {
-			rad_assert(inst->ipaddr.af == AF_INET6);
-			strlcpy(dst_buf, "::", sizeof(dst_buf));
-		}
-	} else {
-		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
-	}
-
-	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
-
-	inst->name = talloc_typed_asprintf(inst, "proto dhcpv4 from client %s port %u to ipaddr %s port %u",
-					   src_buf, inst->connection->src_port, dst_buf, inst->port);
+	inst->name = fr_app_io_socket_name(inst, &proto_dhcpv4_udp,
+					   &inst->connection->src_ipaddr, inst->connection->src_port,
+					   &inst->ipaddr, inst->port);
 
 	return 0;
 }
@@ -593,41 +582,6 @@ static char const *mod_name(void *instance)
 	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
 
 	return inst->name;
-}
-
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
-{
-	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
-	char		    dst_buf[128];
-
-	/*
-	 *	Get our name.
-	 */
-	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
-		if (inst->ipaddr.af == AF_INET) {
-			strlcpy(dst_buf, "*", sizeof(dst_buf));
-		} else {
-			rad_assert(inst->ipaddr.af == AF_INET6);
-			strlcpy(dst_buf, "::", sizeof(dst_buf));
-		}
-	} else {
-		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
-	}
-
-	if (!inst->connection) {
-		inst->name = talloc_typed_asprintf(inst, "proto udp server %s port %u",
-						   dst_buf, inst->port);
-
-	} else {
-		char src_buf[128];
-
-		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
-
-		inst->name = talloc_typed_asprintf(inst, "proto udp from client %s port %u to server %s port %u",
-						   src_buf, inst->connection->src_port, dst_buf, inst->port);
-	}
-
-	return 0;
 }
 
 
@@ -736,14 +690,12 @@ static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipad
 	return client_find(NULL, ipaddr, ipproto);
 }
 
-extern fr_app_io_t proto_dhcpv4_udp;
 fr_app_io_t proto_dhcpv4_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "dhcpv4_udp",
 	.config			= udp_listen_config,
 	.inst_size		= sizeof(proto_dhcpv4_udp_t),
 	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
 
