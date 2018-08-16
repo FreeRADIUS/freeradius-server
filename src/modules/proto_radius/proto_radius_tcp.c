@@ -316,34 +316,7 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 	uint16_t			port = inst->port;
 	CONF_SECTION			*server_cs;
 	CONF_ITEM			*ci;
-	char		    dst_buf[128];
-
-	/*
-	 *	Get our name.
-	 */
-	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
-		if (inst->ipaddr.af == AF_INET) {
-			strlcpy(dst_buf, "*", sizeof(dst_buf));
-		} else {
-			rad_assert(inst->ipaddr.af == AF_INET6);
-			strlcpy(dst_buf, "::", sizeof(dst_buf));
-		}
-	} else {
-		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
-	}
-
-	if (!inst->connection) {
-		inst->name = talloc_typed_asprintf(inst, "proto tcp server %s port %u",
-						   dst_buf, inst->port);
-
-	} else {
-		char src_buf[128];
-
-		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
-
-		inst->name = talloc_typed_asprintf(inst, "proto tcp from client %s port %u to server %s port %u",
-						   src_buf, inst->connection->src_port, dst_buf, inst->port);
-	}
+	char		    		dst_buf[128];
 
 	rad_assert(!inst->connection);
 
@@ -375,6 +348,23 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 
 	server_cs = cf_item_to_section(ci);
 
+	/*
+	 *	Get our name.
+	 */
+	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
+		if (inst->ipaddr.af == AF_INET) {
+			strlcpy(dst_buf, "*", sizeof(dst_buf));
+		} else {
+			rad_assert(inst->ipaddr.af == AF_INET6);
+			strlcpy(dst_buf, "::", sizeof(dst_buf));
+		}
+	} else {
+		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
+	}
+
+	inst->name = talloc_typed_asprintf(inst, "proto tcp ipaddr %s port %u",
+					   dst_buf, inst->port);
+
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on radius address %s bound to virtual server %s",
 	      inst->name, cf_section_name2(server_cs));
@@ -402,8 +392,28 @@ static int mod_fd(void const *instance)
 static int mod_fd_set(void *instance, int fd)
 {
 	proto_radius_tcp_t *inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
+	char dst_buf[128], src_buf[128];
 
 	inst->sockfd = fd;
+
+	/*
+	 *	Get our name.
+	 */
+	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
+		if (inst->ipaddr.af == AF_INET) {
+			strlcpy(dst_buf, "*", sizeof(dst_buf));
+		} else {
+			rad_assert(inst->ipaddr.af == AF_INET6);
+			strlcpy(dst_buf, "::", sizeof(dst_buf));
+		}
+	} else {
+		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
+	}
+
+	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
+
+	inst->name = talloc_typed_asprintf(inst, "proto tcp from client %s port %u to ipaddr %s port %u",
+					   src_buf, inst->connection->src_port, dst_buf, inst->port);
 
 	return 0;
 }
