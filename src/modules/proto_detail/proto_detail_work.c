@@ -712,7 +712,7 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 
 	rad_assert(inst->name == NULL);
 	rad_assert(inst->filename_work != NULL);
-	inst->name = talloc_typed_asprintf(inst, "detail working file %s", inst->filename_work);
+	inst->name = talloc_typed_asprintf(inst, "proto_detail working file %s", inst->filename_work);
 
 	DEBUG("Listening on %s bound to virtual server %s",
 	      inst->name, cf_section_name2(inst->parent->server_cs));

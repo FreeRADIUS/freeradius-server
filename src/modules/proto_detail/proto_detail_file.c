@@ -132,8 +132,7 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 		return -1;
 	}
 
-	rad_assert(inst->name == NULL);
-	inst->name = talloc_typed_asprintf(inst, "detail directory %s", inst->directory);
+	inst->name = talloc_typed_asprintf(inst, "proto_detail polling for files matching %s", inst->filename);
 
 	DEBUG("Listening on %s bound to virtual server %s FD %d",
 	      inst->name, cf_section_name2(inst->parent->server_cs), inst->fd);
@@ -618,14 +617,6 @@ static char const *mod_name(void *instance)
 	return inst->name;
 }
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
-{
-	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
-
-	inst->name = talloc_asprintf(inst, "detail polling for files matching %s", inst->filename);
-
-	return 0;
-}
 
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
@@ -739,7 +730,6 @@ fr_app_io_t proto_detail_file = {
 	.inst_size		= sizeof(proto_detail_file_t),
 	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 65536,
 	.default_reply_size	= 32,
