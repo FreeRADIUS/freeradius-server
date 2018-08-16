@@ -134,7 +134,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			     &address->dst_ipaddr, &address->dst_port,
 			     &address->if_index, &timestamp);
 	if (data_size < 0) {
-		DEBUG2("proto_radius_udp got read error %zd: %s", data_size, fr_strerror());
+		DEBUG2("proto_radius_udp got read error: %s", fr_strerror());
 		return data_size;
 	}
 
@@ -321,6 +321,7 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 	uint16_t			port = inst->port;
 	CONF_SECTION			*server_cs;
 	CONF_ITEM			*ci;
+	char		    		dst_buf[128];
 
 	sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -348,27 +349,6 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 		goto error;
 	}
 
-	/*
-	 *	Connect to the client for child sockets.
-	 */
-	if (inst->connection) {
-		socklen_t salen;
-		struct sockaddr_storage src;
-
-		if (fr_ipaddr_to_sockaddr(&inst->connection->src_ipaddr, inst->connection->src_port,
-					  &src, &salen) < 0) {
-			close(sockfd);
-			ERROR("Failed getting IP address");
-			goto error;
-		}
-
-		if (connect(sockfd, (struct sockaddr *) &src, salen) < 0) {
-			close(sockfd);
-			ERROR("Failed in connect: %s", fr_syserror(errno));
-			goto error;
-		}
-	}
-
 	inst->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
@@ -377,6 +357,23 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 	rad_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
+
+	/*
+	 *	Get our name.
+	 */
+	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
+		if (inst->ipaddr.af == AF_INET) {
+			strlcpy(dst_buf, "*", sizeof(dst_buf));
+		} else {
+			rad_assert(inst->ipaddr.af == AF_INET6);
+			strlcpy(dst_buf, "::", sizeof(dst_buf));
+		}
+	} else {
+		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
+	}
+
+	inst->name = talloc_typed_asprintf(inst, "proto udp ipaddr %s port %u",
+					   dst_buf, inst->port);
 
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on radius address %s bound to virtual server %s",
@@ -395,6 +392,42 @@ static int mod_fd(void const *instance)
 	proto_radius_udp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_udp_t);
 
 	return inst->sockfd;
+}
+
+/** Set the file descriptor for this socket.
+ *
+ * @param[in] instance of the RADIUS UDP I/O path.
+ * @param[in] fd the FD to set
+ */
+static int mod_fd_set(void *instance, int fd)
+{
+	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	char dst_buf[128], src_buf[128];
+
+	inst->sockfd = fd;
+
+	/*
+	 *	Get our name.
+	 */
+	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
+		if (inst->ipaddr.af == AF_INET) {
+			strlcpy(dst_buf, "*", sizeof(dst_buf));
+		} else {
+			rad_assert(inst->ipaddr.af == AF_INET6);
+			strlcpy(dst_buf, "::", sizeof(dst_buf));
+		}
+	} else {
+		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
+	}
+
+	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
+
+	inst->name = talloc_typed_asprintf(inst, "proto udp from client %s port %u to ipaddr %s port %u",
+					   src_buf, inst->connection->src_port, dst_buf, inst->port);
+
+	ERROR("UDP is %s", inst->name);
+
+	return 0;
 }
 
 static int mod_compare(UNUSED void const *instance, void const *one, void const *two)
@@ -423,41 +456,6 @@ static char const *mod_name(void *instance)
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
 	return inst->name;
-}
-
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
-{
-	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
-	char		    dst_buf[128];
-
-	/*
-	 *	Get our name.
-	 */
-	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
-		if (inst->ipaddr.af == AF_INET) {
-			strlcpy(dst_buf, "*", sizeof(dst_buf));
-		} else {
-			rad_assert(inst->ipaddr.af == AF_INET6);
-			strlcpy(dst_buf, "::", sizeof(dst_buf));
-		}
-	} else {
-		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
-	}
-
-	if (!inst->connection) {
-		inst->name = talloc_typed_asprintf(inst, "proto udp server %s port %u",
-						   dst_buf, inst->port);
-
-	} else {
-		char src_buf[128];
-
-		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
-
-		inst->name = talloc_typed_asprintf(inst, "proto udp from client %s port %u to server %s port %u",
-						   src_buf, inst->connection->src_port, dst_buf, inst->port);
-	}
-
-	return 0;
 }
 
 
@@ -585,7 +583,6 @@ fr_app_io_t proto_radius_udp = {
 	.inst_size		= sizeof(proto_radius_udp_t),
 //	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
 	.track_duplicates	= true,
@@ -595,6 +592,7 @@ fr_app_io_t proto_radius_udp = {
 	.write			= mod_write,
 	.close			= mod_close,
 	.fd			= mod_fd,
+	.fd_set			= mod_fd_set,
 	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
