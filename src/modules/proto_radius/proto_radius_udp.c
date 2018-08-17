@@ -324,7 +324,6 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 	uint16_t			port = inst->port;
 	CONF_SECTION			*server_cs;
 	CONF_ITEM			*ci;
-	char		    		dst_buf[128];
 
 	sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -360,20 +359,6 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 	rad_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
-
-	/*
-	 *	Get our name.
-	 */
-	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
-		if (inst->ipaddr.af == AF_INET) {
-			strlcpy(dst_buf, "*", sizeof(dst_buf));
-		} else {
-			rad_assert(inst->ipaddr.af == AF_INET6);
-			strlcpy(dst_buf, "::", sizeof(dst_buf));
-		}
-	} else {
-		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
-	}
 
 	inst->name = fr_app_io_socket_name(inst, &proto_radius_udp,
 					   NULL, 0,
