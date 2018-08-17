@@ -34,6 +34,10 @@ CREATE TABLE radacct (
 	servicetype		VARCHAR(32),
 	framedprotocol		VARCHAR(32),
 	framedipaddress		VARCHAR(15),
+	framedipv6address	VARCHAR(44),
+	framedipv6prefix	VARCHAR(44),
+	framedinterfaceid	VARCHAR(44),
+	delegatedipv6prefix	VARCHAR(44),
 	acctstartdelay		NUMERIC(12),
 	acctstopdelay		NUMERIC(12),
 	XAscendSessionSvrKey	VARCHAR(10)
@@ -43,7 +47,7 @@ CREATE UNIQUE INDEX radacct_idx0
 	ON radacct(acctuniqueid);
 CREATE UNIQUE INDEX radacct_idx1
 	ON radacct(acctsessionid,username,acctstarttime,
-		acctstoptime,nasipaddress,framedipaddress);
+		acctstoptime,nasipaddress,framedipaddress,framedipv6address,framedipv6prefix,framedinterfaceid,delegatedipv6prefix);
 CREATE INDEX radacct_idx2
         ON radacct(acctstoptime,nasipaddress,acctstarttime);
 

@@ -38,7 +38,11 @@ CREATE TABLE radacct (
 	AcctTerminateCause	text,
 	ServiceType		text,
 	FramedProtocol		text,
-	FramedIPAddress		inet
+	FramedIPAddress		inet,
+	FramedIPv6Address	inet,
+	FramedIPv6Prefix	inet,
+	FramedInterfaceId	inet,
+	DelegatedIPv6Prefix	inet
 );
 -- This index may be useful..
 -- CREATE UNIQUE INDEX radacct_whoson on radacct (AcctStartTime, nasipaddress);
