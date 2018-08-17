@@ -17,15 +17,16 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright (C) 2013 Network RADIUS SARL <info@networkradius.com>
+ * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
  */
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/process.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/pcap.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/pcap.h>
 #include <net/if_arp.h>
 
 typedef struct arp_socket_t {
@@ -48,6 +49,14 @@ typedef struct arp_over_ether {
 	uint8_t		tha[ETHER_ADDR_LEN];	//!< Target hardware address.
 	uint8_t		tpa[4];			//!< Target protocol address.
 } arp_over_ether_t;
+
+static fr_dict_t *dict_arp;
+
+extern fr_dict_autoload_t proto_arp_dict[];
+fr_dict_autoload_t proto_arp_dict[] = {
+	{ .out = &dict_arp, .proto = "arp" },
+	{ NULL }
+};
 
 static rlm_rcode_t arp_process(REQUEST *request)
 {
@@ -92,7 +101,7 @@ static int arp_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	link_len = fr_link_layer_offset(data, header->caplen, sock->lsock.pcap->link_layer);
+	link_len = fr_pcap_link_layer_offset(data, header->caplen, sock->lsock.pcap->link_layer);
 	if (link_len < 0) {
 		PERROR("Failed determining link layer header offset");
 		return 0;
@@ -131,7 +140,7 @@ static int arp_socket_recv(rad_listen_t *listener)
 	DEBUG("ARP received on interface %s", sock->lsock.interface);
 
 	if (!request_receive(NULL, listener, packet, &sock->client, arp_process)) {
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return 0;
 	}
 
@@ -185,9 +194,9 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 		len = header_names[i].len;
 
-		if (!rad_cond_assert((size_t)(end - p) < len)) return -1; /* Should have been detected in socket_recv */
+		if (!fr_cond_assert((size_t)(end - p) < len)) return -1; /* Should have been detected in socket_recv */
 
-		da = fr_dict_attr_by_name(NULL, header_names[i].name);
+		da = fr_dict_attr_by_name(dict_arp, header_names[i].name);
 		if (!da) return 0;
 
 		MEM(vp = fr_pair_afrom_da(request->packet, da));
@@ -197,7 +206,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 			fr_pair_value_memcpy(vp, p, len);
 		}
 
-		debug_pair(vp);
+		DEBUG2("&%pP", vp);
 		fr_cursor_insert(&cursor, vp);
 	}
 
@@ -295,14 +304,13 @@ static int arp_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 
 	cf_log_debug(cs, "Loading arp {...}");
 
-	if (unlang_compile(cs, MOD_POST_AUTH) < 0) {
+	if (unlang_compile(cs, MOD_POST_AUTH, NULL) < 0) {
 		cf_log_err(cs, "Failed compiling 'arp' section");
 		return -1;
 	}
 
 	return 0;
 }
-
 
 extern rad_protocol_t proto_arp;
 rad_protocol_t proto_arp = {
@@ -311,6 +319,7 @@ rad_protocol_t proto_arp = {
 	.inst_size	= sizeof(arp_socket_t),
 	.transports	= 0,
 	.tls		= false,
+
 	.bootstrap	= arp_socket_bootstrap,
 	.compile	= arp_socket_compile,
 	.parse		= arp_socket_parse,

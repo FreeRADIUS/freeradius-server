@@ -16,6 +16,4 @@ elsif (1) {
   # we allow empty 'elsif' conditions
 }
 
-update reply {
-	Filter-Id := "filter"
-}
+success

@@ -24,9 +24,25 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
 #include <ctype.h>
+
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_unpack_dict[];
+fr_dict_autoload_t rlm_unpack_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_cast_base;
+
+extern fr_dict_attr_autoload_t rlm_unpack_dict_attr[];
+fr_dict_attr_autoload_t rlm_unpack_dict_attr[] = {
+	{ .out = &attr_cast_base, .name = "Cast-Base", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
+	{ NULL }
+};
 
 #define GOTO_ERROR do { REDEBUG("Unexpected text at '%s'", p); goto error;} while (0)
 
@@ -90,7 +106,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	Attribute reference
 	 */
 	if (*data_name == '&') {
-		if (radius_get_vp(&vp, request, data_name) < 0) goto nothing;
+		if (xlat_fmt_get_vp(&vp, request, data_name) < 0) goto nothing;
 
 		if ((vp->vp_type != FR_TYPE_OCTETS) &&
 		    (vp->vp_type != FR_TYPE_STRING)) {
@@ -122,7 +138,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto nothing;
 	}
 
-	type = fr_str2int(dict_attr_types, data_type, FR_TYPE_INVALID);
+	type = fr_str2int(fr_value_box_type_names, data_type, FR_TYPE_INVALID);
 	if (type == FR_TYPE_INVALID) {
 		REDEBUG("Invalid data type '%s'", data_type);
 		goto nothing;
@@ -142,7 +158,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto nothing;
 	}
 
-	da = fr_dict_attr_by_num(NULL, 0, FR_CAST_BASE + type);
+	da = fr_dict_attr_child_by_num(fr_dict_root(dict_freeradius), attr_cast_base->attr + type);
 	if (!da) {
 		REDEBUG("Cannot decode type '%s'", data_type);
 		goto nothing;
@@ -193,7 +209,7 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *conf)
 {
 	if (cf_section_name2(conf)) return 0;
 
-	xlat_register(NULL, "unpack", unpack_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(NULL, "unpack", unpack_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	return 0;
 }

@@ -9,17 +9,37 @@ LOCAL_SITES :=		$(addprefix raddb/sites-enabled/,$(DEFAULT_SITES))
 
 DEFAULT_MODULES :=	always attr_filter cache_eap chap client \
 			detail detail.log digest dhcpv4 eap \
-			eap_inner echo exec expiration expr files linelog logintime \
-			mschap ntlm_auth pam pap passwd radutmp \
-			soh sradutmp unix unpack utf8
+			eap_inner echo escape exec expiration expr files linelog logintime \
+			mschap ntlm_auth pam pap passwd radius radutmp \
+			soh sradutmp stats unix unpack utf8
 
 LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
 INSTALL_CERT_FILES :=	Makefile README xpextensions \
-			ca.cnf server.cnf ocsp.cnf client.cnf bootstrap
+			ca.cnf server.cnf ocsp.cnf inner-server.cnf \
+			client.cnf bootstrap
 
-LOCAL_CERT_FILES :=	ca.key ca.pem client.crt client.key client.pem dh \
-			ocsp.key ocsp.pem server.crt server.key server.pem
+LOCAL_CERT_FILES :=	dh \
+			rsa/ca.key \
+			rsa/ca.pem \
+			rsa/client.crt \
+			rsa/client.key \
+			rsa/client.pem \
+			rsa/ocsp.key \
+			rsa/ocsp.pem \
+			rsa/server.crt \
+			rsa/server.key \
+			rsa/server.pem \
+			ecc/ca.key \
+			ecc/ca.pem \
+			ecc/client.crt \
+			ecc/client.key \
+			ecc/client.pem \
+			ecc/ocsp.key \
+			ecc/ocsp.pem \
+			ecc/server.crt \
+			ecc/server.key \
+			ecc/server.pem
 
 GENERATED_CERT_FILES := $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
 
@@ -119,8 +139,32 @@ ifeq ("$(TEST_CERTS)","yes")
 #
 build.raddb: $(GENERATED_CERT_FILES)
 
+#
+#  Make certs/{rsa,ecc}/ directories
+#
+.PHONY: ${top_srcdir}/src/tests/certs/rsa
+${top_srcdir}/src/tests/certs/rsa:
+	@mkdir -p $@
+
+.PHONY: ${top_srcdir}/src/tests/certs/ecc
+${top_srcdir}/src/tests/certs/ecc:
+	@mkdir -p $@
+
+.PHONY: ${top_srcdir}/raddb/certs/rsa
+${top_srcdir}/raddb/certs/rsa:
+	@mkdir -p $@
+
+.PHONY: ${top_srcdir}/raddb/certs/ecc
+${top_srcdir}/raddb/certs/ecc:
+	@mkdir -p $@
+
+#
+#  Copy the generated certs to the test directory.
+#
 define CP_FILE
-${top_srcdir}/raddb/certs/${1}: ${top_srcdir}/src/tests/certs/${1}
+${top_srcdir}/raddb/certs/${1}: | $(dir ${top_srcdir}/raddb/certs/${1})
+
+${top_srcdir}/raddb/certs/${1}: ${top_srcdir}/src/tests/certs/${1} | $(dir ${top_srcdir}/src/tests/certs/${1})
 	@${Q}echo TEST_CERTS cp src/tests/certs/${1} raddb/certs/${1}
 	@${Q}cp src/tests/certs/${1} raddb/certs/${1}
 endef

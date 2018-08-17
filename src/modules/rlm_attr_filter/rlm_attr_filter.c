@@ -24,9 +24,9 @@
  */
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/rad_assert.h>
+#include	<freeradius-devel/server/base.h>
+#include	<freeradius-devel/server/modules.h>
+#include	<freeradius-devel/server/rad_assert.h>
 
 #include	<sys/stat.h>
 
@@ -49,6 +49,36 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL, rlm_attr_filter_t, key), .dflt = "&Realm", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("relaxed", FR_TYPE_BOOL, rlm_attr_filter_t, relaxed), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_attr_filter_dict[];
+fr_dict_autoload_t rlm_attr_filter_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_stripped_user_name;
+static fr_dict_attr_t const *attr_fall_through;
+static fr_dict_attr_t const *attr_relax_filter;
+
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_vendor_specific;
+
+extern fr_dict_attr_autoload_t rlm_attr_filter_dict_attr[];
+fr_dict_attr_autoload_t rlm_attr_filter_dict_attr[] = {
+	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_relax_filter, .name = "Relax-Filter", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
+	{ NULL }
 };
 
 static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *reply_item, int *pass, int *fail)
@@ -81,7 +111,7 @@ static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *rep
 
 static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list)
 {
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	int rcode;
 	PAIR_LIST *attrs = NULL;
 	PAIR_LIST *entry;
@@ -101,17 +131,16 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST 
 		entry->check = entry->reply;
 		entry->reply = NULL;
 
-		for (vp = fr_pair_cursor_init(&cursor, &entry->check);
+		for (vp = fr_cursor_init(&cursor, &entry->check);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 		    /*
 		     * If it's NOT a vendor attribute,
 		     * and it's NOT a wire protocol
 		     * and we ignore Fall-Through,
 		     * then bitch about it, giving a good warning message.
 		     */
-		     if ((vp->da->vendor == 0) &&
-			 (vp->da->attr > 1000)) {
+		     if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr > 1000)) {
 			WARN("[%s]:%d Check item \"%s\"\n\tfound in filter list for realm \"%s\".\n",
 			       filename, entry->lineno, vp->da->name, entry->name);
 		    }
@@ -152,7 +181,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 {
 	rlm_attr_filter_t const *inst = instance;
 	VALUE_PAIR	*vp;
-	vp_cursor_t	input, check, out;
+	fr_cursor_t	input, check, out;
 	VALUE_PAIR	*input_item, *check_item, *output;
 	PAIR_LIST	*pl;
 	int		found = 0;
@@ -174,7 +203,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	 *	Head of the output list
 	 */
 	output = NULL;
-	fr_pair_cursor_init(&out, &output);
+	fr_cursor_init(&out, &output);
 
 	/*
 	 *      Find the attr_filter profile entry for the entry.
@@ -196,19 +225,17 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		RDEBUG2("Matched entry %s at line %d", pl->name, pl->lineno);
 		found = 1;
 
-		for (check_item = fr_pair_cursor_init(&check, &pl->check);
+		for (check_item = fr_cursor_init(&check, &pl->check);
 		     check_item;
-		     check_item = fr_pair_cursor_next(&check)) {
-			if (!check_item->da->vendor &&
-			    (check_item->da->attr == FR_FALL_THROUGH) &&
-				(check_item->vp_uint32 == 1)) {
-				fall_through = 1;
-				continue;
-			}
-			else if (!check_item->da->vendor && check_item->da->attr == FR_RELAX_FILTER) {
+		     check_item = fr_cursor_next(&check)) {
+		     	if (check_item->da == attr_fall_through) {
+				if (check_item->vp_uint32 == 1) {
+					fall_through = 1;
+					continue;
+				}
+		     	} else if (check_item->da == attr_relax_filter) {
 				relax_filter = check_item->vp_uint32;
-				continue;
-			}
+		     	}
 
 			/*
 			 *    If it is a SET operator, add the attribute to
@@ -216,11 +243,10 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 			 */
 			if (check_item->op == T_OP_SET ) {
 				vp = fr_pair_copy(packet, check_item);
-				if (!vp) {
-					goto error;
-				}
-				xlat_eval_do(request, vp);
-				fr_pair_cursor_append(&out, vp);
+				if (!vp) goto error;
+
+				xlat_eval_pair(request, vp);
+				fr_cursor_append(&out, vp);
 			}
 		}
 
@@ -232,22 +258,23 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		 *	only if it matches all rules that describe an
 		 *	Idle-Timeout.
 		 */
-		for (input_item = fr_pair_cursor_init(&input, &packet->vps);
+		for (input_item = fr_cursor_init(&input, &packet->vps);
 		     input_item;
-		     input_item = fr_pair_cursor_next(&input)) {
+		     input_item = fr_cursor_next(&input)) {
 			pass = fail = 0; /* reset the pass,fail vars for each reply item */
 
 			/*
 			 *  Reset the check_item pointer to beginning of the list
 			 */
-			for (check_item = fr_pair_cursor_first(&check);
+			for (check_item = fr_cursor_head(&check);
 			     check_item;
-			     check_item = fr_pair_cursor_next(&check)) {
+			     check_item = fr_cursor_next(&check)) {
 				/*
 				 *  Vendor-Specific is special, and matches any VSA if the
 				 *  comparison is always true.
 				 */
-				if ((check_item->da->attr == FR_VENDOR_SPECIFIC) && (input_item->da->vendor != 0) &&
+				if ((check_item->da == attr_vendor_specific) &&
+				    (fr_dict_vendor_num_by_da(input_item->da) != 0) &&
 				    (check_item->op == T_OP_CMP_TRUE)) {
 					pass++;
 					continue;
@@ -272,7 +299,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 				if (!vp) {
 					goto error;
 				}
-				fr_pair_cursor_append(&out, vp);
+				fr_cursor_append(&out, vp);
 			}
 		}
 
@@ -297,16 +324,15 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	packet->vps = output;
 
 	if (request->packet->code == FR_CODE_ACCESS_REQUEST) {
-		request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_STRIPPED_USER_NAME, TAG_ANY);
-		if (!request->username) {
-			request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
-		}
-		request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
+		request->username = fr_pair_find_by_da(request->packet->vps, attr_stripped_user_name, TAG_ANY);
+		if (!request->username) request->username = fr_pair_find_by_da(request->packet->vps,
+									       attr_user_name, TAG_ANY);
+		request->password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 	}
 
 	return RLM_MODULE_UPDATED;
 
-	error:
+error:
 	fr_pair_list_free(&output);
 	return RLM_MODULE_FAIL;
 }

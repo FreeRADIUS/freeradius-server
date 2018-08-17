@@ -25,11 +25,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/exfile.h>
-#include <freeradius-devel/connection.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/server/connection.h>
 
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
@@ -109,10 +109,6 @@ typedef struct {
 
 	struct timeval		connection_timeout;	//!< How long to wait to open a socket.
 	struct timeval		reconnection_delay;	//!< How long to wait to retry.
-
-	fr_dict_attr_t const	*msg_da;		//!< Log-Message attribute.
-	fr_dict_attr_t const	*type_da;		//!< Log-Type attribute.
-	fr_dict_attr_t const	*lvl_da;		//!< Log-Level attribute.
 } rlm_logtee_t;
 
 /** Per-thread instance data
@@ -183,6 +179,26 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_logtee_dict[];
+fr_dict_autoload_t rlm_logtee_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_log_level;
+static fr_dict_attr_t const *attr_log_message;
+static fr_dict_attr_t const *attr_log_type;
+
+extern fr_dict_attr_autoload_t rlm_logtee_dict_attr[];
+fr_dict_attr_autoload_t rlm_logtee_dict_attr[] = {
+	{ .out = &attr_log_level, .name = "Log-Level", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_log_message, .name = "Log-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_log_type, .name = "Log-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 static void logtee_fd_idle(rlm_logtee_thread_t *t);
 
 static void logtee_fd_active(rlm_logtee_thread_t *t);
@@ -204,7 +220,7 @@ static void _logtee_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int 
 	/*
 	 *	Something bad happened... Fix it...
 	 */
-	fr_connection_reconnect(t->conn);
+	fr_connection_signal_reconnect(t->conn);
 }
 
 /** Drain any data we received
@@ -229,7 +245,7 @@ static void _logtee_conn_read(UNUSED fr_event_list_t *el, int sock, UNUSED int f
 		case ETIMEDOUT:
 		case EIO:
 		case ENXIO:
-			fr_connection_reconnect(t->conn);
+			fr_connection_signal_reconnect(t->conn);
 			return;
 
 		/*
@@ -254,7 +270,11 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 	 *	Fixme in general...
 	 */
 	while ((msg = fr_fring_next(t->fring))) {
-		if (write(sock, msg, talloc_array_length(msg) - 1) < 0) {
+		ssize_t slen;
+
+		slen = write(sock, msg, talloc_array_length(msg) - 1) ;
+	write_error:
+		if (slen < 0) {
 			switch (errno) {
 			case EAGAIN:
 #if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
@@ -270,7 +290,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 			case ENXIO:
 			case EPIPE:
 			case ENETDOWN:
-				fr_connection_reconnect(t->conn);
+				fr_connection_signal_reconnect(t->conn);
 				return;
 
 			/*
@@ -281,7 +301,9 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 				rad_assert(0);
 			}
 		}
-		write(sock, t->inst->delimiter, t->inst->delimiter_len);
+
+		slen = write(sock, t->inst->delimiter, t->inst->delimiter_len);
+		if (slen < 0) goto write_error;
 	}
 
 	logtee_fd_idle(t);
@@ -297,7 +319,10 @@ static void logtee_fd_idle(rlm_logtee_thread_t *t)
 {
 	DEBUG3("Marking socket (%i) as idle", fr_connection_get_fd(t->conn));
 	if (fr_event_fd_insert(t->conn, t->el, fr_connection_get_fd(t->conn),
-			       _logtee_conn_read, NULL, _logtee_conn_error, t) < 0) {
+			       _logtee_conn_read,
+			       NULL,
+			       _logtee_conn_error,
+			       t) < 0) {
 		PERROR("Failed inserting FD event");
 	}
 }
@@ -312,7 +337,10 @@ static void logtee_fd_active(rlm_logtee_thread_t *t)
 {
 	DEBUG3("Marking socket (%i) as active - Draining requests", fr_connection_get_fd(t->conn));
 	if (fr_event_fd_insert(t->conn, t->el, fr_connection_get_fd(t->conn),
-			       _logtee_conn_read, _logtee_conn_writable, _logtee_conn_error, t) < 0) {
+			       _logtee_conn_read,
+			       _logtee_conn_writable,
+			       _logtee_conn_error,
+			       t) < 0) {
 		PERROR("Failed inserting FD event");
 	}
 }
@@ -376,7 +404,7 @@ static fr_connection_state_t _logtee_conn_init(int *fd_out, void *uctx)
 	case LOGTEE_DST_UDP:
 		DEBUG2("Opening UDP connection to %pV:%u",
 		       fr_box_ipaddr(inst->udp.dst_ipaddr), inst->udp.port);
-		fd = fr_socket_client_udp(NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
+		fd = fr_socket_client_udp(NULL, NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
 		if (fd < 0) return FR_CONNECTION_STATE_FAILED;
 		break;
 
@@ -422,7 +450,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 	 *	None of this should involve mallocs unless msg > 1k
 	 */
 	msg = talloc_typed_vasprintf(t->msg, fmt, ap);
-	fr_value_box_strdup_buffer_shallow(NULL, &t->msg->data, inst->msg_da, msg, true);
+	fr_value_box_strdup_buffer_shallow(NULL, &t->msg->data, attr_log_message, msg, true);
 
 	t->type->vp_uint32 = (uint32_t) type;
 	t->lvl->vp_uint32 = (uint32_t) lvl;
@@ -457,13 +485,13 @@ finish:
 	 *	Don't free, we re-use the VALUE_PAIRs for the next message
 	 */
 	vp = fr_cursor_remove(&cursor);
-	if (!rad_cond_assert(vp == t->lvl)) fr_cursor_append(&cursor, vp);
+	if (!fr_cond_assert(vp == t->lvl)) fr_cursor_append(&cursor, vp);
 
 	vp = fr_cursor_remove(&cursor);
-	if (!rad_cond_assert(vp == t->type)) fr_cursor_append(&cursor, vp);
+	if (!fr_cond_assert(vp == t->type)) fr_cursor_append(&cursor, vp);
 
 	vp = fr_cursor_remove(&cursor);
-	if (!rad_cond_assert(vp == t->msg)) fr_cursor_append(&cursor, vp);
+	if (!fr_cond_assert(vp == t->msg)) fr_cursor_append(&cursor, vp);
 
 	fr_value_box_clear(&t->msg->data);		/* Clear message data */
 }
@@ -522,9 +550,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	 *	Pre-allocate temporary attributes
 	 */
 	MEM(t->msg_pool = talloc_pool(t, 1024));
-	MEM(t->msg = fr_pair_afrom_da(t->msg_pool, inst->msg_da));
-	MEM(t->type = fr_pair_afrom_da(t, inst->type_da));
-	MEM(t->lvl = fr_pair_afrom_da(t, inst->lvl_da));
+	MEM(t->msg = fr_pair_afrom_da(t->msg_pool, attr_log_message));
+	MEM(t->type = fr_pair_afrom_da(t, attr_log_type));
+	MEM(t->lvl = fr_pair_afrom_da(t, attr_log_level));
 
 	/*
 	 *	This opens the outbound connection
@@ -535,7 +563,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 				      inst->name, t);
 	if (t->conn == NULL) return -1;
 
-	fr_connection_start(t->conn);
+	fr_connection_signal_init(t->conn);
 
 	return 0;
 }
@@ -546,25 +574,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_logtee_t	*inst = instance;
-	char			prefix[100];
-
-	inst->msg_da = fr_dict_attr_by_name(NULL, "Log-Message");
-	if (!inst->msg_da) {
-		ERROR("Missing definition for \"Log-Message\"");
-		return -1;
-	}
-
-	inst->type_da = fr_dict_attr_by_name(NULL, "Log-Type");
-	if (!inst->type_da) {
-		ERROR("Missing definition for \"Log-Type\"");
-		return -1;
-	}
-
-	inst->lvl_da = fr_dict_attr_by_name(NULL, "Log-Level");
-	if (!inst->lvl_da) {
-		ERROR("Missing definition for \"Log-Level\"");
-		return -1;
-	}
+	char		prefix[100];
 
 	/*
 	 *	Escape filenames only if asked.

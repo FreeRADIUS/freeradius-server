@@ -7,3 +7,5 @@
 
 ATTRIBUTE	Response-Length				241.3	integer
 ATTRIBUTE	Original-Packet-Code			241.4	integer
+
+VALUE	Error-Cause			Response-Too-Big	601

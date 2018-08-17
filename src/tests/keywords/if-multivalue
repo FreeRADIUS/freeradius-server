@@ -3,7 +3,6 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := 'filter'
 }
 
 update request {
@@ -52,30 +51,22 @@ update control {
 #  Mmmm O(N^2)
 #
 if (&request:Tmp-String-0[*] != &control:Tmp-String-0[*]) {
-	update reply {
-		Filter-Id += 'fail 0'
-	}
+	test_fail
 }
 
 if (&request:Tmp-String-0[*] == &control:Tmp-String-1[*]) {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 if (&request:Tmp-String-1[*] == &control:Tmp-String-0[*]) {
-	update reply {
-		Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 #
 #  Integer comparison and normalisation
 #
 if (&request:Tmp-Integer-0 != &control:Tmp-Integer-0) {
-	update reply {
-		Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 #
@@ -83,91 +74,67 @@ if (&request:Tmp-Integer-0 != &control:Tmp-Integer-0) {
 #  request:Tmp-Integer-1 then evaluate to true
 #
 if (&request:Tmp-Integer-0[*] > &control:Tmp-Integer-1[*]) {
-	update reply {
-		Filter-Id += 'fail 4'
-	}
+	test_fail
 }
 
 #
 #  Compiled regex comparisons
 #
 if (&request:Tmp-String-1[*] !~ /PEONS$/) {
-	update reply {
-		Filter-Id += 'fail 5'
-	}
+	test_fail
 }
 
 if (&control:Tmp-String-1 =~ /PEONS$/) {
-	update reply {
-		Filter-Id += 'fail 6'
-	}
+	test_fail
 }
 
 if (&control:Tmp-String-1 =~ /DINKS$/) {
-	update reply {
-		Filter-Id += 'fail 7'
-	}
+	test_fail
 }
 
 #
 #  Dynamic regex comparisons
 #
 if (&request:Tmp-String-1[*] !~ /%{Tmp-String-2[0]}$/) {
-	update reply {
-		Filter-Id += 'fail 8'
-	}
+	test_fail
 }
 
 if (&request:Tmp-String-1 =~ /%{Tmp-String-2[1]}$/) {
-	update reply {
-		Filter-Id += 'fail 9'
-	}
+	test_fail
 }
 
 if (&request:Tmp-String-1 !~ /%{Tmp-String-2[2]}$/) {
-	update reply {
-		Filter-Id += 'fail 10'
-	}
+	test_fail
 }
 
 if (&request:Tmp-String-1 =~ /%{Tmp-String-2[#]}$/) {
-	update reply {
-		Filter-Id += 'fail 11'
-	}
+	test_fail
 }
 
 #
 #  XLAT virtual comparisons
 #
 if (&control:Tmp-Integer-0[*] != "%{control:Tmp-Integer-0[#]}") {
-	update reply {
-		Filter-Id += 'fail 12'
-	}
+	test_fail
 }
 
 #
 #  Literal comparisons
 #
 if (&control:Tmp-String-1[*] != 'boink') {
-	update reply {
-		Filter-Id += 'fail 13'
-	}
+	test_fail
 }
 
 if (&control:Tmp-String-1[*] == 'foo') {
-	update reply {
-		Filter-Id += 'fail 14'
-	}
+	test_fail
 }
 
 if (&request:Tmp-Integer-0[*] > 10) {
-	update reply {
-		Filter-Id += 'fail 15'
-	}
+	test_fail
 }
 
 if (!(&request:Tmp-Integer-0[*] < 10)) {
-	update reply {
-		Filter-Id += 'fail 16'
-	}
+	test_fail
 }
+
+success

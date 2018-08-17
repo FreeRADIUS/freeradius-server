@@ -16,16 +16,16 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2002  3APA3A for FreeRADIUS project
-   Copyright 2006  The FreeRADIUS server project
+ * @copyright 2002  3APA3A for FreeRADIUS project
+   @copyright 2006  The FreeRADIUS server project
  */
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
-#include	<freeradius-devel/md4.h>
-#include	<freeradius-devel/md5.h>
-#include	<freeradius-devel/sha1.h>
+#include	<freeradius-devel/util/base.h>
+#include	<freeradius-devel/util/md4.h>
+#include	<freeradius-devel/util/md5.h>
+#include	<freeradius-devel/util/sha1.h>
 #include	<ctype.h>
 
 

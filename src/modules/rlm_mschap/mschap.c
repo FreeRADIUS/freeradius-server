@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2001,2006,2010  The FreeRADIUS server project
+ * @copyright 2000,2001,2006,2010  The FreeRADIUS server project
  */
 
 
@@ -30,11 +30,11 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/rad_assert.h>
-#include	<freeradius-devel/md5.h>
-#include	<freeradius-devel/sha1.h>
+#include	<freeradius-devel/server/base.h>
+#include	<freeradius-devel/server/modules.h>
+#include	<freeradius-devel/server/rad_assert.h>
+#include	<freeradius-devel/util/md5.h>
+#include	<freeradius-devel/util/sha1.h>
 
 #include 	<ctype.h>
 

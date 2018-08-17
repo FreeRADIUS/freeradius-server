@@ -23,15 +23,18 @@
  * @copyright 2008,2017 The FreeRADIUS server project
  * @copyright 2008 Alan DeKok <aland@deployingradius.com>
  */
+#include "dhcpv4.h"
+#include "attrs.h"
+
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/udpfromto.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <stdint.h>
 #include <stddef.h>
 #include <talloc.h>
-#include <freeradius-devel/pair.h>
-#include <freeradius-devel/types.h>
-#include <freeradius-devel/proto.h>
-#include <freeradius-devel/udpfromto.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
 
 #ifndef __MINGW32__
 #  include <sys/ioctl.h>
@@ -188,16 +191,22 @@ RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd)
 	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
 	fr_ipaddr_from_sockaddr(&src, sizeof_src, &src_ipaddr, &src_port);
 
-	packet = fr_dhcpv4_packet_ok(data, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
-	if (packet) {
-		talloc_steal(packet, data);
-		packet->data = data;
-		packet->sockfd = sockfd;
-		packet->if_index = if_index;
-		packet->timestamp = when;
-		return packet;
-	}
+	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return NULL;
 
-	return NULL;
+	packet = fr_dhcpv4_packet_alloc(data, data_len);
+	if (!packet) return NULL;
+
+	packet->dst_port = dst_port;
+	packet->src_port = src_port;
+
+	packet->src_ipaddr = src_ipaddr;
+	packet->dst_ipaddr = dst_ipaddr;
+
+	talloc_steal(packet, data);
+	packet->data = data;
+	packet->sockfd = sockfd;
+	packet->if_index = if_index;
+	packet->timestamp = when;
+	return packet;
 }
 

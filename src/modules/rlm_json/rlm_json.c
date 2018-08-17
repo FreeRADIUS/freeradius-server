@@ -27,13 +27,13 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/map_proc.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/map_proc.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/json/base.h>
 
 #include <ctype.h>
-#include "json.h"
 
 #ifndef HAVE_JSON
 #  error "rlm_json should not be built unless json-c is available"
@@ -205,7 +205,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 				    vp_map_t const *map, void *uctx)
 {
 	VALUE_PAIR			*vp;
-	vp_cursor_t			cursor;
+	fr_cursor_t			cursor;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
 	fr_value_box_t			*head, *value;
 	int				ret;
@@ -221,9 +221,9 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 	if (ret == 0) return 0;
 	rad_assert(head);
 
-	for (fr_pair_cursor_init(&cursor, out), value = head;
+	for (fr_cursor_init(&cursor, out), value = head;
 	     value;
-	     fr_pair_cursor_append(&cursor, vp), value = value->next) {
+	     fr_cursor_append(&cursor, vp), value = value->next) {
 		vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!vp) {
 		error:
@@ -254,7 +254,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST *request,
-			      	vp_tmpl_t const *json, vp_map_t const *maps)
+			      	fr_value_box_t **json, vp_map_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
@@ -264,12 +264,21 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 
 	rlm_json_jpath_to_eval_t	to_eval;
 
-	char				*json_str = NULL;
+	char const			*json_str = NULL;
 
-	if (tmpl_aexpand(request, &json_str, request, json, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+	if (!*json) {
+		REDEBUG("JSON map input cannot be (null)");
+		return RLM_MODULE_FAIL;
+	}
+
+	if (fr_value_box_list_concat(request, *json, json, FR_TYPE_STRING, true) < 0) {
+		REDEBUG("Failed concatenating input");
+		return RLM_MODULE_FAIL;
+	}
+	json_str = (*json)->vb_strvalue;
 
 	if ((talloc_array_length(json_str) - 1) == 0) {
-		REDEBUG("Zero length string is not valid JSON data");
+		REDEBUG("JSON map input length must be > 0");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -334,7 +343,6 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 
 
 finish:
-	talloc_free(json_str);
 	json_object_put(to_eval.root);
 	json_tokener_free(tok);
 
@@ -343,8 +351,8 @@ finish:
 
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	xlat_register(instance, "jsonquote", jsonquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(instance, "jsonquote", jsonquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	if (map_proc_register(instance, "json", mod_map_proc,
 			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t)) < 0) return -1;

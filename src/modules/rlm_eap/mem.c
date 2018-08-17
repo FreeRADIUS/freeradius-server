@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2001,2006  The FreeRADIUS server project
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2000,2001,2006  The FreeRADIUS server project
+ * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  */
 
 RCSID("$Id$")
@@ -60,8 +60,8 @@ static int _eap_session_free(eap_session_t *eap_session)
 	}
 
 #ifdef WITH_VERIFY_PTR
-	if (eap_session->prev_round) (void)rad_cond_assert(talloc_parent(eap_session->prev_round) == eap_session);
-	if (eap_session->this_round) (void)rad_cond_assert(talloc_parent(eap_session->this_round) == eap_session);
+	if (eap_session->prev_round) (void)fr_cond_assert(talloc_parent(eap_session->prev_round) == eap_session);
+	if (eap_session->this_round) (void)fr_cond_assert(talloc_parent(eap_session->this_round) == eap_session);
 #endif
 
 	/*

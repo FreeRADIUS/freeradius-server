@@ -26,9 +26,9 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_unbound - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/log.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/log.h>
 #include <fcntl.h>
 #include <unbound.h>
 
@@ -384,9 +384,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	MEM(inst->xlat_aaaa_name = talloc_typed_asprintf(inst, "%s-aaaa", inst->name));
 	MEM(inst->xlat_ptr_name = talloc_typed_asprintf(inst, "%s-ptr", inst->name));
 
-	if (xlat_register(inst, inst->xlat_a_name, xlat_a, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) ||
-	    xlat_register(inst, inst->xlat_aaaa_name, xlat_aaaa, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) ||
-	    xlat_register(inst, inst->xlat_ptr_name, xlat_ptr, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN)) {
+	if (xlat_register(inst, inst->xlat_a_name, xlat_a, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false) ||
+	    xlat_register(inst, inst->xlat_aaaa_name, xlat_aaaa, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false) ||
+	    xlat_register(inst, inst->xlat_ptr_name, xlat_ptr, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false)) {
 		cf_log_err(conf, "Failed registering xlats");
 		return -1;
 	}
@@ -406,7 +406,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	char k[64]; /* To silence const warns until newer unbound in distros */
 
-	inst->el = process_global_event_list(EVENT_CORRAL_AUX);
+	/*
+	 *	@todo - move this to the thread-instantiate function
+	 */
+	inst->el = fr_global_event_list();
 	inst->log_pipe_stream[0] = NULL;
 	inst->log_pipe_stream[1] = NULL;
 	inst->log_fd = -1;
@@ -434,8 +437,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (rad_debug_lvl > 0) {
 		log_level = rad_debug_lvl;
 
-	} else if (main_config.debug_level > 0) {
-		log_level = main_config.debug_level;
+	} else if (main_config->debug_level > 0) {
+		log_level = main_config->debug_level;
 	}
 
 	switch (log_level) {
@@ -488,12 +491,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		break;
 
 	case L_DST_FILES:
-		if (main_config.log_file) {
+		if (main_config->log_file) {
 			char *log_file;
 
 			strcpy(k, "logfile:");
 			/* 3rd argument isn't const'd in libunbounds API */
-			memcpy(&log_file, &main_config.log_file, sizeof(log_file));
+			memcpy(&log_file, &main_config->log_file, sizeof(log_file));
 			res = ub_ctx_set_option(inst->ub, k, log_file);
 			if (res) {
 				goto error;
@@ -546,7 +549,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			/* Reinstate the log file name JIC */
 			strcpy(k, "logfile:");
 			/* 3rd argument isn't const'd in libunbounds API */
-			memcpy(&log_file, &main_config.log_file, sizeof(log_file));
+			memcpy(&log_file, &main_config->log_file, sizeof(log_file));
 			res = ub_ctx_set_option(inst->ub, k, log_file);
 			if (res) goto error;
 		}
@@ -638,7 +641,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	inst->log_fd = ub_fd(inst->ub);
 	if (inst->log_fd >= 0) {
-		if (fr_event_fd_insert(inst, inst->el, inst->log_fd, ub_fd_handler, NULL, NULL, inst) < 0) {
+		if (fr_event_fd_insert(inst, inst->el, inst->log_fd,
+				       ub_fd_handler,
+				       NULL,
+				       NULL,
+				       inst) < 0) {
 			cf_log_err(conf, "could not insert async fd");
 			inst->log_fd = -1;
 			goto error_nores;
@@ -662,7 +669,7 @@ static int mod_detach(void *instance)
 	rlm_unbound_t *inst = instance;
 
 	if (inst->log_fd >= 0) {
-		fr_event_fd_delete(inst->el, inst->log_fd);
+		fr_event_fd_delete(inst->el, inst->log_fd, FR_EVENT_FILTER_IO);
 		if (inst->ub) {
 			ub_process(inst->ub);
 			/* This can hang/leave zombies currently
@@ -681,7 +688,7 @@ static int mod_detach(void *instance)
 
 	if (inst->log_pipe_stream[0]) {
 		if (inst->log_pipe_in_use) {
-			fr_event_fd_delete(inst->el, inst->log_pipe[0]);
+			fr_event_fd_delete(inst->el, inst->log_pipe[0], FR_EVENT_FILTER_IO);
 		}
 		fclose(inst->log_pipe_stream[0]);
 	}

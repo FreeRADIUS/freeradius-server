@@ -5,13 +5,14 @@
 #
 TARGET		:= libfreeradius-util.a
 
-SOURCES		:= base64.c \
+SOURCES		:= \
+		   ascend.c \
+		   base64.c \
 		   cursor.c \
 		   debug.c \
 		   dict.c \
 		   event.c \
 		   fifo.c \
-		   filters.c \
 		   fring.c \
 		   getaddrinfo.c \
 		   hash.c \
@@ -21,14 +22,14 @@ SOURCES		:= base64.c \
 		   inet.c \
 		   isaac.c \
 		   log.c \
-		   mem.c \
-		   misc.c \
-		   missing.c \
 		   md4.c \
 		   md5.c \
+		   misc.c \
+		   missing.c \
 		   net.c \
-		   pair.c \
+		   packet.c \
 		   pair_cursor.c \
+		   pair.c \
 		   pcap.c \
 		   print.c \
 		   proto.c \
@@ -37,17 +38,20 @@ SOURCES		:= base64.c \
 		   regex.c \
 		   sha1.c \
 		   snprintf.c \
+		   socket.c \
 		   strerror.c \
 		   strlcat.c \
 		   strlcpy.c \
 		   syserror.c \
-		   socket.c \
 		   talloc.c \
 		   token.c \
-		   udpfromto.c \
+		   trie.c \
 		   udp.c \
+		   udpfromto.c \
 		   value.c \
 		   version.c
+
+HEADERS		:= $(subst src/lib/,,$(wildcard $(DIR)/*.h))
 
 SRC_CFLAGS	:= -D_LIBRADIUS -I$(top_builddir)/src
 

@@ -1,154 +1,108 @@
 # rlm_radius
 
-## RADIUS fixups
+## 2017-10-11
 
-It has to add Proxy-State to outbound packets (oops)
+After refactoring...
 
-And do CHAP-Challenge fixups
+* on read(), don't put connection into active state, as it may not be writable?
+ * or, just do it, and hope for the best... with the event loop handling it
 
-## Multiple connections
 
-rlm_radius_udp.c now has one connection, in `c->active`, which is an
-`fr_dlist_t`.  That needs to be moved to a heap, ordered by (1)
-most-recently active (i.e. most recent sent packet that had a
-response), followed by (2) number of free IDs.
+## RADIUS fixes
 
-When we need a connection, we pop it from the heap.  Allocate an ID,
-and push it back to the heap.
+* idle out old connections
 
-When we get a reply, we grab the connection, check / update
-`last_sent_with_reply`, free the ID (unless it's Status-Server ping
-checks), and extract / insert the connection back into the heap.
+* limit # of bad / reconnected connections
 
-When the packet times out, we just free the ID (unless it's
-Status-Server ping checks), and extract / insert the connection back
-into the heap.
+* move status_u allocation and init to connection alloc
 
-We need to extract / insert the connection because it's location may have changed...
+## connection state
 
-We probably don't want to load-balance across connections via
-"num_outstanding" as with "load-balance" in v3.  We probably don't
-want to order "live" connections by number of free packets.  Instead,
-just use the "most lively" connection.  Which should do automatic
-load-balancing.  i.e. if it JUST responded to us, it's probably ready
-to take another packet.
+* maybe move Status-Server to fixed-time pings, as recommended in RFC 3539?
+  * low priority, and probably not useful
 
-The "full" connections should be on a *separate* heap, or maybe a
-`fr_dlist_t`.  The extract / insert connection work needs to be done
-in it's own function, because it's mostly magic, and needs to be done
-in multiple places.
+## Limits
 
-We need to track:
+We limit the number of connections, but not the number of proxied
+packets.  This is because (for now), each connection can only proxy 256 packets...
 
-* connection state: connecting, live, full, zombie, dead
-* connecting = trying, but not yet open
-* live connections which have IDs available
-* live connections which are "full"
-  * either no more IDs, or we've seen EWOULDBLOCK
-  * these don't have packets sent to them
-* zombie connections
-  * these don't have packets sent to them
-  * they have Status-Server checks done
-  * they are moved to "live" if we get 3 responses to Status-Server
-  * they are moved to "live" if we get a response to a previously proxied request
-* dead connections are closed
-
-We need some more configuration options:
-
-    # per-connection limits
-    connection {
-	# this is a per-thread limit.  Oops.
-	max_connections
-	connect_timeout
-	reconnect_delay
-	idle_timeout
-
-	# as per 3.0
-	response_window
-	response_timeouts
-	zombie_period
-	revive_interval
-    }
+## Status Checks
     
-    # return RLM_MODULE_USERLOCK if we're sitting on too many packets
-    # note that this is a per-thread limit.  Sorry about that.
-    max_packets = 65536
-    
-    status_checks {
-	type = Status-Server  # or NONE
-	# mrt, irt, mrc taken from another section, as per Access-Request, etc.
-	
-	num_answers_to_alive
-	# check_interval and check_timeout are no longer relevant
-	# we just use MRT, IRT, etc.  if the response doesn't come
-	# by the time we're sending the next packet, it's a timeout.
-	
-	# update the Status-Server packet here???
-	# probably no need for a separate virtual server...
-	# i.e. no policies
-	# no if / then / else conditions
-	# no templates, just static strings
-	update request {
-		User-Name = ...
-		User-Password = ...
-	}
+* connection negotiation in Status-Server in proto_radius
+  * some is there (Response-Length)
+  * add more?  Extended ID, etc.
+
+## Core Issues
+
+things to do in the server core.  Tracked here because it's related to
+the work in rlm_radius.
+
+## Cleanup_delay
+
+* need to double-check cleanup_delay
+  * it works, but it's likely set too small?
+  * especially if the client retransmits are 10s?
+  * or maybe it was the dup detection bug (timestamp) where it didn't detect dups...
+
+## sequence / ACK in network / worker
+
+* double-check ENABLE_SKIPS in src/lib/io/channel.c.  It's disabled
+  for now, as it caused problems.  So it ALWAYS signals the other side. :(
+
+We should move to a "must_signal" approach, as with the network side
+The worker should suppress signals if it sees that the ACKs from the
+other end haven't caught up to it's sent packets.  Otherwise, it must
+signal.
+
+this whole thing is wrong... we end up signaling on every damned packet in real life...
+
+OK... fix the damned channel to use queue depth instead of ACKs
+which makes them less general, but better.  The worker can NAK a packet, send a reply, or mark it ask discarded
+
+DATA		N -> W: (packet + queue 1, active)
+
+DATA		N <- W (packet + queue is now 0, inactive)
+
+DISCARD		N <- W (no packet, queue is now 0, inactive)
+
+SLEEPING	N <- W (no packet, queue is 1, inactive)
+
+We also need an "must_signal" flag, for if the other end is
+sleeping... the network always sets it, I guess..
+
+### Fork
+
+* fix fork
+
+    fork server.packet-type {
+        &foo += &parent:bar
     }
 
-The `rlm_radius` module should not have an idea as to the status of
-the server, across multiple connections.  i.e. each connection is
-handled separately.  That is because especially for TCP, one
-connection can be dropped by a firewall, but another one can be fine.
-So it should just treat each connection independently.
+* fork is an 'update' section that also runs a new virtual server.  A
+  little weird, but it should work.
 
-The module should also track the state of multiple connections:
+* needs helper functions in virtual_server.c to do it.. and to create
+  child REQUEST async stuff with listen, protocol handler, etc.
 
-* connecting (all connections are connecting)
-* live (one or more connection is live)
-* full (all connections are full)
-  * this should probably just return to the connecting state,
-  * unless it hits max_connections
-* zombie (all connections are zombie)
-* dead (all connections are dead)
-  * this should probably just return it to the connecting state.
+* fork also needs to do this sanity check on compile, so that it knows
+  it can dereference sections which exist...
 
-## Connection status management
+### clean up REQUEST structure
 
-Mark a connection live / dead / zombie based on packet retransmission
-timers.  Do Status-Server checks as necessary.
+many fields are essentially unused.  request->proxy is no longer used,
+but is referenced all over the place.
 
-## status_check
+grunt work, but very useful.
 
-add status_check = Status-Server or Access-Request, ala old code
+### Network and worker fixups
 
-The main issue here is the ID allocation... If this is set, then we
-need to reserve one ID via `rr_track_alloc()` for the status-server
-check.  Then use that ID if there are no responses to packets.
+* switch worker selection from recursing / heap to O(N) lookups and "power of 2"
+  * see comments in src/lib/io/network.c
 
-We should also allow `status_check = auto`, which picks it up from the
-list of allowed packet types.  We then need to require config for
-username / password, for Access-Request, and just username for
-Accounting-Request.
+* associate packets with a particular worker across multiple packets
+  * once this is done, we can move to per-thread SSL contexts, and drop contention massively
+  * with the caveat that *all SSL work* has to be done in one thread
+  * hopefully this doesn't affect things like SQL drivers?  need to check...
 
-## synchronous proxying
-
-ala v3.  All retransmissions started by the client.
-
-This requires a "signal" handler to be added when the module calls unlang_yield.
-
-The call to the signal handler is already in proto_radius_auth and friends.
-
-We could probably add a signal handler to the module, to handle the
-DONE signal.  This would allow graceful cleanups.  Those are mostly
-already handled via the talloc_free() hierarchy and destructors. But
-it may be nice to distinguish the situations.  And, it lets us test
-the signal handler independent of anything else.
-
-Doing synchronous proxying also mean having the network side return
-DUP PACKET (somehow).  And, send that dup packet signal to the worker.
-Which somehow associates it with a request (probably via a simple
-network thread + packet identifier).  This means that the worker has
-to have yet another tree tracking packets... but it will allow for
-signaling if necessary.
-
-We probaby want the network + worker to be able to send IDs of 0/0,
-which means "no tracking", as that will likely be the common case.
+* do NUMA for high-end systems
+  * associate N network threads with W worker threads

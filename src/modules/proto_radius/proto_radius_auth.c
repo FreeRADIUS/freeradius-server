@@ -23,123 +23,241 @@
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)
  */
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/dict.h>
-#include <freeradius-devel/state.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #ifndef USEC
 #define USEC (1000000)
 #endif
 
+typedef struct {
+	bool		log_stripped_names;
+	bool		log_auth;			//!< Log authentication attempts.
+	bool		log_auth_badpass;		//!< Log successful authentications.
+	bool		log_auth_goodpass;		//!< Log failed authentications.
+	char const	*auth_badpass_msg;		//!< Additional text to append to successful auth messages.
+	char const	*auth_goodpass_msg;		//!< Additional text to append to failed auth messages.
+
+	char const	*denied_msg;			//!< Additional text to append if the user is already logged
+							//!< in (simultaneous use check failed).
+
+	uint32_t	session_timeout;		//!< Maximum time between the last response and next request.
+	uint32_t	max_session;			//!< Maximum ongoing session allowed.
+
+	uint8_t       	state_server_id;		//!< Sets a specific byte in the state to allow the
+							//!< authenticating server to be identified in packet
+							//!< captures.
+
+	fr_state_tree_t	*state_tree;			//!< State tree to link multiple requests/responses.
+} proto_radius_auth_t;
+
+static const CONF_PARSER session_config[] = {
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, proto_radius_auth_t, session_timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, proto_radius_auth_t, max_session), .dflt = "4096" },
+	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, proto_radius_auth_t, state_server_id) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER log_config[] = {
+	{ FR_CONF_OFFSET("stripped_names", FR_TYPE_BOOL, proto_radius_auth_t, log_stripped_names), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth", FR_TYPE_BOOL, proto_radius_auth_t, log_auth), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_badpass", FR_TYPE_BOOL, proto_radius_auth_t, log_auth_badpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_goodpass", FR_TYPE_BOOL,proto_radius_auth_t,  log_auth_goodpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("msg_badpass", FR_TYPE_STRING, proto_radius_auth_t, auth_badpass_msg) },
+	{ FR_CONF_OFFSET("msg_goodpass", FR_TYPE_STRING, proto_radius_auth_t, auth_goodpass_msg) },
+	{ FR_CONF_OFFSET("msg_denied", FR_TYPE_STRING, proto_radius_auth_t, denied_msg), .dflt = "You are already logged in - access denied" },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER proto_radius_auth_config[] = {
+	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
+
+	{ FR_CONF_POINTER("session", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) session_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t proto_radius_auth_dict[];
+fr_dict_autoload_t proto_radius_auth_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_calling_station_id;
+static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_module_failure_message;
+static fr_dict_attr_t const *attr_module_success_message;
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_chap_password;
+static fr_dict_attr_t const *attr_service_type;
+static fr_dict_attr_t const *attr_state;
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_nas_port;
+
+extern fr_dict_attr_autoload_t proto_radius_auth_dict_attr[];
+fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
+	{ .out = &attr_calling_station_id, .name = "Calling-Station-Id", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_service_type, .name = "Service-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_nas_port, .name = "NAS-Port", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
+	{ NULL }
+};
+
+/*
+ *	Return a short string showing the terminal server, port
+ *	and calling station ID.
+ */
+static char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
+{
+	VALUE_PAIR	*cli;
+	VALUE_PAIR	*pair;
+	uint32_t	port = 0;	/* RFC 2865 NAS-Port is 4 bytes */
+	char const	*tls = "";
+
+	cli = fr_pair_find_by_da(request->packet->vps, attr_calling_station_id, TAG_ANY);
+	if (!cli) do_cli = false;
+
+	pair = fr_pair_find_by_da(request->packet->vps, attr_nas_port, TAG_ANY);
+	if (pair != NULL) port = pair->vp_uint32;
+
+	if (request->packet->dst_port == 0) tls = " via proxy to virtual server";
+
+	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
+		 request->client->shortname, port,
+		 (do_cli ? " cli " : ""), (do_cli ? cli->vp_strvalue : ""),
+		 tls);
+
+	return buf;
+}
+
 /*
  *	Make sure user/pass are clean and then create an attribute
  *	which contains the log message.
  */
-static void auth_message(char const *msg, REQUEST *request, int goodpass)
+static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t const *inst,
+							REQUEST *request, bool goodpass, char const *fmt, ...)
 {
-	int logit;
-	char const *extra_msg = NULL;
-	char clean_password[1024];
-	char clean_username[1024];
-	char buf[1024];
-	char extra[1024];
-	char *p;
-	VALUE_PAIR *username = NULL;
+	va_list		 ap;
+
+	bool		logit;
+	char const	*extra_msg = NULL;
+
+	char		password_buff[128];
+	char const	*password_str = NULL;
+
+	char		buf[1024];
+	char		extra[1024];
+	char		*p;
+	char		*msg;
+	VALUE_PAIR	*username = NULL;
 
 	/*
 	 * Get the correct username based on the configured value
 	 */
-	if (!log_stripped_names) {
-		username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+	if (!inst->log_stripped_names) {
+		username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	} else {
 		username = request->username;
 	}
 
 	/*
-	 *	Clean up the username
-	 */
-	if (!username) {
-		strcpy(clean_username, "<no User-Name attribute>");
-	} else {
-		fr_snprint(clean_username, sizeof(clean_username), username->vp_strvalue, username->vp_length, '\0');
-	}
-
-	/*
 	 *	Clean up the password
 	 */
-	if (request->root->log_auth_badpass || request->root->log_auth_goodpass) {
+	if (inst->log_auth_badpass || inst->log_auth_goodpass) {
 		if (!request->password) {
 			VALUE_PAIR *auth_type;
 
-			auth_type = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
+			auth_type = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
 			if (auth_type) {
-				snprintf(clean_password, sizeof(clean_password), "<via Auth-Type = %s>",
-					 fr_dict_enum_alias_by_value(NULL, auth_type->da, &auth_type->data));
+				snprintf(password_buff, sizeof(password_buff), "<via Auth-Type = %s>",
+					 fr_dict_enum_alias_by_value(auth_type->da, &auth_type->data));
+				password_str = password_buff;
 			} else {
-				strcpy(clean_password, "<no User-Password attribute>");
+				password_str = "<no User-Password attribute>";
 			}
-		} else if (fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY)) {
-			strcpy(clean_password, "<CHAP-Password>");
-		} else {
-			fr_snprint(clean_password, sizeof(clean_password),
-				  request->password->vp_strvalue, request->password->vp_length, '\0');
+		} else if (fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY)) {
+			password_str = "<CHAP-Password>";
 		}
 	}
 
 	if (goodpass) {
-		logit = request->root->log_auth_goodpass;
-		extra_msg = request->root->auth_goodpass_msg;
+		logit = inst->log_auth_goodpass;
+		extra_msg = inst->auth_goodpass_msg;
 	} else {
-		logit = request->root->log_auth_badpass;
-		extra_msg = request->root->auth_badpass_msg;
+		logit = inst->log_auth_badpass;
+		extra_msg = inst->auth_badpass_msg;
 	}
 
 	if (extra_msg) {
 		extra[0] = ' ';
 		p = extra + 1;
-		if (xlat_eval(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL) < 0) {
-			return;
-		}
+		if (xlat_eval(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL) < 0) return;
 	} else {
 		*extra = '\0';
 	}
 
-	RAUTH("%s: [%s%s%s] (%s)%s",
-		       msg,
-		       clean_username,
-		       logit ? "/" : "",
-		       logit ? clean_password : "",
-		       auth_name(buf, sizeof(buf), request, 1),
-		       extra);
+	/*
+	 *	Expand the input message
+	 */
+	va_start(ap, fmt);
+	msg = fr_vasprintf(request, fmt, ap);
+	va_end(ap);
+
+	RAUTH("%s: [%pV%s%pV] (%s)%s",
+	      msg,
+	      username ? &username->data : fr_box_strvalue("<no User-Name attribute>"),
+	      logit ? "/" : "",
+	      logit ? (password_str ? fr_box_strvalue(password_str) : &request->password->data) : fr_box_strvalue(""),
+	      auth_name(buf, sizeof(buf), request, 1),
+	      extra);
+
+	talloc_free(msg);
 }
 
-static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
+static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_action_t action)
 {
-	VALUE_PAIR		*vp, *auth_type;
-	rlm_rcode_t		rcode;
-	CONF_SECTION		*unlang;
-	fr_dict_enum_t const	*dv = NULL;
-	fr_dict_attr_t const 	*da = NULL;
-	vp_cursor_t		cursor;
+	proto_radius_auth_t const	*inst = instance;
+	VALUE_PAIR			*vp, *auth_type;
+	rlm_rcode_t			rcode;
+	CONF_SECTION			*unlang;
+	fr_dict_enum_t const		*dv = NULL;
+	fr_cursor_t			cursor;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	/*
 	 *	Pass this through asynchronously to the module which
 	 *	is waiting for something to happen.
 	 */
 	if (action != FR_IO_ACTION_RUN) {
-		unlang_signal(request, FR_ACTION_DONE);
+		unlang_signal(request, (fr_state_signal_t) action);
 		return FR_IO_DONE;
 	}
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
-			       fr_packet_codes[request->packet->code], request->packet->id);
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
+		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "radius";
 
@@ -153,19 +271,19 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		/*
 		 *	Do various setups.
 		 */
-		request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
-		request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
+		request->username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+		request->password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 
 		/*
 		 *	Grab the VPS and data associated with the State attribute.
 		 */
-		if (!request->parent) fr_state_to_request(global_state, request, request->packet);
+		if (!request->parent) fr_state_to_request(inst->state_tree, request);
 
 		/*
 		 *	Push the conf section into the unlang stack.
 		 */
 		RDEBUG("Running 'recv Access-Request' from file %s", cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_REJECT);
+		unlang_push_section(request, unlang, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
 		/* FALL-THROUGH */
@@ -194,14 +312,11 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL) {
-				char msg[FR_MAX_STRING_LEN + 16];
-
-				snprintf(msg, sizeof(msg), "Invalid user (%s)",
-					 vp->vp_strvalue);
-				auth_message(msg, request, 0);
+			if ((vp = fr_pair_find_by_da(request->packet->vps,
+						     attr_module_failure_message, TAG_ANY)) != NULL) {
+				auth_message(inst, request, false, "Invalid user (%pV)", &vp->data);
 			} else {
-				auth_message("Invalid user", request, 0);
+				auth_message(inst, request, false, "Invalid user");
 			}
 
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -211,16 +326,16 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		/*
 		 *	Find Auth-Type, and complain if they have too many.
 		 */
-		fr_pair_cursor_init(&cursor, &request->control);
 		auth_type = NULL;
-		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_AUTH_TYPE, TAG_ANY)) != NULL) {
+		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, attr_auth_type);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
 			if (!auth_type) {
 				auth_type = vp;
 				continue;
 			}
 
-			RWDEBUG("Ignoring extra Auth-Type = %s",
-				fr_dict_enum_alias_by_value(NULL, auth_type->da, &vp->data));
+			RWDEBUG("Ignoring extra %pP", vp);
 		}
 
 		/*
@@ -234,9 +349,9 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			 *	the "recv Access-Request" section
 			 *	should have returned reject.
 			 */
-			vp = fr_pair_find_by_num(request->packet->vps, 0, FR_SERVICE_TYPE, TAG_ANY);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_service_type, TAG_ANY);
 			if (vp && (vp->vp_uint32 == FR_SERVICE_TYPE_VALUE_AUTHORIZE_ONLY)) {
-				RDEBUG("Skipping authenticate as we have found Service-Type = Authorize-Only");
+				RDEBUG("Skipping authenticate as we have found %pP", vp);
 				request->reply->code = FR_CODE_ACCESS_ACCEPT;
 				goto setup_send;
 			}
@@ -244,12 +359,11 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			/*
 			 *	Allow for over-ride of reply code.
 			 */
-			vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
+			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 			if (vp) {
 				request->reply->code = vp->vp_uint32;
 				goto setup_send;
 			}
-
 
 			REDEBUG2("No Auth-Type available: rejecting the user.");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -260,13 +374,13 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 *	Handle hard-coded Accept and Reject.
 		 */
 		if (auth_type->vp_uint32 == FR_AUTH_TYPE_ACCEPT) {
-			RDEBUG2("Auth-Type = Accept, allowing user");
+			RDEBUG2("%pP, allowing user", auth_type);
 			request->reply->code = FR_CODE_ACCESS_ACCEPT;
 			goto setup_send;
 		}
 
 		if (auth_type->vp_uint32 == FR_AUTH_TYPE_REJECT) {
-			RDEBUG2("Auth-Type = Reject, rejecting user");
+			RDEBUG2("%pP, rejecting user", auth_type);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
@@ -275,7 +389,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 *	Find the appropriate Auth-Type by name.
 		 */
 		vp = auth_type;
-		dv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
+		dv = fr_dict_enum_by_value(vp->da, &vp->data);
 		if (!dv) {
 			REDEBUG2("Unknown Auth-Type %d found: rejecting the user", vp->vp_uint32);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -290,7 +404,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		}
 
 		RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOTFOUND);
+		unlang_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_PROCESS;
 		/* FALL-THROUGH */
@@ -322,23 +436,20 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			RDEBUG2("Failed to authenticate the user");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 
-			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL){
-				char msg[FR_MAX_STRING_LEN+19];
-
-				snprintf(msg, sizeof(msg), "Login incorrect (%s)",
-					 vp->vp_strvalue);
-				auth_message(msg, request, 0);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_module_failure_message, TAG_ANY);
+			if (vp) {
+				auth_message(inst, request, false, "Login incorrect (%pV)", &vp->data);
 			} else {
-				auth_message("Login incorrect", request, 0);
+				auth_message(inst, request, false, "Login incorrect");
 			}
 
 			/*
 			 *	Maybe the shared secret is wrong?
 			 */
 			if (request->password) {
-				VERIFY_VP(request->password);
+				VP_VERIFY(request->password);
 
-				if ((rad_debug_lvl > 1) && (request->password->da->attr == FR_USER_PASSWORD)) {
+				if ((rad_debug_lvl > 1) && (request->password->da == attr_user_password)) {
 					uint8_t const *p;
 
 					p = (uint8_t const *) request->password->vp_strvalue;
@@ -347,8 +458,9 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 
 						size = fr_utf8_char(p, -1);
 						if (!size) {
-							RWDEBUG("Unprintable characters in the password.  Double-check the "
-								"shared secret on the server and the NAS!");
+							RWDEBUG("Unprintable characters in the password. "
+								"Double-check the shared secret on the server "
+								"and the NAS!");
 							break;
 						}
 						p += size;
@@ -368,34 +480,54 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
-			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_MODULE_SUCCESS_MESSAGE, TAG_ANY)) != NULL){
-				char msg[FR_MAX_STRING_LEN+12];
-
-				snprintf(msg, sizeof(msg), "Login OK (%s)",
-					 vp->vp_strvalue);
-				auth_message(msg, request, 1);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_module_success_message, TAG_ANY);
+			if (vp){
+				auth_message(inst, request, true, "Login OK (%pV)", &vp->data);
 			} else {
-				auth_message("Login OK", request, 1);
+				auth_message(inst, request, true, "Login OK");
 			}
 		}
 
 	setup_send:
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-		rad_assert(da != NULL);
+		if (!request->reply->code) {
+			vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
+			if (vp) {
+				request->reply->code = vp->vp_uint32;
+			} else {
+				RDEBUG("No reply code was set.  Forcing to Access-Reject");
+				request->reply->code = FR_CODE_ACCESS_REJECT;
+			}
+		}
 
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
 
 		if (!unlang) goto send_reply;
 
 	rerun_nak:
+		/*
+		 *	Access-Challenge packets require a State.  If
+		 *	there is none, create one here.  This is so
+		 *	that the State attribute is accessible in the
+		 *	"send Access-Challenge" section.
+		 */
+		if ((request->reply->code == FR_CODE_ACCESS_CHALLENGE) &&
+		    !(vp = fr_pair_find_by_da(request->reply->vps, attr_state, TAG_ANY))) {
+			uint8_t buffer[16];
+
+			fr_rand_buffer(buffer, sizeof(buffer));
+
+			MEM(pair_update_reply(&vp, attr_state) >= 0);
+			fr_pair_value_memcpy(vp, buffer, sizeof(buffer));
+		}
+
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+		unlang_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_SEND;
 		/* FALL-THROUGH */
@@ -410,12 +542,6 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		rad_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
-			/*
-			 *	We need to send CoA-NAK back if Service-Type
-			 *	is Authorize-Only.  Rely on the user's policy
-			 *	to do that.  We're not a real NAS, so this
-			 *	restriction doesn't (ahem) apply to us.
-			 */
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_REJECT:
@@ -426,15 +552,12 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			 *	the NAK section.
 			 */
 			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
-				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-				rad_assert(da != NULL);
-
-				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
-				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'.", dv->alias);
+				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv->alias);
 
 				request->reply->code = FR_CODE_ACCESS_REJECT;
 
-				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
@@ -462,14 +585,21 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		gettimeofday(&request->reply->timestamp, NULL);
 
 		/*
-		 *	Save session-state list for Access-Challenge,
+		 *	Save session-state list for Access-Challenge from a NAS.
 		 *	discard it for everything else.
 		 */
-		if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
-			if (!request->parent) fr_request_to_state(global_state, request, request->packet, request->reply);
-
-		} else {
-			if (!request->parent) fr_state_discard(global_state, request, request->packet);
+		if (!request->parent) {
+			if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
+				/*
+				 *	We can't create a valid response
+				 */
+				if (fr_request_to_state(inst->state_tree, request) < 0) {
+					request->reply->code = FR_CODE_DO_NOT_RESPOND;
+					return FR_IO_REPLY;
+				}
+			} else {
+				fr_state_discard(inst->state_tree, request);
+			}
 		}
 
 		/*
@@ -485,23 +615,10 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 *	Don't print IP addresses.
 		 */
 		if (request->parent) {
-			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
-				       fr_packet_codes[request->reply->code], request->reply->id);
-			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+			RDEBUG("Sent %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
+			log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 			return FR_IO_REPLY;
 		}
-
-#ifdef WITH_UDPFROMTO
-		/*
-		 *	Overwrite the src ip address on the outbound packet
-		 *	with the one specified by the client.
-		 *	This is useful to work around broken DSR implementations
-		 *	and other routing issues.
-		 */
-		if (request->client->src_ipaddr.af != AF_UNSPEC) {
-			request->reply->src_ipaddr = request->client->src_ipaddr;
-		}
-#endif
 
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 		break;
@@ -513,94 +630,21 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-
-/*
- *	Ensure that the "recv Access-Request" etc. sections are compiled.
- */
-static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
+static int mod_instantiate(void *instance, CONF_SECTION *process_app_cs)
 {
-	int rcode;
-	CONF_SECTION *subcs = NULL;
-
-	rcode = unlang_compile_subsection(server_cs, "recv", "Access-Request", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'recv Access-Request { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	/*
-	 *	It's OK to not have an Access-Challenge section.
-	 */
-	rcode = unlang_compile_subsection(server_cs, "send", "Access-Challenge", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", NULL))) {
-		char const *name2;
-
-		name2 = cf_section_name2(subcs);
-		if (!name2) {
-			cf_log_err(subcs, "A second name is required for the 'authenticate { ... }' section");
-			return -1;
-		}
-
-		cf_log_debug(subcs, "Loading authenticate %s {...}", name2);
-
-		if (unlang_compile(subcs, MOD_AUTHENTICATE) < 0) {
-			cf_log_err(subcs, "Failed compiling 'authenticate %s { ... }' section", name2);
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *listen_cs)
-{
+	proto_radius_auth_t	*inst = instance;
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
 	CONF_SECTION		*server_cs;
-	fr_dict_attr_t const	*da;
+	CONF_SECTION		*subcs = NULL;
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_radius;
 
 	rad_assert(listen_cs);
 
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	da = fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE);
-	if (!da) {
-		cf_log_err(server_cs, "Failed finding dictionary definition for Auth-Type");
-		return -1;
-	}
-
-	if (virtual_server_section_attribute_define(server_cs, "authenticate", da) < 0) return -1;
-
-	return 0;
-}
-
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
-{
-	CONF_SECTION		*subcs = NULL;;
-	CONF_SECTION		*server_cs;
-
-	rad_assert(listen_cs);
-
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	if (auth_listen_compile(server_cs, listen_cs) < 0) return -1;
 
 	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", CF_IDENT_ANY))) {
 		int rcode;
@@ -612,21 +656,43 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 			return -1;
 		}
 
-		rcode = unlang_compile_subsection(server_cs, "authenticate", name2, MOD_AUTHENTICATE);
+		rcode = unlang_compile_subsection(server_cs, "authenticate", name2, MOD_AUTHENTICATE, &parse_rules);
 		if (rcode < 0) {
 			cf_log_err(subcs, "Failed compiling 'authenticate %s { ... }' section", name2);
 			return -1;
 		}
 	}
 
+	inst->state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->max_session,
+					      inst->session_timeout, inst->state_server_id);
+
 	return 0;
 }
 
-extern fr_app_process_t proto_radius_auth;
-fr_app_process_t proto_radius_auth = {
+static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
+{
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
+	CONF_SECTION		*server_cs;
+
+	rad_assert(process_app_cs);
+	rad_assert(listen_cs);
+
+	server_cs = cf_item_to_section(cf_parent(listen_cs));
+	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+
+	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
+
+	return 0;
+}
+
+extern fr_app_worker_t proto_radius_auth;
+fr_app_worker_t proto_radius_auth = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_auth",
+	.config		= proto_radius_auth_config,
+	.inst_size	= sizeof(proto_radius_auth_t),
+
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

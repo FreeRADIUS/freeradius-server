@@ -15,8 +15,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2006  The FreeRADIUS server project
- * Copyright 2006  Vitaly Bodzhgua <vitaly@eastera.net>
+ * @copyright 2006  The FreeRADIUS server project
+ * @copyright 2006  Vitaly Bodzhgua <vitaly@eastera.net>
  */
 
 RCSID("$Id$")
@@ -211,7 +211,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		case SQL_FLOAT:
 			snprintf(conn->row[i], conn->row_sizes[i], "%15g",
-				 *(float ISC_FAR *) (var->sqldata));
+				 *(double ISC_FAR *) (var->sqldata));
 			break;
 
 		case SQL_SHORT:

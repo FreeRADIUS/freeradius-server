@@ -24,8 +24,8 @@
  */
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
+#include	<freeradius-devel/server/base.h>
+#include	<freeradius-devel/server/modules.h>
 
 #include	<ctype.h>
 #include	<fcntl.h>
@@ -64,6 +64,22 @@ typedef struct rlm_files_t {
 	rbtree_t *postauth_users;
 } rlm_files_t;
 
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_files_dict[];
+fr_dict_autoload_t rlm_files_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_fall_through;
+
+extern fr_dict_attr_autoload_t rlm_files_dict_attr[];
+fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
+	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+
+	{ NULL }
+};
 
 /*
  *     See if a VALUE_PAIR list contains Fall-Through = Yes
@@ -71,7 +87,7 @@ typedef struct rlm_files_t {
 static int fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = fr_pair_find_by_num(vp, 0, FR_FALL_THROUGH, TAG_ANY);
+	tmp = fr_pair_find_by_da(vp, attr_fall_through, TAG_ANY);
 
 	return tmp ? tmp->vp_uint32 : 0;
 }
@@ -122,7 +138,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 
 		entry = users;
 		while (entry) {
-			vp_cursor_t cursor;
+			fr_cursor_t cursor;
 
 			/*
 			 *	Look for improper use of '=' in the
@@ -131,7 +147,9 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 *	and probably ':=' for server
 			 *	configuration items.
 			 */
-			for (vp = fr_pair_cursor_init(&cursor, &entry->check); vp; vp = fr_pair_cursor_next(&cursor)) {
+			for (vp = fr_cursor_init(&cursor, &entry->check);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
 				/*
 				 *	Ignore attributes which are set
 				 *	properly.
@@ -145,7 +163,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 				 *	or it's a wire protocol,
 				 *	ensure it has '=='.
 				 */
-				if ((vp->da->vendor != 0) ||
+				if ((fr_dict_vendor_num_by_da(vp->da) != 0) ||
 				    (vp->da->attr < 0x100)) {
 					WARN("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
 					     filename, entry->lineno,
@@ -163,7 +181,9 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 *	It's a common enough mistake, that it's
 			 *	worth doing.
 			 */
-			for (vp = fr_pair_cursor_init(&cursor, &entry->reply); vp; vp = fr_pair_cursor_next(&cursor)) {
+			for (vp = fr_cursor_init(&cursor, &entry->reply);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
 				/*
 				 *	If it's NOT a vendor attribute,
 				 *	and it's NOT a wire protocol
@@ -171,8 +191,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 				 *	then bitch about it, giving a
 				 *	good warning message.
 				 */
-				 if ((vp->da->vendor == 0) &&
-					(vp->da->attr > 1000)) {
+				 if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr > 1000)) {
 					WARN("[%s]:%d Check item \"%s\"\n"
 					       "\tfound in reply item list for user \"%s\".\n"
 					       "\tThis attribute MUST go on the first line"
@@ -295,9 +314,9 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char const *filename, rbtree_t *tree,
 			       RADIUS_PACKET *request_packet, RADIUS_PACKET *reply_packet)
 {
-	char const	*name, *match;
-	VALUE_PAIR	*check_tmp;
-	VALUE_PAIR	*reply_tmp;
+	char const	*name;
+	VALUE_PAIR	*check_tmp = NULL;
+	VALUE_PAIR	*reply_tmp = NULL;
 	PAIR_LIST const *user_pl, *default_pl;
 	bool		found = false;
 	PAIR_LIST	my_pl;
@@ -330,7 +349,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	 *	Find the entry for the user.
 	 */
 	while (user_pl || default_pl) {
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		VALUE_PAIR *vp;
 		PAIR_LIST const *pl;
 
@@ -340,44 +359,43 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 
 		if (!default_pl && user_pl) {
 			pl = user_pl;
-			match = name;
 			user_pl = user_pl->next;
 
 		} else if (!user_pl && default_pl) {
 			pl = default_pl;
-			match = "DEFAULT";
 			default_pl = default_pl->next;
 
-		} else if (user_pl->lineno < default_pl->lineno) {
+		} else if (user_pl->order < default_pl->order) {
 			pl = user_pl;
-			match = name;
 			user_pl = user_pl->next;
 
 		} else {
 			pl = default_pl;
-			match = "DEFAULT";
 			default_pl = default_pl->next;
 		}
 
-		check_tmp = fr_pair_list_copy(request, pl->check);
-		for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
+		MEM(fr_pair_list_copy(request, &check_tmp, pl->check) >= 0);
+		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
-			if (xlat_eval_do(request, vp) < 0) {
+		     vp = fr_cursor_next(&cursor)) {
+			if (xlat_eval_pair(request, vp) < 0) {
 				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
 				fr_pair_list_free(&check_tmp);
 				continue;
 			}
 		}
 
-		if (paircompare(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
-			RDEBUG2("Found match \"%s\" one line %d of %s", match, pl->lineno, filename);
+		if (paircmp(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
+			RDEBUG2("Found match \"%s\" one line %d of %s", pl->name, pl->lineno, filename);
 			found = true;
 
 			/* ctx may be reply or proxy */
-			reply_tmp = fr_pair_list_copy(reply_packet, pl->reply);
+			MEM(fr_pair_list_copy(reply_packet, &reply_tmp, pl->reply) >= 0);
+
 			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
 			fr_pair_list_move(request, &request->control, &check_tmp);
+
+			reply_tmp = NULL;	/* radius_pairmove() frees input attributes */
 			fr_pair_list_free(&check_tmp);
 
 			/*
@@ -390,7 +408,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	/*
 	 *	Remove server internal parameters.
 	 */
-	fr_pair_delete_by_num(&reply_packet->vps, 0, FR_FALL_THROUGH, TAG_ANY);
+	fr_pair_delete_by_da(&reply_packet->vps, attr_fall_through);
 
 	/*
 	 *	See if we succeeded.

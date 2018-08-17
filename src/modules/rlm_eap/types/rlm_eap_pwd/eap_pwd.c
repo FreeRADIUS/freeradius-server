@@ -1,7 +1,7 @@
 /*
- * Copyright (c) Dan Harkins, 2012
+ * @copyright (c) Dan Harkins, 2012
  *
- *  Copyright holder grants permission for redistribution and use in source
+ *  @copyright holder grants permission for redistribution and use in source
  *  and binary forms, with or without modification, provided that the
  *  following conditions are met:
  *     1. Redistribution of source code must retain the above copyright
@@ -34,10 +34,11 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-#include "eap_pwd.h"
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/server/modules.h>
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include "eap_pwd.h"
 
 static uint8_t allzero[SHA256_DIGEST_LENGTH] = { 0x00 };
 

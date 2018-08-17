@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_MISSING_H
-#define _FR_MISSING_H
+
 /**
  * $Id$
  *
@@ -84,6 +84,8 @@ RCSIDH(missing_h, "$Id$")
 #  include <errno.h>
 #endif
 
+#include <limits.h>
+
 /*
  *  Check for inclusion of <time.h>, versus <sys/time.h>
  *  Taken verbatim from the autoconf manual.
@@ -113,6 +115,10 @@ RCSIDH(missing_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifndef HAVE_SIG_T
+typedef void (*sig_t)(int);
 #endif
 
 /*
@@ -422,6 +428,10 @@ int clock_gettime(int clk_id, struct timespec *t);
 void timeval2ntp(struct  timeval const *tv, uint8_t *ntp);
 void ntp2timeval(struct timeval *tv, char const *ntp);
 
+#ifndef SSIZE_MIN
+#  define SSIZE_MIN LONG_MIN
+#endif
+
 /*
  *	This is really hacky. Any code needing to perform operations on 128bit integers,
  *	or return 128BIT integers should check for HAVE_128BIT_INTEGERS.
@@ -499,5 +509,3 @@ typedef void(*sig_t)(int);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* _FR_MISSING_H */

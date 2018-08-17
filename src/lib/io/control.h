@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_CONTROL_H
-#define _FR_CONTROL_H
+
 /**
  * $Id$
  *
@@ -53,9 +53,11 @@ typedef	void (*fr_control_callback_t)(void *ctx, void const *data, size_t data_s
 /*
  *	A list of pre-allocated IDs, so that the callers don't have to manage their own.
  */
-#define FR_CONTROL_ID_CHANNEL (1)
-#define FR_CONTROL_ID_SOCKET  (2)
-#define FR_CONTROL_ID_WORKER  (3)
+#define FR_CONTROL_ID_CHANNEL	(1)
+#define FR_CONTROL_ID_SOCKET	(2)
+#define FR_CONTROL_ID_WORKER	(3)
+#define FR_CONTROL_ID_DIRECTORY (4)
+#define FR_CONTROL_ID_INJECT 	(5)
 
 fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq, uintptr_t ident) CC_HINT(nonnull(3));
 void fr_control_free(fr_control_t *c) CC_HINT(nonnull);
@@ -75,5 +77,3 @@ void fr_control_service(fr_control_t *c, void *data, size_t data_size, fr_time_t
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* _FR_CONTROL_H */

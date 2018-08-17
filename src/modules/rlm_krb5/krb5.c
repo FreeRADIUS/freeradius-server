@@ -27,8 +27,8 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_krb5 (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/base.h>
 #include "krb5.h"
 
 #ifdef HAVE_KRB5_GET_ERROR_MESSAGE
@@ -49,7 +49,7 @@ char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_er
 	char const *msg;
 	char *buffer;
 
-	if (!rad_cond_assert(inst)) return NULL;
+	if (!fr_cond_assert(inst)) return NULL;
 
 	buffer = krb5_error_buffer;
 	if (!buffer) {

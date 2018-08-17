@@ -24,14 +24,14 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
-#include <freeradius-devel/map_proc.h>
+#include <freeradius-devel/server/map_proc.h>
 
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				vp_tmpl_t const *key, vp_map_t const *maps);
+				fr_value_box_t **key, vp_map_t const *maps);
 
 /*
  *	Define a structure for our module configuration.
@@ -163,6 +163,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 
 	MEM(e = (rlm_csv_entry_t *)talloc_zero_array(inst->tree, uint8_t,
 						     sizeof(*e) + inst->used_fields + sizeof(e->data[0])));
+	talloc_set_type(e, rlm_csv_entry_t);
 
 	for (p = buffer, i = 0; p != NULL; p = q, i++) {
 		if (!buf2entry(inst, p, &q)) {
@@ -181,7 +182,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		 *	This is the key field.
 		 */
 		if (i == inst->key_field) {
-			e->key = talloc_strdup(e, p);
+			e->key = talloc_typed_strdup(e, p);
 			continue;
 		}
 
@@ -190,7 +191,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		 */
 		if (inst->field_offsets[i] < 0) continue;
 
-		MEM(e->data[inst->field_offsets[i]] = talloc_strdup(e, p));
+		MEM(e->data[inst->field_offsets[i]] = talloc_typed_strdup(e, p));
 	}
 
 	if (i < inst->num_fields) {
@@ -314,7 +315,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Get a writable copy of the header
 	 */
-	header = talloc_strdup(inst, inst->header);
+	header = talloc_typed_strdup(inst, inst->header);
 	if (!header) goto oom;
 
 	/*
@@ -365,7 +366,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	inst->tree = rbtree_create(inst, csv_entry_cmp, NULL, 0);
+	inst->tree = rbtree_talloc_create(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0);
 	if (!inst->tree) goto oom;
 
 	/*
@@ -373,7 +374,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	fp = fopen(inst->filename, "r");
 	if (!fp) {
-		cf_log_err(conf, "Error opening filename %s: %s", inst->filename, strerror(errno));
+		cf_log_err(conf, "Error opening filename %s: %s", inst->filename, fr_syserror(errno));
 		return -1;
 	}
 
@@ -405,13 +406,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  */
 static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
 {
-	char const *str = uctx;
-	VALUE_PAIR *head = NULL, *vp;
-	vp_cursor_t cursor;
-	fr_dict_attr_t const *da;
+	char const		*str = uctx;
+	VALUE_PAIR		*head = NULL, *vp;
+	fr_cursor_t		cursor;
+	fr_dict_attr_t		const *da;
 
 	rad_assert(ctx != NULL);
-	fr_pair_cursor_init(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 
 	/*
 	 *	FIXME: allow multiple entries.
@@ -427,7 +428,8 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(NULL, attr);
+
+		da = fr_dict_attr_by_name(request->dict, attr);
 		if (!da) {
 			RWDEBUG("No such attribute '%s'", attr);
 			return -1;
@@ -439,19 +441,16 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	vp = fr_pair_afrom_da(ctx, da);
 	rad_assert(vp);
 
-	if (fr_pair_value_from_str(vp, str, talloc_array_length(str) - 1) < 0) {
-		char *escaped;
-
-		escaped = fr_asprint(vp, str, talloc_array_length(str) - 1, '\'');
-		RWDEBUG("Failed parsing value \"%s\" for attribute %s: %s", escaped,
+	if (fr_pair_value_from_str(vp, str, talloc_array_length(str) - 1, '\0', true) < 0) {
+		RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue_buffer(str),
 			map->lhs->tmpl_da->name, fr_strerror());
+		talloc_free(vp);
 
-		talloc_free(vp); /* also frees escaped */
 		return -1;
 	}
 
 	vp->op = map->op;
-	fr_pair_cursor_merge(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	*out = head;
 	return 0;
@@ -470,17 +469,23 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				vp_tmpl_t const *key, vp_map_t const *maps)
+				fr_value_box_t **key, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
 	rlm_csv_entry_t		*e, my_entry;
 	vp_map_t const		*map;
-	char			*key_str = NULL;
 
-	if (tmpl_aexpand(request, &key_str, request, key, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+	if (!*key) {
+		REDEBUG("CSV key cannot be (null)");
+		return RLM_MODULE_FAIL;
+	}
 
-	my_entry.key = key_str;
+	if (fr_value_box_list_concat(request, *key, key, FR_TYPE_STRING, true) < 0) {
+		REDEBUG("Failed concatenating key elements");
+		return RLM_MODULE_FAIL;
+	}
+	my_entry.key = (*key)->vb_strvalue;
 
 	e = rbtree_finddata(inst->tree, &my_entry);
 	if (!e) {
@@ -534,7 +539,6 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	REXDENT();
 
 finish:
-	talloc_free(key_str);
 	return rcode;
 }
 

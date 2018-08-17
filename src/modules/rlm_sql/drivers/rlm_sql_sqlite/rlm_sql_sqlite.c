@@ -25,8 +25,8 @@
 RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_sql_sqlite - "
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -324,16 +324,28 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	 */
 	p = buffer;
 	while ((q = strchr(p, ';'))) {
+		uint32_t statement_len;
+
 		if ((q[1] != '\n') && (q[1] != '\0')) {
 			p = q + 1;
 			statement_cnt++;
 			continue;
 		}
 
+#ifndef NDEBUG
+		if ((q - p) > (1 << 20)) {
+			ERROR("Failed preparing statement %i: too long!", statement_cnt);
+			talloc_free(buffer);
+			return -1;
+		}
+#endif
+
+		statement_len = q - p;
+
 #ifdef HAVE_SQLITE3_PREPARE_V2
-		status = sqlite3_prepare_v2(db, p, q - p, &statement, &z_tail);
+		status = sqlite3_prepare_v2(db, p, statement_len, &statement, &z_tail);
 #else
-		status = sqlite3_prepare(db, p, q - p, &statement, &z_tail);
+		status = sqlite3_prepare(db, p, statement_len, &statement, &z_tail);
 #endif
 
 		if (sql_check_error(db, status) != RLM_SQL_OK) {
@@ -673,7 +685,8 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 	struct stat		buf;
 
 	if (!inst->filename) {
-		MEM(inst->filename = talloc_typed_asprintf(inst, "%s/%s", get_radius_dir(), config->sql_db));
+		MEM(inst->filename = talloc_typed_asprintf(inst, "%s/%s",
+							   main_config->raddb_dir, config->sql_db));
 	}
 
 	if (stat(inst->filename, &buf) == 0) {

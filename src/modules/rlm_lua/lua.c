@@ -25,8 +25,8 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "config.h"
 #include "lua.h"
@@ -127,7 +127,7 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 		break;
 
 	case FR_TYPE_FLOAT32:
-		lua_pushnumber(L, vp->vp_float32);
+		lua_pushnumber(L, (double) vp->vp_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
@@ -139,7 +139,7 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 		break;
 
 	case FR_TYPE_NON_VALUES:
-		ERROR("Cannot convert %s to Lua type", fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
+		ERROR("Cannot convert %s to Lua type", fr_int2str(fr_value_box_type_names, vp->vp_type, "<INVALID>"));
 		return -1;
 	}
 	return 0;
@@ -167,7 +167,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 		case FR_TYPE_STRING:
 		{
 			char *p;
-			p = talloc_asprintf(vp, "%f", lua_tonumber(L, -1));
+			p = talloc_typed_asprintf(vp, "%f", lua_tonumber(L, -1));
 			fr_pair_value_strsteal(vp, p);
 			break;
 		}
@@ -204,11 +204,11 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 			break;
 
 		case FR_TYPE_INT8:
-			vp->vp_int32 = (int8_t) lua_tointeger(L, -1);
+			vp->vp_int8 = (int8_t) lua_tointeger(L, -1);
 			break;
 
 		case FR_TYPE_INT16:
-			vp->vp_int32 = (int16_t) lua_tointeger(L, -1);
+			vp->vp_int16 = (int16_t) lua_tointeger(L, -1);
 			break;
 
 		case FR_TYPE_INT32:
@@ -278,7 +278,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 				REDEBUG("Unmarshalling failed: Lua string was NULL");
 				return -1;
 			}
-			if (fr_pair_value_from_str(vp, p, strlen(p)) < 0) {
+			if (fr_pair_value_from_str(vp, p, strlen(p), '\0', false) < 0) {
 				RPEDEBUG("Unmarshalling failed");
 				return -1;
 			}
@@ -328,11 +328,11 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
  */
 static int _lua_pair_get(lua_State *L)
 {
-	vp_cursor_t cursor;
-	fr_dict_attr_t const *da;
-	VALUE_PAIR *vp = NULL;
-	int index;
-	REQUEST *request = rlm_lua_request;
+	fr_cursor_t cursor;
+	fr_dict_attr_t const	*da;
+	VALUE_PAIR		*vp = NULL;
+	int			index;
+	REQUEST			*request = rlm_lua_request;
 
 	rad_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
 
@@ -342,18 +342,14 @@ static int _lua_pair_get(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_pair_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, da);
 
 	for (index = (int) lua_tointeger(L, -1); index >= 0; index--) {
-		vp = fr_pair_cursor_next_by_da(&cursor, da, TAG_ANY);
-		if (!vp) {
-			return 0;
-		}
+		vp = fr_cursor_next(&cursor);
+		if (!vp) return 0;
 	}
 
-	if (rlm_lua_marshall(L, vp) < 0) {
-		return -1;
-	}
+	if (rlm_lua_marshall(L, vp) < 0) return -1;
 
 	return 1;
 }
@@ -370,7 +366,7 @@ static int _lua_pair_get(lua_State *L)
  */
 static int _lua_pair_set(lua_State *L)
 {
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	fr_dict_attr_t const *da;
 	VALUE_PAIR *vp = NULL, *new;
 	int index;
@@ -392,13 +388,11 @@ static int _lua_pair_set(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_pair_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, da);
 
 	for (index = (int) lua_tointeger(L, -2); index >= 0; index--) {
-		vp = fr_pair_cursor_next_by_da(&cursor, da, TAG_ANY);
-		if (vp) {
-			break;
-		}
+		vp = fr_cursor_next(&cursor);
+		if (vp) break;
 	}
 
 	/*
@@ -406,7 +400,7 @@ static int _lua_pair_set(lua_State *L)
 	 *	attribute the cursor is currently positioned at.
 	 */
 	if (delete) {
-		fr_pair_cursor_remove(&cursor);
+		fr_cursor_remove(&cursor);
 		return 0;
 	}
 
@@ -419,9 +413,9 @@ static int _lua_pair_set(lua_State *L)
 	 *	else we add a new VP to the list.
 	 */
 	if (vp) {
-		fr_pair_cursor_replace(&cursor, new);
+		fr_cursor_replace(&cursor, new);
 	} else {
-		fr_pair_cursor_append(&cursor, new);
+		fr_cursor_append(&cursor, new);
 	}
 
 	return 0;
@@ -429,8 +423,7 @@ static int _lua_pair_set(lua_State *L)
 
 static int _lua_pair_iterator(lua_State *L)
 {
-	vp_cursor_t *cursor;
-	fr_dict_attr_t const *da;
+	fr_cursor_t *cursor;
 	VALUE_PAIR *vp;
 
 	/*
@@ -443,13 +436,8 @@ static int _lua_pair_iterator(lua_State *L)
 	cursor = lua_touserdata(L, lua_upvalueindex(1));
 	rad_assert(cursor);
 
-	rad_assert(lua_isuserdata(L, lua_upvalueindex(2)));
-
-	da = lua_touserdata(L, lua_upvalueindex(2));
-	rad_assert(da);
-
 	/* Packet list should be light user data too at some point... */
-	vp = fr_pair_cursor_next_by_da(cursor, da, TAG_ANY);
+	vp = fr_cursor_next(cursor);
 	if (!vp) {
 		lua_pushnil(L);
 		return 1;
@@ -464,9 +452,8 @@ static int _lua_pair_iterator(lua_State *L)
 
 static int _lua_pair_iterator_init(lua_State *L)
 {
-	vp_cursor_t *cursor;
+	fr_cursor_t *cursor;
 	fr_dict_attr_t const *da;
-	fr_dict_attr_t *up;
 	REQUEST *request = rlm_lua_request;
 
 	/*
@@ -478,24 +465,21 @@ static int _lua_pair_iterator_init(lua_State *L)
 	da = lua_touserdata(L, lua_upvalueindex(2));
 	rad_assert(da);
 
-	memcpy(&up, &da, sizeof(up));
-
-	cursor = (vp_cursor_t*) lua_newuserdata(L, sizeof(vp_cursor_t));
+	cursor = (fr_cursor_t*) lua_newuserdata(L, sizeof(fr_cursor_t));
 	if (!cursor) {
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_pair_cursor_init(cursor, &request->packet->vps);	/* @FIXME: Shouldn't use list head */
+	fr_cursor_iter_by_da_init(cursor, &request->packet->vps, da);	/* @FIXME: Shouldn't use list head */
 
-	lua_pushlightuserdata(L, up);
-	lua_pushcclosure(L, _lua_pair_iterator, 2);
+	lua_pushcclosure(L, _lua_pair_iterator, 1);
 
 	return 1;
 }
 
 static int _lua_list_iterator(lua_State *L)
 {
-	vp_cursor_t *cursor;
+	fr_cursor_t *cursor;
 	VALUE_PAIR *vp;
 
 	rad_assert(lua_isuserdata(L, lua_upvalueindex(1)));
@@ -504,7 +488,7 @@ static int _lua_list_iterator(lua_State *L)
 	rad_assert(cursor);
 
 	/* Packet list should be light user data too at some point... */
-	vp = fr_pair_cursor_current(cursor);
+	vp = fr_cursor_current(cursor);
 	if(!vp) {
 		lua_pushnil(L);
 		return 1;
@@ -516,7 +500,7 @@ static int _lua_list_iterator(lua_State *L)
 		return -1;
 	}
 
-	fr_pair_cursor_next(cursor);
+	fr_cursor_next(cursor);
 
 	return 2;
 }
@@ -526,15 +510,15 @@ static int _lua_list_iterator(lua_State *L)
  */
 static int _lua_list_iterator_init(lua_State *L)
 {
-	vp_cursor_t *cursor;
+	fr_cursor_t *cursor;
 	REQUEST *request = rlm_lua_request;
 
-	cursor = (vp_cursor_t*) lua_newuserdata(L, sizeof(vp_cursor_t));
+	cursor = (fr_cursor_t*) lua_newuserdata(L, sizeof(fr_cursor_t));
 	if (!cursor) {
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_pair_cursor_init(cursor, &request->packet->vps);	/* @FIXME: Shouldn't use list head */
+	fr_cursor_init(cursor, &request->packet->vps);	/* @FIXME: Shouldn't use list head */
 
 	lua_pushlightuserdata(L, cursor);
 	lua_pushcclosure(L, _lua_list_iterator, 1);
@@ -560,7 +544,7 @@ static int _lua_pair_accessor_init(lua_State *L)
 		return -1;
 	}
 
-	da = fr_dict_attr_by_name(NULL, attr);
+	da = fr_dict_attr_by_name(request->dict, attr);
 	if (!da) {
 		REDEBUG("Unknown or invalid attribute name \"%s\"", attr);
 		return -1;
@@ -810,9 +794,10 @@ static int _lua_state_free(lua_State **marker)
  */
 static lua_State *rlm_lua_get_interp(rlm_lua_t const *inst) {
 	lua_State **marker;
-	lua_State *L;
 
 #ifdef HAVE_PTHREAD_H
+	lua_State *L;
+
 	/*
 	 *	Were running in single interpreter mode, grab the interpreter lock
 	 *	and return the instance specific interpreter.
@@ -859,7 +844,7 @@ static lua_State *rlm_lua_get_interp(rlm_lua_t const *inst) {
 
 int do_lua(rlm_lua_t const *inst, REQUEST *request, char const *funcname)
 {
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	lua_State *L;
 
 	rlm_lua_request = request;
@@ -870,7 +855,7 @@ int do_lua(rlm_lua_t const *inst, REQUEST *request, char const *funcname)
 	RDEBUG2("Calling %s() in interpreter %p", funcname, L);
 
 	fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da_tag);
-	fr_pair_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_init(&cursor, &request->packet->vps);
 
 	/*
 	 *	Setup the environment

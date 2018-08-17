@@ -1,3 +1,4 @@
+#pragma once
 /**
  * $Id$
  * @file rlm_ldap.h
@@ -12,12 +13,9 @@
  * @copyright 2013 Network RADIUS SARL<info@networkradius.com>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
-#ifndef _RLM_LDAP_H
-#define _RLM_LDAP_H
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/ldap/libfreeradius-ldap.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/ldap/base.h>
 
 typedef struct ldap_inst_s rlm_ldap_t;
 
@@ -112,16 +110,6 @@ struct ldap_inst_s {
 							//!< rlm_ldap module.
 
 	/*
-	 *	Dynamic clients
-	 */
-	char const	*clientobj_filter;		//!< Filter to retrieve only client objects.
-	char const	*clientobj_base_dn;		//!< DN to search for clients under.
-	char const	*clientobj_scope_str;		//!< Scope (sub, one, base).
-	int		clientobj_scope;		//!< Search scope.
-
-	bool		do_clients;			//!< If true, attempt to load clients on instantiation.
-
-	/*
 	 *	Profiles
 	 */
 	vp_tmpl_t	*default_profile;		//!< If this is set, we will search for a profile object
@@ -148,8 +136,8 @@ struct ldap_inst_s {
 							//!< to perform additional authorisation checks.
 #endif
 
-	fr_pool_t *pool;			//!< Connection pool instance.
-	fr_ldap_handle_config_t handle_config;		//!< Connection configuration instance.
+	fr_pool_t	*pool;				//!< Connection pool instance.
+	fr_ldap_config_t handle_config;			//!< Connection configuration instance.
 
 	/*
 	 *	Global config
@@ -160,29 +148,38 @@ struct ldap_inst_s {
 	uint32_t	ldap_debug;			//!< Debug flag for the SDK.
 };
 
+extern fr_dict_attr_t const *attr_cleartext_password;
+extern fr_dict_attr_t const *attr_crypt_password;
+extern fr_dict_attr_t const *attr_ldap_userdn;
+extern fr_dict_attr_t const *attr_nt_password;
+extern fr_dict_attr_t const *attr_password_with_header;
+
+extern fr_dict_attr_t const *attr_user_password;
+extern fr_dict_attr_t const *attr_user_name;
+
 /*
  *	user.c - User lookup functions
  */
-char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t **pconn,
+char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
 			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode);
 
 rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
-				  fr_ldap_conn_t const *conn, LDAPMessage *entry);
+				  fr_ldap_connection_t const *conn, LDAPMessage *entry);
 
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t const *conn);
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t const *conn);
 
 /*
  *	groups.c - Group membership functions.
  */
-rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t **pconn,
+rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
 				       LDAPMessage *entry, char const *attr);
 
-rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t **pconn);
+rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn);
 
-rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t **pconn,
+rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
 					    VALUE_PAIR *check);
 
-rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t **pconn,
+rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
 					   char const *dn, VALUE_PAIR *check);
 
 rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALUE_PAIR *check);
@@ -190,14 +187,8 @@ rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALU
 /*
  *	conn.c - Connection wrappers.
  */
-fr_ldap_conn_t	*mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
+fr_ldap_connection_t	*mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
 
-void		mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t *conn);
+void		mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t *conn);
 
 void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
-
-/*
- *	clients.c - Dynamic clients (bulk load).
- */
-int  rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *cs);
-#endif

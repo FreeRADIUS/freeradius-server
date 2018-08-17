@@ -18,10 +18,10 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2001,2006  The FreeRADIUS server project
- * Copyright 2000  Mike Machado <mike@innercite.com>
- * Copyright 2000  Alan DeKok <aland@ox.org>
- * Copyright 2001  Chad Miller <cmiller@surfsouth.com>
+ * @copyright 2001,2006  The FreeRADIUS server project
+ * @copyright 2000  Mike Machado <mike@innercite.com>
+ * @copyright 2000  Alan DeKok <aland@ox.org>
+ * @copyright 2001  Chad Miller <cmiller@surfsouth.com>
  */
 
 RCSID("$Id$")
@@ -29,8 +29,8 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/rad_assert.h>
+#include	<freeradius-devel/server/base.h>
+#include	<freeradius-devel/server/rad_assert.h>
 
 #include	<sys/file.h>
 #include	<sys/stat.h>
@@ -160,20 +160,19 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 		token = gettoken(&value, buf, sizeof(buf), false);
 		switch (token) {
 		/*
+		 *	Mark the pair to be allocated later.
+		 */
+		case T_BACK_QUOTED_STRING:
+			do_xlat = 1;
+			/* FALL-THROUGH */
+
+		/*
 		 *	Take the unquoted string.
 		 */
 		case T_SINGLE_QUOTED_STRING:
 		case T_DOUBLE_QUOTED_STRING:
 			value = buf;
 			break;
-
-		/*
-		 *	Mark the pair to be allocated later.
-		 */
-		case T_BACK_QUOTED_STRING:
-			do_xlat = 1;
-
-			/* FALL-THROUGH */
 
 		/*
 		 *	Keep the original string.
@@ -201,7 +200,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 			return -1;
 		}
 	} else {
-		if (fr_pair_value_from_str(vp, value, -1) < 0) {
+		if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
 			RPEDEBUG("Error parsing value");
 
 			talloc_free(vp);

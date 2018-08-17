@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2003 Alan DeKok <aland@freeradius.org>
- * Copyright 2006 The FreeRADIUS server project
+ * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2006 The FreeRADIUS server project
  */
 
 RCSID("$Id$")
@@ -27,6 +27,30 @@ RCSID("$Id$")
 #include <stdlib.h>
 
 #include "eap_leap.h"
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_eap_leap_dict[];
+fr_dict_autoload_t rlm_eap_leap_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_cleartext_password;
+fr_dict_attr_t const *attr_nt_password;
+fr_dict_attr_t const *attr_cisco_avpair;
+fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t rlm_eap_leap_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_leap_dict_attr[] = {
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_nt_password, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_cisco_avpair, .name = "Cisco-AVPair", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
 
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
@@ -56,8 +80,8 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	 *	The password is never sent over the wire.
 	 *	Always get the configured password, for each user.
 	 */
-	password = fr_pair_find_by_num(eap_session->request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
-	if (!password) password = fr_pair_find_by_num(eap_session->request->control, 0, FR_NT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_da(eap_session->request->control, attr_cleartext_password, TAG_ANY);
+	if (!password) password = fr_pair_find_by_da(eap_session->request->control, attr_nt_password, TAG_ANY);
 	if (!password) {
 		REDEBUG("No Cleartext-Password or NT-Password configured for this user");
 		talloc_free(packet);
@@ -127,7 +151,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	eap_leap_compose(request, eap_session->this_round, reply);
 	talloc_free(reply);
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 /*
@@ -175,7 +199,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_
 
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 /*
@@ -186,6 +210,8 @@ extern rlm_eap_submodule_t rlm_eap_leap;
 rlm_eap_submodule_t rlm_eap_leap = {
 	.name		= "eap_leap",
 	.magic		= RLM_MODULE_INIT,
+
+	.provides	= { FR_EAP_LEAP },
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
-	.process	= mod_process		/* Process next round of EAP method */
+	.entry_point	= mod_process		/* Process next round of EAP method */
 };

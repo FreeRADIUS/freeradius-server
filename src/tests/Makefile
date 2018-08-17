@@ -39,7 +39,7 @@ dictionary:
 	@echo "# test dictionary not install.  Delete at any time." > dictionary
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> dictionary
 	@echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> dictionary
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcp >> dictionary
+	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcpv4 >> dictionary
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> dictionary
 
 test.conf: dictionary
@@ -70,6 +70,7 @@ radiusd.pid: test.conf
 		echo "Last entries in server log $(TEST_PATH)/radius.log"; \
 	fi
 	@echo "ok"
+	@echo "TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pfxxxxl stdout -d ${top_builddir}/src/tests -n test -D $(TEST_PATH)";
 	@echo "Server logging to \"$(TEST_PATH)/radius.log\""
 
 # We can't make this depend on radiusd.pid, because then make will create

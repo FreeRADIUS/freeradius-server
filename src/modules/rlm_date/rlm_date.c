@@ -21,37 +21,90 @@
  * @author Artur Malinowski <artur@wow.com>
  *
  * @copyright 2013 Artur Malinowski <artur@wow.com>
- * @copyright 1999-2013 The FreeRADIUS Server Project.
+ * @copyright 1999-2018 The FreeRADIUS Server Project.
  */
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
 #include <ctype.h>
 #include <time.h>
 
 typedef struct rlm_date_t {
 	char const *xlat_name;
 	char const *fmt;
+	bool utc;
 } rlm_date_t;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("format", FR_TYPE_STRING, rlm_date_t, fmt), .dflt = "%b %e %Y %H:%M:%S %Z" },
+	{ FR_CONF_OFFSET("utc", FR_TYPE_BOOL, rlm_date_t, utc), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 DIAG_OFF(format-nonliteral)
+static ssize_t date_convert_string(REQUEST *request, char **out, size_t outlen,
+				   const char *str, const char *fmt)
+{
+	struct tm tminfo;
+	time_t date = 0;
+
+	if (strptime(str, fmt, &tminfo) == NULL) {
+		REDEBUG("Failed to parse time string \"%s\" as format '%s'", str, fmt);
+		return -1;
+	}
+
+	date = mktime(&tminfo);
+	if (date < 0) {
+		REDEBUG("Failed converting parsed time into unix time");
+		return -1;
+	}
+
+	return snprintf(*out, outlen, "%" PRIu64, (uint64_t) date);
+}
+
+static ssize_t date_encode_strftime(char **out, size_t outlen, rlm_date_t const *inst,
+				    REQUEST *request, time_t date)
+{
+	struct tm tminfo;
+
+	if (inst->utc) {
+		if (gmtime_r(&date, &tminfo) == NULL) {
+			REDEBUG("Failed converting time string to gmtime: %s", fr_syserror(errno));
+			return -1;
+		}
+	} else {
+		if (localtime_r(&date, &tminfo) == NULL) {
+			REDEBUG("Failed converting time string to localtime: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
+
+	return strftime(*out, outlen, inst->fmt, &tminfo);
+}
+DIAG_ON(format-nonliteral)
+
 static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,
 				 REQUEST *request, char const *fmt)
 {
 	rlm_date_t const *inst = mod_inst;
-	time_t date = 0;
 	struct tm tminfo;
+	struct timeval now;
 	VALUE_PAIR *vp;
 
 	memset(&tminfo, 0, sizeof(tminfo));
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if (strcmp(fmt, "request") == 0) {
+		return date_encode_strftime(out, outlen, inst, request,
+					    request->packet->timestamp.tv_sec);
+	}
+
+	if (strcmp(fmt, "now") == 0) {
+		gettimeofday(&now, NULL);
+		return date_encode_strftime(out, outlen, inst, request, now.tv_sec);
+	}
+
+	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	switch (vp->vp_type) {
 	/*
@@ -60,19 +113,11 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	 *	format as a string.
 	 */
 	case FR_TYPE_DATE:
-		date = vp->vp_date;
-		goto encode;
+		return date_encode_strftime(out, outlen, inst, request, vp->vp_date);
 
 	case FR_TYPE_UINT32:
 	case FR_TYPE_UINT64:
-		date = (time_t) vp->vp_uint32;
-
-	encode:
-		if (localtime_r(&date, &tminfo) == NULL) {
-			REDEBUG("Failed converting time string to localtime");
-			goto error;
-		}
-		return strftime(*out, outlen, inst->fmt, &tminfo);
+		return date_encode_strftime(out, outlen, inst, request, (time_t) vp->vp_uint32);
 
 	/*
 	 *	These are 'from' types, i.e. we'll convert the input string
@@ -80,26 +125,14 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	 *	unix timestamp.
 	 */
 	case FR_TYPE_STRING:
-		if (strptime(vp->vp_strvalue, inst->fmt, &tminfo) == NULL) {
-			REDEBUG("Failed to parse time string \"%s\" as format '%s'", vp->vp_strvalue, inst->fmt);
-			goto error;
-		}
-
-		date = mktime(&tminfo);
-		if (date < 0) {
-			REDEBUG("Failed converting parsed time into unix time");
-
-		}
-		return snprintf(*out, outlen, "%" PRIu64, (uint64_t) date);
+		return date_convert_string(request, out, outlen, vp->vp_strvalue, inst->fmt);
 
 	default:
-		REDEBUG("Can't convert type %s into date", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+		REDEBUG("Can't convert type %s into date", fr_int2str(fr_value_box_type_names, vp->da->type, "<INVALID>"));
 	}
 
-error:
 	return -1;
 }
-DIAG_ON(format-nonliteral)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
@@ -110,7 +143,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	xlat_register(inst, inst->xlat_name, xlat_date_convert, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, inst->xlat_name, xlat_date_convert, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	return 0;
 }

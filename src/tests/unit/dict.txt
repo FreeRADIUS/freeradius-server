@@ -6,16 +6,16 @@
 #  VALUEs
 #
 dictionary VALUE	Service-Type	Foo	bar
-data Invalid VALUE for ATTRIBUTE "Service-Type"
+data Invalid VALUE for ATTRIBUTE "Service-Type": Invalid integer value "bar"
 
 dictionary VALUE	Unit-Byte	TooBig	256
-data Invalid VALUE for ATTRIBUTE "Unit-Byte"
+data Invalid VALUE for ATTRIBUTE "Unit-Byte": Value 256 is invalid for type uint8 (must be in range 0-255)
 
 dictionary VALUE	Unit-Byte	Too-Small	-1
-data Invalid VALUE for ATTRIBUTE "Unit-Byte"
+data Invalid VALUE for ATTRIBUTE "Unit-Byte": Value 18446744073709551615 is invalid for type uint8 (must be in range 0-255)
 
 dictionary VALUE	Unit-Short	Too-Big	65537
-data Invalid VALUE for ATTRIBUTE "Unit-Short"
+data Invalid VALUE for ATTRIBUTE "Unit-Short": Value 65537 is invalid for type uint16 (must be in range 0-65535)
 
 # Check non-uint32 types
 dictionary VALUE	Unit-Integer64	OK	   1
@@ -55,10 +55,10 @@ dictionary ATTRIBUTE	Unit-Array	255		octets[123458]
 data Invalid length for 'octets[...]'
 
 dictionary ATTRIBUTE	Unit-Integer	255		integer[1]
-data fr_dict_attr_add: Failed adding 'Unit-Integer': The 'length' flag can only be set for attributes of type 'octets' or 'struct'
+data Definition for 'Unit-Integer' is invalid: The 'length' flag can only be set for attributes of type 'octets' or 'struct'
 
 dictionary ATTRIBUTE	Unit-$bad$stuff	255		integer
-data Invalid character '$' in attribute name
+data Invalid character '$' in attribute name "Unit-$bad$stuff"
 
 #
 # flags
@@ -67,13 +67,13 @@ dictionary ATTRIBUTE	Unit-Array	241.254		octets[1234]
 data Invalid length for 'octets[...]'
 
 dictionary ATTRIBUTE	Unit-Tag	241.255		integer has_tag
-data fr_dict_attr_add: Failed adding 'Unit-Tag': The 'has_tag' flag can only be used with RFC and VSA attributes
+data Definition for 'Unit-Tag' is invalid: The 'has_tag' flag can only be used with RFC and VSA attributes
 
 dictionary ATTRIBUTE	Unit-Tag	255		date	has_tag
-data fr_dict_attr_add: Failed adding 'Unit-Tag': The 'has_tag' flag can only be used for attributes of type 'integer' or 'string'
+data Definition for 'Unit-Tag' is invalid: The 'has_tag' flag can only be used for attributes of type 'integer' or 'string'
 
 dictionary ATTRIBUTE	Unit-Tag	255		tlv	encrypt=1
-data fr_dict_attr_add: Failed adding 'Unit-Tag': The 'encrypt=1' flag can only be used with attributes of type 'string'
+data Definition for 'Unit-Tag' is invalid: The 'encrypt=1' flag can only be used with attributes of type 'string'
 
 #
 #  structs

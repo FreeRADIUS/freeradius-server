@@ -24,7 +24,7 @@
  */
 RCSIDH(other_h, "$Id$")
 
-#include <freeradius-devel/pool.h>
+#include <freeradius-devel/server/pool.h>
 #include "config.h"
 
 #define CURL_NO_OLDIES 1
@@ -33,7 +33,7 @@ RCSIDH(other_h, "$Id$")
 /*
  *	The common JSON library (also tells us if we have json-c)
  */
-#include "../rlm_json/json.h"
+#include <freeradius-devel/json/base.h>
 
 #define REST_URI_MAX_LEN		2048
 #define REST_BODY_MAX_LEN		8192
@@ -147,7 +147,7 @@ typedef struct {
 
 	char const		*connect_proxy;	//!< Send request via this proxy.
 
-	fr_pool_t	*pool;		//!< Pointer to the connection pool.
+	fr_pool_t	*pool;			//!< Pointer to the connection pool.
 
 	rlm_rest_section_t	xlat;		//!< Configuration specific to xlat.
 	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
@@ -171,6 +171,14 @@ typedef struct {
 	unsigned int		transfers;	//!< Keep track of how many outstanding transfers
 						//!< we think there are.
 } rlm_rest_thread_t;
+
+/** Wrapper around the module thread stuct for individual xlats
+ *
+ */
+typedef struct {
+	rlm_rest_t		*inst;		//!< Instance of rlm_rest.
+	rlm_rest_thread_t	*t;		//!< rlm_rest thread instance.
+} rest_xlat_thread_inst_t;
 
 /*
  *	States for stream based attribute encoders
@@ -200,7 +208,7 @@ typedef struct {
 	REQUEST			*request;	//!< Current request.
 	read_state_t		state;		//!< Encoder state
 
-	vp_cursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
+	fr_cursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
 
 	size_t			chunk;		//!< Chunk size
 
@@ -249,6 +257,20 @@ typedef struct {
 	rlm_rest_curl_context_t	*ctx;		//!< Context, re-initialised after each request.
 } rlm_rest_handle_t;
 
+/** Stores the state of a yielded xlat
+ *
+ */
+typedef struct {
+	rlm_rest_section_t		section;	//!< Our mutated section config.
+	rlm_rest_handle_t		*handle;	//!< curl easy handle servicing our request.
+} rlm_rest_xlat_rctx_t;
+
+extern fr_dict_t *dict_freeradius;
+
+extern fr_dict_attr_t const *attr_rest_http_body;
+extern fr_dict_attr_t const *attr_rest_http_header;
+extern fr_dict_attr_t const *attr_rest_http_status_code;
+
 /*
  *	Function prototype for rest_read_wrapper. Matches CURL's
  *	CURLOPT_READFUNCTION prototype.
@@ -296,7 +318,8 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, RE
 /*
  *	Async IO helpers
  */
-void rest_io_action(REQUEST *request, void *instance, void *thread, void *ctx, fr_state_action_t action);
+void rest_io_module_action(REQUEST *request, void *instance, void *thread, void *rctx, fr_state_signal_t action);
+void rest_io_xlat_action(REQUEST *request, void *instance, void *thread, void *rctx, fr_state_signal_t action);
 int rest_io_request_enqueue(rlm_rest_thread_t *thread, REQUEST *request, void *handle);
 int rest_io_init(rlm_rest_thread_t *thread);
 

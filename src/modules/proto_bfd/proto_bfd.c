@@ -17,16 +17,17 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright (C) 2012 Network RADIUS SARL <info@networkradius.com>
+ * @copyright 2012 Network RADIUS SARL <info@networkradius.com>
  */
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/event.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/sha1.h>
 
 #define USEC (1000000)
 #define BFD_MAX_SECRET_LENGTH 20
@@ -227,6 +228,14 @@ typedef struct bfd_socket_t {
 	rbtree_t	*session_tree;
 } bfd_socket_t;
 
+static fr_dict_t *dict_bfd;
+
+extern fr_dict_autoload_t proto_bfd_dict[];
+fr_dict_autoload_t proto_bfd_dict[] = {
+	{ .out = &dict_bfd, .proto = "bfd" },
+	{ NULL }
+};
+
 static int bfd_start_packets(bfd_state_t *session);
 static int bfd_start_control(bfd_state_t *session);
 static int bfd_stop_control(bfd_state_t *session);
@@ -314,7 +323,6 @@ static void *bfd_child_thread(void *ctx)
 
 static int bfd_pthread_create(bfd_state_t *session)
 {
-	int rcode;
 	pthread_attr_t attr;
 
 	if (pipe(session->pipefd) < 0) {
@@ -337,7 +345,11 @@ static int bfd_pthread_create(bfd_state_t *session)
 	fcntl(session->pipefd[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
 #endif
 
-	if (fr_event_fd_insert(session, session->el, session->pipefd[0], bfd_pipe_recv, NULL, NULL, session) < 0) {
+	if (fr_event_fd_insert(session, session->el, session->pipefd[0],
+			       bfd_pipe_recv,
+			       NULL,
+			       NULL,
+			       session) < 0) {
 		PERROR("Failed inserting file descriptor into event list");
 		goto close_pipes;
 	}
@@ -352,12 +364,10 @@ static int bfd_pthread_create(bfd_state_t *session)
 	 *	Note that the function returns non-zero on error, NOT
 	 *	-1.  The return code is the error, and errno isn't set.
 	 */
-	rcode = pthread_create(&session->pthread_id, &attr,
-			       bfd_child_thread, session);
-	if (rcode != 0) {
+	if (fr_schedule_pthread_create(&session->pthread_id, bfd_child_thread, session) < 0) {
 		talloc_free(session->el);
 		session->el = NULL;
-		ERROR("Thread create failed: %s", fr_syserror(rcode));
+		ERROR("Thread create failed: %s", fr_strerror());
 		goto close_pipes;
 	}
 	pthread_attr_destroy(&attr);
@@ -1370,7 +1380,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 
 		if (rad_debug_lvl) {
 			request->log.dst = talloc_zero(request, log_dst_t);
-			request->log.dst->func = vradlog_request;
+			request->log.dst->func = vlog_request;
 			request->log.dst->uctx = &default_log;
 
 			request->log.lvl = RAD_REQUEST_LVL_DEBUG2;
@@ -1700,12 +1710,12 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->auth_type = fr_str2int(auth_types, auth_type_str, BFD_AUTH_INVALID);
 	if (sock->auth_type == BFD_AUTH_INVALID) {
 		ERROR("Unknown auth_type '%s'", auth_type_str);
-		exit(1);
+		return -1;
 	}
 
 	if (sock->auth_type == BFD_AUTH_SIMPLE) {
 		ERROR("'simple' authentication is insecure and is not supported");
-		exit(1);
+		return -1;
 	}
 
 	if (sock->auth_type != BFD_AUTH_RESERVED) {
@@ -1713,21 +1723,21 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		if (sock->secret_len == 0) {
 			ERROR("Cannot have empty secret");
-			exit(1);
+			return -1;
 		}
 
 		if (((sock->auth_type == BFD_AUTH_KEYED_MD5) ||
 		     (sock->auth_type == BFD_AUTH_MET_KEYED_MD5)) &&
 		    (sock->secret_len > 16)) {
 			ERROR("Secret must be no more than 16 bytes when using MD5");
-			exit(1);
+			return -1;
 		}
 	}
 
-	sock->session_tree = rbtree_create(sock, bfd_session_cmp, bfd_session_free, 0);
+	sock->session_tree = rbtree_talloc_create(sock, bfd_session_cmp, bfd_state_t, bfd_session_free, 0);
 	if (!sock->session_tree) {
 		ERROR("Failed creating session tree!");
-		exit(1);
+		return -1;
 	}
 
 	/*
@@ -1774,7 +1784,7 @@ static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Bootstrap the initial set of connections.
 	 */
 	if (bfd_init_sessions(cs, sock, this->fd) < 0) {
-		exit(1);
+		return -1;
 	}
 
 	return 0;
@@ -1838,7 +1848,7 @@ static int bfd_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 
 	cf_log_debug(cs, "Loading bfd {...}");
 
-	if (unlang_compile(cs, MOD_AUTHORIZE) < 0) {
+	if (unlang_compile(cs, MOD_AUTHORIZE, NULL) < 0) {
 		cf_log_err(cs, "Failed compiling 'bfd' section");
 		return -1;
 	}

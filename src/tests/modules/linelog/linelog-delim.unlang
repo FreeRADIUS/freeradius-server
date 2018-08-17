@@ -9,7 +9,14 @@ group {
 	update request {
 		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_delim.log"`
 	}
-	fail = 1
+
+	#
+	#  We can only over-ride actions in an "actions" subsection,
+	#  and then only as the last item in a group.
+	#
+	actions {
+		fail = 1
+	}
 }
 if (fail) {
 	ok

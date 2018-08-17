@@ -24,16 +24,12 @@ redundant {
 	}
 
 	group {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
 	}
 }
 
 if (!&reply:Filter-Id) {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 #
@@ -71,12 +67,8 @@ foreach &Tmp-Integer-1 {
 }
 
 if (&Tmp-Integer-0 != "%{Tmp-Integer-1[#]}") {
-    update reply {
-        Filter-Id += "fail 2 (passed %{Tmp-Integer-0}/%{Tmp-Integer-1[#]})"
-    }
+    test_fail
 }
 else {
-     update reply {
-	Filter-Id := 'filter'
-     }
+	success
 }

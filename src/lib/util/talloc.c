@@ -14,18 +14,29 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/talloc.c
- * @brief Functions which we wish were included in the standard talloc distribution.
+/** Functions which we wish were included in the standard talloc distribution
+ *
+ * @file src/lib/util/talloc.c
  *
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-
 RCSID("$Id$")
 
-#include <freeradius-devel/talloc.h>
+#include "talloc.h"
+
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/strerror.h>
+
 #include <string.h>
+#include <unistd.h>
+
+typedef struct fr_talloc_link  fr_talloc_link_t;
+
+struct fr_talloc_link {			//!< Allocated in the context of the parent.
+	fr_talloc_link_t **self;	//!< Allocated in the context of the child.
+	TALLOC_CTX *child;		//!< Allocated in the context of the child.
+};
 
 /** Retrieve the current talloc NULL ctx
  *
@@ -44,6 +55,170 @@ void *talloc_null_ctx(void)
 	talloc_free(tmp);
 
 	return null_ctx;
+}
+
+/** Called when the parent CTX is freed
+ *
+ */
+static int _link_ctx_link_free(fr_talloc_link_t *link)
+{
+	/*
+	 *	This hasn't been freed yet.  Mark it as "about to be
+	 *	freed", and then free it.
+	 */
+	if (link->self) {
+		fr_talloc_link_t **self = link->self;
+
+		link->self = NULL;
+		talloc_free(self);
+	}
+	talloc_free(link->child);
+
+	/* link is freed by talloc when this function returns */
+	return 0;
+}
+
+/** Called when the child CTX is freed
+ *
+ */
+static int _link_ctx_self_free(fr_talloc_link_t **link_p)
+{
+	fr_talloc_link_t *link = *link_p;
+
+	/*
+	 *	link->child is freed by talloc at some other point,
+	 *	which results in this destructor being called.
+	 */
+
+	/* link->self is freed by talloc when this function returns */
+
+	/*
+	 *	If link->self is still pointing to us, the link is
+	 *	still valid.  Mark it as "about to be freed", and free the link.
+	 */
+	if (link->self) {
+		link->self = NULL;
+		talloc_free(link);
+	}
+
+	return 0;
+}
+
+/** Link two different parent and child contexts, so the child is freed before the parent
+ *
+ * @note This is not thread safe. Do not free parent before threads are joined, do not call from a
+ *	child thread.
+ * @note It's OK to free the child before threads are joined, but this will leak memory until the
+ *	parent is freed.
+ *
+ * @param parent who's fate the child should share.
+ * @param child bound to parent's lifecycle.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child)
+{
+	fr_talloc_link_t *link;
+
+	link = talloc(parent, fr_talloc_link_t);
+	if (!link) return -1;
+
+	link->self = talloc(child, fr_talloc_link_t *);
+	if (!link->self) {
+		talloc_free(link);
+		return -1;
+	}
+
+	link->child = child;
+	*(link->self) = link;
+
+	talloc_set_destructor(link, _link_ctx_link_free);
+	talloc_set_destructor(link->self, _link_ctx_self_free);
+
+	return 0;
+}
+
+/** Return a page aligned talloc memory pool
+ *
+ * Because we can't intercept talloc's malloc() calls, we need to do some tricks
+ * in order to get the first allocation in the pool page aligned, and to limit
+ * the size of the pool to a multiple of the page size.
+ *
+ * The reason for wanting a page aligned talloc pool, is it allows us to
+ * mprotect() the pages that belong to the pool.
+ *
+ * Talloc chunks appear to be allocated within the protected region, so this should
+ * catch frees too.
+ *
+ * @param[in] ctx	to allocate pool memory in.
+ * @param[out] start	A page aligned address within the pool.  This can be passed
+ *			to mprotect().
+ * @param[out] end	of the pages that should be protected.
+ * @param[in] size	How big to make the pool.  Will be corrected to a multiple
+ *			of the page size.  The actual pool size will be size
+ *			rounded to a multiple of the (page_size), + page_size
+ */
+TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, size_t size)
+{
+	size_t		rounded, page_size = (size_t)getpagesize();
+	size_t		hdr_size, pool_size;
+	void		*next, *chunk;
+	TALLOC_CTX	*pool;
+
+#define ROUND_UP(_num, _mul) (((((_num) + ((_mul) - 1))) / (_mul)) * (_mul))
+
+	rounded = ROUND_UP(size, page_size);			/* Round up to a multiple of the page size */
+	if (rounded == 0) rounded = page_size;
+
+	pool_size = rounded + page_size;
+	pool = talloc_pool(ctx, pool_size);			/* Over allocate */
+	if (!pool) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+
+	chunk = talloc_size(pool, 1);				/* Get the starting address */
+	if (!fr_cond_assert((chunk > pool) && ((uintptr_t)chunk < ((uintptr_t)pool + rounded)))) {
+		fr_strerror_printf("Initial allocation outside of pool memory");
+	error:
+		talloc_free(pool);
+		return NULL;
+	}
+	hdr_size = (uintptr_t)chunk - (uintptr_t)pool;
+
+	next = (void *)ROUND_UP((uintptr_t)chunk, page_size);	/* Round up address to the next page */
+
+	/*
+	 *	Depending on how talloc allocates the chunk headers,
+	 *	the memory allocated here might not align to a page
+	 *	boundary, but that's ok, we just need future allocations
+	 *	to occur on or after 'next'.
+	 */
+	if (((uintptr_t)next - (uintptr_t)chunk) > 0) {
+		size_t	pad_size;
+		void	*padding;
+
+		pad_size = ((uintptr_t)next - (uintptr_t)chunk);
+		if (pad_size > hdr_size) {
+			pad_size -= hdr_size;			/* Save ~111 bytes by not over-padding */
+		} else {
+			pad_size = 1;
+		}
+
+		padding = talloc_size(pool, pad_size);
+		if (!fr_cond_assert(((uintptr_t)padding + (uintptr_t)pad_size) >= (uintptr_t)next)) {
+			fr_strerror_printf("Failed padding pool memory");
+			goto error;
+		}
+	}
+
+	*start = next;						/* This is the address we feed into mprotect */
+	*end = (void *)((uintptr_t)next + (uintptr_t)rounded);
+
+	talloc_set_memlimit(pool, pool_size);			/* Don't allow allocations outside of the pool */
+
+	return pool;
 }
 
 /** Call talloc_strdup, setting the type on the new chunk correctly
@@ -122,9 +297,9 @@ char *talloc_typed_vasprintf(void const *t, char const *fmt, va_list ap)
 
 /** Binary safe strndup function
  *
- * @param[in] t The talloc context o allocate new buffer in.
- * @param[in] in String to dup, may contain embedded '\0'.
- * @param[in] inlen Number of bytes to dup.
+ * @param[in] t 	he talloc context to allocate new buffer in.
+ * @param[in] in	String to dup, may contain embedded '\0'.
+ * @param[in] inlen	Number of bytes to dup.
  * @return duped string.
  */
 char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
@@ -137,6 +312,142 @@ char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
 	p[inlen] = '\0';
 
 	return p;
+}
+
+/** Trim a bstr (char) buffer
+ *
+ * Reallocs to inlen + 1 and '\0' terminates the string buffer.
+ *
+ * @param[in] in	string to trim.  Will be invalid after
+ *			this function returns.
+ * @param[in] inlen	Length to trim string to.
+ * @return
+ *	- The realloced string on success.  in then points to invalid memory.
+ *	- NULL on failure. In will still be valid.
+ */
+char *talloc_realloc_bstr(char *in, size_t inlen)
+{
+	char *n;
+
+	n = talloc_realloc_size(talloc_parent(in), in, inlen + 1);
+	if (!n) return NULL;
+
+	n[inlen] = '\0';
+	talloc_set_type(n, char);
+
+	return n;
+}
+
+/** Concatenate to + from
+ *
+ * @param[in] to	talloc string buffer to append to.
+ * @param[in] from	talloc string buffer to append.
+ * @return
+ *	- NULL if to or from are NULL or if the realloc fails.
+ *	  Note: You'll still need to free to if this function
+ *	  returns NULL.
+ *	- The concatenation of to + from.  After this function
+ *	  returns to may point to invalid memory and should
+ *	  not be used.
+ */
+char *talloc_buffer_append_buffer(char *to, char const *from)
+{
+	size_t to_len, from_len, total_len;
+	char *out;
+
+	if (!to || !from) return NULL;
+
+	to_len = talloc_array_length(to);
+	from_len = talloc_array_length(from);
+	total_len = to_len + (from_len - 1);
+
+	out = talloc_realloc(talloc_parent(to), to, char, total_len);
+	if (!out) return NULL;
+
+	memcpy(out + (to_len - 1), from, from_len);
+	out[total_len - 1] = '\0';
+
+	return out;
+}
+
+/** Concatenate to + ...
+ *
+ * @param[in] to	talloc string buffer to append to.
+ * @param[in] argc	how many variadic arguments were passed.
+ * @param[in] ...	talloc string buffer(s) to append.
+ *			Arguments can be NULL to simplify
+ *			calling logic.
+ * @return
+ *	- NULL if to or from are NULL or if the realloc fails.
+ *	  Note: You'll still need to free to if this function
+ *	  returns NULL.
+ *	- The concatenation of to + from.  After this function
+ *	  returns to may point to invalid memory and should
+ *	  not be used.
+ */
+char *talloc_buffer_append_variadic_buffer(char *to, int argc, ...)
+{
+	va_list		ap_val, ap_len;
+	int		i;
+
+	size_t		to_len, total_len = 0;
+	char		*out, *p;
+
+	if (!to) return NULL;
+
+	va_start(ap_val, argc);
+	va_copy(ap_len, ap_val);
+
+	total_len += to_len = talloc_array_length(to) - 1;
+
+	/*
+	 *	Figure out how much we need to realloc
+	 */
+	for (i = 0; i < argc; i++) {
+		char *arg;
+
+		arg = va_arg(ap_len, char *);
+		if (!arg) continue;
+
+		total_len += (talloc_array_length(arg) - 1);
+	}
+
+	/*
+	 *	It's a noop...
+	 */
+	if (total_len == to_len) {
+		va_end(ap_val);
+		va_end(ap_len);
+		return to;
+	}
+
+	out = talloc_realloc(talloc_parent(to), to, char, total_len + 1);
+	if (!out) goto finish;
+
+	p = out + to_len;
+
+	/*
+	 *	Copy the args in
+	 */
+	for (i = 0; i < argc; i++) {
+		char	*arg;
+		size_t	len;
+
+		arg = va_arg(ap_val, char *);
+		if (!arg) continue;
+
+		len = talloc_array_length(arg) - 1;
+
+		memcpy(p, arg, len);
+		p += len;
+	}
+	*p = '\0';
+
+finish:
+	va_end(ap_val);
+	va_end(ap_len);
+
+	return out;
 }
 
 /** Compares two talloced uint8_t arrays with memcmp
@@ -203,7 +514,11 @@ void talloc_decrease_ref_count(void const *ptr)
 
 	memcpy(&to_free, &ptr, sizeof(to_free));
 
-	talloc_unlink(talloc_parent(ptr), to_free);
+	if (talloc_reference_count(to_free) == 0) {
+		talloc_free(to_free);
+	} else {
+		talloc_unlink(talloc_parent(ptr), to_free);
+	}
 }
 
 /** Add a NULL pointer to an array of pointers
@@ -268,4 +583,15 @@ void **talloc_array_null_strip(void **array)
 	return new;
 }
 
+/** Free const'd memory
+ *
+ * @param[in] ptr	to free.
+ */
+void talloc_const_free(void const *ptr)
+{
+	void *tmp;
+	if (!ptr) return;
 
+	memcpy(&tmp, &ptr, sizeof(tmp));
+	talloc_free(tmp);
+}

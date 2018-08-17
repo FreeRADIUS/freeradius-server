@@ -194,7 +194,7 @@ ATTRIBUTE	WiMAX-Destination-Assigned		28.11.6.7	octets
 
 ATTRIBUTE	WiMAX-IP-TOS/DSCP-Range-and-Mask	28.11.7	octets
 ATTRIBUTE	WiMAX-VLAN-ID				28.11.8	integer
-ATTRIBUTE	WiMAX-802.1p				28.11.9	octets
+ATTRIBUTE	WiMAX-802dot1p				28.11.9	octets
 
 ATTRIBUTE	WiMAX-QoS-Descriptor			29	tlv
 ATTRIBUTE	WiMAX-QoS-Id				29.1	byte

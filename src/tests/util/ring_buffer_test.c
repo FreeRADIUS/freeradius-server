@@ -17,18 +17,20 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @copyright 2016  Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")
 
 #include <freeradius-devel/io/ring_buffer.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/syserror.h>
 #include <string.h>
-#include <freeradius-devel/hash.h>
-#include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #define ALLOC_SIZE (8)
@@ -46,7 +48,7 @@ static size_t		seed_string_len = 3;
 /**********************************************************************/
 typedef struct rad_request REQUEST;
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
-void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
 void talloc_const_free(void const *ptr);
 
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
@@ -54,7 +56,7 @@ REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
 	return NULL;
 }
 
-void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
 {
 }
 
@@ -88,10 +90,10 @@ static void  alloc_blocks(fr_ring_buffer_t *rb, uint32_t *seed, UNUSED int *star
 		array[index] = hash;
 		p = fr_ring_buffer_reserve(rb, 2048);
 
-		if (rad_cond_assert(!p)) exit(1);
+		if (fr_cond_assert(!p)) exit(EXIT_FAILURE);
 
 		data[index] = fr_ring_buffer_alloc(rb, hash);
-		if (rad_cond_assert(data[index] != p)) exit(1);
+		if (fr_cond_assert(data[index] != p)) exit(EXIT_FAILURE);
 
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
@@ -113,7 +115,7 @@ static void  free_blocks(fr_ring_buffer_t *rb, UNUSED uint32_t *seed, int *start
 		index = (*start + i) & (ARRAY_SIZE - 1);
 
 		rcode = fr_ring_buffer_free(rb, array[index]);
-		if (!rad_cond_assert(rcode == 0)) exit(1);
+		if (!fr_cond_assert(rcode == 0)) exit(EXIT_FAILURE);
 
 		used -= array[index];
 		rad_assert(fr_ring_buffer_used(rb) == used);
@@ -135,7 +137,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 	fprintf(stderr, "  -s <string>            Set random seed to <string>.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
@@ -146,7 +148,7 @@ int main(int argc, char *argv[])
 	fr_ring_buffer_t *rb;
 	uint32_t	seed;
 
-	TALLOC_CTX	*autofree = talloc_init("main");
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	while ((c = getopt(argc, argv, "hs:x")) != EOF) switch (c) {
 		case 's':
@@ -170,7 +172,7 @@ int main(int argc, char *argv[])
 	rb = fr_ring_buffer_create(autofree, ARRAY_SIZE * 1024);
 	if (!rb) {
 		fprintf(stderr, "Failed creating ring buffer\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	seed = 0xabcdef;
@@ -181,7 +183,7 @@ int main(int argc, char *argv[])
 	 *	Allocate the first set of blocks.
 	 */
 	alloc_blocks(rb, &seed, &start, &end);
-	
+
 	/*
 	 *	Do 1000 rounds of alloc / free.
 	 */
@@ -197,7 +199,5 @@ int main(int argc, char *argv[])
 	rad_assert(used == 0);
 	rad_assert(fr_ring_buffer_used(rb) == used);
 
-	talloc_free(autofree);
-
-	return 0;
+	exit(EXIT_SUCCESS);
 }

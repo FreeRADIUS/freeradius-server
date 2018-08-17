@@ -14,30 +14,34 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/log.c
- * @brief Support functions for logging in FreeRADIUS libraries.
+/** Support functions for logging in FreeRADIUS libraries
+ *
+ * @file src/lib/util/log.c
  *
  * @copyright 2003,2006  The FreeRADIUS server project
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include "log.h"
 
-/*
- *	Are we using glibc or a close relative?
- */
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+
+#include <fcntl.h>
 #ifdef HAVE_FEATURES_H
 #  include <features.h>
 #endif
-
+#include <stdio.h>
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
 #endif
+#include <time.h>
+#include <unistd.h>
 
-#include <fcntl.h>
-
-FILE *fr_log_fp = NULL;
+FILE	*fr_log_fp = NULL;
+int	fr_debug_lvl = 0;
 
 /** Canonicalize error strings, removing tabs, and generate spaces for error marker
  *
@@ -55,7 +59,7 @@ FILE *fr_log_fp = NULL;
    ERROR("%s^ %s", space, text);
  @endcode
  *
- * @todo merge with above function (radlog_request_marker)
+ * @todo merge with above function (log_request_marker)
  *
  * @param sp Where to write a dynamically allocated buffer of spaces used to indent the error text.
  * @param text Where to write the canonicalized version of msg (the error text).
@@ -230,7 +234,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *msg, va_list ap
 
 		timeval = time(NULL);
 #ifdef HAVE_GMTIME_R
-		if (log_dates_utc) {
+		if (log->dates_utc) {
 			struct tm utc;
 			gmtime_r(&timeval, &utc);
 			ASCTIME_R(&utc, buffer + len, sizeof(buffer) - len - 1);
@@ -615,7 +619,6 @@ bool fr_rate_limit_enabled(void)
 
 	return false;
 }
-
 
 void fr_printf_log(char const *fmt, ...)
 {

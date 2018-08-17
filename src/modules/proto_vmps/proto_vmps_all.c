@@ -19,37 +19,51 @@
  * @file proto_vmps/proto_vmps_all.c
  * @brief VMPS processing.
  *
- * @copyright 2016 The Freeradius server project.
- * @copyright 2016 Alan DeKok (aland@deployingradius.com)
+ * @copyright 2018 The Freeradius server project.
+ * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/dict.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/vqp/vqp.h>
 
-static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
+static fr_dict_t *dict_vmps;
+
+extern fr_dict_autoload_t proto_vmps_all_dict[];
+fr_dict_autoload_t proto_vmps_all_dict[] = {
+	{ .out = &dict_vmps, .proto = "vmps" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_vmps_packet_type;
+
+extern fr_dict_attr_autoload_t proto_vmps_all_dict_attr[];
+fr_dict_attr_autoload_t proto_vmps_all_dict_attr[] = {
+	{ .out = &attr_vmps_packet_type, .name = "VMPS-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
+	{ NULL }
+};
+
+static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, UNUSED fr_io_action_t action)
 {
-	rlm_rcode_t rcode;
-	CONF_SECTION *unlang;
-	fr_dict_enum_t const *dv;
-	fr_dict_attr_t const *da = NULL;
+	rlm_rcode_t		rcode;
+	CONF_SECTION		*unlang;
+	fr_dict_enum_t const	*dv;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
-			       fr_packet_codes[request->packet->code], request->packet->id);
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		RDEBUG("Received %s ID %08x", fr_vmps_codes[request->packet->code], request->packet->id);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "vmps";
 
-		da = fr_dict_attr_by_num(NULL, 0, FR_VQP_PACKET_TYPE);
-		rad_assert(da != NULL);
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
+		dv = fr_dict_enum_by_value(attr_vmps_packet_type, fr_box_uint32(request->packet->code));
 		if (!dv) {
-			REDEBUG("Failed to find value for &request:Packet-Type");
+			REDEBUG("Failed to find value for &request:VMPS-Packet-Type");
 			return FR_IO_FAIL;
 		}
 
@@ -61,7 +75,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+		unlang_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
 		/* FALL-THROUGH */
@@ -76,6 +90,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		rad_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
+		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
 			if (request->packet->code == FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST) {
@@ -97,10 +112,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			break;
 		}
 
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_VMPS_PACKET_TYPE);
-		rad_assert(da != NULL);
-
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+		dv = fr_dict_enum_by_value(attr_vmps_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
 
@@ -108,7 +120,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+		unlang_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_SEND;
 		/* FALL-THROUGH */
@@ -136,15 +148,14 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			 *	the NAK section.
 			 */
 			if (request->reply->code != FR_VMPS_PACKET_TYPE_VALUE_DO_NOT_RESPOND) {
-				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_VMPS_PACKET_TYPE);
-				rad_assert(da != NULL);
-
-				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_vmps_packet_type,
+							   fr_box_uint32(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'.", dv->alias);
 
 				request->reply->code = FR_VMPS_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
 
-				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_vmps_packet_type,
+							   fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
@@ -190,51 +201,9 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 }
 
 
-/*
- *	Ensure that the "recv foo" etc. sections are compiled.
- */
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
-{
-	int rcode;
-	CONF_SECTION *server_cs;
-
-	rad_assert(listen_cs);
-
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	rcode = unlang_compile_subsection(server_cs, "recv", "VMPS-Join-Request", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'recv VMPS-Join-Request { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
-
-	rcode = unlang_compile_subsection(server_cs, "send", "VMPS-Join-Response", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "recv", "VMPS-Reconfirm-Request", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'recv VMPS-Reconfirmn-Request { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
-
-	rcode = unlang_compile_subsection(server_cs, "send", "VMPS-Reconfirm-Response", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	return 0;
-}
-
-extern fr_app_process_t proto_vmps_all;
-fr_app_process_t proto_vmps_all = {
+extern fr_app_worker_t proto_vmps_all;
+fr_app_worker_t proto_vmps_all = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "vmps_all",
-	.instantiate	= mod_instantiate,
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

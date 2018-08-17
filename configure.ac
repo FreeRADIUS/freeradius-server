@@ -24,7 +24,7 @@ AC_PREREQ([2.59])
 export CFLAGS LIBS LDFLAGS CPPFLAGS
 
 AC_INIT([freeradius],[$]Id[$],[http://bugs.freeradius.org],,[http://www.freeradius.org])
-AC_CONFIG_SRCDIR([src/main/radiusd.c])
+AC_CONFIG_SRCDIR([src/bin/radiusd.c])
 AC_CONFIG_HEADER([src/include/autoconf.h])
 m4_include([m4/ax_cc.m4])
 m4_include([m4/ax_with_lib_args.m4])
@@ -36,16 +36,20 @@ dnl #  Custom hackery to discover version at configure time
 dnl #
 dnl #############################################################
 
-RADIUSD_MAJOR_VERSION=`cat VERSION | cut -f1 -d.`
-RADIUSD_MINOR_VERSION=`cat VERSION | cut -f2 -d.`
-RADIUSD_INCRM_VERSION=`cat VERSION | cut -f3 -d. | sed 's/[[\.-]].*$//'`
+RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
+RADIUSD_VERSION_MINOR=`cat VERSION | cut -f2 -d.`
+RADIUSD_VERSION_INCRM=`cat VERSION | cut -f3 -d. | sed 's/[[\.-]].*$//'`
 
-RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_MAJOR_VERSION $RADIUSD_MINOR_VERSION $RADIUSD_INCRM_VERSION`
+AC_MSG_CHECKING([build version])
+RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_VERSION_MAJOR $RADIUSD_VERSION_MINOR $RADIUSD_VERSION_INCRM`
+AC_MSG_RESULT($RADIUSD_VERSION)
 
 dnl #
 dnl #  Still useful for custom builds
 dnl #
+AC_MSG_CHECKING([build version string])
 RADIUSD_VERSION_STRING=`cat VERSION`
+AC_MSG_RESULT($RADIUSD_VERSION_STRING)
 
 dnl #
 dnl #  Add definitions to Make.inc as it's used by various build targets
@@ -65,6 +69,13 @@ dnl #  Override some of the default autoconf variables such as
 dnl #  CFLAGS if were building in developer mode
 dnl #
 dnl #############################################################
+
+dnl #
+dnl #  Unset ASAN_OPTIONS and LSAN_OPTIONS so they don't interfere
+dnl #  with the build process.
+dnl #
+unset ASAN_OPTIONS
+unset LSAN_OPTIONS
 
 dnl #
 dnl #  See if we have Git.
@@ -91,10 +102,31 @@ dnl #
 dnl #  Turn on the developer flag when taken from a git checkout (not a release)
 dnl #
 if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
+  if test "x$RADIUSD_VERSION_RELEASE" = "x"; then
+    AC_MSG_CHECKING([build release])
+    RADIUSD_VERSION_RELEASE=`git describe | sed -e 's/^.*-\([[0-9]]*\)-g[[0-9a-f]]*/\1/'`
+    AC_MSG_RESULT($RADIUSD_VERSION_RELEASE)
+  fi
+
+  if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
+    AC_MSG_CHECKING([build commit])
+    RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+    AC_MSG_RESULT($RADIUSD_VERSION_COMMIT)
+  fi
+
   if test "x$developer" != "xno"; then
     AC_MSG_NOTICE([in git repository, enabling developer build implicitly, disable with --disable-developer])
     developer="yes"
   fi
+
+fi
+
+if test "x$RADIUSD_VERSION_RELEASE" != "x"; then
+  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_RELEASE],[${RADIUSD_VERSION_RELEASE}],[Version release number at time of configuring])
+fi
+
+if test "x$RADIUSD_VERSION_COMMIT" != "x"; then
+  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
 fi
 
 dnl #
@@ -159,6 +191,17 @@ if test "x$GCC" = "xyes"; then
 fi
 
 dnl #
+dnl # -Wno-unknown-warning-option means the compiler doesn't complain about diag pragmas
+dnl # for warnings it doesn't understand.  This may sound like a bad idea, but consider
+dnl # the number of different compiler versions we build under, and the fact that the
+dnl # more anally retentive warnings are likely to be added in later versions.
+dnl #
+AX_CC_NO_UNKNOWN_WARNING_OPTION_FLAG
+if test "x$ax_cv_cc_no_unknown_warning_option_flag" = "xyes"; then
+  CFLAGS="$CFLAGS -Wno-unknown-warning-option"
+fi
+
+dnl #
 dnl #  -Qunused-arguments means the compiler won't complain about unsupported arguments
 dnl #
 AX_CC_QUNUSED_ARGUMENTS_FLAG
@@ -166,6 +209,12 @@ if test "x$ax_cv_cc_qunused_arguments_flag" = "xyes"; then
   CFLAGS="$CFLAGS -Qunused-arguments"
   LDFLAGS="$LDFLAGS -Qunused-arguments"
 fi
+
+dnl #
+dnl # Check for presence of -Wno-date-time warning. Older compilers
+dnl # don't have it, and newer compilers warn without it...
+dnl #
+AX_CC_NO_DATE_TIME_FLAG
 
 dnl #
 dnl #  Compile in large (2G+) file support.
@@ -278,6 +327,23 @@ else
   openssl_version_check_config=
 fi
 AC_SUBST([openssl_version_check_config])
+
+dnl #
+dnl #  extra argument: --enable-reproducible-builds
+dnl #
+AC_ARG_ENABLE(reproducible-builds,
+[AS_HELP_STRING([--enable-reproducible-builds],
+                [ensure the build does not change each time])],
+[ case "$enableval" in
+  yes)
+    AC_DEFINE(ENABLE_REPRODUCIBLE_BUILDS, [1],
+              [Define to ensure each build is the same])
+    reproducible_builds=yes
+    ;;
+  *)
+    reproducible_builds=no
+  esac ]
+)
 
 dnl #############################################################
 dnl #
@@ -611,7 +677,7 @@ if test "x$HAVE_THREADS" != "xno"; then
       dnl #  only support it on certain platforms.
       dnl #
       AX_CC_PTHREAD_FLAG
-      if test "x$ax_cv_cc_pthread_flag" == 'xyes'; then
+      if test "x$ax_cv_cc_pthread_flag" = 'xyes'; then
         CFLAGS="$CFLAGS -pthread"
       fi
     ]
@@ -827,10 +893,6 @@ FR_SMART_CHECK_LIB(pcap, pcap_open_live)
 if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
   AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>.])
 else
-  AC_DEFINE(HAVE_LIBPCAP, 1,
-    [Define to 1 if you have the `pcap' library (-lpcap).]
-  )
-
   AC_CHECK_FUNCS(\
     pcap_fopen_offline \
     pcap_dump_fopen \
@@ -1089,6 +1151,7 @@ if test "x$WITH_OPENSSL" = xyes; then
     AC_CHECK_FUNCS( \
       SSL_get_client_random \
       SSL_get_server_random \
+      EVP_sha3_512 \
     )
 
     CPPFLAGS="$old_CPPFLAGS"
@@ -1112,8 +1175,8 @@ else
   dnl #
   smart_try_dir="$pcap_include_dir"
   FR_SMART_CHECK_INCLUDE([pcap.h])
-  if test "x$ac_cv_header_pcap_h" == "xyes"; then
-    AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
+  if test "x$ac_cv_header_pcap_h" = "xyes"; then
+    AC_DEFINE(HAVE_LIBPCAP, 1, [Define to 1 if you have the `pcap' library (-lpcap) and header file <pcap.h>.])
     AC_SUBST(PCAP_LIBS)
     AC_SUBST(PCAP_LDFLAGS)
   else
@@ -1132,7 +1195,7 @@ else
   dnl #
   smart_try_dir="$collectdclient_include_dir"
   FR_SMART_CHECK_INCLUDE([collectd/client.h])
-  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+  if test "x$ac_cv_header_collectd_client_h" = "xyes"; then
     AC_DEFINE(HAVE_COLLECTDC_H, 1, [Define to 1 if you have the `collectdclient' library (-lcollectdclient).])
     AC_SUBST(COLLECTDC_LIBS)
     AC_SUBST(COLLECTDC_LDFLAGS)
@@ -1152,7 +1215,7 @@ else
   dnl #
   smart_try_dir="$cap_include_dir"
   FR_SMART_CHECK_INCLUDE([sys/capability.h])
-  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+  if test "x$ac_cv_header_sys_capability_h" = "xyes"; then
     AC_DEFINE(HAVE_CAPABILITY_H, 1, [Define to 1 if you have the <sys/capability.h> header file.])
   else
     AC_MSG_WARN([cap headers not found, will not perform debugger checks. Use --with-cap-include-dir=<path>.])
@@ -1167,7 +1230,7 @@ if test "x$WITH_GPERFTOOLS" != xyes || test "x$GPERFTOOLS_LIBS" = x; then
 else
   smart_try_dir="$gperftools_include_dir"
   FR_SMART_CHECK_INCLUDE([gperftools/profiler.h])
-  if test "x$ac_cv_header_gperftools_profiler_h" == "xyes"; then
+  if test "x$ac_cv_header_gperftools_profiler_h" = "xyes"; then
     AC_DEFINE(HAVE_GPERFTOOLS_PROFILER_H, 1, [Define to 1 if you have the <gperftools/profiler.h> header file.])
     AC_SUBST(GPERFTOOLS_LIBS)
     AC_SUBST(GPERFTOOLS_LDFLAGS)
@@ -1184,7 +1247,7 @@ if test "x$WITH_SYSTEMD" != xyes || test "x$SYSTEMD_LIBS" = x; then
 else
   smart_try_dir="$systemd_include_dir"
   FR_SMART_CHECK_INCLUDE([systemd/sd-daemon.h])
-  if test "x$ac_cv_header_systemd_sdmdaemon_h" == "xyes"; then
+  if test "x$ac_cv_header_systemd_sdmdaemon_h" = "xyes"; then
     AC_DEFINE(HAVE_SYSTEMD_SD_DAEMON_H, 1, [Define to 1 if you have the <systemd/sd-daemon.h> header file.])
     AC_SUBST(SYSTEMD_LIBS)
     AC_SUBST(SYSTEMD_LDFLAGS)
@@ -1434,7 +1497,7 @@ AC_TYPE_SIGNAL
 dnl #
 dnl #  Check if we have utmpx.h
 dnl #  if so, check if struct utmpx has entry ut_xtime
-dnl #  if not, set it to define ut_xtime == ut_tv.tv_sec
+dnl #  if not, set it to define ut_xtime = ut_tv.tv_sec
 dnl #
 if test "x$ac_cv_header_utmpx_h" = "xyes"; then
  FR_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
@@ -1543,27 +1606,90 @@ if test "x$developer" = "xyes"; then
   dnl #
   AX_CC_WEVERYTHING_FLAG
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devcflags="$devflags -W -Weverything -Wformat=2 -Wno-disabled-macro-expansion -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed -DWITH_VERIFY_PTR=1"
+    devcflags="$devflags \
+	-W \
+	-Weverything \
+	-Wformat=2 \
+	-DWITH_VERIFY_PTR=1 \
+	-Wno-disabled-macro-expansion \
+	-Wno-missing-field-initializers \
+	-Wno-date-time \
+    	-Wno-padded \
+    	-Wno-gnu-zero-variadic-macro-arguments \
+    	-Wno-shorten-64-to-32 \
+    	-Wno-sign-conversion \
+    	-Wno-conversion \
+    	-Wno-switch-enum \
+    	-Wno-gnu-statement-expression \
+    	-Wno-extended-offsetof \
+    	-Wno-cast-align \
+    	-Wno-documentation-unknown-command \
+    	-Wno-covered-switch-default \
+    	-Wno-packed \
+    	-Wno-reserved-id-macro \
+    	-Wno-format-pedantic"
   else
     if test "x$GCC" = "xyes"; then
-      devcflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-missing-field-initializers -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
+      devcflags="$devflags \
+      	-Wshadow \
+      	-Wpointer-arith \
+      	-Wcast-qual \
+      	-Wcast-align \
+      	-Wwrite-strings \
+      	-Wstrict-prototypes \
+      	-Wmissing-prototypes \
+      	-Wmissing-declarations \
+      	-Wnested-externs \
+      	-W \
+      	-Wredundant-decls \
+      	-Wundef \
+      	-Wformat-y2k \
+      	-Wno-missing-field-initializers \
+      	-Wno-format-extra-args \
+      	-Wno-format-zero-length \
+      	-Wno-cast-align \
+      	-Wformat-nonliteral \
+      	-Wformat-security \
+      	-Wformat=2 \
+      	-DWITH_VERIFY_PTR=1"
       INSTALLSTRIP=""
     fi
+  fi
+
+  dnl #
+  dnl #  Older versions of GCC don't support this, but 7 seems to
+  dnl #
+  AX_CC_IMPLICIT_FALLTHROUGH_FLAG
+  if test "x$ax_cv_cc_wimplicit_fallthrough_flag" = "xyes"; then
+    devcflags="$devcflags -Wimplicit-fallthrough"
   fi
 
   dnl #
   dnl #  If running with clang, add in ASAN
   dnl #
   if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer"
+    dnl #
+    dnl #  -fsanitize=address		- Build with address sanitizer support
+    dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
+    dnl #  -fno-optimize-sibling-calls	- Don't optimize away tail recursion.
+    dnl #
+    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
     AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG
     if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
       devcflags="$devcflags -fsanitize-address-use-after-scope"
     fi
 
+    AC_CHECK_HEADERS(sanitizer/lsan_interface.h)
+
     devldflags="$devldflags -fsanitize=address"
   fi
+
+  dnl #
+  dnl # Clean the flags up
+  dnl #
+  devcflags="$(echo $devcflags | sed -e 's/\\t//g;s/  //g')"
+  devldflags="$(echo $devldflags | sed -e 's/\\t//g;s/  //g')"
 
   AC_MSG_NOTICE([Developer CFLAGS are "$devcflags"])
   AC_MSG_NOTICE([Developer LDFLAGS are "$devldflags"])
@@ -1598,14 +1724,6 @@ else
 fi
 
 export EXPERIMENTAL
-
-dnl #
-dnl #  append the current git hash onto the version string
-dnl #
-if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
-  RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
-  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
-fi
 
 dnl #
 dnl #  check for some compiler features
@@ -2143,13 +2261,21 @@ dnl #
 AC_CONFIG_SUBDIRS($mysubdirs)
 AC_SUBST(MODULES)
 
+dnl #
+dnl #  If reproducible builds are not enabled, disable
+dnl #  -Wdate-time so the compiler doesn't croak.
+dnl #
+if test "x$ax_cv_cc_no_date_time_flag" = "xyes" && test "x$reproducible_builds" != "xyes"; then
+  CFLAGS="-Wno-date-time $CFLAGS"
+fi
+
 dnl #############################################################
 dnl #
 dnl #  Add -Werror last, so it doesn't interfere with autoconf's
 dnl #  test programs.
 dnl #
 dnl #############################################################
-if test "x$werror" == "xyes"; then
+if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi
 
@@ -2160,7 +2286,7 @@ dnl #
 dnl #############################################################
 AC_CONFIG_COMMANDS([stamp-h], [echo timestamp > src/include/stamp-h])
 AC_CONFIG_COMMANDS([build-radpaths-h], [(cd ./src/include && /bin/sh ./build-radpaths-h)])
-AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/main && chmod +x checkrad radlast radtest)])
+AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/bin && chmod +x checkrad radlast radtest)])
 AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly cryptpasswd)])
 
 dnl #
@@ -2172,10 +2298,10 @@ AC_SUBST(INSTALLSTRIP)
 AC_OUTPUT(\
   ./Make.inc \
   ./src/include/build-radpaths-h \
-  ./src/main/radsniff.mk \
-  ./src/main/checkrad \
-  ./src/main/radlast \
-  ./src/main/radtest \
+  ./src/bin/radsniff.mk \
+  ./src/bin/checkrad \
+  ./src/bin/radlast \
+  ./src/bin/radtest \
   ./scripts/rc.radiusd \
   ./scripts/cron/radiusd.cron.daily \
   ./scripts/cron/radiusd.cron.monthly \

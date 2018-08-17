@@ -4,7 +4,7 @@
    a partial implementation of DES designed for use in the
    SMB authentication protocol
 
-   Copyright (C) Andrew Tridgell 1998
+   @copyright Andrew Tridgell 1998
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-   Copyright 2006 The FreeRADIUS server project
+   @copyright 2006 The FreeRADIUS server project
 */
 
 
@@ -48,7 +48,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/util/base.h>
 #include <ctype.h>
 #include "smbdes.h"
 

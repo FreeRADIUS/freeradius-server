@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,11 +14,26 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _RLM_RADIUS_H
-#define _RLM_RADIUS_H
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/util/dlist.h>
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#ifdef HAVE_STDATOMIC_H
+#  include <stdatomic.h>
+#else
+#  include <freeradius-devel/stdatomic.h>
+#endif
+
+/*
+ *	Some macros to make our life easier.
+ */
+#define atomic_uint32_t _Atomic(uint32_t)
+
+#define cas_incr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var + 1, memory_order_release, memory_order_relaxed)
+#define cas_decr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var - 1, memory_order_release, memory_order_relaxed)
+#define load(_var)           atomic_load_explicit(&_var, memory_order_relaxed)
+#define aquire(_var)         atomic_load_explicit(&_var, memory_order_acquire)
+#define store(_store, _var)  atomic_store_explicit(&_store, _var, memory_order_release);
 
 /*
  * $Id$
@@ -35,7 +51,8 @@ typedef struct rlm_radius_link_t rlm_radius_link_t;
 /** Push a REQUEST to an IO submodule
  *
  */
-typedef int (*fr_radius_io_push_t)(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread);
+typedef rlm_rcode_t (*fr_radius_io_push_t)(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread);
+typedef void (*fr_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, rlm_radius_link_t *link, fr_state_signal_t action);
 typedef int (*fr_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
 
 
@@ -55,8 +72,10 @@ typedef struct fr_radius_client_io_t {
 	size_t				thread_inst_size;	//!< Size of data to allocate to the thread instance.
 
 	size_t				request_inst_size;	//!< size of the data per request
+	char const			*request_inst_type;	//!< Talloc type of the request_inst.
 
 	fr_radius_io_push_t		push;			//!< push a REQUEST to an IO submodule
+	fr_radius_io_signal_t		signal;			//!< send a signal to an IO module
 } fr_radius_client_io_t;
 
 typedef struct rlm_radius_retry_t {
@@ -75,15 +94,26 @@ struct rlm_radius_t {
 	struct timeval		connection_timeout;
 	struct timeval		reconnection_delay;
 	struct timeval		idle_timeout;
+	struct timeval		zombie_period;
 
 	bool			replicate;	//!< are we ignoring responses?
+	bool			synchronous;	//!< are we doing synchronous proxying?
+	bool			no_connection_fail; //!< are we failing immediately on no connection?
 
 	dl_instance_t		*io_submodule;	//!< As provided by the transport_parse
 	fr_radius_client_io_t const *io;	//!< Easy access to the IO handle
 	void			*io_instance;	//!< Easy access to the IO instance
 	CONF_SECTION		*io_conf;	//!< Easy access to the IO config section
 
+	uint32_t		max_connections;  //!< maximum number of open connections
+	atomic_uint32_t		num_connections;  //!< actual number of connections
+	uint32_t		max_attributes;   //!< Maximum number of attributes to decode in response.
+
+	uint32_t		proxy_state;  	//!< Unique ID (mostly) of this module.
 	uint32_t		*types;		//!< array of allowed packet types
+	uint32_t		status_check;  	//!< code of status-check type
+	vp_map_t		*status_check_map;	//!< attributes for the status-server checks
+
 	int			allowed[FR_MAX_PACKET_CODE];
 	rlm_radius_retry_t	retry[FR_MAX_PACKET_CODE];
 };
@@ -97,7 +127,7 @@ typedef struct rlm_radius_thread_t {
 	rlm_radius_t const	*inst;			//!< Instance of the module.
 	fr_event_list_t		*el;			//!< This thread's event list.
 
-	fr_dlist_t		running;		//!< running requests
+	fr_dlist_head_t		running;		//!< running requests
 
 	void			*thread_io_ctx;		//!< thread context for the IO submodule
 } rlm_radius_thread_t;
@@ -116,5 +146,3 @@ struct rlm_radius_link_t {
 	rlm_rcode_t		rcode;			//!< from the transport
 	void			*request_io_ctx;	//!< IO submodule tracking for this request
 };
-
-#endif	/* _RLM_RADIUS_H */

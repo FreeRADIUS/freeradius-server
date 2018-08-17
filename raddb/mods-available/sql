@@ -61,10 +61,10 @@ sql {
 #	radius_db = "dbname=radius host=localhost user=radius password=raddpass"
 	# If you're using postgresql this can also be used instead of the connection info parameters
 #	radius_db = "dbname=radius host=localhost user=radius password=raddpass"
-        
+
         # Postgreql doesn't take tls{} options in its module config like mysql does - if you want to
         # use SSL connections then use this form of connection info parameter
-#	radius_db = "host=localhost port=5432 dbname=radius user=radius password=raddpass sslmode=verify-full sslcert=/etc/ssl/client.crt sslkey=/etc/ssl/client.key sslrootcert=/etc/ssl/ca.crt" 
+#	radius_db = "host=localhost port=5432 dbname=radius user=radius password=raddpass sslmode=verify-full sslcert=/etc/ssl/client.crt sslkey=/etc/ssl/client.key sslrootcert=/etc/ssl/ca.crt"
 
 	# If you want both stop and start records logged to the
 	# same SQL table, leave this as is.  If you want them in
@@ -103,7 +103,7 @@ sql {
 	# Per-section logging can be disabled by setting "logfile = ''"
 #	logfile = ${logdir}/sqllog.sql
 
-	#  Set the maximum query duration for rlm_sql_mysql and 
+	#  Set the maximum query duration for rlm_sql_mysql and
 	#  rlm_sql_cassandra.
 #	query_timeout = 5
 
@@ -137,10 +137,10 @@ sql {
 		#  connections during instantiation it will exit.
 		#  Set to 0 to allow the server to start without the
 		#  database being available.
-		start = ${thread[pool].start_servers}
+		start = ${thread[pool].num_workers}
 
 		#  Minimum number of connections to keep open
-		min = ${thread[pool].min_spare_servers}
+		min = ${thread[pool].num_workers}
 
 		#  Maximum number of connections
 		#
@@ -153,13 +153,13 @@ sql {
 		#
 		#  Setting 'max' to MORE than the number of threads means
 		#  that there are more connections than necessary.
-		max = ${thread[pool].max_servers}
+		max = ${thread[pool].num_workers}
 
 		#  Spare connections to be left idle
 		#
 		#  NOTE: Idle connections WILL be closed if "idle_timeout"
 		#  is set.  This should be less than or equal to "max" above.
-		spare = ${thread[pool].max_spare_servers}
+		spare = 1
 
 		#  Number of uses before the connection is closed
 		#
@@ -198,15 +198,8 @@ sql {
 		#  or increase lifetime/idle_timeout.
 	}
 
-	# Set to 'yes' to read radius clients from the database ('nas' table)
-	# Clients will ONLY be read on server startup.
-#	read_clients = yes
-
-	# Table to keep radius client info
-	client_table = "nas"
-
 	# The group attribute specific to this instance of rlm_sql
-	group_attribute = "${.:instance}-${.:name}-Group"
+	group_attribute = "${.:instance}-Group"
 
 	# Read database-specific queries
 	#

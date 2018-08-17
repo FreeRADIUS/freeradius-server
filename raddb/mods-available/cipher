@@ -1,0 +1,90 @@
+
+cipher {
+	#
+	#  RSA asymmetrically keyed ciphering
+	#
+	#  Registers the following expansions:
+	#  - %{<inst>_encrypt:<plaintext>...}			- Encrypts plaintext using `certificate_file`
+	#  - %{<inst>_decrypt:<ciphertext>...}			- Decrypts ciphertext using `private_key_file`
+	#  - %{<inst>_sign:<plaintext>...}			- Signs plaintext using `private_key_file`
+	#  - %{<inst>_verify:<signature> <plaintext>...}	- Validates a signature using `certificate_file`
+	#
+	#  Note: <ciphertext> and <signature> are ingested and excreted to in their raw form.
+	#  You should use armouring expansions i.e. %{base64_encode:}, %{base64_decode:} if the values
+	#  are to be passed outside of FreeRADIUS.
+	#
+	#  Example:
+	#
+	#    %{base64_encode:%{cipher_encrypt:<plaintext>}}
+	#    %{cipher_decrypt:%{base64_decode:<ciphertext>}}
+	#
+	#  Supported digest types vary depending on the version OpenSSL was built against.
+	#
+	#  Reasonably modern >= 1.0.0 versions of OpenSSL should support at least:
+	#
+	#  - md2	(not recommended)
+	#  - md4	(not recommended)
+	#  - md5	(not recommended)
+	#  - sha1	(widely used but deprecated)
+	#  - sha224
+	#  - sha256	(the default - strongly recommended)
+	#  - sha384
+	#  - sha512
+	#
+	#  Bleeding edge versions of OpenSSL may also support the sha3 family of digest functions.
+	#
+	#  Again, the supported versions are determined *entirely* by the version of OpenSSL used, we
+	#  pass the name of the digest off to OpenSSL and it tells *us* whether it's valid/supported
+	#  or not.
+	#
+	rsa {
+		#
+		#  Private key used for decrypting and signing data
+		#
+		private_key_password = whatever
+		private_key_file = ${certdir}/server.pem
+
+		#
+		#  The PEM encoded certificate used for encrypting data
+		#  and verifying signatures.
+		#
+		certificate_file = ${certdir}/server.pem
+
+		#
+		#  Parameters for the OAEP RSA padding scheme
+		#
+		#  Only available when using OpenSSL >= 1.0.2
+		#
+		oaep {
+#			oaep_digest = "sha256"
+#			mgf1_digest = "sha256"
+#			label = ""
+		}
+
+		#
+		#  Digest used to ingest the plaintext before signing
+		#  or verification.
+		#
+#		signature_digest = "sha256"
+
+		#
+		#  The type of padding applied to the plaintext
+		#
+		#  One of:
+		#  - none (no padding)
+		#  - pkcs
+		#  - oaep
+		#  - x931 (signing only)
+		#  - ssl (v1/v2)
+		#
+		#  Defaults to pkcs
+		#
+#		padding_type = pkcs
+	}
+
+	#
+	#  Available schemes are:
+	#  - rsa
+	#
+	type = rsa
+}

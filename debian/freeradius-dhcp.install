@@ -1,3 +1,4 @@
 usr/lib/freeradius/rlm_dhcp*.so
 usr/lib/freeradius/proto_dhcp*.so
 usr/lib/freeradius/libfreeradius-dhcp.so
+usr/bin/dhcpclient

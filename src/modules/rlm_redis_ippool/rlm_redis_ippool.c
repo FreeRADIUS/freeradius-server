@@ -41,13 +41,13 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/rad_assert.h>
 
-#include "redis.h"
-#include "cluster.h"
+#include <freeradius-devel/redis/base.h>
+#include <freeradius-devel/redis/cluster.h>
 #include "redis_ippool.h"
 
 /** rlm_redis module instance
@@ -131,6 +131,26 @@ static CONF_PARSER module_config[] = {
 	 */
 	{ FR_CONF_POINTER("redis", FR_TYPE_SUBSECTION, NULL), .subcs = redis_config },
 	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_redis_ippool_dict[];
+fr_dict_autoload_t rlm_redis_ippool_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_pool_action;
+static fr_dict_attr_t const *attr_acct_status_type;
+
+extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
+fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
+	{ .out = &attr_pool_action, .name = "Pool-Action", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
 };
 
 #define EOL "\n"
@@ -1115,7 +1135,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		}
 
 		if (fr_inet_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
-			REDEBUG("%s", fr_strerror());
+			RPEDEBUG("Failed parsing address");
 			return RLM_MODULE_FAIL;
 		}
 
@@ -1183,7 +1203,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		}
 
 		if (fr_inet_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
-			REDEBUG("%s", fr_strerror());
+			RPEDEBUG("Failed parsing address");
 			return RLM_MODULE_FAIL;
 		}
 
@@ -1232,13 +1252,13 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	/*
 	 *	Pool-Action override
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_POOL_ACTION, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
 	if (vp) return mod_action(inst, request, vp->vp_uint32);
 
 	/*
 	 *	Otherwise, guess the action by Acct-Status-Type
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 	if (!vp) {
 		RDEBUG2("Couldn't find &request:Acct-Status-Type or &control:Pool-Action, doing nothing...");
 		return RLM_MODULE_NOOP;
@@ -1271,7 +1291,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_POOL_ACTION, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
 	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
@@ -1285,7 +1305,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_POOL_ACTION, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
 	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
@@ -1303,7 +1323,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (!inst->cluster) return -1;
 
 	if (!fr_redis_cluster_min_version(inst->cluster, "3.0.2")) {
-		ERROR("%s", fr_strerror());
+		PERROR("Cluster error");
 		return -1;
 	}
 

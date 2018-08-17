@@ -24,22 +24,24 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
-#include <freeradius-devel/md5.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/io/test_point.h>
+#include "attrs.h"
 
 static unsigned int salt_offset = 0;
 
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, int depth,
-			    vp_cursor_t *cursor, void *encoder_ctx);
+			    fr_cursor_t *cursor, void *encoder_ctx);
 
 static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 				       fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				       vp_cursor_t *cursor, void *encoder_ctx);
+				       fr_cursor_t *cursor, void *encoder_ctx);
 
 static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      vp_cursor_t *cursor, void *encoder_ctx);
+			      fr_cursor_t *cursor, void *encoder_ctx);
 
 
 /** Determine if the current attribute is encodable, or find the first one that is
@@ -47,12 +49,12 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
  * @param cursor to iterate over.
  * @return encodable VALUE_PAIR, or NULL if none available.
  */
-static inline VALUE_PAIR *first_encodable(vp_cursor_t *cursor)
+static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor)
 {
 	VALUE_PAIR *vp;
 
-	for (vp = fr_pair_cursor_current(cursor); vp && vp->da->flags.internal; vp = fr_pair_cursor_next(cursor));
-	return fr_pair_cursor_current(cursor);
+	for (vp = fr_cursor_current(cursor); vp && vp->da->flags.internal; vp = fr_cursor_next(cursor));
+	return fr_cursor_current(cursor);
 }
 
 /** Find the next attribute to encode
@@ -60,16 +62,16 @@ static inline VALUE_PAIR *first_encodable(vp_cursor_t *cursor)
  * @param cursor to iterate over.
  * @return encodable VALUE_PAIR, or NULL if none available.
  */
-static inline VALUE_PAIR *next_encodable(vp_cursor_t *cursor)
+static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor)
 {
 	VALUE_PAIR *vp;
 
 	for (;;) {
-		vp = fr_pair_cursor_next(cursor);
+		vp = fr_cursor_next(cursor);
 		if (!vp || !vp->da->flags.internal) break;
 	}
 
-	return fr_pair_cursor_current(cursor);
+	return fr_cursor_current(cursor);
 }
 
 /** Encode a CHAP password
@@ -110,7 +112,7 @@ int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int i
 	 *	Use Chap-Challenge pair if present,
 	 *	Request Authenticator otherwise.
 	 */
-	challenge = fr_pair_find_by_num(packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY);
+	challenge = fr_pair_find_by_da(packet->vps, attr_chap_challenge, TAG_ANY);
 	if (challenge) {
 		memcpy(ptr, challenge->vp_strvalue, challenge->vp_length);
 		i += challenge->vp_length;
@@ -411,20 +413,20 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 
 static ssize_t encode_struct(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      vp_cursor_t *cursor, void *encoder_ctx)
+			      fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
 	unsigned int		child_num = 1;
 	uint8_t			*p = out;
-	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
-	VERIFY_VP(fr_pair_cursor_current(cursor));
+	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	if (tlv_stack[depth]->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -474,7 +476,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		/*
 		 *	If nothing updated the attribute, stop
 		 */
-		if (!fr_pair_cursor_current(cursor) || (vp == fr_pair_cursor_current(cursor))) break;
+		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
 
 		/*
 		 *	We can encode multiple sub TLVs, if after
@@ -482,7 +484,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		 *	at this depth is the same.
 		 */
 		if (da != tlv_stack[depth]) break;
-		vp = fr_pair_cursor_current(cursor);
+		vp = fr_cursor_current(cursor);
 
 		FR_PROTO_HEX_DUMP("Done STRUCT", out, p - out);
 	}
@@ -492,11 +494,11 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 
 static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 				       fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				       vp_cursor_t *cursor, void *encoder_ctx)
+				       fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
 	uint8_t			*p = out;
-	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	while (outlen >= 5) {
@@ -527,7 +529,7 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 		/*
 		 *	If nothing updated the attribute, stop
 		 */
-		if (!fr_pair_cursor_current(cursor) || (vp == fr_pair_cursor_current(cursor))) break;
+		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
 
 		/*
 		 *	We can encode multiple sub TLVs, if after
@@ -535,7 +537,7 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 		 *	at this depth is the same.
 		 */
 		if (da != tlv_stack[depth]) break;
-		vp = fr_pair_cursor_current(cursor);
+		vp = fr_cursor_current(cursor);
 
 		FR_PROTO_HEX_DUMP("Done TLV", out, p - out);
 	}
@@ -545,16 +547,16 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 
 static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      vp_cursor_t *cursor, void *encoder_ctx)
+			      fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
 
-	VERIFY_VP(fr_pair_cursor_current(cursor));
+	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	if (tlv_stack[depth]->type != FR_TYPE_TLV) {
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -590,18 +592,18 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
  */
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, int depth,
-			    vp_cursor_t *cursor, void *encoder_ctx)
+			    fr_cursor_t *cursor, void *encoder_ctx)
 {
 	size_t			offset;
 	ssize_t			len;
 	uint8_t	const		*data = NULL;
 	uint8_t			*ptr = out;
 	uint8_t			buffer[64];
-	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 	fr_radius_ctx_t		*packet_ctx = encoder_ctx;
 
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	/*
@@ -641,7 +643,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 
 	default:
@@ -654,17 +656,13 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	len = fr_radius_attr_len(vp);
 
 	switch (da->type) {
+	/*
+	 *	If asked to encode more data than allowed, we
+	 *	encode only the allowed data.
+	 */
 	case FR_TYPE_OCTETS:
-		/*
-		 *	If asked to encode more data than allowed, we
-		 *	encode only the allowed data.
-		 */
-		if (da->flags.length && (len > da->flags.length)) {
-			len = da->flags.length;
-		}
-		/* FALL-THROUGH */
-
 	case FR_TYPE_STRING:
+		if (da->flags.length && (len > da->flags.length)) len = da->flags.length;
 		data = vp->vp_ptr;
 		break;
 
@@ -686,9 +684,9 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_IPV6_PREFIX:
 		buffer[0] = 0;
 		buffer[1] = vp->vp_ip.prefix;
-		len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
-		memcpy(buffer, vp->vp_ipv6addr, len);	/* Only copy the minimum number of address bytes required */
-		len += 2;				/* Reserved and prefix bytes */
+		len = vp->vp_ip.prefix >> 3;			/* Convert bits to whole bytes */
+		memcpy(buffer + 2, vp->vp_ipv6addr, len);	/* Only copy the minimum number of address bytes required */
+		len += 2;					/* Reserved and prefix bytes */
 		data = buffer;
 		break;
 
@@ -698,7 +696,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_IPV4_PREFIX:
 		buffer[0] = 0;
 		buffer[1] = vp->vp_ip.prefix;
-		memcpy(buffer, &vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
+		memcpy(buffer + 2, &vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
 		data = buffer;
 		break;
 
@@ -740,8 +738,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_DATE_MILLISECONDS:
 	case FR_TYPE_DATE_MICROSECONDS:
 	case FR_TYPE_DATE_NANOSECONDS:
+	case FR_TYPE_GROUP:
+	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
-		fr_strerror_printf("ERROR: Unsupported attribute type %d", da->type);
+		fr_strerror_printf("Unsupported attribute type %d", da->type);
 		return -1;
 	}
 
@@ -756,7 +756,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	}
 
 	/*
-	 *	Bound the data to the calling size
+	 *	Bind the data to the calling size
 	 */
 	if (len > (ssize_t)outlen) len = outlen;
 
@@ -889,22 +889,22 @@ static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
  */
 static int encode_extended_hdr(uint8_t *out, size_t outlen,
 			       fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			       vp_cursor_t *cursor, void *encoder_ctx)
+			       fr_cursor_t *cursor, void *encoder_ctx)
 {
 	int			len;
-	fr_type_t			attr_type;
+	fr_type_t		attr_type;
 #ifndef NDEBUG
-	fr_type_t			vsa_type;
+	fr_type_t		vsa_type;
 #endif
 	uint8_t			*start = out;
-	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	if ((tlv_stack[depth]->type != FR_TYPE_EXTENDED) && (tlv_stack[depth]->type != FR_TYPE_LONG_EXTENDED)) {
 		fr_strerror_printf("%s : Called for non-extended attribute type %s",
-				   __FUNCTION__, fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   __FUNCTION__, fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -1027,12 +1027,12 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
  */
 static ssize_t encode_concat(uint8_t *out, size_t outlen,
 			     fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			     vp_cursor_t *cursor, UNUSED void *encoder_ctx)
+			     fr_cursor_t *cursor, UNUSED void *encoder_ctx)
 {
 	uint8_t			*ptr = out;
 	uint8_t			const *p;
 	size_t			len, left;
-	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
@@ -1087,7 +1087,7 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
  */
 static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 				       fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				       vp_cursor_t *cursor, void *encoder_ctx)
+				       fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t len;
 
@@ -1096,11 +1096,11 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 	switch (tlv_stack[depth]->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 
 	default:
-		if (((tlv_stack[depth]->vendor == 0) && (tlv_stack[depth]->attr == 0)) ||
+		if (((fr_dict_vendor_num_by_da(tlv_stack[depth]) == 0) && (tlv_stack[depth]->attr == 0)) ||
 		    (tlv_stack[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
 					   tlv_stack[depth]->attr);
@@ -1138,7 +1138,7 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
  */
 static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 				      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				      vp_cursor_t *cursor, void *encoder_ctx)
+				      fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
 	size_t			hdr_len;
@@ -1271,14 +1271,14 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
  */
 static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			    vp_cursor_t *cursor, void *encoder_ctx)
+			    fr_cursor_t *cursor, void *encoder_ctx)
 {
 	int			len;
 	uint32_t		lvalue;
 	uint8_t			*start = out;
-	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	/*
@@ -1307,7 +1307,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	out = start;
 	out[0] = FR_VENDOR_SPECIFIC;
 	out[1] = 9;
-	lvalue = htonl(vp->da->vendor);
+	lvalue = htonl(fr_dict_vendor_num_by_da(vp->da));
 	memcpy(out + 2, &lvalue, 4);
 
 	/*
@@ -1361,7 +1361,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
  */
 static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 			  fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			  vp_cursor_t *cursor, void *encoder_ctx)
+			  fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
 	uint32_t		lvalue;
@@ -1371,14 +1371,16 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 
 	if (da->type != FR_TYPE_VSA) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, da->type, "?Unknown?"));
 		return -1;
 	}
 
 	/*
-	 *	Double-check for WiMAX format.
+	 *	Double-check for WiMAX format
 	 */
-	if (da->vendor == VENDORPEC_WIMAX) return encode_wimax_hdr(out, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+	if (fr_dict_vendor_num_by_da(tlv_stack[depth + 1]) == VENDORPEC_WIMAX) {
+		return encode_wimax_hdr(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
+	}
 
 	/*
 	 *	Not enough freespace for: attr, len, vendor-id
@@ -1399,7 +1401,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 
 	if (da->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, da->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -1429,20 +1431,20 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
  *
  */
 static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			  vp_cursor_t *cursor, void *encoder_ctx)
+			  fr_cursor_t *cursor, void *encoder_ctx)
 {
-	VALUE_PAIR const *vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR const *vp = fr_cursor_current(cursor);
 
 	/*
 	 *	Sanity checks
 	 */
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	switch (tlv_stack[depth]->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Expected leaf type got \"%s\"", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 
 	default:
@@ -1450,7 +1452,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 		 *	Attribute 0 is fine as a TLV leaf, or VSA, but not
 		 *	in the original standards space.
 		 */
-		if (((tlv_stack[depth]->vendor == 0) && (tlv_stack[depth]->attr == 0)) ||
+		if (((fr_dict_vendor_num_by_da(tlv_stack[depth]) == 0) && (tlv_stack[depth]->attr == 0)) ||
 		    (tlv_stack[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__, vp->da->attr);
 			return -1;
@@ -1462,8 +1464,8 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	 *	Only CUI is allowed to have zero length.
 	 *	Thank you, WiMAX!
 	 */
-	if ((vp->da->attr == FR_CHARGEABLE_USER_IDENTITY) && (vp->vp_length == 0)) {
-		out[0] = FR_CHARGEABLE_USER_IDENTITY;
+	if ((vp->da == attr_chargeable_user_identity) && (vp->vp_length == 0)) {
+		out[0] = (uint8_t)vp->da->attr;
 		out[1] = 2;
 
 		vp = next_encodable(cursor);
@@ -1474,10 +1476,10 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	/*
 	 *	Message-Authenticator is hard-coded.
 	 */
-	if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
+	if (vp->da == attr_message_authenticator) {
 		if (outlen < 18) return -1;
 
-		out[0] = FR_MESSAGE_AUTHENTICATOR;
+		out[0] = (uint8_t)vp->da->attr;
 		out[1] = 18;
 		memset(out + 2, 0, 16);
 #ifndef NDEBUG
@@ -1508,7 +1510,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
  *	- 0 Nothing to encode (or attribute skipped).
  *	- <0 an error occurred.
  */
-ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR const *vp;
 	int ret;
@@ -1522,7 +1524,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 	vp = first_encodable(cursor);
 	if (!vp) return 0;
 
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 
 	if (vp->da->depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",
@@ -1536,7 +1538,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 	 *	attributes.
 	 */
 	if (fr_radius_attr_len(vp) == 0) {
-		if ((vp->da->vendor != 0) ||
+		if (!fr_dict_attr_is_top_level(vp->da) ||
 		    ((vp->da->attr != FR_CHARGEABLE_USER_IDENTITY) &&
 		     (vp->da->attr != FR_MESSAGE_AUTHENTICATOR))) {
 			next_encodable(cursor);
@@ -1584,7 +1586,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 		break;
 
 	case FR_TYPE_VSA:
-		if (vp->da->vendor == VENDORPEC_WIMAX) {
+		if (fr_dict_vendor_num_by_da(da) == VENDORPEC_WIMAX) {
 			/*
 			 *	WiMAX has a non-standard format for
 			 *	its VSAs.  And, it can do "long"
@@ -1629,10 +1631,44 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 	/*
 	 *	We couldn't do it, so we didn't do anything.
 	 */
-	if (fr_pair_cursor_current(cursor) == vp) {
+	if (fr_cursor_current(cursor) == vp) {
 		fr_strerror_printf("%s: Nested attribute structure too large to encode", __FUNCTION__);
 		return -1;
 	}
 
 	return ret;
 }
+
+static int _test_ctx_free(UNUSED fr_radius_ctx_t *ctx)
+{
+	fr_radius_free();
+
+	return 0;
+}
+
+static void *encode_test_ctx(TALLOC_CTX *ctx)
+{
+	static uint8_t vector[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+				    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+
+	fr_radius_ctx_t	*test_ctx;
+
+	test_ctx = talloc_zero(ctx, fr_radius_ctx_t);
+	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
+	test_ctx->root = fr_dict_root(dict_radius);
+	test_ctx->vector = vector;
+	talloc_set_destructor(test_ctx, _test_ctx_free);
+
+	fr_radius_init();
+
+	return test_ctx;
+}
+
+/*
+ *	Test points
+ */
+extern fr_test_point_pair_encode_t radius_tp_encode;
+fr_test_point_pair_encode_t radius_tp_encode = {
+	.test_ctx	= encode_test_ctx,
+	.func		= fr_radius_encode_pair
+};

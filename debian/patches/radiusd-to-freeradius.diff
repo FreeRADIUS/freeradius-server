@@ -1,7 +1,7 @@
 --- a/Make.inc.in
 +++ b/Make.inc.in
 @@ -98,7 +98,7 @@
- 
+
  LOGDIR		= ${logdir}
  RADDBDIR	= ${raddbdir}
 -RUNDIR		= ${localstatedir}/run/radiusd
@@ -12,12 +12,12 @@
 --- a/raddb/radiusd.conf.in
 +++ b/raddb/radiusd.conf.in
 @@ -61,7 +61,7 @@
- 
+
  #
  #  name of the running server.  See also the "-n" command-line option.
 -name = radiusd
 +name = freeradius
- 
+
  #  Location of config and logfiles.
  confdir = ${raddbdir}
 @@ -416,8 +416,8 @@
@@ -28,13 +28,13 @@
 -#	group = radius
 +	user = freerad
 +	group = freerad
- 
+
  	#  Core dumps are a bad thing.  This should only be set to
  	#  'yes' if you're debugging a problem with the server.
 --- a/scripts/monit/freeradius.monitrc
 +++ b/scripts/monit/freeradius.monitrc
 @@ -8,9 +8,9 @@
- #  Totalmem limit should be lowered to 200.0 if none of the 
+ #  Totalmem limit should be lowered to 200.0 if none of the
  #  interpreted language modules or rlm_cache are being used.
  #
 -check process radiusd with pidfile /var/run/radiusd/radiusd.pid
@@ -54,15 +54,15 @@
  	#
 -#	gid = radius
 +#	gid = freerad
- 
+
  	#
  	#  Access mode.
---- a/src/main/radiusd.c
-+++ b/src/main/radiusd.c
+--- a/src/bin/radiusd.c
++++ b/src/bin/radiusd.c
 @@ -126,12 +126,11 @@ int main(int argc, char *argv[])
  	main_config.daemonize = true;
  	main_config.spawn_workers = true;
- 
+
 -	p = strrchr(argv[0], FR_DIR_SEP);
 -	if (!p) {
 -		main_config.name = argv[0];
@@ -74,6 +74,6 @@
 +	 *	leaves the configuration file as "radiusd.conf".
 +	 */
 +	main_config.name = "radiusd";
- 
+
  	/*
  	 *	Don't put output anywhere until we get told a little

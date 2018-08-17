@@ -13,29 +13,38 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file lib/util/pcap.c
- * @brief Wrappers around libpcap functions
+/** Wrappers around libpcap functions
+ *
+ * @file src/lib/util/pcap.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #ifdef HAVE_LIBPCAP
 
+#include "pcap.h"
+
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/net.h>
+#include <freeradius-devel/util/pcap.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
+
+#include <net/if.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <unistd.h>
 
 #ifndef SIOCGIFHWADDR
-  #include <net/if_dl.h>
-  #include <ifaddrs.h>
+#  include <ifaddrs.h>
+#  include <net/if_dl.h>
 #else
-  #include <net/if.h>
+#  include <net/if.h>
 #endif
 
-#include <freeradius-devel/pcap.h>
-#include <freeradius-devel/net.h>
-#include <freeradius-devel/rad_assert.h>
 
 /** Talloc destructor to free pcap resources associated with a handle.
  *
@@ -80,19 +89,22 @@ static int _free_pcap(fr_pcap_t *pcap)
  * unfortunately when we're trying to find useful interfaces
  * this is too late.
  *
- * @param errbuff Error message.
  * @param dev to get link layer for.
  * @return
  *	- Datalink layer.
  *	- -1 on failure.
  */
-int fr_pcap_if_link_layer(char *errbuff, pcap_if_t *dev)
+int fr_pcap_if_link_layer(pcap_if_t *dev)
 {
-	pcap_t *pcap;
-	int data_link;
+	char	errbuf[PCAP_ERRBUF_SIZE];
+	pcap_t	*pcap;
+	int	data_link;
 
-	pcap = pcap_open_live(dev->name, 0, 0, 0, errbuff);
-	if (!pcap) return -1;
+	pcap = pcap_open_live(dev->name, 0, 0, 0, errbuf);
+	if (!pcap) {
+		fr_strerror_printf("%s", errbuf);
+		return -1;
+	}
 
 	data_link = pcap_datalink(pcap);
 	pcap_close(pcap);
@@ -401,6 +413,8 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 		return -1;
 	}
 
+	pcap_freecode(&fp);	/* Free the filter, it's not longer needed after its been applied */
+
 	return 0;
 }
 
@@ -446,5 +460,132 @@ char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 	buff[len - 1] = '\0';
 
 	return buff;
+}
+
+
+/** Check whether fr_pcap_link_layer_offset can process a link_layer
+ *
+ * @param link_layer to check.
+ * @return
+ *	- true if supported.
+ *	- false if not supported.
+ */
+bool fr_pcap_link_layer_supported(int link_layer)
+{
+	switch (link_layer) {
+	case DLT_EN10MB:
+	case DLT_RAW:
+	case DLT_NULL:
+	case DLT_LOOP:
+#ifdef DLT_LINUX_SLL
+	case DLT_LINUX_SLL:
+#endif
+	case DLT_PFLOG:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+/** Returns the length of the link layer header
+ *
+ * Libpcap does not include a decoding function to skip the L2 header, but it does
+ * at least inform us of the type.
+ *
+ * Unfortunately some headers are of variable length (like ethernet), so additional
+ * decoding logic is required.
+ *
+ * @note No header data is returned, this is only meant to be used to determine how
+ * data to consume before attempting to parse the IP header.
+ *
+ * @param data start of packet data.
+ * @param len caplen.
+ * @param link_layer value returned from pcap_linktype.
+ * @return
+ *	- Length of the header.
+ *	- -1 on failure.
+ */
+ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_layer)
+{
+	uint8_t const *p = data;
+
+	switch (link_layer) {
+	case DLT_RAW:
+		break;
+
+	case DLT_NULL:
+	case DLT_LOOP:
+		p += 4;
+		if (((size_t)(p - data)) > len) {
+		ood:
+			fr_strerror_printf("Out of data, needed %zu bytes, have %zu bytes",
+					   (size_t)(p - data), len);
+			return -1;
+		}
+		break;
+
+	case DLT_EN10MB:
+	{
+		uint16_t ether_type;	/* Ethernet type */
+		int i;
+
+		p += 12;		/* SRC/DST Mac-Addresses */
+		if (((size_t)(p - data)) > len) {
+			goto ood;
+		}
+
+		for (i = 0; i < 3; i++) {
+			ether_type = ntohs(*((uint16_t const *) p));
+			switch (ether_type) {
+			/*
+			 *	There are a number of devices out there which
+			 *	double tag with 0x8100 *sigh*
+			 */
+			case 0x8100:	/* CVLAN */
+			case 0x9100:	/* SVLAN */
+			case 0x9200:	/* SVLAN */
+			case 0x9300:	/* SVLAN */
+				p += 4;
+				if (((size_t)(p - data)) > len) {
+					goto ood;
+				}
+				break;
+
+			default:
+				p += 2;
+				if (((size_t)(p - data)) > len) {
+					goto ood;
+				}
+				goto done;
+			}
+		}
+		fr_strerror_printf("Exceeded maximum level of VLAN tag nesting (2)");
+		return -1;
+	}
+
+#ifdef DLT_LINUX_SLL
+	case DLT_LINUX_SLL:
+		p += 16;
+		if (((size_t)(p - data)) > len) {
+			goto ood;
+		}
+		break;
+#endif
+
+	case DLT_PFLOG:
+		p += 28;
+		if (((size_t)(p - data)) > len) {
+			goto ood;
+		}
+		break;
+
+	default:
+		fr_strerror_printf("Unsupported link layer type %i", link_layer);
+		return -1;
+	}
+
+done:
+	return p - data;
 }
 #endif	/* HAVE_LIBPCAP */

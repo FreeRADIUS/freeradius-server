@@ -6,9 +6,7 @@ update control {
 }
 
 if (User-Name == "bob") {
-	update reply {
-		Filter-Id := "filter"
-	}
+	ok
 
 	#
 	#  We need this because the "return" below
@@ -29,7 +27,5 @@ if (User-Name == "bob") {
 	#
 	#  Shouldn't reach this
 	#
-	update reply {
-		Filter-Id := "fail"
-	}
+	test_fail
 }

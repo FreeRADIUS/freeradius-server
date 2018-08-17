@@ -23,17 +23,51 @@
  */
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/dhcpv4/dhcpv4.h>
-#include	<freeradius-devel/soh.h>
-
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/dhcpv4/dhcpv4.h>
+#include <freeradius-devel/soh/base.h>
 
 typedef struct rlm_soh_t {
 	char const *xlat_name;
 	bool dhcp;
 } rlm_soh_t;
 
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_dhcp;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_soh_dict[];
+fr_dict_autoload_t rlm_soh_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "dhcp" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_soh_supported;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_vendor;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_version;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_release;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_build;
+static fr_dict_attr_t const *attr_soh_ms_machine_sp_version;
+static fr_dict_attr_t const *attr_soh_ms_machine_sp_release;
+static fr_dict_attr_t const *attr_ms_quarantine_soh;
+static fr_dict_attr_t const *attr_dhcp_vendor;
+
+extern fr_dict_attr_autoload_t rlm_soh_dict_attr[];
+fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
+	{ .out = &attr_soh_supported, .name = "SoH-Supported", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_vendor, .name = "SoH-MS-Machine-OS-vendor", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_version, .name = "SoH-MS-Machine-OS-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_release, .name = "SoH-MS-Machine-OS-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_build, .name = "SoH-MS-Machine-OS-build", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_sp_version, .name = "SoH-MS-Machine-SP-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_sp_release, .name = "SoH-MS-Machine-SP-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_ms_quarantine_soh, .name = "MS-Quarantine-SOH", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_dhcp_vendor, .name = "DHCP-Vendor", .type = FR_TYPE_OCTETS, .dict = &dict_dhcp },
+	{ NULL }
+};
 
 /*
  * Not sure how to make this useful yet...
@@ -48,19 +82,19 @@ static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 * There will be no point unless SoH-Supported = yes
 	 */
-	vp[0] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_SUPPORTED, TAG_ANY);
+	vp[0] = fr_pair_find_by_da(request->packet->vps, attr_soh_supported, TAG_ANY);
 	if (!vp[0])
 		return 0;
 
 
 	if (strncasecmp(fmt, "OS", 2) == 0) {
 		/* OS vendor */
-		vp[0] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_VENDOR, TAG_ANY);
-		vp[1] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_VERSION, TAG_ANY);
-		vp[2] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_RELEASE, TAG_ANY);
-		vp[3] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_BUILD, TAG_ANY);
-		vp[4] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_SP_VERSION, TAG_ANY);
-		vp[5] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_SP_RELEASE, TAG_ANY);
+		vp[0] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_os_vendor, TAG_ANY);
+		vp[1] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_os_version, TAG_ANY);
+		vp[2] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_os_release, TAG_ANY);
+		vp[3] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_os_build, TAG_ANY);
+		vp[4] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_sp_version, TAG_ANY);
+		vp[5] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_sp_release, TAG_ANY);
 
 		if (vp[0] && vp[0]->vp_uint32 == VENDORPEC_MICROSOFT) {
 			if (!vp[1]) {
@@ -105,22 +139,6 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	char const	*name;
-	rlm_soh_t	*inst = instance;
-
-	name = cf_section_name2(conf);
-	if (!name) name = cf_section_name1(conf);
-	inst->xlat_name = name;
-	if (!inst->xlat_name) return -1;
-
-	xlat_register(inst, inst->xlat_name, soh_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-
-	return 0;
-}
-
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
 #ifdef WITH_DHCP
@@ -130,7 +148,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 	if (!inst->dhcp) return RLM_MODULE_NOOP;
 
-	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 43, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_dhcp_vendor, TAG_ANY);
 	if (vp) {
 		/*
 		 * vendor-specific options contain
@@ -154,7 +172,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 					RDEBUG("SoH adding NAP marker to DHCP reply");
 					/* client probe; send "NAP" in the reply */
-					vp = fr_pair_afrom_num(request->reply, DHCP_MAGIC_VENDOR, 43);
+					vp = fr_pair_afrom_da(request->reply, attr_dhcp_vendor);
 					p = talloc_array(vp, uint8_t, 5);
 					p[0] = 220;
 					p[1] = 3;
@@ -192,7 +210,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	int rv;
 
 	/* try to find the MS-SoH payload */
-	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MS_QUARANTINE_SOH, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_ms_quarantine_soh, TAG_ANY);
 	if (!vp) {
 		RDEBUG("SoH radius VP not found");
 		return RLM_MODULE_NOOP;
@@ -208,6 +226,33 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	return RLM_MODULE_OK;
 }
 
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	char const	*name;
+	rlm_soh_t	*inst = instance;
+
+	name = cf_section_name2(conf);
+	if (!name) name = cf_section_name1(conf);
+	inst->xlat_name = name;
+	if (!inst->xlat_name) return -1;
+
+	xlat_register(inst, inst->xlat_name, soh_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+
+	return 0;
+}
+
+static int mod_load(void)
+{
+	if (fr_soh_init() < 0) return -1;
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	fr_soh_free();
+}
+
 extern rad_module_t rlm_soh;
 rad_module_t rlm_soh = {
 	.magic		= RLM_MODULE_INIT,
@@ -215,6 +260,8 @@ rad_module_t rlm_soh = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_soh_t),
 	.config		= module_config,
+	.load		= mod_load,
+	.unload		= mod_unload,
 	.bootstrap	= mod_bootstrap,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,

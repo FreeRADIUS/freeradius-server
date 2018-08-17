@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_MESSAGE_H
-#define _FR_MESSAGE_H
+
 /**
  * $Id$
  *
@@ -56,7 +56,7 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size) CC_HINT(nonnull);
 fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size) CC_HINT(nonnull(1));
 fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size,
-				       size_t reserve_size) CC_HINT(nonnull);
+				       size_t leftover, size_t reserve_size) CC_HINT(nonnull);
 fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size) CC_HINT(nonnull(1));
 int fr_message_done(fr_message_t *m) CC_HINT(nonnull);
 
@@ -70,5 +70,3 @@ void fr_message_set_debug(fr_message_set_t *ms, FILE *fp) CC_HINT(nonnull);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* _FR_MESSAGE_H */

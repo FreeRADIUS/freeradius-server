@@ -56,7 +56,7 @@ endif
 ifeq ($(shell dpkg-vendor --derives-from Ubuntu && echo yes),yes)
        SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1f-1ubuntu2)"
 else
-       SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1e-2+deb7u5)"
+       SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1e-2+deb7u5) | libssl1.0.2"
 endif
 
 # Add libsystemd-dev as a Build-Depends to debian/control if it is known to this system
@@ -109,7 +109,8 @@ endif
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
 		--without-rlm_sql_unixodbc \
-		--with-systemd
+		--with-systemd \
+		--enable-reproducible-builds
 
 	rm config.guess
 	mv config.guess.dist config.guess
@@ -179,9 +180,9 @@ install-arch: build-arch-stamp
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius-config
 
 	for mod in ${modulelist}; do \
-	  pkg=$${mod##sql_} ; \
-	  dh_install --sourcedir=$(freeradius_dir) -p freeradius-$$pkg ; \
+	  dh_install --sourcedir=$(freeradius_dir) -p freeradius-$$mod ; \
 	  rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_$$mod*.so ; \
+	  rm -f $(freeradius_dir)/usr/lib/freeradius/proto_$$mod*.so ; \
 	done
 
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius-memcached
@@ -203,7 +204,9 @@ binary-common:
 	dh_installexamples
 	dh_installlogrotate
 	dh_installpam --name=radiusd
+	dh_systemd_enable
 	dh_installinit --noscripts
+	dh_systemd_start
 	dh_installman
 	dh_lintian
 	dh_link

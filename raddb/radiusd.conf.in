@@ -172,25 +172,6 @@ pidfile = ${run_dir}/${name}.pid
 #
 max_request_time = 30
 
-#  cleanup_delay: The time to wait (in seconds) before cleaning up
-#  a reply which was sent to the NAS.
-#
-#  The RADIUS request is normally cached internally for a short period
-#  of time, after the reply is sent to the NAS.  The reply packet may be
-#  lost in the network, and the NAS will not see it.  The NAS will then
-#  re-send the request, and the server will respond quickly with the
-#  cached reply.
-#
-#  If this value is set too low, then duplicate requests from the NAS
-#  MAY NOT be detected, and will instead be handled as separate requests.
-#
-#  If this value is set too high, then the server will cache too many
-#  requests, and some new requests may get blocked.  (See 'max_requests'.)
-#
-#  Useful range of values: 2 to 10
-#
-cleanup_delay = 5
-
 #  max_requests: The maximum number of requests which the server keeps
 #  track of.  This should be 256 multiplied by the number of clients.
 #  e.g. With 4 clients, this number should be 1024.
@@ -210,7 +191,7 @@ cleanup_delay = 5
 #
 max_requests = 16384
 
-#  hostname_lookups: Log the names of clients or just their IP addresses
+#  reverse_lookups: Log the names of clients or just their IP addresses
 #  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
 #
 #  The default is 'off' because it would be overall better for the net
@@ -226,7 +207,18 @@ max_requests = 16384
 #
 #  allowed values: {no, yes}
 #
-hostname_lookups = no
+reverse_lookups = no
+
+#  hostname_lookups: Global toggle for preventing hostname resolution
+#
+#  The default is 'on' because people often use hostnames in configuration
+#  files.  The main disadvantage of enabling this is the server may block
+#  at inopportune moments (like opening new connections) if the DNS servers
+#  are unavailable
+#
+#  allowed values: {no, yes}
+#
+hostname_lookups = yes
 
 #
 #  Logging section.  The various "log_*" configuration items
@@ -284,47 +276,61 @@ log {
 	#  don't want to change this.
 	#
 	syslog_facility = daemon
-
-	#  Log the full User-Name attribute, as it was found in the request.
-	#
-	# allowed values: {no, yes}
-	#
-	stripped_names = no
-
-	#  Log authentication requests to the log file.
-	#
-	#  allowed values: {no, yes}
-	#
-	auth = no
-
-	#  Log passwords with the authentication requests.
-	#  auth_badpass  - logs password if it's rejected
-	#  auth_goodpass - logs password if it's correct
-	#
-	#  allowed values: {no, yes}
-	#
-	auth_badpass = no
-	auth_goodpass = no
-
-	#  Log additional text at the end of the "Login OK" messages.
-	#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-	#  configurations above have to be set to "yes".
-	#
-	#  The strings below are dynamically expanded, which means that
-	#  you can put anything you want in them.  However, note that
-	#  this expansion can be slow, and can negatively impact server
-	#  performance.
-	#
-#	msg_goodpass = ""
-#	msg_badpass = ""
-
-	#  The message when the user exceeds the Simultaneous-Use limit.
-	#
-	msg_denied = "You are already logged in - access denied"
 }
 
-#  The program to execute to do concurrency checks.
-checkrad = ${sbindir}/checkrad
+# ENVIRONMENT VARIABLES
+#
+#  You can reference environment variables using an expansion like
+#  $ENV{PATH}.  However it is sometimes useful to be able to also set
+#  environment variables.  This section lets you do that.
+#
+#  The main purpose of this section is to allow administrators to keep
+#  RADIUS-specific configuration in the RADIUS configuration files.
+#  For example, if you need to set an environment variable which is
+#  used by a module.  You could put that variable into a shell script,
+#  but that's awkward.  Instead, just list it here.
+#
+#  Note that these environment variables are set AFTER the
+#  configuration file is loaded.  So you cannot set FOO here, and
+#  expect to reference it via $ENV{FOO} in another configuration file.
+#  You should instead just use a normal configuration variable for
+#  that.
+#
+ENV {
+
+	#
+	#  Set environment varable 'FOO' to value '/bar/baz'.
+	#
+	#  Note that you MUST use '='.  You CANNOT use '+=' to append
+	#  values.
+	#
+#	FOO = '/bar/baz'
+
+	#
+	#  Delete environment variable BAR.
+	#
+#	BAR
+
+	#
+	#  LD_PRELOAD is special.  It is normally set before the
+	#  application runs, and is interpreted by the dynamic linker.
+	#  Which means you cannot set it inside of an application, and
+	#  expect it to load libraries.
+	#
+	#  Since this functionality is useful, we extend it here.
+	#
+	#  You can set
+	#
+	#	LD_PRELOAD = /path/to/library.so
+	#
+	#  and the server will load the named libraries.  Multiple
+	#  libraries can be loaded by specificing multiple individual
+	#  LD_PRELOAD entries.
+	#
+	#
+#	LD_PRELOAD = /path/to/library1.so
+#	LD_PRELOAD = /path/to/library2.so
+}
 
 # SECURITY CONFIGURATION
 #
@@ -416,44 +422,6 @@ security {
 	#  Setting this number to 0 means "allow any number of attributes"
 	max_attributes = 200
 
-	#
-	#  reject_delay: When sending an Access-Reject, it can be
-	#  delayed for a few seconds.  This may help slow down a DoS
-	#  attack.  It also helps to slow down people trying to brute-force
-	#  crack a users password.
-	#
-	#  Setting this number to 0 means "send rejects immediately"
-	#
-	#  If this number is set higher than 'cleanup_delay', then the
-	#  rejects will be sent at 'cleanup_delay' time, when the request
-	#  is deleted from the internal cache of requests.
-	#
-	#  As of Version 3.0.5, "reject_delay" has sub-second resolution.
-	#  e.g. "reject_delay =  1.4" seconds is possible.
-	#
-	#  Useful ranges: 1 to 5
-	reject_delay = 1
-
-	#
-	#  status_server: Whether or not the server will respond
-	#  to Status-Server requests.
-	#
-	#  When sent a Status-Server message, the server responds with
-	#  an Access-Accept or Accounting-Response packet.
-	#
-	#  This is mainly useful for administrators who want to "ping"
-	#  the server, without adding test users, or creating fake
-	#  accounting packets.
-	#
-	#  It's also useful when a NAS marks a RADIUS server "dead".
-	#  The NAS can periodically "ping" the server with a Status-Server
-	#  packet.  If the server responds, it must be alive, and the
-	#  NAS can start using it for real requests.
-	#
-	#  See also raddb/sites-available/status
-	#
-	status_server = yes
-
 @openssl_version_check_config@
 }
 
@@ -475,160 +443,22 @@ $INCLUDE clients.conf
 
 # THREAD POOL CONFIGURATION
 #
-#  The thread pool is a long-lived group of threads which
-#  take turns (round-robin) handling any incoming requests.
-#
-#  You probably want to have a few spare threads around,
-#  so that high-load situations can be handled immediately.  If you
-#  don't have any spare threads, then the request handling will
-#  be delayed while a new thread is created, and added to the pool.
-#
-#  You probably don't want too many spare threads around,
-#  otherwise they'll be sitting there taking up resources, and
-#  not doing anything productive.
-#
-#  The numbers given below should be adequate for most situations.
+#  In v4, the thread pool does not change size dynamically.  Instead,
+#  there are a small number of threads which read from the network,
+#  and a slightly larger number of threads which process a request.
 #
 thread pool {
-	#  Number of servers to start initially --- should be a reasonable
-	#  ballpark figure.
-	start_servers = 5
+	#
+	#  Only one network thread is supported for now
+	#
+	num_networks = 1
 
-	#  Limit on the total number of servers running.
 	#
-	#  If this limit is ever reached, clients will be LOCKED OUT, so it
-	#  should NOT BE SET TOO LOW.  It is intended mainly as a brake to
-	#  keep a runaway server from taking the system with it as it spirals
-	#  down...
+	#  The worker threads can be varied.  It should be at least one,
+	#  and no more than 32.  Since each request is non-blocking,
+	#  there is no reason to run hundreds of threads as in v3.
 	#
-	#  You may find that the server is regularly reaching the
-	#  'max_servers' number of threads, and that increasing
-	#  'max_servers' doesn't seem to make much difference.
-	#
-	#  If this is the case, then the problem is MOST LIKELY that
-	#  your back-end databases are taking too long to respond, and
-	#  are preventing the server from responding in a timely manner.
-	#
-	#  The solution is NOT do keep increasing the 'max_servers'
-	#  value, but instead to fix the underlying cause of the
-	#  problem: slow database, or 'hostname_lookups=yes'.
-	#
-	#  For more information, see 'max_request_time', above.
-	#
-	max_servers = 32
-
-	#  Server-pool size regulation.  Rather than making you guess
-	#  how many servers you need, FreeRADIUS dynamically adapts to
-	#  the load it sees, that is, it tries to maintain enough
-	#  servers to handle the current load, plus a few spare
-	#  servers to handle transient load spikes.
-	#
-	#  It does this by periodically checking how many servers are
-	#  waiting for a request.  If there are fewer than
-	#  min_spare_servers, it creates a new spare.  If there are
-	#  more than max_spare_servers, some of the spares die off.
-	#  The default values are probably OK for most sites.
-	#
-	min_spare_servers = 3
-	max_spare_servers = 10
-
-	#  When the server receives a packet, it places it onto an
-	#  internal queue, where the worker threads (configured above)
-	#  pick it up for processing.  The maximum size of that queue
-	#  is given here.
-	#
-	#  When the queue is full, any new packets will be silently
-	#  discarded.
-	#
-	#  The most common cause of the queue being full is that the
-	#  server is dependent on a slow database, and it has received
-	#  a large "spike" of traffic.  When that happens, there is
-	#  very little you can do other than make sure the server
-	#  receives less traffic, or make sure that the database can
-	#  handle the load.
-	#
-#	max_queue_size = 65536
-
-	#  There may be memory leaks or resource allocation problems with
-	#  the server.  If so, set this value to 300 or so, so that the
-	#  resources will be cleaned up periodically.
-	#
-	#  This should only be necessary if there are serious bugs in the
-	#  server which have not yet been fixed.
-	#
-	#  '0' is a special value meaning 'infinity', or 'the servers never
-	#  exit'
-	max_requests_per_server = 0
-
-	#  Automatically limit the number of accounting requests.
-	#  This configuration item tracks how many requests per second
-	#  the server can handle.  It does this by tracking the
-	#  packets/s received by the server for processing, and
-	#  comparing that to the packets/s handled by the child
-	#  threads.
-	#
-
-	#  If the received PPS is larger than the processed PPS, *and*
-	#  the queue is more than half full, then new accounting
-	#  requests are probabilistically discarded.  This lowers the
-	#  number of packets that the server needs to process.  Over
-	#  time, the server will "catch up" with the traffic.
-	#
-	#  Throwing away accounting packets is usually safe and low
-	#  impact.  The NAS will retransmit them in a few seconds, or
-	#  even a few minutes.  Vendors should read RFC 5080 Section 2.2.1
-	#  to see how accounting packets should be retransmitted.  Using
-	#  any other method is likely to cause network meltdowns.
-	#
-	auto_limit_acct = no
-
-	#  In some cases, the "offered" load to the server can be
-	#  higher than the "accepted" load.  This usually happens
-	#  when either the database back-end is overload, or when
-	#  10,000 users log in at the same time.
-	#
-	#  When the server cannot process packets quickly enough,
-	#  the incoming packets are placed onto a queue for later
-	#  processing.  These packets are ordered by priority,
-	#  which is configurable.  The different priorities allow
-	#  you to control how the server behaves in overload
-	#  situations.  As not everyones needs are the same,
-	#  we offer multiple options for priority calculations.
-	#
-	#	time	Order packets by when they are received
-	#		Note that replies from a home server
-	#		are ordered by when the *original*
-	#		packet came in, so they are prioritized.
-	#
-	#	default	Order by listener type
-	#		  proxy > auth > acct > detail > coa
-	#		Packets from the same listener are
-	#		ordered by "time".
-	#
-	#	eap	Order by ongoing EAP sessions.
-	#		EAP authentication takes multiple
-	#		rounds.  This priority ensures
-	#		that EAP sessions which are "further along"
-	#		in the authentication process are
-	#		handled with a higher priority.
-	#		Packets with the same eap priority
-	#		are ordered by "default"
-	#
-	#  For systems which are doing EAP / 802.1X authentication
-	#  and not accounting, we recommend using "eap".  If most
-	#  of the packets are proxied, you should NOT use "eap".
-	#
-	#  The danger with the prioritization process is that
-	#  in overload situations, the "eap" priority can cause
-	#  accounting packets to be ignored for extended periods
-	#  of time, until the EAP overload stops.
-	#
-	#  However, setting the "eap" priority ensures that users
-	#  can get on the net as quickly as possible, which is
-	#  usually what you want.
-	#
-	queue_priority = default
-
+	num_workers = 4
 }
 
 ######################################################################
@@ -669,7 +499,22 @@ modules {
 	#
 
 	#
-	#  As of 3.0, modules are in mods-enabled/.  Files matching
+	#  Some modules have ordering issues.  e.g. "sqlippool" uses
+	#  the configuration from "sql".  In that case, the "sql"
+	#  module must be read off of disk before the "sqlippool".
+	#  However, the directory inclusion below just reads the
+	#  directory from start to finish.  Which means that the
+	#  modules are read off of disk randomly.
+	#
+	#  As of 3.0.18, you can list individual modules *before* the
+	#  directory inclusion.  Those modules will be loaded first.
+	#  Then, when the directory is read, those modules will be
+	#  skipped and not read twice.
+	#
+#	$INCLUDE mods-enabled/sql
+
+	#
+	#  Modules are in mods-enabled/.  Files matching
 	#  the regex /[a-zA-Z0-9_.]+/ are loaded.  The modules are
 	#  initialized ONLY if they are referenced in a processing
 	#  section, such as authorize, authenticate, accounting,

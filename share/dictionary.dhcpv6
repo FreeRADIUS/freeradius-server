@@ -1,0 +1,513 @@
+# -*- text -*-
+# Copyright (C) 2018 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#	DHCPv6 Protocol attributes
+#
+##############################################################################
+
+#
+#  RFC3316 - Dynamic Host Configuration Protocol for IPv6 (DHCPv6)
+#
+ATTRIBUTE	DHCPv6-Client-ID			1	octets
+ATTRIBUTE	DHCPv6-Server-ID			2	octets
+ATTRIBUTE	DHCPv6-IA-NA				3	octets		# Complex struct see RFC 3315
+ATTRIBUTE	DHCPv6-IA-TA				4	octets		# Complex struct see RFC 3315
+ATTRIBUTE	DHCPv6-IA-ADDR				5	octets		# Complex struct see RFC 3315
+ATTRIBUTE	DHCPv6-Option-Request			6	octets		# Magic option listing requested options
+ATTRIBUTE	DHCPv6-Preference			7	uint8
+ATTRIBUTE	DHCPv6-Elapsed-Time			8	uint16
+ATTRIBUTE	DHCPv6-Relay-Message			9	octets
+ATTRIBUTE	DHCPv6-Auth				11	octets		# Complex struct see RFC 3315
+ATTRIBUTE	DHCPv6-Unicast				12	ipv6addr
+ATTRIBUTE	DHCPv6-Status-Code			13	octets		# Complex struct see RFC 3315
+ATTRIBUTE	DHCPv6-Rapid-Commit			14	bool
+ATTRIBUTE	DHCPv6-User-Class			15	octets array
+ATTRIBUTE	DHCPv6-Vendor-Class			16	octets		# Complex struct see RFC 3315
+ATTRIBUTE	DHCPv6-Vendor-Opts			17	vsa
+ATTRIBUTE	DHCPv6-Interface-ID			18	octets
+ATTRIBUTE	DHCPv6-Reconf-Msg			19	uint8
+ATTRIBUTE	DHCPv6-Reconf-Accept			20	bool
+
+#
+#  RFC3319 - Dynamic Host Configuration Protocol (DHCPv6) Options
+#            for Session Initiation Protocol (SIP) Servers
+#
+ATTRIBUTE	DHCPv6-SIP-Server-Domain-Name-List	21	octets		# Domain name list (DNS encoding)
+ATTRIBUTE	DHCPv6-SIP-Server-Address		22	ipv6addr array
+
+#
+#  RFC3646 - DNS Configuration options for Dynamic Host
+#	     Configuration Protocol for IPv6 (DHCPv6)
+#
+ATTRIBUTE	DHCPv6-DNS-Servers			23	ipv6addr array
+ATTRIBUTE	DHCPv6-Domain-List			24	octets		# Domain name list (DNS encoding)
+
+#
+#  RFC3666 - IPv6 Prefix Options for
+#	     Dynamic Host Configuration Protocol (DHCP) version 6
+#
+ATTRIBUTE	DHCPv6-IA-PD				25	octets		# Complex struct see RFC 3633
+ATTRIBUTE	DHCPv6-IA-Prefix			26	octets		# Complex struct see RFC 3633
+
+#
+#  RFC3898 - Network Information Service (NIS)
+#	     Configuration Options for
+#	     Dynamic Host Configuration Protocol for IPv6 (DHCPv6)
+#
+ATTRIBUTE	DHCPv6-NIS-Servers			27	ipv6addr array
+ATTRIBUTE	DHCPv6-NIS-Plus-Servers			28	ipv6addr array
+ATTRIBUTE	DHCPv6-NIS-Domain-Name			29	octets		# Domain name
+ATTRIBUTE	DHCPv6-NIS-Plus-Domain-Name		30	octets		# Domain name
+
+#
+#  RFC 4075 - Simple Network Time Protocol (SNTP) Configuration Option for DHCPv6
+#
+ATTRIBUTE	DHCPv6-SNTP-Servers			31	ipv6addr array
+
+#
+#  RFC 4242 - Information Refresh Time Option for
+#	      Dynamic Host Configuration Protocol for IPv6 (DHCPv6)
+#
+ATTRIBUTE	DHCPv6-Information-Refresh-Time		32	uint32
+
+#
+#  RFC 4280 - Dynamic Host Configuration Protocol (DHCP) Options for
+#             Broadcast and Multicast Control Servers
+#
+ATTRIBUTE	DHCPv6-BCMCS-Server-Domain-Name-List	33	octets		# Domain name list (DNS encoding)
+ATTRIBUTE	DHCPv6-BCMCS-Server-Address		34	ipv6addr array
+
+#
+#  RFC 4776 - Dynamic Host Configuration Protocol (DHCPv4 and DHCPv6) Option
+#             for Civic Addresses Configuration Information
+#
+ATTRIBUTE	DHCPv6-Geoconf-Civic			36	octets		# Complex struct see RFC 4776
+
+#
+#  RFC 4649 - Dynamic Host Configuration Protocol for IPv6 (DHCPv6)
+#	      Relay Agent Remote-ID Option
+#
+ATTRIBUTE	DHCPv6-Relay-Agent-Remote-ID		37	octets		# Complex struct see RFC 4649
+
+#
+#  RFC 4580 - Dynamic Host Configuration Protocol for IPv6 (DHCPv6)
+#             Relay Agent Subscriber-ID Option
+#
+ATTRIBUTE	DHCPv6-Subscriber-ID			38	string
+
+#
+#  RFC 4704 - The Dynamic Host Configuration Protocol for IPv6 (DHCPv6) Client
+#             Fully Qualified Domain Name (FQDN) Option
+#
+ATTRIBUTE	DHCPv6-Client-FQDN			39	octets		# Complex struct see RFC 4704
+
+#
+#  RFC 5192 - DHCP Options for Protocol for Carrying Authentication for
+#             Network Access (PANA) Authentication Agent
+#
+ATTRIBUTE	DHCPv6-PANA-Authentication-Agent	40	ipv6addr array
+
+#
+#  RFC 4833 - Timezone Options for DHCP
+#
+ATTRIBUTE	DHCPv6-New-Posix-Timezone		41	string
+ATTRIBUTE	DHCPv6-New-TZDB-Timezone		42	string
+
+#
+#  RFC 4994 - DHCPv6 Relay Agent Echo Request Option
+#
+ATTRIBUTE	DHCPv6-Relay-Agent-Echo-Request		43	uint16 array	# Array of option numbers
+
+#
+#  RFC 5007 - DHCPv6 Leasequery
+#
+ATTRIBUTE	DHCPv6-Lease-Query			44	octets		# Complex struct see RFC 5007
+ATTRIBUTE	DHCPv6-Client-Data			45	octets		# Complex struct see RFC 5007
+ATTRIBUTE	DHCPv6-Client-Last-Transaction-Time	46	uint32
+ATTRIBUTE	DHCPv6-Lease-Query-Relay-Data		47	octets		# Complex struct see RFC 5007
+ATTRIBUTE	DHCPv6-Lease-Query-Client-Link		48	ipv6addr array
+
+#
+#  RFC 6610 - DHCP Options for Home Information Discovery in Mobile IPv6 (MIPv6)
+#
+ATTRIBUTE	DHCPv6-MIP6-Home-Net-ID-FQDN		49	octets		# Domain name
+ATTRIBUTE	DHCPv6-MIP6-Home-Net-Info		50	octets		# Complex struct see RFC 6610
+
+ATTRIBUTE	DHCPv6-MIP6-Identified-Home-Net-Info	69	octets		# Complex struct see RFC 6610
+ATTRIBUTE	DHCPv6-MIP6-Unrestricted-Home-Net-Info	70	octets		# Complex struct see RFC 6610
+ATTRIBUTE	DHCPv6-MIP6-Home-Net-Prefix		71	ipv6prefix
+ATTRIBUTE	DHCPv6-MIP6-Home-Net-Address		72	ipv6addr
+ATTRIBUTE	DHCPv6-MIP6-Home-Agent-FQDN		73	octets		# Domain name
+
+#
+#  RFC 5223 - Discovering Location-to-Service Translation (LoST) Servers Using the
+#             Dynamic Host Configuration Protocol (DHCP)
+#
+ATTRIBUTE	DHCPv6-LoST				51	octets		# Domain name
+
+#
+#  RFC 5417 - Control And Provisioning of Wireless Access Points (CAPWAP)
+#             Access Controller DHCP Option
+#
+ATTRIBUTE	DHCPv6-Capwap-AC			52	ipv6addr array
+
+#
+#  RFC 5460 - DHCPv6 Bulk Leasequery
+#
+ATTRIBUTE	DHCPv6-Relay-ID				53	octets
+
+#
+#  RFC 5678 - Dynamic Host Configuration Protocol (DHCPv4 and DHCPv6) Options for
+#             IEEE 802.21 Mobility Services (MoS) Discovery
+#
+ATTRIBUTE	DHCPv6-MOD-Address-List			54	tlv
+
+BEGIN-TLV	DHCPv6-MOD-Address-List
+ATTRIBUTE	DHCPv6-MOS-Address-IS			1	ipv6addr array
+ATTRIBUTE	DHCPv6-MOS-Address-CS			2	ipv6addr array
+ATTRIBUTE	DHCPv6-MOS-Address-ES			3	ipv6addr array
+END-TLV		DHCPv6-MOD-Address-List
+
+ATTRIBUTE	DHCPv6-MOS-Domain-Name-List		55	tlv
+
+BEGIN-TLV	DHCPv6-MOS-Domain-Name-List
+ATTRIBUTE	DHCPv6-MOS-Domain-Name-IS		1	octets		# Domain name
+ATTRIBUTE	DHCPv6-MOS-Domain-Name-CS		2	octets		# Domain name
+ATTRIBUTE	DHCPv6-MOS-Domain-Name-ES		3	octets		# Domain name
+END-TLV		DHCPv6-MOS-Domain-Name-List
+
+#
+#  RFC 5908 - Network Time Protocol (NTP) Server Option for DHCPv6
+#
+ATTRIBUTE	DHCPv6-NTP-Server			56	tlv
+BEGIN-TLV	DHCPv6-NTP-Server
+ATTRIBUTE	DHCPv6-NTP-Server-Address		1	ipv6addr
+ATTRIBUTE	DHCPv6-NTP-Server-Multicast-Address	2	ipv6addr
+ATTRIBUTE	DHCPv6-NTP-Server-FQDN			3	octets		# Domain name
+END-TLV		DHCPv6-NTP-Server
+
+#
+#  RFC 5986 - Discovering the Local Location Information Server (LIS)
+#
+ATTRIBUTE	DHCPv6-LIS-Access-Domain		57	octets		# Domain name
+
+#
+#  RFC 6011 - Session Initiation Protocol (SIP) User Agent Configuration
+#
+ATTRIBUTE	DHCPv6-SIP-US-CS-Domain-List		58	octets		# Domain name list
+
+#
+#  RFC 5970 - DHCPv6 Options for Network Boot
+#
+ATTRIBUTE	DHCPv6-Bootfile-URL			59	string
+ATTRIBUTE	DHCPv6-Bootfile-Param			60	string array
+ATTRIBUTE	DHCPv6-Client-Arch-Type			61	uint16 array
+
+VALUE	DHCPv6-Client-Arch-Type		x86-BIOS		0
+VALUE	DHCPv6-Client-Arch-Type		NEC-PC98		1
+VALUE	DHCPv6-Client-Arch-Type		Itanium			2
+VALUE	DHCPv6-Client-Arch-Type		DEC-Alpha		3
+VALUE	DHCPv6-Client-Arch-Type		Arc-x86			4
+VALUE	DHCPv6-Client-Arch-Type		Intel-Lean-Client	5
+VALUE	DHCPv6-Client-Arch-Type		x86-UEFI		6
+VALUE	DHCPv6-Client-Arch-Type		x64-UEFI		7
+VALUE	DHCPv6-Client-Arch-Type		EFI-Xscale		8
+VALUE	DHCPv6-Client-Arch-Type		EBC			9
+VALUE	DHCPv6-Client-Arch-Type		ARM-32-bit-UEFI		10
+VALUE	DHCPv6-Client-Arch-Type		ARM-64-bit-UEFI		11
+VALUE	DHCPv6-Client-Arch-Type		PowerPC-Open-Firmware	12
+VALUE	DHCPv6-Client-Arch-Type		PowerPC-ePAPR		13
+VALUE	DHCPv6-Client-Arch-Type		POWER-OPAL-v3		14
+VALUE	DHCPv6-Client-Arch-Type		x86-UEFI-Boot-From-HTTP	15
+VALUE	DHCPv6-Client-Arch-Type		x64-UEFI-Boot-From-HTTP	16
+VALUE	DHCPv6-Client-Arch-Type		EBC-Boot-From-HTTP	17
+VALUE	DHCPv6-Client-Arch-Type		ARM-UEFI-32-Boot-From-HTTP 18
+VALUE	DHCPv6-Client-Arch-Type		ARM-UEFI-64-Boot-From-HTTP 19
+VALUE	DHCPv6-Client-Arch-Type		PCAT-BIOS-Boot-From-HTTP 20
+VALUE	DHCPv6-Client-Arch-Type		ARM-32-Uboot		21
+VALUE	DHCPv6-Client-Arch-Type		ARM-64-Uboot		22
+VALUE	DHCPv6-Client-Arch-Type		ARM-Uboot-32-Boot-From-HTTP 23
+VALUE	DHCPv6-Client-Arch-Type		ARM-Uboot-64-Boot-From-HTTP 24
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-32-Bit-UEFI	25
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-32-Bit-UEFI-Boot-From-HTTP 26
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-64-Bit-UEFI	27
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-64-Bit-UEFI-Boot-From-HTTP 28
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-128-Bit-UEFI	29
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-128-Bit-UEFI-Boot-From-HTTP 30
+VALUE	DHCPv6-Client-Arch-Type		S390-Basic		31
+VALUE	DHCPv6-Client-Arch-Type		S390-Extended		32
+
+ATTRIBUTE	DHCPv6-Client-Network-Interface-ID	62	octets		# Complex struct see RFC 5970
+
+#
+#  RFC 6225 - Dynamic Host Configuration Protocol Options for
+#	      Coordinate-Based Location Configuration Information
+#
+ATTRIBUTE	DHCPv6-Geolocation			63	octets		# Complex struct see RFC 6225
+
+#
+#  RFC 6334 - Dynamic Host Configuration Protocol for IPv6 (DHCPv6) Option
+#             for Dual-Stack Lite.
+#
+ATTRIBUTE	DHCPv6-AFTR-Name			64	octets		# Domain name
+
+#
+#  RFC 6440 - The EAP Re-authentication Protocol (ERP) Local Domain Name DHCPv6 Option
+#
+ATTRIBUTE	DHCPv6-ERP-Local-Domain-Name		65	octets		# Domain name
+
+#
+#  RFC 6422 - Relay-Supplied DHCP Options
+#
+ATTRIBUTE	DHCPv6-Relay-Supplied-Options		66	tlv		# Options see RFC 6422
+
+#
+#  RFC 6603 - PD Exclude
+#
+ATTRIBUTE	DHCPv6-PD-Exclude			67	ipv6prefix
+
+#
+#  RFC 6607 - Virtual Subnet Selection Options for DHCPv4 and DHCPv6
+#
+ATTRIBUTE	DHCPv6-Virtual-Subnet-Selection		68	octets		# Complex struct see RFC 6607
+
+#
+#  RFC 6731 - Improved Recursive DNS Server Selection for Multi-Interfaced Nodes
+#
+ATTRIBUTE	DHCPv6-DNS-Recursive-Name-Server	74	octets		# Complex struct see RFC 6731
+
+#
+#  RFC 6784 - Kerberos Options for DHCPv6
+#
+ATTRIBUTE	DHCPv6-Kerberos-Principal-Name		75	octets		# Complex struct see RFC 6784
+ATTRIBUTE	DHCPv6-Kerberos-Realm-Name		76	octets		# Complex struct see RFC 6784
+ATTRIBUTE	DHCPv6-Kerberos-Default-Realm-Name	77	octets		# Complex struct see RFC 6784
+ATTRIBUTE	DHCPv6-Kerberos-KDC			78	octets		# Complex struct see RFC 6784
+
+#
+#  RFC 6939 - Client Link-Layer Address Option
+#
+ATTRIBUTE	DHCPv6-Client-Link-Layer		79	octets		# Complex struct see RFC 6939
+
+#
+#  RFC 6977 - Triggering DHCPv6 Reconfiguration from Relay Agents
+#
+ATTRIBUTE	DHCPv6-Link-Address			80	ipv6addr
+
+#
+#  RFC 7037 - RADIUS Option for the DHCPv6 Relay Agent
+#
+ATTRIBUTE	DHCPv6-RADIUS				81	octets		# Foreign protocol (RADIUS)
+
+#
+#  RFC 7083 - Modification to Default Values of SOL_MAX_RT and INF_MAX_RT
+#
+ATTRIBUTE	DHCPv6-SOL-Max-RT			82	uint32
+ATTRIBUTE	DHCPv6-INF-Max-RT			83	uint32
+
+#
+#  RFC 7078 - Distributing Address Selection Policy Using DHCPv6
+#
+ATTRIBUTE	DHCPv6-Address-Selection		84	octets		# Complex struct see RFC 7078
+ATTRIBUTE	DHCPv6-Address-Selection-Table		85	octets		# Complex struct see RFC 7078
+
+#
+#  RFC 7291 - DHCP Options for the Port Control Protocol (PCP)
+#
+ATTRIBUTE	DHCPv6-PCP-Server			86	ipv6addr array
+
+#
+#  RFC 7341 - DHCPv4-over-DHCPv6 (DHCP 4o6) Transport
+#
+ATTRIBUTE	DHCPv6-DHCPv4-Msg			87	octets		# Foreign protocol (DHCPv4)
+
+#
+#  RFC 7598 - DHCPv6 Options for Configuration of Softwire Address
+#	      and Port-Mapped Clients
+#
+ATTRIBUTE	DHCPv6-S46-Rule				89	octets		# Complex struct see RFC 7598
+ATTRIBUTE	DHCPv6-S46-Border-Relay			90	ipv6addr
+ATTRIBUTE	DHCPv6-S46-Default-Mapping-Rule		91	ipv6prefix
+ATTRIBUTE	DHCPv6-S46-Address-Binding		92	octets		# Complex struct see RFC 7598
+ATTRIBUTE	DHCPv6-S46-Port-Parameters		93	octets		# Complex struct see RFC 7598
+ATTRIBUTE	DHCPv6-S46-MAP-Cont-E			94	octets		# Complex struct see RFC 7598
+ATTRIBUTE	DHCPv6-S46-MAP-Cont-T			95	octets		# Complex struct see RFC 7598
+ATTRIBUTE	DHCPv6-S46-Cont-LW			96	octets		# Complex struct see RFC 7598
+
+#
+#  RFC 8026 - Unified IPv4-in-IPv6 Softwire Customer Premises Equipment (CPE):
+#	      A DHCPv6-Based Prioritization Mechanism
+#
+ATTRIBUTE	DHCPv6-S46-Priority			111	uint16 array
+VALUE	DHCPv6-S46-Priority		DS-Lite			64
+VALUE	DHCPv6-S46-Priority		DHCPv4-Over-DHCPv6	88
+VALUE	DHCPv6-S46-Priority		MAP-E			94
+VALUE	DHCPv6-S46-Priority		MAP-T			95
+VALUE	DHCPv6-S46-Priority		Lightweight-4-Over-6	96
+
+#
+#  RFC 7600 - IPv4 Residual Deployment via IPv6 - A Stateless Solution (4rd)
+#
+ATTRIBUTE	DHCPv6-4RD				97	octets		# Complex struct see RFC 7600
+ATTRIBUTE	DHCPv6-4RD-Map-Rule			98	octets		# Complex struct see RFC 7600
+ATTRIBUTE	DHCPv6-4RD-Non-Map-Rule			99	octets		# Complex struct see RFC 7600
+
+#
+#  RFC 7653 - DHCPv6 Active Leasequery
+#
+ATTRIBUTE	DHCPv6-Lease-Query-Base-Time		100	date
+ATTRIBUTE	DHCPv6-Lease-Query-Start-Time		101	uint32
+ATTRIBUTE	DHCPv6-Lease-Query-End-Time		102	uint32
+
+#
+#  RFC 7710 - Captive-Portal Identification Using DHCP or Router Advertisements (RAs)
+#
+ATTRIBUTE	DHCPv6-Captive-Portal-URI		103	string
+
+#
+#  RFC 7774 - Multicast Protocol for Low-Power and Lossy Networks (MPL)
+#             Parameter Configuration Option for DHCPv6
+#
+ATTRIBUTE	DHCPv6-MPL-Parameters			104	octets		# Complex struct see RFC 7774
+
+#
+#  RFC 7839 - Access-Network-Identifier
+#
+ATTRIBUTE	DHCPv6-ANI-Access-Technology-Type	105	uint16
+
+VALUE	DHCPv6-ANI-Access-Technology-Type Virtual		1
+VALUE	DHCPv6-ANI-Access-Technology-Type PPP			2
+VALUE	DHCPv6-ANI-Access-Technology-Type IEEE802-3		3
+VALUE	DHCPv6-ANI-Access-Technology-Type IEEE802-11abg		4
+VALUE	DHCPv6-ANI-Access-Technology-Type IEEE802-16e		5
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP-GERAN		6
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP-UTRAN		7
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP-E-UTRAN		8
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP2-eHRPD		9
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP-HRPD		10
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP2-1xRTT		11
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP2-UMB		12
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP2-NB-IOT		13
+
+ATTRIBUTE	DHCPv6-ANI-Network-Name			106	string
+ATTRIBUTE	DHCPv6-ANI-Access-Point-Name		107	string
+ATTRIBUTE	DHCPv6-ANI-Access-Point-BSSID		108	ether
+ATTRIBUTE	DHCPv6-ANI-Operator-Identifier		109	uint32
+ATTRIBUTE	DHCPv6-ANI-Operator-Realm		110	string
+
+#
+#  RFC 8115 - DHCPv6 Option for IPv4-Embedded Multicast and Unicast IPv6 Prefixes
+#
+ATTRIBUTE	DHCPv6-Prefix64				113	octets		# Complex (and stupid) struct
+
+#
+#  RFC 8156 - DHCPv6 Failover Protocol
+#
+ATTRIBUTE	DHCPv6-Failover-Binding-Status		114	uint8
+VALUE	DHCPv6-Failover-Binding-Status	Active			1
+VALUE	DHCPv6-Failover-Binding-Status	Expired			2
+VALUE	DHCPv6-Failover-Binding-Status	Released		3
+VALUE	DHCPv6-Failover-Binding-Status	Pending-Free		4
+VALUE	DHCPv6-Failover-Binding-Status	Free			5
+VALUE	DHCPv6-Failover-Binding-Status	Free-Bakcup		6
+VALUE	DHCPv6-Failover-Binding-Status	Abandoned		7
+VALUE	DHCPv6-Failover-Binding-Status	Reset			8
+
+ATTRIBUTE	DHCPv6-Failover-Connect-Flags		115	uint16
+VALUE	DHCPv6-Failover-Connect-Flags	Fixed-PD-Length		1
+
+ATTRIBUTE	DHCPv6-Failover-DNS-Removal-Info	116	tlv
+
+BEGIN-TLV	DHCPv6-Failover-DNS-Removal-Info
+ATTRIBUTE	DHCPv6-Failover-DNS-Host-Name		117	octets			# Domain name
+ATTRIBUTE	DHCPv6-Failover-DNS-Zone-Name		118	octets			# Zone name
+
+ATTRIBUTE	DHCPv6-Failover-DNS-Flags		119	uint16
+VALUE	DHCPv6-Failover-DNS-Flags	Fwd-Up-To-Date		0x01
+VALUE	DHCPv6-Failover-DNS-Flags	Rev-Up-To-Date		0x02
+VALUE	DHCPv6-Failover-DNS-Flags	Synthesized-Name	0x04
+VALUE	DHCPv6-Failover-DNS-Flags	Using-Requested-FQDN	0x08
+END-TLV		DHCPv6-Failover-DNS-Removal-Info
+
+ATTRIBUTE	DHCPv6-Failover-Expiration-Time		120	date
+ATTRIBUTE	DHCPv6-Failover-Max-Unacked-BNDUPD	121	uint32
+ATTRIBUTE	DHCPv6-Failover-Max-Client-Lead-Time	122	uint32
+ATTRIBUTE	DHCPv6-Failover-Max-Partner-Lifetime	123	uint32
+ATTRIBUTE	DHCPv6-Failover-Partner-Lifetime-Sent	124	uint32
+ATTRIBUTE	DHCPv6-Failover-Partner-Down-Time	125	date
+ATTRIBUTE	DHCPv6-Failover-Partner-Raw-CLT-Time	126	date
+ATTRIBUTE	DHCPv6-Failover-Protocol-Version	127	octets		# Complex struct see RFC 8156
+ATTRIBUTE	DHCPv6-Failover-Keepalive-Time		128	uint32
+ATTRIBUTE	DHCPv6-Failover-Reconfigure-Data	129	octets		# Complex struct see RFC 8156
+ATTRIBUTE	DHCPv6-Failover-Relationship-Name	130	string
+
+ATTRIBUTE	DHCPv6-Failover-Server-Flags		131	uint8
+VALUE	DHCPv6-Failover-Server-Flags	Communicated		0x01
+VALUE	DHCPv6-Failover-Server-Flags	Startup			0x02
+VALUE	DHCPv6-Failover-Server-Flags	ACK-Startup		0x04
+
+ATTRIBUTE	DHCPv6-Failover-Server-State		132	uint8
+VALUE	DHCPv6-Failover-Server-State	Startup			1
+VALUE	DHCPv6-Failover-Server-State	Normal			2
+VALUE	DHCPv6-Failover-Server-State	Communications-Interrupted 3
+VALUE	DHCPv6-Failover-Server-State	Partner-Down		4
+VALUE	DHCPv6-Failover-Server-State	Potential-Conflict	5
+VALUE	DHCPv6-Failover-Server-State	Recover			6
+VALUE	DHCPv6-Failover-Server-State	Recover-Wait		7
+VALUE	DHCPv6-Failover-Server-State	Recover-Done		8
+VALUE	DHCPv6-Failover-Server-State	Resolution-Interrupted	9
+VALUE	DHCPv6-Failover-Server-State	Conflict-Done		10
+
+ATTRIBUTE	DHCPv6-Failover-Start-Time-Of-State	133	date
+ATTRIBUTE	DHCPv6-Failover-State-Expiration-Time	134	uint32
+
+#
+#  RFC 6153 -   DHCPv4 and DHCPv6 Options for
+#   		Access Network Discovery and Selection Function (ANDSF) Discovery
+#
+ATTRIBUTE	DHCPv6-ANDSF-Address			143	ipv6addr
+
+#
+#  DHCPv6 packet header fields
+#
+FLAGS	internal
+
+ATTRIBUTE	DHCPv6-Msg-Type				65536	uint8
+VALUE	DHCPv6-Msg-Type			Solicit			1
+VALUE	DHCPv6-Msg-Type			Advertise		2
+VALUE	DHCPv6-Msg-Type			Request			3
+VALUE	DHCPv6-Msg-Type			Confirm			4
+VALUE	DHCPv6-Msg-Type			Renew			5
+VALUE	DHCPv6-Msg-Type			Rebind			6
+VALUE	DHCPv6-Msg-Type			Reply			7
+VALUE	DHCPv6-Msg-Type			Release			8
+VALUE	DHCPv6-Msg-Type			Decline			9
+VALUE	DHCPv6-Msg-Type			Reconfigure		10
+VALUE	DHCPv6-Msg-Type			Information-Request	11
+VALUE	DHCPv6-Msg-Type			Relay-Forward		12
+VALUE	DHCPv6-Msg-Type			Relay-Reply		13
+VALUE	DHCPv6-Msg-Type			Lease-Query		14
+VALUE	DHCPv6-Msg-Type			Lease-Query-Reply	15
+VALUE	DHCPv6-Msg-Type			Lease-Query-Done	16
+VALUE	DHCPv6-Msg-Type			Lease-Query-Data	17
+VALUE	DHCPv6-Msg-Type			Reconfigure-Request	18
+VALUE	DHCPv6-Msg-Type			Reconfigure-Reply	19
+VALUE	DHCPv6-Msg-Type			DHCPv4-Query		20
+VALUE	DHCPv6-Msg-Type			DHCPv4-Response		21
+VALUE	DHCPv6-Msg-Type			Active-Lease-Query	22
+VALUE	DHCPv6-Msg-Type			Start-TLS		23
+VALUE	DHCPv6-Msg-Type			Bind-Update		24
+VALUE	DHCPv6-Msg-Type			Bind-Reply		25
+VALUE	DHCPv6-Msg-Type			Pool-Request		26
+VALUE	DHCPv6-Msg-Type			Pool-Response		27
+VALUE	DHCPv6-Msg-Type			Update-Request		28
+VALUE	DHCPv6-Msg-Type			Update-Request-All	29
+VALUE	DHCPv6-Msg-Type			Update-Done		30
+VALUE	DHCPv6-Msg-Type			Connect			31
+VALUE	DHCPv6-Msg-Type			Connect-Reply		32
+VALUE	DHCPv6-Msg-Type			Disconnect		33
+VALUE	DHCPv6-Msg-Type			State			34
+VALUE	DHCPv6-Msg-Type			Contact			35
+
+ATTRIBUTE	DHCPv6-Transaction-ID			65537	uint64		# Actually 48bits

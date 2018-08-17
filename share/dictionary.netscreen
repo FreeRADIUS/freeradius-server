@@ -1,8 +1,10 @@
 # -*- text -*-
 # Copyright (C) 2015 The FreeRADIUS Server project and contributors
 #
+#	Netscreen VSAs
+#	Netscreen purchased by Juniper in 2004
 #	From:
-#	http://www.netscreen.com/support/downloads/4.0_configuring_screenOS_for_NTdomain_v11.pdf
+#	https://kb.juniper.net/InfoCenter/index?page=content&id=kb6392&actp=METADATA
 #
 
 VENDOR		Netscreen			3224

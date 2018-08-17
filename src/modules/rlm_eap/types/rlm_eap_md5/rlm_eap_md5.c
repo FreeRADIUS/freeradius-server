@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2001,2006  The FreeRADIUS server project
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2000,2001,2006  The FreeRADIUS server project
+ * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  */
 
 RCSID("$Id$")
@@ -28,10 +28,26 @@ RCSID("$Id$")
 
 #include "eap_md5.h"
 
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/md5.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/md5.h>
 
-static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_eap_md5_dict[];
+fr_dict_autoload_t rlm_eap_md5_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_cleartext_password;
+
+extern fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ NULL }
+};
+
+static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session);
 
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
@@ -85,13 +101,13 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	 */
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session)
 {
 	MD5_PACKET	*packet;
 	MD5_PACKET	*reply;
@@ -103,7 +119,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	rad_assert(eap_session->request != NULL);
 
-	password = fr_pair_find_by_num(eap_session->request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_da(eap_session->request->control, attr_cleartext_password, TAG_ANY);
 	if (!password) {
 		REDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
 		return RLM_MODULE_REJECT;
@@ -153,7 +169,9 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 extern rlm_eap_submodule_t rlm_eap_md5;
 rlm_eap_submodule_t rlm_eap_md5 = {
 	.name		= "eap_md5",
+
+	.provides	= { FR_EAP_MD5 },
 	.magic		= RLM_MODULE_INIT,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
-	.process	= mod_process		/* Process next round of EAP method */
+	.entry_point	= mod_process		/* Process next round of EAP method */
 };

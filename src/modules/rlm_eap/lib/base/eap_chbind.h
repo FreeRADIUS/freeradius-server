@@ -1,3 +1,4 @@
+#pragma once
 /*
  * eap_chbind.c
  *
@@ -17,13 +18,9 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2014  Network RADIUS SARL
- * Copyright 2014  The FreeRADIUS server project
+ * @copyright 2014  Network RADIUS SARL
+ * @copyright 2014  The FreeRADIUS server project
  */
-
-#ifndef _EAP_CHBIND_H
-#define _EAP_CHBIND_H
-
 RCSIDH(eap_chbind_h, "$Id$")
 
 #include <stdio.h>
@@ -31,7 +28,7 @@ RCSIDH(eap_chbind_h, "$Id$")
 #include <sys/types.h>
 #include <ctype.h>
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 
 #include "eap.h"
 
@@ -60,5 +57,3 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind_req);
 
 VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind);
 chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
-
-#endif /*_EAP_CHBIND_H*/

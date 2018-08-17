@@ -31,7 +31,7 @@ RCSIDH(lua_h, "$Id$")
 #  include <lua.h>
 #endif
 #include <lauxlib.h>
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 
 #ifndef HAVE_PTHREAD_H
 #define pthread_mutex_lock(_x)

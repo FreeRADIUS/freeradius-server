@@ -1,7 +1,7 @@
 /*
- * Copyright (c) Dan Harkins, 2012
+ * @copyright (c) Dan Harkins, 2012
  *
- *  Copyright holder grants permission for redistribution and use in source
+ *  @copyright holder grants permission for redistribution and use in source
  *  and binary forms, with or without modification, provided that the
  *  following conditions are met:
  *     1. Redistribution of source code must retain the above copyright
@@ -35,9 +35,20 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #define LOG_PREFIX "rlm_eap_pwd - "
 
-#include "rlm_eap_pwd.h"
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/server/modules.h>
 
 #include "eap_pwd.h"
+
+typedef struct rlm_eap_pwd {
+    BN_CTX *bnctx;
+
+    uint32_t	group;
+    uint32_t	fragment_size;
+    char const	*server_id;
+    char const	*virtual_server;
+} rlm_eap_pwd_t;
 
 #define MPPE_KEY_LEN    32
 #define MSK_EMSK_LEN    (2 * MPPE_KEY_LEN)
@@ -47,6 +58,30 @@ static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_UINT32, rlm_eap_pwd_t, fragment_size), .dflt = "1020" },
 	{ FR_CONF_OFFSET("server_id", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_pwd_t, server_id) },
 	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_eap_pwd_dict[];
+fr_dict_autoload_t rlm_eap_pwd_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_cleartext_password;
+static fr_dict_attr_t const *attr_framed_mtu;
+static fr_dict_attr_t const *attr_ms_mppe_send_key;
+static fr_dict_attr_t const *attr_ms_mppe_recv_key;
+
+extern fr_dict_attr_autoload_t rlm_eap_pwd_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_pwd_dict_attr[] = {
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_framed_mtu, .name = "Framed-MTU", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ NULL }
 };
 
 static int send_pwd_request(pwd_session_t *session, eap_round_t *eap_round)
@@ -188,7 +223,6 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 
 		MEM(session->in = talloc_zero_array(session, uint8_t, session->in_len));
 
-		memset(session->in, 0, session->in_len);
 		session->in_pos = 0;
 		in += sizeof(uint16_t);
 		in_len -= sizeof(uint16_t);
@@ -279,7 +313,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		memcpy(session->peer_id, packet->identity, session->peer_id_len);
 		session->peer_id[session->peer_id_len] = '\0';
 
-		vp = fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
+		vp = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
 		if (!vp) {
 			REDEBUG("Failed to find password for %s to do pwd authentication", session->peer_id);
 			return RLM_MODULE_REJECT;
@@ -401,8 +435,8 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		/*
 		 *	Return the MSK (in halves).
 		 */
-		eap_add_reply(eap_session->request, "MS-MPPE-Recv-Key", msk, MPPE_KEY_LEN);
-		eap_add_reply(eap_session->request, "MS-MPPE-Send-Key", msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
+		eap_add_reply(eap_session->request, attr_ms_mppe_recv_key, msk, MPPE_KEY_LEN);
+		eap_add_reply(eap_session->request, attr_ms_mppe_send_key, msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
 
 		rcode = RLM_MODULE_FAIL;
 		break;
@@ -457,7 +491,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	The admin can dynamically change the MTU.
 	 */
 	session->mtu = inst->fragment_size;
-	vp = fr_pair_find_by_num(eap_session->request->packet->vps, 0, FR_FRAMED_MTU, TAG_ANY);
+	vp = fr_pair_find_by_da(eap_session->request->packet->vps, attr_framed_mtu, TAG_ANY);
 
 	/*
 	 *	session->mtu is *our* MTU.  We need to subtract off the EAP
@@ -493,7 +527,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 static int mod_detach(void *arg)
@@ -543,12 +577,13 @@ rlm_eap_submodule_t rlm_eap_pwd = {
 	.name		= "eap_pwd",
 	.magic		= RLM_MODULE_INIT,
 
+	.provides	= { FR_EAP_PWD },
 	.inst_size	= sizeof(rlm_eap_pwd_t),
 	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	.detach		= mod_detach,
 
 	.session_init	= mod_session_init,	/* Create the initial request */
-	.process	= mod_process,		/* Process next round of EAP method */
+	.entry_point	= mod_process,		/* Process next round of EAP method */
 };
 

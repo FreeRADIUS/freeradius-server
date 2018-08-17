@@ -28,13 +28,13 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/rad_assert.h>
 
-#include "redis.h"
-#include "cluster.h"
+#include <freeradius-devel/redis/base.h>
+#include <freeradius-devel/redis/cluster.h>
 
 #define MAX_QUERY_LEN	4096			//!< Maximum command length.
 #define MAX_REDIS_ARGS	16			//!< Maximum number of arguments.
@@ -208,7 +208,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 		argc = rad_expand_xlat(request, p, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
 		if (argc <= 0) {
-			REDEBUG("Invalid command: %s", p);
+			RPEDEBUG("Invalid command: %s", p);
 			fr_pool_connection_release(pool, request, conn);
 			return -1;
 		}
@@ -253,7 +253,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	argc = rad_expand_xlat(request, p, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
-		REDEBUG("Invalid command: %s", p);
+		RPEDEBUG("Invalid command: %s", p);
 		ret = -1;
 		goto finish;
 	}
@@ -291,7 +291,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto finish;
 	}
 
-	if (!rad_cond_assert(reply)) {
+	if (!fr_cond_assert(reply)) {
 		ret = -1;
 		goto finish;
 	}
@@ -329,7 +329,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat_register(inst, inst->name, redis_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, inst->name, redis_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
 
 	return 0;
 }

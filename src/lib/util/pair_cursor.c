@@ -13,20 +13,20 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- *
- * @file lib/util/cursor.c
- * @brief Functions to iterate over collections of VALUE_PAIRs
+/** Functions to iterate over collections of VALUE_PAIRs
  *
  * @note Do not modify collections of VALUE_PAIRs pointed to by a cursor
  *	 with none fr_pair_cursor_* functions, during the lifetime of that cursor.
+ *
+ * @file src/lib/util/pair_cursor.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013-2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
-#include <freeradius-devel/libradius.h>
+#include "pair_cursor.h"
+
+#include <freeradius-devel/missing.h>
 
 /** Internal function to update cursor state
  *
@@ -73,13 +73,13 @@ VALUE_PAIR *fr_pair_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *const_v
 	 *  to by vp
 	 */
 #ifndef NDEBUG
-	if (*vp) VERIFY_VP(*vp);
+	if (*vp) VP_VERIFY(*vp);
 #endif
 	memcpy(&cursor->first, &vp, sizeof(cursor->first));
 	cursor->current = *cursor->first;
 
 	if (cursor->current) {
-		VERIFY_VP(cursor->current);
+		VP_VERIFY(cursor->current);
 		cursor->next = cursor->current->next;
 	}
 
@@ -101,16 +101,16 @@ void fr_pair_cursor_copy(vp_cursor_t *out, vp_cursor_t *in)
  * @param cursor to operate on.
  * @return #VALUE_PAIR at the start of the list.
  */
-VALUE_PAIR *fr_pair_cursor_first(vp_cursor_t *cursor)
+VALUE_PAIR *fr_pair_cursor_head(vp_cursor_t *cursor)
 {
 	if (!cursor->first) return NULL;
 
 	cursor->current = *cursor->first;
 
 	if (cursor->current) {
-		VERIFY_VP(cursor->current);
+		VP_VERIFY(cursor->current);
 		cursor->next = cursor->current->next;
-		if (cursor->next) VERIFY_VP(cursor->next);
+		if (cursor->next) VP_VERIFY(cursor->next);
 		cursor->found = NULL;
 	}
 
@@ -122,12 +122,12 @@ VALUE_PAIR *fr_pair_cursor_first(vp_cursor_t *cursor)
  * @param cursor to operate on.
  * @return #VALUE_PAIR at the end of the list.
  */
-VALUE_PAIR *fr_pair_cursor_last(vp_cursor_t *cursor)
+VALUE_PAIR *fr_pair_cursor_tail(vp_cursor_t *cursor)
 {
 	if (!cursor->first || !*cursor->first) return NULL;
 
 	/* Need to start at the start */
-	if (!cursor->current) fr_pair_cursor_first(cursor);
+	if (!cursor->current) fr_pair_cursor_head(cursor);
 
 	/* Wind to the end */
 	while (cursor->next) fr_pair_cursor_next(cursor);
@@ -168,7 +168,7 @@ void fr_pair_cursor_end(vp_cursor_t *cursor)
 	if (!cursor->current && cursor->last && !cursor->last->next) return;
 
 	/* Need to start at the start */
-	if (!cursor->current) fr_pair_cursor_first(cursor);
+	if (!cursor->current) fr_pair_cursor_head(cursor);
 
 	/* Wind to the end */
 	while (cursor->next) fr_pair_cursor_next(cursor);
@@ -209,10 +209,8 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
 		for (i = cursor->found ? cursor->found->next : cursor->current;
 		     i != NULL;
 		     i = i->next) {
-			VERIFY_VP(i);
-			if (i->da->parent->flags.is_root &&
-			    (i->da->attr == attr) && (i->da->vendor == 0) &&
-			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			VP_VERIFY(i);
+			if (fr_dict_attr_is_top_level(i->da) && (i->da->attr == attr) && ATTR_TAG_MATCH(i, tag)) {
 				break;
 			}
 		}
@@ -220,10 +218,10 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
 		for (i = cursor->found ? cursor->found->next : cursor->current;
 		     i != NULL;
 		     i = i->next) {
-			VERIFY_VP(i);
+			VP_VERIFY(i);
 			if ((i->da->parent->type == FR_TYPE_VENDOR) &&
-			    (i->da->attr == attr) && (i->da->vendor == vendor) &&
-			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			    (i->da->attr == attr) && (fr_dict_vendor_num_by_da(i->da) == vendor) &&
+			    ATTR_TAG_MATCH(i, tag)) {
 				break;
 			}
 		}
@@ -265,9 +263,8 @@ VALUE_PAIR *fr_pair_cursor_next_by_child_num(vp_cursor_t *cursor,
 	for (i = cursor->found ? cursor->found->next : cursor->current;
 	     i != NULL;
 	     i = i->next) {
-		VERIFY_VP(i);
-		if ((i->da == da) &&
-		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+		VP_VERIFY(i);
+		if ((i->da == da) && ATTR_TAG_MATCH(i, tag)) {
 			break;
 		}
 	}
@@ -302,9 +299,8 @@ VALUE_PAIR *fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const 
 	for (i = cursor->found ? cursor->found->next : cursor->current;
 	     i != NULL;
 	     i = i->next) {
-		VERIFY_VP(i);
-		if ((i->da == da) &&
-		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+		VP_VERIFY(i);
+		if ((i->da == da) && ATTR_TAG_MATCH(i, tag)) {
 			break;
 		}
 	}
@@ -337,9 +333,11 @@ VALUE_PAIR *fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t 
 	for (i = cursor->found ? cursor->found->next : cursor->current;
 	     i != NULL;
 	     i = i->next) {
-		VERIFY_VP(i);
+		VP_VERIFY(i);
 		if (fr_dict_parent_common(ancestor, i->da, true) &&
-		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) break;
+		    ATTR_TAG_MATCH(i, tag)) {
+			break;
+		}
 	}
 
 	return fr_pair_cursor_update(cursor, i);
@@ -358,7 +356,7 @@ VALUE_PAIR *fr_pair_cursor_next(vp_cursor_t *cursor)
 
 	cursor->current = cursor->next;
 	if (cursor->current) {
-		VERIFY_VP(cursor->current);
+		VP_VERIFY(cursor->current);
 
 		/*
 		 *	Set this now in case 'current' gets freed before
@@ -395,7 +393,7 @@ VALUE_PAIR *fr_pair_cursor_next_peek(vp_cursor_t *cursor)
  */
 VALUE_PAIR *fr_pair_cursor_current(vp_cursor_t *cursor)
 {
-	if (cursor->current) VERIFY_VP(cursor->current);
+	if (cursor->current) VP_VERIFY(cursor->current);
 
 	return cursor->current;
 }
@@ -416,8 +414,8 @@ void fr_pair_cursor_prepend(vp_cursor_t *cursor, VALUE_PAIR *vp)
 
 	if (!vp) return;
 
-	VERIFY_VP(vp);
-	VERIFY_LIST(*(cursor->first));
+	VP_VERIFY(vp);
+	LIST_VERIFY(*(cursor->first));
 
 	/*
 	 *	Only allow one VP to by inserted at a time
@@ -454,7 +452,7 @@ void fr_pair_cursor_prepend(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	 */
 	if (!cursor->next) cursor->next = cursor->current->next;
 
-	VERIFY_LIST(*(cursor->first));
+	LIST_VERIFY(*(cursor->first));
 }
 
 /** Insert a single VALUE_PAIR at the end of the list
@@ -475,8 +473,8 @@ void fr_pair_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp)
 
 	if (!vp) return;
 
-	VERIFY_VP(vp);
-	VERIFY_LIST(*(cursor->first));
+	VP_VERIFY(vp);
+	LIST_VERIFY(*(cursor->first));
 
 	/*
 	 *	Only allow one VP to by inserted at a time
@@ -501,14 +499,14 @@ void fr_pair_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	 */
 	if (!cursor->last) cursor->last = cursor->current ? cursor->current : *cursor->first;
 
-	VERIFY_VP(cursor->last);
+	VP_VERIFY(cursor->last);
 
 	/*
 	 *	Wind last to the end of the list.
 	 */
 	if (cursor->last->next) {
 		for (i = cursor->last; i; i = i->next) {
-			VERIFY_VP(i);
+			VP_VERIFY(i);
 			cursor->last = i;
 		}
 	}
@@ -533,7 +531,7 @@ void fr_pair_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	 */
 	if (!cursor->next) cursor->next = cursor->current->next;
 
-	VERIFY_LIST(*(cursor->first));
+	LIST_VERIFY(*(cursor->first));
 }
 
 /** Merges multiple VALUE_PAIR into the cursor
@@ -648,7 +646,7 @@ VALUE_PAIR *fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 
 	if (!fr_cond_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
-	VERIFY_LIST(*(cursor->first));
+	LIST_VERIFY(*(cursor->first));
 
 	vp = cursor->current;
 	if (!vp) {
@@ -667,7 +665,7 @@ VALUE_PAIR *fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 	new->next = vp->next;
 	vp->next = NULL;
 
-	VERIFY_LIST(*(cursor->first));
+	LIST_VERIFY(*(cursor->first));
 
 	return vp;
 }

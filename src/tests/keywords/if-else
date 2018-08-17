@@ -9,7 +9,5 @@ if (User-Name != "bob") {
 	}
 }
 else {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 }

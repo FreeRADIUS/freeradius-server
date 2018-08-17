@@ -26,9 +26,9 @@
 
 #include <libmemcached/memcached.h>
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "../../rlm_cache.h"
 #include "../../serialize.h"
@@ -121,7 +121,7 @@ static int mod_instantiate(rlm_cache_config_t const *config, void *instance, CON
 						   buffer, "modules.rlm_cache.pool", NULL);
 	if (!driver->pool) return -1;
 
-	fr_talloc_link_ctx(driver, driver->pool);	/* Ensure pool is freed */
+	talloc_link_ctx(driver, driver->pool);	/* Ensure pool is freed */
 
 	if (config->max_entries > 0) {
 		ERROR("max_entries is not supported by this driver");
@@ -177,10 +177,10 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	RDEBUG2("%s", from_store);
 
 	c = talloc_zero(NULL, rlm_cache_entry_t);
-	ret = cache_deserialize(c, from_store, len);
+	ret = cache_deserialize(c, request->dict, from_store, len);
 	free(from_store);
 	if (ret < 0) {
-		RERROR("%s", fr_strerror());
+		RPERROR("Invalid entry");
 		talloc_free(c);
 		return CACHE_ERROR;
 	}

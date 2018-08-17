@@ -15,16 +15,16 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  David Kerry <davidk@snti.com>
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  David Kerry <davidk@snti.com>
  */
 
 RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_sql_oracle - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <sys/stat.h>
 

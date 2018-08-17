@@ -27,15 +27,17 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <talloc.h>
-#include <freeradius-devel/pair.h>
-#include <freeradius-devel/types.h>
-#include <freeradius-devel/proto.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
+#include <freeradius-devel/rfc2865.h>
+#include <freeradius-devel/io/test_point.h>
 
-static ssize_t decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len);
 
-static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			    fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len);
 
 /** Returns the number of array members for arrays with fixed element sizes
@@ -83,7 +85,7 @@ static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const
 /*
  *	Decode ONE value into a VP
  */
-static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *da,
+static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
 				     uint8_t const *data, size_t data_len)
 {
 	VALUE_PAIR *vp;
@@ -130,7 +132,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 			/* Need another VP for the next round */
 			if (p < end) {
-				fr_pair_cursor_append(cursor, vp);
+				fr_cursor_append(cursor, vp);
 
 				vp = fr_pair_afrom_da(ctx, da);
 				if (!vp) return -1;
@@ -179,7 +181,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 finish:
 	FR_PROTO_TRACE("decoding value complete, adding new pair and returning %zu byte(s)", p - data);
-	fr_pair_cursor_append(cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	return p - data;
 }
@@ -219,7 +221,7 @@ finish:
  * @param[in] data to parse.
  * @param[in] data_len of data parsed.
  */
-static ssize_t decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len)
 {
 	uint8_t const		*p = data;
@@ -277,13 +279,14 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 			/*
 			 *	Build an unknown attr
 			 */
-			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent, parent->vendor, p[0]);
+			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent,
+								     fr_dict_vendor_num_by_da(parent), p[0]);
 			if (!unknown_child) return -1;
 			child = unknown_child;
 		}
 		FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
-			       fr_int2str(dict_attr_types, parent->type, "<invalid>"), parent->name,
-			       fr_int2str(dict_attr_types, child->type, "<invalid>"), child->name);
+			       fr_int2str(fr_value_box_type_names, parent->type, "<invalid>"), parent->name,
+			       fr_int2str(fr_value_box_type_names, child->type, "<invalid>"), child->name);
 
 		tlv_len = decode_value(ctx, cursor, child, p + 2, p[1]);
 		if (tlv_len <= 0) {
@@ -299,7 +302,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 	return p - data;
 }
 
-static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			    fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
 	unsigned int	values, i;		/* How many values we need to decode */
@@ -350,18 +353,18 @@ static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  *
  * @param[in] ctx context to alloc new attributes in.
  * @param[in,out] cursor Where to write the decoded options.
- * @param[in] parent The root of the protocol dictionary used to decode DHCP attributes.
  * @param[in] data to parse.
  * @param[in] data_len of data to parse.
  * @param[in] decoder_ctx Unused.
  */
-ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
-			        fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			        UNUSED void *decoder_ctx)
+ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
+			        uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
 	ssize_t			ret;
 	uint8_t const		*p = data;
 	fr_dict_attr_t const	*child;
+	fr_dhcp_ctx_t	*packet_ctx = decoder_ctx;
+	fr_dict_attr_t const	*parent;
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
 
@@ -372,7 +375,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *	Stupid hacks until we have protocol specific dictionaries
 	 */
-	parent = fr_dict_attr_child_by_num(parent, FR_VENDOR_SPECIFIC);
+	parent = fr_dict_attr_child_by_num(packet_ctx->root, FR_VENDOR_SPECIFIC);
 	if (!parent) {
 		fr_strerror_printf("Can't find Vendor-Specific (26)");
 		return -1;
@@ -418,8 +421,8 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		if (!child) return -1;
 	}
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
-		       fr_int2str(dict_attr_types, parent->type, "<invalid>"), parent->name,
-		       fr_int2str(dict_attr_types, child->type, "<invalid>"), child->name);
+		       fr_int2str(fr_value_box_type_names, parent->type, "<invalid>"), parent->name,
+		       fr_int2str(fr_value_box_type_names, child->type, "<invalid>"), child->name);
 
 	ret = decode_value(ctx, cursor, child, data + 2, data[1]);
 	if (ret < 0) {
@@ -430,3 +433,32 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	FR_PROTO_TRACE("decoding option complete, returning %zu byte(s)", ret);
 	return ret;
 }
+
+static int _decode_test_ctx(UNUSED fr_dhcp_ctx_t *test_ctx)
+{
+	fr_dhcpv4_free();
+
+	return 0;
+}
+
+static void *decode_test_ctx(TALLOC_CTX *ctx)
+{
+	fr_dhcp_ctx_t *test_ctx;
+
+	test_ctx = talloc_zero(ctx, fr_dhcp_ctx_t);
+	test_ctx->root = fr_dict_root(fr_dict_internal);
+	talloc_set_destructor(test_ctx, _decode_test_ctx);
+
+	fr_dhcpv4_init();
+
+	return test_ctx;
+}
+
+/*
+ *	Test points
+ */
+extern fr_test_point_pair_decode_t dhcpv4_tp_decode;
+fr_test_point_pair_decode_t dhcpv4_tp_decode = {
+	.test_ctx	= decode_test_ctx,
+	.func		= fr_dhcpv4_decode_option
+};

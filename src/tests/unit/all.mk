@@ -7,21 +7,29 @@
 #  functionality from earlier tests.
 #
 FILES  := \
-	rfc.txt \
-	errors.txt \
-	extended.txt \
-	lucent.txt \
-	wimax.txt \
+	radius_rfc.txt \
+	radius_errors.txt \
+	radius_extended.txt \
+	radius_lucent.txt \
+	radius_wimax.txt \
+	radius_tunnel.txt \
+	radius_vendor.txt \
+	radius_tlv.txt \
+	eap_aka_encode.txt \
+	eap_aka_decode.txt \
+	eap_aka_error.txt \
+	eap_sim_encode.txt \
+	eap_sim_decode.txt \
+	eap_sim_error.txt \
+	dhcpv4.txt \
+	dhcpv6.txt \
+	dict.txt \
+	regex.txt \
 	escape.txt \
 	condition.txt \
 	xlat.txt \
-	vendor.txt \
-	dhcp.txt \
-	tlv.txt \
-	tunnel.txt \
-	dict.txt \
-	regex.txt \
-	ethernet.txt
+	ethernet.txt \
+	command.txt
 
 #
 #  Create the output directory
@@ -38,7 +46,7 @@ $(BUILD_DIR)/share:
 #  We need $INCLUDE in the output file, so we pass 2 parameters to 'echo'
 #  No idea how portable that is...
 #
-$(BUILD_DIR)/share/dictionary: $(top_srcdir)/share/dictionary $(top_srcdir)/share/dictionary.dhcp $(top_srcdir)/src/tests/unit/dictionary.unit | $(BUILD_DIR)/share
+$(BUILD_DIR)/share/dictionary: $(top_srcdir)/share/dictionary $(top_srcdir)/share/dictionary.dhcpv4 $(top_srcdir)/src/tests/unit/dictionary.unit | $(BUILD_DIR)/share
 	${Q}rm -f $@
 	${Q}for x in $^; do \
 		echo '$$INCLUDE ' "$$x" >> $@; \

@@ -1,0 +1,9 @@
+#
+#  Input packet
+#
+User-Name = "1420032219455258"
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept

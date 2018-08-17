@@ -286,8 +286,8 @@ ldap {
 #		cache_attribute = 'LDAP-Cached-Membership'
 
 		#  Override the normal group comparison attribute name
-		#  (<inst>-LDAP-Group or LDAP-Group if using the default instance) .
-#		group_attribute = "${.:instance}-${.:name}-Group"
+		#  (<inst>-Group or LDAP-Group if using the default instance) .
+		group_attribute = "${.:instance}-Group"
 	}
 
 	#
@@ -313,57 +313,6 @@ ldap {
 		#  if authorization is successful.
 #		attribute = 'radiusProfileDn'
 	}
-
-	#
-	#  Bulk load clients from the directory
-	#
-	client {
-		#   Where to start searching in the tree for clients
-		base_dn = "${..base_dn}"
-
-		#
-		#  Filter to match client objects
-		#
-		filter = '(objectClass=radiusClient)'
-
-		# Search scope, may be 'base', 'one', 'sub' or 'children'
-#		scope = 'sub'
-
-		#
-		#  Sets default values (not obtained from LDAP) for new client entries
-		#
-		template {
-#			login				= 'test'
-#			password			= 'test'
-#			proto	 			= tcp
-#			require_message_authenticator	= yes
-		}
-
-		#
-		#  Client attribute mappings are in the format:
-		#      <client attribute> = <ldap attribute>
-		#
-		#  The following attributes are required:
-		#    * ipaddr | ipv4addr | ipv6addr - Client IP Address.
-		#    * secret - RADIUS shared secret.
-		#
-		#  All other attributes usually supported in a client
-		#  definition are also supported here.
-		#
-		#  Schemas are available in doc/schemas/ldap for openldap and eDirectory
-		#
-		attribute {
-			ipaddr				= 'radiusClientIdentifier'
-			secret				= 'radiusClientSecret'
-#			shortname			= 'radiusClientShortname'
-#			nas_type			= 'radiusClientType'
-#			virtual_server			= 'radiusClientVirtualServer'
-#			require_message_authenticator	= 'radiusClientRequireMa'
-		}
-	}
-
-	#  Load clients on startup
-#	read_clients = no
 
 	#
 	#  Modify user object on receiving Accounting-Request
@@ -459,6 +408,14 @@ ldap {
 		#
 #		session_tracking = yes
 
+		#
+		#  SASL Security Properties (see SASL_SECPROPS in ldap.conf man page).
+		#  Note - uncomment when using GSS-API sasl mechanism along with TLS
+		#  encryption against Active-Directory LDAP servers (this disables
+		#  sealing and signing at the GSS level as required by AD).
+		#
+#		sasl_secprops = 'noanonymous,noplain,maxssf=0'
+
 		#  Seconds to wait for LDAP query to finish. default: 20
 		res_timeout = 10
 
@@ -541,10 +498,10 @@ ldap {
 		#  connections during instantiation it will exit.
 		#  Set to 0 to allow the server to start without the
 		#  directory being available.
-		start = ${thread[pool].start_servers}
+		start = ${thread[pool].num_workers}
 
 		#  Minimum number of connections to keep open
-		min = ${thread[pool].min_spare_servers}
+		min = ${thread[pool].num_workers}
 
 		#  Maximum number of connections
 		#
@@ -557,13 +514,13 @@ ldap {
 		#
 		#  Setting 'max' to MORE than the number of threads means
 		#  that there are more connections than necessary.
-		max = ${thread[pool].max_servers}
+		max = ${thread[pool].num_workers}
 
 		#  Spare connections to be left idle
 		#
 		#  NOTE: Idle connections WILL be closed if "idle_timeout"
 		#  is set.  This should be less than or equal to "max" above.
-		spare = ${thread[pool].max_spare_servers}
+		spare = 1
 
 		#  Number of uses before the connection is closed
 		#

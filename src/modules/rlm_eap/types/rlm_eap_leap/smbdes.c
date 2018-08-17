@@ -4,8 +4,8 @@
    a partial implementation of DES designed for use in the
    SMB authentication protocol
 
-   Copyright (C) Andrew Tridgell 1998
-   Copyright 2006 The FreeRADIUS server project
+   @copyright Andrew Tridgell 1998
+   @copyright 2006 The FreeRADIUS server project
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by

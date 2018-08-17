@@ -15,12 +15,10 @@ tacacs.h
 rfc*.h
 tls.h
 vqp.h
-protocol/*
-
-# Symlinks
-util
-radius
 
 # Build scripts
 build-radpaths-h
 stamp-h
+
+# Subdirectories - add exceptions if you need them
+**

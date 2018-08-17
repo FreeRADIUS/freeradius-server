@@ -25,9 +25,11 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
-#include	<freeradius-devel/udp.h>
+#include "list.h"
 
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/udp.h>
+#include <freeradius-devel/server/tcp.h>
 #include <fcntl.h>
 
 /*
@@ -330,7 +332,7 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
 
 	pl = talloc_zero(NULL, fr_packet_list_t);
 	if (!pl) return NULL;
-	pl->tree = rbtree_create(pl, packet_entry_cmp, NULL, 0);
+	pl->tree = rbtree_create(pl, packet_entry_cmp, NULL, 0);	/* elements not talloc safe */
 	if (!pl->tree) {
 		fr_packet_list_free(pl);
 		return NULL;
@@ -758,7 +760,7 @@ int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
  *	FIXME: Add sockfd, if -1, do round-robin, else do sockfd
  *		IF in fdset.
  */
-RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
+RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma)
 {
 	int start;
 	RADIUS_PACKET *packet;
@@ -779,7 +781,8 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 			packet = fr_tcp_recv(pl->sockets[start].sockfd, false);
 		} else
 #endif
-			packet = fr_radius_packet_recv(NULL, pl->sockets[start].sockfd, UDP_FLAGS_NONE, false);
+			packet = fr_radius_packet_recv(NULL, pl->sockets[start].sockfd, UDP_FLAGS_NONE,
+						       max_attributes, require_ma);
 		if (!packet) continue;
 
 		/*

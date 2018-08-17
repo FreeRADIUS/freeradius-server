@@ -17,12 +17,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2012  Alan DeKok <aland@freeradius.org>
+ * @copyright 2012  Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 
 #include	"rlm_sql.h"
 

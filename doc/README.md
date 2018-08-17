@@ -1,6 +1,6 @@
 # Installation
 
-See the `INSTALL` file, in the parent directory.
+See the `INSTALL.md` file, in the parent directory.
 
 # Configuration Files
 
@@ -31,7 +31,7 @@ When asking for help on the users list, be sure the include a
 detailed and clear description of the problem, together with
 full debug output from FreeRADIUS, obtained by running
 
-    $ radiusd -X
+    # radiusd -X
 
 Developers only discussion is to be had on the developers list:
 
@@ -76,10 +76,11 @@ Please do not raise general configuration issues there.
 | Directory			| Description
 |---				|---
 | ``src/``			| Source code
-| ``src/main/``			| Source code for the daemon and associated utilities.
-| ``src/lib/``			| Source code for the RADIUS library.
+| ``src/bin/``			| Source code for the daemon and associated utilities.
+| ``src/lib/``			| Source code for various utility libraries.
 | ``src/include/``		| Header files.
-| ``src/modules/``		| Dynamic plug-in modules
+| ``src/protocols/``		| Dynamic frontend plug-in modules.
+| ``src/modules/``		| Dynamic backend plug-in modules.
 
 # Debugging
 
@@ -87,7 +88,7 @@ If you have ANY problems, concerns, or surprises when running
 the server, then run it in debugging mode, as root, from the
 command line:
 
-    $ radiusd -X
+    # radiusd -X
 
 It will produce a large number of messages.  The answers to many
 questions, and the solution to many problems, can usually be found in
@@ -95,6 +96,6 @@ these messages.
 
 For further details, see:
 
-http://www.freeradius.org/faq/
+https://www.freeradius.org/faq/
 
-and the `bugs.md`  file, in this directory.
+and the `bugs.md` file, in this directory.

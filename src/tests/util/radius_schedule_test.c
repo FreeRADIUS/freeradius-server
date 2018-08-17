@@ -17,19 +17,20 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @copyright 2016  Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")
 
-#include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/inet.h>
-#include <freeradius-devel/radius.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/libradius.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/debug.h>
+#include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <sys/event.h>
 #include <stdio.h>
@@ -64,7 +65,7 @@ static int			my_port;
 static char const		*secret = "testing123";
 static fr_test_packet_ctx_t	tpc;
 
-static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
+static fr_io_final_t test_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
 	return FR_IO_REPLY;
@@ -105,26 +106,26 @@ static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *buff
 	return 20;
 }
 
-static size_t test_nak(void const *ctx, uint8_t *const packet, size_t packet_len, UNUSED uint8_t *reply, UNUSED size_t reply_len)
+static size_t test_nak(void const *ctx, UNUSED void *packet_ctx, uint8_t *const packet, size_t packet_len, UNUSED uint8_t *reply, UNUSED size_t reply_len)
 {
 	MPRINT1("\t\tNAK !!! request %d - data %p %p size %zd\n", packet[1], ctx, packet, packet_len);
 
 	return 10;
 }
 
-static int test_open(void *ctx)
+static int test_open(void *ctx, UNUSED void const *master_ctx)
 {
 	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
 
 	io_ctx->sockfd = fr_socket_server_udp(&io_ctx->ipaddr, &io_ctx->port, NULL, true);
 	if (io_ctx->sockfd < 0) {
-		fprintf(stderr, "radius_test: Failed creating socket: %s\n", fr_strerror());
-		exit(1);
+		fr_perror("radius_test: Failed creating socket");
+		exit(EXIT_FAILURE);
 	}
 
 	if (fr_socket_bind(io_ctx->sockfd, &io_ctx->ipaddr, &io_ctx->port, NULL) < 0) {
-		fprintf(stderr, "radius_test: Failed binding to socket: %s\n", fr_strerror());
-		exit(1);
+		fr_perror("radius_test: Failed binding to socket");
+		exit(EXIT_FAILURE);
 	}
 
 	return 0;
@@ -132,13 +133,14 @@ static int test_open(void *ctx)
 
 static fr_time_t start_time;
 
-static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover)
+static ssize_t test_read(void *ctx, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
 	ssize_t			data_size;
-	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
+	fr_listen_test_t const	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
 
 	tpc.salen = sizeof(tpc.src);
 	*leftover = 0;
+	*is_dup = false;
 
 	data_size = recvfrom(io_ctx->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &tpc.src, &tpc.salen);
 	if (data_size <= 0) return data_size;
@@ -151,13 +153,14 @@ static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, fr_time_t **
 
 	start_time = fr_time();
 	*recv_time = &start_time;
+	*priority = 0;
 
 	return data_size;
 }
 
 
-static ssize_t test_write(void const *ctx, UNUSED void *packet_ctx,  UNUSED fr_time_t request_time,
-			  uint8_t *buffer, size_t buffer_len)
+static ssize_t test_write(void *ctx, UNUSED void *packet_ctx,  UNUSED fr_time_t request_time,
+			  uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	ssize_t			data_size;
 	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
@@ -176,7 +179,7 @@ static ssize_t test_write(void const *ctx, UNUSED void *packet_ctx,  UNUSED fr_t
 
 static int test_fd(void const *ctx)
 {
-	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
+	fr_listen_test_t const *io_ctx = talloc_get_type_abort_const(ctx, fr_listen_test_t);
 
 	return io_ctx->sockfd;
 }
@@ -193,13 +196,13 @@ static fr_app_io_t app_io = {
 	.decode = test_decode
 };
 
-static void process_set(UNUSED void const *ctx, REQUEST *request)
+static void entry_point_set(UNUSED void const *ctx, REQUEST *request)
 {
 	request->async->process = test_process;
 }
 
 static fr_app_t test_app = {
-	.process_set = process_set,
+	.entry_point_set = entry_point_set,
 };
 
 static void NEVER_RETURNS usage(void)
@@ -210,7 +213,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -s <secret>            Set shared secret.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
@@ -219,7 +222,7 @@ int main(int argc, char *argv[])
 	int			num_networks = 1;
 	int			num_workers = 2;
 	uint16_t		port16 = 0;
-	TALLOC_CTX		*autofree = talloc_init("main");
+	TALLOC_CTX		*autofree = talloc_autofree_context();
 	fr_schedule_t		*sched;
 	fr_listen_t		listen = { .app_io = &app_io, .app = &test_app };
 	fr_listen_test_t	*app_io_inst;
@@ -240,8 +243,8 @@ int main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "i:n:s:w:x")) != EOF) switch (c) {
 		case 'i':
 			if (fr_inet_pton_port(&my_ipaddr, &port16, optarg, -1, AF_INET, true, false) < 0) {
-				fprintf(stderr, "Failed parsing ipaddr: %s\n", fr_strerror());
-				exit(1);
+				fr_perror("Failed parsing ipaddr");
+				exit(EXIT_FAILURE);
 			}
 			my_port = port16;
 			break;
@@ -278,13 +281,13 @@ int main(int argc, char *argv[])
 	app_io_inst->ipaddr = my_ipaddr;
 	app_io_inst->port = my_port;
 
-	sched = fr_schedule_create(autofree, NULL, &default_log, num_networks, num_workers, NULL, NULL);
+	sched = fr_schedule_create(autofree, NULL, &default_log, debug_lvl, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
-	if (listen.app_io->open(listen.app_io_instance) < 0) exit(1);
+	if (listen.app_io->open(listen.app_io_instance, listen.app_io_instance) < 0) exit(EXIT_FAILURE);
 
 #if 0
 	/*
@@ -292,19 +295,17 @@ int main(int argc, char *argv[])
 	 */
 	EV_SET(&events[0], sockfd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
 	if (kevent(kq_master, events, 1, NULL, 0, NULL) < 0) {
-		fprintf(stderr, "Failed setting KQ for EVFILT_READ: %s\n", fr_strerror());
-		exit(1);
+		fr_perror("Failed setting KQ for EVFILT_READ");
+		exit(EXIT_FAILURE);
 	}
 #endif
 
-	(void) fr_fault_setup(NULL, argv[0]);
-	(void) fr_schedule_socket_add(sched, &listen);
+	(void) fr_fault_setup(autofree, NULL, argv[0]);
+	(void) fr_schedule_listen_add(sched, &listen);
 
 	sleep(10);
 
 	(void) fr_schedule_destroy(sched);
 
-	talloc_free(autofree);
-
-	return 0;
+	exit(EXIT_SUCCESS);
 }

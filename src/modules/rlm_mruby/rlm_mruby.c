@@ -24,9 +24,9 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "rlm_mruby.h"
 
@@ -57,7 +57,7 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static mrb_value mruby_radlog(mrb_state *mrb, UNUSED mrb_value self)
+static mrb_value mruby_log(mrb_state *mrb, UNUSED mrb_value self)
 {
 	mrb_int level;
 	char *msg = NULL;
@@ -150,8 +150,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	/* Define the radlog method */
-	mrb_define_class_method(mrb, inst->mruby_module, "radlog", mruby_radlog, MRB_ARGS_REQ(2));
+	/* Define the log method */
+	mrb_define_class_method(mrb, inst->mruby_module, "log", mruby_log, MRB_ARGS_REQ(2));
 
 #define A(x) mrb_define_const(mrb, inst->mruby_module, #x, mrb_fixnum_value(x));
 	/* Define the logging constants */
@@ -225,7 +225,7 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 
 		tmp = mrb_ary_new_capa(mrb, 2);
 		if (vp->da->flags.has_tag) {
-			str = talloc_asprintf(request, "%s:%d", vp->da->name, vp->tag);
+			str = talloc_typed_asprintf(request, "%s:%d", vp->da->name, vp->tag);
 			key = mrb_str_new(mrb, str, talloc_array_length(str) - 1);
 			talloc_free(str);
 		} else {
@@ -244,6 +244,9 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 			break;
 
 		case FR_TYPE_BOOL:
+#ifndef NDEBUG
+			to_cast = mrb_nil_value();	/* Not needed but clang flags it */
+#endif
 			break;
 
 		default:
@@ -330,7 +333,8 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		}
 
 		if (RARRAY_LEN(tuple) != 2 && RARRAY_LEN(tuple) != 3) {
-			REDEBUG("add_vp_tuple, %s: array with incorrect length passed at index %i, expected 2 or 3, got %i", function_name, i, RARRAY_LEN(tuple));
+			REDEBUG("add_vp_tuple, %s: array with incorrect length passed at index "
+				"%i, expected 2 or 3, got %"PRId64, function_name, i, RARRAY_LEN(tuple));
 			continue;
 		}
 
@@ -362,7 +366,11 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		}
 		DEBUG("%s: %s %s %s", function_name, ckey, fr_int2str(fr_tokens_table, op, "="), cval);
 
-		if (tmpl_afrom_attr_str(request, &dst, ckey, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
+		if (tmpl_afrom_attr_str(request, &dst, ckey,
+					&(vp_tmpl_rules_t){
+						.dict_def = request->dict,
+						.list_def = PAIR_LIST_REPLY
+					}) <= 0) {
 			ERROR("Failed to find attribute %s", ckey);
 			continue;
 		}
@@ -382,7 +390,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		talloc_free(dst);
 
 		vp->op = op;
-		if (fr_pair_value_from_str(vp, cval, -1) < 0) {
+		if (fr_pair_value_from_str(vp, cval, -1, '\0', false) < 0) {
 			REDEBUG("%s: %s %s %s failed", function_name, ckey, fr_int2str(fr_tokens_table, op, "="), cval);
 		} else {
 			DEBUG("%s: %s %s %s OK", function_name, ckey, fr_int2str(fr_tokens_table, op, "="), cval);
@@ -396,6 +404,8 @@ static inline int mruby_set_vps(REQUEST *request, mrb_state *mrb, mrb_value mrub
 				char const *list_name, VALUE_PAIR **vps)
 {
 	mrb_value res;
+
+	memset(&res, 0, sizeof(res));	/* clang scan */
 
 	if (mruby_vps_to_array(request, &res, mrb, vps) < 0) return -1;
 
@@ -421,7 +431,10 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 		mruby_set_vps(request, mrb, mruby_request, "@proxy_reply", &request->proxy->reply->vps);
 	}
 #endif
+
+DIAG_OFF(class-varargs)
 	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), function_name, 1, mruby_request);
+DIAG_ON(class-varargs)
 
 	/* Two options for the return value:
 	 * - a fixnum: convert to rlm_rcode_t, and return that
@@ -435,11 +448,11 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 		/* If it is a Fixnum: return that value */
 		case MRB_TT_FIXNUM:
 			return (rlm_rcode_t)mrb_int(mrb, mruby_result);
-			break;
+
 		case MRB_TT_ARRAY:
 			/* Must have exactly three items */
 			if (RARRAY_LEN(mruby_result) != 3) {
-				ERROR("Expected array to have exactly three values, got %i instead", RARRAY_LEN(mruby_result));
+				ERROR("Expected array to have exactly three values, got %" PRId64 " instead", RARRAY_LEN(mruby_result));
 				return RLM_MODULE_FAIL;
 			}
 
@@ -461,12 +474,11 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 			add_vp_tuple(request->reply, request, &request->reply->vps, mrb, mrb_ary_entry(mruby_result, 1), function_name);
 			add_vp_tuple(request, request, &request->control, mrb, mrb_ary_entry(mruby_result, 2), function_name);
 			return (rlm_rcode_t)mrb_int(mrb, mrb_ary_entry(mruby_result, 0));
-			break;
+
 		default:
 			/* Invalid return type */
 			ERROR("Expected return to be a Fixnum or an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mruby_result)));
 			return RLM_MODULE_FAIL;
-			break;
 	}
 }
 

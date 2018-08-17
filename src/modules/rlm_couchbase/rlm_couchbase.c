@@ -28,13 +28,13 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_couchbase - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/libradius.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <libcouchbase/couchbase.h>
-#include "../rlm_json/json.h"
+#include <freeradius-devel/json/base.h>
 
 #include "mod.h"
 #include "couchbase.h"
@@ -65,6 +65,26 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_couchbase_dict[];
+fr_dict_autoload_t rlm_couchbase_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_acct_status_type;
+fr_dict_attr_t const *attr_acct_session_time;
+fr_dict_attr_t const *attr_event_timestamp;
+
+extern fr_dict_attr_autoload_t rlm_couchbase_dict_attr[];
+fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_session_time, .name = "Acct-Session-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius },
+	{ NULL }
+};
+
 /** Handle authorization requests using Couchbase document data
  *
  * Attempt to fetch the document assocaited with the requested user by
@@ -79,13 +99,13 @@ static const CONF_PARSER module_config[] = {
  */
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_couchbase_t const *inst = instance;       /* our module instance */
-	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
-	char buffer[MAX_KEY_SIZE];
-	char const *dockey;            		/* our document key */
-	lcb_error_t cb_error = LCB_SUCCESS;     /* couchbase error holder */
-	rlm_rcode_t rcode = RLM_MODULE_OK;      /* return code */
-	ssize_t slen;
+	rlm_couchbase_t const	*inst = instance;		/* our module instance */
+	rlm_couchbase_handle_t	*handle = NULL;			/* connection pool handle */
+	char			buffer[MAX_KEY_SIZE];
+	char const		*dockey;			/* our document key */
+	lcb_error_t		cb_error = LCB_SUCCESS;		/* couchbase error holder */
+	rlm_rcode_t		rcode = RLM_MODULE_OK;		/* return code */
+	ssize_t			slen;
 
 	/* assert packet as not null */
 	rad_assert(request->packet != NULL);
@@ -126,14 +146,67 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	/* debugging */
 	RDEBUG3("parsed user document == %s", json_object_to_json_string(cookie->jobj));
 
-	/* inject config value pairs defined in this json oblect */
-	mod_json_object_to_value_pairs(cookie->jobj, "config", request);
+	{
+		TALLOC_CTX	*pool = talloc_pool(request, 1024);	/* We need to do lots of allocs */
+		fr_cursor_t	maps, vlms;
+		vp_map_t	*map_head = NULL, *map;
+		vp_list_mod_t	*vlm_head = NULL, *vlm;
 
-	/* inject reply value pairs defined in this json oblect */
-	mod_json_object_to_value_pairs(cookie->jobj, "reply", request);
+		fr_cursor_init(&maps, &map_head);
 
-	finish:
+		/*
+		 *	Convert JSON data into maps
+		 */
+		if ((mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_CONTROL) < 0) ||
+		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_REPLY) < 0) ||
+		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_REQUEST) < 0) ||
+		    (mod_json_object_to_map(pool, &maps, request, cookie->jobj, PAIR_LIST_STATE) < 0)) {
+		invalid:
+			talloc_free(pool);
+			rcode = RLM_MODULE_INVALID;
+			goto finish;
+		}
 
+		fr_cursor_init(&vlms, &vlm_head);
+
+		/*
+		 *	Convert all the maps into list modifications,
+		 *	which are guaranteed to succeed.
+		 */
+		for (map = fr_cursor_head(&maps);
+		     map;
+		     map = fr_cursor_next(&maps)) {
+			if (map_to_list_mod(pool, &vlm, request, map, NULL, NULL) < 0) goto invalid;
+			fr_cursor_insert(&vlms, vlm);
+		}
+
+		if (!vlm_head) {
+			RDEBUG2("Nothing to update");
+			talloc_free(pool);
+			rcode = RLM_MODULE_NOOP;
+			goto finish;
+		}
+
+		/*
+		 *	Apply the list of modifications
+		 */
+		for (vlm = fr_cursor_head(&vlms);
+		     vlm;
+		     vlm = fr_cursor_next(&vlms)) {
+			int ret;
+
+			ret = map_list_mod_apply(request, vlm);	/* SHOULD NOT FAIL */
+			if (!fr_cond_assert(ret == 0)) {
+				talloc_free(pool);
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
+		}
+
+		talloc_free(pool);
+	}
+
+finish:
 	/* free json object */
 	if (cookie->jobj) {
 		json_object_put(cookie->jobj);
@@ -141,9 +214,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	}
 
 	/* release handle */
-	if (handle) {
-		fr_pool_connection_release(inst->pool, request, handle);
-	}
+	if (handle) fr_pool_connection_release(inst->pool, request, handle);
 
 	/* return */
 	return rcode;
@@ -183,7 +254,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	rad_assert(request->packet != NULL);
 
 	/* sanity check */
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY)) == NULL) {
+	if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY)) == NULL) {
 		/* log debug */
 		RDEBUG("could not find status type in packet");
 		/* return */
@@ -263,7 +334,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	switch (status) {
 	case FR_STATUS_START:
 		/* add start time */
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "startTimestamp",
 					       mod_value_pair_to_json_object(request, vp));
@@ -272,7 +343,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 
 	case FR_STATUS_STOP:
 		/* add stop time */
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "stopTimestamp",
 					       mod_value_pair_to_json_object(request, vp));

@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2002  Axis Communications AB
- * Copyright 2006  The FreeRADIUS server project
+ * @copyright 2002  Axis Communications AB
+ * @copyright 2006  The FreeRADIUS server project
  * Authors: Henrik Eriksson <henriken@axis.com> & Lars Viklund <larsv@axis.com>
  */
 
@@ -28,9 +28,12 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <string.h>
 
-#include "eap_tls.h"
+
 #include <openssl/hmac.h>
-#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/util/sha1.h>
+#include "eap_tls.h"
+#include "eap_base.h"
+#include "eap_attrs.h"
 
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
@@ -227,12 +230,12 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 
 	RDEBUG2("Adding session keys");
 	p = out;
-	eap_add_reply(request, "MS-MPPE-Recv-Key", p, EAP_TLS_MPPE_KEY_LEN);
+	eap_add_reply(request, attr_ms_mppe_recv_key, p, EAP_TLS_MPPE_KEY_LEN);
 	p += EAP_TLS_MPPE_KEY_LEN;
-	eap_add_reply(request, "MS-MPPE-Send-Key", p, EAP_TLS_MPPE_KEY_LEN);
+	eap_add_reply(request, attr_ms_mppe_send_key, p, EAP_TLS_MPPE_KEY_LEN);
 
-	eap_add_reply(request, "EAP-MSK", out, 64);
-	eap_add_reply(request, "EAP-EMSK", out + 64, 64);
+	eap_add_reply(request, attr_eap_msk, out, 64);
+	eap_add_reply(request, attr_eap_emsk, out + 64, 64);
 }
 
 
@@ -301,20 +304,21 @@ void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_
  *	Actually generates EAP-Session-Id, which is an internal server
  *	attribute.  Not all systems want to send EAP-Key-Name
  */
-void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
+void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *ssl, uint32_t header)
 {
 	VALUE_PAIR *vp;
-	uint8_t *p;
+	uint8_t *buff, *p;
 
-	vp = fr_pair_afrom_num(packet, 0, FR_EAP_SESSION_ID);
+	vp = fr_pair_afrom_da(packet, attr_eap_session_id);
 	if (!vp) return;
 
-	p = talloc_array(vp, uint8_t, 1 + 2 * SSL3_RANDOM_SIZE);
-	p[0] = header & 0xff;
+	MEM(buff = p = talloc_array(vp, uint8_t, 1 + (2 * SSL3_RANDOM_SIZE)));
+	*p++ = header & 0xff;
 
-	SSL_get_client_random(s, p + 1, SSL3_RANDOM_SIZE);
-	SSL_get_server_random(s, p + 1 + SSL3_RANDOM_SIZE, SSL3_RANDOM_SIZE);
+	SSL_get_client_random(ssl, p, SSL3_RANDOM_SIZE);
+	p += SSL3_RANDOM_SIZE;
+	SSL_get_server_random(ssl, p, SSL3_RANDOM_SIZE);
 
-	fr_pair_value_memsteal(vp, p);
+	fr_pair_value_memsteal(vp, buff);
 	fr_pair_add(&packet->vps, vp);
 }

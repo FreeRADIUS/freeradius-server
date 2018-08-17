@@ -297,7 +297,6 @@ ATTRIBUTE	SN-WSG-MIP-Simple-IP-Fallback		318	integer
 ATTRIBUTE	SN-WLAN-AP-Identifier			319	octets
 ATTRIBUTE	SN-WLAN-UE-Identifier			320	octets
 
-
 ATTRIBUTE	SNA-PPP-Ctrl-Input-Octets		1001	integer
 ATTRIBUTE	SNA-PPP-Ctrl-Output-Octets		1002	integer
 ATTRIBUTE	SNA-PPP-Ctrl-Input-Packets		1003	integer

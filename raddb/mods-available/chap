@@ -2,10 +2,11 @@
 #
 #  $Id$
 
-# CHAP module
 #
-#  To authenticate requests containing a CHAP-Password attribute.
+#  CHAP module
+#
+#  This module authenticates requests containing a CHAP-Password
+#  attribute. There is no configuration.
 #
 chap {
-	# no configuration
 }

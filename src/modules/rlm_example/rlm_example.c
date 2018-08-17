@@ -24,9 +24,9 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 /*
  *	Define a structure for our module configuration.
@@ -51,6 +51,27 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("string", FR_TYPE_STRING, rlm_example_t, string) },
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, rlm_example_t, ipaddr), .dflt = "*" },
 	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_example_dict[];
+fr_dict_autoload_t rlm_example_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_reply_message;
+static fr_dict_attr_t const *attr_state;
+
+extern fr_dict_attr_autoload_t rlm_example_dict_attr[];
+fr_dict_attr_autoload_t rlm_example_dict_attr[] = {
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+
+	{ NULL }
 };
 
 static int rlm_example_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
@@ -82,8 +103,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	paircompare_register_byname("Example-Paircmp", fr_dict_attr_by_num(NULL, 0, FR_USER_NAME), false,
-				    rlm_example_cmp, inst);
+	if (paircmp_register_by_name("Example-Paircmp", attr_user_name, false, rlm_example_cmp, inst) < 0) {
+		return -1;
+	}
 
 	return 0;
 }
@@ -96,22 +118,22 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	VALUE_PAIR *state;
+	VALUE_PAIR *vp;
 
 	/*
 	 *  Look for the 'state' attribute.
 	 */
-	state = fr_pair_find_by_num(request->packet->vps, 0, FR_STATE, TAG_ANY);
-	if (state != NULL) {
+	vp = fr_pair_find_by_da(request->packet->vps, attr_state, TAG_ANY);
+	if (vp != NULL) {
 		RDEBUG("Found reply to access challenge");
 		return RLM_MODULE_OK;
 	}
 
-	/*
-	 *  Create the challenge, and add it to the reply.
-	 */
-	pair_make_reply("Reply-Message", "This is a challenge", T_OP_EQ);
-	pair_make_reply("State", "0", T_OP_EQ);
+	MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
+	if (vp->vp_length == 0) fr_pair_value_strcpy(vp, "This is a challenge");
+
+	MEM(pair_add_reply(&vp, attr_state) >= 0);
+	fr_pair_value_memcpy(vp, (uint8_t *){ 0x00 }, 1);
 
 	/*
 	 *  Mark the packet as an Access-Challenge packet.

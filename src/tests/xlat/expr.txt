@@ -1,6 +1,3 @@
-xlat %{md5:This is a string\n}
-data 9ac4dbbc3c0ad2429e61d0df5dc28add
-
 xlat %{expr: 1 + 2 + 3 + 4}
 data 10
 

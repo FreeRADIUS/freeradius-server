@@ -91,7 +91,7 @@ $(CONFIG_PATH)/dictionary:
 	${Q}echo "# test dictionary not install.  Delete at any time." > $@
 	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> $@
 	${Q}echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcp >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcpv4 >> $@
 	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> $@
 
 $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary src/tests/eapol_test/all.mk

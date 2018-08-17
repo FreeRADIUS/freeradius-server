@@ -14,17 +14,22 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/strerror.c
- * @brief Support functions to allow libraries to provide errors to their callers.
+/** Support functions to allow libraries to provide errors to their callers
+ *
+ * @file src/lib/util/strerror.c
  *
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
-#include <freeradius-devel/cursor.h>
+#include "strerror.h"
+
+#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/thread_local.h>
+
+#include <stdbool.h>
 
 #define FR_STRERROR_BUFSIZE (2048)
 
@@ -49,6 +54,10 @@ typedef struct {
 } fr_log_buffer_t;
 
 fr_thread_local_setup(fr_log_buffer_t *, fr_strerror_buffer)	/* macro */
+static _Thread_local bool logging_stop;	//!< Due to ordering issues we may get errors being
+					///< logged from within other thread local destructors
+					///< which cause a crash on exit if the logging buffer
+					///< has already been freed.
 
 /*
  *	Explicitly cleanup the memory allocated to the error buffer,
@@ -56,7 +65,15 @@ fr_thread_local_setup(fr_log_buffer_t *, fr_strerror_buffer)	/* macro */
  */
 static void _fr_logging_free(void *arg)
 {
+	/*
+	 *	Free arg instead of thread local storage
+	 *	as address sanitizer does a better job
+	 *	of tracking and doesn't report a leak.
+	 */
 	talloc_free(arg);
+	fr_strerror_buffer = NULL;
+
+	logging_stop = true;
 }
 
 /** Reset cursor state
@@ -76,6 +93,8 @@ static inline void fr_strerror_clear(fr_log_buffer_t *buffer)
 static inline fr_log_buffer_t *fr_strerror_init(void)
 {
 	fr_log_buffer_t *buffer;
+
+	if (logging_stop) return NULL;	/* No more logging */
 
 	buffer = fr_strerror_buffer;
 	if (!buffer) {
@@ -216,6 +235,7 @@ char const *fr_strerror(void)
 	buffer = fr_strerror_buffer;
 	if (!buffer) return "";
 
+	fr_cursor_head(&buffer->cursor);
 	entry = fr_cursor_remove(&buffer->cursor);
 	if (!entry) return "";
 
@@ -224,6 +244,24 @@ char const *fr_strerror(void)
 	 *	fr_strerror_printf or fr_strerror_printf_push.
 	 */
 	fr_strerror_clear(buffer);
+
+	return entry->msg;
+}
+
+/** Get the last library error
+ *
+ * @return library error or zero length string.
+ */
+char const *fr_strerror_peek(void)
+{
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_buffer;
+	if (!buffer) return "";
+
+	entry = fr_cursor_head(&buffer->cursor);
+	if (!entry) return "";
 
 	return entry->msg;
 }
@@ -247,6 +285,7 @@ char const *fr_strerror_pop(void)
 	buffer = fr_strerror_buffer;
 	if (!buffer) return NULL;
 
+	fr_cursor_head(&buffer->cursor);
 	entry = fr_cursor_remove(&buffer->cursor);
 	if (!entry) return NULL;
 
@@ -271,7 +310,7 @@ void fr_perror(char const *fmt, ...)
 	if (error && (error[0] != '\0')) {
 		fprintf(stderr, "%s: %s\n", prefix, error);
 	} else {
-		fprintf(stderr, "%s\n", prefix, stderr);
+		fprintf(stderr, "%s\n", prefix);
 		talloc_free(prefix);
 		return;
 	}
@@ -289,15 +328,16 @@ void fr_perror(char const *fmt, ...)
  */
 void fr_strerror_free(void)
 {
-	talloc_free(fr_strerror_buffer);
+	TALLOC_FREE(fr_strerror_buffer);
+	logging_stop = true;
 }
 
 #ifdef TESTING_STRERROR
 /*
- *  cc strerror.c cursor.c -g3 -Wall -DTESTING_STRERROR -L/usr/local/lib -I/usr/local/include -I../../ -I../ -include ../include/build.h -l talloc -o test_strerror && ./test_strerror
+ *  cc strerror.c -g3 -Wall -DTESTING_STRERROR -L/usr/local/lib -L ../../../build/lib/local/.libs/ -lfreeradius-util -I/usr/local/include -I../../ -I../ -include ../include/build.h -l talloc -o test_strerror && ./test_strerror
  */
 #include <stddef.h>
-#include <freeradius-devel/cutest.h>
+#include <freeradius-devel/util/cutest.h>
 
 void test_strerror_uninit(void)
 {
@@ -436,6 +476,22 @@ void test_strerror_printf_push_append(void)
 	TEST_CHECK(error[0] == '\0');
 }
 
+void test_strerror_printf_push_append2(void)
+{
+	char const *error;
+
+	fr_strerror_printf_push("Testing %i", 1);
+	fr_strerror_printf("%s Testing %i", fr_strerror_pop(), 2);
+
+	error = fr_strerror();
+	TEST_CHECK(error != NULL);
+	TEST_CHECK(strcmp(error, "Testing 1 Testing 2") == 0);
+
+	error = fr_strerror();
+	TEST_CHECK(error != NULL);
+	TEST_CHECK(error[0] == '\0');
+}
+
 TEST_LIST = {
 	{ "test_strerror_uninit",			test_strerror_uninit },
 	{ "test_strerror_pop_uninit",			test_strerror_pop_uninit },
@@ -448,6 +504,7 @@ TEST_LIST = {
 	{ "test_strerror_printf_push_strerror_multi",	test_strerror_printf_push_strerror_multi },
 	{ "test_strerror_printf_strerror_append",	test_strerror_printf_strerror_append },
 	{ "test_strerror_printf_push_append",		test_strerror_printf_push_append },
+	{ "test_strerror_printf_push_append2",		test_strerror_printf_push_append2 },
 
 	{ 0 }
 };

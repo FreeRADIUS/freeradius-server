@@ -38,6 +38,17 @@ else
     Q=
 endif
 
+#
+#  If you want HTML output of the scanner to be rendered to the terminal:
+#
+#	$ ANALYZE_C_DUMP=1 make ... args ...
+#
+ifeq "${ANALYZE_C_DUMP}" ""
+    ANALYZE_C_DUMP=false
+else
+    ANALYZE_C_DUMP=true
+endif
+
 # ADD_CLEAN_RULE - Parameterized "function" that adds a new rule and phony
 #   target for cleaning the specified target (removing its build-generated
 #   files).
@@ -202,6 +213,9 @@ define ADD_TARGET_RULE.exe
     ifneq "${ANALYZE.c}" ""
         scan.${1}: $${${1}_PLISTS}
     endif
+
+    .PHONY: $(DIR)
+    $(DIR)/: ${1}
 endef
 
 # ADD_TARGET_RULE.a - Build a static library target.
@@ -223,6 +237,9 @@ define ADD_TARGET_RULE.a
     ifneq "${ANALYZE.c}" ""
         scan.${1}: $${${1}_PLISTS}
     endif
+
+    .PHONY: $(DIR)
+    $(DIR)/: ${1}
 endef
 
 # ADD_TARGET_RULE.so - Build a ".so" target.
@@ -290,6 +307,7 @@ define ANALYZE_C_CMDS
 	$(Q)$(ECHO) SCAN $<
 	$(Q)$(strip ${ANALYZE.c} --analyze -Xanalyzer -analyzer-output=html -c $< -o $@ ${CPPFLAGS} \
 	    ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
+	$(Q)if $(ANALYZE_C_DUMP) && which lynx > /dev/null && test -d "$@"; then lynx -width=200 -dump $@/*.html; fi
 	$(Q)touch $@
 endef
 
@@ -322,6 +340,7 @@ define INCLUDE_SUBMAKEFILE
     TGT_CHECK_LIBS :=
 
     SOURCES :=
+    HEADERS :=
     SRC_CFLAGS :=
     SRC_CXXFLAGS :=
     SRC_DEFS :=
@@ -417,6 +436,7 @@ define INCLUDE_SUBMAKEFILE
 
         # Save the list of source files for this target.
         $${TGT}_SOURCES += $${SOURCES}
+        $${TGT}_HEADERS += $${HEADERS}
 
         # Convert the source file names to their corresponding object file
         # names.
@@ -487,6 +507,12 @@ define INCLUDE_SUBMAKEFILE
 
         # add rules to build the target
         $$(eval $$(call ADD_TARGET_RULE$${$${TGT}_SUFFIX},$${TGT}))
+
+        # add rules to install the header files
+	ifneq "${HEADERS}" ""
+	  $(foreach h, ${HEADERS},\
+	    $(eval $(call ADD_INSTALL_RULE.h,${h},src/include/${h})))
+        endif
 
         # generate the clean rule for this target.
         $$(eval $$(call ADD_CLEAN_RULE,$${TGT}))
@@ -655,7 +681,6 @@ endif
 # Build rules for installation subdirectories
 $(foreach D,$(patsubst %/,%,$(sort $(dir ${ALL_INSTALL}))),\
   $(eval $(call ADD_INSTALL_RULE.dir,${D})))
-
 
 scan: ${ALL_PLISTS}
 

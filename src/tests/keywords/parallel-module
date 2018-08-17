@@ -1,0 +1,12 @@
+#
+#  PRE: parallel
+#
+parallel {
+	ok
+	ok
+	ok
+	return
+	ok
+}
+
+success

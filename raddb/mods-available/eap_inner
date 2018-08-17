@@ -64,9 +64,31 @@ eap inner-eap {
 	#  In the case of PEAP it also allows SoH with client certificates.
 	#
 	tls-config tls-peer {
-		private_key_password = whatever
-		private_key_file = ${certdir}/server.key
-		certificate_file = ${certdir}/server.pem
+		#
+		#  OpenSSL will automatically create certificate chains, unless
+		#  we tell it to not do that.  The problem is that it sometimes
+		#  gets the chains right from a certificate signature view, but
+		#  wrong from the clients view.
+		#
+		#  When setting "auto_chain = no", the server chain {} stanza(s)
+		#  below MUST include the full certificate chain.
+		#
+#		auto_chain = yes
+
+		#
+		#  Multiple chain sections can be specified to allow
+		#  different chains for different key types (RSA, DSA, EC).
+		#
+		#  If multiple chains for the same key type are specified
+		#  the last chain to be processed will be used for that
+		#  key type.
+		#
+		chain {
+			certificate_file = ${certdir}/rsa/server.pem
+			ca_file = ${certdir}/rsa/ca.pem
+			private_key_password = whatever
+			private_key_file = ${certdir}/rsa/server.key
+		}
 
 		#
 		#  Trusted Root CA list
@@ -78,18 +100,7 @@ eap inner-eap {
 		#  set to a certificate chain for your institution's CA
 		#  or a self signed Root CA.
 		#
-		ca_file = ${cadir}/ca.pem
-
-		#
-		#  OpenSSL will automatically create certificate chains, unless
-		#  we tell it to not do that.  The problem is that it sometimes
-		#  gets the chains right from a certificate signature view, but
-		#  wrong from the clients view.
-		#
-		#  When setting "auto_chain = no", the server certificate file
-		#  MUST include the full certificate chain.
-		#
-#		auto_chain = yes
+		ca_file = ${cadir}/rsa/ca.pem
 
 		#
 		#  For DH cipher suites to work, you have to run OpenSSL to
@@ -127,12 +138,25 @@ eap inner-eap {
 		ca_path = ${cadir}
 #		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 #		check_cert_cn = %{User-Name}
+
+		# Accept an expired Certificate Revocation List
+		#
+#		allow_expired_crl = no
 	}
 
 	## EAP-TLS
 	#
 	#  You SHOULD use different certificates than are used
 	#  for the outer EAP configuration!
+	#
+	#  You can create the "inner-server.pem" file by doing:
+	#
+	#       cd raddb/certs
+	#       vi inner-server.cnf
+	#       make inner-server
+	#
+	#  The certificate MUST be different from the "server.cnf"
+	#  file.
 	#
 	#  Support for PEAP/TLS and RFC 5176 TLS/TLS is experimental.
 	#  It might work, or it might not.

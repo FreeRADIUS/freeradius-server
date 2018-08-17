@@ -1,0 +1,55 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 2 (0x2)
+        Signature Algorithm: ecdsa-with-SHA1
+        Issuer: C=FR, ST=Radius, L=Somewhere, O=Example Inc/emailAddress=admin@example.org, CN=Example Certificate Authority
+        Validity
+            Not Before: Mar 24 20:00:59 2018 GMT
+            Not After : Mar 24 20:00:59 2019 GMT
+        Subject: C=FR, ST=Radius, O=Example Inc, CN=Example Server Certificate/emailAddress=admin@example.org
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+            EC Public Key:
+                pub:
+                    04:b0:3b:4d:78:cd:c2:d4:c7:5b:10:f0:41:c4:d1:
+                    7a:59:fb:8c:ea:07:ec:32:9f:b7:cd:c9:50:4c:7c:
+                    4a:b2:ee:6e:d6:68:6d:31:42:97:4c:75:4d:c4:f5:
+                    7b:a4:f1:c8:d9:c5:fb:c4:a6:48:15:ac:0d:4c:f5:
+                    d6:c6:81:05:34
+                ASN1 OID: prime256v1
+        X509v3 extensions:
+            X509v3 Basic Constraints:
+                CA:FALSE
+            X509v3 Key Usage:
+                Digital Signature, Non Repudiation, Key Encipherment
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication
+            X509v3 CRL Distribution Points:
+                URI:http://www.example.com/example_ca.crl
+
+            Authority Information Access:
+                OCSP - URI:http://www.example.org/ocsp
+
+    Signature Algorithm: ecdsa-with-SHA1
+        30:46:02:21:00:fd:56:bc:41:24:9a:bb:11:5b:82:83:7c:8a:
+        8b:f9:29:4a:a4:d7:2f:d1:9c:93:c5:ab:65:19:0b:56:07:77:
+        03:02:21:00:da:53:26:d3:30:70:6a:6a:98:6e:ed:c4:4a:c6:
+        8b:4f:de:cf:30:b9:9d:1f:e6:8d:ec:60:ef:9b:6a:a1:e4:bc
+-----BEGIN CERTIFICATE-----
+MIICnjCCAkSgAwIBAgIBAjAJBgcqhkjOPQQBMIGSMQswCQYDVQQGEwJGUjEPMA0G
+A1UECAwGUmFkaXVzMRIwEAYDVQQHDAlTb21ld2hlcmUxFDASBgNVBAoMC0V4YW1w
+bGUgSW5jMSAwHgYJKoZIhvcNAQkBFhFhZG1pbkBleGFtcGxlLm9yZzEmMCQGA1UE
+AwwdRXhhbXBsZSBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkwHhcNMTgwMzI0MjAwMDU5
+WhcNMTkwMzI0MjAwMDU5WjB7MQswCQYDVQQGEwJGUjEPMA0GA1UECAwGUmFkaXVz
+MRQwEgYDVQQKDAtFeGFtcGxlIEluYzEjMCEGA1UEAwwaRXhhbXBsZSBTZXJ2ZXIg
+Q2VydGlmaWNhdGUxIDAeBgkqhkiG9w0BCQEWEWFkbWluQGV4YW1wbGUub3JnMFkw
+EwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsDtNeM3C1MdbEPBBxNF6WfuM6gfsMp+3
+zclQTHxKsu5u1mhtMUKXTHVNxPV7pPHI2cX7xKZIFawNTPXWxoEFNKOBoTCBnjAJ
+BgNVHRMEAjAAMAsGA1UdDwQEAwIF4DATBgNVHSUEDDAKBggrBgEFBQcDATA2BgNV
+HR8ELzAtMCugKaAnhiVodHRwOi8vd3d3LmV4YW1wbGUuY29tL2V4YW1wbGVfY2Eu
+Y3JsMDcGCCsGAQUFBwEBBCswKTAnBggrBgEFBQcwAYYbaHR0cDovL3d3dy5leGFt
+cGxlLm9yZy9vY3NwMAkGByqGSM49BAEDSQAwRgIhAP1WvEEkmrsRW4KDfIqL+SlK
+pNcv0ZyTxatlGQtWB3cDAiEA2lMm0zBwamqYbu3ESsaLT97PMLmdH+aN7GDvm2qh
+5Lw=
+-----END CERTIFICATE-----

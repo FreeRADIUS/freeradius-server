@@ -23,35 +23,50 @@
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)
  */
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/dict.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/server/rad_assert.h>
 
-static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t proto_radius_status_dict[];
+fr_dict_autoload_t proto_radius_status_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_packet_type;
+
+extern fr_dict_attr_autoload_t proto_radius_status_dict_attr[];
+fr_dict_attr_autoload_t proto_radius_status_dict_attr[] = {
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
+};
+
+static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
-	fr_dict_attr_t const *da = NULL;
 	VALUE_PAIR *vp;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	/*
 	 *	Pass this through asynchronously to the module which
 	 *	is waiting for something to happen.
 	 */
 	if (action != FR_IO_ACTION_RUN) {
-		unlang_signal(request, FR_ACTION_DONE);
+		unlang_signal(request, (fr_state_signal_t) action);
 		return FR_IO_DONE;
 	}
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
-			       fr_packet_codes[request->packet->code], request->packet->id);
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
+		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "radius";
 
@@ -63,7 +78,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		}
 
 		RDEBUG("Running 'recv Status-Server' from file %s", cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+		unlang_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
 		/* FALL-THROUGH */
@@ -97,13 +112,10 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 		if (vp) request->reply->code = vp->vp_uint32;
 
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-		rad_assert(da != NULL);
-
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
 
@@ -111,7 +123,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+		unlang_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_SEND;
 		/* FALL-THROUGH */
@@ -139,15 +151,12 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			 *	the NAK section.
 			 */
 			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
-				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-				rad_assert(da != NULL);
-
-				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
-				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'.", dv->alias);
+				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'", dv->alias);
 
 				request->reply->code = FR_CODE_ACCESS_REJECT;
 
-				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
@@ -172,23 +181,10 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 *	This is an internally generated request.  Don't print IP addresses.
 		 */
 		if (request->parent) {
-			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
-				       fr_packet_codes[request->reply->code], request->reply->id);
-			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+			RDEBUG("Sent %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
+			log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 			return FR_IO_DONE;
 		}
-
-#ifdef WITH_UDPFROMTO
-		/*
-		 *	Overwrite the src ip address on the outbound packet
-		 *	with the one specified by the client.
-		 *	This is useful to work around broken DSR implementations
-		 *	and other routing issues.
-		 */
-		if (request->client && (request->client->src_ipaddr.af != AF_UNSPEC)) {
-			request->reply->src_ipaddr = request->client->src_ipaddr;
-		}
-#endif
 
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 		break;
@@ -201,46 +197,9 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 }
 
 
-/*
- *	Ensure that the "recv foo" etc. sections are compiled.
- */
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
-{
-	int rcode;
-	CONF_SECTION *server_cs;
-
-	rad_assert(listen_cs);
-
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	rcode = unlang_compile_subsection(server_cs, "recv", "Status-Server", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'recv Status-Server { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	return 0;
-}
-
-extern fr_app_process_t proto_radius_status;
-fr_app_process_t proto_radius_status = {
+extern fr_app_worker_t proto_radius_status;
+fr_app_worker_t proto_radius_status = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_status",
-	.instantiate	= mod_instantiate,
-	.process	= mod_process,
+	.entry_point	= mod_process,
 };

@@ -17,9 +17,9 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Mike Machado <mike@innercite.com>
- * Copyright 2000  Alan DeKok <aland@ox.org>
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Mike Machado <mike@innercite.com>
+ * @copyright 2000  Alan DeKok <aland@ox.org>
  */
 
 /*
@@ -41,8 +41,8 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_sql_postgresql - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <sys/stat.h>
 
@@ -385,7 +385,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	p = PQerrorMessage(conn->db);
 	while ((q = strchr(p, '\n'))) {
 		out[i].type = L_ERR;
-		out[i].msg = talloc_asprintf(ctx, "%.*s", (int) (q - p), p);
+		out[i].msg = talloc_typed_asprintf(ctx, "%.*s", (int) (q - p), p);
 		p = q + 1;
 		if (++i == outlen) return outlen;
 	}
@@ -446,7 +446,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		if (!name) name = cf_section_name1(cs);
 
 		snprintf(application_name, sizeof(application_name),
-			 "FreeRADIUS " RADIUSD_VERSION_STRING " - %s (%s)", main_config.name, name);
+			 "FreeRADIUS " RADIUSD_VERSION_STRING " - %s (%s)", main_config->name, name);
 	}
 
 	/*

@@ -1,3 +1,4 @@
+#pragma once
 /*
  * eap.h    Header file containing the interfaces for all EAP types.
  *
@@ -17,23 +18,23 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * Copyright 2003  Alan DeKok <aland@freeradius.org>
- * Copyright 2006  The FreeRADIUS server project
+ * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2003  Alan DeKok <aland@freeradius.org>
+ * @copyright 2006  The FreeRADIUS server project
  */
-#ifndef _EAP_H
-#define _EAP_H
-
 RCSIDH(eap_h, "$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
+#include "lib/base/eap_base.h"
 #include "eap_types.h"
 
 /* TLS configuration name */
 #define TLS_CONFIG_SECTION "tls-config"
+
+#define MAX_PROVIDED_METHODS	10
 
 /** Contains a pair of request and response packets
  *
@@ -42,10 +43,8 @@ RCSIDH(eap_h, "$Id$")
 typedef struct eap_round {
 	eap_packet_t	*response;			//!< Packet we received from the peer.
 	eap_packet_t	*request;			//!< Packet we will send to the peer.
-	bool		set_request_id;
+	bool		set_request_id;			//!< Whether the EAP-Method already set the next request ID.
 } eap_round_t;
-
-typedef struct _eap_session eap_session_t;
 
 /*
  *	Function to process EAP packets.
@@ -93,11 +92,14 @@ struct _eap_session {
 typedef struct rlm_eap_submodule {
 	RAD_MODULE_COMMON;					//!< Common fields to all loadable modules.
 
+	eap_type_t		provides[MAX_PROVIDED_METHODS];	//!< Allow the module to register itself for more
+								///< than one EAP-Method.
+
 	module_instantiate_t	bootstrap;			//!< Register any attributes required for the module
-								//!< to function, and perform library intit.
+
 	module_instantiate_t	instantiate;			//!< Create a new submodule instance.
 	eap_process_t		session_init;			//!< Callback for creating a new #eap_session_t.
-	eap_process_t		process;			//!< Callback for processing the next #eap_round_t of an
+	eap_process_t		entry_point;			//!< Callback for processing the next #eap_round_t of an
 								//!< #eap_session_t.
 } rlm_eap_submodule_t;
 
@@ -117,8 +119,3 @@ typedef struct eap_tunnel_data_t {
 	void			*tls_session;
 	eap_tunnel_callback_t	callback;
 } eap_tunnel_data_t;
-
-rlm_rcode_t	eap_virtual_server(REQUEST *request, REQUEST *fake,
-				   eap_session_t *eap_session, char const *virtual_server);
-
-#endif /*_EAP_H*/

@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,14 +24,10 @@
  * @author Aaron Hurt <ahurt@anbcs.com>
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
-
-#ifndef _couchbase_h_
-#define _couchbase_h_
-
 RCSIDH(couchbase_h, "$Id$")
 
 #include <libcouchbase/couchbase.h>
-#include "../rlm_json/json.h"
+#include <freeradius-devel/json/base.h>
 
 /** Information relating to the parsing of Couchbase document payloads
  *
@@ -38,9 +35,9 @@ RCSIDH(couchbase_h, "$Id$")
  * Couchbase document payloads.
  */
 typedef struct cookie_t {
-	json_object *jobj;              //!< JSON objects handled by the json-c library.
-	json_tokener *jtok;             //!< JSON tokener objects handled by the json-c library.
-	enum json_tokener_error jerr;   //!< Error values produced by the json-c library.
+	json_object		*jobj;	//!< JSON objects handled by the json-c library.
+	json_tokener		*jtok;	//!< JSON tokener objects handled by the json-c library.
+	enum json_tokener_error	jerr;   //!< Error values produced by the json-c library.
 } cookie_t;
 
 /** Union of constant and non-constant pointers
@@ -52,6 +49,10 @@ typedef union cookie_u {
 	const void *cdata;    //!< Constant pointer to cookie payload (@p cookie_t).
 	void *data;           //!< Non-constant pointer to data payload (@p cookie_t).
 } cookie_u;
+
+extern fr_dict_attr_t const *attr_acct_status_type;
+extern fr_dict_attr_t const *attr_acct_session_time;
+extern fr_dict_attr_t const *attr_event_timestamp;
 
 /* couchbase statistics callback */
 void couchbase_stat_callback(lcb_t instance, const void *cookie, lcb_error_t error,
@@ -84,5 +85,3 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
 
 /* query a couchbase view via http */
 lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char *path, const char *post);
-
-#endif /* _couchbase_h_ */
