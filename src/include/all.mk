@@ -108,11 +108,6 @@ src/freeradius-devel:
 BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY)) $(HEADERS_RFC)
 scan: $(BOOTSTRAP_BUILD)
 
-######################################################################
-#
-#  Installation
-ALL_HEADERS += $(HEADERS)
-
 #
 #  Regenerate the headers if we re-run autoconf.
 #  This is to that changes to the build rules (e.g. PW_FOO -> FR_FOO)
