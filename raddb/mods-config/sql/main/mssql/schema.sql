@@ -38,6 +38,10 @@ CREATE TABLE [radacct] (
 	[ServiceType] [varchar] (32) NULL ,
 	[FramedProtocol] [varchar] (32) NULL ,
 	[FramedIPAddress] [varchar] (15) DEFAULT ('') FOR [FramedIPAddress],
+	[FramedIPv6Address] [varchar] (44) DEFAULT ('') FOR [FramedIPv6Address],
+	[FramedIPv6Prefix] [varchar] (44) DEFAULT ('') FOR [FramedIPv6Prefix],
+	[FramedInterfaceId] [varchar] (44) DEFAULT ('') FOR [FramedInterfaceId],
+	[DelegatedIPv6Prefix] [varchar] (44) DEFAULT ('') FOR [DelegatedIPv6Prefix],
 	[XAscendSessionSvrKey] [varchar] (10) DEFAULT (null) FOR [XAscendSessionSvrKey],
 	[AcctStartDelay] [int] NULL ,
 	[AcctStopDelay] [int] NULL
@@ -127,6 +131,10 @@ ALTER TABLE [radacct] WITH NOCHECK ADD
 	CONSTRAINT [DF_radacct_ServiceType] DEFAULT (null) FOR [ServiceType],
 	CONSTRAINT [DF_radacct_FramedProtocol] DEFAULT (null) FOR [FramedProtocol],
 	CONSTRAINT [DF_radacct_FramedIPAddress] DEFAULT ('') FOR [FramedIPAddress],
+	CONSTRAINT [DF_radacct_FramedIPv6Address] DEFAULT ('') FOR [FramedIPv6Address],
+	CONSTRAINT [DF_radacct_FramedIPv6Prefix] DEFAULT ('') FOR [FramedIPv6Prefix],
+	CONSTRAINT [DF_radacct_FramedInterfaceId] DEFAULT ('') FOR [FramedInterfaceId],
+	CONSTRAINT [DF_radacct_DelegatedIPv6Prefix] DEFAULT ('') FOR [DelegatedIPv6Prefix],
 	CONSTRAINT [DF_radacct_AcctStartDelay] DEFAULT (null) FOR [AcctStartDelay],
 	CONSTRAINT [DF_radacct_AcctStopDelay] DEFAULT (null) FOR [AcctStopDelay],
 	CONSTRAINT [PK_radacct] PRIMARY KEY  NONCLUSTERED
@@ -204,6 +212,18 @@ GO
 GO
 
  CREATE  INDEX [FramedIPAddress] ON [radacct]([FramedIPAddress]) ON [PRIMARY]
+GO
+
+ CREATE  INDEX [FramedIPv6Address] ON [radacct]([FramedIPv6Address]) ON [PRIMARY]
+GO
+
+ CREATE  INDEX [FramedIPv6Prefix] ON [radacct]([FramedIPv6Prefix]) ON [PRIMARY]
+GO
+
+ CREATE  INDEX [FramedInterfaceId] ON [radacct]([FramedInterfaceId]) ON [PRIMARY]
+GO
+
+ CREATE  INDEX [DelegatedIPv6Prefix] ON [radacct]([DelegatedIPv6Prefix]) ON [PRIMARY]
 GO
 
  CREATE  INDEX [AcctSessionId] ON [radacct]([AcctSessionId]) ON [PRIMARY]
