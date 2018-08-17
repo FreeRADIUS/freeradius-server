@@ -205,15 +205,13 @@ ifeq "${mandir}" ""
     mandir = ${datadir}/man
 endif
 ifeq "${docdir}" ""
-    ifneq "${PROJECT_NAME}" ""
-        docdir = ${datadir}/doc/${PROJECT_NAME}
-    endif
+    docdir = ${datadir}/doc/${PROJECT_NAME}
 endif
 ifeq "${logdir}" ""
     logdir = ${localstatedir}/log/
 endif
 ifeq "${includedir}" ""
-    includedir = ${prefix}/include
+    includedir = ${prefix}/include/${PROJECT_NAME}
 endif
 
 
