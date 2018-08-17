@@ -674,6 +674,9 @@ endif
 $(foreach D,$(patsubst %/,%,$(sort $(dir ${ALL_INSTALL}))),\
   $(eval $(call ADD_INSTALL_RULE.dir,${D})))
 
+# Install all of the header files
+$(foreach h, $(ALL_HEADERS),\
+    $(eval $(call ADD_INSTALL_RULE.h,${h},src/include/${h})))
 
 scan: ${ALL_PLISTS}
 
