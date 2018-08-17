@@ -141,7 +141,7 @@ define ADD_INSTALL_RULE.h
     install: $(DESTDIR)/${includedir}/${1}
 
     $(DESTDIR)/${includedir}/${1}: ${2}
-	${Q}echo INSTALL $$(notdir $$<)
+	${Q}echo INSTALL ${1}
 	${Q}$(INSTALL) -d -m 755 `echo $$(dir $$@) | sed 's/\/$$$$//'`
 	${Q}sed -e 's/#\([\\t ]*\)include <freeradius-devel\/\([^>]*\)>/#\1include <freeradius\/\2>/g' < $$< > $$@
 	${Q}chmod 644 $$@
