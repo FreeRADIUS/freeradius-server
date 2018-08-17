@@ -33,6 +33,8 @@ typedef struct exfile_entry_t {
 	int		fd;		//!< File descriptor associated with an entry.
 	uint32_t	hash;		//!< Hash for cheap comparison.
 	time_t		last_used;	//!< Last time the entry was used.
+	dev_t		st_dev;		//!< device inode
+	ino_t		st_ino;		//!< inode number
 	char		*filename;	//!< Filename.
 } exfile_entry_t;
 
@@ -325,8 +327,41 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 			PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
 			return -1;
 		}
+
+		if (fstat(ef->entries[i].fd, &st) < 0) goto error;
+
+		/*
+		 *	Remember which device and inode this file is
+		 *	for.
+		 */
+		ef->entries[i].st_dev = st.st_dev;
+		ef->entries[i].st_ino = st.st_ino;
+
 	} else {
 		i = found;
+
+		/*
+		 *	Stat the *filename*, not the file we opened.
+		 *	If that's not the file we opened, then go back
+		 *	and re-open the file.
+		 */
+		if (stat(ef->entries[i].filename, &st) == 0) {
+			if ((st.st_dev != ef->entries[i].st_dev) ||
+			    (st.st_ino != ef->entries[i].st_ino)) {
+				/*
+				 *	No longer the same file; reopen.
+				 */
+				close(ef->entries[i].fd);
+				goto reopen;
+			}
+		} else {
+			/*
+			 *	Error calling stat, likely the
+			 *	file has been moved. Reopen it.
+			 */
+			close(ef->entries[i].fd);
+			goto reopen;
+		}
 	}
 
 	/*
@@ -378,8 +413,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 	}
 
 	/*
-	 *	Maybe someone deleted the file while we were waiting
-	 *	for the lock.  If so, re-open it.
+	 *	See which file it really is.
 	 */
 	if (fstat(ef->entries[i].fd, &st) < 0) {
 		fr_strerror_printf("Failed to stat file %s: %s", filename, strerror(errno));
@@ -387,16 +421,19 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 	}
 
 	/*
-	 *	It's unlinked from the file system, close the FD and
-	 *	try to re-open it.
+	 *	Maybe the file was unlinked from the file system, OR
+	 *	the file we opened is NOT the one we had cached.  If
+	 *	so, close the file and re-open it from scratch.
 	 */
-	if (st.st_nlink == 0) {
+	if ((st.st_nlink == 0) ||
+	    (st.st_dev != ef->entries[i].st_dev) ||
+	    (st.st_ino != ef->entries[i].st_ino)) {
 		close(ef->entries[i].fd);
 		goto reopen;
 	}
 
 	/*
-	 *	If we're appending, eek to the end of the file before
+	 *	If we're appending, seek to the end of the file before
 	 *	returning the FD to the caller.
 	 */
 	(void) lseek(ef->entries[i].fd, 0, SEEK_END);

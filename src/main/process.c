@@ -366,6 +366,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply) CC_HINT(n
 static void remove_from_proxy_hash(REQUEST *request) CC_HINT(nonnull);
 static void remove_from_proxy_hash_nl(REQUEST *request, bool yank) CC_HINT(nonnull);
 static int insert_into_proxy_hash(REQUEST *request) CC_HINT(nonnull);
+static int setup_post_proxy_fail(REQUEST *request);
 #endif
 
 static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
@@ -430,7 +431,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		RDEBUG("%s %s Id %i from %s%s%s:%i to %s%s%s:%i length %zu",
+		RDEBUG("%s %s Id %u from %s%s%s:%i to %s%s%s:%i length %zu",
 		       received ? "Received" : "Sent",
 		       fr_packet_codes[packet->code],
 		       packet->id,
@@ -448,7 +449,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 		       packet->dst_port,
 		       packet->data_len);
 	} else {
-		RDEBUG("%s code %u Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
+		RDEBUG("%s code %u Id %u from %s%s%s:%i to %s%s%s:%i length %zu\n",
 		       received ? "Received" : "Sent",
 		       packet->code,
 		       packet->id,
@@ -1084,6 +1085,10 @@ static void request_cleanup_delay(REQUEST *request, int action)
 	switch (action) {
 	case FR_ACTION_DUP:
 		if (request->reply->code != 0) {
+			DEBUG("(%u) Sending duplicate reply to "
+			      "client %s port %d - ID: %u",
+			      request->number, request->client->shortname,
+			      request->packet->src_port,request->packet->id);
 			request->listener->send(request->listener, request);
 		} else {
 			RDEBUG("No reply.  Ignoring retransmit");
@@ -1299,6 +1304,7 @@ static void request_finish(REQUEST *request, int action)
 	if (vp) {
 		if (vp->vp_integer == 256) {
 			RDEBUG2("Not responding to request");
+			fr_pair_delete_by_num(&request->reply->vps, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
 			request->reply->code = 0;
 		} else {
 			request->reply->code = vp->vp_integer;
@@ -1331,6 +1337,12 @@ static void request_finish(REQUEST *request, int action)
 	 */
 	if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 		rad_postauth(request);
+
+		vp = fr_pair_find_by_num(request->config, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
+		if (vp && (vp->vp_integer == 256)) {
+			RDEBUG2("Not responding to request");
+			request->reply->code = 0;
+		}
 	}
 
 #ifdef WITH_COA
@@ -1539,8 +1551,7 @@ static void request_running(REQUEST *request, int action)
 		/*
 		 *	We may need to send a proxied request.
 		 */
-		if ((action == FR_ACTION_RUN) &&
-		    request_will_proxy(request)) {
+		if (request_will_proxy(request)) {
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tWill Proxy\t********\n", request->number);
 #endif
@@ -1550,7 +1561,13 @@ static void request_running(REQUEST *request, int action)
 			 *	up the post proxy fail
 			 *	handler.
 			 */
-			if (request_proxy(request) < 0) goto req_finished;
+			if (request_proxy(request) < 0) {
+				if (request->home_server && request->home_server->server) goto req_finished;
+
+				(void) setup_post_proxy_fail(request);
+				process_proxy_reply(request, NULL);
+				goto req_finished;
+			}
 		} else
 #endif
 		{
@@ -2287,7 +2304,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	/*
 	 *	There may be a proxy reply, but it may be too late.
 	 */
-	if (!request->home_server->server && !request->proxy_listener) return 0;
+	if ((request->home_server && !request->home_server->server) && !request->proxy_listener) return 0;
 
 	/*
 	 *	Delete any reply we had accumulated until now.
@@ -2386,7 +2403,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	}
 
 #ifdef WITH_COA
-	if (request->packet->code == request->proxy->code) {
+	if (request->proxy && request->packet->code == request->proxy->code) {
 	  /*
 	   *	Don't run the next bit if we originated a CoA
 	   *	packet, after receiving an Access-Request or
@@ -2619,23 +2636,26 @@ static int setup_post_proxy_fail(REQUEST *request)
 {
 	DICT_VALUE const *dval = NULL;
 	VALUE_PAIR *vp;
+	RADIUS_PACKET *packet;
 
 	VERIFY_REQUEST(request);
 
-	if (request->proxy->code == PW_CODE_ACCESS_REQUEST) {
+	packet = request->proxy ? request->proxy : request->packet;
+
+	if (packet->code == PW_CODE_ACCESS_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Authentication");
 #ifdef WITH_ACCOUNTING
-	} else if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
+	} else if (packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Accounting");
 #endif
 
 #ifdef WITH_COA
-	} else if (request->proxy->code == PW_CODE_COA_REQUEST) {
+	} else if (packet->code == PW_CODE_COA_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-CoA");
 
-	} else if (request->proxy->code == PW_CODE_DISCONNECT_REQUEST) {
+	} else if (packet->code == PW_CODE_DISCONNECT_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-Disconnect");
 #endif
 	} else {
@@ -2817,16 +2837,19 @@ static int request_will_proxy(REQUEST *request)
 		 *	Figure out which pool to use.
 		 */
 		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+			DEBUG3("Using home pool auth for realm %s", realm->name);
 			pool = realm->auth_pool;
 
 #ifdef WITH_ACCOUNTING
 		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+			DEBUG3("Using home pool acct for realm %s", realm->name);
 			pool = realm->acct_pool;
 #endif
 
 #ifdef WITH_COA
 		} else if ((request->packet->code == PW_CODE_COA_REQUEST) ||
 			   (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) {
+			DEBUG3("Using home pool coa for realm %s", realm->name);
 			pool = realm->coa_pool;
 #endif
 
@@ -2836,6 +2859,8 @@ static int request_will_proxy(REQUEST *request)
 
 	} else if ((vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		int pool_type;
+
+		DEBUG3("Using Home-Server-Pool %s", vp->vp_strvalue);
 
 		switch (request->packet->code) {
 		case PW_CODE_ACCESS_REQUEST:
@@ -2911,9 +2936,9 @@ static int request_will_proxy(REQUEST *request)
 		if (!home) {
 			char buffer[256];
 
-			WARN("No such home server %s port %u",
-			     inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
-			     (unsigned int) dst_port);
+			RWDEBUG("No such home server %s port %u",
+				inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
+				(unsigned int) dst_port);
 			return 0;
 		}
 
@@ -2951,7 +2976,7 @@ static int request_will_proxy(REQUEST *request)
 
 	if (!home) {
 		REDEBUG2("Failed to find live home server: Cancelling proxy");
-		return 0;
+		return 1;
 	}
 
 do_home:
@@ -3167,7 +3192,6 @@ static int request_proxy(REQUEST *request)
 	VERIFY_REQUEST(request);
 
 	rad_assert(request->parent == NULL);
-	rad_assert(request->home_server != NULL);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return 0;
 
@@ -3177,6 +3201,11 @@ static int request_proxy(REQUEST *request)
 		request_done(request->coa, FR_ACTION_DONE);
 	}
 #endif
+
+	if (!request->home_server) {
+		RWDEBUG("No home server selected");
+		return -1;
+	}
 
 	/*
 	 *	The request may need sending to a virtual server.
@@ -4636,10 +4665,6 @@ static void event_poll_detail(void *ctx)
 
 static void event_status(struct timeval *wake)
 {
-#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
-	int argval;
-#endif
-
 	if (rad_debug_lvl == 0) {
 		if (just_started) {
 			INFO("Ready to process requests");
@@ -4663,18 +4688,19 @@ static void event_status(struct timeval *wake)
 	 *	all of the time...
 	 */
 
-#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
-	/*
-	 *	If there are no child threads, then there may
-	 *	be child processes.  In that case, wait for
-	 *	their exit status, and throw that exit status
-	 *	away.  This helps get rid of zxombie children.
-	 */
-	while (waitpid(-1, &argval, WNOHANG) > 0) {
-		/* do nothing */
-	}
-#endif
+	if (!spawn_flag) {
+		int argval;
 
+		/*
+		 *	If there are no child threads, then there may
+		 *	be child processes.  In that case, wait for
+		 *	their exit status, and throw that exit status
+		 *	away.  This helps get rid of zxombie children.
+		 */
+		while (waitpid(-1, &argval, WNOHANG) > 0) {
+			/* do nothing */
+		}
+	}
 }
 
 #ifdef WITH_TCP
@@ -4865,14 +4891,14 @@ static int event_new_fd(rad_listen_t *this)
 		/*
 		 *	All sockets: add the FD to the event handler.
 		 */
-		if (!fr_event_fd_insert(el, 0, this->fd,
-					event_socket_handler, this)) {
-			ERROR("Failed adding event handler for socket: %s", fr_strerror());
-			fr_exit(1);
+		if (fr_event_fd_insert(el, 0, this->fd,
+				       event_socket_handler, this)) {
+			this->status = RAD_LISTEN_STATUS_KNOWN;
+			return 1;
 		}
 
-		this->status = RAD_LISTEN_STATUS_KNOWN;
-		return 1;
+		ERROR("Failed adding event handler for socket: %s", fr_strerror());
+		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 	} /* end of INIT */
 
 #ifdef WITH_TCP

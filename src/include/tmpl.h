@@ -121,6 +121,7 @@ typedef struct pair_list {
 	char const		*name;
 	VALUE_PAIR		*check;
 	VALUE_PAIR		*reply;
+	int			order;		/* for ordering! */
 	int			lineno;
 	struct pair_list	*next;
 } PAIR_LIST;

@@ -16,7 +16,7 @@ EnvironmentFile=-/etc/sysconfig/radiusd
 # We provide HOSTNAME here for convenience.
 Environment=HOSTNAME=%H
 
-RuntimeDirectory=/var/run/radiusd
+RuntimeDirectory=radiusd
 RuntimeDirectoryMode=0775
 ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cxm -lstdout
 ExecStartPre=/usr/bin/chown radiusd:radiusd /var/run/radiusd

@@ -48,9 +48,9 @@ Header       Attribute           Description
 .br
 ------       ---------           -----------
 .br
-{clear}      Cleartext-Password  clear-text passwords
+{clear}      Cleartext-Password  Clear-text passwords
 .br
-{cleartext}  Cleartext-Password  clear-text passwords
+{cleartext}  Cleartext-Password  Clear-text passwords
 .br
 {crypt}      Crypt-Password      Unix-style "crypt"ed passwords
 .br
@@ -66,17 +66,29 @@ Header       Attribute           Description
 .br
 {ssha}       SSHA-Password       SHA1 hashed passwords, with a salt
 .br
-             SSHA1-Password      SHA1 hashed passwords, with a salt
+{sha2}       SHA2-Password       SHA2 hashed passwords
 .br
-{ssh2}       SHA2-Password       SHA2 hashed passwords
+{sha224}     SHA2-Password       SHA2 hashed passwords
 .br
-{ssh256}     SHA2-Password       SHA2 hashed passwords
+{sha256}     SHA2-Password       SHA2 hashed passwords
 .br
-{ssh512}     SHA2-Password       SHA2 hashed passwords
+{sha384}     SHA2-Password       SHA2 hashed passwords
+.br
+{sha512}     SHA2-Password       SHA2 hashed passwords
+.br
+{ssha224}    SSHA2-224-Password  SHA2 hashed passwords, with a salt
+.br
+{ssha256}    SSHA2-256-Password  SHA2 hashed passwords, with a salt
+.br
+{ssha384}    SSHA2-384-Password  SHA2 hashed passwords, with a salt
+.br
+{ssha512}    SSHA2-512-Password  SHA2 hashed passwords, with a salt
 .br
 {nt}         NT-Password         Windows NT hashed passwords
 .br
 {nthash}     NT-Password         Windows NT hashed passwords
+.br
+{md4}        NT-Password         Windows NT hashed passwords
 .br
 {x-nthash}   NT-Password         Windows NT hashed passwords
 .br
@@ -84,7 +96,7 @@ Header       Attribute           Description
 .br
 {x- orcllmv} LM-Password         Windows LANMAN hashed passwords
 .br
-{X- orclntv} LM-Password         Windows LANMAN hashed passwords
+{X- orclntv} NT-Password         Windows NT hashed passwords
 .DE
 
 The module tries to be flexible when handling the various password

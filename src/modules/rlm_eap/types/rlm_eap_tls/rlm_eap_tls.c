@@ -130,6 +130,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 {
 	fr_tls_status_t	status;
+	int ret;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	REQUEST *request = handler->request;
 	rlm_eap_tls_t *inst;
@@ -143,6 +144,11 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 		RDEBUG2("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 
+
+	/*
+	 *	Make request available to any SSL callbacks
+	 */
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 	switch (status) {
 	/*
 	 *	EAP-TLS handshake was successful, return an
@@ -181,7 +187,8 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 				RDEBUG2("Certificate rejected by the virtual server");
 				talloc_free(fake);
 				eaptls_fail(handler, 0);
-				return 0;
+				ret = 0;
+				goto done;
 			}
 
 			talloc_free(fake);
@@ -195,7 +202,8 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 		 *	do nothing.
 		 */
 	case FR_TLS_HANDLED:
-		return 1;
+		ret = 1;
+		goto done;
 
 		/*
 		 *	Handshake is done, proceed with decoding tunneled
@@ -223,7 +231,8 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 #endif
 
 		eaptls_fail(handler, 0);
-		return 0;
+		ret = 0;
+		goto done;
 
 		/*
 		 *	Anything else: fail.
@@ -234,13 +243,19 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 	default:
 		tls_fail(tls_session);
 
-		return 0;
+		ret = 0;
+		goto done;
 	}
 
 	/*
 	 *	Success: Automatically return MPPE keys.
 	 */
-	return eaptls_success(handler, 0);
+	ret = eaptls_success(handler, 0);
+
+done:
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
+
+	return ret;
 }
 
 /*

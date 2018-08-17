@@ -44,9 +44,9 @@ RCSIDH(libradius_h, "$Id$")
 #  define MAGIC_COMMIT(_x)	((uint32_t) 0x00000000)
 #else
 #  ifdef RADIUSD_VERSION_COMMIT
-#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY4(f4, RADIUSD_VERSION, RADIUSD_VERSION_COMMIT, 0))
+#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(f, RADIUSD_VERSION, RADIUSD_VERSION_COMMIT))
 #  else
-#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(f4, RADIUSD_VERSION, 00000000))
+#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(f, RADIUSD_VERSION, 00000))
 #  endif
 #  define MAGIC_PREFIX(_x)	((uint8_t) (_x >> 56))
 #  define MAGIC_VERSION(_x)	((uint32_t) ((_x >> 32) & 0x00ffffff))
@@ -714,7 +714,7 @@ int		fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, 
 int		fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve);
 int		fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_t inlen, int af,
 			     bool resolve);
-int		fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr);
+int		fr_ntop(char *out, size_t outlen, fr_ipaddr_t const *addr);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
 uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);

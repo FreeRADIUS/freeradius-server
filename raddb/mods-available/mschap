@@ -55,6 +55,12 @@ mschap {
 	# attribute, and do prefix/suffix checks in order to obtain
 	# the "best" user name for the request.
 	#
+	#  Depending on the AD / Samba configuration, you may also need to add:
+	#
+	#	--allow-mschapv2
+	#
+	#  to the list of command-line options.
+	#
 #	ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%{mschap:Challenge}:-00} --nt-response=%{%{mschap:NT-Response}:-00}"
 
 	# The default is to wait 10 seconds for ntlm_auth to

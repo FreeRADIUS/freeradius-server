@@ -1436,18 +1436,23 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
  *
  * @param[in,out] pool Connection pool to modify.
  * @param[in] conn to delete.
+ * @param[in] msg why the connection was closed.
  * @return
  *	- 0 If the connection could not be found.
  *	- 1 if the connection was deleted.
  */
-int fr_connection_close(fr_connection_pool_t *pool, void *conn)
+int fr_connection_close(fr_connection_pool_t *pool, void *conn, char const *msg)
 {
 	fr_connection_t *this;
 
 	this = fr_connection_find(pool, conn);
 	if (!this) return 0;
 
-	INFO("%s: Deleting connection (%" PRIu64 ")", pool->log_prefix, this->number);
+	if (!msg) {
+		INFO("%s: Deleting connection (%" PRIu64 ")", pool->log_prefix, this->number);
+	} else {
+		INFO("%s: Deleting connection (%" PRIu64 ") - %s", pool->log_prefix, this->number, msg);
+	}
 
 	fr_connection_close_internal(pool, this);
 	fr_connection_pool_check(pool);

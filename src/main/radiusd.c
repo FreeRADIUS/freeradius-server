@@ -63,7 +63,11 @@ char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
-", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
+", for host " HOSTINFO
+#ifndef ENABLE_REPRODUCIBLE_BUILDS
+", built on " __DATE__ " at " __TIME__
+#endif
+;
 
 static pid_t radius_pid;
 
@@ -333,7 +337,7 @@ int main(int argc, char *argv[])
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	tls_global_init();
+	if (tls_global_init(spawn_flag, check_config) < 0) exit(EXIT_FAILURE);
 #endif
 
 	/*
@@ -497,6 +501,7 @@ int main(int argc, char *argv[])
 
 	if ((fr_set_signal(SIGHUP, sig_hup) < 0) ||
 	    (fr_set_signal(SIGTERM, sig_fatal) < 0)) {
+	set_signal_error:
 		ERROR("%s", fr_strerror());
 		exit(EXIT_FAILURE);
 	}
@@ -506,16 +511,13 @@ int main(int argc, char *argv[])
 	 *  immediately.  Use SIGTERM to shut down the server cleanly in
 	 *  that case.
 	 */
-	if (main_config.debug_memory || (rad_debug_lvl == 0)) {
-		if ((fr_set_signal(SIGINT, sig_fatal) < 0)
+	if (fr_set_signal(SIGINT, sig_fatal) < 0) goto set_signal_error;
+
 #ifdef SIGQUIT
-		|| (fr_set_signal(SIGQUIT, sig_fatal) < 0)
-#endif
-		) {
-			ERROR("%s", fr_strerror());
-			exit(EXIT_FAILURE);
-		}
+	if (main_config.debug_memory || (rad_debug_lvl == 0)) {
+		if (fr_set_signal(SIGQUIT, sig_fatal) < 0) goto set_signal_error;
 	}
+#endif
 
 	/*
 	 *  Everything seems to have loaded OK, exit gracefully.

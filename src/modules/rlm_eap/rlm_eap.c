@@ -84,8 +84,14 @@ static int eap_handler_cmp(void const *a, void const *b)
 	 *	EAP work.
 	 */
 	if (fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr) != 0) {
-		WARN("EAP packets are arriving from two different upstream "
-		       "servers.  Has there been a proxy fail-over?");
+		char src1[64], src2[64];
+
+		fr_ntop(src1, sizeof(src1), &one->src_ipaddr);
+		fr_ntop(src2, sizeof(src2), &two->src_ipaddr);
+		
+		RATE_LIMIT(WARN("EAP packets for one session are arriving from two different upstream"
+				"servers (%s and %s).  Has there been a proxy fail-over?",
+				src1, src2));
 	}
 
 	return 0;
@@ -447,8 +453,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 */
 		vp = fr_pair_find_by_num(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp) {
-			vp = fr_pair_copy(request->reply, request->username);
-			fr_pair_add(&request->reply->vps, vp);
+			vp = request->username;
+			if (vp->da->attr != PW_USER_NAME) {
+				vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+			}
+			if (vp) {
+				vp = fr_pair_copy(request->reply, vp);
+				fr_pair_add(&request->reply->vps, vp);
+			}
 		}
 
 		/*
@@ -460,7 +472,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	vp->vp_strvalue is still a NUL-terminated C
 		 *	string.
 		 */
-		if (inst->mod_accounting_username_bug) {
+		if (vp && inst->mod_accounting_username_bug) {
 			char const *old = vp->vp_strvalue;
 			char *new;
 
@@ -470,7 +482,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 			memcpy(new, old, vp->vp_length);
 			new[vp->length] = '\0';
-			new[vp->length + 1] = '\0';
 			vp->vp_strvalue = new;
 
 			rad_const_free(old);

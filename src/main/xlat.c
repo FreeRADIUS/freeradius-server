@@ -68,11 +68,6 @@ struct xlat_exp {
 	xlat_t const *xlat;	//!< The xlat expansion to expand format with.
 };
 
-typedef struct xlat_out {
-	char const *out;	//!< Output data.
-	size_t len;		//!< Length of the output string.
-} xlat_out_t;
-
 static rbtree_t *xlat_root = NULL;
 
 #ifdef WITH_UNLANG
@@ -484,6 +479,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			RINDENT();
 			RDEBUG2("as %s%*s: %s", type->name, pad, " ", value);
 			REXDENT();
+			talloc_free(value);
 
 		next_type:
 			talloc_free(dst);
@@ -1373,6 +1369,9 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		return -(p - fmt);
 	}
 
+	/*
+	 *	Might be a list, too...
+	 */
 	node->type = XLAT_ATTRIBUTE;
 	p += slen;
 
@@ -1665,45 +1664,15 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			*(p++) = '%';
 			*(p++) = '{';
 
-			if (node->attr.tmpl_request != REQUEST_CURRENT) {
-				strlcpy(p, fr_int2str(request_refs, node->attr.tmpl_request, "??"), end - p);
-				p += strlen(p);
-				*(p++) = '.';
+			/*
+			 *	The node MAY NOT be an attribute.  It
+			 *	may be a list.
+			 */
+			tmpl_prints(p, end - p, &node->attr, NULL);
+			if (*p == '&') {
+				memmove(p, p + 1, strlen(p + 1) + 1);
 			}
-
-			if ((node->attr.tmpl_request != REQUEST_CURRENT) ||
-			    (node->attr.tmpl_list != PAIR_LIST_REQUEST)) {
-				strlcpy(p, fr_int2str(pair_lists, node->attr.tmpl_list, "??"), end - p);
-				p += strlen(p);
-				*(p++) = ':';
-			}
-
-			strlcpy(p, node->attr.tmpl_da->name, end - p);
 			p += strlen(p);
-
-			if (node->attr.tmpl_tag != TAG_ANY) {
-				*(p++) = ':';
-				snprintf(p, end - p, "%u", node->attr.tmpl_tag);
-				p += strlen(p);
-			}
-
-			if (node->attr.tmpl_num != NUM_ANY) {
-				*(p++) = '[';
-				switch (node->attr.tmpl_num) {
-				case NUM_COUNT:
-					*(p++) = '#';
-					break;
-
-				case NUM_ALL:
-					*(p++) = '*';
-					break;
-
-				default:
-					snprintf(p, end - p, "%i", node->attr.tmpl_num);
-					p += strlen(p);
-				}
-				*(p++) = ']';
-			}
 			*(p++) = '}';
 			break;
 #ifdef HAVE_REGEX
@@ -2108,7 +2077,11 @@ static const char xlat_spaces[] = "                                             
 #endif
 
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
-			 xlat_escape_t escape, void *escape_ctx, int lvl)
+			 xlat_escape_t escape, void *escape_ctx,
+#ifndef DEBUG_XLAT
+			 UNUSED
+#endif
+			 int lvl)
 {
 	ssize_t rcode;
 	char *str = NULL, *child;
@@ -2348,28 +2321,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		rad_assert(node->alternate != NULL);
 
 		/*
-		 *	If there are no "next" nodes, call ourselves
-		 *	recursively, which is fast.
-		 *
-		 *	If there are "next" nodes, call xlat_process()
-		 *	which does a ton more work.
+		 *	Call xlat_process recursively.  The child /
+		 *	alternate nodes may have "next" pointers, and
+		 *	those need to be expanded.
 		 */
-		if (!node->next) {
-			str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
-			if (str) {
-				XLAT_DEBUG("%.*sALTERNATE got first string: %s", lvl, xlat_spaces, str);
-			} else {
-				str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl);
-				XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
-			}
+		if (xlat_process(&str, request, node->child, escape, escape_ctx) > 0) {
+			XLAT_DEBUG("%.*sALTERNATE got first string: %s", lvl, xlat_spaces, str);
 		} else {
-
-			if (xlat_process(&str, request, node->child, escape, escape_ctx) > 0) {
-				XLAT_DEBUG("%.*sALTERNATE got first string: %s", lvl, xlat_spaces, str);
-			} else {
-				(void) xlat_process(&str, request, node->alternate, escape, escape_ctx);
-				XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
-			}
+			(void) xlat_process(&str, request, node->alternate, escape, escape_ctx);
+			XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
 		}
 		break;
 	}

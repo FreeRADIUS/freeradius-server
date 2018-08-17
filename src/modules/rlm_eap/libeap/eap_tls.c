@@ -96,7 +96,7 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
 #endif
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TALLOC, NULL);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TALLOC, handler);
 
 	return talloc_steal(handler, ssn); /* ssn */
 }
@@ -149,7 +149,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	if (tls_session->prf_label) {
 		eaptls_gen_mppe_keys(handler->request,
 				     tls_session->ssl, tls_session->prf_label);
-	} else {
+	} else if (handler->type != PW_EAP_FAST) {
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 

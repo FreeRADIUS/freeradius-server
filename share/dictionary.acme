@@ -224,6 +224,18 @@ ATTRIBUTE	Acme-Custom-VSA-228			228	string
 ATTRIBUTE	Acme-Custom-VSA-229			229	string
 ATTRIBUTE	Acme-Custom-VSA-230			230	string
 
+ATTRIBUTE       Acme-Flow-Calling-Media-Stop-Time-FS1   231     string
+ATTRIBUTE       Acme-Flow-Called-Media-Stop-Time-FS1    232     string
+ATTRIBUTE       Acme-Flow-Calling-Media-Stop-Time-FS2   233     string
+ATTRIBUTE       Acme-Flow-Called-Media-Stop-Time-FS2    234     string
+ATTRIBUTE       Acme-SIP-Method-Type                    235     string
+ATTRIBUTE       Acme-Domain-Name                        236     string
+ATTRIBUTE       Acme-SIP-Contact                        237     string
+ATTRIBUTE       Acme-SIP-Expires                        238     integer
+ATTRIBUTE       Acme-Reason-Phrase                      239     string
+
+ATTRIBUTE	Acme-User-Privilege			253	string
+
 ATTRIBUTE	Acme-User-Class				254	string
 
 END-VENDOR Acme

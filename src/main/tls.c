@@ -713,13 +713,15 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 
 	if (ssn->invalid_hb_used) return 0;
 
-	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
-	if (err != (int) ssn->dirty_in.used) {
-		REDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+	if (ssn->dirty_in.used > 0) {
+		err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
+		if (err != (int) ssn->dirty_in.used) {
+			REDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+			record_init(&ssn->dirty_in);
+			return 0;
+		}
 		record_init(&ssn->dirty_in);
-		return 0;
 	}
-	record_init(&ssn->dirty_in);
 
 	err = SSL_read(ssn->ssl, ssn->clean_out.data + ssn->clean_out.used,
 		       sizeof(ssn->clean_out.data) - ssn->clean_out.used);
@@ -1226,6 +1228,10 @@ static CONF_PARSER tls_server_config[] = {
 	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 #endif
 
+	{ "tls_max_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_max_version), "" },
+
+	{ "tls_min_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_min_version), "1.0" },
+
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
 	{ "verify", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) verify_config },
@@ -1271,6 +1277,11 @@ static CONF_PARSER tls_client_config[] = {
 #ifdef SSL_OP_NO_TLSv1_2
 	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 #endif
+
+	{ "tls_max_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_max_version), "" },
+
+	{ "tls_min_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_min_version), "1.0" },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1731,7 +1742,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 	BIO		*cbio, *bio_out;
 	ocsp_status_t	ocsp_status = OCSP_STATUS_FAILED;
 	int		status;
-	ASN1_GENERALIZEDTIME *rev, *thisupd, *nextupd;
+	ASN1_GENERALIZEDTIME *rev = NULL, *thisupd, *nextupd;
 	int		reason;
 #if OPENSSL_VERSION_NUMBER >= 0x1000003f
 	OCSP_REQ_CTX	*ctx;
@@ -1740,6 +1751,11 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 	struct timeval	when;
 #endif
 	VALUE_PAIR	*vp;
+
+	if (issuer_cert == NULL) {
+		RWDEBUG("Could not get issuer certificate");
+		goto skipped;
+	}
 
 	/*
 	 * Create OCSP Request
@@ -1883,6 +1899,11 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		goto ocsp_end;
 	}
 	bresp = OCSP_response_get1_basic(resp);
+	if (!bresp) {
+		RDEBUG("ocsp: Failed parsing response");
+		goto ocsp_end;
+	}
+
 	if (conf->ocsp_use_nonce && OCSP_check_nonce(req, bresp)!=1) {
 		REDEBUG("ocsp: Response has wrong nonce value");
 		goto ocsp_end;
@@ -1930,7 +1951,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		REDEBUG("ocsp: Cert status: %s", OCSP_cert_status_str(status));
 		if (reason != -1) REDEBUG("ocsp: Reason: %s", OCSP_crl_reason_str(reason));
 
-		if (bio_out) {
+		if (bio_out && rev) {
 			BIO_puts(bio_out, "\tRevocation Time: ");
 			ASN1_GENERALIZEDTIME_print(bio_out, rev);
 			BIO_puts(bio_out, "\n");
@@ -2260,6 +2281,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	if (certs && (sk_X509_EXTENSION_num(ext_list) > 0)) {
 		int i, len;
+		EXTENDED_KEY_USAGE *eku;
 		char *p;
 		BIO *out;
 
@@ -2305,6 +2327,24 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		}
 
 		BIO_free_all(out);
+
+		/* Export raw EKU OIDs to allow matching a single OID regardless of its name */
+		eku = X509_get_ext_d2i(client_cert, NID_ext_key_usage, NULL, NULL);
+		if (eku != NULL) {
+			for (i = 0; i < sk_ASN1_OBJECT_num(eku); i++) {
+				len = OBJ_obj2txt(value, sizeof(value), sk_ASN1_OBJECT_value(eku, i), 1);
+				if ((len > 0) && ((unsigned) len < sizeof(value))) {
+					vp = fr_pair_make(talloc_ctx, certs,
+							  "TLS-Client-Cert-X509v3-Extended-Key-Usage-OID",
+							  value, T_OP_ADD);
+					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+				}
+				else {
+					RDEBUG("Failed to get EKU OID at index %d", i);
+				}
+			}
+			EXTENDED_KEY_USAGE_free(eku);
+		}
 	}
 
 	REXDENT();
@@ -2377,30 +2417,29 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 			} else {
 				RDEBUG2("Starting OCSP Request");
-				if ((X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) ||
-				    !issuer_cert) {
-					/*
-					 *	Allow for external verify.
-					 */
-					RERROR("Couldn't get issuer_cert for %s", common_name);
-					do_verify = true;
 
-				} else {
-					/*
-					 *	Do the full OCSP checks.
-					 *
-					 *	If they fail, don't run the external verify.  We don't want
-					 *	to allow admins to force authentication success for bad
-					 *	certificates.
-					 *
-					 *	If the OCSP checks succeed, check whether we still want to
-					 *	run the external verification routine.  If it's marked as
-					 *	"skip verify on OK", then we don't do verify.
-					 */
-					my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
-					if (my_ok != OCSP_STATUS_FAILED) {
-						do_verify = !conf->verify_skip_if_ocsp_ok;
-					}
+				/*
+				 *	If we don't have an issuer, then we can't send
+				 *	and OCSP request, but pass the NULL issuer in
+				 *	so ocsp_check can decide on the correct
+				 *	return code.
+				 */
+				issuer_cert = X509_STORE_CTX_get0_current_issuer(ctx);
+
+				/*
+				 *	Do the full OCSP checks.
+				 *
+				 *	If they fail, don't run the external verify.  We don't want
+				 *	to allow admins to force authentication success for bad
+				 *	certificates.
+				 *
+				 *	If the OCSP checks succeed, check whether we still want to
+				 *	run the external verification routine.  If it's marked as
+				 *	"skip verify on OK", then we don't do verify.
+				 */
+				my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
+				if (my_ok != OCSP_STATUS_FAILED) {
+					do_verify = !conf->verify_skip_if_ocsp_ok;
 				}
 			}
 		}
@@ -2549,44 +2588,12 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 #endif
 #endif
 
-/*
- * DIE OPENSSL DIE DIE DIE
- *
- * What a palaver, just to free some data attached the
- * session. We need to do this because the "remove" callback
- * is called when refcount > 0 sometimes, if another thread
- * is using the session
- */
-static void sess_free_vps(UNUSED void *parent, void *data_ptr,
-                                UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
-                                UNUSED long argl, UNUSED void *argp)
-{
-        VALUE_PAIR *vp = data_ptr;
-        if (!vp) return;
-
-        DEBUG2(LOG_PREFIX ": Freeing cached session VPs");
-
-        fr_pair_list_free(&vp);
-}
-
-static void sess_free_certs(UNUSED void *parent, void *data_ptr,
-                                UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
-                                UNUSED long argl, UNUSED void *argp)
-{
-        VALUE_PAIR **certs = data_ptr;
-        if (!certs) return;
-
-        DEBUG2(LOG_PREFIX ": Freeing cached session Certificates");
-
-        fr_pair_list_free(certs);
-}
-
 /** Add all the default ciphers and message digests reate our context.
  *
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
-void tls_global_init(void)
+int tls_global_init(bool spawn_flag, bool check)
 {
 	SSL_load_error_strings();	/* readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* initialize library */
@@ -2596,7 +2603,21 @@ void tls_global_init(void)
 	/*
 	 *	Initialize the index for the certificates.
 	 */
-	fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_certs);
+	fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+
+	/*
+	 *	If we're linking with OpenSSL too, then we need
+	 *	to set up the mutexes and enable the thread callbacks.
+	 *
+	 *	'check' and not 'check_config' because it's a global,
+	 *	and we don't want to have tls.c depend on globals.
+	 */
+	if (spawn_flag && !check && (tls_mutexes_init() < 0)) {
+		ERROR("FATAL: Failed to set up SSL mutexes");
+		return -1;
+	}
+
+	return 0;
 }
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
@@ -2664,6 +2685,28 @@ void tls_global_cleanup(void)
 	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
 }
+
+
+/*
+ *	Map version strings to OpenSSL macros.
+ */
+static const FR_NAME_NUMBER version2int[] = {
+	{ "1.0",    TLS1_VERSION },
+#ifdef TLS1_1_VERSION
+	{ "1.1",    TLS1_1_VERSION },
+#endif
+#ifdef TLS1_2_VERSION
+	{ "1.2",    TLS1_2_VERSION },
+#endif
+#ifdef TLS1_3_VERSION
+	{ "1.3",    TLS1_3_VERSION },
+#endif
+#ifdef TLS1_4_VERSION
+	{ "1.4",    TLS1_4_VERSION },
+#endif
+	{ NULL, 0 }
+};
+
 
 /** Create SSL context
  *
@@ -2864,6 +2907,9 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 
 	/* Load the CAs we trust */
 load_ca:
+#if defined(X509_V_FLAG_PARTIAL_CHAIN)
+	X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), X509_V_FLAG_PARTIAL_CHAIN);
+#endif
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
 			tls_error_log(NULL, "Failed reading Trusted root CA list \"%s\"",
@@ -2900,22 +2946,126 @@ post_ca:
 	ctx_options |= SSL_OP_NO_SSLv3;
 
 	/*
-	 *	As of 3.0.5, we always allow TLSv1.1 and TLSv1.2.
-	 *	Though they can be *globally* disabled if necessary.x
+	 *	SSL_CTX_set_(min|max)_proto_version was included in OpenSSL 1.1.0
+	 *
+	 *	This version already defines macros for TLS1_2_VERSION and
+	 *	below, so we don't need to check for them explicitly.
+	 *
+	 *	TLS1_3_VERSION is available in OpenSSL 1.1.1.
+	 *
+	 *	TLS1_4_VERSION in speculative.
+	 */
+	{
+		int min_version = 0;
+		int max_version = 0;
+
+		/*
+		 *	Get the max version.
+		 */
+		if (conf->tls_max_version && *conf->tls_max_version) {
+			max_version = fr_str2int(version2int, conf->tls_max_version, 0);
+			if (!max_version) {
+				ERROR("Invalid value for tls_max_version '%s'", conf->tls_max_version);
+				return NULL;
+			}
+		} else {
+			/*
+			 *	Pick the maximum one we know about.
+			 */
+#ifdef TLS1_4_VERSION
+			max_version = TLS1_4_VERSION;
+#elif defined(TLS1_3_VERSION)
+			max_version = TLS1_3_VERSION;
+#elif defined(TLS1_2_VERSION)
+			max_version = TLS1_2_VERSION;
+#elif defined(TLS1_1_VERSION)
+			max_version = TLS1_1_VERSION;
+#else
+			max_version = TLS1_VERSION;
+#endif
+		}
+
+		/*
+		 *	Set these for the rest of the code.
+		 */
+#ifdef TLS1_2_VERSION
+		if (max_version < TLS1_2_VERSION) {
+			conf->disable_tlsv1_2 = true;
+		}
+#endif
+#ifdef TLS1_1_VERSION
+		if (max_version < TLS1_1_VERSION) {
+			conf->disable_tlsv1_1 = true;
+		}
+#endif
+
+		/*
+		 *	Get the min version.
+		 */
+		if (conf->tls_min_version && *conf->tls_min_version) {
+			min_version = fr_str2int(version2int, conf->tls_min_version, 0);
+			if (!min_version) {
+				ERROR("Unknown or unsupported value for tls_min_version '%s'", conf->tls_min_version);
+				return NULL;
+			}
+		} else {
+			min_version = TLS1_VERSION;
+		}
+
+		/*
+		 *	Compare the two.
+		 */
+		if (min_version > max_version) {
+			ERROR("tls_min_version '%s' must be <= tls_max_version '%s'",
+			      conf->tls_min_version, conf->tls_max_version);
+			return NULL;
+		}
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
+			ERROR("Failed setting TLS maximum version");
+			return NULL;
+		}
+
+		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
+			ERROR("Failed setting TLS minimum version");
+			return NULL;
+		}
+#endif	/* OpenSSL version >1.1.0 */
+	}
+
+	/*
+	 *	For historical config compatibility, we also allow
+	 *	these, but complain if the admin uses them.
 	 */
 #ifdef SSL_OP_NO_TLSv1
-	if (conf->disable_tlsv1) ctx_options |= SSL_OP_NO_TLSv1;
+	if (conf->disable_tlsv1) {
+		ctx_options |= SSL_OP_NO_TLSv1;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		WARN("Please use tls_min_version and tls_max_version instead of disable_tlsv1");
+#endif
+	}
 
 	ctx_tls_versions |= SSL_OP_NO_TLSv1;
 #endif
 #ifdef SSL_OP_NO_TLSv1_1
-	if (conf->disable_tlsv1_1) ctx_options |= SSL_OP_NO_TLSv1_1;
+	if (conf->disable_tlsv1_1) {
+		ctx_options |= SSL_OP_NO_TLSv1_1;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		WARN("Please use tls_min_version and tls_max_version instead of disable_tlsv1_2");
+#endif
+	}
 
 	ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
 #endif
 #ifdef SSL_OP_NO_TLSv1_2
 
-	if (conf->disable_tlsv1_2) ctx_options |= SSL_OP_NO_TLSv1_2;
+	if (conf->disable_tlsv1_2) {
+		ctx_options |= SSL_OP_NO_TLSv1_2;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		WARN("Please use tls_min_version and tls_max_version instead of disable_tlsv1_2");
+#endif
+	}
 
 	ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
 
@@ -3013,7 +3163,7 @@ post_ca:
 
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
 		if (fr_tls_ex_index_vps < 0)
-			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_vps);
+			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 	}
 
 	/*
@@ -3378,12 +3528,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			 */
 			fr_pair_add(&vps, fr_pair_list_copy(talloc_ctx, *certs));
 
-			/*
-			 *	Save the certs in the packet, so that we can see them.
-			 */
-			fr_pair_add(&request->packet->vps, fr_pair_list_copy(request->packet, *certs));
-
-			vp = fr_pair_find_by_num(request->packet->vps, PW_TLS_CLIENT_CERT_EXPIRATION, 0, TAG_ANY);
+			vp = fr_pair_find_by_num(vps, PW_TLS_CLIENT_CERT_EXPIRATION, 0, TAG_ANY);
 			if (vp) {
 				time_t expires;
 
@@ -3519,12 +3664,14 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	/*
 	 *	Decrypt the complete record.
 	 */
-	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data,
-			ssn->dirty_in.used);
-	if (err != (int) ssn->dirty_in.used) {
-		record_init(&ssn->dirty_in);
-		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
-		return FR_TLS_FAIL;
+	if (ssn->dirty_in.used > 0) {
+		err = BIO_write(ssn->into_ssl, ssn->dirty_in.data,
+				ssn->dirty_in.used);
+		if (err != (int) ssn->dirty_in.used) {
+			record_init(&ssn->dirty_in);
+			RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+			return FR_TLS_FAIL;
+		}
 	}
 
 	/*
@@ -3540,7 +3687,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 *      data buffer.
 	 */
 	err = SSL_read(ssn->ssl, ssn->clean_out.data, sizeof(ssn->clean_out.data));
-	if (err < 0) {
+	if (err <= 0) {
 		int code;
 
 		RDEBUG("SSL_read Error");
@@ -3563,8 +3710,6 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 		}
 		return FR_TLS_FAIL;
 	}
-
-	if (err == 0) RWDEBUG("No data inside of the tunnel");
 
 	/*
 	 *	Passed all checks, successfully decrypted data

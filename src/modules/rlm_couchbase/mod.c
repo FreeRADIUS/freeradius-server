@@ -158,6 +158,11 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 		/* get pair name (attribute name) */
 		attribute = cf_pair_attr(cp);
 
+		if (!dict_attrbyname(attribute)) {
+			ERROR("Unknown RADIUS attribute '%s'", attribute);
+			return -1;
+		}
+
 		/* get pair value (element name) */
 		element = cf_pair_value(cp);
 

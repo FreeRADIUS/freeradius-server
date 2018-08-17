@@ -104,7 +104,7 @@ linelog {
 
 	#
 	#  Reference the Packet-Type (Access-Accept, etc.)  If it doesn't
-	#  exist, reference the "defaukt" entry.
+	#  exist, reference the "default" entry.
 	#
 	#  This is for "linelog" being used in the post-auth section
 	#  If you want to use it in "authorize", you need to change

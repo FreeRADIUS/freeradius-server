@@ -758,6 +758,7 @@ with_openssl
 with_openssl_lib_dir
 with_openssl_include_dir
 enable_openssl_version_check
+enable_reproducible_builds
 with_talloc_lib_dir
 with_talloc_include_dir
 with_pcap_lib_dir
@@ -1406,6 +1407,8 @@ Optional Features:
   --disable-openssl-version-check
                           disable vulnerable OpenSSL version check
 
+  --enable-reproducible-builds
+                          ensure the build does not change each time
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2404,6 +2407,12 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 ac_config_headers="$ac_config_headers src/include/autoconf.h"
+
+
+
+
+
+
 
 
 
@@ -4322,6 +4331,55 @@ if test "x$GCC" = "xyes"; then
 fi
 
 
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wno-unknown-warning-option\"" >&5
+$as_echo_n "checking for the compiler flag \"-Wno-unknown-warning-option\"... " >&6; }
+if ${ax_cv_cc_no_unknown_warning_option_flag+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+  CFLAGS_SAVED=$CFLAGS
+  CFLAGS="-Werror -Wno-unknown-warning-option"
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+    /*
+     *  gcc will happily accept -Wno-unknown-warning-option
+     *  only emitting an error about it, if an error ocurrs in the source file.
+     */
+    #if defined(__GNUC__) && !defined(__clang__)
+        gcc sucks
+    #endif
+
+    return 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ax_cv_cc_no_unknown_warning_option_flag=yes
+else
+  ax_cv_cc_no_unknown_warning_option_flag=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+  CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_no_unknown_warning_option_flag" >&5
+$as_echo "$ax_cv_cc_no_unknown_warning_option_flag" >&6; }
+
+if test "x$ax_cv_cc_no_unknown_warning_option_flag" = "xyes"; then
+  CFLAGS="$CFLAGS -Wno-unknown-warning-option"
+fi
+
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Qunused-arguments\"" >&5
 $as_echo_n "checking for the compiler flag \"-Qunused-arguments\"... " >&6; }
 if ${ax_cv_cc_qunused_arguments_flag+:} false; then :
@@ -4372,6 +4430,54 @@ if test "x$ax_cv_cc_qunused_arguments_flag" = "xyes"; then
   CFLAGS="$CFLAGS -Qunused-arguments"
   LDFLAGS="$LDFLAGS -Qunused-arguments"
 fi
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wno-date-time\"" >&5
+$as_echo_n "checking for the compiler flag \"-Wno-date-time\"... " >&6; }
+if ${ax_cv_cc_no_date_time_flag+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Wno-date-time"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ax_cv_cc_no_date_time_flag="yes"
+else
+  ax_cv_cc_no_date_time_flag="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+    CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_no_date_time_flag" >&5
+$as_echo "$ax_cv_cc_no_date_time_flag" >&6; }
+
 
 # Check whether --enable-largefile was given.
 if test "${enable_largefile+set}" = set; then :
@@ -5466,6 +5572,22 @@ $as_echo "#define ENABLE_OPENSSL_VERSION_CHECK 1" >>confdefs.h
 	allow_vulnerable_openssl = no"
 else
   openssl_version_check_config=
+fi
+
+
+# Check whether --enable-reproducible-builds was given.
+if test "${enable_reproducible_builds+set}" = set; then :
+  enableval=$enable_reproducible_builds;  case "$enableval" in
+  yes)
+
+$as_echo "#define ENABLE_REPRODUCIBLE_BUILDS 1" >>confdefs.h
+
+    reproducible_builds=yes
+    ;;
+  *)
+    reproducible_builds=no
+  esac
+
 fi
 
 
@@ -6768,10 +6890,6 @@ if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>." >&2;}
 else
-
-$as_echo "#define HAVE_LIBPCAP 1" >>confdefs.h
-
-
   for ac_func in \
     pcap_fopen_offline \
     pcap_dump_fopen \
@@ -7969,6 +8087,7 @@ for ac_header in \
   grp.h \
   inttypes.h \
   limits.h \
+  linux/if_packet.h \
   malloc.h \
   netdb.h \
   netinet/in.h \
@@ -9047,9 +9166,9 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_pcap_h" == "xyes"; then
+  if test "x$ac_cv_header_pcap_h" = "xyes" && test "x$ac_cv_lib_pcap_pcap_open_live" = "xyes"; then
 
-$as_echo "#define HAVE_PCAP_H 1" >>confdefs.h
+$as_echo "#define HAVE_LIBPCAP 1" >>confdefs.h
 
 
 
@@ -9290,7 +9409,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+  if test "x$ac_cv_header_collectd_client_h" = "xyes"; then
 
 $as_echo "#define HAVE_COLLECTDC_H 1" >>confdefs.h
 
@@ -9533,7 +9652,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+  if test "x$ac_cv_header_sys_capability_h" = "xyes"; then
 
 $as_echo "#define HAVE_CAPABILITY_H 1" >>confdefs.h
 
@@ -12656,7 +12775,11 @@ subdirs="$subdirs $mysubdirs"
 
 
 
-if test "x$werror" == "xyes"; then
+if test "x$ax_cv_cc_no_date_time_flag" = "xyes" && test "x$reproducible_builds" != "xyes"; then
+  CFLAGS="-Wno-date-time $CFLAGS"
+fi
+
+if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi
 

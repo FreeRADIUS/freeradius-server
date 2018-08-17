@@ -77,3 +77,41 @@ acct_counters64.preacct {
 	}
 }
 
+#
+#  There is a delay between sending the Access-Accept and receiving
+#  the corresponding Accounting-Request "start" packet.  This delay
+#  can be leveraged by a user to bypass Simultaneous-Use checks.
+#
+#  The user can start up multiple sessions at the same time.  When
+#  that happens, both Simultaneous-Use checks are performed before any
+#  Accounting-Request packet is received.  Both Simultaneous-Use
+#  checks will result in "no user session" in the radacct table, and
+#  both sessions will be allowed.  At some point later in time, the
+#  Accounting-Request packets are received.  But by then it's too
+#  late.
+#
+#  The solution is to insert a temporary session into the "radacct"
+#  table, during the "post-auth" section.  This is done by
+#  uncommenting the "sql_session_start" entry in
+#  sites-enabled/default.  Then, reading
+#  raddb/mods-config/sql/main/*/queries.conf, and looking for the
+#  "sql_session_start" comments.  Follow the instructions there to
+#  finalize the configuration.
+#
+#  The server will then create a temporary entry in "radacct" before
+#  it returns the Access-Request.  Any other Access-Request which is
+#  received at the same time will then have it's Simultaneous-Use
+#  check see that entry, and will be rejected.
+#
+#  Subsequent Accounting-Request packets for the first session will
+#  then UPDATE (not INSERT) the data for the session.
+#
+#  There is still a small race condition as the Simultaneous-Use
+#  checks are not done at the same time as updating radacct.  But the
+#  window of opportunity is much smaller.  i.e. milliseconds, instead
+#  of seconds.
+#
+sql_session_start.post-auth {
+	acct_unique
+	sql.accounting
+}

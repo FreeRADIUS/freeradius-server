@@ -668,7 +668,8 @@ module_t rlm_sqlcounter = {
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
-		[MOD_AUTHORIZE]		= mod_authorize
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_POST_AUTH]		= mod_authorize,
 	},
 };
 

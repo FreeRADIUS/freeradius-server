@@ -43,20 +43,6 @@ typedef struct eap_sim_server_state {
 	int  sim_id;
 } eap_sim_state_t;
 
-/*
- *	build a reply to be sent.
- */
-static void eap_sim_compose(REQUEST *request, eap_handler_t *handler)
-{
-	/* we will set the ID on requests, since we have to HMAC it */
-	handler->eap_ds->set_request_id = 1;
-
-	if (!map_eapsim_basictypes(handler->request->reply,
-				   handler->eap_ds->request)) {
-		REDEBUG("Failed decoding EAP-SIM packet: %s", fr_strerror());
-	}
-}
-
 static int eap_sim_sendstart(eap_handler_t *handler)
 {
 	VALUE_PAIR **vps, *newvp;
@@ -454,7 +440,13 @@ static void eap_sim_state_enter(REQUEST *request, eap_handler_t *handler,
 	ess->state = newstate;
 
 	/* build the target packet */
-	eap_sim_compose(request, handler);
+	/* we will set the ID on requests, since we have to HMAC it */
+	handler->eap_ds->set_request_id = 1;
+
+	if (!map_eapsim_basictypes(handler->request->reply,
+				   handler->eap_ds->request)) {
+		REDEBUG("Failed encoding EAP-SIM packet");
+	}
 }
 
 /*

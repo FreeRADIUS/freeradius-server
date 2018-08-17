@@ -84,6 +84,10 @@ listen {
 		private_key_password = whatever
 		private_key_file = ${certdir}/server.pem
 
+		# Accept an expired Certificate Revocation List
+		#
+	#	allow_expired_crl = no
+
 		#  If Private key & Certificate are located in
 		#  the same file, then private_key_file &
 		#  certificate_file must contain the same file
@@ -169,10 +173,9 @@ listen {
 	       #  match, the certificate verification will fail,
 	       #  rejecting the user.
 	       #
-	       #  In 2.1.10 and later, this check can be done
-	       #  more generally by checking the value of the
-	       #  TLS-Client-Cert-Issuer attribute.  This check
-	       #  can be done via any mechanism you choose.
+	       #  This check can be done more generally by checking
+	       #  the value of the TLS-Client-Cert-Issuer attribute.
+	       #  This check can be done via any mechanism you choose.
 	       #
 	#       check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 

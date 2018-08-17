@@ -19,7 +19,6 @@ CREATE TABLE radacct (
   acctsessionid varchar(64) NOT NULL default '',
   acctuniqueid varchar(32) NOT NULL default '',
   username varchar(64) NOT NULL default '',
-  groupname varchar(64) NOT NULL default '',
   realm varchar(64) default '',
   nasipaddress varchar(15) NOT NULL default '',
   nasportid varchar(15) default NULL,
@@ -129,7 +128,8 @@ CREATE TABLE radpostauth (
   pass varchar(64) NOT NULL default '',
   reply varchar(32) NOT NULL default '',
   authdate timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY  (id)
+  PRIMARY KEY  (id),
+  KEY username (username(32))
 ) ENGINE = INNODB;
 
 #

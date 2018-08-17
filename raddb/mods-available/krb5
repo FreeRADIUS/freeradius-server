@@ -6,7 +6,13 @@
 #  Kerberos.  See doc/modules/rlm_krb5 for minimal docs.
 #
 krb5 {
-	keytab = /path/to/keytab
+	#
+	#  The keytab file MUST be owned by the UID/GID used by the server.
+	#  The keytab file MUST be writable by the server.
+	#  The keytab file MUST NOT be readable by other users on the system.
+	#  The keytab file MUST exist before the server is started.
+	#
+	keytab = ${localstatedir}/lib/radiusd/keytab
 	service_principal = name_of_principle
 
 	#  Pool of krb5 contexts, this allows us to make the module multithreaded

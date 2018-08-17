@@ -1034,7 +1034,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				return -1;
 			}
 
-#ifdef HAVE_PTRHEAD_H
+#ifdef HAVE_PTHREAD_H
 			if (pthread_mutex_init(&sock->mutex, NULL) < 0) {
 				rad_assert(0 == 1);
 				listen_free(&this);

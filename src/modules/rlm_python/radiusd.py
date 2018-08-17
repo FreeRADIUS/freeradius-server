@@ -23,14 +23,19 @@ RLM_MODULE_NOOP = 7
 RLM_MODULE_UPDATED = 8
 RLM_MODULE_NUMCODES = 9
 
-
-# from radiusd.h
-L_DBG = 1
+# from log.h
 L_AUTH = 2
 L_INFO = 3
 L_ERR = 4
-L_PROXY = 5
-L_CONS = 128
+L_WARN = 5
+L_PROXY = 6
+L_ACCT = 7
+
+L_DBG = 16
+L_DBG_WARN = 17
+L_DBG_ERR = 18
+L_DBG_WARN_REQ = 19
+L_DBG_ERR_REQ = 20
 
 # log function
 def radlog(level, msg):

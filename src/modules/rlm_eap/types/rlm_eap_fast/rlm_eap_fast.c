@@ -43,6 +43,7 @@ typedef struct rlm_eap_fast_t {
 
 	char const		*virtual_server;			//!< Virtual server to use for processing
 									//!< inner EAP method.
+	char const		*cipher_list;				//!< cipher list specific to EAP-FAST
 	bool			req_client_cert;			//!< Whether we require a client cert
 									//!< in the outer tunnel.
 
@@ -65,6 +66,7 @@ static CONF_PARSER module_config[] = {
 	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_fast_t, default_method_name), "mschapv2" },
 
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_eap_fast_t, virtual_server) , NULL},
+	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_fast_t, cipher_list) , NULL},
 
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_fast_t, req_client_cert), "no" },
 
@@ -121,12 +123,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 	if (talloc_array_length(inst->pac_opaque_key) - 1 != 32) {
 		ERROR("rlm_eap_fast.pac_opaque_key: Must be 32 bytes long");
-		return -1;
-	}
-
-	// FIXME TLSv1.2 uses a different PRF and SSL_export_keying_material("key expansion") is forbidden
-	if (!inst->tls_conf->disable_tlsv1_2) {
-		ERROR("rlm_eap_fast.disable_tlsv1_2: require disable_tlsv1_2=yes");
 		return -1;
 	}
 
@@ -374,6 +370,7 @@ error:
 static int mod_process(void *arg, eap_handler_t *handler)
 {
 	int rcode;
+	int ret = 0;
 	fr_tls_status_t	status;
 	rlm_eap_fast_t *inst = (rlm_eap_fast_t *) arg;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
@@ -398,6 +395,10 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		RDEBUG2("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 
+	/*
+	 *	Make request available to any SSL callbacks
+	 */
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 	switch (status) {
 	/*
 	 *	EAP-TLS handshake was successful, tell the
@@ -417,7 +418,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 *	do nothing.
 	 */
 	case FR_TLS_HANDLED:
-		return 1;
+		ret = 1;
+		goto done;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -430,7 +432,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 *	Anything else: fail.
 	 */
 	default:
-		return 0;
+		ret = 0;
+		goto done;
 	}
 
 	/*
@@ -448,7 +451,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	case PW_CODE_ACCESS_REJECT:
 		RDEBUG("Reject");
 		eaptls_fail(handler, EAP_FAST_VERSION);
-		return 0;
+		ret = 0;
+		goto done;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
@@ -457,13 +461,13 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		RDEBUG("Challenge");
 		tls_handshake_send(request, tls_session);
 		eaptls_request(handler->eap_ds, tls_session);
-		return 1;
+		ret = 1;
+		goto done;
 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case PW_CODE_ACCESS_ACCEPT:
-		RDEBUG("Note that the 'missing PRF label' message below is harmless. Please ignore it.");
 		if (t->accept_vps) {
 			RDEBUG2("Using saved attributes from the original Access-Accept");
 			rdebug_pair_list(L_DBG_LVL_2, request, t->accept_vps, NULL);
@@ -473,7 +477,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		} else if (t->use_tunneled_reply) {
 			RDEBUG2("No saved attributes in the original Access-Accept");
 		}
-		return eaptls_success(handler, EAP_FAST_VERSION);
+		ret = eaptls_success(handler, EAP_FAST_VERSION);
+		goto done;
 
 		/*
 		 *	No response packet, MUST be proxying it.
@@ -485,7 +490,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 #ifdef WITH_PROXY
 		rad_assert(handler->request->proxy != NULL);
 #endif
-		return 1;
+		ret = 1;
+		goto done;
 
 	default:
 		break;
@@ -495,7 +501,11 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 *	Something we don't understand: Reject it.
 	 */
 	eaptls_fail(handler, EAP_FAST_VERSION);
-	return 0;
+
+done:
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
+
+	return ret;
 }
 
 static int eap_fast_tls_start(EAP_DS * eap_ds,tls_session_t *tls_session)
@@ -546,6 +556,23 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->opaque = tls_session = eaptls_session(handler, inst->tls_conf, client_cert);
 
 	if (!tls_session) return 0;
+
+	if (inst->cipher_list) {
+		RDEBUG("Over-riding main cipher list with '%s'", inst->cipher_list);
+
+		if (!SSL_set_cipher_list(tls_session->ssl, inst->cipher_list)) {
+			REDEBUG("Failed over-riding cipher list to '%s'.  EAP-FAST will likely not work",
+				inst->cipher_list);
+		}
+	}
+
+// FIXME TLSv1.2 uses a different PRF and SSL_export_keying_material("key expansion") is forbidden
+#ifdef SSL_OP_NO_TLSv1_2
+	/*
+	 *	Forcibly disable TLSv1.2
+	 */
+	SSL_set_options(tls_session->ssl, SSL_OP_NO_TLSv1_2);
+#endif
 
 	/*
 	 *	Push TLV of authority_identity into tls_record

@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/state.h>
+#include <freeradius-devel/md5.h>
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct state_entry_t {
@@ -289,12 +290,27 @@ static state_entry_t *fr_state_create(fr_state_t *state, const char *server, RAD
 	 *	one we created above.
 	 */
 	if (vp) {
-		if (rad_debug_lvl && (vp->vp_length > sizeof(entry->state))) {
-			WARN("State should be %zd octets!",
-			     sizeof(entry->state));
-		}
-		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
+		/*
+		 *	Assume our own State first.
+		 */
+		if (vp->vp_length == sizeof(entry->state)) {
+			memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
 
+			/*
+			 *	Too big?  Get the MD5 hash, in order
+			 *	to depend on the entire contents of State.
+			 */
+		} else if (vp->vp_length > sizeof(entry->state)) {
+			fr_md5_calc(entry->state, vp->vp_octets, vp->vp_length);
+
+			/*
+			 *	Too small?  Use the whole thing, and
+			 *	set the rest of entry->state to zero.
+			 */
+		} else {
+			memcpy(entry->state, vp->vp_octets, vp->vp_length);
+			memset(&entry->state[vp->vp_length], 0, sizeof(entry->state) - vp->vp_length);
+		}
 	} else {
 		vp = fr_pair_afrom_num(packet, PW_STATE, 0);
 		fr_pair_value_memcpy(vp, entry->state, sizeof(entry->state));
@@ -342,9 +358,27 @@ static state_entry_t *fr_state_find(fr_state_t *state, const char *server, RADIU
 	vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!vp) return NULL;
 
-	if (vp->vp_length != sizeof(my_entry.state)) return NULL;
+	/*
+	 *	Assume our own State first.
+	 */
+	if (vp->vp_length == sizeof(my_entry.state)) {
+		memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
 
-	memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
+		/*
+		 *	Too big?  Get the MD5 hash, in order
+		 *	to depend on the entire contents of State.
+		 */
+	} else if (vp->vp_length > sizeof(my_entry.state)) {
+		fr_md5_calc(my_entry.state, vp->vp_octets, vp->vp_length);
+
+		/*
+		 *	Too small?  Use the whole thing, and
+		 *	set the rest of my_entry.state to zero.
+		 */
+	} else {
+		memcpy(my_entry.state, vp->vp_octets, vp->vp_length);
+		memset(&my_entry.state[vp->vp_length], 0, sizeof(my_entry.state) - vp->vp_length);
+	}
 
 	/*	Make unique for different virtual servers handling same request
 	 */
@@ -449,7 +483,30 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	fr_state_t *state = &global_state;
 
 	if (!request->state) {
+		size_t i;
+		uint32_t x;
+		VALUE_PAIR *vp;
+		uint8_t buffer[16];
+
 		RDEBUG3("session-state: Nothing to cache");
+
+		if (packet->code != PW_CODE_ACCESS_CHALLENGE) return true;
+
+		vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
+		if (vp) return true;
+
+		/*
+		 *
+		 */
+		for (i = 0; i < sizeof(buffer) / sizeof(x); i++) {
+			x = fr_rand();
+			memcpy(buffer + (i * 4), &x, sizeof(x));
+		}
+
+		vp = fr_pair_afrom_num(packet, PW_STATE, 0);
+		fr_pair_value_memcpy(vp, buffer, sizeof(buffer));
+		fr_pair_add(&packet->vps, vp);
+
 		return true;
 	}
 

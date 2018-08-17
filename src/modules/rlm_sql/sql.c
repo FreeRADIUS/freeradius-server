@@ -118,20 +118,19 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 		token = gettoken(&value, buf, sizeof(buf), false);
 		switch (token) {
 		/*
+		 *	Mark the pair to be allocated later.
+		 */
+		case T_BACK_QUOTED_STRING:
+			do_xlat = 1;
+			/* FALL-THROUGH */
+
+		/*
 		 *	Take the unquoted string.
 		 */
 		case T_SINGLE_QUOTED_STRING:
 		case T_DOUBLE_QUOTED_STRING:
 			value = buf;
 			break;
-
-		/*
-		 *	Mark the pair to be allocated later.
-		 */
-		case T_BACK_QUOTED_STRING:
-			do_xlat = 1;
-
-			/* FALL-THROUGH */
 
 		/*
 		 *	Keep the original string.
@@ -487,7 +486,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 		return;
 	}
 
-	fd = exfile_open(inst->ef, filename, 0640);
+	fd = exfile_open(inst->ef, expanded, 0640);
 	if (fd < 0) {
 		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->name,
 		      expanded, fr_syserror(errno));

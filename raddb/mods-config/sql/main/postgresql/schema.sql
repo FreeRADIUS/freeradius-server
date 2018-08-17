@@ -18,7 +18,6 @@ CREATE TABLE radacct (
 	AcctSessionId		text NOT NULL,
 	AcctUniqueId		text NOT NULL UNIQUE,
 	UserName		text,
-	GroupName		text,
 	Realm			text,
 	NASIPAddress		inet NOT NULL,
 	NASPortId		text,

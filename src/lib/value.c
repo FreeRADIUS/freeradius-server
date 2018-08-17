@@ -972,11 +972,18 @@ finish:
 /** Performs byte order reversal for types that need it
  *
  */
-static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, size_t src_len)
+static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src, size_t src_len)
 {
+	size_t dst_len;
+	uint8_t *dst_ptr;
+
 	/* 8 byte integers */
-	switch (type) {
+	switch (dst_type) {
 	case PW_TYPE_INTEGER64:
+		dst_len = sizeof(dst->integer64);
+
+		if (src_len < dst_len) return -1;
+
 		dst->integer64 = htonll(*(uint64_t const *)src);
 		break;
 
@@ -984,22 +991,112 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
 	case PW_TYPE_SIGNED:
+		dst_len = sizeof(dst->integer);
+
+		if (src_len < dst_len) return -1;
+
 		dst->integer = htonl(*(uint32_t const *)src);
 		break;
 
 	/* 2 byte integers */
 	case PW_TYPE_SHORT:
+		dst_len = sizeof(dst->ushort);
+
+		if (src_len < dst_len) return -1;
+
 		dst->ushort = htons(*(uint16_t const *)src);
 		break;
 
-	case PW_TYPE_OCTETS:
-	case PW_TYPE_STRING:
-		fr_assert(0);
-		return;		/* shouldn't happen */
+	/* 1 byte integer */
+	case PW_TYPE_BYTE:
+		dst_len = sizeof(dst->byte);
+
+		if (src_len < dst_len) return -1;
+
+		dst->byte = *(uint8_t const *)src;
+		break;
+
+	case PW_TYPE_IPV4_ADDR:
+		dst_len = 4;
+		dst_ptr = (uint8_t *) &dst->ipaddr.s_addr;
+
+	copy:
+		/*
+		 *	Not enough information, die.
+		 */
+		if (src_len < dst_len) return -1;
+
+		/*
+		 *	Copy only as much as we need from the source.
+		 */
+		memcpy(dst_ptr, src, dst_len);
+		break;
+
+	case PW_TYPE_ABINARY:
+		dst_len = sizeof(dst->filter);
+		dst_ptr = (uint8_t *) dst->filter;
+
+		/*
+		 *	Too little data is OK here.
+		 */
+		if (src_len < dst_len) {
+			memcpy(dst_ptr, src, src_len);
+			memset(dst_ptr + src_len, 0, dst_len - src_len);			
+			break;
+		}
+		goto copy;
+
+	case PW_TYPE_IFID:
+		dst_len = sizeof(dst->ifid);
+		dst_ptr = (uint8_t *) dst->ifid;
+		goto copy;
+
+	case PW_TYPE_IPV6_ADDR:
+		dst_len = sizeof(dst->ipv6addr);
+		dst_ptr = (uint8_t *) dst->ipv6addr.s6_addr;
+		goto copy;
+
+	case PW_TYPE_IPV4_PREFIX:
+		dst_len = sizeof(dst->ipv4prefix);
+		dst_ptr = (uint8_t *) dst->ipv4prefix;
+
+		if (src_len < dst_len) return -1;
+		if ((((uint8_t const *)src)[1] & 0x3f) > 32) return -1;
+		goto copy;
+
+	case PW_TYPE_IPV6_PREFIX:
+		dst_len = sizeof(dst->ipv6prefix);		
+		dst_ptr = (uint8_t *) dst->ipv6prefix;
+
+		/*
+		 *	Smaller IPv6 prefixes are OK, too, so long as
+		 *	they're not too short.
+		 */
+		if (src_len < 2) return -1;
+
+		/*
+		 *	Prefix is too long.
+		 */
+		if (((uint8_t const *)src)[1] > 128) return -1;
+
+		if (src_len < dst_len) {
+			memcpy(dst_ptr, src, src_len);
+			memset(dst_ptr + src_len, 0, dst_len - src_len);			
+			break;
+		}
+
+		goto copy;
+
+	case PW_TYPE_ETHERNET:
+		dst_len = sizeof(dst->ether);
+		dst_ptr = (uint8_t *) dst->ether;
+		goto copy;
 
 	default:
-		memcpy(dst, src, src_len);
+		return -1;	/* can't do it */
 	}
+
+	return dst_len;
 }
 
 /** Convert one type of value_data_t to another
@@ -1021,6 +1118,8 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 			PW_TYPE src_type, DICT_ATTR const *src_enumv,
 			value_data_t const *src, size_t src_len)
 {
+	ssize_t dst_len;
+
 	if (!fr_assert(dst_type != src_type)) return -1;
 
 	/*
@@ -1034,10 +1133,12 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		value_data_hton(dst, src_type, src, src_len);
-		dst->octets = talloc_memdup(ctx, dst, src_len);
+		dst_len = value_data_hton(dst, src_type, src, src_len);
+		if (dst_len < 0) return -1;
+
+		dst->octets = talloc_memdup(ctx, dst, dst_len);
 		talloc_set_type(dst->octets, uint8_t);
-		return talloc_array_length(dst->strvalue);
+		return dst_len;
 	}
 
 	/*
@@ -1121,6 +1222,10 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 
 		case PW_TYPE_SHORT:
 			dst->integer = src->ushort;
+			break;
+
+		case PW_TYPE_DATE:
+			dst->integer = src->date;
 			break;
 
 		case PW_TYPE_OCTETS:
@@ -1381,8 +1486,7 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 
 	if (src_type == PW_TYPE_OCTETS) {
 	do_octets:
-		value_data_hton(dst, dst_type, src->octets, src_len);
-		return src_len;
+		return value_data_hton(dst, dst_type, src->octets, src_len);
 	}
 
 	/*
@@ -1540,8 +1644,8 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 
 		t = data->date;
 
-		p = talloc_array(ctx, char, 64);
-		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
+		p = talloc_zero_array(ctx, char, 64);
+		strftime(p, 63, "%b %e %Y %H:%M:%S %Z",
 			 localtime_r(&t, &s_tm));
 		break;
 	}

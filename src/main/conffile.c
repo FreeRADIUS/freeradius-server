@@ -139,7 +139,7 @@ static char const 	*cf_expand_variables(char const *cf, int *lineno,
 					     char *output, size_t outsize,
 					     char const *input, bool *soft_fail);
 
-static int cf_file_include(CONF_SECTION *cs, char const *filename_in);
+static int cf_file_include(CONF_SECTION *cs, char const *filename_in, bool from_dir);
 
 
 
@@ -300,7 +300,7 @@ static int filename_cmp(void const *a, void const *b)
 	return 0;
 }
 
-static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
+static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, FILE **fp_p)
 {
 	cf_file_t *file;
 	CONF_DATA *cd;
@@ -311,15 +311,35 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 
 	top = cf_top_section(cs);
 	cd = cf_data_find_internal(top, "filename", 0);
-	if (!cd) return NULL;
+	if (!cd) return -1;
 
 	tree = cd->data;
 
+	/*
+	 *	If we're including a wildcard directory, then ignore
+	 *	any files the users has already explicitly loaded in
+	 *	that directory.
+	 */
+	if (from_dir) {
+		cf_file_t my_file;
+
+		my_file.cs = cs;
+		my_file.filename = filename;
+
+		if (stat(filename, &my_file.buf) < 0) goto error;
+
+		file = rbtree_finddata(tree, &my_file);
+		if (file) return 0;
+	}
+
+	DEBUG2("including configuration file %s", filename);
+
 	fp = fopen(filename, "r");
 	if (!fp) {
+error:
 		ERROR("Unable to open file \"%s\": %s",
 		      filename, fr_syserror(errno));
-		return NULL;
+		return -1;
 	}
 
 	fd = fileno(fp);
@@ -327,7 +347,7 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	file = talloc(tree, cf_file_t);
 	if (!file) {
 		fclose(fp);
-		return NULL;
+		return -1;
 	}
 
 	file->filename = filename;
@@ -341,7 +361,7 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 
 			fclose(fp);
 			talloc_free(file);
-			return NULL;
+			return -1;
 		}
 #endif
 	}
@@ -356,7 +376,8 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 		talloc_free(file);
 	}
 
-	return fp;
+	*fp_p = fp;
+	return 1;
 }
 
 /*
@@ -2501,11 +2522,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 						 value, dp->d_name);
 					if ((stat(buf2, &stat_buf) != 0) ||
 					    S_ISDIR(stat_buf.st_mode)) continue;
+
 					/*
 					 *	Read the file into the current
 					 *	configuration section.
 					 */
-					if (cf_file_include(this, buf2) < 0) {
+					if (cf_file_include(this, buf2, true) < 0) {
 						closedir(dir);
 						return -1;
 					}
@@ -2523,7 +2545,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					}
 				}
 
-				if (cf_file_include(this, value) < 0) {
+				if (cf_file_include(this, value, false) < 0) {
 					return -1;
 				}
 			}
@@ -2958,9 +2980,10 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 /*
  *	Include one config file in another.
  */
-static int cf_file_include(CONF_SECTION *cs, char const *filename_in)
+static int cf_file_include(CONF_SECTION *cs, char const *filename_in, bool from_dir)
 {
 	FILE		*fp;
+	int		rcode;
 	int		lineno = 0;
 	char const	*filename;
 
@@ -2969,10 +2992,11 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 	 */
 	filename = talloc_strdup(cs, filename_in);
 
-	DEBUG2("including configuration file %s", filename);
-
-	fp = cf_file_open(cs, filename);
-	if (!fp) return -1;
+	/*
+	 *	This may return "0" if we already loaded the file.
+	 */
+	rcode = cf_file_open(cs, filename, from_dir, &fp);
+	if (rcode <= 0) return rcode;
 
 	if (!cs->item.filename) cs->item.filename = filename;
 
@@ -3054,7 +3078,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	cf_data_add_internal(cs, "filename", tree, NULL, 0);
 
-	if (cf_file_include(cs, filename) < 0) return -1;
+	if (cf_file_include(cs, filename, false) < 0) return -1;
 
 	/*
 	 *	Now that we've read the file, go back through it and

@@ -161,10 +161,6 @@ eap {
 	#  to install the server, and to perform some simple
 	#  tests with EAP-TLS, TTLS, or PEAP.
 	#
-	#  See also:
-	#
-	#  http://www.dslreports.com/forum/remark,9286052~mode=flat
-	#
 	#  Note that you should NOT use a globally known CA here!
 	#  e.g. using a Verisign cert as a "known CA" means that
 	#  ANYONE who has a certificate signed by them can
@@ -285,6 +281,10 @@ eap {
 
 		ca_path = ${cadir}
 
+		# Accept an expired Certificate Revocation List
+		#
+#		allow_expired_crl = no
+
 		#
 		#  If check_cert_issuer is set, the value will
 		#  be checked against the DN of the issuer in
@@ -292,10 +292,10 @@ eap {
 		#  match, the certificate verification will fail,
 		#  rejecting the user.
 		#
-		#  In 2.1.10 and later, this check can be done
-		#  more generally by checking the value of the
-		#  TLS-Client-Cert-Issuer attribute.  This check
-		#  can be done via any mechanism you choose.
+		#  This check can be done more generally by checking
+		#  the value of the TLS-Client-Cert-Issuer attribute.
+		#  This check can be done via any mechanism you
+		#  choose.
 		#
 	#	check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 
@@ -333,16 +333,34 @@ eap {
 		# for TLS
 		cipher_server_preference = no
 
-		# Work-arounds for OpenSSL nonsense
-		# OpenSSL 1.0.1f and 1.0.1g do not calculate
-		# the EAP keys correctly.  The fix is to upgrade
-		# OpenSSL, or disable TLS 1.2 here. 
 		#
-		#  For EAP-FAST, this MUST be set to "yes".
+		#  You can selectively disable TLS versions for
+		#  compatability with old client devices.
+		#
+		#  If your system has OpenSSL 1.1.0 or greater, do NOT
+		#  use these.  Instead, set tls_min_version and
+		#  tls_max_version.
 		#
 #		disable_tlsv1_2 = no
+#		disable_tlsv1_1 = no
+#		disable_tlsv1 = no
 
 		#
+		#  Set min / max TLS version.  Mainly for Debian
+		#  "trusty", which disables older versions of TLS, and
+		#  requires the application to manually enable them.
+		#
+		#  If you are running Debian trusty, you should set
+		#  these options, otherwise older clients will not be
+		#  able to connect.
+		#
+		#  Allowed values are "1.0", "1.1", and "1.2".
+		#
+		#  The values must be in quotes.
+		#
+#		tls_min_version = "1.0"
+#		tls_max_version = "1.2"
+
 
 		#
 		#  Elliptical cryptography configuration
@@ -650,10 +668,7 @@ eap {
 		#  through a virtual server constructed
 		#  specifically for this purpose.
 		#
-		#  If this entry is commented out, the inner
-		#  tunneled request will be sent through
-		#  the virtual server that processed the
-		#  outer requests.
+		#  A virtual server MUST be specified.
 		#
 		virtual_server = "inner-tunnel"
 
@@ -672,6 +687,10 @@ eap {
 		#	EAP-TLS-Require-Client-Cert = Yes
 		#
 		# in the control items for a request.
+		#
+		# Note that the majority of supplicants do not support using a
+		# client certificate with EAP-TTLS, so this option is unlikely
+		# to be usable for most people.
 		#
 	#	require_client_cert = yes
 	}
@@ -771,10 +790,7 @@ eap {
 		#  through a virtual server constructed
 		#  specifically for this purpose.
 		#
-		#  If this entry is commented out, the inner
-		#  tunneled request will be sent through
-		#  the virtual server that processed the
-		#  outer requests.
+		#  A virtual server MUST be specified.
 		#
 		virtual_server = "inner-tunnel"
 
@@ -798,6 +814,10 @@ eap {
 		#	EAP-TLS-Require-Client-Cert = Yes
 		#
 		# in the control items for a request.
+		#
+		# Note that the majority of supplicants do not support using a
+		# client certificate with PEAP, so this option is unlikely to
+		# be usable for most people.
 		#
 	#	require_client_cert = yes
 	}
@@ -849,12 +869,25 @@ eap {
 #	fast {
 		# Point to the common TLS configuration
 		#
-		# cipher_list though must include "ADH" for anonymous provisioning.
-		# This is not as straight forward as appending "ADH" alongside
-		# "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
-		# recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
-		#
 #		tls = tls-common
+
+		#
+		#  If 'cipher_list' is set here, it will over-ride the
+		#  'cipher_list' configuration from the 'tls-common'
+		#  configuration.  The EAP-FAST module has it's own
+		#  over-ride for 'cipher_list' because the
+		#  specifications mandata a different set of ciphers
+		#  than are used by the other EAP methods.
+		#
+		#  cipher_list though must include "ADH" for anonymous provisioning.
+		#  This is not as straight forward as appending "ADH" alongside
+		#  "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
+		#  recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
+		#
+		#  Note - for OpenSSL 1.1.0 and above you may need
+		#  to add ":@SECLEVEL=0"
+		#
+#		cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
 
 		# PAC lifetime in seconds (default: seven days)
 		#

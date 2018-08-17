@@ -294,8 +294,11 @@ void 		cbtls_msg(int write_p, int msg_version, int content_type, void const *buf
 			  void *arg);
 int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 
+/* threads.c */
+int		tls_mutexes_init(void);
+
 /* TLS */
-void		tls_global_init(void);
+int		tls_global_init(bool spawn_flag, bool check);
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 int		tls_global_version_check(char const *acknowledged);
 #endif
@@ -356,6 +359,9 @@ struct fr_tls_server_conf_t {
 	bool		disable_tlsv1;
 	bool		disable_tlsv1_1;
 	bool		disable_tlsv1_2;
+
+	char const	*tls_min_version;
+	char const	*tls_max_version;
 
 	/*
 	 *	Always < 4096 (due to radius limit), 0 by default = 1024

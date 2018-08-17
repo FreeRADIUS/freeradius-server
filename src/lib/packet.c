@@ -925,8 +925,25 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 #ifdef WITH_TCP
 		if (pl->sockets[start].proto == IPPROTO_TCP) {
 			packet = fr_tcp_recv(pl->sockets[start].sockfd, 0);
+
+			/*
+			 *	We always know src/dst ip/port for TCP
+			 *	sockets.  So just fill them in.  Since
+			 *	we read the packet from the TCP
+			 *	socket, we invert src/dst.
+			 */
+			packet->dst_ipaddr = pl->sockets[start].src_ipaddr;
+			packet->dst_port = pl->sockets[start].src_port;
+			packet->src_ipaddr = pl->sockets[start].dst_ipaddr;
+			packet->src_port = pl->sockets[start].dst_port;
+
 		} else
 #endif
+
+		/*
+		 *	Rely on rad_recv() to fill in the required
+		 *	fields.
+		 */
 		packet = rad_recv(NULL, pl->sockets[start].sockfd, 0);
 		if (!packet) continue;
 

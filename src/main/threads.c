@@ -223,7 +223,7 @@ static const CONF_PARSER thread_config[] = {
 static pthread_mutex_t *ssl_mutexes = NULL;
 
 #ifdef HAVE_CRYPTO_SET_ID_CALLBACK
-static unsigned long ssl_id_function(void)
+static unsigned long get_ssl_id(void)
 {
 	unsigned long ret;
 	pthread_t thread = pthread_self();
@@ -236,6 +236,22 @@ static unsigned long ssl_id_function(void)
 
 	return ret;
 }
+
+/*
+ *	Use preprocessor magic to get the right function and argument
+ *	to use.  This avoids ifdef's through the rest of the code.
+ */
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
+#define ssl_id_function get_ssl_id
+#define set_id_callback CRYPTO_set_id_callback
+
+#else
+static void ssl_id_function(CRYPTO_THREADID *id)
+{
+	CRYPTO_THREADID_set_numeric(id, get_ssl_id());
+}
+#define set_id_callback CRYPTO_THREADID_set_callback
+#endif
 #endif
 
 #ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
@@ -249,14 +265,17 @@ static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSE
 }
 #endif
 
-static int setup_ssl_mutexes(void)
+/*
+ *	Create the TLS mutexes.
+ */
+int tls_mutexes_init(void)
 {
 	int i;
 
 	ssl_mutexes = rad_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
 	if (!ssl_mutexes) {
 		ERROR("Error allocating memory for SSL mutexes!");
-		return 0;
+		return -1;
 	}
 
 	for (i = 0; i < CRYPTO_num_locks(); i++) {
@@ -264,13 +283,13 @@ static int setup_ssl_mutexes(void)
 	}
 
 #ifdef HAVE_CRYPTO_SET_ID_CALLBACK
-	CRYPTO_set_id_callback(ssl_id_function);
+	set_id_callback(ssl_id_function);
 #endif
 #ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 	CRYPTO_set_locking_callback(ssl_locking_function);
 #endif
 
-	return 1;
+	return 0;
 }
 #endif
 
@@ -1028,18 +1047,6 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 	}
 #endif
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	/*
-	 *	If we're linking with OpenSSL too, then we need
-	 *	to set up the mutexes and enable the thread callbacks.
-	 */
-	if (!setup_ssl_mutexes()) {
-		ERROR("FATAL: Failed to set up SSL mutexes");
-		return -1;
-	}
-#endif
-
-
 #ifndef WITH_GCD
 	/*
 	 *	Create a number of waiting threads.
@@ -1114,7 +1121,7 @@ void thread_pool_stop(void)
 	 *	the memory.
 	 */
 #ifdef HAVE_CRYPTO_SET_ID_CALLBACK
-	CRYPTO_set_id_callback(NULL);
+	set_id_callback(NULL);
 #endif
 #ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 	CRYPTO_set_locking_callback(NULL);
@@ -1530,7 +1537,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 
 	DEBUG("Trigger %s -> %s", name, value);
 
-	radius_exec_program(request, NULL, 0, NULL, request, value, vp, false, true, EXEC_TIMEOUT);
+	radius_exec_program(request, NULL, 0, NULL, request, value, vp, false, true, 0);
 
 	if (alloc) talloc_free(request);
 }

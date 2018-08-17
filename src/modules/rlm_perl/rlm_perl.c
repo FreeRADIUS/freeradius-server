@@ -624,23 +624,28 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 				     int *i, const char *hash_name, const char *list_name)
 {
 	size_t len;
-
+	SV *sv;
 	char buffer[1024];
+
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, vp->vp_strvalue);
-		av_push(av, newSVpvn(vp->vp_strvalue, vp->vp_length));
+		sv = newSVpvn(vp->vp_strvalue, vp->vp_length);
 		break;
 
 	default:
 		len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
 		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, buffer);
-		av_push(av, newSVpvn(buffer, truncate_len(len, sizeof(buffer))));
+		sv = newSVpvn(buffer, truncate_len(len, sizeof(buffer)));
 		break;
 	}
+
+	if (!sv) return;
+	SvTAINTED_on(sv);
+	av_push(av, sv);
 	(*i)++;
 }
 
@@ -922,6 +927,8 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			RDEBUG("perl_embed:: module = %s , func = %s exit status= %s\n",
 			       inst->module, function_name, SvPV(ERRSV,n_a));
 			(void)POPs;
+			count = 0;
+			exitstatus = RLM_MODULE_FAIL;
 		}
 
 		if (count == 1) {

@@ -70,7 +70,10 @@ static char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
-", built on " __DATE__ " at " __TIME__;
+#ifndef ENABLE_REPRODUCIBLE_BUILDS
+", built on " __DATE__ " at " __TIME__
+#endif
+;
 
 
 /*
@@ -84,12 +87,12 @@ static bool echo = false;
 static char const *secret = "testing123";
 
 #include <sys/wait.h>
+
+#ifdef HAVE_PTHREAD_H
 pid_t rad_fork(void)
 {
 	return fork();
 }
-
-#ifdef HAVE_PTHREAD_H
 pid_t rad_waitpid(pid_t pid, int *status)
 {
 	return waitpid(pid, status, 0);
@@ -693,7 +696,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		if (memcmp(line, "secret ", 7) == 0) {
+		if (strncmp(line, "secret ", 7) == 0) {
 			if (!secret) {
 				secret = line + 7;
 				do_challenge(sockfd);

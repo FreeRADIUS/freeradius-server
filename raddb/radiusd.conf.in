@@ -208,7 +208,7 @@ max_request_time = 30
 #  If this value is set too high, then the server will cache too many
 #  requests, and some new requests may get blocked.  (See 'max_requests'.)
 #
-#  Useful range of values: 2 to 10
+#  Useful range of values: 2 to 30
 #
 cleanup_delay = 5
 
@@ -576,12 +576,8 @@ thread pool {
 	#
 #	max_queue_size = 65536
 
-	#  There may be memory leaks or resource allocation problems with
-	#  the server.  If so, set this value to 300 or so, so that the
-	#  resources will be cleaned up periodically.
-	#
-	#  This should only be necessary if there are serious bugs in the
-	#  server which have not yet been fixed.
+	#  Clean up old threads periodically.  For no reason other than
+	#  it might be useful.
 	#
 	#  '0' is a special value meaning 'infinity', or 'the servers never
 	#  exit'
@@ -648,6 +644,21 @@ modules {
 	#
 
 	#
+	#  Some modules have ordering issues.  e.g. "sqlippool" uses
+	#  the configuration from "sql".  In that case, the "sql"
+	#  module must be read off of disk before the "sqlippool".
+	#  However, the directory inclusion below just reads the
+	#  directory from start to finish.  Which means that the
+	#  modules are read off of disk randomly.
+	#
+	#  As of 3.0.18, you can list individual modules *before* the
+	#  directory inclusion.  Those modules will be loaded first.
+	#  Then, when the directory is read, those modules will be
+	#  skipped and not read twice.
+	#
+#	$INCLUDE mods-enabled/sql
+
+	#
 	#  As of 3.0, modules are in mods-enabled/.  Files matching
 	#  the regex /[a-zA-Z0-9_.]+/ are loaded.  The modules are
 	#  initialized ONLY if they are referenced in a processing
@@ -659,14 +670,14 @@ modules {
 
 # Instantiation
 #
-#  This section orders the loading of the modules.  Modules
-#  listed here will get loaded BEFORE the later sections like
-#  authorize, authenticate, etc. get examined.
+#  This section sets the instantiation order of the modules.  listed
+#  here will get started up BEFORE the sections like authorize,
+#  authenticate, etc. get examined.
 #
-#  This section is not strictly needed.  When a section like
-#  authorize refers to a module, it's automatically loaded and
-#  initialized.  However, some modules may not be listed in any
-#  of the following sections, so they can be listed here.
+#  This section is not strictly needed.  When a section like authorize
+#  refers to a module, the module is automatically loaded and
+#  initialized.  However, some modules may not be listed in any of the
+#  processing sections, so they should be listed here.
 #
 #  Also, listing modules here ensures that you have control over
 #  the order in which they are initialized.  If one module needs

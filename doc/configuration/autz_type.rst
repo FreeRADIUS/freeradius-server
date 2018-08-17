@@ -31,7 +31,7 @@ like this::
 
   DEFAULT        Called-Station-Id == "123456789", Autz-Type := Ldap
 
-  DEFAULT Realm == "other.company.com", Autz-Type := SQL
+  DEFAULT Realm == "other.example.com", Autz-Type := SQL
 
 Autz-Type could also be used to select between multiple instances of
 a module (ie sql or ldap) which have been configured differently.  For

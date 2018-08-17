@@ -660,6 +660,6 @@ That configuration will never show the ``if (1)`` output in debugging mode.
 Dialup_admin
 ------------
 
-The dialip_admin directory has been removed.  No one stepped forward
+The dialup_admin directory has been removed.  No one stepped forward
 to maintain it, and the code had not been changed in many years.
 

@@ -43,7 +43,7 @@ typedef struct fr_event_fd_t {
 	void			*ctx;
 } fr_event_fd_t;
 
-#define FR_EV_MAX_FDS (256)
+#define FR_EV_MAX_FDS (512)
 
 #undef USEC
 #define USEC (1000000)

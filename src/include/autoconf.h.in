@@ -12,6 +12,9 @@
 /* Define to 1 to have OpenSSL version check enabled */
 #undef ENABLE_OPENSSL_VERSION_CHECK
 
+/* Define to ensure each build is the same */
+#undef ENABLE_REPRODUCIBLE_BUILDS
+
 /* Define if your processor stores words with the most significant byte first
    */
 #undef FR_BIG_ENDIAN
@@ -215,7 +218,8 @@
 /* Define to 1 if you have the `nsl' library (-lnsl). */
 #undef HAVE_LIBNSL
 
-/* Define to 1 if you have the `pcap' library (-lpcap). */
+/* Define to 1 if you have the `pcap' library (-lpcap) and header file
+   <pcap.h>. */
 #undef HAVE_LIBPCAP
 
 /* Define if you have a readline compatible library */
@@ -235,6 +239,9 @@
 
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
+
+/* Define to 1 if you have the <linux/if_packet.h> header file. */
+#undef HAVE_LINUX_IF_PACKET_H
 
 /* Define to 1 if you have the `localtime_r' function. */
 #undef HAVE_LOCALTIME_R
@@ -313,9 +320,6 @@
 
 /* Define to 1 if you have the `pcap_fopen_offline' function. */
 #undef HAVE_PCAP_FOPEN_OFFLINE
-
-/* Define to 1 if you have the <pcap.h> header file. */
-#undef HAVE_PCAP_H
 
 /* define this if we have libpcre */
 #undef HAVE_PCRE

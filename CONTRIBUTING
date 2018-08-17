@@ -20,7 +20,7 @@
   It is not for support requests or questions regarding configuration/operation of the server, they
   belong on the users mailing list:
 
-    http://freeradius.org/list/users.html
+    https://freeradius.org/support/
 
   Raising support requests or questions as issues will result in them being closed and locked.  If you
   continue to raise these questions as issues you will be banned from the FreeRADIUS project's GitHub
@@ -47,7 +47,7 @@
 
 3.CONTENTS OF A DEFECT REPORT
 
-  See doc/bugs (https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/bugs) for information
+  See doc/bugs (https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/doc/bugs) for information
   on what to include, and how to obtain it.
 
   When logging bug reports using the GitHub issue tracker, pay attention to formatting.  You should
@@ -62,20 +62,20 @@
   a member of the FreeRADIUS development team first.  For simpler one or two line fixes, go ahead and
   open a pull-request immediately.
 
-  The dev team can be contacted via the devel mailing list (http://freeradius.org/list/devel.html),
+  The dev team can be contacted via the devel mailing list (https://freeradius.org/support/),
   or via GitHub by using the GitHub issue tracker.
 
   Contacting the dev team gives us the opportunity to offer feedback.  We may have a solution to your
   problem that doesn't require additional code, or may have ideas as to how your problem can be solved
-  in a way that will better fit with the longterm vision for the server.
+  in a way that will better fit with the long-term vision for the server.
 
   Once you've got the go ahead, read through the coding standards document:
 
-    http://wiki.freeradius.org/contributing/coding-standards
+    https://wiki.freeradius.org/contributing/coding-standards
 
   If you're creating a new module you may wish to read the module creation guide:
 
-    http://wiki.freeradius.org/contributing/Modules3
+    https://wiki.freeradius.org/contributing/Modules3
 
   You may also wish to utilise the doxygen site to review code documentation:
 
@@ -89,7 +89,7 @@
   Git/GitHub knowledge is assumed.  If you're wondering what the heck a pull-request is, this
   document may be of some use:
 
-    http://wiki.freeradius.org/contributing/GitHub
+    https://wiki.freeradius.org/contributing/GitHub
 
 
 5.CONTINUOUS INTEGRATION TESTS
