@@ -7,6 +7,8 @@ SOURCES	:=	compile.c \
 		module.c \
 		xlat.c
 
+HEADERS		:= $(subst src/lib/,,$(wildcard $(DIR)/*.h))
+
 TGT_PREREQS	+= libfreeradius-util.a libfreeradius-server.a
 
 ifneq ($(MAKECMDGOALS),scan)

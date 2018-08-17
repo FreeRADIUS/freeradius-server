@@ -51,6 +51,8 @@ SOURCES		:= \
 		   value.c \
 		   version.c
 
+HEADERS		:= $(subst src/lib/,,$(wildcard $(DIR)/*.h))
+
 SRC_CFLAGS	:= -D_LIBRADIUS -I$(top_builddir)/src
 
 # System libraries discovered by our top level configure script, links things
