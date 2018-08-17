@@ -23,7 +23,7 @@
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2017 The FreeRADIUS Server Project.
  */
-#include "libfreeradius-ldap.h"
+#include <freeradius-devel/ldap/base.h>
 
 #include <stdarg.h>
 #include <ctype.h>
@@ -265,7 +265,7 @@ bool fr_ldap_util_is_dn(char const *in, size_t inlen)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request, fr_ldap_conn_t *conn, char **extensions)
+int fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request, fr_ldap_connection_t *conn, char **extensions)
 {
 	int i;
 
@@ -326,7 +326,6 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request, fr_ldap_co
 
 	return 0;
 }
-
 
 /** Convert a berval to a talloced string
  *

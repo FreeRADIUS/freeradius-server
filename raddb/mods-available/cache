@@ -47,10 +47,10 @@ cache {
 #		options = "--SERVER=localhost"
 #
 #		pool {
-#			start = ${thread[pool].start_servers}
-#			min = ${thread[pool].min_spare_servers}
-#			max = ${thread[pool].max_servers}
-#			spare = ${thread[pool].max_spare_servers}
+#			start = ${thread[pool].num_workers}
+#			min = ${thread[pool].num_workers}
+#			max = ${thread[pool].num_workers}
+#			spare = 1
 #			uses = 0
 #			lifetime = 0
 #			idle_timeout = 60
@@ -84,10 +84,10 @@ cache {
 #		database = 0
 #
 #		pool {
-#			start = ${thread[pool].start_servers}
-#			min = ${thread[pool].min_spare_servers}
-#			max = ${thread[pool].max_servers}
-#			spare = ${thread[pool].max_spare_servers}
+#			start = ${thread[pool].num_workers}
+#			min = ${thread[pool].num_workers}
+#			max = ${thread[pool].num_workers}
+#			spare = 1
 #			uses = 0
 #			lifetime = 0
 #			idle_timeout = 60

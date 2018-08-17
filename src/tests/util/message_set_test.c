@@ -17,19 +17,21 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @copyright 2016  Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")
 
 #include <freeradius-devel/io/message.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/syserror.h>
+
 #include <string.h>
 #include <sys/time.h>
-#include <freeradius-devel/hash.h>
-#include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #define MPRINT1 if (debug_lvl) printf
@@ -62,7 +64,7 @@ static size_t		allocation_mask = 0x3ff;
 /**********************************************************************/
 typedef struct rad_request REQUEST;
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
-void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
 void talloc_const_free(void const *ptr);
 
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
@@ -70,7 +72,7 @@ REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
 	return NULL;
 }
 
-void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
 {
 }
 
@@ -163,7 +165,7 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 #ifndef NDEBUG
 		rad_assert(rcode == 0);
 #else
-		if (rcode != 0) exit(1);
+		if (rcode != 0) exit(EXIT_FAILURE);
 #endif
 
 		used -= array[index];
@@ -188,18 +190,17 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -t                     Touch 'packet' memory.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
 {
-	int c;
+	int			c;
+	int			i, start, end, rcode;
+	fr_message_set_t	*ms;
+	uint32_t		seed;
 
-	int i, start, end, rcode;
-	fr_message_set_t *ms;
-	uint32_t	seed;
-
-	TALLOC_CTX	*autofree = talloc_init("main");
+	TALLOC_CTX		*autofree = talloc_autofree_context();
 
 	memset(array, 0, sizeof(array));
 	memset(messages, 0, sizeof(messages));
@@ -230,7 +231,7 @@ int main(int argc, char *argv[])
 	ms = fr_message_set_create(autofree, ARRAY_SIZE, sizeof(fr_message_t), ARRAY_SIZE * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	seed = 0xabcdef;
@@ -420,8 +421,6 @@ int main(int argc, char *argv[])
 	 */
 	rcode = fr_message_set_messages_used(ms);
 	rad_assert(rcode == 0);
-
-	talloc_free(autofree);
 
 	return rcode;
 }

@@ -95,7 +95,7 @@ if test x$with_[]modname != xno; then
 		dnl # Only the heimdal version of the library has this function
 		dnl #
 		FR_SMART_CHECK_LIB(krb5, krb5_verify_user_opt)
-		if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" == xyes; then
+		if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" = xyes; then
 			krb5_api_type='heimdal'
 		else
 			krb5_api_type='mit'
@@ -118,13 +118,13 @@ if test x$with_[]modname != xno; then
 	dnl # Check how to free things returned by krb5_get_error_message
 	dnl #
 	AC_CHECK_FUNCS([krb5_get_error_message krb5_free_error_string krb5_free_error_message])
-	if test "x$ac_cv_func_krb5_get_error_message" == xyes; then
+	if test "x$ac_cv_func_krb5_get_error_message" = xyes; then
 		krb5mod_cflags="${krb5mod_cflags} -DHAVE_KRB5_GET_ERROR_MESSAGE"
 	fi
-	if test "x$ac_cv_func_krb5_free_error_message" == xyes; then
+	if test "x$ac_cv_func_krb5_free_error_message" = xyes; then
 		krb5mod_cflags="${krb5mod_cflags} -DHAVE_KRB5_FREE_ERROR_MESSAGE"
 	fi
-	if test "x$ac_cv_func_krb5_free_error_string" == xyes; then
+	if test "x$ac_cv_func_krb5_free_error_string" = xyes; then
 		krb5mod_cflags="${krb5mod_cflags} -DHAVE_KRB5_FREE_ERROR_STRING"
 	fi
 
@@ -135,7 +135,7 @@ if test x$with_[]modname != xno; then
 		krb5threadsafe=
 
 		FR_SMART_CHECK_LIB(krb5, krb5_is_thread_safe)
-		if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" == xyes; then
+		if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" = xyes; then
 			AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <krb5.h>]], [[return krb5_is_thread_safe() ? 0 : 1]])],
 				[krb5threadsafe="-DKRB5_IS_THREAD_SAFE"], [AC_MSG_WARN([[libkrb5 is not threadsafe]])])
 		fi
@@ -143,7 +143,7 @@ if test x$with_[]modname != xno; then
 		krb5threadsafe=""
 	fi
 
-	if test "$krb5_api_type" == "mit"; then
+	if test "$krb5_api_type" = "mit"; then
 		dnl #
 		dnl # This lives in different places depending on the distro
 		dnl #

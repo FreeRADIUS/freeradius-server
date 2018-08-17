@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- *   Copyright 2003 Alan DeKok <aland@freeradius.org>
- *   Copyright 2006 The FreeRADIUS server project
+ *   @copyright 2003 Alan DeKok <aland@freeradius.org>
+ *   @copyright 2006 The FreeRADIUS server project
  */
 
 RCSID("$Id$")
@@ -138,15 +138,13 @@ static int diameter_verify(REQUEST *request, uint8_t const *data, unsigned int d
 /*
  *	Convert diameter attributes to our VALUE_PAIR's
  */
-static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len,
 				    void *decoder_ctx)
 {
 	uint8_t const		*p = data, *end = p + data_len;
 
 	VALUE_PAIR		*vp = NULL;
-	fr_dict_attr_t const	*vendor_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
-									 FR_VENDOR_SPECIFIC);
 	SSL			*ssl = decoder_ctx;
 
 	while (p < end) {
@@ -158,7 +156,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		if ((end - p) < 8) {
 			fr_strerror_printf("Malformed diameter VPs.  Needed at least 8 bytes, got %zu bytes", end - p);
 		error:
-			fr_pair_cursor_free(cursor);
+			fr_cursor_free_list(cursor);
 			return -1;
 		}
 
@@ -183,7 +181,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			p += 4;
 			value_len -= 4;	/* -= 4 for the vendor ID field */
 
-			our_parent = fr_dict_vendor_attr_by_num(fr_dict_internal, FR_VENDOR_SPECIFIC, vendor);
+			our_parent = fr_dict_vendor_attr_by_num(attr_vendor_specific, vendor);
 			if (!our_parent) {
 				if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
 					fr_strerror_printf("Mandatory bit set and no vendor %u found", vendor);
@@ -191,7 +189,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 					goto error;
 				}
 
-				MEM(vp->da = fr_dict_unknown_afrom_fields(vp, vendor_root, vendor, attr));
+				MEM(vp->da = fr_dict_unknown_afrom_fields(vp, attr_vendor_specific, vendor, attr));
 				goto do_value;
 			}
 		} else {
@@ -234,7 +232,7 @@ do_value:
 		 *	to the nearest 4-byte boundary.
 		 */
 		p += (value_len + 0x03) & ~0x03;
-		fr_pair_cursor_append(cursor, vp);
+		fr_cursor_append(cursor, vp);
 
 		if (vp->da->flags.is_unknown) continue;
 
@@ -253,8 +251,7 @@ do_value:
 		 *	challenge) But if the client gets the challenge correct,
 		 *	we're not too worried about the Id.
 		 */
-		if (((vp->da->vendor == 0) && (vp->da->attr == FR_CHAP_CHALLENGE)) ||
-		    ((vp->da->vendor == VENDORPEC_MICROSOFT) && (vp->da->attr == FR_MSCHAP_CHALLENGE))) {
+		if ((vp->da == attr_chap_challenge) || (vp->da == attr_ms_chap_challenge)) {
 			uint8_t	challenge[16];
 			uint8_t	scratch[16];
 
@@ -307,12 +304,14 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 	size_t		total;
 	uint64_t	attr64;
 	VALUE_PAIR	*vp;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 
 	p = buffer;
 	total = 0;
 
-	for (vp = fr_pair_cursor_init(&cursor, &first); vp; vp = fr_pair_cursor_next(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, &first);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Too much data: die.
 		 */
@@ -327,7 +326,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		 */
 
 		length = vp->vp_length;
-		vendor = vp->da->vendor;
+		vendor = fr_dict_vendor_num_by_da(vp->da);
 		if (vendor != 0) {
 			attr = vp->da->attr & 0xffff;
 			length |= ((uint32_t)1 << 31);
@@ -441,8 +440,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 {
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR	*vp, *tunnel_vps = NULL;
-	vp_cursor_t	cursor;
-	vp_cursor_t	to_tunnel;
+	fr_cursor_t	cursor;
+	fr_cursor_t	to_tunnel;
 
 	ttls_tunnel_t	*t = tls_session->opaque;
 
@@ -474,42 +473,30 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	{
 		RDEBUG("Got tunneled Access-Accept");
 
-		fr_pair_cursor_init(&to_tunnel, &tunnel_vps);
+		fr_cursor_init(&to_tunnel, &tunnel_vps);
 		rcode = RLM_MODULE_OK;
 
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_pair_cursor_init(&cursor, &reply->vps);
+		for (vp = fr_cursor_init(&cursor, &reply->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
-		     	switch (vp->da->vendor) {
-			case VENDORPEC_MICROSOFT:
-				if (vp->da->attr == FR_MSCHAP2_SUCCESS) {
-					RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
+		     vp = fr_cursor_next(&cursor)) {
+			if (vp->da == attr_ms_chap2_success) {
+				RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
 
-					rcode = RLM_MODULE_HANDLED;
-					t->authenticated = true;
-					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-				}
-				break;
-
-			case VENDORPEC_UKERNA:
-				if (vp->da->attr == FR_UKERNA_CHBIND) {
-					rcode = RLM_MODULE_HANDLED;
-					t->authenticated = true;
-					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-				}
-				break;
-
-			default:
-				break;
+				rcode = RLM_MODULE_HANDLED;
+				t->authenticated = true;
+				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+			} else if (vp->da == attr_eap_channel_binding_message) {
+				rcode = RLM_MODULE_HANDLED;
+				t->authenticated = true;
+				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 			}
 		}
 	}
 		break;
-
 
 	case FR_CODE_ACCESS_REJECT:
 		RDEBUG("Got tunneled Access-Reject");
@@ -525,37 +512,20 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	case FR_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Got tunneled Access-Challenge");
 
-		fr_pair_cursor_init(&to_tunnel, &tunnel_vps);
+		fr_cursor_init(&to_tunnel, &tunnel_vps);
 
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_pair_cursor_init(&cursor, &reply->vps);
+		for (vp = fr_cursor_init(&cursor, &reply->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
-		     	switch (vp->da->vendor) {
-			case VENDORPEC_UKERNA:
-				if (vp->da->attr == FR_UKERNA_CHBIND) {
-					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-				}
-				break;
-
-			case 0:
-				switch (vp->da->attr) {
-				case FR_EAP_MESSAGE:
-				case FR_REPLY_MESSAGE:
-					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-					break;
-
-				default:
-					break;
-
-				}
-
-			default:
-				continue;
-			}
+		     vp = fr_cursor_next(&cursor)) {
+		     	if ((vp->da == attr_eap_message) || (vp->da == attr_reply_message)) {
+		     		fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+		     	} else if (vp->da == attr_eap_channel_binding_message) {
+				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+		     	}
 		}
 		rcode = RLM_MODULE_HANDLED;
 		break;
@@ -573,7 +543,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 */
 	if (tunnel_vps) {
 		RDEBUG("Sending tunneled reply attributes");
-		rdebug_pair_list(L_DBG_LVL_2, request, tunnel_vps, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, tunnel_vps, NULL);
 
 		vp2diameter(request, tls_session, tunnel_vps);
 		fr_pair_list_free(&tunnel_vps);
@@ -635,7 +605,7 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
 			fprintf(fr_log_fp, "} # server %s\n", cf_section_name2(fake->server_cs));
 
 			RDEBUG("Final reply from tunneled session code %d", fake->reply->code);
-			rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
+			log_request_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 		}
 
 		/*
@@ -716,7 +686,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	rlm_rcode_t		rcode;
 	REQUEST			*fake = NULL;
 	VALUE_PAIR		*vp = NULL;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	ttls_tunnel_t		*t;
 	uint8_t			const *data;
 	size_t			data_len;
@@ -768,7 +738,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Add the tunneled attributes to the fake request.
 	 */
-	fr_pair_cursor_init(&cursor, &fake->packet->vps);
+	fr_cursor_init(&cursor, &fake->packet->vps);
 	if (eap_ttls_decode_pair(fake->packet, &cursor, fr_dict_root(fr_dict_internal),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
@@ -779,16 +749,17 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	fr_pair_make(fake->packet, &fake->packet->vps, "Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
+	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
+	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	RDEBUG("Got tunneled request");
-	rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
 
 	/*
 	 *	Update other items in the REQUEST data structure.
 	 */
-	fake->username = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_NAME, TAG_ANY);
-	fake->password = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
+	fake->username = fr_pair_find_by_da(fake->packet->vps, attr_user_name, TAG_ANY);
+	fake->password = fr_pair_find_by_da(fake->packet->vps, attr_user_password, TAG_ANY);
 
 	/*
 	 *	No User-Name, try to create one from stored data.
@@ -799,7 +770,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		 *	an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_num(fake->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
+			vp = fr_pair_find_by_da(fake->packet->vps, attr_eap_message, TAG_ANY);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
@@ -808,13 +779,13 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 				/*
 				 *	Create & remember a User-Name
 				 */
-				t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
+				t->username = fr_pair_afrom_da(t, attr_user_name);
 				rad_assert(t->username != NULL);
 				t->username->vp_tainted = true;
 
 				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
-				RDEBUG("Got tunneled identity of %s", t->username->vp_strvalue);
+				RDEBUG("Got tunneled identity of %pV", &t->username->data);
 			} else {
 				/*
 				 *	Don't reject the request outright,
@@ -826,9 +797,9 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		} /* else there WAS a t->username */
 
 		if (t->username) {
-			vp = fr_pair_list_copy(fake->packet, t->username);
+			vp = fr_pair_copy(fake->packet, t->username);
 			fr_pair_add(&fake->packet->vps, vp);
-			fake->username = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+			fake->username = vp;
 		}
 	} /* else the request ALREADY had a User-Name */
 
@@ -879,19 +850,18 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
+		vp = fr_pair_find_by_da(fake->control, attr_proxy_to_realm, TAG_ANY);
 		if (vp) {
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
 
-			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);
+			RDEBUG("Tunneled authentication will be proxied to %pV", &vp->data);
 
 			/*
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			fr_pair_list_mcopy_by_num(request, &request->control, &fake->control, 0, FR_PROXY_TO_REALM,
-						  TAG_ANY);
+			fr_pair_list_copy_by_da(request, &request->control, fake->control, attr_proxy_to_realm);
 
 			/*
 			 *	Seed the proxy packet with the
@@ -902,14 +872,12 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			request->proxy = request_alloc_proxy(request);
 
 			request->proxy->packet = talloc_steal(request->proxy, fake->packet);
-			memset(&request->proxy->packet->src_ipaddr, 0,
-			       sizeof(request->proxy->packet->src_ipaddr));
-			memset(&request->proxy->packet->src_ipaddr, 0,
-			       sizeof(request->proxy->packet->src_ipaddr));
+			memset(&request->proxy->packet->src_ipaddr, 0, sizeof(request->proxy->packet->src_ipaddr));
+			memset(&request->proxy->packet->src_ipaddr, 0, sizeof(request->proxy->packet->src_ipaddr));
 			request->proxy->packet->src_port = 0;
 			request->proxy->packet->dst_port = 0;
 			fake->packet = NULL;
-			fr_radius_free(&fake->reply);
+			fr_radius_packet_free(&fake->reply);
 			fake->reply = NULL;
 
 			/*
@@ -924,7 +892,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 */
 			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 					       tunnel, false, false, false);
-			rad_cond_assert(ret == 0);
+			fr_cond_assert(ret == 0);
 
 			/*
 			 *	rlm_eap.c has taken care of associating
@@ -935,7 +903,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 */
 			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
 					       fake, true, false, false);
-			rad_cond_assert(ret == 0);
+			fr_cond_assert(ret == 0);
 
 			fake = NULL;
 

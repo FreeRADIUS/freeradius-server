@@ -1,3 +1,4 @@
+#pragma once
 /*
  * eap_tls.h
  *
@@ -17,13 +18,10 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * Copyright 2003  Alan DeKok <aland@freeradius.org>
- * Copyright 2006  The FreeRADIUS server project
+ * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2003  Alan DeKok <aland@freeradius.org>
+ * @copyright 2006  The FreeRADIUS server project
  */
-#ifndef _EAP_TLS_H
-#define _EAP_TLS_H
-
 RCSIDH(eap_tls_h, "$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
@@ -47,8 +45,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include <unistd.h>
 #endif
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/tls.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/tls/base.h>
 
 #include "eap.h"
 
@@ -186,5 +184,3 @@ eap_tls_session_t	*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_
 
 
 fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs, char const *key) CC_HINT(nonnull);
-
-#endif /*_EAP_TLS_H*/

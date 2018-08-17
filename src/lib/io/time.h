@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_TIME_H
-#define _FR_TIME_H
+
 /**
  * $Id$
  *
@@ -29,7 +29,9 @@ RCSIDH(time_h, "$Id$")
  *	For sys/time.h and time.h
  */
 #include <freeradius-devel/missing.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dlist.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <inttypes.h>
@@ -43,14 +45,6 @@ extern "C" {
  *  nanoseconds since the application started.
  */
 typedef uint64_t fr_time_t;
-
-/**
- *  A doubly linked list.
- */
-typedef struct fr_dlist_t {
-	struct fr_dlist_t *prev;
-	struct fr_dlist_t *next;
-} fr_dlist_t;
 
 /**
  *  A structure to track the time spent processing a request.
@@ -74,69 +68,28 @@ typedef struct fr_time_tracking_t {
 	fr_time_t	running;		//!< total time spent running
 	fr_time_t	waiting;		//!< total time spent waiting
 
-	fr_dlist_t	list;			//!< for linking a request to various lists
+	fr_dlist_head_t	list;			//!< for linking a request to various lists
 } fr_time_tracking_t;
+
+typedef struct fr_time_elapsed_t {
+	uint64_t	array[8];		//!< 100ns to 100s
+} fr_time_elapsed_t;
 
 #define NANOSEC (1000000000)
 #define USEC	(1000000)
-
-/*
- *	Functions to manage a doubly linked list.
- */
-#define FR_DLIST_INIT(head) do { head.prev = head.next = &head; } while (0)
-static inline void fr_dlist_insert_head(fr_dlist_t *head, fr_dlist_t *entry)
-{
-	if (!rad_cond_assert(head->next != NULL)) return;
-	if (!rad_cond_assert(head->prev != NULL)) return;
-
-	entry->prev = head;
-	entry->next = head->next;
-	head->next->prev = entry;
-	head->next = entry;
-}
-
-static inline void fr_dlist_insert_tail(fr_dlist_t *head, fr_dlist_t *entry)
-{
-	if (!rad_cond_assert(head->next != NULL)) return;
-	if (!rad_cond_assert(head->prev != NULL)) return;
-
-	entry->next = head;
-	entry->prev = head->prev;
-	head->prev->next = entry;
-	head->prev = entry;
-}
-
-static inline void fr_dlist_remove(fr_dlist_t *entry)
-{
-	if (!rad_cond_assert(entry->next != NULL)) return;
-	if (!rad_cond_assert(entry->prev != NULL)) return;
-
-	entry->prev->next = entry->next;
-	entry->next->prev = entry->prev;
-	entry->prev = entry->next = entry;
-}
-
-#define FR_DLIST_FIRST(head) (head.next == &head) ? NULL : head.next
-#define FR_DLIST_NEXT(head, p_entry) (p_entry->next == &head) ? NULL : p_entry->next
-#define FR_DLIST_TAIL(head) (head.prev == &head) ? NULL : head.prev
 
 int fr_time_start(void);
 fr_time_t fr_time(void);
 void fr_time_to_timeval(struct timeval *tv, fr_time_t when) CC_HINT(nonnull);
 
-void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when) CC_HINT(nonnull);
+void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
-void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when) CC_HINT(nonnull);
+void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp) CC_HINT(nonnull);
-
-/** Convert a pointer to a member into a pointer to the parent structure.
- *
- */
-#define fr_ptr_to_type(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))
+void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end);
+void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs);
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* _FR_TIME_H */

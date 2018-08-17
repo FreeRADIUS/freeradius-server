@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := 'filter'
 }
 
 #
@@ -18,19 +17,15 @@ update request {
 }
 
 if ("%{Tmp-Octets-0}" != '0x0001020304050607') {
-	update {
-		reply:Filter-Id := 'fail 1'
-	}
+	test_fail
 }
 
 if ("%{Tmp-Octets-0[0]}" != '0x0001020304050607') {
-	update {
-		reply:Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 if ("%{Tmp-Octets-0[*]}" != '0x0001020304050607,0x0706050403020100') {
-	update {
-		reply:Filter-Id += 'fail 3'
-	}
+	test_fail
 }
+
+success

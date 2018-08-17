@@ -26,15 +26,18 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <talloc.h>
-#include <freeradius-devel/pair.h>
-#include <freeradius-devel/types.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/dhcpv4.h>
+#include "dhcpv4.h"
+#include "attrs.h"
 
 /** Retrieve a DHCP option from a raw packet buffer
  *
  *
  */
-uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t packet_size, unsigned int option)
+uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t packet_size, fr_dict_attr_t const *da)
 {
 	int overload = 0;
 	int field = DHCP_OPTION_FIELD;
@@ -59,7 +62,7 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 				field = DHCP_FILE_FIELD;
 				continue;
 
-			} else if ((field == DHCP_FILE_FIELD) && (overload & DHCP_SNAME_FIELD)) {
+			} else if ((field == DHCP_FILE_FIELD || field == DHCP_OPTION_FIELD) && (overload & DHCP_SNAME_FIELD)) {
 				data = packet->sname;
 				where = 0;
 				size = sizeof(packet->sname);
@@ -85,10 +88,10 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 			return NULL;
 		}
 
-		if (data[0] == option) return data;
+		if (data[0] == da->attr) return data;
 
 		if (data[0] == 52) { /* overload sname and/or file */
-			overload = data[3];
+			overload = data[2];
 		}
 
 		where += data[1] + 2;
@@ -100,15 +103,14 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 
 int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 {
-	size_t i;
-	uint8_t *p;
-	uint32_t giaddr;
-	vp_cursor_t cursor;
-	VALUE_PAIR *head = NULL, *vp;
-	VALUE_PAIR *maxms, *mtu;
+	size_t		i;
+	uint8_t		*p = packet->data;
+	uint32_t	giaddr;
+	fr_cursor_t	cursor;
+	VALUE_PAIR	*head = NULL, *vp;
+	VALUE_PAIR	*maxms, *mtu;
 
-	fr_pair_cursor_init(&cursor, &head);
-	p = packet->data;
+	fr_cursor_init(&cursor, &head);
 
 	if (packet->data[1] > 1) {
 		fr_strerror_printf("Packet is not Ethernet: %u",
@@ -120,12 +122,11 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	Decode the header.
 	 */
 	for (i = 0; i < 14; i++) {
-
-		vp = fr_pair_make(packet, NULL, dhcp_header_names[i], NULL, T_OP_EQ);
+		vp = fr_pair_afrom_da(packet, *dhcp_header_attrs[i]);
 		if (!vp) {
-			char buffer[256];
-			strlcpy(buffer, fr_strerror(), sizeof(buffer));
-			fr_strerror_printf("Cannot decode packet due to internal error: %s", buffer);
+			fr_strerror_printf_push("Cannot decode packet due to internal error");
+		error:
+			talloc_free(vp);
 			fr_pair_list_free(&head);
 			return -1;
 		}
@@ -146,36 +147,18 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		}
 
 		switch (vp->vp_type) {
-		case FR_TYPE_UINT8:
-			vp->vp_uint8 = p[0];
-			break;
-
-		case FR_TYPE_UINT16:
-			vp->vp_uint16 = (p[0] << 8) | p[1];
-			break;
-
-		case FR_TYPE_UINT32:
-			memcpy(&vp->vp_uint32, p, 4);
-			vp->vp_uint32 = ntohl(vp->vp_uint32);
-			break;
-
-		case FR_TYPE_IPV4_ADDR:
-			memcpy(&vp->vp_ipv4addr, p, 4);
-			break;
-
 		case FR_TYPE_STRING:
 			/*
 			 *	According to RFC 2131, these are null terminated strings.
 			 *	We don't trust everyone to abide by the RFC, though.
 			 */
 			if (*p != '\0') {
-				uint8_t *end;
-				int len;
-				end = memchr(p, '\0', dhcp_header_sizes[i]);
-				len = end ? end - p : dhcp_header_sizes[i];
-				fr_pair_value_bstrncpy(vp, p, len);
+				uint8_t *q;
+
+				q = memchr(p, '\0', dhcp_header_sizes[i]);
+				fr_pair_value_bstrncpy(vp, p, q ? q - p : dhcp_header_sizes[i]);
 			}
-			if (vp->vp_length == 0) fr_pair_list_free(&vp);
+			if (vp->vp_length == 0) TALLOC_FREE(vp);
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -184,20 +167,25 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 			fr_pair_value_memcpy(vp, p, packet->data[2]);
 			break;
 
+			/*
+			 *	The DHCP header size for CHADDR is not
+			 *	6, so the value_box function doesn't
+			 *	like it.  Just do the copy manually.
+			 */
 		case FR_TYPE_ETHERNET:
 			memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
 			break;
 
 		default:
-			fr_strerror_printf("BAD TYPE %d", vp->vp_type);
-			fr_pair_list_free(&vp);
+			if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
+						      p, dhcp_header_sizes[i], true) < 0) goto error;
 			break;
 		}
 		p += dhcp_header_sizes[i];
 
 		if (!vp) continue;
 
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 	}
 
 	/*
@@ -209,8 +197,11 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	it'll need to find the new tail...
 	 */
 	{
-		uint8_t const *end;
-		ssize_t len;
+		uint8_t const		*end;
+		ssize_t			len;
+		fr_dhcp_ctx_t	packet_ctx = {
+						.root = fr_dict_root(fr_dict_internal)
+					};
 
 		p = packet->data + 240;
 		end = p + (packet->data_len - 240);
@@ -219,13 +210,54 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcpv4_decode_option(packet, &cursor, fr_dict_root(fr_dict_internal),
-						    p, ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p), NULL);
+			len = fr_dhcpv4_decode_option(packet, &cursor, p,
+						      ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p), &packet_ctx);
 			if (len <= 0) {
 				fr_pair_list_free(&head);
 				return len;
 			}
 			p += len;
+		}
+
+		/*
+		 *	If option Overload is present in the 'options' field, then fields 'file' and/or 'sname'
+		 *	are used to hold more options. They are partitioned and must be interpreted in sequence.
+		 */
+		vp = fr_pair_find_by_da(head, attr_dhcp_overload, TAG_ANY);
+		if (vp) {
+			if ((vp->vp_uint8 & 1) == 1) {
+				/*
+				 *	The 'file' field is used to hold options.
+				 *	It must be interpreted before 'sname'.
+				 */
+				p = packet->data + 44;
+				end = p + 64;
+				while (p < end) {
+					len = fr_dhcpv4_decode_option(packet, &cursor, p, end - p, &packet_ctx);
+					if (len <= 0) {
+						fr_pair_list_free(&head);
+						return len;
+					}
+					p += len;
+				}
+				fr_pair_delete_by_da(&head, attr_dhcp_boot_filename);
+			}
+			if ((vp->vp_uint8 & 2) == 2) {
+				/*
+				 *	The 'sname' field is used to hold options.
+				 */
+				p = packet->data + 108;
+				end = p + 128;
+				while (p < end) {
+					len = fr_dhcpv4_decode_option(packet, &cursor, p, end - p, &packet_ctx);
+					if (len <= 0) {
+						fr_pair_list_free(&head);
+						return len;
+					}
+					p += len;
+				}
+				fr_pair_delete_by_da(&head, attr_dhcp_server_host_name);
+			}
 		}
 	}
 
@@ -242,14 +274,14 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		/*
 		 *	DHCP Opcode is request
 		 */
-		vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 256, TAG_ANY);
-		if (vp && vp->vp_uint32 == 3) {
+		vp = fr_pair_find_by_da(head, attr_dhcp_opcode, TAG_ANY);
+		if (vp && vp->vp_uint8 == 1) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
-			vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 63, TAG_ANY);
+			vp = fr_pair_find_by_da(head, attr_dhcp_vendor_class_identifier, TAG_ANY);
 			if (vp && (strcmp(vp->vp_strvalue, "MSFT 98") == 0)) {
-				vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 262, TAG_ANY);
+				vp = fr_pair_find_by_da(head, attr_dhcp_flags, TAG_ANY);
 
 				/*
 				 *	Reply should be broadcast.
@@ -270,10 +302,10 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	Client can request a LARGER size, but not a smaller
 	 *	one.  They also cannot request a size larger than MTU.
 	 */
-	maxms = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 57, TAG_ANY);
-	mtu = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 26, TAG_ANY);
+	maxms = fr_pair_find_by_da(packet->vps, attr_dhcp_dhcp_maximum_msg_size, TAG_ANY);
+	mtu = fr_pair_find_by_da(packet->vps, attr_dhcp_interface_mtu_size, TAG_ANY);
 
-	if (mtu && (mtu->vp_uint32 < DEFAULT_PACKET_SIZE)) {
+	if (mtu && (mtu->vp_uint16 < DEFAULT_PACKET_SIZE)) {
 		fr_strerror_printf("Client says MTU is smaller than minimum permitted by the specification");
 		return -1;
 	}
@@ -282,25 +314,20 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	Client says maximum message size is smaller than minimum permitted
 	 *	by the specification: fixing it.
 	 */
-	if (maxms && (maxms->vp_uint32 < DEFAULT_PACKET_SIZE)) maxms->vp_uint32 = DEFAULT_PACKET_SIZE;
+	if (maxms && (maxms->vp_uint16 < DEFAULT_PACKET_SIZE)) maxms->vp_uint16 = DEFAULT_PACKET_SIZE;
 
 	/*
 	 *	Client says MTU is smaller than maximum message size: fixing it
 	 */
-	if (maxms && mtu && (maxms->vp_uint32 > mtu->vp_uint32)) maxms->vp_uint32 = mtu->vp_uint32;
+	if (maxms && mtu && (maxms->vp_uint16 > mtu->vp_uint16)) maxms->vp_uint16 = mtu->vp_uint16;
 
 	return 0;
 }
 
 int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 {
-	uint8_t		*p;
-	vp_cursor_t	cursor;
-	VALUE_PAIR	*vp;
-	uint32_t	lvalue;
-	uint16_t	svalue;
-	size_t		dhcp_size;
 	ssize_t		len;
+	VALUE_PAIR	*vp;
 
 	if (packet->data) return 0;
 
@@ -308,218 +335,57 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 	packet->data = talloc_zero_array(packet, uint8_t, packet->data_len);
 
 	/* XXX Ugly ... should be set by the caller */
-	if (packet->code == 0) packet->code = FR_DHCPV4_NAK;
+	if (packet->code == 0) packet->code = FR_DHCP_NAK;
 
 	/* store xid */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 260, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_da(packet->vps, attr_dhcp_transaction_id, TAG_ANY))) {
 		packet->id = vp->vp_uint32;
 	} else {
 		packet->id = fr_rand();
 	}
 
-	p = packet->data;
+	len = fr_dhcpv4_encode(packet->data, packet->data_len, packet->code, packet->id, packet->vps);
+	if (len < 0) return -1;
 
-	/*
-	 *	@todo: Make this work again.
-	 */
-#if 0
-	mms = DEFAULT_PACKET_SIZE; /* maximum message size */
-
-	/*
-	 *	Clients can request a LARGER size, but not a
-	 *	smaller one.  They also cannot request a size
-	 *	larger than MTU.
-	 */
-
-	/* DHCP-DHCP-Maximum-Msg-Size */
-	vp = fr_pair_find_by_num(packet->vps, 57, DHCP_MAGIC_VENDOR, TAG_ANY);
-	if (vp && (vp->vp_uint32 > mms)) {
-		mms = vp->vp_uint32;
-
-		if (mms > MAX_PACKET_SIZE) mms = MAX_PACKET_SIZE;
-	}
-#endif
-
-	vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 256, TAG_ANY);
-	if (vp) {
-		*p++ = vp->vp_uint32 & 0xff;
-	} else {
-		*p++ = 1;	/* client message */
-	}
-
-	/* DHCP-Hardware-Type */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 257, TAG_ANY))) {
-		*p++ = vp->vp_uint8;
-	} else {
-		*p++ = 1;		/* hardware type = ethernet */
-	}
-
-	/* DHCP-Hardware-Address-len */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 258, TAG_ANY))) {
-		*p++ = vp->vp_uint8;
-	} else {
-		*p++ = 6;		/* 6 bytes of ethernet */
-	}
-
-	/* DHCP-Hop-Count */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 259, TAG_ANY))) {
-		*p = vp->vp_uint8;
-	}
-	p++;
-
-	/* DHCP-Transaction-Id */
-	lvalue = htonl(packet->id);
-	memcpy(p, &lvalue, 4);
-	p += 4;
-
-	/* DHCP-Number-of-Seconds */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 261, TAG_ANY))) {
-		svalue = htons(vp->vp_uint16);
-		memcpy(p, &svalue, 2);
-	}
-	p += 2;
-
-	/* DHCP-Flags */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 262, TAG_ANY))) {
-		svalue = htons(vp->vp_uint16);
-		memcpy(p, &svalue, 2);
-	}
-	p += 2;
-
-	/* DHCP-Client-IP-Address */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY))) {
-		memcpy(p, &vp->vp_ipv4addr, 4);
-	}
-	p += 4;
-
-	/* DHCP-Your-IP-address */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY))) {
-		lvalue = vp->vp_ipv4addr;
-	} else {
-		lvalue = htonl(INADDR_ANY);
-	}
-	memcpy(p, &lvalue, 4);
-	p += 4;
-
-	/* DHCP-Server-IP-Address */
-	vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 265, TAG_ANY);
-	if (vp) {
-		lvalue = vp->vp_ipv4addr;
-	} else {
-		lvalue = htonl(INADDR_ANY);
-	}
-	memcpy(p, &lvalue, 4);
-	p += 4;
-
-	/*
-	 *	DHCP-Gateway-IP-Address
-	 */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 266, TAG_ANY))) {
-		lvalue = vp->vp_ipv4addr;
-	} else {
-		lvalue = htonl(INADDR_ANY);
-	}
-	memcpy(p, &lvalue, 4);
-	p += 4;
-
-	/* DHCP-Client-Hardware-Address */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 267, TAG_ANY))) {
-		if (vp->vp_type == FR_TYPE_ETHERNET) {
-			/*
-			 *	Ensure that we mark the packet as being Ethernet.
-			 *	This is mainly for DHCP-Lease-Query responses.
-			 */
-			packet->data[1] = 1;
-			packet->data[2] = 6;
-
-			memcpy(p, vp->vp_ether, sizeof(vp->vp_ether));
-		} /* else ignore it */
-	}
-	p += DHCP_CHADDR_LEN;
-
-	/* DHCP-Server-Host-Name */
-	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 268, TAG_ANY))) {
-		if (vp->vp_length > DHCP_SNAME_LEN) {
-			memcpy(p, vp->vp_strvalue, DHCP_SNAME_LEN);
-		} else {
-			memcpy(p, vp->vp_strvalue, vp->vp_length);
-		}
-	}
-	p += DHCP_SNAME_LEN;
-
-	/*
-	 *	Copy over DHCP-Boot-Filename.
-	 *
-	 *	FIXME: This copy should be delayed until AFTER the options
-	 *	have been processed.  If there are too many options for
-	 *	the packet, then they go into the sname && filename fields.
-	 *	When that happens, the boot filename is passed as an option,
-	 *	instead of being placed verbatim in the filename field.
-	 */
-
-	/* DHCP-Boot-Filename */
-	vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 269, TAG_ANY);
-	if (vp) {
-		if (vp->vp_length > DHCP_FILE_LEN) {
-			memcpy(p, vp->vp_strvalue, DHCP_FILE_LEN);
-		} else {
-			memcpy(p, vp->vp_strvalue, vp->vp_length);
-		}
-	}
-	p += DHCP_FILE_LEN;
-
-	/* DHCP magic number */
-	lvalue = htonl(DHCP_OPTION_MAGIC_NUMBER);
-	memcpy(p, &lvalue, 4);
-	p += 4;
-
-	p[0] = 0x35;		/* DHCP-Message-Type */
-	p[1] = 1;
-	p[2] = packet->code - FR_DHCPV4_OFFSET;
-	p += 3;
-
-	/*
-	 *  Pre-sort attributes into contiguous blocks so that fr_dhcpv4_encode_option
-	 *  operates correctly. This changes the order of the list, but never mind...
-	 */
-	fr_pair_list_sort(&packet->vps, fr_dhcpv4_attr_cmp);
-	fr_pair_cursor_init(&cursor, &packet->vps);
-
-	/*
-	 *  Each call to fr_dhcpv4_encode_option will encode one complete DHCP option,
-	 *  and sub options.
-	 */
-	while ((vp = fr_pair_cursor_current(&cursor))) {
-		len = fr_dhcpv4_encode_option(p, packet->data_len - (p - packet->data), &cursor, NULL);
-		if (len < 0) break;
-		p += len;
-	};
-
-	p[0] = 0xff;		/* end of option option */
-	p[1] = 0x00;
-	p += 2;
-	dhcp_size = p - packet->data;
-
-	/*
-	 *	FIXME: if (dhcp_size > mms),
-	 *	  then we put the extra options into the "sname" and "file"
-	 *	  fields, AND set the "end option option" in the "options"
-	 *	  field.  We also set the "overload option",
-	 *	  and put options into the "file" field, followed by
-	 *	  the "sname" field.  Where each option is completely
-	 *	  enclosed in the "file" and/or "sname" field, AND
-	 *	  followed by the "end of option", and MUST be followed
-	 *	  by padding option.
-	 *
-	 *	Yuck.  That sucks...
-	 */
-	packet->data_len = dhcp_size;
-
-	if (packet->data_len < DEFAULT_PACKET_SIZE) {
-		memset(packet->data + packet->data_len, 0,
-		       DEFAULT_PACKET_SIZE - packet->data_len);
-		packet->data_len = DEFAULT_PACKET_SIZE;
-	}
+	packet->data_len = len;
 
 	return 0;
+}
+
+RADIUS_PACKET *fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len)
+{
+	RADIUS_PACKET *packet;
+	uint32_t	magic;
+	uint8_t const	*code;
+
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
+	if (!code) return NULL;
+
+	if (data_len < MIN_PACKET_SIZE) return NULL;
+
+	/* Now that checks are done, allocate packet */
+	packet = fr_radius_alloc(NULL, false);
+	if (!packet) {
+		fr_strerror_printf("Failed allocating packet");
+		return NULL;
+	}
+
+	/*
+	 *	Get XID.
+	 */
+	memcpy(&magic, data + 4, 4);
+
+	packet->data_len = data_len;
+	packet->code = code[2];
+	packet->id = ntohl(magic);
+
+	/*
+	 *	FIXME: for DISCOVER / REQUEST: src_port == dst_port + 1
+	 *	FIXME: for OFFER / ACK       : src_port = dst_port - 1
+	 */
+
+	/*
+	 *	Unique keys are xid, client mac, and client ID?
+	 */
+	return packet;
 }

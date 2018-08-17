@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,12 +14,11 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_ETHERNET_H
-#define _FR_ETHERNET_H
+
 /**
  * $Id$
  *
- * @file include/net.h
+ * @file protocols/ethernet/ethernet.h
  * @brief Structures and functions for parsing ethernet headers.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
@@ -114,4 +114,3 @@ typedef enum {
 	PROTO_OPT_ETHERNET_CVLAN_DEI,		//!< Inner VLAN drop eligible indicator.
 	PROTO_OPT_ETHERNET_CVLAN_VID		//!< Inner VLAN ID.
 } fr_ethernet_options_t;
-#endif

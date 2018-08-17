@@ -3,16 +3,12 @@
 
 # Non matching on attribute ref
 if (User-Name !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
-	update reply {
-		Filter-Id += 'Fail 0'
-	}
+	test_fail
 }
 
 # Matching on xlat expanded value
 if ("%{User-Name}" !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
-	update reply {
-		Filter-Id += 'Fail 1'
-	}
+	test_fail
 }
 
 # Matching on attribute ref with capture groups
@@ -23,72 +19,52 @@ if (User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
 	}
 }
 else {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
 
 # Checking capture groups are cleared out correctly
 if (User-Name =~ /^([0-9])_/) {
 	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1_1') {
-		update reply {
-			Filter-Id += 'Fail 3'
-		}
+		test_fail
 	}
 }
 else {
-	update reply {
-		Filter-Id += 'Fail 3.5'
-	}
+	test_fail
 }
 
 # Checking capture groups are cleared out correctly when there are no matches
 if (User-Name =~ /^./) {
 	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1') {
-		update reply {
-			Filter-Id += 'Fail 4'
-		}
+		test_fail
 	}
 }
 else {
-	update reply {
-		Filter-Id += 'Fail 4.5'
-	}
+	test_fail
 }
 
 # compiled - ref - insensitive
 if (Calling-Station-Id !~ /:roamyroam$/i) {
-	update reply {
-		Filter-Id += 'Fail 5'
-	}
+	test_fail
 }
 
 # compiled - expansion - insensitive
 if ("%{Calling-Station-Id}" !~ /:roamyroam$/i) {
-	update reply {
-		Filter-Id += 'Fail 6'
-	}
+	test_fail
 }
 
 # compiled - enum - ref - insensitive
 if (Service-Type !~ /^framed-user$/i) {
-	update reply {
-		Filter-Id += 'Fail 7'
-	}
+	test_fail
 }
 
 # compiled - enum - expansion - insensitive
 if ("%{Service-Type}" !~ /^framed-user$/i) {
-	update reply {
-		Filter-Id += 'Fail 8'
-	}
+	test_fail
 }
 
 # compiled - enum - ref
 if (Service-Type =~ /^framed-user$/) {
-	update reply {
-		Filter-Id += 'Fail 9'
-	}
+	test_fail
 }
 
 update request {
@@ -97,16 +73,12 @@ update request {
 
 # compiled - ref - multiline
 if (&Tmp-String-0 !~ /^foo$/m) {
-	update reply {
-		Filter-Id += 'Fail 14'
-	}
+	test_fail
 }
 
 # compiled - ref - non-multiline
 if (&Tmp-String-0 =~ /^foo$/) {
-	update reply {
-		Filter-Id += 'Fail 15'
-	}
+	test_fail
 }
 
 # compiled - ref - non-multiline
@@ -114,36 +86,26 @@ if (&Tmp-String-0 =~ /^foo$/) {
 # Not all POSIX implementations support the \n character classes
 # so only run this test if the server was built with libpcre.
 if (("${feature.regex-pcre}" == 'yes') && (&Tmp-String-0 !~ /^foo\nbar$/)) {
-	update reply {
-		Filter-Id += 'Fail 16'
-	}
+	test_fail
 }
 
 # compiled - ref - multiline
 if (&Tmp-String-0 !~ /^bar$/m) {
-	update reply {
-		Filter-Id += 'Fail 17'
-	}
+	test_fail
 }
 
 # compiled - ref - multiline - sensitive
 if (&Tmp-String-0 =~ /^BAR$/m) {
-	update reply {
-		Filter-Id += 'Fail 17'
-	}
+	test_fail
 }
 
 # compiled - ref - multiline - insensitive
 if (&Tmp-String-0 !~ /^BAR$/mi) {
-	update reply {
-		Filter-Id += 'Fail 17'
-	}
+	test_fail
 }
 
 # compiled - ref - multiline - insensitive (flag order reversed)
 if (&Tmp-String-0 !~ /^BAR$/im) {
-	update reply {
-		Filter-Id += 'Fail 18'
-	}
+	test_fail
 }
 

@@ -1,0 +1,97 @@
+#!/usr/bin/env perl
+#
+#  $Id$
+#
+#  Convert conf files to Asciidoc
+#
+#
+
+$raw = 0;
+
+$firstcol = 1;
+
+while (<>) {
+    #
+    #  Skip editor commands
+    #
+    if (/^# -\*- text -\*-/) {
+	next;
+    }
+
+    if (/\$Id: /) {
+	next;
+    }
+
+    # Skip ###### banners
+    if (/^##+$/) {
+	next;
+    }
+
+    if (/^\s*$/) {
+	next;
+    }
+
+    $oldcol = $firstcol;
+    if (/^#/) {
+	$firstcol = 1;
+    } else {
+	$firstcol = 0;
+    }
+
+    if (($firstcol == 1) && ($oldcol == 0) && ($raw == 0)) {
+	s/^#//;
+    }
+
+    #
+    #  Comments in the configuration files get converted to plain
+    #  text.
+    #
+    if (/^\s*#/) {
+	s/^\s*#[\t ]{0,2}//;
+
+	#
+	#  If we WERE printing blocks of raw output, end that, and
+	#  reset the "raw" flag.
+	#
+	if ($raw == 1) {
+	    print "```\n";
+	    $raw = 0;
+	}
+
+	#
+	#  Ensure that lists get formatted correctly
+	#
+	if (/^\s*\*/) {
+	    print "  ";
+	}
+
+	#
+	#  @todo - load up www.freeradius.org/rfc/refs
+	#
+	#  Split the input line on spaces, into a hash array (for
+	#  uniqueness) and check each word against "refs".  If found,
+	#  the word is an attribute.  Replace the word in $_ with a
+	#  reference to the attribute definition.
+	#
+
+	print;
+	next;
+    }
+
+    #
+    #  No comment at the start of the line.  It must be configuration.
+    #  Convert that to raw text.
+    #
+    #  If we were printing normal text, print out the "raw" header.
+    #
+    if ($raw == 0) {
+	print "```\n";
+	$raw = 1;
+    }
+
+    #
+    #  And print out the raw text.
+    #
+    print;
+}
+

@@ -22,6 +22,10 @@ ATTRIBUTE	Xylan-Profil-Numb			7	integer
 ATTRIBUTE	Xylan-Auth-Group-Protocol		8	string
 ATTRIBUTE	Xylan-Asa-Access			9	string
 ATTRIBUTE	Xylan-End-User-Profile			10	integer
+ATTRIBUTE	Xylan-Primary-Home-Agent		12	string
+ATTRIBUTE	Xylan-Secondary-Home-Agent		13	string
+ATTRIBUTE	Xylan-Home-Agent-Password		14	string
+ATTRIBUTE	Xylan-Home-Network-Name			15	string
 ATTRIBUTE	Xylan-Access-Priv			16	integer
 ATTRIBUTE	Xylan-Nms-Group				20	string
 ATTRIBUTE	Xylan-Nms-First-Name			21	string
@@ -37,6 +41,11 @@ ATTRIBUTE	Xylan-Acce-Priv-F-R1			39	octets
 ATTRIBUTE	Xylan-Acce-Priv-F-R2			40	octets
 ATTRIBUTE	Xylan-Acce-Priv-F-W1			41	octets
 ATTRIBUTE	Xylan-Acce-Priv-F-W2			42	octets
+
+ATTRIBUTE	Xylan-Policy-List			100	string
+ATTRIBUTE	Xylan-Redirect-Url			101	string
+ATTRIBUTE	Xylan-Device-Name			152	string
+ATTRIBUTE	Xylan-Device-Location			153	string
 
 VALUE	Xylan-Access-Priv		Xylan-Read-Priv		1
 VALUE	Xylan-Access-Priv		Xylan-Write-Priv	2

@@ -31,16 +31,11 @@ foreach control:Tmp-String-0 {
 		update request {
 			Called-Station-Id := "%{1}"
 		}
-		update reply {
-			Filter-Id := "filter"
-		}
-
+		success
 		break
 	}
 	elsif ("%{Foreach-Variable-0}" == '9') {
-		update reply {
-			Filter-Id := "fail-9"
-		}
+		test_fail
 		reject
 	}
 }

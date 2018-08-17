@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->sql_instance_name
 
 #include <rlm_sql.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <ctype.h>
 
@@ -47,8 +47,8 @@ typedef struct rlm_sqlippool_t {
 	rlm_sql_t const	*sql_inst;
 
 	char const	*pool_name;
-	bool		ipv6;			//!< Whether or not we do IPv6 pools.
-	int		framed_ip_address; 	//!< the attribute number for Framed-IP(v6)-Address
+	fr_dict_attr_t const *framed_ip_address; //!< the attribute for IP address allocation
+	char const	*attribute_name;	//!< name of the IP address attribute
 
 	time_t		last_clear;		//!< So we only do it once a second.
 	char const	*allocate_begin;	//!< SQL query to begin.
@@ -112,10 +112,10 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, rlm_sqlippool_t, pool_name), .dflt = "" },
 
+	{ FR_CONF_OFFSET("attribute_name", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_sqlippool_t, attribute_name), .dflt = "Framed-IP-Address" },
+
 	{ FR_CONF_OFFSET("default_pool", FR_TYPE_STRING, rlm_sqlippool_t, defaultpool), .dflt = "main_pool" },
 
-
-	{ FR_CONF_OFFSET("ipv6", FR_TYPE_BOOL, rlm_sqlippool_t, ipv6) },
 
 	{ FR_CONF_OFFSET("allocate_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), .dflt = "START TRANSACTION" },
 
@@ -167,6 +167,29 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_POINTER("messages", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) message_config },
 	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_sqlippool_dict[];
+fr_dict_autoload_t rlm_sqlippool_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_pool_name;
+static fr_dict_attr_t const *attr_module_success_message;
+static fr_dict_attr_t const *attr_acct_status_type;
+
+extern fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[];
+fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
+	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_pool_name, .name = "Pool-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
+	{ NULL }
 };
 
 /*
@@ -384,17 +407,28 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	} else {
 		inst->pool_name = talloc_typed_strdup(inst, "ippool");
 	}
-	sql_inst = module_find(cf_section_find(main_config.config, "modules", NULL), inst->sql_instance_name);
+	sql_inst = module_find(cf_section_find(main_config->root_cs, "modules", NULL), inst->sql_instance_name);
 	if (!sql_inst) {
 		cf_log_err(conf, "failed to find sql instance named %s",
 			   inst->sql_instance_name);
 		return -1;
 	}
 
-	if (!inst->ipv6) {
-		inst->framed_ip_address = FR_FRAMED_IP_ADDRESS;
-	} else {
-		inst->framed_ip_address = FR_FRAMED_IPV6_PREFIX;
+	if (fr_dict_attr_by_qualified_name(&inst->framed_ip_address, dict_freeradius, inst->attribute_name) < 0) {
+		cf_log_perr(conf, "Failed resolving attribute");
+		return -1;
+	}
+
+	switch (inst->framed_ip_address->type) {
+	default:
+		cf_log_err(conf, "Cannot use non-IP attributes for 'attribute_name = %s'", inst->attribute_name);
+		return -1;
+
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+		break;
 	}
 
 	inst->sql_inst = (rlm_sql_t *) sql_inst->dl_inst->data;
@@ -413,19 +447,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	If we have something to log, then we log it.
  *	Otherwise we return the retcode as soon as possible
  */
-static int do_logging(REQUEST *request, char const *str, int rcode)
+static int do_logging(rlm_sqlippool_t *inst, REQUEST *request, char const *str, int rcode)
 {
-	char *expanded = NULL;
+	char		*expanded = NULL;
+	VALUE_PAIR	*vp;
 
 	if (!str || !*str) return rcode;
 
-	if (xlat_aeval(request, &expanded, request, str, NULL, NULL) < 0) {
-		return rcode;
-	}
+	if (xlat_aeval(request, &expanded, request, str, NULL, NULL) < 0) return rcode;
 
-	pair_make_config("Module-Success-Message", expanded, T_OP_SET);
-
-	talloc_free(expanded);
+	MEM(pair_add_request(&vp, attr_module_success_message) == 0);
+	fr_pair_value_strsteal(vp, expanded);
 
 	return rcode;
 }
@@ -446,16 +478,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if (fr_pair_find_by_num(request->reply->vps, 0, inst->framed_ip_address, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_da(request->reply->vps, inst->framed_ip_address, TAG_ANY) != NULL) {
 		RDEBUG("Framed-IP-Address already exists");
 
-		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
+		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (fr_pair_find_by_num(request->control, 0, FR_POOL_NAME, TAG_ANY) == NULL) {
+	if (fr_pair_find_by_da(request->control, attr_pool_name, TAG_ANY) == NULL) {
 		RDEBUG("No Pool-Name defined");
 
-		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);
+		return do_logging(inst, request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
 
 	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
@@ -522,7 +554,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 				 *	NOTFOUND
 				 */
 				RDEBUG("pool appears to be full");
-				return do_logging(request, inst->log_failed, RLM_MODULE_NOTFOUND);
+				return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
 
 			}
 
@@ -540,20 +572,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
 		RDEBUG("IP address could not be allocated");
-		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
+		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
 	/*
 	 *	See if we can create the VP from the returned data.  If not,
 	 *	error out.  If so, add it to the list.
 	 */
-	vp = fr_pair_afrom_num(request->reply, 0, inst->framed_ip_address);
-	if (fr_pair_value_from_str(vp, allocation, allocation_len) < 0) {
+	MEM(vp = fr_pair_afrom_da(request->reply, inst->framed_ip_address));
+	if (fr_pair_value_from_str(vp, allocation, allocation_len, '\0', true) < 0) {
 		DO_PART(allocate_commit);
 
 		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
 		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
-		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
+		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
 	RDEBUG("Allocated IP %s", allocation);
@@ -569,7 +601,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 	fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
-	return do_logging(request, inst->log_success, RLM_MODULE_OK);
+	return do_logging(inst, request, inst->log_success, RLM_MODULE_OK);
 }
 
 static int mod_accounting_start(rlm_sql_handle_t **handle,
@@ -598,7 +630,7 @@ static int mod_accounting_stop(rlm_sql_handle_t **handle,
 	DO(stop_clear);
 	DO(stop_commit);
 
-	return do_logging(request, inst->log_clear, RLM_MODULE_OK);
+	return do_logging(inst, request, inst->log_clear, RLM_MODULE_OK);
 }
 
 static int mod_accounting_on(rlm_sql_handle_t **handle,
@@ -636,7 +668,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	rlm_sqlippool_t		*inst = (rlm_sqlippool_t *) instance;
 	rlm_sql_handle_t	*handle;
 
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 	if (!vp) {
 		RDEBUG("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;

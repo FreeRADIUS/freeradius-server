@@ -1,3 +1,4 @@
+#pragma once
 /*
  * eap_peap.h
  *
@@ -17,16 +18,13 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2003 Alan DeKok <aland@freeradius.org>
- * Copyright 2006 The FreeRADIUS server project
+ * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2006 The FreeRADIUS server project
  */
-#ifndef _EAP_PEAP_H
-#define _EAP_PEAP_H
-
 RCSIDH(eap_peap_h, "$Id$")
 
 #include "eap_tls.h"
-#include <freeradius-devel/soh.h>
+#include <freeradius-devel/soh/base.h>
 
 typedef enum {
 	PEAP_STATUS_INVALID,
@@ -58,6 +56,15 @@ typedef struct peap_tunnel_t {
 	peap_resumption	session_resumption_state;
 } peap_tunnel_t;
 
+extern fr_dict_attr_t const *attr_auth_type;
+extern fr_dict_attr_t const *attr_eap_tls_require_client_cert;
+extern fr_dict_attr_t const *attr_proxy_to_realm;
+extern fr_dict_attr_t const *attr_soh_supported;
+
+extern fr_dict_attr_t const *attr_eap_message;
+extern fr_dict_attr_t const *attr_freeradius_proxied_to;
+extern fr_dict_attr_t const *attr_user_name;
+
 
 #define EAP_TLV_SUCCESS (1)
 #define EAP_TLV_FAILURE (2)
@@ -69,4 +76,3 @@ typedef struct peap_tunnel_t {
  *	Process the PEAP portion of an EAP-PEAP request.
  */
 rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_session, fr_dict_enum_t const *enumv) CC_HINT(nonnull(1,2));
-#endif /* _EAP_PEAP_H */

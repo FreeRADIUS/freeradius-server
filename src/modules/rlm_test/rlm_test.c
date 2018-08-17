@@ -26,9 +26,9 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_test - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 /*
  *	Define a structure for our module configuration.
@@ -166,6 +166,22 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_test_dict[];
+fr_dict_autoload_t rlm_test_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_user_name;
+
+extern fr_dict_attr_autoload_t rlm_test_dict_attr[];
+fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
 static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
 			UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
@@ -188,13 +204,13 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, UNUSED void *i
 	return 0;
 }
 
-static int mod_thread_detach(void *thread)
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_test_thread_t *t = thread;
 
 	INFO("Performing detach for thread %p", (void *)t->value);
 
-	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return 0;
 }
@@ -213,8 +229,11 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_test_t *inst = instance;
 
-	paircompare_register_byname("test-Paircmp", fr_dict_attr_by_num(NULL, 0, FR_USER_NAME), false,
-				    rlm_test_cmp, inst);
+	if (paircmp_register_by_name("test-Paircmp", attr_user_name, false,
+					rlm_test_cmp, inst) < 0) {
+		PERROR("Failed registering \"test-Paircmp\"");
+		return -1;
+	}
 
 	/*
 	 *	Log some messages
@@ -268,7 +287,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, void *t
 	REXDENT();
 	REDEBUG4("RDEBUG4 error message");
 
-	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }
@@ -280,7 +299,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, void
 {
 	rlm_test_thread_t *t = thread;
 
-	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }
@@ -293,7 +312,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, void *thr
 {
 	rlm_test_thread_t *t = thread;
 
-	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }
@@ -305,7 +324,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, void *
 {
 	rlm_test_thread_t *t = thread;
 
-	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }

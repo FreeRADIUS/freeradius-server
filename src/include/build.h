@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_BUILD_H
-#define _FR_BUILD_H
+
 /**
  * $Id$
  *
@@ -27,6 +27,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*
+ *	Reduce spurious errors from clang scan by having
+ *	all paths that find the da to be NULL, result
+ *	in program exit.
+ */
+#ifdef __clang_analyzer__
+#  define WITH_VERIFY_PTR	1
+#endif
+
 /*
  *	The ubiquitous stringify macros
  */
@@ -156,4 +166,3 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-#endif /* _FR_BUILD_H */

@@ -4,16 +4,14 @@
 #  Static if condition
 #
 if (1) {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 
 	#
 	#  We're not running the 'pap' module, so
 	#  we have to set this ourselves.
 	#
 	update control {
-		Auth-Type := pap
+		&Auth-Type := pap
 	}
 
 	actions {
@@ -21,6 +19,4 @@ if (1) {
 	}
 }
 
-update reply {
-	Filter-Id := "fail"
-}
+test_fail

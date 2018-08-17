@@ -25,11 +25,11 @@
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/sha1.h>
 
 #include <ctype.h>
 
@@ -63,6 +63,109 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 #define ACB_PWNOEXP	0x02000000	//!< User password does not expire.
 #define ACB_AUTOLOCK	0x04000000	//!< Account auto locked.
 #define ACB_FR_EXPIRED	0x00020000	//!< Password Expired.
+
+static const CONF_PARSER passchange_config[] = {
+	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw) },
+	{ FR_CONF_OFFSET("ntlm_auth_username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_username) },
+	{ FR_CONF_OFFSET("ntlm_auth_domain", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
+	{ FR_CONF_OFFSET("local_cpw", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, local_cpw) },
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER module_config[] = {
+	/*
+	 *	Cache the password by default.
+	 */
+	{ FR_CONF_OFFSET("use_mppe", FR_TYPE_BOOL, rlm_mschap_t, use_mppe), .dflt = "yes" },
+	{ FR_CONF_OFFSET("require_encryption", FR_TYPE_BOOL, rlm_mschap_t, require_encryption), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_strong", FR_TYPE_BOOL, rlm_mschap_t, require_strong), .dflt = "no" },
+	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOL, rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
+	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_auth) },
+	{ FR_CONF_OFFSET("ntlm_auth_timeout", FR_TYPE_UINT32, rlm_mschap_t, ntlm_auth_timeout) },
+	{ FR_CONF_POINTER("passchange", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) passchange_config },
+	{ FR_CONF_OFFSET("allow_retry", FR_TYPE_BOOL, rlm_mschap_t, allow_retry), .dflt = "yes" },
+	{ FR_CONF_OFFSET("retry_msg", FR_TYPE_STRING, rlm_mschap_t, retry_msg) },
+	{ FR_CONF_OFFSET("winbind_username", FR_TYPE_TMPL, rlm_mschap_t, wb_username) },
+	{ FR_CONF_OFFSET("winbind_domain", FR_TYPE_TMPL, rlm_mschap_t, wb_domain) },
+#ifdef WITH_AUTH_WINBIND
+	{ FR_CONF_OFFSET("winbind_retry_with_normalised_username", FR_TYPE_BOOL, rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
+#endif
+#ifdef __APPLE__
+	{ FR_CONF_OFFSET("use_open_directory", FR_TYPE_BOOL, rlm_mschap_t, open_directory), .dflt = "yes" },
+#endif
+	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_expiration_dict[];
+fr_dict_autoload_t rlm_expiration_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_auth_type;
+fr_dict_attr_t const *attr_cleartext_password;
+fr_dict_attr_t const *attr_nt_password;
+fr_dict_attr_t const *attr_lm_password;
+fr_dict_attr_t const *attr_ms_chap_use_ntlm_auth;
+
+fr_dict_attr_t const *attr_ms_chap_user_name;
+
+fr_dict_attr_t const *attr_ms_chap_peer_challenge;
+fr_dict_attr_t const *attr_ms_chap_new_nt_password;
+fr_dict_attr_t const *attr_ms_chap_new_cleartext_password;
+fr_dict_attr_t const *attr_smb_account_ctrl;
+fr_dict_attr_t const *attr_smb_account_ctrl_text;
+
+fr_dict_attr_t const *attr_user_name;
+fr_dict_attr_t const *attr_user_password;
+fr_dict_attr_t const *attr_ms_chap_error;
+
+fr_dict_attr_t const *attr_ms_chap_challenge;
+fr_dict_attr_t const *attr_ms_chap_response;
+fr_dict_attr_t const *attr_ms_chap2_response;
+fr_dict_attr_t const *attr_ms_chap2_success;
+
+fr_dict_attr_t const *attr_ms_chap_mppe_keys;
+fr_dict_attr_t const *attr_ms_mppe_encryption_policy;
+fr_dict_attr_t const *attr_ms_mppe_recv_key;
+fr_dict_attr_t const *attr_ms_mppe_send_key;
+fr_dict_attr_t const *attr_ms_mppe_encryption_types;
+fr_dict_attr_t const *attr_ms_chap2_cpw;
+
+extern fr_dict_attr_autoload_t rlm_mschap_dict_attr[];
+fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_nt_password, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_lm_password, .name = "LM-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_use_ntlm_auth, .name = "MS-CHAP-Use-NTLM-Auth", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_user_name, .name = "MS-CHAP-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_new_nt_password, .name = "MS-CHAP-New-NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_new_cleartext_password, .name = "MS-CHAP-New-Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_smb_account_ctrl, .name = "SMB-Account-Ctrl", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_smb_account_ctrl_text, .name = "SMB-Account-Ctrl-Text", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_error, .name = "MS-CHAP-Error", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_response, .name = "MS-CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_response, .name = "MS-CHAP2-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_success, .name = "MS-CHAP2-Success", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_mppe_keys, .name = "MS-CHAP-MPPE-Keys", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_encryption_policy, .name = "MS-MPPE-Encryption-Policy", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_encryption_types, .name = "MS-MPPE-Encryption-Types", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_cpw, .name = "MS-CHAP2-CPW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+
+	{ NULL }
+};
 
 static int pdb_decode_acct_ctrl(char const *p)
 {
@@ -167,8 +270,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	hash of MS-CHAPv2 challenge, and peer challenge.
 	 */
 	if (strncasecmp(fmt, "Challenge", 9) == 0) {
-		chap_challenge = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_CHALLENGE,
-						     TAG_ANY);
+		chap_challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
 		if (!chap_challenge) {
 			REDEBUG("No MS-CHAP-Challenge in the request");
 			return -1;
@@ -191,8 +293,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			VALUE_PAIR *name_attr, *response_name;
 			char const *username_string;
 
-			response = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP2_RESPONSE,
-						       TAG_ANY);
+			response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY);
 			if (!response) {
 				REDEBUG("MS-CHAP2-Response is required to calculate MS-CHAPv1 challenge");
 				return -1;
@@ -212,7 +313,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				return -1;
 			}
 
-			user_name = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+			user_name = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 			if (!user_name) {
 				REDEBUG("User-Name is required to calculate MS-CHAPv1 Challenge");
 				return -1;
@@ -227,7 +328,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 *	We prefer this to the User-Name in the
 			 *	packet.
 			 */
-			response_name = fr_pair_find_by_num(request->packet->vps, 0, FR_MS_CHAP_USER_NAME, TAG_ANY);
+			response_name = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_user_name, TAG_ANY);
 			if (response_name) {
 				name_attr = response_name;
 			} else {
@@ -277,9 +378,8 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	response.
 	 */
 	} else if (strncasecmp(fmt, "NT-Response", 11) == 0) {
-		response = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_RESPONSE, TAG_ANY);
-		if (!response) response = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT,
-							      FR_MSCHAP2_RESPONSE, TAG_ANY);
+		response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response, TAG_ANY);
+		if (!response) response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY);
 		if (!response) {
 			REDEBUG("No MS-CHAP-Response or MS-CHAP2-Response was found in the request");
 			return -1;
@@ -289,9 +389,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 *	For MS-CHAPv1, the NT-Response exists only
 		 *	if the second octet says so.
 		 */
-		if ((response->da->vendor == VENDORPEC_MICROSOFT) &&
-		    (response->da->attr == FR_MSCHAP_RESPONSE) &&
-		    ((response->vp_octets[1] & 0x01) == 0)) {
+		if ((response->da == attr_ms_chap_response) && ((response->vp_octets[1] & 0x01) == 0)) {
 			REDEBUG("No NT-Response in MS-CHAP-Response");
 			return -1;
 		}
@@ -309,7 +407,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	in MS-CHAPv1, and not often there.
 	 */
 	} else if (strncasecmp(fmt, "LM-Response", 11) == 0) {
-		response = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_RESPONSE, TAG_ANY);
+		response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response, TAG_ANY);
 		if (!response) {
 			REDEBUG("No MS-CHAP-Response was found in the request");
 			return -1;
@@ -332,7 +430,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	} else if (strncasecmp(fmt, "NT-Domain", 9) == 0) {
 		char *p, *q;
 
-		user_name = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+		user_name = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 		if (!user_name) {
 			REDEBUG("No User-Name was found in the request");
 			return -1;
@@ -387,7 +485,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	} else if (strncasecmp(fmt, "User-Name", 9) == 0) {
 		char const *p, *q;
 
-		user_name = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+		user_name = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 		if (!user_name) {
 			REDEBUG("No User-Name was found in the request");
 			return -1;
@@ -539,161 +637,16 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED stru
 }
 #endif
 
-
-static const CONF_PARSER passchange_config[] = {
-	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw) },
-	{ FR_CONF_OFFSET("ntlm_auth_username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_username) },
-	{ FR_CONF_OFFSET("ntlm_auth_domain", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
-	{ FR_CONF_OFFSET("local_cpw", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, local_cpw) },
-	CONF_PARSER_TERMINATOR
-};
-
-static const CONF_PARSER module_config[] = {
-	/*
-	 *	Cache the password by default.
-	 */
-	{ FR_CONF_OFFSET("use_mppe", FR_TYPE_BOOL, rlm_mschap_t, use_mppe), .dflt = "yes" },
-	{ FR_CONF_OFFSET("require_encryption", FR_TYPE_BOOL, rlm_mschap_t, require_encryption), .dflt = "no" },
-	{ FR_CONF_OFFSET("require_strong", FR_TYPE_BOOL, rlm_mschap_t, require_strong), .dflt = "no" },
-	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOL, rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
-	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_auth) },
-	{ FR_CONF_OFFSET("ntlm_auth_timeout", FR_TYPE_UINT32, rlm_mschap_t, ntlm_auth_timeout) },
-	{ FR_CONF_POINTER("passchange", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) passchange_config },
-	{ FR_CONF_OFFSET("allow_retry", FR_TYPE_BOOL, rlm_mschap_t, allow_retry), .dflt = "yes" },
-	{ FR_CONF_OFFSET("retry_msg", FR_TYPE_STRING, rlm_mschap_t, retry_msg) },
-	{ FR_CONF_OFFSET("winbind_username", FR_TYPE_TMPL, rlm_mschap_t, wb_username) },
-	{ FR_CONF_OFFSET("winbind_domain", FR_TYPE_TMPL, rlm_mschap_t, wb_domain) },
-#ifdef WITH_AUTH_WINBIND
-	{ FR_CONF_OFFSET("winbind_retry_with_normalised_username", FR_TYPE_BOOL, rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
-#endif
-#ifdef __APPLE__
-	{ FR_CONF_OFFSET("use_open_directory", FR_TYPE_BOOL, rlm_mschap_t, open_directory), .dflt = "yes" },
-#endif
-	CONF_PARSER_TERMINATOR
-};
-
-
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	char const		*name;
-	rlm_mschap_t		*inst = instance;
-
-	/*
-	 *	Create the dynamic translation.
-	 */
-	name = cf_section_name2(conf);
-	if (!name) name = cf_section_name1(conf);
-	inst->xlat_name = name;
-	xlat_register(inst, inst->xlat_name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-
-	return 0;
-}
-
-/*
- *	Create instance for our module. Allocate space for
- *	instance structure and read configuration parameters
- */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
-{
-	rlm_mschap_t		*inst = instance;
-
-	/*
-	 *	For backwards compatibility
-	 */
-	if (!fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->xlat_name)) {
-		inst->auth_type = "MS-CHAP";
-	} else {
-		inst->auth_type = inst->xlat_name;
-	}
-
-	/*
-	 *	Set auth method
-	 */
-	inst->method = AUTH_INTERNAL;
-
-	if (inst->wb_username) {
-#ifdef WITH_AUTH_WINBIND
-		inst->method = AUTH_WBCLIENT;
-
-		inst->wb_pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
-		if (!inst->wb_pool) {
-			cf_log_err(conf, "Unable to initialise winbind connection pool");
-			return -1;
-		}
-#else
-		cf_log_err(conf, "'winbind' auth not enabled at compiled time");
-		return -1;
-#endif
-	}
-
-	/* preserve existing behaviour: this option overrides all */
-	if (inst->ntlm_auth) {
-		inst->method = AUTH_NTLMAUTH_EXEC;
-	}
-
-	switch (inst->method) {
-	case AUTH_INTERNAL:
-		DEBUG("%s: using internal authentication", inst->xlat_name);
-		break;
-	case AUTH_NTLMAUTH_EXEC:
-		DEBUG("%s : authenticating by calling 'ntlm_auth'", inst->xlat_name);
-		break;
-#ifdef WITH_AUTH_WINBIND
-	case AUTH_WBCLIENT:
-		DEBUG("%s : authenticating directly to winbind", inst->xlat_name);
-		break;
-#endif
-	}
-
-	/*
-	 *	Check ntlm_auth_timeout is sane
-	 */
-	if (!inst->ntlm_auth_timeout) {
-		inst->ntlm_auth_timeout = EXEC_TIMEOUT;
-	}
-	if (inst->ntlm_auth_timeout < 1) {
-		cf_log_err(conf, "ntml_auth_timeout '%d' is too small (minimum: 1)",
-			      inst->ntlm_auth_timeout);
-		return -1;
-	}
-	if (inst->ntlm_auth_timeout > 10) {
-		cf_log_err(conf, "ntlm_auth_timeout '%d' is too large (maximum: 10)",
-			      inst->ntlm_auth_timeout);
-		return -1;
-	}
-
-	return 0;
-}
-
-/*
- *	Tidy up instance
- */
-static int mod_detach(UNUSED void *instance)
-{
-#ifdef WITH_AUTH_WINBIND
-	rlm_mschap_t *inst = instance;
-
-	fr_pool_free(inst->wb_pool);
-#endif
-
-	return 0;
-}
-
 /*
  *	add_reply() adds either MS-CHAP2-Success or MS-CHAP-Error
  *	attribute to reply packet
  */
 void mschap_add_reply(REQUEST *request, uint8_t ident,
-		      char const *name, char const *value, size_t len)
+		      fr_dict_attr_t const *da, char const *value, size_t len)
 {
 	VALUE_PAIR *vp;
 
-	vp = pair_make_reply(name, NULL, T_OP_EQ);
-	if (!vp) {
-		REDEBUG("Failed to create attribute %s: %s", name, fr_strerror());
-		return;
-	}
-
+	MEM(pair_update_reply(&vp, da) >= 0);
 	if (vp->vp_type == FR_TYPE_STRING) {
 		char *p;
 
@@ -715,17 +668,12 @@ void mschap_add_reply(REQUEST *request, uint8_t ident,
 /*
  *	Add MPPE attributes to the reply.
  */
-static void mppe_add_reply(REQUEST *request, char const* name, uint8_t const * value, size_t len)
+static void mppe_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, size_t len)
 {
-       VALUE_PAIR *vp;
+	VALUE_PAIR *vp;
 
-       vp = pair_make_reply(name, NULL, T_OP_EQ);
-       if (!vp) {
-	       REDEBUG("mppe_add_reply failed to create attribute %s: %s", name, fr_strerror());
-	       return;
-       }
-
-       fr_pair_value_memcpy(vp, value, len);
+	MEM(pair_update_reply(&vp, da) >= 0);
+	fr_pair_value_memcpy(vp, value, len);
 }
 
 static int write_all(int fd, char const *buf, int len) {
@@ -948,6 +896,7 @@ ntlm_auth_err:
 		char result[253];
 		uint8_t nt_pass_decrypted[516], old_nt_hash_expected[NT_DIGEST_LENGTH];
 		RC4_KEY key;
+		size_t len = 0;
 
 		if (!nt_password) {
 			RDEBUG("Local MS-CHAPv2 password change requires NT-Password attribute");
@@ -992,8 +941,8 @@ ntlm_auth_err:
 		 *  The new NT hash - this should be preferred over the
 		 *  cleartext password as it avoids unicode hassles.
 		 */
-		new_hash = pair_make_request("MS-CHAP-New-NT-Password", NULL, T_OP_EQ);
-		q = talloc_array(new_hash, uint8_t, NT_DIGEST_LENGTH);
+		MEM(pair_update_request(&new_hash, attr_ms_chap_new_nt_password) >= 0);
+		MEM(q = talloc_array(new_hash, uint8_t, NT_DIGEST_LENGTH));
 		fr_pair_value_memsteal(new_hash, q);
 		fr_md4_calc(q, p, passlen);
 
@@ -1002,7 +951,7 @@ ntlm_auth_err:
 		 *  matches the old_hash value from the client.
 		 */
 		smbhash(old_nt_hash_expected, nt_password->vp_octets, q);
-		smbhash(old_nt_hash_expected+8, nt_password->vp_octets+8, q + 7);
+		smbhash(old_nt_hash_expected + 8, nt_password->vp_octets + 8, q + 7);
 		if (memcmp(old_nt_hash_expected, old_nt_hash, NT_DIGEST_LENGTH)!=0) {
 			REDEBUG("Old NT hash value from client does not match our value");
 			return -1;
@@ -1014,10 +963,11 @@ ntlm_auth_err:
 		 *
 		 *  First pass: get the length of the converted string.
 		 */
-		new_pass = pair_make_request("MS-CHAP-New-Cleartext-Password", NULL, T_OP_EQ);
+		MEM(pair_update_request(&new_pass, attr_ms_chap_new_cleartext_password) >= 0);
 		new_pass->vp_length = 0;
 
 		i = 0;
+		len = 0;
 		while (i < passlen) {
 			int c;
 
@@ -1028,15 +978,15 @@ ntlm_auth_err:
 			 *  Gah. nasty. maybe we should just pull in iconv?
 			 */
 			if (c < 0x7f) {
-				new_pass->vp_length++;
+				len++;
 			} else if (c < 0x7ff) {
-				new_pass->vp_length += 2;
+				len += 2;
 			} else {
-				new_pass->vp_length += 3;
+				len += 3;
 			}
 		}
 
-		new_pass->vp_strvalue = x = talloc_array(new_pass, char, new_pass->vp_length + 1);
+		MEM(x = talloc_array(new_pass, char, len + 1));
 
 		/*
 		 *	Second pass: convert the characters from UTF-16 to UTF-8.
@@ -1066,6 +1016,7 @@ ntlm_auth_err:
 		}
 
 		*x = '\0';
+		fr_pair_value_strsteal(new_pass, x);
 
 		/* Perform the xlat */
 		result_len = xlat_eval(result, sizeof(result), request, inst->local_cpw, NULL, NULL);
@@ -1139,11 +1090,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 , 6)) do_mschap(rlm_mschap_t const *inst,
 		 *	then calculate the hash of the NT hash.  Doing this
 		 *	here minimizes work for later.
 		 */
-		if (!password->da->vendor &&
-		    (password->da->attr == FR_NT_PASSWORD)) {
-			fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
-		}
-
+		if (password->da == attr_nt_password) fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
 		break;
 		}
 	case AUTH_NTLMAUTH_EXEC:
@@ -1366,36 +1313,20 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_mschap_t const *inst = instance;
-	VALUE_PAIR *challenge = NULL;
+	rlm_mschap_t const 	*inst = instance;
+	VALUE_PAIR		*challenge = NULL;
 
-	challenge = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_CHALLENGE, TAG_ANY);
-	if (!challenge) {
-		return RLM_MODULE_NOOP;
-	}
+	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
+	if (!challenge) return RLM_MODULE_NOOP;
 
-	if (!fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_RESPONSE, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP2_RESPONSE, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP2_CPW, TAG_ANY)) {
+	if (!fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response, TAG_ANY) &&
+	    !fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY) &&
+	    !fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_cpw, TAG_ANY)) {
 		RDEBUG2("Found MS-CHAP-Challenge, but no MS-CHAP response or change-password");
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY)) {
-		RWDEBUG2("Auth-Type already set.  Not setting to MS-CHAP");
-		return RLM_MODULE_NOOP;
-	}
-
-	RDEBUG2("Found MS-CHAP attributes.  Setting 'Auth-Type  = %s'", inst->xlat_name);
-
-	/*
-	 *	Set Auth-Type to MS-CHAP.  The authentication code
-	 *	will take care of turning cleartext passwords into
-	 *	NT/LM passwords.
-	 */
-	if (!pair_make_config("Auth-Type", inst->auth_type, T_OP_EQ)) {
-		return RLM_MODULE_FAIL;
-	}
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
 
 	return RLM_MODULE_OK;
 }
@@ -1480,7 +1411,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, REQUEST *request, unsi
 	default:
 		return RLM_MODULE_FAIL;
 	}
-	mschap_add_reply(request, ident, "MS-CHAP-Error", buffer, strlen(buffer));
+	mschap_add_reply(request, ident, attr_ms_chap_error, buffer, strlen(buffer));
 
 	return rcode;
 }
@@ -1500,9 +1431,9 @@ static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t const *inst
 	/*
 	 *	Look for NT-Password...
 	 */
-	nt_password = fr_pair_find_by_num(request->control, 0, FR_NT_PASSWORD, TAG_ANY);
+	nt_password = fr_pair_find_by_da(request->control, attr_nt_password, TAG_ANY);
 	if (nt_password) {
-		VERIFY_VP(nt_password);
+		VP_VERIFY(nt_password);
 
 		switch (nt_password->vp_length) {
 		case NT_DIGEST_LENGTH:
@@ -1533,12 +1464,8 @@ static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t const *inst
 
 		if (password) {
 			RDEBUG2("Found Cleartext-Password, hashing to create NT-Password");
-			nt_password = pair_make_config("NT-Password", NULL, T_OP_EQ);
-			if (!nt_password) {
-				RERROR("No memory");
-				return false;
-			}
-			p = talloc_array(nt_password, uint8_t, NT_DIGEST_LENGTH);
+			MEM(pair_update_control(&nt_password, attr_nt_password) >= 0);
+			MEM(p = talloc_array(nt_password, uint8_t, NT_DIGEST_LENGTH));
 			fr_pair_value_memsteal(nt_password, p);
 
 			if (mschap_ntpwdhash(p, password->vp_strvalue) < 0) {
@@ -1567,9 +1494,9 @@ static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t const *inst
 {
 	VALUE_PAIR *lm_password;
 
-	lm_password = fr_pair_find_by_num(request->control, 0, FR_LM_PASSWORD, TAG_ANY);
+	lm_password = fr_pair_find_by_da(request->control, attr_lm_password, TAG_ANY);
 	if (lm_password) {
-		VERIFY_VP(lm_password);
+		VP_VERIFY(lm_password);
 
 		switch (lm_password->vp_length) {
 		case LM_DIGEST_LENGTH:
@@ -1599,13 +1526,9 @@ static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t const *inst
 
 		if (password) {
 			RDEBUG2("Found Cleartext-Password, hashing to create LM-Password");
-			lm_password = pair_make_config("LM-Password", NULL, T_OP_EQ);
-			if (!lm_password) {
-				RERROR("No memory");
-				return false;
-			}
 
-			p = talloc_array(lm_password, uint8_t, LM_DIGEST_LENGTH);
+			MEM(pair_update_control(&lm_password, attr_lm_password) >= 0);
+			MEM(p = talloc_array(lm_password, uint8_t, LM_DIGEST_LENGTH));
 			fr_pair_value_memsteal(lm_password, p);
 			smbdes_lmpwdhash(password->vp_strvalue, p);
 
@@ -1666,17 +1589,15 @@ static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t const *inst
 	 */
 	new_nt_enc_len = 0;
 	for (seq = 1; seq < 4; seq++) {
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		int found = 0;
 
-		for (nt_enc = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		for (nt_enc = fr_cursor_init(&cursor, &request->packet->vps);
 		     nt_enc;
-		     nt_enc = fr_pair_cursor_next(&cursor)) {
-			if (nt_enc->da->vendor != VENDORPEC_MICROSOFT)
-				continue;
+		     nt_enc = fr_cursor_next(&cursor)) {
+			if (fr_dict_vendor_num_by_da(nt_enc->da) != VENDORPEC_MICROSOFT) continue;
 
-			if (nt_enc->da->attr != FR_MSCHAP_NT_ENC_PW)
-				continue;
+			if (nt_enc->da->attr != FR_MSCHAP_NT_ENC_PW) continue;
 
 			if (nt_enc->vp_length < 4) {
 				REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");
@@ -1740,7 +1661,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t const *inst
 		REDEBUG("Password change failed");
 
 		snprintf(buffer, sizeof(buffer), "E=709 R=0 M=Password change failed");
-		mschap_add_reply(request, cpw->vp_octets[1], "MS-CHAP-Error", buffer, strlen(buffer));
+		mschap_add_reply(request, cpw->vp_octets[1], attr_ms_chap_error, buffer, strlen(buffer));
 
 		return RLM_MODULE_REJECT;
 	}
@@ -1758,31 +1679,30 @@ static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t const *inst
  *	or in configured passwd file.
  *	If one is found we will check paraneters given by NAS.
  *
- *	If FR_SMB_ACCOUNT_CTRL is not set to ACB_PWNOTREQ we must have
+ *	If SMB-Account-Ctrl is not set to ACB_PWNOTREQ we must have
  *	one of:
- *		PAP:      FR_USER_PASSWORD or
- *		MS-CHAP:  FR_MSCHAP_CHALLENGE and FR_MSCHAP_RESPONSE or
- *		MS-CHAP2: FR_MSCHAP_CHALLENGE and FR_MSCHAP2_RESPONSE
+ *		PAP:      User-Password or
+ *		MS-CHAP:  MS-CHAP-Challenge and MS-CHAP-Response or
+ *		MS-CHAP2: MS-CHAP-Challenge and MS-CHAP2-Response
  *	In case of password mismatch or locked account we MAY return
- *	FR_MSCHAP_ERROR for MS-CHAP or MS-CHAP v2
- *	If MS-CHAP2 succeeds we MUST return
- *	FR_MSCHAP2_SUCCESS
+ *	MS-CHAP-Error for MS-CHAP or MS-CHAP v2
+ *	If MS-CHAP2 succeeds we MUST return MS-CHAP2-Success
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_mschap_t const *inst = instance;
-	VALUE_PAIR *challenge = NULL;
-	VALUE_PAIR *response = NULL;
-	VALUE_PAIR *cpw = NULL;
-	VALUE_PAIR *password = NULL;
-	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
-	VALUE_PAIR *username;
-	uint8_t nthashhash[NT_DIGEST_LENGTH];
-	char msch2resp[42];
-	char const *username_string;
-	int mschap_version = 0;
-	int mschap_result;
-	MSCHAP_AUTH_METHOD auth_method;
+	rlm_mschap_t const	*inst = instance;
+	VALUE_PAIR		*challenge = NULL;
+	VALUE_PAIR		*response = NULL;
+	VALUE_PAIR		*cpw = NULL;
+	VALUE_PAIR		*password = NULL;
+	VALUE_PAIR		*lm_password, *nt_password, *smb_ctrl;
+	VALUE_PAIR		*username;
+	uint8_t			nthashhash[NT_DIGEST_LENGTH];
+	char			msch2resp[42];
+	char const		*username_string;
+	int			mschap_version = 0;
+	int			mschap_result;
+	MSCHAP_AUTH_METHOD	auth_method;
 
 	/*
 	 *	If we have ntlm_auth configured, use it unless told
@@ -1795,22 +1715,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	want to suppress it.
 	 */
 	if (auth_method != AUTH_INTERNAL) {
-		VALUE_PAIR *vp = fr_pair_find_by_num(request->control, 0, FR_MS_CHAP_USE_NTLM_AUTH, TAG_ANY);
-		if (vp && vp->vp_uint32 == 0) auth_method = AUTH_INTERNAL;
+		VALUE_PAIR *vp = fr_pair_find_by_da(request->control, attr_ms_chap_use_ntlm_auth, TAG_ANY);
+		if (vp && vp->vp_bool == false) auth_method = AUTH_INTERNAL;
 	}
 
 	/*
 	 *	Find the SMB-Account-Ctrl attribute, or the
 	 *	SMB-Account-Ctrl-Text attribute.
 	 */
-	smb_ctrl = fr_pair_find_by_num(request->control, 0, FR_SMB_ACCOUNT_CTRL, TAG_ANY);
+	smb_ctrl = fr_pair_find_by_da(request->control, attr_smb_account_ctrl, TAG_ANY);
 	if (!smb_ctrl) {
-		password = fr_pair_find_by_num(request->control, 0, FR_SMB_ACCOUNT_CTRL_TEXT, TAG_ANY);
+		password = fr_pair_find_by_da(request->control, attr_smb_account_ctrl_text, TAG_ANY);
 		if (password) {
-			smb_ctrl = pair_make_config("SMB-Account-CTRL", "0", T_OP_SET);
-			if (smb_ctrl) {
-				smb_ctrl->vp_uint32 = pdb_decode_acct_ctrl(password->vp_strvalue);
-			}
+			MEM(pair_add_control(&smb_ctrl, attr_smb_account_ctrl) >= 0);
+			smb_ctrl->vp_uint32 = pdb_decode_acct_ctrl(password->vp_strvalue);
 		}
 	}
 
@@ -1831,7 +1749,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	/*
 	 *	Decide how to get the passwords.
 	 */
-	password = fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
 
 	/*
 	 *	Look for or create an NT-Password
@@ -1852,15 +1770,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	Check to see if this is a change password request, and process
 	 *	it accordingly if so.
 	 */
-	cpw = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP2_CPW, TAG_ANY);
+	cpw = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_cpw, TAG_ANY);
 	if (cpw) {
 		uint8_t		*p;
 		rlm_rcode_t	rc;
 
 		rc = process_cpw_request(instance, request, cpw, nt_password);
-		if (rc != RLM_MODULE_OK) {
-			return rc;
-		}
+		if (rc != RLM_MODULE_OK) return rc;
 
 		/*
 		 *	Clear any expiry bit so the user can now login;
@@ -1877,10 +1793,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		 *	password change, add them into the request and then
 		 *	continue with the authentication.
 		 */
-		response = radius_pair_create(request->packet, &request->packet->vps,
-					FR_MSCHAP2_RESPONSE,
-					VENDORPEC_MICROSOFT);
-		p = talloc_array(response, uint8_t, 50);
+		MEM(pair_update_request(&response, attr_ms_chap2_response) >= 0);
+		MEM(p = talloc_array(response, uint8_t, 50));
 
 		/* ident & flags */
 		p[0] = cpw->vp_octets[1];
@@ -1891,7 +1805,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		fr_pair_value_memsteal(response, p);
 	}
 
-	challenge = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_CHALLENGE, TAG_ANY);
+	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
 	if (!challenge) {
 		REDEBUG("You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
 		return RLM_MODULE_REJECT;
@@ -1900,7 +1814,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	/*
 	 *	We also require an MS-CHAP-Response.
 	 */
-	response = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_RESPONSE, TAG_ANY);
+	response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response, TAG_ANY);
 
 	/*
 	 *	MS-CHAP-Response, means MS-CHAPv1
@@ -1948,14 +1862,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		/*
 		 *	Check for errors, and add MSCHAP-Error if necessary.
 		 */
-		rcode = mschap_error(inst, request, *response->vp_octets,
-				     mschap_result, mschap_version, smb_ctrl);
+		rcode = mschap_error(inst, request, *response->vp_octets, mschap_result, mschap_version, smb_ctrl);
 		if (rcode != RLM_MODULE_OK) return rcode;
-	} else if ((response = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP2_RESPONSE,
-						   TAG_ANY)) != NULL) {
+	} else if ((response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY)) != NULL) {
 		uint8_t		mschapv1_challenge[16];
-		VALUE_PAIR	*name_attr, *response_name;
+		VALUE_PAIR	*name_attr, *response_name, *peer_challenge_attr;
 		rlm_rcode_t	rcode;
+		uint8_t const *peer_challenge;
 
 		mschap_version = 2;
 
@@ -1978,7 +1891,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		/*
 		 *	We also require a User-Name
 		 */
-		username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+		username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 		if (!username) {
 			REDEBUG("We require a User-Name for MS-CHAPv2");
 			return RLM_MODULE_INVALID;
@@ -1993,7 +1906,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		 *	We prefer this to the User-Name in the
 		 *	packet.
 		 */
-		response_name = fr_pair_find_by_num(request->packet->vps, 0, FR_MS_CHAP_USER_NAME, TAG_ANY);
+		response_name = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_user_name, TAG_ANY);
 		name_attr = response_name ? response_name : username;
 
 		/*
@@ -2033,6 +1946,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 			}
 		}
 #endif
+		peer_challenge = response->vp_octets + 2;
+
+		peer_challenge_attr = fr_pair_find_by_da(request->control, attr_ms_chap_peer_challenge, TAG_ANY);
+		if (peer_challenge_attr) {
+			RDEBUG2("Overriding peer challenge");
+			peer_challenge = peer_challenge_attr->vp_octets;
+		}
+
 		/*
 		 *	The old "mschapv2" function has been moved to
 		 *	here.
@@ -2041,9 +1962,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
 		 */
 		RDEBUG2("Creating challenge hash with username: %s", username_string);
-		mschap_challenge_hash(response->vp_octets + 2, 	/* peer challenge */
-				      challenge->vp_octets, 	/* our challenge */
-				      username_string, 		/* user name */
+		mschap_challenge_hash(peer_challenge,		/* peer challenge */
+				      challenge->vp_octets,	/* our challenge */
+				      username_string,		/* user name */
 				      mschapv1_challenge);	/* resulting challenge */
 
 		RDEBUG2("Client is using MS-CHAPv2");
@@ -2059,24 +1980,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 #ifdef WITH_AUTH_WINBIND
 		if (inst->wb_retry_with_normalised_username) {
-			if ((response_name = fr_pair_find_by_num(request->packet->vps, FR_MS_CHAP_USER_NAME, 0, TAG_ANY))) {
+			response_name = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_user_name, TAG_ANY);
+			if (response_name) {
 				if (strcmp(username_string, response_name->vp_strvalue)) {
-					RDEBUG2("Changing username %s to %s", username_string, response_name->vp_strvalue);
+					RDEBUG2("Changing username %s to %s", username_string,
+						response_name->vp_strvalue);
 					username_string = response_name->vp_strvalue;
 				}
 			}
 		}
 #endif
 
-		mschap_auth_response(username_string, 		/* without the domain */
-				     nthashhash, 		/* nt-hash-hash */
-				     response->vp_octets + 26, 	/* peer response */
-				     response->vp_octets + 2, 	/* peer challenge */
-				     challenge->vp_octets, 	/* our challenge */
+		mschap_auth_response(username_string,		/* without the domain */
+				     nthashhash,		/* nt-hash-hash */
+				     response->vp_octets + 26,	/* peer response */
+				     peer_challenge,		/* peer challenge */
+				     challenge->vp_octets,	/* our challenge */
 				     msch2resp);		/* calculated MPPE key */
-		mschap_add_reply(request, *response->vp_octets, "MS-CHAP2-Success", msch2resp, 42);
-
-
+		mschap_add_reply(request, *response->vp_octets, attr_ms_chap2_success, msch2resp, 42);
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
 		REDEBUG("You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
 		return RLM_MODULE_INVALID;
@@ -2084,8 +2005,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 	/* now create MPPE attributes */
 	if (inst->use_mppe) {
-		uint8_t mppe_sendkey[34];
-		uint8_t mppe_recvkey[34];
+		VALUE_PAIR	*vp;
+		uint8_t		mppe_sendkey[34];
+		uint8_t		mppe_recvkey[34];
 
 		switch (mschap_version) {
 		case 1:
@@ -2106,15 +2028,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 			 *	is not available.
 			 */
 			memcpy(mppe_sendkey + 8, nthashhash, NT_DIGEST_LENGTH);
-			mppe_add_reply(request, "MS-CHAP-MPPE-Keys", mppe_sendkey, 24);	//-V666
+			mppe_add_reply(request, attr_ms_chap_mppe_keys, mppe_sendkey, 24);	//-V666
 			break;
 
 		case 2:
 			RDEBUG2("Adding MS-CHAPv2 MPPE keys");
 			mppe_chap2_gen_keys128(nthashhash, response->vp_octets + 26, mppe_sendkey, mppe_recvkey);
 
-			mppe_add_reply(request, "MS-MPPE-Recv-Key", mppe_recvkey, 16);
-			mppe_add_reply(request, "MS-MPPE-Send-Key", mppe_sendkey, 16);
+			mppe_add_reply(request, attr_ms_mppe_recv_key, mppe_recvkey, 16);
+			mppe_add_reply(request, attr_ms_mppe_send_key, mppe_sendkey, 16);
 			break;
 
 		default:
@@ -2122,15 +2044,126 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 			break;
 		}
 
-		pair_make_reply("MS-MPPE-Encryption-Policy",
-			       (inst->require_encryption) ? "0x00000002":"0x00000001", T_OP_EQ);
-		pair_make_reply("MS-MPPE-Encryption-Types",
-			       (inst->require_strong) ? "0x00000004":"0x00000006", T_OP_EQ);
+		MEM(pair_update_reply(&vp, attr_ms_mppe_encryption_policy) >= 0);
+		vp->vp_uint32 = inst->require_encryption ? 2 : 1;
+
+		MEM(pair_update_reply(&vp, attr_ms_mppe_encryption_types) >= 0);
+		vp->vp_uint32 = inst->require_strong ? 4 : 6;
 	} /* else we weren't asked to use MPPE */
 
 	return RLM_MODULE_OK;
 #undef inst
 }
+
+/*
+ *	Create instance for our module. Allocate space for
+ *	instance structure and read configuration parameters
+ */
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
+{
+	rlm_mschap_t		*inst = instance;
+
+	/*
+	 *	Set auth method
+	 */
+	inst->method = AUTH_INTERNAL;
+
+	if (inst->wb_username) {
+#ifdef WITH_AUTH_WINBIND
+		inst->method = AUTH_WBCLIENT;
+
+		inst->wb_pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
+		if (!inst->wb_pool) {
+			cf_log_err(conf, "Unable to initialise winbind connection pool");
+			return -1;
+		}
+#else
+		cf_log_err(conf, "'winbind' auth not enabled at compiled time");
+		return -1;
+#endif
+	}
+
+	/* preserve existing behaviour: this option overrides all */
+	if (inst->ntlm_auth) {
+		inst->method = AUTH_NTLMAUTH_EXEC;
+	}
+
+	switch (inst->method) {
+	case AUTH_INTERNAL:
+		DEBUG("%s: using internal authentication", inst->name);
+		break;
+	case AUTH_NTLMAUTH_EXEC:
+		DEBUG("%s : authenticating by calling 'ntlm_auth'", inst->name);
+		break;
+#ifdef WITH_AUTH_WINBIND
+	case AUTH_WBCLIENT:
+		DEBUG("%s : authenticating directly to winbind", inst->name);
+		break;
+#endif
+	}
+
+	/*
+	 *	Check ntlm_auth_timeout is sane
+	 */
+	if (!inst->ntlm_auth_timeout) {
+		inst->ntlm_auth_timeout = EXEC_TIMEOUT;
+	}
+	if (inst->ntlm_auth_timeout < 1) {
+		cf_log_err(conf, "ntml_auth_timeout '%d' is too small (minimum: 1)",
+			      inst->ntlm_auth_timeout);
+		return -1;
+	}
+	if (inst->ntlm_auth_timeout > 10) {
+		cf_log_err(conf, "ntlm_auth_timeout '%d' is too large (maximum: 10)",
+			      inst->ntlm_auth_timeout);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	char const		*name;
+	rlm_mschap_t		*inst = instance;
+
+	/*
+	 *	Create the dynamic translation.
+	 */
+	name = cf_section_name2(conf);
+	if (!name) name = cf_section_name1(conf);
+	inst->name = name;
+
+	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
+		PERROR("Failed adding %s alias", attr_auth_type->name);
+		return -1;
+	}
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name, -1);
+	rad_assert(inst->auth_type);
+
+	xlat_register(inst, inst->name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+
+	return 0;
+}
+
+/*
+ *	Tidy up instance
+ */
+static int mod_detach(
+#ifndef WITH_AUTH_WINBIND
+		      UNUSED
+#endif
+		      void *instance)
+{
+#ifdef WITH_AUTH_WINBIND
+	rlm_mschap_t *inst = instance;
+
+	fr_pool_free(inst->wb_pool);
+#endif
+
+	return 0;
+}
+
 
 extern rad_module_t rlm_mschap;
 rad_module_t rlm_mschap = {

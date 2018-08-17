@@ -9,6 +9,4 @@
 virtual_instantiate
 virtual_instantiate.post-auth
 
-update reply {
-	Filter-Id := 'filter'
-}
+success

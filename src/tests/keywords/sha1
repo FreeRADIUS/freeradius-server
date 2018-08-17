@@ -9,52 +9,38 @@ update {
        request:Tmp-String-2 := "Jefe"
 }
 
-update reply {
-	Filter-Id := 'filter'
-}
-
 #
 #  Put "This is a string" into a file and call "sha1sum" on it.
 #  You should get this string.
 #
 if ("%{sha1:This is a string\n}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 if ("%{sha1:&Tmp-String-0}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
-	update reply {
-		Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 if ("%{sha1:&request:Tmp-String-0}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
-	update reply {
-		Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 if ("%{sha1:%{Tmp-String-0}}" != 'cc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c') {
-	update reply {
-		Filter-Id += 'fail 4'
-	}
+	test_fail
 }
 
 #
 #  SHA1 should also be able to cope with references to octet attributes
 #
 if ("%{sha1:&request:Tmp-Octets-0}" != '365b244645fe7294dff062174996572319d5a82c') {
-	update reply {
-		Filter-Id += 'fail 5'
-	}
+	test_fail
 }
 
 #
 #  SHA1 HMAC with attribute references
 #
 if ("%{hmacsha1:&Tmp-String-1 &Tmp-String-2}" != 'effcdf6ae5eb2fa2d27416d5f184df9c259a7c79') {
-	update reply {
-		Filter-Id += 'fail 6'
-	}
+	test_fail
 }
+
+success

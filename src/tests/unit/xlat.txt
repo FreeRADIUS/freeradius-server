@@ -1,3 +1,7 @@
+xlat %{Tunnel-Password}
+data %{Tunnel-Password}
+
+
 #
 #  Tests for xlat expansion
 #

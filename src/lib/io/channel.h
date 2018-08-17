@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_CHANNEL_H
-#define _FR_CHANNEL_H
+
 /**
  * $Id$
  *
@@ -27,7 +27,8 @@ RCSIDH(channel_h, "$Id$")
 
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/base.h>
+#include <freeradius-devel/util/dlist.h>
 
 #include <sys/types.h>
 #include <sys/event.h>
@@ -88,14 +89,15 @@ typedef struct fr_channel_data_t {
 		 */
 		struct {
 			fr_channel_t		*ch;		//!< channel where this messages was received
-			int			heap_id;	//!< for the various queues
+			int32_t			heap_id;	//!< for the various queues
 		} channel;
 	};
 
 	union {
 		struct {
 			fr_time_t		*recv_time;	//!< time original request was received (network -> worker)
-			fr_dlist_t		list;		//!< list of unprocessed packets for the worker
+			fr_dlist_t		entry;		//!< list of unprocessed packets for the worker
+			bool			is_dup;		//!< dup, new, etc.
 		} request;
 
 		struct {
@@ -114,12 +116,21 @@ typedef struct fr_channel_data_t {
 	fr_listen_t const *listen;				//!< for tracking packet transport, etc.
 } fr_channel_data_t;
 
+#define PRIORITY_NOW    (1 << 16)
+#define PRIORITY_HIGH   (1 << 15)
+#define PRIORITY_NORMAL (1 << 14)
+#define PRIORITY_LOW    (1 << 13)
+
+extern const FR_NAME_NUMBER channel_packet_priority[];
+
 fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker) CC_HINT(nonnull);
 
 int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_reply) CC_HINT(nonnull);
 fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_request) CC_HINT(nonnull);
+int fr_channel_null_reply(fr_channel_t *ch) CC_HINT(nonnull);
+
 fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_worker_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
@@ -145,5 +156,3 @@ void fr_channel_debug(fr_channel_t *ch, FILE *fp);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* _FR_CHANNEL_H */

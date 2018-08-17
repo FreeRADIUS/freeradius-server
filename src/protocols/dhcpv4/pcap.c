@@ -24,9 +24,9 @@
  * @copyright 2008 Alan DeKok <aland@deployingradius.com>
  */
 
-#ifdef HAVE_PCAP_H
-#include <freeradius-devel/pcap.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
+#ifdef HAVE_LIBPCAP
+#include <freeradius-devel/util/pcap.h>
+#include "dhcpv4.h"
 
 /** Send DHCP packet using PCAP
  *
@@ -141,9 +141,9 @@ RADIUS_PACKET *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 		return NULL;
 	}
 
-	link_len = fr_link_layer_offset(data, header->caplen, pcap->link_layer);
+	link_len = fr_pcap_link_layer_offset(data, header->caplen, pcap->link_layer);
 	if (link_len < 0) {
-		fr_strerror_printf("Failed determining link layer header offset: %s", fr_strerror());
+		fr_strerror_printf_push("Failed determining link layer header offset");
 		return NULL;
 	}
 
@@ -208,14 +208,20 @@ RADIUS_PACKET *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	dst_ipaddr.prefix = 32;
 	dst_ipaddr.scope_id = 0;
 
-	packet = fr_dhcpv4_packet_ok(p, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
-	if (packet) {
-		packet->data = talloc_memdup(packet, p, packet->data_len);
-		packet->timestamp = header->ts;
-		packet->if_index = pcap->if_index;
-		return packet;
-	}
+	if (!fr_dhcpv4_ok(p, data_len, NULL, NULL)) return NULL;
 
-	return NULL;
+	packet = fr_dhcpv4_packet_alloc(p, data_len);
+	if (!packet) return NULL;
+
+	packet->dst_port = dst_port;
+	packet->src_port = src_port;
+
+	packet->src_ipaddr = src_ipaddr;
+	packet->dst_ipaddr = dst_ipaddr;
+
+	packet->data = talloc_memdup(packet, p, packet->data_len);
+	packet->timestamp = header->ts;
+	packet->if_index = pcap->if_index;
+	return packet;
 }
-#endif	/* HAVE_PCAP_H */
+#endif	/* HAVE_LIBPCAP */

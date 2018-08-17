@@ -1,0 +1,70 @@
+#! /bin/sh
+#
+#  This script builds FreeRADIUS in a docker environment
+#  using the Dockerfiles in this directory.
+#
+#  Example usage: ./dockerbuild build-debian9
+#
+
+usage ()
+{
+	[ "0$1" -gt 0 ] && exec 1>&2
+	echo "Syntax: $0 [options] <dir>"
+	echo "  -c	disable docker cache"
+	echo "  -j	build jenkins image instead of main image"
+	echo "  -l	build with clang rather than gcc"
+	echo "  -h	this help"
+	exit $1
+}
+
+OPT_CACHE=
+OPT_JENKINS=
+OPT_CC=gcc
+while getopts "chjl" OPT
+do
+	case $OPT in
+	c)	OPT_CACHE="--no-cache";;
+	h)	usage 0;;
+	j)	OPT_JENKINS=1;;
+	l)	OPT_CC=clang;;
+	*)	usage 1;;
+	esac
+done
+shift $(expr $OPTIND - 1)
+
+DIR="$1"
+
+[ -z "$DIR" ] && usage 1
+[ ! -d "$DIR" ] && echo "Directory '$DIR' does not exist" && exit 1
+
+#
+#  Work out which OS to base our image on from the dir name
+#
+DIR=$(echo "$DIR" | sed -e 's/\/$//')
+OSNAME=$(echo "$DIR" | sed -e 's/^build-//')
+
+#
+#  Build dependency image with compiler and all source ready to go
+#
+[ ! -r "$DIR/Dockerfile.deps" ] && echo "'$DIR/Dockerfile.deps' does not exist" && exit 1
+echo Building $OSNAME source and dependency image
+docker build $OPT_CACHE "$DIR" -f "$DIR/Dockerfile.deps" -t freeradius/$OSNAME-deps
+
+if [ -n "$OPT_JENKINS" ]; then
+	#
+	#  Build jenkins image
+	#
+	if [ -r "$DIR/Dockerfile.jenkins" ]; then
+		echo Building $OSNAME jenkins image
+		docker build $OPT_CACHE "$DIR" -f "$DIR/Dockerfile.jenkins" -t freeradius/$OSNAME-jenkins
+	fi
+else
+	#
+	#  Build main image
+	#
+	if [ -r "$DIR/Dockerfile" ]; then
+		echo Building $OSNAME FreeRADIUS image
+		docker build --build-arg=cc=$OPT_CC $OPT_CACHE "$DIR" -t freeradius/$OSNAME
+	fi
+fi
+

@@ -15,16 +15,16 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Dmitri Ageev <d_ageev@ortcc.ru>
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Dmitri Ageev <d_ageev@ortcc.ru>
  */
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #define LOG_PREFIX "rlm_sql_unixodbc - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <sqltypes.h>
 #include "rlm_sql.h"
@@ -315,7 +315,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 	if (errnum == 0) return 0;
 
 	out[0].type = L_ERR;
-	out[0].msg = talloc_asprintf(ctx, "%s: %s", state, errbuff);
+	out[0].msg = talloc_typed_asprintf(ctx, "%s: %s", state, errbuff);
 
 	return 1;
 }

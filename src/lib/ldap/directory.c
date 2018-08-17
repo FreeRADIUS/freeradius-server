@@ -27,7 +27,7 @@
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS (*pconn)->config->name
 
-#include "libfreeradius-ldap.h"
+#include <freeradius-devel/ldap/base.h>
 
 static FR_NAME_NUMBER const fr_ldap_directory_type_table[] = {
 	{ "Unknown",			FR_LDAP_DIRECTORY_UNKNOWN	},
@@ -55,7 +55,7 @@ static FR_NAME_NUMBER const fr_ldap_directory_type_table[] = {
  *	- 1 if we failed identifying the directory server.
  *	- -1 on error.
  */
-int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_conn_t **pconn)
+int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_connection_t **pconn)
 {
 	static char const	*attrs[] = { "vendorname",
 					     "vendorversion",

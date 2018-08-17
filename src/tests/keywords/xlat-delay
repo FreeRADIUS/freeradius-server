@@ -1,0 +1,17 @@
+#
+# PRE: update
+#
+
+# This is mainly a smoke test... i.e. if it crashes there's smoke
+
+"%{delay_10s:}"	# Should 'blip' the request
+
+update request {
+	Tmp-String-0 := "%{delay_10s:0.1}"
+}
+
+if (!&Tmp-String-0) {
+	fail
+}
+
+success

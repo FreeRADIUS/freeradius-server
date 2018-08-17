@@ -1,0 +1,47 @@
+#
+# PRE: update
+#
+
+update request {
+	Tmp-String-0 := "foo"
+	Tmp-String-1 := "bar"
+}
+
+#
+#  First choice
+#
+update request {
+	Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}"
+}
+
+if (&Tmp-String-2[0] != 'foo') {
+	fail
+}
+
+#
+#  Second choice
+#
+update request {
+	Tmp-String-0 !* ANY
+}
+update request {
+	Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}"
+}
+if (&Tmp-String-2[0] != 'bar') {
+	fail
+}
+
+#
+#  Everything null
+#
+update request {
+	Tmp-String-1 !* ANY
+}
+update request {
+	Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}"
+}
+if (!&Tmp-String-2[0] || (&Tmp-String-2[0] != "")) {
+	fail
+}
+
+success

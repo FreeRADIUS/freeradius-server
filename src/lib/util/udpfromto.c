@@ -14,17 +14,18 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file udpfromto.c
- * @brief Like recvfrom, but also stores the destination IP address. Useful on multihomed hosts.
+/** API for sending and receiving packets on unconnected UDP sockets
+ *
+ * Like recvfrom, but also stores the destination IP address. Useful on multihomed hosts.
+ *
+ * @file src/lib/util/udpfromto.c
  *
  * @copyright 2007 Alan DeKok <aland@deployingradius.com>
  * @copyright 2002 Miquel van Smoorenburg
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/udpfromto.h>
+#include <freeradius-devel/util/udpfromto.h>
 
 #ifdef WITH_UDPFROMTO
 
@@ -32,7 +33,13 @@ RCSID("$Id$")
 #  include <sys/uio.h>
 #endif
 
+#include <errno.h>
 #include <fcntl.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <time.h>
+#include <unistd.h>
 
 /*
  *	More portability idiocy
@@ -471,9 +478,8 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 		memset(pkt, 0, sizeof(*pkt));
 		pkt->ipi_spec_dst = s4->sin_addr;
 		pkt->ipi_ifindex = if_index;
-#  endif
 
-#  ifdef IP_SENDSRCADDR
+#  elif defined(IP_SENDSRCADDR)
 		struct cmsghdr *cmsg;
 		struct in_addr *in;
 

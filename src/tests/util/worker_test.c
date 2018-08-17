@@ -17,18 +17,19 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @copyright 2016  Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")
 
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/io/worker.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #include <pthread.h>
@@ -71,7 +72,7 @@ REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
 	return NULL;
 }
 
-void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST const *request)
 {
 }
 
@@ -96,10 +97,10 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -w N                   Create N workers.  Default is 1.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
-static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
+static fr_io_final_t test_process(UNUSED void const *inst, REQUEST *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
 	return FR_IO_REPLY;
@@ -130,7 +131,7 @@ static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *cons
 	return data_len;
 }
 
-static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t packet_len, uint8_t *reply, UNUSED size_t reply_len)
+static size_t test_nak(UNUSED void const *instance, void *packet_ctx, uint8_t *const packet, size_t packet_len, uint8_t *reply, UNUSED size_t reply_len)
 {
 	uint32_t number;
 
@@ -159,24 +160,25 @@ static void *worker_thread(void *arg)
 	fr_worker_t *worker;
 	fr_schedule_worker_t *sw;
 	fr_event_list_t *el;
+	char buffer[16];
 
 	sw = (fr_schedule_worker_t *) arg;
 
 	MPRINT1("\tWorker %d started.\n", sw->id);
 
-	ctx = talloc_init("worker");
-	if (!ctx) _exit(1);
+	MEM(ctx = talloc_init("worker"));
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!el) {
 		fprintf(stderr, "worker_test: Failed to create the event list\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
-	worker = sw->worker = fr_worker_create(ctx, el, &default_log, ~0);
+	snprintf(buffer, sizeof(buffer), "%d", sw->id);
+	worker = sw->worker = fr_worker_create(ctx, buffer, el, &default_log, L_DBG_LVL_MAX);
 	if (!worker) {
 		fprintf(stderr, "worker_test: Failed to create the worker\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	MPRINT1("\tWorker %d looping.\n", sw->id);
@@ -205,13 +207,12 @@ static void master_process(void)
 	fr_listen_t		listen = { .app_io = &app_io };
 	struct kevent		events[MAX_KEVENTS];
 
-	ctx = talloc_init("master");
-	if (!ctx) _exit(1);
+	MEM(ctx = talloc_init("master"));
 
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	MPRINT1("Master started.\n");
@@ -309,7 +310,7 @@ static void master_process(void)
 			MPRINT1("Master sent message %d to worker %d\n", num_messages, which_worker);
 			rcode = fr_channel_send_request(workers[which_worker].ch, cd, &reply);
 			if (rcode < 0) {
-				fprintf(stderr, "Failed sending request: %s\n", strerror(errno));
+				fprintf(stderr, "Failed sending request: %s\n", fr_syserror(errno));
 			}
 			which_worker++;
 			if (which_worker >= num_workers) which_worker = 0;
@@ -340,8 +341,8 @@ check_close:
 				rcode = fr_channel_signal_worker_close(workers[i].ch);
 				MPRINT1("Master asked exit for worker %d.\n", workers[i].id);
 				if (rcode < 0) {
-					fprintf(stderr, "Failed signaling close %d: %s\n", i, strerror(errno));
-					exit(1);
+					fprintf(stderr, "Failed signaling close %d: %s\n", i, fr_syserror(errno));
+					exit(EXIT_FAILURE);
 				}
 			}
 			signaled_close = true;
@@ -356,8 +357,8 @@ check_close:
 		if (num_events < 0) {
 			if (errno == EINTR) continue;
 
-			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
-			exit(1);
+			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
+			exit(EXIT_FAILURE);
 		}
 
 		if (num_events == 0) continue;
@@ -488,11 +489,11 @@ static void sig_ignore(int sig)
 int main(int argc, char *argv[])
 {
 	int c;
-	TALLOC_CTX	*autofree = talloc_init("main");
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 	if (fr_time_start() < 0) {
-		fprintf(stderr, "Failed to start time: %s\n", strerror(errno));
-		exit(1);
+		fprintf(stderr, "Failed to start time: %s\n", fr_syserror(errno));
+		exit(EXIT_FAILURE);
 	}
 
 	fr_log_init(&default_log, false);
@@ -564,7 +565,5 @@ int main(int argc, char *argv[])
 
 	close(kq_master);
 
-	talloc_free(autofree);
-
-	return 0;
+	exit(EXIT_SUCCESS);
 }

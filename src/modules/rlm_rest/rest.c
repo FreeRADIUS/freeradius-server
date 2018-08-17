@@ -32,10 +32,10 @@ RCSID("$Id$")
 #include <string.h>
 #include <time.h>
 
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/libradius.h>
-#include <freeradius-devel/pool.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/server/pool.h>
 
 #include "rest.h"
 
@@ -226,11 +226,11 @@ typedef struct rest_custom_data {
 /** Flags to control the conversion of JSON values to VALUE_PAIRs.
  *
  * These fields are set when parsing the expanded format for value pairs in
- * JSON, and control how json_pair_make_leaf and json_pair_make convert the JSON
+ * JSON, and control how json_pair_alloc_leaf and json_pair_alloc convert the JSON
  * value, and move the new VALUE_PAIR into an attribute list.
  *
- * @see json_pair_make
- * @see json_pair_make_leaf
+ * @see json_pair_alloc
+ * @see json_pair_alloc_leaf
  */
 typedef struct json_flags {
 	int do_xlat;		//!< If true value will be expanded with xlat.
@@ -396,7 +396,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	if (ctx->state == READ_STATE_INIT) ctx->state = READ_STATE_ATTR_BEGIN;
 
 	while (freespace > 0) {
-		vp = fr_pair_cursor_current(&ctx->cursor);
+		vp = fr_cursor_current(&ctx->cursor);
 		if (!vp) {
 			ctx->state = READ_STATE_END;
 
@@ -467,7 +467,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		/*
 		 *  there are more attributes, insert a separator
 		 */
-		if (fr_pair_cursor_next(&ctx->cursor)) {
+		if (fr_cursor_next(&ctx->cursor)) {
 			if (freespace < 1) goto no_space;
 			*p++ = '&';
 			freespace--;
@@ -664,7 +664,7 @@ static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx)
 
 /** Converts plain response into a single VALUE_PAIR
  *
- * @param[in] instance configuration data.
+ * @param[in] inst configuration data.
  * @param[in] section configuration data.
  * @param[in] handle rlm_rest_handle_t to use.
  * @param[in] request Current request.
@@ -674,10 +674,10 @@ static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx)
  *	- Number of VALUE_PAIR processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_plain(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+static int rest_decode_plain(rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
 			     REQUEST *request, UNUSED void *handle, char *raw, size_t rawlen)
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR		*vp;
 
 	/*
 	 *  Empty response?
@@ -687,10 +687,10 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_
 	/*
 	 *  Use rawlen to protect against overrun, and to cope with any binary data
 	 */
-	vp = pair_make_request("REST-HTTP-Body", NULL, T_OP_ADD);
+	MEM(pair_update_request(&vp, attr_rest_http_body) >= 0);
 	fr_pair_value_bstrncpy(vp, raw, rawlen);
 
-	RDEBUG2("Adding &REST-HTTP-Body += \"%s\"", vp->vp_strvalue);
+	RDEBUG2("&%pP", vp);
 
 	return 1;
 }
@@ -791,7 +791,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			continue;
 		}
 
-		da = fr_dict_attr_by_name(NULL, attribute);
+		da = fr_dict_attr_by_name(request->dict, attribute);
 		if (!da) {
 			RWDEBUG("Attribute \"%s\" unknown, skipping", attribute);
 
@@ -804,7 +804,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		rad_assert(vps);
 
 		RINDENT();
-		RDEBUG3("Type  : %s", fr_int2str(dict_attr_types, da->type, "<INVALID>"));
+		RDEBUG3("Type  : %s", fr_int2str(fr_value_box_type_names, da->type, "<INVALID>"));
 
 		ctx = radius_list_ctx(reference, list_name);
 
@@ -838,7 +838,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			goto error;
 		}
 
-		ret = fr_pair_value_from_str(vp, expanded, -1);
+		ret = fr_pair_value_from_str(vp, expanded, -1, '\0', true);
 		TALLOC_FREE(expanded);
 		if (ret < 0) {
 			RWDEBUG("Incompatible value assignment, skipping");
@@ -889,7 +889,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
  *	- #VALUE_PAIR just created.
  *	- NULL on error.
  */
-static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 				      TALLOC_CTX *ctx, REQUEST *request,
 				      fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
 {
@@ -902,13 +902,13 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	fr_value_box_t	src;
 
 	if (fr_json_object_is_type(leaf, json_type_null)) {
-		RDEBUG3("Got null value for attribute \"%s\", skipping...", da->name);
+		RDEBUG3("Got null value for attribute \"%s\" (skipping)", da->name);
 		return NULL;
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
-		RWDEBUG("Failed creating valuepair for attribute \"%s\", skipping...", da->name);
+		RWDEBUG("Failed creating valuepair for attribute \"%s\" (skipping)", da->name);
 		talloc_free(expanded);
 
 		return NULL;
@@ -953,7 +953,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		 */
 		src.vb_strvalue = json_object_get_string(leaf);
 		if (!src.vb_strvalue) {
-			RWDEBUG("Failed getting string value for attribute \"%s\", skipping...", da->name);
+			RWDEBUG("Failed getting string value for attribute \"%s\" (skipping)", da->name);
 
 			return NULL;
 		}
@@ -964,7 +964,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	ret = fr_value_box_cast(vp, &vp->data, da->type, da, &src);
 	talloc_free(expanded);
 	if (ret < 0) {
-		RWDEBUG("Failed parsing value for attribute \"%s\" (skipping): %s", da->name, fr_strerror());
+		RWDEBUG("Failed parsing value for attribute \"%s\" (skipping)", da->name);
 		talloc_free(vp);
 		return NULL;
 	}
@@ -1026,7 +1026,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
  *	- Number of attributes created.
  *	- < 0 on error.
  */
-static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *section,
+static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			 REQUEST *request, json_object *object, UNUSED int level, int max)
 {
 	int max_attrs = max;
@@ -1035,11 +1035,11 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 	if (!fr_json_object_is_type(object, json_type_object)) {
 #ifdef HAVE_JSON_TYPE_TO_NAME
 		REDEBUG("Can't process VP container, expected JSON object"
-			"got \"%s\", skipping...",
+			"got \"%s\" (skipping)",
 			json_type_to_name(json_object_get_type(object)));
 #else
 		REDEBUG("Can't process VP container, expected JSON object"
-			", skipping...");
+			" (skipping)");
 #endif
 		return -1;
 	}
@@ -1068,19 +1068,23 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 		 */
 		RDEBUG2("Parsing attribute \"%s\"", name);
 
-		if (tmpl_afrom_attr_str(request, &dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
-			RWDEBUG("Failed parsing attribute: %s, skipping...", fr_strerror());
+		if (tmpl_afrom_attr_str(request, &dst, name,
+					&(vp_tmpl_rules_t){
+						.dict_def = request->dict,
+						.list_def = PAIR_LIST_REPLY
+					}) <= 0) {
+			RPWDEBUG("Failed parsing attribute (skipping)");
 			continue;
 		}
 
 		if (radius_request(&current, dst->tmpl_request) < 0) {
-			RWDEBUG("Attribute name refers to outer request but not in a tunnel, skipping...");
+			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
 			continue;
 		}
 
 		vps = radius_list(current, dst->tmpl_list);
 		if (!vps) {
-			RWDEBUG("List not valid in this context, skipping...");
+			RWDEBUG("List not valid in this context (skipping)");
 			continue;
 		}
 		ctx = radius_list_ctx(current, dst->tmpl_list);
@@ -1108,7 +1112,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 			if (json_object_object_get_ex(value, "op", &tmp)) {
 				flags.op = fr_str2int(fr_tokens_table, json_object_get_string(tmp), 0);
 				if (!flags.op) {
-					RWDEBUG("Invalid operator value \"%s\", skipping...",
+					RWDEBUG("Invalid operator value \"%s\" (skipping)",
 						json_object_get_string(tmp));
 					continue;
 				}
@@ -1132,18 +1136,18 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 			 *  Value key must be present if were using the expanded syntax.
 			 */
 			if (!json_object_object_get_ex(value, "value", &tmp)) {
-				RWDEBUG("Value key missing, skipping...");
+				RWDEBUG("Value key missing (skipping)");
 				continue;
 			}
 		}
 
 		/*
-		 *  Setup fr_pair_make / recursion loop.
+		 *  Setup fr_pair_alloc / recursion loop.
 		 */
 		if (!flags.is_json && fr_json_object_is_type(value, json_type_array)) {
 			elements = json_object_array_length(value);
 			if (!elements) {
-				RWDEBUG("Zero length value array, skipping...");
+				RWDEBUG("Zero length value array (skipping)");
 				continue;
 			}
 			element = json_object_array_get_idx(value, 0);
@@ -1171,20 +1175,20 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 
 			if (fr_json_object_is_type(element, json_type_object) && !flags.is_json) {
 				/* TODO: Insert nested VP into VP structure...*/
-				RWDEBUG("Found nested VP, these are not yet supported, skipping...");
+				RWDEBUG("Found nested VP, these are not yet supported (skipping)");
 
 				continue;
 
 				/*
-				vp = json_pair_make(instance, section,
+				vp = json_pair_alloc(instance, section,
 						   request, value,
 						   level + 1, max_attrs);*/
 			} else {
-				vp = json_pair_make_leaf(instance, section, ctx, request,
-							 dst->tmpl_da, &flags, element);
+				vp = json_pair_alloc_leaf(instance, section, ctx, request,
+							  dst->tmpl_da, &flags, element);
 				if (!vp) continue;
 			}
-			rdebug_pair(2, request, vp, NULL);
+			RDEBUG2("&%pP", vp);
 			radius_pairmove(current, vps, vp, false);
 		/*
 		 *  If we call json_object_array_get_idx on something that's not an array
@@ -1201,12 +1205,12 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 /** Converts JSON response into VALUE_PAIRs and adds them to the request.
  *
  * Converts the raw JSON string into a json-c object tree and passes it to
- * json_pair_make. After the tree has been parsed json_object_put is called
+ * json_pair_alloc. After the tree has been parsed json_object_put is called
  * which decrements the reference count of the root node by one, and frees
  * the entire tree.
  *
  * @see rest_encode_json
- * @see json_pair_make
+ * @see json_pair_alloc
  *
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
@@ -1239,7 +1243,7 @@ static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t const
 		return -1;
 	}
 
-	ret = json_pair_make(instance, section, request, json, 0, REST_BODY_MAX_ATTRS);
+	ret = json_pair_alloc(instance, section, request, json, 0, REST_BODY_MAX_ATTRS);
 
 	/*
 	 *  Decrement reference count for root object, should free entire JSON tree.
@@ -1479,6 +1483,7 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 	char *tmp;
 
 	size_t const t = (size * nmemb);
+	size_t needed;
 
 	if (t == 0) return 0;
 
@@ -1513,19 +1518,22 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 		return t;
 
 	default:
-		if (t > (ctx->alloc - ctx->used)) {
-			ctx->alloc += ((t + 1) > REST_BODY_INIT) ? t + 1 : REST_BODY_INIT;
+		needed = ctx->used + t + 1;
+		if (needed < REST_BODY_INIT) needed = REST_BODY_INIT;
+
+		if (needed > ctx->alloc) {
+			ctx->alloc = needed;
 
 			tmp = ctx->buffer;
 			ctx->buffer = talloc_array(NULL, char, ctx->alloc);
 			/* If data has been written previously */
 			if (tmp) {
-				strlcpy(ctx->buffer, tmp, (ctx->used + 1));
+				memcpy(ctx->buffer, tmp, ctx->used);
 				talloc_free(tmp);
 			}
 		}
 		strlcpy(ctx->buffer + ctx->used, p, t + 1);
-		ctx->used += t;
+		ctx->used += t;	/* don't include the trailing zero */
 
 		break;
 	}
@@ -1712,7 +1720,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	char const	*content_type;
 
 	VALUE_PAIR 	*header;
-	vp_cursor_t	headers;
+	fr_cursor_t	headers;
 
 	char buffer[512];
 
@@ -1741,8 +1749,8 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	}
 
 	timeout = fr_pool_timeout(t->pool);
-	ERROR("CONNECT TIMEOUT IS %" PRIu64", REQUEST TIMEOUT IS %" PRIu64,
-	      FR_TIMEVAL_TO_MS(&timeout), FR_TIMEVAL_TO_MS(&section->timeout_tv));
+	DEBUG3("CONNECT TIMEOUT IS %" PRIu64", REQUEST TIMEOUT IS %" PRIu64,
+	       FR_TIMEVAL_TO_MS(&timeout), FR_TIMEVAL_TO_MS(&section->timeout_tv));
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(&timeout));
 	SET_OPTION(CURLOPT_TIMEOUT_MS, FR_TIMEVAL_TO_MS(&section->timeout_tv));
 
@@ -1765,9 +1773,10 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	fr_pair_cursor_init(&headers, &request->control);
-	while (fr_pair_cursor_next_by_num(&headers, 0, FR_REST_HTTP_HEADER, TAG_ANY)) {
-		header = fr_pair_cursor_remove(&headers);
+	for (header =  fr_cursor_iter_by_da_init(&headers, &request->control, attr_rest_http_header);
+	     header;
+	     header = fr_cursor_next(&headers)) {
+		header = fr_cursor_remove(&headers);
 		if (!strchr(header->vp_strvalue, ':')) {
 			RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
 				header->vp_strvalue);
@@ -1955,9 +1964,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 */
 	switch (type) {
 	case HTTP_BODY_NONE:
-		if (rest_request_config_body(inst, section, request, handle, NULL) < 0) {
-			return -1;
-		}
+		if (rest_request_config_body(inst, section, request, handle, NULL) < 0) return -1;
 
 		break;
 
@@ -1995,8 +2002,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(inst, section, request, handle,
-					     rest_encode_custom) < 0) {
+		if (rest_request_config_body(inst, section, request, handle, rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
 		}
@@ -2024,7 +2030,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 
 	case HTTP_BODY_POST:
 		rest_request_init(request, &ctx->request);
-		fr_pair_cursor_init(&(ctx->request.cursor), &request->packet->vps);
+		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
 
 		if (rest_request_config_body(inst, section, request, handle,
 					     rest_encode_post) < 0) {
@@ -2053,7 +2059,7 @@ error_header:
 	return -1;
 }
 
-int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+int rest_response_certinfo(rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
 			   REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
@@ -2062,7 +2068,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 	int			i;
 	char		 	buffer[265];
 	char			*p , *q, *attr = buffer;
-	vp_cursor_t		cursor, list;
+	fr_cursor_t		cursor, list;
 	VALUE_PAIR		*cert_vps = NULL;
 
 	/*
@@ -2078,7 +2084,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 	} ptr;
 	ptr.to_info = NULL;
 
-	fr_pair_cursor_init(&list, &request->packet->vps);
+	fr_cursor_init(&list, &request->packet->vps);
 
 	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
 	if (ret != CURLE_OK) {
@@ -2094,12 +2100,13 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 		struct curl_slist *cert_attrs;
 
 		RDEBUG2("Processing certificate %i",i);
-		fr_pair_cursor_init(&cursor, &cert_vps);
+		fr_cursor_init(&cursor, &cert_vps);
 
 		for (cert_attrs = ptr.to_certinfo->certinfo[i];
 		     cert_attrs;
 		     cert_attrs = cert_attrs->next) {
-		     	VALUE_PAIR *vp;
+		     	VALUE_PAIR		*vp;
+		     	fr_dict_attr_t const	*da;
 
 		     	q = strchr(cert_attrs->data, ':');
 			if (!q) {
@@ -2108,17 +2115,18 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 			}
 
 			strlcpy(attr, cert_attrs->data, (q - cert_attrs->data) + 1);
-			for (p = attr; *p != '\0'; p++) {
-				if (*p == ' ') *p = '-';
-			}
+			for (p = attr; *p != '\0'; p++) if (*p == ' ') *p = '-';
 
-			vp = fr_pair_make(request->packet, NULL, buffer, q + 1, T_OP_ADD);
-			if (!vp) {
+			da = fr_dict_attr_by_name(dict_freeradius, buffer);
+			if (!da) {
 				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
 				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);
-			} else {
-				fr_pair_cursor_append(&cursor, vp);
+				continue;
 			}
+			MEM(vp = fr_pair_afrom_da(request->packet, da));
+			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
+
+			fr_cursor_append(&cursor, vp);
 		}
 
 		/*
@@ -2131,13 +2139,13 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 		 *	tls_session_pairs_from_x509_cert contains a
 		 *	reference to cert_vps.
 		 */
-		cert_vps = fr_pair_cursor_current(&cursor);
+		cert_vps = fr_cursor_current(&cursor);
 		if (cert_vps) {
 			/*
 			 *	Print out all the pairs we have so far
 			 */
-			rdebug_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
-			fr_pair_cursor_merge(&list, cert_vps);
+			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
+			fr_cursor_merge(&list, &cursor);
 			cert_vps = NULL;
 		}
 	}
@@ -2300,7 +2308,7 @@ ssize_t rest_uri_build(char **out, rlm_rest_t const *inst, REQUEST *request, cha
 	p = strchr(p, ':');
 	if (!p || (*++p != '/') || (*++p != '/')) {
 		malformed:
-		REDEBUG("Error URI is malformed, can't find start of path");
+		REDEBUG("Error URI \"%s\" is malformed, can't find start of path", uri);
 		return -1;
 	}
 	p = strchr(p + 1, '/');
@@ -2373,7 +2381,7 @@ ssize_t rest_uri_host_unescape(char **out, rlm_rest_t const *inst, REQUEST *requ
 	p = strchr(p, ':');
 	if (!p || (*++p != '/') || (*++p != '/')) {
 	malformed:
-		REDEBUG("Error URI is malformed, can't find start of path");
+		REDEBUG("URI \"%s\" is malformed, can't find start of path", uri);
 		return -1;
 	}
 	p = strchr(p + 1, '/');

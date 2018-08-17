@@ -28,13 +28,13 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/rad_assert.h>
 
-#include "../rlm_redis/redis.h"
-#include "../rlm_redis/cluster.h"
+#include <freeradius-devel/redis/base.h>
+#include <freeradius-devel/redis/cluster.h>
 
 typedef struct rlm_rediswho {
 	fr_redis_conf_t		*conf;		//!< Connection parameters for the Redis server.
@@ -76,6 +76,22 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_rediswho_dict[];
+fr_dict_autoload_t rlm_rediswho_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_acct_status_type;
+
+extern fr_dict_attr_autoload_t rlm_rediswho_dict_attr[];
+fr_dict_attr_autoload_t rlm_rediswho_dict_attr[] = {
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
+
 /*
  *	Query the database executing a command with no result rows
  */
@@ -100,7 +116,10 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 	if (!fmt || !*fmt) return 0;
 
 	argc = rad_expand_xlat(request, fmt, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
- 	if (argc < 0) return -1;
+	if (argc < 0) {
+		RPEDEBUG("Invalid command: %s", fmt);
+		return -1;
+	}
 
 	/*
 	 *	If we've got multiple arguments, the second one is usually the key.
@@ -126,7 +145,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 		fr_redis_reply_free(reply);
 		return -1;
 	}
-	if (!rad_cond_assert(reply)) goto error;
+	if (!fr_cond_assert(reply)) goto error;
 
 	switch (reply->type) {
 	case REDIS_REPLY_INTEGER:
@@ -174,13 +193,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	CONF_SECTION		*cs;
 	char const		*insert, *trim, *expire;
 
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 	if (!vp) {
 		RDEBUG("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;
 	}
 
-	dv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
+	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) {
 		RDEBUG("Unknown Acct-Status-Type %u", vp->vp_uint32);
 		return RLM_MODULE_NOOP;

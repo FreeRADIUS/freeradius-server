@@ -146,6 +146,7 @@ $INCLUDE dictionary.aruba
 $INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
+$INCLUDE dictionary.bigswitch
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.bluecoat
 $INCLUDE dictionary.boingo
@@ -202,6 +203,7 @@ $INCLUDE dictionary.hillstone
 $INCLUDE dictionary.hp
 $INCLUDE dictionary.huawei
 $INCLUDE dictionary.iea
+$INCLUDE dictionary.iec
 $INCLUDE dictionary.infonet
 $INCLUDE dictionary.issanni
 $INCLUDE dictionary.itk
@@ -222,6 +224,7 @@ $INCLUDE dictionary.meru
 $INCLUDE dictionary.microsemi
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.mikrotik
+$INCLUDE dictionary.mimosa
 $INCLUDE dictionary.motorola
 $INCLUDE dictionary.motorola.wimax
 $INCLUDE dictionary.navini
@@ -256,6 +259,7 @@ $INCLUDE dictionary.riverstone
 $INCLUDE dictionary.roaringpenguin
 $INCLUDE dictionary.ruggedcom
 $INCLUDE dictionary.ruckus
+$INCLUDE dictionary.sandy
 $INCLUDE dictionary.sangoma
 $INCLUDE dictionary.shasta
 $INCLUDE dictionary.sg
@@ -298,6 +302,8 @@ $INCLUDE dictionary.zyxel
 #  This should be auto-loaded in the future.
 #
 $INCLUDE dictionary.arp
+$INCLUDE dictionary.vqp
+$INCLUDE dictionary.dhcpv4
 
 #
 #	And finally the server internal attributes.

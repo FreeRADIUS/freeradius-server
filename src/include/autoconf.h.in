@@ -12,6 +12,9 @@
 /* Define to 1 to have OpenSSL version check enabled */
 #undef ENABLE_OPENSSL_VERSION_CHECK
 
+/* Define to ensure each build is the same */
+#undef ENABLE_REPRODUCIBLE_BUILDS
+
 /* Define if your processor stores words with the most significant byte first
    */
 #undef FR_BIG_ENDIAN
@@ -94,6 +97,9 @@
 
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
+
+/* Define to 1 if you have the `EVP_sha3_512' function. */
+#undef HAVE_EVP_SHA3_512
 
 /* define this if we have <execinfo.h> and symbols */
 #undef HAVE_EXECINFO
@@ -209,7 +215,8 @@
 /* Define to 1 if you have the `nsl' library (-lnsl). */
 #undef HAVE_LIBNSL
 
-/* Define to 1 if you have the `pcap' library (-lpcap). */
+/* Define to 1 if you have the `pcap' library (-lpcap) and header file
+   <pcap.h>. */
 #undef HAVE_LIBPCAP
 
 /* Define if you have a readline compatible library */
@@ -305,9 +312,6 @@
 /* Define to 1 if you have the `pcap_fopen_offline' function. */
 #undef HAVE_PCAP_FOPEN_OFFLINE
 
-/* Define to 1 if you have the <pcap.h> header file. */
-#undef HAVE_PCAP_H
-
 /* define this if we have libpcre */
 #undef HAVE_PCRE
 
@@ -349,6 +353,9 @@
 
 /* Define to 1 if you have the <resource.h> header file. */
 #undef HAVE_RESOURCE_H
+
+/* Define to 1 if you have the <sanitizer/lsan_interface.h> header file. */
+#undef HAVE_SANITIZER_LSAN_INTERFACE_H
 
 /* Define to 1 if you have the <semaphore.h> header file. */
 #undef HAVE_SEMAPHORE_H
@@ -583,6 +590,9 @@
 
 /* Commit HEAD at time of configuring */
 #undef RADIUSD_VERSION_COMMIT
+
+/* Version release number at time of configuring */
+#undef RADIUSD_VERSION_RELEASE
 
 /* Raw version string from VERSION file */
 #undef RADIUSD_VERSION_STRING

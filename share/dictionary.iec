@@ -1,0 +1,18 @@
+# -*- text -*-
+# Copyright (C) 2018 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#   Attributes for IEC (62351)
+#
+#   https://www.researchgate.net/publication/317167505_Handling_Role-based_Access_Control_in_the_Digital_Grid
+#
+##############################################################################
+VENDOR		IEC				41912
+BEGIN-VENDOR	IEC
+ATTRIBUTE	IEC62351-8-RoleID			1	integer
+ATTRIBUTE	IEC62351-8-RoleDefinition		2	string
+ATTRIBUTE	IEC62351-8-AoR				3	string
+ATTRIBUTE	IEC62351-8-Revision			4	integer
+ATTRIBUTE	IEC62351-8-ValidFrom			5	string
+ATTRIBUTE	IEC62351-8-ValidTo			6	string
+END-VENDOR IEC

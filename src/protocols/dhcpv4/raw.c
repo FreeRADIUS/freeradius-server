@@ -23,15 +23,19 @@
  * @copyright 2008,2017 The FreeRADIUS server project
  * @copyright 2008 Alan DeKok <aland@deployingradius.com>
  */
+#include "attrs.h"
+#include "dhcpv4.h"
 
-#include <stdint.h>
+#include <freeradius-devel/util/net.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/udpfromto.h>
+
 #include <stddef.h>
+#include <stdint.h>
 #include <talloc.h>
-#include <freeradius-devel/pair.h>
-#include <freeradius-devel/types.h>
-#include <freeradius-devel/proto.h>
-#include <freeradius-devel/udpfromto.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
 
 #ifndef __MINGW32__
 #  include <sys/ioctl.h>
@@ -118,7 +122,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
 
 	/* set ethernet source address to our MAC address (DHCP-Client-Hardware-Address). */
 	uint8_t dhmac[ETH_ADDR_LEN] = { 0 };
-	if ((vp = fr_pair_find_by_num(packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_da(packet->vps, attr_dhcp_client_hardware_address, TAG_ANY))) {
 		if (vp->vp_type == FR_TYPE_ETHERNET) memcpy(dhmac, vp->vp_ether, sizeof(vp->vp_ether));
 	}
 
@@ -199,7 +203,7 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	raw_packet = talloc_zero_array(packet, uint8_t, MAX_PACKET_SIZE);
 	if (!raw_packet) {
 		fr_strerror_printf("Out of memory");
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
@@ -227,7 +231,7 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	 *	Check if it matches the source HW address used (DHCP-Client-Hardware-Address = 267)
 	 */
 	if ((memcmp(&eth_bcast, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0) &&
-	    (vp = fr_pair_find_by_num(request->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY)) &&
+	    (vp = fr_pair_find_by_da(request->vps, attr_dhcp_client_hardware_address, TAG_ANY)) &&
 	    ((vp->vp_type == FR_TYPE_ETHERNET) && (memcmp(vp->vp_ether, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0))) {
 
 		/* No match. */
@@ -295,20 +299,21 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	TALLOC_FREE(raw_packet);
 	packet->id = xid;
 
-	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) packet->data, packet->data_len, FR_DHCPV4_MESSAGE_TYPE);
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) packet->data,
+					   packet->data_len, attr_dhcp_message_type);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
 	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 8)) {
 		fr_strerror_printf("Unknown value for message-type option");
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
-	packet->code = code[2] | FR_DHCPV4_OFFSET;
+	packet->code = code[2];
 
 	/*
 	 *	Create a unique vector from the MAC address and the

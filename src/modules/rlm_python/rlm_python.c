@@ -29,9 +29,10 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_python - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/lsan.h>
 
 #include <Python.h>
 #include <dlfcn.h>
@@ -41,6 +42,10 @@ static void		*python_dlhandle;
 
 static PyThreadState	*main_interpreter;	//!< Main interpreter (cext safe)
 static PyObject		*main_module;		//!< Pthon configuration dictionary.
+
+#if PY_VERSION_HEX > 0x03050000
+static wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
+#endif
 
 /** Specifies the module.function to load for processing a section
  *
@@ -62,11 +67,11 @@ typedef struct rlm_python_t {
 	char const	*python_path;		//!< Path to search for python files in.
 
 #if PY_VERSION_HEX > 0x03050000
-	wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
 	wchar_t		*wide_path;		//!< Special wide char encoding of radiusd path.
-#endif
-	PyObject	*module;		//!< Local, interpreter specific module, containing
 						//!< FreeRADIUS functions.
+#endif
+
+	PyObject	*module;		//!< Local, interpreter specific module, containing
 	bool		cext_compat;		//!< Whether or not to create sub-interpreters per module
 						//!< instance.
 
@@ -94,10 +99,9 @@ typedef struct rlm_python_t {
  * Multiple instances of python create multiple interpreters and each
  * thread must have a PyThreadState per interpreter, to track execution.
  */
-typedef struct python_thread_state {
-	PyThreadState		*state;		//!< Module instance/thread specific state.
-	rlm_python_t const	*inst;		//!< Module instance that created this thread state.
-} python_thread_state_t;
+typedef struct {
+	PyThreadState	*state;			//!< Module instance/thread specific state.
+} rlm_python_thread_t;
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -165,18 +169,13 @@ static struct {
 };
 
 /*
- *	This allows us to initialise PyThreadState on a per thread basis
- */
-fr_thread_local_setup(rbtree_t *, local_thread_state)	/* macro */
-
-/*
  *	radiusd Python functions
  */
 
 /** Allow fr_log to be called from python
  *
  */
-static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
+static PyObject *mod_log(UNUSED PyObject *module, PyObject *args)
 {
 	int status;
 	char *msg;
@@ -192,8 +191,8 @@ static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
 }
 
 static PyMethodDef module_methods[] = {
-	{ "radlog", &mod_radlog, METH_VARARGS,
-	  "radiusd.radlog(level, msg)\n\n" \
+	{ "log", &mod_log, METH_VARARGS,
+	  "radiusd.log(level, msg)\n\n" \
 	  "Print a message using radiusd logging system. level should be one of the\n" \
 	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY\n"
 	},
@@ -301,7 +300,11 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 			}
 		}
 
-		if (tmpl_afrom_attr_str(ctx, &dst, s1, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
+		if (tmpl_afrom_attr_str(ctx, &dst, s1,
+					&(vp_tmpl_rules_t){
+						.dict_def = request->dict,
+						.list_def = PAIR_LIST_REPLY
+					}) <= 0) {
 			ERROR("%s - Failed to find attribute %s:%s", funcname, list_name, s1);
 			continue;
 		}
@@ -322,7 +325,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 
 
 		vp->op = op;
-		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
+		if (fr_pair_value_from_str(vp, s2, -1, '\0', false) < 0) {
 			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
 			      fr_int2str(fr_tokens_table, op, "="), s2);
 		} else {
@@ -405,7 +408,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case FR_TYPE_FLOAT32:
-		value = PyFloat_FromDouble(vp->vp_float32);
+		value = PyFloat_FromDouble((double) vp->vp_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
@@ -460,7 +463,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 
 static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname)
 {
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	VALUE_PAIR      *vp;
 	PyObject	*pRet = NULL;
 	PyObject	*pArgs = NULL;
@@ -480,9 +483,9 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	 */
 	tuplelen = 0;
 	if (request != NULL) {
-		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) tuplelen++;
+		     vp = fr_cursor_next(&cursor)) tuplelen++;
 	}
 
 	if (tuplelen == 0) {
@@ -495,9 +498,9 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 			goto finish;
 		}
 
-		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor), i++) {
+		     vp = fr_cursor_next(&cursor), i++) {
 			PyObject *pp;
 
 			/* The inside tuple has two only: */
@@ -597,114 +600,21 @@ static void python_interpreter_free(PyThreadState *interp)
 	PyEval_ReleaseLock();
 }
 
-/** Destroy a thread state
- *
- * @param thread to destroy.
- * @return 0
- */
-static int _python_thread_free(python_thread_state_t *thread)
-{
-	PyEval_RestoreThread(thread->state);	/* Swap in our local thread state */
-	PyThreadState_Clear(thread->state);
-	PyEval_SaveThread();
-
-	PyThreadState_Delete(thread->state);	/* Don't need to hold lock for this */
-
-	return 0;
-}
-
-/** Callback for rbtree delete walker
- *
- */
-static void _python_thread_entry_free(void *arg)
-{
-	talloc_free(arg);
-}
-
-/** Cleanup any thread local storage on pthread_exit()
- *
- * @param arg The thread currently exiting.
- */
-static void _python_thread_tree_free(void *arg)
-{
-	rad_assert(arg == local_thread_state);
-
-	rbtree_t *tree = talloc_get_type_abort(arg, rbtree_t);
-	talloc_free(tree);	/* Needs to be this not talloc_free to execute delete walker */
-
-	local_thread_state = NULL;	/* Prevent double free in unit_test_module env */
-}
-
-/** Compare instance pointers
- *
- */
-static int _python_inst_cmp(const void *a, const void *b)
-{
-	python_thread_state_t const *a_p = a, *b_p = b;
-
-	return (a_p->inst < b_p->inst) - (a_p->inst > b_p->inst);
-}
-
 /** Thread safe call to a python function
  *
  * Will swap in thread state specific to module/thread.
  */
-static rlm_rcode_t do_python(rlm_python_t const *inst, REQUEST *request, PyObject *pFunc, char const *funcname)
+static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this_thread,
+			     REQUEST *request, PyObject *pFunc, char const *funcname)
 {
 	int			ret;
-	rbtree_t		*thread_tree;
-	python_thread_state_t	*this_thread;
-	python_thread_state_t	find;
 
 	/*
 	 *	It's a NOOP if the function wasn't defined
 	 */
 	if (!pFunc) return RLM_MODULE_NOOP;
 
-	/*
-	 *	Check to see if we've got a thread state tree
-	 *	If not, create one.
-	 */
-	thread_tree = local_thread_state;
-	if (!thread_tree) {
-		thread_tree = rbtree_create(NULL, _python_inst_cmp, _python_thread_entry_free, 0);
-		if (!thread_tree) {
-			RERROR("Failed allocating thread state tree");
-			return RLM_MODULE_FAIL;
-		}
-		fr_thread_local_set_destructor(local_thread_state, _python_thread_tree_free, thread_tree);
-	}
-
-	find.inst = inst;
-	/*
-	 *	Find the thread state associated with this instance
-	 *	and this thread, or create a new thread state.
-	 */
-	this_thread = rbtree_finddata(thread_tree, &find);
-	if (!this_thread) {
-		PyThreadState *state;
-
-		state = PyThreadState_New(inst->sub_interpreter->interp);
-
-		RDEBUG3("Initialised new thread state %p", state);
-		if (!state) {
-			REDEBUG("Failed initialising local PyThreadState on first run");
-			return RLM_MODULE_FAIL;
-		}
-
-		this_thread = talloc(NULL, python_thread_state_t);
-		this_thread->inst = inst;
-		this_thread->state = state;
-		talloc_set_destructor(this_thread, _python_thread_free);
-
-		if (!rbtree_insert(thread_tree, this_thread)) {
-			RERROR("Failed inserting thread state into TLS tree");
-			talloc_free(this_thread);
-
-			return RLM_MODULE_FAIL;
-		}
-	}
-	RDEBUG3("Using thread state %p", this_thread->state);
+	RDEBUG3("Using thread state %p/%p", inst, this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
 	ret = do_python_single(request, pFunc, funcname);
@@ -714,8 +624,9 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, REQUEST *request, PyObjec
 }
 
 #define MOD_FUNC(x) \
-static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, UNUSED void *thread, REQUEST *request) { \
-	return do_python((rlm_python_t const *) instance, request, ((rlm_python_t const *)instance)->x.function, #x);\
+static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, void *thread, REQUEST *request) { \
+	return do_python((rlm_python_t const *) instance, (rlm_python_thread_t *)thread, \
+			 request, ((rlm_python_t const *)instance)->x.function, #x);\
 }
 
 MOD_FUNC(authenticate)
@@ -752,14 +663,13 @@ static int python_function_load(python_func_def_t *def)
 
 	if (def->module_name == NULL || def->function_name == NULL) return 0;
 
-	def->module = PyImport_ImportModule(def->module_name);
+	LSAN_DISABLE(def->module = PyImport_ImportModuleNoBlock(def->module_name));
 	if (!def->module) {
 		ERROR("%s - Module '%s' not found", funcname, def->module_name);
 
 	error:
 		python_error_log();
-		ERROR("%s - Failed to import python function '%s.%s'",
-		      funcname, def->module_name, def->function_name);
+		ERROR("%s - Failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
 		Py_XDECREF(def->function);
 		def->function = NULL;
 		Py_XDECREF(def->module);
@@ -862,36 +772,6 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	int i;
 
 	/*
-	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
-	 */
-	if (python_instances == 0) {
-		INFO("Python version: %s", Py_GetVersion());
-
-		python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
-					 RTLD_NOW | RTLD_GLOBAL);
-		if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
-
-#if PY_VERSION_HEX > 0x03050000
-		{
-			inst->wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
-			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-		}
-#else
-		{
-			char *name;
-
-			memcpy(&name, &main_config.name, sizeof(name));
-			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-		}
-#endif
-
-		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
-		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
-		main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
-	}
-	rad_assert(PyEval_ThreadsInitialized());
-
-	/*
 	 *	Increment the reference counter
 	 */
 	python_instances++;
@@ -901,7 +781,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 *	These will be destroyed on Py_Finalize().
 	 */
 	if (!inst->cext_compat) {
-		inst->sub_interpreter = Py_NewInterpreter();
+		LSAN_DISABLE(inst->sub_interpreter = Py_NewInterpreter());
 	} else {
 		inst->sub_interpreter = main_interpreter;
 	}
@@ -926,13 +806,13 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 #if PY_VERSION_HEX > 0x03050000
 			{
 				inst->wide_path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
-				PySys_SetPath(path);
+				PySys_SetPath(inst->wide_path);
 			}
 #else
 			{
 				char *path;
 
-				memcpy(&path, inst->python_path, sizeof(path));
+				memcpy(&path, &inst->python_path, sizeof(path));
 				PySys_SetPath(path);
 			}
 #endif
@@ -1074,6 +954,13 @@ static int mod_detach(void *instance)
 	PYTHON_FUNC_DESTROY(authenticate);
 	PYTHON_FUNC_DESTROY(preacct);
 	PYTHON_FUNC_DESTROY(accounting);
+	PYTHON_FUNC_DESTROY(pre_proxy);
+	PYTHON_FUNC_DESTROY(post_proxy);
+	PYTHON_FUNC_DESTROY(post_auth);
+#ifdef WITH_COA
+	PYTHON_FUNC_DESTROY(recv_coa);
+	PYTHON_FUNC_DESTROY(send_coa);
+#endif
 	PYTHON_FUNC_DESTROY(detach);
 
 	Py_DecRef(inst->pythonconf_dict);
@@ -1082,32 +969,101 @@ static int mod_detach(void *instance)
 	PyEval_SaveThread();
 
 	/*
-	 *	Force cleaning up of threads if this is *NOT* a worker
-	 *	thread, which happens if this is being called from
-	 *	unit_test_module framework, and probably with the server running
-	 *	in debug mode.
-	 */
-	talloc_free(local_thread_state);
-	local_thread_state = NULL;
-
-	/*
 	 *	Only destroy if it's a subinterpreter
 	 */
 	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
 
 	if ((--python_instances) == 0) {
-		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
-		Py_Finalize();
-		dlclose(python_dlhandle);
-
 #if PY_VERSION_HEX > 0x03050000
-		if (inst->wide_name) PyMem_RawFree(inst->wide_name);
 		if (inst->wide_path) PyMem_RawFree(inst->wide_path);
 #endif
 	}
 
-
 	return ret;
+}
+
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance,
+				  UNUSED fr_event_list_t *el, void *thread)
+{
+	PyThreadState		*state;
+	rlm_python_t		*inst = instance;
+	rlm_python_thread_t	*this_thread = thread;
+
+	state = PyThreadState_New(inst->sub_interpreter->interp);
+	if (!state) {
+		ERROR("Failed initialising local PyThreadState");
+		return -1;
+	}
+
+	DEBUG3("Initialised new thread state %p", state);
+	this_thread->state = state;
+
+	return 0;
+}
+
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_python_thread_t	*this_thread = thread;
+
+	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
+	PyThreadState_Clear(this_thread->state);
+	PyEval_SaveThread();
+
+	PyThreadState_Delete(this_thread->state);	/* Don't need to hold lock for this */
+
+	return 0;
+}
+
+static int mod_load(void)
+{
+	rad_assert(!Py_IsInitialized());
+
+	INFO("Python version: %s", Py_GetVersion());
+
+	/*
+	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
+	 */
+	python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
+				 RTLD_NOW | RTLD_GLOBAL);
+	if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
+
+	LSAN_DISABLE(Py_InitializeEx(0));	/* Don't override signal handlers - noop on subs calls */
+	PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
+	rad_assert(PyEval_ThreadsInitialized());
+	main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
+
+	/*
+	 *	Set program name (i.e. the software calling the interpreter)
+	 */
+#if PY_VERSION_HEX > 0x03050000
+	{
+		wide_name = Py_DecodeLocale(main_config->name, strlen(main_config->name));
+		Py_SetProgramName(wide_name);		/* The value of argv[0] as a wide char string */
+	}
+#else
+	{
+		char const *const_name;
+		char *name;
+
+		const_name = main_config->name;
+
+		memcpy(&name, &const_name, sizeof(name));
+		Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
+	}
+#endif
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
+	Py_Finalize();
+	dlclose(python_dlhandle);
+
+#if PY_VERSION_HEX > 0x03050000
+	if (wide_name) PyMem_RawFree(wide_name);
+#endif
 }
 
 /*
@@ -1121,13 +1077,23 @@ static int mod_detach(void *instance)
  */
 extern rad_module_t rlm_python;
 rad_module_t rlm_python = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "python",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_python_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+	.magic			= RLM_MODULE_INIT,
+	.name			= "python",
+	.type			= RLM_TYPE_THREAD_SAFE,
+
+	.inst_size		= sizeof(rlm_python_t),
+	.thread_inst_size	= sizeof(rlm_python_thread_t),
+
+	.config			= module_config,
+	.load			= mod_load,
+	.unload			= mod_unload,
+
+	.instantiate		= mod_instantiate,
+	.detach			= mod_detach,
+
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
+
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

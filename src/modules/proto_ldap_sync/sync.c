@@ -27,13 +27,13 @@
  *
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/ldap/libfreeradius-ldap.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/ldap/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <lber.h>
 #include "sync.h"
 
 struct sync_state_s {
-	fr_ldap_conn_t 			*conn;
+	fr_ldap_connection_t 			*conn;
 
 	sync_config_t const		*config;
 
@@ -90,6 +90,7 @@ FR_NAME_NUMBER sync_info_tag_table[] = {
 static int sync_new_cookie(bool *new_cookie, sync_state_t *sync, BerElement *ber)
 {
 	struct berval	cookie;
+	size_t		cookie_len;
 	ber_tag_t	bv_ret;
 	ber_len_t	len;
 
@@ -114,8 +115,10 @@ static int sync_new_cookie(bool *new_cookie, sync_state_t *sync, BerElement *ber
 
 	if (sync->cookie) {
 		if (talloc_array_length(sync->cookie) == cookie.bv_len) {
+			cookie_len = talloc_array_length(sync->cookie);
 			if (memcmp(sync->cookie, cookie.bv_val, cookie.bv_len)) {
-				WARN("Ignoring new cookie \"%pS\": Identical to old cookie", sync->cookie);
+				WARN("Ignoring new cookie \"%pV\": Identical to old cookie",
+				     fr_box_strvalue_len((char const *)sync->cookie, cookie_len));
 				return 0;
 			}
 		}
@@ -123,7 +126,9 @@ static int sync_new_cookie(bool *new_cookie, sync_state_t *sync, BerElement *ber
 
 	talloc_free(sync->cookie);
 	sync->cookie = fr_ldap_berval_to_bin(sync, &cookie);
-	DEBUG3("Got new cookie value \"%pS\" (%zu)", sync->cookie, talloc_array_length(sync->cookie));
+	cookie_len = talloc_array_length(sync->cookie);
+	DEBUG3("Got new cookie value \"%pV\" (%zu)",
+	       fr_box_strvalue_len((char const *)sync->cookie, cookie_len), cookie_len);
 
 	if (new_cookie) *new_cookie = true;
 
@@ -360,7 +365,7 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 	int			refresh_done = false;
 
 	ret = ldap_parse_intermediate(sync->conn->handle, msg, &oid, &data, NULL, 0);
-	if (!rad_cond_assert(ret == LDAP_SUCCESS)) return -1;	/* should have been caught earlier */
+	if (!fr_cond_assert(ret == LDAP_SUCCESS)) return -1;	/* should have been caught earlier */
 
 	if (!oid || (strcmp(oid, LDAP_SYNC_INFO) != 0)) {
 		WARN("Ignoring intermediateResult with unexpected OID \"%s\"", oid ? oid : "<unknown>");
@@ -706,7 +711,7 @@ static int sync_search_result(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
  *	- -1 on sync error.
  *	- -2 on conn error.  Requires the handle to be destroyed.
  */
-int sync_demux(int *sync_id, fr_ldap_conn_t *conn)
+int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 {
 	struct	timeval		poll = { 1, 0 };	/* Poll */
 	LDAPMessage		*msg, *head = NULL;
@@ -715,7 +720,7 @@ int sync_demux(int *sync_id, fr_ldap_conn_t *conn)
 	sync_state_t		find = { .msgid = -1 }, *sync = NULL;
 	rbtree_t		*tree;
 
-	tree = talloc_get_type_abort(conn->user_ctx, rbtree_t);
+	tree = talloc_get_type_abort(conn->uctx, rbtree_t);
 
 	rad_assert(conn);
 
@@ -850,8 +855,8 @@ int sync_demux(int *sync_id, fr_ldap_conn_t *conn)
 static int _sync_state_free(sync_state_t *sync)
 {
 
-	fr_ldap_conn_t	*conn = talloc_get_type_abort(sync->conn, fr_ldap_conn_t);	/* check for premature free */
-	rbtree_t	*tree = talloc_get_type_abort(conn->user_ctx, rbtree_t);
+	fr_ldap_connection_t	*conn = talloc_get_type_abort(sync->conn, fr_ldap_connection_t);	/* check for premature free */
+	rbtree_t	*tree = talloc_get_type_abort(conn->uctx, rbtree_t);
 	sync_state_t	find = { .msgid = sync->msgid };
 
 	rad_assert(sync->conn->handle);
@@ -895,14 +900,14 @@ static int _sync_cmp(void const *one, void const *two)
  * @param[in] conn	the connection.
  * @param[in] msgid	of the sync to destroy.
  */
-void sync_state_destroy(fr_ldap_conn_t *conn, int msgid)
+void sync_state_destroy(fr_ldap_connection_t *conn, int msgid)
 {
 	sync_state_t	find, *sync;
 	rbtree_t	*tree;
 
-	if (!conn->user_ctx) return;
+	if (!conn->uctx) return;
 
-	tree = talloc_get_type_abort(conn->user_ctx, rbtree_t);
+	tree = talloc_get_type_abort(conn->uctx, rbtree_t);
 
 	find.msgid = msgid;
 
@@ -915,14 +920,14 @@ void sync_state_destroy(fr_ldap_conn_t *conn, int msgid)
  * @param[in] conn	the connection.
  * @param[in] msgid	of the sync to return the config for.
  */
-sync_config_t const *sync_state_config_get(fr_ldap_conn_t *conn, int msgid)
+sync_config_t const *sync_state_config_get(fr_ldap_connection_t *conn, int msgid)
 {
 	sync_state_t	find, *sync;
 	rbtree_t	*tree;
 
-	if (!conn->user_ctx) return NULL;
+	if (!conn->uctx) return NULL;
 
-	tree = talloc_get_type_abort(conn->user_ctx, rbtree_t);
+	tree = talloc_get_type_abort(conn->uctx, rbtree_t);
 
 	find.msgid = msgid;
 
@@ -960,7 +965,7 @@ sync_config_t const *sync_state_config_get(fr_ldap_conn_t *conn, int msgid)
  * @param[in] reload_hint	If true, hint to the server that we need to be sent all
  *				entries in the directory.
  */
-int sync_state_init(fr_ldap_conn_t *conn, sync_config_t const *config,
+int sync_state_init(fr_ldap_connection_t *conn, sync_config_t const *config,
 		    uint8_t const *cookie, bool reload_hint)
 {
 	static char const	*sync_ctl_oid = LDAP_CONTROL_SYNC;
@@ -981,11 +986,11 @@ int sync_state_init(fr_ldap_conn_t *conn, sync_config_t const *config,
 	 *	Allocate or retrieve the tree of outstanding msgids
 	 *	these are specific to the connection.
 	 */
-	if (!conn->user_ctx) {
-		MEM(tree = rbtree_create(conn, _sync_cmp, NULL, RBTREE_FLAG_NONE));
-		conn->user_ctx = tree;
+	if (!conn->uctx) {
+		MEM(tree = rbtree_talloc_create(conn, _sync_cmp, sync_state_t, NULL, RBTREE_FLAG_NONE));
+		conn->uctx = tree;
 	} else {
-		tree = talloc_get_type_abort(conn->user_ctx, rbtree_t);
+		tree = talloc_get_type_abort(conn->uctx, rbtree_t);
 	}
 
 	/*

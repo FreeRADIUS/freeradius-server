@@ -28,9 +28,13 @@ RCSID("$Id$")
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <freeradius-devel/unlang/base.h>
 #include "eap.h"
 
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
+
+static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 /*
  *	EAP-GTC is just ASCII data carried inside of the EAP session.
@@ -38,18 +42,62 @@ RCSID("$Id$")
  *	protocol.
  */
 typedef struct rlm_eap_gtc_t {
-	char const	*challenge;
-	char const	*auth_type_name;
-	uint32_t	auth_type;
+	char const		*challenge;
+	fr_dict_enum_t const	*auth_type;
 } rlm_eap_gtc_t;
 
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("challenge", FR_TYPE_STRING, rlm_eap_gtc_t, challenge), .dflt = "Password: " },
-	{ FR_CONF_OFFSET("auth_type", FR_TYPE_STRING, rlm_eap_gtc_t, auth_type_name), .dflt = "pap" },
+	{ FR_CONF_OFFSET("auth_type", FR_TYPE_VOID, rlm_eap_gtc_t, auth_type), .func = auth_type_parse,  .dflt = "pap" },
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_eap_gtc_dict[];
+fr_dict_autoload_t rlm_eap_gtc_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t rlm_eap_gtc_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_gtc_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
+
+/** Translate a string auth_type into an enumeration value
+ *
+ * @param[in] ctx	to allocate data.
+ * @param[out] out	Where to write the auth_type we created or resolved.
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_PAIR specifying the name of the auth_type.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
+
+	if (fr_dict_enum_add_alias_next(attr_auth_type, auth_type) < 0) {
+		cf_log_err(ci, "Failed adding %s alias", attr_auth_type->name);
+		return -1;
+	}
+	*((fr_dict_enum_t **)out) = fr_dict_enum_by_alias(attr_auth_type, auth_type, -1);
+
+	return 0;
+}
 
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
@@ -96,7 +144,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 *	of data.
 	 */
 	if (eap_round->response->length <= 4) {
-		ERROR("Corrupted data");
+		REDEBUG("Corrupted data");
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
 		return RLM_MODULE_INVALID;
 	}
@@ -106,7 +154,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 *	we don't like that.
 	 */
 	if (eap_round->response->type.length > 128) {
-		ERROR("Response is too large to understand");
+		REDEBUG("Response is too large to understand");
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
 		return RLM_MODULE_INVALID;
 	}
@@ -115,9 +163,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 *	If there was a User-Password in the request,
 	 *	why the heck are they using EAP-GTC?
 	 */
-	fr_pair_delete_by_num(&request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
-
-	MEM(vp = pair_make_request("User-Password", NULL, T_OP_EQ));
+	MEM(pair_update_request(&vp, attr_user_password) >= 0);
 	fr_pair_value_bstrncpy(vp, eap_round->response->type.data, eap_round->response->type.length);
 	vp->vp_tainted = true;
 
@@ -127,12 +173,12 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 */
 	request->password = vp;
 
-	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type_name);
+	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type->alias);
 	if (!unlang) {
 		/*
 		 *	Call the authenticate section of the *current* virtual server.
 		 */
-		rcode = process_authenticate(inst->auth_type, request);
+		rcode = process_authenticate(inst->auth_type->value->vb_uint32, request);
 		if (rcode != RLM_MODULE_OK) {
 			eap_round->request->code = FR_EAP_CODE_FAILURE;
 			return rcode;
@@ -142,7 +188,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		return RLM_MODULE_OK;
 	}
 
-	unlang_push_section(request, unlang, RLM_MODULE_FAIL);
+	unlang_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME);
 
 	eap_session->process = mod_process_auth_type;
 
@@ -186,31 +232,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 */
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_OK;
-}
-
-/*
- *	Attach the module.
- */
-static int mod_instantiate(void *instance, CONF_SECTION *cs)
-{
-	rlm_eap_gtc_t	*inst = talloc_get_type_abort(instance, rlm_eap_gtc_t);
-	fr_dict_enum_t	*dval;
-
-	if (!inst->auth_type_name) {
-		ERROR("You must specify 'auth_type'");
-		return -1;
-	}
-
-	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->auth_type_name);
-	if (!dval) {
-		cf_log_err_by_name(cs, "auth_type", "Unknown Auth-Type %s", inst->auth_type_name);
-		return -1;
-	}
-	inst->auth_type = dval->value->vb_uint32;
-	inst->auth_type_name = dval->alias;	/* Corrects case mismatches */
-
-	return 0;
+	return RLM_MODULE_HANDLED;
 }
 
 /*
@@ -222,10 +244,10 @@ rlm_eap_submodule_t rlm_eap_gtc = {
 	.name		= "eap_gtc",
 	.magic		= RLM_MODULE_INIT,
 
+	.provides	= { FR_EAP_GTC },
 	.inst_size	= sizeof(rlm_eap_gtc_t),
 	.config		= submodule_config,
 
-	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
-	.process	= mod_process		/* Process next round of EAP method */
+	.entry_point	= mod_process		/* Process next round of EAP method */
 };

@@ -1,11 +1,7 @@
 update control {
-       Cleartext-Password := 'hello'
-}
-
-update reply {
-       Filter-Id := "filter"
+	&Cleartext-Password := 'hello'
 }
 
 update request {
-	Tmp-String-0 := &reply:Filter-Id[#]	# ERROR
+	&Tmp-String-0 := &reply:Filter-Id[#]	# ERROR
 }

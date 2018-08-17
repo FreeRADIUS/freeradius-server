@@ -26,8 +26,8 @@
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 
-#include <freeradius-devel/rad_assert.h>
-#include "libfreeradius-ldap.h"
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/ldap/base.h>
 
 /** Callback for map_to_request
  *
@@ -39,10 +39,10 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 {
 	fr_ldap_result_t *self = uctx;
 	VALUE_PAIR *head = NULL, *vp;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor, to_append;
 	int i;
 
-	fr_pair_cursor_init(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 
 	switch (map->lhs->type) {
 	/*
@@ -58,20 +58,48 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 	 */
 	case TMPL_TYPE_LIST:
 		for (i = 0; i < self->count; i++) {
-			vp_map_t *attr = NULL;
+			vp_map_t	*attr = NULL;
+			char		*attr_str;
 
-			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]->bv_val);
-			if (map_afrom_attr_str(ctx, &attr, self->values[i]->bv_val,
-					       map->lhs->tmpl_request, map->lhs->tmpl_list,
-					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-				RWDEBUG("Failed parsing \"%s\" as valuepair (%s), skipping...", fr_strerror(),
-					self->values[i]->bv_val);
+			vp_tmpl_rules_t	lhs_rules = {
+				.dict_def = request->dict,
+				.request_def = map->lhs->tmpl_request,
+				.list_def = map->lhs->tmpl_list
+			};
+
+			vp_tmpl_rules_t rhs_rules = {
+				.dict_def = request->dict
+			};
+
+			RDEBUG3("Parsing valuepair string \"%pV\"",
+				fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
+
+			/*
+			 *	bv_val is NOT \0 terminated, so we need to make it
+			 *	safe (\0 terminate it) before passing it to any
+			 *	functions which take C strings and no lengths.
+			 */
+			attr_str = talloc_bstrndup(NULL, self->values[i]->bv_val, self->values[i]->bv_len);
+			if (!attr_str) {
+				RWDEBUG("Failed making attribute string safe");
 				continue;
 			}
 
+			if (map_afrom_attr_str(ctx, &attr,
+					       attr_str,
+					       &lhs_rules, &rhs_rules) < 0) {
+				RWDEBUG("Failed parsing \"%pV\" as valuepair (%s), skipping...",
+					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
+					fr_strerror());
+				talloc_free(attr_str);
+				continue;
+			}
+
+			talloc_free(attr_str);
+
 			if (attr->lhs->tmpl_request != map->lhs->tmpl_request) {
-				RWDEBUG("valuepair \"%s\" has conflicting request qualifier (%s vs %s), skipping...",
-					self->values[i]->bv_val,
+				RWDEBUG("valuepair \"%pV\" has conflicting request qualifier (%s vs %s), skipping...",
+					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
 					fr_int2str(request_refs, attr->lhs->tmpl_request, "<INVALID>"),
 					fr_int2str(request_refs, map->lhs->tmpl_request, "<INVALID>"));
 			next_pair:
@@ -80,20 +108,21 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 			}
 
 			if ((attr->lhs->tmpl_list != map->lhs->tmpl_list)) {
-				RWDEBUG("valuepair \"%s\" has conflicting list qualifier (%s vs %s), skipping...",
-					self->values[i]->bv_val,
+				RWDEBUG("valuepair \"%pV\" has conflicting list qualifier (%s vs %s), skipping...",
+					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
 					fr_int2str(pair_lists, attr->lhs->tmpl_list, "<INVALID>"),
 					fr_int2str(pair_lists, map->lhs->tmpl_list, "<INVALID>"));
 				goto next_pair;
 			}
 
 			if (map_to_vp(request, &vp, request, attr, NULL) < 0) {
-				RWDEBUG("Failed creating attribute for valuepair \"%s\", skipping...",
-					self->values[i]->bv_val);
+				RWDEBUG("Failed creating attribute for valuepair \"%pV\", skipping...",
+					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 				goto next_pair;
 			}
 
-			fr_pair_cursor_merge(&cursor, vp);
+			fr_cursor_init(&to_append, &vp);
+			fr_cursor_merge(&cursor, &to_append);
 			talloc_free(attr);
 
 			/*
@@ -115,19 +144,18 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 			vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 			rad_assert(vp);
 
-			if (fr_pair_value_from_str(vp, self->values[i]->bv_val, self->values[i]->bv_len) < 0) {
-				char *escaped;
-
-				escaped = fr_asprint(vp, self->values[i]->bv_val, self->values[i]->bv_len, '"');
-				RWDEBUG("Failed parsing value \"%s\" for attribute %s: %s", escaped,
-					map->lhs->tmpl_da->name, fr_strerror());
+			if (fr_pair_value_from_str(vp, self->values[i]->bv_val,
+						   self->values[i]->bv_len, '\0', true) < 0) {
+				RPWDEBUG("Failed parsing value \"%pV\" for attribute %s",
+					 fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
+					 map->lhs->tmpl_da->name);
 
 				talloc_free(vp); /* also frees escaped */
 				continue;
 			}
 
 			vp->op = map->op;
-			fr_pair_cursor_append(&cursor, vp);
+			fr_cursor_append(&cursor, vp);
 
 			/*
 			 *	Only process the first value, unless the operator is +=
@@ -266,7 +294,7 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t c
  *	- Number of maps successfully applied.
  *	- -1 on failure.
  */
-int fr_ldap_map_do(REQUEST *request, fr_ldap_conn_t *conn,
+int fr_ldap_map_do(REQUEST *request, fr_ldap_connection_t *conn,
 		   char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry)
 {
 	vp_map_t const		*map;
@@ -327,14 +355,17 @@ int fr_ldap_map_do(REQUEST *request, fr_ldap_conn_t *conn,
 		count = ldap_count_values_len(values);
 
 		for (i = 0; i < count; i++) {
-			vp_map_t *attr;
-			char *value;
+			vp_map_t	*attr;
+			char		*value;
+
+			vp_tmpl_rules_t parse_rules = {
+				.dict_def = request->dict
+			};
 
 			value = fr_ldap_berval_to_string(request, values[i]);
 			RDEBUG3("Parsing attribute string '%s'", value);
 			if (map_afrom_attr_str(request, &attr, value,
-					       REQUEST_CURRENT, PAIR_LIST_REPLY,
-					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+					       &parse_rules, &parse_rules) < 0) {
 				RWDEBUG("Failed parsing '%s' value \"%s\" as valuepair (%s), skipping...",
 					fr_strerror(), valuepair_attr, value);
 				talloc_free(value);

@@ -17,23 +17,24 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @copyright 2016  Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")
 
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/inet.h>
-#include <freeradius-devel/fr_log.h>
-#include <freeradius-devel/radius.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/libradius.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/io/worker.h>
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #include <pthread.h>
@@ -86,10 +87,10 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -w N                   Create N workers.  Default is 1.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
-static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
+static fr_io_final_t test_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
 	return FR_IO_REPLY;
@@ -98,8 +99,8 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 
 static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(request->async->listen->app_instance,
-								 fr_radius_packet_ctx_t);
+	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,
+								       fr_radius_packet_ctx_t);
 
 	request->number = pc->id;
 	request->async->process = test_process;
@@ -114,8 +115,8 @@ static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *c
 static ssize_t test_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	FR_MD5_CTX context;
-	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(request->async->listen->app_instance,
-								 fr_radius_packet_ctx_t);
+	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,
+								       fr_radius_packet_ctx_t);
 
 	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p room %zd\n",
 		request->number, pc, buffer, buffer_len);
@@ -135,7 +136,7 @@ static ssize_t test_encode(UNUSED void const *instance, REQUEST *request, uint8_
 	return 20;
 }
 
-static size_t test_nak(void const *instance, uint8_t *const packet, size_t packet_len, UNUSED uint8_t *reply, UNUSED size_t reply_len)
+static size_t test_nak(void const *instance, UNUSED void *packet_ctx, uint8_t *const packet, size_t packet_len, UNUSED uint8_t *reply, UNUSED size_t reply_len)
 {
 	MPRINT1("\t\tNAK !!! request %d - data %p %p size %zd\n", packet[1], instance, packet, packet_len);
 
@@ -161,19 +162,18 @@ static void *worker_thread(void *arg)
 
 	MPRINT1("\tWorker %d started.\n", sw->id);
 
-	ctx = talloc_init("worker");
-	if (!ctx) _exit(1);
+	MEM(ctx = talloc_init("worker"));
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!el) {
 		fprintf(stderr, "radius_test: Failed to create the event list\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
-	worker = sw->worker = fr_worker_create(ctx, el, &default_log, ~0);
+	worker = sw->worker = fr_worker_create(ctx, "test", el, &default_log, L_DBG_LVL_MAX);
 	if (!worker) {
 		fprintf(stderr, "radius_test: Failed to create the worker\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	MPRINT1("\tWorker %d looping.\n", sw->id);
@@ -194,8 +194,8 @@ static void send_reply(int sockfd, fr_channel_data_t *reply)
 	MPRINT1("Master got reply %d size %zd\n", pc->id, reply->m.data_size);
 
 	if (sendto(sockfd, reply->m.data, reply->m.data_size, 0, (struct sockaddr *) &pc->src, pc->salen) < 0) {
-		fprintf(stderr, "Failed sending reply: %s\n", strerror(errno));
-		exit(1);
+		fprintf(stderr, "Failed sending reply: %s\n", fr_syserror(errno));
+		exit(EXIT_FAILURE);
 	}
 
 	talloc_free(pc);
@@ -226,7 +226,7 @@ static void master_process(TALLOC_CTX *ctx)
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -243,13 +243,13 @@ static void master_process(TALLOC_CTX *ctx)
 
 	sockfd = fr_socket_server_udp(&my_ipaddr, &my_port, NULL, true);
 	if (sockfd < 0) {
-		fprintf(stderr, "radius_test: Failed creating socket: %s\n", fr_strerror());
-		exit(1);
+		fr_perror("radius_test: Failed creating socket");
+		exit(EXIT_FAILURE);
 	}
 
 	if (fr_socket_bind(sockfd, &my_ipaddr, &my_port, NULL) < 0) {
-		fprintf(stderr, "radius_test: Failed binding to socket: %s\n", fr_strerror());
-		exit(1);
+		fr_perror("radius_test: Failed binding to socket");
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -257,8 +257,8 @@ static void master_process(TALLOC_CTX *ctx)
 	 */
 	EV_SET(&events[0], sockfd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
 	if (kevent(kq_master, events, 1, NULL, 0, NULL) < 0) {
-		fprintf(stderr, "Failed setting KQ for EVFILT_READ: %s\n", fr_strerror());
-		exit(1);
+		fr_perror("Failed setting KQ for EVFILT_READ");
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -315,8 +315,8 @@ static void master_process(TALLOC_CTX *ctx)
 		if (num_events < 0) {
 			if (errno == EINTR) continue;
 
-			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
-			exit(1);
+			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
+			exit(EXIT_FAILURE);
 		}
 
 		if (num_events == 0) continue;
@@ -405,8 +405,8 @@ static void master_process(TALLOC_CTX *ctx)
 
 			rcode = fr_channel_send_request(workers[which_worker].ch, cd, &reply);
 			if (rcode < 0) {
-				fprintf(stderr, "Failed sending request: %s\n", strerror(errno));
-				exit(1);
+				fprintf(stderr, "Failed sending request: %s\n", fr_syserror(errno));
+				exit(EXIT_FAILURE);
 			}
 			which_worker++;
 			if (which_worker >= num_workers) which_worker = 0;
@@ -525,8 +525,8 @@ static void sig_ignore(int sig)
 
 int main(int argc, char *argv[])
 {
-	int c;
-	TALLOC_CTX	*autofree = talloc_init("main");
+	int		c;
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 	uint16_t	port16 = 0;
 
 	fr_time_start();
@@ -550,8 +550,8 @@ int main(int argc, char *argv[])
 
 		case 'i':
 			if (fr_inet_pton_port(&my_ipaddr, &port16, optarg, -1, AF_INET, true, false) < 0) {
-				fprintf(stderr, "Failed parsing ipaddr: %s\n", fr_strerror());
-				exit(1);
+				fr_perror("Failed parsing ipaddr");
+				exit(EXIT_FAILURE);
 			}
 			my_port = port16;
 			break;
@@ -592,7 +592,5 @@ int main(int argc, char *argv[])
 
 	master_process(autofree);
 
-	talloc_free(autofree);
-
-	return 0;
+	exit(EXIT_SUCCESS);
 }

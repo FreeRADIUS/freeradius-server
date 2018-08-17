@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,11 +14,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_APPLICATION_H
-#define _FR_APPLICATION_H
-
-#include <freeradius-devel/dl.h>
-#include <freeradius-devel/value.h>
 
 /**
  * $Id$
@@ -27,6 +23,8 @@
  *
  * @copyright 2017 The FreeRADIUS project
  */
+#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/util/value.h>
 
 #define FR_PROTO_STACK_MAX	10
 
@@ -109,9 +107,9 @@ typedef ssize_t (*fr_proto_decode_t)(void *proto_ctx, uint8_t const *data, size_
  * know anything about how the data will be used (e.g. reject delay
  * on Access-Reject)
  *
- * @param[in] proto_ctx	as created by #fr_proto_decode_t.
- * @param[out] buffer		the buffer where the raw packet will be written
- * @param[in] buffer_len	the length of the buffer
+ * @param[in] proto_ctx		as created by #fr_proto_decode_t.
+ * @param[out] buffer		the buffer where the raw packet will be written.
+ * @param[in] buffer_len	the length of the buffer.
  * @return
  *	- <0 on error.  May indicate the number of bytes (as a negative) offset,
  *	  that would have been needed to encode the total packet data.
@@ -188,5 +186,3 @@ typedef struct {
 	fr_proto_stack_frame_t	frame[FR_PROTO_STACK_MAX + 1];
 	int			depth;
 } fr_proto_stack_t;
-#endif /* _FR_APPLICATION_H */
-

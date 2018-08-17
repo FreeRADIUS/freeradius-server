@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_RING_BUFFER_H
-#define _FR_RING_BUFFER_H
+
 /**
  * $Id$
  *
@@ -39,7 +39,7 @@ typedef struct fr_ring_buffer_t fr_ring_buffer_t;
 fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size);
 
 uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size) CC_HINT(nonnull);
-uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size) CC_HINT(nonnull);
+uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size);
 uint8_t *fr_ring_buffer_reserve_split(fr_ring_buffer_t *dst, size_t reserve_size,
 				      fr_ring_buffer_t *src, size_t move_size) CC_HINT(nonnull);
 
@@ -57,5 +57,3 @@ void fr_ring_buffer_debug(fr_ring_buffer_t *rb, FILE *fp) CC_HINT(nonnull);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* _FR_RING_BUFFER_H */

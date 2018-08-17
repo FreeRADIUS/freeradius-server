@@ -3,51 +3,34 @@
 #
 #  Tests for dereferencing the Nth attribute
 #
-update reply {
-	Filter-Id := "filter"
-}
-
 update request {
-       Class := 0x01020304
-       Class += 0x05060708
-       Class += 0x090a0b0c
+       &Class := 0x01020304
+       &Class += 0x05060708
+       &Class += 0x090a0b0c
 }
 
-if (&Class != 0x01020304) {
-	update reply {
-		Filter-Id := "fail 0"
-	}
-}
+debug_request
 
-#  Must be the same as above
 if (&Class[0] != 0x01020304) {
-	update reply {
-		Filter-Id += "fail 0a"
-	}
+	test_fail
 }
 
 if (&Class[1] != 0x05060708) {
-	update reply {
-		Filter-Id += "fail 1"
-	}
+	test_fail
 }
 
 if (&Class[2] != 0x090a0b0c) {
-	update reply {
-		Filter-Id += "fail 2"
-	}
+	test_fail
 }
 
 # must not exist
 if (&Class[3]) {
-	update reply {
-		Filter-Id += "fail 3"
-	}
+	test_fail
 }
 
 # Last element of the array
 if (&Class[n] != 0x090a0b0c) {
-	update reply {
-		Filter-Id += "fail 4"
-	}
+	test_fail
 }
+
+success

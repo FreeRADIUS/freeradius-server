@@ -17,28 +17,29 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @copyright 2016  Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")
 
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/time.h>
-#include <freeradius-devel/inet.h>
-#include <freeradius-devel/radius.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <sys/event.h>
 #include <stdio.h>
 #include <string.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#include <pthread.h>
+#  include <pthread.h>
 #endif
 
 static int		debug_lvl = 0;
@@ -50,7 +51,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -w <num>               Start num worker threads\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
@@ -58,7 +59,7 @@ int main(int argc, char *argv[])
 	int c;
 	int num_networks = 1;
 	int num_workers = 2;
-	TALLOC_CTX	*autofree = talloc_init("main");
+	TALLOC_CTX	*autofree = talloc_autofree_context();
 	fr_schedule_t	*sched;
 
 	fr_time_start();
@@ -91,17 +92,15 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 #endif
 
-	sched = fr_schedule_create(autofree, NULL, &default_log, num_networks, num_workers, NULL, NULL);
+	sched = fr_schedule_create(autofree, NULL, &default_log, L_DBG_LVL_MAX, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	sleep(1);
 
 	(void) fr_schedule_destroy(sched);
-
-	talloc_free(autofree);
 
 	return 0;
 }

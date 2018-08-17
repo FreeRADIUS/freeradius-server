@@ -25,13 +25,47 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
-
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/udp.h>
-
 #include <fcntl.h>
 #include <ctype.h>
+
+#include <freeradius-devel/util/base.h>
+
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/udp.h>
+#include "attrs.h"
+
+static int instance_count = 0;
+
+fr_dict_t *dict_freeradius;
+fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t libfreeradius_radius_dict[];
+fr_dict_autoload_t libfreeradius_radius_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_raw_attribute;
+fr_dict_attr_t const *attr_chap_challenge;
+fr_dict_attr_t const *attr_chargeable_user_identity;
+fr_dict_attr_t const *attr_eap_message;
+fr_dict_attr_t const *attr_message_authenticator;
+fr_dict_attr_t const *attr_state;
+fr_dict_attr_t const *attr_vendor_specific;
+
+extern fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[];
+fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
+	{ .out = &attr_raw_attribute, .name = "Raw-Attribute", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_chargeable_user_identity, .name = "Chargeable-User-Identity", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+
+	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
+	{ NULL }
+};
 
 /** RADIUS on-the-wire format attribute sizes
  *
@@ -85,7 +119,7 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 /*
  *	Some messages get printed out only in debugging mode.
  */
-#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
+#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
 FR_NAME_NUMBER const fr_request_types[] = {
 	{ "auth",	FR_CODE_ACCESS_REQUEST },
@@ -98,20 +132,6 @@ FR_NAME_NUMBER const fr_request_types[] = {
 
 	{ NULL, 0}
 };
-
-/*
- *	The maximum number of attributes which we allow in an incoming
- *	request.  If there are more attributes than this, the request
- *	is rejected.
- *
- *	This helps to minimize the potential for a DoS, when an
- *	attacker spoofs Access-Request packets, which don't have a
- *	Message-Authenticator attribute.  This means that the packet
- *	is unsigned, and the attacker can use resources on the server,
- *	even if the end request is rejected.
- */
-uint32_t fr_max_attributes = 0;
-
 
 char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"",					//!< 0
@@ -167,6 +187,14 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"IP-Address-Allocate",			//!< 50
 	"IP-Address-Release",
 	"Protocol-Error",
+};
+
+bool const fr_request_packets[FR_CODE_MAX + 1] = {
+	[FR_CODE_ACCESS_REQUEST] = true,
+	[FR_CODE_ACCOUNTING_REQUEST] = true,
+	[FR_CODE_STATUS_SERVER] = true,
+	[FR_CODE_COA_REQUEST] = true,
+	[FR_CODE_DISCONNECT_REQUEST] = true,
 };
 
 /*
@@ -250,9 +278,8 @@ ssize_t fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src
 
 		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zu bytes", data_len);
 invalid:
-		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s: %s",
-					 inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)),
-					 fr_strerror());
+		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s",
+					 inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)));
 		(void) udp_recv_discard(sockfd);
 
 		return 0;
@@ -344,20 +371,17 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 
 		switch (packet[0]) {
 		case FR_CODE_ACCOUNTING_RESPONSE:
-			if (!original) goto need_original;
-			if (original[0] == FR_CODE_STATUS_SERVER) goto do_ack;
-			goto do_response;
-
-		case FR_CODE_ACCOUNTING_REQUEST:
-		case FR_CODE_DISCONNECT_REQUEST:
 		case FR_CODE_DISCONNECT_ACK:
 		case FR_CODE_DISCONNECT_NAK:
-		case FR_CODE_COA_REQUEST:
 		case FR_CODE_COA_ACK:
 		case FR_CODE_COA_NAK:
 			if (!original) goto need_original;
+			if (original[0] == FR_CODE_STATUS_SERVER) goto do_ack;
+			/* FALL-THROUGH */
 
-		do_response:
+		case FR_CODE_ACCOUNTING_REQUEST:
+		case FR_CODE_DISCONNECT_REQUEST:
+		case FR_CODE_COA_REQUEST:
 			memset(packet + 4, 0, AUTH_VECTOR_LEN);
 			break;
 
@@ -406,6 +430,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	case FR_CODE_DISCONNECT_NAK:
 	case FR_CODE_COA_ACK:
 	case FR_CODE_COA_NAK:
+	case FR_CODE_PROTOCOL_ERROR:
 		if (!original) {
 		need_original:
 			fr_strerror_printf("Cannot sign response packet without a request packet");
@@ -443,15 +468,17 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 
 /** See if the data pointed to by PTR is a valid RADIUS packet.
  *
- * @param packet to check
- * @param[in,out] packet_len_p the size of the packet data
- * @param require_ma to require Message-Authenticator
- * @param reason if not NULL, will have the failure reason written to where it points.
+ * @param[in] packet		to check.
+ * @param[in,out] packet_len_p	The size of the packet data.
+ * @param[in] max_attributes	to allow in the packet.
+ * @param[in] require_ma	whether we require Message-Authenticator.
+ * @param[in] reason		if not NULL, will have the failure reason written to where it points.
  * @return
  *	- True on success.
  *	- False on failure.
  */
-bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool require_ma, decode_fail_t *reason)
+bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
+		  uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
 {
 	uint8_t	const		*attr, *end;
 	size_t			totallen;
@@ -670,10 +697,10 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool require_ma, 
 	 *	attributes, and we've seen more than that maximum,
 	 *	then throw the packet away, as a possible DoS.
 	 */
-	if ((fr_max_attributes > 0) &&
-	    (num_attributes > fr_max_attributes)) {
+	if ((max_attributes > 0) &&
+	    (num_attributes > max_attributes)) {
 		FR_DEBUG_STRERROR_PRINTF("Possible DoS attack - too many attributes in request (received %d, max %d are allowed).",
-					 num_attributes, fr_max_attributes);
+					 num_attributes, max_attributes);
 		failure = DECODE_FAIL_TOO_MANY_ATTRIBUTES;
 		goto finish;
 	}
@@ -777,7 +804,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 */
 	rcode = fr_radius_sign(packet, original, secret, secret_len);
 	if (rcode < 0) {
-		fr_strerror_printf("unknown packet code");
+		fr_strerror_printf_push("Failed calculating correct authenticator");
 		return -1;
 	}
 
@@ -815,6 +842,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		} else {
 			fr_strerror_printf("invalid Request Authenticator (shared secret is incorrect)");
 		}
+		return -1;
 	}
 
 	return 0;
@@ -830,7 +858,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	int			total_length;
 	int			len;
 	VALUE_PAIR const	*vp;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	fr_radius_ctx_t		packet_ctx;
 
 	packet_ctx.secret = secret;
@@ -849,34 +877,30 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	case FR_CODE_ACCESS_ACCEPT:
 	case FR_CODE_ACCESS_REJECT:
 	case FR_CODE_ACCESS_CHALLENGE:
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_RESPONSE:
-#endif
-#ifdef WITH_COA
 	case FR_CODE_COA_ACK:
 	case FR_CODE_COA_NAK:
 	case FR_CODE_DISCONNECT_ACK:
 	case FR_CODE_DISCONNECT_NAK:
-#endif
+	case FR_CODE_PROTOCOL_ERROR:
 		if (!original) {
 			fr_strerror_printf("Cannot encode response without request");
 			return -1;
 		}
 		packet_ctx.vector = original + 4;
+		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 		break;
 
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_REQUEST:
 		packet_ctx.vector = nullvector;
+		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 		break;
-#endif
 
-#ifdef WITH_COA
 	case FR_CODE_COA_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
 		packet_ctx.vector = nullvector;
+		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 		break;
-#endif
 
 	default:
 		fr_strerror_printf("Cannot encode unknown packet code %d", code);
@@ -887,7 +911,6 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	packet[1] = id;
 	packet[2] = 0;
 	packet[3] = total_length = RADIUS_HDR_LEN;
-	memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 
 	/*
 	 *	Load up the configuration values for the user
@@ -895,31 +918,54 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	ptr = packet + RADIUS_HDR_LEN;
 
 	/*
+	 *	If we're sending Protocol-Error, add in
+	 *	Original-Packet-Code manually.  If the user adds it
+	 *	later themselves, well, too bad.
+	 */
+	if (code == FR_CODE_PROTOCOL_ERROR) {
+		size_t room;
+
+		room = (packet + packet_len) - ptr;
+		if (room < 7) {
+			fr_strerror_printf("Insufficient room to encode attributes");
+			return -1;
+		}
+
+		ptr[0] = 241;
+		ptr[1] = 7;
+		ptr[2] = 4;	/* Original-Packet-Code */
+		ptr[3] = 0;
+		ptr[4] = 0;
+		ptr[5] = 0;
+		ptr[6] = original[0];
+
+		ptr += 7;
+		total_length += 7;
+	}
+
+	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	fr_pair_cursor_init(&cursor, &vps);
-	while ((vp = fr_pair_cursor_current(&cursor))) {
+	fr_cursor_init(&cursor, &vps);
+	while ((vp = fr_cursor_current(&cursor))) {
 		size_t		last_len, room;
 		char const	*last_name = NULL;
 
-		VERIFY_VP(vp);
+		VP_VERIFY(vp);
 
 		room = (packet + packet_len) - ptr;
 
 		/*
 		 *	Ignore non-wire attributes, but allow extended
 		 *	attributes.
-		 *
-		 *	@fixme We should be able to get rid of this check
-		 *	and just look at da->flags.internal
 		 */
-		if (vp->da->flags.internal || ((vp->da->vendor == 0) && (vp->da->attr >= 256))) {
+		if (vp->da->flags.internal) {
 #ifndef NDEBUG
 			/*
 			 *	Permit the admin to send BADLY formatted
 			 *	attributes with a debug build.
 			 */
-			if (vp->da->attr == FR_RAW_ATTRIBUTE) {
+			if (vp->da == attr_raw_attribute) {
 				if (vp->vp_length > room) {
 					len = room;
 				} else {
@@ -927,11 +973,11 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 				}
 
 				memcpy(ptr, vp->vp_octets, len);
-				fr_pair_cursor_next(&cursor);
+				fr_cursor_next(&cursor);
 				goto next;
 			}
 #endif
-			fr_pair_cursor_next(&cursor);
+			fr_cursor_next(&cursor);
 			continue;
 		}
 
@@ -939,7 +985,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		 *	Set the Message-Authenticator to the correct
 		 *	length and initial value.
 		 */
-		if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
+		if (vp->da == attr_message_authenticator) {
 			last_len = 16;
 		} else {
 			last_len = vp->vp_length;
@@ -984,3 +1030,136 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	return total_length;
 }
+
+/** Decode a raw RADIUS packet into VPs.
+ *
+ */
+ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, uint8_t const *original,
+			 char const *secret, UNUSED size_t secret_len, VALUE_PAIR **vps)
+{
+	ssize_t			slen;
+	fr_cursor_t		cursor;
+	uint8_t const		*attr, *end;
+	fr_radius_ctx_t		packet_ctx;
+
+	packet_ctx.secret = secret;
+	packet_ctx.vector = original + 4;
+	packet_ctx.root = fr_dict_root(fr_dict_internal);
+
+	fr_cursor_init(&cursor, vps);
+
+	attr = packet + 20;
+	end = packet + packet_len;
+
+	/*
+	 *	The caller MUST have called fr_radius_ok() first.  If
+	 *	he doesn't, all hell breaks loose.
+	 */
+	while (attr < end) {
+		slen = fr_radius_decode_pair(ctx, &cursor, attr, (end - attr), &packet_ctx);
+		if (slen < 0) return slen;
+
+		/*
+		 *	If slen is larger than the room in the packet,
+		 *	all kinds of bad things happen.
+		 */
+		 if (!fr_cond_assert(slen <= (end - attr))) return -1;
+
+		attr += slen;
+	}
+
+	/*
+	 *	We've parsed the whole packet, return that.
+	 */
+	return packet_len;
+}
+
+
+static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
+{
+	int i;
+	static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+	for (i = 0; i < attrlen; i++) {
+		if ((i > 0) && ((i & 0x0f) == 0x00))
+			fprintf(fr_log_fp, "%.*s", depth, tabs);
+		fprintf(fr_log_fp, "%02x ", ptr[i]);
+		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
+	}
+	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
+}
+
+int fr_radius_init(void)
+{
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
+
+	if (fr_dict_autoload(libfreeradius_radius_dict) < 0) return -1;
+	if (fr_dict_attr_autoload(libfreeradius_radius_dict_attr) < 0) return -1;
+
+	return 0;
+}
+
+void fr_radius_free(void)
+{
+	if (--instance_count > 0) return;
+
+	fr_dict_autofree(libfreeradius_radius_dict);
+}
+
+/** Print a raw RADIUS packet as hex.
+ *
+ */
+void fr_radius_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
+{
+	int i;
+	uint8_t const *attr, *end;
+
+	if ((packet[0] > 0) && (packet[0] < FR_MAX_PACKET_CODE)) {
+		fprintf(fp, "  Code:\t\t%s\n", fr_packet_codes[packet[0]]);
+	} else {
+		fprintf(fp, "  Code:\t\t%u\n", packet[0]);
+	}
+
+	fprintf(fp, "  Id:\t\t%u\n", packet[1]);
+	fprintf(fp, "  Length:\t%u\n", ((packet[2] << 8) |
+				   (packet[3])));
+	fprintf(fp, "  Vector:\t");
+
+	for (i = 4; i < 20; i++) {
+		fprintf(fp, "%02x", packet[i]);
+	}
+	fprintf(fp, "\n");
+
+	if (packet_len <= 20) return;
+
+	for (attr = packet + 20, end = packet + packet_len;
+	     attr < end;
+	     attr += attr[1]) {
+		int offset;
+		unsigned int vendor = 0;
+
+		fprintf(fp, "\t\t");
+
+		fprintf(fp, "%02x  %02x  ", attr[0], attr[1]);
+
+#ifndef NDEBUG
+		if (attr[1] < 2) break; /* Coverity */
+#endif
+
+		if ((attr[0] == FR_VENDOR_SPECIFIC) &&
+		    (attr[1] > 6)) {
+			vendor = (attr[2] << 25) | (attr[3] << 16) | (attr[4] << 8) | attr[5];
+			fprintf(fp, "%02x%02x%02x%02x (%u)  ",
+				attr[2], attr[3], attr[4], attr[5], vendor);
+			offset = 6;
+		} else {
+			offset = 2;
+		}
+
+		print_hex_data(attr + offset, attr[1] - offset, 3);
+	}
+}
+

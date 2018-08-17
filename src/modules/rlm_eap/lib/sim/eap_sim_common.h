@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _EAP_SIM_COMMON_H
-#define _EAP_SIM_COMMON_H
+
 /**
  * $Id$
  * @file rlm_eap/lib/sim/eap_sim_common.h
@@ -30,7 +30,10 @@
 
 #define EAP_SIM_VERSION			1
 #define EAP_SIM_NONCE_MT_SIZE		16	//!< Length of challenge from SIM client.
+
 #define EAP_SIM_AUTH_SIZE		16
+#define EAP_AKA_AUTH_SIZE		16
+#define EAP_AKA_PRIME_AUTH_SIZE		32
 
 typedef enum eap_sim_subtype {
 	EAP_SIM_START			= 10,	//!< Start packet used for version negotiation.
@@ -50,4 +53,3 @@ typedef enum {
 	EAP_SIM_CLIENT_START		= 1,	//!< Client is in version negotiation phase.
 	EAP_SIM_CLIENT_MAX_STATES
 } eap_sim_client_states_t;
-#endif

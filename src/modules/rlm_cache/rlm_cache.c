@@ -26,11 +26,11 @@ RCSID("$Id$")
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS inst->config.name
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/dl.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "rlm_cache.h"
 
@@ -46,6 +46,32 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("epoch", FR_TYPE_INT32, rlm_cache_config_t, epoch), .dflt = "0" },
 	{ FR_CONF_OFFSET("add_stats", FR_TYPE_BOOL, rlm_cache_config_t, stats), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_cache_dict[];
+fr_dict_autoload_t rlm_cache_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_cache_merge_new;
+static fr_dict_attr_t const *attr_cache_status_only;
+static fr_dict_attr_t const *attr_cache_allow_merge;
+static fr_dict_attr_t const *attr_cache_allow_insert;
+static fr_dict_attr_t const *attr_cache_ttl;
+static fr_dict_attr_t const *attr_cache_entry_hits;
+
+extern fr_dict_attr_autoload_t rlm_cache_dict_attr[];
+fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
+	{ .out = &attr_cache_merge_new, .name = "Cache-Merge-New", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_cache_status_only, .name = "Cache-Status-Only", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_cache_allow_merge, .name = "Cache-Allow-Merge", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_cache_allow_insert, .name = "Cache-Allow-Insert", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_cache_ttl, .name = "Cache-TTL", .type = FR_TYPE_INT32, .dict = &dict_freeradius },
+	{ .out = &attr_cache_entry_hits, .name = "Cache-Entry-Hits", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
 };
 
 /** Get exclusive use of a handle to access the cache
@@ -157,12 +183,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_ca
 
 	if (inst->config.stats) {
 		rad_assert(request->packet != NULL);
-		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CACHE_ENTRY_HITS, TAG_ANY);
-		if (!vp) {
-			vp = fr_pair_afrom_num(request->packet, 0, FR_CACHE_ENTRY_HITS);
-			rad_assert(vp != NULL);
-			fr_pair_add(&request->packet->vps, vp);
-		}
+		MEM(pair_update_request(&vp, attr_cache_entry_hits) >= 0);
 		vp->vp_uint32 = c->hits;
 	}
 
@@ -199,13 +220,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, 
 			break;
 
 		case CACHE_MISS:
-			if (RDEBUG_ENABLED2) {
-				char *p;
-
-				p = fr_asprint(request, (char const *)key, key_len, '"');
-				RDEBUG("No cache entry found for \"%s\"", p);
-				talloc_free(p);
-			}
+			RDEBUG2("No cache entry found for \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
 			return RLM_MODULE_NOTFOUND;
 
 		/* FALL-THROUGH */
@@ -222,27 +237,16 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, 
 	 *	passed.  Delete it, and pretend it doesn't exist.
 	 */
 	if ((c->expires < request->packet->timestamp.tv_sec) || (c->created < inst->config.epoch)) {
-		if (RDEBUG_ENABLED2) {
-			char *p;
-
-			p = fr_asprint(request, (char const *)key, key_len, '"');
-			RDEBUG2("Found entry for \"%s\", but it expired %li seconds ago.  Removing it", p,
-				request->packet->timestamp.tv_sec - c->expires);
-			talloc_free(p);
-		}
+		RDEBUG2("Found entry for \"%pV\", but it expired %li seconds ago.  Removing it",
+			fr_box_strvalue_len((char const *)key, key_len),
+			request->packet->timestamp.tv_sec - c->expires);
 
 		inst->driver->expire(&inst->config, inst->driver_inst->data, request, handle, c->key, c->key_len);
 		cache_free(inst, &c);
 		return RLM_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
 
-	if (RDEBUG_ENABLED2) {
-		char *p;
-
-		p = fr_asprint(request, (char const *)key, key_len, '"');
-		RDEBUG2("Found entry for \"%s\"", p);
-		talloc_free(p);
-	}
+	RDEBUG2("Found entry for \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
 
 	c->hits++;
 	*out = c;
@@ -320,10 +324,10 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	 *	Alloc a pool so we don't have excessive allocs when
 	 *	gathering VALUE_PAIRs to cache.
 	 */
-	pool = talloc_pool(NULL, 1024);
+	pool = talloc_pool(NULL, 2048);
 	for (map = inst->maps; map != NULL; map = map->next) {
 		VALUE_PAIR	*to_cache = NULL;
-		vp_cursor_t	cursor;
+		fr_cursor_t	cursor;
 
 		rad_assert(map->lhs && map->rhs);
 
@@ -336,9 +340,9 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			continue;
 		}
 
-		for (vp = fr_pair_cursor_init(&cursor, &to_cache);
+		for (vp = fr_cursor_init(&cursor, &to_cache);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Prevent people from accidentally caching
 			 *	cache control attributes.
@@ -400,6 +404,11 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 				MEM(c_map->lhs = tmpl_init(talloc(c_map, vp_tmpl_t),
 							   TMPL_TYPE_ATTR, map->lhs->name, map->lhs->len, T_BARE_WORD));
 				c_map->lhs->tmpl_da = vp->da;
+				if (vp->da->flags.is_unknown) { /* for tmpl_verify() */
+					c_map->lhs->tmpl_unknown = fr_dict_unknown_acopy(c_map->lhs, vp->da);
+					c_map->lhs->tmpl_da = c_map->lhs->tmpl_unknown;
+				}
+
 				c_map->lhs->tmpl_tag = vp->tag;
 				c_map->lhs->tmpl_list = map->lhs->tmpl_list;
 				c_map->lhs->tmpl_num = map->lhs->tmpl_num;
@@ -416,7 +425,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 					goto error;
 				}
 				c_map->lhs->len = len;
-				c_map->lhs->name = talloc_strdup(c_map->lhs, attr);
+				c_map->lhs->name = talloc_typed_strdup(c_map->lhs, attr);
 			}
 				goto do_rhs;
 
@@ -433,8 +442,8 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_MERGE_NEW, TAG_ANY);
-	if (vp && (vp->vp_uint32 > 0)) merge = true;
+	vp = fr_pair_find_by_da(request->control, attr_cache_merge_new, TAG_ANY);
+	if (vp && vp->vp_bool) merge = true;
 
 	if (merge) cache_merge(inst, request, c);
 
@@ -545,7 +554,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 
 	rlm_cache_handle_t	*handle;
 
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	VALUE_PAIR		*vp;
 
 	bool			merge = true, insert = true, expire = false, set_ttl = false;
@@ -571,8 +580,8 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_STATUS_ONLY, TAG_ANY);
-	if (vp && vp->vp_uint32) {
+	vp = fr_pair_find_by_da(request->control, attr_cache_status_only, TAG_ANY);
+	if (vp && vp->vp_bool) {
 		RINDENT();
 		RDEBUG3("status-only: yes");
 		REXDENT();
@@ -591,13 +600,13 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 	/*
 	 *	Figure out what operation we're doing
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_ALLOW_MERGE, TAG_ANY);
-	if (vp) merge = (bool)vp->vp_uint32;
+	vp = fr_pair_find_by_da(request->control, attr_cache_allow_merge, TAG_ANY);
+	if (vp) merge = vp->vp_bool;
 
-	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_ALLOW_INSERT, TAG_ANY);
-	if (vp) insert = (bool)vp->vp_uint32;
+	vp = fr_pair_find_by_da(request->control, attr_cache_allow_insert, TAG_ANY);
+	if (vp) insert = vp->vp_bool;
 
-	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_TTL, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_cache_ttl, TAG_ANY);
 	if (vp) {
 		if (vp->vp_int32 == 0) {
 			expire = true;
@@ -762,19 +771,24 @@ finish:
 	/*
 	 *	Clear control attributes
 	 */
-	for (vp = fr_pair_cursor_init(&cursor, &request->control);
+	for (vp = fr_cursor_init(&cursor, &request->control);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
-		if (vp->da->vendor == 0) switch (vp->da->attr) {
+	     vp = fr_cursor_next(&cursor)) {
+	     again:
+		if (!fr_dict_attr_is_top_level(vp->da)) continue;
+
+		switch (vp->da->attr) {
 		case FR_CACHE_TTL:
 		case FR_CACHE_STATUS_ONLY:
 		case FR_CACHE_ALLOW_MERGE:
 		case FR_CACHE_ALLOW_INSERT:
 		case FR_CACHE_MERGE_NEW:
 			RDEBUG2("Removing &control:%s", vp->da->name);
-			vp = fr_pair_cursor_remove(&cursor);
+			vp = fr_cursor_remove(&cursor);
 			talloc_free(vp);
-			break;
+			vp = fr_cursor_current(&cursor);
+			if (!vp) break;
+			goto again;
 		}
 	}
 
@@ -809,9 +823,9 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 			      request, inst->config.key, NULL, NULL);
 	if (key_len < 0) return -1;
 
-	slen = tmpl_afrom_attr_substr(ctx, &target, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(ctx, &target, fmt, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
-		REDEBUG("%s", fr_strerror());
+		RPEDEBUG("Invalid key");
 		return -1;
 	}
 
@@ -892,7 +906,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat_register(inst, inst->config.name, cache_xlat, NULL, NULL, 0, 0);
+	xlat_register(inst, inst->config.name, cache_xlat, NULL, NULL, 0, 0, true);
 
 	return 0;
 }
@@ -953,7 +967,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	    (inst->driver->instantiate(&inst->config, inst->driver_inst->data, driver_cs) < 0)) return -1;
 
 #ifndef NDEBUG
-	if (inst->driver_inst) module_instance_read_only(inst->driver_inst->data, inst->driver->name);
+	module_instance_read_only(inst->driver_inst->data, inst->driver->name);
 #endif
 
 	if (inst->config.ttl == 0) {
@@ -975,9 +989,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Make sure the users don't screw up too badly.
 	 */
-	if (map_afrom_cs(&inst->maps, update,
-			 PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, cache_verify, NULL, MAX_ATTRMAP) < 0) {
-		return -1;
+	{
+		vp_tmpl_rules_t	parse_rules = {
+			.allow_foreign = true	/* Because we don't know where we'll be called */
+		};
+
+		if (map_afrom_cs(&inst->maps, update,
+				 &parse_rules, &parse_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
+			return -1;
+		}
 	}
 
 	if (!inst->maps) {

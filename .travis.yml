@@ -6,9 +6,8 @@ sudo: true
 dist: trusty
 env:
   global:
-  - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer-3.9
-  - ASAN_OPTIONS="symbolize=1 detect_stack_use_after_return=1"
-  - LSAN_OPTIONS="exitcode=0"
+  - ASAN_OPTIONS="symbolize=1 detect_leaks=1 detect_stack_use_after_return=1"
+  - LSAN_OPTIONS="fast_unwind_on_malloc=0:malloc_context_size=50"
   - KQUEUE_DEBUG="yes"
   - M_PERTURB=0x42
   - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
@@ -16,6 +15,7 @@ env:
   - SQL_POSTGRESQL_TEST_SERVER="127.0.0.1"
   - LDAP_TEST_SERVER="127.0.0.1"
   - LDAP_TEST_SERVER_PORT="3890"
+  - ANALYZE_C_DUMP="1"
   - secure: H+uQeyOgsIyXtIPPG2VzAG8S/8KYGHlHaWhdiNuz1LM3SMcEKoPqG6o/P+HO8HVvYnA6nelyGuEryV90UfuwGY9YC6A/pqPQvx/gXSso63Zt66XSaiZjulCSm9OV8EB3wyWF7VSQ/ZHcn+L01hIlsQXTqLprMaC33cM0FYPr9fY=
   matrix:
   - TEST_CERTS=yes DO_BUILD=yes LIBS_OPTIONAL=no LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
@@ -39,21 +39,23 @@ addons:
   postgresql: '9.4'
   apt:
     sources:
-    - couchbase-precise
-    - llvm-toolchain-precise-3.9
+    - couchbase-trusty
+    - llvm-toolchain-trusty-6.0
+    # For newer GCC
+    - ubuntu-toolchain-r-test
     # For newer libkqueue
     - sourceline: ppa:rjvbertin/misc
     packages:
     - autoconf
     - build-essential
-    - clang-3.9
+    - clang-6.0
     - debhelper
     - devscripts
     - dh-make
     - doxygen
     - fakeroot
-    - gcc-4.9
-    - gccgo-4.9
+    - gcc-7
+    - gccgo-7
     - gdb
     - graphviz
     - lintian
@@ -96,7 +98,9 @@ addons:
     - libykclient-dev
     - libyubikey-dev
     # Needed for llvm-symbolizer
-    - llvm-3.9
+    - llvm-6.0
+    # For rendering clang scan results
+    - lynx
     - slapd
     - ldap-utils
 services:
@@ -104,10 +108,10 @@ services:
 - postgresql
 - redis-server
 before_install:
-- if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60; fi
-- if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --config gcc; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 60; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --config clang; fi
+- rvm --install --default --binary use 2.4
+- if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 && sudo update-alternatives --config gcc; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-6.0 60 && sudo update-alternatives --config clang; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-6.0 60 && sudo update-alternatives --config llvm-symbolizer; fi
 - $CC --version
 before_script:
 - ./scripts/travis/build.sh

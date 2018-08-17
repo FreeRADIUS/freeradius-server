@@ -9,7 +9,10 @@ group {
 	update request {
 		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
 	}
-	fail = 1
+
+	actions {
+		fail = 1
+	}
 }
 if (fail) {
 	ok
@@ -138,7 +141,10 @@ group {
 	update request {
 		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
 	}
-	fail = 1
+
+	actions {
+		fail = 1
+	}
 }
 if (fail) {
 	ok
@@ -160,7 +166,10 @@ group {
 	update request {
 		Tmp-String-0 := `/bin/sh -c "test ! -e $ENV{MODULE_TEST_DIR}/test_b.log"`
 	}
-	fail = 1
+
+	actions {
+		fail = 1
+	}
 }
 if (fail) {
 	test_fail
@@ -196,7 +205,10 @@ group {
 	update request {
 		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
 	}
-	fail = 1
+
+	actions {
+		fail = 1
+	}
 }
 if (fail) {
 	ok
@@ -304,7 +316,10 @@ group {
 	update request {
 		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
 	}
-	fail = 1
+
+	actions {
+		fail = 1
+	}
 }
 if (fail) {
 	ok

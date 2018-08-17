@@ -13,20 +13,28 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file inet.c
- * @brief Functions to parse, print, mask and retrieve IP addresses
+/** Functions for parsing, printing, masking and retrieving IP addresses
+ *
+ * @file src/lib/util/inet.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/inet.h>
-#include <freeradius-devel/libradius.h>
-#include <ctype.h>
+#include "inet.h"
 
-bool		fr_dns_lookups = false;	    //!< IP -> hostname lookups?
-bool		fr_hostname_lookups = true; //!< hostname -> IP lookups?
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+
+#include <ctype.h>
+#include <netdb.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
+bool fr_reverse_lookups = false;		//!< IP -> hostname lookups?
+bool fr_hostname_lookups = true;		//!< hostname -> IP lookups?
 
 /** Determine if an address is the INADDR_ANY address for its address family
  *
@@ -40,7 +48,7 @@ int fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr)
 {
 
 	if (ipaddr->af == AF_INET) {
-		if (ipaddr->addr.v4.s_addr == INADDR_ANY) {
+		if (ipaddr->addr.v4.s_addr == htonl(INADDR_ANY)) {
 			return 1;
 		}
 
@@ -187,11 +195,7 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 	 *	Avoid alloc for IP addresses.  This helps us debug
 	 *	memory errors when using talloc.
 	 */
-#ifdef TALLOC_DEBUG
-	if (true) {
-#else
 	if (!fr_hostname_lookups) {
-#endif
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 		if (af == AF_UNSPEC) {
 			char const *p;
@@ -209,8 +213,11 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 
 		if (af == AF_UNSPEC) af = AF_INET;
 
-		if (!inet_pton(af, hostname, &(out->addr))) return -1;
-
+		if (inet_pton(af, hostname, &(out->addr)) == 0) {
+			fr_strerror_printf("\"%s\" is not a valid IP address and "
+					   "hostname lookups are disabled", hostname);
+			return -1;
+		}
 		out->af = af;
 		out->prefix = 32;
 		out->scope_id = 0;
@@ -288,7 +295,7 @@ char const *fr_inet_ntoh(fr_ipaddr_t const *src, char *out, size_t outlen)
 	/*
 	 *	No DNS lookups
 	 */
-	if (!fr_dns_lookups) {
+	if (!fr_reverse_lookups) {
 		return inet_ntop(src->af, &(src->addr), out, outlen);
 	}
 
@@ -389,13 +396,17 @@ static int ip_prefix_addr_from_str(struct in_addr *out, char const *str)
 
 /** Parse an IPv4 address or IPv4 prefix in presentation format (and others)
  *
- * @param out Where to write the ip address value.
- * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY)
- *	or an FQDN if resolve is true.
- * @param inlen Length of value, if value is \0 terminated inlen may be -1.
- * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
- * @param fallback to IPv6 resolution if no A records can be found.
- * @param mask_bits If true, set address bits to zero.
+ * @param[out] out	Where to write the ip address value.
+ * @param[in] value	to parse, may be:
+ *			- dotted quad [+ prefix]
+ *			- integer
+ *			- octal number
+ *			- '*' (INADDR_ANY)
+ *			- FQDN if resolve is true.
+ * @param[in] inlen	Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] resolve	If true and value doesn't look like an IP address, try and resolve value as a hostname.
+ * @param[in] fallback	to IPv6 resolution if no A records can be found.
+ * @param[in] mask_bits	If true, set address bits to zero.
  * @return
  *	- 0 if ip address was parsed successfully.
  *	- -1 on failure.
@@ -511,13 +522,16 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 
 /** Parse an IPv6 address or IPv6 prefix in presentation format (and others)
  *
- * @param out Where to write the ip address value.
- * @param value to parse, may IPv6 hexits [+ prefix], or '*' (INADDR_ANY)
- *	or an FQDN if resolve is true.
- * @param inlen Length of value, if value is \0 terminated inlen may be -1.
- * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
- * @param fallback to IPv4 resolution if no AAAA records can be found.
- * @param mask If true, set address bits to zero.
+ * @param[out] out	Where to write the ip address value.
+ * @param[in] value	to parse, may be:
+ *				- IPv6 hexits [+ prefix].
+ *				- '*' wildcard.
+ *				- FQDN if resolve is true.
+ * @param[in] inlen	Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] resolve	If true and value doesn't look like an IP address,
+ *			try and resolve value as a hostname.
+ * @param[in] fallback	to IPv4 resolution if no AAAA records can be found.
+ * @param[in] mask	If true, set address bits to zero.
  * @return
  *	- 0 if ip address was parsed successfully.
  *	- -1 on failure.
@@ -631,56 +645,139 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve, bool mask)
 {
 	size_t len, i;
+	bool hostname = true;
+	bool ipv4 = true;
+	bool ipv6 = true;
 
 	len = (inlen >= 0) ? (size_t)inlen : strlen(value);
-	for (i = 0; i < len; i++) switch (value[i]) {
-	/*
-	 *	':' is illegal in domain names and IPv4 addresses.
-	 *	Must be v6 and cannot be a domain.
-	 */
-	case ':':
-		return fr_inet_pton6(out, value, inlen, false, false, mask);
+
+	for (i = 0; i < len; i++) {
+		/*
+		 *	These are valid for IPv4, IPv6, and host names.
+		 */
+		if ((value[i] >= '0') && (value[i] <= '9')) {
+			continue;
+		}
+
+		/*
+		 *	These are invalid for IPv4, but OK for IPv6
+		 *	and host names.
+		 */
+		if ((value[i] >= 'a') && (value[i] <= 'f')) {
+			ipv4 = false;
+			continue;
+		}
+
+		/*
+		 *	These are invalid for IPv4, but OK for IPv6
+		 *	and host names.
+		 */
+		if ((value[i] >= 'A') && (value[i] <= 'F')) {
+			ipv4 = false;
+			continue;
+		}
+
+		/*
+		 *	This is only valid for IPv6 addresses.
+		 */
+		if (value[i] == ':') {
+			ipv4 = false;
+			hostname = false;
+			continue;
+		}
+
+		/*
+		 *	Valid for IPv4 and host names, not for IPv6.
+		 */
+		if (value[i] == '.') {
+			ipv6 = false;
+			continue;
+		}
+
+		/*
+		 *	Netmasks are allowed by us, and MUST come at
+		 *	the end of the address.
+		 */
+		if (value[i] == '/') {
+			break;
+		}
+
+		/*
+		 *	Any characters other than what are checked for
+		 *	above can't be IPv4 or IPv6 addresses.
+		 */
+		ipv4 = false;
+		ipv6 = false;
+	}
 
 	/*
-	 *	Chars which don't really tell us anything
+	 *	It's not an IPv4 or IPv6 address.  It MUST be a host
+	 *	name.
 	 */
-	case '.':
-	case '/':
-		continue;
+	if (!ipv4 && !ipv6) {
+		/*
+		 *	Not an IPv4 or IPv6 address, and we weren't
+		 *	asked to do DNS resolution, we can't do it.
+		 */
+		if (!resolve) {
+			fr_strerror_printf("Not IPv4/6 address, and asked not to resolve");
+			return -1;
+		}
+
+		/*
+		 *	It's not a hostname, either, so bail out
+		 *	early.
+		 */
+		if (!hostname) {
+			fr_strerror_printf("Invalid address");
+			return -1;
+		}
+
+		/*
+		 *	Fall through to resolving the address, using
+		 *	whatever address family they prefer.  If they
+		 *	don't specify an address family, force IPv4.
+		 */
+		if (af == AF_UNSPEC) af = AF_INET;
+	}
+
+	/*
+	 *	The name has a ':' in it.  Therefore it must be an
+	 *	IPv6 address.  Error out if the caller specified IPv4.
+	 *	Otherwise, force IPv6.
+	 */
+	if (ipv6 && !hostname) {
+		if (af == AF_INET) {
+			fr_strerror_printf("Invalid address");
+			return -1;
+		}
+
+		af = AF_INET6;
+	}
+
+	/*
+	 *	Use whatever the caller specified, OR what we
+	 *	insinuated above from looking at the name string.
+	 */
+	switch (af) {
+	case AF_UNSPEC:
+		return fr_inet_pton4(out, value, inlen, resolve, true, mask);
+
+	case AF_INET:
+		return fr_inet_pton4(out, value, inlen, resolve, false, mask);
+
+	case AF_INET6:
+		return fr_inet_pton6(out, value, inlen, resolve, false, mask);
 
 	default:
-		/*
-		 *	Outside the range of IPv4 chars, must be a domain
-		 *	Use A record in preference to AAAA record.
-		 */
-		if ((value[i] < '0') || (value[i] > '9')) {
-			if (!resolve) {
-				fr_strerror_printf("Not IPv4/6 address, and asked not to resolve");
-				return -1;
-			}
-			switch (af) {
-			case AF_UNSPEC:
-				return fr_inet_pton4(out, value, inlen, resolve, true, mask);
-
-			case AF_INET:
-				return fr_inet_pton4(out, value, inlen, resolve, false, mask);
-
-			case AF_INET6:
-				return fr_inet_pton6(out, value, inlen, resolve, false, mask);
-
-			default:
-				fr_strerror_printf("Invalid address family %i", af);
-				return -1;
-			}
-		}
 		break;
 	}
 
- 	/*
- 	 *	All chars were in the IPv4 set [0-9/.], must be an IPv4
- 	 *	address.
- 	 */
-	return fr_inet_pton4(out, value, inlen, false, false, mask);
+	/*
+	 *	No idea what it is...
+	 */
+	fr_strerror_printf("Invalid address family %i", af);
+	return -1;
 }
 
 /** Parses IPv4/6 address + port, to fr_ipaddr_t and integer (port)
@@ -1203,7 +1300,7 @@ int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 #endif
 
 	} else {
-		fr_strerror_printf("Unsupported address famility %d", sa->ss_family);
+		fr_strerror_printf("Unsupported address family %d", sa->ss_family);
 		return -1;
 	}
 

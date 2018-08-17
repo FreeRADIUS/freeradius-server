@@ -15,15 +15,15 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2006  The FreeRADIUS server project
- * Copyright 2006  Vitaly Bodzhgua <vitaly@eastera.net>
+ * @copyright 2006  The FreeRADIUS server project
+ * @copyright 2006  Vitaly Bodzhgua <vitaly@eastera.net>
  */
 RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_sql_firebird - "
 
 #include "sql_fbapi.h"
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 
 /* Forward declarations */

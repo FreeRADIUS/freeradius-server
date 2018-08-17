@@ -25,8 +25,8 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/ring_buffer.h>
-#include <freeradius-devel/fr_log.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <string.h>
 
 /*
@@ -64,7 +64,6 @@ struct fr_ring_buffer_t {
 fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
 {
 	fr_ring_buffer_t	*rb;
-	size_t			pow;
 
 	rb = talloc_zero(ctx, fr_ring_buffer_t);
 	if (!rb) {
@@ -73,14 +72,23 @@ fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
 		return NULL;
 	}
 
+	if (size < 1024) size = 1024;
+
+	if (size > (1 << 30)) {
+		fr_strerror_printf("Ring buffer size must be no more than (1 << 30)");
+		return NULL;
+	}
+
 	/*
-	 *	Find the nearest power of 2 (rounding up)
+	 *	Round up to the nearest power of 2.
 	 */
-	for (pow = 0x00000001;
-	     pow < size;
-	     pow <<= 1);
-	size = pow;
 	size--;
+	size |= size >> 1;
+	size |= size >> 2;
+	size |= size >> 4;
+	size |= size >> 8;
+	size |= size >> 16;
+	size++;
 
 	rb->buffer = talloc_array(rb, uint8_t, size);
 	if (!rb->buffer) {
@@ -337,6 +345,14 @@ uint8_t *fr_ring_buffer_reserve_split(fr_ring_buffer_t *dst, size_t reserve_size
 	if (!p) return NULL;
 
 	/*
+	 *	Alloc and reserve in the same ring buffer.  Maybe
+	 *	there's no need to memcpy() the data?
+	 */
+	if ((src == dst) && (p == (src->buffer + src->write_offset))) {
+		return 0;
+	}
+
+	/*
 	 *	Copy the data from the old buffer to the new one.
 	 */
 	memcpy(p, src->buffer + src->write_offset, move_size);
@@ -550,6 +566,6 @@ int fr_ring_buffer_start(fr_ring_buffer_t *rb, uint8_t **p_start, size_t *p_size
  */
 void fr_ring_buffer_debug(fr_ring_buffer_t *rb, FILE *fp)
 {
-	fprintf(fp, "Buffer %p, write_offset %zd, data_start %zd, data_end %zd\n",
+	fprintf(fp, "Buffer %p, write_offset %zu, data_start %zu, data_end %zu\n",
 		rb->buffer, rb->write_offset, rb->data_start, rb->data_end);
 }

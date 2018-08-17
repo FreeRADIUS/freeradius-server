@@ -1,0 +1,82 @@
+update request {
+	&Tmp-String-0 := "Hello world!"
+}
+
+update request {
+	&Tmp-Octets-0 := "%{cipher_rsa_encrypt:%{Tmp-String-0}}"
+}
+
+if (!&Tmp-Octets-0) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+if (<octets>&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+update request {
+	&Tmp-String-1 := "%{cipher_rsa_decrypt:%{Tmp-Octets-0}}"
+}
+
+if (&Tmp-String-0 != &Tmp-String-1) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+#
+#  Padding scheme should ensure ciphertext is not consistent
+#
+update request {
+	&Tmp-Octets-1 := "%{cipher_rsa_encrypt:%{Tmp-String-0}}"
+}
+
+if (&Tmp-Octets-0 == &Tmp-Octets-1) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+#
+#  Repeat tests to ensure there are no issues with EVP_PKEY_CTX reuse
+#
+update request {
+	&Tmp-String-0 := "Goodbye world!"
+}
+
+update request {
+	&Tmp-Octets-0 := "%{cipher_rsa_encrypt:%{Tmp-String-0}}"
+}
+
+if (!&Tmp-Octets-0) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+if (<octets>&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+update request {
+	&Tmp-String-1 := "%{cipher_rsa_decrypt:%{Tmp-Octets-0}}"
+}
+
+if (&Tmp-String-0 != &Tmp-String-1) {
+	test_fail
+}
+else {
+	test_pass
+}

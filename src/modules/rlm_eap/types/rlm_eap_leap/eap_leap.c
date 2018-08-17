@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2003 Alan DeKok <aland@freeradius.org>
- * Copyright 2006 The FreeRADIUS server project
+ * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2006 The FreeRADIUS server project
  */
 
 /*
@@ -51,7 +51,7 @@ RCSID("$Id$")
 #include "eap.h"
 #include "eap_leap.h"
 
-#include <freeradius-devel/md5.h>
+#include <freeradius-devel/util/md5.h>
 
 /*
  *   Extract the data from the LEAP packet.
@@ -160,8 +160,8 @@ leap_packet_t *eap_leap_extract(REQUEST *request, eap_round_t *eap_round)
  */
 static int eap_leap_ntpwdhash(uint8_t *out, REQUEST *request, VALUE_PAIR *password)
 {
-	if ((password->da->attr == FR_USER_PASSWORD) ||
-	    (password->da->attr == FR_CLEARTEXT_PASSWORD)) {
+	if ((password->da == attr_user_password) ||
+	    (password->da == attr_cleartext_password)) {
 		ssize_t len;
 		uint8_t ucs2_password[512];
 
@@ -300,12 +300,7 @@ leap_packet_t *eap_leap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PA
 	/*
 	 *	Calculate the leap:session-key attribute
 	 */
-	vp = pair_make_reply("Cisco-AVPair", NULL, T_OP_ADD);
-	if (!vp) {
-		REDEBUG("Failed to create Cisco-AVPair attribute.  LEAP cancelled");
-		talloc_free(reply);
-		return NULL;
-	}
+	MEM(pair_add_reply(&vp, attr_cisco_avpair) >= 0);
 
 	/*
 	 *	And calculate the MPPE session key.
@@ -410,9 +405,7 @@ int eap_leap_compose(REQUEST *request, eap_round_t *eap_round, leap_packet_t *re
 		eap_round->request->type.length = reply->length;
 
 		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, reply->length);
-		if (!eap_round->request->type.data) {
-			return 0;
-		}
+		if (!eap_round->request->type.data) return 0;
 
 		data = (leap_packet_raw_t *) eap_round->request->type.data;
 		data->version = 0x01;

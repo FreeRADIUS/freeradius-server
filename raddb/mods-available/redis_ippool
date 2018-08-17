@@ -76,9 +76,9 @@ redis_ippool {
 
 		pool {
 			start = 0
-			min = ${thread[pool].min_spare_servers}
-			max = ${thread[pool].max_servers}
-			spare = ${thread[pool].max_spare_servers}
+			min = ${thread[pool].num_workers}
+			max = ${thread[pool].num_workers}
+			spare = 1
 			uses = 0
 			lifetime = 0
 			retry_delay = 30

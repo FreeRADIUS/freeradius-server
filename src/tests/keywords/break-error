@@ -1,11 +1,7 @@
 update control {
-       Cleartext-Password := 'hello'
+	&Cleartext-Password := 'hello'
 }
 
-update reply {
-       Filter-Id := "filter"
-}
-
-if (User-Name == "bob") {
+if (&User-Name == "bob") {
 	break			# ERROR
 }

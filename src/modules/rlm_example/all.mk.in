@@ -23,6 +23,11 @@ SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
 
 #
+#  We don't want to install this module.  No one will use it.
+#
+TGT_INSTALLDIR	:=
+
+#
 #  If the target has documentation in man format it should be set here
 #
 #MAN		:= example.8

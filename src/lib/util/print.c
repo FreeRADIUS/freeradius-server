@@ -1,8 +1,4 @@
 /*
- * print.c	Routines to print stuff.
- *
- * Version:	$Id$
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -16,15 +12,27 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2000,2006  The FreeRADIUS server project
  */
 
+/** Functions to produce and parse the FreeRADIUS presentation format
+ *
+ * @file src/lib/util/print.c
+ *
+ * @copyright 2000,2006  The FreeRADIUS server project
+ */
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
+#include "print.h"
 
-#include	<ctype.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/talloc.h>
+
+#include <ctype.h>
+#include <string.h>
+#include <talloc.h>
 
 /** Checks for utf-8, taken from http://www.w3.org/International/questions/qa-forms-utf-8
  *
@@ -438,12 +446,10 @@ DIAG_OFF(format-nonliteral)
  * @todo Do something sensible with 'n$', though it's probably not actually used
  *	anywhere in our code base.
  *
- * - %pH takes a buffer and prints it as hex. The length of the
- *	 buffer is determined with a call to talloc_array_length().
- *
  * - %pV prints a value box as a string.
- * - %pS prints a string with FreeRADIUS style escaping, and '"' as the quote char.
- *	 The length of the buffer is determined with a call to talloc_array_length() - 1.
+ * - %pM prints a list of value boxes, concatenating them.
+ * - %pH prints a value box as a hex string.
+ * - %pP prints a VALUE_PAIR.
  *
  * This breaks strict compatibility with printf but allows us to continue using
  * the static format string and argument type validation.
@@ -470,7 +476,6 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	do {
 		char const	*q;
 		char		len[2] = { '\0', '\0' };
-		long		precision = 0;
 		char		*subst = NULL;
 
 		if ((*p != '%') || (*++p == '%')) {
@@ -530,7 +535,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			char *r;
 
 			p++;
-			precision = strtoul(p, &r, 10);
+			strtoul(p, &r, 10);
 			p = r;
 		}
 
@@ -649,12 +654,16 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				 *	string need to occur in the NULL ctx so we don't fragment
 				 *	any pool associated with it.
 				 */
-				subst = fr_value_box_asprint(NULL, in, '"');
-				if (!subst) {
-					talloc_free(out);
-					va_end(ap_p);
-					va_end(ap_q);
-					return NULL;
+				if (in) {
+					subst = fr_value_box_asprint(NULL, in, '"');
+					if (!subst) {
+						talloc_free(out);
+						va_end(ap_p);
+						va_end(ap_q);
+						return NULL;
+					}
+				} else {
+					subst = talloc_typed_strdup(NULL, "(null)");
 				}
 
 			do_splice:
@@ -687,6 +696,11 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 					va_end(ap_p);		/* one time use only */
 					va_copy(ap_p, ap_q);	/* already advanced to the next argument */
+				} else {
+					out_tmp = talloc_strdup_append_buffer(out, subst);
+					TALLOC_FREE(subst);
+					if (!out_tmp) goto oom;
+					out = out_tmp;
 				}
 
 				fmt_p = p + 1;
@@ -695,48 +709,91 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 			case 'H':
 			{
-				uint8_t const *in = va_arg(ap_q, uint8_t const *);
+				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
 
-				/*
-				 *	Only automagically figure out the length
-				 *	if it's not specified.
-				 *
-				 *	This allows %b to be used with stack buffers,
-				 *	so long as the length is specified in the format string.
-				 */
-				if (precision == 0) precision = talloc_array_length(in);
+				if (!in) {
+					subst = talloc_strdup(NULL, "(null)");
+					if (!subst) goto oom;
 
-				subst = talloc_array(NULL, char, (precision * 2) + 1);
-				if (!subst) goto oom;
-				fr_bin2hex(subst, in, precision);
+					goto do_splice;
+				}
 
-				goto do_splice;
+				switch (in->type) {
+				case FR_TYPE_OCTETS:
+					subst = talloc_array(NULL, char, (in->vb_length * 2) + 1);
+					if (!subst) goto oom;
+					fr_bin2hex(subst, in->vb_octets, in->vb_length);
+					break;
+
+				case FR_TYPE_STRING:
+					subst = talloc_array(NULL, char, (in->vb_length * 2) + 1);
+					if (!subst) goto oom;
+					fr_bin2hex(subst, (uint8_t const *)in->vb_strvalue, in->vb_length);
+					break;
+
+				default:
+				{
+					fr_value_box_t dst;
+
+					/*
+					 *	Convert the boxed value into a octets buffer
+					 */
+					if (fr_value_box_cast(NULL, &dst, FR_TYPE_OCTETS, NULL, in) < 0) {
+						subst = talloc_strdup(NULL, fr_strerror()); /* splice in the error */
+						if (!subst) goto oom;
+					}
+
+					subst = talloc_array(NULL, char, (dst.vb_length * 2) + 1);
+					if (!subst) goto oom;
+					fr_bin2hex(subst, dst.vb_octets, dst.vb_length);
+
+					fr_value_box_clear(&dst);
+					break;
+				}
+				}
 			}
+				goto do_splice;
 
-			case 'S':
+			case 'M':
 			{
-				char const *in = va_arg(ap_q, char const *);
+				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
 
-				subst = fr_asprint(NULL, in, talloc_array_length(in) - 1, '"');
-				if (!subst) goto oom;
+				if (!in) {
+					subst = talloc_strdup(NULL, "(null)");
+					goto do_splice;
+				}
 
-				goto do_splice;
+				subst = fr_value_box_list_asprint(NULL, in, NULL, '"');
 			}
+				goto do_splice;
+
+			case 'P':
+			{
+				VALUE_PAIR const *in = va_arg(ap_q, VALUE_PAIR const *);
+
+				if (!in) {
+					subst = talloc_strdup(NULL, "(null)");
+					goto do_splice;
+				}
+
+				VP_VERIFY(in);
+				subst = fr_pair_asprint(NULL, in, '"');
+			}
+				goto do_splice;
 
 			case 'T':
 			{
 				struct timeval *in = va_arg(ap_q, struct timeval *);
 
-				subst = talloc_asprintf(NULL, "%" PRIu64 ".%06" PRIu64,
-						        (uint64_t)in->tv_sec,
-							(uint64_t)in->tv_usec);
+				subst = talloc_typed_asprintf(NULL, "%" PRIu64 ".%06" PRIu64,
+							      (uint64_t)in->tv_sec,
+							      (uint64_t)in->tv_usec);
 				if (!subst) goto oom;
-
-				goto do_splice;
 			}
+				goto do_splice;
 
 			default:
-				(void) va_arg(ap_q, void *);					/* void * */
+				(void) va_arg(ap_q, void *);				/* void * */
 			}
 			break;
 
@@ -765,3 +822,25 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	return out;
 }
 DIAG_ON(format-nonliteral)
+
+/** Special version of asprintf which implements custom format specifiers
+ *
+ * @copybrief fr_vasprintf
+ *
+ * @param[in] ctx	to allocate buffer in.
+ * @param[in] fmt	string.
+ * @param[in] ...	variadic argument list.
+ * @return
+ *	- The result of string interpolation.
+ */
+char *fr_asprintf(TALLOC_CTX *ctx, char const *fmt, ...)
+{
+	va_list ap;
+	char *ret;
+
+	va_start(ap, fmt);
+	ret = fr_vasprintf(ctx, fmt, ap);
+	va_end(ap);
+
+	return ret;
+}

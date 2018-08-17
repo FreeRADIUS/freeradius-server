@@ -1,43 +1,44 @@
+#pragma once
 /*
- Unix snprintf implementation.
- Version 1.4
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU Library General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU Library General Public License for more details.
-
-   You should have received a copy of the GNU Library General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-   Revision History:
-		   see header of snprintf.c.
-
-format:
-  int snprintf(holder, sizeof_holder, format, ...)
-
-Return values:
-  (sizeof_holder - 1)
-
-
- THANKS(for the patches and ideas):
-     Miles Bader
-     Cyrille Rustom
-     Jacek Slabocewiz
-     Mike Parker(mouse)
-
-Alain Magloire: alainm@rcsm.ee.mcgill.ca
-*/
-
+/** Unix snprintf implementation
+ *
+ * Version 1.4
+ *
+ * THANKS(for the patches and ideas):
+ *    Miles Bader
+ *    Cyrille Rustom
+ *    Jacek Slabocewiz
+ *    Mike Parker(mouse)
+ *
+ * @file src/lib/util/snprintf.h
+ *
+ * @copyright Alain Magloire: alainm@rcsm.ee.mcgill.ca
+ */
 #ifndef HAVE_VSNPRINTF
 
 RCSIDH(snprintf_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
 
 #if __STDC__
 #include <stdarg.h>
@@ -45,8 +46,8 @@ RCSIDH(snprintf_h, "$Id$")
 #include <varargs.h>
 #endif
 
-#include <stdlib.h>    /* for atoi() */
 #include <ctype.h>
+#include <stdlib.h>    /* for atoi() */
 
 #define PRIVATE static
 #define PUBLIC
@@ -218,3 +219,8 @@ struct DATA {
 	      (p)->precision = va_arg(args, int)
 
 #endif /* HAVE_VSNPRINTF */
+
+#ifdef __cplusplus
+}
+#endif
+

@@ -25,11 +25,11 @@
  * @copyright 2015 The FreeRADIUS server project
  */
 RCSID("$Id$")
-#include <freeradius-devel/libradius.h>
-#include <freeradius-devel/cf_parse.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/rad_assert.h>
 
-#include "redis.h"
+#include "base.h"
 #include "cluster.h"
 #include "redis_ippool.h"
 
@@ -402,7 +402,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 	{
 		uint128_t ip_curr, ip_end;
 
-		rad_assert((prefix > 0) && (prefix <= 128));
+		if (!fr_cond_assert((prefix > 0) && (prefix <= 128))) return false;
 
 		/* Don't be tempted to cast */
 		memcpy(&ip_curr, ipaddr->addr.v6.s6_addr, sizeof(ip_curr));
@@ -425,7 +425,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 	{
 		uint32_t ip_curr, ip_end;
 
-		rad_assert((prefix > 0) && (prefix <= 32));
+		if (!fr_cond_assert((prefix > 0) && (prefix <= 32))) return false;
 
 		ip_curr = ntohl(ipaddr->addr.v4.s_addr);
 		ip_end = ntohl(end->addr.v4.s_addr);
@@ -919,7 +919,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 			}
 			fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0);
 			if (fr_redis_command_status(conn, reply) != REDIS_RCODE_SUCCESS) {
-				ERROR("Error retrieving keys %s: %s", cursor, fr_strerror());
+				PERROR("Error retrieving keys %s", cursor);
 
 			reply_error:
 				fr_pool_connection_release(pool, request, conn);
@@ -1207,12 +1207,12 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		}
 
 		if (fr_inet_pton(&start, start_buff, -1, AF_UNSPEC, false, true) < 0) {
-			ERROR("Failed parsing \"%s\" as start address: %s", start_buff, fr_strerror());
+			PERROR("Failed parsing \"%s\" as start address", start_buff);
 			return -1;
 		}
 
 		if (fr_inet_pton(&end, end_buff, -1, AF_UNSPEC, false, true) < 0) {
-			ERROR("Failed parsing \"%s\" end address: %s", end_buff, fr_strerror());
+			PERROR("Failed parsing \"%s\" end address", end_buff);
 			return -1;
 		}
 
@@ -1305,7 +1305,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		uint128_t ip, p_mask;
 
 		/* cond assert to satisfy clang scan */
-		if (!rad_cond_assert((prefix > 0) && (prefix <= 128))) return -1;
+		if (!fr_cond_assert((prefix > 0) && (prefix <= 128))) return -1;
 
 		/* Don't be tempted to cast */
 		memcpy(&ip, start.addr.v6.s6_addr, sizeof(ip));
@@ -1322,7 +1322,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		uint32_t ip;
 
 		/* cond assert to satisfy clang scan */
-		if (!rad_cond_assert((prefix > 0) && (prefix <= 32))) return -1;
+		if (!fr_cond_assert((prefix > 0) && (prefix <= 32))) return -1;
 
 		ip = ntohl(start.addr.v4.s_addr);
 
@@ -1363,7 +1363,7 @@ int main(int argc, char *argv[])
 
 	conf = talloc_zero(NULL, ippool_tool_t);
 	conf->cs = cf_section_alloc(NULL, NULL, "main", NULL);
-	if (!conf->cs) exit(1);
+	if (!conf->cs) exit(EXIT_FAILURE);
 
 	trigger_exec_init(conf->cs);
 
@@ -1450,7 +1450,7 @@ do { \
 		break;
 
 	case 'f':
-		if (cf_file_read(conf->cs, optarg) < 0) exit(1);
+		if (cf_file_read(conf->cs, optarg) < 0 || (cf_section_pass2(conf->cs) < 0)) exit(EXIT_FAILURE);
 		break;
 
 	default:
@@ -1472,7 +1472,7 @@ do { \
 	cp = cf_pair_alloc(conf->cs, "server", argv[0], T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
 	if (!cp) {
 		ERROR("Failed creating server pair");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	cf_pair_add(conf->cs, cp);
 
@@ -1508,7 +1508,7 @@ do { \
 
 	if (!do_import && !do_export && !list_pools && !print_stats && (p == ops)) {
 		ERROR("Nothing to do!");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -1517,7 +1517,6 @@ do { \
 	pool_cs = cf_section_find(conf->cs, "pool", NULL);
 	if (!pool_cs) {
 		pool_cs = cf_section_alloc(conf->cs, conf->cs, "pool", NULL);
-		cf_section_add(conf->cs, pool_cs);
 	}
 	cp = cf_pair_find(pool_cs, "start");
 	if (!cp) {
@@ -1537,7 +1536,7 @@ do { \
 
 	if (driver_init(conf, conf->cs, &conf->driver) < 0) {
 		ERROR("Driver initialisation failed");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (do_import) {
@@ -1560,7 +1559,7 @@ do { \
 			pools[0] = pool_arg;
 		} else {
 			slen = driver_get_pools(conf, &pools, conf->driver);
-			if (slen < 0) exit(1);
+			if (slen < 0) exit(EXIT_FAILURE);
 		}
 
 		for (i = 0; i < (size_t)slen; i++) {
@@ -1568,7 +1567,7 @@ do { \
 			uint64_t acum = 0;
 
 			if (driver_get_stats(&stats, conf->driver,
-					     pools[i], talloc_array_length(pools[i])) < 0) exit(1);
+					     pools[i], talloc_array_length(pools[i])) < 0) exit(EXIT_FAILURE);
 
 			pool_str = fr_asprint(conf, (char *)pools[i], talloc_array_length(pools[i]), '"');
 			INFO("pool             : %s", pool_str);
@@ -1600,7 +1599,7 @@ do { \
 		uint8_t 	**pools;
 
 		slen = driver_get_pools(conf, &pools, conf->driver);
-		if (slen < 0) exit(1);
+		if (slen < 0) exit(EXIT_FAILURE);
 		if (slen > 0) {
 			for (i = 0; i < (size_t)slen; i++) {
 				char *pool_str;
@@ -1640,7 +1639,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_add_lease(&count, conf->driver, p) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		INFO("Added %" PRIu64 " address(es)/prefix(es)", count);
 	}
@@ -1651,7 +1650,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_remove_lease(&count, conf->driver, p) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		INFO("Removed %" PRIu64 " address(es)/prefix(es)", count);
 	}
@@ -1662,7 +1661,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_release_lease(&count, conf->driver, p) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		INFO("Released %" PRIu64 " address(es)/prefix(es)", count);
 	}
@@ -1674,7 +1673,7 @@ do { \
 		size_t len, i;
 
 		if (driver_show_lease(&leases, conf->driver, p) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		rad_assert(leases);
 
@@ -1739,7 +1738,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_modify_lease(&count, conf->driver, p) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		INFO("Modified %" PRIu64 " address(es)/prefix(es)", count);
 	}

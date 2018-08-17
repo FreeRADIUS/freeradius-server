@@ -1,3 +1,4 @@
+#pragma once
 /*
  * eap_types.h  Header file containing the interfaces for all EAP types.
  *
@@ -19,17 +20,14 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * Copyright 2003  Alan DeKok <aland@freeradius.org>
- * Copyright 2006  The FreeRADIUS server project
+ * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2003  Alan DeKok <aland@freeradius.org>
+ * @copyright 2006  The FreeRADIUS server project
  */
-#ifndef _EAP_TYPES_H
-#define _EAP_TYPES_H
-
 RCSIDH(eap_methods_h, "$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
 
 /* Code (1) + Identifier (1) + Length (2) */
 #define EAP_HEADER_LEN 		4
@@ -94,7 +92,7 @@ typedef enum eap_method {
 	FR_EAP_PSK,			/* 47 */
 	FR_EAP_SAKE,			/* 48 */
 	FR_EAP_IKEV2,			/* 49 */
-	FR_EAP_AKA2,			/* 50 */
+	FR_EAP_AKA_PRIME,		/* 50 */
 	FR_EAP_GPSK,			/* 51 */
 	FR_EAP_PWD,			/* 52 */
 	FR_EAP_EKE,			/* 53 */
@@ -136,16 +134,4 @@ typedef struct CC_HINT(__packed__) eap_packet_raw {
 	uint8_t		data[1];
 } eap_packet_raw_t;
 
-
-/*
- * interfaces in eapcommon.c
- */
-eap_type_t		eap_name2type(char const *name);
-char const		*eap_type2name(eap_type_t method);
-int			eap_wireformat(eap_packet_t *reply);
-int			eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply);
-VALUE_PAIR		*eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *reply);
-eap_packet_raw_t	*eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
-void			eap_add_reply(REQUEST *request, char const *name, uint8_t const *value, int len);
-
-#endif /* _EAP_TYPES_H */
+typedef struct _eap_session eap_session_t;

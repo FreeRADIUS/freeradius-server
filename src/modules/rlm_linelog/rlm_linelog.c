@@ -17,16 +17,16 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2004,2006  The FreeRADIUS server project
- * Copyright 2004  Alan DeKok <aland@freeradius.org>
+ * @copyright 2004,2006  The FreeRADIUS server project
+ * @copyright 2004  Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/exfile.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/exfile.h>
 
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
@@ -235,7 +235,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 			DEBUG2("Opening UDP connection to %s:%u", buff, inst->udp.port);
 		}
 
-		sockfd = fr_socket_client_udp(NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
+		sockfd = fr_socket_client_udp(NULL, NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
 		if (sockfd < 0) {
 			PERROR("Failed opening UDP socket");
 			return NULL;
@@ -259,7 +259,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 			DEBUG2("Blocking until connection complete...");
 		}
 		if (fr_socket_wait_for_connect(sockfd, timeout) < 0) {
-			ERROR("%s", fr_strerror());
+			PERROR("Failed connecting to log destination");
 			close(sockfd);
 			return NULL;
 		}
@@ -332,7 +332,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	case LINELOG_DST_FILE:
 	{
 		if (!inst->file.name) {
-			cf_log_err(conf, "No value provided for 'filename'");
+			cf_log_err(conf, "No value provided for 'file.filename'");
 			return -1;
 		}
 
@@ -535,7 +535,8 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 		 *	using request as the context (which will hopefully avoid an alloc).
 		 */
 		slen = tmpl_afrom_str(request, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
-				      cf_pair_value_quote(cp), REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+				      cf_pair_value_quote(cp),
+				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
 		if (slen <= 0) {
 			REMARKER(tmpl_str, -slen, fr_strerror());
 			return RLM_MODULE_FAIL;
@@ -568,14 +569,14 @@ build_vector:
 	case TMPL_TYPE_LIST:
 	{
 		#define VECTOR_INCREMENT 20
-		vp_cursor_t	cursor;
+		fr_cursor_t	cursor;
 		VALUE_PAIR	*vp;
 		int		alloced = VECTOR_INCREMENT, i;
 
 		MEM(vector = talloc_array(request, struct iovec, alloced));
 		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt_p), i = 0;
 		     vp;
-		     vp = tmpl_cursor_next(&cursor, vpt_p), i++) {
+		     vp = fr_cursor_next(&cursor), i++) {
 		     	/* need extra for line terminator */
 			if ((with_delim && ((i + 1) >= alloced)) ||
 			    (i >= alloced)) {

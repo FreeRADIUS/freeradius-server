@@ -127,10 +127,10 @@ yubikey {
 			#  connections during instantiation it will exit.
 			#  Set to 0 to allow the server to start without the
 			#  yubikey server being available.
-			start = ${thread[pool].start_servers}
+			start = ${thread[pool].num_workers}
 
 			#  Minimum number of connections to keep open
-			min = ${thread[pool].min_spare_servers}
+			min = ${thread[pool].num_workers}
 
 			#  Maximum number of connections
 			#
@@ -143,7 +143,7 @@ yubikey {
 			#
 			#  Setting 'max' to MORE than the number of threads means
 			#  that there are more connections than necessary.
-			max = ${thread[pool].max_servers}
+			max = ${thread[pool].num_workers}
 
 			#  Number of uses before the connection is closed
 			#

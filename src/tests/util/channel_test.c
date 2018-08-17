@@ -17,21 +17,22 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @copyright 2016  Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")
 
-#include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/channel.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/io/control.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#include <pthread.h>
+#  include <pthread.h>
 #endif
 
 #include <sys/event.h>
@@ -60,7 +61,7 @@ REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
 	return NULL;
 }
 
-void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST const *request)
 {
 }
 
@@ -83,7 +84,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -t                     Touch memory for fake packets.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 static void *channel_master(void *arg)
@@ -99,13 +100,12 @@ static void *channel_master(void *arg)
 	fr_channel_event_t	ce;
 	struct kevent		events[MAX_KEVENTS];
 
-	ctx = talloc_init("channel_master");
-	if (!ctx) _exit(1);
+	MEM(ctx = talloc_init("channel_master"));
 
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	MPRINT1("Master started.\n");
@@ -115,8 +115,8 @@ static void *channel_master(void *arg)
 	 */
 	rcode = fr_channel_signal_open(channel);
 	if (rcode < 0) {
-		fprintf(stderr, "Failed signaling open: %s\n", strerror(errno));
-		exit(1);
+		fprintf(stderr, "Failed signaling open: %s\n", fr_syserror(errno));
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -183,7 +183,7 @@ static void *channel_master(void *arg)
 			MPRINT1("Master sent message %d\n", num_messages);
 			rcode = fr_channel_send_request(channel, cd, &reply);
 			if (rcode < 0) {
-				fprintf(stderr, "Failed sending request: %s\n", strerror(errno));
+				fprintf(stderr, "Failed sending request: %s\n", fr_syserror(errno));
 			}
 			rad_assert(rcode == 0);
 			if (reply) {
@@ -204,8 +204,8 @@ check_close:
 			MPRINT1("Master signaling worker to exit.\n");
 			rcode = fr_channel_signal_worker_close(channel);
 			if (rcode < 0) {
-				fprintf(stderr, "Failed signaling close: %s\n", strerror(errno));
-				exit(1);
+				fprintf(stderr, "Failed signaling close: %s\n", fr_syserror(errno));
+				exit(EXIT_FAILURE);
 			}
 
 			signaled_close = true;
@@ -220,8 +220,8 @@ check_close:
 		if (num_events < 0) {
 			if (num_events == EINTR) continue;
 
-			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
-			exit(1);
+			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
+			exit(EXIT_FAILURE);
 		}
 
 		if (num_events == 0) continue;
@@ -326,13 +326,12 @@ static void *channel_worker(void *arg)
 	fr_channel_event_t ce;
 	struct kevent events[MAX_KEVENTS];
 
-	ctx = talloc_init("channel_worker");
-	if (!ctx) _exit(1);
+	MEM(ctx = talloc_init("channel_worker"));
 
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	MPRINT1("\tWorker started.\n");
@@ -350,8 +349,8 @@ static void *channel_worker(void *arg)
 		if (num_events < 0) {
 			if (errno == EINTR) continue;
 
-			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
-			exit(1);
+			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
+			exit(EXIT_FAILURE);
 		}
 
 		if (num_events == 0) continue;
@@ -441,7 +440,7 @@ static void *channel_worker(void *arg)
 					MPRINT1("\tWorker sending reply to messages %d\n", worker_messages);
 					rcode = fr_channel_send_reply(channel, reply, &cd);
 					if (rcode < 0) {
-						fprintf(stderr, "Failed sending reply: %s\n", strerror(errno));
+						fprintf(stderr, "Failed sending reply: %s\n", fr_syserror(errno));
 					}
 					rad_assert(rcode == 0);
 				}
@@ -483,7 +482,7 @@ static void *channel_worker(void *arg)
 	 *	After the garbage collection, all messages marked "done" MUST also be marked "free".
 	 */
 	rcode = fr_message_set_messages_used(ms);
-	rad_cond_assert(rcode == 0);
+	fr_cond_assert(rcode == 0);
 
 	talloc_free(ctx);
 
@@ -494,11 +493,11 @@ static void *channel_worker(void *arg)
 
 int main(int argc, char *argv[])
 {
-	int c;
-	fr_channel_t	*channel;
-	TALLOC_CTX	*autofree = talloc_init("main");
-	pthread_attr_t	attr;
-	pthread_t	master_id, worker_id;
+	int			c;
+	fr_channel_t		*channel;
+	TALLOC_CTX		*autofree = talloc_autofree_context();
+	pthread_attr_t		attr;
+	pthread_t		master_id, worker_id;
 
 	fr_time_start();
 
@@ -561,7 +560,7 @@ int main(int argc, char *argv[])
 	channel = fr_channel_create(autofree, control_master, control_worker);
 	if (!channel) {
 		fprintf(stderr, "channel_test: Failed to create channel\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -581,7 +580,5 @@ int main(int argc, char *argv[])
 
 	fr_channel_debug(channel, stdout);
 
-	talloc_free(autofree);
-
-	return 0;
+	exit(EXIT_SUCCESS);
 }

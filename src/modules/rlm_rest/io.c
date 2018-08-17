@@ -22,8 +22,9 @@
  * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include "rest.h"
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
 
 /*
  *  CURL headers do:
@@ -60,27 +61,37 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 
 			rad_assert(candle);
 
-			curl_multi_remove_handle(mandle, candle);
-
 			thread->transfers--;
 
 			ret = curl_easy_getinfo(candle, CURLINFO_PRIVATE, &request);
-			if (!fr_cond_assert(ret == CURLE_OK)) return;
+			if (!fr_cond_assert_msg(ret == CURLE_OK,
+						"Failed retrieving request data from CURL easy handle (candle)")) {
+				curl_multi_remove_handle(mandle, candle);
+				return;
+			}
 
-			VERIFY_REQUEST(request);
+			REQUEST_VERIFY(request);
 
 			/*
 			 *	If the request failed, say why...
 			 */
 			if (m->data.result != CURLE_OK) {
-				REDEBUG("%s (%i)", curl_easy_strerror(m->data.result), m->data.result);
+				REDEBUG("REST request failed: %s (%i)",
+					curl_easy_strerror(m->data.result), m->data.result);
 			}
+
+			/*
+			 *	Looks like this needs to be done last,
+			 *	else m->data.result ends up being junk.
+			 */
+			curl_multi_remove_handle(mandle, candle);
 
 			unlang_resumable(request);
 		}
+			break;
 
 		default:
-#if 0
+#ifndef NDEBUG
 			DEBUG4("Got unknown msg (%i) when dequeueing curl responses", msg_queued);
 #endif
 			break;
@@ -268,10 +279,12 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 	switch (what) {
 	case CURL_POLL_IN:
 		if (fr_event_fd_insert(thread, thread->el, fd,
-				       _rest_io_service_readable, NULL, _rest_io_service_errored,
+				       _rest_io_service_readable,
+				       NULL,
+				       _rest_io_service_errored,
 				       thread) < 0) {
-			ERROR("multi-handle %p registration failed for read+error events on FD %i: %s",
-			      thread->mandle, fd, fr_strerror());
+			PERROR("multi-handle %p registration failed for read+error events on FD %i",
+			       thread->mandle, fd);
 			return -1;
 		}
 		DEBUG4("multi-handle %p registered for read+error events on FD %i", thread->mandle, fd);
@@ -279,10 +292,12 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 
 	case CURL_POLL_OUT:
 		if (fr_event_fd_insert(thread, thread->el, fd,
-				       NULL, _rest_io_service_writable, _rest_io_service_errored,
+				       NULL,
+				       _rest_io_service_writable,
+				       _rest_io_service_errored,
 				       thread) < 0) {
-			ERROR("multi-handle %p registration failed for write+error events on FD %i: %s",
-			      thread->mandle, fd, fr_strerror());
+			PERROR("multi-handle %p registration failed for write+error events on FD %i",
+			       thread->mandle, fd);
 			return -1;
 		}
 		DEBUG4("multi-handle %p registered for write+error events on FD %i", thread->mandle, fd);
@@ -290,18 +305,20 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 
 	case CURL_POLL_INOUT:
 		if (fr_event_fd_insert(thread, thread->el, fd,
-				       _rest_io_service_readable, _rest_io_service_writable, _rest_io_service_errored,
+				       _rest_io_service_readable,
+				       _rest_io_service_writable,
+				       _rest_io_service_errored,
 				       thread) < 0) {
-			ERROR("multi-handle %p registration failed for read+write+error events on FD %i: %s",
-			      thread->mandle, fd, fr_strerror());
+			PERROR("multi-handle %p registration failed for read+write+error events on FD %i",
+			       thread->mandle, fd);
 			return -1;
 		}
 		DEBUG4("multi-handle %p registered for read+write+error events on FD %i", thread->mandle, fd);
 		break;
 
 	case CURL_POLL_REMOVE:
-		if (fr_event_fd_delete(thread->el, fd) < 0) {
-			ERROR("multi-handle %p de-registration failed for FD %i %s", thread->mandle, fd, fr_strerror());
+		if (fr_event_fd_delete(thread->el, fd, FR_EVENT_FILTER_IO) < 0) {
+			PERROR("multi-handle %p de-registration failed for FD %i", thread->mandle, fd);
 			return -1;
 		}
 		DEBUG4("multi-handle %p unregistered events for FD %i", thread->mandle, fd);
@@ -317,22 +334,22 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 
 /** Handle asynchronous cancellation of a request
  *
- * If we're signalled that the request has been cancelled (FR_ACTION_DONE).
+ * If we're signalled that the request has been cancelled (FR_SIGNAL_CANCEL).
  * Cleanup any pending state and release the connection handle back into the pool.
  *
  * @param[in] request	being cancelled.
  * @param[in] instance	of rlm_rest.
  * @param[in] thread	Thread specific module instance.
- * @param[in] ctx	rlm_rest_handle_t currently used by the request.
+ * @param[in] rctx	rlm_rest_handle_t currently used by the request.
  * @param[in] action	What happened.
  */
-void rest_io_action(REQUEST *request, void *instance, void *thread, void *ctx, fr_state_action_t action)
+void rest_io_module_action(REQUEST *request, void *instance, void *thread, void *rctx, fr_state_signal_t action)
 {
-	rlm_rest_handle_t	*randle = talloc_get_type_abort(ctx, rlm_rest_handle_t);
+	rlm_rest_handle_t	*randle = talloc_get_type_abort(rctx, rlm_rest_handle_t);
 	rlm_rest_thread_t	*t = thread;
 	CURLMcode		ret;
 
-	if (action != FR_ACTION_DONE) return;
+	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG("Forcefully cancelling pending REST request");
 
@@ -345,6 +362,29 @@ void rest_io_action(REQUEST *request, void *instance, void *thread, void *ctx, f
 
 	rest_request_cleanup(instance, randle);
 	fr_pool_connection_release(t->pool, request, randle);
+}
+
+/** Handle asynchronous cancellation of a request
+ *
+ * If we're signalled that the request has been cancelled (FR_SIGNAL_CANCEL).
+ * Cleanup any pending state and release the connection handle back into the pool.
+ *
+ * @param[in] request	being cancelled.
+ * @param[in] instance	of rlm_rest.
+ * @param[in] thread	Thread specific module instance.
+ * @param[in] rctx	rlm_rest_handle_t currently used by the request.
+ * @param[in] action	What happened.
+ */
+void rest_io_xlat_action(REQUEST *request, UNUSED void *instance, void *thread, void *rctx, fr_state_signal_t action)
+{
+	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(thread, rest_xlat_thread_inst_t);
+	rlm_rest_t			*mod_inst = xti->inst;
+	rlm_rest_thread_t		*t = xti->t;
+
+	rlm_rest_xlat_rctx_t		*our_rctx = talloc_get_type_abort(rctx, rlm_rest_xlat_rctx_t);
+	rlm_rest_handle_t		*randle = talloc_get_type_abort(our_rctx->handle, rlm_rest_handle_t);
+
+	rest_io_module_action(request, mod_inst, t, randle, action);
 }
 
 /** Sends a REST (HTTP) request.
@@ -365,7 +405,7 @@ int rest_io_request_enqueue(rlm_rest_thread_t *t, REQUEST *request, void *handle
 	CURL			*candle = randle->candle;
 	CURLcode		ret;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	/*
 	 *	Stick the current request in the curl handle's

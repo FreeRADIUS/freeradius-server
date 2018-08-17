@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,9 +25,6 @@
  * @copyright 2000  Mike Machado <mike@innercite.com>
  * @copyright 2000  Alan DeKok <aland@ox.org>
  */
-#ifndef _RLM_SQL_H
-#define _RLM_SQL_H
-
 RCSIDH(rlm_sql_h, "$Id$")
 
 #ifndef LOG_PREFIX
@@ -34,10 +32,10 @@ RCSIDH(rlm_sql_h, "$Id$")
 #  define LOG_PREFIX_ARGS inst->name
 #endif
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/pool.h>
-#include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/exfile.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/pool.h>
+#include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/exfile.h>
 
 #define FR_ITEM_CHECK 0
 #define FR_ITEM_REPLY 1
@@ -100,16 +98,12 @@ typedef struct sql_config {
 	char const		*default_profile;		//!< Default profile to use if no other
 								//!< profiles were configured.
 
-	char const		*client_query;			//!< Query used to get FreeRADIUS client
-								//!< definitions.
-
 	char const		*authorize_check_query;		//!< Query used get check VPs for a user.
 	char const 		*authorize_reply_query;		//!< Query used get reply VPs for a user.
 	char const		*authorize_group_check_query;	//!< Query used get check VPs for a group.
 	char const		*authorize_group_reply_query;	//!< Query used get reply VPs for a group.
 	char const 		*groupmemb_query;		//!< Query to determine group membership.
 
-	bool			do_clients;			//!< Read clients from SQL database.
 	bool			read_groups;			//!< Read user groups by default.
 								//!< If false, Fall-Through = yes is required
 								//!< in the previous reply list to process
@@ -252,4 +246,3 @@ sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
 int		sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username);
-#endif

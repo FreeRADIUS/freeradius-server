@@ -13,7 +13,6 @@ if ('${feature.tls}' != 'yes') {
 }
 
 update {
-	reply:Filter-Id := 'filter'
 	control: !* ANY
 	request:Tmp-String-0 := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
 }
@@ -30,9 +29,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 update {
@@ -48,12 +45,12 @@ update {
 
 # To Binary
 update {
-	control:Tmp-Octets-0 := "0x%{control:Tmp-String-1}"
+	control:Tmp-Octets-0 := "%{bin:%{control:Tmp-String-1}}"
 }
 
 # To Base64
 update {
-	control:Tmp-String-1 := "%{base64:&control:Tmp-Octets-0}"
+	control:Tmp-String-1 := "%{base64:%{&control:Tmp-Octets-0}}"
 }
 
 update {
@@ -65,9 +62,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 update {
@@ -83,16 +78,16 @@ update {
 
 # To Binary
 update {
-	control:Tmp-Octets-0 := "0x%{control:Tmp-String-1}"
+	control:Tmp-Octets-0 := "%{bin:%{control:Tmp-String-1}}"
 }
 
 # To Base64
 update {
-	control:Tmp-String-1 := "{ssha512}%{base64:&control:Tmp-Octets-0}"
+	control:Tmp-String-1 := "{ssha512}%{base64:%{control:Tmp-Octets-0}}"
 }
 
 update {
-	control:Password-With-Header += "%{base64:&control:Tmp-String-1}"
+	control:Password-With-Header += "%{base64:%{&control:Tmp-String-1}}"
 }
 
 pap.authorize
@@ -100,9 +95,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 update {
@@ -112,3 +105,5 @@ update {
 update control {
 	Auth-Type := Accept
 }
+
+success

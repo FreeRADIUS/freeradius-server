@@ -1,9 +1,7 @@
-#ifndef _RLM_SECURID_H
-#define _RLM_SECURID_H
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#pragma once
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "acexport.h"
 
@@ -78,6 +76,11 @@ typedef struct rlm_securid_t {
 	uint32_t	max_trips_per_session;
 } rlm_securid_t;
 
+extern fr_dict_attr_t const *attr_prompt;
+extern fr_dict_attr_t const *attr_reply_message;
+extern fr_dict_attr_t const *attr_state;
+extern fr_dict_attr_t const *attr_user_password;
+
 /* Memory Management */
 SECURID_SESSION*     securid_session_alloc(void);
 void		     securid_session_free(rlm_securid_t *inst, REQUEST *request,SECURID_SESSION *session)
@@ -88,6 +91,3 @@ void		     securid_sessionlist_free(rlm_securid_t *inst,REQUEST *request) CC_HIN
 int		     securid_sessionlist_add(rlm_securid_t *inst, REQUEST *request, SECURID_SESSION *session)
 		     CC_HINT(nonnull);
 SECURID_SESSION	     *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request) CC_HINT(nonnull);
-
-
-#endif

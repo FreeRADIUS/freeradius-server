@@ -2,7 +2,7 @@
 #  might not always be available, and the TARGETNAME from the previous
 #  target may stick around.
 TARGETNAME	:=
--include $(top_builddir)/src/modules/rlm_json/libfreeradius-json.mk
+-include $(top_builddir)/src/lib/json/all.mk
 TARGET		:=
 
 #  Check the targetname defined by libfreeradius-json.mk

@@ -1,6 +1,4 @@
-#ifndef _EAP_MSCHAPV2_H
-#define _EAP_MSCHAPV2_H
-
+#pragma once
 RCSIDH(eap_mschapv2_h, "$Id$")
 
 #include "eap.h"
@@ -49,5 +47,3 @@ typedef struct mschapv2_opaque_t {
 	VALUE_PAIR	*mppe_keys;
 	VALUE_PAIR	*reply;
 } mschapv2_opaque_t;
-
-#endif /*_EAP_MSCHAPV2_H*/

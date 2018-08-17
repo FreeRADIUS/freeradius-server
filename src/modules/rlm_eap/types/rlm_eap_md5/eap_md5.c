@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2001,2006  The FreeRADIUS server project
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2000,2001,2006  The FreeRADIUS server project
+ * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  */
 
 /*
@@ -43,7 +43,7 @@ RCSID("$Id$")
 #include "eap.h"
 
 #include "eap_md5.h"
-#include <freeradius-devel/md5.h>
+#include <freeradius-devel/util/md5.h>
 
 /*
  *	We expect only RESPONSE for which SUCCESS or FAILURE is sent back

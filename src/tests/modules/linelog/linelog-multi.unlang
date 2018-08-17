@@ -9,7 +9,10 @@ group {
 	update request {
 		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_multi.log"`
 	}
-	fail = 1
+
+	actions {
+		fail = 1
+	}
 }
 if (fail) {
 	ok

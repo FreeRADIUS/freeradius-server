@@ -1,8 +1,4 @@
 /*
- * misc.c	Various miscellaneous functions.
- *
- * Version:	$Id$
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -16,24 +12,34 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2000,2006  The FreeRADIUS server project
  */
 
+/** Various miscellaneous utility functions
+ *
+ * @file src/lib/util/misc.c
+ *
+ * @copyright 2000,2006  The FreeRADIUS server project
+ */
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include "misc.h"
+
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <ctype.h>
-#include <sys/file.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/file.h>
 #include <sys/uio.h>
+#include <unistd.h>
 
 #ifdef HAVE_DIRENT_H
-#include <dirent.h>
-
+#  include <dirent.h>
 /*
  *	Some versions of Linux don't have closefrom(), but they will
  *	have /proc.
@@ -43,15 +49,15 @@ RCSID("$Id$")
  *	OSX doesn't have closefrom() or /proc/self/fd, but it does
  *	have /dev/fd
  */
-#ifdef __linux__
-#define CLOSEFROM_DIR "/proc/self/fd"
-#elif defined(__APPLE__)
-#define CLOSEFROM_DIR "/dev/fd"
-#else
-#undef HAVE_DIRENT_H
+#  ifdef __linux__
+#    define CLOSEFROM_DIR "/proc/self/fd"
+#  elif defined(__APPLE__)
+#    define CLOSEFROM_DIR "/dev/fd"
+#  else
+#    undef HAVE_DIRENT_H
+#  endif
 #endif
 
-#endif
 
 #define FR_PUT_LE16(a, val)\
 	do {\
@@ -59,16 +65,9 @@ RCSID("$Id$")
 		a[0] = ((uint16_t) (val)) & 0xff;\
 	} while (0)
 
-int	fr_debug_lvl = 0;
-
 static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",
 	"jul", "aug", "sep", "oct", "nov", "dec" };
-
-typedef struct fr_talloc_link {
-	bool armed;
-	TALLOC_CTX *child;
-} fr_talloc_link_t;
 
 /** Sets a signal handler using sigaction if available, else signal
  *
@@ -120,55 +119,9 @@ int fr_unset_signal(int sig)
 #endif
 }
 
-static int _fr_talloc_link_ctx_trigger(fr_talloc_link_t *trigger)
-{
-	if (trigger->armed) talloc_free(trigger->child);
-
-	return 0;
-}
-
-static int _fr_talloc_link_ctx_disarm(bool **armed)
-{
-	**armed = false;
-	return 0;
-}
-
-/** Link a parent and a child context, so the child is freed before the parent
- *
- * @note This is not thread safe. Do not free parent before threads are joined, do not call from a
- *	child thread.
- * @note It's OK to free the child before threads are joined, but this will leak memory until the
- *	parent is freed.
- *
- * @param parent who's fate the child should share.
- * @param child bound to parent's lifecycle.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child)
-{
-	fr_talloc_link_t *trigger;
-	bool **disarm;
-
-	trigger = talloc(parent, fr_talloc_link_t);
-	if (!trigger) return -1;
-
-	disarm = talloc(child, bool *);
-	if (!disarm) {
-		talloc_free(trigger);
-		return -1;
-	}
-
-	trigger->child = child;
-	trigger->armed = true;
-	*disarm = &trigger->armed;
-
-	talloc_set_destructor(trigger, _fr_talloc_link_ctx_trigger);
-	talloc_set_destructor(disarm, _fr_talloc_link_ctx_disarm);
-
-	return 0;
-}
+#ifndef F_WRLCK
+#error "missing definition for F_WRLCK, all file locks will fail"
+#endif
 
 /*
  *	cppcheck apparently can't pick this up from the system headers.
@@ -177,78 +130,50 @@ int fr_talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child)
 #define F_WRLCK
 #endif
 
-/*
- *	Internal wrapper for locking, to minimize the number of ifdef's
- *
- *	Use fcntl or error
- */
-int rad_lockfd(int fd, int lock_len)
+static int rad_lock(int fd, int lock_len, int cmd, int type)
 {
-#ifdef F_WRLCK
 	struct flock fl;
 
 	fl.l_start = 0;
 	fl.l_len = lock_len;
 	fl.l_pid = getpid();
-	fl.l_type = F_WRLCK;
+	fl.l_type = type;
 	fl.l_whence = SEEK_CUR;
 
-	return fcntl(fd, F_SETLKW, (void *)&fl);
-#else
-#error "missing definition for F_WRLCK, all file locks will fail"
+	return fcntl(fd, cmd, (void *)&fl);
+}
 
-	return -1;
-#endif
+/*
+ *	Internal wrapper for locking, to minimize the number of ifdef's
+ */
+int rad_lockfd(int fd, int lock_len)
+{
+	return rad_lock(fd, lock_len, F_SETLKW, F_WRLCK);
 }
 
 /*
  *	Internal wrapper for locking, to minimize the number of ifdef's
  *
- *	Lock an fd, prefer lockf() over flock()
  *	Nonblocking version.
  */
 int rad_lockfd_nonblock(int fd, int lock_len)
 {
-#ifdef F_WRLCK
-	struct flock fl;
-
-	fl.l_start = 0;
-	fl.l_len = lock_len;
-	fl.l_pid = getpid();
-	fl.l_type = F_WRLCK;
-	fl.l_whence = SEEK_CUR;
-
-	return fcntl(fd, F_SETLK, (void *)&fl);
-#else
-#error "missing definition for F_WRLCK, all file locks will fail"
-
-	return -1;
-#endif
+	/*
+	 *	Note that there's no "W" on SETLK
+	 */
+	return rad_lock(fd, lock_len, F_SETLK, F_WRLCK);
 }
 
 /*
  *	Internal wrapper for unlocking, to minimize the number of ifdef's
  *	in the source.
- *
- *	Unlock an fd, prefer lockf() over flock()
  */
 int rad_unlockfd(int fd, int lock_len)
 {
-#ifdef F_WRLCK
-	struct flock fl;
-
-	fl.l_start = 0;
-	fl.l_len = lock_len;
-	fl.l_pid = getpid();
-	fl.l_type = F_WRLCK;
-	fl.l_whence = SEEK_CUR;
-
-	return fcntl(fd, F_UNLCK, (void *)&fl);
-#else
-#error "missing definition for F_WRLCK, all file locks will fail"
-
-	return -1;
-#endif
+	/*
+	 *	Note UNLOCK.
+	 */
+	return rad_lock(fd, lock_len, F_SETLK, F_UNLCK);
 }
 
 static char const hextab[] = "0123456789abcdef";
@@ -367,73 +292,19 @@ int64_t fr_strtoll(char const *value, char **end)
 	return strtoll(value, end, 10);
 }
 
-/** Check whether the string is all whitespace
+/** Trim whitespace from the end of a string
  *
- * @return
- *	- true if the entirety of the string is whitespace.
- *	- false if the string contains non whitespace.
  */
-bool is_whitespace(char const *value)
+char *fr_trim(char const *str, size_t size)
 {
-	do {
-		if (!isspace(*value)) return false;
-	} while (*++value);
+	char *q;
 
-	return true;
-}
+	if (!str || !size) return NULL;
 
-/** Check whether the string is made up of printable UTF8 chars
- *
- * @param value to check.
- * @param len of value.
- *
- * @return
- *	- true if the string is printable.
- *	- false if the string contains non printable chars
- */
- bool is_printable(void const *value, size_t len)
- {
- 	uint8_t	const *p = value;
- 	int	clen;
- 	size_t	i;
+	memcpy(&q, &str, sizeof(q));
+	for (q = q + size; q > str && isspace(*q); q--);
 
- 	for (i = 0; i < len; i++) {
- 		clen = fr_utf8_char(p, len - i);
- 		if (clen == 0) return false;
- 		i += (size_t)clen;
- 		p += clen;
- 	}
- 	return true;
- }
-
-/** Check whether the string is all numbers
- *
- * @return
- *	- true if the entirety of the string is number chars.
- *	- false if string contains no number chars.
- */
-bool is_integer(char const *value)
-{
-	do {
-		if (!isdigit(*value)) return false;
-	} while (*++value);
-
-	return true;
-}
-
-/** Check whether the string is all zeros
- *
- * @return
- *	- true if the entirety of the string is all zeros.
- *	- false if string contains no zeros.
- */
-bool is_zero(char const *value)
-{
-	do {
-		if (*value != '0') return false;
-	} while (*++value);
-
-	return true;
+	return q;
 }
 
 /*

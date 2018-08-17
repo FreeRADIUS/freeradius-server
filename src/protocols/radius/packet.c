@@ -24,11 +24,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
-#include <freeradius-devel/udp.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/udp.h>
 
 #ifdef WITH_UDPFROMTO
-#include <freeradius-devel/udpfromto.h>
+#include <freeradius-devel/util/udpfromto.h>
 #endif
 
 #include <fcntl.h>
@@ -46,14 +46,13 @@ typedef struct radius_packet_t {
 /*
  *	Some messages get printed out only in debugging mode.
  */
-#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
+#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
 
 /** Encode a packet
  *
  */
-int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			    char const *secret)
+int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret)
 {
 	uint8_t const *original_data;
 	ssize_t total_length;
@@ -107,19 +106,21 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
  *	- 0 on success
  *	- -1 on decoding error.
  */
-int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
+int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+			    uint32_t max_attributes, bool tunnel_password_zeros, char const *secret)
 {
 	int			packet_length;
 	uint32_t		num_attributes;
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
 	VALUE_PAIR		*head = NULL;
-	vp_cursor_t		cursor, out;
+	fr_cursor_t		cursor, out;
 	fr_radius_ctx_t		packet_ctx;
 
 	packet_ctx.secret = secret;
 	packet_ctx.vector = packet->vector;
-
+	packet_ctx.tunnel_password_zeros = tunnel_password_zeros;
+	packet_ctx.root = fr_dict_root(fr_dict_internal);
 	switch (packet->code) {
 	case FR_CODE_ACCESS_REQUEST:
 	case FR_CODE_STATUS_SERVER:
@@ -128,34 +129,29 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 	case FR_CODE_ACCESS_ACCEPT:
 	case FR_CODE_ACCESS_REJECT:
 	case FR_CODE_ACCESS_CHALLENGE:
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_RESPONSE:
-#endif
-#ifdef WITH_COA
 	case FR_CODE_COA_ACK:
 	case FR_CODE_COA_NAK:
 	case FR_CODE_DISCONNECT_ACK:
 	case FR_CODE_DISCONNECT_NAK:
-#endif
-		if (!original) {
-			fr_strerror_printf("Cannot decode response without request");
-			return -1;
+		/*
+		 *	radsniff doesn't always have a response
+		 */
+		if (original) {
+ 			packet_ctx.vector = original->vector;
+		} else {
+			memset(packet->vector, 0, sizeof(packet->vector));
 		}
-		packet_ctx.vector = original->vector;
 		break;
 
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
 		break;
-#endif
 
-#ifdef WITH_COA
 	case FR_CODE_COA_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
 		break;
-#endif
 
 	default:
 		fr_strerror_printf("Cannot decode unknown packet code %d", packet->code);
@@ -170,7 +166,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 	packet_length = packet->data_len - RADIUS_HDR_LEN;
 	num_attributes = 0;
 
-	fr_pair_cursor_init(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 
 	/*
 	 *	Loop over the attributes, decoding them into VPs.
@@ -181,8 +177,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 		/*
 		 *	This may return many VPs
 		 */
-		my_len = fr_radius_decode_pair(packet, &cursor, fr_dict_root(fr_dict_internal),
-					       ptr, packet_length, &packet_ctx);
+		my_len = fr_radius_decode_pair(packet, &cursor, ptr, packet_length, &packet_ctx);
 		if (my_len < 0) {
 			fr_pair_list_free(&head);
 			return -1;
@@ -196,7 +191,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 		/*
 		 *	Count the ones which were just added
 		 */
-		while (fr_pair_cursor_next(&cursor)) num_attributes++;
+		while (fr_cursor_next(&cursor)) num_attributes++;
 
 		/*
 		 *	VSA's may not have been counted properly in
@@ -204,7 +199,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 		 *	then without using the dictionary.  We
 		 *	therefore enforce the limits here, too.
 		 */
-		if ((fr_max_attributes > 0) && (num_attributes > fr_max_attributes)) {
+		if ((max_attributes > 0) && (num_attributes > max_attributes)) {
 			char host_ipaddr[INET6_ADDRSTRLEN];
 
 			fr_pair_list_free(&head);
@@ -213,7 +208,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.addr,
 						     host_ipaddr, sizeof(host_ipaddr)),
-					   num_attributes, fr_max_attributes);
+					   num_attributes, max_attributes);
 			return -1;
 		}
 
@@ -221,9 +216,10 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 		packet_length -= my_len;
 	}
 
-	fr_pair_cursor_init(&out, &packet->vps);
-	fr_pair_cursor_last(&out);		/* Move insertion point to the end of the list */
-	fr_pair_cursor_merge(&out, head);
+	fr_cursor_init(&out, &packet->vps);
+	fr_cursor_tail(&out);		/* Move insertion point to the end of the list */
+	fr_cursor_head(&cursor);
+	fr_cursor_merge(&out, &cursor);
 
 	/*
 	 *	Merge information from the outside world into our
@@ -240,23 +236,22 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
  * Packet is not 'const * const' because we may update data_len, if there's more data
  * in the UDP packet than in the RADIUS packet.
  *
- * @param packet to check
- * @param require_ma to require Message-Authenticator
- * @param reason if not NULL, will have the failure reason written to where it points.
+ * @param[in] packet		to check.
+ * @param[in] max_attributes	to decode.
+ * @param[in] require_ma	to require Message-Authenticator.
+ * @param[out] reason		if not NULL, will have the failure reason written to where it points.
  * @return
  *	- True on success.
  *	- False on failure.
  */
-bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason)
+bool fr_radius_packet_ok(RADIUS_PACKET *packet, uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
 {
 	char host_ipaddr[INET6_ADDRSTRLEN];
 
-	if (!fr_radius_ok(packet->data, &packet->data_len, require_ma, reason)) {
-		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s - %s",
-					 inet_ntop(packet->src_ipaddr.af,
-						   &packet->src_ipaddr.addr,
-						   host_ipaddr, sizeof(host_ipaddr)),
-					 fr_strerror());
+	if (!fr_radius_ok(packet->data, &packet->data_len, max_attributes, require_ma, reason)) {
+		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s",
+					 inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr,
+						   host_ipaddr, sizeof(host_ipaddr)));
 		return false;
 	}
 
@@ -288,10 +283,9 @@ int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 
 	if (fr_radius_verify(packet->data, original_data,
 			     (uint8_t const *) secret, talloc_array_length(secret) - 1) < 0) {
-		fr_strerror_printf("Received packet from %s with %s",
-				   inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr,
-					     buffer, sizeof(buffer)),
-				   fr_strerror());
+		fr_strerror_printf_push("Received invalid packet from %s",
+					inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr,
+						  buffer, sizeof(buffer)));
 		return -1;
 	}
 
@@ -363,7 +357,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 /** Receive UDP client requests, and fill in the basics of a RADIUS_PACKET structure
  *
  */
-RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_ma)
+RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma)
 {
 	ssize_t data_len;
 	RADIUS_PACKET		*packet;
@@ -380,7 +374,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool re
 	data_len = rad_recvfrom(fd, packet, flags);
 	if (data_len < 0) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
@@ -393,7 +387,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool re
 	    (packet->dst_ipaddr.af == AF_UNSPEC) ||
 	    (packet->dst_port == 0)) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 #endif
@@ -407,7 +401,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool re
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
 		FR_DEBUG_STRERROR_PRINTF("Discarding packet: Larger than RFC limitation of 4096 bytes");
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
@@ -419,15 +413,15 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool re
 	 */
 	if ((packet->data_len == 0) || !packet->data) {
 		FR_DEBUG_STRERROR_PRINTF("Empty packet: Socket is not ready");
-		fr_radius_free(&packet);
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!fr_radius_packet_ok(packet, require_ma, NULL)) {
-		fr_radius_free(&packet);
+	if (!fr_radius_packet_ok(packet, max_attributes, require_ma, NULL)) {
+		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
@@ -448,7 +442,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool re
 	packet->vps = NULL;
 
 #ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
+	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_packet_print_hex(packet);
 #endif
 
 	return packet;
@@ -494,7 +488,7 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	}
 
 #ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
+	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_packet_print_hex(packet);
 #endif
 
 #ifdef WITH_TCP
@@ -523,25 +517,9 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			&packet->dst_ipaddr, packet->dst_port);
 }
 
-static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
+
+void fr_radius_packet_print_hex(RADIUS_PACKET const *packet)
 {
-	int i;
-	static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
-
-	for (i = 0; i < attrlen; i++) {
-		if ((i > 0) && ((i & 0x0f) == 0x00))
-			fprintf(fr_log_fp, "%.*s", depth, tabs);
-		fprintf(fr_log_fp, "%02x ", ptr[i]);
-		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
-	}
-	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
-}
-
-
-void fr_radius_print_hex(RADIUS_PACKET const *packet)
-{
-	int i;
-
 	if (!packet->data || !fr_log_fp) return;
 
 	fprintf(fr_log_fp, "  Socket:\t%d\n", packet->sockfd);
@@ -565,67 +543,7 @@ void fr_radius_print_hex(RADIUS_PACKET const *packet)
 		fprintf(fr_log_fp, "    port:\t%u\n", packet->dst_port);
 	}
 
-	if (packet->data[0] < FR_MAX_PACKET_CODE) {
-		fprintf(fr_log_fp, "  Code:\t\t(%d) %s\n", packet->data[0], fr_packet_codes[packet->data[0]]);
-	} else {
-		fprintf(fr_log_fp, "  Code:\t\t%u\n", packet->data[0]);
-	}
-	fprintf(fr_log_fp, "  Id:\t\t%u\n", packet->data[1]);
-	fprintf(fr_log_fp, "  Length:\t%u\n", ((packet->data[2] << 8) |
-				   (packet->data[3])));
-	fprintf(fr_log_fp, "  Vector:\t");
-	for (i = 4; i < 20; i++) {
-		fprintf(fr_log_fp, "%02x", packet->data[i]);
-	}
-	fprintf(fr_log_fp, "\n");
+	fr_radius_print_hex(fr_log_fp, packet->data, packet->data_len);
 
-	if (packet->data_len > 20) {
-		int total;
-		uint8_t const *ptr;
-		fprintf(fr_log_fp, "  Data:");
-
-		total = packet->data_len - 20;
-		ptr = packet->data + 20;
-
-		while (total > 0) {
-			int attrlen;
-			unsigned int vendor = 0;
-
-			fprintf(fr_log_fp, "\t\t");
-			if (total < 2) { /* too short */
-				fprintf(fr_log_fp, "%02x\n", *ptr);
-				break;
-			}
-
-			if (ptr[1] > total) { /* too long */
-				for (i = 0; i < total; i++) {
-					fprintf(fr_log_fp, "%02x ", ptr[i]);
-				}
-				break;
-			}
-
-			fprintf(fr_log_fp, "%02x  %02x  ", ptr[0], ptr[1]);
-			attrlen = ptr[1] - 2;
-
-			if ((ptr[0] == FR_VENDOR_SPECIFIC) &&
-			    (attrlen > 4)) {
-				vendor = (ptr[3] << 16) | (ptr[4] << 8) | ptr[5];
-				fprintf(fr_log_fp, "%02x%02x%02x%02x (%u)  ",
-				       ptr[2], ptr[3], ptr[4], ptr[5], vendor);
-				attrlen -= 4;
-				ptr += 6;
-				total -= 6;
-
-			} else {
-				ptr += 2;
-				total -= 2;
-			}
-
-			print_hex_data(ptr, attrlen, 3);
-
-			ptr += attrlen;
-			total -= attrlen;
-		}
-	}
-	fflush(stdout);
+	fflush(fr_log_fp);
 }

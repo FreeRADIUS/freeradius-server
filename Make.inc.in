@@ -112,7 +112,12 @@ RADIR		= ${radacctdir}
 bm_shared_libs  = yes
 bm_static_libs  = yes
 
-LIBREADLINE	= @LIBREADLINE@
+LIBREADLINE		= @LIBREADLINE@
+LIBREADLINE_PREFIX	= @LIBREADLINE_PREFIX@
+ifneq "$(LIBREADLINE_PREFIX)" ""
+LIBREADLINE_CFLAGS	= -I$(LIBREADLINE_PREFIX)/include
+LIBREADLINE_LDFLAGS	= -L$(LIBREADLINE_PREFIX)/lib
+endif
 
 #
 #  Version to use for packaging and other Make related things
@@ -133,12 +138,15 @@ MODULES		= @MODULES@
 #  We don't use OpenSSL SHA1 by default because src/modules/rlm_eap/libeap/fips186prf.c
 #  needs access to the SHA internals.
 #
-ifeq "$(WITH_OPENSSL)" "yes"
-CFLAGS		+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5
-CPPFLAGS	:= "$(OPENSSL_CPPFLAGS) $(CPPFLAGS)"
+ifneq ($(OPENSSL_LIBS),)
+CFLAGS			+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5
+CPPFLAGS		:= $(OPENSSL_CPPFLAGS) $(CPPFLAGS)
+#
+#  Add optional dependency for libfreeradius-server if we're building with OpenSSL
+#
+LIBFREERADIUS_SERVER	:= libfreeradius-tls.a
 endif
-
-OPENSSL_LIBS	= @OPENSSL_LIBS@
+LIBFREERADIUS_SERVER	+= libfreeradius-server.a libfreeradius-unlang.a
 
 ifneq ($(WITH_OPENSSL_MD5),)
 WITH_OPENSSL_DIGEST = 1

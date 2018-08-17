@@ -17,10 +17,10 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Mike Machado <mike@innercite.com>
- * Copyright 2000  Alan DeKok <aland@ox.org>
- * Copyright 2001  Joerg Wendland <wendland@scan-plus.de>
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Mike Machado <mike@innercite.com>
+ * @copyright 2000  Alan DeKok <aland@ox.org>
+ * @copyright 2001  Joerg Wendland <wendland@scan-plus.de>
  */
 
 /*
@@ -31,8 +31,8 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_sql_db2 - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <sys/stat.h>
 
@@ -100,7 +100,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		 *	And probably synthesis the retarded connection string ourselves,
 		 *	probably via config file expansions:
 		 *
-		 *	Driver={IBM DB2 ODBC Driver};Database=testDb;Hostname=remoteHostName.com;UID=username;PWD=mypasswd;PO‌​RT=50000
+		 *	Driver={IBM DB2 ODBC Driver};Database=testDb;Hostname=remoteHostName.com;UID=username;PWD=mypasswd;PORT=50000
 		 */
 		row = SQLConnect(conn->dbc_handle,
 				    server, SQL_NTS,
@@ -270,7 +270,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 	if (errbuff[0] == '\0') return 0;
 
 	out[0].type = L_ERR;
-	out[0].msg = talloc_asprintf(ctx, "%s: %s", state, errbuff);
+	out[0].msg = talloc_typed_asprintf(ctx, "%s: %s", state, errbuff);
 
 	return 1;
 }

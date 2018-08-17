@@ -585,7 +585,7 @@ PACKAGE_STRING='freeradius $Id$'
 PACKAGE_BUGREPORT='http://bugs.freeradius.org'
 PACKAGE_URL='http://www.freeradius.org'
 
-ac_unique_file="src/main/radiusd.c"
+ac_unique_file="src/bin/radiusd.c"
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>
@@ -641,6 +641,7 @@ PCAP_LIBS
 OPENSSL_CPPFLAGS
 OPENSSL_LDFLAGS
 OPENSSL_LIBS
+LIBREADLINE_PREFIX
 LIBREADLINE
 KQUEUE_LDFLAGS
 KQUEUE_LIBS
@@ -741,6 +742,7 @@ enable_strict_dependencies
 enable_werror
 enable_llvm_address_sanitizer
 enable_openssl_version_check
+enable_reproducible_builds
 with_rlm_FOO_lib_dir
 with_rlm_FOO_include_dir
 with_modules
@@ -1422,6 +1424,8 @@ Optional Features:
   --disable-openssl-version-check
                           disable vulnerable OpenSSL version check
 
+  --enable-reproducible-builds
+                          ensure the build does not change each time
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2465,6 +2469,14 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
+
+
+
+
+
+
+
 #
 # SYNOPSIS
 #
@@ -2492,13 +2504,21 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
-RADIUSD_MAJOR_VERSION=`cat VERSION | cut -f1 -d.`
-RADIUSD_MINOR_VERSION=`cat VERSION | cut -f2 -d.`
-RADIUSD_INCRM_VERSION=`cat VERSION | cut -f3 -d. | sed 's/[\.-].*$//'`
+RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
+RADIUSD_VERSION_MINOR=`cat VERSION | cut -f2 -d.`
+RADIUSD_VERSION_INCRM=`cat VERSION | cut -f3 -d. | sed 's/[\.-].*$//'`
 
-RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_MAJOR_VERSION $RADIUSD_MINOR_VERSION $RADIUSD_INCRM_VERSION`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking build version" >&5
+$as_echo_n "checking build version... " >&6; }
+RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_VERSION_MAJOR $RADIUSD_VERSION_MINOR $RADIUSD_VERSION_INCRM`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION" >&5
+$as_echo "$RADIUSD_VERSION" >&6; }
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking build version string" >&5
+$as_echo_n "checking build version string... " >&6; }
 RADIUSD_VERSION_STRING=`cat VERSION`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_STRING" >&5
+$as_echo "$RADIUSD_VERSION_STRING" >&6; }
 
 
 
@@ -2513,6 +2533,9 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
+
+unset ASAN_OPTIONS
+unset LSAN_OPTIONS
 
 # Extract the first word of "git", so it can be a program name with args.
 set dummy git; ac_word=$2
@@ -2567,11 +2590,44 @@ fi
 
 
 if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
+  if test "x$RADIUSD_VERSION_RELEASE" = "x"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking build release" >&5
+$as_echo_n "checking build release... " >&6; }
+    RADIUSD_VERSION_RELEASE=`git describe | sed -e 's/^.*-\([0-9]*\)-g[0-9a-f]*/\1/'`
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_RELEASE" >&5
+$as_echo "$RADIUSD_VERSION_RELEASE" >&6; }
+  fi
+
+  if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
+$as_echo_n "checking build commit... " >&6; }
+    RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_COMMIT" >&5
+$as_echo "$RADIUSD_VERSION_COMMIT" >&6; }
+  fi
+
   if test "x$developer" != "xno"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: in git repository, enabling developer build implicitly, disable with --disable-developer" >&5
 $as_echo "$as_me: in git repository, enabling developer build implicitly, disable with --disable-developer" >&6;}
     developer="yes"
   fi
+
+fi
+
+if test "x$RADIUSD_VERSION_RELEASE" != "x"; then
+
+cat >>confdefs.h <<_ACEOF
+#define RADIUSD_VERSION_RELEASE ${RADIUSD_VERSION_RELEASE}
+_ACEOF
+
+fi
+
+if test "x$RADIUSD_VERSION_COMMIT" != "x"; then
+
+cat >>confdefs.h <<_ACEOF
+#define RADIUSD_VERSION_COMMIT ${RADIUSD_VERSION_COMMIT}
+_ACEOF
+
 fi
 
 if test "x$developer" = "xyes"; then
@@ -4520,6 +4576,55 @@ if test "x$GCC" = "xyes"; then
 fi
 
 
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wno-unknown-warning-option\"" >&5
+$as_echo_n "checking for the compiler flag \"-Wno-unknown-warning-option\"... " >&6; }
+if ${ax_cv_cc_no_unknown_warning_option_flag+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+  CFLAGS_SAVED=$CFLAGS
+  CFLAGS="-Werror -Wno-unknown-warning-option"
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+    /*
+     *  gcc will happily accept -Wno-unknown-warning-option
+     *  only emitting an error about it, if an error ocurrs in the source file.
+     */
+    #if defined(__GNUC__) && !defined(__clang__)
+        gcc sucks
+    #endif
+
+    return 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ax_cv_cc_no_unknown_warning_option_flag=yes
+else
+  ax_cv_cc_no_unknown_warning_option_flag=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+  CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_no_unknown_warning_option_flag" >&5
+$as_echo "$ax_cv_cc_no_unknown_warning_option_flag" >&6; }
+
+if test "x$ax_cv_cc_no_unknown_warning_option_flag" = "xyes"; then
+  CFLAGS="$CFLAGS -Wno-unknown-warning-option"
+fi
+
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Qunused-arguments\"" >&5
 $as_echo_n "checking for the compiler flag \"-Qunused-arguments\"... " >&6; }
 if ${ax_cv_cc_qunused_arguments_flag+:} false; then :
@@ -4570,6 +4675,54 @@ if test "x$ax_cv_cc_qunused_arguments_flag" = "xyes"; then
   CFLAGS="$CFLAGS -Qunused-arguments"
   LDFLAGS="$LDFLAGS -Qunused-arguments"
 fi
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wno-date-time\"" >&5
+$as_echo_n "checking for the compiler flag \"-Wno-date-time\"... " >&6; }
+if ${ax_cv_cc_no_date_time_flag+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Wno-date-time"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ax_cv_cc_no_date_time_flag="yes"
+else
+  ax_cv_cc_no_date_time_flag="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+    CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_no_date_time_flag" >&5
+$as_echo "$ax_cv_cc_no_date_time_flag" >&6; }
+
 
 # Check whether --enable-largefile was given.
 if test "${enable_largefile+set}" = set; then :
@@ -5272,6 +5425,22 @@ $as_echo "#define ENABLE_OPENSSL_VERSION_CHECK 1" >>confdefs.h
 	allow_vulnerable_openssl = no"
 else
   openssl_version_check_config=
+fi
+
+
+# Check whether --enable-reproducible-builds was given.
+if test "${enable_reproducible_builds+set}" = set; then :
+  enableval=$enable_reproducible_builds;  case "$enableval" in
+  yes)
+
+$as_echo "#define ENABLE_REPRODUCIBLE_BUILDS 1" >>confdefs.h
+
+    reproducible_builds=yes
+    ;;
+  *)
+    reproducible_builds=no
+  esac
+
 fi
 
 
@@ -6534,7 +6703,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_pthread_flag" >&5
 $as_echo "$ax_cv_cc_pthread_flag" >&6; }
 
-      if test "x$ax_cv_cc_pthread_flag" == 'xyes'; then
+      if test "x$ax_cv_cc_pthread_flag" = 'xyes'; then
         CFLAGS="$CFLAGS -pthread"
       fi
 
@@ -7989,10 +8158,6 @@ if test "x$ac_cv_lib_pcap_pcap_open_live" != "xyes"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: pcap library not found, silently disabling the RADIUS sniffer, and ARP listener.  Use --with-pcap-lib-dir=<path>." >&2;}
 else
-
-$as_echo "#define HAVE_LIBPCAP 1" >>confdefs.h
-
-
   for ac_func in \
     pcap_fopen_offline \
     pcap_dump_fopen \
@@ -9078,6 +9243,9 @@ done
 
   fi
 fi
+LIBREADLINE_PREFIX=$(brew --prefix readline 2>/dev/null)
+
+
 
 
 
@@ -10300,6 +10468,7 @@ fi
     for ac_func in \
       SSL_get_client_random \
       SSL_get_server_random \
+      EVP_sha3_512 \
 
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -10554,9 +10723,9 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_pcap_h" == "xyes"; then
+  if test "x$ac_cv_header_pcap_h" = "xyes"; then
 
-$as_echo "#define HAVE_PCAP_H 1" >>confdefs.h
+$as_echo "#define HAVE_LIBPCAP 1" >>confdefs.h
 
 
 
@@ -10797,7 +10966,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+  if test "x$ac_cv_header_collectd_client_h" = "xyes"; then
 
 $as_echo "#define HAVE_COLLECTDC_H 1" >>confdefs.h
 
@@ -11040,7 +11209,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+  if test "x$ac_cv_header_sys_capability_h" = "xyes"; then
 
 $as_echo "#define HAVE_CAPABILITY_H 1" >>confdefs.h
 
@@ -11281,7 +11450,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_gperftools_profiler_h" == "xyes"; then
+  if test "x$ac_cv_header_gperftools_profiler_h" = "xyes"; then
 
 $as_echo "#define HAVE_GPERFTOOLS_PROFILER_H 1" >>confdefs.h
 
@@ -11524,7 +11693,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_systemd_sdmdaemon_h" == "xyes"; then
+  if test "x$ac_cv_header_systemd_sdmdaemon_h" = "xyes"; then
 
 $as_echo "#define HAVE_SYSTEMD_SD_DAEMON_H 1" >>confdefs.h
 
@@ -12414,7 +12583,7 @@ else
 
 
     CFLAGS_SAVED=$CFLAGS
-    CFLAGS="$CFLAGS -Werror -Weverything -Wno-unused-macros -Wno-unreachable-code-return"
+    CFLAGS="$CFLAGS -Werror -Weverything -Wno-reserved-id-macro -Wno-unused-macros -Wno-unreachable-code-return"
 
     ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -12453,16 +12622,109 @@ fi
 $as_echo "$ax_cv_cc_weverything_flag" >&6; }
 
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devcflags="$devflags -W -Weverything -Wformat=2 -Wno-disabled-macro-expansion -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed -DWITH_VERIFY_PTR=1"
+    devcflags="$devflags \
+	-W \
+	-Weverything \
+	-Wformat=2 \
+	-DWITH_VERIFY_PTR=1 \
+	-Wno-disabled-macro-expansion \
+	-Wno-missing-field-initializers \
+	-Wno-date-time \
+    	-Wno-padded \
+    	-Wno-gnu-zero-variadic-macro-arguments \
+    	-Wno-shorten-64-to-32 \
+    	-Wno-sign-conversion \
+    	-Wno-conversion \
+    	-Wno-switch-enum \
+    	-Wno-gnu-statement-expression \
+    	-Wno-extended-offsetof \
+    	-Wno-cast-align \
+    	-Wno-documentation-unknown-command \
+    	-Wno-covered-switch-default \
+    	-Wno-packed \
+    	-Wno-reserved-id-macro \
+    	-Wno-format-pedantic"
   else
     if test "x$GCC" = "xyes"; then
-      devcflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-missing-field-initializers -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
+      devcflags="$devflags \
+      	-Wshadow \
+      	-Wpointer-arith \
+      	-Wcast-qual \
+      	-Wcast-align \
+      	-Wwrite-strings \
+      	-Wstrict-prototypes \
+      	-Wmissing-prototypes \
+      	-Wmissing-declarations \
+      	-Wnested-externs \
+      	-W \
+      	-Wredundant-decls \
+      	-Wundef \
+      	-Wformat-y2k \
+      	-Wno-missing-field-initializers \
+      	-Wno-format-extra-args \
+      	-Wno-format-zero-length \
+      	-Wno-cast-align \
+      	-Wformat-nonliteral \
+      	-Wformat-security \
+      	-Wformat=2 \
+      	-DWITH_VERIFY_PTR=1"
       INSTALLSTRIP=""
     fi
   fi
 
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wimplicit-fallthrough\"" >&5
+$as_echo_n "checking for the compiler flag \"-Wimplicit-fallthrough\"... " >&6; }
+if ${ax_cv_cc_wimplicit_fallthrough_flag+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Wimplicit-fallthrough"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ax_cv_cc_wimplicit_fallthrough_flag="yes"
+else
+  ax_cv_cc_wimplicit_fallthrough_flag="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+    CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_wimplicit_fallthrough_flag" >&5
+$as_echo "$ax_cv_cc_wimplicit_fallthrough_flag" >&6; }
+
+  if test "x$ax_cv_cc_wimplicit_fallthrough_flag" = "xyes"; then
+    devcflags="$devcflags -Wimplicit-fallthrough"
+  fi
+
         if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer"
+                        devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-fsanitize-address-use-after-scope\"" >&5
@@ -12515,8 +12777,24 @@ $as_echo "$ax_cv_cc_sanitize_address_use_after_scope" >&6; }
       devcflags="$devcflags -fsanitize-address-use-after-scope"
     fi
 
+    for ac_header in sanitizer/lsan_interface.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "sanitizer/lsan_interface.h" "ac_cv_header_sanitizer_lsan_interface_h" "$ac_includes_default"
+if test "x$ac_cv_header_sanitizer_lsan_interface_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_SANITIZER_LSAN_INTERFACE_H 1
+_ACEOF
+
+fi
+
+done
+
+
     devldflags="$devldflags -fsanitize=address"
   fi
+
+        devcflags="$(echo $devcflags | sed -e 's/\\t//g;s/  //g')"
+  devldflags="$(echo $devldflags | sed -e 's/\\t//g;s/  //g')"
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: Developer CFLAGS are \"$devcflags\"" >&5
 $as_echo "$as_me: Developer CFLAGS are \"$devcflags\"" >&6;}
@@ -12553,15 +12831,6 @@ $as_echo "no" >&6; }
 fi
 
 export EXPERIMENTAL
-
-if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
-  RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
-
-cat >>confdefs.h <<_ACEOF
-#define RADIUSD_VERSION_COMMIT ${RADIUSD_VERSION_COMMIT}
-_ACEOF
-
-fi
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for _Thread_local support in compiler" >&5
@@ -14762,7 +15031,11 @@ subdirs="$subdirs $mysubdirs"
 
 
 
-if test "x$werror" == "xyes"; then
+if test "x$ax_cv_cc_no_date_time_flag" = "xyes" && test "x$reproducible_builds" != "xyes"; then
+  CFLAGS="-Wno-date-time $CFLAGS"
+fi
+
+if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi
 
@@ -14782,7 +15055,7 @@ ac_config_commands="$ac_config_commands scripts-chmod"
 unset ac_cv_env_LIBS_set
 unset ac_cv_env_LIBS_value
 
-ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/radsniff.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
+ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/bin/radsniff.mk ./src/bin/checkrad ./src/bin/radlast ./src/bin/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -15486,10 +15759,10 @@ do
     "scripts-chmod") CONFIG_COMMANDS="$CONFIG_COMMANDS scripts-chmod" ;;
     "./Make.inc") CONFIG_FILES="$CONFIG_FILES ./Make.inc" ;;
     "./src/include/build-radpaths-h") CONFIG_FILES="$CONFIG_FILES ./src/include/build-radpaths-h" ;;
-    "./src/main/radsniff.mk") CONFIG_FILES="$CONFIG_FILES ./src/main/radsniff.mk" ;;
-    "./src/main/checkrad") CONFIG_FILES="$CONFIG_FILES ./src/main/checkrad" ;;
-    "./src/main/radlast") CONFIG_FILES="$CONFIG_FILES ./src/main/radlast" ;;
-    "./src/main/radtest") CONFIG_FILES="$CONFIG_FILES ./src/main/radtest" ;;
+    "./src/bin/radsniff.mk") CONFIG_FILES="$CONFIG_FILES ./src/bin/radsniff.mk" ;;
+    "./src/bin/checkrad") CONFIG_FILES="$CONFIG_FILES ./src/bin/checkrad" ;;
+    "./src/bin/radlast") CONFIG_FILES="$CONFIG_FILES ./src/bin/radlast" ;;
+    "./src/bin/radtest") CONFIG_FILES="$CONFIG_FILES ./src/bin/radtest" ;;
     "./scripts/rc.radiusd") CONFIG_FILES="$CONFIG_FILES ./scripts/rc.radiusd" ;;
     "./scripts/cron/radiusd.cron.daily") CONFIG_FILES="$CONFIG_FILES ./scripts/cron/radiusd.cron.daily" ;;
     "./scripts/cron/radiusd.cron.monthly") CONFIG_FILES="$CONFIG_FILES ./scripts/cron/radiusd.cron.monthly" ;;
@@ -16048,7 +16321,7 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
   case $ac_file$ac_mode in
     "stamp-h":C) echo timestamp > src/include/stamp-h ;;
     "build-radpaths-h":C) (cd ./src/include && /bin/sh ./build-radpaths-h) ;;
-    "main-chmod":C) (cd ./src/main && chmod +x checkrad radlast radtest) ;;
+    "main-chmod":C) (cd ./src/bin && chmod +x checkrad radlast radtest) ;;
     "scripts-chmod":C) (cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly cryptpasswd) ;;
 
   esac

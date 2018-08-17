@@ -1,0 +1,600 @@
+#pragma once
+/*
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+#ifdef WITH_TLS
+/**
+ * $Id$
+ *
+ * @file lib/tls/tls.h
+ * @brief Structures and prototypes for TLS wrappers
+ *
+ * @copyright 2010 Network RADIUS SARL <info@networkradius.com>
+ * @copyright 2016 The FreeRADIUS project
+ */
+RCSIDH(tls_h, "$Id$")
+
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/tls/tls_log.h>
+
+/*
+ *	This changed in OpenSSL 1.1.0 (they allow deprecated interfaces)
+ *	But because we're always ahead of the curve we don't need them.
+ */
+#ifndef OPENSSL_NO_DEPRECATED
+#  define OPENSSL_NO_DEPRECATED
+#endif
+
+/*
+ *	For RH 9, which apparently needs this.
+ */
+#ifndef OPENSSL_NO_KRB5
+#  define OPENSSL_NO_KRB5
+#endif
+
+#ifdef HAVE_OPENSSL_ENGINE_H
+#  include <openssl/engine.h>
+#endif
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+/*
+ *	A single TLS record may be up to 16384 octets in length, but a
+ *	TLS message may span multiple TLS records, and a TLS
+ *	certificate message may in principle be as long as 16MB.
+ *
+ *	However, note that in order to protect against reassembly
+ *	lockup and denial of service attacks, it may be desirable for
+ *	an implementation to set a maximum size for one such group of
+ *	TLS messages.
+ *
+ *	The TLS Message Length field is four octets, and provides the
+ *	total length of the TLS message or set of messages that is
+ *	being fragmented; this simplifies buffer allocation.
+ */
+#define FR_TLS_MAX_RECORD_SIZE 16384
+
+#define FR_TLS_EX_INDEX_EAP_SESSION 	(10)
+#define FR_TLS_EX_INDEX_CONF		(11)
+#define FR_TLS_EX_INDEX_REQUEST		(12)
+#define FR_TLS_EX_INDEX_IDENTITY	(13)
+#define FR_TLS_EX_INDEX_STORE		(14)
+#define FR_TLS_EX_INDEX_TLS_SESSION	(15)
+#define FR_TLS_EX_INDEX_TALLOC		(16)
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+static inline HMAC_CTX *HMAC_CTX_new(void)
+{
+	HMAC_CTX *ctx;
+	ctx = talloc(NULL, HMAC_CTX);
+	HMAC_CTX_init(ctx);
+	return ctx;
+}
+#  define HMAC_CTX_free(_ctx) \
+do {\
+	if (_ctx) {\
+		memset(_ctx, 0, sizeof(*_ctx));\
+		talloc_free(_ctx);\
+	}\
+} while (0)
+#endif
+
+#if OPENSSL_VERSION_NUMBER < 0x10001000L
+#  define ssl_session ssl->session
+#else
+#  define ssl_session session
+#endif
+
+/*
+ *	If we linked with OpenSSL, the application
+ *	must remove the thread's error queue before
+ *	exiting to prevent memory leaks.
+ */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#  define FR_TLS_REMOVE_THREAD_STATE()
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
+#  define FR_TLS_REMOVE_THREAD_STATE() ERR_remove_thread_state(NULL);
+#else
+#  define FR_TLS_REMOVE_THREAD_STATE() ERR_remove_state(0);
+#endif
+
+/*
+ * FIXME: Dynamic allocation of buffer to overcome FR_TLS_MAX_RECORD_SIZE overflows.
+ * 	or configure TLS not to exceed FR_TLS_MAX_RECORD_SIZE.
+ */
+typedef struct _tls_record_t {
+	uint8_t data[FR_TLS_MAX_RECORD_SIZE];
+	size_t  used;
+} tls_record_t;
+
+typedef struct _tls_info_t {
+	int		origin;
+	int		content_type;
+	uint8_t		handshake_type;
+	uint8_t		alert_level;
+	uint8_t		alert_description;
+	bool		initialized;
+
+	char 		info_description[256];
+	size_t		record_len;
+	int		version;
+} tls_info_t;
+
+typedef struct {
+	CONF_SECTION	*load;				//!< Load something from the cache (or NULL if disabled).
+	CONF_SECTION	*store;				//!< Store something in the cache (or NULL if disabled).
+	CONF_SECTION	*clear;				//!< Clear something from the cache (or NULL if disabled).
+} fr_tls_cache_t;
+
+/** Tracks the state of a TLS session
+ *
+ * Currently used for RADSEC and EAP-TLS + dependents (EAP-TTLS, EAP-PEAP etc...).
+ *
+ * In the case of EAP-TLS + dependents a #eap_tls_session_t struct is used to track
+ * the transfer of TLS records.
+ */
+typedef struct _tls_session_t {
+	SSL_CTX		*ctx;				//!< TLS configuration context.
+	SSL 		*ssl;				//!< This SSL session.
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+	SSL_SESSION	*session;			//!< Session resumption data.
+#endif
+	tls_info_t	info;				//!< Information about the state of the TLS session.
+
+	BIO 		*into_ssl;			//!< Basic I/O input to OpenSSL.
+	BIO 		*from_ssl;			//!< Basic I/O output from OpenSSL.
+	tls_record_t 	clean_in;			//!< Cleartext data that needs to be encrypted.
+	tls_record_t 	clean_out;			//!< Cleartext data that's been encrypted.
+	tls_record_t 	dirty_in;			//!< Encrypted data to decrypt.
+	tls_record_t 	dirty_out;			//!< Encrypted data that's been decrypted.
+
+	void 		(*record_init)(tls_record_t *buf);
+	void 		(*record_close)(tls_record_t *buf);
+	unsigned int 	(*record_from_buff)(tls_record_t *buf, void const *ptr, unsigned int size);
+	unsigned int 	(*record_to_buff)(tls_record_t *buf, void *ptr, unsigned int size);
+
+	bool		invalid;			//!< Whether heartbleed attack was detected.
+	size_t 		mtu;				//!< Maximum record fragment size.
+
+	char const	*prf_label;			//!< Input to the TLS pseudo random function.
+							//!< Usually set to a well known string describing
+							//!< what the key being generated will be used for.
+
+	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
+
+	uint8_t		*session_id;			//!< Identifier for cached session.
+	uint8_t		*session_blob;			//!< Cached session data.
+
+	void		*opaque;			//!< Used to store module specific data.
+
+	struct {
+		unsigned int	count;
+		unsigned int	level;
+		unsigned int	description;
+	} handshake_alert;
+} tls_session_t;
+
+#ifdef HAVE_OPENSSL_OCSP_H
+/** OCSP Configuration
+ *
+ */
+typedef struct {
+	bool		enable;				//!< Enable OCSP checks
+	char const	*cache_server;			//!< Virtual server to restore retrieved OCSP status.
+	bool		override_url;			//!< Always use the configured OCSP URL even if the
+							//!< certificate contains one.
+	char const	*url;
+	bool		use_nonce;
+	X509_STORE	*store;
+	uint32_t	timeout;
+	bool		softfail;
+
+
+	fr_tls_cache_t	cache;				//!< Cached cache section pointers.  Means we don't have
+							///< to look them up at runtime.
+} fr_tls_ocsp_conf_t;
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+/** Different chain building modes
+ *
+ */
+typedef enum {
+	FR_TLS_CHAIN_VERIFY_INVALID = 0,
+
+	FR_TLS_CHAIN_VERIFY_HARD,			//!< Fail if we can't build a complete chain from
+							///< the leaf cert back to a root.
+	FR_TLS_CHAIN_VERIFY_SOFT,			//!< Warn if we can't build a complete chain from
+							///< the leaf cert back to a root.
+	FR_TLS_CHAIN_VERIFY_NONE			//!< Don't verify/build the chain.
+} fr_tls_chain_verify_mode_t;
+#endif
+
+/** Structure representing a certificate chain configuration
+ *
+ */
+typedef struct {
+	int		file_format;			//!< Whether the file is expected to be PEM encoded.
+							///< This allows us to load multiple chained PEM certificates
+							///< from a single file.
+
+	char const	*certificate_file;		//!< Path to certificate.
+
+	char const	*password;			//!< Password to decrypt the certificate(s).
+	char const	*private_key_file;		//!< Path to certificate.
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	char const	**ca_files;			//!< Extra certificates to load.
+	fr_tls_chain_verify_mode_t	verify_mode;	//!< How hard we try to build up a complete certificate
+							///< chain.
+#endif
+	bool		include_root_ca;		//!< Include the root ca in the chain we built.
+} fr_tls_chain_conf_t;
+
+/* configured values goes right here */
+struct fr_tls_conf_t {
+	SSL_CTX		**ctx;				//!< We use an array of contexts to reduce contention.
+							//!< Each context may only be used by a single thread
+							//!< concurrently.
+	uint32_t	ctx_count;			//!< Number of contexts we created.
+	uint32_t	ctx_next;			//!< Next context to use.
+
+	CONF_SECTION	*cs;
+
+	fr_tls_chain_conf_t	**chains;		//!< One or more certificates
+
+	char const	*random_file;			//!< If set, we read 10K of data (or the complete file)
+							//!< and use it to seed OpenSSL's PRNG.
+	char const	*ca_path;
+	char const	*ca_file;
+
+	char const	*dh_file;			//!< File to load DH Parameters from.
+
+	uint32_t	verify_depth;			//!< Maximum number of certificates we can traverse
+							//!< when attempting to reach the presented certificate
+							//!< from our Root CA.
+	bool		auto_chain;			//!< Allow OpenSSL to build certificate chains
+							//!< from all certificates it has available.
+							//!< If false, the complete chain must be provided in
+							//!< certificate file.
+	bool		disable_single_dh_use;
+
+	float		tls_max_version;		//!< Maximum TLS version allowed.
+	float		tls_min_version;		//!< Minimum TLS version allowed.
+
+	uint32_t	fragment_size;			//!< Maximum record fragment, or record size.
+	bool		check_crl;			//!< Check certificate revocation lists.
+	bool		allow_expired_crl;		//!< Don't error out if CRL is expired.
+	char const	*check_cert_cn;			//!< Verify cert CN matches the expansion of this string.
+
+	char const	*cipher_list;			//!< Acceptable ciphers.
+	bool		cipher_server_preference;	//!< use server preferences for cipher selection
+#ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
+	bool		allow_renegotiation;		//!< Whether or not to allow cipher renegotiation.
+#endif
+	char const	*check_cert_issuer;		//!< Verify cert issuer matches the expansion of this string.
+
+	vp_tmpl_t	*session_id_name;		//!< Context ID to allow multiple sessions stores to be defined.
+	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
+
+	char const	*session_cache_server;		//!< Virtual server to use as an alternative to the
+							//!< in-memory cache.
+	uint32_t	session_cache_lifetime;		//!< The maximum period a session can be resumed after.
+
+	bool		session_cache_verify;		//!< Revalidate any sessions read in from the cache.
+
+	bool		session_cache_require_extms;	//!< Only allow session resumption if the client/server
+							//!< supports the extended master session key.  This protects
+							//!< against the triple handshake attack.
+
+	bool		session_cache_require_pfs;	//!< Only allow session resumption if a cipher suite that
+							//!< supports perfect forward secrecy.
+
+	fr_tls_cache_t	session_cache;		//!< Cached cache section pointers.  Means we don't have
+							///< to look them up at runtime.
+
+	char const	*verify_tmp_dir;
+	char const	*verify_client_cert_cmd;
+	bool		require_client_cert;
+
+#ifdef HAVE_OPENSSL_OCSP_H
+	fr_tls_ocsp_conf_t	ocsp;			//!< Configuration for validating client certificates
+							//!< with ocsp.
+	fr_tls_ocsp_conf_t	staple;			//!< Configuration for validating server certificates
+							//!< with ocsp.
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#  ifndef OPENSSL_NO_ECDH
+	char const	*ecdh_curve;
+#  endif
+#endif
+
+#ifdef PSK_MAX_IDENTITY_LEN
+	char const	*psk_identity;
+	char const	*psk_password;
+	char const	*psk_query;
+#endif
+};
+
+typedef struct fr_tls_conf_t fr_tls_conf_t;
+
+/*
+ *	Following enums from rfc2246
+ *
+ *	Hmm... since we dpeend on OpenSSL, it would be smarter to
+ *	use the OpenSSL names for these.
+ */
+enum ContentType {
+	change_cipher_spec = 20,
+	alert = 21,
+	handshake = 22,
+	application_data = 23
+};
+
+enum AlertLevel {
+	warning = 1,
+	fatal = 2
+};
+
+enum AlertDescription {
+	close_notify = 0,
+	unexpected_message = 10,
+	bad_record_mac = 20,
+	decryption_failed = 21,
+	record_overflow = 22,
+	decompression_failure = 30,
+	handshake_failure = 40,
+	bad_certificate = 42,
+	unsupported_certificate = 43,
+	certificate_revoked = 44,
+	certificate_expired = 45,
+	certificate_unknown = 46,
+	illegal_parameter = 47,
+	unknown_ca = 48,
+	access_denied = 49,
+	decode_error = 50,
+	decrypt_error = 51,
+	export_restriction = 60,
+	protocol_version = 70,
+	insufficient_security = 71,
+	internal_error = 80,
+	user_canceled = 90,
+	no_renegotiation = 100
+};
+
+enum HandshakeType {
+	hello_request = 0,
+	client_hello = 1,
+	server_hello = 2,
+	certificate = 11,
+	server_key_exchange  = 12,
+	certificate_request = 13,
+	server_hello_done = 14,
+	certificate_verify = 15,
+	client_key_exchange = 16,
+	handshake_finished = 20
+};
+
+extern int fr_tls_ex_index_vps;
+extern int fr_tls_max_threads;
+
+/** Drain log messages from an OpenSSL bio and print them using the specified logging macro
+ *
+ * @param _macro Logging macro e.g. RDEBUG.
+ * @param _prefix Prefix, should be "" if not used.
+ * @param _queue OpenSSL BIO.
+ */
+#define SSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue) \
+do {\
+	char const *_p = NULL, *_q, *_end; \
+	size_t _len; \
+	_len = BIO_get_mem_data(_queue, &_p); \
+	_end = _p + _len; \
+	if (!_p) break; \
+	while ((_q = memchr(_p, '\n', _end - _p))) { \
+		_macro(_prefix "%.*s", (int) (_q - _p), _p); \
+		_p = _q + 1; \
+	} \
+	if (_p != _end) _macro(_prefix "%.*s", (int) (_end - _p), _p); \
+	(void) BIO_reset(_queue); \
+} while (0)
+
+/** Drain errors from an OpenSSL bio and print print them using the specified logging macro
+ *
+ * @param _macro Logging macro e.g. RDEBUG.
+ * @param _prefix Prefix, should be "" if not used.
+ * @param _queue OpenSSL BIO.
+ */
+#define SSL_DRAIN_ERROR_QUEUE(_macro, _prefix, _queue) \
+do {\
+	ERR_print_errors(_queue); \
+	SSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue); \
+} while (0)
+
+extern CONF_PARSER tls_server_config[];
+extern CONF_PARSER tls_client_config[];
+
+/** Holds the temporary context
+ *
+ */
+extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
+
+/** Bind any memory allocated by an OpenSSL function to the object it created
+ *
+ * This is a horrible workaround for OpenSSL memory leaks.  But should always
+ * work, unless OpenSSL allocates memory for global structures whilst allocating
+ * non-global ones.
+ *
+ * It is technically threadsafe as ssl_talloc_ctx is thread specific.
+ *
+ * This should always work so long as OpenSSL does not become talloc aware and
+ * so will free the allocated object last, after doing manual cleanups.
+ *
+ @code{.c}
+   SSL_BIND_MEMORY(ctx = SSL_CTX_new(SSLv23_method()));
+   if (!ctx) ..error
+ @endcode
+ * @param _expr		The call to the OpenSSL function and storage of the
+ *			result.
+ */
+#define SSL_BIND_OBJ_MEMORY(_expr) \
+do { \
+	void *_nmem; \
+	MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_expr))); \
+	_nmem = (_expr);\
+	if (!_nmem) { \
+		TALLOC_FREE(ssl_talloc_ctx); \
+	} else { \
+		talloc_steal(_nmem, ssl_talloc_ctx); \
+	} \
+	ssl_talloc_ctx = NULL; \
+} while (0)
+
+/** Bind all memory allocated from this point until the next instance of SSL_BIND_MEMORY_END to _obj
+ *
+ * @param[in] _obj	to bind memory to.
+ */
+#define SSL_BIND_MEMORY_BEGIN(_obj) \
+do { \
+	if (fr_cond_assert(!ssl_talloc_ctx && (_obj))) { \
+		MEM(ssl_talloc_ctx = talloc_init(STRINGIFY(_obj))); \
+		talloc_steal(_obj, ssl_talloc_ctx); \
+	} \
+} while(0)
+
+#define SSL_BIND_MEMORY_END ssl_talloc_ctx = NULL
+
+/*
+ *	tls/cache.c
+ */
+int		tls_cache_process(REQUEST *request, CONF_SECTION *action);
+
+int		tls_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
+
+void		tls_cache_deny(tls_session_t *tls_session);
+
+int		tls_cache_write(REQUEST *request, tls_session_t *tls_session);
+
+int		tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
+
+void		tls_cache_init(SSL_CTX *ctx, bool enabled, uint32_t lifetime);
+
+/*
+ *	tls/conf.c
+ */
+fr_tls_conf_t	*tls_conf_alloc(TALLOC_CTX *ctx);
+
+fr_tls_conf_t	*tls_conf_parse_server(CONF_SECTION *cs);
+
+fr_tls_conf_t	*tls_conf_parse_client(CONF_SECTION *cs);
+
+/*
+ *	tls/ctx.c
+ */
+SSL_CTX		*tls_ctx_alloc(fr_tls_conf_t const *conf, bool client);
+
+/*
+ *	tls/base.c
+ */
+
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
+int		tls_version_check(char const *acknowledged);
+#endif
+
+int		tls_init(void);
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+void		tls_free(void);
+#else
+#define		tls_free()
+#endif
+
+/*
+ *	tls/log.c
+ */
+int		tls_log_error(REQUEST *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
+
+int		tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char const *msg, ...)
+				 CC_HINT(format (printf, 4, 5));
+
+/*
+ *	tls/ocsp.c
+ */
+int		tls_ocsp_staple_cb(SSL *ssl, void *data);
+
+int		tls_ocsp_check(REQUEST *request, SSL *ssl,
+			       X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
+			       fr_tls_ocsp_conf_t *conf, bool staple_response);
+
+int		tls_ocsp_state_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
+
+int		tls_ocsp_staple_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
+
+/*
+ *	tls/session.c
+ */
+int 		tls_session_password_cb(char *buf, int num, int rwflag, void *userdata);
+
+unsigned int	tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
+					  char *identity, unsigned int max_identity_len,
+					  unsigned char *psk, unsigned int max_psk_len);
+
+unsigned int	tls_session_psk_server_cb(SSL *ssl, const char *identity,
+					  unsigned char *psk, unsigned int max_psk_len);
+
+void 		tls_session_info_cb(SSL const *s, int where, int ret);
+
+void 		tls_session_msg_cb(int write_p, int msg_version, int content_type,
+				   void const *buf, size_t len, SSL *ssl, void *arg);
+
+int		tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
+				     	         tls_session_t *session, X509 *cert, int depth);
+
+int		tls_session_recv(REQUEST *request, tls_session_t *tls_session);
+
+int 		tls_session_send(REQUEST *request, tls_session_t *tls_session);
+
+int 		tls_session_handshake(REQUEST *request, tls_session_t *tls_session);
+
+int 		tls_session_handshake_alert(REQUEST *request, tls_session_t *tls_session, uint8_t level, uint8_t description);
+
+tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf);
+
+tls_session_t	*tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQUEST *request, bool client_cert);
+
+/*
+ *	tls/validate.c
+ */
+int		tls_validate_cert_cb(int ok, X509_STORE_CTX *ctx);
+
+int		tls_validate_client_cert_chain(SSL *ssl);
+
+/*
+ *	tls/utils.c
+ */
+char const	*tls_utils_x509_pkey_type(X509 *cert);
+
+int		tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl);
+
+int		tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1);
+#ifdef __cplusplus
+}
+#endif
+#endif /* WITH_TLS */

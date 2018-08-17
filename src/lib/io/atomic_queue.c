@@ -34,7 +34,7 @@ RCSID("$Id$")
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
 #else
-#  include <freeradius-devel/stdatomic.h>
+#  include <freeradius-devel/util/stdatomic.h>
 #endif
 
 #include <freeradius-devel/io/atomic_queue.h>
@@ -279,7 +279,7 @@ void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 
 		entry = &aq->entry[i];
 
-		fprintf(fp, "\t[%d] = { %p, %zd }",
+		fprintf(fp, "\t[%d] = { %p, %" PRId64 " }",
 			i, entry->data, load(entry->seq));
 #if 0
 		if (entry->data) {

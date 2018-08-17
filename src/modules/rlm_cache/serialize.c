@@ -46,7 +46,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 
 	char		*to_store = NULL;
 
-	to_store = talloc_asprintf(ctx, "&Cache-Expires = %" PRIu64 "\n&Cache-Created = %" PRIu64 "\n",
+	to_store = talloc_typed_asprintf(ctx, "&Cache-Expires = %" PRIu64 "\n&Cache-Created = %" PRIu64 "\n",
 				   (uint64_t)c->expires, (uint64_t)c->created);
 	if (!to_store) return -1;
 
@@ -91,15 +91,16 @@ finish:
 
 /** Converts a serialized cache entry back into a structure
  *
- * @param c Cache entry to populate (should already be allocated)
- * @param in String representation of cache entry.
- * @param inlen Length of string. May be < 0 in which case strlen will be
- *	used to calculate the length of the string.
+ * @param[in] c		Cache entry to populate (should already be allocated)
+ * @param[in] dict	to use for unqualified attributes.
+ * @param[in] in	String representation of cache entry.
+ * @param[in] inlen	Length of string. May be < 0 in which case strlen will be
+ *			used to calculate the length of the string.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
+int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssize_t inlen)
 {
 	vp_map_t	**last = &c->maps;
 	char		*p, *q;
@@ -110,14 +111,15 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 
 	while (((size_t)(p - in)) < (size_t)inlen) {
 		vp_map_t	*map = NULL;
+		vp_tmpl_rules_t parse_rules = {
+					.dict_def = dict
+				};
 
 		q = strchr(p, '\n');
 		if (!q) break;	/* List should also be terminated with a \n */
 		*q = '\0';
 
-		if (map_afrom_attr_str(c, &map, p,
-				       REQUEST_CURRENT, PAIR_LIST_REQUEST,
-				       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		if (map_afrom_attr_str(c, &map, p, &parse_rules, &parse_rules) < 0) {
 			fr_strerror_printf("Failed parsing pair: %s", p);
 		error:
 			talloc_free(map);
@@ -147,7 +149,7 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		 *	Pull out the special attributes, and set the
 		 *	relevant cache entry fields.
 		 */
-		if (map->lhs->tmpl_da->vendor == 0) switch (map->lhs->tmpl_da->attr) {
+		if (fr_dict_attr_is_top_level(map->lhs->tmpl_da)) switch (map->lhs->tmpl_da->attr) {
 		case FR_CACHE_CREATED:
 			c->created = map->rhs->tmpl_value.vb_date;
 			talloc_free(map);

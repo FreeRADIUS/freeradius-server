@@ -15,8 +15,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2012  The FreeRADIUS server project
- * Copyright 2012  Alan DeKok <aland@networkradius.com>
+ * @copyright 2012  The FreeRADIUS server project
+ * @copyright 2012  Alan DeKok <aland@networkradius.com>
  */
 
 #define LOG_PREFIX "rlm_securid - "
@@ -113,6 +113,8 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 		session->session_id = inst->last_session_id;
 		RDEBUG2("Creating a new session with id=%d\n",session->session_id);
 	}
+
+	memset(session->state, 0, sizeof(session->state));
 	snprintf(session->state,sizeof(session->state)-1,"FRR-CH %d|%d",session->session_id,session->trips+1);
 	RDEBUG2("Inserting session id=%d identity='%s' state='%s' to the session list",
 			 session->session_id,SAFE_STR(session->identity),session->state);
@@ -122,9 +124,8 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = pair_make_reply("State", session->state, T_OP_EQ);
-	if (!state) return -1;
-	state->vp_length = SECURID_STATE_LEN;
+	MEM(pair_update_reply(&state, attr_state) >= 0);
+	fr_pair_value_memcpy(state, session->state, sizeof(session->state));
 
 	status = rbtree_insert(inst->session_tree, session);
 	if (status) {
@@ -182,7 +183,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	/*
 	 *	We key the sessions off of the 'state' attribute
 	 */
-	state = fr_pair_find_by_num(request->packet->vps, 0, FR_STATE, TAG_ANY);
+	state = fr_pair_find_by_da(request->packet->vps, attr_state, TAG_ANY);
 	if (!state) {
 		return NULL;
 	}

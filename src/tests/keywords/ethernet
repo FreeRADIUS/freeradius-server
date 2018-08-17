@@ -1,0 +1,35 @@
+update request {
+	Tmp-Ethernet-0 := "00:11:22:33:44:54"
+	Tmp-Ethernet-0 += "00:11:22:33:44:55"
+	Tmp-Octets-0 := 0x001122334456
+}
+
+if (&Tmp-Ethernet-0[0] != 00:11:22:33:44:54) {
+	test_fail
+}
+
+if (&Tmp-Ethernet-0[1] != 00:11:22:33:44:55) {
+	test_fail
+}
+
+update request {
+	&Tmp-Ethernet-0 += &Tmp-Octets-0[0]
+}
+
+if (&Tmp-Ethernet-0[2] != 00:11:22:33:44:56) {
+	test_fail
+}
+
+# NULL assignment
+update request {
+	&Tmp-Ethernet-0 += "%{Calling-Station-ID[42]}"
+}
+
+# Null xlat expansion results in zero length string, which with current behaviour
+# results in all zeros ethernet address.
+if (&Tmp-Ethernet-0[3] != 00:00:00:00:00:00) {
+	test_fail
+}
+
+
+success

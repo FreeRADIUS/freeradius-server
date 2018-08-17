@@ -7,8 +7,9 @@
 #
 #  As posted to the list by Swaran Sethi <ssethi@kinetowireless.com>
 #
-#  For documentation on Kineto Wireless RADIUS attributes, see:
-#                               http://www.kinetowireless.com/
+# Kineto was acquired by Taqua in 2014.
+# Sonus acquired Taqua in 2016.
+# https://support.sonus.net/
 #
 
 VENDOR		Kineto				16445   format=2,1

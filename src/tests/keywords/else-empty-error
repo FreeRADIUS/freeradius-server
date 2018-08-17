@@ -3,9 +3,7 @@
 #
 
 if (&User-Name == 'bob') {
-	update reply {
-		Filter-Id := "filter"
-	}
+	ok
 }
 else {	# ERROR
 	# empty is not allowed

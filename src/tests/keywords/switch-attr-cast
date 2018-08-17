@@ -20,9 +20,7 @@ switch &Service-Type {
        #  and then that compared to the input Service-Type
        #
        case &Filter-Id {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
        }
 
        case {

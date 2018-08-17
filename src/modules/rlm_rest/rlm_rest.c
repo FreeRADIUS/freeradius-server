@@ -19,14 +19,15 @@
  * @file rlm_rest.c
  * @brief Integrate FreeRADIUS with RESTfull APIs
  *
- * @copyright 2012-2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2012-2018 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/token.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include <ctype.h>
 #include "rest.h"
@@ -94,6 +95,26 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_rest_dict[];
+fr_dict_autoload_t rlm_rest_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_rest_http_body;
+fr_dict_attr_t const *attr_rest_http_header;
+fr_dict_attr_t const *attr_rest_http_status_code;
+
+extern fr_dict_attr_autoload_t rlm_rest_dict_attr[];
+fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
+	{ .out = &attr_rest_http_body, .name = "REST-HTTP-Body", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_rest_http_header, .name = "REST-HTTP-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_rest_http_status_code, .name = "REST-HTTP-Status-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 /** Update the status attribute
  *
  * @param[in] request	The current request.
@@ -104,28 +125,20 @@ static const CONF_PARSER module_config[] = {
  */
 static int rlm_rest_status_update(REQUEST *request, void *handle)
 {
-	TALLOC_CTX	*ctx;
-	VALUE_PAIR	**list;
 	int		code;
-	fr_value_box_t	value;
+	VALUE_PAIR	*vp;
 
 	code = rest_get_handle_code(handle);
-
-	RINDENT();
-	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
-	REXDENT();
-
-	value.vb_uint32 = code;
-
-	/*
-	 *	Find the reply list, and appropriate context in the
-	 *	current request.
-	 */
-	RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-	if (!list || (fr_pair_update_by_num(ctx, list, 0, FR_REST_HTTP_STATUS_CODE, TAG_ANY, &value) < 0)) {
-		REDEBUG("Failed updating &REST-HTTP-Status-Code");
+	if (!code) {
+		pair_delete_request(attr_rest_http_status_code);
+		RDEBUG2("&REST-HTTP-Status-Code !* ANY");
 		return -1;
 	}
+
+	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
+
+	MEM(pair_update_request(&vp, attr_rest_http_status_code) >= 0);
+	vp->vp_uint32 = code;
 
 	return 0;
 }
@@ -168,35 +181,119 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *threa
 	return 0;
 }
 
-#if 0
+static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
+				      REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
+				      UNUSED fr_value_box_t **in, void *rctx)
+{
+	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
+	rlm_rest_t const		*mod_inst = xti->inst;
+	rlm_rest_thread_t		*t = xti->t;
+
+	rlm_rest_xlat_rctx_t		*our_rctx = talloc_get_type_abort(rctx, rlm_rest_xlat_rctx_t);
+	int				hcode;
+	ssize_t				len;
+	char const			*body;
+	xlat_action_t			xa = XLAT_ACTION_DONE;
+
+	rlm_rest_handle_t		*handle = talloc_get_type_abort(our_rctx->handle, rlm_rest_handle_t);
+	rlm_rest_section_t		*section = &our_rctx->section;
+
+	if (section->tls_extract_cert_attrs) rest_response_certinfo(mod_inst, section, request, handle);
+
+	if (rlm_rest_status_update(request, handle) < 0) {
+		xa = XLAT_ACTION_FAIL;
+		goto finish;
+	}
+
+	hcode = rest_get_handle_code(handle);
+	switch (hcode) {
+	case 404:
+	case 410:
+	case 403:
+	case 401:
+	{
+		xa = XLAT_ACTION_FAIL;
+error:
+		rest_response_error(request, handle);
+		goto finish;
+	}
+	case 204:
+		goto finish;
+
+	default:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		if ((hcode >= 200) && (hcode < 300)) {
+			break;
+		} else if (hcode < 500) {
+			xa = XLAT_ACTION_FAIL;
+			goto error;
+		} else {
+			xa = XLAT_ACTION_FAIL;
+			goto error;
+		}
+	}
+
+	len = rest_get_handle_data(&body, handle);
+	if (len > 0) {
+		fr_value_box_t *vb;
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
+		fr_cursor_insert(out, vb);
+	}
+
+finish:
+	rest_request_cleanup(mod_inst, handle);
+
+	fr_pool_connection_release(t->pool, request, handle);
+
+	talloc_free(our_rctx);
+
+	return xa;
+}
+
 /*
  *	Simple xlat to read text data from a URL
  */
-static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+			       REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
+			       fr_value_box_t **in)
 {
-	rlm_rest_t const	*inst = mod_inst;
-	rlm_rest_handle_t	*handle = NULL;
-	ssize_t			len;
-	int			ret;
-	char			*uri = NULL;
-	char const		*p = fmt, *q;
-	http_method_t		method;
-	void			*thread = NULL;
+	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
+	rlm_rest_t const		*mod_inst = xti->inst;
+	rlm_rest_thread_t		*t = xti->t;
 
-	rad_assert(*out == NULL);
+	rlm_rest_handle_t		*handle = NULL;
+	ssize_t				len;
+	int				ret;
+	char				*uri = NULL;
+	char const			*p = NULL, *q;
+	http_method_t			method;
 
 	/* There are no configurable parameters other than the URI */
-	rlm_rest_section_t	*section;
+	rlm_rest_xlat_rctx_t		*rctx;
+	rlm_rest_section_t		*section;
+
+	if (!*in) {
+		REDEBUG("Got empty URL string");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		REDEBUG("Failed concatenating arguments into URL string");
+		return XLAT_ACTION_FAIL;
+	}
+	p = (*in)->vb_strvalue;
+
+	MEM(rctx = talloc(request, rlm_rest_xlat_rctx_t));
+	section = &rctx->section;
 
 	/*
 	 *	Section gets modified, so we need our own copy.
 	 */
-	MEM(section = talloc(request, rlm_rest_section_t));
-	memcpy(section, &inst->xlat, sizeof(*section));
-
-	rad_assert(fmt);
+	memcpy(&rctx->section, &mod_inst->xlat, sizeof(*section));
 
 	RDEBUG("Expanding URI components");
 
@@ -219,7 +316,7 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 		 */
 		if ((*q == ' ') && (q != p)) {
 			section->method = HTTP_METHOD_CUSTOM;
-			MEM(section->method_str = talloc_bstrndup(section, p, q - p));
+			MEM(section->method_str = talloc_bstrndup(rctx, p, q - p));
 			p = q;
 		} else {
 			section->method = HTTP_METHOD_GET;
@@ -231,11 +328,8 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 */
 	while (isspace(*p) && p++);
 
-#if 0
-	handle = fr_pool_connection_get(t->pool, request);
-
-	if (!handle) return -1;
-#endif
+	handle = rctx->handle = fr_pool_connection_get(t->pool, request);
+	if (!handle) return XLAT_ACTION_FAIL;
 
 	/*
 	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
@@ -245,9 +339,10 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	if (len <= 0) {
 	error:
 		rest_request_cleanup(mod_inst, handle);
+		fr_pool_connection_release(t->pool, request, handle);
 		talloc_free(section);
 
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	/*
@@ -270,7 +365,7 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(mod_inst, thread, section, request,
+	ret = rest_request_config(mod_inst, t, section, request,
 				  handle, section->method, section->body, uri, NULL, NULL);
 	talloc_free(uri);
 	if (ret < 0) goto error;
@@ -281,76 +376,11 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 *
 	 * @fixme need to pass in thread to all xlat functions
 	 */
-	ret = rest_io_request_enqueue(NULL, request, handle);
+	ret = rest_io_request_enqueue(t, request, handle);
 	if (ret < 0) goto error;
 
-	return 0;	/* FIXME XLAT YIELD */
+	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_action, rctx);
 }
-
-static ssize_t rest_xlat_resume(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-				void const *mod_inst, UNUSED void const *xlat_inst,
-				REQUEST *request, UNUSED char const *fmt)
-{
-	rlm_rest_t const	*inst = mod_inst;
-	rlm_rest_handle_t	*handle = NULL;	/* FIXME POPULATE FROM REQUEST */
-	int			hcode;
-	ssize_t			len, slen = 0;
-	char const		*body;
-	rlm_rest_section_t	*section = NULL; /* FIXME POPULATE FROM REQUEST */
-
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(mod_inst, section, request, handle);
-
-	if (rlm_rest_status_update(request, handle) < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
-
-	hcode = rest_get_handle_code(handle);
-	switch (hcode) {
-	case 404:
-	case 410:
-	case 403:
-	case 401:
-	{
-		slen = -1;
-error:
-		rest_response_error(request, handle);
-		goto finish;
-	}
-	case 204:
-		goto finish;
-
-	default:
-		/*
-		 *	Attempt to parse content if there was any.
-		 */
-		if ((hcode >= 200) && (hcode < 300)) {
-			break;
-		} else if (hcode < 500) {
-			slen = -2;
-			goto error;
-		} else {
-			slen = -1;
-			goto error;
-		}
-	}
-
-	len = rest_get_handle_data(&body, handle);
-	if (len > 0) {
-		*out = talloc_bstrndup(request, body, len);
-		slen = len;
-	}
-
-finish:
-	rest_request_cleanup(mod_inst, handle);
-
-	fr_pool_connection_release(t->pool, request, handle);
-
-	talloc_free(section);
-
-	return slen;
-}
-#endif
 
 static rlm_rcode_t mod_authorize_result(REQUEST *request, void *instance, void *thread, void *ctx)
 {
@@ -462,7 +492,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, 
 		return RLM_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_authorize_result, rest_io_action, handle);
+	return unlang_module_yield(request, mod_authorize_result, rest_io_module_action, handle);
 }
 
 static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, void *thread, void *ctx)
@@ -881,6 +911,28 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	return 0;
 }
 
+/** Resolves and caches the module's thread instance for use by a specific xlat instance
+ *
+ * @param[in] xlat_inst			UNUSED.
+ * @param[in] xlat_thread_inst		pre-allocated structure to hold pointer to module's
+ *					thread instance.
+ * @param[in] exp			UNUSED.
+ * @param[in] uctx			Module's global instance.  Used to lookup thread
+ *					specific instance.
+ * @return 0.
+ */
+static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
+				       UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	rlm_rest_t			*inst = talloc_get_type_abort(uctx, rlm_rest_t);
+	rest_xlat_thread_inst_t	*xt = xlat_thread_inst;
+
+	xt->inst = inst;
+	xt->t = talloc_get_type_abort(module_thread_instance_by_data(inst), rlm_rest_thread_t);
+
+	return 0;
+}
+
 /** Create a thread specific multihandle
  *
  * Easy handles representing requests are added to the curl multihandle
@@ -907,7 +959,7 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 	 *	Temporary hack to make config parsing
 	 *	thread safe.
 	 */
-	my_conf = cf_section_dup(NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
+	my_conf = cf_section_dup(NULL, NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
 	t->pool = fr_pool_init(NULL, my_conf, instance, mod_conn_create, NULL, inst->xlat_name);
 	talloc_free(my_conf);
 
@@ -924,10 +976,11 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
  * Destroys all curl easy handles, and then the multihandle associated
  * with this thread.
  *
+ * @param[in] el	for this thread.
  * @param[in] thread	specific data to destroy.
  * @return 0
  */
-static int mod_thread_detach(void *thread)
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_rest_thread_t	*t = thread;
 
@@ -983,12 +1036,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
-#if 0
-	/*
-	 *	Register the rest xlat function
-	 */
-	xlat_register(inst, inst->xlat_name, rest_xlat, rest_uri_escape, NULL, 0, 0);
-#endif
+	xlat_async_register(inst, inst->xlat_name, rest_xlat,
+			    NULL, 0, NULL,
+			    mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL,
+			    inst);
 
 	return 0;
 }

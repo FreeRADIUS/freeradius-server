@@ -72,6 +72,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_tls.h"
+#include "eap_attrs.h"
 
 FR_NAME_NUMBER const eap_tls_status_table[] = {
 	{ "invalid",			EAP_TLS_INVALID },
@@ -292,7 +293,8 @@ int eap_tls_success(eap_session_t *eap_session)
 	 */
 	if (tls_session->prf_label) {
 		eap_tls_gen_mppe_keys(eap_session->request, tls_session->ssl, tls_session->prf_label);
-	} else {
+
+	} else if (eap_session->type != FR_EAP_FAST) {
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 

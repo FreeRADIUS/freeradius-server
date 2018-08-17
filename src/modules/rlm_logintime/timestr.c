@@ -17,13 +17,13 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Alan DeKok <aland@ox.org>
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Alan DeKok <aland@ox.org>
  */
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/server/base.h>
 
 #include <ctype.h>
 
@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: test timestring\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	l = timestr_match(argv[1], time(NULL));
 	printf ("%s: %d seconds left\n", argv[1], l);

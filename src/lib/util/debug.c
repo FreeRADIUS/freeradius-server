@@ -14,19 +14,33 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * @file lib/util/debug.c
- * @brief Various functions to aid in debugging
+/** Functions to help with debugging
+ *
+ * @file src/lib/util/debug.c
  *
  * @copyright 2013  The FreeRADIUS server project
  * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+#include "debug.h"
+
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/hash.h>
+
 #include <assert.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/libradius.h>
+#include <limits.h>
 #include <pthread.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #if defined(HAVE_MALLOPT) && defined(HAVE_MALLOC_H)
 #  include <malloc.h>
@@ -46,6 +60,7 @@
 
 #ifdef HAVE_SYS_PTRACE_H
 #  include <sys/ptrace.h>
+#  include <sys/types.h>
 #  if !defined(PT_ATTACH) && defined(PTRACE_ATTACH)
 #    define PT_ATTACH PTRACE_ATTACH
 #  endif
@@ -108,6 +123,113 @@ static TALLOC_CTX *talloc_autofree_ctx;
 #    include <sys/capability.h>
 #  endif
 
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+#  include <sanitizer/lsan_interface.h>
+#endif
+
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+static int lsan_test_pipe[2] = {-1, -1};
+static int lsan_test_pid = -1;
+static int lsan_state = INT_MAX;
+
+/*
+ *	Some versions of lsan_interface.h are broken and don't declare
+ *	the prototypes of the functions properly, omitting the zero argument
+ *	specifier (void), so we need to disable the warning.
+ *
+ *	Observed with clang 5.
+ */
+DIAG_OFF(missing-prototypes)
+/** Callback for LSAN - do not rename
+ *
+ */
+const char CC_HINT(used) *__lsan_default_suppressions(void)
+{
+	return
+#if defined(__APPLE__)
+		"leak:_gai_nat64_synthesis\n"		/* Observed in calls to getaddrinfo */
+		"leak:*gmtsub*\n"
+		"leak:tzsetwall_basic\n"
+		"leak:ImageLoaderMachO::doImageInit\n"
+		"leak:libSystem_atfork_child"
+#elif defined(__linux__)
+		"leak:kqueue"
+#endif
+		;
+}
+
+/** Callback for LSAN - do not rename
+ *
+ */
+int CC_HINT(used) __lsan_is_turned_off(void)
+{
+	uint8_t ret = 1;
+
+	/* Parent */
+	if (lsan_test_pid != 0) return 0;
+
+	/* Child */
+	if (write(lsan_test_pipe[1], &ret, sizeof(ret)) < 0) {
+		fprintf(stderr, "Writing LSAN status failed: %s", fr_syserror(errno));
+	}
+	close(lsan_test_pipe[1]);
+	return 0;
+}
+DIAG_ON(missing-prototypes)
+
+/** Determine if we're running under LSAN (Leak Sanitizer)
+ *
+ * @return
+ *	- 0 if we're not.
+ *	- 1 if we are.
+ *	- -1 if we can't tell because of an error.
+ *	- -2 if we can't tell because we were compiled with support for the LSAN interface.
+ */
+int fr_get_lsan_state(void)
+{
+	uint8_t ret = 0;
+
+	if (lsan_state != INT_MAX) return lsan_state;/* Use cached result */
+
+	if (pipe(lsan_test_pipe) < 0) {
+		fr_strerror_printf("Failed opening internal pipe: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	lsan_test_pid = fork();
+	if (lsan_test_pid == -1) {
+		fr_strerror_printf("Error forking: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/* Child */
+	if (lsan_test_pid == 0) {
+		close(lsan_test_pipe[0]);	/* Close parent's side */
+		exit(EXIT_SUCCESS);		/* Results in LSAN calling __lsan_is_turned_off via onexit handler */
+	}
+
+	/* Parent */
+	close(lsan_test_pipe[1]);		/* Close child's side */
+
+	while ((read(lsan_test_pipe[0], &ret, sizeof(ret)) < 0) && (errno == EINTR));
+
+	close(lsan_test_pipe[0]);		/* Close our side (so we don't leak FDs) */
+
+	/* Collect child */
+	waitpid(lsan_test_pid, NULL, 0);
+
+	lsan_state = ret;			/* Cache test results */
+
+	return ret;
+}
+#else
+int fr_get_lsan_state(void)
+{
+	fr_strerror_printf("Not built with support for LSAN interface");
+	return -2;
+}
+#endif
+
 /** Determine if we're running under a debugger by attempting to attach using pattach
  *
  * @return
@@ -116,7 +238,7 @@ static TALLOC_CTX *talloc_autofree_ctx;
  *	- -1 if we can't tell because of an error.
  *	- -2 if we can't tell because we don't have the CAP_SYS_PTRACE capability.
  */
-static int fr_get_debug_state(void)
+int fr_get_debug_state(void)
 {
 	int pid;
 
@@ -178,6 +300,11 @@ static int fr_get_debug_state(void)
 	if (pid == 0) {
 		int8_t	ret = DEBUGGER_STATE_NOT_ATTACHED;
 		int	ppid = getppid();
+		int	flags;
+
+DIAG_OFF(deprecated-declarations);
+		flags = PT_ATTACH;
+DIAG_ON(deprecated-declarations);
 
 		/* Close parent's side */
 		close(from_child[0]);
@@ -190,7 +317,8 @@ static int fr_get_debug_state(void)
 		 *	If we don't do it in that order the read in the parent triggers
 		 *	a SIGKILL.
 		 */
-		if (_PTRACE(PT_ATTACH, ppid) == 0) {
+
+		if (_PTRACE(flags, ppid) == 0) {
 			/* Wait for the parent to stop */
 			waitpid(ppid, NULL, 0);
 
@@ -639,14 +767,14 @@ static int fr_fault_check_permissions(void)
  */
 NEVER_RETURNS void fr_fault(int sig)
 {
-	char cmd[sizeof(panic_action) + 20];
-	char *out = cmd;
-	size_t left = sizeof(cmd), ret;
+	char		cmd[sizeof(panic_action) + 20];
+	char		*out = cmd;
+	size_t		left = sizeof(cmd), ret;
 
-	char const *p = panic_action;
-	char const *q;
+	char const	*p = panic_action;
+	char const	*q;
 
-	int code;
+	int		code;
 
 	/*
 	 *	If a debugger is attached, we don't want to run the panic action,
@@ -665,14 +793,6 @@ NEVER_RETURNS void fr_fault(int sig)
 	memset(cmd, 0, sizeof(cmd));
 
 	FR_FAULT_LOG("CAUGHT SIGNAL: %s", strsignal(sig));
-
-	/*
-	 *	Check for administrator sanity.
-	 */
-	if (fr_fault_check_permissions() < 0) {
-		FR_FAULT_LOG("Refusing to execute panic action: %s", fr_strerror());
-		goto finish;
-	}
 
 	/*
 	 *	Run the callback if one was registered
@@ -703,6 +823,14 @@ NEVER_RETURNS void fr_fault(int sig)
 	/* No panic action set... */
 	if (panic_action[0] == '\0') {
 		FR_FAULT_LOG("No panic action set");
+		goto finish;
+	}
+
+	/*
+	 *	Check for administrator sanity.
+	 */
+	if (fr_fault_check_permissions() < 0) {
+		FR_FAULT_LOG("Refusing to execute panic action: %s", fr_strerror());
 		goto finish;
 	}
 
@@ -760,17 +888,16 @@ NEVER_RETURNS void fr_fault(int sig)
 		fr_exit_now(128 + sig);
 	}
 
-
 finish:
 	/*
 	 *	(Re-)Raise the signal, so that if we're running under
-	 *	a debugger, the debugger can break when it receives
-	 *	the signal.
+	 *	a debugger.
+	 *
+	 *	This allows debuggers to function normally and catch
+	 *	fatal signals.
 	 */
-	fr_unset_signal(sig);	/* Make sure we don't get into a loop */
-
+	fr_unset_signal(sig);		/* Make sure we don't get into a loop */
 	raise(sig);
-
 	fr_exit_now(128 + sig);		/* Function marked as noreturn */
 }
 
@@ -829,12 +956,12 @@ static void _fr_talloc_log(char const *msg)
  *
  * @param ctx to generate a report for, may be NULL in which case the root context is used.
  */
-int fr_log_talloc_report(TALLOC_CTX *ctx)
+int fr_log_talloc_report(TALLOC_CTX const *ctx)
 {
 #define TALLOC_REPORT_MAX_DEPTH 20
 
-	FILE *log;
-	int fd;
+	FILE	*log;
+	int	fd;
 
 	fd = dup(fr_fault_log_fd);
 	if (fd < 0) {
@@ -901,15 +1028,16 @@ void fr_talloc_fault_setup(void)
  *
  * May be called multiple time to change the panic_action/program.
  *
- * @param cmd to execute on fault. If present %p will be substituted
- *        for the parent PID before the command is executed, and %e
- *        will be substituted for the currently running program.
+ * @param[in] ctx	to allocate autofreeable resources in.
+ * @param[in] cmd	to execute on fault. If present %p will be substituted
+ *      		for the parent PID before the command is executed, and %e
+ *      		will be substituted for the currently running program.
  * @param program Name of program currently executing (argv[0]).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_fault_setup(char const *cmd, char const *program)
+int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 {
 	static bool setup = false;
 
@@ -1011,8 +1139,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 			/*
 			 *  Disable null tracking on exit, else valgrind complains
 			 */
-			talloc_autofree_ctx = talloc_autofree_context();
-			marker = talloc(talloc_autofree_ctx, bool);
+			marker = talloc(ctx, bool);
 			talloc_set_destructor(marker, _fr_disable_null_tracking);
 		}
 
@@ -1089,13 +1216,31 @@ void fr_fault_set_log_fd(int fd)
 
 /** A soft assertion which triggers the fault handler in debug builds
  *
- * @param file the assertion failed in.
- * @param line of the assertion in the file.
- * @param expr that was evaluated.
+ * @param[in] file	the assertion failed in.
+ * @param[in] line	of the assertion in the file.
+ * @param[in] expr	that was evaluated.
+ * @param[in] msg	Message to print (may be NULL).
+ * @param[in] ...	Arguments for msg string.
  * @return the value of cond.
  */
-bool fr_cond_assert_fail(char const *file, int line, char const *expr)
+bool fr_cond_assert_fail(char const *file, int line, char const *expr, char const *msg, ...)
 {
+	if (msg) {
+		char str[256];		/* Decent compilers won't allocate this unless fmt is !NULL... */
+		va_list ap;
+
+		va_start(ap, msg);
+		(void)vsnprintf(str, sizeof(str), msg, ap);
+		va_end(ap);
+
+#ifndef NDEBUG
+		FR_FAULT_LOG("ASSERT FAILED %s[%u]: %s: %s", file, line, expr, str);
+		fr_fault(SIGABRT);
+#else
+		FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s: %s", file, line, expr, str);
+#endif
+	}
+
 #ifndef NDEBUG
 	FR_FAULT_LOG("ASSERT FAILED %s[%u]: %s", file, line, expr);
 	fr_fault(SIGABRT);
@@ -1110,14 +1255,14 @@ bool fr_cond_assert_fail(char const *file, int line, char const *expr)
  *
  */
 #ifndef NDEBUG
-bool fr_assert_fail(char const *file, unsigned int line, char const *expr)
+bool fr_assert_exit(char const *file, unsigned int line, char const *expr)
 {
 	FR_FAULT_LOG("ASSERT FAILED %s[%u]: %s", file, line, expr);
 	fr_fault(SIGABRT);
 	fr_exit_now(1);
 }
 #else
-bool fr_assert_fail(char const *file, unsigned int line, char const *expr)
+bool fr_assert_exit(char const *file, unsigned int line, char const *expr)
 {
 	FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s", file, line, expr);
 	return false;
@@ -1188,3 +1333,44 @@ void NEVER_RETURNS _fr_exit_now(UNUSED char const *file, UNUSED int line, int st
 	_exit(status);
 }
 #endif
+
+/*
+ *	Sign a structure, but skip _signature at "offset".
+ */
+static uint32_t fr_hash_struct(void const *ptr, size_t size, size_t offset)
+{
+	uint32_t hash;
+
+	/*
+	 *	Hash entry is at the end of the structure, that's
+	 *	best...
+	 */
+	if ((size + 4) == offset) {
+		return fr_hash(ptr, size);
+	}
+
+	hash = fr_hash(ptr, offset);
+	return fr_hash_update(((uint8_t const *) ptr) + offset + 4, size - (offset + 4), hash);
+}
+
+void fr_sign_struct(void *ptr, size_t size, size_t offset)
+{
+	*(uint32_t *) (((uint8_t *) ptr) + offset) = fr_hash_struct(ptr, size, offset);
+}
+
+void fr_verify_struct(void const *ptr, size_t size, size_t offset)
+{
+	uint32_t hash;
+
+	hash = fr_hash_struct(ptr, size, offset);
+
+	(void) fr_cond_assert(hash == *(uint32_t const *) (((uint8_t const *) ptr) + offset));
+}
+
+void fr_verify_struct_member(void const *ptr, size_t len, uint32_t *signature)
+{
+	uint32_t hash;
+
+	hash = fr_hash(ptr, len);
+	(void) fr_cond_assert(hash == *signature);
+}

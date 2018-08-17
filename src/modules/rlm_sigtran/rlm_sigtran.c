@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Network RADIUS SARL <license@networkradius.com>
+ * @copyright (c) 2016, Network RADIUS SARL <license@networkradius.com>
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -42,9 +42,9 @@ RCSID("$Id$")
 #include "libosmo-m3ua/include/bsc_data.h"
 #include "libosmo-m3ua/include/sctp_m3ua.h"
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "sigtran.h"
 #include <assert.h>
@@ -61,8 +61,6 @@ static_assert(sizeof(void *) < PIPE_BUF, "PIPE_BUF must be large enough to accom
 static uint32_t	sigtran_instances = 0;
 
 unsigned int __hack_opc, __hack_dpc;
-
-fr_thread_local_setup(int *, req_pipe);
 
 static const FR_NAME_NUMBER m3ua_traffic_mode_table[] = {
 	{ "override",  1 },
@@ -84,7 +82,7 @@ static const CONF_PARSER sctp_config[] = {
 };
 
 static const CONF_PARSER m3ua_route[] = {
-	{ FR_CONF_IS_SET_OFFSET("dpc", FR_TYPE_UINT32, sigtran_m3ua_route_t, dpc) },
+	{ FR_CONF_OFFSET_IS_SET("dpc", FR_TYPE_UINT32, sigtran_m3ua_route_t, dpc) },
 	{ FR_CONF_OFFSET("opc", FR_TYPE_UINT32 | FR_TYPE_MULTI, sigtran_m3ua_route_t, opc) },
 	{ FR_CONF_OFFSET("si", FR_TYPE_UINT32 | FR_TYPE_MULTI, sigtran_m3ua_route_t, si) },
 
@@ -98,7 +96,7 @@ static const CONF_PARSER m3ua_config[] = {
 	{ FR_CONF_OFFSET("ack_timeout", FR_TYPE_UINT32, rlm_sigtran_t, conn_conf.m3ua_ack_timeout), .dflt = "2" },
 	{ FR_CONF_OFFSET("beat_interval", FR_TYPE_UINT32, rlm_sigtran_t, conn_conf.m3ua_beat_interval), .dflt = "0" },
 
-	{ FR_CONF_IS_SET_OFFSET("route", FR_TYPE_SUBSECTION, rlm_sigtran_t, conn_conf.m3ua_routes), .subcs = (void const *) m3ua_route },
+	{ FR_CONF_OFFSET_IS_SET("route", FR_TYPE_SUBSECTION, rlm_sigtran_t, conn_conf.m3ua_routes), .subcs = (void const *) m3ua_route },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -112,18 +110,18 @@ static const CONF_PARSER mtp3_config[] = {
 
 static const CONF_PARSER sccp_global_title[] = {
 	{ FR_CONF_OFFSET("address", FR_TYPE_STRING, sigtran_sccp_global_title_t, address) },
-	{ FR_CONF_IS_SET_OFFSET("tt", FR_TYPE_UINT8, sigtran_sccp_global_title_t, tt) },
-	{ FR_CONF_IS_SET_OFFSET("nai", FR_TYPE_UINT8, sigtran_sccp_global_title_t, nai) },
-	{ FR_CONF_IS_SET_OFFSET("np", FR_TYPE_UINT8, sigtran_sccp_global_title_t, np) },
-	{ FR_CONF_IS_SET_OFFSET("es", FR_TYPE_UINT8, sigtran_sccp_global_title_t, es) },
+	{ FR_CONF_OFFSET_IS_SET("tt", FR_TYPE_UINT8, sigtran_sccp_global_title_t, tt) },
+	{ FR_CONF_OFFSET_IS_SET("nai", FR_TYPE_UINT8, sigtran_sccp_global_title_t, nai) },
+	{ FR_CONF_OFFSET_IS_SET("np", FR_TYPE_UINT8, sigtran_sccp_global_title_t, np) },
+	{ FR_CONF_OFFSET_IS_SET("es", FR_TYPE_UINT8, sigtran_sccp_global_title_t, es) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER sccp_address[] = {
-	{ FR_CONF_IS_SET_OFFSET("pc", FR_TYPE_UINT32, sigtran_sccp_address_t, pc) },
-	{ FR_CONF_IS_SET_OFFSET("ssn", FR_TYPE_UINT8, sigtran_sccp_address_t, ssn) },
-	{ FR_CONF_IS_SET_OFFSET("gt", FR_TYPE_SUBSECTION, sigtran_sccp_address_t, gt), .subcs = (void const *) sccp_global_title },
+	{ FR_CONF_OFFSET_IS_SET("pc", FR_TYPE_UINT32, sigtran_sccp_address_t, pc) },
+	{ FR_CONF_OFFSET_IS_SET("ssn", FR_TYPE_UINT8, sigtran_sccp_address_t, ssn) },
+	{ FR_CONF_OFFSET_IS_SET("gt", FR_TYPE_SUBSECTION, sigtran_sccp_address_t, gt), .subcs = (void const *) sccp_global_title },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -156,43 +154,12 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/** Signal the multiplexer that this thread is exiting
- *
- */
-static void _req_pipe_unregister(void *fd_ptr)
-{
-	int fd = *talloc_get_type_abort(fd_ptr, int);
-
-	sigtran_client_thread_unregister(fd);	/* Also closes our side */
-}
-
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, REQUEST *request)
 {
 	rlm_sigtran_t const	*inst = instance;
-	int			*fd_ptr, fd;
 
-	/*
-	 *	Retrieve the thread specific pipe we use
-	 *	to communicate with the multiplexer.
-	 */
-	fd_ptr = req_pipe;
-	if (!fd_ptr) {
-		fd_ptr = talloc(NULL, int);
-		fd = sigtran_client_thread_register();
-		if (fd < 0) {
-			RERROR("Failed registering thread with multiplexer");
-			talloc_free(fd_ptr);
-			return RLM_MODULE_FAIL;
-		}
-		*fd_ptr = fd;
-		fr_thread_local_set_destructor(req_pipe, _req_pipe_unregister, fd_ptr);
-	} else {
-		fd = *fd_ptr;
-	}
-
-	return sigtran_client_map_send_auth_info(inst, request, inst->conn, fd);
+	return sigtran_client_map_send_auth_info(inst, request, inst->conn, *(int *)thread);
 }
-
 
 /** Convert our sccp address config structure into sockaddr_sccp
  *
@@ -300,6 +267,30 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 	return 0;
 }
 
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, UNUSED void *instance,
+				  fr_event_list_t *el, void *thread)
+{
+	rlm_sigtran_t	*inst = instance;
+	int		fd;
+
+	fd = sigtran_client_thread_register(el);
+	if (fd < 0) {
+		ERROR("Failed registering thread with multiplexer");
+		return -1;
+	}
+
+	*((int *)thread) = fd;
+
+	return 0;
+}
+
+static int mod_thread_detach(fr_event_list_t *el, UNUSED void *thread)
+{
+	sigtran_client_thread_unregister(el, *(int *)thread);	/* Also closes our side */
+
+	return 0;
+}
+
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_sigtran_t *inst = instance;
@@ -337,6 +328,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 					    &inst->conn_conf.sccp_calling, conf) < 0) return -1;
 
 	/*
+	 *	Don't bother starting the sigtran thread if we're
+	 *	just checking the config.
+	 */
+	if (check_config) return 0;
+
+	/*
 	 *	If this is the first instance of rlm_sigtran
 	 *	We spawn a new thread to run all the libosmo-* I/O
 	 *	and events.
@@ -366,6 +363,12 @@ static int mod_detach(UNUSED void *instance)
 {
 	rlm_sigtran_t *inst = instance;
 
+	/*
+	 *	If we're just checking the config we didn't start the
+	 *	thread.
+	 */
+	if (check_config) return 0;
+
 	sigtran_client_link_down(&inst->conn);
 
 	if ((--sigtran_instances) == 0) sigtran_event_exit();
@@ -384,13 +387,16 @@ static int mod_detach(UNUSED void *instance)
  */
 extern rad_module_t rlm_sigtran;
 rad_module_t rlm_sigtran = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "sigtran",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_sigtran_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+	.magic			= RLM_MODULE_INIT,
+	.name			= "sigtran",
+	.type			= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,
+	.inst_size		= sizeof(rlm_sigtran_t),
+	.thread_inst_size	= sizeof(int),
+	.config			= module_config,
+	.instantiate		= mod_instantiate,
+	.detach			= mod_detach,
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 	}

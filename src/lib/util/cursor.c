@@ -13,11 +13,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
+/** Functions to iterate over a sets and subsets of items
  *
- * @file lib/util/cursor.c
- * @brief Functions to iterate over a sets and subsets of items.
+ * @file src/lib/util/cursor.c
  *
  * @note Do not modify collections of items pointed to by a cursor
  *	 with none fr_cursor_* functions over the lifetime of that cursor.
@@ -31,7 +29,7 @@ RCSID("$Id$")
 #include <talloc.h>
 #include <string.h>
 #include <stdint.h>
-#include <freeradius-devel/cursor.h>
+#include <freeradius-devel/util/cursor.h>
 
 #define NEXT_PTR(_v) ((void **)(((uint8_t *)(_v)) + cursor->offset))
 
@@ -47,6 +45,7 @@ RCSID("$Id$")
 static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 {
 	void *unused = NULL;
+	void *next;
 
 	if (!prev) prev = &unused;
 
@@ -59,22 +58,28 @@ static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 		if (!cursor->iter) return (*cursor->head);		/* Fast path without custom iter */
 
 		current = *cursor->head;
-		cursor->iter(prev, &current, cursor->ctx);
-		return current;
+		return cursor->iter(prev, current, cursor->ctx);
 	}
 
 	if (!cursor->iter) {
-		void *next;
-
 		next = *NEXT_PTR(current);				/* Fast path without custom iter */
 		if (prev) *prev = current;
 
 		return next;
 	}
 
-	cursor->iter(prev, *NEXT_PTR(current), cursor->ctx);
+	/*
+	 *	Pre-advance prev and current
+	 */
+	*prev = current;
+	next = *NEXT_PTR(current);
 
-	return current;
+	/*
+	 *	The iterator can just return what it was passed for curr
+	 *	and leave prev untouched if it just wants to advance by one.
+	 */
+	next = cursor->iter(prev, next, cursor->ctx);
+	return next;
 }
 
 /** Internal function to get the last attribute
@@ -129,6 +134,20 @@ void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in)
  */
 void *fr_cursor_head(fr_cursor_t *cursor)
 {
+	if (unlikely(!cursor)) return NULL;
+
+	/*
+	 *	If we have a custom iterator, the head attribute
+	 *	may not be in the subset the iterator would
+	 *	return, so set everything to NULL and have
+	 *	cursor_next figure it out.
+	 */
+	if (cursor->iter) {
+		cursor->prev = NULL;
+		cursor->current = cursor_next(&cursor->prev, cursor, NULL);
+		return cursor->current;
+	}
+
 	cursor->current = *cursor->head;
 	cursor->prev = NULL;
 
@@ -142,7 +161,7 @@ void *fr_cursor_head(fr_cursor_t *cursor)
  */
 void *fr_cursor_tail(fr_cursor_t *cursor)
 {
-	if (!*cursor->head) return NULL;
+	if (!cursor || !*cursor->head) return NULL;
 
 	cursor->current = cursor_tail(&cursor->prev, cursor, cursor->current);
 	cursor->tail = cursor->current;				/* my as well update our insertion tail */
@@ -159,7 +178,7 @@ void *fr_cursor_tail(fr_cursor_t *cursor)
  */
 void * CC_HINT(hot) fr_cursor_next(fr_cursor_t *cursor)
 {
-	if (!*cursor->head) return NULL;
+	if (!cursor || !*cursor->head) return NULL;
 
 	cursor->current = cursor_next(&cursor->prev, cursor, cursor->current);
 
@@ -191,7 +210,7 @@ void *fr_cursor_next_peek(fr_cursor_t *cursor)
  */
  void *fr_cursor_list_next_peek(fr_cursor_t *cursor)
 {
-	if (!cursor->current) return NULL;
+	if (!cursor || !cursor->current) return NULL;
 
 	return *NEXT_PTR(cursor->current);
 }
@@ -208,6 +227,8 @@ void *fr_cursor_next_peek(fr_cursor_t *cursor)
  */
 void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
 {
+	if (unlikely(!cursor)) return NULL;
+
 	return cursor->prev;
 }
 
@@ -220,6 +241,8 @@ void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
  */
 void * CC_HINT(hot) fr_cursor_current(fr_cursor_t *cursor)
 {
+	if (unlikely(!cursor)) return NULL;
+
 	return cursor->current;
 }
 
@@ -249,8 +272,6 @@ void CC_HINT(hot) fr_cursor_prepend(fr_cursor_t *cursor, void *v)
 		cursor->tail = *cursor->head;
 
 		*NEXT_PTR(v) = NULL;				/* Only insert one at a time */
-
-		fr_cursor_next(cursor);				/* Update current */
 
 		return;
 	}
@@ -284,8 +305,6 @@ void CC_HINT(hot) fr_cursor_append(fr_cursor_t *cursor, void *v)
 	if (!*(cursor->head)) {
 		*cursor->head = v;
 		*NEXT_PTR(v) = NULL;				/* Only insert one at a time */
-
-		fr_cursor_next(cursor);				/* Update current */
 
 		return;
 	}
@@ -348,14 +367,35 @@ void fr_cursor_insert(fr_cursor_t *cursor, void *v)
  */
 void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 {
-	void		*v;
+	void		*head = NULL, *next, *v;
 
 	/*
-	 *	We have to do it the expensive way, as to_append
-	 *	may use a custom iterator function, and so we only
-	 *	merge a subset of the items.
+	 *	Build the complete list (in reverse)
 	 */
-	while ((v = fr_cursor_remove(to_append))) fr_cursor_append(cursor, v);
+	while ((v = fr_cursor_remove(to_append))) {
+		*NEXT_PTR(v) = head;
+		head = v;
+	}
+
+	if (!head) return;
+
+	/*
+	 *	Now insert - The elements end up in
+	 *	the correct order without advancing
+	 *	the cursor.
+	 */
+	v = head;
+	if (cursor->current) {
+		do {
+			next = *NEXT_PTR(v);
+			fr_cursor_insert(cursor, v);
+		} while ((v = next));
+	} else {
+		do {
+			next = *NEXT_PTR(v);
+			fr_cursor_prepend(cursor, v);
+		} while ((v = next));
+	}
 }
 
 /** Remove the current item
@@ -419,7 +459,7 @@ void * CC_HINT(hot) fr_cursor_remove(fr_cursor_t *cursor)
 	 *	This ensures if the iterator skips the item
 	 *	we just replaced, it doesn't become current.
 	 */
-	fr_cursor_next(cursor);
+	cursor->current = cursor_next(&cursor->prev, cursor, cursor->current);
 
 	/*
 	 *	Set v->next to NULL
@@ -458,7 +498,7 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 	 *	so the replace becomes an append.
 	 */
 	v = cursor->current;
-	if (v) {
+	if (!v) {
 		fr_cursor_append(cursor, r);
 		return NULL;
 	}
@@ -475,9 +515,9 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 		*NEXT_PTR(r) = *NEXT_PTR(v);
 	}
 
-	 /*
-	  *	Fixup current pointer.
-	  */
+	/*
+	 *	Fixup current pointer.
+	 */
 	if (v) {
 		cursor->current = p;
 		cursor->prev = NULL;				/* populated on next call to fr_cursor_next */
@@ -512,11 +552,11 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
  *
  * @param[in] cursor to free items in.
  */
-void fr_cursor_list_free(fr_cursor_t *cursor)
+void fr_cursor_free_list(fr_cursor_t *cursor)
 {
 	void *v;
 
-	if (!*cursor->head) return;	/* noop */
+	if (!*(cursor->head)) return;	/* noop */
 
 	do {
 		v = fr_cursor_remove(cursor);
@@ -556,19 +596,19 @@ void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, siz
 
 #ifdef TESTING_CURSOR
 /*
- *  cc cursor.c -g3 -Wall -DTESTING_CURSOR -I../ -include ../include/build.h -l talloc -o test_cursor && ./test_cursor
+ *  cc cursor.c -g3 -Wall -DTESTING_CURSOR -I../../ -I../ -include ../include/build.h -l talloc -o test_cursor && ./test_cursor
  */
 #include <stddef.h>
-#include <freeradius-devel/cutest.h>
+#include <freeradius-devel/util/cutest.h>
 
 typedef struct {
 	char const *name;
 	void *next;
 } test_item_t;
 
-static void test_iter(void **prev, void **current, void *ctx)
+static void *test_iter(void **prev, void *current, void *ctx)
 {
-	return;
+	return current;
 }
 
 /** Verify internal state is initialised correctly
@@ -764,7 +804,8 @@ void test_cursor_append_empty(void)
 	fr_cursor_append(&cursor, &item1);
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
 	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
 }
 
@@ -783,7 +824,8 @@ void test_cursor_append_empty_3(void)
 	fr_cursor_append(&cursor, &item3);
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next(&cursor) == &item1);
 	TEST_CHECK(fr_cursor_next(&cursor) == &item2);
 	TEST_CHECK(fr_cursor_tail(&cursor) == &item3);
 }
@@ -799,7 +841,8 @@ void test_cursor_prepend_empty(void)
 	fr_cursor_prepend(&cursor, &item1);
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
 	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
 }
 
@@ -814,7 +857,8 @@ void test_cursor_insert_into_empty(void)
 	fr_cursor_insert(&cursor, &item1);
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
 	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
 }
 
@@ -833,9 +877,10 @@ void test_cursor_insert_into_empty_3(void)
 	fr_cursor_insert(&cursor, &item3);
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
-	TEST_CHECK(fr_cursor_next(&cursor) == &item3);
-	TEST_CHECK(fr_cursor_tail(&cursor) == &item2);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next(&cursor) == &item1);
+	TEST_CHECK(fr_cursor_next(&cursor) == &item2);
+	TEST_CHECK(fr_cursor_tail(&cursor) == &item3);
 }
 
 void test_cursor_replace_in_empty(void)
@@ -849,7 +894,8 @@ void test_cursor_replace_in_empty(void)
 	TEST_CHECK(!fr_cursor_replace(&cursor, &item1));
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
 	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
 }
 
@@ -1655,12 +1701,12 @@ void test_cursor_free(void)
 	fr_cursor_append(&cursor, item3);
 
 	fr_cursor_next(&cursor);
-	fr_cursor_list_free(&cursor);
+	fr_cursor_free_list(&cursor);
 
 	TEST_CHECK(fr_cursor_current(&cursor) == NULL);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == item1);
-	TEST_CHECK(fr_cursor_tail(&cursor) == item1);
-	TEST_CHECK(fr_cursor_head(&cursor) == item1);
+	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
+	TEST_CHECK(!fr_cursor_tail(&cursor));
+	TEST_CHECK(!fr_cursor_head(&cursor));
 
 	item_p = fr_cursor_remove(&cursor);
 	talloc_free(item_p);

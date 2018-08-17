@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @copyright 2016  Alan DeKok <aland@freeradius.org>
  */
 
 RCSID("$Id$")
@@ -26,7 +26,7 @@ RCSID("$Id$")
 #include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>
@@ -40,7 +40,7 @@ static int		debug_lvl = 0;
 /**********************************************************************/
 typedef struct rad_request REQUEST;
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
-void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
 void talloc_const_free(void const *ptr);
 
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
@@ -48,7 +48,7 @@ REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
 	return NULL;
 }
 
-void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
 {
 }
 
@@ -69,17 +69,17 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -s size                set queue size.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
 {
-	int c, i, rcode = 0;
-	int size;
-	intptr_t val;
-	void *data;
-	fr_atomic_queue_t *aq;
-	TALLOC_CTX	*autofree = talloc_init("main");
+	int			c, i, rcode = 0;
+	int			size;
+	intptr_t		val;
+	void			*data;
+	fr_atomic_queue_t	*aq;
+	TALLOC_CTX		*autofree = talloc_autofree_context();
 
 	size = 4;
 
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
 		if (!fr_atomic_queue_push(aq, data)) {
 			fprintf(stderr, "Failed pushing at %d\n", i);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 #ifndef NDEBUG
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_atomic_queue_push(aq, data)) {
 		fprintf(stderr, "Pushed an entry past the end of the queue.");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 #ifndef NDEBUG
@@ -157,14 +157,14 @@ int main(int argc, char *argv[])
 	for (i = 0; i < size; i++) {
 		if (!fr_atomic_queue_pop(aq, &data)) {
 			fprintf(stderr, "Failed popping at %d\n", i);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		val = (intptr_t) data;
 		if (val != (i + OFFSET)) {
 			fprintf(stderr, "Pop expected %d, got %d\n",
 				i + OFFSET, (int) val);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 #ifndef NDEBUG
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_atomic_queue_pop(aq, &data)) {
 		fprintf(stderr, "Popped an entry past the end of the queue.");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 #ifndef NDEBUG
@@ -189,8 +189,6 @@ int main(int argc, char *argv[])
 		fr_atomic_queue_debug(aq, stdout);
 	}
 #endif
-
-	talloc_free(autofree);
 
 	return rcode;
 }

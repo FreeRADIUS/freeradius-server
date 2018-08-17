@@ -29,11 +29,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "rlm_ldap.h"
 
-#include <freeradius-devel/map_proc.h>
+#include <freeradius-devel/server/map_proc.h>
 
 static CONF_PARSER sasl_mech_dynamic[] = {
 	{ FR_CONF_OFFSET("mech", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t_dynamic_t, mech) },
@@ -56,20 +56,20 @@ static CONF_PARSER tls_config[] = {
 	/*
 	 *	Deprecated attributes
 	 */
-	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_ca_file) },
 
-	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_path) },
+	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_ca_path) },
 
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_certificate_file) },
 
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_private_key_file) },
 
 	/*
 	 *	LDAP Specific TLS attributes
 	 */
-	{ FR_CONF_OFFSET("start_tls", FR_TYPE_BOOL, fr_ldap_handle_config_t, start_tls), .dflt = "no" },
+	{ FR_CONF_OFFSET("start_tls", FR_TYPE_BOOL, fr_ldap_config_t, start_tls), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_handle_config_t, tls_require_cert_str) },
+	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_config_t, tls_require_cert_str) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -117,13 +117,6 @@ static CONF_PARSER group_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER client_config[] = {
-	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, rlm_ldap_t, clientobj_filter) },
-	{ FR_CONF_OFFSET("scope", FR_TYPE_STRING, rlm_ldap_t, clientobj_scope_str), .dflt = "sub" },
-	{ FR_CONF_OFFSET("base_dn", FR_TYPE_STRING, rlm_ldap_t, clientobj_base_dn), .dflt = "" },
-	CONF_PARSER_TERMINATOR
-};
-
 /*
  *	Reference for accounting updates
  */
@@ -146,6 +139,8 @@ static CONF_PARSER option_config[] = {
 	{ FR_CONF_OFFSET("use_referral_credentials", FR_TYPE_BOOL, rlm_ldap_t, handle_config.use_referral_credentials), .dflt = "no" },
 
 	{ FR_CONF_OFFSET("rebind", FR_TYPE_BOOL, rlm_ldap_t, handle_config.rebind) },
+
+	{ FR_CONF_OFFSET("sasl_secprops", FR_TYPE_STRING, rlm_ldap_t, handle_config.sasl_secprops) },
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/* timeout on network activity */
@@ -214,13 +209,9 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("edir_autz", FR_TYPE_BOOL, rlm_ldap_t, edir_autz) }, /* NULL defaults to "no" */
 #endif
 
-	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOL, rlm_ldap_t, do_clients) }, /* NULL defaults to "no" */
-
 	{ FR_CONF_POINTER("user", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) user_config },
 
 	{ FR_CONF_POINTER("group", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) group_config },
-
-	{ FR_CONF_POINTER("client", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) client_config },
 
 	{ FR_CONF_POINTER("profile", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) profile_config },
 
@@ -230,6 +221,39 @@ static const CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_ldap_t, handle_config), .subcs = (void const *) tls_config },
 	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_ldap_dict[];
+fr_dict_autoload_t rlm_ldap_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+fr_dict_attr_t const *attr_cleartext_password;
+fr_dict_attr_t const *attr_crypt_password;
+fr_dict_attr_t const *attr_ldap_userdn;
+fr_dict_attr_t const *attr_nt_password;
+fr_dict_attr_t const *attr_password_with_header;
+
+fr_dict_attr_t const *attr_user_password;
+fr_dict_attr_t const *attr_user_name;
+
+extern fr_dict_attr_autoload_t rlm_ldap_dict_attr[];
+fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ldap_userdn, .name = "LDAP-UserDN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_nt_password, .name = "NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_password_with_header, .name = "Password-With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+
+	{ NULL }
 };
 
 static ssize_t ldap_escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
@@ -263,7 +287,7 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	struct berval		**values;
 
-	fr_ldap_conn_t		*conn;
+	fr_ldap_connection_t		*conn;
 	int			ldap_errno;
 
 	char const		*url;
@@ -384,7 +408,7 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				vp_tmpl_t const *url, vp_map_t const *maps)
+				fr_value_box_t **url, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
@@ -395,26 +419,36 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	LDAPMessage		*result = NULL;
 	LDAPMessage		*entry = NULL;
 	vp_map_t const		*map;
-	char			*url_str;
+	char const 		*url_str;
 
-	fr_ldap_conn_t		*conn;
+	fr_ldap_connection_t		*conn;
 
 	LDAPControl		*server_ctrls[] = { NULL, NULL };
 
 	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
 
-	if (tmpl_aexpand(request, &url_str, request, url, fr_ldap_escape_func, NULL) < 0) {
+	/*
+	 *	FIXME - Maybe it can be NULL?
+	 */
+	if (!*url) {
+		REDEBUG("LDAP URL cannot be (null)");
 		return RLM_MODULE_FAIL;
 	}
 
+	if (fr_value_box_list_concat(request, *url, url, FR_TYPE_STRING, true) < 0) {
+		REDEBUG("Failed concatenating input");
+		return RLM_MODULE_FAIL;
+	}
+	url_str = (*url)->vb_strvalue;
+
 	if (!ldap_is_ldap_url(url_str)) {
 		REDEBUG("Map query string does not look like a valid LDAP URI");
-		goto free_urlstr;
+		return RLM_MODULE_FAIL;
 	}
 
 	if (ldap_url_parse(url_str, &ldap_url)){
 		REDEBUG("Parsing LDAP URL failed");
-		goto free_urlstr;
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
@@ -525,8 +559,6 @@ free_expanded:
 	talloc_free(expanded.ctx);
 free_urldesc:
 	ldap_free_urldesc(ldap_url);
-free_urlstr:
-	talloc_free(url_str);
 
 	return rcode;
 }
@@ -554,12 +586,12 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	bool			found = false;
 	bool			check_is_dn;
 
-	fr_ldap_conn_t		*conn = NULL;
+	fr_ldap_connection_t		*conn = NULL;
 	char const		*user_dn;
 
 	rad_assert(inst->groupobj_base_dn);
 
-	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
+	RDEBUG("Searching for user in group \"%pV\"", &check->data);
 
 	if (check->vp_length == 0) {
 		REDEBUG("Cannot do comparison (group name is empty)");
@@ -650,7 +682,7 @@ finish:
 	if (conn) mod_conn_release(inst, request, conn);
 
 	if (!found) {
-		RDEBUG("User is not a member of \"%s\"", check->vp_strvalue);
+		RDEBUG("User is not a member of \"%pV\"", &check->data);
 
 		return 1;
 	}
@@ -665,7 +697,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	fr_ldap_rcode_t		status;
 	char const		*dn;
 	rlm_ldap_t const	*inst = instance;
-	fr_ldap_conn_t		*conn;
+	fr_ldap_connection_t		*conn;
 
 	char			sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
 	char			sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
@@ -684,8 +716,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	}
 
 	if (!request->password ||
-	    (request->password->da->attr != FR_USER_PASSWORD)) {
+	    (request->password->da != attr_user_password)) {
 		RWDEBUG("You have set \"Auth-Type := LDAP\" somewhere");
+		RWDEBUG("without checking if User-Password is present");
 		RWDEBUG("*********************************************");
 		RWDEBUG("* THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
 		RWDEBUG("* YOU ARE PREVENTING THE SERVER FROM WORKING");
@@ -737,7 +770,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		}
 	}
 
-	RDEBUG("Login attempt by \"%s\"", request->username->vp_strvalue);
+	RDEBUG("Login attempt by \"%pV\"", &request->username->data);
 
 	/*
 	 *	Get the DN by doing a search.
@@ -801,7 +834,7 @@ finish:
 information.
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t **pconn,
+static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
 					char const *dn, fr_ldap_map_exp_t const *expanded)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
@@ -866,16 +899,17 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t		status;
 	int			ldap_errno;
 	int			i;
 	rlm_ldap_t const	*inst = instance;
 	struct berval		**values;
-	VALUE_PAIR		*vp;
-	fr_ldap_conn_t		*conn;
+	fr_ldap_connection_t	*conn;
 	LDAPMessage		*result, *entry;
 	char const 		*dn = NULL;
 	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
+#ifdef WITH_EDIR
+	fr_ldap_rcode_t		status;
+#endif
 
 	/*
 	 *	Don't be tempted to add a check for request->username
@@ -953,17 +987,16 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY)) {
-		goto skip_edir;
-	}
+	if (fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY)) goto skip_edir;
 
 	/*
 	 *      Retrieve Universal Password if we use eDirectory
 	 */
 	if (inst->edir) {
-		int res = 0;
-		char password[256];
-		size_t pass_size = sizeof(password);
+		VALUE_PAIR	*vp;
+		int		res = 0;
+		char		password[256];
+		size_t		pass_size = sizeof(password);
 
 		/*
 		 *	Retrive universal password
@@ -979,7 +1012,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		/*
 		 *	Add Cleartext-Password attribute to the request
 		 */
-		vp = radius_pair_create(request, &request->control, FR_CLEARTEXT_PASSWORD, 0);
+		MEM(pair_update_control(&vp, attr_cleartext_password) >= 0);
 		fr_pair_value_bstrncpy(vp, password, pass_size);
 
 		if (RDEBUG_ENABLED3) {
@@ -1114,7 +1147,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	fr_ldap_rcode_t	status;
 
-	fr_ldap_conn_t	*conn = NULL;
+	fr_ldap_connection_t	*conn = NULL;
 
 	LDAPMod		*mod_p[LDAP_MAX_ATTRMAP + 1], mod_s[LDAP_MAX_ATTRMAP];
 	LDAPMod		**modify = mod_p;
@@ -1430,7 +1463,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	inst->handle_config.name = talloc_asprintf(inst, "rlm_ldap (%s)", inst->name);
+	inst->handle_config.name = talloc_typed_asprintf(inst, "rlm_ldap (%s)", inst->name);
 
 	if (inst->group_attribute) {
 		group_attribute = inst->group_attribute;
@@ -1441,36 +1474,35 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		group_attribute = "LDAP-Group";
 	}
 
-	if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, FR_USER_NAME),
-					false, rlm_ldap_groupcmp, inst) < 0) {
+	if (paircmp_register_by_name(group_attribute, attr_user_name, false, rlm_ldap_groupcmp, inst) < 0) {
 		PERROR("Error registering group comparison");
 		goto error;
 	}
 
-	inst->group_da = fr_dict_attr_by_name(NULL, group_attribute);
+	inst->group_da = fr_dict_attr_by_name(dict_freeradius, group_attribute);
 
 	/*
 	 *	Setup the cache attribute
 	 */
 	if (inst->cache_attribute) {
-		fr_dict_attr_flags_t flags;
+		fr_dict_attr_flags_t	flags;
 
 		memset(&flags, 0, sizeof(flags));
-		if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), inst->cache_attribute, -1, FR_TYPE_STRING,
-				     flags) < 0) {
+		if (fr_dict_attr_add(dict_freeradius, fr_dict_root(dict_freeradius),
+				     inst->cache_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
 			PERROR("Error creating cache attribute");
 		error:
 			return -1;
 
 		}
-		inst->cache_da = fr_dict_attr_by_name(NULL, inst->cache_attribute);
+		inst->cache_da = fr_dict_attr_by_name(dict_freeradius, inst->cache_attribute);
 	} else {
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}
 
-	xlat_register(inst, inst->name, ldap_xlat, fr_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "ldap_escape", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "ldap_unescape", ldap_unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, inst->name, ldap_xlat, fr_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
+	xlat_register(inst, "ldap_escape", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "ldap_unescape", ldap_unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	map_proc_register(inst, inst->name, mod_map_proc, ldap_map_verify, 0);
 
 	return 0;
@@ -1557,12 +1589,18 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 #endif
 
 #ifndef HAVE_LDAP_URL_PARSE
-	if (inst->use_referral_credentials) {
+	if (inst->handle_config.use_referral_credentials) {
 		cf_log_err(conf, "Configuration item 'use_referral_credentials' not supported.  "
 			      "Linked libldap does not support URL parsing");
 		goto error;
 	}
 #endif
+
+	/*
+	 *	Initialise server with zero length string to
+	 *	make code below simpler.
+	 */
+	inst->handle_config.server = talloc_strdup(inst, "");
 
 	/*
 	 *	Now iterate over all the 'server' config items
@@ -1680,7 +1718,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 					cf_log_err(conf, "Failed recombining URL components");
 					goto ldap_url_error;
 				}
-				inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "%s ", url);
+				inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
+										    "%s ", url);
 				free(url);
 			}
 #  else
@@ -1707,8 +1746,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			}
 
 			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "%s:%i ",
-							      ldap_url->lud_host ? ldap_url->lud_host : "localhost",
-							      ldap_url->lud_port);
+									    ldap_url->lud_host ? ldap_url->lud_host :
+									   			 "localhost",
+									    ldap_url->lud_port);
 #  endif
 			/*
 			 *	@todo We could set a few other top level
@@ -1760,7 +1800,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			}
 			if (port == 0) port = LDAP_PORT;
 
-			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "ldap://%.*s:%i ", (int) len, value, port);
+			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
+									    "ldap://%.*s:%i ",
+									    (int) len, value, port);
 #else
 			/*
 			 *	ldap_init takes port, which can be overridden by :port so
@@ -1803,12 +1845,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		}
 	}
 
-#if LDAP_SET_REBIND_PROC_ARGS != 3
+#if !defined (LDAP_SET_REBIND_PROC_ARGS) || LDAP_SET_REBIND_PROC_ARGS != 3
 	/*
 	 *	The 2-argument rebind doesn't take an instance variable.  Our rebind function needs the instance
 	 *	variable for the username, password, etc.
 	 */
-	if (inst->rebind == true) {
+	if (inst->handle_config.rebind == true) {
 		cf_log_err(conf, "Cannot use 'rebind' configuration item as this version of libldap "
 			      "does not support the API that we need");
 
@@ -1841,18 +1883,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			   inst->groupobj_scope_str);
 #endif
 
-		goto error;
-	}
-
-	inst->clientobj_scope = fr_str2int(fr_ldap_scope, inst->clientobj_scope_str, -1);
-	if (inst->clientobj_scope < 0) {
-#ifdef LDAP_SCOPE_CHILDREN
-		cf_log_err(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
-			   inst->clientobj_scope_str);
-#else
-		cf_log_err(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one' or 'children'",
-			   inst->clientobj_scope_str);
-#endif
 		goto error;
 	}
 
@@ -1911,17 +1941,23 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Build the attribute map
 	 */
-	update = cf_section_find(inst->cs, "update", NULL);
-	if (update && (map_afrom_cs(&inst->user_map, update,
-				    PAIR_LIST_REPLY, PAIR_LIST_REQUEST, fr_ldap_map_verify, NULL,
-				    LDAP_MAX_ATTRMAP) < 0)) {
-		return -1;
+	{
+		vp_tmpl_rules_t	parse_rules = {
+			.allow_foreign = true	/* Because we don't know where we'll be called */
+		};
+
+		update = cf_section_find(inst->cs, "update", NULL);
+		if (update && (map_afrom_cs(&inst->user_map, update,
+					    &parse_rules, &parse_rules, fr_ldap_map_verify, NULL,
+					    LDAP_MAX_ATTRMAP) < 0)) {
+			return -1;
+		}
 	}
 
 	/*
 	 *	Set global options
 	 */
-	if (fr_ldap_global_init() < 0) goto error;
+	if (fr_ldap_init() < 0) goto error;
 
 	/*
 	 *	Initialize the socket pool.
@@ -1929,33 +1965,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	inst->pool = module_connection_pool_init(inst->cs, &inst->handle_config,
 						 mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) goto error;
-
-	/*
-	 *	Bulk load dynamic clients.
-	 */
-	if (inst->do_clients) {
-		CONF_SECTION *cs, *map, *tmpl;
-
-		cs = cf_section_find(inst->cs, "client", NULL);
-		if (!cs) {
-			cf_log_err(conf, "Told to load clients but no client section found");
-			goto error;
-		}
-
-		map = cf_section_find(cs, "attribute", NULL);
-		if (!map) {
-			cf_log_err(cs, "Told to load clients but no attribute section found");
-			goto error;
-		}
-
-		tmpl = cf_section_find(cs, "template", NULL);
-
-		if (rlm_ldap_client_load(inst, tmpl, map) < 0) {
-			cf_log_err(cs, "Error loading clients");
-
-			return -1;
-		}
-	}
 
 	fr_ldap_global_config(inst->ldap_debug, inst->tls_random_file);
 
@@ -1967,14 +1976,14 @@ error:
 
 static int mod_load(void)
 {
-	fr_ldap_global_init();
+	fr_ldap_init();
 
 	return 0;
 }
 
 static void mod_unload(void)
 {
-	fr_ldap_global_free();;
+	fr_ldap_free();;
 }
 
 /* globally exported name */

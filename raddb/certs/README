@@ -94,6 +94,11 @@ $ make ca.der
 		MAKING A SERVER CERTIFICATE
 
 
+The following steps will let you create a server certificate for use
+with TLS-based EAP methods, such as EAP-TLS, PEAP, and TTLS.  Follow
+similar steps to create an "inner-server.pem" file, for use with
+EAP-TLS that is tunneled inside of another TLS-based EAP method.
+
 $ vi server.cnf
 
   Edit the "input_password" and "output_password" fields to be the
@@ -115,6 +120,7 @@ $ make server.csr
 
   You will have to ensure that the certificate contains the XP
   extensions needed by Microsoft clients.
+
 
 
 		MAKING A CLIENT CERTIFICATE

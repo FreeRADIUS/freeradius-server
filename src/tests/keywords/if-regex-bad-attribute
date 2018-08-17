@@ -6,16 +6,12 @@
 #  This should parse
 #
 if (&User-Name =~ /%{User-Name}/) {
-	update reply {
-		Filter-Id := "filter"
-	}
+	ok
 }
 
 #
 #  Check regexes which refer to unknown attributes
 #
 if (&User-Name =~ /%{What-The-Heck-Is-This-Thing}/) {	# ERROR
-	update reply {
-		Filter-Id := "filter"
-	}
+	ok
 }

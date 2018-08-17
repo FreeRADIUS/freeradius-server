@@ -14,20 +14,26 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
- * $Id$
- * @file socket.c
- * @brief Functions for establishing and managing low level sockets.
+/** Functions for establishing and managing low level sockets
+ *
+ * @file src/lib/util/socket.c
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @author Alan DeKok <aland@freeradius.org>
  *
  * @copyright 2015 The FreeRADIUS project
  */
-#include <freeradius-devel/libradius.h>
-#include <freeradius-devel/udpfromto.h>
+#include "socket.h"
+
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/udpfromto.h>
 
 #include <fcntl.h>
+#include <netdb.h>
+#include <unistd.h>
 
 /** Resolve a named service to a port
  *
@@ -338,7 +344,7 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
  *
  * The following code demonstrates using this function with a connection timeout:
  @code {.c}
-   sockfd = fr_socket_client_udp(NULL, ipaddr, port, true);
+   sockfd = fr_socket_client_udp(NULL, NULL, ipaddr, port, true);
    if (sockfd < 0) {
    	fr_perror();
    	exit(1);
@@ -353,8 +359,9 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
    if (fr_blocking(sockfd) < 0) goto error;
  @endcode
  *
- * @param src_ipaddr	to bind socket to, may be NULL if socket is not bound to any specific
- *			address.
+ * @param[in,out] src_ipaddr	to bind socket to, may be NULL if socket is not bound to any specific
+ *			address.  If non-null, the bound IP is copied here, too.
+ * @param[out] src_port	The source port we were bound to, may be NULL.
  * @param dst_ipaddr	Where to send datagrams.
  * @param dst_port	Where to send datagrams.
  * @param async		Whether to set the socket to nonblocking, allowing use of
@@ -363,7 +370,7 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
  *	- FD on success.
  *	- -1 on failure.
  */
-int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
+int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
 {
 	int			sockfd;
 	struct sockaddr_storage salocal;
@@ -404,11 +411,6 @@ int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 		}
 	}
 
-	if (fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &salocal, &salen) < 0) {
-		close(sockfd);
-		return -1;
-	}
-
 	/*
 	 *	Although we ignore SIGPIPE, some operating systems
 	 *	like BSD and OSX ignore the ignoring.
@@ -424,6 +426,43 @@ int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 		setsockopt(sockfd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
 	}
 #endif
+
+	/*
+	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
+	 *	kernel instead binds us to a 1.2.3.4.  So once the
+	 *	socket is bound, ask it what it's IP address is.
+	 */
+	if (src_ipaddr || src_port) {
+		fr_ipaddr_t		my_ipaddr;
+		uint16_t		my_port;
+
+		salen = sizeof(salocal);
+		memset(&salocal, 0, salen);
+		if (getsockname(sockfd, (struct sockaddr *) &salocal, &salen) < 0) {
+			close(sockfd);
+			fr_strerror_printf("Failed getting socket name: %s", fr_syserror(errno));
+			return -1;
+		}
+
+		/*
+		 *	Return these if the caller cared.
+		 */
+		if (!src_ipaddr) src_ipaddr = &my_ipaddr;
+		if (!src_port) src_port = &my_port;
+
+		if (fr_ipaddr_from_sockaddr(&salocal, salen, src_ipaddr, src_port) < 0) {
+			close(sockfd);
+			return -1;
+		}
+	}
+
+	/*
+	 *	And now get our destination
+	 */
+	if (fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &salocal, &salen) < 0) {
+		close(sockfd);
+		return -1;
+	}
 
 	if (connect(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		/*

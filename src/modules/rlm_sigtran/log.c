@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Network RADIUS SARL <license@networkradius.com>
+ * @copyright (c) 2016, Network RADIUS SARL <license@networkradius.com>
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@
  */
 #define LOG_PREFIX "rlm_sigtran - "
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/server/base.h>
 #include <osmocom/core/logging.h>
 #include "sigtran.h"
 
@@ -62,7 +62,7 @@ static void do_log(UNUSED struct log_target *target, unsigned int level, const c
 void sigtran_log_init(TALLOC_CTX *ctx)
 {
 	struct log_target	*log;
-	static struct log_info	info = {};
+	static struct log_info	info;
 
 	log_init(&info, ctx);
 

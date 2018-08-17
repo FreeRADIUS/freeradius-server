@@ -1,5 +1,4 @@
-#ifndef _RLM_EXPR_H
-#define _RLM_EXPR_H
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -15,11 +14,9 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2007  The FreeRADIUS server project
- * Copyright 2007  Alan DeKok <aland@ox.org>
+ * @copyright 2007  The FreeRADIUS server project
+ * @copyright 2007  Alan DeKok <aland@ox.org>
  */
 RCSIDH(rlm_expr_h, "$Id$")
 
 void pair_builtincompare_add(void *instance);
-
-#endif

@@ -26,19 +26,14 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_detail (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/detail.h>
-#include <freeradius-devel/exfile.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/exfile.h>
 
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-
-#ifdef HAVE_FNMATCH_H
-#  include <fnmatch.h>
-#endif
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
@@ -75,7 +70,7 @@ typedef struct detail_instance {
 } rlm_detail_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Client-IP-Address}/detail" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Packet-Src-IP-Address}/detail" },
 	{ FR_CONF_OFFSET("header", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_detail_t, header), .dflt = "%t" },
 	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_detail_t, perm), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, rlm_detail_t, group) },
@@ -85,6 +80,42 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t rlm_detail_dict[];
+fr_dict_autoload_t rlm_detail_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_packet_src_ipv4_address;
+static fr_dict_attr_t const *attr_packet_dst_ipv4_address;
+static fr_dict_attr_t const *attr_packet_src_ipv6_address;
+static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
+static fr_dict_attr_t const *attr_packet_src_port;
+static fr_dict_attr_t const *attr_packet_dst_port;
+static fr_dict_attr_t const *attr_protocol;
+
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_user_password;
+
+extern fr_dict_attr_autoload_t rlm_detail_dict_attr[];
+fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
+	{ .out = &attr_packet_src_ipv4_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ipv4_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+
+	{ NULL }
+};
 
 /*
  *	Clean up.
@@ -155,9 +186,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			attr = cf_pair_attr(cf_item_to_pair(ci));
 			if (!attr) continue; /* pair-anoia */
 
-			da = fr_dict_attr_by_name(NULL, attr);
-			if (!da) {
-				cf_log_err(conf, "No such attribute '%s'", attr);
+			if (fr_dict_attr_by_qualified_name(&da, dict_freeradius, attr) < 0) {
+				cf_log_perr(conf, "Failed resolving attribute");
 				return -1;
 			}
 
@@ -247,7 +277,8 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		 *	Numbers, if not.
 		 */
 		if (is_radius_code(packet->code)) {
-			WRITE("\tPacket-Type = %s\n", fr_packet_codes[packet->code]);
+			WRITE("\tPacket-Type = %s\n",
+			      fr_dict_enum_alias_by_value(attr_packet_type, fr_box_uint32(packet->code)));
 		} else {
 			WRITE("\tPacket-Type = %u\n", packet->code);
 		}
@@ -261,20 +292,19 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
-			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IP_ADDRESS);
-			src_vp.vp_ipv4addr = packet->src_ipaddr.addr.v4.s_addr;
+			src_vp.da = attr_packet_src_ipv4_address;
+			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
 
-			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IP_ADDRESS);
-			dst_vp.vp_ipv4addr = packet->dst_ipaddr.addr.v4.s_addr;
+			dst_vp.da = attr_packet_dst_ipv4_address;
+			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
 			break;
 
 		case AF_INET6:
-			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IPV6_ADDRESS);
-			memcpy(&src_vp.vp_ipv6addr, &packet->src_ipaddr.addr.v6,
-			       sizeof(packet->src_ipaddr.addr.v6));
-			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IPV6_ADDRESS);
-			memcpy(&dst_vp.vp_ipv6addr, &packet->dst_ipaddr.addr.v6,
-			       sizeof(packet->dst_ipaddr.addr.v6));
+			src_vp.da = attr_packet_src_ipv6_address;
+			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
+
+			dst_vp.da = attr_packet_dst_ipv6_address;
+			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
 			break;
 
 		default:
@@ -284,21 +314,22 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		detail_fr_pair_fprint(request, out, &src_vp);
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
-		src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_PORT);
-		src_vp.vp_uint32 = packet->src_port;
-		dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_PORT);
-		dst_vp.vp_uint32 = packet->dst_port;
+		src_vp.da = attr_packet_src_port;
+		fr_value_box_shallow(&src_vp.data, packet->src_port, true);
+
+		dst_vp.da = attr_packet_dst_port;
+		fr_value_box_shallow(&dst_vp.data, packet->dst_port, true);
 
 		detail_fr_pair_fprint(request, out, &src_vp);
 		detail_fr_pair_fprint(request, out, &dst_vp);
 	}
 
 	{
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		/* Write each attribute/value to the log file */
-		for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
+		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			FR_TOKEN op;
 
 			if (inst->ht && fr_hash_table_finddata(inst->ht, vp->da)) continue;
@@ -306,7 +337,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 			/*
 			 *	Don't print passwords in old format...
 			 */
-			if (compat && !vp->da->vendor && (vp->da->attr == FR_USER_PASSWORD)) continue;
+			if (compat && (vp->da == attr_user_password)) continue;
 
 			/*
 			 *	Print all of the attributes, operator should always be '='.
@@ -332,6 +363,13 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		}
 #endif
 	}
+
+	/*
+	 *	Add the original protocol of the request, this should
+	 *	be used by the detail reader to set the default
+	 *	dictionary used for decoding.
+	 */
+//	WRITE("\t%s = %s", attr_protocol->name, fr_dict_root(request->dict)->name);
 	WRITE("\tTimestamp = %ld\n", (unsigned long) request->packet->timestamp.tv_sec);
 
 	WRITE("\n");
@@ -368,26 +406,9 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 
 	RDEBUG2("%s expands to %s", inst->filename, buffer);
 
-#ifdef WITH_ACCOUNTING
-#if defined(HAVE_FNMATCH_H) && defined(FNM_FILE_NAME)
-	/*
-	 *	If we read it from a detail file, and we're about to
-	 *	write it back to the SAME detail file directory, then
-	 *	suppress the write.  This check prevents an infinite
-	 *	loop.
-	 */
-	if (request->listener && (request->listener->type == RAD_LISTEN_DETAIL) &&
-	    (fnmatch(((listen_detail_t *)request->listener->data)->filename,
-		     buffer, FNM_FILE_NAME | FNM_PERIOD ) == 0)) {
-		RWDEBUG2("Suppressing infinite loop");
-		return RLM_MODULE_NOOP;
-	}
-#endif
-#endif
-
 	outfd = exfile_open(inst->ef, request, buffer, inst->perm);
 	if (outfd < 0) {
-		RERROR("Couldn't open file %s: %s", buffer, fr_strerror());
+		RPERROR("Couldn't open file %s", buffer);
 		/* coverity[missing_unlock] */
 		return RLM_MODULE_FAIL;
 	}
@@ -444,15 +465,6 @@ skip_group:
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-#ifdef WITH_DETAIL
-	if (request->listener && (request->listener->type == RAD_LISTEN_DETAIL) &&
-	    strcmp(((rlm_detail_t const *)instance)->filename,
-		   ((listen_detail_t *)request->listener->data)->filename) == 0) {
-		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file");
-		return RLM_MODULE_NOOP;
-	}
-#endif
-
 	return detail_do(instance, request, request->packet, true);
 }
 

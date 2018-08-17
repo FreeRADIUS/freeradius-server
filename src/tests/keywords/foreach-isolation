@@ -3,7 +3,6 @@
 #
 
 update {
-	&reply:Filter-Id := 'filter'
 	&control:Tmp-String-0 := '0'
 	&control:Tmp-String-0 += '1'
 	&control:Tmp-String-0 += '2'
@@ -20,19 +19,15 @@ foreach control:Tmp-String-0 {
 }
 
 if (!&Tmp-String-0[0] || !&Tmp-String-0[1] || !&Tmp-String-0[2] || !&Tmp-String-0[3]) {
-	update reply {
-		Filter-Id += 'Fail 0'
-	}
+	test_fail
 }
 
 if ((&Tmp-String-0[0] != '0') || (&Tmp-String-0[1] != '1') || (&Tmp-String-0[2] != '2') || (&Tmp-String-0[3] != '3')) {
-	update reply {
-		Filter-Id += 'Fail 1'
-	}
+	test_fail
 }
 
 if (!&control:Tmp-String-0[0] || &control:Tmp-String-0[1] || &control:Tmp-String-0[2] || &control:Tmp-String-0[3]) {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
+
+success

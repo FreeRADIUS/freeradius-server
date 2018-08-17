@@ -25,10 +25,10 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/map_proc.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/map_proc.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 /** Client field
  *
@@ -44,13 +44,13 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 {
 	client_get_vp_ctx_t	*client = uctx;
 	VALUE_PAIR		*head = NULL, *vp;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	CONF_PAIR const		*cp;
 
 	rad_assert(ctx != NULL);
 
-	fr_pair_cursor_init(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 
 	/*
 	 *	FIXME: allow multiple entries.
@@ -65,7 +65,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(NULL, attr);
+		da = fr_dict_attr_by_name(request->dict, attr);
 		if (!da) {
 			RWDEBUG("No such attribute '%s'", attr);
 			return -1;
@@ -80,8 +80,8 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 		char const *value = cf_pair_value(cp);
 
 		MEM(vp = fr_pair_afrom_da(ctx, da));
-		if (fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1) < 0) {
-			RWDEBUG("Failed parsing value \"%pS\" for attribute %s: %s", value,
+		if (fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, '\0', false) < 0) {
+			RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue(value),
 				map->lhs->tmpl_da->name, fr_strerror());
 			fr_pair_list_free(&head);
 			talloc_free(vp);
@@ -89,7 +89,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 		}
 
 		vp->op = map->op;
-		fr_pair_cursor_merge(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		if (map->op != T_OP_ADD) break;	/* Create multiple attribute for multiple CONF_PAIRs */
 	}
@@ -113,25 +113,30 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				   vp_tmpl_t const *client_override, vp_map_t const *maps)
+				   fr_value_box_t **client_override, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	vp_map_t const		*map;
 	RADCLIENT		*client;
 	client_get_vp_ctx_t	uctx;
 
-	if (client_override) {
+	if (*client_override) {
 		fr_ipaddr_t	ip;
-		char 		*client_str = NULL;
+		char const	*client_str;
 
-		if (tmpl_aexpand(request, &client_str, request, client_override, NULL, NULL) < 0) {
+		/*
+		 *	Concat don't asprint, as this becomes a noop
+		 *	in the vast majority of cases.
+		 */
+		if (fr_value_box_list_concat(request, *client_override, client_override, FR_TYPE_STRING, true) < 0) {
+			REDEBUG("Failed concatenating input data");
 			return RLM_MODULE_FAIL;
 		}
+		client_str = (*client_override)->vb_strvalue;
 
 		if (fr_inet_pton(&ip, client_str, -1, AF_UNSPEC, false, true) < 0) {
 			REDEBUG("\"%s\" is not a valid IPv4 or IPv6 address", client_str);
 			rcode = RLM_MODULE_FAIL;
-			talloc_free(client_str);
 			goto finish;
 		}
 
@@ -155,8 +160,6 @@ static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst
 				RDEBUG2("Found client matching \"%s\"", client_str);
 			}
 		}
-
-		talloc_free(client_str);
 	} else {
 		client = request->client;
 	}
@@ -340,7 +343,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
  */
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	xlat_register(instance, "client", xlat_client, NULL, NULL, 0, 0);
+	xlat_register(instance, "client", xlat_client, NULL, NULL, 0, 0, true);
 	map_proc_register(instance, "client", map_proc_client, NULL, 0);
 
 	return 0;

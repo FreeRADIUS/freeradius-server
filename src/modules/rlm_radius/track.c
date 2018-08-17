@@ -23,10 +23,11 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rbtree.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "track.h"
 #include "rlm_radius.h"
@@ -45,7 +46,7 @@ static int rr_track_free(rlm_radius_id_t *id)
 		 *	The timers are parented from the request, so
 		 *	we have to manually free them here.
 		 */
-		talloc_const_free(id->id[i].ev);
+		if (id->id[i].timer->ev) talloc_const_free(id->id[i].timer->ev);
 	}
 
 	return 0;
@@ -67,11 +68,11 @@ rlm_radius_id_t *rr_track_create(TALLOC_CTX *ctx)
 	id = talloc_zero(ctx, rlm_radius_id_t);
 	if (!id) return NULL;
 
-	FR_DLIST_INIT(id->free_list);
+	fr_dlist_init(&id->free_list, rlm_radius_request_t, entry);
 
 	for (i = 0; i < 256; i++) {
 		id->id[i].id = i;
-		fr_dlist_insert_tail(&id->free_list, &id->id[i].entry);
+		fr_dlist_insert_tail(&id->free_list, &id->id[i]);
 		id->num_free++;
 	}
 
@@ -100,28 +101,27 @@ static int rr_cmp(void const *one, void const *two)
  * @param[in] request		The request which will send the proxied packet.
  * @param[in] code		Of the outbound request.
  * @param[in] link		the structure linking REQUEST to rlm_radius thread instance
+ * @param[in] timer		structure containing retransmission data
  * @return
  *	- NULL on error
  *	- rlm_radius_request_t on success
  */
-rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code, rlm_radius_link_t *link)
+rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code, rlm_radius_link_t *link,
+				     rlm_radius_retransmit_t *timer)
 {
-	fr_dlist_t *entry;
 	rlm_radius_request_t *rr;
 
 retry:
-	entry = FR_DLIST_FIRST(id->free_list);
-	if (entry) {
+	rr = fr_dlist_head(&id->free_list);
+	if (rr) {
 		rad_assert(id->num_free > 0);
-
-		rr = fr_ptr_to_type(rlm_radius_request_t, entry, entry);
 
 		rad_assert(rr->request == NULL);
 
 		/*
 		 *	Mark it as used, and remove it from the free list.
 		 */
-		fr_dlist_remove(&rr->entry);
+		fr_dlist_remove(&id->free_list, rr);
 		id->num_free--;
 
 		/*
@@ -155,7 +155,8 @@ retry:
 	 *	If needed, allocate a subtree.
 	 */
 	if (!id->subtree[id->next_id]) {
-		id->subtree[id->next_id] = rbtree_create(id, rr_cmp, NULL, RBTREE_FLAG_NONE);
+		id->subtree[id->next_id] = rbtree_talloc_create(id, rr_cmp, rlm_radius_request_t,
+								NULL, RBTREE_FLAG_NONE);
 		if (!id->subtree[id->next_id]) return NULL;
 	}
 
@@ -163,13 +164,23 @@ retry:
 	 *	Allocate a new one, and insert it into the appropriate subtree.
 	 */
 	rr = talloc_zero(id, rlm_radius_request_t);
-	FR_DLIST_INIT(rr->entry);
 	rr->id = id->next_id;
 
 done:
 	rr->link = link;
-	rr->code = code;
 	rr->request = request;
+
+	rr->timer = timer;
+	rr->code = code;
+
+	/*
+	 *	rr->id is already allocated
+	 *
+	 *	don't touch the timer fields.  The caller should have
+	 *	initialized them to all zero.
+	 */
+
+
 	id->num_requests++;
 	return rr;
 }
@@ -226,7 +237,6 @@ int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr)
 	(void) talloc_get_type_abort(id, rlm_radius_id_t);
 
 	rr->request = NULL;
-	if (rr->ev) talloc_const_free(rr->ev);
 
 	rad_assert(id->num_requests > 0);
 	id->num_requests--;
@@ -270,7 +280,7 @@ int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr)
 	 *	Otherwise put it back on the free list.
 	 */
 done:
-	fr_dlist_insert_tail(&id->free_list, &rr->entry);
+	fr_dlist_insert_tail(&id->free_list, rr);
 	id->num_free++;
 
 	return 0;
@@ -368,42 +378,41 @@ void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag)
 	id->use_authenticator = flag;
 }
 
-int rr_track_retry(UNUSED rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_t *el,
-		   fr_event_callback_t callback, void *uctx, rlm_radius_retry_t *retry,
-		   struct timeval *now)
+int rr_track_retry(rlm_radius_retransmit_t *timer, struct timeval *now)
 {
 	uint32_t delay, frac;
-	struct timeval next;
 
 	/*
 	 *	Get when we SHOULD have woken up, which might not be
 	 *	the same as 'now'.
 	 */
-	next = rr->start;
-	next.tv_usec += rr->rt;
+	timer->next = timer->start;
+	timer->next.tv_usec += timer->rt;
 
 	/*
 	 *	Increment retransmission counter
 	 */
-	rr->count++;
+	timer->count++;
 
 	/*
 	 *	We retried too many times.  Fail.
 	 */
-	if (retry->mrc && (rr->count > retry->mrc)) {
+	if (timer->retry->mrc && (timer->count > timer->retry->mrc)) {
+		DEBUG3("RETRANSMIT - reached MRC %d", timer->retry->mrc);
 		return 0;
 	}
 
 	/*
 	 *	Cap delay at MRD
 	 */
-	if (retry->mrd) {
+	if (timer->retry->mrd) {
 		struct timeval end;
 
-		end = rr->start;
-		end.tv_sec += retry->mrd;
+		end = timer->start;
+		end.tv_sec += timer->retry->mrd;
 
 		if (timercmp(now, &end, >=)) {
+			DEBUG3("RETRANSMIT - reached MRD %d", timer->retry->mrd);
 			return 0;
 		}
 	}
@@ -418,16 +427,16 @@ int rr_track_retry(UNUSED rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_even
 	delay = fr_rand();
 	delay ^= (delay >> 16);
 	delay &= 0xffff;
-	frac = rr->rt / 5;
+	frac = timer->rt / 5;
 	delay = ((frac >> 16) * delay) + (((frac & 0xffff) * delay) >> 16);
 
-	delay += (2 * rr->rt) - (rr->rt / 10);
+	delay += (2 * timer->rt) - (timer->rt / 10);
 
 	/*
 	 *	Cap delay at MRT
 	 */
-	if (retry->mrt && (delay > (retry->mrt * USEC))) {
-		int mrt_usec = retry->mrt * USEC;
+	if (timer->retry->mrt && (delay > (timer->retry->mrt * USEC))) {
+		int mrt_usec = timer->retry->mrt * USEC;
 
 		/*
 		 *	delay = MRT + RAND * MRT
@@ -443,39 +452,29 @@ int rr_track_retry(UNUSED rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_even
 	/*
 	 *	And finally set the retransmission timer.
 	 */
-	rr->rt = delay;
+	timer->rt = delay;
 
 	/*
 	 *	Get the next delay time.
 	 */
-	next.tv_usec += rr->rt;
-	next.tv_sec += (next.tv_usec / USEC);
-	next.tv_usec %= USEC;
+	timer->next.tv_usec += timer->rt;
+	timer->next.tv_sec += (timer->next.tv_usec / USEC);
+	timer->next.tv_usec %= USEC;
 
-	if (fr_event_timer_insert(rr->request, el, &rr->ev, &next, callback, uctx) < 0) {
-		return -1;
-	}
-
-	return 0;
+	DEBUG3("RETRANSMIT - in %d.%06ds", timer->rt / USEC, timer->rt % USEC);
+	return 1;
 }
 
 
-int rr_track_start(UNUSED rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_t *el,
-		   fr_event_callback_t callback, void *uctx, rlm_radius_retry_t *retry)
+int rr_track_start(rlm_radius_retransmit_t *timer)
 {
-	struct timeval next;
+	timer->count = 1;
+	timer->rt = timer->retry->irt * USEC; /* rt is in usec */
 
-	rr->count = 1;
-	rr->rt = retry->irt * USEC; /* rt is in usec */
-
-	next = rr->start;
-	next.tv_usec += rr->rt;
-	next.tv_sec += (next.tv_usec / USEC);
-	next.tv_usec %= USEC;
-
-	if (fr_event_timer_insert(rr->request, el, &rr->ev, &next, callback, uctx) < 0) {
-		return -1;
-	}
+	timer->next = timer->start;
+	timer->next.tv_usec += timer->rt;
+	timer->next.tv_sec += (timer->next.tv_usec / USEC);
+	timer->next.tv_usec %= USEC;
 
 	return 0;
 }

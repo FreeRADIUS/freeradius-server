@@ -26,7 +26,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/ring_buffer.h>
-#include <freeradius-devel/fr_log.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <string.h>
 #include <sys/event.h>
@@ -231,7 +232,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
 		(void) fr_control_gc(c, rb);
 		m = (fr_control_message_t *) fr_ring_buffer_alloc(rb, message_size);
 		if (!m) {
-			fr_strerror_printf("Failed allocating from ring buffer: %s", fr_strerror());
+			fr_strerror_printf_push("Failed allocating from ring buffer");
 			return NULL;
 		}
 	}
@@ -258,6 +259,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
  * @return
+ *	- -2 on ring buffer full
  *	- <0 on error
  *	- 0 on success
  */
@@ -280,7 +282,7 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 		m = fr_control_message_alloc(c, rb, id, data, data_size);
 		if (!m) {
 			fr_strerror_printf("Failed allocationg after GC");
-			return -1;
+			return -2;
 		}
 	}
 

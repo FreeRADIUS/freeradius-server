@@ -1,10 +1,6 @@
 #
 # PRE: update
 #
-update reply {
-       Filter-Id := "filter"
-}
-
 update request {
 	Tmp-String-0        := '9870'
 	Tmp-String-1        := '98709870'
@@ -41,9 +37,7 @@ update request {
 	Tmp-Integer-0 := "%{integer:Tmp-String-0}"
 }
 if ((Tmp-String-0 != "%{string:Tmp-Integer-0}") || (Tmp-Integer-0 != 959985456)) {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 # String - network order representation of a 8 char string
@@ -51,16 +45,12 @@ update request {
 	Tmp-Integer64-0 := "%{integer:Tmp-String-1}"
 }
 if ((Tmp-String-1 != "%{string:Tmp-Integer64-0}") || (Tmp-Integer64-0 != 4123106139115632432)) {
-	update reply {
-		Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 # String - Can't convert 12 byte string to integer (our biggest native size is a 64bit unsigned int)
 if ("%{integer:Tmp-String-2}" != '') {
-	update reply {
-		Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 # Octets - network order representation of a 4 byte octet string
@@ -72,14 +62,10 @@ update request {
 #  Disabled until xlats can return binary data
 #
 #if (Tmp-Octets-0 != "%{hex:Tmp-Integer-0}") {
-#	update reply {
-#		Filter-Id += 'fail 4a'
-#	}
+#	test_fail
 #}
 if (Tmp-Integer-0 != 959985457) {
-	update reply {
-		Filter-Id += 'fail 4b'
-	}
+	test_fail
 }
 
 # Octets - network order representation of a 8 byte octet string
@@ -91,77 +77,55 @@ update request {
 #  Disabled until xlats can return binary data
 #
 #if (Tmp-Octets-1 != "%{hex:Tmp-Integer64-0}") {
-#	update reply {
-#		Filter-Id += 'fail 5a'
-#	}
+#	test_fail
 #}
 
 if (Tmp-Integer64-0 != 4123106143410599729) {
-	update reply {
-		Filter-Id += 'fail 5b'
-	}
+	test_fail
 }
 
 # String - Can't convert 12 byte octet string to integer (our biggest native size is a 64bit unsigned int)
 if ("%{integer:Tmp-Octets-2}" != '') {
-	update reply {
-		Filter-Id += 'fail 6'
-	}
+	test_fail
 }
 
 # IP Address
 if (Tmp-String-2 != '959985458') {
-	update reply {
-		Filter-Id += 'fail 7'
-	}
+	test_fail
 }
 
 if (<ipaddr>Tmp-String-2 != &Tmp-IP-Address-0) {
-	update reply {
-		Filter-Id += 'fail 8'
-	}
+	test_fail
 }
 
 # Date
 if (Tmp-String-3 != '959985459') {
-	update reply {
-		Filter-Id += 'fail 9'
-	}
+	test_fail
 }
 
 # Integer
 if (Tmp-String-4 != '959985460') {
-	update reply {
-		Filter-Id += 'fail 10'
-	}
+	test_fail
 }
 
 # Abinary - Can't convert ascend binary to an integer
 if (Tmp-String-5 != '') {
-	update reply {
-		Filter-Id += 'fail 11'
-	}
+	test_fail
 }
 
 # ifid - Can't convert interface ID to an integer
 if (Tmp-String-6 != '') {
-	update reply {
-		Filter-Id += 'fail 12'
-	}
+	test_fail
 }
 
 # ipv6addr - Can't convert IPv6 to integer
 if (Tmp-String-7 != '959985464') {
-	update reply {
-		Filter-ID += 'fail 13'
-	}
+	test_fail
 }
 
 # ipv6addrprefix
 if (Tmp-String-8 != '959985465') {
-	update reply {
-		Filter-ID += 'fail 14'
-	}
+	test_fail
 }
 update request {
 	Tmp-String-0        := "%{integer:Tmp-Cast-Byte}"
@@ -173,44 +137,30 @@ update request {
 
 # byte
 if (Tmp-String-0 != '58') {
-	update reply {
-		Filter-ID += 'fail 15'
-	}
+	test_fail
 }
 
 # short
 if (Tmp-String-1 != '14139') {
-	update reply {
-		Filter-ID += 'fail 16'
-	}
+	test_fail
 }
 
 # ethernet
 if (Tmp-String-2 != '62913607630848') {
-	update reply {
-		Filter-Id += 'fail 17'
-	}
+	test_fail
 }
 if (<ether>Tmp-String-2 != &Tmp-Cast-Ether) {
-	update reply {
-		Filter-Id += 'fail 18'
-	}
+	test_fail
 }
 
 # integer64
 if (Tmp-String-3 != '1152921505566832445') {
-	update reply {
-		Filter-Id += 'fail 19'
-	}
+	test_fail
 }
 
 # ipv4prefix
 if (Tmp-String-4 != '959985470') {
-	update reply {
-		Filter-Id += 'fail 20'
-	}
+	test_fail
 }
 
-
-
-
+success

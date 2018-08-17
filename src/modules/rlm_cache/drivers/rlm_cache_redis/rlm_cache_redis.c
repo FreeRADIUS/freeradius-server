@@ -23,13 +23,12 @@
  */
 #define LOG_PREFIX "rlm_cache_redis - "
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/rad_assert.h>
 
 #include "../../rlm_cache.h"
-#include "../../../rlm_redis/redis.h"
-#include "../../../rlm_redis/cluster.h"
-
+#include <freeradius-devel/redis/base.h>
+#include <freeradius-devel/redis/cluster.h>
 static CONF_PARSER driver_config[] = {
 	REDIS_COMMON_CONFIG,
 	CONF_PARSER_TERMINATOR
@@ -44,6 +43,24 @@ typedef struct rlm_cache_redis {
 
 	fr_redis_cluster_t	*cluster;
 } rlm_cache_redis_t;
+
+static fr_dict_t *dict_freeradius;
+
+extern fr_dict_autoload_t rlm_cache_redis_dict[];
+fr_dict_autoload_t rlm_cache_redis_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_cache_created;
+static fr_dict_attr_t const *attr_cache_expires;
+
+extern fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[];
+fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[] = {
+	{ .out = &attr_cache_created, .name = "Cache-Created", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_cache_expires, .name = "Cache-Expires", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ NULL }
+};
 
 /** Create a new rlm_cache_redis instance
  *
@@ -71,14 +88,12 @@ static int mod_instantiate(rlm_cache_config_t const *config, void *instance, CON
 	/*
 	 *	These never change, so do it once on instantiation
 	 */
-	if (tmpl_afrom_attr_str(driver, &driver->created_attr, "&Cache-Created",
-			        REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) < 0) {
+	if (tmpl_afrom_attr_str(driver, &driver->created_attr, "&Cache-Created", NULL) < 0) {
 		ERROR("Cache-Created attribute not defined");
 		return -1;
 	}
 
-	if (tmpl_afrom_attr_str(driver, &driver->expires_attr, "&Cache-Expires",
-			        REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) < 0) {
+	if (tmpl_afrom_attr_str(driver, &driver->expires_attr, "&Cache-Expires", NULL) < 0) {
 		ERROR("Cache-Expires attribute not defined");
 		return -1;
 	}
@@ -127,29 +142,19 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		 *	Grab all the data for this hash, should return an array
 		 *	of alternating keys/values which we then convert into maps.
 		 */
-		if (RDEBUG_ENABLED3) {
-			char *p;
-
-			p = fr_asprint(NULL, (char const *)key, key_len, '"');
-			RDEBUG3("LRANGE %s 0 -1", key);
-			talloc_free(p);
-		}
+		RDEBUG3("LRANGE %pV 0 -1", fr_box_strvalue_len((char const *)key, key_len));
 		reply = redisCommand(conn->handle, "LRANGE %b 0 -1", key, key_len);
 		status = fr_redis_command_status(conn, reply);
 	}
 	if (s_ret != REDIS_RCODE_SUCCESS) {
-		char *p;
-
-		p = fr_asprint(NULL, (char const *)key, key_len, '"');
-		RERROR("Failed retrieving entry for key \"%s\"", p);
-		talloc_free(p);
+		RERROR("Failed retrieving entry for key \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
 
 	error:
 		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
 	}
 
-	if (!rad_cond_assert(reply)) goto error;
+	if (!fr_cond_assert(reply)) goto error;
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Bad result type, expected array, got %s",
@@ -207,7 +212,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache created date
 	 */
-	if ((head->lhs->tmpl_da->vendor == 0) && (head->lhs->tmpl_da->attr == FR_CACHE_CREATED)) {
+	if (head->lhs->tmpl_da == attr_cache_created) {
 		vp_map_t *map;
 
 		c->created = head->rhs->tmpl_value.vb_date;
@@ -220,7 +225,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache expires date
 	 */
-	if ((head->lhs->tmpl_da->vendor == 0) && (head->lhs->tmpl_da->attr == FR_CACHE_EXPIRES)) {
+	if (head->lhs->tmpl_da == attr_cache_expires) {
 		vp_map_t *map;
 
 		c->expires = head->rhs->tmpl_value.vb_date;
@@ -267,7 +272,6 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	redisReply		*replies[5];	/* Should have the same number of elements as pipelined commands */
 	size_t			reply_num = 0, i;
 
-	char			*p;
 	int			cnt;
 
 	vp_tmpl_t		expires_value;
@@ -355,12 +359,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 			pipelined++;
 		}
 
-		if (RDEBUG_ENABLED3) {
-			p = fr_asprint(request, (char const *)c->key, c->key_len, '\0');
-			RDEBUG3("DEL \"%s\"", p);
-			talloc_free(p);
-
-		}
+		RDEBUG3("DEL \"%pV\"", fr_box_strvalue_len((char const *)c->key, c->key_len));
 
 		if (redisAppendCommand(conn->handle, "DEL %b", c->key, c->key_len) != REDIS_OK) goto append_error;
 		pipelined++;
@@ -369,9 +368,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 			RDEBUG3("argv command");
 			RINDENT();
 			for (i = 0; i < talloc_array_length(argv); i++) {
-				p = fr_asprint(request, argv[i], argv_len[i], '\0');
-				RDEBUG3("%s", p);
-				talloc_free(p);
+				RDEBUG3("%pV", fr_box_strvalue_len(argv[i], argv_len[i]));
 			}
 			REXDENT();
 		}
@@ -382,11 +379,8 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		 *	Set the expiry time and close out the transaction.
 		 */
 		if (c->expires > 0) {
-			if (RDEBUG_ENABLED3) {
-				p = fr_asprint(request, (char const *)c->key, c->key_len, '\"');
-				RDEBUG3("EXPIREAT \"%s\" %li", p, (long)c->expires);
-				talloc_free(p);
-			}
+			RDEBUG3("EXPIREAT \"%pV\" %li",
+				fr_box_strvalue_len((char const *)c->key, c->key_len), (long)c->expires);
 			if (redisAppendCommand(conn->handle, "EXPIREAT %b %i", c->key,
 					       c->key_len, c->expires) != REDIS_OK) goto append_error;
 			pipelined++;
@@ -446,7 +440,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
 	}
-	if (!rad_cond_assert(reply)) goto error;
+	if (!fr_cond_assert(reply)) goto error;
 
 	if (reply->type == REDIS_REPLY_INTEGER) {
 		cache_status = CACHE_MISS;
