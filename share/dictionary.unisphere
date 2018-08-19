@@ -296,11 +296,11 @@ VALUE	Unisphere-Qos-Profile-Interface-Type PPPOE-SUB		12
 VALUE	Unisphere-Nas-Port-Method	None			0
 VALUE	Unisphere-Nas-Port-Method	CISCO-CLID		1
 
-VALUE	Unisphere-Ppp-Protocol		None			0
-VALUE	Unisphere-Ppp-Protocol		PAP			1
-VALUE	Unisphere-Ppp-Protocol		CHAP			2
-VALUE	Unisphere-Ppp-Protocol		PAP-CHAP		3
-VALUE	Unisphere-Ppp-Protocol		CHAP-PAP		4
+VALUE	Unisphere-PPP-Protocol		None			0
+VALUE	Unisphere-PPP-Protocol		PAP			1
+VALUE	Unisphere-PPP-Protocol		CHAP			2
+VALUE	Unisphere-PPP-Protocol		PAP-CHAP		3
+VALUE	Unisphere-PPP-Protocol		CHAP-PAP		4
 
 VALUE	Unisphere-Tunnel-Bearer-Type	None			0
 VALUE	Unisphere-Tunnel-Bearer-Type	Analog			1

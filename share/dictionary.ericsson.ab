@@ -174,7 +174,7 @@ ATTRIBUTE	Bind-L2TP-Flow-Control			57	integer
 ATTRIBUTE	Bind-Sub-User-At-Context		58	string
 ATTRIBUTE	Bind-Sub-Password			59	string
 ATTRIBUTE	Ip-Host-Addr				60	string
-ATTRIBUTE	IP-Tos-Field				61	integer
+ATTRIBUTE	IP-TOS-Field				61	integer
 
 VALUE	IP-TOS-Field			normal			0
 VALUE	IP-TOS-Field			min-cost-only		1
