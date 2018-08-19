@@ -394,7 +394,6 @@ ATTRIBUTE	Class-Volume-limit			186	string
 ATTRIBUTE	Class-Volume-In-Counter			187	string
 ATTRIBUTE	Class-Volume-Out-Counter		188	string
 ATTRIBUTE	Flow-FAC-Profile			189	string
-ATTRIBUTE	Flow-FAC-Profile			189	string
 ATTRIBUTE	Service-Name				190	string has_tag
 ATTRIBUTE	Service-Action				191	integer has_tag
 
