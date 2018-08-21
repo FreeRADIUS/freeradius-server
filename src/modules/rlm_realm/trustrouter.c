@@ -144,7 +144,7 @@ static bool tidc_send_recv(const char *trustrouter, int port, const char *rpreal
 	/* Send TIDC request */
 	rcode = tidc_send_request(global_tidc, conn, gssctx, (char *) rprealm, (char *) realm_name,
 				  (char *) community, &tr_response_func, cookie);
-	if (rcode > 0) {
+	if (rcode < 0) {
 		DEBUG2("Error in tidc_send_request, rc = %d.", rcode);
 		return false;
 	}
