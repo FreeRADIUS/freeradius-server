@@ -233,9 +233,6 @@ ATTRIBUTE	FreeDHCP-Cisco-TFTP-Server-IP-Addresses	150	ipaddr array
 
 ATTRIBUTE	FreeDHCP-End-Of-Options			255	byte
 
-VALUE	FreeDHCP-Opcode			Client-Message		1
-VALUE	FreeDHCP-Opcode			Server-Message		2
-
 VALUE	FreeDHCP-Message-Type		FreeDHCP-Discover	1
 VALUE	FreeDHCP-Message-Type		FreeDHCP-Offer		2
 VALUE	FreeDHCP-Message-Type		FreeDHCP-Request	3
