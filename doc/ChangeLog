@@ -16,6 +16,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  item.  This change should only affect people who are using
 	  variables in insecure ways.
 	* Allow "sqlcounter" module to be listed in "post-auth".
+	* Add support for IPv6 attributes in SQL.  Fixes #2280.
+	  Patches from Michael Ducharme.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -41,6 +43,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Don't write 0 bytes to SSL.  Fixes #2270.
 	* Remove "expiry_time IS NULL" from allocate_update
 	  query.  Fixes #2262.
+	* Various dictionary cleanups and consistency checks.
+	  Fixes #2281.  Patches from Peter Lemenkov.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
