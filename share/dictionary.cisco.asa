@@ -61,10 +61,9 @@ ATTRIBUTE	ASA-Allow-Network-Extension-Mode	64	integer
 ATTRIBUTE	ASA-Authorization-Type			65	integer
 ATTRIBUTE	ASA-Authorization-Required		66	integer
 ATTRIBUTE	ASA-Authorization-DN-Field		67	string
-ATTRIBUTE	ASA-Authorization-DN-Field		67	string
 ATTRIBUTE	ASA-IKE-KeepAlive-Confidence-Interval	68	integer
 ATTRIBUTE	ASA-WebVPN-Content-Filter-Parameters	69	integer
-ATTRIBUTE	ASA-WebVPN-HTML-Filter			69	integer
+ATTRIBUTE	ASA-WebVPN-HTML-Filter			70	integer
 ATTRIBUTE	ASA-WebVPN-URL-List			71	string
 ATTRIBUTE	ASA-WebVPN-Port-Forwarding-List		72	string
 ATTRIBUTE	ASA-WebVPN-Access-List			73	string
