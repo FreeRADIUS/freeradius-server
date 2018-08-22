@@ -1851,10 +1851,17 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		}
 
 		/*
+		 *	How much room do we have left?
+		 */
+		room = ((uint8_t *) data) + sizeof(data) - ptr;
+
+		/*
 		 *	Set the Message-Authenticator to the correct
 		 *	length and initial value.
 		 */
 		if (!reply->da->vendor && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
+			if (room < 18) break;
+
 			/*
 			 *	Cache the offset to the
 			 *	Message-Authenticator
@@ -1862,14 +1869,16 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			packet->offset = total_length;
 			last_len = 16;
 		} else {
+			if (room < (2 + reply->vp_length)) break;
+
 			last_len = reply->vp_length;
 		}
 		last_name = reply->da->name;
 
-		room = ((uint8_t *) data) + sizeof(data) - ptr;
-
-		if (room <= 2) break;
-
+		/*
+		 *	Note that this also checks "room", as the
+		 *	attribute may be a VSA, etc.
+		 */
 		len = rad_vp2attr(packet, original, secret, &reply, ptr, room);
 		if (len < 0) return -1;
 
@@ -1980,7 +1989,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	If there's a Message-Authenticator, update it
 	 *	now.
 	 */
-	if (packet->offset > 0) {
+	if ((packet->offset > 0) && ((packet->offset + 18) <= packet->data_len)) {
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 
 		switch (packet->code) {
