@@ -293,7 +293,7 @@ static int m3ua_conn_write(struct osmo_fd *ofd, struct msgb *msg)
 		strerror_r(errno, strerrbuf, sizeof(strerrbuf));
 
 		LOGP(DINP, LOGL_ERROR, "Failed writing to fd %i (only wrote %zu bytes): %s.\n",
-		     ofd->fd, strerrbuf));
+		     ofd->fd, strerrbuf);
 	} else {
 		LOGP(DINP, LOGL_DEBUG, "Wrote %zu bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
 	}
