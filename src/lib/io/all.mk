@@ -7,7 +7,7 @@ TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-util.la
 TGT_LDLIBS	:= $(LIBS)
 TGT_LDFLAGS	:= $(LDFLAGS)
 
-HEADERS		:= $(subst src/lib/,,$(wildcard $(DIR)/*.h))
+HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/io/*.h))
 
 #
 #  Create the build directory.

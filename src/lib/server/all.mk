@@ -39,7 +39,7 @@ SOURCES	:= \
 	xlat_inst.c \
 	xlat_tokenize.c
 
-HEADERS		:= $(subst src/lib/,,$(wildcard $(DIR)/*.h))
+HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/server/*.h))
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS	:= $(LIBS) $(SYSTEMD_LIBS) $(GPERFTOOLS_LIBS) $(LCRYPT)
