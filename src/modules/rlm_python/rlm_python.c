@@ -1177,7 +1177,7 @@ extern module_t rlm_python;
 module_t rlm_python = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "python",
-	.type		= RLM_TYPE_THREAD_SAFE,
+	.type		= RLM_TYPE_THREAD_UNSAFE,
 	.inst_size	= sizeof(rlm_python_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
