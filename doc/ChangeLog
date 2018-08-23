@@ -8,6 +8,7 @@ FreeRADIUS 2.2.11 Monday 17 Jul 2018 09:00:00 EDT, urgency=low
 	* Use F_UNLCK when using fcntl() locks.
 	* use correct length when decoding invalid attributes
 	  in TTLS.
+	* Don't over-write packets when encoding Message-Authenticator.
 
 FreeRADIUS 2.2.10 Monday 17 Jul 2017 09:00:00 EDT, urgency=high
 	Feature improvements
