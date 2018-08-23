@@ -1266,6 +1266,11 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	length and initial value.
 		 */
 		if (reply->attribute == PW_MESSAGE_AUTHENTICATOR) {
+			/*
+			 *	If there's no room, don't add it.
+			 */
+			if ((ptr + 18) > (((uint8_t *)data) + sizeof(data))) break;
+
 			reply->length = AUTH_VECTOR_LEN;
 			memset(reply->vp_strvalue, 0, AUTH_VECTOR_LEN);
 
