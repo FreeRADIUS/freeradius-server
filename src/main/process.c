@@ -2218,6 +2218,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
 		this = proxy_new_listener(proxy_ctx, request->home_server, 0);
 		if (!this) {
+			request->home_server->state = HOME_STATE_CONNECTION_FAIL;
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			goto fail;
 		}
@@ -2946,7 +2947,7 @@ static int request_will_proxy(REQUEST *request)
 		 *	The home server is alive (or may be alive).
 		 *	Send the packet to the IP.
 		 */
-		if (home->state != HOME_STATE_IS_DEAD) goto do_home;
+		if (home->state < HOME_STATE_IS_DEAD) goto do_home;
 
 		/*
 		 *	The home server is dead.  If you wanted
@@ -3427,7 +3428,7 @@ static void request_ping(REQUEST *request, int action)
 		 *
 		 *	If it's zombie, we mark it alive immediately.
 		 */
-		if ((home->state == HOME_STATE_IS_DEAD) &&
+		if ((home->state >= HOME_STATE_IS_DEAD) &&
 		    (home->num_received_pings < home->num_pings_to_alive)) {
 			return;
 		}
@@ -3742,7 +3743,11 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 	home->state = HOME_STATE_IS_DEAD;
 	home_trigger(home, "home_server.dead");
 
-	if (home->ping_check != HOME_PING_CHECK_NONE) {
+	/*
+	 *	Ping it if configured, AND we can ping it.
+	 */
+	if ((home->ping_check != HOME_PING_CHECK_NONE) &&
+	    (previous_state != HOME_STATE_CONNECTION_FAIL)) {
 		/*
 		 *	If the control socket marks us dead, start
 		 *	pinging.  Otherwise, we already started
@@ -3818,6 +3823,14 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		if (request->home_server->server) return;
 
 		/*
+		 *	Failed connections get the home server marked
+		 *	as dead.
+		 */
+		if (home->state == HOME_STATE_CONNECTION_FAIL) {
+			mark_home_server_dead(home, &now);
+		}
+
+		/*
 		 *	Use a new connection when the home server is
 		 *	dead, or when there's no proxy listener, or
 		 *	when the listener is failed or dead.
@@ -3825,7 +3838,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	If the listener is known or frozen, use it for
 		 *	retransmits.
 		 */
-		if ((home->state == HOME_STATE_IS_DEAD) ||
+		if ((home->state >= HOME_STATE_IS_DEAD) ||
 		    !request->proxy_listener ||
 		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
 			request_proxy_anew(request);
@@ -4443,7 +4456,7 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 		 *	Don't do fail-over.  This is a 3.1 feature.
 		 */
 		if (!request->home_server ||
-		    (request->home_server->state == HOME_STATE_IS_DEAD) ||
+		    (request->home_server->state >= HOME_STATE_IS_DEAD) ||
 		    !request->proxy_listener ||
 		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
 			request_done(request, FR_ACTION_DONE);

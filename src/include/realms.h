@@ -36,10 +36,11 @@ typedef enum {
 } home_ping_check_t;
 
 typedef enum {
-	HOME_STATE_ALIVE = 0,
+	HOME_STATE_UNKNOWN = 0,
+	HOME_STATE_ALIVE,
 	HOME_STATE_ZOMBIE,
 	HOME_STATE_IS_DEAD,
-	HOME_STATE_UNKNOWN
+	HOME_STATE_CONNECTION_FAIL,
 } home_state_t;
 
 typedef struct fr_socket_limit_t {
