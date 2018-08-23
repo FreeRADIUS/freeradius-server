@@ -500,7 +500,7 @@ static void tr_response_func( TIDC_INSTANCE *inst,
 		nr = talloc_zero(NULL, REALM);
 		if (!nr) goto error;
 		nr->name = talloc_move(nr, &opaque->fr_realm_name);
-		nr->auth_pool = servers_to_pool(nr, inst, resp, opaque->fr_realm_name);
+		nr->auth_pool = servers_to_pool(nr, inst, resp, nr->name);
 		if (!realm_realm_add(nr, NULL)) goto error;
 
 	} else {
