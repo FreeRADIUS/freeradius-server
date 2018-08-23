@@ -3812,11 +3812,6 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 	switch (action) {
 	case FR_ACTION_DUP:
 		/*
-		 *	We have a reply, ignore the retransmit.
-		 */
-		if (request->proxy_reply) return;
-
-		/*
 		 *	The request was proxied to a virtual server.
 		 *	Ignore the retransmit.
 		 */
@@ -3829,6 +3824,11 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		if (home->state == HOME_STATE_CONNECTION_FAIL) {
 			mark_home_server_dead(home, &now);
 		}
+
+		/*
+		 *	We have a reply, ignore the retransmit.
+		 */
+		if (request->proxy_reply) return;
 
 		/*
 		 *	Use a new connection when the home server is
@@ -3908,6 +3908,14 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_TIMER:
+		/*
+		 *	Failed connections get the home server marked
+		 *	as dead.
+		 */
+		if (home->state == HOME_STATE_CONNECTION_FAIL) {
+			mark_home_server_dead(home, &now);
+		}
+
 		response_window = request_response_window(request);
 
 #ifdef WITH_TCP
