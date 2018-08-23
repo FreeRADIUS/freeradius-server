@@ -1989,7 +1989,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	If there's a Message-Authenticator, update it
 	 *	now.
 	 */
-	if ((packet->offset > 0) && ((packet->offset + 18) <= packet->data_len)) {
+	if ((packet->offset > 0) && ((size_t) (packet->offset + 18) <= packet->data_len)) {
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 
 		switch (packet->code) {
