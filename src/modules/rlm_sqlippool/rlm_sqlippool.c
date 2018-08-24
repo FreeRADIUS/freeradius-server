@@ -46,9 +46,10 @@ typedef struct rlm_sqlippool_t {
 
 	rlm_sql_t const	*sql_inst;
 
-	char const	*pool_name;
-	fr_dict_attr_t const *framed_ip_address; //!< the attribute for IP address allocation
+	char const	*pool_name;		//!< Name of the Attribute to use as key in the SQL queries
+	fr_dict_attr_t const *pool_attribute; //!< Attribute corresponding to the pool_name variable
 	char const	*attribute_name;	//!< name of the IP address attribute
+	fr_dict_attr_t const *framed_ip_address; //!< the attribute for IP address allocation
 
 	time_t		last_clear;		//!< So we only do it once a second.
 	char const	*allocate_begin;	//!< SQL query to begin.
@@ -110,7 +111,7 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("lease_duration", FR_TYPE_UINT32, rlm_sqlippool_t, lease_duration), .dflt = "86400" },
 
-	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, rlm_sqlippool_t, pool_name), .dflt = "" },
+	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, rlm_sqlippool_t, pool_name), .dflt = "Pool-Name" },
 
 	{ FR_CONF_OFFSET("attribute_name", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_sqlippool_t, attribute_name), .dflt = "Framed-IP-Address" },
 
@@ -179,14 +180,12 @@ fr_dict_autoload_t rlm_sqlippool_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_pool_name;
 static fr_dict_attr_t const *attr_module_success_message;
 static fr_dict_attr_t const *attr_acct_status_type;
 
 extern fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
 	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_pool_name, .name = "Pool-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	{ NULL }
@@ -399,18 +398,21 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	module_instance_t	*sql_inst;
 	rlm_sqlippool_t		*inst = instance;
-	char const		*pool_name = NULL;
 
-	pool_name = cf_section_name2(conf);
-	if (pool_name != NULL) {
-		inst->pool_name = talloc_typed_strdup(inst, pool_name);
-	} else {
-		inst->pool_name = talloc_typed_strdup(inst, "ippool");
-	}
 	sql_inst = module_find(cf_section_find(main_config->root_cs, "modules", NULL), inst->sql_instance_name);
 	if (!sql_inst) {
 		cf_log_err(conf, "failed to find sql instance named %s",
 			   inst->sql_instance_name);
+		return -1;
+	}
+
+	if (fr_dict_attr_by_qualified_name(&inst->pool_attribute, dict_freeradius, inst->pool_name) < 0) {
+		cf_log_perr(conf, "Failed resolving pool_name");
+		return -1;
+	}
+
+	if (inst->pool_attribute->type != FR_TYPE_STRING) {
+		cf_log_err(conf, "Cannot use non-String attributes for 'pool_name = %s'", inst->pool_name);
 		return -1;
 	}
 
@@ -480,13 +482,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 */
 	if (fr_pair_find_by_da(request->reply->vps, inst->framed_ip_address, TAG_ANY) != NULL) {
 		RDEBUG("Framed-IP-Address already exists");
-
 		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (fr_pair_find_by_da(request->control, attr_pool_name, TAG_ANY) == NULL) {
-		RDEBUG("No Pool-Name defined");
-
+	if (fr_pair_find_by_da(request->control, inst->pool_attribute, TAG_ANY) == NULL) {
+		RDEBUG("No %s defined", inst->pool_name);
 		return do_logging(inst, request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
 
