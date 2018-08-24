@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/rfc2865.h>
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
