@@ -184,12 +184,17 @@ static RADIUS_PACKET *request_init(char const *filename)
 	     vp = fr_cursor_next(&cursor)) {
 
 		/*
-		 *	Xlat expansions are not supported. Provide a string value instead.
+		 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
 		 */
 		if (vp->type == VT_XLAT) {
+			fr_type_t type = vp->da->type;
+			if (fr_value_box_from_str(vp, &vp->data, &type, NULL, vp->xlat, -1, '\0', false) < 0) {
+				fr_perror("dhcpclient");
+				fr_radius_packet_free(&request);
+				if (fp != stdin) fclose(fp);
+				return NULL;
+			}
 			vp->type = VT_DATA;
-			vp->vp_strvalue = vp->xlat;
-			vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 		}
 
 		/*
