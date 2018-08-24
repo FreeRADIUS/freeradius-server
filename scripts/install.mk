@@ -114,6 +114,39 @@ define ADD_INSTALL_RULE.man
 endef
 
 
+# ADD_INSTALL_RULE.h - Parameterized "function" that adds a new rule
+#   and phony target for installing a header file.
+#
+#  Note that we re-write the header files to get rid of
+#  "freeradius-devel" and replace it with "freeradius"
+#
+#  install-sh function for creating directories gets confused
+#  if there's a trailing slash, tries to create a directory
+#  it already created, and fails...
+#
+# ${1} = filename where it will be installed
+# ${2} = filename in the source
+#
+#  Because things in .../src/lib/io/foo.h go into .../io/foo.h
+#
+#  For 'sed', the expression must deal with indentation after the hash
+#  and copy it to the substitution string.  The hash is not anchored
+#  in order to allow substitution in function documentation.
+#
+#   USE WITH EVAL
+#
+define ADD_INSTALL_RULE.h
+    ALL_INSTALL += $(DESTDIR)/${includedir}/${1}
+
+    install: $(DESTDIR)/${includedir}/${1}
+
+    $(DESTDIR)/${includedir}/${1}: ${2}
+	${Q}echo INSTALL ${1}
+	${Q}$(INSTALL) -d -m 755 `echo $$(dir $$@) | sed 's/\/$$$$//'`
+	${Q}sed -e 's/#\([\\t ]*\)include <freeradius-devel\/\([^>]*\)>/#\1include <freeradius\/\2>/g' < $$< > $$@
+	${Q}chmod 644 $$@
+endef
+
 # ADD_INSTALL_RULE.dir - Parameterized "function" that adds a new rule
 #   and phony target for installing a directory
 #
@@ -205,15 +238,13 @@ ifeq "${mandir}" ""
     mandir = ${datadir}/man
 endif
 ifeq "${docdir}" ""
-    ifneq "${PROJECT_NAME}" ""
-        docdir = ${datadir}/doc/${PROJECT_NAME}
-    endif
+    docdir = ${datadir}/doc/${PROJECT_NAME}
 endif
 ifeq "${logdir}" ""
     logdir = ${localstatedir}/log/
 endif
 ifeq "${includedir}" ""
-    includedir = ${prefix}/include
+    includedir = ${prefix}/include/
 endif
 
 

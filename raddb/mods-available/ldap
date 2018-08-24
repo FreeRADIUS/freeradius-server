@@ -498,10 +498,10 @@ ldap {
 		#  connections during instantiation it will exit.
 		#  Set to 0 to allow the server to start without the
 		#  directory being available.
-		start = ${thread[pool].start_servers}
+		start = ${thread[pool].num_workers}
 
 		#  Minimum number of connections to keep open
-		min = ${thread[pool].min_spare_servers}
+		min = ${thread[pool].num_workers}
 
 		#  Maximum number of connections
 		#
@@ -514,13 +514,13 @@ ldap {
 		#
 		#  Setting 'max' to MORE than the number of threads means
 		#  that there are more connections than necessary.
-		max = ${thread[pool].max_servers}
+		max = ${thread[pool].num_workers}
 
 		#  Spare connections to be left idle
 		#
 		#  NOTE: Idle connections WILL be closed if "idle_timeout"
 		#  is set.  This should be less than or equal to "max" above.
-		spare = ${thread[pool].max_spare_servers}
+		spare = 1
 
 		#  Number of uses before the connection is closed
 		#

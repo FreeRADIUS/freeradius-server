@@ -34,6 +34,9 @@
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include "proto_radius.h"
+
+extern fr_app_io_t proto_radius_udp;
+
 typedef struct proto_radius_udp_t {
 	char const			*name;			//!< socket name
 	CONF_SECTION			*cs;			//!< our configuration
@@ -134,7 +137,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			     &address->dst_ipaddr, &address->dst_port,
 			     &address->if_index, &timestamp);
 	if (data_size < 0) {
-		DEBUG2("proto_radius_udp got read error %zd: %s", data_size, fr_strerror());
+		DEBUG2("proto_radius_udp got read error: %s", fr_strerror());
 		return data_size;
 	}
 
@@ -308,11 +311,12 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
 /** Open a UDP listener for RADIUS
  *
  * @param[in] instance of the RADIUS UDP I/O path.
+ * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(void *instance, UNUSED void const *master_instance)
 {
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
@@ -347,27 +351,6 @@ static int mod_open(void *instance)
 		goto error;
 	}
 
-	/*
-	 *	Connect to the client for child sockets.
-	 */
-	if (inst->connection) {
-		socklen_t salen;
-		struct sockaddr_storage src;
-
-		if (fr_ipaddr_to_sockaddr(&inst->connection->src_ipaddr, inst->connection->src_port,
-					  &src, &salen) < 0) {
-			close(sockfd);
-			ERROR("Failed getting IP address");
-			goto error;
-		}
-
-		if (connect(sockfd, (struct sockaddr *) &src, salen) < 0) {
-			close(sockfd);
-			ERROR("Failed in connect: %s", fr_syserror(errno));
-			goto error;
-		}
-	}
-
 	inst->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
@@ -376,6 +359,10 @@ static int mod_open(void *instance)
 	rad_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
+
+	inst->name = fr_app_io_socket_name(inst, &proto_radius_udp,
+					   NULL, 0,
+					   &inst->ipaddr, inst->port);
 
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on radius address %s bound to virtual server %s",
@@ -394,6 +381,24 @@ static int mod_fd(void const *instance)
 	proto_radius_udp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_udp_t);
 
 	return inst->sockfd;
+}
+
+/** Set the file descriptor for this socket.
+ *
+ * @param[in] instance of the RADIUS UDP I/O path.
+ * @param[in] fd the FD to set
+ */
+static int mod_fd_set(void *instance, int fd)
+{
+	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+
+	inst->sockfd = fd;
+
+	inst->name = fr_app_io_socket_name(inst, &proto_radius_udp,
+					   &inst->connection->src_ipaddr, inst->connection->src_port,
+					   &inst->ipaddr, inst->port);
+
+	return 0;
 }
 
 static int mod_compare(UNUSED void const *instance, void const *one, void const *two)
@@ -422,41 +427,6 @@ static char const *mod_name(void *instance)
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
 	return inst->name;
-}
-
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
-{
-	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
-	char		    dst_buf[128];
-
-	/*
-	 *	Get our name.
-	 */
-	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
-		if (inst->ipaddr.af == AF_INET) {
-			strlcpy(dst_buf, "*", sizeof(dst_buf));
-		} else {
-			rad_assert(inst->ipaddr.af == AF_INET6);
-			strlcpy(dst_buf, "::", sizeof(dst_buf));
-		}
-	} else {
-		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
-	}
-
-	if (!inst->connection) {
-		inst->name = talloc_typed_asprintf(inst, "proto udp server %s port %u",
-						   dst_buf, inst->port);
-
-	} else {
-		char src_buf[128];
-
-		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
-
-		inst->name = talloc_typed_asprintf(inst, "proto udp from client %s port %u to server %s port %u",
-						   src_buf, inst->connection->src_port, dst_buf, inst->port);
-	}
-
-	return 0;
 }
 
 
@@ -564,27 +534,12 @@ static RADCLIENT *mod_client_find(void *instance, fr_ipaddr_t const *ipaddr, int
 	return client_find(NULL, ipaddr, ipproto);
 }
 
-#if 0
-static int mod_detach(void *instance)
-{
-	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
-
-	if (inst->sockfd >= 0) close(inst->sockfd);
-	inst->sockfd = -1;
-
-	return 0;
-}
-#endif
-
-extern fr_app_io_t proto_radius_udp;
 fr_app_io_t proto_radius_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_udp",
 	.config			= udp_listen_config,
 	.inst_size		= sizeof(proto_radius_udp_t),
-//	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
 	.track_duplicates	= true,
@@ -594,6 +549,7 @@ fr_app_io_t proto_radius_udp = {
 	.write			= mod_write,
 	.close			= mod_close,
 	.fd			= mod_fd,
+	.fd_set			= mod_fd_set,
 	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,

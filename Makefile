@@ -41,6 +41,7 @@ $(error The build system requires GNU Make 3.81 or later.)
 endif
 
 export DESTDIR := $(R)
+export PROJECT_NAME := freeradius
 
 # And over-ride all of the other magic.
 ifneq "$(MAKECMDGOALS)" "deb"

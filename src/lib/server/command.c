@@ -164,28 +164,35 @@ static fr_cmd_t *fr_command_alloc(TALLOC_CTX *ctx, fr_cmd_t **head, char const *
 
 /*
  *	Validate a name (or syntax)
+ *
+ *	We have to be careful here, because some commands are taken
+ *	from module names, which can be almost anything.
  */
 static bool fr_command_valid_name(char const *name)
 {
-	char const *p;
+	uint8_t const *p;
 
-	for (p = name; *p != '\0'; p++) {
-		if (*p <= ' ') {
+	for (p = (uint8_t const *) name; *p != '\0'; p++) {
+		if (*p < ' ') {
 			fr_strerror_printf("Invalid control character in name");
 			return false;
 		}
-		if (*p > 0x7e) {
-			fr_strerror_printf("Invalid non-ASCII character");
-			return false;
-		}
 
-		if ((*p == '[') || (*p == ']') ||
-		    (*p == '"') || (*p == '\'') ||
-		    (*p == '(') || (*p == ')') ||
-		    (*p == '|') || (*p == '#')) {
+		if (((*p >= ' ') && (*p <= ',')) ||
+		    ((*p >= ':') && (*p <= '@')) ||
+		    ((*p >= '[') && (*p <= '^')) ||
+		    ((*p > 'z') && (*p <= 0xf7)) ||
+		    (*p == '`')) {
 			fr_strerror_printf("Invalid special character");
 			return false;
 		}
+
+		/*
+		 *	Allow valid UTF-8 characters.
+		 */
+		if (fr_utf8_char(p, -1)) continue;
+
+		fr_strerror_printf("Invalid non-UTF8 character in name");
 	}
 
 	return true;
@@ -537,7 +544,7 @@ static int split(char **input, char **output, bool syntax_string)
 	return 1;
 }
 
-static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **head)
+static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **head, bool allow_varargs)
 {
 	int i, rcode;
 	char *name, *p;
@@ -563,8 +570,13 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 		 *	a known data type.
 		 */
 		if (strcmp(name, "...") == 0) {
+			if (!allow_varargs) {
+				fr_strerror_printf("Varargs MUST NOT be in an [...] or (...) syntax.");
+				return -1;
+			}
+
 			if (!prev || *p) {
-				fr_strerror_printf("Varargs MUST be the last argument in the syntax list");
+				fr_strerror_printf("Varargs MUST be the last argument in the syntax list.");
 				return -1;
 			}
 
@@ -579,6 +591,7 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			argv = talloc_zero(ctx, fr_cmd_argv_t);
 			argv->name = name;
 			argv->type = FR_TYPE_VARARGS;
+			allow_varargs = false;
 
 		} else if (name[0] == '[') {
 			/*
@@ -597,7 +610,10 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			*q = '\0';
 			child = NULL;
 
-			rcode = fr_command_add_syntax(option, option, &child);
+			/*
+			 *	varargs can't be inside an optional block
+			 */
+			rcode = fr_command_add_syntax(option, option, &child, false);
 			if (rcode < 0) return rcode;
 
 			argv = talloc_zero(ctx, fr_cmd_argv_t);
@@ -638,7 +654,11 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 				if (rcode == 0) break;
 
 				sub = NULL;
-				rcode = fr_command_add_syntax(option, word, &sub);
+
+				/*
+				 *	varargs can't be inside an alternation block
+				 */
+				rcode = fr_command_add_syntax(option, word, &sub, false);
 				if (rcode < 0) return rcode;
 
 				choice = talloc_zero(option, fr_cmd_argv_t);
@@ -717,6 +737,10 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	}
 
 	if (name && !fr_command_valid_name(name)) {
+		return -1;
+	}
+
+	if (!fr_command_valid_name(table->name)) {
 		return -1;
 	}
 
@@ -839,7 +863,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	if (table->syntax) {
 		char *syntax = talloc_strdup(talloc_ctx, table->syntax);
 
-		argc = fr_command_add_syntax(syntax, syntax, &syntax_argv);
+		argc = fr_command_add_syntax(syntax, syntax, &syntax_argv, true);
 		if (argc < 0) return -1;
 
 		/*
@@ -1323,6 +1347,111 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 	return i;
 }
 
+
+/*
+ *	Magic parsing macros
+ */
+#define SKIP_SPACES while (isspace((int) *word)) word++
+
+#define SKIP_NAME(name) do { p = word; q = name; while (*p && *q && (*p == *q)) { \
+				p++; \
+				q++; \
+			} } while (0)
+#define MATCHED_NAME	((!*p || isspace((int) *p)) && !*q)
+#define TOO_FAR		(*p && (*q > *p))
+#define MATCHED_START	((text + start) >= word) && ((text + start) <= p)
+
+static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only, int offset, fr_cmd_t *head)
+{
+	int i, rcode;
+	fr_cmd_t *start, *cmd = NULL;
+	fr_cmd_info_t my_info;
+
+	rad_assert(head->intermediate);
+	rad_assert(head->child != NULL);
+
+	start = head->child;
+
+	/*
+	 *	Wildcard '*' is at 'offset + 1'.  Then the command to run is at 'offset + 2'.
+	 */
+	rad_assert(info->argc >= (offset + 2));
+
+	/*
+	 *	Loop from "start", trying to find a matching command.
+	 */
+	for (i = offset + 1; i < info->argc; i++) {
+		char const *p, *q, *word;
+
+		/*
+		 *	Re-parse the input because "*" only picked up
+		 *	the first command, not the rest of them.
+		 */
+		for (cmd = start; cmd != NULL; cmd = cmd->next) {
+			if (!cmd->live) continue;
+
+			word = info->argv[i];
+			SKIP_NAME(cmd->name);
+
+			if (!MATCHED_NAME) continue;
+
+			if (cmd->intermediate) {
+				info->cmd[i] = cmd;
+				start = cmd->child;
+				break;
+			}
+
+			/*
+			 *	Not an intermediate command, we've got
+			 *	to run it.
+			 */
+			break;
+		}
+
+		/*
+		 *	Not found, die.
+		 */
+		if (!cmd) return 0;
+
+		/*
+		 *	Ignore read-only on intermediate commands.
+		 *	Some may have been automatically allocated
+		 */
+		if (cmd->intermediate) continue;
+		break;
+	}
+
+	if (!cmd) return 0;
+
+	if (!cmd->live) return 0;
+
+	if (!cmd->read_only && read_only) {
+		fprintf(fp_err, "No permissions to run command '%s' help %s\n", cmd->name, cmd->help);
+		return -1;
+	}
+
+	/*
+	 *	Leaf nodes must have a callback.
+	 */
+	rad_assert(cmd->func != NULL);
+
+	// @todo - add cmd->min_argc && cmd->max_argc, to track optional things, varargs, etc.
+
+	/*
+	 *	The arguments have already been verified by
+	 *	fr_command_str_to_argv().
+	 */
+	my_info.argc = info->argc - i - 1;
+	my_info.max_argc = info->max_argc - info->argc;
+	my_info.runnable = true;
+	my_info.argv = &info->argv[i + 1];
+	my_info.box = &info->box[i + 1];
+	rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
+
+	return rcode;
+}
+
+
 /** Run a particular command
  *
  *  info->argc is left alone, as are all other fields.
@@ -1354,11 +1483,25 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 		cmd = info->cmd[i];
 		rad_assert(cmd != NULL);
 
+		if (cmd->added_name && (info->argv[i][0] == '*')) {
+			rad_assert(i > 0);
+
+			for (; cmd != NULL; cmd = cmd->next) {
+				if (!cmd->live) continue;
+
+				fprintf(fp, "%s %s\n", info->argv[i - 1], cmd->name);
+				info->argv[i] = cmd->name;
+				rcode = fr_command_run_partial(fp, fp_err, info, read_only, i, cmd);
+				if (rcode < 0) return rcode;
+			}
+
+			return 0;
+		}
+
 		/*
 		 *	Ignore read-only on intermediate commands.
 		 *	Some may have been automatically allocated
 		 */
-
 		if (cmd->intermediate) continue;
 		break;
 	}
@@ -1389,6 +1532,7 @@ int fr_command_run(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, bool read_only)
 	my_info.argv = &info->argv[i + 1];
 	my_info.box = &info->box[i + 1];
 	rcode = cmd->func(fp, fp_err, cmd->ctx, &my_info);
+
 	return rcode;
 }
 
@@ -1718,19 +1862,6 @@ no_match:
 	return used;
 }
 
-/*
- *	Magic parsing macros
- */
-#define SKIP_SPACES while (isspace((int) *word)) word++
-
-#define SKIP_NAME(name) do { p = word; q = name; while (*p && *q && (*p == *q)) { \
-				p++; \
-				q++; \
-			} } while (0)
-#define MATCHED_NAME	((!*p || isspace((int) *p)) && !*q)
-#define TOO_FAR		(*p && (*q > *p))
-#define MATCHED_START	((text + start) >= word) && ((text + start) <= p)
-
 static char const *skip_word(char const *text)
 {
 	char quote;
@@ -2042,6 +2173,11 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 
 		SKIP_SPACES;
 
+		if ((word[0] == '*') && isspace(word[1]) && cmd->added_name) {
+			p = word + 1;
+			goto skip_matched;
+		}
+
 		SKIP_NAME(cmd->name);
 
 		/*
@@ -2052,6 +2188,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 			goto invalid;
 		}
 
+skip_matched:
 		word = p;
 
 		if (!cmd->intermediate) {
@@ -2099,6 +2236,22 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 				fr_strerror_printf("No cmd at offset %d", argc);
 				goto invalid;
 			}
+		}
+
+		/*
+		 *	Allow wildcards as a primitive "for" loop in
+		 *	some special circumstances.
+		 */
+		if ((word[0] == '*') && isspace(word[1]) && cmd->added_name) {
+			rad_assert(cmd->intermediate);
+			rad_assert(cmd->child != NULL);
+
+			info->argv[argc] = "*";
+			info->cmd[argc] = cmd;
+			word++;
+			cmd = cmd->child;
+			argc++;
+			continue;
 		}
 
 		SKIP_NAME(cmd->name);

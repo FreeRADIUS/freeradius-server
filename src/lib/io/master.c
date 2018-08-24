@@ -22,7 +22,6 @@
  * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/unlang/base.h>
@@ -62,13 +61,15 @@ typedef enum {
  *
  */
 typedef struct fr_io_client_t {
+	void				*parent;	//!< talloc parent sucks
 	fr_io_client_state_t		state;		//!< state of this client
 	fr_ipaddr_t			src_ipaddr;	//!< packets come from this address
 	fr_ipaddr_t			network;	//!< network for dynamic clients
 	RADCLIENT			*radclient;	//!< old-style definition of this client
 
 	int				packets;	//!< number of packets using this client
-	int				heap_id;	//!< for pending clients
+	int				pending_id;	//!< for pending clients
+	int				alive_id;	//!< for all clients
 
 	bool				connected;	//!< is this client for a connected socket?
 	bool				use_connected;	//!< does this client allow connected sub-sockets?
@@ -112,6 +113,7 @@ typedef struct {
 	bool				dead;		//!< roundabout way to get the network side to close a socket
 	bool				paused;		//!< event filter doesn't like resuming something that isn't paused
 	void				*app_io_instance; //!< as described
+	void				*socket_instance; //!< as described
 	fr_event_list_t			*el;		//!< event list for this connection
 	fr_network_t			*nr;		//!< network for this connection
 } fr_io_connection_t;
@@ -324,9 +326,6 @@ static RADCLIENT *radclient_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
 	COPY_FIELD(tls_required);
 #endif
 
-	FR_STRUCT_MEMBER_SIGN(c, secret, talloc_array_length(c->secret));
-	FR_STRUCT_SIGN(c);
-
 	return c;
 
 	/*
@@ -365,6 +364,17 @@ static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED int ke
 
 	*((uint32_t *) ctx) += connections;
 
+	return 0;
+}
+
+
+static int connection_free(fr_io_connection_t *connection)
+{
+	/*
+	 *	This is it's own talloc context, as there are
+	 *	thousands of packets associated with it.
+	 */
+	talloc_free(connection->client);
 	return 0;
 }
 
@@ -428,10 +438,16 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	connection->parent = client;
 	connection->dl_inst = dl_inst;
 
-	MEM(connection->client = talloc_zero(connection, fr_io_client_t));
+	MEM(connection->client = talloc_named(NULL, sizeof(fr_io_client_t), "fr_io_client_t"));
+	memset(connection->client, 0, sizeof(*connection->client));
+
+	connection->client->parent = connection;
 	MEM(connection->client->radclient = radclient = radclient_clone(connection->client, client->radclient));
 
-	connection->client->heap_id = -1;
+	talloc_set_destructor(connection, connection_free);
+
+	connection->client->pending_id = -1;
+	connection->client->alive_id = -1;
 	connection->client->connected = true;
 
 	/*
@@ -449,7 +465,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	 */
 	radclient->dynamic = true;
 	radclient->active = true;
-	FR_STRUCT_SIGN(radclient);
 
 	/*
 	 *	address->client points to a "static" client.  We want
@@ -506,7 +521,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 *	that define a dynamic client.
 		 */
 		radclient->active = false;
-		FR_STRUCT_SIGN(radclient);
 		break;
 
 	case PR_CLIENT_STATIC:
@@ -549,42 +563,92 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		/*
 		 *	Bootstrap the configuration.  There shouldn't
 		 *	be need to re-parse it.
+		 *
+		 *	@todo - ATD thread - allocate thread-specific data, and call thread instantiate,
+		 *	instead of app_io->instantiate again.
 		 */
 		memcpy(connection->app_io_instance, inst->app_io_instance, inst->app_io->inst_size);
 
+#if 0
+		/*
+		 *	@todo - start using socket_instance (socket
+		 *	data) as different from app_io_instance
+		 *	(parsed configuration data).
+		 */
+		listen->socket_instance = talloc_memdup(listen, listen->app_io_instance, listen->app_io->inst_size);
+#endif
+
+
 		/*
 		 *	Instantiate the child, and open the socket.
-		 *
-		 *	This also sets connection->name.
 		 */
-		if ((inst->app_io->connection_set(connection->app_io_instance, connection->address) < 0) ||
-		    (inst->app_io->instantiate(connection->app_io_instance, inst->app_io_conf) < 0)) {
-			DEBUG("Failed opening initializing socket.");
+		rad_assert(inst->app_io->connection_set != NULL);
+
+		if (inst->app_io->connection_set(connection->app_io_instance, connection->address) < 0) {
+			DEBUG("Failed setting connection for socket.");
 			talloc_free(dl_inst);
 			return NULL;
 		}
 
+		if (inst->app_io->instantiate &&
+		    (inst->app_io->instantiate(connection->app_io_instance, inst->app_io_conf) < 0)) {
+			DEBUG("Failed instantiating socket.");
+			talloc_free(dl_inst);
+			return NULL;
+		}
+
+		/*
+		 *	UDP sockets: open a new socket, and then
+		 *	connect it to the client.  This emulates the
+		 *	behavior of accept().
+		 */
 		if (fd < 0) {
-			if (inst->app_io->open(connection->app_io_instance) < 0) {
+			socklen_t salen;
+			struct sockaddr_storage src;
+
+			if (inst->app_io->open(connection->app_io_instance, inst->app_io_instance) < 0) {
 				DEBUG("Failed opening connected socket.");
 				talloc_free(dl_inst);
 				return NULL;
 			}
-		} else {
-			if (inst->app_io->fd_set(connection->app_io_instance, fd) < 0) {
-				DEBUG3("Failed setting FD to %s", inst->app_io->name);
-				close(fd);
+			
+
+			fd = inst->app_io->fd(connection->app_io_instance);
+
+			if (fr_ipaddr_to_sockaddr(&connection->address->src_ipaddr, connection->address->src_port, &src, &salen) < 0) {
+				DEBUG("Failed getting IP address");
+				talloc_free(dl_inst);
 				return NULL;
 			}
+
+			if (connect(fd, (struct sockaddr *) &src, salen) < 0) {
+				close(fd);
+				ERROR("Failed in connect: %s", fr_syserror(errno));
+				talloc_free(dl_inst);
+				return NULL;
+			}
+		}
+
+		/*
+		 *	Set the new FD, and get the module to set it's connection name.
+		 */
+		if (inst->app_io->fd_set(connection->app_io_instance, fd) < 0) {
+			DEBUG3("Failed setting FD to %s", inst->app_io->name);
+			close(fd);
+			return NULL;
 		}
 
 		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(connection->address->src_ipaddr), 0);
 		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(connection->address->dst_ipaddr), 0);
 
-		connection->name = talloc_typed_asprintf(inst, "proto_%s from client %s port %u to server %s port %u",
-							 inst->app_io->name,
-							 src_buf, connection->address->src_port,
-							 dst_buf, connection->address->dst_port);
+		if (!inst->app_io->get_name) {
+			connection->name = talloc_typed_asprintf(inst, "proto_%s from client %s port %u to server %s port %u",
+								 inst->app_io->name,
+								 src_buf, connection->address->src_port,
+								 dst_buf, connection->address->dst_port);
+		} else {
+			connection->name = inst->app_io->get_name(connection->app_io_instance);
+		}
 	}
 
 	/*
@@ -614,7 +678,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	}
 
 	DEBUG("proto_%s - starting connection %s", inst->app_io->name, connection->name);
-	connection->nr = fr_schedule_socket_add(inst->sc, connection->listen);
+	connection->nr = fr_schedule_listen_add(inst->sc, connection->listen);
 	if (!connection->nr) {
 		ERROR("proto_%s - Failed inserting connection into scheduler.  Closing it, and diuscarding all packets for connection %s.", inst->app_io->name, connection->name);
 		pthread_mutex_lock(&client->mutex);
@@ -663,7 +727,6 @@ static void get_inst(void *instance, fr_io_instance_t **inst, fr_io_connection_t
 		*connection = instance;
 		*inst = (*connection)->client ->inst;
 		if (app_io_instance) *app_io_instance = (*connection)->app_io_instance;
-
 	}
 }
 
@@ -715,7 +778,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 		track->client = client;
 		if (client->connected) {
-			fr_io_connection_t *connection = talloc_parent(client);
+			fr_io_connection_t *connection = client->parent;
 
 			track->address = connection->address;
 		}
@@ -849,7 +912,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 }
 
 
-/**  Implement 99% of the RADIUS read routines.
+/**  Implement 99% of the read routines.
  *
  *  The app_io->read does the transport-specific data read.
  */
@@ -964,6 +1027,7 @@ redo:
 		socklen_t salen;
 
 		salen = sizeof(saremote);
+#
 
 		/*
 		 *	We're a TCP socket but are NOT connected.  We
@@ -982,6 +1046,10 @@ redo:
 			      inst->app->name, inst->transport, fr_syserror(errno));
 			return 0;
 		}
+
+#ifdef __clang_analyzer__
+		saremote.ss_family = AF_INET; /* clang doesn't know that accept() initializes this */
+#endif
 
 		/*
 		 *	Get IP addresses only if we have IP addresses.
@@ -1120,7 +1188,6 @@ do_read:
 			 */
 			MEM(radclient = radclient_clone(inst, radclient));
 			radclient->active = true;
-			FR_STRUCT_SIGN(radclient);
 
 		} else if (inst->dynamic_clients) {
 			if (inst->max_clients && (inst->num_clients >= inst->max_clients)) {
@@ -1174,13 +1241,21 @@ do_read:
 		 *	Create our own local client.  This client
 		 *	holds our state which really shouldn't go into
 		 *	RADCLIENT.
+		 *
+		 *	Note that we create a new top-level talloc
+		 *	context for this client, as there may be tens
+		 *	of thousands of packets associated with this
+		 *	client.  And we want to avoid problems with
+		 *	O(N) issues in talloc.
 		 */
-		MEM(client = talloc_zero(inst, fr_io_client_t));
+		MEM(client = talloc_named(NULL, sizeof(fr_io_client_t), "fr_io_client_t"));
+		memset(client, 0, sizeof(*client));
+
+		client->parent = inst;
 		client->state = state;
 		client->src_ipaddr = radclient->ipaddr;
 		client->radclient = radclient;
 		client->inst = inst;
-		client->heap_id = -1;
 		client->connected = false;
 
 		if (network) {
@@ -1229,7 +1304,8 @@ do_read:
 		 *	allowed clients.
 		 */
 		if (fr_trie_insert(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
-			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.", inst->app_io->name, client->radclient->shortname);
+			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.",
+			      inst->app_io->name, client->radclient->shortname);
 			talloc_free(client);
 			if (accept_fd >= 0) close(accept_fd);
 			return -1;
@@ -1237,6 +1313,13 @@ do_read:
 
 		client->in_trie = true;
 		if (client->state == PR_CLIENT_PENDING) inst->num_clients++;
+
+		/*
+		 *	Track the live clients so that we can clean
+		 *	them up.
+		 */
+		(void) fr_heap_insert(inst->alive_clients, client);
+		client->pending_id = -1;
 	}
 
 have_client:
@@ -1262,8 +1345,6 @@ have_client:
 	 *	Track this packet and return it if necessary.
 	 */
 	if (connection || !client->use_connected) {
-		FR_STRUCT_MEMBER_VERIFY(client->radclient, secret, talloc_array_length(client->radclient->secret));
-		FR_STRUCT_VERIFY(client->radclient);
 
 		/*
 		 *	Add the packet to the tracking table, if it's
@@ -1476,9 +1557,40 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 	return 0;
 }
 
+/** Open a new listener
+ *
+ * @param[in] instance of the IO path.
+ * @param[in] master_instance the master configuration for this socket
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+static int mod_open(void *instance, void const *master_instance)
+{
+	fr_io_instance_t *inst;
+	fr_io_connection_t *connection;
+	void *app_io_instance;
+	int rcode;
+
+	get_inst(instance, &inst, &connection, &app_io_instance);
+
+	/*
+	 *	One connection can't open another one.
+	 */
+	rad_assert(connection == NULL);
+
+	rad_assert(master_instance == inst->app_instance);
+
+	rcode = inst->app_io->open(app_io_instance, master_instance);
+	if (rcode < 0) return rcode;
+
+	return rcode;
+}
+
+
 /** Get the file descriptor for this socket.
  *
- * @param[in] const_instance of the RADIUS I/O path.
+ * @param[in] const_instance of the IO path.
  * @return the file descriptor
  */
 static int mod_fd(void const *const_instance)
@@ -1497,7 +1609,7 @@ static int mod_fd(void const *const_instance)
 
 /** Set the event list for a new socket
  *
- * @param[in] instance of the RADIUS I/O path.
+ * @param[in] instance of the IO path.
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
@@ -1539,6 +1651,17 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 }
 
 
+static void delete_client(fr_io_instance_t *inst, fr_io_client_t *client)
+{
+	rad_assert(client->in_trie);
+	rad_assert(!client->connected);
+	(void) fr_trie_remove(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
+	(void) fr_heap_extract(inst->alive_clients, client);
+	rad_assert(inst->num_clients > 0);
+	inst->num_clients--;
+	talloc_free(client);
+}
+
 static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *uctx)
 {
 	fr_io_client_t *client = uctx;
@@ -1557,7 +1680,7 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 
 	// @todo - print out what we plan on doing next
 
-	get_inst(talloc_parent(client), &inst, &connection, NULL);
+	get_inst(client->parent, &inst, &connection, NULL);
 
 	rad_assert(client->state != PR_CLIENT_STATIC);
 
@@ -1623,13 +1746,7 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 			return;
 		}
 
-		rad_assert(client->in_trie);
-		rad_assert(!client->connected);
-		(void) fr_trie_remove(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
-
-		rad_assert(inst->num_clients > 0);
-		inst->num_clients--;
-		talloc_free(client);
+		delete_client(inst, client);
 		return;
 	}
 
@@ -1886,8 +2003,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		}
 
 		/*
-		 *	We have a real RADIUS packet, write it to the
-		 *	network via the underlying transport write.
+		 *	We have a real packet, write it to the network
+		 *	via the underlying transport write.
 		 */
 
 		packet_len = inst->app_io->write(app_io_instance, track, request_time,
@@ -2025,12 +2142,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 			 *	Remove the pending client from the trie.
 			 */
 			if (!connection) {
-				rad_assert(client->in_trie);
-				rad_assert(!client->connected);
-				(void) fr_trie_remove(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
-				rad_assert(inst->num_clients > 0);
-				inst->num_clients--;
-				talloc_free(client);
+				delete_client(inst, client);
 				return buffer_len;
 			}
 
@@ -2077,8 +2189,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 	radclient->server_cs = inst->server_cs;
 	radclient->server = cf_section_name2(inst->server_cs);
 	radclient->cs = NULL;
-	FR_STRUCT_MEMBER_SIGN(radclient, secret, talloc_array_length(radclient->secret));
-	FR_STRUCT_SIGN(radclient);
 
 	/*
 	 *	This is a connected socket, and it's just been
@@ -2093,7 +2203,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		client->state = PR_CLIENT_CONNECTED;
 
 		radclient->active = true;
-		FR_STRUCT_SIGN(radclient);
 
 		/*
 		 *	Connections can't spawn new connections.
@@ -2157,7 +2266,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		 */
 		client->state = PR_CLIENT_DYNAMIC;
 		client->radclient->active = true;
-		FR_STRUCT_SIGN(radclient);
 	}
 
 	/*
@@ -2168,10 +2276,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 	 */
 	if (!inst->pending_clients) {
 		MEM(inst->pending_clients = fr_heap_create(inst->ctx, pending_client_cmp,
-							   fr_io_client_t, heap_id));
+							   fr_io_client_t, pending_id));
 	}
 
-	rad_assert(client->heap_id < 0);
+	rad_assert(client->pending_id < 0);
 	(void) fr_heap_insert(inst->pending_clients, client);
 
 finish:
@@ -2202,7 +2310,7 @@ reread:
 
 /** Close the socket.
  *
- * @param[in] instance of the RADIUS I/O path.
+ * @param[in] instance of the IO path.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -2241,11 +2349,20 @@ static int mod_detach(void *instance)
 	fr_io_connection_t *connection;
 	void *app_io_instance;
 	int rcode;
+	fr_io_client_t *client;
 
 	get_inst(instance, &inst, &connection, &app_io_instance);
 
 	rcode = inst->app_io->detach(app_io_instance);
 	if (rcode < 0) return rcode;
+
+	/*
+	 *	Each client is it's own talloc context, so we have to
+	 *	clean them up individually.
+	 */
+	while ((client = fr_heap_pop(inst->alive_clients)) != NULL) {
+		talloc_free(client);
+	}
 
 	return 0;
 }
@@ -2265,12 +2382,11 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 	 */
 	inst->app_io = (fr_app_io_t const *) inst->submodule->module->common;
 
-	inst->app_io_instance = inst->submodule->data;
 	inst->app_io_conf = inst->submodule->conf;
-
+	inst->app_io_instance = inst->submodule->data;
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
-		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"proto_%s\"", inst->app_io->name);
+		cf_log_err(inst->app_io_conf, "Bootstrap failed for proto_%s", inst->app_io->name);
 		return -1;
 	}
 
@@ -2281,6 +2397,11 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 	 *	application IO module.
 	 */
 	inst->app_io->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
+
+	if (inst->ipproto && !inst->app_io->connection_set) {
+		cf_log_err(inst->app_io_conf, "Cannot set TCP for proto_%s - internal set error", inst->app_io->name);
+		return -1;
+	}
 
 	return 0;
 }
@@ -2311,9 +2432,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
+	MEM(inst->alive_clients = fr_heap_create(inst->ctx, pending_client_cmp,
+						 fr_io_client_t, alive_id));
 	if (inst->app_io->instantiate &&
 	    (inst->app_io->instantiate(inst->app_io_instance,
-					  inst->app_io_conf) < 0)) {
+				       inst->app_io_conf) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"proto_%s\"", inst->app_io->name);
 		return -1;
 	}
@@ -2504,6 +2627,7 @@ fr_app_io_t fr_master_app_io = {
 	.write			= mod_write,
 	.inject			= mod_inject,
 
+	.open			= mod_open,
 	.close			= mod_close,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,

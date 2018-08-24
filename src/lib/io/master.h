@@ -90,6 +90,7 @@ typedef struct fr_io_instance_t {
 
 	fr_app_io_t const		*app_io;			//!< Easy access to the app_io handle.
 	void				*app_io_instance;		//!< Easy access to the app_io instance.
+	void				*socket_instance;       	//!< socket specific information
 	CONF_SECTION			*app_io_conf;			//!< Easy access to the app_io's config section.
 
 	fr_listen_t const		*listen;			//!< The listener structure which describes
@@ -105,6 +106,7 @@ typedef struct fr_io_instance_t {
 	fr_trie_t			*trie;				//!< trie of clients
 	fr_trie_t const			*networks;     			//!< trie of allowed networks
 	fr_heap_t			*pending_clients;		//!< heap of pending clients
+	fr_heap_t			*alive_clients;			//!< heap of active clients
 } fr_io_instance_t;
 
 extern fr_app_io_t fr_master_app_io;

@@ -443,160 +443,22 @@ $INCLUDE clients.conf
 
 # THREAD POOL CONFIGURATION
 #
-#  The thread pool is a long-lived group of threads which
-#  take turns (round-robin) handling any incoming requests.
-#
-#  You probably want to have a few spare threads around,
-#  so that high-load situations can be handled immediately.  If you
-#  don't have any spare threads, then the request handling will
-#  be delayed while a new thread is created, and added to the pool.
-#
-#  You probably don't want too many spare threads around,
-#  otherwise they'll be sitting there taking up resources, and
-#  not doing anything productive.
-#
-#  The numbers given below should be adequate for most situations.
+#  In v4, the thread pool does not change size dynamically.  Instead,
+#  there are a small number of threads which read from the network,
+#  and a slightly larger number of threads which process a request.
 #
 thread pool {
-	#  Number of servers to start initially --- should be a reasonable
-	#  ballpark figure.
-	start_servers = 5
+	#
+	#  Only one network thread is supported for now
+	#
+	num_networks = 1
 
-	#  Limit on the total number of servers running.
 	#
-	#  If this limit is ever reached, clients will be LOCKED OUT, so it
-	#  should NOT BE SET TOO LOW.  It is intended mainly as a brake to
-	#  keep a runaway server from taking the system with it as it spirals
-	#  down...
+	#  The worker threads can be varied.  It should be at least one,
+	#  and no more than 32.  Since each request is non-blocking,
+	#  there is no reason to run hundreds of threads as in v3.
 	#
-	#  You may find that the server is regularly reaching the
-	#  'max_servers' number of threads, and that increasing
-	#  'max_servers' doesn't seem to make much difference.
-	#
-	#  If this is the case, then the problem is MOST LIKELY that
-	#  your back-end databases are taking too long to respond, and
-	#  are preventing the server from responding in a timely manner.
-	#
-	#  The solution is NOT do keep increasing the 'max_servers'
-	#  value, but instead to fix the underlying cause of the
-	#  problem: slow database, or 'hostname_lookups=yes'.
-	#
-	#  For more information, see 'max_request_time', above.
-	#
-	max_servers = 32
-
-	#  Server-pool size regulation.  Rather than making you guess
-	#  how many servers you need, FreeRADIUS dynamically adapts to
-	#  the load it sees, that is, it tries to maintain enough
-	#  servers to handle the current load, plus a few spare
-	#  servers to handle transient load spikes.
-	#
-	#  It does this by periodically checking how many servers are
-	#  waiting for a request.  If there are fewer than
-	#  min_spare_servers, it creates a new spare.  If there are
-	#  more than max_spare_servers, some of the spares die off.
-	#  The default values are probably OK for most sites.
-	#
-	min_spare_servers = 3
-	max_spare_servers = 10
-
-	#  When the server receives a packet, it places it onto an
-	#  internal queue, where the worker threads (configured above)
-	#  pick it up for processing.  The maximum size of that queue
-	#  is given here.
-	#
-	#  When the queue is full, any new packets will be silently
-	#  discarded.
-	#
-	#  The most common cause of the queue being full is that the
-	#  server is dependent on a slow database, and it has received
-	#  a large "spike" of traffic.  When that happens, there is
-	#  very little you can do other than make sure the server
-	#  receives less traffic, or make sure that the database can
-	#  handle the load.
-	#
-#	max_queue_size = 65536
-
-	#  There may be memory leaks or resource allocation problems with
-	#  the server.  If so, set this value to 300 or so, so that the
-	#  resources will be cleaned up periodically.
-	#
-	#  This should only be necessary if there are serious bugs in the
-	#  server which have not yet been fixed.
-	#
-	#  '0' is a special value meaning 'infinity', or 'the servers never
-	#  exit'
-	max_requests_per_server = 0
-
-	#  Automatically limit the number of accounting requests.
-	#  This configuration item tracks how many requests per second
-	#  the server can handle.  It does this by tracking the
-	#  packets/s received by the server for processing, and
-	#  comparing that to the packets/s handled by the child
-	#  threads.
-	#
-
-	#  If the received PPS is larger than the processed PPS, *and*
-	#  the queue is more than half full, then new accounting
-	#  requests are probabilistically discarded.  This lowers the
-	#  number of packets that the server needs to process.  Over
-	#  time, the server will "catch up" with the traffic.
-	#
-	#  Throwing away accounting packets is usually safe and low
-	#  impact.  The NAS will retransmit them in a few seconds, or
-	#  even a few minutes.  Vendors should read RFC 5080 Section 2.2.1
-	#  to see how accounting packets should be retransmitted.  Using
-	#  any other method is likely to cause network meltdowns.
-	#
-	auto_limit_acct = no
-
-	#  In some cases, the "offered" load to the server can be
-	#  higher than the "accepted" load.  This usually happens
-	#  when either the database back-end is overload, or when
-	#  10,000 users log in at the same time.
-	#
-	#  When the server cannot process packets quickly enough,
-	#  the incoming packets are placed onto a queue for later
-	#  processing.  These packets are ordered by priority,
-	#  which is configurable.  The different priorities allow
-	#  you to control how the server behaves in overload
-	#  situations.  As not everyones needs are the same,
-	#  we offer multiple options for priority calculations.
-	#
-	#	time	Order packets by when they are received
-	#		Note that replies from a home server
-	#		are ordered by when the *original*
-	#		packet came in, so they are prioritized.
-	#
-	#	default	Order by listener type
-	#		  proxy > auth > acct > detail > coa
-	#		Packets from the same listener are
-	#		ordered by "time".
-	#
-	#	eap	Order by ongoing EAP sessions.
-	#		EAP authentication takes multiple
-	#		rounds.  This priority ensures
-	#		that EAP sessions which are "further along"
-	#		in the authentication process are
-	#		handled with a higher priority.
-	#		Packets with the same eap priority
-	#		are ordered by "default"
-	#
-	#  For systems which are doing EAP / 802.1X authentication
-	#  and not accounting, we recommend using "eap".  If most
-	#  of the packets are proxied, you should NOT use "eap".
-	#
-	#  The danger with the prioritization process is that
-	#  in overload situations, the "eap" priority can cause
-	#  accounting packets to be ignored for extended periods
-	#  of time, until the EAP overload stops.
-	#
-	#  However, setting the "eap" priority ensures that users
-	#  can get on the net as quickly as possible, which is
-	#  usually what you want.
-	#
-	queue_priority = default
-
+	num_workers = 4
 }
 
 ######################################################################

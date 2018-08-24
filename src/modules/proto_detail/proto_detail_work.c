@@ -671,11 +671,12 @@ free_track:
 /** Open a detail listener
  *
  * @param[in] instance of the detail worker.
+ * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(void *instance, UNUSED void const *master_instance)
 {
 	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 
@@ -711,7 +712,7 @@ static int mod_open(void *instance)
 
 	rad_assert(inst->name == NULL);
 	rad_assert(inst->filename_work != NULL);
-	inst->name = talloc_typed_asprintf(inst, "detail working file %s", inst->filename_work);
+	inst->name = talloc_typed_asprintf(inst, "proto_detail working file %s", inst->filename_work);
 
 	DEBUG("Listening on %s bound to virtual server %s",
 	      inst->name, cf_section_name2(inst->parent->server_cs));

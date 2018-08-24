@@ -108,40 +108,12 @@ src/freeradius-devel:
 BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY)) $(HEADERS_RFC)
 scan: $(BOOTSTRAP_BUILD)
 
-######################################################################
-#
-#  Installation
-#
-# define the installation directory
-SRC_INCLUDE_DIR := ${R}${includedir}/freeradius
-
-$(SRC_INCLUDE_DIR):
-	${Q}$(INSTALL) -d -m 755 ${SRC_INCLUDE_DIR}
-
-#
-#  install the headers by re-writing the local files
-#
-#  install-sh function for creating directories gets confused
-#  if there's a trailing slash, tries to create a directory
-#  it already created, and fails...
-#
-${SRC_INCLUDE_DIR}/%.h: src/include/%.h | $(SRC_INCLUDE_DIR)
-	${Q}echo INSTALL $(notdir $<)
-	${Q}$(INSTALL) -d -m 755 `echo $(dir $@) | sed 's/\/$$//'`
-# Expression must deal with indentation after the hash and copy it to the substitution string.
-# Hash not anchored to allow substitution in function documentation.
-	${Q}sed -e 's/#\([\\t ]*\)include <freeradius-devel\/\([^>]*\)>/#\1include <freeradius\/\2>/g' < $< > $@
-	${Q}chmod 644 $@
-
 #
 #  Regenerate the headers if we re-run autoconf.
 #  This is to that changes to the build rules (e.g. PW_FOO -> FR_FOO)
 #  result in the headers being rebuilt.
 #
 $(BOOTSTRAP_BUILD): src/include/autoconf.h
-
-install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${HEADERS})
-install: install.src.include
 
 #
 #  Cleaning

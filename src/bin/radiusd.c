@@ -714,7 +714,10 @@ int main(int argc, char *argv[])
 					networks, workers,
 					thread_instantiate,
 					config->root_cs);
-		if (!sc) EXIT_WITH_FAILURE;
+		if (!sc) {
+			PERROR("Failed starting the scheduler: %s", fr_strerror());
+			EXIT_WITH_FAILURE;
+		}
 
 		/*
 		 *	Tell the virtual servers to open their sockets.
@@ -942,7 +945,7 @@ cleanup:
 	 */
 	unlang_free();
 
-#if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
+#ifdef HAVE_OPENSSL_CRYPTO_H
 	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
 

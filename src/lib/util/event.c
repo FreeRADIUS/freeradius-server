@@ -83,6 +83,7 @@ static FR_NAME_NUMBER const kevent_filter_table[] = {
  *
  */
 struct fr_event_timer {
+	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
 	struct timeval		when;			//!< When this timer should fire.
 	fr_event_cb_t		callback;		//!< Callback to execute when the timer fires.
 	void const		*uctx;			//!< Context pointer to pass to the callback.
@@ -232,6 +233,7 @@ static FR_NAME_NUMBER const fr_event_fd_type_table[] = {
  *
  */
 struct fr_event_fd {
+	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
 	fr_event_filter_t	filter;
 	int			fd;			//!< File descriptor we're listening for events on.
 
@@ -257,8 +259,8 @@ struct fr_event_fd {
 };
 
 struct fr_event_pid {
+	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
 	pid_t			pid;			//!< child to wait for
-	fr_event_list_t		*el;			//!< the event list which this thing is in
 
 	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
@@ -614,7 +616,7 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 	int i;
 	struct kevent		evset[10];
 	int			count = 0;
-	fr_event_list_t		*el = talloc_get_type_abort(talloc_parent(ef), fr_event_list_t);
+	fr_event_list_t		*el = ef->el;
 	fr_event_funcs_t	funcs;
 
 	/*
@@ -868,6 +870,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		}
 		talloc_set_destructor(ef, _event_fd_delete);
 		ef->linked_ctx = ctx;
+		ef->el = el;
 
 		/*
 		 *	Determine what type of file descriptor
@@ -985,7 +988,7 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
 	fr_event_timer_t *ev;
 
 	if (unlikely(!*ev_p)) return 0;
-	if (!fr_cond_assert(talloc_parent(*ev_p) == el)) return -1;
+	if (!fr_cond_assert((*ev_p)->el == el)) return -1;
 
 	memcpy(&ev, ev_p, sizeof(ev));
 	return talloc_free(ev);
@@ -1000,7 +1003,7 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
  */
 static int _event_timer_free(fr_event_timer_t *ev)
 {
-	fr_event_list_t	*el = talloc_parent(ev);
+	fr_event_list_t	*el = ev->el;
 	fr_event_timer_t const **ev_p;
 	int		ret;
 
@@ -1112,6 +1115,7 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 		(void) fr_heap_extract(el->times, ev);
 	}
 
+	ev->el = el;
 	ev->when = *when;
 	ev->callback = callback;
 	ev->uctx = uctx;

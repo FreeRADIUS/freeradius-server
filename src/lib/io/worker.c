@@ -133,7 +133,6 @@ struct fr_worker_t {
 
 	size_t			talloc_pool_size; //!< for each REQUEST
 
-	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
 
 	fr_worker_heap_t	to_decode;	//!< messages from the master, to be decoded or localized
 	fr_worker_heap_t       	localized;	//!< localized messages to be decoded
@@ -142,7 +141,9 @@ struct fr_worker_t {
 	fr_heap_t		*time_order;	//!< time ordered heap of requests
 	rbtree_t		*dedup;		//!< de-dup tree
 
-	fr_io_stats_t		stats;
+	fr_io_stats_t		stats;		//!< input / output stats
+	fr_time_elapsed_t	cpu_time;	//!< histogram of total CPU time per request
+	fr_time_elapsed_t	wall_clock;	//!< histogram of wall clock time per request
 
 	uint64_t       		num_decoded;	//!< number of messages which have been decoded
 	uint64_t    		num_timeouts;	//!< number of messages which timed out
@@ -152,6 +153,9 @@ struct fr_worker_t {
 
 	bool			was_sleeping;	//!< used to suppress multiple sleep signals in a row
 	bool			exiting;	//!< are we exiting?
+
+	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
+	fr_time_t		last_event;	//!< last time we ran the event loop
 
 	fr_time_t		next_cleanup;	//!< when we next do the max_request_time checks
 	fr_event_timer_t const	*ev_cleanup;	//!< timer for max_request_time
@@ -451,6 +455,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	fr_channel_data_t *reply, *cd;
 	fr_channel_t *ch;
 	fr_message_set_t *ms;
+	fr_time_t now;
 
 	REQUEST_VERIFY(request);
 
@@ -459,12 +464,14 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 */
 	rad_assert(request->runnable_id < 0);
 
+	now = fr_time();
+
 	/*
 	 *	If it's a detached request, don't send a real reply.
 	 *	Just toss the request.
 	 */
 	if (request->async->detached) {
-		fr_time_tracking_end(&request->async->tracking, fr_time(), &worker->tracking);
+		fr_time_tracking_end(&request->async->tracking, now, &worker->tracking);
 		goto finished;
 	}
 
@@ -510,7 +517,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	/*
 	 *	The request is done.  Track that.
 	 */
-	fr_time_tracking_end(&request->async->tracking, fr_time(), &worker->tracking);
+	fr_time_tracking_end(&request->async->tracking, now, &worker->tracking);
 	rad_assert(worker->num_active > 0);
 	worker->num_active--;
 
@@ -534,6 +541,12 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 
 	reply->listen = request->async->listen;
 	reply->packet_ctx = request->async->packet_ctx;
+
+	/*
+	 *	Update the various timers.
+	 */
+	fr_time_elapsed_update(&worker->cpu_time, now, now + reply->reply.processing_time);
+	fr_time_elapsed_update(&worker->wall_clock, reply->reply.request_time, now);
 
 	RDEBUG("finished request.");
 
@@ -1466,6 +1479,8 @@ void fr_worker(fr_worker_t *worker)
 
 		WORKER_VERIFY;
 
+		worker->last_event = fr_time();
+
 		/*
 		 *	There are runnable requests.  We still service
 		 *	the event loop, but we don't wait for events.
@@ -1624,28 +1639,38 @@ int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
 	return 7;
 }
 
-static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
 {
 	fr_worker_t const *worker = ctx;
 	fr_time_t when;
 
-	fprintf(fp, "count.in\t%" PRIu64 "\n", worker->stats.in);
-	fprintf(fp, "count.out\t%" PRIu64 "\n", worker->stats.out);
-	fprintf(fp, "count.dup\t%" PRIu64 "\n", worker->stats.dup);
-	fprintf(fp, "count.dropped\t%" PRIu64 "\n", worker->stats.dropped);
-	fprintf(fp, "count.decoded\t%" PRIu64 "\n", worker->num_decoded);
-	fprintf(fp, "count.timeouts\t%" PRIu64 "\n", worker->num_timeouts);
-	fprintf(fp, "count.active\t%" PRIu64 "\n", worker->num_active);
-	fprintf(fp, "count.runnable\t%u\n", fr_heap_num_elements(worker->runnable));
+	if ((info->argc == 0) || (strcmp(info->argv[0], "count") == 0)) {
+		fprintf(fp, "count.in\t\t\t%" PRIu64 "\n", worker->stats.in);
+		fprintf(fp, "count.out\t\t\t%" PRIu64 "\n", worker->stats.out);
+		fprintf(fp, "count.dup\t\t\t%" PRIu64 "\n", worker->stats.dup);
+		fprintf(fp, "count.dropped\t\t\t%" PRIu64 "\n", worker->stats.dropped);
+		fprintf(fp, "count.decoded\t\t\t%" PRIu64 "\n", worker->num_decoded);
+		fprintf(fp, "count.timeouts\t\t\t%" PRIu64 "\n", worker->num_timeouts);
+		fprintf(fp, "count.active\t\t\t%" PRIu64 "\n", worker->num_active);
+		fprintf(fp, "count.runnable\t\t\t%u\n", fr_heap_num_elements(worker->runnable));
+	}
 
-	when = worker->tracking.predicted;
-	fprintf(fp, "cpu.predicted\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+	if ((info->argc == 0) || (strcmp(info->argv[0], "cpu") == 0)) {
+		when = worker->tracking.predicted;
+		fprintf(fp, "cpu.average_request_time\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
-	when = worker->tracking.running;
-	fprintf(fp, "cpu.used\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+		when = worker->tracking.running;
+		fprintf(fp, "cpu.used\t\t\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
 
-	when = worker->tracking.waiting;
-	fprintf(fp, "cpu.waiting\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000);
+		when = worker->tracking.waiting;
+		fprintf(fp, "cpu.waiting\t\t\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+
+		when = fr_time() - worker->last_event;
+		fprintf(fp, "cpu.event_loop_serviced\t\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+
+		fr_time_elapsed_fprint(fp, &worker->cpu_time, "cpu.requests", 1);
+		fr_time_elapsed_fprint(fp, &worker->wall_clock, "time.requests", 1);
+	}
 
 	return 0;
 }
@@ -1662,6 +1687,7 @@ fr_cmd_table_t cmd_worker_table[] = {
 		.parent = "stats worker",
 		.add_name = true,
 		.name = "self",
+		.syntax = "[(count|cpu)]",
 		.func = cmd_stats_worker,
 		.help = "Show statistics for a specific worker thread.",
 		.read_only = true

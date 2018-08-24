@@ -117,6 +117,37 @@ static FR_NAME_NUMBER mode_names[] = {
 };
 
 
+#undef INT
+#ifdef HAVE_FUNOPEN
+#define INT int
+#define SINT int
+#else
+#define INT size_t
+#define SINT ssize_t
+#endif
+
+static SINT write_stdout(void *instance, char const *buffer, INT buffer_size)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, buffer, buffer_size);
+}
+
+static SINT write_stderr(void *instance, char const *buffer, INT buffer_size)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDERR, buffer, buffer_size);
+}
+
+static SINT write_misc(void *instance, char const *buffer, INT buffer_size)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return fr_conduit_write(inst->sockfd, inst->misc_conduit, buffer, buffer_size);
+}
+
+
 /*
  *	Run a command.
  */
@@ -913,21 +944,20 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 /** Open a UNIX listener for RADIUS
  *
  * @param[in] instance of the RADIUS UNIX I/O path.
+ * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(void *instance, UNUSED void const *master_instance)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
 
 	int				sockfd = 0;
-	CONF_SECTION			*server_cs;
 	CONF_ITEM			*ci;
+	CONF_SECTION			*server_cs;
 
 	rad_assert(!inst->connection);
-
-	rad_assert(inst->name != NULL);
 
 	if (inst->peercred) {
 		sockfd = fr_server_domain_socket_peercred(inst->filename, inst->uid, inst->gid);
@@ -953,6 +983,8 @@ static int mod_open(void *instance)
 	rad_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
+
+	inst->name = talloc_typed_asprintf(inst, "proto unix filename %s", inst->filename);
 
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on control address %s bound to virtual server %s",
@@ -1001,13 +1033,17 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 static int mod_fd_set(void *instance, int fd)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+#ifndef HAVE_FUNOPEN
+	cookie_io_functions_t io;
+#endif
 
+	inst->name = NULL;
 
 #ifdef HAVE_GETPEEREID
 	/*
 	 *	Perform user authentication.
 	 */
-	if (inst->peercred && (inst->uid_name || inst->gid_name)) {
+	if (inst->peercred) {
 		uid_t uid;
 		gid_t gid;
 
@@ -1020,7 +1056,7 @@ static int mod_fd_set(void *instance, int fd)
 		/*
 		 *	Only do UID checking if the caller is
 		 *	non-root.  The superuser can do anything, so
-		 *	we might as well let them.
+		 *	we might as well let them do anything.
 		 */
 		if (uid != 0) do {
 			/*
@@ -1031,7 +1067,6 @@ static int mod_fd_set(void *instance, int fd)
 
 			if (inst->uid_name && (inst->uid != uid)) {
 				ERROR("Unauthorized connection to %s from uid %ld",
-
 				       inst->filename, (long int) uid);
 				return -1;
 			}
@@ -1043,72 +1078,21 @@ static int mod_fd_set(void *instance, int fd)
 			}
 
 		} while (0);
+
+		inst->name = talloc_typed_asprintf(inst, "proto unix filename %s from peer UID %u GID %u",
+						   inst->filename,
+						   (unsigned int) uid, (unsigned int) gid);
 	}
 #endif
+
+	if (!inst->name) inst->name = talloc_typed_asprintf(inst, "proto unix filename %s", inst->filename);
 
 	inst->sockfd = fd;
 	inst->read = mod_read_init;
 
-	return 0;
-}
-
-#undef INT
-#ifdef HAVE_FUNOPEN
-#define INT int
-#define SINT int
-#else
-#define INT size_t
-#define SINT ssize_t
-#endif
-
-static SINT write_stdout(void *instance, char const *buffer, INT buffer_size)
-{
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
-
-	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, buffer, buffer_size);
-}
-
-static SINT write_stderr(void *instance, char const *buffer, INT buffer_size)
-{
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
-
-	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDERR, buffer, buffer_size);
-}
-
-static SINT write_misc(void *instance, char const *buffer, INT buffer_size)
-{
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
-
-	return fr_conduit_write(inst->sockfd, inst->misc_conduit, buffer, buffer_size);
-}
-
-
-static char const *mod_name(void *instance)
-{
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
-
-	return inst->name;
-}
-
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
-{
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
-#ifndef HAVE_FUNOPEN
-	cookie_io_functions_t io;
-#endif
-
 	/*
-	 *	Just listen, but don't do anything with the socket.
+	 *	Set up socket-specific callbacks
 	 */
-	if (!inst->connection) {
-		inst->name = talloc_typed_asprintf(inst, "proto unix server %s filename %s",
-						   "???", inst->filename);
-		return 0;
-	}
-
-	inst->name = talloc_typed_asprintf(inst, "proto unix via filename %s",
-					   inst->filename);
-
 #ifdef HAVE_FUNOPEN
 	inst->stdout = funopen(instance, NULL, write_stdout, NULL, NULL);
 	rad_assert(inst->stdout != NULL);
@@ -1150,6 +1134,13 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	fr_command_info_init(instance, inst->info);
 
 	return 0;
+}
+
+static char const *mod_name(void *instance)
+{
+	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+
+	return inst->name;
 }
 
 
@@ -1236,27 +1227,13 @@ static RADCLIENT *mod_client_find(void *instance, UNUSED fr_ipaddr_t const *ipad
 	return &inst->radclient;
 }
 
-#if 0
-static int mod_detach(void *instance)
-{
-	proto_control_unix_t	*inst = talloc_get_type_abort(instance, proto_control_unix_t);
-
-	if (inst->sockfd >= 0) close(inst->sockfd);
-	inst->sockfd = -1;
-
-	return 0;
-}
-#endif
-
 extern fr_app_io_t proto_control_unix;
 fr_app_io_t proto_control_unix = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "control_unix",
 	.config			= unix_listen_config,
 	.inst_size		= sizeof(proto_control_unix_t),
-//	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
 

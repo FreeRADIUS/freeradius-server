@@ -264,3 +264,62 @@ void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp)
 	DPRINT(running);
 	DPRINT(waiting);
 }
+
+void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end)
+{
+	fr_time_t delay;
+
+	if (start >= end) {
+		delay = 0;
+	} else {
+		delay = end - start;
+	}
+
+	if (delay < 1000) { /* microseconds */
+		elapsed->array[0]++;
+
+	} else if (delay < 10000) {
+		elapsed->array[1]++;
+
+	} else if (delay < 100000) {
+		elapsed->array[2]++;
+
+	} else if (delay < 1000000) { /* milliseconds */
+		elapsed->array[3]++;
+
+	} else if (delay < 10000000) {
+		elapsed->array[4]++;
+
+	} else if (delay < (fr_time_t) 100000000) {
+		elapsed->array[5]++;
+
+	} else if (delay < (fr_time_t) 1000000000) { /* seconds */
+		elapsed->array[6]++;
+
+	} else {		/* tens of seconds or more */
+		elapsed->array[7]++;
+
+	}
+}
+
+static const char *names[8] = {
+	"1us", "10us", "100us",
+	"1ms", "10ms", "100ms",
+	"1s", "10s"
+};
+
+static char const *tab_string = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs)
+{
+	int i;
+
+	if (!prefix) prefix = "elapsed";
+
+	for (i = 0; i < 8; i++) {
+		if (!elapsed->array[i]) continue;
+
+		fprintf(fp, "%s.%s\t%.*s%" PRIu64 "\n",
+			prefix, names[i], tabs, tab_string, elapsed->array[i]);
+	}
+}

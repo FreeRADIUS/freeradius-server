@@ -340,6 +340,7 @@ define INCLUDE_SUBMAKEFILE
     TGT_CHECK_LIBS :=
 
     SOURCES :=
+    HEADERS :=
     SRC_CFLAGS :=
     SRC_CXXFLAGS :=
     SRC_DEFS :=
@@ -435,6 +436,7 @@ define INCLUDE_SUBMAKEFILE
 
         # Save the list of source files for this target.
         $${TGT}_SOURCES += $${SOURCES}
+        $${TGT}_HEADERS += $${HEADERS}
 
         # Convert the source file names to their corresponding object file
         # names.
@@ -505,6 +507,12 @@ define INCLUDE_SUBMAKEFILE
 
         # add rules to build the target
         $$(eval $$(call ADD_TARGET_RULE$${$${TGT}_SUFFIX},$${TGT}))
+
+        # add rules to install the header files
+	ifneq "${HEADERS}" ""
+	  $(foreach h, ${HEADERS},\
+	    $(eval $(call ADD_INSTALL_RULE.h,${h},src/include/${h})))
+        endif
 
         # generate the clean rule for this target.
         $$(eval $$(call ADD_CLEAN_RULE,$${TGT}))
@@ -673,7 +681,6 @@ endif
 # Build rules for installation subdirectories
 $(foreach D,$(patsubst %/,%,$(sort $(dir ${ALL_INSTALL}))),\
   $(eval $(call ADD_INSTALL_RULE.dir,${D})))
-
 
 scan: ${ALL_PLISTS}
 

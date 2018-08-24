@@ -2011,7 +2011,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 	 */
 	cp = cf_pair_find(cs, p);
 	if (cp) {
-		cp->parsed = true;	/* conf pairs which are referenced count as parsed */
+		cp->referenced = true;	/* conf pairs which are referenced count as used */
 		return &(cp->item);
 	}
 

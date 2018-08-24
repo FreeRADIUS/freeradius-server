@@ -113,7 +113,7 @@ static size_t test_nak(void const *ctx, UNUSED void *packet_ctx, uint8_t *const 
 	return 10;
 }
 
-static int test_open(void *ctx)
+static int test_open(void *ctx, UNUSED void const *master_ctx)
 {
 	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
 
@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (listen.app_io->open(listen.app_io_instance) < 0) exit(EXIT_FAILURE);
+	if (listen.app_io->open(listen.app_io_instance, listen.app_io_instance) < 0) exit(EXIT_FAILURE);
 
 #if 0
 	/*
@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
 #endif
 
 	(void) fr_fault_setup(autofree, NULL, argv[0]);
-	(void) fr_schedule_socket_add(sched, &listen);
+	(void) fr_schedule_listen_add(sched, &listen);
 
 	sleep(10);
 

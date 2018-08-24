@@ -35,6 +35,8 @@
 #include <freeradius-devel/server/rad_assert.h>
 #include "proto_radius.h"
 
+extern fr_app_io_t proto_radius_tcp;
+
 typedef struct {
 	char const			*name;			//!< socket name
 	CONF_SECTION			*cs;			//!< our configuration
@@ -303,11 +305,12 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
 /** Open a TCP listener for RADIUS
  *
  * @param[in] instance of the RADIUS TCP I/O path.
+ * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(void *instance, UNUSED void const *master_instance)
 {
 	proto_radius_tcp_t *inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
 
@@ -346,6 +349,10 @@ static int mod_open(void *instance)
 
 	server_cs = cf_item_to_section(ci);
 
+	inst->name = fr_app_io_socket_name(inst, &proto_radius_tcp,
+					   NULL, 0,
+					   &inst->ipaddr, inst->port);
+
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on radius address %s bound to virtual server %s",
 	      inst->name, cf_section_name2(server_cs));
@@ -376,6 +383,10 @@ static int mod_fd_set(void *instance, int fd)
 
 	inst->sockfd = fd;
 
+	inst->name = fr_app_io_socket_name(inst, &proto_radius_tcp,
+					   &inst->connection->src_ipaddr, inst->connection->src_port,
+					   &inst->ipaddr, inst->port);
+
 	return 0;
 }
 
@@ -405,42 +416,6 @@ static char const *mod_name(void *instance)
 	proto_radius_tcp_t *inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
 
 	return inst->name;
-}
-
-
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
-{
-	proto_radius_tcp_t *inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
-	char		    dst_buf[128];
-
-	/*
-	 *	Get our name.
-	 */
-	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
-		if (inst->ipaddr.af == AF_INET) {
-			strlcpy(dst_buf, "*", sizeof(dst_buf));
-		} else {
-			rad_assert(inst->ipaddr.af == AF_INET6);
-			strlcpy(dst_buf, "::", sizeof(dst_buf));
-		}
-	} else {
-		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
-	}
-
-	if (!inst->connection) {
-		inst->name = talloc_typed_asprintf(inst, "proto tcp server %s port %u",
-						   dst_buf, inst->port);
-
-	} else {
-		char src_buf[128];
-
-		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
-
-		inst->name = talloc_typed_asprintf(inst, "proto tcp from client %s port %u to server %s port %u",
-						   src_buf, inst->connection->src_port, dst_buf, inst->port);
-	}
-
-	return 0;
 }
 
 
@@ -645,27 +620,12 @@ static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipad
 	return client_find(NULL, ipaddr, ipproto);
 }
 
-#if 0
-static int mod_detach(void *instance)
-{
-	proto_radius_tcp_t	*inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
-
-	if (inst->sockfd >= 0) close(inst->sockfd);
-	inst->sockfd = -1;
-
-	return 0;
-}
-#endif
-
-extern fr_app_io_t proto_radius_tcp;
 fr_app_io_t proto_radius_tcp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_tcp",
 	.config			= tcp_listen_config,
 	.inst_size		= sizeof(proto_radius_tcp_t),
-//	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
 	.track_duplicates	= true,

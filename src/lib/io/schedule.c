@@ -105,7 +105,7 @@ typedef struct fr_schedule_network_t {
 	fr_schedule_t	*sc;			//!< the scheduler we are running under
 
 	fr_schedule_child_status_t status;	//!< status of the worker
-	fr_network_t	*rc;			//!< the receive data structure
+	fr_network_t	*nr;			//!< the receive data structure
 } fr_schedule_network_t;
 
 
@@ -203,7 +203,7 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	sw->status = FR_CHILD_RUNNING;
 
-	(void) fr_network_worker_add(sc->sn->rc, sw->worker);
+	(void) fr_network_worker_add(sc->sn->nr, sw->worker);
 
 	fr_log(sc->log, L_INFO, "Spawned async worker %d", sw->id);
 
@@ -270,8 +270,8 @@ static void *fr_schedule_network_thread(void *arg)
 		goto fail;
 	}
 
-	sn->rc = fr_network_create(ctx, el, sc->log, sc->lvl);
-	if (!sn->rc) {
+	sn->nr = fr_network_create(ctx, el, sc->log, sc->lvl);
+	if (!sn->nr) {
 		fr_log(sc->log, L_ERR, "Network %d - Failed creating network: %s", sn->id, fr_strerror());
 		goto fail;
 	}
@@ -288,7 +288,7 @@ static void *fr_schedule_network_thread(void *arg)
 	/*
 	 *	Do all of the work.
 	 */
-	fr_network(sn->rc);
+	fr_network(sn->nr);
 
 	status = FR_CHILD_EXITED;
 
@@ -382,7 +382,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	non-zero networks and workers.
 	 */
 	if (!el && (!max_networks || !max_workers)) {
-		fr_strerror_printf("Must specify the number of networks and workers");
+		fr_strerror_printf("Must specify the number of networks (%d >= 0) and workers (%d >= 0)",
+			max_networks, max_workers);
 		return NULL;
 	}
 
@@ -560,7 +561,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		}
 	}
 
-	if (fr_command_register_hook(NULL, "0", sc->sn, cmd_network_table) < 0) {
+	if (fr_command_register_hook(NULL, "0", sc->sn->nr, cmd_network_table) < 0) {
 		fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
 		goto st_fail;
 	}
@@ -608,9 +609,9 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	workers that the network side is going away.
 	 */
 	if (sc->sn->status == FR_CHILD_RUNNING) {
-		fr_network_exit(sc->sn->rc);
+		fr_network_exit(sc->sn->nr);
 		SEM_WAIT_INTR(&sc->semaphore);
-		fr_network_destroy(sc->sn->rc);
+		fr_network_destroy(sc->sn->nr);
 	}
 
 	/*
@@ -672,7 +673,7 @@ done:
 	return 0;
 }
 
-/** Add a socket to a scheduler.
+/** Add a fr_listen_t to a scheduler.
  *
  * @param[in] sc the scheduler
  * @param[in] io the ctx and callbacks for the transport.
@@ -680,7 +681,7 @@ done:
  *	- NULL on error
  *	- the fr_network_t that the socket was added to.
  */
-fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, fr_listen_t const *io)
+fr_network_t *fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_t const *io)
 {
 	fr_network_t *nr;
 
@@ -689,10 +690,10 @@ fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, fr_listen_t const *io)
 	if (sc->el) {
 		nr = sc->single_network;
 	} else {
-		nr = sc->sn->rc;
+		nr = sc->sn->nr;
 	}
 
-	if (fr_network_socket_add(nr, io) < 0) return NULL;
+	if (fr_network_listen_add(nr, io) < 0) return NULL;
 
 	return nr;
 }
@@ -714,7 +715,7 @@ fr_network_t *fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_t const *io
 	if (sc->el) {
 		nr = sc->single_network;
 	} else {
-		nr = sc->sn->rc;
+		nr = sc->sn->nr;
 	}
 
 	if (fr_network_directory_add(nr, io) < 0) return NULL;

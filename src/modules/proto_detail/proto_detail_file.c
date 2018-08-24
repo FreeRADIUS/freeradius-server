@@ -110,11 +110,12 @@ static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
 /** Open a detail listener
  *
  * @param[in] instance of the detail worker.
+ * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(void *instance, UNUSED void const *master_instance)
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
 	int oflag;
@@ -131,8 +132,7 @@ static int mod_open(void *instance)
 		return -1;
 	}
 
-	rad_assert(inst->name == NULL);
-	inst->name = talloc_typed_asprintf(inst, "detail directory %s", inst->directory);
+	inst->name = talloc_typed_asprintf(inst, "proto_detail polling for files matching %s", inst->filename);
 
 	DEBUG("Listening on %s bound to virtual server %s FD %d",
 	      inst->name, cf_section_name2(inst->parent->server_cs), inst->fd);
@@ -370,7 +370,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	 *	Instantiate the new worker.
 	 */
 	if (listen->app_io->instantiate &&
-	    (listen->app_io->instantiate(listen->app_io_instance,
+	    (listen->app_io->instantiate(work,
 					 inst->parent->work_io_conf) < 0)) {
 		ERROR("Failed instantiating %s", listen->app_io->name);
 		goto error;
@@ -387,13 +387,13 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	/*
 	 *	Open the detail.work file.
 	 */
-	if (listen->app_io->open(listen->app_io_instance) < 0) {
+	if (listen->app_io->open(listen->app_io_instance, listen->app_io_instance) < 0) {
 		ERROR("Failed opening %s", listen->app_io->name);
 		goto error;
 	}
 	opened = true;
 
-	if (!fr_schedule_socket_add(inst->parent->sc, listen)) {
+	if (!fr_schedule_listen_add(inst->parent->sc, listen)) {
 	error:
 		if (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
 			PERROR("Failed removing DELETE callback when opening work file");
@@ -617,14 +617,6 @@ static char const *mod_name(void *instance)
 	return inst->name;
 }
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
-{
-	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
-
-	inst->name = talloc_asprintf(inst, "detail polling for files matching %s", inst->filename);
-
-	return 0;
-}
 
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
@@ -738,7 +730,6 @@ fr_app_io_t proto_detail_file = {
 	.inst_size		= sizeof(proto_detail_file_t),
 	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 65536,
 	.default_reply_size	= 32,

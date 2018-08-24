@@ -447,6 +447,30 @@ static void openssl_free(void *to_free)
 	(void)talloc_free(to_free);
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+/** Free any memory alloced by libssl
+ *
+ * OpenSSL >= 1.1.0 uses an atexit handler to automatically free memory
+ */
+void tls_free(void)
+{
+	if (--instance_count > 0) return;
+
+	FR_TLS_REMOVE_THREAD_STATE();
+	ENGINE_cleanup();
+	CONF_modules_unload(1);
+	ERR_free_strings();
+	EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
+
+	TALLOC_FREE(global_mutexes);
+
+	fr_dict_autofree(tls_dict);
+}
+#endif
+
+
+
 /** Add all the default ciphers and message digests to our context.
  *
  * This should be called exactly once from main, before reading the main config
@@ -521,25 +545,4 @@ int tls_init(void)
 	return 0;
 }
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-/** Free any memory alloced by libssl
- *
- * OpenSSL >= 1.1.0 uses an atexit handler to automatically free memory
- */
-void tls_free(void)
-{
-	if (--instance_count > 0) return;
-
-	FR_TLS_REMOVE_THREAD_STATE();
-	ENGINE_cleanup();
-	CONF_modules_unload(1);
-	ERR_free_strings();
-	EVP_cleanup();
-	CRYPTO_cleanup_all_ex_data();
-
-	TALLOC_FREE(global_mutexes);
-
-	fr_dict_autofree(tls_dict);
-}
-#endif
 #endif /* WITH_TLS */

@@ -82,7 +82,6 @@ ATTRIBUTE	Ericsson-ViG-Redirecting-num-NP		78	integer
 ATTRIBUTE	Ericsson-ViG-Redirecting-num-PI		79	integer
 ATTRIBUTE	Ericsson-ViG-Redirecting-num-RFD	80	integer
 ATTRIBUTE	Ericsson-ViG-Time-stamp-UTC		81	integer
-ATTRIBUTE	Ericsson-ViG-Time-stamp-UTC		81	integer
 ATTRIBUTE	Ericsson-ViG-Time-stamp-TZ		82	integer
 ATTRIBUTE	Ericsson-ViG-Time-stamp-DST		83	integer
 ATTRIBUTE	Ericsson-ViG-Session-routing-duration	84	integer
@@ -110,7 +109,6 @@ ATTRIBUTE	Ericsson-ViG-Internal-Rel-reason-orig	105	integer
 ATTRIBUTE	Ericsson-ViG-Service-ID			106	integer
 ATTRIBUTE	Ericsson-ViG-User-ID			107	string
 ATTRIBUTE	Ericsson-ViG-Service-Name		108	string
-ATTRIBUTE	Ericsson-ViG-Test-Call-Indicator	109	integer
 ATTRIBUTE	Ericsson-ViG-Test-Call-Indicator	109	integer
 ATTRIBUTE	Ericsson-ViG-Emergency-Call-Indicator	110	integer
 ATTRIBUTE	Ericsson-ViG-Calling-ID			111	string

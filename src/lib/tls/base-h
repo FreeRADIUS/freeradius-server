@@ -522,6 +522,8 @@ int		tls_init(void);
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 void		tls_free(void);
+#else
+#define		tls_free()
 #endif
 
 /*
