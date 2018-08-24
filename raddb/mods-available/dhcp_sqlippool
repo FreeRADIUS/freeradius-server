@@ -17,6 +17,9 @@ sqlippool dhcp_sqlippool {
 
 	ippool_table = "radippool"
 
+	# Name of the check item attribute to be used as a key in the SQL queries
+	pool_name = "Pool-Name"
+
 	lease_duration = 7200
 
 	# Client's MAC address is mapped to Calling-Station-Id in policy.conf
@@ -33,12 +36,12 @@ sqlippool dhcp_sqlippool {
 
 	sqlippool_log_exists = "DHCP: Existing IP: %{reply:Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-	sqlippool_log_success = "DHCP: Allocated IP: %{reply:Framed-IP-Address} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	sqlippool_log_success = "DHCP: Allocated IP: %{reply:Framed-IP-Address} from %{control:${..pool_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
 	sqlippool_log_clear = "DHCP: Released IP %{Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
 
-	sqlippool_log_failed = "DHCP: IP Allocation FAILED from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	sqlippool_log_failed = "DHCP: IP Allocation FAILED from %{control:${..pool_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-	sqlippool_log_nopool = "DHCP: No Pool-Name defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	sqlippool_log_nopool = "DHCP: No ${..pool_name} defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
 }

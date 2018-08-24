@@ -18,6 +18,9 @@ sqlippool {
 	#  reference expansions.
 	dialect = "mysql"
 
+	# Name of the check item attribute to be used as a key in the SQL queries
+	pool_name = "Pool-Name"
+
 	# SQL table to use for ippool range and lease info
 	ippool_table = "radippool"
 
@@ -85,13 +88,13 @@ sqlippool {
 	messages {
 		exists = "Existing IP: %{reply:${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-		success = "Allocated IP: %{reply:${..attribute_name}} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		success = "Allocated IP: %{reply:${..attribute_name}} from %{control:${..pool_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
 		clear = "Released IP ${..attribute_name} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
 
-		failed = "IP Allocation FAILED from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		failed = "IP Allocation FAILED from %{control:${..pool_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-		nopool = "No Pool-Name defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		nopool = "No ${..pool_name} defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 	}
 
 	$INCLUDE ${modconfdir}/sql/ippool/${dialect}/queries.conf

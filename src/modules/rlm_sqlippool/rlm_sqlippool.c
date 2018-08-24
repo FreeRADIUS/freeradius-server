@@ -44,12 +44,13 @@ typedef struct rlm_sqlippool_t {
 
 	rlm_sql_t	*sql_inst;
 
-	char const	*pool_name;
+	char const	*pool_name;		//!< Name of the attribute in the check VPS for which the value will be used as key
 	bool		ipv6;			//!< Whether or not we do IPv6 pools.
 	bool		allow_duplicates;	//!< assign even if it already exists
 	char const	*attribute_name;	//!< name of the IP address attribute
 
 	DICT_ATTR const *framed_ip_address; 	//!< the attribute for IP address allocation
+	DICT_ATTR const *pool_attribute; 	//!< the attribute corresponding to the pool_name
 
 	time_t		last_clear;		//!< So we only do it once a second.
 	char const	*allocate_begin;	//!< SQL query to begin.
@@ -123,7 +124,7 @@ static CONF_PARSER module_config[] = {
 	{ "lease_duration", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlippool_t, lease_duration), "86400" },
 
 	{ "pool-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, pool_name), NULL },
-	{ "pool_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, pool_name), "" },
+	{ "pool_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, pool_name), "Pool-Name" },
 
 	{ "default-pool", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, defaultpool), NULL },
 	{ "default_pool", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, defaultpool), "main_pool" },
@@ -410,20 +411,28 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	module_instance_t *sql_inst;
 	rlm_sqlippool_t *inst = instance;
-	char const *pool_name = NULL;
 
-	pool_name = cf_section_name2(conf);
-	if (pool_name != NULL) {
-		inst->pool_name = talloc_typed_strdup(inst, pool_name);
-	} else {
-		inst->pool_name = talloc_typed_strdup(inst, "ippool");
-	}
 	sql_inst = module_instantiate(cf_section_find("modules"),
 					inst->sql_instance_name);
 	if (!sql_inst) {
 		cf_log_err_cs(conf, "failed to find sql instance named %s",
 			   inst->sql_instance_name);
 		return -1;
+	}
+
+	if (inst->pool_name) {
+		DICT_ATTR const *da;
+
+		da = dict_attrbyname(inst->pool_name);
+		if (!da) {
+			cf_log_err_cs(conf, "Unknown attribute 'pool_name = %s'", inst->attribute_name);
+			return -1;
+		}
+
+		if (da->type != PW_TYPE_STRING) {
+			cf_log_err_cs(conf, "Cannot use non-string attributes for 'pool_name = %s'", inst->attribute_name);
+			return -1;
+		}
 	}
 
 	if (inst->attribute_name) {
@@ -517,8 +526,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (fr_pair_find_by_num(request->config, PW_POOL_NAME, 0, TAG_ANY) == NULL) {
-		RDEBUG("No Pool-Name defined");
+	if (fr_pair_find_by_num(request->config, inst->pool_attribute->attr, inst->pool_attribute->vendor, TAG_ANY) == NULL) {
+		RDEBUG("No %s defined", inst->pool_name);
 
 		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
