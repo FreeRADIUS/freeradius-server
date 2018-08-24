@@ -183,6 +183,20 @@ static RADIUS_PACKET *request_init(char const *filename)
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
+		 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
+		 */
+		if (vp->type == VT_XLAT) {
+			fr_type_t type = vp->da->type;
+			if (fr_value_box_from_str(vp, &vp->data, &type, NULL, vp->xlat, -1, '\0', false) < 0) {
+				fr_perror("dhcpclient");
+				fr_radius_packet_free(&request);
+				if (fp != stdin) fclose(fp);
+				return NULL;
+			}
+			vp->type = VT_DATA;
+		}
+
+		/*
 		 *	Allow to set packet type using DHCP-Message-Type
 		 */
 	     	if (vp->da == attr_dhcp_message_type) {
