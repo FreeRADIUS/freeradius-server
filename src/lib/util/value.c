@@ -36,8 +36,8 @@
  *
  * - PRESENTATION format is what we print to the screen, and what we get from the user, databases
  *   and configuration files.
- *   - #fr_value_box_asprint is used to convert INTERNAL format PRESENTATION format.
- *   - #fr_value_box_from_str is used to convert from INTERNAL to PRESENTATION format.
+ *   - #fr_value_box_asprint is used to convert from INTERNAL to PRESENTATION format.
+ *   - #fr_value_box_from_str is used to convert from PRESENTATION to INTERNAL format.
  *
  * @copyright 2014-2017 The FreeRADIUS server project
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
