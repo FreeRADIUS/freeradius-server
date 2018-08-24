@@ -476,10 +476,16 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			     vp;
 			     vp = fr_cursor_next(&cursor)) {
 			     again:
+				/*
+				 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
+				 */
 				if (vp->type == VT_XLAT) {
+					fr_type_t type = vp->da->type;
+					if (fr_value_box_from_str(vp, &vp->data, &type, NULL, vp->xlat, -1, '\0', false) < 0) {
+						fr_perror("radclient");
+						goto error;
+					}
 					vp->type = VT_DATA;
-					vp->vp_strvalue = vp->xlat;
-					vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 				}
 
 				if ((vp->da == attr_response_packet_type) || (vp->da == attr_packet_type)) {
@@ -505,13 +511,15 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			/*
-			 *	Double quoted strings get marked up as xlat expansions,
-			 *	but we don't support that in request.
+			 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
 			 */
 			if (vp->type == VT_XLAT) {
+				fr_type_t type = vp->da->type;
+				if (fr_value_box_from_str(vp, &vp->data, &type, NULL, vp->xlat, -1, '\0', false) < 0) {
+					fr_perror("radclient");
+					goto error;
+				}
 				vp->type = VT_DATA;
-				vp->vp_strvalue = vp->xlat;
-				vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 			}
 
 			/*
