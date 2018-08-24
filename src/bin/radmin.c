@@ -142,6 +142,7 @@ static char *radmin_buffer = NULL;
 #define CMD_MAX_EXPANSIONS (128)
 
 static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info);
+static main_config_t *radmin_main_config = NULL;
 
 #ifdef USE_READLINE
 /*
@@ -149,7 +150,6 @@ static int cmd_exit(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t cons
  */
 static int radmin_num_expansions;
 static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
-static main_config_t *radmin_main_config = NULL;
 
 static char *
 radmin_expansion_walk(UNUSED const char *text, int state)
