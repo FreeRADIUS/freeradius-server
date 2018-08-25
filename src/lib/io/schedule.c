@@ -63,6 +63,14 @@ RCSID("$Id$")
 
 #define SEM_WAIT_INTR(_x) do {if (sem_wait(_x) == 0) break;} while (errno == EINTR)
 
+#undef DEBUG
+#undef DEBUG2
+#undef DEBUG3
+
+#define DEBUG(fmt, ...) if (sc->lvl) fr_log(sc->log, L_DBG, fmt, ## __VA_ARGS__)
+//#define DEBUG2(fmt, ...) if (sc->lvl >= L_DBG_LVL_2) fr_log(sc->log, L_DBG, fmt, ## __VA_ARGS__)
+#define DEBUG3(fmt, ...) if (sc->lvl >= L_DBG_LVL_3) fr_log(sc->log, L_DBG, fmt, ## __VA_ARGS__)
+
 /**
  *  Track the child thread status.
  */
@@ -205,7 +213,7 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	(void) fr_network_worker_add(sc->sn->nr, sw->worker);
 
-	fr_log(sc->log, L_INFO, "Spawned async worker %d", sw->id);
+	DEBUG3("Spawned async worker %d", sw->id);
 
 	/*
 	 *	Tell the originator that the thread has started.
@@ -219,7 +227,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 */
 	fr_worker(sw->worker);
 
-	fr_log(sc->log, L_INFO, "Worker %d finished\n", sw->id);
+	DEBUG3("Worker %d finished\n", sw->id);
 
 	status = FR_CHILD_EXITED;
 
@@ -231,7 +239,7 @@ fail:
 		sw->worker = NULL;
 	}
 
-	fr_log(sc->log, L_INFO, "Worker %d exiting\n", sw->id);
+	DEBUG3("Worker %d exiting\n", sw->id);
 
 	/*
 	 *	Tell the scheduler we're done.
@@ -283,7 +291,7 @@ static void *fr_schedule_network_thread(void *arg)
 	 */
 	sem_post(&sc->semaphore);
 
-	fr_log(sc->log, L_INFO, "Spawned asycn network 0");
+	DEBUG3("Spawned asycn network 0");
 
 	/*
 	 *	Do all of the work.
@@ -295,7 +303,7 @@ static void *fr_schedule_network_thread(void *arg)
 fail:
 	sn->status = status;
 
-	fr_log(sc->log, L_INFO, "Network exiting");
+	DEBUG3("Network exiting");
 
 	/*
 	 *	Tell the scheduler we're done.
@@ -443,7 +451,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		}
 
 		(void) fr_network_worker_add(sc->single_network, sc->single_worker);
-		fr_log(sc->log, L_DBG, "Scheduler created in single-threaded mode");
+		DEBUG("Scheduler created in single-threaded mode");
 
 		return sc;
 	}
@@ -487,7 +495,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	Create all of the workers.
 	 */
 	for (i = 0; i < sc->max_workers; i++) {
-		fr_log(sc->log, L_DBG, "Creating %d/%d workers\n", i, sc->max_workers);
+		DEBUG3("Creating %d/%d workers\n", i, sc->max_workers);
 
 		/*
 		 *	Create a worker "glue" structure
@@ -518,7 +526,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	can't start.
 	 */
 	for (i = 0; i < sc->num_workers; i++) {
-		fr_log(sc->log, L_DBG, "Waiting for semaphore from worker %d/%d\n", i, sc->num_workers);
+		DEBUG3("Waiting for semaphore from worker %d/%d\n", i, sc->num_workers);
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
 
@@ -629,7 +637,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	underneath the workers!
 	 */
 	for (i = 0; i < sc->num_workers; i++) {
-		fr_log(sc->log, L_DBG, "Wait for semaphore indicating exit %d/%d\n", i, sc->num_workers);
+		DEBUG3("Wait for semaphore indicating exit %d/%d\n", i, sc->num_workers);
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
 
@@ -652,7 +660,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		if (pthread_join(sw->pthread_id, NULL) != 0) {
 			fr_log(sc->log, L_ERR, "Failed joining worker %i: %s", sw->id, fr_syserror(errno));
 		} else {
-			fr_log(sc->log, L_INFO, "Worker %i exited", sw->id);
+			DEBUG3("Worker %i exited", sw->id);
 		}
 		talloc_free(sw->ctx);
 	}
