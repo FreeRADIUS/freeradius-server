@@ -3970,9 +3970,8 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	This check should really be part of a home
 		 *	server state machine.
 		 */
-		if (((home->state == HOME_STATE_ALIVE) ||
-		     (home->state == HOME_STATE_UNKNOWN))
-			) {
+		if ((home->state == HOME_STATE_ALIVE) ||
+		     (home->state == HOME_STATE_UNKNOWN)) {
 			home->response_timeouts++;
 			if (home->response_timeouts >= home->max_response_timeouts)
 				mark_home_server_zombie(home, &now, response_window);
