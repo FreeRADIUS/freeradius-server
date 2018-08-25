@@ -67,7 +67,7 @@ static TALLOC_CTX *radmin_ctx;
 /*
  *	@todo - use thread-local storage
  */
-static char *readline_buffer[1024];
+static char readline_buffer[1024];
 
 static char *readline(char const *prompt)
 {
