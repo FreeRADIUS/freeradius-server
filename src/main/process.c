@@ -639,6 +639,29 @@ static void request_done(REQUEST *request, int action)
 	 */
 	request->master_state = REQUEST_STOP_PROCESSING;
 
+#ifdef WITH_PROXY
+	/*
+	 *	Walk through the server pool to see if we need to mark
+	 *	connections as dead.
+	 */
+	if (request->home_pool) {
+		fr_event_now(el, &now);
+		if (request->home_pool->last_serviced < now.tv_sec) {
+			int i;
+
+			request->home_pool->last_serviced = now.tv_sec;
+
+			for (i = 0; i < request->home_pool->num_home_servers; i++) {
+				home_server_t *home = request->home_pool->servers[i];
+
+				if (home->state == HOME_STATE_CONNECTION_FAIL) {
+					mark_home_server_dead(home, &now);
+				}
+			}
+		}
+	}
+#endif
+
 #ifdef WITH_COA
 	/*
 	 *	Move the CoA request to its own handler.

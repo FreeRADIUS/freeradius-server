@@ -160,6 +160,7 @@ typedef struct home_pool_t {
 	home_server_t		*fallback;
 	int			in_fallback;
 	time_t			time_all_dead;
+	time_t			last_serviced;
 
 	int			num_home_servers;
 	home_server_t		*servers[1];
