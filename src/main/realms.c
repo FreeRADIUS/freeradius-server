@@ -462,7 +462,7 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("check_timeout", home->ping_timeout, >=, 1);
 	FR_INTEGER_BOUND_CHECK("check_timeout", home->ping_timeout, <=, 10);
 
-	FR_INTEGER_BOUND_CHECK("revive_interval", home->revive_interval, >=, 60);
+	FR_INTEGER_BOUND_CHECK("revive_interval", home->revive_interval, >=, 10);
 	FR_INTEGER_BOUND_CHECK("revive_interval", home->revive_interval, <=, 3600);
 
 #ifdef WITH_COA
