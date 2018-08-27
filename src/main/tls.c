@@ -716,7 +716,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	if (ssn->dirty_in.used > 0) {
 		err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
 		if (err != (int) ssn->dirty_in.used) {
-			REDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+			REDEBUG("TLS - Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
 			record_init(&ssn->dirty_in);
 			return 0;
 		}
@@ -733,11 +733,60 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	if (!tls_error_io_log(request, ssn, err, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
-	if (SSL_is_init_finished(ssn->ssl)) RDEBUG2("SSL Connection Established");
-	if (SSL_in_init(ssn->ssl)) RDEBUG2("In SSL Handshake Phase");
-	if (SSL_in_before(ssn->ssl)) RDEBUG2("Before SSL Handshake Phase");
-	if (SSL_in_accept_init(ssn->ssl)) RDEBUG2("In SSL Accept mode");
-	if (SSL_in_connect_init(ssn->ssl)) RDEBUG2("In SSL Connect mode");
+	if (SSL_is_init_finished(ssn->ssl)) {
+		VALUE_PAIR *vp;
+		char const *str_version;
+
+		RDEBUG2("TLS - Connection Established");
+
+		vp = fr_pair_afrom_num(request->state_ctx, PW_TLS_SESSION_CIPHER_SUITE, 0);
+		if (vp) {
+			fr_pair_value_strcpy(vp, SSL_CIPHER_get_name(SSL_get_current_cipher(ssn->ssl)));
+			fr_pair_add(&request->state, vp);
+			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		}
+
+		switch (ssn->info.version) {
+		case SSL2_VERSION:
+			str_version = "SSL 2.0";
+			break;
+		case SSL3_VERSION:
+			str_version = "SSL 3.0";
+			break;
+		case TLS1_VERSION:
+			str_version = "TLS 1.0";
+			break;
+#ifdef TLS1_1_VERSION
+		case TLS1_1_VERSION:
+			str_version = "TLS 1.1";
+			break;
+#endif
+#ifdef TLS1_2_VERSION
+		case TLS1_2_VERSION:
+			str_version = "TLS 1.2";
+			break;
+#endif
+#ifdef TLS1_3_VERSON
+		case TLS1_3_VERSION:
+			str_version = "TLS 1.3";
+			break;
+#endif
+		default:
+			str_version = "UNKNOWN";
+			break;
+		}
+
+		vp = fr_pair_afrom_num(request->state_ctx, PW_TLS_SESSION_VERSION, 0);
+		if (vp) {
+			fr_pair_value_strcpy(vp, str_version);
+			fr_pair_add(&request->state, vp);
+			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		}
+	}
+	else if (SSL_in_init(ssn->ssl)) { RDEBUG2("TLS - In Handshake Phase"); }
+	else if (SSL_in_before(ssn->ssl)) { RDEBUG2("TLS - Before Handshake Phase"); }
+	else if (SSL_in_accept_init(ssn->ssl)) { RDEBUG2("TLS - In Accept mode"); }
+	else if (SSL_in_connect_init(ssn->ssl)) { RDEBUG2("TLS - In Connect mode"); }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	/*
@@ -746,7 +795,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	if (!ssn->ssl_session && SSL_is_init_finished(ssn->ssl)) {
 		ssn->ssl_session = SSL_get_session(ssn->ssl);
 		if (!ssn->ssl_session) {
-			RDEBUG("Failed getting SSL session");
+			RDEBUG("TLS - Failed getting session");
 			return 0;
 		}
 	}
@@ -757,20 +806,23 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
 			       sizeof(ssn->dirty_out.data));
 		if (err > 0) {
+			RDEBUG2("TLS - got %d bytes of data", err);
 			ssn->dirty_out.used = err;
 
 		} else if (BIO_should_retry(ssn->from_ssl)) {
 			record_init(&ssn->dirty_in);
-			RDEBUG2("Asking for more data in tunnel");
+			RDEBUG2("TLS - Asking for more data in tunnel.");
 			return 1;
 
 		} else {
 			tls_error_log(NULL, NULL);
 			record_init(&ssn->dirty_in);
+			RDEBUG2("TLS - Tunnel data is established.");
 			return 0;
 		}
 	} else {
-		RDEBUG2("SSL Application Data");
+
+		RDEBUG2("TLS - Application data.");
 		/* Its clean application data, do whatever we want */
 		record_init(&ssn->clean_out);
 	}
@@ -1145,7 +1197,9 @@ void tls_session_information(tls_session_t *tls_session)
 		 str_details1, str_details2);
 
 	request = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST);
-	ROPTIONAL(RDEBUG2, DEBUG2, "%s", tls_session->info.info_description);
+	if (!request) return;
+
+	RDEBUG2("%s", tls_session->info.info_description);
 }
 
 static CONF_PARSER cache_config[] = {
@@ -2123,7 +2177,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	sn = X509_get_serialNumber(client_cert);
 
-	RDEBUG2("Creating attributes from certificate OIDs");
+	RDEBUG2("TLS - Creating attributes from certificate OIDs");
 	RINDENT();
 
 	/*
@@ -2144,7 +2198,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
-
 
 	/*
 	 *	Get the Expiration Date
