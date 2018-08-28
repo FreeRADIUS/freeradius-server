@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief Thread-safe queues.
- * @file io/atomic_queue.c
+ * @file atomic_queue.c
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  * @copyright 2016 Alister Winfield
