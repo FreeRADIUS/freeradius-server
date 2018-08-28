@@ -411,6 +411,9 @@
 /* Define to 1 if you have the `SSL_SESSION_get_master_key' function. */
 #undef HAVE_SSL_SESSION_GET_MASTER_KEY
 
+/* Define to 1 if you have the <stdatomic.h> header file. */
+#undef HAVE_STDATOMIC_H
+
 /* Define to 1 if you have the <stdbool.h> header file. */
 #undef HAVE_STDBOOL_H
 

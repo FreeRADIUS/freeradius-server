@@ -1046,6 +1046,7 @@ AC_CHECK_HEADERS( \
   sia.h \
   siad.h \
   signal.h \
+  stdatomic.h \
   stdbool.h \
   stddef.h \
   stdint.h \
