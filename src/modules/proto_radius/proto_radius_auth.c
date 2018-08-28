@@ -172,6 +172,11 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	VALUE_PAIR	*username = NULL;
 
 	/*
+	 *	No logs?  Then no logs.
+	 */
+	if (!inst->log_auth) return;
+
+	/*
 	 * Get the correct username based on the configured value
 	 */
 	if (!inst->log_stripped_names) {
