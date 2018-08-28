@@ -421,8 +421,8 @@ int request_enqueue(REQUEST *request)
 #else  /* no atomic queues */
 
 	if (!managed && 
-	    (thread_pool.active_threads == thread_pool.total_threads) ||
-	    (thread_pool.exited_threads > 0)) {
+	    ((thread_pool.active_threads == thread_pool.total_threads) ||
+	     (thread_pool.exited_threads > 0))) {
 		thread_pool_manage(request->timestamp);
 	}
 
