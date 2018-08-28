@@ -722,6 +722,9 @@ VALUE	TLS-Client-Error-Code		Unknown-PSK-Identity	115
 VALUE	TLS-Client-Error-Code		Certificate-Required	116
 VALUE	TLS-Client-Error-Code		No-Application-Protocol	120
 
+ATTRIBUTE	TLS-Session-Version			1947	string
+ATTRIBUTE	TLS-Session-Cipher-Suite		1948	string
+
 ATTRIBUTE	SoH-MS-Machine-OS-vendor		2100	integer
 VALUE	SoH-MS-Machine-OS-vendor	Microsoft		311
 

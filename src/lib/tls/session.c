@@ -1337,12 +1337,15 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 	 */
 	if (SSL_is_init_finished(session->ssl)) {
 		SSL_CIPHER const *cipher;
+		VALUE_PAIR *vp;
+		char const *str_version;
 
 		char cipher_desc[256], cipher_desc_clean[256];
 		char *p = cipher_desc, *q = cipher_desc_clean;
 
 		cipher = SSL_get_current_cipher(session->ssl);
 		SSL_CIPHER_description(cipher, cipher_desc, sizeof(cipher_desc));
+
 		/*
 		 *	Cleanup the output from OpenSSL
 		 *	Seems to print info in a tabular format.
@@ -1358,6 +1361,51 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 		*q = '\0';
 
 		RDEBUG2("Cipher suite: %s", cipher_desc_clean);
+
+		vp = fr_pair_afrom_num(request->state_ctx, 0, FR_TLS_SESSION_CIPHER_SUITE);
+		if (vp) {
+			fr_pair_value_strcpy(vp,  SSL_CIPHER_get_name(cipher));
+			fr_pair_add(&request->state, vp);
+			RDEBUG2("    &session-state:TLS-Session-Cipher-Suite := \"%s\"", vp->vp_strvalue);
+		}
+
+		switch (session->info.version) {
+		case SSL2_VERSION:
+			str_version = "SSL 2.0";
+			break;
+		case SSL3_VERSION:
+			str_version = "SSL 3.0";
+			break;
+		case TLS1_VERSION:
+			str_version = "TLS 1.0";
+			break;
+#ifdef TLS1_1_VERSION
+		case TLS1_1_VERSION:
+			str_version = "TLS 1.1";
+			break;
+#endif
+#ifdef TLS1_2_VERSION
+		case TLS1_2_VERSION:
+			str_version = "TLS 1.2";
+			break;
+#endif
+#ifdef TLS1_3_VERSON
+		case TLS1_3_VERSION:
+			str_version = "TLS 1.3";
+			break;
+#endif
+		default:
+			str_version = "UNKNOWN";
+			break;
+		}
+
+		vp = fr_pair_afrom_num(request->state_ctx, 0, FR_TLS_SESSION_VERSION);
+		if (vp) {
+			fr_pair_value_strcpy(vp, str_version);
+			fr_pair_add(&request->state, vp);
+			RDEBUG2("    &session-state:TLS-Session-Version := \"%s\"", str_version);
+		}
+
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 		/*
 		 *	Cache the SSL_SESSION pointer.
@@ -1390,8 +1438,6 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 		 *	Session was resumed, add attribute to mark it as such.
 		 */
 		if (SSL_session_reused(session->ssl)) {
-			VALUE_PAIR *vp;
-
 			/*
 			 *	Mark the request as resumed.
 			 */
