@@ -192,7 +192,7 @@ listen {
 	       #
 	       #  In 2.1.10 and later, this check can be done
 	       #  more generally by checking the value of the
-	       #  TLS-Client-Cert-CN attribute.  This check
+	       #  TLS-Client-Cert-Common-Name attribute.  This check
 	       #  can be done via any mechanism you choose.
 	       #
 	#	check_cert_cn = %{User-Name}
@@ -494,7 +494,7 @@ home_server tls {
 	       #
 	       #  In 2.1.10 and later, this check can be done
 	       #  more generally by checking the value of the
-	       #  TLS-Client-Cert-CN attribute.  This check
+	       #  TLS-Client-Cert-Common-Name attribute.  This check
 	       #  can be done via any mechanism you choose.
 	       #
 	#	check_cert_cn = %{User-Name}

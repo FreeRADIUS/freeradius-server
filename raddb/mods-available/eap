@@ -312,7 +312,7 @@ eap {
 		#
 		#  In 2.1.10 and later, this check can be done
 		#  more generally by checking the value of the
-		#  TLS-Client-Cert-CN attribute.  This check
+		#  TLS-Client-Cert-Common-Name attribute.  This check
 		#  can be done via any mechanism you choose.
 		#
 	#	check_cert_cn = %{User-Name}
@@ -587,7 +587,7 @@ eap {
 
 		#
 		# As part of checking a client certificate, the EAP-TLS
-		# sets some attributes such as TLS-Client-Cert-CN. This
+		# sets some attributes such as TLS-Client-Cert-Common-Name. This
 		# virtual server has access to these attributes, and can
 		# be used to accept or reject the request.
 		#
