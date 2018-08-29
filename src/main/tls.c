@@ -585,7 +585,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 
 	rad_assert(request != NULL);
 
-	RDEBUG2("Initiating new EAP-TLS session");
+	RDEBUG2("Initiating new TLS session");
 
 	/*
 	 *	Manually flush the sessions every so often.  If HALF
