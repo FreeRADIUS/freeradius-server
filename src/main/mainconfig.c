@@ -470,6 +470,22 @@ static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
+#ifdef WITH_TLS
+	/*
+	 *	Look for TLS certificate data.
+	 */
+	if (strncmp(fmt, "TLS-", 4) == 0) {
+		VALUE_PAIR *vp;
+		listen_socket_t *sock = request->listener->data;
+
+		for (vp = sock->certs; vp != NULL; vp = vp->next) {
+			if (strcmp(fmt, vp->da->name) == 0) {
+				return vp_prints_value(out, outlen, vp, 0);
+			}
+		}
+	}
+#endif
+
 	cp = cf_pair_find(request->listener->cs, fmt);
 	if (!cp || !(value = cf_pair_value(cp))) {
 		RDEBUG("Listener does not contain config item \"%s\"", fmt);
