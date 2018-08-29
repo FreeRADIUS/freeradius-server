@@ -158,7 +158,7 @@ server radsec {
 			#  the check succeeds.
 			#
 			#  This check can be done more generally by checking
-			#  the value of the TLS-Client-Cert-CN attribute.
+			#  the value of the TLS-Client-Cert-Common-Name attribute.
 			#  This check can be done via any mechanism you choose.
 			#
 		#	check_cert_cn = %{User-Name}
