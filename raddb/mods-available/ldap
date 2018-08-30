@@ -33,6 +33,22 @@ ldap {
 	base_dn = 'dc=example,dc=org'
 
 	#
+	#  You can run the 'ldapsearch' command line tool using the
+	#  parameters from this module's configuration.
+	#
+	#    ldapsearch -D ${identity} -w ${password} -h ${server}  -b 'CN=user,${base_dn}'
+	#
+	#  That will give you the LDAP information for 'user'.
+	#
+	#  Group membership can be queried by using the above "ldapsearch" string,
+	#  and adding "memberof" qualifiers.  For ActiveDirectory, use:
+	#
+	#    ldapsearch ... '(&(objectClass=user)(sAMAccountName=user)(memberof=CN=group,${base_dn}))'
+	#
+	#  Where 'user' is the user as above, and 'group' is the group you are querying for.
+	#
+
+	#
 	#  SASL parameters to use for admin binds
 	#
 	#  When we're prompted by the SASL library, these control
