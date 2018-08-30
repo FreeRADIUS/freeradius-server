@@ -6,9 +6,9 @@
 #
 #
 
+$was_raw = 0;
 $raw = 0;
-
-$firstcol = 1;
+$blank = 0;
 
 while (<>) {
     #
@@ -27,67 +27,54 @@ while (<>) {
 	next;
     }
 
+    # Print one line of blank text, but suppress multiple blank lines.
     if (/^\s*$/) {
+	print "\n" if (!$blank);
+	$blank = 1;
 	next;
     }
 
-    $oldcol = $firstcol;
-    if (/^#/) {
-	$firstcol = 1;
-    } else {
-	$firstcol = 0;
-    }
+    $blank = 0;
 
-    if (($firstcol == 1) && ($oldcol == 0) && ($raw == 0)) {
-	s/^#//;
-    }
+    undef $prefix;
+
+    #
+    #  Commented-out config blocks get converted to commented out raw text.
+    #
+    if (/^#[\t]/ || /^#[^\s]/) {
+	$raw = 1;
+#	print "R";
 
     #
     #  Comments in the configuration files get converted to plain
     #  text.
     #
-    if (/^\s*#/) {
+    } elsif (/^\s*#/) {
 	s/^\s*#[\t ]{0,2}//;
 
-	#
-	#  If we WERE printing blocks of raw output, end that, and
-	#  reset the "raw" flag.
-	#
-	if ($raw == 1) {
-	    print "```\n";
-	    $raw = 0;
-	}
+#	print "T";
 
 	#
 	#  Ensure that lists get formatted correctly
 	#
 	if (/^\s*\*/) {
-	    print "  ";
+	    $prefix = "  ";
 	}
 
-	#
-	#  @todo - load up www.freeradius.org/rfc/refs
-	#
-	#  Split the input line on spaces, into a hash array (for
-	#  uniqueness) and check each word against "refs".  If found,
-	#  the word is an attribute.  Replace the word in $_ with a
-	#  reference to the attribute definition.
-	#
+	$raw = 0;
 
-	print;
-	next;
-    }
-
-    #
-    #  No comment at the start of the line.  It must be configuration.
-    #  Convert that to raw text.
-    #
-    #  If we were printing normal text, print out the "raw" header.
-    #
-    if ($raw == 0) {
-	print "```\n";
+    } else {
 	$raw = 1;
+
+#	print "C";
     }
+
+    if ($raw != $was_raw) {
+	print "```\n";
+	$was_raw = $raw;
+    }
+
+    print $prefix if defined $prefix;
 
     #
     #  And print out the raw text.
