@@ -431,7 +431,7 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session)
 		str_version = "TLS 1.2 ";
 		break;
 #endif
-#ifdef TLS1_3_VERSON
+#ifdef TLS1_3_VERSION
 	case TLS1_3_VERSION:
 		str_version = "TLS 1.3 ";
 		break;
@@ -1389,7 +1389,7 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 			str_version = "TLS 1.2";
 			break;
 #endif
-#ifdef TLS1_3_VERSON
+#ifdef TLS1_3_VERSION
 		case TLS1_3_VERSION:
 			str_version = "TLS 1.3";
 			break;
