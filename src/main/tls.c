@@ -766,7 +766,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			str_version = "TLS 1.2";
 			break;
 #endif
-#ifdef TLS1_3_VERSON
+#ifdef TLS1_3_VERSION
 		case TLS1_3_VERSION:
 			str_version = "TLS 1.3";
 			break;
@@ -995,7 +995,7 @@ void tls_session_information(tls_session_t *tls_session)
 		str_version = "TLS 1.2 ";
 		break;
 #endif
-#ifdef TLS1_3_VERSON
+#ifdef TLS1_3_VERSION
 	case TLS1_3_VERSION:
 		str_version = "TLS 1.3 ";
 		break;
