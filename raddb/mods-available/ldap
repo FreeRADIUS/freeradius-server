@@ -250,6 +250,9 @@ ldap {
 
 		#  Filter for group objects, should match all available
 		#  group objects a user might be a member of.
+		#
+		#  If using Active Directory you are likely to need "group"
+		#  instead of "posixGroup".
 		filter = '(objectClass=posixGroup)'
 
 		# Search scope, may be 'base', 'one', sub' or 'children'
@@ -260,17 +263,24 @@ ldap {
 		#  names.
 #		name_attribute = cn
 
-		#  Filter to find group objects a user is a member of.
+		#  Filter to find all group objects a user is a member of.
 		#  That is, group objects with attributes that
 		#  identify members (the inverse of membership_attribute).
 #		membership_filter = "(|(member=%{control:Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
 
-		#  The attribute in user objects which contain the names
+		#  The attribute, in user objects, which contain the names
 		#  or DNs of groups a user is a member of.
 		#
 		#  Unless a conversion between group name and group DN is
 		#  needed, there's no requirement for the group objects
 		#  referenced to actually exist.
+		#
+		#  If the LDAP server does not support the "memberOf"
+		#  attribute (or equivalent), then you will need to use the
+		#  membership_filter option above instead. If you can't see
+		#  the memberOf attribute then it is also possible that the
+		#  LDAP bind user does not have the correct permissions to
+		#  view it.
 		membership_attribute = 'memberOf'
 
 		#  If cacheable_name or cacheable_dn are enabled,
