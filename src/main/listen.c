@@ -971,6 +971,9 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	rcode = cf_item_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &listen_port), "0");
 	if (rcode < 0) return -1;
 
+	rcode = cf_item_parse(cs, "recv_buff", PW_TYPE_INTEGER, &sock->recv_buff, NULL);
+	if (rcode < 0) return -1;
+
 	sock->proto = IPPROTO_UDP;
 
 	if (cf_pair_find(cs, "proto")) {
@@ -2576,6 +2579,17 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 #endif
+#endif
+
+#ifdef SO_RCVBUF
+	if (sock->recv_buff > 0) {
+		int opt;
+
+		opt = sock->recv_buff;
+		if (setsockopt(this->fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
+			WARN("Failed setting 'recv_buf': %s", fr_syserror(errno));
+		}
+	}
 #endif
 
 	/*

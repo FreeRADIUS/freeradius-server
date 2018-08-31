@@ -110,6 +110,9 @@ typedef struct listen_socket_t {
 #ifdef SO_BROADCAST
 	int		broadcast;
 #endif
+
+	int		recv_buff;
+
 	time_t		rate_time;
 	uint32_t	rate_pps_old;
 	uint32_t	rate_pps_now;
