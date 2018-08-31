@@ -52,6 +52,7 @@ typedef struct proto_radius_udp_t {
 	char const			*port_name;		//!< Name of the port for getservent().
 
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
+	uint32_t			send_buff;		//!< How big the kernel's send buffer should be.
 
 	uint32_t			max_packet_size;	//!< for message ring buffer.
 	uint32_t			max_attributes;		//!< Limit maximum decodable attributes.
@@ -60,8 +61,8 @@ typedef struct proto_radius_udp_t {
 
 	uint16_t			port;			//!< Port to listen on.
 
-	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
-								//!< buffer value.
+	bool				recv_buff_is_set;	//!< Whether we were provided with a recv_buff
+	bool				send_buff_is_set;	//!< Whether we were provided with a send_buff
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 
 	fr_trie_t			*trie;			//!< for parsed networks
@@ -92,7 +93,9 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, proto_radius_udp_t, port_name) },
 
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_radius_udp_t, port) },
+
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_radius_udp_t, recv_buff) },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, proto_radius_udp_t, send_buff) },
 
 	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_BOOL, proto_radius_udp_t, dynamic_clients) } ,
 	{ FR_CONF_POINTER("networks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) networks_config },
@@ -107,7 +110,7 @@ static const CONF_PARSER udp_listen_config[] = {
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
-	fr_io_address_t		*address, **address_p;
+	fr_io_address_t			*address, **address_p;
 
 	int				flags;
 	ssize_t				data_size;
@@ -345,6 +348,28 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 		}
 	}
 
+#ifdef SO_RCVBUF
+	if (inst->recv_buff_is_set) {
+		int opt;
+
+		opt = inst->recv_buff;
+		if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
+			WARN("Failed setting 'recv_buf': %s", fr_syserror(errno));
+		}
+	}
+#endif
+
+#ifdef SO_SNDBUF
+	if (inst->send_buff_is_set) {
+		int opt;
+
+		opt = inst->send_buff;
+		if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
+			WARN("Failed setting 'send_buf': %s", fr_syserror(errno));
+		}
+	}
+#endif
+
 	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");
@@ -450,6 +475,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	if (inst->recv_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, INT_MAX);
+	}
+
+	if (inst->send_buff_is_set) {
+		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, >=, inst->max_packet_size);
+		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, <=, (1 << 30));
 	}
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 20);
