@@ -438,6 +438,9 @@ next_message:
 		return;
 	}
 
+	cd->request.is_dup = false;
+	cd->priority = PRIORITY_NORMAL;
+
 	/*
 	 *	Read data from the network.
 	 *

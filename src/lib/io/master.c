@@ -767,8 +767,6 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 	if (client->inst->app_io->track_duplicates) track = rbtree_finddata(client->table, &my_track);
 	if (!track) {
-		*is_dup = false;
-
 		MEM(track = talloc_zero(client, fr_io_track_t));
 		talloc_get_type_abort(track, fr_io_track_t);
 
@@ -932,7 +930,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	get_inst(instance, &inst, &connection, &app_io_instance);
 
-	*is_dup = false;
 	track = NULL;
 
 	/*
