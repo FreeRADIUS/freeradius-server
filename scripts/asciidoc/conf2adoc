@@ -107,7 +107,7 @@ while (<>) {
     foreach $word (@words) {
 	next if ($word eq '\`\`\`');
 
-	next if ($word !~ /^`(.*)`$/);
+	next if ($word !~ /^`(.*)`[,.]?$/);
 
 	#
 	#  @todo - automatically add cross-links for:
