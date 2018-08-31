@@ -5,10 +5,31 @@
 #  Convert conf files to Asciidoc
 #
 #
+use File::Basename;
 
 $was_raw = 0;
 $raw = 0;
 $blank = 0;
+
+$script_dir = dirname(__FILE__);
+$filename = "$script_dir/links.txt";
+
+%links = {};
+
+#
+#  Read the links file.
+#
+#  @todo - have this script take multiple inputs, so that we don't
+#  have to read the links file on every file we convert.
+#
+open FILE, "<$filename" or die "Failed to open $filename: $!\n";
+while (<FILE>) {
+    chop;
+    ($name, $link) = split;
+    
+    $links{$name} = $link;
+}
+close FILE;
 
 while (<>) {
     #
@@ -76,9 +97,42 @@ while (<>) {
 
     print $prefix if defined $prefix;
 
+    $line = $_;
+
+    my @words = split;
+
+    #
+    #  See if we can automagically make cross-links
+    #
+    foreach $word (@words) {
+	next if ($word eq '\`\`\`');
+
+	next if ($word !~ /^`(.*)`$/);
+
+	#
+	#  @todo - automatically add cross-links for:
+	#
+	#	mods-available/
+	#	sites-available/
+	#
+	#  etc.
+	#
+	
+	next if (!$links{$1});
+
+	$link = "`link:" . $links{$1} . "[" . $1 . "]`";
+
+	#
+	#  Yes, this is terrible.  We should really just print each
+	#  word individually, but that would also mess up (mildly)
+	#  whitespace.
+	#
+	$line =~ s/$1/$link/g;
+    }
+
     #
     #  And print out the raw text.
     #
-    print;
+    print $line;
 }
 
