@@ -252,7 +252,7 @@ server default {
 			#  packets.
 			#
 			#  The default port for Access-Accept packets
-			#  is `812`.
+			#  is `1812`.
 			#
 			port = 1812
 
@@ -616,7 +616,7 @@ recv Access-Request {
 	mschap
 
 	#
-	#  The `digest` module implements the HTTP Digest
+	#  The `digest` module implements the SIP Digest
 	#  authentication method.
 	#
 	#  Note that the module does not implement RFC 4590.  Instead,
@@ -626,7 +626,7 @@ recv Access-Request {
 	#
 	#  If you have a Cisco SIP server authenticating against
 	#  FreeRADIUS, the digest module will set `Auth-Type :=
-	#  "Digest"` if we are handling an HTTP Digest request and the
+	#  "Digest"` if we are handling an SIP Digest request and the
 	#  `Auth-Type` has not already been set.
 	#
 	digest
@@ -796,10 +796,10 @@ recv Status-Server {
 #
 # ### PAP Authentication
 #
-#  PAP authentication, for when a back-end database listed in the
-#  `recv Access-Request` section supplies a password. The password can
-#  be clear-text, or encrypted via `crypt`, `bcrypt`, or other
-#  hashing.
+#  For users who are using PAP authentication. A back-end database
+#  listed in the "recv Access-Request" section MUST supply a "known
+#  good" password for the user.  The password can be clear-text, or
+#  encrypted via `crypt`, `bcrypt`, or other hashing.
 #
 authenticate pap {
 	pap
@@ -808,54 +808,76 @@ authenticate pap {
 #
 # ### CHAP Authentication
 #
-#  For users that are using CHAP authentication. A back-end
-#  database listed in the "recv Access-Request" section MUST
-#  supply a CLEAR TEXT password. Encrypted passwords won't work.
+#  For users who are using CHAP authentication. A back-end database
+#  listed in the "recv Access-Request" section MUST supply a
+#  Cleartext-Password attribute. Encrypted passwords won't work.
 #
 authenticate chap {
 	chap
 }
 
 #
-#  Handle MS-CHAP authentication.
+#  ### MS-CHAP authentication
+#
+#  For users who are using MS-CHAP authentication. A back-end
+#  database listed in the "recv Access-Request" section MUST supply
+#  either a Cleartext-Password attribute, or an NT-Password
+#  attribute. Encrypted passwords won't work.
 #
 authenticate mschap {
 	mschap
 }
 
 #
-#  If you have a Cisco SIP server authenticating against
-#  FreeRADIUS, the following line, and the 'digest' line in
-#  the "recv Access-Request" section will be required.
+# ### SIP Digest Authentication
+#
+#  For users who are using SIP Digest authentication.
+#
+#  The `digest` line in the `recv Access-Request` section should also
+#  be uncommented.
 #
 authenticate digest {
 	digest
 }
 
 #
+#  ## PAM (Pluggable Authentication Modules) Authentication
+#
 #  Authenticate with PAM (Pluggable Authentication Modules).
+#
+#  We do not recommend using PAM.  The server has enough functionality
+#  that anything that can be done in PAM can be done easier in
+#  FreeRADIUS.
 #
 authenticate pam {
 	pam
 }
 
 #
-#  Use this if you want to use LDAP for authentication.
+#  ### LDAP Authentication
 #
-#  Note that this means "check plain-text password by trying to
-#  bind to the LDAP directory". This means that EAP won't work, as
-#  it does not supply a plain-text password.
+#  For users who are using PAP, and when you can't get the "known
+#  good" password from LDAP.  The module binds to the LDAP directory
+#  as the user, along with the password taken from the User-Password
+#  attribute.  The "bind as user" method means that CHAP, MS-CHAP, and
+#  EAP won't work, as they does not supply a plain-text password.
 #
 #  We do NOT recommend using this. LDAP servers are databases, not
-#  authentication servers.
+#  authentication servers.  It is only here as a last resort for
+#  databases such as Active Directory.
+#
+#  We strongly recommend using `ldap` in the `recv Access-Request`
+#  section.  And, ensuring that the account used by FreeRADIUS has
+#  read permission on all of the users, groups, and passwords.
 #
 authenticate ldap {
 	-ldap
 }
 
 #
-#  Allow EAP authentication, and remove all attributes from
-#  Access-Challenge.
+#  EAP Authentication
+#
+#  For EAP-MD5, EAP-MSCHAP, EAP-TLS, EAP-TTLS, EAP-PEAP, EAP-PWD, etc.
 #
 authenticate eap {
 	eap
@@ -863,15 +885,29 @@ authenticate eap {
 
 
 #
-#  Proxying
+#  ### Proxying
+#
+#  Proxying has changed substantially from v3 to v4.  These changes
+#  are complex, but were necessary in order to support new features.
+#  The result is that configurations which were impossible in v3 are
+#  now trivial in v4.  For example:
+#
+#  * sending the same packet to multiple destinations, along with retransmissions
+#  * sending the same packet to multiple destinations in parallel
+#  * trying to proxy, and if it fails, programmatically doing something else
+#  * trying to proxy, and if it fails, authenticating the user locally
+#    * note that this won't work for EAP.
+#
+#  For more information, see:
+#  https://wiki.freeradius.org/upgrading/version4/proxy.
 #
 
 #
 #  The following example shows how proxying to three remote servers
 #  can be configured.
 #
-#  The Auth-Type attribute would need to be set to
-#  "proxy-example.com" above. Define the remote servers in
+#  The `Auth-Type` attribute would need to be set to
+#  `proxy-example.com`.  The home servers MUST be defined in
 #  `mods-available/radius`.
 #
 
@@ -883,11 +919,12 @@ authenticate eap {
 #
 #	#
 #	#  Send the request to remote RADIUS servers, with
-#	#  fail-over if no response.
+#	#  fail-over from one to the other if there's no response.
 #	#
 #	redundant {
 #		radius1.example.com
 #		radius2.example.com
+#		radius3.example.com
 #	}
 #
 #	#
@@ -898,16 +935,17 @@ authenticate eap {
 
 
 
-######################################################################
 #
-#  Authentication responses
+#  ## Send replies to Access-Request packets
 #
-######################################################################
 
 #
+#  ### send Access-Challenge packets
+#
+#
 #  This section is called when sending an Access-Challenge
-#  response. Filter out any attributes that should not be in the
-#  packet.
+#  response. It is configured to filter out all attributes that should
+#  not be in the packet.
 #
 send Access-Challenge {
 	attr_filter.access_challenge.post-auth
@@ -915,10 +953,10 @@ send Access-Challenge {
 }
 
 #
-#  Post-Authentication, Access-Accept
+#  ### send Access-Accept packets
 #
-#  Once we KNOW that the user has been authenticated successfully,
-#  there are additional steps we can take.
+#  Once we know that the user has been authenticated successfully,
+#  there are additional things that can be done.
 #
 send Access-Accept {
 	#
@@ -939,7 +977,7 @@ send Access-Accept {
 	#  when an Access-Request is received.
 	#
 	#  The session-state attributes are deleted after an
-	#  Access-Reject or Access-Accept has been sent.
+	#  `Access-Reject` or `Access-Accept` packet has been sent.
 	#
 	update {
 		&reply: += &session-state:
@@ -988,22 +1026,22 @@ send Access-Accept {
 	#  work, you will need to define the WiMAX NAI, usually
 	#  via:
 	#
-	#      update request {
-	#          WiMAX-MN-NAI = "%{User-Name}"
-	#      }
-	#
+#	update request {
+#		WiMAX-MN-NAI = "%{User-Name}"
+#	}
+
 	#  If you want various keys to be calculated, you will
 	#  need to update the reply with "template" values. The
 	#  module will see this, and replace the template values
 	#  with the correct ones taken from the cryptographic
 	#  calculations, e.g.
 	#
-	#      update reply {
-	#          WiMAX-FA-RK-Key = 0x00
-	#          WiMAX-MSK = "%{EAP-MSK}"
-	#      }
-	#
-	#  You may want to delete the MS-MPPE-*-Keys from the
+#	update reply {
+#		WiMAX-FA-RK-Key = 0x00
+#		WiMAX-MSK = "%{EAP-MSK}"
+#	}
+
+	#  You may want to delete the `MS-MPPE-*-Keys` from the
 	#  reply, as some WiMAX clients behave badly when those
 	#  attributes are included. See the configuration entry
 	#  `delete_mppe_keys` in `mods-available/wimax` for
@@ -1041,7 +1079,7 @@ send Access-Accept {
 #	}
 
 	#
-	#  Insert Class attribute (with a unique value) into the
+	#  Insert the `Class` attribute with a unique value into the
 	#  response, which aids matching auth and acct records and
 	#  protects against duplicate Acct-Session-Id.
 	#
@@ -1053,15 +1091,15 @@ send Access-Accept {
 #	insert_acct_class
 
 	#
-	#  MacSEC requires the use of EAP-Key-Name. However, we
-	#  don't want to send it for all EAP sessions. Therefore,
-	#  the EAP modules put required data into the
-	#  EAP-Session-Id attribute. This attribute is never put
-	#  into a request or reply packet.
+	#  MacSEC requires the use of `EAP-Key-Name`. However, we
+	#  don't want to send it for all EAP sessions. Therefore, the
+	#  EAP modules put required data into the `EAP-Session-Id`
+	#  attribute. This attribute is never put into a request or
+	#  reply packet.
 	#
 	#  Uncomment the next few lines to copy the required data
 	#  into the EAP-Key-Name attribute.
-	#
+#
 #	if (&reply:EAP-Session-Id) {
 #		update reply {
 #			EAP-Key-Name := &reply:EAP-Session-Id
@@ -1069,20 +1107,24 @@ send Access-Accept {
 #	}
 
 	#
-	#  Remove Reply-Message if the response contains an
-	#  EAP-Message.
+	#  Remove `Reply-Message` if the response contains an
+	#  `EAP-Message` attribute.  Some NAS equipment will
+	#  automatically convert the `Reply-Message` to an "EAP
+	#  notification" packet, which will cause end-user machines to
+	#  drop the network connection.
 	#
 	remove_reply_message_if_eap
 }
 
 #
-#  This section is called before an Access-Reject packet is sent.
+#  ### send Access-Reject packets
 #
-#  Add the ldap module name (or instance) if you have set
-#  'edir_account_policy_check = yes' in the ldap module
-#  configuration.
+#  This section processes `Access-Reject` packets before they are sent
+#  to the NAS.
 #
-#  The "session-state" attributes are not available here.
+#  The `session-state` list is available while this section is being
+#  processed.  But all of the attributes in that list are discarded as
+#  soon as the section is finished.
 #
 send Access-Reject {
 	#
@@ -1097,15 +1139,17 @@ send Access-Reject {
 	attr_filter.access_reject
 
 	#
-	# Insert EAP-Failure message if the request was rejected
-	# by policy rather than because of an authentication
-	# failure.
+	# Insert an EAP-Failure message if the request was rejected by
+	# policy rather than because of an authentication failure.
 	#
 	eap
 
 	#
-	#  Remove Reply-Message if the response contains an
-	#  EAP-Message attribute.
+	#  Remove `Reply-Message` if the response contains an
+	#  `EAP-Message` attribute.  Some NAS equipment will
+	#  automatically convert the `Reply-Message` to an "EAP
+	#  notification" packet, which will cause end-user machines to
+	#  drop the network connection.
 	#
 	remove_reply_message_if_eap
 }
