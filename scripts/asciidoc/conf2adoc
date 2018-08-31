@@ -127,7 +127,7 @@ while (<>) {
 	#  word individually, but that would also mess up (mildly)
 	#  whitespace.
 	#
-	$line =~ s/$1/$link/g;
+	$line =~ s/`$1`/$link/g;
     }
 
     #
