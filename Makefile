@@ -344,6 +344,6 @@ ADOC_FILES := $(patsubst raddb/%,asciidoc/%.adoc,$(CONF_FILES))
 asciidoc/%.adoc: raddb/%
 	@echo ADOC $^
 	@mkdir -p $(dir $@)
-	@./scripts/conf2adoc < $^ > $@
+	@./scripts/asciidoc/conf2adoc < $^ > $@
 
 asciidoc: $(ADOC_FILES)
