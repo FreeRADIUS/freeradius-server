@@ -2549,7 +2549,7 @@ int main(int argc, char *argv[])
 		 *	allowing the UDP filter to work.  Without this
 		 *	tagged packets aren't processed.
 		 */
-		conf->pcap_filter_vlan = talloc_asprintf(conf, "(vlan and (%s)) or (%s)",
+		conf->pcap_filter_vlan = talloc_asprintf(conf, "(%s) or (vlan and (%s))",
 							 conf->pcap_filter, conf->pcap_filter);
 	}
 
