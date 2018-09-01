@@ -418,3 +418,25 @@ redundant {
 		ok
 	}
 }
+
+#
+#  IPv4 address to integer
+#
+update request {
+	Tmp-Integer-0 := &NAS-IP-Address
+}
+
+if (Tmp-Integer-0 != 0x7f000001) {
+	update reply {
+		Filter-Id += 'Fail 22'
+	}
+}
+
+#
+#  Check the decimal value just for the heck of it
+#
+if (Tmp-Integer-0 != 2130706433) {
+	update reply {
+		Filter-Id += 'Fail 23'
+	}
+}

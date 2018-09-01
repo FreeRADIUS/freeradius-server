@@ -1228,6 +1228,10 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 			dst->integer = src->date;
 			break;
 
+		case PW_TYPE_IPV4_ADDR:
+			dst->integer = ntohl(src->ipaddr.s_addr);
+			break;
+
 		case PW_TYPE_OCTETS:
 			goto do_octets;
 
