@@ -18,6 +18,22 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Allow "sqlcounter" module to be listed in "post-auth".
 	* Add support for IPv6 attributes in SQL.  Fixes #2280.
 	  Patches from Michael Ducharme.
+	* The server is better at handling fail-over for outbound
+	  RadSec and TCP connections.  Fixes #2284.
+	* The server is now more aggressive about retrying failed
+	  outbound RadSec and TCP connections.  Fixes #2284.
+	* Add TLS-Session-Version and TLS-Session-Cipher-Suite to
+	  the "session_state" list.
+	* Add expansion for Radsec connections.  "%{listen:TLS-...}"
+	  for TLS-Client-Cert-* and TLS-Cert-* attributes.
+	* Add notes on running "ldapsearch" using the parameters from
+	  the LDAP module.
+	* "ipaddr" attributes can now be cast to "integer" type attributes
+	  in an "update" section.
+	* Move main thread queue to using atomic queues.  This should help
+	  with contention in high load scenarios.
+	* Add "recv_buff" setting to listeners. For more details,
+	  see sites-available/default
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
