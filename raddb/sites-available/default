@@ -152,6 +152,17 @@ listen {
 #	clients = per_socket_clients
 
 	#
+	#  Set the default UDP receive buffer size.  In most cases,
+	#  the default values set by the kernel are fine.  However, in
+	#  some cases the NASes will send large packets, and many of
+	#  them at a time.  It is then possible to overflow the
+	#  buffer, causing the kernel to drop packets before they
+	#  reach FreeRADIUS.  Increasing the size of the buffer will
+	#  avoid these packet drops.
+	#
+#	recv_buff = 65536
+
+	#
 	#  Connection limiting for sockets with "proto = tcp".
 	#
 	#  This section is ignored for other kinds of sockets.
