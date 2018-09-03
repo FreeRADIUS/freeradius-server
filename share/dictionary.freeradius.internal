@@ -552,7 +552,7 @@ ATTRIBUTE	TLS-Session-Version			1947	string
 ATTRIBUTE	TLS-Session-Cipher-Suite		1948	string
 
 #
-#	Range:	1940-2099
+#	Range:	1950-2099
 #		Free
 #
 #	Range:	2100-2199
