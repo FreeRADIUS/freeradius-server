@@ -46,7 +46,7 @@
 #  configurations These references serve as place-holders, and as
 #  documentation.  If you need the functionality of that module, then:
 #
-#  * configure the module in `mods-available`
+#  * configure the module in `mods-available/`
 #  * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
 #  *  un-comment the references to it in this file.
 #
@@ -187,7 +187,7 @@ server default {
 			#
 			#  cleanup_delay:: The time to wait (in
 			#  seconds) before cleaning up a reply to an
-			#  Access-Request packet.
+			#  `Access-Request` packet.
 			#
 			#  The reply is normally cached internally for
 			#  a short period of time, after it is sent to
@@ -387,7 +387,7 @@ server default {
 		#  #### Access-Request subsection
 		#
 		#  This section contains configuration which is
-		#  specific to processing Access-Request packets.
+		#  specific to processing `Access-Request` packets.
 		#
 		#  Similar sections can be added, but are not
 		#  necessary for Accounting-Request (and other)
@@ -396,14 +396,14 @@ server default {
 		#
 		Access-Request {
 			#
-			#  log:: Logging configuration for Access-Request packets
+			#  log:: Logging configuration for `Access-Request` packets
 			#
-			#  In v3, the Access-Request logging was
+			#  In v3, the `Access-Request` logging was
 			#  configured in the main `radiusd.conf` file,
 			#  in the main `log` subsection.  That
 			#  limitation meant that the configuration was
 			#  global to FreeRADIUS.  i.e. you could not
-			#  have different Access-Request logging for
+			#  have different `Access-Request` logging for
 			#  different virtual server.
 			#
 			#  The extra configuration in v4 allows for
@@ -411,7 +411,7 @@ server default {
 			#
 			log {
 				#  stripped_names:: Log the full
-				#  User-Name attribute, as it was
+				#  `User-Name` attribute, as it was
 				#  found in the request.
 				#
 				# allowed values: {no, yes}
@@ -542,9 +542,9 @@ server default {
 #
 recv Access-Request {
 	#
-	#  Take a User-Name, and perform some checks on it, for
-	#  spaces and other invalid characters. If the User-Name
-	#  appears invalid, reject the request.
+	#  Take a `User-Name`, and perform some checks on it, for
+	#  spaces and other invalid characters. If the `User-Name`
+	#  is invalid, reject the request.
 	#
 	#  See policy.d/filter for the definition of the
 	#  filter_username policy.
@@ -591,7 +591,7 @@ recv Access-Request {
 #	cui
 
 	#
-	#  The `auth_log` module will write all Access-Request packets to a file.
+	#  The `auth_log` module will write all `Access-Request` packets to a file.
 	#
 	#  Uncomment the next bit in order to have a log of
 	#  authentication requests.  For more information, see
@@ -974,9 +974,9 @@ send Access-Accept {
 	#  For EAP-TTLS and PEAP, add any cached attributes to the
 	#  reply. The "session-state" attributes are automatically
 	#  cached when an Access-Challenge is sent, and retrieved
-	#  when an Access-Request is received.
+	#  when an `Access-Request` is received.
 	#
-	#  The session-state attributes are deleted after an
+	#  The `session-state` attributes are deleted after an
 	#  `Access-Reject` or `Access-Accept` packet has been sent.
 	#
 	update {
