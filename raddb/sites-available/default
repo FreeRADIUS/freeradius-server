@@ -984,6 +984,12 @@ send Access-Accept {
 	}
 
 	#
+	#  For EAP, ensure that the Access-Accept contains a User-Name
+	#  attribute.
+	#
+	eap
+
+	#
 	#  Get an address from the IP Pool.
 	#
 #	main_pool
@@ -1140,7 +1146,7 @@ send Access-Reject {
 
 	#
 	# Insert an EAP-Failure message if the request was rejected by
-	# policy rather than because of an authentication failure.
+	# policy, instead of from an authentication failure.
 	#
 	eap
 

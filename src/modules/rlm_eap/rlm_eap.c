@@ -419,36 +419,6 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, UNU
 	}
 
 	/*
-	 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
-	 *	says that we MUST include a User-Name attribute in the
-	 *	Access-Accept.
-	 */
-	if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && request->username) {
-		VALUE_PAIR *vp;
-
-		/*
-		 *	Doesn't exist, add it in.
-		 */
-		vp = fr_pair_find_by_da(request->reply->vps, attr_user_name, TAG_ANY);
-		if (!vp) {
-			vp = fr_pair_copy(request->reply, request->username);
-			fr_pair_add(&request->reply->vps, vp);
-		}
-
-		/*
-		 *	Cisco AP1230 has a bug and needs a zero
-		 *	terminated string in Access-Accept.
-		 */
-		if (inst->cisco_accounting_username_bug) {
-			char *new;
-
-			new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
-			memcpy(new, vp->vp_strvalue, vp->vp_length);
-			fr_pair_value_strsteal(vp, new);        /* Also frees existing buffer */
-		}
-	}
-
-	/*
 	 *	Freeze the eap_session so we can continue
 	 *	the authentication session later.
 	 */
@@ -904,6 +874,34 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	VALUE_PAIR		*vp;
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
+
+	/*
+	 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
+	 *	says that we MUST include a User-Name attribute in the
+	 *	Access-Accept.
+	 */
+	if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && request->username) {
+		/*
+		 *	Doesn't exist, add it in.
+		 */
+		vp = fr_pair_find_by_da(request->reply->vps, attr_user_name, TAG_ANY);
+		if (!vp) {
+			vp = fr_pair_copy(request->reply, request->username);
+			fr_pair_add(&request->reply->vps, vp);
+		}
+
+		/*
+		 *	Cisco AP1230 has a bug and needs a zero
+		 *	terminated string in Access-Accept.
+		 */
+		if (inst->cisco_accounting_username_bug) {
+			char *new;
+
+			new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
+			memcpy(new, vp->vp_strvalue, vp->vp_length);
+			fr_pair_value_strsteal(vp, new);        /* Also frees existing buffer */
+		}
+	}
 
 	/*
 	 *	Only build a failure message if something previously rejected the request
