@@ -1127,7 +1127,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			return rcode;
 		}
 		if (!head) {
-			RDEBUG2("No attributes updated");
+			RDEBUG2("No attributes updated for RHS %s", map->rhs->name);
 			return rcode;
 		}
 	} else {
