@@ -340,10 +340,19 @@ whitespace:
 
 CONF_FILES := $(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/*)
 ADOC_FILES := $(patsubst raddb/%,asciidoc/%.adoc,$(CONF_FILES))
+PDF_FILES := $(patsubst raddb/%,asciidoc/%.pdf,$(CONF_FILES))
 
 asciidoc/%.adoc: raddb/%
 	@echo ADOC $^
 	@mkdir -p $(dir $@)
 	@./scripts/asciidoc/conf2adoc < $^ > $@
 
+asciidoc/%.pdf: asciidoc/%.adoc
+	@echo PDF $^
+	@asciidoctor $< -b docbook5 -o - | \
+                pandoc -f docbook -t latex --latex-engine=xelatex \
+			-V papersize=letter \
+			--template=./scripts/asciidoc/freeradius.template -o $@
+
+.PHONY: asciidoc
 asciidoc: $(ADOC_FILES)
