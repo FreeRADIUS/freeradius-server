@@ -13,8 +13,13 @@
 %
 \documentclass[$if(papersize)$$papersize$paper,$endif$12pt,twoside]{article}
 %
+$if(images)$
 \def\WordMarkFile{scripts/asciidoc/wordmark.pdf}
 \def\LogoFile{scripts/asciidoc/octopus.pdf}
+$else$
+\def\WordMarkFile{}
+\def\LogoFile{}
+$endif$
 %
 \makeatletter
 \renewcommand{\section}{\@startsection

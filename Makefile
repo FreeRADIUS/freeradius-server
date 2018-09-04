@@ -350,9 +350,16 @@ asciidoc/%.adoc: raddb/%
 asciidoc/%.pdf: asciidoc/%.adoc
 	@echo PDF $^
 	@asciidoctor $< -b docbook5 -o - | \
-                pandoc -f docbook -t latex --latex-engine=xelatex \
+		pandoc -f docbook -t latex --latex-engine=xelatex \
 			-V papersize=letter \
+			-V images=yes \
 			--template=./scripts/asciidoc/freeradius.template -o $@
+
+asciidoc/%.pdf: raddb/%.md
+	@echo PDF $^
+	pandoc -f markdown -t latex --latex-engine=xelatex \
+		-V papersize=letter \
+		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
 .PHONY: asciidoc
 asciidoc: $(ADOC_FILES)
