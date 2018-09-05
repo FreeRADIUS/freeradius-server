@@ -588,6 +588,12 @@ retry:
 		 */
 		request->child_state = REQUEST_DONE;
 	}
+
+	/*
+	 *	Popping might fail.  If so, return.
+	 */
+	if (!request) return 0;
+
 #else
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
