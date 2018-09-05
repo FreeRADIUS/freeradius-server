@@ -2182,11 +2182,9 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	/*
 	 *	For this next bit, we create the attributes *only* if
-	 *	we're at the client or issuing certificate, AND we
-	 *	have a user identity.  i.e. we don't create the
-	 *	attributes for RadSec connections.
+	 *	we're at the client or issuing certificate.
 	 */
-	if (certs && identity &&
+	if (certs &&
 	    (lookup <= 1) && sn && ((size_t) sn->length < (sizeof(buf) / 2))) {
 		char *p = buf;
 		int i;
@@ -2204,7 +2202,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	buf[0] = '\0';
 	asn_time = X509_get_notAfter(client_cert);
-	if (certs && identity && (lookup <= 1) && asn_time &&
+	if (certs && (lookup <= 1) && asn_time &&
 	    (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
@@ -2219,7 +2217,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_oneline(X509_get_subject_name(client_cert), subject,
 			  sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
-	if (certs && identity && (lookup <= 1) && subject[0]) {
+	if (certs && (lookup <= 1) && subject[0]) {
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
@@ -2227,7 +2225,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_oneline(X509_get_issuer_name(client_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
-	if (certs && identity && (lookup <= 1) && issuer[0]) {
+	if (certs && (lookup <= 1) && issuer[0]) {
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
@@ -2238,7 +2236,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_get_text_by_NID(X509_get_subject_name(client_cert),
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
-	if (certs && identity && (lookup <= 1) && common_name[0] && subject[0]) {
+	if (certs && (lookup <= 1) && common_name[0] && subject[0]) {
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
