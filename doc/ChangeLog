@@ -34,6 +34,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  with contention in high load scenarios.
 	* Add "recv_buff" setting to listeners. For more details,
 	  see sites-available/default
+	* The sqlippool module can now use attributes other than "Pool-Name"
+	  to assign IP pools.  The "Pool-Name" attribute is still the default.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
