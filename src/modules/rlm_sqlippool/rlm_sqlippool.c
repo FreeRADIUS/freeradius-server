@@ -433,6 +433,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			cf_log_err_cs(conf, "Cannot use non-string attributes for 'pool_name = %s'", inst->pool_name);
 			return -1;
 		}
+
+		inst->pool_attribute = da;
 	}
 
 	if (inst->attribute_name) {
