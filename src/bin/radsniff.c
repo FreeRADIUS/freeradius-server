@@ -1990,12 +1990,15 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
-		 *	xlat expansion isn't supported here
+		 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
 		 */
 		if (vp->type == VT_XLAT) {
+			fr_type_t type = vp->da->type;
+			if (fr_value_box_from_str(vp, &vp->data, &type, NULL, vp->xlat, -1, '\0', false) < 0) {
+				fr_perror("radsniff");
+				return -1;
+			}
 			vp->type = VT_DATA;
-			vp->vp_strvalue = vp->xlat;
-			vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 		}
 	}
 
