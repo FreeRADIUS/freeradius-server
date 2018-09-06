@@ -425,12 +425,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		da = dict_attrbyname(inst->pool_name);
 		if (!da) {
-			cf_log_err_cs(conf, "Unknown attribute 'pool_name = %s'", inst->attribute_name);
+			cf_log_err_cs(conf, "Unknown attribute 'pool_name = %s'", inst->pool_name);
 			return -1;
 		}
 
 		if (da->type != PW_TYPE_STRING) {
-			cf_log_err_cs(conf, "Cannot use non-string attributes for 'pool_name = %s'", inst->attribute_name);
+			cf_log_err_cs(conf, "Cannot use non-string attributes for 'pool_name = %s'", inst->pool_name);
 			return -1;
 		}
 	}
