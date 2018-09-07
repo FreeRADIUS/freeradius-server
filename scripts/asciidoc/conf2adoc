@@ -6,10 +6,13 @@
 #
 #
 use File::Basename;
+use Getopt::Std;
 
 $was_raw = 0;
 $raw = 0;
 $blank = 0;
+
+getopts('a:');
 
 $script_dir = dirname(__FILE__);
 $filename = "$script_dir/links.txt";
@@ -124,7 +127,7 @@ sub process_file {
 	    #  etc.
 	    #
 	    if ($key =~ /^mods-available\/./) {
-		$links{$key} = "$key.adoc";
+		$links{$key} = "$opt_a/$key.adoc";
 	    }
 	    
 	    next if (!$links{$key});
@@ -144,7 +147,22 @@ sub process_file {
 	#
 	print $output $line;
     }
+
+    #
+    #  Terminate any trailing "raw" text.
+    #
+    print "```\n" if ($was_raw);
+
+}
+
+sub HELP_MESSAGE {
+    print "usage: conf2adoc [opts]\n";
+    print "    -a <directory>\tthe root directory for Asciidoc conversion.\n";
+    exit 0;
+}
+
+if (!defined $opt_a) {
+    $opt_a = "";
 }
 
 process_file(STDIN, STDOUT);
-
