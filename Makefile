@@ -345,7 +345,7 @@ PDF_FILES := $(patsubst raddb/%,asciidoc/%.pdf,$(CONF_FILES))
 asciidoc/%.adoc: raddb/%
 	@echo ADOC $^
 	@mkdir -p $(dir $@)
-	@./scripts/asciidoc/conf2adoc < $^ > $@
+	@./scripts/asciidoc/conf2adoc -a ${top_srcdir}/asciidoc < $^ > $@
 
 asciidoc/%.pdf: asciidoc/%.adoc
 	@echo PDF $^
