@@ -83,6 +83,11 @@ static void fr_worker_verify(fr_worker_t *worker);
 #define WORKER_VERIFY
 #endif
 
+#ifdef WITH_WORKER_IO
+static fr_message_set_t *worker_ms = NULL;
+static void fr_worker_reply(fr_channel_data_t *reply) CC_HINT(nonnull);
+#endif
+
 /*
  *	Define our own debugging.
  */
@@ -383,10 +388,14 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	/*
 	 *	Cache the outbound channel.  We'll need it later.
 	 */
-	ch = cd->channel.ch;
 	listen = cd->listen;
 
+#ifndef WITH_WORKER_IO
+	ch = cd->channel.ch;
 	ms = fr_channel_worker_ctx_get(ch);
+#else
+	ms = worker_ms;
+#endif
 	rad_assert(ms != NULL);
 
 	size = listen->app_io->default_reply_size;
@@ -426,6 +435,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	 */
 	fr_message_done(&cd->m);
 
+#ifndef WITH_WORKER_IO
 	/*
 	 *	Send the reply, which also polls the request queue.
 	 */
@@ -433,6 +443,10 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 		DEBUG2("\t%sfails sending reply to channel", worker->name);
 		cd = NULL;
 	}
+#else
+	fr_worker_reply(reply);
+	cd = NULL;		/* don't bother checking the channel, it doesn't exist */
+#endif
 
 	worker->stats.out++;
 
@@ -478,14 +492,19 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	/*
 	 *	Allocate and send the reply.
 	 */
+#ifndef WITH_WORKER_IO
 	ch = request->async->channel;
 	rad_assert(ch != NULL);
 
 	ms = fr_channel_worker_ctx_get(ch);
 	rad_assert(ms != NULL);
+#else
+	ms = worker_ms;
+#endif
 
 	reply = (fr_channel_data_t *) fr_message_reserve(ms, size);
 	rad_assert(reply != NULL);
+
 
 	/*
 	 *	Encode it, if required.
@@ -550,6 +569,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 
 	RDEBUG("finished request.");
 
+#ifndef WITH_WORKER_IO
 	/*
 	 *	Send the reply, which also polls the request queue.
 	 */
@@ -557,6 +577,10 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 		DEBUG2("\t%sfails sending reply", worker->name);
 		cd = NULL;
 	}
+#else
+	fr_worker_reply(reply);
+	cd = NULL;		/* don't bother checking the channel, it doesn't exist */
+#endif
 
 	worker->stats.out++;
 
@@ -909,7 +933,9 @@ nak:
 			 */
 			if (is_dup) {
 				RDEBUG("Got duplicate packet notice after we had sent a reply - ignoring");
+#ifndef WITH_WORKER_IO
 				fr_channel_null_reply(request->async->channel);
+#endif
 				return NULL;
 			}
 			goto insert_new;
@@ -938,7 +964,9 @@ nak:
 		if (old->async->recv_time == request->async->recv_time) {
 			RWARN("Discarding duplicate of request (%"PRIu64")", old->number);
 
+#ifndef WITH_WORKER_IO
 			fr_channel_null_reply(request->async->channel);
+#endif
 			talloc_free(request);
 
 			/*
@@ -1023,8 +1051,11 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 *	active, run it.  Otherwise, tell it that it's done.
 	 */
 	if ((*request->async->original_recv_time == request->async->recv_time) &&
-	    (request->async->detached ||
-	     fr_channel_active(request->async->channel))) {
+	    (request->async->detached
+#ifndef WITH_WORKER_IO
+	     || fr_channel_active(request->async->channel)
+#endif
+		    )) {
 		final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
 
 	} else {
@@ -1382,8 +1413,209 @@ nomem:
 		goto fail2;
 	}
 
+#ifdef WITH_WORKER_IO
+	rad_assert(worker_ms == NULL);
+	worker_ms = fr_message_set_create(worker, worker->message_set_size,
+					  sizeof(fr_channel_data_t),
+					  worker->ring_buffer_size);
+	rad_assert(worker_ms != NULL);
+#endif
+
 	return worker;
 }
+
+#ifdef WITH_WORKER_IO
+static void fr_worker_reply(fr_channel_data_t *cd)
+{
+	fr_listen_t const *listen;
+
+	listen = cd->listen;
+
+	/*
+	 *	The write function is responsible for ensuring
+	 *	that NAKs are not written to the network.
+	 */
+	rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx,
+				      cd->reply.request_time,
+				      cd->m.data, cd->m.data_size, 0);
+	fr_message_done(&cd->m);
+}
+
+/** Read a packet from the network.
+ *
+ * @param[in] el	the event list.
+ * @param[in] sockfd	the socket which is ready to read.
+ * @param[in] flags	from kevent.
+ * @param[in] ctx	the network socket context.
+ */
+static void fr_worker_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx)
+{
+	int num_messages = 0;
+	fr_worker_socket_t *s = ctx;
+	fr_worker_t *worker = s->worker;
+	ssize_t data_size;
+	fr_channel_data_t *cd, *next;
+	fr_time_t *recv_time;
+
+	if (!fr_cond_assert(s->fd == sockfd)) return;
+
+	DEBUG3("worker read");
+
+	if (!s->cd) {
+		cd = (fr_channel_data_t *) fr_message_reserve(worker_ms, s->listen->default_message_size);
+		if (!cd) {
+			fr_log(nr->log, L_ERR, "Failed allocating message size %zd! - Closing socket", s->listen->default_message_size);
+//			fr_worker_socket_dead(worker, s);
+			return;
+		}
+	} else {
+		cd = s->cd;
+	}
+
+	rad_assert(cd->m.data != NULL);
+	rad_assert(cd->m.rb_size >= 256);
+
+next_message:
+	/*
+	 *	Poll this socket, but not too often.  We have to go
+	 *	service other sockets, too.
+	 */
+	if (num_messages > 16) {
+		s->cd = cd;
+		return;
+	}
+
+	cd->request.is_dup = false;
+	cd->priority = PRIORITY_NORMAL;
+
+	/*
+	 *	Read data from the network.
+	 *
+	 *	Return of 0 means "no data", which is fine for UDP.
+	 *	For TCP, if an underlying read() on the TCP socket
+	 *	returns 0, (which signals that the FD is no longer
+	 *	usable) this function should return -1, so that the
+	 *	network side knows that it needs to close the
+	 *	connection.
+	 */
+	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, &recv_time,
+					    cd->m.data, cd->m.rb_size, &s->leftover, &cd->priority, &cd->request.is_dup);
+	if (data_size == 0) {
+		/*
+		 *	Cache the message for later.  This is
+		 *	important for stream sockets, which can do
+		 *	partial reads into the current buffer.  We
+		 *	need to be able to give the same buffer back
+		 *	to the stream socket for subsequent reads.
+		 *
+		 *	Since we have a message set for each
+		 *	fr_io_socket_t, no "head of line"
+		 *	blocking issues can happen for stream sockets.
+		 */
+		s->cd = cd;
+		return;
+	}
+
+	/*
+	 *	Error: close the connection, and remove the fr_listen_t
+	 */
+	if (data_size < 0) {
+//		fr_log(nr->log, L_DBG_ERR, "error from transport read on socket %d", sockfd);
+		fr_network_socket_dead(nr, s);
+		return;
+	}
+	s->cd = NULL;
+
+	DEBUG("Worker received packet size %zd", data_size);
+	s->stats.in++;
+
+	/*
+	 *	Initialize the rest of the fields of the channel data.
+	 *
+	 *	We always use "now" as the time of the message, as the
+	 *	packet MAY be a duplicate packet magically resurrected
+	 *	from the past.
+	 */
+	cd->m.when = fr_time();
+	cd->listen = s->listen;
+	cd->request.recv_time = recv_time;
+
+	/*
+	 *	Nothing in the buffer yet.  Allocate room for one
+	 *	packet.
+	 */
+	if ((cd->m.data_size == 0) && (!s->leftover)) {
+
+		(void) fr_message_alloc(worker_ms, &cd->m, data_size);
+		next = NULL;
+
+	} else {
+		/*
+		 *	There are leftover bytes in the buffer, feed
+		 *	them to the next round of reading.
+		 */
+		next = (fr_channel_data_t *) fr_message_alloc_reserve(worker_ms, &cd->m, data_size, s->leftover,
+								      s->listen->default_message_size);
+		if (!next) {
+			fr_log(nr->log, L_ERR, "Failed reserving partial packet.");
+			// @todo - probably close the socket...
+			rad_assert(0 == 1);
+		}
+	}
+
+	// add the message to the "to_decode" queue
+
+	/*
+	 *	If there is a next message, go read it from the buffer.
+	 *
+	 *	@todo - note that this calls read(), even if the
+	 *	app_io has paused the reader.  We likely want to be
+	 *	able to check that, too.  We might just remove this
+	 *	"goto"...
+	 */
+	if (next) {
+		cd = next;
+		num_messages++;
+		goto next_message;
+	}
+}
+
+int fr_worker_listen_add(fr_worker_t *worker, fr_listen_t *listen)
+{
+	fr_worker_socket_t	*s;
+	fr_app_io_t const	*app_io;
+
+	s = talloc_zero(worker, fr_worker_socket_t);
+	rad_assert(s != NULL);
+
+	s->worker = worker;
+	memcpy(&s->listen, listen, sizeof(s->listen));
+	s->number = worker->num_sockets++;
+
+	talloc_set_destructor(s, _worker_socket_free);
+
+	app_io = s->listen->app_io;
+
+	rad_assert(app_io->fd);
+	s->fd = app_io->fd(s->listen->app_io_instance);
+	s->filter = FR_EVENT_FILTER_IO;
+
+	if (fr_event_fd_insert(s, worker->el, s->fd,
+			       fr_worker_read,
+			       NULL,
+			       fr_worker_error,
+			       s) < 0) {
+		PERROR("Failed adding new socket to worker event loop");
+		talloc_free(s);
+		return;
+	}
+
+	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, worker->el, worker);
+
+	return 0;
+}
+#endif
+
 
 /** Get the KQ for the worker
  *
