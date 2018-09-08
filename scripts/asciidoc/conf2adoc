@@ -137,6 +137,14 @@ sub process_file {
 		$links{$key} = "$opt_a/$key.adoc";
 	    }
 
+	    #
+	    #  A bare `eap` gets converted to a reference to the EAP
+	    #  module, if the EAP module exists.
+	    #
+	    if (-e "$opt_a/../raddb/mods-available/$key") {
+		$links{$key} = "$opt_a/mods-available/$key.adoc";
+	    }
+
 	    next if (!$links{$key});
 
 	    $link = "`link:" . $links{$key} . "[" . $key . "]`";
