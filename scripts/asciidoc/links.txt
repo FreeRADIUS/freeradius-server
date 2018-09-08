@@ -30,7 +30,6 @@ MS-Primary-DNS-Server https://freeradius.org/rfc/rfc2548.html#MS-Primary-DNS-Ser
 MS-Secondary-DNS-Server https://freeradius.org/rfc/rfc2548.html#MS-Secondary-DNS-Server
 MS-Primary-NBNS-Server https://freeradius.org/rfc/rfc2548.html#MS-Primary-NBNS-Server
 MS-Secondary-NBNS-Server https://freeradius.org/rfc/rfc2548.html#MS-Secondary-NBNS-Server
-Keep-Alives https://freeradius.org/rfc/rfc2865.html#Keep-Alives
 Access-Request https://freeradius.org/rfc/rfc2865.html#Access-Request
 Access-Accept https://freeradius.org/rfc/rfc2865.html#Access-Accept
 Access-Reject https://freeradius.org/rfc/rfc2865.html#Access-Reject

@@ -34,6 +34,9 @@ while (<FILE>) {
 }
 close FILE;
 
+$links{"sites-available/"} = "$opt_a/sites-available/README.adoc";
+$links{"mods-available/"} = "$opt_a/mods-available/README.adoc";
+
 sub process_file {
     my $input = shift;
     my $output = shift;
@@ -130,6 +133,10 @@ sub process_file {
 		$links{$key} = "$opt_a/$key.adoc";
 	    }
 	    
+	    elsif ($key =~ /^sites-available\/./) {
+		$links{$key} = "$opt_a/$key.adoc";
+	    }
+
 	    next if (!$links{$key});
 
 	    $link = "`link:" . $links{$key} . "[" . $key . "]`";
