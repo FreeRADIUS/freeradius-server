@@ -843,7 +843,7 @@ check_active:
 	memcpy(original + 4, rr->vector, sizeof(rr->vector));
 
 	if (fr_radius_verify(c->buffer, original,
-			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
+			     (uint8_t const *) c->inst->secret, talloc_array_length(c->inst->secret) - 1) < 0) {
 		RPWDEBUG("Ignoring response with invalid signature");
 		goto redo;
 	}
