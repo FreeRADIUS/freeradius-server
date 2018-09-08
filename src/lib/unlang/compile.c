@@ -1809,7 +1809,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
 					name = cf_pair_attr(cp);
 					if (name[0] == '-') {
 						cf_log_warn(cp, "Ignoring \"%s\" "
-							    "(see raddb/mods-available/README.rst)", name + 1);
+							    "(see mods-available/README.md)", name + 1);
 						continue;
 					}
 
