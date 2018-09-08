@@ -250,12 +250,11 @@ bad_seqno:
 }
 
 
-static int tacacs_xor(RADIUS_PACKET * const packet, char const *secret)
+static int tacacs_xor(RADIUS_PACKET * const packet, char const *secret, size_t secret_len)
 {
 	fr_tacacs_packet_t *pkt = (fr_tacacs_packet_t *)packet->data;
 	uint8_t pad[MD5_DIGEST_LENGTH];
 	uint8_t *buf;
-	int secret_len;
 	int pad_offset;
 
 	if (!secret) {
@@ -272,7 +271,6 @@ static int tacacs_xor(RADIUS_PACKET * const packet, char const *secret)
 		return -1;
 	}
 
-	secret_len = strlen(secret);
 	pad_offset = sizeof(pkt->hdr.session_id) + secret_len + sizeof(pkt->hdr.version) + sizeof(pkt->hdr.seq_no);
 
 	/* MD5_1 = MD5{session_id, key, version, seq_no} */
@@ -315,7 +313,7 @@ static int tacacs_xor(RADIUS_PACKET * const packet, char const *secret)
  *	Calling this function MAY change sockfd,
  *	if src_ipaddr.af == AF_UNSPEC.
  */
-int fr_tacacs_packet_recv(RADIUS_PACKET * const packet, char const * const secret)
+int fr_tacacs_packet_recv(RADIUS_PACKET * const packet, char const * const secret, size_t secret_len)
 {
 	ssize_t len;
 
@@ -416,7 +414,7 @@ int fr_tacacs_packet_recv(RADIUS_PACKET * const packet, char const * const secre
 		return 0;
 	}
 
-	if (tacacs_xor(packet, secret) < 0) {
+	if (tacacs_xor(packet, secret, secret_len) < 0) {
 		fr_strerror_printf("Failed decryption of TACACS request: %s", fr_syserror(errno));
 		return -1;
 	}
@@ -454,7 +452,7 @@ int fr_tacacs_packet_recv(RADIUS_PACKET * const packet, char const * const secre
 	return 1;	/* done reading the packet */
 }
 
-int fr_tacacs_packet_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const original, char const * const secret)
+int fr_tacacs_packet_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const original, char const * const secret, size_t secret_len)
 {
 	uint8_t			vminor;
 	tacacs_type_t		type;
@@ -493,14 +491,14 @@ int fr_tacacs_packet_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * co
 	vp->vp_uint32 = tacacs_session_id(original);
 	fr_pair_add(&packet->vps, vp);
 
-	if (fr_tacacs_packet_encode(packet, secret) < 0) {
+	if (fr_tacacs_packet_encode(packet, secret, secret_len) < 0) {
 		fr_strerror_printf("Failed encoding TACACS reply: %s", fr_syserror(errno));
 		return -1;
 	}
 
 	rad_assert(tacacs_packet_verify(packet, false) == true);
 
-	if (tacacs_xor(packet, secret) < 0) {
+	if (tacacs_xor(packet, secret, secret_len) < 0) {
 		fr_strerror_printf("Failed encryption of TACACS reply: %s", fr_syserror(errno));
 		return -1;
 	}

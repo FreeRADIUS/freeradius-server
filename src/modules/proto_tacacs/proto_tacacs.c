@@ -478,7 +478,8 @@ send_reply:
 
 		if (RDEBUG_ENABLED) fr_tacacs_packet_debug(request, request->reply, false);
 
-		if (fr_tacacs_packet_send(request->reply, request->packet, request->client->secret) < 0) {
+		if (fr_tacacs_packet_send(request->reply, request->packet,
+					  request->client->secret, talloc_array_length(request->client->secret) - 1) < 0) {
 			RPEDEBUG("Failed sending TACACS reply");
 			goto done;
 		}
@@ -556,7 +557,7 @@ static int tacacs_socket_recv(rad_listen_t *listener)
 	 */
 	packet = sock->packet;
 
-	rcode = fr_tacacs_packet_recv(packet, client->secret);
+	rcode = fr_tacacs_packet_recv(packet, client->secret, talloc_array_length(client->secret) - 1);
 	if (rcode == 0) return 0;	/* partial packet */
 	if (rcode == -1) {		/* error reading packet */
 		char buffer[256];

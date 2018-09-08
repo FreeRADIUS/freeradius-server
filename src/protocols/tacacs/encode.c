@@ -33,7 +33,7 @@
 #include "tacacs.h"
 #include "attrs.h"
 
-int fr_tacacs_packet_encode(RADIUS_PACKET * const packet, char const * const secret)
+int fr_tacacs_packet_encode(RADIUS_PACKET * const packet, char const * const secret, UNUSED size_t secret_len)
 {
 	uint8_t			*ptr;
 	uint16_t		length_hdr;
