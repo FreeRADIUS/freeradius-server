@@ -992,7 +992,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			}
 
 			packet->vps = head;
-			if (fr_tacacs_packet_encode(packet, NULL) < 0) {
+			if (fr_tacacs_packet_encode(packet, NULL, 0) < 0) {
 				strerror_concat(output, sizeof(output));
 				talloc_free(packet);
 				continue;
