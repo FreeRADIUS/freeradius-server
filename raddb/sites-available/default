@@ -7,7 +7,7 @@
 #  $Id$
 #
 #  The `default` virtual server is the first one that is enabled on a
-#  default installaction of FreeRADIUS.  This configuration is
+#  default installation of FreeRADIUS.  This configuration is
 #  designed to work in the widest possible set of circumstances, with
 #  the widest possible number of authentication methods.  This means
 #  that in general, you should need to make very few changes to this
@@ -16,9 +16,11 @@
 #  The usual approach is as follows:
 #
 #  * configure users in a database (e.g. the `files` module, or in
-#  * `sql`) configure the relevant module to talk to the database
-#  * (e.g. `sql`) If using EAP / 802.1X, configure the certificates in
-#  * the `certs/` directory.
+#    `sql`)
+#  * configure the relevant module to talk to the database
+#    (e.g. `sql`)
+#  * If using EAP / 802.1X, configure the certificates in
+#    the `certs/` directory.
 #
 #  Then, run the server.  This process will ensure that users can log
 #  in via PAP, CHAP, MS-CHAP, etc.  You should so test the server via
