@@ -652,6 +652,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 {
 	RADCLIENT	*c;
 	char const	*name2;
+	CONF_PAIR	*cp;
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -678,6 +679,35 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 #endif
 
 		return NULL;
+	}
+
+	/*
+	 *	Allow for binary secrets.
+	 */
+	cp = cf_pair_find(cs, "secret");
+	if (cp && (cf_pair_operator(cp) == T_BARE_WORD)) {
+		char const *value;
+
+		value = cf_pair_value(cp);
+		if ((value[0] == '0') && (value[1] == 'x')) {
+			size_t bin_len, hex_len, converted;
+			uint8_t *bin;
+
+			/*
+			 *	'0x...' plus trailing NUL.
+			 */
+			hex_len = talloc_array_length(value) - 3;
+			bin_len = (hex_len / 2) + 1;
+			MEM(bin = talloc_array(c, uint8_t, bin_len));
+			converted = fr_hex2bin(bin, bin_len, value + 2, hex_len);
+			if (converted < (bin_len - 1)) {
+				cf_log_err(cs, "Invalide hex string in shared secret");
+				goto error;
+			}
+
+			talloc_const_free(c->secret);
+			c->secret = (char const *) bin;
+		}
 	}
 
 	/*
