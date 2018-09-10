@@ -1,4 +1,4 @@
-# Modules in Version 3
+# Modules in Version 4
 
 As of Version 3, all of the modules have been places in the
 `mods-available/` directory.  This practice follows that used by other
@@ -24,7 +24,7 @@ modules.
 
 ## Conditional Modules
 
-Version 3 allows modules to be conditionally loaded.  This is useful
+FreeRADIUS allows modules to be conditionally loaded.  This is useful
 when you want to have a virtual server which references a module, but
 does not require it.  Instead of editing the virtual server file, you
 can just conditionally enable the module.
@@ -52,7 +52,7 @@ server.
 
 If you see this message::
 
-    Ignoring module (see mods-available/README.rst)
+    Ignoring module (see mods-available/README.md)
 
 Then you are in the right place.  Most of the time this message can be
 ignored.  The message can be fixed by find the references to `-module`

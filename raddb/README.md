@@ -31,32 +31,70 @@ these changes is that the some of the configuration has been changed.
 Please see the `UPGRADE.md` file for instructions on how to migrate a
 v3 configuration to v4.
 
+## Configuring the server
+
+When configuring the server, please start with the default
+configuration.  It is intended to work in the widest possible
+circumstances, with minimal site-local changes.  Most sites can just
+configure a few modules such as `ldap` and `sql`, and the server will
+do everything you need.  More complex configurations require more
+effort, of course.
+
+For more complex configurations, the best approach is to make a series
+of small changes.  Start the server after every change via `radiusd
+-XC` to see if the configuration is OK.  Use `radclient` to send the
+server test packets.  Read the debug output (`radiusd -X`) to verify
+that the server is doing what you expect.
+
+For complex policies, it is best to write down what you want in plain
+English.  Be specific.  Write down what the server receives in a
+packet, which databases are used, and what the database should return.
+The more detailed these explanations, the easier it will be to create
+a working configuration.
+
+Take your time.  It is better to make small incrementatal progress,
+than to make massive changes, and then to spend weeks debugging it.
+
 ## Organization
 
 The files in this directory are organized into logical groups, as
-follows:
+follows.
+
+* `mods-available` - [Available modules](mods-available/README.adoc), with example configuration.
+
+* `mods-enabled/` - Enabled modules that are being used by FreeRADIUSx.
+
+* `sites-available/` - [Available virtual servers](sites-available/README.adoc), with example configuration.
+
+* `sites-enabled/` - Enabled virtual servers that are being used by FreeRADIUS.
+
+* `policy.d/` - example and live policies which implement standard rules and checks.
+
+* `certs/` - Certificiates for EAP and for RADIUS over TLS.
+
+The directories are descrived in more detail below.
 
 ### `mods-available/`
 
-This directory contains configuration for all of the available
-modules.  Each module configuration is different.  Each file contains
-documentation that describes what the module is, and how it works.
+The `mods-available/` directory contains configuration for all of the
+available modules.  Each module configuration is different.  Each file
+contains documentation that describes what the module is, and how it
+works.
 
 The directory contains almost 100 modules.  Most configurations will
 only use a few modules.  The rest exist in order to serve as
-documentation and worked examples/
+documentation and worked examples.
 
 ### `mods-enabled/`
 
-This directory contains the *enabled* modules.  The files here should
-generally be soft links back to the `mods-available/` directory.
+The `mods-enabled/` directory contains the *enabled* modules.  The
+files here should generally be soft links back to the
+`mods-available/` directory.
 
-For example, to enable the `ldap` module, you can run these commands:
+For example, the following commands would enable the `ldap` module:
 
-```
-cd mods-enabled/
-ln -s ../mods-available/ldap
-```
+    cd mods-enabled/
+    ln -s ../mods-available/ldap
 
 Note that the `ldap` module must still be configured for the local systems.
 
@@ -77,17 +115,18 @@ Note that only a few modules require this extra configuration.
 
 ### `policy.d`
 
-This directory contains sample policies that are used when processing
-packets.  These policies implement complex logic which often uses
-multiple modules.
+The `policy.d/` directory contains sample policies that are used when
+processing packets.  These policies implement complex logic which
+often uses multiple modules.
 
 There is no need to have "available" or "enabled" policies.  All
 policies are loaded by the server, and unused ones are ignored.
 
 ### `sites-available/`
 
-This directory contains virtual servers which process packets.  They
-are similar to the virtual servers used by Apache or Nginx.
+The `sites-available/` directory contains virtual servers which
+process packets.  They are similar to the virtual servers used by
+Apache or Nginx.
 
 Each virtual server will begin with a `server` declaration, along with
 it's name.  e.g. `server default { ...`.  The declaration is then
@@ -116,15 +155,13 @@ be achieved.
 
 ### `sites-enabled/`
 
-This directory contains the *enabled* virtual servers.  The files here should
+The `sites-enabled/` directory contains the *enabled* virtual servers.  The files here should
 generally be soft links back to the `sites-available/` directory.
 
 For example, to enable the `default` virtual server, you can run these commands:
 
-```
-cd sites-enabled/
-ln -s ../sites-available/default
-```
+    cd sites-enabled/
+    ln -s ../sites-available/default
 
 The standard installation of FreeRADIUS enables only a few virtual servers.
 
