@@ -1118,55 +1118,6 @@ static void unlang_parallel_signal(UNUSED REQUEST *request, void *rctx, fr_state
 	}
 }
 
-static void unlang_parallel_resumable(REQUEST *request, UNUSED void *rctx)
-{
-	unlang_stack_t			*stack;
-	unlang_stack_frame_t		*frame;
-	unlang_resume_t			*mr;
-	unlang_parallel_t		*state;
-	int				i;
-
-#ifndef NDEBUG
-	bool				found = false;
-#endif
-
-	/*
-	 *	Child requests CANNOT be runnable.  Only the
-	 *	parent request can be runnable.  When it runs
-	 *	(eventually), the interpreter will walk back
-	 *	down the stack, resuming anything that needs resuming.
-	 */
-	rad_assert(request->backlog == NULL);
-	rad_assert(request->runnable_id < 0);
-
-	/*
-	 *	Now look at the parents stack.  It also must
-	 *	have been yielded in order for someone to mark
-	 *	the child as resumable.
-	 */
-	stack = request->stack;
-	frame = &stack->frame[stack->depth];
-	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
-
-	mr = unlang_generic_to_resume(frame->instruction);
-	(void) talloc_get_type_abort(mr, unlang_resume_t);
-	state = mr->rctx;
-
-	/*
-	 *	Find the child and mark it resumable
-	 */
-	for (i = 0; i < state->num_children; i++) {
-		if (state->children[i].state != CHILD_YIELDED) continue;
-		if (state->children[i].child != request) continue;
-
-		state->children[i].state = CHILD_RUNNABLE;
-#ifndef NDEBUG
-		found = true;
-#endif
-		break;
-	}
-	rad_assert(found);
-}
 
 static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *presult, void *rctx)
 {
@@ -1694,7 +1645,6 @@ int unlang_op_init(void)
 				.name = "parallel",
 				.func = unlang_parallel,
 				.signal = unlang_parallel_signal,
-				.resumable = unlang_parallel_resumable,
 				.resume = unlang_parallel_resume,
 				.debug_braces = true
 			   });

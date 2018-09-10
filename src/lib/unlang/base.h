@@ -65,18 +65,6 @@ typedef unlang_action_t (*unlang_op_call_t)(REQUEST *request, rlm_rcode_t *presu
  */
 typedef void (*unlang_op_signal_t)(REQUEST *request, void *rctx, fr_state_signal_t action);
 
-/** Function to call when a request becomes resumable
- *
- * When an event occurs that means we can continue processing the request, this function is called
- * first. This callback is usually used to remove timeout events, unregister interest in file
- * descriptors, and generally cleanup after the yielding function.
- *
- * @param[in] request		The current request.
- * @param[in] rctx		A structure allocated by the initial #unlang_op_call_t to store
- *				the result of the async execution.
- */
-typedef void (*unlang_op_resumable_t)(REQUEST *request, void *rctx);
-
 /** Function to call if the initial function yielded and the request is resumable
  *
  * @param[in] request		The current request.
@@ -109,9 +97,6 @@ typedef struct {
 
 	unlang_op_signal_t	signal;				//!< Called if the request is to be destroyed
 								///< and we need to cleanup any residual state.
-
-	unlang_op_resumable_t	resumable;			//!< Called as soon as the interpreter is informed
-								///< that a request is resumable.
 
 	unlang_op_resume_t	resume;				//!< Called if we're continuing processing
 								///< a request.
