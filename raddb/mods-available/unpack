@@ -28,7 +28,7 @@
 #		the data type to unpack at that offset.
 #		e.g. integer, ipaddr, byte, short, etc.
 #
-#  e.g. if we have Class = 0x00000001020304, then
+#  e.g. if we have Class = 0x0000000102030405, then
 #
 #	%{unpack:&Class 4 short}
 #
@@ -37,6 +37,23 @@
 #
 #  This module is used when vendors put multiple fields
 #  into one attribute of type "octets".
+#
+#  The module can also be used to unpack substrings, by specifing a
+#  data type of "string(len)" or "octets(len)".  Where "len" is an
+#  actual number.  For example:
+#
+#	%{unpack:&User-Name 1 string(2)}
+#
+#  When given a User-Name of "hello", it will start taking the
+#  substring at offset 1 (i.e. "e"), and it will take two characters
+#  from that offset, i.e. "el".
+#
+#  When "octets(len)" is used, the output is printed as hex.  e.g. for
+#  the above example with Class:
+#
+#	%{unpack:&Class 4 octets(4)}
+#
+#  Will return the hex string "02030405"
 #
 unpack {
 }

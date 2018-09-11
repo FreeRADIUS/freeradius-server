@@ -113,6 +113,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 		}
 		input = blob;
 		input_len = fr_hex2bin(blob, sizeof(blob), data_name + 2, len);
+		vp = NULL;
 
 	} else {
 		GOTO_ERROR;
@@ -124,6 +125,74 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 		goto nothing;
 	}
 
+	if ((size_t) offset >= input_len) {
+		REDEBUG("Offset is larget then the input.");
+		goto nothing;
+	}
+
+	/*
+	 *	Allow for string(4) or octets(4), which says "take 4
+	 *	bytes from the thing.
+	 */
+	p = strchr(data_type, '(');
+	if (p) {
+		char *end;
+		unsigned long to_copy;
+
+		*p = '\0';
+
+		to_copy = strtoul(p + 1, &end, 10);
+		if (to_copy > input_len) {
+			REDEBUG("Invalid length at '%s'", p + 1);
+			goto nothing;
+		}
+
+		if ((end[0] != ')') || (end[1] != '\0')) {
+			REDEBUG("Invalid ending at '%s'", end);
+			goto nothing;
+		}
+
+		type = fr_str2int(dict_attr_types, data_type, PW_TYPE_INVALID);
+		if (type == PW_TYPE_INVALID) {
+			REDEBUG("Invalid data type '%s'", data_type);
+			goto nothing;
+		}
+
+		if ((type != PW_TYPE_OCTETS) && (type != PW_TYPE_STRING)) {
+			REDEBUG("Cannot take substring of data type '%s'", data_type);
+			goto nothing;
+		}
+
+		if (input_len < (offset + to_copy)) {
+			REDEBUG("Insufficient data to unpack '%s' from '%s'", data_type, data_name);
+			goto nothing;
+		}
+
+		/*
+		 *	Just copy the string over.
+		 */
+		if (type == PW_TYPE_STRING) {
+			if (outlen <= to_copy) {
+				REDEBUG("Insufficient buffer space to unpack data");
+				goto nothing;
+			}
+
+			memcpy(out, input + offset, to_copy);
+			out[to_copy] = '\0';
+			return to_copy;
+		}
+
+		/*
+		 *	We hex encode octets.
+		 */
+		if (outlen <= (to_copy * 2)) {
+			REDEBUG("Insufficient buffer space to unpack data");
+			goto nothing;
+		}
+
+		return fr_bin2hex(out, input + offset, to_copy);
+	}
+
 	type = fr_str2int(dict_attr_types, data_type, PW_TYPE_INVALID);
 	if (type == PW_TYPE_INVALID) {
 		REDEBUG("Invalid data type '%s'", data_type);
@@ -133,7 +202,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 	/*
 	 *	Output must be a non-zero limited size.
 	 */
-	if ((dict_attr_sizes[type][0] ==  0) ||
+	if ((dict_attr_sizes[type][0] == 0) ||
 	    (dict_attr_sizes[type][0] != dict_attr_sizes[type][1])) {
 		REDEBUG("unpack requires fixed-size output type, not '%s'", data_type);
 		goto nothing;
@@ -180,6 +249,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 
 	len = vp_prints_value(out, outlen, cast, 0);
 	talloc_free(cast);
+
 	if (is_truncated(len, outlen)) {
 		REDEBUG("Insufficient buffer space to unpack data");
 		goto nothing;
