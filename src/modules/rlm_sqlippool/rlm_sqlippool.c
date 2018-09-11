@@ -323,6 +323,11 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	}
 	talloc_free(expanded);
 
+	/*
+	 *	No handle, we can't continue.
+	 */
+	if (!*handle) return -1;
+
 	if (*handle) (data->sql_inst->module->sql_finish_query)(*handle, data->sql_inst->config);
 
 	return 0;
@@ -766,7 +771,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		break;
 	}
 
-	fr_connection_release(inst->sql_inst->pool, handle);
+	if (handle) fr_connection_release(inst->sql_inst->pool, handle);
 
 	return rcode;
 }
