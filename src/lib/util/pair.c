@@ -1621,25 +1621,57 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR 
 		}
 		if (last_token == T_INVALID) break;
 
-		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
-			vp = fr_pair_make(ctx, NULL, raw.l_opand, NULL, raw.op);
+		/*
+		 *	Regular expressions get sanity checked by pair_make().
+		 *
+		 *	@todo - note that they will also be escaped,
+		 *	so we may need to fix that later.
+		 */
+		if ((raw.op == T_OP_REG_EQ) || (raw.op == T_OP_REG_NE)) {
+			vp = fr_pair_make(ctx, NULL, raw.l_opand, raw.r_opand, raw.op);
 			if (!vp) {
-				last_token = T_INVALID;
-				break;
-			}
-			if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
-				talloc_free(vp);
+			invalid:
 				last_token = T_INVALID;
 				break;
 			}
 		} else {
-			vp = fr_pair_make(ctx, NULL, raw.l_opand, raw.r_opand, raw.op);
-			if (!vp) {
-				last_token = T_INVALID;
-				break;
+			/*
+			 *	All other attributes get the name
+			 *	parsed, which also includes parsing
+			 *	the tag.
+			 */
+			vp = fr_pair_make(ctx, NULL, raw.l_opand, NULL, raw.op);
+			if (!vp) goto invalid;
+
+			/*
+			 *	We don't care what the value is, so
+			 *	ignore it.
+			 */
+			if ((raw.op == T_OP_CMP_TRUE) || (raw.op == T_OP_CMP_FALSE)) goto next;
+
+			/*
+			 *	fr_pair_raw_from_str() only returns this when
+			 *	the input looks like it needs to be xlat'd.
+			 */
+			if (raw.quote == T_DOUBLE_QUOTED_STRING) {
+				if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
+					talloc_free(vp);
+					goto invalid;
+				}
+
+				/*
+				 *	Parse it ourselves.  The RHS
+				 *	might NOT be tainted, but we
+				 *	don't know.  So just mark it
+				 *	as such to be safe.
+				 */
+			} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', true) < 0) {
+				talloc_free(vp);
+				goto invalid;
 			}
 		}
 
+	next:
 		*tail = vp;
 		tail = &((*tail)->next);
 	} while (*p && (last_token == T_COMMA));
