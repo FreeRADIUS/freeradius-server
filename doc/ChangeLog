@@ -36,6 +36,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  see sites-available/default
 	* The sqlippool module can now use attributes other than "Pool-Name"
 	  to assign IP pools.  The "Pool-Name" attribute is still the default.
+	* The "unpack" expansion can now unpack substrings.  See
+	  mods-available/unpack for documentation and examples.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
