@@ -310,7 +310,13 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	}
 	talloc_free(expanded);
 
-	if (*handle) (data->sql_inst->driver->sql_finish_query)(*handle, data->sql_inst->config);
+	/*
+	 *	No handle, we can't continue.
+	 */
+	if (!*handle) return -1;
+
+	(data->sql_inst->driver->sql_finish_query)(*handle, data->sql_inst->config);
+
 	return 0;
 }
 
@@ -599,7 +605,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 	DO_PART(allocate_commit);
 
-	fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
 	return do_logging(inst, request, inst->log_success, RLM_MODULE_OK);
 }
