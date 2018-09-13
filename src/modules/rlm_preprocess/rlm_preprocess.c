@@ -113,8 +113,8 @@ static void cisco_vsa_hack(REQUEST *request)
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		vendorcode = vp->da->vendor;
-		if (!((vendorcode == 9) || (vendorcode == 6618))) {
-			continue; /* not a Cisco or Quintum VSA, continue */
+		if (!((vendorcode == 9) || (vendorcode == 6618) || (vendorcode == 35265))) {
+			continue; /* not a Cisco, Quintum or Eltex VSA, continue */
 		}
 
 		if (vp->da->type != PW_TYPE_STRING) {
