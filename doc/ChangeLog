@@ -38,6 +38,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  to assign IP pools.  The "Pool-Name" attribute is still the default.
 	* The "unpack" expansion can now unpack substrings.  See
 	  mods-available/unpack for documentation and examples.
+	* The preprocess module now does "ciscvo_vsa_hack" for Eltex-AVPair.
+	  Fixes #2301.  Vendors SHOULD NOT USE THAT KIND OF ATTRIBUTE.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -69,6 +71,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  reported issues.  Performance may be affected.
 	* Don't allow Message-Authenticator to overflow
 	  past the end of a large packet.
+	* Fix crash in sqlippool when SQL server goes away.
+	  Fixes #2300.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
