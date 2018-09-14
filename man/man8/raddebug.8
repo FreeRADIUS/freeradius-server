@@ -7,6 +7,8 @@ raddebug - Display debugging output from a running server.
 .IR condition ]
 .RB [ \-d
 .IR config_directory ]
+.RB [ \-D
+.IR dictionary_directory ]
 .RB [ \-n
 .IR name ]
 .RB [ \-i
@@ -73,6 +75,8 @@ option is equivalent to using:
 .IP "\-d \fIconfig directory\fP"
 The radius configuration directory, usually /etc/raddb.  See the
 \fIradmin\fP manual page for more description of this option.
+.IP "\-D \fIdictionary directory\fP"
+Set main dictionary directory. Defaults to \fI/usr/share/freeradius\fP.
 .IP "\-n \fImname\fP"
 Read \fIraddb/name.conf\fP instead of \fIraddb/radiusd.conf\fP.
 .IP \-I\ \fIipv6-address\fP

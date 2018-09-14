@@ -6,6 +6,8 @@ radiusd - Authentication, Authorization and Accounting server
 .RB [ \-C ]
 .RB [ \-d
 .IR config_directory ]
+.RB [ \-D
+.IR dictionary_directory ]
 .RB [ \-f ]
 .RB [ \-h ]
 .RB [ \-i
@@ -17,6 +19,7 @@ radiusd - Authentication, Authorization and Accounting server
 .IR name ]
 .RB [ \-p
 .IR port ]
+.RB [ \-P ]
 .RB [ \-s ]
 .RB [ \-t ]
 .RB [ \-v ]
@@ -55,6 +58,8 @@ configuration, and which modules are skipped, and therefore not checked.
 .IP "\-d \fIconfig directory\fP"
 Defaults to \fI/etc/raddb\fP. \fBRadiusd\fP looks here for its configuration
 files such as the \fIdictionary\fP and the \fIusers\fP files.
+.IP "\-D \fIdictionary directory\fP"
+Set main dictionary directory. Defaults to \fI/usr/share/freeradius\fP.
 .IP \-f
 Do not fork, stay running as a foreground process.
 .IP \-h
@@ -84,6 +89,8 @@ When this command-line option is given, all "listen" sections in
 \fIradiusd.conf\fP are ignored.
 
 This option MUST be used in conjunction with "-i".
+.IP "\-P
+Always write out PID, even with -f.
 .IP \-s
 Run in "single server" mode.  The server normally runs with multiple
 threads and/or processes, which can lower its response time to
