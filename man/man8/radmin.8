@@ -5,6 +5,8 @@ radmin - FreeRADIUS Administration tool
 .B radmin
 .RB [ \-d
 .IR config_directory ]
+.RB [ \-D
+.IR dictionary_directory ]
 .RB [ \-e
 .IR command ]
 .RB [ \-E ]
@@ -34,6 +36,8 @@ The following command-line options are accepted by the program.
 Defaults to \fI/etc/raddb\fP. \fBradmin\fP looks here for the server
 configuration files to find the "listen" section that defines the
 control socket filename.
+.IP "\-D \fIdictionary directory\fP"
+Set main dictionary directory. Defaults to \fI/usr/share/freeradius\fP.
 .IP "\-e \fIcommand\fP"
 Run \fIcommand\fP and exit.
 .IP \-E
