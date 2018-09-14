@@ -1213,8 +1213,9 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	 *	we pass the string back to libldap we must not alter it.
 	 */
 	RDEBUG("User object found at DN \"%s\"", dn);
-	vp = fr_pair_make(request, &request->config, "LDAP-UserDN", NULL, T_OP_EQ);
+	vp = fr_pair_afrom_da(request, inst->user_dn_da);
 	if (vp) {
+		fr_pair_add(&request->config, vp);
 		fr_pair_value_strcpy(vp, dn);
 		*rcode = RLM_MODULE_OK;
 	}

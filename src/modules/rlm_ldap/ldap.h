@@ -162,6 +162,9 @@ typedef struct ldap_instance {
 
 	int		userobj_scope;			//!< Search scope.
 
+	char const	*user_dn;			//!< for multiple LDAP modules
+	DICT_ATTR const *user_dn_da;			//!< cached user DN
+
 	char const	*userobj_membership_attr;	//!< Attribute that describes groups the user is a member of.
 	char const	*userobj_access_attr;		//!< Attribute to check to see if the user should be locked out.
 	bool		access_positive;		//!< If true the presence of the attribute will allow access,

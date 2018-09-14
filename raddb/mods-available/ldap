@@ -263,10 +263,28 @@ ldap {
 		#  names.
 #		name_attribute = cn
 
+		#
+		#  Name of the attribute that contains the user DN.
+		#  The default name is LDAP-UserDn.
+		#
+		#  If you have multiple LDAP instances, you should
+		#  change this configuration item to:
+		#
+		#	${.:instance}-LDAP-UserDn
+		#
+		#  That change allows the modules to set their own
+		#  User DN, and to not conflict with each other.
+		#
+		user_dn = "LDAP-UserDn"
+
 		#  Filter to find all group objects a user is a member of.
 		#  That is, group objects with attributes that
 		#  identify members (the inverse of membership_attribute).
-#		membership_filter = "(|(member=%{control:Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
+		#
+		#  Note that this configuration references the "user_dn"
+		#  configuration defined above.
+		#
+#		membership_filter = "(|(member=%{control:${user_dn}})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
 
 		#  The attribute, in user objects, which contain the names
 		#  or DNs of groups a user is a member of.
