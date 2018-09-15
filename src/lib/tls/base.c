@@ -140,47 +140,52 @@ typedef struct libssl_defect {
 	char const	*comment;	//!< Where to get more information.
 } libssl_defect_t;
 
+#undef VM
+#undef Vm
+#define VM(_a,_b,_c) (((((_a) << 24) | ((_b) << 16) | ((_c) << 8)) << 4) | 0x0f)
+#define Vm(_a,_b,_c,_d) (((((_a) << 24) | ((_b) << 16) | ((_c) << 8) | ((_d) - 'a' + 1)) << 4) | 0x0f)
+
 /* Record critical defects in libssl here, new versions of OpenSSL to older versions of OpenSSL.  */
 static libssl_defect_t libssl_defects[] =
 {
 	{
-		.low		= 0x01010001f,		/* 1.1.0a */
-		.high		= 0x01010001f,		/* 1.1.0a */
+		.low		= Vm(1,1,0,'a'),		/* 1.1.0a */
+		.high		= Vm(1,1,0,'a'),		/* 1.1.0a */
 		.id		= "CVE-2016-6309",
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160926.txt"
 	},
 	{
-		.low		= 0x01010000f,		/* 1.1.0  */
-		.high		= 0x01010000f,		/* 1.1.0  */
+		.low		= VM(1,1,0),			/* 1.1.0  */
+		.high		= VM(1,1,0),			/* 1.1.0  */
 		.id		= "CVE-2016-6304",
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
 	},
 	{
-		.low		= 0x01000209f,		/* 1.0.2i */
-		.high		= 0x01000209f,		/* 1.0.2i */
+		.low		= Vm(1,0,2,'i'),		/* 1.0.2i */
+		.high		= Vm(1,0,2,'i'),		/* 1.0.2i */
 		.id		= "CVE-2016-7052",
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160926.txt"
 	},
 	{
-		.low		= 0x01000200f,		/* 1.0.2  */
-		.high		= 0x01000208f,		/* 1.0.2h */
+		.low		= VM(1,0,2),			/* 1.0.2  */
+		.high		= Vm(1,0,2,'h'),		/* 1.0.2h */
 		.id		= "CVE-2016-6304",
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
 	},
 	{
-		.low		= 0x01000100f,		/* 1.0.1  */
-		.high		= 0x01000114f,		/* 1.0.1t */
+		.low		= VM(1,0,1),			/* 1.0.1  */
+		.high		= Vm(1,0,1,'t'),		/* 1.0.1t */
 		.id		= "CVE-2016-6304",
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
 	},
 	{
-		.low		= 0x010001000,		/* 1.0.1  */
-		.high		= 0x01000106f,		/* 1.0.1f */
+		.low		= VM(1,0,1),			/* 1.0.1  */
+		.high		= Vm(1,0,1,'f'),		/* 1.0.1f */
 		.id		= "CVE-2014-0160",
 		.name		= "Heartbleed",
 		.comment	= "For more information see http://heartbleed.com"
