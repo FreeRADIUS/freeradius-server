@@ -144,15 +144,15 @@ typedef struct libssl_defect {
 static libssl_defect_t libssl_defects[] =
 {
 	{
-		.low		= 0x01010101f,		/* 1.1.0a */
-		.high		= 0x01010101f,		/* 1.1.0a */
+		.low		= 0x01010001f,		/* 1.1.0a */
+		.high		= 0x01010001f,		/* 1.1.0a */
 		.id		= "CVE-2016-6309",
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160926.txt"
 	},
 	{
-		.low		= 0x01010100f,		/* 1.1.0  */
-		.high		= 0x01010100f,		/* 1.1.0  */
+		.low		= 0x01010000f,		/* 1.1.0  */
+		.high		= 0x01010000f,		/* 1.1.0  */
 		.id		= "CVE-2016-6304",
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
