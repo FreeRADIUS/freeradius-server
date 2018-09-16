@@ -8099,6 +8099,7 @@ for ac_header in \
   siad.h \
   signal.h \
   stdatomic.h \
+  stdalign.h \
   stdbool.h \
   stddef.h \
   stdint.h \
