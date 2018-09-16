@@ -25,6 +25,8 @@
  */
 RCSID("$Id$")
 
+#ifdef HAVE_STDALIGN_H
+
 #include <stdint.h>
 #include <stdalign.h>
 #include <inttypes.h>
@@ -283,3 +285,5 @@ void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 	}
 }
 #endif
+
+#endif	/* HAVE_STDALIGN_H */
