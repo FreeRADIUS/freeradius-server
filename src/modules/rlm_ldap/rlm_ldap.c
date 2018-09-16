@@ -631,7 +631,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		if (dict_addattr(inst->user_dn, -1, 0, PW_TYPE_STRING, flags) < 0) {
 			LDAP_ERR("Error creating %s attribute: %s", inst->user_dn, fr_strerror());
 			return -1;
-
 		}
 		inst->user_dn_da = dict_attrbyname(inst->user_dn);
 	}
