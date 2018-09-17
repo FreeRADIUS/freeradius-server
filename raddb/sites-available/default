@@ -701,7 +701,7 @@ recv Access-Request {
 	#  an LDAP database.
 	#
 	#  For a full description of the module behavior, please see
-	#  https://wiki.freeradius.org/modules/Rlm_ldapx
+	#  https://wiki.freeradius.org/modules/Rlm_ldap
 	#
 	-ldap
 
