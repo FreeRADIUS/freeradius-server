@@ -4533,8 +4533,7 @@ static void coa_separate(REQUEST *request)
 	request->parent->coa = NULL;
 	request->parent = NULL;
 
-	if (!request->proxy_reply && we_are_master()) {
-		request->delay = 0;
+	if (!request->proxy_reply) {
 		coa_retransmit(request);
 	}
 }
