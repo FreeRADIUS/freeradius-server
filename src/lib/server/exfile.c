@@ -97,8 +97,6 @@ static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_en
 
 static void exfile_cleanup_entry(exfile_t *ef, REQUEST *request, exfile_entry_t *entry)
 {
-	TALLOC_FREE(entry->filename);
-
 	if (entry->fd >= 0) close(entry->fd);
 
 	entry->hash = 0;
@@ -108,6 +106,11 @@ static void exfile_cleanup_entry(exfile_t *ef, REQUEST *request, exfile_entry_t 
 	 *	Issue close trigger *after* we've closed the fd
 	 */
 	exfile_trigger_exec(ef, request, entry, "close");
+
+	/*
+	 *	Trigger still needs access to filename to populate Exfile-Name
+	 */
+	TALLOC_FREE(entry->filename);
 }
 
 
