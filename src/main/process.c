@@ -1547,7 +1547,7 @@ static void request_running(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		COA_SEPARATE;
+		if (request->coa) TALLOC_FREE(request->coa);
 		(void) request_max_time(request);
 		break;
 
