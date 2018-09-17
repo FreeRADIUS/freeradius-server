@@ -378,8 +378,8 @@ static void request_coa_originate(REQUEST *request) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_wait_for_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_running) CC_HINT(nonnull);
-static void coa_separate(REQUEST *request) CC_HINT(nonnull);
-#  define COA_SEPARATE if (request->coa) coa_separate(request->coa);
+static void coa_separate(REQUEST *request, bool retransmit) CC_HINT(nonnull);
+#  define COA_SEPARATE if (request->coa) coa_separate(request->coa, true);
 #else
 #  define COA_SEPARATE
 #endif
@@ -667,9 +667,9 @@ static void request_done(REQUEST *request, int action)
 	 *	Move the CoA request to its own handler.
 	 */
 	if (request->coa) {
-		coa_separate(request->coa);
+		coa_separate(request->coa, true);
 	} else if (request->parent && (request->parent->coa == request)) {
-		coa_separate(request);
+		coa_separate(request, true);
 	}
 #endif
 
@@ -4317,7 +4317,7 @@ static void request_coa_originate(REQUEST *request)
 	coa->child_pid = NO_SUCH_CHILD_PID;
 #endif
 
-	if (we_are_master()) coa_separate(request->coa);
+	if (we_are_master()) coa_separate(request->coa, true);
 
 	/*
 	 *	And send the packet.
@@ -4482,7 +4482,7 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 	ASSERT_MASTER;
 	CHECK_FOR_STOP;
 
-	if (request->parent) coa_separate(request);
+	if (request->parent) coa_separate(request, false);
 
 	switch (action) {
 	case FR_ACTION_TIMER:
@@ -4513,7 +4513,7 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 	}
 }
 
-static void coa_separate(REQUEST *request)
+static void coa_separate(REQUEST *request, bool retransmit)
 {
 	VERIFY_REQUEST(request);
 #ifdef DEBUG_STATE_MACHINE
@@ -4533,7 +4533,7 @@ static void coa_separate(REQUEST *request)
 	request->parent->coa = NULL;
 	request->parent = NULL;
 
-	if (!request->proxy_reply) {
+	if (retransmit && (request->delay == 0) && !request->proxy_reply) {
 		coa_retransmit(request);
 	}
 }
