@@ -21,7 +21,7 @@ detail {
 	#  the end of it, to create a new detail file every hour,
 	#  e.g.:
 	#
-	#      ..../detail-%Y%m%d:%H
+	#      ..../detail-%Y-%m-%dT%H:00:00
 	#
 	#  This will create a new detail file for every hour.
 	#
@@ -32,7 +32,7 @@ detail {
 	#  only be ONE "listen" section reading detail files from
 	#  a particular directory.
 	#
-	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/detail-%Y%m%d
+	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/detail-%Y-%m-%d
 
 	#
 	#  If you are using radrelay, delete the above line for

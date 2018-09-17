@@ -18,7 +18,7 @@
 #  the comments in raddb/mods-available/detail.
 #
 detail auth_log {
-	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/auth-detail-%Y%m%d
+	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/auth-detail-%Y-%m-%d
 
 	#
 	#  This should be 0600 to ensure private data in the
@@ -43,7 +43,7 @@ detail auth_log {
 #  'send Access-Accept' section of raddb/sites-enabled/default.
 #
 detail reply_log {
-	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/reply-detail-%Y%m%d
+	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/reply-detail-%Y-%m-%d
 
 	permissions = 0600
 }
@@ -55,7 +55,7 @@ detail reply_log {
 #  proxying. See the example in raddb/sites-available/default.
 #
 detail pre_proxy_log {
-	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/pre-proxy-detail-%Y%m%d
+	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/pre-proxy-detail-%Y-%m-%d
 
 	permissions = 0600
 
@@ -71,7 +71,7 @@ detail pre_proxy_log {
 #  See the example in raddb/sites-available/default.
 #
 detail post_proxy_log {
-	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/post-proxy-detail-%Y%m%d
+	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/post-proxy-detail-%Y-%m-%d
 
 	permissions = 0600
 }

@@ -26,5 +26,5 @@
 #  corner cases.
 #
 detail detail.example.com {
-	filename = ${radacctdir}/detail.example.com/detail-%Y%m%d:%H:%G
+	filename = ${radacctdir}/detail.example.com/detail-%Y-%m-%dT%H:%G:00
 }
