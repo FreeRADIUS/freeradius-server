@@ -29,8 +29,8 @@ LOG_R_DAYS=5
 LOG_E_DAYS=1
 
 # The expression we use to match folders and archives
-DATE_EXPR='^[1-2][0-9][0-9][0-9][0-1][0-9][0-3][0-9]$'
-DATE_EXPR_ARC='^[1-2][0-9][0-9][0-9][0-1][0-9][0-3][0-9]\.tar\.xz$'
+DATE_EXPR='^[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]$'
+DATE_EXPR_ARC='^[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]\.tar\.xz$'
 
 # What are we running on (so many date variations)
 PLATFORM=`uname`
@@ -133,11 +133,11 @@ else
         exit 64
 fi
 
-E_DATE=`pastDate $LOG_E_DAYS` ; ERROR "Logs after $E_DATE will be ignored"
-R_DATE=`pastDate $LOG_R_DAYS` ; ERROR "Logs and archives prior to $R_DATE will be deleted"
+E_DATE=$(pastDate $LOG_E_DAYS` ; ERROR "Logs after $E_DATE will be ignored")
+R_DATE=$(pastDate $LOG_R_DAYS` ; ERROR "Logs and archives prior to $R_DATE will be deleted")
 
 # Remove old archives
-for ARCDD in `ls $ARCHIVE_DIR | egrep "$DATE_EXPR_ARC" | cut -d '.' -f 1`; do
+for ARCDD in $(ls $ARCHIVE_DIR | egrep "$DATE_EXPR_ARC" | cut -d '.' -f 1); do
         ARCFP="$ARCHIVE_DIR/$ARCDD.tar.xz"
         if [ "$R_DATE" -gt "$ARCDD" ] ; then
                 DEBUG "Removing '$ARCFP'"
@@ -148,7 +148,7 @@ for ARCDD in `ls $ARCHIVE_DIR | egrep "$DATE_EXPR_ARC" | cut -d '.' -f 1`; do
 done
 
 # Archive and remove directories
-for LOGDD in `ls $LOG_DIR | egrep "$DATE_EXPR"`; do
+for LOGDD in $(ls $LOG_DIR | egrep "$DATE_EXPR"); do
         LOGFP="$LOG_DIR/$LOGDD"
         if [ "$E_DATE" -lt "$LOGDD" ] ; then
                 DEBUG "Ignoring '$LOGFP'"
