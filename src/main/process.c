@@ -4079,11 +4079,6 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
  *
  ***********************************************************************/
 #ifdef WITH_COA
-static int null_handler(UNUSED REQUEST *request)
-{
-	return 0;
-}
-
 /*
  *	See if we need to originate a CoA request.
  */
@@ -4221,7 +4216,6 @@ static void request_coa_originate(REQUEST *request)
 
 	coa->config = fr_pair_list_copy(coa, request->config);
 	coa->num_coa_requests = 0;
-	coa->handle = null_handler;
 	coa->number = request->number; /* it's associated with the same request */
 
 	/*

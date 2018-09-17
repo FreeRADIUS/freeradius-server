@@ -717,6 +717,11 @@ REQUEST *request_alloc_fake(REQUEST *request)
 }
 
 #ifdef WITH_COA
+static int null_handler(UNUSED REQUEST *request)
+{
+	return 0;
+}
+
 REQUEST *request_alloc_coa(REQUEST *request)
 {
 	if (!request || request->coa) return NULL;
@@ -730,6 +735,7 @@ REQUEST *request_alloc_coa(REQUEST *request)
 	request->coa = request_alloc_fake(request);
 	if (!request->coa) return NULL;
 
+	request->coa->handle = null_handler;
 	request->coa->options = RAD_REQUEST_OPTION_COA;	/* is a CoA packet */
 	request->coa->packet->code = 0; /* unknown, as of yet */
 	request->coa->child_state = REQUEST_RUNNING;
