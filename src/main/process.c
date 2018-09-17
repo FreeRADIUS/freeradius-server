@@ -4493,6 +4493,7 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 		 */
 		if (!request->home_server ||
 		    (request->home_server->state >= HOME_STATE_IS_DEAD) ||
+		    request->proxy_reply ||
 		    !request->proxy_listener ||
 		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
 			request_done(request, FR_ACTION_DONE);
@@ -4528,13 +4529,11 @@ static void coa_separate(REQUEST *request)
 	rad_assert(!request->in_request_hash);
 	rad_assert(request->coa == NULL);
 
-	rad_assert(request->proxy_reply || request->proxy_listener);
-
 	(void) talloc_steal(NULL, request);
 	request->parent->coa = NULL;
 	request->parent = NULL;
 
-	if (we_are_master()) {
+	if (!request->proxy_reply && we_are_master()) {
 		request->delay = 0;
 		coa_retransmit(request);
 	}
