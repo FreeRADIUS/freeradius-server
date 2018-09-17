@@ -627,14 +627,14 @@ recv Access-Request {
 	#  this limitation is fine.
 	#
 	#  If you have a Cisco SIP server authenticating against
-	#  FreeRADIUS, the digest module will set `Auth-Type :=
+	#  FreeRADIUS, the `digest` module will set `Auth-Type :=
 	#  "Digest"` if we are handling an SIP Digest request and the
 	#  `Auth-Type` has not already been set.
 	#
 	digest
 
 	#
-	#  The `wimax` moduel fixes up various WiMAX-specific stupidities.
+	#  The `wimax` module fixes up various WiMAX-specific stupidities.
 	#
 	#  The WiMAX specification says that the `Calling-Station-Id`
 	#  is 6 octets of the MAC.  This definition conflicts with RFC
@@ -701,7 +701,7 @@ recv Access-Request {
 	#  an LDAP database.
 	#
 	#  For a full description of the module behavior, please see
-	#  https://wiki.freeradius.org/modules/Rlm_ldapx
+	#  https://wiki.freeradius.org/modules/Rlm_ldap
 	#
 	-ldap
 
