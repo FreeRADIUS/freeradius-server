@@ -40,6 +40,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  mods-available/unpack for documentation and examples.
 	* The preprocess module now does "ciscvo_vsa_hack" for Eltex-AVPair.
 	  Fixes #2301.  Vendors SHOULD NOT USE THAT KIND OF ATTRIBUTE.
+	* Allow for <instance>-LDAP-UserDN.  See mods-available/ldap for
+	  more information.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -73,6 +75,11 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  past the end of a large packet.
 	* Fix crash in sqlippool when SQL server goes away.
 	  Fixes #2300.
+	* Typos in man pages.  Patch from Nikolai Kondrashov.
+	  Fixes #2303.
+	* Check for correct OpenSSL version in vulnerability
+	  list.  Patch from Christian Hesse.
+	* Fix crash with CoA packets/  Fixes #2304.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
