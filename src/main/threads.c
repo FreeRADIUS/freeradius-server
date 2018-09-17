@@ -85,7 +85,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #define NUM_FIFOS	       RAD_LISTEN_MAX
 
-#ifdef HAVE_STDALIGN_H
+#ifndef HAVE_STDALIGN_H
 #undef HAVE_STDATOMIC_H
 #endif
 
