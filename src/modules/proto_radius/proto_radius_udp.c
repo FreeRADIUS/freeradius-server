@@ -39,9 +39,17 @@ extern fr_app_io_t proto_radius_udp;
 
 typedef struct proto_radius_udp_t {
 	char const			*name;			//!< socket name
-	CONF_SECTION			*cs;			//!< our configuration
-
 	int				sockfd;
+
+	fr_io_address_t			*connection;		//!< for connected sockets.
+
+	RADCLIENT_LIST			*clients;		//!< local clients
+
+	/*
+	 *	The remaining items are "const" after mod_bootstrap()
+	 *	and mod_instantiate() are called.
+	 */
+	CONF_SECTION			*cs;			//!< our configuration
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
@@ -65,11 +73,6 @@ typedef struct proto_radius_udp_t {
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
-
-	fr_io_address_t			*connection;		//!< for connected sockets.
-
-	RADCLIENT_LIST			*clients;		//!< local clients
-
 } proto_radius_udp_t;
 
 
