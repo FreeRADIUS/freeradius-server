@@ -43,9 +43,6 @@ typedef struct proto_radius_udp_t {
 
 	int				sockfd;
 
-	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
-	fr_network_t			*nr;			//!< for fr_network_listen_read();
-
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
 	char const			*interface;		//!< Interface to bind to.
