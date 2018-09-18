@@ -4333,7 +4333,10 @@ static void coa_retransmit(REQUEST *request)
 	/*
 	 *	Home server has gone away.  The request is done.
 	 */
-	if (!request->home_server) goto fail;
+	if (!request->home_server) {
+		RDEBUG("No home server for CoA packet.  Failing it.");
+		goto fail;
+	}
 
 	if (request->delay == 0) {
 		/*
