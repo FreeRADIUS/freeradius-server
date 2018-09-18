@@ -495,6 +495,10 @@ int virtual_servers_open(fr_schedule_t *sc)
 			rad_assert(listen->proto_module != NULL);
 			rad_assert(listen->app != NULL);
 
+			/*
+			 *	The socket is opened with listen->app_instance,
+			 *	but all subsequent calls (network.c, etc.) use listen->app_io_instance.
+			 */
 			if (listen->app->open &&
 			    listen->app->open(listen->proto_module->data, sc, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Opening %s I/O interface failed",
