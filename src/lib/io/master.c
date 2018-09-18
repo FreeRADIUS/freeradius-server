@@ -113,7 +113,6 @@ typedef struct {
 	bool				dead;		//!< roundabout way to get the network side to close a socket
 	bool				paused;		//!< event filter doesn't like resuming something that isn't paused
 	void				*app_io_instance; //!< as described
-	void				*socket_instance; //!< as described
 	fr_event_list_t			*el;		//!< event list for this connection
 	fr_network_t			*nr;		//!< network for this connection
 } fr_io_connection_t;
@@ -561,23 +560,23 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		connection->app_io_instance = dl_inst->data;
 
 		/*
-		 *	Bootstrap the configuration.  There shouldn't
-		 *	be need to re-parse it.
+		 *	There isn't a need to re-parse the
+		 *	configuration.  So we just copy the parent
+		 *	config to the child.  We assume that the users
+		 *	are smart enough to ensure that they don't
+		 *	modify fields which are meant to be "const".
 		 *
-		 *	@todo - ATD thread - allocate thread-specific data, and call thread instantiate,
-		 *	instead of app_io->instantiate again.
+		 *	@todo - figure this all out.  The issue is
+		 *	that the dl API will allocate (for instance)
+		 *	proto_radius_udp_t.  We want to pass that
+		 *	struct to mod_bootstrap && mod_instantiate.
+		 *	BUT we want to pass per-socket information to
+		 *	mod_read(), and to pretty much everything
+		 *	else.  There doesn't seem to be a clear way to
+		 *	make that distinction with the current APIs.
+		 *	So, we just hack it...
 		 */
 		memcpy(connection->app_io_instance, inst->app_io_instance, inst->app_io->inst_size);
-
-#if 0
-		/*
-		 *	@todo - start using socket_instance (socket
-		 *	data) as different from app_io_instance
-		 *	(parsed configuration data).
-		 */
-		listen->socket_instance = talloc_memdup(listen, listen->app_io_instance, listen->app_io->inst_size);
-#endif
-
 
 		/*
 		 *	Instantiate the child, and open the socket.
@@ -586,13 +585,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 
 		if (inst->app_io->connection_set(connection->app_io_instance, connection->address) < 0) {
 			DEBUG("Failed setting connection for socket.");
-			talloc_free(dl_inst);
-			return NULL;
-		}
-
-		if (inst->app_io->instantiate &&
-		    (inst->app_io->instantiate(connection->app_io_instance, inst->app_io_conf) < 0)) {
-			DEBUG("Failed instantiating socket.");
 			talloc_free(dl_inst);
 			return NULL;
 		}

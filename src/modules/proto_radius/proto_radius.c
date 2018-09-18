@@ -607,7 +607,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		/*
 		 *	Don't set the connection for the main socket.  It's not connected.
 		 */
-		if (inst->io.app_io->open(inst->io.app_io_instance, inst->io.app_io_instance) < 0) {
+		if (inst->io.app_io->open(inst->io.app_io_instance, NULL) < 0) {
 			cf_log_err(conf, "Failed opening %s interface", inst->io.app_io->name);
 			talloc_free(listen);
 			return -1;
