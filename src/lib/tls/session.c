@@ -1056,7 +1056,7 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 			char *p;
 			BIO *out;
 
-			out = BIO_new(BIO_s_mem());
+			MEM(out = BIO_new(BIO_s_mem()));
 			strlcpy(attribute, "TLS-Client-Cert-", sizeof(attribute));
 
 			for (i = 0; i < sk_X509_EXTENSION_num(ext_list); i++) {
@@ -1423,16 +1423,16 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 		}
 
 		if (RDEBUG_ENABLED3) {
-			BIO *ssl_log = BIO_new(BIO_s_mem());
+			BIO *ssl_log;
 
-			if (ssl_log) {
-				if (SSL_SESSION_print(ssl_log, session->ssl_session) == 1) {
-					SSL_DRAIN_ERROR_QUEUE(RDEBUG3, "", ssl_log);
-				} else {
-					RDEBUG3("Failed retrieving session data");
-				}
-				BIO_free(ssl_log);
+			MEM(ssl_log = BIO_new(BIO_s_mem()));
+
+			if (SSL_SESSION_print(ssl_log, session->ssl_session) == 1) {
+				SSL_DRAIN_ERROR_QUEUE(RDEBUG3, "", ssl_log);
+			} else {
+				RDEBUG3("Failed retrieving session data");
 			}
+			BIO_free(ssl_log);
 		}
 #endif
 
@@ -1667,8 +1667,8 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	 *	and we can update those BIOs from the packets we've
 	 *	received.
 	 */
-	session->into_ssl = BIO_new(BIO_s_mem());
-	session->from_ssl = BIO_new(BIO_s_mem());
+	MEM(session->into_ssl = BIO_new(BIO_s_mem()));
+	MEM(session->from_ssl = BIO_new(BIO_s_mem()));
 	SSL_set_bio(session->ssl, session->into_ssl, session->from_ssl);
 
 	/*
