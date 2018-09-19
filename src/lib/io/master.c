@@ -105,14 +105,14 @@ typedef struct {
 	char const			*name;		//!< taken from proto_FOO_TRANSPORT
 	int				packets;	//!< number of packets using this connection
 	fr_io_address_t   		*address;      	//!< full information about the connection.
-	fr_listen_t			*listen;	//!< listener for this socket
+	fr_listen_t			*listen;	//!< master listener for this socket
+	fr_listen_t			*child;		//!< child listener for this socket
 	fr_io_client_t			*client;	//!< our local client (pending or connected).
 	fr_io_client_t			*parent;	//!< points to the parent client.
 	dl_instance_t   		*dl_inst;	//!< for submodule
 
 	bool				dead;		//!< roundabout way to get the network side to close a socket
 	bool				paused;		//!< event filter doesn't like resuming something that isn't paused
-	void				*app_io_instance; //!< as described
 	fr_event_list_t			*el;		//!< event list for this connection
 	fr_network_t			*nr;		//!< network for this connection
 } fr_io_connection_t;
@@ -539,25 +539,16 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		char src_buf[128], dst_buf[128];
 
 		/*
-		 *	Create the listener, based on our listener.
+		 *	Get the child listener.
 		 */
-		MEM(listen = connection->listen = talloc(connection, fr_listen_t));
-
-		/*
-		 *	Note that our instance is effectively 'const'.
-		 *
-		 *	i.e. we can't add things to it.  Instead, we have to
-		 *	put all variable data into the connection.
-		 */
+		MEM(listen = connection->child = talloc(connection, fr_listen_t));
 		memcpy(listen, inst->listen, sizeof(*listen));
 
 		/*
-		 *	Glue in the connection to the listener.
+		 *	Glue in the actual app_io
 		 */
-		rad_assert(listen->app_io == &fr_master_app_io);
-		listen->app_io_instance = connection;
-
-		connection->app_io_instance = dl_inst->data;
+		listen->app_io = inst->child->app_io;
+		listen->app_io_instance = dl_inst->data;
 
 		/*
 		 *	There isn't a need to re-parse the
@@ -576,14 +567,33 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 *	make that distinction with the current APIs.
 		 *	So, we just hack it...
 		 */
-		memcpy(connection->app_io_instance, inst->app_io_instance, inst->app_io->inst_size);
+		memcpy(connection->child->app_io_instance, inst->app_io_instance, inst->app_io->inst_size);
+
+		/*
+		 *	Create the listener, based on our listener.
+		 */
+		MEM(listen = connection->listen = talloc(connection, fr_listen_t));
+
+		/*
+		 *	Note that our instance is effectively 'const'.
+		 *
+		 *	i.e. we can't add things to it.  Instead, we have to
+		 *	put all variable data into the connection.
+		 */
+		memcpy(listen, inst->listen, sizeof(*listen));
+
+		/*
+		 *	Glue in the connection to the listener.
+		 */
+		rad_assert(listen->app_io == &fr_master_app_io);
+		listen->app_io_instance = connection;
 
 		/*
 		 *	Instantiate the child, and open the socket.
 		 */
 		rad_assert(inst->app_io->connection_set != NULL);
 
-		if (inst->app_io->connection_set(connection->app_io_instance, connection->address) < 0) {
+		if (inst->app_io->connection_set(connection->child->app_io_instance, connection->address) < 0) {
 			DEBUG("Failed setting connection for socket.");
 			talloc_free(dl_inst);
 			return NULL;
@@ -598,14 +608,13 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 			socklen_t salen;
 			struct sockaddr_storage src;
 
-			if (inst->app_io->open(connection->app_io_instance) < 0) {
+			if (inst->app_io->open(connection->child->app_io_instance) < 0) {
 				DEBUG("Failed opening connected socket.");
 				talloc_free(dl_inst);
 				return NULL;
 			}
-			
 
-			fd = inst->app_io->fd(connection->app_io_instance);
+			fd = inst->app_io->fd(connection->child->app_io_instance);
 
 			if (fr_ipaddr_to_sockaddr(&connection->address->src_ipaddr, connection->address->src_port, &src, &salen) < 0) {
 				DEBUG("Failed getting IP address");
@@ -624,7 +633,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		/*
 		 *	Set the new FD, and get the module to set it's connection name.
 		 */
-		if (inst->app_io->fd_set(connection->app_io_instance, fd) < 0) {
+		if (inst->app_io->fd_set(connection->child->app_io_instance, fd) < 0) {
 			DEBUG3("Failed setting FD to %s", inst->app_io->name);
 			close(fd);
 			return NULL;
@@ -639,7 +648,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 								 src_buf, connection->address->src_port,
 								 dst_buf, connection->address->dst_port);
 		} else {
-			connection->name = inst->app_io->get_name(connection->app_io_instance);
+			connection->name = inst->app_io->get_name(connection->child->app_io_instance);
 		}
 	}
 
@@ -704,7 +713,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
  *	but may make things simpler?
  */
 static void get_inst(void *instance, fr_io_instance_t **inst, fr_io_connection_t **connection,
-		     void **app_io_instance)
+		     fr_listen_t **child)
 {
 	int magic;
 
@@ -712,13 +721,13 @@ static void get_inst(void *instance, fr_io_instance_t **inst, fr_io_connection_t
 	if (magic == PR_MAIN_MAGIC) {
 		*inst = instance;
 		*connection = NULL;
-		if (app_io_instance) *app_io_instance = (*inst)->app_io_instance;
+		if (child) *child = (*inst)->child;
 
 	} else {
 		rad_assert(magic == PR_CONNECTION_MAGIC);
 		*connection = instance;
 		*inst = (*connection)->client ->inst;
-		if (app_io_instance) *app_io_instance = (*connection)->app_io_instance;
+		if (child) *child = (*connection)->child;
 	}
 }
 
@@ -917,10 +926,10 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	fr_io_connection_t my_connection, *connection;
 	fr_io_pending_packet_t *pending;
 	fr_io_track_t *track;
-	void *app_io_instance;
+	fr_listen_t *child;
 	int value, accept_fd = -1;
 
-	get_inst(instance, &inst, &connection, &app_io_instance);
+	get_inst(instance, &inst, &connection, &child);
 
 	track = NULL;
 
@@ -1023,7 +1032,7 @@ redo:
 		 *	must be the master socket.  Accept the new
 		 *	connection, and figure out src/dst IP/port.
 		 */
-		accept_fd = accept(inst->app_io->fd(app_io_instance),
+		accept_fd = accept(inst->app_io->fd(child->app_io_instance),
 				   (struct sockaddr *) &saremote, &salen);
 
 		/*
@@ -1084,7 +1093,7 @@ do_read:
 		 *		and run THAT through the dynamic client definition,
 		 *		instead of using RADIUS packets.
 		 */
-		packet_len = inst->app_io->read(app_io_instance, (void **) &local_address, &local_recv_time,
+		packet_len = inst->app_io->read(child->app_io_instance, (void **) &local_address, &local_recv_time,
 					  buffer, buffer_len, leftover, priority, is_dup);
 		if (packet_len <= 0) {
 			return packet_len;
@@ -1121,7 +1130,7 @@ do_read:
 
 			connection->paused = true;
 			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(connection->app_io_instance),
+						      inst->app_io->fd(child->app_io_instance),
 						      FR_EVENT_FILTER_IO, pause_read);
 		}
 	}
@@ -1557,17 +1566,17 @@ static int mod_open(void *instance)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
-	void *app_io_instance;
+	fr_listen_t *child;
 	int rcode;
 
-	get_inst(instance, &inst, &connection, &app_io_instance);
+	get_inst(instance, &inst, &connection, &child);
 
 	/*
 	 *	One connection can't open another one.
 	 */
 	rad_assert(connection == NULL);
 
-	rcode = inst->app_io->open(app_io_instance);
+	rcode = inst->app_io->open(child->app_io_instance);
 	if (rcode < 0) return rcode;
 
 	return rcode;
@@ -1583,14 +1592,14 @@ static int mod_fd(void const *const_instance)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
-	void *app_io_instance;
+	fr_listen_t *child;
 	void *instance;
 
 	memcpy(&instance, &const_instance, sizeof(const_instance)); /* const issues */
 
-	get_inst((void *) instance, &inst, &connection, &app_io_instance);
+	get_inst((void *) instance, &inst, &connection, &child);
 
-	return inst->app_io->fd(app_io_instance);
+	return inst->app_io->fd(child->app_io_instance);
 }
 
 /** Set the event list for a new socket
@@ -1603,9 +1612,8 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
-	void *app_io_instance;
 
-	get_inst(instance, &inst, &connection, &app_io_instance);
+	get_inst(instance, &inst, &connection, NULL);
 
 	/*
 	 *	We're not doing IO, so there are no timers for
@@ -1938,10 +1946,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 	fr_io_track_t *track = packet_ctx;
 	fr_io_client_t *client;
 	RADCLIENT *radclient;
-	void *app_io_instance;
+	fr_listen_t *child;
 	int packets;
 
-	get_inst(instance, &inst, &connection, &app_io_instance);
+	get_inst(instance, &inst, &connection, &child);
 
 	client = track->client;
 	packets = client->packets;
@@ -1993,7 +2001,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		 *	via the underlying transport write.
 		 */
 
-		packet_len = inst->app_io->write(app_io_instance, track, request_time,
+		packet_len = inst->app_io->write(child->app_io_instance, track, request_time,
 						 buffer, buffer_len, written);
 		if (packet_len > 0) {
 			rad_assert(buffer_len == (size_t) packet_len);
@@ -2205,7 +2213,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		 */
 		if (connection->paused) {
 			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(connection->app_io_instance),
+						      inst->app_io->fd(child->app_io_instance),
 						      FR_EVENT_FILTER_IO, resume_read);
 		}
 
@@ -2305,12 +2313,12 @@ static int mod_close(void *instance)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
-	void *app_io_instance;
+	fr_listen_t *child;
 	int rcode;
 
-	get_inst(instance, &inst, &connection, &app_io_instance);
+	get_inst(instance, &inst, &connection, &child);
 
-	rcode = inst->app_io->close(app_io_instance);
+	rcode = inst->app_io->close(child->app_io_instance);
 	if (rcode < 0) return rcode;
 
 	/*
@@ -2333,13 +2341,13 @@ static int mod_detach(void *instance)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
-	void *app_io_instance;
+	fr_listen_t *child;
 	int rcode;
 	fr_io_client_t *client;
 
-	get_inst(instance, &inst, &connection, &app_io_instance);
+	get_inst(instance, &inst, &connection, &child);
 
-	rcode = inst->app_io->detach(app_io_instance);
+	rcode = inst->app_io->detach(child->app_io_instance);
 	if (rcode < 0) return rcode;
 
 	/*
@@ -2600,7 +2608,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc,
 			size_t default_message_size, size_t num_messages)
 {
-	fr_listen_t	*listen;
+	fr_listen_t	*listen, *child;
 
 	/*
 	 *	Build the #fr_listen_t.  This describes the complete
@@ -2635,6 +2643,19 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	 */
 	listen->app_io = &fr_master_app_io;
 	listen->app_io_instance = io;
+
+	/*
+	 *	Create the child listener, so that it can later be
+	 *	passed to the app_io functions.
+	 */
+	child = io->child = talloc_zero(listen, fr_listen_t);
+	memcpy(child, listen, sizeof(*child));
+
+	/*
+	 *	Reset these fields to point to the actual data.
+	 */
+	child->app_io = io->app_io;
+	child->app_io_instance = io->app_io_instance;
 
 	/*
 	 *	Don't set the connection for the main socket.  It's not connected.
