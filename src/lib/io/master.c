@@ -598,7 +598,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 			socklen_t salen;
 			struct sockaddr_storage src;
 
-			if (inst->app_io->open(connection->app_io_instance, inst->app_io_instance) < 0) {
+			if (inst->app_io->open(connection->app_io_instance) < 0) {
 				DEBUG("Failed opening connected socket.");
 				talloc_free(dl_inst);
 				return NULL;
@@ -1549,12 +1549,11 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 /** Open a new listener
  *
  * @param[in] instance of the IO path.
- * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance, void const *master_instance)
+static int mod_open(void *instance)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
@@ -1568,9 +1567,7 @@ static int mod_open(void *instance, void const *master_instance)
 	 */
 	rad_assert(connection == NULL);
 
-	rad_assert(master_instance == inst->app_instance);
-
-	rcode = inst->app_io->open(app_io_instance, master_instance);
+	rcode = inst->app_io->open(app_io_instance);
 	if (rcode < 0) return rcode;
 
 	return rcode;
@@ -2639,7 +2636,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	/*
 	 *	Don't set the connection for the main socket.  It's not connected.
 	 */
-	if (io->app_io->open(io->app_io_instance, NULL) < 0) {
+	if (io->app_io->open(io->app_io_instance) < 0) {
 		cf_log_err(io->app_io_conf, "Failed opening %s interface", io->app_io->name);
 		talloc_free(listen);
 		return -1;

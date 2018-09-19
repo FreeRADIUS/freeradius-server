@@ -110,12 +110,11 @@ static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
 /** Open a detail listener
  *
  * @param[in] instance of the detail worker.
- * @param[in] master_instance the master configuration for this socket
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int mod_open(void *instance, UNUSED void const *master_instance)
+static int mod_open(void *instance)
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
 	int oflag;
@@ -384,7 +383,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	/*
 	 *	Open the detail.work file.
 	 */
-	if (listen->app_io->open(listen->app_io_instance, listen->app_io_instance) < 0) {
+	if (listen->app_io->open(listen->app_io_instance) < 0) {
 		ERROR("Failed opening %s", listen->app_io->name);
 		goto error;
 	}

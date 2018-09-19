@@ -80,12 +80,11 @@ typedef struct fr_channel_t fr_channel_t;
  * No data will be read from or written to the fd, except by the io_data callbacks here.
  *
  * @param[in] instance the instance carrying socket-specific information.
- * @param[in] master_instance the master configuration for this socket
  * @return
  *	- 0 on success
  *	- <0 on error
  */
-typedef int (*fr_io_open_t)(void *instance, void const *master_instance);
+typedef int (*fr_io_open_t)(void *instance);
 
 /** Return a selectable file descriptor for this I/O path
  *
