@@ -451,19 +451,19 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	listen->num_messages = inst->num_messages;
 
 	/*
+	 *	Open the file.
+	 */
+	if (inst->app_io->open(inst->app_io_instance, NULL) < 0) {
+		cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
+		talloc_free(listen);
+		return -1;
+	}
+
+	/*
 	 *	Testing: allow it to read a "detail.work" file
 	 *	directly.
 	 */
 	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") == 0) {
-		/*
-		 *	Open the file.
-		 */
-		if (inst->app_io->open(inst->app_io_instance, inst->app_io_instance) < 0) {
-			cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
-			talloc_free(listen);
-			return -1;
-		}
-
 		if (!fr_schedule_listen_add(sc, listen)) {
 			talloc_free(listen);
 			return -1;
@@ -471,15 +471,6 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 
 		inst->listen = listen;
 		return 0;
-	}
-
-	/*
-	 *	Open the file.
-	 */
-	if (inst->app_io->open(inst->app_io_instance, inst->app_io_instance) < 0) {
-		cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
-		talloc_free(listen);
-		return -1;
 	}
 
 	/*
