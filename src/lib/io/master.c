@@ -2646,11 +2646,6 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	}
 
 	/*
-	 *	The caller may need to add his own socket to the scheduler.
-	 */
-	if (!sc) return 0;
-
-	/*
 	 *	Add the socket to the scheduler, which might
 	 *	end up in a different thread.
 	 */
