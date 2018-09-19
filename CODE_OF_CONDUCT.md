@@ -1,7 +1,7 @@
 # Code of Conduct
 ## 1. Overview
 
-The goal of the FreeRADIUS project is to produce reliable, feature full software which benefits the
+The goal of the FreeRADIUS project is to produce reliable, feature-full software which benefits the
 open source community.
 
 The GitHub issue tracker and mailing lists have a strict code of conduct.
@@ -17,6 +17,10 @@ This code of conduct is simple to abide by, and is simple to enforce. Unlike oth
 it does not require participants to be explicitly "inclusive" or "accepting" of certain topics. It
 requires participants to be *blind* to non-technical subjects, as those subjects are explicitly off
 topic. The FreeRADIUS community is inclusive by virtue of not being exclusionary.
+
+If you believe that the implicit biases of community members may affect how your contributions are 
+evaluated, you are invited to anonymise your contributions.  You will not be penalised for use of
+pseudonyms or anonymised identities when creating/signing patches, or posting on the mailing list(s).
 
 ## 2. Expected Behaviour
 
