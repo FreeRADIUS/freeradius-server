@@ -554,7 +554,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		/*
 		 *	Glue in the connection to the listener.
 		 */
-		listen->app_io = &fr_master_app_io;
+		rad_assert(listen->app_io == &fr_master_app_io);
 		listen->app_io_instance = connection;
 
 		connection->app_io_instance = dl_inst->data;
