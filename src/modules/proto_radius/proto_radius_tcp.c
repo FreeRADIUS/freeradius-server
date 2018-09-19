@@ -360,8 +360,11 @@ static int mod_open(void *instance)
 }
 
 /** Get the file descriptor for this socket.
+ *
+ * @param[in] instance of the RADIUS TCP I/O path.
+ * @return the file descriptor
  */
-static int mod_fd(void const *instance, UNUSED void *thread_instance)
+static int mod_fd(void const *instance)
 {
 	proto_radius_tcp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_tcp_t);
 

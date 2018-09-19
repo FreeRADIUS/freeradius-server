@@ -605,7 +605,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 			}
 			
 
-			fd = inst->app_io->fd(connection->app_io_instance, NULL);
+			fd = inst->app_io->fd(connection->app_io_instance);
 
 			if (fr_ipaddr_to_sockaddr(&connection->address->src_ipaddr, connection->address->src_port, &src, &salen) < 0) {
 				DEBUG("Failed getting IP address");
@@ -1023,7 +1023,7 @@ redo:
 		 *	must be the master socket.  Accept the new
 		 *	connection, and figure out src/dst IP/port.
 		 */
-		accept_fd = accept(inst->app_io->fd(app_io_instance, NULL),
+		accept_fd = accept(inst->app_io->fd(app_io_instance),
 				   (struct sockaddr *) &saremote, &salen);
 
 		/*
@@ -1121,7 +1121,7 @@ do_read:
 
 			connection->paused = true;
 			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(connection->app_io_instance, NULL),
+						      inst->app_io->fd(connection->app_io_instance),
 						      FR_EVENT_FILTER_IO, pause_read);
 		}
 	}
@@ -1575,8 +1575,11 @@ static int mod_open(void *instance)
 
 
 /** Get the file descriptor for this socket.
+ *
+ * @param[in] const_instance of the IO path.
+ * @return the file descriptor
  */
-static int mod_fd(void const *const_instance, UNUSED void *thread_instance)
+static int mod_fd(void const *const_instance)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
@@ -1587,7 +1590,7 @@ static int mod_fd(void const *const_instance, UNUSED void *thread_instance)
 
 	get_inst((void *) instance, &inst, &connection, &app_io_instance);
 
-	return inst->app_io->fd(app_io_instance, NULL);
+	return inst->app_io->fd(app_io_instance);
 }
 
 /** Set the event list for a new socket
@@ -2202,7 +2205,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		 */
 		if (connection->paused) {
 			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(connection->app_io_instance, NULL),
+						      inst->app_io->fd(connection->app_io_instance),
 						      FR_EVENT_FILTER_IO, resume_read);
 		}
 
