@@ -546,11 +546,8 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 }
 
 /** Get the file descriptor for this socket.
- *
- * @param[in] instance of the DHCPV4 UDP I/O path.
- * @return the file descriptor
  */
-static int mod_fd(void const *instance)
+static int mod_fd(void const *instance, UNUSED void *thread_instance)
 {
 	proto_dhcpv4_udp_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_udp_t);
 

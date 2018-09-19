@@ -994,11 +994,8 @@ static int mod_open(void *instance, UNUSED void const *master_instance)
 }
 
 /** Get the file descriptor for this socket.
- *
- * @param[in] instance of the RADIUS UNIX I/O path.
- * @return the file descriptor
  */
-static int mod_fd(void const *instance)
+static int mod_fd(void const *instance, UNUSED void *thread_instance)
 {
 	proto_control_unix_t const *inst = talloc_get_type_abort_const(instance, proto_control_unix_t);
 

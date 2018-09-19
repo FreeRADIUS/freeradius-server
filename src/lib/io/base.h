@@ -91,9 +91,10 @@ typedef int (*fr_io_open_t)(void *instance, void const *master_instance);
  *
  * Return the file descriptor associated with this I/O path.
  *
- * @param[in] instance	containing the file descriptor (amongst other things).
+ * @param[in] instance		static module configuration
+ * @param[in] thread_instance	thread / socket-specific configuration
  */
-typedef int (*fr_io_get_fd_t)(void const *instance);
+typedef int (*fr_io_get_fd_t)(void const *instance, void *thread_instance);
 
 /** Set a selectable file descriptor for this I/O path
  *
