@@ -32,6 +32,9 @@ LOG_E_DAYS=1
 DATE_EXPR='^[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]$'
 DATE_EXPR_ARC='^[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]\.tar\.xz$'
 
+# Whether we should be verbose
+VERBOSE=0
+
 # What are we running on (so many date variations)
 PLATFORM=`uname`
 
@@ -48,7 +51,7 @@ function INFO
 
 function DEBUG
 {
-    if [ $verbose -gt 0 ]; then
+    if [ $VERBOSE -gt 0 ]; then
         echo "$@"
     fi
 }
@@ -85,8 +88,9 @@ function show_help
     INFO "  -a <dir>		Archive dir - defaults to \"${ARCHIVE_DIR}\"."
     INFO "  -r <days>		How long we archive files for - defaults to ${LOG_R_DAYS} day(s)."
     INFO "  -e <days>		How many days we delay compression - defaults to ${LOG_E_DAYS} day(s)."
+    INFO "  -v                  Print debugging information."
     INFO ""
-    INFO "Directory structure must be in the format: <prefix>/<yyyy><mm><dd>/*"
+    INFO "Directory structure must be in the format: <prefix>/<yyyy>-<mm>-<dd>/*"
 }
 
 while getopts "h?H:d:a:r:e:" opt; do
@@ -97,7 +101,7 @@ while getopts "h?H:d:a:r:e:" opt; do
         ;;
 
     v)
-        verbose=1
+        VERBOSE=1
         ;;
 
     d)
