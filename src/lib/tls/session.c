@@ -896,6 +896,8 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 
 #define CERT_ATTR_ADD(_attr, _attr_index, _value) tls_session_cert_attr_add(ctx, request, cursor, _attr, _attr_index, _value)
 
+	fr_cursor_tail(cursor);
+
 	attr_index = depth;
 	if (attr_index > 1) attr_index = 1;
 
