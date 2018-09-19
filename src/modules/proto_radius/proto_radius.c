@@ -262,15 +262,6 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 
 	transport_cs = cf_section_find(listen_cs, name, NULL);
 
-	/*
-	 *	Allocate an empty section if one doesn't exist
-	 *	this is so defaults get parsed.
-	 */
-	if (!transport_cs) {
-		transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
-		cf_section_add(listen_cs, transport_cs);
-	}
-
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
 	rad_assert(parent_inst);
 
@@ -280,6 +271,16 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 	 */
 	inst = talloc_get_type_abort(parent_inst->data, proto_radius_t);
 	inst->io.transport = name;
+
+	/*
+	 *	Allocate an empty section if one doesn't exist
+	 *	this is so defaults get parsed.
+	 */
+	if (!transport_cs) {
+		transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
+		cf_section_add(listen_cs, transport_cs);
+		inst->io.app_io_conf = transport_cs;
+	}
 
 	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
 }
@@ -567,68 +568,23 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
  *
  * @param[in] instance	Ctx data for this application.
  * @param[in] sc	to add our file descriptor to.
- * @param[in] conf	Listen section parsed to give us isntance.
+ * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
+static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf)
 {
 	proto_radius_t 	*inst = talloc_get_type_abort(instance, proto_radius_t);
-	fr_listen_t	*listen;
+
+	inst->io.app = &proto_radius;
+	inst->io.app_instance = instance;
 
 	/*
-	 *	Build the #fr_listen_t.  This describes the complete
-	 *	path data takes from the socket to the decoder and
-	 *	back again.
+	 *	io.app_io should already be set
 	 */
-	listen = talloc_zero(inst, fr_listen_t);
-
-	listen->app = &proto_radius;
-	listen->app_instance = instance;
-	listen->server_cs = inst->io.server_cs;
-
-	/*
-	 *	Set configurable parameters for message ring buffer.
-	 */
-	listen->default_message_size = inst->max_packet_size;
-	listen->num_messages = inst->num_messages;
-
-	/*
-	 *	Open the socket, and add it to the scheduler.
-	 */
-	if (inst->io.app_io) {
-		/*
-		 *	Set the listener to call our master trampoline function.
-		 */
-		listen->app_io = &fr_master_app_io;
-		listen->app_io_instance = inst;
-
-		/*
-		 *	Don't set the connection for the main socket.  It's not connected.
-		 */
-		if (inst->io.app_io->open(inst->io.app_io_instance, NULL) < 0) {
-			cf_log_err(conf, "Failed opening %s interface", inst->io.app_io->name);
-			talloc_free(listen);
-			return -1;
-		}
-
-		/*
-		 *	Add the socket to the scheduler, which might
-		 *	end up in a different thread.
-		 */
-		if (!fr_schedule_listen_add(sc, listen)) {
-			talloc_free(listen);
-			return -1;
-		}
-	} else {
-		rad_assert(!inst->io.dynamic_clients);
-	}
-
-	inst->io.listen = listen;	/* Probably won't need it, but doesn't hurt */
-	inst->io.sc = sc;
-
-	return 0;
+	return fr_master_io_listen(inst, &inst->io, sc,
+				   inst->max_packet_size, inst->num_messages);
 }
 
 static rlm_components_t code2component[FR_CODE_DO_NOT_RESPOND + 1] = {

@@ -57,6 +57,19 @@ typedef struct {
 } fr_io_track_t;
 
 
+/** The master IO instance
+ *
+ *  This structure is the instance data for the "master" IO handler.
+ *  The structure is exposed for simplicity right now.  It may be
+ *  made private in the future.
+ *
+ *  The fr_master_io_listen() should be used to create a listener from
+ *  this structure.
+ *
+ *  Note that most entries of this structure MUST be initialized
+ *  before fr_master_io_listen() is called.  That function only
+ *  creates the listener, and adds it to the scheduler.
+ */
 typedef struct fr_io_instance_t {
 	int				magic;				//!< sparkles and unicorns
 
@@ -92,10 +105,6 @@ typedef struct fr_io_instance_t {
 	void				*app_io_instance;		//!< Easy access to the app_io instance.
 	CONF_SECTION			*app_io_conf;			//!< Easy access to the app_io's config section.
 
-	fr_listen_t const		*listen;			//!< The listener structure which describes
-									///< the I/O path.
-	fr_schedule_t			*sc;				//!< the scheduler
-
 	int				ipproto;			//!< IP proto by number
 	char const			*transport;			//!< transport, typically name of IP proto
 
@@ -106,11 +115,16 @@ typedef struct fr_io_instance_t {
 	fr_trie_t const			*networks;     			//!< trie of allowed networks
 	fr_heap_t			*pending_clients;		//!< heap of pending clients
 	fr_heap_t			*alive_clients;			//!< heap of active clients
+
+	fr_listen_t const		*listen;			//!< The master IO path
+	fr_schedule_t			*sc;				//!< the scheduler
 } fr_io_instance_t;
 
 extern fr_app_io_t fr_master_app_io;
 
 fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_ipaddr_t *deny);
+int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc,
+			size_t default_message_size, size_t num_messages);
 
 #ifdef __cplusplus
 }

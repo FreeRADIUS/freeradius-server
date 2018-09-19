@@ -2597,6 +2597,71 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 	return trie;
 }
 
+int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc,
+			size_t default_message_size, size_t num_messages)
+{
+	fr_listen_t	*listen;
+
+	/*
+	 *	Build the #fr_listen_t.  This describes the complete
+	 *	path data takes from the socket to the decoder and
+	 *	back again.
+	 */
+	listen = talloc_zero(ctx, fr_listen_t);
+
+	listen->app = io->app;
+	listen->app_instance = io->app_instance;
+	listen->server_cs = io->server_cs;
+
+	/*
+	 *	Set configurable parameters for message ring buffer.
+	 */
+	listen->default_message_size = default_message_size;
+	listen->num_messages = num_messages;
+
+	io->listen = listen;
+	io->sc = sc;
+
+	/*
+	 *	No IO paths, so we don't initialize them.
+	 */
+	if (!io->app_io) {
+		rad_assert(!io->dynamic_clients);
+		return 0;
+	}
+
+	/*
+	 *	Set the listener to call our master trampoline function.
+	 */
+	listen->app_io = &fr_master_app_io;
+	listen->app_io_instance = io;
+
+	/*
+	 *	Don't set the connection for the main socket.  It's not connected.
+	 */
+	if (io->app_io->open(io->app_io_instance, NULL) < 0) {
+		cf_log_err(io->app_io_conf, "Failed opening %s interface", io->app_io->name);
+		talloc_free(listen);
+		return -1;
+	}
+
+	/*
+	 *	The caller may need to add his own socket to the scheduler.
+	 */
+	if (!sc) return 0;
+
+	/*
+	 *	Add the socket to the scheduler, which might
+	 *	end up in a different thread.
+	 */
+	if (!fr_schedule_listen_add(sc, listen)) {
+		talloc_free(listen);
+		return -1;
+	}
+
+	return 0;
+}
+
 
 fr_app_io_t fr_master_app_io = {
 	.magic			= RLM_MODULE_INIT,

@@ -447,63 +447,15 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
+static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf)
 {
-	fr_listen_t	*listen;
 	proto_vmps_t 	*inst = talloc_get_type_abort(instance, proto_vmps_t);
 
-	/*
-	 *	Build the #fr_listen_t.  This describes the complete
-	 *	path, data takes from the socket to the decoder and
-	 *	back again.
-	 */
-	listen = talloc_zero(inst, fr_listen_t);
+	inst->io.app = &proto_vmps;
+	inst->io.app_instance = instance;
 
-	listen->app = &proto_vmps;
-	listen->app_instance = instance;
-	listen->server_cs = inst->io.server_cs;
-
-	/*
-	 *	Set configurable parameters for message ring buffer.
-	 */
-	listen->default_message_size = inst->max_packet_size;
-	listen->num_messages = inst->num_messages;
-
-	/*
-	 *	Open the socket, and add it to the scheduler.
-	 */
-	if (inst->io.app_io) {
-		/*
-		 *	Set the listener to call our master trampoline function.
-		 */
-		listen->app_io = &fr_master_app_io;
-		listen->app_io_instance = inst;
-
-		/*
-		 *	Don't set the connection for the main socket.  It's not connected.
-		 */
-		if (inst->io.app_io->open(inst->io.app_io_instance, inst->io.app_io_instance) < 0) {
-			cf_log_err(conf, "Failed opening %s interface", inst->io.app_io->name);
-			talloc_free(listen);
-			return -1;
-		}
-
-		/*
-		 *	Add the socket to the scheduler, which might
-		 *	end up in a different thread.
-		 */
-		if (!fr_schedule_listen_add(sc, listen)) {
-			talloc_free(listen);
-			return -1;
-		}
-	} else {
-		rad_assert(!inst->io.dynamic_clients);
-	}
-
-	inst->io.listen = listen;	/* Probably won't need it, but doesn't hurt */
-	inst->io.sc = sc;
-
-	return 0;
+	return fr_master_io_listen(inst, &inst->io, sc,
+				   inst->max_packet_size, inst->num_messages);
 }
 
 /** Instantiate the application
