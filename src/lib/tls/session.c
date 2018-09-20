@@ -1068,7 +1068,11 @@ int tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 				ext = sk_X509_EXTENSION_value(ext_list, i);
 
 				obj = X509_EXTENSION_get_object(ext);
-				i2a_ASN1_OBJECT(out, obj);
+				if (i2a_ASN1_OBJECT(out, obj) <= 0) {
+					RPWDEBUG("Skipping X509 Extension (%i) conversion to attribute. "
+						 "Conversion from ASN1 failed...", i);
+					continue;
+				}
 
 				len = BIO_read(out, attribute + 16 , sizeof(attribute) - 16 - 1);
 				if (len <= 0) continue;
