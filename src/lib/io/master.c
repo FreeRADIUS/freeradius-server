@@ -2304,12 +2304,19 @@ static int mod_close(fr_listen_t *li)
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
-	int rcode;
 
 	get_inst(li->app_io_instance, &inst, &connection, &child);
 
-	rcode = inst->app_io->close(child);
-	if (rcode < 0) return rcode;
+	if (inst->app_io->close) {
+		int rcode;
+
+		rcode = inst->app_io->close(child);
+		if (rcode < 0) return rcode;
+	} else {
+		int fd = inst->app_io->fd(child);
+
+		if (fd >= 0) close(fd):
+	}
 
 	/*
 	 *	We allocated this, so we're responsible for closing

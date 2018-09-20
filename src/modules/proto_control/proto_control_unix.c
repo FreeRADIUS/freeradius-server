@@ -357,19 +357,6 @@ static ssize_t mod_write(void *instance, UNUSED void *packet_ctx, UNUSED fr_time
 }
 
 
-/** Close a UNIX listener for RADIUS
- *
- */
-static int mod_close(fr_listen_t *li)
-{
-	proto_control_unix_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
-
-	close(inst->sockfd);
-	inst->sockfd = -1;
-
-	return 0;
-}
-
 static int mod_connection_set(void *instance, fr_io_address_t *connection)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
@@ -1236,7 +1223,6 @@ fr_app_io_t proto_control_unix = {
 	.open			= mod_open,
 	.read			= mod_read,
 	.write			= mod_write,
-	.close			= mod_close,
 	.fd			= mod_fd,
 	.fd_set			= mod_fd_set,
 	.connection_set		= mod_connection_set,
