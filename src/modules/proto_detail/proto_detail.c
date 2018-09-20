@@ -454,7 +454,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	/*
 	 *	Open the file.
 	 */
-	if (inst->app_io->open(inst->app_io_instance) < 0) {
+	if (inst->app_io->open(listen) < 0) {
 		cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
 		talloc_free(listen);
 		return -1;

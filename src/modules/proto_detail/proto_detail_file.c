@@ -109,14 +109,10 @@ static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
 
 /** Open a detail listener
  *
- * @param[in] instance of the detail worker.
- * @return
- *	- <0 on error
- *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(fr_listen_t *listen)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_file_t *inst = talloc_get_type_abort(listen->app_io_instance, proto_detail_file_t);
 	int oflag;
 
 #ifdef O_EVTONLY

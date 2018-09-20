@@ -612,6 +612,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	mode_t			perm = 0;
 	struct stat		st;
 
+
 	size_t			len;
 
 	socklen_t		socklen;
@@ -943,14 +944,10 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 
 /** Open a UNIX listener for control sockets
  *
- * @param[in] instance of the I/O path.
- * @return
- *	- <0 on error
- *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(fr_listen_t *listen)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_t *inst = talloc_get_type_abort(listen->app_io_instance, proto_control_unix_t);
 
 	int				sockfd = 0;
 	CONF_ITEM			*ci;

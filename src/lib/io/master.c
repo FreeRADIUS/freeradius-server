@@ -611,7 +611,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 			socklen_t salen;
 			struct sockaddr_storage src;
 
-			if (inst->app_io->open(connection->child->app_io_instance) < 0) {
+			if (inst->app_io->open(connection->child) < 0) {
 				DEBUG("Failed opening connected socket.");
 				talloc_free(dl_inst);
 				return NULL;
@@ -1560,26 +1560,22 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 
 /** Open a new listener
  *
- * @param[in] instance of the IO path.
- * @return
- *	- <0 on error
- *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(fr_listen_t *listen)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
 	int rcode;
 
-	get_inst(instance, &inst, &connection, &child);
+	get_inst(listen->app_io_instance, &inst, &connection, &child);
 
 	/*
 	 *	One connection can't open another one.
 	 */
 	rad_assert(connection == NULL);
 
-	rcode = inst->app_io->open(child->app_io_instance);
+	rcode = inst->app_io->open(child);
 	if (rcode < 0) return rcode;
 
 	return rcode;
@@ -2660,7 +2656,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	/*
 	 *	Don't set the connection for the main socket.  It's not connected.
 	 */
-	if (io->app_io->open(io->app_io_instance) < 0) {
+	if (io->app_io->open(child) < 0) {
 		cf_log_err(io->app_io_conf, "Failed opening %s interface", io->app_io->name);
 		talloc_free(listen);
 		return -1;

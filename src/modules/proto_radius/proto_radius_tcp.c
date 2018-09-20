@@ -304,14 +304,10 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
 
 /** Open a TCP listener for RADIUS
  *
- * @param[in] instance of the I/O path.
- * @return
- *	- <0 on error
- *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(fr_listen_t *listener)
 {
-	proto_radius_tcp_t *inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
+	proto_radius_tcp_t *inst = talloc_get_type_abort(listener->app_io_instance, proto_radius_tcp_t);
 
 	int				sockfd = 0;
 	uint16_t			port = inst->port;

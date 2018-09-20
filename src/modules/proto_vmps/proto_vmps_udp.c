@@ -312,14 +312,10 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
 
 /** Open a UDP listener for VMPS
  *
- * @param[in] instance of the I/O path.
- * @return
- *	- <0 on error
- *	- 0 on success
  */
-static int mod_open(void *instance)
+static int mod_open(fr_listen_t *listen)
 {
-	proto_vmps_udp_t *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	proto_vmps_udp_t *inst = talloc_get_type_abort(listen->app_io_instance, proto_vmps_udp_t);
 
 	int				sockfd = 0;
 	uint16_t			port = inst->port;
