@@ -716,7 +716,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	rbtree_deletebydata(nr->sockets_by_num, s);
 
 	if (s->listen->app_io->close) {
-		s->listen->app_io->close(s->listen->app_io_instance);
+		s->listen->app_io->close(s->listen);
 	} else {
 		close(s->fd);
 	}
@@ -794,7 +794,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	app_io = s->listen->app_io;
 
 	rad_assert(app_io->fd);
-	s->fd = app_io->fd(s->listen->app_io_instance);
+	s->fd = app_io->fd(s->listen);
 	s->filter = FR_EVENT_FILTER_IO;
 
 	if (fr_event_fd_insert(nr, nr->el, s->fd,
@@ -865,7 +865,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el, nr);
 
 	rad_assert(app_io->fd);
-	s->fd = app_io->fd(s->listen->app_io_instance);
+	s->fd = app_io->fd(s->listen);
 	s->filter = FR_EVENT_FILTER_VNODE;
 
 	if (fr_event_filter_insert(nr, nr->el, s->fd, s->filter,
