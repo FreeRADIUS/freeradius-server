@@ -89,7 +89,7 @@ typedef int (*fr_app_priority_get_t)(void const *instance, uint8_t const *buffer
 
 /** Called by the network thread to pass an event list for the module to use for timer events
  */
-typedef void (*fr_app_event_list_set_t)(void *instance, fr_event_list_t *el, void *nr);
+typedef void (*fr_app_event_list_set_t)(fr_listen_t *li, fr_event_list_t *el, void *nr);
 
 /** Describes a new application (protocol)
  *

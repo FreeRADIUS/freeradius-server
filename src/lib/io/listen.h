@@ -23,7 +23,9 @@
  */
 typedef struct fr_listen fr_listen_t;
 struct fr_listen {
-	int			fd;			//!< file descriptor for this socket
+	int			fd;			//!< file descriptor for this socket - set by open
+	char const		*name;			//!< printable name for this socket - set by open
+
 	fr_app_io_t const	*app_io;		//!< I/O path functions.
 	void     		*app_io_instance;	//!< I/O path configuration context.
 	void			*thread_instance;	//!< thread / socket context

@@ -594,7 +594,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 */
 		rad_assert(inst->app_io->connection_set != NULL);
 
-		if (inst->app_io->connection_set(connection->child->app_io_instance, connection->address) < 0) {
+		if (inst->app_io->connection_set(connection->child, connection->address) < 0) {
 			DEBUG("Failed setting connection for socket.");
 			talloc_free(dl_inst);
 			return NULL;
@@ -655,7 +655,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 								 src_buf, connection->address->src_port,
 								 dst_buf, connection->address->dst_port);
 		} else {
-			connection->name = inst->app_io->get_name(connection->child->app_io_instance);
+			connection->name = inst->app_io->get_name(connection->child);
 		}
 
 	}
@@ -923,7 +923,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
  *
  *  The app_io->read does the transport-specific data read.
  */
-static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time_p,
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time_p,
 			uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
 	fr_io_instance_t *inst;
@@ -937,7 +937,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	fr_listen_t *child;
 	int value, accept_fd = -1;
 
-	get_inst(instance, &inst, &connection, &child);
+	get_inst(li->app_io_instance, &inst, &connection, &child);
 
 	track = NULL;
 
@@ -1101,7 +1101,7 @@ do_read:
 		 *		and run THAT through the dynamic client definition,
 		 *		instead of using RADIUS packets.
 		 */
-		packet_len = inst->app_io->read(child->app_io_instance, (void **) &local_address, &local_recv_time,
+		packet_len = inst->app_io->read(child, (void **) &local_address, &local_recv_time,
 					  buffer, buffer_len, leftover, priority, is_dup);
 		if (packet_len <= 0) {
 			return packet_len;
@@ -1185,7 +1185,7 @@ do_read:
 		 */
 		rad_assert(!connection);
 
-		radclient = inst->app_io->client_find(inst->app_io_instance, &address.src_ipaddr, inst->ipproto);
+		radclient = inst->app_io->client_find(inst->child, &address.src_ipaddr, inst->ipproto);
 		if (radclient) {
 			state = PR_CLIENT_STATIC;
 
@@ -1512,7 +1512,7 @@ have_client:
  *
  *  Always called in the context of the network.
  */
-static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_time_t recv_time)
+static int mod_inject(fr_listen_t *li, uint8_t *buffer, size_t buffer_len, fr_time_t recv_time)
 {
 	fr_io_instance_t	*inst;
 	int		priority;
@@ -1521,7 +1521,7 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 	fr_io_pending_packet_t *pending;
 	fr_io_track_t *track;
 
-	get_inst(instance, &inst, &connection, NULL);
+	get_inst(li->app_io_instance, &inst, &connection, NULL);
 
 	if (!connection) {
 		DEBUG2("Received injected packet for an unconnected socket.");
@@ -1591,16 +1591,16 @@ static int mod_open(fr_listen_t *li)
 
 /** Set the event list for a new socket
  *
- * @param[in] instance of the IO path.
+ * @param[in] li the listener
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
+static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 
-	get_inst(instance, &inst, &connection, NULL);
+	get_inst(li->app_io_instance, &inst, &connection, NULL);
 
 	/*
 	 *	We're not doing IO, so there are no timers for
@@ -1925,7 +1925,7 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	}
 }
 
-static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_time,
+static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
 	fr_io_instance_t *inst;
@@ -1936,7 +1936,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 	fr_listen_t *child;
 	int packets;
 
-	get_inst(instance, &inst, &connection, &child);
+	get_inst(li->app_io_instance, &inst, &connection, &child);
 
 	client = track->client;
 	packets = client->packets;
@@ -1988,7 +1988,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		 *	via the underlying transport write.
 		 */
 
-		packet_len = inst->app_io->write(child->app_io_instance, track, request_time,
+		packet_len = inst->app_io->write(child, track, request_time,
 						 buffer, buffer_len, written);
 		if (packet_len > 0) {
 			rad_assert(buffer_len == (size_t) packet_len);
@@ -2390,13 +2390,13 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 }
 
 
-static char const *mod_name(void *instance)
+static char const *mod_name(fr_listen_t *li)
 {
-	fr_io_instance_t		*inst = instance;
+	fr_io_instance_t	*inst = li->thread_instance;
 
 	if (!inst->app_io->get_name) return inst->app_io->name;
 
-	return inst->app_io->get_name(inst->app_io_instance);
+	return inst->app_io->get_name(inst->child);
 }
 
 

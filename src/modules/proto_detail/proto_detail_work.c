@@ -136,9 +136,9 @@ static fr_event_update_t resume_read[] = {
 	{ 0 }
 };
 
-static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_detail_work_t		*inst = talloc_get_type_abort(instance, proto_detail_work_t);
+	proto_detail_work_t		*inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
 
 	ssize_t				data_size;
 	size_t				packet_len;
@@ -467,7 +467,7 @@ redo:
 	/*
 	 *	Allocate the tracking entry.
 	 */
-	track = talloc_zero(instance, fr_detail_entry_t);
+	track = talloc_zero(inst, fr_detail_entry_t);
 	track->timestamp = fr_time();
 	track->id = inst->count++;
 	track->rt = inst->irt;
@@ -553,10 +553,10 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 #endif
 }
 
-static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_time,
+static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
-	proto_detail_work_t		*inst = talloc_get_type_abort(instance, proto_detail_work_t);
+	proto_detail_work_t		*inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
 	fr_detail_entry_t		*track = packet_ctx;
 
 	if (buffer_len < 1) return -1;
@@ -772,13 +772,13 @@ static void mod_revoke(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 
 /** Set the event list for a new IO instance
  *
- * @param[in] instance of the detail worker
+ * @param[in] li the listener
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
+static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
+	proto_detail_work_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
 
 #ifdef NOTE_REVOKE
 	fr_event_vnode_func_t funcs;
@@ -796,9 +796,9 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 }
 
 
-static char const *mod_name(void *instance)
+static char const *mod_name(fr_listen_t *li)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
+	proto_detail_work_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
 
 	return inst->name;
 }

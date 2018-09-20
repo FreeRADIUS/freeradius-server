@@ -151,10 +151,10 @@ static SINT write_misc(void *instance, char const *buffer, INT buffer_size)
 /*
  *	Run a command.
  */
-static ssize_t mod_read_command(void *instance, UNUSED void **packet_ctx, UNUSED fr_time_t **recv_time, uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup
+static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t **recv_time, uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup
 )
 {
-	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_t		*inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
 	uint32_t			status;
 	uint8_t				*cmd = buffer + sizeof(*hdr);
@@ -232,10 +232,10 @@ done:
 /*
  *	Process an initial connection request.
  */
-static ssize_t mod_read_init(void *instance, UNUSED void **packet_ctx, UNUSED fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup
+static ssize_t mod_read_init(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup
 )
 {
-	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_t		*inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
 	uint32_t			magic;
 
@@ -274,9 +274,9 @@ static ssize_t mod_read_init(void *instance, UNUSED void **packet_ctx, UNUSED fr
 	return 0;
 }
 
-static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
-	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_t		*inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
 	ssize_t				data_size;
 
 	fr_time_t			*recv_time_p;
@@ -325,14 +325,14 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	/*
 	 *	Run the state machine to process the rest of the packet.
 	 */
-	return inst->read(instance, packet_ctx, recv_time, buffer, (size_t) data_size, leftover, priority, is_dup);
+	return inst->read(li, packet_ctx, recv_time, buffer, (size_t) data_size, leftover, priority, is_dup);
 }
 
 
-static ssize_t mod_write(void *instance, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
+static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
-	proto_control_unix_t		*inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_t		*inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
 	ssize_t				data_size;
 
 	/*
@@ -357,9 +357,9 @@ static ssize_t mod_write(void *instance, UNUSED void *packet_ctx, UNUSED fr_time
 }
 
 
-static int mod_connection_set(void *instance, fr_io_address_t *connection)
+static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
 
 	inst->connection = connection;
 
@@ -1110,9 +1110,9 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static char const *mod_name(void *instance)
+static char const *mod_name(fr_listen_t *li)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
 
 	return inst->name;
 }
@@ -1194,9 +1194,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(void *instance, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
+static RADCLIENT *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
 {
-	proto_control_unix_t	*inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_t	*inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
 
 	return &inst->radclient;
 }

@@ -450,7 +450,7 @@ next_message:
 	 *	network side knows that it needs to close the
 	 *	connection.
 	 */
-	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, &recv_time,
+	data_size = s->listen->app_io->read(s->listen, &cd->packet_ctx, &recv_time,
 					    cd->m.data, cd->m.rb_size, &s->leftover, &cd->priority, &cd->request.is_dup);
 	if (data_size == 0) {
 		/*
@@ -564,7 +564,7 @@ static void fr_network_vnode_extend(UNUSED fr_event_list_t *el, int sockfd, int 
 	 *	Tell the IO handler that something has happened to the
 	 *	file.
 	 */
-	s->listen->app_io->vnode(s->listen->app_io_instance, fflags);
+	s->listen->app_io->vnode(s->listen, fflags);
 }
 
 
@@ -582,7 +582,7 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	fr_network_socket_t *s = ctx;
 
 	if (s->listen->app_io->error) {
-		s->listen->app_io->error(s->listen->app_io_instance);
+		s->listen->app_io->error(s->listen);
 	}
 
 	fr_network_socket_dead(s->nr, s);
@@ -625,9 +625,9 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		rad_assert(li == cd->listen);
 		rad_assert(cd->m.status == FR_MESSAGE_LOCALIZED);
 
-		rcode = li->app_io->write(li->app_io_instance, cd->packet_ctx,
-					      cd->reply.request_time,
-					      cd->m.data, cd->m.data_size, 0);
+		rcode = li->app_io->write(li, cd->packet_ctx,
+					  cd->reply.request_time,
+					  cd->m.data, cd->m.data_size, 0);
 		if (rcode < 0) {
 
 			/*
@@ -803,7 +803,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 		return;
 	}
 
-	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el, nr);
+	if (app_io->event_list_set) app_io->event_list_set(s->listen, nr->el, nr);
 
 	(void) rbtree_insert(nr->sockets, s);
 	(void) rbtree_insert(nr->sockets_by_num, s);
@@ -858,7 +858,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 
 	app_io = s->listen->app_io;
 
-	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el, nr);
+	if (app_io->event_list_set) app_io->event_list_set(s->listen, nr->el, nr);
 
 	s->filter = FR_EVENT_FILTER_VNODE;
 
@@ -951,7 +951,7 @@ static void fr_network_inject_callback(void *ctx, void const *data, size_t data_
 	 *	Inject the packet, and then read it back from the
 	 *	network.
 	 */
-	if (s->listen->app_io->inject(s->listen->app_io_instance, my_inject.packet, my_inject.packet_len, my_inject.recv_time) == 0) {
+	if (s->listen->app_io->inject(s->listen, my_inject.packet, my_inject.packet_len, my_inject.recv_time) == 0) {
 		fr_network_read(nr->el, s->listen->fd, 0, s);
 	}
 
@@ -1237,9 +1237,9 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 *	The write function is responsible for ensuring
 		 *	that NAKs are not written to the network.
 		 */
-		rcode = li->app_io->write(li->app_io_instance, cd->packet_ctx,
-					      cd->reply.request_time,
-					      cd->m.data, cd->m.data_size, 0);
+		rcode = li->app_io->write(li, cd->packet_ctx,
+					  cd->reply.request_time,
+					  cd->m.data, cd->m.data_size, 0);
 		if (rcode < 0) {
 			s->pending = 0;
 
@@ -1280,7 +1280,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			PERROR("Failed writing to socket %d", s->listen->fd);
 		error:
 			fr_message_done(&cd->m);
-			if (li->app_io->error) li->app_io->error(li->app_io_instance);
+			if (li->app_io->error) li->app_io->error(li);
 
 			fr_network_socket_dead(nr, s);
 			continue;
@@ -1520,7 +1520,7 @@ static int socket_list(void *ctx, void *data)
 		return 0;
 	}
 
-	fprintf(fp, "%d\t%s\n", s->number, s->listen->app_io->get_name(s->listen->app_io_instance));
+	fprintf(fp, "%d\t%s\n", s->number, s->listen->app_io->get_name(s->listen));
 	return 0;
 }
 

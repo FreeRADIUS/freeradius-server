@@ -107,9 +107,9 @@ static const CONF_PARSER udp_listen_config[] = {
 };
 
 
-static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_radius_udp_t);
 	fr_io_address_t			*address, **address_p;
 
 	int				flags;
@@ -199,10 +199,10 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 }
 
 
-static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t request_time,
+static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
-	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_radius_udp_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	fr_io_address_t			*address = track->address;
 
@@ -274,9 +274,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t requ
 }
 
 
-static int mod_connection_set(void *instance, fr_io_address_t *connection)
+static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
 {
-	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_radius_udp_t);
 
 	inst->connection = connection;
 	return 0;
@@ -410,9 +410,9 @@ static int mod_compare(UNUSED void const *instance, void const *one, void const 
 }
 
 
-static char const *mod_name(void *instance)
+static char const *mod_name(fr_listen_t *li)
 {
-	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_radius_udp_t);
 
 	return inst->name;
 }
@@ -511,9 +511,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(void *instance, fr_ipaddr_t const *ipaddr, int ipproto)
+static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
-	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t	*inst = talloc_get_type_abort(li->thread_instance, proto_radius_udp_t);
 	RADCLIENT		*client;
 
 	/*

@@ -102,9 +102,9 @@ static const CONF_PARSER tcp_listen_config[] = {
 };
 
 
-static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_radius_tcp_t		*inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
+	proto_radius_tcp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_radius_tcp_t);
 	ssize_t				data_size;
 	size_t				packet_len;
 	decode_fail_t			reason;
@@ -205,10 +205,10 @@ static ssize_t mod_read(void *instance, UNUSED void **packet_ctx, fr_time_t **re
 }
 
 
-static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t request_time,
+static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
-	proto_radius_tcp_t		*inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
+	proto_radius_tcp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	ssize_t				data_size;
 
@@ -266,9 +266,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t requ
 }
 
 
-static int mod_connection_set(void *instance, fr_io_address_t *connection)
+static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
 {
-	proto_radius_tcp_t *inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
+	proto_radius_tcp_t *inst = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_t);
 
 	inst->connection = connection;
 	return 0;
@@ -375,9 +375,9 @@ static int mod_compare(UNUSED void const *instance, void const *one, void const 
 }
 
 
-static char const *mod_name(void *instance)
+static char const *mod_name(fr_listen_t *li)
 {
-	proto_radius_tcp_t *inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
+	proto_radius_tcp_t *inst = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_t);
 
 	return inst->name;
 }
@@ -579,7 +579,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipaddr, int ipproto)
+static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	return client_find(NULL, ipaddr, ipproto);
 }

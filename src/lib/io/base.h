@@ -157,7 +157,7 @@ typedef ssize_t (*fr_io_encode_t)(void const *instance, REQUEST *request, uint8_
  *  take the appropriate action.  e.g. for RADIUS, mark a request as
  *  "do not respond", even if duplicates come in.
  *
- * @param[in] instance		the context for this function.
+ * @param[in] li		the listener for this socket
  * @param[out] packet_ctx	the  packet_ctx struct containing request specific data.
  * @param[in] packet		the packet to NAK
  * @param[in] packet_len	length of the packet to NAK
@@ -165,7 +165,7 @@ typedef ssize_t (*fr_io_encode_t)(void const *instance, REQUEST *request, uint8_
  * @param[in] reply_len		length of the buffer where the reply should be placed.
  * @return length of the data in the reply buffer.
  */
-typedef size_t (*fr_io_nak_t)(void const *instance, void *packet_ctx, uint8_t *const packet, size_t packet_len,
+typedef size_t (*fr_io_nak_t)(fr_listen_t *li, void *packet_ctx, uint8_t *const packet, size_t packet_len,
 			      uint8_t *reply, size_t reply_len);
 
 /** Read from a socket.
@@ -183,7 +183,7 @@ typedef size_t (*fr_io_nak_t)(void const *instance, void *packet_ctx, uint8_t *c
  * in the buffer.  The value in 'leftover'' will be the same as from
  * the previous call, so the reader does not need to track it.
  *
- * @param[in] instance		the context for this function
+ * @param[in] li		the listener for this socket
  * @param[out] packet_ctx	Where to write a newly allocated packet_ctx struct containing request specific data.
  * @param[in,out] recv_time	A pointer to a time when the packet was received
  * @param[in,out] buffer	the buffer where the raw packet will be written to (or read from)
@@ -195,7 +195,7 @@ typedef size_t (*fr_io_nak_t)(void const *instance, void *packet_ctx, uint8_t *c
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
-typedef ssize_t (*fr_io_data_read_t)(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *dup);
+typedef ssize_t (*fr_io_data_read_t)(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *dup);
 
 /** Write a socket.
  *
@@ -227,7 +227,7 @@ typedef ssize_t (*fr_io_data_read_t)(void *instance, void **packet_ctx, fr_time_
  *  *packets*, not raw streams of bytes.  This API allows the "buffer"
  *  parameter to always contain a full packet.
  *
- * @param[in] instance		the context for this function
+ * @param[in] li		the listener for this socket
  * @param[in] packet_ctx	Request specific data.
  * @param[in] request_time	when the original request was received
  * @param[in] buffer		the buffer where the raw packet will be written from
@@ -237,7 +237,7 @@ typedef ssize_t (*fr_io_data_read_t)(void *instance, void **packet_ctx, fr_time_
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
-typedef ssize_t (*fr_io_data_write_t)(void *instance, void *packet_ctx, fr_time_t request_time,
+typedef ssize_t (*fr_io_data_write_t)(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
 				      uint8_t *buffer, size_t buffer_len, size_t written);
 
 /** Inject data into a socket.
@@ -260,7 +260,7 @@ typedef ssize_t (*fr_io_data_write_t)(void *instance, void *packet_ctx, fr_time_
  *  and the pointer becomes invalid.  Subsequent access to the buffer
  *  will result in crashes.
  *
- * @param[in] instance		the context for this function
+ * @param[in] li		the listener for this socket
  * @param[in] buffer		the buffer where the raw packet to be injected
  * @param[in] buffer_len	the length of the buffer
  * @param[in] recv_time		when the packet was received
@@ -268,14 +268,14 @@ typedef ssize_t (*fr_io_data_write_t)(void *instance, void *packet_ctx, fr_time_
  *	- <0 on error
  *	- 0 on success
  */
-typedef int (*fr_io_data_inject_t)(void *instance,uint8_t *buffer, size_t buffer_len, fr_time_t recv_time);
+typedef int (*fr_io_data_inject_t)(fr_listen_t *li,uint8_t *buffer, size_t buffer_len, fr_time_t recv_time);
 
 /** Tell the IO handler that a VNODE has changed
  *
- * @param[in] instance		the context for this function
+ * @param[in] li		the listener for this socket
  * @param[in] fflags		from kevent.  Usually just NOTE_EXEND
  */
-typedef void (*fr_io_data_vnode_t)(void *instance, uint32_t fflags);
+typedef void (*fr_io_data_vnode_t)(fr_listen_t *li, uint32_t fflags);
 
 /** Compare two packets for storing in a duplicate detection tree.
  *
@@ -310,12 +310,12 @@ typedef int (*fr_io_data_cmp_t)(void const *instance, void const *packet1, void 
  *  before "close".  On normal finish, the "close" function will be
  *  called.
  *
- * @param[in] instance		the context for this function
+ * @param[in] li		the listener for this socket
  * @return
  *	- 0 on success
  *	- <0 on error
  */
-typedef int (*fr_io_signal_t)(void const *instance);
+typedef int (*fr_io_signal_t)(fr_listen_t *li);
 
 /**  Handle a close on the socket.
  *
@@ -353,15 +353,15 @@ typedef struct {
 	RADCLIENT const			*radclient;		//!< old-style client definition
 } fr_io_address_t;
 
-typedef int (*fr_io_connection_set_t)(void *instance, fr_io_address_t *connection);
+typedef int (*fr_io_connection_set_t)(fr_listen_t *li, fr_io_address_t *connection);
 
 typedef struct radclient RADCLIENT;
 
-typedef RADCLIENT *(*fr_io_client_find_t)(void *instance, fr_ipaddr_t const *ipaddr, int ipproto);
+typedef RADCLIENT *(*fr_io_client_find_t)(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto);
 
 typedef void (*fr_io_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
 
-typedef char const *(*fr_io_name_t)(void *instance);
+typedef char const *(*fr_io_name_t)(fr_listen_t *li);
 
 
 #ifdef __cplusplus

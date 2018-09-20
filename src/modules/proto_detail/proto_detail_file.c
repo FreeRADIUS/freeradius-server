@@ -83,17 +83,17 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	return inst->parent->work_io->decode(inst->parent->work_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_time,
+static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
-	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_file_t);
+	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(li->thread_instance, proto_detail_file_t);
 
 	return inst->parent->work_io->write(inst->parent->work_io_instance, packet_ctx, request_time, buffer, buffer_len, written);
 }
 
-static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
+static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_file_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
 	bool has_worker = false;
 
 	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
@@ -547,13 +547,13 @@ delay:
 
 /** Set the event list for a new IO instance
  *
- * @param[in] instance of the detail worker
+ * @param[in] li the listener
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
-static void mod_event_list_set(void *instance, fr_event_list_t *el, UNUSED void *nr)
+static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void *nr)
 {
-	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_file_t	*inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
 #ifdef __linux__
 	struct timeval when;
 #endif
@@ -594,9 +594,9 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, UNUSED void 
 }
 
 
-static char const *mod_name(void *instance)
+static char const *mod_name(fr_listen_t *li)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_file_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
 
 	return inst->name;
 }

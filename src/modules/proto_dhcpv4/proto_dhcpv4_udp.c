@@ -127,9 +127,9 @@ fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
 	{ NULL }
 };
 
-static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
 	fr_io_address_t			*address, **address_p;
 
 	int				flags;
@@ -213,10 +213,10 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 }
 
 
-static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t request_time,
+static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
-	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	fr_io_address_t			address;
 
@@ -435,9 +435,9 @@ send_reply:
 }
 
 
-static int mod_connection_set(void *instance, fr_io_address_t *connection)
+static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
 {
-	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
 
 	inst->connection = connection;
 	return 0;
@@ -540,9 +540,9 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 }
 
 
-static char const *mod_name(void *instance)
+static char const *mod_name(fr_listen_t *li)
 {
-	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
 
 	return inst->name;
 }
@@ -648,7 +648,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 // @todo - allow for "wildcard" clients, which allow anything
 // and then rely on "networks" to filter source IPs...
 // which means we probably want to filter on "networks" even if there are no dynamic clients
-static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipaddr, int ipproto)
+static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	return client_find(NULL, ipaddr, ipproto);
 }
