@@ -369,6 +369,7 @@ static int mod_close(fr_listen_t *li)
 
 	if (inst->stdout) fclose(inst->stdout);
 	if (inst->stderr) fclose(inst->stderr);
+	if (inst->misc) fclose(inst->misc);
 
 	return 0;
 }
