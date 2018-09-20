@@ -248,7 +248,7 @@ static int fr_dict_enum_from_name_number(fr_dict_attr_t const *da, FR_NAME_NUMBE
 
 /** Describe the socket we opened to the LDAP server
  *
- * @param[in] li	abstracting the connection to the server.
+ * @param[in] listen	abstracting the connection to the server.
  * @param[out] buffer	Where to write text describing the socket.
  * @param[in] bufsize	the length of data written to buffe.r
  * @return 1.
@@ -475,7 +475,7 @@ static void request_queued(REQUEST *request, fr_state_signal_t action)
  * Sets various fields in the request->packet with information from the file descriptor
  * we received from libldap.
  *
- * @param[in] li	The common listener encapsulating the libldap fd.
+ * @param[in] listen	The common listener encapsulating the libldap fd.
  * @param[in] inst	of the proto_ldap_sync module.
  * @param[in] sync_id 	the unique identifier of the sync.
  * @return
@@ -796,7 +796,7 @@ static RADCLIENT *proto_ldap_fake_client_alloc(proto_ldap_inst_t *inst)
  *
  * @param[in] ctx	to allocate cookie buffer in.
  * @param[out] cookie	Where to write the cookie we loaded.
- * @param[in] li	structure encapsulating the LDAP
+ * @param[in] listen	structure encapsulating the LDAP
  * @param[in] config	of the sync we're loading the cookie for.
  * @return
  *	- -1 on failure.
@@ -887,7 +887,7 @@ finish:
  *	circumstances.  This needs to be fixed, but is waiting on v4.0.0
  *	re-architecture.
  *
- * @param[in] li	encapsulating the libldap socket.
+ * @param[in] listen	encapsulating the libldap socket.
  * @return
  *	- 1 on success.
  *	- 0 on failure.
@@ -952,7 +952,7 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
  * @note This is performed synchronously.
  *
  * @param[in] cs	specifying the listener configuration.
- * @param[in] li	structure encapsulating the libldap socket.
+ * @param[in] listen	structure encapsulating the libldap socket.
  * @return
  *	- 0 on success.
  *	- -1 on error.
@@ -1074,7 +1074,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 /** Parse socket configuration
  *
  * @param[in] cs	specifying the listener configuration.
- * @param[in] li	structure encapsulating the libldap socket.
+ * @param[in] listen	structure encapsulating the libldap socket.
  * @return
  *	- 0 on success.
  *	- -1 on error.
@@ -1197,7 +1197,7 @@ static int ldap_compile_section(CONF_SECTION *server_cs, char const *name1, char
 /** Compile the various recv/load/store sections
  *
  * @param[in] server_cs		The virtual server containing the sections to compile.
- * @param[in] li_cs		The listen config section.
+ * @param[in] listen_cs		The listen config section.
  */
 static int proto_ldap_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
 {
