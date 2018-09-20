@@ -45,7 +45,7 @@ RCSIDH(lua_h, "$Id$")
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct rlm_lua {
+typedef struct {
 	lua_State	*interpreter;		//!< Interpreter used for single threaded mode, and environment tests.
 	bool 		threads;		//!< Whether to create new interpreters on a per-instance/per-thread
 						//!< basis, or use a single mutex protected interpreter.
@@ -81,9 +81,13 @@ typedef struct rlm_lua {
 	const char	*func_xlat;		//!< Name of function to be called for string expansions.
 } rlm_lua_t;
 
+typedef struct {
+	lua_State	*interpreter;		//!< Thread specific interpreter.
+} rlm_lua_thread_t;
+
 /* lua.c */
 int rlm_lua_init(lua_State **out, rlm_lua_t const *instance);
-int do_lua(rlm_lua_t const *inst, REQUEST *request, char const *funcname);
+int do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname);
 bool rlm_lua_isjit(lua_State *L);
 char const *rlm_lua_version(lua_State *L);
 

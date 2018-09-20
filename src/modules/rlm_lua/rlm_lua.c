@@ -42,7 +42,6 @@ RCSID("$Id$")
  */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_lua_t, module), NULL},
-	{ FR_CONF_OFFSET("threads", FR_TYPE_BOOL, rlm_lua_t, threads), .dflt = "no"},
 	{ FR_CONF_OFFSET("func_instantiate", FR_TYPE_STRING, rlm_lua_t, func_instantiate), NULL},
 	{ FR_CONF_OFFSET("func_detach", FR_TYPE_STRING, rlm_lua_t, func_detach), NULL},
 	{ FR_CONF_OFFSET("func_authorize", FR_TYPE_STRING, rlm_lua_t, func_authorize), NULL},
@@ -66,87 +65,13 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/** Destroy the interpreter when it's associated worker exits
- *
- * @param ctx The interpreter to destroy.
- */
-static void _tls_interp_destroy(void *ctx)
-{
-	lua_State **marker = talloc_get_type_abort(ctx, lua_State *);
-	rlm_lua_t *inst;
-
-	/*
-	 *	ctx is a pointer to a Lua interpreter.
-	 *	So that we don't have to have a special struct to pass around the instance this
-	 *	interpreter belongs to, we use some talloc magic to find it's parent context
-	 *	which is hopefully an rlm_lua_t.
-	 *
-	 *	We then re-use the mutex in the rlm_lua_t to protect the parent context whilst
-	 *	we free this context, which should in turn call a destructor which will
-	 *	call lua_close and free the actual interpreter.
-	 */
-	inst = talloc_find_parent_bytype(marker, rlm_lua_t);
-	rad_assert(inst != NULL);
-	pthread_mutex_lock(inst->mutex);
-	talloc_free(marker);
-	pthread_mutex_unlock(inst->mutex);
-}
-
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
-{
-	rlm_lua_t *inst = instance;
-
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
-	}
-
-#ifdef HAVE_PTHREAD_H
-	inst->mutex = talloc(inst, pthread_mutex_t);
-	pthread_mutex_init(inst->mutex, NULL);	/* Used in both threaded and non-threaded modes */
-
-	if (inst->threads) {
-		int rcode;
-
-		rcode = pthread_key_create(&inst->key, _tls_interp_destroy);
-		if (rcode != 0) {
-			ERROR("Error creating pthread key for lua interpreter: %s", fr_syserror(rcode));
-			return -1;
-		}
-	}
-#endif
-	if (rlm_lua_init(&inst->interpreter, inst) < 0) {
-		return -1;
-	}
-
-	inst->jit = rlm_lua_isjit(inst->interpreter);
-	if (!inst->jit) {
-		WARN("Using standard Lua interpreter, performance will be suboptimal");
-	}
-
-	DEBUG("rlm_lua (%s): Using %s interpreter", inst->xlat_name, rlm_lua_version(inst->interpreter));
-
-	return 0;
-}
-
-static int mod_detach(void *instance)
-{
-	rlm_lua_t *inst = instance;
-
-	if (inst->key) {
-		pthread_key_delete(inst->key);
-	}
-
-	return 0;
-}
-
 #define DO_LUA(_s)\
-static rlm_rcode_t mod_##_s(void *instance, UNUSED void *thread, REQUEST *request) {\
+static rlm_rcode_t mod_##_s(void *instance, void *thread, REQUEST *request) {\
 	rlm_lua_t const *inst = instance;\
 	if (!inst->func_##_s) {\
 		return RLM_MODULE_NOOP;\
 	}\
-	if (do_lua(inst, request, inst->func_##_s) < 0) {\
+	if (do_lua(inst, thread, request, inst->func_##_s) < 0) {\
 		return RLM_MODULE_FAIL;\
 	}\
 	return RLM_MODULE_OK;\
@@ -162,6 +87,70 @@ DO_LUA(post_auth)
 DO_LUA(recv_coa)
 DO_LUA(send_coa)
 
+/** Free any thread specific interpreters
+ *
+ */
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_lua_thread_t *this_thread = thread;
+
+	lua_close(this_thread->interpreter);
+	this_thread->interpreter = NULL;
+
+	return 0;
+}
+
+/** Create thread-specific connections and buffers
+ *
+ * @param[in] conf	section containing the configuration of this module instance.
+ * @param[in] instance	of rlm_lua_t.
+ * @param[in] el	The event list serviced by this thread.
+ * @param[in] thread	specific data (where we write the interpreter).
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance,
+				  UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_lua_thread_t *this_thread = thread;
+
+	if (rlm_lua_init(&this_thread->interpreter, instance) < 0) return -1;
+
+	return 0;
+}
+
+/** Close the global interpreter
+ *
+ */
+static int mod_detach(void *instance)
+{
+	rlm_lua_t *inst = instance;
+
+	lua_close(inst->interpreter);
+
+	return 0;
+}
+
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
+{
+	rlm_lua_t *inst = instance;
+
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+
+	/*
+	 *	Get an instance global interpreter to use with various things...
+	 */
+	if (rlm_lua_init(&inst->interpreter, inst) < 0) return -1;
+	inst->jit = rlm_lua_isjit(inst->interpreter);
+	if (!inst->jit) WARN("Using standard Lua interpreter, performance will be suboptimal");
+
+	DEBUG("rlm_lua (%s): Using %s interpreter", inst->xlat_name, rlm_lua_version(inst->interpreter));
+
+	return 0;
+}
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -173,13 +162,18 @@ DO_LUA(send_coa)
  */
 extern rad_module_t rlm_lua;
 rad_module_t rlm_lua = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "lua",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_lua_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+	.magic			= RLM_MODULE_INIT,
+	.name			= "lua",
+	.type			= RLM_TYPE_THREAD_SAFE,
+	.inst_size		= sizeof(rlm_lua_t),
+	.thread_inst_size	= sizeof(rlm_lua_thread_t),
+
+	.config			= module_config,
+	.instantiate		= mod_instantiate,
+	.thread_instantiate	= mod_thread_instantiate,
+
+	.detach			= mod_detach,
+	.thread_detach		= mod_thread_detach,
 
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,

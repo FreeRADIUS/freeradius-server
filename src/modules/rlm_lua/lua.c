@@ -622,7 +622,6 @@ char const *rlm_lua_version(lua_State *L)
 	return version;
 }
 
-
 /** Check if a given function was loaded into an index in the global table
  *
  * Also check what was loaded there is a function and that it accepts the correct arguments.
@@ -783,74 +782,18 @@ static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 	return 0;
 }
 
-static int _lua_state_free(lua_State **marker)
-{
-	lua_close(*((lua_State **) marker));
-	return 0;
-}
-
-/** Get a lua interpreter to use
- *
- */
-static lua_State *rlm_lua_get_interp(rlm_lua_t const *inst) {
-	lua_State **marker;
-
-#ifdef HAVE_PTHREAD_H
-	lua_State *L;
-
-	/*
-	 *	Were running in single interpreter mode, grab the interpreter lock
-	 *	and return the instance specific interpreter.
-	 */
-	if (!inst->threads) {
-		if (!inst->interpreter) return NULL;
-
-		pthread_mutex_lock(inst->mutex);
-		return inst->interpreter;
-	}
-
-	/*
-	 *	Were running in multi interpreter mode, retrieve or initialise
-	 *	the thread specific, instance specific interpreter.
-	 */
-	marker = pthread_getspecific(inst->key);
-	if (!marker) {
-		if (rlm_lua_init(&L, inst) < 0) {
-			return NULL;
-		}
-		marker = talloc(inst, lua_State *);
-		talloc_set_destructor(marker, _lua_state_free);
-		*marker = L;
-		(void) pthread_setspecific(inst->key, marker);
-
-		return L;
-	}
-
-	return *talloc_get_type_abort(marker, lua_State *);
-#else
-	/*
-	 *	We were build without threads, so inst->threads has no effect.
-	 *	Just return the instance specific interpreter.
-	 */
-	return inst->interpreter;
-#endif
-}
-
 #ifdef HAVE_PTHREAD_H
 #define rlm_lua_release_interp(_x)  if (!_x->threads) pthread_mutex_unlock(_x->mutex)
 #else
 #define rlm_lua_release_interp(_x)
 #endif
 
-int do_lua(rlm_lua_t const *inst, REQUEST *request, char const *funcname)
+int do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 {
 	fr_cursor_t cursor;
-	lua_State *L;
+	lua_State *L = thread->interpreter;
 
 	rlm_lua_request = request;
-
-	L = rlm_lua_get_interp(inst);
-	if (!L) return -1;
 
 	RDEBUG2("Calling %s() in interpreter %p", funcname, L);
 
