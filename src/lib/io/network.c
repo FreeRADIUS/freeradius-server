@@ -71,7 +71,6 @@ typedef struct fr_network_worker_t {
 
 typedef struct fr_network_socket_t {
 	fr_network_t		*nr;			//!< O(N) issues in talloc
-	int			fd;			//!< file descriptor
 	int			number;			//!< unique ID
 	int			heap_id;		//!< for the sockets_by_num heap
 
@@ -374,7 +373,7 @@ static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
 
 	s->dead = true;
 
-	fr_event_fd_delete(nr->el, s->fd, s->filter);
+	fr_event_fd_delete(nr->el, s->listen->fd, s->filter);
 
 	/*
 	 *	If there are no outstanding packets, then we can free
@@ -410,7 +409,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	fr_channel_data_t *cd, *next;
 	fr_time_t *recv_time;
 
-	if (!fr_cond_assert(s->fd == sockfd)) return;
+	if (!fr_cond_assert(s->listen->fd == sockfd)) return;
 
 	DEBUG3("network read");
 
@@ -557,7 +556,7 @@ static void fr_network_vnode_extend(UNUSED fr_event_list_t *el, int sockfd, int 
 	fr_network_socket_t *s = ctx;
 	fr_network_t *nr = s->nr;
 
-	fr_cond_assert(s->fd == sockfd);
+	fr_cond_assert(s->listen->fd == sockfd);
 
 	DEBUG3("network vnode");
 
@@ -652,7 +651,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 				return;
 			}
 
-			PERROR("Failed writing to socket %d", s->fd);
+			PERROR("Failed writing to socket %d", s->listen->fd);
 			fr_network_socket_dead(nr, s);
 			return;
 		}
@@ -690,7 +689,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	 *	We've successfully written all of the packets.  Remove
 	 *	the write callback.
 	 */
-	if (fr_event_fd_insert(nr, nr->el, s->fd,
+	if (fr_event_fd_insert(nr, nr->el, s->listen->fd,
 			       fr_network_read,
 			       NULL,
 			       fr_network_error,
@@ -706,7 +705,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	fr_channel_data_t *cd;
 
 	if (!s->dead) {
-		if (fr_event_fd_delete(nr->el, s->fd, s->filter) < 0) {
+		if (fr_event_fd_delete(nr->el, s->listen->fd, s->filter) < 0) {
 			PERROR("Failed deleting socket from event loop in _network_socket_free");
 			rad_assert("Failed removing socket FD from event loop in _network_socket_free" == NULL);
 		}
@@ -718,7 +717,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	if (s->listen->app_io->close) {
 		s->listen->app_io->close(s->listen);
 	} else {
-		close(s->fd);
+		close(s->listen->fd);
 	}
 
 	if (s->pending) {
@@ -792,12 +791,9 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	}
 
 	app_io = s->listen->app_io;
-
-	rad_assert(app_io->fd);
-	s->fd = app_io->fd(s->listen);
 	s->filter = FR_EVENT_FILTER_IO;
 
-	if (fr_event_fd_insert(nr, nr->el, s->fd,
+	if (fr_event_fd_insert(nr, nr->el, s->listen->fd,
 			       fr_network_read,
 			       NULL,
 			       fr_network_error,
@@ -812,7 +808,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	(void) rbtree_insert(nr->sockets, s);
 	(void) rbtree_insert(nr->sockets_by_num, s);
 
-	DEBUG3("Using new socket with FD %d", s->fd);
+	DEBUG3("Using new socket with FD %d", s->listen->fd);
 }
 
 /** Handle a network control message callback for a new "watch directory"
@@ -864,11 +860,9 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 
 	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el, nr);
 
-	rad_assert(app_io->fd);
-	s->fd = app_io->fd(s->listen);
 	s->filter = FR_EVENT_FILTER_VNODE;
 
-	if (fr_event_filter_insert(nr, nr->el, s->fd, s->filter,
+	if (fr_event_filter_insert(nr, nr->el, s->listen->fd, s->filter,
 				   &funcs,
 				   app_io->error ? fr_network_error : NULL,
 				   s) < 0) {
@@ -880,7 +874,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	(void) rbtree_insert(nr->sockets, s);
 	(void) rbtree_insert(nr->sockets_by_num, s);
 
-	DEBUG3("Using new socket with FD %d", s->fd);
+	DEBUG3("Using new socket with FD %d", s->listen->fd);
 }
 
 
@@ -958,7 +952,7 @@ static void fr_network_inject_callback(void *ctx, void const *data, size_t data_
 	 *	network.
 	 */
 	if (s->listen->app_io->inject(s->listen->app_io_instance, my_inject.packet, my_inject.packet_len, my_inject.recv_time) == 0) {
-		fr_network_read(nr->el, s->fd, 0, s);
+		fr_network_read(nr->el, s->listen->fd, 0, s);
 	}
 
 	talloc_free(my_inject.packet);
@@ -1251,7 +1245,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 
 			if (errno == EWOULDBLOCK) {
 			save_pending:
-				if (fr_event_fd_insert(nr, nr->el, s->fd,
+				if (fr_event_fd_insert(nr, nr->el, s->listen->fd,
 						       fr_network_read,
 						       fr_network_write,
 						       fr_network_error,
@@ -1283,7 +1277,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			 *	Don't call close, as that will be done
 			 *	in the destructor.
 			 */
-			PERROR("Failed writing to socket %d", s->fd);
+			PERROR("Failed writing to socket %d", s->listen->fd);
 		error:
 			fr_message_done(&cd->m);
 			if (li->app_io->error) li->app_io->error(li->app_io_instance);
@@ -1301,7 +1295,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			goto save_pending;
 		}
 
-		DEBUG3("Sending reply to socket %d", s->fd);
+		DEBUG3("Sending reply to socket %d", s->listen->fd);
 		fr_message_done(&cd->m);
 		s->pending = NULL;
 		s->written = 0;
@@ -1449,7 +1443,7 @@ void fr_network_listen_read(fr_network_t *nr, fr_listen_t *li)
 	/*
 	 *	Go read the socket.
 	 */
-	fr_network_read(nr->el, s->fd, 0, s);
+	fr_network_read(nr->el, s->listen->fd, 0, s);
 }
 
 /** Inject a packet for a listener

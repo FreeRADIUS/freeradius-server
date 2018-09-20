@@ -209,14 +209,14 @@ static int mod_open(fr_listen_t *li)
 {
 	proto_control_tcp_t *inst = talloc_get_type_abort(li->app_io_instance, proto_control_tcp_t);
 
-	int				sockfd = 0;
+	int				sockfd;
 	uint16_t			port = inst->port;
 	CONF_SECTION			*server_cs;
 	CONF_ITEM			*ci;
 
 	rad_assert(!inst->connection);
 
-	sockfd = fr_socket_server_tcp(&inst->ipaddr, &port, inst->port_name, true);
+	li->fd = sockfd = fr_socket_server_tcp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
 		PERROR("Failed opening TCP socket");
 	error:
@@ -255,15 +255,6 @@ static int mod_open(fr_listen_t *li)
 	return 0;
 }
 
-/** Get the file descriptor for this socket.
- *
- */
-static int mod_fd(fr_listen_t const *li)
-{
-	proto_control_tcp_t const *inst = talloc_get_type_abort_const(li->thread_instance, proto_control_tcp_t);
-
-	return inst->sockfd;
-}
 
 /** Set the file descriptor for this socket.
  *
@@ -494,7 +485,6 @@ fr_app_io_t proto_control_tcp = {
 	.open			= mod_open,
 	.read			= mod_read,
 	.write			= mod_write,
-	.fd			= mod_fd,
 	.fd_set			= mod_fd_set,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,

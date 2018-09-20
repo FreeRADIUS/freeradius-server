@@ -23,6 +23,7 @@
  */
 typedef struct fr_listen fr_listen_t;
 struct fr_listen {
+	int			fd;			//!< file descriptor for this socket
 	fr_app_io_t const	*app_io;		//!< I/O path functions.
 	void     		*app_io_instance;	//!< I/O path configuration context.
 	void			*thread_instance;	//!< thread / socket context

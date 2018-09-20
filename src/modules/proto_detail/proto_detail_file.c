@@ -121,7 +121,7 @@ static int mod_open(fr_listen_t *li)
 	oflag = O_RDONLY;
 #endif
 
-	inst->fd = open(inst->directory, oflag);
+	li->fd = inst->fd = open(inst->directory, oflag);
 	if (inst->fd < 0) {
 		cf_log_err(inst->cs, "Failed opening %s: %s", inst->directory, fr_syserror(errno));
 		return -1;
@@ -133,15 +133,6 @@ static int mod_open(fr_listen_t *li)
 	      inst->name, cf_section_name2(inst->parent->server_cs), inst->fd);
 
 	return 0;
-}
-
-/** Get the file descriptor for this IO instance
- */
-static int mod_fd(fr_listen_t const *li)
-{
-	proto_detail_file_t const *inst = talloc_get_type_abort_const(li->thread_instance, proto_detail_file_t);
-
-	return inst->fd;
 }
 
 /*
@@ -314,7 +305,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 
 	work->ev = NULL;
 
-	work->fd = dup(fd);
+	li->fd = work->fd = dup(fd);
 	if (work->fd < 0) {
 		DEBUG("proto_detail (%s): Failed opening %s: %s",
 		      inst->name, inst->filename_work, fr_syserror(errno));
@@ -731,7 +722,6 @@ fr_app_io_t proto_detail_file = {
 	.vnode			= mod_vnode_extend,
 	.decode			= mod_decode,
 	.write			= mod_write,
-	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
 	.get_name		= mod_name,
 };

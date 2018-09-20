@@ -929,7 +929,7 @@ static int mod_open(fr_listen_t *li)
 {
 	proto_control_unix_t *inst = talloc_get_type_abort(li->app_io_instance, proto_control_unix_t);
 
-	int				sockfd = 0;
+	int				sockfd ;
 	CONF_ITEM			*ci;
 	CONF_SECTION			*server_cs;
 
@@ -951,7 +951,7 @@ static int mod_open(fr_listen_t *li)
 		return -1;
 	}
 
-	inst->sockfd = sockfd;
+	li->fd = inst->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
 	rad_assert(ci != NULL);
@@ -969,15 +969,6 @@ static int mod_open(fr_listen_t *li)
 	return 0;
 }
 
-/** Get the file descriptor for this socket.
- *
- */
-static int mod_fd(fr_listen_t const *li)
-{
-	proto_control_unix_t const *inst = talloc_get_type_abort_const(li->thread_instance, proto_control_unix_t);
-
-	return inst->sockfd;
-}
 
 #if !defined(HAVE_GETPEEREID) && defined(SO_PEERCRED)
 static int getpeereid(int s, uid_t *euid, gid_t *egid)
@@ -1223,7 +1214,6 @@ fr_app_io_t proto_control_unix = {
 	.open			= mod_open,
 	.read			= mod_read,
 	.write			= mod_write,
-	.fd			= mod_fd,
 	.fd_set			= mod_fd_set,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,

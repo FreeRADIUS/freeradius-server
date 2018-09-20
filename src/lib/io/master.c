@@ -617,7 +617,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 				return NULL;
 			}
 
-			fd = inst->app_io->fd(connection->child);
+			fd = connection->child->fd;
 
 			if (fr_ipaddr_to_sockaddr(&connection->address->src_ipaddr, connection->address->src_port, &src, &salen) < 0) {
 				DEBUG("Failed getting IP address");
@@ -631,6 +631,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 				talloc_free(dl_inst);
 				return NULL;
 			}
+		} else {
+			connection->child->fd = fd;
 		}
 
 		/*
@@ -641,6 +643,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 			close(fd);
 			return NULL;
 		}
+
+		li->fd = fd;
 
 		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(connection->address->src_ipaddr), 0);
 		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(connection->address->dst_ipaddr), 0);
@@ -653,6 +657,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		} else {
 			connection->name = inst->app_io->get_name(connection->child->app_io_instance);
 		}
+
 	}
 
 	/*
@@ -1035,7 +1040,7 @@ redo:
 		 *	must be the master socket.  Accept the new
 		 *	connection, and figure out src/dst IP/port.
 		 */
-		accept_fd = accept(inst->app_io->fd(child),
+		accept_fd = accept(child->fd,
 				   (struct sockaddr *) &saremote, &salen);
 
 		/*
@@ -1133,7 +1138,7 @@ do_read:
 
 			connection->paused = true;
 			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(child),
+						      child->fd,
 						      FR_EVENT_FILTER_IO, pause_read);
 		}
 	}
@@ -1578,23 +1583,11 @@ static int mod_open(fr_listen_t *li)
 	rcode = inst->app_io->open(child);
 	if (rcode < 0) return rcode;
 
+	li->fd = child->fd;	/* copy this back up */
+
 	return rcode;
 }
 
-
-/** Get the file descriptor for this socket.
- *
- */
-static int mod_fd(fr_listen_t const *li)
-{
-	fr_io_instance_t *inst;
-	fr_io_connection_t *connection;
-	fr_listen_t *child;
-
-	get_inst(li->app_io_instance, &inst, &connection, &child);
-
-	return inst->app_io->fd(child);
-}
 
 /** Set the event list for a new socket
  *
@@ -2207,7 +2200,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		 */
 		if (connection->paused) {
 			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(child),
+						      child->fd,
 						      FR_EVENT_FILTER_IO, resume_read);
 		}
 
@@ -2313,9 +2306,8 @@ static int mod_close(fr_listen_t *li)
 		rcode = inst->app_io->close(child);
 		if (rcode < 0) return rcode;
 	} else {
-		int fd = inst->app_io->fd(child);
-
-		if (fd >= 0) close(fd):
+		close(child->fd);
+		child->fd = -1;
 	}
 
 	/*
@@ -2665,6 +2657,8 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 		return -1;
 	}
 
+	li->fd = child->fd;	/* copy this back up */
+
 	/*
 	 *	Add the socket to the scheduler, which might
 	 *	end up in a different thread.
@@ -2695,7 +2689,6 @@ fr_app_io_t fr_master_app_io = {
 
 	.open			= mod_open,
 	.close			= mod_close,
-	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
 	.get_name		= mod_name,
 };

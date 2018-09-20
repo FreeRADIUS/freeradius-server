@@ -678,7 +678,7 @@ static int mod_open(fr_listen_t *li)
 	 *	Open the file if we haven't already been given one.
 	 */
 	if (inst->fd < 0) {
-		inst->fd = open(inst->filename_work, inst->mode);
+		li->fd = inst->fd = open(inst->filename_work, inst->mode);
 		if (inst->fd < 0) {
 			cf_log_err(inst->cs, "Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
 			return -1;
@@ -768,16 +768,6 @@ static void mod_revoke(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	mod_close_internal(inst);
 }
 #endif
-
-/** Get the file descriptor for this IO instance
- *
- */
-static int mod_fd(fr_listen_t const *li)
-{
-	proto_detail_work_t const *inst = talloc_get_type_abort_const(li->thread_instance, proto_detail_work_t);
-
-	return inst->fd;
-}
 
 
 /** Set the event list for a new IO instance
@@ -919,7 +909,6 @@ fr_app_io_t proto_detail_work = {
 	.read			= mod_read,
 	.decode			= mod_decode,
 	.write			= mod_write,
-	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
 	.get_name		= mod_name,
 };
