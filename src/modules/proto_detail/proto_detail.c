@@ -439,6 +439,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 
 	listen->app_io = inst->app_io;
 	listen->app_io_instance = inst->app_io_instance;
+	listen->thread_instance = listen->app_io_instance;
 
 	listen->app = &proto_detail;
 	listen->app_instance = instance;

@@ -549,6 +549,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 */
 		listen->app_io = inst->child->app_io;
 		listen->app_io_instance = dl_inst->data;
+		listen->thread_instance = listen->app_io_instance;
 
 		/*
 		 *	There isn't a need to re-parse the
@@ -568,6 +569,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 *	So, we just hack it...
 		 */
 		memcpy(connection->child->app_io_instance, inst->app_io_instance, inst->app_io->inst_size);
+		connection->child->thread_instance = connection->child->app_io_instance;
 
 		/*
 		 *	Create the listener, based on our listener.
@@ -587,6 +589,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 */
 		rad_assert(listen->app_io == &fr_master_app_io);
 		listen->app_io_instance = connection;
+		listen->thread_instance = listen->app_io_instance;
 
 		/*
 		 *	Instantiate the child, and open the socket.
@@ -2643,6 +2646,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	 */
 	listen->app_io = &fr_master_app_io;
 	listen->app_io_instance = io;
+	listen->thread_instance = listen->app_io_instance;
 
 	/*
 	 *	Create the child listener, so that it can later be
@@ -2656,6 +2660,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	 */
 	child->app_io = io->app_io;
 	child->app_io_instance = io->app_io_instance;
+	child->thread_instance = child->app_io_instance;
 
 	/*
 	 *	Don't set the connection for the main socket.  It's not connected.

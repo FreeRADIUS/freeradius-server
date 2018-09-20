@@ -315,6 +315,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	 *	talloc threading issues by using a NULL TALLOC_CTX.
 	 */
 	MEM(listen->app_io_instance = work = talloc(listen, proto_detail_work_t));
+	listen->thread_instance = listen->app_io_instance;
 
 	memcpy(work, inst->parent->work_submodule->data, sizeof(*work));
 
