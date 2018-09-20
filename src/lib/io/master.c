@@ -617,7 +617,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 				return NULL;
 			}
 
-			fd = inst->app_io->fd(connection->child->app_io_instance);
+			fd = inst->app_io->fd(connection->child);
 
 			if (fr_ipaddr_to_sockaddr(&connection->address->src_ipaddr, connection->address->src_port, &src, &salen) < 0) {
 				DEBUG("Failed getting IP address");
@@ -1035,7 +1035,7 @@ redo:
 		 *	must be the master socket.  Accept the new
 		 *	connection, and figure out src/dst IP/port.
 		 */
-		accept_fd = accept(inst->app_io->fd(child->app_io_instance),
+		accept_fd = accept(inst->app_io->fd(child),
 				   (struct sockaddr *) &saremote, &salen);
 
 		/*
@@ -1133,7 +1133,7 @@ do_read:
 
 			connection->paused = true;
 			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(child->app_io_instance),
+						      inst->app_io->fd(child),
 						      FR_EVENT_FILTER_IO, pause_read);
 		}
 	}
@@ -2207,7 +2207,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx, fr_time_t request_tim
 		 */
 		if (connection->paused) {
 			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(child->app_io_instance),
+						      inst->app_io->fd(child),
 						      FR_EVENT_FILTER_IO, resume_read);
 		}
 
