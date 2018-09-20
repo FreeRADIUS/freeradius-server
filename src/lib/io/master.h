@@ -116,7 +116,7 @@ typedef struct fr_io_instance_t {
 	fr_heap_t			*pending_clients;		//!< heap of pending clients
 	fr_heap_t			*alive_clients;			//!< heap of active clients
 
-	fr_listen_t const		*listen;			//!< The master IO path
+	fr_listen_t			*listen;			//!< The master IO path
 	fr_listen_t			*child;				//!< The child IO path
 	fr_schedule_t			*sc;				//!< the scheduler
 } fr_io_instance_t;

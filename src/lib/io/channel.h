@@ -113,7 +113,7 @@ typedef struct fr_channel_data_t {
 								//!< information, and other proto_* specific information
 								//!< that needs to be passed to the request.
 
-	fr_listen_t const *listen;				//!< for tracking packet transport, etc.
+	fr_listen_t	*listen;				//!< for tracking packet transport, etc.
 } fr_channel_data_t;
 
 #define PRIORITY_NOW    (1 << 16)

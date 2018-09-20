@@ -38,12 +38,12 @@ void fr_network_exit(fr_network_t *nr) CC_HINT(nonnull);
 int fr_network_destroy(fr_network_t *nr) CC_HINT(nonnull);
 void fr_network(fr_network_t *nr) CC_HINT(nonnull);
 
-int fr_network_listen_add(fr_network_t *nr, fr_listen_t const *io) CC_HINT(nonnull);
-int fr_network_socket_delete(fr_network_t *nr, fr_listen_t const *listen);
-int fr_network_directory_add(fr_network_t *nr, fr_listen_t const *listen) CC_HINT(nonnull);
+int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
+int fr_network_socket_delete(fr_network_t *nr, fr_listen_t *li);
+int fr_network_directory_add(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
 int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker) CC_HINT(nonnull);
-void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen) CC_HINT(nonnull);
-int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t const *packet, size_t packet_len, fr_time_t recv_time);
+void fr_network_listen_read(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
+int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len, fr_time_t recv_time);
 int fr_network_stats(fr_network_t const *nr, int num, uint64_t *stats) CC_HINT(nonnull);
 extern fr_cmd_table_t cmd_network_table[];
 

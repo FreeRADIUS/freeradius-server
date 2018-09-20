@@ -367,10 +367,6 @@ static int mod_close(fr_listen_t *li)
 	close(inst->sockfd);
 	inst->sockfd = -1;
 
-	if (inst->stdout) fclose(inst->stdout);
-	if (inst->stderr) fclose(inst->stderr);
-	if (inst->misc) fclose(inst->misc);
-
 	return 0;
 }
 
@@ -1016,6 +1012,15 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 
 #endif /* HAVE_GETPEEREID */
 
+static int _close_cookies(proto_control_unix_t *inst)
+{
+	if (inst->stdout) fclose(inst->stdout);
+	if (inst->stderr) fclose(inst->stderr);
+	if (inst->misc) fclose(inst->misc);
+
+	return 0;
+}
+
 /** Set the file descriptor for this socket.
  *
  */
@@ -1108,6 +1113,8 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	io.write = write_misc;
 	inst->misc = fopencookie(inst, "w", io);
 #endif
+
+	talloc_set_destructor(inst, _close_cookies);
 
 	/*
 	 *	@todo - if we move to a binary protocol, then we

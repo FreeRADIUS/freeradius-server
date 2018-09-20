@@ -684,12 +684,12 @@ done:
 /** Add a fr_listen_t to a scheduler.
  *
  * @param[in] sc the scheduler
- * @param[in] io the ctx and callbacks for the transport.
+ * @param[in] li the ctx and callbacks for the transport.
  * @return
  *	- NULL on error
  *	- the fr_network_t that the socket was added to.
  */
-fr_network_t *fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_t const *io)
+fr_network_t *fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_t *li)
 {
 	fr_network_t *nr;
 
@@ -701,7 +701,7 @@ fr_network_t *fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_t const *io)
 		nr = sc->sn->nr;
 	}
 
-	if (fr_network_listen_add(nr, io) < 0) return NULL;
+	if (fr_network_listen_add(nr, li) < 0) return NULL;
 
 	return nr;
 }
@@ -709,12 +709,12 @@ fr_network_t *fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_t const *io)
 /** Add a directory NOTE_EXTEND to a scheduler.
  *
  * @param[in] sc the scheduler
- * @param[in] io the ctx and callbacks for the transport.
+ * @param[in] li the ctx and callbacks for the transport.
  * @return
  *	- NULL on error
  *	- the fr_network_t that the socket was added to.
  */
-fr_network_t *fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_t const *io)
+fr_network_t *fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_t *li)
 {
 	fr_network_t *nr;
 
@@ -726,7 +726,7 @@ fr_network_t *fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_t const *io
 		nr = sc->sn->nr;
 	}
 
-	if (fr_network_directory_add(nr, io) < 0) return NULL;
+	if (fr_network_directory_add(nr, li) < 0) return NULL;
 
 	return nr;
 }

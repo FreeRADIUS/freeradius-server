@@ -62,7 +62,7 @@ typedef struct proto_detail_t {
 
 	fr_schedule_t			*sc;				//!< the scheduler, where we insert new readers
 
-	fr_listen_t const		*listen;			//!< The listener structure which describes
+	fr_listen_t			*listen;			//!< The listener structure which describes
 									//!< the I/O path.
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t			worker_mutex;			//!< for the workers

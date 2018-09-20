@@ -51,7 +51,7 @@ struct fr_async_t {
 	fr_channel_t		*channel;
 
 	void			*packet_ctx;
-	fr_listen_t const	*listen;	//!< How we received this request,
+	fr_listen_t		*listen;	//!< How we received this request,
 						//!< and how we'll send the reply.
 	uint32_t		priority;
 	bool			detached;	//!< if detached, we don't send real replies

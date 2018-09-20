@@ -80,7 +80,7 @@ typedef struct fr_network_socket_t {
 	bool			dead;			//!< is it dead?
 
 	size_t			outstanding;		//!< number of outstanding packets sent to the worker
-	fr_listen_t const	*listen;		//!< I/O ctx and functions.
+	fr_listen_t		*listen;		//!< I/O ctx and functions.
 
 	fr_message_set_t	*ms;			//!< message buffers for this socket.
 	fr_channel_data_t	*cd;			//!< cached in case of allocation & read error
@@ -600,7 +600,7 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
-	fr_listen_t const *listen = s->listen;
+	fr_listen_t *li = s->listen;
 	fr_network_t *nr = s->nr;
 	fr_channel_data_t *cd;
 
@@ -623,10 +623,10 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	     cd = fr_heap_pop(s->waiting)) {
 		int rcode;
 
-		rad_assert(listen == cd->listen);
+		rad_assert(li == cd->listen);
 		rad_assert(cd->m.status == FR_MESSAGE_LOCALIZED);
 
-		rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx,
+		rcode = li->app_io->write(li->app_io_instance, cd->packet_ctx,
 					      cd->reply.request_time,
 					      cd->m.data, cd->m.data_size, 0);
 		if (rcode < 0) {
@@ -1167,17 +1167,17 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 
 	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
 		ssize_t rcode;
-		fr_listen_t const *listen;
+		fr_listen_t *li;
 		fr_message_t *lm;
 		fr_network_socket_t my_socket, *s;
 
-		listen = cd->listen;
+		li = cd->listen;
 
 		/*
 		 *	@todo - cache this somewhere so we don't need
 		 *	to do an rbtree lookup for every packet.
 		 */
-		my_socket.listen = listen;
+		my_socket.listen = li;
 		s = rbtree_finddata(nr->sockets, &my_socket);
 
 		/*
@@ -1243,7 +1243,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 *	The write function is responsible for ensuring
 		 *	that NAKs are not written to the network.
 		 */
-		rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx,
+		rcode = li->app_io->write(li->app_io_instance, cd->packet_ctx,
 					      cd->reply.request_time,
 					      cd->m.data, cd->m.data_size, 0);
 		if (rcode < 0) {
@@ -1286,7 +1286,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			PERROR("Failed writing to socket %d", s->fd);
 		error:
 			fr_message_done(&cd->m);
-			if (listen->app_io->error) listen->app_io->error(listen->app_io_instance);
+			if (li->app_io->error) li->app_io->error(li->app_io_instance);
 
 			fr_network_socket_dead(nr, s);
 			continue;
@@ -1364,29 +1364,29 @@ void fr_network_exit(fr_network_t *nr)
 /** Add a fr_listen_t to a network
  *
  * @param nr		the network
- * @param listen	Functions and context.
+ * @param li		the listener
  */
-int fr_network_listen_add(fr_network_t *nr, fr_listen_t const *listen)
+int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li)
 {
 	fr_ring_buffer_t *rb;
 
 	rb = fr_network_rb_init();
 	if (!rb) return -1;
 
-	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_SOCKET, &listen, sizeof(listen));
+	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_SOCKET, &li, sizeof(li));
 }
 
 
 /** Delete a socket from a network.  MUST be called only by the listener itself!.
  *
  * @param nr		the network
- * @param listen	Functions and context.
+ * @param li		the listener
  */
-int fr_network_socket_delete(fr_network_t *nr, fr_listen_t const *listen)
+int fr_network_socket_delete(fr_network_t *nr, fr_listen_t *li)
 {
 	fr_network_socket_t *s, my_socket;
 
-	my_socket.listen = listen;
+	my_socket.listen = li;
 	s = rbtree_finddata(nr->sockets, &my_socket);
 	if (!s) {
 		return -1;
@@ -1400,16 +1400,16 @@ int fr_network_socket_delete(fr_network_t *nr, fr_listen_t const *listen)
 /** Add a "watch directory" call to a network
  *
  * @param nr		the network
- * @param listen	Functions and context.
+ * @param li		the listener
  */
-int fr_network_directory_add(fr_network_t *nr, fr_listen_t const *listen)
+int fr_network_directory_add(fr_network_t *nr, fr_listen_t *li)
 {
 	fr_ring_buffer_t *rb;
 
 	rb = fr_network_rb_init();
 	if (!rb) return -1;
 
-	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_DIRECTORY, &listen, sizeof(listen));
+	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_DIRECTORY, &li, sizeof(li));
 }
 
 /** Add a worker to a network
@@ -1433,16 +1433,16 @@ int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
 /** Signal the network to read from a listener
  *
  * @param nr the network
- * @param listen the listener to read from
+ * @param li the listener to read from
  */
-void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen)
+void fr_network_listen_read(fr_network_t *nr, fr_listen_t *li)
 {
 	fr_network_socket_t my_socket, *s;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
-	(void) talloc_get_type_abort_const(listen, fr_listen_t);
+	(void) talloc_get_type_abort_const(li, fr_listen_t);
 
-	my_socket.listen = listen;
+	my_socket.listen = li;
 	s = rbtree_finddata(nr->sockets, &my_socket);
 	if (!s) return;
 
@@ -1455,7 +1455,7 @@ void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen)
 /** Inject a packet for a listener
  *
  * @param nr		the network
- * @param listen	the listener where the packet is being injected
+ * @param li		the listener where the packet is being injected
  * @param packet	the packet to be injected
  * @param packet_len	the length of the packet
  * @param recv_time	when the packet was received.
@@ -1463,7 +1463,7 @@ void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen)
  *	- <0 on error
  *	- 0 on success
  */
-int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t const *packet, size_t packet_len, fr_time_t recv_time)
+int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len, fr_time_t recv_time)
 {
 	fr_ring_buffer_t *rb;
 	fr_network_inject_t my_inject;
@@ -1472,14 +1472,14 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t cons
 	if (!rb) return -1;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
-	(void) talloc_get_type_abort(listen, fr_listen_t);
+	(void) talloc_get_type_abort(li, fr_listen_t);
 
 	/*
 	 *	Can't inject to injection-less destinations.
 	 */
-	if (!listen->app_io->inject) return -1;
+	if (!li->app_io->inject) return -1;
 
-	my_inject.listen = listen;
+	my_inject.listen = li;
 	my_inject.packet = talloc_memdup(NULL, packet, packet_len);
 	my_inject.packet_len = packet_len;
 	my_inject.recv_time = recv_time;
