@@ -437,14 +437,10 @@ send_reply:
 
 /** Open a UDP listener for DHCPV4
  *
- * @param[in] instance of the DHCPV4 UDP I/O path.
- * @return
- *	- <0 on error
- *	- 0 on success
  */
-static int mod_close(void *instance)
+static int mod_close(fr_listen_t *li)
 {
-	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
 
 	close(inst->sockfd);
 	inst->sockfd = -1;

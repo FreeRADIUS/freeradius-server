@@ -715,17 +715,8 @@ static int mod_open(fr_listen_t *li)
 }
 
 
-/** Close  a detail listener
- *
- * @param[in] instance of the detail worker.
- * @return
- *	- <0 on error
- *	- 0 on success
- */
-static int mod_close(void *instance)
+static int mod_close_internal(proto_detail_work_t *inst)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
-
 	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
 	inst->parent->work_io_instance = NULL;
 	inst->parent->num_workers--;
@@ -743,12 +734,25 @@ static int mod_close(void *instance)
 	inst->fd = -1;
 
 	if (inst->free_on_close) {
-		fr_listen_t *li = talloc_get_type_abort(talloc_parent(inst), fr_listen_t);
+		fr_listen_t *parent = talloc_get_type_abort(talloc_parent(inst), fr_listen_t);
 
-		talloc_free(li);
+		talloc_free(parent);
 	}
 
 	return 0;
+}
+
+
+
+
+/** Close  a detail listener
+ *
+ */
+static int mod_close(fr_listen_t *li)
+{
+	proto_detail_work_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
+
+	return mod_close_internal(inst);
 }
 
 #ifdef NOTE_REVOKE
@@ -758,10 +762,10 @@ static void mod_revoke(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 
 	/*
 	 *	The underlying file system is gone.  Stop reading the
-	 *	file, destroy all of the IO handlers, and delete
+	 *	file, destroy all of the IO handlers, and delete everything.
 	 */
 	DEBUG("Detail worker %s had file system unmounted.  Stopping.", inst->name);
-	mod_close(inst);
+	mod_close_internal(inst);
 }
 #endif
 

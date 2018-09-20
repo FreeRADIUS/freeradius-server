@@ -185,14 +185,10 @@ static ssize_t mod_write(void *instance, UNUSED void *packet_ctx, UNUSED fr_time
 
 /** Close a TCP listener for RADIUS
  *
- * @param[in] instance of the RADIUS TCP I/O path.
- * @return
- *	- <0 on error
- *	- 0 on success
  */
-static int mod_close(void *instance)
+static int mod_close(fr_listen_t *li)
 {
-	proto_control_tcp_t *inst = talloc_get_type_abort(instance, proto_control_tcp_t);
+	proto_control_tcp_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_tcp_t);
 
 	close(inst->sockfd);
 	inst->sockfd = -1;

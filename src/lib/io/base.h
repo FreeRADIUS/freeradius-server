@@ -324,12 +324,12 @@ typedef int (*fr_io_signal_t)(void const *instance);
  *  before "close".  On normal finish, the "close" function will be
  *  called.
  *
- * @param[in] instance		the context for this function
+ * @param[in] li the listener for this socket
  * @return
  *	- 0 on success
  *	- <0 on error
  */
-typedef int (*fr_io_close_t)(void *instance);
+typedef int (*fr_io_close_t)(fr_listen_t *li);
 
 /** Process a request through the transport async state machine.
  *

@@ -2298,21 +2298,17 @@ reread:
 
 /** Close the socket.
  *
- * @param[in] instance of the IO path.
- * @return
- *	- <0 on error
- *	- 0 on success
  */
-static int mod_close(void *instance)
+static int mod_close(fr_listen_t *li)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
 	int rcode;
 
-	get_inst(instance, &inst, &connection, &child);
+	get_inst(li->app_io_instance, &inst, &connection, &child);
 
-	rcode = inst->app_io->close(child->app_io_instance);
+	rcode = inst->app_io->close(child);
 	if (rcode < 0) return rcode;
 
 	/*

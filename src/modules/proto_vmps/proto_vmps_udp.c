@@ -275,14 +275,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx, UNUSED fr_time_t requ
 
 /** Open a UDP listener for VMPS
  *
- * @param[in] instance of the VMPS UDP I/O path.
- * @return
- *	- <0 on error
- *	- 0 on success
  */
-static int mod_close(void *instance)
+static int mod_close(fr_listen_t *li)
 {
-	proto_vmps_udp_t *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	proto_vmps_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_t);
 
 	close(inst->sockfd);
 	inst->sockfd = -1;
