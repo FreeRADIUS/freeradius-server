@@ -1024,12 +1024,10 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 
 /** Set the file descriptor for this socket.
  *
- * @param[in] instance of the RADIUS UNIX I/O path.
- * @param[in] fd the FD to set
  */
-static int mod_fd_set(void *instance, int fd)
+static int mod_fd_set(fr_listen_t *listen, int fd)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_t *inst = talloc_get_type_abort(listen->thread_instance, proto_control_unix_t);
 #ifndef HAVE_FUNOPEN
 	cookie_io_functions_t io;
 #endif
@@ -1091,13 +1089,13 @@ static int mod_fd_set(void *instance, int fd)
 	 *	Set up socket-specific callbacks
 	 */
 #ifdef HAVE_FUNOPEN
-	inst->stdout = funopen(instance, NULL, write_stdout, NULL, NULL);
+	inst->stdout = funopen(inst, NULL, write_stdout, NULL, NULL);
 	rad_assert(inst->stdout != NULL);
 
-	inst->stderr = funopen(instance, NULL, write_stderr, NULL, NULL);
+	inst->stderr = funopen(inst, NULL, write_stderr, NULL, NULL);
 	rad_assert(inst->stderr != NULL);
 
-	inst->misc = funopen(instance, NULL, write_misc, NULL, NULL);
+	inst->misc = funopen(inst, NULL, write_misc, NULL, NULL);
 	rad_assert(inst->misc != NULL);
 #else
 	/*
@@ -1108,13 +1106,13 @@ static int mod_fd_set(void *instance, int fd)
 	io.close = NULL;
 	io.write = write_stdout;
 
-	inst->stdout = fopencookie(instance, "w", io);
+	inst->stdout = fopencookie(inst, "w", io);
 
 	io.write = write_stderr;
-	inst->stderr = fopencookie(instance, "w", io);
+	inst->stderr = fopencookie(inst, "w", io);
 
 	io.write = write_misc;
-	inst->misc = fopencookie(instance, "w", io);
+	inst->misc = fopencookie(inst, "w", io);
 #endif
 
 	/*
@@ -1127,8 +1125,8 @@ static int mod_fd_set(void *instance, int fd)
 	(void) setvbuf(inst->stderr, NULL, _IOLBF, 0);
 	(void) setvbuf(inst->misc, NULL, _IOLBF, 0);
 
-	inst->info = talloc_zero(instance, fr_cmd_info_t);
-	fr_command_info_init(instance, inst->info);
+	inst->info = talloc_zero(inst, fr_cmd_info_t);
+	fr_command_info_init(inst, inst->info);
 
 	return 0;
 }

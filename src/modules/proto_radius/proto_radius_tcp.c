@@ -370,13 +370,10 @@ static int mod_fd(fr_listen_t const *listen)
 }
 
 /** Set the file descriptor for this socket.
- *
- * @param[in] instance of the RADIUS TCP I/O path.
- * @param[in] fd the FD to set
  */
-static int mod_fd_set(void *instance, int fd)
+static int mod_fd_set(fr_listen_t *listen, int fd)
 {
-	proto_radius_tcp_t *inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
+	proto_radius_tcp_t *inst = talloc_get_type_abort(listen->thread_instance, proto_radius_tcp_t);
 
 	inst->sockfd = fd;
 

@@ -636,7 +636,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		/*
 		 *	Set the new FD, and get the module to set it's connection name.
 		 */
-		if (inst->app_io->fd_set(connection->child->app_io_instance, fd) < 0) {
+		if (inst->app_io->fd_set(connection->child, fd) < 0) {
 			DEBUG3("Failed setting FD to %s", inst->app_io->name);
 			close(fd);
 			return NULL;

@@ -97,10 +97,10 @@ typedef int (*fr_io_get_fd_t)(fr_listen_t const *listen);
 /** Set a selectable file descriptor for this I/O path
  *
  *
- * @param[in] instance	containing the configuration
+ * @param[in] listen	the listener for this socket
  * @param[in] fd	the FD to set
  */
-typedef int (*fr_io_set_fd_t)(void *instance, int fd);
+typedef int (*fr_io_set_fd_t)(fr_listen_t *listen, int fd);
 
 /** Decode a raw packet and convert it into a request.
  *

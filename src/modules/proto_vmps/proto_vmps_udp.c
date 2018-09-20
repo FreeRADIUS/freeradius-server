@@ -384,12 +384,10 @@ static int mod_fd(fr_listen_t const *listen)
 
 /** Set the file descriptor for this socket.
  *
- * @param[in] instance of the UDP I/O path.
- * @param[in] fd the FD to set
  */
-static int mod_fd_set(void *instance, int fd)
+static int mod_fd_set(fr_listen_t *listen, int fd)
 {
-	proto_vmps_udp_t *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	proto_vmps_udp_t *inst = talloc_get_type_abort(listen->thread_instance, proto_vmps_udp_t);
 
 	inst->sockfd = fd;
 
