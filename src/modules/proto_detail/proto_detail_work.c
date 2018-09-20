@@ -771,12 +771,10 @@ static void mod_revoke(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 
 /** Get the file descriptor for this IO instance
  *
- * @param[in] instance of the detail worker
- * @return the file descriptor
  */
-static int mod_fd(void const *instance)
+static int mod_fd(fr_listen_t const *listen)
 {
-	proto_detail_work_t const *inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
+	proto_detail_work_t const *inst = talloc_get_type_abort_const(listen->thread_instance, proto_detail_work_t);
 
 	return inst->fd;
 }

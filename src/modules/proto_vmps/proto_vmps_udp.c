@@ -374,12 +374,10 @@ static int mod_open(void *instance)
 
 /** Get the file descriptor for this socket.
  *
- * @param[in] instance of the VMPS UDP I/O path.
- * @return the file descriptor
  */
-static int mod_fd(void const *instance)
+static int mod_fd(fr_listen_t const *listen)
 {
-	proto_vmps_udp_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_udp_t);
+	proto_vmps_udp_t const *inst = talloc_get_type_abort_const(listen->thread_instance, proto_vmps_udp_t);
 
 	return inst->sockfd;
 }

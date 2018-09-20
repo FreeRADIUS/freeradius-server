@@ -396,13 +396,10 @@ static int mod_open(void *instance)
 }
 
 /** Get the file descriptor for this socket.
- *
- * @param[in] instance of the RADIUS UDP I/O path.
- * @return the file descriptor
  */
-static int mod_fd(void const *instance)
+static int mod_fd(fr_listen_t const *listen)
 {
-	proto_radius_udp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_udp_t);
+	proto_radius_udp_t const *inst = talloc_get_type_abort_const(listen->thread_instance, proto_radius_udp_t);
 
 	return inst->sockfd;
 }

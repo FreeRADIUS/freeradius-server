@@ -90,9 +90,9 @@ typedef int (*fr_io_open_t)(void *instance);
  *
  * Return the file descriptor associated with this I/O path.
  *
- * @param[in] instance	containing the file descriptor (amongst other things).
+ * @param[in] listen the listener for this socket
  */
-typedef int (*fr_io_get_fd_t)(void const *instance);
+typedef int (*fr_io_get_fd_t)(fr_listen_t const *listen);
 
 /** Set a selectable file descriptor for this I/O path
  *

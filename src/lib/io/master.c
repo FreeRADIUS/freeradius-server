@@ -1588,21 +1588,16 @@ static int mod_open(void *instance)
 
 /** Get the file descriptor for this socket.
  *
- * @param[in] const_instance of the IO path.
- * @return the file descriptor
  */
-static int mod_fd(void const *const_instance)
+static int mod_fd(fr_listen_t const *listen)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
-	void *instance;
 
-	memcpy(&instance, &const_instance, sizeof(const_instance)); /* const issues */
+	get_inst(listen->app_io_instance, &inst, &connection, &child);
 
-	get_inst((void *) instance, &inst, &connection, &child);
-
-	return inst->app_io->fd(child->app_io_instance);
+	return inst->app_io->fd(child);
 }
 
 /** Set the event list for a new socket
