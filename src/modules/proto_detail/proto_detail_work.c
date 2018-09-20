@@ -670,9 +670,9 @@ free_track:
 /** Open a detail listener
  *
  */
-static int mod_open(fr_listen_t *listen)
+static int mod_open(fr_listen_t *li)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(listen->app_io_instance, proto_detail_work_t);
+	proto_detail_work_t *inst = talloc_get_type_abort(li->app_io_instance, proto_detail_work_t);
 
 	/*
 	 *	Open the file if we haven't already been given one.
@@ -743,9 +743,9 @@ static int mod_close(void *instance)
 	inst->fd = -1;
 
 	if (inst->free_on_close) {
-		fr_listen_t *listen = talloc_get_type_abort(talloc_parent(inst), fr_listen_t);
+		fr_listen_t *li = talloc_get_type_abort(talloc_parent(inst), fr_listen_t);
 
-		talloc_free(listen);
+		talloc_free(li);
 	}
 
 	return 0;
@@ -768,9 +768,9 @@ static void mod_revoke(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 /** Get the file descriptor for this IO instance
  *
  */
-static int mod_fd(fr_listen_t const *listen)
+static int mod_fd(fr_listen_t const *li)
 {
-	proto_detail_work_t const *inst = talloc_get_type_abort_const(listen->thread_instance, proto_detail_work_t);
+	proto_detail_work_t const *inst = talloc_get_type_abort_const(li->thread_instance, proto_detail_work_t);
 
 	return inst->fd;
 }

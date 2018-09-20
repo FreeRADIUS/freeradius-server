@@ -79,28 +79,28 @@ typedef struct fr_channel_t fr_channel_t;
  *
  * No data will be read from or written to the fd, except by the io_data callbacks here.
  *
- * @param[in] listen the listener for this socket
+ * @param[in] li the listener for this socket
  * @return
  *	- 0 on success
  *	- <0 on error
  */
-typedef int (*fr_io_open_t)(fr_listen_t *listen);
+typedef int (*fr_io_open_t)(fr_listen_t *li);
 
 /** Return a selectable file descriptor for this I/O path
  *
  * Return the file descriptor associated with this I/O path.
  *
- * @param[in] listen the listener for this socket
+ * @param[in] li the listener for this socket
  */
-typedef int (*fr_io_get_fd_t)(fr_listen_t const *listen);
+typedef int (*fr_io_get_fd_t)(fr_listen_t const *li);
 
 /** Set a selectable file descriptor for this I/O path
  *
  *
- * @param[in] listen	the listener for this socket
+ * @param[in] li	the listener for this socket
  * @param[in] fd	the FD to set
  */
-typedef int (*fr_io_set_fd_t)(fr_listen_t *listen, int fd);
+typedef int (*fr_io_set_fd_t)(fr_listen_t *li, int fd);
 
 /** Decode a raw packet and convert it into a request.
  *

@@ -222,9 +222,9 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
 /** Open a TCP listener for control sockets
  *
  */
-static int mod_open(fr_listen_t *listener)
+static int mod_open(fr_listen_t *li)
 {
-	proto_control_tcp_t *inst = talloc_get_type_abort(listener->app_io_instance, proto_control_tcp_t);
+	proto_control_tcp_t *inst = talloc_get_type_abort(li->app_io_instance, proto_control_tcp_t);
 
 	int				sockfd = 0;
 	uint16_t			port = inst->port;
@@ -275,9 +275,9 @@ static int mod_open(fr_listen_t *listener)
 /** Get the file descriptor for this socket.
  *
  */
-static int mod_fd(fr_listen_t const *listen)
+static int mod_fd(fr_listen_t const *li)
 {
-	proto_control_tcp_t const *inst = talloc_get_type_abort_const(listen->thread_instance, proto_control_tcp_t);
+	proto_control_tcp_t const *inst = talloc_get_type_abort_const(li->thread_instance, proto_control_tcp_t);
 
 	return inst->sockfd;
 }
@@ -285,9 +285,9 @@ static int mod_fd(fr_listen_t const *listen)
 /** Set the file descriptor for this socket.
  *
  */
-static int mod_fd_set(fr_listen_t *listen, int fd)
+static int mod_fd_set(fr_listen_t *li, int fd)
 {
-	proto_control_tcp_t *inst = talloc_get_type_abort(listen->thread_instance, proto_control_tcp_t);
+	proto_control_tcp_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_tcp_t);
 
 	inst->sockfd = fd;
 

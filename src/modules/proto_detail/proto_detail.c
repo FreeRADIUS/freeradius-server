@@ -427,7 +427,7 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
  */
 static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
-	fr_listen_t	*listen;
+	fr_listen_t	*li;
 	proto_detail_t 	*inst = talloc_get_type_abort(instance, proto_detail_t);
 
 	/*
@@ -435,28 +435,28 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 *	path, data takes from the socket to the decoder and
 	 *	back again.
 	 */
-	listen = talloc_zero(inst, fr_listen_t);
+	li = talloc_zero(inst, fr_listen_t);
 
-	listen->app_io = inst->app_io;
-	listen->app_io_instance = inst->app_io_instance;
-	listen->thread_instance = listen->app_io_instance;
+	li->app_io = inst->app_io;
+	li->app_io_instance = inst->app_io_instance;
+	li->thread_instance = li->app_io_instance;
 
-	listen->app = &proto_detail;
-	listen->app_instance = instance;
-	listen->server_cs = inst->server_cs;
+	li->app = &proto_detail;
+	li->app_instance = instance;
+	li->server_cs = inst->server_cs;
 
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
-	listen->default_message_size = inst->max_packet_size;
-	listen->num_messages = inst->num_messages;
+	li->default_message_size = inst->max_packet_size;
+	li->num_messages = inst->num_messages;
 
 	/*
 	 *	Open the file.
 	 */
-	if (inst->app_io->open(listen) < 0) {
+	if (inst->app_io->open(li) < 0) {
 		cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
-		talloc_free(listen);
+		talloc_free(li);
 		return -1;
 	}
 
@@ -465,24 +465,24 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 *	directly.
 	 */
 	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") == 0) {
-		if (!fr_schedule_listen_add(sc, listen)) {
-			talloc_free(listen);
+		if (!fr_schedule_listen_add(sc, li)) {
+			talloc_free(li);
 			return -1;
 		}
 
-		inst->listen = listen;
+		inst->listen = li;
 		return 0;
 	}
 
 	/*
 	 *	Watch the directory for changes.
 	 */
-	if (!fr_schedule_directory_add(sc, listen)) {
-		talloc_free(listen);
+	if (!fr_schedule_directory_add(sc, li)) {
+		talloc_free(li);
 		return -1;
 	}
 
-	inst->listen = listen;	/* Probably won't need it, but doesn't hurt */
+	inst->listen = li;	/* Probably won't need it, but doesn't hurt */
 	inst->sc = sc;
 
 	return 0;

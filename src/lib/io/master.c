@@ -389,7 +389,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	int rcode;
 	fr_io_connection_t *connection;
 	dl_instance_t *dl_inst = NULL;
-	fr_listen_t *listen;
+	fr_listen_t *li;
 	RADCLIENT *radclient;
 
 	/*
@@ -541,15 +541,15 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		/*
 		 *	Get the child listener.
 		 */
-		MEM(listen = connection->child = talloc(connection, fr_listen_t));
-		memcpy(listen, inst->listen, sizeof(*listen));
+		MEM(li = connection->child = talloc(connection, fr_listen_t));
+		memcpy(li, inst->listen, sizeof(*li));
 
 		/*
 		 *	Glue in the actual app_io
 		 */
-		listen->app_io = inst->child->app_io;
-		listen->app_io_instance = dl_inst->data;
-		listen->thread_instance = listen->app_io_instance;
+		li->app_io = inst->child->app_io;
+		li->app_io_instance = dl_inst->data;
+		li->thread_instance = li->app_io_instance;
 
 		/*
 		 *	There isn't a need to re-parse the
@@ -574,7 +574,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		/*
 		 *	Create the listener, based on our listener.
 		 */
-		MEM(listen = connection->listen = talloc(connection, fr_listen_t));
+		MEM(li = connection->listen = talloc(connection, fr_listen_t));
 
 		/*
 		 *	Note that our instance is effectively 'const'.
@@ -582,14 +582,14 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 *	i.e. we can't add things to it.  Instead, we have to
 		 *	put all variable data into the connection.
 		 */
-		memcpy(listen, inst->listen, sizeof(*listen));
+		memcpy(li, inst->listen, sizeof(*li));
 
 		/*
 		 *	Glue in the connection to the listener.
 		 */
-		rad_assert(listen->app_io == &fr_master_app_io);
-		listen->app_io_instance = connection;
-		listen->thread_instance = listen->app_io_instance;
+		rad_assert(li->app_io == &fr_master_app_io);
+		li->app_io_instance = connection;
+		li->thread_instance = li->app_io_instance;
 
 		/*
 		 *	Instantiate the child, and open the socket.
@@ -1561,14 +1561,14 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 /** Open a new listener
  *
  */
-static int mod_open(fr_listen_t *listen)
+static int mod_open(fr_listen_t *li)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
 	int rcode;
 
-	get_inst(listen->app_io_instance, &inst, &connection, &child);
+	get_inst(li->app_io_instance, &inst, &connection, &child);
 
 	/*
 	 *	One connection can't open another one.
@@ -1585,13 +1585,13 @@ static int mod_open(fr_listen_t *listen)
 /** Get the file descriptor for this socket.
  *
  */
-static int mod_fd(fr_listen_t const *listen)
+static int mod_fd(fr_listen_t const *li)
 {
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
 
-	get_inst(listen->app_io_instance, &inst, &connection, &child);
+	get_inst(li->app_io_instance, &inst, &connection, &child);
 
 	return inst->app_io->fd(child);
 }
@@ -2602,26 +2602,26 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc,
 			size_t default_message_size, size_t num_messages)
 {
-	fr_listen_t	*listen, *child;
+	fr_listen_t	*li, *child;
 
 	/*
 	 *	Build the #fr_listen_t.  This describes the complete
 	 *	path data takes from the socket to the decoder and
 	 *	back again.
 	 */
-	listen = talloc_zero(ctx, fr_listen_t);
+	li = talloc_zero(ctx, fr_listen_t);
 
-	listen->app = io->app;
-	listen->app_instance = io->app_instance;
-	listen->server_cs = io->server_cs;
+	li->app = io->app;
+	li->app_instance = io->app_instance;
+	li->server_cs = io->server_cs;
 
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
-	listen->default_message_size = default_message_size;
-	listen->num_messages = num_messages;
+	li->default_message_size = default_message_size;
+	li->num_messages = num_messages;
 
-	io->listen = listen;
+	io->listen = li;
 	io->sc = sc;
 
 	/*
@@ -2635,16 +2635,16 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	/*
 	 *	Set the listener to call our master trampoline function.
 	 */
-	listen->app_io = &fr_master_app_io;
-	listen->app_io_instance = io;
-	listen->thread_instance = listen->app_io_instance;
+	li->app_io = &fr_master_app_io;
+	li->app_io_instance = io;
+	li->thread_instance = li->app_io_instance;
 
 	/*
 	 *	Create the child listener, so that it can later be
 	 *	passed to the app_io functions.
 	 */
-	child = io->child = talloc_zero(listen, fr_listen_t);
-	memcpy(child, listen, sizeof(*child));
+	child = io->child = talloc_zero(li, fr_listen_t);
+	memcpy(child, li, sizeof(*child));
 
 	/*
 	 *	Reset these fields to point to the actual data.
@@ -2658,7 +2658,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	 */
 	if (io->app_io->open(child) < 0) {
 		cf_log_err(io->app_io_conf, "Failed opening %s interface", io->app_io->name);
-		talloc_free(listen);
+		talloc_free(li);
 		return -1;
 	}
 
@@ -2666,8 +2666,8 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	 *	Add the socket to the scheduler, which might
 	 *	end up in a different thread.
 	 */
-	if (!fr_schedule_listen_add(sc, listen)) {
-		talloc_free(listen);
+	if (!fr_schedule_listen_add(sc, li)) {
+		talloc_free(li);
 		return -1;
 	}
 

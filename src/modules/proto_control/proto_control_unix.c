@@ -945,9 +945,9 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 /** Open a UNIX listener for control sockets
  *
  */
-static int mod_open(fr_listen_t *listen)
+static int mod_open(fr_listen_t *li)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(listen->app_io_instance, proto_control_unix_t);
+	proto_control_unix_t *inst = talloc_get_type_abort(li->app_io_instance, proto_control_unix_t);
 
 	int				sockfd = 0;
 	CONF_ITEM			*ci;
@@ -992,9 +992,9 @@ static int mod_open(fr_listen_t *listen)
 /** Get the file descriptor for this socket.
  *
  */
-static int mod_fd(fr_listen_t const *listen)
+static int mod_fd(fr_listen_t const *li)
 {
-	proto_control_unix_t const *inst = talloc_get_type_abort_const(listen->thread_instance, proto_control_unix_t);
+	proto_control_unix_t const *inst = talloc_get_type_abort_const(li->thread_instance, proto_control_unix_t);
 
 	return inst->sockfd;
 }
@@ -1022,9 +1022,9 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 /** Set the file descriptor for this socket.
  *
  */
-static int mod_fd_set(fr_listen_t *listen, int fd)
+static int mod_fd_set(fr_listen_t *li, int fd)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(listen->thread_instance, proto_control_unix_t);
+	proto_control_unix_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
 #ifndef HAVE_FUNOPEN
 	cookie_io_functions_t io;
 #endif

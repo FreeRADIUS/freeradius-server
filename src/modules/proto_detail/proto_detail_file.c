@@ -110,9 +110,9 @@ static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
 /** Open a detail listener
  *
  */
-static int mod_open(fr_listen_t *listen)
+static int mod_open(fr_listen_t *li)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(listen->app_io_instance, proto_detail_file_t);
+	proto_detail_file_t *inst = talloc_get_type_abort(li->app_io_instance, proto_detail_file_t);
 	int oflag;
 
 #ifdef O_EVTONLY
@@ -137,9 +137,9 @@ static int mod_open(fr_listen_t *listen)
 
 /** Get the file descriptor for this IO instance
  */
-static int mod_fd(fr_listen_t const *listen)
+static int mod_fd(fr_listen_t const *li)
 {
-	proto_detail_file_t const *inst = talloc_get_type_abort_const(listen->thread_instance, proto_detail_file_t);
+	proto_detail_file_t const *inst = talloc_get_type_abort_const(li->thread_instance, proto_detail_file_t);
 
 	return inst->fd;
 }
@@ -225,7 +225,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 {
 	bool			opened = false;
 	proto_detail_work_t	*work;
-	fr_listen_t		*listen = NULL;
+	fr_listen_t		*li = NULL;
 	struct stat		st;
 
 	fr_event_vnode_func_t	funcs = { .delete = mod_vnode_delete };
@@ -287,7 +287,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		return 1;
 	}
 
-	MEM(listen = talloc_zero(NULL, fr_listen_t));
+	MEM(li = talloc_zero(NULL, fr_listen_t));
 
 	/*
 	 *	Create a new listener, and insert it into the
@@ -297,18 +297,18 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	 *	This listener is parented from the worker.  So that
 	 *	when the worker goes away, so does the listener.
 	 */
-	listen->app_io = inst->parent->work_io;
+	li->app_io = inst->parent->work_io;
 
-	listen->app = inst->parent->self;
-	listen->app_instance = inst->parent;
-	listen->server_cs = inst->parent->server_cs;
+	li->app = inst->parent->self;
+	li->app_instance = inst->parent;
+	li->server_cs = inst->parent->server_cs;
 
 	/*
 	 *	The worker may be in a different thread, so avoid
 	 *	talloc threading issues by using a NULL TALLOC_CTX.
 	 */
-	MEM(listen->app_io_instance = work = talloc(listen, proto_detail_work_t));
-	listen->thread_instance = listen->app_io_instance;
+	MEM(li->app_io_instance = work = talloc(li, proto_detail_work_t));
+	li->thread_instance = li->app_io_instance;
 
 	memcpy(work, inst->parent->work_submodule->data, sizeof(*work));
 
@@ -320,7 +320,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		      inst->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
-		talloc_free(listen);
+		talloc_free(li);
 		return -1;
 	}
 
@@ -352,8 +352,8 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
-	listen->default_message_size = inst->parent->max_packet_size;
-	listen->num_messages = inst->parent->num_messages;
+	li->default_message_size = inst->parent->max_packet_size;
+	li->num_messages = inst->parent->num_messages;
 
 	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
 	inst->parent->num_workers++;
@@ -362,31 +362,31 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	/*
 	 *	Instantiate the new worker.
 	 */
-	if (listen->app_io->instantiate &&
-	    (listen->app_io->instantiate(work,
+	if (li->app_io->instantiate &&
+	    (li->app_io->instantiate(work,
 					 inst->parent->work_io_conf) < 0)) {
-		ERROR("Failed instantiating %s", listen->app_io->name);
+		ERROR("Failed instantiating %s", li->app_io->name);
 		goto error;
 	}
 
 	/*
 	 *	Limit the number of messages, retransmission, etc.
 	 */
-	if (work->max_outstanding < listen->num_messages) {
-		listen->num_messages = work->max_outstanding;
+	if (work->max_outstanding < li->num_messages) {
+		li->num_messages = work->max_outstanding;
 	}
 	if (work->max_outstanding < 1) work->max_outstanding = 1;
 
 	/*
 	 *	Open the detail.work file.
 	 */
-	if (listen->app_io->open(listen->app_io_instance) < 0) {
-		ERROR("Failed opening %s", listen->app_io->name);
+	if (li->app_io->open(li->app_io_instance) < 0) {
+		ERROR("Failed opening %s", li->app_io->name);
 		goto error;
 	}
 	opened = true;
 
-	if (!fr_schedule_listen_add(inst->parent->sc, listen)) {
+	if (!fr_schedule_listen_add(inst->parent->sc, li)) {
 	error:
 		if (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
 			PERROR("Failed removing DELETE callback when opening work file");
@@ -395,13 +395,13 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		inst->vnode_fd = -1;
 
 		if (opened) {
-			(void) listen->app_io->close(listen->app_io_instance);
-			listen = NULL;
+			(void) li->app_io->close(li->app_io_instance);
+			li = NULL;
 		}
 
 	detach:
-		if (listen) (void) listen->app_io->detach(listen->app_io_instance);
-		talloc_free(listen);
+		if (li) (void) li->app_io->detach(li->app_io_instance);
+		talloc_free(li);
 		return -1;
 	}
 
