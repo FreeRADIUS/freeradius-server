@@ -546,8 +546,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 *	Glue in the actual app_io
 		 */
 		li->app_io = inst->child->app_io;
-		li->app_io_instance = dl_inst->data;
-		li->thread_instance = li->app_io_instance;
+		li->thread_instance = dl_inst->data;
+		li->app_io_instance = li->thread_instance;
 
 		/*
 		 *	There isn't a need to re-parse the
@@ -566,8 +566,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 *	make that distinction with the current APIs.
 		 *	So, we just hack it...
 		 */
-		memcpy(connection->child->app_io_instance, inst->app_io_instance, inst->app_io->inst_size);
-		connection->child->thread_instance = connection->child->app_io_instance;
+		memcpy(connection->child->thread_instance, inst->app_io_instance, inst->app_io->inst_size);
+		connection->child->app_io_instance = connection->child->thread_instance;
 
 		/*
 		 *	Create the listener, based on our listener.
@@ -586,8 +586,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		 *	Glue in the connection to the listener.
 		 */
 		rad_assert(li->app_io == &fr_master_app_io);
-		li->app_io_instance = connection;
-		li->thread_instance = li->app_io_instance;
+		li->thread_instance = connection;
+		li->app_io_instance = li->thread_instance;
 
 		/*
 		 *	Instantiate the child, and open the socket.
