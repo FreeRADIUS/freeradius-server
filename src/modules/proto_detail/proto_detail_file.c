@@ -325,7 +325,8 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 				   &funcs, NULL, inst) < 0) {
 		PERROR("Failed adding work socket to event loop");
 		close(fd);
-		goto detach;
+		talloc_free(li);
+		return -1;
 	}
 
 	/*
@@ -390,8 +391,6 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 			li = NULL;
 		}
 
-	detach:
-		if (li) (void) li->app_io->detach(li->app_io_instance);
 		talloc_free(li);
 		return -1;
 	}
@@ -674,9 +673,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static int mod_detach(void *instance)
+static int mod_close(fr_listen_t *li)
 {
-	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_file_t	*inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
 
 	if (inst->nr) (void) fr_network_socket_delete(inst->nr, inst->parent->listen);
 
@@ -712,13 +711,13 @@ fr_app_io_t proto_detail_file = {
 	.name			= "detail_file",
 	.config			= file_listen_config,
 	.inst_size		= sizeof(proto_detail_file_t),
-	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 65536,
 	.default_reply_size	= 32,
 
 	.open			= mod_open,
+	.close			= mod_close,
 	.vnode			= mod_vnode_extend,
 	.decode			= mod_decode,
 	.write			= mod_write,
