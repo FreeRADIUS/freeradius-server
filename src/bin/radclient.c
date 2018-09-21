@@ -1491,16 +1491,17 @@ int main(int argc, char **argv)
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
 	} else
 #endif
+	{
+		sockfd = fr_socket_server_udp(&client_ipaddr, &client_port, NULL, false);
+		if (sockfd < 0) {
+			ERROR("Error opening socket: %s", fr_strerror());
+			return -1;
+		}
 
-	sockfd = fr_socket_server_udp(&client_ipaddr, &client_port, NULL, false);
-	if (sockfd < 0) {
-		ERROR("Error opening socket: %s", fr_strerror());
-		return -1;
-	}
-
-	if (fr_socket_bind(sockfd, &client_ipaddr, &client_port, NULL) < 0) {
-		ERROR("Error binding socket: %s", fr_strerror());
-		return -1;
+		if (fr_socket_bind(sockfd, &client_ipaddr, &client_port, NULL) < 0) {
+			ERROR("Error binding socket: %s", fr_strerror());
+			return -1;
+		}
 	}
 
 	packet_list = fr_packet_list_create(1);
