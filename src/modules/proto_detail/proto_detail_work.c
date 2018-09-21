@@ -717,9 +717,14 @@ static int mod_open(fr_listen_t *li)
 
 static int mod_close_internal(proto_detail_work_t *inst)
 {
+	/*
+	 *	One less worker...  we check for "0" because of the
+	 *	hacks in proto_detail which let us start up with
+	 *	"transport = work" for debugging purposes.
+	 */
 	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
 	inst->parent->work_io_instance = NULL;
-	inst->parent->num_workers--;
+	if (inst->parent->num_workers > 0) inst->parent->num_workers--;
 	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
 
 	DEBUG("Closing and deleting detail worker file %s", inst->name);
@@ -741,8 +746,6 @@ static int mod_close_internal(proto_detail_work_t *inst)
 
 	return 0;
 }
-
-
 
 
 /** Close  a detail listener
@@ -869,24 +872,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static int mod_detach(void *instance)
-{
-	proto_detail_work_t	*inst = talloc_get_type_abort(instance, proto_detail_work_t);
-
-	if (inst->fd >= 0) close(inst->fd);
-
-	/*
-	 *	One less worker...  we check for "0" because of the
-	 *	hacks in proto_detail which let us start up with
-	 *	"transport = work" for debugging purposes.
-	 */
-	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
-	if (inst->parent->num_workers > 0) inst->parent->num_workers--;
-	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
-
-	return 0;
-}
-
 
 /** Private interface for use by proto_detail_file
  *
@@ -897,7 +882,6 @@ fr_app_io_t proto_detail_work = {
 	.name			= "detail_work",
 	.config			= file_listen_config,
 	.inst_size		= sizeof(proto_detail_work_t),
-	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 
