@@ -1569,23 +1569,14 @@ static int mod_inject(fr_listen_t *li, uint8_t *buffer, size_t buffer_len, fr_ti
 static int mod_open(fr_listen_t *li)
 {
 	fr_io_instance_t *inst;
-	fr_io_connection_t *connection;
-	fr_listen_t *child;
-	int rcode;
 
-	get_inst(li->thread_instance, &inst, &connection, &child);
+	inst = li->thread_instance;
 
-	/*
-	 *	One connection can't open another one.
-	 */
-	rad_assert(connection == NULL);
+	if (inst->app_io->open(inst->child) < 0) return -1;
 
-	rcode = inst->app_io->open(child);
-	if (rcode < 0) return rcode;
+	li->fd = inst->child->fd;	/* copy this back up */
 
-	li->fd = child->fd;	/* copy this back up */
-
-	return rcode;
+	return 0;
 }
 
 
