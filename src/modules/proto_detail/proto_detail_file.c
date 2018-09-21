@@ -298,8 +298,8 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	 *	The worker may be in a different thread, so avoid
 	 *	talloc threading issues by using a NULL TALLOC_CTX.
 	 */
-	MEM(li->app_io_instance = work = talloc(li, proto_detail_work_t));
-	li->thread_instance = li->app_io_instance;
+	MEM(li->thread_instance = work = talloc(li, proto_detail_work_t));
+	li->app_io_instance = li->thread_instance;
 
 	memcpy(work, inst->parent->work_submodule->data, sizeof(*work));
 
