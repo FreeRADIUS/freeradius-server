@@ -937,7 +937,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	fr_listen_t *child;
 	int value, accept_fd = -1;
 
-	get_inst(li->app_io_instance, &inst, &connection, &child);
+	get_inst(li->thread_instance, &inst, &connection, &child);
 
 	track = NULL;
 
@@ -1521,7 +1521,7 @@ static int mod_inject(fr_listen_t *li, uint8_t *buffer, size_t buffer_len, fr_ti
 	fr_io_pending_packet_t *pending;
 	fr_io_track_t *track;
 
-	get_inst(li->app_io_instance, &inst, &connection, NULL);
+	get_inst(li->thread_instance, &inst, &connection, NULL);
 
 	if (!connection) {
 		DEBUG2("Received injected packet for an unconnected socket.");
@@ -1573,7 +1573,7 @@ static int mod_open(fr_listen_t *li)
 	fr_listen_t *child;
 	int rcode;
 
-	get_inst(li->app_io_instance, &inst, &connection, &child);
+	get_inst(li->thread_instance, &inst, &connection, &child);
 
 	/*
 	 *	One connection can't open another one.
@@ -1600,7 +1600,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 
-	get_inst(li->app_io_instance, &inst, &connection, NULL);
+	get_inst(li->thread_instance, &inst, &connection, NULL);
 
 	/*
 	 *	We're not doing IO, so there are no timers for
@@ -1936,7 +1936,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	fr_listen_t *child;
 	int packets;
 
-	get_inst(li->app_io_instance, &inst, &connection, &child);
+	get_inst(li->thread_instance, &inst, &connection, &child);
 
 	client = track->client;
 	packets = client->packets;
@@ -2298,7 +2298,7 @@ static int mod_close(fr_listen_t *li)
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
 
-	get_inst(li->app_io_instance, &inst, &connection, &child);
+	get_inst(li->thread_instance, &inst, &connection, &child);
 
 	if (inst->app_io->close) {
 		int rcode;
@@ -2627,8 +2627,8 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	 *	Set the listener to call our master trampoline function.
 	 */
 	li->app_io = &fr_master_app_io;
-	li->app_io_instance = io;
-	li->thread_instance = li->app_io_instance;
+	li->thread_instance = io;
+	li->app_io_instance = li->thread_instance;
 
 	/*
 	 *	Create the child listener, so that it can later be
@@ -2641,8 +2641,8 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc
 	 *	Reset these fields to point to the actual data.
 	 */
 	child->app_io = io->app_io;
-	child->app_io_instance = io->app_io_instance;
-	child->thread_instance = child->app_io_instance;
+	child->thread_instance = io->app_io_instance;
+	child->app_io_instance = child->thread_instance;
 
 	/*
 	 *	Don't set the connection for the main socket.  It's not connected.
