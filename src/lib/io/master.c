@@ -2331,13 +2331,9 @@ static int mod_detach(void *instance)
 	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
-	int rcode;
 	fr_io_client_t *client;
 
 	get_inst(instance, &inst, &connection, &child);
-
-	rcode = inst->app_io->detach(child->app_io_instance);
-	if (rcode < 0) return rcode;
 
 	/*
 	 *	Each client is it's own talloc context, so we have to

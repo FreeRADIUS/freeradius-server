@@ -27,7 +27,7 @@ struct fr_listen {
 	char const		*name;			//!< printable name for this socket - set by open
 
 	fr_app_io_t const	*app_io;		//!< I/O path functions.
-	void     		*app_io_instance;	//!< I/O path configuration context.
+	void const    		*app_io_instance;	//!< I/O path configuration context.
 	void			*thread_instance;	//!< thread / socket context
 
 	fr_app_t const		*app;
