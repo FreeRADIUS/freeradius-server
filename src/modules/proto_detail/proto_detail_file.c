@@ -372,7 +372,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	/*
 	 *	Open the detail.work file.
 	 */
-	if (li->app_io->open(li->app_io_instance) < 0) {
+	if (li->app_io->open(li) < 0) {
 		ERROR("Failed opening %s", li->app_io->name);
 		goto error;
 	}
@@ -387,7 +387,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		inst->vnode_fd = -1;
 
 		if (opened) {
-			(void) li->app_io->close(li->app_io_instance);
+			(void) li->app_io->close(li);
 			li = NULL;
 		}
 
