@@ -56,6 +56,7 @@ typedef struct {
 	uint8_t				packet[20];	//!< original request packet
 } fr_io_track_t;
 
+typedef struct fr_io_live_t fr_io_live_t;
 
 /** The master IO instance
  *
@@ -80,11 +81,6 @@ typedef struct fr_io_instance_t {
 	uint32_t			max_clients;			//!< maximum number of dynamic clients to allow
 	uint32_t			max_pending_packets;		//!< maximum number of pending packets
 
-	// @todo - count num_nak_clients, and num_nak_connections, too
-	uint32_t			num_connections;		//!< number of dynamic connections
-	uint32_t			num_clients;			//!< number of dynamic clients
-	uint32_t			num_pending_packets;   		//!< number of pending packets
-
 	struct timeval			cleanup_delay;			//!< for Access-Request packets
 	struct timeval			idle_timeout;			//!< for dynamic clients
 	struct timeval			nak_lifetime;			//!< lifetime of NAKed clients
@@ -108,17 +104,9 @@ typedef struct fr_io_instance_t {
 	int				ipproto;			//!< IP proto by number
 	char const			*transport;			//!< transport, typically name of IP proto
 
-	fr_event_list_t			*el;				//!< event list, for the master socket.
-	fr_network_t			*nr;				//!< network for the master socket
-
-	fr_trie_t			*trie;				//!< trie of clients
 	fr_trie_t const			*networks;     			//!< trie of allowed networks
-	fr_heap_t			*pending_clients;		//!< heap of pending clients
-	fr_heap_t			*alive_clients;			//!< heap of active clients
 
-	fr_listen_t			*listen;			//!< The master IO path
-	fr_listen_t			*child;				//!< The child IO path
-	fr_schedule_t			*sc;				//!< the scheduler
+	fr_io_live_t			*live;			       	//!< live socket data
 } fr_io_instance_t;
 
 extern fr_app_io_t fr_master_app_io;
