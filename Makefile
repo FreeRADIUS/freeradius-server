@@ -341,7 +341,8 @@ whitespace:
 CONF_FILES := $(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/*)
 ADOC_FILES := $(patsubst raddb/%,asciidoc/%.adoc,$(CONF_FILES))
 ADOC_FILES += $(patsubst raddb/%.md,asciidoc/%.adoc,$(shell find raddb -name "*\.md" -print))
-PDF_FILES := $(patsubst raddb/%.adoc,asciidoc/%.pdf,$(ADOC_FILES))
+PDF_FILES := $(patsubst asciidoc/%.adoc,asciidoc/%.pdf,$(ADOC_FILES))
+HTML_FILES := $(patsubst asciidoc/%.adoc,asciidoc/%.html,$(ADOC_FILES))
 
 #
 #  Markdown files get converted to asciidoc via pandoc.
@@ -363,6 +364,10 @@ asciidoc/%.adoc: raddb/%
 	@mkdir -p $(dir $@)
 	@./scripts/asciidoc/conf2adoc -a ${top_srcdir}/asciidoc < $^ > $@
 
+asciidoc/%.html: asciidoc/%.adoc
+	@echo HTML $^
+	@asciidoctor $< -b html5 -o $@ $<
+
 asciidoc/%.pdf: asciidoc/%.adoc
 	@echo PDF $^
 	@asciidoctor $< -b docbook5 -o - | \
@@ -377,5 +382,6 @@ asciidoc/%.pdf: raddb/%.md
 		-V papersize=letter \
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
-.PHONY: asciidoc
+.PHONY: asciidoc asciidoc-html
 asciidoc: $(ADOC_FILES)
+asciidoc-html: $(HTML_FILES)
