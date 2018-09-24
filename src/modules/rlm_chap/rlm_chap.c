@@ -102,7 +102,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		uint8_t const *p;
 		size_t length;
 		VALUE_PAIR *vp;
-		char buffer[CHAP_VALUE_LENGTH * 2 + 1];
+		char buffer[MAX_STRING_LEN * 2 + 1];
 
 		RDEBUG3("Comparing with \"known good\" &control:Cleartext-Password value \"%s\"",
 			password->vp_strvalue);
