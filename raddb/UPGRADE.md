@@ -14,6 +14,8 @@ In general, we have the following changes:
 * Packet processing sections are now `recv Access-Request`, etc.  Not `authorize`, etc.
 * each `listen` section needs to be converted to the v4 format
 
+## Upgrading from older versions
+
 ### Upgrading from v3
 
 When upgrading, please start with the default configuration of v4.
@@ -47,8 +49,9 @@ last in any `send Access-Reject section.
 The `log` section has been updated to remove many configuration items
 which are specific to RADIUS, and to Access-Request packets.  Please
 see `sites-available/default`, and look for the `Access-Request`
-subsection there.  See also `templates.conf` for a way to regain one
-global configuration for Access-Request packets.
+subsection there.  See also [`templates.conf`](templates.conf) for
+a way to regain one global configuration for Access-Request
+packets.
 
 ## Virtual Servers
 
@@ -503,7 +506,7 @@ All data received from the network is marked "tainted" by default.
 ### rlm_rest
 
 `REST-HTTP-Code` is now inserted into the `&request:` list instead of the `&reply:`
-list, to be compliant with the [list usage](http://wiki.freeradius.org/contributing/List-Usage) guidelines.
+list, to be compliant with the [list usage](http://wiki.freeradius.org/guide/List-Usage) guidelines.
 
 ### rlm_sql
 

@@ -28,8 +28,8 @@ in v3 and earlier releases, we had the following limitations:
 
 All of these limitations and more have been removed.  The downside of
 these changes is that the some of the configuration has been changed.
-Please see the `UPGRADE.md` file for instructions on how to migrate a
-v3 configuration to v4.
+Please see the [`UPGRADE.md`](UPGRADE.md) file for instructions on
+how to migrate a v3 configuration to v4.
 
 ## Configuring the server
 
@@ -60,11 +60,11 @@ than to make massive changes, and then to spend weeks debugging it.
 The files in this directory are organized into logical groups, as
 follows.
 
-* `mods-available` - [Available modules](mods-available/README.adoc), with example configuration.
+* `mods-available/` - [Available modules](mods-available/README.md), with example configuration.
 
-* `mods-enabled/` - Enabled modules that are being used by FreeRADIUSx.
+* `mods-enabled/` - Enabled modules that are being used by FreeRADIUS.
 
-* `sites-available/` - [Available virtual servers](sites-available/README.adoc), with example configuration.
+* `sites-available/` - [Available virtual servers](sites-available/README.md), with example configuration.
 
 * `sites-enabled/` - Enabled virtual servers that are being used by FreeRADIUS.
 
@@ -146,7 +146,8 @@ Note that unlike v3, there are no longer any `authorize`,
 been renamed.  This change was necessary in order to simplify the
 operation of the server, and to better support multiple protocols.
 
-Please see the `UPGRADE.md` file for more information about these changes.
+Please see the [`UPGRADE.md`](UPGRADE.md) file for more
+information about these changes.
 
 The `sites-available/` directory contains many files.  Each file is a
 worked example of how to achieve a particular goal using FreeRADIUS.
