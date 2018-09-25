@@ -330,3 +330,8 @@ virtual server, then you will need one or more global "client"
 sections.  Those clients will contain a "virtual_server = ..." entry
 that will direct requests from those clients to the appropriate
 virtual server.
+
+## List of provided virtual servers
+
+<!--- FILE_LIST(raddb/sites-available)
+      Do not remove - this will be expanded when converting to Asciidoc -->

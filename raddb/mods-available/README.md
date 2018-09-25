@@ -73,3 +73,8 @@ method described above.
 
 Once the module is enabled, it will automatically be used in the
 default configuration.
+
+## List of available modules
+
+<!--- FILE_LIST(raddb/mods-available)
+      Do not remove - this will be expanded when converting to Asciidoc -->

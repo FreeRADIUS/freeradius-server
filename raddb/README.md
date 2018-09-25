@@ -171,4 +171,7 @@ The standard installation of FreeRADIUS enables only a few virtual servers.
 This directory contains certificates and configuration for EAP and
 RADIUS over TLS (i.e. RadSec).
 
+## List of config files
 
+<!--- FILE_LIST(raddb)
+      Do not remove - this will be expanded when converting to Asciidoc -->
