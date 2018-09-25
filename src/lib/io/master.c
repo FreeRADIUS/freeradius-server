@@ -95,7 +95,7 @@ typedef struct fr_io_client_t {
 	bool				ready_to_delete; //!< are we ready to delete this client?
 	bool				in_trie;	//!< is the client in the trie?
 
-	fr_io_instance_t		*inst;		//!< parent instance for master IO handler
+	fr_io_instance_t const		*inst;		//!< parent instance for master IO handler
 	fr_event_timer_t const		*ev;		//!< when we clean up the client
 	rbtree_t			*table;		//!< tracking table for packets
 
@@ -276,7 +276,7 @@ static int track_cmp(void const *one, void const *two)
 }
 
 
-static fr_io_pending_packet_t *pending_packet_pop(fr_io_instance_t *inst)
+static fr_io_pending_packet_t *pending_packet_pop(fr_io_instance_t const *inst)
 {
 	fr_io_client_t *client;
 	fr_io_pending_packet_t *pending;
@@ -400,7 +400,7 @@ static int connection_free(fr_io_connection_t *connection)
  *
  *  Called ONLY from the master socket.
  */
-static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_client_t *client,
+static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst, fr_io_client_t *client,
 						  int fd,
 						  fr_io_address_t *address,
 						  fr_io_connection_t *nak)
@@ -738,7 +738,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
  *	fr_io_connection_io, which will duplicate some code,
  *	but may make things simpler?
  */
-static void get_inst(void *instance, fr_io_instance_t **inst, fr_io_connection_t **connection,
+static void get_inst(void *instance, fr_io_instance_t const **inst, fr_io_connection_t **connection,
 		     fr_listen_t **child)
 {
 	int magic;
@@ -942,7 +942,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time_p,
 			uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
-	fr_io_instance_t *inst;
+	fr_io_instance_t const *inst;
 	ssize_t packet_len = -1;
 	fr_time_t recv_time = 0;
 	fr_io_client_t *client;
@@ -1208,7 +1208,7 @@ do_read:
 			/*
 			 *	Make our own copy that we can modify it.
 			 */
-			MEM(radclient = radclient_clone(inst, radclient));
+			MEM(radclient = radclient_clone(inst->live, radclient));
 			radclient->active = true;
 
 		} else if (inst->dynamic_clients) {
@@ -1528,7 +1528,7 @@ have_client:
  */
 static int mod_inject(fr_listen_t *li, uint8_t *buffer, size_t buffer_len, fr_time_t recv_time)
 {
-	fr_io_instance_t	*inst;
+	fr_io_instance_t const *inst;
 	int		priority;
 	bool		is_dup = false;
 	fr_io_connection_t *connection;
@@ -1582,7 +1582,7 @@ static int mod_inject(fr_listen_t *li, uint8_t *buffer, size_t buffer_len, fr_ti
  */
 static int mod_open(fr_listen_t *li)
 {
-	fr_io_instance_t *inst;
+	fr_io_instance_t const *inst;
 
 	inst = li->thread_instance;
 
@@ -1602,7 +1602,7 @@ static int mod_open(fr_listen_t *li)
  */
 static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 {
-	fr_io_instance_t *inst;
+	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
 
 	get_inst(li->thread_instance, &inst, &connection, NULL);
@@ -1637,7 +1637,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 }
 
 
-static void delete_client(fr_io_instance_t *inst, fr_io_client_t *client)
+static void delete_client(fr_io_instance_t const *inst, fr_io_client_t *client)
 {
 	rad_assert(client->in_trie);
 	rad_assert(!client->connection);
@@ -1651,10 +1651,10 @@ static void delete_client(fr_io_instance_t *inst, fr_io_client_t *client)
 static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *uctx)
 {
 	fr_io_client_t *client = uctx;
-	fr_io_instance_t *inst;
+	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
 	struct timeval when;
-	struct timeval *delay;
+	struct timeval const *delay;
 	int packets, connections;
 
 	/*
@@ -1858,7 +1858,7 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 {
 	fr_io_track_t *track = talloc_get_type_abort(uctx, fr_io_track_t);
 	fr_io_client_t *client = track->client;
-	fr_io_instance_t *inst = client->inst;
+	fr_io_instance_t const *inst = client->inst;
 
 	/*
 	 *	@todo - figure out how to do this only for SOME
@@ -1933,7 +1933,7 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
-	fr_io_instance_t *inst;
+	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
 	fr_io_track_t *track = packet_ctx;
 	fr_io_client_t *client;
@@ -2299,7 +2299,7 @@ reread:
  */
 static int mod_close(fr_listen_t *li)
 {
-	fr_io_instance_t *inst;
+	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
 
@@ -2373,7 +2373,7 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 
 static char const *mod_name(fr_listen_t *li)
 {
-	fr_io_instance_t *inst = li->thread_instance;
+	fr_io_instance_t const *inst = li->thread_instance;
 
 	if (!inst->app_io->get_name) return inst->app_io->name;
 
