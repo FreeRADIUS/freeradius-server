@@ -514,30 +514,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the master io submodule
 	 */
-	if (fr_master_app_io.instantiate(&inst->io, conf) < 0) {
-		return -1;
-
-	}
-
-	/*
-	 *	No dynamic clients, nothing more to do.
-	 */
-	if (!inst->io.dynamic_clients) return 0;
-
-	/*
-	 *	Instantiate proto_control_dynamic_client
-	 */
-	{
-		fr_app_worker_t const	*app_process;
-
-		app_process = (fr_app_worker_t const *)inst->dynamic_submodule->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_submodule->data, conf) < 0)) {
-			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
-			return -1;
-		}
-	}
-
-	return 0;
+	return fr_master_app_io.instantiate(&inst->io, conf);
 }
 
 
