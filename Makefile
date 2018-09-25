@@ -338,7 +338,7 @@ whitespace:
 	@for x in $$(git ls-files raddb/ src/); do unexpand $$x > $$x.bak; cp $$x.bak $$x; rm -f $$x.bak;done
 	@perl -p -i -e 'trim' $$(git ls-files src/)
 
-CONF_FILES := $(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary)
+CONF_FILES := $(filter-out %~,$(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary))
 ADOC_FILES := $(patsubst raddb/%,asciidoc/%.adoc,$(CONF_FILES))
 ADOC_FILES += $(patsubst raddb/%.md,asciidoc/%.adoc,$(shell find raddb -name "*\.md" -print))
 PDF_FILES := $(patsubst asciidoc/%.adoc,asciidoc/%.pdf,$(ADOC_FILES))
