@@ -1347,7 +1347,7 @@ do_read:
 		 *	allowed clients.
 		 */
 		if (fr_trie_insert(live->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
-			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.",
+			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packets for it.",
 			      inst->app_io->name, client->radclient->shortname);
 			talloc_free(client);
 			if (accept_fd >= 0) close(accept_fd);
