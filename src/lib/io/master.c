@@ -46,7 +46,6 @@ typedef struct fr_io_live_t {
 
 	// @todo - count num_nak_clients, and num_nak_connections, too
 	uint32_t			num_connections;		//!< number of dynamic connections
-	uint32_t			num_clients;			//!< number of dynamic clients
 	uint32_t			num_pending_packets;   		//!< number of pending packets
 } fr_io_live_t;
 
@@ -938,6 +937,24 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 }
 
 
+/*
+ *	Remove a client from the list of "live" clients.
+ *
+ *	This function is only used for the "main" socket.  Clients
+ *	from connections do not use it.
+ */
+static int _client_free(fr_io_client_t *client)
+{
+	rad_assert(client->in_trie);
+	rad_assert(!client->connection);
+	rad_assert(fr_heap_num_elements(client->live->alive_clients) > 0);
+
+	(void) fr_trie_remove(client->live->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
+	(void) fr_heap_extract(client->live->alive_clients, client);
+
+	return 0;
+}
+
 /**  Implement 99% of the read routines.
  *
  *  The app_io->read does the transport-specific data read.
@@ -1217,7 +1234,7 @@ do_read:
 			radclient->active = true;
 
 		} else if (inst->dynamic_clients) {
-			if (inst->max_clients && (live->num_clients >= inst->max_clients)) {
+			if (inst->max_clients && (fr_heap_num_elements(live->alive_clients) >= inst->max_clients)) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 
 				if (accept_fd <= 0) {
@@ -1338,7 +1355,6 @@ do_read:
 		}
 
 		client->in_trie = true;
-		if (client->state == PR_CLIENT_PENDING) live->num_clients++;
 
 		/*
 		 *	Track the live clients so that we can clean
@@ -1346,6 +1362,13 @@ do_read:
 		 */
 		(void) fr_heap_insert(live->alive_clients, client);
 		client->pending_id = -1;
+
+		/*
+		 *	Now that we've inserted it into the heap and
+		 *	incremented the numbers, set the destructor
+		 *	function.
+		 */
+		talloc_set_destructor(client, _client_free);
 	}
 
 have_client:
@@ -1643,17 +1666,6 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 }
 
 
-static void delete_client(fr_io_live_t *live, fr_io_client_t *client)
-{
-	rad_assert(client->in_trie);
-	rad_assert(!client->connection);
-	(void) fr_trie_remove(live->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
-	(void) fr_heap_extract(live->alive_clients, client);
-	rad_assert(live->num_clients > 0);
-	live->num_clients--;
-	talloc_free(client);
-}
-
 static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *uctx)
 {
 	fr_io_client_t *client = uctx;
@@ -1738,7 +1750,7 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 			return;
 		}
 
-		delete_client(inst->live, client);
+		talloc_free(client);
 		return;
 	}
 
@@ -2144,7 +2156,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			 *	Remove the pending client from the trie.
 			 */
 			if (!connection) {
-				delete_client(live, client);
+				talloc_free(client);
 				return buffer_len;
 			}
 
@@ -2580,15 +2592,18 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 }
 
 
-static int _free_clients(fr_heap_t *heap)
+static int _client_heap_free(fr_heap_t *heap)
 {
 	fr_io_client_t *client;
 
 	/*
 	 *	Each client is it's own talloc context, so we have to
 	 *	clean them up individually.
+	 *
+	 *	The client destructor will remove them from the heap,
+	 *	so we don't need to do that here.
 	 */
-	while ((client = fr_heap_pop(heap)) != NULL) {
+	while ((client = fr_heap_peek(heap)) != NULL) {
 		talloc_free(client);
 	}
 
@@ -2638,7 +2653,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 
 	MEM(live->alive_clients = fr_heap_create(inst->ctx, pending_client_cmp,
 							 fr_io_client_t, alive_id));
-	talloc_set_destructor(live->alive_clients, _free_clients);
+	talloc_set_destructor(live->alive_clients, _client_heap_free);
 
 	/*
 	 *	Set the listener to call our master trampoline function.
