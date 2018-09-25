@@ -95,7 +95,7 @@ typedef struct fr_io_client_t {
 	bool				ready_to_delete; //!< are we ready to delete this client?
 	bool				in_trie;	//!< is the client in the trie?
 
-	struct fr_io_instance_t		*inst;		//!< parent instance for master IO handler
+	fr_io_instance_t		*inst;		//!< parent instance for master IO handler
 	fr_event_timer_t const		*ev;		//!< when we clean up the client
 	rbtree_t			*table;		//!< tracking table for packets
 
@@ -668,7 +668,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(connection->address->src_ipaddr), 0);
 			fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(connection->address->dst_ipaddr), 0);
 
-			connection->name = talloc_typed_asprintf(inst, "proto_%s from client %s port %u to server %s port %u",
+			connection->name = talloc_typed_asprintf(connection, "proto_%s from client %s port %u to server %s port %u",
 								 inst->app_io->name,
 								 src_buf, connection->address->src_port,
 								 dst_buf, connection->address->dst_port);
@@ -758,12 +758,12 @@ static void get_inst(void *instance, fr_io_instance_t **inst, fr_io_connection_t
 }
 
 
-static RADCLIENT *radclient_alloc(fr_io_instance_t *inst, fr_io_address_t *address)
+static RADCLIENT *radclient_alloc(TALLOC_CTX *ctx, int ipproto, fr_io_address_t *address)
 {
 	RADCLIENT *client;
 	char src_buf[128];
 
-	MEM(client = talloc_zero(inst, RADCLIENT));
+	MEM(client = talloc_zero(ctx, RADCLIENT));
 
 	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address->src_ipaddr), 0);
 
@@ -775,7 +775,7 @@ static RADCLIENT *radclient_alloc(fr_io_instance_t *inst, fr_io_address_t *addre
 
 	client->src_ipaddr = address->dst_ipaddr;
 
-	client->proto = inst->ipproto;
+	client->proto = ipproto;
 	client->dynamic = true;
 
 	return client;
@@ -1241,7 +1241,7 @@ do_read:
 			 *	Allocate our local radclient as a
 			 *	placeholder for the dynamic client.
 			 */
-			radclient = radclient_alloc(inst, &address);
+			radclient = radclient_alloc(inst->live, inst->ipproto, &address);
 			state = PR_CLIENT_PENDING;
 
 		} else {
@@ -2373,7 +2373,7 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 
 static char const *mod_name(fr_listen_t *li)
 {
-	fr_io_instance_t	*inst = li->thread_instance;
+	fr_io_instance_t *inst = li->thread_instance;
 
 	if (!inst->app_io->get_name) return inst->app_io->name;
 
@@ -2383,7 +2383,7 @@ static char const *mod_name(fr_listen_t *li)
 
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	fr_io_instance_t		*inst = instance;
+	fr_io_instance_t *inst = instance;
 
 	rad_assert(inst->app_io != NULL);
 
