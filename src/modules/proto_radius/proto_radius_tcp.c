@@ -290,7 +290,7 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_radius_tcp_t *inst = talloc_get_type_abort(li->app_io_instance, proto_radius_tcp_t);
+	proto_radius_tcp_t *inst = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_t);
 
 	int				sockfd;
 	uint16_t			port = inst->port;

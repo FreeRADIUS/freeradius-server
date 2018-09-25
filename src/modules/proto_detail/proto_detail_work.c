@@ -672,7 +672,7 @@ free_track:
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(li->app_io_instance, proto_detail_work_t);
+	proto_detail_work_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
 
 	/*
 	 *	Open the file if we haven't already been given one.

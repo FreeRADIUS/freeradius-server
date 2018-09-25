@@ -112,7 +112,7 @@ static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(li->app_io_instance, proto_detail_file_t);
+	proto_detail_file_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
 	int oflag;
 
 #ifdef O_EVTONLY
