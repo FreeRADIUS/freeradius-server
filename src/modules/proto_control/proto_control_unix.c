@@ -927,7 +927,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(li->app_io_instance, proto_control_unix_t);
+	proto_control_unix_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
 
 	int				sockfd ;
 	CONF_ITEM			*ci;
