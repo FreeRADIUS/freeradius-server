@@ -438,8 +438,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	li = talloc_zero(inst, fr_listen_t);
 
 	li->app_io = inst->app_io;
-	li->app_io_instance = inst->app_io_instance;
-	li->thread_instance = li->app_io_instance;
+	li->thread_instance = inst->app_io_instance;
+	li->app_io_instance = li->thread_instance;
 
 	li->app = &proto_detail;
 	li->app_instance = instance;
