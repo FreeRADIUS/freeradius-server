@@ -147,7 +147,11 @@ sub process_file {
 
 	    next if (!$links{$key});
 
-	    $link = "`link:" . $links{$key} . "[" . $key . "]`";
+	    if ($links{$key} =~ /^http/) {
+		$link = "`link:" . $links{$key} . "[" . $key . "]`";
+	    } else {
+		$link = "<<" . $links{$key} . "," . $key . ">>";
+	    }
 
 	    #
 	    #  Yes, this is terrible.  We should really just print each
