@@ -518,10 +518,10 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 	if (inst->io.app_io && (track->dynamic == request->async->recv_time)) {
 		fr_app_worker_t const	*app_process;
 
-		app_process = (fr_app_worker_t const *) inst->dynamic_submodule->module->common;
+		app_process = (fr_app_worker_t const *) inst->io.dynamic_submodule->module->common;
 
 		request->async->process = app_process->entry_point;
-		request->async->process_inst = inst->dynamic_submodule;
+		request->async->process_inst = inst->io.dynamic_submodule;
 		track->dynamic = 0;
 		return;
 	}
@@ -774,8 +774,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	{
 		fr_app_worker_t const	*app_process;
 
-		app_process = (fr_app_worker_t const *)inst->dynamic_submodule->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_submodule->data, conf) < 0)) {
+		app_process = (fr_app_worker_t const *)inst->io.dynamic_submodule->module->common;
+		if (app_process->instantiate && (app_process->instantiate(inst->io.dynamic_submodule->data, conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
 		}
@@ -893,7 +893,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Load proto_radius_dynamic_client
 	 */
-	if (dl_instance(inst, &inst->dynamic_submodule,
+	if (dl_instance(inst, &inst->io.dynamic_submodule,
 			conf, inst->io.dl_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
 		cf_log_err(conf, "Failed finding proto_radius_dynamic_client");
 		return -1;

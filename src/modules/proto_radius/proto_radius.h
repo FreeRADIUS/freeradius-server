@@ -33,8 +33,6 @@ typedef struct proto_radius_t {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
 	dl_instance_t			**type_submodule;		//!< Instance of the various types
-	dl_instance_t			*dynamic_submodule;		//!< proto_radius_dynamic_client
-									//!< only one instance per type allowed.
 	dl_instance_t			*type_submodule_by_code[FR_MAX_PACKET_CODE];	//!< Lookup process entry point by code.
 
 	uint32_t			max_packet_size;		//!< for message ring buffer.
