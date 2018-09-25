@@ -778,31 +778,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Bootstrap the master IO handler.
 	 */
-	if (fr_master_app_io.bootstrap(&inst->io, conf) < 0) {
-		return -1;
-	}
-
-	/*
-	 *	proto_dhcpv4_udp determines if we have dynamic clients
-	 *	or not.
-	 */
-	if (!inst->io.dynamic_clients) return 0;
-
-	/*
-	 *	Load proto_dhcpv4_dynamic_client
-	 */
-	if (dl_instance(inst, &inst->io.dynamic_submodule,
-			conf, inst->io.dl_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
-		cf_log_err(conf, "Failed finding proto_dhcpv4_dynamic_client");
-		return -1;
-	}
-
-	/*
-	 *	Don't bootstrap the dynamic submodule.  We're
-	 *	not even sure what that means...
-	 */
-
-	return 0;
+	return fr_master_app_io.bootstrap(&inst->io, conf);
 }
 
 static int mod_load(void)

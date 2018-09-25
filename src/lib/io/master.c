@@ -2358,7 +2358,7 @@ static int mod_close(fr_listen_t *li)
 }
 
 
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
+static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	fr_io_instance_t *inst = instance;
 
@@ -2381,17 +2381,36 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 		return -1;
 	}
 
-	if (!inst->app_io->network_get) return 0;
+	/*
+	 *	The caller determines if we have dynamic clients.
+	 */
+	if (inst->dynamic_clients) {
+		/*
+		 *	Load proto_dhcpv4_dynamic_client
+		 */
+		if (dl_instance(cs, &inst->dynamic_submodule,
+				cs, inst->dl_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
+			cf_log_err(cs, "Failed finding proto_%s_dynamic_client", inst->app->name);
+			return -1;
+		}
+
+		/*
+		 *	Don't bootstrap the dynamic submodule.  We're
+		 *	not even sure what that means...
+		 */
+	}
+
+	if (inst->ipproto && !inst->app_io->connection_set) {
+		cf_log_err(inst->app_io_conf, "Cannot set TCP for proto_%s - internal set error", inst->app_io->name);
+		return -1;
+	}
 
 	/*
 	 *	Get various information after bootstrapping the
 	 *	application IO module.
 	 */
-	inst->app_io->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
-
-	if (inst->ipproto && !inst->app_io->connection_set) {
-		cf_log_err(inst->app_io_conf, "Cannot set TCP for proto_%s - internal set error", inst->app_io->name);
-		return -1;
+	if (inst->app_io->network_get) {
+		inst->app_io->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
 	}
 
 	return 0;
