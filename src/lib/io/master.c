@@ -1935,17 +1935,27 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
 	fr_io_instance_t const *inst;
+	fr_io_live_t *live;
 	fr_io_connection_t *connection;
 	fr_io_track_t *track = packet_ctx;
 	fr_io_client_t *client;
 	RADCLIENT *radclient;
 	fr_listen_t *child;
 	int packets;
+	fr_event_list_t *el;
 
 	get_inst(li->thread_instance, &inst, &connection, &child);
 
+	live = inst->live;
 	client = track->client;
 	packets = client->packets;
+	if (connection) {
+		el = connection->el;
+	} else {
+		el = live->el;
+	}
+
+
 	if (client->pending) packets += fr_heap_num_elements(client->pending);
 
 	/*
@@ -1972,7 +1982,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			 *	idle timeouts.
 			 */
 			if ((packets == 0) && (client->state != PR_CLIENT_STATIC)) {
-				client_expiry_timer(connection ? connection->el : inst->live->el, NULL, client);
+				client_expiry_timer(el, NULL, client);
 			}
 			return buffer_len;
 		}
@@ -1985,7 +1995,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		if (buffer_len < 20) {
 			track->reply_len = 1; /* don't respond */
-			packet_expiry_timer(connection ? connection->el : inst->live->el, NULL, track);
+			packet_expiry_timer(el, NULL, track);
 			return buffer_len;
 		}
 
@@ -2007,7 +2017,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		/*
 		 *	Expire the packet (if necessary).
 		 */
-		packet_expiry_timer(connection ? connection->el : inst->live->el, NULL, track);
+		packet_expiry_timer(el, NULL, track);
 
 		return packet_len;
 	}
@@ -2054,8 +2064,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	too.
 		 */
 		if (connection && (inst->ipproto == IPPROTO_UDP)) {
-			connection = fr_io_connection_alloc(inst, inst->live, client, -1, connection->address, connection);
-			client_expiry_timer(connection->el, NULL, connection->client);
+			connection = fr_io_connection_alloc(inst, live, client, -1, connection->address, connection);
+			client_expiry_timer(el, NULL, connection->client);
 
 			errno = ECONNREFUSED;
 			return -1;
@@ -2067,7 +2077,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	connection.
 		 */
 
-		client_expiry_timer(connection ? connection->el : inst->live->el, NULL, client);
+		client_expiry_timer(el, NULL, client);
 		return buffer_len;
 	}
 
@@ -2129,7 +2139,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			 *	Remove the pending client from the trie.
 			 */
 			if (!connection) {
-				delete_client(inst->live, client);
+				delete_client(live, client);
 				return buffer_len;
 			}
 
@@ -2205,8 +2215,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	the read function to NULL.
 		 */
 		if (connection->paused) {
-			(void) fr_event_filter_update(connection->el,
-						      child->fd,
+			(void) fr_event_filter_update(el, child->fd,
 						      FR_EVENT_FILTER_IO, resume_read);
 		}
 
@@ -2261,13 +2270,13 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 *	pending packet, and process it.
 	 *
 	 */
-	if (!inst->live->pending_clients) {
-		MEM(inst->live->pending_clients = fr_heap_create(inst->ctx, pending_client_cmp,
+	if (!live->pending_clients) {
+		MEM(live->pending_clients = fr_heap_create(inst->ctx, pending_client_cmp,
 							   fr_io_client_t, pending_id));
 	}
 
 	rad_assert(client->pending_id < 0);
-	(void) fr_heap_insert(inst->live->pending_clients, client);
+	(void) fr_heap_insert(live->pending_clients, client);
 
 finish:
 	/*
@@ -2275,7 +2284,7 @@ finish:
 	 *	timed out, so there's nothing more to do.  In that case, set up the expiry timers.
 	 */
 	if (packets == 0) {
-		client_expiry_timer(connection ? connection->el : inst->live->el, NULL, client);
+		client_expiry_timer(el, NULL, client);
 	}
 
 reread:
@@ -2288,7 +2297,7 @@ reread:
 		if (connection) {
 			fr_network_listen_read(connection->nr, connection->listen);
 		} else {
-			fr_network_listen_read(inst->live->nr, inst->live->listen);
+			fr_network_listen_read(live->nr, live->listen);
 		}
 	}
 
@@ -2376,9 +2385,9 @@ static char const *mod_name(fr_listen_t *li)
 {
 	fr_io_instance_t const *inst = li->thread_instance;
 
-	if (!inst->app_io->get_name) return inst->app_io->name;
+	if (!li->app_io->get_name) return li->app_io->name;
 
-	return inst->app_io->get_name(inst->live->child);
+	return li->app_io->get_name(inst->live->child);
 }
 
 
