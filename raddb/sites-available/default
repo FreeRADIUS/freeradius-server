@@ -26,7 +26,7 @@
 #  in via PAP, CHAP, MS-CHAP, etc.  You should so test the server via
 #  `radtest` to verify that it works.
 #
-# ## Editing this file.
+# ## Editing this file
 #
 #  Please read "man radiusd" before editing this file.  See the
 #  section titled DEBUGGING.  It outlines a method where you can
@@ -529,7 +529,7 @@ server default {
 
 ######################################################################
 #
-#  # Packet Processing sections
+#  ## Packet Processing sections
 #
 #  The sections below are called when a RADIUS packet has been
 #  received.
@@ -540,7 +540,7 @@ server default {
 ######################################################################
 
 #
-#  ## Receive Access-Request packets
+#  ### Receive Access-Request packets
 #
 recv Access-Request {
 	#
@@ -746,7 +746,7 @@ recv Access-Request {
 
 
 #
-#  ## Receive Status-Server packets
+#  ### Receive Status-Server packets
 #
 #
 #  This section is processed when the server receives a `Status-Server`
