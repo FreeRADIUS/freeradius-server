@@ -2288,7 +2288,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 *
 	 */
 	if (!live->pending_clients) {
-		MEM(live->pending_clients = fr_heap_create(inst->ctx, pending_client_cmp,
+		MEM(live->pending_clients = fr_heap_create(live, pending_client_cmp,
 							   fr_io_client_t, pending_id));
 	}
 
@@ -2649,10 +2649,10 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	/*
 	 *	Create the trie of clients for this socket.
 	 */
-	MEM(live->trie = fr_trie_alloc(inst->ctx));
+	MEM(live->trie = fr_trie_alloc(live));
 
-	MEM(live->alive_clients = fr_heap_create(inst->ctx, pending_client_cmp,
-							 fr_io_client_t, alive_id));
+	MEM(live->alive_clients = fr_heap_create(live, pending_client_cmp,
+						 fr_io_client_t, alive_id));
 	talloc_set_destructor(live->alive_clients, _client_heap_free);
 
 	/*
