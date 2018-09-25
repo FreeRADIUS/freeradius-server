@@ -512,11 +512,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
 	/*
-	 *	Set talloc ctx for master IO.
-	 */
-	inst->io.ctx = inst;
-
-	/*
 	 *	Instantiate the master io submodule
 	 */
 	if (fr_master_app_io.instantiate(&inst->io, conf) < 0) {
