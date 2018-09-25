@@ -75,11 +75,13 @@ typedef enum {
 	PR_CLIENT_PENDING,				//!< dynamic client pending definition
 } fr_io_client_state_t;
 
+typedef struct fr_io_connection_t fr_io_connection_t;
+
 /** Client definitions for master IO
  *
  */
 typedef struct fr_io_client_t {
-	void				*parent;	//!< talloc parent sucks
+	fr_io_connection_t		*connection;	//!< parent connection
 	fr_io_client_state_t		state;		//!< state of this client
 	fr_ipaddr_t			src_ipaddr;	//!< packets come from this address
 	fr_ipaddr_t			network;	//!< network for dynamic clients
@@ -89,7 +91,6 @@ typedef struct fr_io_client_t {
 	int				pending_id;	//!< for pending clients
 	int				alive_id;	//!< for all clients
 
-	bool				connected;	//!< is this client for a connected socket?
 	bool				use_connected;	//!< does this client allow connected sub-sockets?
 	bool				ready_to_delete; //!< are we ready to delete this client?
 	bool				in_trie;	//!< is the client in the trie?
@@ -118,7 +119,7 @@ typedef struct fr_io_client_t {
  *  tell the parent it's alive, and the parent can push packets to the
  *  child.
  */
-typedef struct {
+struct fr_io_connection_t {
 	int				magic;		//!< sparkles and unicorns
 	char const			*name;		//!< taken from proto_FOO_TRANSPORT
 	int				packets;	//!< number of packets using this connection
@@ -133,7 +134,7 @@ typedef struct {
 	bool				paused;		//!< event filter doesn't like resuming something that isn't paused
 	fr_event_list_t			*el;		//!< event list for this connection
 	fr_network_t			*nr;		//!< network for this connection
-} fr_io_connection_t;
+};
 
 static fr_event_update_t pause_read[] = {
 	FR_EVENT_SUSPEND(fr_event_io_func_t, read),
@@ -261,12 +262,12 @@ static int track_cmp(void const *one, void const *two)
 	 *	Connected sockets MUST have all tracking entries use
 	 *	the same client definition.
 	 */
-	if (a->client->connected) {
+	if (a->client->connection) {
 		rad_assert(a->client == b->client);
 		return 0;
 	}
 
-	rad_assert(!b->client->connected);
+	rad_assert(!b->client->connection);
 
 	/*
 	 *	Unconnected sockets must check src/dst ip/port.
@@ -458,14 +459,13 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	MEM(connection->client = talloc_named(NULL, sizeof(fr_io_client_t), "fr_io_client_t"));
 	memset(connection->client, 0, sizeof(*connection->client));
 
-	connection->client->parent = connection;
 	MEM(connection->client->radclient = radclient = radclient_clone(connection->client, client->radclient));
 
 	talloc_set_destructor(connection, connection_free);
 
 	connection->client->pending_id = -1;
 	connection->client->alive_id = -1;
-	connection->client->connected = true;
+	connection->client->connection = connection;
 
 	/*
 	 *	Create the packet tracking table for this client.
@@ -802,10 +802,8 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		track->address->radclient = client->radclient;
 
 		track->client = client;
-		if (client->connected) {
-			fr_io_connection_t *connection = client->parent;
-
-			track->address = connection->address;
+		if (client->connection) {
+			track->address = client->connection->address;
 		}
 
 		memcpy(track->packet, packet, sizeof(track->packet));
@@ -931,7 +929,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 	 *	we pause the FD, so the number of
 	 *	pending packets will always be small.
 	 */
-	if (!client->connected) client->inst->live->num_pending_packets++;
+	if (!client->connection) client->inst->live->num_pending_packets++;
 
 	return pending;
 }
@@ -1167,7 +1165,7 @@ do_read:
 	 */
 	if (!connection) {
 		client = fr_trie_lookup(inst->live->trie, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
-		rad_assert(!client || !client->connected);
+		rad_assert(!client || !client->connection);
 
 	} else {
 		client = connection->client;
@@ -1275,12 +1273,10 @@ do_read:
 		MEM(client = talloc_named(NULL, sizeof(fr_io_client_t), "fr_io_client_t"));
 		memset(client, 0, sizeof(*client));
 
-		client->parent = inst;
 		client->state = state;
 		client->src_ipaddr = radclient->ipaddr;
 		client->radclient = radclient;
 		client->inst = inst;
-		client->connected = false;
 
 		if (network) {
 			client->network = *network;
@@ -1644,7 +1640,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 static void delete_client(fr_io_instance_t *inst, fr_io_client_t *client)
 {
 	rad_assert(client->in_trie);
-	rad_assert(!client->connected);
+	rad_assert(!client->connection);
 	(void) fr_trie_remove(inst->live->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
 	(void) fr_heap_extract(inst->live->alive_clients, client);
 	rad_assert(inst->live->num_clients > 0);
@@ -1669,8 +1665,8 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	DEBUG("TIMER - checking status of client %s", client->radclient->shortname);
 
 	// @todo - print out what we plan on doing next
-
-	get_inst(client->parent, &inst, &connection, NULL);
+	connection = client->connection;
+	inst = client->inst;
 
 	rad_assert(client->state != PR_CLIENT_STATIC);
 
@@ -2188,7 +2184,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	if (connection) {
 		rad_assert(connection != NULL);
 		rad_assert(connection->client == client);
-		rad_assert(client->connected == true);
+		rad_assert(client->connection != NULL);
 
 		client->state = PR_CLIENT_CONNECTED;
 
