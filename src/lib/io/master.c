@@ -96,6 +96,7 @@ typedef struct fr_io_client_t {
 	bool				in_trie;	//!< is the client in the trie?
 
 	fr_io_instance_t const		*inst;		//!< parent instance for master IO handler
+	fr_io_live_t			*live;
 	fr_event_timer_t const		*ev;		//!< when we clean up the client
 	rbtree_t			*table;		//!< tracking table for packets
 
@@ -492,6 +493,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 */
 	connection->address->radclient = connection->client->radclient;
 	connection->client->inst = inst;
+	connection->client->live = live;
 
 	/*
 	 *	Create a heap for packets which are pending for this
@@ -930,7 +932,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 	 *	we pause the FD, so the number of
 	 *	pending packets will always be small.
 	 */
-	if (!client->connection) client->inst->live->num_pending_packets++;
+	if (!client->connection) client->live->num_pending_packets++;
 
 	return pending;
 }
@@ -944,6 +946,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 			uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
 	fr_io_instance_t const *inst;
+	fr_io_live_t *live;
 	ssize_t packet_len = -1;
 	fr_time_t recv_time = 0;
 	fr_io_client_t *client;
@@ -956,6 +959,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 
 	get_inst(li->thread_instance, &inst, &connection, &child);
 
+	live = inst->live;
 	track = NULL;
 
 	/*
@@ -985,8 +989,8 @@ redo:
 
 		pending = fr_heap_pop(connection->client->pending);
 
-	} else if (inst->live->pending_clients) {
-		pending = pending_packet_pop(inst->live);
+	} else if (live->pending_clients) {
+		pending = pending_packet_pop(live);
 
 	} else {
 		pending = NULL;
@@ -1165,7 +1169,7 @@ do_read:
 	 *	connected socket).
 	 */
 	if (!connection) {
-		client = fr_trie_lookup(inst->live->trie, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
+		client = fr_trie_lookup(live->trie, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
 		rad_assert(!client || !client->connection);
 
 	} else {
@@ -1202,18 +1206,18 @@ do_read:
 		 */
 		rad_assert(!connection);
 
-		radclient = inst->app_io->client_find(inst->live->child, &address.src_ipaddr, inst->ipproto);
+		radclient = inst->app_io->client_find(live->child, &address.src_ipaddr, inst->ipproto);
 		if (radclient) {
 			state = PR_CLIENT_STATIC;
 
 			/*
 			 *	Make our own copy that we can modify it.
 			 */
-			MEM(radclient = radclient_clone(inst->live, radclient));
+			MEM(radclient = radclient_clone(live, radclient));
 			radclient->active = true;
 
 		} else if (inst->dynamic_clients) {
-			if (inst->max_clients && (inst->live->num_clients >= inst->max_clients)) {
+			if (inst->max_clients && (live->num_clients >= inst->max_clients)) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 
 				if (accept_fd <= 0) {
@@ -1242,7 +1246,7 @@ do_read:
 			 *	Allocate our local radclient as a
 			 *	placeholder for the dynamic client.
 			 */
-			radclient = radclient_alloc(inst->live, inst->ipproto, &address);
+			radclient = radclient_alloc(live, inst->ipproto, &address);
 			state = PR_CLIENT_PENDING;
 
 		} else {
@@ -1278,6 +1282,7 @@ do_read:
 		client->src_ipaddr = radclient->ipaddr;
 		client->radclient = radclient;
 		client->inst = inst;
+		client->live = live;
 
 		if (network) {
 			client->network = *network;
@@ -1324,7 +1329,7 @@ do_read:
 		 *	Add the newly defined client to the trie of
 		 *	allowed clients.
 		 */
-		if (fr_trie_insert(inst->live->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
+		if (fr_trie_insert(live->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
 			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.",
 			      inst->app_io->name, client->radclient->shortname);
 			talloc_free(client);
@@ -1333,13 +1338,13 @@ do_read:
 		}
 
 		client->in_trie = true;
-		if (client->state == PR_CLIENT_PENDING) inst->live->num_clients++;
+		if (client->state == PR_CLIENT_PENDING) live->num_clients++;
 
 		/*
 		 *	Track the live clients so that we can clean
 		 *	them up.
 		 */
-		(void) fr_heap_insert(inst->live->alive_clients, client);
+		(void) fr_heap_insert(live->alive_clients, client);
 		client->pending_id = -1;
 	}
 
@@ -1352,7 +1357,7 @@ have_client:
 	 *	let it read from the socket.
 	 */
 	if (accept_fd >= 0) {
-		if (!fr_io_connection_alloc(inst, inst->live, client, accept_fd, &address, NULL)) {
+		if (!fr_io_connection_alloc(inst, live, client, accept_fd, &address, NULL)) {
 			DEBUG("Failed to allocate connection from client %s.", client->radclient->shortname);
 			close(accept_fd);
 		}
@@ -1401,7 +1406,7 @@ have_client:
 			 *	for connected sockets, we don't need
 			 *	to track pending packets.
 			 */
-			if (!connection && inst->max_pending_packets && (inst->live->num_pending_packets >= inst->max_pending_packets)) {
+			if (!connection && inst->max_pending_packets && (live->num_pending_packets >= inst->max_pending_packets)) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(client->src_ipaddr), 0);
 
 				DEBUG("Too many pending packets for client %s - discarding packet", src_buf);
@@ -1496,7 +1501,7 @@ have_client:
 	 *	No existing connection, create one.
 	 */
 	if (!connection) {
-		connection = fr_io_connection_alloc(inst, inst->live, client, -1, &address, NULL);
+		connection = fr_io_connection_alloc(inst, live, client, -1, &address, NULL);
 		if (!connection) {
 			DEBUG("Failed to allocate connection from client %s.  Discarding packet.", client->radclient->shortname);
 			return 0;
