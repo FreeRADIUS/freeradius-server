@@ -354,7 +354,7 @@ HTML_FILES := $(patsubst asciidoc/%.adoc,asciidoc/%.html,$(ADOC_FILES))
 asciidoc/%.adoc: raddb/%.md
 	@echo PANDOC $^
 	@mkdir -p $(dir $@)
-	@pandoc -w asciidoc -o $@ $^
+	@pandoc --filter=scripts/asciidoc/pandoc-filter -w asciidoc -o $@ $^
 
 #
 #  Conf files get converted to Asciidoc via our own magic script.

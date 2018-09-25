@@ -1,0 +1,118 @@
+#! /usr/bin/perl
+#
+#  Pandoc filter to convert Asciidoc standard links to
+#  inter-document cross references and expand file lists.
+
+use strict;
+use JSON;
+use Data::Dumper;
+my $debug = 0;
+
+my $filter = sub
+{
+	my $js = shift;
+
+	#  We're only interested in "Link" types
+	return $js unless $$js{"t"};
+
+	if ($$js{"t"} eq "RawBlock") {
+		return do_rawblock($js);
+	}
+
+	if ($$js{"t"} eq "Link") {
+		return do_link($js);
+	}
+
+	return $js;
+
+};
+
+my $json = JSON->new;
+my $json_doc = <STDIN>;
+my $doc = $json->filter_json_object($filter)->decode($json_doc);
+print $json->encode($doc);
+
+
+sub do_rawblock
+{
+	my $js = shift;
+
+	#  Get the text and the link destination
+	my $type = $$js{"c"}[0];
+	my $text = $$js{"c"}[1];
+
+	return $js unless $type eq "html";
+	return $js unless $text =~ /FILE_LIST\(([^)]+)\)/;
+
+	my $dir = $1;
+	die "dir $dir does not exist" unless -d $dir;
+	print STDERR "Expanding files in: $dir\n" if $debug;
+
+	my @json_list;
+	opendir my $dh, $dir;
+	my @files = sort readdir($dh);
+	foreach my $file (@files) {
+		next unless -f "$dir/$file";
+		next if $file =~ /^\./;
+		next if $file =~ /\.(?:md|in|mk)$/;
+		push @json_list, pandoc_link($file.".adoc#", $file);
+	}
+	closedir $dh;
+
+
+	$js = {
+		"t" => "BulletList",
+		"c" => [map { [$_] } @json_list]
+	};
+
+	return $js;
+}
+
+sub do_link
+{
+	my $js = shift;
+
+	#  Get the text and the link destination
+	my $text = $$js{"c"}[1];
+	my $link = $$js{"c"}[2][0];
+
+	#  Some link types stay unchanged
+	return $js if $link =~ /^#/;
+	return $js if $link =~ /^http/;
+
+	#  Fix the file extension if needed
+	print STDERR "Link $link -> " if $debug;
+	$link .= ".adoc" unless $link =~ /\.(?:md|adoc)$/;
+	print STDERR "$link\n" if $debug;
+
+	#  Add the new Asciidoc markup as Str so it doesn't
+	#  get mangled by the output
+	unshift @$text, {"t"=>"Str","c"=>"<<$link#,"};
+	push @$text, {"t"=>"Str","c"=>">>"};
+
+	#  Replace the output with our new markup. Use an inline
+	#  "Span" so we can send back a list of hashrefs.
+	my $nl = {"t"=>"Span",
+		"c" => [ ["",[],[]],
+			$text,
+			]
+		};
+	return $nl;
+}
+
+sub pandoc_link
+{
+	my $dest = shift;
+	my $label = shift;
+
+	my @pdlabel = map { {"t"=>"Space"},{"t"=>"Str","c"=>$_} } split(/\W/, $label);
+	shift @pdlabel;
+
+	my $ret = {"t" => "Plain", "c" => [
+		{"t"=>"Str","c"=>"<<$dest,"},
+		@pdlabel,
+		{"t"=>"Str","c"=>">>"}
+	]};
+
+	return $ret;
+}
