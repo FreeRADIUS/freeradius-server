@@ -551,7 +551,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 */
 	if (sc->num_workers < sc->max_workers) {
 		fr_schedule_destroy(sc);
-		sc = NULL;
+		return NULL;
 	}
 #endif
 
