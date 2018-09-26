@@ -1,0 +1,16 @@
+#
+# PRE: update
+#
+
+#
+#  Everything null
+#
+update request {
+	Tmp-String-0 !* ANY
+	Tmp-String-1 !* ANY
+}
+update request {
+	Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}%{delay_10s:}"
+}
+
+success
