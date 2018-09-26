@@ -114,6 +114,7 @@ extern fr_app_io_t fr_master_app_io;
 fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_ipaddr_t *deny);
 int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *io, fr_schedule_t *sc,
 			size_t default_message_size, size_t num_messages) CC_HINT(nonnull);
+int fr_app_process_bootstrap(dl_instance_t **type_submodule, CONF_SECTION *conf, CONF_SECTION *server_cs);
 
 #ifdef __cplusplus
 }

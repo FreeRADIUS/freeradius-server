@@ -678,8 +678,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	proto_dhcpv4_t 		*inst = talloc_get_type_abort(instance, proto_dhcpv4_t);
-	size_t			i = 0;
-	CONF_PAIR		*cp = NULL;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
@@ -690,41 +688,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rad_assert(attr_message_type != NULL);
 
 	/*
-	 *	Bootstrap the process modules
+	 *	Bootstrap the app_process modules.
 	 */
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		char const		*value;
-		dl_t const		*module = talloc_get_type_abort_const(inst->type_submodule[i]->module, dl_t);
-		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)module->common;
-
-		if (app_process->bootstrap && (app_process->bootstrap(inst->type_submodule[i]->data,
-								      inst->type_submodule[i]->conf) < 0)) {
-			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
-			return -1;
-		}
-
-		value = cf_pair_value(cp);
-
-		/*
-		 *	Add handlers for the virtual server calls.
-		 *	This is so that when one virtual server wants
-		 *	to call another, it just looks up the data
-		 *	here by packet name, and doesn't need to troll
-		 *	through all of the listeners.
-		 */
-		if (!cf_data_find(inst->io.server_cs, fr_io_process_t, value)) {
-			fr_io_process_t *process_p;
-
-			rad_assert(inst->io.server_cs);	/* Ensure we don't leak memory */
-
-			process_p = talloc(inst->io.server_cs, fr_io_process_t);
-			*process_p = app_process->entry_point;
-
-			(void) cf_data_add(inst->io.server_cs, process_p, value, NULL);
-		}
-
-		i++;
-	}
+	if (fr_app_process_bootstrap(inst->type_submodule, conf, inst->io.server_cs) < 0) return -1;
 
 	/*
 	 *	No IO module, it's an empty listener.

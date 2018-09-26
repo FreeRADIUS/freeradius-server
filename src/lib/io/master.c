@@ -2731,6 +2731,49 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	return 0;
 }
 
+int fr_app_process_bootstrap(dl_instance_t **type_submodule, CONF_SECTION *conf, CONF_SECTION *server_cs)
+{
+	int i = 0;
+	CONF_PAIR *cp = NULL;
+
+	/*
+	 *	Bootstrap the process modules
+	 */
+	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
+		char const		*value;
+		dl_t const		*module = talloc_get_type_abort_const(type_submodule[i]->module, dl_t);
+		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)module->common;
+
+		if (app_process->bootstrap && (app_process->bootstrap(type_submodule[i]->data,
+								      type_submodule[i]->conf) < 0)) {
+			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
+			return -1;
+		}
+
+		value = cf_pair_value(cp);
+
+		/*
+		 *	Add handlers for the virtual server calls.
+		 *	This is so that when one virtual server wants
+		 *	to call another, it just looks up the data
+		 *	here by packet name, and doesn't need to trawl
+		 *	through all of the listeners.
+		 */
+		if (!cf_data_find(server_cs, fr_io_process_t, value)) {
+			fr_io_process_t *process_p;
+
+			process_p = talloc(server_cs, fr_io_process_t);
+			*process_p = app_process->entry_point;
+
+			(void) cf_data_add(server_cs, process_p, value, NULL);
+		}
+
+		i++;
+	}
+
+	return 0;
+}
+
 
 fr_app_io_t fr_master_app_io = {
 	.magic			= RLM_MODULE_INIT,
