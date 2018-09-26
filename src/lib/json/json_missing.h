@@ -78,11 +78,11 @@ enum json_tokener_error json_tokener_get_error(json_tokener *tok);
 /* redefine with correct handling of const pointers */
 #if defined(__GNUC__) && !defined(__STRICT_ANSI__)
 #  define json_object_object_foreach(obj, key, val) \
-	char *key = NULL; \
+	char const *key = NULL; \
 	struct json_object *val = NULL; \
 	union ctn_u {const void *cdata; void *data; } ctn; \
 	for (struct lh_entry *entry = json_object_get_object(obj)->head; \
-		({ if (entry) { key = (char *)entry->k; ctn.cdata = entry->v; \
+		({ if (entry) { key = (char const *)entry->k; ctn.cdata = entry->v; \
 		val = (struct json_object *)ctn.data; }; entry; }); \
 		entry = entry->next)
 #else /* ANSI C or MSC */
