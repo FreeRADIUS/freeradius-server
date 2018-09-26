@@ -172,7 +172,8 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 
 			if (!fr_json_object_is_type(object, json_type_array)) return 0;
 			array_obj = json_object_get_array(object);
-			if ((selector->slice[0] < 0) || ((size_t)selector->slice[0] >= array_obj->length)) continue;
+			if ((selector->slice[0] < 0) ||
+			    (selector->slice[0] >= (int32_t)array_obj->length)) continue;
 
 			ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 					     array_obj->array[selector->slice[0]], node->next);
@@ -197,18 +198,18 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			if (step == SELECTOR_INDEX_UNSET) step = 1;
 
 			start = selector->slice[0];
-			if (start == SELECTOR_INDEX_UNSET) start = (step < 0) ? array_obj->length - 1 : 0;
+			if (start == SELECTOR_INDEX_UNSET) start = (step < 0) ? (int32_t)(array_obj->length - 1) : 0;
 			else if (start < 0) start = array_obj->length + start;
 
 			end = selector->slice[1];
-			if (end == SELECTOR_INDEX_UNSET) end = (step < 0) ? -1 : array_obj->length - 1;
+			if (end == SELECTOR_INDEX_UNSET) end = (step < 0) ? -1 : (int32_t)(array_obj->length - 1);
 			else if (end < 0) end = array_obj->length + end;
 
 			/*
 			 *	Descending
 			 */
 			if (step < 0) for (i = start; (i > end) && (i >= 0); i += step) {
-				rad_assert((i >= 0) && ((size_t)i < array_obj->length));
+				rad_assert((i >= 0) && (i < (int32_t)array_obj->length));
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node->next);
 				if (ret < 0) return ret;
@@ -216,8 +217,8 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			/*
 			 *	Ascending
 			 */
-			} else for (i = start; (i < end) && ((size_t)i < array_obj->length); i += step) {
-				rad_assert((i >= 0) && ((size_t)i < array_obj->length));
+			} else for (i = start; (i < end) && (i < (int32_t)array_obj->length); i += step) {
+				rad_assert((i >= 0) && (i < (int32_t)array_obj->length));
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node->next);
 				if (ret < 0) return ret;
@@ -243,7 +244,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			struct array_list *array_obj;
 
 			array_obj = json_object_get_array(object);
-			for (i = 0; (size_t)i < array_obj->length; i++) {
+			for (i = 0; i < (int32_t)array_obj->length; i++) {
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node->next);
 				if (ret < 0) return ret;
@@ -280,7 +281,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			 *	Descend into each element of the array
 			 */
 			array_obj = json_object_get_array(object);
-			for (i = 0; (size_t)i < array_obj->length; i++) {
+			for (i = 0; i < (int32_t)array_obj->length; i++) {
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node);
 				if (ret < 0) return ret;
