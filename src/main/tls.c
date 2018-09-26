@@ -792,13 +792,16 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	/*
 	 *	Cache the SSL_SESSION pointer.
 	 */
-	if (!ssn->ssl_session && SSL_is_init_finished(ssn->ssl)) {
+	if (!ssn->ssl_session) {
 		ssn->ssl_session = SSL_get_session(ssn->ssl);
 		if (!ssn->ssl_session) {
 			RDEBUG("TLS - Failed getting session");
 			return 0;
 		}
 	}
+
+#else
+#error You must use a newer version of OpenSSL
 #endif
 
 	err = BIO_ctrl_pending(ssn->from_ssl);
