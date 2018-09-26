@@ -553,7 +553,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		fr_schedule_destroy(sc);
 		return NULL;
 	}
-#endif
 
 	for (sw = fr_dlist_head(&sc->workers), i = 0;
 	     sw != NULL;
@@ -568,6 +567,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			goto st_fail;
 		}
 	}
+#endif
 
 	if (fr_command_register_hook(NULL, "0", sc->sn->nr, cmd_network_table) < 0) {
 		fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
@@ -608,6 +608,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		goto done;
 	}
 
+	rad_assert(sc->sn);
 	rad_assert(sc->num_workers > 0);
 
 	/*
