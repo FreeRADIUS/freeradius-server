@@ -33,8 +33,7 @@ typedef struct {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
 	dl_instance_t			**type_submodule;		//!< Instance of the various types
-									//!< only one instance per type allowed.
-	fr_io_process_t			process;			//!< process function
+	dl_instance_t			*type_submodule_by_code[FR_MAX_VMPS_CODE];	//!< Lookup process entry point by code.
 
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.

@@ -535,7 +535,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	proto_dhcpv4_t		*inst = talloc_get_type_abort(instance, proto_dhcpv4_t);
 	size_t			i;
 
-	CONF_PAIR		*cp = NULL;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
 	vp_tmpl_rules_t		parse_rules;
@@ -613,30 +612,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the process modules
 	 */
-	i = 0;
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_worker_t const	*app_process;
-		fr_dict_enum_t const	*enumv;
-		int code;
-
-		app_process = (fr_app_worker_t const *)inst->type_submodule[i]->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule[i]->data,
-									  inst->type_submodule[i]->conf) < 0)) {
-			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
-			return -1;
-		}
-
-		/*
-		 *	We've already done bounds checking in the type_parse function
-		 */
-		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
-		if (!fr_cond_assert(enumv)) return -1;
-
-		code = enumv->value->vb_uint32;
-		inst->type_submodule_by_code[code] = inst->type_submodule[i];
-
-		rad_assert(inst->code_allowed[code] == true);
-		i++;
+	if (fr_app_process_instantiate(inst->type_submodule, inst->type_submodule_by_code,
+				       sizeof(inst->type_submodule_by_code) / sizeof(inst->type_submodule_by_code[0]),
+				       conf) < 0) {
+		return -1;
 	}
 
 	/*

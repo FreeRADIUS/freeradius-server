@@ -394,7 +394,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	proto_control_t		*inst = talloc_get_type_abort(instance, proto_control_t);
 	size_t			i;
 
-	CONF_PAIR		*cp = NULL;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
 
@@ -470,26 +469,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the process modules
 	 */
-	i = 0;
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_worker_t const	*app_process;
-		fr_dict_enum_t const	*enumv;
-
-		app_process = (fr_app_worker_t const *)inst->type_submodule[i]->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule[i]->data,
-									  inst->type_submodule[i]->conf) < 0)) {
-			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
-			return -1;
-		}
-
-		/*
-		 *	We've already done bounds checking in the type_parse function
-		 */
-		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
-		if (!fr_cond_assert(enumv)) return -1;
-
-		inst->process = app_process->entry_point;		/* Store the state function */
-		i++;
+	if (fr_app_process_instantiate(inst->type_submodule, NULL, 0,
+				       conf) < 0) {
+		return -1;
 	}
 
 	/*

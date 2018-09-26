@@ -2775,6 +2775,47 @@ int fr_app_process_bootstrap(dl_instance_t **type_submodule, CONF_SECTION *conf,
 }
 
 
+int fr_app_process_instantiate(dl_instance_t **type_submodule, dl_instance_t **type_submodule_by_code, int code_max, CONF_SECTION *conf)
+{
+	int i;
+	CONF_PAIR *cp = NULL;
+
+	/*
+	 *	Instantiate the process modules
+	 */
+	i = 0;
+	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
+		fr_app_worker_t const	*app_process;
+		fr_dict_enum_t const	*enumv;
+		int			code;
+
+		app_process = (fr_app_worker_t const *)type_submodule[i]->module->common;
+		if (app_process->instantiate &&
+		    (app_process->instantiate(type_submodule[i]->data, type_submodule[i]->conf) < 0)) {
+			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
+			return -1;
+		}
+
+		/*
+		 *	We've already done bounds checking in the type_parse function
+		 */
+		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
+		if (!fr_cond_assert(enumv)) return -1;
+
+		code = enumv->value->vb_uint32;
+		if (code >= code_max) {
+			cf_log_err(conf, "Invalid type code \"%s\" for \"%s\"", enumv->alias, app_process->name);
+			return -1;
+		}
+
+		type_submodule_by_code[code] = type_submodule[i];	/* Store the process function */
+		i++;
+	}
+
+	return 0;
+}
+
+
 fr_app_io_t fr_master_app_io = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_master_io",
