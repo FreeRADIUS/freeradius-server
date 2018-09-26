@@ -118,10 +118,12 @@ static inline void _fr_dlist_init(fr_dlist_head_t *head, size_t offset, char con
  * @param[in] list_head	to insert ptr into.
  * @param[in] ptr	to insert.
  */
-static inline void fr_dlist_insert_head(fr_dlist_head_t *list_head, void *ptr)
+static inline CC_HINT(nonnull(1)) void fr_dlist_insert_head(fr_dlist_head_t *list_head, void *ptr)
 {
 	fr_dlist_t *entry;
 	fr_dlist_t *head;
+
+	if (!ptr) return;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
@@ -147,10 +149,12 @@ static inline void fr_dlist_insert_head(fr_dlist_head_t *list_head, void *ptr)
  * @param[in] list_head	to insert ptr into.
  * @param[in] ptr	to insert.
  */
-static inline void fr_dlist_insert_tail(fr_dlist_head_t *list_head, void *ptr)
+static inline CC_HINT(nonnull(1)) void fr_dlist_insert_tail(fr_dlist_head_t *list_head, void *ptr)
 {
 	fr_dlist_t *entry;
 	fr_dlist_t *head;
+
+	if (!ptr) return;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
@@ -175,7 +179,7 @@ static inline void fr_dlist_insert_tail(fr_dlist_head_t *list_head, void *ptr)
  *	- The HEAD item.
  *	- NULL if no items exist in the list.
  */
-static inline void *fr_dlist_head(fr_dlist_head_t *list_head)
+static inline CC_HINT(nonnull) void *fr_dlist_head(fr_dlist_head_t *list_head)
 {
 	fr_dlist_t *head = &(list_head->entry);
 
@@ -190,7 +194,7 @@ static inline void *fr_dlist_head(fr_dlist_head_t *list_head)
  *	- True if it does not.
  *	- False if it does.
  */
-static inline bool fr_dlist_empty(fr_dlist_head_t *list_head)
+static inline CC_HINT(nonnull) bool fr_dlist_empty(fr_dlist_head_t *list_head)
 {
 	fr_dlist_t *head = &(list_head->entry);
 
@@ -204,7 +208,7 @@ static inline bool fr_dlist_empty(fr_dlist_head_t *list_head)
  *	- The TAIL item.
  *	- NULL if no items exist in the list.
  */
-static inline void *fr_dlist_tail(fr_dlist_head_t *list_head)
+static inline CC_HINT(nonnull) void *fr_dlist_tail(fr_dlist_head_t *list_head)
 {
 	fr_dlist_t *head = &(list_head->entry);
 
@@ -227,7 +231,7 @@ static inline void *fr_dlist_tail(fr_dlist_head_t *list_head)
  *	- The head of the list if ptr is NULL.
  *	- NULL if ptr is the tail of the list (no more items).
  */
-static inline void *fr_dlist_next(fr_dlist_head_t *list_head, void *ptr)
+static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t *list_head, void *ptr)
 {
 	fr_dlist_t *entry;
 	fr_dlist_t *head;
@@ -258,7 +262,7 @@ static inline void *fr_dlist_next(fr_dlist_head_t *list_head, void *ptr)
  *	- The tail of the list if ptr is NULL.
  *	- NULL if ptr is the head of the list (no more items).
  */
-static inline void *fr_dlist_prev(fr_dlist_head_t *list_head, void *ptr)
+static inline CC_HINT(nonnull(1)) void *fr_dlist_prev(fr_dlist_head_t *list_head, void *ptr)
 {
 	fr_dlist_t *entry;
 	fr_dlist_t *head;
@@ -305,17 +309,17 @@ static inline void *fr_dlist_prev(fr_dlist_head_t *list_head, void *ptr)
  *	- The previous item in the list (makes iteration easier).
  *	- NULL if we just removed the head of the list.
  */
-static inline void *fr_dlist_remove(fr_dlist_head_t *list_head, void *ptr)
+static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_head, void *ptr)
 {
 	fr_dlist_t *entry;
 	fr_dlist_t *head;
 	fr_dlist_t *prev;
 
+	if (!ptr) return NULL;
+
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
-
-	if (!ptr) return NULL;
 
 	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
 	head = &(list_head->entry);
@@ -340,7 +344,7 @@ static inline void *fr_dlist_remove(fr_dlist_head_t *list_head, void *ptr)
  * Does nothing if the list was not initialised with #fr_dlist_talloc_init.
  */
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-static inline void fr_dlist_verify(fr_dlist_head_t *list_head)
+static inline CC_HINT(nonnull) void fr_dlist_verify(fr_dlist_head_t *list_head)
 {
 	void *item;
 
@@ -359,7 +363,7 @@ static inline void fr_dlist_verify(fr_dlist_head_t *list_head)
 /** Merge two lists, inserting the tail of one into the other
  *
  */
-static inline void fr_dlist_move(fr_dlist_head_t *list_dst, fr_dlist_head_t *list_src)
+static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_dlist_head_t *list_src)
 {
 	fr_dlist_t *dst = &(list_dst->entry);
 	fr_dlist_t *src = &(list_src->entry);
