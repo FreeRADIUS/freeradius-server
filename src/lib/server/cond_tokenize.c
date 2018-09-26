@@ -533,9 +533,14 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 			return_P("Conditional check cannot begin with a regular expression");
 		}
 
-		slen = cond_tokenize_cast(p, &c->cast, error);
-		if (slen <= 0) return_SLEN;
-		p += slen;
+		/*
+		 *	Do casts if it exists.
+		 */
+		if (*p == '<') {
+			slen = cond_tokenize_cast(p, &c->cast, error);
+			if (slen <= 0) return_SLEN;
+			p += slen;
+		}
 
 		lhs_p = p;
 		slen = cond_tokenize_word(c, p, &lhs, &lhs_type, error);
