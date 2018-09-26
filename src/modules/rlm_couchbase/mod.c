@@ -713,7 +713,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	}
 
 	/* loop across all row elements */
-	for (idx = 0; idx < json_object_array_length(jrows); idx++) {
+	for (idx = 0; (size_t)idx < json_object_array_length(jrows); idx++) {
 		/* fetch current index */
 		json = json_object_array_get_idx(jrows, idx);
 

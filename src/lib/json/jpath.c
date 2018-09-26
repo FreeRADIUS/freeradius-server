@@ -172,7 +172,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 
 			if (!fr_json_object_is_type(object, json_type_array)) return 0;
 			array_obj = json_object_get_array(object);
-			if (selector->slice[0] >= array_obj->length) continue;
+			if ((selector->slice[0] < 0) || ((size_t)selector->slice[0] >= array_obj->length)) continue;
 
 			ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 					     array_obj->array[selector->slice[0]], node->next);
@@ -208,7 +208,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			 *	Descending
 			 */
 			if (step < 0) for (i = start; (i > end) && (i >= 0); i += step) {
-				rad_assert((i >= 0) && (i < array_obj->length));
+				rad_assert((i >= 0) && ((size_t)i < array_obj->length));
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node->next);
 				if (ret < 0) return ret;
@@ -216,8 +216,8 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			/*
 			 *	Ascending
 			 */
-			} else for (i = start; (i < end) && (i < array_obj->length); i += step) {
-				rad_assert((i >= 0) && (i < array_obj->length));
+			} else for (i = start; (i < end) && ((size_t)i < array_obj->length); i += step) {
+				rad_assert((i >= 0) && ((size_t)i < array_obj->length));
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node->next);
 				if (ret < 0) return ret;
@@ -243,7 +243,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			struct array_list *array_obj;
 
 			array_obj = json_object_get_array(object);
-			for (i = 0; i < array_obj->length; i++) {
+			for (i = 0; (size_t)i < array_obj->length; i++) {
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node->next);
 				if (ret < 0) return ret;
@@ -280,7 +280,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			 *	Descend into each element of the array
 			 */
 			array_obj = json_object_get_array(object);
-			for (i = 0; i < array_obj->length; i++) {
+			for (i = 0; (size_t)i < array_obj->length; i++) {
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node);
 				if (ret < 0) return ret;
