@@ -287,16 +287,18 @@ static ssize_t cond_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out
 	return len;
 }
 
-
 static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda, char const **error)
 {
-	char const *p = start;
-	char const *q;
-	fr_type_t cast;
+	char const	*p = start;
+	char const	*q;
+	fr_type_t	cast;
 
 	while (isspace((int) *p)) p++; /* skip spaces before condition */
 
-	if (*p != '<') return 0;
+	if (*p != '<') {
+		*pda = NULL;
+		return 0;
+	}
 	p++;
 
 	q = p;
@@ -305,6 +307,7 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 	cast = fr_substr2int(fr_value_box_type_names, p, FR_TYPE_INVALID, q - p);
 	if (cast == FR_TYPE_INVALID) {
 		*error = "Invalid data type in cast";
+		*pda = NULL;
 		return -(p - start);
 	}
 
@@ -314,12 +317,14 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 	 */
 	if (fr_dict_non_data_types[cast]) {
 		*error = "Forbidden data type in cast";
+		*pda = NULL;
 		return -(p - start);
 	}
 
 	*pda = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + cast);
 	if (!*pda) {
 		*error = "Cannot cast to this data type";
+		*pda = NULL;
 		return -(p - start);
 	}
 
@@ -522,16 +527,12 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 		}
 
 		slen = cond_tokenize_cast(p, &c->cast, error);
-		if (slen < 0) {
-			return_SLEN;
-		}
+		if (slen <= 0) return_SLEN;
 		p += slen;
 
 		lhs_p = p;
 		slen = cond_tokenize_word(c, p, &lhs, &lhs_type, error);
-		if (slen <= 0) {
-			return_SLEN;
-		}
+		if (slen <= 0) return_SLEN;
 		p += slen;
 
 		/*
