@@ -231,8 +231,9 @@ static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out, char const **er
 
 static ssize_t cond_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out, FR_TOKEN *op, char const **error)
 {
-	size_t len;
-	char const *p = start;
+	size_t		len;
+
+	char const	*p = start;
 
 	if ((*p == '"') || (*p == '\'') || (*p == '`') || (*p == '/')) {
 		return cond_tokenize_string(ctx, out, error, start, op);
@@ -247,8 +248,14 @@ static ssize_t cond_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out
 		 *	things.  For now, we allow pretty much anything.
 		 */
 		if (*p == '\\') {
+			ssize_t slen;
+
 			*error = "Unexpected escape";
-			return -(p - start);
+		error:
+			*out = NULL;
+			slen = -(p - start);
+			rad_assert(slen <= 0);	/* For stupidity in clang scan */
+			return slen;
 		}
 
 		/*
@@ -268,7 +275,7 @@ static ssize_t cond_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out
 
 		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
 			*error = "Unexpected start of string";
-			return -(p - start);
+			goto error;
 		}
 
 		p++;
@@ -277,10 +284,10 @@ static ssize_t cond_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out
 	len = p - start;
 	if (!len) {
 		*error = "Empty string is invalid";
-		return 0;
+		goto error;
 	}
 
-	*out = talloc_array(ctx, char, len + 1);
+	MEM(*out = talloc_array(ctx, char, len + 1));
 	memcpy(*out, start, len);
 	(*out)[len] = '\0';
 
@@ -715,9 +722,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				fr_dict_attr_t const *cast_da;
 
 				slen = cond_tokenize_cast(p, &cast_da, error);
-				if (slen < 0) {
-					return_SLEN;
-				}
+				if (slen <= 0) return_SLEN;
 
 				if (!c->cast) {
 					return_P("Unexpected cast");
@@ -735,9 +740,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 			 */
 			rhs_p = p;
 			slen = cond_tokenize_word(c, p, &rhs, &rhs_type, error);
-			if (slen <= 0) {
-				return_SLEN;
-			}
+			if (slen <= 0) return_SLEN;
 
 #ifdef HAVE_REGEX
 			/*
