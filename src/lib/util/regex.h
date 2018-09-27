@@ -48,18 +48,18 @@ extern "C" {
  *  libpcre defines its matches as an array of ints which is a
  *  multiple of three.
  */
-typedef struct regmatch {
+typedef struct {
 	int a;
 	int b;
 	int c;
 } regmatch_t;
 
-typedef struct regex {
-	bool		precompiled;	//!< Whether this regex was precompiled, or compiled for one of evaluation.
+typedef struct {
 	pcre		*compiled;	//!< Compiled regular expression.
-
-	bool		jitd;		//!< Whether JIT data is available.
 	pcre_extra	*extra;		//!< Result of studying a regular expression.
+
+	bool		precompiled;	//!< Whether this regex was precompiled, or compiled for one off evaluation.
+	bool		jitd;		//!< Whether JIT data is available.
 } regex_t;
 #  else
 #    include <regex.h>
