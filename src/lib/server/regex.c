@@ -248,23 +248,23 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
  *
  * @note This is the POSIX variant of the function.
  *
- * @param ctx To allocate subcapture buffer in.
- * @param out Where to write the subcapture string.
- * @param request to extract.
- * @param num Subcapture index (0 for entire match).
+ * @param[in] ctx	To allocate subcapture buffer in.
+ * @param[out] out	Where to write the subcapture string.
+ * @param[in] request	to extract.
+ * @param[in] num	Subcapture index (0 for entire match).
  * @return
  *	- 0 on success.
  *	- -1 on notfound.
  */
 int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
 {
-	regcapture_t	*cap;
-	char 		*p;
+	regcapture_t	*rc;
+	char 		*buff;
 	char const	*start;
 	size_t		len;
 
-	cap = request_data_reference(request, request, REQUEST_DATA_REGEX);
-	if (!cap) {
+	rc = request_data_reference(request, request, REQUEST_DATA_REGEX);
+	if (!rc) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
 		return -1;
@@ -275,8 +275,8 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	 *
 	 *	-1 means no value in this capture group.
 	 */
-	if ((num >= cap->nmatch) || (cap->rxmatch[num].rm_eo == -1) || (cap->rxmatch[num].rm_so == -1)) {
-		RDEBUG4("%i/%zu Not found", num, cap->nmatch);
+	if ((num >= rc->nmatch) || (rc->rxmatch[num].rm_eo == -1) || (rc->rxmatch[num].rm_so == -1)) {
+		RDEBUG4("%i/%zu Not found", num, rc->nmatch);
 		*out = NULL;
 		return -1;
 	}
@@ -284,18 +284,16 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	/*
 	 *	Sanity checks on the offsets
 	 */
-	rad_assert(cap->rxmatch[num].rm_eo <= (regoff_t)talloc_array_length(cap->value));
-	rad_assert(cap->rxmatch[num].rm_so <= (regoff_t)talloc_array_length(cap->value));
+	rad_assert(rc->rxmatch[num].rm_eo <= (regoff_t)talloc_array_length(rc->value));
+	rad_assert(rc->rxmatch[num].rm_so <= (regoff_t)talloc_array_length(rc->value));
 
-	start = cap->value + cap->rxmatch[num].rm_so;
-	len = cap->rxmatch[num].rm_eo - cap->rxmatch[num].rm_so;
+	start = rc->value + rc->rxmatch[num].rm_so;
+	len = rc->rxmatch[num].rm_eo - rc->rxmatch[num].rm_so;
 
-	RDEBUG4("%i/%zu Found: %.*s (%zu)", num, cap->nmatch, (int)len, start, len);
-	MEM(p = talloc_array(ctx, char, len + 1));
-	memcpy(p, start, len);
-	p[len] = '\0';
+	MEM(buff = talloc_bstrndup(ctx, start, len));
+	RDEBUG4("%i/%zu Found: %pV (%zu)", num, rc->nmatch, fr_box_strvalue_buffer(buff), len);
 
-	*out = p;
+	*out = buff;
 
 	return 0;
 }
