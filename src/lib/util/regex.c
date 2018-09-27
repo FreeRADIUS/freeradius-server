@@ -67,11 +67,13 @@ static int _regex_free(regex_t *preg)
  *	with talloc wrappers. This allows us to use the subcapture copy
  *	functions and just reparent the memory allocated.
  */
-static void *_pcre_talloc_array(size_t to_alloc) {
+static void *_pcre_talloc(size_t to_alloc)
+{
 	return talloc_array(NULL, uint8_t, to_alloc);
 }
 
-static void _pcre_talloc_free(void *to_free) {
+static void _pcre_talloc_free(void *to_free)
+{
 	talloc_free(to_free);
 }
 
@@ -99,13 +101,13 @@ static void _pcre_talloc_free(void *to_free) {
 ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
 		      bool ignore_case, bool multiline, bool subcaptures, bool runtime)
 {
-	char const *error;
-	int offset;
-	int cflags = 0;
-	regex_t *preg;
+	char const	*error;
+	int		offset;
+	int		cflags = 0;
+	regex_t		*preg;
 
-	static bool setup;
-	static bool study_flags;
+	static		bool setup;
+	static		bool study_flags;
 
 	/*
 	 *	Lets us use subcapture copy
@@ -124,10 +126,13 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 
 		if (do_jit) study_flags |= PCRE_STUDY_JIT_COMPILE;
 #endif
-		pcre_malloc = _pcre_talloc_array;	/* pcre_malloc is a global provided by libpcre */
+		pcre_malloc = _pcre_talloc;	/* pcre_malloc is a global provided by libpcre */
 		pcre_free = _pcre_talloc_free;		/* pcre_free is a global provided by libpcre */
 	}
 
+	/*
+	 *	Check inputs
+	 */
 	*out = NULL;
 
 	if (len == 0) {
@@ -135,6 +140,9 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 		return 0;
 	}
 
+	/*
+	 *	Options
+	 */
 	if (ignore_case) cflags |= PCRE_CASELESS;
 	if (multiline) cflags |= PCRE_MULTILINE;
 	if (!subcaptures) cflags |= PCRE_NO_AUTO_CAPTURE;
@@ -144,8 +152,8 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 
 	preg->compiled = pcre_compile(pattern, cflags, &error, &offset, NULL);
 	if (!preg->compiled) {
-		talloc_free(preg);
 		fr_strerror_printf("Pattern compilation failed: %s", error);
+		talloc_free(preg);
 
 		return -(ssize_t)offset;
 	}
@@ -154,8 +162,8 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 		preg->precompiled = true;
 		preg->extra = pcre_study(preg->compiled, study_flags, &error);
 		if (error) {
-			talloc_free(preg);
 			fr_strerror_printf("Pattern study failed: %s", error);
+			talloc_free(preg);
 
 			return 0;
 		}
@@ -222,11 +230,11 @@ static void _pcre_jit_stack_free(void *stack)
 
 /** Wrapper around pcre_exec
  *
- * @param preg The compiled expression.
- * @param subject to match.
- * @param len Length of subject.
- * @param pmatch Array of match pointers.
- * @param nmatch How big the match array is. Updated to number of matches.
+ * @param[in] preg	The compiled expression.
+ * @param[in] subject	to match.
+ * @param[in] len	Length of subject.
+ * @param[in] pmatch	Array of match pointers.
+ * @param[in] nmatch	How big the match array is. Updated to number of matches.
  * @return
  *	- -1 on failure.
  *	- 0 on no match.
@@ -290,11 +298,12 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 
 	return 1;
 }
+#  else
 /*
  *	Wrapper functions for POSIX like, and extended regular
  *	expressions.  These use the system regex library.
  */
-#  else
+
 /** Free heap allocated regex_t structure
  *
  * Heap allocation of regex_t is needed so regex_compile has the same signature with
@@ -311,24 +320,24 @@ static int _regex_free(regex_t *preg)
 
 /** Binary safe wrapper around regcomp
  *
- *  If we have the BSD extensions we don't need to do any special work
- *  if we don't have the BSD extensions we need to check to see if the
- *  regular expression contains any \0 bytes.
+ * If we have the BSD extensions we don't need to do any special work
+ * if we don't have the BSD extensions we need to check to see if the
+ * regular expression contains any \0 bytes.
  *
- *  If it does we fail and print the appropriate error message.
+ * If it does we fail and print the appropriate error message.
  *
  * @note Compiled expression must be freed with talloc_free.
  *
- * @param ctx To allocate memory in.
- * @param out Where to write out a pointer to the structure containing the
- *	compiled expression.
- * @param pattern to compile.
- * @param len of pattern.
- * @param ignore_case Whether the match should be case ignore_case.
- * @param multiline If true $ matches newlines.
- * @param subcaptures Whether to compile the regular expression to store subcapture
- *	data.
- * @param runtime Whether the compilation is being done at runtime.
+ * @param[in] ctx		To allocate memory in.
+ * @param[out] out		Where to write out a pointer
+ *				to the structure containing the compiled expression.
+ * @param[in] pattern		to compile.
+ * @param[in] len		of pattern.
+ * @param[in] ignore_case	Whether the match should be case ignore_case.
+ * @param[in] multiline		If true $ matches newlines.
+ * @param[in] subcaptures	Whether to compile the regular expression
+ *				to store subcapture data.
+ * @param[in] runtime		Whether the compilation is being done at runtime.
  * @return
  *	- >= 1 on success.
  *	- <= 0 on error. Negative value is offset of parse error.
@@ -346,6 +355,9 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 		return 0;
 	}
 
+	/*
+	 *	Options
+	 */
 	if (ignore_case) cflags |= REG_ICASE;
 	if (multiline) cflags |= REG_NEWLINE;
 	if (!subcaptures) cflags |= REG_NOSUB;
@@ -392,16 +404,16 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 
 /** Binary safe wrapper around regexec
  *
- *  If we have the BSD extensions we don't need to do any special work
- *  If we don't have the BSD extensions we need to check to see if the
- *  value to be compared contains any \0 bytes.
+ * If we have the BSD extensions we don't need to do any special work
+ * If we don't have the BSD extensions we need to check to see if the
+ * value to be compared contains any \0 bytes.
  *
- *  If it does, we fail and print the appropriate error message.
+ * If it does, we fail and print the appropriate error message.
  *
- * @param preg The compiled expression.
- * @param subject to match.
- * @param pmatch Array of match pointers.
- * @param nmatch How big the match array is. Updated to number of matches.
+ * @param[in] preg	The compiled expression.
+ * @param[in] subject	to match.
+ * @param[in] pmatch	Array of match pointers.
+ * @param[in] nmatch	How big the match array is. Updated to number of matches.
  * @return
  *	- -1 on failure.
  *	- 0 on no match.
