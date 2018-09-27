@@ -82,7 +82,11 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 	char *p;
 	VALUE_PAIR *username = NULL;
 
-	if (!request->root->log_auth) {
+	if ((request->reply->code == PW_CODE_ACCESS_ACCEPT) && !request->root->log_accept) {
+		return 0;
+	}
+
+	if ((request->reply->code == PW_CODE_ACCESS_REJECT) && !request->root->log_reject) {
 		return 0;
 	}
 

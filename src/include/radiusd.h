@@ -114,7 +114,9 @@ typedef struct main_config {
 	fr_ipaddr_t	myip;				//!< IP to bind to. Set on command line.
 	uint16_t	port;				//!< Port to bind to. Set on command line.
 
-	bool		log_auth;			//!< Log authentication attempts.
+	bool		log_auth;			//!< Log all authentication attempts.
+	bool		log_accept;			//!< Log Access-Accept
+	bool		log_reject;			//!< Log Access-Reject
 	bool		log_auth_badpass;		//!< Log successful authentications.
 	bool		log_auth_goodpass;		//!< Log failed authentications.
 	char const	*auth_badpass_msg;		//!< Additional text to append to successful auth messages.

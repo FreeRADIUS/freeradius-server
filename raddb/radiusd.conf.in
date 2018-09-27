@@ -298,11 +298,30 @@ log {
 	#
 	stripped_names = no
 
-	#  Log authentication requests to the log file.
+	#  Log all (accept and reject) authentication results to the log file.
+	#
+	#  This is the same as setting "auth_accept = yes" and
+	#  "auth_reject = yes"
 	#
 	#  allowed values: {no, yes}
 	#
 	auth = no
+
+	#  Log Access-Accept results to the log file.
+	#
+	#  This is only used if "auth = no"
+	#
+	#  allowed values: {no, yes}
+	#
+#	auth_accept = no
+
+	#  Log Access-Reject results to the log file.
+	#
+	#  This is only used if "auth = no"
+	#
+	#  allowed values: {no, yes}
+	#
+#	auth_reject = no
 
 	#  Log passwords with the authentication requests.
 	#  auth_badpass  - logs password if it's rejected

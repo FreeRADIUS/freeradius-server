@@ -135,6 +135,8 @@ static const CONF_PARSER startup_server_config[] = {
 static const CONF_PARSER log_config[] = {
 	{ "stripped_names", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &log_stripped_names),"no" },
 	{ "auth", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.log_auth), "no" },
+	{ "auth_accept", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.log_accept), NULL},
+	{ "auth_reject", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.log_reject), NULL},
 	{ "auth_badpass", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.log_auth_badpass), "no" },
 	{ "auth_goodpass", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.log_auth_goodpass), "no" },
 	{ "msg_badpass", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.auth_badpass_msg), NULL},
@@ -954,6 +956,13 @@ do {\
 	 *	radiusd.conf, the other configuration files exist.
 	 */
 	if (cf_section_parse(cs, NULL, server_config) < 0) return -1;
+
+	/*
+	 *	Fix up log_auth, and log_accept and log_reject
+	 */
+	if (main_config.log_auth) {
+		main_config.log_accept = main_config.log_reject = true;
+	}
 
 	/*
 	 *	We ignore colourization of output until after the
