@@ -27,10 +27,41 @@
 
 RCSID("$Id$")
 
+#ifdef HAVE_OPENSSL_EVP_H
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
+#endif
+
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
 
-/** Calculate HMAC using MD5
+#ifdef HAVE_OPENSSL_EVP_H
+/** Calculate HMAC using OpenSSL's MD5 implementation
+ *
+ * @param digest Caller digest to be filled in.
+ * @param text Pointer to data stream.
+ * @param text_len length of data stream.
+ * @param key Pointer to authentication key.
+ * @param key_len Length of authentication key.
+ *
+ */
+void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
+		 uint8_t const *key, size_t key_len)
+{
+	HMAC_CTX *ctx  = HMAC_CTX_new();
+
+#ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
+	/* Since MD5 is not allowed by FIPS, explicitly allow it. */
+	HMAC_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+#endif /* EVP_MD_CTX_FLAG_NON_FIPS_ALLOW */
+
+	HMAC_Init_ex(ctx, key, key_len, EVP_md5(), NULL);
+	HMAC_Update(ctx, text, text_len);
+	HMAC_Final(ctx, digest, NULL);
+	HMAC_CTX_free(ctx);
+}
+#else
+/** Calculate HMAC using internal MD5 implementation
  *
  * @param digest Caller digest to be filled in.
  * @param text Pointer to data stream.
@@ -101,6 +132,7 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 					      * hash */
 	fr_md5_final(digest, &context);	  /* finish up 2nd pass */
 }
+#endif /* HAVE_OPENSSL_EVP_H */
 
 /*
 Test Vectors (Trailing '\0' of a character string not included in test):
