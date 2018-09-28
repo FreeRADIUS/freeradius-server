@@ -1161,7 +1161,7 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index)
 		fr_strerror_printf("Failed resolving interface index %i to name: %s", if_index, fr_syserror(errno));
 		return -1;
 	}
-#elsif defined(HAVE_IF_INDEXTONAME)
+#elif defined(HAVE_IF_INDEXTONAME)
 	if (!if_indextoname(if_index, if_req.ifr_name)) {
 		fr_strerror_printf("Failed resolving interface index %i to name", if_index);
 		return -1;
