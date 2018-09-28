@@ -395,14 +395,14 @@ void dependency_features_init(CONF_SECTION *cs)
 				);
 
 	dependency_feature_add(cs, "regex-pcre",
-#ifdef HAVE_PCRE
+#ifdef HAVE_REGEX_PCRE
 				true
 #else
 				false
 #endif
 				);
 
-#if !defined(HAVE_PCRE) && defined(HAVE_REGEX)
+#if !defined(HAVE_REGEX_PCRE) && defined(HAVE_REGEX)
 	dependency_feature_add(cs, "regex-posix", true);
 	dependency_feature_add(cs, "regex-posix-extended",
 #  ifdef HAVE_REG_EXTENDED
@@ -546,8 +546,13 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 
 	dependency_version_number_add(cs, "ssl", ssl_version_num());
 
-#if defined(HAVE_REGEX) && defined(HAVE_PCRE)
+#ifdef HAVE_REGEX
+#  ifdef HAVE_REGEX_PCRE2
+	snprintf(buffer, sizeof(buffer), "%i.%i (%s) - build time", PCRE2_MAJOR, PCRE2_MINOR, STRINGIFY(PCRE2_DATA));
+	dependency_version_number_add(cs, "pcre2", buffer);
+#  elif defined(HAVE_REGEX_PCRE)
 	dependency_version_number_add(cs, "pcre", pcre_version());
+#  endif
 #endif
 }
 

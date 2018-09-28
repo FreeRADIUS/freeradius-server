@@ -35,7 +35,25 @@ extern "C" {
 #include <talloc.h>
 #include <unistd.h>
 
-#  ifdef HAVE_PCRE
+#  ifdef HAVE_REGEX_PCRE2
+#    define PCRE2_CODE_UNIT_WIDTH 8
+#    include <pcre2.h>
+/*
+ *  libpcre defines its matches as an array of ints which is a
+ *  multiple of three.
+ */
+
+/** libpcre2 has its own matchdata struct, we alias it for simplicity
+ *
+ */
+typedef pcre2_match_data regmatch_t;
+
+typedef struct {
+	pcre2_code	*compiled;	//!< Compiled regular expression.
+	bool		precompiled;	//!< Whether this regex was precompiled, or compiled for one off evaluation.
+	bool		jitd;		//!< Whether JIT data is available.
+} regex_t;
+#  elif defined(HAVE_REGEX_PCRE)
 #    include <pcre.h>
 /*
  *  Versions older then 8.20 didn't have the JIT functionality
@@ -75,9 +93,11 @@ typedef struct {
 #      define REG_NOSUB (0)
 #    endif
 #  endif
-ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
-		      bool ignore_case, bool multiline, bool subcaptures, bool runtime);
-int	regex_exec(regex_t *preg, char const *string, size_t len, regmatch_t pmatch[], size_t *nmatch);
+ssize_t		regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
+			      bool ignore_case, bool multiline, bool subcaptures, bool runtime);
+int		regex_exec(regex_t *preg, char const *string, size_t len,
+			   regmatch_t *pmatch, size_t *nmatch);
+regmatch_t	*regex_match_data_alloc(TALLOC_CTX *ctx, size_t count);
 #  ifdef __cplusplus
 }
 #  endif

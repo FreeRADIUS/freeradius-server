@@ -1836,57 +1836,71 @@ dnl #  First look for PCRE
 dnl #
 if test "x$WITH_REGEX" != "xno" && test "x$WITH_PCRE" != "xno"; then
   smart_try_dir=$pcre_include_dir
-  FR_SMART_CHECK_INCLUDE(pcre.h)
-  if test "x$ac_cv_header_pcre_h" = "xyes"; then
+
+  dnl #
+  dnl #  Prefer libpcre2 over libpcre
+  dnl #
+  FR_SMART_CHECK_INCLUDE(pcre2.h,[#define PCRE2_CODE_UNIT_WIDTH (8)])
+  if test "x$ac_cv_header_pcre2_h" = "xyes"; then
     smart_try_dir=$pcre_lib_dir
-    FR_SMART_CHECK_LIB(pcre, pcre_compile)
-    if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
-    AC_MSG_CHECKING([libpcre library and header version consistency])
-      AC_RUN_IFELSE(
-        [AC_LANG_PROGRAM(
-          [[
-            #include <stdio.h>
-            #include <pcre.h>
-            #include <stdlib.h>
-            #define XSTRINGIFY(x) #x
-            #define STRINGIFY(x) XSTRINGIFY(x)
-          ]],
-          [[
-            char const *p = pcre_version();
-            char *q;
-            unsigned long ver;
+     FR_SMART_CHECK_LIB(pcre2-8, pcre2_compile_8)
+     if test "x$ac_cv_lib_pcre2_8_pcre2_compile_8" = "xyes"; then
+       REGEX=yes
+       AC_DEFINE(HAVE_REGEX_PCRE2, [1], [define this if we have libpcre2])
+       AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])
+     fi
+  fi
 
-            printf("library: %s header: %u.%u %s... ", p, PCRE_MAJOR, PCRE_MINOR, STRINGIFY(PCRE_DATE));
+  dnl #
+  dnl #  Fallback to libpcre
+  dnl #
+  if test "x$REGEX" != "xyes"; then
+    FR_SMART_CHECK_INCLUDE(pcre.h)
+    if test "x$ac_cv_header_pcre_h" = "xyes"; then
+      smart_try_dir=$pcre_lib_dir
+      FR_SMART_CHECK_LIB(pcre, pcre_compile)
+      if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
+        AC_MSG_CHECKING([libpcre library and header version consistency])
+          AC_RUN_IFELSE(
+            [AC_LANG_PROGRAM(
+              [[
+                #include <stdio.h>
+                #include <pcre.h>
+                #include <stdlib.h>
+                #define XSTRINGIFY(x) #x
+                #define STRINGIFY(x) XSTRINGIFY(x)
+              ]],
+              [[
+                char const *p = pcre_version();
+                char *q;
+                unsigned long ver;
 
-            ver = strtoul(p, &q, 10);
-            if (*q != '.') {
-              return 1;
-            }
-            if (ver != PCRE_MAJOR) {
-              return 65;
-            }
-            p = ++q;
+                printf("library: %s header: %u.%u %s... ", p, PCRE_MAJOR, PCRE_MINOR, STRINGIFY(PCRE_DATE));
 
-            ver = strtoul(p, &q, 10);
-            if (ver != PCRE_MINOR) {
-              return 1;
-            }
-          ]]
-        )],
-        [
-          AC_MSG_RESULT(yes)
-          REGEX=yes
-          AC_DEFINE(HAVE_PCRE, [1], [define this if we have libpcre])
-          AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])
-        ],
-        [
-          AC_MSG_RESULT(no)
-          AC_MSG_FAILURE([libpcre library version does not match header version])
-        ],
-        [
-          AC_MSG_RESULT([cross-compiling (assuming yes)])
-        ]
-      )
+                ver = strtoul(p, &q, 10);
+                if (*q != '.') return 1;
+                if (ver != PCRE_MAJOR) return 65;
+                p = ++q;
+
+                ver = strtoul(p, &q, 10);
+                if (ver != PCRE_MINOR) return 1;
+              ]]
+            )],
+            [
+               AC_MSG_RESULT(yes)
+               REGEX=yes
+               AC_DEFINE(HAVE_REGEX_PCRE, [1], [define this if we have libpcre])
+               AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])
+            ],
+            [
+               AC_MSG_RESULT(no)
+               AC_MSG_FAILURE([libpcre library version does not match header version])
+            ],
+            [
+               AC_MSG_RESULT([cross-compiling (assuming yes)])
+            ]
+          )
+      fi
     fi
   fi
 fi
@@ -1936,6 +1950,7 @@ if test "x$REGEX" = "x"; then
     if test x"$ac_cv_func_regncomp" = x"yes" && test  x"$ac_cv_func_regnexec" = x"yes"; then
       AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])
     fi
+    AC_DEFINE(HAVE_REGEX_POSIX, [1], [define this if we have POSIX regular expressions])
   fi
 fi
 

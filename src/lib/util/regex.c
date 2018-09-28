@@ -29,13 +29,355 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/thread_local.h>
 #include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/talloc.h>
 
+#ifdef HAVE_REGEX_PCRE2
+/*
+ *	Wrapper functions for libpcre2. Much more powerful, and guaranteed
+ *	to be binary safe for both patterns and subjects but require
+ *	libpcre2.
+ */
+
+/** Thread local storage for PCRE2
+ *
+ * Not all this storage is thread local, but it simplifies cleanup if
+ * we bind its lifetime to the thread, and lets us get away with not
+ * having specific init/free functions.
+ */
+typedef struct {
+	TALLOC_CTX		*alloc_ctx;	//!< Context used for any allocations.
+	pcre2_general_context	*gcontext;	//!< General context.
+	pcre2_compile_context	*ccontext;	//!< Compile context.
+	pcre2_match_context	*mcontext;	//!< Match context.
+	pcre2_jit_stack		*jit_stack;	//!< Jit stack for executing jit'd patterns.
+	bool			do_jit;		//!< Whether we have runtime JIT support.
+} fr_pcre2_tls_t;
+
+/** Thread local storage for PCRE2
+ *
+ */
+fr_thread_local_setup(fr_pcre2_tls_t *, fr_pcre2_tls)
+
+/** Talloc wrapper for pcre2 memory allocation
+ *
+ * @param[in] to_alloc		How many bytes to alloc.
+ * @param[in] uctx		UNUSED.
+ */
+static void *_pcre2_talloc(PCRE2_SIZE to_alloc, UNUSED void *uctx)
+{
+	return talloc_array(fr_pcre2_tls->alloc_ctx, uint8_t, to_alloc);
+}
+
+/** Talloc wrapper for pcre2 memory freeing
+ *
+ * @param[in] to_free		Memory to free.
+ * @param[in] uctx		UNUSED.
+ */
+static void _pcre2_talloc_free(void *to_free, UNUSED void *uctx)
+{
+	talloc_free(to_free);
+}
+
+/** Free thread local data
+ *
+ * @param[in] tls	Thread local data to free.
+ */
+static int _pcre2_tls_free(fr_pcre2_tls_t *tls)
+{
+	if (tls->gcontext) pcre2_general_context_free(tls->gcontext);
+	if (tls->ccontext) pcre2_compile_context_free(tls->ccontext);
+	if (tls->mcontext) pcre2_match_context_free(tls->mcontext);
+	if (tls->jit_stack) pcre2_jit_stack_free(tls->jit_stack);
+
+	return 0;
+}
+
+static void _pcre2_tls_free_on_exit(void *arg)
+{
+	talloc_free(arg);
+}
+
+/** Thread local init for pcre2
+ *
+ */
+static int fr_pcre2_tls_init(void)
+{
+	fr_pcre2_tls_t *tls;
+
+	if (unlikely(fr_pcre2_tls)) return 0;
+
+	fr_pcre2_tls = tls = talloc_zero(NULL, fr_pcre2_tls_t);
+	if (!tls) return -1;
+	talloc_set_destructor(tls, _pcre2_tls_free);
+
+	tls->gcontext = pcre2_general_context_create(_pcre2_talloc, _pcre2_talloc_free, NULL);
+	if (!tls->gcontext) {
+		fr_strerror_printf("Failed allocating general context");
+		return -1;
+	}
+
+	tls->ccontext = pcre2_compile_context_create(tls->gcontext);
+	if (!tls->ccontext) {
+		fr_strerror_printf("Failed allocating compile context");
+	error:
+		fr_pcre2_tls = NULL;
+		_pcre2_tls_free(tls);
+		return -1;
+	}
+
+	tls->mcontext = pcre2_match_context_create(tls->gcontext);
+	if (!tls->mcontext) {
+		fr_strerror_printf("Failed allocating match context");
+		goto error;
+	}
+
+	pcre2_config(PCRE2_CONFIG_JIT, &tls->do_jit);
+	if (tls->do_jit) {
+		tls->jit_stack = pcre2_jit_stack_create(32 * 1024, 512 * 1024, tls->gcontext);
+		if (!tls->jit_stack) {
+			fr_strerror_printf("Failed allocating JIT stack");
+			goto error;
+		}
+		pcre2_jit_stack_assign(tls->mcontext, NULL, tls->jit_stack);
+	}
+
+	/*
+	 *	Free on thread exit
+	 */
+	fr_thread_local_set_destructor(fr_pcre2_tls, _pcre2_tls_free_on_exit, tls);
+	fr_pcre2_tls = tls;	/* Assign to thread local storage */
+
+	return 0;
+}
+
+/** Free regex_t structure
+ *
+ * Calls libpcre specific free functions for the expression and study.
+ *
+ * @param preg to free.
+ */
+static int _regex_free(regex_t *preg)
+{
+	if (preg->compiled) pcre2_code_free(preg->compiled);
+
+	return 0;
+}
+
+/** Wrapper around pcre2_compile
+ *
+ * Allows the rest of the code to do compilations using one function signature.
+ *
+ * @note Compiled expression must be freed with talloc_free.
+ *
+ * @param[out] out		Where to write out a pointer to the structure containing
+ *				the compiled expression.
+ * @param[in] pattern		to compile.
+ * @param[in] len		of pattern.
+ * @param[in] ignore_case	Whether to do case insensitive matching.
+ * @param[in] multiline		If true $ matches newlines.
+ * @param[in] subcaptures	Whether to compile the regular expression to store subcapture
+ *				data.
+ * @param[in] runtime		If false run the pattern through the PCRE JIT to convert it
+ *				to machine code. This trades startup time (longer) for
+ *				runtime performance (better).
+ * @return
+ *	- >= 1 on success.
+ *	- <= 0 on error. Negative value is offset of parse error.
+ */
+ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
+		      bool ignore_case, bool multiline, bool subcaptures, bool runtime)
+{
+	int		ret;
+	PCRE2_SIZE	offset;
+	uint32_t	cflags = 0;
+	regex_t		*preg;
+
+	/*
+	 *	Thread local initialisation
+	 */
+	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+
+	/*
+	 *	Check inputs
+	 */
+	*out = NULL;
+
+	if (len == 0) {
+		fr_strerror_printf("Empty expression");
+		return 0;
+	}
+
+	/*
+	 *	Options
+	 */
+	if (ignore_case) cflags |= PCRE2_CASELESS;
+	if (multiline) cflags |= PCRE2_MULTILINE;
+	if (!subcaptures) cflags |= PCRE2_NO_AUTO_CAPTURE;
+
+	preg = talloc_zero(ctx, regex_t);
+	talloc_set_destructor(preg, _regex_free);
+
+	preg->compiled = pcre2_compile((PCRE2_SPTR8)pattern, len,
+				       cflags, &ret, &offset, fr_pcre2_tls->ccontext);
+	if (!preg->compiled) {
+		PCRE2_UCHAR buffer[128];
+
+		pcre2_get_error_message(ret, buffer, sizeof(buffer));
+		fr_strerror_printf("Pattern compilation failed: %s", (char *)buffer);
+		talloc_free(preg);
+
+		return -(ssize_t)offset;
+	}
+
+	if (!runtime) {
+		preg->precompiled = true;
+
+		/*
+		 *	This is expensive, so only do it for
+		 *	expressions that are going to be
+		 *	evaluated repeatedly.
+		 */
+		if (fr_pcre2_tls->do_jit) {
+			ret = pcre2_jit_compile(preg->compiled, PCRE2_JIT_COMPLETE);
+			if (ret < 0) {
+				PCRE2_UCHAR buffer[128];
+
+				pcre2_get_error_message(ret, buffer, sizeof(buffer));
+				fr_strerror_printf("Pattern JIT failed: %s", (char *)buffer);
+				talloc_free(preg);
+
+				return 0;
+			}
+			preg->jitd = true;
+		}
+	}
+
+	*out = preg;
+
+	return len;
+}
+
+/** Wrapper around pcre_exec
+ *
+ * @param[in] preg	The compiled expression.
+ * @param[in] subject	to match.
+ * @param[in] len	Length of subject.
+ * @param[in] pmatch	Array of match pointers.
+ * @param[in] nmatch	How big the match array is. Updated to number of matches.
+ * @return
+ *	- -1 on failure.
+ *	- 0 on no match.
+ *	- 1 on match.
+ */
+int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t *pmatch, size_t *nmatch)
+{
+	int			ret;
+	char			*local_subject = NULL;
+	pcre2_match_data	*match_data = NULL;
+
+	/*
+	 *	Thread local initialisation
+	 */
+	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+
+	/*
+	 *	PCRE_NO_AUTO_CAPTURE is a compile time only flag,
+	 *	and can't be passed here.
+	 *	We rely on the fact that matches has been set to
+	 *	0 as a hint that no subcapture data should be
+	 *	generated.
+	 */
+	if (!pmatch || !nmatch) {
+		if (nmatch) *nmatch = 0;
+	} else {
+	 	match_data = *((pcre2_match_data **)pmatch);
+
+		/*
+		 *	We have to dup and operate on the duplicate
+		 *	of the subject, because pcre2_jit_match and
+		 *	pcre2_match store a pointer to the subject
+		 *	in the pmatch structure.
+		 */
+		subject = local_subject = talloc_bstrndup(pmatch, subject, len);
+	}
+
+	if (preg->jitd) {
+		ret = pcre2_jit_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, 0,
+				      match_data, fr_pcre2_tls->mcontext);
+	} else {
+		ret = pcre2_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, 0,
+				  match_data, fr_pcre2_tls->mcontext);
+	}
+	if (ret < 0) {
+		PCRE2_UCHAR buffer[128];
+
+		talloc_free(local_subject);
+
+		if (ret == PCRE2_ERROR_NOMATCH) return 0;
+
+		pcre2_get_error_message(ret, buffer, sizeof(buffer));
+		fr_strerror_printf("regex evaluation failed with code (%i): %s", ret, buffer);
+
+		return -1;
+	}
+
+	/*
+	 *	0 signifies more offsets than we provided space for,
+	 *	so don't touch nmatches.
+	 */
+	if (nmatch && (ret > 0)) *nmatch = ret;
+
+	return 1;
+}
+
+/** Free libpcre2's matchdata
+ *
+ * @note Don't call directly, will be called if talloc_free is called on a #regmatch_t.
+ */
+static int _pcre2_match_data_free(regmatch_t *pmatch)
+{
+	pcre2_match_data_free(*((pcre2_match_data **)pmatch));
+	return 0;
+}
+
+/** Allocate vectors to fill with match data
+ *
+ * @param[in] ctx	to allocate match vectors in.
+ * @param[in] count	The number of vectors to allocate.
+ * @return
+ *	- NULL on error.
+ *	- Array of match vectors.
+ */
+regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, size_t count)
+{
+	pcre2_match_data **pmatch;
+
+	/*
+	 *	Thread local initialisation
+	 */
+	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+
+	pmatch = talloc(ctx, pcre2_match_data *);
+	if (!pmatch) {
+	oom:
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+	talloc_set_type(pmatch, regmatch_t);
+
+	*pmatch = pcre2_match_data_create(count, fr_pcre2_tls->gcontext);
+	if (!*pmatch) goto oom;
+
+	talloc_set_type(*pmatch, pcre2_match_data);
+	talloc_set_destructor((regmatch_t *)pmatch, _pcre2_match_data_free);
+
+	return (regmatch_t *)pmatch;
+}
+#elif defined(HAVE_REGEX_PCRE)
 /*
  *	Wrapper functions for libpcre. Much more powerful, and guaranteed
  *	to be binary safe but require libpcre.
  */
-#ifdef HAVE_PCRE
-
 #if (PCRE_MAJOR >= 8) && (PCRE_MINOR >= 32) && defined(PCRE_CONFIG_JIT)
 #  define HAVE_PCRE_JIT_EXEC 1
 #endif
@@ -298,6 +640,19 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 
 	return 1;
 }
+
+/** Allocate vectors to fill with match data
+ *
+ * @param[in] ctx	to allocate match vectors in.
+ * @param[in] count	The number of vectors to allocate.
+ * @return
+ *	- NULL on error.
+ *	- Array of match vectors.
+ */
+regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, size_t count)
+{
+	return talloc_zero_array(ctx, regmatch_t, count);
+}
 #  else
 /*
  *	Wrapper functions for POSIX like, and extended regular
@@ -475,6 +830,19 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 	if (nmatch && (*nmatch > preg->re_nsub)) *nmatch = preg->re_nsub + 1;
 
 	return 1;
+}
+
+/** Allocate vectors to fill with match data
+ *
+ * @param[in] ctx	to allocate match vectors in.
+ * @param[in] count	The number of vectors to allocate.
+ * @return
+ *	- NULL on error.
+ *	- Array of match vectors.
+ */
+regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, size_t count)
+{
+	return talloc_zero_array(ctx, regmatch_t, count);
 }
 #  endif
 #endif

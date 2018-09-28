@@ -463,14 +463,14 @@ bool		rad_suid_is_down_permanent(void);
 #  define REQUEST_MAX_REGEX 32
 
 void	regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value,
-			     size_t len, regmatch_t rxmatch[], size_t nmatch);
+			     size_t len, regmatch_t **rxmatch, size_t nmatch);
 
 int	regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num);
 
 /*
  *	Named capture groups only supported by PCRE.
  */
-#  ifdef HAVE_PCRE
+#  if defined(HAVE_REGEX_PCRE2) || defined(HAVE_REGEX_PCRE)
 int	regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name);
 #  endif
 #endif

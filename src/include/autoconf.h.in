@@ -312,9 +312,6 @@
 /* Define to 1 if you have the `pcap_fopen_offline' function. */
 #undef HAVE_PCAP_FOPEN_OFFLINE
 
-/* define this if we have libpcre */
-#undef HAVE_PCRE
-
 /* Define to 1 if you have the <prot.h> header file. */
 #undef HAVE_PROT_H
 
@@ -341,6 +338,15 @@
 
 /* Define if we have any regular expression library */
 #undef HAVE_REGEX
+
+/* define this if we have libpcre */
+#undef HAVE_REGEX_PCRE
+
+/* define this if we have libpcre2 */
+#undef HAVE_REGEX_PCRE2
+
+/* define this if we have POSIX regular expressions */
+#undef HAVE_REGEX_POSIX
 
 /* Define to 1 if you have the `regncomp' function. */
 #undef HAVE_REGNCOMP

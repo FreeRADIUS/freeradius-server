@@ -463,7 +463,7 @@ static ssize_t xlat_module(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	return strlen(*out);
 }
 
-#if defined(HAVE_REGEX) && defined(HAVE_PCRE)
+#if defined(HAVE_REGEX) && defined(HAVE_REGEX_PCRE)
 static ssize_t xlat_regex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt)
@@ -2557,7 +2557,7 @@ int xlat_init(void)
 	XLAT_REGISTER(map);
 	XLAT_REGISTER(module);
 	XLAT_REGISTER(debug_attr);
-#if defined(HAVE_REGEX) && defined(HAVE_PCRE)
+#if defined(HAVE_REGEX) && defined(HAVE_REGEX_PCRE)
 	XLAT_REGISTER(regex);
 #endif
 
