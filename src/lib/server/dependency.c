@@ -395,14 +395,14 @@ void dependency_features_init(CONF_SECTION *cs)
 				);
 
 	dependency_feature_add(cs, "regex-pcre",
-#ifdef HAVE_REGEX_PCRE
+#if defined(HAVE_REGEX_PCRE2) || defined(HAVE_REGEX_PCRE)
 				true
 #else
 				false
 #endif
 				);
 
-#if !defined(HAVE_REGEX_PCRE) && defined(HAVE_REGEX)
+#ifdef HAVE_REGEX_POSIX
 	dependency_feature_add(cs, "regex-posix", true);
 	dependency_feature_add(cs, "regex-posix-extended",
 #  ifdef HAVE_REG_EXTENDED
