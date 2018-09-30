@@ -462,8 +462,7 @@ bool		rad_suid_is_down_permanent(void);
  */
 #  define REQUEST_MAX_REGEX 32
 
-void	regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value,
-			     size_t len, regmatch_t **rxmatch, size_t nmatch);
+void	regex_sub_to_request(REQUEST *request, regex_t **preg, fr_regmatch_t **regmatch);
 
 int	regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num);
 

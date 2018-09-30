@@ -43,15 +43,22 @@ extern "C" {
  *  multiple of three.
  */
 
-/** libpcre2 has its own matchdata struct, we alias it for simplicity
+/** libpcre2 has its own matchdata struct, we wrap it so we can use talloc destructors
  *
  */
-typedef pcre2_match_data regmatch_t;
+typedef struct {
+	pcre2_match_data	*match_data;	//!< Match data containing the subject
+						///< and various match offsets.
+	size_t			used;		//!< Number of slots filled with match data.
+} fr_regmatch_t;
 
 typedef struct {
-	pcre2_code	*compiled;	//!< Compiled regular expression.
-	bool		precompiled;	//!< Whether this regex was precompiled, or compiled for one off evaluation.
-	bool		jitd;		//!< Whether JIT data is available.
+	pcre2_code		*compiled;	//!< Compiled regular expression.
+	uint32_t		subcaptures;	//!< Number of subcaptures contained within the expression.
+
+	bool			precompiled;	//!< Whether this regex was precompiled,
+						///< or compiled for one off evaluation.
+	bool			jitd;		//!< Whether JIT data is available.
 } regex_t;
 #  elif defined(HAVE_REGEX_PCRE)
 #    include <pcre.h>
@@ -72,12 +79,26 @@ typedef struct {
 	int c;
 } regmatch_t;
 
+/** Emulates the functionality of the pcre2_match_data struct
+ *
+ */
 typedef struct {
-	pcre		*compiled;	//!< Compiled regular expression.
-	pcre_extra	*extra;		//!< Result of studying a regular expression.
+	regmatch_t		*match_data;	//!< Slots for matches.
+	size_t			allocd;		//!< Number of slots allocated for match data.
+	size_t			used;		//!< Number of slots filled with match data.
+	char const		*subject;	//!< A local copy of the subject.
+} fr_regmatch_t;
 
-	bool		precompiled;	//!< Whether this regex was precompiled, or compiled for one off evaluation.
-	bool		jitd;		//!< Whether JIT data is available.
+/** Bundles compiled regular expression structures together
+ *
+ */
+typedef struct {
+	pcre			*compiled;	//!< Compiled regular expression.
+	pcre_extra		*extra;		//!< Result of studying a regular expression.
+	uint32_t		subcaptures;	//!< Number of subcaptures contained within the expression.
+
+	bool			precompiled;	//!< Whether this regex was precompiled, or compiled for one off evaluation.
+	bool			jitd;		//!< Whether JIT data is available.
 } regex_t;
 #  else
 #    include <regex.h>
@@ -92,12 +113,23 @@ typedef struct {
 #    ifndef REG_NOSUB
 #      define REG_NOSUB (0)
 #    endif
+
+/** Emulates the functionality of the pcre2_match_data struct
+ *
+ */
+typedef struct {
+	regmatch_t		*match_data;	//!< Slots for matches.
+	size_t			allocd;		//!< Number of slots allocated for match data.
+	size_t			used;		//!< Number of slots filled with match data.
+	char const		*subject;	//!< A local copy of the subject.
+} fr_regmatch_t;
+
 #  endif
 ssize_t		regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
 			      bool ignore_case, bool multiline, bool subcaptures, bool runtime);
-int		regex_exec(regex_t *preg, char const *string, size_t len,
-			   regmatch_t *pmatch, size_t *nmatch);
-regmatch_t	*regex_match_data_alloc(TALLOC_CTX *ctx, size_t count);
+int		regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch);
+uint32_t	regex_subcapture_count(regex_t const *preg);
+fr_regmatch_t	*regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count);
 #  ifdef __cplusplus
 }
 #  endif

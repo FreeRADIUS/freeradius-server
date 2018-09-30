@@ -1237,7 +1237,7 @@ int fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 			/*
 			 *	Don't care about substring matches, oh well...
 			 */
-			slen = regex_exec(preg, value, talloc_array_length(value) - 1, NULL, NULL);
+			slen = regex_exec(preg, value, talloc_array_length(value) - 1, NULL);
 			talloc_free(preg);
 			talloc_free(value);
 

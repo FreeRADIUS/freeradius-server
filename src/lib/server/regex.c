@@ -36,66 +36,49 @@ typedef struct {
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	regex_t		*preg;		//!< Compiled pattern.
 #endif
-#if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_POSIX)
-	char const	*value;		//!< Original string.  Only needed for original
-					///< libpcre, as we're forced to strdup the
-					///< subject for libpcre2 in every instance.
-#endif
-	regmatch_t	*rxmatch;	//!< Match vectors.
-	size_t		nmatch;		//!< Number of match vectors.
-} regcapture_t;
+	fr_regmatch_t	*regmatch;	//!< Match vectors.
+} fr_regcapture_t;
 
 /** Adds subcapture values to request data
  *
  * Allows use of %{n} expansions.
  *
  * @note If preg was runtime-compiled, it will be consumed and *preg will be set to NULL.
- * @note rxmatch will be consumed and *rxmatch will be set to NULL.
+ * @note regmatch will be consumed and *regmatch will be set to NULL.
  * @note Their lifetimes will be bound to the match request data.
  *
  * @param[in] request		Current request.
  * @param[in,out] preg		Compiled pattern. May be set to NULL if
  *				reparented to the regcapture struct.
- * @param[in] value		The original value.
- * @param[in] len		Length of the original value.
- * @param[in,out] rxmatch	Pointers into value. May be set to NULL if
+ * @param[in,out] regmatch	Pointers into value. May be set to NULL if
  *				reparented to the regcapture struct.
- * @param[in] nmatch		Sizeof rxmatch.
  */
-void regex_sub_to_request(REQUEST *request, regex_t **preg,
-#ifdef HAVE_REGEX_PCRE2
-			  UNUSED char const *value,
-			  UNUSED size_t len,
-#else
-			  char const *value,
-			  size_t len,
-#endif
-			  regmatch_t **rxmatch, size_t nmatch)
+void regex_sub_to_request(REQUEST *request, regex_t **preg, fr_regmatch_t **regmatch)
 {
-	regcapture_t *old_rc, *new_rc;	/* lldb doesn't like bare new *sigh* */
+	fr_regcapture_t *old_rc, *new_rc;	/* lldb doesn't like bare new *sigh* */
 
 	/*
 	 *	Clear out old_rc matches
 	 */
 	old_rc = request_data_get(request, request, REQUEST_DATA_REGEX);
 	if (old_rc) {
-		DEBUG4("Clearing %zu matches", old_rc->nmatch);
+		DEBUG4("Clearing %zu matches", old_rc->regmatch->used);
 		talloc_free(old_rc);
 	} else {
 		DEBUG4("No matches");
 	}
 
-	if (nmatch == 0) return;
+	if (!regmatch || ((*regmatch)->used == 0)) return;
 
 	rad_assert(preg && *preg);
-	rad_assert(rxmatch);
+	rad_assert(regmatch);
 
-	DEBUG4("Adding %zu matches", nmatch);
+	DEBUG4("Adding %zu matches", (*regmatch)->used);
 
 	/*
 	 *	Container struct for all the match data
 	 */
-	MEM(new_rc = talloc(request, regcapture_t));
+	MEM(new_rc = talloc(request, fr_regcapture_t));
 
 	/*
 	 *	Steal runtime pregs, leave precompiled ones
@@ -112,18 +95,10 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg,
 	/*
 	 *	Steal match data
 	 */
-	new_rc->rxmatch = talloc_steal(new_rc, *rxmatch);
-	*rxmatch = NULL;
-	new_rc->nmatch = nmatch;
+	new_rc->regmatch = talloc_steal(new_rc, *regmatch);
+	*regmatch = NULL;
 
-#if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_POSIX)
-	/*
-	 *	Have to dup the subject
-	 */
-	new_rc->value = talloc_bstrndup(new_rc, value, len);
-#endif
-
-	request_data_talloc_add(request, request, REQUEST_DATA_REGEX, regcapture_t, new_rc, true, false, false);
+	request_data_talloc_add(request, request, REQUEST_DATA_REGEX, fr_regcapture_t, new_rc, true, false, false);
 }
 
 #  if defined(HAVE_REGEX_PCRE2)
@@ -141,7 +116,7 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg,
  */
 int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
 {
-	regcapture_t		*rc;
+	fr_regcapture_t		*rc;
 	char			*buff;
 	size_t			len;
 	int			ret;
@@ -153,7 +128,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 		*out = NULL;
 		return 1;
 	}
-	match_data = talloc_get_type_abort(*((pcre2_match_data **)rc->rxmatch), pcre2_match_data);
+	match_data = rc->regmatch->match_data;
 
 	ret = pcre2_substring_length_bynumber(match_data, num, &len);
 	switch (ret) {
@@ -175,7 +150,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	 *	Not finding a substring is fine
 	 */
 	case PCRE2_ERROR_NOSUBSTRING:
-		RDEBUG4("%i/%zu Not found", num, rc->nmatch);
+		RDEBUG4("%i/%zu Not found", num + 1, rc->regmatch->used);
 		*out = NULL;
 		return -1;
 
@@ -188,7 +163,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 		MEM(buff = talloc_array(ctx, char, ++len));	/* +1 for \0, it'll get reset by pcre2_substring */
 		pcre2_substring_copy_bynumber(match_data, num, (PCRE2_UCHAR *)buff, &len); /* can't error */
 
-		RDEBUG4("%i/%zu Found: %pV (%zu)", num, rc->nmatch,
+		RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used,
 			fr_box_strvalue_buffer(buff), talloc_array_length(buff) - 1);
 
 		*out = buff;
@@ -212,7 +187,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
  */
 int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name)
 {
-	regcapture_t		*rc;
+	fr_regcapture_t		*rc;
 	char			*buff;
 	int			ret;
 	size_t			len;
@@ -224,7 +199,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 		*out = NULL;
 		return 1;
 	}
-	match_data = talloc_get_type_abort(*((pcre2_match_data **)rc->rxmatch), pcre2_match_data);
+	match_data = rc->regmatch->match_data;
 
 	ret = pcre2_substring_length_byname(match_data, (PCRE2_UCHAR const *)name, &len);
 	switch (ret) {
@@ -282,7 +257,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
  */
 int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
 {
-	regcapture_t	*rc;
+	fr_regcapture_t	*rc;
 	char const	*p;
 	int		ret;
 
@@ -293,7 +268,8 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 		return 1;
 	}
 
-	ret = pcre_get_substring(rc->value, (int *)rc->rxmatch, (int)rc->nmatch, num, &p);
+	ret = pcre_get_substring(rc->regmatch->subject,
+				 (int *)rc->regmatch->match_data, (int)rc->regmatch->used, num, &p);
 	switch (ret) {
 	case PCRE_ERROR_NOMEMORY:
 		MEM(NULL);
@@ -313,7 +289,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	 *	Not finding a substring is fine
 	 */
 	case PCRE_ERROR_NOSUBSTRING:
-		RDEBUG4("%i/%zu Not found", num, rc->nmatch);
+		RDEBUG4("%i/%zu Not found", num + 1, rc->regmatch->used);
 		*out = NULL;
 		return -1;
 
@@ -326,7 +302,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 		talloc_set_type(p, char);
 		p = talloc_steal(ctx, p);
 
-		RDEBUG4("%i/%zu Found: %pV (%zu)", num, rc->nmatch,
+		RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used,
 			fr_box_strvalue_buffer(p), talloc_array_length(p) - 1);
 
 		memcpy(out, &p, sizeof(*out));
@@ -350,7 +326,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
  */
 int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name)
 {
-	regcapture_t	*rc;
+	fr_regcapture_t	*rc;
 	char const	*p;
 	int		ret;
 
@@ -361,8 +337,8 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 		return 1;
 	}
 
-	ret = pcre_get_named_substring(rc->preg->compiled, rc->value,
-				       (int *)rc->rxmatch, (int)rc->nmatch, name, &p);
+	ret = pcre_get_named_substring(rc->preg->compiled, rc->regmatch->subject,
+				       (int *)rc->regmatch->match_data, (int)rc->regmatch->used, name, &p);
 	switch (ret) {
 	case PCRE_ERROR_NOMEMORY:
 		MEM(NULL);
@@ -423,10 +399,11 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
  */
 int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
 {
-	regcapture_t	*rc;
+	fr_regcapture_t	*rc;
 	char 		*buff;
 	char const	*start;
 	size_t		len;
+	regmatch_t	*match_data;
 
 	rc = request_data_reference(request, request, REQUEST_DATA_REGEX);
 	if (!rc) {
@@ -434,14 +411,15 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 		*out = NULL;
 		return -1;
 	}
+	match_data = rc->regmatch->match_data;
 
 	/*
 	 *	Greater than our capture array
 	 *
 	 *	-1 means no value in this capture group.
 	 */
-	if ((num >= rc->nmatch) || (rc->rxmatch[num].rm_eo == -1) || (rc->rxmatch[num].rm_so == -1)) {
-		RDEBUG4("%i/%zu Not found", num, rc->nmatch);
+	if ((num >= rc->regmatch->used) || (match_data[num].rm_eo == -1) || (match_data[num].rm_so == -1)) {
+		RDEBUG4("%i/%zu Not found", num + 1, rc->regmatch->used);
 		*out = NULL;
 		return -1;
 	}
@@ -449,14 +427,14 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	/*
 	 *	Sanity checks on the offsets
 	 */
-	rad_assert(rc->rxmatch[num].rm_eo <= (regoff_t)talloc_array_length(rc->value));
-	rad_assert(rc->rxmatch[num].rm_so <= (regoff_t)talloc_array_length(rc->value));
+	rad_assert(match_data[num].rm_eo <= (regoff_t)talloc_array_length(rc->regmatch->subject));
+	rad_assert(match_data[num].rm_so <= (regoff_t)talloc_array_length(rc->regmatch->subject));
 
-	start = rc->value + rc->rxmatch[num].rm_so;
-	len = rc->rxmatch[num].rm_eo - rc->rxmatch[num].rm_so;
+	start = rc->regmatch->subject + match_data[num].rm_so;
+	len = match_data[num].rm_eo - match_data[num].rm_so;
 
 	MEM(buff = talloc_bstrndup(ctx, start, len));
-	RDEBUG4("%i/%zu Found: %pV (%zu)", num, rc->nmatch, fr_box_strvalue_buffer(buff), len);
+	RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, fr_box_strvalue_buffer(buff), len);
 
 	*out = buff;
 

@@ -463,28 +463,6 @@ static ssize_t xlat_module(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	return strlen(*out);
 }
 
-#if defined(HAVE_REGEX) && defined(HAVE_REGEX_PCRE)
-static ssize_t xlat_regex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			  REQUEST *request, char const *fmt)
-{
-	char *p;
-	size_t len;
-
-	if (regex_request_to_sub_named(request, &p, request, fmt) < 0) return 0;
-
-	len = talloc_array_length(p);
-	if (len > outlen) {
-		RDEBUG("Insufficient buffer space to write subcapture value, needed %zu bytes, have %zu bytes",
-		       len, outlen);
-		return -1;
-	}
-	strlcpy(*out, p, outlen);
-
-	return len - 1; /* - \0 */
-}
-#endif
-
 #ifdef WITH_UNLANG
 /** Implements the Foreach-Variable-X
  *
@@ -839,6 +817,82 @@ static xlat_action_t xlat_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+#if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
+static xlat_action_t xlat_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
+				REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				fr_value_box_t **in)
+{
+	/*
+	 *	Return the complete capture if no other capture is specified
+	 */
+	if (!(*in)) {
+		fr_value_box_t	*vb;
+		char		*p;
+
+		if (regex_request_to_sub(ctx, &p, request, 0) < 0) return XLAT_ACTION_FAIL;
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
+		fr_cursor_insert(out, vb);
+
+		return XLAT_ACTION_DONE;
+	}
+
+	switch ((*in)->type) {
+	/*
+	 *	If the input is an integer value then get an
+	 *	arbitrary subcapture index.
+	 */
+	case FR_TYPE_NUMERIC:
+	{
+		fr_value_box_t	idx;
+		fr_value_box_t	*vb;
+		char		*p;
+
+		if ((*in)->next) {
+			REDEBUG("Only one subcapture argument allowed");
+			return XLAT_ACTION_FAIL;
+		}
+
+		if (fr_value_box_cast(NULL, &idx, FR_TYPE_UINT32, NULL, *in) < 0) {
+			RPEDEBUG("Bad subcapture index");
+			return XLAT_ACTION_FAIL;
+		}
+
+		if (regex_request_to_sub(ctx, &p, request, idx.vb_uint32) < 0) return XLAT_ACTION_FAIL;
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
+		fr_cursor_insert(out, vb);
+
+		return XLAT_ACTION_DONE;
+	}
+
+	default:
+	{
+		fr_value_box_t	*vb;
+		char		*p;
+
+		/*
+		 *	Concatenate all input
+		 */
+		if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+			RPEDEBUG("Failed concatenating input");
+			return XLAT_ACTION_FAIL;
+		}
+
+		if (regex_request_to_sub_named(request, &p, request, (*in)->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		fr_value_box_bstrsteal(vb, vb, NULL, p, false);
+		fr_cursor_insert(out, vb);
+
+		return XLAT_ACTION_DONE;
+	}
+	}
+}
+#endif
+
 /** URLencode special characters
  *
  * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
@@ -855,9 +909,7 @@ static xlat_action_t xlat_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 	/*
 	 * Nothing to do if input is empty
 	 */
-	if (!(*in)) {
-		return XLAT_ACTION_DONE;
-	}
+	if (!(*in)) return XLAT_ACTION_DONE;
 
 	/*
 	 * Concatenate all input
@@ -2557,9 +2609,6 @@ int xlat_init(void)
 	XLAT_REGISTER(map);
 	XLAT_REGISTER(module);
 	XLAT_REGISTER(debug_attr);
-#if defined(HAVE_REGEX) && defined(HAVE_REGEX_PCRE)
-	XLAT_REGISTER(regex);
-#endif
 
 	xlat_register(NULL, "tolower", tolower_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "toupper", toupper_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2601,6 +2650,9 @@ int xlat_init(void)
 	xlat_async_register(NULL, "md5", xlat_md5, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "rand", xlat_rand, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "randstr", xlat_randstr, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+#if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
+	xlat_async_register(NULL, "regex", xlat_regex, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+#endif
 	xlat_async_register(NULL, "urlquote", xlat_urlquote, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "urlunquote", xlat_urlunquote, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 

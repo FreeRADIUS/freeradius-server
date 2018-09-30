@@ -339,8 +339,8 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	if ((check->op == T_OP_REG_EQ) || (check->op == T_OP_REG_NE)) {
 		ssize_t		slen;
 		regex_t		*preg = NULL;
-		regmatch_t	*rxmatch;
-		size_t		nmatch = REQUEST_MAX_REGEX + 1;
+		uint32_t	subcaptures;
+		fr_regmatch_t	*regmatch;
 
 		char *expr = NULL, *value = NULL;
 		char const *expr_p, *value_p;
@@ -378,15 +378,14 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			goto regex_error;
 		}
 
-		/*
-		 *	+1 for %{0} (whole match) capture group
-		 */
-		MEM(rxmatch = regex_match_data_alloc(NULL, nmatch));
+		subcaptures = regex_subcapture_count(preg);
+		if (!subcaptures) subcaptures = REQUEST_MAX_REGEX + 1;	/* +1 for %{0} (whole match) capture group */
+		MEM(regmatch = regex_match_data_alloc(NULL, subcaptures));
 
 		/*
 		 *	Evaluate the expression
 		 */
-		slen = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, rxmatch, &nmatch);
+		slen = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, regmatch);
 		if (slen < 0) {
 			RPERROR("Invalid regex");
 
@@ -397,15 +396,13 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			/*
 			 *	Add in %{0}. %{1}, etc.
 			 */
-			regex_sub_to_request(request, &preg,
-					     value_p, talloc_array_length(value_p) - 1,
-					     &rxmatch, nmatch);
+			regex_sub_to_request(request, &preg, &regmatch);
 			ret = (slen == 1) ? 0 : -1;
 		} else {
 			ret = (slen != 1) ? 0 : -1;
 		}
 
-		talloc_free(rxmatch);
+		talloc_free(regmatch);
 		talloc_free(preg);
 		talloc_free(expr);
 		talloc_free(value);

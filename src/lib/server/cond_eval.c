@@ -166,11 +166,11 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	vp_map_t const *map = c->data.map;
 
 	ssize_t		slen;
+	uint32_t	subcaptures;
 	int		ret;
 
 	regex_t		*preg, *rreg = NULL;
-	regmatch_t	*rxmatch;
-	size_t		nmatch = REQUEST_MAX_REGEX + 1;
+	fr_regmatch_t	*regmatch;
 
 	if (!fr_cond_assert(lhs != NULL)) return -1;
 	if (!fr_cond_assert(lhs->type == FR_TYPE_STRING)) return -1;
@@ -199,24 +199,23 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 	}
 
-	/*
-	 *	+1 for %{0} (whole match) capture group
-	 */
-	MEM(rxmatch = regex_match_data_alloc(NULL, nmatch));
+	subcaptures = regex_subcapture_count(preg);
+	if (!subcaptures) subcaptures = REQUEST_MAX_REGEX + 1;	/* +1 for %{0} (whole match) capture group */
+	MEM(regmatch = regex_match_data_alloc(NULL, subcaptures));
 
 	/*
 	 *	Evaluate the expression
 	 */
-	ret = regex_exec(preg, lhs->vb_strvalue, lhs->datum.length, rxmatch, &nmatch);
+	ret = regex_exec(preg, lhs->vb_strvalue, lhs->datum.length, regmatch);
 	switch (ret) {
 	case 0:
 		EVAL_DEBUG("CLEARING SUBCAPTURES");
-		regex_sub_to_request(request, NULL, NULL, 0, NULL, 0);	/* clear out old entries */
+		regex_sub_to_request(request, NULL, NULL);	/* clear out old entries */
 		break;
 
 	case 1:
 		EVAL_DEBUG("SETTING SUBCAPTURES");
-		regex_sub_to_request(request, &preg, lhs->vb_strvalue, lhs->datum.length, &rxmatch, nmatch);
+		regex_sub_to_request(request, &preg, &regmatch);
 		break;
 
 	case -1:
@@ -228,7 +227,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 	}
 
-	talloc_free(rxmatch);	/* free if not consumed */
+	talloc_free(regmatch);	/* free if not consumed */
 	if (preg) talloc_free(rreg);
 
 	return ret;

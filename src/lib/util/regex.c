@@ -220,10 +220,10 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	preg->compiled = pcre2_compile((PCRE2_SPTR8)pattern, len,
 				       cflags, &ret, &offset, fr_pcre2_tls->ccontext);
 	if (!preg->compiled) {
-		PCRE2_UCHAR buffer[128];
+		PCRE2_UCHAR errbuff[128];
 
-		pcre2_get_error_message(ret, buffer, sizeof(buffer));
-		fr_strerror_printf("Pattern compilation failed: %s", (char *)buffer);
+		pcre2_get_error_message(ret, errbuff, sizeof(errbuff));
+		fr_strerror_printf("Pattern compilation failed: %s", (char *)errbuff);
 		talloc_free(preg);
 
 		return -(ssize_t)offset;
@@ -240,10 +240,10 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 		if (fr_pcre2_tls->do_jit) {
 			ret = pcre2_jit_compile(preg->compiled, PCRE2_JIT_COMPLETE);
 			if (ret < 0) {
-				PCRE2_UCHAR buffer[128];
+				PCRE2_UCHAR errbuff[128];
 
-				pcre2_get_error_message(ret, buffer, sizeof(buffer));
-				fr_strerror_printf("Pattern JIT failed: %s", (char *)buffer);
+				pcre2_get_error_message(ret, errbuff, sizeof(errbuff));
+				fr_strerror_printf("Pattern JIT failed: %s", (char *)errbuff);
 				talloc_free(preg);
 
 				return 0;
@@ -257,86 +257,87 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	return len;
 }
 
-/** Wrapper around pcre_exec
+/** Wrapper around pcre2_exec
  *
  * @param[in] preg	The compiled expression.
  * @param[in] subject	to match.
  * @param[in] len	Length of subject.
- * @param[in] pmatch	Array of match pointers.
- * @param[in] nmatch	How big the match array is. Updated to number of matches.
+ * @param[in] regmatch	Array of match pointers.
  * @return
  *	- -1 on failure.
  *	- 0 on no match.
  *	- 1 on match.
  */
-int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t *pmatch, size_t *nmatch)
+int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch)
 {
 	int			ret;
-	char			*local_subject = NULL;
-	pcre2_match_data	*match_data = NULL;
+	char			*our_subject = NULL;
 
 	/*
 	 *	Thread local initialisation
 	 */
 	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
 
-	/*
-	 *	PCRE_NO_AUTO_CAPTURE is a compile time only flag,
-	 *	and can't be passed here.
-	 *	We rely on the fact that matches has been set to
-	 *	0 as a hint that no subcapture data should be
-	 *	generated.
-	 */
-	if (!pmatch || !nmatch) {
-		if (nmatch) *nmatch = 0;
-	} else {
-	 	match_data = *((pcre2_match_data **)pmatch);
-
+	if (regmatch) {
 		/*
 		 *	We have to dup and operate on the duplicate
 		 *	of the subject, because pcre2_jit_match and
 		 *	pcre2_match store a pointer to the subject
-		 *	in the pmatch structure.
+		 *	in the regmatch structure.
 		 */
-		subject = local_subject = talloc_bstrndup(pmatch, subject, len);
+		subject = our_subject = talloc_bstrndup(regmatch, subject, len);
 	}
 
 	if (preg->jitd) {
 		ret = pcre2_jit_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, 0,
-				      match_data, fr_pcre2_tls->mcontext);
+				      regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext);
 	} else {
 		ret = pcre2_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, 0,
-				  match_data, fr_pcre2_tls->mcontext);
+				  regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext);
 	}
 	if (ret < 0) {
-		PCRE2_UCHAR buffer[128];
+		PCRE2_UCHAR errbuff[128];
 
-		talloc_free(local_subject);
+		talloc_free(our_subject);
 
 		if (ret == PCRE2_ERROR_NOMATCH) return 0;
 
-		pcre2_get_error_message(ret, buffer, sizeof(buffer));
-		fr_strerror_printf("regex evaluation failed with code (%i): %s", ret, buffer);
+		pcre2_get_error_message(ret, errbuff, sizeof(errbuff));
+		fr_strerror_printf("regex evaluation failed with code (%i): %s", ret, errbuff);
 
 		return -1;
 	}
 
-	/*
-	 *	0 signifies more offsets than we provided space for,
-	 *	so don't touch nmatches.
-	 */
-	if (nmatch && (ret > 0)) *nmatch = ret;
+	if (regmatch) regmatch->used = ret;
 
 	return 1;
+}
+
+/** Returns the number of subcapture groups
+ *
+ * @return
+ *	- >0 The number of subcaptures contained within the pattern
+ *	- 0 if the number of subcaptures can't be determined.
+ */
+uint32_t regex_subcapture_count(regex_t const *preg)
+{
+	uint32_t count;
+
+	if (pcre2_pattern_info(preg->compiled, PCRE2_INFO_CAPTURECOUNT, &count) != 0) {
+		fr_strerror_printf("Error determining subcapture group count");
+		return 0;
+	}
+
+	return count + 1;
 }
 
 /** Free libpcre2's matchdata
  *
  * @note Don't call directly, will be called if talloc_free is called on a #regmatch_t.
  */
-static int _pcre2_match_data_free(regmatch_t *pmatch)
+static int _pcre2_match_data_free(fr_regmatch_t *regmatch)
 {
-	pcre2_match_data_free(*((pcre2_match_data **)pmatch));
+	pcre2_match_data_free(regmatch->match_data);
 	return 0;
 }
 
@@ -348,30 +349,32 @@ static int _pcre2_match_data_free(regmatch_t *pmatch)
  *	- NULL on error.
  *	- Array of match vectors.
  */
-regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, size_t count)
+fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 {
-	pcre2_match_data **pmatch;
+	fr_regmatch_t *regmatch;
 
 	/*
 	 *	Thread local initialisation
 	 */
 	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
 
-	pmatch = talloc(ctx, pcre2_match_data *);
-	if (!pmatch) {
+	regmatch = talloc(ctx, fr_regmatch_t);
+	if (!regmatch) {
 	oom:
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
-	talloc_set_type(pmatch, regmatch_t);
 
-	*pmatch = pcre2_match_data_create(count, fr_pcre2_tls->gcontext);
-	if (!*pmatch) goto oom;
+	regmatch->match_data = pcre2_match_data_create(count, fr_pcre2_tls->gcontext);
+	if (!regmatch->match_data) {
+		talloc_free(regmatch);
+		goto oom;
+	}
+	talloc_set_type(regmatch->match_data, pcre2_match_data);
 
-	talloc_set_type(*pmatch, pcre2_match_data);
-	talloc_set_destructor((regmatch_t *)pmatch, _pcre2_match_data_free);
+	talloc_set_destructor(regmatch, _pcre2_match_data_free);
 
-	return (regmatch_t *)pmatch;
+	return regmatch;
 }
 #elif defined(HAVE_REGEX_PCRE)
 /*
@@ -468,7 +471,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 
 		if (do_jit) study_flags |= PCRE_STUDY_JIT_COMPILE;
 #endif
-		pcre_malloc = _pcre_talloc;	/* pcre_malloc is a global provided by libpcre */
+		pcre_malloc = _pcre_talloc;		/* pcre_malloc is a global provided by libpcre */
 		pcre_free = _pcre_talloc_free;		/* pcre_free is a global provided by libpcre */
 	}
 
@@ -575,14 +578,13 @@ static void _pcre_jit_stack_free(void *stack)
  * @param[in] preg	The compiled expression.
  * @param[in] subject	to match.
  * @param[in] len	Length of subject.
- * @param[in] pmatch	Array of match pointers.
- * @param[in] nmatch	How big the match array is. Updated to number of matches.
+ * @param[in] regmatch	Match result structure.
  * @return
  *	- -1 on failure.
  *	- 0 on no match.
  *	- 1 on match.
  */
-int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch[], size_t *nmatch)
+int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch)
 {
 	int	ret;
 	size_t	matches;
@@ -601,28 +603,29 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 #endif
 
 	/*
-	 *	PCRE_NO_AUTO_CAPTURE is a compile time only flag,
-	 *	and can't be passed here.
-	 *	We rely on the fact that matches has been set to
-	 *	0 as a hint that no subcapture data should be
-	 *	generated.
+	 *	Disable capturing
 	 */
-	if (!pmatch || !nmatch) {
-		pmatch = NULL;
-		if (nmatch) *nmatch = 0;
+	if (!regmatch) {
 		matches = 0;
 	} else {
-		matches = *nmatch;
+		matches = regmatch->allocd;
+
+		/*
+		 *	Reset the match result structure
+		 */
+		memset(regmatch->match_data, 0, sizeof(regmatch->match_data[0]) * matches);
+		regmatch->used = 0;
 	}
 
 #ifdef HAVE_PCRE_JIT_EXEC
 	if (preg->jitd) {
 		ret = pcre_jit_exec(preg->compiled, preg->extra, subject, len, 0, 0,
-				    (int *)pmatch, matches * 3, fr_pcre_jit_stack);
+				    regmatch ? (int *)regmatch->match_data : NULL, matches * 3, fr_pcre_jit_stack);
 	} else
 #endif
 	{
-		ret = pcre_exec(preg->compiled, preg->extra, subject, len, 0, 0, (int *)pmatch, matches * 3);
+		ret = pcre_exec(preg->compiled, preg->extra, subject, len, 0, 0,
+				regmatch ? (int *)regmatch->match_data : NULL, matches * 3);
 	}
 	if (ret < 0) {
 		if (ret == PCRE_ERROR_NOMATCH) return 0;
@@ -636,22 +639,36 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 	 *	0 signifies more offsets than we provided space for,
 	 *	so don't touch nmatches.
 	 */
-	if (nmatch && (ret > 0)) *nmatch = ret;
+	if (regmatch && (ret > 0)) {
+		regmatch->used = ret;
+
+		if (regmatch->subject) talloc_const_free(regmatch->subject);
+		regmatch->subject = talloc_bstrndup(regmatch, subject, len);
+		if (!regmatch->subject) {
+			fr_strerror_printf("Out of memory");
+			return -1;
+		}
+	}
 
 	return 1;
 }
 
-/** Allocate vectors to fill with match data
+/** Returns the number of subcapture groups
  *
- * @param[in] ctx	to allocate match vectors in.
- * @param[in] count	The number of vectors to allocate.
  * @return
- *	- NULL on error.
- *	- Array of match vectors.
+ *	- >0 The number of subcaptures contained within the pattern
+ *	- 0 if the number of subcaptures can't be determined.
  */
-regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, size_t count)
+uint32_t regex_subcapture_count(regex_t const *preg)
 {
-	return talloc_zero_array(ctx, regmatch_t, count);
+	int count;
+
+	if (pcre_fullinfo(preg->compiled, preg->extra, PCRE_INFO_CAPTURECOUNT, &count) != 0) {
+		fr_strerror_printf("Error determining subcapture group count");
+		return 0;
+	}
+
+	return (uint32_t)count + 1;
 }
 #  else
 /*
@@ -767,14 +784,13 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
  *
  * @param[in] preg	The compiled expression.
  * @param[in] subject	to match.
- * @param[in] pmatch	Array of match pointers.
- * @param[in] nmatch	How big the match array is. Updated to number of matches.
+ * @param[in] regmatch	Match result structure.
  * @return
  *	- -1 on failure.
  *	- 0 on no match.
  *	- 1 on match.
  */
-int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch[], size_t *nmatch)
+int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch)
 {
 	int	ret;
 	size_t	matches;
@@ -782,14 +798,16 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 	/*
 	 *	Disable capturing
 	 */
-	if (!pmatch || !nmatch) {
-		pmatch = NULL;
-		if (nmatch) *nmatch = 0;
+	if (!regmatch) {
 		matches = 0;
 	} else {
-		/* regexec does not seem to initialise unused elements */
-		matches = *nmatch;
-		memset(pmatch, 0, sizeof(pmatch[0]) * matches);
+		matches = regmatch->allocd;
+
+		/*
+		 *	Reset the match result structure
+		 */
+		memset(regmatch->match_data, 0, sizeof(regmatch->match_data[0]) * matches);
+		regmatch->used = 0;
 	}
 
 #ifndef HAVE_REGNEXEC
@@ -802,12 +820,13 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 		if ((size_t)(p - subject) != len) {
 			fr_strerror_printf("Found null in subject at offset %zu.  String unsafe for evaluation",
 					   (p - subject));
+			if (regmatch) regmatch->used = 0;
 			return -1;
 		}
-		ret = regexec(preg, subject, matches, pmatch, 0);
+		ret = regexec(preg, subject, matches, regmatch ? regmatch->match_data : NULL, 0);
 	}
 #else
-	ret = regnexec(preg, subject, len, matches, pmatch, 0);
+	ret = regnexec(preg, subject, len, matches, regmatch ? regmatch->match_data : NULL, 0);
 #endif
 	if (ret != 0) {
 		if (ret != REG_NOMATCH) {
@@ -816,22 +835,41 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 			regerror(ret, preg, errbuf, sizeof(errbuf));
 
 			fr_strerror_printf("regex evaluation failed: %s", errbuf);
-			if (nmatch) *nmatch = 0;
 			return -1;
 		}
 		return 0;
 	}
 
 	/*
-	 *	Update *nmatch to be the maximum number of
-	 *	groups that *could* have been populated,
-	 *	need to check them later.
+	 *	Update regmatch->count to be the maximum number of
+	 *	groups that *could* have been populated as we don't
+	 *	have the number of matches.
 	 */
-	if (nmatch && (*nmatch > preg->re_nsub)) *nmatch = preg->re_nsub + 1;
+	if (regmatch) {
+		regmatch->used = preg->re_nsub + 1;
 
+		if (regmatch->subject) talloc_const_free(regmatch->subject);
+		regmatch->subject = talloc_bstrndup(regmatch, subject, len);
+		if (!regmatch->subject) {
+			fr_strerror_printf("Out of memory");
+			return -1;
+		}
+	}
 	return 1;
 }
 
+/** Returns the number of subcapture groups
+ *
+ * @return
+ *	- 0 we can't determine this for POSIX regular expressions.
+ */
+uint32_t regex_subcapture_count(UNUSED regex_t const *preg)
+{
+	return 0;
+}
+#  endif
+
+#  if defined(HAVE_REGEX_POSIX) || defined(HAVE_REGEX_PCRE)
 /** Allocate vectors to fill with match data
  *
  * @param[in] ctx	to allocate match vectors in.
@@ -840,9 +878,33 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
  *	- NULL on error.
  *	- Array of match vectors.
  */
-regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, size_t count)
+fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 {
-	return talloc_zero_array(ctx, regmatch_t, count);
+	fr_regmatch_t *regmatch;
+
+#    ifdef HAVE_TALLOC_POOLED_OBJECT
+	/*
+	 *	Pre-allocate space for the match structure
+	 *	and for a 128b subject string.
+	 */
+	regmatch = talloc_pooled_object(ctx, fr_regmatch_t, 2, (sizeof(regmatch_t) * count) + 128);
+#    else
+	regmatch = talloc(ctx, fr_regmatch_t);
+#    endif
+	if (unlikely(!regmatch)) {
+	error:
+		fr_strerror_printf("Out of memory");
+		talloc_free(regmatch);
+		return NULL;
+	}
+	regmatch->match_data = talloc_array(ctx, regmatch_t, count);
+	if (unlikely(!regmatch->match_data)) goto error;
+
+	regmatch->allocd = count;
+	regmatch->used = 0;
+	regmatch->subject = NULL;
+
+	return regmatch;
 }
 #  endif
 #endif
