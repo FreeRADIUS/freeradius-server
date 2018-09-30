@@ -897,7 +897,7 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 		talloc_free(regmatch);
 		return NULL;
 	}
-	regmatch->match_data = talloc_array(ctx, regmatch_t, count);
+	regmatch->match_data = talloc_array(regmatch, regmatch_t, count);
 	if (unlikely(!regmatch->match_data)) goto error;
 
 	regmatch->allocd = count;
