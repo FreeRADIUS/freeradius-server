@@ -869,6 +869,8 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 
 	IPPOOL_BUILD_KEY(key, key_p, "*}:pool", 1);
 
+	*out = NULL;	/* Initialise output pointer */
+
 	/*
 	 *	Get the addresses of all masters in the pool
 	 */
