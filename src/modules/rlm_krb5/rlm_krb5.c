@@ -323,13 +323,13 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, REQUEST *request, 
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_krb5_t const *inst = instance;
-	rlm_rcode_t rcode;
-	krb5_error_code ret;
+	rlm_krb5_t const	*inst = instance;
+	rlm_rcode_t		rcode;
+	krb5_error_code		ret;
 
-	rlm_krb5_handle_t *conn;
+	rlm_krb5_handle_t	*conn;
 
-	krb5_principal client;
+	krb5_principal		client = NULL;
 
 #  ifdef KRB5_IS_THREAD_SAFE
 	conn = fr_pool_connection_get(inst->pool, request);
@@ -337,11 +337,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 #  else
 	conn = inst->conn;
 #  endif
-
-	/*
-	 *	Zero out local storage
-	 */
-	memset(&client, 0, sizeof(client));
 
 	rcode = krb5_parse_user(&client, inst, request, conn->context);
 	if (rcode != RLM_MODULE_OK) goto cleanup;
@@ -396,14 +391,14 @@ cleanup:
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_krb5_t const *inst = instance;
-	rlm_rcode_t rcode;
-	krb5_error_code ret;
+	rlm_krb5_t const	*inst = instance;
+	rlm_rcode_t		rcode;
+	krb5_error_code		ret;
 
-	rlm_krb5_handle_t *conn;
+	rlm_krb5_handle_t	*conn;
 
-	krb5_principal client;
-	krb5_creds init_creds;
+	krb5_principal		client = NULL;	/* actually a pointer value */
+	krb5_creds		init_creds;
 	char *password;		/* compiler warnings */
 
 	rad_assert(inst->context);
@@ -418,7 +413,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	/*
 	 *	Zero out local storage
 	 */
-	memset(&client, 0, sizeof(client));
 	memset(&init_creds, 0, sizeof(init_creds));
 
 	/*
