@@ -834,7 +834,7 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 		return -1;
 	}
 
-	switch (cache_find(&c, mod_inst, request, handle, key, key_len)) {
+	switch (cache_find(&c, mod_inst, request, &handle, key, key_len)) {
 	case RLM_MODULE_OK:		/* found */
 		break;
 
