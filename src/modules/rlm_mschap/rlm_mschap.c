@@ -1428,6 +1428,8 @@ static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t const *inst
 {
 	VALUE_PAIR *nt_password;
 
+	*ntpw = NULL;	/* Init output pointer */
+
 	/*
 	 *	Look for NT-Password...
 	 */
@@ -1473,7 +1475,17 @@ static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t const *inst
 				return false;
 			}
 		} else if (inst->method == AUTH_INTERNAL) {
+		/*
+		 *	If we're doing internal auth, then this is an issue
+		 */
 			RWDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password");
+			return false;
+
+		/*
+		 *	..if we're not, then we can call out to external sources.
+		 */
+		} else {
+			return false;
 		}
 	}
 
@@ -1493,6 +1505,8 @@ static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t const *inst
 							VALUE_PAIR **lmpw)
 {
 	VALUE_PAIR *lm_password;
+
+	*lmpw = NULL;	/* Init output pointer */
 
 	lm_password = fr_pair_find_by_da(request->control, attr_lm_password, TAG_ANY);
 	if (lm_password) {
@@ -1535,12 +1549,16 @@ static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t const *inst
 		/*
 		 *	Only complain if we don't have NT-Password
 		 */
-		} else if (inst->method == AUTH_INTERNAL && !nt_password) {
+		} else if ((inst->method == AUTH_INTERNAL) && !nt_password) {
 			RWDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password");
+			return false;
+		} else {
+			return false;
 		}
 	}
 
 	*lmpw = lm_password;
+
 	return true;
 }
 
