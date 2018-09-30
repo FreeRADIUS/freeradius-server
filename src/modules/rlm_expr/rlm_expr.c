@@ -230,10 +230,11 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		for (i = 0, vp = tmpl_cursor_init(&err, &cursor, request, vpt);
 		     (i < max) && (vp != NULL);
 		     i++, vp = fr_cursor_next(&cursor)) {
-			int64_t y;
+			int64_t		y;
+			fr_value_box_t	value;
 
 			if (vp->vp_type != FR_TYPE_UINT64) {
-				fr_value_box_t	value;
+
 
 				if (fr_value_box_cast(vp, &value, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
 					RPEDEBUG("Failed converting &%.*s to an integer value", (int) vpt->len,
@@ -243,8 +244,8 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 				if (value.vb_uint64 > INT64_MAX) {
 				overflow:
 					talloc_free(vpt);
-					REDEBUG("Value of &%.*s (%"PRIu64 ") would overflow a signed 64bit integer "
-						"(our internal arithmetic type)", (int)vpt->len, vpt->name, value.vb_uint64);
+					REDEBUG("Value of &%.*s (%pV) would overflow a signed 64bit integer "
+						"(our internal arithmetic type)", (int)vpt->len, vpt->name, &value);
 					return false;
 				}
 				y = (int64_t)value.vb_uint64;
@@ -253,7 +254,14 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 				RDEBUG3("&%.*s --> %" PRIu64, (int)vpt->len, vpt->name, y);
 				REXDENT();
 			} else {
-				if (vp->vp_uint64 > INT64_MAX) goto overflow;
+				if (vp->vp_uint64 > INT64_MAX) {
+					/*
+					 *	So we can print out the correct value
+					 *	in the overflow error message.
+					 */
+					fr_value_box_copy(NULL, &value, &vp->data);
+					goto overflow;
+				}
 				y = (int64_t)vp->vp_uint64;
 			}
 
