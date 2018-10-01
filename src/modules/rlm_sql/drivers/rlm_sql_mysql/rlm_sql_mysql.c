@@ -184,7 +184,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 */
 #ifdef MYSQL_OPT_RECONNECT
 	{
-		my_bool reconnect = 0;
+		bool reconnect = 0;
 		mysql_options(&(conn->db), MYSQL_OPT_RECONNECT, &reconnect);
 	}
 #endif
