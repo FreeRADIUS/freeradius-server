@@ -234,8 +234,6 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 			fr_value_box_t	value;
 
 			if (vp->vp_type != FR_TYPE_UINT64) {
-
-
 				if (fr_value_box_cast(vp, &value, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
 					RPEDEBUG("Failed converting &%.*s to an integer value", (int) vpt->len,
 						 vpt->name);
