@@ -1756,7 +1756,7 @@ static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p,
 		if (node->used == 1) {
 			int i;
 			void *trie;
-			chunk = -1;
+			chunk = (1 << node->size);
 
 			for (i = 0; i < (1 << node->size); i++) {
 				if (node->trie[i]) {
@@ -1766,7 +1766,6 @@ static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p,
 			}
 
 			fr_cond_assert(i < (1 << node->size));
-			fr_cond_assert(chunk >= 0);
 			fr_cond_assert(chunk < (1 << node->size));
 
 			/*
