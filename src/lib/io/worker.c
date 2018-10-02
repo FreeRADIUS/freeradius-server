@@ -1098,12 +1098,12 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 		return 0;
 	}
 
-	DEBUG3("\t%ssleeping running %u, localized %u, to_decode %u",
+	DEBUG3("\tWorker %s sleeping running %u, localized %u, to_decode %u",
 	       worker->name,
 	       fr_heap_num_elements(worker->runnable),
 	       fr_heap_num_elements(worker->localized.heap),
 	       fr_heap_num_elements(worker->to_decode.heap));
-	DEBUG3("\t%srequests %" PRIu64 ", decoded %" PRIu64 ", replied %" PRIu64 " active %" PRIu64 "",
+	DEBUG3("\tWorker %s requests %" PRIu64 ", decoded %" PRIu64 ", replied %" PRIu64 " active %" PRIu64 "",
 	       worker->name, worker->stats.in, worker->num_decoded,
 	       worker->stats.out, worker->num_active);
 
@@ -1429,7 +1429,7 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 	 *	cleanups are done periodically.
 	 */
 	if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
-		DEBUG3("\t%schecking timeouts", worker->name);
+		DEBUG3("\tWorker %s checking timeouts", worker->name);
 		fr_worker_check_timeouts(worker, now);
 	}
 
