@@ -135,8 +135,11 @@ typedef struct fr_channel_t {
 	bool			active;		//!< Whether the channel is active.
 	bool			same_thread;	//!< are both ends in the same thread?
 
-	fr_channel_recv_reply_t recv_reply;	//!< callback for receiving replies
+	fr_channel_recv_callback_t recv_reply;	//!< callback for receiving replies
 	void			*recv_reply_ctx; //!< context for receiving replies
+
+	fr_channel_recv_callback_t recv_request;	//!< callback for receiving requests
+	void			*recv_request_ctx; //!< context for receiving requests
 
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
 } fr_channel_t;
@@ -425,10 +428,10 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
  *
  * @param[in] ch the channel
  * @return
- *	- NULL on no data to receive
- *	- the message on success
+ *	- true if there was a message received
+ *	- false if there are no more messages
  */
-fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch)
+bool fr_channel_recv_request(fr_channel_t *ch)
 {
 	fr_channel_data_t *cd;
 	fr_channel_end_t *worker;
@@ -440,7 +443,7 @@ fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch)
 	/*
 	 *	It's OK for the queue to be empty.
 	 */
-	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return NULL;
+	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return false;
 
 	rad_assert(cd->live.sequence > worker->ack);
 	rad_assert(cd->live.sequence >= worker->sequence); /* must have more requests than replies */
@@ -452,26 +455,22 @@ fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch)
 	rad_assert(worker->last_read_other <= cd->m.when);
 	worker->last_read_other = cd->m.when;
 
-	return cd;
+	ch->recv_request(ch->recv_request_ctx, ch, cd);
+
+	return true;
 }
 
 /** Send a reply message into the channel
  *
  * The message should be initialized, other than "sequence" and "ack".
  *
- * No matter what the function returns, the caller should check the
- * request pointer.  If the reply pointer is not NULL, the caller
- * should call fr_channel_recv_request() until that function returns
- * NULL.
- *
  * @param[in] ch		the channel to send the reply on.
  * @param[in] cd		the message to send
- * @param[out] p_request	a pointer to a request message.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_data_t **p_request)
+int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 {
 	uint64_t sequence;
 	fr_time_t when, message_interval;
@@ -487,7 +486,9 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 
 	if (!fr_atomic_queue_push(worker->aq, cd)) {
 		fr_strerror_printf("Failed pushing to atomic queue");
-		*p_request = fr_channel_recv_request(ch);
+		while (fr_channel_recv_request(ch)) {
+			/* nothing */
+		}
 		return -1;
 	}
 
@@ -509,7 +510,9 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	the caller may have sent us one.  Go check the input
 	 *	channel.
 	 */
-	*p_request = fr_channel_recv_request(ch);
+	while (fr_channel_recv_request(ch)) {
+		/* nothing */
+	}
 
 	/*
 	 *	No packets outstanding, we HAVE to signal the master
@@ -857,10 +860,17 @@ void *fr_channel_network_ctx_get(fr_channel_t *ch)
 }
 
 
-int fr_channel_set_recv_reply(fr_channel_t *ch, void *ctx, fr_channel_recv_reply_t recv_reply)
+int fr_channel_set_recv_reply(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_reply)
 {
 	ch->recv_reply = recv_reply;
 	ch->recv_reply_ctx = ctx;
+	return 0;
+}
+
+int fr_channel_set_recv_request(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_request)
+{
+	ch->recv_request = recv_request;
+	ch->recv_request_ctx = ctx;
 	return 0;
 }
 

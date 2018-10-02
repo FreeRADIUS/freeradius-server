@@ -196,30 +196,20 @@ static void fr_worker_post_event(fr_event_list_t *el, struct timeval *now, void 
        } while (0)
 
 
-/** Drain the input channel
+/** Callback which handles a message being received on the worker side.
  *
- * @param[in] worker the worker
+ * @param[in] ctx the worker
  * @param[in] ch the channel to drain
  * @param[in] cd the message (if any) to start with
  */
-static bool fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_channel_data_t *cd)
+static void fr_worker_recv_request(void *ctx, fr_channel_t *ch, fr_channel_data_t *cd)
 {
-	if (!cd) {
-		cd = fr_channel_recv_request(ch);
-		if (!cd) {
-			DEBUG3("\t--> empty-ack");
-			return false;
-		}
-	}
+	fr_worker_t *worker = ctx;
 
-	do {
-		worker->stats.in++;
-		DEBUG3("\t%sreceived request %" PRIu64 "", worker->name, worker->stats.in);
-		cd->channel.ch = ch;
-		WORKER_HEAP_INSERT(to_decode, cd);
-	} while ((cd = fr_channel_recv_request(ch)) != NULL);
-
-	return true;
+	worker->stats.in++;
+	DEBUG3("\t%sreceived request %" PRIu64 "", worker->name, worker->stats.in);
+	cd->channel.ch = ch;
+	WORKER_HEAP_INSERT(to_decode, cd);
 }
 
 
@@ -268,8 +258,12 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 	case FR_CHANNEL_DATA_READY_WORKER:
 		rad_assert(ch != NULL);
 		DEBUG3("\t--> data");
-		if (!fr_worker_drain_input(worker, ch, NULL)) {
+
+		if (!fr_channel_recv_request(ch)) {
 			worker->was_sleeping = was_sleeping;
+
+		} else while (fr_channel_recv_request(ch)) {
+				/* do nothing */
 		}
 		break;
 
@@ -430,14 +424,11 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	/*
 	 *	Send the reply, which also polls the request queue.
 	 */
-	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
+	if (fr_channel_send_reply(ch, reply) < 0) {
 		DEBUG2("\t%sfails sending reply to channel", worker->name);
-		cd = NULL;
 	}
 
 	worker->stats.out++;
-
-	if (cd) (void) fr_worker_drain_input(worker, ch, cd);
 }
 
 static void worker_reset_timer(fr_worker_t *worker);
@@ -554,18 +545,11 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	/*
 	 *	Send the reply, which also polls the request queue.
 	 */
-	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
+	if (fr_channel_send_reply(ch, reply) < 0) {
 		DEBUG2("\t%sfails sending reply", worker->name);
-		cd = NULL;
 	}
 
 	worker->stats.out++;
-
-	/*
-	 *	Drain the incoming TO_WORKER queue.  We do this every
-	 *	time we're done processing a request.
-	 */
-	if (cd) (void) fr_worker_drain_input(worker, ch, cd);
 
 	/*
 	 *	@todo Use a talloc pool for the request.  Clean it up,
@@ -1561,6 +1545,8 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 	ch = fr_channel_create(ctx, master, worker->control, same);
 	if (!ch) return NULL;
 
+	fr_channel_set_recv_request(ch, worker, fr_worker_recv_request);
+
 	/*
 	 *	Tell the worker about the channel
 	 */
@@ -1568,7 +1554,6 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_
 		talloc_free(ch);
 		return NULL;
 	}
-
 
 	return ch;
 }
