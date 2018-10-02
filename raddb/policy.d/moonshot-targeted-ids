@@ -77,6 +77,12 @@ moonshot_host_tid.post-auth {
 				Moonshot-MSTID-TargetedId !* ANY
 			}
 		}
+
+		#  Sanitise the control list to remove the internal attributes
+		update control {
+			Moonshot-MSTID-GSS-Acceptor !* ANY
+			Moonshot-MSTID-Namespace !* ANY
+		}
 	}
 }
 
@@ -118,6 +124,12 @@ moonshot_realm_tid.post-auth {
 				Moonshot-MSTID-TargetedId !* ANY
 			}
 		}
+
+		#  Sanitise the control list to remove the internal attributes
+		update control {
+			Moonshot-MSTID-GSS-Acceptor !* ANY
+			Moonshot-MSTID-Namespace !* ANY
+		}
 	}
 }
 
@@ -158,6 +170,12 @@ moonshot_coi_tid.post-auth {
 			update control {
 				Moonshot-MSTID-TargetedId !* ANY
 			}
+		}
+
+		#  Sanitise the control list to remove the internal attributes
+		update control {
+			Moonshot-MSTID-GSS-Acceptor !* ANY
+			Moonshot-MSTID-Namespace !* ANY
 		}
 	}
 }
