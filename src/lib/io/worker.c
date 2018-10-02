@@ -109,6 +109,7 @@ struct fr_worker_t {
 	char const		*name;		//!< name of this worker
 
 	int			kq;		//!< my kq
+	pthread_t		id;		//!< my thread ID
 
 	fr_log_t const		*log;		//!< log destination
 	fr_log_lvl_t		lvl;		//!< log level
@@ -1298,6 +1299,7 @@ nomem:
 		goto nomem;
 	}
 
+	worker->id = pthread_self();
 	worker->el = el;
 	worker->log = logger;
 	worker->lvl = lvl;
@@ -1548,10 +1550,15 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master)
 {
 	fr_channel_t *ch;
+	pthread_t id;
+	bool same;
 
 	WORKER_VERIFY;
 
-	ch = fr_channel_create(ctx, master, worker->control);
+	id = pthread_self();
+	same = (pthread_equal(id, worker->id) != 0);
+
+	ch = fr_channel_create(ctx, master, worker->control, same);
 	if (!ch) return NULL;
 
 	/*

@@ -557,7 +557,7 @@ int main(int argc, char *argv[])
 	control_worker = fr_control_create(autofree, kq_worker, aq_worker, 1025);
 	rad_assert(control_worker != NULL);
 
-	channel = fr_channel_create(autofree, control_master, control_worker);
+	channel = fr_channel_create(autofree, control_master, control_worker, false);
 	if (!channel) {
 		fprintf(stderr, "channel_test: Failed to create channel\n");
 		exit(EXIT_FAILURE);

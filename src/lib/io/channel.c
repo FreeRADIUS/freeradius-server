@@ -133,6 +133,7 @@ typedef struct fr_channel_t {
 	fr_time_t		processing_time; //!< Time spent by the worker processing requests.
 
 	bool			active;		//!< Whether the channel is active.
+	bool			same_thread;	//!< are both ends in the same thread?
 
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
 } fr_channel_t;
@@ -151,11 +152,12 @@ const FR_NAME_NUMBER channel_packet_priority[] = {
  * @param[in] ctx	The talloc_ctx to allocate channel data in.
  * @param[in] master	control plane.
  * @param[in] worker	control plane.
+ * @param[in] same	whether or not the channel is for the same thread
  * @return
  *	- NULL on error
  *	- channel on success
  */
-fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker)
+fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker, bool same)
 {
 	fr_time_t when;
 	fr_channel_t *ch;
@@ -166,6 +168,8 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_contro
 		fr_strerror_printf("Failed allocating memory");
 		return NULL;
 	}
+
+	ch->same_thread = same;
 
 	ch->end[TO_WORKER].aq = fr_atomic_queue_create(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[TO_WORKER].aq) {
