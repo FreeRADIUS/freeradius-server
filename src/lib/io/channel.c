@@ -824,12 +824,12 @@ void *fr_channel_worker_ctx_get(fr_channel_t *ch)
 }
 
 
-/** Add master-specific data to a channel
+/** Add network-specific data to a channel
  *
  * @param[in] ch	The channel.
  * @param[in] ctx	The context to add.
  */
-void fr_channel_master_ctx_add(fr_channel_t *ch, void *ctx)
+void fr_channel_network_ctx_add(fr_channel_t *ch, void *ctx)
 {
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 
@@ -837,11 +837,11 @@ void fr_channel_master_ctx_add(fr_channel_t *ch, void *ctx)
 }
 
 
-/** Get master-specific data from a channel
+/** Get network-specific data from a channel
  *
  * @param[in] ch	The channel.
  */
-void *fr_channel_master_ctx_get(fr_channel_t *ch)
+void *fr_channel_network_ctx_get(fr_channel_t *ch)
 {
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 

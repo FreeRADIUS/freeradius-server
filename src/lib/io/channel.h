@@ -147,8 +147,8 @@ int fr_channel_worker_ack_close(fr_channel_t *ch) CC_HINT(nonnull);
 
 void fr_channel_worker_ctx_add(fr_channel_t *ch, void *ctx) CC_HINT(nonnull);
 void *fr_channel_worker_ctx_get(fr_channel_t *ch) CC_HINT(nonnull);
-void fr_channel_master_ctx_add(fr_channel_t *ch, void *ctx) CC_HINT(nonnull);
-void *fr_channel_master_ctx_get(fr_channel_t *ch) CC_HINT(nonnull);
+void fr_channel_network_ctx_add(fr_channel_t *ch, void *ctx) CC_HINT(nonnull);
+void *fr_channel_network_ctx_get(fr_channel_t *ch) CC_HINT(nonnull);
 
 
 void fr_channel_debug(fr_channel_t *ch, FILE *fp);

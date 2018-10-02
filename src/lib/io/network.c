@@ -231,7 +231,7 @@ static void fr_network_drain_input(fr_network_t *nr, fr_channel_t *ch, fr_channe
 		/*
 		 *	Update stats for the worker.
 		 */
-		worker = fr_channel_master_ctx_get(ch);
+		worker = fr_channel_network_ctx_get(ch);
 		worker->stats.out++;
 		worker->cpu_time = cd->reply.cpu_time;
 		if (!worker->predicted) {
@@ -903,7 +903,7 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
 	w->channel = fr_worker_channel_create(worker, w, nr->control);
 	if (!w->channel) fr_exit_now(1);
 
-	fr_channel_master_ctx_add(w->channel, w);
+	fr_channel_network_ctx_add(w->channel, w);
 
 	/*
 	 *	Insert the worker into the array of workers.
