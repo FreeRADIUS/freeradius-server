@@ -282,6 +282,14 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	fr_time_t when, message_interval;
 	fr_channel_end_t *master;
 
+	/*
+	 *	Same thread?  Just call the "recv" function directly.
+	 */
+	if (ch->same_thread) {
+		ch->end[FROM_WORKER].recv(ch->end[FROM_WORKER].recv_ctx, ch, cd);
+		return 0;
+	}
+
 	master = &(ch->end[TO_WORKER]);
 	when = cd->m.when;
 
@@ -472,6 +480,14 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	uint64_t sequence;
 	fr_time_t when, message_interval;
 	fr_channel_end_t *worker;
+
+	/*
+	 *	Same thread?  Just call the "recv" function directly.
+	 */
+	if (ch->same_thread) {
+		ch->end[TO_WORKER].recv(ch->end[TO_WORKER].recv_ctx, ch, cd);
+		return 0;
+	}
 
 	worker = &(ch->end[FROM_WORKER]);
 

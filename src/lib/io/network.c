@@ -233,6 +233,8 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 	}
 
 	(void) fr_heap_insert(nr->replies, cd);
+
+	(void) fr_network_post_event(nr->el, NULL, nr);
 }
 
 /** Handle a network control message callback for a channel
