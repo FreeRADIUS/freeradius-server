@@ -97,6 +97,9 @@ typedef struct fr_channel_end_t {
 
 	void			*ctx;		//!< Worker context.
 
+	fr_channel_recv_callback_t recv;	//!< callback for receiving messages
+	void			*recv_ctx;	//!< context for receiving messages
+
 	int			num_outstanding; //!< Number of outstanding requests with no reply.
 	bool			must_signal;	//!< we need to signal the other end
 
@@ -134,12 +137,6 @@ typedef struct fr_channel_t {
 
 	bool			active;		//!< Whether the channel is active.
 	bool			same_thread;	//!< are both ends in the same thread?
-
-	fr_channel_recv_callback_t recv_reply;	//!< callback for receiving replies
-	void			*recv_reply_ctx; //!< context for receiving replies
-
-	fr_channel_recv_callback_t recv_request;	//!< callback for receiving requests
-	void			*recv_request_ctx; //!< context for receiving requests
 
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
 } fr_channel_t;
@@ -373,7 +370,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	fr_channel_end_t *master;
 	fr_atomic_queue_t *aq;
 
-	rad_assert(ch->recv_reply != NULL);
+	rad_assert(ch->end[TO_WORKER].recv != NULL);
 
 	aq = ch->end[FROM_WORKER].aq;
 	master = &(ch->end[TO_WORKER]);
@@ -418,7 +415,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	rad_assert(master->last_read_other <= cd->m.when);
 	master->last_read_other = cd->m.when;
 
-	ch->recv_reply(ch->recv_reply_ctx, ch, cd);
+	ch->end[TO_WORKER].recv(ch->end[TO_WORKER].recv_ctx, ch, cd);
 
 	return true;
 }
@@ -455,7 +452,7 @@ bool fr_channel_recv_request(fr_channel_t *ch)
 	rad_assert(worker->last_read_other <= cd->m.when);
 	worker->last_read_other = cd->m.when;
 
-	ch->recv_request(ch->recv_request_ctx, ch, cd);
+	ch->end[FROM_WORKER].recv(ch->end[FROM_WORKER].recv_ctx, ch, cd);
 
 	return true;
 }
@@ -862,15 +859,16 @@ void *fr_channel_network_ctx_get(fr_channel_t *ch)
 
 int fr_channel_set_recv_reply(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_reply)
 {
-	ch->recv_reply = recv_reply;
-	ch->recv_reply_ctx = ctx;
+	ch->end[TO_WORKER].recv = recv_reply;
+	ch->end[TO_WORKER].recv_ctx = ctx;
+
 	return 0;
 }
 
 int fr_channel_set_recv_request(fr_channel_t *ch, void *ctx, fr_channel_recv_callback_t recv_request)
 {
-	ch->recv_request = recv_request;
-	ch->recv_request_ctx = ctx;
+	ch->end[FROM_WORKER].recv = recv_request;
+	ch->end[FROM_WORKER].recv_ctx = ctx;
 	return 0;
 }
 
