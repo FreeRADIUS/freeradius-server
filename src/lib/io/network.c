@@ -207,41 +207,32 @@ static inline fr_ring_buffer_t *fr_network_rb_init(void)
 #define IALPHA (8)
 #define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
 
-/** Drain the input channel
+/** Callback which handles a message being received on the network side.
  *
- * @param[in] nr the network
- * @param[in] ch the channel to drain
+ * @param[in] ctx the network
+ * @param[in] ch the channel that the message is on.
  * @param[in] cd the message (if any) to start with
  */
-static void fr_network_drain_input(fr_network_t *nr, fr_channel_t *ch, fr_channel_data_t *cd)
+static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t *cd)
 {
+	fr_network_t *nr = ctx;
 	fr_network_worker_t *worker;
 
-	if (!cd) {
-		cd = fr_channel_recv_reply(ch);
-		if (!cd) {
-			DEBUG3("empty reply from worker");
-			return;
-		}
+	cd->channel.ch = ch;
+
+	/*
+	 *	Update stats for the worker.
+	 */
+	worker = fr_channel_network_ctx_get(ch);
+	worker->stats.out++;
+	worker->cpu_time = cd->reply.cpu_time;
+	if (!worker->predicted) {
+		worker->predicted = cd->reply.processing_time;
+	} else {
+		worker->predicted = RTT(worker->predicted, cd->reply.processing_time);
 	}
 
-	do {
-		cd->channel.ch = ch;
-
-		/*
-		 *	Update stats for the worker.
-		 */
-		worker = fr_channel_network_ctx_get(ch);
-		worker->stats.out++;
-		worker->cpu_time = cd->reply.cpu_time;
-		if (!worker->predicted) {
-			worker->predicted = cd->reply.processing_time;
-		} else {
-			worker->predicted = RTT(worker->predicted, cd->reply.processing_time);
-		}
-
-		(void) fr_heap_insert(nr->replies, cd);
-	} while ((cd = fr_channel_recv_reply(ch)) != NULL);
+	(void) fr_heap_insert(nr->replies, cd);
 }
 
 /** Handle a network control message callback for a channel
@@ -274,7 +265,9 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 	case FR_CHANNEL_DATA_READY_NETWORK:
 		rad_assert(ch != NULL);
 		DEBUG3("data <--");
-		fr_network_drain_input(nr, ch, NULL);
+		while (fr_channel_recv_reply(ch)) {
+			/* nothing */
+		}
 		break;
 
 	case FR_CHANNEL_DATA_READY_WORKER:
@@ -302,7 +295,6 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 {
 	fr_network_worker_t *worker;
-	fr_channel_data_t *reply;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
@@ -338,7 +330,7 @@ static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	 *	happens, we have no idea what to do, and the whole
 	 *	thing falls over.
 	 */
-	if (fr_channel_send_request(worker->channel, cd, &reply) < 0) {
+	if (fr_channel_send_request(worker->channel, cd) < 0) {
 		worker->stats.dropped++;
 		return false;
 	}
@@ -352,12 +344,6 @@ static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	 *	reply from this channel.
 	 */
 	worker->cpu_time += worker->predicted;
-
-	/*
-	 *	If we have a reply, push it onto our local queue, and
-	 *	poll for more replies.
-	 */
-	if (reply) fr_network_drain_input(nr, worker->channel, reply);
 
 	return true;
 }
@@ -904,6 +890,7 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
 	if (!w->channel) fr_exit_now(1);
 
 	fr_channel_network_ctx_add(w->channel, w);
+	fr_channel_set_recv_reply(w->channel, nr, fr_network_recv_reply);
 
 	/*
 	 *	Insert the worker into the array of workers.

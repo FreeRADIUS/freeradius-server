@@ -135,6 +135,9 @@ typedef struct fr_channel_t {
 	bool			active;		//!< Whether the channel is active.
 	bool			same_thread;	//!< are both ends in the same thread?
 
+	fr_channel_recv_reply_t recv_reply;	//!< callback for receiving replies
+	void			*recv_reply_ctx; //!< context for receiving replies
+
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
 } fr_channel_t;
 
@@ -265,19 +268,15 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
  *
  * The message should be initialized, other than "sequence" and "ack".
  *
- * No matter what the function returns, the caller should check the
- * reply pointer.  If the reply pointer is not NULL, the caller
- * should call #fr_channel_recv_reply until that function returns
- * NULL.
+ * This function automatically calls the recv_reply callback if there is a reply.
  *
  * @param[in] ch	the channel to send the request on.
  * @param[in] cd	the message to send.
- * @param[out] p_reply	a pointer to a reply message.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_data_t **p_reply)
+int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 {
 	uint64_t sequence;
 	fr_time_t when, message_interval;
@@ -285,7 +284,6 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 
 	master = &(ch->end[TO_WORKER]);
 	when = cd->m.when;
-	*p_reply = NULL;
 
 	sequence = master->sequence + 1;
 	cd->live.sequence = sequence;
@@ -297,7 +295,9 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	 */
 	if (!fr_atomic_queue_push(master->aq, cd)) {
 		fr_strerror_printf("Failed pushing to atomic queue");
-		*p_reply = fr_channel_recv_reply(ch);
+		while (fr_channel_recv_reply(ch)) {
+			/* do nothing */
+		}
 		return -1;
 	}
 
@@ -323,15 +323,15 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	 *	We just sent the first packet.  There can't possibly be a reply, so don't bother looking.
 	 */
 	if (master->num_outstanding == 1) {
-		*p_reply = NULL;
-
 
 		/*
 		 *	There is at least one old packet which is
 		 *	outstanding, look for a reply.
 		 */
 	} else if (master->num_outstanding > 1) {
-		*p_reply = fr_channel_recv_reply(ch);
+		while (fr_channel_recv_reply(ch)) {
+			/* do nothing */
+		}
 
 		/*
 		 *	There's no reply yet, so we still have packets outstanding.
@@ -361,14 +361,16 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
  *
  * @param[in] ch	the channel to read data from.
  * @return
- *	- NULL on no data to receive.
- *	- The message we received (on success).
+ *	- true if there was a message received
+ *	- false if there are no more messages
  */
-fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
+bool fr_channel_recv_reply(fr_channel_t *ch)
 {
 	fr_channel_data_t *cd;
 	fr_channel_end_t *master;
 	fr_atomic_queue_t *aq;
+
+	rad_assert(ch->recv_reply != NULL);
 
 	aq = ch->end[FROM_WORKER].aq;
 	master = &(ch->end[TO_WORKER]);
@@ -376,7 +378,7 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 	/*
 	 *	It's OK for the queue to be empty.
 	 */
-	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return NULL;
+	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return false;
 
 	/*
 	 *	We want an exponential moving average for round trip
@@ -413,7 +415,9 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 	rad_assert(master->last_read_other <= cd->m.when);
 	master->last_read_other = cd->m.when;
 
-	return cd;
+	ch->recv_reply(ch->recv_reply_ctx, ch, cd);
+
+	return true;
 }
 
 
@@ -852,6 +856,13 @@ void *fr_channel_network_ctx_get(fr_channel_t *ch)
 	return ch->end[TO_WORKER].ctx;
 }
 
+
+int fr_channel_set_recv_reply(fr_channel_t *ch, void *ctx, fr_channel_recv_reply_t recv_reply)
+{
+	ch->recv_reply = recv_reply;
+	ch->recv_reply_ctx = ctx;
+	return 0;
+}
 
 /** Send a channel to a worker
  *

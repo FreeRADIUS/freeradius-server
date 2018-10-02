@@ -125,13 +125,16 @@ extern const FR_NAME_NUMBER channel_packet_priority[];
 
 fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker, bool same) CC_HINT(nonnull);
 
-int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_reply) CC_HINT(nonnull);
+int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm) CC_HINT(nonnull);
 fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_request) CC_HINT(nonnull);
 int fr_channel_null_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
-fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
+bool fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
+
+typedef void (*fr_channel_recv_reply_t)(void *ctx, fr_channel_t *ch, fr_channel_data_t *cd);
+int fr_channel_set_recv_reply(fr_channel_t *ch, void *ctx, fr_channel_recv_reply_t recv_reply) CC_HINT(nonnull(1,3));
 
 int fr_channel_worker_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
 
