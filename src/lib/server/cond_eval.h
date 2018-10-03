@@ -18,27 +18,26 @@
 /**
  * $Id$
  *
- * @file modpriv.h
- * @brief Stuff needed by both module.c but should not be
- *	accessed from anywhere else.
+ * @file lib/server/cond_eval.h
+ * @brief Structures and prototypes for the condition evaluation code
  *
- * @copyright 2015 The FreeRADIUS server project
+ * @copyright 2007  The FreeRADIUS server project
+ * @copyright 2007  Alan DeKok <aland@deployingradius.com>
  */
-RCSIDH(modpriv_h, "$Id$")
+RCSIDH(cond_eval_h, "$Id$")
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/server/map.h>
+#include <freeradius-devel/util/value.h>
+#include <freeradius-devel/server/request.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-module_instance_t	*module_find_with_method(rlm_components_t *method,
-						 CONF_SECTION *modules, char const *asked_name);
-module_instance_t	*module_find(CONF_SECTION *modules, char const *asked_name);
-int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
-int			unlang_fixup_update(vp_map_t *map, void *ctx);
+/* evaluate.c */
+typedef struct fr_cond_t fr_cond_t;
+int	cond_eval_tmpl(REQUEST *request, int modreturn, int depth, vp_tmpl_t const *vpt);
+int	cond_eval_map(REQUEST *request, int modreturn, int depth, fr_cond_t const *c);
+int	cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c);
 
 #ifdef __cplusplus
 }

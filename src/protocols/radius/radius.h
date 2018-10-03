@@ -38,6 +38,7 @@
 #  define VENDORPEC_USR		429
 #  define VENDORPEC_LUCENT	4846
 #  define VENDORPEC_STARENT	8164
+#  undef DEBUG
 #  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 #endif
 

@@ -42,7 +42,7 @@ RCSID("$Id$")
 /** Group of clients
  *
  */
-struct radclient_list {
+struct rad_client_list {
 	char const	*name;			//!< Name of the client list.
 #ifdef WITH_TRIE
 	fr_trie_t	*v4_udp;

@@ -225,6 +225,27 @@ fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
 	{ NULL }
 };
 
+/*
+ *	Delete a request.
+ */
+static void request_delete(UNUSED REQUEST *request)
+{
+}
+
+static int request_receive(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
+		    UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
+{
+	return 0;
+}
+
+
+static REQUEST *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
+		       UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
+{
+	rad_assert(0 == 1);
+	return NULL;
+}
+
 /** Add dict enumv from a FR_NAME_NUMBER table
  *
  * @param[in] da	to add enumv to.

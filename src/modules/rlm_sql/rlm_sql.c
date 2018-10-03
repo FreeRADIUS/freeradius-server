@@ -32,11 +32,12 @@ RCSID("$Id$")
 #include <ctype.h>
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/util/token.h>
-#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/server/map_proc.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/pairmove.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/token.h>
 
 #include <sys/stat.h>
 

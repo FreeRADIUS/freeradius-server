@@ -355,7 +355,7 @@ typedef struct {
 
 typedef int (*fr_io_connection_set_t)(fr_listen_t *li, fr_io_address_t *connection);
 
-typedef struct radclient RADCLIENT;
+typedef struct rad_client RADCLIENT;
 
 typedef RADCLIENT *(*fr_io_client_find_t)(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto);
 

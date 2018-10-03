@@ -18,27 +18,34 @@
 /**
  * $Id$
  *
- * @file modpriv.h
- * @brief Stuff needed by both module.c but should not be
- *	accessed from anywhere else.
+ * @file lib/server/users_file.h
+ * @brief Support functions for users_file parsing.
  *
- * @copyright 2015 The FreeRADIUS server project
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
+ * @copyright 2000  Alan DeKok <aland@ox.org>
  */
-RCSIDH(modpriv_h, "$Id$")
+RCSIDH(users_file_h, "$Id$")
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/server/map.h>
+#include <freeradius-devel/util/pair.h>
+#include <talloc.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-module_instance_t	*module_find_with_method(rlm_components_t *method,
-						 CONF_SECTION *modules, char const *asked_name);
-module_instance_t	*module_find(CONF_SECTION *modules, char const *asked_name);
-int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
-int			unlang_fixup_update(vp_map_t *map, void *ctx);
+typedef struct pair_list {
+	char const		*name;
+	VALUE_PAIR		*check;
+	VALUE_PAIR		*reply;
+	int			order;
+	int			lineno;
+	struct pair_list	*next;
+} PAIR_LIST;
+
+/* users_file.c */
+int		pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int complain);
+void		pairlist_free(PAIR_LIST **);
 
 #ifdef __cplusplus
 }

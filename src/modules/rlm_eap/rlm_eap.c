@@ -496,8 +496,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, void *thread, eap_session_
 	 *	a home server, then it's multiple layers of tunneling.
 	 */
 	if (eap_session->request->parent &&
-	    eap_session->request->parent->parent &&
-	    !eap_session->request->parent->parent->home_server) {
+	    eap_session->request->parent->parent) {
 		RERROR("Multiple levels of TLS nesting are invalid");
 
 		return RLM_MODULE_INVALID;
@@ -838,6 +837,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 	i = 34;
 	p = talloc_memdup(vp, vp->vp_strvalue, vp->vp_length + 1);
 	talloc_set_type(p, uint8_t);
+/*
 	ret = fr_radius_decode_tunnel_password((uint8_t *)p + 17, &i, request->proxy->home_server->secret,
 					       request->proxy->packet->vector, false);
 	if (ret < 0) {
@@ -845,6 +845,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 		talloc_free(p);
 		return RLM_MODULE_FAIL;
 	}
+*/
 	len = i;
 	if (len != 16) {
 		REDEBUG("Decoded key length is incorrect, must be 16 bytes");

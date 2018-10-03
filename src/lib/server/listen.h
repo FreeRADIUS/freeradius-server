@@ -25,6 +25,10 @@
  */
 RCSIDH(listen_h, "$Id$")
 
+#include <freeradius-devel/server/socket.h>
+#include <freeradius-devel/server/stats.h>
+#include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/pcap.h>
 
 #ifdef __cplusplus
@@ -145,7 +149,6 @@ typedef struct listen_socket_t {
 	uint32_t		max_rate;
 
 	/* for outgoing sockets */
-	home_server_t		*home;
 	fr_ipaddr_t		other_ipaddr;
 	uint16_t		other_port;
 

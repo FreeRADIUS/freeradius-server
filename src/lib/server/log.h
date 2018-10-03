@@ -26,7 +26,25 @@
  */
 RCSIDH(server_log_h, "$Id$")
 
+/*
+ *	Forward declarations
+ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/** A logging destination, consisting of a function and its context
+ *
+ */
+typedef struct log_dst log_dst_t;
+
+#ifdef __cplusplus
+}
+#endif
+
+#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/pair.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,10 +65,7 @@ extern "C" {
  */
 typedef	void (*log_func_t)(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *fmt, va_list ap, void *uctx);
 
-/** A logging destination, consisting of a function and its context
- *
- */
-typedef struct log_dst log_dst_t;
+
 struct log_dst {
 	log_func_t	func;	//!< Function to call to log to this destination.
 	void		*uctx;	//!< Context to pass to the logging function.
@@ -463,6 +478,3 @@ do {\
 	} while(0)
 
 
-#ifdef __cplusplus
-}
-#endif

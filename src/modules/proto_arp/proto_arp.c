@@ -58,6 +58,12 @@ fr_dict_autoload_t proto_arp_dict[] = {
 	{ NULL }
 };
 
+static int request_receive(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
+		    UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
+{
+	return 0;
+}
+
 static rlm_rcode_t arp_process(REQUEST *request)
 {
 	CONF_SECTION *unlang;

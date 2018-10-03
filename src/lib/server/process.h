@@ -26,7 +26,7 @@
  */
 RCSIDH(process_h, "$Id$")
 
-#include <freeradius-devel/server/clients.h>
+#include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/listen.h>
 #include <freeradius-devel/server/signal.h>
 

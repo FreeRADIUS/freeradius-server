@@ -233,30 +233,39 @@ void request_stats_final(REQUEST *request)
 	}
 
 #ifdef WITH_PROXY
+#if 0
 	if (!request->proxy || !request->proxy->home_server) goto done;	/* simplifies formatting */
-
+#endif
 	switch (request->proxy->packet->code) {
 	case FR_CODE_ACCESS_REQUEST:
+#if 0
 		proxy_auth_stats.total_requests += request->proxy->packet->count;
 		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
+#endif
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_REQUEST:
+#if 0
 		proxy_acct_stats.total_requests += request->proxy->packet->count;
 		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
+#endif
 		break;
 #endif
 
 #ifdef WITH_COA
 	case FR_CODE_COA_REQUEST:
+#if 0
 		proxy_coa_stats.total_requests += request->proxy->packet->count;
 		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
+#endif
 		break;
 
 	case FR_CODE_DISCONNECT_REQUEST:
+#if 0
 		proxy_dsc_stats.total_requests += request->proxy->packet->count;
 		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
+#endif
 		break;
 #endif
 
@@ -267,31 +276,42 @@ void request_stats_final(REQUEST *request)
 	if (!request->proxy->reply) goto done;	/* simplifies formatting */
 
 #undef INC
+#if 0
 #define INC(_x) proxy_auth_stats._x += request->proxy->reply->count; request->proxy->home_server->stats._x += request->proxy->reply->count;
-
+#endif
 	switch (request->proxy->reply->code) {
 	case FR_CODE_ACCESS_ACCEPT:
+#if 0
 		INC(total_access_accepts);
+#endif
 	proxy_stats:
+#if 0
 		INC(total_responses);
+
 		fr_stats_bins(&proxy_auth_stats,
 			      &request->proxy->packet->timestamp,
 			      &request->proxy->reply->timestamp);
 		fr_stats_bins(&request->proxy->home_server->stats,
 			      &request->proxy->packet->timestamp,
 			      &request->proxy->reply->timestamp);
+#endif
 		break;
 
 	case FR_CODE_ACCESS_REJECT:
+#if 0
 		INC(total_access_rejects);
+#endif
 		goto proxy_stats;
 
 	case FR_CODE_ACCESS_CHALLENGE:
+#if 0
 		INC(total_access_challenges);
+#endif
 		goto proxy_stats;
 
 #ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_RESPONSE:
+#if 0
 		proxy_acct_stats.total_responses++;
 		request->proxy->home_server->stats.total_responses++;
 		fr_stats_bins(&proxy_acct_stats,
@@ -300,12 +320,14 @@ void request_stats_final(REQUEST *request)
 		fr_stats_bins(&request->proxy->home_server->stats,
 			      &request->proxy->packet->timestamp,
 			      &request->proxy->reply->timestamp);
+#endif
 		break;
 #endif
 
 #ifdef WITH_COA
 	case FR_CODE_COA_ACK:
 	case FR_CODE_COA_NAK:
+#if 0
 		proxy_coa_stats.total_responses++;
 		request->proxy->home_server->stats.total_responses++;
 		fr_stats_bins(&proxy_coa_stats,
@@ -314,10 +336,12 @@ void request_stats_final(REQUEST *request)
 		fr_stats_bins(&request->proxy->home_server->stats,
 			      &request->proxy->packet->timestamp,
 			      &request->proxy->reply->timestamp);
+#endif
 		break;
 
 	case FR_CODE_DISCONNECT_ACK:
 	case FR_CODE_DISCONNECT_NAK:
+#if 0
 		proxy_dsc_stats.total_responses++;
 		request->proxy->home_server->stats.total_responses++;
 		fr_stats_bins(&proxy_dsc_stats,
@@ -326,12 +350,15 @@ void request_stats_final(REQUEST *request)
 		fr_stats_bins(&request->proxy->home_server->stats,
 			      &request->proxy->packet->timestamp,
 			      &request->proxy->reply->timestamp);
+#endif
 		break;
 #endif
 
 	default:
+#if 0
 		proxy_auth_stats.total_unknown_types++;
 		request->proxy->home_server->stats.total_unknown_types++;
+#endif
 		break;
 	}
 

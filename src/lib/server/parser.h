@@ -29,6 +29,9 @@ RCSIDH(parser_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/server/map.h>
+
 #ifndef RADIUSD_H
 /*
  *	Also defined in radiusd.h for radius_evalute_cond()

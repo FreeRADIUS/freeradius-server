@@ -91,11 +91,7 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 *	rejected in the above loop. So that means it is accepted and we
 	 *	do no further authentication.
 	 */
-	if ((auth_type == FR_AUTH_TYPE_ACCEPT)
-#ifdef WITH_PROXY
-	    || (request->proxy)
-#endif
-	    ) {
+	if (auth_type == FR_AUTH_TYPE_ACCEPT) {
 		RDEBUG2("Auth-Type = Accept, accepting the user");
 		return 0;
 	}

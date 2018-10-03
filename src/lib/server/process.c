@@ -27,11 +27,11 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/server/state.h>
-
+#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/state.h>
 
 #include <signal.h>
 #include <fcntl.h>
@@ -59,28 +59,6 @@ static fr_event_list_t *event_list = NULL;
 fr_event_list_t *fr_global_event_list(void) {
 	/* Currently we do not run a second event loop for modules. */
 	return event_list;
-}
-
-
-/*
- *	Delete a request.
- */
-void request_delete(UNUSED REQUEST *request)
-{
-}
-
-int request_receive(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
-		    UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
-{
-	return 0;
-}
-
-
-REQUEST *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
-		       UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
-{
-	rad_assert(0 == 1);
-	return NULL;
 }
 
 static int event_status(UNUSED void *ctx, struct timeval *wake)
@@ -123,21 +101,6 @@ static int event_new_fd(rad_listen_t *this)
 			INFO(" ... adding new socket %s", buffer);
 		}
 
-#ifdef WITH_PROXY
-		if (!just_started && (this->type == RAD_LISTEN_PROXY)) {
-			home_server_t *home;
-
-			home = sock->home;
-			if (!home || !home->limit.max_connections) {
-				INFO(" ... adding new socket %s", buffer);
-			} else {
-				INFO(" ... adding new socket %s (%u of %u)", buffer,
-				     home->limit.num_connections, home->limit.max_connections);
-			}
-
-#endif
-		}
-
 		switch (this->type) {
 #ifdef WITH_DETAIL
 		/*
@@ -149,45 +112,11 @@ static int event_new_fd(rad_listen_t *this)
 			break;	/* add the FD to the list */
 #endif	/* WITH_DETAIL */
 
-#ifdef WITH_PROXY
-		/*
-		 *	Add it to the list of sockets we can use.
-		 *	Server sockets (i.e. auth/acct) are never
-		 *	added to the packet list.
-		 */
-		case RAD_LISTEN_PROXY:
-#ifdef WITH_TCP
-			if (!fr_cond_assert((sock->proto == IPPROTO_UDP) || (sock->home != NULL))) fr_exit(1);
-
-			/*
-			 *	Add timers to outgoing child sockets, if necessary.
-			 */
-			if (sock->proto == IPPROTO_TCP && sock->opened &&
-			    (sock->home->limit.lifetime || sock->home->limit.idle_timeout)) {
-				this->when.tv_sec = sock->opened + 1;
-				this->when.tv_usec = 0;
-
-			}
-#endif
-			break;
-#endif	/* WITH_PROXY */
-
 			/*
 			 *	FIXME: put idle timers on command sockets.
 			 */
 
 		default:
-#ifdef WITH_TCP
-			/*
-			 *	Add timers to incoming child sockets, if necessary.
-			 */
-			if (sock->proto == IPPROTO_TCP && sock->opened &&
-			    (sock->limit.lifetime || sock->limit.idle_timeout)) {
-				this->when.tv_sec = sock->opened + 1;
-				this->when.tv_usec = 0;
-
-			}
-#endif
 			break;
 		} /* switch over listener types */
 

@@ -24,11 +24,13 @@
  */
 RCSID("$Id$")
 
-#include	<freeradius-devel/server/base.h>
-#include	<freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/pairmove.h>
+#include <freeradius-devel/server/users_file.h>
 
-#include	<ctype.h>
-#include	<fcntl.h>
+#include <ctype.h>
+#include <fcntl.h>
 
 typedef struct rlm_files_t {
 	char const *key;

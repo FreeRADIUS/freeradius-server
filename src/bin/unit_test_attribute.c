@@ -24,7 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 
-typedef struct REQUEST REQUEST;
+typedef struct rad_request REQUEST;
 
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/map.h>
@@ -57,18 +57,6 @@ typedef struct REQUEST REQUEST;
 extern fr_log_lvl_t rad_debug_lvl;
 
 #include <sys/wait.h>
-pid_t rad_fork(void);
-pid_t rad_waitpid(pid_t pid, int *status);
-
-pid_t rad_fork(void)
-{
-	return fork();
-}
-
-pid_t rad_waitpid(pid_t pid, int *status)
-{
-	return waitpid(pid, status, 0);
-}
 
 static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

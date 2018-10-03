@@ -18,27 +18,21 @@
 /**
  * $Id$
  *
- * @file modpriv.h
- * @brief Stuff needed by both module.c but should not be
- *	accessed from anywhere else.
+ * @file lib/server/pairmove.h
+ * @brief Legacy pairmove function
  *
- * @copyright 2015 The FreeRADIUS server project
+ * @copyright 2007  The FreeRADIUS server project
+ * @copyright 2007  Alan DeKok <aland@deployingradius.com>
  */
-RCSIDH(modpriv_h, "$Id$")
+RCSIDH(pairmove_h, "$Id$")
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/server/map.h>
+#include <freeradius-devel/server/request.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-module_instance_t	*module_find_with_method(rlm_components_t *method,
-						 CONF_SECTION *modules, char const *asked_name);
-module_instance_t	*module_find(CONF_SECTION *modules, char const *asked_name);
-int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
-int			unlang_fixup_update(vp_map_t *map, void *ctx);
+void	radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

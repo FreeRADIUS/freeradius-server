@@ -25,7 +25,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/server/parser.h>
 #include <freeradius-devel/server/rad_assert.h>
@@ -38,20 +38,6 @@ RCSID("$Id$")
 #else
 #  define EVAL_DEBUG(...)
 #endif
-
-FR_NAME_NUMBER const modreturn_table[] = {
-	{ "reject",		RLM_MODULE_REJECT       },
-	{ "fail",		RLM_MODULE_FAIL	 	},
-	{ "ok",			RLM_MODULE_OK	   	},
-	{ "handled",		RLM_MODULE_HANDLED      },
-	{ "invalid",		RLM_MODULE_INVALID      },
-	{ "userlock",		RLM_MODULE_USERLOCK     },
-	{ "notfound", 		RLM_MODULE_NOTFOUND     },
-	{ "noop",		RLM_MODULE_NOOP	 	},
-	{ "updated",		RLM_MODULE_UPDATED      },
-	{ NULL, 0 }
-};
-
 
 static bool all_digits(char const *string)
 {
@@ -89,7 +75,7 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
-		modcode = fr_str2int(modreturn_table, vpt->name, RLM_MODULE_UNKNOWN);
+		modcode = fr_str2int(rcode_table, vpt->name, RLM_MODULE_UNKNOWN);
 		if (modcode != RLM_MODULE_UNKNOWN) {
 			rcode = (modcode == modreturn);
 			break;

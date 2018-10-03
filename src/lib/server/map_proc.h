@@ -28,6 +28,7 @@ RCSIDH(map_proc_h, "$Id$")
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/server/map.h>
 
 #ifdef __cplusplus
 extern "C" {

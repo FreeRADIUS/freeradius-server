@@ -70,6 +70,8 @@
 RCSIDH(tmpl_h, "$Id$")
 
 #include <freeradius-devel/server/xlat.h>
+#include <freeradius-devel/util/packet.h>
+#include <freeradius-devel/util/regex.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -107,15 +109,6 @@ typedef enum requests {
 } request_refs_t;
 
 extern const FR_NAME_NUMBER request_refs[];
-
-typedef struct pair_list {
-	char const		*name;
-	VALUE_PAIR		*check;
-	VALUE_PAIR		*reply;
-	int			order;
-	int			lineno;
-	struct pair_list	*next;
-} PAIR_LIST;
 
 /** Types of #vp_tmpl_t
  */
@@ -161,7 +154,7 @@ extern const FR_NAME_NUMBER tmpl_names[];
  *
  * @see vp_map_t
  */
-typedef struct vp_tmpl_t {
+typedef struct vp_tmpl_s {
 	tmpl_type_t	type;		//!< What type of value tmpl refers to.
 
 	char const	*name;		//!< Raw string used to create the template.

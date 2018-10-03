@@ -18,27 +18,25 @@
 /**
  * $Id$
  *
- * @file modpriv.h
- * @brief Stuff needed by both module.c but should not be
- *	accessed from anywhere else.
+ * @file lib/server/socket.h
+ * @brief Socket structures.
  *
- * @copyright 2015 The FreeRADIUS server project
+ * @copyright 2018 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-RCSIDH(modpriv_h, "$Id$")
-
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/server/map.h>
+RCSIDH(server_socket_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-module_instance_t	*module_find_with_method(rlm_components_t *method,
-						 CONF_SECTION *modules, char const *asked_name);
-module_instance_t	*module_find(CONF_SECTION *modules, char const *asked_name);
-int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
-int			unlang_fixup_update(vp_map_t *map, void *ctx);
+typedef struct fr_socket_limit_t {
+	uint32_t	max_connections;
+	uint32_t	num_connections;
+	uint32_t	max_requests;
+	uint32_t	num_requests;
+	uint32_t	lifetime;
+	uint32_t	idle_timeout;
+} fr_socket_limit_t;
 
 #ifdef __cplusplus
 }

@@ -152,22 +152,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(void *instance, UNUSED v
 	return sometimes_return(instance, request, request->reply, NULL);
 }
 
-#ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	if (!request->proxy) return RLM_MODULE_NOOP;
-
-	return sometimes_return(instance, request, request->proxy->packet, request->proxy->reply);
-}
-
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	if (!request->proxy || !request->proxy->reply) return RLM_MODULE_NOOP;
-
-	return sometimes_return(instance, request, request->proxy->reply, NULL);
-}
-#endif
-
 extern rad_module_t rlm_sometimes;
 rad_module_t rlm_sometimes = {
 	.magic		= RLM_MODULE_INIT,
@@ -180,10 +164,6 @@ rad_module_t rlm_sometimes = {
 		[MOD_AUTHORIZE]		= mod_sometimes_packet,
 		[MOD_PREACCT]		= mod_sometimes_packet,
 		[MOD_ACCOUNTING]	= mod_sometimes_packet,
-#ifdef WITH_PROXY
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
-#endif
 		[MOD_POST_AUTH]		= mod_sometimes_reply,
 #ifdef WITH_COA
 		[MOD_RECV_COA]		= mod_sometimes_packet,

@@ -24,6 +24,7 @@
  */
 RCSIDH(other_h, "$Id$")
 
+#include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/pool.h>
 #include "config.h"
 

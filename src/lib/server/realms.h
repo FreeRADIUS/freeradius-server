@@ -29,6 +29,8 @@ RCSIDH(realms_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/server/socket.h>
+
 typedef enum {
 	HOME_TYPE_INVALID = 0,
 	HOME_TYPE_AUTH,		//!< Authentication server
@@ -53,15 +55,6 @@ typedef enum {
 	HOME_STATE_IS_DEAD,
 	HOME_STATE_UNKNOWN
 } home_state_t;
-
-typedef struct fr_socket_limit_t {
-	uint32_t	max_connections;
-	uint32_t	num_connections;
-	uint32_t	max_requests;
-	uint32_t	num_requests;
-	uint32_t	lifetime;
-	uint32_t	idle_timeout;
-} fr_socket_limit_t;
 
 typedef struct home_server {
 	char const		*log_name;		//!< The name used for log messages.

@@ -29,10 +29,15 @@ RCSIDH(xlat_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/signal.h>
+#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/value.h>
 
 typedef struct xlat_exp xlat_exp_t;
+typedef struct vp_tmpl_s vp_tmpl_t;		//!< Avoid circular dependencies.
 
 typedef enum {
 	XLAT_ACTION_PUSH_CHILD = 1,		//!< A deeper level of nesting needs to be evaluated.
@@ -289,6 +294,14 @@ void		xlat_unregister_module(void *instance);
 int		xlat_register_redundant(CONF_SECTION *cs);
 int		xlat_init(void);
 void		xlat_free(void);
+
+/*
+ *	xlat_tokenize.c
+ */
+
+vp_tmpl_t	*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
+
+xlat_exp_t	*xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt);
 
 /*
  *	xlat_inst.c

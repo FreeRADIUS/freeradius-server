@@ -25,15 +25,15 @@
  */
 RCSIDH(radiusd_h, "$Id$")
 
+
+#include <freeradius-devel/server/cf_file.h>
+#include <freeradius-devel/server/log.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/heap.h>
-
-typedef struct rad_request REQUEST;
-
-#include <freeradius-devel/server/log.h>
 
 #include <pthread.h>
 
@@ -50,10 +50,7 @@ typedef struct rad_request REQUEST;
 
 #include <freeradius-devel/server/stats.h>
 #include <freeradius-devel/server/realms.h>
-#include <freeradius-devel/server/xlat.h>
-#include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/map.h>
-#include <freeradius-devel/server/clients.h>
+#include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/dependency.h>
 
@@ -80,251 +77,6 @@ extern "C" {
 /*
  *	See util.c
  */
-typedef struct request_data_t request_data_t;
-
-/** Return codes indicating the result of the module call
- *
- * All module functions must return one of the codes listed below (apart from
- * RLM_MODULE_NUMCODES, which is used to check for validity).
- */
-typedef enum rlm_rcodes {
-	RLM_MODULE_REJECT = 0,				//!< Immediately reject the request.
-	RLM_MODULE_FAIL,				//!< Module failed, don't reply.
-	RLM_MODULE_OK,					//!< The module is OK, continue.
-	RLM_MODULE_HANDLED,				//!< The module handled the request, so stop.
-	RLM_MODULE_INVALID,				//!< The module considers the request invalid.
-	RLM_MODULE_USERLOCK,				//!< Reject the request (user is locked out).
-	RLM_MODULE_NOTFOUND,				//!< User not found.
-	RLM_MODULE_NOOP,				//!< Module succeeded without doing anything.
-	RLM_MODULE_UPDATED,				//!< OK (pairs modified).
-	RLM_MODULE_NUMCODES,				//!< How many valid return codes there are.
-	RLM_MODULE_YIELD,				//!< for unlang.
-	RLM_MODULE_UNKNOWN,				//!< Error resolving rcode (should not be
-							//!< returned by modules).
-} rlm_rcode_t;
-extern const FR_NAME_NUMBER modreturn_table[];
-
-typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(REQUEST *);
-
-/** Main server configuration
- *
- * The parsed version of the main server config.
- */
-typedef struct {
-	char const	*name;				//!< Name of the daemon, usually 'radiusd'.
-	bool		overwrite_config_name;		//!< Overwrite the configured name, as this
-							///< was specified by the user on the command line.
-	CONF_SECTION	*root_cs;			//!< Root of the server config.
-
-	bool		daemonize;			//!< Should the server daemonize on startup.
-	bool		spawn_workers;			//!< Should the server spawn threads.
-	char const      *pid_file;			//!< Path to write out PID file.
-
-	uint32_t	max_request_time;		//!< How long a request can be processed for before
-							//!< timing out.
-
-	uint32_t	num_networks;			//!< number of network threads
-	uint32_t	num_workers;			//!< number of network threads
-
-	bool		drop_requests;			//!< Administratively disable request processing.
-
-	char const	*log_dir;
-	char const	*local_state_dir;
-	char const	*chroot_dir;
-#ifdef WITH_CONF_WRITE
-	char const	*write_dir;			//!< where the normalized config is written
-#endif
-
-	bool		reverse_lookups;
-	bool		hostname_lookups;
-
-	char const	*radacct_dir;
-	char const	*lib_dir;
-	char const	*sbin_dir;
-	char const	*run_dir;
-	char const	*raddb_dir;			//!< Path to raddb directory
-
-	char const	*prefix;
-
-	char const	*log_dest;
-
-	char const	*log_file;
-	bool		do_colourise;
-
-	bool		log_dates_utc;
-	bool		*log_timestamp;
-	bool		log_timestamp_is_set;
-
-	int32_t		syslog_facility;
-
-	char const	*dict_dir;			//!< Where to load dictionaries from.
-
-	struct timeval	init_delay;			//!< Initial request processing delay.
-
-	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #REQUEST.
-
-	bool		write_pid;			//!< write the PID file
-
-#ifdef HAVE_SETUID
-	uid_t		server_uid;			//!< UID we're running as.
-	gid_t		server_gid;			//!< GID we're runing as.
-	uid_t		uid;				//!< UID we should run as.
-	bool		uid_is_set;
-	gid_t		gid;				//!< GID we should run as.
-	bool		gid_is_set;
-#endif
-
-#ifdef ENABLE_OPENSSL_VERSION_CHECK
-	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
-#endif
-
-
-	fr_dict_t	*dict;				//!< Main dictionary.
-
-
-	/*
-	 *	Debugging options
-	 */
-	bool		allow_core_dumps;		//!< Whether the server is allowed to drop a core when
-							//!< receiving a fatal signal.
-
-	char const	*panic_action;			//!< Command to execute if the server receives a fatal
-							//!< signal.
-
-	uint32_t	debug_level;			//!< The base log level for the server.
-
-	bool		talloc_memory_report;		//!< Print a memory report on what's left unfreed.
-							//!< Can only be used when the server is running in single
-							//!< threaded mode.
-
-	size_t		talloc_memory_limit;		//!< Limit the amount of talloced memory the server uses.
-							//!< Only applicable in single threaded mode.
-} main_config_t;
-
-#ifdef WITH_VERIFY_PTR
-#  define REQUEST_VERIFY(_x) request_verify(__FILE__, __LINE__, _x)
-#else
-/*
- *  Even if were building without WITH_VERIFY_PTR
- *  the pointer must not be NULL when these various macros are used
- *  so we can add some sneaky asserts.
- */
-#  define REQUEST_VERIFY(_x) rad_assert(_x)
-#endif
-
-typedef enum {
-	REQUEST_ACTIVE = 1,
-	REQUEST_STOP_PROCESSING,
-	REQUEST_COUNTED
-} rad_master_state_t;
-#define REQUEST_MASTER_NUM_STATES (REQUEST_COUNTED + 1)
-
-typedef enum fr_request_state_t {
-	REQUEST_INIT = 0,
-	REQUEST_RECV,
-	REQUEST_PROCESS,
-	REQUEST_SEND,
-	REQUEST_OTHER_1,
-	REQUEST_OTHER_2,
-	REQUEST_OTHER_3,
-	REQUEST_OTHER_4,
-} fr_request_state_t;
-
-/*
- *	Forward declaration for new async listeners.
- */
-typedef struct fr_async_t fr_async_t;
-
-struct rad_request {
-#ifndef NDEBUG
-	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
-						//!< or request structs that have not been properly initialised.
-#endif
-	uint64_t		number; 	//!< Monotonically increasing request number. Reset on server restart.
-	uint64_t		child_number; 	//!< Monotonically increasing number for children of this request
-	char const		*name;		//!< for debug printing, as (%d) is no longer sufficient
-
-	fr_dict_t const		*dict;		//!< Dictionary of the protocol that this request belongs to.
-
-	fr_event_list_t		*el;		//!< thread-specific event list.
-	fr_heap_t		*backlog;	//!< thread-specific backlog
-	fr_request_state_t	request_state;	//!< state for the various protocol handlers.
-
-	fr_dlist_head_t		data;		//!< Request metadata.
-
-	rad_listen_t		*listener;	//!< The listener that received the request.
-	RADCLIENT		*client;	//!< The client that originally sent us the request.
-
-	RADIUS_PACKET		*packet;	//!< Incoming request.
-	VALUE_PAIR		*username;	//!< Cached username #VALUE_PAIR from request #RADIUS_PACKET.
-	VALUE_PAIR		*password;	//!< Cached password #VALUE_PAIR from request #RADIUS_PACKET.
-
-	RADIUS_PACKET		*reply;		//!< Outgoing response.
-
-	VALUE_PAIR		*control;	//!< #VALUE_PAIR (s) used to set per request parameters
-						//!< for modules and the server core at runtime.
-
-	uint64_t		seq_start;	//!< State sequence ID.  Stable identifier for a sequence of requests
-						//!< and responses.
-	TALLOC_CTX		*state_ctx;	//!< for request->state
-	VALUE_PAIR		*state;		//!< #VALUE_PAIR (s) available over the lifetime of the authentication
-						//!< attempt. Useful where the attempt involves a sequence of
-						//!< many request/challenge packets, like OTP, and EAP.
-
-	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
-						//!< working with the request, to do something.
-
-	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
-
-	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
-	CONF_SECTION		*server_cs;	//!< virtual server which is processing the request.
-
-	char const		*component; 	//!< Section the request is in.
-	char const		*module;	//!< Module the request is currently being processed by.
-
-	void			*stack;		//!< unlang interpreter stack.
-
-	REQUEST			*parent;
-
-#ifdef WITH_PROXY
-	REQUEST			*proxy;		//!< proxied packet
-
-	home_server_t	       	*home_server;
-	home_pool_t		*home_pool;	//!< For dynamic failover
-#endif
-
-	struct timeval		response_delay;	//!< How long to wait before sending Access-Rejects.
-	fr_event_timer_t const	*ev;		//!< Event in event loop tied to this request.
-
-	int32_t			runnable_id;	//!< entry in the queue / heap of runnable packets
-	int32_t			time_order_id;	//!< entry in the queue / heap of time ordered packets
-
-	main_config_t const	*config;	//!< Pointer to the main config hack to try and deal with hup.
-
-	struct {
-		log_dst_t	*dst;		//!< First in a list of log destinations.
-
-		fr_log_lvl_t	lvl;		//!< Log messages with lvl >= to this should be logged.
-
-		uint8_t		unlang_indent;	//!< By how much to indent log messages. uin8_t so it's obvious
-						//!< when a request has been exdented too much.
-		uint8_t		module_indent;	//!< Indentation after the module prefix name.
-	} log;
-
-	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.
-
-	fr_async_t		*async;		//!< for new async listeners
-};				/* REQUEST typedef */
-
-#define RAD_REQUEST_LVL_NONE	(0)		//!< No debug messages should be printed.
-#define RAD_REQUEST_LVL_DEBUG	(1)
-#define RAD_REQUEST_LVL_DEBUG2	(2)
-#define RAD_REQUEST_LVL_DEBUG3	(3)
-#define RAD_REQUEST_LVL_DEBUG4	(4)
-
-#define RAD_REQUEST_OPTION_CTX	(1 << 1)
-#define RAD_REQUEST_OPTION_DETAIL (1 << 2)
-
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30
 #define CLEANUP_DELAY		5
@@ -389,33 +141,6 @@ size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,
 				    char const *in, UNUSED void *arg);
 ssize_t		rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen);
 char		*rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c);
-REQUEST		*request_alloc(TALLOC_CTX *ctx);
-REQUEST		*request_alloc_fake(REQUEST *oldreq);
-REQUEST		*request_alloc_proxy(REQUEST *request);
-REQUEST		*request_alloc_detachable(REQUEST *request);
-int		request_detach(REQUEST *fake);
-
-void		request_data_list_init(fr_dlist_head_t *data);
-
-#define request_data_add(_request, _unique_ptr, _unique_int, _opaque, _free_on_replace, _free_on_parent, _persist) \
-		_request_data_add(_request, _unique_ptr, _unique_int, NULL, _opaque,  \
-				  _free_on_replace, _free_on_parent, _persist)
-
-#define request_data_talloc_add(_request, _unique_ptr, _unique_int, _type, _opaque, _free_on_replace, _free_on_parent, _persist) \
-		_request_data_add(_request, _unique_ptr, _unique_int, STRINGIFY(_type), _opaque, \
-				  _free_on_replace, _free_on_parent, _persist)
-
-int		_request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, char const *type, void *opaque,
-				  bool free_on_replace, bool free_on_parent, bool persist);
-void		*request_data_get(REQUEST *request, void const *unique_ptr, int unique_int);
-void		*request_data_reference(REQUEST *request, void const *unique_ptr, int unique_int);
-
-int		request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool persist);
-void		request_data_restore(REQUEST *request, fr_dlist_head_t *in);
-
-#ifdef WITH_VERIFY_PTR
-bool		request_data_verify_parent(TALLOC_CTX *parent, fr_dlist_head_t *entry);
-#endif
 
 int		rad_copy_string(char *dst, char const *src);
 int		rad_copy_string_bare(char *dst, char const *src);
@@ -474,10 +199,6 @@ int	regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 #  endif
 #endif
 
-/* users_file.c */
-int		pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int complain);
-void		pairlist_free(PAIR_LIST **);
-
 /* auth.c */
 rlm_rcode_t    	rad_authenticate (REQUEST *);
 rlm_rcode_t    	rad_postauth(REQUEST *);
@@ -500,9 +221,6 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 		  CC_HINT(nonnull (3));
 void trigger_exec_free(void);
 VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
-
-vp_tmpl_t	*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
-xlat_exp_t	*xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt);
 
 /* paircmp.c */
 int		paircmp_pairs(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
@@ -627,26 +345,6 @@ void request_enqueue(REQUEST *request);
 void request_queue_extract(REQUEST *request);
 
 extern struct timeval sd_watchdog_interval;
-REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
-		       RADCLIENT *client, RAD_REQUEST_FUNP fun);
-
-int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
-		    RADCLIENT *client, RAD_REQUEST_FUNP fun);
-
-/* main_config.c */
-/* Define a global config structure */
-extern main_config_t const	*main_config;
-
-void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
-void			main_config_raddb_dir_set(main_config_t *config, char const *path);
-void			main_config_dict_dir_set(main_config_t *config, char const *path);
-
-main_config_t		*main_config_alloc(TALLOC_CTX *ctx);
-int			main_config_init(main_config_t *config);
-int			main_config_free(main_config_t **config);
-void			main_config_hup(main_config_t *config);
-void			hup_logfile(main_config_t *config);
-
 
 /* process.c */
 fr_event_list_t *fr_global_event_list(void);
@@ -658,15 +356,6 @@ void radius_update_listener(rad_listen_t *listener);
 void revive_home_server(fr_event_list_t *el, struct timeval *now, void *ctx);
 void mark_home_server_dead(home_server_t *home, struct timeval *when);
 
-/* evaluate.c */
-typedef struct fr_cond_t fr_cond_t;
-int cond_eval_tmpl(REQUEST *request, int modreturn, int depth,
-			 vp_tmpl_t const *vpt);
-int cond_eval_map(REQUEST *request, int modreturn, int depth,
-			fr_cond_t const *c);
-int cond_eval(REQUEST *request, int modreturn, int depth,
-			 fr_cond_t const *c);
-void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

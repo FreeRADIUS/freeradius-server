@@ -14,10 +14,11 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
+#include <freeradius-devel/io/atomic_queue.h>
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/io/atomic_queue.h>
 
 /*
  * $Id$

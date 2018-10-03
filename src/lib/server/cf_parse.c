@@ -30,6 +30,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_file.h>
+#include <freeradius-devel/server/tmpl.h>
 #include "cf_priv.h"
 
 #include <freeradius-devel/util/types.h>

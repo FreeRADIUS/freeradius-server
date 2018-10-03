@@ -26,9 +26,9 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/server/rad_assert.h>
 
 #include "rlm_radius.h"
 
@@ -477,14 +477,6 @@ static void radius_fixups(rlm_radius_t *inst, REQUEST *request)
 
 	if (request->packet->code != FR_CODE_ACCESS_REQUEST) return;
 
-	/*
-	 *	If there is no PW_CHAP_CHALLENGE attribute but
-	 *	there is a PW_CHAP_PASSWORD we need to add it
-	 *	since we can't use the request->packet request
-	 *	authenticator anymore, as the
-	 *	request->proxy->packet authenticator is
-	 *	different.
-	 */
 	if (fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY) &&
 	    !fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY)) {
 	    	MEM(pair_add_request(&vp, attr_chap_challenge) >= 0);

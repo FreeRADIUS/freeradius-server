@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/server/clients.h
+ * @file lib/server/client.h
  * @brief API to add client definitions to the server, both on startup and at runtime.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
@@ -31,11 +31,13 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/io/time.h>
+#include <freeradius-devel/server/socket.h>
+#include <freeradius-devel/server/stats.h>
 
 /** Describes a host allowed to send packets to the server
  *
  */
-typedef struct radclient {
+typedef struct rad_client {
 	fr_ipaddr_t		ipaddr;			//!< IPv4/IPv6 address of the host.
 	fr_ipaddr_t		src_ipaddr;		//!< IPv4/IPv6 address to send responses
 							//!< from (family must match ipaddr).
@@ -85,7 +87,7 @@ typedef struct radclient {
 	FR_STRUCT_SIGNATURE
 } RADCLIENT;
 
-typedef struct radclient_list RADCLIENT_LIST;
+typedef struct rad_client_list RADCLIENT_LIST;
 
 /** Callback for retrieving values when building client sections
  *

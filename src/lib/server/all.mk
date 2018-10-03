@@ -16,7 +16,7 @@ SOURCES	:= \
 	exec.c \
 	exfile.c \
 	log.c \
-	mainconfig.c \
+	main_config.c \
 	map_proc.c \
 	map.c \
 	module.c \
@@ -24,6 +24,7 @@ SOURCES	:= \
 	pairmove.c \
 	pool.c \
 	process.c \
+	rcode.c \
 	regex.c \
 	request.c \
 	snmp.c \
