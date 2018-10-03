@@ -1426,7 +1426,7 @@ static int fr_command_run_partial(FILE *fp, FILE *fp_err, fr_cmd_info_t *info, b
 	if (!cmd->live) return 0;
 
 	if (!cmd->read_only && read_only) {
-		fprintf(fp_err, "No permissions to run command '%s' help %s\n", cmd->name, cmd->help);
+		fprintf(fp_err, "No permissions to run command '%s'\n", cmd->name);
 		return -1;
 	}
 
