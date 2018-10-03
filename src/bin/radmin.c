@@ -439,6 +439,11 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 	return 0;
 }
 
+static int cmd_terminate(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
+	return 0;
+}
 
 static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
@@ -793,6 +798,14 @@ static fr_cmd_table_t cmd_table[] = {
 		.func = cmd_help,
 		.help = "Display list of commands and their help text.",
 		.read_only = true
+	},
+
+
+	{
+		.name = "terminate",
+		.func = cmd_terminate,
+		.help = "Terminate the running server and cause it to exit.",
+		.read_only = false
 	},
 
 
