@@ -120,7 +120,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 			if (end == NULL) {
 				*p = '\0';
 				INFO("%s[%d]: Variable expansion missing }",
-				       cf, *lineno);
+				     cf, *lineno);
 				return NULL;
 			}
 
@@ -201,13 +201,13 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 
 				if (!cp->value) {
 					ERROR("%s[%d]: Reference \"%s\" has no value",
-					       cf, *lineno, input);
+					      cf, *lineno, input);
 					return NULL;
 				}
 
 				if (p + strlen(cp->value) >= output + outsize) {
 					ERROR("%s[%d]: Reference \"%s\" is too long",
-					       cf, *lineno, input);
+					      cf, *lineno, input);
 					return NULL;
 				}
 
@@ -265,7 +265,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 			if (end == NULL) {
 				*p = '\0';
 				INFO("%s[%d]: Environment variable expansion missing }",
-				       cf, *lineno);
+				     cf, *lineno);
 				return NULL;
 			}
 
@@ -275,7 +275,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 			 */
 			if ((size_t) (end - ptr) >= sizeof(name)) {
 				ERROR("%s[%d]: Environment variable name is too large",
-				       cf, *lineno);
+				      cf, *lineno);
 				return NULL;
 			}
 
@@ -294,7 +294,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 
 			if (p + strlen(env) >= output + outsize) {
 				ERROR("%s[%d]: Reference \"%s\" is too long",
-				       cf, *lineno, input);
+				      cf, *lineno, input);
 				return NULL;
 			}
 
@@ -312,7 +312,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 
 		if (p >= (output + outsize)) {
 			ERROR("%s[%d]: Reference \"%s\" is too long",
-			       cf, *lineno, input);
+			      cf, *lineno, input);
 			return NULL;
 		}
 	} /* loop over all of the input string. */
@@ -451,7 +451,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 
 	fp = fopen(filename, "r");
 	if (!fp) {
-error:
+	error:
 		ERROR("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
 		return -1;
 	}
@@ -924,25 +924,25 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	receive a closing brace, then it must mean the
 		 *	end of the section.
 		 */
-	       if (t1 == T_RCBRACE) {
-		       if (this == current) {
-			       ERROR("%s[%d]: Too many closing braces", filename, *lineno);
-			       goto error;
-		       }
+		if (t1 == T_RCBRACE) {
+			if (this == current) {
+				ERROR("%s[%d]: Too many closing braces", filename, *lineno);
+				goto error;
+			}
 
-		       /*
-			*	Merge the template into the existing
-			*	section.  This uses more memory, but
-			*	means that templates now work with
-			*	sub-sections, etc.
-			*/
-		       if (!cf_template_merge(this, this->template)) goto error;
+			/*
+			 *	Merge the template into the existing
+			 *	section.  This uses more memory, but
+			 *	means that templates now work with
+			 *	sub-sections, etc.
+			 */
+			if (!cf_template_merge(this, this->template)) goto error;
 
-		       this = cf_item_to_section(this->item.parent);
-		       goto check_for_more;
-	       }
+			this = cf_item_to_section(this->item.parent);
+			goto check_for_more;
+		}
 
-	       if (t1 != T_BARE_WORD) goto skip_keywords;
+		if (t1 != T_BARE_WORD) goto skip_keywords;
 
 		/*
 		 *	Allow for $INCLUDE files
@@ -950,14 +950,14 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *      This *SHOULD* work for any level include.
 		 *      I really really really hate this file.  -cparker
 		 */
-	       if ((strcasecmp(buff[1], "$INCLUDE") == 0) ||
-		   (strcasecmp(buff[1], "$-INCLUDE") == 0)) {
+		if ((strcasecmp(buff[1], "$INCLUDE") == 0) ||
+		    (strcasecmp(buff[1], "$-INCLUDE") == 0)) {
 			bool relative = true;
 
 			t2 = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
 			if (t2 != T_EOL) {
-			       ERROR("%s[%d]: Unexpected text after $INCLUDE", filename, *lineno);
-			       goto error;
+				ERROR("%s[%d]: Unexpected text after $INCLUDE", filename, *lineno);
+				goto error;
 			}
 
 			if (buff[2][0] == '$') relative = false;
@@ -1086,43 +1086,43 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			continue;
 		} /* we were in an include */
 
-	       if (strcasecmp(buff[1], "$template") == 0) {
-		       CONF_ITEM *ci;
-		       CONF_SECTION *parent_cs, *templatecs;
-		       t2 = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
+		if (strcasecmp(buff[1], "$template") == 0) {
+			CONF_ITEM *ci;
+			CONF_SECTION *parent_cs, *templatecs;
+			t2 = getword(&ptr, buff[2], talloc_array_length(buff[2]), true);
 
-		       if (t2 != T_EOL) {
+			if (t2 != T_EOL) {
 				ERROR("%s[%d]: Unexpected text after $TEMPLATE", filename, *lineno);
 				goto error;
-		       }
+			}
 
-		       parent_cs = cf_root(current);
+			parent_cs = cf_root(current);
 
-		       templatecs = cf_section_find(parent_cs, "templates", NULL);
-		       if (!templatecs) {
+			templatecs = cf_section_find(parent_cs, "templates", NULL);
+			if (!templatecs) {
 				ERROR("%s[%d]: No \"templates\" section for reference \"%s\"", filename, *lineno, buff[2]);
 				goto error;
-		       }
+			}
 
-		       ci = cf_reference_item(parent_cs, templatecs, buff[2]);
-		       if (!ci || (ci->type != CONF_ITEM_SECTION)) {
+			ci = cf_reference_item(parent_cs, templatecs, buff[2]);
+			if (!ci || (ci->type != CONF_ITEM_SECTION)) {
 				ERROR("%s[%d]: Reference \"%s\" not found", filename, *lineno, buff[2]);
 				goto error;
-		       }
+			}
 
-		       if (!this) {
+			if (!this) {
 				ERROR("%s[%d]: Internal sanity check error in template reference", filename, *lineno);
 				goto error;
-		       }
+			}
 
-		       if (this->template) {
+			if (this->template) {
 				ERROR("%s[%d]: Section already has a template", filename, *lineno);
 				goto error;
-		       }
+			}
 
-		       this->template = cf_item_to_section(ci);
-		       continue;
-	       }
+			this->template = cf_item_to_section(ci);
+			continue;
+		}
 
 		/*
 		 *	Ensure that the user can't add CONF_PAIRs
@@ -1148,7 +1148,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Skip (...) to find the {
 			 */
 			slen = fr_cond_tokenize(this, cf_section_to_item(this), ptr, &cond,
-						     &error, FR_COND_TWO_PASS);
+						&error, FR_COND_TWO_PASS);
 			memcpy(&p, &ptr, sizeof(p));
 
 			if (slen < 0) {
@@ -1207,7 +1207,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			css->item.lineno = *lineno;
 
 			slen = fr_cond_tokenize(css, cf_section_to_item(css), ptr, &cond,
-						     &error, FR_COND_TWO_PASS);
+						&error, FR_COND_TWO_PASS);
 			*p = '{'; /* put it back */
 
 		cond_error:
@@ -1380,7 +1380,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_CMP_FALSE:
 			if (!this || ((strcmp(this->name1, "update") != 0) && (strcmp(this->name1, "map") != 0))) {
 				ERROR("%s[%d]: Invalid operator in assignment",
-				       filename, *lineno);
+				      filename, *lineno);
 				goto error;
 			}
 			/* FALL-THROUGH */
@@ -1759,7 +1759,7 @@ static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
 	if ((rad_mkdir(buffer, 0700, -1, -1) < 0) &&
 	    (errno != EEXIST)) {
 		cf_log_err(cs, "Failed creating directory %s: %s",
-			      buffer, fr_syserror(errno));
+			   buffer, fr_syserror(errno));
 		return NULL;
 	}
 
@@ -1771,7 +1771,7 @@ static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
 	fp = fopen(buffer, "a");
 	if (!fp) {
 		cf_log_err(cs, "Failed creating file %s: %s",
-			      buffer, fr_syserror(errno));
+			   buffer, fr_syserror(errno));
 		return NULL;
 	}
 
@@ -2004,7 +2004,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 
 	if (!*p) goto no_such_item;
 
- retry:
+retry:
 	/*
 	 *	Find it in the current referenced
 	 *	section.
