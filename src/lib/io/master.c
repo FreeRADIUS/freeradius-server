@@ -562,8 +562,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 */
 		li->connected = true;
 		li->app_io = live->child->app_io;
-		li->thread_instance = dl_inst->data;
-		li->app_io_instance = li->thread_instance;
+		li->thread_instance = connection;
+		li->app_io_instance = dl_inst->data;
 
 		/*
 		 *	There isn't a need to re-parse the
@@ -582,7 +582,10 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 *	make that distinction with the current APIs.
 		 *	So, we just hack it...
 		 */
-		memcpy(connection->child->thread_instance, inst->app_io_instance, inst->app_io->inst_size);
+		connection->child->thread_instance = talloc_memdup(connection->child,
+								  inst->app_io_instance, inst->app_io->inst_size);
+		talloc_set_name_const(connection->child->thread_instance,
+				      talloc_get_name(inst->app_io_instance));
 		connection->child->app_io_instance = connection->child->thread_instance;
 
 		/*
@@ -738,17 +741,21 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
  *	fr_io_connection_io, which will duplicate some code,
  *	but may make things simpler?
  */
-static void get_inst(fr_listen_t *li, fr_io_instance_t const **inst, fr_io_connection_t **connection,
-		     fr_listen_t **child)
+static void get_inst(fr_listen_t *li, fr_io_instance_t const **inst, fr_io_live_t **live,
+		     fr_io_connection_t **connection, fr_listen_t **child)
 {
 	if (!li->connected) {
-		*inst = li->thread_instance;
+		*inst = li->app_io_instance;
+		if (live) *live = li->thread_instance;
 		*connection = NULL;
-		if (child) *child = (*inst)->live->child;
+		if (child) *child = ((fr_io_live_t *)li->thread_instance)->child;
 
 	} else {
+		rad_assert(connection != NULL);
+
 		*connection = li->thread_instance;
-		*inst = (*connection)->client ->inst;
+		*inst = (*connection)->client->inst;
+		if (live) *live = NULL;
 		if (child) *child = (*connection)->child;
 	}
 }
@@ -968,9 +975,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	fr_listen_t *child;
 	int value, accept_fd = -1;
 
-	get_inst(li, &inst, &connection, &child);
+	get_inst(li, &inst, &live, &connection, &child);
 
-	live = inst->live;
 	track = NULL;
 
 	/*
@@ -1558,7 +1564,7 @@ static int mod_inject(fr_listen_t *li, uint8_t *buffer, size_t buffer_len, fr_ti
 	fr_io_pending_packet_t *pending;
 	fr_io_track_t *track;
 
-	get_inst(li, &inst, &connection, NULL);
+	get_inst(li, &inst, NULL, &connection, NULL);
 
 	if (!connection) {
 		DEBUG2("Received injected packet for an unconnected socket.");
@@ -1605,13 +1611,15 @@ static int mod_inject(fr_listen_t *li, uint8_t *buffer, size_t buffer_len, fr_ti
  */
 static int mod_open(fr_listen_t *li)
 {
+	fr_io_live_t *live;
 	fr_io_instance_t const *inst;
 
-	inst = li->thread_instance;
+	live = li->thread_instance;
+	inst = li->app_io_instance;
 
-	if (inst->app_io->open(inst->live->child) < 0) return -1;
+	if (inst->app_io->open(live->child) < 0) return -1;
 
-	li->fd = inst->live->child->fd;	/* copy this back up */
+	li->fd = live->child->fd;	/* copy this back up */
 
 	return 0;
 }
@@ -1627,8 +1635,9 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 {
 	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
+	fr_io_live_t *live;
 
-	get_inst(li, &inst, &connection, NULL);
+	get_inst(li, &inst, &live, &connection, NULL);
 
 	/*
 	 *	We're not doing IO, so there are no timers for
@@ -1650,8 +1659,8 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	 *	Set event list and network side for this socket.
 	 */
 	if (!connection) {
-		inst->live->el = el;
-		inst->live->nr = nr;
+		live->el = el;
+		live->nr = nr;
 
 	} else {
 		connection->el = el;
@@ -1955,9 +1964,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	int packets;
 	fr_event_list_t *el;
 
-	get_inst(li, &inst, &connection, &child);
+	get_inst(li, &inst, &live, &connection, &child);
 
-	live = inst->live;
 	client = track->client;
 	packets = client->packets;
 	if (connection) {
@@ -2324,7 +2332,7 @@ static int mod_close(fr_listen_t *li)
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
 
-	get_inst(li, &inst, &connection, &child);
+	get_inst(li, &inst, NULL, &connection, &child);
 
 	if (inst->app_io->close) {
 		int rcode;
@@ -2407,11 +2415,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 static char const *mod_name(fr_listen_t *li)
 {
-	fr_io_instance_t const *inst = li->thread_instance;
+	fr_io_live_t *live = li->thread_instance;
 
 	if (!li->app_io->get_name) return li->app_io->name;
 
-	return li->app_io->get_name(inst->live->child);
+	return li->app_io->get_name(live->child);
 }
 
 
@@ -2677,7 +2685,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	/*
 	 *	Per-socket data lives here.
 	 */
-	live = inst->live = talloc_zero(ctx, fr_io_live_t);
+	live = talloc_zero(ctx, fr_io_live_t);
 	live->listen = li;
 	live->sc = sc;
 
@@ -2694,8 +2702,8 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 *	Set the listener to call our master trampoline function.
 	 */
 	li->app_io = &fr_master_app_io;
-	li->thread_instance = inst;
-	li->app_io_instance = li->thread_instance;
+	li->thread_instance = live;
+	li->app_io_instance = inst;
 
 	/*
 	 *	The child listener points to the *actual* IO path.

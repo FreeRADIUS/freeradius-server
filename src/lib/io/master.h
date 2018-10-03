@@ -56,8 +56,6 @@ typedef struct {
 	uint8_t				packet[20];	//!< original request packet
 } fr_io_track_t;
 
-typedef struct fr_io_live_t fr_io_live_t;
-
 /** The master IO instance
  *
  *  This structure is the instance data for the "master" IO handler.
@@ -103,8 +101,6 @@ typedef struct fr_io_instance_t {
 	char const			*transport;			//!< transport, typically name of IP proto
 
 	fr_trie_t const			*networks;     			//!< trie of allowed networks
-
-	fr_io_live_t			*live;			       	//!< live socket data
 } fr_io_instance_t;
 
 extern fr_app_io_t fr_master_app_io;
