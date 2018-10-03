@@ -451,7 +451,7 @@ int eap_base_init(void)
 	}
 
 	/*
-	 *	But mainconfig.c does read the dictionaries before
+	 *	But main_config.c does read the dictionaries before
 	 *	loading modules, so these have to exist.
 	 */
 	if (fr_dict_attr_autoload(eap_base_dict_attr) < 0) {
