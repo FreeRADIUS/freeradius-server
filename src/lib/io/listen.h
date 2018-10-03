@@ -35,6 +35,7 @@ struct fr_listen {
 
 	CONF_SECTION		*server_cs;		//!< CONF_SECTION of the server
 
+	bool			connected;		//!< is this for a connected socket?
 	size_t			default_message_size;	//!< copied from app_io, but may be changed
 	size_t			num_messages;		//!< for the message ring buffer
 };

@@ -72,8 +72,6 @@ typedef struct fr_io_live_t fr_io_live_t;
  *  creates the listener, and adds it to the scheduler.
  */
 typedef struct fr_io_instance_t {
-	int				magic;				//!< sparkles and unicorns
-
 	dl_instance_t const   		*dl_inst;			//!< our parent dl_inst
 
 	uint32_t			max_connections;		//!< maximum number of connections to allow

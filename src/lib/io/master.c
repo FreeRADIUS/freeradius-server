@@ -29,9 +29,6 @@
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/server/rad_assert.h>
 
-#define PR_CONNECTION_MAGIC (0x434f4e4e)
-#define PR_MAIN_MAGIC	    (0x4d4149e4)
-
 typedef struct fr_io_live_t {
 	fr_event_list_t			*el;				//!< event list, for the master socket.
 	fr_network_t			*nr;				//!< network for the master socket
@@ -120,7 +117,6 @@ typedef struct fr_io_client_t {
  *  child.
  */
 struct fr_io_connection_t {
-	int				magic;		//!< sparkles and unicorns
 	char const			*name;		//!< taken from proto_FOO_TRANSPORT
 	int				packets;	//!< number of packets using this connection
 	fr_io_address_t   		*address;      	//!< full information about the connection.
@@ -453,7 +449,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	MEM(connection->address = talloc_memdup(connection, address, sizeof(*address)));
 	(void) talloc_set_name_const(connection->address, "fr_io_address_t");
 
-	connection->magic = PR_CONNECTION_MAGIC;
 	connection->parent = client;
 	connection->dl_inst = dl_inst;
 
@@ -565,6 +560,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		/*
 		 *	Glue in the actual app_io
 		 */
+		li->connected = true;
 		li->app_io = live->child->app_io;
 		li->thread_instance = dl_inst->data;
 		li->app_io_instance = li->thread_instance;
@@ -606,6 +602,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 *	Glue in the connection to the listener.
 		 */
 		rad_assert(li->app_io == &fr_master_app_io);
+
+		li->connected = true;
 		li->thread_instance = connection;
 		li->app_io_instance = li->thread_instance;
 
@@ -740,20 +738,16 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
  *	fr_io_connection_io, which will duplicate some code,
  *	but may make things simpler?
  */
-static void get_inst(void *instance, fr_io_instance_t const **inst, fr_io_connection_t **connection,
+static void get_inst(fr_listen_t *li, fr_io_instance_t const **inst, fr_io_connection_t **connection,
 		     fr_listen_t **child)
 {
-	int magic;
-
-	magic = *(int *) instance;
-	if (magic == PR_MAIN_MAGIC) {
-		*inst = instance;
+	if (!li->connected) {
+		*inst = li->thread_instance;
 		*connection = NULL;
 		if (child) *child = (*inst)->live->child;
 
 	} else {
-		rad_assert(magic == PR_CONNECTION_MAGIC);
-		*connection = instance;
+		*connection = li->thread_instance;
 		*inst = (*connection)->client ->inst;
 		if (child) *child = (*connection)->child;
 	}
@@ -974,7 +968,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	fr_listen_t *child;
 	int value, accept_fd = -1;
 
-	get_inst(li->thread_instance, &inst, &connection, &child);
+	get_inst(li, &inst, &connection, &child);
 
 	live = inst->live;
 	track = NULL;
@@ -1564,7 +1558,7 @@ static int mod_inject(fr_listen_t *li, uint8_t *buffer, size_t buffer_len, fr_ti
 	fr_io_pending_packet_t *pending;
 	fr_io_track_t *track;
 
-	get_inst(li->thread_instance, &inst, &connection, NULL);
+	get_inst(li, &inst, &connection, NULL);
 
 	if (!connection) {
 		DEBUG2("Received injected packet for an unconnected socket.");
@@ -1634,7 +1628,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
 
-	get_inst(li->thread_instance, &inst, &connection, NULL);
+	get_inst(li, &inst, &connection, NULL);
 
 	/*
 	 *	We're not doing IO, so there are no timers for
@@ -1961,7 +1955,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	int packets;
 	fr_event_list_t *el;
 
-	get_inst(li->thread_instance, &inst, &connection, &child);
+	get_inst(li, &inst, &connection, &child);
 
 	live = inst->live;
 	client = track->client;
@@ -2330,7 +2324,7 @@ static int mod_close(fr_listen_t *li)
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
 
-	get_inst(li->thread_instance, &inst, &connection, &child);
+	get_inst(li, &inst, &connection, &child);
 
 	if (inst->app_io->close) {
 		int rcode;
@@ -2342,17 +2336,17 @@ static int mod_close(fr_listen_t *li)
 		child->fd = -1;
 	}
 
+	if (!connection) return 0;
+
 	/*
 	 *	We allocated this, so we're responsible for closing
 	 *	it.
 	 */
-	if (connection) {
-		DEBUG("Closing connection %s", connection->name);
-		if (connection->client->pending) {
-			TALLOC_FREE(connection->client->pending); /* for any pending packets */
-		}
-		talloc_free(connection->dl_inst);
+	DEBUG("Closing connection %s", connection->name);
+	if (connection->client->pending) {
+		TALLOC_FREE(connection->client->pending); /* for any pending packets */
 	}
+	talloc_free(connection->dl_inst);
 
 	return 0;
 }
@@ -2361,12 +2355,6 @@ static int mod_close(fr_listen_t *li)
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	fr_io_instance_t *inst = instance;
-
-	/*
-	 *	Set our magic so that we know if we're a connection or
-	 *	an instance.
-	 */
-	inst->magic = PR_MAIN_MAGIC;
 
 	/*
 	 *	Find and bootstrap the application IO handler.
@@ -2664,6 +2652,18 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 */
 	MEM(li = talloc_zero(ctx, fr_listen_t));
 
+	/*
+	 *	The first listener is the one for the application
+	 *	(e.g. RADIUS).  However, we mangle the IO path to
+	 *	point to the master IO handler.  That allows all of
+	 *	the high-level work (dynamic client checking,
+	 *	connected sockets, etc.) to be handled by the master
+	 *	IO handler.
+	 *
+	 *	This listener is then passed to the network code,
+	 *	which calls our trampoline functions to do the actual
+	 *	work.
+	 */
 	li->app = inst->app;
 	li->app_instance = inst->app_instance;
 	li->server_cs = inst->server_cs;
@@ -2674,6 +2674,9 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	li->default_message_size = default_message_size;
 	li->num_messages = num_messages;
 
+	/*
+	 *	Per-socket data lives here.
+	 */
 	live = inst->live = talloc_zero(ctx, fr_io_live_t);
 	live->listen = li;
 	live->sc = sc;
@@ -2695,21 +2698,29 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	li->app_io_instance = li->thread_instance;
 
 	/*
-	 *	Create the child listener, so that it can later be
-	 *	passed to the app_io functions.
+	 *	The child listener points to the *actual* IO path.
+	 *
+	 *	We need to create a complete listener here (e.g.
+	 *	RADIUS + RADIUS_UDP), because the underlying IO
+	 *	functions expect to get passed a full listener.
+	 *
+	 *	Once the network side calls us, we will call the child
+	 *	listener to do the actual IO.
 	 */
 	child = live->child = talloc_zero(li, fr_listen_t);
 	memcpy(child, li, sizeof(*child));
 
 	/*
-	 *	Reset these fields to point to the actual data.
+	 *	Reset these fields to point to the IO instance data.
 	 */
 	child->app_io = inst->app_io;
 	child->thread_instance = inst->app_io_instance;
 	child->app_io_instance = child->thread_instance;
 
 	/*
-	 *	Don't set the connection for the main socket.  It's not connected.
+	 *	Don't call connection_set() for the main socket.  It's
+	 *	not connected.  Instead, tell the IO path to open the
+	 *	socket for us.
 	 */
 	if (inst->app_io->open(child) < 0) {
 		cf_log_err(inst->app_io_conf, "Failed opening %s interface", inst->app_io->name);
@@ -2720,8 +2731,8 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	li->fd = child->fd;	/* copy this back up */
 
 	/*
-	 *	Add the socket to the scheduler, which might
-	 *	end up in a different thread.
+	 *	Add the socket to the scheduler, where it might end up
+	 *	in a different thread.
 	 */
 	if (!fr_schedule_listen_add(sc, li)) {
 		talloc_free(li);
