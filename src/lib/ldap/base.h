@@ -11,6 +11,8 @@
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/connection.h>
+#include <freeradius-devel/server/map.h>
+
 #include <lber.h>
 #include <ldap.h>
 #include "config.h"
