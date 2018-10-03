@@ -135,6 +135,7 @@ struct fr_network_t {
 };
 
 static void fr_network_post_event(fr_event_list_t *el, struct timeval *now, void *uctx);
+static int fr_network_pre_event(void *ctx, struct timeval *wake);
 
 static int reply_cmp(void const *one, void const *two)
 {
@@ -233,8 +234,6 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 	}
 
 	(void) fr_heap_insert(nr->replies, cd);
-
-	(void) fr_network_post_event(nr->el, NULL, nr);
 }
 
 /** Handle a network control message callback for a channel
@@ -1080,6 +1079,11 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 		goto fail2;
 	}
 
+	if (fr_event_pre_insert(nr->el, fr_network_pre_event, nr) < 0) {
+		fr_strerror_printf("Failed adding pre-check to event list");
+		goto fail2;
+	}
+
 	if (fr_event_post_insert(nr->el, fr_network_post_event, nr) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");
 		goto fail2;
@@ -1128,11 +1132,32 @@ int fr_network_destroy(fr_network_t *nr)
 		fr_message_done(&cd->m);
 	}
 
+	(void) fr_event_pre_delete(nr->el, fr_network_pre_event, nr);
 	(void) fr_event_post_delete(nr->el, fr_network_post_event, nr);
 
 	/*
 	 *	The caller has to free 'nr'.
 	 */
+
+	return 0;
+}
+
+/** Run the event loop 'pre' callback
+ *
+ *  This function MUST DO NO WORK.  All it does is check if there's
+ *  work, and tell the event code to return to the main loop if
+ *  there's work to do.
+ *
+ * @param[in] ctx the network
+ * @param[in] wake the time when the event loop will wake up.
+ */
+static int fr_network_pre_event(void *ctx, UNUSED struct timeval *wake)
+{
+	fr_network_t *nr = talloc_get_type_abort(ctx, fr_network_t);
+
+	if (fr_heap_num_elements(nr->replies) > 0) {
+		return 1;
+	}
 
 	return 0;
 }
