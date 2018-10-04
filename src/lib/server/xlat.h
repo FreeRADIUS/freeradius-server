@@ -29,6 +29,20 @@ RCSIDH(xlat_h, "$Id$")
 extern "C" {
 #endif
 
+/*
+ *	Forward declarations
+ */
+typedef enum xlat_action_e {
+	XLAT_ACTION_PUSH_CHILD = 1,		//!< A deeper level of nesting needs to be evaluated.
+	XLAT_ACTION_YIELD,			//!< An xlat function pushed a resume frame onto the stack.
+	XLAT_ACTION_DONE,			//!< We're done evaluating this level of nesting.
+	XLAT_ACTION_FAIL			//!< An xlat function failed.
+} xlat_action_t;
+
+typedef struct xlat_inst xlat_inst_t;
+typedef struct xlat_thread_inst xlat_thread_inst_t;
+typedef struct xlat_exp xlat_exp_t;
+
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/signal.h>
@@ -36,35 +50,25 @@ extern "C" {
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/value.h>
 
-typedef struct xlat_exp xlat_exp_t;
-typedef struct vp_tmpl_s vp_tmpl_t;		//!< Avoid circular dependencies.
-
-typedef enum {
-	XLAT_ACTION_PUSH_CHILD = 1,		//!< A deeper level of nesting needs to be evaluated.
-	XLAT_ACTION_YIELD,			//!< An xlat function pushed a resume frame onto the stack.
-	XLAT_ACTION_DONE,			//!< We're done evaluating this level of nesting.
-	XLAT_ACTION_FAIL			//!< An xlat function failed.
-} xlat_action_t;
 
 /** Instance data for an xlat expansion node
  *
  */
-typedef struct {
+struct xlat_inst {
 	xlat_exp_t const	*node;		//!< Node this data relates to.
 	void			*data;		//!< xlat node specific instance data.
-} xlat_inst_t;
+};
 
 /** Thread specific instance data for xlat expansion node
  *
  */
-typedef struct {
+struct xlat_thread_inst {
 	xlat_exp_t const	*node;		//!< Node this data relates to.
  	void			*data;		//!< Thread specific instance data.
 
 	uint64_t		total_calls;	//! total number of times we've been called
 	uint64_t		active_callers; //! number of active callers.  i.e. number of current yields
-} xlat_thread_inst_t;
-
+};
 
 extern FR_NAME_NUMBER const xlat_action_table[];
 

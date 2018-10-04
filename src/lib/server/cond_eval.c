@@ -590,8 +590,8 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	vp_map_t const *map = c->data.map;
 
 	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
-		   fr_int2str(tmpl_names, map->lhs->type, "???"),
-		   fr_int2str(tmpl_names, map->rhs->type, "???"));
+		   fr_int2str(tmpl_type_table, map->lhs->type, "???"),
+		   fr_int2str(tmpl_type_table, map->rhs->type, "???"));
 
 	MAP_VERIFY(map);
 

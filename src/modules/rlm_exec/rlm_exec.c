@@ -40,8 +40,8 @@ typedef struct rlm_exec_t {
 	char const	*program;
 	char const	*input;
 	char const	*output;
-	pair_lists_t	input_list;
-	pair_lists_t	output_list;
+	pair_list_t	input_list;
+	pair_list_t	output_list;
 	bool		shell_escape;
 	uint32_t	timeout;
 } rlm_exec_t;

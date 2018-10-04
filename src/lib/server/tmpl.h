@@ -69,15 +69,14 @@
  */
 RCSIDH(tmpl_h, "$Id$")
 
-#include <freeradius-devel/server/xlat.h>
-#include <freeradius-devel/util/packet.h>
-#include <freeradius-devel/util/regex.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef enum pair_lists {
+/*
+ *	Forward declarations
+ */
+typedef enum pair_list_e {
 	PAIR_LIST_REQUEST = 0,		//!< Attributes in incoming or internally proxied
 					///< request (default).
 	PAIR_LIST_REPLY,		//!< Attributes to send in the response.
@@ -93,11 +92,11 @@ typedef enum pair_lists {
 					///< request.
 #endif
 	PAIR_LIST_UNKNOWN		//!< Unknown list.
-} pair_lists_t;
+} pair_list_t;
 
-extern const FR_NAME_NUMBER pair_lists[];
+extern const FR_NAME_NUMBER pair_list_table[];
 
-typedef enum requests {
+typedef enum requests_ref_e {
 	REQUEST_CURRENT = 0,		//!< The current request (default).
 	REQUEST_OUTER,			//!< #REQUEST containing the outer layer of the EAP
 					//!< conversation. Usually the RADIUS request sent
@@ -106,13 +105,13 @@ typedef enum requests {
 	REQUEST_PARENT,			//!< Parent (whatever it is).
 	REQUEST_PROXY,			//!< Proxied request.
 	REQUEST_UNKNOWN			//!< Unknown request.
-} request_refs_t;
+} request_ref_t;
 
-extern const FR_NAME_NUMBER request_refs[];
+extern const FR_NAME_NUMBER request_ref_table[];
 
 /** Types of #vp_tmpl_t
  */
-typedef enum tmpl_type {
+typedef enum tmpl_type_e {
 	TMPL_TYPE_UNKNOWN = 0,		//!< Uninitialised.
 	TMPL_TYPE_UNPARSED,		//!< Unparsed literal string.
 	TMPL_TYPE_XLAT,			//!< XLAT expansion.
@@ -127,7 +126,14 @@ typedef enum tmpl_type {
 	TMPL_TYPE_NULL			//!< Has no value.
 } tmpl_type_t;
 
-extern const FR_NAME_NUMBER tmpl_names[];
+extern const FR_NAME_NUMBER tmpl_type_table[];
+
+typedef struct vp_tmpl_s vp_tmpl_t;
+typedef struct vp_tmpl_rules_s vp_tmpl_rules_t;
+
+#include <freeradius-devel/server/xlat.h>
+#include <freeradius-devel/util/packet.h>
+#include <freeradius-devel/util/regex.h>
 
 /** A source or sink of value data.
  *
@@ -154,7 +160,7 @@ extern const FR_NAME_NUMBER tmpl_names[];
  *
  * @see vp_map_t
  */
-typedef struct vp_tmpl_s {
+struct vp_tmpl_s {
 	tmpl_type_t	type;		//!< What type of value tmpl refers to.
 
 	char const	*name;		//!< Raw string used to create the template.
@@ -168,8 +174,8 @@ typedef struct vp_tmpl_s {
 
 	union {
 		struct {
-			request_refs_t		request;		//!< Request to search or insert in.
-			pair_lists_t		list;			//!< List to search or insert in.
+			request_ref_t		request;		//!< Request to search or insert in.
+			pair_list_t		list;			//!< List to search or insert in.
 
 			fr_dict_attr_t const	*da;			//!< Resolved dictionary attribute.
 			union {
@@ -192,7 +198,7 @@ typedef struct vp_tmpl_s {
 		regex_t		*preg;	//!< pre-parsed regex_t
 #endif
 	} data;
-} vp_tmpl_t;
+};
 
 /** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNDEFINED, #TMPL_TYPE_LIST
  *
@@ -315,14 +321,14 @@ do {\
 /** Optional arguments passed to vp_tmpl functions
  *
  */
-typedef struct {
+struct vp_tmpl_rules_s {
 	fr_dict_t const		*dict_def;		//!< Default dictionary to use
 							///< with unqualified attribute references.
 
-	request_refs_t		request_def;		//!< Default request to use with
+	request_ref_t		request_def;		//!< Default request to use with
 							///< unqualified attribute references.
 
-	pair_lists_t		list_def;		//!< Default list to use with unqualified
+	pair_list_t		list_def;		//!< Default list to use with unqualified
 							///< attribute reference.
 
 	bool			allow_unknown;		//!< Allow unknown attributes i.e. attributes
@@ -334,7 +340,7 @@ typedef struct {
 							///< approach to parsing.
 
 	bool			allow_foreign;		//!< Allow arguments not found in dict_def.
-} vp_tmpl_rules_t;
+};
 
 /** Map ptr type to a boxed type
  *
@@ -373,17 +379,17 @@ typedef struct {
 	_tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, FR_TYPE_FROM_PTR(_out))
 
 
-VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);
+VALUE_PAIR		**radius_list(REQUEST *request, pair_list_t list);
 
-RADIUS_PACKET		*radius_packet(REQUEST *request, pair_lists_t list_name);
+RADIUS_PACKET		*radius_packet(REQUEST *request, pair_list_t list_name);
 
-TALLOC_CTX		*radius_list_ctx(REQUEST *request, pair_lists_t list_name);
+TALLOC_CTX		*radius_list_ctx(REQUEST *request, pair_list_t list_name);
 
-size_t			radius_list_name(pair_lists_t *out, char const *name, pair_lists_t default_list);
+size_t			radius_list_name(pair_list_t *out, char const *name, pair_list_t default_list);
 
-int			radius_request(REQUEST **request, request_refs_t name);
+int			radius_request(REQUEST **request, request_ref_t name);
 
-size_t			radius_request_name(request_refs_t *out, char const *name, request_refs_t unknown);
+size_t			radius_request_name(request_ref_t *out, char const *name, request_ref_t unknown);
 
 vp_tmpl_t		*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
 				   char const *name, ssize_t len, FR_TOKEN quote);
@@ -392,7 +398,7 @@ vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 				    ssize_t len, FR_TOKEN quote);
 
 void			tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
-				     request_refs_t request, pair_lists_t list);
+				     request_ref_t request, pair_list_t list);
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data, bool steal);
 

@@ -27,12 +27,12 @@
  */
 RCSIDH(users_file_h, "$Id$")
 
-#include <freeradius-devel/util/pair.h>
-#include <talloc.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <freeradius-devel/util/pair.h>
+#include <talloc.h>
 
 typedef struct pair_list {
 	char const		*name;

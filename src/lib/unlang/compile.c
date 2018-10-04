@@ -1038,7 +1038,7 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 	default:
 		cf_log_err(map->ci, "Left side of map must be an attribute "
 		           "or an xlat (that expands to an attribute), not a %s",
-		           fr_int2str(tmpl_names, map->lhs->type, "<INVALID>"));
+		           fr_int2str(tmpl_type_table, map->lhs->type, "<INVALID>"));
 		return -1;
 	}
 

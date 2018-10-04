@@ -343,14 +343,14 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 
 		if (vp->da->flags.has_tag) {
 			RIDEBUG2("&%s:%s:%i %s %pV",
-				fr_int2str(pair_lists, vpt->tmpl_list, "<INVALID>"),
+				fr_int2str(pair_list_table, vpt->tmpl_list, "<INVALID>"),
 				vp->da->name,
 				vp->tag,
 				fr_int2str(fr_tokens_table, vp->op, "<INVALID>"),
 				&vp->data);
 		} else {
 			RIDEBUG2("&%s:%s %s %pV",
-				fr_int2str(pair_lists, vpt->tmpl_list, "<INVALID>"),
+				fr_int2str(pair_list_table, vpt->tmpl_list, "<INVALID>"),
 				vp->da->name,
 				fr_int2str(fr_tokens_table, vp->op, "<INVALID>"),
 				&vp->data);

@@ -38,8 +38,8 @@ RCSID("$Id$")
 static void map_dump(REQUEST *request, vp_map_t const *map)
 {
 	RDEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
-	       fr_int2str(tmpl_names, map->lhs->type, "???"),
-	       fr_int2str(tmpl_names, map->rhs->type, "???"));
+	       fr_int2str(tmpl_type_table, map->lhs->type, "???"),
+	       fr_int2str(tmpl_type_table, map->rhs->type, "???"));
 
 	if (map->rhs) {
 		RDEBUG(">>> MAP NAMES %s %s", map->lhs->name, map->rhs->name);
@@ -69,7 +69,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	size_t			len;
 	uint8_t			*ptr;
 	char const		*p;
-	pair_lists_t		list;
+	pair_list_t		list;
 
 	fr_dict_attr_t const	*da;
 	VALUE_PAIR		*vp = NULL;
@@ -351,7 +351,7 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 			return -1;
 		}
 
-		our_lhs_rules.list_def = fr_str2int(pair_lists, p, PAIR_LIST_UNKNOWN);
+		our_lhs_rules.list_def = fr_str2int(pair_list_table, p, PAIR_LIST_UNKNOWN);
 		if (our_lhs_rules.list_def == PAIR_LIST_UNKNOWN) {
 			cf_log_err(ci, "Default list \"%s\" specified in mapping section is invalid", p);
 			return -1;
@@ -2400,7 +2400,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	    (map->lhs->type != TMPL_TYPE_ATTR)) {
 		REDEBUG("Left side \"%.*s\" of map should be an attr or list but is an %s",
 			(int)map->lhs->len, map->lhs->name,
-			fr_int2str(tmpl_names, map->lhs->type, "<INVALID>"));
+			fr_int2str(tmpl_type_table, map->lhs->type, "<INVALID>"));
 		rcode = -2;
 		goto finish;
 	}

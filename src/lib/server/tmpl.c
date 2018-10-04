@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 /** Map #tmpl_type_t values to descriptive strings
  */
-FR_NAME_NUMBER const tmpl_names[] = {
+FR_NAME_NUMBER const tmpl_type_table[] = {
 	{ "literal",		TMPL_TYPE_UNPARSED 	},
 	{ "xlat",		TMPL_TYPE_XLAT		},
 	{ "attr",		TMPL_TYPE_ATTR		},
@@ -48,9 +48,9 @@ FR_NAME_NUMBER const tmpl_names[] = {
 	{ NULL, 0 }
 };
 
-/** Map keywords to #pair_lists_t values
+/** Map keywords to #pair_list_t values
  */
-const FR_NAME_NUMBER pair_lists[] = {
+const FR_NAME_NUMBER pair_list_table[] = {
 	{ "request",		PAIR_LIST_REQUEST },
 	{ "reply",		PAIR_LIST_REPLY },
 	{ "control",		PAIR_LIST_CONTROL },		/* New name should have priority */
@@ -63,9 +63,9 @@ const FR_NAME_NUMBER pair_lists[] = {
 	{  NULL , -1 }
 };
 
-/** Map keywords to #request_refs_t values
+/** Map keywords to #request_ref_t values
  */
-const FR_NAME_NUMBER request_refs[] = {
+const FR_NAME_NUMBER request_ref_table[] = {
 	{ "outer",		REQUEST_OUTER },
 	{ "current",		REQUEST_CURRENT },
 	{ "parent",		REQUEST_PARENT },
@@ -73,9 +73,9 @@ const FR_NAME_NUMBER request_refs[] = {
 	{  NULL , -1 }
 };
 
-/** @name Parse list and request qualifiers to #pair_lists_t and #request_refs_t values
+/** @name Parse list and request qualifiers to #pair_list_t and #request_ref_t values
  *
- * These functions also resolve #pair_lists_t and #request_refs_t values to #REQUEST
+ * These functions also resolve #pair_list_t and #request_ref_t values to #REQUEST
  * structs and the head of #VALUE_PAIR lists in those structs.
  *
  * For adding new #VALUE_PAIR to the lists, the #radius_list_ctx function can be used
@@ -86,9 +86,9 @@ const FR_NAME_NUMBER request_refs[] = {
  * @{
  */
 
-/** Resolve attribute name to a #pair_lists_t value.
+/** Resolve attribute name to a #pair_list_t value.
  *
- * Check the name string for #pair_lists qualifiers and write a #pair_lists_t value
+ * Check the name string for #pair_list_t qualifiers and write a #pair_list_t value
  * for that list to out. This value may be passed to #radius_list, along with the current
  * #REQUEST, to get a pointer to the actual list in the #REQUEST.
  *
@@ -112,7 +112,7 @@ const FR_NAME_NUMBER request_refs[] = {
  * @see pair_list
  * @see radius_list
  */
-size_t radius_list_name(pair_lists_t *out, char const *name, pair_lists_t def)
+size_t radius_list_name(pair_list_t *out, char const *name, pair_list_t def)
 {
 	char const *p = name;
 	char const *q;
@@ -133,7 +133,7 @@ size_t radius_list_name(pair_lists_t *out, char const *name, pair_lists_t def)
 	 *	anything.
 	 */
 	case '\0':
-		*out = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+		*out = fr_substr2int(pair_list_table, p, PAIR_LIST_UNKNOWN, (q - p));
 		if (*out != PAIR_LIST_UNKNOWN) return q - p;
 		*out = def;
 		return 0;
@@ -162,7 +162,7 @@ size_t radius_list_name(pair_lists_t *out, char const *name, pair_lists_t def)
 			}
 		}
 
-		*out = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+		*out = fr_substr2int(pair_list_table, p, PAIR_LIST_UNKNOWN, (q - p));
 		if (*out == PAIR_LIST_UNKNOWN) return 0;
 
 		return (q + 1) - name; /* Consume the list and delimiter */
@@ -174,20 +174,20 @@ size_t radius_list_name(pair_lists_t *out, char const *name, pair_lists_t def)
 	}
 }
 
-/** Resolve attribute #pair_lists_t value to an attribute list.
+/** Resolve attribute #pair_list_t value to an attribute list.
  *
  * The value returned is a pointer to the pointer of the HEAD of a #VALUE_PAIR list in the
  * #REQUEST. If the head of the list changes, the pointer will still be valid.
  *
  * @param[in] request containing the target lists.
- * @param[in] list #pair_lists_t value to resolve to #VALUE_PAIR list. Will be NULL if list
+ * @param[in] list #pair_list_t value to resolve to #VALUE_PAIR list. Will be NULL if list
  *	name couldn't be resolved.
  * @return a pointer to the HEAD of a list in the #REQUEST.
  *
  * @see tmpl_cursor_init
  * @see fr_pair_cursor_init
  */
-VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
+VALUE_PAIR **radius_list(REQUEST *request, pair_list_t list)
 {
 	if (!request) return NULL;
 
@@ -222,7 +222,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 	}
 
 	RWDEBUG2("List \"%s\" is not available",
-		fr_int2str(pair_lists, list, "<INVALID>"));
+		fr_int2str(pair_list_table, list, "<INVALID>"));
 
 	return NULL;
 }
@@ -233,14 +233,14 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
  * for the current #REQUEST.
  *
  * @param[in] request To resolve list in.
- * @param[in] list #pair_lists_t value to resolve to #RADIUS_PACKET.
+ * @param[in] list #pair_list_t value to resolve to #RADIUS_PACKET.
  * @return
  *	- #RADIUS_PACKET on success.
  *	- NULL on failure.
  *
  * @see radius_list
  */
-RADIUS_PACKET *radius_packet(REQUEST *request, pair_lists_t list)
+RADIUS_PACKET *radius_packet(REQUEST *request, pair_list_t list)
 {
 	switch (list) {
 	/* Don't add default */
@@ -277,14 +277,14 @@ RADIUS_PACKET *radius_packet(REQUEST *request, pair_lists_t list)
  * freed too.
  *
  * @param[in] request containing the target lists.
- * @param[in] list #pair_lists_t value to resolve to TALLOC_CTX.
+ * @param[in] list #pair_list_t value to resolve to TALLOC_CTX.
  * @return
  *	- TALLOC_CTX on success.
  *	- NULL on failure.
  *
  * @see radius_list
  */
-TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list)
+TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_list_t list)
 {
 	if (!request) return NULL;
 
@@ -319,21 +319,21 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list)
 	return NULL;
 }
 
-/** Resolve attribute name to a #request_refs_t value.
+/** Resolve attribute name to a #request_ref_t value.
  *
  * Check the name string for qualifiers that reference a parent #REQUEST.
  *
- * If we find a string that matches a #request_refs qualifier, return the number of chars
+ * If we find a string that matches a #request_ref_t qualifier, return the number of chars
  * we consumed.
  *
  * If we're sure we've definitely found a list qualifier token delimiter (``*``) but the
- * qualifier doesn't match one of the #request_refs qualifiers, return 0 and set out to
+ * qualifier doesn't match one of the #request_ref_t qualifiers, return 0 and set out to
  * #REQUEST_UNKNOWN.
  *
  * If we can't find a string that looks like a request qualifier, set out to def, and
  * return 0.
  *
- * @param[out] out The #request_refs_t value the name resolved to (or #REQUEST_UNKNOWN).
+ * @param[out] out The #request_ref_t value the name resolved to (or #REQUEST_UNKNOWN).
  * @param[in] name of attribute.
  * @param[in] def default request ref to return if no request qualifier is present.
  * @return 0 if no valid request qualifier could be found, else the number of bytes consumed.
@@ -341,9 +341,9 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list)
  *	start of the attribute list or attribute name(if any).
  *
  * @see radius_list_name
- * @see request_refs
+ * @see request_ref_table
  */
-size_t radius_request_name(request_refs_t *out, char const *name, request_refs_t def)
+size_t radius_request_name(request_ref_t *out, char const *name, request_ref_t def)
 {
 	char const *p, *q;
 
@@ -361,16 +361,16 @@ size_t radius_request_name(request_refs_t *out, char const *name, request_refs_t
 		return 0;
 	}
 
-	*out = fr_substr2int(request_refs, name, REQUEST_UNKNOWN, q - p);
+	*out = fr_substr2int(request_ref_table, name, REQUEST_UNKNOWN, q - p);
 	if (*out == REQUEST_UNKNOWN) return 0;
 
 	return (q + 1) - p;
 }
 
-/** Resolve a #request_refs_t to a #REQUEST.
+/** Resolve a #request_ref_t to a #REQUEST.
  *
  * Sometimes #REQUEST structs may be chained to each other, as is the case
- * when internally proxying EAP. This function resolves a #request_refs_t
+ * when internally proxying EAP. This function resolves a #request_ref_t
  * to a #REQUEST higher in the chain than the current #REQUEST.
  *
  * @see radius_list
@@ -381,7 +381,7 @@ size_t radius_request_name(request_refs_t *out, char const *name, request_refs_t
  *	- 0 if request is valid in this context.
  *	- -1 if request is not valid in this context.
  */
-int radius_request(REQUEST **context, request_refs_t name)
+int radius_request(REQUEST **context, request_ref_t name)
 {
 	REQUEST *request = *context;
 
@@ -511,7 +511,7 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
  * @param list to operate on.
  */
 void tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
-		  request_refs_t request, pair_lists_t list)
+		  request_ref_t request, pair_list_t list)
 {
 	static char const name[] = "internal";
 
@@ -587,15 +587,15 @@ static vp_tmpl_rules_t const default_rules = {
  *
  * @param[in,out] ctx		to allocate #vp_tmpl_t in.
  * @param[out] out		Where to write pointer to new #vp_tmpl_t.
- * @param[in] name		of attribute including #request_refs and #pair_lists qualifiers.
- *				If only #request_refs #pair_lists qualifiers are found,
+ * @param[in] name		of attribute including #request_ref_t and #pair_list_t qualifiers.
+ *				If only #request_ref_t #pair_list_t qualifiers are found,
  *				a #TMPL_TYPE_LIST #vp_tmpl_t will be produced.
  * @param[in] rules		Rules which control parsing:
  *				- dict_def		The default dictionary to use if attributes
  *							are unqualified.
  *				- request_def		The default #REQUEST to set if no
- *							#request_refs qualifiers are found in name.
- *				- list_def		The default list to set if no #pair_lists
+ *							#request_ref_t qualifiers are found in name.
+ *				- list_def		The default list to set if no #pair_list_t
  *							qualifiers are found in the name.
  *				- allow_unknown		If true attributes in the format accepted by
  *							#fr_dict_unknown_afrom_oid_substr will be allowed,
@@ -915,7 +915,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, 
 
 	if (slen != (ssize_t)strlen(name)) {
 		/* This looks wrong, but it produces meaningful errors for unknown attrs with tags */
-		fr_strerror_printf("Unexpected text after %s", fr_int2str(tmpl_names, (*out)->type, "<INVALID>"));
+		fr_strerror_printf("Unexpected text after %s", fr_int2str(tmpl_type_table, (*out)->type, "<INVALID>"));
 		return -slen;
 	}
 
@@ -1988,13 +1988,13 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 		 *	Don't add &current.
 		 */
 		if (vpt->tmpl_request == REQUEST_CURRENT) {
-			len = snprintf(out_p, end - out_p, "%s:", fr_int2str(pair_lists, vpt->tmpl_list, ""));
+			len = snprintf(out_p, end - out_p, "%s:", fr_int2str(pair_list_table, vpt->tmpl_list, ""));
 			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 			goto inst_and_tag;
 		}
 
-		len = snprintf(out_p, end - out_p, "%s.%s:", fr_int2str(request_refs, vpt->tmpl_request, ""),
-			       fr_int2str(pair_lists, vpt->tmpl_list, ""));
+		len = snprintf(out_p, end - out_p, "%s.%s:", fr_int2str(request_ref_table, vpt->tmpl_request, ""),
+			       fr_int2str(pair_list_table, vpt->tmpl_list, ""));
 		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 		goto inst_and_tag;
 
@@ -2022,13 +2022,13 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 			 *	Don't add &request:
 			 */
 			len = snprintf(out_p, end - out_p, "%s:%s",
-				       fr_int2str(pair_lists, vpt->tmpl_list, ""), p);
+				       fr_int2str(pair_list_table, vpt->tmpl_list, ""), p);
 			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 			goto inst_and_tag;
 		}
 
-		len = snprintf(out_p, end - out_p, "%s.%s:%s", fr_int2str(request_refs, vpt->tmpl_request, ""),
-			       fr_int2str(pair_lists, vpt->tmpl_list, ""), p);
+		len = snprintf(out_p, end - out_p, "%s.%s:%s", fr_int2str(request_ref_table, vpt->tmpl_request, ""),
+			       fr_int2str(pair_list_table, vpt->tmpl_list, ""), p);
 		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 
 	inst_and_tag:
@@ -2252,7 +2252,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request, vp
 		if (err) {
 			*err = -3;
 			fr_strerror_printf("Request context \"%s\" not available",
-					   fr_int2str(request_refs, vpt->tmpl_request, "<INVALID>"));
+					   fr_int2str(request_ref_table, vpt->tmpl_request, "<INVALID>"));
 		}
 		return NULL;
 	}
@@ -2261,7 +2261,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request, vp
 		if (err) {
 			*err = -2;
 			fr_strerror_printf("List \"%s\" not available in this context",
-					   fr_int2str(pair_lists, vpt->tmpl_list, "<INVALID>"));
+					   fr_int2str(pair_list_table, vpt->tmpl_list, "<INVALID>"));
 		}
 		return NULL;
 	}
@@ -2448,7 +2448,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 
 	if (vpt->type > TMPL_TYPE_NULL) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: vp_tmpl_t type was %i "
-			     "(outside range of tmpl_names)", file, line, vpt->type);
+			     "(outside range of tmpl_type_table)", file, line, vpt->type);
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 

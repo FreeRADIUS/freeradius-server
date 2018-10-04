@@ -71,7 +71,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	}
 
 	if (src->type != TMPL_TYPE_ATTR) {
-		RPEDEBUG("dhcp_options cannot operate on a %s", fr_int2str(tmpl_names, src->type, "<INVALID>"));
+		RPEDEBUG("dhcp_options cannot operate on a %s", fr_int2str(tmpl_type_table, src->type, "<INVALID>"));
 		goto error;
 	}
 

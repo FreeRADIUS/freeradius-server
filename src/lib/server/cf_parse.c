@@ -1374,7 +1374,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 			if (attribute && (vpt->type != TMPL_TYPE_ATTR)) {
 				cf_log_err(&cp->item, "Expected attr got %s",
-					   fr_int2str(tmpl_names, vpt->type, "???"));
+					   fr_int2str(tmpl_type_table, vpt->type, "???"));
 				return -1;
 			}
 

@@ -286,10 +286,10 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
  *	- 0 on success.
  *	- <0 on error.
  */
-int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, json_object *json, pair_lists_t list)
+int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, json_object *json, pair_list_t list)
 {
 	json_object	*list_obj;
-	char const	*list_name = fr_int2str(pair_lists, list, "<INVALID>");
+	char const	*list_name = fr_int2str(pair_list_table, list, "<INVALID>");
 
 	/*
 	 *	Check for a section matching the specified list

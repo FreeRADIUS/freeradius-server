@@ -658,14 +658,14 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			 *	@todo - just call tmpl_snprint() ??
 			 */
 			if (node->attr->tmpl_request != REQUEST_CURRENT) {
-				strlcpy(p, fr_int2str(request_refs, node->attr->tmpl_request, "??"), end - p);
+				strlcpy(p, fr_int2str(request_ref_table, node->attr->tmpl_request, "??"), end - p);
 				p += strlen(p);
 				*(p++) = '.';
 			}
 
 			if ((node->attr->tmpl_request != REQUEST_CURRENT) ||
 			    (node->attr->tmpl_list != PAIR_LIST_REQUEST)) {
-				strlcpy(p, fr_int2str(pair_lists, node->attr->tmpl_list, "??"), end - p);
+				strlcpy(p, fr_int2str(pair_list_table, node->attr->tmpl_list, "??"), end - p);
 				p += strlen(p);
 				*(p++) = ':';
 			}

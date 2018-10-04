@@ -735,8 +735,8 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 	fr_dict_attr_t const *da;
 	VALUE_PAIR *vp;
 
-	pair_lists_t list_name;
-	request_refs_t request_name;
+	pair_list_t list_name;
+	request_ref_t request_name;
 	REQUEST *reference = request;
 	VALUE_PAIR **vps;
 	TALLOC_CTX *ctx;
