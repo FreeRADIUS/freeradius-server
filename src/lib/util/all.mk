@@ -17,8 +17,8 @@ SOURCES		:= \
 		   getaddrinfo.c \
 		   hash.c \
 		   heap.c \
-		   hmacmd5.c \
-		   hmacsha1.c \
+		   hmac_md5.c \
+		   hmac_sha1.c \
 		   inet.c \
 		   isaac.c \
 		   log.c \

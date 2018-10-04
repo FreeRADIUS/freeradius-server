@@ -89,7 +89,7 @@ static inline HMAC_CTX *HMAC_CTX_new(void)
 #  define HMAC_CTX_free(_ctx) \
 do {\
 	if (_ctx) {\
-		memset(_ctx, 0, sizeof(*_ctx));\
+		memset(_ctx, 0, sizeof(*((HMAC_CTX *)(_ctx))));\
 		talloc_free(_ctx);\
 	}\
 } while (0)

@@ -22,7 +22,7 @@
  *
  * Adapted from hmacmd5.c (HMAC-MD5).  Test cases from RFC2202.
  *
- * @file src/lib/util/hmacsha1.c
+ * @file src/lib/util/hmac_sha1.c
  *
  * @author Michael Richardson <mcr@sandelman.ottawa.on.ca>
  *
@@ -31,10 +31,6 @@
  */
 RCSID("$Id$")
 
-#ifdef HAVE_OPENSSL_EVP_H
-#include <freeradius-devel/tls/base.h>
-#endif
-
 #include <freeradius-devel/util/sha1.h>
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
@@ -42,6 +38,16 @@ unsigned int sha1_data_problems = 0;
 #endif
 
 #ifdef HAVE_OPENSSL_EVP_H
+#  include <freeradius-devel/tls/base.h>
+#  include <openssl/hmac.h>
+
+fr_thread_local_setup(HMAC_CTX *, sha1_hmac_ctx)
+
+static void _hmac_sha1_ctx_free_on_exit(void *arg)
+{
+	HMAC_CTX_free(arg);
+}
+
 /** Calculate HMAC using OpenSSL's SHA1 implementation
  *
  * @param digest Caller digest to be filled in.
@@ -54,10 +60,20 @@ unsigned int sha1_data_problems = 0;
 void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
 		  uint8_t const *key, size_t key_len)
 {
-	HMAC_CTX *ctx  = HMAC_CTX_new();
+	HMAC_CTX *ctx;
+
+	if (unlikely(!sha1_hmac_ctx)) {
+		ctx = HMAC_CTX_new();
+		if (unlikely(!ctx)) return;
+		fr_thread_local_set_destructor(sha1_hmac_ctx, _hmac_sha1_ctx_free_on_exit, ctx);
+	} else {
+		ctx = sha1_hmac_ctx;
+	}
+
 	HMAC_Init_ex(ctx, key, key_len, EVP_sha1(), NULL);
 	HMAC_Update(ctx, text, text_len);
 	HMAC_Final(ctx, digest, NULL);
+	HMAC_CTX_cleanup(ctx);
 }
 
 #else

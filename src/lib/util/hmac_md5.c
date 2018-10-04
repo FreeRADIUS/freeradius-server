@@ -16,7 +16,7 @@
 
 /** MD5 HMAC not dependent on OpenSSL
  *
- * @file src/lib/util/hmacmd5.c
+ * @file src/lib/util/hmac_md5.c
  *
  * @note New code that needs fast or incremental HMACs should use the OpenSSL EVP_* HMAC
  *	interface instead, as that can take advantage of acceleration instructions provided
@@ -30,13 +30,19 @@
  */
 RCSID("$Id$")
 
-#ifdef HAVE_OPENSSL_EVP_H
-#include <freeradius-devel/tls/base.h>
-#endif
-
 #include <freeradius-devel/util/md5.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
+#  include <freeradius-devel/tls/base.h>
+#  include <openssl/hmac.h>
+
+fr_thread_local_setup(HMAC_CTX *, md5_hmac_ctx)
+
+static void _hmac_md5_ctx_free_on_exit(void *arg)
+{
+	HMAC_CTX_free(arg);
+}
+
 /** Calculate HMAC using OpenSSL's MD5 implementation
  *
  * @param digest Caller digest to be filled in.
@@ -49,7 +55,15 @@ RCSID("$Id$")
 void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
 		 uint8_t const *key, size_t key_len)
 {
-	HMAC_CTX *ctx  = HMAC_CTX_new();
+	HMAC_CTX *ctx;
+
+	if (unlikely(!md5_hmac_ctx)) {
+		ctx = HMAC_CTX_new();
+		if (unlikely(!ctx)) return;
+		fr_thread_local_set_destructor(md5_hmac_ctx, _hmac_md5_ctx_free_on_exit, ctx);
+	} else {
+		ctx = md5_hmac_ctx;
+	}
 
 #ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
 	/* Since MD5 is not allowed by FIPS, explicitly allow it. */
@@ -59,10 +73,9 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 	HMAC_Init_ex(ctx, key, key_len, EVP_md5(), NULL);
 	HMAC_Update(ctx, text, text_len);
 	HMAC_Final(ctx, digest, NULL);
+	HMAC_CTX_cleanup(ctx);
 }
-
 #else
-
 /** Calculate HMAC using internal MD5 implementation
  *
  * @param digest Caller digest to be filled in.
@@ -170,28 +183,28 @@ Test Vectors (Trailing '\0' of a character string not included in test):
  */
 int main(int argc, char **argv)
 {
-  uint8_t digest[16];
-  char *key;
-  int key_len;
-  char *text;
-  int text_len;
-  int i;
+	uint8_t digest[16];
+	char *key;
+	int key_len;
+	char *text;
+	int text_len;
+	int i;
 
-  key = argv[1];
-  key_len = strlen(key);
+	key = argv[1];
+	key_len = strlen(key);
 
-  text = argv[2];
-  text_len = strlen(text);
+	text = argv[2];
+	text_len = strlen(text);
 
-  fr_hmac_md5(digest, text, text_len, key, key_len);
+	fr_hmac_md5(digest, text, text_len, key, key_len);
 
-  for (i = 0; i < 16; i++) {
-    printf("%02x", digest[i]);
-  }
-  printf("\n");
+	for (i = 0; i < 16; i++) {
+	printf("%02x", digest[i]);
+	}
+	printf("\n");
 
-  exit(0);
-  return 0;
+	exit(0);
+	return 0;
 }
 
 #endif
