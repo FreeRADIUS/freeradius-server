@@ -54,8 +54,6 @@ typedef struct rad_request REQUEST;
 #include <assert.h>
 
 #include <freeradius-devel/server/log.h>
-extern fr_log_lvl_t rad_debug_lvl;
-
 #include <sys/wait.h>
 
 static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
