@@ -42,6 +42,11 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  Fixes #2301.  Vendors SHOULD NOT USE THAT KIND OF ATTRIBUTE.
 	* Allow for <instance>-LDAP-UserDN.  See mods-available/ldap for
 	  more information.
+	* Add sanitizing of control list for moonshot.  Fixes #2318
+	* Update rlm_sql_mysql to be compatible with MySQL 8.
+	  Fixes https://bugs.launchpad.net/bugs/1795310.
+	* Allow logging of only Access-Accept or Access-Reject messages.
+	  See radiusd.conf, "auth_accept" and "auth_reject".
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
