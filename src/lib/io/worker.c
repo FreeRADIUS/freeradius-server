@@ -444,7 +444,7 @@ static void worker_reset_timer(fr_worker_t *worker);
  */
 static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size)
 {
-	fr_channel_data_t *reply, *cd;
+	fr_channel_data_t *reply;
 	fr_channel_t *ch;
 	fr_message_set_t *ms;
 	fr_time_t now;
@@ -500,10 +500,15 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 		}
 
 		/*
-		 *	Resize the buffer to the actual packet size.
+		 *	Shrink the buffer to the actual packet size.
+		 *
+		 *	This will ALWAYS return the same message as we put in.
 		 */
-		cd = (fr_channel_data_t *) fr_message_alloc(ms, &reply->m, slen);
-		rad_assert(cd == reply);
+		if ((size_t) slen < reply->m.rb_size) {
+			(void) fr_message_alloc(ms, &reply->m, slen);
+		} else {
+			rad_assert((size_t) slen == reply->m.rb_size);
+		}
 	}
 
 	/*
