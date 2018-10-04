@@ -22,7 +22,7 @@ ATTRIBUTE	Operator-Name				126	string
 ATTRIBUTE	Location-Information			127	octets
 ATTRIBUTE	Location-Data				128	octets
 ATTRIBUTE	Basic-Location-Policy-Rules		129	octets
-ATTRIBUTE	Extended-Location-Policy-Rules		130	octets
+ATTRIBUTE	Extended-Location-Policy-Rules		130	string
 
 #
 #  Really a bit-packed field
