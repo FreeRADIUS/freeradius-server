@@ -504,11 +504,8 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 		 *
 		 *	This will ALWAYS return the same message as we put in.
 		 */
-		if ((size_t) slen < reply->m.rb_size) {
-			(void) fr_message_alloc(ms, &reply->m, slen);
-		} else {
-			rad_assert((size_t) slen == reply->m.rb_size);
-		}
+		rad_assert((size_t) slen <= reply->m.rb_size);
+		(void) fr_message_alloc(ms, &reply->m, slen);
 	}
 
 	/*
