@@ -104,7 +104,7 @@ static int fr_pcre2_tls_init(void)
 {
 	fr_pcre2_tls_t *tls;
 
-	if (unlikely(fr_pcre2_tls)) return 0;
+	if (unlikely(fr_pcre2_tls != NULL)) return 0;
 
 	fr_pcre2_tls = tls = talloc_zero(NULL, fr_pcre2_tls_t);
 	if (!tls) return -1;
@@ -356,7 +356,7 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 	/*
 	 *	Thread local initialisation
 	 */
-	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return NULL;
 
 	regmatch = talloc(ctx, fr_regmatch_t);
 	if (!regmatch) {
