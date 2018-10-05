@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/parser.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/sha1.h>
