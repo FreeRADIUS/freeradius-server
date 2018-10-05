@@ -26,8 +26,8 @@
  */
 RCSIDH(cond_eval_h, "$Id$")
 
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/util/value.h>
 
 #ifdef __cplusplus
 extern "C" {

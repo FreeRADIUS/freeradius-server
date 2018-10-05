@@ -32,14 +32,6 @@ RCSID("$Id$")
 #  include <mach/mach_time.h>
 #endif
 
-#ifndef HAVE_CRYPT
-char *crypt(UNUSED char *key, char *salt)
-{
-	/*log(L_ERR, "crypt() called but not implemented");*/
-	return salt;
-}
-#endif
-
 #ifndef HAVE_STRNCASECMP
 int strncasecmp(char *s1, char *s2, int n)
 {

@@ -30,8 +30,9 @@ RCSIDH(conf_file_h, "$Id$")
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include <freeradius-devel/util/token.h>
+
 #include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/token.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -23,14 +23,20 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/crypt.h>
 
 #ifdef HAVE_CRYPT_H
 #  include <crypt.h>
 #endif
+#include <unistd.h>	/* Contains crypt function declarations */
+#include <string.h>
 
-#include <pthread.h>
+/*
+ *	We don't have threadsafe crypt, so we have to wrap
+ *	calls in a mutex
+ */
 #ifndef HAVE_CRYPT_R
+#  include <pthread.h>
 static pthread_mutex_t fr_crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
@@ -46,13 +52,11 @@ static pthread_mutex_t fr_crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
  */
 int fr_crypt_check(char const *password, char const *reference_crypt)
 {
-	char *crypt_out;
-	int cmp = 0;
+	char	*crypt_out;
+	int	cmp = 0;
 
 #ifdef HAVE_CRYPT_R
-	struct crypt_data crypt_data;
-
-	crypt_data.initialized = 0;
+	struct crypt_data crypt_data = { .initialized = 0 };
 
 	crypt_out = crypt_r(password, reference_crypt, &crypt_data);
 	if (crypt_out) cmp = strcmp(reference_crypt, crypt_out);

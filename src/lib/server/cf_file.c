@@ -30,14 +30,13 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/cf_file.h>
+#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/parser.h>
 #include <freeradius-devel/server/rad_assert.h>
-
-#include <freeradius-devel/server/cf_file.h>
-#include "cf_priv.h"
-
 #include <freeradius-devel/util/cursor.h>
+
+#include "cf_priv.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>

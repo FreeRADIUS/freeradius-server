@@ -25,17 +25,18 @@
 #define LOG_PREFIX "[%" PRIu64 "] %s - "
 #define LOG_PREFIX_ARGS conn->id, conn->log_prefix
 
+#include <freeradius-devel/server/connection.h>
+#include <freeradius-devel/server/log.h>
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/event.h>
+
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
 #else
 #  include <freeradius-devel/util/stdatomic.h>
 #endif
 #include <talloc.h>
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/util/event.h>
-#include <freeradius-devel/server/connection.h>
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/server/base.h>
 
 FR_NAME_NUMBER const fr_connection_states[] = {
 	{ "HALTED",		FR_CONNECTION_STATE_HALTED },

@@ -26,16 +26,16 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
-#include <ctype.h>
-
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/crypt.h>
 #include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/server/rad_assert.h>
-
+#include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/sha1.h>
-#include <freeradius-devel/tls/base.h>
+
+#include <ctype.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>
@@ -632,6 +632,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t const *inst,
 	return RLM_MODULE_OK;
 }
 
+#ifdef HAVE_CRYPT
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_crypt(UNUSED rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	if (RDEBUG_ENABLED3) {
@@ -646,6 +647,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_crypt(UNUSED rlm_pap_t const *inst,
 	}
 	return RLM_MODULE_OK;
 }
+#endif
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
@@ -1425,8 +1427,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 		if (vp->da == attr_cleartext_password) {
 			auth_func = &pap_auth_clear;
+#ifdef HAVE_CRYPT
 		} else if (vp->da == attr_crypt_password) {
 			auth_func = &pap_auth_crypt;
+#endif
 		} else if (vp->da == attr_md5_password) {
 			auth_func = &pap_auth_md5;
 		} else if (vp->da == attr_smd5_password) {

@@ -22,9 +22,16 @@
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include <talloc.h>
+RCSIDH(cond_eval_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/token.h>
+
+#include <talloc.h>
 
 typedef struct fr_conn fr_connection_t;
 
@@ -113,5 +120,9 @@ void			fr_connection_signal_reconnect(fr_connection_t *conn);
 fr_event_list_t		*fr_connection_get_el(fr_connection_t const *conn);
 int			fr_connection_get_fd(fr_connection_t const *conn);
 void			fr_connection_set_fd(fr_connection_t *conn, int fd);
+
+#ifdef __cplusplus
+}
+#endif
 
 

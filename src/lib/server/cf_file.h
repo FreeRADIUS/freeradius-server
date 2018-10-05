@@ -27,9 +27,10 @@ RCSIDH(cf_file_h, "$Id$")
 
 #include <stddef.h>
 #include <stdint.h>
-#include <freeradius-devel/util/token.h>
-#include <freeradius-devel/util/rbtree.h>
+
 #include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/token.h>
 
 #ifdef __cplusplus
 extern "C" {
