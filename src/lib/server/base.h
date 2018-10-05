@@ -176,26 +176,6 @@ void		rad_suid_down(void);
 void		rad_suid_up(void);
 void		rad_suid_down_permanent(void);
 bool		rad_suid_is_down_permanent(void);
-/* regex.c */
-
-#ifdef HAVE_REGEX
-/*
- *	Increasing this is essentially free
- *	It just increases memory usage. 12-16 bytes for each additional subcapture.
- */
-#  define REQUEST_MAX_REGEX 32
-
-void	regex_sub_to_request(REQUEST *request, regex_t **preg, fr_regmatch_t **regmatch);
-
-int	regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num);
-
-/*
- *	Named capture groups only supported by PCRE.
- */
-#  if defined(HAVE_REGEX_PCRE2) || defined(HAVE_REGEX_PCRE)
-int	regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name);
-#  endif
-#endif
 
 /* auth.c */
 rlm_rcode_t    	rad_authenticate (REQUEST *);
