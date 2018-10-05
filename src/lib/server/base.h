@@ -128,8 +128,6 @@ typedef enum {
 
 
 /* radiusd.c */
-int		fr_crypt_check(char const *password, char const *reference_crypt);
-
 int		log_err (char *);
 
 /* util.c */
