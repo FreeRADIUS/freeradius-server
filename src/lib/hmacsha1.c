@@ -10,13 +10,19 @@
 
 RCSID("$Id$")
 
+#ifdef HAVE_OPENSSL_EVP_H
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
+#endif
+
 #include <freeradius-devel/libradius.h>
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
 unsigned int sha1_data_problems = 0;
 #endif
 
-/** Calculate HMAC using SHA1
+#ifdef HAVE_OPENSSL_EVP_H
+/** Calculate HMAC using OpenSSL's SHA1 implementation
  *
  * @param digest Caller digest to be filled in.
  * @param text Pointer to data stream.
@@ -24,6 +30,26 @@ unsigned int sha1_data_problems = 0;
  * @param key Pointer to authentication key.
  * @param key_len Length of authentication key.
 
+ */
+void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
+		  uint8_t const *key, size_t key_len)
+{
+	HMAC_CTX *ctx  = HMAC_CTX_new();
+	HMAC_Init_ex(ctx, key, key_len, EVP_sha1(), NULL);
+	HMAC_Update(ctx, text, text_len);
+	HMAC_Final(ctx, digest, NULL);
+	HMAC_CTX_free(ctx);
+}
+
+#else
+
+/** Calculate HMAC using internal SHA1 implementation
+ *
+ * @param digest Caller digest to be filled in.
+ * @param text Pointer to data stream.
+ * @param text_len length of data stream.
+ * @param key Pointer to authentication key.
+ * @param key_len Length of authentication key.
  */
 void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
 		  uint8_t const *key, size_t key_len)
@@ -142,6 +168,7 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 	}
 #endif
 }
+#endif /* HAVE_OPENSSL_EVP_H */
 
 /*
 Test Vectors (Trailing '\0' of a character string not included in test):
