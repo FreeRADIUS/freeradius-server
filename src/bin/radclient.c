@@ -1489,6 +1489,11 @@ int main(int argc, char **argv)
 #ifdef WITH_TCP
 	if (proto) {
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
+		if (sockfd < 0) {
+			ERROR("Failed opening socket");
+			return -1;
+		}
+
 	} else
 #endif
 	{
@@ -1512,7 +1517,7 @@ int main(int argc, char **argv)
 
 	if (!fr_packet_list_socket_add(packet_list, sockfd, ipproto, &server_ipaddr,
 				       server_port, NULL)) {
-		ERROR("Out of memory");
+		ERROR("Failed adding socket");
 		exit(1);
 	}
 
