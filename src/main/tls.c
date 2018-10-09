@@ -733,11 +733,12 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	if (!tls_error_io_log(request, ssn, err, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
-	if (SSL_is_init_finished(ssn->ssl)) {
+	if (!ssn->is_init_finished && SSL_is_init_finished(ssn->ssl)) {
 		VALUE_PAIR *vp;
 		char const *str_version;
 
 		RDEBUG2("TLS - Connection Established");
+		ssn->is_init_finished = true;
 
 		vp = fr_pair_afrom_num(request->state_ctx, PW_TLS_SESSION_CIPHER_SUITE, 0);
 		if (vp) {

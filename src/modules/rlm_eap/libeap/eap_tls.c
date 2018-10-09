@@ -727,7 +727,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	EPTLS_SUCCESS
 	 */
 
-	if (SSL_is_init_finished(tls_session->ssl)) {
+	if (tls_session->is_init_finished) {
 		/*
 		 *	Init is finished.  The rest is
 		 *	application data.
@@ -874,7 +874,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 *
 	 *	The TLS data will be in the tls_session structure.
 	 */
-	if (SSL_is_init_finished(tls_session->ssl)) {
+	if (tls_session->is_init_finished) {
 		/*
 		 *	The initialization may be finished, but if
 		 *	there more fragments coming, then send ACK,
