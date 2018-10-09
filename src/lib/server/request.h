@@ -29,13 +29,16 @@ RCSIDH(request_h, "$Id$")
 extern "C" {
 #endif
 
+#ifndef NDEBUG
+#  define REQUEST_MAGIC (0xdeadbeef)
+#endif
+
 /*
  *	Forward declarations to avoid dependency loops
  */
 typedef struct fr_async_t fr_async_t;
 typedef struct rad_request REQUEST;
 typedef struct request_data_t request_data_t;
-
 
 typedef struct rad_listen rad_listen_t;
 typedef struct rad_client RADCLIENT;
@@ -197,6 +200,8 @@ int		request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool pe
 void		request_data_restore(REQUEST *request, fr_dlist_head_t *in);
 
 #ifdef WITH_VERIFY_PTR
+void		request_verify(char const *file, int line, REQUEST const *request);	/* only for special debug builds */
+
 bool		request_data_verify_parent(TALLOC_CTX *parent, fr_dlist_head_t *entry);
 #endif
 

@@ -33,6 +33,7 @@ extern "C" {
 #include <freeradius-devel/io/time.h>
 #include <freeradius-devel/server/socket.h>
 #include <freeradius-devel/server/stats.h>
+#include <freeradius-devel/util/inet.h>
 
 /** Describes a host allowed to send packets to the server
  *

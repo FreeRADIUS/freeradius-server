@@ -25,35 +25,20 @@
  */
 RCSIDH(radiusd_h, "$Id$")
 
-
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/request.h>
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/heap.h>
-
-#include <pthread.h>
-
-#ifndef NDEBUG
-#  define REQUEST_MAGIC (0xdeadbeef)
-#endif
-
-/*
- *	WITH_VMPS is handled by src/include/features.h
- */
-#ifdef WITHOUT_VMPS
-#  undef WITH_VMPS
-#endif
-
 #include <freeradius-devel/server/stats.h>
 #include <freeradius-devel/server/realms.h>
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/paircmp.h>
+#include <freeradius-devel/server/util.h>
+
+#include <freeradius-devel/util/base.h>
+
 /*
  *  Let any external program building against the library know what
  *  features the library was built with.
@@ -151,28 +136,6 @@ char const	*rad_default_raddb_dir(void);
 char const	*rad_default_run_dir(void);
 char const	*rad_default_sbin_dir(void);
 char const	*rad_default_radacct_dir(void);
-
-#ifdef WITH_VERIFY_PTR
-void		request_verify(char const *file, int line, REQUEST const *request);	/* only for special debug builds */
-#endif
-void		rad_mode_to_str(char out[10], mode_t mode);
-void		rad_mode_to_oct(char out[5], mode_t mode);
-int		rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid);
-int		rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name);
-int		rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid);
-int		rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name);
-int		rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name);
-char		*rad_asprint_uid(TALLOC_CTX *ctx, uid_t uid);
-char		*rad_asprint_gid(TALLOC_CTX *ctx, gid_t gid);
-void		rad_file_error(int num);
-int		rad_seuid(uid_t uid);
-int		rad_segid(gid_t gid);
-
-void		rad_suid_set_down_uid(uid_t uid);
-void		rad_suid_down(void);
-void		rad_suid_up(void);
-void		rad_suid_down_permanent(void);
-bool		rad_suid_is_down_permanent(void);
 
 /* auth.c */
 rlm_rcode_t    	rad_authenticate (REQUEST *);

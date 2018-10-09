@@ -30,6 +30,8 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/server/socket.h>
+#include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/inet.h>
 
 typedef enum {
 	HOME_TYPE_INVALID = 0,
