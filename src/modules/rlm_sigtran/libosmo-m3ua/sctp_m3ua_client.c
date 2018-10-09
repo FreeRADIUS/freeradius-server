@@ -1028,7 +1028,7 @@ static void m3ua_handle_mgmt(struct mtp_m3ua_client_link *link, struct xua_msg *
 		}
 		if (param->len != 4) {
 			LOGP(DINP, LOGL_ERROR, "Bad length for ERR_CODE in M3UA_MGMT_ERROR result.\n");
-			goto next;
+			break;
 		}
 		memcpy(&error_code, &param->dat[0], 4);
 		error_code = ntohl(error_code);
