@@ -313,7 +313,7 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 	tls->psk_password = hexbuf;
 	tls->psk_identity = talloc_strdup(tls, tid_srvr_get_key_name(server)->buf);
 
-	tls->cipher_list = talloc_strdup(tls, "PSK");
+	tls->cipher_list = talloc_strdup(tls, "aPSK");
 	tls->fragment_size = 4200;
 	tls->ctx = tls_init_ctx(tls, 1);
 	if (!tls->ctx) goto error;
