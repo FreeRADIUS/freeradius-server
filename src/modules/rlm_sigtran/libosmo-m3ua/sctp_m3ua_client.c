@@ -1015,7 +1015,35 @@ static void m3ua_handle_mgmt(struct mtp_m3ua_client_link *link, struct xua_msg *
 {
 	switch (m3ua->hdr.msg_type) {
 	case M3UA_MGMT_ERROR:
+	{
+		struct xua_msg_part	*param;
+		uint32_t		error_code;
+
 		LOGP(DINP, LOGL_ERROR, "Received MGMT_ERROR\n");
+
+		param = xua_msg_find_tag(m3ua, MUA_TAG_ERR_CODE);
+		if (!param) {
+			LOGP(DINP, LOGL_ERROR, "No ERR_CODE in M3UA_MGMT_ERROR result.\n");
+			break;
+		}
+		if (param->len != 4) {
+			LOGP(DINP, LOGL_ERROR, "Bad length for ERR_CODE in M3UA_MGMT_ERROR result.\n");
+			goto next;
+		}
+		memcpy(&error_code, &param->dat[0], 4);
+		error_code = ntohl(error_code);
+
+		LOGP(DINP, LOGL_ERROR, "Received MGMT_ERROR with ERR_CODE %u.\n", error_code);
+
+		switch (error_code) {
+		case M3UA_ERR_CODE_REFUSED_MANAGEMENT_BLOCKING:
+			fail_link(link);
+			break;
+
+		default:
+			break;
+		}
+	}
 		break;
 
 	case M3UA_MGMT_NTFY:
