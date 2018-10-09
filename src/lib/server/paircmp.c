@@ -29,11 +29,12 @@
 
 RCSID("$Id$")
 
-#include <ctype.h>
-
+#include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/server/request.h>
+
+#include <ctype.h>
 
 typedef struct paircmp_s paircmp_t;
 struct paircmp_s {

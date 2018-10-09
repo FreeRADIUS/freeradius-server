@@ -53,7 +53,7 @@ RCSIDH(radiusd_h, "$Id$")
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/dependency.h>
-
+#include <freeradius-devel/server/paircmp.h>
 /*
  *  Let any external program building against the library know what
  *  features the library was built with.
@@ -84,9 +84,6 @@ extern "C" {
 #define RETRY_COUNT		3
 #define DEAD_TIME		120
 #define EXEC_TIMEOUT		10
-
-/* for paircmp_register */
-typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
 typedef enum request_fail {
 	REQUEST_FAIL_UNKNOWN = 0,
@@ -199,27 +196,6 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 		  CC_HINT(nonnull (3));
 void trigger_exec_free(void);
 VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
-
-/* paircmp.c */
-int		paircmp_pairs(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
-
-int		paircmp(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check, VALUE_PAIR **rep_list);
-
-int		paircmp_find(fr_dict_attr_t const *da);
-
-int		paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
-					 bool first_only, RAD_COMPARE_FUNC func, void *instance);
-
-int		paircmp_register(fr_dict_attr_t const *attribute, fr_dict_attr_t const *from,
-				 bool first_only, RAD_COMPARE_FUNC func, void *instance);
-
-void		paircmp_unregister(fr_dict_attr_t const *attr, RAD_COMPARE_FUNC func);
-
-void		paircmp_unregister_instance(void *instance);
-
-int		paircmp_init(void);
-
-void		paircmp_free(void);
 
 /** Allocate a VALUE_PAIR in the request list
  *
