@@ -26,7 +26,7 @@
 
 # Default options
 : ${COMPRESS:=false}
-: ${EXPIRES:=0}
+: ${LOG_R_DAYS:=0}
 : ${VERBOSE:=0}
 : ${LOG_DIR=/var/log/radius}
 
@@ -43,29 +43,8 @@ function INFO
 function DEBUG
 {
 	if [ $VERBOSE -gt 0 ]; then
-	echo "$@"
+		echo "$@"
 	fi
-}
-
-function check_binaries
-{
-	need_bin="aws lsof find rm"
-
-	if $COMPRESS; then
-		need_bin+=" bzip2 mktemp"
-	fi
-
-	if [ "$EXPIRES" -gt 0 ]; then
-		need_bin+=" date"
-	fi
-
-	# Check we have everything we need
-	for bin in ${need_bin}; do
-		if ! which $bin > /dev/null; then
-			ERROR "Can't find '${bin}' binary.  Ensure it's available in the current PATH"
-			exit 64
-		fi
-	done
 }
 
 function unix_now
@@ -93,17 +72,39 @@ function future_date
 	fi
 }
 
+function check_binaries
+{
+	need_bin="aws lsof find rm"
+
+	if $COMPRESS; then
+		need_bin+=" bzip2 mktemp"
+	fi
+
+	if [ "$LOG_R_DAYS" -gt 0 ]; then
+		need_bin+=" date"
+	fi
+
+	# Check we have everything we need
+	for bin in ${need_bin}; do
+		if ! which $bin > /dev/null; then
+			ERROR "Can't find '${bin}' binary.  Ensure it's available in the current PATH"
+			exit 64
+		fi
+	done
+}
+
 function show_help
 {
 	INFO $(basename $0)" [options]"
-	INFO "  -a                  Append to existing log files."
-	INFO "  -d <dir>            Log directory - defaults to \"${LOG_DIR}\"."
-	INFO "  -e <days>           Expire log files N days after they're moved to AWS"
-	INFO "  -z                  bzip files before uploading."
-	INFO "  -v                  Print debugging information."
+	INFO "  -a                Append to existing log files."
+	INFO "  -d <dir>          Log directory - defaults to \"${LOG_DIR}\"."
+	INFO "  -h                Display this help message."
+	INFO "  -r <days>         Retain log files for N days in AWS."
+	INFO "  -z                bzip files before uploading."
+	INFO "  -v                Print debugging information."
 }
 
-while getopts "h?ad:e:zv" opt; do
+while getopts "h?ad:r:zv" opt; do
 	case "$opt" in
 	h|\?)
 		show_help
@@ -118,8 +119,8 @@ while getopts "h?ad:e:zv" opt; do
 		LOG_DIR="$OPTARG"
 		;;
 
-	e)
-		EXPIRES="$OPTARG"
+	r)
+		LOG_R_DAYS="$OPTARG"
 		;;
 
 	v)
@@ -136,9 +137,9 @@ done
 check_binaries
 
 # Get expiry time
-if [ $EXPIRES -gt 0 ]; then
-	EXPIRES_AT="$(future_date ${EXPIRES})"
-	EXPIRES_ARG=" --expires ${EXPIRES_AT}"
+if [ $LOG_R_DAYS -gt 0 ]; then
+	retain_until="$(future_date ${LOG_R_DAYS})"
+	expires_arg=" --expires ${retain_until}"
 fi
 
 # Get a temporary directory
@@ -148,8 +149,6 @@ if $APPEND; then tmpdir=$(mktemp -d); fi
 # and if they're not, compress them and upload them to AWS.
 copied=0
 while read -r in_file; do
-	expire_arg=
-
 	# The file is still in use, don't move it
 	if lsof -lnP -- $in_file > /dev/null; then
 		DEBUG "Skipping ${in_file} (still in use)"
@@ -191,8 +190,8 @@ while read -r in_file; do
 		fi
 	fi
 
-	if ! aws s3 mv "${in_file}" "${aws_file}" $EXPIRES_ARG > /dev/null; then
-		ERROR "aws s3 mv \"${in_file}\" \"${aws_file}\" $EXPIRES_ARG failed, skipping..."
+	if ! aws s3 mv "${in_file}" "${aws_file}" ${expires_arg} > /dev/null; then
+		ERROR "aws s3 mv \"${in_file}\" \"${aws_file}\" ${expires_arg} failed, skipping..."
 		continue
 	fi
 
@@ -204,8 +203,8 @@ if $APPEND; then rm -rf "$tmpdir"; fi
 
 if [ $copied -eq 0 ]; then
 	DEBUG "No files to process"
-elif [ ! -z "$EXPIRES_AT" ]; then
-	DEBUG "Logs will expire at $EXPIRES_AT"
+elif [ ! -z "$retain_until" ]; then
+	DEBUG "Logs will expire at ${retain_until}"
 fi
 
 exit 0
