@@ -1051,16 +1051,26 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	if (parent->type == FR_TYPE_STRUCT) {
 		fr_dict_attr_t *mutable;
 
+		if (*attr > 1) {
+			fr_dict_attr_t const *sibling;
+
+			if (!parent->flags.length) {
+				fr_strerror_printf("Children of 'struct' type attributes MUST start with sub-attribute 1.");
+				goto error;
+			}
+
+			sibling = fr_dict_attr_child_by_num(parent, (*attr) - 1);
+			if (!sibling) {
+				fr_strerror_printf("Children of 'struct' type attributes MUST be numbered consecutively.");
+				goto error;
+			}
+		}
+
 		/*
 		 *	STRUCTs will have their length filled in later.
 		 */
 		if ((type != FR_TYPE_STRUCT) && (flags->length == 0)) {
 			fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
-			goto error;
-		}
-
-		if ((*attr > 1) && !parent->flags.length) {
-			fr_strerror_printf("Children of 'struct' type attributes MUST start with sub-attribute 1.");
 			goto error;
 		}
 
