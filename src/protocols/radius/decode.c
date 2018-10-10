@@ -474,7 +474,8 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	fr_cursor_init(&child_cursor, &head);
 	child_num = 1;
 	while (p < end) {
-		ssize_t child_len;
+		ssize_t decoded_len;
+		size_t child_length;
 
 		/*
 		 *	Go to the next child.  If it doesn't exist, we're done.
@@ -484,14 +485,17 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
 
+		child_length = child->flags.length;
+		if (!child_length) child_length = (end - p);
+
 		/*
 		 *	Decode the next field based on the length of the child.
 		 *	dict.c enforces that child->flags.length is non-zero.
 		 */
-		child_len = fr_radius_decode_pair_value(ctx, &child_cursor, child, p,
-							child->flags.length, child->flags.length,
-							decoder_ctx);
-		if (child_len < 0) {
+		decoded_len = fr_radius_decode_pair_value(ctx, &child_cursor, child, p,
+							   child_length, child_length,
+							   decoder_ctx);
+		if (decoded_len < 0) {
 			FR_PROTO_TRACE("Failed to decode child %u of STRUCT %s", child_num, parent->name);
 
 		raw:
@@ -508,13 +512,18 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			/*
 			 *	Decode the whole STRUCT as an unknown attribute
 			 */
-			child_len = fr_radius_decode_pair_value(ctx, &child_cursor, child,
+			decoded_len = fr_radius_decode_pair_value(ctx, &child_cursor, child,
 								data, data_len, data_len, decoder_ctx);
-			if (child_len < 0) return child_len;
+			if (decoded_len < 0) return decoded_len;
 			break;
 		}
 
-		p += child->flags.length;
+		/*
+		 *	Note that we're decoding fixed fields here.
+		 *	So we skip the input based on the *known*
+		 *	length, and not on the *decoded* length.
+		 */
+		p += child_length;
 		child_num++;	/* go to the next child */
 	}
 	fr_cursor_head(&child_cursor);
