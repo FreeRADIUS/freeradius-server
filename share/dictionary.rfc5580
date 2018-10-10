@@ -19,9 +19,23 @@ ATTRIBUTE	Operator-Name				126	string
 #
 #  Large blobs of stuff
 #
-ATTRIBUTE	Location-Information			127	octets
-ATTRIBUTE	Location-Data				128	octets
-ATTRIBUTE	Basic-Location-Policy-Rules		129	octets
+ATTRIBUTE	Location-Information			127	struct
+ATTRIBUTE	Location-Information-Index		127.1	uint16
+ATTRIBUTE	Location-Information-Code		127.2	uint8
+ATTRIBUTE	Location-Information-Entity		127.3	uint8
+ATTRIBUTE	Location-Information-Sighting-Time	127.4	uint64
+ATTRIBUTE	Location-Information-TTL		127.5	uint64
+ATTRIBUTE	Location-Information-Method		127.6	string
+
+ATTRIBUTE	Location-Data				128	struct
+ATTRIBUTE	Location-Data-Index			128.1	uint16
+ATTRIBUTE	Location-Data-Location			128.2	octets
+
+ATTRIBUTE	Basic-Location-Policy-Rules		129	struct
+ATTRIBUTE	Basic-Location-Policy-Flags		129.1	uint16
+ATTRIBUTE	Basic-Location-Policy-Retention-Expires	129.2	uint64
+ATTRIBUTE	Basic-Location-Policy-Note-Well		129.3	string
+
 ATTRIBUTE	Extended-Location-Policy-Rules		130	string
 
 #
