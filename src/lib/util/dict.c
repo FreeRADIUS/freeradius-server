@@ -1064,14 +1064,22 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 				fr_strerror_printf("Children of 'struct' type attributes MUST be numbered consecutively.");
 				goto error;
 			}
-		}
 
-		/*
-		 *	STRUCTs will have their length filled in later.
-		 */
-		if ((type != FR_TYPE_STRUCT) && (flags->length == 0)) {
-			fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
-			goto error;
+			if (dict_attr_sizes[sibling->type][1] == ~(size_t) 0) {
+				fr_strerror_printf("Only the last child of a 'struct' attribute can have variable length");
+				goto error;
+			}
+
+		} else {
+			/*
+			 *	The first child can't be variable length, that's stupid.
+			 *
+			 *	STRUCTs will have their length filled in later.
+			 */
+			if ((type != FR_TYPE_STRUCT) && (flags->length == 0)) {
+				fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
+				goto error;
+			}
 		}
 
 		/*
