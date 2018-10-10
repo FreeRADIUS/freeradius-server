@@ -1094,12 +1094,13 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	switch (tlv_stack[depth]->type) {
-	case FR_TYPE_STRUCTURAL:
+	default:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 
-	default:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VALUES:
 		if (((fr_dict_vendor_num_by_da(tlv_stack[depth]) == 0) && (tlv_stack[depth]->attr == 0)) ||
 		    (tlv_stack[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
