@@ -192,7 +192,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:	/* Same addr field */
-		return snprintf(*out, outlen, "%u", htonl(vp->vp_ipv4addr));
+		return snprintf(*out, outlen, "%u", ntohl(vp->vp_ipv4addr));
 
 	case FR_TYPE_UINT32:
 		return snprintf(*out, outlen, "%u", vp->vp_uint32);
