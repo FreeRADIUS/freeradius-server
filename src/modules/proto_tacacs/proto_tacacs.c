@@ -496,7 +496,7 @@ send_reply:
 done:
 	default:
 		(void) fr_heap_extract(request->backlog, request);
-		request_delete(request);
+		//request_delete(request);
 		break;
 	}
 }
@@ -513,7 +513,7 @@ static void tacacs_queued(REQUEST *request, fr_state_signal_t action)
 
 	case FR_SIGNAL_CANCEL:
 		(void) fr_heap_extract(request->backlog, request);
-		request_delete(request);
+		//request_delete(request);
 		break;
 
 	default:

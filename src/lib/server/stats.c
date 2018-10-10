@@ -862,4 +862,41 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 #endif
 }
 
+/** Sort latency times into bins
+ *
+ * This solves the problem of attempting to keep min/max/avg latencies, whilst
+ * not knowing what the polling frequency will be.
+ *
+ * @param[out] stats Holding monotonically increasing stats bins.
+ * @param[in] start of the request.
+ * @param[in] end of the request.
+ */
+void fr_stats_bins(fr_stats_t *stats, struct timeval *start, struct timeval *end)
+{
+	struct timeval diff;
+	uint32_t delay;
+
+	if ((start->tv_sec == 0) || (end->tv_sec == 0) || (end->tv_sec < start->tv_sec)) return;
+
+	fr_timeval_subtract(&diff, end, start);
+
+	if (diff.tv_sec >= 10) {
+		stats->elapsed[7]++;
+	} else {
+		int i;
+		uint32_t cmp;
+
+		delay = (diff.tv_sec * USEC) + diff.tv_usec;
+
+		cmp = 10;
+		for (i = 0; i < 7; i++) {
+			if (delay < cmp) {
+				stats->elapsed[i]++;
+				break;
+			}
+			cmp *= 10;
+		}
+	}
+}
+
 #endif /* WITH_STATS */

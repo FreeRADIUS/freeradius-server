@@ -25,15 +25,6 @@
  */
 RCSIDH(conf_file_h, "$Id$")
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <sys/time.h>
-
-#include <freeradius-devel/util/rbtree.h>
-#include <freeradius-devel/util/token.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,6 +39,14 @@ typedef struct cf_pair CONF_PAIR;	//!< #CONF_ITEM with an attribute, an operator
 typedef struct cf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary data
 					///< with a #CONF_PAIR or #CONF_SECTION.
 
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <sys/time.h>
+
+#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/token.h>
 
 #define FR_TIMEVAL_TO_MS(_x) (((_x)->tv_usec / 1000) + ((_x)->tv_sec * (uint64_t)1000))
 #define FR_TIMESPEC_TO_MS(_x) (((_x)->tv_usec / 1000000) + ((_x)->tv_sec * (uint64_t)1000))

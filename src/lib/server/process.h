@@ -26,25 +26,43 @@
  */
 RCSIDH(process_h, "$Id$")
 
-#include <freeradius-devel/server/client.h>
-#include <freeradius-devel/server/listen.h>
-#include <freeradius-devel/server/signal.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*
- *  Function handler for requests.
- */
-typedef	void (*fr_request_process_t)(REQUEST *, fr_state_signal_t);
+typedef enum {
+	RADIUS_SIGNAL_SELF_NONE		= (0),
+	RADIUS_SIGNAL_SELF_HUP		= (1 << 0),
+	RADIUS_SIGNAL_SELF_TERM		= (1 << 1),
+	RADIUS_SIGNAL_SELF_EXIT		= (1 << 2),
+	RADIUS_SIGNAL_SELF_DETAIL	= (1 << 3),
+	RADIUS_SIGNAL_SELF_NEW_FD	= (1 << 4),
+	RADIUS_SIGNAL_SELF_MAX		= (1 << 5)
+} radius_signal_t;
 
 extern time_t fr_start_time;
 
-/*
- *	More state machine helper functions.
- */
-void request_delete(REQUEST *request);
+extern struct timeval sd_watchdog_interval;
+
+#include <freeradius-devel/server/client.h>
+#include <freeradius-devel/server/listen.h>
+#include <freeradius-devel/server/signal.h>
+
+typedef	void (*fr_request_process_t)(REQUEST *, fr_state_signal_t);	//!< Function handler for requests.
+
+fr_event_list_t		*fr_global_event_list(void);
+
+void			radius_signal_self(int flag);
+
+int			radius_event_init(void);
+
+int			radius_event_start(bool spawn_flag);
+
+void			radius_event_free(void);
+
+int			radius_event_process(void);
+
+void			radius_update_listener(rad_listen_t *listener);
 
 #ifdef __cplusplus
 }

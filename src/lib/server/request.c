@@ -561,6 +561,81 @@ void request_data_restore(REQUEST *request, fr_dlist_head_t *in)
 }
 
 #ifdef WITH_VERIFY_PTR
+/*
+ *	Verify a packet.
+ */
+static void packet_verify(char const *file, int line, REQUEST const *request, RADIUS_PACKET const *packet, char const *type)
+{
+	TALLOC_CTX *parent;
+
+	if (!packet) {
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: RADIUS_PACKET %s pointer was NULL", file, line, type);
+		if (!fr_cond_assert(0)) fr_exit_now(1);
+	}
+
+	parent = talloc_parent(packet);
+	if (parent != request) {
+		ERROR("CONSISTENCY CHECK FAILED %s[%i]: Expected RADIUS_PACKET %s to be parented by %p (%s), "
+		      "but parented by %p (%s)", file, line, type, request, talloc_get_name(request),
+		      parent, parent ? talloc_get_name(parent) : "NULL");
+
+		fr_log_talloc_report(packet);
+		if (parent) fr_log_talloc_report(parent);
+
+		rad_assert(0);
+	}
+
+	PACKET_VERIFY(packet);
+
+	if (!packet->vps) return;
+
+	fr_pair_list_verify(file, line, packet, packet->vps);
+}
+
+/*
+ *	Catch horrible talloc errors.
+ */
+void request_verify(char const *file, int line, REQUEST const *request)
+{
+	if (!request) {
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
+		if (!fr_cond_assert(0)) fr_exit_now(1);
+	}
+
+	(void) talloc_get_type_abort_const(request, REQUEST);
+
+	rad_assert(request->magic == REQUEST_MAGIC);
+
+	if (talloc_get_size(request) != sizeof(REQUEST)) {
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: expected REQUEST size of %zu bytes, got %zu bytes",
+			file, line, sizeof(REQUEST), talloc_get_size(request));
+		if (!fr_cond_assert(0)) fr_exit_now(1);
+	}
+
+	fr_pair_list_verify(file, line, request, request->control);
+	fr_pair_list_verify(file, line, request->state_ctx, request->state);
+
+	if (request->username) VP_VERIFY(request->username);
+	if (request->password) VP_VERIFY(request->password);
+
+	rad_assert(request->server_cs != NULL);
+
+	if (request->packet) {
+		packet_verify(file, line, request, request->packet, "request");
+		if ((request->packet->code == FR_CODE_ACCESS_REQUEST) &&
+		    (request->reply && !request->reply->code)) {
+			rad_assert(request->state_ctx != NULL);
+		}
+	}
+	if (request->reply) packet_verify(file, line, request, request->reply, "reply");
+
+	if (request->async) {
+		(void) talloc_get_type_abort(request->async, fr_async_t);
+		rad_assert(talloc_parent(request->async) == request);
+	}
+
+}
+
 /** Verify all request data is parented by the specified context
  *
  * @note Only available if built with WITH_VERIFY_PTR

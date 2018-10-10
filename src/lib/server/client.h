@@ -30,7 +30,43 @@ RCSIDH(clients_h, "$Id$")
 extern "C" {
 #endif
 
+typedef struct rad_client RADCLIENT;
+typedef struct rad_client_list RADCLIENT_LIST;
+
+/** Callback for retrieving values when building client sections
+ *
+ * Example:
+ @code{.c}
+   int _client_value_cb(char **out, CONF_PAIR const *cp, void *data)
+   {
+   	my_result *result = data;
+   	char *value;
+
+   	value = get_attribute_from_result(result, cf_pair_value(cp));
+   	if (!value) {
+   		*out = NULL;
+   		return 0;
+   	}
+
+   	*out = talloc_strdup(value);
+   	free_attribute(value);
+
+   	if (!*out) return -1;
+   	return 0;
+   }
+ @endcode
+ *
+ * @param[out] out Where to write a pointer to the talloced value buffer.
+ * @param[in] cp The value of the CONF_PAIR specifies the attribute name to retrieve from the result.
+ * @param[in] data Pointer to the result struct to copy values from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
+
 #include <freeradius-devel/io/time.h>
+#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/socket.h>
 #include <freeradius-devel/server/stats.h>
 #include <freeradius-devel/util/inet.h>
@@ -38,7 +74,7 @@ extern "C" {
 /** Describes a host allowed to send packets to the server
  *
  */
-typedef struct rad_client {
+struct rad_client {
 	fr_ipaddr_t		ipaddr;			//!< IPv4/IPv6 address of the host.
 	fr_ipaddr_t		src_ipaddr;		//!< IPv4/IPv6 address to send responses
 							//!< from (family must match ipaddr).
@@ -86,41 +122,7 @@ typedef struct rad_client {
 
 	FR_STRUCT_MEMBER_SIGNATURE(secret)
 	FR_STRUCT_SIGNATURE
-} RADCLIENT;
-
-typedef struct rad_client_list RADCLIENT_LIST;
-
-/** Callback for retrieving values when building client sections
- *
- * Example:
- @code{.c}
-   int _client_value_cb(char **out, CONF_PAIR const *cp, void *data)
-   {
-   	my_result *result = data;
-   	char *value;
-
-   	value = get_attribute_from_result(result, cf_pair_value(cp));
-   	if (!value) {
-   		*out = NULL;
-   		return 0;
-   	}
-
-   	*out = talloc_strdup(value);
-   	free_attribute(value);
-
-   	if (!*out) return -1;
-   	return 0;
-   }
- @endcode
- *
- * @param[out] out Where to write a pointer to the talloced value buffer.
- * @param[in] cp The value of the CONF_PAIR specifies the attribute name to retrieve from the result.
- * @param[in] data Pointer to the result struct to copy values from.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
+};
 
 RADCLIENT_LIST	*client_list_init(CONF_SECTION *cs);
 

@@ -437,7 +437,7 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 			break;
 		}
 		rad_assert(request->log.unlang_indent == 0);
-		request_delete(request);
+		//request_delete(request);
 		break;
 	}
 }
@@ -467,7 +467,7 @@ static void request_queued(REQUEST *request, fr_state_signal_t action)
 
 	case FR_SIGNAL_CANCEL:
 		(void) fr_heap_extract(request->backlog, request);
-		request_delete(request);
+		//request_delete(request);
 		break;
 
 	default:

@@ -18,37 +18,32 @@
 /**
  * $Id$
  *
- * @file lib/server/rad_assert.h
- * @brief Debug assertions, with logging.
+ * @file lib/server/trigger.h
+ * @brief Execute scripts when a server event occurs.
  *
- * @copyright 2000,2001,2006  The FreeRADIUS server project
+ * @copyright 2015 The FreeRADIUS server project
  */
-RCSIDH(rad_assert_h, "$Id$")
-
-#include <stdbool.h>
-#include <freeradius-devel/util/debug.h>
+RCSIDH(trigger_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef NDEBUG
-#  define rad_assert(_expr)
-#elif !defined(__clang_analyzer__)
-#  define rad_assert(_expr) ((void) ((_expr) ? (void) 0 : (void) fr_assert_exit(__FILE__, __LINE__, #_expr)))
-#else
-#  include <assert.h>
-#  define rad_assert assert
-#endif
+#include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/util/pair.h>
 
-/** For systems with an old version libc, define static_assert.
- *
- */
-#ifndef static_assert
-#  define static_assert _Static_assert
-# else
-#  include <assert.h>
-#endif
+#include <talloc.h>
+
+void		trigger_exec_init(CONF_SECTION const *cs);
+
+int		trigger_exec(REQUEST *request, CONF_SECTION const *cs,
+			     char const *name, bool quench, VALUE_PAIR *args)
+			     CC_HINT(nonnull (3));
+
+void		trigger_exec_free(void);
+
+VALUE_PAIR	*trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
 
 #ifdef __cplusplus
 }

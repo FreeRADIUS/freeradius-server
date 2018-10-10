@@ -26,15 +26,16 @@
 RCSIDH(radiusd_h, "$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
+#include <freeradius-devel/server/client.h>
+#include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/log.h>
+#include <freeradius-devel/server/paircmp.h>
+#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/realms.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/stats.h>
-#include <freeradius-devel/server/realms.h>
-#include <freeradius-devel/server/client.h>
-#include <freeradius-devel/server/process.h>
-#include <freeradius-devel/server/dependency.h>
-#include <freeradius-devel/server/paircmp.h>
+#include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/server/util.h>
 
 #include <freeradius-devel/util/base.h>
@@ -62,27 +63,7 @@ extern "C" {
 /*
  *	See util.c
  */
-#define SECONDS_PER_DAY		86400
-#define MAX_REQUEST_TIME	30
-#define CLEANUP_DELAY		5
-#define RETRY_DELAY		5
-#define RETRY_COUNT		3
-#define DEAD_TIME		120
 #define EXEC_TIMEOUT		10
-
-typedef enum request_fail {
-	REQUEST_FAIL_UNKNOWN = 0,
-	REQUEST_FAIL_NO_THREADS,	//!< No threads to handle it.
-	REQUEST_FAIL_DECODE,		//!< Rad_decode didn't like it.
-	REQUEST_FAIL_PROXY,		//!< Call to proxy modules failed.
-	REQUEST_FAIL_PROXY_SEND,	//!< Proxy_send didn't like it.
-	REQUEST_FAIL_NO_RESPONSE,	//!< We weren't told to respond, so we reject.
-	REQUEST_FAIL_HOME_SERVER,	//!< The home server didn't respond.
-	REQUEST_FAIL_HOME_SERVER2,	//!< Another case of the above.
-	REQUEST_FAIL_HOME_SERVER3,	//!< Another case of the above.
-	REQUEST_FAIL_NORMAL_REJECT,	//!< Authentication failure.
-	REQUEST_FAIL_SERVER_TIMEOUT	//!< The server took too long to process the request.
-} request_fail_t;
 
 /*
  *	Global variables.
@@ -93,17 +74,9 @@ extern fr_log_lvl_t	rad_debug_lvl;
 extern fr_log_lvl_t	req_debug_lvl;
 extern char const	*radiusd_version;
 extern char const	*radiusd_version_short;
-void			radius_signal_self(int flag);
 
-typedef enum {
-	RADIUS_SIGNAL_SELF_NONE		= (0),
-	RADIUS_SIGNAL_SELF_HUP		= (1 << 0),
-	RADIUS_SIGNAL_SELF_TERM		= (1 << 1),
-	RADIUS_SIGNAL_SELF_EXIT		= (1 << 2),
-	RADIUS_SIGNAL_SELF_DETAIL	= (1 << 3),
-	RADIUS_SIGNAL_SELF_NEW_FD	= (1 << 4),
-	RADIUS_SIGNAL_SELF_MAX		= (1 << 5)
-} radius_signal_t;
+
+
 /*
  *	Function prototypes.
  */
@@ -111,31 +84,6 @@ typedef enum {
 
 /* radiusd.c */
 int		log_err (char *);
-
-/* util.c */
-void (*reset_signal(int signo, void (*func)(int)))(int);
-int		rad_mkdir(char *directory, mode_t mode, uid_t uid, gid_t gid);
-size_t		rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen,
-				       char const *in, UNUSED void *arg);
-size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,
-				    char const *in, UNUSED void *arg);
-ssize_t		rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen);
-char		*rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c);
-
-int		rad_copy_string(char *dst, char const *src);
-int		rad_copy_string_bare(char *dst, char const *src);
-int		rad_copy_variable(char *dst, char const *from);
-uint32_t	rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval *now);
-int		rad_expand_xlat(REQUEST *request, char const *cmd,
-				int max_argc, char const *argv[], bool can_fail,
-				size_t argv_buflen, char *argv_buf);
-
-char const	*rad_default_log_dir(void);
-char const	*rad_default_lib_dir(void);
-char const	*rad_default_raddb_dir(void);
-char const	*rad_default_run_dir(void);
-char const	*rad_default_sbin_dir(void);
-char const	*rad_default_radacct_dir(void);
 
 /* auth.c */
 rlm_rcode_t    	rad_authenticate (REQUEST *);
@@ -154,11 +102,6 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
 int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
 			REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
 			bool exec_wait, bool shell_escape, int timeout) CC_HINT(nonnull (5, 6));
-void trigger_exec_init(CONF_SECTION const *cs);
-int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, bool quench, VALUE_PAIR *args)
-		  CC_HINT(nonnull (3));
-void trigger_exec_free(void);
-VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
 
 /** Allocate a VALUE_PAIR in the request list
  *
@@ -249,29 +192,6 @@ VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint1
  *	- 0 if no pairs were deleted.
  */
 #define pair_delete_control(_da) fr_pair_delete_by_da(&request->control, _da)
-
-/* threads.c */
-int		thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers);
-int		thread_pool_init(void);
-void		thread_pool_stop(void);
-
-/*
- *	In threads.c
- */
-void request_enqueue(REQUEST *request);
-void request_queue_extract(REQUEST *request);
-
-extern struct timeval sd_watchdog_interval;
-
-/* process.c */
-fr_event_list_t *fr_global_event_list(void);
-int radius_event_init(void);
-int radius_event_start(bool spawn_flag);
-void radius_event_free(void);
-int radius_event_process(void);
-void radius_update_listener(rad_listen_t *listener);
-void revive_home_server(fr_event_list_t *el, struct timeval *now, void *ctx);
-void mark_home_server_dead(home_server_t *home, struct timeval *when);
 
 
 #ifdef __cplusplus

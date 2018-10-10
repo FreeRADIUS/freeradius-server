@@ -32,19 +32,15 @@ RCSIDH(main_config_h, "$Id$")
 extern "C" {
 #endif
 
+#define MAX_REQUEST_TIME	30			//!< Default maximum request time
+
 typedef struct main_config_s main_config_t;
 
-#ifdef __cplusplus
-}
-#endif
+extern main_config_t const *main_config;		//!< Global configuration singleton.
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/dict.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /** Main server configuration
  *
@@ -140,9 +136,6 @@ struct main_config_s {
 	size_t		talloc_memory_limit;		//!< Limit the amount of talloced memory the server uses.
 							//!< Only applicable in single threaded mode.
 };
-
-/* Define a global config structure */
-extern main_config_t const *main_config;
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
 void			main_config_raddb_dir_set(main_config_t *config, char const *path);
