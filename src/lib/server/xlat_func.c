@@ -207,12 +207,22 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_uint16);
 
 	/*
-	 *	Ethernet is weird... It's network related, so we assume to it should be
-	 *	bigendian.
+	 *	Ethernet is weird... It's network related, so it
+	 *	should be bigendian.
 	 */
 	case FR_TYPE_ETHERNET:
-		memcpy(&int64, vp->vp_ether, sizeof(vp->vp_ether));
-		return snprintf(*out, outlen, "%" PRIu64, htonll(int64));
+		int64 = vp->vp_ether[0];
+		int64 <<= 8;
+		int64 |= vp->vp_ether[1];
+		int64 <<= 8;
+		int64 |= vp->vp_ether[2];
+		int64 <<= 8;
+		int64 |= vp->vp_ether[3];
+		int64 <<= 8;
+		int64 |= vp->vp_ether[4];
+		int64 <<= 8;
+		int64 |= vp->vp_ether[5];
+		return snprintf(*out, outlen, "%" PRIu64, int64);
 
 	case FR_TYPE_INT32:
 		return snprintf(*out, outlen, "%i", vp->vp_int32);

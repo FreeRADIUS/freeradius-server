@@ -130,7 +130,7 @@ if (Tmp-String-8 != '959985465') {
 update request {
 	Tmp-String-0        := "%{integer:Tmp-Cast-Byte}"
 	Tmp-String-1        := "%{integer:Tmp-Cast-Short}"
-	Tmp-String-2        := "%{integer:Tmp-Cast-Ether}"
+	Tmp-Integer64-2     := "%{integer:Tmp-Cast-Ether}"
 	Tmp-String-3        := "%{integer:Tmp-Cast-Integer64}"
 	Tmp-String-4        := "%{integer:Tmp-Cast-IPv4Prefix}"
 }
@@ -146,10 +146,16 @@ if (Tmp-String-1 != '14139') {
 }
 
 # ethernet
-if (Tmp-String-2 != '62913607630848') {
+if (Tmp-Integer64-2 != 959985468) {
 	test_fail
 }
-if (<ether>Tmp-String-2 != &Tmp-Cast-Ether) {
+
+#
+#  The integer is in host order, so it's cast to an ethernet address,
+#  with the lowest octet of the integer mapping to the right-most
+#  ethernet octet (in network order)
+#
+if (<ether>Tmp-Integer64-2 != &Tmp-Cast-Ether) {
 	test_fail
 }
 
