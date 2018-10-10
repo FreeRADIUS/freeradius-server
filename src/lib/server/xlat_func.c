@@ -580,7 +580,7 @@ static ssize_t xlat_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
  *
  * Example %{debug:3}
  */
-static ssize_t xlat_debug(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+static ssize_t debug_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt)
 {
@@ -612,7 +612,7 @@ done:
 /** Generate a random integer value
  *
  */
-static xlat_action_t xlat_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t rand_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 			       fr_value_box_t **in)
 {
@@ -646,7 +646,7 @@ static xlat_action_t xlat_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
  *  Build strings of random chars, useful for generating tokens and passcodes
  *  Format similar to String::Random.
  */
-static xlat_action_t xlat_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t randstr_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				  REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				  fr_value_box_t **in)
 {
@@ -819,7 +819,7 @@ static xlat_action_t xlat_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
-static xlat_action_t xlat_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t regex_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_t **in)
 {
@@ -898,7 +898,7 @@ static xlat_action_t xlat_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
  */
-static xlat_action_t xlat_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t urlquote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
@@ -982,7 +982,7 @@ static xlat_action_t xlat_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Remember to escape % with %% in strings, else xlat will try to parse it.
  */
-static xlat_action_t xlat_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t urlunquote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
@@ -1191,7 +1191,7 @@ static int fr_value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out,
  *
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
-static xlat_action_t xlat_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t md5_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 			      fr_value_box_t **in)
 {
@@ -1486,7 +1486,7 @@ static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
  *
  * Example: "%{base64:foo}" == "Zm9v"
  */
-static xlat_action_t xlat_base64(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t base64_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				 fr_value_box_t **in)
 {
@@ -2299,7 +2299,7 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 	return 0;
 }
 
-static xlat_action_t xlat_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t concat_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				 fr_value_box_t **in)
 {
@@ -2332,7 +2332,7 @@ static xlat_action_t xlat_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_action_t xlat_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t bin_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 			      fr_value_box_t **in)
 {
@@ -2640,22 +2640,22 @@ int xlat_init(void)
 	xlat_register(NULL, "lpad", lpad_xlat, NULL, NULL, 0, 0, true);
 	xlat_register(NULL, "rpad", rpad_xlat, NULL, NULL, 0, 0, true);
 
-	xlat_register(&xlat_foreach_inst[0], "debug", xlat_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(&xlat_foreach_inst[0], "debug", debug_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	c = xlat_func_find("debug");
 	rad_assert(c != NULL);
 	c->internal = true;
 
-	xlat_async_register(NULL, "base64", xlat_base64, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "concat", xlat_concat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "bin", xlat_bin, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "md5", xlat_md5, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "rand", xlat_rand, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "randstr", xlat_randstr, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "base64", base64_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "concat", concat_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "bin", bin_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "md5", md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "rand", rand_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "randstr", randstr_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
-	xlat_async_register(NULL, "regex", xlat_regex, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "regex", regex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 #endif
-	xlat_async_register(NULL, "urlquote", xlat_urlquote, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "urlunquote", xlat_urlunquote, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "urlquote", urlquote_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "urlunquote", urlunquote_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }
