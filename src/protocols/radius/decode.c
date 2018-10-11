@@ -453,8 +453,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
  *
  */
 static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, fr_cursor_t *cursor,
-				       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-				       UNUSED void *decoder_ctx)
+				       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
 	unsigned int		child_num;
 	uint8_t const		*p = data, *end = data + data_len;
@@ -501,7 +500,7 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 */
 		switch (child->type) {
 		default:
-			fr_strerror_printf("Invalid data type passed to encode_struct");
+			fr_strerror_printf("Invalid data type passed to decode_struct");
 			return -1;
 
 		case FR_TYPE_VALUES:
@@ -1377,7 +1376,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	attribute, OR it's already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		rcode = fr_radius_decode_struct(ctx, cursor, parent, p, attr_len, decoder_ctx);
+		rcode = fr_radius_decode_struct(ctx, cursor, parent, p, attr_len);
 		if (rcode < 0) goto raw;
 		return rcode;
 
