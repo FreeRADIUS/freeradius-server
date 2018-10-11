@@ -517,8 +517,6 @@ skip:
 	return rcode;
 }
 
-void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received);
-
 /*
  *	Debug the packet if requested.
  */
