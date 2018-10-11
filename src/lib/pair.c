@@ -217,7 +217,7 @@ VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *vp, unsigned int attr, unsigned int 
 	/* List head may be NULL if it contains no VPs */
 	if (!vp) return NULL;
 
-	VERIFY_LIST(vp);
+	VERIFY_LIST(vp, "");
 
 	(void) fr_cursor_init(&cursor, &vp);
 	return fr_cursor_next_by_num(&cursor, attr, vendor, tag);
@@ -2412,7 +2412,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 /*
  *	Verify a pair list
  */
-void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps)
+void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps, char const *name)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
@@ -2426,9 +2426,9 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE
 		parent = talloc_parent(vp);
 		if (expected && (parent != expected)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Expected VALUE_PAIR \"%s\" to be parented "
-				     "by %p (%s), instead parented by %p (%s)\n",
+				     "by %p (%s) name %s, instead parented by %p (%s)\n",
 				     file, line, vp->da->name,
-				     expected, talloc_get_name(expected),
+				     expected, talloc_get_name(expected), name,
 				     parent, parent ? talloc_get_name(parent) : "NULL");
 
 			fr_log_talloc_report(expected);

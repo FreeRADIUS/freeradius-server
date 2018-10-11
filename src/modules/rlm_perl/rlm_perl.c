@@ -814,7 +814,7 @@ static void get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_P
 		}
 	}
 
-	if (*vps) VERIFY_LIST(*vps);
+	if (*vps) VERIFY_LIST(*vps, "perl");
 }
 
 /*

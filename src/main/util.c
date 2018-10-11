@@ -1073,12 +1073,12 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 /*
  *	Verify a packet.
  */
-static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_PACKET *packet, char const *type)
+static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_PACKET *packet, char const *name)
 {
 	TALLOC_CTX *parent;
 
 	if (!packet) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: RADIUS_PACKET %s pointer was NULL", file, line, type);
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: RADIUS_PACKET %s pointer was NULL", file, line, name);
 		fr_assert(0);
 		fr_exit_now(0);
 	}
@@ -1086,7 +1086,7 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 	parent = talloc_parent(packet);
 	if (parent != request) {
 		ERROR("CONSISTENCY CHECK FAILED %s[%i]: Expected RADIUS_PACKET %s to be parented by %p (%s), "
-		      "but parented by %p (%s)", file, line, type, request, talloc_get_name(request),
+		      "but parented by %p (%s)", file, line, name, request, talloc_get_name(request),
 		      parent, parent ? talloc_get_name(parent) : "NULL");
 
 		fr_log_talloc_report(packet);
@@ -1100,7 +1100,7 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 	if (!packet->vps) return;
 
 #ifdef WITH_VERIFY_PTR
-	fr_pair_list_verify(file, line, packet, packet->vps);
+	fr_pair_list_verify(file, line, packet, packet->vps, name);
 #endif
 }
 /*
@@ -1117,8 +1117,8 @@ void verify_request(char const *file, int line, REQUEST *request)
 	(void) talloc_get_type_abort(request, REQUEST);
 
 #ifdef WITH_VERIFY_PTR
-	fr_pair_list_verify(file, line, request, request->config);
-	fr_pair_list_verify(file, line, request->state_ctx, request->state);
+	fr_pair_list_verify(file, line, request, request->config, "config");
+	fr_pair_list_verify(file, line, request->state_ctx, request->state, "state");
 #endif
 
 	if (request->packet) verify_packet(file, line, request, request->packet, "request");
