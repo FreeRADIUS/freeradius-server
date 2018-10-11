@@ -24,18 +24,26 @@
  * @copyright 2012  The FreeRADIUS server project
  * @copyright 2012  Alan DeKok <aland@deployingradius.com>
  */
-RCSIDH(connection_h, "$Id$")
+RCSIDH(pool_h, "$Id$")
 
-#include <freeradius-devel/server/base.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct fr_pool_s fr_pool_t;
+typedef struct fr_pool_state_s fr_pool_state_t;
+
+#ifdef __cplusplus
+}
+#endif
+
 #include <freeradius-devel/server/stats.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct fr_pool fr_pool_t;
-
-typedef struct fr_pool_state {
+struct fr_pool_state_s {
 	uint32_t	pending;		//!< Number of pending open connections.
 	time_t		last_checked;		//!< Last time we pruned the connection pool.
 	time_t		last_spawned;		//!< Last time we spawned a connection.
@@ -64,7 +72,7 @@ typedef struct fr_pool_state {
 	uint32_t	active;	 		//!< Number of currently reserved connections.
 
 	bool		reconnecting;		//!< We are currently reconnecting the pool.
-} fr_pool_state_t;
+};
 
 /** Alter the opaque data of a connection pool during reconnection event
  *
@@ -125,11 +133,11 @@ typedef int (*fr_pool_connection_alive_t)(void *opaque, void *connection);
  *	Pool allocation/initialisation
  */
 fr_pool_t	*fr_pool_init(TALLOC_CTX *ctx,
-						 CONF_SECTION const *cs,
-						 void *opaque,
-						 fr_pool_connection_create_t c,
-						 fr_pool_connection_alive_t a,
-						 char const *log_prefix);
+			      CONF_SECTION const *cs,
+			      void *opaque,
+			      fr_pool_connection_create_t c,
+			      fr_pool_connection_alive_t a,
+			      char const *log_prefix);
 
 fr_pool_t	*fr_pool_copy(TALLOC_CTX *ctx, fr_pool_t *pool, void *opaque);
 

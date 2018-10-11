@@ -460,7 +460,7 @@ extern cache_driver_t rlm_cache_redis;
 cache_driver_t rlm_cache_redis = {
 	.name		= "rlm_cache_redis",
 	.magic		= RLM_MODULE_INIT,
-	.load		= mod_load,
+	.onload		= mod_load,
 	.instantiate	= mod_instantiate,
 	.inst_size	= sizeof(rlm_cache_redis_t),
 	.config		= driver_config,

@@ -29,6 +29,8 @@
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/radius/radius.h>
+
 #include "proto_detail.h"
 
 static fr_dict_t *dict_freeradius;

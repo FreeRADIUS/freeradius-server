@@ -25,8 +25,16 @@
  */
 RCSIDH(dependency_h, "$Id$")
 
-#include <stddef.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern char const	*radiusd_version;
+extern char const	*radiusd_version_short;
+
 #include <freeradius-devel/server/cf_util.h>
+
+#include <stddef.h>
 
 int		rad_check_lib_magic(uint64_t magic);
 int 		ssl_check_consistency(void);
@@ -39,3 +47,7 @@ int		dependency_version_number_add(CONF_SECTION *cs, char const *name, char cons
 void		dependency_features_init(CONF_SECTION *cs);
 void		dependency_version_numbers_init(CONF_SECTION *cs);
 void		dependency_version_print(void);
+
+#ifdef __cplusplus
+}
+#endif

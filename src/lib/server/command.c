@@ -29,6 +29,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/rad_assert.h>
 
+#include <freeradius-devel/util/misc.h>
+
 /*
  *	Registration hooks for radmin.
  */

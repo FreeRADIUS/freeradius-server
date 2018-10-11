@@ -27,6 +27,10 @@
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/exfile.h>
 
+#include <freeradius-devel/util/misc.h>
+
+#include <freeradius-devel/attributes.h>
+
 #include <sys/stat.h>
 #include <fcntl.h>
 

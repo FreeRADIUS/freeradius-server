@@ -21,13 +21,17 @@
  *
  * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/io/master.h>
-#include <freeradius-devel/util/syserror.h>
+
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/server/rad_assert.h>
+
+#include <freeradius-devel/unlang/base.h>
+
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/syserror.h>
 
 typedef struct fr_io_live_t {
 	fr_event_list_t			*el;				//!< event list, for the master socket.

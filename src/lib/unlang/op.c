@@ -24,13 +24,16 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/parser.h>
 #include <freeradius-devel/server/xlat.h>
+
+#include <freeradius-devel/io/listen.h>
+
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/rand.h>
 
 #include "unlang_priv.h"
 

@@ -27,13 +27,18 @@ RCSID("$Id$")
 #include <talloc.h>
 
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/rbtree.h>
-#include <freeradius-devel/io/queue.h>
+#include <freeradius-devel/util/thread_local.h>
+
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/io/worker.h>
-#include <freeradius-devel/io/network.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/io/network.h>
+#include <freeradius-devel/io/queue.h>
+#include <freeradius-devel/io/ring_buffer.h>
+#include <freeradius-devel/io/worker.h>
 
 /*
  *	Define our own debugging.
@@ -52,14 +57,14 @@ RCSID("$Id$")
 
 fr_thread_local_setup(fr_ring_buffer_t *, fr_network_rb)	/* macro */
 
-typedef struct fr_network_inject_t {
+typedef struct  {
 	fr_listen_t	*listen;
 	uint8_t		*packet;
 	size_t		packet_len;
 	fr_time_t	recv_time;
 } fr_network_inject_t;
 
-typedef struct fr_network_worker_t {
+typedef struct {
 	int32_t			heap_id;		//!< workers are in a heap
 	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
 	fr_time_t		predicted;		//!< predicted processing time for one packet
@@ -69,7 +74,7 @@ typedef struct fr_network_worker_t {
 	fr_io_stats_t		stats;
 } fr_network_worker_t;
 
-typedef struct fr_network_socket_t {
+typedef struct {
 	fr_network_t		*nr;			//!< O(N) issues in talloc
 	int			number;			//!< unique ID
 	int			heap_id;		//!< for the sockets_by_num heap

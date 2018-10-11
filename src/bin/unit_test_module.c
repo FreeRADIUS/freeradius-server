@@ -26,12 +26,19 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/state.h>
+
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/radius/radius.h>
+
+#include <freeradius-devel/util/rand.h>
+
 #include <freeradius-devel/tls/base.h>
+
+#include <freeradius-devel/unlang/base.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>

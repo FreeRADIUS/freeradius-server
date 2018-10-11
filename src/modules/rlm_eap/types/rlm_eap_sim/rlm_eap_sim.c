@@ -1178,7 +1178,7 @@ rlm_eap_submodule_t rlm_eap_sim = {
 	.inst_size	= sizeof(rlm_eap_sim_t),
 	.config		= submodule_config,
 
-	.load		= mod_load,
+	.onload		= mod_load,
 	.unload		= mod_unload,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.entry_point	= mod_process,		/* Process next round of EAP method */

@@ -27,23 +27,32 @@ RCSIDH(value_h, "$Id$")
 extern "C" {
 #endif
 
+#define FR_MAX_STRING_LEN	254	/* RFC2138: string 0-253 octets */
+
+typedef struct value_box fr_value_box_t;
+
+#ifdef __cplusplus
+}
+#endif
+
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/types.h>
 
-/*
- *	Avoid circular type references.
- */
-typedef struct value_box fr_value_box_t;
-
-#include <freeradius-devel/util/dict.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern const FR_NAME_NUMBER fr_value_box_type_names[];
+
 extern size_t const fr_value_box_field_sizes[];
+
 extern size_t const fr_value_box_offsets[];
 
 #define fr_value_box_foreach(_v, _iv) for (fr_value_box_t *_iv = _v; _iv; _iv = _iv->next)
@@ -443,7 +452,6 @@ _Generic((_var), \
 )(_var, _box)
 
 /* @} **/
-
 /*
  *	Allocation - init/alloc use static functions (above)
  */
@@ -551,7 +559,6 @@ bool		fr_value_box_list_tainted(fr_value_box_t const *head);
 char		*fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quote);
 
 size_t		fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote);
-
 #ifdef __cplusplus
 }
 #endif

@@ -22,16 +22,23 @@
  * @copyright 2017 The FreeRADIUS server project.
  * @copyright 2017 Alan DeKok (aland@deployingradius.com)
  */
-#include <netdb.h>
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/base.h>
+
 #include <freeradius-devel/io/application.h>
+#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
+
+#include <freeradius-devel/radius/radius.h>
+
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/rad_assert.h>
+
+#include <freeradius-devel/util/misc.h>
+
 #include "proto_detail.h"
+
+#include <netdb.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>

@@ -24,8 +24,16 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/util.h>
+
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/thread_local.h>
+
+#include <freeradius-devel/attributes.h>
 
 #include <sys/file.h>
 

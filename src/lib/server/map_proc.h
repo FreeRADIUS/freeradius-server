@@ -26,6 +26,17 @@
  */
 RCSIDH(map_proc_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct map_proc map_proc_t;
+typedef struct map_proc_inst map_proc_inst_t;
+
+#ifdef __cplusplus
+}
+#endif
+
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/map.h>
@@ -33,9 +44,6 @@ RCSIDH(map_proc_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct map_proc map_proc_t;
-typedef struct map_proc_inst map_proc_inst_t;
 
 /** Function to evaluate the src string and map the result to server attributes
  *

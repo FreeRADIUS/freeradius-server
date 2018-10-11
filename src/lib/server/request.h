@@ -25,23 +25,23 @@
  */
 RCSIDH(request_h, "$Id$")
 
+/*
+ *	Forward declarations to avoid dependency loops
+ */
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef NDEBUG
-#  define REQUEST_MAGIC (0xdeadbeef)
-#endif
-
-/*
- *	Forward declarations to avoid dependency loops
- */
 typedef struct fr_async_t fr_async_t;
 typedef struct rad_request REQUEST;
 typedef struct request_data_t request_data_t;
 
 typedef struct rad_listen rad_listen_t;
 typedef struct rad_client RADCLIENT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/main_config.h>
@@ -50,6 +50,14 @@ typedef struct rad_client RADCLIENT;
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/packet.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef NDEBUG
+#  define REQUEST_MAGIC (0xdeadbeef)
+#endif
 
 typedef enum {
 	REQUEST_ACTIVE = 1,

@@ -23,27 +23,42 @@
  *
  * @copyright 2014 The FreeRADIUS server project
  */
-RCSIDH(exfile_h, "$Id$")
-
-#include <freeradius-devel/server/request.h>
+RCSIDH(exec_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-/*
- *	Multiple threads logging to one or more files.
- */
-typedef struct exfile_t exfile_t;
 
-exfile_t	*exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle, bool locking);
+#include <unistd.h>
 
-void		exfile_enable_triggers(exfile_t *ef, CONF_SECTION *cs, char const *trigger_prefix,
-				       VALUE_PAIR *trigger_args);
+#define EXEC_TIMEOUT		10	//!< Default wait time for exec calls.
 
-int		exfile_open(exfile_t *lf, REQUEST *request, char const *filename,
-			    mode_t permissions);
+extern pid_t	(*rad_fork)(void);
+extern pid_t	(*rad_waitpid)(pid_t pid, int *status);
 
-int		exfile_close(exfile_t *lf, REQUEST *request, int fd);
+#ifdef __cplusplus
+}
+#endif
+
+#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/util/pair.h>
+
+#include <sys/types.h>
+#include <talloc.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+pid_t	radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
+			     int *input_fd, int *output_fd,
+			     VALUE_PAIR *input_pairs, bool shell_escape);
+
+int	radius_readfrom_program(int fd, pid_t pid, int timeout,
+				char *answer, int left);
+
+int	radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
+			    REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
+			    bool exec_wait, bool shell_escape, int timeout) CC_HINT(nonnull (5, 6));
 
 #ifdef __cplusplus
 }

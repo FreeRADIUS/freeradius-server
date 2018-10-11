@@ -32,7 +32,7 @@ extern "C" {
 /*
  *	Forward declarations
  */
-typedef enum xlat_action_e {
+typedef enum {
 	XLAT_ACTION_PUSH_CHILD = 1,		//!< A deeper level of nesting needs to be evaluated.
 	XLAT_ACTION_YIELD,			//!< An xlat function pushed a resume frame onto the stack.
 	XLAT_ACTION_DONE,			//!< We're done evaluating this level of nesting.
@@ -43,13 +43,13 @@ typedef struct xlat_inst xlat_inst_t;
 typedef struct xlat_thread_inst xlat_thread_inst_t;
 typedef struct xlat_exp xlat_exp_t;
 
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/signal.h>
+
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/value.h>
-
 
 /** Instance data for an xlat expansion node
  *

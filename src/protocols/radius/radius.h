@@ -30,7 +30,6 @@
 
 #define AUTH_VECTOR_LEN		16
 #define CHAP_VALUE_LENGTH       16
-#define FR_MAX_STRING_LEN	254	/* RFC2138: string 0-253 octets */
 #define RADIUS_MAX_ATTRIBUTES	255
 
 #ifdef _LIBRADIUS

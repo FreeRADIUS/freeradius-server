@@ -393,7 +393,7 @@ rlm_eap_submodule_t rlm_eap_peap = {
 	.provides	= { FR_EAP_PEAP },
 	.inst_size	= sizeof(rlm_eap_peap_t),
 	.config		= submodule_config,
-	.load		= mod_load,
+	.onload		= mod_load,
 	.unload		= mod_unload,
 	.instantiate	= mod_instantiate,
 

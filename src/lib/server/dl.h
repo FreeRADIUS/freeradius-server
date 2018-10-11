@@ -65,7 +65,7 @@ typedef struct dl_module dl_t;
  *	- 0 on success.
  *	- -1 if initialisation failed.
  */
-typedef int (*module_load_t)(void);
+typedef int (*module_onload_t)(void);
 
 /** Called when the module is about to be unloaded (all instances destroyed)
  *
@@ -120,7 +120,7 @@ typedef void (*dl_free_t)(dl_t const *module, void *symbol, void *user_ctx);
 		size_t				inst_size;	\
 		char const			*inst_type;	\
 		CONF_PARSER const		*config;        \
-		module_load_t			load;           \
+		module_onload_t			onload;         \
 		module_unload_t			unload;		\
 		module_detach_t			detach;		\
 	}

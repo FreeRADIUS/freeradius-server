@@ -30,11 +30,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls - "
 
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/server/rad_assert.h>
+
 #include <openssl/rand.h>
 #include <openssl/dh.h>
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
 #include "base.h"
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL

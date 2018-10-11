@@ -34,6 +34,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/server/request.h>
 
+#include <freeradius-devel/rfc2865.h>
+
 #include <ctype.h>
 
 typedef struct paircmp_s paircmp_t;

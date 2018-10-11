@@ -1086,7 +1086,7 @@ rad_module_t rlm_python = {
 	.thread_inst_size	= sizeof(rlm_python_thread_t),
 
 	.config			= module_config,
-	.load			= mod_load,
+	.onload			= mod_load,
 	.unload			= mod_unload,
 
 	.instantiate		= mod_instantiate,

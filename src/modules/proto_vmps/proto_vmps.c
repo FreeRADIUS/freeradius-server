@@ -676,7 +676,7 @@ fr_app_t proto_vmps = {
 	.config			= proto_vmps_config,
 	.inst_size		= sizeof(proto_vmps_t),
 
-	.load			= mod_load,
+	.onload			= mod_load,
 	.unload			= mod_unload,
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,

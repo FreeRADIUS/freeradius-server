@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/udp.h>
+#include <freeradius-devel/vqp.h>
 
 #include "vqp.h"
 

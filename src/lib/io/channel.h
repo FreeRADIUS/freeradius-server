@@ -25,14 +25,6 @@
  */
 RCSIDH(channel_h, "$Id$")
 
-#include <freeradius-devel/io/message.h>
-#include <freeradius-devel/io/control.h>
-#include <freeradius-devel/io/base.h>
-#include <freeradius-devel/util/dlist.h>
-
-#include <sys/types.h>
-#include <sys/event.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -51,6 +43,22 @@ typedef struct fr_channel_t fr_channel_t;
  *	the network threads can push transports to worker threads.
  */
 typedef struct fr_listen fr_listen_t;
+
+#ifdef __cplusplus
+}
+#endif
+
+#include <freeradius-devel/io/message.h>
+#include <freeradius-devel/io/control.h>
+#include <freeradius-devel/io/base.h>
+#include <freeradius-devel/util/dlist.h>
+
+#include <sys/types.h>
+#include <sys/event.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef enum fr_channel_event_t {
 	FR_CHANNEL_ERROR = 0,

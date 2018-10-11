@@ -28,8 +28,15 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modules.h>
-#include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/state.h>
+
+#include <freeradius-devel/util/print.h>
+
+#include <freeradius-devel/radius/defs.h>
+
+#include <freeradius-devel/attributes.h>
 
 #include <ctype.h>
 
@@ -218,7 +225,7 @@ rlm_rcode_t rad_postauth(REQUEST *request)
  *	The return value of this function isn't actually used right now, so
  *	it's not entirely clear if it is returning the right things. --Pac.
  */
-rlm_rcode_t rad_authenticate(REQUEST *request)
+static rlm_rcode_t rad_authenticate(REQUEST *request)
 {
 	VALUE_PAIR	*tmp = NULL;
 	int		result;

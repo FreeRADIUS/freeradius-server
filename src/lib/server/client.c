@@ -26,14 +26,18 @@
  */
 RCSID("$Id$")
 
-#include <ctype.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/server/rad_assert.h>
+
 #include <freeradius-devel/util/trie.h>
+#include <freeradius-devel/util/misc.h>
+
+#include <freeradius-devel/attributes.h>
+
+#include <ctype.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 //#define WITH_TRIE (1)
 

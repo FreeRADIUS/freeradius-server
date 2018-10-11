@@ -25,16 +25,24 @@
  */
 RCSIDH(schedule_h, "$Id$")
 
-#include <freeradius-devel/io/worker.h>
-#include <freeradius-devel/io/network.h>
-#include <freeradius-devel/util/log.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct fr_schedule_t fr_schedule_t;
 
+#ifdef __cplusplus
+}
+#endif
+
+#include <freeradius-devel/io/channel.h>
+#include <freeradius-devel/io/network.h>
+#include <freeradius-devel/io/worker.h>
+#include <freeradius-devel/util/log.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 /** Setup a new thread
  *
  * @param[in] ctx	to allocate any thread specific memory in.

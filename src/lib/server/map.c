@@ -28,9 +28,16 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/map.h>
+#include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/rad_assert.h>
+
+#include <freeradius-devel/util/pair_cursor.h>
+#include <freeradius-devel/util/misc.h>
+
+#include <freeradius-devel/rfc2865.h>
+#include <freeradius-devel/attributes.h>
 
 #include <ctype.h>
 

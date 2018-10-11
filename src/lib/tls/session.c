@@ -28,10 +28,15 @@
 #ifdef HAVE_OPENSSL_OCSP_H
 #define LOG_PREFIX "tls - "
 
-#include <ctype.h>
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/pair.h>
+
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/attributes.h>
+
 #include <openssl/x509v3.h>
+#include <ctype.h>
+
 #include "base.h"
 #include "tls_attrs.h"
 

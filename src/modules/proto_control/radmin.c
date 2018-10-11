@@ -68,9 +68,17 @@ DIAG_ON(strict-prototypes)
 #define LOG_PREFIX "radmin - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/radmin.h>
+
+#include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/socket.h>
+
+
 #include "conduit.h"
 
 /*

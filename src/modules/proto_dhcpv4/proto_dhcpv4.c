@@ -724,7 +724,7 @@ fr_app_t proto_dhcpv4 = {
 	.config			= proto_dhcpv4_config,
 	.inst_size		= sizeof(proto_dhcpv4_t),
 
-	.load			= mod_load,
+	.onload			= mod_load,
 	.unload			= mod_unload,
 
 	.bootstrap		= mod_bootstrap,

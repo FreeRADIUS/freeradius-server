@@ -358,7 +358,7 @@ rad_module_t rlm_redis = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_redis_t),
 	.config		= module_config,
-	.load		= mod_load,
+	.onload		= mod_load,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 };

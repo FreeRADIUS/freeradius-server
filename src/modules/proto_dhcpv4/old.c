@@ -1119,7 +1119,7 @@ rad_protocol_t proto_dhcp = {
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
 
-	.load		= dhcp_load,
+	.onload		= dhcp_load,
 	.unload		= dhcp_unload,
 	.compile	= dhcp_listen_compile,
 	.parse		= dhcp_socket_parse,

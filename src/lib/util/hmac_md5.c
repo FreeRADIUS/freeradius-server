@@ -31,6 +31,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/thread_local.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <freeradius-devel/tls/base.h>

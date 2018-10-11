@@ -830,7 +830,7 @@ fr_app_t proto_radius = {
 	.config			= proto_radius_config,
 	.inst_size		= sizeof(proto_radius_t),
 
-	.load			= mod_load,
+	.onload			= mod_load,
 	.unload			= mod_unload,
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,

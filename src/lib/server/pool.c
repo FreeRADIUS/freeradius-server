@@ -29,11 +29,13 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS pool->log_prefix
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/rad_assert.h>
 
-typedef struct fr_pool_connection fr_pool_connection_t;
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/util/misc.h>
+
+typedef struct fr_pool_connection_s fr_pool_connection_t;
 
 static int connection_check(fr_pool_t *pool, REQUEST *request);
 
@@ -44,7 +46,7 @@ static int connection_check(fr_pool_t *pool, REQUEST *request);
  *
  * @see fr_pool_t
  */
-struct fr_pool_connection {
+struct fr_pool_connection_s {
 	fr_pool_connection_t	*prev;			//!< Previous connection in list.
 	fr_pool_connection_t	*next;			//!< Next connection in list.
 	int32_t		heap_id;			//!< For the next connection heap.
@@ -78,7 +80,7 @@ struct fr_pool_connection {
  *
  * @see fr_connection
  */
-struct fr_pool {
+struct fr_pool_s {
 	int		ref;			//!< Reference counter to prevent connection
 						//!< pool being freed multiple times.
 	uint32_t	start;			//!< Number of initial connections.

@@ -36,7 +36,7 @@ extern "C" {
  * All module functions must return one of the codes listed below (apart from
  * RLM_MODULE_NUMCODES, which is used to check for validity).
  */
-typedef enum rlm_rcodes {
+typedef enum {
 	RLM_MODULE_REJECT = 0,				//!< Immediately reject the request.
 	RLM_MODULE_FAIL,				//!< Module failed, don't reply.
 	RLM_MODULE_OK,					//!< The module is OK, continue.

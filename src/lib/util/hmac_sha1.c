@@ -32,6 +32,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/sha1.h>
+#include <freeradius-devel/util/thread_local.h>
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
 unsigned int sha1_data_problems = 0;

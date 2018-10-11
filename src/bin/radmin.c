@@ -25,10 +25,14 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/radmin.h>
+
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/socket.h>
 
 #ifdef HAVE_LIBREADLINE
 

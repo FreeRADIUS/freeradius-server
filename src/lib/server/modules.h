@@ -25,14 +25,31 @@
  */
 RCSIDH(modules_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct rad_module_s rad_module_t;
+typedef struct module_instance_s module_instance_t;
+typedef struct section_type_value_s section_type_value_t;
+typedef struct module_thread_instance_s  module_thread_instance_t;
+
+#ifdef __cplusplus
+}
+#endif
+
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/dl.h>
-#include <freeradius-devel/features.h>
-#include <freeradius-devel/server/pool.h>
-#include <freeradius-devel/server/exfile.h>
-#include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/components.h>
+#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/server/pool.h>
+#include <freeradius-devel/server/rcode.h>
+
+#include <freeradius-devel/io/schedule.h>
+
 #include <freeradius-devel/unlang/base.h>
+
+#include <freeradius-devel/features.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,11 +62,11 @@ extern const FR_NAME_NUMBER mod_rcode_table[];
  * Used by module.c to define the mappings between names, types and control
  * attributes.
  */
-typedef struct section_type_value_t {
+struct section_type_value_s {
 	char const      *section;		//!< Section name e.g. "Authorize".
 	char const      *typename;		//!< Type name e.g. "Auth-Type".
 	int		attr;			//!< Attribute number.
-} section_type_value_t;
+};
 
 /** Mappings between section names, typenames and control attributes
  *
@@ -185,7 +202,7 @@ typedef void (*fr_unlang_module_signal_t)(REQUEST *request, void *instance, void
  * Determines the capabilities of the module, and maps internal functions
  * within the module to different sections.
  */
-typedef struct rad_module_t {
+struct rad_module_s {
 	RAD_MODULE_COMMON;
 
 	int			type;			//!< Type flags that control calling conventions for modules.
@@ -199,7 +216,7 @@ typedef struct rad_module_t {
 	size_t			thread_inst_size;	//!< Size of data to allocate to the thread instance.
 
 	module_method_t		methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
-} rad_module_t;
+};
 
 /** Per instance data
  *
@@ -207,7 +224,7 @@ typedef struct rad_module_t {
  * instance names (may NOT be the module names!), and the per-instance
  * data structures.
  */
-typedef struct {
+struct module_instance_s {
 	char const			*name;		//!< Instance name e.g. user_database.
 
 	dl_instance_t			*dl_inst;	//!< Structure containing the module's instance data,
@@ -224,13 +241,13 @@ typedef struct {
 
 	rlm_rcode_t			code;		//!< Code module will return when 'force' has
 							//!< has been set to true.
-} module_instance_t;
+};
 
 /** Per thread per instance data
  *
  * Stores module and thread specific data.
  */
-typedef struct {
+struct module_thread_instance_s {
 	void				*data;		//!< Thread specific instance data.
 
 	fr_event_list_t			*el;		//!< Event list associated with this thread.
@@ -244,7 +261,7 @@ typedef struct {
 
 	uint64_t			total_calls;	//! total number of times we've been called
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
-} module_thread_instance_t;
+};
 
 /*
  *	Share connection pool instances between modules

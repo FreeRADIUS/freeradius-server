@@ -29,14 +29,17 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/server/state.h>
+
 #include <freeradius-devel/tls/base.h>
+
 #include <freeradius-devel/unlang/base.h>
+
+#include <freeradius-devel/util/misc.h>
 
 #include <ctype.h>
 #include <fcntl.h>

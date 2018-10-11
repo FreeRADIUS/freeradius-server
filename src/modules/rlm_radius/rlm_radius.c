@@ -899,7 +899,7 @@ rad_module_t rlm_radius = {
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
-	.load		= mod_load,
+	.onload		= mod_load,
 	.unload		= mod_unload,
 
 	.thread_inst_size = sizeof(rlm_radius_thread_t),

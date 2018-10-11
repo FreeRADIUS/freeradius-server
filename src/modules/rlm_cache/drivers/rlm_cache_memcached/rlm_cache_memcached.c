@@ -313,7 +313,7 @@ cache_driver_t rlm_cache_memcached = {
 	.inst_size	= sizeof(rlm_cache_memcached_t),
 	.config		= driver_config,
 
-	.load		= mod_load,
+	.onload		= mod_load,
 	.instantiate	= mod_instantiate,
 
 	.free		= cache_entry_free,

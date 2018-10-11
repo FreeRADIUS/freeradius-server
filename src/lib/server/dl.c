@@ -25,12 +25,15 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/log.h>
+#include <freeradius-devel/server/rad_assert.h>
+
+#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/syserror.h>
+
 #include <ctype.h>
 #include <unistd.h>
-#include <freeradius-devel/server/dl.h>
-#include <freeradius-devel/util/cursor.h>
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/server/base.h>
 
 #ifdef HAVE_VALGRIND_H
 #  include <valgrind.h>
@@ -192,7 +195,7 @@ static int dl_handle_cmp(void const *one, void const *two)
  */
 static int dl_load_func(dl_t const *dl_module, UNUSED void *symbol, UNUSED void *ctx)
 {
-	if (dl_module->common->load && (dl_module->common->load() < 0)) {
+	if (dl_module->common->onload && (dl_module->common->onload() < 0)) {
 		ERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
 		return -1;
 	}

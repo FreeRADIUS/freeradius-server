@@ -574,7 +574,7 @@ fr_app_t proto_control = {
 	.config			= proto_control_config,
 	.inst_size		= sizeof(proto_control_t),
 
-	.load			= mod_load,
+	.onload			= mod_load,
 	.unload			= mod_unload,
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,

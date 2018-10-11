@@ -28,6 +28,8 @@
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/cond_eval.h>
+
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/event.h>
 

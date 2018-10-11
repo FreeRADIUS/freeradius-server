@@ -26,6 +26,17 @@
  */
 RCSIDH(map_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct vp_map_s vp_map_t;
+typedef struct vp_list_mod_s vp_list_mod_t;
+
+#ifdef __cplusplus
+}
+#endif
+
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
 
@@ -43,7 +54,7 @@ extern "C" {
  *
  * @see vp_tmpl_t
  */
-typedef struct vp_map {
+struct vp_map_s {
 	vp_tmpl_t		*lhs;		//!< Typically describes the attribute to add, modify or compare.
 	vp_tmpl_t		*rhs;   	//!< Typically describes a literal value or a src attribute
 						///< to copy or compare.
@@ -54,19 +65,19 @@ typedef struct vp_map {
 	CONF_ITEM		*ci;		//!< Config item that the map was created from. Mainly used for
 						//!< logging validation errors.
 
-	struct vp_map		*next;		//!< The next valuepair map.
-} vp_map_t;
+	vp_map_t		*next;		//!< The next valuepair map.
+};
 
 /** A list modification
  *
  */
-typedef struct vp_list_mod {
+struct vp_list_mod_s {
 	vp_map_t const		*map;		//!< Original map describing the change to be made.
 
 	vp_map_t		*mod;		//!< New map containing the destination (LHS) and
 						///< values (RHS).
-	struct vp_list_mod	*next;
-} vp_list_mod_t;
+	vp_list_mod_t		*next;
+};
 
 #ifndef WITH_VERIFY_PTR
 #  define MAP_VERIFY(_x) rad_assert((_x)->lhs)

@@ -204,7 +204,7 @@ rad_module_t rlm_dhcpv4 = {
 	.name		= "dhcpv4",
 	.inst_size	= sizeof(rlm_dhcpv4_t),
 
-	.load		= dhcp_load,
+	.onload		= dhcp_load,
 	.unload		= dhcp_unload,
 	.bootstrap	= mod_bootstrap,
 };

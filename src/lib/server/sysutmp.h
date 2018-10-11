@@ -25,6 +25,8 @@
  */
 RCSIDH(sysutmp_h, "$Id$")
 
+#include <freeradius-devel/autoconf.h>
+
 /*
  *  If we have BOTH utmp.h and utmpx.h, then
  *  we prefer to use utmp.h, but only on systems other than Solaris.
@@ -41,7 +43,7 @@ RCSIDH(sysutmp_h, "$Id$")
 #ifdef HAVE_UTMPX_H
 #  include <utmpx.h>
 #  include <sys/fcntl.h>
-#  define utmp utmpx
+#  define USE_UTMPX     1
 #  define UT_NAMESIZE	32
 #  define UT_LINESIZE	32
 #  define UT_HOSTSIZE	257

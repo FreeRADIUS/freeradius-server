@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
@@ -22,15 +23,15 @@
  */
 RCSIDH(rand_h, "$Id$")
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 
 #include <stddef.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* random numbers in isaac.c */
 /* context of random number generator */

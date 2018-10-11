@@ -34,6 +34,8 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/sysutmp.h>
 
 #include <grp.h>
 #include <pwd.h>
@@ -44,9 +46,6 @@ USES_APPLE_DEPRECATED_API
 #ifdef HAVE_SHADOW_H
 #  include <shadow.h>
 #endif
-
-#include<freeradius-devel/server/modules.h>
-#include <freeradius-devel/server/sysutmp.h>
 
 static char trans[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define ENC(c) trans[c]
@@ -468,8 +467,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		strlcpy(ut.ut_host, buf, sizeof(ut.ut_host));
 	}
 #endif
-#ifdef HAVE_UTMPX_H
-	ut.ut_xtime = t- delay;
+#ifdef USE_UTMPX
+	ut.ut_xtime = t - delay;
 #else
 	ut.ut_time = t - delay;
 #endif

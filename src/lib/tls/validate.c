@@ -28,8 +28,13 @@
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls - "
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/exec.h>
+#include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/rad_assert.h>
+
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+
 #include "base.h"
 #include "tls_attrs.h"
 

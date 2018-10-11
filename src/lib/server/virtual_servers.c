@@ -28,14 +28,18 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/command.h>
+#include <freeradius-devel/server/dl.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/parser.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/server/dl.h>
-#include <freeradius-devel/server/command.h>
+
 #include <freeradius-devel/io/application.h>
+#include <freeradius-devel/io/listen.h>
+
+#include <freeradius-devel/unlang/base.h>
+
+#include <freeradius-devel/attributes.h>
 
 /*
  *	Ordered by component

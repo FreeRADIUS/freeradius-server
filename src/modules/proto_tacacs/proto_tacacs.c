@@ -678,7 +678,7 @@ extern rad_protocol_t proto_tacacs;
 rad_protocol_t proto_tacacs = {
 	.name		= "tacacs",
 	.magic		= RLM_MODULE_INIT,
-	.load		= mod_load,
+	.onload		= mod_load,
 	.unload		= mod_unload,
 	.config		= proto_tacacs_config,
 	.inst_size	= sizeof(proto_tacacs_t),

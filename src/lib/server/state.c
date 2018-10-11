@@ -48,9 +48,12 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/rad_assert.h>
+
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/rand.h>
 
 /** Holds a state value, and associated VALUE_PAIRs and data
  *
@@ -520,7 +523,7 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 
 	/*
 	 *	Assume our own State first.
-	 */	
+	 */
 	if (vb->vb_length == sizeof(my_entry.state)) {
 		memcpy(my_entry.state, vb->vb_octets, sizeof(my_entry.state));
 

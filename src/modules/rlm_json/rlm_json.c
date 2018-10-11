@@ -380,6 +380,6 @@ rad_module_t rlm_json = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "json",
 	.type		= RLM_TYPE_THREAD_SAFE,
-	.load		= mod_load,
+	.onload		= mod_load,
 	.bootstrap	= mod_bootstrap,
 };

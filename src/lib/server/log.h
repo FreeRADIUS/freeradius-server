@@ -38,17 +38,12 @@ extern "C" {
  */
 typedef struct log_dst log_dst_t;
 
-#ifdef __cplusplus
-}
-#endif
-
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/pair.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+extern fr_log_lvl_t	rad_debug_lvl;		//!< Global debug level.
+extern fr_log_lvl_t	req_debug_lvl;		//!< Request specific debug level.
 
 /** Logging callback to write log messages to a destination
  *
@@ -63,8 +58,8 @@ extern "C" {
  * @param[in] ap	Arguments for the fmt string.
  * @param[in] uctx	Context data for the log function.  Usually an #fr_log_t for vlog_request.
  */
-typedef	void (*log_func_t)(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *fmt, va_list ap, void *uctx);
-
+typedef	void (*log_func_t)(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+			   char const *fmt, va_list ap, void *uctx);
 
 struct log_dst {
 	log_func_t	func;	//!< Function to call to log to this destination.

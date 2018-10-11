@@ -145,11 +145,17 @@
  *   after some time.  This time is configurable.
  *
  */
+
+#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/cf_parse.h>
+
+#include <freeradius-devel/util/fifo.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/rand.h>
+
 #include "base.h"
 #include "cluster.h"
 #include "crc16.h"
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/server/cf_parse.h>
 
 #define KEY_SLOTS		16384			//!< Maximum number of keyslots (should not change).
 

@@ -27,10 +27,12 @@ RCSID("$Id$")
 #include <freeradius-devel/server/stats.h>
 #include <freeradius-devel/server/util.h>
 
-#include <ctype.h>
+#include <freeradius-devel/util/misc.h>
 
-#include <sys/stat.h>
+#include <ctype.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <sys/stat.h>
 
 static bool suid_down_permanent = false;	//!< Record whether we've permanently dropped privilledges
 

@@ -22,7 +22,7 @@
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-RCSIDH(cond_eval_h, "$Id$")
+RCSIDH(connection_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
