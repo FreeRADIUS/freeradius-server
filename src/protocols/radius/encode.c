@@ -413,7 +413,7 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 
 static ssize_t encode_struct(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      fr_cursor_t *cursor, void *encoder_ctx)
+			      fr_cursor_t *cursor)
 {
 	ssize_t			len;
 	unsigned int		child_num = 1;
@@ -466,8 +466,8 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		 *
 		 *	@fixme: allow structs within structs
 		 */
-		len = encode_value(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
-		if (len <= 0) return len;
+		len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
+		if (len <= 0) return -1;
 
 		p += len;
 		outlen -= len;				/* Subtract from the buffer we have available */
@@ -618,7 +618,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	This has special requirements.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		len = encode_struct(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
+		len = encode_struct(out, outlen, tlv_stack, depth, cursor);
 		if (len < 0) return len;
 
 		vp = next_encodable(cursor);
