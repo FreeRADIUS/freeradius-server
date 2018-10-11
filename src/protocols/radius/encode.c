@@ -474,24 +474,16 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		child_num++;
 
 		vp = next_encodable(cursor);
+		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 
 		/*
-		 *	Nothing more to do, we're done.
+		 *	Nothing more to do, or we've done all of the
+		 *	entries in this structure, stop.
 		 */
-		if (!vp) break;
-
-		/*
-		 *	If the next VP isn't from the same parent, then stop.
-		 */
-		if (vp->da->parent != da) {
-			break;
-		}
-
-		fr_proto_tlv_stack_build(tlv_stack, vp->da);
-		FR_PROTO_HEX_DUMP("Done STRUCT", out, p - out);
+		if (!vp || (vp->da->parent != da)) break;
 	}
 
-	fr_proto_tlv_stack_build(tlv_stack, NULL);
+	FR_PROTO_HEX_DUMP("Done STRUCT", out, p - out);
 
 	return p - out;
 }
@@ -622,12 +614,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	This has special requirements.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		len = encode_struct(out, outlen, tlv_stack, depth, cursor);
-		if (len < 0) return len;
-
-		vp = fr_cursor_current(cursor);
-		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
-		return len;
+		return encode_struct(out, outlen, tlv_stack, depth, cursor);
 	}
 
 	/*
