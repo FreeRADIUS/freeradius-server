@@ -15,6 +15,10 @@
 #  to change the user passwords in order to re-generate the
 #  appropriate hashes.
 #
+#  Complete OSX configuration information is available on Apple's web site:
+#
+#	https://developer.apple.com/support/macos-server/macOS-Server-Service-Migration-Guide.pdf
+#
 #  See also https://discussions.apple.com/thread/6053980?tstart=0
 #
 opendirectory {
