@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+ <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+“http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+ <plist version="1.0">
+ <dict>
+ <key>Disabled</key>
+ <true/>
+ <key>EnableTransactions</key>
+ <true/>
+ <key>Label</key>
+ <string>org.freeradius.radiusd</string>
+ <key>KeepAlive</key>
+ <true/>
+ <key>ProcessType</key>
+ <string>Standard</string>
+ <key>ProgramArguments</key>
+ <array>
+ <string>/usr/local/sbin/radiusd</string>
+ <string>-sf</string>
+ </array>
+ </dict>
+ </plist>
