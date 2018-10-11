@@ -136,3 +136,75 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	return data_len;
 }
 
+
+ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
+			     fr_dict_attr_t const *parent, fr_cursor_t *cursor)
+{
+	ssize_t			len;
+	unsigned int		child_num = 1;
+	uint8_t			*p = out;
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+
+	VP_VERIFY(fr_cursor_current(cursor));
+
+	if (parent->type != FR_TYPE_STRUCT) {
+		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
+				   fr_int2str(fr_value_box_type_names, parent->type, "?Unknown?"));
+		return -1;
+	}
+
+	if (!vp || (vp->da->parent != parent)) {
+		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
+		return -1;
+	}
+
+	while (outlen) {
+		fr_dict_attr_t const *child_da;
+
+		/*
+		 *	The child attributes should be in order.  If
+		 *	they're not, we fill the struct with zeroes.
+		 */
+		child_da = vp->da;
+		if (child_da->attr != child_num) {
+			child_da = fr_dict_attr_child_by_num(parent, child_num);
+
+			if (!child_da) break;
+
+			if (child_da->flags.length < outlen) break;
+
+			len = child_da->flags.length;
+			memset(p, 0, len);
+
+			p += len;
+			outlen -= len;
+			child_num++;
+			continue;
+		}
+
+		/*
+		 *	Determine the nested type and call the appropriate encoder
+		 *
+		 *	@fixme: allow structs within structs
+		 */
+		len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
+		if (len <= 0) return -1;
+
+		p += len;
+		outlen -= len;				/* Subtract from the buffer we have available */
+		child_num++;
+
+		do {
+			vp = fr_cursor_next(cursor);
+			if (!vp || !vp->da->flags.internal) break;
+		} while (vp != NULL);
+
+		/*
+		 *	Nothing more to do, or we've done all of the
+		 *	entries in this structure, stop.
+		 */
+		if (!vp || (vp->da->parent != parent)) break;
+	}
+
+	return p - out;
+}
