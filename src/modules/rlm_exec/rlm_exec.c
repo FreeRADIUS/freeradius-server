@@ -353,7 +353,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 	 *	If we're not waiting, then there are no output pairs.
 	 */
 	if (inst->output) {
-		fr_pair_list_move(request, output_pairs, &answer);
+		fr_pair_list_move(ctx, output_pairs, &answer);
 	}
 	fr_pair_list_free(&answer);
 
