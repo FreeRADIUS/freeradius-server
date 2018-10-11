@@ -473,21 +473,25 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		outlen -= len;				/* Subtract from the buffer we have available */
 		child_num++;
 
-		/*
-		 *	If nothing updated the attribute, stop
-		 */
-		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
+		vp = next_encodable(cursor);
 
 		/*
-		 *	We can encode multiple sub TLVs, if after
-		 *	rebuilding the TLV Stack, the attribute
-		 *	at this depth is the same.
+		 *	Nothing more to do, we're done.
 		 */
-		if (da != tlv_stack[depth]) break;
-		vp = fr_cursor_current(cursor);
+		if (!vp) break;
 
+		/*
+		 *	If the next VP isn't from the same parent, then stop.
+		 */
+		if (vp->da->parent != da) {
+			break;
+		}
+
+		fr_proto_tlv_stack_build(tlv_stack, vp->da);
 		FR_PROTO_HEX_DUMP("Done STRUCT", out, p - out);
 	}
+
+	fr_proto_tlv_stack_build(tlv_stack, NULL);
 
 	return p - out;
 }
@@ -621,7 +625,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		len = encode_struct(out, outlen, tlv_stack, depth, cursor);
 		if (len < 0) return len;
 
-		vp = next_encodable(cursor);
+		vp = fr_cursor_current(cursor);
 		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 		return len;
 	}
