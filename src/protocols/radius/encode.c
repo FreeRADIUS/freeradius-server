@@ -412,25 +412,23 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 }
 
 static ssize_t encode_struct(uint8_t *out, size_t outlen,
-			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      fr_cursor_t *cursor)
+			     fr_dict_attr_t const *parent,
+			     fr_cursor_t *cursor)
 {
 	ssize_t			len;
 	unsigned int		child_num = 1;
 	uint8_t			*p = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
-	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	VP_VERIFY(fr_cursor_current(cursor));
-	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	if (tlv_stack[depth]->type != FR_TYPE_STRUCT) {
+	if (parent->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
-				   fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_names, parent->type, "?Unknown?"));
 		return -1;
 	}
 
-	if (!tlv_stack[depth + 1]) {
+	if (!vp || (vp->da->parent != parent)) {
 		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
 		return -1;
 	}
@@ -438,15 +436,13 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 	while (outlen) {
 		fr_dict_attr_t const *child_da;
 
-		FR_PROTO_STACK_PRINT(tlv_stack, depth);
-
 		/*
 		 *	The child attributes should be in order.  If
 		 *	they're not, we fill the struct with zeroes.
 		 */
 		child_da = vp->da;
 		if (child_da->attr != child_num) {
-			child_da = fr_dict_attr_child_by_num(da, child_num);
+			child_da = fr_dict_attr_child_by_num(parent, child_num);
 
 			if (!child_da) break;
 
@@ -474,13 +470,12 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		child_num++;
 
 		vp = next_encodable(cursor);
-		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 
 		/*
 		 *	Nothing more to do, or we've done all of the
 		 *	entries in this structure, stop.
 		 */
-		if (!vp || (vp->da->parent != da)) break;
+		if (!vp || (vp->da->parent != parent)) break;
 	}
 
 	FR_PROTO_HEX_DUMP("Done STRUCT", out, p - out);
@@ -614,7 +609,12 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	This has special requirements.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		return encode_struct(out, outlen, tlv_stack, depth, cursor);
+		len = encode_struct(out, outlen, tlv_stack[depth], cursor);
+		if (len <= 0) return len;
+
+		vp = fr_cursor_current(cursor);
+		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
+		return len;
 	}
 
 	/*
