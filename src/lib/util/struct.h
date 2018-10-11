@@ -17,7 +17,7 @@
 
 /** Boxed value structures and functions to manipulate them
  *
- * @file src/lib/io/struct.h
+ * @file src/lib/util/struct.h
  *
  * @copyright 2018 Alan DeKok <aland@freeradius.org>
  */

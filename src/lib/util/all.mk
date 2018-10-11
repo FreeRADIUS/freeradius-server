@@ -42,6 +42,7 @@ SOURCES		:= \
 		   strerror.c \
 		   strlcat.c \
 		   strlcpy.c \
+		   struct.c \
 		   syserror.c \
 		   talloc.c \
 		   token.c \
