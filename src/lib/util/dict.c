@@ -1107,16 +1107,27 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		 *	Sneak in the length of the children.
 		 */
 		memcpy(&mutable, &parent, sizeof(mutable));
-		mutable->flags.length += flags->length;
 
 		/*
 		 *	The struct has a maximum size.  Complain if we exceed it.
 		 */
-		if (mutable->flags.type_size && (mutable->flags.length > mutable->flags.type_size)) {
-			fr_strerror_printf("Child attribute causes struct to overflow maximum size of %d octets",
-					   mutable->flags.type_size);
-			goto error;
+		if (flags->length) {
+			if (mutable->flags.type_size && ((mutable->flags.length + flags->length) > mutable->flags.type_size)) {
+				fr_strerror_printf("Child attribute causes struct to overflow maximum size of %d octets",
+						   mutable->flags.type_size);
+				goto error;
+			}
+			mutable->flags.length += flags->length;
+
+		} else {
+			/*
+			 *	This is a bad hack... set the struct
+			 *	size to it's maximum value, which
+			 *	indicates that it has variable length.
+			 */
+			mutable->flags.length = 0;
 		}
+
 	}
 
 	return true;
