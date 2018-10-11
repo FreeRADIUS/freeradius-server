@@ -1034,6 +1034,17 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		 */
 	case FR_TYPE_STRUCT:
 		flags->length = 0;
+
+		if (flags->encrypt != FLAG_ENCRYPT_NONE) {
+			fr_strerror_printf("Attributes of type 'struct' MUST NOT be encrypted.");
+			goto error;
+		}
+
+		if (flags->internal || flags->has_tag || flags->array || flags->concat || flags->virtual) {
+			fr_strerror_printf("Invalid flag for attribute of type 'struct'");
+			goto error;
+		}
+
 		break;
 
 	case FR_TYPE_STRING:
@@ -1050,6 +1061,16 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	 */
 	if (parent->type == FR_TYPE_STRUCT) {
 		fr_dict_attr_t *mutable;
+
+		if (flags->encrypt != FLAG_ENCRYPT_NONE) {
+			fr_strerror_printf("Attributes inside a 'struct' MUST NOT be encrypted.");
+			goto error;
+		}
+
+		if (flags->internal || flags->has_tag || flags->array || flags->concat || flags->virtual) {
+			fr_strerror_printf("Invalid flag for attribute inside a 'struct'");
+			goto error;
+		}
 
 		if (*attr > 1) {
 			fr_dict_attr_t const *sibling;
