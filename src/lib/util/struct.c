@@ -62,23 +62,30 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	fr_dict_attr_t const	*child;
 	VALUE_PAIR		*head = NULL;
 	fr_cursor_t		child_cursor;
+	VALUE_PAIR		*vp;
 
 	if (data_len < 1) return -1; /* at least one byte of data */
-
-	/*
-	 *	Data is too small for the structure, ignore it.
-	 */
-	if (data_len < parent->flags.length) goto raw;
 
 	/*
 	 *  Record where we were in the list when this function was called
 	 */
 	fr_cursor_init(&child_cursor, &head);
 
+	/*
+	 *	Data is too small for the structure, ignore it.
+	 */
+	if (data_len < parent->flags.length) {
+	raw:
+		vp = fr_unknown_from_network(ctx, parent, data, data_len);
+		if (!vp) return -1;
+
+		fr_cursor_append(&child_cursor, vp);
+		return data_len;
+	}
+
 	child_num = 1;
 	while (p < end) {
 		size_t child_length;
-		VALUE_PAIR *vp;
 
 		/*
 		 *	Go to the next child.  If it doesn't exist, we're done.
@@ -102,24 +109,20 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			return -1;
 
 		case FR_TYPE_VALUES:
-		case FR_TYPE_STRUCT:
 			break;
 		}
 
 		/*
-		 *	No protocol-specific magic here.
+		 *	No protocol-specific data types here (yet).
+		 *
+		 *	If we can't decode this field, then the entire
+		 *	structure is treated as a raw blob.
 		 */
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, child_length, true) < 0) {
 			TALLOC_FREE(vp);
-
 			fr_pair_list_free(&head);
-
-		raw:
 			fr_cursor_init(&child_cursor, &head);
-
-			vp = fr_unknown_from_network(ctx, parent, data, data_len);
-			if (vp) fr_cursor_append(&child_cursor, vp);
-			break;
+			goto raw;
 		}
 
 		vp->type = VT_DATA;
