@@ -1262,8 +1262,29 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	attribute, OR it's already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		rcode = fr_struct_from_network(ctx, cursor, parent, p, attr_len);
+		rcode = fr_struct_from_network(ctx, cursor, parent, p, attr_len, &child);
 		if (rcode < 0) goto raw;
+
+		/*
+		 *	The above function only decodes fixed fields
+		 *	and strings.  If there are TLVs at the end of
+		 *	the struct, we have to decode them manually
+		 *	here.
+		 */
+		if (child && ((size_t) rcode < attr_len)) {
+			size_t tlv_len;
+
+			/*
+			 *	Try to decode the TLVs
+			 */
+			tlv_len = fr_radius_decode_tlv(ctx, cursor, child, p + rcode, attr_len - rcode,
+						       decoder_ctx);
+			if (tlv_len < 0) {
+				vp = fr_unknown_from_network(ctx, child, p + rcode, attr_len - rcode);
+				if (vp) fr_cursor_append(cursor, vp);
+			}
+		}
+
 		return attr_len;
 
 	case FR_TYPE_VSA:

@@ -55,7 +55,8 @@ VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
  *
  */
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
-				     fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
+			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
+			       fr_dict_attr_t const **child_p)
 {
 	unsigned int		child_num;
 	uint8_t const		*p = data, *end = data + data_len;
@@ -70,6 +71,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	 *  Record where we were in the list when this function was called
 	 */
 	fr_cursor_init(&child_cursor, &head);
+	*child_p = NULL;
 
 	/*
 	 *	Data is too small for the structure, ignore it.
@@ -92,6 +94,21 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 */
 		child = fr_dict_attr_child_by_num(parent, child_num);
 		if (!child) break;
+
+		/*
+		 *	Decode child TLVs, according to the parent attribute.
+		 *
+		 *	Return only PARTIALLY decoded data.  Let the
+		 *	caller decode the rest.
+		 */
+		if (child->type == FR_TYPE_TLV) {
+			*child_p = child;
+
+			fr_cursor_head(&child_cursor);
+			fr_cursor_tail(cursor);
+			fr_cursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
+			return (p - data);
+		}
 
 		child_length = child->flags.length;
 		if (!child_length) child_length = (end - p);

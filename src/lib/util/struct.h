@@ -32,7 +32,8 @@ extern "C" {
 #endif
 
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
-			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len) CC_HINT(nonnull);
+			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
+			       fr_dict_attr_t const **child) CC_HINT(nonnull(2,3,4));
 ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 			     fr_dict_attr_t const *parent, fr_cursor_t *cursor) CC_HINT(nonnull);
 
