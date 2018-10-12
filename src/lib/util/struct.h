@@ -25,15 +25,19 @@ RCSIDH(struct_h, "$Id$")
 
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/pair.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
-			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len);
+			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
-			     fr_dict_attr_t const *parent, fr_cursor_t *cursor);
+			     fr_dict_attr_t const *parent, fr_cursor_t *cursor) CC_HINT(nonnull);
+
+VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
+				    uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

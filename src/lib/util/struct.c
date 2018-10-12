@@ -25,7 +25,31 @@ RCSID("$Id$")
 
 #include "struct.h"
 
-#include <freeradius-devel/util/pair.h>
+VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
+{
+	VALUE_PAIR *vp;
+	fr_dict_attr_t const *child;
+
+	/*
+	 *	Build an unknown attr of the entire STRUCT.
+	 */
+	child = fr_dict_unknown_afrom_fields(ctx, parent->parent,
+					     fr_dict_vendor_num_by_da(parent), parent->attr);
+	if (!child) return NULL;
+
+	vp = fr_pair_afrom_da(ctx, child);
+	if (!vp) return NULL;
+
+	if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
+		TALLOC_FREE(vp);
+		return NULL;
+	}
+
+	vp->type = VT_DATA;
+	return vp;
+}
+
+
 
 /** Convert a STRUCT to one or more VPs
  *
@@ -84,8 +108,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 		/*
 		 *	No protocol-specific magic here.
-		 *
-		 *	@todo - allow it, if necessary
 		 */
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, child_length, true) < 0) {
 			TALLOC_FREE(vp);
@@ -95,24 +117,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		raw:
 			fr_cursor_init(&child_cursor, &head);
 
-			/*
-			 *	Build an unknown attr of the entire STRUCT.
-			 */
-			child = fr_dict_unknown_afrom_fields(ctx, parent->parent,
-							     fr_dict_vendor_num_by_da(parent), parent->attr);
-			if (!child) return -1;
-
-			vp = fr_pair_afrom_da(ctx, child);
-			if (!vp) return -1;
-
-			if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
-				TALLOC_FREE(vp);
-				return -1;
-			}
-
-			vp->type = VT_DATA;
-			vp->vp_tainted = true;
-			fr_cursor_append(&child_cursor, vp);
+			vp = fr_unknown_from_network(ctx, parent, data, data_len);
+			if (vp) fr_cursor_append(&child_cursor, vp);
 			break;
 		}
 
@@ -184,8 +190,6 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 
 		/*
 		 *	Determine the nested type and call the appropriate encoder
-		 *
-		 *	@fixme: allow structs within structs
 		 */
 		len = fr_value_box_to_network(NULL, p, outlen, &vp->data);
 		if (len <= 0) return -1;
