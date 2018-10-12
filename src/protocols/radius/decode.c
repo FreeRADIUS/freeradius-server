@@ -1145,7 +1145,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		rcode = fr_radius_decode_pair_value(ctx, cursor, child, p + 1, attr_len - 1, attr_len - 1,
 						    decoder_ctx);
 		if (rcode < 0) goto raw;
-		return 1 + rcode;
+		return attr_len;
 
 	case FR_TYPE_LONG_EXTENDED:
 		if (data_len < 3) goto raw; /* etype, flags, value */
@@ -1182,7 +1182,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			rcode = fr_radius_decode_pair_value(ctx, cursor, child, p + 2, attr_len - 2, attr_len - 2,
 							    decoder_ctx);
 			if (rcode < 0) goto raw;
-			return 2 + rcode;
+			return attr_len;
 		}
 
 		/*
@@ -1243,7 +1243,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		rcode = fr_radius_decode_pair_value(ctx, cursor, child, p + 5, attr_len - 5, attr_len - 5,
 						    decoder_ctx);
 		if (rcode < 0) goto raw;
-		return 5 + rcode;
+		return attr_len;
 	}
 
 	case FR_TYPE_TLV:
@@ -1254,7 +1254,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 */
 		rcode = fr_radius_decode_tlv(ctx, cursor, parent, p, attr_len, decoder_ctx);
 		if (rcode < 0) goto raw;
-		return rcode;
+		return attr_len;
 
 	case FR_TYPE_STRUCT:
 		/*
@@ -1264,7 +1264,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 */
 		rcode = fr_struct_from_network(ctx, cursor, parent, p, attr_len);
 		if (rcode < 0) goto raw;
-		return rcode;
+		return attr_len;
 
 	case FR_TYPE_VSA:
 		/*
@@ -1273,7 +1273,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 */
 		rcode = decode_vsa(ctx, cursor, parent, p, attr_len, packet_len, decoder_ctx);
 		if (rcode < 0) goto raw;
-		return rcode;
+		return attr_len;
 
 	default:
 	raw:
