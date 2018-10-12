@@ -1272,7 +1272,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	here.
 		 */
 		if (child && ((size_t) rcode < attr_len)) {
-			size_t tlv_len;
+			ssize_t tlv_len;
 
 			/*
 			 *	Try to decode the TLVs
