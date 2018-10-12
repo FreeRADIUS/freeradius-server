@@ -52,6 +52,11 @@ static int sql_num_fields(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_confi
 static sql_rcode_t sql_select_query(UNUSED rlm_sql_handle_t *handle,
 				    UNUSED rlm_sql_config_t *config, UNUSED char const *query)
 {
+	if (rad_debug_lvl >= L_DBG_LVL_1) {
+		radlog(L_DBG | L_WARN, "The 'rlm_sql_null' driver CANNOT be used for SELECTS");
+		radlog(L_DBG | L_WARN, "Please update the 'sql' module configuration to use a real database.");
+	}
+
 	return 0;
 }
 
