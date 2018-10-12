@@ -538,12 +538,40 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	This has special requirements.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		len = fr_struct_to_network(out, outlen, tlv_stack[depth], cursor);
-		if (len <= 0) return len;
+		ssize_t struct_len;
+
+		struct_len = fr_struct_to_network(out, outlen, tlv_stack[depth], cursor);
+		if (struct_len <= 0) return struct_len;
 
 		vp = fr_cursor_current(cursor);
 		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
-		return len;
+
+		out += struct_len;
+		outlen -= struct_len;
+
+		/*
+		 *	Encode any TLV, attributes which are part of this structure.
+		 *
+		 *	The fr_struct_to_network() function can't do
+		 *	this work, as it's not protocol aware, and
+		 *	doesn't have the tlv_stack or encoder_ctx.
+		 *
+		 *	Note that we call the "internal" encode
+		 *	function, as we don't want the encapsulating
+		 *	TLV to be encoded here.  It's number is just
+		 *	the field number in the struct.
+		 */
+		while (vp && (tlv_stack[depth] == da) && (outlen > 0)) {
+			len = encode_tlv_hdr_internal(out, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+			if (len < 0) return len;
+
+			struct_len += len;
+
+			vp = fr_cursor_current(cursor);
+			fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
+		}
+
+		return struct_len;
 	}
 
 	/*
