@@ -168,23 +168,25 @@ ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
 	}
 
 	while (outlen) {
-		fr_dict_attr_t const *child_da;
+		fr_dict_attr_t const *child;
 
 		/*
 		 *	The child attributes should be in order.  If
 		 *	they're not, we fill the struct with zeroes.
 		 */
-		child_da = vp->da;
-		if (child_da->attr != child_num) {
-			child_da = fr_dict_attr_child_by_num(parent, child_num);
+		child = vp->da;
+		if (child->attr != child_num) {
+			child = fr_dict_attr_child_by_num(parent, child_num);
 
-			if (!child_da) break;
+			if (!child) break;
 
-			if (child_da->flags.length < outlen) break;
+			if (child->flags.length > outlen) {
+				len = outlen;
+			} else {
+				len = child->flags.length;
+			}
 
-			len = child_da->flags.length;
 			memset(p, 0, len);
-
 			p += len;
 			outlen -= len;
 			child_num++;
