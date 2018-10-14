@@ -1294,7 +1294,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 */
 		rcode = decode_vsa(ctx, cursor, parent, p, attr_len, packet_len, decoder_ctx);
 		if (rcode < 0) goto raw;
-		return attr_len;
+		return rcode;
 
 	default:
 	raw:
