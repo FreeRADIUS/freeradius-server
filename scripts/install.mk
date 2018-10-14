@@ -136,14 +136,14 @@ endef
 #   USE WITH EVAL
 #
 define ADD_INSTALL_RULE.h
-    ALL_INSTALL += $(DESTDIR)/${includedir}/${1}
+    ALL_INSTALL += $(DESTDIR)/${includedir}/${PROJECT_NAME}/${1}
 
-    install: $(DESTDIR)/${includedir}/${1}
+    install: $(DESTDIR)/${includedir}/${PROJECT_NAME}/${1}
 
-    $(DESTDIR)/${includedir}/${1}: ${2}
+    $(DESTDIR)/${includedir}/${PROJECT_NAME}/${1}: ${2}
 	${Q}echo INSTALL ${1}
 	${Q}$(INSTALL) -d -m 755 `echo $$(dir $$@) | sed 's/\/$$$$//'`
-	${Q}sed -e 's/#\([\\t ]*\)include <freeradius-devel\/\([^>]*\)>/#\1include <freeradius\/\2>/g' < $$< > $$@
+	${Q}sed -e 's/#\([\\t ]*\)include <${PROJECT_NAME}-devel\/\([^>]*\)>/#\1include <${PROJECT_NAME}\/\2>/g' < $$< > $$@
 	${Q}chmod 644 $$@
 endef
 
@@ -244,7 +244,7 @@ ifeq "${logdir}" ""
     logdir = ${localstatedir}/log/
 endif
 ifeq "${includedir}" ""
-    includedir = ${prefix}/include/
+    includedir = ${prefix}/include/${PROJECT_NAME}
 endif
 
 
