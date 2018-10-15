@@ -36,6 +36,7 @@
 
 $begin_vendor = 0;
 $blank = 0;
+$previous = "";
 
 while (@ARGV) {
     $filename = shift;
@@ -73,6 +74,13 @@ while (@ARGV) {
 	#  not followed by a comment..
 	#
 	s/^\s*([^#])/$1/;
+
+	#
+	#  Not an ATTRIBUTE? Suppress "previous" checks.
+	#
+	if (!/^ATTRIBUTE/) {
+	    $previous = "";
+	}
 
 	#
 	#  Remember the vendor
@@ -158,6 +166,22 @@ while (@ARGV) {
 		}
 		$stuff =~ s/$vendor//;
 		$stuff =~ s/\s+$//;
+	    }
+
+	    #
+	    #  The numerical value doesn't start with ".".
+	    #
+	    #  If the current attribute is a child of the previous
+	    #  one, then just print out the child values.
+	    #
+	    #  Otherwise, remember this attribute as the new "previous"
+	    #
+	    if ($value !~ /^\./) {
+		if ($value =~ /^$previous(\..+)$/) {
+		    $value = $1;
+		} else {
+		    $previous = $value;
+		}
 	    }
 
 	    push @output, "ATTRIBUTE\t$name$tabs$value\t$type$stuff\n";
