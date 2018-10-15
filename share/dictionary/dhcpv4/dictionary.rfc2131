@@ -2,7 +2,7 @@
 # Copyright (C) 2015 The FreeRADIUS Server project and contributors
 ##############################################################################
 #
-#	DHCP to RADIUS gateway dictionary.
+#	DHCP dictionary.
 #
 #	http://www.iana.org/assignments/bootp-dhcp-parameters
 #
@@ -15,11 +15,6 @@
 ##############################################################################
 
 #
-
-#	This is really Apollo's number, but since they're out of business,
-#	I don't think they'll be needing this.
-#
-#	HP owns the Apollo assets, but let's not worry about that.
 #
 #	The vendor codes are 2 octets, because we need 256 numbers
 #	for the base DHCP options, PLUS a few for the DHCP headers,
@@ -28,11 +23,7 @@
 #	On top of that, a number of options are really TLV's.
 #	We need to be able to understand them, too.
 #
-VENDOR		DHCP				54
-
-BEGIN-VENDOR	DHCP
-
-FLAGS	internal
+FLAGS		internal
 ATTRIBUTE	DHCP-Opcode				256	byte
 
 VALUE	DHCP-Opcode			Client-Message		1
@@ -173,6 +164,7 @@ ATTRIBUTE	DHCP-IP-Address-Lease-Time		51	integer
 ATTRIBUTE	DHCP-Overload				52	byte
 ATTRIBUTE	DHCP-Message-Type			53	byte
 
+VALUE	DHCP-Message-Type		DHCP-Do-Not-Respond	0
 VALUE	DHCP-Message-Type		DHCP-Discover		1
 VALUE	DHCP-Message-Type		DHCP-Offer		2
 VALUE	DHCP-Message-Type		DHCP-Request		3
@@ -188,8 +180,6 @@ VALUE	DHCP-Message-Type		DHCP-Lease-Unknown	12
 VALUE	DHCP-Message-Type		DHCP-Lease-Active	13
 VALUE	DHCP-Message-Type		DHCP-Bulk-Lease-Query	14
 VALUE	DHCP-Message-Type		DHCP-Lease-Query-Done	15
-
-VALUE	DHCP-Message-Type		DHCP-Do-Not-Respond	255
 
 ATTRIBUTE	DHCP-DHCP-Server-Identifier		54	ipaddr
 
@@ -339,8 +329,8 @@ ATTRIBUTE	DHCP-Call-Server-IP-address		129	octets
 ATTRIBUTE	DHCP-Ethernet-Interface			130	octets
 ATTRIBUTE	DHCP-Vendor-Discrimination-Str		130	octets
 ATTRIBUTE	DHCP-Remote-Stats-Svr-IP-Address	131	octets
-ATTRIBUTE	DHCP-IEEE-802dot1Q-VLAN-ID		132	octets
-ATTRIBUTE	DHCP-IEEE-802dot1P-L2-Priority		133	octets
+ATTRIBUTE	DHCP-IEEE-802.1P-VLAN-ID		132	octets
+ATTRIBUTE	DHCP-IEEE-802.1Q-L2-Priority		133	octets
 ATTRIBUTE	DHCP-Diffserv-Code-Point		134	octets
 ATTRIBUTE	DHCP-HTTP-Proxy				135	octets
 
@@ -570,5 +560,3 @@ VALUE	DHCP-Parameter-Request-List	DHCP-IEEE-802.1P-VLAN-ID 132
 VALUE	DHCP-Parameter-Request-List	DHCP-IEEE-802.1Q-L2-Priority 133
 VALUE	DHCP-Parameter-Request-List	DHCP-Diffserv-Code-Point 134
 VALUE	DHCP-Parameter-Request-List	DHCP-HTTP-Proxy		135
-
-END-VENDOR	DHCP

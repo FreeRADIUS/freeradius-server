@@ -1,0 +1,17 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+#
+#	Protocol dictionary for EAP-SIM
+#
+#
+PROTOCOL	EAP-SIM		101
+BEGIN-PROTOCOL	EAP-SIM
+
+$INCLDUE dictionary.freeradius
+$INCLUDE dictionary.rfc4187
+$INCLUDE dictionary.rfc5448
+$INCLUDE dictionary.rfc7458
+$INCLUDE dictionary.3gpp-ts24.139
+$INCLUDE dictionary.3gpp-ts24.302
+
+END-PROTOCOL	EAP-SIM

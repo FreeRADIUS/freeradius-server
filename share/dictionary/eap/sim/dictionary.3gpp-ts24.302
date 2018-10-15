@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+#
+#	EAP-SIM attributes defined by 3gpp-ts24.302
+#
+
+#
+#  Skippable-Attributes
+#
+ATTRIBUTE	EAP-SIM-IPMS-Ind			137	octets
+ATTRIBUTE	EAP-SIM-IPMS-Res			138	octets
+ATTRIBUTE	EAP-SIM-Tust-Ind			139	octets
+ATTRIBUTE	EAP-SIM-Short-Name-For-Network		140	octets
+ATTRIBUTE	EAP-SIM-Full-Name-For-Network		141	octets
+
+ATTRIBUTE	EAP-SIM-Twan-Conn-Mode			144	octets

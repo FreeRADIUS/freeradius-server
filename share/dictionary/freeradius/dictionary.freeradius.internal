@@ -35,7 +35,7 @@ ATTRIBUTE	Relax-Filter				501	bool
 #
 #
 #	Non-Protocol Attributes
-#	These attributes are usedly by the server
+#	These attributes are used internally by the server
 #
 
 # Fixme - Should be attribute 1 when this becomes a separate dictionary

@@ -1,0 +1,14 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+#
+#	The FreeRADIUS Vendor-Specific dictionary for SNMP operations.
+#
+# Version:	$Id$
+#
+
+PROTOCOL	VQP	6		format=2
+BEGIN-PROTOCOL	VQP
+
+$INCLUDE dictionary.vqp
+
+END-PROTOCOL VQP

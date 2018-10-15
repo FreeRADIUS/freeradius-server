@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+#
+#	EAP-SIM attributes defined by rfc5448
+#
+
+#
+#  Non-Skippable attributes
+#
+ATTRIBUTE	EAP-SIM-KDF-Input			24	octets
+ATTRIBUTE	EAP-SIM-KDF				25	octets

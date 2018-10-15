@@ -1,0 +1,25 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+#
+#	Attributes needed by FreeRADIUS internally
+#
+
+#
+#  Internal (Non-Protocol) attributes
+#
+FLAGS		internal
+ATTRIBUTE	EAP-SIM-Subtype				256	integer
+
+VALUE	EAP-SIM-Subtype			SIM-Start		10
+VALUE	EAP-SIM-Subtype			SIM-Challenge		11
+VALUE	EAP-SIM-Subtype			SIM-Notification	12
+VALUE	EAP-SIM-Subtype			SIM-Reauthentication	13
+VALUE	EAP-SIM-Subtype			SIM-Client-Error	14
+
+ATTRIBUTE	EAP-SIM-HMAC				257	string
+ATTRIBUTE	EAP-SIM-Key				258	octets
+ATTRIBUTE	EAP-SIM-Extra				259	octets
+
+ATTRIBUTE	EAP-SIM-SRES				1222	octets
+ATTRIBUTE	EAP-SIM-KC				1223	octets
+ATTRIBUTE	EAP-SIM-State				1224	integer

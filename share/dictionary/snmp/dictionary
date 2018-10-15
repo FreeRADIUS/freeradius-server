@@ -1,0 +1,14 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+#
+#	The FreeRADIUS Vendor-Specific dictionary for SNMP operations.
+#
+# Version:	$Id$
+#
+
+PROTOCOL	SNMP	3	format=4
+BEGIN-PROTOCOL	SNMP
+
+$INCLUDE dictionary.freeradius
+
+END-PROTOCOL SNMP

@@ -59,6 +59,9 @@
 #	7		= 1	(integer encoding)
 #
 
+PROTOCOL	RADIUS		1
+BEGIN-PROTOCOL	RADIUS
+
 #
 #	Include compatibility dictionary for older users file. Move
 #	this directive to the end of this file if you want to see the
@@ -192,7 +195,6 @@ $INCLUDE dictionary.extreme
 $INCLUDE dictionary.f5
 $INCLUDE dictionary.fdxtended
 $INCLUDE dictionary.freeradius
-$INCLUDE dictionary.freeradius.snmp
 $INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
@@ -299,15 +301,4 @@ $INCLUDE dictionary.zeus
 $INCLUDE dictionary.zte
 $INCLUDE dictionary.zyxel
 
-#
-#  This should be auto-loaded in the future.
-#
-$INCLUDE dictionary.arp
-$INCLUDE dictionary.vqp
-$INCLUDE dictionary.dhcpv4
-
-#
-#	And finally the server internal attributes.
-#	These are attributes which NEVER go into a RADIUS packet.
-#
-$INCLUDE dictionary.freeradius.internal
+END-PROTOCOL RADIUS

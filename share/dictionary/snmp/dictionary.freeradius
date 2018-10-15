@@ -6,8 +6,6 @@
 # Version:	$Id$
 #
 
-BEGIN-VENDOR	FreeRADIUS format=Extended-Vendor-Specific-1
-
 ATTRIBUTE	FreeRADIUS-SNMP-Operation		10	byte
 
 VALUE	FreeRADIUS-SNMP-Operation	ping			0
@@ -120,5 +118,3 @@ END-TLV		Radius-Auth-Client-Ext-Entry
 
 END-TLV		Radius-Auth-Serv
 END-TLV		FreeRADIUS-Mib-2
-
-END-VENDOR	FreeRADIUS

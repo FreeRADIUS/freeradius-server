@@ -2,9 +2,10 @@
 # Copyright (C) 2016 The FreeRADIUS Server project and contributors
 ##############################################################################
 #
-#	EAP-SIM Protocol attributes
+#	EAP-SIM attributes defined by rfc4187
 #
 ##############################################################################
+
 #
 #  Non-Skippable attributes
 #
@@ -23,7 +24,6 @@ VALUE	EAP-SIM-Notification		Success			32768
 ATTRIBUTE	EAP-SIM-Any-ID-Req			13	bool
 ATTRIBUTE	EAP-SIM-Identity			14	string
 ATTRIBUTE	EAP-SIM-Version-List			15	short array
-
 ATTRIBUTE	EAP-SIM-Selected-Version		16	short
 ATTRIBUTE	EAP-SIM-Fullauth-ID-Req			17	bool
 ATTRIBUTE	EAP-SIM-Client-Error-Code		22	short

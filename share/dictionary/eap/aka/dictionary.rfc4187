@@ -28,7 +28,10 @@ ATTRIBUTE	EAP-AKA-Identity			14	string
 ATTRIBUTE	EAP-AKA-Fullauth-ID-Req			17	bool
 ATTRIBUTE	EAP-AKA-Client-Error-Code		22	short
 
-VALUE	EAP-AKA-Client-Error-Code	Unable-To-Process-Packet 0
+VALUE	EAP-AKA-Client-Error-Code		Unable-To-Process-Packet	0
+VALUE	EAP-AKA-Client-Error-Code		Unsupported-Version		1
+VALUE	EAP-AKA-Client-Error-Code		Insufficient-Challenges		2
+VALUE	EAP-AKA-Client-Error-Code		RANDS-Not-Fresh			3
 
 ATTRIBUTE	EAP-AKA-KDF-Input			23	string
 ATTRIBUTE	EAP-AKA-KDF				24	short

@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+#
+#	EAP-AKA attributes defined by 3gpp-ts24.302
+#
+
+#
+#  Skippable-Attributes
+#
+ATTRIBUTE	EAP-AKA-IPMS-Ind			137	octets
+ATTRIBUTE	EAP-AKA-IPMS-Res			138	octets
+ATTRIBUTE	EAP-AKA-Tust-Ind			139	octets
+ATTRIBUTE	EAP-AKA-Short-Name-For-Network		140	octets
+ATTRIBUTE	EAP-AKA-Full-Name-For-Network		141	octets
+
+ATTRIBUTE	EAP-AKA-Twan-Conn-Mode			144	octets

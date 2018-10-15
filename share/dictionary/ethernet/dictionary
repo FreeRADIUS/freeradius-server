@@ -1,0 +1,23 @@
+# -*- text -*-
+# Copyright (C) 2018 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#	$Id$
+#
+##############################################################################
+
+#
+#
+#	The vendor codes are 2 octets, because we need 256 numbers
+#	for the base DHCP options, PLUS a few for the DHCP headers,
+#	which aren't in option format.
+#
+#	On top of that, a number of options are really TLV's.
+#	We need to be able to understand them, too.
+#
+PROTOCOL	Ethernet	4
+BEGIN-PROTOCOL	Ethernet
+
+$INCLUDE dictionary.ethernet
+
+END-PROTOCOL 	Ethernet

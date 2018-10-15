@@ -1,0 +1,15 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+#
+#	EAP-SIM attributes defined by rfc7458
+#
+
+#
+#  Skippable-Attributes
+#
+ATTRIBUTE	EAP-SIM-Virtual-Network-ID		145	octets
+ATTRIBUTE	EAP-SIM-Virtual-Network-Req		146	octets
+ATTRIBUTE	EAP-SIM-Connectivity-Type		147	octets
+ATTRIBUTE	EAP-SIM-Handover-Indication		148	octets
+ATTRIBUTE	EAP-SIM-Handover-Session-ID		149	octets
+ATTRIBUTE	EAP-SIM-MN-Serial-ID			150	octets

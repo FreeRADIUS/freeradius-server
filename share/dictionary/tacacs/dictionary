@@ -1,0 +1,14 @@
+# -*- text -*-
+# Copyright (C) 2017 The FreeRADIUS Server project and contributors
+#
+#	The FreeRADIUS Vendor-Specific dictionary for SNMP operations.
+#
+# Version:	$Id$
+#
+
+PROTOCOL	TACACS	5
+BEGIN-PROTOCOL TACACS
+
+$INCLUDE dictionary.tacacs
+
+END-PROTOCOL TACACS

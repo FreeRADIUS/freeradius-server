@@ -12,19 +12,21 @@
 #
 # Prompt value should be 1 for echo, 0 for no echo, default 1.
 #ATTRIBUTE	Prompt			64	integer
-ATTRIBUTE	Multi-Link-Flag				126	integer
 ATTRIBUTE	Char-Noecho				250	integer
 
 #
 #	USR specific Integer Translations
 #
 
+ATTRIBUTE	Termination-Action			29	integer
 VALUE	Termination-Action		Manage-Resources	2
 
+ATTRIBUTE	Acct-Status-Type			40	integer
 VALUE	Acct-Status-Type		Modem-Start		4
 VALUE	Acct-Status-Type		Modem-Stop		5
 VALUE	Acct-Status-Type		Cancel			6
 
+ATTRIBUTE	Multi-Link-Flag				126	integer
 VALUE	Multi-Link-Flag			True			1
 VALUE	Multi-Link-Flag			False			0
 

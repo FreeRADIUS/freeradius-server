@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+#
+#	EAP-AKA attributes defined by 3gpp-ts24.139
+#
+
+#
+#  Skippable-Attributes
+#
+ATTRIBUTE	EAP-AKA-RQSI-Ind			142	octets
+ATTRIBUTE	EAP-AKA-RQSI-Res			143	octets

@@ -1,0 +1,9 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+#
+#	Master dictionary file
+#
+#	$Id$
+#
+
+$INCLUDE dictionary.freeradius.internal
