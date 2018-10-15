@@ -25,6 +25,13 @@ ATTRIBUTE	Unit-Struct2-TLV-Int1	.3.1		integer
 ATTRIBUTE	Unit-Struct2-TLV-Int2	.3.2		integer
 ATTRIBUTE	Unit-Struct2-TLV-String	.3.3		string
 
+ATTRIBUTE	Unit-Struct3		241.249		struct
+ATTRIBUTE	Unit-Struct3-Int	.1		integer
+ATTRIBUTE	Unit-Struct3-TLV	.2		tlv
+ATTRIBUTE	Unit-Struct3a		.2.1		struct
+ATTRIBUTE	Unit-Struct3a-Ipaddr1	.2.1.1		ipaddr
+ATTRIBUTE	Unit-Struct3a-Ipaddr2	.2.1.2		ipaddr
+
 
 ATTRIBUTE	Unit-TLV-Integer 241.243.1 integer
 
