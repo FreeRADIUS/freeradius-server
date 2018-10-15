@@ -609,7 +609,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 			ret = -1;
 		}
 
-		if (request) VERIFY_REQUEST(request);
+		VERIFY_REQUEST(request);
 
 
 	/*
