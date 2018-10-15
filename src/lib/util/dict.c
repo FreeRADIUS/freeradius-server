@@ -2788,6 +2788,13 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsi
 	if (!fr_cond_assert(parent)) return 0;
 	INTERNAL_IF_NULL(dict);
 
+	/*
+	 *	It's a partial OID.  Grab it, and skip to the next bit.
+	 */
+	if (p[0] == '.') {
+		p++;
+	}
+
 	*attr = 0;
 
 	if (fr_dict_oid_component(&num, &p) < 0) return oid - p;
@@ -3856,9 +3863,10 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
  */
 static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			     	       fr_dict_vendor_t const *block_vendor, char **argv, int argc,
-				       fr_dict_attr_flags_t *base_flags)
+				       fr_dict_attr_flags_t *base_flags, fr_dict_attr_t const **previous)
 {
 	bool			oid = false;
+	bool			set_previous = true;
 
 	fr_dict_vendor_t const	*vendor;
 	unsigned int		attr;
@@ -3897,12 +3905,28 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 		}
 
 		/*
+		 *	Got a '.', which means "continue from the
+		 *	previously defined attribute, which then must exist.
+		 */
+	} else if (argv[1][0] == '.') {
+		if (!previous || !*previous) {
+			fr_strerror_printf("Unknown parent for partial OID");
+			return -1;
+		}
+
+		parent = *previous;
+		set_previous = false;
+		goto get_by_oid;
+
+
+		/*
 		 *	Got an OID string.  Every attribute should exist other
 		 *	than the leaf, which is the attribute we're defining.
 		 */
 	} else {
 		ssize_t slen;
 
+get_by_oid:
 		oid = true;
 
 		slen = fr_dict_attr_by_oid(dict, &parent, &attr, argv[1]);
@@ -4077,6 +4101,12 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 	} else {
 		if (dict_attr_ref_add(dict, parent, argv[0], attr, type, &flags, ref) < 0) return -1;
 	}
+
+	/*
+	 *	If we need to set the previous attribute, we have to
+	 *	look it up by number.
+	 */
+	if (set_previous && previous) *previous = fr_dict_attr_child_by_num(parent, attr);
 
 	return 0;
 }
@@ -4449,7 +4479,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 	struct stat		statbuf;
 	char			*argv[MAX_ARGV];
 	int			argc;
-	fr_dict_attr_t const	*da;
+	fr_dict_attr_t const	*da, *previous = NULL;
 
 	/*
 	 *	Base flags are only set for the current file
@@ -4610,7 +4640,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			if (!base_flags.named) {
 				if (dict_read_process_attribute(ctx->dict, ctx->parent, ctx->block_vendor,
 								argv + 1, argc - 1,
-								&base_flags) == -1) goto error;
+								&base_flags, &previous) == -1) goto error;
 			} else {
 				if (dict_read_process_named_attribute(ctx->dict, ctx->parent,
 								      argv + 1, argc - 1,
@@ -5494,7 +5524,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 
 		return dict_read_process_attribute(dict, parent,
 						   fr_dict_vendor_by_num(dict, vendor_pen),
-						   argv + 1, argc - 1, &base_flags);
+						   argv + 1, argc - 1, &base_flags, NULL);
 	}
 
 	if (strcasecmp(argv[0], "VENDOR") == 0) return dict_read_process_vendor(dict, argv + 1, argc - 1);
