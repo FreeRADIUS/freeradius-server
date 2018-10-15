@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2018 The FreeRADIUS Server project and contributors
+#
+VENDOR		Infinera			8708
+
+BEGIN-VENDOR	Infinera
+
+ATTRIBUTE	Infinera-User-Category			1	string
+ATTRIBUTE	Infinera-ENM-User-Category		2	string
+
+END-VENDOR      Infinera
