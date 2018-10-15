@@ -15,6 +15,7 @@ FILES  := \
 	radius_tunnel.txt \
 	radius_vendor.txt \
 	radius_tlv.txt \
+	radius_struct.txt \
 	eap_aka_encode.txt \
 	eap_aka_decode.txt \
 	eap_aka_error.txt \
