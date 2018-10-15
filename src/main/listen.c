@@ -2966,9 +2966,11 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 
 		proto = dlsym(handle, buffer);
 		if (!proto) {
+#if 0
 			cf_log_err_cs(cs,
 				      "Failed linking to protocol %s : %s\n",
 				      value, dlerror());
+#endif
 			dlclose(handle);
 			return NULL;
 		}

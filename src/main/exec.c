@@ -608,6 +608,10 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 			strlcpy(out, answer, len);
 			ret = -1;
 		}
+
+		if (request) VERIFY_REQUEST(request);
+
+
 	/*
 	 *	We've not been told to extract output pairs,
 	 *	just copy the programs output to the out
