@@ -30,6 +30,10 @@ VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 	VALUE_PAIR *vp;
 	fr_dict_attr_t const *child;
 
+#ifndef NDEBUG
+	if (!parent->parent) return NULL; /* stupid static analyzers */
+#endif
+
 	/*
 	 *	Build an unknown attr of the entire STRUCT.
 	 */
