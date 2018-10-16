@@ -227,11 +227,8 @@ rlm_rcode_t rad_postauth(REQUEST *request)
  */
 static rlm_rcode_t rad_authenticate(REQUEST *request)
 {
-	VALUE_PAIR	*tmp = NULL;
 	int		result;
 	rlm_rcode_t    	rcode;
-	char		autz_retry = 0;
-	int		autz_type = 0;
 
 #ifdef WITH_PROXY
 	/*
@@ -251,8 +248,7 @@ static rlm_rcode_t rad_authenticate(REQUEST *request)
 	/*
 	 *	Get the user's authorization information from the database
 	 */
-autz_redo:
-	rcode = process_authorize(autz_type, request);
+	rcode = process_authorize(0, request);
 	switch (rcode) {
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_NOTFOUND:
@@ -268,16 +264,6 @@ autz_redo:
 	default:
 		request->reply->code = FR_CODE_ACCESS_REJECT;
 		return rcode;
-	}
-	if (!autz_retry) {
-		tmp = fr_pair_find_by_num(request->control, 0, FR_AUTZ_TYPE, TAG_ANY);
-		if (tmp) {
-			autz_type = tmp->vp_uint32;
-			RDEBUG2("Using Autz-Type %s",
-				fr_dict_enum_alias_by_value(tmp->da, fr_box_uint32(autz_type)));
-			autz_retry = 1;
-			goto autz_redo;
-		}
 	}
 
 	/*
