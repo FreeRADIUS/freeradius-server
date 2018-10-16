@@ -92,7 +92,7 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TE
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx; \
+			echo KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep -E '^(Error : )?$<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
@@ -100,7 +100,7 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TE
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx; \
+			echo KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx; \
 			exit 1; \
 		fi \
 	fi

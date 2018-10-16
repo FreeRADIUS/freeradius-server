@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
 
-#include <freeradius-devel/freeradius.snmp.h>
+#include <freeradius-devel/protocol/snmp/freeradius.h>
 
 #define FR_FREERADIUS_SNMP_TYPE_OBJECT 0
 

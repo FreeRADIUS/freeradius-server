@@ -33,6 +33,9 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/rad_assert.h>
+
+#include <freeradius-devel/protocol/vqp/vqp.h>
+
 #include "proto_vmps.h"
 
 extern fr_app_io_t proto_vmps_udp;

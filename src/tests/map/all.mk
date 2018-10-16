@@ -19,7 +19,7 @@ $(MAP_OUTPUT): $(MAP_UNIT_BIN) | $(BUILD_DIR)/tests/map/
 #
 $(BUILD_DIR)/tests/map/%.out: $(top_srcdir)/src/tests/map/%
 	${Q}echo MAP_TEST $(notdir $<)
-	${Q}if ! $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share $< > $@ 2>&1; then \
+	${Q}if ! $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary $< > $@ 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@; \
 			echo "# $@"; \
@@ -32,13 +32,13 @@ $(BUILD_DIR)/tests/map/%.out: $(top_srcdir)/src/tests/map/%
 			cat $@; \
 			echo "# $@"; \
 			echo "E $$EXPECTED F $$FOUND"; \
-			echo UNEXPECTED ERROR: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share $<"; \
+			echo UNEXPECTED ERROR: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary $<"; \
 			exit 1; \
 		fi; \
 	else \
 		if ! diff $<.out $@; then \
 			echo FAILED: " diff $<.out $@"; \
-			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share $<"; \
+			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary $<"; \
 			exit 1; \
 		fi; \
 	fi

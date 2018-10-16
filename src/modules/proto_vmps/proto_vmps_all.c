@@ -30,6 +30,8 @@
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/vqp/vqp.h>
 
+#include <freeradius-devel/protocol/vqp/vqp.h>
+
 static fr_dict_t *dict_vmps;
 
 extern fr_dict_autoload_t proto_vmps_all_dict[];

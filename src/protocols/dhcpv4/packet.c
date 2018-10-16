@@ -29,7 +29,7 @@
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/types.h>
-#include <freeradius-devel/dhcpv4.h>
+#include <freeradius-devel/protocol/dhcpv4/rfc2131.h>
 #include "dhcpv4.h"
 #include "attrs.h"
 

@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/server/request.h>
 
-#include <freeradius-devel/rfc2865.h>
+#include <freeradius-devel/protocol/radius/rfc2865.h>
 
 #include <ctype.h>
 

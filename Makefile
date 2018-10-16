@@ -65,7 +65,8 @@ raddb/test.conf:
 # Don't molest STDERR as this may be used to receive output from a debugger.
 $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | build.raddb
 	@printf "radiusd -C... "
-	@if ! FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -XCd ./raddb -n debug -D ./share -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
+	@if ! FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
+		rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
 		echo "FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -XCd ./raddb -n debug -D ./share -n test"; \
@@ -108,11 +109,11 @@ endif
 #
 export DESTDIR := $(R)
 
-DICTIONARIES := $(wildcard share/dictionary*)
-install.share: $(addprefix $(R)$(dictdir)/,$(notdir $(DICTIONARIES)))
+DICTIONARIES := $(shell find share/dictionary -type f -name dictionary*)
+install.share: $(addprefix $(R)$(dictdir)/,$(patsubst share/dictionary/%,%,$(DICTIONARIES)))
 
-$(R)$(dictdir)/%: share/%
-	@echo INSTALL $(notdir $<)
+$(R)$(dictdir)/%: share/dictionary/%
+	@echo INSTALL $(patsubst share/dictionary/%,%,$<)
 	@$(INSTALL) -m 644 $< $@
 
 MANFILES := $(wildcard man/man*/*.?)

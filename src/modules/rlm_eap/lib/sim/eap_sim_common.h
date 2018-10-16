@@ -26,7 +26,7 @@
  *
  * @copyright 2016 The FreeRADIUS server project
  */
-#include <freeradius-devel/eap.sim.h>
+#include <freeradius-devel/protocol/eap/sim/dictionary.h>
 
 #define EAP_SIM_VERSION			1
 #define EAP_SIM_NONCE_MT_SIZE		16	//!< Length of challenge from SIM client.

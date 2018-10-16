@@ -30,6 +30,8 @@
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/rad_assert.h>
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+
 #ifndef USEC
 #define USEC (1000000)
 #endif
@@ -380,13 +382,13 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 		/*
 		 *	Handle hard-coded Accept and Reject.
 		 */
-		if (auth_type->vp_uint32 == FR_AUTH_TYPE_ACCEPT) {
+		if (auth_type->vp_uint32 == FR_AUTH_TYPE_VALUE_ACCEPT) {
 			RDEBUG2("%pP, allowing user", auth_type);
 			request->reply->code = FR_CODE_ACCESS_ACCEPT;
 			goto setup_send;
 		}
 
-		if (auth_type->vp_uint32 == FR_AUTH_TYPE_REJECT) {
+		if (auth_type->vp_uint32 == FR_AUTH_TYPE_VALUE_REJECT) {
 			RDEBUG2("%pP, rejecting user", auth_type);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;

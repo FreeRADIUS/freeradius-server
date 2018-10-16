@@ -2,7 +2,7 @@
 #  Create the output directory
 #
 .PHONY: $(BUILD_DIR)/tests/dict
-$(BUILD_DIR)/tests/dict:
+$(BUILD_DIR)/tests/dict/radius:
 	${Q}mkdir -p $@
 
 FILES := $(wildcard $(DIR)/*.dict)
@@ -17,6 +17,8 @@ $(BUILD_DIR)/tests/dict/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTB
 	${Q}echo UNIT-TEST $(notdir $@)
 	${Q}mkdir -p $@_dir
 	${Q}cp $< $@_dir/dictionary
+	${Q}ln -sf ${top_srcdir}/share/dictionary/radius $@_dir/
+	${Q}ln -sf ${top_srcdir}/share/dictionary/dhcp $@_dir/
 	${Q}if ! $(TESTBIN)/unit_test_attribute -D $@_dir $(dir $<)/empty.txt; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $@_dir $(dir $<)/empty.txt"; \
 		exit 1; \

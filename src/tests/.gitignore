@@ -3,7 +3,6 @@
 .bar
 .request
 *.ok
-dictionary
 test.conf
 radius.log
 radiusd.pid

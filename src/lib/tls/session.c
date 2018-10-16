@@ -32,7 +32,8 @@
 #include <freeradius-devel/server/pair.h>
 
 #include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/attributes.h>
+
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <openssl/x509v3.h>
 #include <ctype.h>

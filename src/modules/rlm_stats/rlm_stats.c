@@ -29,6 +29,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/server/rad_assert.h>
 
+#include <freeradius-devel/protocol/radius/freeradius.h>
+
 /*
  *	@todo - also get the statistics from the network side for
  *		that, though, we need a way to find other network

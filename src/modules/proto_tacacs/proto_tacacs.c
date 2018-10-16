@@ -30,6 +30,8 @@
 
 #include <freeradius-devel/tacacs/tacacs.h>
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+
 typedef struct {
 	uint32_t	session_timeout;		//!< Maximum time between rounds.
 	uint32_t	max_sessions;			//!< Maximum ongoing sessions.
@@ -337,13 +339,13 @@ stop_processing:
 		/*
 		 *	Handle hard-coded Accept and Reject.
 		 */
-		if (auth_type->vp_uint32 == FR_AUTH_TYPE_ACCEPT) {
+		if (auth_type->vp_uint32 == FR_AUTH_TYPE_VALUE_ACCEPT) {
 			RDEBUG2("Auth-Type = Accept, allowing user");
 			tacacs_status(request, RLM_MODULE_OK);
 			goto setup_send;
 		}
 
-		if (auth_type->vp_uint32 == FR_AUTH_TYPE_REJECT) {
+		if (auth_type->vp_uint32 == FR_AUTH_TYPE_VALUE_REJECT) {
 			RDEBUG2("Auth-Type = Reject, rejecting user");
 			tacacs_status(request, RLM_MODULE_REJECT);
 			goto setup_send;

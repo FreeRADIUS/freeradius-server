@@ -28,6 +28,9 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/rad_assert.h>
+
+#include <freeradius-devel/protocol/vqp/vqp.h>
+
 #include "proto_vmps.h"
 
 extern fr_app_t proto_vmps;

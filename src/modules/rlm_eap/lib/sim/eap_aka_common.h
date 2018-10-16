@@ -26,7 +26,7 @@
  *
  * @copyright 2016 The FreeRADIUS server project
  */
-#include <freeradius-devel/eap.aka.h>
+#include <freeradius-devel/protocol/eap/aka/dictionary.h>
 
 #define EAP_AKA_AUTS_SIZE		14	//!< Server sequence number.  SIM checks this
 						//!< is within the correct range.

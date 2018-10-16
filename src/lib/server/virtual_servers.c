@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/base.h>
 
-#include <freeradius-devel/attributes.h>
+
 
 /*
  *	Ordered by component

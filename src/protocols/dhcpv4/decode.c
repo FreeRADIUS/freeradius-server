@@ -31,7 +31,7 @@
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
-#include <freeradius-devel/rfc2865.h>
+#include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/io/test_point.h>
 
 static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,

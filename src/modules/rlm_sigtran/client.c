@@ -28,8 +28,8 @@
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/eap.aka.h>
-#include <freeradius-devel/eap.sim.h>
+#include <freeradius-devel/protocol/eap/aka/dictionary.h>
+#include <freeradius-devel/protocol/eap/sim/dictionary.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/module.h>
 #include "sigtran.h"

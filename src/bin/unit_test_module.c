@@ -40,6 +40,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/base.h>
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
 #endif
@@ -960,11 +962,11 @@ int main(int argc, char *argv[])
 	if (!vp) goto done;
 
 	switch (vp->vp_int32) {
-	case FR_AUTH_TYPE_ACCEPT:
+	case FR_AUTH_TYPE_VALUE_ACCEPT:
 		request->reply->code = FR_CODE_ACCESS_ACCEPT;
 		goto done;
 
-	case FR_AUTH_TYPE_REJECT:
+	case FR_AUTH_TYPE_VALUE_REJECT:
 		request->reply->code = FR_CODE_ACCESS_REJECT;
 		goto done;
 

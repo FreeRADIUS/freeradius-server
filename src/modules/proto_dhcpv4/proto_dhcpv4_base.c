@@ -29,7 +29,7 @@
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
-#include <freeradius-devel/dhcpv4.h>
+#include <freeradius-devel/protocol/dhcpv4/rfc2131.h>
 
 static fr_dict_t *dict_dhcpv4;
 

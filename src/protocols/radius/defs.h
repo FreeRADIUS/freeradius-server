@@ -68,48 +68,44 @@ typedef enum {
  */
 #define MAX_PACKET_LEN 4096
 
-#include <freeradius-devel/rfc2865.h>
-#include <freeradius-devel/rfc2866.h>
-#include <freeradius-devel/rfc2867.h>
-#include <freeradius-devel/rfc2868.h>
-#include <freeradius-devel/rfc2869.h>
+#include <freeradius-devel/protocol/radius/rfc2865.h>
+#include <freeradius-devel/protocol/radius/rfc2866.h>
+#include <freeradius-devel/protocol/radius/rfc2867.h>
+#include <freeradius-devel/protocol/radius/rfc2868.h>
+#include <freeradius-devel/protocol/radius/rfc2869.h>
 
-#include <freeradius-devel/rfc3162.h>
-#include <freeradius-devel/rfc3576.h>
-#include <freeradius-devel/rfc3580.h>
+#include <freeradius-devel/protocol/radius/rfc3162.h>
+#include <freeradius-devel/protocol/radius/rfc3576.h>
+#include <freeradius-devel/protocol/radius/rfc3580.h>
 
-#include <freeradius-devel/rfc4072.h>
-#include <freeradius-devel/rfc4372.h>
+#include <freeradius-devel/protocol/radius/rfc4072.h>
+#include <freeradius-devel/protocol/radius/rfc4372.h>
 
 #define FR_CUI	FR_CHARGEABLE_USER_IDENTITY
 
-#include <freeradius-devel/rfc4675.h>
-#include <freeradius-devel/rfc4818.h>
-#include <freeradius-devel/rfc4849.h>
+#include <freeradius-devel/protocol/radius/rfc4675.h>
+#include <freeradius-devel/protocol/radius/rfc4818.h>
+#include <freeradius-devel/protocol/radius/rfc4849.h>
 
-#include <freeradius-devel/rfc5580.h>
-#include <freeradius-devel/rfc5607.h>
-#include <freeradius-devel/rfc5904.h>
+#include <freeradius-devel/protocol/radius/rfc5580.h>
+#include <freeradius-devel/protocol/radius/rfc5607.h>
+#include <freeradius-devel/protocol/radius/rfc5904.h>
 
-#include <freeradius-devel/rfc6572.h>
-#include <freeradius-devel/rfc6677.h>
-#include <freeradius-devel/rfc6911.h>
-#include <freeradius-devel/rfc6929.h>
-#include <freeradius-devel/rfc6930.h>
+#include <freeradius-devel/protocol/radius/rfc6572.h>
+#include <freeradius-devel/protocol/radius/rfc6677.h>
+#include <freeradius-devel/protocol/radius/rfc6911.h>
+#include <freeradius-devel/protocol/radius/rfc6929.h>
+#include <freeradius-devel/protocol/radius/rfc6930.h>
 
-#include <freeradius-devel/rfc7055.h>
-#include <freeradius-devel/rfc7155.h>
-#include <freeradius-devel/rfc7268.h>
-#include <freeradius-devel/rfc7930.h>
+#include <freeradius-devel/protocol/radius/rfc7055.h>
+#include <freeradius-devel/protocol/radius/rfc7155.h>
+#include <freeradius-devel/protocol/radius/rfc7268.h>
+#include <freeradius-devel/protocol/radius/rfc7930.h>
 
 /*
  *	All internal attributes are now defined in this file.
  */
-#include <freeradius-devel/attributes.h>
-
-#include <freeradius-devel/freeradius.h>
-
-#include <freeradius-devel/vqp.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #define FR_DIGEST_RESPONSE		206
 #define FR_DIGEST_ATTRIBUTES		207

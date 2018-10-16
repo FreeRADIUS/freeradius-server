@@ -29,7 +29,7 @@ RCSID("$Id$")
 #endif
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/rfc2865.h>
+#include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/misc.h>
@@ -4502,11 +4502,10 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
-			fr_strerror_printf_push("%s: Couldn't open dictionary '%s': %s",
-						"Error reading dictionary", fn, fr_syserror(errno));
+			fr_strerror_printf_push("Couldn't open dictionary %s: %s", fr_syserror(errno), fn);
 		} else {
-			fr_strerror_printf_push("%s: %s[%d]: Couldn't open dictionary '%s': %s",
-						"Error reading dictionary", src_file, src_line, fn,
+			fr_strerror_printf_push("Error reading dictionary: %s[%d]: Couldn't open dictionary '%s': %s",
+						src_file, src_line, fn,
 						fr_syserror(errno));
 		}
 		return -2;
@@ -4522,7 +4521,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 	if (!S_ISREG(statbuf.st_mode)) {
 		fclose(fp);
-		fr_strerror_printf_push("%s: Dictionary '%s' is not a regular file", "Error reading dictionary", fn);
+		fr_strerror_printf_push("Dictionary is not a regular file: %s", fn);
 		return -1;
 	}
 
@@ -4533,8 +4532,8 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 #ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
 		fclose(fp);
-		fr_strerror_printf_push("%s: Dictionary '%s' is globally writable.  Refusing to start "
-				   "due to insecure configuration", "Error reading dictionary", fn);
+		fr_strerror_printf_push("Dictionary is globally writable: %s. "
+					"Refusing to start due to insecure configuration", fn);
 		return -1;
 	}
 #endif
@@ -5394,14 +5393,7 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 		if (strcmp(p->proto, "freeradius") == 0) {
 			if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) return -1;
 		} else {
-			/*
-			 *	FIXME - Temporarily disabled
-			 */
-#if 0
 			if (fr_dict_protocol_afrom_file(&dict, p->proto) < 0) return -1;
-#else
-			continue;
-#endif
 		}
 
 		if (p->out) *(p->out) = dict;

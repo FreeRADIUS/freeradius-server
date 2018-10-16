@@ -25,7 +25,7 @@ PORT := 12340
 #	example.com stripped.example.com
 SECRET := testing123
 
-.PHONY: all eap dictionary clean
+.PHONY: all eap clean
 
 #
 #	Build the directory for testing the server
@@ -33,14 +33,15 @@ SECRET := testing123
 all: parse tests
 
 clean:
-	@rm -f test.conf dictionary *.ok *.log
+	@rm -f test.conf *.ok *.log
 
 dictionary:
-	@echo "# test dictionary not install.  Delete at any time." > dictionary
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> dictionary
-	@echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> dictionary
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcpv4 >> dictionary
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> dictionary
+	${Q}echo "# test dictionary not install.  Delete at any time." > $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/freeradius/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/radius/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/dhcpv4/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/vqp/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> $@
 
 test.conf: dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
@@ -59,11 +60,10 @@ test.conf: dictionary
 	@echo 'cadir   = $${maindir}/certs' >> $@
 	@echo '$$INCLUDE $${testdir}/config/' >> $@
 
-
 radiusd.pid: test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
 	@printf "TEST-SERVER Starting server... "
-	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxl $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -D $(TEST_PATH); then\
+	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxl $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -D "${top_builddir}/share/dictionary/"; then\
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
@@ -104,5 +104,5 @@ radiusd.kill:
 tests: test.conf | radiusd.kill radiusd.pid
 	@chmod a+x runtests.sh
 	@echo BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
-	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
+	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" TOP_BUILDDIR="${top_builddir}" ./runtests.sh $(TESTS)
 	@$(MAKE) radiusd.kill

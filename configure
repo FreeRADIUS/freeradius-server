@@ -5606,7 +5606,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $raddbdir" >&5
 $as_echo "$raddbdir" >&6; }
 
-dictdir='${datarootdir}/freeradius'
+dictdir='${datarootdir}/freeradius/dictionary'
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking dictdir" >&5
 $as_echo_n "checking dictdir... " >&6; }
 

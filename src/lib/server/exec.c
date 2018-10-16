@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/thread_local.h>
 
-#include <freeradius-devel/attributes.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <sys/file.h>
 

@@ -47,7 +47,7 @@ $(CONFIG_PATH)/methods-enabled:
 $(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)/methods-enabled
 	${Q}ln -sf $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
 
-.PHONY: eap dictionary clean clean.tests.eap
+.PHONY: eap clean clean.tests.eap
 clean: clean.tests.eap
 
 #
@@ -83,16 +83,16 @@ radiusd.kill: | $(OUTPUT_DIR)
 clean.tests.eap:
 	${Q}rm -f $(OUTPUT_DIR)/*.ok $(OUTPUT_DIR)/*.log $(OUTPUT_DIR)/eapol_test.skip
 	${Q}rm -f "$(CONFIG_PATH)/test.conf"
-	${Q}rm -f "$(CONFIG_PATH)/dictionary"
 	${Q}rm -rf "$(CONFIG_PATH)/methods-enabled"
 
 ifneq "$(EAPOL_TEST)" ""
 $(CONFIG_PATH)/dictionary:
 	${Q}echo "# test dictionary not install.  Delete at any time." > $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/freeradius/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/radius/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/dhcpv4/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/vqp/dictionary >> $@
 	${Q}echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcpv4 >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> $@
 
 $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary src/tests/eapol_test/all.mk
 	${Q}echo "# test configuration file.  Do not install.  Delete at any time." > $@
@@ -121,7 +121,7 @@ $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.
 	${Q}make -C src/tests/certs verify
 	${Q}rm -f $(GDB_LOG) $(RADIUS_LOG)
 	${Q}printf "Starting EAP test server... "
-	${Q}if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
+	${Q}if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D "${top_builddir}/share/dictionary/"; then\
 		echo "FAILED STARTING RADIUSD"; \
 		tail -n 40 "$(RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADIUS_LOG)):"; \
@@ -153,13 +153,13 @@ $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 		$(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$@) 2>&1; then\
 		touch $@; \
 	else \
-		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$<)):"; \
-		tail -n 40 "$(patsubst %.conf,%.log,$<)"; \
+		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$@)):"; \
+		tail -n 40 "$(patsubst %.conf,%.log,$@)"; \
 		echo "--------------------------------------------------"; \
 		tail -n 40 "$(RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADIUS_LOG)):"; \
 		echo "--------------------------------------------------"; \
-		echo "TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -PX -d \"$(CONFIG_PATH)\" -n test -D \"$(CONFIG_PATH)\""; \
+		echo "TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -PXxx -d \"$(CONFIG_PATH)\" -n test -D \"${top_builddir}/share/dictionary/\""; \
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)"; \
 		$(MAKE) radiusd.kill; \
 		exit 1;\

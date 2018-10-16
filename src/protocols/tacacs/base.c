@@ -29,7 +29,7 @@
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/tacacs.h>
+#include <freeradius-devel/protocol/tacacs/dictionary.h>
 
 #include "tacacs.h"
 #include "attrs.h"

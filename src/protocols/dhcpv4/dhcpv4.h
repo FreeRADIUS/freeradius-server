@@ -32,7 +32,7 @@ extern "C" {
 
 #include <freeradius-devel/util/pcap.h>
 #include <freeradius-devel/util/packet.h>
-#include <freeradius-devel/dhcpv4.h>
+#include <freeradius-devel/protocol/dhcpv4/rfc2131.h>
 
 #define DHCP_CHADDR_LEN	(16)
 #define DHCP_SNAME_LEN	(64)

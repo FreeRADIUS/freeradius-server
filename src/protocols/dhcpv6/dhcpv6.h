@@ -29,8 +29,8 @@
 RCSIDH(dhcpv6_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/attributes.h>
-#include <freeradius-devel/dhcpv6.h>
+
+#include <freeradius-devel/protocol/dhcpv6/dictionary.h>
 
 extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
 extern fr_dict_attr_t const *dhcpv6_root;

@@ -515,7 +515,7 @@ AC_MSG_RESULT($raddbdir)
 dnl #
 dnl #  extra argument: --with-dictdir
 dnl #
-dictdir='${datarootdir}/freeradius'
+dictdir='${datarootdir}/freeradius/dictionary'
 AC_MSG_CHECKING(dictdir)
 AC_ARG_WITH(dictdir,
 [  --with-dictdir=DIR      directory for dictionary files [DATAROOTDIR/freeradius] ],

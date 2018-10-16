@@ -3,18 +3,14 @@ autoconf.h
 autoconf.sed
 
 # Dynamically generated headers
-attributes.h
 features.h
-freeradius.h
-freeradius.snmp.h
 missing.h
 radpaths.h
-eap.sim.h
-eap.aka.h
-tacacs.h
-rfc*.h
 tls.h
-vqp.h
+protocol/*
+
+# Symlinks
+util
 
 # Build scripts
 build-radpaths-h

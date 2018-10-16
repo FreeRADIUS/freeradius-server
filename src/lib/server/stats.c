@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 
 #include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/attributes.h>
+
 
 #ifdef WITH_STATS
 

@@ -28,11 +28,12 @@ do
     echo 'Test-Number = ' $NUMBER >> .request
 
     rm ./radclient.log > /dev/null 2>&1
-    $BIN_PATH/radclient -f .request -xF -D ./ 127.0.0.1:$PORT auth $SECRET 1> ./radclient.log
+    $BIN_PATH/radclient -f .request -xF -d "${TOP_BUILDDIR}/src/tests" -D "${TOP_BUILDDIR}/share/dictionary" 127.0.0.1:$PORT auth $SECRET 1> ./radclient.log
     if [ "$?" = "0" ]; then
       echo "${BASE}_${NUMBER} : Success"
     else
       echo "${BASE}_${NUMBER} : FAILED"
+      echo "$BIN_PATH/radclient -f .request -xF -d "${TOP_BUILDDIR}/src/tests" -D "${TOP_BUILDDIR}/share/dictionary" 127.0.0.1:$PORT auth $SECRET"
       cat ./radclient.log
       RCODE=1
     fi

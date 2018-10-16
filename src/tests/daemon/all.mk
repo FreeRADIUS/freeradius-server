@@ -68,7 +68,7 @@ $(BUILD_DIR)/tests/daemon/radiusd.version: $(TESTBINDIR)/radiusd
 #
 $(BUILD_DIR)/tests/daemon/radiusd.log: $(BUILD_DIR)/tests/daemon/radiusd.version
 	${Q}rm -f $@
-	${Q}tmux -L $(TMUX_KEY) new-session -d './$(TESTBIN)/radiusd -i 127.0.0.1 -p $(TMUX_PORT) -fxx -d ./raddb -D share -l $@'
+	${Q}tmux -L $(TMUX_KEY) new-session -d './$(TESTBIN)/radiusd -i 127.0.0.1 -p $(TMUX_PORT) -fxx -d ./raddb -D share/dictionary -l $@'
 
 radiusd.start: $(BUILD_DIR)/tests/daemon/radiusd.log
 

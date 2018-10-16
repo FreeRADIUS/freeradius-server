@@ -22,8 +22,10 @@
  */
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/eap.sim.h>
-#include <freeradius-devel/eap.aka.h>
+#include <freeradius-devel/protocol/eap/sim/dictionary.h>
+#include <freeradius-devel/protocol/eap/sim/rfc4187.h>
+#include <freeradius-devel/protocol/eap/aka/dictionary.h>
+#include <freeradius-devel/protocol/eap/aka/rfc4187.h>
 
 /*
  *	Sanity check on dictionaries...
