@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/state.h>
+#include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/util/print.h>
 
@@ -39,133 +40,6 @@ RCSID("$Id$")
 #include <freeradius-devel/attributes.h>
 
 #include <ctype.h>
-
-/*
- *	Check password.
- *
- *	Returns:	0  OK
- *			-1 Password fail
- *			-2 Rejected (Auth-Type = Reject, send Port-Message back)
- *			1  End check & return, don't reply
- *
- *	NOTE: NOT the same as the RLM_ values !
- */
-static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
-{
-	fr_cursor_t		cursor;
-	VALUE_PAIR		*auth_type_pair;
-	int			auth_type = -1;
-	int			result;
-	int			auth_type_count = 0;
-	fr_dict_attr_t const	*da;
-
-	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_AUTH_TYPE);
-	if (!da) {
-		RERROR("Missing definition for Auth-Type");
-		return -1;
-	}
-
-	/*
-	 *	Look for matching check items. We skip the whole lot
-	 *	if the authentication type is FR_AUTH_TYPE_ACCEPT or
-	 *	FR_AUTH_TYPE_REJECT.
-	 */
-	for (auth_type_pair = fr_cursor_iter_by_da_init(&cursor, &request->control, da);
-	     auth_type_pair;
-	     auth_type_pair = fr_cursor_next(&cursor)) {
-		auth_type = auth_type_pair->vp_uint32;
-		auth_type_count++;
-
-		RDEBUG2("Using '%pP' for authenticate {...}", auth_type_pair);
-		if (auth_type == FR_AUTH_TYPE_REJECT) {
-			RDEBUG2("Auth-Type = Reject, rejecting user");
-
-			return -2;
-		}
-	}
-
-	/*
-	 *	Warn if more than one Auth-Type was found, because only the last
-	 *	one found will actually be used.
-	 */
-	if ((auth_type_count > 1) && (rad_debug_lvl) && request->username) {
-		RERROR("Warning:  Found %d auth-types on request for user '%s'",
-		       auth_type_count, request->username->vp_strvalue);
-	}
-
-	/*
-	 *	This means we have a proxy reply or an accept and it wasn't
-	 *	rejected in the above loop. So that means it is accepted and we
-	 *	do no further authentication.
-	 */
-	if (auth_type == FR_AUTH_TYPE_ACCEPT) {
-		RDEBUG2("Auth-Type = Accept, accepting the user");
-		return 0;
-	}
-
-	/*
-	 *	Check that Auth-Type has been set, and reject if not.
-	 *
-	 *	Do quick checks to see if Cleartext-Password or Crypt-Password have
-	 *	been set, and complain if so.
-	 */
-	if (auth_type < 0) {
-		if (fr_pair_find_by_num(request->control, 0, FR_CRYPT_PASSWORD, TAG_ANY) != NULL) {
-			RWDEBUG2("Please update your configuration, and remove 'Auth-Type = Crypt'");
-			RWDEBUG2("Use the PAP module instead");
-		}
-		else if (fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY) != NULL) {
-			RWDEBUG2("Please update your configuration, and remove 'Auth-Type = Local'");
-			RWDEBUG2("Use the PAP or CHAP modules instead");
-		}
-
-		/*
-		 *	The admin hasn't told us how to
-		 *	authenticate the user, so we reject them!
-		 *
-		 *	This is fail-safe.
-		 */
-
-		REDEBUG2("No Auth-Type found: rejecting the user via Post-Auth-Type = Reject");
-		return -2;
-	}
-
-	/*
-	 *	See if there is a module that handles
-	 *	this Auth-Type, and turn the RLM_ return
-	 *	status into the values as defined at
-	 *	the top of this function.
-	 */
-	result = process_authenticate(auth_type, request);
-	switch (result) {
-	/*
-	 *	An authentication module FAIL
-	 *	return code, or any return code that
-	 *	is not expected from authentication,
-	 *	is the same as an explicit REJECT!
-	 */
-	case RLM_MODULE_FAIL:
-	case RLM_MODULE_INVALID:
-	case RLM_MODULE_NOOP:
-	case RLM_MODULE_NOTFOUND:
-	case RLM_MODULE_REJECT:
-	case RLM_MODULE_UPDATED:
-	case RLM_MODULE_USERLOCK:
-	default:
-		result = -1;
-		break;
-
-	case RLM_MODULE_OK:
-		result = 0;
-		break;
-
-	case RLM_MODULE_HANDLED:
-		result = 1;
-		break;
-	}
-
-	return result;
-}
 
 /*
  *	Post-authentication step processes the response before it is
@@ -219,115 +93,6 @@ rlm_rcode_t rad_postauth(REQUEST *request)
 	return rcode;
 }
 
-/*
- *	Process and reply to an authentication request
- *
- *	The return value of this function isn't actually used right now, so
- *	it's not entirely clear if it is returning the right things. --Pac.
- */
-static rlm_rcode_t rad_authenticate(REQUEST *request)
-{
-	int		result;
-	rlm_rcode_t    	rcode;
-
-#ifdef WITH_PROXY
-	/*
-	 *	Old proxy code removed, see v3.0.x for details
-	 */
-#endif
-	/*
-	 *	Look for, and cache, passwords.
-	 */
-	if (!request->password) {
-		request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
-	}
-	if (!request->password) {
-		request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY);
-	}
-
-	/*
-	 *	Get the user's authorization information from the database
-	 */
-	rcode = process_authorize(0, request);
-	switch (rcode) {
-	case RLM_MODULE_NOOP:
-	case RLM_MODULE_NOTFOUND:
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-		break;
-	case RLM_MODULE_HANDLED:
-		return rcode;
-	case RLM_MODULE_FAIL:
-	case RLM_MODULE_INVALID:
-	case RLM_MODULE_REJECT:
-	case RLM_MODULE_USERLOCK:
-	default:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		return rcode;
-	}
-
-	/*
-	 *	Validate the user
-	 */
-	do {
-		result = rad_check_password(request);
-		if (result > 0) {
-			return RLM_MODULE_HANDLED;
-		}
-
-	} while(0);
-
-	/*
-	 *	Failed to validate the user.
-	 *
-	 *	We PRESUME that the code which failed will clean up
-	 *	request->reply->vps, to be ONLY the reply items it
-	 *	wants to send back.
-	 */
-	if (result < 0) {
-		RDEBUG2("Failed to authenticate the user");
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-
-		if (request->password) {
-			VP_VERIFY(request->password);
-			/* double check: maybe the secret is wrong? */
-			if ((rad_debug_lvl > 1) && (request->password->da->attr == FR_USER_PASSWORD)) {
-				uint8_t const *p;
-
-				p = (uint8_t const *) request->password->vp_strvalue;
-				while (*p) {
-					int size;
-
-					size = fr_utf8_char(p, -1);
-					if (!size) {
-						RWDEBUG("Unprintable characters in the password.  Double-check the "
-							"shared secret on the server and the NAS!");
-						break;
-					}
-					p += size;
-				}
-			}
-		}
-	}
-
-	/*
-	 *	Result should be >= 0 here - if not, it means the user
-	 *	is rejected, so we just process post-auth and return.
-	 */
-	if (result < 0) {
-		return RLM_MODULE_REJECT;
-	}
-
-	/*
-	 *	Set the reply to Access-Accept, if it hasn't already
-	 *	been set to something.  (i.e. Access-Challenge)
-	 */
-	if (request->reply->code == 0) request->reply->code = FR_CODE_ACCESS_ACCEPT;
-
-	return rcode;
-}
-
-#include <freeradius-devel/io/listen.h>
 
 static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
 {
@@ -363,7 +128,6 @@ static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
  */
 rlm_rcode_t rad_virtual_server(REQUEST *request)
 {
-	int rcode;
 	VALUE_PAIR *vp;
 
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
@@ -466,41 +230,7 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 skip:
 	if (request->async) return virtual_server_async(request, false);
 
-	if (request->parent && request->parent->async) return virtual_server_async(request, true);
-
-	RDEBUG("server %s {", cf_section_name2(request->server_cs));
-
-	RINDENT();
-
-	/*
-	 *	We currently only handle AUTH packets here.
-	 *	This could be expanded to handle other packets as well if required.
-	 */
-	rad_assert(request->packet->code == FR_CODE_ACCESS_REQUEST);
-
-	rcode = rad_authenticate(request);
-
-	if (request->reply->code == FR_CODE_ACCESS_REJECT) {
-		fr_pair_delete_by_child_num(&request->control, fr_dict_root(fr_dict_internal), FR_POST_AUTH_TYPE, TAG_ANY);
-
-		MEM(vp = fr_pair_afrom_child_num(request, fr_dict_root(fr_dict_internal), FR_POST_AUTH_TYPE));
-		fr_pair_value_from_str(vp, "Reject", -1, '\0', false);
-		fr_pair_add(&request->control, vp);
-
-		rad_postauth(request);
-	}
-
-	if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
-		(void) rad_postauth(request);
-	}
-
-	REXDENT();
-	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
-
-	RDEBUG("Virtual server sending reply");
-	log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
-
-	return rcode;
+	return virtual_server_async(request, true);
 }
 
 /*
