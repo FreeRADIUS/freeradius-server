@@ -697,25 +697,9 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 				fr_strerror_printf("The 'length' flag can only be used with attributes of TLV lengths of 1,2 or 4");
 				goto error;
 			}
-
-		} else if ((type != FR_TYPE_OCTETS) &&
-			   (type != FR_TYPE_STRUCT)) {
+		} else if (type != FR_TYPE_OCTETS) {
 			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets' or 'struct'");
 			goto error;
-		}
-
-		if (type == FR_TYPE_STRUCT) {
-			if (flags->type_size != 0) {
-				fr_strerror_printf("Invalid initializer for type_size");
-				goto error;
-			}
-
-			/*
-			 *	Set maximum length for the struct, and
-			 *	initialize the current length to be zero.
-			 */
-			flags->type_size = flags->length;
-			flags->length = 0;
 		}
 	}
 
@@ -1044,7 +1028,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			fr_strerror_printf("Invalid flag for attribute of type 'struct'");
 			goto error;
 		}
-
 		break;
 
 	case FR_TYPE_STRING:
@@ -1060,8 +1043,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	 *	Validate attribute based on parent.
 	 */
 	if (parent->type == FR_TYPE_STRUCT) {
-		fr_dict_attr_t *mutable;
-
 		if (flags->encrypt != FLAG_ENCRYPT_NONE) {
 			fr_strerror_printf("Attributes inside a 'struct' MUST NOT be encrypted.");
 			goto error;
@@ -1074,11 +1055,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 
 		if (*attr > 1) {
 			fr_dict_attr_t const *sibling;
-
-			if (!parent->flags.length) {
-				fr_strerror_printf("Children of 'struct' type attributes MUST start with sub-attribute 1.");
-				goto error;
-			}
 
 			sibling = fr_dict_attr_child_by_num(parent, (*attr) - 1);
 			if (!sibling) {
@@ -1102,32 +1078,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 				goto error;
 			}
 		}
-
-		/*
-		 *	Sneak in the length of the children.
-		 */
-		memcpy(&mutable, &parent, sizeof(mutable));
-
-		/*
-		 *	The struct has a maximum size.  Complain if we exceed it.
-		 */
-		if (flags->length) {
-			if (mutable->flags.type_size && ((mutable->flags.length + flags->length) > mutable->flags.type_size)) {
-				fr_strerror_printf("Child attribute causes struct to overflow maximum size of %d octets",
-						   mutable->flags.type_size);
-				goto error;
-			}
-			mutable->flags.length += flags->length;
-
-		} else {
-			/*
-			 *	This is a bad hack... set the struct
-			 *	size to it's maximum value, which
-			 *	indicates that it has variable length.
-			 */
-			mutable->flags.length = 0;
-		}
-
 	}
 
 	return true;
@@ -3951,6 +3901,11 @@ get_by_oid:
 
 	if (p) {
 		char *q;
+
+		if (type != FR_TYPE_OCTETS) {
+			fr_strerror_printf("Only 'octets' types can have a 'length' parameter");
+			return -1;
+		}
 
 		q = strchr(p + 1, ']');
 		if (!q) {

@@ -25,3 +25,30 @@ data f1 11 f9 00 00 00 01 01 0a 7f 00 00 01 08 08 08 08
 
 decode-pair -
 data Unit-Struct3-Int = 1, Unit-Struct3a-Ipaddr1 = 127.0.0.1, Unit-Struct3a-Ipaddr2 = 8.8.8.8
+
+#
+#  Fixed size struct
+#
+encode-pair Unit-Struct4-Int1 = 1, Unit-Struct4-Int2 = 2, Unit-Struct4-Short = 4
+data f1 0d fa 00 00 00 01 00 00 00 02 00 04
+
+decode-pair -
+data Unit-Struct4-Int1 = 1, Unit-Struct4-Int2 = 2, Unit-Struct4-Short = 4
+
+#
+#  Wrong-sized struct (last field missing), it just decodes what it can.
+#
+decode-pair f1 0b fa 00 00 00 01 00 00 00 02
+data Unit-Struct4-Int1 = 1, Unit-Struct4-Int2 = 2
+
+#
+#  Wrong-sized struct (last two fields missing), it just decodes what it can.
+#
+decode-pair f1 07 fa 00 00 00 01
+data Unit-Struct4-Int1 = 1
+
+#
+#  Wrong-sized struct (data is too long), we ignore the extra data.
+#
+decode-pair f1 0e fa 00 00 00 01 00 00 00 02 00 04 00
+data Unit-Struct4-Int1 = 1, Unit-Struct4-Int2 = 2, Unit-Struct4-Short = 4

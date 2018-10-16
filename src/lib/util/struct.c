@@ -77,18 +77,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	fr_cursor_init(&child_cursor, &head);
 	*child_p = NULL;
 
-	/*
-	 *	Data is too small for the structure, ignore it.
-	 */
-	if (data_len < parent->flags.length) {
-	raw:
-		vp = fr_unknown_from_network(ctx, parent, data, data_len);
-		if (!vp) return -1;
-
-		fr_cursor_append(&child_cursor, vp);
-		return data_len;
-	}
-
 	child_num = 1;
 	while (p < end) {
 		size_t child_length;
@@ -143,7 +131,12 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			TALLOC_FREE(vp);
 			fr_pair_list_free(&head);
 			fr_cursor_init(&child_cursor, &head);
-			goto raw;
+
+			vp = fr_unknown_from_network(ctx, parent, data, data_len);
+			if (!vp) return -1;
+
+			fr_cursor_append(&child_cursor, vp);
+			return data_len;
 		}
 
 		vp->type = VT_DATA;
