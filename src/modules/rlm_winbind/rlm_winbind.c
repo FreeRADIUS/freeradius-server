@@ -76,7 +76,7 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  *
  * @param instance	Instance of this module
  * @param request	The current request
- * @param attr		Attribute to look up in group
+ * @param req		The request list
  * @param check		Value pair containing group to be searched
  * @param check_pairs	Unknown
  * @param reply_pairs	Unknown
@@ -85,7 +85,7 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  *	- 0 user is in group
  *	- 1 failure or user is not in group
  */
-static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr, VALUE_PAIR *check,
+static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *req, VALUE_PAIR *check,
 			     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_winbind_t		*inst = instance;
@@ -104,6 +104,8 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 
 	ssize_t			slen;
 	size_t			backslash = 0;
+
+	if (!request->username) return -1;
 
 	RINDENT();
 
@@ -149,7 +151,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 			RWDEBUG("Searching group with plain username, this will probably fail");
 			RWDEBUG("Ensure winbind_domain and group_search_username are both correctly set");
 		}
-		user = attr->vp_strvalue;
+		user = request->username->vp_strvalue;
 	}
 
 	if (domain) {
