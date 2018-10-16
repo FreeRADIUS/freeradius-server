@@ -59,21 +59,6 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
 #endif
 };
 
-static int default_component_results[MOD_COUNT] = {
-	RLM_MODULE_REJECT,	/* AUTH */
-	RLM_MODULE_NOTFOUND,	/* AUTZ */
-	RLM_MODULE_NOOP,	/* PREACCT */
-	RLM_MODULE_NOOP,	/* ACCT */
-	RLM_MODULE_NOOP,	/* PRE_PROXY */
-	RLM_MODULE_NOOP,	/* POST_PROXY */
-	RLM_MODULE_NOOP       	/* POST_AUTH */
-#ifdef WITH_COA
-	,
-	RLM_MODULE_NOOP,      	/* RECV_COA_TYPE */
-	RLM_MODULE_NOOP		/* SEND_COA_TYPE */
-#endif
-};
-
 typedef struct {
 	char const		*namespace;		//!< Namespace function is registered to.
 	fr_virtual_server_compile_t	func;		//!< Function to call to compile sections.
@@ -272,12 +257,15 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 /**
  */
-static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *request)
+rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 {
 	rlm_rcode_t	rcode;
 	CONF_SECTION	*cs, *server_cs;
 	char const	*module;
 	char const	*component;
+	fr_dict_attr_t const *da;
+	fr_dict_enum_t const *dv;
+	CONF_SECTION	*subcs;
 
 	rad_assert(request->server_cs != NULL);
 
@@ -291,43 +279,38 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 	 *	This is mainly for things like proxying
 	 */
 	server_cs = request->server_cs;
-	cs = cf_section_find(request->server_cs, section_type_value[comp].section, NULL);
+	cs = cf_section_find(request->server_cs, "authenticate", NULL);
 	if (!cs) {
-		RDEBUG2("Empty %s section in virtual server \"%s\".  Using default return value (%s)",
-			section_type_value[comp].section, cf_section_name2(request->server_cs),
-			fr_int2str(mod_rcode_table, default_component_results[comp], "<invalid>"));
-		return default_component_results[comp];
+		RDEBUG2("Empty 'authenticate' section in virtual server \"%s\".  Using default return value (%s)",
+			cf_section_name2(request->server_cs),
+			fr_int2str(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"));
+		return RLM_MODULE_REJECT;
 	}
 
 	/*
 	 *	Figure out which section to run.
 	 */
-	if (!idx) {
-		RDEBUG("Running section %s from file %s",
-		       section_type_value[comp].section, cf_filename(cs));
-
-	} else {
-		fr_dict_attr_t const *da;
-		fr_dict_enum_t const *dv;
-		CONF_SECTION *subcs;
-
-		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), section_type_value[comp].attr);
-		if (!da) return RLM_MODULE_FAIL;
-
-		dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t)idx));
-		if (!dv) return RLM_MODULE_FAIL;
-
-		subcs = cf_section_find(cs, da->name, dv->alias);
-		if (!subcs) {
-			RDEBUG2("%s %s sub-section not found.  Using default return values.",
-				da->name, dv->alias);
-			return default_component_results[comp];
-		}
-
-		RDEBUG("Running %s %s from file %s",
-		       da->name, dv->alias, cf_filename(subcs));
-		cs = subcs;
+	if (!auth_type) {
+		RERROR("An 'Auth-Type' MUST be specified");
+		return RLM_MODULE_REJECT;
 	}
+
+	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_AUTH_TYPE);
+	if (!da) return RLM_MODULE_FAIL;
+
+	dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t) auth_type));
+	if (!dv) return RLM_MODULE_FAIL;
+
+	subcs = cf_section_find(cs, da->name, dv->alias);
+	if (!subcs) {
+		RDEBUG2("%s %s sub-section not found.  Using default return values.",
+			da->name, dv->alias);
+		return RLM_MODULE_REJECT;
+	}
+
+	RDEBUG("Running %s %s from file %s",
+	       da->name, dv->alias, cf_filename(subcs));
+	cs = subcs;
 
 	/*
 	 *	Cache and restore these, as they're re-set when
@@ -337,9 +320,9 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 	component = request->component;
 
 	request->module = NULL;
-	request->component = section_type_value[comp].section;
+	request->component = "authenticate";
 
-	rcode = unlang_interpret(request, cs, default_component_results[comp]);
+	rcode = unlang_interpret(request, cs, RLM_MODULE_REJECT);
 
 	request->component = component;
 	request->module = module;
@@ -348,13 +331,6 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 	return rcode;
 }
 
-/*
- *	Authenticate a user/password with various methods.
- */
-rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
-{
-	return module_method_call(MOD_AUTHENTICATE, auth_type, request);
-}
 
 /** Define a values for Auth-Type attributes by the sections present in a virtual-server
  *
