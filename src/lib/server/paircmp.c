@@ -777,16 +777,16 @@ int paircmp_find(fr_dict_attr_t const *da)
 int paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
 			     bool first_only, RAD_COMPARE_FUNC func, void *instance)
 {
-	fr_dict_attr_flags_t	flags = {
-					.compare = 1
-				};
-
+	fr_dict_attr_flags_t	flags;
 	fr_dict_attr_t const	*da;
+
+	memset(&flags, 0, sizeof(flags));
 
 	da = fr_dict_attr_by_name(fr_dict_internal, name);
 	if (da) {
-		if (!da->flags.compare) {
-			fr_strerror_printf("Attribute '%s' already exists", name);
+		if (paircmp_find(da)) {
+			fr_strerror_printf_push("Cannot register two comparions for attribute %s",
+						name);
 			return -1;
 		}
 	} else if (from) {

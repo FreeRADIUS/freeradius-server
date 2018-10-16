@@ -2547,7 +2547,6 @@ do { \
 	FLAG_SET(has_value);
 	FLAG_SET(concat);
 	FLAG_SET(virtual);
-	FLAG_SET(compare);
 	FLAG_SET(named);
 
 	if (flags->encrypt) {

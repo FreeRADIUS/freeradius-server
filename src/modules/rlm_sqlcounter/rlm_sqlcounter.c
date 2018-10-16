@@ -600,13 +600,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rad_assert(inst->limit_attr);
 
 	memset(&flags, 0, sizeof(flags));
-	flags.compare = 1;	/* ugly hack */
 	if (tmpl_define_undefined_attr(dict_freeradius, inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining counter attribute");
 		return -1;
 	}
 
-	flags.compare = 0;
 	if (tmpl_define_undefined_attr(dict_freeradius, inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining check attribute");
 		return -1;
