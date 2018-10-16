@@ -47,6 +47,13 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  Fixes https://bugs.launchpad.net/bugs/1795310.
 	* Allow logging of only Access-Accept or Access-Reject messages.
 	  See radiusd.conf, "auth_accept" and "auth_reject".
+	* Removed Connect-Rate comparison.  It was unused and broken.
+	* Add dictionary.infinera.
+	* RPMs can now change raddb location with rpmbuild parameter
+	  --define '_sysconfdir /etc'
+	* OpenDirectory module now points to Apple documentation for help
+	  with build and configuration.
+	* Use OpenSSL HMAC functions instead of local ones.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -85,6 +92,7 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Check for correct OpenSSL version in vulnerability
 	  list.  Patch from Christian Hesse.
 	* Fix crash with CoA packets/  Fixes #2304.
+	* Fix crash in rlm_exec with CoA.  Fixes #2328.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
