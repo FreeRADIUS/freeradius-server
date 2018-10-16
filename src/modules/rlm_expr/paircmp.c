@@ -28,22 +28,6 @@ RCSID("$Id$")
 #include "rlm_expr.h"
 
 /*
- *	Compare a Connect-Info and a Connect-Rate
- */
-static int connectcmp(UNUSED void *instance,
-		      REQUEST *req UNUSED,
-		      VALUE_PAIR *request,
-		      VALUE_PAIR *check,
-		      UNUSED VALUE_PAIR *check_pairs,
-		      UNUSED VALUE_PAIR **reply_pairs)
-{
-	int rate;
-
-	rate = atoi(request->vp_strvalue);
-	return rate - check->vp_integer;
-}
-
-/*
  *	Compare prefix/suffix.
  *
  *	If they compare:
@@ -238,8 +222,6 @@ void pair_builtincompare_add(void *instance)
 
 	paircompare_register(dict_attrbyvalue(PW_PREFIX, 0), dict_attrbyvalue(PW_USER_NAME, 0), false, presufcmp, instance);
 	paircompare_register(dict_attrbyvalue(PW_SUFFIX, 0), dict_attrbyvalue(PW_USER_NAME, 0), false, presufcmp, instance);
-	paircompare_register(dict_attrbyvalue(PW_CONNECT_RATE, 0), dict_attrbyvalue(PW_CONNECT_INFO, 0),
-				false, connectcmp, instance);
 	paircompare_register(dict_attrbyvalue(PW_PACKET_TYPE, 0), NULL, true, packetcmp, instance);
 	paircompare_register(dict_attrbyvalue(PW_RESPONSE_PACKET_TYPE, 0), NULL, true, responsecmp, instance);
 
