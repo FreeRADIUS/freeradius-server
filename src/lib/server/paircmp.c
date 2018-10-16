@@ -153,13 +153,11 @@ static int prefix_suffix_cmp(UNUSED void *instance,
 	int		len, namelen;
 	int		ret = -1;
 
-	if (!request) return -1;
+	if (!request || !request->username) return -1;
 
-	VP_VERIFY(req);
 	VP_VERIFY(check);
-	rad_assert(req->vp_type == FR_TYPE_STRING);
 
-	name = req->vp_strvalue;
+	name = request->username->vp_strvalue;
 
 	RDEBUG3("Comparing name \"%s\" and check value \"%s\"", name, check->vp_strvalue);
 
