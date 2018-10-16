@@ -53,8 +53,8 @@ static int connectcmp(UNUSED void *instance,
  *	  add a PW_STRIPPED_USER_NAME to the request.
  */
 static int presufcmp(UNUSED void *instance,
-		     REQUEST *req,
-		     VALUE_PAIR *request,
+		     REQUEST *request,
+		     UNUSED VALUE_PAIR *req,
 		     VALUE_PAIR *check,
 		     VALUE_PAIR *check_pairs,
 		     UNUSED VALUE_PAIR **reply_pairs)
@@ -65,15 +65,15 @@ static int presufcmp(UNUSED void *instance,
 	int len, namelen;
 	int ret = -1;
 
-	if (!request) {
+	if (!request->username) {
 		return -1;
 	}
 
-	VERIFY_VP(request);
+	VERIFY_VP(request->username);
 	VERIFY_VP(check);
-	rad_assert(request->da->type == PW_TYPE_STRING);
+	rad_assert(request->username->da->type == PW_TYPE_STRING);
 
-	name = request->vp_strvalue;
+	name = request->username->vp_strvalue;
 
 #if 0 /* DEBUG */
 	printf("Comparing %s and %s, check->attr is %d\n", name, check->vp_strvalue, check->attribute);
@@ -112,13 +112,9 @@ static int presufcmp(UNUSED void *instance,
 	 */
 	vp = fr_pair_find_by_num(check_pairs, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 	if (!vp) {
-		/*
-		 *	If "request" is NULL, then the memory will be
-		 *	lost!
-		 */
-		vp = radius_pair_create(req->packet, &request, PW_STRIPPED_USER_NAME, 0);
+		vp = radius_pair_create(request->packet, &request->packet->vps, PW_STRIPPED_USER_NAME, 0);
 		if (!vp) return ret;
-		req->username = vp;
+		request->username = vp;
 	}
 
 	fr_pair_value_strcpy(vp, rest);
