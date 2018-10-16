@@ -76,7 +76,6 @@ fr_dict_autoload_t rlm_eap_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_post_auth_type;
 fr_dict_attr_t const *attr_eap_type;
 
 static fr_dict_attr_t const *attr_cisco_avpair;
@@ -89,7 +88,6 @@ extern fr_dict_attr_autoload_t rlm_eap_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_post_auth_type, .name = "Post-Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
 	{ .out = &attr_cisco_avpair, .name = "Cisco-AvPair", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -905,10 +903,10 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	}
 
 	/*
-	 *	Only build a failure message if something previously rejected the request
+	 *	Only synthesize a failure message if something
+	 *	previously rejected the request.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_post_auth_type, TAG_ANY);
-	if (!vp || (vp->vp_uint32 != FR_POST_AUTH_TYPE_REJECT)) return RLM_MODULE_NOOP;
+	if (request->reply->code != FR_CODE_ACCESS_REJECT) return RLM_MODULE_NOOP;
 
 	if (!fr_pair_find_by_da(request->packet->vps, attr_eap_message, TAG_ANY)) {
 		RDEBUG3("Request didn't contain an EAP-Message, not inserting EAP-Failure");
