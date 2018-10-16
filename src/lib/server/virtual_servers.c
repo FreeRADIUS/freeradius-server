@@ -349,40 +349,11 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 }
 
 /*
- *	Call all authorization modules until one returns
- *	somethings else than RLM_MODULE_OK
- */
-rlm_rcode_t process_authorize(int autz_type, REQUEST *request)
-{
-	return module_method_call(MOD_AUTHORIZE, autz_type, request);
-}
-
-/*
  *	Authenticate a user/password with various methods.
  */
 rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 {
 	return module_method_call(MOD_AUTHENTICATE, auth_type, request);
-}
-
-#ifdef WITH_PROXY
-/*
- *	Do post-proxying for ALL configured sessions
- */
-rlm_rcode_t process_post_proxy(int type, REQUEST *request)
-{
-	rad_assert(request->proxy != NULL);
-
-	return module_method_call(MOD_POST_PROXY, type, request);
-}
-#endif
-
-/*
- *	Do post-authentication for ALL configured sessions
- */
-rlm_rcode_t process_post_auth(int postauth_type, REQUEST *request)
-{
-	return module_method_call(MOD_POST_AUTH, postauth_type, request);
 }
 
 /** Define a values for Auth-Type attributes by the sections present in a virtual-server
