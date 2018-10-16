@@ -698,6 +698,9 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 			return -1;
 		}
 
+#ifdef __clang_analyzer__
+		if (!parent->parent) return -1; /* stupid static analyzers */
+#endif
 		rad_assert(parent->parent);
 
 		/*
