@@ -149,6 +149,8 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 
 runit:
 	if (!request->async) {
+		rad_assert(request->parent != NULL);
+
 		request->async = talloc_memdup(request, request->parent->async, sizeof(fr_async_t));
 		talloc_set_name_const(request->async, talloc_get_name(request->parent->async));
 	}
