@@ -553,130 +553,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 }
 
 
-#ifdef WITH_PROXY
-/*
- *	Do post-proxy processing,
- */
-static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void *data)
-{
-	int rcode;
-	tls_session_t *tls_session = talloc_get_type_abort(data, tls_session_t);
-	REQUEST *fake, *request = eap_session->request;
-
-	RDEBUG("Passing reply from proxy back into the tunnel");
-
-	/*
-	 *	If there was a fake request associated with the proxied
-	 *	request, do more processing of it.
-	 */
-	fake = (REQUEST *) request_data_get(eap_session->request,
-					    eap_session->request->proxy,
-					    REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK);
-
-	/*
-	 *	Do the callback, if it exists, and if it was a success.
-	 */
-	if (fake && (eap_session->request->proxy->reply->code == FR_CODE_ACCESS_ACCEPT)) {
-		/*
-		 *	Terrible hacks.
-		 */
-		rad_assert(!fake->packet);
-		fake->packet = talloc_steal(fake, request->proxy->packet);
-		fake->packet->src_ipaddr = request->packet->src_ipaddr;
-		request->proxy->packet = NULL;
-
-		rad_assert(!fake->reply);
-		fake->reply = talloc_steal(fake, request->proxy->reply);
-		request->proxy->reply = NULL;
-
-		if ((rad_debug_lvl > 0) && fr_log_fp) {
-			fprintf(fr_log_fp, "server %s {\n", cf_section_name2(fake->server_cs));
-		}
-
-		/*
-		 *	Perform a post-auth stage for the tunneled
-		 *	session.
-		 */
-		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-		rcode = rad_postauth(fake);
-		RDEBUG2("post-auth returns %d", rcode);
-
-		if ((rad_debug_lvl > 0) && fr_log_fp) {
-			fprintf(fr_log_fp, "} # server %s\n", cf_section_name2(fake->server_cs));
-
-			RDEBUG("Final reply from tunneled session code %d", fake->reply->code);
-			log_request_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
-		}
-
-		/*
-		 *	Terrible hacks.
-		 */
-		request->proxy->packet = talloc_steal(request->proxy, fake->packet);
-		fake->packet = NULL;
-		request->proxy->reply = talloc_steal(request->proxy, fake->reply);
-		fake->reply = NULL;
-
-		/*
-		 *	And we're done with this request.
-		 */
-
-		switch (rcode) {
-		case RLM_MODULE_FAIL:
-			talloc_free(fake);
-			eap_tls_fail(eap_session);
-			return 0;
-
-		default:  /* Don't Do Anything */
-			RDEBUG2("Got reply %d",
-			       request->proxy->reply->code);
-			break;
-		}
-	}
-	talloc_free(fake);	/* robust if !fake */
-
-	/*
-	 *	Process the reply from the home server.
-	 */
-	rcode = process_reply(eap_session, tls_session, eap_session->request, eap_session->request->proxy->reply);
-
-	/*
-	 *	The proxy code uses the reply from the home server as
-	 *	the basis for the reply to the NAS.  We don't want that,
-	 *	so we toss it, after we've had our way with it.
-	 */
-	fr_pair_list_free(&eap_session->request->proxy->reply->vps);
-
-	switch (rcode) {
-	case RLM_MODULE_REJECT:
-		RDEBUG("Reply was rejected");
-		break;
-
-	case RLM_MODULE_HANDLED:
-		RDEBUG("Reply was handled");
-		eap_tls_request(eap_session);
-		request->proxy->reply->code = FR_CODE_ACCESS_CHALLENGE;
-		return 1;
-
-	case RLM_MODULE_OK:
-		RDEBUG("Reply was OK");
-
-		/*
-		 *	Success: Automatically return MPPE keys.
-		 */
-		if (eap_tls_success(eap_session) < 0) return 0;
-		return 1;
-
-	default:
-		RDEBUG("Reply was unknown");
-		break;
-	}
-
-	eap_tls_fail(eap_session);
-	return 0;
-}
-
-#endif	/* WITH_PROXY */
-
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
@@ -847,82 +723,11 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Decide what to do with the reply.
 	 */
-	switch (fake->reply->code) {
-	case 0:			/* No reply code, must be proxied... */
-#ifdef WITH_PROXY
-		vp = fr_pair_find_by_da(fake->control, attr_proxy_to_realm, TAG_ANY);
-		if (vp) {
-			int			ret;
-			eap_tunnel_data_t	*tunnel;
-
-			RDEBUG("Tunneled authentication will be proxied to %pV", &vp->data);
-
-			/*
-			 *	Tell the original request that it's going
-			 *	to be proxied.
-			 */
-			fr_pair_list_copy_by_da(request, &request->control, fake->control, attr_proxy_to_realm);
-
-			/*
-			 *	Seed the proxy packet with the
-			 *	tunneled request.
-			 */
-			rad_assert(!request->proxy);
-
-			request->proxy = request_alloc_proxy(request);
-
-			request->proxy->packet = talloc_steal(request->proxy, fake->packet);
-			memset(&request->proxy->packet->src_ipaddr, 0, sizeof(request->proxy->packet->src_ipaddr));
-			memset(&request->proxy->packet->src_ipaddr, 0, sizeof(request->proxy->packet->src_ipaddr));
-			request->proxy->packet->src_port = 0;
-			request->proxy->packet->dst_port = 0;
-			fake->packet = NULL;
-			fr_radius_packet_free(&fake->reply);
-			fake->reply = NULL;
-
-			/*
-			 *	Set up the callbacks for the tunnel
-			 */
-			tunnel = talloc_zero(request, eap_tunnel_data_t);
-			tunnel->tls_session = tls_session;
-			tunnel->callback = eap_ttls_postproxy;
-
-			/*
-			 *	Associate the callback with the request.
-			 */
-			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-					       tunnel, false, false, false);
-			fr_cond_assert(ret == 0);
-
-			/*
-			 *	rlm_eap.c has taken care of associating
-			 *	the eap_session with the fake request.
-			 *
-			 *	So we associate the fake request with
-			 *	this request.
-			 */
-			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
-					       fake, true, false, false);
-			fr_cond_assert(ret == 0);
-
-			fake = NULL;
-
-			/*
-			 *	Didn't authenticate the packet, but
-			 *	we're proxying it.
-			 */
-			code = FR_CODE_STATUS_CLIENT;
-
-		} else
-#endif	/* WITH_PROXY */
-		  {
-			RDEBUG("No tunneled reply was found for request %" PRIu64 ", and the request was not "
-			       "proxied: rejecting the user", request->number);
-			code = FR_CODE_ACCESS_REJECT;
-		}
-		break;
-
-	default:
+	if (!fake->reply->code) {
+		RDEBUG("No tunneled reply was found for request %" PRIu64 ", and the request was not "
+		       "proxied: rejecting the user", request->number);
+		code = FR_CODE_ACCESS_REJECT;
+	} else {
 		/*
 		 *	Returns RLM_MODULE_FOO, and we want to return FR_FOO
 		 */
@@ -944,7 +749,6 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			code = FR_CODE_ACCESS_REJECT;
 			break;
 		}
-		break;
 	}
 
 finish:

@@ -41,59 +41,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-/*
- *	Post-authentication step processes the response before it is
- *	sent to the NAS. It can receive both Access-Accept and Access-Reject
- *	replies.
- */
-rlm_rcode_t rad_postauth(REQUEST *request)
-{
-	rlm_rcode_t rcode;
-	int	postauth_type = 0;
-	VALUE_PAIR *vp;
-
-	/*
-	 *	Do post-authentication calls. ignoring the return code.
-	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_POST_AUTH_TYPE, TAG_ANY);
-	if (vp) {
-		postauth_type = vp->vp_uint32;
-		RDEBUG2("Using Post-Auth-Type %s",
-			fr_dict_enum_alias_by_value(vp->da, fr_box_uint32(postauth_type)));
-	}
-	rcode = process_post_auth(postauth_type, request);
-	switch (rcode) {
-	/*
-	 *	The module failed, or said to reject the user: Do so.
-	 */
-	case RLM_MODULE_FAIL:
-	case RLM_MODULE_INVALID:
-	case RLM_MODULE_REJECT:
-	case RLM_MODULE_USERLOCK:
-	default:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		rcode = RLM_MODULE_REJECT;
-		break;
-	/*
-	 *	The module handled the request, cancel the reply.
-	 */
-	case RLM_MODULE_HANDLED:
-		/* FIXME */
-		break;
-	/*
-	 *	The module had a number of OK return codes.
-	 */
-	case RLM_MODULE_NOOP:
-	case RLM_MODULE_NOTFOUND:
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-		rcode = RLM_MODULE_OK;
-		break;
-	}
-	return rcode;
-}
-
-
 static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
 {
 	fr_io_final_t final;

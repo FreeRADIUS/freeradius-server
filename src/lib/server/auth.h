@@ -31,7 +31,6 @@ extern "C" {
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/rcode.h>
 
-rlm_rcode_t    	rad_postauth(REQUEST *);
 rlm_rcode_t    	rad_virtual_server(REQUEST *);
 
 #ifdef __cplusplus

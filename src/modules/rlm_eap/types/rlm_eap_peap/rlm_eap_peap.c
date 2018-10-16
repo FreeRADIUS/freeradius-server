@@ -26,14 +26,9 @@ RCSID("$Id$")
 
 #include "eap_peap.h"
 
-static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
-
 typedef struct rlm_eap_peap_t {
 	char const		*tls_conf_name;		//!< TLS configuration.
 	fr_tls_conf_t		*tls_conf;
-
-	fr_dict_enum_t		*inner_eap_module;	//!< Auth type of the inner eap module
 
 	bool			use_tunneled_reply;	//!< Use the reply attributes from the tunneled session in
 							//!< the non-tunneled reply to the client.
@@ -53,8 +48,6 @@ typedef struct rlm_eap_peap_t {
 
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_peap_t, tls_conf_name) },
-
-	{ FR_CONF_OFFSET("inner_eap_module", FR_TYPE_VOID, rlm_eap_peap_t, inner_eap_module), .func = auth_type_parse, .dflt = "eap" },
 
 	{ FR_CONF_DEPRECATED("copy_request_to_tunnel", FR_TYPE_BOOL, rlm_eap_peap_t, NULL), .dflt = "no" },
 
@@ -106,30 +99,6 @@ fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[] = {
 	{ NULL }
 };
 
-/** Translate a string auth_type into an enumeration value
- *
- * @param[in] ctx	to allocate data.
- * @param[out] out	Where to write the auth_type we created or resolved.
- * @param[in] parent	Base structure address.
- * @param[in] ci	#CONF_PAIR specifying the name of the auth_type.
- * @param[in] rule	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
-
-	if (fr_dict_enum_add_alias_next(attr_auth_type, auth_type) < 0) {
-		cf_log_err(ci, "Failed adding %s alias", attr_auth_type->name);
-		return -1;
-	}
-	*((fr_dict_enum_t **)out) = fr_dict_enum_by_alias(attr_auth_type, auth_type, -1);
-
-	return 0;
-}
 
 /*
  *	Allocate the PEAP per-session data
@@ -237,7 +206,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	/*
 	 *	Process the PEAP portion of the request.
 	 */
-	rcode = eap_peap_process(eap_session, tls_session, inst->inner_eap_module);
+	rcode = eap_peap_process(eap_session, tls_session);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		eap_tls_fail(eap_session);
