@@ -41,34 +41,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
-{
-	fr_io_final_t final;
-
-	if (parent) {
-		request->async = talloc_memdup(request, request->parent->async, sizeof(fr_async_t));
-		talloc_set_name_const(request->async, talloc_get_name(request->parent->async));
-	}
-
-	RDEBUG("server %s {", cf_section_name2(request->server_cs));
-	final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
-	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
-
-	fr_cond_assert(final == FR_IO_REPLY);
-
-	if (!request->reply->code ||
-	    (request->reply->code == FR_CODE_ACCESS_REJECT)) {
-		return RLM_MODULE_REJECT;
-	}
-
-	if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
-		return RLM_MODULE_HANDLED;
-	}
-
-	return RLM_MODULE_OK;
-}
-
-
 /*
  *	Run a virtual server auth and postauth
  *
@@ -76,6 +48,7 @@ static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
 rlm_rcode_t rad_virtual_server(REQUEST *request)
 {
 	VALUE_PAIR *vp;
+	fr_io_final_t final;
 
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
 	log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
@@ -93,7 +66,7 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 		 */
 		if (request->parent->username->da->attr == FR_STRIPPED_USER_NAME) {
 			vp = fr_pair_find_by_num(request->parent->packet->vps, 0, FR_USER_NAME, TAG_ANY);
-			if (!vp) goto skip;
+			if (!vp) goto runit;
 		} else {
 			vp = request->parent->username;
 		}
@@ -174,10 +147,28 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 		}
 	}
 
-skip:
-	if (request->async) return virtual_server_async(request, false);
+runit:
+	if (!request->async) {
+		request->async = talloc_memdup(request, request->parent->async, sizeof(fr_async_t));
+		talloc_set_name_const(request->async, talloc_get_name(request->parent->async));
+	}
 
-	return virtual_server_async(request, true);
+	RDEBUG("server %s {", cf_section_name2(request->server_cs));
+	final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
+	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
+
+	fr_cond_assert(final == FR_IO_REPLY);
+
+	if (!request->reply->code ||
+	    (request->reply->code == FR_CODE_ACCESS_REJECT)) {
+		return RLM_MODULE_REJECT;
+	}
+
+	if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
+		return RLM_MODULE_HANDLED;
+	}
+
+	return RLM_MODULE_OK;
 }
 
 /*
