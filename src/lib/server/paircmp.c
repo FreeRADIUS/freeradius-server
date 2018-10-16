@@ -62,7 +62,6 @@ static fr_dict_attr_t const *attr_acct_type;
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_autz_type;
 static fr_dict_attr_t const *attr_client_ip_address;
-static fr_dict_attr_t const *attr_connect_rate;
 static fr_dict_attr_t const *attr_crypt_password;
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
 static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
@@ -78,7 +77,6 @@ static fr_dict_attr_t const *attr_strip_user_name;
 static fr_dict_attr_t const *attr_stripped_user_name;
 static fr_dict_attr_t const *attr_suffix;
 static fr_dict_attr_t const *attr_virtual_server;
-static fr_dict_attr_t const *attr_connect_info;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 
@@ -88,7 +86,6 @@ fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_autz_type, .name = "Autz-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_connect_rate, .name = "Connect-Rate", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
@@ -104,7 +101,6 @@ fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_suffix, .name = "Suffix", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_connect_info, .name = "Connect-Info", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
@@ -112,24 +108,6 @@ fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 
 static paircmp_t *cmp;
 
-/*
- *	Compare a Connect-Info and a Connect-Rate
- */
-static int connect_cmp(UNUSED void *instance,
-		       REQUEST *request UNUSED,
-		       VALUE_PAIR *req,
-		       VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_list,
-		       UNUSED VALUE_PAIR **reply_list)
-{
-	int rate;
-
-	VP_VERIFY(req);
-	VP_VERIFY(check);
-
-	rate = atoi(req->vp_strvalue);
-	return rate - check->vp_uint32;
-}
 
 /*
  *	Compare prefix/suffix.
@@ -899,7 +877,6 @@ int paircmp_init(void)
 
 	paircmp_register(attr_prefix, attr_user_name, false, prefix_suffix_cmp, NULL);
 	paircmp_register(attr_suffix, attr_user_name, false, prefix_suffix_cmp, NULL);
-	paircmp_register(attr_connect_rate, attr_connect_info, false, connect_cmp, NULL);
 	paircmp_register(attr_packet_type, NULL, true, packet_cmp, NULL);
 
 	paircmp_register(attr_client_ip_address, NULL, true, generic_cmp, NULL);
@@ -919,7 +896,6 @@ void paircmp_free(void)
 {
 	paircmp_unregister(attr_prefix, prefix_suffix_cmp);
 	paircmp_unregister(attr_suffix, prefix_suffix_cmp);
-	paircmp_unregister(attr_connect_rate, connect_cmp);
 	paircmp_unregister(attr_packet_type, packet_cmp);
 
 	paircmp_unregister(attr_client_ip_address, generic_cmp);
