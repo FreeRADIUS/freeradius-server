@@ -271,7 +271,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch)
 {
 	int			ret;
-	uint32_t		options;
+	uint32_t		options = 0;
 
 #ifndef PCRE2_COPY_MATCHED_SUBJECT
 	char			*our_subject = NULL;
