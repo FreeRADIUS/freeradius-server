@@ -5233,6 +5233,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 		if (!dict) {
 		error:
 			talloc_free(proto_dir);
+			talloc_free(dict);
 			return -1;
 		}
 	} else {
