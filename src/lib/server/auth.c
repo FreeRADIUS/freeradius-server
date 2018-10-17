@@ -149,6 +149,9 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 
 runit:
 	if (!request->async) {
+#ifdef __clang_analyzer__
+		if (!request->parent) return RLM_MODULE_FAIL;
+#endif
 		rad_assert(request->parent != NULL);
 
 		request->async = talloc_memdup(request, request->parent->async, sizeof(fr_async_t));
