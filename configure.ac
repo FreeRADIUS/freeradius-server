@@ -2313,7 +2313,6 @@ AC_SUBST(INSTALLSTRIP)
 AC_OUTPUT(\
   ./Make.inc \
   ./src/include/build-radpaths-h \
-  ./src/bin/radsniff.mk \
   ./src/bin/checkrad \
   ./src/bin/radlast \
   ./src/bin/radtest \

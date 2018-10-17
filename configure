@@ -15468,7 +15468,7 @@ ac_config_commands="$ac_config_commands scripts-chmod"
 unset ac_cv_env_LIBS_set
 unset ac_cv_env_LIBS_value
 
-ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/bin/radsniff.mk ./src/bin/checkrad ./src/bin/radlast ./src/bin/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
+ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/bin/checkrad ./src/bin/radlast ./src/bin/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -16172,7 +16172,6 @@ do
     "scripts-chmod") CONFIG_COMMANDS="$CONFIG_COMMANDS scripts-chmod" ;;
     "./Make.inc") CONFIG_FILES="$CONFIG_FILES ./Make.inc" ;;
     "./src/include/build-radpaths-h") CONFIG_FILES="$CONFIG_FILES ./src/include/build-radpaths-h" ;;
-    "./src/bin/radsniff.mk") CONFIG_FILES="$CONFIG_FILES ./src/bin/radsniff.mk" ;;
     "./src/bin/checkrad") CONFIG_FILES="$CONFIG_FILES ./src/bin/checkrad" ;;
     "./src/bin/radlast") CONFIG_FILES="$CONFIG_FILES ./src/bin/radlast" ;;
     "./src/bin/radtest") CONFIG_FILES="$CONFIG_FILES ./src/bin/radtest" ;;

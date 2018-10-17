@@ -1,5 +1,3 @@
-PCAP_LIBS	:= -lpcap
-
 ifneq ($(PCAP_LIBS),)
 TARGET		:= radsniff
 else
