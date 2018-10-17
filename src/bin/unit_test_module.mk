@@ -3,7 +3,7 @@ SOURCES := unit_test_module.c
 
 TGT_INSTALLDIR  :=
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT)
-TGT_PREREQS	:= libfreeradius-io.a libfreeradius-radius.a libfreeradius-unlang.a
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-radius.a libfreeradius-io.a libfreeradius-util.a
 
 # Libraries can't depend on libraries (oops), so make the binary
 # depend on the EAP code...
