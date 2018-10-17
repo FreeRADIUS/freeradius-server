@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modules.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/state.h>
-
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/radius/radius.h>
 
