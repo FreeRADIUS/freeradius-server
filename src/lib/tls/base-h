@@ -93,6 +93,8 @@ do {\
 		talloc_free(_ctx);\
 	}\
 } while (0)
+
+#define HMAC_CTX_reset(_x)	HMAC_CTX_cleanup(_x)
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10001000L

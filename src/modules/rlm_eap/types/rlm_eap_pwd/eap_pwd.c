@@ -47,11 +47,7 @@ static void pwd_hmac_final(HMAC_CTX *hmac_ctx, uint8_t *digest)
 {
 	unsigned int mdlen = SHA256_DIGEST_LENGTH;
 	HMAC_Final(hmac_ctx, digest, &mdlen);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	HMAC_CTX_reset(hmac_ctx);
-#else
-	HMAC_CTX_cleanup(hmac_ctx);
-#endif
 }
 
 /* a counter-based KDF based on NIST SP800-108 */
@@ -86,11 +82,7 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 			memcpy(result + len, digest, mdlen);
 		}
 		len += mdlen;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		HMAC_CTX_reset(hmac_ctx);
-#else
-		HMAC_CTX_cleanup(hmac_ctx);
-#endif
 	}
 
 	/* since we're expanding to a bit length, mask off the excess */
