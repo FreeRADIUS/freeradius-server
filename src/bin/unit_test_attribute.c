@@ -1160,8 +1160,9 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode") + 1;
 			if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, tp_ctx) < 0)) {
-				fr_perror("Failed initialising decoder testpoint at line %d of %s\n",
-					  lineno, directory);
+				fprintf(stderr, "unit_test_attribute: Failed initialising encoder testpoint at "
+					"line %d of %s\n", lineno, directory);
+				fr_perror("unit_test_attribute");
 				goto error;
 			}
 
