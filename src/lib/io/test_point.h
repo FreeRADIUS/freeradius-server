@@ -19,10 +19,11 @@
 
 /** Allocate an encoder/decoder ctx
  *
+ * @param[out] out	Where the decoder context should be written.
  * @param[in] ctx	to allocate the test point context in.
  * @return proto or pair encoder or decoder ctx.
  */
-typedef void *(*fr_test_point_ctx_alloc_t)(TALLOC_CTX *ctx);
+typedef int (*fr_test_point_ctx_alloc_t)(void **out, TALLOC_CTX *ctx);
 
 /** Entry point for protocol decoders
  *

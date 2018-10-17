@@ -944,15 +944,16 @@ ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	return slen;
 }
 
-static void *encode_test_ctx(UNUSED TALLOC_CTX *ctx)
+static int encode_test_ctx(void **out, UNUSED TALLOC_CTX *ctx)
 {
 	static fr_dhcpv6_encode_ctx_t	test_ctx;
 
-	fr_dhcpv6_global_init();
+	if (fr_dhcpv6_global_init() < 0) return -1;
 
 	test_ctx.root = dhcpv6_root;
+	*out = &test_ctx;
 
-	return &test_ctx;
+	return 0;
 }
 
 /*

@@ -1099,7 +1099,7 @@ static fr_sim_encode_ctx_t *test_ctx_init(TALLOC_CTX *ctx, uint8_t const *k_encr
 	memcpy(keys->k_encr, k_encr, k_encr_len);
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 
-	fr_sim_init();
+	if (fr_sim_init() < 0) return NULL;
 
 	return test_ctx;
 }
@@ -1107,42 +1107,54 @@ static fr_sim_encode_ctx_t *test_ctx_init(TALLOC_CTX *ctx, uint8_t const *k_encr
 /*
  *	Test ctx data
  */
-static void *encode_test_ctx_sim(TALLOC_CTX *ctx)
+static int encode_test_ctx_sim(void **out, TALLOC_CTX *ctx)
 {
 	fr_sim_encode_ctx_t	*test_ctx;
 	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
 					     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
 	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
+	if (!test_ctx) return -1;
+
 	test_ctx->root = attr_eap_sim_root;
 	test_ctx->iv_included = true;	/* Ensures IV is all zeros */
 
-	return test_ctx;
+	*out = test_ctx;
+
+	return 0;
 }
 
-static void *encode_test_ctx_aka(TALLOC_CTX *ctx)
+static int encode_test_ctx_aka(void **out, TALLOC_CTX *ctx)
 {
 	fr_sim_encode_ctx_t	*test_ctx;
 	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
 					     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
 	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
+	if (!test_ctx) return -1;
+
 	test_ctx->root = attr_eap_aka_root;
 	test_ctx->iv_included = true;	/* Ensures IV is all zeros */
 
-	return test_ctx;
+	*out = test_ctx;
+
+	return 0;
 }
 
-static void *encode_test_ctx_sim_rfc4186(TALLOC_CTX *ctx)
+static int encode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx)
 {
 	fr_sim_encode_ctx_t	*test_ctx;
 	static uint8_t		k_encr[] = { 0x53, 0x6e, 0x5e, 0xbc, 0x44 ,0x65, 0x58, 0x2a,
 					     0xa6, 0xa8, 0xec, 0x99, 0x86, 0xeb, 0xb6, 0x20 };
 
 	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
+	if (!test_ctx) return -1;
+
 	test_ctx->root = attr_eap_sim_root;
 
-	return test_ctx;
+	*out = test_ctx;
+
+	return 0;
 }
 
 /*

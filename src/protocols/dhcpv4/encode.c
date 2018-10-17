@@ -342,17 +342,19 @@ static int _encode_test_ctx(UNUSED fr_dhcp_ctx_t *test_ctx)
 	return 0;
 }
 
-static void *encode_test_ctx(TALLOC_CTX *ctx)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_dhcp_ctx_t *test_ctx;
+
+	if (fr_dhcpv4_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_dhcp_ctx_t);
 	test_ctx->root = fr_dict_root(fr_dict_internal);
 	talloc_set_destructor(test_ctx, _encode_test_ctx);
 
-	fr_dhcpv4_init();
+	*out = test_ctx;
 
-	return test_ctx;
+	return 0;
 }
 
 /*

@@ -912,8 +912,8 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			if (outlen == 0) {
 				fprintf(stderr, "Parse error in line %d of %s\n", lineno, directory);
 			error:
+				talloc_free(tp_ctx);	/* Free testpoint first then the library */
 				unload_proto_library();	/* Cleanup */
-				talloc_free(tp_ctx);
 
 				return -1;
 			}
@@ -1159,7 +1159,12 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			}
 
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode") + 1;
-			if (tp->test_ctx) decoder_ctx = tp->test_ctx(tp_ctx);
+			if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, tp_ctx) < 0)) {
+				fr_perror("Failed initialising decoder testpoint at line %d of %s\n",
+					  lineno, directory);
+				goto error;
+			}
+
 
 			if (strcmp(p, "-") == 0) {
 				attr = data;
@@ -1231,7 +1236,12 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			if (len <= 0) goto error;
 
 			p += ((size_t)len) + 1;
-			if (tp->test_ctx) encoder_ctx = tp->test_ctx(tp_ctx);
+			if (tp->test_ctx && (tp->test_ctx(&encoder_ctx, tp_ctx) < 0)) {
+				fr_strerror_printf_push("unit_test_attribute: Failed initialising encoder testpoint at "
+							"line %d of %s", lineno, directory);
+				fr_perror("unit_test_attribute");
+				goto error;
+			}
 
 			/*
 			 *	Encode the previous output
@@ -1420,11 +1430,6 @@ int main(int argc, char *argv[])
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-
-	/*
-	 *	Dump the dictionary if we're in super debug mode
-	 */
-	if (fr_debug_lvl > 5) fr_dict_dump(dict);
 
 	if (xlat_register(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true) < 0) {
 		fprintf(stderr, "Failed registering xlat");
