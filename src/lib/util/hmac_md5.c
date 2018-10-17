@@ -74,7 +74,11 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 	HMAC_Init_ex(ctx, key, key_len, EVP_md5(), NULL);
 	HMAC_Update(ctx, text, text_len);
 	HMAC_Final(ctx, digest, NULL);
+#if OPENSSL_VERSION_NUMBER < 0x10001000L
 	HMAC_CTX_cleanup(ctx);
+#else
+	HMAC_CTX_reset(ctx);
+#endif
 }
 #else
 /** Calculate HMAC using internal MD5 implementation

@@ -74,7 +74,11 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 	HMAC_Init_ex(ctx, key, key_len, EVP_sha1(), NULL);
 	HMAC_Update(ctx, text, text_len);
 	HMAC_Final(ctx, digest, NULL);
+#if OPENSSL_VERSION_NUMBER < 0x10001000L
 	HMAC_CTX_cleanup(ctx);
+#else
+	HMAC_CTX_reset(ctx);
+#endif
 }
 
 #else
