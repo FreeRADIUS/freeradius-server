@@ -271,7 +271,11 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *regmatch)
 {
 	int			ret;
+	uint32_t		options;
+
+#ifndef PCRE2_COPY_MATCHED_SUBJECT
 	char			*our_subject = NULL;
+#endif
 
 	/*
 	 *	Thread local initialisation
@@ -279,6 +283,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
 
 	if (regmatch) {
+#ifndef PCRE2_COPY_MATCHED_SUBJECT
 		/*
 		 *	We have to dup and operate on the duplicate
 		 *	of the subject, because pcre2_jit_match and
@@ -286,19 +291,36 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		 *	in the regmatch structure.
 		 */
 		subject = our_subject = talloc_bstrndup(regmatch, subject, len);
+#else
+		/*
+		 *	If PCRE2_COPY_MATCHED_SUBJECT is available
+		 *	and set as an options flag, pcre2_match will
+		 *	strdup the subject string if pcre2_match is
+		 *	successful and store a pointer to it in the
+		 *	regmatch struct.
+		 *
+		 *	The lifetime of the string memory will be
+		 *	bound to the regmatch struct.  This is more
+		 *	efficient that doing it ourselves, as the
+		 *	strdup only occurs if the subject matches.
+		 */
+		options |= PCRE2_COPY_MATCHED_SUBJECT;
+#endif
 	}
 
 	if (preg->jitd) {
-		ret = pcre2_jit_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, 0,
+		ret = pcre2_jit_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, options,
 				      regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext);
 	} else {
-		ret = pcre2_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, 0,
+		ret = pcre2_match(preg->compiled, (PCRE2_SPTR8)subject, len, 0, options,
 				  regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext);
 	}
 	if (ret < 0) {
 		PCRE2_UCHAR errbuff[128];
 
+#ifndef PCRE2_COPY_MATCHED_SUBJECT
 		talloc_free(our_subject);
+#endif
 
 		if (ret == PCRE2_ERROR_NOMATCH) return 0;
 
