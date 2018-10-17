@@ -344,11 +344,6 @@ ATTRIBUTE	LDAP-Sync-Entry-UUID			8	octets
 END-TLV		LDAP-Sync-TLV
 
 #
-# 	Consumes attribute 1194
-#
-$INCLUDE dictionary.ethernet
-
-#
 #	Range:	1200-1210
 #
 #	SIM attributes.  These do not belong to either EAP-AKA or EAP-SIM
@@ -386,38 +381,6 @@ VALUE	SIM-Identity-Type		Unknown			0
 VALUE	SIM-Identity-Type		Permanent		1
 VALUE	SIM-Identity-Type		Pseudonym		2
 VALUE	SIM-Identity-Type		Fastauth		3
-
-#
-#	AKA - Temporary root until we have protocol specific dictionaries.
-#
-ATTRIBUTE	EAP-AKA-Root				1210	tlv
-BEGIN-TLV	EAP-AKA-Root
-$INCLUDE dictionary.eap.aka
-END-TLV		EAP-AKA-Root
-
-#
-#	SIM - Temporary root until we have protocol specific dictionaries.
-#
-ATTRIBUTE	EAP-SIM-Root				1211	tlv
-BEGIN-TLV	EAP-SIM-Root
-$INCLUDE dictionary.eap.sim
-END-TLV		EAP-SIM-Root
-
-#
-#	DHCPv6 - Temporary root until we have protocol specific dictionaries.
-#
-ATTRIBUTE	DHCPv6-Root				1212	tlv
-BEGIN-TLV	DHCPv6-Root
-$INCLUDE dictionary.dhcpv6
-END-TLV		DHCPv6-Root
-
-#
-#	TACACS+ - Temporary root until we have protocol specific dictionaries.
-#
-ATTRIBUTE	TACACS-Root				1213	tlv
-BEGIN-TLV	TACACS-Root
-$INCLUDE dictionary.tacacs
-END-TLV		TACACS-Root
 
 #
 #	Range:	1230-1239
