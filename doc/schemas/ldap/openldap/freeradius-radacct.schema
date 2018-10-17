@@ -1,100 +1,4 @@
 attributetype ( 1.3.6.1.4.1.11344.4.3.1.66
-	NAME 'radiusAcctSessionId'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.67
-	NAME 'radiusAcctUniqueId'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.68
-	NAME 'radiusUserName'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.69
-	NAME 'radiusRealm'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.70
-	NAME 'radiusNASIPAddress'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.71
-	NAME 'radiusNASPortId'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.72
-	NAME 'radiusNASPortType'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.73
-	NAME 'radiusAcctStartTime'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.74
-	NAME 'radiusAcctUpdateTime'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.75
-	NAME 'radiusAcctStopTime'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.76
-	NAME 'radiusAcctInterval'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.77
-	NAME 'radiusAcctSessionTime'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.78
 	NAME 'radiusAcctAuthentic'
 	DESC ''
 	EQUALITY caseIgnoreIA5Match
@@ -102,23 +6,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.78
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.79
-	NAME 'radiusConnectInfoStart'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.80
-	NAME 'radiusConnectInfoStop'
-	DESC ''
-	EQUALITY caseIgnoreIA5Match
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-	SINGLE-VALUE
- )
-
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.81
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.67
 	NAME 'radiusAcctInputOctets'
 	DESC ''
 	EQUALITY caseIgnoreIA5Match
@@ -126,7 +14,15 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.81
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.82
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.68
+	NAME 'radiusAcctInterval'
+	DESC ''
+	EQUALITY caseIgnoreIA5Match
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+	SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.69
 	NAME 'radiusAcctOutputOctets'
 	DESC ''
 	EQUALITY caseIgnoreIA5Match
@@ -134,23 +30,39 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.82
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.83
-	NAME 'radiusCalledStationId'
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.70
+	NAME 'radiusAcctSessionId'
 	DESC ''
 	EQUALITY caseIgnoreIA5Match
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.84
-	NAME 'radiusCallingStationId'
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.71
+	NAME 'radiusAcctSessionTime'
 	DESC ''
 	EQUALITY caseIgnoreIA5Match
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.85
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.72
+	NAME 'radiusAcctStartTime'
+	DESC ''
+	EQUALITY caseIgnoreIA5Match
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+	SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.73
+	NAME 'radiusAcctStopTime'
+	DESC ''
+	EQUALITY caseIgnoreIA5Match
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+	SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.74
 	NAME 'radiusAcctTerminateCause'
 	DESC ''
 	EQUALITY caseIgnoreIA5Match
@@ -158,24 +70,72 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.85
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.86
-	NAME 'radiusServiceType'
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.75
+	NAME 'radiusAcctUniqueId'
 	DESC ''
 	EQUALITY caseIgnoreIA5Match
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.87
-	NAME 'radiusFramedProtocol'
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.76
+	NAME 'radiusAcctUpdateTime'
 	DESC ''
 	EQUALITY caseIgnoreIA5Match
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.88
-	NAME 'radiusFramedIpAddress'
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.77
+	NAME 'radiusConnectInfoStart'
+	DESC ''
+	EQUALITY caseIgnoreIA5Match
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+	SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.78
+	NAME 'radiusConnectInfoStop'
+	DESC ''
+	EQUALITY caseIgnoreIA5Match
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+	SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.79
+	NAME 'radiusNASIdentifier'
+	DESC ''
+	EQUALITY caseIgnoreIA5Match
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+	SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.80
+	NAME 'radiusNASPort'
+	DESC ''
+	EQUALITY caseIgnoreIA5Match
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+	SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.81
+	NAME 'radiusNASPortId'
+	DESC ''
+	EQUALITY caseIgnoreIA5Match
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+	SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.82
+	NAME 'radiusNASPortType'
+	DESC ''
+	EQUALITY caseIgnoreIA5Match
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+	SINGLE-VALUE
+ )
+
+attributetype ( 1.3.6.1.4.1.11344.4.3.1.83
+	NAME 'radiusUserName'
 	DESC ''
 	EQUALITY caseIgnoreIA5Match
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
@@ -186,6 +146,6 @@ objectclass ( 1.3.6.1.4.1.11344.4.3.2.3
 	NAME 'radiusacct'
 	SUP top
 	AUXILIARY
-	MAY (  $ radiusAcctSessionId $ radiusAcctUniqueId $ radiusUserName $ radiusRealm $ radiusNASIPAddress $ radiusNASPortId $ radiusNASPortType $ radiusAcctStartTime $ radiusAcctUpdateTime $ radiusAcctStopTime $ radiusAcctInterval $ radiusAcctSessionTime $ radiusAcctAuthentic $ radiusConnectInfoStart $ radiusConnectInfoStop $ radiusAcctInputOctets $ radiusAcctOutputOctets $ radiusCalledStationId $ radiusCallingStationId $ radiusAcctTerminateCause $ radiusServiceType $ radiusFramedProtocol $ radiusFramedIpAddress )
+	MAY (  radiusAcctAuthentic $ radiusAcctInputOctets $ radiusAcctInterval $ radiusAcctOutputOctets $ radiusAcctSessionId $ radiusAcctSessionTime $ radiusAcctStartTime $ radiusAcctStopTime $ radiusAcctTerminateCause $ radiusAcctUniqueId $ radiusAcctUpdateTime $ radiusConnectInfoStart $ radiusConnectInfoStop $ radiusNASIdentifier $ radiusNASPort $ radiusNASPortId $ radiusNASPortType $ radiusUserName )
  )
 
