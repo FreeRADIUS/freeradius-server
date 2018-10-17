@@ -98,8 +98,7 @@ define ADD_TARGET_RULE.la
 	    @$(ECHO) LINK $${${1}_BUILD}/${1}
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
-                $${${1}_PRLIBS} ${${1}_TRANS_PRLIBS} \
-		${${1}_TRANS_LDFLAGS} ${${1}_TRANS_LDLIBS}
+                $${${1}_PRLIBS}
 	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
@@ -122,9 +121,8 @@ define ADD_LOCAL_RULE.exe
     $${${1}_BUILD}/$${${1}_LOCAL}: $${${1}_OBJS} $${${1}_PRBIN} $${${1}_LOCAL_PRLIBS}
 	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${LOCAL}/)
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${LOCAL}${1} $${LOCAL_FLAGS} $${LDFLAGS} \
-                $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
-                $${${1}_LOCAL_PRLIBS} $${${1}_TRANS_LOCAL_PRLIBS} \
-		$${${1}_TRANS_LOCAL_LDFLAGS} $${${1}_TRANS_LOCAL_LDLIBS}
+                $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_LOCAL_PRLIBS} \
+                $${LDLIBS} $${${1}_LDLIBS}
 	    $(Q)$${${1}_POSTMAKE}
 
     .PHONY: $(DIR)
@@ -144,8 +142,7 @@ define ADD_LOCAL_RULE.la
 	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${LOCAL}/)
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${LOCAL}${1} $${LOCAL_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
-                $${${1}_LOCAL_PRLIBS} ${${1}_TRANS_PRLIBS} \
-		${${1}_TRANS_LDFLAGS} ${${1}_TRANS_LDLIBS}
+                $${${1}_LOCAL_PRLIBS}
 	    $(Q)$${${1}_POSTMAKE}
 
 endef
@@ -231,8 +228,6 @@ define ADD_LIBTOOL_TARGET
         # add rules to relink the target
 
         $${TGT}_LOCAL_PRLIBS := $$(subst $${BUILD_DIR}/lib/,$${BUILD_DIR}/lib/${LOCAL},$${$${TGT}_PRLIBS})
-        $${TGT}_LOCAL_TRANS_LDLIBS := $$(subst $${BUILD_DIR}/lib/,$${BUILD_DIR}/lib/${LOCAL},$${$${TGT}_TRANS_LDLIBS})
-        $${TGT}_LOCAL_TRANS_LDFLAGS := $$(subst $${BUILD_DIR}/lib/,$${BUILD_DIR}/lib/${LOCAL},$${$${TGT}_TRANS_LDFLAGS})
 
         $$(eval $$(call ADD_LOCAL_RULE$${$${TGT}_SUFFIX},$${TGT}))
 

@@ -206,9 +206,8 @@ define ADD_TARGET_RULE.exe
 	    $(Q)$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
 	    $(Q)$(ECHO) LINK $${${1}_BUILD}/${1}
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
-                $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
-                $${${1}_PRLIBS} ${${1}_TRANS_PRLIBS} \
-		${${1}_TRANS_LDFLAGS} ${${1}_TRANS_LDLIBS}
+                $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_PRLIBS} \
+                $${LDLIBS} $${${1}_LDLIBS}
 	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
@@ -384,19 +383,20 @@ define INCLUDE_SUBMAKEFILE
         $${TGT}_POSTCLEAN := $${TGT_POSTCLEAN}
         $${TGT}_POSTINSTALL := $${TGT_POSTINSTALL}
         $${TGT}_PREREQS := $${TGT_PREREQS}
-        $${TGT}_PRBIN := $$(addprefix $${BUILD_DIR}/bin/,$$(filter-out %.a %.so %.la,$${$${TGT}_PREREQS}))
-        $${TGT}_PRLIBS := $$(addprefix $${BUILD_DIR}/lib/,$$(filter %.a %.so %.la,$${$${TGT}_PREREQS}))
+        $${TGT}_PRBIN := $$(addprefix $${BUILD_DIR}/bin/,$$(filter-out %.a %.so %.la,$${TGT_PREREQS}))
+        $${TGT}_PRLIBS := $$(addprefix $${BUILD_DIR}/lib/,$$(filter %.a %.so %.la,$${TGT_PREREQS}))
         $${TGT}_DEPS :=
         $${TGT}_OBJS :=
         $${TGT}_SOURCES :=
         $${TGT}_MAN := $${MAN}
         $${TGT}_SUFFIX := $$(if $$(suffix $${TGT}),$$(suffix $${TGT}),.exe)
 
-        # Ensure that transitive library linking works.
-        # i.e. we build libfoo.a which in turn requires -lbar.
-	$${TGT}_TRANS_PRLIBS += $$(foreach TRANS,$${TGT_PREREQS},$${$${TRANS}_PRLIBS})
-	$${TGT}_TRANS_LDLIBS += $$(foreach TRANS,$${TGT_PREREQS},$${$${TRANS}_LDLIBS})
-	$${TGT}_TRANS_LDFLAGS += $$(foreach TRANS,$${TGT_PREREQS},$${$${TRANS}_LDFLAGS})
+        # If it's an EXE, ensure that transitive library linking works.
+        # i.e. we build libfoo.a which in turn requires -lbar.  So, the executable
+        # has to be linked to both libfoo.a and -lbar.
+	ifeq "$${$${TGT}_SUFFIX}" ".exe"
+		$${TGT}_LDLIBS += $$(filter-out %.a %.so %.la,$${$${TGT_PREREQS}_LDLIBS})
+	endif
 
         $${TGT}_BUILD := $$(if $$(suffix $${TGT}),$${BUILD_DIR}/lib,$${BUILD_DIR}/bin)
         $${TGT}_MAKEFILES += ${1}
