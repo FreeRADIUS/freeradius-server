@@ -31,9 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/syserror.h>
 
-#ifdef HAVE_PTHREAD_H
 #include <pthread.h>
-#endif
 
 /*
  *	Other OS's have sem_init, OS X doesn't.
@@ -134,9 +132,7 @@ struct fr_schedule_t {
 	int		num_workers;		//!< number of worker threads
 	int		num_workers_exited;	//!< number of exited workers
 
-#ifdef HAVE_PTHREAD_H
 	sem_t		semaphore;		//!< for inter-thread signaling
-#endif
 
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
 	void					*worker_instantiate_ctx;	//!< thread instantiation context
@@ -370,10 +366,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  void *worker_thread_ctx)
 {
-#ifdef HAVE_PTHREAD_H
 	int i;
 	fr_schedule_worker_t *sw, *next;
-#endif
 	fr_schedule_t *sc;
 
 	/*
@@ -456,7 +450,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		return sc;
 	}
 
-#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Create the list which holds the workers.
 	 */
@@ -567,7 +560,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			goto st_fail;
 		}
 	}
-#endif
 
 	if (fr_command_register_hook(NULL, "0", sc->sn->nr, cmd_network_table) < 0) {
 		fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
@@ -594,7 +586,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 
 	sc->running = false;
 
-#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Single threaded mode: kill the only network / worker we have.
 	 */
@@ -669,8 +660,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	TALLOC_FREE(sc->sn->ctx);
 
 	sem_destroy(&sc->semaphore);
-#endif	/* HAVE_PTHREAD_H */
-
 
 done:
 	/*
