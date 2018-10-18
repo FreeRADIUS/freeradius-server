@@ -33,6 +33,7 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 
 #include <errno.h>
+#include <pthread.h>
 
 typedef void (*pthread_destructor_t)(void*);
 
@@ -51,28 +52,6 @@ typedef void (*pthread_destructor_t)(void*);
  *	For other types like ints _Thread_local should be used directly
  *	without the macros.
  */
-#ifndef HAVE_PTHREAD_H
-#  define fr_thread_local_setup(_t, _n)	static _t _n;\
-static inline int __fr_thread_local_destructor_##_n(pthread_destructor_t *ctx)\
-{\
-	pthread_destructor_t func = *ctx;\
-	func(_n);\
-	return 0;\
-}\
-static inline int __fr_thread_local_set_destructor_##_n(pthread_destructor_t func, void *value)\
-{\
-	static pthread_destructor_t *ctx;\
-	if (!ctx) {\
-		ctx = talloc(talloc_autofree_context(), pthread_destructor_t);\
-		talloc_set_destructor(ctx, __fr_thread_local_destructor_##_n);\
-		*ctx = func;\
-	}\
-	_n = value;\
-	return 0;\
-}
-#  define fr_thread_local_set_destructor(_n, _f, _v) __fr_thread_local_set_destructor_##_n(_f, _v)
-#else
-#  include <pthread.h>
 /** Pre-initialise resources required for a thread local destructor
  *
  * @note If destructors are not required, just use __Thread_local.
@@ -115,7 +94,6 @@ static int __fr_thread_local_set_destructor_##_n(pthread_destructor_t func, void
  * @param _v	Memory to free.
  */
 #  define fr_thread_local_set_destructor(_n, _f, _v) __fr_thread_local_set_destructor_##_n(_f, _v)
-#endif
 
 #ifdef __cplusplus
 }
