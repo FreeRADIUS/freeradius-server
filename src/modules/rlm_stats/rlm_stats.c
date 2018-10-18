@@ -63,10 +63,7 @@ typedef struct rlm_stats_thread_t {
 
 	fr_time_t		last_manage;			//!< when we deleted old things
 
-	pthread_mutex_t		src_mutex;
 	rbtree_t		*src;				//!< stats by source
-
-	pthread_mutex_t		dst_mutex;
 	rbtree_t		*dst;				//!< stats by destination
 
 	uint64_t		stats[FR_MAX_PACKET_CODE];
@@ -97,12 +94,10 @@ fr_dict_attr_autoload_t rlm_stats_dict_attr[] = {
 };
 
 static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_t *t,
-		     size_t mutex_offset, size_t tree_offset,
-		     rlm_stats_data_t *mydata)
+		     size_t tree_offset, rlm_stats_data_t *mydata)
 {
 	rlm_stats_data_t *stats;
 	rlm_stats_thread_t *other;
-	pthread_mutex_t *mutex;
 	rbtree_t **tree;
 	uint64_t local_stats[FR_MAX_PACKET_CODE];
 
@@ -131,15 +126,11 @@ static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_
 		if (other == t) continue;
 
 		tree = (rbtree_t **) (((uint8_t *) other) + tree_offset);
-		mutex = (pthread_mutex_t *) (((uint8_t *) other) + mutex_offset);
-		pthread_mutex_lock(mutex);
 		stats = rbtree_finddata(*tree, mydata);
 		if (!stats) {
-			pthread_mutex_unlock(mutex);
 			continue;
 		}
 		memcpy(&local_stats, stats->stats, sizeof(stats->stats));
-		pthread_mutex_unlock(mutex);
 
 		for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
 			final_stats[i] += local_stats[i];
@@ -191,9 +182,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 			stats->ipaddr = request->packet->src_ipaddr;
 			stats->created = request->async->recv_time;
 
-			pthread_mutex_lock(&t->src_mutex);
 			(void) rbtree_insert(t->src, stats);
-			pthread_mutex_unlock(&t->src_mutex);
 		}
 
 		stats->last_packet = request->async->recv_time;
@@ -211,9 +200,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 			stats->ipaddr = request->packet->dst_ipaddr;
 			stats->created = request->async->recv_time;
 
-			pthread_mutex_lock(&t->dst_mutex);
 			(void) rbtree_insert(t->dst, stats);
-			pthread_mutex_unlock(&t->dst_mutex);
 		}
 
 		stats->last_packet = request->async->recv_time;
@@ -287,9 +274,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		if (!vp) return RLM_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
-		coalesce(local_stats, t,
-			 offsetof(rlm_stats_thread_t, src_mutex), offsetof(rlm_stats_thread_t, src),
-			 &mydata);
+		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, src), &mydata);
 		break;
 
 	case FR_FREERADIUS_STATS4_TYPE_VALUE_LISTENER:			/* dst */
@@ -298,9 +283,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		if (!vp) return RLM_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
-		coalesce(local_stats, t,
-			 offsetof(rlm_stats_thread_t, dst_mutex), offsetof(rlm_stats_thread_t, dst),
-			 &mydata);
+		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, dst), &mydata);
 		break;
 
 	default:
@@ -360,10 +343,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->inst = inst;
 
-	pthread_mutex_init(&t->src_mutex, NULL);
-	pthread_mutex_init(&t->dst_mutex, NULL);
-	t->src = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_NONE);
-	t->dst = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_NONE);
+	t->src = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_LOCK);
+	t->dst = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_LOCK);
 
 	pthread_mutex_lock(&inst->mutex);
 	fr_dlist_insert_head(&inst->list, t);
