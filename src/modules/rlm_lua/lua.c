@@ -782,11 +782,7 @@ static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 	return 0;
 }
 
-#ifdef HAVE_PTHREAD_H
 #define rlm_lua_release_interp(_x)  if (!_x->threads) pthread_mutex_unlock(_x->mutex)
-#else
-#define rlm_lua_release_interp(_x)
-#endif
 
 int do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 {
