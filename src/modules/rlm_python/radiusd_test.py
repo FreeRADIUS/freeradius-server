@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 #
 # Python module test
 # Miguel A.L. Paraz <mparaz@mparaz.com>
