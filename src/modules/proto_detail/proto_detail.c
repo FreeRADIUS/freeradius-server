@@ -669,9 +669,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		}
 	}
 
-#ifdef HAVE_PTHREAD_H
 	(void) pthread_mutex_init(&inst->worker_mutex, NULL);
-#endif
 
 	return 0;
 }
@@ -688,9 +686,7 @@ static int mod_detach(void *instance)
 {
 	proto_detail_t		*inst = talloc_get_type_abort(instance, proto_detail_t);
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&inst->worker_mutex);
-#endif
 
 	return 0;
 }

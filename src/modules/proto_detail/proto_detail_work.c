@@ -722,10 +722,10 @@ static int mod_close_internal(proto_detail_work_t *inst)
 	 *	hacks in proto_detail which let us start up with
 	 *	"transport = work" for debugging purposes.
 	 */
-	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	pthread_mutex_lock(&inst->parent->worker_mutex);
 	inst->parent->work_io_instance = NULL;
 	if (inst->parent->num_workers > 0) inst->parent->num_workers--;
-	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+	pthread_mutex_unlock(&inst->parent->worker_mutex);
 
 	DEBUG("Closing and deleting detail worker file %s", inst->name);
 

@@ -64,9 +64,7 @@ typedef struct proto_detail_t {
 
 	fr_listen_t			*listen;			//!< The listener structure which describes
 									//!< the I/O path.
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t			worker_mutex;			//!< for the workers
-#endif
 	int				num_workers;			//!< number of workers
 
 } proto_detail_t;
@@ -136,15 +134,7 @@ typedef struct proto_detail_process_t {
 	rlm_components_t	send_type;
 } proto_detail_process_t;
 
-#ifdef HAVE_PTHREAD_H
 #include <pthread.h>
-#define PTHREAD_MUTEX_LOCK   pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-
-#else
-#define PTHREAD_MUTEX_LOCK
-#define PTHREAD_MUTEX_UNLOCK
-#endif
 
 #ifdef __cplusplus
 }

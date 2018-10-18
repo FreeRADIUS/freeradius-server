@@ -103,9 +103,9 @@ static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
 	proto_detail_file_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
 	bool has_worker = false;
 
-	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	pthread_mutex_lock(&inst->parent->worker_mutex);
 	has_worker = (inst->parent->num_workers != 0);
-	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+	pthread_mutex_unlock(&inst->parent->worker_mutex);
 
 	if (has_worker) return;
 
@@ -354,9 +354,9 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	li->default_message_size = inst->parent->max_packet_size;
 	li->num_messages = inst->parent->num_messages;
 
-	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	pthread_mutex_lock(&inst->parent->worker_mutex);
 	inst->parent->num_workers++;
-	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+	pthread_mutex_unlock(&inst->parent->worker_mutex);
 
 	/*
 	 *	Instantiate the new worker.
@@ -452,9 +452,9 @@ static void work_init(proto_detail_file_t *inst)
 	int fd, rcode;
 	bool has_worker;
 
-	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	pthread_mutex_lock(&inst->parent->worker_mutex);
 	has_worker = (inst->parent->num_workers != 0);
-	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+	pthread_mutex_unlock(&inst->parent->worker_mutex);
 
 	/*
 	 *	The worker is still processing the file, poll until
