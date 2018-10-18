@@ -30,13 +30,10 @@ RCSID("$Id$")
 #include <sys/event.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
-#endif
-
-#ifdef HAVE_PTHREAD_H
-#  include <pthread.h>
 #endif
 
 #undef MEM

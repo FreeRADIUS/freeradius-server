@@ -31,10 +31,7 @@ RCSID("$Id$")
 #  include <getopt.h>
 #endif
 
-#ifdef HAVE_PTHREAD_H
-#  include <pthread.h>
-#endif
-
+#include <pthread.h>
 #include <sys/event.h>
 
 #define MAX_MESSAGES		(2048)
