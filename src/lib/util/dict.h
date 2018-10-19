@@ -360,6 +360,8 @@ int			fr_dict_autoload(fr_dict_autoload_t const *to_load);
 void			fr_dict_autofree(fr_dict_autoload_t const *to_free);
 /** @} */
 
+void			fr_dict_free(fr_dict_t **dict);
+
 /** @name Initialisation
  *
  * @{

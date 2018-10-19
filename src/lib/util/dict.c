@@ -5321,6 +5321,22 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 	return dict_from_file(dict, dir, filename, NULL, 0);
 }
 
+/** Decrement the reference count on a previously loaded dictionary
+ *
+ * @param[in] dict	to free.
+ */
+void fr_dict_free(fr_dict_t **dict)
+{
+	/*
+	 *	Hack to set the internal dictionary to NULL
+	 *	once all the references have been freed.
+	 */
+	if ((*dict == fr_dict_internal) && (talloc_reference_count(*dict) == 1)) fr_dict_internal = NULL;
+
+	talloc_decrease_ref_count(*dict);
+	*dict = NULL;
+}
+
 /** Process a dict_attr_autoload element to load/verify a dictionary attribute
  *
  * @param[in] to_load	attribute definition
