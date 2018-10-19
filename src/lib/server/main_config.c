@@ -938,10 +938,12 @@ int main_config_init(main_config_t *config)
 	 *	be fixed to be done as a second stage.
 	 */
 	DEBUG2("Including dictionary file \"%s/%s\"", config->dict_dir, FR_DICTIONARY_FILE);
+#if 0
 	if (fr_dict_from_file(&config->dict, FR_DICTIONARY_FILE) != 0) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return -1;
 	}
+#endif
 
 #define DICT_READ_OPTIONAL(_d, _n) \
 do {\

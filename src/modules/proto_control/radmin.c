@@ -719,10 +719,12 @@ int main(int argc, char **argv)
 			exit(64);
 		}
 
+#if 0
 		if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
 			fr_perror("radmin");
 			exit(64);
 		}
+#endif
 
 		if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 			fr_perror("radmin");

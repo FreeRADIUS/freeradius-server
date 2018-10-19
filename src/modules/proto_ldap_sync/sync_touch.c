@@ -137,10 +137,12 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+#if 0
 	if (fr_dict_from_file(&conf->dict, FR_DICTIONARY_FILE) < 0) {
 		fr_perror("sync_touch");
 		exit(EXIT_FAILURE);
 	}
+#endif
 
 	if (fr_dict_read(dict_freeradius, conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("sync_touch");
