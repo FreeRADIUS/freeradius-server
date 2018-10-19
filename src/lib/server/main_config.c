@@ -437,33 +437,10 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
 {
 	DEBUG("Loading dictionary %s", module->name);
 
-#if 0
 	if (fr_dict_autoload((fr_dict_autoload_t const *)symbol) < 0) {
 		WARN("Failed initialising protocol library: %s", fr_strerror());
-		return 0;
+		return -1;
 	}
-#else
-	/*
-	 *	Hack for now
-	 */
-	fr_dict_autoload_t const	*to_load, *p;
-	char				buffer[256];
-
-	to_load = symbol;
-
-	for (p = to_load; p->out; p++) {
-		snprintf(buffer, sizeof(buffer), "dictionary.%s", p->proto);
-
-		/*
-		 *	0   == loaded
-		 *	-1  == error on load
-		 *	-2  == non-existent
-		 */
-		if (fr_dict_read(main_config->dict, main_config->dict_dir, buffer) == -1) return -1;
-
-		if (p->out) *(p->out) = main_config->dict;
-	}
-#endif
 
 	return 0;
 }
