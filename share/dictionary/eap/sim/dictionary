@@ -7,7 +7,7 @@
 PROTOCOL	EAP-SIM		101
 BEGIN-PROTOCOL	EAP-SIM
 
-$INCLDUE dictionary.freeradius
+$INCLUDE dictionary.freeradius
 $INCLUDE dictionary.rfc4187
 $INCLUDE dictionary.rfc5448
 $INCLUDE dictionary.rfc7458
