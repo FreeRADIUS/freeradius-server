@@ -45,6 +45,9 @@ RCSID("$Id$")
 
 #define MAX_ARGV (16)
 
+#define DICT_POOL_SIZE		(1024 * 1024 * 2)
+#define DICT_FIXUP_POOL_SIZE	(1024 * 1024 * 1)
+
 static TALLOC_CTX	*dict_ctx;
 static fr_hash_table_t	*protocol_by_name = NULL;	//!< Hash containing names of all the registered protocols.
 static fr_hash_table_t	*protocol_by_num = NULL;	//!< Hash containing numbers of all the registered protocols.
@@ -3726,10 +3729,10 @@ static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 *	As that's the working memory required during
 	 *	dictionary initialisation.
 	 */
-	dict->pool = talloc_pool(dict, (1024 * 1024 * 6));
+	dict->pool = talloc_pool(dict, DICT_POOL_SIZE);
 	if (!dict->pool) goto error;
 
-	dict->fixup_pool = talloc_pool(dict, (1024 * 1024 * 1));
+	dict->fixup_pool = talloc_pool(dict, DICT_FIXUP_POOL_SIZE);
 	if (!dict->fixup_pool) goto error;
 
 	/*
@@ -4446,6 +4449,65 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	return 0;
 }
 
+static int fr_dict_finalise(fr_dict_t *dict)
+{
+	/*
+	 *	Resolve any VALUE aliases (enums) that were defined
+	 *	before the attributes they reference.
+	 */
+	if (dict->enum_fixup) {
+		fr_dict_attr_t const *da;
+		dict_enum_fixup_t *this, *next;
+
+		for (this = dict->enum_fixup; this != NULL; this = next) {
+			fr_value_box_t	value;
+			fr_type_t	type;
+			int		ret;
+
+			next = this->next;
+			da = fr_dict_attr_by_name(dict, this->attribute);
+			if (!da) {
+				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s'",
+						   this->attribute, this->alias);
+			error:
+				return -1;
+			}
+			type = da->type;
+
+			if (fr_value_box_from_str(this, &value, &type, NULL,
+						  this->value, talloc_array_length(this->value) - 1, '\0', false) < 0) {
+				fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\"", da->name);
+				goto error;
+			}
+
+			ret = fr_dict_enum_add_alias(da, this->alias, &value, false, false);
+			fr_value_box_clear(&value);
+
+			if (ret < 0) goto error;
+
+			/*
+			 *	Just so we don't lose track of things.
+			 */
+			dict->enum_fixup = next;
+		}
+	}
+	TALLOC_FREE(dict->fixup_pool);
+
+	/*
+	 *	Walk over all of the hash tables to ensure they're
+	 *	initialized.  We do this because the threads may perform
+	 *	lookups, and we don't want multi-threaded re-ordering
+	 *	of the table entries.  That would be bad.
+	 */
+	fr_hash_table_walk(dict->vendors_by_name, hash_null_callback, NULL);
+	fr_hash_table_walk(dict->vendors_by_num, hash_null_callback, NULL);
+
+	fr_hash_table_walk(dict->values_by_da, hash_null_callback, NULL);
+	fr_hash_table_walk(dict->values_by_alias, hash_null_callback, NULL);
+
+	return 0;
+}
+
 /** Parse a dictionary file
  *
  * @param[in] ctx	Contains the current state of the dictionary parser.
@@ -4725,6 +4787,11 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
+			/*
+			 *	Add a temporary fixup pool
+			 */
+			if (!found->fixup_pool) found->fixup_pool = talloc_pool(found, DICT_FIXUP_POOL_SIZE);
+
 			ctx->dict = found;
 			ctx->parent = ctx->dict->root;
 
@@ -4753,6 +4820,12 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 						   argv[1], found->root->name);
 				goto error;
 			}
+
+			/*
+			 *	Applies fixups to any attributes added to
+			 *	the protocol dictionary.
+			 */
+			if (fr_dict_finalise(ctx->dict) < 0) goto error;
 
 			ctx->dict = ctx->old_dict;	/* Switch back to the old dictionary */
 			ctx->parent = ctx->dict->root;
@@ -4986,7 +5059,11 @@ static int dict_from_file(fr_dict_t *dict,
 
 /** (Re-)Initialize the special internal dictionary
  *
- * This dictionary has additional programatically generated attributes added to it.
+ * This dictionary has additional programatically generated attributes added to it,
+ * and is checked in addition to the protocol specific dictionaries.
+ *
+ * @note The dictionary pointer returned in out must have its reference counter
+ *	 decremented with #fr_dict_free when no longer used.
  *
  * @param[out] out		Where to write pointer to the internal dictionary.
  * @param[in] dict_subdir	name of the internal dictionary dir (may be NULL).
@@ -4996,7 +5073,7 @@ static int dict_from_file(fr_dict_t *dict,
  */
 int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 {
-	fr_dict_t		*dict = fr_dict_internal;
+	fr_dict_t		*dict;
 	char			*dict_path = NULL;
 	char			*tmp;
 	FR_NAME_NUMBER const	*p;
@@ -5008,28 +5085,31 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 		return -1;
 	}
 
+	/*
+	 *	Increase the reference count of the internal dictionary.
+	 */
+	if (fr_dict_internal) {
+		 talloc_increase_ref_count(fr_dict_internal);
+		 *out = fr_dict_internal;
+		 return 0;
+	}
+
 	memcpy(&tmp, &default_dict_dir, sizeof(tmp));
 	dict_path = dict_subdir ? talloc_asprintf(NULL, "%s%c%s", default_dict_dir, FR_DIR_SEP, dict_subdir) : tmp;
 
+	dict = dict_alloc(dict_ctx);
 	if (!dict) {
-		dict = dict_alloc(dict_ctx);
-		if (!dict) {
-		error:
-			if (!fr_dict_internal) talloc_free(dict);
-			talloc_free(dict_path);
-			return -1;
-		}
-
-		/*
-		 *	Set the root name of the dictionary
-		 */
-		dict_root_set(dict, "internal", 0);
-	} else {
-		if (dict_stat_check(dict, dict_path, FR_DICTIONARY_FILE)) {
-			talloc_free(dict_path);
-			return 0;
-		}
+	error:
+		if (!fr_dict_internal) talloc_free(dict);
+		talloc_free(dict_path);
+		return -1;
 	}
+
+	/*
+	 *	Set the root name of the dictionary
+	 */
+	dict_root_set(dict, "internal", 0);
+
 	/*
 	 *	Add cast attributes.  We do it this way,
 	 *	so cast attributes get added automatically for new types.
@@ -5065,10 +5145,16 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 		 *	Set up parenting for the attribute.
 		 */
 		if (dict_attr_child_add(dict->root, n) < 0) goto error;
-
 	}
 
 	if (dict_path && dict_from_file(dict, dict_path, FR_DICTIONARY_FILE, NULL, 0) < 0) goto error;
+
+	/*
+	 *	Applies fixups to any attributes
+	 */
+	if (fr_dict_finalise(dict) < 0) goto error;
+
+	talloc_free(dict_path);
 
 	*out = dict;
 	if (!fr_dict_internal) fr_dict_internal = dict;
@@ -5101,96 +5187,62 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 		return -1;
 	}
 
+	if (unlikely(!fr_dict_internal)) {
+		fr_strerror_printf("Internal dictionary must be initialised before loading protocol dictionaries");
+		return -1;
+	}
+
 	/*
 	 *	Increment the reference count if the dictionary
-	 *	has already been loaded.
+	 *	has already been loaded and return that.
 	 */
-	if (!*out) {
-		*out = fr_dict_by_protocol_name(proto_name);
-		if (*out) {
-			 talloc_increase_ref_count(*out);
-			 return 0;
-		}
+	dict = fr_dict_by_protocol_name(proto_name);
+	if (dict) {
+		 talloc_increase_ref_count(dict);
+		 *out = dict;
+		 return 0;
 	}
 
 	/*
-	 *	Replace '_' with '/'
+	 *	Replace [_-] with '/'
 	 */
 	proto_dir = talloc_strdup(dict_ctx, proto_name);
-	for (p = proto_dir; *p; p++) if (*p == '_') *p = FR_DIR_SEP;
-
+	for (p = proto_dir; *p; p++) if ((*p == '_') || (*p == '-')) *p = FR_DIR_SEP;
 	dir = talloc_asprintf(proto_dir, "%s%c%s", default_dict_dir, FR_DIR_SEP, proto_dir);
-	if (!*out) {
-		dict = dict_alloc(dict_ctx);
-		if (!dict) {
-		error:
-			talloc_free(proto_dir);
-			talloc_free(dict);
-			return -1;
-		}
-	} else {
-		dict = *out;
-		if (dict_stat_check(dict, dir, FR_DICTIONARY_FILE)) return 0;
+
+	/*
+	 *	Start in the context of the internal dictionary,
+	 *	and switch to the context of a protocol dictionary
+	 *	when we hit a BEGIN-PROTOCOL line.
+	 *
+	 *	This allows a single file to provide definitions
+	 *	for multiple protocols, which'll probably be useful
+	 *	at some point.
+	 */
+	if (dict_from_file(fr_dict_internal, dir, FR_DICTIONARY_FILE, NULL, 0) < 0) {
+	error:
+		talloc_free(proto_dir);
+		return -1;
 	}
 
-	dict->enum_fixup = NULL;        /* just to be safe. */
-
-	if (dict_from_file(dict, dir, FR_DICTIONARY_FILE, NULL, 0) < 0) goto error;
+	/*
+	 *	Check the dictionary actually defined the protocol
+	 */
+	dict = fr_dict_by_protocol_name(proto_name);
+	if (!dict) {
+		fr_strerror_printf("Dictionary '%s' missing 'BEGIN-PROTOCOL %s' declaration", dir, proto_name);
+		goto error;
+	}
+	/*
+	 *	Applies fixup to any attributes added to the *internal*
+	 *	dictionary.
+	 *
+	 *	Fixups should have been applied already to any protocol
+	 *	dictionaries.
+	 */
+	if (fr_dict_finalise(dict) < 0) goto error;
 
 	talloc_free(proto_dir);
-
-	/*
-	 *	Resolve any VALUE aliases (enums) that were defined
-	 *	before the attributes they reference.
-	 */
-	if (dict->enum_fixup) {
-		fr_dict_attr_t const *da;
-		dict_enum_fixup_t *this, *next;
-
-		for (this = dict->enum_fixup; this != NULL; this = next) {
-			fr_value_box_t	value;
-			fr_type_t	type;
-			int		ret;
-
-			next = this->next;
-			da = fr_dict_attr_by_name(dict, this->attribute);
-			if (!da) {
-				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s'",
-						   this->attribute, this->alias);
-				goto error;
-			}
-			type = da->type;
-
-			if (fr_value_box_from_str(this, &value, &type, NULL,
-						  this->value, talloc_array_length(this->value) - 1, '\0', false) < 0) {
-				fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\"", da->name);
-				goto error;
-			}
-
-			ret = fr_dict_enum_add_alias(da, this->alias, &value, false, false);
-			fr_value_box_clear(&value);
-
-			if (ret < 0) goto error;
-
-			/*
-			 *	Just so we don't lose track of things.
-			 */
-			dict->enum_fixup = next;
-		}
-	}
-	TALLOC_FREE(dict->fixup_pool);
-
-	/*
-	 *	Walk over all of the hash tables to ensure they're
-	 *	initialized.  We do this because the threads may perform
-	 *	lookups, and we don't want multi-threaded re-ordering
-	 *	of the table entries.  That would be bad.
-	 */
-	fr_hash_table_walk(dict->vendors_by_name, hash_null_callback, NULL);
-	fr_hash_table_walk(dict->vendors_by_num, hash_null_callback, NULL);
-
-	fr_hash_table_walk(dict->values_by_da, hash_null_callback, NULL);
-	fr_hash_table_walk(dict->values_by_alias, hash_null_callback, NULL);
 
 	*out = dict;
 
@@ -5214,6 +5266,7 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 
 	return dict_from_file(dict, dir, filename, NULL, 0);
 }
+
 
 /** Decrement the reference count on a previously loaded dictionary
  *
@@ -5283,10 +5336,11 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
  */
 int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 {
-	fr_dict_t			*dict = NULL;
 	fr_dict_autoload_t const	*p;
 
 	for (p = to_load; p->out; p++) {
+		fr_dict_t *dict = NULL;
+
 		if (unlikely(!p->out)) {
 			fr_strerror_printf("autoload missing parameter out");
 			return -1;
@@ -5301,7 +5355,7 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 		 *	Load the internal dictionary
 		 */
 		if (strcmp(p->proto, "freeradius") == 0) {
-			if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) return -1;
+			if (fr_dict_internal_afrom_file(&dict, p->proto) < 0) return -1;
 		} else {
 			if (fr_dict_protocol_afrom_file(&dict, p->proto) < 0) return -1;
 		}
