@@ -816,16 +816,13 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		}
 
 		switch (type) {
-		case FR_TYPE_TLV:
-			if (flags->internal || parent->flags.internal) break;
-			/* FALL-THROUGH */
-
 		default:
 		encrypt_fail:
 			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
 					   fr_int2str(fr_value_box_type_names, type, "<UNKNOWN>"));
 			goto error;
 
+		case FR_TYPE_TLV:
 		case FR_TYPE_IPV4_ADDR:
 		case FR_TYPE_UINT32:
 		case FR_TYPE_OCTETS:
