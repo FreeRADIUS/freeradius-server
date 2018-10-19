@@ -972,7 +972,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 				p += 14;
 			}
 
-			if (fr_pair_list_afrom_str(packet, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(packet, proto_dict, p, &head) != T_EOL) {
 				strerror_concat(output, sizeof(output));
 
 				talloc_free(packet);
@@ -1040,7 +1040,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 		if (strcmp(test_type, "attribute") == 0) {
 			p += 10;
 
-			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(NULL, proto_dict, p, &head) != T_EOL) {
 				strerror_concat(output, sizeof(output));
 				continue;
 			}
@@ -1092,7 +1092,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 		if (strcmp(test_type, "attribute") == 0) {
 			p += 10;
 
-			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(NULL, proto_dict, p, &head) != T_EOL) {
 				strerror_concat(output, sizeof(output));
 				continue;
 			}
@@ -1249,7 +1249,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			 */
 			if (strcmp(p, "-") == 0) p = output;
 
-			if (fr_pair_list_afrom_str(tp_ctx, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(tp_ctx, proto_dict, p, &head) != T_EOL) {
 				strerror_concat(output, sizeof(output));
 				skip_decode = true;						/* Record that the operation failed */
 

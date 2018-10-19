@@ -660,7 +660,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 			answer[--len] = '\0';
 		}
 
-		if (fr_pair_list_afrom_str(ctx, answer, &vps) == T_INVALID) {
+		if (fr_pair_list_afrom_str(ctx, request->dict, answer, &vps) == T_INVALID) {
 			RPERROR("Failed parsing output from: %s", cmd);
 			if (out) strlcpy(out, answer, len);
 			ret = -1;

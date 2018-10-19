@@ -169,7 +169,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 	/*
 	 *	Read the VP's.
 	 */
-	if (fr_pair_list_afrom_file(NULL, &request->vps, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(NULL, dict_dhcpv4, &request->vps, fp, &filedone) < 0) {
 		fr_perror("dhcpclient");
 		fr_radius_packet_free(&request);
 		if (fp != stdin) fclose(fp);

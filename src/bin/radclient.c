@@ -417,7 +417,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Read the request VP's.
 		 */
-		if (fr_pair_list_afrom_file(request->packet, &request->packet->vps, packets, &packets_done) < 0) {
+		if (fr_pair_list_afrom_file(request->packet, dict_radius,
+					    &request->packet->vps, packets, &packets_done) < 0) {
 			char const *input;
 
 			if ((files->packets[0] == '-') && (files->packets[1] == '\0')) {
@@ -445,7 +446,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		if (filters) {
 			bool filters_done;
 
-			if (fr_pair_list_afrom_file(request, &request->filter, filters, &filters_done) < 0) {
+			if (fr_pair_list_afrom_file(request, dict_radius,
+						    &request->filter, filters, &filters_done) < 0) {
 				REDEBUG("Error parsing \"%s\"", files->filters);
 				goto error;
 			}

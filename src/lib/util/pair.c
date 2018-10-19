@@ -480,14 +480,15 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
  *
  * The string value is parsed according to the type of #VALUE_PAIR being created.
  *
- * @param[in] ctx for talloc.
- * @param[in] vps list where the attribute will be added (optional)
- * @param[in] attribute name.
- * @param[in] value attribute value (may be NULL if value will be set later).
- * @param[in] op to assign to new #VALUE_PAIR.
+ * @param[in] ctx	for talloc.
+ * @param[in] dict	to look attributes up in.
+ * @param[in] vps	list where the attribute will be added (optional)
+ * @param[in] attribute	name.
+ * @param[in] value	attribute value (may be NULL if value will be set later).
+ * @param[in] op	to assign to new #VALUE_PAIR.
  * @return a new #VALUE_PAIR.
  */
-VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
+VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vps,
 			 char const *attribute, char const *value, FR_TOKEN op)
 {
 	fr_dict_attr_t const *da;
@@ -544,7 +545,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 *	It's not found in the dictionary, so we use
 	 *	another method to create the attribute.
 	 */
-	da = fr_dict_attr_by_name(NULL, attrname);
+	da = fr_dict_attr_by_name(dict, attrname);
 	if (!da) {
 		if (tag != TAG_NONE) {
 			fr_strerror_printf("Invalid tag for attribute %s", attribute);
@@ -608,7 +609,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		}
 		talloc_free(preg);
 
-		vp = fr_pair_make(ctx, NULL, attribute, NULL, op);
+		vp = fr_pair_make(ctx, dict, NULL, attribute, NULL, op);
 		if (!vp) return NULL;
 
 		if (fr_pair_mark_xlat(vp, value) < 0) {
@@ -1583,12 +1584,13 @@ mismatch:
  * @note If the function returns #T_INVALID, an error has occurred and
  * @note the valuepair list should probably be freed.
  *
- * @param ctx for talloc
- * @param buffer to read valuepairs from.
- * @param list where the parsed VALUE_PAIRs will be appended.
+ * @param[in] ctx	for talloc
+ * @param[in] dict	to resolve attributes in.
+ * @param[in] buffer	to read valuepairs from.
+ * @param[in] list	where the parsed VALUE_PAIRs will be appended.
  * @return the last token parsed, or #T_INVALID
  */
-FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
+FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, VALUE_PAIR **list)
 {
 	VALUE_PAIR	*vp, *head, **tail;
 	char const	*p;
@@ -1629,7 +1631,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR 
 		 *	so we may need to fix that later.
 		 */
 		if ((raw.op == T_OP_REG_EQ) || (raw.op == T_OP_REG_NE)) {
-			vp = fr_pair_make(ctx, NULL, raw.l_opand, raw.r_opand, raw.op);
+			vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, raw.r_opand, raw.op);
 			if (!vp) {
 			invalid:
 				last_token = T_INVALID;
@@ -1641,7 +1643,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR 
 			 *	parsed, which also includes parsing
 			 *	the tag.
 			 */
-			vp = fr_pair_make(ctx, NULL, raw.l_opand, NULL, raw.op);
+			vp = fr_pair_make(ctx, dict, NULL, raw.l_opand, NULL, raw.op);
 			if (!vp) goto invalid;
 
 			/*
@@ -1692,7 +1694,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR 
 /*
  *	Read valuepairs from the fp up to End-Of-File.
  */
-int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone)
+int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **out, FILE *fp, bool *pfiledone)
 {
 	char buf[8192];
 	FR_TOKEN last_token = T_EOL;
@@ -1726,7 +1728,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *p
 		 *	Read all of the attributes on the current line.
 		 */
 		vp = NULL;
-		last_token = fr_pair_list_afrom_str(ctx, buf, &vp);
+		last_token = fr_pair_list_afrom_str(ctx, dict, buf, &vp);
 		if (!vp) {
 			if (last_token != T_EOL) goto error;
 			break;
@@ -2959,7 +2961,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		/*
 		 *	Attribute may be present with multiple names
 		 */
-		da = fr_dict_attr_by_name(NULL, vp->da->name);
+		da = fr_dict_attr_by_name(fr_dict_by_da(vp->da), vp->da->name);
 		if (!da) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" (%s) "
 				     "not found in global dictionary",
@@ -2978,7 +2980,6 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
 		}
-
 
 		if (da != vp->da) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR "

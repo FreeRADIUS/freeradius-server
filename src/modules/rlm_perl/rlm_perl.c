@@ -783,7 +783,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 	if (!SvOK(sv)) return -1;
 
 	val = SvPV(sv, len);
-	vp = fr_pair_make(ctx, vps, key, NULL, op);
+	vp = fr_pair_make(ctx, request->dict, vps, key, NULL, op);
 	if (!vp) {
 	fail:
 		REDEBUG("Failed to create pair %s:%s %s %s", list_name, key,

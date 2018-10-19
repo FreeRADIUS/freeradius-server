@@ -333,7 +333,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		 *	functions walking over the list.
 		 */
 		vp = NULL;
-		if ((fr_pair_list_afrom_str(request->packet, (char const *) p, &vp) > 0) && vp) {
+		if ((fr_pair_list_afrom_str(request->packet, request->dict, (char const *) p, &vp) > 0) && vp) {
 			fr_cursor_append(&cursor, vp);
 		} else {
 			RWDEBUG("Ignoring line %d - :%s", lineno, p);

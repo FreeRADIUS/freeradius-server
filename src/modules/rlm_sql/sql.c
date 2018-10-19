@@ -186,7 +186,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	/*
 	 *	Create the pair
 	 */
-	vp = fr_pair_make(ctx, NULL, row[2], NULL, op);
+	vp = fr_pair_make(ctx, request->dict, NULL, row[2], NULL, op);
 	if (!vp) {
 		RPEDEBUG("Failed to create the pair");
 		return -1;

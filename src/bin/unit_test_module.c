@@ -208,7 +208,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	/*
 	 *	Read packet from fp
 	 */
-	if (fr_pair_list_afrom_file(request->packet, &request->packet->vps, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(request->packet, dict_radius, &request->packet->vps, fp, &filedone) < 0) {
 		fr_perror("%s", main_config->name);
 		talloc_free(request);
 		return NULL;
@@ -907,7 +907,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if (fr_pair_list_afrom_file(request, &filter_vps, fp, &filedone) < 0) {
+		if (fr_pair_list_afrom_file(request, dict_radius, &filter_vps, fp, &filedone) < 0) {
 			fprintf(stderr, "Failed reading attributes from %s: %s\n",
 				filter_file, fr_strerror());
 			goto exit_failure;

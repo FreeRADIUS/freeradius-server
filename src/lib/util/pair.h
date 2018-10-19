@@ -198,7 +198,8 @@ VALUE_PAIR	*fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 
 void		fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp);
 
-VALUE_PAIR	*fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, char const *value, FR_TOKEN op);
+VALUE_PAIR	*fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict,
+			      VALUE_PAIR **vps, char const *attribute, char const *value, FR_TOKEN op);
 
 void		fr_pair_list_free(VALUE_PAIR **);
 
@@ -285,8 +286,10 @@ bool		fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PA
 bool 		fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
 
 /* Lists */
-FR_TOKEN	fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
-int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
+FR_TOKEN	fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict,
+				       char const *buffer, VALUE_PAIR **head);
+int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict,
+					VALUE_PAIR **out, FILE *fp, bool *pfiledone);
 
 int		fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR *from);
 int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,

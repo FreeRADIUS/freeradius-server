@@ -215,7 +215,8 @@ parse_again:
 			 */
 			rad_assert(check_tmp == NULL);
 			rad_assert(reply_tmp == NULL);
-			parsecode = fr_pair_list_afrom_str(t, ptr, &check_tmp);
+
+			parsecode = fr_pair_list_afrom_str(t, NULL, ptr, &check_tmp);
 			if (parsecode == T_INVALID) {
 				pairlist_free(&pl);
 				PERROR("%s[%d]: Parse error (check) for entry %s", file, lineno, entry);
@@ -290,7 +291,7 @@ parse_again:
 		 *	Parse the reply values.  If there's a trailing
 		 *	comma, keep parsing the reply values.
 		 */
-		parsecode = fr_pair_list_afrom_str(t, buffer, &reply_tmp);
+		parsecode = fr_pair_list_afrom_str(t, NULL, buffer, &reply_tmp);
 		if (parsecode == T_COMMA) {
 			continue;
 		}
