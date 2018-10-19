@@ -694,7 +694,8 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("%s", config->name);
-		exit(EXIT_FAILURE);
+		rcode = EXIT_FAILURE;
+		goto finish;
 	}
 
 	dl_loader_init(autofree, config->lib_dir);
@@ -780,7 +781,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
-	if (unlang_init() < 0) exit(EXIT_FAILURE);
+	if (unlang_init() < 0) goto exit_failure;
 
 	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
@@ -816,12 +817,12 @@ int main(int argc, char *argv[])
 	/*
 	 *	Call xlat instantiation functions (after the xlats have been compiled)
 	 */
-	if (xlat_instantiate() < 0) exit(EXIT_FAILURE);
+	if (xlat_instantiate() < 0) goto exit_failure;
 
 	/*
 	 *	Instantiate "permanent" paircmps
 	 */
-	if (paircmp_init() < 0) exit(EXIT_FAILURE);
+	if (paircmp_init() < 0) goto exit_failure;
 
 	/*
 	 *	Simulate thread specific instantiation
@@ -842,7 +843,7 @@ int main(int argc, char *argv[])
 
 		if (panic_action && (fr_fault_setup(autofree, panic_action, argv[0]) < 0)) {
 			fr_perror("%s", config->name);
-			exit(EXIT_FAILURE);
+			goto exit_failure;
 		}
 	}
 
@@ -855,8 +856,7 @@ int main(int argc, char *argv[])
 		if (!fp) {
 			fprintf(stderr, "Failed reading %s: %s\n",
 				input_file, fr_syserror(errno));
-			rcode = EXIT_FAILURE;
-			goto finish;
+			goto exit_failure;
 		}
 	}
 
@@ -875,8 +875,7 @@ int main(int argc, char *argv[])
 	request = request_from_file(fp, el, client);
 	if (!request) {
 		fprintf(stderr, "Failed reading input: %s\n", fr_strerror());
-		rcode = EXIT_FAILURE;
-		goto finish;
+		goto exit_failure;
 	}
 	request->el = el;
 
@@ -904,16 +903,14 @@ int main(int argc, char *argv[])
 			fp = fopen(filter_file, "r");
 			if (!fp) {
 				fprintf(stderr, "Failed reading %s: %s\n", filter_file, fr_syserror(errno));
-				rcode = EXIT_FAILURE;
-				goto finish;
+				goto exit_failure;
 			}
 		}
 
 		if (fr_pair_list_afrom_file(request, &filter_vps, fp, &filedone) < 0) {
 			fprintf(stderr, "Failed reading attributes from %s: %s\n",
 				filter_file, fr_strerror());
-			rcode = EXIT_FAILURE;
-			goto finish;
+			goto exit_failure;
 		}
 
 		/*
@@ -922,8 +919,7 @@ int main(int argc, char *argv[])
 		if (!filter_vps) {
 			fprintf(stderr, "No attributes in filter file %s\n",
 				filter_file);
-			rcode = EXIT_FAILURE;
-			goto finish;
+			goto exit_failure;
 		}
 
 		/*
@@ -1023,8 +1019,7 @@ done:
 			fr_pair_validate_debug(request, failed);
 			fr_perror("Output file %s does not match attributes in filter %s (%s)",
 				  output_file ? output_file : input_file, filter_file, fr_strerror());
-			rcode = EXIT_FAILURE;
-			goto finish;
+			goto exit_failure;
 		}
 	}
 
