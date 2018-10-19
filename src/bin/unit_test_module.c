@@ -579,6 +579,7 @@ int main(int argc, char *argv[])
 	RADCLIENT		*client = NULL;
 	CONF_SECTION		*unlang;
 	char			*auth_type;
+	fr_dict_t		*dict;
 
 	TALLOC_CTX		*autofree = talloc_autofree_context();
 	TALLOC_CTX		*thread_ctx = talloc_new(autofree);
@@ -702,6 +703,21 @@ int main(int argc, char *argv[])
 
 	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
 		fr_perror("%s", config->name);
+		rcode = EXIT_FAILURE;
+		goto finish;
+	}
+
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+		fr_perror("unit_test_attribute");
+		rcode = EXIT_FAILURE;
+		goto finish;
+	}
+
+	/*
+	 *	Load the custom dictionary
+	 */
+	if (fr_dict_read(dict, config->raddb_dir, FR_DICTIONARY_FILE) == -1) {
+		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
@@ -1089,6 +1105,11 @@ finish:
 	 *	Free any autoload dictionaries
 	 */
 	fr_dict_autofree(unit_test_module_dict);
+
+	/*
+	 *	Free our explicitly loaded internal dictionary
+	 */
+	fr_dict_free(&dict);
 
 	/*
 	 *	Free the strerror buffer.
