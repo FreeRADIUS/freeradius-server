@@ -248,7 +248,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 
 	default:
 		slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, lhs_rules);
-
 		if (slen <= 0) {
 			cf_log_err(cp, "Failed parsing attribute reference");
 
