@@ -810,6 +810,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 	char		directory[8192];
 	uint8_t		*attr, data[2048];
 	TALLOC_CTX	*tp_ctx = talloc_init("tp_ctx");
+	fr_dict_t	*proto_dict = NULL;
 
 	bool		skip_decode = false;		//!< Whether the last encode errored.
 
@@ -827,8 +828,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 
 		fp = fopen(directory, "r");
 		if (!fp) {
-			fprintf(stderr, "Error opening %s: %s\n",
-				directory, fr_syserror(errno));
+			fprintf(stderr, "Error opening %s: %s\n", directory, fr_syserror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -874,7 +874,12 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 		q = strchr(p, ' ');
 		if (q && ((size_t)(q - p) > (sizeof(test_type) - 1))) {
 			fprintf(stderr, "Verb \"%.*s\" is too long\n", (int)(q - p), p);
-			goto error;
+		error:
+			talloc_free(tp_ctx);	/* Free testpoint first then the library */
+			unload_proto_library();	/* Cleanup */
+			fr_dict_free(&proto_dict);
+
+			return -1;
 		}
 
 		if (!q) q = p + strlen(p);
@@ -882,8 +887,35 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 		strlcpy(test_type, p, (q - p) + 1);
 
 		if (strcmp(test_type, "load") == 0) {
-			p += 5;
+			p += 4;
+
+			if (*p++ != ' ') {
+				fprintf(stderr, "Load syntax is \"load <lib_name>\"");
+				goto error;
+			}
+
 			load_proto_library(p);
+			continue;
+		}
+
+		if (strcmp(test_type, "load-dictionary") == 0) {
+			p += 15;
+
+			if (*p++ != ' ') {
+				fprintf(stderr, "Load-dictionary syntax is \"load-dictionary <proto_name>\"");
+				goto error;
+			}
+
+			/*
+			 *	Decrease ref count if we're loading in a new dictionary
+			 */
+			if (proto_dict) fr_dict_free(&proto_dict);
+
+			if (fr_dict_protocol_afrom_file(&proto_dict, p) < 0) {
+				fr_perror("unit_test_attribute");
+				goto error;
+			}
+
 			continue;
 		}
 
@@ -911,11 +943,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			outlen = encode_rfc(p + 4, data, sizeof(data));
 			if (outlen == 0) {
 				fprintf(stderr, "Parse error in line %d of %s\n", lineno, directory);
-			error:
-				talloc_free(tp_ctx);	/* Free testpoint first then the library */
-				unload_proto_library();	/* Cleanup */
-
-				return -1;
+				goto error;
 			}
 
 		print_hex:
@@ -1160,8 +1188,8 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode") + 1;
 			if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, tp_ctx) < 0)) {
-				fprintf(stderr, "unit_test_attribute: Failed initialising encoder testpoint at "
-					"line %d of %s\n", lineno, directory);
+				fr_strerror_printf_push("unit_test_attribute: Failed initialising decoder testpoint at "
+							"line %d of %s", lineno, directory);
 				fr_perror("unit_test_attribute");
 				goto error;
 			}
@@ -1323,6 +1351,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 	if (fp != stdin) fclose(fp);
 
 	unload_proto_library();	/* Cleanup */
+	fr_dict_free(&proto_dict);
 	talloc_free(tp_ctx);
 
 	return 0;
@@ -1420,12 +1449,14 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fr_perror("unit_test_attribute");
-		ret = EXIT_FAILURE;
-		goto done;
+		exit(EXIT_FAILURE);
 	}
 
+	/*
+	 *	Load the custom dictionary
+	 */
 	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		ret = EXIT_FAILURE;
