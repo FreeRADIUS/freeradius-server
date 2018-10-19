@@ -772,7 +772,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	 *	Check that the attribute we resolved was from an allowed dictionary
 	 */
 	if (!rules->allow_foreign && rules->dict_def && (fr_dict_by_da(vpt->tmpl_da) != rules->dict_def)) {
-		fr_strerror_printf("Only attribute from protocol \"%s\" allowed", fr_dict_root(rules->dict_def)->name);
+		fr_strerror_printf("Only attributes from protocol \"%s\" allowed", fr_dict_root(rules->dict_def)->name);
 		slen = -(p - name);
 		goto error;
 	}
