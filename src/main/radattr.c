@@ -786,6 +786,7 @@ static void process_file(const char *root_dir, char const *filename)
 			continue;
 		}
 
+#ifdef WITH_DHCP
 		/*
 		 *	And some DHCP tests
 		 */
@@ -868,6 +869,7 @@ static void process_file(const char *root_dir, char const *filename)
 			}
 			continue;
 		}
+#endif
 
 		if (strncmp(p, "attribute ", 10) == 0) {
 			p += 10;
