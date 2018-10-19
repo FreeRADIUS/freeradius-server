@@ -2544,7 +2544,8 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			}
 
 		} else {
-			fr_dict_attr_t const *da;
+			fr_dict_attr_t const	*da;
+			fr_dict_t const		*dict;
 
 			if (!vpt->tmpl_da->flags.has_tag &&
 			    (vpt->tmpl_tag != TAG_NONE) && (vpt->tmpl_tag != TAG_ANY)) {
@@ -2567,12 +2568,22 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			/*
 			 *	Attribute may be present with multiple names
 			 */
-			da = fr_dict_attr_by_name(fr_dict_by_da(vpt->tmpl_da), vpt->tmpl_da->name);
-			if (!da) {
+			dict = fr_dict_by_da(vpt->tmpl_da);
+			if (!dict) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
-					     "attribute \"%s\" (%s) not found in global dictionary",
+					     "attribute \"%s\" (%s) not rooted in a dictionary",
 					     file, line, vpt->tmpl_da->name,
 					     fr_int2str(fr_value_box_type_names, vpt->tmpl_da->type, "<INVALID>"));
+				if (!fr_cond_assert(0)) fr_exit_now(1);
+			}
+
+			da = fr_dict_attr_by_name(dict, vpt->tmpl_da->name);
+			if (!da) {
+				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+					     "attribute \"%s\" (%s) not found in dictionary (%s)",
+					     file, line, vpt->tmpl_da->name,
+					     fr_int2str(fr_value_box_type_names, vpt->tmpl_da->type, "<INVALID>"),
+					     fr_dict_root(dict)->name);
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
 
@@ -2580,9 +2591,11 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 				da = fr_dict_attr_by_type(vpt->tmpl_da, vpt->tmpl_da->type);
 				if (!da) {
 					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
-						     "attribute \"%s\" variant (%s) not found in global dictionary",
+						     "attribute \"%s\" variant (%s) not found in dictionary (%s)",
 						     file, line, vpt->tmpl_da->name,
-						     fr_int2str(fr_value_box_type_names, vpt->tmpl_da->type, "<INVALID>"));
+						     fr_int2str(fr_value_box_type_names, vpt->tmpl_da->type,
+						     		"<INVALID>"),
+						     fr_dict_root(dict)->name);
 					if (!fr_cond_assert(0)) fr_exit_now(1);
 				}
 			}
