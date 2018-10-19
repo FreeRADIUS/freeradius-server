@@ -5409,14 +5409,13 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 void fr_dict_autofree(fr_dict_autoload_t const *to_free)
 {
 	fr_dict_t			**dict;
-	fr_dict_autoload_t const	*p = to_free;
+	fr_dict_autoload_t const	*p;
 
 	for (p = to_free; p->out; p++) {
-		dict = to_free->out;
+		dict = p->out;
 		if (!*dict) continue;
 
-		talloc_decrease_ref_count(*dict);
-		*dict = NULL;
+		fr_dict_free(dict);
 	}
 }
 
