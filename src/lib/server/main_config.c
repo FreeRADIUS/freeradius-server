@@ -921,7 +921,7 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 int main_config_init(main_config_t *config)
 {
 	char const		*p = NULL;
-	CONF_SECTION		*cs, *subcs;
+	CONF_SECTION		*cs = NULL, *subcs;
 	struct stat		statbuf;
 	char			buffer[1024];
 
@@ -971,7 +971,7 @@ do {\
 	switch (fr_dict_read(config->dict, _d, _n)) {\
 	case -1:\
 		PERROR("Error reading dictionary \"%s/%s\"", _d, _n);\
-		return -1;\
+		goto failure;\
 	case 0:\
 		DEBUG2("Including dictionary file \"%s/%s\"", _d,_n);\
 		break;\
@@ -1103,8 +1103,7 @@ do {\
 				if (setenv(attr, value, 1) < 0) {
 					cf_log_err(ci, "Failed setting environment variable %s: %s",
 						   attr, fr_syserror(errno));
-					talloc_free(cs);
-					return -1;
+					goto failure;
 				}
 
 				/*
