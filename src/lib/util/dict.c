@@ -5339,12 +5339,10 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 			return -1;
 		}
 
-#if 0
 		if (!*p->dict) {
-			fr_strerror_printf("Missing dictionary required for attribute autoresolution");
+			fr_strerror_printf("Missing dictionary for attribute \"%s\" autoresolution", p->name);
 			return -1;
 		}
-#endif
 
 		da = fr_dict_attr_by_name(*p->dict, p->name);
 		if (!da) {
