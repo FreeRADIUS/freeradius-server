@@ -4685,6 +4685,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			}
 
 			ctx->dict = found;
+			ctx->parent = ctx->dict->root;
 
 			continue;
 		}
@@ -4713,6 +4714,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			}
 
 			ctx->dict = ctx->old_dict;	/* Switch back to the old dictionary */
+			ctx->parent = ctx->dict->root;
 
 			continue;
 		}
