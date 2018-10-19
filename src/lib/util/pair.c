@@ -254,7 +254,7 @@ ssize_t fr_pair_afrom_substr(TALLOC_CTX *ctx, VALUE_PAIR **out,
 
 	p = in;
 
-	slen = fr_dict_attr_by_name_substr(&da, dict, p);
+	slen = fr_dict_attr_by_name_substr(NULL, &da, dict, p);
 	if (slen <= 0) return slen;
 
 	p += slen;

@@ -420,7 +420,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (fr_dict_attr_by_qualified_name(&inst->framed_ip_address, dict_freeradius, inst->attribute_name) < 0) {
+	if (fr_dict_attr_by_qualified_name(&inst->framed_ip_address,
+					   dict_freeradius, inst->attribute_name, false) < 0) {
 		cf_log_perr(conf, "Failed resolving attribute");
 		return -1;
 	}

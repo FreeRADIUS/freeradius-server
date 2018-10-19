@@ -525,7 +525,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 	/*
 	 *	@fixme - Default should be set by virtual server.
 	 */
-	if (fr_dict_attr_by_qualified_name(&da, fr_dict_internal, vpt->tmpl_unknown_name) < 0) {
+	if (fr_dict_attr_by_qualified_name(&da, fr_dict_internal, vpt->tmpl_unknown_name, true) < 0) {
 		cf_log_perr(ci, "Failed resolving undefined attribute");
 		return false;
 	}

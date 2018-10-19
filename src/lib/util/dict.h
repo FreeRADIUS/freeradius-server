@@ -312,16 +312,17 @@ fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
 
 fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen);
 
-ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_t const **out,
+ssize_t			fr_dict_attr_by_name_substr(int *err, fr_dict_attr_t const **out,
 						    fr_dict_t const *dict, char const *name);
 
 fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *attr);
 
 ssize_t			fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **out,
-							      fr_dict_t const *dict_def, char const *attr);
+							      fr_dict_t const *dict_def,
+							      char const *attr, bool fallback);
 
 int			fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out,
-						       fr_dict_t const *dict_def, char const *attr);
+						       fr_dict_t const *dict_def, char const *attr, bool fallback);
 
 fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type);
 

@@ -617,6 +617,8 @@ static vp_tmpl_rules_t const default_rules = {
  *							#vp_tmpl_t will be produced.
  *				- allow_foreign		If true, allow attribute names to be qualified
  *							with a protocol outside of the passed dict_def.
+ *				- disallow_internal	If true, don't allow fallback to internal
+ *							attributes.
  *
  * @see REMARKER to produce pretty error markers from the return value.
  *
@@ -721,7 +723,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	 *	Look up by name, *including* any Attr-1.2.3.4 which was created when
 	 *	parsing the configuration files.
 	 */
-	slen = fr_dict_attr_by_qualified_name_substr(NULL, &vpt->tmpl_da, rules->dict_def, p);
+	slen = fr_dict_attr_by_qualified_name_substr(NULL, &vpt->tmpl_da,
+						     rules->dict_def, p, !rules->disallow_internal);
 	if (slen <= 0) {
 		char const *q;
 
@@ -791,12 +794,32 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	}
 
 	/*
-	 *	Check that the attribute we resolved was from an allowed dictionary
+	 *	Attribute location checks
 	 */
-	if (!rules->allow_foreign && rules->dict_def && (fr_dict_by_da(vpt->tmpl_da) != rules->dict_def)) {
-		fr_strerror_printf("Only attributes from protocol \"%s\" allowed", fr_dict_root(rules->dict_def)->name);
-		slen = -(p - name);
-		goto error;
+	{
+		fr_dict_t *found_in = fr_dict_by_da(vpt->tmpl_da);
+
+		/*
+		 *	Even if allow_foreign is false, if disallow_internal is not
+		 *	true, we still allow foreign
+		 */
+		if (found_in == fr_dict_internal) {
+			if (rules->disallow_internal) {
+				fr_strerror_printf("Internal attributes not allowed here");
+				slen = -(p - name);
+				goto error;
+			}
+		/*
+		 *	Check that the attribute we resolved was from an allowed dictionary
+		 */
+		} else if ((rules->dict_def && (found_in != rules->dict_def))) {
+			if (!rules->allow_foreign) {
+				fr_strerror_printf("Only attributes from protocol \"%s\" allowed here",
+						   fr_dict_root(rules->dict_def)->name);
+				slen = -(p - name);
+				goto error;
+			}
+		}
 	}
 
 	/*

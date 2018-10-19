@@ -3175,6 +3175,11 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
  * If the attribute does not exist, don't advance the pointer and return
  * NULL.
  *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				- 0 success.
+ *				- -1 if the attribute can't be found.
+ *				- -2 attribute name too long.
+ *				- -4 out of memory.
  * @param[out] out		Where to store the resolve attribute.
  * @param[in] dict		of protocol context we're operating in.
  *				If NULL the internal dictionary will be used.
@@ -3183,7 +3188,7 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_t const **out, fr_dict_t const *dict, char const *name)
+ssize_t fr_dict_attr_by_name_substr(int *err, fr_dict_attr_t const **out, fr_dict_t const *dict, char const *name)
 {
 	fr_dict_attr_t		find;
 	fr_dict_attr_t const	*da;
@@ -3192,6 +3197,8 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_t const **out, fr_dict_t const 
 
 	if (!name || !*name) return 0;
 	INTERNAL_IF_NULL(dict);
+
+	if (err) *err = 0;
 
 	memset(&find, 0, sizeof(find));
 
@@ -3204,18 +3211,21 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_t const **out, fr_dict_t const 
 	len = p - name;
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
+		if (err) *err = -2;
 		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
 
 	find.name = talloc_bstrndup(NULL, name, len);
 	if (!find.name) {
 		fr_strerror_printf("Out of memory");
+		if (err) *err = -4;
 		return 0;
 	}
 	da = fr_hash_table_finddata(dict->attributes_by_name, &find);
 	talloc_const_free(find.name);
 
 	if (!da) {
+		if (err) *err = -1;
 		fr_strerror_printf("Unknown attribute '%.*s'", (int) len, name);
 		return 0;
 	}
@@ -3254,20 +3264,24 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
  * @param[out] err		Why parsing failed. May be NULL.
  *				- 0 success.
  *				- -1 if the attribute can't be found.
- *				- -2 if the protocol can't be found.
+ *				- -2 attribute name too long.
+ *				- -3 if the protocol can't be found.
+ *				- -4 out of memory.
  * @param[out] out		Dictionary found attribute.
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] attr		Dictionary/Attribute name.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
 ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **out,
-					      fr_dict_t const *dict_def, char const *attr)
+					      fr_dict_t const *dict_def, char const *attr, bool fallback)
 {
 	fr_dict_t	*dict = NULL;
 	char const	*p = attr;
 	ssize_t		slen;
+	int		aerr = 0;
 
 	INTERNAL_IF_NULL(dict_def);
 
@@ -3283,12 +3297,37 @@ ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **o
 		return 0;
 	}
 
+	/*
+	 *	Has dictionary qualifier, can't fallback
+	 */
+	if (slen > 0) fallback = false;
 	p += slen;
 
-	slen = fr_dict_attr_by_name_substr(out, dict, p);
-	if (slen <= 0) {
-		if (err) *err = -1;
-		return -(p - attr);
+	slen = fr_dict_attr_by_name_substr(&aerr, out, dict, p);
+again:
+	switch (aerr) {
+	case 0:
+		break;
+
+	case -1:
+		/*
+		 *	Fallback to lookup in internal dictionary
+		 */
+		if (fallback) {
+			slen = fr_dict_attr_by_name_substr(&aerr, out, fr_dict_internal, p);
+			fallback = false;
+			goto again;
+		}
+
+		if (err) *err = aerr;
+		return -((p - attr) + slen);
+
+	/*
+	 *	Other error codes are the same
+	 */
+	default:
+		if (err) *err = aerr;
+		return -((p - attr) + slen);
 	}
 
 	p += slen;
@@ -3301,18 +3340,20 @@ ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **o
  * @param[out] out		Dictionary found attribute.
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] attr		Dictionary/Attribute name.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
  * @return
  *	- 0 on success.
  *	- -1 if the attribute can't be found.
  *	- -2 if the protocol can't be found.
  *	- -3 trailing garbage in attr atring.
  */
-int fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr_dict_t const *dict_def, char const *attr)
+int fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr_dict_t const *dict_def,
+				   char const *attr, bool fallback)
 {
 	ssize_t slen;
 	int	err = 0;
 
-	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, attr);
+	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, attr, fallback);
 	if (slen <= 0) return err;
 
 	if ((size_t)slen != strlen(attr)) {
@@ -3791,7 +3832,7 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
 	if (*p == '.') {
 		p++;
 
-		slen = fr_dict_attr_by_name_substr(&da, proto_dict, p);
+		slen = fr_dict_attr_by_name_substr(NULL, &da, proto_dict, p);
 		if (slen <= 0) {
 			fr_strerror_printf("Referenced attribute \"%s\" not found", p);
 			return NULL;

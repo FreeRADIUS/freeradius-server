@@ -350,6 +350,8 @@ struct vp_tmpl_rules_s {
 
 	bool			allow_foreign;		//!< Allow arguments not found in dict_def.
 
+	bool			disallow_internal;	//!< Allow/fallback to internal attributes.
+
 	vp_attr_ref_prefix_t	prefix;			//!< Whether the attribute reference requires
 							///< a prefix.
 };
