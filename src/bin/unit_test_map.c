@@ -31,12 +31,22 @@ RCSID("$Id$")
 #include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #include <assert.h>
 
 #include <freeradius-devel/server/log.h>
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+extern fr_dict_autoload_t unit_test_module_dict[];
+fr_dict_autoload_t unit_test_module_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
 
 module_instance_t *module_find_with_method(UNUSED rlm_components_t *method,
 					   UNUSED CONF_SECTION *modules, UNUSED char const *name)
@@ -74,6 +84,7 @@ static int process_file(char const *filename)
 	main_config_t	*config;
 
 	vp_tmpl_rules_t	parse_rules = {
+		.dict_def = dict_radius,
 		.allow_foreign = true	/* Because we don't know what protocol we're operating with */
 	};
 
@@ -192,13 +203,22 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fr_perror("unit_test_map");
 		exit(EXIT_FAILURE);
 	}
 
+	/*
+	 *	Load the custom dictionary
+	 */
 	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
+		fr_strerror_printf_push("Failed to initialize the dictionaries");
+		fr_perror("unit_test_map");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fr_dict_autoload(unit_test_module_dict) < 0) {
+		fr_perror("unit_test_map");
 		exit(EXIT_FAILURE);
 	}
 
@@ -216,6 +236,14 @@ int main(int argc, char *argv[])
 	 *	memory, so we get clean talloc reports.
 	 */
 	xlat_free();
+
+	/*
+	 *	Free any autoload dictionaries
+	 */
+	fr_dict_autofree(unit_test_module_dict);
+
+	fr_dict_free(&dict);
+
 	fr_strerror_free();
 
 	return rcode;

@@ -23,7 +23,7 @@ $(BUILD_DIR)/tests/map/%.out: $(top_srcdir)/src/tests/map/%
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@; \
 			echo "# $@"; \
-			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share $<"; \
+			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary $<"; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep $< $@ | head -1 | sed 's,^.*$(top_srcdir),,;s/:.*//;s/.*\[//;s/\].*//'); \
