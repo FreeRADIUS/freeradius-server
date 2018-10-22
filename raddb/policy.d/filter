@@ -69,7 +69,7 @@ filter_username {
 		#
 		if (&User-Name =~ /\.\./ ) {
 			update request {
-				&Module-Failure-Message += 'User-Name contains multiple ..s'
+				&Module-Failure-Message += 'User-Name contains multiple dots (e.g. user@site..com)'
 			}
 			reject
 		}
