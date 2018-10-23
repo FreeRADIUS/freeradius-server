@@ -2164,23 +2164,23 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 	cprintf(listener, "responses\t" PRIu64 "\n", stats->total_responses);
 
 	if (auth) {
-		cprintf(listener, "accepts\t\t" PRIu64 "\n",
+		cprintf(listener, "accepts\t\t%" PRIu64 "\n",
 			stats->total_access_accepts);
-		cprintf(listener, "rejects\t\t" PRIu64 "\n",
+		cprintf(listener, "rejects\t\t%" PRIu64 "\n",
 			stats->total_access_rejects);
-		cprintf(listener, "challenges\t" PRIu64 "\n",
+		cprintf(listener, "challenges\t%" PRIu64 "\n",
 			stats->total_access_challenges);
 	}
 
-	cprintf(listener, "dup\t\t" PRIu64 "\n", stats->total_dup_requests);
-	cprintf(listener, "invalid\t\t" PRIu64 "\n", stats->total_invalid_requests);
-	cprintf(listener, "malformed\t" PRIu64 "\n", stats->total_malformed_requests);
-	cprintf(listener, "bad_authenticator\t" PRIu64 "\n", stats->total_bad_authenticators);
-	cprintf(listener, "dropped\t\t" PRIu64 "\n", stats->total_packets_dropped);
-	cprintf(listener, "unknown_types\t" PRIu64 "\n", stats->total_unknown_types);
+	cprintf(listener, "dup\t\t%" PRIu64 "\n", stats->total_dup_requests);
+	cprintf(listener, "invalid\t\t%" PRIu64 "\n", stats->total_invalid_requests);
+	cprintf(listener, "malformed\t%" PRIu64 "\n", stats->total_malformed_requests);
+	cprintf(listener, "bad_authenticator\t%" PRIu64 "\n", stats->total_bad_authenticators);
+	cprintf(listener, "dropped\t\t%" PRIu64 "\n", stats->total_packets_dropped);
+	cprintf(listener, "unknown_types\t%" PRIu64 "\n", stats->total_unknown_types);
 
 	if (server) {
-		cprintf(listener, "timeouts\t" PRIu64 "\n", stats->total_timeouts);
+		cprintf(listener, "timeouts\t%" PRIu64 "\n", stats->total_timeouts);
 	}
 
 	cprintf(listener, "last_packet\t%" PRId64 "\n", (int64_t) stats->last_packet);
@@ -2200,14 +2200,14 @@ static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED c
 
 	thread_pool_queue_stats(array, pps);
 
-	cprintf(listener, "queue_len_internal\t" PRIu64 "\n", array[0]);
-	cprintf(listener, "queue_len_proxy\t\t" PRIu64 "\n", array[1]);
-	cprintf(listener, "queue_len_auth\t\t" PRIu64 "\n", array[2]);
-	cprintf(listener, "queue_len_acct\t\t" PRIu64 "\n", array[3]);
-	cprintf(listener, "queue_len_detail\t" PRIu64 "\n", array[4]);
+	cprintf(listener, "queue_len_internal\t%d\n", array[0]);
+	cprintf(listener, "queue_len_proxy\t\t%d\n", array[1]);
+	cprintf(listener, "queue_len_auth\t\t%d\n", array[2]);
+	cprintf(listener, "queue_len_acct\t\t%d\n", array[3]);
+	cprintf(listener, "queue_len_detail\t%d\n", array[4]);
 
-	cprintf(listener, "queue_pps_in\t\t" PRIu64 "\n", pps[0]);
-	cprintf(listener, "queue_pps_out\t\t" PRIu64 "\n", pps[1]);
+	cprintf(listener, "queue_pps_in\t\t%d\n", pps[0]);
+	cprintf(listener, "queue_pps_out\t\t%d\n", pps[1]);
 
 	return CMD_OK;
 }
