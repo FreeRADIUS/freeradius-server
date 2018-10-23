@@ -163,7 +163,7 @@ typedef struct rlm_rest_t {
 						//!< checking.
 	rlm_rest_section_t	post_auth;	//!< Configuration specific to Post-auth
 	rlm_rest_section_t	pre_proxy;	//!< Configuration specific to Pre-proxy
-	rlm_rest_section_t      post_proxy;     //!< Configuration specific to Post-proxy
+	rlm_rest_section_t	post_proxy;	//!< Configuration specific to Post-proxy
 #ifdef WITH_COA
 	rlm_rest_section_t	recv_coa;		//!< Configuration specific to recv-coa
 #endif
