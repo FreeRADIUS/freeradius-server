@@ -131,6 +131,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	switch (ret) {
 	case PCRE_ERROR_NOMEMORY:
 		MEM(NULL);
+		/* FALL-THROUGH */
 
 	/*
 	 *	Not finding a substring is fine
@@ -189,6 +190,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 	switch (ret) {
 	case PCRE_ERROR_NOMEMORY:
 		MEM(NULL);
+		/* FALL-THROUGH */
 
 	/*
 	 *	Not finding a substring is fine

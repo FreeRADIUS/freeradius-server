@@ -596,6 +596,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 			case SSL_ERROR_ZERO_RETURN:
 				/* remote end sent close_notify, send one back */
 				SSL_shutdown(sock->ssn->ssl);
+				/* FALL-THROUGH */
 
 			case SSL_ERROR_SYSCALL:
 			do_close:

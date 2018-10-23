@@ -10619,7 +10619,7 @@ fi
 export EXPERIMENTAL
 
 if test -d $srcdir/.git -a "x$GIT" = "xyes"; then
-  RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+  RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1 | cut -c1-9`
 
 cat >>confdefs.h <<_ACEOF
 #define RADIUSD_VERSION_COMMIT ${RADIUSD_VERSION_COMMIT}

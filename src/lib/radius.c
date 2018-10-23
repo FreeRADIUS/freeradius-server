@@ -1970,6 +1970,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			if (original && original->code == PW_CODE_STATUS_SERVER) {
 				goto do_ack;
 			}
+			/* FALL-THROUGH */
 
 		case PW_CODE_ACCOUNTING_REQUEST:
 		case PW_CODE_DISCONNECT_REQUEST:
@@ -2766,6 +2767,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 				    (original->code == PW_CODE_STATUS_SERVER)) {
 					goto do_ack;
 				}
+				/* FALL-THROUGH */
 
 			case PW_CODE_ACCOUNTING_REQUEST:
 			case PW_CODE_DISCONNECT_REQUEST:

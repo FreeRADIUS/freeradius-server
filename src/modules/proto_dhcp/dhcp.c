@@ -825,6 +825,7 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *da
 	 */
 	raw:
 		if (fr_pair_to_unknown(vp) < 0) return -1;
+		/* FALL-THROUGH */
 
 	case PW_TYPE_OCTETS:
 		if (len > 255) return -1;
