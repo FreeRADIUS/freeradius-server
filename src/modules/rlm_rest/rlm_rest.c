@@ -653,6 +653,118 @@ finish:
 	return rcode;
 }
 
+/*
+ *	Send pre-proxy info to a REST API endpoint
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
+{
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->pre_proxy;
+
+	void *handle;
+	int hcode;
+	int rcode = RLM_MODULE_OK;
+	int ret;
+
+	if (!section->name) return RLM_MODULE_NOOP;
+
+	handle = fr_connection_get(inst->pool);
+	if (!handle) return RLM_MODULE_FAIL;
+
+	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
+	if (ret < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	hcode = rest_get_handle_code(handle);
+	if (hcode >= 500) {
+		rcode = RLM_MODULE_FAIL;
+	} else if (hcode == 204) {
+		rcode = RLM_MODULE_OK;
+	} else if ((hcode >= 200) && (hcode < 300)) {
+		ret = rest_response_decode(inst, section, request, handle);
+		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+		else if (ret == 0) rcode = RLM_MODULE_OK;
+		else		   rcode = RLM_MODULE_UPDATED;
+	} else {
+		rcode = RLM_MODULE_INVALID;
+	}
+
+finish:
+	switch (rcode) {
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_FAIL:
+		rest_response_error(request, handle);
+		break;
+
+	default:
+		break;
+	}
+
+	rlm_rest_cleanup(inst, section, handle);
+
+	fr_connection_release(inst->pool, handle);
+
+	return rcode;
+}
+
+/*
+ *      Send post-proxy info to a REST API endpoint
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
+{
+        rlm_rest_t *inst = instance;
+        rlm_rest_section_t *section = &inst->post_proxy;
+
+        void *handle;
+        int hcode;
+        int rcode = RLM_MODULE_OK;
+        int ret;
+
+        if (!section->name) return RLM_MODULE_NOOP;
+
+        handle = fr_connection_get(inst->pool);
+        if (!handle) return RLM_MODULE_FAIL;
+
+        ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
+        if (ret < 0) {
+                rcode = RLM_MODULE_FAIL;
+                goto finish;
+        }
+
+        hcode = rest_get_handle_code(handle);
+        if (hcode >= 500) {
+                rcode = RLM_MODULE_FAIL;
+        } else if (hcode == 204) {
+                rcode = RLM_MODULE_OK;
+        } else if ((hcode >= 200) && (hcode < 300)) {
+                ret = rest_response_decode(inst, section, request, handle);
+                if (ret < 0)       rcode = RLM_MODULE_FAIL;
+                else if (ret == 0) rcode = RLM_MODULE_OK;
+                else               rcode = RLM_MODULE_UPDATED;
+        } else {
+                rcode = RLM_MODULE_INVALID;
+        }
+
+finish:
+        switch (rcode) {
+        case RLM_MODULE_INVALID:
+        case RLM_MODULE_FAIL:
+                rest_response_error(request, handle);
+                break;
+
+        default:
+                break;
+        }
+
+        rlm_rest_cleanup(inst, section, handle);
+
+        fr_connection_release(inst->pool, handle);
+
+        return rcode;
+}
+
 #ifdef WITH_COA
 /*
  *	Create the set of attribute-value pairs to check and reply
@@ -922,6 +1034,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 /* @todo add behaviour for checksimul */
 /*		(parse_sub_section(conf, &inst->checksimul, MOD_SESSION) < 0) || */
+		(parse_sub_section(conf, &inst->pre_proxy, MOD_PRE_PROXY) < 0) ||
+		(parse_sub_section(conf, &inst->post_proxy, MOD_POST_PROXY) < 0) ||
 		(parse_sub_section(conf, &inst->post_auth, MOD_POST_AUTH) < 0))
 	{
 		return -1;
@@ -981,6 +1095,8 @@ module_t rlm_rest = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_ACCOUNTING]	= mod_accounting,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 		[MOD_POST_AUTH]		= mod_post_auth,
 #ifdef WITH_COA
 		[MOD_RECV_COA]		= mod_recv_coa
