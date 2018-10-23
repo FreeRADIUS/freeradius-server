@@ -615,7 +615,28 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	rlm_rest_section_t *section = &inst->post_auth;
 
 	return mod_common(inst, request, section);
+}
 
+/*
+ *	Send pre-proxy info to a REST API endpoint
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
+{
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->pre_proxy;
+
+	return mod_common(inst, request, section);
+}
+
+/*
+ *	Send post-proxy info to a REST API endpoint
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
+{
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->post_proxy;
+
+	return mod_common(inst, request, section);
 }
 
 #ifdef WITH_COA
@@ -880,6 +901,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		(parse_sub_section(conf, &inst->authorize, MOD_AUTHORIZE) < 0) ||
 		(parse_sub_section(conf, &inst->authenticate, MOD_AUTHENTICATE) < 0) ||
 		(parse_sub_section(conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
+		(parse_sub_section(conf, &inst->pre_proxy, MOD_PRE_PROXY) < 0) ||
+		(parse_sub_section(conf, &inst->post_proxy, MOD_POST_PROXY) < 0) ||
 
 #ifdef WITH_COA
 		(parse_sub_section(conf, &inst->recv_coa, MOD_RECV_COA) < 0) ||
@@ -947,6 +970,8 @@ module_t rlm_rest = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_ACCOUNTING]	= mod_accounting,
 		[MOD_POST_AUTH]		= mod_post_auth,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 #ifdef WITH_COA
 		[MOD_RECV_COA]		= mod_recv_coa
 #endif
