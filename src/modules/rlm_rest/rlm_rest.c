@@ -542,13 +542,10 @@ finish:
 }
 
 /*
- *	Send accounting info to a REST API endpoint
+ *	Do common work.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_common(rlm_rest_t *inst, REQUEST *request, rlm_rest_section_t *section)
 {
-	rlm_rest_t *inst = instance;
-	rlm_rest_section_t *section = &inst->accounting;
-
 	void *handle;
 	int hcode;
 	int rcode = RLM_MODULE_OK;
@@ -597,6 +594,18 @@ finish:
 	return rcode;
 }
 
+
+/*
+ *	Send accounting info to a REST API endpoint
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+{
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->accounting;
+
+	return mod_common(inst, request, section);
+}
+
 /*
  *	Send post-auth info to a REST API endpoint
  */
@@ -605,52 +614,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	rlm_rest_t *inst = instance;
 	rlm_rest_section_t *section = &inst->post_auth;
 
-	void *handle;
-	int hcode;
-	int rcode = RLM_MODULE_OK;
-	int ret;
+	return mod_common(inst, request, section);
 
-	if (!section->name) return RLM_MODULE_NOOP;
-
-	handle = fr_connection_get(inst->pool);
-	if (!handle) return RLM_MODULE_FAIL;
-
-	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
-	if (ret < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
-
-	hcode = rest_get_handle_code(handle);
-	if (hcode >= 500) {
-		rcode = RLM_MODULE_FAIL;
-	} else if (hcode == 204) {
-		rcode = RLM_MODULE_OK;
-	} else if ((hcode >= 200) && (hcode < 300)) {
-		ret = rest_response_decode(inst, section, request, handle);
-		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
-		else if (ret == 0) rcode = RLM_MODULE_OK;
-		else		   rcode = RLM_MODULE_UPDATED;
-	} else {
-		rcode = RLM_MODULE_INVALID;
-	}
-
-finish:
-	switch (rcode) {
-	case RLM_MODULE_INVALID:
-	case RLM_MODULE_FAIL:
-		rest_response_error(request, handle);
-		break;
-
-	default:
-		break;
-	}
-
-	rlm_rest_cleanup(inst, section, handle);
-
-	fr_connection_release(inst->pool, handle);
-
-	return rcode;
 }
 
 #ifdef WITH_COA
