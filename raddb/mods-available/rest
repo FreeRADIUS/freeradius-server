@@ -167,7 +167,7 @@ rest {
 		tls = ${..tls}
 	}
 
-	#  Accounting/Post-auth
+	#  Accounting/Post-auth/Pre-Proxy/Post-Proxy
 	#
 	#  Code   Meaning       Process body  Module code
 	#  204    no content    no            ok
@@ -181,6 +181,16 @@ rest {
 	}
 	post-auth {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
+		method = 'post'
+		tls = ${..tls}
+	}
+	pre-proxy {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=pre-proxy"
+		method = 'post'
+		tls = ${..tls}
+	}
+	post-proxy {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-proxy"
 		method = 'post'
 		tls = ${..tls}
 	}
