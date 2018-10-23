@@ -167,7 +167,7 @@ rest {
 		tls = ${..tls}
 	}
 
-	#  Accounting/Post-auth
+	#  Accounting/Pre-proxy/Post-proxy/Post-auth
 	#
 	#  Code   Meaning       Process body  Module code
 	#  204    no content    no            ok
@@ -184,7 +184,16 @@ rest {
 		method = 'post'
 		tls = ${..tls}
 	}
-
+	pre-proxy {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=pre-proxy"
+		method = 'post'
+		tls = ${..tls}
+	}
+	post-proxy {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-proxy"
+		method = 'post'
+		tls = ${..tls}
+	}
 	#
 	#  The connection pool is new for 3.0, and will be used in many
 	#  modules, for all kinds of connection-related activity.
