@@ -2160,8 +2160,8 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 {
 	int i;
 
-	cprintf(listener, "requests\t" PRIu64 "\n", stats->total_requests);
-	cprintf(listener, "responses\t" PRIu64 "\n", stats->total_responses);
+	cprintf(listener, "requests\t%" PRIu64 "\n", stats->total_requests);
+	cprintf(listener, "responses\t%" PRIu64 "\n", stats->total_responses);
 
 	if (auth) {
 		cprintf(listener, "accepts\t\t%" PRIu64 "\n",
