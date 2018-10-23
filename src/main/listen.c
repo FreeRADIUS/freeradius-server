@@ -2703,10 +2703,6 @@ static int _listener_free(rad_listen_t *this)
 		(((fr_command_socket_t *) this->data)->magic != COMMAND_SOCKET_MAGIC))
 #endif
 		) {
-		listen_socket_t *sock = this->data;
-
-		rad_assert(talloc_parent(sock) == this);
-		rad_assert(sock->ev == NULL);
 
 		/*
 		 *	Remove the child from the parent tree.
@@ -2729,6 +2725,11 @@ static int _listener_free(rad_listen_t *this)
 		 *	may be used by multiple listeners.
 		 */
 		if (this->tls) {
+			listen_socket_t *sock = this->data;
+
+			rad_assert(talloc_parent(sock) == this);
+			rad_assert(sock->ev == NULL);
+
 			rad_assert(!sock->ssn || (talloc_parent(sock->ssn) == sock));
 			rad_assert(!sock->request || (talloc_parent(sock->request) == sock));
 #ifdef HAVE_PTHREAD_H
