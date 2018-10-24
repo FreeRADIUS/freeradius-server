@@ -85,7 +85,7 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  *	- 0 user is in group
  *	- 1 failure or user is not in group
  */
-static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *req, VALUE_PAIR *check,
+static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req, VALUE_PAIR *check,
 			     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_winbind_t		*inst = instance;
