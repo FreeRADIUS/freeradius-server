@@ -41,6 +41,7 @@ extern "C" {
 uint32_t fr_hash(void const *, size_t);
 uint32_t fr_hash_update(void const *data, size_t size, uint32_t hash);
 uint32_t fr_hash_string(char const *p);
+uint32_t fr_hash_case_string(char const *p);
 
 typedef struct fr_hash_table_t fr_hash_table_t;
 typedef void (*fr_hash_table_free_t)(void *);

@@ -789,6 +789,20 @@ uint32_t fr_hash_string(char const *p)
 	return hash;
 }
 
+/** Hash a C string, converting all chars to lowercase
+ *
+ */
+uint32_t fr_hash_case_string(char const *p)
+{
+	uint32_t      hash = FNV_MAGIC_INIT;
+
+	while (*p) {
+		hash *= FNV_MAGIC_PRIME;
+		hash ^= (uint32_t) (tolower(*p++));
+	}
+
+	return hash;
+}
 
 #ifdef TESTING
 /*
