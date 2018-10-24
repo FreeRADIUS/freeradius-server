@@ -696,8 +696,8 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 				char const *name1, char const *name2,
 				char const *filename, int lineno)
 {
-	CONF_SECTION *cs;
-	char buffer[1024];
+	CONF_SECTION	*cs;
+	char		buffer[1024];
 
 	if (!name1) return NULL;
 
@@ -761,8 +761,15 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 					if ((FR_BASE_TYPE(rule_p->type) == FR_TYPE_SUBSECTION) &&
 					    ((rule_p->type & FR_TYPE_ON_READ) != 0) &&
 					    (strcmp(rule_p->name, name1) == 0)) {
-						(void) _cf_section_rule_push(cs, rule_p, cd->item.filename, cd->item.lineno);
-						(void) rule_p->func(ctx, NULL, NULL, cf_section_to_item(cs), rule_p);
+						if (_cf_section_rule_push(cs, rule_p,
+									  cd->item.filename, cd->item.lineno) < 0) {
+						error:
+							talloc_free(cs);
+							return NULL;
+						}
+
+						if (rule_p->func(ctx, NULL, NULL,
+								 cf_section_to_item(cs), rule_p) < 0) goto error;
 						return cs;
 					}
 				}
@@ -780,9 +787,8 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 			if (rule->func &&
 			    (FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) &&
 			    ((rule->type & FR_TYPE_ON_READ) != 0)) {
-				(void) cf_section_rules_push(cs, rule);
-
-				(void) rule->func(ctx, NULL, NULL, cf_section_to_item(cs), rule);
+				if (cf_section_rules_push(cs, rule) < 0) goto error;
+				if (rule->func(ctx, NULL, NULL, cf_section_to_item(cs), rule) < 0) goto error;
 			}
 		}
 	}
