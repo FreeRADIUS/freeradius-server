@@ -3706,6 +3706,18 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 	return 0;
 }
 
+static int _dict_free(fr_dict_t *dict)
+{
+	if (dict == fr_dict_internal) fr_dict_internal = NULL;
+
+	fr_hash_table_delete(protocol_by_name, dict);
+	fr_hash_table_delete(protocol_by_num, dict);
+
+	fr_perror("Freeing %s", dict->root->name);
+
+	return 0;
+}
+
 /** Allocate a new dictionary
  *
  * @param[in] ctx to allocate dictionary in.
@@ -3723,6 +3735,8 @@ static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 		talloc_free(dict);
 		return NULL;
 	}
+
+	talloc_set_destructor(dict, _dict_free);
 
 	/*
 	 *	Pre-Allocate 6MB of pool memory for rapid startup
@@ -5274,11 +5288,7 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
  */
 void fr_dict_free(fr_dict_t **dict)
 {
-	/*
-	 *	Hack to set the internal dictionary to NULL
-	 *	once all the references have been freed.
-	 */
-	if ((*dict == fr_dict_internal) && (talloc_reference_count(*dict) == 1)) fr_dict_internal = NULL;
+	if (!*dict) return;
 
 	talloc_decrease_ref_count(*dict);
 	*dict = NULL;
