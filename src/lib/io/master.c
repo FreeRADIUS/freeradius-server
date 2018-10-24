@@ -586,11 +586,26 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 *	make that distinction with the current APIs.
 		 *	So, we just hack it...
 		 */
-		connection->child->thread_instance = talloc_memdup(connection->child,
-								  inst->app_io_instance, inst->app_io->inst_size);
-		talloc_set_name_const(connection->child->thread_instance,
-				      talloc_get_name(inst->app_io_instance));
-		connection->child->app_io_instance = connection->child->thread_instance;
+		if (inst->app_io->thread_inst_size) {
+			connection->child->thread_instance = talloc_zero_array(connection->child, uint8_t,
+									       inst->app_io->thread_inst_size);
+
+			talloc_set_name(connection->child->thread_instance, "proto_%s_thread_t",
+					inst->app_io->name);
+
+			/*
+			 *	This is "const", and the user can't
+			 *	touch it.  So we just re-use the same
+			 *	configuration everywhere.
+			 */
+			connection->child->app_io_instance = inst->app_io_instance;
+		} else {
+			connection->child->thread_instance = talloc_memdup(connection->child,
+									   inst->app_io_instance, inst->app_io->inst_size);
+			talloc_set_name_const(connection->child->thread_instance,
+					      talloc_get_name(inst->app_io_instance));
+			connection->child->app_io_instance = connection->child->thread_instance;
+		}
 
 		/*
 		 *	Create the listener, based on our listener.
@@ -2726,8 +2741,25 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 *	Reset these fields to point to the IO instance data.
 	 */
 	child->app_io = inst->app_io;
-	child->thread_instance = inst->app_io_instance;
-	child->app_io_instance = child->thread_instance;
+
+	if (child->app_io->thread_inst_size > 0) {
+		child->thread_instance = talloc_zero_array(child, uint8_t,
+							   inst->app_io->thread_inst_size);
+
+		talloc_set_name(child->thread_instance, "proto_%s_thread_t",
+				inst->app_io->name);
+
+		/*
+		 *	This is "const", and the user can't
+		 *	touch it.  So we just re-use the same
+		 *	configuration everywhere.
+		 */
+		child->app_io_instance = inst->app_io_instance;
+
+	} else {
+		child->thread_instance = inst->app_io_instance;
+		child->app_io_instance = child->thread_instance;
+	}
 
 	/*
 	 *	Don't call connection_set() for the main socket.  It's

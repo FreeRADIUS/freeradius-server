@@ -39,6 +39,7 @@ typedef struct {
 
 	size_t				default_message_size;	//!< Usually maximum message size
 	size_t				default_reply_size;	//!< same for replies
+	size_t				thread_inst_size;	//!< thread-specific socket information size
 	bool				track_duplicates;	//!< track duplicate packets
 
 	fr_io_open_t			open;		//!< Open a new socket for listening, or accept/connect a new
