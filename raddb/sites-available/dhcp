@@ -39,11 +39,6 @@ server dhcp {
 #  section per interface.
 #
 listen {
-	type = DHCP-Discover
-	type = DHCP-Decline
-
-	transport = udp
-
 	udp {
 		#  IP address to listen on. Will usually be the IP of the
 		#  interface, or 0.0.0.0
@@ -90,7 +85,13 @@ listen {
 		# This will allow the server to set ARP table entries
 		# for newly allocated IPs
 	}
-
+	transport = udp
+	
+	type = DHCP-Discover
+	type = DHCP-Request
+	type = DHCP-Inform
+	type = DHCP-Release
+	type = DHCP-Decline
 }
 
 #  Packets received on the socket will be processed through one
