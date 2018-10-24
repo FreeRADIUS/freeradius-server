@@ -111,6 +111,9 @@ struct fr_dict {
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce allocs.
 	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
 							///< in the dictionary.
+
+	fr_dict_attr_t const	*last_attr;		//!< Cache of last attribute to speed up
+							///< value processing.
 };
 
 /** Map data types to min / max data sizes
@@ -4114,7 +4117,6 @@ static int dict_read_process_named_attribute(fr_dict_t *dict, fr_dict_attr_t con
  */
 static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 {
-	static fr_dict_attr_t const	*last_attr = NULL;
 	fr_dict_attr_t const		*da;
 	fr_value_box_t			value;
 
@@ -4128,11 +4130,11 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 	 *	save a lot of lookups on dictionary initialization by
 	 *	caching the last attribute.
 	 */
-	if (last_attr && (strcasecmp(argv[0], last_attr->name) == 0)) {
-		da = last_attr;
+	if (dict->last_attr && (strcasecmp(argv[0], dict->last_attr->name) == 0)) {
+		da = dict->last_attr;
 	} else {
 		da = fr_dict_attr_by_name(dict, argv[0]);
-		last_attr = da;
+		dict->last_attr = da;
 	}
 
 	/*
