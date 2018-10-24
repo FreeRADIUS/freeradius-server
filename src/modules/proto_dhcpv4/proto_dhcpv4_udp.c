@@ -37,11 +37,21 @@
 
 extern fr_app_io_t proto_dhcpv4_udp;
 
-typedef struct proto_dhcpv4_udp_t {
+typedef struct proto_dhcpv4_udp_thread_t {
 	char const			*name;			//!< socket name
-	CONF_SECTION			*cs;			//!< our configuration
-
 	int				sockfd;
+
+	fr_io_address_t			*connection;		//!< for connected sockets.
+
+	fr_stats_t			stats;			//!< statistics for this socket
+}  proto_dhcpv4_udp_thread_t;
+
+typedef struct proto_dhcpv4_udp_t {
+	/*
+	 *	The remaining items are "const" after mod_bootstrap()
+	 *	and mod_instantiate() are called.
+	 */
+	CONF_SECTION			*cs;			//!< our configuration
 
 	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
 	fr_network_t			*nr;			//!< for fr_network_listen_read();
@@ -58,8 +68,6 @@ typedef struct proto_dhcpv4_udp_t {
 	uint32_t			max_packet_size;	//!< for message ring buffer.
 	uint32_t			max_attributes;		//!< Limit maximum decodable attributes.
 
-	fr_stats_t			stats;			//!< statistics for this socket
-
 	uint16_t			port;			//!< Port to listen on.
 
 	bool				broadcast;		//!< whether we listen for broadcast packets
@@ -71,9 +79,6 @@ typedef struct proto_dhcpv4_udp_t {
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
-
-	fr_io_address_t			*connection;		//!< for connected sockets.
-
 } proto_dhcpv4_udp_t;
 
 
@@ -129,7 +134,7 @@ fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
 
 	int				flags;
@@ -155,9 +160,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	/*
 	 *      Tell udp_recv if we're connected or not.
 	 */
-	flags = UDP_FLAGS_CONNECTED * (inst->connection != NULL);
+	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	data_size = udp_recv(inst->sockfd, buffer, buffer_len, flags,
+	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
 			     &address->src_ipaddr, &address->src_port,
 			     &address->dst_ipaddr, &address->dst_port,
 			     &address->if_index, &timestamp);
@@ -207,7 +212,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	 */
 	DEBUG2("proto_dhcpv4_udp - Received %s XID %04x length %d %s",
 	       dhcp_message_types[message_type], xid,
-	       (int) packet_len, inst->name);
+	       (int) packet_len, thread->name);
 
 	return packet_len;
 }
@@ -216,7 +221,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
-	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
+
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	fr_io_address_t			address;
 
@@ -228,9 +235,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	put the stats in the listener, so that proto_dhcpv4
 	 *	can update them, too.. <sigh>
 	 */
-	inst->stats.total_responses++;
+	thread->stats.total_responses++;
 
-	flags = UDP_FLAGS_CONNECTED * (inst->connection != NULL);
+	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
 	rad_assert(track->reply_len == 0);
 
@@ -246,7 +253,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	/*
 	 *	Figure out which kind of packet we're sending.
 	 */
-	if (!inst->connection) {
+	if (!thread->connection) {
 		uint8_t const *code, *sid;
 		uint32_t ipaddr;
 		dhcp_packet_t *packet = (dhcp_packet_t *) buffer;
@@ -281,7 +288,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
 		} else if ((address->if_index > 0) &&
-			   (fr_ipaddr_from_ifindex(&primary, inst->sockfd, &address.dst_ipaddr.af,
+			   (fr_ipaddr_from_ifindex(&primary, thread->sockfd, &address.dst_ipaddr.af,
 						   &address.if_index) == 0)) {
 			address.src_ipaddr = primary;
 #endif
@@ -380,7 +387,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 #ifdef SIOCSARP
 			} else if (inst->broadcast && inst->interface) {
-				if (fr_dhcpv4_udp_add_arp_entry(inst->sockfd, inst->interface,
+				if (fr_dhcpv4_udp_add_arp_entry(thread->sockfd, inst->interface,
 								&packet->yiaddr, &packet->chaddr) < 0) {
 					DEBUG("Failed adding ARP entry.  Reply will be broadcast.");
 					address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
@@ -421,7 +428,7 @@ send_reply:
 	/*
 	 *	proto_radius_dhcpv4 takes care of suppressing do-not-respond, etc.
 	 */
-	data_size = udp_send(inst->sockfd, buffer, buffer_len, flags,
+	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
 			     &address.src_ipaddr, address.src_port,
 			     address.if_index,
 			     &address.dst_ipaddr, address.dst_port);
@@ -437,16 +444,16 @@ send_reply:
 
 static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
 {
-	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
-	inst->connection = connection;
+	thread->connection = connection;
 	return 0;
 }
 
 
 static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie)
 {
-	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
 
 	*ipproto = IPPROTO_UDP;
 	*dynamic_clients = inst->dynamic_clients;
@@ -459,7 +466,8 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
 	int				sockfd;
 	uint16_t			port = inst->port;
@@ -503,7 +511,7 @@ static int mod_open(fr_listen_t *li)
 		goto error;
 	}
 
-	inst->sockfd = sockfd;
+	thread->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
 	rad_assert(ci != NULL);
@@ -512,12 +520,12 @@ static int mod_open(fr_listen_t *li)
 
 	server_cs = cf_item_to_section(ci);
 
-	inst->name = fr_app_io_socket_name(inst, &proto_dhcpv4_udp,
+	thread->name = fr_app_io_socket_name(inst, &proto_dhcpv4_udp,
 					   NULL, 0,
 					   &inst->ipaddr, inst->port);
 
 	DEBUG("Listening on dhcpv4 address %s bound to virtual server %s",
-	      inst->name, cf_section_name2(server_cs));
+	      thread->name, cf_section_name2(server_cs));
 
 	return 0;
 }
@@ -528,12 +536,13 @@ static int mod_open(fr_listen_t *li)
  */
 static int mod_fd_set(fr_listen_t *li, int fd)
 {
-	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
-	inst->sockfd = fd;
+	thread->sockfd = fd;
 
-	inst->name = fr_app_io_socket_name(inst, &proto_dhcpv4_udp,
-					   &inst->connection->src_ipaddr, inst->connection->src_port,
+	thread->name = fr_app_io_socket_name(inst, &proto_dhcpv4_udp,
+					   &thread->connection->src_ipaddr, thread->connection->src_port,
 					   &inst->ipaddr, inst->port);
 
 	return 0;
@@ -542,9 +551,9 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 
 static char const *mod_name(fr_listen_t *li)
 {
-	proto_dhcpv4_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
-	return inst->name;
+	return thread->name;
 }
 
 
@@ -658,6 +667,7 @@ fr_app_io_t proto_dhcpv4_udp = {
 	.name			= "dhcpv4_udp",
 	.config			= udp_listen_config,
 	.inst_size		= sizeof(proto_dhcpv4_udp_t),
+	.thread_inst_size	= sizeof(proto_dhcpv4_udp_thread_t),
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,
