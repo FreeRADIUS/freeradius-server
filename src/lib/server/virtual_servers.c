@@ -447,8 +447,15 @@ int virtual_servers_open(fr_schedule_t *sc)
 			rad_assert(listen->app != NULL);
 
 			/*
-			 *	The socket is opened with listen->app_instance,
-			 *	but all subsequent calls (network.c, etc.) use listen->app_io_instance.
+			 *	The socket is opened with app_instance,
+			 *	but all subsequent calls (network.c, etc.) use app_io_instance.
+			 *
+			 *	The reason is that we call (for example) proto_radius to
+			 *	open the socket, and proto_radius is responsible for setting up
+			 *	proto_radius_udp, and then calling proto_radius_udp->open.
+			 *
+			 *	Even then, proto_radius usually calls fr_master_io_listen() in order
+			 *	to create the fr_listen_t structure.
 			 */
 			if (listen->app->open &&
 			    listen->app->open(listen->proto_module->data, sc, listen->proto_module->conf) < 0) {
