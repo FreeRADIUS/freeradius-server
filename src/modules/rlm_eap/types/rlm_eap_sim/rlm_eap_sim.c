@@ -70,7 +70,6 @@ fr_dict_autoload_t rlm_eap_sim_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_eap_sim_mk;
-static fr_dict_attr_t const *attr_eap_sim_root;
 static fr_dict_attr_t const *attr_eap_sim_subtype;
 
 static fr_dict_attr_t const *attr_ms_mppe_send_key;
@@ -95,7 +94,6 @@ static fr_dict_attr_t const *attr_eap_sim_version_list;
 extern fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[] = {
 	{ .out = &attr_eap_sim_mk, .name = "EAP-SIM-MK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_eap_sim_root, .name = "EAP-SIM-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
 	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -130,7 +128,7 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 	VALUE_PAIR		*head = NULL, *vp;
 	REQUEST			*request = eap_session->request;
 	fr_sim_encode_ctx_t	encoder_ctx = {
-					.root = attr_eap_sim_root,
+					.root = fr_dict_root(dict_eap_sim),
 					.keys = &eap_sim_session->keys,
 
 					.iv = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -152,7 +150,7 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 	fr_cursor_init(&to_encode, &head);
 
 	while ((vp = fr_cursor_current(&cursor))) {
-		if (!fr_dict_parent_common(attr_eap_sim_root, vp->da, true)) {
+		if (!fr_dict_parent_common(fr_dict_root(dict_eap_sim), vp->da, true)) {
 			fr_cursor_next(&cursor);
 			continue;
 		}
@@ -871,7 +869,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 	fr_sim_decode_ctx_t	ctx = {
 					.keys = &eap_sim_session->keys,
-					.root = attr_eap_sim_root
+					.root = fr_dict_root(dict_eap_sim)
 				};
 	VALUE_PAIR		*subtype_vp, *from_peer, *vp;
 	fr_cursor_t		cursor;
@@ -879,8 +877,6 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	eap_sim_subtype_t	subtype;
 
 	int			ret;
-
-	rad_assert(attr_eap_sim_root);
 
 	/*
 	 *	VPS is the data from the client

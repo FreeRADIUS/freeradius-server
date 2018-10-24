@@ -1063,7 +1063,7 @@ static int decode_test_ctx_sim(void **out, TALLOC_CTX *ctx)
 	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
 	if (!test_ctx) return -1;
 
-	test_ctx->root = attr_eap_sim_root;
+	test_ctx->root = fr_dict_root(dict_eap_sim);
 	test_ctx->have_iv = true;	/* Ensures IV is all zeros */
 
 	*out = test_ctx;
@@ -1081,7 +1081,7 @@ static int decode_test_ctx_aka(void **out, TALLOC_CTX *ctx)
 	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
 	if (!test_ctx) return -1;
 
-	test_ctx->root = attr_eap_aka_root;
+	test_ctx->root = fr_dict_root(dict_eap_aka);
 	test_ctx->have_iv = true;	/* Ensures IV is all zeros */
 
 	*out = test_ctx;
@@ -1098,7 +1098,7 @@ static int decode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx)
 	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
 	if (!test_ctx) return -1;
 
-	test_ctx->root = attr_eap_sim_root;
+	test_ctx->root = fr_dict_root(dict_eap_sim);
 
 	*out = test_ctx;
 

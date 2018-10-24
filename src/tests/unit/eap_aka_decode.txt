@@ -7,6 +7,7 @@ need-feature tls
 
 # Load the EAP-SIM module
 load eap-sim
+load-dictionary eap-aka
 
 #
 # Encode some AKA attributes with special formats

@@ -70,7 +70,6 @@ fr_dict_autoload_t rlm_eap_aka_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_eap_aka_root;
 static fr_dict_attr_t const *attr_eap_aka_subtype;
 static fr_dict_attr_t const *attr_sim_amf;
 
@@ -96,7 +95,6 @@ static fr_dict_attr_t const *attr_eap_aka_result_ind;
 
 extern fr_dict_attr_autoload_t rlm_eap_aka_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_aka_dict_attr[] = {
-	{ .out = &attr_eap_aka_root, .name = "EAP-AKA-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 	{ .out = &attr_eap_aka_subtype, .name = "EAP-AKA-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_sim_amf, .name = "SIM-AMF", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
@@ -131,7 +129,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	REQUEST			*request = eap_session->request;
 	ssize_t			ret;
 	fr_sim_encode_ctx_t	encoder_ctx = {
-					.root = attr_eap_aka_root,
+					.root = fr_dict_root(dict_eap_aka),
 					.keys = &eap_aka_session->keys,
 
 					.iv = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -148,7 +146,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	fr_cursor_init(&to_encode, &head);
 
 	while ((vp = fr_cursor_current(&cursor))) {
-		if (!fr_dict_parent_common(attr_eap_aka_root, vp->da, true)) {
+		if (!fr_dict_parent_common(encoder_ctx.root, vp->da, true)) {
 			fr_cursor_next(&cursor);
 			continue;
 		}
@@ -876,7 +874,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 
 	fr_sim_decode_ctx_t	ctx = {
 					.keys = &eap_aka_session->keys,
-					.root = attr_eap_aka_root
+					.root = fr_dict_root(dict_eap_aka)
 				};
 	VALUE_PAIR		*vp, *vps, *subtype_vp;
 	fr_cursor_t		cursor;

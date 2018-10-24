@@ -40,10 +40,10 @@ RCSID("$Id$")
 
 static int instance_count = 0;
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
-static fr_dict_t *dict_eap_sim;
-static fr_dict_t *dict_eap_aka;
+fr_dict_t *dict_freeradius;
+fr_dict_t *dict_radius;
+fr_dict_t *dict_eap_sim;
+fr_dict_t *dict_eap_aka;
 
 extern fr_dict_autoload_t libfreeradius_sim_dict[];
 fr_dict_autoload_t libfreeradius_sim_dict[] = {
@@ -58,11 +58,9 @@ fr_dict_autoload_t libfreeradius_sim_dict[] = {
 fr_dict_attr_t const *attr_eap_aka_ak;
 fr_dict_attr_t const *attr_eap_aka_ck;
 fr_dict_attr_t const *attr_eap_aka_ik;
-fr_dict_attr_t const *attr_eap_aka_root;
 fr_dict_attr_t const *attr_eap_aka_subtype;
 fr_dict_attr_t const *attr_eap_aka_xres;
 fr_dict_attr_t const *attr_eap_sim_kc;
-fr_dict_attr_t const *attr_eap_sim_root;
 fr_dict_attr_t const *attr_eap_sim_sres;
 fr_dict_attr_t const *attr_eap_sim_subtype;
 fr_dict_attr_t const *attr_sim_amf;
@@ -100,7 +98,6 @@ fr_dict_attr_autoload_t libfreeradius_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_padding, .name = "EAP-AKA-Padding", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
 	{ .out = &attr_eap_aka_rand, .name = "EAP-AKA-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
 	{ .out = &attr_eap_aka_res, .name = "EAP-AKA-RES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-	{ .out = &attr_eap_aka_root, .name = "EAP-AKA-Root", .type = FR_TYPE_TLV, .dict = &dict_eap_aka },
 	{ .out = &attr_eap_aka_subtype, .name = "EAP-AKA-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka },
 	{ .out = &attr_eap_aka_xres, .name = "EAP-AKA-XRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
 
@@ -110,7 +107,6 @@ fr_dict_attr_autoload_t libfreeradius_sim_dict_attr[] = {
 	{ .out = &attr_eap_sim_mac, .name = "EAP-SIM-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
 	{ .out = &attr_eap_sim_padding, .name = "EAP-SIM-Padding", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
 	{ .out = &attr_eap_sim_rand, .name = "EAP-SIM-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
-	{ .out = &attr_eap_sim_root, .name = "EAP-SIM-Root", .type = FR_TYPE_TLV, .dict = &dict_eap_sim },
 	{ .out = &attr_eap_sim_sres, .name = "EAP-SIM-SRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
 	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_eap_sim },
 

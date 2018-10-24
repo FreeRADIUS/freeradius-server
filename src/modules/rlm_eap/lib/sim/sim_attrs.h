@@ -54,14 +54,17 @@ DICT_SANITY_CHECK(MAC);
 DICT_SANITY_CHECK(SUBTYPE);
 #define FR_SIM_SUBTYPE				(FR_EAP_SIM_SUBTYPE & FR_EAP_AKA_SUBTYPE)
 
+extern fr_dict_t *dict_freeradius;
+extern fr_dict_t *dict_radius;
+extern fr_dict_t *dict_eap_sim;
+extern fr_dict_t *dict_eap_aka;
+
 extern fr_dict_attr_t const *attr_eap_aka_ak;
 extern fr_dict_attr_t const *attr_eap_aka_ck;
 extern fr_dict_attr_t const *attr_eap_aka_ik;
-extern fr_dict_attr_t const *attr_eap_aka_root;
 extern fr_dict_attr_t const *attr_eap_aka_subtype;
 extern fr_dict_attr_t const *attr_eap_aka_xres;
 extern fr_dict_attr_t const *attr_eap_sim_kc;
-extern fr_dict_attr_t const *attr_eap_sim_root;
 extern fr_dict_attr_t const *attr_eap_sim_sres;
 extern fr_dict_attr_t const *attr_eap_sim_subtype;
 extern fr_dict_attr_t const *attr_sim_amf;
