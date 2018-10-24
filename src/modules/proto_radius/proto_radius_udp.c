@@ -111,7 +111,7 @@ static const CONF_PARSER udp_listen_config[] = {
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_radius_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_radius_udp_t);
+	proto_radius_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_udp_t);
 	proto_radius_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
 
@@ -302,7 +302,7 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_radius_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_radius_udp_t);
+	proto_radius_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_udp_t);
 	proto_radius_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_udp_thread_t);
 
 	int				sockfd;
@@ -367,9 +367,9 @@ static int mod_open(fr_listen_t *li)
 
 	server_cs = cf_item_to_section(ci);
 
-	thread->name = fr_app_io_socket_name(inst, &proto_radius_udp,
-					   NULL, 0,
-					   &inst->ipaddr, inst->port);
+	thread->name = fr_app_io_socket_name(thread, &proto_radius_udp,
+					     NULL, 0,
+					     &inst->ipaddr, inst->port);
 
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on radius address %s bound to virtual server %s",
@@ -383,14 +383,14 @@ static int mod_open(fr_listen_t *li)
  */
 static int mod_fd_set(fr_listen_t *li, int fd)
 {
-	proto_radius_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_radius_udp_t);
+	proto_radius_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_udp_t);
 	proto_radius_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_udp_thread_t);
 
 	thread->sockfd = fd;
 
-	thread->name = fr_app_io_socket_name(inst, &proto_radius_udp,
-					   &thread->connection->src_ipaddr, thread->connection->src_port,
-					   &inst->ipaddr, inst->port);
+	thread->name = fr_app_io_socket_name(thread, &proto_radius_udp,
+					     &thread->connection->src_ipaddr, thread->connection->src_port,
+					     &inst->ipaddr, inst->port);
 
 	return 0;
 }
@@ -519,7 +519,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
-	proto_radius_udp_t	*inst = talloc_get_type_abort(li->app_io_instance, proto_radius_udp_t);
+	proto_radius_udp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_udp_t);
 	RADCLIENT		*client;
 
 	/*

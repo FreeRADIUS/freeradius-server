@@ -221,7 +221,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
-	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
@@ -466,7 +466,7 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
 	int				sockfd;
@@ -520,9 +520,9 @@ static int mod_open(fr_listen_t *li)
 
 	server_cs = cf_item_to_section(ci);
 
-	thread->name = fr_app_io_socket_name(inst, &proto_dhcpv4_udp,
-					   NULL, 0,
-					   &inst->ipaddr, inst->port);
+	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv4_udp,
+					     NULL, 0,
+					     &inst->ipaddr, inst->port);
 
 	DEBUG("Listening on dhcpv4 address %s bound to virtual server %s",
 	      thread->name, cf_section_name2(server_cs));
@@ -536,14 +536,14 @@ static int mod_open(fr_listen_t *li)
  */
 static int mod_fd_set(fr_listen_t *li, int fd)
 {
-	proto_dhcpv4_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
 	thread->sockfd = fd;
 
-	thread->name = fr_app_io_socket_name(inst, &proto_dhcpv4_udp,
-					   &thread->connection->src_ipaddr, thread->connection->src_port,
-					   &inst->ipaddr, inst->port);
+	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv4_udp,
+					     &thread->connection->src_ipaddr, thread->connection->src_port,
+					     &inst->ipaddr, inst->port);
 
 	return 0;
 }
