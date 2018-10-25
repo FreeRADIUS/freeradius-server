@@ -47,10 +47,6 @@ typedef struct proto_radius_udp_thread_t {
 } proto_radius_udp_thread_t;
 
 typedef struct proto_radius_udp_t {
-	/*
-	 *	The remaining items are "const" after mod_bootstrap()
-	 *	and mod_instantiate() are called.
-	 */
 	CONF_SECTION			*cs;			//!< our configuration
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.

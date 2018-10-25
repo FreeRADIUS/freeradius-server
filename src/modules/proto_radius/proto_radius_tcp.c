@@ -37,14 +37,17 @@
 
 extern fr_app_io_t proto_radius_tcp;
 
-typedef struct {
+typedef struct proto_radius_tcp_thread_t {
 	char const			*name;			//!< socket name
-	CONF_SECTION			*cs;			//!< our configuration
-
 	int				sockfd;
 
-	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
-	fr_network_t			*nr;			//!< for fr_network_listen_read();
+	fr_io_address_t			*connection;		//!< for connected sockets.
+
+	fr_stats_t			stats;			//!< statistics for this socket
+} proto_radius_tcp_thread_t;
+
+typedef struct {
+	CONF_SECTION			*cs;			//!< our configuration
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
@@ -56,8 +59,6 @@ typedef struct {
 	uint32_t			max_packet_size;	//!< for message ring buffer.
 	uint32_t			max_attributes;		//!< Limit maximum decodable attributes.
 
-	fr_stats_t			stats;			//!< statistics for this socket
-
 	uint16_t			port;			//!< Port to listen on.
 
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
@@ -67,9 +68,6 @@ typedef struct {
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
-
-	fr_io_address_t			*connection;		//!< for connected sockets.
-
 } proto_radius_tcp_t;
 
 
@@ -104,7 +102,8 @@ static const CONF_PARSER tcp_listen_config[] = {
 
 static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_radius_tcp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_t);
+	proto_radius_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_tcp_t);
+	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 	ssize_t				data_size;
 	size_t				packet_len;
 	decode_fail_t			reason;
@@ -116,7 +115,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **r
 	/*
 	 *      Read data into the buffer.
 	 */
-	data_size = read(inst->sockfd, buffer + *leftover, buffer_len - *leftover);
+	data_size = read(thread->sockfd, buffer + *leftover, buffer_len - *leftover);
 	if (data_size < 0) {
 		DEBUG2("proto_radius_tcp got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
@@ -141,7 +140,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **r
 	 */
 	if ((buffer[0] == 0) || (buffer[0] > FR_MAX_PACKET_CODE)) {
 		DEBUG("proto_radius_tcp got invalid packet code %d", buffer[0]);
-		inst->stats.total_unknown_types++;
+		thread->stats.total_unknown_types++;
 		return -1;
 	}
 
@@ -183,7 +182,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **r
 		 *      @todo - check for F5 load balancer packets.  <sigh>
 		 */
 		DEBUG2("proto_radius_tcp got a packet which isn't RADIUS");
-		inst->stats.total_malformed_requests++;
+		thread->stats.total_malformed_requests++;
 		return -1;
 	}
 
@@ -199,7 +198,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **r
 	 */
 	DEBUG2("proto_radius_tcp - Received %s ID %d length %d %s",
 	       fr_packet_codes[buffer[0]], buffer[1],
-	       (int) packet_len, inst->name);
+	       (int) packet_len, thread->name);
 
 	return packet_len;
 }
@@ -208,7 +207,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t **r
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
-	proto_radius_tcp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_t);
+	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	ssize_t				data_size;
 
@@ -217,7 +216,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	put the stats in the listener, so that proto_radius
 	 *	can update them, too.. <sigh>
 	 */
-	inst->stats.total_responses++;
+	thread->stats.total_responses++;
 
 	/*
 	 *	This handles the race condition where we get a DUP,
@@ -243,7 +242,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	Only write replies if they're RADIUS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
-	data_size = write(inst->sockfd, buffer + written, buffer_len - written);
+	data_size = write(thread->sockfd, buffer + written, buffer_len - written);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -268,9 +267,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
 {
-	proto_radius_tcp_t *inst = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_t);
+	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 
-	inst->connection = connection;
+	thread->connection = connection;
 	return 0;
 }
 
@@ -290,14 +289,15 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_radius_tcp_t *inst = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_t);
+	proto_radius_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_tcp_t);
+	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 
 	int				sockfd;
 	uint16_t			port = inst->port;
 	CONF_SECTION			*server_cs;
 	CONF_ITEM			*ci;
 
-	rad_assert(!inst->connection);
+	rad_assert(!thread->connection);
 
 	li->fd = sockfd = fr_socket_server_tcp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -318,7 +318,7 @@ static int mod_open(fr_listen_t *li)
 		goto error;
 	}
 
-	inst->sockfd = sockfd;
+	thread->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
 	rad_assert(ci != NULL);
@@ -327,13 +327,13 @@ static int mod_open(fr_listen_t *li)
 
 	server_cs = cf_item_to_section(ci);
 
-	inst->name = fr_app_io_socket_name(inst, &proto_radius_tcp,
-					   NULL, 0,
-					   &inst->ipaddr, inst->port);
+	thread->name = fr_app_io_socket_name(thread, &proto_radius_tcp,
+					     NULL, 0,
+					     &inst->ipaddr, inst->port);
 
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on radius address %s bound to virtual server %s",
-	      inst->name, cf_section_name2(server_cs));
+	      thread->name, cf_section_name2(server_cs));
 
 	return 0;
 }
@@ -343,13 +343,14 @@ static int mod_open(fr_listen_t *li)
  */
 static int mod_fd_set(fr_listen_t *li, int fd)
 {
-	proto_radius_tcp_t *inst = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_t);
+	proto_radius_tcp_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_tcp_t);
+	proto_radius_tcp_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 
-	inst->sockfd = fd;
+	thread->sockfd = fd;
 
-	inst->name = fr_app_io_socket_name(inst, &proto_radius_tcp,
-					   &inst->connection->src_ipaddr, inst->connection->src_port,
-					   &inst->ipaddr, inst->port);
+	thread->name = fr_app_io_socket_name(thread, &proto_radius_tcp,
+					     &thread->connection->src_ipaddr, thread->connection->src_port,
+					     &inst->ipaddr, inst->port);
 
 	return 0;
 }
@@ -377,9 +378,9 @@ static int mod_compare(UNUSED void const *instance, void const *one, void const 
 
 static char const *mod_name(fr_listen_t *li)
 {
-	proto_radius_tcp_t *inst = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_t);
+	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 
-	return inst->name;
+	return thread->name;
 }
 
 
@@ -589,6 +590,7 @@ fr_app_io_t proto_radius_tcp = {
 	.name			= "radius_tcp",
 	.config			= tcp_listen_config,
 	.inst_size		= sizeof(proto_radius_tcp_t),
+	.thread_inst_size	= sizeof(proto_radius_tcp_thread_t),
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,
