@@ -50,14 +50,29 @@
 #include <pwd.h>
 #include <grp.h>
 
-typedef struct {
+typedef struct proto_control_unix_thread_t {
 	char const			*name;			//!< socket name
-	CONF_SECTION			*cs;			//!< our configuration
 
 	int				sockfd;
 
-	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
-	fr_network_t			*nr;			//!< for fr_network_listen_read();
+	fr_stats_t			stats;			//!< statistics for this socket
+
+	fr_io_address_t			*connection;		//!< for connected sockets.
+
+
+	fr_io_data_read_t		read;			//!< function to process data *after* reading
+	FILE				*stdout;
+	FILE				*stderr;
+
+	fr_conduit_type_t      		misc_conduit;
+	FILE				*misc;
+	fr_cmd_info_t			*info;			//!< for running commands
+
+	RADCLIENT			radclient;		//!< for faking out clients
+} proto_control_unix_thread_t;
+
+typedef struct {
+	CONF_SECTION			*cs;			//!< our configuration
 
 	char const     			*filename;     		//!< filename of control socket
 	char const     			*uid_name;		//!< name of UID to require
@@ -69,25 +84,12 @@ typedef struct {
 
 	uint32_t			max_packet_size;	//!< for message ring buffer.
 
-	fr_stats_t			stats;			//!< statistics for this socket
-
 	char const			*mode_name;
 	bool				read_only;
 
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
 								//!< buffer value.
 	bool				peercred;		//!< whether we use peercred or not
-
-	fr_io_address_t			*connection;		//!< for connected sockets.
-	RADCLIENT			radclient;		//!< for faking out clients
-
-	fr_io_data_read_t		read;			//!< function to process data *after* reading
-	FILE				*stdout;
-	FILE				*stderr;
-
-	fr_conduit_type_t      		misc_conduit;
-	FILE				*misc;
-	fr_cmd_info_t			*info;			//!< for running commands
 } proto_control_unix_t;
 
 static const CONF_PARSER unix_listen_config[] = {
@@ -128,23 +130,23 @@ static FR_NAME_NUMBER mode_names[] = {
 
 static SINT write_stdout(void *instance, char const *buffer, INT buffer_size)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_thread_t *thread = talloc_get_type_abort(instance, proto_control_unix_thread_t);
 
-	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDOUT, buffer, buffer_size);
+	return fr_conduit_write(thread->sockfd, FR_CONDUIT_STDOUT, buffer, buffer_size);
 }
 
 static SINT write_stderr(void *instance, char const *buffer, INT buffer_size)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
-
-	return fr_conduit_write(inst->sockfd, FR_CONDUIT_STDERR, buffer, buffer_size);
+	proto_control_unix_thread_t *thread = talloc_get_type_abort(instance, proto_control_unix_thread_t)
+;
+	return fr_conduit_write(thread->sockfd, FR_CONDUIT_STDERR, buffer, buffer_size);
 }
 
 static SINT write_misc(void *instance, char const *buffer, INT buffer_size)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_thread_t *thread = talloc_get_type_abort(instance, proto_control_unix_thread_t);
 
-	return fr_conduit_write(inst->sockfd, inst->misc_conduit, buffer, buffer_size);
+	return fr_conduit_write(thread->sockfd, thread->misc_conduit, buffer, buffer_size);
 }
 
 
@@ -154,7 +156,8 @@ static SINT write_misc(void *instance, char const *buffer, INT buffer_size)
 static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t **recv_time, uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup
 )
 {
-	proto_control_unix_t		*inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
+	proto_control_unix_t const     	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_control_unix_t);
+	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
 	uint32_t			status;
 	uint8_t				*cmd = buffer + sizeof(*hdr);
@@ -173,7 +176,7 @@ static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSE
 	 *	Content is the string we need help for.
 	 */
 	if (htons(hdr->conduit) == FR_CONDUIT_HELP) {
-		fr_radmin_help(inst->stdout, string);
+		fr_radmin_help(thread->stdout, string);
 		// @todo - have in-band signalling saying that the help is done?
 		// we want to be able to say that *this* help is done.
 		// the best way to do that is to have a token, and every command
@@ -192,9 +195,9 @@ static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSE
 
 		start = (string[0] << 8) | string[1];
 
-		inst->misc_conduit = FR_CONDUIT_COMPLETE;
-		fr_radmin_complete(inst->misc, string + 2, start);
-		inst->misc_conduit = FR_CONDUIT_STDOUT;
+		thread->misc_conduit = FR_CONDUIT_COMPLETE;
+		fr_radmin_complete(thread->misc, string + 2, start);
+		thread->misc_conduit = FR_CONDUIT_STDOUT;
 		status = FR_CONDUIT_SUCCESS;
 		goto done;
 	}
@@ -206,7 +209,7 @@ static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSE
 
 	DEBUG("radmin-remote> %.*s", (int) hdr->length, cmd);
 
-	rcode = fr_radmin_run(inst->info, inst->stdout, inst->stderr, string, inst->read_only);
+	rcode = fr_radmin_run(thread->info, thread->stdout, thread->stderr, string, inst->read_only);
 	if (rcode < 0) {
 fail:
 		status = FR_CONDUIT_FAIL;
@@ -216,7 +219,7 @@ fail:
 		 *	The other end should keep track of it's
 		 *	context, and send us full lines.
 		 */
-		(void) fr_command_clear(0, inst->info);
+		(void) fr_command_clear(0, thread->info);
 		status = FR_CONDUIT_PARTIAL;
 	} else {
 		status = FR_CONDUIT_SUCCESS;
@@ -224,7 +227,7 @@ fail:
 
 done:
 	status = htonl(status);
-	(void) fr_conduit_write(inst->sockfd, FR_CONDUIT_CMD_STATUS, &status, sizeof(status));
+	(void) fr_conduit_write(thread->sockfd, FR_CONDUIT_CMD_STATUS, &status, sizeof(status));
 
 	return 0;
 }
@@ -235,7 +238,7 @@ done:
 static ssize_t mod_read_init(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup
 )
 {
-	proto_control_unix_t		*inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
+	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 	fr_conduit_hdr_t		*hdr = (fr_conduit_hdr_t *) buffer;
 	uint32_t			magic;
 
@@ -264,19 +267,19 @@ static ssize_t mod_read_init(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED f
 	/*
 	 *	Next 4 bytes are zero, we ignore them.
 	 */
-	if (write(inst->sockfd, buffer, buffer_len) < (ssize_t) buffer_len) {
+	if (write(thread->sockfd, buffer, buffer_len) < (ssize_t) buffer_len) {
 		DEBUG("ERROR: Blocking write to socket... oops");
 		return -1;
 	}
 
-	inst->read = mod_read_command;
+	thread->read = mod_read_command;
 
 	return 0;
 }
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
-	proto_control_unix_t		*inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
+	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 	ssize_t				data_size;
 
 	fr_time_t			*recv_time_p;
@@ -288,7 +291,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	/*
 	 *      Read data into the buffer.
 	 */
-	data_size = fr_conduit_read_async(inst->sockfd, &conduit, buffer, buffer_len, leftover, &want_more);
+	data_size = fr_conduit_read_async(thread->sockfd, &conduit, buffer, buffer_len, leftover, &want_more);
 	if (data_size < 0) {
 		DEBUG2("proto_control_unix got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
@@ -320,19 +323,19 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	 *	Print out what we received.
 	 */
 	DEBUG3("proto_control_unix - Received command packet length %d on %s",
-	       (int) data_size, inst->name);
+	       (int) data_size, thread->name);
 
 	/*
 	 *	Run the state machine to process the rest of the packet.
 	 */
-	return inst->read(li, packet_ctx, recv_time, buffer, (size_t) data_size, leftover, priority, is_dup);
+	return thread->read(li, packet_ctx, recv_time, buffer, (size_t) data_size, leftover, priority, is_dup);
 }
 
 
 static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
-	proto_control_unix_t		*inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
+	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 	ssize_t				data_size;
 
 	/*
@@ -340,13 +343,13 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 *	put the stats in the listener, so that proto_control
 	 *	can update them, too.. <sigh>
 	 */
-	inst->stats.total_responses++;
+	thread->stats.total_responses++;
 
 	/*
 	 *	Only write replies if they're RADIUS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
-	data_size = write(inst->sockfd, buffer + written, buffer_len - written);
+	data_size = write(thread->sockfd, buffer + written, buffer_len - written);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -359,9 +362,9 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 
 static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
+	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 
-	inst->connection = connection;
+	thread->connection = connection;
 
 	// @todo - set name to path + peer ID of other end?
 
@@ -927,13 +930,14 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
+	proto_control_unix_t const     	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_control_unix_t);
+	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 
 	int				sockfd ;
 	CONF_ITEM			*ci;
 	CONF_SECTION			*server_cs;
 
-	rad_assert(!inst->connection);
+	rad_assert(!thread->connection);
 
 	if (inst->peercred) {
 		sockfd = fr_server_domain_socket_peercred(inst->filename, inst->uid, inst->gid);
@@ -951,7 +955,7 @@ static int mod_open(fr_listen_t *li)
 		return -1;
 	}
 
-	li->fd = inst->sockfd = sockfd;
+	li->fd = thread->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
 	rad_assert(ci != NULL);
@@ -960,11 +964,22 @@ static int mod_open(fr_listen_t *li)
 
 	server_cs = cf_item_to_section(ci);
 
-	inst->name = talloc_typed_asprintf(inst, "proto unix filename %s", inst->filename);
+	thread->name = talloc_typed_asprintf(inst, "proto unix filename %s", inst->filename);
 
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on control address %s bound to virtual server %s",
-	      inst->name, cf_section_name2(server_cs));
+	      thread->name, cf_section_name2(server_cs));
+
+	/*
+	 *	Set up the fake client
+	 */
+	thread->radclient.longname = inst->filename;
+	thread->radclient.ipaddr.af = AF_INET;
+	thread->radclient.src_ipaddr.af = AF_INET;
+
+	thread->radclient.server_cs = cf_item_to_section(cf_parent(cf_parent(inst->cs)));
+	rad_assert(thread->radclient.server_cs != NULL);
+	thread->radclient.server = cf_section_name2(thread->radclient.server_cs);
 
 	return 0;
 }
@@ -990,11 +1005,11 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 
 #endif /* HAVE_GETPEEREID */
 
-static int _close_cookies(proto_control_unix_t *inst)
+static int _close_cookies(proto_control_unix_thread_t *thread)
 {
-	if (inst->stdout) fclose(inst->stdout);
-	if (inst->stderr) fclose(inst->stderr);
-	if (inst->misc) fclose(inst->misc);
+	if (thread->stdout) fclose(thread->stdout);
+	if (thread->stderr) fclose(thread->stderr);
+	if (thread->misc) fclose(thread->misc);
 
 	return 0;
 }
@@ -1004,12 +1019,14 @@ static int _close_cookies(proto_control_unix_t *inst)
  */
 static int mod_fd_set(fr_listen_t *li, int fd)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
+	proto_control_unix_t const     	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_control_unix_t);
+	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
+
 #ifndef HAVE_FUNOPEN
 	cookie_io_functions_t io;
 #endif
 
-	inst->name = NULL;
+	thread->name = NULL;
 
 #ifdef HAVE_GETPEEREID
 	/*
@@ -1051,29 +1068,29 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 
 		} while (0);
 
-		inst->name = talloc_typed_asprintf(inst, "proto unix filename %s from peer UID %u GID %u",
+		thread->name = talloc_typed_asprintf(inst, "proto unix filename %s from peer UID %u GID %u",
 						   inst->filename,
 						   (unsigned int) uid, (unsigned int) gid);
 	}
 #endif
 
-	if (!inst->name) inst->name = talloc_typed_asprintf(inst, "proto unix filename %s", inst->filename);
+	if (!thread->name) thread->name = talloc_typed_asprintf(inst, "proto unix filename %s", inst->filename);
 
-	inst->sockfd = fd;
-	inst->read = mod_read_init;
+	thread->sockfd = fd;
+	thread->read = mod_read_init;
 
 	/*
 	 *	Set up socket-specific callbacks
 	 */
 #ifdef HAVE_FUNOPEN
-	inst->stdout = funopen(inst, NULL, write_stdout, NULL, NULL);
-	rad_assert(inst->stdout != NULL);
+	thread->stdout = funopen(thread, NULL, write_stdout, NULL, NULL);
+	rad_assert(thread->stdout != NULL);
 
-	inst->stderr = funopen(inst, NULL, write_stderr, NULL, NULL);
-	rad_assert(inst->stderr != NULL);
+	thread->stderr = funopen(thread, NULL, write_stderr, NULL, NULL);
+	rad_assert(thread->stderr != NULL);
 
-	inst->misc = funopen(inst, NULL, write_misc, NULL, NULL);
-	rad_assert(inst->misc != NULL);
+	thread->misc = funopen(thread, NULL, write_misc, NULL, NULL);
+	rad_assert(thread->misc != NULL);
 #else
 	/*
 	 *	These must be set separately as they have different prototypes.
@@ -1083,16 +1100,16 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	io.close = NULL;
 	io.write = write_stdout;
 
-	inst->stdout = fopencookie(inst, "w", io);
+	thread->stdout = fopencookie(thread, "w", io);
 
 	io.write = write_stderr;
-	inst->stderr = fopencookie(inst, "w", io);
+	thread->stderr = fopencookie(thread, "w", io);
 
 	io.write = write_misc;
-	inst->misc = fopencookie(inst, "w", io);
+	thread->misc = fopencookie(thread, "w", io);
 #endif
 
-	talloc_set_destructor(inst, _close_cookies);
+	talloc_set_destructor(thread, _close_cookies);
 
 	/*
 	 *	@todo - if we move to a binary protocol, then we
@@ -1100,21 +1117,21 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	 *	data should be sent over to the remote side as quickly
 	 *	as possible.
 	 */
-	(void) setvbuf(inst->stdout, NULL, _IOLBF, 0);
-	(void) setvbuf(inst->stderr, NULL, _IOLBF, 0);
-	(void) setvbuf(inst->misc, NULL, _IOLBF, 0);
+	(void) setvbuf(thread->stdout, NULL, _IOLBF, 0);
+	(void) setvbuf(thread->stderr, NULL, _IOLBF, 0);
+	(void) setvbuf(thread->misc, NULL, _IOLBF, 0);
 
-	inst->info = talloc_zero(inst, fr_cmd_info_t);
-	fr_command_info_init(inst, inst->info);
+	thread->info = talloc_zero(inst, fr_cmd_info_t);
+	fr_command_info_init(thread, thread->info);
 
 	return 0;
 }
 
 static char const *mod_name(fr_listen_t *li)
 {
-	proto_control_unix_t *inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
+	proto_control_unix_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 
-	return inst->name;
+	return thread->name;
 }
 
 
@@ -1180,25 +1197,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 20);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
 
-	/*
-	 *	Set up the fake client
-	 */
-	inst->radclient.longname = inst->filename;
-	inst->radclient.ipaddr.af = AF_INET;
-	inst->radclient.src_ipaddr.af = AF_INET;
-
-	inst->radclient.server_cs = cf_item_to_section(cf_parent(cf_parent(cs)));
-	rad_assert(inst->radclient.server_cs != NULL);
-	inst->radclient.server = cf_section_name2(inst->radclient.server_cs);
-
 	return 0;
 }
 
 static RADCLIENT *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
 {
-	proto_control_unix_t	*inst = talloc_get_type_abort(li->thread_instance, proto_control_unix_t);
+	proto_control_unix_thread_t    	*thread = talloc_get_type_abort(li->thread_instance, proto_control_unix_thread_t);
 
-	return &inst->radclient;
+	return &thread->radclient;
 }
 
 extern fr_app_io_t proto_control_unix;
@@ -1207,6 +1213,7 @@ fr_app_io_t proto_control_unix = {
 	.name			= "control_unix",
 	.config			= unix_listen_config,
 	.inst_size		= sizeof(proto_control_unix_t),
+	.thread_inst_size	= sizeof(proto_control_unix_thread_t),
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,
