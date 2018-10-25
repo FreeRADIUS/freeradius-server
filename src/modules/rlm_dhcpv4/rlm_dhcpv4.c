@@ -56,7 +56,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	VALUE_PAIR	*vp, *head = NULL;
 	int		decoded = 0;
 	ssize_t		slen;
-	fr_dhcp_ctx_t	packet_ctx = {
+	fr_dhcpv4_ctx_t	packet_ctx = {
 				.root = fr_dict_root(fr_dict_internal)
 			};
 

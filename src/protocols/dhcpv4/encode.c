@@ -335,7 +335,7 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	return len;
 }
 
-static int _encode_test_ctx(UNUSED fr_dhcp_ctx_t *test_ctx)
+static int _encode_test_ctx(UNUSED fr_dhcpv4_ctx_t *test_ctx)
 {
 	fr_dhcpv4_global_free();
 
@@ -344,12 +344,13 @@ static int _encode_test_ctx(UNUSED fr_dhcp_ctx_t *test_ctx)
 
 static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
-	fr_dhcp_ctx_t *test_ctx;
+	fr_dhcpv4_ctx_t *test_ctx;
 
 	if (fr_dhcpv4_global_init() < 0) return -1;
 
-	test_ctx = talloc_zero(ctx, fr_dhcp_ctx_t);
-	test_ctx->root = fr_dict_root(fr_dict_internal);
+	test_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
+	if (!test_ctx) return -1;
+	test_ctx->root = fr_dict_root(dict_dhcpv4);
 	talloc_set_destructor(test_ctx, _encode_test_ctx);
 
 	*out = test_ctx;

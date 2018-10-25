@@ -199,7 +199,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	{
 		uint8_t const		*end;
 		ssize_t			len;
-		fr_dhcp_ctx_t	packet_ctx = {
+		fr_dhcpv4_ctx_t	packet_ctx = {
 						.root = fr_dict_root(fr_dict_internal)
 					};
 

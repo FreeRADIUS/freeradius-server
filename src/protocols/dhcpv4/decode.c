@@ -30,9 +30,11 @@
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/io/test_point.h>
+
+#include "dhcpv4.h"
+#include "attrs.h"
 
 static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len);
@@ -363,7 +365,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	ssize_t			ret;
 	uint8_t const		*p = data;
 	fr_dict_attr_t const	*child;
-	fr_dhcp_ctx_t	*packet_ctx = decoder_ctx;
+	fr_dhcpv4_ctx_t	*packet_ctx = decoder_ctx;
 	fr_dict_attr_t const	*parent;
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
@@ -434,7 +436,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	return ret;
 }
 
-static int _decode_test_ctx(UNUSED fr_dhcp_ctx_t *test_ctx)
+static int _decode_test_ctx(UNUSED fr_dhcpv4_ctx_t *test_ctx)
 {
 	fr_dhcpv4_global_free();
 
@@ -443,12 +445,12 @@ static int _decode_test_ctx(UNUSED fr_dhcp_ctx_t *test_ctx)
 
 static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
-	fr_dhcp_ctx_t *test_ctx;
+	fr_dhcpv4_ctx_t *test_ctx;
 
 	if (fr_dhcpv4_global_init() < 0) return -1;
 
-	test_ctx = talloc_zero(ctx, fr_dhcp_ctx_t);
-	test_ctx->root = fr_dict_root(fr_dict_internal);
+	test_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
+	test_ctx->root = fr_dict_root(dict_dhcpv4);
 	talloc_set_destructor(test_ctx, _decode_test_ctx);
 
 	*out = test_ctx;
