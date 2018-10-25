@@ -37,14 +37,18 @@
 
 extern fr_app_io_t proto_vmps_udp;
 
-typedef struct proto_vmps_udp_t {
+typedef struct proto_vmps_udp_thread_t {
 	char const			*name;			//!< socket name
-	CONF_SECTION			*cs;			//!< our configuration
 
 	int				sockfd;
 
-	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
-	fr_network_t			*nr;			//!< for fr_network_listen_read();
+	fr_io_address_t			*connection;		//!< for connected sockets.
+
+	fr_stats_t			stats;			//!< statistics for this socket
+} proto_vmps_udp_thread_t;
+
+typedef struct proto_vmps_udp_t {
+	CONF_SECTION			*cs;			//!< our configuration
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
@@ -54,8 +58,6 @@ typedef struct proto_vmps_udp_t {
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 
 	uint32_t			max_packet_size;	//!< for message ring buffer.
-
-	fr_stats_t			stats;			//!< statistics for this socket
 
 	uint16_t			port;			//!< Port to listen on.
 
@@ -67,10 +69,7 @@ typedef struct proto_vmps_udp_t {
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
 
-	fr_io_address_t			*connection;		//!< for connected sockets.
-
 	RADCLIENT_LIST			*clients;		//!< local clients
-
 } proto_vmps_udp_t;
 
 
@@ -104,7 +103,8 @@ static const CONF_PARSER udp_listen_config[] = {
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_vmps_udp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_t);
+	proto_vmps_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_vmps_udp_t);
+	proto_vmps_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
 
 	int				flags;
@@ -128,9 +128,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	/*
 	 *      Tell udp_recv if we're connected or not.
 	 */
-	flags = UDP_FLAGS_CONNECTED * (inst->connection != NULL);
+	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	data_size = udp_recv(inst->sockfd, buffer, buffer_len, flags,
+	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
 			     &address->src_ipaddr, &address->src_port,
 			     &address->dst_ipaddr, &address->dst_port,
 			     &address->if_index, &timestamp);
@@ -148,20 +148,20 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 
 	if (data_size < 8) {
 		DEBUG2("proto_vmps_udp got 'too short' packet size %zd", data_size);
-		inst->stats.total_malformed_requests++;
+		thread->stats.total_malformed_requests++;
 		return 0;
 	}
 
 	if (packet_len > inst->max_packet_size) {
 		DEBUG2("proto_vmps_udp got 'too long' packet size %zd > %u", data_size, inst->max_packet_size);
-		inst->stats.total_malformed_requests++;
+		thread->stats.total_malformed_requests++;
 		return 0;
 	}
 
 	if ((buffer[1] != FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST) &&
 	    (buffer[1] != FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST)) {
 		DEBUG("proto_vmps_udp got invalid packet code %d", buffer[0]);
-		inst->stats.total_unknown_types++;
+		thread->stats.total_unknown_types++;
 		return 0;
 	}
 
@@ -173,7 +173,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 		 *      @todo - check for F5 load balancer packets.  <sigh>
 		 */
 		DEBUG2("proto_vmps_udp got a packet which isn't VMPS");
-		inst->stats.total_malformed_requests++;
+		thread->stats.total_malformed_requests++;
 		return 0;
 	}
 
@@ -192,7 +192,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	 */
 	DEBUG2("proto_vmps_udp - Received %d ID %08x length %d %s",
 	       buffer[1], id,
-	       (int) packet_len, inst->name);
+	       (int) packet_len, thread->name);
 
 	return packet_len;
 }
@@ -201,7 +201,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
-	proto_vmps_udp_t		*inst = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_t);
+	proto_vmps_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_thread_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
 	fr_io_address_t			*address = track->address;
 
@@ -213,9 +213,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	put the stats in the listener, so that proto_vmps
 	 *	can update them, too.. <sigh>
 	 */
-	inst->stats.total_responses++;
+	thread->stats.total_responses++;
 
-	flags = UDP_FLAGS_CONNECTED * (inst->connection != NULL);
+	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
 	/*
 	 *	This handles the race condition where we get a DUP,
@@ -233,7 +233,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
 
-			(void) udp_send(inst->sockfd, packet, track->reply_len, flags,
+			(void) udp_send(thread->sockfd, packet, track->reply_len, flags,
 					&address->dst_ipaddr, address->dst_port,
 					address->if_index,
 					&address->src_ipaddr, address->src_port);
@@ -251,7 +251,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	Only write replies if they're VMPS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
-	data_size = udp_send(inst->sockfd, buffer, buffer_len, flags,
+	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
 			     &address->dst_ipaddr, address->dst_port,
 			     address->if_index,
 			     &address->src_ipaddr, address->src_port);
@@ -275,9 +275,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
 {
-	proto_vmps_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_t);
+	proto_vmps_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_thread_t);
 
-	inst->connection = connection;
+	thread->connection = connection;
 	return 0;
 }
 
@@ -297,7 +297,8 @@ static void mod_network_get(void *instance, int *ipproto, bool *dynamic_clients,
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_vmps_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_t);
+	proto_vmps_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_vmps_udp_t);
+	proto_vmps_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_thread_t);
 
 	int				sockfd;
 	uint16_t			port = inst->port;
@@ -330,7 +331,7 @@ static int mod_open(fr_listen_t *li)
 		goto error;
 	}
 
-	inst->sockfd = sockfd;
+	thread->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
 	rad_assert(ci != NULL);
@@ -339,13 +340,13 @@ static int mod_open(fr_listen_t *li)
 
 	server_cs = cf_item_to_section(ci);
 
-	inst->name = fr_app_io_socket_name(inst, &proto_vmps_udp,
-					   NULL, 0,
-					   &inst->ipaddr, inst->port);
+	thread->name = fr_app_io_socket_name(thread, &proto_vmps_udp,
+					     NULL, 0,
+					     &inst->ipaddr, inst->port);
 
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on vmps address %s bound to virtual server %s",
-	      inst->name, cf_section_name2(server_cs));
+	      thread->name, cf_section_name2(server_cs));
 
 	return 0;
 }
@@ -356,13 +357,14 @@ static int mod_open(fr_listen_t *li)
  */
 static int mod_fd_set(fr_listen_t *li, int fd)
 {
-	proto_vmps_udp_t *inst = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_t);
+	proto_vmps_udp_t		*inst = talloc_get_type_abort(li->app_io_instance, proto_vmps_udp_t);
+	proto_vmps_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_thread_t);
 
-	inst->sockfd = fd;
+	thread->sockfd = fd;
 
-	inst->name = fr_app_io_socket_name(inst, &proto_vmps_udp,
-					   &inst->connection->src_ipaddr, inst->connection->src_port,
-					   &inst->ipaddr, inst->port);
+	thread->name = fr_app_io_socket_name(thread, &proto_vmps_udp,
+					     &thread->connection->src_ipaddr, thread->connection->src_port,
+					     &inst->ipaddr, inst->port);
 
 	return 0;
 }
@@ -478,7 +480,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 // which means we probably want to filter on "networks" even if there are no dynamic clients
 static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
-	proto_vmps_udp_t	*inst = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_t);
+	proto_vmps_udp_t	*inst = talloc_get_type_abort(li->app_io_instance, proto_vmps_udp_t);
 	RADCLIENT		*client;
 
 	/*
@@ -497,6 +499,7 @@ fr_app_io_t proto_vmps_udp = {
 	.name			= "vmps_udp",
 	.config			= udp_listen_config,
 	.inst_size		= sizeof(proto_vmps_udp_t),
+	.thread_inst_size	= sizeof(proto_vmps_udp_thread_t),
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,
