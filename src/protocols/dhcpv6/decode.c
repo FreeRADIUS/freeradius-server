@@ -34,3 +34,4 @@
 #include <freeradius-devel/io/test_point.h>
 
 #include "dhcpv6.h"
+#include "attrs.h"

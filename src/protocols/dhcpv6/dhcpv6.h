@@ -33,7 +33,6 @@ RCSIDH(dhcpv6_h, "$Id$")
 #include <freeradius-devel/protocol/dhcpv6/dictionary.h>
 
 extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
-extern fr_dict_attr_t const *dhcpv6_root;
 
 #define OPT_HDR_LEN	(sizeof(uint16_t) * 2)
 
@@ -47,6 +46,8 @@ typedef struct {
 size_t		fr_dhcpv6_option_len(VALUE_PAIR const *vp);
 
 int		fr_dhcpv6_global_init(void);
+
+void		fr_dhcpv6_global_free(void);
 
 /*
  *	encode.c

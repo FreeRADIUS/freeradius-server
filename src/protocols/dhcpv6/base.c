@@ -33,8 +33,17 @@
 #include <freeradius-devel/util/proto.h>
 
 #include "dhcpv6.h"
+#include "attrs.h"
 
-fr_dict_attr_t const *dhcpv6_root;
+static int instance_count;
+
+fr_dict_t *dict_dhcpv6;
+
+extern fr_dict_autoload_t dhcpv6_dict[];
+fr_dict_autoload_t dhcpv6_dict[] = {
+	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
+	{ NULL }
+};
 
 size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_INVALID]		= {~0, 0},	//!< Ensure array starts at 0 (umm?)
@@ -83,17 +92,19 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 
 int fr_dhcpv6_global_init(void)
 {
-	static bool done_init;
-
-	if (done_init) return 0;
-
-	dhcpv6_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_DHCPV6_ROOT);
-	if (!dhcpv6_root) {
-		fr_strerror_printf("Missing DHCPv6 root");
-		return -1;
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
 	}
 
-	done_init = true;
+	if (fr_dict_autoload(dhcpv6_dict) < 0) return -1;
 
 	return 0;
+}
+
+void fr_dhcpv6_global_free(void)
+{
+	if (--instance_count > 0) return;
+
+	fr_dict_autofree(dhcpv6_dict);
 }
