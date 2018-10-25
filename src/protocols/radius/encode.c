@@ -1611,6 +1611,8 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	if (fr_radius_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_radius_ctx_t);
+	if (!test_ctx) return -1;
+
 	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
 	test_ctx->root = fr_dict_root(dict_radius);
 	test_ctx->vector = vector;
