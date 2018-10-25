@@ -683,7 +683,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 static int mod_load(void)
 {
-	if (fr_dhcpv4_init() < 0) {
+	if (fr_dhcpv4_global_init() < 0) {
 		PERROR("Failed initialising protocol library");
 		return -1;
 	}
@@ -693,7 +693,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	fr_dhcpv4_free();
+	fr_dhcpv4_global_free();
 }
 
 fr_app_t proto_dhcpv4 = {

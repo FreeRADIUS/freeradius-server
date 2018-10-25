@@ -436,7 +436,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 static int _decode_test_ctx(UNUSED fr_dhcp_ctx_t *test_ctx)
 {
-	fr_dhcpv4_free();
+	fr_dhcpv4_global_free();
 
 	return 0;
 }
@@ -445,7 +445,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_dhcp_ctx_t *test_ctx;
 
-	if (fr_dhcpv4_init() < 0) return -1;
+	if (fr_dhcpv4_global_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_dhcp_ctx_t);
 	test_ctx->root = fr_dict_root(fr_dict_internal);

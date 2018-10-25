@@ -490,7 +490,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, uint32_t xid,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dhcpv4_init(void)
+int fr_dhcpv4_global_init(void)
 {
 	fr_value_box_t		value = { .type = FR_TYPE_UINT8 };
 	uint8_t			i;
@@ -525,7 +525,7 @@ int fr_dhcpv4_init(void)
 	return 0;
 }
 
-void fr_dhcpv4_free(void)
+void fr_dhcpv4_global_free(void)
 {
 	if (--instance_count > 0) return;
 

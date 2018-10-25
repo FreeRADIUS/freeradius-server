@@ -691,7 +691,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Initialise the DHCPv4 library
 	 */
-	fr_dhcpv4_init();
+	fr_dhcpv4_global_init();
 
 	/*
 	 *	Resolve hostname.
@@ -803,7 +803,7 @@ int main(int argc, char **argv)
 		dhcp_packet_debug(reply, true);
 	}
 
-	fr_dhcpv4_free();
+	fr_dhcpv4_global_free();
 	fr_dict_autofree(dhcpclient_dict);
 
 	return ret < 0 ? 1 : 0;

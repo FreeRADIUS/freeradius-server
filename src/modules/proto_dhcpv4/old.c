@@ -1097,7 +1097,7 @@ static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
 
 static int dhcp_load(void)
 {
-	if (fr_dhcpv4_init() < 0) {
+	if (fr_dhcpv4_global_init() < 0) {
 		PERROR("Failed initialising DHCP");
 		return -1;
 	}
@@ -1107,7 +1107,7 @@ static int dhcp_load(void)
 
 static void dhcp_unload(void)
 {
-	fr_dhcpv4_free();
+	fr_dhcpv4_global_free();
 }
 
 
