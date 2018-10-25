@@ -44,22 +44,12 @@ $(BUILD_DIR)/share:
 	${Q}mkdir -p $@
 
 #
-#  We need $INCLUDE in the output file, so we pass 2 parameters to 'echo'
-#  No idea how portable that is...
-#
-$(BUILD_DIR)/share/dictionary: $(top_srcdir)/share/dictionary $(top_srcdir)/share/dictionary/dhcpv4/dictionary $(top_srcdir)/src/tests/unit/dictionary.unit | $(BUILD_DIR)/share
-	${Q}rm -f $@
-	${Q}for x in $^; do \
-		echo '$$INCLUDE ' "$$x" >> $@; \
-	done
-
-#
 #  Files in the output dir depend on the unit tests
 #
 $(BUILD_DIR)/tests/unit/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTBINDIR)/unit_test_attribute $(BUILD_DIR)/share/dictionary | $(BUILD_DIR)/tests/unit
 	${Q}echo UNIT-TEST $(notdir $@)
-	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(BUILD_DIR)/share $<; then \
-		echo "$(TESTBIN)/unit_test_attribute -D $(BUILD_DIR)/share $<"; \
+	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit $(BUILD_DIR)/share $<; then \
+		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit $<"; \
 		exit 1; \
 	fi
 	${Q}touch $@
