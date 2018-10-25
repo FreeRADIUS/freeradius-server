@@ -47,14 +47,7 @@ typedef struct proto_dhcpv4_udp_thread_t {
 }  proto_dhcpv4_udp_thread_t;
 
 typedef struct proto_dhcpv4_udp_t {
-	/*
-	 *	The remaining items are "const" after mod_bootstrap()
-	 *	and mod_instantiate() are called.
-	 */
 	CONF_SECTION			*cs;			//!< our configuration
-
-	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
-	fr_network_t			*nr;			//!< for fr_network_listen_read();
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
