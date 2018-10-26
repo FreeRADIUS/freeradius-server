@@ -157,7 +157,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	rad_assert(*leftover < buffer_len);
 	rad_assert(thread->fd >= 0);
 
-	MPRINT("AT COUNT %d offset %lld", thread->count, thread->read_offset);
+	MPRINT("AT COUNT %d offset %ld", thread->count, (long) thread->read_offset);
 
 	/*
 	 *	Process retransmissions before anything else in the
@@ -264,7 +264,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 		thread->eof = (data_size == 0) || (thread->read_offset == thread->file_size) || ((size_t) data_size < room);
 		if (thread->eof) {
 			MPRINT("Set EOF data_size %ld vs room %ld", data_size, room);
-			MPRINT("Set EOF read %lld vs file %lld", thread->read_offset, thread->file_size);
+			MPRINT("Set EOF read %ld vs file %ld", (long) thread->read_offset, (long) thread->file_size);
 		}
 		end = partial + data_size;
 

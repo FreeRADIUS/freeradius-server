@@ -591,7 +591,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 
 	if (fr_event_timer_insert(thread, thread->el, &thread->ev,
 				  &when, work_retry_timer, thread) < 0) {
-		ERROR("Failed inserting poll timer for %s", inst->filename_work);
+		ERROR("Failed inserting poll timer for %s", thread->filename_work);
 	}
 #endif
 }
