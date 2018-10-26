@@ -66,7 +66,12 @@ DIAG_ON(unused-macros)
  */
 typedef struct proto_detail_work_t proto_detail_file_t;
 
-static void work_init(proto_detail_file_t *inst);
+/*
+ *	@todo - this should really now be a different data structure
+ */
+typedef struct proto_detail_work_thread_t proto_detail_file_thread_t;
+
+static void work_init(proto_detail_file_thread_t *thread);
 static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, void *ctx);
 
 static const CONF_PARSER file_listen_config[] = {
@@ -93,14 +98,16 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
-	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(li->thread_instance, proto_detail_file_t);
+	proto_detail_file_thread_t  *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
-	return inst->parent->work_io->write(inst->parent->work_io_instance, packet_ctx, request_time, buffer, buffer_len, written);
+	return thread->listen->app_io->write(thread->listen, packet_ctx, request_time, buffer, buffer_len, written);
 }
 
 static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
+	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
+	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
+
 	bool has_worker = false;
 
 	pthread_mutex_lock(&inst->parent->worker_mutex);
@@ -109,9 +116,9 @@ static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
 
 	if (has_worker) return;
 
-	if (inst->ev) fr_event_timer_delete(inst->el, &inst->ev);
+	if (thread->ev) fr_event_timer_delete(thread->el, &thread->ev);
 
-	work_init(inst);
+	work_init(thread);
 }
 
 /** Open a detail listener
@@ -119,7 +126,8 @@ static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
+	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
+	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 	int oflag;
 
 #ifdef O_EVTONLY
@@ -128,16 +136,18 @@ static int mod_open(fr_listen_t *li)
 	oflag = O_RDONLY;
 #endif
 
-	li->fd = inst->fd = open(inst->directory, oflag);
-	if (inst->fd < 0) {
+	li->fd = thread->fd = open(inst->directory, oflag);
+	if (thread->fd < 0) {
 		cf_log_err(inst->cs, "Failed opening %s: %s", inst->directory, fr_syserror(errno));
 		return -1;
 	}
 
-	inst->name = talloc_typed_asprintf(inst, "proto_detail polling for files matching %s", inst->filename);
+	thread->inst = inst;
+	thread->name = talloc_typed_asprintf(inst, "proto_detail polling for files matching %s", inst->filename);
+	thread->vnode_fd = -1;
 
 	DEBUG("Listening on %s bound to virtual server %s FD %d",
-	      inst->name, cf_section_name2(inst->parent->server_cs), inst->fd);
+	      thread->name, cf_section_name2(inst->parent->server_cs), thread->fd);
 
 	return 0;
 }
@@ -145,8 +155,9 @@ static int mod_open(fr_listen_t *li)
 /*
  *	The "detail.work" file doesn't exist.  Let's see if we can rename one.
  */
-static int work_rename(proto_detail_file_t *inst)
+static int work_rename(proto_detail_file_thread_t *thread)
 {
+	proto_detail_file_t const *inst = thread->inst;
 	unsigned int	i;
 	int		found;
 	time_t		chtime;
@@ -155,13 +166,13 @@ static int work_rename(proto_detail_file_t *inst)
 	struct stat	st;
 
 	DEBUG3("proto_detail (%s): polling for detail files in %s",
-	       inst->name, inst->directory);
+	       thread->name, inst->directory);
 
 	memset(&files, 0, sizeof(files));
 	if (glob(inst->filename, 0, NULL, &files) != 0) {
 	noop:
 		DEBUG3("proto_detail (%s): no matching files for %s",
-		       inst->name, inst->filename);
+		       thread->name, inst->filename);
 		globfree(&files);
 		return -1;
 	}
@@ -191,10 +202,10 @@ static int work_rename(proto_detail_file_t *inst)
 	 */
 	filename = files.gl_pathv[found];
 
-	DEBUG("proto_detail (%s): Renaming %s -> %s", inst->name, filename, inst->filename_work);
+	DEBUG("proto_detail (%s): Renaming %s -> %s", thread->name, filename, inst->filename_work);
 	if (rename(filename, inst->filename_work) < 0) {
 		ERROR("detail (%s): Failed renaming %s to %s: %s",
-		      inst->name, filename, inst->filename_work, fr_syserror(errno));
+		      thread->name, filename, inst->filename_work, fr_syserror(errno));
 		goto noop;
 	}
 
@@ -211,24 +222,25 @@ static int work_rename(proto_detail_file_t *inst)
  */
 static void work_retry_timer(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(uctx, proto_detail_file_t);
+	proto_detail_file_thread_t *thread = talloc_get_type_abort(uctx, proto_detail_file_thread_t);
 
-	work_init(inst);
+	work_init(thread);
 }
 
 /*
  *	The "detail.work" file exists, and is open in the 'fd'.
  */
-static int work_exists(proto_detail_file_t *inst, int fd)
+static int work_exists(proto_detail_file_thread_t *thread, int fd)
 {
+	proto_detail_file_t const *inst = thread->inst;
 	bool			opened = false;
-	proto_detail_work_t	*work;
+	proto_detail_work_thread_t     *work;
 	fr_listen_t		*li = NULL;
 	struct stat		st;
 
 	fr_event_vnode_func_t	funcs = { .delete = mod_vnode_delete };
 
-	DEBUG3("proto_detail (%s): Trying to lock %s", inst->name, inst->filename_work);
+	DEBUG3("proto_detail (%s): Trying to lock %s", thread->name, inst->filename_work);
 
 	/*
 	 *	"detail.work" exists, try to lock it.
@@ -237,34 +249,34 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		struct timeval when, now;
 
 		DEBUG3("proto_detail (%s): Failed locking %s: %s",
-		       inst->name, inst->filename_work, fr_syserror(errno));
+		       thread->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
 
-		when.tv_usec = inst->lock_interval % USEC;
-		when.tv_sec = inst->lock_interval / USEC;
+		when.tv_usec = thread->lock_interval % USEC;
+		when.tv_sec = thread->lock_interval / USEC;
 
 		/*
 		 *	Ensure that we don't do massive busy-polling.
 		 */
-		inst->lock_interval += inst->lock_interval / 2;
-		if (inst->lock_interval > (30 * USEC)) inst->lock_interval = 30 * USEC;
+		thread->lock_interval += thread->lock_interval / 2;
+		if (thread->lock_interval > (30 * USEC)) thread->lock_interval = 30 * USEC;
 
 		DEBUG3("proto_detail (%s): Waiting %d.%06ds for lock on file %s",
-		       inst->name, (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
+		       thread->name, (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
 
 		gettimeofday(&now, NULL);
 		fr_timeval_add(&when, &when, &now);
 
-		if (fr_event_timer_insert(inst, inst->el, &inst->ev,
-					  &when, work_retry_timer, inst) < 0) {
+		if (fr_event_timer_insert(thread, thread->el, &thread->ev,
+					  &when, work_retry_timer, thread) < 0) {
 			ERROR("Failed inserting retry timer for %s", inst->filename_work);
 		}
 		return 0;
 	}
 
 	DEBUG3("proto_detail (%s): Obtained lock and starting to process file %s",
-	       inst->name, inst->filename_work);
+	       thread->name, inst->filename_work);
 
 	/*
 	 *	Ignore empty files.
@@ -279,7 +291,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 
 	if (!st.st_size) {
 		DEBUG3("proto_detail (%s): %s file is empty, ignoring it.",
-		       inst->name, inst->filename_work);
+		       thread->name, inst->filename_work);
 		unlink(inst->filename_work);
 		close(fd);
 		return 1;
@@ -305,17 +317,16 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	 *	The worker may be in a different thread, so avoid
 	 *	talloc threading issues by using a NULL TALLOC_CTX.
 	 */
-	MEM(li->thread_instance = work = talloc(li, proto_detail_work_t));
-	li->app_io_instance = li->thread_instance;
+	MEM(li->thread_instance = work = talloc_zero(li, proto_detail_work_thread_t));
 
-	memcpy(work, inst->parent->work_submodule->data, sizeof(*work));
-
+	li->app_io_instance = inst->parent->work_io_instance;
+	work->inst = li->app_io_instance;
 	work->ev = NULL;
 
 	li->fd = work->fd = dup(fd);
 	if (work->fd < 0) {
 		DEBUG("proto_detail (%s): Failed opening %s: %s",
-		      inst->name, inst->filename_work, fr_syserror(errno));
+		      thread->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
 		talloc_free(li);
@@ -328,8 +339,8 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	 *	@todo - ensure that proto_detail_work is done the file...
 	 *	maybe by creating a new instance?
 	 */
-	if (fr_event_filter_insert(inst, inst->el, fd, FR_EVENT_FILTER_VNODE,
-				   &funcs, NULL, inst) < 0) {
+	if (fr_event_filter_insert(thread, thread->el, fd, FR_EVENT_FILTER_VNODE,
+				   &funcs, NULL, thread) < 0) {
 		PERROR("Failed adding work socket to event loop");
 		close(fd);
 		talloc_free(li);
@@ -339,12 +350,13 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	/*
 	 *	Remember this for later.
 	 */
-	inst->vnode_fd = fd;
+	thread->vnode_fd = fd;
 
 	/*
-	 *	Yuck.
+	 *	For us, this is the worker listener.
+	 *	For the worker, this is it's own parent
 	 */
-	inst->parent->work_io_instance = work;
+	thread->listen = li;
 
 	work->filename_work = talloc_strdup(work, inst->filename_work);
 
@@ -359,24 +371,6 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	pthread_mutex_unlock(&inst->parent->worker_mutex);
 
 	/*
-	 *	Instantiate the new worker.
-	 */
-	if (li->app_io->instantiate &&
-	    (li->app_io->instantiate(work,
-					 inst->parent->work_io_conf) < 0)) {
-		ERROR("Failed instantiating %s", li->app_io->name);
-		goto error;
-	}
-
-	/*
-	 *	Limit the number of messages, retransmission, etc.
-	 */
-	if (work->max_outstanding < li->num_messages) {
-		li->num_messages = work->max_outstanding;
-	}
-	if (work->max_outstanding < 1) work->max_outstanding = 1;
-
-	/*
 	 *	Open the detail.work file.
 	 */
 	if (li->app_io->open(li) < 0) {
@@ -387,14 +381,15 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 
 	if (!fr_schedule_listen_add(inst->parent->sc, li)) {
 	error:
-		if (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
+		if (fr_event_fd_delete(thread->el, thread->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
 			PERROR("Failed removing DELETE callback when opening work file");
 		}
-		close(inst->vnode_fd);
-		inst->vnode_fd = -1;
+		close(thread->vnode_fd);
+		thread->vnode_fd = -1;
 
 		if (opened) {
 			(void) li->app_io->close(li);
+			thread->listen = NULL;
 			li = NULL;
 		}
 
@@ -405,7 +400,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	/*
 	 *	Tell the worker to clean itself up.
 	 */
-	work->free_on_close = true;
+	work->listen = li;
 
 	return 0;
 }
@@ -413,20 +408,21 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 
 static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, void *ctx)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(ctx, proto_detail_file_t);
+	proto_detail_file_thread_t *thread = talloc_get_type_abort(ctx, proto_detail_file_thread_t);
+	proto_detail_file_t const *inst = thread->inst;
 
-	DEBUG("proto_detail (%s): Deleted %s", inst->name, inst->filename_work);
+	DEBUG("proto_detail (%s): Deleted %s", thread->name, inst->filename_work);
 
 	/*
 	 *	Silently ignore notifications from the directory.  We
 	 *	didn't ask for them, but libkqueue delivers them to
 	 *	us.
 	 */
-	if (fd == inst->fd) return;
+	if (fd == thread->fd) return;
 
-	if (fd != inst->vnode_fd) {
+	if (fd != thread->vnode_fd) {
 		ERROR("Received DELETE for FD %d, when we were expecting one on FD %d - ignoring it",
-		      fd, inst->vnode_fd);
+		      fd, thread->vnode_fd);
 		return;
 	}
 
@@ -434,7 +430,7 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 		PERROR("Failed removing DELETE callback after deletion");
 	}
 	close(fd);
-	inst->vnode_fd = -1;
+	thread->vnode_fd = -1;
 
 	/*
 	 *	Re-initialize the state machine.
@@ -443,12 +439,13 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 	 *	"move", which both deletes the old file, and creates
 	 *	the new one.
 	 */
-	work_init(inst);
+	work_init(thread);
 }
 
 
-static void work_init(proto_detail_file_t *inst)
+static void work_init(proto_detail_file_thread_t *thread)
 {
+	proto_detail_file_t const *inst = thread->inst;
 	int fd, rcode;
 	bool has_worker;
 
@@ -462,11 +459,11 @@ static void work_init(proto_detail_file_t *inst)
 	 */
 	if (has_worker) {
 		DEBUG3("proto_detail (%s): worker %s is still alive, waiting for it to finish.",
-		       inst->name, inst->filename_work);
+		       thread->name, inst->filename_work);
 		goto delay;
 	}
 
-	rad_assert(inst->vnode_fd < 0);
+	rad_assert(thread->vnode_fd < 0);
 
 	/*
 	 *	See if there is a "detail.work" file.  If not, try to
@@ -482,13 +479,13 @@ static void work_init(proto_detail_file_t *inst)
 	if (fd < 0) {
 		if (errno != ENOENT) {
 			DEBUG("proto_detail (%s): Failed opening %s: %s",
-			      inst->name, inst->filename_work,
+			      thread->name, inst->filename_work,
 			      fr_syserror(errno));
 			goto delay;
 		}
 
 retry:
-		fd = work_rename(inst);
+		fd = work_rename(thread);
 	}
 
 	/*
@@ -515,20 +512,20 @@ delay:
 		when.tv_usec = 0;
 
 		DEBUG3("Waiting %d.%06ds for new files in %s",
-		       (int) when.tv_sec, (int) when.tv_usec, inst->name);
+		       (int) when.tv_sec, (int) when.tv_usec, thread->name);
 
 		gettimeofday(&now, NULL);
 
 		fr_timeval_add(&when, &when, &now);
 
-		if (fr_event_timer_insert(inst, inst->el, &inst->ev,
-					  &when, work_retry_timer, inst) < 0) {
+		if (fr_event_timer_insert(thread, thread->el, &thread->ev,
+					  &when, work_retry_timer, thread) < 0) {
 			ERROR("Failed inserting poll timer for %s", inst->filename_work);
 		}
 		return;
 	}
 
-	inst->lock_interval = USEC / 10;
+	thread->lock_interval = USEC / 10;
 
 	/*
 	 *	It exists, go process it!
@@ -536,7 +533,7 @@ delay:
 	 *	We will get back to the main loop when the
 	 *	"detail.work" file is deleted.
 	 */
-	rcode = work_exists(inst, fd);
+	rcode = work_exists(thread, fd);
 	if (rcode < 0) goto delay;
 
 	/*
@@ -559,18 +556,18 @@ delay:
  */
 static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void *nr)
 {
-	proto_detail_file_t	*inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
+	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 #ifdef __linux__
 	struct timeval when;
 #endif
 
-	inst->el = el;
+	thread->el = el;
 
 	/*
 	 *	Initialize the work state machine.
 	 */
 #ifndef __linux__
-	work_init(inst);
+	work_init(thread);
 #else
 
 	/*
@@ -578,7 +575,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 	 *	detail files now.
 	 */
 	if (!main_config->allow_core_dumps) {
-		work_init(inst);
+		work_init(thread);
 		return;
 	}
 
@@ -592,8 +589,8 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 	gettimeofday(&when, NULL);
 	when.tv_sec +=1;
 
-	if (fr_event_timer_insert(inst, inst->el, &inst->ev,
-				  &when, work_retry_timer, inst) < 0) {
+	if (fr_event_timer_insert(thread, thread->el, &thread->ev,
+				  &when, work_retry_timer, thread) < 0) {
 		ERROR("Failed inserting poll timer for %s", inst->filename_work);
 	}
 #endif
@@ -602,9 +599,9 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 
 static char const *mod_name(fr_listen_t *li)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
+	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
-	return inst->name;
+	return thread->name;
 }
 
 
@@ -654,8 +651,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
 	inst->cs = cs;
-	inst->fd = -1;
-	inst->vnode = true;
 
 	inst->directory = p = talloc_strdup(inst, inst->filename);
 
@@ -675,34 +670,34 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	We need this for the lock.
 	 */
 	inst->mode = O_RDWR;
-	inst->vnode_fd = -1;
 
 	return 0;
 }
 
 static int mod_close(fr_listen_t *li)
 {
-	proto_detail_file_t	*inst = talloc_get_type_abort(li->thread_instance, proto_detail_file_t);
+	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
+	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
-	if (inst->nr) (void) fr_network_socket_delete(inst->nr, inst->parent->listen);
+	if (thread->nr) (void) fr_network_socket_delete(thread->nr, inst->parent->listen);
 
 	/*
 	 *	@todo - have our OWN event loop for timers, and a
 	 *	"copy timer from -> to, which means we only have to
 	 *	delete our child event loop from the parent on close.
 	 */
-	close(inst->fd);
+	close(thread->fd);
 
-	if (inst->vnode_fd >= 0) {
-		if (inst->nr) {
-			(void) fr_network_socket_delete(inst->nr, inst->parent->listen);
+	if (thread->vnode_fd >= 0) {
+		if (thread->nr) {
+			(void) fr_network_socket_delete(thread->nr, inst->parent->listen);
 		} else {
-			if (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
+			if (fr_event_fd_delete(thread->el, thread->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
 				PERROR("Failed removing DELETE callback on detach");
 			}
 		}
-		close(inst->vnode_fd);
-		inst->vnode_fd = -1;
+		close(thread->vnode_fd);
+		thread->vnode_fd = -1;
 	}
 
 	return 0;
@@ -718,6 +713,7 @@ fr_app_io_t proto_detail_file = {
 	.name			= "detail_file",
 	.config			= file_listen_config,
 	.inst_size		= sizeof(proto_detail_file_t),
+	.thread_inst_size	= sizeof(proto_detail_file_thread_t),
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 65536,

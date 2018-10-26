@@ -69,47 +69,54 @@ typedef struct proto_detail_t {
 
 } proto_detail_t;
 
+
 /*
  *	The detail "work" data structure, shared by all of the detail readers.
  */
 typedef struct proto_detail_work_t {
 	CONF_SECTION			*cs;			//!< our configuration section
+
 	proto_detail_t			*parent;		//!< The module that spawned us!
-	char const			*name;			//!< debug name for printing
-
-	int				fd;			//!< file descriptor
-	int				vnode_fd;      		//!< file descriptor for vnode_delete
-
-	fr_event_list_t			*el;			//!< for various timers
-
 	char const			*directory;     	//!< containing the file below
 	char const			*filename;     		//!< file name, usually with wildcards
 	char const			*filename_work;		//!< work file name
 
 	uint32_t			poll_interval;		//!< interval between polling
 
-	uint32_t			lock_interval;		//!< interval between trying the locks.
-
 	uint32_t			irt;
 	uint32_t			mrt;
 	uint32_t			mrc;
 	uint32_t			mrd;
 	uint32_t			max_outstanding;	//!< number of packets to run in parallel
-	uint32_t       			outstanding;		//!< number of currently outstanding records;
-
-	fr_dlist_head_t			list;			//!< for retransmissions
-
-	bool				vnode;			//!< are we the vnode instance,
-								//!< or the filename_work instance?
-	bool				eof;			//!< are we at EOF on reading?
-	bool				closing;		//!< we should be closing the file
 
 	bool				track_progress;		//!< do we track progress by writing?
 	bool				retransmit;		//!< are we retransmitting on error?
-	bool				paused;			//!< Is reading paused?
-	bool				free_on_close;		//!< free the worker on close
 
 	int				mode;			//!< O_RDWR or O_RDONLY
+
+	RADCLIENT			*client;		//!< so the rest of the server doesn't complain
+} proto_detail_work_t;
+
+typedef struct proto_detail_work_thread_t {
+	char const			*name;			//!< debug name for printing
+	proto_detail_work_t const	*inst;			//!< instance data
+
+	int				fd;			//!< file descriptor
+	int				vnode_fd;      		//!< file descriptor for vnode_delete
+
+	fr_event_list_t			*el;			//!< for various timers
+	fr_network_t			*nr;			//!< for Linux-specific callbacks
+	fr_listen_t			*listen;		//!< talloc_parent() is slow
+
+	char const			*filename_work;		//!< work file name
+	fr_dlist_head_t			list;			//!< for retransmissions
+
+	uint32_t       			outstanding;		//!< number of currently outstanding records;
+	uint32_t			lock_interval;		//!< interval between trying the locks.
+
+	bool				eof;			//!< are we at EOF on reading?
+	bool				closing;		//!< we should be closing the file
+	bool				paused;			//!< Is reading paused?
 
 	int				count;			//!< number of packets we read from this file.
 
@@ -124,10 +131,7 @@ typedef struct proto_detail_work_t {
 	off_t				read_offset;		//!< where we're reading from in filename_work
 
 	fr_event_timer_t const		*ev;			//!< for detail file timers.
-	RADCLIENT			*client;		//!< so the rest of the server doesn't complain
-
-	fr_network_t			*nr;			//!< for Linux-specific callbacks
-} proto_detail_work_t;
+} proto_detail_work_thread_t;
 
 typedef struct proto_detail_process_t {
 	rlm_components_t	recv_type;

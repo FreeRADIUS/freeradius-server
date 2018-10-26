@@ -438,8 +438,9 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	li = talloc_zero(inst, fr_listen_t);
 
 	li->app_io = inst->app_io;
-	li->thread_instance = inst->app_io_instance;
-	li->app_io_instance = li->thread_instance;
+	li->thread_instance = talloc_zero_array(li, uint8_t, li->app_io->thread_inst_size);
+	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->name);
+	li->app_io_instance = inst->app_io_instance;
 
 	li->app = &proto_detail;
 	li->app_instance = instance;
@@ -564,6 +565,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	if (!inst->priority && inst->code && (inst->code < FR_MAX_PACKET_CODE)) {
 		inst->priority = priorities[inst->code];
+	}
+
+	/*
+	 *	If the IO is "file" and not the worker, instantiate the worker now.
+	 */
+	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") != 0) {
+		if (inst->work_io->instantiate && (inst->work_io->instantiate(inst->work_io_instance,
+									      inst->work_io_conf) < 0)) {
+			cf_log_err(inst->work_io_conf, "Instantiation failed for \"%s\"", inst->work_io->name);
+			return -1;
+		}
 	}
 
 	return 0;

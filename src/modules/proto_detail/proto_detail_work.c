@@ -36,6 +36,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#ifndef NDEBUG
 #if 0
 /*
  *	When we want detailed debugging here, without detailed server
@@ -45,8 +46,13 @@
 #else
 #define MPRINT DEBUG3
 #endif
+#else
+// No debugging, just remove the mprint entirely
+#define MPRINT(_x, ...)
+#endif
 
 typedef struct {
+	proto_detail_work_thread_t	*parent;		//!< talloc_parent is SLOW!
 	fr_time_t			timestamp;		//!< when we read the entry.
 	off_t				done_offset;		//!< where we're tracking the status
 
@@ -138,7 +144,8 @@ static fr_event_update_t resume_read[] = {
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_detail_work_t		*inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
+	proto_detail_work_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_work_t);
+	proto_detail_work_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
 
 	ssize_t				data_size;
 	size_t				packet_len;
@@ -148,25 +155,27 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	off_t				done_offset;
 
 	rad_assert(*leftover < buffer_len);
-	rad_assert(inst->fd >= 0);
+	rad_assert(thread->fd >= 0);
+
+	MPRINT("AT COUNT %d offset %lld", thread->count, thread->read_offset);
 
 	/*
 	 *	Process retransmissions before anything else in the
 	 *	file.
 	 */
-	track = fr_dlist_head(&inst->list);
+	track = fr_dlist_head(&thread->list);
 	if (track) {
-		fr_dlist_remove(&inst->list, track);
+		fr_dlist_remove(&thread->list, track);
 
 		/*
 		 *	Don't over-write "leftover" bytes!
 		 */
 		if (*leftover) {
-			rad_assert(inst->leftover == 0);
-			if (!inst->leftover_buffer) MEM(inst->leftover_buffer = talloc_array(inst, uint8_t, buffer_len));
+			rad_assert(thread->leftover == 0);
+			if (!thread->leftover_buffer) MEM(thread->leftover_buffer = talloc_array(thread, uint8_t, buffer_len));
 
-			memcpy(inst->leftover_buffer, buffer, *leftover);
-			inst->leftover = *leftover;
+			memcpy(thread->leftover_buffer, buffer, *leftover);
+			thread->leftover = *leftover;
 			*leftover = 0;
 		}
 
@@ -185,8 +194,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	 *	else in the file.  Someone extended the file on us
 	 *	without locking it first.  So too bad for them.
 	 */
-	if (inst->closing) {
-		if (inst->track_progress) inst->read_offset = lseek(inst->fd, 0, SEEK_END);
+	if (thread->closing) {
+		if (inst->track_progress) thread->read_offset = lseek(thread->fd, 0, SEEK_END);
 		return 0;
 	}
 
@@ -195,8 +204,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	 *	many packets.  So if we want to stop it from reading,
 	 *	we have to check this ourselves.
 	 */
-	if (inst->outstanding >= inst->max_outstanding) {
-		rad_assert(inst->paused);
+	if (thread->outstanding >= inst->max_outstanding) {
+		rad_assert(thread->paused);
 		return 0;
 	}
 
@@ -204,19 +213,19 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	 *	If we've cached leftover data from the ring buffer,
 	 *	copy it back.
 	 */
-	if (inst->leftover) {
+	if (thread->leftover) {
 		rad_assert(*leftover == 0);
-		rad_assert(inst->leftover < buffer_len);
+		rad_assert(thread->leftover < buffer_len);
 
-		memcpy(buffer, inst->leftover_buffer, inst->leftover);
-		*leftover = inst->leftover;
-		inst->leftover = 0;
+		memcpy(buffer, thread->leftover_buffer, thread->leftover);
+		*leftover = thread->leftover;
+		thread->leftover = 0;
 	}
 
 	/*
 	 *	Seek to the current read offset.
 	 */
-	(void) lseek(inst->fd, inst->read_offset, SEEK_SET);
+	(void) lseek(thread->fd, thread->read_offset, SEEK_SET);
 
 	/*
 	 *	There will be "leftover" bytes left over in the buffer
@@ -230,15 +239,15 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	/*
 	 *	Try to read as much data as possible.
 	 */
-	if (!inst->eof) {
+	if (!thread->eof) {
 		size_t room;
 
 		room = buffer_len - *leftover;
 
-		data_size = read(inst->fd, partial, room);
+		data_size = read(thread->fd, partial, room);
 		if (data_size < 0) {
 			ERROR("proto_detail (%s): Failed reading file %s: %s",
-			      inst->name, inst->filename_work, fr_syserror(errno));
+			      thread->name, thread->filename_work, fr_syserror(errno));
 			return -1;
 		}
 
@@ -247,12 +256,20 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 		/*
 		 *	Remember the read offset, and whether we got EOF.
 		 */
-		inst->read_offset = lseek(inst->fd, 0, SEEK_CUR);
-		inst->eof = (data_size == 0) || (inst->read_offset == inst->file_size) || ((size_t) data_size < room);
+		thread->read_offset = lseek(thread->fd, 0, SEEK_CUR);
+
+		/*
+		 *	Only set EOF if there's no more data in the buffer to manage.
+		 */
+		thread->eof = (data_size == 0) || (thread->read_offset == thread->file_size) || ((size_t) data_size < room);
+		if (thread->eof) {
+			MPRINT("Set EOF data_size %ld vs room %ld", data_size, room);
+			MPRINT("Set EOF read %lld vs file %lld", thread->read_offset, thread->file_size);
+		}
 		end = partial + data_size;
 
 	} else {
-		MPRINT("AT EOF");
+		MPRINT("READ UNTIL EOF");
 
 		/*
 		 *	We didn't read any more data from the file,
@@ -273,11 +290,11 @@ redo:
 	 *	Note that all of the data MUST be printable, and raw
 	 *	LFs are forbidden in attribute contents.
 	 */
-	rad_assert((buffer + inst->last_search) <= end);
+	rad_assert((buffer + thread->last_search) <= end);
 
-	MPRINT("Starting search from offset %ld", inst->last_search);
+	MPRINT("Starting search from offset %ld", thread->last_search);
 
-	p = buffer + inst->last_search;
+	p = buffer + thread->last_search;
 	while (p < end) {
 		if (p[0] != '\n') {
 			p++;
@@ -307,8 +324,8 @@ redo:
 		 */
 		if (p[1] != '\t') {
 			ERROR("proto_detail (%s): Malformed line found at offset %zu in file %s",
-			      inst->name, (size_t)((p - buffer) + inst->header_offset),
-			      inst->filename_work);
+			      thread->name, (size_t)((p - buffer) + thread->header_offset),
+			      thread->filename_work);
 			return -1;
 		}
 
@@ -349,9 +366,9 @@ redo:
 		 */
 		if (memcmp(p, " = ", 3) != 0) {
 			ERROR("proto_detail (%s): Malformed line found at offset %zu: %.*s of file %s",
-			      inst->name,
-			      (size_t)((p - buffer) + inst->header_offset), (int) (end - p), p,
-			      inst->filename_work);
+			      thread->name,
+			      (size_t)((p - buffer) + thread->header_offset), (int) (end - p), p,
+			      thread->filename_work);
 			return -1;
 		}
 
@@ -362,7 +379,7 @@ redo:
 		p += 3;
 	}
 
-	inst->last_search = (stopped_search - buffer);
+	thread->last_search = (stopped_search - buffer);
 
 	/*
 	 *	If there is a next record, remember how large this
@@ -374,12 +391,12 @@ redo:
 
 		MPRINT("FOUND next at %zd, leftover is %zd", packet_len, *leftover);
 
-	} else if (!inst->eof) {
+	} else if (!thread->eof) {
 		if ((size_t) (end - buffer) == buffer_len) {
 			ERROR("proto_detail (%s): Too large entry (>%d bytes) found at offset %zu: %.*s of file %s",
-			      inst->name, (int) buffer_len,
-			      (size_t)((p - buffer) + inst->header_offset), (int) (end - p), p,
-			      inst->filename_work);
+			      thread->name, (int) buffer_len,
+			      (size_t)((p - buffer) + thread->header_offset), (int) (end - p), p,
+			      thread->filename_work);
 			return -1;
 		}
 
@@ -412,7 +429,7 @@ redo:
 	 */
 	if (packet_len > inst->parent->max_packet_size) {
 		DEBUG("Ignoring 'too large' entry at offset %zu of %s",
-		      (size_t) inst->header_offset, inst->filename_work);
+		      (size_t) thread->header_offset, thread->filename_work);
 		DEBUG("Entry size %lu is greater than allowed maximum %u",
 		      packet_len, inst->parent->max_packet_size);
 	skip_record:
@@ -422,7 +439,7 @@ redo:
 			data_size = (end - next);
 			*leftover = 0;
 			end = buffer + data_size;
-			inst->last_search = 0;
+			thread->last_search = 0;
 
 			/*
 			 *	No more data, we're done.
@@ -460,16 +477,17 @@ redo:
 		if (((record_end - p) > 10) &&
 		    (memcmp(p, "\tTimestamp", 10) == 0)) {
 			p++;
-			done_offset = inst->header_offset + (p - buffer);
+			done_offset = thread->header_offset + (p - buffer);
 		}
 	}
 
 	/*
 	 *	Allocate the tracking entry.
 	 */
-	track = talloc_zero(inst, fr_detail_entry_t);
+	track = talloc_zero(thread, fr_detail_entry_t);
+	track->parent = thread;
 	track->timestamp = fr_time();
-	track->id = inst->count++;
+	track->id = thread->count++;
 	track->rt = inst->irt;
 
 	track->done_offset = done_offset;
@@ -481,7 +499,7 @@ redo:
 	/*
 	 *	We've read one more packet.
 	 */
-	inst->header_offset += packet_len;
+	thread->header_offset += packet_len;
 
 	*packet_ctx = track;
 	*recv_time = &track->timestamp;
@@ -491,33 +509,34 @@ done:
 	/*
 	 *	If we're at EOF, mark us as "closing".
 	 */
-	if (inst->eof) {
-		rad_assert(!inst->closing);
-		inst->closing = (*leftover == 0);
+	if (thread->eof) {
+		rad_assert(!thread->closing);
+		thread->closing = (*leftover == 0);
+		MPRINT("AT EOF, BUT CLOSING %d", thread->closing);
 	}
 
-	inst->outstanding++;
+	thread->outstanding++;
 
 	/*
 	 *	Pause reading until such time as we need more packets.
 	 */
-	if (!inst->paused && (inst->outstanding >= inst->max_outstanding)) {
-		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, pause_read);
-		inst->paused = true;
+	if (!thread->paused && (thread->outstanding >= inst->max_outstanding)) {
+		(void) fr_event_filter_update(thread->el, thread->fd, FR_EVENT_FILTER_IO, pause_read);
+		thread->paused = true;
 
 		/*
 		 *	Back up so that read() knows there's more data.
 		 */
-		if (*leftover) (void) lseek(inst->fd, inst->read_offset - 1, SEEK_SET);
+		if (*leftover) (void) lseek(thread->fd, thread->read_offset - 1, SEEK_SET);
 	}
 
 	/*
 	 *	Next time, start searching from the start of the
 	 *	buffer.
 	 */
-	inst->last_search = 0;
+	thread->last_search = 0;
 
-	MPRINT("Returning NUM %u - %.*s", inst->outstanding, (int) packet_len, buffer);
+	MPRINT("Returning NUM %u - %.*s", thread->outstanding, (int) packet_len, buffer);
 	return packet_len;
 }
 
@@ -525,19 +544,19 @@ done:
 static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
 	fr_detail_entry_t		*track = talloc_get_type_abort(uctx, fr_detail_entry_t);
-	proto_detail_work_t		*inst = talloc_parent(track);
+	proto_detail_work_thread_t     	*thread = track->parent;
 
-	DEBUG("%s - retransmitting packet %d", inst->name, track->id);
+	DEBUG("%s - retransmitting packet %d", thread->name, track->id);
 	track->count++;
 
-	fr_dlist_insert_tail(&inst->list, &track);
+	fr_dlist_insert_tail(&thread->list, &track);
 
-	if (inst->paused && (inst->outstanding < inst->max_outstanding)) {
-		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, resume_read);
-		inst->paused = false;
+	if (thread->paused && (thread->outstanding < thread->inst->max_outstanding)) {
+		(void) fr_event_filter_update(thread->el, thread->fd, FR_EVENT_FILTER_IO, resume_read);
+		thread->paused = false;
 	}
 
-	rad_assert(inst->fd >= 0);
+	rad_assert(thread->fd >= 0);
 
 	/*
 	 *	Seek to the START of the file, so that the FD will
@@ -546,23 +565,24 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 	 *	The mod_read() function will take care of seeking to
 	 *	the correct read offset.
 	 */
-	(void) lseek(inst->fd, 0, SEEK_SET);
+	(void) lseek(thread->fd, 0, SEEK_SET);
 
 #ifdef __linux__
-	fr_network_listen_read(inst->nr, talloc_parent(inst));
+	fr_network_listen_read(thread->nr, talloc_parent(thread->inst));
 #endif
 }
 
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
-	proto_detail_work_t		*inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
+	proto_detail_work_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_work_t);
+	proto_detail_work_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
 	fr_detail_entry_t		*track = packet_ctx;
 
 	if (buffer_len < 1) return -1;
 
-	rad_assert(inst->outstanding > 0);
-	rad_assert(inst->fd >= 0);
+	rad_assert(thread->outstanding > 0);
+	rad_assert(thread->fd >= 0);
 
 	if (!buffer[0]) {
 		struct timeval when, now;
@@ -572,7 +592,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		if (inst->mrc && (track->count >= inst->mrc)) {
 			DEBUG("%s - packet %d failed after %u retransmissions",
-			      inst->name, track->id, track->count);
+			      thread->name, track->id, track->count);
 			goto fail;
 		}
 
@@ -597,7 +617,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 				end.tv_sec += inst->mrd;
 				if (timercmp(&now, &end, >=)) {
 					DEBUG("%s - packet %d failed after %u seconds",
-					      inst->name, track->id, inst->mrd);
+					      thread->name, track->id, inst->mrd);
 					goto fail;
 				}
 			}
@@ -610,21 +630,22 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		when.tv_usec = track->rt % USEC;
 
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %d.%06ds",
-		      inst->name, track->id, (int) when.tv_sec, (int) when.tv_usec);
+		      thread->name, track->id, (int) when.tv_sec, (int) when.tv_usec);
 
 		fr_timeval_add(&when, &now, &when);
 
-		if (fr_event_timer_insert(inst, inst->el, &track->ev, &when, work_retransmit, track) < 0) {
-			ERROR("%s - Failed inserting retransmission timeout", inst->name);
+		if (fr_event_timer_insert(thread, thread->el, &track->ev, &when, work_retransmit, track) < 0) {
+			ERROR("%s - Failed inserting retransmission timeout", thread->name);
 		fail:
 			if (inst->track_progress && (track->done_offset > 0)) goto mark_done;
 			goto free_track;
 		}
 
-		if (!inst->paused && (inst->outstanding >= inst->max_outstanding)) {
-			(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, pause_read);
-			inst->paused = true;
+		if (!thread->paused && (thread->outstanding >= inst->max_outstanding)) {
+			(void) fr_event_filter_update(thread->el, thread->fd, FR_EVENT_FILTER_IO, pause_read);
+			thread->paused = true;
 		}
+
 		return 1;
 
 	} else if (inst->track_progress && (track->done_offset > 0)) {
@@ -633,22 +654,29 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	Seek to the entry, mark it as done, and then seek to
 		 *	the point in the file where we were reading from.
 		 */
-		(void) lseek(inst->fd, track->done_offset, SEEK_SET);
-		if (write(inst->fd, "Done", 4) < 0) {
-			ERROR("%s - Failed marking entry as done: %s", inst->name, fr_syserror(errno));
+		(void) lseek(thread->fd, track->done_offset, SEEK_SET);
+		if (write(thread->fd, "Done", 4) < 0) {
+			ERROR("%s - Failed marking entry as done: %s", thread->name, fr_syserror(errno));
 		}
-		(void) lseek(inst->fd, inst->read_offset, SEEK_SET);
+		(void) lseek(thread->fd, thread->read_offset, SEEK_SET);
 	}
 
 free_track:
-	inst->outstanding--;
+	thread->outstanding--;
 
 	/*
 	 *	If we need to read some more packet, let's do so.
 	 */
-	if (inst->paused && (inst->outstanding < inst->max_outstanding)) {
-		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, resume_read);
-		inst->paused = false;
+	if (thread->paused && (thread->outstanding < inst->max_outstanding)) {
+		(void) fr_event_filter_update(thread->el, thread->fd, FR_EVENT_FILTER_IO, resume_read);
+		thread->paused = false;
+
+		/*
+		 *	And seek to the start of the file, so that the
+		 *	reader gets activated again.  The reader will
+		 *	lseek() to the read offset, so this seek is fine.
+		 */
+		(void) lseek(thread->fd, 0, SEEK_SET);
 	}
 
 	/*
@@ -660,10 +688,12 @@ free_track:
 	 *	Close the socket if we're at EOF, and there are no
 	 *	outstanding replies to deal with.
 	 */
-	if (inst->closing && !inst->outstanding) {
+	if (thread->closing && !thread->outstanding) {
+		MPRINT("WRITE ASKED TO CLOSE");
 		return 0;
 	}
 
+	MPRINT("WRITE RETURN B %ld", buffer_len);
 	return buffer_len;
 }
 
@@ -672,15 +702,20 @@ free_track:
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
+	proto_detail_work_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_work_t);
+	proto_detail_work_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
+
+	fr_dlist_init(&thread->list, fr_detail_entry_t, entry);
 
 	/*
 	 *	Open the file if we haven't already been given one.
 	 */
-	if (inst->fd < 0) {
-		li->fd = inst->fd = open(inst->filename_work, inst->mode);
-		if (inst->fd < 0) {
-			cf_log_err(inst->cs, "Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
+	if (thread->fd < 0) {
+		thread->filename_work = talloc_strdup(inst, inst->filename_work);
+
+		li->fd = thread->fd = open(thread->filename_work, inst->mode);
+		if (thread->fd < 0) {
+			cf_log_err(inst->cs, "Failed opening %s: %s", thread->filename_work, fr_syserror(errno));
 			return -1;
 		}
 	}
@@ -691,32 +726,36 @@ static int mod_open(fr_listen_t *li)
 	if (inst->track_progress) {
 		struct stat buf;
 
-		if (fstat(inst->fd, &buf) < 0) {
-			cf_log_err(inst->cs, "Failed examining %s: %s", inst->filename_work, fr_syserror(errno));
+		if (fstat(thread->fd, &buf) < 0) {
+			cf_log_err(inst->cs, "Failed examining %s: %s", thread->filename_work, fr_syserror(errno));
 			return -1;
 		}
 
-		inst->file_size = buf.st_size;
+		thread->file_size = buf.st_size;
 	} else {
 		/*
 		 *	Avoid triggering erroneous EOF.
 		 */
-		inst->file_size = 1;
+		thread->file_size = 1;
 	}
 
-	rad_assert(inst->name == NULL);
-	rad_assert(inst->filename_work != NULL);
-	inst->name = talloc_typed_asprintf(inst, "proto_detail working file %s", inst->filename_work);
+	rad_assert(thread->name == NULL);
+	rad_assert(thread->filename_work != NULL);
+	thread->name = talloc_typed_asprintf(thread, "proto_detail working file %s", thread->filename_work);
 
 	DEBUG("Listening on %s bound to virtual server %s",
-	      inst->name, cf_section_name2(inst->parent->server_cs));
+	      thread->name, cf_section_name2(inst->parent->server_cs));
 
 	return 0;
 }
 
 
-static int mod_close_internal(proto_detail_work_t *inst)
+static int mod_close_internal(proto_detail_work_thread_t *thread)
 {
+	proto_detail_work_t const *inst = thread->inst;
+
+	rad_assert(thread->eof);
+
 	/*
 	 *	One less worker...  we check for "0" because of the
 	 *	hacks in proto_detail which let us start up with
@@ -727,21 +766,23 @@ static int mod_close_internal(proto_detail_work_t *inst)
 	if (inst->parent->num_workers > 0) inst->parent->num_workers--;
 	pthread_mutex_unlock(&inst->parent->worker_mutex);
 
-	DEBUG("Closing and deleting detail worker file %s", inst->name);
+	DEBUG("Closing and deleting detail worker file %s", thread->name);
 
 #ifdef NOTE_REVOKE
-	fr_event_fd_delete(inst->el, inst->fd, FR_EVENT_FILTER_VNODE);
+	fr_event_fd_delete(thread->el, thread->fd, FR_EVENT_FILTER_VNODE);
 #endif
 
-	unlink(inst->filename_work);
+	unlink(thread->filename_work);
 
-	close(inst->fd);
-	inst->fd = -1;
+	close(thread->fd);
+	thread->fd = -1;
 
-	if (inst->free_on_close) {
-		fr_listen_t *parent = talloc_get_type_abort(talloc_parent(inst), fr_listen_t);
-
-		talloc_free(parent);
+	/*
+	 *	If we've been spawned from proto_detail_file, clean
+	 *	ourselves up, including our listener.
+	 */
+	if (thread->listen) {
+		talloc_free(thread->listen);
 	}
 
 	return 0;
@@ -753,22 +794,22 @@ static int mod_close_internal(proto_detail_work_t *inst)
  */
 static int mod_close(fr_listen_t *li)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
+	proto_detail_work_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
 
-	return mod_close_internal(inst);
+	return mod_close_internal(thread);
 }
 
 #ifdef NOTE_REVOKE
 static void mod_revoke(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(uctx, proto_detail_work_t);
+	proto_detail_work_thread_t *thread = talloc_get_type_abort(uctx, proto_detail_work_thread_t);
 
 	/*
 	 *	The underlying file system is gone.  Stop reading the
 	 *	file, destroy all of the IO handlers, and delete everything.
 	 */
-	DEBUG("Detail worker %s had file system unmounted.  Stopping.", inst->name);
-	mod_close_internal(inst);
+	DEBUG("Detail worker %s had file system unmounted.  Stopping.", thread->name);
+	mod_close_internal(thread);
 }
 #endif
 
@@ -781,7 +822,7 @@ static void mod_revoke(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
  */
 static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
+	proto_detail_work_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
 
 #ifdef NOTE_REVOKE
 	fr_event_vnode_func_t funcs;
@@ -789,29 +830,27 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	memset(&funcs, 0, sizeof(funcs));
 	funcs.revoke = mod_revoke;
 
-	if (fr_event_filter_insert(inst, el, inst->fd, FR_EVENT_FILTER_VNODE, &funcs, NULL, inst) < 0) {
+	if (fr_event_filter_insert(thread, el, thread->fd, FR_EVENT_FILTER_VNODE, &funcs, NULL, thread) < 0) {
 		WARN("Failed to add event watching for unmounted file system");
 	}
 #endif
 
-	inst->el = el;
-	inst->nr = nr;
+	thread->el = el;
+	thread->nr = nr;
 }
 
 
 static char const *mod_name(fr_listen_t *li)
-{
-	proto_detail_work_t *inst = talloc_get_type_abort(li->thread_instance, proto_detail_work_t);
 
-	return inst->name;
+{	proto_detail_work_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_work_thread_t);
+
+	return thread->name;
 }
 
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
 	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 	RADCLIENT *client;
-
-	fr_dlist_init(&inst->list, fr_detail_entry_t, entry);
 
 	client = inst->client = talloc_zero(inst, RADCLIENT);
 	if (!inst->client) return 0;
@@ -820,7 +859,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	client->ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
 	client->src_ipaddr = client->ipaddr;
 
-	client->longname = client->shortname = client->secret = inst->filename_work;
+	client->longname = client->shortname = client->secret = inst->filename;
 	client->nas_type = talloc_strdup(client, "other");
 
 	return 0;
@@ -841,7 +880,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
 	inst->cs = cs;
-	inst->fd = -1;
 
 	if (inst->track_progress) {
 		inst->mode = O_RDWR;
@@ -882,6 +920,7 @@ fr_app_io_t proto_detail_work = {
 	.name			= "detail_work",
 	.config			= file_listen_config,
 	.inst_size		= sizeof(proto_detail_work_t),
+	.thread_inst_size	= sizeof(proto_detail_work_thread_t),
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 
