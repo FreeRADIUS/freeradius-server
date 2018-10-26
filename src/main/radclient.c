@@ -355,10 +355,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		request->packet->src_ipaddr = client_ipaddr;
 		request->packet->src_port = client_port;
 		request->packet->dst_ipaddr = server_ipaddr;
-		request->packet->dst_port = server_port;
 		request->packet->proto = ipproto;
 #endif
 
+		request->packet->dst_port = server_port;
 		request->files = files;
 		request->packet->id = -1; /* allocate when sending */
 		request->num = num++;
