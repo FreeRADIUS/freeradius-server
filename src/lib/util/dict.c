@@ -4803,7 +4803,17 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			ctx->old_dict = ctx->dict;
 
 			if (argc != 2) {
-				fr_strerror_printf("Invalid BEGIN-PROTOCOL entry");
+				fr_strerror_printf_push("Invalid BEGIN-PROTOCOL entry");
+				goto error;
+			}
+
+			/*
+			 *	If we're not parsing in the context of the internal
+			 *	dictionary, then we don't allow BEGIN-PROTOCOL
+			 *	statements.
+			 */
+			if (ctx->dict != fr_dict_internal) {
+				fr_strerror_printf_push("Nested BEGIN-PROTOCOL statements are not allowed");
 				goto error;
 			}
 
