@@ -4787,7 +4787,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "PROTOCOL") == 0) {
 			if (argc < 2) {
-				fr_strerror_printf("Invalid PROTOCOL entry");
+				fr_strerror_printf_push("Invalid PROTOCOL entry");
 				goto error;
 			}
 			if (dict_read_process_protocol(argv + 1, argc - 1) == -1) goto error;
