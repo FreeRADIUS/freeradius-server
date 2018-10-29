@@ -686,7 +686,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		if ((strcmp(name, "recv") == 0) && (dv->value->vb_uint32 <= FR_CODE_MAX) &&
 		    fr_request_packets[dv->value->vb_uint32] &&
 		    !inst->code_allowed[dv->value->vb_uint32]) {
-			cf_log_warn(subcs, "Skipping %s %s { ...}", name, packet_type);
+			/* Don't emit warnings here - likely handled by a different listen section */
 			continue;
 		}
 
