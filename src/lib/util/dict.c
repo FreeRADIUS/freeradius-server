@@ -5244,7 +5244,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 	 */
 	dict = fr_dict_by_protocol_name(proto_name);
 	if (!dict) {
-		fr_strerror_printf("Dictionary '%s' missing 'BEGIN-PROTOCOL %s' declaration", dir, proto_name);
+		fr_strerror_printf("Dictionary \"%s\" missing \"BEGIN-PROTOCOL %s\" declaration", dir, proto_name);
 		goto error;
 	}
 	/*
