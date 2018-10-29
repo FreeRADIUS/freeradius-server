@@ -310,7 +310,9 @@ int fr_get_debug_state(void)
 		 *	Disable the leak checker for this forked process
 		 *	so we don't get spurious leaks reported.
 		 */
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
 		lsan_disable = true;
+#endif
 
 DIAG_OFF(deprecated-declarations);
 		flags = PT_ATTACH;
