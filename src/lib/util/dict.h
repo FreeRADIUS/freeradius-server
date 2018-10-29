@@ -358,6 +358,7 @@ int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load);
 int			fr_dict_autoload(fr_dict_autoload_t const *to_load);
 
 void			fr_dict_autofree(fr_dict_autoload_t const *to_free);
+/** @} */
 
 /** @name Initialisation
  *
