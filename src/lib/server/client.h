@@ -117,9 +117,6 @@ struct rad_client {
 
 	int			proto;			//!< Protocol number.
 	fr_socket_limit_t	limit;			//!< Connections per client (TCP clients only).
-
-	FR_STRUCT_MEMBER_SIGNATURE(secret)
-	FR_STRUCT_SIGNATURE
 };
 
 RADCLIENT_LIST	*client_list_init(CONF_SECTION *cs);
