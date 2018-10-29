@@ -131,6 +131,7 @@ static TALLOC_CTX *talloc_autofree_ctx;
 static int lsan_test_pipe[2] = {-1, -1};
 static int lsan_test_pid = -1;
 static int lsan_state = INT_MAX;
+static bool lsan_disable = false;	//!< Explicitly disable LSAN
 
 /*
  *	Some versions of lsan_interface.h are broken and don't declare
@@ -164,6 +165,9 @@ const char CC_HINT(used) *__lsan_default_suppressions(void)
 int CC_HINT(used) __lsan_is_turned_off(void)
 {
 	uint8_t ret = 1;
+
+	/* Disable LSAN explicitly - Used for tests involving fork() */
+	if (lsan_disable) return 1;
 
 	/* Parent */
 	if (lsan_test_pid != 0) return 0;
@@ -301,6 +305,12 @@ int fr_get_debug_state(void)
 		int8_t	ret = DEBUGGER_STATE_NOT_ATTACHED;
 		int	ppid = getppid();
 		int	flags;
+
+		/*
+		 *	Disable the leak checker for this forked process
+		 *	so we don't get spurious leaks reported.
+		 */
+		lsan_disable = true;
 
 DIAG_OFF(deprecated-declarations);
 		flags = PT_ATTACH;
