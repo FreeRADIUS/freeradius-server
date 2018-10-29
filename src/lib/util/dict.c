@@ -94,6 +94,11 @@ typedef struct dict_enum_fixup_t {
  * There would also be conflicts for DHCP(v6)/RADIUS attributes etc...
  */
 struct fr_dict {
+	bool			in_protocol_by_name;	//!< Whether the dictionary has been inserted into the
+							///< protocol_by_name hash.
+	bool			in_protocol_by_num;	//!< Whether the dictionary has been inserted into the
+							//!< protocol_by_num table.
+
 	dict_enum_fixup_t	*enum_fixup;
 
 	dict_stat_t		*stat_head;
@@ -1281,11 +1286,13 @@ static int dict_protocol_add(fr_dict_t *dict)
 
 		return 0;
 	}
+	dict->in_protocol_by_name = true;
 
 	if (!fr_hash_table_insert(protocol_by_num, dict)) {
 		fr_strerror_printf("%s: Duplicate protocol number %i", __FUNCTION__, dict->root->attr);
 		return -1;
 	}
+	dict->in_protocol_by_num = true;
 
 	return 0;
 }
@@ -3710,9 +3717,14 @@ static int _dict_free(fr_dict_t *dict)
 {
 	if (dict == fr_dict_internal) fr_dict_internal = NULL;
 
-	fr_hash_table_delete(protocol_by_name, dict);
-	fr_hash_table_delete(protocol_by_num, dict);
-
+	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(protocol_by_name, dict))) {
+		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
+		return -1;
+	}
+	if (!fr_cond_assert(!dict->in_protocol_by_num || fr_hash_table_delete(protocol_by_num, dict))) {
+		fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
+		return -1;
+	}
 	fr_perror("Freeing %s", dict->root->name);
 
 	return 0;
