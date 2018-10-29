@@ -424,14 +424,6 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
-	dependency_feature_add(cs, "threads",
-#ifdef WITH_THREADS
-				true
-#else
-				false
-#endif
-				);
-
 	dependency_feature_add(cs, "tls",
 #ifdef WITH_TLS
 				true
