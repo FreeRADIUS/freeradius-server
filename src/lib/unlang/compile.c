@@ -901,18 +901,18 @@ static bool pass2_fixup_map(unlang_group_t *g)
 
 static void unlang_dump(unlang_t *mc, int depth)
 {
-	unlang_t *this;
+	unlang_t *inst;
 	unlang_group_t *g;
 	vp_map_t *map;
 	char buffer[1024];
 
-	for (this = mc; this != NULL; this = this->next) {
-		switch (this->type) {
+	for (inst = mc; inst != NULL; inst = inst->next) {
+		switch (inst->type) {
 		default:
 			break;
 
 		case UNLANG_TYPE_MODULE: {
-			unlang_module_t *single = unlang_generic_to_module(this);
+			unlang_module_t *single = unlang_generic_to_module(inst);
 
 			DEBUG("%.*s%s", depth, modcall_spaces,
 				single->module_instance->name);
@@ -921,16 +921,16 @@ static void unlang_dump(unlang_t *mc, int depth)
 
 #ifdef WITH_UNLANG
 		case UNLANG_TYPE_MAP:
-			g = unlang_generic_to_group(this); /* FIXMAP: print option 3, too */
+			g = unlang_generic_to_group(inst); /* FIXMAP: print option 3, too */
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-			      unlang_ops[this->type].name,
+			      unlang_ops[inst->type].name,
 			      cf_section_name2(g->cs));
 			goto print_map;
 
 		case UNLANG_TYPE_UPDATE:
-			g = unlang_generic_to_group(this);
+			g = unlang_generic_to_group(inst);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_ops[this->type].name);
+				unlang_ops[inst->type].name);
 
 		print_map:
 			for (map = g->map; map != NULL; map = map->next) {
@@ -942,38 +942,38 @@ static void unlang_dump(unlang_t *mc, int depth)
 			break;
 
 		case UNLANG_TYPE_ELSE:
-			g = unlang_generic_to_group(this);
+			g = unlang_generic_to_group(inst);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_ops[this->type].name);
+				unlang_ops[inst->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
 		case UNLANG_TYPE_IF:
 		case UNLANG_TYPE_ELSIF:
-			g = unlang_generic_to_group(this);
+			g = unlang_generic_to_group(inst);
 			cond_snprint(buffer, sizeof(buffer), g->cond);
 			DEBUG("%.*s%s (%s) {", depth, modcall_spaces,
-				unlang_ops[this->type].name, buffer);
+				unlang_ops[inst->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
 		case UNLANG_TYPE_SWITCH:
 		case UNLANG_TYPE_CASE:
-			g = unlang_generic_to_group(this);
+			g = unlang_generic_to_group(inst);
 			tmpl_snprint(buffer, sizeof(buffer), g->vpt);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				unlang_ops[this->type].name, buffer);
+				unlang_ops[inst->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
 		case UNLANG_TYPE_POLICY:
 		case UNLANG_TYPE_FOREACH:
-			g = unlang_generic_to_group(this);
+			g = unlang_generic_to_group(inst);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				unlang_ops[this->type].name, this->name);
+				unlang_ops[inst->type].name, inst->name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -984,18 +984,18 @@ static void unlang_dump(unlang_t *mc, int depth)
 
 #endif
 		case UNLANG_TYPE_GROUP:
-			g = unlang_generic_to_group(this);
+			g = unlang_generic_to_group(inst);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-			      unlang_ops[this->type].name);
+			      unlang_ops[inst->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
 		case UNLANG_TYPE_LOAD_BALANCE:
 		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
-			g = unlang_generic_to_group(this);
+			g = unlang_generic_to_group(inst);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_ops[this->type].name);
+				unlang_ops[inst->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -2857,7 +2857,7 @@ static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_compone
 }
 
 
-static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci, module_instance_t *this, unlang_group_type_t parentgroup_type, char const *realname)
+static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci, module_instance_t *inst, unlang_group_type_t parentgroup_type, char const *realname)
 {
 	unlang_t *c;
 	unlang_module_t *single;
@@ -2866,12 +2866,12 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	Check if the module in question has the necessary
 	 *	component.
 	 */
-	if (!this->module->methods[unlang_ctx->component]) {
+	if (!inst->module->methods[unlang_ctx->component]) {
 		if (unlang_ctx->section_name1 && unlang_ctx->section_name2) {
-			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s %s { ... }' sections -- they have no such method.", this->module->name,
+			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s %s { ... }' sections -- they have no such method.", inst->module->name,
 				   unlang_ctx->section_name1, unlang_ctx->section_name2);
 		} else {
-			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s { ... }' sections -- they have no such method.", this->module->name,
+			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s { ... }' sections -- they have no such method.", inst->module->name,
 				   unlang_ctx->name);
 		}
 
@@ -2879,8 +2879,8 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	}
 
 	single = talloc_zero(parent, unlang_module_t);
-	single->module_instance = this;
-	single->method = this->module->methods[unlang_ctx->component];
+	single->module_instance = inst;
+	single->method = inst->module->methods[unlang_ctx->component];
 
 	c = unlang_module_to_generic(single);
 	c->parent = parent;
@@ -2956,7 +2956,7 @@ static unlang_t *compile_item(unlang_t *parent,
 {
 	char const		*modrefname, *p;
 	unlang_t		*c;
-	module_instance_t	*this;
+	module_instance_t	*inst;
 	CONF_SECTION		*cs, *subcs, *modules;
 	CONF_ITEM		*loop;
 	char const		*realname;
@@ -3188,7 +3188,7 @@ static unlang_t *compile_item(unlang_t *parent,
 	modules = cf_section_find(cf_root(ci), "modules", NULL);
 	if (!modules) goto fail;
 
-	this = NULL;
+	inst = NULL;
 	realname = modrefname;
 
 	/*
@@ -3202,12 +3202,12 @@ static unlang_t *compile_item(unlang_t *parent,
 	 *	modules belongs in raddb/mods-available/,
 	 *	which isn't loaded into the "modules" section.
 	 */
-	this = module_find_with_method(&component, modules, realname);
-	if (this) {
+	inst = module_find_with_method(&component, modules, realname);
+	if (inst) {
 		UPDATE_CTX2;
 
-		*modname = this->module->name;
-		return compile_module(parent, &unlang_ctx2, ci, this, parent_group_type, realname);
+		*modname = inst->module->name;
+		return compile_module(parent, &unlang_ctx2, ci, inst, parent_group_type, realname);
 	}
 
 	/*
