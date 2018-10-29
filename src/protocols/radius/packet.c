@@ -491,7 +491,6 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_packet_print_hex(packet);
 #endif
 
-#ifdef WITH_TCP
 	/*
 	 *	If the socket is TCP, call write().  Calling sendto()
 	 *	is allowed on some platforms, but it's not nice.  Even
@@ -507,7 +506,6 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		fr_strerror_printf("sendto failed: %s", fr_syserror(errno));
 		return -1;
 	}
-#endif
 
 	/*
 	 *	And send it on it's way.
@@ -523,9 +521,7 @@ void fr_radius_packet_print_hex(RADIUS_PACKET const *packet)
 	if (!packet->data || !fr_log_fp) return;
 
 	fprintf(fr_log_fp, "  Socket:\t%d\n", packet->sockfd);
-#ifdef WITH_TCP
 	fprintf(fr_log_fp, "  Proto:\t%d\n", packet->proto);
-#endif
 
 	if (packet->src_ipaddr.af == AF_INET) {
 		char buffer[INET6_ADDRSTRLEN];

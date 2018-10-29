@@ -270,7 +270,6 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 
 	} else {
 		MPRINT("READ UNTIL EOF");
-
 		/*
 		 *	We didn't read any more data from the file,
 		 *	but there should be data left in the buffer.

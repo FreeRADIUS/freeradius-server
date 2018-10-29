@@ -91,10 +91,8 @@ RADIUS_PACKET *fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 	reply->vps = NULL;
 	reply->data = NULL;
 	reply->data_len = 0;
-
-#ifdef WITH_TCP
 	reply->proto = packet->proto;
-#endif
+
 	return reply;
 }
 

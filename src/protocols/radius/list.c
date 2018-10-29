@@ -90,9 +90,7 @@ void fr_request_from_reply(RADIUS_PACKET *request,
 {
 	request->sockfd = reply->sockfd;
 	request->id = reply->id;
-#ifdef WITH_TCP
 	request->proto = reply->proto;
-#endif
 	request->src_port = reply->dst_port;
 	request->dst_port = reply->src_port;
 	request->src_ipaddr = reply->dst_ipaddr;
@@ -119,9 +117,7 @@ typedef struct fr_packet_socket_t {
 
 	bool		dont_use;
 
-#ifdef WITH_TCP
 	int		proto;
-#endif
 
 	uint8_t		id[32];
 } fr_packet_socket_t;
@@ -237,13 +233,6 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 		return false;
 	}
 
-#ifndef WITH_TCP
-	if (proto != IPPROTO_UDP) {
-		fr_strerror_printf("only UDP is supported");
-		return false;
-	}
-#endif
-
 	ps = NULL;
 	i = start = SOCK2OFFSET(sockfd);
 
@@ -263,9 +252,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	memset(ps, 0, sizeof(*ps));
 	ps->ctx = ctx;
-#ifdef WITH_TCP
 	ps->proto = proto;
-#endif
 
 	/*
 	 *	Get address family, etc. first, so we know if we
@@ -392,7 +379,6 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl, RADIUS_PACKET 
 	my_request.sockfd = reply->sockfd;
 	my_request.id = reply->id;
 
-#ifdef WITH_TCP
 	/*
 	 *	TCP sockets are always bound to the correct src/dst IP/port
 	 */
@@ -407,9 +393,7 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl, RADIUS_PACKET 
 		my_request.dst_ipaddr = ps->dst_ipaddr;
 		my_request.dst_port = ps->dst_port;
 
-	} else
-#endif
-	{
+	} else {
 		if (ps->src_any) {
 			my_request.src_ipaddr = ps->src_ipaddr;
 		} else {
@@ -421,9 +405,7 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl, RADIUS_PACKET 
 		my_request.dst_port = reply->src_port;
 	}
 
-#ifdef WITH_TCP
 	my_request.proto = reply->proto;
-#endif
 	request = &my_request;
 
 	return rbtree_finddata(pl->tree, &request);
@@ -483,13 +465,6 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		fr_strerror_printf("No destination address/port specified");
 		return false;
 	}
-
-#ifndef WITH_TCP
-	if ((proto != 0) && (proto != IPPROTO_UDP)) {
-		fr_strerror_printf("Invalid destination protocol");
-		return false;
-	}
-#endif
 
 	/*
 	 *	Special case: unspec == "don't care"
@@ -554,9 +529,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		 */
 		if (ps->num_outgoing == 256) continue;
 
-#ifdef WITH_TCP
 		if (ps->proto != proto) continue;
-#endif
 
 		/*
 		 *	Address families don't match, skip it.
@@ -776,11 +749,9 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t m
 
 		if (!FD_ISSET(pl->sockets[start].sockfd, set)) continue;
 
-#ifdef WITH_TCP
 		if (pl->sockets[start].proto == IPPROTO_TCP) {
 			packet = fr_tcp_recv(pl->sockets[start].sockfd, false);
 		} else
-#endif
 			packet = fr_radius_packet_recv(NULL, pl->sockets[start].sockfd, UDP_FLAGS_NONE,
 						       max_attributes, require_ma);
 		if (!packet) continue;
@@ -791,9 +762,7 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t m
 		 */
 
 		pl->last_recv = start;
-#ifdef WITH_TCP
 		packet->proto = pl->sockets[start].proto;
-#endif
 		return packet;
 	} while (start != pl->last_recv);
 

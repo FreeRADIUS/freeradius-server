@@ -49,10 +49,8 @@ struct rad_client_list {
 #ifdef WITH_TRIE
 	fr_trie_t	*v4_udp;
 	fr_trie_t	*v6_udp;
-#ifdef WITH_TCP
 	fr_trie_t	*v4_tcp;
 	fr_trie_t	*v6_tcp;
-#endif
 #else
 	rbtree_t	*tree[129];
 #endif
@@ -125,7 +123,6 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 		return NULL;
 	}
 
-#ifdef WITH_TCP
 	clients->v4_tcp = fr_trie_alloc(clients);
 	if (!clients->v4_tcp) {
 		talloc_free(clients);
@@ -137,7 +134,6 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 		talloc_free(clients);
 		return NULL;
 	}
-#endif
 #endif	/* WITH_TRIE */
 
 	return clients;
@@ -156,24 +152,17 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
  *	structure that does udp/tcp/wildcard demultiplexing
  */
 static fr_trie_t *clients_trie(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
-#ifndef WITH_TCP
-			       UNUSED
-#endif
 			       int proto)
 {
 	if (ipaddr->af == AF_INET) {
-#ifdef WITH_TCP
 		if (proto == IPPROTO_TCP) return clients->v4_tcp;
-#endif
 
 		return clients->v4_udp;
 	}
 
 	rad_assert(ipaddr->af == AF_INET6);
 
-#ifdef WITH_TCP
 	if (proto == IPPROTO_TCP) return clients->v6_tcp;
-#endif
 
 	return clients->v6_udp;
 }
@@ -420,11 +409,8 @@ RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 
 static fr_ipaddr_t cl_ipaddr;
 static char const *cl_srcipaddr = NULL;
-#ifdef WITH_TCP
 static char const *hs_proto = NULL;
-#endif
 
-#ifdef WITH_TCP
 static CONF_PARSER limit_config[] = {
 	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, RADCLIENT, limit.max_connections), .dflt = "16" },
 
@@ -433,7 +419,6 @@ static CONF_PARSER limit_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_UINT32, RADCLIENT, limit.idle_timeout), .dflt = "30" },
 	CONF_PARSER_TERMINATOR
 };
-#endif
 
 static const CONF_PARSER client_config[] = {
 	{ FR_CONF_POINTER("ipaddr", FR_TYPE_COMBO_IP_PREFIX, &cl_ipaddr) },
@@ -454,10 +439,8 @@ static const CONF_PARSER client_config[] = {
 
 	{ FR_CONF_OFFSET("track_connections", FR_TYPE_BOOL, RADCLIENT, use_connected) },
 
-#ifdef WITH_TCP
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, &hs_proto) },
 	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
-#endif
 
 	CONF_PARSER_TERMINATOR
 };
@@ -675,11 +658,8 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 		cf_log_err(cs, "Error parsing client section");
 	error:
 		client_free(c);
-#ifdef WITH_TCP
 		hs_proto = NULL;
 		cl_srcipaddr = NULL;
-#endif
-
 		return NULL;
 	}
 
@@ -769,25 +749,19 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 		if (strcmp(hs_proto, "udp") == 0) {
 			hs_proto = NULL;
 
-#ifdef WITH_TCP
 		} else if (strcmp(hs_proto, "tcp") == 0) {
 			hs_proto = NULL;
 			c->proto = IPPROTO_TCP;
-#  ifdef WITH_TLS
+#ifdef WITH_TLS
 		} else if (strcmp(hs_proto, "tls") == 0) {
 			hs_proto = NULL;
 			c->proto = IPPROTO_TCP;
 			c->tls_required = true;
 
-		} else if (strcmp(hs_proto, "radsec") == 0) {
-			hs_proto = NULL;
-			c->proto = IPPROTO_TCP;
-			c->tls_required = true;
-#  endif
+#endif
 		} else if (strcmp(hs_proto, "*") == 0) {
 			hs_proto = NULL;
 			c->proto = IPPROTO_IP; /* fake for dual */
-#endif
 		} else {
 			cf_log_err(cs, "Unknown proto \"%s\".", hs_proto);
 			goto error;
@@ -847,7 +821,6 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 	}
 #endif
 
-#ifdef WITH_TCP
 	if ((c->proto == IPPROTO_TCP) || (c->proto == IPPROTO_IP)) {
 		if ((c->limit.idle_timeout > 0) && (c->limit.idle_timeout < 5))
 			c->limit.idle_timeout = 5;
@@ -856,7 +829,6 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 		if ((c->limit.lifetime > 0) && (c->limit.idle_timeout > c->limit.lifetime))
 			c->limit.idle_timeout = 0;
 	}
-#endif
 
 	return c;
 }

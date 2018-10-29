@@ -67,9 +67,7 @@ static uint16_t client_port = 0;
 
 static int sockfd;
 
-#ifdef WITH_TCP
 static char const *proto = NULL;
-#endif
 static int ipproto = IPPROTO_UDP;
 
 static rbtree_t *filename_tree = NULL;
@@ -172,6 +170,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -h                     Print usage help information.\n");
 	fprintf(stderr, "  -n <num>               Send N requests/s\n");
 	fprintf(stderr, "  -p <num>               Send 'num' packets from a file in parallel.\n");
+	fprintf(stderr, "  -P <proto>             Use proto (tcp or udp) for transport.\n");
 	fprintf(stderr, "  -q                     Do not print anything out.\n");
 	fprintf(stderr, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -s                     Print out summary information of auth results.\n");
@@ -179,10 +178,6 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds before retrying (may be a floating point number).\n");
 	fprintf(stderr, "  -v                     Show program version information.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
-
-#ifdef WITH_TCP
-	fprintf(stderr, "  -P <proto>             Use proto (tcp or udp) for transport.\n");
-#endif
 
 	exit(1);
 }
@@ -870,7 +865,6 @@ static int send_one_packet(rc_request_t *request)
 			int mysockfd;
 			uint16_t port = 0;
 
-#ifdef WITH_TCP
 			if (proto) {
 				mysockfd = fr_socket_client_tcp(NULL,
 								&request->packet->dst_ipaddr,
@@ -880,7 +874,6 @@ static int send_one_packet(rc_request_t *request)
 					return 0;
 				}
 			} else
-#endif
 			{
 				mysockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
 				if (mysockfd < 0) {
@@ -1041,14 +1034,12 @@ static int recv_one_packet(int wait_time)
 	reply = fr_packet_list_recv(packet_list, &set, RADIUS_MAX_ATTRIBUTES, false);
 	if (!reply) {
 		ERROR("Received bad packet");
-#ifdef WITH_TCP
 		/*
 		 *	If the packet is bad, we close the socket.
 		 *	I'm not sure how to do that now, so we just
 		 *	die...
 		 */
 		if (proto) exit(1);
-#endif
 		return -1;	/* bad packet */
 	}
 
@@ -1064,8 +1055,6 @@ static int recv_one_packet(int wait_time)
 	reply->dst_ipaddr = client_ipaddr;
 	reply->dst_port = client_port;
 
-#ifdef WITH_TCP
-
 	/*
 	 *	TCP sockets don't use recvmsg(), and thus don't get
 	 *	the source IP/port.  However, since they're TCP, we
@@ -1076,7 +1065,6 @@ static int recv_one_packet(int wait_time)
 		reply->src_ipaddr = server_ipaddr;
 		reply->src_port = server_port;
 	}
-#endif
 
 	packet_p = fr_packet_list_find_byreply(packet_list, reply);
 	if (!packet_p) {
@@ -1218,11 +1206,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhn:p:qr:sS:t:vx"
-#ifdef WITH_TCP
-		"P:"
-#endif
-			   )) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhn:p:P:qr:sS:t:vx")) != EOF) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -1287,7 +1271,6 @@ int main(int argc, char **argv)
 			if (parallel <= 0) usage();
 			break;
 
-#ifdef WITH_TCP
 		case 'P':
 			proto = optarg;
 			if (strcmp(proto, "tcp") != 0) {
@@ -1300,8 +1283,6 @@ int main(int argc, char **argv)
 				ipproto = IPPROTO_TCP;
 			}
 			break;
-
-#endif
 
 		case 'q':
 			do_output = false;
@@ -1484,7 +1465,6 @@ int main(int argc, char **argv)
 
 	client_port = request_head->packet->src_port;
 
-#ifdef WITH_TCP
 	if (proto) {
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
 		if (sockfd < 0) {
@@ -1492,9 +1472,7 @@ int main(int argc, char **argv)
 			return -1;
 		}
 
-	} else
-#endif
-	{
+	} else {
 		sockfd = fr_socket_server_udp(&client_ipaddr, &client_port, NULL, false);
 		if (sockfd < 0) {
 			ERROR("Error opening socket: %s", fr_strerror());

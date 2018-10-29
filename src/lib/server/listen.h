@@ -86,12 +86,10 @@ struct rad_listen {
 	RAD_LISTEN_STATUS	status;
 	bool			old_style;
 
-#ifdef WITH_TCP
 	int			count;
 	bool			dual;
 	rbtree_t		*children;
 	rad_listen_t		*parent;
-#endif
 	bool			nodup;
 
 #if 0
@@ -161,7 +159,6 @@ typedef struct listen_socket_t {
 
 	rbtree_t		*dup_tree;	//!< only for auth packets
 
-#ifdef WITH_TCP
 	/* for a proxy connecting to home servers */
 	time_t			last_packet;
 	time_t			opened;
@@ -171,7 +168,6 @@ typedef struct listen_socket_t {
 	RADCLIENT		*client;
 
 	RADIUS_PACKET  	 	*packet; /* for reading partial packets */
-#endif
 
 #if 0
 	tls_session_t		*tls_session;

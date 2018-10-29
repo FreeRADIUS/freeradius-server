@@ -597,11 +597,9 @@ void request_stats_reply(REQUEST *request)
 			ipaddr.af = AF_INET;
 			ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 			client = client_find(cl, &ipaddr, IPPROTO_UDP);
-#ifdef WITH_TCP
 			if (!client) {
 				client = client_find(cl, &ipaddr, IPPROTO_TCP);
 			}
-#endif
 
 			/*
 			 *	Else look it up by number.

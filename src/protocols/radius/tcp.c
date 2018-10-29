@@ -28,8 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/tcp.h>
 
-#ifdef WITH_TCP
-
 RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 {
 	RADIUS_PACKET *packet = fr_radius_alloc(NULL, false);
@@ -172,5 +170,3 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 
 	return 1;		/* done reading the packet */
 }
-
-#endif /* WITH_TCP */

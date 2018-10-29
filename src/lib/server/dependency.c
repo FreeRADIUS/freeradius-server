@@ -424,14 +424,6 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
-	dependency_feature_add(cs, "tcp",
-#ifdef WITH_TCP
-				true
-#else
-				false
-#endif
-				);
-
 	dependency_feature_add(cs, "threads",
 #ifdef WITH_THREADS
 				true

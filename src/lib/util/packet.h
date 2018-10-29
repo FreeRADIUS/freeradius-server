@@ -72,10 +72,8 @@ typedef struct radius_packet {
 
 	uint32_t       		rounds;			//!< for State[0]
 
-#ifdef WITH_TCP
 	size_t			partial;
 	int			proto;
-#endif
 } RADIUS_PACKET;
 
 RADIUS_PACKET	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);

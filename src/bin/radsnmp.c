@@ -131,16 +131,13 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -h                     Print usage help information.\n");
 	fprintf(stderr, "  -l <file>              Log output to file.\n");
+	fprintf(stderr, "  -P <proto>             Use proto (tcp or udp) for transport.\n");
 	fprintf(stderr, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -S <file>              read secret from file, not command line.\n");
 	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds before retrying (may be a floating "
 		"point number).\n");
 	fprintf(stderr, "  -v                     Show program version information.\n");
 	fprintf(stderr, "  -x                     Increase debug level.\n");
-
-#ifdef WITH_TCP
-	fprintf(stderr, "  -P <proto>             Use proto (tcp or udp) for transport.\n");
-#endif
 
 	exit(EXIT_FAILURE);
 }
@@ -934,11 +931,7 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:l:n:p:qr:sS:t:vx"
-#ifdef WITH_TCP
-		"P:"
-#endif
-		)) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:l:n:p:P:qr:sS:t:vx")) != EOF) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -974,7 +967,6 @@ int main(int argc, char **argv)
 		}
 			break;
 
-#ifdef WITH_TCP
 		case 'P':
 			conf->proto_str = optarg;
 			if (strcmp(conf->proto_str, "tcp") != 0) {
@@ -983,8 +975,6 @@ int main(int argc, char **argv)
 				conf->proto = IPPROTO_TCP;
 			}
 			break;
-
-#endif
 
 		case 'r':
 			if (!isdigit((int) *optarg)) usage();
@@ -1130,11 +1120,9 @@ int main(int argc, char **argv)
 	}
 
 	switch (conf->proto) {
-#ifdef WITH_TCP
 	case IPPROTO_TCP:
 		sockfd = fr_socket_client_tcp(NULL, &conf->server_ipaddr, conf->server_port, true);
 		break;
-#endif
 
 	default:
 	case IPPROTO_UDP:

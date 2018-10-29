@@ -116,9 +116,7 @@ struct rad_client {
 	struct timeval		response_window;	//!< How long the client has to respond.
 
 	int			proto;			//!< Protocol number.
-#ifdef WITH_TCP
 	fr_socket_limit_t	limit;			//!< Connections per client (TCP clients only).
-#endif
 
 	FR_STRUCT_MEMBER_SIGNATURE(secret)
 	FR_STRUCT_SIGNATURE
