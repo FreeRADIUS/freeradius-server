@@ -355,7 +355,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		request->packet->src_port = client_port;
 		request->packet->dst_ipaddr = server_ipaddr;
 		request->packet->dst_port = server_port;
+#ifdef WITH_TCP
 		request->packet->proto = ipproto;
+#endif
 
 		request->files = files;
 		request->packet->id = -1; /* allocate when sending */
