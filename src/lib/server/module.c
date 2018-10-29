@@ -1024,7 +1024,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	 */
 	mi = module_find(modules, inst_name);
 	if (mi) {
-		ERROR("Duplicate module \"%s\", in file %s:%d and file %s:%d",
+		ERROR("Duplicate module \"%s\" in file %s[%d] and file %s[%d]",
 		      inst_name,
 		      cf_filename(cs),
 		      cf_lineno(cs),
