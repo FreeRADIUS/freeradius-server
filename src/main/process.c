@@ -5214,7 +5214,7 @@ static void handle_signal_self(int flag)
 	}
 #endif
 
-#if defined(WITH_TCP) && defined(WITH_PROXY) && defined(HAVE_PTHREAD_H)
+#if defined(WITH_PROXY) && defined(HAVE_PTHREAD_H)
 	/*
 	 *	There are new listeners in the list.  Run
 	 *	event_new_fd() on them.
