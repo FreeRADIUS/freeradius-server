@@ -584,7 +584,7 @@ static void unload_proto_library(void)
 	}
 }
 
-static size_t load_proto_library(char const *proto_name)
+static ssize_t load_proto_library(char const *proto_name)
 {
 	char dl_name[128];
 
@@ -604,7 +604,7 @@ static size_t load_proto_library(char const *proto_name)
 		if (!dl_handle) {
 			fprintf(stderr, "Failed to link to library \"%s\": %s\n", dl_name, fr_strerror());
 			unload_proto_library();
-			return -1;
+			return 0;
 		}
 
 		strlcpy(proto_name_prev, proto_name, sizeof(proto_name_prev));
@@ -613,7 +613,7 @@ static size_t load_proto_library(char const *proto_name)
 	return strlen(proto_name);
 }
 
-static size_t load_test_point_by_command(void **symbol, char *command, size_t offset, char const *dflt_symbol)
+static ssize_t load_test_point_by_command(void **symbol, char *command, size_t offset, char const *dflt_symbol)
 {
 	char		buffer[128];
 	char const	*p, *q;
@@ -622,7 +622,7 @@ static size_t load_test_point_by_command(void **symbol, char *command, size_t of
 
 	if (!dl_handle) {
 		fprintf(stderr, "No protocol library loaded. Specify library with \"load <proto name>\"\n");
-		exit(EXIT_FAILURE);
+		return 0;
 	}
 
 	p = command + offset;
@@ -642,7 +642,7 @@ static size_t load_test_point_by_command(void **symbol, char *command, size_t of
 	if (!dl_symbol) {
 		fprintf(stderr, "Test point (symbol \"%s\") not exported by library\n", symbol_name);
 		unload_proto_library();
-		exit(EXIT_FAILURE);
+		return 0;
 	}
 	*symbol = dl_symbol;
 
@@ -894,7 +894,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 				goto error;
 			}
 
-			load_proto_library(p);
+			if (load_proto_library(p) <= 0) goto error;
 			continue;
 		}
 
@@ -924,7 +924,8 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			p += 12;
 
 			if (*p != ' ') {
-				fprintf(stderr, "Prerequisite syntax is \"need-feature <feature>\".  Use -f to print features");
+				fprintf(stderr, "Prerequisite syntax is \"need-feature <feature>\".  "
+				        "Use -f to print features");
 				goto error;
 			}
 			p++;
@@ -1315,7 +1316,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 		if (strncmp(test_type, "decode-proto", 12) == 0) {
 			fr_test_point_proto_decode_t *tp;
 
-			load_test_point_by_command((void **)&tp, test_type, 12, "tp_decode");
+			if (load_test_point_by_command((void **)&tp, test_type, 12, "tp_decode") <= 0) goto error;
 
 			continue;
 		}
@@ -1326,7 +1327,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 		if (strncmp(test_type, "encode-proto", 12) == 0) {
 			fr_test_point_proto_encode_t *tp;
 
-			load_test_point_by_command((void **)&tp, test_type, 12, "tp_encode");
+			if (load_test_point_by_command((void **)&tp, test_type, 12, "tp_encode") <= 0) goto error;
 
 			continue;
 		}
@@ -1480,6 +1481,7 @@ int main(int argc, char *argv[])
 	 *	memory, so we get clean talloc reports.
 	 */
 done:
+	fr_dict_free(&dict);
 	xlat_free();
 	fr_strerror_free();
 
