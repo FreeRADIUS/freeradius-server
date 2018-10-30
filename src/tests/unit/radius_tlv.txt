@@ -1,4 +1,5 @@
 load radius
+load-dictionary radius
 
 # Encode deeply nested TLV under a vendor dictionary
 encode-pair Radius-Auth-Serv-Total-Unknown-Types = 99999
