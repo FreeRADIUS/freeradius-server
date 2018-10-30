@@ -1,3 +1,5 @@
+load-dictionary radius
+
 condition (ok =~ handled)
 data ERROR offset 7 Expected regular expression
 
