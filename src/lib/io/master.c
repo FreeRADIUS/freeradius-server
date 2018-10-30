@@ -2657,6 +2657,14 @@ static int _client_heap_free(fr_heap_t *heap)
 	return 0;
 }
 
+int fr_io_listen_free(fr_listen_t *li)
+{
+	if (!li->thread_instance) return 0;
+
+	talloc_free(li->thread_instance);
+	return 0;
+}
+
 int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *sc,
 			size_t default_message_size, size_t num_messages)
 {
@@ -2677,6 +2685,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 *	back again.
 	 */
 	MEM(li = talloc_zero(ctx, fr_listen_t));
+	talloc_set_destructor(li, fr_io_listen_free);
 
 	/*
 	 *	The first listener is the one for the application
