@@ -64,15 +64,6 @@ static char		*default_dict_dir;		//!< The default location for loading dictionar
  */
 fr_dict_t	*fr_dict_internal = NULL;	//!< Internal server dictionary.
 
-/*
- *	For faster HUP's, we cache the stat information for
- *	files we've $INCLUDEd
- */
-typedef struct dict_stat_t {
-	struct dict_stat_t *next;
-	struct stat stat_buf;
-} dict_stat_t;
-
 /** A temporary enum value, which we'll resolve later
  *
  */
@@ -100,9 +91,6 @@ struct fr_dict {
 							//!< protocol_by_num table.
 
 	dict_enum_fixup_t	*enum_fixup;
-
-	dict_stat_t		*stat_head;
-	dict_stat_t		*stat_tail;
 
 	fr_hash_table_t		*vendors_by_name;	//!< Lookup vendor by name.
 	fr_hash_table_t		*vendors_by_num;	//!< Lookup vendor by PEN.
@@ -444,72 +432,6 @@ static int dict_enum_value_cmp(void const *one, void const *two)
 	fr_dict_enum_t const *b = two;
 
 	return fr_value_box_cmp(a->value, b->value);
-}
-
-/** Add an entry to the list of stat buffers.
- */
-static void dict_stat_add(fr_dict_t *dict, struct stat const *stat_buf)
-{
-	dict_stat_t *this;
-
-	this = talloc_zero(dict, dict_stat_t);
-	if (!this) return;
-
-	memcpy(&(this->stat_buf), stat_buf, sizeof(this->stat_buf));
-
-	if (!dict->stat_head) {
-		dict->stat_head = dict->stat_tail = this;
-	} else {
-		dict->stat_tail->next = this;
-		dict->stat_tail = this;
-	}
-}
-
-/** See if any dictionaries have changed.  If not, don't do anything
- */
-static int dict_stat_check(fr_dict_t *dict, char const *dir, char const *file)
-{
-	struct stat stat_buf;
-	dict_stat_t *this;
-	char buffer[2048];
-
-	/*
-	 *	Nothing cached, all files are new.
-	 */
-	if (!dict || !dict->stat_head) return 0;
-
-	/*
-	 *	Stat the file.
-	 */
-	snprintf(buffer, sizeof(buffer), "%s/%s", dir, file);
-	if (stat(buffer, &stat_buf) < 0) return 0;
-
-	/*
-	 *	Find the cache entry.
-	 *	FIXME: use a hash table.
-	 *	FIXME: check dependencies, via children.
-	 *	       if A loads B and B changes, we probably want
-	 *	       to reload B at the minimum.
-	 */
-	for (this = dict->stat_head; this != NULL; this = this->next) {
-		if (this->stat_buf.st_dev != stat_buf.st_dev) continue;
-		if (this->stat_buf.st_ino != stat_buf.st_ino) continue;
-
-		/*
-		 *	The file has changed.  Re-read it.
-		 */
-		if (this->stat_buf.st_mtime < stat_buf.st_mtime) return 0;
-
-		/*
-		 *	The file is the same.  Ignore it.
-		 */
-		return 1;
-	}
-
-	/*
-	 *	Not in the cache.
-	 */
-	return 0;
 }
 
 /** Validate a new attribute definition
@@ -4615,19 +4537,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		}
 	}
 
-	/*
-	 *	Check if we've loaded this file before.  If so, ignore it.
-	 */
-	p = strrchr(fn, FR_DIR_SEP);
-	if (p) {
-		*p = '\0';
-		if (dict_stat_check(ctx->dict, fn, p + 1)) {
-			*p = FR_DIR_SEP;
-			return 0;
-		}
-		*p = FR_DIR_SEP;
-	}
-
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
 			fr_strerror_printf_push("Couldn't open dictionary %s: %s", fr_syserror(errno), fn);
@@ -4665,8 +4574,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		return -1;
 	}
 #endif
-
-	dict_stat_add(ctx->dict, &statbuf);
 
 	/*
 	 *	Seed the random pool with data.
