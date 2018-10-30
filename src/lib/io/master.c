@@ -570,43 +570,20 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		li->app_io_instance = dl_inst->data;
 
 		/*
-		 *	There isn't a need to re-parse the
-		 *	configuration.  So we just copy the parent
-		 *	config to the child.  We assume that the users
-		 *	are smart enough to ensure that they don't
-		 *	modify fields which are meant to be "const".
-		 *
-		 *	@todo - figure this all out.  The issue is
-		 *	that the dl API will allocate (for instance)
-		 *	proto_radius_udp_t.  We want to pass that
-		 *	struct to mod_bootstrap && mod_instantiate.
-		 *	BUT we want to pass per-socket information to
-		 *	mod_read(), and to pretty much everything
-		 *	else.  There doesn't seem to be a clear way to
-		 *	make that distinction with the current APIs.
-		 *	So, we just hack it...
+		 *	Create writable thread instance data.
 		 */
-		if (inst->app_io->thread_inst_size) {
-			connection->child->thread_instance = talloc_zero_array(NULL, uint8_t,
-									       inst->app_io->thread_inst_size);
-			talloc_set_destructor(connection->child, fr_io_listen_free);
-			talloc_set_name(connection->child->thread_instance, "proto_%s_thread_t",
-					inst->app_io->name);
+		connection->child->thread_instance = talloc_zero_array(NULL, uint8_t,
+								       inst->app_io->thread_inst_size);
+		talloc_set_destructor(connection->child, fr_io_listen_free);
+		talloc_set_name(connection->child->thread_instance, "proto_%s_thread_t",
+				inst->app_io->name);
 
-			/*
-			 *	This is "const", and the user can't
-			 *	touch it.  So we just re-use the same
-			 *	configuration everywhere.
-			 */
-			connection->child->app_io_instance = inst->app_io_instance;
-		} else {
-			connection->child->thread_instance = talloc_memdup(NULL,
-									   inst->app_io_instance, inst->app_io->inst_size);
-			talloc_set_destructor(connection->child, fr_io_listen_free);
-			talloc_set_name_const(connection->child->thread_instance,
-					      talloc_get_name(inst->app_io_instance));
-			connection->child->app_io_instance = connection->child->thread_instance;
-		}
+		/*
+		 *	This is "const", and the user can't
+		 *	touch it.  So we just re-use the same
+		 *	configuration everywhere.
+		 */
+		connection->child->app_io_instance = inst->app_io_instance;
 
 		/*
 		 *	Create the listener, based on our listener.
@@ -2678,6 +2655,11 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	if (!inst->app_io) {
 		rad_assert(!inst->dynamic_clients);
 		return 0;
+	}
+
+	if (!inst->app_io->thread_inst_size) {
+		fr_strerror_printf("IO modules MUST set 'thread_inst_size' when using the master IO handler.");
+		return -1;
 	}
 
 	/*
