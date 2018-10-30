@@ -297,6 +297,10 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 		return 1;
 	}
 
+	/*
+	 *	This listener is allocated in a thread-specific
+	 *	context, so it doesn't need a destructor,
+	 */
 	MEM(li = talloc_zero(NULL, fr_listen_t));
 
 	/*
