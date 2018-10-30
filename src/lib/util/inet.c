@@ -263,7 +263,8 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 
 	if (!ai) ai = alt;
 	if (!ai) {
-		fr_strerror_printf("fr_inet_hton failed to find requested information for host %.100s", hostname);
+		fr_strerror_printf("Failed resolving \"%s\": No records matching requested address family returned",
+				   hostname);
 		freeaddrinfo(res);
 		return -1;
 	}
