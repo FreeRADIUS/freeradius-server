@@ -814,6 +814,12 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 
 	bool		skip_decode = false;		//!< Whether the last encode errored.
 
+#define CLEAR_TEST_POINT \
+do { \
+	talloc_free_children(tp_ctx); \
+	tp = NULL; \
+} while (0)
+
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
 		filename = "<stdin>";
@@ -1217,7 +1223,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 					break;
 				}
 				if (dec_len > len) {
-					fprintf(stderr, "Internal sanity check failed at %d\n", __LINE__);
+					fr_perror("Internal sanity check failed at %d", __LINE__);
 					goto error;
 				}
 				attr += dec_len;
@@ -1249,7 +1255,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			} else { /* zero-length attribute */
 				*output = '\0';
 			}
-			talloc_free_children(tp_ctx);
+			CLEAR_TEST_POINT;
 			continue;
 		}
 
@@ -1292,10 +1298,10 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 				if (enc_len < 0) {
 					snprintf(output, sizeof(output), "%zd", enc_len);	/* Overwritten with real error */
 					strerror_concat(output, sizeof(output));
-					skip_decode = true;					/* Record that the operation failed */
 
+					skip_decode = true;					/* Record that the operation failed */
 					fr_pair_list_free(&head);
-					talloc_free_children(tp_ctx);
+
 					goto next_line;						/* Bail out of the encode operation */
 				}
 				attr += enc_len;
@@ -1306,7 +1312,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 
 			outlen = attr - data;
 
-			talloc_free_children(tp_ctx);
+			CLEAR_TEST_POINT;
 			goto print_hex;
 		}
 
