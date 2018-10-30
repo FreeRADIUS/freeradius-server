@@ -708,7 +708,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
-		fr_perror("unit_test_attribute");
+		fr_perror("%s", config->name);
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
