@@ -64,9 +64,6 @@ typedef struct proto_detail_t {
 
 	fr_listen_t			*listen;			//!< The listener structure which describes
 									//!< the I/O path.
-	pthread_mutex_t			worker_mutex;			//!< for the workers
-	int				num_workers;			//!< number of workers
-
 } proto_detail_t;
 
 
@@ -107,6 +104,7 @@ typedef struct proto_detail_work_thread_t {
 	fr_event_list_t			*el;			//!< for various timers
 	fr_network_t			*nr;			//!< for Linux-specific callbacks
 	fr_listen_t			*listen;		//!< talloc_parent() is slow
+	struct proto_detail_work_thread_t  *file_parent;	//!< thread instance of the directory reader that spawned us
 
 	char const			*filename_work;		//!< work file name
 	fr_dlist_head_t			list;			//!< for retransmissions
@@ -131,6 +129,9 @@ typedef struct proto_detail_work_thread_t {
 	off_t				read_offset;		//!< where we're reading from in filename_work
 
 	fr_event_timer_t const		*ev;			//!< for detail file timers.
+
+	pthread_mutex_t			worker_mutex;		//!< for the workers
+	int				num_workers;		//!< number of workers
 } proto_detail_work_thread_t;
 
 typedef struct proto_detail_process_t {

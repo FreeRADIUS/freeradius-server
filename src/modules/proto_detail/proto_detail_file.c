@@ -105,14 +105,13 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 
 static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
 {
-	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
 	bool has_worker = false;
 
-	pthread_mutex_lock(&inst->parent->worker_mutex);
-	has_worker = (inst->parent->num_workers != 0);
-	pthread_mutex_unlock(&inst->parent->worker_mutex);
+	pthread_mutex_lock(&thread->worker_mutex);
+	has_worker = (thread->num_workers != 0);
+	pthread_mutex_unlock(&thread->worker_mutex);
 
 	if (has_worker) return;
 
@@ -145,6 +144,7 @@ static int mod_open(fr_listen_t *li)
 	thread->inst = inst;
 	thread->name = talloc_typed_asprintf(inst, "proto_detail polling for files matching %s", inst->filename);
 	thread->vnode_fd = -1;
+	pthread_mutex_init(&thread->worker_mutex, NULL);
 
 	DEBUG("Listening on %s bound to virtual server %s FD %d",
 	      thread->name, cf_section_name2(inst->parent->server_cs), thread->fd);
@@ -325,6 +325,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 
 	li->app_io_instance = inst->parent->work_io_instance;
 	work->inst = li->app_io_instance;
+	work->file_parent = li->thread_instance;
 	work->ev = NULL;
 
 	li->fd = work->fd = dup(fd);
@@ -370,9 +371,9 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	li->default_message_size = inst->parent->max_packet_size;
 	li->num_messages = inst->parent->num_messages;
 
-	pthread_mutex_lock(&inst->parent->worker_mutex);
-	inst->parent->num_workers++;
-	pthread_mutex_unlock(&inst->parent->worker_mutex);
+	pthread_mutex_lock(&thread->worker_mutex);
+	thread->num_workers++;
+	pthread_mutex_unlock(&thread->worker_mutex);
 
 	/*
 	 *	Open the detail.work file.
@@ -453,9 +454,9 @@ static void work_init(proto_detail_file_thread_t *thread)
 	int fd, rcode;
 	bool has_worker;
 
-	pthread_mutex_lock(&inst->parent->worker_mutex);
-	has_worker = (inst->parent->num_workers != 0);
-	pthread_mutex_unlock(&inst->parent->worker_mutex);
+	pthread_mutex_lock(&thread->worker_mutex);
+	has_worker = (thread->num_workers != 0);
+	pthread_mutex_unlock(&thread->worker_mutex);
 
 	/*
 	 *	The worker is still processing the file, poll until
@@ -702,6 +703,8 @@ static int mod_close(fr_listen_t *li)
 		}
 		close(thread->vnode_fd);
 		thread->vnode_fd = -1;
+
+		pthread_mutex_destroy(&thread->worker_mutex);
 	}
 
 	return 0;

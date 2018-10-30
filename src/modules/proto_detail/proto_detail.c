@@ -682,27 +682,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		}
 	}
 
-	(void) pthread_mutex_init(&inst->worker_mutex, NULL);
-
 	return 0;
 }
 
-/** Detach the application
- *
- *
- * @param[in] instance	Ctx data for this application.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_detach(void *instance)
-{
-	proto_detail_t		*inst = talloc_get_type_abort(instance, proto_detail_t);
-
-	pthread_mutex_destroy(&inst->worker_mutex);
-
-	return 0;
-}
 
 fr_app_t proto_detail = {
 	.magic			= RLM_MODULE_INIT,
@@ -712,7 +694,6 @@ fr_app_t proto_detail = {
 
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
-	.detach			= mod_detach,
 	.open			= mod_open,
 	.decode			= mod_decode,
 	.encode			= mod_encode,

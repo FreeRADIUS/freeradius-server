@@ -760,10 +760,12 @@ static int mod_close_internal(proto_detail_work_thread_t *thread)
 	 *	hacks in proto_detail which let us start up with
 	 *	"transport = work" for debugging purposes.
 	 */
-	pthread_mutex_lock(&inst->parent->worker_mutex);
-	inst->parent->work_io_instance = NULL;
-	if (inst->parent->num_workers > 0) inst->parent->num_workers--;
-	pthread_mutex_unlock(&inst->parent->worker_mutex);
+	if (thread->file_parent) {
+		pthread_mutex_lock(&thread->file_parent->worker_mutex);
+		inst->parent->work_io_instance = NULL;
+		if (thread->file_parent->num_workers > 0) thread->file_parent->num_workers--;
+		pthread_mutex_unlock(&thread->file_parent->worker_mutex);
+	}
 
 	DEBUG("Closing and deleting detail worker file %s", thread->name);
 
