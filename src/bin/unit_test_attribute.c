@@ -1199,15 +1199,8 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 
 				fr_pair_list_free(&head);
 			} else if (dec_len < 0) {
-				char *out_p = output, *out_end = out_p + sizeof(output);
-				char const *err;
-
 				snprintf(output, sizeof(output), "%zd", dec_len);	/* Overwritten with real error */
-
-				while ((err = fr_strerror_pop()) && (out_p < out_end)) {
-					if (out_p != output) out_p += strlcpy(out_p, ": ", out_end - out_p);
-					out_p += strlcpy(out_p, err, out_end - out_p);
-				}
+				strerror_concat(output, sizeof(output));
 			} else { /* zero-length attribute */
 				*output = '\0';
 			}
@@ -1224,7 +1217,10 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			fr_cursor_t			cursor;
 			void				*encoder_ctx = NULL;
 
-			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_encode") + 1;
+			len = load_test_point_by_command((void **)&tp, test_type, 11, "tp_encode");
+			if (len <= 0) goto error;
+
+			p += ((size_t)len) + 1;
 			if (tp->test_ctx) encoder_ctx = tp->test_ctx(tp_ctx);
 
 			/*
@@ -1242,15 +1238,10 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			while ((vp = fr_cursor_current(&cursor))) {
 				enc_len = tp->func(attr, data + sizeof(data) - attr, &cursor, encoder_ctx);
 				if (enc_len < 0) {
-					char *out_p = output, *out_end = out_p + sizeof(output);
-					char const *err;
-
 					snprintf(output, sizeof(output), "%zd", enc_len);	/* Overwritten with real error */
+					strerror_concat(output, sizeof(output));
+					skip_decode = true;					/* Record that the operation failed */
 
-					while ((err = fr_strerror_pop()) && (out_p < out_end)) {
-						if (out_p != output) out_p += strlcpy(out_p, ": ", out_end - out_p);
-						out_p += strlcpy(out_p, err, out_end - out_p);
-					}
 					fr_pair_list_free(&head);
 					talloc_free_children(tp_ctx);
 					goto next;
@@ -1417,6 +1408,11 @@ int main(int argc, char *argv[])
 		ret = EXIT_FAILURE;
 		goto done;
 	}
+
+	/*
+	 *	Dump the dictionary if we're in super debug mode
+	 */
+	if (fr_debug_lvl > 5) fr_dict_dump(dict);
 
 	if (xlat_register(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true) < 0) {
 		fprintf(stderr, "Failed registering xlat");
