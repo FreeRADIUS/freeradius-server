@@ -60,3 +60,5 @@ struct fr_async_t {
 	uint32_t		priority;
 	bool			detached;	//!< if detached, we don't send real replies
 };
+
+int fr_io_listen_free(fr_listen_t *li);
