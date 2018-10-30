@@ -917,11 +917,10 @@ ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, voi
 	 *	Fast path for the common case.
 	 */
 	if ((vp->da->parent == packet_ctx->root) && !vp->da->flags.concat && (vp->vp_type != FR_TYPE_TLV)) {
-		tlv_stack[0] = packet_ctx->root;
-		tlv_stack[1] = vp->da;
-		tlv_stack[2] = NULL;
+		tlv_stack[0] = vp->da;
+		tlv_stack[1] = NULL;
 		FR_PROTO_STACK_PRINT(tlv_stack, 0);
-		return encode_rfc_hdr(out, attr_len, tlv_stack, 1, cursor, encoder_ctx);
+		return encode_rfc_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 	}
 
 	/*
@@ -930,18 +929,18 @@ ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, voi
 	fr_proto_tlv_stack_build(tlv_stack, vp->da);
 	FR_PROTO_STACK_PRINT(tlv_stack, 0);
 
-	da = tlv_stack[1];	/* FIXME - Should be index 0, and will be when we have proto dicts */
+	da = tlv_stack[0];
 
 	switch (da->type) {
 	/*
 	 *	Supported types
 	 */
 	default:
-		slen = encode_rfc_hdr(out, attr_len, tlv_stack, 1, cursor, encoder_ctx);
+		slen = encode_rfc_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
 	case FR_TYPE_TLV:
-		slen = encode_tlv_hdr(out, attr_len, tlv_stack, 1, cursor, encoder_ctx);
+		slen = encode_tlv_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 	}
 
