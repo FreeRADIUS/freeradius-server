@@ -59,7 +59,10 @@ int fr_vqp_init(void)
 	}
 
 	if (fr_dict_autoload(libfreeradius_vqp) < 0) return -1;
-	if (fr_dict_attr_autoload(libfreeradius_vqp_attr) < 0) return -1;
+	if (fr_dict_attr_autoload(libfreeradius_vqp_attr) < 0) {
+		fr_dict_autofree(libfreeradius_vqp);
+		return -1;
+	}
 
 	instance_count++;
 

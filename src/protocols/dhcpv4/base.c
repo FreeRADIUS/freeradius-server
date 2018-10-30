@@ -501,7 +501,10 @@ int fr_dhcpv4_global_init(void)
 	}
 
 	if (fr_dict_autoload(dhcpv4_dict) < 0) return -1;
-	if (fr_dict_attr_autoload(dhcpv4_dict_attr) < 0) return -1;
+	if (fr_dict_attr_autoload(dhcpv4_dict_attr) < 0) {
+		fr_dict_autofree(dhcpv4_dict);
+		return -1;
+	}
 
 	/*
 	 *	Fixup dictionary entry for DHCP-Paramter-Request-List adding all the options

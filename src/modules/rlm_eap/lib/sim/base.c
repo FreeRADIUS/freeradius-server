@@ -185,7 +185,11 @@ int fr_sim_init(void)
 	}
 
 	if (fr_dict_autoload(libfreeradius_sim_dict) < 0) return -1;
-	if (fr_dict_attr_autoload(libfreeradius_sim_dict_attr) < 0) return -1;
+	if (fr_dict_attr_autoload(libfreeradius_sim_dict_attr) < 0) {
+		fr_dict_autofree(libfreeradius_sim_dict);
+		return -1;
+	}
+	instance_count++;
 
 	return 0;
 }

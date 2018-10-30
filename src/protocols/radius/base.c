@@ -1074,7 +1074,6 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, ui
 	return packet_len;
 }
 
-
 static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 {
 	int i;
@@ -1097,7 +1096,12 @@ int fr_radius_init(void)
 	}
 
 	if (fr_dict_autoload(libfreeradius_radius_dict) < 0) return -1;
-	if (fr_dict_attr_autoload(libfreeradius_radius_dict_attr) < 0) return -1;
+	if (fr_dict_attr_autoload(libfreeradius_radius_dict_attr) < 0) {
+		fr_dict_autofree(libfreeradius_radius_dict);
+		return -1;
+	}
+
+	instance_count++;
 
 	return 0;
 }

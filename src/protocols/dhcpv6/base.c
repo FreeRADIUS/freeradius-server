@@ -99,6 +99,8 @@ int fr_dhcpv6_global_init(void)
 
 	if (fr_dict_autoload(dhcpv6_dict) < 0) return -1;
 
+	instance_count++;
+
 	return 0;
 }
 

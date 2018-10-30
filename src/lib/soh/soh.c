@@ -722,17 +722,14 @@ int fr_soh_init(void)
 		return 0;
 	}
 
-	if (fr_dict_autoload(soh_dict) < 0) {
-		PERROR("Failed initialising protocol library");
-		return -1;
-	}
+	if (fr_dict_autoload(soh_dict) < 0) return -1;
 
 	if (fr_dict_attr_autoload(soh_dict_attr) < 0) {
-		PERROR("Failed resolving attributes");
+		fr_dict_autofree(soh_dict);
 		return -1;
 	}
 
-
+	instance_count++;
 
 	return 0;
 }
