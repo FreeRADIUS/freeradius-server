@@ -751,8 +751,6 @@ static int mod_open(fr_listen_t *li)
 
 static int mod_close_internal(proto_detail_work_thread_t *thread)
 {
-	proto_detail_work_t const *inst = thread->inst;
-
 	rad_assert(thread->eof);
 
 	/*
@@ -762,7 +760,6 @@ static int mod_close_internal(proto_detail_work_thread_t *thread)
 	 */
 	if (thread->file_parent) {
 		pthread_mutex_lock(&thread->file_parent->worker_mutex);
-		inst->parent->work_io_instance = NULL;
 		if (thread->file_parent->num_workers > 0) thread->file_parent->num_workers--;
 		pthread_mutex_unlock(&thread->file_parent->worker_mutex);
 	}
