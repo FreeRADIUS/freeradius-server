@@ -88,7 +88,7 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_exampl
 #
 $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/keywords $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
 	${Q}echo UNIT-TEST $(notdir $@)
-	${Q}if ! KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
+	${Q}if ! KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \

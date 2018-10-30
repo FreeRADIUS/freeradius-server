@@ -7,7 +7,7 @@ TESTS.MODULES_FILES :=
 # If module requires test server, make sure TEST_SERVER of <MODULE>_TEST_SERVER variables are defined
 # If TEST_SERVER is defined, define <MODULE>_TEST_SERVER for all modules that have CHECK_MODULE_TEST_CAN_BE_RUN
 define CHECK_MODULE_TEST_CAN_BE_RUN
-  ifndef ${1}_require_test_server 
+  ifndef ${1}_require_test_server
     tests.modules: ${1}.test
   else
     ifdef TEST_SERVER
@@ -52,11 +52,11 @@ endef
 $(BUILD_DIR)/tests/modules/%: src/tests/modules/%.unlang $(BUILD_DIR)/tests/modules/%.attrs $(TESTBINDIR)/unit_test_module | build.raddb
 	@mkdir -p $(dir $@)
 	@echo MODULE-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))
-	@if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unit_test_module -D share -d src/tests/modules/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1; then \
+	@if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unit_test_module -D share -d src/tests/modules/ -i $@.attrs -f $@.attrs -xx; \
+			echo MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i $@.attrs -f $@.attrs -xx; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep ^$< $@.log | head -1 | sed 's/:.*//;s/.*\[//;s/\].*//'); \
@@ -64,7 +64,7 @@ $(BUILD_DIR)/tests/modules/%: src/tests/modules/%.unlang $(BUILD_DIR)/tests/modu
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unit_test_module -D share -d src/tests/modules/ -i $@.attrs -f $@.attrs -xx; \
+			echo MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i $@.attrs -f $@.attrs -xx; \
 			exit 1; \
 		fi \
 	fi
