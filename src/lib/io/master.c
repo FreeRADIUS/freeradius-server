@@ -587,9 +587,9 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 *	So, we just hack it...
 		 */
 		if (inst->app_io->thread_inst_size) {
-			connection->child->thread_instance = talloc_zero_array(connection->child, uint8_t,
+			connection->child->thread_instance = talloc_zero_array(NULL, uint8_t,
 									       inst->app_io->thread_inst_size);
-
+			talloc_set_destructor(connection->child, fr_io_listen_free);
 			talloc_set_name(connection->child->thread_instance, "proto_%s_thread_t",
 					inst->app_io->name);
 
@@ -600,8 +600,9 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			 */
 			connection->child->app_io_instance = inst->app_io_instance;
 		} else {
-			connection->child->thread_instance = talloc_memdup(connection->child,
+			connection->child->thread_instance = talloc_memdup(NULL,
 									   inst->app_io_instance, inst->app_io->inst_size);
+			talloc_set_destructor(connection->child, fr_io_listen_free);
 			talloc_set_name_const(connection->child->thread_instance,
 					      talloc_get_name(inst->app_io_instance));
 			connection->child->app_io_instance = connection->child->thread_instance;
@@ -2751,8 +2752,9 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	child->app_io = inst->app_io;
 
 	if (child->app_io->thread_inst_size > 0) {
-		child->thread_instance = talloc_zero_array(child, uint8_t,
+		child->thread_instance = talloc_zero_array(NULL, uint8_t,
 							   inst->app_io->thread_inst_size);
+		talloc_set_destructor(child, fr_io_listen_free);
 
 		talloc_set_name(child->thread_instance, "proto_%s_thread_t",
 				inst->app_io->name);
