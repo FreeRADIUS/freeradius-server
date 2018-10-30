@@ -811,6 +811,8 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 	uint8_t		*attr, data[2048];
 	TALLOC_CTX	*tp_ctx = talloc_init("tp_ctx");
 
+	bool		skip_decode = false;		//!< Whether the last encode errored.
+
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
 		filename = "<stdin>";
@@ -1148,6 +1150,14 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 			fr_cursor_t 			cursor;
 			void				*decoder_ctx = NULL;
 
+			/*
+			 *	Encode errored, so skip the decode
+			 */
+			if (skip_decode) {
+				skip_decode = false;
+				continue;
+			}
+
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode") + 1;
 			if (tp->test_ctx) decoder_ctx = tp->test_ctx(tp_ctx);
 
@@ -1230,6 +1240,8 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 
 			if (fr_pair_list_afrom_str(tp_ctx, p, &head) != T_EOL) {
 				strerror_concat(output, sizeof(output));
+				skip_decode = true;						/* Record that the operation failed */
+
 				continue;
 			}
 
@@ -1244,10 +1256,10 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 
 					fr_pair_list_free(&head);
 					talloc_free_children(tp_ctx);
-					goto next;
+					goto next_line;						/* Bail out of the encode operation */
 				}
-
 				attr += enc_len;
+
 				if (enc_len == 0) break;
 			}
 			fr_pair_list_free(&head);
@@ -1293,7 +1305,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 
 		goto error;
 
-	next:
+	next_line:
 		continue;
 	}
 
