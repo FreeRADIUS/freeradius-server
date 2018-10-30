@@ -3725,7 +3725,6 @@ static int _dict_free(fr_dict_t *dict)
 		fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
 		return -1;
 	}
-	fr_perror("Freeing %s", dict->root->name);
 
 	return 0;
 }
