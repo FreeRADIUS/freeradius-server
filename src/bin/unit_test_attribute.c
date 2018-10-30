@@ -922,6 +922,11 @@ do { \
 				goto error;
 			}
 
+			/*
+			 *	Dump the dictionary if we're in super debug mode
+			 */
+			if (fr_debug_lvl > 5) fr_dict_dump(proto_dict);
+
 			continue;
 		}
 
