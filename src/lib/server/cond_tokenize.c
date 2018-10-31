@@ -1750,13 +1750,13 @@ ssize_t fr_cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start,
 /*
  *	Walk in order.
  */
-bool fr_cond_walk(fr_cond_t *c, bool (*callback)(void *, fr_cond_t *), void *ctx)
+bool fr_cond_walk(fr_cond_t *c, bool (*callback)(fr_cond_t *cond, void *uctx), void *uctx)
 {
 	while (c) {
 		/*
 		 *	Process this one, exit on error.
 		 */
-		if (!callback(ctx, c)) return false;
+		if (!callback(c, uctx)) return false;
 
 		switch (c->type) {
 		case COND_TYPE_INVALID:
@@ -1772,7 +1772,7 @@ bool fr_cond_walk(fr_cond_t *c, bool (*callback)(void *, fr_cond_t *), void *ctx
 			/*
 			 *	Walk over the child.
 			 */
-			if (!fr_cond_walk(c->data.child, callback, ctx)) {
+			if (!fr_cond_walk(c->data.child, callback, uctx)) {
 				return false;
 			}
 		}

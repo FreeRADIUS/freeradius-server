@@ -102,7 +102,7 @@ struct fr_cond_t {
 ssize_t fr_cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, fr_cond_t **head, char const **error, int flag);
 size_t cond_snprint(char *buffer, size_t bufsize, fr_cond_t const *c);
 
-bool fr_cond_walk(fr_cond_t *head, bool (*callback)(void *, fr_cond_t *), void *ctx);
+bool fr_cond_walk(fr_cond_t *head, bool (*callback)(fr_cond_t *cond, void *uctx), void *uctx);
 
 #ifdef __cplusplus
 }

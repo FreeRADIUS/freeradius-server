@@ -516,7 +516,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 }
 #endif
 
-static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
+static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
 {
 	fr_dict_attr_t const *da;
 
@@ -525,7 +525,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 	/*
 	 *	@fixme - Default should be set by virtual server.
 	 */
-	if (fr_dict_attr_by_qualified_name(&da, fr_dict_internal, vpt->tmpl_unknown_name, true) < 0) {
+	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, vpt->tmpl_unknown_name, true) < 0) {
 		cf_log_perr(ci, "Failed resolving undefined attribute");
 		return false;
 	}
@@ -536,7 +536,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 }
 
 
-static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert)
+static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rules_t const *rules, bool convert)
 {
 	vp_tmpl_t *vpt = *pvpt;
 
@@ -549,7 +549,7 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 	 *	where Foo-Bar is defined by a module.
 	 */
 	if (vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
-		return pass2_fixup_undefined(ci, vpt);
+		return pass2_fixup_undefined(ci, vpt, rules);
 	}
 
 	/*
@@ -563,10 +563,11 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 	return true;
 }
 
-static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
+static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 {
-	vp_map_t *map;
-	vp_tmpl_t *vpt;
+	vp_map_t		*map;
+	vp_tmpl_t		*vpt;
+	unlang_compile_t	*unlang_ctx = uctx;
 
 	/*
 	 *	These don't get optimized.
@@ -580,7 +581,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 	 *	Call children.
 	 */
 	if (c->type == COND_TYPE_CHILD) {
-		return pass2_cond_callback(ctx, c->data.child);
+		return pass2_cond_callback(c->data.child, uctx);
 	}
 
 	/*
@@ -588,7 +589,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 	 */
 	if (c->type == COND_TYPE_EXISTS) {
 		rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
-		return pass2_fixup_tmpl(c->ci, &c->data.vpt, true);
+		return pass2_fixup_tmpl(c->ci, &c->data.vpt, unlang_ctx->rules, true);
 	}
 
 	/*
@@ -620,11 +621,11 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 
 	if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
 		if (map->lhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
-			if (!pass2_fixup_undefined(map->ci, map->lhs)) return false;
+			if (!pass2_fixup_undefined(map->ci, map->lhs, unlang_ctx->rules)) return false;
 		}
 
 		if (map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
-			if (!pass2_fixup_undefined(map->ci, map->rhs)) return false;
+			if (!pass2_fixup_undefined(map->ci, map->rhs, unlang_ctx->rules)) return false;
 		}
 
 		c->pass2_fixup = PASS2_FIXUP_NONE;
@@ -745,7 +746,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 
 		fmt = talloc_typed_asprintf(map->lhs, "%%{%s}", map->lhs->name);
 		slen = tmpl_afrom_str(map, &vpt, fmt, talloc_array_length(fmt) - 1, T_DOUBLE_QUOTED_STRING,
-				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
+				      &(vp_tmpl_rules_t){ .allow_unknown = true }, true);
 		if (slen < 0) {
 			char *spaces, *text;
 
@@ -835,7 +836,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 /*
  *	Compile the RHS of update sections to xlat_exp_t
  */
-static bool pass2_fixup_update(unlang_group_t *g)
+static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 {
 	vp_map_t *map;
 
@@ -869,11 +870,11 @@ static bool pass2_fixup_update(unlang_group_t *g)
 		 *	Deal with undefined attributes now.
 		 */
 		if (map->lhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
-			if (!pass2_fixup_undefined(map->ci, map->lhs)) return false;
+			if (!pass2_fixup_undefined(map->ci, map->lhs, rules)) return false;
 		}
 
 		if (map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
-			if (!pass2_fixup_undefined(map->ci, map->rhs)) return false;
+			if (!pass2_fixup_undefined(map->ci, map->rhs, rules)) return false;
 		}
 	}
 
@@ -883,19 +884,19 @@ static bool pass2_fixup_update(unlang_group_t *g)
 /*
  *	Compile the RHS of map sections to xlat_exp_t
  */
-static bool pass2_fixup_map(unlang_group_t *g)
+static bool pass2_fixup_map(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 {
 	/*
 	 *	Compile the map
 	 */
-	if (!pass2_fixup_update(g)) return false;
+	if (!pass2_fixup_update(g, rules)) return false;
 
 	/*
 	 *	Map sections don't need a VPT.
 	 */
 	if (!g->vpt) return true;
 
-	return pass2_fixup_tmpl(g->map->ci, &g->vpt, false);
+	return pass2_fixup_tmpl(g->map->ci, &g->vpt, rules, false);
 }
 #endif
 
@@ -1478,7 +1479,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	header?  Or ensure that the map is registered in the
 	 *	"boostrap" phase, so that it's always available here.
 	 */
-	if (!pass2_fixup_map(g)) {
+	if (!pass2_fixup_map(g, unlang_ctx->rules)) {
 		talloc_free(g);
 		return NULL;
 	}
@@ -1537,7 +1538,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 //	cf_data_add(cs, CF_DATA_TYPE_UNLANG, "update", g->map, NULL); /* for output normalization */
 #endif
 
-	if (!pass2_fixup_update(g)) {
+	if (!pass2_fixup_update(g, unlang_ctx->rules)) {
 		talloc_free(g);
 		return NULL;
 	}
@@ -1968,7 +1969,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	This is so that compile_case() can do attribute type
 	 *	checks / casts against us.
 	 */
-	if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, true)) {
+	if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, unlang_ctx->rules, true)) {
 		talloc_free(g);
 		return NULL;
 	}
@@ -2026,7 +2027,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 
 		if (vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
-			if (!pass2_fixup_undefined(cf_section_to_item(cs), vpt)) {
+			if (!pass2_fixup_undefined(cf_section_to_item(cs), vpt, unlang_ctx->rules)) {
 				talloc_free(vpt);
 				return NULL;
 			}
@@ -2304,9 +2305,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	 *	parsed.  Now that they are all defined, we need to fix
 	 *	them up.
 	 */
-	if (!fr_cond_walk(cond, pass2_cond_callback, NULL)) {
-		return NULL;
-	}
+	if (!fr_cond_walk(cond, pass2_cond_callback, unlang_ctx)) return NULL;
 
 	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) return NULL;
@@ -2564,7 +2563,7 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 		/*
 		 *	Fixup the templates
 		 */
-		if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, true)) {
+		if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, unlang_ctx->rules, true)) {
 			talloc_free(g);
 			return NULL;
 		}
