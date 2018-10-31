@@ -1364,22 +1364,22 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			     CONF_SECTION *cs, UNUSED unlang_group_type_t group_type,
 			     unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
 {
-	int		rcode;
-	unlang_group_t	*g;
-	unlang_t	*c;
-	CONF_SECTION	*modules;
-	ssize_t		slen;
-	char const	*tmpl_str;
+	int			rcode;
+	unlang_group_t		*g;
+	unlang_t		*c;
+	CONF_SECTION		*modules;
+	ssize_t			slen;
+	char const		*tmpl_str;
 
-	vp_map_t	*head;
-	vp_tmpl_t	*vpt = NULL;
+	vp_map_t		*head;
+	vp_tmpl_t		*vpt = NULL;
 
-	map_proc_t	*proc;
-	map_proc_inst_t	*proc_inst;
+	map_proc_t		*proc;
+	map_proc_inst_t		*proc_inst;
 
-	char const	*name2 = cf_section_name2(cs);
+	char const		*name2 = cf_section_name2(cs);
 
-	vp_tmpl_rules_t	parse_rules;
+	vp_tmpl_rules_t		parse_rules;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -1491,14 +1491,14 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				CONF_SECTION *cs, unlang_group_type_t group_type,
 				UNUSED unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
 {
-	int		rcode;
-	unlang_group_t	*g;
-	unlang_t	*c;
-	char const	*name2 = cf_section_name2(cs);
+	int			rcode;
+	unlang_group_t		*g;
+	unlang_t		*c;
+	char const		*name2 = cf_section_name2(cs);
 
-	vp_map_t	*head;
+	vp_map_t		*head;
 
-	vp_tmpl_rules_t	parse_rules;
+	vp_tmpl_rules_t		parse_rules;
 
 	/*
 	 *	We allow unknown attributes here.
@@ -1845,7 +1845,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_t *parent, unlang_co
  *	Generic "compile a section with more unlang inside of it".
  */
 static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				  unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+			       unlang_group_type_t group_type,
+			       unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	unlang_group_t *g;
 	unlang_t *c;
@@ -1868,7 +1869,8 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 }
 
 static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				   unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+				unlang_group_type_t group_type,
+				unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	CONF_ITEM *ci;
 	FR_TOKEN type;
@@ -1970,11 +1972,11 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				 unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
-	int i;
-	char const *name2;
-	unlang_t *c;
-	unlang_group_t *g;
-	vp_tmpl_t *vpt = NULL;
+	int			i;
+	char const		*name2;
+	unlang_t		*c;
+	unlang_group_t		*g;
+	vp_tmpl_t		*vpt = NULL;
 
 	if (!parent || (parent->type != UNLANG_TYPE_SWITCH)) {
 		cf_log_err(cs, "\"case\" statements may only appear within a \"switch\" section");
@@ -2097,12 +2099,12 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				    unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
-	FR_TOKEN type;
-	char const *name2;
-	unlang_t *c;
-	unlang_group_t *g;
-	ssize_t slen;
-	vp_tmpl_t *vpt;
+	FR_TOKEN		type;
+	char const		*name2;
+	unlang_t		*c;
+	unlang_group_t		*g;
+	ssize_t			slen;
+	vp_tmpl_t		*vpt;
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -2469,9 +2471,9 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
-	char const *name2;
-	unlang_t *c;
-	unlang_group_t *g;
+	char const	*name2;
+	unlang_t	*c;
+	unlang_group_t	*g;
 
 	/*
 	 *	No children?  Die!
@@ -2652,15 +2654,15 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type,
 			      unlang_type_t mod_type)
 {
-	ssize_t slen;
-	char const *name2;
-	unlang_group_t *g;
-	unlang_t *c;
-	FR_TOKEN type;
-	char *server;
-	char *packet;
-	CONF_SECTION *server_cs;
-	fr_io_process_t *process_p;
+	ssize_t			slen;
+	char const		*name2;
+	unlang_group_t		*g;
+	unlang_t		*c;
+	FR_TOKEN		type;
+	char			*server;
+	char			*packet;
+	CONF_SECTION		*server_cs;
+	fr_io_process_t		*process_p;
 
 	/*
 	 *	calls with a normal packet are not allowed.  It will
@@ -3231,10 +3233,10 @@ fail:
 
 int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules)
 {
-	char const *name1, *name2;
-	unlang_t *c;
-	unlang_compile_t unlang_ctx;
-	vp_tmpl_rules_t my_rules;
+	char const		*name1, *name2;
+	unlang_t		*c;
+	unlang_compile_t	unlang_ctx;
+	vp_tmpl_rules_t		my_rules;
 
 	unlang_ctx.component = component;
 	unlang_ctx.name = comp2str[component];
@@ -3243,7 +3245,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 	unlang_ctx.actions = &defaultactions[component];
 
 	/*
-	 *	Ensure that all complie functions get valid rules.
+	 *	Ensure that all compile functions get valid rules.
 	 */
 	if (!rules) {
 		memset(&my_rules, 0, sizeof(my_rules));
