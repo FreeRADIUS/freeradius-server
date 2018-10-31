@@ -1414,7 +1414,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		 *	Try to parse the template.
 		 */
 		slen = tmpl_afrom_str(cs, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1, type,
-				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
+				      &parse_rules, true);
 		if (slen < 0) {
 			cf_log_perr(cs, "Failed parsing map");
 			return NULL;
@@ -1880,6 +1880,14 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_group_t *g;
 	ssize_t slen;
 
+	vp_tmpl_rules_t	parse_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	parse_rules = *(unlang_ctx->rules);
+	parse_rules.allow_unknown = true;
+
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err(cs, "You must specify a variable to switch over for 'switch'");
@@ -1894,8 +1902,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	defined by now.
 	 */
 	type = cf_section_name2_quote(cs);
-	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type,
-			      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
+	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, &parse_rules, true);
 	if (slen < 0) {
 		char *spaces, *text;
 
@@ -1977,6 +1984,13 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	unlang_t		*c;
 	unlang_group_t		*g;
 	vp_tmpl_t		*vpt = NULL;
+	vp_tmpl_rules_t		parse_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	parse_rules = *(unlang_ctx->rules);
+	parse_rules.allow_unknown = true;
 
 	if (!parent || (parent->type != UNLANG_TYPE_SWITCH)) {
 		cf_log_err(cs, "\"case\" statements may only appear within a \"switch\" section");
@@ -1995,8 +2009,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 		type = cf_section_name2_quote(cs);
 
-		slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type,
-				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
+		slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, &parse_rules, true);
 		if (slen < 0) {
 			char *spaces, *text;
 
@@ -2106,6 +2119,14 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	ssize_t			slen;
 	vp_tmpl_t		*vpt;
 
+	vp_tmpl_rules_t		parse_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	parse_rules = *(unlang_ctx->rules);
+	parse_rules.allow_unknown = true;
+
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err(cs,
@@ -2120,8 +2141,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_quote(cs);
-	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type,
-			      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
+	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, &parse_rules, true);
 	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 		char *spaces, *text;
 
@@ -2475,6 +2495,14 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 	unlang_t	*c;
 	unlang_group_t	*g;
 
+	vp_tmpl_rules_t	parse_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	parse_rules = *(unlang_ctx->rules);
+	parse_rules.allow_unknown = true;
+
 	/*
 	 *	No children?  Die!
 	 */
@@ -2513,8 +2541,7 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 		 *	defined by now.
 		 */
 		type = cf_section_name2_quote(cs);
-		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type,
-				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
+		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, &parse_rules, true);
 		if (slen < 0) {
 			char *spaces, *text;
 
@@ -2664,6 +2691,14 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	CONF_SECTION		*server_cs;
 	fr_io_process_t		*process_p;
 
+	vp_tmpl_rules_t		parse_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	parse_rules = *(unlang_ctx->rules);
+	parse_rules.allow_unknown = true;
+
 	/*
 	 *	calls with a normal packet are not allowed.  It will
 	 *	work, but we don't know what it means.  If someone has
@@ -2694,9 +2729,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
-	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type,
-			      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
-
+	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, &parse_rules, true);
 	if (slen < 0) {
 		char *spaces, *text;
 
