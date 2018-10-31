@@ -1375,7 +1375,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			}
 
 			if (attribute && (vpt->type != TMPL_TYPE_ATTR)) {
-				cf_log_err(&cp->item, "Expected attr got %s",
+				cf_log_err(cp, "Expected attr got %s",
 					   fr_int2str(tmpl_type_table, vpt->type, "???"));
 				return -1;
 			}
@@ -1385,7 +1385,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			 *	All attributes should have been defined by this point.
 			 */
 			case TMPL_TYPE_ATTR_UNDEFINED:
-				cf_log_err(&cp->item, "Unknown attribute '%s'", vpt->tmpl_unknown_name);
+				cf_log_err(cp, "Unknown attribute '%s'", vpt->tmpl_unknown_name);
 				talloc_free(vpt);	/* Free last (vpt needed for log) */
 				return -1;
 
