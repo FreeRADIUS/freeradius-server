@@ -92,13 +92,13 @@ xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 	return node;
 }
 
-static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-				       char const **error);
-static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-				     bool brace, char const **error);
+static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char const **error, char *fmt,
+				       vp_tmpl_rules_t const *rules);
+static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char const **error, char *fmt,
+				     bool brace, vp_tmpl_rules_t const *rules);
 
-static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-					 char const **error)
+static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, char const **error, char *fmt,
+					 vp_tmpl_rules_t const *rules)
 {
 	ssize_t slen;
 	char *p;
@@ -115,7 +115,7 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 	node->type = XLAT_ALTERNATE;
 
 	p = fmt + 2;
-	slen = xlat_tokenize_expansion(node, p, &node->child, error);
+	slen = xlat_tokenize_expansion(node, &node->child, error, p, rules);
 	if (slen <= 0) {
 		talloc_free(node);
 		return slen - (p - fmt);
@@ -149,7 +149,7 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 		*(p++) = '\0';
 
 	} else {
-		slen = xlat_tokenize_literal(node, p, &node->alternate, true, error);
+		slen = xlat_tokenize_literal(node, &node->alternate, error, p, true, rules);
 		if (slen <= 0) {
 			talloc_free(node);
 			return slen - (p - fmt);
@@ -169,7 +169,8 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 	return p - fmt;
 }
 
-static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head, char const **error)
+static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char const **error,
+				       char *fmt, vp_tmpl_rules_t const *rules)
 {
 	ssize_t slen;
 	char *p, *q;
@@ -185,7 +186,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	/*
 	 *	%{%{...}:-bar}
 	 */
-	if ((fmt[2] == '%') && (fmt[3] == '{')) return xlat_tokenize_alternation(ctx, fmt, head, error);
+	if ((fmt[2] == '%') && (fmt[3] == '{')) return xlat_tokenize_alternation(ctx, head, error, fmt, rules);
 
 	XLAT_DEBUG("EXPANSION <-- %s", fmt);
 	node = talloc_zero(ctx, xlat_exp_t);
@@ -272,7 +273,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			p = q + 1;
 			XLAT_DEBUG("MOD <-- %s ... %s", node->fmt, p);
 
-			slen = xlat_tokenize_literal(node, p, &node->child, true, error);
+			slen = xlat_tokenize_literal(node, &node->child, error, p, true, rules);
 			if (slen < 0) {
 				talloc_free(node);
 				return (slen - (p - start)) - 2;	/* error */
@@ -375,8 +376,8 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 }
 
 
-static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-				     bool brace, char const **error)
+static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char const **error, char *fmt,
+				     bool brace, vp_tmpl_rules_t const *rules)
 {
 	char *p;
 	xlat_exp_t *node;
@@ -416,7 +417,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 
 			XLAT_DEBUG("EXPANSION-2 <-- %s", node->fmt);
 
-			slen = xlat_tokenize_expansion(node, p, &node->next, error);
+			slen = xlat_tokenize_expansion(node, &node->next, error, p, rules);
 			if (slen <= 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
@@ -439,7 +440,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			 *	EXPANSION	User-Name
 			 *	LITERAL		" bar"
 			 */
-			slen = xlat_tokenize_literal(node->next, p, &(node->next->next), brace, error);
+			slen = xlat_tokenize_literal(node->next, &(node->next->next), error, p, brace, rules);
 			rad_assert(slen != 0);
 			if (slen < 0) {
 				talloc_free(node);
@@ -494,7 +495,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			/*
 			 *	And recurse.
 			 */
-			slen = xlat_tokenize_literal(node->next, p, &(node->next->next), brace, error);
+			slen = xlat_tokenize_literal(node->next, &(node->next->next), error, p, brace, rules);
 			rad_assert(slen != 0);
 			if (slen < 0) {
 				talloc_free(node);
@@ -731,15 +732,17 @@ size_t xlat_snprint(char *out, size_t outlen, xlat_exp_t const *node)
  * like LDAP or SQL.
  *
  * @param[in] ctx	to allocate dynamic buffers in.
+ * @param[out] head	the head of the xlat list / tree structure.
  * @param[in] request	the input request.  Memory will be attached here.
  * @param[in] fmt	the format string to expand.
- * @param[out] head	the head of the xlat list / tree structure.
+ * @param[in] rules	controlling how attribute references are parsed.
  * @return
  *	- <= -1 on error.  Return value is negative offset of where parsing
  *	  error occured.
  *	- >= 0 on success.  The number of bytes parsed.
  */
-ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, REQUEST *request, char const *fmt, xlat_exp_t **head)
+ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *request,
+			        char const *fmt, vp_tmpl_rules_t const *rules)
 {
 	ssize_t		slen;
 	char		*tokens;
@@ -755,7 +758,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, REQUEST *request, char const *f
 	tokens = talloc_typed_strdup(ctx, fmt);
 	if (!tokens) return -1;
 
-	slen = xlat_tokenize_literal(request, tokens, head, false, &error);
+	slen = xlat_tokenize_literal(request, head, &error, tokens, false, rules);
 
 	/*
 	 *	Zero length expansion, return a zero length node.
@@ -808,18 +811,19 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, REQUEST *request, char const *f
 /** Tokenize an xlat expansion
  *
  * @param[in] ctx	to allocate dynamic buffers in.
- * @param[in] fmt	the format string to expand.
  * @param[out] head	the head of the xlat list / tree structure.
  * @param[out] error	where to write a point to error messages.
+ * @param[in] fmt	the format string to expand.
+ * @param[in] rules	controlling how attribute references are parsed.
  * @return
  *	- <0 on error.
  *	- 0 on success.
  */
-ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head, char const **error)
+ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char const **error, char *fmt, vp_tmpl_rules_t const *rules)
 {
 	int ret;
 
-	ret = xlat_tokenize_literal(ctx, fmt, head, false, error);
+	ret = xlat_tokenize_literal(ctx, head, error, fmt, false, rules);
 	if (ret < 0) return ret;
 
 	/*

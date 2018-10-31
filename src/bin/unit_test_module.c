@@ -491,7 +491,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 			char *fmt = talloc_typed_strdup(NULL, input + 5);
 			xlat_exp_t *head;
 
-			slen = xlat_tokenize_ephemeral(fmt, request, fmt, &head);
+			slen = xlat_tokenize_ephemeral(fmt, &head, request, fmt, NULL);
 			if (slen <= 0) {
 				talloc_free(fmt);
 				snprintf(output, sizeof(output), "ERROR offset %d '%s'", (int) -slen,
@@ -789,7 +789,7 @@ int main(int argc, char *argv[])
 		server = cf_section_alloc(config->root_cs, config->root_cs, "server", "unit_test");
 		cf_section_add(config->root_cs, server);
 
-		namespace = cf_pair_alloc(config->root_cs, "namespace", "unit_test_module",
+		namespace = cf_pair_alloc(config->root_cs, "namespace", "radius",
 					  T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 		cf_pair_add(server, namespace);
 	}

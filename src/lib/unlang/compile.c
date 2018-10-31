@@ -384,7 +384,7 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 
 #ifdef WITH_UNLANG
 static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert,
-			       fr_dict_attr_t const *da)
+			       fr_dict_attr_t const *da, vp_tmpl_rules_t const *rules)
 {
 	ssize_t slen;
 	char *fmt;
@@ -397,7 +397,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 	rad_assert(vpt->type == TMPL_TYPE_XLAT);
 
 	fmt = talloc_typed_strdup(vpt, vpt->name);
-	slen = xlat_tokenize(vpt, fmt, &head, &error);
+	slen = xlat_tokenize(vpt, &head, &error, fmt, rules);
 
 	if (slen < 0) {
 		char *spaces, *text;
@@ -469,7 +469,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 
 
 #ifdef HAVE_REGEX
-static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt)
+static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules_t const *rules)
 {
 	ssize_t slen;
 	regex_t *preg;
@@ -489,7 +489,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 	 */
 	if (strchr(vpt->name, '%')) {
 		vpt->type = TMPL_TYPE_XLAT;
-		return pass2_fixup_xlat(ci, &vpt, false, NULL);
+		return pass2_fixup_xlat(ci, &vpt, false, NULL, rules);
 	}
 
 	slen = regex_compile(vpt, &preg, vpt->name, vpt->len,
@@ -541,7 +541,7 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, vp_tmpl_rule
 	vp_tmpl_t *vpt = *pvpt;
 
 	if (vpt->type == TMPL_TYPE_XLAT) {
-		return pass2_fixup_xlat(ci, pvpt, convert, NULL);
+		return pass2_fixup_xlat(ci, pvpt, convert, NULL, rules);
 	}
 
 	/*
@@ -648,11 +648,11 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 		 *	@todo v3.1: allow anything anywhere.
 		 */
 		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
-			if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL)) {
+			if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL, unlang_ctx->rules)) {
 				return false;
 			}
 		} else {
-			if (!pass2_fixup_xlat(map->ci, &map->lhs, true, NULL)) {
+			if (!pass2_fixup_xlat(map->ci, &map->lhs, true, NULL, unlang_ctx->rules)) {
 				return false;
 			}
 
@@ -725,12 +725,12 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 
 			if (!c->cast) da = map->lhs->tmpl_da;
 
-			if (!pass2_fixup_xlat(map->ci, &map->rhs, true, da)) {
+			if (!pass2_fixup_xlat(map->ci, &map->rhs, true, da, unlang_ctx->rules)) {
 				return false;
 			}
 
 		} else {
-			if (!pass2_fixup_xlat(map->ci, &map->rhs, false, NULL)) {
+			if (!pass2_fixup_xlat(map->ci, &map->rhs, false, NULL, unlang_ctx->rules)) {
 				return false;
 			}
 		}
@@ -768,7 +768,7 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 
 #ifdef HAVE_REGEX
 	if (map->rhs->type == TMPL_TYPE_REGEX) {
-		if (!pass2_fixup_regex(map->ci, map->rhs)) {
+		if (!pass2_fixup_regex(map->ci, map->rhs, unlang_ctx->rules)) {
 			return false;
 		}
 	}
@@ -848,7 +848,7 @@ static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 			 *	FIXME: compile to attribute && handle
 			 *	the conversion in map_to_vp().
 			 */
-			if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL)) {
+			if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL, rules)) {
 				return false;
 			}
 		}
@@ -859,7 +859,7 @@ static bool pass2_fixup_update(unlang_group_t *g, vp_tmpl_rules_t const *rules)
 			 *	FIXME: compile to attribute && handle
 			 *	the conversion in map_to_vp().
 			 */
-			if (!pass2_fixup_xlat(map->ci, &map->rhs, false, NULL)) {
+			if (!pass2_fixup_xlat(map->ci, &map->rhs, false, NULL, rules)) {
 				return false;
 			}
 		}
@@ -2070,7 +2070,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			 *	Don't expand xlat's into an
 			 *	attribute of a different type.
 			 */
-			if (!pass2_fixup_xlat(cf_section_to_item(cs), &vpt, true, da)) {
+			if (!pass2_fixup_xlat(cf_section_to_item(cs), &vpt, true, da, unlang_ctx->rules)) {
 				talloc_free(vpt);
 				return NULL;
 			}
@@ -2260,7 +2260,7 @@ static unlang_t *compile_xlat_inline(unlang_t *parent,
 		ssize_t		slen;
 		char const	*error;
 
-		slen = xlat_tokenize(mx, mx->xlat_name, &mx->exp, &error);
+		slen = xlat_tokenize(mx, &mx->exp, &error, mx->xlat_name, unlang_ctx->rules);
 		if (slen < 0) {
 			cf_log_err(cp, "%s", error);
 			talloc_free(mx);

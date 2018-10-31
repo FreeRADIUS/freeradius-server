@@ -1319,7 +1319,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			 *	xlat expansions should be parseable.
 			 */
 			value = talloc_typed_strdup(cs, cp->value); /* modified by xlat_tokenize */
-			slen = xlat_tokenize(cs, value, &xlat, &error);
+			slen = xlat_tokenize(cs, &xlat, &error, value, NULL);
 			if (slen < 0) {
 				char *spaces, *text;
 

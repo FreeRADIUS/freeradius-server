@@ -1507,7 +1507,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 	/*
 	 *	Give better errors than the old code.
 	 */
-	len = xlat_tokenize_ephemeral(ctx, request, fmt, &node);
+	len = xlat_tokenize_ephemeral(ctx, &node, request, fmt, NULL);
 	if (len == 0) {
 		if (*out) {
 			**out = '\0';

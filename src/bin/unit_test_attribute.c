@@ -558,7 +558,7 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 	xlat_exp_t	*head;
 
 	fmt = talloc_typed_strdup(NULL, input);
-	dec_len = xlat_tokenize(fmt, fmt, &head, &error);
+	dec_len = xlat_tokenize(fmt, &head, &error, fmt, NULL);
 
 	if (dec_len <= 0) {
 		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -dec_len, error);

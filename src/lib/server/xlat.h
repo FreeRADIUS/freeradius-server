@@ -265,9 +265,11 @@ ssize_t		xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
 
 int		xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp);
 
-ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, REQUEST *request, char const *fmt, xlat_exp_t **head);
+ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *request,
+					char const *fmt, vp_tmpl_rules_t const *rules);
 
-ssize_t		xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head, char const **error);
+ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char const **error,
+			      char *fmt, vp_tmpl_rules_t const *rules);
 
 size_t		xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 
