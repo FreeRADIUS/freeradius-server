@@ -8,10 +8,34 @@
 
 ######################################################################
 #
-#	Read "man radiusd" before editing this file.  See the section
-#	titled DEBUGGING.  It outlines a method where you can quickly
-#	obtain the configuration you want, without running into
-#	trouble.
+#	The format of this (and other) configuration file is
+#	documented in "man unlang".  There are also READMEs in many
+#	subdirectories:
+#
+#	  raddb/README.rst
+#		How to upgrade from v2.
+#
+#	  raddb/mods-available/README.rst
+#		How to use mods-available / mods-enabled.
+#		All of the modules are in individual files,
+#		along with configuration items and full documentation.
+#
+#	  raddb/sites-available/README
+#		virtual servers, "listen" sections, clients, etc.
+#		The "sites-available" directory contains many
+#		worked examples of common configurations.
+#
+#	  raddb/certs/README
+#		How to create certificates for EAP or RadSec.
+#
+#	Every configuration item in the server is documented
+#	extensively in the comments in the example configuration
+#	files.
+#
+#	Before editing this (or any other) configuration file, PLEASE
+#	read "man radiusd".  See the section titled DEBUGGING.  It
+#	outlines a method where you can quickly create the
+#	configuration you want, with minimal effort.
 #
 #	Run the server in debugging mode, and READ the output.
 #
@@ -26,29 +50,26 @@
 #	"warning", "error", "reject", or "failure".  The messages there
 #	will usually be enough to guide you to a solution.
 #
+#	More documentation on "radiusd -X" is available on the wiki:
+#		https://wiki.freeradius.org/radiusd-X
+#
 #	If you are going to ask a question on the mailing list, then
 #	explain what you are trying to do, and include the output from
 #	debugging mode (radiusd -X).  Failure to do so means that all
 #	of the responses to your question will be people telling you
 #	to "post the output of radiusd -X".
+#
+#	Guidelines for posting to the mailing list are on the wiki:
+#		https://wiki.freeradius.org/list-help
+#
+#	Please read those guidelines before posting to the list.
+#
+#	Further documentation is available in the "doc" directory
+#	of the server distribution, or on the wiki at:
+#		https://wiki.freeradius.org/
+#
 
 ######################################################################
-#
-#  	The location of other config files and logfiles are declared
-#  	in this file.
-#
-#  	Also general configuration for modules can be done in this
-#  	file, it is exported through the API to modules that ask for
-#  	it.
-#
-#	See "man radiusd.conf" for documentation on the format of this
-#	file.  Note that the individual configuration items are NOT
-#	documented in that "man" page.  They are only documented here,
-#	in the comments.
-#
-#	The "unlang" policy language can be used to create complex
-#	if / else policies.  See "man unlang" for details.
-#
 
 prefix = @prefix@
 exec_prefix = @exec_prefix@
