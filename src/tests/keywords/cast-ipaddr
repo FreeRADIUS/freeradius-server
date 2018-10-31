@@ -8,10 +8,10 @@ update {
 }
 
 update request {
-	&Tmp-String-0[0] := "%{request:NAS-IP-Address}"
+	&Tmp-String-0[0] := &NAS-IP-Address
 }
 
-if (<ipaddr>&Tmp-Integer-0[0] != NAS-IP-Address) {
+if (<ipaddr>&Tmp-Integer-0[0] != &NAS-IP-Address) {
 	test_fail
 }
 
