@@ -46,7 +46,7 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/map_proc_priv.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/map.h>
-#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/pairmove.h>

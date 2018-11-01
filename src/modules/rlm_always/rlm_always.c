@@ -28,7 +28,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/module.h>
 
 /*
  *	The instance data for rlm_always is the list of fake values we are

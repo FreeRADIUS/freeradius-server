@@ -27,7 +27,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->config.name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/dl.h>
 #include <freeradius-devel/server/rad_assert.h>

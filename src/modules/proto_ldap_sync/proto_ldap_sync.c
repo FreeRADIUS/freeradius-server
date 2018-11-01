@@ -24,7 +24,7 @@
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include <freeradius-devel/ldap/base.h>
-#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/process.h>

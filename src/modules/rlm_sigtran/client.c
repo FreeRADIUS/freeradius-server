@@ -31,7 +31,7 @@
 #include <freeradius-devel/eap.aka.h>
 #include <freeradius-devel/eap.sim.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/module.h>
 #include "sigtran.h"
 
 static pthread_mutex_t ctrl_pipe_mutex = PTHREAD_MUTEX_INITIALIZER;

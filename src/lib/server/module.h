@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/server/modules.h
+ * @file lib/server/module.h
  * @brief Interface to the RADIUS module system.
  *
  * @copyright 2013 The FreeRADIUS server project

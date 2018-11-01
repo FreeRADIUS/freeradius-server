@@ -34,7 +34,7 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/sysutmp.h>
 
 #include <grp.h>

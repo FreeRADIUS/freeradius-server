@@ -25,7 +25,7 @@
 RCSIDH(rlm_eap_tls_h, "$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/module.h>
 
 #include "eap_tls.h"
 

@@ -24,7 +24,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/server/modules.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include "proto_control.h"
