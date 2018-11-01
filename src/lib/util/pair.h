@@ -295,10 +295,6 @@ int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
 					      VALUE_PAIR *from, fr_dict_attr_t const *parent_da);
 
 void		fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
-int		fr_pair_list_move_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,
-					VALUE_PAIR **from, fr_dict_attr_t const *da);
-int		fr_pair_list_move_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
-					      VALUE_PAIR **from, fr_dict_attr_t const *da);
 
 /* Value manipulation */
 int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t len, char quote, bool tainted);
