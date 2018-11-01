@@ -226,7 +226,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 */
 		next = entry->next;
 		entry->next = NULL;
-		(void) talloc_steal(tree, entry);
 
 		/*
 		 *	DEFAULT entries get their own list.
