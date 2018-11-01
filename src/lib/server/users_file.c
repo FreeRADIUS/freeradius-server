@@ -114,6 +114,11 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 	}
 
 	/*
+	 *	Allocate the structure for one entry.
+	 */
+	MEM(t = talloc_zero(ctx, PAIR_LIST));
+
+	/*
 	 *	Read the entire file into memory for speed.
 	 */
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
@@ -186,7 +191,7 @@ parse_again:
 
 				t = NULL;
 
-				if (pairlist_read(ctx, newfile, &t, 0) != 0) {
+				if (pairlist_read(t, newfile, &t, 0) != 0) {
 					pairlist_free(&pl);
 					ERROR("%s[%d]: Could not open included file %s: %s",
 					      file, lineno, newfile, fr_syserror(errno));
@@ -213,7 +218,7 @@ parse_again:
 			 */
 			rad_assert(check_tmp == NULL);
 			rad_assert(reply_tmp == NULL);
-			parsecode = fr_pair_list_afrom_str(ctx, ptr, &check_tmp);
+			parsecode = fr_pair_list_afrom_str(t, ptr, &check_tmp);
 			if (parsecode == T_INVALID) {
 				pairlist_free(&pl);
 				PERROR("%s[%d]: Parse error (check) for entry %s", file, lineno, entry);
@@ -223,7 +228,7 @@ parse_again:
 
 			if (parsecode != T_EOL) {
 				pairlist_free(&pl);
-				talloc_free(check_tmp);
+				talloc_free(t);
 				ERROR("%s[%d]: Invalid text after check attributes for entry %s",
 				      file, lineno, entry);
 				fclose(fp);
@@ -241,7 +246,7 @@ parse_again:
 				     (vp->op == T_OP_REG_NE)) &&
 				    (vp->vp_type != FR_TYPE_STRING)) {
 					pairlist_free(&pl);
-					talloc_free(check_tmp);
+					talloc_free(t);
 					ERROR("%s[%d]: Cannot use regular expressions for non-string "
 					      "attributes in entry %s", file, lineno, entry);
 					fclose(fp);
@@ -277,8 +282,7 @@ parse_again:
 		if (!isspace((int) buffer[0])) {
 		trailing_comma:
 			pairlist_free(&pl);
-			talloc_free(check_tmp);
-			talloc_free(reply_tmp);
+			talloc_free(t);
 			ERROR("%s[%d]: Invalid comma after the reply attributes.  Please delete it.",
 			      file, lineno);
 			fclose(fp);
@@ -289,7 +293,7 @@ parse_again:
 		 *	Parse the reply values.  If there's a trailing
 		 *	comma, keep parsing the reply values.
 		 */
-		parsecode = fr_pair_list_afrom_str(ctx, buffer, &reply_tmp);
+		parsecode = fr_pair_list_afrom_str(t, buffer, &reply_tmp);
 		if (parsecode == T_COMMA) {
 			continue;
 		}
@@ -299,22 +303,13 @@ parse_again:
 		 */
 		if (parsecode != T_EOL) {
 			pairlist_free(&pl);
-			talloc_free(check_tmp);
-			talloc_free(reply_tmp);
+			talloc_free(t);
 			PERROR("%s[%d]: Parse error (reply) for entry %s", file, lineno, entry);
 			fclose(fp);
 			return -1;
 		}
 
 	create_entry:
-		/*
-		 *	Done with this entry...
-		 */
-		MEM(t = talloc_zero(ctx, PAIR_LIST));
-
-		if (check_tmp) fr_pair_steal(t, check_tmp);
-		if (reply_tmp) fr_pair_steal(t, reply_tmp);
-
 		t->check = check_tmp;
 		t->reply = reply_tmp;
 		t->lineno = entry_lineno;
@@ -326,6 +321,11 @@ parse_again:
 
 		*last = t;
 		last = &(t->next);
+
+		/*
+		 *	Allocate another one, just in case it's needed.
+		 */
+		MEM(t = talloc_zero(ctx, PAIR_LIST));
 
 		/*
 		 *	Look for a name.  If we came here because
@@ -347,6 +347,12 @@ parse_again:
 	 *	We had an entry, but no reply attributes.  That's OK.
 	 */
 	if (mode == FIND_MODE_WANT_REPLY) goto create_entry;
+
+	/*
+	 *	We allocated one more than we need, so free this one
+	 *	now.
+	 */
+	talloc_free(t);
 
 	/*
 	 *	Else we were looking for an entry.  We didn't get one
