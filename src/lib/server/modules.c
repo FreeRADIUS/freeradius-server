@@ -502,6 +502,37 @@ module_thread_instance_t *module_thread_instance_find(module_instance_t *mi)
 }
 
 
+/** Retrieve module/thread specific instance data for a module
+ *
+ * @param[in] mod_inst	Module specific instance to find thread_data for.
+ * @return
+ *	- Thread specific instance data on success.
+ *	- NULL if module has no thread instance data.
+ */
+void *module_thread_instance_by_data(void *mod_inst)
+{
+	module_thread_instance_t	**array = module_thread_inst_array;
+	size_t i, len;
+
+	len = talloc_array_length(array);
+
+	/*
+	 *	Linear search is fast enough for ~50 modules in a linear array.
+	 */
+	for (i = 1; i < len; i++) {
+		if (!array[i]) continue;
+		if (array[i]->mod_inst != mod_inst) continue;
+
+		/*
+		 *	Return the thread instance data.
+		 */
+		return array[i]->data;
+	}
+
+	return NULL;
+}
+
+
 /** Destructor for module_thread_instance_t array
  */
 static int _module_thread_inst_array_free(module_thread_instance_t **array)
