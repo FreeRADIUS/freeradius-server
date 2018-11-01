@@ -1441,7 +1441,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(&head, cs, &parse_rules, &parse_rules, modcall_fixup_map, NULL, 256);
+	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, modcall_fixup_map, NULL, 256);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
 		cf_log_err(cs, "'map' sections cannot be empty");
@@ -1509,7 +1509,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(&head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
+	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
 		cf_log_err(cs, "'update' sections cannot be empty");

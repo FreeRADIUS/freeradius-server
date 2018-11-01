@@ -1398,7 +1398,6 @@ static int mod_detach(void *instance)
 #endif
 
 	fr_pool_free(inst->pool);
-	talloc_free(inst->user_map);
 
 	return 0;
 }
@@ -1947,7 +1946,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		};
 
 		update = cf_section_find(inst->cs, "update", NULL);
-		if (update && (map_afrom_cs(&inst->user_map, update,
+		if (update && (map_afrom_cs(inst, &inst->user_map, update,
 					    &parse_rules, &parse_rules, fr_ldap_map_verify, NULL,
 					    LDAP_MAX_ATTRMAP) < 0)) {
 			return -1;

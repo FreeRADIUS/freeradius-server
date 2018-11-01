@@ -335,7 +335,7 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int status_check_update_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 				     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	int			rcode;
@@ -360,7 +360,7 @@ static int status_check_update_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED v
 			.allow_foreign = true	/* Because we don't know where we'll be called */
 		};
 
-		rcode = map_afrom_cs(&head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
+		rcode = map_afrom_cs(ctx, &head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 		if (rcode < 0) return -1; /* message already printed */
 		if (!head) {
 			cf_log_err(cs, "'update' sections cannot be empty");

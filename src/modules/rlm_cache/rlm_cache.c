@@ -876,8 +876,6 @@ static int mod_detach(void *instance)
 {
 	rlm_cache_t *inst = instance;
 
-	talloc_free(inst->maps);
-
 	/*
 	 *	We need to explicitly free all children, so if the driver
 	 *	parented any memory off the instance, their destructors
@@ -994,7 +992,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			.allow_foreign = true	/* Because we don't know where we'll be called */
 		};
 
-		if (map_afrom_cs(&inst->maps, update,
+		if (map_afrom_cs(inst, &inst->maps, update,
 				 &parse_rules, &parse_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
 			return -1;
 		}

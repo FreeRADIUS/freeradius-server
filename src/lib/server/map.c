@@ -309,20 +309,21 @@ error:
  *
  * Uses 'name2' of section to set default request and lists.
  *
+ * @param[in] ctx		for talloc.
  * @param[out] out		Where to store the allocated map.
  * @param[in] cs		the update section
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
  * @param[in] rhs_rules		rules for parsing RHS attribute references.
  * @param[in] validate		map using this callback (may be NULL).
- * @param[in] ctx		to pass to callback.
+ * @param[in] uctx		to pass to callback.
  * @param[in] max		number of mappings to process.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
+int map_afrom_cs(TALLOC_CTX *ctx, vp_map_t **out, CONF_SECTION *cs,
 		 vp_tmpl_rules_t const *lhs_rules, vp_tmpl_rules_t const *rhs_rules,
-		 map_validate_t validate, void *ctx,
+		 map_validate_t validate, void *uctx,
 		 unsigned int max)
 {
 	char const	*cs_list, *p;
@@ -340,10 +341,10 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 	tail = out;
 
 	/*
-	 *	The first map has cs as the parent.
+	 *	The first map has ctx as the parent.
 	 *	The rest have the previous map as the parent.
 	 */
-	parent = cs;
+	parent = ctx;
 
 	ci = cf_section_to_item(cs);
 
@@ -394,7 +395,7 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 		/*
 		 *	Check the types in the map are valid
 		 */
-		if (validate && (validate(map, ctx) < 0)) goto error;
+		if (validate && (validate(map, uctx) < 0)) goto error;
 
 		parent = *tail = map;
 		tail = &(map->next);
