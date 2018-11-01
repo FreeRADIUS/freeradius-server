@@ -294,7 +294,7 @@ int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, VALUE_PAIR **to,
 int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
 					      VALUE_PAIR *from, fr_dict_attr_t const *parent_da);
 
-void		fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
+void		fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from);
 
 /* Value manipulation */
 int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t len, char quote, bool tainted);

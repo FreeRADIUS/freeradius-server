@@ -2493,7 +2493,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				/* FALL-THROUGH */
 
 		case T_OP_ADD:
-				fr_pair_list_move(parent, list, &head);
+				fr_pair_list_move(list, &head);
 				fr_pair_list_free(&head);
 			}
 			goto update;

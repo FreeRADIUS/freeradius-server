@@ -1908,13 +1908,12 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
  *
  * @note Does not respect tags when matching.
  *
- * @param[in] ctx for talloc
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
  *
  * @see radius_pairmove
  */
-void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
+void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 {
 	VALUE_PAIR *i, *found;
 	VALUE_PAIR *head_new, **tail_new;
@@ -2038,7 +2037,6 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			*tail_from = i->next;
 			i->next = NULL;
 			*tail_new = i;
-			fr_pair_steal(ctx, i);
 			tail_new = &(i->next);
 			continue;
 		}
