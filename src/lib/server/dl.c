@@ -371,13 +371,6 @@ static int _dl_free(dl_t *module)
 
 	rbtree_deletebydata(dl_loader->tree, module);
 
-	/*
-	 *	If everything has been freed, autofree the tree.
-	 *	dl *MUST* be set to NULL, so that if the server decides to
-	 *	load more modules, the tree is recreated.
-	 */
-	if (rbtree_num_elements(dl_loader->tree) == 0) TALLOC_FREE(dl_loader);
-
 	return 0;
 }
 
@@ -970,6 +963,7 @@ static int _dl_loader_free(dl_loader_t *dl_l)
 	if (ret != 0) WARN("This may appear as a leak in talloc memory reports");
 #endif
 
+	dl_loader = NULL;
 	return ret;
 }
 
@@ -980,7 +974,7 @@ int dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
 {
 	if (dl_loader) return 0;
 
-	dl_loader = talloc_zero(ctx, dl_loader_t);
+	dl_loader = talloc_zero(NULL, dl_loader_t);
 	dl_loader->tree = rbtree_talloc_create(dl_loader, dl_handle_cmp, dl_t, NULL, 0);
 	if (!dl_loader->tree) {
 		ERROR("Failed initialising dl->tree");
@@ -988,6 +982,8 @@ int dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
 		TALLOC_FREE(dl_loader);
 		return -1;
 	}
+
+	talloc_link_ctx(ctx, dl_loader);
 
 	dl_loader->inst_tree = rbtree_talloc_create(dl_loader, dl_inst_cmp, dl_instance_t, NULL, 0);
 	if (!dl_loader->inst_tree) {
