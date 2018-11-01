@@ -85,7 +85,7 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
  * @param[in] request		the request.
  * @param[in] instance		the xlat instance.
  * @param[in] thread		data specific to this xlat instance.
- * @param[in] rctx		a local context for the callback.
+ * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] fired		the time the timeout event actually fired.
  */
 typedef	void (*fr_unlang_xlat_timeout_t)(REQUEST *request, void *instance, void *thread, void *rctx,
@@ -99,12 +99,12 @@ typedef	void (*fr_unlang_xlat_timeout_t)(REQUEST *request, void *instance, void 
  * @note The callback is automatically removed on unlang_resumable(), so
  *
  * @param[in] request		the current request.
- * @param[in] instance		the xlat instance.
- * @param[in] thread		data specific to this xlat instance.
- * @param[in] rctx		a local context for the callback.
+ * @param[in] xlat_inst		the xlat instance.
+ * @param[in] xlat_thread_inst	data specific to this xlat instance.
+ * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] fd		the file descriptor.
  */
-typedef void (*fr_unlang_xlat_fd_event_t)(REQUEST *request, void *instance, void *thread, void *rctx, int fd);
+typedef void (*fr_unlang_xlat_fd_event_t)(REQUEST *request, void *xlat_inst, void *xlat_thread_inst, void *rctx, int fd);
 
 /** xlat callback function
  *
@@ -116,13 +116,15 @@ typedef void (*fr_unlang_xlat_fd_event_t)(REQUEST *request, void *instance, void
  * If outlen is 0, then the function should allocate its own buffer, in the
  * context of the request.
  *
- * @param[in] ctx to allocate any dynamic buffers in.
- * @param[in,out] out Where to write either a pointer to a new buffer, or data to an existing buffer.
- * @param[in] outlen Length of pre-allocated buffer, or 0 if function should allocate its own buffer.
- * @param[in] mod_inst Instance data provided by the xlat that registered the xlat.
- * @param[in] xlat_inst Instance data created by the xlat instantiation function.
- * @param[in] request The current request.
- * @param[in] fmt string to expand.
+ * @param[in] ctx		to allocate any dynamic buffers in.
+ * @param[in,out] out		Where to write either a pointer to a new buffer,
+ *				or data to an existing buffer.
+ * @param[in] outlen		Length of pre-allocated buffer, or 0 if function should
+ *				allocate its own buffer.
+ * @param[in] mod_inst		Instance data provided by the xlat that registered the xlat.
+ * @param[in] xlat_inst		Instance data created by the xlat instantiation function.
+ * @param[in] request		The current request.
+ * @param[in] fmt		string to expand.
  */
 typedef ssize_t (*xlat_func_sync_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
 				    void const *mod_inst, void const *xlat_inst,
@@ -133,7 +135,8 @@ typedef ssize_t (*xlat_func_sync_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
  * Ingests a list of value boxes as arguments, with arguments delimited by spaces.
  *
  * @param[in] ctx		to allocate any fr_value_box_t in.
- * @param[out] out		Where to append #fr_value_box_t containing the output of this function.
+ * @param[out] out		Where to append #fr_value_box_t containing the output of
+ *				this function.
  * @param[in] request		The current request.
  * @param[in] xlat_inst		Global xlat instance.
  * @param[in] xlat_thread_inst	Thread specific xlat instance.
@@ -154,12 +157,13 @@ typedef xlat_action_t (*xlat_func_async_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
  * Ingests a list of value boxes as arguments, with arguments delimited by spaces.
  *
  * @param[in] ctx		to allocate any fr_value_box_t in.
- * @param[out] out		Where to append #fr_value_box_t containing the output of this function.
+ * @param[out] out		Where to append #fr_value_box_t containing the output of
+ *				this function.
  * @param[in] request		The current request.
  * @param[in] xlat_inst		Global xlat instance.
  * @param[in] xlat_thread_inst	Thread specific xlat instance.
  * @param[in] in		Input arguments.
- * @param[in] rctx		passed to resume function.
+ * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @return
  *	- XLAT_ACTION_YIELD	xlat function is waiting on an I/O event and
  *				has pushed a resumption function onto the stack.
@@ -176,12 +180,12 @@ typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @note The callback is automatically removed on unlang_resumable().
  *
  * @param[in] request		The current request.
- * @param[in] instance		The xlat instance.
- * @param[in] thread		data specific to this xlat instance.
- * @param[in] rctx		Resume ctx for the callback.
+ * @param[in] xlat_inst		the xlat instance.
+ * @param[in] xlat_thread_inst	data specific to this xlat instance.
+ * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*xlat_func_signal_t)(REQUEST *request, void *instance, void *thread,
+typedef void (*xlat_func_signal_t)(REQUEST *request, void *xlat_inst, void *xlat_thread_inst,
 				   void *rctx, fr_state_signal_t action);
 
 /** Allocate new instance data for an xlat instance
@@ -195,7 +199,7 @@ typedef void (*xlat_func_signal_t)(REQUEST *request, void *instance, void *threa
  */
 typedef int (*xlat_instantiate_t)(void *xlat_inst, xlat_exp_t const *exp, void *uctx);
 
-/** Allocate new trhead instance data for an xlat instance
+/** Allocate new thread instance data for an xlat instance
  *
  * @param[in] xlat_inst		Previously instantiated xlat instance.
  * @param[out] xlat_thread_inst	Thread specific structure to populate.
@@ -302,7 +306,6 @@ void		xlat_free(void);
 /*
  *	xlat_tokenize.c
  */
-
 vp_tmpl_t	*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
 
 xlat_exp_t	*xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt);
