@@ -19,7 +19,7 @@ SOURCES	:= \
 	main_config.c \
 	map_proc.c \
 	map.c \
-	module.c \
+	modules.c \
 	paircmp.c \
 	pairmove.c \
 	pool.c \
