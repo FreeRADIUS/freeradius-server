@@ -550,7 +550,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		int tuple_size = PyTuple_GET_SIZE(pRet);
 
 		if (tuple_size < 2 || tuple_size > 3) {
-			ERROR("%s - Tuple must be (return, replyTuple, configTuple) or (return, updateDict)", funcname);
+			ERROR("%s - Tuple must be (return, updateDict) or (return, replyTuple, configTuple)", funcname);
 			ret = RLM_MODULE_FAIL;
 			goto finish;
 		}
@@ -564,17 +564,8 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		/* Now have the return value */
 		ret = PyInt_AsLong(pTupleInt);
 
-		/* process replyTuple and configTuple */
-		if (tuple_size == 3) {
-			/* Reply item tuple */
-			mod_vptuple(request->reply, request, &request->reply->vps,
-				    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
-			/* Config item tuple */
-			mod_vptuple(request, request, &request->config,
-				    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
-		}
 		/* process updateDict */
-		else if (tuple_size == 2) {
+		if (tuple_size == 2) {
 			PyObject *updateDict = PyTuple_GET_ITEM(pRet, 1);
 			if (!PyDict_CheckExact(updateDict)) {
 				ERROR("%s - updateDict is not a dictionary", funcname);
@@ -590,10 +581,12 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 			mod_vptuple(request->state_ctx, request, &request->state,
 				    PyDict_GetItemString(updateDict, "session-state"), funcname, "session-state");
 #ifdef WITH_PROXY
-			mod_vptuple(request->proxy, request, &request->proxy->vps,
-				    PyDict_GetItemString(updateDict, "proxy-request"), funcname, "proxy-request");
-			mod_vptuple(request->proxy_reply, request, &request->proxy_reply->vps,
-				    PyDict_GetItemString(updateDict, "proxy-reply"), funcname, "proxy-reply");
+			if (request->proxy)
+				mod_vptuple(request->proxy, request, &request->proxy->vps,
+					    PyDict_GetItemString(updateDict, "proxy-request"), funcname, "proxy-request");
+			if (request->proxy_reply)
+				mod_vptuple(request->proxy_reply, request, &request->proxy_reply->vps,
+					    PyDict_GetItemString(updateDict, "proxy-reply"), funcname, "proxy-reply");
 #endif
 			/*
 			 *	Update cached copies
@@ -602,6 +595,16 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 			request->password = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 			if (!request->password)
 				request->password = fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+		}
+
+		/* process replyTuple and configTuple */
+		else if (tuple_size == 3) {
+			/* Reply item tuple */
+			mod_vptuple(request->reply, request, &request->reply->vps,
+				    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
+			/* Config item tuple */
+			mod_vptuple(request, request, &request->config,
+				    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
 		}
 	} else if (PyInt_CheckExact(pRet)) {
 		/* Just an integer */
