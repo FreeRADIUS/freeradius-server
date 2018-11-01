@@ -964,7 +964,7 @@ static int mod_open(fr_listen_t *li)
 
 	server_cs = cf_item_to_section(ci);
 
-	thread->name = talloc_typed_asprintf(inst, "proto unix filename %s", inst->filename);
+	thread->name = talloc_typed_asprintf(thread, "proto unix filename %s", inst->filename);
 
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on control address %s bound to virtual server %s",
@@ -1068,13 +1068,13 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 
 		} while (0);
 
-		thread->name = talloc_typed_asprintf(inst, "proto unix filename %s from peer UID %u GID %u",
-						   inst->filename,
-						   (unsigned int) uid, (unsigned int) gid);
+		thread->name = talloc_typed_asprintf(thread, "proto unix filename %s from peer UID %u GID %u",
+						     inst->filename,
+						     (unsigned int) uid, (unsigned int) gid);
 	}
 #endif
 
-	if (!thread->name) thread->name = talloc_typed_asprintf(inst, "proto unix filename %s", inst->filename);
+	if (!thread->name) thread->name = talloc_typed_asprintf(thread, "proto unix filename %s", inst->filename);
 
 	thread->sockfd = fd;
 	thread->read = mod_read_init;
@@ -1121,7 +1121,7 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	(void) setvbuf(thread->stderr, NULL, _IOLBF, 0);
 	(void) setvbuf(thread->misc, NULL, _IOLBF, 0);
 
-	thread->info = talloc_zero(inst, fr_cmd_info_t);
+	thread->info = talloc_zero(thread, fr_cmd_info_t);
 	fr_command_info_init(thread, thread->info);
 
 	return 0;
