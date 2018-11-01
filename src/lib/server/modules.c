@@ -35,9 +35,15 @@ RCSID("$Id$")
 #include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/server/cf_file.h>
 
-static _Thread_local rbtree_t *module_thread_inst_tree;
-
 static TALLOC_CTX *instance_ctx = NULL;
+static size_t instance_num = 0;
+
+/*
+ *	For simplicity, this is just array[instance_num].  Once we
+ *	finish with modules_bootstrap(), the "instance_num" above MUST
+ *	NOT change.
+ */
+static _Thread_local module_thread_instance_t **module_thread_inst_array;
 
 static int module_instantiate(CONF_SECTION *root, char const *name);
 static fr_cmd_table_t cmd_module_table[];
@@ -410,6 +416,7 @@ int modules_free(void)
 	 *	Free instances first, then dynamic libraries.
 	 */
 	TALLOC_FREE(instance_ctx);
+	instance_num = 0;
 
 	return 0;
 }
@@ -487,64 +494,40 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
  */
 module_thread_instance_t *module_thread_instance_find(module_instance_t *mi)
 {
-	rbtree_t			*tree = module_thread_inst_tree;
-	module_thread_instance_t	find = { .mod_inst = mi->dl_inst->data };
+	module_thread_instance_t	**array = module_thread_inst_array;
 
-	return rbtree_finddata(tree, &find);
+	rad_assert(mi->number < talloc_array_length(array));
+
+	return array[mi->number];
 }
 
-/** Retrieve module/thread specific instance data for a module
- *
- * @param[in] mod_inst		Module specific instance to find thread_data for.
- * @return
- *	- Thread specific instance data on success.
- *	- NULL if module has no thread instance data.
+
+/** Destructor for module_thread_instance_t array
  */
-void *module_thread_instance_by_data(void *mod_inst)
+static int _module_thread_inst_array_free(module_thread_instance_t **array)
 {
-	rbtree_t			*tree = module_thread_inst_tree;
-	module_thread_instance_t	find = { .mod_inst = mod_inst }, *found;
+	size_t i, len;
 
-	found = rbtree_finddata(tree, &find);
-	if (!found) return NULL;
+	len = talloc_array_length(array);
+	for (i = 1; i < len; i++) {
+		module_thread_instance_t *ti;
 
-	return found->data;
+		if (!array[i]) continue;
+
+		ti = talloc_get_type_abort(array[i], module_thread_instance_t);
+
+		DEBUG4("Worker cleaning up %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
+		if (ti->module->thread_detach) (void) ti->module->thread_detach(ti->el, ti->data);
+
+		talloc_free(ti);
+	}
+
+	return 0;
 }
 
-/** Destructor for module_thread_instance_t
- *
- * @note This cannot be converted to a talloc destructor,
- *	as we need to call thread_detach *before* any of the children
- *	of the talloc ctx are freed.
- */
-static void _module_thread_instance_free(void *to_free)
-{
-	module_thread_instance_t *ti = talloc_get_type_abort(to_free, module_thread_instance_t);
-
-	DEBUG4("Worker cleaning up %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
-	if (ti->module->thread_detach) (void) ti->module->thread_detach(ti->el, ti->data);
-
-	talloc_free(ti);
-}
-
-/** Compare two thread instances based on inst pointer
- *
- * @param[in] a		First thread specific module instance.
- * @param[in] b		Second thread specific module instance.
- * @return
- *	- +1 if a > b.
- *	- -1 if a < b.
- *	- 0 if a == b.
- */
-static int _module_thread_inst_tree_cmp(void const *a, void const *b)
-{
-	module_thread_instance_t const *my_a = a, *my_b = b;
-
-	return (my_a->mod_inst > my_b->mod_inst) - (my_a->mod_inst < my_b->mod_inst);
-}
 
 typedef struct {
-	rbtree_t	*tree;		//!< Containing the thread instances.
+	module_thread_instance_t **array; //!< Containing the thread instances.
 	fr_event_list_t *el;		//!< Event list for this thread.
 } _thread_intantiate_ctx_t;
 
@@ -563,7 +546,7 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 	_thread_intantiate_ctx_t	*thread_inst_ctx = ctx;
 	int				ret;
 
-	MEM(ti = talloc_zero(thread_inst_ctx->tree, module_thread_instance_t));
+	MEM(ti = talloc_zero(thread_inst_ctx->array, module_thread_instance_t));
 	ti->el = thread_inst_ctx->el;
 	ti->module = mi->module;
 	ti->mod_inst = mi->dl_inst->data;	/* For efficient lookups */
@@ -592,7 +575,8 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 		}
 	}
 
-	rbtree_insert(thread_inst_ctx->tree, ti);
+	rad_assert(mi->number < talloc_array_length(thread_inst_ctx->array));
+	thread_inst_ctx->array[mi->number] = ti;
 
 	return 0;
 }
@@ -617,17 +601,16 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, CONF_SECTION *root, fr_event_lis
 	modules = cf_section_find(root, "modules", NULL);
 	if (!modules) return 0;
 
-	if (!module_thread_inst_tree) {
-		MEM(module_thread_inst_tree = rbtree_talloc_create(ctx, _module_thread_inst_tree_cmp,
-							    	   module_thread_instance_t,
-							    	   _module_thread_instance_free, 0));
+	if (!module_thread_inst_array) {
+		MEM(module_thread_inst_array = talloc_zero_array(ctx, module_thread_instance_t *, instance_num + 1));
+		talloc_set_destructor(module_thread_inst_array, _module_thread_inst_array_free);
 	}
 
 	uctx.el = el;
-	uctx.tree = module_thread_inst_tree;
+	uctx.array = module_thread_inst_array;
 
 	if (cf_data_walk(modules, module_instance_t, _module_thread_instantiate, &uctx) < 0) {
-		TALLOC_FREE(module_thread_inst_tree);
+		TALLOC_FREE(module_thread_inst_array);
 		return -1;
 	}
 
@@ -1059,6 +1042,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	}
 
 	mi->name = talloc_typed_strdup(mi, inst_name);
+	mi->number = instance_num++;
 
 	/*
 	 *	Remember the module for later.
@@ -1171,6 +1155,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	CONF_SECTION *cs, *modules;
 
 	instance_ctx = talloc_init("module instance context");
+	instance_num = 1;	/* to catch uninitialized thingies */
 
 	/*
 	 *	Remember where the modules were stored.

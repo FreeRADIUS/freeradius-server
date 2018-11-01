@@ -234,6 +234,7 @@ struct module_instance_s {
 
 	pthread_mutex_t			*mutex;
 
+	size_t				number;		//!< unique module number
 	bool				instantiated;	//!< Whether the module has been instantiated yet.
 
 	bool				force;		//!< Force the module to return a specific code.
