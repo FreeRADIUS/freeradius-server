@@ -1,7 +1,0 @@
-%{poke:my_reject.rcode=ok}
-
-my_reject	# should be "ok"
-
-update control {
-	Cleartext-Password := "hello"
-}
