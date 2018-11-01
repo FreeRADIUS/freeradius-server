@@ -17,6 +17,10 @@ python {
 
 	module = example
 
+	# Pass all VPS lists as a 6-tuple to the callback
+	# (request, reply, config, state, proxy_req, proxy_reply)
+	# pass_all_vps = no
+
 	mod_instantiate = ${.module}
 #	func_instantiate = instantiate
 
