@@ -21,7 +21,7 @@
  *
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2000,2006 The FreeRADIUS server project
- * @copyright 2000 Alan DeKok <aland@ox.org>
+ * @copyright 2000 Alan DeKok <aland@freeradius.org>
  * @copyright 2000 Miquel van Smoorenburg <miquels@cistron.nl>
  */
 RCSID("$Id$")

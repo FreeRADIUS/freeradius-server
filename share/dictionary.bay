@@ -5,7 +5,7 @@
 #	http://www.baynetworks.com/ (dead)
 #
 #	From MegaZone <megazone@megazone.org>, as posted to the bay-isp list.
-#	Modified for libradius by Alan DeKok <aland@ox.org>
+#	Modified for libradius by Alan DeKok <aland@freeradius.org>
 #
 #   Bay Networks was acquired by Nortel in 1998. Some Avaya products continue
 #   to use attributes from this dictionary as result of the Nortel acquisitions.

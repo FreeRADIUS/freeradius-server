@@ -21,7 +21,7 @@
  * @brief Defines functions for virtual_server initialisation.
  *
  * @copyright 2003,2006  The FreeRADIUS server project
- * @copyright 2000  Alan DeKok <aland@ox.org>
+ * @copyright 2000  Alan DeKok <aland@freeradius.org>
  * @copyright 2000  Alan Curry <pacman@world.std.com>
  */
 

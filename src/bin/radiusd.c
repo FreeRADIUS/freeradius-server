@@ -22,7 +22,7 @@
  *
  * @copyright 2000-2018 The FreeRADIUS server project
  * @copyright 1999,2000 Miquel van Smoorenburg <miquels@cistron.nl>
- * @copyright 2000 Alan DeKok <aland@ox.org>
+ * @copyright 2000 Alan DeKok <aland@freeradius.org>
  * @copyright 2000 Alan Curry <pacman-radius@cqc.com>
  * @copyright 2000 Jeff Carneal <jeff@apex.net>
  * @copyright 2000 Chad Miller <cmiller@surfsouth.com>

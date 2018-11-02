@@ -20,7 +20,7 @@
  * @brief Execute commands and parse the results.
  *
  * @copyright 2002,2006  The FreeRADIUS server project
- * @copyright 2002  Alan DeKok <aland@ox.org>
+ * @copyright 2002  Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
 

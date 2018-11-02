@@ -20,7 +20,7 @@
  *
  * @copyright 2001,2006  The FreeRADIUS server project
  * @copyright 2000  Mike Machado <mike@innercite.com>
- * @copyright 2000  Alan DeKok <aland@ox.org>
+ * @copyright 2000  Alan DeKok <aland@freeradius.org>
  * @copyright 2001  Chad Miller <cmiller@surfsouth.com>
  */
 
