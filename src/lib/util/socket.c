@@ -874,7 +874,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	if (src_port) my_port = *src_port;
 
 #ifdef HAVE_CAPABILITY_H
-	if (*src_port < 1024) {	/* Super special service ports */
+	if (src_port && (*src_port < 1024)) {	/* Super special service ports */
 		cap_t			caps;
 		cap_flag_value_t	state;
 
@@ -928,9 +928,10 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 				goto skip_cap;
 			}
 		}
-	}
+
 skip_cap:
-	if (caps) cap_free(caps);
+		if (caps) cap_free(caps);
+	}
 #endif
 
 	/*
