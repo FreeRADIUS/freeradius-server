@@ -462,7 +462,7 @@ static int mod_open(fr_listen_t *li)
 	proto_dhcpv4_udp_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
-	int				sockfd;
+	int				sockfd, rcode;
 	uint16_t			port = inst->port;
 	CONF_SECTION			*server_cs;
 	CONF_ITEM			*ci;
@@ -498,7 +498,13 @@ static int mod_open(fr_listen_t *li)
 		}
 	}
 
-	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
+	/*
+	 *	SUID up is really only needed if interface is set, OR port <1024.
+	 */
+	rad_suid_up();
+	rcode = fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface);
+	rad_suid_down();
+	if (rcode < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");
 		goto error;
