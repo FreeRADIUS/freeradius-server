@@ -40,7 +40,7 @@ typedef struct rlm_radius_retransmit_t {
  *
  */
 typedef struct rlm_radius_request_t {
-	rlm_radius_link_t	*link;		//!< to the rlm_radius thread context, and to the IO submodule
+	void			*request_io_ctx;
 	REQUEST			*request;	//!< as always...
 
 	int			code;		//!< packet code (sigh)
@@ -70,7 +70,7 @@ typedef struct rlm_radius_id_t {
 
 rlm_radius_id_t *rr_track_create(TALLOC_CTX *ctx);
 rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code,
-				     rlm_radius_link_t *link, rlm_radius_retransmit_t *timer) CC_HINT(nonnull);
+				     void *request_io_ctx, rlm_radius_retransmit_t *timer) CC_HINT(nonnull);
 int rr_track_update(rlm_radius_id_t *id, rlm_radius_request_t *rr, uint8_t *vector) CC_HINT(nonnull);
 rlm_radius_request_t *rr_track_find(rlm_radius_id_t *id, int packet_id, uint8_t *vector) CC_HINT(nonnull(1));
 int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr) CC_HINT(nonnull);

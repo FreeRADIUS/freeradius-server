@@ -144,6 +144,13 @@ typedef enum rlm_radius_request_state_t {
 struct rlm_radius_udp_request_t {
 	rlm_radius_request_state_t state;		//!< state of this request
 
+	REQUEST			*request;		//!< the request we are for, so we can find it from the link
+
+	fr_time_t		time_sent;		//!< when we sent the packet
+	fr_time_t		time_recv;		//!< when we received the reply
+
+	rlm_rcode_t		rcode;			//!< from the transport
+
 	fr_dlist_t		entry;			//!< in the connection list of packets.
 	int32_t			heap_id;		//!< for the "to be sent" queue.
 
@@ -157,7 +164,6 @@ struct rlm_radius_udp_request_t {
 	int			code;			//!< Packet code.
 	rlm_radius_udp_connection_t	*c;		//!< The connection state machine.
 	rlm_radius_udp_thread_t *thread;		//!< the thread data for this request
-	rlm_radius_link_t	*link;			//!< More link stuff.
 	rlm_radius_request_t	*rr;			//!< ID tracking, resend count, etc.
 
 	rlm_radius_retransmit_t timer;			//!< retransmission data structures
@@ -252,8 +258,8 @@ static int queue_cmp(void const *one, void const *two)
 	rlm_radius_udp_request_t const *a = one;
 	rlm_radius_udp_request_t const *b = two;
 
-	if (a->link->request->async->recv_time < b->link->request->async->recv_time) return -1;
-	if (a->link->request->async->recv_time > b->link->request->async->recv_time) return +1;
+	if (a->request->async->recv_time < b->request->async->recv_time) return -1;
+	if (a->request->async->recv_time > b->request->async->recv_time) return +1;
 
 	return 0;
 }
@@ -527,7 +533,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		rad_assert(u->rr == NULL);
 		rad_assert(u->c == NULL);
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
-		if (u->yielded) unlang_resumable(u->link->request);
+		if (u->yielded) unlang_resumable(u->request);
 		break;
 
 	case PACKET_STATE_FINISHED:
@@ -774,7 +780,6 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	rlm_radius_udp_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 	rlm_radius_request_t		*rr;
-	rlm_radius_link_t		*link;
 	rlm_radius_udp_request_t	*u;
 	int				code;
 	decode_fail_t			reason;
@@ -831,9 +836,8 @@ check_active:
 		goto redo;
 	}
 
-	link = rr->link;
-	u = link->request_io_ctx;
-	request = link->request;
+	u = rr->request_io_ctx;
+	request = u->request;
 	rad_assert(request != NULL);
 
 	original[0] = rr->code;
@@ -929,7 +933,7 @@ check_active:
 		uint8_t const *attr, *end;
 
 		end = c->buffer + packet_len;
-		link->rcode = RLM_MODULE_INVALID;
+		u->rcode = RLM_MODULE_INVALID;
 
 		for (attr = c->buffer + 20;
 		     attr < end;
@@ -976,7 +980,7 @@ check_active:
 			 *	Allow the Protocol-Error response,
 			 *	which returns "fail".
 			 */
-			link->rcode = RLM_MODULE_FAIL;
+			u->rcode = RLM_MODULE_FAIL;
 			break;
 		}
 
@@ -988,7 +992,7 @@ check_active:
 
 	} else if (!code || (code >= FR_MAX_PACKET_CODE)) {
 		REDEBUG("Unknown reply code %d", code);
-		link->rcode = RLM_MODULE_INVALID;
+		u->rcode = RLM_MODULE_INVALID;
 
 		/*
 		 *	Different debug message.  The packet is within
@@ -996,14 +1000,14 @@ check_active:
 		 */
 	} else if (!allowed_replies[code]) {
 		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
-		link->rcode = RLM_MODULE_INVALID;
+		u->rcode = RLM_MODULE_INVALID;
 
 
 		/*
 		 *	Status-Server packets can accept all possible replies.
 		 */
 	} else if (u->code == FR_CODE_STATUS_SERVER) {
-		link->rcode = code2rcode[code];
+		u->rcode = code2rcode[code];
 
 		/*
 		 *	The reply is a known code, but isn't
@@ -1014,7 +1018,7 @@ check_active:
 
 		REDEBUG("Invalid reply code %s to request packet %s",
 		        fr_packet_codes[code], fr_packet_codes[u->code]);
-		link->rcode = RLM_MODULE_INVALID;
+		u->rcode = RLM_MODULE_INVALID;
 
 		/*
 		 *	<whew>, it's OK.  Choose the correct module
@@ -1024,7 +1028,7 @@ check_active:
 	} else {
 		VALUE_PAIR *vp;
 
-		link->rcode = code2rcode[code];
+		u->rcode = code2rcode[code];
 
 	decode_reply:
 		vp = NULL;
@@ -1036,7 +1040,7 @@ check_active:
 				     c->inst->secret, 0, &vp) < 0) {
 			REDEBUG("Failed decoding attributes for packet");
 			fr_pair_list_free(&vp);
-			link->rcode = RLM_MODULE_INVALID;
+			u->rcode = RLM_MODULE_INVALID;
 			goto done;
 		}
 
@@ -1092,7 +1096,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	bool				resign = false;
 	int				rcode;
 	rlm_radius_udp_connection_t	*c = u->c;
-	REQUEST				*request = u->link->request;
+	REQUEST				*request = u->request;
 
 	rad_assert(u->packet != NULL);
 	rad_assert(u->packet_len >= 20);
@@ -1248,7 +1252,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 
 	rad_assert(u->timer.ev == NULL);
 
-	request = u->link->request;
+	request = u->request;
 
 	RDEBUG("TIMER - response timeout reached for try (%d/%d)",
 	       u->timer.count, u->timer.retry->mrc);
@@ -1307,7 +1311,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		 *	We just grabbed a new connection, go allocate
 		 *	an ID for it.
 		 */
-		u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
+		u->rr = rr_track_alloc(c->id, u->request, u->code, u, &u->timer);
 		if (!u->rr) {
 			conn_transition(c, CONN_FULL);
 			goto get_new_connection;
@@ -1376,7 +1380,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	rad_assert(c->inst->parent->allowed[u->code] || (u == c->status_u));
 	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
-	request = u->link->request;
+	request = u->request;
 
 	/*
 	 *	Make sure that we print out the actual encoded value
@@ -1616,7 +1620,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Instead, just set the return code to OK, and return.
 	 */
 	if (c->inst->replicate && (u != c->status_u)) {
-		u->link->rcode = RLM_MODULE_OK;
+		u->rcode = RLM_MODULE_OK;
 		return 2;
 	}
 
@@ -1656,8 +1660,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Status-Server only checks.
 	 */
 	if (u->timer.count == 0) {
-		u->link->time_sent = fr_time();
-		fr_time_to_timeval(&u->timer.start, u->link->time_sent);
+		u->time_sent = fr_time();
+		fr_time_to_timeval(&u->timer.start, u->time_sent);
 
 		if (rr_track_start(&u->timer) < 0) {
 			RDEBUG("%s - Failed starting retransmit tracking for connection %s",
@@ -1706,7 +1710,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	while ((u = fr_heap_peek(c->thread->queued)) != NULL) {
 		int rcode;
 
-		u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
+		u->rr = rr_track_alloc(c->id, u->request, u->code, u, &u->timer);
 
 		/*
 		 *	Can't allocate any more IDs, re-insert the
@@ -2051,14 +2055,12 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 	 *	all of it's associated glue.
 	 */
 	if (c->inst->parent->status_check && !c->status_u) {
-		rlm_radius_link_t *link;
 		rlm_radius_udp_request_t *u;
 		REQUEST *request;
 
-		link = talloc_zero(c, rlm_radius_link_t);
 		u = talloc_zero(c, rlm_radius_udp_request_t);
 
-		request = request_alloc(link);
+		request = request_alloc(u);
 		request->async = talloc_zero(request, fr_async_t);
 		talloc_const_free(request->name);
 		request->name = talloc_strdup(request, c->inst->parent->name);
@@ -2100,19 +2102,13 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 		log_request_pair_list(L_DBG_LVL_3, request, request->packet->vps, NULL);
 
 		/*
-		 *	Initialize the link.  Note that we don't set
+		 *	Initialize the request IO ctx.  Note that we don't set
 		 *	destructors.
 		 */
-		link->request = request;
-		link->request_io_ctx = u;
-
-		/*
-		 *	Unitialize the UDP link.
-		 */
+		u->request = request;
 		u->code = c->inst->parent->status_check;
 		request->packet->code = u->code;
 		u->c = c;
-		u->link = link;
 		u->thread = t;
 
 		/*
@@ -2121,12 +2117,11 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 		 *	demand.  If the proxied packets use all of the
 		 *	IDs, then we can't send a Status-Server check.
 		 */
-		u->rr = rr_track_alloc(c->id, request, u->code, link, &u->timer);
+		u->rr = rr_track_alloc(c->id, request, u->code, u, &u->timer);
 		if (!u->rr) {
 			ERROR("%s - Failed allocating status_check ID for connection %s",
 			      c->inst->parent->name, c->name);
 			talloc_free(u);
-			talloc_free(link);
 
 		} else {
 			DEBUG2("%s - Allocated %s ID %u for status checks on connection %s",
@@ -2374,12 +2369,12 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	return;
 }
 
-static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread)
+static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_ctx, void *thread)
 {
 	rlm_rcode_t    			rcode = RLM_MODULE_FAIL;
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	rlm_radius_udp_thread_t		*t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
-	rlm_radius_udp_request_t	*u = link->request_io_ctx;
+	rlm_radius_udp_request_t	*u = talloc_get_type_abort(request_io_ctx, rlm_radius_udp_request_t);
 	rlm_radius_udp_connection_t	*c;
 
 	rad_assert(request->packet->code > 0);
@@ -2398,7 +2393,8 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	u->state = PACKET_STATE_INIT;
 	u->rr = NULL;
 	u->c = NULL;
-	u->link = link;
+	u->request = request;
+	u->rcode = RLM_MODULE_FAIL;
 	u->code = request->packet->code;
 	u->thread = t;
 	u->heap_id = -1;
@@ -2415,8 +2411,8 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	/*
 	 *	Start the retransmission timers.
 	 */
-	u->link->time_sent = fr_time();
-	fr_time_to_timeval(&u->timer.start, u->link->time_sent);
+	u->time_sent = fr_time();
+	fr_time_to_timeval(&u->timer.start, u->time_sent);
 
 	if (rr_track_start(&u->timer) < 0) {
 		RDEBUG("%s - Failed starting retransmit tracking", inst->parent->name);
@@ -2493,9 +2489,9 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 }
 
 
-static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thread, rlm_radius_link_t *link, fr_state_signal_t action)
+static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *request_io_ctx, fr_state_signal_t action)
 {
-	rlm_radius_udp_request_t *u = link->request_io_ctx;
+	rlm_radius_udp_request_t *u = talloc_get_type_abort(request_io_ctx, rlm_radius_udp_request_t);
 	struct timeval now;
 
 	if (action != FR_SIGNAL_DUP) return;
@@ -2514,12 +2510,12 @@ static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thr
 
 static rlm_rcode_t mod_resume(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
 {
-	rlm_radius_link_t *link = talloc_get_type_abort(ctx, rlm_radius_link_t);
+	rlm_radius_udp_request_t *u = talloc_get_type_abort(ctx, rlm_radius_udp_request_t);
 	rlm_rcode_t rcode;
 
-	rcode = link->rcode;
+	rcode = u->rcode;
 	rad_assert(rcode != RLM_MODULE_YIELD);
-	talloc_free(link);
+	talloc_free(u);
 
 	return rcode;
 }

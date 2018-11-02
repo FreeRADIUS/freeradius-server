@@ -378,31 +378,11 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 }
 
 
-
-/** Free an rlm_radius_link_t
- *
- */
-static int mod_link_free(rlm_radius_link_t *link)
-{
-	/*
-	 *	Free the child's request io context.  That will call
-	 *	the IO submodules destructor, which will remove it
-	 *	from the tracking table, etc.
-	 *
-	 *	Note that the IO submodule has to set the destructor
-	 *	itself...
-	 */
-	talloc_free(link->request_io_ctx);
-
-	return 0;
-}
-
 static void mod_radius_signal(REQUEST *request, void *instance, void *thread, void *ctx,
 			      fr_state_signal_t action)
 {
 	rlm_radius_t const *inst = talloc_get_type_abort_const(instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-	rlm_radius_link_t *link = talloc_get_type_abort(ctx, rlm_radius_link_t);
 
 	/*
 	 *	We've been told we're done.  Clean up.
@@ -414,7 +394,7 @@ static void mod_radius_signal(REQUEST *request, void *instance, void *thread, vo
 	 *	necessary.
 	 */
 	if (action == FR_SIGNAL_CANCEL) {
-		talloc_free(link);
+		talloc_free(ctx);
 		return;
 	}
 
@@ -427,7 +407,7 @@ static void mod_radius_signal(REQUEST *request, void *instance, void *thread, vo
 
 	if (!inst->io->signal) return;
 
-	inst->io->signal(request, inst->io_instance, t->thread_io_ctx, link, action);
+	inst->io->signal(request, inst->io_instance, t->thread_io_ctx, ctx, action);
 }
 
 
@@ -438,9 +418,8 @@ static rlm_rcode_t mod_radius_resume(REQUEST *request, void *instance, void *thr
 {
 	rlm_radius_t const *inst = talloc_get_type_abort_const(instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-	rlm_radius_link_t *link = talloc_get_type_abort(ctx, rlm_radius_link_t);
 
-	return inst->io->resume(request, inst->io_instance, t->thread_io_ctx, link);
+	return inst->io->resume(request, inst->io_instance, t->thread_io_ctx, ctx);
 }
 
 /** Do any RADIUS-layer fixups for proxying.
@@ -486,7 +465,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	rlm_rcode_t rcode;
 	rlm_radius_t *inst = instance;
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-	rlm_radius_link_t *link;
+	void *request_io_ctx;
 
 	if (!request->packet->code) {
 		RDEBUG("You MUST specify a packet code");
@@ -520,26 +499,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	}
 
 	/*
-	 *	Allocate and fill in the data structure which links
-	 *	the request to the IO submodule.
-	 */
-	link = talloc_zero(request, rlm_radius_link_t);
-	if (!link) return RLM_MODULE_FAIL;
-
-	/*
 	 *	The submodule needs to track it's own data associated
 	 *	with the request.  Allocate that here.  Note that the
 	 *	IO submodule has to set the destructor if it so wishes.
 	 */
-	link->request_io_ctx = talloc_zero_array(link, uint8_t, inst->io->request_inst_size);
-	if (!link->request_io_ctx) {
-		talloc_free(link);
+	request_io_ctx = talloc_zero_array(request, uint8_t, inst->io->request_inst_size);
+	if (!request_io_ctx) {
 		return RLM_MODULE_FAIL;
 	}
-	if (inst->io->request_inst_type) talloc_set_name_const(link->request_io_ctx, inst->io->request_inst_type);
-
-	link->request = request;
-	link->rcode = RLM_MODULE_FAIL;
+	if (inst->io->request_inst_type) talloc_set_name_const(request_io_ctx, inst->io->request_inst_type);
 
 	/*
 	 *	Do any necessary RADIUS level fixups
@@ -548,22 +516,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	radius_fixups(inst, request);
 
-	talloc_set_destructor(link, mod_link_free);
-
 	/*
-	 *	Push the request and it's link to the IO submodule.
+	 *	Push the request and it's data to the IO submodule.
 	 *
 	 *	This may return YIELD, for "please yield", or it may
 	 *	return another code which indicates what happened to
 	 *	the request...b
 	 */
-	rcode = inst->io->push(inst->io_instance, request, link, t->thread_io_ctx);
+	rcode = inst->io->push(inst->io_instance, request, request_io_ctx, t->thread_io_ctx);
 	if (rcode != RLM_MODULE_YIELD) {
-		talloc_free(link);
+		talloc_free(request_io_ctx);
 		return rcode;
 	}
 
-	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, link);
+	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, request_io_ctx);
 }
 
 

@@ -30,14 +30,13 @@
  */
 
 typedef struct rlm_radius_t rlm_radius_t;
-typedef struct rlm_radius_link_t rlm_radius_link_t;
 
 
 /** Push a REQUEST to an IO submodule
  *
  */
-typedef rlm_rcode_t (*fr_radius_io_push_t)(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread);
-typedef void (*fr_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, rlm_radius_link_t *link, fr_state_signal_t action);
+typedef rlm_rcode_t (*fr_radius_io_push_t)(void *instance, REQUEST *request, void *request_io_ctx, void *thread);
+typedef void (*fr_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, void *request_io_ctx, fr_state_signal_t action);
 typedef int (*fr_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
 
 
@@ -115,16 +114,3 @@ typedef struct rlm_radius_thread_t {
 
 	void			*thread_io_ctx;		//!< thread context for the IO submodule
 } rlm_radius_thread_t;
-
-/** Link a REQUEST to an rlm_radius thread context, and to the IO submodule.
- *
- */
-struct rlm_radius_link_t {
-	REQUEST			*request;		//!< the request we are for, so we can find it from the link
-
-	fr_time_t		time_sent;		//!< when we sent the packet
-	fr_time_t		time_recv;		//!< when we received the reply
-
-	rlm_rcode_t		rcode;			//!< from the transport
-	void			*request_io_ctx;	//!< IO submodule tracking for this request
-};
