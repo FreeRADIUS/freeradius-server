@@ -2512,6 +2512,18 @@ static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thr
 }
 
 
+static rlm_rcode_t mod_resume(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
+{
+	rlm_radius_link_t *link = talloc_get_type_abort(ctx, rlm_radius_link_t);
+	rlm_rcode_t rcode;
+
+	rcode = link->rcode;
+	rad_assert(rcode != RLM_MODULE_YIELD);
+	talloc_free(link);
+
+	return rcode;
+}
+
 /** Bootstrap the module
  *
  * Bootstrap I/O and type submodules.
@@ -2680,4 +2692,5 @@ fr_radius_client_io_t rlm_radius_udp = {
 
 	.push			= mod_push,
 	.signal			= mod_signal,
+	.resume			= mod_resume,
 };

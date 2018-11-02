@@ -434,16 +434,13 @@ static void mod_radius_signal(REQUEST *request, void *instance, void *thread, vo
 /** Continue after unlang_resumable()
  *
  */
-static rlm_rcode_t mod_radius_resume(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
+static rlm_rcode_t mod_radius_resume(REQUEST *request, void *instance, void *thread, void *ctx)
 {
+	rlm_radius_t const *inst = talloc_get_type_abort_const(instance, rlm_radius_t);
+	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 	rlm_radius_link_t *link = talloc_get_type_abort(ctx, rlm_radius_link_t);
-	rlm_rcode_t rcode;
 
-	rcode = link->rcode;
-	rad_assert(rcode != RLM_MODULE_YIELD);
-	talloc_free(link);
-
-	return rcode;
+	return inst->io->resume(request, inst->io_instance, t->thread_io_ctx, link);
 }
 
 /** Do any RADIUS-layer fixups for proxying.

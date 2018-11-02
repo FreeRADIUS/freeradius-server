@@ -61,6 +61,7 @@ typedef struct fr_radius_client_io_t {
 
 	fr_radius_io_push_t		push;			//!< push a REQUEST to an IO submodule
 	fr_radius_io_signal_t		signal;			//!< send a signal to an IO module
+	fr_unlang_module_resume_t	resume;			//!< resume a request, and get rcode
 } fr_radius_client_io_t;
 
 typedef struct rlm_radius_retry_t {
