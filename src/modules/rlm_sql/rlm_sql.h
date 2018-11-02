@@ -212,6 +212,8 @@ typedef struct rlm_sql_module_t {
 
 	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+
+	xlat_escape_t	sql_escape_func;
 } rlm_sql_module_t;
 
 struct sql_inst {
