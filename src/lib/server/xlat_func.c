@@ -2638,7 +2638,7 @@ int xlat_init(void)
 	xlat_register(NULL, "sha3_224", sha3_224_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "sha3_256", sha3_256_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "sha3_384", sha3_384_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha3_512", sha3_512_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);#  endif
+	xlat_register(NULL, "sha3_512", sha3_512_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 #  endif
 #endif
 	xlat_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);

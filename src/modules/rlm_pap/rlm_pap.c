@@ -552,7 +552,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		else if (vp->da == attr_sha3_password) {
 			if (inst->normify) normify(request, vp, 28); /* ensure it's in the right format */
 			found_pw = true;
-		} else if (vp->da == attr_ssha3_224_password) {}
+		} else if (vp->da == attr_ssha3_224_password) {
 			if (inst->normify) normify(request, vp, 28); /* ensure it's in the right format */
 			found_pw = true;
 		} else if (vp->da == attr_ssha3_256_password) {
@@ -860,7 +860,6 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(rlm_pap_t const *inst, REQU
 				vp->vp_length);
 			return RLM_MODULE_INVALID;
 		}
-		break;
 	}
 #  endif
 	else {
