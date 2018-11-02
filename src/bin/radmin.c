@@ -65,7 +65,7 @@ static pthread_t pthread_id;
 static bool stop = false;
 static int context = 0;
 static fr_cmd_info_t radmin_info;
-static TALLOC_CTX *radmin_ctx;
+static TALLOC_CTX *radmin_ctx = NULL;
 
 #ifndef USE_READLINE
 /*
@@ -974,6 +974,8 @@ int fr_radmin_start(main_config_t *config, bool cli)
 
 void fr_radmin_stop(void)
 {
+	if (!radmin_ctx) return;
+
 	stop = true;
 
 	(void) pthread_join(pthread_id, NULL);
