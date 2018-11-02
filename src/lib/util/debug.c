@@ -249,44 +249,44 @@ int fr_get_debug_state(void)
 	int from_child[2] = {-1, -1};
 
 #ifdef HAVE_CAPABILITY_H
-	cap_flag_value_t value;
-	cap_t current;
+	cap_flag_value_t	state;
+	cap_t			caps;
 
 	/*
 	 *  If we're running under linux, we first need to check if we have
 	 *  permission to to ptrace. We do that using the capabilities
 	 *  functions.
 	 */
-	current = cap_get_proc();
-	if (!current) {
+	caps = cap_get_proc();
+	if (!caps) {
 		fr_strerror_printf("Failed getting process capabilities: %s", fr_syserror(errno));
 		return DEBUGGER_STATE_UNKNOWN;
 	}
 
-	if (cap_get_flag(current, CAP_SYS_PTRACE, CAP_PERMITTED, &value) < 0) {
-		fr_strerror_printf("Failed getting permitted ptrace capability state: %s",
+	if (cap_get_flag(caps, CAP_SYS_PTRACE, CAP_PERMITTED, &state) < 0) {
+		fr_strerror_printf("Failed getting CAP_SYS_PTRACE permitted state: %s",
 				   fr_syserror(errno));
-		cap_free(current);
+		cap_free(caps);
 		return DEBUGGER_STATE_UNKNOWN;
 	}
 
-	if ((value == CAP_SET) && (cap_get_flag(current, CAP_SYS_PTRACE, CAP_EFFECTIVE, &value) < 0)) {
-		fr_strerror_printf("Failed getting effective ptrace capability state: %s",
+	if ((state == CAP_SET) && (cap_get_flag(caps, CAP_SYS_PTRACE, CAP_EFFECTIVE, &state) < 0)) {
+		fr_strerror_printf("Failed getting CAP_SYS_PTRACE effective state: %s",
 				   fr_syserror(errno));
-		cap_free(current);
+		cap_free(caps);
 		return DEBUGGER_STATE_UNKNOWN;
 	}
 
 	/*
 	 *  We don't have permission to ptrace, so this test will always fail.
 	 */
-	if (value == CAP_CLEAR) {
+	if (state == CAP_CLEAR) {
 		fr_strerror_printf("ptrace capability not set.  If debugger detection is required run as root or: "
 				   "setcap cap_sys_ptrace+ep <path_to_radiusd>");
-		cap_free(current);
+		cap_free(caps);
 		return DEBUGGER_STATE_UNKNOWN_NO_PTRACE_CAP;
 	}
-	cap_free(current);
+	cap_free(caps);
 #endif
 
 	if (pipe(from_child) < 0) {
