@@ -381,13 +381,9 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 
 /** Free an rlm_radius_link_t
  *
- *  Unlink it from the running list, and remove it from the
- *  transport.
  */
 static int mod_link_free(rlm_radius_link_t *link)
 {
-	fr_dlist_remove(&link->t->running, link);
-
 	/*
 	 *	Free the child's request io context.  That will call
 	 *	the IO submodules destructor, which will remove it
@@ -545,9 +541,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	}
 	if (inst->io->request_inst_type) talloc_set_name_const(link->request_io_ctx, inst->io->request_inst_type);
 
-	link->t = t;
 	link->request = request;
-
 	link->rcode = RLM_MODULE_FAIL;
 
 	/*
@@ -557,7 +551,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	radius_fixups(inst, request);
 
-	fr_dlist_insert_tail(&t->running, link);
 	talloc_set_destructor(link, mod_link_free);
 
 	/*
@@ -812,8 +805,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->inst = instance;
 	t->el = el;
 
-	fr_dlist_init(&t->running, rlm_radius_link_t, entry);
-
 	/*
 	 *	Allocate thread-specific data.  The connections should
 	 *	live here.
@@ -849,18 +840,6 @@ static int mod_thread_detach(fr_event_list_t *el, void *thread)
 	 */
 	if (inst->io->thread_detach &&
 	    (inst->io->thread_detach(el, t->thread_io_ctx) < 0)) {
-		return -1;
-	}
-
-	/*
-	 *	The scheduler MUST be destroyed before this modules
-	 *	thread memory is freed.  That ordering ensures that
-	 *	all of the requests for a worker thread are forcibly
-	 *	marked DONE, and (in an ideal world) resumed / cleaned
-	 *	up before this memory is freed.
-	 */
-	if (fr_dlist_head(&t->running) != NULL) {
-		ERROR("Module still has running requests!");
 		return -1;
 	}
 

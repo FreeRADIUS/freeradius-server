@@ -112,8 +112,6 @@ typedef struct rlm_radius_thread_t {
 	rlm_radius_t const	*inst;			//!< Instance of the module.
 	fr_event_list_t		*el;			//!< This thread's event list.
 
-	fr_dlist_head_t		running;		//!< running requests
-
 	void			*thread_io_ctx;		//!< thread context for the IO submodule
 } rlm_radius_thread_t;
 
@@ -122,8 +120,6 @@ typedef struct rlm_radius_thread_t {
  */
 struct rlm_radius_link_t {
 	REQUEST			*request;		//!< the request we are for, so we can find it from the link
-	rlm_radius_thread_t	*t;			//!< thread context for rlm_radius
-	fr_dlist_t		entry;			//!< linked list of active requests for rlm_radius
 
 	fr_time_t		time_sent;		//!< when we sent the packet
 	fr_time_t		time_recv;		//!< when we received the reply
