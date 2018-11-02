@@ -1458,12 +1458,14 @@ int main(int argc, char *argv[])
 
 	if (fr_dict_global_init(autofree, dict_dir) < 0) {
 		fr_perror("unit_test_attribute");
-		exit(EXIT_FAILURE);
+		ret = EXIT_FAILURE;
+		goto done;
 	}
 
 	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fr_perror("unit_test_attribute");
-		exit(EXIT_FAILURE);
+		ret = EXIT_FAILURE;
+		goto done;
 	}
 
 	/*
