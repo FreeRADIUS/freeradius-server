@@ -2159,7 +2159,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 /** Initialise a new outbound connection
  *
  * @param[out] fd_out	Where to write the new file descriptor.
- * @param[in] uctx	A #rlm_radius_thread_t.
+ * @param[in] uctx	A #rlm_radius_udp_thread_t.
  */
 static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
 {
