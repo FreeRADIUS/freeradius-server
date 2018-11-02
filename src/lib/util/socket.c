@@ -874,15 +874,14 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	if (src_port) my_port = *src_port;
 
 #ifdef HAVE_CAPABILITY_H
-	if (src_port && (*src_port < 1024)) {	/* Super special service ports */
+	/*
+	 *	If we're binding to a special port as non-root, then
+	 *	check capabilities.  If we're root, we already have
+	 *	equivalent capabilities so we don't need to check.
+	 */
+	if (src_port && (*src_port < 1024) && (geteuid() != 0)) {
 		cap_t			caps;
 		cap_flag_value_t	state;
-
-		/*
-		 *	If we're root, we already have equivalent
-		 *	capabilities so we don't need to check.
-		 */
-		if (geteuid() == 0) goto skip_cap;
 
 		caps = cap_get_proc();
 		if (!caps) {
