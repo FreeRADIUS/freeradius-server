@@ -35,6 +35,15 @@
 #include <netdb.h>
 #include <unistd.h>
 
+/*
+ *	This is used during binding ports less than 1024
+ *	which is a privilege that processes don't
+ *	automatically acquire even when being run as root.
+ */
+#ifdef HAVE_CAPABILITY_H
+#  include <sys/capability.h>
+#endif
+
 /** Resolve a named service to a port
  *
  * @param[in] proto	The protocol. Either IPPROTO_TCP or IPPROTO_UDP.
@@ -855,13 +864,67 @@ int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
  */
 int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char const *interface)
 {
-	int			rcode;
-	uint16_t		my_port = 0;
-	fr_ipaddr_t		my_ipaddr = *src_ipaddr;
-	struct sockaddr_storage	salocal;
-	socklen_t		salen;
+	int				rcode;
+	uint16_t			my_port = 0;
+	fr_ipaddr_t			my_ipaddr = *src_ipaddr;
+	struct sockaddr_storage		salocal;
+	socklen_t			salen;
 
 	if (src_port) my_port = *src_port;
+
+#ifdef HAVE_CAPABILITY_H
+	if (*src_port < 1024) {	/* Super special service ports */
+		cap_t			caps;
+		cap_flag_value_t	state;
+
+		caps = cap_get_proc();
+		if (!caps) {
+			fr_strerror_printf("Failed getting process capabilities: %s", fr_syserror(errno));
+			return -1;
+		}
+
+		if (cap_get_flag(caps, CAP_NET_BIND_SERVICE, CAP_PERMITTED, &state) < 0) {
+			fr_strerror_printf("Failed getting CAP_NET_BIND_SERVICE permitted state: %s",
+					   fr_syserror(errno));
+		cap_error:
+			cap_free(caps);
+			return -1;
+		}
+
+		/*
+		 *	We're not permitted to set the CAP_NET_BIND_SERVICE
+		 *	capability, so error out without trying.
+		 */
+		if (state == CAP_CLEAR) {
+			fr_strerror_printf("Binding to service port (%i) would fail as we lack the correct "
+					   "capabilities. Use the following command to allow this bind: "
+					   "setcap cap_net_bind_service+ep <path_to_radiusd>", *src_port);
+			goto cap_error;
+		}
+
+		if (cap_get_flag(caps, CAP_NET_BIND_SERVICE, CAP_EFFECTIVE, &state) < 0) {
+			fr_strerror_printf("Failed getting CAP_NET_BIND_SERVICE effective state: %s",
+					   fr_syserror(errno));
+			goto cap_error;
+		}
+
+		/*
+		 *	Permitted bit is high effective bit is low,
+		 *	see if we can fix that.
+		 */
+		if (state == CAP_CLEAR) {
+			cap_value_t const to_set[] = {
+				CAP_NET_BIND_SERVICE
+			};
+
+			if (cap_set_flag(caps, CAP_EFFECTIVE, to_set, sizeof(to_set) / sizeof(*to_set), CAP_SET) < 0) {
+				fr_strerror_printf("Failed setting CAP_NET_BIND_SERVICE effective state: %s",
+						   fr_syserror(errno));
+				goto cap_error;
+			}
+		}
+	}
+#endif
 
 	/*
 	 *	Bind to a device BEFORE touching IP addresses.
