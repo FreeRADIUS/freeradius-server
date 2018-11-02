@@ -33,6 +33,7 @@
 
 #include <fcntl.h>
 #include <netdb.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 /*
@@ -877,40 +878,44 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 		cap_t			caps;
 		cap_flag_value_t	state;
 
+		/*
+		 *	If we're root, we already have equivalent
+		 *	capabilities so we don't need to check.
+		 */
+		if (geteuid() == 0) goto skip_cap;
+
 		caps = cap_get_proc();
 		if (!caps) {
-			fr_strerror_printf("Failed getting process capabilities: %s", fr_syserror(errno));
-			return -1;
+			fr_strerror_printf_push("Failed getting process capabilities: %s", fr_syserror(errno));
+			goto skip_cap;
 		}
 
 		if (cap_get_flag(caps, CAP_NET_BIND_SERVICE, CAP_PERMITTED, &state) < 0) {
-			fr_strerror_printf("Failed getting CAP_NET_BIND_SERVICE permitted state: %s",
-					   fr_syserror(errno));
-		cap_error:
-			cap_free(caps);
-			return -1;
+			fr_strerror_printf_push("Failed getting CAP_NET_BIND_SERVICE permitted state: %s",
+						fr_syserror(errno));
+			goto skip_cap;
 		}
 
 		/*
 		 *	We're not permitted to set the CAP_NET_BIND_SERVICE
-		 *	capability, so error out without trying.
+		 *	capability, so skip to just attempting the bind.
 		 */
 		if (state == CAP_CLEAR) {
-			fr_strerror_printf("Binding to service port (%i) would fail as we lack the correct "
-					   "capabilities. Use the following command to allow this bind: "
-					   "setcap cap_net_bind_service+ep <path_to_radiusd>", *src_port);
-			goto cap_error;
+			fr_strerror_printf_push("Binding to service port (%i) will likely fail as we lack the correct "
+						"capabilities. Use the following command to allow this bind: "
+						"setcap cap_net_bind_service+ep <path_to_radiusd>", *src_port);
+			goto skip_cap;
 		}
 
 		if (cap_get_flag(caps, CAP_NET_BIND_SERVICE, CAP_EFFECTIVE, &state) < 0) {
-			fr_strerror_printf("Failed getting CAP_NET_BIND_SERVICE effective state: %s",
-					   fr_syserror(errno));
-			goto cap_error;
+			fr_strerror_printf_push("Failed getting CAP_NET_BIND_SERVICE effective state: %s",
+						fr_syserror(errno));
+			goto skip_cap;
 		}
 
 		/*
-		 *	Permitted bit is high effective bit is low,
-		 *	see if we can fix that.
+		 *	Permitted bit is high effective bit is low, see
+		 *	if we can fix that.
 		 */
 		if (state == CAP_CLEAR) {
 			cap_value_t const to_set[] = {
@@ -918,12 +923,14 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 			};
 
 			if (cap_set_flag(caps, CAP_EFFECTIVE, to_set, sizeof(to_set) / sizeof(*to_set), CAP_SET) < 0) {
-				fr_strerror_printf("Failed setting CAP_NET_BIND_SERVICE effective state: %s",
-						   fr_syserror(errno));
-				goto cap_error;
+				fr_strerror_printf_push("Failed setting CAP_NET_BIND_SERVICE effective state: %s",
+							fr_syserror(errno));
+				goto skip_cap;
 			}
 		}
 	}
+skip_cap:
+	if (caps) cap_free(caps);
 #endif
 
 	/*
@@ -938,7 +945,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 
 		rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
 		if (rcode < 0) {
-			fr_strerror_printf("Failed binding to interface %s: %s", interface, fr_syserror(errno));
+			fr_strerror_printf_push("Failed binding to interface %s: %s", interface, fr_syserror(errno));
 			return -1;
 		} /* else it worked. */
 #else
@@ -959,8 +966,8 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 			if (my_ipaddr.scope_id == 0) {
 				my_ipaddr.scope_id = if_nametoindex(interface);
 				if (my_ipaddr.scope_id == 0) {
-					fr_strerror_printf("Failed finding interface %s: %s",
-							   interface, fr_syserror(errno));
+					fr_strerror_printf_push("Failed finding interface %s: %s",
+								interface, fr_syserror(errno));
 					return -1;
 				}
 			} /* else scope was defined: we're OK. */
@@ -972,8 +979,8 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 			 *	IPv4: no link local addresses,
 			 *	and no bind to device.
 			 */
-			fr_strerror_printf("Failed binding to interface %s: \"bind to device\" is unsupported",
-					   interface);
+			fr_strerror_printf_push("Failed binding to interface %s: \"bind to device\" is unsupported",
+						interface);
 			return -1;
 		}
 #endif
@@ -986,7 +993,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 
 	rcode = bind(sockfd, (struct sockaddr *) &salocal, salen);
 	if (rcode < 0) {
-		fr_strerror_printf("Bind failed: %s", fr_syserror(errno));
+		fr_strerror_printf_push("Bind failed: %s", fr_syserror(errno));
 		return rcode;
 	}
 
@@ -998,12 +1005,19 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	salen = sizeof(salocal);
 	memset(&salocal, 0, salen);
 	if (getsockname(sockfd, (struct sockaddr *) &salocal, &salen) < 0) {
-		fr_strerror_printf("Failed getting socket name: %s", fr_syserror(errno));
+		fr_strerror_printf_push("Failed getting socket name: %s", fr_syserror(errno));
 		return -1;
 	}
 
 	if (fr_ipaddr_from_sockaddr(&salocal, salen, &my_ipaddr, &my_port) < 0) return -1;
 	if (src_port) *src_port = my_port;
 
+#ifdef HAVE_CAPABILITY_H
+	/*
+	 *	Clear any errors we may have produced in the
+	 *	capabilities check.
+	 */
+	fr_strerror();
+#endif
 	return 0;
 }
