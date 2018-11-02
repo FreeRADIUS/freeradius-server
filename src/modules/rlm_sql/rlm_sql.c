@@ -110,6 +110,7 @@ static const CONF_PARSER module_config[] = {
 #endif
 	{ "safe-characters", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sql_config_t, allowed_chars), NULL },
 	{ "safe_characters", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, allowed_chars), "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
+	{ "driver_specific_escape", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, driver_specific_escape), "no" },
 
 	/*
 	 *	This only works for a few drivers.
@@ -1076,7 +1077,7 @@ do { \
 	 *	Either use the module specific escape function
 	 *	or our default one.
 	 */
-	inst->sql_escape_func = inst->module->sql_escape_func ?
+	inst->sql_escape_func = inst->module->sql_escape_func && inst->config->driver_specific_escape ?
 				inst->module->sql_escape_func :
 				sql_escape_func;
 

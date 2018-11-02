@@ -126,6 +126,7 @@ typedef struct sql_config {
 								//!< stale sessions.
 
 	char const		*allowed_chars;			//!< Chars which done need escaping..
+	bool			driver_specific_escape;		//!< Use the driver specific SQL escape method
 	uint32_t		query_timeout;			//!< How long to allow queries to run for.
 
 	char const		*connect_query;			//!< Query executed after establishing
