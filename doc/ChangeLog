@@ -93,6 +93,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  list.  Patch from Christian Hesse.
 	* Fix crash with CoA packets/  Fixes #2304.
 	* Fix crash in rlm_exec with CoA.  Fixes #2328.
+	* Print errors while parsing the log config, and don't
+	  quit when deprecated log settings are found.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements

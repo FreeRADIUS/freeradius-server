@@ -884,7 +884,10 @@ do {\
 	 *	set it now.
 	 */
 	if (default_log.dst == L_DST_NULL) {
-		if (cf_section_parse(cs, NULL, startup_server_config) < 0) {
+		default_log.dst = L_DST_STDERR;
+		default_log.fd = STDERR_FILENO;
+
+		if (cf_section_parse(cs, NULL, startup_server_config) == -1) {
 			fprintf(stderr, "%s: Error: Failed to parse log{} section.\n",
 				main_config.name);
 			cf_file_free(cs);
@@ -898,6 +901,7 @@ do {\
 			return -1;
 		}
 
+		default_log.fd = -1;
 		default_log.dst = fr_str2int(log_str2dst, radlog_dest,
 					      L_DST_NUM_DEST);
 		if (default_log.dst == L_DST_NUM_DEST) {
