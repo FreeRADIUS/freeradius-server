@@ -1483,10 +1483,19 @@ int main(int argc, char *argv[])
 		goto done;
 	}
 
+	/*
+	 *	Read tests from stdin
+	 */
 	if (argc < 2) {
 		if (process_file(features, dict, NULL, "-") < 0) ret = EXIT_FAILURE;
+
+	/*
+	 *	...or process each file in turn.
+	 */
 	} else {
-		if (process_file(features, dict, NULL, argv[1]) < 0) ret = EXIT_FAILURE;
+		int i;
+
+		for (i = 1; i < argc; i++) if (process_file(features, dict, NULL, argv[i]) < 0) ret = EXIT_FAILURE;
 	}
 
 	/*
