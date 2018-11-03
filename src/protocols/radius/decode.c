@@ -814,6 +814,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 	fr_dict_vendor_t	my_dv;
 	fr_dict_attr_t const	*vendor_da;
 	fr_cursor_t		tlv_cursor;
+	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 
 	/*
 	 *	Container must be a VSA
@@ -868,7 +869,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 		 *	We found an attribute representing the vendor
 		 *	so it *MUST* exist in the vendor tree.
 		 */
-		dv = fr_dict_vendor_by_num(NULL, vendor);
+		dv = fr_dict_vendor_by_num(fr_dict_by_da(packet_ctx->root), vendor);
 		if (!fr_cond_assert(dv)) return -1;
 	}
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor_da->name);
