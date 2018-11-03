@@ -73,8 +73,7 @@
 #	part of a RADIUS system does.  It is not just "configure FreeRADIUS"!
 #		https://networkradius.com/doc/FreeRADIUS-Technical-Guide.pdf
 #
-#
-#	Detailed documentation on dictionaries, modules, unlang, etc. is also
+#	More documentation on dictionaries, modules, unlang, etc. is also
 #	available on the Network RADIUS web site:
 #		https://networkradius.com/freeradius-documentation/
 #
