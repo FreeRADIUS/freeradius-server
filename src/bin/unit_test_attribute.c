@@ -812,7 +812,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 	TALLOC_CTX	*tp_ctx = talloc_init("tp_ctx");
 	fr_dict_t	*proto_dict = NULL;
 
-	bool		skip_decode = false;		//!< Whether the last encode errored.
+	bool		encode_error = false;		//!< Whether the last encode errored.
 
 #define CLEAR_TEST_POINT \
 do { \
@@ -891,6 +891,36 @@ do { \
 		if (!q) q = p + strlen(p);
 
 		strlcpy(test_type, p, (q - p) + 1);
+
+		if (strcmp(test_type, "data") == 0) {
+			encode_error = false;	/* Clear the encode error if we're doing a comparison */
+
+			/*
+			 *	Handle "no data expected"
+			 */
+			if (((p[4] == '\0') || (p[5] == '\0')) && (output[0] != '\0')) {
+				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected :\n",
+					lineno, directory, output);
+				goto error;
+			}
+
+			if (strcmp(p + 5, output) != 0) {
+				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
+					lineno, directory, output, p + 5);
+				goto error;
+			}
+			fr_strerror();	/* Clear the error buffer */
+			continue;
+		}
+
+
+		/*
+		 *	Previous encode line errored, skip until we find a "data" item
+		 */
+		if (encode_error) {
+			fr_perror("Skipping \"%s\" due to previous encode error", buffer);
+			continue;
+		}
 
 		if (strcmp(test_type, "load") == 0) {
 			p += 4;
@@ -976,25 +1006,6 @@ do { \
 			}
 			outlen = strlen(output);
 			output[outlen - 1] = '\0';
-			continue;
-		}
-
-		if (strcmp(test_type, "data") == 0) {
-			/*
-			 *	Handle "no data expected"
-			 */
-			if (((p[4] == '\0') || (p[5] == '\0')) && (output[0] != '\0')) {
-				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected :\n",
-					lineno, directory, output);
-				goto error;
-			}
-
-			if (strcmp(p + 5, output) != 0) {
-				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
-					lineno, directory, output, p + 5);
-				goto error;
-			}
-			fr_strerror();	/* Clear the error buffer */
 			continue;
 		}
 
@@ -1190,14 +1201,6 @@ do { \
 			fr_cursor_t 			cursor;
 			void				*decoder_ctx = NULL;
 
-			/*
-			 *	Encode errored, so skip the decode
-			 */
-			if (skip_decode) {
-				skip_decode = false;
-				continue;
-			}
-
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode") + 1;
 			if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, tp_ctx) < 0)) {
 				fr_strerror_printf_push("unit_test_attribute: Failed initialising decoder testpoint at "
@@ -1291,7 +1294,7 @@ do { \
 
 			if (fr_pair_list_afrom_str(tp_ctx, proto_dict, p, &head) != T_EOL) {
 				strerror_concat(output, sizeof(output));
-				skip_decode = true;						/* Record that the operation failed */
+				encode_error = true;						/* Record that the operation failed */
 
 				continue;
 			}
@@ -1304,7 +1307,7 @@ do { \
 					snprintf(output, sizeof(output), "%zd", enc_len);	/* Overwritten with real error */
 					strerror_concat(output, sizeof(output));
 
-					skip_decode = true;					/* Record that the operation failed */
+					encode_error = true;					/* Record that the operation failed */
 					fr_pair_list_free(&head);
 
 					goto next_line;						/* Bail out of the encode operation */
