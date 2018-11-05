@@ -228,9 +228,9 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ NULL }
 };
 
-static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx);
-static void conn_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
-static void conn_writable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
+static void conn_error(fr_event_list_t *el, int fd, int flags, int fd_errno, void *uctx);
+static void conn_read(fr_event_list_t *el, int fd, int flags, void *uctx);
+static void conn_writable(fr_event_list_t *el, int fd, int flags, void *uctx);
 static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u);
 
 static int conn_cmp(void const *one, void const *two)
