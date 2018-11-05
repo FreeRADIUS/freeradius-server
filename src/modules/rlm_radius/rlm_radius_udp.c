@@ -131,10 +131,10 @@ typedef struct rlm_radius_udp_connection_t {
 
 typedef enum rlm_radius_request_state_t {
 	PACKET_STATE_INIT = 0,
-	PACKET_STATE_THREAD,				//!< in the thread queue
-	PACKET_STATE_SENT,				//!< in the connection "sent" heap
-	PACKET_STATE_RESUMABLE,      			//!< timed out, or received a reply
-	PACKET_STATE_FINISHED,				//!< and done
+	PACKET_STATE_QUEUED,				//!< in the thread queue
+	PACKET_STATE_WRITTEN,				//!< in the connection "sent" heap
+	PACKET_STATE_REPLIED,      			//!< timed out, or received a reply
+	PACKET_STATE_DONE,				//!< and done
 } rlm_radius_request_state_t;
 
 
@@ -446,7 +446,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 		 *	"sent" list
 		 */
 		if (rcode == 1) {
-			u->state = PACKET_STATE_SENT;
+			u->state = PACKET_STATE_WRITTEN;
 			u->c = c;
 			return;
 		}
@@ -488,15 +488,15 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 
 	switch (u->state) {
 	case PACKET_STATE_INIT:
-		rad_assert(state == PACKET_STATE_THREAD);
+		rad_assert((state == PACKET_STATE_QUEUED) || (state == PACKET_STATE_DONE));
 		break;
 
-	case PACKET_STATE_THREAD:
+	case PACKET_STATE_QUEUED:
 		rad_assert(u->heap_id >= 0);
 		(void) fr_heap_extract(u->thread->queued, u);
 		break;
 
-	case PACKET_STATE_SENT:
+	case PACKET_STATE_WRITTEN:
 		rad_assert(u->rr != NULL);
 		rad_assert(u->c != NULL);
 		(void) rr_track_delete(u->c->id, u->rr);
@@ -505,8 +505,8 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		u->c = NULL;
 		break;
 
-	case PACKET_STATE_RESUMABLE:
-		rad_assert(state == PACKET_STATE_FINISHED);
+	case PACKET_STATE_REPLIED:
+		rad_assert(state == PACKET_STATE_DONE);
 		break;
 
 	default:
@@ -516,27 +516,27 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 
 	u->state = state;
 	switch (u->state) {
-	case PACKET_STATE_THREAD:
+	case PACKET_STATE_QUEUED:
 		rad_assert(u->rr == NULL);
 		rad_assert(u->c == NULL);
 		rad_assert(u->heap_id < 0);
 		fr_heap_insert(u->thread->queued, u);
 		break;
 
-	case PACKET_STATE_SENT:
+	case PACKET_STATE_WRITTEN:
 		rad_assert(u->rr != NULL);
 		rad_assert(u->c != NULL);
 		fr_dlist_insert_tail(&u->c->sent, u);
 		break;
 
-	case PACKET_STATE_RESUMABLE:
+	case PACKET_STATE_REPLIED:
 		rad_assert(u->rr == NULL);
 		rad_assert(u->c == NULL);
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 		if (u->yielded) unlang_resumable(u->request);
 		break;
 
-	case PACKET_STATE_FINISHED:
+	case PACKET_STATE_DONE:
 		rad_assert(u->rr == NULL);
 		rad_assert(u->c == NULL);
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
@@ -550,7 +550,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 
 static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u)
 {
-	rad_assert(u->state != PACKET_STATE_FINISHED);
+	rad_assert(u->state != PACKET_STATE_DONE);
 
 	/*
 	 *	Delete the tracking table entry, and remove the
@@ -567,14 +567,14 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 			return;
 		}
 
-		rad_assert(u->state == PACKET_STATE_SENT);
-		state_transition(u, PACKET_STATE_RESUMABLE);
+		rad_assert(u->state == PACKET_STATE_WRITTEN);
+		state_transition(u, PACKET_STATE_REPLIED);
 
 		conn_check_idle(c);
 
 	} else {
-		rad_assert(u->state == PACKET_STATE_THREAD);
-		state_transition(u, PACKET_STATE_RESUMABLE);
+		rad_assert(u->state == PACKET_STATE_QUEUED);
+		state_transition(u, PACKET_STATE_REPLIED);
 	}
 }
 
@@ -653,7 +653,7 @@ static void status_check_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_re
 	 */
 	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
-	rad_assert(u->state == PACKET_STATE_SENT);
+	rad_assert(u->state == PACKET_STATE_WRITTEN);
 	u->state = PACKET_STATE_INIT;
 
 	if (u->code != FR_CODE_STATUS_SERVER) return;
@@ -855,7 +855,7 @@ check_active:
 	/*
 	 *	We can only get a reply to a sent packet.
 	 */
-	rad_assert(u->state == PACKET_STATE_SENT);
+	rad_assert(u->state == PACKET_STATE_WRITTEN);
 	rad_assert(u->c == c);
 
 	/*
@@ -1080,7 +1080,7 @@ done:
 	} else {
 		rad_assert(u->c == c);
 		rad_assert(u->rr != NULL);
-		rad_assert(u->state == PACKET_STATE_SENT);
+		rad_assert(u->state == PACKET_STATE_WRITTEN);
 
 		/*
 		 *	It's a normal request.  Mark it as finished.
@@ -1299,7 +1299,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 */
 	if (!c) {
 	get_new_connection:
-		rad_assert(u->state == PACKET_STATE_THREAD);
+		rad_assert(u->state == PACKET_STATE_QUEUED);
 		c = fr_heap_peek(u->thread->active);
 		if (!c) {
 			RDEBUG("No available connections for retransmission.  Waiting %d.%06ds for retry",
@@ -1321,10 +1321,10 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		 *	We have a connection, transition to "sent".
 		 */
 		u->c = c;
-		state_transition(u, PACKET_STATE_SENT);
+		state_transition(u, PACKET_STATE_WRITTEN);
 	}
 
-	rad_assert(u->state == PACKET_STATE_SENT);
+	rad_assert(u->state == PACKET_STATE_WRITTEN);
 
 	/*
 	 *	If we can retransmit it, do so.  Otherwise, it will
@@ -1335,7 +1335,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	rcode = retransmit_packet(u, now);
 	if (rcode < 0) {
 		RDEBUG("Failed retransmitting packet for connection %s", c->name);
-		state_transition(u, PACKET_STATE_THREAD);
+		state_transition(u, PACKET_STATE_QUEUED);
 		talloc_free(c);
 		goto get_new_connection;
 	}
@@ -1347,7 +1347,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 */
 	if (rcode == 0) {
 		RDEBUG("Blocked writing for connection %s", c->name);
-		state_transition(u, PACKET_STATE_THREAD);
+		state_transition(u, PACKET_STATE_QUEUED);
 		conn_transition(c, CONN_BLOCKED);
 		goto get_new_connection;
 	}
@@ -1723,10 +1723,10 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 			break;
 		}
 
-		rad_assert(u->state == PACKET_STATE_THREAD);
+		rad_assert(u->state == PACKET_STATE_QUEUED);
 
 		u->c = c;
-		state_transition(u, PACKET_STATE_SENT);
+		state_transition(u, PACKET_STATE_WRITTEN);
 
 		/*
 		 *	If we're retransmitting the packet, wait for
@@ -1757,7 +1757,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 */
 		if (rcode == 0) {
 			pending = true;
-			state_transition(u, PACKET_STATE_THREAD);
+			state_transition(u, PACKET_STATE_QUEUED);
 			conn_transition(c, CONN_BLOCKED);
 			break;
 		}
@@ -1790,7 +1790,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 */
 		else {
 			rad_assert(rcode == 2);
-			state_transition(u, PACKET_STATE_RESUMABLE);
+			state_transition(u, PACKET_STATE_REPLIED);
 		}
 	}
 
@@ -1875,7 +1875,7 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 {
 	struct timeval when, now;
 
-	state_transition(u, PACKET_STATE_FINISHED);
+	state_transition(u, PACKET_STATE_DONE);
 
 	/*
 	 *	We don't have a connection, so we can't update any of
@@ -2007,7 +2007,7 @@ static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t s
 		 *	Move "sent" packets back to the thread queue,
 		 */
 		while ((u = fr_dlist_head(&c->sent)) != NULL) {
-			state_transition(u, PACKET_STATE_THREAD);
+			state_transition(u, PACKET_STATE_QUEUED);
 		}
 	}
 
@@ -2246,10 +2246,10 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 	 *	Move "sent" packets back to the main thread queue
 	 */
 	while ((u = fr_dlist_head(&c->sent)) != NULL) {
-		rad_assert(u->state == PACKET_STATE_SENT);
+		rad_assert(u->state == PACKET_STATE_WRITTEN);
 		rad_assert(u->c == c);
 
-		state_transition(u, PACKET_STATE_THREAD);
+		state_transition(u, PACKET_STATE_QUEUED);
 	}
 
 	if (c->status_u) talloc_free(c->status_u);
@@ -2406,7 +2406,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 	/*
 	 *	Insert the new packet into the thread queue.
 	 */
-	state_transition(u, PACKET_STATE_THREAD);
+	state_transition(u, PACKET_STATE_QUEUED);
 
 	/*
 	 *	Start the retransmission timers.
@@ -2470,17 +2470,17 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 		rad_assert(0 == 1);
 		break;
 
-	case PACKET_STATE_THREAD:
-	case PACKET_STATE_SENT:
+	case PACKET_STATE_QUEUED:
+	case PACKET_STATE_WRITTEN:
 		rcode = RLM_MODULE_YIELD;
 		u->yielded = true;
 		break;
 
-	case PACKET_STATE_RESUMABLE: /* was replicated */
-		state_transition(u, PACKET_STATE_FINISHED);
+	case PACKET_STATE_REPLIED:
+		state_transition(u, PACKET_STATE_DONE);
 		/* FALL-THROUGH */
 
-	case PACKET_STATE_FINISHED:
+	case PACKET_STATE_DONE:
 		rcode = RLM_MODULE_OK;
 		break;
 	}
