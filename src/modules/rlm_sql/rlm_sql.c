@@ -378,7 +378,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 			      char const *in, void *arg)
 {
-	rlm_sql_handle_t *handle = arg;
+	rlm_sql_handle_t *handle = talloc_get_type_abort(arg, rlm_sql_handle_t);
 	rlm_sql_t *inst = handle->inst;
 	size_t len = 0;
 
@@ -490,7 +490,7 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			ret;
-	rlm_sql_t		*inst = arg;
+	rlm_sql_t		*inst = talloc_get_type_abort(arg, rlm_sql_t);
 	rlm_sql_handle_t	*handle;
 
 	handle = fr_connection_get(inst->pool);

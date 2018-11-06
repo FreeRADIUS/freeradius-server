@@ -736,7 +736,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen;
-	rlm_sql_handle_t	*handle = arg;
+	rlm_sql_handle_t	*handle = talloc_get_type_abort(arg, rlm_sql_handle_t);
 	rlm_sql_mysql_conn_t	*conn = handle->conn;
 
 	/* Check for potential buffer overflow */
