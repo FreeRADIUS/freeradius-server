@@ -1389,10 +1389,9 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u)
 {
 	int			rcode;
-	size_t			buflen;
 	ssize_t			packet_len;
 	uint8_t			*msg = NULL;
-	bool			require_ma = false;
+	int			require_ma = 0;
 	int			proxy_state = 6;
 	REQUEST			*request;
 	char const		*module_name;
@@ -1411,7 +1410,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	request.
 	 */
 	if (fr_pair_find_by_da(request->packet->vps, attr_message_authenticator, TAG_ANY)) {
-		require_ma = true;
+		require_ma = 18;
 		pair_delete_request(attr_message_authenticator);
 	}
 
@@ -1428,7 +1427,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		size_t i;
 		uint32_t hash, base;
 
-		require_ma = true;
+		require_ma = 18;
 
 		base = fr_rand();
 		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
@@ -1452,18 +1451,15 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	}
 
 	/*
-	 *	Leave room for the Message-Authenticator.
+	 *	We should have at mininum 64-byte packets, so don't
+	 *	bother doing run-time checks here.
 	 */
-	if (require_ma) {
-		buflen = c->buflen - 18;
-	} else {
-		buflen = c->buflen;
-	}
+	rad_assert(c->buflen >= (20 + proxy_state + require_ma));
 
 	/*
 	 *	Encode it, leaving room for Proxy-State, too.
 	 */
-	packet_len = fr_radius_encode(c->buffer, buflen - proxy_state, NULL,
+	packet_len = fr_radius_encode(c->buffer, c->buflen - proxy_state - require_ma, NULL,
 				      c->inst->secret, 0, u->code, u->rr->id,
 				      request->packet->vps);
 	if (packet_len <= 0) return -1;
@@ -1498,19 +1494,13 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 */
 	if (proxy_state) {
 		uint8_t		*attr = c->buffer + packet_len;
-		int		hdr_len;
 		VALUE_PAIR	*vp;
 
-		rad_assert((size_t) (packet_len + 6) <= c->buflen);
+		rad_assert((size_t) (packet_len + proxy_state) <= c->buflen);
 
 		attr[0] = (uint8_t)attr_proxy_state->attr;
 		attr[1] = 6;
 		memcpy(attr + 2, &c->inst->parent->proxy_state, 4);
-
-		hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
-		hdr_len += 6;
-		c->buffer[2] = (hdr_len >> 8) & 0xff;
-		c->buffer[3] = hdr_len & 0xff;
 
 		vp = fr_pair_afrom_da(u, attr_proxy_state);
 		fr_pair_value_memcpy(vp, attr + 2, 4);
@@ -1529,9 +1519,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Note that the length check will always pass, due to
 	 *	the buflen manipulation done above.
 	 */
-	if (require_ma &&
-	    ((size_t) (packet_len + 18) <= c->buflen)) {
-		int hdr_len;
+	if (require_ma) {
+		rad_assert((size_t) (packet_len + require_ma) <= c->buflen);
 
 		msg = c->buffer + packet_len;
 
@@ -1539,13 +1528,14 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		msg[1] = 18;
 		memset(msg + 2, 0, 16);
 
-		hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
-		hdr_len += 18;
-		c->buffer[2] = (hdr_len >> 8) & 0xff;
-		c->buffer[3] = hdr_len & 0xff;
-
 		packet_len += 18;
 	}
+
+	/*
+	 *	Update the packet header based on the new attributes.
+	 */
+	c->buffer[2] = (packet_len >> 8) & 0xff;
+	c->buffer[3] = packet_len & 0xff;
 
 	/*
 	 *	Ensure that we update the Acct-Delay-Time on
@@ -1583,6 +1573,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		u->manual_delay_time = false;
 	}
 
+	/*
+	 *	Now that we're done mangling the packet, sign it.
+	 */
 	if (fr_radius_sign(c->buffer, NULL, (uint8_t const *) c->inst->secret,
 			   strlen(c->inst->secret)) < 0) {
 		request->module = module_name;
@@ -1591,6 +1584,10 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		return -1;
 	}
 
+	/*
+	 *	Remember the authentication vector, which now has the
+	 *	packet signature.
+	 */
 	memcpy(u->rr->vector, c->buffer + 4, AUTH_VECTOR_LEN);
 
 	/*
@@ -1613,8 +1610,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	request->module = module_name;
 
 	/*
-	 *	Write the packet to the socket.  If it blocks,
-	 *	stop dequeueing packets.
+	 *	Write the packet to the socket.  If it blocks, stop
+	 *	dequeueing packets.
 	 */
 	rcode = write(c->fd, c->buffer, packet_len);
 	if (rcode < 0) {
