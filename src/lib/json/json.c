@@ -431,7 +431,7 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 				struct json_object *mapped_value;
 
 				/* Add to mapping array */
-				MEM(mapped_value = json_object_new_string(dv->alias));
+				MEM(mapped_value = json_object_from_value_box(ctx, dv->value));
 				json_object_array_add(mapping, mapped_value);
 			/*
 			 *	Add NULL value to mapping array
