@@ -61,7 +61,7 @@ DIAG_OFF(strict-prototypes)
 #endif /* HAVE_LIBREADLINE */
 DIAG_ON(strict-prototypes)
 
-static pthread_t pthread_id;
+static pthread_t cli_pthread_id;
 static bool stop = false;
 static int context = 0;
 static fr_cmd_info_t radmin_info;
@@ -964,7 +964,7 @@ int fr_radmin_start(main_config_t *config, bool cli)
 	 *	won't go into la-la-land.  They might find unfinished
 	 *	commands, but they don't crash.
 	 */
-	if (fr_schedule_pthread_create(&pthread_id, fr_radmin, NULL) < 0) {
+	if (fr_schedule_pthread_create(&cli_pthread_id, fr_radmin, NULL) < 0) {
 		PERROR("Failed creating radmin thread");
 		return -1;
 	}
@@ -978,7 +978,7 @@ void fr_radmin_stop(void)
 
 	stop = true;
 
-	(void) pthread_join(pthread_id, NULL);
+	if (cli) (void) pthread_join(cli_pthread_id, NULL);
 
 	TALLOC_FREE(radmin_ctx);
 }
