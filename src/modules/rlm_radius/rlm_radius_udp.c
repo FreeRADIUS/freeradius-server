@@ -1454,7 +1454,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	We should have at mininum 64-byte packets, so don't
 	 *	bother doing run-time checks here.
 	 */
-	rad_assert(c->buflen >= (20 + proxy_state + require_ma));
+	rad_assert(c->buflen >= (size_t) (20 + proxy_state + require_ma));
 
 	/*
 	 *	Encode it, leaving room for Proxy-State, too.
