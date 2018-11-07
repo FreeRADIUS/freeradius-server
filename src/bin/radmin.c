@@ -978,7 +978,7 @@ void fr_radmin_stop(void)
 
 	stop = true;
 
-	if (cli) (void) pthread_join(cli_pthread_id, NULL);
+	if (cli_pthread_id > 0) (void) pthread_join(cli_pthread_id, NULL);
 
 	TALLOC_FREE(radmin_ctx);
 }
