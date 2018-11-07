@@ -450,7 +450,7 @@ static cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_slot, fr_so
 		fr_strerror_printf("No '-MOVED' or '-ASK' log_prefix");
 		return CLUSTER_OP_BAD_INPUT;
 	}
-	if ((q - p) >= redirect->len) {
+	if ((size_t)(q - p) >= redirect->len) {
 		fr_strerror_printf("Truncated");
 		return CLUSTER_OP_BAD_INPUT;
 	}
