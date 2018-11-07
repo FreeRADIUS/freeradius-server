@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/redis/cluster.h>
 
 typedef struct rlm_rediswho {
-	fr_redis_conf_t		*conf;		//!< Connection parameters for the Redis server.
+	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
 	char const		*name;		//!< Instance name.
@@ -235,7 +235,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_rediswho_t *inst = instance;
 
-	inst->cluster = fr_redis_cluster_alloc(inst, conf, inst->conf, true, NULL, NULL, NULL);
+	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf, true, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	return 0;
