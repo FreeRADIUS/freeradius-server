@@ -107,6 +107,7 @@ void fr_ldap_timeout_debug(REQUEST *request, fr_ldap_connection_t const *conn,
 	int				server = 0;
 	fr_ldap_config_t const	*handle_config = conn->config;
 
+	if (request) RINDENT();
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	if (ldap_get_option(conn->handle, LDAP_OPT_NETWORK_TIMEOUT, &net) != LDAP_OPT_SUCCESS) {
