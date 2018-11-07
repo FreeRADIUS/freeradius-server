@@ -92,14 +92,17 @@ typedef struct rlm_radius_udp_request_t rlm_radius_udp_request_t;
  *
  */
 typedef struct rlm_radius_udp_connection_t {
+	char const     		*name;			//!< From IP PORT to IP PORT.
+	rlm_radius_udp_connection_state_t state;	//!< State of the connection.
+
+	int			fd;			//!< File descriptor.
+
 	rlm_radius_udp_t const	*inst;			//!< Our module instance.
 	rlm_radius_udp_thread_t *thread;       		//!< Our thread-specific data.
 	fr_connection_t		*conn;			//!< Connection to our destination.
-	char const     		*name;			//!< From IP PORT to IP PORT.
 
 	fr_dlist_t		entry;			//!< In the linked list of connections.
 	int32_t			heap_id;		//!< For the active heap.
-	rlm_radius_udp_connection_state_t state;	//!< State of the connection.
 
 	fr_event_timer_t const	*idle_ev;		//!< Idle timeout event.
 	struct timeval		idle_timeout;		//!< When the idle timeout will fire.
@@ -113,7 +116,6 @@ typedef struct rlm_radius_udp_connection_t {
 	fr_dlist_head_t		sent;			//!< List of sent packets.
 
 	uint32_t		max_packet_size;	//!< Our max packet size. may be different from the parent.
-	int			fd;			//!< File descriptor.
 
 	fr_ipaddr_t		dst_ipaddr;		//!< IP of the home server. stupid 'const' issues.
 	uint16_t		dst_port;		//!< Port of the home server.
@@ -123,8 +125,10 @@ typedef struct rlm_radius_udp_connection_t {
 	uint8_t			*buffer;		//!< Receive buffer.
 	size_t			buflen;			//!< Receive buffer length.
 
+	/*
+	 *	The rest of the entries are RADIUS-specific
+	 */
 	rlm_radius_udp_request_t *status_u;    		//!< For Status-Server checks.
-
 	rlm_radius_id_t		*id;			//!< RADIUS ID tracking structure.
 } rlm_radius_udp_connection_t;
 
@@ -154,22 +158,27 @@ struct rlm_radius_udp_request_t {
 	fr_dlist_t		entry;			//!< in the connection list of packets.
 	int32_t			heap_id;		//!< for the "to be sent" queue.
 
+	rlm_radius_udp_connection_t	*c;		//!< The connection state machine.
+	rlm_radius_udp_thread_t *thread;		//!< the thread data for this request
+
+	bool			yielded;		//!< whether it yielded
+
+	/*
+	 *	The rest of the entries are RADIUS-specific
+	 */
+	bool			manual_delay_time;	//!< Whether or not we manually added an Acct-Delay-Time.
 	VALUE_PAIR		*extra;			//!< VPs for debugging, like Proxy-State.
 
 	uint8_t			*acct_delay_time;	//!< in the encoded packet.
 	uint32_t		initial_delay_time;	//!< Initial value of Acct-Delay-Time.
-	bool			manual_delay_time;	//!< Whether or not we manually added an Acct-Delay-Time.
-	bool			yielded;		//!< whether it yielded
 
 	int			code;			//!< Packet code.
-	rlm_radius_udp_connection_t	*c;		//!< The connection state machine.
-	rlm_radius_udp_thread_t *thread;		//!< the thread data for this request
-	rlm_radius_request_t	*rr;			//!< ID tracking, resend count, etc.
-
-	rlm_radius_retransmit_t timer;			//!< retransmission data structures
 
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
+
+	rlm_radius_request_t	*rr;			//!< ID tracking, resend count, etc.
+	rlm_radius_retransmit_t timer;			//!< retransmission data structures
 };
 
 
@@ -644,7 +653,7 @@ static void protocol_error_reply(rlm_radius_udp_connection_t *c, REQUEST *reques
 /** Deal with Status-Server replies, and possible negotiation
  *
  */
-static void status_check_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u, REQUEST *request)
+static void status_server_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 
@@ -816,6 +825,8 @@ check_active:
 
 	/*
 	 *	Replicating?  Drain the socket, but ignore all responses.
+	 *
+	 *	Note that if we're replicating, we don't do Status-Server checks.
 	 */
 	 if (c->inst->replicate) goto redo;
 
@@ -857,6 +868,187 @@ check_active:
 	 */
 	rad_assert(u->state == PACKET_STATE_WRITTEN);
 	rad_assert(u->c == c);
+
+	code = c->buffer[0];
+
+	/*
+	 *	Set request return code based on the packet type.
+	 *	Note that we don't care what the sent packet is, we
+	 *	presume that the reply is correct for the request,
+	 *	because it has been successfully verified.  The reply
+	 *	packet code only affects the module return code,
+	 *	nothing else.
+	 *
+	 *	Protocol-Error is special.  It goes through it's own
+	 *	set of checks.
+	 */
+	if (code == FR_CODE_PROTOCOL_ERROR) {
+		uint8_t const *attr, *end;
+
+		end = c->buffer + packet_len;
+		u->rcode = RLM_MODULE_INVALID;
+
+		for (attr = c->buffer + 20;
+		     attr < end;
+		     attr += attr[1]) {
+			/*
+			 *	The attribute containing the
+			 *	Original-Packet-Code is an extended
+			 *	attribute.
+			 */
+			if (attr[0] != (uint8_t)attr_extended_attribute_1->attr) continue;
+
+			/*
+			 *	ATTR + LEN + EXT-Attr + uint32
+			 */
+			if (attr[1] != 7) continue;
+
+			/*
+			 *	See if there's an Original-Packet-Code.
+			 */
+			if (attr[2] != (uint8_t)attr_original_packet_code->attr) continue;
+
+			/*
+			 *	Has to be an 8-bit number.
+			 */
+			if ((attr[3] != 0) ||
+			    (attr[4] != 0) ||
+			    (attr[5] != 0)) {
+				REDEBUG("Original-Packet-Code has invalid value > 255");
+				break;
+			}
+
+			/*
+			 *	The value has to match.  We don't
+			 *	currently multiplex different codes
+			 *	with the same IDs on connections.  So
+			 *	this check is just for RFC compliance,
+			 *	and for sanity.
+			 */
+			if (attr[6] != u->code) {
+				REDEBUG("Original-Packet-Code %d does not match original code %d",
+				        attr[6], u->code);
+				break;
+			}
+
+			/*
+			 *	Allow the Protocol-Error response,
+			 *	which returns "fail".
+			 */
+			u->rcode = RLM_MODULE_FAIL;
+			break;
+		}
+
+		/*
+		 *	Decode and print the reply, so that the caller
+		 *	can do something with it.
+		 */
+		goto decode_reply;
+
+	} else if (!code || (code >= FR_MAX_PACKET_CODE)) {
+		REDEBUG("Unknown reply code %d", code);
+		u->rcode = RLM_MODULE_INVALID;
+
+		/*
+		 *	Different debug message.  The packet is within
+		 *	the known bounds, but is one we don't handle.
+		 */
+	} else if (!allowed_replies[code]) {
+		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
+		u->rcode = RLM_MODULE_INVALID;
+
+		/*
+		 *	Status-Server can accept many kinds of
+		 *	replies.
+		 */
+	} else if (u->code == FR_CODE_STATUS_SERVER) {
+		goto check_reply;
+
+		/*
+		 *	The reply is a known code, but isn't
+		 *	appropriate for the request packet type.
+		 */
+	} else if (allowed_replies[code] != (FR_CODE) u->code) {
+		rad_assert(request != NULL);
+
+		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
+		u->rcode = RLM_MODULE_INVALID;
+
+		/*
+		 *	<whew>, it's OK.  Choose the correct module
+		 *	rcode based on the reply code.  This is either
+		 *	OK for an ACK, or FAIL for a NAK.
+		 */
+	} else {
+		VALUE_PAIR *vp;
+
+check_reply:
+		u->rcode = code2rcode[code];
+
+		if (u->rcode == RLM_MODULE_INVALID) {
+			REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
+			goto done;
+		}
+
+	decode_reply:
+		vp = NULL;
+
+		/*
+		 *	Decode the attributes, in the context of the reply.
+		 */
+		if (fr_radius_decode(request->reply, c->buffer, packet_len, original,
+				     c->inst->secret, 0, &vp) < 0) {
+			REDEBUG("Failed decoding attributes for packet");
+			fr_pair_list_free(&vp);
+			u->rcode = RLM_MODULE_INVALID;
+			goto done;
+		}
+
+		RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
+		       fr_packet_codes[code], code, packet_len, c->name);
+		log_request_pair_list(L_DBG_LVL_2, request, vp, NULL);
+
+		/*
+		 *	@todo - make this programmatic?  i.e. run a
+		 *	separate policy which updates the reply.
+		 *
+		 *	This is why I wanted to have "recv
+		 *	Access-Accept" policies...  so the user could
+		 *	programatically decide which attributes to add.
+		 */
+
+		request->reply->code = code;
+		fr_pair_add(&request->reply->vps, vp);
+
+		/*
+		 *	Run hard-coded policies on Protocol-Error
+		 */
+		if (code == FR_CODE_PROTOCOL_ERROR) protocol_error_reply(c, request);
+
+		/*
+		 *	Run hard-coded policies on packets *we* sent
+		 *	as status checks.
+		 */
+		if (u == c->status_u) status_server_reply(c, u, request);
+	}
+
+done:
+	rad_assert(request != NULL);
+	rad_assert(request->reply != NULL);
+
+	/*
+	 *	Clean up packets which aren't Status-Server
+	 */
+	if (u != c->status_u) {
+		rad_assert(u->c == c);
+		rad_assert(u->rr != NULL);
+		rad_assert(u->state == PACKET_STATE_WRITTEN);
+
+		/*
+		 *	It's a normal request.  Mark it as finished.
+		 */
+		mod_finished_request(c, u);
+	}
 
 	/*
 	 *	Remember when we last saw a reply.
@@ -914,178 +1106,6 @@ check_active:
 		 */
 		activate = true;
 		break;
-	}
-
-	code = c->buffer[0];
-
-	/*
-	 *	Set request return code based on the packet type.
-	 *	Note that we don't care what the sent packet is, we
-	 *	presume that the reply is correct for the request,
-	 *	because it has been successfully verified.  The reply
-	 *	packet code only affects the module return code,
-	 *	nothing else.
-	 *
-	 *	Protocol-Error is special.  It goes through it's own
-	 *	set of checks.
-	 */
-	if (code == FR_CODE_PROTOCOL_ERROR) {
-		uint8_t const *attr, *end;
-
-		end = c->buffer + packet_len;
-		u->rcode = RLM_MODULE_INVALID;
-
-		for (attr = c->buffer + 20;
-		     attr < end;
-		     attr += attr[1]) {
-			/*
-			 *	Must be an extended attribute.
-			 */
-			if (attr[0] != (uint8_t)attr_extended_attribute_1->attr) continue;
-
-			/*
-			 *	ATTR + LEN + EXT-Attr + uint32
-			 */
-			if (attr[1] != 7) continue;
-
-			/*
-			 *	See if there's an original packet code.
-			 */
-			if (attr[2] != (uint8_t)attr_original_packet_code->attr) continue;
-
-			/*
-			 *	Has to be an 8-bit number.
-			 */
-			if ((attr[3] != 0) ||
-			    (attr[4] != 0) ||
-			    (attr[5] != 0)) {
-				REDEBUG("Original-Packet-Code has invalid value > 255");
-				break;
-			}
-
-			/*
-			 *	This has to match.  We don't currently
-			 *	multiplex different codes with the
-			 *	same IDs on connections.  So this
-			 *	check is just for RFC compliance, and
-			 *	for sanity.
-			 */
-			if (attr[6] != u->code) {
-				REDEBUG("Original-Packet-Code %d does not match original code %d",
-				        attr[6], u->code);
-				break;
-			}
-
-			/*
-			 *	Allow the Protocol-Error response,
-			 *	which returns "fail".
-			 */
-			u->rcode = RLM_MODULE_FAIL;
-			break;
-		}
-
-		/*
-		 *	Decode and print the reply, so that the caller
-		 *	can do something with it.
-		 */
-		goto decode_reply;
-
-	} else if (!code || (code >= FR_MAX_PACKET_CODE)) {
-		REDEBUG("Unknown reply code %d", code);
-		u->rcode = RLM_MODULE_INVALID;
-
-		/*
-		 *	Different debug message.  The packet is within
-		 *	the known bounds, but is one we don't handle.
-		 */
-	} else if (!allowed_replies[code]) {
-		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
-		u->rcode = RLM_MODULE_INVALID;
-
-
-		/*
-		 *	Status-Server packets can accept all possible replies.
-		 */
-	} else if (u->code == FR_CODE_STATUS_SERVER) {
-		u->rcode = code2rcode[code];
-
-		/*
-		 *	The reply is a known code, but isn't
-		 *	appropriate for the request packet type.
-		 */
-	} else if (allowed_replies[code] != (FR_CODE) u->code) {
-		rad_assert(request != NULL);
-
-		REDEBUG("Invalid reply code %s to request packet %s",
-		        fr_packet_codes[code], fr_packet_codes[u->code]);
-		u->rcode = RLM_MODULE_INVALID;
-
-		/*
-		 *	<whew>, it's OK.  Choose the correct module
-		 *	rcode based on the reply code.  This is either
-		 *	OK for an ACK, or FAIL for a NAK.
-		 */
-	} else {
-		VALUE_PAIR *vp;
-
-		u->rcode = code2rcode[code];
-
-	decode_reply:
-		vp = NULL;
-
-		/*
-		 *	Decode the attributes, in the context of the reply.
-		 */
-		if (fr_radius_decode(request->reply, c->buffer, packet_len, original,
-				     c->inst->secret, 0, &vp) < 0) {
-			REDEBUG("Failed decoding attributes for packet");
-			fr_pair_list_free(&vp);
-			u->rcode = RLM_MODULE_INVALID;
-			goto done;
-		}
-
-		RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
-		       fr_packet_codes[code], code, packet_len, c->name);
-		log_request_pair_list(L_DBG_LVL_2, request, vp, NULL);
-
-		/*
-		 *	@todo - make this programmatic?  i.e. run a
-		 *	separate policy which updates the reply.
-		 *
-		 *	This is why I wanted to have "recv
-		 *	Access-Accept" policies...  so the user could
-		 *	programatically decide which attributes to add.
-		 */
-
-		request->reply->code = code;
-		fr_pair_add(&request->reply->vps, vp);
-
-		/*
-		 *	Run hard-coded policies on Protocol-Error
-		 */
-		if (code == FR_CODE_PROTOCOL_ERROR) protocol_error_reply(c, request);
-	}
-
-done:
-	rad_assert(request != NULL);
-	rad_assert(request->reply != NULL);
-
-	/*
-	 *	We received the response to a Status-Server
-	 *	check.
-	 */
-	if (u == c->status_u) {
-		status_check_reply(c, u, request);
-
-	} else {
-		rad_assert(u->c == c);
-		rad_assert(u->rr != NULL);
-		rad_assert(u->state == PACKET_STATE_WRITTEN);
-
-		/*
-		 *	It's a normal request.  Mark it as finished.
-		 */
-		mod_finished_request(c, u);
 	}
 
 	goto redo;
@@ -1614,12 +1634,12 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 	/*
 	 *	We're replicating, so we don't care about the
-	 *	responses.  Don't do any retransmission
-	 *	timers, etc.
+	 *	responses.  Don't do any retransmission timers, don't
+	 *	look for replies to status checks, etc.
 	 *
 	 *	Instead, just set the return code to OK, and return.
 	 */
-	if (c->inst->replicate && (u != c->status_u)) {
+	if (c->inst->replicate) {
 		u->rcode = RLM_MODULE_OK;
 		return 2;
 	}
@@ -2044,7 +2064,6 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 	 *	If the connection is open, it must be writable.
 	 */
 	rad_assert(c->state == CONN_OPENING);
-	conn_transition(c, CONN_ACTIVE);
 
 	rad_assert(c->zombie_ev == NULL);
 	memset(&c->zombie_start, 0, sizeof(c->zombie_start));
@@ -2146,6 +2165,15 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 	 *	writable.
 	 */
 	if (fr_heap_num_elements(t->queued) > 0) conn_writable(c->thread->el, fd, 0, c);
+
+	/*
+	 *	@todo - do negotiation on the connection by sending
+	 *	Status-Server with bits of information.  If there's an
+	 *	appropriate response, then transition the connection
+	 *	to ACTIVE.  Otherwise, leave the connection as
+	 *	OPENING, and start the negotiation phase.
+	 */
+	conn_transition(c, CONN_ACTIVE);
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }
