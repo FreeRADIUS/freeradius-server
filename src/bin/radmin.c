@@ -62,6 +62,7 @@ DIAG_OFF(strict-prototypes)
 DIAG_ON(strict-prototypes)
 
 static pthread_t cli_pthread_id;
+static bool cli_started = false;
 static bool stop = false;
 static int context = 0;
 static fr_cmd_info_t radmin_info;
@@ -968,6 +969,7 @@ int fr_radmin_start(main_config_t *config, bool cli)
 		PERROR("Failed creating radmin thread");
 		return -1;
 	}
+	cli_started = true;
 
 	return 0;
 }
@@ -978,7 +980,10 @@ void fr_radmin_stop(void)
 
 	stop = true;
 
-	if (cli_pthread_id > 0) (void) pthread_join(cli_pthread_id, NULL);
+	if (cli_started) {
+		(void) pthread_join(cli_pthread_id, NULL);
+		cli_started = false;
+	}
 
 	TALLOC_FREE(radmin_ctx);
 }
