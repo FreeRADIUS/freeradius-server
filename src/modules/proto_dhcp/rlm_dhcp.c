@@ -142,7 +142,7 @@ static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 		return -1;
 	}
 
-	return fr_bin2hex(out, binbuf, (p - binbuf)));
+	return fr_bin2hex(out, binbuf, (p - binbuf));
 }
 
 
