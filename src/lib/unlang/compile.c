@@ -674,9 +674,9 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 				    (map->lhs->tmpl_da->type == FR_TYPE_OCTETS)) {
 
 					if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
-						cf_log_err(map->ci, "Failed to parse data type %s from string: %s",
+						cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
 							   fr_int2str(fr_value_box_type_names, map->lhs->tmpl_da->type, "<UNKNOWN>"),
-							   map->rhs->name);
+							   fr_box_strvalue_len(map->rhs->name, map->rhs->len));
 						return false;
 					} /* else the cast was successful */
 
