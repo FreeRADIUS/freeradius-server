@@ -4,7 +4,7 @@
 update request {
 	Tmp-String-0        := '9870'
 	Tmp-String-1        := '98709870'
-	Tmp-String-2        := '987098709870'
+	Tmp-String-2        := '184467440737095516157'
 	Tmp-Octets-0        := 0x39383731
 	Tmp-Octets-1        := 0x3938373139383731
 	Tmp-Octets-2        := 0x393837313938373139383731
@@ -22,21 +22,11 @@ update request {
 	Tmp-Cast-IPv4Prefix := 57.56.55.62/32
 }
 
-update request {
-	Tmp-String-2        := "%{integer:Tmp-IP-Address-0}"
-	Tmp-String-3        := "%{integer:Tmp-Date-0}"
-	Tmp-String-4        := "%{integer:Tmp-Integer-0}"
-	Tmp-String-5        := "%{integer:Tmp-Cast-Abinary}"
-	Tmp-String-6        := "%{integer:Tmp-Cast-Ifid}"
-	Tmp-String-7        := "%{integer:Tmp-Cast-IPv6Addr}"
-	Tmp-String-8        := "%{integer:Tmp-Cast-IPv6Prefix}"
-}
-
 # String - network order representation of a 4 char string
 update request {
-	Tmp-Integer-0 := "%{integer:Tmp-String-0}"
+	Tmp-Integer-1 := "%{integer:Tmp-String-0}"
 }
-if ((Tmp-String-0 != "%{string:Tmp-Integer-0}") || (Tmp-Integer-0 != 959985456)) {
+if ((<integer>&Tmp-String-0 != &Tmp-Integer-1) || (Tmp-Integer-1 != 9870)) {
 	test_fail
 }
 
@@ -44,7 +34,7 @@ if ((Tmp-String-0 != "%{string:Tmp-Integer-0}") || (Tmp-Integer-0 != 959985456))
 update request {
 	Tmp-Integer64-0 := "%{integer:Tmp-String-1}"
 }
-if ((Tmp-String-1 != "%{string:Tmp-Integer64-0}") || (Tmp-Integer64-0 != 4123106139115632432)) {
+if ((<integer64>&Tmp-String-1 != &Tmp-Integer64-0) || (&Tmp-Integer64-0 != 98709870)) {
 	test_fail
 }
 
@@ -55,16 +45,16 @@ if ("%{integer:Tmp-String-2}" != '') {
 
 # Octets - network order representation of a 4 byte octet string
 update request {
-	Tmp-Integer-0 := "%{integer:Tmp-Octets-0}"
+	Tmp-Integer-1 := "%{integer:Tmp-Octets-0}"
 }
 
 #
 #  Disabled until xlats can return binary data
 #
-#if (Tmp-Octets-0 != "%{hex:Tmp-Integer-0}") {
+#if (Tmp-Octets-0 != "%{hex:Tmp-Integer-1}") {
 #	test_fail
 #}
-if (Tmp-Integer-0 != 959985457) {
+if (Tmp-Integer-1 != 959985457) {
 	test_fail
 }
 
@@ -87,6 +77,16 @@ if (Tmp-Integer64-0 != 4123106143410599729) {
 # String - Can't convert 12 byte octet string to integer (our biggest native size is a 64bit unsigned int)
 if ("%{integer:Tmp-Octets-2}" != '') {
 	test_fail
+}
+
+update request {
+	Tmp-String-2        := "%{integer:Tmp-IP-Address-0}"
+	Tmp-String-3        := "%{integer:Tmp-Date-0}"
+	Tmp-String-4        := "%{integer:Tmp-Integer-0}"
+	Tmp-String-5        := "%{integer:Tmp-Cast-Abinary}"
+	Tmp-String-6        := "%{integer:Tmp-Cast-Ifid}"
+	Tmp-String-7        := "%{integer:Tmp-Cast-IPv6Addr}"
+	Tmp-String-8        := "%{integer:Tmp-Cast-IPv6Prefix}"
 }
 
 # IP Address
