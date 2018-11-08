@@ -506,45 +506,29 @@ static ssize_t xlat_foreach(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
  * be printed as 0x0a0a0a. The xlat "%{string:Foo}" will instead
  * expand to "\n\n\n"
  */
-static ssize_t xlat_string(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+static xlat_action_t string_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				 fr_value_box_t **in)
 {
-	ssize_t		ret;
-	VALUE_PAIR	*vp;
-	uint8_t		buffer[64];
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if (outlen < 3) {
-	nothing:
-		return 0;
-	}
-
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
+	if (!*in) return XLAT_ACTION_DONE;
 
 	/*
-	 *	These are printed specially.
+	 * Concatenate all input
 	 */
-	switch (vp->vp_type) {
-	case FR_TYPE_OCTETS:
-		return fr_snprint(*out, outlen, (char const *) vp->vp_octets, vp->vp_length, '"');
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
 
-		/*
-		 *	Note that "%{string:...}" is NOT binary safe!
-		 *	It is explicitly used to get rid of embedded zeros.
-		 */
-	case FR_TYPE_STRING:
-		return strlcpy(*out, vp->vp_strvalue, outlen);
-
-	default:
-		break;
+		return XLAT_ACTION_FAIL;
 	}
 
-	ret = fr_value_box_to_network(NULL, buffer, sizeof(buffer), &vp->data);
-	if (ret < 0) return ret;
+	if (fr_value_box_cast_in_place(ctx, *in, FR_TYPE_STRING, NULL) < 0) {
+		RPEDEBUG2("Conversion to string failed");
+		return XLAT_ACTION_FAIL;
+	}
 
-	return fr_snprint(*out, outlen, (char const *) buffer, ret, '\0');
+	fr_cursor_insert(out, *in);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** xlat expand string attribute value
@@ -2619,7 +2603,6 @@ int xlat_init(void)
 	XLAT_REGISTER(length);
 	XLAT_REGISTER(hex);
 	XLAT_REGISTER(tag);
-	XLAT_REGISTER(string);
 	XLAT_REGISTER(xlat);
 	XLAT_REGISTER(map);
 	XLAT_REGISTER(module);
@@ -2664,6 +2647,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "bin", bin_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "md5", md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "rand", rand_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "string", string_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "randstr", randstr_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	xlat_async_register(NULL, "regex", regex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
