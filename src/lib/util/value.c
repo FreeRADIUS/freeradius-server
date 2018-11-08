@@ -3387,7 +3387,7 @@ void fr_value_box_increment(fr_value_box_t *vb)
  *	- 0 on success.
  *	- -1 on parse error.
  */
-static int fr_value_box_integer_str(fr_value_box_t *dst, fr_type_t dst_type, char const *in)
+static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type, char const *in)
 {
 	uint64_t	uinteger = 0;
 	int64_t		sinteger = 0;
@@ -3796,7 +3796,7 @@ parse:
 	case FR_TYPE_DATE_MILLISECONDS:
 	case FR_TYPE_DATE_MICROSECONDS:
 	case FR_TYPE_DATE_NANOSECONDS:
-		if (fr_value_box_integer_str(dst, *dst_type, in) < 0) return -1;
+		if (fr_value_box_from_integer_str(dst, *dst_type, in) < 0) return -1;
 		break;
 
 	case FR_TYPE_SIZE:
