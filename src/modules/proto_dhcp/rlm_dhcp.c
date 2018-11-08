@@ -111,18 +111,18 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
 	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *head = NULL, *vp;
 	uint8_t binbuf[1024];
 	uint8_t *p = binbuf, *end = p + sizeof(binbuf);
 	ssize_t slen;
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_copy_vp(request, &vp, request, fmt) < 0) || !vp) {
+	if ((radius_copy_vp(request, &head, request, fmt) < 0) || !head) {
 		 *out = '\0';
 		 return 0;
 	}
-	fr_cursor_init(&cursor, &vp);
+	fr_cursor_init(&cursor, &head);
 
 	while ((vp = fr_cursor_current(&cursor))) {
 		slen = fr_dhcp_encode_option(request, p, end - p, &cursor);
