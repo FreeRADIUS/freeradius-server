@@ -173,8 +173,19 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	switch (vp->vp_type) {
-	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
+	{
+		fr_value_box_t vb;
+
+		if (fr_value_box_cast(NULL, &vb, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
+			RPEDEBUG("Input string invalid");
+			return -1;
+		}
+
+		return snprintf(*out, outlen, "%" PRIu64, vb.vb_uint64);
+	}
+
+	case FR_TYPE_OCTETS:
 		if (vp->vp_length > 8) {
 			break;
 		}
