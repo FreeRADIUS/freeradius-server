@@ -3407,6 +3407,11 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 
 			return -1;
 		}
+		if (errno == ERANGE) {
+			fr_strerror_printf("Integer value \"%s\" too large, would overflow", in);
+
+			return -1;
+		}
 		break;
 
 	case FR_TYPE_INT8:
@@ -3416,6 +3421,11 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 		sinteger = fr_strtoll(in, &p);
 		if (*p != '\0') {
 			fr_strerror_printf("Invalid integer value \"%s\"", in);
+
+			return -1;
+		}
+		if (errno == ERANGE) {
+			fr_strerror_printf("Integer value \"%s\" too large, would overflow", in);
 
 			return -1;
 		}
