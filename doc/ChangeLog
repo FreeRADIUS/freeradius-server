@@ -95,6 +95,10 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Fix crash in rlm_exec with CoA.  Fixes #2328.
 	* Print errors while parsing the log config, and don't
 	  quit when deprecated log settings are found.
+	* Fix DHCP encoder xlat so that it can be used with
+	  a list of attributes.  It previously only encoded the
+	  first member of the list, and now encodes all
+	  members.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
