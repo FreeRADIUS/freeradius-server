@@ -3401,7 +3401,7 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 	case FR_TYPE_DATE_MILLISECONDS:
 	case FR_TYPE_DATE_MICROSECONDS:
 	case FR_TYPE_DATE_NANOSECONDS:
-		uinteger = fr_strtoll(in, &p);
+		uinteger = fr_strtoull(in, &p);
 		if (*p != '\0') {
 			fr_strerror_printf("Invalid integer value \"%s\"", in);
 
