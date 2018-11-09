@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/request.h>
 
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/unlang_priv.h>	/* Remove when everything uses new xlat API */
 
 #include <freeradius-devel/attributes.h>
 
@@ -1162,12 +1163,51 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	case XLAT_FUNC:
 		XLAT_DEBUG("xlat_aprint MODULE");
 
+		/*
+		 *	Temporary hack to use the new API.
+		 *
+		 *	Will not handle yields.
+		 */
 		if (node->xlat->type == XLAT_FUNC_ASYNC) {
-			REDEBUG("Async XLAT function (%s) not allowed here", node->xlat->name);
-			return NULL;
-		}
+			fr_value_box_t	*result = NULL;
+			TALLOC_CTX	*pool = talloc_new(NULL);
 
-		if (node->child) {
+			/*
+			 *	Use the unlang stack to evaluate
+			 *	the async xlat up until the point
+			 *	that it needs to yield.
+			 */
+			unlang_xlat_push(pool, &result, request, node, true);
+
+			switch (unlang_run(request)) {
+			default:
+				break;
+
+			case RLM_MODULE_YIELD:
+				RPEDEBUG("xlat yield NYI in conditions");
+				talloc_free(pool);
+				return NULL;
+
+			case RLM_MODULE_REJECT:
+			case RLM_MODULE_FAIL:
+				RPEDEBUG("xlat evaluation failed");
+				talloc_free(pool);
+				return NULL;
+			}
+
+			if (result) {
+				str = fr_value_box_list_asprint(ctx, result, NULL, '"');
+				if (!str) {
+					RPEDEBUG("Failed concatenating xlat result string");
+					talloc_free(pool);
+					return NULL;
+				}
+			} else {
+				str = talloc_strdup(ctx, "");
+			}
+			talloc_free(pool);	/* Memory should be in new ctx */
+			return str;
+		} else if (node->child) {
 			if (xlat_process(ctx, &child, request,
 					 node->child, node->xlat->escape, node->xlat->mod_inst) == 0) {
 				return NULL;

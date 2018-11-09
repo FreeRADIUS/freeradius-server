@@ -37,6 +37,10 @@ if (&Tmp-String-0 != "\\\\") {
 	test_fail
 }
 
+if (<string>&Tmp-Octets-0 != "%{string:%{Tmp-Octets-0}}") {
+	test_fail
+}
+
 if (&Tmp-String-1 != 'I like chicken I like liver') {
 	test_fail
 }
