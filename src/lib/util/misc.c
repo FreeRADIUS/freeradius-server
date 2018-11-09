@@ -261,21 +261,29 @@ char *fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen)
  * Allows integer or hex representations of integers (but not octal,
  * as octal is deemed to be confusing).
  *
- * @note Check for overflow with errno == ERANGE.
- *
- * @param[in] value	string to parse.
+ * @param[out] out	Result of parsing string as unsigned 64bit integer.
  * @param[out] end	pointer to the first non numeric char.
+ * @param[in] value	string to parse.
+ *
  * @return integer value.
  */
-uint64_t fr_strtoull(char const *value, char **end)
+int fr_strtoull(uint64_t *out, char **end, char const *value)
 {
 	errno = 0;	/* Explicitly clear errors, as glibc appears not to do this */
 
 	if ((value[0] == '0') && (value[1] == 'x')) {
-		return strtoull(value, end, 16);
+		*out = strtoull(value, end, 16);
+		if (errno == ERANGE) {
+		error:
+			fr_strerror_printf("Unsigned integer value \"%s\" too large, would overflow", value);
+			return -1;
+		}
+		return 0;
 	}
 
-	return strtoull(value, end, 10);
+	*out = strtoull(value, end, 10);
+	if (errno == ERANGE) goto error;
+	return 0;
 }
 
 /** Consume the integer (or hex) portion of a value string
@@ -285,19 +293,28 @@ uint64_t fr_strtoull(char const *value, char **end)
  *
  * @note Check for overflow with errno == ERANGE.
  *
- * @param[in] value	string to parse.
+ * @param[out] out	Result of parsing string as signed 64bit integer.
  * @param[out] end	pointer to the first non numeric char.
+ * @param[in] value	string to parse.
  * @return integer value.
  */
-int64_t fr_strtoll(char const *value, char **end)
+int fr_strtoll(int64_t *out, char **end, char const *value)
 {
 	errno = 0;	/* Explicitly clear errors, as glibc appears not to do this */
 
 	if ((value[0] == '0') && (value[1] == 'x')) {
-		return strtoll(value, end, 16);
+		*out = strtoll(value, end, 16);
+		if (errno == ERANGE) {
+		error:
+			fr_strerror_printf("Signed integer value \"%s\" too large, would overflow", value);
+			return -1;
+		}
+		return 0;
 	}
 
-	return strtoll(value, end, 10);
+	*out = strtoll(value, end, 10);
+	if (errno == ERANGE) goto error;
+	return 0;
 }
 
 /** Trim whitespace from the end of a string

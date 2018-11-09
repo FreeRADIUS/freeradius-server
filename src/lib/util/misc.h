@@ -129,8 +129,8 @@ int		rad_unlockfd(int fd, int lock_len);
 char		*fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen);
 size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
 size_t		fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen);
-uint64_t	fr_strtoull(char const *value, char **end);
-int64_t		fr_strtoll(char const *value, char **end);
+int		fr_strtoull(uint64_t *out, char **end, char const *value);
+int		fr_strtoll(int64_t *out, char **end, char const *value);
 char		*fr_trim(char const *str, size_t size);
 
 int		fr_nonblock(int fd);

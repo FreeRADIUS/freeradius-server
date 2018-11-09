@@ -3401,14 +3401,18 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 	case FR_TYPE_DATE_MILLISECONDS:
 	case FR_TYPE_DATE_MICROSECONDS:
 	case FR_TYPE_DATE_NANOSECONDS:
-		uinteger = fr_strtoull(in, &p);
+		/*
+		 *	fr_strtoull checks for overflows and calls
+		 *	fr_strerror_printf to set an error.
+		 */
+		if (fr_strtoull(&uinteger, &p, in) < 0) return -1;
 		if (*p != '\0') {
 			fr_strerror_printf("Invalid integer value \"%s\"", in);
 
 			return -1;
 		}
 		if (errno == ERANGE) {
-			fr_strerror_printf("Unsigned integer value \"%s\" too large, would overflow", in);
+
 
 			return -1;
 		}
@@ -3418,14 +3422,13 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 	case FR_TYPE_INT16:
 	case FR_TYPE_INT32:
 	case FR_TYPE_INT64:
-		sinteger = fr_strtoll(in, &p);
+		/*
+		 *	fr_strtoll checks for overflows and calls
+		 *	fr_strerror_printf to set an error.
+		 */
+		if (fr_strtoll(&sinteger, &p, in) < 0) return -1;
 		if (*p != '\0') {
 			fr_strerror_printf("Invalid integer value \"%s\"", in);
-
-			return -1;
-		}
-		if (errno == ERANGE) {
-			fr_strerror_printf("Signed integer value \"%s\" too large, would overflow", in);
 
 			return -1;
 		}
