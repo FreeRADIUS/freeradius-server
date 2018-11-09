@@ -313,12 +313,12 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 
 /** Called when we're ready to resume processing the request
  *
- * @param[in] request		to resume processing.
- * @param[in] presult		the result of the xlat function.
- *				- RLM_MODULE_OK on success.
- *				- RLM_MODULE_FAIL on failure.
- *				- RLM_MODULE_YIELD if additional asynchronous operations
- *				  need to be performed.
+ * @param[in] request	to resume processing.
+ * @param[in] presult	the result of the xlat function.
+ *			  - RLM_MODULE_OK on success.
+ *			  - RLM_MODULE_FAIL on failure.
+ *			  - RLM_MODULE_YIELD if additional asynchronous
+ *			    operations need to be performed.
  * @param[in] rctx	provided by xlat function.
  * @return
  *	- UNLANG_ACTION_YIELD	if yielding.
