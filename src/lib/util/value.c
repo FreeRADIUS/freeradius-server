@@ -3408,7 +3408,7 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 			return -1;
 		}
 		if (errno == ERANGE) {
-			fr_strerror_printf("Integer value \"%s\" too large, would overflow", in);
+			fr_strerror_printf("Unsigned integer value \"%s\" too large, would overflow", in);
 
 			return -1;
 		}
@@ -3425,7 +3425,7 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 			return -1;
 		}
 		if (errno == ERANGE) {
-			fr_strerror_printf("Integer value \"%s\" too large, would overflow", in);
+			fr_strerror_printf("Signed integer value \"%s\" too large, would overflow", in);
 
 			return -1;
 		}

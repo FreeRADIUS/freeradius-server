@@ -261,12 +261,16 @@ char *fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen)
  * Allows integer or hex representations of integers (but not octal,
  * as octal is deemed to be confusing).
  *
+ * @note Check for overflow with errno == ERANGE.
+ *
  * @param[in] value	string to parse.
  * @param[out] end	pointer to the first non numeric char.
  * @return integer value.
  */
 uint64_t fr_strtoull(char const *value, char **end)
 {
+	errno = 0;	/* Explicitly clear errors, as glibc appears not to do this */
+
 	if ((value[0] == '0') && (value[1] == 'x')) {
 		return strtoull(value, end, 16);
 	}
@@ -279,12 +283,16 @@ uint64_t fr_strtoull(char const *value, char **end)
  * Allows integer or hex representations of integers (but not octal,
  * as octal is deemed to be confusing).
  *
+ * @note Check for overflow with errno == ERANGE.
+ *
  * @param[in] value	string to parse.
  * @param[out] end	pointer to the first non numeric char.
  * @return integer value.
  */
 int64_t fr_strtoll(char const *value, char **end)
 {
+	errno = 0;	/* Explicitly clear errors, as glibc appears not to do this */
+
 	if ((value[0] == '0') && (value[1] == 'x')) {
 		return strtoll(value, end, 16);
 	}
