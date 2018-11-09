@@ -189,16 +189,13 @@ parse_again:
 					getword(&ptr, newfile, sizeof(newfile), false);
 				}
 
-				t = NULL;
-
-				if (pairlist_read(t, newfile, &t, 0) != 0) {
+				if (pairlist_read(ctx, newfile, last, 0) != 0) {
 					pairlist_free(&pl);
 					ERROR("%s[%d]: Could not open included file %s: %s",
 					      file, lineno, newfile, fr_syserror(errno));
 					fclose(fp);
 					return -1;
 				}
-				*last = t;
 
 				/*
 				 *	t may be NULL, it may have one
