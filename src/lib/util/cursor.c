@@ -61,6 +61,10 @@ static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 		return cursor->iter(prev, current, cursor->ctx);
 	}
 
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (cursor->type) _talloc_get_type_abort(current, cursor->type, __location__);
+#endif
+
 	if (!cursor->iter) {
 		next = *NEXT_PTR(current);				/* Fast path without custom iter */
 		if (prev) *prev = current;
