@@ -292,6 +292,8 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		goto done;
 	}
 
+	while (isspace((int) *p)) p++;
+
 	if ((*p < '0') || (*p > '9')) {
 		RDEBUG2("Not a number at \"%s\"", p);
 		return false;
