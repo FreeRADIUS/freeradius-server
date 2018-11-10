@@ -17,3 +17,19 @@ date {
 	#  default = no
 #	utc = yes
 }
+
+#
+#  The WISPr-Session-Terminate-Time attribute is of type "string",
+#  and not "date".  Use this expansion to create an attribute
+#  that holds an actual date:
+#
+#	Tmp-Date-0 := "%{wispr2date:&reply:WISPr-Session-Terminate-Time}"
+#
+date wispr2date {
+	format = "%Y-%m-%dT%H:%M:%S"
+
+	# Use UTC instead of local time.
+	#
+	#  default = no
+#	utc = yes
+}
