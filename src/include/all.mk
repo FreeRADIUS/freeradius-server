@@ -15,6 +15,7 @@
 HEADERS_DY = attributes.h features.h missing.h radpaths.h tls.h
 
 HEADERS	= \
+	autoconf.h \
 	build.h \
 	conf.h \
 	conffile.h \
@@ -33,9 +34,12 @@ HEADERS	= \
 	radiusd.h \
 	radutmp.h \
 	realms.h \
+	regex.h \
 	sha1.h \
 	stats.h \
 	sysutmp.h \
+	tcp.h \
+	threads.h \
 	token.h \
 	udpfromto.h \
 	base64.h \
