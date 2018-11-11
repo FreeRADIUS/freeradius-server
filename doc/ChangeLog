@@ -54,6 +54,9 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* OpenDirectory module now points to Apple documentation for help
 	  with build and configuration.
 	* Use OpenSSL HMAC functions instead of local ones.
+	* Some SQL modules can now use "auto_escape" to escape unsafe strings.
+	  See mods-config/sql/main/mysql/queries.conf
+	* Add wispr2date conversion in mods-available/date
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -99,6 +102,7 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  a list of attributes.  It previously only encoded the
 	  first member of the list, and now encodes all
 	  members.
+	* The "expr" module now skips more whitespace.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
