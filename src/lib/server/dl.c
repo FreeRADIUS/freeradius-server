@@ -113,7 +113,7 @@ typedef struct dl_loader {
 	rbtree_t		*tree;
 } dl_loader_t;
 
-static dl_loader_t *dl_loader;
+static dl_loader_t *dl_loader = NULL;
 static bool do_dlclose = true;	/* Sometimes we need to leave libraries loaded for debugging */
 
 /** Name prefixes matching the types of loadable module
@@ -325,6 +325,9 @@ static void dl_symbol_free_walk(dl_t const *dl_module)
 	fr_cursor_t		cursor;
 	void			*sym = NULL;
 
+	rad_assert(dl_loader != NULL);
+	rad_assert(dl_loader->sym_free != NULL);
+
 	for (free = fr_cursor_init(&cursor, &dl_loader->sym_free);
 	     free;
 	     free = fr_cursor_next(&cursor)) {
@@ -404,6 +407,7 @@ int dl_symbol_init_cb_register(unsigned int priority, char const *symbol, dl_loa
 	n->func = func;
 	n->ctx = ctx;
 
+	rad_assert(dl_loader != NULL);
 	for (p = fr_cursor_init(&cursor, &dl_loader->sym_init); p && (p->priority >= priority); fr_cursor_next(&cursor));
 	fr_cursor_insert(&cursor, n);
 
@@ -423,6 +427,7 @@ void dl_symbol_init_cb_unregister(char const *symbol, dl_loader_init_t func)
 	find.symbol = symbol;
 	find.func = func;
 
+	rad_assert(dl_loader != NULL);
 	for (found = fr_cursor_init(&cursor, &dl_loader->sym_init);
 	     found && (dl_symbol_init_cmp(&find, found) != 0);
 	     found = fr_cursor_next(&cursor));
@@ -454,6 +459,7 @@ int dl_symbol_free_cb_register(unsigned int priority, char const *symbol, dl_fre
 
 	dl_symbol_free_cb_unregister(symbol, func);
 
+	rad_assert(dl_loader != NULL);
 	MEM(n = talloc(dl_loader, dl_symbol_free_t));
 	n->priority = priority;
 	n->symbol = symbol;
@@ -479,6 +485,7 @@ void dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func)
 	find.symbol = symbol;
 	find.func = func;
 
+	rad_assert(dl_loader != NULL);
 	for (found = fr_cursor_init(&cursor, &dl_loader->sym_free);
 	     found && (dl_symbol_free_cmp(&find, found) != 0);
 	     found = fr_cursor_next(&cursor));
@@ -799,6 +806,7 @@ static int _dl_instance_free(dl_instance_t *dl_inst)
 	/*
 	 *	Remove this instance from the tracking tree.
 	 */
+	rad_assert(dl_loader != NULL);
 	rbtree_deletebydata(dl_loader->inst_tree, dl_inst);
 
 	/*
@@ -904,6 +912,7 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 	dl_inst->conf = conf;
 	dl_inst->parent = parent;
 
+	rad_assert(dl_loader != NULL);
 	rbtree_insert(dl_loader->inst_tree, dl_inst);	/* Duplicates not possible */
 
 	*out = dl_inst;
@@ -959,11 +968,13 @@ static int _dl_loader_free(dl_loader_t *dl_l)
 #endif
 	}
 
+	if (ret != 0) {
 #ifndef NDEBUG
-	if (ret != 0) WARN("This may appear as a leak in talloc memory reports");
+		WARN("This may appear as a leak in talloc memory reports");
 #endif
+		dl_loader = NULL;
+	}
 
-	dl_loader = NULL;
 	return ret;
 }
 
