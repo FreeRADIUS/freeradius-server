@@ -533,7 +533,6 @@ int main(int argc, char *argv[])
 
 	if (fr_radmin_start(config, radmin) < 0) EXIT_WITH_FAILURE;
 
-#ifndef __MINGW32__
 	/*
 	 *  Disconnect from session
 	 */
@@ -605,11 +604,10 @@ int main(int argc, char *argv[])
 
 		/* so the pipe is correctly widowed if the parent exits?! */
 		close(from_child[0]);
-#  ifdef HAVE_SETSID
+#ifdef HAVE_SETSID
 		setsid();
-#  endif
-	}
 #endif
+	}
 
 	/*
 	 *  Ensure that we're using the CORRECT pid after forking, NOT the one
@@ -882,9 +880,7 @@ int main(int argc, char *argv[])
 	 *  Send a TERM signal to all associated processes
 	 *  (including us, which gets ignored.)
 	 */
-#ifndef __MINGW32__
 	if (config->spawn_workers) kill(-radius_pid, SIGTERM);
-#endif
 
 	/*
 	 *  We're exiting, so we can delete the PID file.
