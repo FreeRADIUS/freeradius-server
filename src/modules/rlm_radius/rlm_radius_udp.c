@@ -2315,7 +2315,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	rlm_radius_udp_connection_t	*c;
 
 	c = talloc_zero(t, rlm_radius_udp_connection_t);
-	c->name = inst->parent->name;
+	c->module_name = inst->parent->name;
 	c->heap_id = -1;
 	c->inst = inst;
 	c->thread = t;
@@ -2328,7 +2328,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	c->buffer = talloc_array(c, uint8_t, c->max_packet_size);
 	if (!c->buffer) {
 		cf_log_err(inst->config, "%s failed allocating memory for new connection",
-			   inst->parent->name);
+			   c->module_name);
 		talloc_free(c);
 		return;
 	}
@@ -2349,7 +2349,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	c->id = rr_track_create(c);
 	if (!c->id) {
 		cf_log_err(inst->config, "%s - Failed allocating ID tracking for new connection",
-			   inst->parent->name);
+			   c->module_name);
 		talloc_free(c);
 		return;
 	}
@@ -2359,11 +2359,11 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 				      _conn_init,
 				      _conn_open,
 				      _conn_close,
-				      inst->parent->name, c);
+				      c->module_name, c);
 	if (!c->conn) {
 		talloc_free(c);
 		cf_log_err(inst->config, "%s - Failed allocating state handler for new connection",
-			   inst->parent->name);
+			   c->module_name);
 		return;
 	}
 	fr_connection_failed_func(c->conn, _conn_failed);
