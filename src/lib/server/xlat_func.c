@@ -521,8 +521,6 @@ static xlat_action_t string_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				 fr_value_box_t **in)
 {
-	fr_value_box_t *initial = *in;
-
 	if (!*in) return XLAT_ACTION_DONE;
 
 	/*
