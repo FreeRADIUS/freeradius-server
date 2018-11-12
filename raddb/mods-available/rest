@@ -167,15 +167,20 @@ rest {
 		tls = ${..tls}
 	}
 
-	#  Accounting/Post-auth/Pre-Proxy/Post-Proxy
+	#  Preacct/Accounting/Post-auth/Pre-Proxy/Post-Proxy
 	#
 	#  Code   Meaning       Process body  Module code
 	#  204    no content    no            ok
 	#  2xx    successful    yes           ok/updated
 	#  5xx    server error  no            fail
 	#  xxx    -             no            invalid
+        preacct {
+                uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=preacct"
+                method = 'post'
+                tls = ${..tls}
+        }
 	accounting {
-		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}"
+		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=accounting"
 		method = 'post'
 		tls = ${..tls}
 	}
