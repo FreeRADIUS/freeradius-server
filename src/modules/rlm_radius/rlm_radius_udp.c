@@ -1122,11 +1122,6 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 
 	/*
 	 *	RADIUS layer fixups for Accounting-Request packets.
-	 *
-	 *	Note that we don't change the ID.  We can claim that
-	 *	we randomly chose the same one again. :(
-	 *
-	 *	@todo - try to change the ID.
 	 */
 	if ((u->code == FR_CODE_ACCOUNTING_REQUEST) &&
 	    (u != c->status_u)) {
@@ -1207,7 +1202,28 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	}
 
 	/*
-	 *	Recalculate the packet signature again.
+	 *	Deallocate the ID and allocate a new one.  Note that
+	 *	we MUST be able to allocate a new ID, as we just freed
+	 *	the old one!
+	 *
+	 *	Note that for now, we only change the IDs for some
+	 *	packets.  Changing it for Access-Request packets means
+	 *	that we would need to changi the packet authentication
+	 *	vector, and then re-encoding the User-Password, along
+	 *	with any other attributes that depend on it.
+	 */
+	if ((u != c->status_u) &&
+	    ((u->code == FR_CODE_ACCOUNTING_REQUEST) ||
+	     (u->code == FR_CODE_COA_REQUEST) ||
+	     (u->code == FR_CODE_DISCONNECT_REQUEST))) {
+		(void) rr_track_delete(u->c->id, u->rr);
+		u->rr = rr_track_alloc(c->id, u->request, u->code, u, &u->timer);
+		rad_assert(u->rr != NULL);
+		resign = true;
+	}
+
+	/*
+	 *	Recalculate the packet signature.
 	 */
 	if (resign) {
 		if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
@@ -1215,6 +1231,8 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 			REDEBUG("Failed re-signing packet");
 			return -1;
 		}
+
+		// @todo - call rr_track_update() when we use the authentication vector for uniqueness
 		memcpy(u->rr->vector, u->packet + 4, AUTH_VECTOR_LEN);
 	}
 
@@ -1314,7 +1332,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	/*
 	 *	The timer hit, but there was no connection for the
 	 *	packet.  Try to grab an active connection.  If we do
-	 *	have an active connection
+	 *	have any active connections.
 	 */
 	if (!c) {
 	get_new_connection:
