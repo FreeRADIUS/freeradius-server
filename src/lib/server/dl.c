@@ -972,6 +972,7 @@ static int _dl_loader_free(dl_loader_t *dl_l)
 #ifndef NDEBUG
 		WARN("This may appear as a leak in talloc memory reports");
 #endif
+	} else {
 		dl_loader = NULL;
 	}
 
