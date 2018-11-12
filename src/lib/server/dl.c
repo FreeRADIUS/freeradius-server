@@ -936,7 +936,7 @@ static int _dl_inst_walk_print(UNUSED void *context, void *data)
 {
 	dl_instance_t *dl_inst = talloc_get_type_abort(data, dl_instance_t);
 
-	WARN("  %s", dl_inst->name);
+	WARN("  (%s) %s", dl_inst->module->name, dl_inst->name);
 
 	return 0;
 }
