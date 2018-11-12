@@ -65,7 +65,6 @@ typedef struct rlm_radius_udp_t {
  *  This data structure holds the connections, etc. for this IO submodule.
  */
 typedef struct rlm_radius_udp_thread_t {
-	rlm_radius_udp_t	*inst;			//!< IO submodule instance.
 	fr_event_list_t		*el;			//!< Event list.
 
 	fr_heap_t		*queued;		//!< Queued requests for some new connection.
@@ -75,6 +74,12 @@ typedef struct rlm_radius_udp_thread_t {
 	fr_dlist_head_t		full;      		//!< Full connections.
 	fr_dlist_head_t		zombie;      		//!< Zombie connections.
 	fr_dlist_head_t		opening;      		//!< Opening connections.
+
+	uint32_t		max_connections;  //!< maximum number of open connections
+	struct timeval		connection_timeout;
+	struct timeval		reconnection_delay;
+	struct timeval		idle_timeout;
+	struct timeval		zombie_period;
 } rlm_radius_udp_thread_t;
 
 typedef enum rlm_radius_udp_connection_state_t {
@@ -340,11 +345,11 @@ static void conn_check_idle(rlm_radius_udp_connection_t *c)
 	if (c->idle_ev) return;
 
 	gettimeofday(&when, NULL);
-	when.tv_usec += c->inst->parent->idle_timeout.tv_usec;
+	when.tv_usec += c->thread->idle_timeout.tv_usec;
 	when.tv_sec += when.tv_usec / USEC;
 	when.tv_usec %= USEC;
 
-	when.tv_sec += c->inst->parent->idle_timeout.tv_sec;
+	when.tv_sec += c->thread->idle_timeout.tv_sec;
 	when.tv_sec += 1;
 
 	if (timercmp(&when, &c->idle_timeout, >)) {
@@ -352,7 +357,7 @@ static void conn_check_idle(rlm_radius_udp_connection_t *c)
 		c->idle_timeout = when;
 
 		DEBUG("%s - Setting idle timeout to +%pV for connection %s",
-		      c->inst->parent->name, fr_box_timeval(c->inst->parent->idle_timeout), c->name);
+		      c->inst->parent->name, fr_box_timeval(c->thread->idle_timeout), c->name);
 		if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 			ERROR("%s - Failed inserting idle timeout for connection %s",
 			      c->inst->parent->name, c->name);
@@ -493,8 +498,6 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 {
 	if (u->state == state) return;
 
-	rad_assert(!u->c || (u != u->c->status_u));
-
 	switch (u->state) {
 	case PACKET_STATE_INIT:
 		rad_assert((state == PACKET_STATE_QUEUED) || (state == PACKET_STATE_DONE));
@@ -567,9 +570,9 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 	 */
 	if (c) {
 		/*
-		 *	Status check packets are never removed from
-		 *	the connection, and their IDs are never
-		 *	deallocated.
+		 *      Status check packets are never removed from
+		 *      the connection, and their IDs are never
+		 *      deallocated.
 		 */
 		if (u == c->status_u) {
 			u->state = PACKET_STATE_INIT;
@@ -663,7 +666,6 @@ static void status_server_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_r
 	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
 	rad_assert(u->state == PACKET_STATE_WRITTEN);
-	u->state = PACKET_STATE_INIT;
 
 	if (u->code != FR_CODE_STATUS_SERVER) return;
 
@@ -673,7 +675,7 @@ static void status_server_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_r
 	 */
 	if (attr_response_length &&
 	    ((vp = fr_pair_find_by_da(request->reply->vps, attr_response_length, TAG_ANY)) != NULL)) {
-		if (vp->vp_uint32 > c->buflen) {
+		if ((vp->vp_uint32 > c->buflen) && (vp->vp_uint32 <= 65536)) {
 			request->module = c->inst->parent->name;
 			RDEBUG("Increasing buffer size to %u for connection %s", vp->vp_uint32, c->name);
 
@@ -770,7 +772,7 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 		gettimeofday(&when, NULL);
 		c->zombie_start = when;
 
-		fr_timeval_add(&when, &when, &c->inst->parent->zombie_period);
+		fr_timeval_add(&when, &when, &c->thread->zombie_period);
 		WARN("%s - Entering Zombie state - connection %s", c->inst->parent->name, c->name);
 
 		if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
@@ -994,7 +996,9 @@ check_reply:
 		vp = NULL;
 
 		/*
-		 *	Decode the attributes, in the context of the reply.
+		 *	Decode the attributes, in the context of the
+		 *	reply.  This only fails if the packet is
+		 *	malformed, or if we run out of memory.
 		 */
 		if (fr_radius_decode(request->reply, c->buffer, packet_len, original,
 				     c->inst->secret, 0, &vp) < 0) {
@@ -1037,18 +1041,12 @@ done:
 	rad_assert(request->reply != NULL);
 
 	/*
-	 *	Clean up packets which aren't Status-Server
+	 *	Mark the request as finished.
 	 */
-	if (u != c->status_u) {
-		rad_assert(u->c == c);
-		rad_assert(u->rr != NULL);
-		rad_assert(u->state == PACKET_STATE_WRITTEN);
-
-		/*
-		 *	It's a normal request.  Mark it as finished.
-		 */
-		mod_finished_request(c, u);
-	}
+	rad_assert(u->c == c);
+	rad_assert(u->rr != NULL);
+	rad_assert(u->state == PACKET_STATE_WRITTEN);
+	mod_finished_request(c, u);
 
 	/*
 	 *	Remember when we last saw a reply.
@@ -1943,7 +1941,7 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 	 *	Note that we do this check on every packet, which is a
 	 *	bit annoying, but oh well.
 	 */
-	fr_timeval_add(&when, &when, &u->c->inst->parent->zombie_period);
+	fr_timeval_add(&when, &when, &u->c->thread->zombie_period);
 	if (timercmp(&when, &now, > )) return 0;
 
 	/*
@@ -2355,7 +2353,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	}
 	fr_dlist_init(&c->sent, rlm_radius_udp_request_t, entry);
 
-	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
+	c->conn = fr_connection_alloc(c, t->el, &t->connection_timeout, &t->reconnection_delay,
 				      _conn_init,
 				      _conn_open,
 				      _conn_close,
@@ -2379,7 +2377,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 
 		num_connections = load(inst->parent->num_connections);
 
-		if (num_connections >= inst->parent->max_connections) {
+		if (num_connections >= t->max_connections) {
 			TALLOC_FREE(c->conn); /* ordering */
 			talloc_free(c);
 			return;
@@ -2641,11 +2639,17 @@ static int mod_instantiate(rlm_radius_t *parent, void *instance, CONF_SECTION *c
  */
 static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
 {
-	rlm_radius_udp_thread_t *t = thread;
+	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
+	rlm_radius_udp_thread_t *t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
 
-	(void) talloc_set_type(t, rlm_radius_udp_thread_t);
-	t->inst = instance;
 	t->el = el;
+
+#define COPY(_x) t->_x = inst->parent->_x
+	COPY(max_connections);
+	COPY(connection_timeout);
+	COPY(reconnection_delay);
+	COPY(idle_timeout);
+	COPY(zombie_period);
 
 	t->queued = fr_heap_talloc_create(t, queue_cmp, rlm_radius_udp_request_t, heap_id);
 	fr_dlist_init(&t->blocked, rlm_radius_udp_connection_t, entry);
@@ -2655,7 +2659,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->active = fr_heap_talloc_create(t, conn_cmp, rlm_radius_udp_connection_t, heap_id);
 
-	conn_alloc(t->inst, t);
+	conn_alloc(inst, t);
 
 	return 0;
 }
