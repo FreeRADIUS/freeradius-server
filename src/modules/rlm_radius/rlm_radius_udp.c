@@ -98,6 +98,7 @@ typedef struct rlm_radius_udp_request_t rlm_radius_udp_request_t;
  */
 typedef struct rlm_radius_udp_connection_t {
 	char const     		*name;			//!< From IP PORT to IP PORT.
+	char const		*module_name;		//!< the module that opened the connection
 	rlm_radius_udp_connection_state_t state;	//!< State of the connection.
 
 	int			fd;			//!< File descriptor.
@@ -286,7 +287,7 @@ static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval 
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	DEBUG("%s - Idle timeout for connection %s", c->inst->parent->name, c->name);
+	DEBUG("%s - Idle timeout for connection %s", c->module_name, c->name);
 
 	talloc_free(c);
 }
@@ -357,10 +358,10 @@ static void conn_check_idle(rlm_radius_udp_connection_t *c)
 		c->idle_timeout = when;
 
 		DEBUG("%s - Setting idle timeout to +%pV for connection %s",
-		      c->inst->parent->name, fr_box_timeval(c->thread->idle_timeout), c->name);
+		      c->module_name, fr_box_timeval(c->thread->idle_timeout), c->name);
 		if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 			ERROR("%s - Failed inserting idle timeout for connection %s",
-			      c->inst->parent->name, c->name);
+			      c->module_name, c->name);
 		}
 	}
 }
@@ -394,7 +395,7 @@ static void fd_idle(rlm_radius_udp_connection_t *c)
  */
 static void fd_active(rlm_radius_udp_connection_t *c)
 {
-	DEBUG3("%s - Activating connection %s", c->inst->parent->name, c->name);
+	DEBUG3("%s - Activating connection %s", c->module_name, c->name);
 
 	/*
 	 *	If we're writing to the connection, it's not idle.
@@ -423,7 +424,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	ERROR("%s - Zombie timeout for connection %s", c->inst->parent->name, c->name);
+	ERROR("%s - Zombie timeout for connection %s", c->module_name, c->name);
 
 	/*
 	 *	If we have Status-Server packets, start sending those now.
@@ -440,7 +441,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 		rcode = conn_write(c, u);
 		if (rcode < 0) {
 			DEBUG2("%s - Failed writing status check, closing connection %s",
-			       c->inst->parent->name, c->name);
+			       c->module_name, c->name);
 			talloc_free(c);
 			return;
 		}
@@ -451,7 +452,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 		 */
 		if (rcode == 0) {
 			DEBUG2("%s - EWOULDBLOCK for status check on connection %s",
-			       c->inst->parent->name, c->name);
+			       c->module_name, c->name);
 			return;
 		}
 
@@ -472,7 +473,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 		return;
 	}
 
-	DEBUG2("%s - No status_check response, closing connection %s", c->inst->parent->name, c->name);
+	DEBUG2("%s - No status_check response, closing connection %s", c->module_name, c->name);
 
 	talloc_free(c);
 }
@@ -485,7 +486,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	ERROR("%s - Connection failed: %s - %s", c->inst->parent->name, fr_syserror(fd_errno), c->name);
+	ERROR("%s - Connection failed: %s - %s", c->module_name, fr_syserror(fd_errno), c->name);
 
 	/*
 	 *	Something bad happened... Fix it...
@@ -643,7 +644,7 @@ static void protocol_error_reply(rlm_radius_udp_connection_t *c, REQUEST *reques
 	    ((vp = fr_pair_find_by_da(request->reply->vps, attr_response_length, TAG_ANY)) != NULL)) {
 
 		if (vp->vp_uint32 > c->buflen) {
-			request->module = c->inst->parent->name;
+			request->module = c->module_name;
 			RDEBUG("Increasing buffer size to %u for connection %s", vp->vp_uint32, c->name);
 
 			talloc_free(c->buffer);
@@ -676,7 +677,7 @@ static void status_server_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_r
 	if (attr_response_length &&
 	    ((vp = fr_pair_find_by_da(request->reply->vps, attr_response_length, TAG_ANY)) != NULL)) {
 		if ((vp->vp_uint32 > c->buflen) && (vp->vp_uint32 <= 65536)) {
-			request->module = c->inst->parent->name;
+			request->module = c->module_name;
 			RDEBUG("Increasing buffer size to %u for connection %s", vp->vp_uint32, c->name);
 
 			talloc_free(c->buffer);
@@ -773,11 +774,11 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 		c->zombie_start = when;
 
 		fr_timeval_add(&when, &when, &c->thread->zombie_period);
-		WARN("%s - Entering Zombie state - connection %s", c->inst->parent->name, c->name);
+		WARN("%s - Entering Zombie state - connection %s", c->module_name, c->name);
 
 		if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
 			ERROR("%s - Failed inserting zombie timeout for connection %s",
-			      c->inst->parent->name, c->name);
+			      c->module_name, c->name);
 		}
 		break;
 	}
@@ -801,7 +802,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	bool				reinserted = false;
 	bool				activate = false;
 
-	DEBUG3("%s - Reading data for connection %s", c->inst->parent->name, c->name);
+	DEBUG3("%s - Reading data for connection %s", c->module_name, c->name);
 
 redo:
 	/*
@@ -834,18 +835,18 @@ check_active:
 
 	packet_len = data_len;
 	if (!fr_radius_ok(c->buffer, &packet_len, c->inst->parent->max_attributes, false, &reason)) {
-		WARN("%s - Ignoring malformed packet", c->inst->parent->name);
+		WARN("%s - Ignoring malformed packet", c->module_name);
 		goto redo;
 	}
 
 	if (DEBUG_ENABLED3) {
-		DEBUG3("%s - Read packet", c->inst->parent->name);
+		DEBUG3("%s - Read packet", c->module_name);
 		fr_radius_print_hex(fr_log_fp, c->buffer, packet_len);
 	}
 
 	rr = rr_track_find(c->id, c->buffer[1], NULL);
 	if (!rr) {
-		WARN("%s - Ignoring reply which arrived too late", c->inst->parent->name);
+		WARN("%s - Ignoring reply which arrived too late", c->module_name);
 		goto redo;
 	}
 
@@ -1680,14 +1681,14 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 		if (rr_track_start(&u->timer) < 0) {
 			RDEBUG("%s - Failed starting retransmit tracking for connection %s",
-			       c->inst->parent->name, c->name);
+			       c->module_name, c->name);
 			return -1;
 		}
 
 		if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
 					  response_timeout, u) < 0) {
 			RDEBUG("%s - Failed starting retransmit tracking for connection %s",
-			       c->inst->parent->name, c->name);
+			       c->module_name, c->name);
 			return -1;
 		}
 
@@ -1717,7 +1718,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	rlm_radius_udp_connection_state_t prev_state = c->state;
 	rlm_radius_udp_connection_t	*next;
 
-	DEBUG3("%s - Writing packets for connection %s", c->inst->parent->name, c->name);
+	DEBUG3("%s - Writing packets for connection %s", c->module_name, c->name);
 
 	/*
 	 *	Empty the global queue of packets to send.
@@ -1863,12 +1864,12 @@ static void _conn_close(int fd, void *uctx)
 
 	if (shutdown(fd, SHUT_RDWR) < 0) {
 		DEBUG3("%s - Failed shutting down connection %s: %s",
-		       c->inst->parent->name, c->name, fr_syserror(errno));
+		       c->module_name, c->name, fr_syserror(errno));
 	}
 
 	if (close(fd) < 0) {
 		DEBUG3("%s - Failed closing connection %s: %s",
-		       c->inst->parent->name, c->name, fr_syserror(errno));
+		       c->module_name, c->name, fr_syserror(errno));
 	}
 
 	c->fd = -1;
@@ -1878,7 +1879,7 @@ static void _conn_close(int fd, void *uctx)
 	 */
 	conn_transition(c, CONN_INIT);
 
-	DEBUG("%s - Connection closed - %s", c->inst->parent->name, c->name);
+	DEBUG("%s - Connection closed - %s", c->module_name, c->name);
 }
 
 /** Free an rlm_radius_udp_request_t
@@ -1962,7 +1963,7 @@ static int status_udp_request_free(rlm_radius_udp_request_t *u)
 {
 	rlm_radius_udp_connection_t	*c = u->c;
 
-	DEBUG3("%s - Freeing status check ID %d on connection %s", c->inst->parent->name, u->rr->id, c->name);
+	DEBUG3("%s - Freeing status check ID %d on connection %s", c->module_name, u->rr->id, c->name);
 	c->status_u = NULL;
 
 	/*
@@ -2044,7 +2045,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 			      fr_box_ipaddr(c->src_ipaddr), c->src_port,
 			      fr_box_ipaddr(c->dst_ipaddr), c->dst_port);
 
-	DEBUG("%s - Connection open - %s", c->inst->parent->name, c->name);
+	DEBUG("%s - Connection open - %s", c->module_name, c->name);
 
 	/*
 	 *	Connection is "active" now.  i.e. we prefer the newly
@@ -2077,7 +2078,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 		request = request_alloc(u);
 		request->async = talloc_zero(request, fr_async_t);
 		talloc_const_free(request->name);
-		request->name = talloc_strdup(request, c->inst->parent->name);
+		request->name = talloc_strdup(request, c->module_name);
 
 		request->el = c->thread->el;
 		request->packet = fr_radius_alloc(request, false);
@@ -2134,12 +2135,12 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 		u->rr = rr_track_alloc(c->id, request, u->code, u, &u->timer);
 		if (!u->rr) {
 			ERROR("%s - Failed allocating status_check ID for connection %s",
-			      c->inst->parent->name, c->name);
+			      c->module_name, c->name);
 			talloc_free(u);
 
 		} else {
 			DEBUG2("%s - Allocated %s ID %u for status checks on connection %s",
-			       c->inst->parent->name, fr_packet_codes[u->code], u->rr->id, c->name);
+			       c->module_name, fr_packet_codes[u->code], u->rr->id, c->name);
 			talloc_set_destructor(u, status_udp_request_free);
 			c->status_u = u;
 		}
@@ -2189,7 +2190,7 @@ static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
 	 */
 	fd = fr_socket_client_udp(&c->src_ipaddr, &c->src_port, &c->dst_ipaddr, c->dst_port, true);
 	if (fd < 0) {
-		PERROR("%s - Failed opening socket", c->inst->parent->name);
+		PERROR("%s - Failed opening socket", c->module_name);
 		return FR_CONNECTION_STATE_FAILED;
 	}
 
@@ -2314,6 +2315,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	rlm_radius_udp_connection_t	*c;
 
 	c = talloc_zero(t, rlm_radius_udp_connection_t);
+	c->name = inst->parent->name;
 	c->heap_id = -1;
 	c->inst = inst;
 	c->thread = t;
