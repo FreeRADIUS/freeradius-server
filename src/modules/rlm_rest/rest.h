@@ -158,6 +158,7 @@ typedef struct rlm_rest_t {
 
 	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
 	rlm_rest_section_t	authenticate;	//!< Configuration specific to authentication.
+	rlm_rest_section_t	preacct;	//!< Configuration specific to preacct.
 	rlm_rest_section_t	accounting;	//!< Configuration specific to accounting.
 	rlm_rest_section_t	checksimul;	//!< Configuration specific to simultaneous session
 						//!< checking.
