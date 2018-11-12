@@ -521,6 +521,8 @@ static xlat_action_t string_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				 fr_value_box_t **in)
 {
+	fr_value_box_t *initial = *in;
+
 	if (!*in) return XLAT_ACTION_DONE;
 
 	/*
@@ -532,12 +534,8 @@ static xlat_action_t string_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_cast_in_place(ctx, *in, FR_TYPE_STRING, NULL) < 0) {
-		RPEDEBUG2("Conversion to string failed");
-		return XLAT_ACTION_FAIL;
-	}
-
 	fr_cursor_insert(out, *in);
+	*in = NULL;	/* Let the caller know this was consumed */
 
 	return XLAT_ACTION_DONE;
 }
