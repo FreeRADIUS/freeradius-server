@@ -1002,7 +1002,7 @@ check_reply:
 		 *	malformed, or if we run out of memory.
 		 */
 		if (fr_radius_decode(request->reply, c->buffer, packet_len, original,
-				     c->inst->secret, 0, &vp) < 0) {
+				     c->inst->secret, talloc_array_length(c->inst->secret) - 1, &vp) < 0) {
 			REDEBUG("Failed decoding attributes for packet");
 			fr_pair_list_free(&vp);
 			u->rcode = RLM_MODULE_INVALID;
@@ -1211,7 +1211,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	 */
 	if (resign) {
 		if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
-				   strlen(c->inst->secret)) < 0) {
+				   talloc_array_length(c->inst->secret) - 1) < 0) {
 			REDEBUG("Failed re-signing packet");
 			return -1;
 		}
@@ -1459,7 +1459,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Encode it, leaving room for Proxy-State, too.
 	 */
 	packet_len = fr_radius_encode(c->buffer, c->buflen - proxy_state - require_ma, NULL,
-				      c->inst->secret, 0, u->code, u->rr->id,
+				      c->inst->secret, talloc_array_length(c->inst->secret) - 1, u->code, u->rr->id,
 				      request->packet->vps);
 	if (packet_len <= 0) return -1;
 
@@ -1576,7 +1576,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Now that we're done mangling the packet, sign it.
 	 */
 	if (fr_radius_sign(c->buffer, NULL, (uint8_t const *) c->inst->secret,
-			   strlen(c->inst->secret)) < 0) {
+			   talloc_array_length(c->inst->secret) - 1) < 0) {
 		request->module = module_name;
 		RERROR("Failed signing packet");
 		conn_error(c->thread->el, c->fd, 0, errno, c);
