@@ -251,7 +251,6 @@ static void conn_read(fr_event_list_t *el, int fd, int flags, void *uctx);
 static void conn_writable(fr_event_list_t *el, int fd, int flags, void *uctx);
 static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u);
 static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_connection_state_t state);
-static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now);
 
 static int conn_cmp(void const *one, void const *two)
 {
@@ -476,7 +475,7 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 }
 
 
-/** Deal with per-request timeouts for transmissions, etc.
+/** Deal with status check timeouts for transmissions, etc.
  *
  */
 static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void *uctx)
@@ -485,6 +484,9 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 	rlm_radius_udp_request_t	*u = uctx;
 	rlm_radius_udp_connection_t	*c = u->c;
 	REQUEST				*request;
+	uint32_t			event_time;
+	uint8_t				*attr, *end;
+	char const			*module_name;
 
 	rad_assert(u == c->status_u);
 	rad_assert(u->timer.ev == NULL);
@@ -492,7 +494,7 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 
 	request = u->request;
 
-	RDEBUG("TIMER - response timeout reached for try (%d/%d)",
+	RDEBUG("TIMER - response timeout on status check packet reached for try (%d/%d)",
 	       u->timer.count, u->timer.retry->mrc);
 
 	/*
@@ -524,39 +526,112 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 	 *	get retransmitted when we get around to polling
 	 *	t->queued
 	 */
-	RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
-	rcode = retransmit_packet(u, now);
-	if (rcode < 0) {
-		RDEBUG("Failed retransmitting packet for connection %s", c->name);
+	RDEBUG("Retransmitting status check ID %d on connection %s", u->rr->id, c->name);
 
-		/*
-		 *	If we fail retransmitting the status packet,
-		 *	just close the connection.
-		 */
-		talloc_free(c);
+	rad_assert(u->packet != NULL);
+
+	/*
+	 *	Always update Event-Timestamp.  Note that the rest of
+	 *	the code ensures that the packet always contains an
+	 *	Event-Timestamp attribute.
+	 */
+	attr = u->packet + 20;
+	end = u->packet + u->packet_len;
+
+	while (attr < end) {
+		if (attr[0] != (uint8_t)attr_event_timestamp->attr) {
+			attr += attr[1];
+			continue;
+		}
+
+		event_time = htonl(time(NULL));
+		rad_assert(attr[1] == 6);
+		memcpy(attr + 2, &event_time, 4);
+		break;
+	}
+
+	/*
+	 *	Get a new Request Authenticator, if necessary.
+	 */
+	if ((u->code == FR_CODE_ACCESS_REQUEST) ||
+	    (u->code == FR_CODE_STATUS_SERVER)) {
+		size_t i;
+		uint32_t hash, base;
+
+		base = fr_rand();
+		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
+			hash = fr_rand() ^ base;
+			memcpy(c->buffer + 4 + i, &hash, sizeof(hash));
+		}
+	}
+
+	/*
+	 *	Free / allocate the ID.  This ensures that the ID changes.
+	 */
+	(void) rr_track_delete(u->c->id, u->rr);
+	u->rr = rr_track_alloc(c->id, u->request, u->code, u, &u->timer);
+	rad_assert(u->rr != NULL);
+
+	/*
+	 *	This hack cleans up the debug output a bit.
+	 */
+	module_name = request->module;
+	request->module = NULL;
+
+	/*
+	 *	Now that we're done mangling the packet, sign it.
+	 */
+	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
+			   talloc_array_length(c->inst->secret) - 1) < 0) {
+		request->module = module_name;
+		RERROR("Failed signing packet");
+		conn_error(c->thread->el, c->fd, 0, errno, c);
 		return;
 	}
 
 	/*
-	 *	If we wrote the packet to the connection, we're done.
+	 *	Remember the authentication vector, which now has the
+	 *	packet signature.
 	 */
-	if (rcode != 0) {
+	memcpy(u->rr->vector, c->buffer + 4, AUTH_VECTOR_LEN);
+
+	request->module = module_name;
+
+	/*
+	 *	@todo - print out the packet contents, including Message-Authenticator
+	 */
+
+	/*
+	 *	Write the packet to the socket.  If it works, we're
+	 *	done.
+	 */
+	rcode = write(c->fd, u->packet, u->packet_len);
+	if (rcode > 0) {
 		c->status_check_blocked = false;
 		return;
 	}
 
 	/*
-	 *	EWOULDBLOCK, move the connection to blocked/
+	 *	Blocked?  Try to write it when the socket becomes ready.
 	 */
-	RDEBUG("Blocked writing for connection %s", c->name);
-	conn_transition(c, CONN_BLOCKED);
+	if ((rcode < 0) && (errno == EWOULDBLOCK)) {
+		RDEBUG("Blocked writing for connection %s", c->name);
+		conn_transition(c, CONN_BLOCKED);
+
+		/*
+		 *	Remember to write status check packets as soon as the
+		 *	socket becomes writable.
+		 */
+		c->status_check_blocked = true;
+	}
+
+	RDEBUG("Failed retransmitting status check packet for connection %s", c->name);
 
 	/*
-	 *	Remember to write status check packets as soon as the
-	 *	socket becomes writable.
+	 *	If we fail retransmitting the status packet,
+	 *	just close the connection.
 	 */
-	c->status_check_blocked = true;
-	return;
+	talloc_free(c);
 }
 
 
@@ -566,84 +641,85 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
+	rlm_radius_udp_request_t *u;
+	int rcode;
 
 	ERROR("%s - Zombie timeout for connection %s", c->module_name, c->name);
+
+	if (!c->status_u) {
+		DEBUG2("%s - No status_check response, closing connection %s", c->module_name, c->name);
+		talloc_free(c);
+		return;
+	}
 
 	/*
 	 *	If we have Status-Server packets, start sending those now.
 	 */
-	if (c->status_u) {
-		int rcode;
-		rlm_radius_udp_request_t *u = c->status_u;
+	u = c->status_u;
 
-		/*
-		 *	Re-initialize the timers.
-		 */
-		u->timer.count = 0;
-		c->status_check_blocked = false;
+	/*
+	 *	Re-initialize the timers.
+	 */
+	u->timer.count = 0;
+	c->status_check_blocked = false;
 
-		/*
-		 *	Start the timers for status checks.
-		 */
-		u->time_sent = fr_time();
-		fr_time_to_timeval(&u->timer.start, u->time_sent);
+	/*
+	 *	Start the timers for status checks.
+	 */
+	u->time_sent = fr_time();
+	fr_time_to_timeval(&u->timer.start, u->time_sent);
 
-		if (rr_track_start(&u->timer) < 0) {
-			DEBUG("%s - Failed starting retransmit tracking for connection %s",
-			       c->module_name, c->name);
-			talloc_free(c);
-			return;
-		}
-
-		if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
-					  status_check_timeout, u) < 0) {
-			DEBUG("%s - Failed starting retransmit tracking for connection %s",
-			       c->module_name, c->name);
-			talloc_free(c);
-			return;
-		}
-
-		/*
-		 *	And now write it to the connection.
-		 */
-		rcode = conn_write(c, u);
-		if (rcode < 0) {
-			DEBUG2("%s - Failed writing status check, closing connection %s",
-			       c->module_name, c->name);
-			talloc_free(c);
-			return;
-		}
-
-		/*
-		 *	It returned EWOULDBLOCK.  Wait for the
-		 *	retransmission timer to fire.
-		 */
-		if (rcode == 0) {
-			DEBUG2("%s - EWOULDBLOCK for status check on connection %s",
-			       c->module_name, c->name);
-			return;
-		}
-
-		/*
-		 *	Note that the status check packets not in any
-		 *	"sent" list
-		 */
-		if (rcode == 1) {
-			u->state = PACKET_STATE_WRITTEN;
-			u->c = c;
-			return;
-		}
-
-		/*
-		 *	Status check packets are never replicated.
-		 */
-		rad_assert(0 == 1);
+	if (rr_track_start(&u->timer) < 0) {
+		DEBUG("%s - Failed starting retransmit tracking for connection %s",
+		      c->module_name, c->name);
+		talloc_free(c);
 		return;
 	}
 
-	DEBUG2("%s - No status_check response, closing connection %s", c->module_name, c->name);
+	if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
+				  status_check_timeout, u) < 0) {
+		DEBUG("%s - Failed starting retransmit tracking for connection %s",
+		      c->module_name, c->name);
+		talloc_free(c);
+		return;
+	}
 
-	talloc_free(c);
+	/*
+	 *	And now write it to the connection.
+	 */
+	rcode = conn_write(c, u);
+	if (rcode < 0) {
+		DEBUG2("%s - Failed writing status check, closing connection %s",
+		       c->module_name, c->name);
+		talloc_free(c);
+		return;
+	}
+
+	/*
+	 *	It returned EWOULDBLOCK.  Wait for the socket to
+	 *	become ready, OR for the retransmission timer to fire.
+	 */
+	if (rcode == 0) {
+		c->status_check_blocked = true;
+		DEBUG2("%s - EWOULDBLOCK for status check on connection %s",
+		       c->module_name, c->name);
+		return;
+	}
+
+	/*
+	 *	Note that the status check packets not in any
+	 *	"sent" list
+	 */
+	if (rcode == 1) {
+		u->state = PACKET_STATE_WRITTEN;
+		u->c = c;
+		return;
+	}
+
+	/*
+	 *	Status check packets are never replicated.
+	 */
+	rad_assert(0 == 1);
 }
 
 
@@ -1299,12 +1375,12 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 
 	rad_assert(u->packet != NULL);
 	rad_assert(u->packet_len >= 20);
+	rad_assert(u != c->status_u);
 
 	/*
 	 *	RADIUS layer fixups for Accounting-Request packets.
 	 */
-	if ((u->code == FR_CODE_ACCOUNTING_REQUEST) &&
-	    (u != c->status_u)) {
+	if (u->code == FR_CODE_ACCOUNTING_REQUEST) {
 		/*
 		 *	No Acct-Delay-Time, add one manually if
 		 *	there's room.
@@ -1357,31 +1433,6 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	}
 
 	/*
-	 *	Update the Event-Timestamp for status packets.
-	 */
-	if (u == c->status_u) {
-		uint32_t event_time;
-		uint8_t *attr, *end;
-
-		attr = u->packet + 20;
-		end = u->packet + u->packet_len;
-
-		while (attr < end) {
-			if (attr[0] != (uint8_t)attr_event_timestamp->attr) {
-				attr += attr[1];
-				continue;
-			}
-
-			event_time = htonl(time(NULL));
-			rad_assert(attr[1] == 6);
-			memcpy(attr + 2, &event_time, 4);
-
-			resign = true;
-			break;
-		}
-	}
-
-	/*
 	 *	Deallocate the ID and allocate a new one.  Note that
 	 *	we MUST be able to allocate a new ID, as we just freed
 	 *	the old one!
@@ -1392,10 +1443,9 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	 *	vector, and then re-encoding the User-Password, along
 	 *	with any other attributes that depend on it.
 	 */
-	if ((u != c->status_u) &&
-	    ((u->code == FR_CODE_ACCOUNTING_REQUEST) ||
-	     (u->code == FR_CODE_COA_REQUEST) ||
-	     (u->code == FR_CODE_DISCONNECT_REQUEST))) {
+	if ((u->code == FR_CODE_ACCOUNTING_REQUEST) ||
+	    (u->code == FR_CODE_COA_REQUEST) ||
+	    (u->code == FR_CODE_DISCONNECT_REQUEST)) {
 		(void) rr_track_delete(u->c->id, u->rr);
 		u->rr = rr_track_alloc(c->id, u->request, u->code, u, &u->timer);
 		rad_assert(u->rr != NULL);
@@ -1629,7 +1679,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Every status check packet has an Event-Timestamp.  The
 	 *	timestamp changes every time we send a packet.  Status
 	 *	check packets never have Proxy-State, because we
-	 *	generate them, and they're not proxied.
+	 *	generated them, and they're not proxied.
 	 */
 	if (u == c->status_u) {
 		VALUE_PAIR *vp;
@@ -1646,7 +1696,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	rad_assert(c->buflen >= (size_t) (20 + proxy_state + require_ma));
 
 	/*
-	 *	Encode it, leaving room for Proxy-State, too.
+	 *	Encode it, leaving room for Proxy-State and
+	 *	Message-Authenticator if necessary.
 	 */
 	packet_len = fr_radius_encode(c->buffer, c->buflen - proxy_state - require_ma, NULL,
 				      c->inst->secret, talloc_array_length(c->inst->secret) - 1, u->code, u->rr->id,
@@ -1733,8 +1784,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	If the accounting packet doesn't have Acct-Delay-Time,
 	 *	then we leave well enough alone.
 	 */
-	if ((u->code == FR_CODE_ACCOUNTING_REQUEST) &&
-	    (u != c->status_u)) {
+	if (u->code == FR_CODE_ACCOUNTING_REQUEST) {
 		uint8_t *attr, *end;
 		uint32_t delay;
 
@@ -1832,6 +1882,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 	/*
 	 *	Copy the packet in case it needs retransmitting.
+	 *
+	 *	@todo - only do this if the packet actually is being
+	 *	retransmitted.
 	 */
 	MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
 	u->packet_len = packet_len;
