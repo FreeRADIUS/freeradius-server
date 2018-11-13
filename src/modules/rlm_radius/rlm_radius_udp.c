@@ -136,6 +136,7 @@ typedef struct rlm_radius_udp_connection_t {
 	 */
 	rlm_radius_udp_request_t *status_u;    		//!< For Status-Server checks.
 	rlm_radius_id_t		*id;			//!< RADIUS ID tracking structure.
+	bool			status_check_blocked;	//!< if we blocked writing status check packets
 } rlm_radius_udp_connection_t;
 
 
@@ -438,6 +439,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 		 *	Re-initialize the timers.
 		 */
 		u->timer.count = 0;
+		c->status_check_blocked = false;
 
 		rcode = conn_write(c, u);
 		if (rcode < 0) {
@@ -1402,7 +1404,12 @@ retransmit:
 	/*
 	 *	If we wrote the packet to the connection, we're done.
 	 */
-	if (rcode != 0) return;
+	if (rcode != 0) {
+		if (u == c->status_u) {
+			c->status_check_blocked = false;
+		}
+		return;
+	}
 
 	/*
 	 *	EWOULDBLOCK, move the connection to blocked/
@@ -1411,10 +1418,13 @@ retransmit:
 	conn_transition(c, CONN_BLOCKED);
 
 	/*
-	 *	@todo - status packets should get written as soon as
-	 *	the socket becomes writable.
+	 *	Remember to write status check packets as soon as the
+	 *	socket becomes writable.
 	 */
-	if (u == c->status_u) return;
+	if (u == c->status_u) {
+		c->status_check_blocked = true;
+		return;
+	}
 
 	/*
 	 *	Move the packet back to the thread queue, and try to
@@ -1767,20 +1777,45 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	bool				pending = false;
 	rlm_radius_udp_connection_state_t prev_state = c->state;
 	rlm_radius_udp_connection_t	*next;
+	int				rcode;
 
 	DEBUG3("%s - Writing packets for connection %s", c->module_name, c->name);
 
 	/*
-	 *	@todo - if we have a pending status check packet,
-	 *	write that first.
+	 *	If we have a pending status check packet, write that
+	 *	first.
 	 */
+	if (c->status_check_blocked) {
+		c->status_check_blocked = false;
+		rcode = conn_write(c, c->status_u);
+
+		/*
+		 *	Error, close the connection.
+		 */
+		if (rcode < 0) {
+			talloc_free(c);
+			return;
+		}
+
+		/*
+		 *	Blocked, don't write anything more to the
+		 *	connection.
+		 */
+		if (rcode == 0) {
+			c->status_check_blocked = true;
+			conn_transition(c, CONN_BLOCKED);
+			return;
+		}
+
+		/*
+		 *	Written successfully, go write more packets.
+		 */
+	}
 
 	/*
 	 *	Empty the global queue of packets to send.
 	 */
 	while ((u = fr_heap_peek(c->thread->queued)) != NULL) {
-		int rcode;
-
 		rad_assert(u->state == PACKET_STATE_QUEUED);
 
 		/*
