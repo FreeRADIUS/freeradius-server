@@ -229,6 +229,7 @@ static fr_dict_attr_t const *attr_nas_identifier;
 static fr_dict_attr_t const *attr_original_packet_code;
 static fr_dict_attr_t const *attr_proxy_state;
 static fr_dict_attr_t const *attr_response_length;
+static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[];
 fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
@@ -241,6 +242,7 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ .out = &attr_original_packet_code, .name = "Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius},
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_response_length, .name = "Response-Length", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ NULL }
 };
 
@@ -2256,6 +2258,25 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 			 *	creating them.
 			 */
 			for (map = c->inst->parent->status_check_map; map != NULL; map = map->next) {
+				/*
+				 *	Skip things which aren't attributes.
+				 */
+				if (map->lhs->type != TMPL_TYPE_ATTR) continue;
+
+				/*
+				 *	Disallow signalling attributes.
+				 */
+				if ((map->lhs->tmpl_da == attr_proxy_state) ||
+				    (map->lhs->tmpl_da == attr_event_timestamp) ||
+				    (map->lhs->tmpl_da == attr_message_authenticator)) continue;
+
+				/*
+				 *	Allow passwords only in Access-Request packets.
+				 */
+				if ((c->inst->parent->status_check != FR_CODE_ACCESS_REQUEST) &&
+				    (map->lhs->tmpl_da == attr_user_password)) continue;
+
+
 				(void) map_to_request(request, map, map_to_vp, NULL);
 			}
 
