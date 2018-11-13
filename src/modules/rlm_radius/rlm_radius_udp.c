@@ -249,6 +249,7 @@ static void conn_read(fr_event_list_t *el, int fd, int flags, void *uctx);
 static void conn_writable(fr_event_list_t *el, int fd, int flags, void *uctx);
 static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u);
 static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_connection_state_t state);
+static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now);
 
 static int conn_cmp(void const *one, void const *two)
 {
@@ -473,6 +474,90 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 }
 
 
+/** Deal with per-request timeouts for transmissions, etc.
+ *
+ */
+static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void *uctx)
+{
+	int				rcode;
+	rlm_radius_udp_request_t	*u = uctx;
+	rlm_radius_udp_connection_t	*c = u->c;
+	REQUEST				*request;
+
+	rad_assert(u == c->status_u);
+	rad_assert(u->timer.ev == NULL);
+	rad_assert(!c->inst->parent->synchronous);
+
+	request = u->request;
+
+	RDEBUG("TIMER - response timeout reached for try (%d/%d)",
+	       u->timer.count, u->timer.retry->mrc);
+
+	/*
+	 *	Can we retry this packet?  If not, then maybe the
+	 *	connection is zombie.  If we don't have a connection,
+	 *	just give up on the request.
+	 */
+	rcode = rr_track_retry(&u->timer, now);
+	if (rcode == 0) {
+		rad_assert(c != NULL);
+		REDEBUG("No response to status checks, closing connection %s", c->name);
+		talloc_free(c);
+		return;
+	}
+
+	/*
+	 *	Insert the next retransmission timer.
+	 */
+	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next, status_check_timeout, u) < 0) {
+		RDEBUG("Failed inserting retransmission timer for status check - closing connection %s", c->name);
+		talloc_free(c);
+		return;
+	}
+
+	rad_assert(u->state == PACKET_STATE_WRITTEN);
+
+	/*
+	 *	If we can retransmit it, do so.  Otherwise, it will
+	 *	get retransmitted when we get around to polling
+	 *	t->queued
+	 */
+	RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
+	rcode = retransmit_packet(u, now);
+	if (rcode < 0) {
+		RDEBUG("Failed retransmitting packet for connection %s", c->name);
+
+		/*
+		 *	If we fail retransmitting the status packet,
+		 *	just close the connection.
+		 */
+		talloc_free(c);
+		return;
+	}
+
+	/*
+	 *	If we wrote the packet to the connection, we're done.
+	 */
+	if (rcode != 0) {
+		c->status_check_blocked = false;
+		return;
+	}
+
+	/*
+	 *	EWOULDBLOCK, move the connection to blocked/
+	 */
+	RDEBUG("Blocked writing for connection %s", c->name);
+	conn_transition(c, CONN_BLOCKED);
+
+	/*
+	 *	Remember to write status check packets as soon as the
+	 *	socket becomes writable.
+	 */
+	c->status_check_blocked = true;
+	return;
+}
+
+
 /** Mark a connection "zombie" due to zombie timeout.
  *
  */
@@ -495,6 +580,30 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 		u->timer.count = 0;
 		c->status_check_blocked = false;
 
+		/*
+		 *	Start the timers for status checks.
+		 */
+		u->time_sent = fr_time();
+		fr_time_to_timeval(&u->timer.start, u->time_sent);
+
+		if (rr_track_start(&u->timer) < 0) {
+			DEBUG("%s - Failed starting retransmit tracking for connection %s",
+			       c->module_name, c->name);
+			talloc_free(c);
+			return;
+		}
+
+		if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
+					  status_check_timeout, u) < 0) {
+			DEBUG("%s - Failed starting retransmit tracking for connection %s",
+			       c->module_name, c->name);
+			talloc_free(c);
+			return;
+		}
+
+		/*
+		 *	And now write it to the connection.
+		 */
 		rcode = conn_write(c, u);
 		if (rcode < 0) {
 			DEBUG2("%s - Failed writing status check, closing connection %s",
@@ -1356,6 +1465,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	rlm_radius_udp_connection_t	*c = u->c;
 	REQUEST				*request;
 
+	rad_assert(u != c->status_u);
 	rad_assert(u->timer.ev == NULL);
 	rad_assert(!c->inst->parent->synchronous);
 
@@ -1372,16 +1482,9 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	rcode = rr_track_retry(&u->timer, now);
 	if (rcode == 0) {
 		if (c) {
-			if (u == c->status_u) {
-				REDEBUG("No response to status checks, closing connection %s", c->name);
-				talloc_free(c);
-				return;
-			}
-
 			REDEBUG("No response to proxied request ID %d on connection %s",
 				u->rr->id, c->name);
 			conn_transition(c, CONN_ZOMBIE);
-
 		} else {
 			REDEBUG("No response to proxied request");
 		}
@@ -1400,12 +1503,6 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	}
 
 	/*
-	 *	Don't move status check packets to a different
-	 *	connection.
-	 */
-	if (u == c->status_u) goto retransmit;
-
-	/*
 	 *	The timer hit, and there was no connection for the
 	 *	packet.  Try to grab an active connection.  If we do
 	 *	have any active connections.
@@ -1422,14 +1519,14 @@ get_new_connection:
 
 		/*
 		 *	We have a connection, try transitioning to it.
-		 *	If we can't assign the packet to the
-		 *	connection, thenb try grabbing another
-		 *	connection.
+		 *	If we can't assign the packet to the current
+		 *	connection, we try grabbing a different
+		 *	connection.  The transition sets 'u->c = c'
+		 *	if it succeeds.
 		 */
 		state_transition(u, PACKET_STATE_WRITTEN, c);
 	}
 
-retransmit:
 	rad_assert(u->state == PACKET_STATE_WRITTEN);
 
 	/*
@@ -1441,16 +1538,6 @@ retransmit:
 	rcode = retransmit_packet(u, now);
 	if (rcode < 0) {
 		RDEBUG("Failed retransmitting packet for connection %s", c->name);
-
-		/*
-		 *	If we fail retransmitting the status packet,
-		 *	just close the connection.
-		 */
-		if (u == c->status_u) {
-			talloc_free(c);
-			return;
-		}
-
 		state_transition(u, PACKET_STATE_QUEUED, NULL);
 		talloc_free(c);
 		goto get_new_connection;
@@ -1459,27 +1546,13 @@ retransmit:
 	/*
 	 *	If we wrote the packet to the connection, we're done.
 	 */
-	if (rcode != 0) {
-		if (u == c->status_u) {
-			c->status_check_blocked = false;
-		}
-		return;
-	}
+	if (rcode != 0) return;
 
 	/*
 	 *	EWOULDBLOCK, move the connection to blocked/
 	 */
 	RDEBUG("Blocked writing for connection %s", c->name);
 	conn_transition(c, CONN_BLOCKED);
-
-	/*
-	 *	Remember to write status check packets as soon as the
-	 *	socket becomes writable.
-	 */
-	if (u == c->status_u) {
-		c->status_check_blocked = true;
-		return;
-	}
 
 	/*
 	 *	Move the packet back to the thread queue, and try to
@@ -1784,29 +1857,10 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 			RDEBUG("Proxying request.  Relying on NAS to perform retransmissions");
 		}
 
-		return 1;
-	}
-
-	/*
-	 *	Status-Server only checks.
-	 */
-	if (u->timer.count == 0) {
-		u->time_sent = fr_time();
-		fr_time_to_timeval(&u->timer.start, u->time_sent);
-
-		if (rr_track_start(&u->timer) < 0) {
-			RDEBUG("%s - Failed starting retransmit tracking for connection %s",
-			       c->module_name, c->name);
-			return -1;
-		}
-
-		if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
-					  response_timeout, u) < 0) {
-			RDEBUG("%s - Failed starting retransmit tracking for connection %s",
-			       c->module_name, c->name);
-			return -1;
-		}
-
+		/*
+		 *	Status-Server only checks.
+		 */
+	} else if (u->timer.count == 1) {
 		RDEBUG("Sending %s status check.  Expecting response within %d.%06ds for connection %s",
 		       fr_packet_codes[u->code],
 		       u->timer.rt / USEC, u->timer.rt % USEC,
@@ -2252,8 +2306,11 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 	if (c->status_u) {
 		rlm_radius_udp_request_t *u = c->status_u;
 
+		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
+
 		memset(&u->timer, 0, sizeof(u->timer));
 		u->timer.retry = &c->inst->parent->retry[u->code];
+		c->status_check_blocked = false;
 	}
 
 	/*
