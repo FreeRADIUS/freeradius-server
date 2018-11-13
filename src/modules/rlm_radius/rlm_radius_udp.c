@@ -2321,6 +2321,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 				 */
 				if ((map->lhs->tmpl_da == attr_proxy_state) ||
 				    (map->lhs->tmpl_da == attr_event_timestamp) ||
+				    (map->lhs->tmpl_da == attr_acct_delay_time) ||
 				    (map->lhs->tmpl_da == attr_message_authenticator)) continue;
 
 				/*
