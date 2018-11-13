@@ -369,6 +369,60 @@ static void conn_check_idle(rlm_radius_udp_connection_t *c)
 }
 
 
+static int conn_check_zombie(rlm_radius_udp_connection_t *c)
+{
+	struct timeval when, now;
+
+	switch (c->state) {
+		/*
+		 *	If it's unused, why is there a request for it?
+		 */
+	case CONN_INIT:
+	case CONN_OPENING:
+		rad_assert(0 == 1);
+		return 0;
+
+		/*
+		 *	The connection is already marked "zombie", or
+		 *	is doing status checks.  Don't do it again.
+		 */
+	case CONN_ZOMBIE:
+		return 0;
+
+		/*
+		 *	It was alive, but it might not be any longer.
+		 */
+	case CONN_ACTIVE:
+	case CONN_FULL:
+	case CONN_BLOCKED:
+		break;
+	}
+
+	/*
+	 *	Check if we can mark the connection as "dead".
+	 */
+	gettimeofday(&now, NULL);
+	when = c->last_reply;
+
+	/*
+	 *	Use the zombie_period for the timeout.
+	 *
+	 *	Note that we do this check on every packet, which is a
+	 *	bit annoying, but oh well.
+	 */
+	fr_timeval_add(&when, &when, &c->thread->zombie_period);
+	if (timercmp(&when, &now, > )) return 0;
+
+	/*
+	 *	The home server hasn't responded in a long time.  Mark
+	 *	the connection as "zombie".
+	 */
+	conn_transition(c, CONN_ZOMBIE);
+
+	return 0;
+}
+
+
 /** Set the socket to "nothing to write"
  *
  *  But keep the read event open, just in case the other end sends us
@@ -1303,6 +1357,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	REQUEST				*request;
 
 	rad_assert(u->timer.ev == NULL);
+	rad_assert(!c->inst->parent->synchronous);
 
 	request = u->request;
 
@@ -1966,6 +2021,7 @@ static void _conn_close(int fd, void *uctx)
 	DEBUG("%s - Connection closed - %s", c->module_name, c->name);
 }
 
+
 /** Free an rlm_radius_udp_request_t
  *
  *  Unlink the packet from the connection, and remove any tracking
@@ -1973,8 +2029,6 @@ static void _conn_close(int fd, void *uctx)
  */
 static int udp_request_free(rlm_radius_udp_request_t *u)
 {
-	struct timeval when, now;
-
 	state_transition(u, PACKET_STATE_DONE, NULL);
 
 	/*
@@ -1989,53 +2043,13 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 	 */
 	if (!u->c->inst->parent->synchronous) return 0;
 
-	switch (u->c->state) {
-		/*
-		 *	If it's unused, why is there a request for it?
-		 */
-	case CONN_INIT:
-	case CONN_OPENING:
-		rad_assert(0 == 1);
-		return 0;
-
-		/*
-		 *	The connection is already marked "zombie", or
-		 *	is doing status checks.  Don't do it again.
-		 */
-	case CONN_ZOMBIE:
-		return 0;
-
-		/*
-		 *	It was alive, but likely no longer..
-		 */
-	case CONN_ACTIVE:
-	case CONN_FULL:
-	case CONN_BLOCKED:
-		break;
-	}
-
 	/*
-	 *	Check if we can mark the connection as "dead".
+	 *	The module is doing synchronous proxying.  i.e. where
+	 *	we retransmit only when the NAS retransmits.  Since we
+	 *	don't have our own timers, we have to check for zombie
+	 *	connections when the request is finished.
 	 */
-	gettimeofday(&now, NULL);
-	when = u->c->last_reply;
-
-	/*
-	 *	Use the zombie_period for the timeout.
-	 *
-	 *	Note that we do this check on every packet, which is a
-	 *	bit annoying, but oh well.
-	 */
-	fr_timeval_add(&when, &when, &u->c->thread->zombie_period);
-	if (timercmp(&when, &now, > )) return 0;
-
-	/*
-	 *	The home server hasn't responded in a long time.  Mark
-	 *	the connection as "zombie".
-	 */
-	conn_transition(u->c, CONN_ZOMBIE);
-
-	return 0;
+	return conn_check_zombie(u->c);
 }
 
 /** Free the status-check rlm_radius_udp_request_t
@@ -2375,9 +2389,15 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 		break;
 
 	case CONN_OPENING:
+		fr_dlist_remove(&c->thread->opening, c);
+		break;
+
 	case CONN_FULL:
-	case CONN_ZOMBIE:
 		fr_dlist_remove(&c->thread->blocked, c);
+		break;
+
+	case CONN_ZOMBIE:
+		fr_dlist_remove(&c->thread->zombie, c);
 		break;
 
 	case CONN_ACTIVE:
@@ -2520,20 +2540,27 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 	 *	Start the retransmission timers.
 	 */
 	u->time_sent = fr_time();
-	fr_time_to_timeval(&u->timer.start, u->time_sent);
 
-	if (rr_track_start(&u->timer) < 0) {
-		RDEBUG("%s - Failed starting retransmit tracking", inst->parent->name);
-		talloc_free(u);
-		return RLM_MODULE_FAIL;
-	}
+	/*
+	 *	Set up retransmission timers ONLY if we are
+	 *	responsible for retransmits.
+	 */
+	if (!inst->parent->synchronous) {
+		fr_time_to_timeval(&u->timer.start, u->time_sent);
 
-	if (fr_event_timer_insert(u, t->el, &u->timer.ev, &u->timer.next,
-				  response_timeout, u) < 0) {
-		RDEBUG("%s - Failed starting retransmit tracking",
-		       inst->parent->name);
-		talloc_free(u);
-		return RLM_MODULE_FAIL;
+		if (rr_track_start(&u->timer) < 0) {
+			RDEBUG("%s - Failed starting retransmit tracking", inst->parent->name);
+			talloc_free(u);
+			return RLM_MODULE_FAIL;
+		}
+
+		if (fr_event_timer_insert(u, t->el, &u->timer.ev, &u->timer.next,
+					  response_timeout, u) < 0) {
+			RDEBUG("%s - Failed starting retransmit tracking",
+			       inst->parent->name);
+			talloc_free(u);
+			return RLM_MODULE_FAIL;
+		}
 	}
 
 	/*
