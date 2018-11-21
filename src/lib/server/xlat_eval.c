@@ -1341,7 +1341,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
 			   xlat_escape_t escape, void const *escape_ctx)
 {
-	int i, list;
+	int i, j, list;
 	size_t total;
 	char **array, *answer;
 	xlat_exp_t const *node;
@@ -1387,12 +1387,25 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 
 	for (node = head, i = 0; node != NULL; node = node->next, i++) {
 		array[i] = xlat_aprint(array, request, node, escape, escape_ctx, 0); /* may be NULL */
+
+		/*
+		 *	Nasty temporary hack
+		 *
+		 *	If an async func is evaluated the async code will evaluate
+		 *      all codes at that level.
+		 *
+		 *	Break here to avoid nodes being evaluated multiple times
+		 *      and parts of strings being duplicated.
+		 */
+		if ((node->type == XLAT_FUNC) && (node->xlat->type == XLAT_FUNC_ASYNC)) {
+			i++;
+			break;
+		}
 	}
+	j = i;
 
 	total = 0;
-	for (i = 0; i < list; i++) {
-		if (array[i]) total += strlen(array[i]); /* FIXME: calculate strlen once */
-	}
+	for (i = 0; i < j; i++) if (array[i]) total += strlen(array[i]); /* FIXME: calculate strlen once */
 
 	if (!total) {
 		talloc_free(array);
@@ -1403,7 +1416,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 	answer = talloc_array(ctx, char, total + 1);
 
 	total = 0;
-	for (i = 0; i < list; i++) {
+	for (i = 0; i < j; i++) {
 		size_t len;
 
 		if (array[i]) {

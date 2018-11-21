@@ -8,6 +8,8 @@ update request {
 	Tmp-Octets-1 := 0x49206c696b6520636869636b656e2049206c696b65206c69766572
 	Tmp-Octets-2 := 0x490049
 	Tmp-Octets-3 := 0x00
+	Tmp-Octets-4 := 0x7465737431
+	Tmp-Octets-5 := 0x7465737432
 }
 
 update request {
@@ -38,6 +40,21 @@ if (&Tmp-String-0 != "\\\\") {
 }
 
 if (<string>&Tmp-Octets-0 != "%{string:%{Tmp-Octets-0}}") {
+	test_fail
+}
+
+#
+#  Test interpolation between string expansions and strings
+#
+if ("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}" != "test1test2") {
+	test_fail
+}
+
+if ("test0%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}" != "test0test1test2") {
+	test_fail
+}
+
+if ("%{string:%{Tmp-Octets-4}}%{string:%{Tmp-Octets-5}}test3" != "test1test2test3") {
 	test_fail
 }
 
