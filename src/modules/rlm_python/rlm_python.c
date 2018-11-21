@@ -96,6 +96,7 @@ typedef struct rlm_python_t {
 	PyObject	*pythonconf_dict;	//!< Configuration parameters defined in the module
 						//!< made available to the python script.
 	bool 		pass_all_vps;		//!< Pass all VPS lists (request, reply, config, state, proxy_req, proxy_reply)
+	bool 		pass_all_vps_dict;		//!< Pass all VPS lists as a dictionary rather than a tuple
 } rlm_python_t;
 
 /** Tracks a python module inst/thread state pair
@@ -136,6 +137,7 @@ static CONF_PARSER module_config[] = {
 	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
 	{ "cext_compat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), "yes" },
 	{ "pass_all_vps", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, pass_all_vps), "no" },
+	{ "pass_all_vps_dict", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, pass_all_vps_dict), "no" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -250,7 +252,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 	 *	If the Python function gave us None for the tuple,
 	 *	then just return.
 	 */
-	if (pValue == Py_None) return;
+	if (pValue == Py_None || pValue == NULL) return;
 
 	if (!PyTuple_CheckExact(pValue)) {
 		ERROR("%s - non-tuple passed to %s", funcname, list_name);
@@ -438,10 +440,11 @@ error:
 	return false;
 }
 
-static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname, bool pass_all_vps)
+static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname, bool pass_all_vps, bool pass_all_vps_dict)
 {
 	PyObject	*pRet = NULL;
 	PyObject	*pArgs = NULL;
+	PyObject 	*pDictInput = NULL;
 	int		ret;
 	int 		i;
 
@@ -492,12 +495,28 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	else for (i = 0; i < 6; i++) mod_populate_vps(pArgs, i, NULL);
 
 	/*
-	 * Call Python function. If pass_all_vps is true, a 6-tuple representing
-	 * (Request, Reply, Config, State, Proxy-Request, Proxy-Reply) is passed
-	 * as argument to the module callback.
-	 * Otherwise, a tuple representing just the request is passed.
+	 * Call Python function. If pass_all_vps_dict is true, a dictionary with the
+	 * appropriate "request", "reply"... keys is passed as argument to the
+	 * module callback.
+	 * Else, if pass_all_vps is true, a 6-tuple representing
+	 * (Request, Reply, Config, State, Proxy-Request, Proxy-Reply) is passed.
+	 * Otherwise, a tuple representing just the request is used.
 	 */
-	if (pass_all_vps)
+	if (pass_all_vps_dict) {
+		pDictInput = PyDict_New();
+		if (pDictInput == NULL ||
+		    PyDict_SetItemString(pDictInput, "request", PyTuple_GET_ITEM(pArgs, 0)) ||
+		    PyDict_SetItemString(pDictInput, "reply", PyTuple_GET_ITEM(pArgs, 1)) ||
+		    PyDict_SetItemString(pDictInput, "config", PyTuple_GET_ITEM(pArgs, 2)) ||
+		    PyDict_SetItemString(pDictInput, "session-state", PyTuple_GET_ITEM(pArgs, 3)) ||
+		    PyDict_SetItemString(pDictInput, "proxy-request", PyTuple_GET_ITEM(pArgs, 4)) ||
+		    PyDict_SetItemString(pDictInput, "proxy-reply", PyTuple_GET_ITEM(pArgs, 5))) {
+			ret = RLM_MODULE_FAIL;
+			goto finish;
+		}
+		pRet = PyObject_CallFunctionObjArgs(pFunc, pDictInput, NULL);
+	}
+	else if (pass_all_vps)
 		pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
 	else
 		pRet = PyObject_CallFunctionObjArgs(pFunc, PyTuple_GET_ITEM(pArgs, 0), NULL);
@@ -528,9 +547,10 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	 */
 	if (PyTuple_CheckExact(pRet)) {
 		PyObject *pTupleInt;
+		int tuple_size = PyTuple_GET_SIZE(pRet);
 
-		if (PyTuple_GET_SIZE(pRet) != 3) {
-			ERROR("%s - Tuple must be (return, replyTuple, configTuple)", funcname);
+		if (tuple_size < 2 || tuple_size > 3) {
+			ERROR("%s - Tuple must be (return, updateDict) or (return, replyTuple, configTuple)", funcname);
 			ret = RLM_MODULE_FAIL;
 			goto finish;
 		}
@@ -543,13 +563,49 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		}
 		/* Now have the return value */
 		ret = PyInt_AsLong(pTupleInt);
-		/* Reply item tuple */
-		mod_vptuple(request->reply, request, &request->reply->vps,
-			    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
-		/* Config item tuple */
-		mod_vptuple(request, request, &request->config,
-			    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
 
+		/* process updateDict */
+		if (tuple_size == 2) {
+			PyObject *updateDict = PyTuple_GET_ITEM(pRet, 1);
+			if (!PyDict_CheckExact(updateDict)) {
+				ERROR("%s - updateDict is not a dictionary", funcname);
+				ret = RLM_MODULE_FAIL;
+				goto finish;
+			}
+			mod_vptuple(request->reply, request, &request->reply->vps,
+				    PyDict_GetItemString(updateDict, "reply"), funcname, "reply");
+			mod_vptuple(request, request, &request->config,
+				    PyDict_GetItemString(updateDict, "config"), funcname, "config");
+			mod_vptuple(request->packet, request, &request->packet->vps,
+				    PyDict_GetItemString(updateDict, "request"), funcname, "request");
+			mod_vptuple(request->state_ctx, request, &request->state,
+				    PyDict_GetItemString(updateDict, "session-state"), funcname, "session-state");
+#ifdef WITH_PROXY
+			if (request->proxy)
+				mod_vptuple(request->proxy, request, &request->proxy->vps,
+					    PyDict_GetItemString(updateDict, "proxy-request"), funcname, "proxy-request");
+			if (request->proxy_reply)
+				mod_vptuple(request->proxy_reply, request, &request->proxy_reply->vps,
+					    PyDict_GetItemString(updateDict, "proxy-reply"), funcname, "proxy-reply");
+#endif
+			/*
+			 *	Update cached copies
+			 */
+			request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+			request->password = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+			if (!request->password)
+				request->password = fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+		}
+
+		/* process replyTuple and configTuple */
+		else if (tuple_size == 3) {
+			/* Reply item tuple */
+			mod_vptuple(request->reply, request, &request->reply->vps,
+				    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
+			/* Config item tuple */
+			mod_vptuple(request, request, &request->config,
+				    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
+		}
 	} else if (PyInt_CheckExact(pRet)) {
 		/* Just an integer */
 		ret = PyInt_AsLong(pRet);
@@ -568,6 +624,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 finish:
 	Py_XDECREF(pArgs);
 	Py_XDECREF(pRet);
+	Py_XDECREF(pDictInput);
 
 	return ret;
 }
@@ -697,7 +754,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	RDEBUG3("Using thread state %p", this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
-	ret = do_python_single(request, pFunc, funcname, inst->pass_all_vps);
+	ret = do_python_single(request, pFunc, funcname, inst->pass_all_vps, inst->pass_all_vps_dict);
 	PyEval_SaveThread();
 
 	return ret;
@@ -1097,7 +1154,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Call the instantiate function.
 	 */
-	code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps);
+	code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
 	if (code < 0) {
 	error:
 		python_error_log();	/* Needs valid thread with GIL */
@@ -1119,7 +1176,7 @@ static int mod_detach(void *instance)
 	 */
 	PyEval_RestoreThread(inst->sub_interpreter);
 
-	ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps);
+	ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
