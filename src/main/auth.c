@@ -228,12 +228,14 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 */
 	if (auth_type < 0) {
 		if (fr_pair_find_by_num(request->config, PW_CRYPT_PASSWORD, 0, TAG_ANY) != NULL) {
-			RWDEBUG2("Please update your configuration, and remove 'Auth-Type = Crypt'");
-			RWDEBUG2("Use the PAP module instead");
+			RWDEBUG2("No module configured to handle comparisons with &control:Crypt-Password");
+			RWDEBUG2("Add pap to the authorize { ... } and authenticate { ... } sections of this "
+				 "virtual server to handle this \"known good\" password type");
 		}
 		else if (fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) != NULL) {
-			RWDEBUG2("Please update your configuration, and remove 'Auth-Type = Local'");
-			RWDEBUG2("Use the PAP or CHAP modules instead");
+			RWDEBUG2("No module configured to handle comparisons with &control:Cleartext-Password");
+			RWDEBUG2("Add pap or chap to the authorize { ... } and authenticate { ... } sections "
+				 "of this virtual server to handle this \"known good\" password type");
 		}
 
 		/*
