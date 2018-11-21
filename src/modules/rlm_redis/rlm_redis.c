@@ -238,6 +238,12 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 	if (argc <= 0)
 		return -1;
 
+	if (argc >= (MAX_REDIS_ARGS - 1)) {
+		RERROR("rlm_redis (%s): query has too many parameters; increase "
+				"MAX_REDIS_ARGS and recompile", inst->xlat_name);
+		return -1;
+	}
+
 	dissocket = *dissocket_p;
 
 	DEBUG2("rlm_redis (%s): executing the query: \"%s\"", inst->xlat_name, query);
