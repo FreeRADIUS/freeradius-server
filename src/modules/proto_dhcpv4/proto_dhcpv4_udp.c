@@ -203,7 +203,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_dhcpv4_udp - Received %s XID %04x length %d %s",
+	DEBUG2("proto_dhcpv4_udp - Received %s XID %08x length %d %s",
 	       dhcp_message_types[message_type], xid,
 	       (int) packet_len, thread->name);
 
