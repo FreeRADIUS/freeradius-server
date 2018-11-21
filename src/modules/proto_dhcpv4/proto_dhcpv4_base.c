@@ -73,6 +73,52 @@ static int reply_fail[FR_DHCP_INFORM + 1] = {
 	[FR_DHCP_INFORM]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
 };
 
+
+/*
+ *	Debug the packet if requested.
+ */
+static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
+{
+	char src_ipaddr[FR_IPADDR_STRLEN];
+	char dst_ipaddr[FR_IPADDR_STRLEN];
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+	char if_name[IFNAMSIZ];
+#endif
+
+	if (!packet) return;
+	if (!RDEBUG_ENABLED) return;
+
+
+	log_request(L_DBG, L_DBG_LVL_1, request, "%s %s XID %08x from %s%s%s:%i to %s%s%s:%i "
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+		       "%s%s%s"
+#endif
+		       "length %zu",
+		       received ? "Received" : "Sent",
+		       dhcp_message_types[packet->code],
+		       packet->id,
+		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
+		       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
+		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->src_port,
+		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
+		       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
+		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->dst_port,
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+		       packet->if_index ? "via " : "",
+		       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+		       packet->if_index ? " " : "",
+#endif
+		       packet->data_len);
+
+	if (received) {
+		log_request_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+	} else {
+		log_request_proto_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+	}
+}
+
 static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, UNUSED fr_io_action_t action)
 {
 	rlm_rcode_t rcode;
@@ -87,8 +133,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		RDEBUG("Received %s ID %08x", dhcp_message_types[request->packet->code], request->packet->id);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		dhcpv4_packet_debug(request, request->packet, true);
 
 		request->component = "dhcpv4";
 
@@ -225,7 +270,9 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 			return FR_IO_DONE;
 		}
 
-		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
+		if (RDEBUG_ENABLED) {
+			dhcpv4_packet_debug(request, request->reply, false);
+		}
 		break;
 
 	default:
