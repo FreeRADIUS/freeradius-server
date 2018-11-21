@@ -427,6 +427,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		fr_dhcpv4_print_hex(fr_log_fp, buffer, data_len);
 	}
 
+	request->reply->data_len = data_len;
 	return data_len;
 }
 
