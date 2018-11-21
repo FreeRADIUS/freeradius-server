@@ -147,6 +147,7 @@ RADIUS_PACKET	*fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len);
 ssize_t		fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, uint32_t xid, VALUE_PAIR *vps);
 int		fr_dhcpv4_init(void);
 void		fr_dhcpv4_free(void);
+void		fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 
 /*
  *	decode.c

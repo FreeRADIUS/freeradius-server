@@ -532,3 +532,67 @@ void fr_dhcpv4_free(void)
 	fr_dict_autofree(dhcpv4_dict);
 }
 
+
+static char const *short_header_names[] = {
+	"opcode",
+	"hwtype",
+	"hwaddrlen",
+	"hop_count",
+	"xid",
+	"seconds",
+	"flags",
+	"ciaddr",
+	"yiaddr",
+	"siaddr",
+	"giaddr",
+	"chaddr",
+	"server_hostname",
+	"boot_filename",
+};
+
+static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
+{
+	int i;
+	static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+	for (i = 0; i < attrlen; i++) {
+		if ((i > 0) && ((i & 0x0f) == 0x00))
+			fprintf(fr_log_fp, "%.*s", depth, tabs);
+		fprintf(fr_log_fp, "%02x ", ptr[i]);
+		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
+	}
+	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
+}
+
+/** Print a raw RADIUS packet as hex.
+ *
+ */
+void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
+{
+	int i;
+	uint8_t const *attr, *end;
+
+	end = packet + packet_len;
+	attr = packet;
+
+	for (i = 0; i < 14; i++) {
+		fprintf(fp, "\t%s: ", short_header_names[i]);
+		print_hex_data(attr, dhcp_header_sizes[i], 2);
+		attr += dhcp_header_sizes[i];
+	}
+
+	while (attr < end) {
+		fprintf(fp, "\t\t");
+
+		fprintf(fp, "%02x  %02x  ", attr[0], attr[1]);
+
+		print_hex_data(attr + 2, attr[1], 3);
+
+		/*
+		 *	"End of option" option.
+		 */
+		if (attr[0] == 255) break;
+
+		attr += attr[1] + 2;
+	}
+}
