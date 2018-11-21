@@ -288,8 +288,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	Hacks for now until we have a lower-level decode routine.
 	 */
 	request->packet->code = data[0];
-	request->packet->id = data[1];
-	request->reply->id = data[1];
+	request->packet->id = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
+	request->reply->id = request->packet->id;
 	memcpy(request->packet->vector, data + 4, sizeof(request->packet->vector));
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
