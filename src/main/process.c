@@ -1650,10 +1650,12 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	packet_p = rbtree_finddata(pl, &packet);
 	if (packet_p) {
 		rad_child_state_t child_state;
+		char const *old_module;
 
 		request = fr_packet2myptr(REQUEST, packet, packet_p);
 		rad_assert(request->in_request_hash);
 		child_state = request->child_state;
+		old_module = request->module;
 
 		/*
 		 *	Same src/dst ip/port, length, and
@@ -1716,9 +1718,10 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 			 */
 			ERROR("Received conflicting packet from "
 			      "client %s port %d - ID: %u due to "
-			      "unfinished request.  Giving up on old request.",
+			      "unfinished request in module %s.  Giving up on old request.",
 			      client->shortname,
-			      packet->src_port, packet->id);
+			      packet->src_port, packet->id,
+			      old_module);
 		}
 
 		/*
