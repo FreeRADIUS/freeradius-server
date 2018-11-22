@@ -219,6 +219,11 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 			p += len;
 		}
 
+		vp = fr_pair_find_by_da(head, attr_dhcp_message_type, TAG_ANY);
+		if (vp) {
+			packet->code = vp->vp_uint8;
+		}
+
 		/*
 		 *	If option Overload is present in the 'options' field, then fields 'file' and/or 'sname'
 		 *	are used to hold more options. They are partitioned and must be interpreted in sequence.

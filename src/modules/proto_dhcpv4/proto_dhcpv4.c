@@ -305,14 +305,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		return -1;
 	}
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_message_type, TAG_ANY);
-	if (!vp) {
-		RPEDEBUG("Packet does not contain DHCP-Message-Type");
-		return -1;
-	}
-
-	request->packet->code = vp->vp_uint8;
-
 	/*
 	 *	Set the rest of the fields.
 	 */
