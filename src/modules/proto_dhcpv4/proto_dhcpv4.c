@@ -267,7 +267,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t *address = track->address;
 	RADCLIENT const *client;
-	VALUE_PAIR *vp;
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
