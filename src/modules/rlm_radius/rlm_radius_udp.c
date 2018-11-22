@@ -2330,7 +2330,6 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 				if ((c->inst->parent->status_check != FR_CODE_ACCESS_REQUEST) &&
 				    (map->lhs->tmpl_da == attr_user_password)) continue;
 
-
 				(void) map_to_request(request, map, map_to_vp, NULL);
 			}
 

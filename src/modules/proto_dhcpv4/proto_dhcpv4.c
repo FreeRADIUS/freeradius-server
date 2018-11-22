@@ -267,6 +267,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t *address = track->address;
 	RADCLIENT const *client;
+	VALUE_PAIR *vp;
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
@@ -287,7 +288,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
 	 */
-	request->packet->code = data[0];
 	request->packet->id = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
 	request->reply->id = request->packet->id;
 	memcpy(request->packet->vector, data + 4, sizeof(request->packet->vector));
@@ -304,6 +304,14 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
+
+	vp = fr_pair_find_by_da(request->packet->vps, attr_message_type, TAG_ANY);
+	if (!vp) {
+		RPEDEBUG("Packet does not contain DHCP-Message-Type");
+		return -1;
+	}
+
+	request->packet->code = vp->vp_uint8;
 
 	/*
 	 *	Set the rest of the fields.
