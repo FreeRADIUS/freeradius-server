@@ -209,8 +209,13 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		argc = rad_expand_xlat(request, p, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
 		if (argc <= 0) {
 			RPEDEBUG("Invalid command: %s", p);
+		arg_error:
 			fr_pool_connection_release(pool, request, conn);
 			return -1;
+		}
+		if (argc >= (MAX_REDIS_ARGS - 1)) {
+			RPEDEBUG("Too many parameters; increase MAX_REDIS_ARGS and recompile: %s", p);
+			goto arg_error;
 		}
 
 		RDEBUG2("Executing command: %s", argv[0]);
@@ -254,6 +259,12 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	argc = rad_expand_xlat(request, p, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
 		RPEDEBUG("Invalid command: %s", p);
+		ret = -1;
+		goto finish;
+	}
+
+	if (argc >= (MAX_REDIS_ARGS - 1)) {
+		RPEDEBUG("Too many parameters; increase MAX_REDIS_ARGS and recompile: %s", p);
 		ret = -1;
 		goto finish;
 	}
