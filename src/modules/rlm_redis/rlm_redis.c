@@ -36,9 +36,6 @@ RCSID("$Id$")
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
 
-#define MAX_QUERY_LEN	4096			//!< Maximum command length.
-#define MAX_REDIS_ARGS	16			//!< Maximum number of arguments.
-
 static CONF_PARSER module_config[] = {
 	REDIS_COMMON_CONFIG,
 	CONF_PARSER_TERMINATOR
@@ -165,7 +162,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	int			argc;
 	char const		*argv[MAX_REDIS_ARGS];
-	char			argv_buf[MAX_QUERY_LEN];
+	char			argv_buf[MAX_REDIS_COMMAND_LEN];
 
 	if (p[0] == '-') {
 		p++;
