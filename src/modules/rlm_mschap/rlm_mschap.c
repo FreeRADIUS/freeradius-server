@@ -1156,28 +1156,63 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 			char *p;
 
 			/*
-			 *	look for "Password expired", or "Must change password".
+			 *	Do checks for numbers, which are
+			 *	language neutral.  They're also
+			 *	faster.
 			 */
-			if (strcasestr(buffer, "Password expired") ||
+			p = strcasestr(buffer, "0xC0000");
+			if (p) {
+				int rcode = 0;
+
+				p += 7;
+				if (strcmp(p, "224") == 0) {
+					rcode = -648;
+
+				} else if (strcmp(p, "234") == 0) {
+					rcode = -647;
+
+				} else if (strcmp(p, "072") == 0) {
+					rcode = -691;
+
+				} else if (strcasecmp(p, "05E") == 0) {
+					rcode = -2;
+				}
+
+				if (rcode != 0) {
+					REDEBUG2("%s", buffer);
+					return rcode;
+				}
+
+				/*
+				 *	Else fall through to more ridiculous checks.
+				 */
+			}
+
+			/*
+			 *	Look for variants of expire password.
+			 */
+			if (strcasestr(buffer, "0xC0000224") ||
+			    strcasestr(buffer, "Password expired") ||
+			    strcasestr(buffer, "Password has expired") ||
+			    strcasestr(buffer, "Password must be changed") ||
 			    strcasestr(buffer, "Must change password")) {
-				REDEBUG2("%s", buffer);
 				return -648;
 			}
 
-			if (strcasestr(buffer, "Account locked out") ||
-			    strcasestr(buffer, "0xC0000234")) {
+			if (strcasestr(buffer, "0xC0000234") ||
+			    strcasestr(buffer, "Account locked out")) {
 				REDEBUG2("%s", buffer);
 				return -647;
 			}
 
-			if (strcasestr(buffer, "Account disabled") ||
-			    strcasestr(buffer, "0xC0000072")) {
+			if (strcasestr(buffer, "0xC0000072") ||
+			    strcasestr(buffer, "Account disabled")) {
 				REDEBUG2("%s", buffer);
 				return -691;
 			}
 
-			if (strcasestr(buffer, "No logon servers") ||
-			    strcasestr(buffer, "0xC000005E")) {
+			if (strcasestr(buffer, "0xC000005E") ||
+			    strcasestr(buffer, "No logon servers")) {
 				REDEBUG2("%s", buffer);
 				return -2;
 			}
