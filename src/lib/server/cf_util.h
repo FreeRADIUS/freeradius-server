@@ -193,6 +193,20 @@ int		_cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx);
 /*
  *	Validation
  */
+
+/** Define a function for parsing CF_PAIR values using a name/number table
+ *
+ */
+#define CF_PAIR_IN_TABLE_FUNC(_table) \
+static int _table##_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, \
+			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule) \
+{ \
+	int32_t number; \
+	if (cf_pair_in_table(&number, _table, cf_item_to_pair(ci)) < 0) return -1; \
+	*((int32_t *)out) = number; \
+	return 0; \
+}
+
 int		cf_pair_in_table(int32_t *out, FR_NAME_NUMBER const *table, CONF_PAIR *cp);
 
 /*
