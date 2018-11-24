@@ -61,7 +61,7 @@ typedef enum {
 	RADSNMP_EXIT					//!< Terminate gracefully.
 } radsnmp_command_t;
 
-static const FR_NAME_NUMBER radsnmp_command_str[] = {
+static FR_NAME_NUMBER const radsnmp_command_str[] = {
 	{ "PING", 	RADSNMP_PING },			//!< Liveness command from Net-SNMP
 	{ "get",	RADSNMP_GET },			//!< Get the value of an OID.
 	{ "getnext", 	RADSNMP_GETNEXT },		//!< Get the next OID in the tree.
