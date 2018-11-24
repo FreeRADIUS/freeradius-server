@@ -262,8 +262,8 @@ typedef struct {
  *
  */
 typedef struct {
-	rlm_rest_section_t		section;	//!< Our mutated section config.
-	rlm_rest_handle_t		*handle;	//!< curl easy handle servicing our request.
+	rlm_rest_section_t	section;	//!< Our mutated section config.
+	rlm_rest_handle_t	*handle;	//!< curl easy handle servicing our request.
 } rlm_rest_xlat_rctx_t;
 
 extern fr_dict_t *dict_freeradius;
