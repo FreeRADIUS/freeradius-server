@@ -39,9 +39,7 @@ static FR_NAME_NUMBER const http_negotiation_table[] = {
 	{ "1.0", 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
 	{ "1.1",	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
 #ifdef CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE
-	{ "2.0", 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Attempt HTTP 2 requests. libcurl will fall back
-								///< to HTTP 1.1 if HTTP 2 can't be negotiated with
-								///< the server. (Added in 7.33.0)
+	{ "2.0", 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Enforce HTTP 2.0 requests.
 #endif
 #ifdef CURL_HTTP_VERSION_2_0
 	{ "2.0+auto",	CURL_HTTP_VERSION_2_0 },		//!< Attempt HTTP 2 requests. libcurl will fall back
