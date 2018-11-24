@@ -1730,6 +1730,11 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	buffer[(sizeof(buffer) - 1)] = '\0';
 
 	/*
+	 *	Control which HTTP version we're going to use
+	 */
+	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) SET_OPTION(CURLOPT_HTTP_VERSION, inst->http_negotiation);
+
+	/*
 	 *	Setup any header options and generic headers.
 	 */
 	SET_OPTION(CURLOPT_URL, uri);

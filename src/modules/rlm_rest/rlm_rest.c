@@ -33,6 +33,32 @@ RCSID("$Id$")
 #include <ctype.h>
 #include "rest.h"
 
+static FR_NAME_NUMBER const http_negotiation_table[] = {
+	{ "default", 	CURL_HTTP_VERSION_NONE },		//!< We don't care about what version the library uses.
+								///< libcurl will use whatever it thinks fit.
+	{ "1.0", 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
+	{ "1.1",	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
+#ifdef CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE
+	{ "2.0", 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Attempt HTTP 2 requests. libcurl will fall back
+								///< to HTTP 1.1 if HTTP 2 can't be negotiated with
+								///< the server. (Added in 7.33.0)
+#endif
+#ifdef CURL_HTTP_VERSION_2_0
+	{ "2.0+auto",	CURL_HTTP_VERSION_2_0 },		//!< Attempt HTTP 2 requests. libcurl will fall back
+								///< to HTTP 1.1 if HTTP 2 can't be negotiated with the
+								///< server. (Added in 7.33.0)
+#endif
+#ifdef CURL_HTTP_VERSION_2TLS
+	{ "2.0+tls",	CURL_HTTP_VERSION_2TLS },		//!< Attempt HTTP 2 over TLS (HTTPS) only.
+								///< libcurl will fall back to HTTP 1.1 if HTTP 2
+								///< can't be negotiated with the HTTPS server.
+								///< For clear text HTTP servers, libcurl will use 1.1.
+#endif
+	{  NULL , 	-1}
+};
+
+CF_PAIR_IN_TABLE_FUNC(http_negotiation_table)
+
 /*
  *	TLS Configuration
  */
@@ -93,6 +119,13 @@ static const CONF_PARSER xlat_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_DEPRECATED("connect_timeout", FR_TYPE_TIMEVAL, rlm_rest_t, connect_timeout) },
 	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, rlm_rest_t, connect_proxy) },
+	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_INT32, rlm_rest_t, http_negotiation),
+	  .dflt = "default", .func = http_negotiation_table_parse },
+
+#ifdef CURLPIPE_MULTIPLEX
+	{ FR_CONF_OFFSET("multiplex", FR_TYPE_BOOL, rlm_rest_t, multiplex), .dflt = "yes" },
+#endif
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -969,7 +1002,7 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 		return -1;
 	}
 
-	return rest_io_init(t);
+	return rest_io_init(t, inst->multiplex);
 }
 
 /** Cleanup all outstanding requests associated with this thread

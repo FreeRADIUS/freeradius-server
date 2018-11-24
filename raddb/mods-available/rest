@@ -52,6 +52,25 @@ rest {
 #	connect_proxy = "socks://127.0.0.1"
 
 	#
+	#  The negotiation scheme and target HTTP version:
+	#    default      - Use whichever negotiation scheme and version is the default
+	#                   for libcurl.
+	#    1.0          - Disable negotiation.  Force HTTP 1.0.
+	#    1.1          - Disable negotiation.  Force HTTP 1.1.
+	#    2.0          - Disable negotiation.  Force HTTP 2.0.
+	#    2.0+auto     - Try and negotiate 2.0 and fallback to 1.1.
+	#    2.0+tls      - Try and negotiate 2.0 if using TLS (fallback to 1.1).
+	#                   Use HTTP 1.1 for plaintext HTTP connections.
+	#
+#	http_negotiation = "default"
+
+	#
+	#  >= 2.0 is required for multiplexing to succeed.  If we can't negotiate
+	#  a high enough http version, multiplexing will be silently disabled.
+	#
+#	multiplex = yes
+
+	#
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#  For example if you list rest in the authorize section of a virtual server,

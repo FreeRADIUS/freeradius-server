@@ -148,7 +148,13 @@ typedef struct {
 
 	char const		*connect_proxy;	//!< Send request via this proxy.
 
-	fr_pool_t	*pool;			//!< Pointer to the connection pool.
+	int32_t			http_negotiation; //!< What HTTP version to negotiate, and how to
+						///< negotiate it.  One or the CURL_HTTP_VERSION_ macros.
+
+	bool			multiplex;	//!< Whether to perform multiple requests using a single
+						///< connection.
+
+	fr_pool_t		*pool;		//!< Pointer to the connection pool.
 
 	rlm_rest_section_t	xlat;		//!< Configuration specific to xlat.
 	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
@@ -322,5 +328,5 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, RE
 void rest_io_module_action(REQUEST *request, void *instance, void *thread, void *rctx, fr_state_signal_t action);
 void rest_io_xlat_action(REQUEST *request, void *instance, void *thread, void *rctx, fr_state_signal_t action);
 int rest_io_request_enqueue(rlm_rest_thread_t *thread, REQUEST *request, void *handle);
-int rest_io_init(rlm_rest_thread_t *thread);
+int rest_io_init(rlm_rest_thread_t *thread, bool multiplex);
 

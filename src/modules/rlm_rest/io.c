@@ -430,12 +430,17 @@ int rest_io_request_enqueue(rlm_rest_thread_t *t, REQUEST *request, void *handle
 
 /** Performs the libcurl initialisation of the thread
  *
- * @param[in] thread to initialise.
+ * @param[in] thread		to initialise.
+ * @param[in] multiplex		Run multiple requests over the same connection simultaneously.
  * @return
  *	- 0 on success.
  *	- -1 on error.
  */
-int rest_io_init(rlm_rest_thread_t *thread)
+int rest_io_init(rlm_rest_thread_t *thread,
+#ifndef CURLPIPE_MULTIPLEX
+		 UNUSED
+#endif
+		 bool multiplex)
 {
 	CURLMcode	ret;
 	CURLM		*mandle;
@@ -452,6 +457,10 @@ int rest_io_init(rlm_rest_thread_t *thread)
 
 	SET_OPTION(CURLMOPT_SOCKETFUNCTION, _rest_io_event_modify);
 	SET_OPTION(CURLMOPT_SOCKETDATA, thread);
+
+#ifdef CURLPIPE_MULTIPLEX
+	SET_OPTION(CURLMOPT_PIPELINING, multiplex ? CURLPIPE_MULTIPLEX : CURLPIPE_NOTHING);
+#endif
 
 	return 0;
 
