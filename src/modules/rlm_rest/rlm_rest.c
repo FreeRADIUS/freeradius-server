@@ -55,8 +55,6 @@ static FR_NAME_NUMBER const http_negotiation_table[] = {
 	{  NULL , 	-1}
 };
 
-CF_PAIR_IN_TABLE_FUNC(http_negotiation_table)
-
 /*
  *	TLS Configuration
  */
@@ -118,7 +116,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_DEPRECATED("connect_timeout", FR_TYPE_TIMEVAL, rlm_rest_t, connect_timeout) },
 	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, rlm_rest_t, connect_proxy) },
 	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_INT32, rlm_rest_t, http_negotiation),
-	  .dflt = "default", .func = http_negotiation_table_parse },
+	  .func = cf_table_parse_int32, .uctx = http_negotiation_table, .dflt = "default" },
 
 #ifdef CURLPIPE_MULTIPLEX
 	{ FR_CONF_OFFSET("multiplex", FR_TYPE_BOOL, rlm_rest_t, multiplex), .dflt = "yes" },

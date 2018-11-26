@@ -411,6 +411,9 @@ struct CONF_PARSER {
 	cf_parse_t	func;			//!< Override default parsing behaviour for the specified type with
 						//!< a custom parsing function.
 
+	void const	*uctx;			//!< User data accessible by the #cf_parse_t func.  Useful for
+						///< building reusable functions.
+
 	/** Where to write status if FR_TYPE_IS_DEFAULT is set
 	 *
 	 * @note Which field is used, is determined by whether
@@ -467,6 +470,16 @@ int		cf_section_parse_pass2(void *base, CONF_SECTION *cs);
 int		_cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const *filename, int lineno);
 #define		cf_section_rules_push(_cs, _rule) _cf_section_rules_push(_cs, _rule, __FILE__, __LINE__)
 int		_cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char const *filename, int lineno);
+
+/*
+ *	Generic parsing callback functions
+ */
+int		cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				      CONF_ITEM *ci, CONF_PARSER const *rule);
+
+int		cf_table_parse_int32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				     CONF_ITEM *ci, CONF_PARSER const *rule);
+
 
 #ifdef __cplusplus
 }

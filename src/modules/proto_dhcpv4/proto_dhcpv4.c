@@ -30,26 +30,24 @@
 #include "proto_dhcpv4.h"
 
 extern fr_app_t proto_dhcpv4;
-static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static const CONF_PARSER priority_config[] = {
 	{ FR_CONF_OFFSET("DHCP-Discover", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_DISCOVER]),
-	  .func = priority_parse, .dflt = "normal" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "normal" },
 	{ FR_CONF_OFFSET("DHCP-Request", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_REQUEST]),
-	  .func = priority_parse, .dflt = "normal" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "normal" },
 	{ FR_CONF_OFFSET("DHCP-Decline", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_DECLINE]),
-	  .func = priority_parse, .dflt = "normal" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "normal" },
 	{ FR_CONF_OFFSET("DHCP-Release", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_RELEASE]),
-	  .func = priority_parse, .dflt = "normal" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "normal" },
 	{ FR_CONF_OFFSET("DHCP-Inform", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_INFORM]),
-	  .func = priority_parse, .dflt = "normal" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "normal" },
 	{ FR_CONF_OFFSET("DHCP-Lease-Query", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_LEASE_QUERY]),
-	  .func = priority_parse, .dflt = "low" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "low" },
 	{ FR_CONF_OFFSET("DHCP-Bulk-Lease-Query", FR_TYPE_UINT32, proto_dhcpv4_t, priorities[FR_DHCP_BULK_LEASE_QUERY]),
-	  .func = priority_parse, .dflt = "low" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "low" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -107,18 +105,6 @@ fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
 	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ NULL }
 };
-
-static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	int32_t priority;
-
-	if (cf_pair_in_table(&priority, channel_packet_priority, cf_item_to_pair(ci)) < 0) return -1;
-
-	*((uint32_t *)out) = (uint32_t)priority;
-
-	return 0;
-}
 
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *

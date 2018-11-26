@@ -1539,3 +1539,36 @@ int _cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char cons
 	return 0;
 }
 
+/** Generic function for parsing conf pair values as int32_t (FR_TYPE_INT32)
+ *
+ */
+int cf_table_parse_int32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			 CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int32_t num;
+
+	if (cf_pair_in_table(&num, rule->uctx, cf_item_to_pair(ci)) < 0) return -1;
+
+	*((int32_t *)out) = num;
+
+	return 0;
+}
+
+/** Generic function for parsing conf pair values as int32_t (FR_TYPE_UINT32)
+ *
+ */
+int cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			  CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int32_t num;
+
+	if (cf_pair_in_table(&num, rule->uctx, cf_item_to_pair(ci)) < 0) return -1;
+	if (num < 0) {
+		cf_log_err(ci, "Resolved value must be a positive integer, got %i", num);
+		return -1;
+	}
+	*((uint32_t *)out) = (uint32_t)num;
+
+	return 0;
+}
+

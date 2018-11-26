@@ -31,8 +31,6 @@
 #include "proto_vmps.h"
 
 extern fr_app_t proto_vmps;
-static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 		      CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
@@ -40,9 +38,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 static const CONF_PARSER priority_config[] = {
 	{ FR_CONF_OFFSET("VMPS-Join-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST]),
-	   .func = priority_parse, .dflt = "low" },
+	   .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "low" },
 	{ FR_CONF_OFFSET("VMPS-Reconfirm-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST]),
-	   .func = priority_parse, .dflt = "low" },
+	   .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "low" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -93,18 +91,6 @@ fr_dict_attr_autoload_t proto_vmps_dict_attr[] = {
 	{ .out = &attr_vmps_packet_type, .name = "VMPS-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps},
 	{ NULL }
 };
-
-static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	int32_t priority;
-
-	if (cf_pair_in_table(&priority, channel_packet_priority, cf_item_to_pair(ci)) < 0) return -1;
-
-	*((uint32_t *)out) = (uint32_t)priority;
-
-	return 0;
-}
 
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *

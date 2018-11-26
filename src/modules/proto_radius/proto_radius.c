@@ -34,7 +34,6 @@ extern fr_app_t proto_radius;
 
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int priority_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 static CONF_PARSER const limit_config[] = {
 	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_TIMEVAL, proto_radius_t, io.cleanup_delay), .dflt = "5.0" } ,
@@ -56,15 +55,15 @@ static CONF_PARSER const limit_config[] = {
 
 static const CONF_PARSER priority_config[] = {
 	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCESS_REQUEST]),
-	  .func = priority_parse, .dflt = "high" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "high" },
 	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCOUNTING_REQUEST]),
-	  .func = priority_parse, .dflt = "low" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "low" },
 	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_COA_REQUEST]),
-	  .func = priority_parse, .dflt = "normal" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "normal" },
 	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_DISCONNECT_REQUEST]),
-	  .func = priority_parse, .dflt = "low" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "low" },
 	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_STATUS_SERVER]),
-	  .func = priority_parse, .dflt = "now" },
+	  .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "now" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -109,17 +108,6 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ NULL }
 };
-
-static int priority_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	int32_t priority;
-
-	if (cf_pair_in_table(&priority, channel_packet_priority, cf_item_to_pair(ci)) < 0) return -1;
-
-	*((uint32_t *)out) = (uint32_t)priority;
-
-	return 0;
-}
 
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
