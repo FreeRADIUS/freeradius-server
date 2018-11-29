@@ -45,19 +45,20 @@ ATTRIBUTE	Unit-Root-246		246 tlv
 ATTRIBUTE	Unit-Long-Octets	246.241	octets
 
 ATTRIBUTE	Extended-Attribute-1			241	extended
-ATTRIBUTE	Extended-Attribute-2			242	extended
+ATTRIBUTE	Extended-Attribute-5			245	long-extended
 
 ATTRIBUTE	Extended-Vendor-Specific-1		241.26	evs
-ATTRIBUTE	Extended-Vendor-Specific-2		242.26	evs
+ATTRIBUTE	Extended-Vendor-Specific-5		245.26	evs
 
-VENDOR FreeRADIUS 1
+VENDOR FreeRADIUS 11344
 BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-1
 
 ATTRIBUTE	Unit-EVS-Integer 1 integer
 ATTRIBUTE	Unit-EVS-Octets	 2 octets
+
 END-Vendor FreeRADIUS
 
-BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-2
+BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-5
 
 ATTRIBUTE	Unit-EVS-5-Integer	1 integer
 ATTRIBUTE	Unit-EVS-5-Octets	2 octets
