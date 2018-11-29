@@ -158,7 +158,7 @@ IP address.
 Credits
 -------
 
-Original  - Alan DeKok <aland@ox.org>
+Original  - Alan DeKok <aland@freeradius.org>
 12.x Info - Chris Parker <cparker@starnetusa.net>  2000-10-12
 
 More Information
