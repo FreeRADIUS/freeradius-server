@@ -1477,7 +1477,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	No attribute was found that looked like a password to match.
 	 */
 	if (!auth_func) {
-		RDEBUG("No password configured for the user.  Cannot do authentication");
+		RWDEBUG("No password configured for the user.  Cannot do authentication");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -1486,13 +1486,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	rc = auth_func(inst, request, vp);
 
-	if (rc == RLM_MODULE_REJECT) {
-		RDEBUG("Passwords don't match");
-	}
+	if (rc == RLM_MODULE_REJECT) REDEBUG("Passwords don't match");
 
-	if (rc == RLM_MODULE_OK) {
-		RDEBUG("User authenticated successfully");
-	}
+	if (rc == RLM_MODULE_OK) RDEBUG("User authenticated successfully");
 
 	return rc;
 }
