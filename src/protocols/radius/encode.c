@@ -850,17 +850,6 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	if ((tlv_stack[depth]->type != FR_TYPE_EXTENDED) && (tlv_stack[depth]->type != FR_TYPE_LONG_EXTENDED)) {
-		fr_strerror_printf("%s : Called for non-extended attribute type %s",
-				   __FUNCTION__, fr_int2str(fr_value_box_type_names, tlv_stack[depth]->type, "?Unknown?"));
-		return -1;
-	}
-
-	/*
-	 *	Encode which extended attribute it is.
-	 */
-	out[0] = tlv_stack[depth++]->attr & 0xff;
-
 	/*
 	 *	@fixme: check depth of stack
 	 */
@@ -872,18 +861,35 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	/*
 	 *	Encode the header for "short" or "long" attributes
 	 */
-	if (attr_type == FR_TYPE_EXTENDED) {
+	switch (attr_type) {
+	case FR_TYPE_EXTENDED:
 		if (outlen < 3) return 0;
 
+		/*
+		 *	Encode which extended attribute it is.
+		 */
+		out[0] = tlv_stack[depth++]->attr & 0xff;
 		out[1] = 3;
 		out[2] = tlv_stack[depth]->attr & 0xff;
+		break;
 
-	} else {
+	case FR_TYPE_LONG_EXTENDED:
 		if (outlen < 4) return 0;
 
+		/*
+		 *	Encode which extended attribute it is.
+		 */
+		out[0] = tlv_stack[depth++]->attr & 0xff;
 		out[1] = 4;
 		out[2] = tlv_stack[depth]->attr & 0xff;
 		out[3] = 0;	/* flags start off at zero */
+		break;
+
+	default:
+		fr_strerror_printf("%s : Called for non-extended attribute type %s",
+				   __FUNCTION__, fr_int2str(fr_value_box_type_names,
+				   tlv_stack[depth]->type, "?Unknown?"));
+		return -1;
 	}
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
