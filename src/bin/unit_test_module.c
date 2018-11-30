@@ -179,6 +179,17 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	request = request_alloc(NULL);
 	gettimeofday(&now, NULL);
 
+	/*
+	 *	FIXME - Should be less RADIUS centric, but everything
+	 *	else assumes RADIUS at the moment so we can fix this later.
+	 */
+	request->dict = fr_dict_by_protocol_name("radius");
+	if (!request->dict) {
+		ERROR("RADIUS dictionary failed to load");
+		talloc_free(request);
+		return NULL;
+	}
+
 	request->packet = fr_radius_alloc(request, false);
 	if (!request->packet) {
 		ERROR("No memory");
