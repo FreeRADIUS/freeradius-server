@@ -382,20 +382,14 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	 *	For everything else we get the string representation
 	 */
 	default:
-	{
-		char	value[256];
-		size_t	len;
-
-		len = fr_value_box_snprint(value, sizeof(value), &map->rhs->tmpl_value, '\0');
-		new = talloc_bstrndup(pool, value, len);
+		new = fr_value_box_asprint(pool, &map->rhs->tmpl_value, '\0');
 		if (!new) {
 			talloc_free(key);
 			return -1;
 		}
 		out[2] = new;
-		out_len[2] = len;
+		out_len[2] = talloc_array_length(new) - 1;
 		break;
-	}
 	}
 
 	out[0] = key;

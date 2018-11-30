@@ -443,14 +443,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 		for (i = 0; i < num; i++) {
 			fr_ipaddr_t *network;
-			char buffer[256];
 
 			/*
 			 *	Can't add v4 networks to a v6 socket, or vice versa.
 			 */
 			if (inst->allow[i].af != inst->ipaddr.af) {
-				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->allow[i]), 0);
-				cf_log_err(cs, "Address family in entry %zd - 'allow = %s' does not match 'ipaddr'", i + 1, buffer);
+				cf_log_err(cs, "Address family in entry %zd - 'allow = %pV' does not match 'ipaddr'",
+					   i + 1, fr_box_ipaddr(inst->allow[i]));
 				return -1;
 			}
 
@@ -460,8 +459,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			network = fr_trie_match(inst->trie,
 						&inst->allow[i].addr, inst->allow[i].prefix);
 			if (network) {
-				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->allow[i]), 0);
-				cf_log_err(cs, "Cannot add duplicate entry 'allow = %s'", buffer);
+				cf_log_err(cs, "Cannot add duplicate entry 'allow = %pV'",
+					   fr_box_ipaddr(inst->allow[i]));
 				return -1;
 			}
 
@@ -479,9 +478,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			network = fr_trie_lookup(inst->trie,
 						 &inst->allow[i].addr, inst->allow[i].prefix);
 			if (network && (network->prefix <= inst->allow[i].prefix)) {
-				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->allow[i]), 0);
-				cf_log_err(cs, "Cannot add overlapping entry 'allow = %s'", buffer);
-				cf_log_err(cs, "Entry is completely enclosed inside of a previously defined network.");
+				cf_log_err(cs, "Cannot add overlapping entry 'allow = %pV'",
+					   fr_box_ipaddr(inst->allow[i]));
+				cf_log_err(cs, "Entry is completely enclosed inside of a previously defined network");
 				return -1;
 			}
 
@@ -493,8 +492,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			if (fr_trie_insert(inst->trie,
 					   &inst->allow[i].addr, inst->allow[i].prefix,
 					   &inst->allow[i]) < 0) {
-				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->allow[i]), 0);
-				cf_log_err(cs, "Failed adding 'allow = %s' to tracking table.", buffer);
+				cf_log_err(cs, "Failed adding 'allow = %pV' to tracking table",
+					   fr_box_ipaddr(inst->allow[i]));
 				return -1;
 			}
 		}
@@ -510,15 +509,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		 *	a "deny" inside of a previous "allow".
 		 */
 		for (i = 0; i < num; i++) {
-			fr_ipaddr_t *network;
-			char buffer[256];
+			fr_ipaddr_t	*network;
 
 			/*
 			 *	Can't add v4 networks to a v6 socket, or vice versa.
 			 */
 			if (inst->deny[i].af != inst->ipaddr.af) {
-				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->deny[i]), 0);
-				cf_log_err(cs, "Address family in entry %zd - 'deny = %s' does not match 'ipaddr'", i + 1, buffer);
+				cf_log_err(cs, "Address family in entry %zd - 'deny = %pV' does not match 'ipaddr'",
+					   i + 1, fr_box_ipaddr(inst->deny[i]));
 				return -1;
 			}
 
@@ -528,8 +526,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			network = fr_trie_match(inst->trie,
 						&inst->deny[i].addr, inst->deny[i].prefix);
 			if (network) {
-				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->deny[i]), 0);
-				cf_log_err(cs, "Cannot add duplicate entry 'deny = %s'", buffer);
+				cf_log_err(cs, "Cannot add duplicate entry 'deny = %pV'", fr_box_ipaddr(inst->deny[i]));
 				return -1;
 			}
 
@@ -539,9 +536,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			network = fr_trie_lookup(inst->trie,
 						&inst->deny[i].addr, inst->deny[i].prefix);
 			if (!network) {
-				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->deny[i]), 0);
-				cf_log_err(cs, "The network in entry %zd - 'deny = %s' is not contained within a previous 'allow'",
-					   i + 1, buffer);
+				cf_log_err(cs, "The network in entry %zd - 'deny = %pV' is not contained "
+					   "within a previous 'allow'", i + 1, fr_box_ipaddr(inst->deny[i]));
 				return -1;
 			}
 
@@ -551,9 +547,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			 *	adding a "deny" inside of a "deny".
 			 */
 			if (network->af != inst->ipaddr.af) {
-				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->deny[i]), 0);
-				cf_log_err(cs, "The network in entry %zd - 'deny = %s' is overlaps with another 'deny' rule",
-					   i + 1, buffer);
+				cf_log_err(cs, "The network in entry %zd - 'deny = %pV' overlaps with "
+					   "another 'deny' rule", i + 1, fr_box_ipaddr(inst->deny[i]));
 				return -1;
 			}
 
@@ -565,8 +560,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			if (fr_trie_insert(inst->trie,
 					   &inst->deny[i].addr, inst->deny[i].prefix,
 					   &inst->deny[i]) < 0) {
-				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->deny[i]), 0);
-				cf_log_err(cs, "Failed adding 'deny = %s' to tracking table.", buffer);
+				cf_log_err(cs, "Failed adding 'deny = %pV' to tracking table",
+					   fr_box_ipaddr(inst->deny[i]));
 				return -1;
 			}
 

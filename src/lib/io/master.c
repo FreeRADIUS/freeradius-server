@@ -663,15 +663,13 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		li->fd = fd;
 
 		if (!inst->app_io->get_name) {
-			char src_buf[128], dst_buf[128];
-
-			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(connection->address->src_ipaddr), 0);
-			fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(connection->address->dst_ipaddr), 0);
-
-			connection->name = talloc_typed_asprintf(connection, "proto_%s from client %s port %u to server %s port %u",
-								 inst->app_io->name,
-								 src_buf, connection->address->src_port,
-								 dst_buf, connection->address->dst_port);
+			connection->name = fr_asprintf(connection, "proto_%s from client %pV port "
+						       "%u to server %pV port %u",
+						       inst->app_io->name,
+						       fr_box_ipaddr(connection->address->src_ipaddr),
+						       connection->address->src_port,
+						       fr_box_ipaddr(connection->address->dst_ipaddr),
+						       connection->address->dst_port);
 		} else {
 			connection->name = inst->app_io->get_name(connection->child);
 		}
@@ -761,13 +759,10 @@ static void get_inst(fr_listen_t *li, fr_io_instance_t const **inst, fr_io_threa
 static RADCLIENT *radclient_alloc(TALLOC_CTX *ctx, int ipproto, fr_io_address_t *address)
 {
 	RADCLIENT *client;
-	char src_buf[128];
 
 	MEM(client = talloc_zero(ctx, RADCLIENT));
 
-	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address->src_ipaddr), 0);
-
-	client->longname = client->shortname = talloc_strdup(client, src_buf);
+	client->longname = client->shortname = fr_value_box_asprint(client, fr_box_ipaddr(address->src_ipaddr), '\0');
 
 	client->secret = client->nas_type = talloc_strdup(client, "");
 
@@ -1148,14 +1143,12 @@ do_read:
 		 */
 		value = inst->app->priority(inst, buffer, packet_len);
 		if (value <= 0) {
-			char src_buf[128];
 
 			/*
 			 *	@todo - unix sockets
 			 */
-			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
-			DEBUG2("proto_%s - ignoring packet %d from IP %s. It is not configured as 'type = ...'",
-			       inst->app_io->name, buffer[0], src_buf);
+			DEBUG2("proto_%s - ignoring packet %d from IP %pV. It is not configured as 'type = ...'",
+			       inst->app_io->name, buffer[0], fr_box_ipaddr(address.src_ipaddr));
 			return 0;
 		}
 		*priority = value;
@@ -1213,7 +1206,6 @@ do_read:
 		RADCLIENT *radclient = NULL;
 		fr_io_client_state_t state;
 		fr_ipaddr_t const *network = NULL;
-		char src_buf[128];
 
 		/*
 		 *	We MUST be the master socket.
@@ -1232,14 +1224,14 @@ do_read:
 
 		} else if (inst->dynamic_clients) {
 			if (inst->max_clients && (fr_heap_num_elements(thread->alive_clients) >= inst->max_clients)) {
-				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
-
 				if (accept_fd <= 0) {
-					DEBUG("proto_%s - ignoring packet code %d from client IP address %s - too many dynamic clients are defined",
-					      inst->app_io->name, buffer[0], src_buf);
+					DEBUG("proto_%s - ignoring packet code %d from client IP address %pV - "
+					      "too many dynamic clients are defined",
+					      inst->app_io->name, buffer[0], fr_box_ipaddr(address.src_ipaddr));
 				} else {
-					DEBUG("proto_%s - ignoring connection attempt from client IP address %s - too many dynamic clients are defined",
-					      inst->app_io->name, src_buf);
+					DEBUG("proto_%s - ignoring connection attempt from client IP address %pV "
+					      "- too many dynamic clients are defined",
+					      inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
 					close(accept_fd);
 				}
 				return 0;
@@ -1265,14 +1257,12 @@ do_read:
 
 		} else {
 		ignore:
-			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
-
 			if (accept_fd < 0) {
-				DEBUG("proto_%s - ignoring packet code %d from unknown client IP address %s",
-				      inst->app_io->name, buffer[0], src_buf);
+				DEBUG("proto_%s - ignoring packet code %d from unknown client IP address %pV",
+				      inst->app_io->name, buffer[0], fr_box_ipaddr(address.src_ipaddr));
 			} else {
-				DEBUG("proto_%s - ignoring connection attempt from unknown client IP address %s",
-				      inst->app_io->name, src_buf);
+				DEBUG("proto_%s - ignoring connection attempt from unknown client IP address %pV",
+				      inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
 				close(accept_fd);
 			}
 			return 0;
@@ -1401,7 +1391,8 @@ have_client:
 		if (!track) {
 			track = fr_io_track_add(client, &address, buffer, recv_time, is_dup);
 			if (!track) {
-				DEBUG("Failed tracking packet from client %s - discarding it.", client->radclient->shortname);
+				DEBUG("Failed tracking packet from client %s - discarding it",
+				      client->radclient->shortname);
 				return 0;
 			}
 		}
@@ -1413,8 +1404,6 @@ have_client:
 		 *	the pending queue for this client.
 		 */
 		if (client->state == PR_CLIENT_PENDING) {
-			char src_buf[128];
-
 			/*
 			 *	Track pending packets for the master
 			 *	socket.  Connected sockets are paused
@@ -1427,9 +1416,8 @@ have_client:
 			 *	to track pending packets.
 			 */
 			if (!connection && inst->max_pending_packets && (thread->num_pending_packets >= inst->max_pending_packets)) {
-				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(client->src_ipaddr), 0);
-
-				DEBUG("Too many pending packets for client %s - discarding packet", src_buf);
+				DEBUG("Too many pending packets for client %pV - discarding packet",
+				      fr_box_ipaddr(client->src_ipaddr));
 				return 0;
 			}
 
@@ -1439,14 +1427,14 @@ have_client:
 			pending = fr_io_pending_alloc(client, buffer, packet_len,
 						      track, *priority);
 			if (!pending) {
-				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(client->src_ipaddr), 0);
-				DEBUG("Failed tracking packet from client %s - discarding packet", src_buf);
+				DEBUG("Failed tracking packet from client %pV - discarding packet", fr_box_ipaddr(client->src_ipaddr));
 				return 0;
 			}
 
 			if (fr_heap_num_elements(client->pending) > 1) {
-				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(client->src_ipaddr), 0);
-				DEBUG("Client %s is still being dynamically defined.  Caching this packet until the client has been defined.", src_buf);
+				DEBUG("Client %pV is still being dynamically defined.  "
+				      "Caching this packet until the client has been defined",
+				      fr_box_ipaddr(client->src_ipaddr));
 				return 0;
 			}
 
@@ -2471,14 +2459,13 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 
 	for (i = 0; i < num; i++) {
 		fr_ipaddr_t *network;
-		char buffer[256];
 
 		/*
 		 *	Can't add v4 networks to a v6 socket, or vice versa.
 		 */
 		if (allow[i].af != af) {
-			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(allow[i]), 0);
-			fr_strerror_printf("Address family in entry %zd - 'allow = %s' does not match 'ipaddr'", i + 1, buffer);
+			fr_strerror_printf("Address family in entry %zd - 'allow = %pV' "
+					   "does not match 'ipaddr'", i + 1, fr_box_ipaddr(allow[i]));
 			talloc_free(trie);
 			return NULL;
 		}
@@ -2489,8 +2476,8 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		network = fr_trie_match(trie,
 					&allow[i].addr, allow[i].prefix);
 		if (network) {
-			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(allow[i]), 0);
-			fr_strerror_printf("Cannot add duplicate entry 'allow = %s'", buffer);
+			fr_strerror_printf("Cannot add duplicate entry 'allow = %pV'",
+					   fr_box_ipaddr(allow[i]));
 			talloc_free(trie);
 			return NULL;
 		}
@@ -2509,8 +2496,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		network = fr_trie_lookup(trie,
 					 &allow[i].addr, allow[i].prefix);
 		if (network && (network->prefix <= allow[i].prefix)) {
-			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(allow[i]), 0);
-			fr_strerror_printf("Cannot add overlapping entry 'allow = %s'", buffer);
+			fr_strerror_printf("Cannot add overlapping entry 'allow = %pV'", fr_box_ipaddr(allow[i]));
 			fr_strerror_printf("Entry is completely enclosed inside of a previously defined network.");
 			talloc_free(trie);
 			return NULL;
@@ -2524,8 +2510,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		if (fr_trie_insert(trie,
 				   &allow[i].addr, allow[i].prefix,
 				   &allow[i]) < 0) {
-			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(allow[i]), 0);
-			fr_strerror_printf("Failed adding 'allow = %s' to tracking table.", buffer);
+			fr_strerror_printf("Failed adding 'allow = %pV' to tracking table", fr_box_ipaddr(allow[i]));
 			talloc_free(trie);
 			return NULL;
 		}
@@ -2543,14 +2528,13 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 	 */
 	for (i = 0; i < num; i++) {
 		fr_ipaddr_t *network;
-		char buffer[256];
 
 		/*
 		 *	Can't add v4 networks to a v6 socket, or vice versa.
 		 */
 		if (deny[i].af != af) {
-			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(deny[i]), 0);
-			fr_strerror_printf("Address family in entry %zd - 'deny = %s' does not match 'ipaddr'", i + 1, buffer);
+			fr_strerror_printf("Address family in entry %zd - 'deny = %pV' "
+					   "does not match 'ipaddr'", i + 1, fr_box_ipaddr(deny[i]));
 			talloc_free(trie);
 			return NULL;
 		}
@@ -2561,8 +2545,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		network = fr_trie_match(trie,
 					&deny[i].addr, deny[i].prefix);
 		if (network) {
-			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(deny[i]), 0);
-			fr_strerror_printf("Cannot add duplicate entry 'deny = %s'", buffer);
+			fr_strerror_printf("Cannot add duplicate entry 'deny = %pV'", fr_box_ipaddr(deny[i]));
 			talloc_free(trie);
 			return NULL;
 		}
@@ -2573,9 +2556,8 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		network = fr_trie_lookup(trie,
 					 &deny[i].addr, deny[i].prefix);
 		if (!network) {
-			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(deny[i]), 0);
-			fr_strerror_printf("The network in entry %zd - 'deny = %s' is not contained within a previous 'allow'",
-				   i + 1, buffer);
+			fr_strerror_printf("The network in entry %zd - 'deny = %pV' is not "
+					   "contained within a previous 'allow'", i + 1, fr_box_ipaddr(deny[i]));
 			talloc_free(trie);
 			return NULL;
 		}
@@ -2586,9 +2568,8 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		 *	adding a "deny" inside of a "deny".
 		 */
 		if (network->af != af) {
-			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(deny[i]), 0);
-			fr_strerror_printf("The network in entry %zd - 'deny = %s' is overlaps with another 'deny' rule",
-				   i + 1, buffer);
+			fr_strerror_printf("The network in entry %zd - 'deny = %pV' is overlaps "
+					   "with another 'deny' rule", i + 1, fr_box_ipaddr(deny[i]));
 			talloc_free(trie);
 			return NULL;
 		}
@@ -2601,8 +2582,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		if (fr_trie_insert(trie,
 				   &deny[i].addr, deny[i].prefix,
 				   &deny[i]) < 0) {
-			fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(deny[i]), 0);
-			fr_strerror_printf("Failed adding 'deny = %s' to tracking table.", buffer);
+			fr_strerror_printf("Failed adding 'deny = %pV' to tracking table", fr_box_ipaddr(deny[i]));
 			talloc_free(trie);
 			return NULL;
 		}
