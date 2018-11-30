@@ -211,13 +211,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 		break;
 
 	case LINELOG_DST_TCP:
-		if (DEBUG_ENABLED2) {
-			char buff[FR_IPADDR_PREFIX_STRLEN]; /* IPv6 + /<d><d><d> */
-
-			fr_inet_ntop_prefix(buff, sizeof(buff), &inst->tcp.dst_ipaddr);
-
-			DEBUG2("Opening TCP connection to %s:%u", buff, inst->tcp.port);
-		}
+		DEBUG2("Opening TCP connection to %pV:%u", fr_box_ipaddr(inst->tcp.dst_ipaddr), inst->tcp.port);
 
 		sockfd = fr_socket_client_tcp(NULL, &inst->tcp.dst_ipaddr, inst->tcp.port, true);
 		if (sockfd < 0) {
@@ -227,13 +221,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 		break;
 
 	case LINELOG_DST_UDP:
-		if (DEBUG_ENABLED2) {
-			char buff[FR_IPADDR_PREFIX_STRLEN]; /* IPv6 + /<d><d><d> */
-
-			fr_inet_ntop_prefix(buff, sizeof(buff), &inst->udp.dst_ipaddr);
-
-			DEBUG2("Opening UDP connection to %s:%u", buff, inst->udp.port);
-		}
+		DEBUG2("Opening UDP connection to %pV:%u", fr_box_ipaddr(inst->udp.dst_ipaddr), inst->udp.port);
 
 		sockfd = fr_socket_client_udp(NULL, NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
 		if (sockfd < 0) {
@@ -758,7 +746,7 @@ build_vector:
 			break;
 		}
 	done:
-	fr_pool_connection_release(inst->pool, request, conn);
+		fr_pool_connection_release(inst->pool, request, conn);
 	}
 		break;
 
