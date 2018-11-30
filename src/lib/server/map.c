@@ -1054,7 +1054,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	here for robustness.
 		 */
 		if (fr_value_box_list_concat(*lhs_result, *lhs_result, lhs_result, FR_TYPE_STRING, true) < 0) {
-			RPEDEBUG("Left hand side of map failed expansion");
+			RPEDEBUG("Left side expansion failed");
 			TALLOC_FREE(*lhs_result);
 			goto error;
 		}
@@ -1065,8 +1065,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 					   	.prefix = VP_ATTR_REF_PREFIX_NO
 					   });
 		if (slen <= 0) {
-			RPEDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference",
-				(int)original->lhs->len, original->lhs->name, (*lhs_result)->vb_strvalue);
+			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference",
+				 (*lhs_result)->vb_strvalue);
 			TALLOC_FREE(*lhs_result);
 			goto error;
 		}
@@ -1094,16 +1094,15 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 		slen = tmpl_aexpand(request, &attr_str, request, mutated->lhs, NULL, NULL);
 		if (slen <= 0) {
-			REDEBUG("Left side \"%.*s\" of map failed expansion",
-				(int)mutated->lhs->len, mutated->lhs->name);
+			RPEDEBUG("Left side expansion failed");
 			rad_assert(!attr_str);
 			goto error;
 		}
 
-		slen = tmpl_afrom_attr_str(tmp_ctx, &map_tmp.lhs, attr_str, NULL);
+		slen = tmpl_afrom_attr_str(tmp_ctx, &map_tmp.lhs, attr_str,
+					   &(vp_tmpl_rules_t){ .dict_def = request->dict });
 		if (slen <= 0) {
-			RPEDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference",
-				(int)original->lhs->len, original->lhs->name, attr_str);
+			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference", attr_str);
 			talloc_free(attr_str);
 			goto error;
 		}
@@ -2373,7 +2372,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 
 		slen = tmpl_aexpand(request, &attr_str, request, map->lhs, NULL, NULL);
 		if (slen <= 0) {
-			REDEBUG("Left side \"%.*s\" of map failed expansion", (int)map->lhs->len, map->lhs->name);
+			RPEDEBUG("Left side expansion failed");
 			rad_assert(!attr_str);
 			rcode = -1;
 			goto finish;
@@ -2385,8 +2384,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 					   	.prefix = VP_ATTR_REF_PREFIX_NO
 					   });
 		if (slen <= 0) {
-			RPEDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference",
-				(int)map->lhs->len, map->lhs->name, attr_str);
+			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference", attr_str);
 			talloc_free(attr_str);
 			rcode = -1;
 			goto finish;
