@@ -179,6 +179,20 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char 
 #ifdef HAVE_REGEX
 	long num;
 #endif
+	/*
+	 *	We need a local copy as we always allow unknowns.
+	 *	This is because not all attribute references
+	 *	reference real attributes in the dictionaries,
+	 *	and instead are "virtual" attributes like
+	 *	Foreach-Variable-N.
+	 */
+	vp_tmpl_rules_t our_rules;
+
+	if (rules) {
+		memcpy(&our_rules, rules, sizeof(our_rules));
+	} else {
+		memset(&our_rules, 0, sizeof(our_rules));
+	}
 
 	rad_assert(fmt[0] == '%');
 	rad_assert(fmt[1] == '{');
@@ -297,12 +311,9 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char 
 	 *	- '[' - Which is an attribute index, so it must be an attribute.
 	 *      - '}' - The end of the expansion, which means it was a bareword.
 	 */
-	slen = tmpl_afrom_attr_substr(node, &node->attr, p,
-				      &(vp_tmpl_rules_t){
-				      		.allow_undefined = true,
-				      		.allow_unknown = true,
-				      		.prefix = VP_ATTR_REF_PREFIX_NO	/* Must be NO to stop %{&User-Name} */
-				      });
+	our_rules.allow_undefined = true;		/* So we can check for virtual attributes later */
+  	our_rules.prefix = VP_ATTR_REF_PREFIX_NO;	/* Must be NO to stop %{&User-Name} */
+	slen = tmpl_afrom_attr_substr(node, &node->attr, p, &our_rules);
 	if (slen <= 0) {
 		/*
 		 *	If the parse error occurred before the ':'
