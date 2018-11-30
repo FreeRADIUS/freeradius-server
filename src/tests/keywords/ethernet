@@ -22,7 +22,7 @@ if (&Tmp-Ethernet-0[2] != 00:11:22:33:44:56) {
 
 # NULL assignment
 update request {
-	&Tmp-Ethernet-0 += "%{Calling-Station-ID[42]}"
+	&Tmp-Ethernet-0 += "%{Tmp-Ethernet-1[42]}"
 }
 
 # Null xlat expansion results in zero length string, which with current behaviour

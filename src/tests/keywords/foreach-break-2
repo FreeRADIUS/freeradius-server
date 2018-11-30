@@ -3,7 +3,7 @@
 #
 
 update request {
-	&Calling-Station-Id := "ABCDEF_8"
+	&Tmp-String-0 := "ABCDEF_8"
 }
 
 update control {
@@ -26,10 +26,10 @@ update control {
 	&Tmp-String-0 += "g"
 }
 
-foreach &control:Tmp-String-0 {
-	if ("%{Calling-Station-Id[*]}" =~ /([A-Z0-9\-]*)_%{Foreach-Variable-0}/) {
+foreach control:Tmp-String-0 {
+	if ("%{Tmp-String-0[*]}" =~ /([A-Z0-9\-]*)_%{Foreach-Variable-0}/) {
 		update request {
-			&Called-Station-Id := "%{1}"
+			Tmp-String-0 := "%{1}"
 		}
 		success
 		break
