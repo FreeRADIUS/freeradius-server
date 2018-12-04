@@ -49,7 +49,7 @@ update {
 #  Hex encoded SSHA password
 #
 update {
-	control:Password-With-Header += "{ssha}%{sha1:%{request:User-Password}%{&request:Tmp-String-0}}%{hex:&request:Tmp-String-0}"
+	control:Password-With-Header += "{ssha}%{hex:%{sha1:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
 }
 
 pap.authorize
@@ -68,7 +68,7 @@ update {
 #  Base64 encoded SSHA password
 #
 update {
-	control:Tmp-String-1 := "%{sha1:%{request:User-Password}%{&request:Tmp-String-0}}%{hex:&request:Tmp-String-0}"
+	control:Tmp-String-1 := "%{hex:%{sha1:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
 }
 
 # To Binary
@@ -101,7 +101,7 @@ update {
 #  Base64 of Base64 encoded SSHA password
 #
 update {
-	control:Tmp-String-1 := "%{sha1:%{request:User-Password}%{&request:Tmp-String-0}}%{hex:&request:Tmp-String-0}"
+	control:Tmp-String-1 := "%{hex:%{sha1:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
 }
 
 # To Binary

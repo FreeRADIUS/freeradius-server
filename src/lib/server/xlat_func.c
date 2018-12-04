@@ -258,59 +258,45 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 /** Print data as hex, not as VALUE.
  *
  */
-static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			REQUEST *request, char const *fmt)
+static xlat_action_t hex_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+			      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			      fr_value_box_t **in)
 {
-	size_t i;
-	VALUE_PAIR *vp;
-	uint8_t const *p;
-	size_t	len;
-	fr_value_box_t dst;
-	uint8_t const *buff = NULL;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) {
-	error:
-		return -1;
-	}
+	char *buff, *buff_p;
+	uint8_t const *p, *end;
+	fr_value_box_t* vb;
 
 	/*
-	 *	The easy case.
+	 *	If there's no input, there's no output
 	 */
-	if (vp->vp_type == FR_TYPE_OCTETS) {
-		p = vp->vp_octets;
-		len = vp->vp_length;
-	/*
-	 *	Cast the fr_value_box_t of the VP to an octets string and
-	 *	print that as hex.
-	 */
-	} else {
-		if (fr_value_box_cast(request, &dst, FR_TYPE_OCTETS, NULL, &vp->data) < 0) {
-			RPEDEBUG("Invalid cast");
-			goto error;
-		}
-		len = (size_t)dst.datum.length;
-		p = buff = dst.vb_octets;
-	}
-
-	rad_assert(p);
+	if (!*in) return XLAT_ACTION_DONE;
 
 	/*
-	 *	Don't truncate the data.
+	 * Concatenate all input
 	 */
-	if (outlen < (len * 2)) {
-		talloc_const_free(buff);
-		goto error;
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
 	}
 
-	for (i = 0; i < len; i++) {
-		snprintf((*out) + (2 * i), 3, "%02x", p[i]);
-	}
-	talloc_const_free(buff);
+	p = (*in)->vb_octets;
+	end = p + (*in)->vb_length;
 
-	return len * 2;
+	buff = buff_p = talloc_array(NULL, char, ((*in)->vb_length * 2) + 1);
+
+	while (p < end) {
+		snprintf(buff_p, 3, "%02x", *(p++));
+		buff_p += 2;
+	}
+
+	*buff_p = '\0';
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Return the tag of an attribute reference
@@ -1125,90 +1111,12 @@ static xlat_action_t tolower_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Probably only works for ASCII
  */
-static xlat_action_t xlat_toupper(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t toupper_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				  REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				  fr_value_box_t **in)
 {
 	return _xlat_change_case(true, ctx, out, request, in);
 }
-
-/** Decodes data or &Attr-Name to data
- *
- * This needs to die, and hopefully will die, when xlat functions accept
- * xlat node structures.
- *
- * @param ctx		Talloc ctx for temporary allocations.
- * @param out		fr_value_box_t containing a shallow copy of the attribute,
- *			or the fmt string.
- * @param request	current request.
- * @param fmt		string.
- * @returns
- *	- The length of the data.
- *	- -1 on failure.
- */
-static int fr_value_box_from_fmt(TALLOC_CTX *ctx, fr_value_box_t *out, REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	/*
-	 *	Not an attribute reference?  Just use the input format.
-	 */
-	if (*fmt != '&') {
-		memset(out, 0, sizeof(*out));
-		out->vb_strvalue = fmt;
-		out->datum.length = talloc_array_length(fmt) - 1;
-		out->type = FR_TYPE_STRING;
-		return 0;
-	}
-
-	/*
-	 *	If it's an attribute reference, get the underlying
-	 *	attribute, and then store the data in network byte
-	 *	order.
-	 */
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return -1;
-
-	fr_value_box_copy(ctx, out, &vp->data);
-
-	return 0;
-}
-
-static int fr_value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out, size_t *outlen, fr_value_box_t const *in)
-{
-	fr_value_box_t bin;
-
-	switch (in->type) {
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-		memcpy(out, &in->datum.ptr, sizeof(in));
-		*outlen = in->datum.length;
-		return 0;
-
-	default:
-		if (fr_value_box_cast(ctx, &bin, FR_TYPE_OCTETS, NULL, in) < 0) {
-			RPERROR("Failed casting xlat input to 'octets'");
-			return -1;
-		}
-		memcpy(out, &bin.datum.ptr, sizeof(in));
-		*outlen = bin.datum.length;
-		return 0;
-	}
-}
-
-#define VALUE_FROM_FMT(_tmp_ctx, _p, _len, _request, _fmt) \
-	fr_value_box_t _value; \
-	if (!_tmp_ctx) MEM(_tmp_ctx = talloc_new(_request)); \
-	if (fr_value_box_from_fmt(_tmp_ctx, &_value, _request, _fmt) < 0) { \
-		talloc_free(_tmp_ctx); \
-		return -1; \
-	} \
-	if (fr_value_box_to_bin(_tmp_ctx, _request, &_p, &_len, &_value) < 0) { \
-		talloc_free(_tmp_ctx); \
-		return -1; \
-	}
-
 
 /** Calculate the MD5 hash of a string or attribute.
  *
@@ -1251,34 +1159,37 @@ static xlat_action_t md5_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
-static ssize_t sha1_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+static xlat_action_t sha1_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+			       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			       fr_value_box_t **in)
 {
-	uint8_t		digest[20];
-	size_t		i, len, inlen;
-	uint8_t		*p;
-	fr_sha1_ctx 	sha1_ctx;
-	TALLOC_CTX	*tmp_ctx = NULL;
-
-	VALUE_FROM_FMT(tmp_ctx, p, inlen, request, fmt);
-
-	fr_sha1_init(&sha1_ctx);
-	fr_sha1_update(&sha1_ctx, p, inlen);
-	fr_sha1_final(digest, &sha1_ctx);
+	uint8_t		digest[SHA1_DIGEST_LENGTH];
+	fr_sha1_ctx	sha1_ctx;
+	fr_value_box_t	*vb;
 
 	/*
-	 *      Each digest octet takes two hex digits, plus one for
-	 *      the terminating NUL. SHA1 is 160 bits (20 bytes)
+	 * Concatenate all input if there is some
 	 */
-	len = (outlen / 2) - 1;
-	if (len > 20) len = 20;
+	if (*in && fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
-	for (i = 0; i < len; i++) snprintf((*out) + (i * 2), 3, "%02x", digest[i]);
+	fr_sha1_init(&sha1_ctx);
+	if (*in) {
+		fr_sha1_update(&sha1_ctx, (*in)->vb_octets, (*in)->vb_length);
+	} else {
+		/* sha1 of empty string */
+		fr_sha1_update(&sha1_ctx, NULL, 0);
+	}
+	fr_sha1_final(digest, &sha1_ctx);
 
-	talloc_free(tmp_ctx);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
-	return strlen(*out);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Calculate any digest supported by OpenSSL EVP_MD
@@ -1286,45 +1197,47 @@ static ssize_t sha1_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  * Example: "%{sha256:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
 #ifdef HAVE_OPENSSL_EVP_H
-static ssize_t evp_md_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt, EVP_MD const *md)
+static xlat_action_t evp_md_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+			         REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			         fr_value_box_t **in, EVP_MD const *md)
 {
 	uint8_t		digest[EVP_MAX_MD_SIZE];
-	unsigned int	digestlen, i, len;
-	size_t		inlen;
-	uint8_t		*p;
+	unsigned int	digestlen;
 	EVP_MD_CTX	*md_ctx;
-	TALLOC_CTX	*tmp_ctx = NULL;
+	fr_value_box_t	*vb;
 
-	VALUE_FROM_FMT(tmp_ctx, p, inlen, request, fmt);
+	/*
+	 * Concatenate all input if there is some
+	 */
+	if (*in && fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
 	md_ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(md_ctx, md, NULL);
-	EVP_DigestUpdate(md_ctx, p, inlen);
+	if (*in) {
+		EVP_DigestUpdate(md_ctx, (*in)->vb_octets, (*in)->vb_length);
+	} else {
+		EVP_DigestUpdate(md_ctx, NULL, 0);
+	}
 	EVP_DigestFinal_ex(md_ctx, digest, &digestlen);
 	EVP_MD_CTX_destroy(md_ctx);
 
-	/*
-	 *      Each digest octet takes two hex digits, plus one for
-	 *      the terminating NUL.
-	 */
-	len = (outlen / 2) - 1;
-	if (len > digestlen) len = digestlen;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_memdup(vb, vb, NULL, digest, digestlen, false);
 
-	for (i = 0; i < len; i++) snprintf((*out) + (i * 2), 3, "%02x", digest[i]);
+	fr_cursor_append(out, vb);
 
-	talloc_free(tmp_ctx);
-
-	return strlen(*out);
+	return XLAT_ACTION_DONE;
 }
 
 #  define EVP_MD_XLAT(_md) \
-static ssize_t _md##_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,\
-			  void const *mod_inst, void const *xlat_inst,\
-			  REQUEST *request, char const *fmt)\
+static xlat_action_t _md##_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,\
+				 REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,\
+				 fr_value_box_t **in)\
 {\
-	return evp_md_xlat(ctx, out, outlen, mod_inst, xlat_inst, request, fmt, EVP_##_md());\
+	return evp_md_xlat(ctx, out, request, xlat_inst, xlat_thread_inst, in, EVP_##_md());\
 }
 
 EVP_MD_XLAT(sha224)
@@ -1340,109 +1253,72 @@ EVP_MD_XLAT(sha3_512)
 #  endif
 #endif
 
+typedef enum {
+	HMAC_MD5,
+	HMAC_SHA1
+} hmac_type;
+
+static xlat_action_t _xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
+				REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				fr_value_box_t **in, uint8_t *digest, int digest_len, hmac_type type)
+{
+	uint8_t const	*data_p, *key_p;
+	size_t		data_len, key_len;
+	fr_value_box_t	*vb, *vb_data, *vb_sep, *vb_key;
+
+	vb_data = fr_value_box_list_get(*in, 0);
+	vb_sep = fr_value_box_list_get(*in, 1);
+	vb_key = fr_value_box_list_get(*in, 2);
+
+	if (!in || !vb_data || !vb_sep || !vb_key ||
+            vb_sep->vb_length != 1 ||
+            vb_sep->vb_strvalue[0] != ' ') {
+		REDEBUG("HMAC requires exactly two arguments (%%{&data} %%{&key})");
+		return XLAT_ACTION_FAIL;
+	}
+
+	data_p = vb_data->vb_octets;
+	data_len = vb_data->vb_length;
+
+	key_p = vb_key->vb_octets;
+	key_len = vb_key->vb_length;
+
+	if (type == HMAC_MD5) {
+		fr_hmac_md5(digest, data_p, data_len, key_p, key_len);
+	} else if (type == HMAC_SHA1) {
+		fr_hmac_sha1(digest, data_p, data_len, key_p, key_len);
+	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_memdup(vb, vb, NULL, digest, digest_len, false);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 /** Generate the HMAC-MD5 of a string or attribute
  *
  * Example: "%{hmacmd5:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_md5_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
-			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     REQUEST *request, char const *fmt)
+static xlat_action_t hmac_md5_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				   REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+				   fr_value_box_t **in)
 {
-
-	char const	*p, *q;
 	uint8_t		digest[MD5_DIGEST_LENGTH];
-
-	char		*data_fmt;
-
-	uint8_t		*data_p, *key_p;
-	size_t		data_len, key_len;
-	TALLOC_CTX	*tmp_ctx = NULL;
-
-	if (outlen <= (sizeof(digest) * 2)) {
-		REDEBUG("Insufficient space to write digest, needed %zu bytes, have %zu bytes",
-			(sizeof(digest) * 2) + 1, outlen);
-		return -1;
-	}
-
-	p = fmt;
-	while (isspace(*p)) p++;
-
-	/*
-	 *	Find the delimiting char
-	 */
-	q = strchr(p, ' ');
-	if (!q) {
-		REDEBUG("HMAC requires exactly two arguments (&data &key)");
-		return -1;
-	}
-
-	tmp_ctx = talloc_new(ctx);
-	data_fmt = talloc_bstrndup(tmp_ctx, p, q - p);
-	p = q + 1;
-
-	{
-		VALUE_FROM_FMT(tmp_ctx, data_p, data_len, request, data_fmt);
-	}
-	{
-		VALUE_FROM_FMT(tmp_ctx, key_p, key_len, request, p);
-	}
-	fr_hmac_md5(digest, data_p, data_len, key_p, key_len);
-	talloc_free(tmp_ctx);
-
-	return fr_bin2hex(*out, digest, sizeof(digest));
+	return _xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, MD5_DIGEST_LENGTH, HMAC_MD5);
 }
 
 /** Generate the HMAC-SHA1 of a string or attribute
  *
  * Example: "%{hmacsha1:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_sha1_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
+static xlat_action_t hmac_sha1_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				    REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+				    fr_value_box_t **in)
 {
-	char const	*p, *q;
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
-
-	char		*data_fmt;
-
-	uint8_t		*data_p, *key_p;
-	size_t		data_len, key_len;
-	TALLOC_CTX	*tmp_ctx = NULL;
-
-	if (outlen <= (sizeof(digest) * 2)) {
-		REDEBUG("Insufficient space to write digest, needed %zu bytes, have %zu bytes",
-			(sizeof(digest) * 2) + 1, outlen);
-		return -1;
-	}
-
-	p = fmt;
-	while (isspace(*p)) p++;
-
-	/*
-	 *	Find the delimiting char
-	 */
-	q = strchr(p, ' ');
-	if (!q) {
-		REDEBUG("HMAC requires exactly two arguments (&data &key)");
-		return -1;
-	}
-
-	tmp_ctx = talloc_new(ctx);
-	data_fmt = talloc_bstrndup(tmp_ctx, p, q - p);
-	p = q + 1;
-
-	{
-		VALUE_FROM_FMT(tmp_ctx, data_p, data_len, request, data_fmt);
-	}
-	{
-		VALUE_FROM_FMT(tmp_ctx, key_p, key_len, request, p);
-	}
-
-	fr_hmac_sha1(digest, data_p, data_len, key_p, key_len);
-
-	talloc_free(tmp_ctx);
-
-	return fr_bin2hex(*out, digest, sizeof(digest));
+	return _xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, SHA1_DIGEST_LENGTH, HMAC_SHA1);
 }
 
 /** Encode attributes as a series of string attribute/value pairs
@@ -2626,29 +2502,12 @@ int xlat_init(void)
 	XLAT_REGISTER(integer);
 	XLAT_REGISTER(strlen);
 	XLAT_REGISTER(length);
-	XLAT_REGISTER(hex);
 	XLAT_REGISTER(tag);
 	XLAT_REGISTER(xlat);
 	XLAT_REGISTER(map);
 	XLAT_REGISTER(module);
 	XLAT_REGISTER(debug_attr);
 
-	xlat_register(NULL, "sha1", sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-#ifdef HAVE_OPENSSL_EVP_H
-	xlat_register(NULL, "sha224", sha224_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha256", sha256_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha384", sha384_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha512", sha512_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
-#  ifdef HAVE_EVP_SHA3_512
-	xlat_register(NULL, "sha3_224", sha3_224_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha3_256", sha3_256_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha3_384", sha3_384_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "sha3_512", sha3_512_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-#  endif
-#endif
-	xlat_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "pairs", pairs_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 
@@ -2666,19 +2525,38 @@ int xlat_init(void)
 	c->internal = true;
 
 	xlat_async_register(NULL, "base64", base64_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "concat", concat_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "bin", bin_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "concat", concat_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "hex", hex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "md5", md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "rand", rand_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "string", string_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "randstr", randstr_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	xlat_async_register(NULL, "regex", regex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 #endif
+	xlat_async_register(NULL, "sha1", sha1_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+#ifdef HAVE_OPENSSL_EVP_H
+	xlat_async_register(NULL, "sha224", sha224_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha256", sha256_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha384", sha384_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha512", sha512_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+#  ifdef HAVE_EVP_SHA3_512
+	xlat_async_register(NULL, "sha3_224", sha3_224_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha3_256", sha3_256_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha3_384", sha3_384_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha3_512", sha3_512_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+#  endif
+#endif
+
+	xlat_async_register(NULL, "string", string_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "tolower", tolower_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "toupper", toupper_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "urlquote", urlquote_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "urlunquote", urlunquote_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "tolower", tolower_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "toupper", xlat_toupper, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }

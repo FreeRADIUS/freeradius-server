@@ -30,8 +30,11 @@ linelog_escapes
 update request {
 	Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 }
+update request {
+	Tmp-String-1 := "%{hex:%{&Tmp-String-0}}"
+}
 #  Fixme? Should probably be 666f6f5c6e626172
-if ("%{hex:&Tmp-String-0}" == '666f6f0a626172') {
+if (Tmp-String-1 == '666f6f0a626172') {
 	test_pass
 }
 else {
@@ -60,7 +63,10 @@ linelog_escapes
 update request {
 	Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 }
-if ("%{hex:&Tmp-String-0}" == '666f6f0a626172') {
+update request {
+	Tmp-String-1 := "%{hex:%{&Tmp-String-0}}"
+}
+if (Tmp-String-1 == '666f6f0a626172') {
 	test_pass
 }
 else {
