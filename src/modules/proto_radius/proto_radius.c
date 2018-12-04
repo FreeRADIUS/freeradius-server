@@ -381,6 +381,18 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		}
 	}
 
+	if (RDEBUG_ENABLED) {
+		RDEBUG("Received %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
+		       fr_packet_codes[request->packet->code],
+		       request->packet->id,
+		       fr_box_ipaddr(request->packet->src_ipaddr),
+		       request->packet->src_port,
+		       fr_box_ipaddr(request->packet->dst_ipaddr),
+		       request->packet->dst_port,
+		       request->packet->data_len,
+		       request->async->listen->name);
+	}
+
 	if (!inst->io.app_io->decode) return 0;
 
 	/*
@@ -490,9 +502,20 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		return -1;
 	}
 
-	if (DEBUG_ENABLED3) {
-		RDEBUG("proto_radius encode packet");
-		fr_radius_print_hex(fr_log_fp, buffer, data_len);
+	if (RDEBUG_ENABLED) {
+		RDEBUG("Sent %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
+		       fr_packet_codes[request->reply->code],
+		       request->reply->id,
+		       fr_box_ipaddr(request->reply->src_ipaddr),
+		       request->reply->src_port,
+		       fr_box_ipaddr(request->reply->dst_ipaddr),
+		       request->reply->dst_port,
+		       request->reply->data_len,
+		       request->async->listen->name);
+
+		if (DEBUG_ENABLED3) {
+			fr_radius_print_hex(fr_log_fp, buffer, data_len);
+		}
 	}
 
 	return data_len;
