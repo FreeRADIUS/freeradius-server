@@ -521,7 +521,8 @@ static int mod_open(fr_listen_t *li)
 
 	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv4_udp,
 					     NULL, 0,
-					     &inst->ipaddr, inst->port);
+					     &inst->ipaddr, inst->port,
+					     inst->interface);
 
 	DEBUG("Listening on dhcpv4 address %s bound to virtual server %s",
 	      thread->name, cf_section_name2(server_cs));
@@ -542,7 +543,8 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 
 	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv4_udp,
 					     &thread->connection->src_ipaddr, thread->connection->src_port,
-					     &inst->ipaddr, inst->port);
+					     &inst->ipaddr, inst->port,
+					     inst->interface);
 
 	return 0;
 }

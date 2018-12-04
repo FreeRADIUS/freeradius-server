@@ -329,7 +329,8 @@ static int mod_open(fr_listen_t *li)
 
 	thread->name = fr_app_io_socket_name(thread, &proto_radius_tcp,
 					     NULL, 0,
-					     &inst->ipaddr, inst->port);
+					     &inst->ipaddr, inst->port,
+					     inst->interface);
 
 	// @todo - also print out auth / acct / coa, etc.
 	DEBUG("Listening on radius address %s bound to virtual server %s",
@@ -350,7 +351,8 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 
 	thread->name = fr_app_io_socket_name(thread, &proto_radius_tcp,
 					     &thread->connection->src_ipaddr, thread->connection->src_port,
-					     &inst->ipaddr, inst->port);
+					     &inst->ipaddr, inst->port,
+					     inst->interface);
 
 	return 0;
 }
