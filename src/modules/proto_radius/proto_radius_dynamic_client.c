@@ -27,6 +27,7 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 
 static fr_dict_t *dict_freeradius;
@@ -71,8 +72,10 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		if (RDEBUG_ENABLED) {
+			RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
+			log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		}
 
 		request->component = "radius";
 
@@ -193,7 +196,6 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		} else {
 			RDEBUG("Denying client");
 		}
-		if (RDEBUG_ENABLED) log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
 		break;
 
 	default:

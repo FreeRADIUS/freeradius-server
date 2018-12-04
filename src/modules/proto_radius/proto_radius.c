@@ -426,6 +426,15 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		rad_assert(buffer_len >= sizeof(client));
 
 		/*
+		 *	We don't accept the new client, so don't do
+		 *	anything.
+		 */
+		if (request->reply->code != FR_CODE_ACCESS_ACCEPT) {
+			*buffer = true;
+			return 1;
+		}
+
+		/*
 		 *	Allocate the client.  If that fails, send back a NAK.
 		 *
 		 *	@todo - deal with NUMA zones?  Or just deal with this
@@ -438,7 +447,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		new_client = client_afrom_request(NULL, request);
 		if (!new_client) {
 			PERROR("Failed creating new client");
-			buffer[0] = true;
+			*buffer = true;
 			return 1;
 		}
 

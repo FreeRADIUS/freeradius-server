@@ -27,7 +27,6 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/rad_assert.h>
 
 static fr_dict_t *dict_freeradius;
@@ -66,8 +65,10 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
-		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		if (RDEBUG_ENABLED) {
+			RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
+			log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		}
 
 		request->component = "radius";
 
@@ -157,24 +158,20 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		}
 
 	send_reply:
+		gettimeofday(&request->reply->timestamp, NULL);
+
 		/*
 		 *	Check for "do not respond".
 		 */
 		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client.");
-			return FR_IO_DONE;
+			break;
 		}
 
-		/*
-		 *	This is an internally generated request.  Don't print IP addresses.
-		 */
-		if (request->parent) {
-			RDEBUG("Sent %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
+		if (RDEBUG_ENABLED) {
+			RDEBUG("Sending %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
 			log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
-			return FR_IO_DONE;
 		}
-
-		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 		break;
 
 	default:
