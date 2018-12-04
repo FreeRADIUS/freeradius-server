@@ -1118,84 +1118,6 @@ static xlat_action_t toupper_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return _xlat_change_case(true, ctx, out, request, in);
 }
 
-/** Decodes data or &Attr-Name to data
- *
- * This needs to die, and hopefully will die, when xlat functions accept
- * xlat node structures.
- *
- * @param ctx		Talloc ctx for temporary allocations.
- * @param out		fr_value_box_t containing a shallow copy of the attribute,
- *			or the fmt string.
- * @param request	current request.
- * @param fmt		string.
- * @returns
- *	- The length of the data.
- *	- -1 on failure.
- */
-static int fr_value_box_from_fmt(TALLOC_CTX *ctx, fr_value_box_t *out, REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	/*
-	 *	Not an attribute reference?  Just use the input format.
-	 */
-	if (*fmt != '&') {
-		memset(out, 0, sizeof(*out));
-		out->vb_strvalue = fmt;
-		out->datum.length = talloc_array_length(fmt) - 1;
-		out->type = FR_TYPE_STRING;
-		return 0;
-	}
-
-	/*
-	 *	If it's an attribute reference, get the underlying
-	 *	attribute, and then store the data in network byte
-	 *	order.
-	 */
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return -1;
-
-	fr_value_box_copy(ctx, out, &vp->data);
-
-	return 0;
-}
-
-static int fr_value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out, size_t *outlen, fr_value_box_t const *in)
-{
-	fr_value_box_t bin;
-
-	switch (in->type) {
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-		memcpy(out, &in->datum.ptr, sizeof(in));
-		*outlen = in->datum.length;
-		return 0;
-
-	default:
-		if (fr_value_box_cast(ctx, &bin, FR_TYPE_OCTETS, NULL, in) < 0) {
-			RPERROR("Failed casting xlat input to 'octets'");
-			return -1;
-		}
-		memcpy(out, &bin.datum.ptr, sizeof(in));
-		*outlen = bin.datum.length;
-		return 0;
-	}
-}
-
-#define VALUE_FROM_FMT(_tmp_ctx, _p, _len, _request, _fmt) \
-	fr_value_box_t _value; \
-	if (!_tmp_ctx) MEM(_tmp_ctx = talloc_new(_request)); \
-	if (fr_value_box_from_fmt(_tmp_ctx, &_value, _request, _fmt) < 0) { \
-		talloc_free(_tmp_ctx); \
-		return -1; \
-	} \
-	if (fr_value_box_to_bin(_tmp_ctx, _request, &_p, &_len, &_value) < 0) { \
-		talloc_free(_tmp_ctx); \
-		return -1; \
-	}
-
-
 /** Calculate the MD5 hash of a string or attribute.
  *
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
@@ -1391,53 +1313,12 @@ static xlat_action_t hmac_md5_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Example: "%{hmacsha1:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_sha1_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
+static xlat_action_t hmac_sha1_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				    REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+				    fr_value_box_t **in)
 {
-	char const	*p, *q;
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
-
-	char		*data_fmt;
-
-	uint8_t		*data_p, *key_p;
-	size_t		data_len, key_len;
-	TALLOC_CTX	*tmp_ctx = NULL;
-
-	if (outlen <= (sizeof(digest) * 2)) {
-		REDEBUG("Insufficient space to write digest, needed %zu bytes, have %zu bytes",
-			(sizeof(digest) * 2) + 1, outlen);
-		return -1;
-	}
-
-	p = fmt;
-	while (isspace(*p)) p++;
-
-	/*
-	 *	Find the delimiting char
-	 */
-	q = strchr(p, ' ');
-	if (!q) {
-		REDEBUG("HMAC requires exactly two arguments (&data &key)");
-		return -1;
-	}
-
-	tmp_ctx = talloc_new(ctx);
-	data_fmt = talloc_bstrndup(tmp_ctx, p, q - p);
-	p = q + 1;
-
-	{
-		VALUE_FROM_FMT(tmp_ctx, data_p, data_len, request, data_fmt);
-	}
-	{
-		VALUE_FROM_FMT(tmp_ctx, key_p, key_len, request, p);
-	}
-
-	fr_hmac_sha1(digest, data_p, data_len, key_p, key_len);
-
-	talloc_free(tmp_ctx);
-
-	return fr_bin2hex(*out, digest, sizeof(digest));
+	return _xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, SHA1_DIGEST_LENGTH, HMAC_SHA1);
 }
 
 /** Encode attributes as a series of string attribute/value pairs
@@ -2627,7 +2508,6 @@ int xlat_init(void)
 	XLAT_REGISTER(module);
 	XLAT_REGISTER(debug_attr);
 
-	xlat_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "pairs", pairs_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 
@@ -2649,6 +2529,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "concat", concat_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "hex", hex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "md5", md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "rand", rand_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "randstr", randstr_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);

@@ -7,14 +7,17 @@ update {
        request:Tmp-Octets-0 := 0x000504030201
        request:Tmp-String-1 := "what do ya want for nothing?"
        request:Tmp-String-2 := "Jefe"
+       request:Tmp-String-3 := ""
 }
 
 update {
 	request:Tmp-Octets-2 := "%{sha1:This is a string\n}"
 	request:Tmp-Octets-3 := "%{sha1:%{Tmp-String-0}}"
 	request:Tmp-Octets-4 := "%{sha1:%{request:Tmp-String-0}}"
-	request:Tmp-Octets-5 := "%{sha1:%{request:Tmp-Octets-0}}"
-	request:Tmp-Octets-6 := "%{sha1:%{request:Tmp-Octets-9}}"
+	request:Tmp-Octets-5 := "%{sha1:%{request:Tmp-Octets-9}}"
+	request:Tmp-Octets-6 := "%{hmacsha1:%{&Tmp-String-1} %{&Tmp-String-2}}"
+	request:Tmp-Octets-7 := "%{hmacsha1:%{&Tmp-String-3} %{&Tmp-String-3}}"
+	request:Tmp-Octets-8 := "%{hmacsha1:%{&Tmp-String-1} }"
 }
 
 #
@@ -34,23 +37,30 @@ if (&request:Tmp-Octets-4 != 0xcc7edf1ccc4bdf1e0ec8f72b95388b65218ecf0c) {
 }
 
 #
-#  SHA1 should also be able to cope with references to octet attributes
-#
-if (&request:Tmp-Octets-5 != 0x365b244645fe7294dff062174996572319d5a82c) {
-	test_fail
-}
-
-#
 # SHA1 of empty string
 #
-if (&request:Tmp-Octets-6 != 0xda39a3ee5e6b4b0d3255bfef95601890afd80709) {
+if (&request:Tmp-Octets-5 != 0xda39a3ee5e6b4b0d3255bfef95601890afd80709) {
 	test_fail
 }
 
 #
 #  SHA1 HMAC with attribute references
 #
-if ("%{hmacsha1:&Tmp-String-1 &Tmp-String-2}" != 'effcdf6ae5eb2fa2d27416d5f184df9c259a7c79') {
+if (&request:Tmp-Octets-6 != 0xeffcdf6ae5eb2fa2d27416d5f184df9c259a7c79) {
+	test_fail
+}
+
+#
+#  MD5 HMAC with empty key and data
+#
+if (&Tmp-Octets-7 != 0xfbdb1d1b18aa6c08324b7d64b71fb76370690e1d) {
+	test_fail
+}
+
+#
+#  MD5 HMAC with missing key should fail
+#
+if (&Tmp-Octets-8 != "") {
 	test_fail
 }
 
