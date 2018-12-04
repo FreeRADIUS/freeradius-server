@@ -1251,34 +1251,37 @@ static xlat_action_t md5_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
-static ssize_t sha1_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+static xlat_action_t sha1_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+			       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			       fr_value_box_t **in)
 {
-	uint8_t		digest[20];
-	size_t		i, len, inlen;
-	uint8_t		*p;
-	fr_sha1_ctx 	sha1_ctx;
-	TALLOC_CTX	*tmp_ctx = NULL;
-
-	VALUE_FROM_FMT(tmp_ctx, p, inlen, request, fmt);
-
-	fr_sha1_init(&sha1_ctx);
-	fr_sha1_update(&sha1_ctx, p, inlen);
-	fr_sha1_final(digest, &sha1_ctx);
+	uint8_t		digest[SHA1_DIGEST_LENGTH];
+	fr_sha1_ctx	sha1_ctx;
+	fr_value_box_t	*vb;
 
 	/*
-	 *      Each digest octet takes two hex digits, plus one for
-	 *      the terminating NUL. SHA1 is 160 bits (20 bytes)
+	 * Concatenate all input if there is some
 	 */
-	len = (outlen / 2) - 1;
-	if (len > 20) len = 20;
+	if (*in && fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
-	for (i = 0; i < len; i++) snprintf((*out) + (i * 2), 3, "%02x", digest[i]);
+	fr_sha1_init(&sha1_ctx);
+	if (*in) {
+		fr_sha1_update(&sha1_ctx, (*in)->vb_octets, (*in)->vb_length);
+	} else {
+		/* sha1 of empty string */
+		fr_sha1_update(&sha1_ctx, NULL, 0);
+	}
+	fr_sha1_final(digest, &sha1_ctx);
 
-	talloc_free(tmp_ctx);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
-	return strlen(*out);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Calculate any digest supported by OpenSSL EVP_MD
@@ -2633,7 +2636,6 @@ int xlat_init(void)
 	XLAT_REGISTER(module);
 	XLAT_REGISTER(debug_attr);
 
-	xlat_register(NULL, "sha1", sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 #ifdef HAVE_OPENSSL_EVP_H
 	xlat_register(NULL, "sha224", sha224_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "sha256", sha256_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2675,6 +2677,7 @@ int xlat_init(void)
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	xlat_async_register(NULL, "regex", regex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 #endif
+	xlat_async_register(NULL, "sha1", sha1_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "urlquote", urlquote_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "urlunquote", urlunquote_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "tolower", tolower_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
