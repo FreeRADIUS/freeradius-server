@@ -65,7 +65,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		if (RDEBUG_ENABLED) {
+		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
 			log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 		}
@@ -214,7 +214,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 			break;
 		}
 
-		if (RDEBUG_ENABLED) {
+		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Sending %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
 			log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 		}

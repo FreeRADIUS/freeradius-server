@@ -391,6 +391,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		       request->packet->dst_port,
 		       request->packet->data_len,
 		       request->async->listen->name);
+
+		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 	}
 
 	if (!inst->io.app_io->decode) return 0;
@@ -510,8 +512,10 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		       request->reply->src_port,
 		       fr_box_ipaddr(request->reply->dst_ipaddr),
 		       request->reply->dst_port,
-		       request->reply->data_len,
+		       data_len,
 		       request->async->listen->name);
+
+		log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 
 		if (DEBUG_ENABLED3) {
 			fr_radius_print_hex(fr_log_fp, buffer, data_len);
