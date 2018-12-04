@@ -1041,6 +1041,11 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		return;
 
 	case FR_IO_REPLY:
+		/*
+		 *	Don't reply to internally generated request.
+		 */
+		if (request->parent) break;
+
 		size = request->async->listen->app_io->default_reply_size;
 		if (!size) size = request->async->listen->app_io->default_message_size;
 		break;
