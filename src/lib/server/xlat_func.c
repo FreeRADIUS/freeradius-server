@@ -1331,56 +1331,60 @@ EVP_MD_XLAT(sha3_512)
 #  endif
 #endif
 
+typedef enum {
+	HMAC_MD5,
+	HMAC_SHA1
+} hmac_type;
+
+static xlat_action_t _xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
+				REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				fr_value_box_t **in, uint8_t *digest, int digest_len, hmac_type type)
+{
+	uint8_t const	*data_p, *key_p;
+	size_t		data_len, key_len;
+	fr_value_box_t	*vb, *vb_data, *vb_sep, *vb_key;
+
+	vb_data = fr_value_box_list_get(*in, 0);
+	vb_sep = fr_value_box_list_get(*in, 1);
+	vb_key = fr_value_box_list_get(*in, 2);
+
+	if (!in || !vb_data || !vb_sep || !vb_key ||
+            vb_sep->vb_length != 1 ||
+            vb_sep->vb_strvalue[0] != ' ') {
+		REDEBUG("HMAC requires exactly two arguments (%%{&data} %%{&key})");
+		return XLAT_ACTION_FAIL;
+	}
+
+	data_p = vb_data->vb_octets;
+	data_len = vb_data->vb_length;
+
+	key_p = vb_key->vb_octets;
+	key_len = vb_key->vb_length;
+
+	if (type == HMAC_MD5) {
+		fr_hmac_md5(digest, data_p, data_len, key_p, key_len);
+	} else if (type == HMAC_SHA1) {
+		fr_hmac_sha1(digest, data_p, data_len, key_p, key_len);
+	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_memdup(vb, vb, NULL, digest, digest_len, false);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 /** Generate the HMAC-MD5 of a string or attribute
  *
  * Example: "%{hmacmd5:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_md5_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
-			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     REQUEST *request, char const *fmt)
+static xlat_action_t hmac_md5_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				   REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+				   fr_value_box_t **in)
 {
-
-	char const	*p, *q;
 	uint8_t		digest[MD5_DIGEST_LENGTH];
-
-	char		*data_fmt;
-
-	uint8_t		*data_p, *key_p;
-	size_t		data_len, key_len;
-	TALLOC_CTX	*tmp_ctx = NULL;
-
-	if (outlen <= (sizeof(digest) * 2)) {
-		REDEBUG("Insufficient space to write digest, needed %zu bytes, have %zu bytes",
-			(sizeof(digest) * 2) + 1, outlen);
-		return -1;
-	}
-
-	p = fmt;
-	while (isspace(*p)) p++;
-
-	/*
-	 *	Find the delimiting char
-	 */
-	q = strchr(p, ' ');
-	if (!q) {
-		REDEBUG("HMAC requires exactly two arguments (&data &key)");
-		return -1;
-	}
-
-	tmp_ctx = talloc_new(ctx);
-	data_fmt = talloc_bstrndup(tmp_ctx, p, q - p);
-	p = q + 1;
-
-	{
-		VALUE_FROM_FMT(tmp_ctx, data_p, data_len, request, data_fmt);
-	}
-	{
-		VALUE_FROM_FMT(tmp_ctx, key_p, key_len, request, p);
-	}
-	fr_hmac_md5(digest, data_p, data_len, key_p, key_len);
-	talloc_free(tmp_ctx);
-
-	return fr_bin2hex(*out, digest, sizeof(digest));
+	return _xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, MD5_DIGEST_LENGTH, HMAC_MD5);
 }
 
 /** Generate the HMAC-SHA1 of a string or attribute
@@ -2623,7 +2627,6 @@ int xlat_init(void)
 	XLAT_REGISTER(module);
 	XLAT_REGISTER(debug_attr);
 
-	xlat_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "pairs", pairs_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
@@ -2645,6 +2648,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "bin", bin_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "concat", concat_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "hex", hex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "md5", md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "rand", rand_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "randstr", randstr_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);

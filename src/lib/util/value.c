@@ -4405,6 +4405,26 @@ bool fr_value_box_list_tainted(fr_value_box_t const *head)
 	return false;
 }
 
+/** Get list member at a given index
+ *
+ * @param[in] head	of list.
+ * @param[in] index	of member to return.
+ * @return
+ *	- NULL if there is no member at given index
+ *	- member if it exists
+ */
+fr_value_box_t * fr_value_box_list_get(fr_value_box_t *head, int index)
+{
+	int i = 0;
+
+	while (i < index && head) {
+		head = head->next;
+		i++;
+	}
+
+	return head;
+}
+
 /** Print the value of an attribute to a string
  *
  * @note return value should be checked with is_truncated.
