@@ -1125,7 +1125,7 @@ static xlat_action_t tolower_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Probably only works for ASCII
  */
-static xlat_action_t xlat_toupper(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t toupper_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				  REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				  fr_value_box_t **in)
 {
@@ -2678,7 +2678,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "urlquote", urlquote_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "urlunquote", urlunquote_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "tolower", tolower_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "toupper", xlat_toupper, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "toupper", toupper_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }
