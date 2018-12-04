@@ -41,7 +41,7 @@ CREATE TABLE radacct (
 	FramedIPAddress		inet,
 	FramedIPv6Address	inet,
 	FramedIPv6Prefix	inet,
-	FramedInterfaceId	inet,
+	FramedInterfaceId	text,
 	DelegatedIPv6Prefix	inet
 );
 -- This index may be useful..

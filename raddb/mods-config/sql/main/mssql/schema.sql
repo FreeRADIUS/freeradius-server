@@ -38,10 +38,10 @@ CREATE TABLE [radacct] (
 	[ServiceType] [varchar] (32) NULL ,
 	[FramedProtocol] [varchar] (32) NULL ,
 	[FramedIPAddress] [varchar] (15) DEFAULT ('') FOR [FramedIPAddress],
-	[FramedIPv6Address] [varchar] (44) DEFAULT ('') FOR [FramedIPv6Address],
-	[FramedIPv6Prefix] [varchar] (44) DEFAULT ('') FOR [FramedIPv6Prefix],
+	[FramedIPv6Address] [varchar] (45) DEFAULT ('') FOR [FramedIPv6Address],
+	[FramedIPv6Prefix] [varchar] (45) DEFAULT ('') FOR [FramedIPv6Prefix],
 	[FramedInterfaceId] [varchar] (44) DEFAULT ('') FOR [FramedInterfaceId],
-	[DelegatedIPv6Prefix] [varchar] (44) DEFAULT ('') FOR [DelegatedIPv6Prefix],
+	[DelegatedIPv6Prefix] [varchar] (45) DEFAULT ('') FOR [DelegatedIPv6Prefix],
 	[XAscendSessionSvrKey] [varchar] (10) DEFAULT (null) FOR [XAscendSessionSvrKey],
 	[AcctStartDelay] [int] NULL ,
 	[AcctStopDelay] [int] NULL

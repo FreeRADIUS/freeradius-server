@@ -34,10 +34,10 @@ CREATE TABLE radacct (
 	servicetype		VARCHAR(32),
 	framedprotocol		VARCHAR(32),
 	framedipaddress		VARCHAR(15),
-	framedipv6address	VARCHAR(44),
-	framedipv6prefix	VARCHAR(44),
+	framedipv6address	VARCHAR(45),
+	framedipv6prefix	VARCHAR(45),
 	framedinterfaceid	VARCHAR(44),
-	delegatedipv6prefix	VARCHAR(44),
+	delegatedipv6prefix	VARCHAR(45),
 	acctstartdelay		NUMERIC(12),
 	acctstopdelay		NUMERIC(12),
 	XAscendSessionSvrKey	VARCHAR(10)
