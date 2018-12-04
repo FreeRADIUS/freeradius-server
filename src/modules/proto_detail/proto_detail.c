@@ -462,6 +462,9 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		return -1;
 	}
 
+	rad_assert(li->app_io->get_name);
+	li->name = li->app_io->get_name(li);
+
 	/*
 	 *	Testing: allow it to read a "detail.work" file
 	 *	directly.

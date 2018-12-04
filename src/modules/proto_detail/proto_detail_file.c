@@ -384,6 +384,9 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	}
 	opened = true;
 
+	rad_assert(li->app_io->get_name);
+	li->name = li->app_io->get_name(li);
+
 	if (!fr_schedule_listen_add(inst->parent->sc, li)) {
 	error:
 		if (fr_event_fd_delete(thread->el, thread->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {

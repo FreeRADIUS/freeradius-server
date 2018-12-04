@@ -42,7 +42,7 @@ typedef struct fr_io_thread_t {
 	fr_heap_t			*alive_clients;			//!< heap of active clients
 
 	fr_listen_t			*listen;			//!< The master IO path
-	fr_listen_t			*child;				//!< The child IO path
+	fr_listen_t			*child;				//!< The child (app_io) IO path
 	fr_schedule_t			*sc;				//!< the scheduler
 
 	// @todo - count num_nak_clients, and num_nak_connections, too
@@ -125,7 +125,7 @@ struct fr_io_connection_t {
 	int				packets;	//!< number of packets using this connection
 	fr_io_address_t   		*address;      	//!< full information about the connection.
 	fr_listen_t			*listen;	//!< master listener for this socket
-	fr_listen_t			*child;		//!< child listener for this socket
+	fr_listen_t			*child;		//!< child listener (app_io) for this socket
 	fr_io_client_t			*client;	//!< our local client (pending or connected).
 	fr_io_client_t			*parent;	//!< points to the parent client.
 	dl_instance_t   		*dl_inst;	//!< for submodule
@@ -674,6 +674,11 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			connection->name = inst->app_io->get_name(connection->child);
 		}
 
+		/*
+		 *	Set the names for the listeners.
+		 */
+		connection->listen->name = connection->name;
+		connection->child->name = connection->name;
 	}
 
 	/*
@@ -1105,31 +1110,31 @@ redo:
 		fr_io_address_t *local_address;
 		fr_time_t *local_recv_time;
 
+		/*
+		 *	We're either not a TCP socket, or we are a
+		 *	connected TCP socket.  Just read it.
+		 */
 do_read:
 		local_address = &address;
 		local_recv_time = &recv_time;
 
 		/*
-		 *	@todo TCP - handle TCP connected sockets, where we
-		 *	don't get a packet here, but instead get told
-		 *	there's a new socket.  In that situation, we
-		 *	have to get the new sockfd, figure out what
-		 *	the source IP is, etc.
+		 *	@todo - For connected TCP sockets which are
+		 *	dynamically defined, the app_io read()
+		 *	function should stop reading the socket if the
+		 *	server is busy.  That change puts TCP
+		 *	backpressure on the client.
 		 *
-		 *	If we can, we shoe-horn this into the "read"
-		 *	routine, which should make the rest of the
-		 *	code simpler
-		 *
-		 *	@todo TCP - for connected TCP sockets which are
-		 *	dynamically defined, have the app_io_read()
-		 *	function STOP reading the socket once a packet
-		 *	has been read.  That puts backpressure on the
-		 *	client...
-		 *
-		 *	@todo TLS - for TLS and dynamic sockets, do the SSL setup here,
-		 *		but have a structure which describes the TLS data
-		 *		and run THAT through the dynamic client definition,
-		 *		instead of using RADIUS packets.
+		 *	@todo TLS - for TLS and dynamic sockets, do
+		 *	the SSL setup here, but have a structure which
+		 *	describes the TLS data and run THAT through
+		 *	the dynamic client definition, instead of
+		 *	using normal packets.  Or, rely on the app_io
+		 *	read() function to do all TLS work?  Given
+		 *	that some protocols have "starttls" beginning
+		 *	after a clear-text exchange, it's likely best
+		 *	to have yet another layer of trampoline
+		 *	functions which do all of the TLS work.
 		 */
 		packet_len = inst->app_io->read(child, (void **) &local_address, &local_recv_time,
 					  buffer, buffer_len, leftover, priority, is_dup);
@@ -1138,14 +1143,17 @@ do_read:
 		}
 
 		/*
-		 *	Not allowed?  Discard it.  The other function
-		 *	has done any complaining, if necessary.
+		 *	Not allowed?  Discard it.  The priority()
+		 *	function has done any complaining, if
+		 *	necessary.
 		 */
 		value = inst->app->priority(inst, buffer, packet_len);
 		if (value <= 0) {
 
 			/*
-			 *	@todo - unix sockets
+			 *	@todo - unix sockets.  We need to use
+			 *	the "name" of the socket, in the
+			 *	listener?
 			 */
 			DEBUG2("proto_%s - ignoring packet %d from IP %pV. It is not configured as 'type = ...'",
 			       inst->app_io->name, buffer[0], fr_box_ipaddr(address.src_ipaddr));
@@ -1522,11 +1530,11 @@ have_client:
 	 *	Inject the packet into the connected socket.  It will
 	 *	process the packet as if it came in from the network.
 	 *
-	 *	@todo future - after creating the connection, put the current
-	 *	packet into connection->pending, instead of inject?,
-	 *	and then call fr_network_listen_read() from the
-	 *	child's instantiation routine???
-
+	 *	@todo future - after creating the connection, put the
+	 *	current packet into connection->pending, instead of
+	 *	inject?, and then call fr_network_listen_read() from
+	 *	the child's instantiation routine???
+	 *
 	 *	@todo TCP - for ACCEPT sockets, we don't have a
 	 *	packet, so don't do this.  Instead, the connection
 	 *	will take care of figuring out what to do.
@@ -2745,6 +2753,13 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	}
 
 	li->fd = child->fd;	/* copy this back up */
+
+	if (!child->app_io->get_name) {
+		li->name = child->app_io->name;
+	} else {
+		li->name = child->app_io->get_name(child);
+	}
+	child->name = li->name;
 
 	/*
 	 *	Add the socket to the scheduler, where it might end up
