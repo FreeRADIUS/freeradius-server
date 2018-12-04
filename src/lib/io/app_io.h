@@ -78,4 +78,5 @@ typedef struct {
  */
 char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 				  fr_ipaddr_t const *src_ipaddr, int src_port,
-				  fr_ipaddr_t const *dst_ipaddr, int dst_port);
+				  fr_ipaddr_t const *dst_ipaddr, int dst_port,
+				  char const *interface);

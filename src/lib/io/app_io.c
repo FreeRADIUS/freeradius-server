@@ -29,7 +29,8 @@
 
 char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 				  fr_ipaddr_t const *src_ipaddr, int src_port,
-				  fr_ipaddr_t const *dst_ipaddr, int dst_port)
+				  fr_ipaddr_t const *dst_ipaddr, int dst_port,
+				  char const *interface)
 {
 	char		    dst_buf[128], src_buf[128];
 
@@ -47,14 +48,25 @@ char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(*dst_ipaddr), 0);
 	}
 
-	if (!src_ipaddr) {
-		return talloc_typed_asprintf(ctx, "proto_%s server %s port %u",
-					     app_io->name, dst_buf, dst_port);
+	if (src_ipaddr) fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(*src_ipaddr), 0);
+
+	if (!interface) {
+		if (!src_ipaddr) {
+			return talloc_typed_asprintf(ctx, "proto_%s server %s port %u",
+						     app_io->name, dst_buf, dst_port);
+		}
+
+
+		return talloc_typed_asprintf(ctx, "proto_%s from client %s port %u to server %s port %u",
+					     app_io->name, src_buf, src_port, dst_buf, dst_port);
 	}
 
+	if (!src_ipaddr) {
+		return talloc_typed_asprintf(ctx, "proto_%s server %s port %u on interface %s",
+					     app_io->name, dst_buf, dst_port, interface);
+		}
 
-	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(*src_ipaddr), 0);
 
-	return talloc_typed_asprintf(ctx, "proto_%s from client %s port %u to server %s port %u",
-				     app_io->name, src_buf, src_port, dst_buf, dst_port);
+		return talloc_typed_asprintf(ctx, "proto_%s from client %s port %u to server %s port %u on interface %s",
+					     app_io->name, src_buf, src_port, dst_buf, dst_port, interface);
 }
