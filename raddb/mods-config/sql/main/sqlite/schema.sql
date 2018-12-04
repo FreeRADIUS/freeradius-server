@@ -35,10 +35,10 @@ CREATE TABLE radacct (
 	servicetype varchar(32) default NULL,
 	framedprotocol varchar(32) default NULL,
 	framedipaddress varchar(15) NOT NULL default '',
-	framedipv6address varchar(44) NOT NULL default '',
-	framedipv6prefix varchar(44) NOT NULL default '',
+	framedipv6address varchar(45) NOT NULL default '',
+	framedipv6prefix varchar(45) NOT NULL default '',
 	framedinterfaceid varchar(44) NOT NULL default '',
-	delegatedipv6prefix varchar(44) NOT NULL default ''
+	delegatedipv6prefix varchar(45) NOT NULL default ''
 );
 
 CREATE UNIQUE INDEX acctuniqueid ON radacct(acctuniqueid);
