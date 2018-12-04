@@ -470,7 +470,7 @@ next_message:
 	}
 	s->cd = NULL;
 
-	DEBUG("Network received packet size %zd", data_size);
+	DEBUG3("Network received packet size %zd", data_size);
 	nr->stats.in++;
 	s->stats.in++;
 
