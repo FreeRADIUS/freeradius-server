@@ -1155,8 +1155,8 @@ do_read:
 			 *	the "name" of the socket, in the
 			 *	listener?
 			 */
-			DEBUG2("proto_%s - ignoring packet %d from IP %pV. It is not configured as 'type = ...'",
-			       inst->app_io->name, buffer[0], fr_box_ipaddr(address.src_ipaddr));
+			DEBUG2("proto_%s - ignoring packet from IP %pV. It is not configured as 'type = ...'",
+			       inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
 			return 0;
 		}
 		*priority = value;
@@ -1233,9 +1233,9 @@ do_read:
 		} else if (inst->dynamic_clients) {
 			if (inst->max_clients && (fr_heap_num_elements(thread->alive_clients) >= inst->max_clients)) {
 				if (accept_fd <= 0) {
-					DEBUG("proto_%s - ignoring packet code %d from client IP address %pV - "
+					DEBUG("proto_%s - ignoring packet from client IP address %pV - "
 					      "too many dynamic clients are defined",
-					      inst->app_io->name, buffer[0], fr_box_ipaddr(address.src_ipaddr));
+					      inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
 				} else {
 					DEBUG("proto_%s - ignoring connection attempt from client IP address %pV "
 					      "- too many dynamic clients are defined",
@@ -1266,8 +1266,8 @@ do_read:
 		} else {
 		ignore:
 			if (accept_fd < 0) {
-				DEBUG("proto_%s - ignoring packet code %d from unknown client IP address %pV",
-				      inst->app_io->name, buffer[0], fr_box_ipaddr(address.src_ipaddr));
+				DEBUG("proto_%s - ignoring packet from unknown client IP address %pV",
+				      inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
 			} else {
 				DEBUG("proto_%s - ignoring connection attempt from unknown client IP address %pV",
 				      inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
