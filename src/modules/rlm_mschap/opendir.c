@@ -362,7 +362,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	status = dsDoDirNodeAuth(userNodeRef, pAuthType, 1, tDataBuff, pStepBuff, NULL);
 	if (status == eDSNoErr) {
 		if (pStepBuff->fBufferLength > 4) {
-			size_t len;
+			uint32_t len;
 
 			memcpy(&len, pStepBuff->fBufferData, sizeof(len));
 			if (len == 40) {
@@ -375,7 +375,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 						 *response->vp_strvalue,
 						 attr_ms_chap2_success,
 						 mschap_reply, len + 2);
-				RDEBUG2("dsDoDirNodeAuth returns stepbuff: %s (len=%zu)\n", mschap_reply, len);
+				RDEBUG2("dsDoDirNodeAuth returns stepbuff: %s (len=%u)\n", mschap_reply, (unsigned int) len);
 			}
 		}
 	}
