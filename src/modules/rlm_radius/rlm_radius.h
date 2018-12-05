@@ -54,6 +54,7 @@ typedef struct fr_radius_client_io_t {
 								//!< a new worker thread.
 	module_thread_detach_t		thread_detach;		//!< Destroy thread specific data.
 	size_t				thread_inst_size;	//!< Size of data to allocate to the thread instance.
+	char const			*thread_inst_type;	//!< Talloc type of the thread instance
 
 	size_t				request_inst_size;	//!< size of the data per request
 	char const			*request_inst_type;	//!< Talloc type of the request_inst.

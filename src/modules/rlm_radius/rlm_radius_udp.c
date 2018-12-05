@@ -64,7 +64,7 @@ typedef struct rlm_radius_udp_t {
  *
  *  This data structure holds the connections, etc. for this IO submodule.
  */
-typedef struct rlm_radius_udp_thread_t {
+typedef struct fr_io_connection_thread_t {
 	fr_event_list_t		*el;			//!< Event list.
 
 	fr_heap_t		*queued;		//!< Queued requests for some new connection.
@@ -80,7 +80,7 @@ typedef struct rlm_radius_udp_thread_t {
 	struct timeval		reconnection_delay;
 	struct timeval		idle_timeout;
 	struct timeval		zombie_period;
-} rlm_radius_udp_thread_t;
+} fr_io_connection_thread_t;
 
 typedef enum fr_io_connection_state_t {
 	CONN_INIT = 0,					//!< Configured but not started.
@@ -91,7 +91,7 @@ typedef enum fr_io_connection_state_t {
 	CONN_ZOMBIE,					//!< Has had a retransmit timeout.
 } fr_io_connection_state_t;
 
-typedef struct rlm_radius_udp_request_t rlm_radius_udp_request_t;
+typedef struct fr_io_request_t fr_io_request_t;
 
 /** Represents RADIUS-specific things for a connection
  *
@@ -100,7 +100,7 @@ typedef struct rlm_radius_udp_connection_t {
 	/*
 	 *	The rest of the entries are RADIUS-specific
 	 */
-	rlm_radius_udp_request_t *status_u;    		//!< For Status-Server checks.
+	fr_io_request_t		*status_u;    		//!< For Status-Server checks.
 	rlm_radius_id_t		*id;			//!< RADIUS ID tracking structure.
 	bool			status_check_blocked;	//!< if we blocked writing status check packets
 } rlm_radius_udp_connection_t;
@@ -117,7 +117,7 @@ typedef struct fr_io_connection_t {
 	int			fd;			//!< File descriptor.
 
 	rlm_radius_udp_t const	*inst;			//!< Our module instance.
-	rlm_radius_udp_thread_t *thread;       		//!< Our thread-specific data.
+	fr_io_connection_thread_t *thread;       		//!< Our thread-specific data.
 	fr_connection_t		*conn;			//!< Connection to our destination.
 
 	fr_dlist_t		entry;			//!< In the linked list of connections.
@@ -149,20 +149,20 @@ typedef struct fr_io_connection_t {
 } fr_io_connection_t;
 
 
-typedef enum rlm_radius_request_state_t {
-	PACKET_STATE_INIT = 0,
-	PACKET_STATE_QUEUED,				//!< in the thread queue
-	PACKET_STATE_WRITTEN,				//!< in the connection "sent" heap
-	PACKET_STATE_REPLIED,      			//!< timed out, or received a reply
-	PACKET_STATE_DONE,				//!< and done
-} rlm_radius_request_state_t;
+typedef enum fr_io_request_state_t {
+	REQUEST_IO_STATE_INIT = 0,
+	REQUEST_IO_STATE_QUEUED,				//!< in the thread queue
+	REQUEST_IO_STATE_WRITTEN,				//!< in the connection "sent" heap
+	REQUEST_IO_STATE_REPLIED,      			//!< timed out, or received a reply
+	REQUEST_IO_STATE_DONE,				//!< and done
+} fr_io_request_state_t;
 
 
-/** An ongoing RADIUS request
+/** Tracking for a REQUEST that is associated with the connection.
  *
  */
-struct rlm_radius_udp_request_t {
-	rlm_radius_request_state_t state;		//!< state of this request
+struct fr_io_request_t {
+	fr_io_request_state_t	state;			//!< state of this request
 
 	REQUEST			*request;		//!< the request we are for, so we can find it from the link
 
@@ -175,7 +175,7 @@ struct rlm_radius_udp_request_t {
 	int32_t			heap_id;		//!< for the "to be sent" queue.
 
 	fr_io_connection_t	*c;			//!< The outbound connection
-	rlm_radius_udp_thread_t *thread;		//!< the thread data for this request
+	fr_io_connection_thread_t *thread;		//!< the thread data for this request
 
 	bool			yielded;		//!< whether it yielded
 
@@ -258,7 +258,7 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 static void conn_error(fr_event_list_t *el, int fd, int flags, int fd_errno, void *uctx);
 static void conn_read(fr_event_list_t *el, int fd, int flags, void *uctx);
 static void conn_writable(fr_event_list_t *el, int fd, int flags, void *uctx);
-static int conn_write(fr_io_connection_t *c, rlm_radius_udp_request_t *u);
+static int conn_write(fr_io_connection_t *c, fr_io_request_t *u);
 static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state);
 
 static int conn_cmp(void const *one, void const *two)
@@ -283,8 +283,8 @@ static int conn_cmp(void const *one, void const *two)
  */
 static int queue_cmp(void const *one, void const *two)
 {
-	rlm_radius_udp_request_t const *a = one;
-	rlm_radius_udp_request_t const *b = two;
+	fr_io_request_t const *a = one;
+	fr_io_request_t const *b = two;
 
 	if (a->request->async->recv_time < b->request->async->recv_time) return -1;
 	if (a->request->async->recv_time > b->request->async->recv_time) return +1;
@@ -490,7 +490,7 @@ static void fd_active(fr_io_connection_t *c)
 static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void *uctx)
 {
 	int				rcode;
-	rlm_radius_udp_request_t	*u = uctx;
+	fr_io_request_t	*u = uctx;
 	fr_io_connection_t		*c = u->c;
 	rlm_radius_udp_connection_t	*radius = c->ctx;
 	REQUEST				*request;
@@ -529,7 +529,7 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 		return;
 	}
 
-	rad_assert(u->state == PACKET_STATE_WRITTEN);
+	rad_assert(u->state == REQUEST_IO_STATE_WRITTEN);
 
 	/*
 	 *	If we can retransmit it, do so.  Otherwise, it will
@@ -653,7 +653,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 {
 	fr_io_connection_t *c = talloc_get_type_abort(uctx, fr_io_connection_t);
 	rlm_radius_udp_connection_t *radius = c->ctx;
-	rlm_radius_udp_request_t *u;
+	fr_io_request_t *u;
 	int rcode;
 
 	ERROR("%s - Zombie timeout for connection %s", c->module_name, c->name);
@@ -723,7 +723,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 	 *	"sent" list
 	 */
 	if (rcode == 1) {
-		u->state = PACKET_STATE_WRITTEN;
+		u->state = REQUEST_IO_STATE_WRITTEN;
 		u->c = c;
 		return;
 	}
@@ -751,23 +751,23 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 }
 
 
-static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_state_t state, fr_io_connection_t *c)
+static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr_io_connection_t *c)
 {
 	rlm_radius_udp_connection_t *radius;
 
 	if (u->state == state) return;
 
 	switch (u->state) {
-	case PACKET_STATE_INIT:
-		rad_assert((state == PACKET_STATE_QUEUED) || (state == PACKET_STATE_DONE));
+	case REQUEST_IO_STATE_INIT:
+		rad_assert((state == REQUEST_IO_STATE_QUEUED) || (state == REQUEST_IO_STATE_DONE));
 		break;
 
-	case PACKET_STATE_QUEUED:
+	case REQUEST_IO_STATE_QUEUED:
 		rad_assert(u->heap_id >= 0);
 		(void) fr_heap_extract(u->thread->queued, u);
 		break;
 
-	case PACKET_STATE_WRITTEN:
+	case REQUEST_IO_STATE_WRITTEN:
 		rad_assert(u->rr != NULL);
 		rad_assert(u->c != NULL);
 
@@ -779,8 +779,8 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		u->c = NULL;
 		break;
 
-	case PACKET_STATE_REPLIED:
-		rad_assert(state == PACKET_STATE_DONE);
+	case REQUEST_IO_STATE_REPLIED:
+		rad_assert(state == REQUEST_IO_STATE_DONE);
 		break;
 
 	default:
@@ -792,7 +792,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 	u->c = c;
 
 	switch (u->state) {
-	case PACKET_STATE_QUEUED:
+	case REQUEST_IO_STATE_QUEUED:
 	queued:
 		rad_assert(u->rr == NULL);
 		u->c = NULL;
@@ -800,7 +800,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		fr_heap_insert(u->thread->queued, u);
 		break;
 
-	case PACKET_STATE_WRITTEN:
+	case REQUEST_IO_STATE_WRITTEN:
 		rad_assert(c != NULL);
 		radius = c->ctx;
 
@@ -809,7 +809,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		 */
 		u->rr = rr_track_alloc(radius->id, u->request, u->code, u, &u->timer);
 		if (!u->rr) {
-			u->state = PACKET_STATE_QUEUED;
+			u->state = REQUEST_IO_STATE_QUEUED;
 			u->c = NULL;
 			conn_transition(c, CONN_FULL);
 			goto queued;
@@ -819,14 +819,14 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		fr_dlist_insert_tail(&u->c->sent, u);
 		break;
 
-	case PACKET_STATE_REPLIED:
+	case REQUEST_IO_STATE_REPLIED:
 		rad_assert(u->rr == NULL);
 		rad_assert(u->c == NULL);
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 		if (u->yielded) unlang_resumable(u->request);
 		break;
 
-	case PACKET_STATE_DONE:
+	case REQUEST_IO_STATE_DONE:
 		rad_assert(u->rr == NULL);
 		rad_assert(u->c == NULL);
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
@@ -838,11 +838,11 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 	}
 }
 
-static void mod_finished_request(fr_io_connection_t *c, rlm_radius_udp_request_t *u)
+static void mod_finished_request(fr_io_connection_t *c, fr_io_request_t *u)
 {
 	rlm_radius_udp_connection_t *radius = c->ctx;
 
-	rad_assert(u->state != PACKET_STATE_DONE);
+	rad_assert(u->state != REQUEST_IO_STATE_DONE);
 
 	/*
 	 *	Delete the tracking table entry, and remove the
@@ -855,18 +855,18 @@ static void mod_finished_request(fr_io_connection_t *c, rlm_radius_udp_request_t
 		 *      deallocated.
 		 */
 		if (u == radius->status_u) {
-			u->state = PACKET_STATE_INIT;
+			u->state = REQUEST_IO_STATE_INIT;
 			return;
 		}
 
-		rad_assert(u->state == PACKET_STATE_WRITTEN);
-		state_transition(u, PACKET_STATE_REPLIED, NULL);
+		rad_assert(u->state == REQUEST_IO_STATE_WRITTEN);
+		state_transition(u, REQUEST_IO_STATE_REPLIED, NULL);
 
 		conn_check_idle(c);
 
 	} else {
-		rad_assert(u->state == PACKET_STATE_QUEUED);
-		state_transition(u, PACKET_STATE_REPLIED, NULL);
+		rad_assert(u->state == REQUEST_IO_STATE_QUEUED);
+		state_transition(u, REQUEST_IO_STATE_REPLIED, NULL);
 	}
 }
 
@@ -936,7 +936,7 @@ static void protocol_error_reply(fr_io_connection_t *c, REQUEST *request)
 /** Deal with Status-Server replies, and possible negotiation
  *
  */
-static void status_server_reply(fr_io_connection_t *c, rlm_radius_udp_request_t *u, REQUEST *request)
+static void status_server_reply(fr_io_connection_t *c, fr_io_request_t *u, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 
@@ -945,7 +945,7 @@ static void status_server_reply(fr_io_connection_t *c, rlm_radius_udp_request_t 
 	 */
 	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
-	rad_assert(u->state == PACKET_STATE_WRITTEN);
+	rad_assert(u->state == REQUEST_IO_STATE_WRITTEN);
 
 	if (u->code != FR_CODE_STATUS_SERVER) return;
 
@@ -1071,7 +1071,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_io_connection_t		*c = talloc_get_type_abort(uctx, fr_io_connection_t);
 	rlm_radius_request_t		*rr;
-	rlm_radius_udp_request_t	*u;
+	fr_io_request_t	*u;
 	rlm_radius_udp_connection_t	*radius = c->ctx;
 	int				code;
 	decode_fail_t			reason;
@@ -1149,7 +1149,7 @@ check_active:
 	/*
 	 *	We can only get a reply to a sent packet.
 	 */
-	rad_assert(u->state == PACKET_STATE_WRITTEN);
+	rad_assert(u->state == REQUEST_IO_STATE_WRITTEN);
 	rad_assert(u->c == c);
 
 	code = c->buffer[0];
@@ -1326,7 +1326,7 @@ done:
 	 */
 	rad_assert(u->c == c);
 	rad_assert(u->rr != NULL);
-	rad_assert(u->state == PACKET_STATE_WRITTEN);
+	rad_assert(u->state == REQUEST_IO_STATE_WRITTEN);
 	mod_finished_request(c, u);
 
 	/*
@@ -1390,7 +1390,7 @@ done:
 	goto redo;
 }
 
-static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
+static int retransmit_packet(fr_io_request_t *u, struct timeval *now)
 {
 	bool				resign = false;
 	int				rcode;
@@ -1539,7 +1539,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uctx)
 {
 	int				rcode;
-	rlm_radius_udp_request_t	*u = uctx;
+	fr_io_request_t	*u = uctx;
 	fr_io_connection_t		*c = u->c;
 	rlm_radius_udp_connection_t	*radius = c->ctx;
 	REQUEST				*request;
@@ -1588,7 +1588,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 */
 get_new_connection:
 	while (!u->c) {
-		rad_assert(u->state == PACKET_STATE_QUEUED);
+		rad_assert(u->state == REQUEST_IO_STATE_QUEUED);
 		c = fr_heap_peek(u->thread->active);
 		if (!c) {
 			RDEBUG("No available connections for retransmission.  Waiting %d.%06ds for retry",
@@ -1603,10 +1603,10 @@ get_new_connection:
 		 *	connection.  The transition sets 'u->c = c'
 		 *	if it succeeds.
 		 */
-		state_transition(u, PACKET_STATE_WRITTEN, c);
+		state_transition(u, REQUEST_IO_STATE_WRITTEN, c);
 	}
 
-	rad_assert(u->state == PACKET_STATE_WRITTEN);
+	rad_assert(u->state == REQUEST_IO_STATE_WRITTEN);
 
 	/*
 	 *	If we can retransmit it, do so.  Otherwise, it will
@@ -1617,7 +1617,7 @@ get_new_connection:
 	rcode = retransmit_packet(u, now);
 	if (rcode < 0) {
 		RDEBUG("Failed retransmitting packet for connection %s", c->name);
-		state_transition(u, PACKET_STATE_QUEUED, NULL);
+		state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);
 		talloc_free(c);
 		goto get_new_connection;
 	}
@@ -1637,7 +1637,7 @@ get_new_connection:
 	 *	Move the packet back to the thread queue, and try to
 	 *	send the packet on a different connection.
 	 */
-	state_transition(u, PACKET_STATE_QUEUED, NULL);
+	state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);
 	goto get_new_connection;
 }
 
@@ -1652,7 +1652,7 @@ get_new_connection:
  *	- 1 the packet was successfully written to the socket, and we wait for a reply
  *	- 2 the packet was replicated to the socket, and should be resumed immediately.
  */
-static int conn_write(fr_io_connection_t *c, rlm_radius_udp_request_t *u)
+static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 {
 	int			rcode;
 	ssize_t			packet_len;
@@ -1966,7 +1966,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 {
 	fr_io_connection_t		*c = talloc_get_type_abort(uctx, fr_io_connection_t);
 	rlm_radius_udp_connection_t	*radius = c->ctx;
-	rlm_radius_udp_request_t	*u;
+	fr_io_request_t	*u;
 	bool				pending = false;
 	fr_io_connection_state_t	prev_state = c->state;
 	fr_io_connection_t		*next;
@@ -2009,13 +2009,13 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	 *	Empty the global queue of packets to send.
 	 */
 	while ((u = fr_heap_peek(c->thread->queued)) != NULL) {
-		rad_assert(u->state == PACKET_STATE_QUEUED);
+		rad_assert(u->state == REQUEST_IO_STATE_QUEUED);
 
 		/*
 		 *	Transition the packet to the connection.  If
 		 *	we can't do that, leave it where it is.
 		 */
-		state_transition(u, PACKET_STATE_WRITTEN, c);
+		state_transition(u, REQUEST_IO_STATE_WRITTEN, c);
 		if (!u->c) {
 			pending = true;
 			break;
@@ -2050,7 +2050,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 */
 		if (rcode == 0) {
 			pending = true;
-			state_transition(u, PACKET_STATE_QUEUED, NULL);
+			state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);
 			conn_transition(c, CONN_BLOCKED);
 			break;
 		}
@@ -2066,7 +2066,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 *	another round trip through the event loop.
 		 */
 		if (rcode < 0) {
-			rlm_radius_udp_thread_t *t = c->thread;
+			fr_io_connection_thread_t *t = c->thread;
 
 			talloc_free(c);
 
@@ -2083,7 +2083,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 */
 		else {
 			rad_assert(rcode == 2);
-			state_transition(u, PACKET_STATE_REPLIED, NULL);
+			state_transition(u, REQUEST_IO_STATE_REPLIED, NULL);
 		}
 	}
 
@@ -2160,14 +2160,14 @@ static void _conn_close(int fd, void *uctx)
 }
 
 
-/** Free an rlm_radius_udp_request_t
+/** Free an fr_io_request_t
  *
  *  Unlink the packet from the connection, and remove any tracking
  *  entries.
  */
-static int udp_request_free(rlm_radius_udp_request_t *u)
+static int udp_request_free(fr_io_request_t *u)
 {
-	state_transition(u, PACKET_STATE_DONE, NULL);
+	state_transition(u, REQUEST_IO_STATE_DONE, NULL);
 
 	/*
 	 *	We don't have a connection, so we can't update any of
@@ -2190,12 +2190,12 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 	return conn_check_zombie(u->c);
 }
 
-/** Free the status-check rlm_radius_udp_request_t
+/** Free the status-check fr_io_request_t
  *
  *  Unlink the packet from the connection, and remove any tracking
  *  entries.
  */
-static int status_udp_request_free(rlm_radius_udp_request_t *u)
+static int status_udp_request_free(fr_io_request_t *u)
 {
 	fr_io_connection_t	*c = u->c;
 	rlm_radius_udp_connection_t *radius = c->ctx;
@@ -2229,7 +2229,6 @@ static int status_udp_request_free(rlm_radius_udp_request_t *u)
 static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t state, void *uctx)
 {
 	fr_io_connection_t	*c = talloc_get_type_abort(uctx, fr_io_connection_t);
-	rlm_radius_udp_connection_t *radius = c->ctx;
 
 	/*
 	 *	If the connection was connected when it failed,
@@ -2237,7 +2236,8 @@ static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t s
 	 *	timer events before reconnecting.
 	 */
 	if (state == FR_CONNECTION_STATE_CONNECTED) {
-		rlm_radius_udp_request_t *u;
+		fr_io_request_t *u;
+		rlm_radius_udp_connection_t *radius = c->ctx;
 
 		/*
 		 *	Reset the Status-Server checks.
@@ -2266,7 +2266,7 @@ static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t s
 		 *	Move "sent" packets back to the thread queue,
 		 */
 		while ((u = fr_dlist_head(&c->sent)) != NULL) {
-			state_transition(u, PACKET_STATE_QUEUED, NULL);
+			state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);
 		}
 	}
 
@@ -2281,7 +2281,7 @@ static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t s
 static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void *uctx)
 {
 	fr_io_connection_t		*c = talloc_get_type_abort(uctx, fr_io_connection_t);
-	rlm_radius_udp_thread_t		*t = c->thread;
+	fr_io_connection_thread_t		*t = c->thread;
 	rlm_radius_udp_connection_t	*radius = c->ctx;
 
 	talloc_const_free(c->name);
@@ -2307,17 +2307,17 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 
 	rad_assert(c->zombie_ev == NULL);
 	memset(&c->zombie_start, 0, sizeof(c->zombie_start));
-	fr_dlist_init(&c->sent, rlm_radius_udp_request_t, entry);
+	fr_dlist_init(&c->sent, fr_io_request_t, entry);
 
 	/*
 	 *	Status-Server checks.  Manually build the packet, and
 	 *	all of it's associated glue.
 	 */
 	if (c->inst->parent->status_check && !radius->status_u) {
-		rlm_radius_udp_request_t *u;
+		fr_io_request_t *u;
 		REQUEST *request;
 
-		u = talloc_zero(c, rlm_radius_udp_request_t);
+		u = talloc_zero(c, fr_io_request_t);
 
 		request = request_alloc(u);
 		request->async = talloc_zero(request, fr_async_t);
@@ -2414,7 +2414,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 	 *	Reset the timer, retransmission counters, etc.
 	 */
 	if (radius->status_u) {
-		rlm_radius_udp_request_t *u = radius->status_u;
+		fr_io_request_t *u = radius->status_u;
 
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
@@ -2445,7 +2445,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 /** Initialise a new outbound connection
  *
  * @param[out] fd_out	Where to write the new file descriptor.
- * @param[in] uctx	A #rlm_radius_udp_thread_t.
+ * @param[in] uctx	A #fr_io_connection_thread_t.
  */
 static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
 {
@@ -2511,8 +2511,8 @@ static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
  */
 static int _conn_free(fr_io_connection_t *c)
 {
-	rlm_radius_udp_request_t	*u;
-	rlm_radius_udp_thread_t		*t = talloc_get_type_abort(c->thread, rlm_radius_udp_thread_t);
+	fr_io_request_t	*u;
+	fr_io_connection_thread_t		*t = talloc_get_type_abort(c->thread, fr_io_connection_thread_t);
 	rlm_radius_udp_connection_t	*radius = c->ctx;
 
 	/*
@@ -2538,7 +2538,7 @@ static int _conn_free(fr_io_connection_t *c)
 	 *	Move "sent" packets back to the main thread queue
 	 */
 	while ((u = fr_dlist_head(&c->sent)) != NULL) {
-		state_transition(u, PACKET_STATE_QUEUED, NULL);
+		state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);
 	}
 
 	if (radius->status_u) talloc_free(radius->status_u);
@@ -2581,7 +2581,7 @@ static int _conn_free(fr_io_connection_t *c)
 /** Allocate a new connection and set it up.
  *
  */
-static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
+static void conn_alloc(rlm_radius_udp_t *inst, fr_io_connection_thread_t *t)
 {
 	fr_io_connection_t	*c;
 	rlm_radius_udp_connection_t *radius;
@@ -2627,7 +2627,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 		talloc_free(c);
 		return;
 	}
-	fr_dlist_init(&c->sent, rlm_radius_udp_request_t, entry);
+	fr_dlist_init(&c->sent, fr_io_request_t, entry);
 
 	c->conn = fr_connection_alloc(c, t->el, &t->connection_timeout, &t->reconnection_delay,
 				      _conn_init,
@@ -2672,8 +2672,8 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 {
 	rlm_rcode_t    			rcode = RLM_MODULE_FAIL;
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	rlm_radius_udp_thread_t		*t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
-	rlm_radius_udp_request_t	*u = talloc_get_type_abort(request_io_ctx, rlm_radius_udp_request_t);
+	fr_io_connection_thread_t		*t = talloc_get_type_abort(thread, fr_io_connection_thread_t);
+	fr_io_request_t	*u = talloc_get_type_abort(request_io_ctx, fr_io_request_t);
 	fr_io_connection_t	*c;
 
 	rad_assert(request->packet->code > 0);
@@ -2689,7 +2689,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 		return RLM_MODULE_FAIL;
 	}
 
-	u->state = PACKET_STATE_INIT;
+	u->state = REQUEST_IO_STATE_INIT;
 	u->rr = NULL;
 	u->c = NULL;
 	u->request = request;
@@ -2705,7 +2705,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 	/*
 	 *	Insert the new packet into the thread queue.
 	 */
-	state_transition(u, PACKET_STATE_QUEUED, NULL);
+	state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);
 
 	/*
 	 *	Start the retransmission timers.
@@ -2772,21 +2772,21 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 	conn_writable(t->el, c->fd, 0, c);
 
 	switch (u->state) {
-	case PACKET_STATE_INIT:
+	case REQUEST_IO_STATE_INIT:
 		rad_assert(0 == 1);
 		break;
 
-	case PACKET_STATE_QUEUED:
-	case PACKET_STATE_WRITTEN:
+	case REQUEST_IO_STATE_QUEUED:
+	case REQUEST_IO_STATE_WRITTEN:
 		rcode = RLM_MODULE_YIELD;
 		u->yielded = true;
 		break;
 
-	case PACKET_STATE_REPLIED:
-		state_transition(u, PACKET_STATE_DONE, NULL);
+	case REQUEST_IO_STATE_REPLIED:
+		state_transition(u, REQUEST_IO_STATE_DONE, NULL);
 		/* FALL-THROUGH */
 
-	case PACKET_STATE_DONE:
+	case REQUEST_IO_STATE_DONE:
 		rcode = RLM_MODULE_OK;
 		break;
 	}
@@ -2797,7 +2797,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 
 static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *request_io_ctx, fr_state_signal_t action)
 {
-	rlm_radius_udp_request_t *u = talloc_get_type_abort(request_io_ctx, rlm_radius_udp_request_t);
+	fr_io_request_t *u = talloc_get_type_abort(request_io_ctx, fr_io_request_t);
 	struct timeval now;
 
 	if (action != FR_SIGNAL_DUP) return;
@@ -2816,7 +2816,7 @@ static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thr
 
 static rlm_rcode_t mod_resume(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
 {
-	rlm_radius_udp_request_t *u = talloc_get_type_abort(ctx, rlm_radius_udp_request_t);
+	fr_io_request_t *u = talloc_get_type_abort(ctx, fr_io_request_t);
 	rlm_rcode_t rcode;
 
 	rcode = u->rcode;
@@ -2923,7 +2923,7 @@ static int mod_instantiate(rlm_radius_t *parent, void *instance, CONF_SECTION *c
 static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
 {
 	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	rlm_radius_udp_thread_t *t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
+	fr_io_connection_thread_t *t = talloc_get_type_abort(thread, fr_io_connection_thread_t);
 
 	t->el = el;
 
@@ -2934,7 +2934,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	COPY(idle_timeout);
 	COPY(zombie_period);
 
-	t->queued = fr_heap_talloc_create(t, queue_cmp, rlm_radius_udp_request_t, heap_id);
+	t->queued = fr_heap_talloc_create(t, queue_cmp, fr_io_request_t, heap_id);
 	fr_dlist_init(&t->blocked, fr_io_connection_t, entry);
 	fr_dlist_init(&t->full, fr_io_connection_t, entry);
 	fr_dlist_init(&t->zombie, fr_io_connection_t, entry);
@@ -2952,7 +2952,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
  */
 static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
-	rlm_radius_udp_thread_t *t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
+	fr_io_connection_thread_t *t = talloc_get_type_abort(thread, fr_io_connection_thread_t);
 
 	if (fr_heap_num_elements(t->queued) != 0) {
 		ERROR("There are still queued requests");
@@ -2987,10 +2987,11 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.name			= "radius_udp",
 	.inst_size		= sizeof(rlm_radius_udp_t),
 
-	.request_inst_size 	= sizeof(rlm_radius_udp_request_t),
-	.request_inst_type	= "rlm_radius_udp_request_t",
+	.request_inst_size 	= sizeof(fr_io_request_t),
+	.request_inst_type	= "fr_io_request_t",
 
-	.thread_inst_size	= sizeof(rlm_radius_udp_thread_t),
+	.thread_inst_size	= sizeof(fr_io_connection_thread_t),
+	.thread_inst_type	= "fr_io_connection_thread_t",
 
 	.config			= module_config,
 	.bootstrap		= mod_bootstrap,

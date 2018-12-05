@@ -762,7 +762,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 {
 	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-	char buffer[256];
 
 	(void) talloc_set_type(t, rlm_radius_thread_t);
 
@@ -781,8 +780,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	/*
 	 *	Set the name of the IO modules thread instance.
 	 */
-	snprintf(buffer, sizeof(buffer), "rlm_%s_thread_t", inst->io->name);
-	(void) talloc_set_name(t->thread_io_ctx, "%s", buffer);
+	(void) talloc_set_name_const(t->thread_io_ctx, inst->io->thread_inst_type);
 
 	/*
 	 *	Instantiate the per-thread data.  This should open up
