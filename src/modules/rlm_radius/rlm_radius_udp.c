@@ -82,14 +82,14 @@ typedef struct rlm_radius_udp_thread_t {
 	struct timeval		zombie_period;
 } rlm_radius_udp_thread_t;
 
-typedef enum rlm_radius_udp_connection_state_t {
+typedef enum fr_io_connection_state_t {
 	CONN_INIT = 0,					//!< Configured but not started.
 	CONN_OPENING,					//!< Trying to connect.
 	CONN_ACTIVE,					//!< has free IDs
 	CONN_BLOCKED,					//!< blocked, but can't write to the socket
 	CONN_FULL,					//!< Live, but has no more IDs to use.
 	CONN_ZOMBIE,					//!< Has had a retransmit timeout.
-} rlm_radius_udp_connection_state_t;
+} fr_io_connection_state_t;
 
 typedef struct rlm_radius_udp_request_t rlm_radius_udp_request_t;
 
@@ -112,7 +112,7 @@ typedef struct rlm_radius_udp_connection_t {
 typedef struct fr_io_connection_t {
 	char const     		*name;			//!< From IP PORT to IP PORT.
 	char const		*module_name;		//!< the module that opened the connection
-	rlm_radius_udp_connection_state_t state;	//!< State of the connection.
+	fr_io_connection_state_t state;	//!< State of the connection.
 
 	int			fd;			//!< File descriptor.
 
@@ -259,7 +259,7 @@ static void conn_error(fr_event_list_t *el, int fd, int flags, int fd_errno, voi
 static void conn_read(fr_event_list_t *el, int fd, int flags, void *uctx);
 static void conn_writable(fr_event_list_t *el, int fd, int flags, void *uctx);
 static int conn_write(fr_io_connection_t *c, rlm_radius_udp_request_t *u);
-static void conn_transition(fr_io_connection_t *c, rlm_radius_udp_connection_state_t state);
+static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state);
 
 static int conn_cmp(void const *one, void const *two)
 {
@@ -272,7 +272,6 @@ static int conn_cmp(void const *one, void const *two)
 	if (a->slots_free < b->slots_free) return -1;
 	if (a->slots_free > b->slots_free) return +1;
 
-// XXX - copy id->num_free to slots_free
 	return 0;
 }
 
@@ -581,6 +580,7 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 	 */
 	(void) rr_track_delete(radius->id, u->rr);
 	u->rr = rr_track_alloc(radius->id, u->request, u->code, u, &u->timer);
+	c->slots_free = radius->id->num_free;
 	rad_assert(u->rr != NULL);
 
 	/*
@@ -773,6 +773,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 
 		radius = u->c->ctx;
 		(void) rr_track_delete(radius->id, u->rr);
+		u->c->slots_free = radius->id->num_free;
 		fr_dlist_remove(&u->c->sent, u);
 		u->rr = NULL;
 		u->c = NULL;
@@ -813,6 +814,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 			conn_transition(c, CONN_FULL);
 			goto queued;
 		}
+		c->slots_free = radius->id->num_free;
 		u->c = c;
 		fr_dlist_insert_tail(&u->c->sent, u);
 		break;
@@ -974,7 +976,7 @@ static void status_server_reply(fr_io_connection_t *c, rlm_radius_udp_request_t 
 
 }
 
-static void conn_transition(fr_io_connection_t *c, rlm_radius_udp_connection_state_t state)
+static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state)
 {
 	struct timeval when;
 
@@ -1471,6 +1473,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	    (u->code == FR_CODE_DISCONNECT_REQUEST)) {
 		(void) rr_track_delete(radius->id, u->rr);
 		u->rr = rr_track_alloc(radius->id, u->request, u->code, u, &u->timer);
+		c->slots_free = radius->id->num_free;
 		rad_assert(u->rr != NULL);
 		resign = true;
 	}
@@ -1965,8 +1968,8 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	rlm_radius_udp_connection_t	*radius = c->ctx;
 	rlm_radius_udp_request_t	*u;
 	bool				pending = false;
-	rlm_radius_udp_connection_state_t prev_state = c->state;
-	fr_io_connection_t	*next;
+	fr_io_connection_state_t	prev_state = c->state;
+	fr_io_connection_t		*next;
 	int				rcode;
 
 	DEBUG3("%s - Writing packets for connection %s", c->module_name, c->name);
@@ -2210,6 +2213,7 @@ static int status_udp_request_free(rlm_radius_udp_request_t *u)
 
 	if (u->rr) {
 		(void) rr_track_delete(radius->id, u->rr);
+		c->slots_free = radius->id->num_free;
 	}
 	u->rr = NULL;
 
@@ -2402,6 +2406,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 			       c->module_name, fr_packet_codes[u->code], u->rr->id, c->name);
 			talloc_set_destructor(u, status_udp_request_free);
 			radius->status_u = u;
+			c->slots_free = radius->id->num_free;
 		}
 	}
 
