@@ -374,7 +374,6 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 			memcpy(&len, pStepBuff->fBufferData, sizeof(len));
 			if (len == 40) {
 				char mschap_reply[42] = { '\0' };
-				pStepBuff->fBufferData[len+4] = '\0';
 				mschap_reply[0] = 'S';
 				mschap_reply[1] = '=';
 				memcpy(&(mschap_reply[2]), &(pStepBuff->fBufferData[4]), len);
@@ -382,7 +381,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 						 *response->vp_strvalue,
 						 "MS-CHAP2-Success",
 						 mschap_reply, len+2);
-				RDEBUG2("dsDoDirNodeAuth returns stepbuff: %s (len=u)\n", mschap_reply, (unsigned int) len);
+				RDEBUG2("dsDoDirNodeAuth returns stepbuff: %s (len=%u)\n", mschap_reply, (unsigned int) len);
 			}
 		}
 	}
