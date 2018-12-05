@@ -255,11 +255,14 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ NULL }
 };
 
+// CLEAN start
+
 static void conn_error(fr_event_list_t *el, int fd, int flags, int fd_errno, void *uctx);
 static void conn_read(fr_event_list_t *el, int fd, int flags, void *uctx);
 static void conn_writable(fr_event_list_t *el, int fd, int flags, void *uctx);
 static int conn_write(fr_io_connection_t *c, fr_io_request_t *u);
 static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state);
+static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr_io_connection_t *c);
 
 static int conn_cmp(void const *one, void const *two)
 {
@@ -482,6 +485,188 @@ static void fd_active(fr_io_connection_t *c)
 		fr_connection_signal_reconnect(c->conn);
 	}
 }
+
+/** Connection errored
+ *
+ */
+static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
+{
+	fr_io_connection_t *c = talloc_get_type_abort(uctx, fr_io_connection_t);
+
+	ERROR("%s - Connection failed: %s - %s", c->module_name, fr_syserror(fd_errno), c->name);
+
+	/*
+	 *	Something bad happened... Fix it...
+	 */
+	fr_connection_signal_reconnect(c->conn);
+}
+
+
+/** Shutdown/close a file descriptor
+ *
+ */
+static void _conn_close(int fd, void *uctx)
+{
+	fr_io_connection_t *c = talloc_get_type_abort(uctx, fr_io_connection_t);
+
+	if (c->idle_ev) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+
+	if (shutdown(fd, SHUT_RDWR) < 0) {
+		DEBUG3("%s - Failed shutting down connection %s: %s",
+		       c->module_name, c->name, fr_syserror(errno));
+	}
+
+	if (close(fd) < 0) {
+		DEBUG3("%s - Failed closing connection %s: %s",
+		       c->module_name, c->name, fr_syserror(errno));
+	}
+
+	c->fd = -1;
+
+	/*
+	 *	Reset our state back to init
+	 */
+	conn_transition(c, CONN_INIT);
+
+	DEBUG("%s - Connection closed - %s", c->module_name, c->name);
+}
+
+
+/** Initialise a new outbound connection
+ *
+ * @param[out] fd_out	Where to write the new file descriptor.
+ * @param[in] uctx	A #fr_io_connection_thread_t.
+ */
+static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
+{
+	int				fd;
+	fr_io_connection_t		*c = talloc_get_type_abort(uctx, fr_io_connection_t);
+
+	/*
+	 *	Open the outgoing socket.
+	 */
+	fd = fr_socket_client_udp(&c->src_ipaddr, &c->src_port, &c->dst_ipaddr, c->dst_port, true);
+	if (fd < 0) {
+		PERROR("%s - Failed opening socket", c->module_name);
+		return FR_CONNECTION_STATE_FAILED;
+	}
+
+	/*
+	 *	Set the connection name.
+	 *
+	 *	@todo - print out application (RADIUS), protocol (UDP), etc.
+	 */
+	talloc_const_free(c->name);
+	c->name = fr_asprintf(c, "connecting from %pV to %pV port %u",
+			      fr_box_ipaddr(c->src_ipaddr),
+			      fr_box_ipaddr(c->dst_ipaddr), c->dst_port);
+
+#ifdef SO_RCVBUF
+	if (c->inst->recv_buff_is_set) {
+		int opt;
+
+		opt = c->inst->recv_buff;
+		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
+			WARN("Failed setting 'recv_buf': %s", fr_syserror(errno));
+		}
+	}
+#endif
+
+#ifdef SO_SNDBUF
+	if (c->inst->send_buff_is_set) {
+		int opt;
+
+		opt = c->inst->send_buff;
+		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
+			WARN("Failed setting 'send_buf': %s", fr_syserror(errno));
+		}
+	}
+#endif
+
+	/*
+	 *	Insert the connection into the opening list
+	 */
+	conn_transition(c, CONN_OPENING);
+	c->fd = fd;
+
+	// @todo - initialize the tracking memory, etc.
+	// i.e. histograms (or hyperloglog) of packets, so we can see
+	// which connections / home servers are fast / slow.
+
+	*fd_out = fd;
+
+	return FR_CONNECTION_STATE_CONNECTING;
+}
+
+/** Free the connection, and return requests to the thread queue
+ *
+ */
+static int _conn_free(fr_io_connection_t *c)
+{
+	fr_io_request_t	*u;
+	fr_io_connection_thread_t	*t = talloc_get_type_abort(c->thread, fr_io_connection_thread_t);
+
+	/*
+	 *	We're no longer using this connection.
+	 */
+	while (true) {
+		uint32_t num_connections;
+
+		num_connections = load(c->inst->parent->num_connections);
+		rad_assert(num_connections > 0);
+
+		if (cas_decr(c->inst->parent->num_connections, num_connections)) break;
+	}
+
+	/*
+	 *	Explicit free not technically required,
+	 *	but may prevent future ordering issues.
+	 */
+	talloc_free(c->conn);
+	c->conn = NULL;
+
+	/*
+	 *	Move "sent" packets back to the main thread queue
+	 */
+	while ((u = fr_dlist_head(&c->sent)) != NULL) {
+		state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);
+	}
+
+	if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
+	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+
+	talloc_free_children(c); /* clears out FD events, timers, etc. */
+
+	switch (c->state) {
+	default:
+		rad_assert(0 == 1);
+		break;
+
+	case CONN_INIT:
+		break;
+
+	case CONN_OPENING:
+		fr_dlist_remove(&c->thread->opening, c);
+		break;
+
+	case CONN_FULL:
+		fr_dlist_remove(&c->thread->blocked, c);
+		break;
+
+	case CONN_ZOMBIE:
+		fr_dlist_remove(&c->thread->zombie, c);
+		break;
+
+	case CONN_ACTIVE:
+		rad_assert(c->heap_id < 0);
+		(void) fr_heap_extract(t->active, c);
+		break;
+	}
+
+	return 0;
+}
+
+// CLEAN END
 
 
 /** Deal with status check timeouts for transmissions, etc.
@@ -732,22 +917,6 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 	 *	Status check packets are never replicated.
 	 */
 	rad_assert(0 == 1);
-}
-
-
-/** Connection errored
- *
- */
-static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
-{
-	fr_io_connection_t *c = talloc_get_type_abort(uctx, fr_io_connection_t);
-
-	ERROR("%s - Connection failed: %s - %s", c->module_name, fr_syserror(fd_errno), c->name);
-
-	/*
-	 *	Something bad happened... Fix it...
-	 */
-	fr_connection_signal_reconnect(c->conn);
 }
 
 
@@ -2130,36 +2299,6 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	conn_writable(el, next->fd, 0, next);
 }
 
-/** Shutdown/close a file descriptor
- *
- */
-static void _conn_close(int fd, void *uctx)
-{
-	fr_io_connection_t *c = talloc_get_type_abort(uctx, fr_io_connection_t);
-
-	if (c->idle_ev) fr_event_timer_delete(c->thread->el, &c->idle_ev);
-
-	if (shutdown(fd, SHUT_RDWR) < 0) {
-		DEBUG3("%s - Failed shutting down connection %s: %s",
-		       c->module_name, c->name, fr_syserror(errno));
-	}
-
-	if (close(fd) < 0) {
-		DEBUG3("%s - Failed closing connection %s: %s",
-		       c->module_name, c->name, fr_syserror(errno));
-	}
-
-	c->fd = -1;
-
-	/*
-	 *	Reset our state back to init
-	 */
-	conn_transition(c, CONN_INIT);
-
-	DEBUG("%s - Connection closed - %s", c->module_name, c->name);
-}
-
-
 /** Free an fr_io_request_t
  *
  *  Unlink the packet from the connection, and remove any tracking
@@ -2439,142 +2578,6 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 	conn_transition(c, CONN_ACTIVE);
 
 	return FR_CONNECTION_STATE_CONNECTED;
-}
-
-
-/** Initialise a new outbound connection
- *
- * @param[out] fd_out	Where to write the new file descriptor.
- * @param[in] uctx	A #fr_io_connection_thread_t.
- */
-static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
-{
-	int				fd;
-	fr_io_connection_t	*c = talloc_get_type_abort(uctx, fr_io_connection_t);
-
-	/*
-	 *	Open the outgoing socket.
-	 */
-	fd = fr_socket_client_udp(&c->src_ipaddr, &c->src_port, &c->dst_ipaddr, c->dst_port, true);
-	if (fd < 0) {
-		PERROR("%s - Failed opening socket", c->module_name);
-		return FR_CONNECTION_STATE_FAILED;
-	}
-
-	/*
-	 *	Set the connection name.
-	 */
-	talloc_const_free(c->name);
-	c->name = fr_asprintf(c, "connecting proto udp from %pV to %pV port %u",
-			      fr_box_ipaddr(c->src_ipaddr),
-			      fr_box_ipaddr(c->dst_ipaddr), c->dst_port);
-
-#ifdef SO_RCVBUF
-	if (c->inst->recv_buff_is_set) {
-		int opt;
-
-		opt = c->inst->recv_buff;
-		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
-			WARN("Failed setting 'recv_buf': %s", fr_syserror(errno));
-		}
-	}
-#endif
-
-#ifdef SO_SNDBUF
-	if (c->inst->send_buff_is_set) {
-		int opt;
-
-		opt = c->inst->send_buff;
-		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
-			WARN("Failed setting 'send_buf': %s", fr_syserror(errno));
-		}
-	}
-#endif
-
-	/*
-	 *	Insert the connection into the opening list
-	 */
-	conn_transition(c, CONN_OPENING);
-	c->fd = fd;
-
-	// @todo - initialize the tracking memory, etc.
-	// i.e. histograms (or hyperloglog) of packets, so we can see
-	// which connections / home servers are fast / slow.
-
-	*fd_out = fd;
-
-	return FR_CONNECTION_STATE_CONNECTING;
-}
-
-/** Free the connection, and return requests to the thread queue
- *
- */
-static int _conn_free(fr_io_connection_t *c)
-{
-	fr_io_request_t	*u;
-	fr_io_connection_thread_t		*t = talloc_get_type_abort(c->thread, fr_io_connection_thread_t);
-	rlm_radius_udp_connection_t	*radius = c->ctx;
-
-	/*
-	 *	We're no longer using this connection.
-	 */
-	while (true) {
-		uint32_t num_connections;
-
-		num_connections = load(c->inst->parent->num_connections);
-		rad_assert(num_connections > 0);
-
-		if (cas_decr(c->inst->parent->num_connections, num_connections)) break;
-	}
-
-	/*
-	 *	Explicit free not technically required,
-	 *	but may prevent future ordering issues.
-	 */
-	talloc_free(c->conn);
-	c->conn = NULL;
-
-	/*
-	 *	Move "sent" packets back to the main thread queue
-	 */
-	while ((u = fr_dlist_head(&c->sent)) != NULL) {
-		state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);
-	}
-
-	if (radius->status_u) talloc_free(radius->status_u);
-
-	if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
-	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
-
-	talloc_free_children(c); /* clears out FD events, timers, etc. */
-
-	switch (c->state) {
-	default:
-		rad_assert(0 == 1);
-		break;
-
-	case CONN_INIT:
-		break;
-
-	case CONN_OPENING:
-		fr_dlist_remove(&c->thread->opening, c);
-		break;
-
-	case CONN_FULL:
-		fr_dlist_remove(&c->thread->blocked, c);
-		break;
-
-	case CONN_ZOMBIE:
-		fr_dlist_remove(&c->thread->zombie, c);
-		break;
-
-	case CONN_ACTIVE:
-		rad_assert(c->heap_id < 0);
-		(void) fr_heap_extract(t->active, c);
-		break;
-	}
-
-	return 0;
 }
 
 
