@@ -2,7 +2,7 @@
 #
 
 # Non matching on attribute ref
-if (User-Name !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
+if (&User-Name !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
 	test_fail
 }
 
@@ -12,10 +12,10 @@ if ("%{User-Name}" !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) 
 }
 
 # Matching on attribute ref with capture groups
-if (User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
+if (&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
 	# Test all the capture groups
 	update {
-		reply:User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
+		&reply:User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
 	}
 }
 else {
@@ -23,7 +23,7 @@ else {
 }
 
 # Checking capture groups are cleared out correctly
-if (User-Name =~ /^([0-9])_/) {
+if (&User-Name =~ /^([0-9])_/) {
 	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1_1') {
 		test_fail
 	}
@@ -33,7 +33,7 @@ else {
 }
 
 # Checking capture groups are cleared out correctly when there are no matches
-if (User-Name =~ /^./) {
+if (&User-Name =~ /^./) {
 	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1') {
 		test_fail
 	}
@@ -43,7 +43,7 @@ else {
 }
 
 # compiled - ref - insensitive
-if (Calling-Station-Id !~ /:roamyroam$/i) {
+if (&Calling-Station-Id !~ /:roamyroam$/i) {
 	test_fail
 }
 
@@ -53,7 +53,7 @@ if ("%{Calling-Station-Id}" !~ /:roamyroam$/i) {
 }
 
 # compiled - enum - ref - insensitive
-if (Service-Type !~ /^framed-user$/i) {
+if (&Service-Type !~ /^framed-user$/i) {
 	test_fail
 }
 
@@ -63,12 +63,12 @@ if ("%{Service-Type}" !~ /^framed-user$/i) {
 }
 
 # compiled - enum - ref
-if (Service-Type =~ /^framed-user$/) {
+if (&Service-Type =~ /^framed-user$/) {
 	test_fail
 }
 
 update request {
-	Tmp-String-0 := "foo\nbar"
+	&Tmp-String-0 := "foo\nbar"
 }
 
 # compiled - ref - multiline

@@ -9,12 +9,12 @@ update {
 	&control:Tmp-String-0 += '3'
 }
 
-foreach control:Tmp-String-0 {
+foreach &control:Tmp-String-0 {
 	update control {
-		Tmp-String-0 -= "%{expr:%{Foreach-Variable-0} + 1}"
+		&Tmp-String-0 -= "%{expr:%{Foreach-Variable-0} + 1}"
 	}
 	update request {
-		Tmp-String-0 += "%{Foreach-Variable-0}"
+		&Tmp-String-0 += "%{Foreach-Variable-0}"
 	}
 }
 

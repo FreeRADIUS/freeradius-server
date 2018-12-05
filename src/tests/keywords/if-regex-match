@@ -1,11 +1,11 @@
 # PRE: if
 #
 update request {
-	Tmp-Integer-0 := '123456789'
+	&Tmp-Integer-0 := '123456789'
 }
 
 # Non matching on attribute ref
-if (User-Name !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
+if (&User-Name !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
 	test_fail
 }
 
@@ -15,10 +15,10 @@ if ("%{User-Name}" !~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{T
 }
 
 # Matching on attribute ref with capture groups
-if (User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
+if (&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
 	# Test all the capture groups
 	update {
-		reply:User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
+		&reply:User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
 	}
 }
 else {
@@ -26,7 +26,7 @@ else {
 }
 
 # Checking capture groups are cleared out correctly
-if (User-Name =~ /^([0-9])_%{Tmp-String-0}/) {
+if (&User-Name =~ /^([0-9])_%{Tmp-String-0}/) {
 	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1_1') {
 		test_fail
 	}
@@ -36,7 +36,7 @@ else {
 }
 
 # Checking capture groups are cleared out correctly when there are no matches
-if (User-Name =~ /^.%{Tmp-String-0}/) {
+if (&User-Name =~ /^.%{Tmp-String-0}/) {
 	if ("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" != '1') {
 		test_fail
 	}
@@ -66,7 +66,7 @@ else {
 }
 
 # uncompiled - ref - insensitive
-if (Calling-Station-Id !~ /:roamyroam%{Tmp-String-0}$/i) {
+if (&Calling-Station-Id !~ /:roamyroam%{Tmp-String-0}$/i) {
 	test_fail
 }
 
@@ -76,7 +76,7 @@ if ("%{Calling-Station-Id}" !~ /:roamyroam%{Tmp-String-0}$/i) {
 }
 
 # uncompiled - enum - ref - insensitive
-if (Service-Type !~ /^framed-user%{Tmp-String-0}$/i) {
+if (&Service-Type !~ /^framed-user%{Tmp-String-0}$/i) {
 	test_fail
 }
 
@@ -86,17 +86,17 @@ if ("%{Service-Type}" !~ /^framed-user%{Tmp-String-0}$/i) {
 }
 
 # uncompiled - enum - ref
-if (Service-Type =~ /^framed-user%{Tmp-String-0}$/) {
+if (&Service-Type =~ /^framed-user%{Tmp-String-0}$/) {
 	test_fail
 }
 
 # uncompiled - integer - ref
-if (Tmp-Integer-0 !~ /%{Tmp-Integer-0}/) {
+if (&Tmp-Integer-0 !~ /%{Tmp-Integer-0}/) {
 	test_fail
 }
 
 update request {
-	Tmp-String-0 := "foo\nbar"
+	&Tmp-String-0 := "foo\nbar"
 }
 
 # uncompiled - ref - multiline

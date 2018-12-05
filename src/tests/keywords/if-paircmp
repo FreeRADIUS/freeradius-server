@@ -2,7 +2,7 @@
 # PRE: update if
 #
 update {
-       control:Cleartext-Password := 'hello'
+	&control:Cleartext-Password := 'hello'
 }
 
 #

@@ -3,9 +3,9 @@
 #
 #  Matching "if" conditions
 #
-if (User-Name != "bob") {
+if (&User-Name != "bob") {
 	update reply {
-		Filter-Id := "not bob"
+		&Filter-Id := "not bob"
 	}
 }
 else {

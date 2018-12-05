@@ -2,13 +2,13 @@
 # PRE: update if
 #
 update {
-       control:Cleartext-Password := 'hello'
+       &control:Cleartext-Password := 'hello'
 }
 
 update request {
-	Cisco-AVPair := 'foo=bar'
-	Cisco-AVPair += 'bar=baz'
-	Cisco-AVPair += 'baz=foo'
+	&Cisco-AVPair := 'foo=bar'
+	&Cisco-AVPair += 'bar=baz'
+	&Cisco-AVPair += 'baz=foo'
 }
 
 if (&Cisco-AVPair[*] =~ /bar=(.*)/) {

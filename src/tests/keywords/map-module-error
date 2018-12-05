@@ -2,5 +2,5 @@
 #  PRE: map-2arg-error
 #
 map foo "bar" {		# ERROR
-    User-Name = 'foo'
+	&User-Name = 'foo'
 }
