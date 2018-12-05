@@ -57,6 +57,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Some SQL modules can now use "auto_escape" to escape unsafe strings.
 	  See mods-config/sql/main/mysql/queries.conf
 	* Add wispr2date conversion in mods-available/date
+	* Implement dictionary-based handling in rlm_python.  Fixes #2334.
+	  See mods-available/python for details.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -106,6 +108,9 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Remove internal FreeRADIUS-Response-Delay attributes
 	  from attr_filter Access-Reject.
 	* Don't send junk to redis when maximum args reached.
+	* Small updates to IPv6 for accounting schema.
+	  Fixes #2364.
+	* Fix OpenDirectory integration in rlm_mschap
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
