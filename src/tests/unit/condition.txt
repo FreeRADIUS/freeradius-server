@@ -95,7 +95,7 @@ data !&User-Name == &User-Password || &Filter-Id == &Reply-Message
 condition ((a == b) || (c == d)))
 data ERROR offset 22 Unexpected closing brace
 
-condition (handled && (Response-Packet-Type == Access-Challenge))
+condition (handled && (&Response-Packet-Type == Access-Challenge))
 data handled && &Response-Packet-Type == Access-Challenge
 
 # This is OK, without the braces
@@ -106,16 +106,16 @@ data handled && &Response-Packet-Type == Access-Challenge
 condition handled &&&Response-Packet-Type == Access-Challenge
 data handled && &Response-Packet-Type == Access-Challenge
 
-condition reply == request
+condition &reply: == &request:
 data ERROR offset 0 Cannot use list references in condition
 
-condition reply == "hello"
+condition &reply: == "hello"
 data ERROR offset 0 Cannot use list references in condition
 
-condition "hello" == reply
+condition "hello" == &reply:
 data ERROR offset 0 Cannot use list references in condition
 
-condition request:User-Name == reply:User-Name
+condition &request:User-Name == &reply:User-Name
 data &User-Name == &reply:User-Name
 
 #
@@ -133,22 +133,22 @@ data &User-Name == &User-Password
 condition <ipv6addr>foo
 data ERROR offset 0 Cannot do cast for existence check
 
-condition <ipaddr>Filter-Id == &Framed-IP-Address
+condition <ipaddr>&Filter-Id == &Framed-IP-Address
 data <ipaddr>&Filter-Id == &Framed-IP-Address
 
-condition <ipaddr>Filter-Id == <ipaddr>&Framed-IP-Address
-data ERROR offset 21 Unnecessary cast
+condition <ipaddr>&Filter-Id == <ipaddr>&Framed-IP-Address
+data ERROR offset 22 Unnecessary cast
 
-condition <ipaddr>Filter-Id == <integer>&Framed-IP-Address
-data ERROR offset 21 Cannot cast to a different data type
+condition <ipaddr>&Filter-Id == <integer>&Framed-IP-Address
+data ERROR offset 22 Cannot cast to a different data type
 
-condition <ipaddr>Filter-Id == <blerg>&Framed-IP-Address
-data ERROR offset 22 Invalid data type in cast
+condition <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
+data ERROR offset 23 Invalid data type in cast
 
 #
 #  Normalize things
 #
-condition <ipaddr>Filter-Id == "127.0.0.1"
+condition <ipaddr>&Filter-Id == "127.0.0.1"
 data <ipaddr>&Filter-Id == '127.0.0.1'
 
 condition <ipaddr>127.0.0.1 < &Framed-IP-Address
@@ -162,64 +162,64 @@ condition "foo" =* bar
 data ERROR offset 6 Cannot use =* on a string
 
 # existence checks don't need the RHS
-condition User-Name =* bar
+condition &User-Name =* bar
 data &User-Name
 
-condition User-Name !* bar
+condition &User-Name !* bar
 data !&User-Name
 
-condition !User-Name =* bar
+condition !&User-Name =* bar
 data !&User-Name
 
-condition !User-Name !* bar
+condition !&User-Name !* bar
 data &User-Name
 
 # redundant casts get squashed
-condition <ipaddr>Framed-IP-Address == 127.0.0.1
+condition <ipaddr>&Framed-IP-Address == 127.0.0.1
 data &Framed-IP-Address == 127.0.0.1
 
-condition <cidr>Framed-IP-Address <= 192.168.0.0/16
+condition <cidr>&Framed-IP-Address <= 192.168.0.0/16
 data <ipv4prefix>&Framed-IP-Address <= 192.168.0.0/16
 
 # All IP address literals should be parsed as prefixes
-condition Framed-IP-Address <= 192.168.0.0/16
+condition &Framed-IP-Address <= 192.168.0.0/16
 data <ipv4prefix>&Framed-IP-Address <= 192.168.0.0/16
 
 # string attributes must be string
-condition User-Name == "bob"
+condition &User-Name == "bob"
 data &User-Name == "bob"
 
-condition User-Name == `bob`
+condition &User-Name == `bob`
 data &User-Name == `bob`
 
-condition User-Name == 'bob'
+condition &User-Name == 'bob'
 data &User-Name == 'bob'
 
-condition User-Name == bob
-data ERROR offset 13 Comparison value must be a quoted string
+condition &User-Name == bob
+data ERROR offset 14 Comparison value must be a quoted string
 
 # Integer (etc.) types must be "bare"
-condition Session-Timeout == 10
+condition &Session-Timeout == 10
 data &Session-Timeout == 10
 
-condition Session-Timeout == '10'
-data ERROR offset 19 Comparison value must be an unquoted string
+condition &Session-Timeout == '10'
+data ERROR offset 20 Comparison value must be an unquoted string
 
 # Except for dates, which can be humanly readable!
 # This one is be an expansion, so it's left as-is.
-condition Event-Timestamp == "January 1, 2012 %{blah}"
+condition &Event-Timestamp == "January 1, 2012 %{blah}"
 data &Event-Timestamp == "January 1, 2012 %{blah}"
 
 # This one is NOT an expansion, so it's parsed into normal form
-condition Event-Timestamp == 'January 1, 2012'
+condition &Event-Timestamp == 'January 1, 2012'
 #data &Event-Timestamp == 'Jan  1 2012 00:00:00 EST'
 
 # literals are parsed when the conditions are parsed
 condition <integer>X == 1
 data ERROR offset 9 Failed to parse field
 
-condition NAS-Port == X
-data ERROR offset 12 Failed to parse value for attribute
+condition &NAS-Port == X
+data ERROR offset 13 Failed to parse value for attribute
 
 #
 #  The RHS is a static string, so this gets mashed to a literal,
@@ -258,16 +258,16 @@ data false
 condition 0
 data false
 
-condition true && (User-Name == "bob")
+condition true && (&User-Name == "bob")
 data &User-Name == "bob"
 
-condition false && (User-Name == "bob")
+condition false && (&User-Name == "bob")
 data false
 
-condition false || (User-Name == "bob")
+condition false || (&User-Name == "bob")
 data &User-Name == "bob"
 
-condition true || (User-Name == "bob")
+condition true || (&User-Name == "bob")
 data true
 
 #
@@ -384,7 +384,7 @@ data true
 condition (`a`)
 data `a`
 
-condition (User-name)
+condition (&User-name)
 data &User-Name
 
 #

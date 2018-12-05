@@ -6,17 +6,17 @@ update {
        &request:Class := 0xad
 }
 
-if (<byte>Class == 173) {
+if (<byte>&Class == 173) {
 	success
 }
 
-if (<byte>Class < 173) {
+if (<byte>&Class < 173) {
 	update reply {
 		&Filter-Id += "wrong"
 	}
 }
 
-if (<byte>Class > 173) {
+if (<byte>&Class > 173) {
 	update reply {
 		&Filter-Id += "wrong"
 	}

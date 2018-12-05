@@ -1,5 +1,5 @@
 update control {
-       Cleartext-Password := 'hello'
+       &Cleartext-Password := 'hello'
 }
 
 success

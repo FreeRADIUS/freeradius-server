@@ -5,13 +5,13 @@ switch &User-Name {
 
 	case "doug" {
 		update reply {
-			Filter-Id := "doug"
+			&Filter-Id := "doug"
 		}
 	}
 
 	case {
 		update reply {
-			Filter-Id := "default"
+			&Filter-Id := "default"
 		}
 	}
 }

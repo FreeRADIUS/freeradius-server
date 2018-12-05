@@ -29,7 +29,7 @@ data !&User-Name =~ /^foo\nbar$/
 condition &User-Name =~ /@|\\/
 data &User-Name =~ /@|\\/
 
-condition User-Name =~ /^([^\\]*)\\(.*)$/
+condition &User-Name =~ /^([^\\]*)\\(.*)$/
 data &User-Name =~ /^([^\\]*)\\(.*)$/
 
 xlat %{1}

@@ -2,7 +2,7 @@
 #  PRE: update
 #
 update request {
-	3GPP-IMSI := "hello"
+	&3GPP-IMSI := "hello"
 }
 
 #

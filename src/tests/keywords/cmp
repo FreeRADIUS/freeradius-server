@@ -2,17 +2,17 @@
 #  PRE: update
 #
 update control {
-       Cleartext-Password := 'hello'
+       &Cleartext-Password := 'hello'
 }
 
 update request {
-       Called-Station-Id  := "This is a test"
-       Calling-Station-Id := "This is a test"
+       &Called-Station-Id  := "This is a test"
+       &Calling-Station-Id := "This is a test"
 }
 
 #
 #  Check attribute references
 #
-if (Called-Station-Id == &Calling-Station-Id) {
+if (&Called-Station-Id == &Calling-Station-Id) {
 	success
 }
