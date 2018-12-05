@@ -625,131 +625,100 @@ static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 	REXDENT();
 }
 
-size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
+size_t xlat_snprint(char *out, size_t outlen, xlat_exp_t const *node)
 {
-	size_t len;
 	char *p, *end;
 
-	if (!node) {
-		*buffer = '\0';
+	if (!node || (outlen <= 2)) {
+		*out = '\0';
 		return 0;
 	}
 
-	p = buffer;
-	end = buffer + bufsize;
+	p = out;
+	end = out + outlen;
+
+#define CHECK_SPACE(_p, _end) if (_p >= _end) goto oob
 
 	while (node) {
-		switch (node->type) {
-		case XLAT_LITERAL:
-			strlcpy(p, node->fmt, end - p);
-			p += strlen(p);
-			break;
+		if (node->type == XLAT_LITERAL) {
+			p += strlcpy(p, node->fmt, end - p);
+			CHECK_SPACE(p, end);
+			goto next;
+		}
 
-		case XLAT_ONE_LETTER:
-			p[0] = '%';
-			p[1] = node->fmt[0];
-			p += 2;
-			break;
-
-		case XLAT_ATTRIBUTE:
+		if (node->type == XLAT_ONE_LETTER) {
 			*(p++) = '%';
-			*(p++) = '{';
-
-			/*
-			 *	@todo - just call tmpl_snprint() ??
-			 */
-			if (node->attr->tmpl_request != REQUEST_CURRENT) {
-				strlcpy(p, fr_int2str(request_ref_table, node->attr->tmpl_request, "??"), end - p);
-				p += strlen(p);
-				*(p++) = '.';
+			if (p >= end) {
+			oob:
+				out[outlen - 1] = '\0';
+				return outlen + 1;
 			}
 
-			if ((node->attr->tmpl_request != REQUEST_CURRENT) ||
-			    (node->attr->tmpl_list != PAIR_LIST_REQUEST)) {
-				strlcpy(p, fr_int2str(pair_list_table, node->attr->tmpl_list, "??"), end - p);
-				p += strlen(p);
-				*(p++) = ':';
-			}
+			*(p++) = node->fmt[0];
+			CHECK_SPACE(p, end);
+			goto next;
+		}
 
-			strlcpy(p, node->attr->tmpl_da->name, end - p);
-			p += strlen(p);
+		*(p++) = '%';
+		CHECK_SPACE(p, end);
+		*(p++) = '{';
+		CHECK_SPACE(p, end);
 
-			if (TAG_VALID(node->attr->tmpl_tag)) {
-				snprintf(p, end - p, ":%d", node->attr->tmpl_tag);
-				p += strlen(p);
-			}
-
-			if (node->attr->tmpl_num != NUM_ANY) {
-				*(p++) = '[';
-				switch (node->attr->tmpl_num) {
-				case NUM_COUNT:
-					*(p++) = '#';
-					break;
-
-				case NUM_ALL:
-					*(p++) = '*';
-					break;
-
-				default:
-					snprintf(p, end - p, "%i", node->attr->tmpl_num);
-					p += strlen(p);
-				}
-				*(p++) = ']';
-			}
-			*(p++) = '}';
+		switch (node->type) {
+		case XLAT_ATTRIBUTE:
+			p += tmpl_snprint_attr_str(p, end - p, node->attr);
+			CHECK_SPACE(p, end);
 			break;
 #ifdef HAVE_REGEX
 		case XLAT_REGEX:
-			snprintf(p, end - p, "%%{%i}", node->regex_index);
-			p += strlen(p);
+			p += snprintf(p, end - p, "%i", node->regex_index);
+			CHECK_SPACE(p, end);
 			break;
 #endif
 		case XLAT_VIRTUAL:
-			*(p++) = '%';
-			*(p++) = '{';
-			strlcpy(p, node->fmt, end - p);
-			p += strlen(p);
-			*(p++) = '}';
+			p += strlcpy(p, node->fmt, end - p);
+			CHECK_SPACE(p, end);
 			break;
 
 		case XLAT_FUNC:
-			*(p++) = '%';
-			*(p++) = '{';
-			strlcpy(p, node->xlat->name, end - p);
-			p += strlen(p);
+			p += strlcpy(p, node->xlat->name, end - p);
+			CHECK_SPACE(p, end);
+
 			*(p++) = ':';
+			CHECK_SPACE(p, end);
+
 			rad_assert(node->child != NULL);
-			len = xlat_snprint(p, end - p, node->child);
-			p += len;
-			*(p++) = '}';
+			p += xlat_snprint(p, end - p, node->child);
+			CHECK_SPACE(p, end);
 			break;
 
 		case XLAT_ALTERNATE:
-			*(p++) = '%';
-			*(p++) = '{';
-
-			len = xlat_snprint(p, end - p, node->child);
-			p += len;
+			p += xlat_snprint(p, end - p, node->child);
+			CHECK_SPACE(p, end);
 
 			*(p++) = ':';
+			CHECK_SPACE(p, end);
 			*(p++) = '-';
+			CHECK_SPACE(p, end);
 
-			len = xlat_snprint(p, end - p, node->alternate);
-			p += len;
-
-			*(p++) = '}';
+			p += xlat_snprint(p, end - p, node->alternate);
+			CHECK_SPACE(p, end);
 			break;
+
+		default:
+			if (!fr_cond_assert(0)) break;
 		}
 
+		*(p++) = '}';
+		CHECK_SPACE(p, end);
 
-		if (p == end) break;
-
+	next:
 		node = node->next;
 	}
 
 	*p = '\0';
 
-	return p - buffer;
+	return p - out;
 }
 
 /** Tokenize an xlat expansion at runtime
