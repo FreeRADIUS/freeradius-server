@@ -2,7 +2,7 @@
 #  PRE: switch
 #
 update request {
-	Tmp-String-0 := &User-Name
+	&Tmp-String-0 := &User-Name
 }
 
 #

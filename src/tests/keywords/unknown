@@ -2,18 +2,18 @@
 #  PRE: wimax
 #
 update control {
-       Cleartext-Password := 'hello'
+	&Cleartext-Password := 'hello'
 }
 
 update request {
-	FreeRADIUS-Proxied-To  := 127.0.0.2
+	&FreeRADIUS-Proxied-To  := 127.0.0.2
 }
 
 #
 #  Check that a known but malformed attr is malformed
 #
 update request {
-	Attr-26.24757.84.9.5.7 = 0xab
+	&Attr-26.24757.84.9.5.7 = 0xab
 }
 
 if (&Attr-26.24757.84.9.5.7 != 0xab) {
@@ -24,7 +24,7 @@ if (&Attr-26.24757.84.9.5.7 != 0xab) {
 #  Check that an unknown attr is OK
 #
 update request {
-       Attr-26.24757.84.9.5.15 = 0xabcdef
+	&Attr-26.24757.84.9.5.15 = 0xabcdef
 }
 
 if (&Attr-26.24757.84.9.5.15 != 0xabcdef) {

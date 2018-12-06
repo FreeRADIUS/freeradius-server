@@ -2,10 +2,10 @@
 #  PRE: update if
 #
 update control {
-	Cleartext-Password := 'hello'
+	&Cleartext-Password := 'hello'
 }
 
-if (User-Name == "bob") {
+if (&User-Name == "bob") {
 	ok
 
 	#
@@ -14,7 +14,7 @@ if (User-Name == "bob") {
 	#  in the "authorize" section.
 	#
 	update control {
-		Auth-Type := PAP
+		&Auth-Type := PAP
 	}
 
 	#

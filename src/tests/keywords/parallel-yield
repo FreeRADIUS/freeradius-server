@@ -6,7 +6,7 @@
 parallel {
 	reschedule
 	update request {
-		Tmp-String-0 := 'foo'
+		&Tmp-String-0 := 'foo'
 	}
 }
 

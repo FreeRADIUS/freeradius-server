@@ -54,21 +54,21 @@ else {
 #
 #  Test paircmp group comparisons
 #
-if (SQL-Group != 'groups_group_a') {
+if (&SQL-Group != 'groups_group_a') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (SQL-Group == 'groups_group_b') {
+if (&SQL-Group == 'groups_group_b') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (SQL-Group == 'groups_group_c') {
+if (&SQL-Group == 'groups_group_c') {
 	test_pass
 }
 else {
@@ -76,7 +76,7 @@ else {
 }
 
 # Non-existent group
-if (SQL-Group != 'groups_group_d') {
+if (&SQL-Group != 'groups_group_d') {
 	test_pass
 }
 else {
@@ -87,10 +87,10 @@ else {
 #  Test paircmp group comparisons with dynamic expansions
 #
 update request {
-	Tmp-String-0 := 'groups_group_b'
+	&Tmp-String-0 := 'groups_group_b'
 }
 
-if (SQL-Group == "%{Tmp-String-0}") {
+if (&SQL-Group == "%{Tmp-String-0}") {
 	test_pass
 }
 else {

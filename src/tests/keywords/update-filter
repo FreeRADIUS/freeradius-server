@@ -2,13 +2,13 @@
 #  PRE: update
 #
 update control {
-	Tmp-Integer-0 := 5
-	Tmp-Integer-0 += 10
-	Tmp-Integer-0 += 15
-	Tmp-Integer-0 += 20
-	Tmp-String-0 := 'foo'
-	Tmp-String-0 += 'baz'
-	Tmp-String-0 += 'boink'
+	&Tmp-Integer-0 := 5
+	&Tmp-Integer-0 += 10
+	&Tmp-Integer-0 += 15
+	&Tmp-Integer-0 += 20
+	&Tmp-String-0 := 'foo'
+	&Tmp-String-0 += 'baz'
+	&Tmp-String-0 += 'boink'
 }
 
 # Reset the request list
@@ -242,7 +242,7 @@ if ("%{Tmp-String-0[#]}" != 1) {
 debug_request
 
 update control {
-	Auth-Type := Accept
+	&Auth-Type := Accept
 }
 
 success

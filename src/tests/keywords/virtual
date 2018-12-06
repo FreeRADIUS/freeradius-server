@@ -2,9 +2,9 @@
 #  PRE: update if
 #
 update control {
-       Cleartext-Password := 'hello'
+	&Cleartext-Password := 'hello'
 }
 
-if (request:Packet-Type == Access-Request) {
+if (&request:Packet-Type == Access-Request) {
 	success
 }

@@ -7,21 +7,21 @@
 #
 if ('${feature.tls}' != 'yes') {
 	update control {
-		Response-Packet-Type := Access-Accept
+		&Response-Packet-Type := Access-Accept
 	}
 	handled
 }
 
 update {
-	control: !* ANY
-	request:Tmp-String-0 := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
+	&control: !* ANY
+	&request:Tmp-String-0 := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
 }
 
 #
 #  Hex encoded SSHA2-512 password
 #
 update {
-	control:Password-With-Header += "{ssha512}%{hex:%{sha512:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
+	&control:Password-With-Header += "{ssha512}%{hex:%{sha512:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
 }
 
 pap.authorize
@@ -33,28 +33,28 @@ if (reject) {
 }
 
 update {
-	control: !* ANY
+	&control: !* ANY
 }
 
 #
 #  Base64 encoded SSHA2-512 password
 #
 update {
-	control:Tmp-String-1 := "%{hex:%{sha512:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
+	&control:Tmp-String-1 := "%{hex:%{sha512:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
 }
 
 # To Binary
 update {
-	control:Tmp-Octets-0 := "%{bin:%{control:Tmp-String-1}}"
+	&control:Tmp-Octets-0 := "%{bin:%{control:Tmp-String-1}}"
 }
 
 # To Base64
 update {
-	control:Tmp-String-1 := "%{base64:%{control:Tmp-Octets-0}}"
+	&control:Tmp-String-1 := "%{base64:%{control:Tmp-Octets-0}}"
 }
 
 update {
-	control:Password-With-Header += "{ssha512}%{control:Tmp-String-1}"
+	&control:Password-With-Header += "{ssha512}%{control:Tmp-String-1}"
 }
 
 pap.authorize
@@ -66,28 +66,28 @@ if (reject) {
 }
 
 update {
-	control: !* ANY
+	&control: !* ANY
 }
 
 #
 #  Base64 of Base64 encoded SSHA2-512 password
 #
 update {
-	control:Tmp-String-1 := "%{hex:%{sha512:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
+	&control:Tmp-String-1 := "%{hex:%{sha512:%{request:User-Password}%{request:Tmp-String-0}}}%{hex:%{request:Tmp-String-0}}"
 }
 
 # To Binary
 update {
-	control:Tmp-Octets-0 := "%{bin:%{control:Tmp-String-1}}"
+	&control:Tmp-Octets-0 := "%{bin:%{control:Tmp-String-1}}"
 }
 
 # To Base64
 update {
-	control:Tmp-String-1 := "{ssha512}%{base64:%{control:Tmp-Octets-0}}"
+	&control:Tmp-String-1 := "{ssha512}%{base64:%{control:Tmp-Octets-0}}"
 }
 
 update {
-	control:Password-With-Header += "%{base64:%{control:Tmp-String-1}}"
+	&control:Password-With-Header += "%{base64:%{control:Tmp-String-1}}"
 }
 
 pap.authorize
@@ -99,11 +99,11 @@ if (reject) {
 }
 
 update {
-	control: !* ANY
+	&control: !* ANY
 }
 
 update control {
-	Auth-Type := Accept
+	&Auth-Type := Accept
 }
 
 success

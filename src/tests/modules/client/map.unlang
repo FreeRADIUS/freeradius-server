@@ -1,5 +1,5 @@
 map client {
-	Tmp-String-0 := 'nas_type'
+	&Tmp-String-0 := 'nas_type'
 }
 
 if (&Tmp-String-0 == 'a_type') {
@@ -10,7 +10,7 @@ else {
 }
 
 map client 127.0.0.1 {
-	Tmp-String-0 := 'nas_type'
+	&Tmp-String-0 := 'nas_type'
 }
 
 if (&Tmp-String-0 == 'a_type') {
@@ -21,7 +21,7 @@ else {
 }
 
 map client 127.0.0.2 {
-	Tmp-String-0 := 'nas_type'
+	&Tmp-String-0 := 'nas_type'
 }
 
 if (&Tmp-String-0 == 'b_type') {
@@ -32,7 +32,7 @@ else {
 }
 
 map client 127.0.0.5 {
-	Tmp-String-0 := 'nas_type'
+	&Tmp-String-0 := 'nas_type'
 }
 
 if (&Tmp-String-0 == 'b_type') {
@@ -46,7 +46,7 @@ else {
 #  Test multi-valued maps
 #
 map client {
-	Tmp-String-1 += 'group'
+	&Tmp-String-1 += 'group'
 }
 
 if (&Tmp-String-1[0] == 'a') {
@@ -71,7 +71,7 @@ else {
 }
 
 map client 127.0.0.2 {
-	Tmp-String-2 += 'group'
+	&Tmp-String-2 += 'group'
 }
 
 if (&Tmp-String-2[0] == 'd') {
@@ -99,8 +99,8 @@ else {
 #  Test non-existent client properties
 #
 map client {
-	Tmp-String-3 := 'non-existent-attr'
-	Tmp-String-4 += 'non-existing-attr2'
+	&Tmp-String-3 := 'non-existent-attr'
+	&Tmp-String-4 += 'non-existing-attr2'
 }
 
 if (&Tmp-String-3) {

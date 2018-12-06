@@ -3,14 +3,14 @@
 #
 
 update request {
-	Service-Type := Login-User
-	Filter-Id := "Login-User"
+	&Service-Type := Login-User
+	&Filter-Id := "Login-User"
 }
 
 switch &Service-Type {
        case "%{expr: 1 + 2}" {
 		update reply {
-			Filter-Id := "3"
+			&Filter-Id := "3"
 		}
        }
 
@@ -25,7 +25,7 @@ switch &Service-Type {
 
        case {
 		update reply {
-			Filter-Id := "default"
+			&Filter-Id := "default"
 		}
        }
 

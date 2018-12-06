@@ -272,7 +272,7 @@ else {
 }
 
 update request {
-	Tmp-String-0 := "SELECT * FROM radusergroup WHERE priority = 0 AND username = '%{User-Name}'"
+	&Tmp-String-0 := "SELECT * FROM radusergroup WHERE priority = 0 AND username = '%{User-Name}'"
 }
 
 # Clear the control list

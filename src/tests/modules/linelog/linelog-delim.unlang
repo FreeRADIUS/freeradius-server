@@ -1,5 +1,5 @@
 update control {
-	Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
+	&Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 }
 
 #
@@ -7,7 +7,7 @@ update control {
 #
 group {
 	update request {
-		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_delim.log"`
+		&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_delim.log"`
 	}
 
 	#
@@ -24,7 +24,7 @@ if (fail) {
 
 linelog_fmt_delim
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_delim.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_delim.log"`
 }
 
 if (&Tmp-String-0 == 'bob, ') {
@@ -37,7 +37,7 @@ else {
 #  Check strings are appended
 linelog_fmt_delim
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_delim.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_delim.log"`
 }
 
 if (&Tmp-String-0 == 'bob, bob, ') {
@@ -49,5 +49,5 @@ else {
 
 #  Remove the file
 update request {
-	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_delim.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_delim.log"`
 }

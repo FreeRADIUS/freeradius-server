@@ -3,7 +3,7 @@
 #
 
 update request {
-	Tmp-String-0 := "{\"foo\":\"bar\"}"
+	&Tmp-String-0 := "{\"foo\":\"bar\"}"
 }
 
 # 0. Simple field access
@@ -458,7 +458,7 @@ update request {
 
 # 34. Path containing dynamic expansion
 update request {
-	Tmp-Integer-2 := 0
+	&Tmp-Integer-2 := 0
 }
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += "$[3][%{Tmp-Integer-2}]"
@@ -523,7 +523,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-String-1 += '$..bool'
 }
-if (("%{Tmp-String-1[#]}" == 1) && (Tmp-String-1 == 'yes')) {
+if (("%{Tmp-String-1[#]}" == 1) && (&Tmp-String-1 == 'yes')) {
 	test_pass
 } else {
 	test_fail

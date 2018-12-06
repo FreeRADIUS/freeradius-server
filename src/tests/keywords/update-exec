@@ -2,7 +2,7 @@
 #  PRE: update update-remove-any if redundant
 #
 update control {
-       Cleartext-Password := 'hello'
+	&Cleartext-Password := 'hello'
 }
 
 #
@@ -74,7 +74,7 @@ redundant {
 	}
 	ok
 }
-if (Tmp-String-0) {
+if (&Tmp-String-0) {
 	test_fail
 }
 

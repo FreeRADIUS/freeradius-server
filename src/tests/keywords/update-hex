@@ -4,22 +4,22 @@
 #  Update using a bareword containing a hex string
 #
 update {
-       control:Cleartext-Password := 'hello'
+	&control:Cleartext-Password := 'hello'
 }
 
 update {
-	Tmp-String-0 := 0x626f62
+	&Tmp-String-0 := 0x626f62
 }
 
-if (Tmp-String-0 != 'bob') {
+if (&Tmp-String-0 != 'bob') {
 	test_fail
 }
 
 update {
-	Tmp-String-0 := '0x626f62'
+	&Tmp-String-0 := '0x626f62'
 }
 
-if (Tmp-String-0 != '0x626f62') {
+if (&Tmp-String-0 != '0x626f62') {
 	test_fail
 }
 

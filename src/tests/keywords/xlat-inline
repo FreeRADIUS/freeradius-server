@@ -2,12 +2,12 @@
 # PRE: update
 #
 update {
-	control:Cleartext-Password := 'hello'
+	&control:Cleartext-Password := 'hello'
 }
 
 # Set debug to something high, recording the old level
 update request {
-	Tmp-Integer-0 := "%{debug:4}"
+	&Tmp-Integer-0 := "%{debug:4}"
 }
 
 # Check debug level is now 4

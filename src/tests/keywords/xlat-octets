@@ -4,7 +4,7 @@
 #  Remove all attributes in a list
 #
 update {
-	control:Cleartext-Password := 'hello'
+	&control:Cleartext-Password := 'hello'
 }
 
 #
@@ -12,8 +12,8 @@ update {
 #  octet strings must NOT have a 0x prefix added
 #
 update request {
-	Tmp-Octets-0 := 0x0001020304050607
-	Tmp-Octets-0 += 0x0706050403020100
+	&Tmp-Octets-0 := 0x0001020304050607
+	&Tmp-Octets-0 += 0x0706050403020100
 }
 
 if ("%{Tmp-Octets-0}" != '0x0001020304050607') {

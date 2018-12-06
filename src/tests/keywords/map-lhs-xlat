@@ -3,9 +3,9 @@
 #
 
 update request {
-	Tmp-String-0 := "reply:Filter-Id"
+	&Tmp-String-0 := "reply:Filter-Id"
 }
 
 map csv "%{tolower:%{User-Name}}" {
-    "%{Tmp-String-0}" := 'field3'
+	"%{Tmp-String-0}" := 'field3'
 }

@@ -5,5 +5,5 @@
 #  part of the set of enumerated values for an attribute
 #
 update {
-       Service-Type := 'hello'	# ERROR
+	&Service-Type := 'hello'	# ERROR
 }

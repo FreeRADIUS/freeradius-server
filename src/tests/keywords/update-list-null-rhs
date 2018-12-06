@@ -4,9 +4,9 @@
 #  Form attribute references with xlats
 #
 update request {
-	Tmp-String-0 += 'foo'
-	Tmp-String-0 += 'bar'
-	Tmp-String-1 += 'baz'
+	&Tmp-String-0 += 'foo'
+	&Tmp-String-0 += 'bar'
+	&Tmp-String-1 += 'baz'
 	&control: !* ANY
 }
 

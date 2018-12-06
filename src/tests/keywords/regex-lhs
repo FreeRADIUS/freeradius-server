@@ -7,8 +7,8 @@
 #  characters escaped.  Because the input strings are unsafe.
 #
 update request {
-	Tmp-String-0 := "example.com"
-	Tmp-String-1 := "^foo$bar"
+	&Tmp-String-0 := "example.com"
+	&Tmp-String-1 := "^foo$bar"
 }
 
 if (&Tmp-String-0 !~ /example\.com$/) {

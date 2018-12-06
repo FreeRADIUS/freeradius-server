@@ -1,5 +1,5 @@
 update control {
-	Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
+	&Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 }
 
 #
@@ -7,7 +7,7 @@ update control {
 #
 group {
 	update request {
-		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
+		&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
 	}
 
 	actions {
@@ -20,11 +20,11 @@ if (fail) {
 
 #  Check linelog fails over to the default message (an xlat expansion)
 update control {
-	Tmp-String-0 := 'test_default'
+	&Tmp-String-0 := 'test_default'
 }
 linelog_fmt_and_ref
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == 'bob default') {
@@ -36,12 +36,12 @@ else {
 
 #  Check linelog adds a newline at the end of each message (also tests if execs pointed to by refs work)
 update control {
-	Tmp-String-0 := 'test_exec'
+	&Tmp-String-0 := 'test_exec'
 }
 linelog_fmt_and_ref
 
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == 'bob exec') {
@@ -53,7 +53,7 @@ else {
 
 #  Check it's not overwriting the same line repeatedly
 update request {
-	Tmp-String-0 := `/bin/sh -c "head -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+	&Tmp-String-0 := `/bin/sh -c "head -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == 'bob default') {
@@ -65,12 +65,12 @@ else {
 
 #  Check linelog can use attrs pointed to by refs
 update control {
-	Tmp-String-0 := 'test_attr'
+	&Tmp-String-0 := 'test_attr'
 }
 linelog_fmt_and_ref
 
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == 'bob') {
@@ -82,12 +82,12 @@ else {
 
 #  Check linelog can use xlats pointed to by refs
 update control {
-	Tmp-String-0 := 'test_xlat'
+	&Tmp-String-0 := 'test_xlat'
 }
 linelog_fmt_and_ref
 
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == 'bob xlat') {
@@ -99,12 +99,12 @@ else {
 
 #  Check linelog can use literals pointed to by refs
 update control {
-	Tmp-String-0 := 'test_literal'
+	&Tmp-String-0 := 'test_literal'
 }
 linelog_fmt_and_ref
 
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == '%{User-Name} literal') {
@@ -116,12 +116,12 @@ else {
 
 #  Check linelog can use empty conf pairs
 update control {
-	Tmp-String-0 := 'test_empty'
+	&Tmp-String-0 := 'test_empty'
 }
 linelog_fmt_and_ref
 
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == '') {
@@ -133,13 +133,13 @@ else {
 
 #  Remove the file
 update request {
-	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 #  Remove old log files
 group {
 	update request {
-		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
+		&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
 	}
 
 	actions {
@@ -152,7 +152,7 @@ if (fail) {
 
 #  Check behaviour when we don't have a default configured (should not create new file)
 update control {
-	Tmp-String-0 := 'test_default'
+	&Tmp-String-0 := 'test_default'
 }
 linelog_ref
 if (noop) {
@@ -164,7 +164,7 @@ else {
 
 group {
 	update request {
-		Tmp-String-0 := `/bin/sh -c "test ! -e $ENV{MODULE_TEST_DIR}/test_b.log"`
+		&Tmp-String-0 := `/bin/sh -c "test ! -e $ENV{MODULE_TEST_DIR}/test_b.log"`
 	}
 
 	actions {
@@ -180,12 +180,12 @@ else {
 
 #  Check ref still works (with an exec)
 update control {
-	Tmp-String-0 := 'test_exec'
+	&Tmp-String-0 := 'test_exec'
 }
 linelog_ref
 
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_b.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_b.log"`
 }
 
 if (&Tmp-String-0 == 'bob exec') {
@@ -197,13 +197,13 @@ else {
 
 #  Remove the file
 update request {
-	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
 }
 
 #  Remove old log files
 group {
 	update request {
-		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
+		&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
 	}
 
 	actions {
@@ -216,12 +216,12 @@ if (fail) {
 
 #  Check behaviour using an attribute ref as a path
 update control {
-	Tmp-String-0 := '.messages.test_xlat'
+	&Tmp-String-0 := '.messages.test_xlat'
 }
 
 linelog_fmt_and_ref_attr
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 }
 
 if (&Tmp-String-0 == 'bob xlat') {
@@ -233,12 +233,12 @@ else {
 
 #  Check behaviour using an attribute ref (non existent path, with default also an attribute ref)
 update control {
-	Tmp-String-0 := 'test_xlat'
+	&Tmp-String-0 := 'test_xlat'
 }
 
 linelog_fmt_and_ref_attr
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 }
 
 if (&Tmp-String-0 == 'bob') {
@@ -250,12 +250,12 @@ else {
 
 #  Check '.' is always prefixed to the path
 update control {
-	Tmp-String-0 := 'messages.test_xlat'
+	&Tmp-String-0 := 'messages.test_xlat'
 }
 
 linelog_fmt_and_ref_attr
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 }
 
 if (&Tmp-String-0 == 'bob xlat') {
@@ -267,7 +267,7 @@ else {
 
 #  Check '..' results in a 'fail' (can't go up one level)
 update control {
-	Tmp-String-0 := '..messages.test_attr'
+	&Tmp-String-0 := '..messages.test_attr'
 }
 
 linelog_fmt_and_ref_attr {
@@ -281,7 +281,7 @@ else {
 }
 
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 }
 
 if (&Tmp-String-0 == 'bob xlat') {
@@ -293,7 +293,7 @@ else {
 
 #  Check '.messages' results in a 'fail' (messages is a section)
 update control {
-	Tmp-String-0 := '.messages'
+	&Tmp-String-0 := '.messages'
 }
 
 linelog_fmt_and_ref_attr {
@@ -308,13 +308,13 @@ else {
 
 #  Remove the file
 update request {
-	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
 }
 
 #  Remove old log files
 group {
 	update request {
-		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
+		&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
 	}
 
 	actions {
@@ -327,7 +327,7 @@ if (fail) {
 linelog_fmt
 
 update request {
-	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_d.log"`
+	&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_d.log"`
 }
 if (&Tmp-String-0 == 'bob') {
 	test_pass
@@ -338,5 +338,5 @@ else {
 
 #  Remove the file
 update request {
-	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
+	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
 }

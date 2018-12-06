@@ -3,9 +3,9 @@
 #
 
 update request {
-       Class := 0x01020304
-       Class += 0x05060708
-       Class += 0x090a0b0c
+       &Class := 0x01020304
+       &Class += 0x05060708
+       &Class += 0x090a0b0c
 }
 
 
@@ -15,9 +15,9 @@ update request {
 #
 
 update request {
-       Proxy-State += &Class[0]
-       Proxy-State += &Class[1]
-       Proxy-State += &Class[2]
+	&Proxy-State += &Class[0]
+	&Proxy-State += &Class[1]
+	&Proxy-State += &Class[2]
 }
 
 if (&Proxy-State != 0x01020304) {

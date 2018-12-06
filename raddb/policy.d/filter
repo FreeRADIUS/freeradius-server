@@ -153,7 +153,7 @@ filter_inner_identity {
 		#
 		if (&outer.request:User-Name =~ /@([^@]+)$/) {
 			update request {
-				Outer-Realm-Name = "%{1}"
+				&Outer-Realm-Name = "%{1}"
 			}
 
 			#
@@ -190,7 +190,7 @@ filter_inner_identity {
 		#
 		if (&User-Name =~ /@([^@]+)$/) {
 			update request {
-				Inner-Realm-Name = "%{1}"
+				&Inner-Realm-Name = "%{1}"
 			}
 
 			#

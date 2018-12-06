@@ -1,22 +1,22 @@
 update control {
-       Cleartext-Password := 'hello'
+	&Cleartext-Password := 'hello'
 }
 
 update request {
-	WiMAX-PFDv2-Src-Port = 6809
+	&WiMAX-PFDv2-Src-Port = 6809
 }
 
-if (WiMAX-PFDv2-Src-Port != 6809) {
+if (&WiMAX-PFDv2-Src-Port != 6809) {
 	test_fail
 }
 
 #
 #  This is known, and should be renamed
 update request {
-	Attr-26.24757.84.9.5.7 = 0x01
+	&Attr-26.24757.84.9.5.7 = 0x01
 }
 
-if (WiMAX-PFDv2-Src-Assigned != 1) {
+if (&WiMAX-PFDv2-Src-Assigned != 1) {
 	test_fail
 }
 

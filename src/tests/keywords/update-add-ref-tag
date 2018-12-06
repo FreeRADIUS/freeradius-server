@@ -3,19 +3,19 @@
 #
 
 update request {
-	request:Tunnel-Server-Endpoint += '192.0.1.1'
-	request:Tunnel-Server-Endpoint += '192.0.1.2'
-	request:Tunnel-Server-Endpoint:1 += '192.0.1.1'
-	request:Tunnel-Server-Endpoint:2 += '192.0.2.1'
-	request:Tunnel-Server-Endpoint:2 += '192.0.2.2'
-	request:Tunnel-Server-Endpoint:3 += '192.0.3.1'
+	&request:Tunnel-Server-Endpoint += '192.0.1.1'
+	&request:Tunnel-Server-Endpoint += '192.0.1.2'
+	&request:Tunnel-Server-Endpoint:1 += '192.0.1.1'
+	&request:Tunnel-Server-Endpoint:2 += '192.0.2.1'
+	&request:Tunnel-Server-Endpoint:2 += '192.0.2.2'
+	&request:Tunnel-Server-Endpoint:3 += '192.0.3.1'
 }
 
 #
 #  Copy all Tunnel-Server-Endpoint attributes
 #
 update request {
-       control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint[*]
+       &control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint[*]
 }
 
 if ((&control:Tunnel-Server-Endpoint[0] != '192.0.1.1') || \
@@ -32,14 +32,14 @@ if ((&control:Tunnel-Server-Endpoint[0] != '192.0.1.1') || \
 #  Clear out control attributes...
 #
 update control {
-	Tunnel-Server-Endpoint !* ANY
+	&Tunnel-Server-Endpoint !* ANY
 }
 
 #
 #  Copy all Tunnel-Server-Endpoint attributes with tag 2
 #
 update request {
-       control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:2[*]
+	&control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:2[*]
 }
 
 if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
@@ -52,14 +52,14 @@ if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
 #  Clear out control attributes...
 #
 update control {
-	Tunnel-Server-Endpoint !* ANY
+	&Tunnel-Server-Endpoint !* ANY
 }
 
 #
 #  Copy all Tunnel-Server-Endpoint attributes with no tag
 #
 update request {
-       control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:0[*]
+	&control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:0[*]
 }
 
 if ((&control:Tunnel-Server-Endpoint[0] != '192.0.1.1') || \
@@ -72,14 +72,14 @@ if ((&control:Tunnel-Server-Endpoint[0] != '192.0.1.1') || \
 #  Clear out control attributes...
 #
 update control {
-	Tunnel-Server-Endpoint !* ANY
+	&Tunnel-Server-Endpoint !* ANY
 }
 
 #
 #  Copy the first attribute with tag 2 (explicit)
 #
 update request {
-       control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:2[0]
+	&control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:2[0]
 }
 
 if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
