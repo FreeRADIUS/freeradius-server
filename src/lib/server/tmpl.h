@@ -317,6 +317,15 @@ do {\
 	}\
 } while (0)
 
+/** Specify whether attribute references require a prefix
+ *
+ */
+typedef enum {
+	VP_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
+	VP_ATTR_REF_PREFIX_NO,				//!< Attribute refs have no '&' prefix.
+	VP_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
+} vp_attr_ref_prefix_t;
+
 
 /** Optional arguments passed to vp_tmpl functions
  *
@@ -340,6 +349,9 @@ struct vp_tmpl_rules_s {
 							///< approach to parsing.
 
 	bool			allow_foreign;		//!< Allow arguments not found in dict_def.
+
+	vp_attr_ref_prefix_t	prefix;			//!< Whether the attribute reference requires
+							///< a prefix.
 };
 
 /** Map ptr type to a boxed type

@@ -103,5 +103,6 @@ radiusd.kill:
 # remove the changes to raddb/
 tests: test.conf | radiusd.kill radiusd.pid
 	@chmod a+x runtests.sh
+	@echo BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 	@$(MAKE) radiusd.kill

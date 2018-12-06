@@ -205,8 +205,6 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		VALUE_PAIR	*vp;
 		fr_cursor_t	cursor;
 
-		p += 1;
-
 		slen = tmpl_afrom_attr_substr(request, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 		if (slen <= 0) {
 			RPEDEBUG("Failed parsing attribute name '%s'", p);

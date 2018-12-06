@@ -1061,7 +1061,10 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		}
 
 		slen = tmpl_afrom_attr_str(tmp_ctx, &map_tmp.lhs, (*lhs_result)->vb_strvalue,
-					   &(vp_tmpl_rules_t){ .dict_def = request->dict });
+					   &(vp_tmpl_rules_t){
+					   	.dict_def = request->dict,
+					   	.prefix = VP_ATTR_REF_PREFIX_NO
+					   });
 		if (slen <= 0) {
 			RPEDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference",
 				(int)original->lhs->len, original->lhs->name, (*lhs_result)->vb_strvalue);
@@ -2378,7 +2381,10 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		}
 
 		slen = tmpl_afrom_attr_str(tmp_ctx, &exp_lhs, attr_str,
-					   &(vp_tmpl_rules_t){ .dict_def = request->dict });
+					   &(vp_tmpl_rules_t){
+					   	.dict_def = request->dict,
+					   	.prefix = VP_ATTR_REF_PREFIX_NO
+					   });
 		if (slen <= 0) {
 			RPEDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference",
 				(int)map->lhs->len, map->lhs->name, attr_str);

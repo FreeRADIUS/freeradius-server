@@ -635,11 +635,33 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 
 	p = name;
 
-	if (*p == '&') p++;
-
 	if (!*p) {
-		fr_strerror_printf("Invalid attribute name.");
-		return -1;
+		fr_strerror_printf("Empty attribute reference");
+		return 0;
+	}
+
+	/*
+	 *	Check to see if we expect a reference prefix
+	 */
+	switch (rules->prefix) {
+	case VP_ATTR_REF_PREFIX_YES:
+		if (*p != '&') {
+			fr_strerror_printf("Invalid attribute reference, missing '&' prefix");
+			return 0;
+		}
+		p++;
+		break;
+
+	case VP_ATTR_REF_PREFIX_NO:
+		if (*p == '&') {
+			fr_strerror_printf("Attribute references used here must not have a '&' prefix");
+			return 0;
+		}
+		break;
+
+	case VP_ATTR_REF_PREFIX_AUTO:
+		if (*p == '&') p++;
+		break;
 	}
 
 	MEM(vpt = talloc_zero(ctx, vp_tmpl_t));

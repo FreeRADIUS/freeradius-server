@@ -94,7 +94,11 @@ int xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 
 	*out = NULL;
 
-	if (tmpl_afrom_attr_str(request, &vpt, name, &(vp_tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
+	if (tmpl_afrom_attr_str(request, &vpt, name,
+				&(vp_tmpl_rules_t){
+					.dict_def = request->dict,
+					.prefix = VP_ATTR_REF_PREFIX_AUTO
+				}) <= 0) return -4;
 
 	rcode = tmpl_find_vp(out, request, vpt);
 	talloc_free(vpt);
@@ -339,7 +343,11 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if (tmpl_afrom_attr_str(request, &vpt, fmt, &(vp_tmpl_rules_t){ .dict_def = request->dict }) <= 0) {
+	if (tmpl_afrom_attr_str(request, &vpt, fmt,
+				&(vp_tmpl_rules_t){
+					.dict_def = request->dict,
+					.prefix = VP_ATTR_REF_PREFIX_AUTO
+				}) <= 0) {
 		RPEDEBUG("Invalid input");
 		return -1;
 	}
@@ -1339,7 +1347,11 @@ static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	VALUE_PAIR *vp;
 
-	if (tmpl_afrom_attr_str(ctx, &vpt, fmt, &(vp_tmpl_rules_t){ .dict_def = request->dict }) <= 0) {
+	if (tmpl_afrom_attr_str(ctx, &vpt, fmt,
+				&(vp_tmpl_rules_t){
+					.dict_def = request->dict,
+					.prefix = VP_ATTR_REF_PREFIX_AUTO
+				}) <= 0) {
 		RPEDEBUG("Invalid input");
 		return -1;
 	}

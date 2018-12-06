@@ -297,7 +297,11 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *      - '}' - The end of the expansion, which means it was a bareword.
 	 */
 	slen = tmpl_afrom_attr_substr(node, &node->attr, p,
-				      &(vp_tmpl_rules_t){ .allow_undefined = true, .allow_unknown = true });
+				      &(vp_tmpl_rules_t){
+				      		.allow_undefined = true,
+				      		.allow_unknown = true,
+				      		.prefix = VP_ATTR_REF_PREFIX_NO	/* Must be NO to stop %{&User-Name} */
+				      });
 	if (slen <= 0) {
 		/*
 		 *	If the parse error occurred before the ':'
