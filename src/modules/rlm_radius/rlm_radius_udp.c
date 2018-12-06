@@ -1710,10 +1710,8 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	int				rcode;
 	fr_io_request_t	*u = uctx;
 	fr_io_connection_t		*c = u->c;
-	rlm_radius_udp_connection_t	*radius = c->ctx;
 	REQUEST				*request;
 
-	rad_assert(u != radius->status_u);
 	rad_assert(u->timer.ev == NULL);
 	rad_assert(!c->inst->parent->synchronous);
 
