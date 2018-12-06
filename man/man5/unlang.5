@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "14 September 2017" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "06 December 2018" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -724,11 +724,17 @@ it the given string, and replace the string expansion with the
 resulting string returned from the module.
 
 .DS
-	%{module: string ...}
+	%{module:string ...}
 .DE
 
 The syntax of the string is module-specific.  Please read the module
-documentation for additional details.
+documentation for additional details.  If a literal "}" character is
+needed inside of an expansion, it should be escaped as "%}".  e.g.
+"%{module:This uses {braces%} as an example}"
+
+Many modules will take data that is dynamically expanded, e.g.
+"%{module:%{Attribute-Name}}".  The expansion will be turned into a
+static string before it is passed to the module.
 .RE
 .PP
 Conditional Syntax
