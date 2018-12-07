@@ -108,4 +108,17 @@ if (&Tmp-String-3[0] != 'IDk4Nz4=') {
 	test_fail
 }
 
+update request {
+	&Tmp-Octets-0		:= "%{base64decode:Zm9v}"
+	&Tmp-Octets-1		:= "%{base64decode:AIAAAAAAAAAAAAAAAAA5ODc5}"
+}
+
+if (&Tmp-Octets-0 != "foo") {
+	test_fail
+}
+
+if (&Tmp-Octets-1 != 0x008000000000000000000000000039383739) {
+	test_fail
+}
+
 success

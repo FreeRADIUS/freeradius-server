@@ -1439,32 +1439,48 @@ static xlat_action_t base64_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-/** Convert base64 to hex
+/** Decode base64 string
  *
- * Example: "%{base64tohex:Zm9v}" == "666f6f"
+ * Example: "%{base64decode:Zm9v}" == "foo"
  */
-static ssize_t base64_to_hex_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-				  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				  REQUEST *request, char const *fmt)
+static xlat_action_t xlat_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
+					REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					fr_value_box_t **in)
 {
-	uint8_t decbuf[1024];
+	size_t		alen;
+	ssize_t		declen;
+	uint8_t		*decbuf;
+	fr_value_box_t	*vb;
 
-	ssize_t declen;
-	ssize_t len = strlen(fmt);
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!in) return XLAT_ACTION_DONE;
 
-	declen = fr_base64_decode(decbuf, sizeof(decbuf), fmt, len);
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	alen = FR_BASE64_DEC_LENGTH((*in)->vb_length);
+
+	MEM(decbuf = talloc_array(ctx, uint8_t, alen));
+
+	declen = fr_base64_decode(decbuf, alen, (*in)->vb_strvalue, (*in)->vb_length);
 	if (declen < 0) {
+		talloc_free(decbuf);
 		REDEBUG("Base64 string invalid");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
-	if ((size_t)((declen * 2) + 1) > outlen) {
-		REDEBUG("Base64 conversion failed, output buffer exhausted, needed %zd bytes, have %zd bytes",
-			(declen * 2) + 1, outlen);
-		return -1;
-	}
+	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	return fr_bin2hex(*out, decbuf, declen);
+	fr_value_box_memdup(vb, vb, NULL, decbuf, declen, false);
+	talloc_free(decbuf);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Split an attribute into multiple new attributes based on a delimiter
@@ -2523,7 +2539,6 @@ int xlat_init(void)
 	xlat_register(NULL, "pairs", pairs_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 
-	xlat_register(NULL, "base64tohex", base64_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	xlat_register(NULL, "explode", explode_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
@@ -2537,6 +2552,7 @@ int xlat_init(void)
 	c->internal = true;
 
 	xlat_async_register(NULL, "base64", base64_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "base64decode", xlat_base64_decode, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "bin", bin_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "concat", concat_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "hex", hex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
