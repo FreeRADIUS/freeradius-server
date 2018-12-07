@@ -1347,7 +1347,7 @@ static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	VALUE_PAIR *vp;
 
-	if (tmpl_afrom_attr_str(ctx, &vpt, fmt,
+	if (tmpl_afrom_attr_str(ctx, &vpt, (*in)->vb_strvalue,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -2233,7 +2233,9 @@ static xlat_action_t concat_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				 fr_value_box_t **in)
 {
 	fr_value_box_t *result;
+	fr_value_box_t *separator;
 	char *buff;
+	char const *sep;
 
 	/*
 	 *	If there's no input, there's no output
@@ -2241,9 +2243,17 @@ static xlat_action_t concat_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	if (!in) return XLAT_ACTION_DONE;
 
 	/*
-	 *	Otherwise, join the boxes together commas
-	 *	FIXME It'd be nice to set a custom delimiter
+	 * Separator is first value box
 	 */
+	separator = *in;
+
+	if (!separator) {
+		REDEBUG("Missing separator for concat xlat");
+		return XLAT_ACTION_FAIL;
+	}
+
+	sep = separator->vb_strvalue;
+
 	result = fr_value_box_alloc_null(ctx);
 	if (!result) {
 	error:
@@ -2251,10 +2261,10 @@ static xlat_action_t concat_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	buff = fr_value_box_list_asprint(result, *in, ",", '\0');
+	buff = fr_value_box_list_asprint(result, (*in)->next, sep, '\0');
 	if (!buff) goto error;
 
-	fr_value_box_bstrsteal(result, result, NULL, buff, fr_value_box_list_tainted(*in));
+	fr_value_box_bstrsteal(result, result, NULL, buff, fr_value_box_list_tainted((*in)->next));
 
 	fr_cursor_insert(out, result);
 
