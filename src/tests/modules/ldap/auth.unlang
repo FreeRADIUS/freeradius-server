@@ -61,7 +61,7 @@ if ("%{pairs:reply:}" == "") {
 ldap.post-auth
 
 update {
-        Tmp-String-0 := "%{ldap:ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?description}"
+        &Tmp-String-0 := "%{ldap:ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?description}"
 }
 
 if (&Tmp-String-0 != "User %{User-Name} authenticated") {

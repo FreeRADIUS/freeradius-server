@@ -6,7 +6,7 @@ ldap
 #
 #  Resolve using group name attribute
 #
-if (LDAP-Group == 'foo') {
+if (&LDAP-Group == 'foo') {
         test_pass
 }
 else {
@@ -16,7 +16,7 @@ else {
 #
 #  Resolve using group DN
 #
-if (LDAP-Group == 'cn=foo,ou=groups,dc=example,dc=com') {
+if (&LDAP-Group == 'cn=foo,ou=groups,dc=example,dc=com') {
         test_pass
 }
 else {
