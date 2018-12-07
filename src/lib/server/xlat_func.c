@@ -1334,16 +1334,26 @@ static xlat_action_t hmac_sha1_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  * This is intended to serialize one or more attributes as a comma
  * delimited string.
  *
- * Example: "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar'"
+ * Example: "%{pairs:request:}" == "User-Name = 'foo'User-Password = 'bar'"
  */
-static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
-			  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			  REQUEST *request, char const *fmt)
+static xlat_action_t pairs_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+								REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+								fr_value_box_t **in)
 {
 	vp_tmpl_t	*vpt = NULL;
 	fr_cursor_t	cursor;
-	size_t		len, freespace = outlen;
-	char		*p = *out;
+	char		*buff;
+	fr_value_box_t	*vb;
+
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!in) return XLAT_ACTION_DONE;
+
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
 	VALUE_PAIR *vp;
 
@@ -1353,44 +1363,27 @@ static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 					.prefix = VP_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {
 		RPEDEBUG("Invalid input");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-	     	FR_TOKEN op = vp->op;
+		FR_TOKEN op = vp->op;
 
-	     	vp->op = T_OP_EQ;
-		len = fr_pair_snprint(p, freespace, vp);
+		vp->op = T_OP_EQ;
+		buff = fr_pair_asprint(ctx, vp, '"');
 		vp->op = op;
 
-		if (is_truncated(len, freespace)) {
-		no_space:
-			talloc_free(vpt);
-			REDEBUG("Insufficient space to store pair string, needed %zu bytes have %zu bytes",
-				(p - *out) + len, outlen);
-			return -1;
-		}
-		p += len;
-		freespace -= len;
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
 
-		if (freespace < 2) {
-			len = 2;
-			goto no_space;
-		}
-
-		*p++ = ',';
-		*p++ = ' ';
-		freespace -= 2;
+		fr_cursor_append(out, vb);
 	}
 
-	/* Trim the trailing ', ' */
-	if (p != *out) p -= 2;
-	*p = '\0';
 	talloc_free(vpt);
 
-	return (p - *out);
+	return XLAT_ACTION_DONE;
 }
 
 /** Encode string or attribute as base64
@@ -2548,10 +2541,6 @@ int xlat_init(void)
 	XLAT_REGISTER(module);
 	XLAT_REGISTER(debug_attr);
 
-	xlat_register(NULL, "pairs", pairs_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
-
-
 	xlat_register(NULL, "explode", explode_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	xlat_register(NULL, "nexttime", next_time_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2571,6 +2560,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "md5", md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "pairs", pairs_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "rand", rand_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "randstr", randstr_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
