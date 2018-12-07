@@ -1405,6 +1405,7 @@ static xlat_action_t base64_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	ssize_t		elen;
 	char		*buff;
 	fr_value_box_t	*vb;
+
 	/*
 	 *	If there's no input, there's no output
 	 */
@@ -1415,18 +1416,19 @@ static xlat_action_t base64_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
 	alen = FR_BASE64_ENC_LENGTH((*in)->vb_length);
 	MEM(buff = talloc_array(ctx, char, alen + 1));
 
 	elen = fr_base64_encode(buff, alen + 1, (*in)->vb_octets, (*in)->vb_length);
 	if (elen < 0) {
 		RPEDEBUG("Base64 encoding failed");
-		talloc_free(vb);
+		talloc_free(buff);
 		return XLAT_ACTION_FAIL;
 	}
 
 	rad_assert((size_t)elen <= alen);
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
 
 	if (fr_value_box_bstrsnteal(vb, vb, NULL, &buff, elen, false) < 0) {
 		RPEDEBUG("Failed assigning encoded data buffer to box");
