@@ -835,7 +835,8 @@ do { \
 		fp = fopen(directory, "r");
 		if (!fp) {
 			fprintf(stderr, "Error opening %s: %s\n", directory, fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			talloc_free(tp_ctx);	/* Free testpoint first then the library */
+			return -1;
 		}
 
 		filename = directory;
