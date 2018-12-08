@@ -428,12 +428,13 @@ void fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
  *  - Attr-%d.%d.%d...
  *
  * @param ctx for talloc
+ * @param dict to user for partial resolution.
  * @param attribute name to parse.
  * @param value to parse (must be a hex string).
  * @param op to assign to new valuepair.
  * @return new #VALUE_PAIR or NULL on error.
  */
-static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
+static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 					char const *attribute, char const *value,
 					FR_TOKEN op)
 {
@@ -443,7 +444,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	vp = fr_pair_alloc(ctx);
 	if (!vp) return NULL;
 
-	if (fr_dict_unknown_afrom_oid_str(vp, &n, fr_dict_root(fr_dict_internal), attribute) <= 0) {
+	if (fr_dict_unknown_afrom_oid_str(vp, &n, fr_dict_root(dict), attribute) <= 0) {
 		talloc_free(vp);
 		return NULL;
 	}
@@ -551,7 +552,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vp
 			return NULL;
 		}
 
-		vp = fr_pair_make_unknown(ctx, attrname, value, op);
+		vp = fr_pair_make_unknown(ctx, dict, attrname, value, op);
 		if (!vp) return NULL;
 
 		if (vps) fr_pair_add(vps, vp);
