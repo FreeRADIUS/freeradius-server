@@ -5,8 +5,8 @@
 #
 #  VALUEs
 #
-dictionary VALUE	Service-Type	Foo	bar
-data Invalid VALUE for ATTRIBUTE "Service-Type": Invalid integer value "bar"
+dictionary VALUE	Unit-Enumv	Foo	bar
+data Invalid VALUE for ATTRIBUTE "Unit-Enumv": Invalid integer value "bar"
 
 dictionary VALUE	Unit-Byte	TooBig	256
 data Invalid VALUE for ATTRIBUTE "Unit-Byte": Value 256 is invalid for type uint8 (must be in range 0-255)
