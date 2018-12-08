@@ -1305,6 +1305,12 @@ do { \
 			continue;
 		}
 
+		if (strcmp(test_type, "dict-dump") == 0) {
+			p += 9;
+			fr_dict_dump(proto_dict ? proto_dict : dict);
+			continue;
+		}
+
 		fprintf(stderr, "Unknown input at line %d of %s: %s\n", lineno, directory, p);
 
 		goto error;
