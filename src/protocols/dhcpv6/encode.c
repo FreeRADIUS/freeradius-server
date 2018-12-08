@@ -912,7 +912,6 @@ ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 
 	fr_proto_tlv_stack_build(tlv_stack, vp->da);
 
-	depth++;	/* Skip the root attribute */
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	/*
