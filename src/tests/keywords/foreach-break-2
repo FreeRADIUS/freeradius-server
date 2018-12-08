@@ -26,10 +26,10 @@ update control {
 	&Tmp-String-0 += "g"
 }
 
-foreach control:Tmp-String-0 {
+foreach &control:Tmp-String-0 {
 	if ("%{Tmp-String-0[*]}" =~ /([A-Z0-9\-]*)_%{Foreach-Variable-0}/) {
 		update request {
-			Tmp-String-0 := "%{1}"
+			&Tmp-String-0 := "%{1}"
 		}
 		success
 		break

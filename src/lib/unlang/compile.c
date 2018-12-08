@@ -2165,7 +2165,8 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	rad_assert(vpt);
 
 	if ((vpt->type != TMPL_TYPE_ATTR) && (vpt->type != TMPL_TYPE_LIST)) {
-		cf_log_err(cs, "MUST use attribute or list reference in 'foreach'");
+		cf_log_err(cs, "MUST use attribute or list reference (not %s) in 'foreach'",
+			   fr_int2str(tmpl_type_table, vpt->type, "???"));
 		talloc_free(vpt);
 		return NULL;
 	}
