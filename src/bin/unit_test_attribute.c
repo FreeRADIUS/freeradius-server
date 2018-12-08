@@ -1141,58 +1141,6 @@ do { \
 			continue;
 		}
 
-		if (strcmp(test_type, "attribute") == 0) {
-			p += 10;
-
-			if (fr_pair_list_afrom_str(NULL, proto_dict, p, &head) != T_EOL) {
-				strerror_concat(output, sizeof(output));
-				continue;
-			}
-
-			fr_pair_snprint(output, sizeof(output), head);
-			fr_pair_list_free(&head);
-			continue;
-		}
-
-		if (strcmp(test_type, "dictionary") == 0) {
-			p += 11;
-
-			if (fr_dict_parse_str(dict, p, fr_dict_root(dict), 0) < 0) {
-				strerror_concat(output, sizeof(output));
-				continue;
-			}
-
-			strlcpy(output, "ok", sizeof(output));
-			continue;
-		}
-
-		if (strcmp(test_type, "$INCLUDE") == 0) {
-			p += 9;
-			while (isspace((int) *p)) p++;
-
-			q = strrchr(directory, '/');
-			if (q) {
-				*q = '\0';
-				process_file(features, dict, directory, p);
-				*q = '/';
-			} else {
-				process_file(features, dict, NULL, p);
-			}
-			continue;
-		}
-
-		if (strcmp(test_type, "condition") == 0) {
-			p += 10;
-			parse_condition(p, output, sizeof(output));
-			continue;
-		}
-
-		if (strcmp(test_type, "xlat") == 0) {
-			p += 5;
-			parse_xlat(p, output, sizeof(output));
-			continue;
-		}
-
 		/*
 		 *	Generic pair decode test point
 		 */
