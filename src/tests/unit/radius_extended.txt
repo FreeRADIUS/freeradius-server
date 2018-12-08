@@ -1,6 +1,5 @@
 # Load libfreeradius-radius
 load radius
-load-dictionary radius
 
 encode-pair Unit-EVS-5-Integer = 1, Unit-EVS-5-Integer = 2
 data f5 0d 1a 00 00 00 2c 50 01 00 00 00 01 f5 0d 1a 00 00 00 2c 50 01 00 00 00 02
@@ -89,7 +88,7 @@ data Attr-245.26.1.6 = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 # again, but the second one attr is not an extended attr
 decode-pair f5 ff 1a 80 00 00 00 01 06 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa ab bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb 01 05 62 6f 62
-data Attr-245.26.1.6 = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, User-Name = "bob"
+data Attr-245.26.1.6 = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, Unit-String = "bob"
 
 # No data means that the attribute is an "invalid attribute"
 decode-pair f5 04 01 00
@@ -114,19 +113,19 @@ data Attr-245.26.1.6 = 0x0101
 #
 #  And using the dictionaries
 #
-attribute Unit-Integer = 6809
-data Unit-Integer = 6809
+attribute Unit-Ext-241-Integer = 6809
+data Unit-Ext-241-Integer = 6809
 
-encode-pair Unit-Integer = 6809
+encode-pair Unit-Ext-241-Integer = 6809
 data f1 07 f1 00 00 1a 99
 
 decode-pair -
-data Unit-Integer = 6809
+data Unit-Ext-241-Integer = 6809
 
 #
 #  Encoded as two different top-level attributes.
 #
-encode-pair Unit-Integer = 6809, Unit-Integer = 2112
+encode-pair Unit-Ext-241-Integer = 6809, Unit-Ext-241-Integer = 2112
 data f1 07 f1 00 00 1a 99 f1 07 f1 00 00 08 40
 
 #

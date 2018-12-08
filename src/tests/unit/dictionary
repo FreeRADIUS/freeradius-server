@@ -4,21 +4,28 @@
 #  We use 241-255 from the "reserved" space, which means that
 #  these tests won't affect real attributes
 #
-ATTRIBUTE	Unit-Root-241	241 tlv
-ATTRIBUTE	Unit-Integer	241.241	integer
-ATTRIBUTE	Unit-Octets	241.242 octets
-ATTRIBUTE	Unit-TLV	241.243 tlv
-ATTRIBUTE	Unit-Byte	241.244 byte
-ATTRIBUTE	Unit-Short	241.245 short
-ATTRIBUTE	Unit-Integer64	241.246 integer64
 
-ATTRIBUTE	Unit-Struct1		241.247		struct
+#
+#  Needed for the extended tests where this dictionary is used instead
+#  of the standard RADIUS dictionary.
+#
+ATTRIBUTE	Unit-String		1		string
+
+ATTRIBUTE	Unit-Ext-241		241		extended
+ATTRIBUTE	Unit-Ext-241-Integer	241.241		integer
+ATTRIBUTE	Unit-Ext-241-Octets	241.242		octets
+ATTRIBUTE	Unit-Ext-241-TLV	241.243		tlv
+ATTRIBUTE	Unit-Ext-241-Byte	241.244		byte
+ATTRIBUTE	Unit-Ext-241-Short	241.245		short
+ATTRIBUTE	Unit-Ext-241-Integer64	241.246		integer64
+
+ATTRIBUTE	Unit-Ext-241-Struct1	241.247		struct
 ATTRIBUTE	Unit-Struct1-Int1	.1		integer
 ATTRIBUTE	Unit-Struct1-Int2	.2		integer
 ATTRIBUTE	Unit-Struct1-Short	.3		uint16
 ATTRIBUTE	Unit-Struct1-String	.4		string
 
-ATTRIBUTE	Unit-Struct2		241.248		struct
+ATTRIBUTE	Unit-Ext-241-Struct2	241.248		struct
 ATTRIBUTE	Unit-Struct2-Int1	.1		integer
 ATTRIBUTE	Unit-Struct2-Short	.2		uint16
 ATTRIBUTE	Unit-Struct2-TLV	.3		tlv
@@ -26,32 +33,32 @@ ATTRIBUTE	Unit-Struct2-TLV-Int1	.3.1		integer
 ATTRIBUTE	Unit-Struct2-TLV-Int2	.3.2		integer
 ATTRIBUTE	Unit-Struct2-TLV-String	.3.3		string
 
-ATTRIBUTE	Unit-Struct3		241.249		struct
+ATTRIBUTE	Unit-Ext-241-Struct3	241.249		struct
 ATTRIBUTE	Unit-Struct3-Int	.1		integer
 ATTRIBUTE	Unit-Struct3-TLV	.2		tlv
 ATTRIBUTE	Unit-Struct3a		.2.1		struct
 ATTRIBUTE	Unit-Struct3a-Ipaddr1	.2.1.1		ipaddr
 ATTRIBUTE	Unit-Struct3a-Ipaddr2	.2.1.2		ipaddr
 
-ATTRIBUTE	Unit-Struct4		241.250		struct
+ATTRIBUTE	Unit-Ext-241-Struct4	241.250		struct
 ATTRIBUTE	Unit-Struct4-Int1	.1		integer
 ATTRIBUTE	Unit-Struct4-Int2	.2		integer
 ATTRIBUTE	Unit-Struct4-Short	.3		uint16
 
 
-ATTRIBUTE	Unit-TLV-Integer 241.243.1 integer
+ATTRIBUTE	Unit-TLV-Integer	241.243.1	integer
 
-ATTRIBUTE	Unit-Root-246		246 tlv
-ATTRIBUTE	Unit-Long-Octets	246.241	octets
+ATTRIBUTE	Unit-Root-246		246		tlv
+ATTRIBUTE	Unit-Long-Octets	246.241		octets
 
-ATTRIBUTE	Extended-Attribute-1			241	extended
+ATTRIBUTE	Extended-Attribute-2			242	extended
 ATTRIBUTE	Extended-Attribute-5			245	long-extended
 
-ATTRIBUTE	Extended-Vendor-Specific-1		241.26	evs
+ATTRIBUTE	Extended-Vendor-Specific-2		242.26	evs
 ATTRIBUTE	Extended-Vendor-Specific-5		245.26	evs
 
 VENDOR FreeRADIUS 11344
-BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-1
+BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-2
 
 ATTRIBUTE	Unit-EVS-Integer 1 integer
 ATTRIBUTE	Unit-EVS-Octets	 2 octets
