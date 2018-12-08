@@ -550,7 +550,7 @@ static void parse_condition(fr_dict_t const *dict, char const *input, char *outp
 	talloc_free(cond);
 }
 
-static void parse_xlat(char const *input, char *output, size_t outlen)
+static void parse_xlat(fr_dict_t const *dict, char const *input, char *output, size_t outlen)
 {
 	ssize_t		dec_len;
 	char const	*error = NULL;
@@ -558,7 +558,7 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 	xlat_exp_t	*head;
 
 	fmt = talloc_typed_strdup(NULL, input);
-	dec_len = xlat_tokenize(fmt, &head, &error, fmt, NULL);
+	dec_len = xlat_tokenize(fmt, &head, &error, fmt, &(vp_tmpl_rules_t) { .dict_def = dict });
 
 	if (dec_len <= 0) {
 		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -dec_len, error);
@@ -1137,7 +1137,7 @@ do { \
 
 		if (strcmp(test_type, "xlat") == 0) {
 			p += 5;
-			parse_xlat(p, output, sizeof(output));
+			parse_xlat(proto_dict ? proto_dict : dict, p, output, sizeof(output));
 			continue;
 		}
 
