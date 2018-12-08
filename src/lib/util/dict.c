@@ -5371,13 +5371,22 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 	if (!dict->fixup_pool) return -1;
 
 	if (strcasecmp(argv[0], "VALUE") == 0) {
-		ret = dict_read_process_value(dict, argv + 1, argc - 1);
-		if (ret < 0) {
+		if (argc < 4) {
+			fr_strerror_printf("VALUE needs at least 4 arguments, got %i", argc);
 		error:
 			TALLOC_FREE(dict->fixup_pool);
 			dict->enum_fixup = NULL;
 			return -1;
 		}
+
+		if (!fr_dict_attr_by_name(dict, argv[1])) {
+			fr_strerror_printf("Attribute \"%s\" does not exist in dictionary \"%s\"",
+					   argv[1], dict->root->name);
+			goto error;
+		}
+		ret = dict_read_process_value(dict, argv + 1, argc - 1);
+		if (ret < 0) goto error;
+
 	} else if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 		if (!parent) parent = fr_dict_root(dict);
 
