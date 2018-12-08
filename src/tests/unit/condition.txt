@@ -9,7 +9,7 @@
 #  A bunch of errors, in the order that the error strings
 #  appear in parser.c
 #
-
+load-dictionary radius
 
 # All IP address literals should be parsed as prefixes
 condition ("foo\

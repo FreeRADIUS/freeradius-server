@@ -441,19 +441,20 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 /** Tokenize a conditional check
  *
  *  @param[in] ctx for talloc
+ *  @param[out] pcond pointer to the returned condition structure
+ *  @param[out] error the parse error (if any)
  *  @param[in] ci for CONF_ITEM
  *  @param[in] start the start of the string to process.  Should be "(..."
  *  @param[in] brace look for a closing brace
- *  @param[out] pcond pointer to the returned condition structure
- *  @param[out] error the parse error (if any)
  *  @param[in] flags do one/two pass
  *  @param[in] rules for attribute parsing
  *  @return
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
-static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, bool brace,
-			     fr_cond_t **pcond, char const **error, int flags, vp_tmpl_rules_t const *rules)
+static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **error,
+			     CONF_ITEM *ci, char const *start, bool brace,
+			     int flags, vp_tmpl_rules_t const *rules)
 {
 	ssize_t			slen, tlen;
 	char const		*p = start;
@@ -511,7 +512,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 		 */
 		c->type = COND_TYPE_CHILD;
 		c->ci = ci;
-		slen = cond_tokenize(c, ci, p, true, &c->data.child, error, flags, rules);
+		slen = cond_tokenize(c, &c->data.child, error, ci, p, true, flags, rules);
 		if (slen <= 0) return_SLEN;
 
 		if (!c->data.child) {
@@ -1282,7 +1283,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	slen = cond_tokenize(c, ci, p, brace, &c->next, error, flags, rules);
+	slen = cond_tokenize(c, &c->next, error, ci, p, brace,  flags, rules);
 	if (slen <= 0) {
 	return_slen:
 		if (lhs) talloc_free(lhs);
@@ -1727,24 +1728,27 @@ done:
 
 /** Tokenize a conditional check
  *
- *  @param[in] ctx for talloc
- *  @param[in] ci for CONF_ITEM
- *  @param[in] start the start of the string to process.  Should be "(..."
- *  @param[out] head the parsed condition structure
- *  @param[out] error the parse error (if any)
- *  @param[in] flags do one/two pass
- *  @return
+ * @param[in] ctx	for talloc
+ * @param[out] head	the parsed condition structure
+ * @param[out] error	the parse error (if any)
+ * @param[in] dict	dictionary to resolve attributes in.
+ * @param[in] ci	for CONF_ITEM
+ * @param[in] start	the start of the string to process.  Should be "(..."
+ * @param[in] flags	do one/two pass
+ * @return
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
-ssize_t fr_cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start,
-			 fr_cond_t **head, char const **error, int flags)
+ssize_t fr_cond_tokenize(TALLOC_CTX *ctx,
+			 fr_cond_t **head, char const **error,
+			 fr_dict_t const *dict,
+			 CONF_ITEM *ci, char const *start, int flags)
 {
-	vp_tmpl_rules_t parse_rules;
+	vp_tmpl_rules_t parse_rules = {
+				.dict_def = dict
+			};
 
-	memset(&parse_rules, 0, sizeof(parse_rules));
-
-	return cond_tokenize(ctx, ci, start, false, head, error, flags, &parse_rules);
+	return cond_tokenize(ctx, head, error, ci, start, false, flags, &parse_rules);
 }
 
 /*

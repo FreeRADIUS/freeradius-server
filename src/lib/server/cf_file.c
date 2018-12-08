@@ -1149,8 +1149,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Skip (...) to find the {
 			 */
-			slen = fr_cond_tokenize(this, cf_section_to_item(this), ptr, &cond,
-						&error, FR_COND_TWO_PASS);
+			slen = fr_cond_tokenize(this, &cond, &error,
+						NULL, cf_section_to_item(this), ptr, FR_COND_TWO_PASS);
 			memcpy(&p, &ptr, sizeof(p));
 
 			if (slen < 0) {
@@ -1208,8 +1208,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			css->item.filename = filename;
 			css->item.lineno = *lineno;
 
-			slen = fr_cond_tokenize(css, cf_section_to_item(css), ptr, &cond,
-						&error, FR_COND_TWO_PASS);
+			slen = fr_cond_tokenize(css, &cond, &error,
+						NULL, cf_section_to_item(css), ptr, FR_COND_TWO_PASS);
 			*p = '{'; /* put it back */
 
 		cond_error:

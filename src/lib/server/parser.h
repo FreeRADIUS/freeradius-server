@@ -99,7 +99,9 @@ struct fr_cond_t {
 #define FR_COND_ONE_PASS (0)
 #define FR_COND_TWO_PASS (1)
 
-ssize_t fr_cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, fr_cond_t **head, char const **error, int flag);
+ssize_t fr_cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **head, char const **error,
+			 fr_dict_t const *dict,
+			 CONF_ITEM *ci, char const *start, int flag);
 size_t cond_snprint(char *buffer, size_t bufsize, fr_cond_t const *c);
 
 bool fr_cond_walk(fr_cond_t *head, bool (*callback)(fr_cond_t *cond, void *uctx), void *uctx);

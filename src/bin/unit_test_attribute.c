@@ -526,13 +526,13 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 	return length + sublen;
 }
 
-static void parse_condition(char const *input, char *output, size_t outlen)
+static void parse_condition(fr_dict_t const *dict, char const *input, char *output, size_t outlen)
 {
 	ssize_t dec_len;
 	char const *error = NULL;
 	fr_cond_t *cond;
 
-	dec_len = fr_cond_tokenize(NULL, NULL, input, &cond, &error, FR_COND_ONE_PASS);
+	dec_len = fr_cond_tokenize(NULL, &cond, &error, dict, NULL, input, FR_COND_ONE_PASS);
 	if (dec_len <= 0) {
 		snprintf(output, outlen, "ERROR offset %d %s", (int) -dec_len, error);
 		return;
@@ -1024,7 +1024,7 @@ do { \
 				p += 14;
 			}
 
-			if (fr_pair_list_afrom_str(packet, proto_dict, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(packet, proto_dict ? proto_dict : dict, p, &head) != T_EOL) {
 				strerror_concat(output, sizeof(output));
 
 				talloc_free(packet);
@@ -1092,7 +1092,7 @@ do { \
 		if (strcmp(test_type, "attribute") == 0) {
 			p += 10;
 
-			if (fr_pair_list_afrom_str(NULL, proto_dict, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(NULL, proto_dict ? proto_dict : dict, p, &head) != T_EOL) {
 				strerror_concat(output, sizeof(output));
 				continue;
 			}
@@ -1131,7 +1131,7 @@ do { \
 
 		if (strcmp(test_type, "condition") == 0) {
 			p += 10;
-			parse_condition(p, output, sizeof(output));
+			parse_condition(proto_dict ? proto_dict : dict, p, output, sizeof(output));
 			continue;
 		}
 
