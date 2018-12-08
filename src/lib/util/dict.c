@@ -4134,6 +4134,8 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 	if (!da) {
 		dict_enum_fixup_t *fixup;
 
+		if (!fr_cond_assert_msg(dict->fixup_pool, "fixup pool context invalid")) return -1;
+
 		fixup = talloc_zero(dict->fixup_pool, dict_enum_fixup_t);
 		if (!fixup) {
 		oom:
@@ -5353,6 +5355,8 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 {
 	int	argc;
 	char	*argv[MAX_ARGV];
+	int	ret;
+
 	fr_dict_attr_flags_t base_flags;
 
 	INTERNAL_IF_NULL(dict);
@@ -5360,25 +5364,40 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 	argc = fr_dict_str_to_argv(buf, argv, MAX_ARGV);
 	if (argc == 0) return 0;
 
-	if (strcasecmp(argv[0], "VALUE") == 0) {
-		return dict_read_process_value(dict, argv + 1, argc - 1);
-	}
+	if (!fr_cond_assert_msg(!dict->fixup_pool && !dict->enum_fixup,
+				"dict not finalised from previous processing")) return -1;
 
-	if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
+	dict->fixup_pool = talloc_pool(dict, DICT_FIXUP_POOL_SIZE);
+	if (!dict->fixup_pool) return -1;
+
+	if (strcasecmp(argv[0], "VALUE") == 0) {
+		ret = dict_read_process_value(dict, argv + 1, argc - 1);
+		if (ret < 0) {
+		error:
+			TALLOC_FREE(dict->fixup_pool);
+			dict->enum_fixup = NULL;
+			return -1;
+		}
+	} else if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 		if (!parent) parent = fr_dict_root(dict);
 
 		memset(&base_flags, 0, sizeof(base_flags));
 
-		return dict_read_process_attribute(dict, parent,
-						   fr_dict_vendor_by_num(dict, vendor_pen),
-						   argv + 1, argc - 1, &base_flags, NULL);
+		ret = dict_read_process_attribute(dict, parent,
+						  fr_dict_vendor_by_num(dict, vendor_pen),
+						  argv + 1, argc - 1, &base_flags, NULL);
+		if (ret < 0) goto error;
+	} else if (strcasecmp(argv[0], "VENDOR") == 0) {
+		ret = dict_read_process_vendor(dict, argv + 1, argc - 1);
+		if (ret < 0) goto error;
+	} else {
+		fr_strerror_printf("Invalid input '%s'", argv[0]);
+		goto error;
 	}
 
-	if (strcasecmp(argv[0], "VENDOR") == 0) return dict_read_process_vendor(dict, argv + 1, argc - 1);
+	fr_dict_finalise(dict);
 
-	fr_strerror_printf("Invalid input '%s'", argv[0]);
-
-	return -1;
+	return 0;
 }
 
 /** Initialise the global protocol hashes
