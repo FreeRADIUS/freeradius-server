@@ -34,6 +34,36 @@
 #include "dhcpv4.h"
 #include "attrs.h"
 
+/** Determine if the current attribute is encodable, or find the first one that is
+ *
+ * @param cursor to iterate over.
+ * @return encodable VALUE_PAIR, or NULL if none available.
+ */
+static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor)
+{
+	VALUE_PAIR *vp;
+
+	for (vp = fr_cursor_current(cursor); vp && vp->da->flags.internal; vp = fr_cursor_next(cursor));
+	return fr_cursor_current(cursor);
+}
+
+/** Find the next attribute to encode
+ *
+ * @param cursor to iterate over.
+ * @return encodable VALUE_PAIR, or NULL if none available.
+ */
+static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor)
+{
+	VALUE_PAIR *vp;
+
+	for (;;) {
+		vp = fr_cursor_next(cursor);
+		if (!vp || !vp->da->flags.internal) break;
+	}
+
+	return fr_cursor_current(cursor);
+}
+
 /** Write DHCP option value into buffer
  *
  * Does not include DHCP option length or number.
@@ -107,10 +137,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	default:
 		fr_strerror_printf("Unsupported option type %d", vp->vp_type);
-		(void)fr_cursor_next(cursor);
+		(void)next_encodable(cursor);
 		return -2;
 	}
-	vp = fr_cursor_next(cursor);	/* We encoded a leaf, advance the cursor */
+	vp = next_encodable(cursor);	/* We encoded a leaf, advance the cursor */
 	fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -291,27 +321,19 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 	ssize_t			len;
 
-	vp = fr_cursor_current(cursor);
+	vp = first_encodable(cursor);
 	if (!vp) return -1;
 
-	if (fr_dict_vendor_num_by_da(vp->da) != DHCP_MAGIC_VENDOR) goto next; /* not a DHCP option */
 	if (vp->da == attr_dhcp_message_type) goto next; /* already done */
-	if ((vp->da->attr > 255) && (DHCP_BASE_ATTR(vp->da->attr) != FR_DHCP_OPTION_82)) {
+	if ((vp->da->attr > 255) && (vp->da->attr != FR_DHCP_OPTION_82)) {
 	next:
 		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
-		fr_cursor_next(cursor);
+		next_encodable(cursor);
 		return 0;
 	}
 
 	fr_proto_tlv_stack_build(tlv_stack, vp->da);
 
-	/*
-	 *	Because of the stupid DHCP vendor hack we use,
-	 *	we've got to jump a few places up in the stack
-	 *	before starting.  Once we have protocol dictionaries
-	 *	this must be removed.
-	 */
-	depth += 2;
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	/*

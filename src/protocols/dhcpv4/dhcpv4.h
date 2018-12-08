@@ -93,7 +93,6 @@ typedef struct dhcp_packet_t {
 
 #define FR_DHCP_OPTION_82 (82)
 #define DHCP_PACK_OPTION1(x,y) ((x) | ((y) << 8))
-#define DHCP_BASE_ATTR(x) (x & 0xff)
 #define DHCP_UNPACK_OPTION1(x) (((x) & 0xff00) >> 8)
 
 #ifndef INADDR_BROADCAST
