@@ -1744,11 +1744,7 @@ ssize_t fr_cond_tokenize(TALLOC_CTX *ctx,
 			 fr_dict_t const *dict,
 			 CONF_ITEM *ci, char const *start, int flags)
 {
-	vp_tmpl_rules_t parse_rules = {
-				.dict_def = dict
-			};
-
-	return cond_tokenize(ctx, head, error, ci, start, false, flags, &parse_rules);
+	return cond_tokenize(ctx, head, error, ci, start, false, flags, &(vp_tmpl_rules_t){ .dict_def = dict });
 }
 
 /*
