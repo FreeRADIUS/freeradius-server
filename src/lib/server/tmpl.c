@@ -2626,7 +2626,9 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 					     "unknown da pointer", file, line);
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
-
+		/*
+		 *	Raw attributes may not have been added to the dictionary yet
+		 */
 		} else {
 			fr_dict_attr_t const	*da;
 			fr_dict_t const		*dict;
@@ -2663,12 +2665,16 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 
 			da = fr_dict_attr_by_name(dict, vpt->tmpl_da->name);
 			if (!da) {
-				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
-					     "attribute \"%s\" (%s) not found in dictionary (%s)",
-					     file, line, vpt->tmpl_da->name,
-					     fr_int2str(fr_value_box_type_names, vpt->tmpl_da->type, "<INVALID>"),
-					     fr_dict_root(dict)->name);
-				if (!fr_cond_assert(0)) fr_exit_now(1);
+				if (!vpt->tmpl_da->flags.is_raw) {
+					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+						     "attribute \"%s\" (%s) not found in dictionary (%s)",
+						     file, line, vpt->tmpl_da->name,
+						     fr_int2str(fr_value_box_type_names,
+						     		vpt->tmpl_da->type, "<INVALID>"),
+						     fr_dict_root(dict)->name);
+					if (!fr_cond_assert(0)) fr_exit_now(1);
+				}
+				da = vpt->tmpl_da;
 			}
 
 			if ((da->type == FR_TYPE_COMBO_IP_ADDR) && (da->type != vpt->tmpl_da->type)) {
