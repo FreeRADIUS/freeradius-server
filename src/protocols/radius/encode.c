@@ -1614,7 +1614,6 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	if (!test_ctx) return -1;
 
 	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
-	test_ctx->root = fr_dict_root(dict_radius);
 	test_ctx->vector = vector;
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 

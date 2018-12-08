@@ -869,7 +869,6 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 	fr_sim_decode_ctx_t	ctx = {
 					.keys = &eap_sim_session->keys,
-					.root = fr_dict_root(dict_eap_sim)
 				};
 	VALUE_PAIR		*subtype_vp, *from_peer, *vp;
 	fr_cursor_t		cursor;
@@ -888,6 +887,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 
 	ret = fr_sim_decode(eap_session->request,
 			    &cursor,
+			    dict_eap_sim,
 			    eap_session->this_round->response->type.data,
 			    eap_session->this_round->response->type.length,
 			    &ctx);

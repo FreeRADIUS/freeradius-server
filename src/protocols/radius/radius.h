@@ -127,11 +127,10 @@ int		fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 void		fr_radius_packet_print_hex(RADIUS_PACKET const *packet) CC_HINT(nonnull);
 
 
-typedef struct fr_radius_ctx {
+typedef struct {
 	uint8_t const		*vector;		//!< vector for encryption / decryption of data
 	char const		*secret;		//!< shared secret.  MUST be talloc'd
 	bool 			tunnel_password_zeros;
-	fr_dict_attr_t const	*root;
 } fr_radius_ctx_t;
 
 /*
@@ -156,13 +155,15 @@ ssize_t		fr_radius_decode_password(char *encpw, size_t len, char const *secret, 
 ssize_t		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *secret,
 						 uint8_t const *vector, bool tunnel_password_zeros);
 
-ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
+ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+					    fr_dict_attr_t const *parent,
 					    uint8_t const *data, size_t const attr_len, size_t const packet_len,
 					    void *decoder_ctx);
 
-ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
+ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t data_len,
 				     void *decoder_ctx);
 
-ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, uint8_t const *data, size_t data_len,
-				      void *decoder_ctx);
+ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+				      uint8_t const *data, size_t data_len, void *decoder_ctx);

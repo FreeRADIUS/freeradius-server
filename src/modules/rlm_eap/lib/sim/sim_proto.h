@@ -196,7 +196,6 @@ typedef struct {
 } fr_sim_keys_t;
 
 typedef struct {
-	fr_dict_attr_t const	*root;				//!< Root attribute of the dictionary.
 	fr_sim_keys_t const	*keys;				//!< From the EAP session.
 	uint8_t			iv[SIM_IV_SIZE];		//!< From the current packet.
 	bool			have_iv;			//!< Whether we found the IV already.
@@ -225,10 +224,10 @@ extern size_t const fr_sim_attr_sizes[FR_TYPE_MAX + 1][2];
 /*
  *	decode.c
  */
-ssize_t		fr_sim_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor,
+ssize_t		fr_sim_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 				   uint8_t const *data, size_t data_len, void *decoder_ctx);
 
-int		fr_sim_decode(REQUEST *request, fr_cursor_t *decoded,
+int		fr_sim_decode(REQUEST *request, fr_cursor_t *decoded, fr_dict_t const *dict,
 			      uint8_t const *data, size_t data_len, fr_sim_decode_ctx_t *ctx);
 
 /*

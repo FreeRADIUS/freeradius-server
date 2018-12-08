@@ -1174,7 +1174,8 @@ do { \
 
 			fr_cursor_init(&cursor, &head);
 			while (len > 0) {
-				dec_len = tp->func(tp_ctx, &cursor, attr, len, decoder_ctx);
+				dec_len = tp->func(tp_ctx, &cursor, proto_dict ? proto_dict : dict,
+						   attr, len, decoder_ctx);
 				if (dec_len < 0) {
 					fr_pair_list_free(&head);
 					break;
@@ -1241,7 +1242,7 @@ do { \
 			 */
 			if (strcmp(p, "-") == 0) p = output;
 
-			if (fr_pair_list_afrom_str(tp_ctx, proto_dict, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(tp_ctx, proto_dict ? proto_dict : dict, p, &head) != T_EOL) {
 				strerror_concat(output, sizeof(output));
 				encode_error = true;						/* Record that the operation failed */
 

@@ -66,7 +66,6 @@ fr_dict_attr_t const *attr_dhcp_message_type;
 fr_dict_attr_t const *attr_dhcp_parameter_request_list;
 fr_dict_attr_t const *attr_dhcp_overload;
 fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
-fr_dict_attr_t const *attr_vendor_specific;
 
 extern fr_dict_attr_autoload_t dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
@@ -90,7 +89,6 @@ fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
 	{ .out = &attr_dhcp_parameter_request_list, .name = "DHCP-Parameter-Request-List", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_overload, .name = "DHCP-Overload", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_vendor_class_identifier, .name = "DHCP-Vendor-Class-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
-	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 

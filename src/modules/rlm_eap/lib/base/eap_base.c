@@ -67,8 +67,8 @@ RCSID("$Id$")
 #include "eap_attrs.h"
 #include "eap.h"
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+fr_dict_t *dict_freeradius;
+fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t eap_base_dict[];
 fr_dict_autoload_t eap_base_dict[] = {

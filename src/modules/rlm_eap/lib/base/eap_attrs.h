@@ -24,6 +24,9 @@
  */
 RCSIDH(eap_attrs_h, "$Id$")
 
+extern fr_dict_t *dict_freeradius;
+extern fr_dict_t *dict_radius;
+
 extern fr_dict_attr_t const *attr_chbind_response_code;
 extern fr_dict_attr_t const *attr_eap_session_id;
 extern fr_dict_attr_t const *attr_eap_type;

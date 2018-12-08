@@ -49,4 +49,3 @@ extern fr_dict_attr_t const *attr_dhcp_message_type;
 extern fr_dict_attr_t const *attr_dhcp_parameter_request_list;
 extern fr_dict_attr_t const *attr_dhcp_overload;
 extern fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
-extern fr_dict_attr_t const *attr_vendor_specific;

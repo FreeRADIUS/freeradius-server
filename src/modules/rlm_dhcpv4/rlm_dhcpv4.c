@@ -31,6 +31,14 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+static fr_dict_t *dict_dhcpv4;
+
+extern fr_dict_autoload_t rlm_dhcpv4_dict[];
+fr_dict_autoload_t rlm_dhcpv4_dict[] = {
+	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
+	{ NULL }
+};
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -56,9 +64,6 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	VALUE_PAIR	*vp, *head = NULL;
 	int		decoded = 0;
 	ssize_t		slen;
-	fr_dhcpv4_ctx_t	packet_ctx = {
-				.root = fr_dict_root(fr_dict_internal)
-			};
 
 	while (isspace((int) *fmt)) fmt++;
 
@@ -96,7 +101,8 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcpv4_decode_option(request->packet, &options_cursor, p, end - p, &packet_ctx);
+			len = fr_dhcpv4_decode_option(request->packet, &options_cursor, dict_dhcpv4,
+						      p, end - p, NULL);
 			if (len <= 0) {
 				RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
 				fr_pair_list_free(&head);

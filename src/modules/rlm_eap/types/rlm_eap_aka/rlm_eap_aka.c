@@ -874,7 +874,6 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 
 	fr_sim_decode_ctx_t	ctx = {
 					.keys = &eap_aka_session->keys,
-					.root = fr_dict_root(dict_eap_aka)
 				};
 	VALUE_PAIR		*vp, *vps, *subtype_vp;
 	fr_cursor_t		cursor;
@@ -901,6 +900,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 
 	ret = fr_sim_decode(eap_session->request,
 			    &cursor,
+			    dict_eap_aka,
 			    eap_session->this_round->response->type.data,
 			    eap_session->this_round->response->type.length,
 			    &ctx);

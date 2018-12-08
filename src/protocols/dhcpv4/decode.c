@@ -353,19 +353,19 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 /** Decode DHCP option
  *
- * @param[in] ctx context to alloc new attributes in.
- * @param[in,out] cursor Where to write the decoded options.
- * @param[in] data to parse.
- * @param[in] data_len of data to parse.
- * @param[in] decoder_ctx Unused.
+ * @param[in] ctx context	to alloc new attributes in.
+ * @param[in,out] cursor	Where to write the decoded options.
+ * @param[in] dict		to lookup attributes in.
+ * @param[in] data		to parse.
+ * @param[in] data_len		of data to parse.
+ * @param[in] decoder_ctx	Unused.
  */
 ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
-			        uint8_t const *data, size_t data_len, void *decoder_ctx)
+			        fr_dict_t const *dict, uint8_t const *data, size_t data_len, UNUSED void *decoder_ctx)
 {
 	ssize_t			ret;
 	uint8_t const		*p = data;
 	fr_dict_attr_t const	*child;
-	fr_dhcpv4_ctx_t	*packet_ctx = decoder_ctx;
 	fr_dict_attr_t const	*parent;
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
@@ -374,20 +374,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 	FR_PROTO_HEX_DUMP(NULL, data, data_len);
 
-	/*
-	 *	Stupid hacks until we have protocol specific dictionaries
-	 */
-	parent = fr_dict_attr_child_by_num(packet_ctx->root, FR_VENDOR_SPECIFIC);
-	if (!parent) {
-		fr_strerror_printf("Can't find Vendor-Specific (26)");
-		return -1;
-	}
-
-	parent = fr_dict_attr_child_by_num(parent, DHCP_MAGIC_VENDOR);
-	if (!parent) {
-		fr_strerror_printf("Can't find DHCP vendor");
-		return -1;
-	}
+	parent = fr_dict_root(dict);
 
 	/*
 	 *	Padding / End of options
@@ -450,7 +437,6 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	if (fr_dhcpv4_global_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
-	test_ctx->root = fr_dict_root(dict_dhcpv4);
 	talloc_set_destructor(test_ctx, _decode_test_ctx);
 
 	*out = test_ctx;

@@ -24,6 +24,8 @@
  */
 RCSID("$Id$")
 
+#include "attrs.h"
+
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/udp.h>
 
@@ -115,12 +117,12 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	radius_packet_t		*hdr;
 	VALUE_PAIR		*head = NULL;
 	fr_cursor_t		cursor, out;
-	fr_radius_ctx_t		packet_ctx;
+	fr_radius_ctx_t		packet_ctx = {
+					.secret = secret,
+					.vector = packet->vector,
+					.tunnel_password_zeros = tunnel_password_zeros
+				};
 
-	packet_ctx.secret = secret;
-	packet_ctx.vector = packet->vector;
-	packet_ctx.tunnel_password_zeros = tunnel_password_zeros;
-	packet_ctx.root = fr_dict_root(fr_dict_internal);
 	switch (packet->code) {
 	case FR_CODE_ACCESS_REQUEST:
 	case FR_CODE_STATUS_SERVER:
@@ -177,7 +179,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		/*
 		 *	This may return many VPs
 		 */
-		my_len = fr_radius_decode_pair(packet, &cursor, ptr, packet_length, &packet_ctx);
+		my_len = fr_radius_decode_pair(packet, &cursor, dict_radius, ptr, packet_length, &packet_ctx);
 		if (my_len < 0) {
 			fr_pair_list_free(&head);
 			return -1;

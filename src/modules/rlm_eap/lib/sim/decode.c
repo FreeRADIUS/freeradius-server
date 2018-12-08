@@ -918,6 +918,7 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr
  *
  * @param[in] ctx		to allocate attributes in.
  * @param[in] cursor		where to insert the attributes.
+ * @param[in] dict		for looking up attributes.
  * @param[in] data		data to parse.
  * @param[in] data_len		length of data.  For top level attributes packet_ctx must be the length
  *				of the packet (so we can hunt for AT_IV), for Sub-TLVs it should
@@ -927,12 +928,10 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr
  *	- The number of bytes parsed.
  *	- -1 on error.
  */
-ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor,
+ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
 			   uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
-	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
-
-	return sim_decode_pair_internal(ctx, cursor, packet_ctx->root, data, data_len, decoder_ctx);
+	return sim_decode_pair_internal(ctx, cursor, fr_dict_root(dict), data, data_len, decoder_ctx);
 }
 
 /** Decode SIM/AKA/AKA' specific packet data
@@ -954,6 +953,7 @@ ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor,
  *
  * @param[in] request		the current request.
  * @param[in] decoded		where to write decoded attributes.
+ * @param[in] dict		for looking up attributes.
  * @param[in] data		to convert to pairs.
  * @param[in] data_len		length of data to convert.
  * @param[in] decoder_ctx	holds the state of the decoder.
@@ -961,15 +961,12 @@ ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_sim_decode(REQUEST *request, fr_cursor_t *decoded,
+int fr_sim_decode(REQUEST *request, fr_cursor_t *decoded, fr_dict_t const *dict,
 		  uint8_t const *data, size_t data_len, fr_sim_decode_ctx_t *decoder_ctx)
 {
 	ssize_t			rcode;
 	uint8_t	const		*p = data;
 	uint8_t const		*end = p + data_len;
-	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
-
-	rad_assert(packet_ctx->root);
 
 	/*
 	 *	Move the cursor to the end, so we know if
@@ -999,7 +996,7 @@ int fr_sim_decode(REQUEST *request, fr_cursor_t *decoded,
 	 *	in the SIM/AKA/AKA' dict.
 	 */
 	while (p < end) {
-		rcode = fr_sim_decode_pair(request->packet, decoded, p, end - p, decoder_ctx);
+		rcode = fr_sim_decode_pair(request->packet, decoded, dict, p, end - p, decoder_ctx);
 		if (rcode <= 0) {
 			RPEDEBUG("Failed decoding AT");
 		error:
@@ -1018,7 +1015,7 @@ int fr_sim_decode(REQUEST *request, fr_cursor_t *decoded,
 	{
 		VALUE_PAIR *vp;
 
-		vp = fr_pair_afrom_child_num(request->packet, packet_ctx->root, FR_SIM_SUBTYPE);
+		vp = fr_pair_afrom_child_num(request->packet, fr_dict_root(dict), FR_SIM_SUBTYPE);
 		if (!vp) {
 			fr_strerror_printf("Failed allocating subtype attribute");
 			goto error;
@@ -1063,7 +1060,6 @@ static int decode_test_ctx_sim(void **out, TALLOC_CTX *ctx)
 	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
 	if (!test_ctx) return -1;
 
-	test_ctx->root = fr_dict_root(dict_eap_sim);
 	test_ctx->have_iv = true;	/* Ensures IV is all zeros */
 
 	*out = test_ctx;
@@ -1081,7 +1077,6 @@ static int decode_test_ctx_aka(void **out, TALLOC_CTX *ctx)
 	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
 	if (!test_ctx) return -1;
 
-	test_ctx->root = fr_dict_root(dict_eap_aka);
 	test_ctx->have_iv = true;	/* Ensures IV is all zeros */
 
 	*out = test_ctx;
@@ -1097,8 +1092,6 @@ static int decode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx)
 
 	test_ctx = test_ctx_init(ctx, k_encr, sizeof(k_encr));
 	if (!test_ctx) return -1;
-
-	test_ctx->root = fr_dict_root(dict_eap_sim);
 
 	*out = test_ctx;
 
