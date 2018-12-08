@@ -1099,8 +1099,14 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	min = fr_radius_attr_sizes[parent->type][0];
 	max = fr_radius_attr_sizes[parent->type][1];
 
-	if (data_len < min) goto raw;
-	if (data_len > max) goto raw;
+	if (data_len < min) {
+		FR_PROTO_TRACE("Data len %zu too short, need at least %zu", data_len, min);
+		goto raw;
+	}
+	if (data_len > max) {
+		FR_PROTO_TRACE("Data len %zu too long, must be less than or equal to %zu", data_len, max);
+		goto raw;
+	}
 
 	switch (parent->type) {
 	case FR_TYPE_VALUES:
@@ -1112,9 +1118,13 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		} else if (data_len == max) {
 			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV6_PREFIX);
 		} else {
+			FR_PROTO_TRACE("Combo attribute len %zu incorrect, must be %zu or %zu", data_len, min, max);
 			goto raw;
 		}
-		if (!child) goto raw;
+		if (!child) {
+			FR_PROTO_TRACE("Missing type variant for combo attribute len %zu", data_len);
+			goto raw;
+		}
 		parent = child;	/* re-write it */
 		break;
 
@@ -1124,9 +1134,13 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		} else if (data_len == max) {
 			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV6_ADDR);
 		} else {
+			FR_PROTO_TRACE("Combo attribute len %zu incorrect, must be %zu or %zu", data_len, min, max);
 			goto raw;
 		}
-		if (!child) goto raw;
+		if (!child) {
+			FR_PROTO_TRACE("Missing type variant for combo attribute len %zu", data_len);
+			goto raw;
+		}
 		parent = child;	/* re-write it */
 		break;
 
@@ -1134,7 +1148,10 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		if (data_len < 2) goto raw; /* etype, value */
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
-		if (!child) goto raw;
+		if (!child) {
+			FR_PROTO_TRACE("Extended attribute %s has no child %i", parent->name, p[0]);
+			goto raw;
+		}
 		FR_PROTO_TRACE("decode context changed %s->%s", child->name, parent->name);
 
 		/*
