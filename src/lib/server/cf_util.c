@@ -954,6 +954,32 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *p
 					       CONF_ITEM_SECTION, name1, name2));
 }
 
+/** Find a CONF_SECTION with name1 and optionally name2 in the specified conf section of one of its parents
+ *
+ * @param[in] cs	The section we're searching in.
+ * @param[in] name1	of the section we're searching for. Special value CF_IDENT_ANY
+ *			can be used to match any name1 value.
+ * @param[in] name2	of the section we're searching for. Special value CF_IDENT_ANY
+ *			can be used to match any name2 value.
+ * @return
+ *	- The first matching subsection.
+ *	- NULL if no subsections match.
+ */
+CONF_SECTION *cf_section_find_in_parent(CONF_SECTION const *cs,
+			      		char const *name1, char const *name2)
+{
+	CONF_ITEM const *parent = cf_section_to_item(cs);
+
+	do {
+		CONF_ITEM *found;
+
+		found = cf_find(parent, CONF_ITEM_SECTION, name1, name2);
+		if (found) return cf_item_to_section(found);
+	} while ((parent = cf_parent(parent)));
+
+	return NULL;
+}
+
 /** Find a pair in a #CONF_SECTION
  *
  * @param[in] cs	the #CONF_SECTION to search in.
@@ -1204,7 +1230,7 @@ CONF_PAIR *cf_pair_find(CONF_SECTION const *cs, char const *attr)
 	return cf_item_to_pair(cf_find(cf_section_to_item(cs), CONF_ITEM_PAIR, attr, NULL));
 }
 
-/** Find a pair with a name matching attr, after specified pair.
+/** Find a pair with a name matching attr, after specified pair
  *
  * @param[in] cs	to search in.
  * @param[in] prev	Pair to search from (may be NULL).
@@ -1216,6 +1242,29 @@ CONF_PAIR *cf_pair_find(CONF_SECTION const *cs, char const *attr)
 CONF_PAIR *cf_pair_find_next(CONF_SECTION const *cs, CONF_PAIR const *prev, char const *attr)
 {
 	return cf_item_to_pair(cf_find_next(cf_section_to_item(cs), cf_pair_to_item(prev), CONF_ITEM_PAIR, attr, NULL));
+}
+
+/** Find a pair with a name matching attr in the specified section or one of its parents
+ *
+ * @param[in] cs	to search in.  Will start in the current section
+ *			and work upwards.
+ * @param[in] attr	to find.
+ * @return
+ *	- A matching #CONF_PAIR.
+ *	- NULL if none matched.
+ */
+CONF_PAIR *cf_pair_find_in_parent(CONF_SECTION const *cs, char const *attr)
+{
+	CONF_ITEM const *parent = cf_section_to_item(cs);
+
+	do {
+		CONF_ITEM *found;
+
+		found = cf_find(parent, CONF_ITEM_PAIR, attr, NULL);
+		if (found) return cf_item_to_pair(found);
+	} while ((parent = cf_parent(parent)));
+
+	return NULL;
 }
 
 /** Callback to determine the number of pairs in a section
@@ -1380,7 +1429,7 @@ static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const 
 
 /** Find user data in a config section
  *
- * @param[in] ci	to add data to.
+ * @param[in] ci	The section to search for data in.
  * @param[in] type	of user data.  Used for name spacing and walking over a specific
  *			type of user data.
  * @param[in] name	String identifier of the user data.  Special value CF_IDENT_ANY
@@ -1394,9 +1443,9 @@ CONF_DATA const *_cf_data_find(CONF_ITEM const *ci, char const *type, char const
 	return cf_item_to_data(cf_find(ci, CONF_ITEM_DATA, type, name));
 }
 
-/** Return the next matching section
+/** Return the next item of user data
  *
- * @param[in] ci	The section we're searching in.
+ * @param[in] ci	The section to search for data in.
  * @param[in] prev	section we found.  May be NULL in which case
  *			we just return the next section after prev.
  * @param[in] type	of user data.  Used for name spacing and walking over a specific
@@ -1404,12 +1453,37 @@ CONF_DATA const *_cf_data_find(CONF_ITEM const *ci, char const *type, char const
  * @param[in] name	String identifier of the user data.  Special value CF_IDENT_ANY
  *			can be used to match any name2 value.
  * @return
- *	- The next #CONF_SECTION.
- *	- NULL if there are no more #CONF_SECTION.
+ *	- The next #matching #CONF_DATA.
+ *	- NULL if there is no more matching #CONF_DATA.
  */
 CONF_DATA const *_cf_data_find_next(CONF_ITEM const *ci, CONF_ITEM const *prev, char const *type, char const *name)
 {
 	return cf_item_to_data(cf_find_next(ci, prev, CONF_ITEM_DATA, type, name));
+}
+
+/** Find matching data in the specified section or one of its parents
+ *
+ * @param[in] ci	The section to search for data in.
+ * @param[in] type	of user data.  Used for name spacing and walking over a specific
+ *			type of user data.
+ * @param[in] name	String identifier of the user data.  Special value CF_IDENT_ANY
+ *			may be used to match on type only.
+ * @return
+ *	- The next #matching #CONF_DATA.
+ *	- NULL if there is no more matching #CONF_DATA.
+ */
+CONF_DATA *_cf_data_find_in_parent(CONF_ITEM const *ci, char const *type, char const *name)
+{
+	CONF_ITEM const *parent = ci;
+
+	do {
+		CONF_ITEM *found;
+
+		found = cf_find(parent, CONF_ITEM_DATA, type, name);
+		if (found) return cf_item_to_data(found);
+	} while ((parent = cf_parent(parent)));
+
+	return NULL;
 }
 
 /** Return the user assigned value of #CONF_DATA

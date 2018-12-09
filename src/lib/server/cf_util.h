@@ -137,6 +137,8 @@ CONF_SECTION	*cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *prev);
 CONF_SECTION	*cf_section_find(CONF_SECTION const *cs, char const *name1, char const *name2);
 CONF_SECTION	*cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *subcs,
 				      char const *name1, char const *name2);
+CONF_SECTION	*cf_section_find_in_parent(CONF_SECTION const *cs,
+					   char const *name1, char const *name2);
 
 char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 
@@ -158,6 +160,7 @@ void		cf_pair_add(CONF_SECTION *parent, CONF_PAIR *cp);
 CONF_PAIR	*cf_pair_next(CONF_SECTION const *cs, CONF_PAIR const *prev);
 CONF_PAIR	*cf_pair_find(CONF_SECTION const *cs, char const *name);
 CONF_PAIR	*cf_pair_find_next(CONF_SECTION const *cs, CONF_PAIR const *prev, char const *name);
+CONF_PAIR	*cf_pair_find_in_parent(CONF_SECTION const *cs, char const *attr);
 int		cf_pair_count(CONF_SECTION const *cs);
 
 char const	*cf_pair_attr(CONF_PAIR const *pair);
@@ -175,6 +178,9 @@ CONF_DATA const	*_cf_data_find(CONF_ITEM const *ci, char const *type, char const
 
 #define		cf_data_find_next(_cf, _prev, _type, _name) _cf_data_find_next(CF_TO_ITEM(_cf), CF_TO_ITEM(_prev), #_type, _name)
 CONF_DATA const	*_cf_data_find_next(CONF_ITEM const *ci, CONF_ITEM const *prev, char const *type, char const *name);
+
+#define		cf_data_find_in_parent(_cf, _type, _name) _cf_data_find_in_parent(CF_TO_ITEM(_cf), #_type, _name)
+CONF_DATA 	*_cf_data_find_in_parent(CONF_ITEM const *ci, char const *type, char const *name);
 
 void		*cf_data_value(CONF_DATA const *cd);
 
