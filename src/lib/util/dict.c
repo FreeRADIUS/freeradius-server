@@ -2771,7 +2771,7 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
  *	- <= 0 on error and (*out == NULL) (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  */
-ssize_t fr_dict_by_protocol_substr(fr_dict_t **out, char const *name, fr_dict_t const *dict_def)
+ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_dict_t const *dict_def)
 {
 	fr_dict_attr_t		root;
 	fr_dict_t		find = { .root = &root };
@@ -3196,7 +3196,7 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
  * @param[out] err		Why parsing failed. May be NULL.
  *				- 0 success.
  *				- -1 if the attribute can't be found.
- *				- -2 attribute name too long.
+ *				- -2 attribute name is too long.
  *				- -3 if the protocol can't be found.
  *				- -4 out of memory.
  * @param[out] out		Dictionary found attribute.
@@ -3210,7 +3210,7 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
 ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **out,
 					      fr_dict_t const *dict_def, char const *attr, bool fallback)
 {
-	fr_dict_t	*dict = NULL;
+	fr_dict_t const	*dict = NULL;
 	char const	*p = attr;
 	ssize_t		slen;
 	int		aerr = 0;
@@ -3224,15 +3224,20 @@ ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **o
 	 *	or if the string was qualified.
 	 */
 	slen = fr_dict_by_protocol_substr(&dict, p, dict_def);
-	if ((slen <= 0) && !dict) {
+	if (slen < 0) {
 		if (err) *err = -2;
 		return 0;
-	}
-
+	/*
+	 *	Nothing was parsed, use the default dictionary
+	 */
+	} else if (slen == 0) {
+		dict = dict_def;
 	/*
 	 *	Has dictionary qualifier, can't fallback
 	 */
-	if (slen > 0) fallback = false;
+	} else if (slen > 0) {
+		fallback = false;
+	}
 	p += slen;
 
 	slen = fr_dict_attr_by_name_substr(&aerr, out, dict, p);
