@@ -35,13 +35,10 @@ static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t 
 				     REQUEST *request, char const *fmt)
 {
 	char			*q;
-	fr_dict_t const		*dict = NULL;
 	unsigned int		number;
 	fr_dict_attr_t const	*da;
 
 	*out = NULL;
-
-	dict = fr_dict_internal;
 
 	number = (unsigned int)strtoul(fmt, &q, 10);
 	if ((q == fmt) || (*q != '\0')) {
@@ -49,7 +46,7 @@ static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t 
 		return -1;
 	}
 
-	da = fr_dict_attr_child_by_num(fr_dict_root(dict), number);
+	da = fr_dict_attr_child_by_num(fr_dict_root(request->dict), number);
 	if (!da) {
 		REDEBUG("No attribute found with number %u", number);
 		return -1;
@@ -68,7 +65,7 @@ static ssize_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, char **out, UNUSED size_t 
 				     REQUEST *request, char const *fmt)
 {
 	unsigned int		attr = 0;
-	fr_dict_attr_t const	*parent = fr_dict_root(fr_dict_internal);
+	fr_dict_attr_t const	*parent = fr_dict_root(request->dict);
 	fr_dict_attr_t const	*da;
 	ssize_t		ret;
 
