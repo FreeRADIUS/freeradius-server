@@ -2,7 +2,7 @@
 #  PRE: update unknown
 #
 update control {
-       Cleartext-Password := 'hello'
+       &Cleartext-Password := 'hello'
 }
 
 #
