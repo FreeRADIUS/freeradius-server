@@ -1688,7 +1688,7 @@ void _cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)
 	char	*msg;
 
 	va_start(ap, fmt);
-	msg = talloc_vasprintf(NULL, fmt, ap);
+	msg = fr_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
 	if (!ci || !ci->filename || !*ci->filename || (*ci->filename == '<')) {
@@ -1717,7 +1717,7 @@ void _cf_log_perr(CONF_ITEM const *ci, char const *fmt, ...)
 	char	*msg;
 
 	va_start(ap, fmt);
-	msg = talloc_vasprintf(NULL, fmt, ap);
+	msg = fr_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
 	if (!ci || !ci->filename) {
@@ -1744,7 +1744,7 @@ void _cf_log_warn(CONF_ITEM const *ci, char const *fmt, ...)
 	char	*msg;
 
 	va_start(ap, fmt);
-	msg = talloc_vasprintf(NULL, fmt, ap);
+	msg = fr_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
 	if (!ci || !ci->filename) {
@@ -1771,7 +1771,7 @@ void _cf_log_info(CONF_ITEM const *ci, char const *fmt, ...)
 	char	*msg;
 
 	va_start(ap, fmt);
-	msg = talloc_vasprintf(NULL, fmt, ap);
+	msg = fr_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
 	if (!ci || !ci->filename || !DEBUG_ENABLED4) {
@@ -1802,7 +1802,7 @@ void _cf_log_debug(CONF_ITEM const *ci, char const *fmt, ...)
 	if (rad_debug_lvl < 1) return;
 
 	va_start(ap, fmt);
-	msg = talloc_vasprintf(NULL, fmt, ap);
+	msg = fr_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
 	if (!ci || !ci->filename || !DEBUG_ENABLED4) {
@@ -1833,7 +1833,7 @@ void _cf_log_debug_prefix(CONF_ITEM const *ci, char const *fmt, ...)
 	if (rad_debug_lvl < 1) return;
 
 	va_start(ap, fmt);
-	msg = talloc_vasprintf(NULL, fmt, ap);
+	msg = fr_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
 	if (!ci || !ci->filename) {
@@ -1864,7 +1864,7 @@ void cf_log_err_by_name(CONF_SECTION const *parent, char const *name, char const
 	int len;
 
 	va_start(ap, fmt);
-	msg = talloc_vasprintf(NULL, fmt, ap);
+	msg = fr_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
 	cp = cf_pair_find(parent, name);
