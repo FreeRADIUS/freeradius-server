@@ -800,7 +800,7 @@ int main(int argc, char *argv[])
 		server = cf_section_alloc(config->root_cs, config->root_cs, "server", "unit_test");
 		cf_section_add(config->root_cs, server);
 
-		namespace = cf_pair_alloc(config->root_cs, "namespace", "radius",
+		namespace = cf_pair_alloc(server, "namespace", "radius",
 					  T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 		cf_pair_add(server, namespace);
 	}
