@@ -883,7 +883,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		if (((ptr[0] == '%') && (ptr[1] == '{')) ||
 		    (ptr[0] == '`')) {
-			ssize_t slen;
+			ssize_t slen = 0;
 
 			if (ptr[0] == '%') {
 				slen = rad_copy_variable(buff[1], ptr);
@@ -1139,18 +1139,23 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 *	Handle if/elsif specially.
 		 */
 		if ((strcmp(buff[1], "if") == 0) || (strcmp(buff[1], "elsif") == 0)) {
-			ssize_t slen;
+			ssize_t slen = 0;
 			char const *error = NULL;
-			char *p;
+			char *p = NULL;
 			fr_cond_t *cond = NULL;
+			CONF_DATA const *cd;
+			fr_dict_t const *dict = NULL;
 
 			if (invalid_location(this, buff[1], filename, *lineno)) goto error;
+
+			cd = cf_data_find_in_parent(this, fr_dict_t **, "dictionary");
+			if (cd) dict = *((fr_dict_t **)cf_data_value(cd));
 
 			/*
 			 *	Skip (...) to find the {
 			 */
 			slen = fr_cond_tokenize(this, &cond, &error,
-						NULL, cf_section_to_item(this), ptr, FR_COND_TWO_PASS);
+						dict, cf_section_to_item(this), ptr, FR_COND_TWO_PASS);
 			memcpy(&p, &ptr, sizeof(p));
 
 			if (slen < 0) {
@@ -1209,7 +1214,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			css->item.lineno = *lineno;
 
 			slen = fr_cond_tokenize(css, &cond, &error,
-						NULL, cf_section_to_item(css), ptr, FR_COND_TWO_PASS);
+						dict, cf_section_to_item(css), ptr, FR_COND_TWO_PASS);
 			*p = '{'; /* put it back */
 
 		cond_error:
