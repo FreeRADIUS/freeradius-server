@@ -87,6 +87,8 @@ static fr_virtual_server_t **virtual_servers;
  */
 static CONF_SECTION *virtual_server_root;
 
+static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int listen_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
@@ -116,7 +118,8 @@ const CONF_PARSER virtual_servers_on_read_config[] = {
 };
 
 static const CONF_PARSER server_config[] = {
-	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace) },
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING | FR_TYPE_ON_READ, fr_virtual_server_t, namespace),
+	  .func = namespace_on_read },
 
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
 			 fr_virtual_server_t, listener), \
@@ -166,6 +169,50 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 		return -1;
 	}
 	cf_data_add(listen_cs, module, "proto module", true);
+
+	return 0;
+}
+
+/** Decrement references on dictionaries as the config sections are freed
+ *
+ */
+static int namespace_dict_free(fr_dict_t **dict)
+{
+	fr_dict_free(dict);
+	return 0;
+}
+
+/** Load a protocol dictionary matching the specified namespace
+ *
+ * @param[in] ctx	to allocate data in.
+ * @param[out] out	always NULL
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_SECTION containing the namespace pair.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	CONF_PAIR		*namespace_cp = cf_item_to_pair(ci);
+	char const		*namespace = cf_pair_value(namespace_cp);
+	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
+	fr_dict_t		*dict = NULL;
+	fr_dict_t		**dict_p;
+
+	if (DEBUG_ENABLED4) cf_log_debug(ci, "Initialising namespace \"%s\"", namespace);
+
+	if (fr_dict_protocol_afrom_file(&dict, namespace) < 0) {
+		cf_log_perr(ci, "Failed initialising namespace \"%s\"", namespace);
+		return -1;
+	}
+	dict_p = talloc_zero(ctx, fr_dict_t *);
+	*dict_p = dict;
+	talloc_set_destructor(dict_p, namespace_dict_free);
+
+	cf_data_add(server_cs, dict_p, "dictionary", true);
 
 	return 0;
 }
