@@ -290,6 +290,14 @@ post-auth {
 #       cui-inner
 
 	#
+	#  If you want the Access-Accept to contain the inner
+	#  User-Name, uncomment the following lines.
+	#
+#	update outer.session-state {
+#	       User-Name := &User-Name
+#	}
+
+	#
 	#  If you want to have a log of authentication replies,
 	#  un-comment the following line, and enable the
 	#  'detail reply_log' module.
