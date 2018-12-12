@@ -147,17 +147,26 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 	}
 	if (!fr_cond_assert(reply)) goto error;
 
+	/*
+	 *	Write the response to the debug log
+	 */
+	fr_redis_reply_print(L_DBG_LVL_2, reply, request, 0);
+
 	switch (reply->type) {
+	case REDIS_REPLY_ERROR:
+		break;
+
 	case REDIS_REPLY_INTEGER:
-		RDEBUG2("Query response %lld", reply->integer);
 		if (reply->integer > 0) ret = reply->integer;
 		break;
 
-	case REDIS_REPLY_STRING:
-		REDEBUG2("Query response %s", reply->str);
-		break;
-
+	/*
+	 *	We don't know to interpret this, the user has probably messed
+	 *	up the queries, so print an error message and fail.
+	 */
 	default:
+		REDEBUG("Expected type \"integer\" got type \"%s\"",
+			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 		break;
 	}
 	fr_redis_reply_free(reply);
