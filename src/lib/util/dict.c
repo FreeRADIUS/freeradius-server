@@ -3199,6 +3199,7 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
  *				- -2 attribute name is too long.
  *				- -3 if the protocol can't be found.
  *				- -4 out of memory.
+ *				- -5 parsing / format error
  * @param[out] out		Dictionary found attribute.
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] attr		Dictionary/Attribute name.
@@ -3227,18 +3228,28 @@ ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **o
 	if (slen < 0) {
 		if (err) *err = -2;
 		return 0;
+
 	/*
 	 *	Nothing was parsed, use the default dictionary
 	 */
 	} else if (slen == 0) {
 		dict = dict_def;
+
 	/*
 	 *	Has dictionary qualifier, can't fallback
 	 */
 	} else if (slen > 0) {
 		fallback = false;
+		p += slen;
+
+		/*
+		 *	Next thing SHOULD be a '.'
+		 */
+		if (*p++ != '.') {
+			if (err) *err = -5;
+			return 0;
+		}
 	}
-	p += slen;
 
 	slen = fr_dict_attr_by_name_substr(&aerr, out, dict, p);
 again:
