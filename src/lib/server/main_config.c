@@ -435,7 +435,7 @@ static int gid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  */
 static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
-	DEBUG("Loading dictionary %s", module->name);
+	DEBUG("Loading dictionaries for %s", module->name);
 
 	if (fr_dict_autoload((fr_dict_autoload_t const *)symbol) < 0) {
 		WARN("Failed initialising protocol library: %s", fr_strerror());
@@ -890,13 +890,6 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 	return config;
 }
 
-static fr_dict_t *dict_freeradius;
-
-static fr_dict_autoload_t main_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
-};
-
 /*
  *	Read config files.
  *
@@ -938,11 +931,8 @@ int main_config_init(main_config_t *config)
 	 */
 	config->talloc_pool_size = 8 * 1024; /* default */
 
-	/*
-	 *	Bootstrap the main FreeRADIUS dictionaries
-	 */
-	if (fr_dict_autoload(&main_dict[0]) < 0) {
-		PERROR("Error reading main dictionary");
+	if (fr_dict_internal_afrom_file(&config->dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+		PERROR("Failed reading internal dictionaries");
 		goto failure;
 	}
 
