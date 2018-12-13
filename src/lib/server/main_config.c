@@ -890,6 +890,13 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 	return config;
 }
 
+static fr_dict_t *dict_freeradius;
+
+static fr_dict_autoload_t main_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
 /*
  *	Read config files.
  *
@@ -932,18 +939,12 @@ int main_config_init(main_config_t *config)
 	config->talloc_pool_size = 8 * 1024; /* default */
 
 	/*
-	 *	We need to load the dictionaries before reading the
-	 *	configuration files.  This is because of the
-	 *	pre-compilation in conf_file.c.  That should probably
-	 *	be fixed to be done as a second stage.
+	 *	Bootstrap the main FreeRADIUS dictionaries
 	 */
-	DEBUG2("Including dictionary file \"%s/%s\"", config->dict_dir, FR_DICTIONARY_FILE);
-#if 0
-	if (fr_dict_from_file(&config->dict, FR_DICTIONARY_FILE) != 0) {
-		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
-		return -1;
+	if (fr_dict_autoload(&main_dict[0]) < 0) {
+		PERROR("Error reading main dictionary");
+		goto failure;
 	}
-#endif
 
 #define DICT_READ_OPTIONAL(_d, _n) \
 do {\
