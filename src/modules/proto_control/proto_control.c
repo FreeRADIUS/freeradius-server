@@ -67,7 +67,7 @@ static fr_dict_t *dict_control;
 
 extern fr_dict_autoload_t proto_control_dict[];
 fr_dict_autoload_t proto_control_dict[] = {
-	{ .out = &dict_control, .proto = "internal" },
+	{ .out = &dict_control, .proto = "freeradius" },
 	{ NULL }
 };
 
