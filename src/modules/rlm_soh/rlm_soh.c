@@ -34,13 +34,13 @@ typedef struct rlm_soh_t {
 } rlm_soh_t;
 
 static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_dhcp;
+static fr_dict_t *dict_dhcpv4;
 static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t rlm_soh_dict[];
 fr_dict_autoload_t rlm_soh_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "dhcp" },
+	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
@@ -65,7 +65,7 @@ fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
 	{ .out = &attr_soh_ms_machine_sp_version, .name = "SoH-MS-Machine-SP-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_soh_ms_machine_sp_release, .name = "SoH-MS-Machine-SP-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_ms_quarantine_soh, .name = "MS-Quarantine-SOH", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_dhcp_vendor, .name = "DHCP-Vendor", .type = FR_TYPE_OCTETS, .dict = &dict_dhcp },
+	{ .out = &attr_dhcp_vendor, .name = "DHCP-Vendor", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
