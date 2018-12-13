@@ -118,7 +118,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST 
 	PAIR_LIST *entry;
 	VALUE_PAIR *vp;
 
-	rcode = pairlist_read(ctx, filename, &attrs, 1);
+	rcode = pairlist_read(ctx, dict_radius, filename, &attrs, 1);
 	if (rcode < 0) {
 		return -1;
 	}

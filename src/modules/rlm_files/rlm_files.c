@@ -67,18 +67,22 @@ typedef struct rlm_files_t {
 } rlm_files_t;
 
 static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t rlm_files_dict[];
 fr_dict_autoload_t rlm_files_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
 static fr_dict_attr_t const *attr_fall_through;
+static fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_files_dict_attr[];
 fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -104,7 +108,7 @@ static const CONF_PARSER module_config[] = {
 #endif
 	{ FR_CONF_OFFSET("auth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile) },
 	{ FR_CONF_OFFSET("postauth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile) },
-	{ FR_CONF_OFFSET("key", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_files_t, key) },
+	{ FR_CONF_OFFSET("key", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_files_t, key), .dflt = "User-Name" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -127,7 +131,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		return 0;
 	}
 
-	rcode = pairlist_read(ctx, filename, &users, 1);
+	rcode = pairlist_read(ctx, dict_radius, filename, &users, 1);
 	if (rcode < 0) {
 		return -1;
 	}

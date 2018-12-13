@@ -79,7 +79,7 @@ void pairlist_free(PAIR_LIST **pl)
 /*
  *	Read the users file. Return a PAIR_LIST.
  */
-int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int complain)
+int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST **list, int complain)
 {
 	FILE *fp;
 	int mode = FIND_MODE_NAME;
@@ -189,7 +189,7 @@ parse_again:
 					getword(&ptr, newfile, sizeof(newfile), false);
 				}
 
-				if (pairlist_read(ctx, newfile, last, 0) != 0) {
+				if (pairlist_read(ctx, dict, newfile, last, 0) != 0) {
 					pairlist_free(&pl);
 					ERROR("%s[%d]: Could not open included file %s: %s",
 					      file, lineno, newfile, fr_syserror(errno));
@@ -216,7 +216,7 @@ parse_again:
 			rad_assert(check_tmp == NULL);
 			rad_assert(reply_tmp == NULL);
 
-			parsecode = fr_pair_list_afrom_str(t, NULL, ptr, &check_tmp);
+			parsecode = fr_pair_list_afrom_str(t, dict, ptr, &check_tmp);
 			if (parsecode == T_INVALID) {
 				pairlist_free(&pl);
 				PERROR("%s[%d]: Parse error (check) for entry %s", file, lineno, entry);
@@ -291,7 +291,7 @@ parse_again:
 		 *	Parse the reply values.  If there's a trailing
 		 *	comma, keep parsing the reply values.
 		 */
-		parsecode = fr_pair_list_afrom_str(t, NULL, buffer, &reply_tmp);
+		parsecode = fr_pair_list_afrom_str(t, dict, buffer, &reply_tmp);
 		if (parsecode == T_COMMA) {
 			continue;
 		}

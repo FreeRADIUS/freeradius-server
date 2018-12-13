@@ -44,7 +44,7 @@ typedef struct pair_list {
 } PAIR_LIST;
 
 /* users_file.c */
-int		pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int complain);
+int		pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 
 #ifdef __cplusplus
