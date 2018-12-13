@@ -122,7 +122,7 @@ recv DHCP-Discover {
 	#  based on the rcode of this section.
 
 	update reply {
-	       DHCP-Message-Type = DHCP-Offer
+	       &DHCP-Message-Type = DHCP-Offer
 	}
 
 	#  The contents here are invented.  Change them!
