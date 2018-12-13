@@ -255,7 +255,8 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ NULL }
 };
 
-// CLEAN start
+// ATD start
+// the code to "end" is free of all RADIUS pollution.
 
 static void conn_error(fr_event_list_t *el, int fd, int flags, int fd_errno, void *uctx);
 static void conn_read(fr_event_list_t *el, int fd, int flags, void *uctx);
@@ -263,6 +264,7 @@ static void conn_writable(fr_event_list_t *el, int fd, int flags, void *uctx);
 static int conn_write(fr_io_connection_t *c, fr_io_request_t *u);
 static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state);
 static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr_io_connection_t *c);
+static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx);
 
 static int conn_cmp(void const *one, void const *two)
 {
@@ -666,7 +668,146 @@ static int _conn_free(fr_io_connection_t *c)
 	return 0;
 }
 
-// CLEAN END
+/** Destroy thread data for the IO submodule.
+ *
+ */
+static int conn_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	fr_io_connection_thread_t *t = talloc_get_type_abort(thread, fr_io_connection_thread_t);
+
+	if (fr_heap_num_elements(t->queued) != 0) {
+		ERROR("There are still queued requests");
+		return -1;
+	}
+
+	/*
+	 *	Free all of the heaps, lists, and sockets.
+	 */
+	talloc_free_children(t);
+
+	if (fr_dlist_head(&t->opening) != NULL) {
+		ERROR("There are still partially open sockets");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int conn_thread_instantiate(fr_io_connection_thread_t *t, fr_event_list_t *el)
+{
+	t->el = el;
+
+	t->queued = fr_heap_talloc_create(t, queue_cmp, fr_io_request_t, heap_id);
+	fr_dlist_init(&t->blocked, fr_io_connection_t, entry);
+	fr_dlist_init(&t->full, fr_io_connection_t, entry);
+	fr_dlist_init(&t->zombie, fr_io_connection_t, entry);
+	fr_dlist_init(&t->opening, fr_io_connection_t, entry);
+
+	t->active = fr_heap_talloc_create(t, conn_cmp, fr_io_connection_t, heap_id);
+
+	return 0;
+}
+
+static rlm_rcode_t conn_request_resume(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
+{
+	fr_io_request_t *u = talloc_get_type_abort(ctx, fr_io_request_t);
+	rlm_rcode_t rcode;
+
+	rcode = u->rcode;
+	rad_assert(rcode != RLM_MODULE_YIELD);
+	talloc_free(u);
+
+	return rcode;
+}
+
+static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state)
+{
+	struct timeval when;
+
+	if (c->state == state) return;
+
+	/*
+	 *	Get it out of the old state.
+	 */
+	switch (c->state) {
+	case CONN_INIT:
+		break;
+
+	case CONN_OPENING:
+	case CONN_FULL:
+	case CONN_BLOCKED:
+		fr_dlist_remove(&c->thread->blocked, c); /* we only need 'offset' from the list */
+		break;
+
+	case CONN_ACTIVE:
+		rad_assert(c->heap_id >= 0);
+		(void) fr_heap_extract(c->thread->active, c);
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+		break;
+
+	case CONN_ZOMBIE:
+		/*
+		 *	Don't transition from zombie to blocked when
+		 *	we're trying to write status check packets to
+		 *	the connection.
+		 */
+		if (state == CONN_BLOCKED) return;
+
+		fr_dlist_remove(&c->thread->blocked, c);
+		if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
+		break;
+	}
+
+	/*
+	 *	And move it to the new state.
+	 */
+	c->state = state;
+	switch (c->state) {
+	case CONN_INIT:
+		break;
+
+	case CONN_OPENING:
+		fr_dlist_insert_head(&c->thread->opening, c);
+		break;
+
+	case CONN_ACTIVE:
+		rad_assert(c->heap_id < 0);
+		(void) fr_heap_insert(c->thread->active, c);
+		conn_check_idle(c);
+		break;
+
+	case CONN_BLOCKED:
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+
+		fr_dlist_insert_head(&c->thread->blocked, c);
+		break;
+
+	case CONN_FULL:
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+
+		fr_dlist_insert_head(&c->thread->full, c);
+		break;
+
+	case CONN_ZOMBIE:
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+
+		fr_dlist_insert_head(&c->thread->zombie, c);
+
+		gettimeofday(&when, NULL);
+		c->zombie_start = when;
+
+		fr_timeval_add(&when, &when, &c->thread->zombie_period);
+		WARN("%s - Entering Zombie state - connection %s", c->module_name, c->name);
+
+		if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
+			ERROR("%s - Failed inserting zombie timeout for connection %s",
+			      c->module_name, c->name);
+		}
+		break;
+	}
+}
+
+// ATD END
 
 
 /** Deal with status check timeouts for transmissions, etc.
@@ -1143,93 +1284,6 @@ static void status_server_reply(fr_io_connection_t *c, fr_io_request_t *u, REQUE
 #endif
 		fr_pair_list_free(&request->reply->vps);
 
-}
-
-static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state)
-{
-	struct timeval when;
-
-	if (c->state == state) return;
-
-	/*
-	 *	Get it out of the old state.
-	 */
-	switch (c->state) {
-	case CONN_INIT:
-		break;
-
-	case CONN_OPENING:
-	case CONN_FULL:
-	case CONN_BLOCKED:
-		fr_dlist_remove(&c->thread->blocked, c); /* we only need 'offset' from the list */
-		break;
-
-	case CONN_ACTIVE:
-		rad_assert(c->heap_id >= 0);
-		(void) fr_heap_extract(c->thread->active, c);
-		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
-		break;
-
-	case CONN_ZOMBIE:
-		/*
-		 *	Don't transition from zombie to blocked when
-		 *	we're trying to write status check packets to
-		 *	the connection.
-		 */
-		if (state == CONN_BLOCKED) return;
-
-		fr_dlist_remove(&c->thread->blocked, c);
-		if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
-		break;
-	}
-
-	/*
-	 *	And move it to the new state.
-	 */
-	c->state = state;
-	switch (c->state) {
-	case CONN_INIT:
-		break;
-
-	case CONN_OPENING:
-		fr_dlist_insert_head(&c->thread->opening, c);
-		break;
-
-	case CONN_ACTIVE:
-		rad_assert(c->heap_id < 0);
-		(void) fr_heap_insert(c->thread->active, c);
-		conn_check_idle(c);
-		break;
-
-	case CONN_BLOCKED:
-		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
-
-		fr_dlist_insert_head(&c->thread->blocked, c);
-		break;
-
-	case CONN_FULL:
-		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
-
-		fr_dlist_insert_head(&c->thread->full, c);
-		break;
-
-	case CONN_ZOMBIE:
-		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
-
-		fr_dlist_insert_head(&c->thread->zombie, c);
-
-		gettimeofday(&when, NULL);
-		c->zombie_start = when;
-
-		fr_timeval_add(&when, &when, &c->thread->zombie_period);
-		WARN("%s - Entering Zombie state - connection %s", c->module_name, c->name);
-
-		if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
-			ERROR("%s - Failed inserting zombie timeout for connection %s",
-			      c->module_name, c->name);
-		}
-		break;
-	}
 }
 
 
@@ -2815,18 +2869,6 @@ static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thr
 }
 
 
-static rlm_rcode_t mod_resume(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
-{
-	fr_io_request_t *u = talloc_get_type_abort(ctx, fr_io_request_t);
-	rlm_rcode_t rcode;
-
-	rcode = u->rcode;
-	rad_assert(rcode != RLM_MODULE_YIELD);
-	talloc_free(u);
-
-	return rcode;
-}
-
 /** Bootstrap the module
  *
  * Bootstrap I/O and type submodules.
@@ -2917,7 +2959,6 @@ static int mod_instantiate(rlm_radius_t *parent, void *instance, CONF_SECTION *c
 	return 0;
 }
 
-
 /** Instantiate thread data for the submodule.
  *
  */
@@ -2925,8 +2966,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 {
 	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	fr_io_connection_thread_t *t = talloc_get_type_abort(thread, fr_io_connection_thread_t);
-
-	t->el = el;
+	int rcode;
 
 #define COPY(_x) t->_x = inst->parent->_x
 	COPY(max_connections);
@@ -2935,43 +2975,13 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	COPY(idle_timeout);
 	COPY(zombie_period);
 
-	t->queued = fr_heap_talloc_create(t, queue_cmp, fr_io_request_t, heap_id);
-	fr_dlist_init(&t->blocked, fr_io_connection_t, entry);
-	fr_dlist_init(&t->full, fr_io_connection_t, entry);
-	fr_dlist_init(&t->zombie, fr_io_connection_t, entry);
-	fr_dlist_init(&t->opening, fr_io_connection_t, entry);
-
-	t->active = fr_heap_talloc_create(t, conn_cmp, fr_io_connection_t, heap_id);
+	rcode =conn_thread_instantiate(t, el);
+	if (rcode < 0) return rcode;
 
 	conn_alloc(inst, t);
-
 	return 0;
 }
 
-/** Destroy thread data for the IO submodule.
- *
- */
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
-{
-	fr_io_connection_thread_t *t = talloc_get_type_abort(thread, fr_io_connection_thread_t);
-
-	if (fr_heap_num_elements(t->queued) != 0) {
-		ERROR("There are still queued requests");
-		return -1;
-	}
-
-	/*
-	 *	Free all of the heaps, lists, and sockets.
-	 */
-	talloc_free_children(t);
-
-	if (fr_dlist_head(&t->opening) != NULL) {
-		ERROR("There are still partially open sockets");
-		return -1;
-	}
-
-	return 0;
-}
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -2998,9 +3008,9 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 	.thread_instantiate 	= mod_thread_instantiate,
-	.thread_detach		= mod_thread_detach,
+	.thread_detach		= conn_thread_detach,
 
 	.push			= mod_push,
 	.signal			= mod_signal,
-	.resume			= mod_resume,
+	.resume			= conn_request_resume,
 };
