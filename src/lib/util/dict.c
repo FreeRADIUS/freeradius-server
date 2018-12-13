@@ -5248,7 +5248,7 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 		}
 
 		if (!*p->dict) {
-			fr_strerror_printf("Missing dictionary for attribute \"%s\" autoresolution", p->name);
+			fr_strerror_printf("Dictionary was not already loaded for attribute \"%s\"", p->name);
 			return -1;
 		}
 
