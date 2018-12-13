@@ -102,8 +102,8 @@ static const CONF_PARSER module_config[] = {
 static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
 
-extern fr_dict_autoload_t rlm_expiration_dict[];
-fr_dict_autoload_t rlm_expiration_dict[] = {
+extern fr_dict_autoload_t rlm_mschap_dict[];
+fr_dict_autoload_t rlm_mschap_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
