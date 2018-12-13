@@ -1019,16 +1019,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 					}
 
 				same_type:
-					return_0("Attribute comparisons must be of the same data type");
-				}
+					*error = "Attribute comparisons must be of the same data type";
 
-				/*
-				 *	Without a cast, we can't compare "foo" to User-Name,
-				 *	it has to be done the other way around.
-				 */
-				if ((c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->lhs->type != TMPL_TYPE_ATTR)) {
-					*error = "Cannot use attribute reference on right side of condition";
 				return_0:
 					if (lhs) talloc_free(lhs);
 					if (rhs) talloc_free(rhs);
