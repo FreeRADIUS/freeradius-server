@@ -33,8 +33,8 @@
 
 static fr_dict_t *dict_dhcpv4;
 
-extern fr_dict_autoload_t proto_dhcpv4_dict[];
-fr_dict_autoload_t proto_dhcpv4_dict[] = {
+extern fr_dict_autoload_t proto_dhcpv4_base_dict[];
+fr_dict_autoload_t proto_dhcpv4_base_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
 	{ NULL }
 };
