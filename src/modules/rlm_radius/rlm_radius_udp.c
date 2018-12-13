@@ -807,6 +807,22 @@ static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t stat
 	}
 }
 
+static void conn_finished_request(fr_io_connection_t *c, fr_io_request_t *u)
+{
+	rad_assert(u->state != REQUEST_IO_STATE_DONE);
+
+	if (c) {
+		rad_assert(u->state == REQUEST_IO_STATE_WRITTEN);
+		state_transition(u, REQUEST_IO_STATE_REPLIED, NULL);
+
+		conn_check_idle(c);
+
+	} else {
+		rad_assert(u->state == REQUEST_IO_STATE_QUEUED);
+		state_transition(u, REQUEST_IO_STATE_REPLIED, NULL);
+	}
+}
+
 // ATD END
 
 
@@ -1082,6 +1098,17 @@ static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr
 		rad_assert(u->c != NULL);
 
 		radius = u->c->ctx;
+
+		/*
+		 *      Status check packets are never removed from
+		 *      the connection, and their IDs are never
+		 *      deallocated.
+		 */
+		if (u == radius->status_u) {
+			u->state = REQUEST_IO_STATE_INIT;
+			return;
+		}
+
 		(void) rr_track_delete(radius->id, u->rr);
 		u->c->slots_free = radius->id->num_free;
 		fr_dlist_remove(&u->c->sent, u);
@@ -1145,38 +1172,6 @@ static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr
 	default:
 		rad_assert(0 == 1);
 		break;
-	}
-}
-
-static void mod_finished_request(fr_io_connection_t *c, fr_io_request_t *u)
-{
-	rlm_radius_udp_connection_t *radius = c->ctx;
-
-	rad_assert(u->state != REQUEST_IO_STATE_DONE);
-
-	/*
-	 *	Delete the tracking table entry, and remove the
-	 *	request from the "sent" list for this connection.
-	 */
-	if (c) {
-		/*
-		 *      Status check packets are never removed from
-		 *      the connection, and their IDs are never
-		 *      deallocated.
-		 */
-		if (u == radius->status_u) {
-			u->state = REQUEST_IO_STATE_INIT;
-			return;
-		}
-
-		rad_assert(u->state == REQUEST_IO_STATE_WRITTEN);
-		state_transition(u, REQUEST_IO_STATE_REPLIED, NULL);
-
-		conn_check_idle(c);
-
-	} else {
-		rad_assert(u->state == REQUEST_IO_STATE_QUEUED);
-		state_transition(u, REQUEST_IO_STATE_REPLIED, NULL);
 	}
 }
 
@@ -1550,7 +1545,7 @@ done:
 	rad_assert(u->c == c);
 	rad_assert(u->rr != NULL);
 	rad_assert(u->state == REQUEST_IO_STATE_WRITTEN);
-	mod_finished_request(c, u);
+	conn_finished_request(c, u);
 
 	/*
 	 *	Remember when we last saw a reply.
@@ -1587,7 +1582,7 @@ done:
 		 *	responses, but we're happy to do it faster.
 		 *
 		 *	If the connection was FULL, then
-		 *	mod_finished_request() will ensure that this
+		 *	conn_finished_request() will ensure that this
 		 *	packet has been removed from the connection,
 		 *	before any subsequent writes go to it.
 		 */
@@ -1789,7 +1784,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 			REDEBUG("No response to proxied request");
 		}
 
-		mod_finished_request(c, u);
+		conn_finished_request(c, u);
 		return;
 	}
 
@@ -1798,7 +1793,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 */
 	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next, response_timeout, u) < 0) {
 		RDEBUG("Failed inserting retransmission timer");
-		mod_finished_request(c, u);
+		conn_finished_request(c, u);
 		return;
 	}
 
