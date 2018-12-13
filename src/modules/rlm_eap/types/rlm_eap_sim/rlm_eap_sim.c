@@ -93,8 +93,8 @@ static fr_dict_attr_t const *attr_eap_sim_version_list;
 
 extern fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[] = {
-	{ .out = &attr_eap_sim_mk, .name = "EAP-SIM-MK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_eap_sim_mk, .name = "EAP-SIM-MK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_eap_sim },
 
 	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -1148,7 +1148,10 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 
 static int mod_load(void)
 {
-	if (fr_sim_init() < 0) return -1;
+	if (fr_sim_init() < 0) {
+		ERROR("Failed initializing SIM library");
+		return -1;
+	}
 
 	sim_xlat_register();
 

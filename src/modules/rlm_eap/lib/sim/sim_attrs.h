@@ -26,6 +26,7 @@
 #include <freeradius-devel/protocol/eap/sim/rfc4187.h>
 #include <freeradius-devel/protocol/eap/aka/dictionary.h>
 #include <freeradius-devel/protocol/eap/aka/rfc4187.h>
+#include <freeradius-devel/protocol/eap/aka/freeradius.h>
 
 /*
  *	Sanity check on dictionaries...

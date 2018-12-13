@@ -65,27 +65,3 @@ VALUE	EAP-AKA-Bidding			Prefer-AKA		0
 VALUE	EAP-AKA-Bidding			Prefer-AKA-Prime	32768	# D Bit
 
 ATTRIBUTE	EAP-AKA-Result-Ind			137	bool
-
-#
-#  Internal attributes used by FreeRADIUS
-#
-FLAGS	internal
-ATTRIBUTE	EAP-AKA-Subtype				256	integer
-
-VALUE	EAP-AKA-Subtype			AKA-Challenge		1
-VALUE	EAP-AKA-Subtype			AKA-Authentication-Reject 2
-VALUE	EAP-AKA-Subtype			AKA-Synchronization-Failure 4
-VALUE	EAP-AKA-Subtype			AKA-Identity		5
-VALUE	EAP-AKA-Subtype			AKA-Notification	12
-VALUE	EAP-AKA-Subtype			AKA-Reauthentication	13
-VALUE	EAP-AKA-Subtype			AKA-Client-Error	14
-
-ATTRIBUTE	EAP-AKA-XRES				260	octets
-ATTRIBUTE	EAP-AKA-CK				261	octets
-ATTRIBUTE	EAP-AKA-IK				262	octets
-ATTRIBUTE	EAP-AKA-AK				263	octets
-
-#
-#  Keys to store for fast-reauthentication
-#
-ATTRIBUTE	EAP-SIM-MK				264	octets		# Master key

@@ -184,8 +184,12 @@ int fr_sim_init(void)
 		return 0;
 	}
 
-	if (fr_dict_autoload(libfreeradius_sim_dict) < 0) return -1;
+	if (fr_dict_autoload(libfreeradius_sim_dict) < 0) {
+		PERROR("Failed loading SIM dictionary");
+		return -1;
+	}
 	if (fr_dict_attr_autoload(libfreeradius_sim_dict_attr) < 0) {
+		PERROR("Failed loading SIM attributes");
 		fr_dict_autofree(libfreeradius_sim_dict);
 		return -1;
 	}
