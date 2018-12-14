@@ -1453,7 +1453,7 @@ CONF_DATA const *_cf_data_find(CONF_ITEM const *ci, char const *type, char const
  * @param[in] name	String identifier of the user data.  Special value CF_IDENT_ANY
  *			can be used to match any name2 value.
  * @return
- *	- The next #matching #CONF_DATA.
+ *	- The next matching #CONF_DATA.
  *	- NULL if there is no more matching #CONF_DATA.
  */
 CONF_DATA const *_cf_data_find_next(CONF_ITEM const *ci, CONF_ITEM const *prev, char const *type, char const *name)
@@ -1469,7 +1469,7 @@ CONF_DATA const *_cf_data_find_next(CONF_ITEM const *ci, CONF_ITEM const *prev, 
  * @param[in] name	String identifier of the user data.  Special value CF_IDENT_ANY
  *			may be used to match on type only.
  * @return
- *	- The next #matching #CONF_DATA.
+ *	- The next matching #CONF_DATA.
  *	- NULL if there is no more matching #CONF_DATA.
  */
 CONF_DATA *_cf_data_find_in_parent(CONF_ITEM const *ci, char const *type, char const *name)
