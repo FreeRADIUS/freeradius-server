@@ -479,7 +479,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (fr_dict_attr_by_qualified_name(&da, dict_freeradius, inst->pwd_fmt->field[key_field], false) < 0) {
+	if (fr_dict_attr_by_qualified_name(&da, dict_freeradius, inst->pwd_fmt->field[key_field], true) < 0) {
 		PERROR("Unable to resolve attribute");
 		release_ht(inst->ht);
 		inst->ht = NULL;
