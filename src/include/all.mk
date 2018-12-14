@@ -49,7 +49,7 @@ DICT += $(shell find share/dictionary -type f -name *dictionary)
 # Add in protocol specific dictionaries (should be done in proto_* modules?)
 DICT += share/dictionary/vqp/dictionary.vqp
 
-NORMALIZE	:= tr -- '[:lower:]/.-+' '[:upper:]____' | sed 's/241_//;'
+NORMALIZE	:= tr -- '[:lower:]/+.-' '[:upper:]____' | sed 's/241_//;'
 HEADER		:= "/* AUTO_GENERATED FILE.  DO NOT EDIT */"
 
 #  Build targets dynamically
