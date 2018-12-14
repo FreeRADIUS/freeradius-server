@@ -3198,8 +3198,8 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
  *				- -1 if the attribute can't be found.
  *				- -2 attribute name is too long.
  *				- -3 if the protocol can't be found.
- *				- -4 out of memory.
- *				- -5 parsing / format error
+ *				- -4 parsing / format error.
+ *				- -5 out of memory.
  * @param[out] out		Dictionary found attribute.
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] attr		Dictionary/Attribute name.
@@ -3292,8 +3292,10 @@ again:
  * @return
  *	- 0 on success.
  *	- -1 if the attribute can't be found.
- *	- -2 if the protocol can't be found.
- *	- -3 trailing garbage in attr atring.
+ *	- -2 attribute name is too long.
+ *	- -3 if the protocol can't be found.
+ *	- -4 parsing / format error.
+ *	- -5 out of memory.
  */
 int fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr_dict_t const *dict_def,
 				   char const *attr, bool fallback)
@@ -3306,7 +3308,7 @@ int fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr_dict_t const *
 
 	if ((size_t)slen != strlen(attr)) {
 		fr_strerror_printf("Trailing garbage after attr string \"%s\"", attr);
-		return -3;
+		return -4;
 	}
 
 	return 0;
@@ -5259,7 +5261,10 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 		}
 
 		if (!*p->dict) {
-			fr_strerror_printf("Dictionary was not already loaded for attribute \"%s\"", p->name);
+			fr_strerror_printf("Can't resolve attribute \"%s\", dictionary not loaded", p->name);
+			fr_strerror_printf_push("Check exported fr_dict_autoload_t struct has "
+						"an entry to load the dictionary \"%s\" is located in, and that "
+						"the symbol name is correct", p->name);
 			return -1;
 		}
 

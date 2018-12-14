@@ -1148,10 +1148,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 
 static int mod_load(void)
 {
-	if (fr_sim_init() < 0) {
-		ERROR("Failed initializing SIM library");
-		return -1;
-	}
+	if (fr_sim_init() < 0) return -1;
 
 	sim_xlat_register();
 
