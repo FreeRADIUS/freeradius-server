@@ -2774,7 +2774,6 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_dict_t const *dict_def)
 {
 	fr_dict_attr_t		root;
-	fr_dict_t		find = { .root = &root };
 
 	fr_dict_t		*dict;
 	char const		*p;
@@ -2811,7 +2810,7 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_d
 		*out = NULL;
 		return 0;
 	}
-	dict = fr_hash_table_finddata(protocol_by_name, &find);
+	dict = fr_hash_table_finddata(protocol_by_name, &(fr_dict_t){ .root = &root });
 	talloc_const_free(root.name);
 
 	if (!dict) {
@@ -2833,12 +2832,9 @@ ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_d
  */
 fr_dict_t *fr_dict_by_protocol_name(char const *name)
 {
-	fr_dict_attr_t	root = { .name = name };
-	fr_dict_t	find = { .root = &root };
-
 	if (!protocol_by_name || !name) return NULL;
 
-	return fr_hash_table_finddata(protocol_by_name, &find);
+	return fr_hash_table_finddata(protocol_by_name, &(fr_dict_t){ .root = &(fr_dict_attr_t){ .name = name } });
 }
 
 /** Lookup a protocol by its number.
@@ -2851,18 +2847,9 @@ fr_dict_t *fr_dict_by_protocol_name(char const *name)
  */
 fr_dict_t *fr_dict_by_protocol_num(unsigned int num)
 {
-	fr_dict_t	find;
-	fr_dict_attr_t	root;
-
 	if (!protocol_by_num) return NULL;
 
-	memset(&find, 0, sizeof(find));
-	memset(&root, 0, sizeof(root));
-
-	find.root = &root;
-	root.attr = num;
-
-	return fr_hash_table_finddata(protocol_by_num, &find);
+	return fr_hash_table_finddata(protocol_by_num, &(fr_dict_t) { .root = &(fr_dict_attr_t){ .attr = num } });
 }
 
 /** Dictionary/attribute ctx struct
@@ -2994,12 +2981,12 @@ fr_dict_vendor_t const *fr_dict_vendor_by_da(fr_dict_attr_t const *da)
  */
 fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name)
 {
-	fr_dict_vendor_t find = { .name = name }, *found;
+	fr_dict_vendor_t	*found;
 
 	if (!name) return 0;
 	INTERNAL_IF_NULL(dict);
 
-	found = fr_hash_table_finddata(dict->vendors_by_name, &find);
+	found = fr_hash_table_finddata(dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
 	if (!found) return 0;
 
 	return found;
@@ -3016,13 +3003,9 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
  */
 fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t vendor_pen)
 {
-	fr_dict_vendor_t 	find = {
-					.pen = vendor_pen
-				};
-
 	INTERNAL_IF_NULL(dict);
 
-	return fr_hash_table_finddata(dict->vendors_by_num, &find);
+	return fr_hash_table_finddata(dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
 }
 
 /** Return the vendor that parents this attribute
@@ -3349,14 +3332,12 @@ int fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr_dict_t const *
  */
 fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type)
 {
-	fr_dict_t	*dict = fr_dict_by_da(da);
-	fr_dict_attr_t	find = {
-				.parent = da->parent,
-				.attr = da->attr,
-				.type = type
-			};
-
-	return fr_hash_table_finddata(dict->attributes_combo, &find);
+	return fr_hash_table_finddata(fr_dict_by_da(da)->attributes_combo,
+				      &(fr_dict_attr_t){
+				      		.parent = da->parent,
+				      		.attr = da->attr,
+				      		.type = type
+				      });
 }
 
 /** Check if a child attribute exists in a parent using a pointer (da)
