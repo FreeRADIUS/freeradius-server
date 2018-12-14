@@ -1154,7 +1154,7 @@ do { \
 			slen = load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode");
 			if (slen <= 0) goto error;
 
-			p = slen + 1;
+			p += slen + 1;
 			if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, tp_ctx) < 0)) {
 				fr_strerror_printf_push("unit_test_attribute: Failed initialising decoder testpoint at "
 							"line %d of %s", lineno, directory);
