@@ -11,7 +11,7 @@
 VENDOR		HP				11
 
 #
-# Attributes supported by HP ProCurve wired networking devices
+# Attributes supported by HP ProCurve and Aruba wired networking devices
 #
 BEGIN-VENDOR	HP
 
