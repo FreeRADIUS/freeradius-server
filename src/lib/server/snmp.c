@@ -35,6 +35,28 @@ RCSID("$Id$")
 
 #include <freeradius-devel/protocol/snmp/freeradius.h>
 
+static fr_dict_t *dict_snmp;
+
+extern fr_dict_autoload_t snmp_dict[];
+fr_dict_autoload_t snmp_dict[] = {
+	{ .out = &dict_snmp, .proto = "snmp" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_snmp_operation;
+static fr_dict_attr_t const *attr_snmp_type;
+static fr_dict_attr_t const *attr_snmp_failure;
+static fr_dict_attr_t const *attr_snmp_root;
+
+extern fr_dict_attr_autoload_t snmp_dict_attr[];
+fr_dict_attr_autoload_t snmp_dict_attr[] = {
+	{ .out = &attr_snmp_operation, .name = "FreeRADIUS-SNMP-Operation", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
+	{ .out = &attr_snmp_type, .name = "FreeRADIUS-SNMP-Type", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
+	{ .out = &attr_snmp_failure, .name = "FreeRADIUS-SNMP-Failure", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
+	{ .out = &attr_snmp_root, .name = "FreeRADIUS-Iso", .type = FR_TYPE_TLV, .dict = &dict_snmp },
+	{ NULL }
+};
+
 #define FR_FREERADIUS_SNMP_TYPE_OBJECT 0
 
 #define SNMP_MAP_TERMINATOR	{ .name = NULL, .da = NULL, .type = 0 }
@@ -73,11 +95,6 @@ struct fr_snmp_map {
 
 	fr_snmp_map_t		*child;			//!< Child map.
 };
-
-static fr_dict_attr_t const *fr_snmp_op_attr;
-static fr_dict_attr_t const *fr_snmp_type;
-static fr_dict_attr_t const *fr_snmp_root;
-static fr_dict_attr_t const *fr_snmp_failure;
 
 static struct timeval uptime;
 static struct timeval reset_time;
@@ -795,7 +812,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 		fr_value_box_steal(vp, &vp->data, &data);
 		fr_cursor_append(out, vp);
 
-		vp = fr_pair_afrom_da(request->reply, fr_snmp_type);
+		vp = fr_pair_afrom_da(request->reply, attr_snmp_type);
 		if (!vp) return 0;
 		vp->vp_uint32 = map_p->type;
 		fr_cursor_append(out, vp);
@@ -807,7 +824,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 		ssize_t ret;
 
 		if (!map_p->set || (map_p->type == FR_FREERADIUS_SNMP_TYPE_OBJECT)) {
-			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
+			vp = fr_pair_afrom_da(request->reply, attr_snmp_failure);
 			if (!vp) return 0;
 			vp->vp_uint32 = FR_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE;
 			fr_cursor_append(out, vp);
@@ -822,7 +839,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, REQUEST *request,
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_LENGTH:
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_VALUE:
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_INCONSISTENT_VALUE:
-			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
+			vp = fr_pair_afrom_da(request->reply, attr_snmp_failure);
 			if (!vp) break;
 
 			vp->vp_uint32 = -(ret);
@@ -923,7 +940,7 @@ int fr_snmp_process(REQUEST *request)
 	VALUE_PAIR		*op;
 
 	fr_cursor_init(&request_cursor, &request->packet->vps);
-	fr_cursor_iter_by_da_init(&op_cursor, &request->packet->vps, fr_snmp_op_attr);
+	fr_cursor_iter_by_da_init(&op_cursor, &request->packet->vps, attr_snmp_operation);
 	fr_cursor_init(&reply_cursor, &request->reply->vps);
 	fr_cursor_init(&out_cursor, &head);
 
@@ -969,7 +986,7 @@ int fr_snmp_process(REQUEST *request)
 		vp->da = da;
 	}
 
-	for (vp = fr_cursor_iter_by_ancestor_init(&request_cursor, &request->packet->vps, fr_snmp_root);
+	for (vp = fr_cursor_iter_by_ancestor_init(&request_cursor, &request->packet->vps, attr_snmp_root);
 	     vp;
 	     vp = fr_cursor_next(&request_cursor)) {
 		fr_proto_tlv_stack_build(tlv_stack, vp->da);
@@ -978,21 +995,21 @@ int fr_snmp_process(REQUEST *request)
 		 *	Wind to the frame in the TLV stack that matches our
 		 *	SNMP root.
 		 */
-		for (depth = 0; tlv_stack[depth]; depth++) if (fr_snmp_root == tlv_stack[depth]) break;
+		for (depth = 0; tlv_stack[depth]; depth++) if (attr_snmp_root == tlv_stack[depth]) break;
 
 		/*
 		 *	Any attribute returned by fr_cursor_next_by_ancestor
 		 *	should have the SNMP root attribute as an ancestor.
 		 */
 		rad_assert(tlv_stack[depth]);
-		rad_assert(tlv_stack[depth] == fr_snmp_root);
+		rad_assert(tlv_stack[depth] == attr_snmp_root);
 
 		/*
 		 *	Operator attribute acts as a request delimiter
 		 */
 		op = fr_cursor_current(&op_cursor);
 		if (!op) {
-			ERROR("Missing operation (%s)", fr_snmp_op_attr->name);
+			ERROR("Missing operation (%s)", attr_snmp_operation->name);
 			return -1;
 		}
 		fr_cursor_next(&op_cursor);
@@ -1022,11 +1039,11 @@ int fr_snmp_process(REQUEST *request)
 			oid_str[0] = '.';
 
 			/* Get the length of the matching part */
-			oid_len = fr_dict_print_attr_oid(oid_str + 1, sizeof(oid_str) - 1, fr_snmp_root, tlv_stack[-(ret)]);
+			oid_len = fr_dict_print_attr_oid(oid_str + 1, sizeof(oid_str) - 1, attr_snmp_root, tlv_stack[-(ret)]);
 
 			/* Get the last frame in the current stack */
 			for (depth = 0; tlv_stack[depth + 1]; depth++);
-			len = fr_dict_print_attr_oid(oid_str + 1, sizeof(oid_str) - 1, fr_snmp_root, tlv_stack[depth]);
+			len = fr_dict_print_attr_oid(oid_str + 1, sizeof(oid_str) - 1, attr_snmp_root, tlv_stack[depth]);
 
 			/* Use the difference in OID string length to place the marker */
 			REMARKER(oid_str, oid_len - (len - oid_len), fr_strerror());
@@ -1054,7 +1071,7 @@ static int _fr_snmp_init(fr_snmp_map_t map[])
 
 			rad_assert(map[i].child);
 
-			map[i].da = fr_dict_attr_by_name(NULL, map[i].name);
+			map[i].da = fr_dict_attr_by_name(dict_snmp, map[i].name);
 			if (!map[i].da) {
 				ERROR("Incomplete dictionary: Missing definition for \"%s\"", map[i].name);
 				return -1;
@@ -1066,7 +1083,7 @@ static int _fr_snmp_init(fr_snmp_map_t map[])
 			continue;
 		}
 
-		map[i].da = fr_dict_attr_by_name(NULL, map[i].name);
+		map[i].da = fr_dict_attr_by_name(dict_snmp, map[i].name);
 		if (!map[i].da) {
 			ERROR("Incomplete dictionary: Missing definition for \"%s\"", map[i].name);
 			return -1;
@@ -1093,23 +1110,18 @@ static int _fr_snmp_init(fr_snmp_map_t map[])
  */
 int fr_snmp_init(void)
 {
-
-#define CACHE_DA(_v, _n) \
-do { \
-	_v = fr_dict_attr_by_name(NULL, _n); \
-	if (!_v) { \
-		ERROR("Incomplete dictionary: Missing definition for \"%s\"", _n); \
-		return -1; \
-	} \
-} while(0);
-
 	gettimeofday(&uptime, NULL);
 	reset_time = uptime;
 
-	CACHE_DA(fr_snmp_op_attr, "FreeRADIUS-SNMP-Operation");
-	CACHE_DA(fr_snmp_type, "FreeRADIUS-SNMP-Type");
-	CACHE_DA(fr_snmp_failure, "FreeRADIUS-SNMP-Failure");
-	CACHE_DA(fr_snmp_root, "FreeRADIUS-Iso");		/* Common root for all SNMP OID TLVs */
+	if (fr_dict_autoload(snmp_dict) < 0) {
+		fr_perror("snmp_init");
+		return -1;
+	}
+
+	if (fr_dict_attr_autoload(snmp_dict_attr) < 0) {
+		fr_perror("snmp_init");
+		return -1;
+	}
 
 	return _fr_snmp_init(snmp_iso);	/* The SNMP root node */
 }
