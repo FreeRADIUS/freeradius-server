@@ -34,6 +34,7 @@ extern "C" {
 #include <stdint.h>
 #include <talloc.h>
 
+typedef struct fr_hash_entry_s fr_hash_entry_t;
 /*
  *	Fast hash, which isn't too bad.  Don't use for cryptography,
  *	just for hashing internal data.

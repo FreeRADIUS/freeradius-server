@@ -42,13 +42,12 @@ RCSID("$Id$")
  */
 #define FR_HASH_NUM_BUCKETS (64)
 
-typedef struct fr_hash_entry_t {
-	struct fr_hash_entry_t *next;
+struct fr_hash_entry_s {
+	fr_hash_entry_t *next;
 	uint32_t	reversed;
 	uint32_t	key;
-	void const 	*data;
-} fr_hash_entry_t;
-
+	void 		*data;
+};
 
 struct fr_hash_table_t {
 	int			num_elements;
@@ -60,9 +59,9 @@ struct fr_hash_table_t {
 	fr_hash_table_hash_t	hash;
 	fr_hash_table_cmp_t	cmp;
 
-	fr_hash_entry_t	null;
+	fr_hash_entry_t		null;
 
-	fr_hash_entry_t	**buckets;
+	fr_hash_entry_t		**buckets;
 };
 
 #ifdef TESTING
@@ -429,7 +428,7 @@ int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	node->next = &ht->null;
 	node->reversed = reversed;
 	node->key = key;
-	node->data = data;
+	memcpy(&node->data, &data, sizeof(node->data));
 
 	/* already in the table, can't insert it */
 	if (!list_insert(ht, &ht->buckets[entry], node)) {
@@ -475,18 +474,15 @@ static fr_hash_entry_t *fr_hash_table_find(fr_hash_table_t *ht, void const *data
 int fr_hash_table_replace(fr_hash_table_t *ht, void const *data)
 {
 	fr_hash_entry_t *node;
-	void *tofree;
 
 	if (!ht || !data) return 0;
 
 	node = fr_hash_table_find(ht, data);
 	if (!node) return fr_hash_table_insert(ht, data);
 
-	if (ht->free) {
-		memcpy(&tofree, &node->data, sizeof(tofree));
-		ht->free(tofree);
-	}
-	node->data = data;
+	if (ht->free) ht->free(node->data);
+
+	memcpy(&node->data, &data, sizeof(node->data));
 
 	return 1;
 }
@@ -535,9 +531,8 @@ void *fr_hash_table_yank(fr_hash_table_t *ht, void const *data)
 	list_delete(ht, &ht->buckets[entry], node);
 	ht->num_elements--;
 
-	memcpy(&old, &node->data, sizeof(old));
+	old = node->data;
 	talloc_free(node);
-
 	return old;
 }
 
@@ -576,13 +571,10 @@ void fr_hash_table_free(fr_hash_table_t *ht)
 			if (ht->buckets[i]) for (node = ht->buckets[i];
 						 node != &ht->null;
 						 node = next) {
-				void *tofree;
-
 				next = node->next;
 				if (!node->data) continue; /* dummy entry */
 
-				memcpy(&tofree, &node->data, sizeof(tofree));
-				ht->free(tofree);
+				ht->free(node->data);
 			}
 		}
 	}
@@ -625,12 +617,9 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 		if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
 
 		for (node = ht->buckets[i]; node != &ht->null; node = next) {
-			void *arg;
-
 			next = node->next;
 
-			memcpy(&arg, &node->data, sizeof(arg));
-			rcode = callback(context, arg);
+			rcode = callback(context, node->data);
 
 			if (rcode != 0) return rcode;
 		}
