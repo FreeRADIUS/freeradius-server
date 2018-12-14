@@ -28,6 +28,7 @@ ATTRIBUTE	HP-Port-Client-Limit-WA			12	integer
 ATTRIBUTE	HP-Port-Auth-Mode-Dot1x			13	integer
 ATTRIBUTE	HP-Port-Bounce-Host			23	integer
 ATTRIBUTE	HP-Captive-Portal-URL			24	string
+ATTRIBUTE	HP-User-Role			25	string
 
 # Client QoS attributes
 ATTRIBUTE	HP-Port-Priority-Regeneration-Table	40	string
