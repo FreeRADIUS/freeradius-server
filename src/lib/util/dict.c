@@ -3212,9 +3212,12 @@ ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **o
 					      fr_dict_t const *dict_def, char const *attr, bool fallback)
 {
 	fr_dict_t const	*dict = NULL;
+	fr_dict_t const *dict_iter = NULL;
 	char const	*p = attr;
 	ssize_t		slen;
 	int		aerr = 0;
+	bool		internal = false;
+	fr_hash_iter_t  iter;
 
 	INTERNAL_IF_NULL(dict_def);
 
@@ -3235,11 +3238,15 @@ ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **o
 	} else if (slen == 0) {
 		dict = dict_def;
 
+		if (fallback) {
+			dict_iter = fr_hash_table_iter_init(protocol_by_num, &iter);
+			if (dict_def == fr_dict_internal) internal = true; /* already checked this */
+		}
+
 	/*
 	 *	Has dictionary qualifier, can't fallback
 	 */
 	} else if (slen > 0) {
-		fallback = false;
 		p += slen;
 
 		/*
@@ -3251,20 +3258,36 @@ ssize_t fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **o
 		}
 	}
 
-	slen = fr_dict_attr_by_name_substr(&aerr, out, dict, p);
 again:
+	slen = fr_dict_attr_by_name_substr(&aerr, out, dict, p);
+
 	switch (aerr) {
 	case 0:
 		break;
 
 	case -1:
 		/*
-		 *	Fallback to lookup in internal dictionary
+		 *	Loop over all the dictionaries
 		 */
-		if (fallback) {
-			slen = fr_dict_attr_by_name_substr(&aerr, out, fr_dict_internal, p);
-			fallback = false;
-			goto again;
+		if (dict_iter) {
+			/*
+			 *	If we haven't checked the internal
+			 *	dictionary, do that first.  It's not
+			 *	in the hash table.
+			 */
+			if (!internal) {
+				dict = fr_dict_internal;
+				internal = true;
+				goto again;
+			}
+
+			do {
+				dict_iter = fr_hash_table_iter_next(protocol_by_num, &iter);
+			} while (dict_iter == dict_def); /* skip the dictionary we already checked */
+
+			dict = dict_iter;
+
+			if (dict) goto again;
 		}
 
 		if (err) *err = aerr;
