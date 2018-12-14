@@ -108,7 +108,7 @@ static const CONF_PARSER module_config[] = {
 #endif
 	{ FR_CONF_OFFSET("auth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile) },
 	{ FR_CONF_OFFSET("postauth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile) },
-	{ FR_CONF_OFFSET("key", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_files_t, key), .dflt = "User-Name" },
+	{ FR_CONF_OFFSET("key", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_files_t, key) },
 	CONF_PARSER_TERMINATOR
 };
 
