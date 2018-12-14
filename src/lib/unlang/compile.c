@@ -523,8 +523,20 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 	rad_assert(vpt->type == TMPL_TYPE_ATTR_UNDEFINED);
 
 	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, vpt->tmpl_unknown_name, true) < 0) {
-		cf_log_perr(ci, "Failed resolving undefined attribute");
-		return false;
+		ssize_t slen;
+		fr_dict_attr_t *unknown_da;
+
+		/*
+		 *	Can't find it under it's regular name.  Try an unknown attribute.
+		 */
+		slen = fr_dict_unknown_afrom_oid_str(vpt, &unknown_da, fr_dict_root(rules->dict_def),
+						     vpt->tmpl_unknown_name);
+		if ((slen < 0) || (vpt->tmpl_unknown_name[slen] != '\0')) {
+			cf_log_perr(ci, "Failed resolving undefined attribute");
+			return false;
+		}
+
+		da = unknown_da;
 	}
 
 	vpt->tmpl_da = da;
