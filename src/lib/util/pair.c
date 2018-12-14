@@ -2953,7 +2953,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		break;
 	}
 
-	if (vp->da->flags.is_unknown) {
+	if (vp->da->flags.is_unknown || vp->da->flags.is_raw) {
 		(void) talloc_get_type_abort_const(vp->da, fr_dict_attr_t);
 	} else {
 		fr_dict_attr_t const *da;
