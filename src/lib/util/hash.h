@@ -35,6 +35,15 @@ extern "C" {
 #include <talloc.h>
 
 typedef struct fr_hash_entry_s fr_hash_entry_t;
+
+/** Stores the state of the current iteration operation
+ *
+ */
+typedef struct {
+	int			bucket;
+	fr_hash_entry_t		*node;
+} fr_hash_iter_t;
+
 /*
  *	Fast hash, which isn't too bad.  Don't use for cryptography,
  *	just for hashing internal data.
@@ -54,16 +63,28 @@ fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
 				      fr_hash_table_hash_t hashNode,
 				      fr_hash_table_cmp_t cmpNode,
 				      fr_hash_table_free_t freeNode);
+
 void		fr_hash_table_free(fr_hash_table_t *ht);
+
 int		fr_hash_table_insert(fr_hash_table_t *ht, void const *data);
+
 int		fr_hash_table_delete(fr_hash_table_t *ht, void const *data);
+
 void		*fr_hash_table_yank(fr_hash_table_t *ht, void const *data);
+
 int		fr_hash_table_replace(fr_hash_table_t *ht, void const *data);
+
 void		*fr_hash_table_finddata(fr_hash_table_t *ht, void const *data);
+
 int		fr_hash_table_num_elements(fr_hash_table_t *ht);
+
 int		fr_hash_table_walk(fr_hash_table_t *ht,
 				     fr_hash_table_walk_t callback,
 				     void *ctx);
+
+void		*fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter);
+
+void		*fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter);
 
 #ifdef __cplusplus
 }

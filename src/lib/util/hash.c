@@ -628,6 +628,70 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 	return 0;
 }
 
+/** Iterate over entries in a hash table
+ *
+ * @note If the hash table is modified the iterator should be considered invalidated.
+ *
+ * @param[in] ht	to iterate over.
+ * @param[in] iter	Pointer to an iterator struct, used to maintain
+ *			state between calls.
+ * @return
+ *	- User data.
+ *	- NULL if at the end of the list.
+ */
+void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
+{
+	fr_hash_entry_t *node;
+
+	if (unlikely(!ht)) return NULL;
+
+	/*
+	 *	Return the next element in the bucket
+	 */
+	if (iter->node != &ht->null) {
+		node = iter->node;
+		iter->node = node->next;
+
+		return node->data;
+	}
+
+	/*
+	 *	We might have to go through multiple empty
+	 *	buckets to find one that contains something
+	 *	we should return
+	 */
+	while ((--iter->bucket) >= 0) {
+		if (!ht->buckets[iter->bucket]) fr_hash_table_fixup(ht, iter->bucket);
+
+		node = ht->buckets[iter->bucket];
+		if (node == &ht->null) continue;	/* This bucket was empty too... */
+
+		iter->node = node->next;		/* Store the next one to examine */
+		return node->data;
+	}
+
+	return NULL;
+}
+
+/** Initialise an iterator
+ *
+ * @note If the hash table is modified the iterator should be considered invalidated.
+ *
+ * @param[in] ht	to iterate over.
+ * @param[in] iter	to initialise.
+ * @return
+ *	- The first entry in the hash table.
+ *	- NULL if the hash table is empty.
+ */
+void *fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter)
+{
+	if (unlikely(!ht)) return NULL;
+
+	iter->bucket = ht->num_buckets;
+	iter->node = &ht->null;
+
+	return fr_hash_table_iter_next(ht, iter);
+}
 
 #ifdef TESTING
 /*
