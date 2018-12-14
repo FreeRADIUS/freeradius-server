@@ -536,7 +536,9 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 			return false;
 		}
 
-		da = unknown_da;
+		vpt->tmpl_da = vpt->tmpl_unknown = unknown_da;
+		vpt->type = TMPL_TYPE_ATTR;
+		return true;
 	}
 
 	vpt->tmpl_da = da;
