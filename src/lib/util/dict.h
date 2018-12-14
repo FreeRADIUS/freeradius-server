@@ -158,6 +158,17 @@ typedef struct {
 	char const		*proto;				//!< The protocol dictionary name.
 } fr_dict_autoload_t;
 
+/** Errors returned by attribute lookup functions
+ *
+ */
+typedef enum {
+	FR_DICT_ATTR_OK			= 0,			//!< No error.
+	FR_DICT_ATTR_NOTFOUND		= -1,			//!< Attribute couldn't be found.
+	FR_DICT_ATTR_PROTOCOL_NOTFOUND	= -2,			//!< Protocol couldn't be found.
+	FR_DICT_ATTR_PARSE_ERROR	= -3,			//!< Attribute string couldn't be parsed
+	FR_DICT_ATTR_OOM		= -4			//!< Memory allocation error.
+} fr_dict_attr_err_t;
+
 /*
  *	Dictionary constants
  */
@@ -312,16 +323,16 @@ fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
 
 fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen);
 
-ssize_t			fr_dict_attr_by_name_substr(int *err, fr_dict_attr_t const **out,
+ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 						    fr_dict_t const *dict, char const *name);
 
 fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *attr);
 
-ssize_t			fr_dict_attr_by_qualified_name_substr(int *err, fr_dict_attr_t const **out,
+ssize_t			fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 							      fr_dict_t const *dict_def,
 							      char const *attr, bool fallback);
 
-int			fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out,
+fr_dict_attr_err_t	fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out,
 						       fr_dict_t const *dict_def, char const *attr, bool fallback);
 
 fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type);
