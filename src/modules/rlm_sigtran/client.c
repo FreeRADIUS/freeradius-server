@@ -32,6 +32,8 @@
 #include <freeradius-devel/protocol/eap/sim/dictionary.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/module.h>
+
+#include "attrs.h"
 #include "sigtran.h"
 
 static pthread_mutex_t ctrl_pipe_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -305,89 +307,67 @@ static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *inst
 		for (vec = res->vector; vec; vec = vec->next) {
 			switch (vec->type) {
 			case SIGTRAN_VECTOR_TYPE_SIM_TRIPLETS:
-			{
-				fr_dict_attr_t const *root;
-
 				rad_assert(vec->sim.rand);
 				rad_assert(vec->sim.sres);
 				rad_assert(vec->sim.kc);
 
-				root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_SIM_ROOT);
-				if (!root) {
-					REDEBUG("Can't find dict root for EAP-SIM");
-				error:
-					talloc_free(txn);
-					return RLM_MODULE_FAIL;
-				}
-
 				RDEBUG2("SIM auth vector %i", i);
 				RINDENT();
-				vp = fr_pair_afrom_child_num(request, root, FR_EAP_SIM_RAND);
+				vp = fr_pair_afrom_da(request, root, attr_eap_sim_rand);
 				fr_pair_value_memsteal(vp, vec->sim.rand);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_child_num(request, root, FR_EAP_SIM_SRES);
+				vp = fr_pair_afrom_da(request, root, attr_eap_sim_sres);
 				fr_pair_value_memsteal(vp, vec->sim.sres);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_child_num(request, root, FR_EAP_SIM_KC);
+				vp = fr_pair_afrom_da(request, root, attr_eap_sim_kc);
 				fr_pair_value_memsteal(vp, vec->sim.kc);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 				REXDENT();
 
 				i++;
-			}
 				break;
 
 			case SIGTRAN_VECTOR_TYPE_UMTS_QUINTUPLETS:
-			{
-				fr_dict_attr_t const *root;
-
 				rad_assert(vec->umts.rand);
 				rad_assert(vec->umts.xres);
 				rad_assert(vec->umts.ck);
 				rad_assert(vec->umts.ik);
 				rad_assert(vec->umts.authn);
 
-				root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_AKA_ROOT);
-				if (!root) {
-					REDEBUG("Can't find dict root for EAP-AKA");
-					goto error;
-				}
-
 				RDEBUG2("UMTS auth vector %i", i);
 				RINDENT();
-				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_RAND);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_rand);
 				fr_pair_value_memsteal(vp, vec->umts.rand);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_XRES);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_xres);
 				fr_pair_value_memsteal(vp, vec->umts.xres);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_CK);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_ck);
 				fr_pair_value_memsteal(vp, vec->umts.ck);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_IK);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_ik);
 				fr_pair_value_memsteal(vp, vec->umts.ik);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
-				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_AUTN);
+				vp = fr_pair_afrom_da(request, attr_eap_aka_autn);
 				fr_pair_value_memsteal(vp, vec->umts.authn);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 				REXDENT();
 
 				i++;
-			}
 				break;
 			}
 		}
