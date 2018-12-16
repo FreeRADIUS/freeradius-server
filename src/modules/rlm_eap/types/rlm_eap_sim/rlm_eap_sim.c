@@ -94,7 +94,6 @@ static fr_dict_attr_t const *attr_eap_sim_version_list;
 extern fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[] = {
 	{ .out = &attr_eap_sim_mk, .name = "EAP-SIM-MK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
-	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_eap_sim },
 
 	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -113,6 +112,7 @@ fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[] = {
 	{ .out = &attr_eap_sim_rand, .name = "EAP-SIM-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
 	{ .out = &attr_eap_sim_result_ind, .name = "EAP-SIM-Result-Ind", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim },
 	{ .out = &attr_eap_sim_selected_version, .name = "EAP-SIM-Selected-Version", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_eap_sim },
 	{ .out = &attr_eap_sim_version_list, .name = "EAP-SIM-Version-List", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim },
 	{ NULL }
 };
