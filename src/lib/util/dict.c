@@ -3212,11 +3212,6 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 	} else if (slen == 0) {
 		dict = dict_def;
 
-		if (fallback) {
-			dict_iter = fr_hash_table_iter_init(protocol_by_num, &iter);
-			if (dict_def == fr_dict_internal) internal = true; /* already checked this */
-		}
-
 	/*
 	 *	Has dictionary qualifier, can't fallback
 	 */
@@ -3230,6 +3225,8 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 			return 0;
 		}
+
+		fallback = false;
 	}
 
 again:
@@ -3243,27 +3240,41 @@ again:
 		/*
 		 *	Loop over all the dictionaries
 		 */
-		if (dict_iter) {
+		if (fallback) {
 			/*
-			 *	If we haven't checked the internal
-			 *	dictionary, do that first.  It's not
-			 *	in the hash table.
+			 *	Haven't started yet, do so.
 			 */
-			if (!internal) {
-				dict = fr_dict_internal;
-				internal = true;
-				goto again;
+			if (!dict_iter) {
+				/*
+				 *	Check the internal dictionary
+				 *	first, unless it's alreaday
+				 *	been checked.
+				 */
+				if (!internal) {
+					internal = true;
+					if (dict_def != fr_dict_internal) {
+						dict = fr_dict_internal;
+						goto again;
+					}
+				}
+
+				/*
+				 *	Start the iteration over all dictionaries.
+				 */
+				dict_iter = fr_hash_table_iter_init(protocol_by_num, &iter);
+			} else {
+			redo:
+				dict_iter = fr_hash_table_iter_next(protocol_by_num, &iter);
 			}
 
-			do {
-				dict_iter = fr_hash_table_iter_next(protocol_by_num, &iter);
-			} while (dict_iter == dict_def); /* skip the dictionary we already checked */
+			if (!dict_iter) goto fail;
+			if (dict_iter == dict_def) goto redo;
 
 			dict = dict_iter;
-
-			if (dict) goto again;
+			goto again;
 		}
 
+	fail:
 		if (err) *err = aerr;
 		return -((p - attr) + slen);
 
