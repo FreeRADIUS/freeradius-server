@@ -167,7 +167,7 @@ fr_dict_attr_t const *attr_eap_aka_xres;
 
 fr_dict_attr_t const *attr_eap_sim_kc;
 fr_dict_attr_t const *attr_eap_sim_sres;
-fr_dict_attr_t const *attr_eap_aka_rand;
+fr_dict_attr_t const *attr_eap_sim_rand;
 
 extern fr_dict_autoload_t rlm_sigtran_dict[];
 fr_dict_autoload_t rlm_sigtran_dict[] = {
