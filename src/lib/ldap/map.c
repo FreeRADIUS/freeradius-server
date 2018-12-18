@@ -115,7 +115,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 				goto next_pair;
 			}
 
-			if (map_to_vp(request, &vp, request, attr, NULL) < 0) {
+			if (map_to_vp(ctx, &vp, request, attr, NULL) < 0) {
 				RWDEBUG("Failed creating attribute for valuepair \"%pV\", skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 				goto next_pair;
