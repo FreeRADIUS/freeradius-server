@@ -2458,13 +2458,16 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	/*
 	 *	Print the VPs
 	 */
-	if (rad_debug_lvl) {
+#ifndef WITH_VERIFY_PTR
+	if (rad_debug_lvl)
+#endif
+	{
 		for (vp = fr_pair_cursor_init(&src_list, &head);
 		     vp;
 		     vp = fr_pair_cursor_next(&src_list)) {
 			VP_VERIFY(vp);
 
-			map_debug_log(request, map, vp);
+			if (rad_debug_lvl) map_debug_log(request, map, vp);
 		}
 	}
 
