@@ -1405,7 +1405,7 @@ static int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 		a = fr_hash_table_finddata(dict->attributes_by_name, da);
 		if (a && (strcasecmp(a->name, da->name) == 0)) {
 			if ((a->attr != da->attr) || (a->parent != da->parent)) {
-				fr_strerror_printf("Duplicate attribute name");
+				fr_strerror_printf("Duplicate attribute name %s", da->name);
 			error:
 				return -1;
 			}
