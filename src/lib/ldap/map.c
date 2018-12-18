@@ -64,7 +64,8 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 			vp_tmpl_rules_t	lhs_rules = {
 				.dict_def = request->dict,
 				.request_def = map->lhs->tmpl_request,
-				.list_def = map->lhs->tmpl_list
+				.list_def = map->lhs->tmpl_list,
+				.prefix = VP_ATTR_REF_PREFIX_AUTO,
 			};
 
 			vp_tmpl_rules_t rhs_rules = {
