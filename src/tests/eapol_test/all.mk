@@ -88,11 +88,6 @@ clean.tests.eap:
 ifneq "$(EAPOL_TEST)" ""
 $(CONFIG_PATH)/dictionary:
 	${Q}echo "# test dictionary not install.  Delete at any time." > $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/freeradius/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/radius/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/dhcpv4/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/vqp/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> $@
 
 $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary src/tests/eapol_test/all.mk
 	${Q}echo "# test configuration file.  Do not install.  Delete at any time." > $@
