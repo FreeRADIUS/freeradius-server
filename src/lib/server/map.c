@@ -2911,8 +2911,20 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	}
 
 	switch (map->lhs->type) {
-	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
+		/*
+		 *	The MAP may have said "list", but if there's a
+		 *	VP, it has it's own name, which isn't in the
+		 *	map name.
+		 */
+		if (vp) {
+			tmpl_snprint(buffer, sizeof(buffer), map->lhs);
+			RDEBUG("%s%s %s %s", buffer, vp->da->name, fr_int2str(fr_tokens_table, vp->op, "<INVALID>"), rhs);
+			break;
+		}
+		/* FALL-THROUGH */
+
+	case TMPL_TYPE_ATTR:
 		tmpl_snprint(buffer, sizeof(buffer), map->lhs);
 		RDEBUG("%s %s %s", buffer, fr_int2str(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);
 		break;
