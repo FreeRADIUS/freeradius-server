@@ -75,14 +75,28 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp
 				fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 
 			/*
-			 *	bv_val is NOT \0 terminated, so we need to make it
-			 *	safe (\0 terminate it) before passing it to any
-			 *	functions which take C strings and no lengths.
+			 *	The data in LDAP *must* be attribute
+			 *	names.  If there isn't a leading '&',
+			 *	just add one...
 			 */
-			attr_str = talloc_bstrndup(NULL, self->values[i]->bv_val, self->values[i]->bv_len);
-			if (!attr_str) {
-				RWDEBUG("Failed making attribute string safe");
-				continue;
+			if (self->values[i]->bv_val[0] != '&') {
+				attr_str = talloc_zero_array(NULL, char, self->values[i]->bv_len + 2);
+				if (!attr_str) goto alloc_fail;
+
+				attr_str[0] = '&';
+				memcpy(attr_str + 1, self->values[i]->bv_val, self->values[i]->bv_len);
+			} else {
+				/*
+				 *	bv_val is NOT \0 terminated, so we need to make it
+				 *	safe (\0 terminate it) before passing it to any
+				 *	functions which take C strings and no lengths.
+				 */
+				attr_str = talloc_bstrndup(NULL, self->values[i]->bv_val, self->values[i]->bv_len);
+				if (!attr_str) {
+				alloc_fail:
+					RWDEBUG("Failed making attribute string safe");
+					continue;
+				}
 			}
 
 			if (map_afrom_attr_str(ctx, &attr,
