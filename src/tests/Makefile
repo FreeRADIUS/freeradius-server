@@ -9,14 +9,14 @@
 include ../../Make.inc
 
 BUILD_PATH := $(top_builddir)/build
-TEST_PATH := $(top_builddir)/src/tests
+TEST_PATH := $(top_srcdir)/src/tests
 BIN_PATH := $(BUILD_PATH)/bin/local
 LIB_PATH := $(BUILD_PATH)/lib/local/.libs/
 FR_LIBRARY_PATH := $(BUILD_PATH)/lib/local/.libs/
 
 export FR_LIBRARY_PATH
 
-RADDB_PATH := $(top_builddir)/raddb
+RADDB_PATH := $(top_srcdir)/raddb
 
 TESTS = mschapv1 digest-01/digest* test.example.com
 
@@ -37,17 +37,17 @@ clean:
 
 dictionary:
 	${Q}echo "# test dictionary not install.  Delete at any time." > $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/freeradius/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/radius/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/dhcpv4/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary/vqp/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> $@
+	${Q}echo '$$INCLUDE ' $(top_srcdir)/share/dictionary/freeradius/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_srcdir)/share/dictionary/radius/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_srcdir)/share/dictionary/dhcpv4/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_srcdir)/share/dictionary/vqp/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_srcdir)/src/tests/dictionary.test >> $@
 
 test.conf: dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
 	@echo "testdir =" $(TEST_PATH) >> $@
 	@echo 'logdir = $${testdir}' >> $@
-	@echo 'maindir = ${top_builddir}/raddb/' >> $@
+	@echo 'maindir = ${top_srcdir}/raddb/' >> $@
 	@echo 'radacctdir = $${testdir}' >> $@
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> $@
 	@echo 'panic_action = "gdb -batch -x ${testdir}/panic.gdb %e %p > ${testdir}/gdb.log 2>&1; cat ${testdir}/gdb.log"' >> $@
@@ -63,14 +63,14 @@ test.conf: dictionary
 radiusd.pid: test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
 	@printf "TEST-SERVER Starting server... "
-	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxl $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -D "${top_builddir}/share/dictionary/"; then\
+	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxl $(TEST_PATH)/radius.log -d ${top_srcdir}/src/tests -n test -D "${top_srcdir}/share/dictionary/"; then\
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
 		echo "Last entries in server log $(TEST_PATH)/radius.log"; \
 	fi
 	@echo "ok"
-	@echo "TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pfxxxxl stdout -d ${top_builddir}/src/tests -n test -D $(TEST_PATH)";
+	@echo "TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pfxxxxl stdout -d ${top_srcdir}/src/tests -n test -D $(TEST_PATH)";
 	@echo "Server logging to \"$(TEST_PATH)/radius.log\""
 
 # We can't make this depend on radiusd.pid, because then make will create
