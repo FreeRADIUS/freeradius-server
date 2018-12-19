@@ -146,6 +146,12 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 
 	VALUE_PAIR		*vp = NULL;
 	SSL			*ssl = decoder_ctx;
+	fr_dict_t const		*dict_radius;
+	fr_dict_attr_t const   	*attr_radius;
+
+	dict_radius = fr_dict_by_protocol_name("radius");
+	rad_assert(dict_radius != NULL);
+	attr_radius = fr_dict_root(dict_radius);
 
 	while (p < end) {
 		ssize_t			ret;
@@ -193,7 +199,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 				goto do_value;
 			}
 		} else {
-			our_parent = fr_dict_root(fr_dict_internal);
+			our_parent = attr_radius;
 		}
 
 		/*
@@ -202,7 +208,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		vp->da = fr_dict_attr_child_by_num(our_parent, attr);
 		if (!vp->da) {
 			if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
-				fr_strerror_printf("Mandatory bit set and no attribute %u defined", attr);
+				fr_strerror_printf("Mandatory bit set and no attribute %u defined for parent %s", attr, parent->name);
 				talloc_free(vp);
 				goto error;
 			}
