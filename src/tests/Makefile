@@ -35,14 +35,6 @@ all: parse tests
 clean:
 	@rm -f test.conf *.ok *.log
 
-dictionary:
-	${Q}echo "# test dictionary not install.  Delete at any time." > $@
-	${Q}echo '$$INCLUDE ' $(top_srcdir)/share/dictionary/freeradius/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_srcdir)/share/dictionary/radius/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_srcdir)/share/dictionary/dhcpv4/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_srcdir)/share/dictionary/vqp/dictionary >> $@
-	${Q}echo '$$INCLUDE ' $(top_srcdir)/src/tests/dictionary.test >> $@
-
 test.conf: dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
 	@echo "testdir =" $(TEST_PATH) >> $@
