@@ -17,7 +17,7 @@
 
 /**
  * $Id$
- * @file rlm_eap/lib/sim/sim_proto.h
+ * @file src/lib/sim/sim_proto.h
  * @brief Functions common to SIM protocols (EAP-SIM/EAP-AKA/EAP-AKA')
  *
  * The development of the EAP/SIM support was funded by Internet Foundation

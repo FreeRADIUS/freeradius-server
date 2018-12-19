@@ -15,7 +15,7 @@
  */
 
 /**
- * @file rlm_eap/lib/sim/id.c
+ * @file src/lib/sim/id.c
  * @brief EAP-SIM/EAP-AKA identity detection, creation, and decyption.
  *
  * @copyright 2017 The FreeRADIUS server project

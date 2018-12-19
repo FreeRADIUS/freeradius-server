@@ -15,7 +15,7 @@
  */
 
 /**
- * @file rlm_eap/lib/sim/decode.c
+ * @file src/lib/sim/decode.c
  * @brief Code common to EAP-SIM/AKA/AKA' clients and servers.
  *
  * The development of the EAP-SIM support was funded by Internet Foundation

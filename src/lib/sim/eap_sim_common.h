@@ -17,7 +17,7 @@
 
 /**
  * $Id$
- * @file rlm_eap/lib/sim/eap_sim_common.h
+ * @file src/lib/sim/eap_sim_common.h
  * @brief Declarations for EAP-SIM
  *
  * @note These are required by rlm_eap_sim

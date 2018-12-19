@@ -17,7 +17,7 @@
 
 /**
  * $Id$
- * @file rlm_eap/lib/sim/eap_aka_common.h
+ * @file src/lib/sim/eap_aka_common.h
  * @brief Declarations for EAP-AKA
  *
  * @note These are needed for the quintuplet -> triplet conversion in EAP-SIM.

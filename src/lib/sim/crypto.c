@@ -15,7 +15,7 @@
  */
 
 /**
- * @file rlm_eap/lib/sim/crypto.c
+ * @file src/lib/sim/crypto.c
  * @brief Calculate keys from GSM vectors.
  *
  * The development of the original EAP/SIM support was funded by Internet Foundation
