@@ -62,7 +62,7 @@ radiusd.pid: test.conf
 		echo "Last entries in server log $(TEST_PATH)/radius.log"; \
 	fi
 	@echo "ok"
-	@echo "TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pfxxxxl stdout -d ${top_srcdir}/src/tests -n test -D $(TEST_PATH)";
+	@echo "TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pfxxxxl stdout -d ${top_builddir}/src/tests -n test -D \"${top_srcdir}/share/dictionary/\"";
 	@echo "Server logging to \"$(TEST_PATH)/radius.log\""
 
 # We can't make this depend on radiusd.pid, because then make will create
