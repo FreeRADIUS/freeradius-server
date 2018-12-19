@@ -195,17 +195,20 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("unit_test_map");
-		exit(EXIT_FAILURE);
+		rcode = EXIT_FAILURE;
+		goto done;
 	}
 
 	if (fr_dict_global_init(autofree, dict_dir) < 0) {
 		fr_perror("unit_test_map");
-		exit(EXIT_FAILURE);
+		rcode = EXIT_FAILURE;
+		goto done;
 	}
 
 	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fr_perror("unit_test_map");
-		exit(EXIT_FAILURE);
+		rcode = EXIT_FAILURE;
+		goto done;
 	}
 
 	/*
@@ -214,12 +217,14 @@ int main(int argc, char *argv[])
 	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_strerror_printf_push("Failed to initialize the dictionaries");
 		fr_perror("unit_test_map");
-		exit(EXIT_FAILURE);
+		rcode = EXIT_FAILURE;
+		goto done;
 	}
 
 	if (fr_dict_autoload(unit_test_module_dict) < 0) {
 		fr_perror("unit_test_map");
-		exit(EXIT_FAILURE);
+		rcode = EXIT_FAILURE;
+		goto done;
 	}
 
 	if (argc < 2) {
@@ -231,6 +236,7 @@ int main(int argc, char *argv[])
 
 	if (rcode < 0) rcode = 1; /* internal to Unix process return code */
 
+done:
 	/*
 	 *	Try really hard to free any allocated
 	 *	memory, so we get clean talloc reports.
