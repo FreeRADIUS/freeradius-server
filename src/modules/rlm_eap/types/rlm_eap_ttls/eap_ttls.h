@@ -40,7 +40,7 @@ extern fr_dict_attr_t const *attr_user_name;
 extern fr_dict_attr_t const *attr_user_password;
 extern fr_dict_attr_t const *attr_vendor_specific;
 
-typedef {
+typedef struct {
 	VALUE_PAIR	*username;
 	bool		authenticated;
 	char const	*virtual_server;
