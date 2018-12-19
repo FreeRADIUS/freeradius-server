@@ -1590,6 +1590,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		     char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t		*n;
+	fr_dict_attr_t const	*old;
 	fr_dict_attr_t		*mutable;
 	fr_dict_attr_flags_t	our_flags = *flags;
 
@@ -1599,6 +1600,43 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	Check it's valid
 	 */
 	if (!dict_attr_fields_valid(dict, parent, name, &attr, type, &our_flags)) return -1;
+
+	/*
+	 *	Suppress duplicates.
+	 */
+#define FLAGS_EQUAL(_x) (old->flags._x == flags->_x)
+
+	old = fr_dict_attr_by_name(dict, name);
+	if (old) {
+		if ((old->parent == parent) && (old->attr == (unsigned int) attr) && (old->type == type) &&
+		    FLAGS_EQUAL(has_tag) && FLAGS_EQUAL(array) && FLAGS_EQUAL(concat) && FLAGS_EQUAL(encrypt)) {
+			return 0;
+		}
+
+		if (old->parent != parent) {
+			fr_strerror_printf_push("Cannot add duplicate name %s with different parent (old %s, new %s)",
+						name, old->parent->name, parent->name);
+			return -1;
+		}
+
+		if (old->attr != (unsigned int) attr) {
+			fr_strerror_printf_push("Cannot add duplicate name %s with different number (old %u, new %d)",
+						name, old->attr, attr);
+			return -1;
+		}
+
+		if (old->type != type) {
+			fr_strerror_printf_push("Cannot add duplicate name %s with different type (old %s, new %s)",
+						name,
+						fr_int2str(fr_value_box_type_names, old->type, "?Unknown?"),
+						fr_int2str(fr_value_box_type_names, type, "?Unknown?"));
+			return -1;
+		}
+
+		fr_strerror_printf_push("Cannot add duplicate name %s with different flags",
+					name);
+		return -1;
+	}
 
 	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &our_flags);
 	if (!n) return -1;
