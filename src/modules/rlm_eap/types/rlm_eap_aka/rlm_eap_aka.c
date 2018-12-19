@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/eap/types.h>
 #include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/sim/sim_proto.h>
+#include <freeradius-devel/sim/base.h>
 
 #include <freeradius-devel/protocol/eap/aka/freeradius.h>
 #include <freeradius-devel/protocol/eap/aka/rfc4187.h>

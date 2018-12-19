@@ -50,7 +50,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/sha1.h>
-#include "sim_proto.h"
+#include "base.h"
 
 /*
  * we do it in 8-bit chunks, because we have to keep the numbers

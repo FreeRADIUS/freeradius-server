@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/eap/types.h>
-#include "sim_proto.h"
+#include "base.h"
 #include "sim_attrs.h"
 #include "comp128.h"
 #include "milenage.h"

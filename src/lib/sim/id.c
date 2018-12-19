@@ -23,7 +23,7 @@
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/tls/tls_log.h>
 #include <openssl/evp.h>
-#include "sim_proto.h"
+#include "base.h"
 #include "id.h"
 
 #define us(x) (uint8_t) x

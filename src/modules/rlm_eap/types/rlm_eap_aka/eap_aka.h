@@ -26,7 +26,7 @@
  */
 RCSIDH(rlm_eap_aka_eap_aka_h, "$Id$")
 
-#include <freeradius-devel/sim/sim_proto.h>
+#include <freeradius-devel/sim/base.h>
 
 /** Server states
  *
