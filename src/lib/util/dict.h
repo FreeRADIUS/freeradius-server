@@ -224,7 +224,7 @@ int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
  */
 fr_dict_attr_t		*fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
 
-fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old);
+fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old) CC_HINT(nonnull);
 
 void			fr_dict_unknown_free(fr_dict_attr_t const **da);
 
