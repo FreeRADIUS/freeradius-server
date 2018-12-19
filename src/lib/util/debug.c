@@ -117,14 +117,14 @@ static TALLOC_CTX *talloc_autofree_ctx;
  * resume address, with the magic value (void *)1 to resume where
  * process stopped. Specifying NULL there leads to a crash because
  * process resumes at address 0.
- */  
+ */
 #ifdef HAVE_SYS_PTRACE_H
 #  ifdef __linux__
 #    define _PTRACE(_x, _y) ptrace(_x, _y, NULL, NULL)
 #    define _PTRACE_DETACH(_x) ptrace(PT_DETACH, _x, NULL, NULL)
 #  else
 #    define _PTRACE(_x, _y) ptrace(_x, _y, NULL, 0)
-#    define _PTRACE_DETACH(_x) ptrace(PT_DETACH, _x, (void *)1, NULL)
+#    define _PTRACE_DETACH(_x) ptrace(PT_DETACH, _x, (void *)1, 0)
 #  endif
 
 #  ifdef HAVE_CAPABILITY_H
