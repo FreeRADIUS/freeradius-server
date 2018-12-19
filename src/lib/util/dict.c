@@ -1594,8 +1594,6 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	fr_dict_attr_t		*mutable;
 	fr_dict_attr_flags_t	our_flags = *flags;
 
-	INTERNAL_IF_NULL(dict);
-
 	/*
 	 *	Check it's valid
 	 */
