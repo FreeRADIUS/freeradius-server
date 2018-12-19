@@ -90,6 +90,8 @@ struct fr_dict {
 	bool			in_protocol_by_num;	//!< Whether the dictionary has been inserted into the
 							//!< protocol_by_num table.
 
+	bool			autoloaded;		//!< manual vs autoload
+
 	dict_enum_fixup_t	*enum_fixup;
 
 	fr_hash_table_t		*vendors_by_name;	//!< Lookup vendor by name.
@@ -5159,7 +5161,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 	 *	has already been loaded and return that.
 	 */
 	dict = fr_dict_by_protocol_name(proto_name);
-	if (dict) {
+	if (dict && dict->autoloaded) {
 		 talloc_increase_ref_count(dict);
 		 *out = dict;
 		 return 0;
@@ -5205,6 +5207,15 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 	if (fr_dict_finalise(dict) < 0) goto error;
 
 	talloc_free(proto_dir);
+
+	/*
+	 *	If we're autoloading a previously defined dictionary,
+	 *	then mark up the dictionary as now autoloaded.
+	 */
+	if (!dict->autoloaded) {
+		talloc_increase_ref_count(dict);
+		dict->autoloaded = true;
+	}
 
 	*out = dict;
 
