@@ -53,7 +53,7 @@ RCSID("$Id$")
 /** rlm_redis module instance
  *
  */
-typedef struct rlm_redis_ippool {
+typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 

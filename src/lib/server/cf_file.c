@@ -596,7 +596,7 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 	return true;
 }
 
-typedef struct cf_file_callback_t {
+typedef struct {
 	int		rcode;
 	rb_walker_t	callback;
 	CONF_SECTION	*modules;

@@ -53,7 +53,7 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
  * and to register callbacks that get executed when processing packets of this
  * protocol type.
  */
-typedef struct rad_protocol_t {
+typedef struct rad_protocol_s {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	uint32_t			transports;	//!< What can transport this protocol.

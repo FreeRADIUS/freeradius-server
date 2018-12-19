@@ -34,7 +34,7 @@ RCSIDH(rlm_eap_h, "$Id$")
 /** Private structure to hold handles and interfaces for an EAP method
  *
  */
-typedef struct rlm_eap_method {
+typedef struct {
 	dl_instance_t			*submodule_inst;		//!< Submodule's instance data
 	rlm_eap_submodule_t const	*submodule;			//!< Submodule's exported interface.
 } rlm_eap_method_t;
@@ -42,7 +42,7 @@ typedef struct rlm_eap_method {
 /** Instance data for rlm_eap
  *
  */
-typedef struct rlm_eap {
+typedef struct {
 	dl_instance_t			**submodule_instances;		//!< All the submodules we loaded.
 	rlm_eap_method_t 		methods[FR_EAP_MAX_TYPES];	//!< Array of loaded (or not), submodules.
 

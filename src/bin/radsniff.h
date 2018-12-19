@@ -92,7 +92,7 @@ typedef struct rs_stats_tmpl rs_stats_tmpl_t;
 typedef struct rs_stats_value_tmpl rs_stats_value_tmpl_t;
 #endif
 
-typedef struct rs_counters {
+typedef struct {
 	uint64_t type[FR_CODE_MAX + 1];
 } rs_counters_t;
 
@@ -100,7 +100,7 @@ typedef struct rs_counters {
  *
  * And interval is defined as the time between a call to the stats output function.
  */
-typedef struct rs_latency {
+typedef struct {
 	int			intervals;			//!< Number of stats intervals.
 
 	double			latency_smoothed;		//!< Smoothed moving average.
@@ -133,7 +133,7 @@ typedef struct rs_latency {
 	} interval;
 } rs_latency_t;
 
-typedef struct rs_malformed {
+typedef struct {
 	uint64_t		min_length_packet;
 	uint64_t		min_length_field;
 	uint64_t		min_length_mimatch;
@@ -150,7 +150,7 @@ typedef struct rs_malformed {
 /** One set of statistics
  *
  */
-typedef struct rs_stats {
+typedef struct {
 	int			intervals;		//!< Number of stats intervals.
 
 	rs_latency_t		exchange[FR_CODE_MAX + 1];  //!< We end up allocating ~16K, but memory is cheap so
@@ -162,7 +162,7 @@ typedef struct rs_stats {
 							//!< dropping packets, or we run out of memory.
 } rs_stats_t;
 
-typedef struct rs_capture {
+typedef struct {
 	struct pcap_pkthdr	*header;		//!< PCAP packet header.
 	uint8_t			*data;			//!< PCAP packet data.
 } rs_capture_t;
@@ -172,7 +172,7 @@ typedef struct rs_capture {
  * Allows an event to be associated with a request packet.  This is required because we need to disarm
  * the event timer when a response is received, so we don't erroneously log the response as lost.
  */
-typedef struct rs_request {
+typedef struct {
 	uint64_t		id;			//!< Monotonically increasing packet counter.
 	fr_event_timer_t const	*event;			//!< Event created when we received the original request.
 
@@ -209,7 +209,7 @@ typedef struct rs_request {
 /** Statistic write/print event
  *
  */
-typedef struct rs_event {
+typedef struct {
 	fr_event_list_t		*list;			//!< The event list.
 
 	fr_pcap_t		*in;			//!< PCAP handle event occurred on.

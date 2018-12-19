@@ -43,7 +43,7 @@ typedef enum {
 	PEAP_RESUMPTION_MAYBE
 } peap_resumption;
 
-typedef struct peap_tunnel_t {
+typedef struct {
 	VALUE_PAIR	*username;
 	peap_status	status;
 	bool		home_access_accept;

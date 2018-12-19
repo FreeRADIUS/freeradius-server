@@ -29,7 +29,7 @@
 /** An instance of a proto_radius listen section
  *
  */
-typedef struct proto_radius_t {
+typedef struct {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
 	dl_instance_t			**type_submodule;		//!< Instance of the various types

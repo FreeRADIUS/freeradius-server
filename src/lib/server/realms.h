@@ -58,7 +58,7 @@ typedef enum {
 	HOME_STATE_UNKNOWN
 } home_state_t;
 
-typedef struct home_server {
+typedef struct {
 	char const		*log_name;		//!< The name used for log messages.
 
 	char const		*name;			//!< Name the server may be referenced by for querying
@@ -153,7 +153,7 @@ typedef enum home_pool_type_t {
 } home_pool_type_t;
 
 
-typedef struct home_pool_t {
+typedef struct {
 	char const		*name;
 	home_pool_type_t	type;
 
@@ -171,7 +171,7 @@ typedef struct home_pool_t {
 } home_pool_t;
 
 
-typedef struct _realm {
+typedef struct {
 	char const		*name;
 
 	bool			strip_realm;

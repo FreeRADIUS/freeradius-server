@@ -41,7 +41,7 @@ typedef enum fr_message_status_t {
 	FR_MESSAGE_DONE
 } fr_message_status_t;
 
-typedef struct fr_message_t {
+typedef struct {
 	fr_message_status_t	status;		//!< free, used, done, etc.
 
 	fr_time_t		when;		//!< when this message was sent

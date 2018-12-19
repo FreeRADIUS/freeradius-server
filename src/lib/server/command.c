@@ -41,12 +41,13 @@ static int fr_command_register(UNUSED TALLOC_CTX *talloc_ctx, UNUSED char const 
 
 fr_command_register_hook_t fr_command_register_hook = fr_command_register;
 
-typedef struct fr_cmd_argv_t {
-	char const     	*name;
-	fr_type_t	type;
-	struct fr_cmd_argv_t *next;
-	struct fr_cmd_argv_t *child;
-} fr_cmd_argv_t;
+typedef struct fr_cmd_argv_s fr_cmd_argv_t;
+struct fr_cmd_argv_s {
+	char const     		*name;
+	fr_type_t		type;
+	fr_cmd_argv_t		*next;
+	fr_cmd_argv_t		*child;
+};
 
 struct fr_cmd_t {
 	char const		*name;
@@ -992,7 +993,7 @@ int fr_command_add_multi(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *na
 /** A stack for walking commands.
  *
  */
-typedef struct fr_cmd_stack_t {
+typedef struct {
 	int		depth;
 	char const     	**parents;
 	fr_cmd_t	*entry[CMD_MAX_ARGV];

@@ -64,13 +64,13 @@ static const FR_NAME_NUMBER server_warnings_table[] = {
 	{ NULL, 0 }
 };
 
-typedef struct rlm_sql_mysql_conn {
+typedef struct {
 	MYSQL		db;
 	MYSQL		*sock;
 	MYSQL_RES	*result;
 } rlm_sql_mysql_conn_t;
 
-typedef struct rlm_sql_mysql_config {
+typedef struct {
 	char const *tls_ca_file;		//!< Path to the CA used to validate the server's certificate.
 	char const *tls_ca_path;		//!< Directory containing CAs that may be used to validate the
 						//!< servers certificate.

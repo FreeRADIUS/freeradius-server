@@ -29,7 +29,7 @@ USES_APPLE_DEPRECATED_API
 #include <sqltypes.h>
 #include "rlm_sql.h"
 
-typedef struct rlm_sql_unixodbc_conn {
+typedef struct {
 	SQLHENV env;
 	SQLHDBC dbc;
 	SQLHSTMT stmt;

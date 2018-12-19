@@ -45,7 +45,7 @@
 /** Cassandra cluster connection
  *
  */
-typedef struct rlm_sql_cassandra_conn {
+typedef struct {
 	CassResult const	*result;			//!< Result from executing a query.
 	CassIterator		*iterator;			//!< Row set iterator.
 
@@ -57,7 +57,7 @@ typedef struct rlm_sql_cassandra_conn {
 /** Cassandra driver instance
  *
  */
-typedef struct rlm_sql_cassandra {
+typedef struct {
 	CassCluster		*cluster;			//!< Configuration of the cassandra cluster connection.
 	CassSession		*session;			//!< Cluster's connection pool.
 	CassSsl			*ssl;				//!< Connection's SSL context.

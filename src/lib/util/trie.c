@@ -134,7 +134,7 @@ DIAG_ON(unused-macros)
 /** A data structure which holds a path-compressed key.
  *
  */
-typedef struct fr_trie_path_t {
+typedef struct {
 	int			number;		//!< for debug printing
 	uint8_t	const		*key;		//!< path information.
 	int			length;		//!< length of the path in bits
@@ -146,7 +146,7 @@ typedef struct fr_trie_path_t {
 /** A data structure which holds a 2^N way key
  *
  */
-typedef struct fr_trie_node_t {
+typedef struct {
 	int			number;		//!< for debug printing
 	int			size;		//!< as power of 2.  i.e. 2^1=2, 2^2=4, 2^3=8, etc.
 	int			used;		//!< number of used entries
@@ -156,7 +156,7 @@ typedef struct fr_trie_node_t {
 /** A data structure which holds user ctx data
  *
  */
-typedef struct fr_trie_user_t {
+typedef struct {
 	int			number;		//!< for debug printing
 	void			*data;		//!< user ctx if we have a match here
 	void			*trie;		//!< subtree if the key continues past this point
@@ -2328,7 +2328,7 @@ int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback)
 #ifdef TESTING
 static bool print_lineno = false;
 
-typedef struct fr_trie_sprint_ctx_t {
+typedef struct {
 	char	*start;
 	char	*buffer;
 	size_t	buflen;
@@ -2827,7 +2827,7 @@ typedef int (*fr_trie_function_t)(fr_trie_t *ft, int argc, char **argv, char *ou
 /**  Data structure which holds the trie command name, function, etc.
  *
  */
-typedef struct fr_trie_command_t {
+typedef struct {
 	char const		*name;
 	fr_trie_function_t	function;
 	int			min_argc;

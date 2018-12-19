@@ -96,7 +96,7 @@ typedef enum {
 /** A connection to a server
  *
  */
-typedef struct radmin_conn {
+typedef struct {
 	fr_event_list_t		*event_list;		//!< Event list this fd is serviced by.
 	int			fd;			//!< Control socket descriptor.
 
@@ -116,7 +116,7 @@ typedef struct radmin_conn {
  * Many of the readline functions don't take callbacks, so we need
  * to use a global structure to communicate radmin state.
  */
-typedef struct radmin_state {
+typedef struct {
 	fr_event_list_t		*event_list;		//!< Our main event list.
 
 	radmin_conn_t		*active_conn;		//!< Connection to remote entity.

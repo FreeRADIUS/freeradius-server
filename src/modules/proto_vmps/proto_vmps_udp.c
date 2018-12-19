@@ -40,7 +40,7 @@
 
 extern fr_app_io_t proto_vmps_udp;
 
-typedef struct proto_vmps_udp_thread_t {
+typedef struct {
 	char const			*name;			//!< socket name
 
 	int				sockfd;
@@ -50,7 +50,7 @@ typedef struct proto_vmps_udp_thread_t {
 	fr_stats_t			stats;			//!< statistics for this socket
 } proto_vmps_udp_thread_t;
 
-typedef struct proto_vmps_udp_t {
+typedef struct {
 	CONF_SECTION			*cs;			//!< our configuration
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.

@@ -35,7 +35,7 @@ extern "C" {
 
 /* random numbers in isaac.c */
 /* context of random number generator */
-typedef struct fr_randctx {
+typedef struct {
 	uint32_t randcnt;
 	uint32_t randrsl[256];
 	uint32_t randmem[256];

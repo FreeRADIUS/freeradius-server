@@ -58,7 +58,7 @@ RCSID("$Id$")
 /** Holds a state value, and associated VALUE_PAIRs and data
  *
  */
-typedef struct state_entry {
+typedef struct {
 	uint64_t		id;				//!< State number within state tree.
 	union {
 		/** Server ID components

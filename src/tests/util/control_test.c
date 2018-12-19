@@ -83,7 +83,7 @@ static void NEVER_RETURNS usage(void)
 	exit(EXIT_FAILURE);
 }
 
-typedef struct my_message_t {
+typedef struct {
 	uint32_t		header;
 	size_t			counter;
 } my_message_t;

@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/soh/base.h>
 
-typedef struct rlm_soh_t {
+typedef struct {
 	char const *xlat_name;
 	bool dhcp;
 } rlm_soh_t;

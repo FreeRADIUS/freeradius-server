@@ -63,7 +63,7 @@
  *
  * Represents a single layer of 802.1Q or QinQ tagging.
  */
-typedef struct CC_HINT(__packed__) vlan_header {
+typedef struct CC_HINT(__packed__) {
 	uint16_t	tag_type;		//!< Tag type.  One of (0x8100 - CVLAN, 0x9100,
 						///< 0x9200, 0x9300 - SVLAN).
 	uint16_t	tag_control;		//!< - 3 bits priority.

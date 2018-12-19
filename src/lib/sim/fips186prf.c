@@ -58,7 +58,7 @@ RCSID("$Id$")
  *
  * make it a structure so that we can do structure assignments.
  */
-typedef struct onesixty {
+typedef struct {
 	uint8_t p[20];
 } onesixty;
 

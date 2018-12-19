@@ -37,7 +37,7 @@ extern "C" {
 #include <pcap.h>
 #include <sys/types.h>
 
-#define SNAPLEN ETHER_HDR_LEN + IP_HDR_LEN + sizeof(struct udp_header) + MAX_RADIUS_LEN
+#define SNAPLEN ETHER_HDR_LEN + IP_HDR_LEN + sizeof(udp_header_t) + MAX_RADIUS_LEN
 #define PCAP_BUFFER_DEFAULT (10000)
 /*
  *	It's unclear why this differs between platforms

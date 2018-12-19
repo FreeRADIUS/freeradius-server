@@ -70,7 +70,7 @@ static FR_NAME_NUMBER const radsnmp_command_str[] = {
 	{  NULL , 	-1}
 };
 
-typedef struct radsnmp_conf {
+typedef struct {
 	fr_dict_t		*dict;			//!< Radius protocol dictionary.
 	fr_dict_attr_t const	*snmp_root;		//!< SNMP protocol root in the FreeRADIUS dictionary.
 	fr_dict_attr_t const	*snmp_oid_root;		//!< First attribute to include at the start of OID responses.

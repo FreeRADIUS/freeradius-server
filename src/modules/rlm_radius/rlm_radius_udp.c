@@ -38,7 +38,7 @@ RCSID("$Id$")
 /** Static configuration for the module.
  *
  */
-typedef struct rlm_radius_udp_t {
+typedef struct {
 	rlm_radius_t		*parent;		//!< rlm_radius instance.
 	CONF_SECTION		*config;
 
@@ -64,7 +64,7 @@ typedef struct rlm_radius_udp_t {
  *
  *  This data structure holds the connections, etc. for this IO submodule.
  */
-typedef struct fr_io_connection_thread_t {
+typedef struct {
 	fr_event_list_t		*el;			//!< Event list.
 
 	fr_heap_t		*queued;		//!< Queued requests for some new connection.
@@ -96,7 +96,7 @@ typedef struct fr_io_request_t fr_io_request_t;
 /** Represents RADIUS-specific things for a connection
  *
  */
-typedef struct rlm_radius_udp_connection_t {
+typedef struct {
 	/*
 	 *	The rest of the entries are RADIUS-specific
 	 */
@@ -109,7 +109,7 @@ typedef struct rlm_radius_udp_connection_t {
 /** Represents a generic connection
  *
  */
-typedef struct fr_io_connection_t {
+typedef struct {
 	char const     		*name;			//!< From IP PORT to IP PORT.
 	char const		*module_name;		//!< the module that opened the connection
 	fr_io_connection_state_t state;	//!< State of the connection.

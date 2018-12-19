@@ -40,7 +40,7 @@ RCSIDH(eap_pwd_h, "$Id$")
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
-typedef struct _pwd_hdr {
+typedef struct {
     uint8_t lm_exchange;
 #define EAP_PWD_EXCH_ID		 1
 #define EAP_PWD_EXCH_COMMIT	     2
@@ -56,7 +56,7 @@ typedef struct _pwd_hdr {
 #define EAP_PWD_GET_EXCHANGE(x)	 ((x)->lm_exchange & 0x3f)
 #define EAP_PWD_SET_EXCHANGE(x,y)       ((x)->lm_exchange |= (y))
 
-typedef struct _pwd_id_packet {
+typedef struct {
     uint16_t group_num;
     uint8_t random_function;
 #define EAP_PWD_DEF_RAND_FUN	1
@@ -70,7 +70,7 @@ typedef struct _pwd_id_packet {
     char identity[];
 } CC_HINT(packed) pwd_id_packet_t;
 
-typedef struct _pwd_session_t {
+typedef struct {
     uint16_t state;
 #define PWD_STATE_ID_REQ		1
 #define PWD_STATE_COMMIT		2

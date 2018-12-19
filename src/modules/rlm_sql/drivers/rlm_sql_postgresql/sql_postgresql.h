@@ -5,7 +5,7 @@ RCSIDH(sql_postgresql_h, "$Id$")
 /** Error Codes and required information
  *
  */
-typedef struct pgsql_error{
+typedef struct {
 	char const	*errorcode;	//!< 5 char error code from PG_DIAG_SQLSTATE.
 	char const	*meaning;	//!< Verbose description.
 	bool 		reconnect;	//!< Should reconnect socket when receiving this error.

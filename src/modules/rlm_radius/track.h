@@ -27,7 +27,7 @@
 #include "rlm_radius.h"
 #include <freeradius-devel/util/dlist.h>
 
-typedef struct rlm_radius_retransmit_t {
+typedef struct {
 	struct timeval		start;		//!< when we started sending the packet
 	uint32_t		count;		//!< how many times we sent this packet
 	uint32_t		rt;		//!< retransmit timer (microseconds)
@@ -39,7 +39,7 @@ typedef struct rlm_radius_retransmit_t {
 /** Track one request to a response
  *
  */
-typedef struct rlm_radius_request_t {
+typedef struct {
 	void			*request_io_ctx;
 	REQUEST			*request;	//!< as always...
 
@@ -54,7 +54,7 @@ typedef struct rlm_radius_request_t {
 	};
 } rlm_radius_request_t;
 
-typedef struct rlm_radius_id_t {
+typedef struct {
 	int			num_requests;  	//!< number of requests in the allocation
 	int			num_free;	//!< number of entries in the free list
 

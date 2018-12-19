@@ -31,7 +31,7 @@ RCSID("$Id$")
  *	The instance data for rlm_sometimes is the list of fake values we are
  *	going to return.
  */
-typedef struct rlm_sometimes_t {
+typedef struct {
 	char const	*rcode_str;
 	rlm_rcode_t	rcode;
 	uint32_t	start;

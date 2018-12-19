@@ -1625,7 +1625,7 @@ void *_cf_data_remove(CONF_ITEM *parent, CONF_DATA const *cd)
 /** ctx data for a _cf_data_walk_call
  *
  */
-typedef struct cf_data_walk_ctx {
+typedef struct {
 	char const 	*type;		//!< of CONF_DATA we're iterating over.
 	cf_walker_t	cb;		//!< cb to process CONF_DATA.
 	void		*ctx;		//!< to pass to cb.

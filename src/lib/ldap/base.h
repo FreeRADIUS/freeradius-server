@@ -123,13 +123,13 @@ typedef enum {
 	LDAP_EXT_BINDPW,				//!< Specifies the password for an LDAP bind.
 } ldap_supported_extension_t;
 
-typedef struct fr_ldap_sasl_t {
+typedef struct {
 	char const	*mech;				//!< SASL mech(s) to try.
 	char const	*proxy;				//!< Identity to proxy.
 	char const	*realm;				//!< Kerberos realm.
 } fr_ldap_sasl_t;
 
-typedef struct fr_ldap_control {
+typedef struct {
 	LDAPControl 	*control;			//!< LDAP control.
 	bool		freeit;				//!< Whether the control should be freed after
 							//!< we've finished using it.
@@ -162,7 +162,7 @@ typedef enum {
 	FR_LDAP_STATE_ERROR				//!< Connection is in an error state.
 } fr_ldap_state_t;
 
-typedef struct fr_ldap_directory {
+typedef struct {
 	char const		*vendor_str;		//!< As returned from the vendorName attribute in the
 							///< rootDSE.
 	char const		*version_str;		//!< As returned from the vendorVersion attribute in the
@@ -276,7 +276,7 @@ typedef struct {
 /** Tracks the state of a libldap connection handle
  *
  */
-typedef struct fr_ldap_connection {
+typedef struct {
 	LDAP			*handle;		//!< libldap handle.
 
 	bool			rebound;		//!< Whether the connection has been rebound to something
@@ -304,7 +304,7 @@ typedef struct fr_ldap_connection {
 /** Contains a collection of values
  *
  */
-typedef struct fr_ldap_result {
+typedef struct {
 	struct berval		**values;		//!< libldap struct containing bv_val (char *)
 							///< and length bv_len.
 	int			count;			//!< Number of values.
@@ -314,7 +314,7 @@ typedef struct fr_ldap_result {
  *
  * Used to store the array of attributes we'll be querying for.
  */
-typedef struct rlm_ldap_map_exp {
+typedef struct {
 	vp_map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
 	char const	*attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
 							//!< and NULL termination.

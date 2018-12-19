@@ -74,48 +74,48 @@ typedef enum {
 #define PAC_I_ID_LENGTH		16
 #define PAC_A_ID_INFO_LENGTH	32
 
-typedef struct eap_fast_pac_attr_hdr_t {
+typedef struct {
 	uint16_t			type;
 	uint16_t			length;
 } CC_HINT(__packed__) eap_fast_pac_attr_hdr_t;
 
-typedef struct eap_fast_pac_attr_lifetime_t {
+typedef struct {
 	eap_fast_pac_attr_hdr_t		hdr;
 	uint32_t			data;	// secs since epoch
 } CC_HINT(__packed__) eap_fast_pac_attr_lifetime_t;
 
-typedef struct eap_fast_pac_attr_a_id_t {
+typedef struct {
 	eap_fast_pac_attr_hdr_t		hdr;
 	uint8_t				data[PAC_A_ID_LENGTH];
 } CC_HINT(__packed__) eap_fast_pac_attr_a_id_t;
 
-typedef struct eap_fast_pac_attr_i_id_t {
+typedef struct {
 	eap_fast_pac_attr_hdr_t		hdr;
 	uint8_t				data[PAC_I_ID_LENGTH];
 } CC_HINT(__packed__) eap_fast_pac_attr_i_id_t;
 
-typedef struct eap_fast_pac_attr_a_id_info_t {
+typedef struct {
 	eap_fast_pac_attr_hdr_t		hdr;
 	uint8_t				data[PAC_A_ID_INFO_LENGTH];
 } CC_HINT(__packed__) eap_fast_pac_attr_a_id_info_t;
 
-typedef struct eap_fast_pac_attr_pac_type_t {
+typedef struct {
 	eap_fast_pac_attr_hdr_t		hdr;
 	uint16_t			data;
 } CC_HINT(__packed__) eap_fast_pac_attr_pac_type_t;
 
-typedef struct eap_fast_pac_attr_pac_key_t {
+typedef struct {
 	eap_fast_pac_attr_hdr_t		hdr;
 	uint8_t				data[PAC_KEY_LENGTH];
 } CC_HINT(__packed__) eap_fast_pac_attr_pac_key_t;
 
-typedef struct eap_fast_attr_pac_opaque_plaintext_t {
+typedef struct {
 	eap_fast_pac_attr_pac_type_t	type;
 	eap_fast_pac_attr_lifetime_t	lifetime;
 	eap_fast_pac_attr_pac_key_t	key;
 } CC_HINT(__packed__) eap_fast_attr_pac_opaque_plaintext_t;
 
-typedef struct eap_fast_attr_pac_opaque_t {
+typedef struct {
 	eap_fast_pac_attr_hdr_t		hdr;
 	unsigned char			aad[PAC_A_ID_LENGTH];
 	unsigned char			iv[EVP_MAX_IV_LENGTH];
@@ -123,7 +123,7 @@ typedef struct eap_fast_attr_pac_opaque_t {
 	uint8_t				data[sizeof(eap_fast_attr_pac_opaque_plaintext_t) * 2]; // space for EVP
 } CC_HINT(__packed__) eap_fast_attr_pac_opaque_t;
 
-typedef struct eap_fast_attr_pac_info_t {
+typedef struct {
 	eap_fast_pac_attr_hdr_t		hdr;
 	eap_fast_pac_attr_lifetime_t	lifetime;
 	eap_fast_pac_attr_a_id_t	a_id;
@@ -131,14 +131,14 @@ typedef struct eap_fast_attr_pac_info_t {
 	eap_fast_pac_attr_pac_type_t	type;
 } CC_HINT(__packed__) eap_fast_attr_pac_info_t;
 
-typedef struct eap_fast_pac_t {
+typedef struct {
 	eap_fast_pac_attr_pac_key_t	key;
 	eap_fast_attr_pac_info_t	info;
 	eap_fast_attr_pac_opaque_t	opaque;	// has to be last!
 } CC_HINT(__packed__) eap_fast_pac_t;
 
 /* RFC 4851, Section 4.2.8 - Crypto-Binding TLV */
-typedef struct eap_tlv_crypto_binding_tlv_t {
+typedef struct {
         uint16_t tlv_type;
         uint16_t length;
         uint8_t reserved;
@@ -155,13 +155,13 @@ typedef enum eap_fast_tlv_crypto_binding_tlv_subtype_t {
 } eap_fast_tlv_crypto_binding_tlv_subtype_t;
 
 /* RFC 5422: Section 3.3 - Key Derivations Used in the EAP-FAST Provisioning Exchange */
-typedef struct eap_fast_keyblock_t {
+typedef struct {
 	uint8_t	session_key_seed[EAP_FAST_SKS_LEN];
 	uint8_t	server_challenge[CHAP_VALUE_LENGTH];
 	uint8_t	client_challenge[CHAP_VALUE_LENGTH];
 } CC_HINT(__packed__) eap_fast_keyblock_t;
 
-typedef struct eap_fast_tunnel_t {
+typedef struct {
 	VALUE_PAIR		*username;
 
 	bool			authenticated;

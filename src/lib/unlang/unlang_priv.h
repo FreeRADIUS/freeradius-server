@@ -106,6 +106,8 @@ typedef enum {
 #define UNLANG_DETACHABLE (true)
 #define UNLANG_NORMAL_CHILD (false)
 
+typedef struct unlang_s unlang_t;
+
 /** A node in a graph of #unlang_op_t (s) that we execute
  *
  * The interpreter acts like a turing machine, with #unlang_t nodes forming the tape
@@ -117,14 +119,14 @@ typedef enum {
  *
  * The specialisations of the nodes describe additional details of the operation to be performed.
  */
-typedef struct unlang_t {
-	struct unlang_t		*parent;	//!< Previous node.
-	struct unlang_t		*next;		//!< Next node (executed on #UNLANG_ACTION_CONTINUE et al).
+struct unlang_s {
+	unlang_t		*parent;	//!< Previous node.
+	unlang_t		*next;		//!< Next node (executed on #UNLANG_ACTION_CONTINUE et al).
 	char const		*name;		//!< Unknown...
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.
 	int			actions[RLM_MODULE_NUMCODES];	//!< Priorities for the various return codes.
-} unlang_t;
+};
 
 /** Generic representation of a grouping
  *

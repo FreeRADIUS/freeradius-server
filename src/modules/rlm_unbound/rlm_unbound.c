@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 #include <unbound.h>
 
-typedef struct rlm_unbound_t {
+typedef struct {
 	struct ub_ctx	*ub;   /* This must come first.  Do not move */
 	fr_event_list_t	*el; /* This must come second.  Do not move. */
 

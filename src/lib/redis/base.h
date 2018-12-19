@@ -80,7 +80,7 @@ typedef enum {
 
 /** Connection handle, holding a redis context
  */
-typedef struct redis_conn {
+typedef struct {
 	redisContext		*handle;	//!< Hiredis context used when issuing commands.
 } fr_redis_conn_t;
 
@@ -88,7 +88,7 @@ typedef struct redis_conn {
  *
  * @note should be passed as instance data to #module_connection_pool_init.
  */
-typedef struct redis_common_conf {
+typedef struct {
 	char const		**hostname;	//!< of Redis server.
 	uint16_t		port;		//!< of Redis daemon.
 	uint32_t		database;	//!< number on Redis server.

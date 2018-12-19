@@ -374,7 +374,7 @@ void request_stats_final(REQUEST *request)
 }
 
 #if 0				/* OLD LISTENERS */
-typedef struct fr_stats2vp {
+typedef struct {
 	int	attribute;
 	size_t	offset;
 } fr_stats2vp;

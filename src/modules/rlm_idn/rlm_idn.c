@@ -31,7 +31,7 @@ RCSID("$Id$")
 /*
  *      Structure for module configuration
  */
-typedef struct rlm_idn_t {
+typedef struct {
 	char const	*xlat_name;
 	bool		use_std3_ascii_rules;
 	bool		allow_unassigned;

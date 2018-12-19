@@ -71,7 +71,7 @@ static bool reply_expected = true;
 static char const *dhcpclient_version = RADIUSD_VERSION_STRING_BUILD("dhcpclient");
 
 /* structure to keep track of offered IP addresses */
-typedef struct dc_offer {
+typedef struct {
 	uint32_t server_addr;
 	uint32_t offered_addr;
 } dc_offer_t;

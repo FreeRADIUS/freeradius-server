@@ -64,17 +64,19 @@ static char		*default_dict_dir;		//!< The default location for loading dictionar
  */
 fr_dict_t	*fr_dict_internal = NULL;	//!< Internal server dictionary.
 
+typedef struct dict_enum_fixup_s dict_enum_fixup_t;
+
 /** A temporary enum value, which we'll resolve later
  *
  */
-typedef struct dict_enum_fixup_t {
+struct dict_enum_fixup_s {
 	char *attribute;		//!< we couldn't find (and will need to resolve later).
 	char *alias;			//!< Raw enum name.
 	char *value;			//!< Raw enum value.  We can't do anything with this until
 					//!< we know the attribute type, which we only find out later.
 
-	struct dict_enum_fixup_t *next;	//!< Next in the linked list of fixups.
-} dict_enum_fixup_t;
+	dict_enum_fixup_t *next;	//!< Next in the linked list of fixups.
+};
 
 /** Vendors and attribute names
  *

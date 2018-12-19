@@ -57,12 +57,12 @@ RCSID("$Id$")
 #  define NAMEDATALEN 64
 #endif
 
-typedef struct rlm_sql_postgres_config {
+typedef struct {
 	char const	*db_string;
 	bool		send_application_name;
 } rlm_sql_postgres_t;
 
-typedef struct rlm_sql_postgres_conn {
+typedef struct {
 	PGconn		*db;
 	PGresult	*result;
 	int		cur_row;

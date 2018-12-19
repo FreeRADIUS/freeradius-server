@@ -101,7 +101,7 @@ void fr_request_from_reply(RADIUS_PACKET *request,
 /*
  *	We need to keep track of the socket & it's IP/port.
  */
-typedef struct fr_packet_socket_t {
+typedef struct {
 	int		sockfd;
 	void		*ctx;
 

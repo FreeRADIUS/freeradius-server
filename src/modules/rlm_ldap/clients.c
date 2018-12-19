@@ -70,7 +70,7 @@ static int rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION
 	return 0;
 }
 
-typedef struct ldap_client_data {
+typedef struct {
 	fr_ldap_connection_t *conn;
 	LDAPMessage *entry;
 } ldap_client_data_t;

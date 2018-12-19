@@ -40,7 +40,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct rlm_csv_t {
+typedef struct {
 	char const	*name;
 	char const	*filename;
 	char const	*delimiter;
@@ -56,7 +56,7 @@ typedef struct rlm_csv_t {
 	rbtree_t	*tree;
 } rlm_csv_t;
 
-typedef struct rlm_csv_entry_t {
+typedef struct {
 	struct rlm_csv_entry_t *next;
 	char const *key;
 	char *data[];

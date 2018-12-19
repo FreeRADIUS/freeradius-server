@@ -44,7 +44,7 @@ static CONF_PARSER module_config[] = {
 /** rlm_redis module instance
  *
  */
-typedef struct rlm_redis_t {
+typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 

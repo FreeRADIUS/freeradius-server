@@ -39,7 +39,7 @@ RCSID("$Id$")
 /*
  *	Define a structure for our module configuration.
  */
-typedef struct rlm_sqlippool_t {
+typedef struct {
 	char const	*sql_instance_name;
 
 	uint32_t	lease_duration;

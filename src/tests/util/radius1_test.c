@@ -51,14 +51,14 @@ RCSID("$Id$")
 #define MPRINT2 if (debug_lvl > 1) printf
 
 
-typedef struct fr_schedule_worker {
+typedef struct {
 	int		id;			//!< ID of the worker 0..N
 	pthread_t	pthread_id;		//!< pthread ID of the worker
 	fr_worker_t	*worker;		//!< pointer to the worker
 	fr_channel_t	*ch;			//!< channel for communicating with the worker
 } fr_schedule_worker_t;
 
-typedef struct fr_packet_ctx {
+typedef struct {
 	uint8_t		vector[16];
 	uint8_t		id;
 

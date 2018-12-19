@@ -40,7 +40,7 @@ RCSID("$Id$")
 #include <sqlcli.h>
 #include "rlm_sql.h"
 
-typedef struct rlm_sql_conn {
+typedef struct {
 	SQLHANDLE dbc_handle;
 	SQLHANDLE env_handle;
 	SQLHANDLE stmt;

@@ -26,14 +26,14 @@
 #include <freeradius-devel/server/rad_assert.h>
 #include "../../rlm_cache.h"
 
-typedef struct rlm_cache_rbtree {
+typedef struct {
 	rbtree_t		*cache;		//!< Tree for looking up cache keys.
 	fr_heap_t		*heap;		//!< For managing entry expiry.
 
 	pthread_mutex_t		mutex;		//!< Protect the tree from multiple readers/writers.
 } rlm_cache_rbtree_t;
 
-typedef struct rlm_cache_rbtree_entry {
+typedef struct {
 	rlm_cache_entry_t	fields;		//!< Entry data.
 	int32_t			heap_id;	//!< Offset used for heap.
 } rlm_cache_rbtree_entry_t;

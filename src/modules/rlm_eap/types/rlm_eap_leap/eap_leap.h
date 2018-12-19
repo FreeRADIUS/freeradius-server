@@ -23,7 +23,7 @@ RCSIDH(eap_leap_h, "$Id$")
  */
 
 /* eap packet structure */
-typedef struct leap_packet_raw_t {
+typedef struct {
 	/*
 	 *  EAP header, followed by type comes before this.
 	 */
@@ -36,7 +36,7 @@ typedef struct leap_packet_raw_t {
 /*
  *	Which is decoded into this.
  */
-typedef struct leap_packet {
+typedef struct {
 	unsigned char	code;
 	unsigned char	id;
 	size_t		length;
@@ -50,7 +50,7 @@ typedef struct leap_packet {
  *	The information which must be kept around
  *	during the LEAP session.
  */
-typedef struct leap_session_t {
+typedef struct {
 	int		stage;
 	uint8_t		peer_challenge[8];
 	uint8_t		peer_response[24];

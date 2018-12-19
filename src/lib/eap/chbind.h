@@ -35,13 +35,13 @@ RCSIDH(lib_eap_chbind_h, "$Id$")
 #include <freeradius-devel/server/base.h>
 
 /* Structure to represent eap channel binding packet format */
-typedef struct chbind_packet_t {
+typedef struct {
 	uint8_t	code;
 	uint8_t data[1];
 } chbind_packet_t;
 
 /* Structure to hold channel bindings req/resp information */
-typedef struct CHBIND_REQ {
+typedef struct {
 	VALUE_PAIR	*username;		/* the username */
 	chbind_packet_t *request;		/* channel binding request buffer */
 	chbind_packet_t *response;		/* channel binding response buffer */

@@ -39,7 +39,7 @@ int		timestr_match(char const *, time_t);
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct rlm_logintime_t {
+typedef struct {
 	uint32_t	min_time;
 } rlm_logintime_t;
 

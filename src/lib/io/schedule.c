@@ -83,7 +83,7 @@ typedef enum fr_schedule_child_status_t {
 /**
  *	A data structure to track workers.
  */
-typedef struct fr_schedule_worker_t {
+typedef struct {
 	TALLOC_CTX	*ctx;			//!< our allocation ctx
 	fr_event_list_t	*el;			//!< our event list
 	pthread_t	pthread_id;		//!< the thread of this worker
@@ -103,7 +103,7 @@ typedef struct fr_schedule_worker_t {
 /**
  *	A data structure to track network threads / networks.
  */
-typedef struct fr_schedule_network_t {
+typedef struct {
 	TALLOC_CTX	*ctx;			//!< our allocation ctx
 	pthread_t	pthread_id;		//!< the thread of this network
 

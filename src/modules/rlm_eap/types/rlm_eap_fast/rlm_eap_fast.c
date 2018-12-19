@@ -35,7 +35,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /*
  *	An instance of EAP-FAST
  */
-typedef struct rlm_eap_fast_t {
+typedef struct {
 	char const		*tls_conf_name;				//!< Name of shared TLS config.
 	fr_tls_conf_t		*tls_conf;				//!< TLS config pointer.
 

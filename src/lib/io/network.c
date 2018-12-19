@@ -57,7 +57,7 @@ RCSID("$Id$")
 
 fr_thread_local_setup(fr_ring_buffer_t *, fr_network_rb)	/* macro */
 
-typedef struct  {
+typedef struct {
 	fr_listen_t	*listen;
 	uint8_t		*packet;
 	size_t		packet_len;

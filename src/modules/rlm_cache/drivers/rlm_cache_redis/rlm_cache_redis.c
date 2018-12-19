@@ -34,7 +34,7 @@ static CONF_PARSER driver_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-typedef struct rlm_cache_redis {
+typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 

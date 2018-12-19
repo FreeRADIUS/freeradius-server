@@ -36,7 +36,7 @@ extern "C" {
  *  "master" writing requests to the channel, and a "worker" reading
  *  requests, and writing replies back to the master.
  */
-typedef struct fr_channel_t fr_channel_t;
+typedef struct fr_channel_s fr_channel_t;
 
 /*
  *	Forward declaration until such time as we fix the code so that
@@ -77,7 +77,7 @@ typedef enum fr_channel_event_t {
  *  The messages are just for exchanging packet data.  The channel
  *  data structure is for exchanging requests and replies.
  */
-typedef struct fr_channel_data_t {
+typedef struct {
 	fr_message_t		m;		//!< the message header
 
 	union {

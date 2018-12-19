@@ -131,7 +131,7 @@ void fr_verify_struct_member(void const *ptr, size_t len, uint32_t *signature);
 
 /** Manual validation of structures.
  *
- *	typedef struct foo_t {
+ *	typedef struct {
  *		char *a;
  *		int b;
  *		FR_SIGNATURE		// no semicolon!

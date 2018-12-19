@@ -23,7 +23,7 @@ RCSIDH(eap_md5_h, "$Id$")
  */
 
 /* eap packet structure */
-typedef struct md5_packet_t {
+typedef struct {
 /*
 	uint8_t	code;
 	uint8_t	id;
@@ -33,7 +33,7 @@ typedef struct md5_packet_t {
 	uint8_t	value_name[1];
 } md5_packet_t;
 
-typedef struct md5_packet {
+typedef struct {
 	unsigned char	code;
 	unsigned char	id;
 	unsigned short	length;

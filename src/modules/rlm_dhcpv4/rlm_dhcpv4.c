@@ -46,7 +46,7 @@ fr_dict_autoload_t rlm_dhcpv4_dict[] = {
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct rlm_dhcpv4_t {
+typedef struct {
 	int nothing;
 } rlm_dhcpv4_t;
 

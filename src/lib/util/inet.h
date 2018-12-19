@@ -40,7 +40,7 @@ extern "C" {
  * Abstraction around the standard in_addr/in6_addr structures to
  * support address family agnostic functions.
  */
-typedef struct fr_ipaddr_t {
+typedef struct {
 	int		af;			//!< Address family.
 	union {
 		struct in_addr	v4;		//!< IPv4 address.
@@ -57,7 +57,7 @@ typedef struct fr_ipaddr_t {
 /** Holds information necessary for binding or connecting to a socket.
  *
  */
-typedef struct fr_socket_addr {
+typedef struct {
 	union {
 		struct {
 			fr_ipaddr_t	ipaddr;	//!< IP address to bind or connect to.

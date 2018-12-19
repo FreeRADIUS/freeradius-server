@@ -78,7 +78,7 @@ typedef enum fr_channel_signal_t {
 	FR_CHANNEL_SIGNAL_WORKER_SLEEPING,
 } fr_channel_signal_t;
 
-typedef struct fr_channel_control_t {
+typedef struct {
 	fr_channel_signal_t	signal;		//!< the signal to send
 	uint64_t		ack;		//!< or the endpoint..
 	fr_channel_t		*ch;		//!< the channel
@@ -90,7 +90,7 @@ typedef struct fr_channel_control_t {
  * The atomic queue is there to get bulk data through, because it's more efficient
  * than pushing 1M+ events per second through a kqueue.
  */
-typedef struct fr_channel_end_t {
+typedef struct {
 	fr_control_t		*control;	//!< The control plane, consisting of an atomic queue and kqueue.
 
 	fr_ring_buffer_t	*rb;		//!< Ring buffer for control-plane messages.
@@ -126,12 +126,14 @@ typedef struct fr_channel_end_t {
 	fr_atomic_queue_t	*aq;		//!< The queue of messages - visible only to this channel.
 } fr_channel_end_t;
 
+typedef struct fr_channel_s fr_channel_t;
+
 /** A full channel, which consists of two ends
  *
  * A channel consists of the kqueue identifiers and an atomic queue in each
  * direction to allow for bidirectional communication.
  */
-typedef struct fr_channel_t {
+struct fr_channel_s {
 	fr_time_t		cpu_time;	//!< Total time used by the worker for this channel.
 	fr_time_t		processing_time; //!< Time spent by the worker processing requests.
 
@@ -139,7 +141,7 @@ typedef struct fr_channel_t {
 	bool			same_thread;	//!< are both ends in the same thread?
 
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
-} fr_channel_t;
+};
 
 const FR_NAME_NUMBER channel_packet_priority[] = {
 	{ "now",	PRIORITY_NOW },

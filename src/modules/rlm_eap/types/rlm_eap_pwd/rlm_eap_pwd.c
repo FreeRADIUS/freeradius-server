@@ -41,7 +41,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_pwd.h"
 
-typedef struct rlm_eap_pwd {
+typedef struct {
     BN_CTX *bnctx;
 
     uint32_t	group;

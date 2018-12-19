@@ -37,7 +37,7 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
-typedef struct rlm_sql_freetds_conn {
+typedef struct {
 	CS_CONTEXT	*context;	//!< Structure FreeTDS uses to avoid creating globals.
 	CS_CONNECTION	*db;		//!< Handle specifying a single connection to the database.
 	CS_COMMAND	*command;	//!< A prepared statement.

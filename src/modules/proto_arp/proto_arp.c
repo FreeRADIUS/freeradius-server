@@ -29,7 +29,7 @@
 #include <freeradius-devel/util/pcap.h>
 #include <net/if_arp.h>
 
-typedef struct arp_socket_t {
+typedef struct {
 	listen_socket_t	lsock;
 	uint64_t	counter;
 	RADCLIENT	client;
@@ -38,7 +38,7 @@ typedef struct arp_socket_t {
 /*
  *	ARP for ethernet && IPv4.
  */
-typedef struct arp_over_ether {
+typedef struct {
 	uint16_t	htype;			//!< Format of hardware address.
 	uint16_t	ptype;			//!< Format of protocol address.
 	uint8_t		hlen;			//!< Length of hardware address.
@@ -165,7 +165,7 @@ static int arp_socket_encode(UNUSED rad_listen_t *listener, UNUSED REQUEST *requ
 }
 
 
-typedef struct arp_decode_t {
+typedef struct {
 	char const	*name;
 	size_t		len;
 } arp_decode_t;

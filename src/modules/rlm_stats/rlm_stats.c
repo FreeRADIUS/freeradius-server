@@ -40,7 +40,7 @@ RCSID("$Id$")
 
 #include <pthread.h>
 
-typedef struct rlm_stats_t {
+typedef struct {
 	pthread_mutex_t		mutex;
 	fr_dict_attr_t const	*type_da;			//!< FreeRADIUS-Stats4-Type
 	fr_dict_attr_t const	*ipv4_da;			//!< FreeRADIUS-Stats4-IPv4-Address
@@ -50,14 +50,14 @@ typedef struct rlm_stats_t {
 	uint64_t		stats[FR_MAX_PACKET_CODE];
 } rlm_stats_t;
 
-typedef struct rlm_stats_data_t {
+typedef struct {
 	fr_ipaddr_t		ipaddr;				//!< IP address of this thing
 	fr_time_t		created;			//!< when it was created
 	fr_time_t		last_packet;			//!< when we last saw a packet
 	uint64_t		stats[FR_MAX_PACKET_CODE];	//!< actual statistic
 } rlm_stats_data_t;
 
-typedef struct rlm_stats_thread_t {
+typedef struct {
 	rlm_stats_t		*inst;
 
 	fr_time_t		last_global_update;

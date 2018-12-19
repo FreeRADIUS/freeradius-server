@@ -29,7 +29,7 @@ RCSIDH(server_socket_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_socket_limit_t {
+typedef struct {
 	uint32_t	max_connections;
 	uint32_t	num_connections;
 	uint32_t	max_requests;

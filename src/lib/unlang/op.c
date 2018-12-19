@@ -876,13 +876,13 @@ typedef enum unlang_parallel_child_state_t {
 /** Each parallel child has a state, and an associated request
  *
  */
-typedef struct unlang_parallel_child_t {
+typedef struct {
 	unlang_parallel_child_state_t	state;		//!< state of the child
 	REQUEST				*child; 	//!< child request
 	unlang_t			*instruction;	//!< broken out of g->children
 } unlang_parallel_child_t;
 
-typedef struct unlang_parallel_t {
+typedef struct {
 	rlm_rcode_t		result;
 	int			priority;
 

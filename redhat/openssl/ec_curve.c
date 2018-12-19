@@ -202,7 +202,7 @@ static const struct { EC_CURVE_DATA h; unsigned char data[20+32*6]; }
 	  0x25,0x51 }
 	};
 
-typedef struct _ec_list_element_st {
+typedef struct {
 	int	nid;
 	const EC_CURVE_DATA *data;
 	const EC_METHOD *(*meth)(void);

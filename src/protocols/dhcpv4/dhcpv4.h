@@ -59,7 +59,7 @@ typedef enum {
 	FR_DHCP_MAX = (16)
 } fr_dhcpv4_codes_t;
 
-typedef struct dhcp_packet_t {
+typedef struct {
 	uint8_t		opcode;
 	uint8_t		htype;
 	uint8_t		hlen;

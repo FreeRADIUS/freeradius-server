@@ -50,7 +50,7 @@
 #include <pwd.h>
 #include <grp.h>
 
-typedef struct proto_control_unix_thread_t {
+typedef struct {
 	char const			*name;			//!< socket name
 
 	int				sockfd;

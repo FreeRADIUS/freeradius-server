@@ -36,7 +36,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 #include <ctype.h>
 
-typedef struct radius_packet_t {
+typedef struct {
 	uint8_t	code;
 	uint8_t	id;
 	uint8_t	length[2];

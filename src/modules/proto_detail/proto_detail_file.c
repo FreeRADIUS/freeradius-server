@@ -64,12 +64,12 @@ DIAG_ON(unused-macros)
 /*
  *	For talloc names, ".name = detail_file", and dl.c prepends "proto_", and appends "_t".
  */
-typedef struct proto_detail_work_t proto_detail_file_t;
+typedef struct proto_detail_work_s proto_detail_file_t;
 
 /*
  *	@todo - this should really now be a different data structure
  */
-typedef struct proto_detail_work_thread_t proto_detail_file_thread_t;
+typedef struct proto_detail_work_thread_s proto_detail_file_thread_t;
 
 static void work_init(proto_detail_file_thread_t *thread);
 static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, void *ctx);

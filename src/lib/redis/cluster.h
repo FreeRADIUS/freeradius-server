@@ -34,6 +34,7 @@ RCSIDH(cluster_h, "$Id$")
 #include <freeradius-devel/server/pool.h>
 
 typedef struct fr_redis_cluster fr_redis_cluster_t;
+typedef struct fr_redis_cluster_node_s fr_redis_cluster_node_t;
 
 /** Redis connection sequence state
  *
@@ -42,7 +43,7 @@ typedef struct fr_redis_cluster fr_redis_cluster_t;
  * Used by callers of the cluster code.  Allocated on the stack and passed to
  * #fr_redis_cluster_state_init and #fr_redis_cluster_state_next.
  */
-typedef struct fr_redis_cluster_state {
+typedef struct {
 	bool			close_conn;	//!< Set by caller of fr_redis_cluster_state_next,
 						//!< to indicate that connection must be closed, as it's
 						//!< now in an unknown state.
@@ -50,7 +51,7 @@ typedef struct fr_redis_cluster_state {
 	uint8_t const		*key;		//!< Key we performed hashing on.
 	size_t			key_len;	//!< Length of the key.
 
-	struct fr_redis_cluster_node *node;	//!< Node we're communicating with.
+	fr_redis_cluster_node_t	*node;		//!< Node we're communicating with.
 	uint32_t		redirects;	//!< How many redirects have we followed.
 
 	uint32_t		retries;	//!< How many times we've received TRYAGAIN

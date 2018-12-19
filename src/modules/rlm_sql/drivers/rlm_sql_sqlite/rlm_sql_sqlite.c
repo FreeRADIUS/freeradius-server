@@ -49,13 +49,13 @@ RCSID("$Id$")
 typedef sqlite_int64 sqlite3_int64;
 #endif
 
-typedef struct rlm_sql_sqlite_conn {
+typedef struct {
 	sqlite3 *db;
 	sqlite3_stmt *statement;
 	int col_count;
 } rlm_sql_sqlite_conn_t;
 
-typedef struct rlm_sql_sqlite {
+typedef struct {
 	char const	*filename;
 	uint32_t	busy_timeout;
 } rlm_sql_sqlite_t;

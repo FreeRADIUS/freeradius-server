@@ -47,7 +47,7 @@ struct rlm_json_jpath_cache {
 	rlm_json_jpath_cache_t	*next;		//!< Next jpath cache entry.
 };
 
-typedef struct rlm_json_jpath_to_eval {
+typedef struct {
 	fr_jpath_node_t const	*jpath;
 	json_object		*root;
 } rlm_json_jpath_to_eval_t;

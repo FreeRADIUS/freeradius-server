@@ -30,13 +30,15 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 
+typedef struct fr_dlist_s fr_dlist_t;
+
 /** Entry in a doubly linked list
  *
  */
-typedef struct fr_dlist {
-	struct fr_dlist *prev;
-	struct fr_dlist *next;
-} fr_dlist_t;
+struct fr_dlist_s {
+	fr_dlist_t *prev;
+	fr_dlist_t *next;
+};
 
 /** Head of a doubly linked list
  *

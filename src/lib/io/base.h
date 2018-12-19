@@ -38,7 +38,7 @@ extern "C" {
 typedef struct fr_listen fr_listen_t;
 typedef struct fr_trie_t fr_trie_t;
 
-typedef struct fr_io_stats_t {
+typedef struct {
 	uint64_t	in;
 	uint64_t	out;
 	uint64_t	dup;
@@ -66,7 +66,7 @@ typedef enum {
 	FR_IO_DONE,		//!< succeeded without a reply
 } fr_io_final_t;
 
-typedef struct fr_channel_t fr_channel_t;
+typedef struct fr_channel_s fr_channel_t;
 
 /**  Open an I/O path
  *

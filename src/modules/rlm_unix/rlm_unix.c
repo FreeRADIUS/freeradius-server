@@ -50,7 +50,7 @@ USES_APPLE_DEPRECATED_API
 static char trans[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define ENC(c) trans[c]
 
-typedef struct rlm_unix {
+typedef struct {
 	char const *name;	//!< Instance name.
 	char const *radwtmp;
 } rlm_unix_t;

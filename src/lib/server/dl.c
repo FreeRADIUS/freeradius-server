@@ -85,7 +85,7 @@ struct dl_symbol_free {
 /** A dynamic loader
  *
  */
-typedef struct dl_loader {
+typedef struct {
 	char const		*lib_dir;	//!< Where the libraries live.
 
 	/** Linked list of symbol init callbacks

@@ -34,7 +34,7 @@ typedef enum {
  */
 
 #define SECURID_STATE_LEN 32
-typedef struct _securid_session_t {
+typedef struct {
 	struct _securid_session_t *prev, *next;
 	SDI_HANDLE		  sdiHandle;
 	SECURID_SESSION_STATE	  securidSessionState;
@@ -61,7 +61,7 @@ typedef struct _securid_session_t {
  *      sessions = remembered sessions, in a tree for speed.
  *      mutex = ensure only one thread is updating the sessions list
  */
-typedef struct rlm_securid_t {
+typedef struct {
 	pthread_mutex_t	session_mutex;
 	rbtree_t*	session_tree;
 	SECURID_SESSION	*session_head, *session_tail;

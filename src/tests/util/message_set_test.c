@@ -41,7 +41,7 @@ RCSID("$Id$")
 #define ARRAY_SIZE (4 * ALLOC_SIZE)
 #define MY_ARRAY_SIZE (16 * ARRAY_SIZE)
 
-typedef struct fr_test_t {
+typedef struct {
 	fr_message_t	m;
 	int		foo;
 	int		bar;

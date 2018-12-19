@@ -37,7 +37,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /*
  *	FIXME: Fix the build system to create definitions from names.
  */
-typedef struct rlm_wimax_t {
+typedef struct {
 	bool	delete_mppe_keys;
 } rlm_wimax_t;
 

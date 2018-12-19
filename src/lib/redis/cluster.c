@@ -75,13 +75,13 @@
  *   This code maintains a series structures for efficient lookup and lockless operations.
  *
  *   The important ones are:
- *     - An array of #cluster_node_t.  These are pre-allocated on startup and are
+ *     - An array of #fr_redis_cluster_node_t.  These are pre-allocated on startup and are
  *       never added to, or removed from.
  *     - An #fr_fifo_t.  This contains the queue of nodes that may be re-used.
  *     - An #rbtree_t.  This contains a tree of nodes which are active.  The tree is built on IP
  *       address and port.
  *
- *   Each #cluster_node_t contains a master ID, and an array of slave IDs.  The IDs are array
+ *   Each #fr_redis_cluster_node_t contains a master ID, and an array of slave IDs.  The IDs are array
  *   indexes in the fr_redis_cluster_t.node array.  We use 8bit unsigned integers instead of
  *   pointers to save space.  Using pointers, the node[] array would need 784K, using IDs
  *   it uses 112K.  Still not light on memory, but a bit more acceptable.
@@ -196,7 +196,7 @@ typedef enum {
 
 /** Live nodes data, used to perform weighted random selection of alternative nodes
  */
-typedef struct cluster_nodes_live {
+typedef struct {
 	struct {
 		uint8_t					id;		//!< Node ID.
 		fr_pool_state_t const	*pool_state;	//!< Connection pool stats.
@@ -210,7 +210,7 @@ typedef struct cluster_nodes_live {
  *
  * Passed as opaque data to pools which open connection to nodes.
  */
-typedef struct fr_redis_cluster_node {
+struct fr_redis_cluster_node_s {
 	char			name[INET6_ADDRSTRLEN];	//!< Buffer to hold IP string.
 							//!< text for debug messages.
 	uint8_t			id;			//!< Node ID (index in node array).
@@ -228,15 +228,15 @@ typedef struct fr_redis_cluster_node {
 	bool			is_master;		//!< Whether this node is a master.
 							//!< This is needed for commands like 'KEYS', which
 							//!< we need to issue to every master in the cluster.
-} cluster_node_t;
+};
 
-/** Indexes in the cluster_node_t array for a single key slot
+/** Indexes in the fr_redis_cluster_node_t array for a single key slot
  *
  * When dealing with 16K entries, space is a concern. It's significantly
  * more memory efficient to use 8bit indexes than 64bit pointers for each
  * of the key slot to node mappings.
  */
-typedef struct cluster_key_slot {
+typedef struct {
 	uint8_t			slave[MAX_SLAVES];	//!< R/O node (slave) for this key slot.
 	uint8_t			slave_num;		//!< Number of slaves associated with this key slot.
 	uint8_t			master;			//!< R/W node (master) for this key slot.
@@ -261,7 +261,7 @@ struct fr_redis_cluster {
 	fr_redis_conf_t		*conf;			//!< Base configuration data such as the database number
 							//!< and passwords.
 
-	cluster_node_t		*node;			//!< Structure containing a node id, its address and
+	fr_redis_cluster_node_t		*node;			//!< Structure containing a node id, its address and
 							//!< a pool of its connections.
 
 	fr_fifo_t		*free_nodes;		//!< Queue of free nodes (or nodes waiting to be reused).
@@ -312,7 +312,7 @@ static uint16_t cluster_key_hash(uint8_t const *key, size_t key_len)
  */
 static int _cluster_node_cmp(void const *a, void const *b)
 {
-	cluster_node_t const *my_a = a, *my_b = b;
+	fr_redis_cluster_node_t const *my_a = a, *my_b = b;
 	int ret;
 
 	ret = fr_ipaddr_cmp(&my_a->addr.ipaddr, &my_b->addr.ipaddr);
@@ -329,7 +329,7 @@ static int _cluster_node_cmp(void const *a, void const *b)
 static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
 {
 	VALUE_PAIR	*args;
-	cluster_node_t	*node = opaque;
+	fr_redis_cluster_node_t	*node = opaque;
 
 	node->addr = node->pending_addr;
 
@@ -357,7 +357,7 @@ static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
  *	 - CLUSTER_OP_SUCCESS on success.
  *	 - CLUSTER_OP_FAILED if the operation failed.
  */
-static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster_node_t *node)
+static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, fr_redis_cluster_node_t *node)
 {
 	char const *p;
 
@@ -590,8 +590,8 @@ do { \
 		size_t			j;
 		long long int		k;
 		int			slaves = 0;
-		cluster_node_t		*found, *spare;
-		cluster_node_t		find;
+		fr_redis_cluster_node_t		*found, *spare;
+		fr_redis_cluster_node_t		find;
 		cluster_key_slot_t	tmpl_slot;
 		redisReply		*map = reply->element[i];
 
@@ -721,7 +721,7 @@ do { \
 	 */
 	for (i = 1; i < cluster->conf->max_nodes; i++) {
 #ifndef NDEBUG
-		cluster_node_t *found;
+		fr_redis_cluster_node_t *found;
 
 		if (cluster->node[i].is_active) {
 			/* Sanity check for duplicates that are active */
@@ -1098,9 +1098,9 @@ static cluster_rcode_t cluster_remap(REQUEST *request, fr_redis_cluster_t *clust
  *	- CLUSTER_OP_NO_CONNECTION connection failure.
  *	- CLUSTER_OP_BAD_INPUT on validation failure (bad data returned from Redis).
  */
-static cluster_rcode_t cluster_redirect(cluster_node_t **out, fr_redis_cluster_t *cluster, redisReply *reply)
+static cluster_rcode_t cluster_redirect(fr_redis_cluster_node_t **out, fr_redis_cluster_t *cluster, redisReply *reply)
 {
-	cluster_node_t		find, *found, *spare;
+	fr_redis_cluster_node_t		find, *found, *spare;
 	fr_redis_conn_t		*rconn;
 
 	uint16_t		key;
@@ -1183,7 +1183,7 @@ static cluster_rcode_t cluster_redirect(cluster_node_t **out, fr_redis_cluster_t
 static int _cluster_pool_walk(void *context, void *data)
 {
 	cluster_nodes_live_t	*live = context;
-	cluster_node_t		*node = data;
+	fr_redis_cluster_node_t		*node = data;
 
 	rad_assert(node->pool);
 
@@ -1252,7 +1252,7 @@ static int cluster_node_pool_health(struct timeval const *now, fr_pool_state_t c
  *	- CLUSTER_OP_SUCCESS on success.
  *	- CLUSTER_OP_NO_CONNECTION on connection down.
  */
-static cluster_rcode_t cluster_node_ping(REQUEST *request, cluster_node_t *node, fr_redis_conn_t *conn)
+static cluster_rcode_t cluster_node_ping(REQUEST *request, fr_redis_cluster_node_t *node, fr_redis_conn_t *conn)
 {
 	redisReply		*reply;
 	fr_redis_rcode_t	rcode;
@@ -1319,8 +1319,8 @@ static cluster_rcode_t cluster_node_ping(REQUEST *request, cluster_node_t *node,
  * @param[in] skip this node (it's bad).
  * @return 0 (iterates over the whole tree).
  */
-static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **live_conn,
-				  REQUEST *request, fr_redis_cluster_t *cluster, cluster_node_t *skip)
+static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_conn_t **live_conn,
+				  REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_cluster_node_t *skip)
 {
 	uint32_t		i;
 
@@ -1352,7 +1352,7 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 	 */
 	for (i = 0; (i < cluster->conf->max_alt) && live->next; i++) {
 		fr_redis_conn_t 	*conn;
-		cluster_node_t		*node;
+		fr_redis_cluster_node_t		*node;
 		uint8_t			j;
 		int			first, last, pivot;	/* Must be signed for BS */
 		unsigned int		find, cumulative = 0;
@@ -1461,7 +1461,7 @@ static int _cluster_conn_free(fr_redis_conn_t *conn)
 /** Create a new connection to a Redis node
  *
  * @param[in] ctx to allocate connection structure in. Will be freed at the same time as the pool.
- * @param[in] instance data of type #cluster_node_t. Holds parameters for establishing new connection.
+ * @param[in] instance data of type #fr_redis_cluster_node_t. Holds parameters for establishing new connection.
  * @param[in] timeout The maximum time allowed to complete the connection.
  * @return
  *	- New #fr_redis_conn_t on success.
@@ -1469,7 +1469,7 @@ static int _cluster_conn_free(fr_redis_conn_t *conn)
  */
 void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
-	cluster_node_t		*node = instance;
+	fr_redis_cluster_node_t		*node = instance;
 	fr_redis_conn_t		*conn = NULL;
 	redisContext		*handle;
 	redisReply		*reply = NULL;
@@ -1646,7 +1646,7 @@ fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr
 					     fr_redis_cluster_t *cluster, REQUEST *request,
 					     uint8_t const *key, size_t key_len, bool read_only)
 {
-	cluster_node_t		*node;
+	fr_redis_cluster_node_t		*node;
 	cluster_key_slot_t	*key_slot;
 	uint8_t			first, i;
 	int			used_nodes;
@@ -1897,7 +1897,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 */
 	case REDIS_RCODE_ASK:
 	{
-		cluster_node_t *new;
+		fr_redis_cluster_node_t *new;
 
 		fr_pool_connection_release(state->node->pool, request, *conn);	/* Always release the old connection */
 
@@ -1969,7 +1969,7 @@ try_again:
 int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *cluster,
 				       fr_socket_addr_t *node_addr, bool create)
 {
-	cluster_node_t	find, *found;
+	fr_redis_cluster_node_t	find, *found;
 
 	find.addr.ipaddr = node_addr->ipaddr;
 	find.addr.port = node_addr->port;
@@ -1977,7 +1977,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 	pthread_mutex_lock(&cluster->mutex);
 	found = rbtree_finddata(cluster->used_nodes, &find);
 	if (!found) {
-		cluster_node_t *spare;
+		fr_redis_cluster_node_t *spare;
 		char buffer[INET6_ADDRSTRLEN];
 		char const *hostname;
 
@@ -2021,7 +2021,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 /** Private ctx structure to pass to _cluster_role_walk
  *
  */
-typedef struct addr_by_role_ctx {
+typedef struct {
 	bool			is_master;
 	bool			is_slave;
 	uint8_t			count;
@@ -2039,7 +2039,7 @@ typedef struct addr_by_role_ctx {
 static int _cluster_role_walk(void *context, void *data)
 {
 	addr_by_role_ctx_t	*ctx = context;
-	cluster_node_t		*node = data;
+	fr_redis_cluster_node_t		*node = data;
 
 	if ((ctx->is_master && node->is_master) || (ctx->is_slave && !node->is_master)) {
 		ctx->found[ctx->count++] = node->addr;
@@ -2118,7 +2118,7 @@ static int _fr_redis_cluster_free(fr_redis_cluster_t *cluster)
 static int _cluster_version_walk(void *context, void *data)
 {
 	char const 		*min_version = context;
-	cluster_node_t		*node = data;
+	fr_redis_cluster_node_t		*node = data;
 	fr_redis_conn_t		*conn;
 	int			ret;
 	char			buffer[40];
@@ -2291,7 +2291,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		return NULL;
 	}
 
-	cluster->node = talloc_zero_array(cluster, cluster_node_t, conf->max_nodes + 1);
+	cluster->node = talloc_zero_array(cluster, fr_redis_cluster_node_t, conf->max_nodes + 1);
 	if (!cluster->node) goto oom;
 
 	cluster->used_nodes = rbtree_create(cluster, _cluster_node_cmp, NULL, 0);
@@ -2336,7 +2336,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	 */
 	do {
 		char const	*server;
-		cluster_node_t	*node;
+		fr_redis_cluster_node_t	*node;
 		fr_redis_conn_t	*conn;
 		redisReply	*map;
 		size_t		j, k;

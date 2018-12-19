@@ -44,7 +44,7 @@ typedef int (*fr_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance,
  *
  * This structure is exported by client I/O modules e.g. rlm_radius_udp.
  */
-typedef struct fr_radius_client_io_t {
+typedef struct {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	fr_app_bootstrap_t		bootstrap;
@@ -64,7 +64,7 @@ typedef struct fr_radius_client_io_t {
 	fr_unlang_module_resume_t	resume;			//!< resume a request, and get rcode
 } fr_radius_client_io_t;
 
-typedef struct rlm_radius_retry_t {
+typedef struct {
 	uint32_t		irt;			//!< Initial transmission time
 	uint32_t		mrc;			//!< Maximum retransmission count
 	uint32_t		mrt;			//!< Maximum retransmission time
@@ -109,7 +109,7 @@ struct rlm_radius_t {
  *
  * Contains buffers and connection handles specific to the thread.
  */
-typedef struct rlm_radius_thread_t {
+typedef struct {
 	rlm_radius_t const	*inst;			//!< Instance of the module.
 	fr_event_list_t		*el;			//!< This thread's event list.
 

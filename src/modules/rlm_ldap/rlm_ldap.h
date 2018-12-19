@@ -25,7 +25,7 @@ typedef struct {
 	vp_tmpl_t	*realm;				//!< Kerberos realm.
 } fr_ldap_sasl_t_dynamic_t;
 
-typedef struct ldap_acct_section {
+typedef struct {
 	CONF_SECTION	*cs;				//!< Section configuration.
 
 	char const	*reference;			//!< Configuration reference string.

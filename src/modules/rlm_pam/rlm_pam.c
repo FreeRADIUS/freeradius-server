@@ -47,7 +47,7 @@ RCSID("$Id$")
 #  include <syslog.h>
 #endif
 
-typedef struct rlm_pam_t {
+typedef struct {
 	char const *pam_auth_name;
 } rlm_pam_t;
 

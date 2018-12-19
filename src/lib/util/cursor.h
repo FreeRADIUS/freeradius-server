@@ -47,7 +47,7 @@ extern "C" {
  */
 typedef void *(*fr_cursor_iter_t)(void **prev, void *to_eval, void *uctx);
 
-typedef struct fr_cursor_s {
+typedef struct {
 	void			**head;		//!< First item in the list.
 	void			*tail;		//!< Used for efficient fr_cursor_append.
 	void			*current;	//!< The current item in the linked list.

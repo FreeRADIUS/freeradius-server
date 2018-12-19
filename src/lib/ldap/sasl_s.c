@@ -35,7 +35,7 @@
 /** Data passed to the _sasl interact callback.
  *
  */
-typedef struct fr_ldap_sasl_t_ctx_t {
+typedef struct {
 	REQUEST			*request;	//!< The current request.
 
 	char const		*identity;	//!< User's DN or identity.

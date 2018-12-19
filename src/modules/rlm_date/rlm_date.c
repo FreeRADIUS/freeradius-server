@@ -29,7 +29,7 @@
 #include <ctype.h>
 #include <time.h>
 
-typedef struct rlm_date_t {
+typedef struct {
 	char const *xlat_name;
 	char const *fmt;
 	bool utc;

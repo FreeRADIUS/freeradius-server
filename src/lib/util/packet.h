@@ -51,7 +51,7 @@ extern "C" {
  *
  *	data,data_len:	Used between fr_radius_recv and fr_radius_decode.
  */
-typedef struct radius_packet {
+typedef struct {
 	int			sockfd;			//!< Socket this packet was read from.
 	int			if_index;		//!< Index of receiving interface.
 	fr_ipaddr_t		src_ipaddr;		//!< Src IP address of packet.

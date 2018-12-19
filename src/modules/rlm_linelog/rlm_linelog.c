@@ -68,7 +68,7 @@ static FR_NAME_NUMBER const linefr_log_dst_table[] = {
 	{  NULL , -1 }
 };
 
-typedef struct linelog_net {
+typedef struct {
 	fr_ipaddr_t		dst_ipaddr;		//!< Network server.
 	fr_ipaddr_t		src_ipaddr;		//!< Send requests from a given src_ipaddr.
 	uint16_t		port;			//!< Network port.
@@ -77,7 +77,7 @@ typedef struct linelog_net {
 
 /** linelog module instance
  */
-typedef struct linelog_instance_t {
+typedef struct {
 	char const			*name;			//!< Module instance name.
 	fr_pool_t			*pool;			//!< Connection pool instance.
 
@@ -119,7 +119,7 @@ typedef struct linelog_instance_t {
 	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
 } linelog_instance_t;
 
-typedef struct linelog_conn {
+typedef struct {
 	int			sockfd;			//!< File descriptor associated with socket
 } linelog_conn_t;
 

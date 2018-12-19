@@ -58,7 +58,7 @@ typedef uint64_t fr_time_t;
  *  While fr_time() is fast, it is also called very often.  We should
  *  therefore be careful to call it only when necessary.
  */
-typedef struct fr_time_tracking_t {
+typedef struct {
 	fr_time_t	when;			//!< last time we changed a field
 	fr_time_t	start;			//!< time this request started being processed
 	fr_time_t	end;			//!< when we stopped processing this request
@@ -71,7 +71,7 @@ typedef struct fr_time_tracking_t {
 	fr_dlist_head_t	list;			//!< for linking a request to various lists
 } fr_time_tracking_t;
 
-typedef struct fr_time_elapsed_t {
+typedef struct {
 	uint64_t	array[8];		//!< 100ns to 100s
 } fr_time_elapsed_t;
 

@@ -42,7 +42,7 @@ RCSIDH(lib_eap_base_h, "$Id$")
  *
  * Helps with formulating/correlating requests to responses we've received.
  */
-typedef struct eap_round {
+typedef struct {
 	eap_packet_t	*response;			//!< Packet we received from the peer.
 	eap_packet_t	*request;			//!< Packet we will send to the peer.
 	bool		set_request_id;			//!< Whether the EAP-Method already set the next request ID.
@@ -91,7 +91,7 @@ struct _eap_session {
 /** Interface exported by EAP submodules
  *
  */
-typedef struct rlm_eap_submodule {
+typedef struct {
 	RAD_MODULE_COMMON;					//!< Common fields to all loadable modules.
 
 	eap_type_t		provides[MAX_PROVIDED_METHODS];	//!< Allow the module to register itself for more
@@ -117,7 +117,7 @@ typedef struct rlm_eap_submodule {
  */
 typedef int (*eap_tunnel_callback_t)(eap_session_t *eap_session, void *tls_session);
 
-typedef struct eap_tunnel_data_t {
+typedef struct {
 	void			*tls_session;
 	eap_tunnel_callback_t	callback;
 } eap_tunnel_data_t;

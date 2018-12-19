@@ -34,7 +34,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-typedef struct exfile_entry_t {
+typedef struct {
 	int			fd;			//!< File descriptor associated with an entry.
 	uint32_t		hash;			//!< Hash for cheap comparison.
 	time_t			last_used;		//!< Last time the entry was used.

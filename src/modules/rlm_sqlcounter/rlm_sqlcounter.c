@@ -59,7 +59,7 @@ RCSID("$Id$")
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct rlm_sqlcounter_t {
+typedef struct {
 	vp_tmpl_t	*paircmp_attr;	//!< Daily-Session-Time.
 	vp_tmpl_t	*limit_attr;  	//!< Max-Daily-Session.
 	vp_tmpl_t	*reply_attr;  	//!< Session-Timeout.

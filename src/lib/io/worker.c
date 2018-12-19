@@ -71,7 +71,7 @@ RCSID("$Id$")
 /**
  *  Track things by priority and time.
  */
-typedef struct fr_worker_heap_t {
+typedef struct {
 	fr_dlist_head_t	list;			//!< list of things, ordered by time.
 	fr_heap_t	*heap;			//!< heap, ordered by priority
 } fr_worker_heap_t;

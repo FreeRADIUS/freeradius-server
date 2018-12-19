@@ -64,17 +64,19 @@ typedef enum value_type {
 								//!< added to VALUE_PAIR tree.
 } value_type_t;
 
+typedef struct value_pair_s VALUE_PAIR;
+
 /** Stores an attribute, a value and various bits of other data
  *
  * VALUE_PAIRs are the main data structure used in the server
  *
  * They also specify what behaviour should be used when the attribute is merged into a new list/tree.
  */
-typedef struct value_pair {
+struct value_pair_s {
 	fr_dict_attr_t const	*da;				//!< Dictionary attribute defines the attribute
 								//!< number, vendor and type of the attribute.
 
-	struct value_pair	*next;
+	VALUE_PAIR		*next;
 
 	FR_TOKEN		op;				//!< Operator to use when moving or inserting
 								//!< valuepair into a list.
@@ -92,7 +94,7 @@ typedef struct value_pair {
 
 	value_type_t		type;				//!< Type of pointer in value union.
 	fr_value_box_t		data;
-} VALUE_PAIR;
+};
 
 /** Abstraction to allow iterating over different configurations of VALUE_PAIRs
  *
@@ -102,7 +104,7 @@ typedef struct value_pair {
  * Field within a vp_cursor should not be accessed directly, and vp_cursors should only be
  * manipulated with the pair* functions.
  */
-typedef struct vp_cursor {
+typedef struct {
 	VALUE_PAIR	**first;
 	VALUE_PAIR	*found;					//!< pairfind marker.
 	VALUE_PAIR	*last;					//!< Temporary only used for fr_pair_cursor_append
@@ -114,7 +116,7 @@ typedef struct vp_cursor {
  *
  * Used to represent pairs in the legacy 'users' file format.
  */
-typedef struct value_pair_raw {
+typedef struct {
 	char l_opand[256];					//!< Left hand side of the pair.
 	char r_opand[1024];					//!< Right hand side of the pair.
 

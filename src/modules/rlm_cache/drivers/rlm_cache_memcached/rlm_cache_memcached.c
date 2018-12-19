@@ -33,11 +33,11 @@
 #include "../../rlm_cache.h"
 #include "../../serialize.h"
 
-typedef struct rlm_cache_memcached_handle {
+typedef struct {
 	memcached_st *handle;
 } rlm_cache_memcached_handle_t;
 
-typedef struct rlm_cache_memcached {
+typedef struct {
 	char const 		*options;	//!< Connection options
 	fr_pool_t	*pool;
 } rlm_cache_memcached_t;

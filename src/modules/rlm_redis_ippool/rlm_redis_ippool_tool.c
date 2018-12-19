@@ -50,7 +50,7 @@ typedef enum ippool_tool_action {
 /** A single pool operation
  *
  */
-typedef struct ippool_tool_operation {
+typedef struct {
 	char const		*name;		//!< Original range or CIDR string.
 
 	uint8_t const		*pool;		//!< Pool identifier.
@@ -66,7 +66,7 @@ typedef struct ippool_tool_operation {
 	ippool_tool_action_t	action;		//!< What to do to the leases described by net/prefix.
 } ippool_tool_operation_t;
 
-typedef struct ippool_tool_lease {
+typedef struct {
 	fr_ipaddr_t		ipaddr;		//!< Prefix or address.
 	time_t			next_event;	//!< Last state change.
 	uint8_t const		*range;		//!< Range the lease belongs to.
@@ -77,7 +77,7 @@ typedef struct ippool_tool_lease {
 	size_t			gateway_len;
 } ippool_tool_lease_t;
 
-typedef struct ippool_tool_stats {
+typedef struct {
 	uint64_t		total;		//!< Addresses available.
 	uint64_t		free;		//!< Addresses in use.
 	uint64_t		expiring_1m;	//!< Addresses that expire in the next minute.
@@ -91,12 +91,12 @@ static CONF_PARSER redis_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-typedef struct redis_driver_conf {
+typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 	fr_redis_cluster_t	*cluster;
 } redis_driver_conf_t;
 
-typedef struct ippool_tool {
+typedef struct {
 	void			*driver;
 	CONF_SECTION		*cs;
 } ippool_tool_t;

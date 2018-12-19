@@ -37,7 +37,7 @@ USES_APPLE_DEPRECATED_API
 /*
  *	Define a structure for our module configuration.
  */
-typedef struct rlm_expr_t {
+typedef struct {
 	char const *xlat_name;
 } rlm_expr_t;
 
@@ -136,7 +136,7 @@ static int precedence[TOKEN_LAST + 1] = {
 	0
 };
 
-typedef struct expr_map_t {
+typedef struct {
 	char op;
 	expr_token_t token;
 } expr_map_t;

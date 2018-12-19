@@ -356,7 +356,7 @@ int main(void){
 }
 
 #else  /* TEST */
-typedef struct rlm_passwd_t {
+typedef struct {
 	struct hashtable	*ht;
 	struct mypasswd		*pwd_fmt;
 	char const		*filename;

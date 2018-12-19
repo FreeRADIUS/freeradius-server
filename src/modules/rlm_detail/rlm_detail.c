@@ -49,7 +49,7 @@ RCSID("$Id$")
  *
  * Holds the configuration and preparsed data for a instance of rlm_detail.
  */
-typedef struct detail_instance {
+typedef struct {
 	char const	*name;		//!< Instance name.
 	char const	*filename;	//!< File/path to write to.
 	uint32_t	perm;		//!< Permissions to use for new files.

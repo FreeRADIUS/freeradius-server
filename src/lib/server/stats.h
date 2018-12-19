@@ -36,7 +36,7 @@ typedef uint32_t fr_uint_t;
 #endif
 
 #ifdef WITH_STATS
-typedef struct fr_stats_t {
+typedef struct {
 	fr_uint_t	total_requests;
 	fr_uint_t	total_invalid_requests;
 	fr_uint_t	total_dup_requests;
@@ -54,7 +54,7 @@ typedef struct fr_stats_t {
 	fr_uint_t	elapsed[8];
 } fr_stats_t;
 
-typedef struct fr_stats_ema_t {
+typedef struct {
 	uint32_t	window;
 
 	uint32_t	f1, f10;

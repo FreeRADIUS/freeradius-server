@@ -61,7 +61,7 @@ static pid_t waitpid_wrapper(pid_t pid, int *status)
 pid_t (*rad_fork)(void) = fork;
 pid_t (*rad_waitpid)(pid_t pid, int *status) = waitpid_wrapper;
 
-typedef struct fr_child_t {
+typedef struct {
 	fr_dlist_t	entry;
 	pid_t		pid;
 } fr_child_t;

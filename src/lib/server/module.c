@@ -758,7 +758,7 @@ static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUS
 	return 0;
 }
 
-typedef struct module_tab_expand_t {
+typedef struct {
 	char const *text;
 	int count;
 	int max_expansions;

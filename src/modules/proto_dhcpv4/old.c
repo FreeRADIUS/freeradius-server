@@ -60,7 +60,7 @@
 /*
  *	Same contents as listen_socket_t.
  */
-typedef struct dhcp_socket_t {
+typedef struct {
 	listen_socket_t	lsock;
 
 	/*

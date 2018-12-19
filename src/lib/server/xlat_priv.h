@@ -44,7 +44,7 @@ typedef enum {
 	XLAT_FUNC_ASYNC						//!< Ingests and excretes value boxes (and may yield)
 } xlat_func_sync_type_t;
 
-typedef struct xlat_t {
+typedef struct {
 	char const		*name;				//!< Name of xlat function.
 
 	union {
@@ -125,7 +125,7 @@ struct xlat_exp {
 	};
 };
 
-typedef struct xlat_out {
+typedef struct {
 	char const	*out;		//!< Output data.
 	size_t		len;		//!< Length of the output string.
 } xlat_out_t;

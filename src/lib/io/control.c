@@ -56,14 +56,14 @@ typedef enum fr_control_message_status_t {
 /**
  *  The header for the control message
  */
-typedef struct fr_control_message_t {
+typedef struct {
 	fr_control_message_status_t	status;		//!< status of this message
 	uint32_t			id;		//!< ID of this message
 	size_t				data_size;     	//!< size of the data we're sending
 } fr_control_message_t;
 
 
-typedef struct fr_control_ctx_t {
+typedef struct {
 	uint32_t			id;		//!< id of this callback
 	void				*ctx;		//!< context for the callback
 	fr_control_callback_t		callback;	//!< the function to call

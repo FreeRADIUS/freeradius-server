@@ -47,7 +47,7 @@ DIAG_ON(unused-macros)
 
 #include "rlm_sql.h"
 
-typedef struct rlm_sql_oracle_conn_t {
+typedef struct {
 	OCIEnv		*env;
 	OCIStmt		*query;
 	OCIError	*error;

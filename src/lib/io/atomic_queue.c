@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/io/atomic_queue.h>
 
-typedef struct fr_atomic_queue_entry_t {
+typedef struct {
 	alignas(128) void *data;
 	atomic_int64_t seq;
 } fr_atomic_queue_entry_t;
@@ -227,7 +227,7 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 #ifndef NDEBUG
 
 #if 0
-typedef struct fr_control_message_t {
+typedef struct {
 	int			status;		//!< status of this message
 	size_t				data_size;     	//!< size of the data we're sending
 

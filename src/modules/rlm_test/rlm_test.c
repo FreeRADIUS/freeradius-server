@@ -37,7 +37,7 @@ RCSID("$Id$")
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct rlm_test_t {
+typedef struct {
 	vp_tmpl_t	*tmpl;
 	vp_tmpl_t	**tmpl_m;
 	char const	*string;

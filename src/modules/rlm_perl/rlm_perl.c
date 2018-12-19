@@ -50,7 +50,7 @@ extern char **environ;
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct rlm_perl_t {
+typedef struct {
 	/* Name of the perl module */
 	char const	*module;
 

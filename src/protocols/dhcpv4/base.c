@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 static int instance_count = 0;
 
-typedef struct dhcp_option_t {
+typedef struct {
 	uint8_t		code;
 	uint8_t		length;
 } dhcp_option_t;

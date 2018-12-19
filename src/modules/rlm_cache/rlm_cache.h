@@ -46,7 +46,7 @@ typedef enum {
  * This is separate from the #rlm_cache_t struct, to limit driver's visibility of
  * rlm_cache instance data.
  */
-typedef struct rlm_cache_config_t {
+typedef struct {
 	char const		*name;			//!< Name of xlat function to register.
 	char const		*driver_name;		//!< Driver name.
 	vp_tmpl_t		*key;			//!< What to expand to get the value of the key.
@@ -63,7 +63,7 @@ typedef struct rlm_cache_config_t {
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct rlm_cache_t {
+typedef struct {
 	rlm_cache_config_t	config;			//!< Must come first because of icky hacks.
 
 	dl_instance_t		*driver_inst;		//!< Driver's instance data.
@@ -74,7 +74,7 @@ typedef struct rlm_cache_t {
 	CONF_SECTION		*cs;
 } rlm_cache_t;
 
-typedef struct rlm_cache_entry_t {
+typedef struct {
 	uint8_t const		*key;			//!< Key used to identify entry.
 	size_t			key_len;		//!< Length of key data.
 	long long int		hits;			//!< How many times the entry has been retrieved.

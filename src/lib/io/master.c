@@ -33,7 +33,7 @@
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 
-typedef struct fr_io_thread_t {
+typedef struct {
 	fr_event_list_t			*el;				//!< event list, for the master socket.
 	fr_network_t			*nr;				//!< network for the master socket
 
@@ -80,7 +80,7 @@ typedef struct fr_io_connection_t fr_io_connection_t;
 /** Client definitions for master IO
  *
  */
-typedef struct fr_io_client_t {
+struct fr_io_client_s {
 	fr_io_connection_t		*connection;	//!< parent connection
 	fr_io_client_state_t		state;		//!< state of this client
 	fr_ipaddr_t			src_ipaddr;	//!< packets come from this address
@@ -105,7 +105,7 @@ typedef struct fr_io_client_t {
 
 	pthread_mutex_t			mutex;		//!< for parent / child signaling
 	fr_hash_table_t			*ht;		//!< for tracking connected sockets
-} fr_io_client_t;
+};
 
 /** Track a connection
  *

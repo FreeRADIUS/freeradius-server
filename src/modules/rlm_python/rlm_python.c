@@ -51,7 +51,7 @@ static wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
 /** Specifies the module.function to load for processing a section
  *
  */
-typedef struct python_func_def {
+typedef struct {
 	PyObject	*module;		//!< Python reference to module.
 	PyObject	*function;		//!< Python reference to function in module.
 
@@ -62,7 +62,7 @@ typedef struct python_func_def {
 /** An instance of the rlm_python module
  *
  */
-typedef struct rlm_python_t {
+typedef struct {
 	char const	*name;			//!< Name of the module instance
 	PyThreadState	*sub_interpreter;	//!< The main interpreter/thread used for this instance.
 	char const	*python_path;		//!< Path to search for python files in.

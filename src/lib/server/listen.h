@@ -61,8 +61,8 @@ typedef enum RAD_LISTEN_STATUS {
 	RAD_LISTEN_STATUS_REMOVE_NOW
 } RAD_LISTEN_STATUS;
 
+typedef struct rad_protocol_s rad_protocol_t;
 typedef struct rad_listen rad_listen_t;
-typedef struct rad_protocol_t rad_protocol_t;
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
@@ -125,7 +125,7 @@ typedef const char* (*rad_pcap_filter_builder)(rad_listen_t *);
 /*
  *	This shouldn't really be exposed...
  */
-typedef struct listen_socket_t {
+typedef struct {
 	/*
 	 *	For normal sockets.
 	 */

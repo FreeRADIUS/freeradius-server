@@ -92,7 +92,7 @@ typedef enum {
 	L_TIMESTAMP_OFF				//!< Never log timestamps.
 } fr_log_timestamp_t;
 
-typedef struct fr_log_t {
+typedef struct {
 	fr_log_dst_t		dst;		//!< Log destination.
 
 	bool			colourise;	//!< Prefix log messages with VT100 escape codes to change text

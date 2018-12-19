@@ -36,7 +36,7 @@ typedef enum {
 	TAC_PLUS_SINGLE_CONNECT_FLAG			= 0x04
 } tacacs_flags_t;
 
-typedef struct CC_HINT(__packed__) fr_tacacs_packet_hdr {
+typedef struct CC_HINT(__packed__) {
 	union {
 		uint8_t	version;
 		struct CC_HINT(__packed__) {
@@ -91,7 +91,7 @@ typedef enum {
 	TAC_PLUS_AUTHEN_SVC_FWPROXY	= 0x09
 } tacacs_authenservice_t;
 
-typedef struct CC_HINT(__packed__) fr_tacacs_packet_authen_start_hdr {
+typedef struct CC_HINT(__packed__) {
 	tacacs_action_t		action:8;
 	tacacs_privlvl_t	priv_lvl:8;
 	tacacs_authentype_t	authen_type:8;
@@ -119,7 +119,7 @@ typedef enum {
 	TAC_PLUS_REPLY_FLAG_NOECHO	= 0x01
 } tacacs_authen_reply_flags_t;
 
-typedef struct CC_HINT(__packed__) fr_tacacs_packet_authen_reply_hdr {
+typedef struct CC_HINT(__packed__) {
 	tacacs_authen_reply_status_t	status:8;
 	tacacs_authen_reply_flags_t	flags:8;
 	uint16_t			server_msg_len;
@@ -132,7 +132,7 @@ typedef enum {
 	TAC_PLUS_CONTINUE_FLAG_ABORT	= 0x01
 } tacacs_authen_cont_flags_t;
 
-typedef struct CC_HINT(__packed__) fr_tacacs_packet_authen_cont_hdr {
+typedef struct CC_HINT(__packed__) {
 	uint16_t			user_msg_len;
 	uint16_t			data_len;
 	tacacs_authen_cont_flags_t	flags:8;
@@ -153,7 +153,7 @@ typedef enum {
 	TAC_PLUS_AUTHEN_METH_RCMD	= 0x20
 } tacacs_author_authen_method_t;
 
-typedef struct CC_HINT(__packed__) fr_tacacs_packet_author_req_hdr {
+typedef struct CC_HINT(__packed__) {
 	tacacs_author_authen_method_t	authen_method:8;
 	tacacs_privlvl_t		priv_lvl:8;
 	tacacs_authentype_t		authen_type:8;
@@ -173,7 +173,7 @@ typedef enum {
 	TAC_PLUS_AUTHOR_STATUS_FOLLOW		= 0x21
 } tacacs_author_res_status_t;
 
-typedef struct CC_HINT(__packed__) fr_tacacs_packet_author_res_hdr {
+typedef struct CC_HINT(__packed__) {
 	tacacs_author_res_status_t	status:8;
 	uint8_t				arg_cnt;
 	uint16_t			server_msg_len;
@@ -187,7 +187,7 @@ typedef enum {
 	TAC_PLUS_ACCT_FLAG_WATCHDOG	= 0x08
 } tacacs_acct_req_flags_t;
 
-typedef struct CC_HINT(__packed__) fr_tacacs_packet_acct_req_hdr {
+typedef struct CC_HINT(__packed__) {
 	tacacs_acct_req_flags_t		flags:8;
 	tacacs_author_authen_method_t	authen_method:8;
 	tacacs_privlvl_t		priv_lvl:8;
@@ -206,14 +206,14 @@ typedef enum {
 	TAC_PLUS_ACCT_STATUS_FOLLOW	= 0x21
 } tacacs_acct_reply_status_t;
 
-typedef struct CC_HINT(__packed__) fr_tacacs_packet_acct_res_hdr {
+typedef struct CC_HINT(__packed__) {
 	uint16_t			server_msg_len;
 	uint16_t			data_len;
 	tacacs_acct_reply_status_t	status:8;
 	uint8_t				body[1];
 } fr_tacacs_packet_acct_res_hdr_t;
 
-typedef struct CC_HINT(__packed__) fr_tacacs_packet {
+typedef struct CC_HINT(__packed__) {
 	fr_tacacs_packet_hdr_t					hdr;
 	union {
 		union {

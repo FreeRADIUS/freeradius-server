@@ -126,19 +126,19 @@ typedef enum cf_include_type {
 } CONF_INCLUDE_TYPE;
 
 #ifdef WITH_CONF_WRITE
-typedef struct conf_comment {
+typedef struct {
 	CONF_ITEM		item;
 	char const		*comment;
 } CONF_COMMENT;
 
-typedef struct conf_include {
+typedef struct {
 	CONF_ITEM		item;
 	char const		*filename;
 	CONF_INCLUDE_TYPE	file_type;
 } CONF_INCLUDE;
 #endif
 
-typedef struct cf_file_t {
+typedef struct {
 	char const		*filename;
 	CONF_SECTION		*cs;
 	struct stat		buf;

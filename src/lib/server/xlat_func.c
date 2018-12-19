@@ -2154,7 +2154,7 @@ typedef enum xlat_redundant_type_t {
 	XLAT_REDUNDANT_LOAD_BALANCE,
 } xlat_redundant_type_t;
 
-typedef struct xlat_redundant_t {
+typedef struct {
 	xlat_redundant_type_t		type;
 	uint32_t			count;
 	CONF_SECTION const		*cs;

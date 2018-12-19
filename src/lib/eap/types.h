@@ -106,7 +106,7 @@ typedef enum eap_method {
 
 /** EAP-Type specific data
  */
-typedef struct eap_type_data {
+typedef struct {
 	eap_type_t	num;
 	size_t		length;
 	uint8_t		*data;
@@ -117,7 +117,7 @@ typedef struct eap_type_data {
  * length = code + id + length + type + type.data
  *	=  1   +  1 +   2    +  1   +  X
  */
-typedef struct eap_packet {
+typedef struct {
 	eap_code_t	code;
 	uint8_t		id;
 	size_t		length;
@@ -128,7 +128,7 @@ typedef struct eap_packet {
 
 /** Structure to represent packet format of eap *on wire*
  */
-typedef struct CC_HINT(__packed__) eap_packet_raw {
+typedef struct CC_HINT(__packed__) {
 	uint8_t		code;
 	uint8_t		id;
 	uint8_t		length[2];

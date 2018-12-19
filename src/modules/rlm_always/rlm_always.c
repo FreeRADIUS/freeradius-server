@@ -34,7 +34,7 @@ RCSID("$Id$")
  *	The instance data for rlm_always is the list of fake values we are
  *	going to return.
  */
-typedef struct rlm_always_t {
+typedef struct {
 	char const	*name;		//!< Name of this instance of the always module.
 	char const	*rcode_str;	//!< The base value.
 

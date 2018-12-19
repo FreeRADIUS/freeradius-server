@@ -111,7 +111,7 @@ typedef enum {
 	EAP_TLS_RECORD_RECV_COMPLETE 			//!< Received final fragment of a record.
 } eap_tls_status_t;
 
-typedef struct tls_data_t {
+typedef struct {
 	uint8_t		flags;
 	uint8_t		data[1];
 } eap_tls_data_t;
@@ -123,7 +123,7 @@ typedef struct tls_data_t {
  *
  * TLS session state is stored in a tls_session_t accessed via the tls_session field.
  */
-typedef struct eap_tls_session {
+typedef struct {
 	eap_tls_status_t	state;			//!< The state of the EAP-TLS session.
 
 	tls_session_t		*tls_session;		//!< TLS session used to authenticate peer

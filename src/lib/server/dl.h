@@ -127,7 +127,7 @@ typedef void (*dl_free_t)(dl_t const *module, void *symbol, void *user_ctx);
 
 /** Fields common to all types of loadable modules
  */
-typedef struct dl_common {
+typedef struct {
 	RAD_MODULE_COMMON;
 } dl_common_t;
 

@@ -131,7 +131,7 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 int fr_tls_max_threads = 1;
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
-typedef struct libssl_defect {
+typedef struct {
 	uint64_t	high;		//!< The last version number this defect affected.
 	uint64_t	low;		//!< The first version this defect affected.
 

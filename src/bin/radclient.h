@@ -50,7 +50,7 @@ extern "C" {
 #define RDEBUG(fmt, ...)	if (do_output && (fr_debug_lvl > 0)) fprintf(fr_log_fp, "(%" PRIu64 ") " fmt "\n", request->num, ## __VA_ARGS__)
 #define RDEBUG2(fmt, ...)	if (do_output && (fr_debug_lvl > 1)) fprintf(fr_log_fp, "(%" PRIu64 ") " fmt "\n", request->num, ## __VA_ARGS__)
 
-typedef struct rc_stats {
+typedef struct {
 	uint64_t accepted;		//!< Requests to which we received a accept
 	uint64_t rejected;		//!< Requests to which we received a reject
 	uint64_t lost;			//!< Requests to which we received no response
@@ -58,7 +58,7 @@ typedef struct rc_stats {
 	uint64_t failed;		//!< Requests which failed a fitler
 } rc_stats_t;
 
-typedef struct rc_file_pair {
+typedef struct {
 	char const *packets;		//!< The file containing the request packet
 	char const *filters;		//!< The file containing the definition of the
 					//!< packet we want to match.

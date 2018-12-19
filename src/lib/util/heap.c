@@ -302,7 +302,7 @@ static bool fr_heap_check(fr_heap_t *hp, void *data)
 	return false;
 }
 
-typedef struct heap_thing {
+typedef struct {
 	int	data;
 	int32_t	heap;		/* for the heap */
 } heap_thing;

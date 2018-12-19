@@ -60,7 +60,7 @@ typedef union {
 /** A jpath expression for performing complex comparisons against field values
  *
  */
-typedef struct jpath_expr {
+typedef struct {
 	jpath_operand_t		lhs;		//!< LHS value.
 
 	jpath_operand_t		rhs;		//!< RHS value.

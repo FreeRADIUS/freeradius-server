@@ -37,7 +37,7 @@ static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  *	The length of the data is indicated by the encapsulating EAP
  *	protocol.
  */
-typedef struct rlm_eap_gtc_t {
+typedef struct {
 	char const		*challenge;
 	fr_dict_enum_t const	*auth_type;
 } rlm_eap_gtc_t;

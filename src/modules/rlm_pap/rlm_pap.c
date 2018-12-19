@@ -48,7 +48,7 @@ USES_APPLE_DEPRECATED_API
  *      a lot cleaner to do so, and a pointer to the structure can
  *      be used as the instance handle.
  */
-typedef struct rlm_pap_t {
+typedef struct {
 	char const		*name;
 	fr_dict_enum_t		*auth_type;
 	bool			normify;

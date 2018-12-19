@@ -41,7 +41,7 @@ RCSIDH(mod_h, "$Id$")
  *
  * This struct contains the core module configuration.
  */
-typedef struct rlm_couchbase_t {
+typedef struct {
 	vp_tmpl_t		*acct_key;		//!< Accounting document key.
 	char const		*doctype;		//!< Value of accounting 'docType' element name.
 	uint32_t		expire;			//!< Accounting document expire time in seconds.
@@ -65,7 +65,7 @@ typedef struct rlm_couchbase_t {
  * This struct contains the Couchbase connection handle as well as a
  * cookie pointer to store fetched document payloads.
  */
-typedef struct rlm_couchbase_handle_t {
+typedef struct {
 	void *handle;    //!< Real couchbase instance.
 	void *cookie;    //!< Couchbase cookie (@p cookie_u @p cookie_t).
 } rlm_couchbase_handle_t;

@@ -849,7 +849,7 @@ void *unlang_stack_alloc(TALLOC_CTX *ctx)
 /** Wrap an #fr_event_timer_t providing data needed for unlang events
  *
  */
-typedef struct unlang_event_t {
+typedef struct {
 	REQUEST				*request;			//!< Request this event pertains to.
 	int				fd;				//!< File descriptor to wait on.
 	fr_unlang_module_timeout_t	timeout;			//!< Function to call on timeout.
@@ -1249,13 +1249,13 @@ typedef enum unlang_parallel_child_state_t {
 /** Each parallel child has a state, and an associated request
  *
  */
-typedef struct unlang_parallel_child_t {
+typedef struct {
 	unlang_parallel_child_state_t	state;		//!< state of the child
 	REQUEST				*child; 	//!< child request
 	unlang_t			*instruction;	//!< broken out of g->children
 } unlang_parallel_child_t;
 
-typedef struct unlang_parallel_t {
+typedef struct {
 	rlm_rcode_t		result;
 	int			priority;
 

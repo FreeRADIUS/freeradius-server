@@ -66,7 +66,7 @@ char const * const comp2str[] = {
 
 typedef int const unlang_action_table_t[UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES];
 
-typedef struct unlang_compile_t {
+typedef struct {
 	rlm_components_t	component;
 	char const		*name;
 	char const		*section_name1;
@@ -3013,7 +3013,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 typedef unlang_t *(*modcall_compile_function_t)(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 					 unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type);
-typedef struct modcall_compile_t {
+typedef struct {
 	char const			*name;
 	modcall_compile_function_t	compile;
 	unlang_group_type_t	        group_type;

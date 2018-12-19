@@ -69,7 +69,7 @@ static FR_NAME_NUMBER const logtee_dst_table[] = {
 	{  NULL , -1 }
 };
 
-typedef struct logtee_net {
+typedef struct {
 	fr_ipaddr_t		dst_ipaddr;		//!< Network server.
 	fr_ipaddr_t		src_ipaddr;		//!< Send requests from a given src_ipaddr.
 	uint16_t		port;			//!< Network port.

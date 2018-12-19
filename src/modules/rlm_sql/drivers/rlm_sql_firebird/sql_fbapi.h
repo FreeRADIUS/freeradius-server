@@ -41,7 +41,7 @@ RCSIDH(sql_fbapi_h, "$Id$")
 #define ISC_ULONG_FMT "ul"
 #endif
 
-typedef struct rlm_sql_firebird_conn {
+typedef struct {
 	isc_db_handle dbh;
 	isc_stmt_handle stmt;
 	isc_tr_handle trh;

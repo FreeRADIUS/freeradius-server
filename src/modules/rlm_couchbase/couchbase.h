@@ -34,7 +34,7 @@ RCSIDH(couchbase_h, "$Id$")
  * This structure holds various references to json-c objects used when parsing
  * Couchbase document payloads.
  */
-typedef struct cookie_t {
+typedef struct {
 	json_object		*jobj;	//!< JSON objects handled by the json-c library.
 	json_tokener		*jtok;	//!< JSON tokener objects handled by the json-c library.
 	enum json_tokener_error	jerr;   //!< Error values produced by the json-c library.

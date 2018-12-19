@@ -60,7 +60,7 @@ typedef enum {
 
 typedef char **rlm_sql_row_t;
 
-typedef struct sql_log_entry {
+typedef struct {
 	fr_log_type_t	type;		//!< Type of log entry L_ERR, L_WARN, L_INFO, L_DBG etc..
 	char const	*msg;		//!< Log message.
 } sql_log_entry_t;
@@ -69,7 +69,7 @@ typedef struct sql_log_entry {
  * Sections where we dynamically resolve the config entry to use,
  * by xlating reference.
  */
-typedef struct sql_acct_section {
+typedef struct {
 	CONF_SECTION		*cs;				//!< The CONF_SECTION representing the group
 								//!< of queries to process.
 
@@ -82,7 +82,7 @@ typedef struct sql_acct_section {
 	char const		**query;			/* for xlat parsing */
 } sql_acct_section_t;
 
-typedef struct sql_config {
+typedef struct {
 	char const 		*sql_driver_name;		//!< SQL driver module name e.g. rlm_sql_sqlite.
 	char const 		*sql_server;			//!< Server to connect to.
 	uint32_t 		sql_port;			//!< Port to connect to.
@@ -139,7 +139,7 @@ typedef struct sql_config {
 
 typedef struct sql_inst rlm_sql_t;
 
-typedef struct rlm_sql_handle {
+typedef struct {
 	void			*conn;				//!< Database specific connection handle.
 	rlm_sql_row_t		row;				//!< Row data from the last query.
 	rlm_sql_t const		*inst;				//!< The rlm_sql instance this connection belongs to.
@@ -177,7 +177,7 @@ extern const FR_NAME_NUMBER sql_rcode_table[];
 typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, rlm_sql_handle_t *handle,
 			      rlm_sql_config_t *config);
 
-typedef struct rlm_sql_driver_t {
+typedef struct {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	int		flags;
@@ -229,10 +229,11 @@ struct sql_inst {
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
 };
 
-typedef struct sql_grouplist {
+typedef struct rlm_sql_grouplist_s rlm_sql_grouplist_t;
+struct rlm_sql_grouplist_s {
 	char			*name;
-	struct sql_grouplist	*next;
-} rlm_sql_grouplist_t;
+	rlm_sql_grouplist_t	*next;
+};
 
 void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 int		sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **first_pair, rlm_sql_row_t row);

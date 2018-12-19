@@ -142,7 +142,7 @@ void fb_free_sqlda(XSQLDA *sqlda)
 #define IS_NULL(x) (x->sqltype & 1) && (*x->sqlind < 0)
 
 //Structure to manage a SQL_VARYING Firebird's data types
-typedef struct vary_fb {
+typedef struct {
 	 short vary_length;
 	 char vary_string[1];
 } VARY;

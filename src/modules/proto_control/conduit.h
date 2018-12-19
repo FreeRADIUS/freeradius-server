@@ -64,7 +64,7 @@ typedef enum fr_conduit_notify_t {
 
 #define COMMAND_BUFFER_SIZE (1024)
 
-typedef struct fr_cs_buffer_t {
+typedef struct {
 	int		auth;
 	int		mode;
 	ssize_t		offset;
@@ -72,7 +72,7 @@ typedef struct fr_cs_buffer_t {
 	char		buffer[COMMAND_BUFFER_SIZE];
 } fr_cs_buffer_t;
 
-typedef struct fr_conduit_hdr_t {
+typedef struct {
 	uint16_t	origin;
 	uint16_t	conduit;
 	uint32_t	length;

@@ -71,7 +71,7 @@ typedef enum fr_token {
 #define T_EQSTART	T_OP_ADD
 #define	T_EQEND		(T_OP_CMP_EQ + 1)
 
-typedef struct FR_NAME_NUMBER {
+typedef struct {
 	char const	*name;
 	int32_t		number;
 } FR_NAME_NUMBER;

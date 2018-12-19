@@ -32,7 +32,7 @@ USES_APPLE_DEPRECATED_API
 #  include <freeradius-devel/server/pool.h>
 #endif
 
-typedef struct rlm_krb5_handle {
+typedef struct {
 	krb5_context	context;
 	krb5_keytab	keytab;
 
@@ -46,7 +46,7 @@ typedef struct rlm_krb5_handle {
  *
  * Holds the configuration and preparsed data for a instance of rlm_krb5.
  */
-typedef struct rlm_krb5_t {
+typedef struct {
 #ifdef KRB5_IS_THREAD_SAFE
 	fr_pool_t	*pool;		//!< Connection pool instance.
 #else

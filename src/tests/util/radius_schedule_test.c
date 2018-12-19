@@ -50,7 +50,7 @@ typedef struct {
 	socklen_t		salen;
 } fr_test_packet_ctx_t;
 
-typedef struct fr_listen_test_t {
+typedef struct {
 	int			sockfd;
 	fr_ipaddr_t		ipaddr;
 	uint16_t		port;

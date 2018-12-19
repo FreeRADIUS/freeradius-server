@@ -216,7 +216,7 @@ const FR_NAME_NUMBER http_content_type_table[] = {
  *	Encoder specific structures.
  *	@todo split encoders/decoders into submodules.
  */
-typedef struct rest_custom_data {
+typedef struct {
 	char const	*start;	//!< Start of the buffer.
 	char const	*p;	//!< how much text we've sent so far.
 	size_t		len;	//!< Length of data
@@ -232,7 +232,7 @@ typedef struct rest_custom_data {
  * @see json_pair_alloc
  * @see json_pair_alloc_leaf
  */
-typedef struct json_flags {
+typedef struct {
 	int do_xlat;		//!< If true value will be expanded with xlat.
 	int is_json;		//!< If true value will be inserted as raw JSON
 				// (multiple values not supported).

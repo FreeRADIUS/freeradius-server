@@ -32,7 +32,7 @@ RCSIDH(detail_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct proto_detail_t {
+typedef struct {
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 	CONF_SECTION			*cs;				//!< my configuration
 	fr_app_t			*self;				//!< child / parent linking issues
@@ -66,11 +66,12 @@ typedef struct proto_detail_t {
 									//!< the I/O path.
 } proto_detail_t;
 
+typedef struct proto_detail_work_s proto_detail_work_t;
 
 /*
  *	The detail "work" data structure, shared by all of the detail readers.
  */
-typedef struct proto_detail_work_t {
+struct proto_detail_work_s {
 	CONF_SECTION			*cs;			//!< our configuration section
 
 	proto_detail_t			*parent;		//!< The module that spawned us!
@@ -92,9 +93,11 @@ typedef struct proto_detail_work_t {
 	int				mode;			//!< O_RDWR or O_RDONLY
 
 	RADCLIENT			*client;		//!< so the rest of the server doesn't complain
-} proto_detail_work_t;
+};
 
-typedef struct proto_detail_work_thread_t {
+typedef struct proto_detail_work_thread_s proto_detail_work_thread_t;
+
+struct proto_detail_work_thread_s {
 	char const			*name;			//!< debug name for printing
 	proto_detail_work_t const	*inst;			//!< instance data
 
@@ -104,7 +107,7 @@ typedef struct proto_detail_work_thread_t {
 	fr_event_list_t			*el;			//!< for various timers
 	fr_network_t			*nr;			//!< for Linux-specific callbacks
 	fr_listen_t			*listen;		//!< talloc_parent() is slow
-	struct proto_detail_work_thread_t  *file_parent;	//!< thread instance of the directory reader that spawned us
+	proto_detail_work_thread_t	*file_parent;	//!< thread instance of the directory reader that spawned us
 
 	char const			*filename_work;		//!< work file name
 	fr_dlist_head_t			list;			//!< for retransmissions
@@ -132,9 +135,9 @@ typedef struct proto_detail_work_thread_t {
 
 	pthread_mutex_t			worker_mutex;		//!< for the workers
 	int				num_workers;		//!< number of workers
-} proto_detail_work_thread_t;
+};
 
-typedef struct proto_detail_process_t {
+typedef struct {
 	rlm_components_t	recv_type;
 	rlm_components_t	send_type;
 } proto_detail_process_t;

@@ -83,7 +83,7 @@
 
 static pthread_mutex_t fr_debug_init = PTHREAD_MUTEX_INITIALIZER;
 
-typedef struct fr_bt_info {
+typedef struct {
 	void 		*obj;				//!< Memory address of the block of allocated memory.
 	void		*frames[MAX_BT_FRAMES];		//!< Backtrace frame data
 	int		count;				//!< Number of frames stored

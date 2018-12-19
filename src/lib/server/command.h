@@ -35,7 +35,7 @@ extern "C" {
 
 typedef struct fr_cmd_t fr_cmd_t;
 
-typedef struct fr_cmd_info_t {
+typedef struct {
 	int		argc;				//!< current argument count
 	int		max_argc;			//!< maximum number of arguments
 	bool		runnable;			//!< is the command runnable?
@@ -48,7 +48,7 @@ typedef int (*fr_cmd_func_t)(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t co
 
 typedef int (*fr_cmd_tab_t)(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions);
 
-typedef struct fr_cmd_table_t {
+typedef struct {
 	char const		*parent;		//!< e.g. "show module"
 	char const		*name;			//!< e.g. "stats"
 	char const		*syntax;		//!< e.g. "STRING"
@@ -61,7 +61,7 @@ typedef struct fr_cmd_table_t {
 
 #define CMD_TABLE_END { .help = NULL }
 
-typedef struct fr_cmd_walk_info_t {
+typedef struct {
 	int		num_parents;
 	char const	**parents;
 	char const	*name;

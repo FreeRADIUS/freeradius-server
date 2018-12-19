@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/map_proc.h>
 
-typedef struct rlm_delay_t {
+typedef struct {
 	char const	*xlat_name;		//!< Name of our xlat function.
 	vp_tmpl_t	*delay;			//!< How long we delay for.
 	bool		relative;		//!< Whether the delay is relative to the start of request processing.

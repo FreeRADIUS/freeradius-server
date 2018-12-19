@@ -28,7 +28,7 @@ RCSIDH(rlm_eap_tls_h, "$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 
-typedef struct rlm_eap_tls {
+typedef struct {
 	/*
 	 *	TLS configuration
 	 */

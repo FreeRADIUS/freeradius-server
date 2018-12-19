@@ -52,7 +52,7 @@ extern "C" {
  * with every copy.
  */
 #  define MD5_BLOCK_LENGTH 64
-typedef struct FR_MD5Context {
+typedef struct {
 	uint32_t state[4];			//!< State.
 	uint32_t count[2];			//!< Number of bits, mod 2^64.
 	uint8_t buffer[MD5_BLOCK_LENGTH];	//!< Input buffer.

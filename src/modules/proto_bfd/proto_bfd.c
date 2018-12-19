@@ -67,7 +67,7 @@ typedef enum bfd_auth_type_t {
 
 #define BFD_AUTH_INVALID (BFD_AUTH_MET_KEYED_SHA1 + 1)
 
-typedef struct bfd_state_t {
+typedef struct {
 	int		number;
 	int		sockfd;
 
@@ -134,21 +134,21 @@ typedef struct bfd_state_t {
 	int		passive;
 } bfd_state_t;
 
-typedef struct bfd_auth_basic_t {
+typedef struct {
 	uint8_t		auth_type;
 	uint8_t		auth_len;
 	uint8_t		key_id;
 } __attribute__ ((packed)) bfd_auth_basic_t;
 
 
-typedef struct bfd_auth_simple_t {
+typedef struct {
 	uint8_t		auth_type;
 	uint8_t		auth_len;
 	uint8_t		key_id;
 	uint8_t		password[16];
 } __attribute__ ((packed)) bfd_auth_simple_t;
 
-typedef struct bfd_auth_md5_t {
+typedef struct {
 	uint8_t		auth_type;
 	uint8_t		auth_len;
 	uint8_t		key_id;
@@ -157,7 +157,7 @@ typedef struct bfd_auth_md5_t {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
 } __attribute__ ((packed)) bfd_auth_md5_t;
 
-typedef struct bfd_auth_sha1_t {
+typedef struct {
 	uint8_t		auth_type;
 	uint8_t		auth_len;
 	uint8_t		key_id;
@@ -177,7 +177,7 @@ typedef union bfd_auth_t {
 /*
  *	A packet
  */
-typedef struct bfd_packet_t {
+typedef struct {
 #ifdef WORDS_BIGENDIAN
 	unsigned int	version : 3;
 	unsigned int	diag : 5;
@@ -211,7 +211,7 @@ typedef struct bfd_packet_t {
 } __attribute__ ((packed)) bfd_packet_t;
 
 
-typedef struct bfd_socket_t {
+typedef struct {
 	fr_ipaddr_t	my_ipaddr;
 	uint16_t	my_port;
 

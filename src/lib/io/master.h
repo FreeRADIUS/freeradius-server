@@ -36,6 +36,8 @@ RCSIDH(master_h, "$Id$")
 extern "C" {
 #endif
 
+typedef struct fr_io_client_s fr_io_client_t;
+
 typedef struct {
 	fr_event_timer_t const		*ev;		//!< when we clean up this tracking entry
 	fr_time_t			timestamp;	//!< when this packet was received
@@ -52,7 +54,7 @@ typedef struct {
 	 */
 	fr_time_t			dynamic;	//!< timestamp for packet doing dynamic client definition
 	fr_io_address_t   		*address;	//!< of this packet.. shared between multiple packets
-	struct fr_io_client_t		*client;	//!< client handling this packet.
+	fr_io_client_t			*client;	//!< client handling this packet.
 	uint8_t				packet[20];	//!< original request packet
 } fr_io_track_t;
 
@@ -69,7 +71,7 @@ typedef struct {
  *  before fr_master_io_listen() is called.  That function only
  *  creates the listener, and adds it to the scheduler.
  */
-typedef struct fr_io_instance_t {
+typedef struct {
 	dl_instance_t const   		*dl_inst;			//!< our parent dl_inst
 
 	uint32_t			max_connections;		//!< maximum number of connections to allow

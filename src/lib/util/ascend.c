@@ -93,7 +93,7 @@ RCSID("$Id$")
  *
  *	fill:		Round things out to a int16_t boundary.
  */
-typedef struct ascend_ip_filter_t {
+typedef struct {
 	uint32_t	srcip;
 	uint32_t	dstip;
 	uint8_t 	srcmask;
@@ -117,7 +117,7 @@ typedef struct ascend_ip_filter_t {
  *
  *	socket:      IPX socket address
  */
-typedef struct ascend_ipx_net_t {
+typedef struct {
 	uint32_t	net;
 	uint8_t		node[IPX_NODE_ADDR_LEN];
 	uint16_t	socket;
@@ -137,7 +137,7 @@ typedef struct ascend_ipx_net_t {
  *
  *	dstSocComp:     Destination socket compare value
  */
-typedef struct ascend_ipx_filter_t {
+typedef struct {
 	ascend_ipx_net_t src;
 	ascend_ipx_net_t dst;
 	uint8_t		srcSocComp;
@@ -169,7 +169,7 @@ typedef struct ascend_ipx_filter_t {
  *
  *	fill:		Round things out to a dword boundary
  */
-typedef struct ascend_generic_filter_t {
+typedef struct {
 	uint16_t	offset;
 	uint16_t	len;
 	uint16_t	more;
@@ -202,7 +202,7 @@ typedef struct ascend_generic_filter_t {
  *			ip:		An ip filter entry
  *			generic:	A generic filter entry
  */
-typedef struct ascend_filter_t {
+typedef struct {
 	uint8_t 	type;
 	uint8_t		forward;
 	uint8_t		direction;
@@ -218,7 +218,7 @@ typedef struct ascend_filter_t {
 /*
  *	This is a wild C hack...
  */
-typedef struct _cpp_hack {
+typedef struct {
 	char data[(sizeof(ascend_filter_t) == 32) ? 1 : -1 ];
 } _cpp_hack;
 
