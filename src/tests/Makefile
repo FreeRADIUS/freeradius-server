@@ -55,7 +55,7 @@ test.conf: dictionary
 radiusd.pid: test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
 	@printf "TEST-SERVER Starting server... "
-	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxl $(TEST_PATH)/radius.log -d ${top_srcdir}/src/tests -n test -D "${top_srcdir}/share/dictionary/"; then\
+	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxl stdout -d ${top_srcdir}/src/tests -n test -D "${top_srcdir}/share/dictionary/" >  ${top_srcdir}/src/tests/radius.log 2>&1 ; then\
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
