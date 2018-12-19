@@ -23,9 +23,6 @@
 
 RCSID("$Id$")
 
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "eap_leap.h"
 
 static fr_dict_t *dict_freeradius;

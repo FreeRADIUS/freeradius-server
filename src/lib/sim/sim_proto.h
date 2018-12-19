@@ -30,7 +30,7 @@ RCSIDH(sim_h, "$Id$")
 
 #include <assert.h>
 #include "id.h"
-#include "eap_types.h"
+#include <freeradius-devel/eap/types.h>
 #include "eap_sim_common.h"
 #include "eap_aka_common.h"
 

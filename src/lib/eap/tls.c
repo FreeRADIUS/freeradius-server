@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file eap_tls.c
+ * @file lib/eap/tls.c
  * @brief Implements the EAP part of EAP-TLS
  *
  * RFC 2716 Section 4.2.  PPP EAP TLS Request Packet
@@ -71,8 +71,8 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-#include "eap_tls.h"
-#include "eap_attrs.h"
+#include "tls.h"
+#include "attrs.h"
 
 FR_NAME_NUMBER const eap_tls_status_table[] = {
 	{ "invalid",			EAP_TLS_INVALID },

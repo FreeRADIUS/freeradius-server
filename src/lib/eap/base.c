@@ -1,14 +1,8 @@
 /*
- * eapcommon.c    rfc2284 & rfc2869 implementation
- *
- * code common to clients and to servers.
- *
- * Version:     $Id$
- *
- *   This program is free software; you can redistribute it and/or modify
+ *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,12 +12,19 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ * @file lib/eap/base.c
+ * @brief Code common to clients and to servers.
  *
  * @copyright 2000-2003,2006  The FreeRADIUS server project
  * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  * @copyright 2003  Alan DeKok <aland@freeradius.org>
  * @copyright 2003  Michael Richardson <mcr@sandelman.ottawa.on.ca>
  */
+
 /*
  *  EAP PACKET FORMAT
  *  --- ------ ------
@@ -63,9 +64,9 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/server/rad_assert.h>
-#include "eap_types.h"
-#include "eap_attrs.h"
-#include "eap.h"
+#include <freeradius-devel/eap/base.h>
+#include "types.h"
+#include "attrs.h"
 
 fr_dict_t *dict_freeradius;
 fr_dict_t *dict_radius;

@@ -1,9 +1,5 @@
 #pragma once
 /*
- * eap.h    Header file containing the interfaces for all EAP types.
- *
- * Version:     $Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -17,19 +13,25 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * @copyright 2003  Alan DeKok <aland@freeradius.org>
- * @copyright 2006  The FreeRADIUS server project
  */
-RCSIDH(eap_h, "$Id$")
+
+/**
+ * $Id$
+ * @file lib/eap/base.h
+ * @brief Interface into the base EAP library
+ *
+ * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ */
+RCSIDH(lib_eap_base_h, "$Id$")
+
+#include <freeradius-devel/eap/types.h>
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/rad_assert.h>
 
-#include "lib/base/eap_base.h"
-#include "eap_types.h"
+#include <freeradius-devel/eap/base.h>
+#include <freeradius-devel/eap/types.h>
 
 /* TLS configuration name */
 #define TLS_CONFIG_SECTION "tls-config"
@@ -119,3 +121,23 @@ typedef struct eap_tunnel_data_t {
 	void			*tls_session;
 	eap_tunnel_callback_t	callback;
 } eap_tunnel_data_t;
+
+
+/*
+ *	interfaces in eapcommon.c
+ */
+eap_type_t		eap_name2type(char const *name);
+char const		*eap_type2name(eap_type_t method);
+int			eap_wireformat(eap_packet_t *reply);
+
+VALUE_PAIR		*eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *reply);
+eap_packet_raw_t	*eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
+void			eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, int len);
+
+rlm_rcode_t		eap_virtual_server(REQUEST *request, REQUEST *fake,
+					   eap_session_t *eap_session, char const *virtual_server);
+
+int			eap_base_init(void);
+
+void			eap_base_free(void);
+

@@ -1,7 +1,7 @@
 #pragma once
 RCSIDH(eap_mschapv2_h, "$Id$")
 
-#include "eap.h"
+#include <freeradius-devel/eap/base.h>
 
 /*
  *	draft-kamath-pppext-eap-mschapv2-00.txt says:

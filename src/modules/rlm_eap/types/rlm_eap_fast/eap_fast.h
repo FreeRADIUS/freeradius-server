@@ -27,7 +27,7 @@
  */
 RCSIDH(eap_fast_h, "$Id$")
 
-#include "eap_tls.h"
+#include <freeradius-devel/eap/tls.h>
 
 #define EAP_FAST_VERSION			1
 

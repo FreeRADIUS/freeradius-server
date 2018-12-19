@@ -28,13 +28,14 @@
  */
 RCSID("$Id$")
 
-#include "../../eap.h"
-#include "eap_types.h"
-#include "eap_sim.h"
-#include "sim_proto.h"
-
+#include <freeradius-devel/eap/base.h>
+#include <freeradius-devel/eap/types.h>
 #include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/sim/sim_proto.h>
+
 #include <freeradius-devel/protocol/eap/sim/rfc4187.h>
+
+#include "eap_sim.h"
 
 #ifndef EAP_TLS_MPPE_KEY_LEN
 #  define EAP_TLS_MPPE_KEY_LEN     32

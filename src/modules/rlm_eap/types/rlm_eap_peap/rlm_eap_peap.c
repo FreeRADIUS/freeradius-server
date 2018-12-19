@@ -24,9 +24,10 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_eap_peap - "
 
+#include <freeradius-devel/eap/tls.h>
 #include "eap_peap.h"
 
-typedef struct rlm_eap_peap_t {
+typedef struct {
 	char const		*tls_conf_name;		//!< TLS configuration.
 	fr_tls_conf_t		*tls_conf;
 

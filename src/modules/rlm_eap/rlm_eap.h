@@ -28,8 +28,8 @@ RCSIDH(rlm_eap_h, "$Id$")
 
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/state.h>
-#include "eap.h"
-#include "eap_types.h"
+#include <freeradius-devel/eap/base.h>
+#include <freeradius-devel/eap/types.h>
 
 /** Private structure to hold handles and interfaces for an EAP method
  *

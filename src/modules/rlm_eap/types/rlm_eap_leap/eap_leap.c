@@ -48,7 +48,7 @@ RCSID("$Id$")
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "eap.h"
+#include <freeradius-devel/eap/base.h>
 #include "eap_leap.h"
 
 #include <freeradius-devel/util/md5.h>

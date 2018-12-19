@@ -23,13 +23,10 @@
 
 RCSID("$Id$")
 
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "eap_md5.h"
-
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/util/md5.h>
+
+#include "eap_md5.h"
 
 static fr_dict_t *dict_freeradius;
 

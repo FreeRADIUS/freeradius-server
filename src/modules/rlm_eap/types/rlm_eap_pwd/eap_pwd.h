@@ -32,8 +32,8 @@
  * license (including the GNU public license).
  */
 RCSIDH(eap_pwd_h, "$Id$")
-#include "eap.h"
 
+#include <freeradius-devel/eap/base.h>
 #include <openssl/bn.h>
 #include <openssl/sha.h>
 #include <openssl/ec.h>

@@ -1,7 +1,7 @@
 #pragma once
 RCSIDH(eap_leap_h, "$Id$")
 
-#include "eap.h"
+#include <freeradius-devel/eap/base.h>
 
 #define FR_LEAP_CHALLENGE	1
 #define FR_LEAP_RESPONSE	2

@@ -27,9 +27,10 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
+#include <freeradius-devel/util/md5.h>
+
 #include "eap_fast.h"
 #include "eap_fast_crypto.h"
-#include <freeradius-devel/util/md5.h>
 
 /*
  *	An instance of EAP-FAST

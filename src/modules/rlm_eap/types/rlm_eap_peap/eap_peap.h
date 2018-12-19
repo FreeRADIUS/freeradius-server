@@ -23,7 +23,7 @@
  */
 RCSIDH(eap_peap_h, "$Id$")
 
-#include "eap_tls.h"
+#include <freeradius-devel/eap/tls.h>
 #include <freeradius-devel/soh/base.h>
 
 typedef enum {

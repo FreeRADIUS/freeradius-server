@@ -1,13 +1,9 @@
 #pragma once
 /*
- * eap_tls.h
- *
- * Version:     $Id$
- *
- *   This program is free software; you can redistribute it and/or modify
+ *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,12 +13,19 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ * @file lib/eap/tls.h
+ * @brief Generic EAP over TLS API
  *
  * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  * @copyright 2003  Alan DeKok <aland@freeradius.org>
  * @copyright 2006  The FreeRADIUS server project
  */
-RCSIDH(eap_tls_h, "$Id$")
+
+RCSIDH(lib_eap_tls_h, "$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <stdio.h>
@@ -47,8 +50,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/tls/base.h>
-
-#include "eap.h"
+#include <freeradius-devel/eap/base.h>
 
 #define TLS_HEADER_LEN 4
 #define TLS_HEADER_LENGTH_FIELD_LEN 4

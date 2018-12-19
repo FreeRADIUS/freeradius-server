@@ -1,12 +1,8 @@
 /*
- * mppe_keys.c
- *
- * Version:     $Id$
- *
- *   This program is free software; you can redistribute it and/or modify
+ *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,10 +12,18 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ * @file lib/eap/mppe_keys.c
+ * @brief MPPE key calculation API
+ *
+ * @author Henrik Eriksson <henriken@axis.com>
+ * @author Lars Viklund <larsv@axis.com>
  *
  * @copyright 2002  Axis Communications AB
  * @copyright 2006  The FreeRADIUS server project
- * Authors: Henrik Eriksson <henriken@axis.com> & Lars Viklund <larsv@axis.com>
  */
 
 RCSID("$Id$")
@@ -28,13 +32,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <string.h>
 
-
 #include <openssl/hmac.h>
-#include <freeradius-devel/util/sha1.h>
-#include "eap_tls.h"
-#include "eap_base.h"
-#include "eap_attrs.h"
 
+#include <freeradius-devel/util/sha1.h>
+
+#include "tls.h"
+#include "base.h"
+#include "attrs.h"
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 /*

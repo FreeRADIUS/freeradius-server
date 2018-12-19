@@ -23,7 +23,7 @@
  */
 RCSIDH(eap_ttls_h, "$Id$")
 
-#include "eap_tls.h"
+#include <freeradius-devel/eap/tls.h>
 
 typedef struct ttls_tunnel_t {
 	VALUE_PAIR	*username;

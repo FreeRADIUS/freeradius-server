@@ -1,7 +1,7 @@
 #pragma once
 RCSIDH(eap_md5_h, "$Id$")
 
-#include "eap.h"
+#include <freeradius-devel/eap/base.h>
 
 #define FR_MD5_CHALLENGE	1
 #define FR_MD5_RESPONSE		2
