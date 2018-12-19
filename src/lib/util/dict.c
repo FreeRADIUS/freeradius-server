@@ -1400,13 +1400,13 @@ static int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 		fr_dict_attr_t *a;
 
 		/*
-		 *	If the attribute has identical number, then
-		 *	error out.  We don't allow duplicate attribute
-		 *	definitions.
+		 *	Find the old name.  If it's the same name and
+		 *	but the parent, or number, or type are
+		 *	different, that's an error.
 		 */
 		a = fr_hash_table_finddata(dict->attributes_by_name, da);
 		if (a && (strcasecmp(a->name, da->name) == 0)) {
-			if ((a->attr != da->attr) || (a->parent != da->parent)) {
+			if ((a->attr != da->attr) || (a->type != da->type) || (a->parent != da->parent)) {
 				fr_strerror_printf("Duplicate attribute name \"%s\"", da->name);
 			error:
 				return -1;
