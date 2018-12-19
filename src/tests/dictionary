@@ -1,6 +1,11 @@
 #
 #  Used for internal testing
 #
+PROTOCOL	RADIUS		1
+BEGIN-PROTOCOL	RADIUS
+
+
+
 VENDOR TEST 32000
 
 BEGIN-VENDOR TEST
@@ -8,3 +13,4 @@ ATTRIBUTE	Test-Name		1 string
 ATTRIBUTE	Test-Number		2 integer
 ATTRIBUTE	Test-Server-Port	3 integer
 END-VENDOR TEST
+END-PROTOCOL	RADIUS
