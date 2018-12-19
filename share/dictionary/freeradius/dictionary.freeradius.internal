@@ -142,8 +142,8 @@ ATTRIBUTE	Time-Of-Day				1089	string
 ATTRIBUTE	Request-Processing-Stage		1090	string virtual
 ATTRIBUTE	SHA2-Password				1092	octets
 ATTRIBUTE	SHA-Password				1093	octets
-ATTRIBUTE	SSHA-Password				1094	octets
 ATTRIBUTE	SHA1-Password				1093	octets
+ATTRIBUTE	SSHA-Password				1094	octets
 ATTRIBUTE	SSHA1-Password				1094	octets
 ATTRIBUTE	MD5-Password				1095	octets
 ATTRIBUTE	SMD5-Password				1096	octets
