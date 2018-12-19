@@ -83,7 +83,7 @@ AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 #  ERROR line in the input.
 #
 $(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/auth $(AUTH_RADDB) $(AUTH_LIBS) build.raddb
-	${Q}echo UNIT-TEST $(notdir $@)
+	${Q}echo AUTH-TEST $(notdir $@)
 	${Q}if ! TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
