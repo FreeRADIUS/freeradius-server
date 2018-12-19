@@ -4967,11 +4967,19 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				if (!vsa_da) {
 					memset(&flags, 0, sizeof(flags));
 
-					memcpy(&mutable, &ctx->parent, sizeof(mutable));
-					new = dict_attr_alloc(mutable, fr_dict_root(ctx->dict), "Vendor-Specific",
-							      FR_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags);
-					dict_attr_child_add(mutable, new);
-					vsa_da = new;
+					if (fr_dict_attr_add(ctx->dict, ctx->parent, "Vendor-Specific",
+							     FR_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags) < 0) {
+						fr_strerror_printf_push("Failed adding Vendor-Specific for Vendor %s",
+									vendor->name);
+						goto error;
+					}
+
+					vsa_da = fr_dict_attr_child_by_num(ctx->parent, FR_VENDOR_SPECIFIC);
+					if (!vsa_da) {
+						fr_strerror_printf_push("Failed finding Vendor-Specific for Vendor %s",
+									vendor->name);
+						goto error;
+					}
 				}
 			}
 
