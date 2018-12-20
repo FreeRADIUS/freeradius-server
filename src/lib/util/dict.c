@@ -5213,9 +5213,9 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 	 */
 	dict = fr_dict_by_protocol_name(proto_name);
 	if (dict && dict->autoloaded) {
-		 talloc_increase_ref_count(dict);
-		 *out = dict;
-		 return 0;
+		talloc_increase_ref_count(dict);
+		*out = dict;
+		return 0;
 	}
 
 	/*
@@ -5264,7 +5264,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 	 *	then mark up the dictionary as now autoloaded.
 	 */
 	if (!dict->autoloaded) {
-		talloc_increase_ref_count(dict);
+//		talloc_increase_ref_count(dict);
 		dict->autoloaded = true;
 	}
 
