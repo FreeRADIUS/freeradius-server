@@ -98,7 +98,7 @@ int fr_sim_crypto_init_checkcode(TALLOC_CTX *ctx, fr_sim_checkcode_t **checkcode
  * @param[in,out] checkcode	if *checkcode is NULL, a new checkcode structure
  *				will be allocated and the message digest context
  *				will be initialised before the provided
- *				#eap_packet is fed into the digest.
+ *				eap_packet is fed into the digest.
  * @param[in] eap_packet	to digest.
  * @return
  *	- 0 on success.
