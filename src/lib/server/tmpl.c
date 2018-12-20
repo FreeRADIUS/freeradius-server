@@ -814,7 +814,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		 */
 		} else if ((rules->dict_def && (found_in != rules->dict_def))) {
 			if (!rules->allow_foreign) {
-				fr_strerror_printf("Only attributes from protocol \"%s\" allowed here",
+				fr_strerror_printf("Only attributes from the %s protocol are allowed here",
 						   fr_dict_root(rules->dict_def)->name);
 				slen = -(p - name);
 				goto error;
