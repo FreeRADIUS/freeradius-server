@@ -508,13 +508,15 @@ int talloc_memcmp_bstr(char const *a, char const *b)
  */
 void talloc_decrease_ref_count(void const *ptr)
 {
+	size_t ref_count;
 	void *to_free;
 
 	if (!ptr) return;
 
 	memcpy(&to_free, &ptr, sizeof(to_free));
 
-	if (talloc_reference_count(to_free) == 0) {
+	ref_count = talloc_reference_count(to_free);
+	if (ref_count == 0) {
 		talloc_free(to_free);
 	} else {
 		talloc_unlink(talloc_parent(ptr), to_free);
