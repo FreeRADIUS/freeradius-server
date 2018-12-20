@@ -39,12 +39,13 @@ static char const porttypes[] = "ASITX";
 /*
  *	used for caching radutmp lookups in the accounting component.
  */
-typedef struct {
+typedef struct nas_port_s NAS_PORT;
+struct nas_port_s {
 	uint32_t		nasaddr;
 	uint16_t		port;
 	off_t			offset;
-	struct nas_port 	*next;
-} NAS_PORT;
+	NAS_PORT 		*next;
+};
 
 typedef struct {
 	NAS_PORT	*nas_port_list;
