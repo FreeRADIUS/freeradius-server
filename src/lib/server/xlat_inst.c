@@ -338,12 +338,8 @@ xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
 
 	if (node->ephemeral) return node->thread_inst;
 
-	{
-		xlat_thread_inst_t find = { .node = node };
-
-		found = rbtree_finddata(xlat_thread_inst_tree, &find);
-		rad_assert(found);
-	}
+	found = rbtree_finddata(xlat_thread_inst_tree, &(xlat_thread_inst_t){ .node = node });
+	rad_assert(found);
 
 	return found;
 }

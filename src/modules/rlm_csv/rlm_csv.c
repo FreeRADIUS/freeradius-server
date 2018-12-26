@@ -473,7 +473,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
-	rlm_csv_entry_t		*e, my_entry;
+	rlm_csv_entry_t		*e;
 	vp_map_t const		*map;
 
 	if (!*key) {
@@ -485,9 +485,8 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		REDEBUG("Failed concatenating key elements");
 		return RLM_MODULE_FAIL;
 	}
-	my_entry.key = (*key)->vb_strvalue;
 
-	e = rbtree_finddata(inst->tree, &my_entry);
+	e = rbtree_finddata(inst->tree, &(rlm_csv_entry_t){ .key = (*key)->vb_strvalue });
 	if (!e) {
 		rcode = RLM_MODULE_NOOP;
 		goto finish;

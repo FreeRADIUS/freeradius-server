@@ -927,14 +927,12 @@ static void fr_network_inject_callback(void *ctx, void const *data, size_t data_
 {
 	fr_network_t *nr = ctx;
 	fr_network_inject_t my_inject;
-	fr_network_socket_t *s, my_socket;
+	fr_network_socket_t *s;
 
 	rad_assert(data_size == sizeof(my_inject));
 
 	memcpy(&my_inject, data, data_size);
-
-	my_socket.listen = my_inject.listen;
-	s = rbtree_finddata(nr->sockets, &my_socket);
+	s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = my_inject.listen });
 	if (!s) {
 		talloc_free(my_inject.packet); /* MUST be it's own TALLOC_CTX */
 		return;
@@ -1182,7 +1180,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		ssize_t rcode;
 		fr_listen_t *li;
 		fr_message_t *lm;
-		fr_network_socket_t my_socket, *s;
+		fr_network_socket_t *s;
 
 		li = cd->listen;
 
@@ -1190,8 +1188,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 *	@todo - cache this somewhere so we don't need
 		 *	to do an rbtree lookup for every packet.
 		 */
-		my_socket.listen = li;
-		s = rbtree_finddata(nr->sockets, &my_socket);
+		s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = li });
 
 		/*
 		 *	This shouldn't happen, but be safe...
@@ -1397,13 +1394,10 @@ int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li)
  */
 int fr_network_socket_delete(fr_network_t *nr, fr_listen_t *li)
 {
-	fr_network_socket_t *s, my_socket;
+	fr_network_socket_t *s;
 
-	my_socket.listen = li;
-	s = rbtree_finddata(nr->sockets, &my_socket);
-	if (!s) {
-		return -1;
-	}
+	s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	if (!s) return -1;
 
 	fr_network_socket_dead(nr, s);
 
@@ -1450,13 +1444,12 @@ int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
  */
 void fr_network_listen_read(fr_network_t *nr, fr_listen_t *li)
 {
-	fr_network_socket_t my_socket, *s;
+	fr_network_socket_t *s;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort_const(li, fr_listen_t);
 
-	my_socket.listen = li;
-	s = rbtree_finddata(nr->sockets, &my_socket);
+	s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return;
 
 	/*
@@ -1556,11 +1549,9 @@ static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_c
 static int cmd_stats_socket(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
 {
 	fr_network_t const *nr = ctx;
-	fr_network_socket_t *s, my_s;
+	fr_network_socket_t *s;
 
-	my_s.number = info->box[0]->vb_uint32;
-
-	s = rbtree_finddata(nr->sockets_by_num, &my_s);
+	s = rbtree_finddata(nr->sockets_by_num, &(fr_network_socket_t){ .number = info->box[0]->vb_uint32 });
 	if (!s) {
 		fprintf(fp_err, "No such socket number '%s'.\n", info->argv[0]);
 		return -1;

@@ -163,7 +163,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
-	rlm_cache_entry_t *c, my_c;
+	rlm_cache_entry_t *c;
 
 	rad_assert(driver->cache);
 
@@ -180,9 +180,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Is there an entry for this key?
 	 */
-	my_c.key = key;
-	my_c.key_len = key_len;
-	c = rbtree_finddata(driver->cache, &my_c);
+	c = rbtree_finddata(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
 	if (!c) {
 		*out = NULL;
 		return CACHE_MISS;
@@ -203,13 +201,11 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 					 uint8_t const *key, size_t key_len)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
-	rlm_cache_entry_t *c, my_c;
+	rlm_cache_entry_t *c;
 
 	if (!request) return CACHE_ERROR;
 
-	my_c.key = key;
-	my_c.key_len = key_len;
-	c = rbtree_finddata(driver->cache, &my_c);
+	c = rbtree_finddata(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
 	if (!c) return CACHE_MISS;
 
 	fr_heap_extract(driver->heap, c);

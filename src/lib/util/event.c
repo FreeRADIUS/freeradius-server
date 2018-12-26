@@ -697,13 +697,9 @@ static int _event_fd_delete(fr_event_fd_t *ef)
  */
 int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 {
-	fr_event_fd_t	*ef, find;
+	fr_event_fd_t	*ef;
 
-	memset(&find, 0, sizeof(find));
-	find.fd = fd;
-	find.filter = filter;
-
-	ef = rbtree_finddata(el->fds, &find);
+	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -748,17 +744,13 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
  */
 int fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter, fr_event_update_t updates[])
 {
-	fr_event_fd_t		*ef, find;
+	fr_event_fd_t		*ef;
 	size_t			i;
 	fr_event_funcs_t	curr_active, curr_stored;
 	struct kevent		evset[10];
 	int			count = 0;
 
-	memset(&find, 0, sizeof(find));
-	find.fd = fd;
-	find.filter = filter;
-
-	ef = rbtree_finddata(el->fds, &find);
+	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -825,7 +817,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 			   void *uctx)
 {
 	ssize_t			count;
-	fr_event_fd_t		find, *ef;
+	fr_event_fd_t		*ef;
 	fr_event_funcs_t	active;
 	struct kevent		evset[10];
 
@@ -844,11 +836,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		return -1;
 	}
 
-	memset(&find, 0, sizeof(find));
-
-	find.fd = fd;
-	find.filter = filter;
-	ef = rbtree_finddata(el->fds, &find);
+	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 
 	/*
 	 *	Need to free the event to change the talloc link.

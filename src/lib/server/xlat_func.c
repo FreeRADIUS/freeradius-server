@@ -1889,13 +1889,11 @@ static int xlat_cmp(void const *one, void const *two)
  */
 xlat_t *xlat_func_find(char const *name)
 {
-	xlat_t find;
 	xlat_t *found;
 
 	if (!xlat_root) return NULL;
 
-	find.name = name;
-	found = rbtree_finddata(xlat_root, &find);
+	found = rbtree_finddata(xlat_root, &(xlat_t){ .name = name });
 
 	return found;
 }
@@ -1944,7 +1942,6 @@ int xlat_register(void *mod_inst, char const *name,
 		  size_t buf_len, bool async_safe)
 {
 	xlat_t	*c;
-	xlat_t	find;
 	bool	new = false;
 
 	if (!xlat_root) xlat_init();
@@ -1957,8 +1954,7 @@ int xlat_register(void *mod_inst, char const *name,
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	find.name = name;
-	c = rbtree_finddata(xlat_root, &find);
+	c = rbtree_finddata(xlat_root, &(xlat_t){ .name = name });
 	if (c) {
 		if (c->internal) {
 			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
@@ -2041,7 +2037,6 @@ int _xlat_async_register(TALLOC_CTX *ctx,
 			 void *uctx)
 {
 	xlat_t	*c;
-	xlat_t	find;
 	bool	new = false;
 
 	if (!xlat_root) xlat_init();
@@ -2054,8 +2049,7 @@ int _xlat_async_register(TALLOC_CTX *ctx,
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	find.name = name;
-	c = rbtree_finddata(xlat_root, &find);
+	c = rbtree_finddata(xlat_root, &(xlat_t){ .name = name });
 	if (c) {
 		if (c->internal) {
 			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
@@ -2116,11 +2110,10 @@ int _xlat_async_register(TALLOC_CTX *ctx,
 void xlat_unregister(char const *name)
 {
 	xlat_t	*c;
-	xlat_t	find = { .name = name };
 
 	if (!name || !xlat_root) return;
 
-	c = rbtree_finddata(xlat_root, &find);
+	c = rbtree_finddata(xlat_root, &(xlat_t){ .name = name });
 	if (!c) return;
 
 	(void) talloc_get_type_abort(c, xlat_t);
