@@ -5062,7 +5062,7 @@ static int dict_from_file(fr_dict_t *dict,
 			  char const *src_file, int src_line)
 {
 	return _dict_from_file(&(dict_from_file_ctx_t) { .dict = dict, .parent = dict->root },
-			       dir_name, filename, src_file, src_line, 0);
+			       dir_name, filename, src_file, src_line);
 }
 
 /** (Re-)Initialize the special internal dictionary
