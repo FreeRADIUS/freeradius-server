@@ -70,12 +70,12 @@ typedef struct dict_enum_fixup_s dict_enum_fixup_t;
  *
  */
 struct dict_enum_fixup_s {
-	char *attribute;		//!< we couldn't find (and will need to resolve later).
-	char *alias;			//!< Raw enum name.
-	char *value;			//!< Raw enum value.  We can't do anything with this until
-					//!< we know the attribute type, which we only find out later.
+	char			*attribute;		//!< we couldn't find (and will need to resolve later).
+	char			*alias;			//!< Raw enum name.
+	char			*value;			//!< Raw enum value.  We can't do anything with this until
+							//!< we know the attribute type, which we only find out later.
 
-	dict_enum_fixup_t *next;	//!< Next in the linked list of fixups.
+	dict_enum_fixup_t	*next;			//!< Next in the linked list of fixups.
 };
 
 /** Vendors and attribute names
@@ -462,7 +462,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	if (!fr_cond_assert(parent)) return NULL;
 
 	name_len = strlen(name);
-	if (name_len >= FR_DICT_ATTR_MAX_NAME_LEN) {
+	if (name_len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
 	error:
 		fr_strerror_printf_push("Definition for '%s' is invalid", name);
@@ -3148,17 +3148,19 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
 ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 				    fr_dict_t const *dict, char const *name)
 {
-	fr_dict_attr_t		find;
 	fr_dict_attr_t const	*da;
 	char const		*p;
 	size_t			len;
+	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 
-	if (!name || !*name) return 0;
+	if (!*name) {
+		fr_strerror_printf("Zero length attribute name");
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		return 0;
+	}
 	INTERNAL_IF_NULL(dict);
 
-	if (err) *err = 0;
-
-	memset(&find, 0, sizeof(find));
+	if (err) *err = FR_DICT_ATTR_OK;
 
 	/*
 	 *	Advance p until we get something that's not part of
@@ -3173,15 +3175,10 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
 
-	find.name = talloc_bstrndup(NULL, name, len);
-	if (!find.name) {
-		fr_strerror_printf("Out of memory");
-		if (err) *err = FR_DICT_ATTR_OOM;
-		return 0;
-	}
-	da = fr_hash_table_finddata(dict->attributes_by_name, &find);
-	talloc_const_free(find.name);
+	memcpy(buffer, name, len);
+	buffer[len] = '\0';
 
+	da = fr_hash_table_finddata(dict->attributes_by_name, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
 		fr_strerror_printf("Unknown attribute '%.*s'", (int) len, name);
@@ -3221,18 +3218,18 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *na
  *				@see fr_dict_attr_err_t
  * @param[out] out		Dictionary found attribute.
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
- * @param[in] attr		Dictionary/Attribute name.
+ * @param[in] name		Dictionary/Attribute name.
  * @param[in] fallback		If true, fallback to the internal dictionary.
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
 ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-					      fr_dict_t const *dict_def, char const *attr, bool fallback)
+					      fr_dict_t const *dict_def, char const *name, bool fallback)
 {
 	fr_dict_t const		*dict = NULL;
 	fr_dict_t const		*dict_iter = NULL;
-	char const		*p = attr;
+	char const		*p = name;
 	ssize_t			slen;
 	fr_dict_attr_err_t	aerr = FR_DICT_ATTR_OK;
 	bool			internal = false;
@@ -3240,7 +3237,7 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 
 	INTERNAL_IF_NULL(dict_def);
 
-	if (err) *err = 0;
+	if (err) *err = FR_DICT_ATTR_OK;
 
 	/*
 	 *	Figure out if we should use the default dictionary
@@ -3321,19 +3318,19 @@ again:
 
 	fail:
 		if (err) *err = aerr;
-		return -((p - attr) + slen);
+		return -((p - name) + slen);
 
 	/*
 	 *	Other error codes are the same
 	 */
 	default:
 		if (err) *err = aerr;
-		return -((p - attr) + slen);
+		return -((p - name) + slen);
 	}
 
 	p += slen;
 
-	return p - attr;
+	return p - name;
 }
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
@@ -3347,8 +3344,8 @@ again:
 fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr_dict_t const *dict_def,
 						  char const *attr, bool fallback)
 {
-	ssize_t slen;
-	int	err = 0;
+	ssize_t			slen;
+	fr_dict_attr_err_t	err = FR_DICT_ATTR_OK;
 
 	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, attr, fallback);
 	if (slen <= 0) return err;
@@ -3358,7 +3355,7 @@ fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr
 		return FR_DICT_ATTR_PARSE_ERROR;
 	}
 
-	return 0;
+	return FR_DICT_ATTR_OK;
 }
 
 /** Lookup a attribute by its its vendor and attribute numbers and data type
@@ -5064,12 +5061,8 @@ static int dict_from_file(fr_dict_t *dict,
 			  char const *dir_name, char const *filename,
 			  char const *src_file, int src_line)
 {
-	dict_from_file_ctx_t	ctx = {
-					.dict = dict,
-					.parent = dict->root
-				};
-
-	return _dict_from_file(&ctx, dir_name, filename, src_file, src_line);
+	return _dict_from_file(&(dict_from_file_ctx_t) { .dict = dict, .parent = dict->root },
+			       dir_name, filename, src_file, src_line, 0);
 }
 
 /** (Re-)Initialize the special internal dictionary

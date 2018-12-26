@@ -166,7 +166,8 @@ typedef enum {
 	FR_DICT_ATTR_NOTFOUND		= -1,			//!< Attribute couldn't be found.
 	FR_DICT_ATTR_PROTOCOL_NOTFOUND	= -2,			//!< Protocol couldn't be found.
 	FR_DICT_ATTR_PARSE_ERROR	= -3,			//!< Attribute string couldn't be parsed
-	FR_DICT_ATTR_OOM		= -4			//!< Memory allocation error.
+	FR_DICT_ATTR_OOM		= -4,			//!< Memory allocation error.
+	FR_DICT_ATTR_EINVAL		= -5			//!< Invalid arguments.
 } fr_dict_attr_err_t;
 
 /*
@@ -324,7 +325,7 @@ fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
 fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen);
 
 ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-						    fr_dict_t const *dict, char const *name);
+						    fr_dict_t const *dict, char const *name) CC_HINT(nonnull(2,4));
 
 fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *attr);
 

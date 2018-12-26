@@ -782,7 +782,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 			goto error;
 		}
 
-		if ((q - p) >= FR_DICT_ATTR_MAX_NAME_LEN) {
+		if ((q - p) > FR_DICT_ATTR_MAX_NAME_LEN) {
 			fr_strerror_printf("Attribute name is too long");
 			slen = -(p - name);
 			goto error;
