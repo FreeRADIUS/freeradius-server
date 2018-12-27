@@ -86,6 +86,7 @@ typedef struct radclient {
 							//!< clients.
 
 	bool			rate_limit;		//!< Where addition of clients should be rate limited.
+	fr_event_t		*ev;			//!< for deleting dynamic clients
 #endif
 
 #ifdef WITH_COA

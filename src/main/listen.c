@@ -79,6 +79,15 @@ static int command_write_magic(int newfd, listen_socket_t *sock);
 
 static fr_protocol_t master_listen[];
 
+#ifdef WITH_DYNAMIC_CLIENTS
+static void client_timer_free(void *ctx)
+{
+	RADCLIENT *client = ctx;
+
+	client_free(client);
+}
+#endif
+
 /*
  *	Find a per-socket client.
  */
@@ -161,6 +170,8 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 #ifdef HAVE_SYS_STAT_H
 		char const *filename;
 #endif
+		fr_event_list_t *el;
+		struct timeval when;
 
 		/*
 		 *	Lives forever.  Return it.
@@ -201,10 +212,22 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 
 		/*
-		 *	This really puts them onto a queue for later
-		 *	deletion.
+		 *	Delete the client from the known list.
 		 */
 		client_delete(clients, client);
+
+		/*
+		 *	Add a timer to free the client in 120s
+		 */
+		el = radius_event_list_corral(EVENT_CORRAL_MAIN);
+
+		gettimeofday(&when, NULL);
+		when.tv_sec += 120;
+
+		/*
+		 *	If this fails, we leak memory.  That's better than crashing...
+		 */
+		(void) fr_event_insert(el, client_timer_free, client, &when, &client->ev);
 
 		/*
 		 *	Go find the enclosing network again.
