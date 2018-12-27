@@ -222,7 +222,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		el = radius_event_list_corral(EVENT_CORRAL_MAIN);
 
 		gettimeofday(&when, NULL);
-		when.tv_sec += 120;
+		when.tv_sec += main_config.max_request_time + 20;
 
 		/*
 		 *	If this fails, we leak memory.  That's better than crashing...
