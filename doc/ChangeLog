@@ -111,6 +111,9 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Small updates to IPv6 for accounting schema.
 	  Fixes #2364.
 	* Fix OpenDirectory integration in rlm_mschap
+	* Fix slow memory leak with dynamic clients
+	* Don't artificially truncate debug output for long
+	  strings.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
