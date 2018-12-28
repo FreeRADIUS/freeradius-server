@@ -729,7 +729,7 @@ void debug_pair(VALUE_PAIR *vp)
  */
 void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
-	char buffer[256];
+	char buffer[768];
 	if (!vp || !request || !request->log.func) return;
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
@@ -748,7 +748,7 @@ void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *
 void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	vp_cursor_t cursor;
-	char buffer[256];
+	char buffer[768];
 	if (!vp || !request || !request->log.func) return;
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
@@ -774,7 +774,7 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
 void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp)
 {
 	vp_cursor_t cursor;
-	char buffer[256];
+	char buffer[768];
 	if (!vp || !request || !request->log.func) return;
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
