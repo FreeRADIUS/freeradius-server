@@ -67,6 +67,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	}
 
 	if (connect(fd, (struct sockaddr *) &sa, socklen) < -1) {
+		close(fd);
 		ERROR("Failed connecting to SMSOTP file %s: %s",
 		       inst->socket, fr_syserror(errno));
 		return NULL;
