@@ -560,10 +560,7 @@ void fr_hash_table_free(fr_hash_table_t *ht)
 					 node = next) {
 			next = node->next;
 
-			if (!node->data) continue; /* dummy entry */
-
-
-			if (ht->free) {
+			if (node->data && ht->free) {
 				void *tofree;
 				memcpy(&tofree, &node->data, sizeof(tofree));
 				ht->free(tofree);
