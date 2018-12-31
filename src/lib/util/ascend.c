@@ -656,7 +656,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
  */
 static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 {
-	int rcode, token = -1;
+	int rcode, token;
 
 	/*
 	 *	There MUST be a comparison string.
