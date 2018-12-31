@@ -505,7 +505,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			 */
 			if (fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY)) {
 				RWDEBUG("Config already contains a \"known good\" password "
-					"(&control:Cleartext-Password).  Ignoring &config:Password-With-Header");
+					"(&control:Cleartext-Password).  Ignoring &control:Password-With-Header");
 				break;
 			}
 
