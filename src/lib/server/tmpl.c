@@ -812,7 +812,21 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		/*
 		 *	Check that the attribute we resolved was from an allowed dictionary
 		 */
-		} else if ((rules->dict_def && (found_in != rules->dict_def))) {
+		}
+#if 0
+		else if ((rules->dict_def && (found_in != rules->dict_def))) {
+		/*
+		 *	@fixme - We can't enforce this until we support nested attributes
+		 *	where the change of attribute context gives us a new dictionary.
+		 *
+		 *	i.e.
+		 *
+		 *	My-Dhcp-In-RADIUS-Attribute.My-DHCP-Attribute
+		 *	|                          ||_ DHCP attribute
+		 *	|                          |_ Lookup inside linking attribute triggers dictionary change
+		 *	|_ RADIUS attribute
+		 */
+
 			if (!rules->allow_foreign) {
 				fr_strerror_printf("Only attributes from the %s protocol are allowed here",
 						   fr_dict_root(rules->dict_def)->name);
@@ -820,6 +834,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 				goto error;
 			}
 		}
+#endif
 	}
 
 	/*
