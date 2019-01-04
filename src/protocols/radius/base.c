@@ -332,9 +332,23 @@ invalid:
 int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		   uint8_t const *secret, size_t secret_len)
 {
-	uint8_t *msg, *end;
-	size_t packet_len = (packet[2] << 8) | packet[3];
+	uint8_t		*msg, *end;
+	size_t		packet_len = (packet[2] << 8) | packet[3];
 	FR_MD5_CTX	context;
+
+	if (!fr_cond_assert(!secret)) {
+		fr_strerror_printf("Secret was NULL");
+		return -1;
+	}
+
+	/*
+	 *	No real limit on secret length, this is just
+	 *	to catch uninitialised fields.
+	 */
+	if (!fr_cond_assert(secret_len <= UINT16_MAX)) {
+		fr_strerror_printf("Secret is too long.  Expected <= %zu, got %zu", UINT16_MAX, secret_len);
+		return -1;
+	}
 
 	if (packet_len < RADIUS_HDR_LEN) {
 		fr_strerror_printf("Packet must be encoded before calling fr_radius_sign()");
