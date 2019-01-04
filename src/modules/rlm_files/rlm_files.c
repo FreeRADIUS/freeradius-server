@@ -121,6 +121,7 @@ static int pairlist_cmp(void const *a, void const *b)
 static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 {
 	int rcode;
+	VALUE_PAIR *vp;
 	PAIR_LIST *users = NULL;
 	PAIR_LIST *entry, *next;
 	PAIR_LIST *user_list, *default_list, **default_tail;
@@ -137,77 +138,73 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 	}
 
 	/*
-	 *	Walk through the 'users' file list, if we're debugging.
+	 *	Walk through the 'users' file list
 	 */
-	if (rad_debug_lvl) {
-		VALUE_PAIR *vp;
+	entry = users;
+	while (entry) {
+		fr_cursor_t cursor;
 
-		entry = users;
-		while (entry) {
-			fr_cursor_t cursor;
-
+		/*
+		 *	Look for improper use of '=' in the
+		 *	check items.  They should be using
+		 *	'==' for on-the-wire RADIUS attributes,
+		 *	and probably ':=' for server
+		 *	configuration items.
+		 */
+		for (vp = fr_cursor_init(&cursor, &entry->check);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
 			/*
-			 *	Look for improper use of '=' in the
-			 *	check items.  They should be using
-			 *	'==' for on-the-wire RADIUS attributes,
-			 *	and probably ':=' for server
-			 *	configuration items.
+			 *	Ignore attributes which are set
+			 *	properly.
 			 */
-			for (vp = fr_cursor_init(&cursor, &entry->check);
-			     vp;
-			     vp = fr_cursor_next(&cursor)) {
-				/*
-				 *	Ignore attributes which are set
-				 *	properly.
-				 */
-				if (vp->op != T_OP_EQ) {
-					continue;
-				}
-
-				/*
-				 *	If it's a vendor attribute,
-				 *	or it's a wire protocol,
-				 *	ensure it has '=='.
-				 */
-				if ((fr_dict_vendor_num_by_da(vp->da) != 0) ||
-				    (vp->da->attr < 0x100)) {
-					WARN("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
-					     filename, entry->lineno,
-					     vp->da->name, vp->da->name,
-					     entry->name);
-					vp->op = T_OP_CMP_EQ;
-					continue;
-				}
-			} /* end of loop over check items */
-
-			/*
-			 *	Look for server configuration items
-			 *	in the reply list.
-			 *
-			 *	It's a common enough mistake, that it's
-			 *	worth doing.
-			 */
-			for (vp = fr_cursor_init(&cursor, &entry->reply);
-			     vp;
-			     vp = fr_cursor_next(&cursor)) {
-				/*
-				 *	If it's NOT a vendor attribute,
-				 *	and it's NOT a wire protocol
-				 *	and we ignore Fall-Through,
-				 *	then bitch about it, giving a
-				 *	good warning message.
-				 */
-				 if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr > 1000)) {
-					WARN("[%s]:%d Check item \"%s\"\n"
-					       "\tfound in reply item list for user \"%s\".\n"
-					       "\tThis attribute MUST go on the first line"
-					       " with the other check items", filename, entry->lineno, vp->da->name,
-					       entry->name);
-				}
+			if (vp->op != T_OP_EQ) {
+				continue;
 			}
 
-			entry = entry->next;
+			/*
+			 *	If it's a vendor attribute,
+			 *	or it's a wire protocol,
+			 *	ensure it has '=='.
+			 */
+			if ((fr_dict_vendor_num_by_da(vp->da) != 0) ||
+			    (vp->da->attr < 0x100)) {
+				WARN("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+				     filename, entry->lineno,
+				     vp->da->name, vp->da->name,
+				     entry->name);
+				vp->op = T_OP_CMP_EQ;
+				continue;
+			}
+		} /* end of loop over check items */
+
+		/*
+		 *	Look for server configuration items
+		 *	in the reply list.
+		 *
+		 *	It's a common enough mistake, that it's
+		 *	worth doing.
+		 */
+		for (vp = fr_cursor_init(&cursor, &entry->reply);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			/*
+			 *	If it's NOT a vendor attribute,
+			 *	and it's NOT a wire protocol
+			 *	and we ignore Fall-Through,
+			 *	then bitch about it, giving a
+			 *	good warning message.
+			 */
+			 if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr > 1000)) {
+				WARN("[%s]:%d Check item \"%s\"\n"
+				       "\tfound in reply item list for user \"%s\".\n"
+				       "\tThis attribute MUST go on the first line"
+				       " with the other check items", filename, entry->lineno, vp->da->name,
+				       entry->name);
+			}
 		}
+
+		entry = entry->next;
 	}
 
 	tree = rbtree_create(ctx, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
