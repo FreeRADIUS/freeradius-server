@@ -606,8 +606,10 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	 *	Don't do chroot/setuid/setgid if we're in debugging
 	 *	as non-root.
 	 */
-	if (rad_debug_lvl && (getuid() != 0)) return 0;
-
+	if (DEBUG_ENABLED && (getuid() != 0)) {
+		WARN("Ignoring configured UID / GID / chroot as we're running in debug mode");
+		return 0;
+	}
 #ifdef HAVE_GRP_H
 	/*
 	 *	Get the correct GID for the server.

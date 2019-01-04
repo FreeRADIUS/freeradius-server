@@ -270,9 +270,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 			return FR_IO_DONE;
 		}
 
-		if (RDEBUG_ENABLED) {
-			dhcpv4_packet_debug(request, request->reply, false);
-		}
+		if (RDEBUG_ENABLED) dhcpv4_packet_debug(request, request->reply, false);
 		break;
 
 	default:

@@ -143,7 +143,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	if (RDEBUG_ENABLED3) {
 		uint8_t	const	*p;
 		size_t		length;
-		char		*hex;
 		VALUE_PAIR	*vp;
 
 		RDEBUG3("Comparing with \"known good\" &control:Cleartext-Password value \"%s\"",
@@ -161,17 +160,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		}
 
 		RINDENT();
-		hex = fr_abin2hex(request, p, length);
-		RDEBUG3("CHAP challenge : %s", hex);
-		talloc_free(hex);
-
-		hex = fr_abin2hex(request, chap->vp_octets + 1, CHAP_VALUE_LENGTH);
-		RDEBUG3("Client sent    : %s", hex);
-		talloc_free(hex);
-
-		hex = fr_abin2hex(request, pass_str + 1, CHAP_VALUE_LENGTH);
-		RDEBUG3("We calculated  : %s", hex);
-		talloc_free(hex);
+		RDEBUG3("CHAP challenge : %pH", fr_box_octets(p, length));
+		RDEBUG3("Client sent    : %pH", fr_box_octets(chap->vp_octets + 1, CHAP_VALUE_LENGTH));
+		RDEBUG3("We calculated  : %pH", fr_box_octets(pass_str + 1, CHAP_VALUE_LENGTH));
 		REXDENT();
 	} else {
 		RDEBUG2("Comparing with \"known good\" Cleartext-Password");

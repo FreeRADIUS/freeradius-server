@@ -479,14 +479,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		fr_pair_add(&packet->vps, vp);
 	}
 
-	if (DEBUG_ENABLED4) {
-		char hex[(sizeof(entry->state) * 2) + 1];
-
-		fr_bin2hex(hex, entry->state, sizeof(entry->state));
-
-		DEBUG4("State ID %" PRIu64 " created, value 0x%s, expires %" PRIu64 "s",
-		       entry->id, hex, (uint64_t)entry->cleanup - now);
-	}
+	DEBUG4("State ID %" PRIu64 " created, value 0x%pH, expires %" PRIu64 "s",
+	       entry->id, fr_box_octets(entry->state, sizeof(entry->state)), (uint64_t)entry->cleanup - now);
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 

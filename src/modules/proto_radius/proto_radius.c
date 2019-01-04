@@ -517,9 +517,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 
 		log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 
-		if (DEBUG_ENABLED3) {
-			fr_radius_print_hex(fr_log_fp, buffer, data_len);
-		}
+		if (DEBUG_ENABLED3) fr_radius_print_hex(fr_log_fp, buffer, data_len);
 	}
 
 	return data_len;

@@ -236,16 +236,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		   (mip_rk_1[2] << 8) | mip_rk_1[3]);
 	if (mip_spi < 256) mip_spi += 256;
 
-	if (rad_debug_lvl) {
-		int len = rk_len;
-		char buffer[512];
-
-		if (len > 128) len = 128; /* buffer size */
-
-		fr_bin2hex(buffer, mip_rk, len);
-		RDEBUG("MIP-RK = 0x%s", buffer);
-		RDEBUG("MIP-SPI = %08x", ntohl(mip_spi));
-	}
+	RDEBUG("MIP-RK = 0x%pH", fr_box_octets(mip_rk, rk_len));
+	RDEBUG("MIP-SPI = %08x", ntohl(mip_spi));
 
 	/*
 	 *	FIXME: Perform SPI collision prevention

@@ -474,7 +474,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	fr_bin2hex((char *) kd, hash, sizeof(hash));
 
 #ifndef NRDEBUG
-	if (rad_debug_lvl > 1) {
+	if (RDEBUG_ENABLED2) {
 		fr_printf_log("H(A1) = ");
 		for (i = 0; i < 16; i++) {
 			fr_printf_log("%02x", hash[i]);
@@ -543,7 +543,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	fr_bin2hex((char *) kd + kd_len, hash, sizeof(hash));
 
 #ifndef NRDEBUG
-	if (rad_debug_lvl > 1) {
+	if (RDEBUG_ENABLED2) {
 		fr_printf_log("H(A2) = ");
 		for (i = 0; i < 16; i++) {
 			fr_printf_log("%02x", hash[i]);
@@ -577,13 +577,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_INVALID;
 	}
 
-	if (RDEBUG_ENABLED3) {
-		char buffer[33];
-
-		fr_bin2hex(buffer, kd, 16);
-
-		RDEBUG3("Comparing hashes, received: %s, calculated: %s", vp->vp_strvalue, buffer);
-	}
+	RDEBUG3("Comparing hashes, received: %pV, calculated: %pH", &vp->data, fr_box_octets(kd, 16));
 
 	/*
 	 *  And finally, compare the digest in the packet with KD.

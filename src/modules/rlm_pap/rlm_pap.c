@@ -671,8 +671,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t const *inst, REQUEST 
 	if (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("MD5 digest does not match \"known good\" digest");
 		REDEBUG3("Password   : %pV", &request->password->data);
-		REDEBUG3("Calculated : %pV", fr_box_octets(digest, MD5_DIGEST_LENGTH));
-		REDEBUG3("Expected   : %pV", fr_box_octets(vp->vp_octets, MD5_DIGEST_LENGTH));
+		REDEBUG3("Calculated : %pH", fr_box_octets(digest, MD5_DIGEST_LENGTH));
+		REDEBUG3("Expected   : %pH", fr_box_octets(vp->vp_octets, MD5_DIGEST_LENGTH));
 		return RLM_MODULE_REJECT;
 	}
 
@@ -704,8 +704,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t const *inst, REQUEST
 	if (fr_digest_cmp(digest, vp->vp_octets, MD5_DIGEST_LENGTH) != 0) {
 		REDEBUG("SMD5 digest does not match \"known good\" digest");
 		REDEBUG3("Password   : %pV", &request->password->data);
-		REDEBUG3("Calculated : %pV", fr_box_octets(digest, MD5_DIGEST_LENGTH));
-		REDEBUG3("Expected   : %pV", fr_box_octets(vp->vp_octets, MD5_DIGEST_LENGTH));
+		REDEBUG3("Calculated : %pH", fr_box_octets(digest, MD5_DIGEST_LENGTH));
+		REDEBUG3("Expected   : %pH", fr_box_octets(vp->vp_octets, MD5_DIGEST_LENGTH));
 		return RLM_MODULE_REJECT;
 	}
 
@@ -733,8 +733,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t const *inst, REQUEST 
 	if (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("SHA1 digest does not match \"known good\" digest");
 		REDEBUG3("Password   : %pV", &request->password->data);
-		REDEBUG3("Calculated : %pV", fr_box_octets(digest, SHA1_DIGEST_LENGTH));
-		REDEBUG3("Expected   : %pV", fr_box_octets(vp->vp_octets, SHA1_DIGEST_LENGTH));
+		REDEBUG3("Calculated : %pH", fr_box_octets(digest, SHA1_DIGEST_LENGTH));
+		REDEBUG3("Expected   : %pH", fr_box_octets(vp->vp_octets, SHA1_DIGEST_LENGTH));
 		return RLM_MODULE_REJECT;
 	}
 
@@ -764,10 +764,10 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t const *inst, REQUEST
 	if (fr_digest_cmp(digest, vp->vp_octets, SHA1_DIGEST_LENGTH) != 0) {
 		REDEBUG("SSHA digest does not match \"known good\" digest");
 		REDEBUG3("Password   : %pV", &request->password->data);
-		REDEBUG3("Salt       : %pV", fr_box_octets(vp->vp_octets + SHA1_DIGEST_LENGTH,
+		REDEBUG3("Salt       : %pH", fr_box_octets(vp->vp_octets + SHA1_DIGEST_LENGTH,
 							   vp->vp_length - SHA1_DIGEST_LENGTH));
-		REDEBUG3("Calculated : %pV", fr_box_octets(digest, SHA1_DIGEST_LENGTH));
-		REDEBUG3("Expected   : %pV", fr_box_octets(vp->vp_octets, SHA1_DIGEST_LENGTH));
+		REDEBUG3("Calculated : %pH", fr_box_octets(digest, SHA1_DIGEST_LENGTH));
+		REDEBUG3("Expected   : %pH", fr_box_octets(vp->vp_octets, SHA1_DIGEST_LENGTH));
 		return RLM_MODULE_REJECT;
 	}
 
@@ -878,8 +878,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(rlm_pap_t const *inst, REQU
 	if (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
 		REDEBUG3("Password   : %pV", &request->password->data);
-		REDEBUG3("Calculated : %pV", fr_box_octets(digest, digest_len));
-		REDEBUG3("Expected   : %pV", &vp->data);
+		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
+		REDEBUG3("Expected   : %pH", &vp->data);
 		return RLM_MODULE_REJECT;
 	}
 
@@ -965,9 +965,9 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha_evp(rlm_pap_t const *inst, REQ
 	if (fr_digest_cmp(digest, vp->vp_octets, (size_t)digest_len) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
 		REDEBUG3("Password   : %pV", &request->password->data);
-		REDEBUG3("Salt       : %pV", fr_box_octets(vp->vp_octets + min_len, vp->vp_length - min_len));
-		REDEBUG3("Calculated : %pV", fr_box_octets(digest, digest_len));
-		REDEBUG3("Expected   : %pV", &vp->data);
+		REDEBUG3("Salt       : %pH", fr_box_octets(vp->vp_octets + min_len, vp->vp_length - min_len));
+		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
+		REDEBUG3("Expected   : %pH", &vp->data);
 		return RLM_MODULE_REJECT;
 	}
 
@@ -1183,9 +1183,9 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 
 	if (fr_digest_cmp(digest, hash, (size_t)digest_len) != 0) {
 		REDEBUG("PBKDF2 digest does not match \"known good\" digest");
-		REDEBUG3("Salt       : %pV", fr_box_octets(salt, salt_len));
-		REDEBUG3("Calculated : %pV", fr_box_octets(digest, digest_len));
-		REDEBUG3("Expected   : %pV", fr_box_octets(hash, slen));
+		REDEBUG3("Salt       : %pH", fr_box_octets(salt, salt_len));
+		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
+		REDEBUG3("Expected   : %pH", fr_box_octets(hash, slen));
 		rcode = RLM_MODULE_REJECT;
 	} else {
 		rcode = RLM_MODULE_OK;
@@ -1284,8 +1284,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t const *inst, REQUEST *
 
 	if (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("NT digest does not match \"known good\" digest");
-		REDEBUG3("Calculated : %pV", fr_box_octets(digest, sizeof(digest)));
-		REDEBUG3("Expected   : %pV", &vp->data);
+		REDEBUG3("Calculated : %pH", fr_box_octets(digest, sizeof(digest)));
+		REDEBUG3("Expected   : %pH", &vp->data);
 		return RLM_MODULE_REJECT;
 	}
 
@@ -1313,8 +1313,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t const *inst, REQUEST *
 	if ((fr_hex2bin(digest, sizeof(digest), charbuf, len) != vp->vp_length) ||
 	    (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0)) {
 		REDEBUG("LM digest does not match \"known good\" digest");
-		REDEBUG3("Calculated : %pV", fr_box_octets(digest, sizeof(digest)));
-		REDEBUG3("Expected   : %pV", &vp->data);
+		REDEBUG3("Calculated : %pH", fr_box_octets(digest, sizeof(digest)));
+		REDEBUG3("Expected   : %pH", &vp->data);
 		return RLM_MODULE_REJECT;
 	}
 

@@ -458,7 +458,7 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 			if (request->password) {
 				VP_VERIFY(request->password);
 
-				if ((rad_debug_lvl > 1) && (request->password->da == attr_user_password)) {
+				if (RDEBUG_ENABLED2 && (request->password->da == attr_user_password)) {
 					uint8_t const *p;
 
 					p = (uint8_t const *) request->password->vp_strvalue;

@@ -410,7 +410,7 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session)
 	 *	Don't print this out in the normal course of
 	 *	operations.
 	 */
-	if (rad_debug_lvl == 0) return;
+	if (!RDEBUG_ENABLED2) return;
 
 	str_write_p = tls_session->info.origin ? ">>> send" : "<<< recv";
 

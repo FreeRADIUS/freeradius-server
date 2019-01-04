@@ -89,9 +89,7 @@ static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *rep
 	if (check_item->op == T_OP_SET) return;
 
 	compare = fr_pair_cmp(check_item, reply_item);
-	if (compare < 0) {
-		RPEDEBUG("Comparison failed");
-	}
+	if (compare < 0) RPEDEBUG("Comparison failed");
 
 	if (compare == 1) {
 		++*(pass);
@@ -99,13 +97,7 @@ static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *rep
 		++*(fail);
 	}
 
-	if (RDEBUG_ENABLED3) {
-		char rule[1024], pair[1024];
-
-		fr_pair_snprint(rule, sizeof(rule), check_item);
-		fr_pair_snprint(pair, sizeof(pair), reply_item);
-		RDEBUG3("%s %s %s", pair, compare == 1 ? "allowed by" : "disallowed by", rule);
-	}
+	RDEBUG3("%pP %s %pP", reply_item, compare == 1 ? "allowed by" : "disallowed by", check_item);
 
 	return;
 }

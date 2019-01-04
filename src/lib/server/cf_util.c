@@ -1873,7 +1873,7 @@ void _cf_log_debug(CONF_ITEM const *ci, char const *fmt, ...)
 	va_list	ap;
 	char	*msg;
 
-	if (rad_debug_lvl < 1) return;
+	if (!DEBUG_ENABLED) return;
 
 	va_start(ap, fmt);
 	msg = fr_vasprintf(NULL, fmt, ap);
@@ -1904,7 +1904,7 @@ void _cf_log_debug_prefix(CONF_ITEM const *ci, char const *fmt, ...)
 	va_list	ap;
 	char	*msg;
 
-	if (rad_debug_lvl < 1) return;
+	if (!DEBUG_ENABLED) return;
 
 	va_start(ap, fmt);
 	msg = fr_vasprintf(NULL, fmt, ap);

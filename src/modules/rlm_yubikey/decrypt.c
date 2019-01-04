@@ -28,7 +28,6 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, cha
 	uint32_t counter, timestamp;
 	yubikey_token_st token;
 
-	char private_id[(YUBIKEY_UID_SIZE * 2) + 1];
 	VALUE_PAIR *key, *vp;
 
 	key = fr_pair_find_by_da(request->control, attr_yubikey_key, TAG_ANY);
@@ -57,16 +56,13 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, cha
 	counter = (yubikey_counter(token.ctr) << 8) | token.use;
 	timestamp = (token.tstph << 16) | token.tstpl;
 
-	if (RDEBUG_ENABLED2) {
-		(void) fr_bin2hex((char *) &private_id, (uint8_t*) &token.uid, YUBIKEY_UID_SIZE);
-		RDEBUG2("Private ID        : 0x%s", private_id);
-		RDEBUG2("Session counter   : %u", counter);
+	RDEBUG2("Private ID        : %pH", fr_box_octets(token.uid, YUBIKEY_UID_SIZE));
+	RDEBUG2("Session counter   : %u", counter);
 
-		RDEBUG2("Token timestamp   : %u", timestamp);
+	RDEBUG2("Token timestamp   : %u", timestamp);
 
-		RDEBUG2("Random data       : %u", token.rnd);
-		RDEBUG2("CRC data          : 0x%x", token.crc);
-	}
+	RDEBUG2("Random data       : %u", token.rnd);
+	RDEBUG2("CRC data          : 0x%x", token.crc);
 
 	/*
 	 *	Private ID used for validation purposes

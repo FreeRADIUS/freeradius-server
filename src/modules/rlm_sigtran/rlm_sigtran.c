@@ -294,14 +294,8 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 		/*
 		 *	Print out the constructed global title blob.
 		 */
-		if (DEBUG_ENABLED4) {
-			char *hex;
-
-			hex = fr_abin2hex(ctx, out->gti_data, out->gti_len);
-			DEBUG4("gt_ind: 0x%x", out->gti_ind);
-			DEBUG4("digits: 0x%s (%i)", hex, out->gti_len);
-			talloc_free(hex);
-		}
+		DEBUG4("gt_ind: 0x%x", out->gti_ind);
+		DEBUG4("digits: 0x%pH (%i)", fr_box_octets(out->gti_data, out->gti_len), out->gti_len);
 	}
 	return 0;
 }

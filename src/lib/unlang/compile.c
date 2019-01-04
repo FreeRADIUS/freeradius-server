@@ -3379,9 +3379,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 		c->debug_name = talloc_typed_asprintf(c, "%s %s", name1, name2);
 	}
 
-	if (rad_debug_lvl > 3) {
-		unlang_dump(c, 2);
-	}
+	if (DEBUG_ENABLED4) unlang_dump(c, 2);
 
 	/*
 	 *	Associate the unlang with the configuration section.

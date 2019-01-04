@@ -63,7 +63,7 @@ fr_event_list_t *fr_global_event_list(void) {
 
 static int event_status(UNUSED void *ctx, struct timeval *wake)
 {
-	if (rad_debug_lvl == 0) {
+	if (!DEBUG_ENABLED) {
 		if (just_started) {
 			INFO("Ready to process requests");
 			just_started = false;

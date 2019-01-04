@@ -652,14 +652,8 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (RDEBUG_ENABLED) {
-			char *hex;
-
-			hex = fr_abin2hex(request, vp->vp_octets, vp->vp_length);
-			RDEBUG("$%s{'%s'}[%i] = &%s:%s -> 0x%s", hash_name, vp->da->name, *i,
-			       list_name, vp->da->name, hex);
-			talloc_free(hex);
-		}
+		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> 0x%pH", hash_name, vp->da->name, *i,
+		       list_name, vp->da->name, &vp->data);
 		sv = newSVpvn((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
@@ -747,10 +741,8 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (RDEBUG_ENABLED) {
-				RDEBUG("$%s{'%s'} = &%s:%s -> %pV", hash_name, vp->da->name,
-				       list_name, vp->da->name, &vp->data);
-			}
+			RDEBUG("$%s{'%s'} = &%s:%s -> %pV", hash_name, vp->da->name, list_name,
+			       vp->da->name, &vp->data);
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn((char const *)vp->vp_octets, vp->vp_length), 0);
 			break;

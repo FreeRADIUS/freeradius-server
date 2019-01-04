@@ -261,7 +261,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 	*	Expect_password is set when we process the mapping, and is only true if there was a mapping between
 	*	an LDAP attribute and a password reference attribute in the control list.
 	*/
-	if (!inst->expect_password || (rad_debug_lvl < L_DBG_LVL_2)) return;
+	if (!inst->expect_password || !RDEBUG_ENABLED2) return;
 
 	if (!fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY) &&
 	    !fr_pair_find_by_da(request->control, attr_nt_password, TAG_ANY) &&
@@ -270,59 +270,59 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 	    !fr_pair_find_by_da(request->control, attr_crypt_password, TAG_ANY)) {
 		switch (conn->directory->type) {
 		case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
-			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
-			RWDEBUG("!!! Active Directory does not allow passwords to be read via LDAP");
-			RWDEBUG("!!! Remove the password map and either:");
-			RWDEBUG("!!!  - Configure authentication via ntlm_auth (mschapv2 only)");
-			RWDEBUG("!!!  - Configure authentication via wbclient (mschapv2 only)");
-			RWDEBUG("!!!    that password attribute");
-			RWDEBUG("!!!  - Bind as the user by listing %s in the authenticate section, and",
-				inst->name);
-			RWDEBUG("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
-				inst->name);
-			RWDEBUG("!!!    (pap only)");
+			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
+			RWDEBUG2("!!! Active Directory does not allow passwords to be read via LDAP");
+			RWDEBUG2("!!! Remove the password map and either:");
+			RWDEBUG2("!!!  - Configure authentication via ntlm_auth (mschapv2 only)");
+			RWDEBUG2("!!!  - Configure authentication via wbclient (mschapv2 only)");
+			RWDEBUG2("!!!    that password attribute");
+			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
+				 inst->name);
+			RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+				 inst->name);
+			RWDEBUG2("!!!    (pap only)");
 
 			break;
 
 		case FR_LDAP_DIRECTORY_EDIRECTORY:
-			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
-			RWDEBUG("!!! eDirectory does not allow passwords to be retrieved via LDAP search");
-			RWDEBUG("!!! Remove the password map and either:");
-			RWDEBUG("!!!  - Set 'edir = yes' and enable the universal password feature on your ");
-			RWDEBUG("!!!    eDir server (recommended)");
-			RWDEBUG("!!!    that password attribute");
-			RWDEBUG("!!!  - Bind as the user by listing %s in the authenticate section, and",
-				inst->name);
-			RWDEBUG("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
-				inst->name);
+			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
+			RWDEBUG2("!!! eDirectory does not allow passwords to be retrieved via LDAP search");
+			RWDEBUG2("!!! Remove the password map and either:");
+			RWDEBUG2("!!!  - Set 'edir = yes' and enable the universal password feature on your ");
+			RWDEBUG2("!!!    eDir server (recommended)");
+			RWDEBUG2("!!!    that password attribute");
+			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
+				 inst->name);
+			RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+				 inst->name);
 			RWDEBUG("!!!    (pap only)");
 			break;
 
 		default:
 			if (!conn->config->admin_identity) {
-				RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
-				RWDEBUG("!!! but no password attribute found in search result");
-				RWDEBUG("!!! Either:");
-				RWDEBUG("!!!  - Ensure the user object contains a password attribute, and that ");
-				RWDEBUG("!!!    \"%s\" has permission to read that password attribute (recommended)",
-					conn->config->admin_identity);
-				RWDEBUG("!!!  - Bind as the user by listing %s in the authenticate section, and",
-					inst->name);
-				RWDEBUG("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
-					inst->name);
-				RWDEBUG("!!!    (pap only)");
+				RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
+				RWDEBUG2("!!! but no password attribute found in search result");
+				RWDEBUG2("!!! Either:");
+				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that ");
+				RWDEBUG2("!!!    \"%s\" has permission to read that password attribute (recommended)",
+					 conn->config->admin_identity);
+				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
+					 inst->name);
+				RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+					 inst->name);
+				RWDEBUG2("!!!    (pap only)");
 			} else {
-				RWDEBUG("!!! No \"known good\" password added");
-				RWDEBUG("!!! but no password attribute found in search result");
-				RWDEBUG("!!! Either:");
-				RWDEBUG("!!!  - Ensure the user object contains a password attribute, and that ");
-				RWDEBUG("!!!    'identity' is set to the DN of an account that has permission to read");
-				RWDEBUG("!!!    that password attribute");
-				RWDEBUG("!!!  - Bind as the user by listing %s in the authenticate section, and",
-					inst->name);
-				RWDEBUG("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
-					inst->name);
-				RWDEBUG("!!!    (pap only)");
+				RWDEBUG2("!!! No \"known good\" password added");
+				RWDEBUG2("!!! but no password attribute found in search result");
+				RWDEBUG2("!!! Either:");
+				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that ");
+				RWDEBUG2("!!!    'identity' is set to the DN of an account that has permission to read");
+				RWDEBUG2("!!!    that password attribute");
+				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
+					 inst->name);
+				RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+					 inst->name);
+				RWDEBUG2("!!!    (pap only)");
 			}
 			break;
 		}

@@ -1200,7 +1200,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 	 *	Warn about items in the configuration which weren't
 	 *	checked during parsing.
 	 */
-	if (rad_debug_lvl >= 3) cf_section_parse_warn(cs);
+	if (DEBUG_ENABLED4) cf_section_parse_warn(cs);
 
 	cf_log_debug(cs, "%.*s}", SECTION_SPACE(cs), parse_spaces);
 
