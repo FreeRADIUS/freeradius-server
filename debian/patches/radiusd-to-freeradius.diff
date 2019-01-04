@@ -1,6 +1,6 @@
 --- a/Make.inc.in
 +++ b/Make.inc.in
-@@ -98,7 +98,7 @@
+@@ -105,7 +105,7 @@
 
  LOGDIR		= ${logdir}
  RADDBDIR	= ${raddbdir}
@@ -20,7 +20,7 @@
 
  #  Location of config and logfiles.
  confdir = ${raddbdir}
-@@ -416,8 +416,8 @@
+@@ -397,8 +397,8 @@
  	#  member.  This can allow for some finer-grained access
  	#  controls.
  	#
@@ -48,32 +48,39 @@
     if cpu > 95% for 2 cycles then alert
 --- a/raddb/sites-available/control-socket
 +++ b/raddb/sites-available/control-socket
-@@ -66,7 +66,7 @@ listen {
- 	#
- 	#  Name of group that is allowed to connect to the control socket.
- 	#
--#	gid = radius
-+#	gid = freerad
+@@ -71,12 +71,12 @@ listen {
+ 			#
+ 			#  Name of user who is allowed to connect to the control socket.
+ 			#
+-#			uid = radius
++#			uid = freerad
 
- 	#
- 	#  Access mode.
+ 			#
+ 			#  Name of group that is allowed to connect to the control socket.
+ 			#
+-#			gid = radius
++#			gid = freerad
+
+ 			#
+ 			#  Access mode.
 --- a/src/bin/radiusd.c
 +++ b/src/bin/radiusd.c
-@@ -126,12 +126,11 @@ int main(int argc, char *argv[])
- 	main_config.daemonize = true;
- 	main_config.spawn_workers = true;
-
+@@ -231,13 +231,11 @@ int main(int argc, char *argv[])
+ 	/*
+ 	 *	Set some default values
+-	 */
 -	p = strrchr(argv[0], FR_DIR_SEP);
 -	if (!p) {
--		main_config.name = argv[0];
+-		main_config_name_set_default(config, argv[0], false);
 -	} else {
--		main_config.name = p + 1;
+-		main_config_name_set_default(config, p + 1, false);
 -	}
-+	/*
++	 *
 +	 *	Debian changes the binary name to "freeradius", but
 +	 *	leaves the configuration file as "radiusd.conf".
 +	 */
-+	main_config.name = "radiusd";
++	main_config_name_set_default(config, "radiusd", false);
 
- 	/*
- 	 *	Don't put output anywhere until we get told a little
+ 	config->daemonize = true;
+ 	config->spawn_workers = true;
+

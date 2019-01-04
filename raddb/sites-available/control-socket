@@ -73,7 +73,6 @@ server control {
 			#
 #			uid = radius
 
-
 			#
 			#  Name of group that is allowed to connect to the control socket.
 			#
