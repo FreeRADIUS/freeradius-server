@@ -346,7 +346,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	 *	to catch uninitialised fields.
 	 */
 	if (!fr_cond_assert(secret_len <= UINT16_MAX)) {
-		fr_strerror_printf("Secret is too long.  Expected <= %zu, got %zu", UINT16_MAX, secret_len);
+		fr_strerror_printf("Secret is too long.  Expected <= %u, got %zu", UINT16_MAX, secret_len);
 		return -1;
 	}
 
