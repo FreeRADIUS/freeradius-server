@@ -336,11 +336,6 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	size_t		packet_len = (packet[2] << 8) | packet[3];
 	FR_MD5_CTX	context;
 
-	if (!fr_cond_assert(!secret)) {
-		fr_strerror_printf("Secret was NULL");
-		return -1;
-	}
-
 	/*
 	 *	No real limit on secret length, this is just
 	 *	to catch uninitialised fields.
