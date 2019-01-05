@@ -640,9 +640,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const *vp,
 				     int *i, const char *hash_name, const char *list_name)
 {
-	size_t len;
+
 	SV *sv;
-	char buffer[1024];
 
 	switch (vp->vp_type) {
 	case FR_TYPE_STRING:
@@ -658,10 +657,15 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 		break;
 
 	default:
-		len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, 0);
+	{
+		char	buffer[1024];
+		size_t	len;
+
+		len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
 		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, buffer);
 		sv = newSVpvn(buffer, truncate_len(len, sizeof(buffer)));
+	}
 		break;
 	}
 
@@ -695,9 +699,6 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 
 		char const *name;
 		char namebuf[256];
-		char buffer[1024];
-
-		size_t len;
 
 		/*
 		 *	Tagged attributes are added to the hash with name
@@ -748,11 +749,16 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			break;
 
 		default:
-			len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, 0);
+		{
+			char buffer[1024];
+			size_t len;
+
+			len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
 			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
 			       list_name, vp->da->name, buffer);
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn(buffer, truncate_len(len, sizeof(buffer))), 0);
+		}
 			break;
 		}
 	}
