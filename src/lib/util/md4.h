@@ -65,7 +65,7 @@ typedef struct {
 
 void	fr_md4_init(FR_MD4_CTX *ctx);
 void	fr_md4_update(FR_MD4_CTX *ctx, uint8_t const *in, size_t inlen);
-void	fr_md4_final(uint8_t out[static MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
+void	fr_md4_final(uint8_t out[static MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx);
 void	fr_md4_transform(uint32_t buf[static 4], uint8_t const inc[static MD4_BLOCK_LENGTH]);
 #else  /* HAVE_OPENSSL_EVP_H */
 USES_APPLE_DEPRECATED_API
