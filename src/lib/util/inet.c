@@ -976,7 +976,7 @@ char *fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid)
  * @param[in] ifid_str to parse.
  * @return a pointer to out.
  */
-uint8_t *fr_inet_ifid_pton(uint8_t out[8], char const *ifid_str)
+uint8_t *fr_inet_ifid_pton(uint8_t out[static 8], char const *ifid_str)
 {
 	static char const xdigits[] = "0123456789abcdef";
 	char const *p, *pch;

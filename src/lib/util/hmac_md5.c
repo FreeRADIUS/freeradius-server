@@ -47,13 +47,13 @@ static void _hmac_md5_ctx_free_on_exit(void *arg)
 /** Calculate HMAC using OpenSSL's MD5 implementation
  *
  * @param digest Caller digest to be filled in.
- * @param text Pointer to data stream.
- * @param text_len length of data stream.
+ * @param in Pointer to data stream.
+ * @param inlen length of data stream.
  * @param key Pointer to authentication key.
  * @param key_len Length of authentication key.
  *
  */
-void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
+void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
 		 uint8_t const *key, size_t key_len)
 {
 	HMAC_CTX *ctx;
@@ -72,7 +72,7 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 #endif /* EVP_MD_CTX_FLAG_NON_FIPS_ALLOW */
 
 	HMAC_Init_ex(ctx, key, key_len, EVP_md5(), NULL);
-	HMAC_Update(ctx, text, text_len);
+	HMAC_Update(ctx, in, inlen);
 	HMAC_Final(ctx, digest, NULL);
 	HMAC_CTX_reset(ctx);
 }
@@ -80,16 +80,16 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 /** Calculate HMAC using internal MD5 implementation
  *
  * @param digest Caller digest to be filled in.
- * @param text Pointer to data stream.
- * @param text_len length of data stream.
+ * @param in Pointer to data stream.
+ * @param inlen length of data stream.
  * @param key Pointer to authentication key.
  * @param key_len Length of authentication key.
  *
  */
-void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
+void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
 		 uint8_t const *key, size_t key_len)
 {
-	FR_MD5_CTX context;
+	FR_MD5_CTX conin;
 	uint8_t k_ipad[65];    /* inner padding - key XORd with ipad */
 	uint8_t k_opad[65];    /* outer padding - key XORd with opad */
 	uint8_t tk[16];
@@ -110,13 +110,13 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 	/*
 	 * the HMAC_MD5 transform looks like:
 	 *
-	 * MD5(K XOR opad, MD5(K XOR ipad, text))
+	 * MD5(K XOR opad, MD5(K XOR ipad, in))
 	 *
 	 * where K is an n byte key
 	 * ipad is the byte 0x36 repeated 64 times
 
 	 * opad is the byte 0x5c repeated 64 times
-	 * and text is the data being protected
+	 * and in is the data being protected
 	 */
 
 	/* start out by storing key in pads */
@@ -133,20 +133,20 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 	/*
 	 * perform inner MD5
 	 */
-	fr_md5_init(&context);		   /* init context for 1st
+	fr_md5_init(&conin);		   /* init conin for 1st
 					      * pass */
-	fr_md5_update(&context, k_ipad, 64);      /* start with inner pad */
-	fr_md5_update(&context, text, text_len); /* then text of datagram */
-	fr_md5_final(digest, &context);	  /* finish up 1st pass */
+	fr_md5_update(&conin, k_ipad, 64);      /* start with inner pad */
+	fr_md5_update(&conin, in, inlen); /* then in of datagram */
+	fr_md5_final(digest, &conin);	  /* finish up 1st pass */
 	/*
 	 * perform outer MD5
 	 */
-	fr_md5_init(&context);		   /* init context for 2nd
+	fr_md5_init(&conin);		   /* init conin for 2nd
 					      * pass */
-	fr_md5_update(&context, k_opad, 64);     /* start with outer pad */
-	fr_md5_update(&context, digest, 16);     /* then results of 1st
+	fr_md5_update(&conin, k_opad, 64);     /* start with outer pad */
+	fr_md5_update(&conin, digest, 16);     /* then results of 1st
 					      * hash */
-	fr_md5_final(digest, &context);	  /* finish up 2nd pass */
+	fr_md5_final(digest, &conin);	  /* finish up 2nd pass */
 }
 #endif /* HAVE_OPENSSL_EVP_H */
 

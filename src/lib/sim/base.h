@@ -288,9 +288,7 @@ int		fr_sim_vector_umts_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 /*
  *	fips186prf.c
  */
-void		fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
-				    CC_BOUNDED(__size__, 2, 160, 160)
-				    CC_BOUNDED(__size__, 1, 20, 20);
+void		fr_sim_fips186_2prf(uint8_t out[static 160], uint8_t mk[static 20]);
 
 /*
  *	xlat.c

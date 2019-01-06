@@ -99,12 +99,6 @@ extern "C" {
 #  define unlikely(_x)	_x
 #endif
 
-#ifdef HAVE_ATTRIBUTE_BOUNDED
-#  define CC_BOUNDED(_x, ...) CC_HINT(__bounded__(_x, ## __VA_ARGS__))
-#else
-#  define CC_BOUNDED(...)
-#endif
-
 /*
  *	Macros to add pragmas
  */

@@ -67,7 +67,7 @@
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface, fr_ipaddr_t const *ip, uint8_t macaddr[6])
+int fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface, fr_ipaddr_t const *ip, uint8_t macaddr[static 6])
 {
 	struct sockaddr_in *sin;
 	struct arpreq req;
@@ -96,7 +96,7 @@ int fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface, fr_ipaddr_t const
 }
 #else
 int fr_dhcpv4_udp_add_arp_entry(UNUSED int fd, UNUSED char const *interface,
-				UNUSED fr_ipaddr_t const *ip, UNUSED uint8_t macaddr[6])
+				UNUSED fr_ipaddr_t const *ip, UNUSED uint8_t macaddr[static 6])
 {
 	fr_strerror_printf("Adding ARP entry is unsupported on this system");
 	return -1;

@@ -35,16 +35,16 @@ typedef struct {
     uint8_t buffer[64];
 } fr_sha1_ctx;
 
-void fr_sha1_transform(uint32_t state[5], uint8_t const buffer[64]);
+void fr_sha1_transform(uint32_t state[static 5], uint8_t const buffer[static 64]);
 void fr_sha1_init(fr_sha1_ctx *context);
 void fr_sha1_update(fr_sha1_ctx *context, uint8_t const *data, size_t len);
-void fr_sha1_final(uint8_t digest[20], fr_sha1_ctx *context);
+void fr_sha1_final(uint8_t digest[static 20], fr_sha1_ctx *context);
 
 /*
  * this version implements a raw SHA1 transform, no length is appended,
  * nor any 128s out to the block size.
  */
-void fr_sha1_final_no_len(uint8_t digest[20], fr_sha1_ctx* context);
+void fr_sha1_final_no_len(uint8_t digest[static 20], fr_sha1_ctx* context);
 
 #else  /* WITH_OPENSSL_SHA1 */
 USES_APPLE_DEPRECATED_API

@@ -88,7 +88,7 @@ static void onesixty_add_mod(onesixty *sum, onesixty *a, onesixty *b)
  * @param[in] mk	The master key we use to derive all other keying
  *			data.
  */
-void fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
+void fr_sim_fips186_2prf(uint8_t out[static 160], uint8_t mk[static 20])
 {
 	fr_sha1_ctx	context;
 	int		j;

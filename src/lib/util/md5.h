@@ -59,13 +59,9 @@ typedef struct {
 } FR_MD5_CTX;
 
 void 	fr_md5_init(FR_MD5_CTX *ctx);
-void	fr_md5_update(FR_MD5_CTX *ctx, uint8_t const *in, size_t inlen)
-	CC_BOUNDED(__string__, 2, 3);
-void	fr_md5_final(uint8_t out[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
-	CC_BOUNDED(__minbytes__, 1, MD5_DIGEST_LENGTH);
-void	fr_md5_transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
-	CC_BOUNDED(__size__, 1, 4, 4)
-	CC_BOUNDED(__minbytes__, 2, MD5_BLOCK_LENGTH);
+void	fr_md5_update(FR_MD5_CTX *ctx, uint8_t const *in, size_t inlen);
+void	fr_md5_final(uint8_t out[static MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx);
+void	fr_md5_transform(uint32_t state[static 4], uint8_t const block[static MD5_BLOCK_LENGTH]);
 #  define fr_md5_copy(_out, _in)	memcpy(_out, _in, sizeof(*_out))
 #else  /* HAVE_OPENSSL_EVP_H */
 USES_APPLE_DEPRECATED_API
@@ -79,12 +75,10 @@ USES_APPLE_DEPRECATED_API
 #endif
 
 /* hmac.c */
-void	fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
-		    uint8_t const *key, size_t key_len)
-	CC_BOUNDED(__minbytes__, 1, MD5_DIGEST_LENGTH);
-
+void	fr_hmac_md5(uint8_t digest[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
+		    uint8_t const *key, size_t key_len);
 /* md5.c */
-void	fr_md5_calc(uint8_t *out, uint8_t const *in, size_t inlen);
+void	fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
 
 #ifdef __cplusplus
 }

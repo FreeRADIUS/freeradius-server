@@ -18,7 +18,7 @@ RCSID("$Id$")
  * @param[in] in Data to hash.
  * @param[in] inlen Length of the data.
  */
-void fr_md5_calc(uint8_t *out, uint8_t const *in, size_t inlen)
+void fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen)
 {
 	FR_MD5_CTX ctx;
 
@@ -177,7 +177,7 @@ void fr_md5_final(uint8_t out[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
  * @param[in] state 16 bytes of data to feed into the hashing function.
  * @param[in,out] block MD5 digest block to update.
  */
-void fr_md5_transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
+void fr_md5_transform(uint32_t state[static 4], uint8_t const block[static MD5_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d, in[MD5_BLOCK_LENGTH / 4];
 

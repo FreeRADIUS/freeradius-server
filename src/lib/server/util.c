@@ -840,7 +840,7 @@ char const *rad_default_radacct_dir(void)
  * @param mode to convert.
  * @param out Where to write the string to, must be exactly 10 bytes long.
  */
-void rad_mode_to_str(char out[10], mode_t mode)
+void rad_mode_to_str(char out[static 10], mode_t mode)
 {
 	static char const *rwx[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
 
@@ -853,7 +853,7 @@ void rad_mode_to_str(char out[10], mode_t mode)
 	out[9] = '\0';
 }
 
-void rad_mode_to_oct(char out[5], mode_t mode)
+void rad_mode_to_oct(char out[static 5], mode_t mode)
 {
 	out[0] = '0' + ((mode >> 9) & 0x07);
 	out[1] = '0' + ((mode >> 6) & 0x07);

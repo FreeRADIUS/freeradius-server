@@ -237,7 +237,7 @@ void fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
  * @param[in] state 16 bytes of data to feed into the hashing function.
  * @param[in,out] block MD4 digest block to update.
  */
-void fr_md4_transform(uint32_t state[4], uint8_t const block[MD4_BLOCK_LENGTH])
+void fr_md4_transform(uint32_t state[static 4], uint8_t const block[static MD4_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d;
 	uint32_t const *in = (uint32_t const *)block;

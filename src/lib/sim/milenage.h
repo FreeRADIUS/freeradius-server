@@ -55,7 +55,7 @@
  * @param[in] i		integer value.
  * @return pointer to out.
  */
-static inline uint8_t *uint48_to_buff(uint8_t out[6], uint64_t i)
+static inline uint8_t *uint48_to_buff(uint8_t out[static 6], uint64_t i)
 {
 	out[0] = (i & 0xff0000000000) >> 40;
 	out[1] = (i & 0x00ff00000000) >> 32;

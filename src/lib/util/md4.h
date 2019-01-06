@@ -64,13 +64,9 @@ typedef struct {
 } FR_MD4_CTX;
 
 void	fr_md4_init(FR_MD4_CTX *ctx);
-void	fr_md4_update(FR_MD4_CTX *ctx, uint8_t const *in, size_t inlen)
-	CC_BOUNDED(__string__, 2, 3);
-void	fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
-	CC_BOUNDED(__minbytes__, 1, MD4_DIGEST_LENGTH);
-void	fr_md4_transform(uint32_t buf[4], uint8_t const inc[MD4_BLOCK_LENGTH])
-	CC_BOUNDED(__size__, 1, 4, 4)
-	CC_BOUNDED(__minbytes__, 2, MD4_BLOCK_LENGTH);
+void	fr_md4_update(FR_MD4_CTX *ctx, uint8_t const *in, size_t inlen);
+void	fr_md4_final(uint8_t out[static MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
+void	fr_md4_transform(uint32_t buf[static 4], uint8_t const inc[static MD4_BLOCK_LENGTH]);
 #else  /* HAVE_OPENSSL_EVP_H */
 USES_APPLE_DEPRECATED_API
 #include <openssl/md4.h>
@@ -82,7 +78,7 @@ USES_APPLE_DEPRECATED_API
 #endif
 
 /* md4.c */
-void fr_md4_calc(uint8_t out[MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
+void fr_md4_calc(uint8_t out[static MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
 
 #ifdef __cplusplus
 }

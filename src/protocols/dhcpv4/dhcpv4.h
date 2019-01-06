@@ -196,7 +196,8 @@ int		fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET
 /*
  *	udp.c
  */
-int		fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface, fr_ipaddr_t const *ip, uint8_t macaddr[6]);
+int		fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface,
+					    fr_ipaddr_t const *ip, uint8_t macaddr[static 6]);
 #ifdef __cplusplus
 }
 #endif

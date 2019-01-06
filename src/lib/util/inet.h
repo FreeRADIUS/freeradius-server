@@ -122,7 +122,7 @@ char	*fr_inet_ntop_prefix(char out[FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_i
 
 char	*fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid);
 
-uint8_t	*fr_inet_ifid_pton(uint8_t out[8], char const *ifid_str);
+uint8_t	*fr_inet_ifid_pton(uint8_t out[static 8], char const *ifid_str);
 
 /*
  *	if_index and if_name resolution

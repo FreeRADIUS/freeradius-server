@@ -30,5 +30,5 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void comp128v1(uint8_t sres[4], uint8_t kc[8], uint8_t const ki[16], uint8_t const rand[16]);
-void comp128v23(uint8_t sres[4], uint8_t kc[8], uint8_t const ki[16], uint8_t const rand[16], bool v2);
+void comp128v1(uint8_t sres[static 4], uint8_t kc[static 8], uint8_t const ki[static 16], uint8_t const rand[static 16]);
+void comp128v23(uint8_t sres[static 4], uint8_t kc[static 8], uint8_t const ki[static 16], uint8_t const rand[static 16], bool v2);

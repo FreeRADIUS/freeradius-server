@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
-void fr_sha1_transform(uint32_t state[5], uint8_t const buffer[64])
+void fr_sha1_transform(uint32_t state[static 5], uint8_t const buffer[static 64])
 {
 	uint32_t a, b, c, d, e;
 	typedef union {
@@ -129,7 +129,7 @@ void fr_sha1_update(fr_sha1_ctx *context,uint8_t const *data, size_t len)
 
 /* Add padding and return the message digest. */
 
-void fr_sha1_final(uint8_t digest[20], fr_sha1_ctx *context)
+void fr_sha1_final(uint8_t digest[static 20], fr_sha1_ctx *context)
 {
 	uint32_t i, j;
 	uint8_t finalcount[8];
@@ -162,7 +162,7 @@ void fr_sha1_final(uint8_t digest[20], fr_sha1_ctx *context)
 #  endif
 }
 
-void fr_sha1_final_no_len(uint8_t digest[20], fr_sha1_ctx *context)
+void fr_sha1_final_no_len(uint8_t digest[static 20], fr_sha1_ctx *context)
 {
 	uint32_t i, j;
 

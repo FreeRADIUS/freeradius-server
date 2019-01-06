@@ -2475,8 +2475,6 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
-
-
 #
 # SYNOPSIS
 #
@@ -13067,54 +13065,7 @@ $as_echo "#define HAVE_BUILTIN_BSWAP_64 1" >>confdefs.h
 
 fi
 
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for __attribute__((__bounded__)) support in compiler" >&5
-$as_echo_n "checking for __attribute__((__bounded__)) support in compiler... " >&6; }
-if ${ax_cv_cc_bounded_attribute+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-
-  CFLAGS_SAVED=$CFLAGS
-  CFLAGS="$CFLAGS -Werror"
-  if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-        void test(char *buff) __attribute__ ((__bounded__ (__string__, 1, 1)));
-        int main(int argc, char **argv) {
-          if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
-          return 0;
-        }
-
-
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
-  ax_cv_cc_bounded_attribute=yes
-else
-  ax_cv_cc_bounded_attribute=no
-
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-  CFLAGS="$CFLAGS_SAVED"
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_bounded_attribute" >&5
-$as_echo "$ax_cv_cc_bounded_attribute" >&6; }
-if test "x$ax_cv_cc_bounded_attribute" = "xyes"; then
-
-$as_echo "#define HAVE_ATTRIBUTE_BOUNDED 1" >>confdefs.h
-
-fi
-
+AX_CC_HAVE_BOUNDED_ATTRIBUTE
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for _Generic support in compiler" >&5

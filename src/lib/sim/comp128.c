@@ -238,7 +238,8 @@ static inline void _comp128_permutation(uint8_t *x, uint8_t *bits)
  * @param[in] ki	known only by the SIM and AuC (us in this case).
  * @param[in] rand	16 bytes of randomness.
  */
-void comp128v1(uint8_t sres[4], uint8_t kc[8], uint8_t const ki[16], uint8_t const rand[16])
+void comp128v1(uint8_t sres[static 4], uint8_t kc[static 8],
+	       uint8_t const ki[static 16], uint8_t const rand[static 16])
 {
 	int i;
 	uint8_t x[32], bits[128];
@@ -332,7 +333,8 @@ static void _comp128v23(uint8_t *rand, uint8_t const *kxor)
  * @param[in] rand	16 bytes of randomness.
  * @param[in] v2	if true we use version comp128-2 else we use comp128-3.
  */
-void comp128v23(uint8_t sres[4], uint8_t kc[8], uint8_t const ki[16], uint8_t const rand[16], bool v2)
+void comp128v23(uint8_t sres[static 4], uint8_t kc[static 8],
+		uint8_t const ki[static 16], uint8_t const rand[static 16], bool v2)
 {
 	uint8_t k_mix[16];
 	uint8_t rand_mix[16];

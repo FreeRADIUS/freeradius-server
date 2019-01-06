@@ -73,7 +73,8 @@ static const FR_NAME_NUMBER conf_property_name[] = {
 	{  NULL , -1 }
 };
 
-static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLUDE_TYPE file_type, char *buff[7], bool from_dir);
+static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLUDE_TYPE file_type,
+			   char *buff[static 7], bool from_dir);
 
 /*
  *	Expand the variables in an input string.
