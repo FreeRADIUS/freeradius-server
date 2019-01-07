@@ -423,6 +423,11 @@ security {
 	max_attributes = 200
 
 @openssl_version_check_config@
+
+	#
+	#  openssl_fips_mode: Enable OpenSSL FIPS mode.
+	#  This disables non-FIPS compliant digests and algorithms
+#	openssl_fips_mode = no
 }
 
 # CLIENTS CONFIGURATION

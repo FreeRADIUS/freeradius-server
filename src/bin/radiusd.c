@@ -507,6 +507,19 @@ int main(int argc, char *argv[])
 	if (tls_version_check(config->allow_vulnerable_openssl) < 0) EXIT_WITH_FAILURE;
 #endif
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	/*
+	 *  Toggle OpenSSL FIPS mode
+	 */
+	if (config->openssl_fips_mode_is_set) {
+		if (FIPS_mode_set(config->openssl_fips_mode ? 1 : 0) == 0) {
+			tls_log_error(NULL, "Failed %s OpenSSL FIPS mode",
+				      config->openssl_fips_mode ? "enabling" : "disabling");
+			EXIT_WITH_FAILURE;
+		}
+	}
+#endif
+
 	/*
 	 *  The systemd watchdog enablement must be checked before we
 	 *  daemonize, but the notifications can come from any process.

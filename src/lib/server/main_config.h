@@ -116,6 +116,10 @@ struct main_config_s {
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	bool		openssl_fips_mode;		//!< Whether OpenSSL fips mode is enabled or disabled.
+	bool		openssl_fips_mode_is_set;	//!< Whether the user specified a value.
+#endif
 
 	fr_dict_t	*dict;				//!< Main dictionary.
 
