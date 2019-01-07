@@ -23,6 +23,10 @@
  * @copyright 2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2017 The FreeRADIUS Server Project.
  */
+RCSID("$Id$")
+
+USES_APPLE_DEPRECATED_API
+
 #include <freeradius-devel/ldap/base.h>
 
 #include <stdarg.h>

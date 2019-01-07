@@ -23,6 +23,10 @@
  * @copyright 2013,2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
+RCSID("$Id$")
+
+USES_APPLE_DEPRECATED_API
+
 #include <freeradius-devel/server/rad_assert.h>
 #include <ctype.h>
 

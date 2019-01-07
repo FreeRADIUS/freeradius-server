@@ -24,6 +24,9 @@
  * @copyright 2013-2015 Network RADIUS SARL <info@networkradius.com>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
+RCSID("$Id$")
+
+USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/rad_assert.h>
 

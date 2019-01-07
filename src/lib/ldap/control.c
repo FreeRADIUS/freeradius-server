@@ -22,6 +22,10 @@
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+RCSID("$Id$")
+
+USES_APPLE_DEPRECATED_API
+
 #include <freeradius-devel/ldap/base.h>
 
 /** Merge connection and call specific client and server controls

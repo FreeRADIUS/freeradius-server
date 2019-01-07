@@ -25,6 +25,8 @@
  */
 RCSID("$Id$")
 
+USES_APPLE_DEPRECATED_API
+
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 

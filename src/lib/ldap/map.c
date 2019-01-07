@@ -23,6 +23,10 @@
  * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
  * @copyright 2013 The FreeRADIUS Server Project.
  */
+RCSID("$Id$")
+
+USES_APPLE_DEPRECATED_API
+
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 

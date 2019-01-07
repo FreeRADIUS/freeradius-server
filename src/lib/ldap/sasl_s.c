@@ -23,6 +23,10 @@
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 The FreeRADIUS Server Project.
  */
+RCSID("$Id$")
+
+USES_APPLE_DEPRECATED_API
+
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 

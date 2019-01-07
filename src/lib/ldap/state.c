@@ -23,6 +23,8 @@
  */
 RCSID("$Id$")
 
+USES_APPLE_DEPRECATED_API
+
 #include <freeradius-devel/ldap/base.h>
 
 #define STATE_TRANSITION(_new) \
