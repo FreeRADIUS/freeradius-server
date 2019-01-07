@@ -52,13 +52,13 @@ static void _hmac_sha1_ctx_free_on_exit(void *arg)
 /** Calculate HMAC using OpenSSL's SHA1 implementation
  *
  * @param digest Caller digest to be filled in.
- * @param text Pointer to data stream.
- * @param text_len length of data stream.
+ * @param in Pointer to data stream.
+ * @param inlen length of data stream.
  * @param key Pointer to authentication key.
  * @param key_len Length of authentication key.
 
  */
-void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
+void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
 		  uint8_t const *key, size_t key_len)
 {
 	HMAC_CTX *ctx;
@@ -72,25 +72,23 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 	}
 
 	HMAC_Init_ex(ctx, key, key_len, EVP_sha1(), NULL);
-	HMAC_Update(ctx, text, text_len);
+	HMAC_Update(ctx, in, inlen);
 	HMAC_Final(ctx, digest, NULL);
 	HMAC_CTX_reset(ctx);
 }
-
 #else
-
 /** Calculate HMAC using internal SHA1 implementation
  *
  * @param digest Caller digest to be filled in.
- * @param text Pointer to data stream.
- * @param text_len length of data stream.
+ * @param in Pointer to data stream.
+ * @param inlen length of data stream.
  * @param key Pointer to authentication key.
  * @param key_len Length of authentication key.
  */
-void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
+void fr_hmac_sha1(uint8_t digest[static SHA1_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
 		  uint8_t const *key, size_t key_len)
 {
-	fr_sha1_ctx context;
+	fr_sha1_ctx ctx;
 	uint8_t k_ipad[65];    /* inner padding - key XORd with ipad */
 	uint8_t k_opad[65];    /* outer padding - key XORd with opad */
 	uint8_t tk[20];
@@ -124,10 +122,10 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 
 			printf("%02x", key[i]);
 		}
-		printf("\nDATA: (%d)    ",text_len);
+		printf("\nDATA: (%d)    ",inlen);
 
 		j=0; k=0;
-		for (i = 0; i < text_len; i++) {
+		for (i = 0; i < inlen; i++) {
 		  if(k==20) {
 		    printf("\n	    ");
 		    k=0;
@@ -140,7 +138,7 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 		  k++;
 		  j++;
 
-		  printf("%02x", text[i]);
+		  printf("%02x", in[i]);
 		}
 		printf("\n");
 	}
@@ -150,13 +148,13 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 	/*
 	 * the HMAC_SHA1 transform looks like:
 	 *
-	 * SHA1(K XOR opad, SHA1(K XOR ipad, text))
+	 * SHA1(K XOR opad, SHA1(K XOR ipad, in))
 	 *
 	 * where K is an n byte key
 	 * ipad is the byte 0x36 repeated 64 times
 
 	 * opad is the byte 0x5c repeated 64 times
-	 * and text is the data being protected
+	 * and in is the data being protected
 	 */
 
 	/* start out by storing key in pads */
@@ -173,17 +171,17 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 	/*
 	 * perform inner SHA1
 	 */
-	fr_sha1_init(&context);				/* init context for 1st pass */
-	fr_sha1_update(&context, k_ipad, 64);		/* start with inner pad */
-	fr_sha1_update(&context, text, text_len);	/* then text of datagram */
-	fr_sha1_final(digest, &context);		/* finish up 1st pass */
+	fr_sha1_init(&ctx);				/* init ctx for 1st pass */
+	fr_sha1_update(&ctx, k_ipad, 64);		/* start with inner pad */
+	fr_sha1_update(&ctx, in, inlen);	/* then in of datagram */
+	fr_sha1_final(digest, &ctx);		/* finish up 1st pass */
 	/*
 	 * perform outer SHA1
 	 */
-	fr_sha1_init(&context);				/* init context for 2nd pass */
-	fr_sha1_update(&context, k_opad, 64);		/* start with outer pad */
-	fr_sha1_update(&context, digest, 20);		/* then results of 1st hash */
-	fr_sha1_final(digest, &context);		/* finish up 2nd pass */
+	fr_sha1_init(&ctx);				/* init ctx for 2nd pass */
+	fr_sha1_update(&ctx, k_opad, 64);		/* start with outer pad */
+	fr_sha1_update(&ctx, digest, 20);		/* then results of 1st hash */
+	fr_sha1_final(digest, &ctx);		/* finish up 2nd pass */
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
 	if (sha1_data_problems) {

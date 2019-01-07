@@ -103,7 +103,7 @@ void fr_sha1_init(fr_sha1_ctx* context)
 }
 
 /* Run your data through this. */
-void fr_sha1_update(fr_sha1_ctx *context,uint8_t const *data, size_t len)
+void fr_sha1_update(fr_sha1_ctx *context, uint8_t const *data, size_t len)
 {
 	unsigned int i, j;
 
@@ -129,7 +129,7 @@ void fr_sha1_update(fr_sha1_ctx *context,uint8_t const *data, size_t len)
 
 /* Add padding and return the message digest. */
 
-void fr_sha1_final(uint8_t digest[static 20], fr_sha1_ctx *context)
+void fr_sha1_final(uint8_t digest[static SHA1_DIGEST_LENGTH], fr_sha1_ctx *context)
 {
 	uint32_t i, j;
 	uint8_t finalcount[8];
@@ -162,7 +162,7 @@ void fr_sha1_final(uint8_t digest[static 20], fr_sha1_ctx *context)
 #  endif
 }
 
-void fr_sha1_final_no_len(uint8_t digest[static 20], fr_sha1_ctx *context)
+void fr_sha1_final_no_len(uint8_t digest[static SHA1_DIGEST_LENGTH], fr_sha1_ctx *context)
 {
 	uint32_t i, j;
 
