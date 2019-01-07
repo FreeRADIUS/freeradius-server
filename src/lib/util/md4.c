@@ -18,7 +18,7 @@ RCSID("$Id$")
  * @param[in] in Data to hash.
  * @param[in] inlen Length of the data.
  */
-void fr_md4_calc(uint8_t out[MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen)
+void fr_md4_calc(uint8_t out[static MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen)
 {
 	FR_MD4_CTX ctx;
 
@@ -177,7 +177,7 @@ void fr_md4_update(FR_MD4_CTX *ctx, uint8_t const *in, size_t inlen)
  * @param[out] out Where to write the MD4 digest. Minimum length of MD4_DIGEST_LENGTH.
  * @param[in,out] ctx to finalise.
  */
-void fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
+void fr_md4_final(uint8_t out[static MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
 {
 	uint32_t count;
 	unsigned char *p;

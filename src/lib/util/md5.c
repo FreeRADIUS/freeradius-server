@@ -135,7 +135,7 @@ void fr_md5_update(FR_MD5_CTX *ctx, uint8_t const *in, size_t inlen)
  * @param[out] out Where to write the MD5 digest. Minimum length of MD5_DIGEST_LENGTH.
  * @param[in,out] ctx to finalise.
  */
-void fr_md5_final(uint8_t out[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
+void fr_md5_final(uint8_t out[static MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 {
 	uint8_t count[8];
 	size_t padlen;
