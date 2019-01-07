@@ -4,7 +4,7 @@
  * @note license is LGPL, but largely derived from a public domain source.
  *
  * @file src/lib/util/md4.h
- * @brief Structures and prototypes for md4.
+ * @brief Structures and declarations for md4.
  */
 RCSIDH(md4_h, "$Id$")
 
@@ -15,70 +15,75 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 
-#ifdef HAVE_INTTYPES_H
-#  include <inttypes.h>
-#endif
-
-#ifdef HAVE_SYS_TYPES_H
-#  include <sys/types.h>
-#endif
-
-#ifdef HAVE_STDINT_H
-#  include <stdint.h>
-#endif
-
+#include <inttypes.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
-
-#ifdef HAVE_OPENSSL_EVP_H
-#  include <openssl/evp.h>
-#endif
-
 
 #ifndef MD4_DIGEST_LENGTH
 #  define MD4_DIGEST_LENGTH 16
 #endif
 
-#ifndef HAVE_OPENSSL_EVP_H
-/*
- * The MD4 code used here and in md4.c was originally retrieved from:
- *   http://www.openbsd.org/cgi-bin/cvsweb/src/include/md4.h?rev=1.12
- *
- * This code implements the MD4 message-digest algorithm.
- * The algorithm is due to Ron Rivest.  This code was
- * written by Colin Plumb in 1993, no copyright is claimed.
- * This code is in the public domain; do with it what you wish.
- * Todd C. Miller modified the MD4 code to do MD4 based on RFC 1186.
- *
- * Equivalent code is available from RSA Data Security, Inc.
- * This code has been tested against that, and is equivalent,
- * except that you don't need to include two pages of legalese
- * with every copy.
- */
-#  define MD4_BLOCK_LENGTH 64
-#  define MD4_DIGEST_STRING_LENGTH (MD4_DIGEST_LENGTH * 2 + 1)
-
-typedef struct {
-	uint32_t state[4];			//!< State.
-	uint32_t count[2];			//!< Number of bits, mod 2^64.
-	uint8_t buffer[MD4_BLOCK_LENGTH];	//!< Input buffer.
-} FR_MD4_CTX;
-
-void	fr_md4_init(FR_MD4_CTX *ctx);
-void	fr_md4_update(FR_MD4_CTX *ctx, uint8_t const *in, size_t inlen);
-void	fr_md4_final(uint8_t out[static MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx);
-void	fr_md4_transform(uint32_t buf[static 4], uint8_t const inc[static MD4_BLOCK_LENGTH]);
-#else  /* HAVE_OPENSSL_EVP_H */
-USES_APPLE_DEPRECATED_API
-#include <openssl/md4.h>
-#  define FR_MD4_CTX			MD4_CTX
-#  define fr_md4_init			MD4_Init
-#  define fr_md4_update			MD4_Update
-#  define fr_md4_final			MD4_Final
-#  define fr_md4_transform		MD4_Transform
-#endif
+typedef void fr_md4_ctx_t;
 
 /* md4.c */
-void fr_md4_calc(uint8_t out[static MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
+
+/** Reset the ctx to allow reuse
+ *
+ * @param[in] ctx	To reuse.
+ */
+typedef		void (*fr_md4_ctx_reset_t)(fr_md4_ctx_t *ctx);
+extern		fr_md4_ctx_reset_t	fr_md4_ctx_reset;
+
+/** Copy the contents of a ctx
+ *
+ * @param[in] dst	Where to copy the context to.
+ * @param[in] src	Where to copy the context from.
+ */
+typedef		void (*fr_md4_ctx_copy_t)(fr_md4_ctx_t *dst, fr_md4_ctx_t const *src);
+extern		fr_md4_ctx_copy_t	fr_md4_ctx_copy;
+
+/** Allocation function for MD4 digest context
+ *
+ * @param[in] shared	Whether we allocate a new context or use the thread local context.
+ * @return
+ *	- An MD4 ctx.
+ *	- NULL if out of memory.
+ */
+typedef		fr_md4_ctx_t *(*fr_md4_ctx_alloc_t)(bool shared);
+extern		fr_md4_ctx_alloc_t	fr_md4_ctx_alloc;
+
+/** Free function for MD4 digest ctx
+ *
+ * @param[in] ctx	MD4 ctx to free.  If the shared ctx is passed in
+ *			then the ctx is reset but not freed.
+ */
+typedef		void (*fr_md4_ctx_free_t)(fr_md4_ctx_t **ctx);
+extern		fr_md4_ctx_free_t	fr_md4_ctx_free;
+
+
+/** Ingest plaintext into the digest
+ *
+ * @param[in] ctx	To ingest data into.
+ * @param[in] in	Data to ingest.
+ * @param[in] inlen	Length of data to ingest.
+ */
+typedef		void (*fr_md4_update_t)(fr_md4_ctx_t *ctx, uint8_t const *in, size_t inlen);
+extern		fr_md4_update_t		fr_md4_update;
+
+/** Finalise the ctx, producing the digest
+ *
+ * @param[out] out	The MD4 digest.
+ * @param[in] ctx	To finalise.
+ */
+typedef		void (*fr_md4_final_t)(uint8_t out[static MD4_DIGEST_LENGTH], fr_md4_ctx_t *ctx);
+extern		fr_md4_final_t		fr_md4_final;
+
+/** Perform a single digest operation on a single input buffer
+ *
+ */
+void		fr_md4_calc(uint8_t out[static MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
 
 #ifdef __cplusplus
 }

@@ -1126,6 +1126,45 @@ static xlat_action_t toupper_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return _xlat_change_case(true, ctx, out, request, in);
 }
 
+
+/** Calculate the MD4 hash of a string or attribute.
+ *
+ * Example: "%{md4:foo}" == "0ac6700c491d70fb8650940b1ca1e4b2"
+ */
+static xlat_action_t md4_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+			      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			      fr_value_box_t **in)
+{
+	uint8_t		digest[MD5_DIGEST_LENGTH];
+	fr_md4_ctx_t	*md4_ctx;
+	fr_value_box_t	*vb;
+
+	/*
+	 * Concatenate all input if there is some
+	 */
+	if (*in && fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	md4_ctx = fr_md4_ctx_alloc(true);
+	if (*in) {
+		fr_md4_update(md4_ctx, (*in)->vb_octets, (*in)->vb_length);
+	} else {
+		/* MD4 of empty string */
+		fr_md4_update(md4_ctx, NULL, 0);
+	}
+	fr_md4_final(digest, md4_ctx);
+	fr_md4_ctx_free(&md4_ctx);
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 /** Calculate the MD5 hash of a string or attribute.
  *
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
@@ -2535,6 +2574,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "hex", hex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "md4", md4_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "md5", md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "rand", rand_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "randstr", randstr_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
