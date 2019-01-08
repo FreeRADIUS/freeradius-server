@@ -770,6 +770,13 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
 			if (vp->da->vendor != VENDORPEC_MICROSOFT) continue;
 
+			if (vp->vp_length != 16) {
+				REDEBUG("Found CHAP-Challenge with incorrect length.  Expected %u, got %zu",
+					16, vp->vp_length);
+				rcode = RLM_MODULE_INVALID;
+				break;
+			}
+
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
 			switch (vp->da->attr) {
 			case PW_MSCHAP_MPPE_SEND_KEY:
