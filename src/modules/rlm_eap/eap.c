@@ -828,7 +828,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 {
 	eap_session_t	*eap_session = NULL;
 	eap_packet_raw_t *eap_packet;
-	VALUE_PAIR	*vp;
+	VALUE_PAIR	*state, *user;
 
 	/*
 	 *	Ensure it's a valid EAP-Request, or EAP-Response.
@@ -843,20 +843,70 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 	eap_packet = *eap_packet_p;
 
 	/*
-	 *	eap_session_t MUST be found in the list if it is not
-	 *	EAP-Identity response
+	 *	RFC 3579 - Once EAP has been negotiated, the NAS SHOULD
+	 *	send an initial EAP-Request message to the authenticating
+	 *	peer.  This will typically be an EAP-Request/Identity,
+	 *	although it could be an EAP-Request for an authentication
+	 *	method (Types 4 and greater).
+	 *
+	 *	This means that if there is no State attribute, we should
+	 *	consider this as the start of a new session.
 	 */
-	if (eap_packet->data[0] != FR_EAP_IDENTITY) {
-		eap_session = eap_session_thaw(request);
-		if (!eap_session) {
-			vp = fr_pair_find_by_da(request->packet->vps, attr_state, TAG_ANY);
-			if (!vp) {
-				REDEBUG("EAP requires the State attribute to work, but no State exists in the Access-Request packet.");
-				REDEBUG("The RADIUS client is broken.  No amount of changing FreeRADIUS will fix the RADIUS client.");
-			}
+	state = fr_pair_find_by_da(request->packet->vps, attr_state, TAG_ANY);
+	if (!state) {
+		eap_session = eap_session_alloc(inst, request);
+		if (!eap_session) goto error_round;
 
-			goto error_round;
+		RDEBUG4("New eap_session_t %p", eap_session);
+
+		/*
+		 *	All fields in the eap_session are set to zero.
+		 */
+		switch (eap_packet->data[0]) {
+		case FR_EAP_IDENTITY:
+			eap_session->identity = eap_identity(request, eap_session, eap_packet);
+			if (!eap_session->identity) {
+				RDEBUG("Invalid identity response");
+				goto error_session;
+			}
+			break;
+
+		case FR_EAP_INVALID:
+		case FR_EAP_NOTIFICATION:
+		case FR_EAP_NAK:
+			RDEBUG("Initial EAP method (%u) invalid", eap_packet->data[0]);
+			goto error_session;
+
+		/*
+		 *	Initialise a zero length identity, as we've
+		 *	not been provided with one at the start of the
+		 *	EAP method.
+		 */
+		default:
+			eap_session->identity = talloc_bstrndup(eap_session, "", 0);
+			break;
 		}
+
+		/*
+		 *	If the index is removed by something else
+		 *	like the state being cleaned up, then we
+		 *	still want the eap_session to be freed, which
+		 *	is why we set free_opaque to true.
+		 *
+		 *	We must pass a NULL pointer to associate the
+		 *	the EAP_SESSION data with, else we'll break
+		 *	tunneled EAP, where the inner EAP module is
+		 *	a different instance to the outer one.
+		 */
+		request_data_talloc_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session_t,
+					eap_session, true, true, true);
+
+	/*
+	 *	Continue a previously started EAP-Session
+	 */
+	} else {
+		eap_session = eap_session_thaw(request);
+		if (!eap_session) goto error_round;
 
 		RDEBUG4("Got eap_session_t %p from request data", eap_session);
 		(void) talloc_get_type_abort(eap_session, eap_session_t);
@@ -885,41 +935,10 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 			RERROR("Your Supplicant or NAS is probably broken");
 			goto error_round;
 		}
-	/*
-	 *	Packet was EAP identity, allocate a new eap_session.
-	 */
-	} else {
-		eap_session = eap_session_alloc(inst, request);
-		if (!eap_session) goto error_round;
-
-		RDEBUG4("New eap_session_t %p", eap_session);
-
-		/*
-		 *	All fields in the eap_session are set to zero.
-		 */
-		eap_session->identity = eap_identity(request, eap_session, eap_packet);
-		if (!eap_session->identity) {
-			RDEBUG("Identity Unknown, authentication failed");
-			goto error_session;
-		}
-
-		/*
-		 *	If the index is removed by something else
-		 *	like the state being cleaned up, then we
-		 *	still want the eap_session to be freed, which
-		 *	is why we set free_opaque to true.
-		 *
-		 *	We must pass a NULL pointer to associate the
-		 *	the EAP_SESSION data with, else we'll break
-		 *	tunneled EAP, where the inner EAP module is
-		 *	a different instance to the outer one.
-		 */
-		request_data_talloc_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session_t,
-					eap_session, true, true, true);
 	}
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-	if (!vp) {
+	user = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	if (!user) {
 		/*
 		 *	NAS did not set the User-Name
 		 *	attribute, so we set it here and
@@ -928,8 +947,8 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		 *	correctly
 		 */
 		RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
-		MEM(pair_add_request(&vp, attr_user_name) >= 0);
-		fr_pair_value_bstrncpy(vp, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
+		MEM(pair_add_request(&user, attr_user_name) >= 0);
+		fr_pair_value_bstrncpy(user, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
 	} else {
 		/*
 		 *      A little more paranoia.  If the NAS
@@ -940,9 +959,9 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		 *      request as the NAS is doing something
 		 *      funny.
 		 */
-		if (talloc_memcmp_bstr(eap_session->identity, vp->vp_strvalue) != 0) {
+		if (talloc_memcmp_bstr(eap_session->identity, user->vp_strvalue) != 0) {
 			REDEBUG("Identity from EAP Identity-Response \"%s\" does not match User-Name attribute \"%s\"",
-				eap_session->identity, vp->vp_strvalue);
+				eap_session->identity, user->vp_strvalue);
 			goto error_round;
 		}
 	}
