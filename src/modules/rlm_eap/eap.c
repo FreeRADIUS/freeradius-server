@@ -599,16 +599,42 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
 
-	if ((len <= 5) || (eap_packet->data[1] == 0x00)) {
-		REDEBUG("EAP-Identity Unknown");
+	/*
+	 *  Note: The minimum length here is 5.
+	 *  Previous versions of FreeRADIUS limited the length to 6 and
+	 *  checked for data[0] != \0.
+	 *
+	 *  This was incorrect, and broke encrypted pseudonyms in EAP-SIM/AKA.
+	 *
+	 *  RFC 3748 states - If the Identity is unknown, the
+	 *  Identity Response field should be zero bytes in length.  The
+	 *  Identity Response field MUST NOT be null terminated.  In all
+	 *  cases, the length of the Type-Data field is derived from the
+	 *  Length field of the Request/Response packet.
+	 *
+	 *  Code (1) + Identifier (1) + Length (2) + Type (1) = 5.
+	 *
+	 *  The maximum value is not bounded by the RFC. The eap_validation()
+	 *  function called before eap_identity(), checks that the length
+	 *  field does not overrun the available data.
+	 *
+	 *  In some EAP methods, the identity may be encrypted, and padded
+	 *  out to the block size of the encryption method.  These identities
+	 *  may contain nuls, and made be much larger than humanly readable
+	 *  identiies.
+	 *
+	 *  The identity value *MUST NOT* be artificially limited or truncated
+	 *  here.
+	 */
+	if (len < sizeof(eap_packet_raw_t)) {
+		REDEBUG("EAP-Identity length field too short, expected >= 5, got %u", len);
 		return NULL;
 	}
 
-	if (len > 1024) {
-		REDEBUG("EAP-Identity too long");
-		return NULL;
-	}
-
+	/*
+	 *	If the length is 5, then a buffer with a length of 1 is
+	 *	created with a \0 byte.
+	 */
 	return talloc_bstrndup(eap_session, (char *)&eap_packet->data[1], len - 5);
 }
 

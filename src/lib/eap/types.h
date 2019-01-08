@@ -127,6 +127,10 @@ typedef struct {
 } eap_packet_t;
 
 /** Structure to represent packet format of eap *on wire*
+ *
+ * @note Do not change field order, or field size. Code depends on
+ * sizeof(eap_packet_raw_t), and uses this structure for
+ * on the wire parsing.
  */
 typedef struct CC_HINT(__packed__) {
 	uint8_t		code;
