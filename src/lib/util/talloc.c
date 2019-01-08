@@ -473,7 +473,7 @@ int talloc_memcmp_array(uint8_t const *a, uint8_t const *b)
 	b_len = talloc_array_length(b);
 
 	if (a_len > b_len) return +1;
-	if (b_len < a_len) return -1;
+	if (a_len < b_len) return -1;
 
 	return memcmp(a, b, a_len);
 }
@@ -497,7 +497,7 @@ int talloc_memcmp_bstr(char const *a, char const *b)
 	b_len = talloc_array_length(b);
 
 	if (a_len > b_len) return +1;
-	if (b_len < a_len) return -1;
+	if (a_len < b_len) return -1;
 
 	return memcmp(a, b, a_len);
 }
