@@ -21,6 +21,8 @@ case "$1" in
         done
 
         for dir in /etc/freeradius/certs \
+          /etc/freeradius/certs/rsa \
+          /etc/freeradius/certs/ecc \
           /etc/freeradius/sites-available \
           /etc/freeradius/sites-enabled \
           /etc/freeradius/mods-available \
