@@ -55,6 +55,7 @@
  */
 #define LOG_PREFIX "rlm_eap - "
 #include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/radius/radius.h>
 
 RCSID("$Id$")
 
@@ -937,6 +938,15 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		}
 	}
 
+	/*
+	 *	RFC3579 In order to permit non-EAP aware RADIUS proxies to forward the
+	 *	Access-Request packet, if the NAS initially sends an
+	 *	EAP-Request/Identity message to the peer, the NAS MUST copy the
+	 *	contents of the Type-Data field of the EAP-Response/Identity received
+	 *	from the peer into the User-Name attribute and MUST include the
+	 *	Type-Data field of the EAP-Response/Identity in the User-Name
+	 *	attribute in every subsequent Access-Request.
+	 */
 	user = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	if (!user) {
 		/*
@@ -949,7 +959,17 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
 		MEM(pair_add_request(&user, attr_user_name) >= 0);
 		fr_pair_value_bstrncpy(user, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
-	} else {
+	/*
+	 *	The RFC 3579 is pretty unambiguous, the main issue is that the EAP Identity Response
+	 *	can be significantly longer than 253 bytes (the maximum RADIUS
+	 *	attribute length), and the RFC is silent about what happens then.
+	 *
+	 *	The behaviour seen in the wild, is that the NAS will use the Mac-Address
+	 *	of the connecting device as the User-name, and send the Identity in full,
+	 *	so if the EAP identity is longer than the max RADIUS attribute length
+	 *	then ignore mismatches.
+	 */
+	} else if ((talloc_array_length(eap_session->identity) - 1) <= RADIUS_MAX_STRING_LENGTH) {
 		/*
 		 *      A little more paranoia.  If the NAS
 		 *      *did* set the User-Name, and it doesn't
