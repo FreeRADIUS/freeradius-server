@@ -522,10 +522,8 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 	/*
 	 *	Fixup current pointer.
 	 */
-	if (v) {
-		cursor->current = p;
-		cursor->prev = NULL;				/* populated on next call to fr_cursor_next */
-	}
+	cursor->current = p;
+	cursor->prev = NULL;				/* populated on next call to fr_cursor_next */
 
 	/*
 	 *	Fixup tail pointer.

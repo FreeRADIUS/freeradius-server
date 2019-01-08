@@ -5357,11 +5357,6 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 	for (p = to_load; p->out; p++) {
 		fr_dict_t *dict = NULL;
 
-		if (unlikely(!p->out)) {
-			fr_strerror_printf("autoload missing parameter out");
-			return -1;
-		}
-
 		if (unlikely(!p->proto)) {
 			fr_strerror_printf("autoload missing parameter proto");
 			return -1;
@@ -5376,7 +5371,7 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 			if (fr_dict_protocol_afrom_file(&dict, p->proto) < 0) return -1;
 		}
 
-		if (p->out) *(p->out) = dict;
+		*(p->out) = dict;
 	}
 
 	return 0;
