@@ -636,7 +636,6 @@ static int bfd_verify_sequence(bfd_state_t *session, uint32_t sequence_no,
 
 static void bfd_calc_md5(bfd_state_t *session, bfd_packet_t *bfd)
 {
-	FR_MD5_CTX ctx;
 	bfd_auth_md5_t *md5 = &bfd->auth.md5;
 
 	rad_assert(session->secret_len <= sizeof(md5->digest));
@@ -645,9 +644,7 @@ static void bfd_calc_md5(bfd_state_t *session, bfd_packet_t *bfd)
 	memset(md5->digest, 0, sizeof(md5->digest));
 	memcpy(md5->digest, session->secret, session->secret_len);
 
-	fr_md5_init(&ctx);
-	fr_md5_update(&ctx, (const uint8_t *) bfd, bfd->length);
-	fr_md5_final(md5->digest, &ctx);
+	fr_md5_calc(md5->digest,(const uint8_t *) bfd, bfd->length);
 }
 
 static void bfd_auth_md5(bfd_state_t *session, bfd_packet_t *bfd)

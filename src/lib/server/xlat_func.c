@@ -1136,7 +1136,6 @@ static xlat_action_t md4_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			      fr_value_box_t **in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
-	fr_md4_ctx_t	*md4_ctx;
 	fr_value_box_t	*vb;
 
 	/*
@@ -1147,15 +1146,12 @@ static xlat_action_t md4_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	md4_ctx = fr_md4_ctx_alloc(true);
 	if (*in) {
-		fr_md4_update(md4_ctx, (*in)->vb_octets, (*in)->vb_length);
+		fr_md4_calc(digest, (*in)->vb_octets, (*in)->vb_length);
 	} else {
-		/* MD4 of empty string */
-		fr_md4_update(md4_ctx, NULL, 0);
+		/* Digest of empty string */
+		fr_md4_calc(digest, NULL, 0);
 	}
-	fr_md4_final(digest, md4_ctx);
-	fr_md4_ctx_free(&md4_ctx);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
@@ -1174,7 +1170,6 @@ static xlat_action_t md5_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			      fr_value_box_t **in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
-	FR_MD5_CTX	md5_ctx;
 	fr_value_box_t	*vb;
 
 	/*
@@ -1185,14 +1180,12 @@ static xlat_action_t md5_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_md5_init(&md5_ctx);
 	if (*in) {
-		fr_md5_update(&md5_ctx, (*in)->vb_octets, (*in)->vb_length);
+		fr_md5_calc(digest, (*in)->vb_octets, (*in)->vb_length);
 	} else {
-		/* MD5 of empty string */
-		fr_md5_update(&md5_ctx, NULL, 0);
+		/* Digest of empty string */
+		fr_md5_calc(digest, NULL, 0);
 	}
-	fr_md5_final(digest, &md5_ctx);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);

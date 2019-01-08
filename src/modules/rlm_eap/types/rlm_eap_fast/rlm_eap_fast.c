@@ -227,10 +227,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	}
 
 	rad_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
-	FR_MD5_CTX ctx;
-	fr_md5_init(&ctx);
-	fr_md5_update(&ctx, inst->authority_identity, talloc_array_length(inst->authority_identity) - 1);
-	fr_md5_final(inst->a_id, &ctx);
+
+	fr_md5_calc(inst->a_id, (uint8_t const *)inst->authority_identity,
+		    talloc_array_length(inst->authority_identity) - 1);
 
 	return 0;
 }

@@ -651,7 +651,6 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_crypt(UNUSED rlm_pap_t const *inst,
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
 
 	RDEBUG("Comparing with \"known-good\" MD5-Password");
@@ -664,9 +663,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t const *inst, REQUEST 
 		return RLM_MODULE_INVALID;
 	}
 
-	fr_md5_init(&md5_context);
-	fr_md5_update(&md5_context, request->password->vp_octets, request->password->vp_length);
-	fr_md5_final(digest, &md5_context);
+	fr_md5_calc(digest, request->password->vp_octets, request->password->vp_length);
 
 	if (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("MD5 digest does not match \"known good\" digest");
@@ -1324,7 +1321,6 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t const *inst, REQUEST *
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
 	uint8_t buff[FR_MAX_STRING_LEN];
 	uint8_t buff2[FR_MAX_STRING_LEN + 50];
@@ -1369,9 +1365,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *
 		memcpy(p, &vp->vp_octets[32], 32);
 		p += 32;
 
-		fr_md5_init(&md5_context);
-		fr_md5_update(&md5_context, (uint8_t *) buff2, p - buff2);
-		fr_md5_final(buff, &md5_context);
+		fr_md5_calc(buff, (uint8_t *) buff2, p - buff2);
 	}
 
 	if (fr_digest_cmp(digest, buff, 16) != 0) {
