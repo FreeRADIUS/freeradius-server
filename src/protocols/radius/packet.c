@@ -40,7 +40,7 @@ typedef struct {
 	uint8_t	code;
 	uint8_t	id;
 	uint8_t	length[2];
-	uint8_t	vector[AUTH_VECTOR_LEN];
+	uint8_t	vector[RADIUS_AUTH_VECTOR_LENGTH];
 	uint8_t	data[1];
 } radius_packet_t;
 
@@ -165,7 +165,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 */
 	hdr = (radius_packet_t *)packet->data;
 	ptr = hdr->data;
-	packet_length = packet->data_len - RADIUS_HDR_LEN;
+	packet_length = packet->data_len - RADIUS_HEADER_LENGTH;
 	num_attributes = 0;
 
 	fr_cursor_init(&cursor, &head);
@@ -227,7 +227,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	Merge information from the outside world into our
 	 *	random pool.
 	 */
-	fr_rand_seed(packet->data, RADIUS_HDR_LEN);
+	fr_rand_seed(packet->data, RADIUS_HEADER_LENGTH);
 
 	return 0;
 }
@@ -324,7 +324,7 @@ int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	if (rcode < 0) return rcode;
 
-	memcpy(packet->vector, packet->data + 4, AUTH_VECTOR_LEN);
+	memcpy(packet->vector, packet->data + 4, RADIUS_AUTH_VECTOR_LENGTH);
 	return 0;
 }
 

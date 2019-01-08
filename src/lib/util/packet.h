@@ -40,7 +40,7 @@ extern "C" {
 #  define PACKET_VERIFY(_x)	fr_cond_assert(_x)
 #endif
 
-#define AUTH_VECTOR_LEN		16
+#define RADIUS_AUTH_VECTOR_LENGTH		16
 
 /*
  *	vector:		Request authenticator from access-request packet
@@ -62,7 +62,7 @@ typedef struct {
 	int			id;			//!< Packet ID (used to link requests/responses).
 	unsigned int		code;			//!< Packet code (type).
 
-	uint8_t			vector[AUTH_VECTOR_LEN];//!< RADIUS authentication vector.
+	uint8_t			vector[RADIUS_AUTH_VECTOR_LENGTH];//!< RADIUS authentication vector.
 
 	uint32_t       		count;			//!< Number of times we've seen this packet
 	struct timeval		timestamp;		//!< When we received the packet.

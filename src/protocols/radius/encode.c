@@ -118,8 +118,8 @@ int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int i
 		memcpy(ptr, challenge->vp_strvalue, challenge->vp_length);
 		i += challenge->vp_length;
 	} else {
-		memcpy(ptr, packet->vector, AUTH_VECTOR_LEN);
-		i += AUTH_VECTOR_LEN;
+		memcpy(ptr, packet->vector, RADIUS_AUTH_VECTOR_LENGTH);
+		i += RADIUS_AUTH_VECTOR_LENGTH;
 	}
 
 	*output = id;
@@ -138,8 +138,8 @@ int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int i
  */
 int fr_radius_encode_tunnel_password(char *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
 {
-	uint8_t		buffer[AUTH_VECTOR_LEN + FR_MAX_STRING_LEN + 3];
-	unsigned char	digest[AUTH_VECTOR_LEN];
+	uint8_t		buffer[RADIUS_AUTH_VECTOR_LENGTH + FR_MAX_STRING_LEN + 3];
+	unsigned char	digest[RADIUS_AUTH_VECTOR_LENGTH];
 	char		*salt;
 	int		i, n, secretlen;
 	unsigned	len, n2;
@@ -194,9 +194,9 @@ int fr_radius_encode_tunnel_password(char *passwd, size_t *pwlen, char const *se
 
 	for (n2 = 0; n2 < len; n2 +=AUTH_PASS_LEN) {
 		if (!n2) {
-			memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
-			memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
-			fr_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
+			memcpy(buffer + secretlen, vector, RADIUS_AUTH_VECTOR_LENGTH);
+			memcpy(buffer + secretlen + RADIUS_AUTH_VECTOR_LENGTH, salt, 2);
+			fr_md5_calc(digest, buffer, secretlen + RADIUS_AUTH_VECTOR_LENGTH + 2);
 		} else {
 			memcpy(buffer + secretlen, passwd + n2 - AUTH_PASS_LEN, AUTH_PASS_LEN);
 			fr_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
@@ -220,7 +220,7 @@ int fr_radius_encode_tunnel_password(char *passwd, size_t *pwlen, char const *se
 int fr_radius_encode_password(char *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
-	uint8_t		digest[AUTH_VECTOR_LEN];
+	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
 	int		i, n, secretlen;
 	int		len;
 
@@ -283,8 +283,8 @@ static void encode_password(uint8_t *out, ssize_t *outlen, uint8_t const *input,
 			    char const *secret, uint8_t const *vector)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
-	uint8_t		digest[AUTH_VECTOR_LEN];
-	uint8_t		passwd[MAX_PASS_LEN];
+	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
+	uint8_t		passwd[RADIUS_MAX_PASS_LENGTH];
 	size_t		i, n;
 	size_t		len;
 
@@ -293,7 +293,7 @@ static void encode_password(uint8_t *out, ssize_t *outlen, uint8_t const *input,
 	 */
 	len = inlen;
 
-	if (len > MAX_PASS_LEN) len = MAX_PASS_LEN;
+	if (len > RADIUS_MAX_PASS_LENGTH) len = RADIUS_MAX_PASS_LENGTH;
 
 	memcpy(passwd, input, len);
 	if (len < sizeof(passwd)) memset(passwd + len, 0, sizeof(passwd) - len);
@@ -338,7 +338,7 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 				   char const *secret, uint8_t const *vector)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
-	uint8_t		digest[AUTH_VECTOR_LEN];
+	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
 	size_t		i, n;
 	size_t		encrypted_len;
 
@@ -402,7 +402,7 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx);
 
-	fr_md5_update(md5_ctx, vector, AUTH_VECTOR_LEN);
+	fr_md5_update(md5_ctx, vector, RADIUS_AUTH_VECTOR_LENGTH);
 	fr_md5_update(md5_ctx, &out[0], 2);
 
 	for (n = 0; n < encrypted_len; n += AUTH_PASS_LEN) {
@@ -766,7 +766,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		if (len != 16) return 0;
 
 		fr_radius_ascend_secret(ptr, packet_ctx->vector, packet_ctx->secret, data);
-		len = AUTH_VECTOR_LEN;
+		len = RADIUS_AUTH_VECTOR_LENGTH;
 		break;
 
 	default:

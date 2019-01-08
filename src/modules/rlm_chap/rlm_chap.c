@@ -117,7 +117,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_INVALID;
 	}
 
-	if (chap->vp_length != CHAP_VALUE_LENGTH + 1) {
+	if (chap->vp_length != RADIUS_CHAP_CHALLENGE_LENGTH + 1) {
 		REDEBUG("&request:CHAP-Password has invalid length");
 		return RLM_MODULE_INVALID;
 	}
@@ -161,14 +161,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 
 		RINDENT();
 		RDEBUG3("CHAP challenge : %pH", fr_box_octets(p, length));
-		RDEBUG3("Client sent    : %pH", fr_box_octets(chap->vp_octets + 1, CHAP_VALUE_LENGTH));
-		RDEBUG3("We calculated  : %pH", fr_box_octets(pass_str + 1, CHAP_VALUE_LENGTH));
+		RDEBUG3("Client sent    : %pH", fr_box_octets(chap->vp_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH));
+		RDEBUG3("We calculated  : %pH", fr_box_octets(pass_str + 1, RADIUS_CHAP_CHALLENGE_LENGTH));
 		REXDENT();
 	} else {
 		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
 
-	if (fr_digest_cmp(pass_str + 1, chap->vp_octets + 1, CHAP_VALUE_LENGTH) != 0) {
+	if (fr_digest_cmp(pass_str + 1, chap->vp_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH) != 0) {
 		REDEBUG("Password comparison failed: password is incorrect");
 		return RLM_MODULE_REJECT;
 	}

@@ -172,7 +172,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 */
 	vp = fr_pair_find_by_da(request->reply->vps, attr_message_authenticator, TAG_ANY);
 	if (!vp) {
-		static uint8_t auth_vector[AUTH_VECTOR_LEN] = { 0x00 };
+		static uint8_t auth_vector[RADIUS_AUTH_VECTOR_LENGTH] = { 0x00 };
 
 		MEM(pair_add_reply(&vp, attr_message_authenticator) >= 0);
 		fr_pair_value_memcpy(vp, auth_vector, sizeof(auth_vector));

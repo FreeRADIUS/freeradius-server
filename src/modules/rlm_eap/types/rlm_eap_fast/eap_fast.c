@@ -507,11 +507,11 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
 			switch (vp->da->attr) {
 			case FR_MSCHAP_MPPE_SEND_KEY:
-				memcpy(t->isk.mppe_send, vp->vp_octets, CHAP_VALUE_LENGTH);
+				memcpy(t->isk.mppe_send, vp->vp_octets, RADIUS_CHAP_CHALLENGE_LENGTH);
 				break;
 
 			case FR_MSCHAP_MPPE_RECV_KEY:
-				memcpy(t->isk.mppe_recv, vp->vp_octets, CHAP_VALUE_LENGTH);
+				memcpy(t->isk.mppe_recv, vp->vp_octets, RADIUS_CHAP_CHALLENGE_LENGTH);
 				break;
 
 			case FR_MSCHAP2_SUCCESS:
@@ -524,7 +524,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 				break;
 			}
 		}
-		RHEXDUMP(L_DBG_LVL_MAX, (uint8_t *)&t->isk, 2 * CHAP_VALUE_LENGTH, "ISK[j]"); /* FIXME (part of above) */
+		RHEXDUMP(L_DBG_LVL_MAX,
+			 (uint8_t *)&t->isk, 2 * RADIUS_CHAP_CHALLENGE_LENGTH, "ISK[j]"); /* FIXME (part of above) */
 		break;
 
 	case FR_CODE_ACCESS_REJECT:
@@ -651,14 +652,14 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		 */
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
 			tvp = fr_pair_afrom_da(fake, attr_ms_chap_challenge);
-			fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, CHAP_VALUE_LENGTH);
+			fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH);
 			fr_pair_add(&fake->control, tvp);
-			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->server_challenge, CHAP_VALUE_LENGTH, "MSCHAPv2 auth_challenge");
+			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 auth_challenge");
 
 			tvp = fr_pair_afrom_da(fake, attr_ms_chap_peer_challenge);
-			fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, CHAP_VALUE_LENGTH);
+			fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH);
 			fr_pair_add(&fake->control, tvp);
-			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->client_challenge, CHAP_VALUE_LENGTH, "MSCHAPv2 peer_challenge");
+			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 peer_challenge");
 		}
 	}
 

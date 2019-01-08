@@ -28,15 +28,18 @@
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/log.h>
 
-#define AUTH_VECTOR_LEN		16
-#define CHAP_VALUE_LENGTH       16
-#define RADIUS_MAX_ATTRIBUTES	255
+#define RADIUS_HEADER_LENGTH		20
+#define RADIUS_MAX_STRING_LENGTH	253
+#define RADIUS_AUTH_VECTOR_LENGTH	16
+#define RADIUS_CHAP_CHALLENGE_LENGTH	16
+#define RADIUS_MAX_PASS_LENGTH		128
+#define RADIUS_MAX_ATTRIBUTES		255
+
+#define RADIUS_VENDORPEC_USR		429
+#define RADIUS_VENDORPEC_LUCENT		4846
+#define RADIUS_VENDORPEC_STARENT	8164
 
 #ifdef _LIBRADIUS
-#  define RADIUS_HDR_LEN	20
-#  define VENDORPEC_USR		429
-#  define VENDORPEC_LUCENT	4846
-#  define VENDORPEC_STARENT	8164
 #  undef DEBUG
 #  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 #endif
@@ -49,8 +52,8 @@
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
 #define is_radius_code(_x) ((_x > 0) && (_x < FR_MAX_PACKET_CODE))
 
-#define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
-#define MAX_PASS_LEN (128)
+#define AUTH_PASS_LEN (RADIUS_AUTH_VECTOR_LENGTH)
+
 #define	FR_TUNNEL_FR_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
 extern size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2];
 extern FR_NAME_NUMBER const fr_request_types[];

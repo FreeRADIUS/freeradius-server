@@ -326,7 +326,7 @@ int fr_tacacs_packet_recv(RADIUS_PACKET * const packet, char const * const secre
 		size_t packet_len;
 
 		/* borrow vector to bring in the header for later talloc */
-		rad_assert(sizeof(fr_tacacs_packet_hdr_t) <= AUTH_VECTOR_LEN);
+		rad_assert(sizeof(fr_tacacs_packet_hdr_t) <= RADIUS_AUTH_VECTOR_LENGTH);
 
 		/*
 		 *	Only read enough data to get the TACACS+ header.

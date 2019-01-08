@@ -204,7 +204,7 @@ bool const fr_request_packets[FR_CODE_MAX + 1] = {
  *	Authenticator contains the signature of the packet, so we
  *	can't use that.
  */
-static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static uint8_t nullvector[RADIUS_AUTH_VECTOR_LENGTH] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 /** Return the on-the-wire length of an attribute value
  *
@@ -238,12 +238,12 @@ void fr_radius_ascend_secret(uint8_t *digest, uint8_t const *vector, char const 
 	int		i;
 
 	md5_ctx = fr_md5_ctx_alloc(true);
-	fr_md5_update(md5_ctx, vector, AUTH_VECTOR_LEN);
+	fr_md5_update(md5_ctx, vector, RADIUS_AUTH_VECTOR_LENGTH);
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	fr_md5_final(digest, md5_ctx);
 	fr_md5_ctx_free(&md5_ctx);
 
-	for (i = 0; i < AUTH_VECTOR_LEN; i++ ) digest[i] ^= value[i];
+	for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++ ) digest[i] ^= value[i];
 }
 
 /** Basic validation of RADIUS packet header
@@ -258,7 +258,7 @@ void fr_radius_ascend_secret(uint8_t *digest, uint8_t const *vector, char const 
  * @return
  *	- -1 on failure.
  *	- 1 on decode error.
- *	- >= RADIUS_HDR_LEN on success. This is the packet length as specified in the header.
+ *	- >= RADIUS_HEADER_LENGTH on success. This is the packet length as specified in the header.
  */
 ssize_t fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code)
 {
@@ -295,8 +295,8 @@ invalid:
 	 *	The length in the packet says it's less than
 	 *	a RADIUS header length: discard it.
 	 */
-	if (packet_len < RADIUS_HDR_LEN) {
-		FR_DEBUG_STRERROR_PRINTF("Expected at least " STRINGIFY(RADIUS_HDR_LEN)  " bytes of packet "
+	if (packet_len < RADIUS_HEADER_LENGTH) {
+		FR_DEBUG_STRERROR_PRINTF("Expected at least " STRINGIFY(RADIUS_HEADER_LENGTH)  " bytes of packet "
 					 "data, got %zu bytes", packet_len);
 		goto invalid;
 	}
@@ -345,7 +345,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		return -1;
 	}
 
-	if (packet_len < RADIUS_HDR_LEN) {
+	if (packet_len < RADIUS_HEADER_LENGTH) {
 		fr_strerror_printf("Packet must be encoded before calling fr_radius_sign()");
 		return -1;
 	}
@@ -355,7 +355,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	 *	calculated before we calculate the Request
 	 *	Authenticator or the Response Authenticator.
 	 */
-	msg = packet + RADIUS_HDR_LEN;
+	msg = packet + RADIUS_HEADER_LENGTH;
 	end = packet + packet_len;
 
 	while (msg < end) {
@@ -391,7 +391,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		case FR_CODE_ACCOUNTING_REQUEST:
 		case FR_CODE_DISCONNECT_REQUEST:
 		case FR_CODE_COA_REQUEST:
-			memset(packet + 4, 0, AUTH_VECTOR_LEN);
+			memset(packet + 4, 0, RADIUS_AUTH_VECTOR_LENGTH);
 			break;
 
 		case FR_CODE_ACCESS_ACCEPT:
@@ -399,7 +399,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		case FR_CODE_ACCESS_CHALLENGE:
 		do_ack:
 			if (!original) goto need_original;
-			memcpy(packet + 4, original + 4, AUTH_VECTOR_LEN);
+			memcpy(packet + 4, original + 4, RADIUS_AUTH_VECTOR_LENGTH);
 			break;
 
 		case FR_CODE_ACCESS_REQUEST:
@@ -416,7 +416,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		 *	calculate the HMAC, and put it into the
 		 *	Message-Authenticator attribute.
 		 */
-		memset(msg + 2, 0, AUTH_VECTOR_LEN);
+		memset(msg + 2, 0, RADIUS_AUTH_VECTOR_LENGTH);
 		fr_hmac_md5(msg + 2, packet, packet_len, secret, secret_len);
 		break;
 	}
@@ -428,7 +428,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	case FR_CODE_ACCOUNTING_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
 	case FR_CODE_COA_REQUEST:
-		memset(packet + 4, 0, AUTH_VECTOR_LEN);
+		memset(packet + 4, 0, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	case FR_CODE_ACCESS_ACCEPT:
@@ -445,7 +445,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 			fr_strerror_printf("Cannot sign response packet without a request packet");
 			return -1;
 		}
-		memcpy(packet + 4, original + 4, AUTH_VECTOR_LEN);
+		memcpy(packet + 4, original + 4, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 		/*
@@ -508,7 +508,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *
 	 *	"The minimum length is 20 ..."
 	 */
-	if (packet_len < RADIUS_HDR_LEN) {
+	if (packet_len < RADIUS_HEADER_LENGTH) {
 		FR_DEBUG_STRERROR_PRINTF("packet is too short (received %zu < minimum 20)",
 					 packet_len);
 		failure = DECODE_FAIL_MIN_LENGTH_PACKET;
@@ -551,7 +551,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *
 	 *	"The minimum length is 20 ..."
 	 */
-	if (totallen < RADIUS_HDR_LEN) {
+	if (totallen < RADIUS_HEADER_LENGTH) {
 		FR_DEBUG_STRERROR_PRINTF("length in header is too small (length %zu < minimum 20)",
 					 totallen);
 		failure = DECODE_FAIL_MIN_LENGTH_FIELD;
@@ -610,7 +610,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	or with an intentional attack.  Either way, we do NOT want
 	 *	to be vulnerable to this problem.
 	 */
-	attr = packet + RADIUS_HDR_LEN;
+	attr = packet + RADIUS_HEADER_LENGTH;
 	end = packet + packet_len;
 	num_attributes = 0;
 
@@ -681,7 +681,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 			break;
 
 		case FR_MESSAGE_AUTHENTICATOR:
-			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
+			if (attr[1] != 2 + RADIUS_AUTH_VECTOR_LENGTH) {
 				FR_DEBUG_STRERROR_PRINTF("Message-Authenticator has invalid length (%d != 18) at offset %zd",
 					   attr[1] - 2, attr - packet);
 				failure = DECODE_FAIL_MA_INVALID_LENGTH;
@@ -765,10 +765,10 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	int rcode;
 	uint8_t *msg, *end;
 	size_t packet_len = (packet[2] << 8) | packet[3];
-	uint8_t request_authenticator[AUTH_VECTOR_LEN];
-	uint8_t message_authenticator[AUTH_VECTOR_LEN];
+	uint8_t request_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
+	uint8_t message_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
 
-	if (packet_len < RADIUS_HDR_LEN) {
+	if (packet_len < RADIUS_HEADER_LENGTH) {
 		fr_strerror_printf("invalid packet length %zd", packet_len);
 		return -1;
 	}
@@ -780,7 +780,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 *	calculated before we calculate the Request
 	 *	Authenticator or the Response Authenticator.
 	 */
-	msg = packet + RADIUS_HDR_LEN;
+	msg = packet + RADIUS_HEADER_LENGTH;
 	end = packet + packet_len;
 
 	while (msg < end) {
@@ -902,18 +902,18 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 			return -1;
 		}
 		packet_ctx.vector = original + 4;
-		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
+		memcpy(packet + 4, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	case FR_CODE_ACCOUNTING_REQUEST:
 		packet_ctx.vector = nullvector;
-		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
+		memcpy(packet + 4, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	case FR_CODE_COA_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
 		packet_ctx.vector = nullvector;
-		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
+		memcpy(packet + 4, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	default:
@@ -924,12 +924,12 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	packet[0] = code;
 	packet[1] = id;
 	packet[2] = 0;
-	packet[3] = total_length = RADIUS_HDR_LEN;
+	packet[3] = total_length = RADIUS_HEADER_LENGTH;
 
 	/*
 	 *	Load up the configuration values for the user
 	 */
-	ptr = packet + RADIUS_HDR_LEN;
+	ptr = packet + RADIUS_HEADER_LENGTH;
 
 	/*
 	 *	If we're sending Protocol-Error, add in

@@ -90,7 +90,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 
 		packet_len = (packet->vector[2] << 8) | packet->vector[3];
 
-		if (packet_len < RADIUS_HDR_LEN) {
+		if (packet_len < RADIUS_HEADER_LENGTH) {
 			fr_strerror_printf("Discarding packet: Smaller than RFC minimum of 20 bytes");
 			return -1;
 		}

@@ -911,7 +911,7 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 		uint32_t hash, base;
 
 		base = fr_rand();
-		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
+		for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i += sizeof(uint32_t)) {
 			hash = fr_rand() ^ base;
 			memcpy(c->buffer + 4 + i, &hash, sizeof(hash));
 		}
@@ -946,7 +946,7 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 	 *	Remember the authentication vector, which now has the
 	 *	packet signature.
 	 */
-	memcpy(u->rr->vector, c->buffer + 4, AUTH_VECTOR_LEN);
+	memcpy(u->rr->vector, c->buffer + 4, RADIUS_AUTH_VECTOR_LENGTH);
 
 	request->module = module_name;
 
@@ -1707,7 +1707,7 @@ static int retransmit_packet(fr_io_request_t *u, struct timeval *now)
 		}
 
 		// @todo - call rr_track_update() when we use the authentication vector for uniqueness
-		memcpy(u->rr->vector, u->packet + 4, AUTH_VECTOR_LEN);
+		memcpy(u->rr->vector, u->packet + 4, RADIUS_AUTH_VECTOR_LENGTH);
 	}
 
 	RDEBUG("Retransmitting request (%d/%d).  Expecting response within %d.%06ds",
@@ -1913,7 +1913,7 @@ static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 		require_ma = 18;
 
 		base = fr_rand();
-		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
+		for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i += sizeof(uint32_t)) {
 			hash = fr_rand() ^ base;
 			memcpy(c->buffer + 4 + i, &hash, sizeof(hash));
 		}
@@ -2071,7 +2071,7 @@ static int conn_write(fr_io_connection_t *c, fr_io_request_t *u)
 	 *	Remember the authentication vector, which now has the
 	 *	packet signature.
 	 */
-	memcpy(u->rr->vector, c->buffer + 4, AUTH_VECTOR_LEN);
+	memcpy(u->rr->vector, c->buffer + 4, RADIUS_AUTH_VECTOR_LENGTH);
 
 	/*
 	 *	Print out the actual value of the Message-Authenticator attribute

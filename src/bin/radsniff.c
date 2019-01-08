@@ -479,14 +479,14 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		}
 
 		if (conf->print_packet && (fr_debug_lvl > 1)) {
-			char vector[(AUTH_VECTOR_LEN * 2) + 1];
+			char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1];
 
 			if (packet->vps) {
 				fr_pair_list_sort(&packet->vps, fr_pair_cmp_by_da_tag);
 				fr_pair_list_fprint(fr_log_fp, packet->vps);
 			}
 
-			fr_bin2hex(vector, packet->vector, AUTH_VECTOR_LEN);
+			fr_bin2hex(vector, packet->vector, RADIUS_AUTH_VECTOR_LENGTH);
 			INFO("\tAuthenticator-Field = 0x%s", vector);
 		}
 	}

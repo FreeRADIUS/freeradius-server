@@ -75,7 +75,7 @@ typedef enum {
 /*
  *	The number of bytes in a RADIUS packet header.
  */
-#define RADIUS_HDR_LEN	20
+#define RADIUS_HEADER_LENGTH	20
 
 /*
  *	RADIUS packet length.
@@ -84,7 +84,7 @@ typedef enum {
  */
 #define MAX_RADIUS_LEN	4096
 #define MIN_RADIUS_LEN	20
-#define AUTH_VECTOR_LEN	16
+#define RADIUS_AUTH_VECTOR_LENGTH	16
 
 
 #define IP_V(ip)	(((ip)->ip_vhl & 0xf0) >> 4)
@@ -147,7 +147,7 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t		code;
 	uint8_t		id;
 	uint8_t		length[2];
-	uint8_t		vector[AUTH_VECTOR_LEN];
+	uint8_t		vector[RADIUS_AUTH_VECTOR_LENGTH];
 	uint8_t		data[];
 } radius_packet_t;
 

@@ -53,7 +53,7 @@ typedef struct {
  */
 typedef rlm_rcode_t (*eap_process_t)(void *instance, eap_session_t *eap_session);
 
-#define EAP_STATE_LEN (AUTH_VECTOR_LEN)
+#define EAP_STATE_LEN (RADIUS_AUTH_VECTOR_LENGTH)
 /** Tracks the progress of a single session of any EAP method
  *
  */
