@@ -83,7 +83,7 @@ static int test_decode(void const *instance, REQUEST *request, uint8_t *const da
 
 static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
-	FR_MD5_CTX context;
+	fr_md5_ctx_t	*md5_ctx;
 	fr_listen_test_t const *pc = instance;
 
 	MPRINT1("\t\tENCODE >>> request %"PRIu64"- data %p %p room %zd\n", request->number, pc, buffer, buffer_len);
@@ -95,10 +95,11 @@ static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *buff
 
 	memcpy(buffer + 4, tpc.vector, 16);
 
-	fr_md5_init(&context);
-	fr_md5_update(&context, buffer, 20);
-	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
-	fr_md5_final(buffer + 4, &context);
+	md5_ctx = fr_md5_ctx_alloc(true);
+	fr_md5_update(md5_ctx, buffer, 20);
+	fr_md5_update(md5_ctx, (uint8_t const *) secret, strlen(secret));
+	fr_md5_final(buffer + 4, md5_ctx);
+	fr_md5_ctx_free(&md5_ctx);
 
 	return 20;
 }

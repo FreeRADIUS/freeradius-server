@@ -114,7 +114,7 @@ static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *c
 
 static ssize_t test_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
-	FR_MD5_CTX context;
+	fr_md5_ctx_t	*md5_ctx;
 	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,
 								       fr_radius_packet_ctx_t);
 
@@ -128,10 +128,11 @@ static ssize_t test_encode(UNUSED void const *instance, REQUEST *request, uint8_
 
 	memcpy(buffer + 4, pc->vector, 16);
 
-	fr_md5_init(&context);
-	fr_md5_update(&context, buffer, 20);
-	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
-	fr_md5_final(buffer + 4, &context);
+	md5_ctx = fr_md5_ctx_alloc(true);
+	fr_md5_update(md5_ctx, buffer, 20);
+	fr_md5_update(md5_ctx, (uint8_t const *) secret, strlen(secret));
+	fr_md5_final(buffer + 4, md5_ctx);
+	fr_md5_ctx_free(&md5_ctx);
 
 	return 20;
 }

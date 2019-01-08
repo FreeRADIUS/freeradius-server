@@ -682,7 +682,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t const *inst, REQUEST 
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	FR_MD5_CTX md5_context;
+	fr_md5_ctx_t *md5_ctx;
 	uint8_t digest[128];
 
 	RDEBUG("Comparing with \"known-good\" SMD5-Password");
@@ -693,10 +693,11 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t const *inst, REQUEST
 		return RLM_MODULE_INVALID;
 	}
 
-	fr_md5_init(&md5_context);
-	fr_md5_update(&md5_context, request->password->vp_octets, request->password->vp_length);
-	fr_md5_update(&md5_context, vp->vp_octets + MD5_DIGEST_LENGTH, vp->vp_length - MD5_DIGEST_LENGTH);
-	fr_md5_final(digest, &md5_context);
+	md5_ctx = fr_md5_ctx_alloc(true);
+	fr_md5_update(md5_ctx, request->password->vp_octets, request->password->vp_length);
+	fr_md5_update(md5_ctx, vp->vp_octets + MD5_DIGEST_LENGTH, vp->vp_length - MD5_DIGEST_LENGTH);
+	fr_md5_final(digest, md5_ctx);
+	fr_md5_ctx_free(&md5_ctx);
 
 	/*
 	 *	Compare only the MD5 hash results, not the salt.

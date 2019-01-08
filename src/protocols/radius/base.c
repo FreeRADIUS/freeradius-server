@@ -234,13 +234,14 @@ size_t fr_radius_attr_len(VALUE_PAIR const *vp)
  */
 void fr_radius_ascend_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value)
 {
-	FR_MD5_CTX context;
-	int	     i;
+	fr_md5_ctx_t	*md5_ctx;
+	int		i;
 
-	fr_md5_init(&context);
-	fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
-	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret) - 1);
-	fr_md5_final(digest, &context);
+	md5_ctx = fr_md5_ctx_alloc(true);
+	fr_md5_update(md5_ctx, vector, AUTH_VECTOR_LEN);
+	fr_md5_update(md5_ctx, (uint8_t const *) secret, talloc_array_length(secret) - 1);
+	fr_md5_final(digest, md5_ctx);
+	fr_md5_ctx_free(&md5_ctx);
 
 	for (i = 0; i < AUTH_VECTOR_LEN; i++ ) digest[i] ^= value[i];
 }
@@ -334,7 +335,6 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 {
 	uint8_t		*msg, *end;
 	size_t		packet_len = (packet[2] << 8) | packet[3];
-	FR_MD5_CTX	context;
 
 	/*
 	 *	No real limit on secret length, this is just
@@ -466,10 +466,15 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	/*
 	 *	Request / Response Authenticator = MD5(packet + secret)
 	 */
-	fr_md5_init(&context);
-	fr_md5_update(&context, packet, packet_len);
-	fr_md5_update(&context, secret, secret_len);
-	fr_md5_final(packet + 4, &context);
+	{
+		fr_md5_ctx_t	*md5_ctx;
+
+		md5_ctx = fr_md5_ctx_alloc(true);
+		fr_md5_update(md5_ctx, packet, packet_len);
+		fr_md5_update(md5_ctx, secret, secret_len);
+		fr_md5_final(packet + 4, md5_ctx);
+		fr_md5_ctx_free(&md5_ctx);
+	}
 
 	return 0;
 }

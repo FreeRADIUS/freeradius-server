@@ -6,28 +6,143 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/thread_local.h>
+#include <talloc.h>
+
 /*
  *  FORCE MD5 TO USE OUR MD5 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD5.
  */
 #include "md5.h"
 
-/** Calculate the MD5 hash of the contents of a buffer
- *
- * @param[out] out Where to write the MD5 digest. Must be a minimum of MD5_DIGEST_LENGTH.
- * @param[in] in Data to hash.
- * @param[in] inlen Length of the data.
- */
-void fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen)
-{
-	FR_MD5_CTX ctx;
+fr_thread_local_setup(fr_md5_ctx_t *, md5_ctx)
 
-	fr_md5_init(&ctx);
-	fr_md5_update(&ctx, in, inlen);
-	fr_md5_final(out, &ctx);
+/*
+ *	If we have OpenSSL's EVP API available, then build wrapper functions.
+ *
+ *	We always need to build the local MD5 functions as OpenSSL could
+ *	be operating in FIPS mode where MD5 digest functions are unavailable.
+ */
+#ifdef HAVE_OPENSSL_EVP_H
+#  include <openssl/evp.h>
+#  include <openssl/crypto.h>
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#  define EVP_MD_CTX_new EVP_MD_CTX_create
+#  define EVP_MD_CTX_free EVP_MD_CTX_destroy
+#  define EVP_MD_CTX_reset EVP_MD_CTX_cleanup
+#endif
+
+static int have_openssl_md5 = -1;
+
+static void _md5_ctx_openssl_free_on_exit(void *arg)
+{
+	EVP_MD_CTX_free(arg);
 }
 
-#ifndef HAVE_OPENSSL_EVP_H
+/** @copydoc fr_md5_ctx_reset
+ *
+ */
+static void fr_md5_openssl_ctx_reset(fr_md5_ctx_t *ctx)
+{
+	EVP_MD_CTX *md_ctx = ctx;
+
+	EVP_MD_CTX_reset(md_ctx);
+	EVP_DigestInit_ex(md_ctx, EVP_md5(), NULL);
+}
+
+/** @copydoc fr_md5_ctx_copy
+ *
+ */
+static void fr_md5_openssl_ctx_copy(fr_md5_ctx_t *dst, fr_md5_ctx_t const *src)
+{
+	EVP_MD_CTX_copy_ex(dst, src);
+}
+
+/** @copydoc fr_md5_ctx_alloc
+ *
+ */
+static fr_md5_ctx_t *fr_md5_openssl_ctx_alloc(bool thread_local)
+{
+	EVP_MD_CTX *md_ctx;
+
+	/*
+	 *	Use the thread local ctx to avoid heap allocations.
+	 */
+	if (thread_local) {
+		if (unlikely(!md5_ctx)) {
+			md_ctx = EVP_MD_CTX_new();
+			if (unlikely(!md_ctx)) {
+			oom:
+				fr_strerror_printf("Out of memory");
+				return NULL;
+			}
+			fr_thread_local_set_destructor(md5_ctx, _md5_ctx_openssl_free_on_exit, md_ctx);
+			EVP_DigestInit_ex(md_ctx, EVP_md5(), NULL);
+		} else {
+			md_ctx = md5_ctx;
+		}
+	/*
+	 *	If the MD5 ctx might be used across a yield point
+	 *	shared should be set to false, and new contexts
+	 *	should be allocated.
+	 */
+	} else {
+		md_ctx = EVP_MD_CTX_new();
+		if (unlikely(!md_ctx)) goto oom;
+		EVP_DigestInit_ex(md_ctx, EVP_md5(), NULL);
+	}
+
+	return md_ctx;
+}
+
+/** @copydoc fr_md5_ctx_free
+ *
+ */
+static void fr_md5_openssl_ctx_free(fr_md5_ctx_t **ctx)
+{
+	if (md5_ctx && (md5_ctx == *ctx)) {
+		fr_md5_openssl_ctx_reset(*ctx);
+		*ctx = NULL;
+		return;
+	}
+
+	EVP_MD_CTX_free(*ctx);
+	*ctx = NULL;
+}
+
+/** @copydoc fr_md5_update
+ *
+ */
+static void fr_md5_openssl_update(fr_md5_ctx_t *ctx, uint8_t const *in, size_t inlen)
+{
+	EVP_DigestUpdate(ctx, in, inlen);
+}
+
+/** @copydoc fr_md5_final
+ *
+ */
+static void fr_md5_openssl_final(uint8_t out[static MD5_DIGEST_LENGTH], fr_md5_ctx_t *ctx)
+{
+	unsigned int len;
+
+	EVP_DigestFinal(ctx, out, &len);
+
+	if (!fr_cond_assert(len == MD5_DIGEST_LENGTH)) return;
+}
+#endif
+
+#  define MD5_BLOCK_LENGTH 64
+typedef struct {
+	uint32_t state[4];			//!< State.
+	uint32_t count[2];			//!< Number of bits, mod 2^64.
+	uint8_t buffer[MD5_BLOCK_LENGTH];	//!< Input buffer.
+} fr_md5_ctx_local_t;
+
+
 /*
  * This code implements the MD5 message-digest algorithm.
  * The algorithm is due to Ron Rivest.	This code was
@@ -68,96 +183,6 @@ static const uint8_t PADDING[MD5_BLOCK_LENGTH] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-/** Initialise a new MD5 context
- *
- * Set bit count to 0 and buffer to mysterious initialization constants.
- *
- * @param[out] ctx to initialise.
- */
-void fr_md5_init(FR_MD5_CTX *ctx)
-{
-	ctx->count[0] = 0;
-	ctx->count[1] = 0;
-	ctx->state[0] = 0x67452301;
-	ctx->state[1] = 0xefcdab89;
-	ctx->state[2] = 0x98badcfe;
-	ctx->state[3] = 0x10325476;
-}
-
-/** Feed additional data into the MD5 hashing function
- *
- * @param[in,out] ctx to update.
- * @param[in] in Data to hash.
- * @param[in] inlen Length of the data.
- */
-void fr_md5_update(FR_MD5_CTX *ctx, uint8_t const *in, size_t inlen)
-{
-	size_t have, need;
-
-	/* Check how many bytes we already have and how many more we need. */
-	have = (size_t)((ctx->count[0] >> 3) & (MD5_BLOCK_LENGTH - 1));
-	need = MD5_BLOCK_LENGTH - have;
-
-	/* Update bitcount */
-/*	ctx->count += (uint64_t)inlen << 3;*/
-	if ((ctx->count[0] += ((uint32_t)inlen << 3)) < (uint32_t)inlen) {
-	/* Overflowed ctx->count[0] */
-		ctx->count[1]++;
-	}
-	ctx->count[1] += ((uint32_t)inlen >> 29);
-
-	if (inlen >= need) {
-		if (have != 0) {
-			memcpy(ctx->buffer + have, in, need);
-			fr_md5_transform(ctx->state, ctx->buffer);
-			in += need;
-			inlen -= need;
-			have = 0;
-		}
-
-		/* Process data in MD5_BLOCK_LENGTH-byte chunks. */
-		while (inlen >= MD5_BLOCK_LENGTH) {
-			fr_md5_transform(ctx->state, in);
-			in += MD5_BLOCK_LENGTH;
-			inlen -= MD5_BLOCK_LENGTH;
-		}
-	}
-
-	/* Handle any remaining bytes of data. */
-	if (inlen != 0) memcpy(ctx->buffer + have, in, inlen);
-}
-
-/** Finalise the MD5 context and write out the hash
- *
- * Final wrapup - pad to 64-byte boundary with the bit pattern 1 0*
- * (64-bit count of bits processed, MSB-first).
- *
- * @param[out] out Where to write the MD5 digest. Minimum length of MD5_DIGEST_LENGTH.
- * @param[in,out] ctx to finalise.
- */
-void fr_md5_final(uint8_t out[static MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
-{
-	uint8_t count[8];
-	size_t padlen;
-	int i;
-
-	/* Convert count to 8 bytes in little endian order. */
-	PUT_64BIT_LE(count, ctx->count);
-
-	/* Pad out to 56 mod 64. */
-	padlen = MD5_BLOCK_LENGTH -
-	    ((ctx->count[0] >> 3) & (MD5_BLOCK_LENGTH - 1));
-	if (padlen < 1 + 8)
-		padlen += MD5_BLOCK_LENGTH;
-	fr_md5_update(ctx, PADDING, padlen - 8); /* padlen - 8 <= 64 */
-	fr_md5_update(ctx, count, 8);
-
-	if (out != NULL) {
-		for (i = 0; i < 4; i++)
-			PUT_32BIT_LE(out + i * 4, ctx->state[i]);
-	}
-	memset(ctx, 0, sizeof(*ctx));	/* in case it's sensitive */
-}
 
 /* The four core functions - F1 is optimized somewhat */
 #define F1(x, y, z) (z ^ (x & (y ^ z)))
@@ -177,7 +202,7 @@ void fr_md5_final(uint8_t out[static MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
  * @param[in] state 16 bytes of data to feed into the hashing function.
  * @param[in,out] block MD5 digest block to update.
  */
-void fr_md5_transform(uint32_t state[static 4], uint8_t const block[static MD5_BLOCK_LENGTH])
+static void fr_md5_local_transform(uint32_t state[static 4], uint8_t const block[static MD5_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d, in[MD5_BLOCK_LENGTH / 4];
 
@@ -267,4 +292,206 @@ void fr_md5_transform(uint32_t state[static 4], uint8_t const block[static MD5_B
 	state[2] += c;
 	state[3] += d;
 }
+
+/** @copydoc fr_md5_ctx_reset
+ *
+ */
+static void fr_md5_local_ctx_reset(fr_md5_ctx_t *ctx)
+{
+	fr_md5_ctx_local_t	*ctx_local = talloc_get_type_abort(ctx, fr_md5_ctx_local_t);
+
+	ctx_local->count[0] = 0;
+	ctx_local->count[1] = 0;
+	ctx_local->state[0] = 0x67452301;
+	ctx_local->state[1] = 0xefcdab89;
+	ctx_local->state[2] = 0x98badcfe;
+	ctx_local->state[3] = 0x10325476;
+}
+
+/** @copydoc fr_md5_ctx_copy
+ *
+ */
+static void fr_md5_local_ctx_copy(fr_md5_ctx_t *dst, fr_md5_ctx_t const *src)
+{
+	fr_md5_ctx_local_t const *ctx_local_src = talloc_get_type_abort_const(src, fr_md5_ctx_local_t);
+	fr_md5_ctx_local_t *ctx_local_dst = talloc_get_type_abort(dst, fr_md5_ctx_local_t);
+
+	memcpy(ctx_local_dst, ctx_local_src, sizeof(*ctx_local_dst));
+}
+
+static void _md5_ctx_local_free_on_exit(void *arg)
+{
+	talloc_free(arg);
+}
+
+/** @copydoc fr_md5_ctx_alloc
+ *
+ */
+static fr_md5_ctx_t *fr_md5_local_ctx_alloc(bool thread_local)
+{
+	fr_md5_ctx_local_t *ctx_local;
+
+#ifdef HAVE_OPENSSL_EVP_H
+	if (unlikely(have_openssl_md5 == -1)) {
+		/*
+		 *	If we're not in FIPS mode, then swap out the
+		 *	md5 functions, and call the OpenSSL init
+		 *	function.
+		 */
+		if (FIPS_mode() == 0) {
+			have_openssl_md5 = 1;
+
+			/*
+			 *	Swap out the functions pointers
+			 *	for the OpenSSL versions.
+			 */
+			fr_md5_ctx_reset = fr_md5_openssl_ctx_reset;
+			fr_md5_ctx_copy = fr_md5_openssl_ctx_copy;
+			fr_md5_ctx_alloc = fr_md5_openssl_ctx_alloc;
+			fr_md5_ctx_free = fr_md5_openssl_ctx_free;
+			fr_md5_update = fr_md5_openssl_update;
+			fr_md5_final = fr_md5_openssl_final;
+
+			return fr_md5_ctx_alloc(thread_local);
+		}
+
+		have_openssl_md5 = 0;
+	}
 #endif
+
+	/*
+	 *	Use the thread local ctx to avoid heap allocations.
+	 */
+	if (thread_local) {
+		if (unlikely(!md5_ctx)) {
+			ctx_local = talloc(NULL, fr_md5_ctx_local_t);
+			if (unlikely(!ctx_local)) return NULL;
+			fr_md5_local_ctx_reset(ctx_local);
+			fr_thread_local_set_destructor(md5_ctx, _md5_ctx_local_free_on_exit, ctx_local);
+		} else {
+			ctx_local = md5_ctx;
+		}
+	/*
+	 *	If the MD5 ctx might be used across a yield point
+	 *	shared should be set to false, and new contexts
+	 *	should be allocated.
+	 */
+	} else {
+		ctx_local = talloc(NULL, fr_md5_ctx_local_t);
+		if (unlikely(!ctx_local)) return NULL;
+		fr_md5_local_ctx_reset(ctx_local);
+	}
+
+	return ctx_local;
+}
+
+/** @copydoc fr_md5_ctx_free
+ *
+ */
+static void fr_md5_local_ctx_free(fr_md5_ctx_t **ctx)
+{
+	if (md5_ctx && (md5_ctx == *ctx)) {
+		fr_md5_local_ctx_reset(*ctx);
+		*ctx = NULL;
+		return;	/* Don't free the thread_local ctx */
+	}
+
+	talloc_free(*ctx);
+	*ctx = NULL;
+}
+
+/** @copydoc fr_md5_update
+ *
+ */
+static void fr_md5_local_update(fr_md5_ctx_t *ctx, uint8_t const *in, size_t inlen)
+{
+	fr_md5_ctx_local_t	*ctx_local = talloc_get_type_abort(ctx, fr_md5_ctx_local_t);
+
+	size_t have, need;
+
+	/* Check how many bytes we already have and how many more we need. */
+	have = (size_t)((ctx_local->count[0] >> 3) & (MD5_BLOCK_LENGTH - 1));
+	need = MD5_BLOCK_LENGTH - have;
+
+	/* Update bitcount */
+/*	ctx_local->count += (uint64_t)inlen << 3;*/
+	if ((ctx_local->count[0] += ((uint32_t)inlen << 3)) < (uint32_t)inlen) {
+	/* Overflowed ctx_local->count[0] */
+		ctx_local->count[1]++;
+	}
+	ctx_local->count[1] += ((uint32_t)inlen >> 29);
+
+	if (inlen >= need) {
+		if (have != 0) {
+			memcpy(ctx_local->buffer + have, in, need);
+			fr_md5_local_transform(ctx_local->state, ctx_local->buffer);
+			in += need;
+			inlen -= need;
+			have = 0;
+		}
+
+		/* Process data in MD5_BLOCK_LENGTH-byte chunks. */
+		while (inlen >= MD5_BLOCK_LENGTH) {
+			fr_md5_local_transform(ctx_local->state, in);
+			in += MD5_BLOCK_LENGTH;
+			inlen -= MD5_BLOCK_LENGTH;
+		}
+	}
+
+	/* Handle any remaining bytes of data. */
+	if (inlen != 0) memcpy(ctx_local->buffer + have, in, inlen);
+}
+
+/** @copydoc fr_md5_final
+ *
+ */
+static void fr_md5_local_final(uint8_t out[static MD5_DIGEST_LENGTH], fr_md5_ctx_t *ctx)
+{
+	fr_md5_ctx_local_t	*ctx_local = talloc_get_type_abort(ctx, fr_md5_ctx_local_t);
+	uint8_t			count[8];
+	size_t			padlen;
+	int			i;
+
+	/* Convert count to 8 bytes in little endian order. */
+	PUT_64BIT_LE(count, ctx_local->count);
+
+	/* Pad out to 56 mod 64. */
+	padlen = MD5_BLOCK_LENGTH -
+	    ((ctx_local->count[0] >> 3) & (MD5_BLOCK_LENGTH - 1));
+	if (padlen < 1 + 8)
+		padlen += MD5_BLOCK_LENGTH;
+	fr_md5_update(ctx_local, PADDING, padlen - 8); /* padlen - 8 <= 64 */
+	fr_md5_update(ctx_local, count, 8);
+
+	if (out != NULL) {
+		for (i = 0; i < 4; i++)
+			PUT_32BIT_LE(out + i * 4, ctx_local->state[i]);
+	}
+	memset(ctx_local, 0, sizeof(*ctx_local));	/* in case it's sensitive */
+}
+
+/*
+ *	Digest function pointers
+ */
+fr_md5_ctx_reset_t fr_md5_ctx_reset = fr_md5_local_ctx_reset;
+fr_md5_ctx_copy_t fr_md5_ctx_copy = fr_md5_local_ctx_copy;
+fr_md5_ctx_alloc_t fr_md5_ctx_alloc = fr_md5_local_ctx_alloc;
+fr_md5_ctx_free_t fr_md5_ctx_free = fr_md5_local_ctx_free;
+fr_md5_update_t fr_md5_update = fr_md5_local_update;
+fr_md5_final_t fr_md5_final = fr_md5_local_final;
+
+/** Calculate the MD5 hash of the contents of a buffer
+ *
+ * @param[out] out Where to write the MD5 digest. Must be a minimum of MD5_DIGEST_LENGTH.
+ * @param[in] in Data to hash.
+ * @param[in] inlen Length of the data.
+ */
+void fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen)
+{
+	fr_md5_ctx_t *ctx;
+
+	ctx = fr_md5_ctx_alloc(true);
+	fr_md5_update(ctx, in, inlen);
+	fr_md5_final(out, ctx);
+	fr_md5_ctx_free(&ctx);
+}

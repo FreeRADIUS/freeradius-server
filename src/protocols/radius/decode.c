@@ -59,7 +59,7 @@ static void memcpy_bounded(void * restrict dst, const void * restrict src, size_
 ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 					 char const *secret, uint8_t const *vector, bool tunnel_password_zeros)
 {
-	FR_MD5_CTX	context, old;
+	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t		digest[AUTH_VECTOR_LEN];
 	int		secretlen;
 	size_t		i, n, encrypted_len, embedded_len;
@@ -97,17 +97,19 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 	 */
 	secretlen = talloc_array_length(secret) - 1;
 
-	fr_md5_init(&context);
-	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
-	fr_md5_copy(&old, &context); /* save intermediate work */
+	md5_ctx = fr_md5_ctx_alloc(false);
+	md5_ctx_old = fr_md5_ctx_alloc(true);
+
+	fr_md5_update(md5_ctx, (uint8_t const *) secret, secretlen);
+	fr_md5_ctx_copy(md5_ctx_old, md5_ctx); /* save intermediate work */
 
 	/*
 	 *	Set up the initial key:
 	 *
 	 *	 b(1) = MD5(secret + vector + salt)
 	 */
-	fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
-	fr_md5_update(&context, passwd, 2);
+	fr_md5_update(md5_ctx, vector, AUTH_VECTOR_LEN);
+	fr_md5_update(md5_ctx, passwd, 2);
 
 	embedded_len = 0;
 	for (n = 0; n < encrypted_len; n += AUTH_PASS_LEN) {
@@ -124,8 +126,8 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 		if (n == 0) {
 			base = 1;
 
-			fr_md5_final(digest, &context);
-			fr_md5_copy(&context, &old);
+			fr_md5_final(digest, md5_ctx);
+			fr_md5_ctx_copy(md5_ctx, md5_ctx_old);
 
 			/*
 			 *	A quick check: decrypt the first octet
@@ -136,24 +138,29 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 			if (embedded_len > encrypted_len) {
 				fr_strerror_printf("Tunnel Password is too long for the attribute "
 						   "(shared secret is probably incorrect!)");
+				fr_md5_ctx_free(&md5_ctx);
+				fr_md5_ctx_free(&md5_ctx_old);
 				return -1;
 			}
 
-			fr_md5_update(&context, passwd + 2, block_len);
+			fr_md5_update(md5_ctx, passwd + 2, block_len);
 
 		} else {
 			base = 0;
 
-			fr_md5_final(digest, &context);
+			fr_md5_final(digest, md5_ctx);
 
-			fr_md5_copy(&context, &old);
-			fr_md5_update(&context, passwd + n + 2, block_len);
+			fr_md5_ctx_copy(md5_ctx, md5_ctx_old);
+			fr_md5_update(md5_ctx, passwd + n + 2, block_len);
 		}
 
 		for (i = base; i < block_len; i++) {
 			passwd[n + i - 1] = passwd[n + i + 2] ^ digest[i];
 		}
 	}
+
+	fr_md5_ctx_free(&md5_ctx);
+	fr_md5_ctx_free(&md5_ctx_old);
 
 	/*
 	 *	Check trailing bytes
@@ -179,7 +186,7 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
  */
 ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret, uint8_t const *vector)
 {
-	FR_MD5_CTX	context, old;
+	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t		digest[AUTH_VECTOR_LEN];
 	int		i;
 	size_t		n, secretlen;
@@ -201,33 +208,38 @@ ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret
 	 */
 	secretlen = talloc_array_length(secret) - 1;
 
-	fr_md5_init(&context);
-	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
-	fr_md5_copy(&old, &context);	/* save intermediate work */
+	md5_ctx = fr_md5_ctx_alloc(false);
+	md5_ctx_old = fr_md5_ctx_alloc(true);
+
+	fr_md5_update(md5_ctx, (uint8_t const *) secret, secretlen);
+	fr_md5_ctx_copy(md5_ctx_old, md5_ctx);	/* save intermediate work */
 
 	/*
 	 *	The inverse of the code above.
 	 */
 	for (n = 0; n < pwlen; n += AUTH_PASS_LEN) {
 		if (n == 0) {
-			fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
-			fr_md5_final(digest, &context);
+			fr_md5_update(md5_ctx, vector, AUTH_VECTOR_LEN);
+			fr_md5_final(digest, md5_ctx);
 
-			fr_md5_copy(&context, &old);
+			fr_md5_ctx_copy(md5_ctx, md5_ctx_old);
 			if (pwlen > AUTH_PASS_LEN) {
-				fr_md5_update(&context, (uint8_t *) passwd, AUTH_PASS_LEN);
+				fr_md5_update(md5_ctx, (uint8_t *) passwd, AUTH_PASS_LEN);
 			}
 		} else {
-			fr_md5_final(digest, &context);
+			fr_md5_final(digest, md5_ctx);
 
-			fr_md5_copy(&context, &old);
+			fr_md5_ctx_copy(md5_ctx, md5_ctx_old);
 			if (pwlen > (n + AUTH_PASS_LEN)) {
-				fr_md5_update(&context, (uint8_t *) passwd + n, AUTH_PASS_LEN);
+				fr_md5_update(md5_ctx, (uint8_t *) passwd + n, AUTH_PASS_LEN);
 			}
 		}
 
 		for (i = 0; i < AUTH_PASS_LEN; i++) passwd[i + n] ^= digest[i];
 	}
+
+	fr_md5_ctx_free(&md5_ctx);
+	fr_md5_ctx_free(&md5_ctx_old);
 
  done:
 	passwd[pwlen] = '\0';

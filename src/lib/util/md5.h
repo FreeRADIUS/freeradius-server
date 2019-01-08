@@ -4,6 +4,7 @@
  * @note license is LGPL, but largely derived from a public domain source.
  *
  * @file src/lib/util/md5.h
+ * @brief Structures and declarations for md5.
  */
 RCSIDH(md5_h, "$Id$")
 
@@ -14,72 +15,78 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 
-#ifdef HAVE_INTTYPES_H
-#  include <inttypes.h>
-#endif
-
-#ifdef HAVE_SYS_TYPES_H
-#  include <sys/types.h>
-#endif
-
-#ifdef HAVE_STDINT_H
-#  include <stdint.h>
-#endif
-
-#  include <string.h>
-
-#ifdef HAVE_OPENSSL_EVP_H
-#  include <openssl/evp.h>
-#endif
+#include <inttypes.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
 
 #ifndef MD5_DIGEST_LENGTH
 #  define MD5_DIGEST_LENGTH 16
 #endif
 
-#ifndef HAVE_OPENSSL_EVP_H
-/*
- * The MD5 code used here and in md5.c was originally retrieved from:
- *   http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.h?rev=1.1
- *
- * This code implements the MD5 message-digest algorithm.
- * The algorithm is due to Ron Rivest.  This code was
- * written by Colin Plumb in 1993, no copyright is claimed.
- * This code is in the public domain; do with it what you wish.
- *
- * Equivalent code is available from RSA Data Security, Inc.
- * This code has been tested against that, and is equivalent,
- * except that you don't need to include two pages of legalese
- * with every copy.
- */
-#  define MD5_BLOCK_LENGTH 64
-typedef struct {
-	uint32_t state[4];			//!< State.
-	uint32_t count[2];			//!< Number of bits, mod 2^64.
-	uint8_t buffer[MD5_BLOCK_LENGTH];	//!< Input buffer.
-} FR_MD5_CTX;
+typedef void fr_md5_ctx_t;
 
-void 	fr_md5_init(FR_MD5_CTX *ctx);
-void	fr_md5_update(FR_MD5_CTX *ctx, uint8_t const *in, size_t inlen);
-void	fr_md5_final(uint8_t out[static MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx);
-void	fr_md5_transform(uint32_t state[static 4], uint8_t const block[static MD5_BLOCK_LENGTH]);
-#  define fr_md5_copy(_out, _in)	memcpy(_out, _in, sizeof(*_out))
-#else  /* HAVE_OPENSSL_EVP_H */
-USES_APPLE_DEPRECATED_API
-#include <openssl/md5.h>
-#  define FR_MD5_CTX			MD5_CTX
-#  define fr_md5_init			MD5_Init
-#  define fr_md5_update			MD5_Update
-#  define fr_md5_final			MD5_Final
-#  define fr_md5_transform		MD5_Transform
-#  define fr_md5_copy(_out, _in)	memcpy(_out, _in, sizeof(*_out))
-#endif
+/* md5.c */
+
+/** Reset the ctx to allow reuse
+ *
+ * @param[in] ctx	To reuse.
+ */
+typedef		void (*fr_md5_ctx_reset_t)(fr_md5_ctx_t *ctx);
+extern		fr_md5_ctx_reset_t	fr_md5_ctx_reset;
+
+/** Copy the contents of a ctx
+ *
+ * @param[in] dst	Where to copy the context to.
+ * @param[in] src	Where to copy the context from.
+ */
+typedef		void (*fr_md5_ctx_copy_t)(fr_md5_ctx_t *dst, fr_md5_ctx_t const *src);
+extern		fr_md5_ctx_copy_t	fr_md5_ctx_copy;
+
+/** Allocation function for MD5 digest context
+ *
+ * @param[in] shared	Whether we allocate a new context or use the thread local context.
+ * @return
+ *	- An MD5 ctx.
+ *	- NULL if out of memory.
+ */
+typedef		fr_md5_ctx_t *(*fr_md5_ctx_alloc_t)(bool shared);
+extern		fr_md5_ctx_alloc_t	fr_md5_ctx_alloc;
+
+/** Free function for MD5 digest ctx
+ *
+ * @param[in] ctx	MD5 ctx to free.  If the shared ctx is passed in
+ *			then the ctx is reset but not freed.
+ */
+typedef		void (*fr_md5_ctx_free_t)(fr_md5_ctx_t **ctx);
+extern		fr_md5_ctx_free_t	fr_md5_ctx_free;
+
+/** Ingest plaintext into the digest
+ *
+ * @param[in] ctx	To ingest data into.
+ * @param[in] in	Data to ingest.
+ * @param[in] inlen	Length of data to ingest.
+ */
+typedef		void (*fr_md5_update_t)(fr_md5_ctx_t *ctx, uint8_t const *in, size_t inlen);
+extern		fr_md5_update_t		fr_md5_update;
+
+/** Finalise the ctx, producing the digest
+ *
+ * @param[out] out	The MD5 digest.
+ * @param[in] ctx	To finalise.
+ */
+typedef		void (*fr_md5_final_t)(uint8_t out[static MD5_DIGEST_LENGTH], fr_md5_ctx_t *ctx);
+extern		fr_md5_final_t		fr_md5_final;
+
+/** Perform a single digest operation on a single input buffer
+ *
+ */
+void		fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
 
 /* hmac.c */
-void	fr_hmac_md5(uint8_t digest[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
-		    uint8_t const *key, size_t key_len);
-/* md5.c */
-void	fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
-
+void		fr_hmac_md5(uint8_t digest[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
+			    uint8_t const *key, size_t key_len);
 #ifdef __cplusplus
 }
 #endif

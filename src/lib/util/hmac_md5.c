@@ -89,19 +89,19 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t in
 void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
 		 uint8_t const *key, size_t key_len)
 {
-	FR_MD5_CTX ctx;
-	uint8_t k_ipad[65];    /* inner padding - key XORd with ipad */
-	uint8_t k_opad[65];    /* outer padding - key XORd with opad */
-	uint8_t tk[16];
+	fr_md5_ctx_t	*ctx;
+	uint8_t		k_ipad[65];    /* inner padding - key XORd with ipad */
+	uint8_t		k_opad[65];    /* outer padding - key XORd with opad */
+	uint8_t		tk[16];
 	int i;
+
+	ctx = fr_md5_ctx_alloc(true);
 
 	/* if key is longer than 64 bytes reset it to key=MD5(key) */
 	if (key_len > 64) {
-		FR_MD5_CTX tctx;
-
-		fr_md5_init(&tctx);
-		fr_md5_update(&tctx, key, key_len);
-		fr_md5_final(tk, &tctx);
+		fr_md5_update(ctx, key, key_len);
+		fr_md5_final(tk, ctx);
+		fr_md5_ctx_reset(ctx);
 
 		key = tk;
 		key_len = 16;
@@ -120,10 +120,10 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t in
 	 */
 
 	/* start out by storing key in pads */
-	memset( k_ipad, 0, sizeof(k_ipad));
-	memset( k_opad, 0, sizeof(k_opad));
-	memcpy( k_ipad, key, key_len);
-	memcpy( k_opad, key, key_len);
+	memset(k_ipad, 0, sizeof(k_ipad));
+	memset(k_opad, 0, sizeof(k_opad));
+	memcpy(k_ipad, key, key_len);
+	memcpy(k_opad, key, key_len);
 
 	/* XOR key with ipad and opad values */
 	for (i = 0; i < 64; i++) {
@@ -133,20 +133,20 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t in
 	/*
 	 * perform inner MD5
 	 */
-	fr_md5_init(&ctx);		   /* init ctx for 1st
-					      * pass */
-	fr_md5_update(&ctx, k_ipad, 64);      /* start with inner pad */
-	fr_md5_update(&ctx, in, inlen); /* then in of datagram */
-	fr_md5_final(digest, &ctx);	  /* finish up 1st pass */
+	fr_md5_update(ctx, k_ipad, 64);		/* start with inner pad */
+	fr_md5_update(ctx, in, inlen);		/* then in of datagram */
+	fr_md5_final(digest, ctx);		/* finish up 1st pass */
+
+
 	/*
 	 * perform outer MD5
 	 */
-	fr_md5_init(&ctx);		   /* init ctx for 2nd
-					      * pass */
-	fr_md5_update(&ctx, k_opad, 64);     /* start with outer pad */
-	fr_md5_update(&ctx, digest, 16);     /* then results of 1st
-					      * hash */
-	fr_md5_final(digest, &ctx);	  /* finish up 2nd pass */
+	fr_md5_ctx_reset(ctx);
+	fr_md5_update(ctx, k_opad, 64);		/* start with outer pad */
+	fr_md5_update(ctx, digest, 16);		/* then results of 1st hash */
+	fr_md5_final(digest, ctx);		/* finish up 2nd pass */
+
+	fr_md5_ctx_free(&ctx);
 }
 #endif /* HAVE_OPENSSL_EVP_H */
 
