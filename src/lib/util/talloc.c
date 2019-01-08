@@ -308,6 +308,10 @@ char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
 
 	p = talloc_array(t, char, inlen + 1);
 	if (!p) return NULL;
+
+	/*
+	 * C99 (7.21.1/2) - Length zero results in noop
+	 */
 	memcpy(p, in, inlen);
 	p[inlen] = '\0';
 
