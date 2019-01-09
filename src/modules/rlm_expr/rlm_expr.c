@@ -365,8 +365,8 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 		break;
 
 	case TOKEN_LSHIFT:
-		if (rhs > 63) {
-			RDEBUG("Shift must be less than 63 (was %lld)", (long long int) rhs);
+		if (rhs > 62) {
+			RDEBUG("Shift must be less than 62 (was %lld)", (long long int) rhs);
 			return false;
 		}
 
@@ -374,8 +374,8 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 		break;
 
 	case TOKEN_RSHIFT:
-		if (rhs > 63) {
-			RDEBUG("Shift must be less than 63 (was %lld)", (long long int) rhs);
+		if (rhs > 62) {
+			RDEBUG("Shift must be less than 62 (was %lld)", (long long int) rhs);
 			return false;
 		}
 
