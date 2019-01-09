@@ -856,7 +856,6 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 	 */
 	rcode = rr_track_retry(&u->timer, now);
 	if (rcode == 0) {
-		rad_assert(c != NULL);
 		REDEBUG("No response to status checks, closing connection %s", c->name);
 		talloc_free(c);
 		return;
@@ -1757,12 +1756,12 @@ static int retransmit_packet(fr_io_request_t *u, struct timeval *now)
 static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uctx)
 {
 	int				rcode;
-	fr_io_request_t	*u = uctx;
+	fr_io_request_t			*u = uctx;
 	fr_io_connection_t		*c = u->c;
 	REQUEST				*request;
 
 	rad_assert(u->timer.ev == NULL);
-	rad_assert(!c->inst->parent->synchronous);
+	rad_assert(!c || !c->inst->parent->synchronous);
 
 	request = u->request;
 
