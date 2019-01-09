@@ -1067,7 +1067,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
 	xlat_async_register(inst, inst->xlat_name, rest_xlat,
-			    NULL, 0, NULL,
+			    NULL, NULL, NULL,
 			    mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL,
 			    inst);
 
