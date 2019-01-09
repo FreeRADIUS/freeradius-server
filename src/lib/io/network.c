@@ -699,7 +699,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	if (!s->dead) {
 		if (fr_event_fd_delete(nr->el, s->listen->fd, s->filter) < 0) {
 			PERROR("Failed deleting socket from event loop in _network_socket_free");
-			rad_assert("Failed removing socket FD from event loop in _network_socket_free" == NULL);
+			return -1;
 		}
 	}
 
@@ -1517,7 +1517,7 @@ static int cmd_stats_self(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cm
 	fprintf(fp, "count.out\t%" PRIu64 "\n", nr->stats.out);
 	fprintf(fp, "count.dup\t%" PRIu64 "\n", nr->stats.dup);
 	fprintf(fp, "count.dropped\t%" PRIu64 "\n", nr->stats.dropped);
-	fprintf(fp, "count.sockets\t%d\n", rbtree_num_elements(nr->sockets));
+	fprintf(fp, "count.sockets\t%u\n", rbtree_num_elements(nr->sockets));
 
 	return 0;
 }

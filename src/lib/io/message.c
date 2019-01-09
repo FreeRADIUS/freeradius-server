@@ -1325,12 +1325,12 @@ void fr_message_set_debug(fr_message_set_t *ms, FILE *fp)
 	for (i = 0; i <= ms->mr_max; i++) {
 		fr_ring_buffer_t *mr = ms->mr_array[i];
 
-		fprintf(fp, "messages[%d] =\tsize %zd, used %zd\n",
+		fprintf(fp, "messages[%d] =\tsize %zu, used %zu\n",
 			i, fr_ring_buffer_size(mr), fr_ring_buffer_used(mr));
 	}
 
 	for (i = 0; i <= ms->rb_max; i++) {
-		fprintf(fp, "ring buffer[%d] =\tsize %zd, used %zd\n",
+		fprintf(fp, "ring buffer[%d] =\tsize %zu, used %zu\n",
 			i, fr_ring_buffer_size(ms->rb_array[i]), fr_ring_buffer_used(ms->rb_array[i]));
 	}
 }
