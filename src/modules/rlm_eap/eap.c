@@ -502,7 +502,7 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 		return -1;
 	}
 
-	if ((eap_packet->data[0] <= 0) ||
+	if ((eap_packet->data[0] == 0) ||
 	    (eap_packet->data[0] >= FR_EAP_MAX_TYPES)) {
 		/*
 		 *	Handle expanded types by smashing them to
