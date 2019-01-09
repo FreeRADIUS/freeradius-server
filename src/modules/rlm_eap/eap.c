@@ -784,11 +784,7 @@ eap_session_t *eap_session_thaw(REQUEST *request)
 	eap_session_t *eap_session;
 
 	eap_session = request_data_reference(request, NULL, REQUEST_DATA_EAP_SESSION);
-	if (!eap_session) {
-		/* Either send EAP_Identity or EAP-Fail */
-		REDEBUG("No EAP session matching state");
-		return NULL;
-	}
+	if (!eap_session) return NULL;
 
 	if (!fr_cond_assert(eap_session->inst)) return NULL;
 
@@ -827,9 +823,9 @@ eap_session_t *eap_session_thaw(REQUEST *request)
  */
 eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t const *inst, REQUEST *request)
 {
-	eap_session_t	*eap_session = NULL;
-	eap_packet_raw_t *eap_packet;
-	VALUE_PAIR	*state, *user;
+	eap_session_t		*eap_session = NULL;
+	eap_packet_raw_t	*eap_packet;
+	VALUE_PAIR		*user;
 
 	/*
 	 *	Ensure it's a valid EAP-Request, or EAP-Response.
@@ -853,13 +849,16 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 	 *	This means that if there is no State attribute, we should
 	 *	consider this as the start of a new session.
 	 */
-	state = fr_pair_find_by_da(request->packet->vps, attr_state, TAG_ANY);
-	if (!state) {
+	eap_session = eap_session_thaw(request);
+	if (!eap_session) {
 		eap_session = eap_session_alloc(inst, request);
 		if (!eap_session) goto error_round;
 
-		RDEBUG4("New eap_session_t %p", eap_session);
-
+		if (RDEBUG_ENABLED4) {
+			RDEBUG4("New EAP session - eap_session_t %p", eap_session);
+		} else {
+			RDEBUG2("New EAP session started");
+		}
 		/*
 		 *	All fields in the eap_session are set to zero.
 		 */
@@ -870,6 +869,9 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 				RDEBUG("Invalid identity response");
 				goto error_session;
 			}
+			RDEBUG2("EAP Identity Response - \"%pV\"",
+				fr_box_strvalue_len(eap_session->identity,
+						    talloc_array_length(eap_session->identity) - 1));
 			break;
 
 		case FR_EAP_INVALID:
@@ -906,10 +908,12 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 	 *	Continue a previously started EAP-Session
 	 */
 	} else {
-		eap_session = eap_session_thaw(request);
-		if (!eap_session) goto error_round;
+		if (RDEBUG_ENABLED4) {
+			RDEBUG4("Continuing EAP session - eap_session_t %p", eap_session);
+		} else {
+			RDEBUG2("Continuing EAP session");
+		}
 
-		RDEBUG4("Got eap_session_t %p from request data", eap_session);
 		(void) talloc_get_type_abort(eap_session, eap_session_t);
 		eap_session->rounds++;
 		if (eap_session->rounds >= 50) {
