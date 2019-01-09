@@ -1371,7 +1371,7 @@ int main(int argc, char *argv[])
 
 #define ADD_ACTION(_action) \
 do { \
-	if ((size_t)(p - ops) >= sizeof(ops)) { \
+	if (p >= end) { \
 		ERROR("Too many actions, max is " STRINGIFY(sizeof(ops))); \
 		usage(64); \
 	} \
