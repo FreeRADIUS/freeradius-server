@@ -826,6 +826,23 @@ static void conn_finished_request(fr_io_connection_t *c, fr_io_request_t *u)
 // ATD END
 
 
+static int conn_timeout_init(fr_event_list_t *el, fr_io_request_t *u, fr_event_cb_t callback)
+{
+	u->time_sent = fr_time();
+	fr_time_to_timeval(&u->timer.start, u->time_sent);
+
+	if (rr_track_start(&u->timer) < 0) {
+		return -1;
+	}
+
+	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next,
+				  callback, u) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Deal with status check timeouts for transmissions, etc.
  *
  */
@@ -1019,18 +1036,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 	/*
 	 *	Start the timers for status checks.
 	 */
-	u->time_sent = fr_time();
-	fr_time_to_timeval(&u->timer.start, u->time_sent);
-
-	if (rr_track_start(&u->timer) < 0) {
-		DEBUG("%s - Failed starting retransmit tracking for connection %s",
-		      c->module_name, c->name);
-		talloc_free(c);
-		return;
-	}
-
-	if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
-				  status_check_timeout, u) < 0) {
+	if (conn_timeout_init(c->thread->el, u, status_check_timeout) < 0) {
 		DEBUG("%s - Failed starting retransmit tracking for connection %s",
 		      c->module_name, c->name);
 		talloc_free(c);
@@ -2721,9 +2727,9 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 {
 	rlm_rcode_t    			rcode = RLM_MODULE_FAIL;
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	fr_io_connection_thread_t		*t = talloc_get_type_abort(thread, fr_io_connection_thread_t);
-	fr_io_request_t	*u = talloc_get_type_abort(request_io_ctx, fr_io_request_t);
-	fr_io_connection_t	*c;
+	fr_io_connection_thread_t	*t = talloc_get_type_abort(thread, fr_io_connection_thread_t);
+	fr_io_request_t			*u = talloc_get_type_abort(request_io_ctx, fr_io_request_t);
+	fr_io_connection_t		*c;
 
 	rad_assert(request->packet->code > 0);
 	rad_assert(request->packet->code < FR_MAX_PACKET_CODE);
@@ -2757,30 +2763,16 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 	state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);
 
 	/*
-	 *	Start the retransmission timers.
+	 *	If it's synchronous, remember the time we sent this
+	 *	packet.  Otherwise, start the retransmission timers.
 	 */
-	u->time_sent = fr_time();
+	if (inst->parent->synchronous) {
+		u->time_sent = fr_time();
 
-	/*
-	 *	Set up retransmission timers ONLY if we are
-	 *	responsible for retransmits.
-	 */
-	if (!inst->parent->synchronous) {
-		fr_time_to_timeval(&u->timer.start, u->time_sent);
-
-		if (rr_track_start(&u->timer) < 0) {
-			RDEBUG("%s - Failed starting retransmit tracking", inst->parent->name);
-			talloc_free(u);
-			return RLM_MODULE_FAIL;
-		}
-
-		if (fr_event_timer_insert(u, t->el, &u->timer.ev, &u->timer.next,
-					  response_timeout, u) < 0) {
-			RDEBUG("%s - Failed starting retransmit tracking",
-			       inst->parent->name);
-			talloc_free(u);
-			return RLM_MODULE_FAIL;
-		}
+	} else if (conn_timeout_init(t->el, u, response_timeout) < 0) {
+		RDEBUG("%s - Failed starting retransmit tracking", inst->parent->name);
+		talloc_free(u);
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
