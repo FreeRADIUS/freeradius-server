@@ -129,7 +129,7 @@ fr_dict_attr_autoload_t proto_radius_auth_dict_attr[] = {
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
  */
-static char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
+static char *auth_name(char *buf, size_t buflen, REQUEST *request)
 {
 	VALUE_PAIR	*cli;
 	VALUE_PAIR	*pair;
@@ -137,7 +137,6 @@ static char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
 	char const	*tls = "";
 
 	cli = fr_pair_find_by_da(request->packet->vps, attr_calling_station_id, TAG_ANY);
-	if (!cli) do_cli = false;
 
 	pair = fr_pair_find_by_da(request->packet->vps, attr_nas_port, TAG_ANY);
 	if (pair != NULL) port = pair->vp_uint32;
@@ -146,7 +145,7 @@ static char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
 
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
 		 request->client->shortname, port,
-		 (do_cli ? " cli " : ""), (do_cli ? cli->vp_strvalue : ""),
+		 (cli ? " cli " : ""), (cli ? cli->vp_strvalue : ""),
 		 tls);
 
 	return buf;
@@ -235,7 +234,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	      username ? &username->data : fr_box_strvalue("<no User-Name attribute>"),
 	      logit ? "/" : "",
 	      logit ? (password_str ? fr_box_strvalue(password_str) : &request->password->data) : fr_box_strvalue(""),
-	      auth_name(buf, sizeof(buf), request, 1),
+	      auth_name(buf, sizeof(buf), request),
 	      extra);
 
 	talloc_free(msg);
