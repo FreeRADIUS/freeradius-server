@@ -236,7 +236,6 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	proto_control_t const *inst = talloc_get_type_abort_const(instance, proto_control_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t *address = track->address;
-	ssize_t data_len;
 	RADCLIENT const *client;
 
 	/*
@@ -292,41 +291,11 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	 *	If the app_io encodes the packet, then we don't need
 	 *	to do that.
 	 */
-	if (inst->io.app_io->encode) {
-		data_len = inst->io.app_io->encode(inst->io.app_io_instance, request, buffer, buffer_len);
-		if (data_len > 0) return data_len;
-	}
-
-#ifdef WITH_UDPFROMTO
-	/*
-	 *	Overwrite the src ip address on the outbound packet
-	 *	with the one specified by the client.  This is useful
-	 *	to work around broken DSR implementations and other
-	 *	routing issues.
-	 */
-	if (client->src_ipaddr.af != AF_UNSPEC) {
-		request->reply->src_ipaddr = client->src_ipaddr;
-	}
-#endif
-
-	/*
-	 *	@todo - encode the reply.
-	 *
-	 *	If the reply is too large, find a way to gradually
-	 *	write it to the network side?
-	 */
-#if 0
-	data_len = fr_control_encode(buffer, buffer_len, request->packet->data,
-				  request->reply->code, request->reply->id, request->reply->vps);
-#else
-	data_len = -1;
-#endif
-	if (data_len < 0) {
-		RPEDEBUG("Failed encoding CONTROL reply");
+	if (!inst->io.app_io->encode) {
 		return -1;
 	}
 
-	return data_len;
+	return inst->io.app_io->encode(inst->io.app_io_instance, request, buffer, buffer_len);
 }
 
 static void mod_entry_point_set(void const *instance, REQUEST *request)
