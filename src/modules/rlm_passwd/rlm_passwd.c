@@ -97,7 +97,7 @@ static int string_to_entry(char const* string, int num_fields, char delimiter,
 	if(!len) return 0;
 	if (string[len-1] == '\r') len--;
 	if(!len) return 0;
-	if (!len || !passwd ||
+	if (!passwd ||
 	    bufferlen < (len + num_fields * sizeof (char*) + num_fields * sizeof (char) + sizeof (struct mypasswd) + 1) ) return 0;
 	passwd->next = NULL;
 	data_beg=(char *)passwd + sizeof(struct mypasswd);
