@@ -370,7 +370,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 	 *	dictionary used for decoding.
 	 */
 //	WRITE("\t%s = %s", attr_protocol->name, fr_dict_root(request->dict)->name);
-	WRITE("\tTimestamp = %ld\n", (unsigned long) request->packet->timestamp.tv_sec);
+	WRITE("\tTimestamp = %lu\n", (unsigned long) request->packet->timestamp.tv_sec);
 
 	WRITE("\n");
 
