@@ -2836,18 +2836,20 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 }
 
 
-static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *request_io_ctx, fr_state_signal_t action)
+static void mod_signal(REQUEST *request, void *instance, UNUSED void *thread, void *request_io_ctx, fr_state_signal_t action)
 {
+	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	fr_io_request_t *u = talloc_get_type_abort(request_io_ctx, fr_io_request_t);
 	struct timeval now;
 
 	if (action != FR_SIGNAL_DUP) return;
 
 	/*
-	 *	Sychronous mode means that we don't do any
-	 *	retransmission, and instead we rely on the
-	 *	retransmission from the NAS.
+	 *	ASychronous mode means that we do retransmission, and
+	 *	we don't rely on the retransmission from the NAS.
 	 */
+	if (!inst->parent->synchronous) return;
+
 	RDEBUG("retransmitting proxied request");
 
 	gettimeofday(&now, NULL);
