@@ -257,7 +257,7 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
 		 */
 		case 3:
 
-			RDEBUG3("SoH MS-Packet-Info %s vers=%i", *p & 0x10 ? "request" : "response", *p & 0xf);
+			RDEBUG3("SoH MS-Packet-Info %s vers=%i", (*p & 0x10) ? "request" : "response", *p & 0xf);
 			p++;
 			data_len--;
 			break;
@@ -684,10 +684,10 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 							fr_pair_value_snprintf(vp,
 									"%s ok snoozed=%i microsoft=%i up2date=%i enabled=%i",
 									s,
-									hcstatus & 0x8 ? 1 : 0,
-									hcstatus & 0x4 ? 1 : 0,
-									hcstatus & 0x2 ? 1 : 0,
-									hcstatus & 0x1 ? 1 : 0
+									(hcstatus & 0x8) ? 1 : 0,
+									(hcstatus & 0x4) ? 1 : 0,
+									(hcstatus & 0x2) ? 1 : 0,
+									(hcstatus & 0x1) ? 1 : 0
 									);
 						}
 					} else {
