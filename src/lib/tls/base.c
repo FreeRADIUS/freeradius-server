@@ -455,7 +455,10 @@ static void openssl_free(void *to_free)
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 /** Free any memory alloced by libssl
  *
- * OpenSSL >= 1.1.0 uses an atexit handler to automatically free memory
+ * OpenSSL >= 1.1.0 uses an atexit handler to automatically free
+ * memory. However, we need to call it manually because some of
+ * the SSL ctx is parented to the main config which will get freed
+ * before the atexit handler, causing a segfault on exit.
  */
 void tls_free(void)
 {
@@ -475,6 +478,7 @@ void tls_free(void)
 #else
 void tls_free(void)
 {
+	OPENSSL_cleanup();
 	fr_dict_autofree(tls_dict);
 }
 #endif
