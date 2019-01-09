@@ -208,7 +208,7 @@ static void rs_time_print(char *out, size_t len, struct timeval const *t)
 
 	if (usec) {
 		while (usec < 100000) usec *= 10;
-		snprintf(out + ret, len - ret, ".%i", usec);
+		snprintf(out + ret, len - ret, ".%u", usec);
 	} else {
 		snprintf(out + ret, len - ret, ".000000");
 	}

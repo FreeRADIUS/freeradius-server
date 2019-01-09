@@ -707,7 +707,7 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 	p++;
 
 
-	if (input) parent = talloc_strdup(ctx, input);
+	parent = talloc_strdup(ctx, input);
 
 	/*
 	 *	Set the name and try to find the syntax.
