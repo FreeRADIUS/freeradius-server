@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/connection.h>
 
 #ifdef HAVE_FCNTL_H
@@ -95,7 +94,6 @@ typedef struct {
 		uint32_t		permissions;		//!< Permissions to use when creating new files.
 		char const		*group_str;		//!< Group to set on new files.
 		gid_t			group;			//!< Resolved gid.
-		exfile_t		*ef;			//!< Exclusive file access handle.
 		bool			escape;			//!< Do filename escaping, yes / no.
 		xlat_escape_t		escape_func;		//!< Escape function.
 	} file;
