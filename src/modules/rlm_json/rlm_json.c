@@ -93,7 +93,7 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 	slen = fr_jpath_parse(request, &head, fmt, strlen(fmt));
 	if (slen <= 0) {
 		rad_assert(head == NULL);
-		return snprintf(*out, outlen, "%zu:%s", -(slen), fr_strerror());
+		return snprintf(*out, outlen, "%zd:%s", -(slen), fr_strerror());
 	}
 	rad_assert(talloc_get_type_abort(head, fr_jpath_node_t));
 
