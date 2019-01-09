@@ -70,23 +70,23 @@ radiusd.pid: test.conf
 .PHONY: radiusd.kill
 radiusd.kill:
 	@if [ -f radiusd.pid ]; then \
-	    ret=0; \
-	    if ! ps `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
-		rm -f radiusd.pid; \
-		echo "FreeRADIUS terminated during test"; \
-		echo "GDB output was:"; \
-		cat "$(TEST_PATH)/gdb.log"; \
-		echo "Last log entries were:"; \
-		tail -n 20 $(TEST_PATH)/radius.log; \
-		echo "Last entries in server log $(TEST_PATH)/radius.log"; \
-		ret=1; \
-	    fi; \
-		if ! kill -TERM `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
-		    ret=1; \
+		ret=0; \
+		if ! ps `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+			echo "FreeRADIUS terminated during test"; \
+			echo "GDB output was:"; \
+			cat "$(TEST_PATH)/gdb.log"; \
+			echo "Last log entries were:"; \
+			tail -n 20 $(TEST_PATH)/radius.log; \
+			echo "Last entries in server log $(TEST_PATH)/radius.log"; \
+			ret=1; \
+		elif ! kill -TERM `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+			echo "Failed terminating FreeRADIUS process"; \
+			ret=1; \
 		fi; \
+		rm -f radiusd.pid \
 		exit $$ret; \
 	fi
-	@rm -f radiusd.pid
+
 
 # kill the server (if it's running)
 # start the server
