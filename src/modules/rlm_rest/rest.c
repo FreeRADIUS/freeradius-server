@@ -1598,7 +1598,7 @@ size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
 {
 	rlm_rest_curl_context_t *ctx = handle->ctx;
 
-	rad_assert(ctx->response.buffer || (!ctx->response.buffer && !ctx->response.used));
+	rad_assert(ctx->response.buffer || !ctx->response.used);
 
 	*out = ctx->response.buffer;
 	return ctx->response.used;
