@@ -458,8 +458,8 @@ static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr
 	fr_timeval_subtract(&now, &now, &start_time);
 
 	fprintf(fp, "Uptime: %u.%06u seconds\n",
-		(int) now.tv_sec,
-		(int) now.tv_usec);
+		(unsigned int) now.tv_sec,
+		(unsigned int) now.tv_usec);
 
 	return 0;
 }
