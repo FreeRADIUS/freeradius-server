@@ -364,7 +364,7 @@ unexpected:
 		goto unexpected;
 	}
 
-	if (num[attr_eap_fast_intermediate_result->attr] > 0 && num[attr_eap_fast_intermediate_result->attr]) {
+	if (num[attr_eap_fast_intermediate_result->attr] > 0) {
 		RDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request.");
 		goto unexpected;
 	}
