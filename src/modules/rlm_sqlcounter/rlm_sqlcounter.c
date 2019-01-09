@@ -256,7 +256,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
  *	%S	sqlmod_inst
  *
  */
-static size_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, REQUEST *request, char const *fmt)
+static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, REQUEST *request, char const *fmt)
 {
 	int freespace;
 	char const *p;
