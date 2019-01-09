@@ -292,7 +292,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	xlat_async_register(inst, inst->xlat_name, xlat_delay,
 			    mod_xlat_instantiate, rlm_delay_t *, NULL,
-			    NULL, 0, NULL, inst);
+			    NULL, NULL, NULL, inst);
 
 	return 0;
 }
