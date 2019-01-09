@@ -86,7 +86,7 @@ int fr_tacacs_packet_encode(RADIUS_PACKET * const packet, char const * const sec
 		} else if (vp->da == attr_tacacs_authentication_status) {
 			pkt->authen.reply.status = vp->vp_uint8;
 			status = vp->vp_uint8;
-		} else if (vp->da == attr_tacacs_authentication_status) {
+		} else if (vp->da == attr_tacacs_authentication_flags) {
 			authen_reply_flags |= vp->vp_uint8;
 		} else if (vp->da == attr_tacacs_authorization_status) {
 			pkt->author.res.status = vp->vp_uint8;
