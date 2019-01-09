@@ -65,7 +65,7 @@ MD5_PACKET *eap_md5_extract(eap_round_t *eap_round)
 	    eap_round->response->type.num != FR_EAP_MD5	 ||
 	    !eap_round->response->type.data 		 ||
 	    (eap_round->response->length <= MD5_HEADER_LEN) ||
-	    (eap_round->response->type.data[0] <= 0)) {
+	    (eap_round->response->type.data[0] == 0)) {
 		ERROR("corrupted data");
 		return NULL;
 	}
