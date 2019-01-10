@@ -476,9 +476,9 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 			status = REDIS_RCODE_SUCCESS;
 
 			/*
-			 *	We got a redirect, start back at the beginning of the block.
+			 *	If we got a redirect, start back at the beginning of the block.
 			 */
-			ipaddr = acked;
+			if (s_ret == REDIS_RCODE_TRY_AGAIN) ipaddr = acked;
 
 			for (i = 0; (i < MAX_PIPELINED) && more; i++, more = ipaddr_next(&ipaddr, &op->end,
 											 op->prefix)) {
