@@ -37,4 +37,4 @@ extern fr_dict_attr_t const *attr_eap_aka_xres;
 
 extern fr_dict_attr_t const *attr_eap_sim_kc;
 extern fr_dict_attr_t const *attr_eap_sim_sres;
-extern fr_dict_attr_t const *attr_eap_aka_rand;
+extern fr_dict_attr_t const *attr_eap_sim_rand;
