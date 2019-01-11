@@ -59,6 +59,12 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Add wispr2date conversion in mods-available/date
 	* Implement dictionary-based handling in rlm_python.  Fixes #2334.
 	  See mods-available/python for details.
+	* Add support for SKIP LOCKED in sqlippool.  This can improve
+	  performance by an order of magnitude or more.  See
+	  raddb/mods-config/sql/ippool/*/queries.conf
+	  Fixes #2383.  Patch from Nathan Ward.
+	* Updated Debian packages to allow for libssl1.1.
+	  Fixes #2384.  Patch from Alejandro Perez.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
