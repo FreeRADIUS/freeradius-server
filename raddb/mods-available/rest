@@ -59,8 +59,10 @@ rest {
 	#    1.1          - Disable negotiation.  Force HTTP 1.1.
 	#    2.0          - Disable negotiation.  Force HTTP 2.0.
 	#    2.0+auto     - Try and negotiate 2.0 and fallback to 1.1.
-	#    2.0+tls      - Try and negotiate 2.0 if using TLS (fallback to 1.1).
-	#                   Use HTTP 1.1 for plaintext HTTP connections.
+	#    2.0+tls      - For https try and negotiate 2.0 and 
+	#                   fallback to 1.1.
+	#                   For http try and negotiate 2.0 and 
+	#                   fallback to 1.1.
 	#
 #	http_negotiation = "default"
 
@@ -139,7 +141,7 @@ rest {
 	#               value will be used, and it will be assigned to a single
 	#               attribute.
 	#  {
-	#      "<attribute0>":{
+	#      "[outer.][<list>:]<attribute0>":{
 	#          "is_json":<bool>,
 	#          "do_xlat":<bool>,
 	#          "op":"<operator>",
