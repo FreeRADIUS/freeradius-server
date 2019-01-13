@@ -1976,7 +1976,7 @@ int xlat_register(void *mod_inst, char const *name,
 	xlat_t	*c;
 	bool	new = false;
 
-	if (!xlat_root) xlat_init();
+	if (!xlat_root && (xlat_init() < 0)) return -1;;
 
 	if (!name || !*name) {
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
@@ -2500,13 +2500,17 @@ int xlat_register_redundant(CONF_SECTION *cs)
  */
 int xlat_init(void)
 {
-	if (xlat_root) return 0;
-
 	xlat_t	*c;
 
 #ifdef WITH_UNLANG
 	int i;
 #endif
+	if (xlat_root) return 0;
+
+	/*
+	 *	Lookup attributes used by virtual xlat expansions.
+	 */
+	if (xlat_eval_init() < 0) return -1;
 
 	/*
 	 *	Registers async xlat operations in the `unlang` interpreter.
@@ -2605,6 +2609,11 @@ int xlat_init(void)
 void xlat_free(void)
 {
 	rbtree_t *xr = xlat_root;		/* Make sure the tree can't be freed multiple times */
+
+	if (!xr) return;
+
 	xlat_root = NULL;
 	talloc_free(xr);
+
+	xlat_eval_free();
 }

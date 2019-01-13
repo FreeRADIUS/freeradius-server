@@ -42,8 +42,8 @@ fr_dict_attr_t const *attr_vqp_error_code;
 fr_dict_attr_t const *attr_vqp_packet_type;
 fr_dict_attr_t const *attr_vqp_sequence_number;
 
-extern fr_dict_attr_autoload_t libfreeradius_vqp_attr[];
-fr_dict_attr_autoload_t libfreeradius_vqp_attr[] = {
+extern fr_dict_attr_autoload_t libfreeradius_vqp_dict_attr[];
+fr_dict_attr_autoload_t libfreeradius_vqp_dict_attr[] = {
 	{ .out = &attr_vqp_error_code, .name = "VQP-Error-Code", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
 	{ .out = &attr_vqp_packet_type, .name = "VQP-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
 	{ .out = &attr_vqp_sequence_number, .name = "VQP-Sequence-Number", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
@@ -59,7 +59,7 @@ int fr_vqp_init(void)
 	}
 
 	if (fr_dict_autoload(libfreeradius_vqp) < 0) return -1;
-	if (fr_dict_attr_autoload(libfreeradius_vqp_attr) < 0) {
+	if (fr_dict_attr_autoload(libfreeradius_vqp_dict_attr) < 0) {
 		fr_dict_autofree(libfreeradius_vqp);
 		return -1;
 	}

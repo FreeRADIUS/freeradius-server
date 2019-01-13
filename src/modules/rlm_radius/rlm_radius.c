@@ -148,26 +148,24 @@ static CONF_PARSER const type_interval_config[FR_MAX_PACKET_CODE] = {
 	[FR_CODE_DISCONNECT_REQUEST] = { FR_CONF_POINTER("Disconnect-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) disconnect_config },
 };
 
-static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t rlm_radius_dict[];
 fr_dict_autoload_t rlm_radius_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
 static fr_dict_attr_t const *attr_chap_challenge;
 static fr_dict_attr_t const *attr_chap_password;
-static fr_dict_attr_t const *attr_proxy_state;
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_proxy_state;
 
 extern fr_dict_attr_autoload_t rlm_radius_dict_attr[];
 fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ NULL }
 };

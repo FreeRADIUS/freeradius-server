@@ -124,7 +124,6 @@ fr_dict_attr_autoload_t soh_dict_attr[] = {
 
 static int instance_count = 0;
 
-
 /** Read big-endian 2-byte unsigned from p
  *
  * caller must ensure enough data exists at "p"

@@ -89,12 +89,10 @@ static CONF_PARSER const proto_radius_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t proto_radius_dict[];
 fr_dict_autoload_t proto_radius_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
@@ -104,7 +102,7 @@ static fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t proto_radius_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius},
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius},
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ NULL }
 };

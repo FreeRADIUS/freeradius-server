@@ -162,6 +162,10 @@ xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 
 int		xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_state_t type, void *uctx);
 
+int		xlat_eval_init(void);
+
+void		xlat_eval_free(void);
+
 void		unlang_xlat_init(void);
 
 #ifdef __cplusplus

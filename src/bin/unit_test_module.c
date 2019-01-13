@@ -66,12 +66,14 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_digest_algorithm;
+static fr_dict_attr_t const *attr_digest_attributes;
 static fr_dict_attr_t const *attr_digest_body_digest;
 static fr_dict_attr_t const *attr_digest_cnonce;
 static fr_dict_attr_t const *attr_digest_method;
-static fr_dict_attr_t const *attr_digest_nonce;
 static fr_dict_attr_t const *attr_digest_nonce_count;
+static fr_dict_attr_t const *attr_digest_nonce;
 static fr_dict_attr_t const *attr_digest_qop;
 static fr_dict_attr_t const *attr_digest_realm;
 static fr_dict_attr_t const *attr_digest_uri;
@@ -84,8 +86,6 @@ static fr_dict_attr_t const *attr_packet_src_ipv6_address;
 static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_response_packet_type;
-static fr_dict_attr_t const *attr_chap_password;
-static fr_dict_attr_t const *attr_digest_attributes;
 static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
@@ -109,10 +109,11 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_response_packet_type, .name = "Response-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_digest_attributes, .name = "Digest-Attributes", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_response_packet_type, .name = "Response-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
@@ -821,6 +822,11 @@ int main(int argc, char *argv[])
 	 *	Initialise the interpreter, registering operations.
 	 */
 	if (unlang_init() < 0) goto exit_failure;
+
+	/*
+	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
+	 */
+	if (xlat_init() < 0) goto exit_failure;
 
 	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers

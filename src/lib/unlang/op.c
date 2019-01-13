@@ -1613,8 +1613,14 @@ static unlang_action_t unlang_if(REQUEST *request,
 
 int unlang_op_init(void)
 {
-	if (fr_dict_autoload(op_dict) < 0) return -1;
-	if (fr_dict_attr_autoload(op_dict_attr) < 0) return -1;
+	if (fr_dict_autoload(op_dict) < 0) {
+		PERROR("%s", __FUNCTION__);
+		return -1;
+	}
+	if (fr_dict_attr_autoload(op_dict_attr) < 0) {
+		PERROR("%s", __FUNCTION__);
+		return -1;
+	}
 
 	unlang_op_register(UNLANG_TYPE_FUNCTION,
 			   &(unlang_op_t){

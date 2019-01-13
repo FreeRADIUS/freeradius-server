@@ -1,0 +1,94 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+#
+#	Non Protocol Attributes used by FreeRADIUS
+#
+#	$Id$
+#
+
+#
+#	All of these attributes are internal.
+#
+FLAGS	internal
+
+ATTRIBUTE	Packet-Type				1000	integer virtual
+VALUE	Packet-Type			Access-Request		1
+VALUE	Packet-Type			Access-Accept		2
+VALUE	Packet-Type			Access-Reject		3
+VALUE	Packet-Type			Accounting-Request	4
+VALUE	Packet-Type			Accounting-Response	5
+VALUE	Packet-Type			Accounting-Status	6
+VALUE	Packet-Type			Password-Request	7
+VALUE	Packet-Type			Password-Accept		8
+VALUE	Packet-Type			Password-Reject		9
+VALUE	Packet-Type			Accounting-Message	10
+VALUE	Packet-Type			Access-Challenge	11
+VALUE	Packet-Type			Status-Server		12
+VALUE	Packet-Type			Status-Client		13
+
+#
+#	The following packet types are described in RFC 2882,
+#	but they are NOT part of the RADIUS standard.  Instead,
+#	they are informational about vendor-specific extensions
+#	to the RADIUS standard.
+#
+VALUE	Packet-Type			Resource-Free-Request	21
+VALUE	Packet-Type			Resource-Free-Response	22
+VALUE	Packet-Type			Resource-Query-Request	23
+VALUE	Packet-Type			Resource-Query-Response	24
+VALUE	Packet-Type			Alternate-Resource-Reclaim-Request 25
+VALUE	Packet-Type			NAS-Reboot-Request	26
+VALUE	Packet-Type			NAS-Reboot-Response	27
+VALUE	Packet-Type			Next-Passcode		29
+VALUE	Packet-Type			New-Pin			30
+VALUE	Packet-Type			Terminate-Session	31
+VALUE	Packet-Type			Password-Expired	32
+VALUE	Packet-Type			Event-Request		33
+VALUE	Packet-Type			Event-Response		34
+
+#	RFC 3576 allocates packet types 40-45
+
+VALUE	Packet-Type			Disconnect-Request	40
+VALUE	Packet-Type			Disconnect-ACK		41
+VALUE	Packet-Type			Disconnect-NAK		42
+VALUE	Packet-Type			CoA-Request		43
+VALUE	Packet-Type			CoA-ACK			44
+VALUE	Packet-Type			CoA-NAK			45
+
+VALUE	Packet-Type			IP-Address-Allocate	50
+VALUE	Packet-Type			IP-Address-Release	51
+
+#
+#  From RFC 3730, Section 4
+#
+VALUE	Packet-Type			Protocol-Error		52
+
+VALUE	Packet-Type			Do-Not-Respond		256
+
+ATTRIBUTE	Response-Packet-Type			1001	integer virtual
+VALUE	Response-Packet-Type		Access-Request		1
+VALUE	Response-Packet-Type		Access-Accept		2
+VALUE	Response-Packet-Type		Access-Reject		3
+VALUE	Response-Packet-Type		Accounting-Request	4
+VALUE	Response-Packet-Type		Accounting-Response	5
+VALUE	Response-Packet-Type		Accounting-Status	6
+VALUE	Response-Packet-Type		Password-Request	7
+VALUE	Response-Packet-Type		Password-Accept		8
+VALUE	Response-Packet-Type		Password-Reject		9
+VALUE	Response-Packet-Type		Accounting-Message	10
+VALUE	Response-Packet-Type		Access-Challenge	11
+VALUE	Response-Packet-Type		Status-Server		12
+VALUE	Response-Packet-Type		Status-Client		13
+
+VALUE	Response-Packet-Type		Disconnect-Request	40
+VALUE	Response-Packet-Type		Disconnect-ACK		41
+VALUE	Response-Packet-Type		Disconnect-NAK		42
+VALUE	Response-Packet-Type		CoA-Request		43
+VALUE	Response-Packet-Type		CoA-ACK			44
+VALUE	Response-Packet-Type		CoA-NAK			45
+#
+#  Special value
+#
+VALUE	Response-Packet-Type		Do-Not-Respond		256
+
+ATTRIBUTE	Packet-Authentication-Vector		1002	octets virtual

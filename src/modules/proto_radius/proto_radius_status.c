@@ -29,11 +29,11 @@
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/server/rad_assert.h>
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t proto_radius_status_dict[];
 fr_dict_autoload_t proto_radius_status_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
@@ -41,7 +41,7 @@ static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t proto_radius_status_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_status_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 

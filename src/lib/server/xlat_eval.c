@@ -36,10 +36,54 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/unlang_priv.h>	/* Remove when everything uses new xlat API */
 
-
-
 #include <ctype.h>
 #include "xlat_priv.h"
+
+static bool done_init = false;
+
+static fr_dict_t *dict_freeradius;
+static fr_dict_t *dict_radius;
+
+static fr_dict_autoload_t xlat_eval_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_client_ip_address;
+static fr_dict_attr_t const *attr_client_shortname;
+static fr_dict_attr_t const *attr_module_return_code;
+static fr_dict_attr_t const *attr_packet_dst_ip_address;
+static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
+static fr_dict_attr_t const *attr_packet_dst_port;
+static fr_dict_attr_t const *attr_packet_src_ip_address;
+static fr_dict_attr_t const *attr_packet_src_ipv6_address;
+static fr_dict_attr_t const *attr_packet_src_port;
+static fr_dict_attr_t const *attr_request_processing_stage;
+static fr_dict_attr_t const *attr_virtual_server;
+
+static fr_dict_attr_t const *attr_packet_authentication_vector;
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_response_packet_type;
+
+static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
+	{ .out = &attr_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_client_shortname, .name = "Client-Shortname", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_module_return_code, .name = "Module-Return-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPV6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_request_processing_stage, .name = "Request-Processing-Stage", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_packet_authentication_vector, .name = "Packet-Authentication-Vector", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_response_packet_type, .name = "Response-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
 
 FR_NAME_NUMBER const xlat_action_table[] = {
 	{ "push-child",	XLAT_ACTION_PUSH_CHILD	},
@@ -410,39 +454,31 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	/*
 	 *	Some non-packet expansions
 	 */
-	switch (vpt->tmpl_da->attr) {
-	default:
-		break;		/* ignore them */
-
-	case FR_CLIENT_SHORTNAME:
+	if (vpt->tmpl_da == attr_client_shortname) {
 		if (!request->client || !request->client->shortname) return XLAT_ACTION_DONE;
 
-		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
+		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da, request->client->shortname, false) < 0) {
 		error:
 			talloc_free(value);
 			return XLAT_ACTION_FAIL;
 		}
 		goto done;
-
-	case FR_REQUEST_PROCESSING_STAGE:
+	} else if (vpt->tmpl_da == attr_request_processing_stage) {
 		if (!request->component) return XLAT_ACTION_DONE;
 
-		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
+		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da, request->component, false) < 0) goto error;
 		goto done;
-
-	case FR_VIRTUAL_SERVER:
+	} else if (vpt->tmpl_da == attr_virtual_server) {
 		if (!request->server_cs) return XLAT_ACTION_DONE;
 
-		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
+		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da,
 					       cf_section_name2(request->server_cs), false) < 0) goto error;
 		goto done;
-
-	case FR_MODULE_RETURN_CODE:
-		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
-		value->enumv = vpt->tmpl_da;
+	} else if (vpt->tmpl_da == attr_module_return_code) {
+		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, vpt->tmpl_da, false));
 		value->datum.int32 = request->rcode;
 		goto done;
 	}
@@ -455,27 +491,20 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	packet = radius_packet(request, vpt->tmpl_list);
 	if (!packet) return XLAT_ACTION_DONE;
 
-	switch (vpt->tmpl_da->attr) {
-	default:
-		RERROR("Attribute \"%s\" incorrectly marked as virtual", vpt->tmpl_da->name);
-		return XLAT_ACTION_FAIL;
-
-	case FR_RESPONSE_PACKET_TYPE:
-		if (packet != request->reply) {
-			RWARN("%%{Response-Packet-Type} is ONLY for responses!");
-		}
+	if (vpt->tmpl_da == attr_response_packet_type) {
+		if (packet != request->reply) RWARN("%%{Response-Packet-Type} is ONLY for responses!");
 		packet = request->reply;
 
 		RWARN("Please replace %%{Response-Packet-Type} with %%{reply:Packet-Type}");
-		/* FALL-THROUGH */
 
-	case FR_PACKET_TYPE:
+		goto packet_type;
+	} else if (vpt->tmpl_da == attr_packet_type) {
+	packet_type:
 		if (!packet || !packet->code) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
 		value->enumv = vpt->tmpl_da;
 		value->datum.int32 = packet->code;
-		break;
 
 	/*
 	 *	Virtual attributes which require a temporary VALUE_PAIR
@@ -483,56 +512,46 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	 *	because of the talloc checks sprinkled throughout the
 	 *	various VP functions.
 	 */
-	case FR_PACKET_AUTHENTICATION_VECTOR:
-		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+	} else if (vpt->tmpl_da == attr_packet_authentication_vector) {
+		value = fr_value_box_alloc_null(ctx);
 		fr_value_box_memdup(ctx, value, vpt->tmpl_da, packet->vector, sizeof(packet->vector), true);
-		break;
-
-	case FR_CLIENT_IP_ADDRESS:
+	} else if (vpt->tmpl_da == attr_client_ip_address) {
 		if (request->client) {
-			value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false);
+			value = fr_value_box_alloc_null(ctx);
 			fr_value_box_ipaddr(value, NULL, &request->client->ipaddr, false);	/* Enum might not match type */
-			break;
+			goto done;
 		}
-		/* FALL-THROUGH */
-
-	case FR_PACKET_SRC_IP_ADDRESS:
+		goto src_ip_address;
+	} else if (vpt->tmpl_da == attr_packet_src_ip_address) {
+	src_ip_address:
 		if (packet->src_ipaddr.af != AF_INET) return XLAT_ACTION_DONE;
 
-		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		value = fr_value_box_alloc_null(ctx);
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->src_ipaddr, true);
-		break;
-
-	case FR_PACKET_DST_IP_ADDRESS:
+	} else if (vpt->tmpl_da == attr_packet_dst_ip_address) {
 		if (packet->dst_ipaddr.af != AF_INET) return XLAT_ACTION_DONE;
 
-		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		value = fr_value_box_alloc_null(ctx);
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->dst_ipaddr, true);
-		break;
-
-	case FR_PACKET_SRC_IPV6_ADDRESS:
+	} else if (vpt->tmpl_da == attr_packet_src_ipv6_address) {
 		if (packet->src_ipaddr.af != AF_INET6) return XLAT_ACTION_DONE;
 
-		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		value = fr_value_box_alloc_null(ctx);
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->src_ipaddr, true);
-		break;
-
-	case FR_PACKET_DST_IPV6_ADDRESS:
+	} else if (vpt->tmpl_da == attr_packet_dst_ipv6_address) {
 		if (packet->dst_ipaddr.af != AF_INET6) return XLAT_ACTION_DONE;
 
-		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		value = fr_value_box_alloc_null(ctx);
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->dst_ipaddr, true);
-		break;
-
-	case FR_PACKET_SRC_PORT:
+	} else if (vpt->tmpl_da == attr_packet_src_port) {
 		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
 		value->datum.uint16 = packet->src_port;
-		break;
-
-	case FR_PACKET_DST_PORT:
+	} else if (vpt->tmpl_da == attr_packet_dst_port) {
 		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
 		value->datum.uint16 = packet->dst_port;
-		break;
+	} else {
+		RERROR("Attribute \"%s\" incorrectly marked as virtual", vpt->tmpl_da->name);
+		return XLAT_ACTION_FAIL;
 	}
 
 done:
@@ -1536,18 +1555,24 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 ssize_t xlat_eval(char *out, size_t outlen, REQUEST *request,
 		  char const *fmt, xlat_escape_t escape, void const *escape_ctx)
 {
+	rad_assert(done_init);
+
 	return _xlat_eval(request, &out, outlen, request, fmt, escape, escape_ctx);
 }
 
 ssize_t xlat_eval_compiled(char *out, size_t outlen, REQUEST *request,
 			   xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
 {
+	rad_assert(done_init);
+
 	return _xlat_eval_compiled(request, &out, outlen, request, xlat, escape, escape_ctx);
 }
 
 ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fmt,
 		   xlat_escape_t escape, void const *escape_ctx)
 {
+	rad_assert(done_init);
+
 	*out = NULL;
 	return _xlat_eval(ctx, out, 0, request, fmt, escape, escape_ctx);
 }
@@ -1555,6 +1580,8 @@ ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fm
 ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
 			    xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
 {
+	rad_assert(done_init);
+
 	*out = NULL;
 	return _xlat_eval_compiled(ctx, out, 0, request, xlat, escape, escape_ctx);
 }
@@ -1666,3 +1693,28 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_state_t type, voi
 	return 0;
 }
 
+int xlat_eval_init(void)
+{
+	rad_assert(!done_init);
+
+	if (fr_dict_autoload(xlat_eval_dict) < 0) {
+		PERROR("%s", __FUNCTION__);
+		return -1;
+	}
+	if (fr_dict_attr_autoload(xlat_eval_dict_attr) < 0) {
+		PERROR("%s", __FUNCTION__);
+		fr_dict_autofree(xlat_eval_dict);
+		return -1;
+	}
+
+	done_init = true;
+
+	return 0;
+}
+
+void xlat_eval_free(void)
+{
+	fr_dict_autofree(xlat_eval_dict);
+
+	done_init = false;
+}

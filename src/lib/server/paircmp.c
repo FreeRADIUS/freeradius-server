@@ -76,9 +76,9 @@ static fr_dict_attr_t const *attr_session_type;
 static fr_dict_attr_t const *attr_strip_user_name;
 static fr_dict_attr_t const *attr_stripped_user_name;
 static fr_dict_attr_t const *attr_suffix;
-static fr_dict_attr_t const *attr_virtual_server;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_virtual_server;
 
 extern fr_dict_attr_autoload_t paircmp_dict_attr[];
 fr_dict_attr_autoload_t paircmp_dict_attr[] = {
@@ -93,7 +93,6 @@ fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_prefix, .name = "Prefix", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_request_processing_stage, .name = "Request-Processing-Stage", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_session_type, .name = "Session-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
@@ -101,6 +100,8 @@ fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_suffix, .name = "Suffix", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
@@ -872,8 +873,15 @@ void paircmp_unregister_instance(void *instance)
  */
 int paircmp_init(void)
 {
-	if (fr_dict_autoload(paircmp_dict) < 0) return -1;
-	if (fr_dict_attr_autoload(paircmp_dict_attr) < 0) return -1;
+	if (fr_dict_autoload(paircmp_dict) < 0) {
+		PERROR("%s", __FUNCTION__);
+		return -1;
+	}
+	if (fr_dict_attr_autoload(paircmp_dict_attr) < 0) {
+		PERROR("%s", __FUNCTION__);
+		fr_dict_autofree(paircmp_dict);
+		return -1;
+	}
 
 	paircmp_register(attr_prefix, attr_user_name, false, prefix_suffix_cmp, NULL);
 	paircmp_register(attr_suffix, attr_user_name, false, prefix_suffix_cmp, NULL);
