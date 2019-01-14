@@ -828,7 +828,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			return 1;
 
 		} else {
-			tls_error_log(NULL, NULL);
+			tls_error_log(NULL, "Error reading from SSL BIO");
 			record_init(&ssn->dirty_in);
 			RDEBUG2("TLS - Tunnel data is established.");
 			return 0;
