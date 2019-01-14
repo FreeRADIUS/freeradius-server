@@ -561,8 +561,12 @@ post_ca:
 		int max_version = 0;
 
 		if (conf->tls_min_version > conf->tls_max_version) {
+			/*
+			 *	%f is actually %lg now (double).  Compile complains about
+			 *      implicit promotion unless we cast args to double.
+			 */
 			ERROR("tls_min_version (%f) must be <= tls_max_version (%f)",
-			      conf->tls_min_version, conf->tls_max_version);
+			      (double)conf->tls_min_version, (double)conf->tls_max_version);
 			goto error;
 		}
 
