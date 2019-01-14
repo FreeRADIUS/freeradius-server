@@ -499,8 +499,13 @@ int tls_init(void)
 		return 0;
 	}
 
+	/*
+	 *	This will only fail if memory has already been allocated
+	 *	by OpenSSL.
+	 */
 	if (CRYPTO_set_mem_functions(openssl_talloc, openssl_realloc, openssl_free) != 1) {
-		WARN("Failed to set OpenSSL memory allocation functions.  OpenSSL mallocs will not be tracked");
+		tls_log_error(NULL, "Failed to set OpenSSL memory allocation functions.  tls_init() called too late");
+		return -1;
 	}
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -542,6 +547,16 @@ int tls_init(void)
 	if (rand_engine && (strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0)) ENGINE_unregister_RAND(rand_engine);
 	ENGINE_register_all_complete();
 
+	instance_count++;
+
+	return 0;
+}
+
+/** Load dictionary attributes
+ *
+ */
+int tls_dict_init(void)
+{
 	if (fr_dict_autoload(tls_dict) < 0) {
 		PERROR("Failed initialising protocol library");
 		tls_free();
@@ -553,8 +568,6 @@ int tls_init(void)
 		tls_free();
 		return -1;
 	}
-
-	instance_count++;
 
 	return 0;
 }

@@ -397,12 +397,22 @@ int main(int argc, char *argv[])
 
 	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) EXIT_WITH_FAILURE;
 
+
+#ifdef HAVE_OPENSSL_CRYPTO_H
 	/*
 	 *  Mismatch between build time OpenSSL and linked SSL, better to die
 	 *  here than segfault later.
 	 */
-#ifdef HAVE_OPENSSL_CRYPTO_H
 	if (ssl_check_consistency() < 0) EXIT_WITH_FAILURE;
+
+	/*
+	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
+	 *  Must be called before display_version to ensure relevant engines are loaded.
+	 *
+	 *  tls_init() must be called before *ANY* OpenSSL functions are used, which is why
+	 *  it's called so early.
+	 */
+	if (tls_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
 	/*
@@ -459,18 +469,15 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	if (tls_dict_init() < 0) {
+		fr_perror("radiusd");
+		EXIT_WITH_FAILURE;
+	}
+
 	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
-	 *  Must be called before display_version to ensure relevant engines are loaded.
-	 */
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_init() < 0) EXIT_WITH_FAILURE;
-#endif
 
 	/*
 	 *  Set panic_action from the main config if one wasn't specified in the
