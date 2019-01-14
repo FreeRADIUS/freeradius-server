@@ -795,7 +795,16 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	 */
 	if (!ssn->ssl_session) {
 		ssn->ssl_session = SSL_get_session(ssn->ssl);
-		if (!ssn->ssl_session) {
+
+		/*
+		 *	Some versions of OpenSSL don't allow you to
+		 *	get the session before the init is finished.
+		 *	In that case, this error is a soft fail.
+		 *
+		 *	If the session init is finished, then failure
+		 *	to get the session is a hard fail.
+		 */
+		if (!ssn->ssl_session && ssn->is_init_finished) {
 			RDEBUG("TLS - Failed getting session");
 			return 0;
 		}
