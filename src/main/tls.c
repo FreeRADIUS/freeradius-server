@@ -2874,15 +2874,6 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 	}
 
 #ifdef PSK_MAX_IDENTITY_LEN
-	if (conf->psk_identity || conf->psk_password || conf->psk_query) {
-		if (conf->certificate_file ||
-		    conf->private_key_password || conf->private_key_file ||
-		    conf->ca_file || conf->ca_path) {
-			ERROR(LOG_PREFIX ": When PSKs are used, No certificate configuration is permitted");
-			return NULL;
-		}
-	}
-
 	/*
 	 *	A dynamic query exists.  There MUST NOT be a
 	 *	statically configured identity and password.
