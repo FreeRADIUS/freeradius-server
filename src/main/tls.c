@@ -2884,12 +2884,12 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 			return NULL;
 		}
 
-		if (conf->psk_identity || *conf->psk_identity) {
+		if (conf->psk_identity && *conf->psk_identity) {
 			ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_identity and psk_query cannot be used at the same time.");
 			return NULL;
 		}
 
-		if (conf->psk_password || *conf->psk_password) {
+		if (conf->psk_password && *conf->psk_password) {
 			ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_password and psk_query cannot be used at the same time.");
 			return NULL;
 		}
