@@ -4456,6 +4456,105 @@ static void coa_retransmit(REQUEST *request)
 }
 
 
+/*
+ *	Enforce maximum time for CoA packets
+ */
+static bool coa_max_time(REQUEST *request)
+{
+	struct timeval now, when;
+	rad_assert(request->magic == REQUEST_MAGIC);
+#ifdef DEBUG_STATE_MACHINE
+	int action = FR_ACTION_TIMER;
+#endif
+
+	VERIFY_REQUEST(request);
+
+	TRACE_STATE_MACHINE;
+	ASSERT_MASTER;
+
+	/*
+	 *	The child thread has acknowledged it's done.
+	 *	Transition to the DONE state.
+	 *
+	 *	If the request was marked STOP, then the "check for
+	 *	stop" macro already took care of it.
+	 */
+	if (request->child_state == REQUEST_DONE) {
+	done:
+		request_done(request, FR_ACTION_DONE);
+		return true;
+	}
+
+	/*
+	 *	The request is still running.  Enforce max_request_time.
+	 *
+	 *	Note that the *proxy* timestamp is the one we use, as
+	 *	that's when the CoA packet was sent.
+	 *
+	 *	Note also that if there's an error, the home server
+	 *	may not exist.
+	 */
+	fr_event_now(el, &now);
+	when = request->proxy->timestamp;
+	if (request->home_server && (request->process != coa_running)) {
+		when.tv_sec += request->home_server->coa_mrd;
+	} else {
+		when.tv_sec += request->root->max_request_time;
+	}
+
+	/*
+	 *	Taking too long: tell it to die.
+	 */
+	if (timercmp(&now, &when, >=)) {
+		char buffer[256];
+
+#ifdef HAVE_PTHREAD_H
+		/*
+		 *	If there's a child thread processing it,
+		 *	complain.
+		 */
+		if (spawn_flag &&
+		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
+			ERROR("Unresponsive child for originate-coa request %u, in component %s module %s",
+			      request->number,
+			      request->component ? request->component : "<core>",
+			      request->module ? request->module : "<core>");
+			exec_trigger(request, NULL, "server.thread.unresponsive", true);
+		}
+#endif
+
+		RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d within %d seconds",
+		       request->proxy->id,
+		       inet_ntop(request->proxy->dst_ipaddr.af,
+				 &request->proxy->dst_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       request->proxy->dst_port,
+		       request->home_server->coa_mrd);
+
+		/*
+		 *	Tell the request that it's done.
+		 */
+		goto done;
+	}
+
+	/*
+	 *	Let coa_retransmit() handle the retransmission timers.
+	 */
+	if (request->process != coa_running) return false;
+
+	/*
+	 *	Sleep for some more.  We HOPE that the child will
+	 *	become responsive at some point in the future.  We do
+	 *	this by adding 50% to the current timer.
+	 */
+	when = now;
+	tv_add(&when, request->delay);
+	request->delay += request->delay >> 1;
+	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	return false;
+}
+
+
 /** Wait for a reply after originating a CoA a request.
  *
  *  Retransmit the proxied packet, or time out and go to
@@ -4486,7 +4585,7 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		if (request_max_time(request)) break;
+		if (coa_max_time(request)) break;
 
 		/*
 		 *	Don't do fail-over.  This is a 3.1 feature.
@@ -4504,6 +4603,13 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
+		/*
+		 *	Reset the initial delay for checking if we
+		 *	should still run.
+		 */
+		request->delay = (int)request->root->init_delay.tv_sec * USEC +
+			(int)request->root->init_delay.tv_usec;
+
 		request_queue_or_run(request, coa_running);
 		break;
 
@@ -4566,7 +4672,7 @@ static void coa_no_reply(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		(void) request_max_time(request);
+		(void) coa_max_time(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY: /* too late! */
@@ -4615,7 +4721,7 @@ static void coa_running(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		(void) request_max_time(request);
+		(void) coa_max_time(request);
 		break;
 
 	case FR_ACTION_RUN:
