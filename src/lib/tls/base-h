@@ -522,6 +522,8 @@ int		tls_version_check(char const *acknowledged);
 
 int		tls_init(void);
 
+int		tls_dict_init(void);
+
 void		tls_free(void);
 
 /*
