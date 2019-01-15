@@ -158,9 +158,15 @@ static char const *tls_handshake_type_str[] = {
 	[SSL3_MT_HELLO_REQUEST]			= "hello_request",
 	[SSL3_MT_CLIENT_HELLO]			= "client_hello",
 	[SSL3_MT_SERVER_HELLO]			= "server_hello",
+#ifdef SSL3_MT_NEWSESSION_TICKET
 	[SSL3_MT_NEWSESSION_TICKET]		= "new_session_ticket",
+#endif
+#ifdef SSL3_MT_END_OF_EARLY_DATA
 	[SSL3_MT_END_OF_EARLY_DATA]		= "end_of_early_data",
+#endif
+#ifdef SSL3_MT_ENCRYPTED_EXTENSIONS
 	[SSL3_MT_ENCRYPTED_EXTENSIONS]		= "encrypted_extensions",
+#endif
 	[SSL3_MT_CERTIFICATE]			= "certificate",
 	[SSL3_MT_SERVER_KEY_EXCHANGE]		= "server_key_exchange",
 	[SSL3_MT_CERTIFICATE_REQUEST]		= "certificate_request",
