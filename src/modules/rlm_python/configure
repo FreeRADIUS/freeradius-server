@@ -2822,7 +2822,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-		PYHTON_BIN=
+		PYTHON_BIN=
 
 # Check whether --with-rlm-python-bin was given.
 if test "${with_rlm_python_bin+set}" = set; then :
@@ -2940,8 +2940,12 @@ $as_echo "$as_me: Python sys.exec_prefix \"${PY_EXEC_PREFIX}\"" >&6;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.version \"${PY_SYS_VERSION}\"" >&5
 $as_echo "$as_me: Python sys.version \"${PY_SYS_VERSION}\"" >&6;}
 
-		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
-		PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
+		if  -z "$PY_LIB_DIR" ; then
+			PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
+			PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
+		else
+			PY_LIB_LOC="-L$PY_LIB_DIR"
+		fi
 
 		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config/Makefile"
 		if test -f ${PY_MAKEFILE}; then
