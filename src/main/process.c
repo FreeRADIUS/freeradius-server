@@ -4466,6 +4466,7 @@ static bool coa_max_time(REQUEST *request)
 #ifdef DEBUG_STATE_MACHINE
 	int action = FR_ACTION_TIMER;
 #endif
+	int mrd;
 
 	VERIFY_REQUEST(request);
 
@@ -4497,10 +4498,11 @@ static bool coa_max_time(REQUEST *request)
 	fr_event_now(el, &now);
 	when = request->proxy->timestamp;
 	if (request->home_server && (request->process != coa_running)) {
-		when.tv_sec += request->home_server->coa_mrd;
+		mrd = request->home_server->coa_mrd;
 	} else {
-		when.tv_sec += request->root->max_request_time;
+		mrd = request->root->max_request_time;
 	}
+	when.tv_sec += mrd;
 
 	/*
 	 *	Taking too long: tell it to die.
@@ -4515,7 +4517,7 @@ static bool coa_max_time(REQUEST *request)
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port,
-			       request->home_server->coa_mrd);
+			       mrd);
 			goto done;
 		}
 
