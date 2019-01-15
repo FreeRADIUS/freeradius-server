@@ -124,6 +124,7 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  strings.
 	* Fix memory leak in EAP-PWD.
 	* Fix crash in "hints" file with Fall-Through = yes
+	* Fix crash / timer issues with many CoA packets.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
