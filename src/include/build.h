@@ -66,6 +66,9 @@ extern "C" {
  */
 #define UNUSED_VAR(_x) ((void)_x)
 
+/** Pad _x to the next multiple of _y
+ *
+ */
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 
 #define PRINTF_LIKE(n)		CC_HINT(format(printf, n, n+1))
@@ -84,6 +87,7 @@ extern "C" {
  *	struct field size
  */
 #define SIZEOF_MEMBER(_t, _m) sizeof(((_t *)0)->_m)
+#define NUM_ELEMENTS(_t) (sizeof((_t)) / sizeof(*(_t)))
 
 /*
  *	Only use GCC __attribute__ if were building with a GCClike

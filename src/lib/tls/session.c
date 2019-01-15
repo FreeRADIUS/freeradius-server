@@ -64,6 +64,136 @@ static fr_dict_attr_t const **cert_attr_names[][2] = {
 #define IDX_SUBJECT_ALT_NAME_EMAIL	(6)
 #define IDX_SUBJECT_ALT_NAME_UPN	(7)
 
+static char const *tls_version_str[] = {
+	[SSL2_VERSION]				= "SSL 2.0",
+	[SSL3_VERSION]				= "SSL 3.0",
+	[TLS1_VERSION]				= "TLS 1.0",
+#ifdef TLS1_1_VERSION
+	[TLS1_1_VERSION]			= "TLS 1.1",
+#endif
+#ifdef TLS1_2_VERSION
+	[TLS1_2_VERSION]			= "TLS 1.2",
+#endif
+#ifdef TLS1_3_VERSION
+	[TLS1_3_VERSION]			= "TLS 1.3",
+#endif
+#ifdef TLS1_4_VERSION
+	[TLS1_4_VERSION]			= "TLS 1.4",
+#endif
+};
+
+static char const *tls_content_type_str[] = {
+	[SSL3_RT_CHANGE_CIPHER_SPEC]		= "change_cipher_spec",
+	[SSL3_RT_ALERT]				= "alert",
+	[SSL3_RT_HANDSHAKE]			= "handshake",
+	[SSL3_RT_APPLICATION_DATA]		= "application_data",
+#ifdef DTLS1_RT_HEARTBEAT
+	[DTLS1_RT_HEARTBEAT]			= "heartbeat",
+#endif
+#ifdef TLS1_RT_HEARTBEAT
+	[TLS1_RT_HEARTBEAT]			= "heartbeat",
+#endif
+#ifdef SSL3_RT_HEADER
+	[SSL3_RT_HEADER]			= "header",
+#endif
+#ifdef SSL3_RT_INNER_CONTENT_TYPE
+	[SSL3_RT_INNER_CONTENT_TYPE]		= "inner_content_type",
+#endif
+};
+
+static char const *tls_alert_description_str[] = {
+	[SSL3_AD_CLOSE_NOTIFY]			= "close_notify",
+	[SSL3_AD_UNEXPECTED_MESSAGE]		= "unexpected_message",
+	[SSL3_AD_BAD_RECORD_MAC]		= "bad_record_mac",
+	[TLS1_AD_DECRYPTION_FAILED]		= "decryption_failed",
+	[TLS1_AD_RECORD_OVERFLOW]		= "record_overflow",
+	[SSL3_AD_DECOMPRESSION_FAILURE]		= "decompression_failure",
+	[SSL3_AD_HANDSHAKE_FAILURE]		= "handshake_failure",
+	[SSL3_AD_BAD_CERTIFICATE]		= "bad_certificate",
+	[SSL3_AD_UNSUPPORTED_CERTIFICATE]	= "unsupported_certificate",
+	[SSL3_AD_CERTIFICATE_REVOKED]		= "certificate_revoked",
+	[SSL3_AD_CERTIFICATE_EXPIRED]		= "certificate_expired",
+	[SSL3_AD_CERTIFICATE_UNKNOWN]		= "certificate_unknown",
+	[SSL3_AD_ILLEGAL_PARAMETER]		= "illegal_parameter",
+	[TLS1_AD_UNKNOWN_CA]			= "unknown_ca",
+	[TLS1_AD_ACCESS_DENIED]			= "access_denied",
+	[TLS1_AD_DECODE_ERROR]			= "decode_error",
+	[TLS1_AD_DECRYPT_ERROR]			= "decrypt_error",
+	[TLS1_AD_EXPORT_RESTRICTION]		= "export_restriction",
+	[TLS1_AD_PROTOCOL_VERSION]		= "protocol_version",
+	[TLS1_AD_INSUFFICIENT_SECURITY]		= "insufficient_security",
+	[TLS1_AD_INTERNAL_ERROR]		= "internal_error",
+	[TLS1_AD_USER_CANCELLED]		= "user_canceled",
+	[TLS1_AD_NO_RENEGOTIATION]		= "no_renegotiation",
+#ifdef TLS13_AD_MISSING_EXTENSION
+	[TLS13_AD_MISSING_EXTENSION]		= "missing_extension",
+#endif
+#ifdef TLS13_AD_CERTIFICATE_REQUIRED
+	[TLS13_AD_CERTIFICATE_REQUIRED]		= "certificate_required",
+#endif
+#ifdef TLS1_AD_UNSUPPORTED_EXTENSION
+	[TLS1_AD_UNSUPPORTED_EXTENSION]		= "unsupported_extension",
+#endif
+#ifdef TLS1_AD_CERTIFICATE_UNOBTAINABLE
+	[TLS1_AD_CERTIFICATE_UNOBTAINABLE]	= "certificate_unobtainable",
+#endif
+#ifdef  TLS1_AD_UNRECOGNIZED_NAME
+	[TLS1_AD_UNRECOGNIZED_NAME]		= "unrecognised_name",
+#endif
+#ifdef TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE
+	[TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE] = "bad_sertificate_status_response",
+#endif
+#ifdef TLS1_AD_BAD_CERTIFICATE_HASH_VALUE
+	[TLS1_AD_BAD_CERTIFICATE_HASH_VALUE]	= "bad_certificate_hash_value",
+#endif
+#ifdef TLS1_AD_UNKNOWN_PSK_IDENTITY
+	[TLS1_AD_UNKNOWN_PSK_IDENTITY]		= "unknown_psk_identity",
+#endif
+#ifdef TLS1_AD_NO_APPLICATION_PROTOCOL
+	[TLS1_AD_NO_APPLICATION_PROTOCOL]	= "no_application_protocol",
+#endif
+};
+
+static char const *tls_handshake_type_str[] = {
+	[SSL3_MT_HELLO_REQUEST]			= "hello_request",
+	[SSL3_MT_CLIENT_HELLO]			= "client_hello",
+	[SSL3_MT_SERVER_HELLO]			= "server_hello",
+	[SSL3_MT_NEWSESSION_TICKET]		= "new_session_ticket",
+	[SSL3_MT_END_OF_EARLY_DATA]		= "end_of_early_data",
+	[SSL3_MT_ENCRYPTED_EXTENSIONS]		= "encrypted_extensions",
+	[SSL3_MT_CERTIFICATE]			= "certificate",
+	[SSL3_MT_SERVER_KEY_EXCHANGE]		= "server_key_exchange",
+	[SSL3_MT_CERTIFICATE_REQUEST]		= "certificate_request",
+	[SSL3_MT_SERVER_DONE]			= "server_hello_done",
+	[SSL3_MT_CERTIFICATE_VERIFY]		= "certificate_verify",
+	[SSL3_MT_CLIENT_KEY_EXCHANGE]		= "client_key_exchange",
+	[SSL3_MT_FINISHED]			= "finished",
+#ifdef SSL3_MT_CERTIFICATE_URL
+	[SSL3_MT_CERTIFICATE_URL]		= "certificate_url",
+#endif
+#ifdef SSL3_MT_CERTIFICATE_STATUS
+	[SSL3_MT_CERTIFICATE_STATUS]		= "certificate_status",
+#endif
+#ifdef SSL3_MT_SUPPLEMENTAL_DATA
+	[SSL3_MT_SUPPLEMENTAL_DATA]		= "supplemental_data",
+#endif
+#ifdef SSL3_MT_KEY_UPDATE
+	[SSL3_MT_KEY_UPDATE]			= "key_update",
+#endif
+#ifdef SSL3_MT_NEXT_PROTO
+	[SSL3_MT_NEXT_PROTO]			= "next_proto",
+#endif
+#ifdef SSL3_MT_MESSAGE_HASH
+	[SSL3_MT_MESSAGE_HASH]			= "message_hash",
+#endif
+#ifdef DTLS1_MT_HELLO_VERIFY_REQUEST
+	[DTLS1_MT_HELLO_VERIFY_REQUEST]		= "hello_verify_request",
+#endif
+#ifdef SSL3_MT_CHANGE_CIPHER_SPEC
+	[SSL3_MT_CHANGE_CIPHER_SPEC]		= "change_cipher_spec",
+#endif
+};
+
 /** Clear a record buffer
  *
  * @param record buffer to clear.
@@ -401,10 +531,14 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
  */
 static void session_msg_log(REQUEST *request, tls_session_t *tls_session)
 {
-	char const	*str_write_p, *str_version, *str_content_type = "";
-	char const	*str_details1 = "", *str_details2= "";
-	char		buffer[32];
-	char		content_type[64];
+	char const	*version, *content_type;
+	char const	*str_details1 = NULL;
+	char const	*str_details2 = NULL;
+	char		unknown_version[32];
+	char		unknown_content_type[32];
+	char		unknown_alert_level[32];
+	char		unknown_alert_description[32];
+	char		unknown_handshake_type[32];
 
 	/*
 	 *	Don't print this out in the normal course of
@@ -412,307 +546,79 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session)
 	 */
 	if (!RDEBUG_ENABLED2) return;
 
-	str_write_p = tls_session->info.origin ? ">>> send" : "<<< recv";
-
-	switch (tls_session->info.version) {
-	case SSL2_VERSION:
-		str_version = "SSL 2.0 ";
-		break;
-
-	case SSL3_VERSION:
-		str_version = "SSL 3.0 ";
-		break;
-
-	case TLS1_VERSION:
-		str_version = "TLS 1.0 ";
-		break;
-
-#ifdef TLS1_1_VERSION
-	case TLS1_1_VERSION:
-		str_version = "TLS 1.1 ";
-		break;
-#endif
-#ifdef TLS1_2_VERSION
-	case TLS1_2_VERSION:
-		str_version = "TLS 1.2 ";
-		break;
-#endif
-#ifdef TLS1_3_VERSION
-	case TLS1_3_VERSION:
-		str_version = "TLS 1.3 ";
-		break;
-#endif
-
-	default:
-		if (tls_session->info.version) {
-			sprintf(buffer, "UNKNOWN TLS VERSION 0x%04x", tls_session->info.version);
-			str_version = buffer;
-		} else {
-			str_version = "";
-		}
-		break;
+	if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
+	    !tls_version_str[tls_session->info.version]) {
+		sprintf(unknown_version, "unknown_tls_version_0x%04x", tls_session->info.version);
+		version = unknown_version;
+	} else {
+		version = tls_version_str[tls_session->info.version];
 	}
 
 	/*
 	 *	TLS 1.0, 1.1, 1.2 content types are the same as SSLv3
 	 */
-	switch (tls_session->info.content_type) {
-	case SSL3_RT_CHANGE_CIPHER_SPEC:
-		str_content_type = "change_cipher_spec ";
-		break;
-
-	case SSL3_RT_ALERT:
-		str_content_type = "alert ";
-		break;
-
-	case SSL3_RT_HANDSHAKE:
-		str_content_type = "handshake ";
-		break;
-
-	case SSL3_RT_APPLICATION_DATA:
-		str_content_type = "application_data ";
-		break;
-
-#ifdef TLS1_RT_HEARTBEAT
-	case TLS1_RT_HEARTBEAT:
-		str_content_type = "heartbeat ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO
-	case TLS1_RT_CRYPTO:
-		str_content_type = "crypto ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO_PREMASTER
-	case TLS1_RT_CRYPTO_PREMASTER:
-		str_content_type = "crypto_premaster ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO_CLIENT_RANDOM
-	case TLS1_RT_CRYPTO_CLIENT_RANDOM:
-		str_content_type = "client_random ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO_SERVER_RANDOM
-	case TLS1_RT_CRYPTO_SERVER_RANDOM:
-		str_content_type = "server_random ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO_MASTER
-	case TLS1_RT_CRYPTO_MASTER:
-		str_content_type = "crypto_master ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO_READ
-	case TLS1_RT_CRYPTO_READ:
-		str_content_type = "crypto_read ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO_WRITE
-	case TLS1_RT_CRYPTO_WRITE:
-		str_content_type = "crypto_write ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO_MAC
-	case TLS1_RT_CRYPTO_MAC:
-		str_content_type = "crypto_mac ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO_KEY
-	case TLS1_RT_CRYPTO_KEY:
-		str_content_type = "crypto_key ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO_IV
-	case TLS1_RT_CRYPTO_IV:
-		str_content_type = "crypto_iv ";
-		break;
-#endif
-
-#ifdef TLS1_RT_CRYPTO_FIXED_IV
-	case TLS1_RT_CRYPTO_FIXED_IV:
-		str_content_type = "crypto_fixed_iv ";
-		break;
-#endif
-
-	default:
-		snprintf(content_type, sizeof(content_type), "unknown content type %i", tls_session->info.content_type );
-		str_content_type = content_type;
-		break;
+	if (((size_t)tls_session->info.content_type >= NUM_ELEMENTS(tls_content_type_str)) ||
+	    !tls_content_type_str[tls_session->info.content_type]) {
+		sprintf(unknown_content_type, "unknown_content_type_0x%04x", tls_session->info.content_type);
+		content_type = unknown_content_type;
+	} else {
+		content_type = tls_content_type_str[tls_session->info.content_type];
 	}
 
 	if (tls_session->info.content_type == SSL3_RT_ALERT) {
-		str_details1 = ", ???";
-
 		if (tls_session->info.record_len == 2) {
 			switch (tls_session->info.alert_level) {
 			case SSL3_AL_WARNING:
-				str_details1 = ", warning";
+				str_details1 = "warning";
 				break;
 			case SSL3_AL_FATAL:
-				str_details1 = ", fatal";
+				str_details1 = "fatal";
+				break;
+
+			default:
+				sprintf(unknown_alert_level,
+					"unknown_alert_level_0x%04x", tls_session->info.alert_level);
+				str_details1 = unknown_alert_level;
 				break;
 			}
 
-			str_details2 = " ???";
-			switch (tls_session->info.alert_description) {
-			case SSL3_AD_CLOSE_NOTIFY:
-				str_details2 = " close_notify";
-				break;
+			if (((size_t)tls_session->info.alert_description >= NUM_ELEMENTS(tls_alert_description_str)) ||
+			    !tls_alert_description_str[tls_session->info.alert_description]) {
+				sprintf(unknown_alert_description,
+					"unknown_alert_0x%04x", tls_session->info.alert_description);
+				str_details2 = unknown_alert_description;
+			} else {
+				str_details2 = tls_alert_description_str[tls_session->info.alert_description];
+			}
+		} else {
+			str_details1 = "unknown_alert_level";
+			str_details2 = "unknown_alert";
+		}
+	}
 
-			case SSL3_AD_UNEXPECTED_MESSAGE:
-				str_details2 = " unexpected_message";
-				break;
-
-			case SSL3_AD_BAD_RECORD_MAC:
-				str_details2 = " bad_record_mac";
-				break;
-
-			case TLS1_AD_DECRYPTION_FAILED:
-				str_details2 = " decryption_failed";
-				break;
-
-			case TLS1_AD_RECORD_OVERFLOW:
-				str_details2 = " record_overflow";
-				break;
-
-			case SSL3_AD_DECOMPRESSION_FAILURE:
-				str_details2 = " decompression_failure";
-				break;
-
-			case SSL3_AD_HANDSHAKE_FAILURE:
-				str_details2 = " handshake_failure";
-				break;
-
-			case SSL3_AD_BAD_CERTIFICATE:
-				str_details2 = " bad_certificate";
-				break;
-
-			case SSL3_AD_UNSUPPORTED_CERTIFICATE:
-				str_details2 = " unsupported_certificate";
-				break;
-
-			case SSL3_AD_CERTIFICATE_REVOKED:
-				str_details2 = " certificate_revoked";
-				break;
-
-			case SSL3_AD_CERTIFICATE_EXPIRED:
-				str_details2 = " certificate_expired";
-				break;
-
-			case SSL3_AD_CERTIFICATE_UNKNOWN:
-				str_details2 = " certificate_unknown";
-				break;
-
-			case SSL3_AD_ILLEGAL_PARAMETER:
-				str_details2 = " illegal_parameter";
-				break;
-
-			case TLS1_AD_UNKNOWN_CA:
-				str_details2 = " unknown_ca";
-				break;
-
-			case TLS1_AD_ACCESS_DENIED:
-				str_details2 = " access_denied";
-				break;
-
-			case TLS1_AD_DECODE_ERROR:
-				str_details2 = " decode_error";
-				break;
-
-			case TLS1_AD_DECRYPT_ERROR:
-				str_details2 = " decrypt_error";
-				break;
-
-			case TLS1_AD_EXPORT_RESTRICTION:
-				str_details2 = " export_restriction";
-				break;
-
-			case TLS1_AD_PROTOCOL_VERSION:
-				str_details2 = " protocol_version";
-				break;
-
-			case TLS1_AD_INSUFFICIENT_SECURITY:
-				str_details2 = " insufficient_security";
-				break;
-
-			case TLS1_AD_INTERNAL_ERROR:
-				str_details2 = " internal_error";
-				break;
-
-			case TLS1_AD_USER_CANCELLED:
-				str_details2 = " user_canceled";
-				break;
-
-			case TLS1_AD_NO_RENEGOTIATION:
-				str_details2 = " no_renegotiation";
-				break;
+	if ((size_t)tls_session->info.content_type == SSL3_RT_HANDSHAKE) {
+		if (tls_session->info.record_len > 0) {
+			if (((size_t)tls_session->info.handshake_type >= NUM_ELEMENTS(tls_handshake_type_str)) ||
+			    !tls_handshake_type_str[tls_session->info.handshake_type]) {
+				sprintf(unknown_handshake_type,
+					"unknown_handshake_type_0x%04x", tls_session->info.handshake_type);
+				str_details1 = unknown_handshake_type;
+			} else {
+				str_details1 = tls_handshake_type_str[tls_session->info.handshake_type];
 			}
 		}
 	}
 
-	if (tls_session->info.content_type == SSL3_RT_HANDSHAKE) {
-		str_details1 = "???";
-
-		if (tls_session->info.record_len > 0) switch (tls_session->info.handshake_type) {
-		case SSL3_MT_HELLO_REQUEST:
-			str_details1 = ", hello_request";
-			break;
-
-		case SSL3_MT_CLIENT_HELLO:
-			str_details1 = ", client_hello";
-			break;
-
-		case SSL3_MT_SERVER_HELLO:
-			str_details1 = ", server_hello";
-			break;
-
-		case SSL3_MT_CERTIFICATE:
-			str_details1 = ", certificate";
-			break;
-
-		case SSL3_MT_SERVER_KEY_EXCHANGE:
-			str_details1 = ", server_key_exchange";
-			break;
-
-		case SSL3_MT_CERTIFICATE_REQUEST:
-			str_details1 = ", certificate_request";
-			break;
-
-		case SSL3_MT_SERVER_DONE:
-			str_details1 = ", server_hello_done";
-			break;
-
-		case SSL3_MT_CERTIFICATE_VERIFY:
-			str_details1 = ", certificate_verify";
-			break;
-
-		case SSL3_MT_CLIENT_KEY_EXCHANGE:
-			str_details1 = ", client_key_exchange";
-			break;
-
-		case SSL3_MT_FINISHED:
-			str_details1 = ", finished";
-			break;
-		}
-	}
-
-	snprintf(tls_session->info.info_description,
-		 sizeof(tls_session->info.info_description),
-		 "%s %s%s[length %lu]%s%s\n",
-		 str_write_p, str_version, str_content_type,
+	snprintf(tls_session->info.info_description, sizeof(tls_session->info.info_description),
+		 "%s %s, %s[length %lu]%s%s%s%s",
+		 tls_session->info.origin ? ">>> send" : "<<< recv",
+		 version,
+		 content_type,
 		 (unsigned long)tls_session->info.record_len,
-		 str_details1, str_details2);
+		 str_details1 ? ", " : "",
+		 str_details1 ? str_details1 : "",
+		 str_details2 ? ", " : "",
+		 str_details2 ? str_details2 : "");
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "%s", tls_session->info.info_description);
 }
@@ -1350,7 +1256,7 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 	if (SSL_is_init_finished(session->ssl)) {
 		SSL_CIPHER const *cipher;
 		VALUE_PAIR *vp;
-		char const *str_version;
+		char const *version;
 
 		char cipher_desc[256], cipher_desc_clean[256];
 		char *p = cipher_desc, *q = cipher_desc_clean;
@@ -1378,44 +1284,23 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 		if (vp) {
 			fr_pair_value_strcpy(vp,  SSL_CIPHER_get_name(cipher));
 			fr_pair_add(&request->state, vp);
-			RDEBUG2("    &session-state:TLS-Session-Cipher-Suite := \"%s\"", vp->vp_strvalue);
+			RINDENT();
+			RDEBUG2("&session-state:TLS-Session-Cipher-Suite := \"%s\"", vp->vp_strvalue);
+			REXDENT();
 		}
 
-		switch (session->info.version) {
-		case SSL2_VERSION:
-			str_version = "SSL 2.0";
-			break;
-		case SSL3_VERSION:
-			str_version = "SSL 3.0";
-			break;
-		case TLS1_VERSION:
-			str_version = "TLS 1.0";
-			break;
-#ifdef TLS1_1_VERSION
-		case TLS1_1_VERSION:
-			str_version = "TLS 1.1";
-			break;
-#endif
-#ifdef TLS1_2_VERSION
-		case TLS1_2_VERSION:
-			str_version = "TLS 1.2";
-			break;
-#endif
-#ifdef TLS1_3_VERSION
-		case TLS1_3_VERSION:
-			str_version = "TLS 1.3";
-			break;
-#endif
-		default:
-			str_version = "UNKNOWN";
-			break;
+		if (((size_t)session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
+		    !tls_version_str[session->info.version]) {
+			version = "UNKNOWN";
+		} else {
+			version = tls_version_str[session->info.version];
 		}
 
 		vp = fr_pair_afrom_num(request->state_ctx, 0, FR_TLS_SESSION_VERSION);
 		if (vp) {
-			fr_pair_value_strcpy(vp, str_version);
+			fr_pair_value_strcpy(vp, version);
 			fr_pair_add(&request->state, vp);
-			RDEBUG2("    &session-state:TLS-Session-Version := \"%s\"", str_version);
+			RDEBUG2("    &session-state:TLS-Session-Version := \"%s\"", version);
 		}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
