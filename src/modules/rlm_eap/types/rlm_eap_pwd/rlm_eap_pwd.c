@@ -173,7 +173,6 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	uint16_t	offset;
 	uint8_t		exch, *in, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
 	uint8_t		peer_confirm[SHA256_DIGEST_LENGTH];
-	BIGNUM		*x = NULL, *y = NULL;
 
 	if (((eap_round = eap_session->this_round) == NULL) || !inst) return 0;
 
@@ -274,6 +273,9 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 
 	switch (session->state) {
 	case PWD_STATE_ID_REQ:
+	{
+		BIGNUM	*x = NULL, *y = NULL;
+
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_ID) {
 			RDEBUG2("PWD exchange is incorrect, Not ID");
 			return RLM_MODULE_INVALID;
@@ -336,10 +338,8 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 			return RLM_MODULE_FAIL;
 		}
 
-		if (((x = BN_new()) == NULL) || ((y = BN_new()) == NULL)) {
-			REDEBUG("Server point allocation failed");
-			return RLM_MODULE_FAIL;
-		}
+		MEM(x = BN_new());
+		MEM(y = BN_new());
 
 		/*
 		 *	Element is a point, get both coordinates: x and y
@@ -360,10 +360,12 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		ptr = session->out;
 		offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 		BN_bn2bin(x, ptr + offset);
+		BN_clear_free(x);
 
 		ptr += BN_num_bytes(session->prime);
 		offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 		BN_bn2bin(y, ptr + offset);
+		BN_clear_free(y);
 
 		ptr += BN_num_bytes(session->prime);
 		offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
@@ -371,6 +373,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 
 		session->state = PWD_STATE_COMMIT;
 		rcode = send_pwd_request(session, eap_round) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
+	}
 		break;
 
 	case PWD_STATE_COMMIT:
