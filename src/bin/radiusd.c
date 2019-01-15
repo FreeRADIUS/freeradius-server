@@ -469,10 +469,12 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
 	if (tls_dict_init() < 0) {
 		fr_perror("radiusd");
 		EXIT_WITH_FAILURE;
 	}
+#endif
 
 	/*
 	 *  Read the configuration files, BEFORE doing anything else.
