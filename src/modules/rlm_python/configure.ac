@@ -74,11 +74,9 @@ if test x$with_[]modname != xno; then
 		PY_SYS_VERSION=`${PYTHON_BIN} -c 'import sys ; print(sys.version[[0:3]])'`
 		AC_MSG_NOTICE([Python sys.version \"${PY_SYS_VERSION}\"])
 
-		if [ -z "$PY_LIB_DIR" ]; then
+		if [ "x$PY_LIB_DIR" = "x" ]; then
 			PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
 			PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
-		else
-			PY_LIB_LOC="-L$PY_LIB_DIR"
 		fi
 
 		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config/Makefile"

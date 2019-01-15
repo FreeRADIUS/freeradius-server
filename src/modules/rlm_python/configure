@@ -2940,11 +2940,9 @@ $as_echo "$as_me: Python sys.exec_prefix \"${PY_EXEC_PREFIX}\"" >&6;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.version \"${PY_SYS_VERSION}\"" >&5
 $as_echo "$as_me: Python sys.version \"${PY_SYS_VERSION}\"" >&6;}
 
-		if  -z "$PY_LIB_DIR" ; then
+		if  "x$PY_LIB_DIR" = "x" ; then
 			PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
 			PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
-		else
-			PY_LIB_LOC="-L$PY_LIB_DIR"
 		fi
 
 		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config/Makefile"
