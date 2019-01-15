@@ -869,9 +869,23 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 				RDEBUG("Invalid identity response");
 				goto error_session;
 			}
-			RDEBUG2("EAP Identity Response - \"%pV\"",
-				fr_box_strvalue_len(eap_session->identity,
-						    talloc_array_length(eap_session->identity) - 1));
+
+			/*
+			 *	Sometimes we need the hex stream to determine where
+			 *	random junk is coming from.
+			 */
+			if (DEBUG_ENABLED3) {
+				RHEXDUMP(L_DBG_LVL_3, (uint8_t *const)eap_session->identity,
+					 talloc_array_length(eap_session->identity) - 1,
+					 "EAP Identity Response - \"%pV\"",
+					 fr_box_strvalue_len(eap_session->identity,
+						    	     talloc_array_length(eap_session->identity) - 1));
+			} else {
+				RDEBUG2("EAP Identity Response - \"%pV\"",
+					fr_box_strvalue_len(eap_session->identity,
+							    talloc_array_length(eap_session->identity) - 1));
+			}
+
 			break;
 
 		case FR_EAP_INVALID:
