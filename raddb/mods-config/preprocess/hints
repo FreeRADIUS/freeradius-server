@@ -1,6 +1,7 @@
-# hints
 #
-#	The hints file.   This file is used to match
+#  hints
+#
+#	The hints file.  This file is used to match
 #	a request, and then add attributes to it.  This
 #	process allows a user to login as "bob.ppp" (for example),
 #	and receive a PPP connection, even if the NAS doesn't
@@ -12,10 +13,10 @@
 #	attributes, just like in the "users" file.
 #	These attributes operate ONLY on the username, though.
 #
-#	Note that the attributes that are set for each
-#	entry are _NOT_ passed back to the terminal server.
-#	Instead they are added to the information that has
-#	been _SENT_ by the terminal server.
+#	Note that the attributes that are set for each entry are
+#	NOT added to the reply attributes passed back to the NAS.
+#	Instead they are added to the list of attributes in the
+#	request that has been SENT by the NAS.
 #
 #	This extra information can be used in the users file to
 #	match on. Usually this is done in the DEFAULT entries,
@@ -28,7 +29,15 @@
 #	A special non-protocol name-value pair called "Hint"
 #	can be set to match on in the "users" file.
 #
-#	The following is how most ISPs want to set this up.
+#	As with the "users" file, the first entry that matches the
+#	incoming request will cause the server to stop looking for
+#	more hints. If the "Fall-Through" attribute is set to
+#	"Yes" in an entry then the server will not stop, but
+#	continue to process further hints from the file. Matches
+#	on subsequent hints will be against the altered request
+#	from the previous hints, not against the original request.
+#
+#	The following is how most dial-up ISPs want to set this up.
 #
 # Version:	$Id$
 #
