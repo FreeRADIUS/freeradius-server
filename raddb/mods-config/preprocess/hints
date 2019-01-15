@@ -1,3 +1,10 @@
+<<<<<<< Updated upstream
+=======
+DEFAULT User-Name =~ "^([^@]+)@realm.com", NAS-IP-Address == "127.0.0.1"
+     User-Name := "%{1}"
+
+# hints
+>>>>>>> Stashed changes
 #
 #  hints
 #

@@ -1,3 +1,7 @@
+bob	Cleartext-Password := "bob"
+	Session-Timeout := 1234,
+	Example-Integer := 6809
+
 #
 # 	Configuration file for the rlm_files module.
 # 	Please see rlm_files(5) manpage for more information.

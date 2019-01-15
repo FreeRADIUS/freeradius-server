@@ -566,6 +566,14 @@ authenticate {
 preacct {
 	preprocess
 
+	 update coa {
+                  User-Name="%{User-Name}"
+                  Acct-Session-Id="%{%{Acct-Multi-Session-Id}:-%{Acct-Session-ID}}"
+          }
+                 
+          echo
+
+
 	#
 	#  Merge Acct-[Input|Output]-Gigawords and Acct-[Input-Output]-Octets
 	#  into a single 64bit counter Acct-[Input|Output]-Octets64.

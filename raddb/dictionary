@@ -47,3 +47,15 @@
 #ATTRIBUTE	My-Local-String		3000	string
 #ATTRIBUTE	My-Local-IPAddr		3001	ipaddr
 #ATTRIBUTE	My-Local-Integer	3002	integer
+
+VENDOR example	   65535
+
+BEGIN-VENDOR example
+ATTRIBUTE Example-Integer	1 integer
+ATTRIBUTE Example-String	2 string
+ATTRIBUTE Example-IP-Address	3 ipaddr
+
+VALUE	Example-Integer Name1	1
+VALUE	Example-Integer Name2	2
+
+END-VENDOR example
