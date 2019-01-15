@@ -52,7 +52,7 @@ exec echo {
 	#  field, so things like the following example will
 	#  work.
 	#
-	program = "/bin/echo 'Filter-Id := %{User-Name}'"
+	program = "/bin/echo %{User-Name}"
 
 	#
 	#  The attributes which are placed into the
@@ -79,7 +79,7 @@ exec echo {
 	#  restrictions as to availability, are the same as
 	#  for the input_pairs.
 	#
-	output_pairs = coa
+	output_pairs = reply
 
 	#
 	#  When to execute the program.  If the packet
