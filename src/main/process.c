@@ -4508,6 +4508,17 @@ static bool coa_max_time(REQUEST *request)
 	if (timercmp(&now, &when, >=)) {
 		char buffer[256];
 
+		if (request->process != coa_running) {
+			RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d within %d seconds",
+			       request->proxy->id,
+			       inet_ntop(request->proxy->dst_ipaddr.af,
+					 &request->proxy->dst_ipaddr.ipaddr,
+					 buffer, sizeof(buffer)),
+			       request->proxy->dst_port,
+			       request->home_server->coa_mrd);
+			goto done;
+		}
+
 #ifdef HAVE_PTHREAD_H
 		/*
 		 *	If there's a child thread processing it,
@@ -4515,21 +4526,15 @@ static bool coa_max_time(REQUEST *request)
 		 */
 		if (spawn_flag &&
 		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
-			ERROR("Unresponsive child for originate-coa request %u, in component %s module %s",
-			      request->number,
+			RERROR("Unresponsive child for originate-coa, in component %s module %s",
 			      request->component ? request->component : "<core>",
 			      request->module ? request->module : "<core>");
 			exec_trigger(request, NULL, "server.thread.unresponsive", true);
-		}
+		} else
 #endif
-
-		RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d within %d seconds",
-		       request->proxy->id,
-		       inet_ntop(request->proxy->dst_ipaddr.af,
-				 &request->proxy->dst_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       request->proxy->dst_port,
-		       request->home_server->coa_mrd);
+		{
+			RERROR("originate-coa hit max_request_time.  Cancelling it.");
+		}
 
 		/*
 		 *	Tell the request that it's done.
