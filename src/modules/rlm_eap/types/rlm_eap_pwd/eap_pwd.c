@@ -142,15 +142,14 @@ int compute_password_element(pwd_session_t *session, uint16_t grp_num,
 		goto error;
 	}
 
-	if (((rnd = BN_new()) == NULL) ||
-	    ((cofactor = BN_new()) == NULL) ||
-	    ((session->pwe = EC_POINT_new(session->group)) == NULL) ||
-	    ((session->order = BN_new()) == NULL) ||
-	    ((session->prime = BN_new()) == NULL) ||
-	    ((x_candidate = BN_new()) == NULL)) {
-		ERROR("Unable to create bignums");
-		goto error;
-	}
+	MEM(session->pwe = EC_POINT_new(session->group));
+	MEM(session->order = BN_new());
+	MEM(session->prime = BN_new());
+
+	MEM(rnd = BN_new());
+	MEM(cofactor = BN_new());
+	MEM(x_candidate = BN_new());
+
 
 	if (!EC_GROUP_get_curve_GFp(session->group, session->prime, NULL, NULL, NULL)) {
 		ERROR("Unable to get prime for GFp curve");
@@ -273,13 +272,11 @@ int compute_scalar_element(pwd_session_t *session, BN_CTX *bn_ctx)
 	BIGNUM *mask = NULL;
 	int ret = -1;
 
-	if (((session->private_value = BN_new()) == NULL) ||
-	    ((session->my_element = EC_POINT_new(session->group)) == NULL) ||
-	    ((session->my_scalar = BN_new()) == NULL) ||
-	    ((mask = BN_new()) == NULL)) {
-		ERROR("Server scalar allocation failed");
-		goto error;
-	}
+	MEM(session->private_value = BN_new());
+	MEM(session->my_element = EC_POINT_new(session->group));
+	MEM(session->my_scalar = BN_new());
+
+	MEM(mask = BN_new());
 
 	if (BN_rand_range(session->private_value, session->order) != 1) {
 		ERROR("Unable to get randomness for private_value");
@@ -316,19 +313,17 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 	size_t		data_len;
 	BIGNUM		*x = NULL, *y = NULL, *cofactor = NULL;
 	EC_POINT	*K = NULL, *point = NULL;
-	int		res = 1;
+	int		ret = 1;
 
-	if (((session->peer_scalar = BN_new()) == NULL) ||
-	    ((session->k = BN_new()) == NULL) ||
-	    ((cofactor = BN_new()) == NULL) ||
-	    ((x = BN_new()) == NULL) ||
-	    ((y = BN_new()) == NULL) ||
-	    ((point = EC_POINT_new(session->group)) == NULL) ||
-	    ((K = EC_POINT_new(session->group)) == NULL) ||
-	    ((session->peer_element = EC_POINT_new(session->group)) == NULL)) {
-		ERROR("Failed to allocate room to process peer's commit");
-		goto finish;
-	}
+	MEM(session->peer_scalar = BN_new());
+	MEM(session->k = BN_new());
+	MEM(session->peer_element = EC_POINT_new(session->group));
+	MEM(point = EC_POINT_new(session->group));
+	MEM(K = EC_POINT_new(session->group));
+
+	MEM(cofactor = BN_new());
+	MEM(x = BN_new());
+	MEM(y = BN_new());
 
 	if (!EC_GROUP_get_cofactor(session->group, cofactor, NULL)) {
 		ERROR("Unable to get group co-factor");
@@ -404,7 +399,7 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 		ERROR("Unable to get shared secret from K");
 		goto finish;
 	}
-	res = 0;
+	ret = 0;
 
 finish:
 	EC_POINT_clear_free(K);
@@ -413,7 +408,7 @@ finish:
 	BN_clear_free(x);
 	BN_clear_free(y);
 
-	return res;
+	return ret;
 }
 
 int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
@@ -426,11 +421,9 @@ int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	/*
 	 * Each component of the cruft will be at most as big as the prime
 	 */
-	if (((cruft = talloc_zero_array(session, uint8_t, BN_num_bytes(session->prime))) == NULL) ||
-	    ((x = BN_new()) == NULL) || ((y = BN_new()) == NULL)) {
-		ERROR("Unable to allocate space to compute confirm");
-		goto finish;
-	}
+	MEM(cruft = talloc_zero_array(session, uint8_t, BN_num_bytes(session->prime)));
+	MEM(x = BN_new());
+	MEM(y = BN_new());
 
 	/*
 	 * commit is H(k | server_element | server_scalar | peer_element |
@@ -529,11 +522,9 @@ int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	/*
 	 * Each component of the cruft will be at most as big as the prime
 	 */
-	if (((cruft = talloc_zero_array(session, uint8_t, BN_num_bytes(session->prime))) == NULL) ||
-	    ((x = BN_new()) == NULL) || ((y = BN_new()) == NULL)) {
-		ERROR("Unable to allocate space to compute confirm");
-		goto finish;
-	}
+	MEM(cruft = talloc_zero_array(session, uint8_t, BN_num_bytes(session->prime)));
+	MEM(x = BN_new());
+	MEM(y = BN_new());
 
 	/*
 	 * commit is H(k | server_element | server_scalar | peer_element |
