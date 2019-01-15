@@ -375,18 +375,15 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	VALUE_PAIR	*add;
 	VALUE_PAIR	*tmp;
 	PAIR_LIST	*i;
-	VALUE_PAIR	*request_pairs;
 	int		updated = 0, ft;
 
-	request_pairs = request->packet->vps;
-
-	if (!hints || !request_pairs)
+	if (!hints || !request->packet->vps)
 		return RLM_MODULE_NOOP;
 
 	/*
 	 *	Check for valid input, zero length names not permitted
 	 */
-	name = (tmp = fr_pair_find_by_num(request_pairs, PW_USER_NAME, 0, TAG_ANY)) ?
+	name = (tmp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY)) ?
 		tmp->vp_strvalue : NULL;
 	if (!name || name[0] == 0) {
 		/*
@@ -400,7 +397,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 		 *	Use "paircompare", which is a little more general...
 		 */
 		if (((strcmp(i->name, "DEFAULT") == 0) || (strcmp(i->name, name) == 0)) &&
-		    (paircompare(request, request_pairs, i->check, NULL) == 0)) {
+		    (paircompare(request, request->packet->vps, i->check, NULL) == 0)) {
 			RDEBUG2("hints: Matched %s at %d", i->name, i->lineno);
 			/*
 			 *	Now add all attributes to the request list,
