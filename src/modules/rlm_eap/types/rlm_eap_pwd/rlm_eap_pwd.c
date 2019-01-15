@@ -278,7 +278,6 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	uint16_t offset;
 	uint8_t exch, *in, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
 	uint8_t peer_confirm[SHA256_DIGEST_LENGTH];
-	BIGNUM *x = NULL, *y = NULL;
 
 	if (((eap_ds = handler->eap_ds) == NULL) || !inst) return 0;
 
