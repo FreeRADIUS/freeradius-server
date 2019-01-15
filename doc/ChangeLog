@@ -65,6 +65,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  Fixes #2383.  Patch from Nathan Ward.
 	* Updated Debian packages to allow for libssl1.1.
 	  Fixes #2384.  Patch from Alejandro Perez.
+	* Allow PSK and certificates at the same time.
+	  There appears to be no reason to forbid this.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -120,6 +122,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Fix slow memory leak with dynamic clients
 	* Don't artificially truncate debug output for long
 	  strings.
+	* Fix memory leak in EAP-PWD.
+	* Fix crash in "hints" file with Fall-Through = yes
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
