@@ -35,8 +35,6 @@ RCSID("$Id$")
  #undef DEBUG
 #define DEBUG(fmt, ...)		if (fr_debug_lvl > 0) fr_printf_log(fmt "\n", ## __VA_ARGS__)
 
-#define ERROR(fmt, ...)		fr_perror("dhcpclient: " fmt, ## __VA_ARGS__)
-
 #ifdef WITH_DHCP
 
 #include <ctype.h>
@@ -160,7 +158,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 	if (filename) {
 		fp = fopen(filename, "r");
 		if (!fp) {
-			ERROR("Error opening %s: %s", filename, fr_syserror(errno));
+			fr_perror("dhcpclient: Error opening %s: %s", filename, fr_syserror(errno));
 			return NULL;
 		}
 	} else {
@@ -358,7 +356,7 @@ static RADIUS_PACKET *fr_dhcpv4_recv_raw_loop(int lsockfd,
 			if (fr_debug_lvl) print_hex(cur_reply_p);
 
 			if (fr_dhcpv4_packet_decode(cur_reply_p) < 0) {
-				ERROR("Failed decoding reply");
+				fr_perror("dhcpclient: Failed decoding reply");
 				return NULL;
 			}
 
@@ -416,7 +414,7 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 	if (raw_mode) {
 		sockfd = fr_dhcpv4_raw_socket_open(&ll, iface_ind);
 		if (sockfd < 0) {
-			ERROR("Error opening socket");
+			fr_perror("dhcpclient: Error opening socket");
 			return -1;
 		}
 	} else
@@ -424,12 +422,12 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 	{
 		sockfd = fr_socket_server_udp(&request->src_ipaddr, &request->src_port, NULL, false);
 		if (sockfd < 0) {
-			ERROR("Error opening socket: %s", fr_strerror());
+			fr_perror("dhcpclient: Error opening socket: %s", fr_strerror());
 			return -1;
 		}
 
 		if (fr_socket_bind(sockfd, &request->src_ipaddr, &request->src_port, NULL) < 0) {
-			ERROR("Error binding socket: %s", fr_strerror());
+			fr_perror("dhcpclient: Error binding socket: %s", fr_strerror());
 			return -1;
 		}
 	}
@@ -440,12 +438,12 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 	 *	Note: in case of a timeout, the error will be "Resource temporarily unavailable".
 	 */
 	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv_timeout, sizeof(struct timeval)) == -1) {
-		ERROR("Failed setting socket timeout: %s", fr_syserror(errno));
+		fr_perror("dhcpclient: Failed setting socket timeout: %s", fr_syserror(errno));
 		return -1;
 	}
 
 	if (setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-		ERROR("Can't set broadcast option: %s", fr_syserror(errno));
+		fr_perror("dhcpclient: Can't set broadcast option: %s", fr_syserror(errno));
 		return -1;
 	}
 	request->sockfd = sockfd;
@@ -453,21 +451,21 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 #ifdef HAVE_LINUX_IF_PACKET_H
 	if (raw_mode) {
 		if (fr_dhcpv4_raw_packet_send(sockfd, &ll, request) < 0) {
-			ERROR("Failed sending (fr_dhcpv4_raw_packet_send): %s", fr_syserror(errno));
+			fr_perror("dhcpclient: Failed sending (fr_dhcpv4_raw_packet_send): %s", fr_syserror(errno));
 			return -1;
 		}
 		if (!reply_expected) return 0;
 
 		*reply = fr_dhcpv4_recv_raw_loop(sockfd, &ll, request);
 		if (!*reply) {
-			ERROR("Error receiving reply (fr_dhcpv4_recv_raw_loop)");
+			fr_perror("dhcpclient: Error receiving reply (fr_dhcpv4_recv_raw_loop)");
 			return -1;
 		}
 	} else
 #endif
 	{
 		if (fr_dhcpv4_udp_packet_send(request) < 0) {
-			ERROR("Failed sending: %s", fr_syserror(errno));
+			fr_perror("dhcpclient: Failed sending: %s", fr_syserror(errno));
 			return -1;
 		}
 		if (!reply_expected) return 0;
@@ -476,9 +474,9 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 		if (!*reply) {
 			if (errno == EAGAIN) {
 				fr_strerror(); /* clear error */
-				ERROR("Timed out waiting for reply");
+				fr_perror("dhcpclient: Timed out waiting for reply");
 			} else {
-				ERROR("Error receiving reply");
+				fr_perror("dhcpclient: Error receiving reply");
 			}
 			return -1;
 		}
@@ -495,12 +493,12 @@ static int send_with_pcap(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 
 	pcap = fr_pcap_init(NULL, iface, PCAP_INTERFACE_IN_OUT);
 	if (!pcap) {
-		ERROR("Failed creating pcap");
+		fr_perror("dhcpclient: Failed creating pcap");
 		return -1;
 	}
 
 	if (fr_pcap_open(pcap) < 0) {
-		ERROR("Failed opening interface");
+		fr_perror("dhcpclient: Failed opening interface");
 		talloc_free(pcap);
 		return -1;
 	}
@@ -509,13 +507,13 @@ static int send_with_pcap(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 	sprintf(pcap_filter, "udp and dst port %d", request->src_port);
 
 	if (fr_pcap_apply_filter(pcap, pcap_filter) < 0) {
-		ERROR("Failing setting filter");
+		fr_perror("dhcpclient: Failing setting filter");
 		talloc_free(pcap);
 		return -1;
 	}
 
 	if (fr_dhcpv4_pcap_send(pcap, eth_bcast, request) < 0) {
-		ERROR("Failed sending packet");
+		fr_perror("dhcpclient: Failed sending packet");
 		talloc_free(pcap);
 		return -1;
 	}
@@ -529,7 +527,7 @@ static int send_with_pcap(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 				      request);
 
 	if (!*reply) {
-		ERROR("Error receiving reply");
+		fr_perror("dhcpclient: Error receiving reply");
 		talloc_free(pcap);
 		return -1;
 	}
@@ -715,7 +713,7 @@ int main(int argc, char **argv)
 		if (!isdigit((int) argv[2][0])) {
 			packet_code = fr_str2int(request_types, argv[2], -2);
 			if (packet_code == -2) {
-				ERROR("Unknown packet type: %s", argv[2]);
+				fr_perror("dhcpclient: Unknown packet type: %s", argv[2]);
 				usage();
 			}
 		} else {
@@ -731,19 +729,19 @@ int main(int argc, char **argv)
 	if (iface) {
 		iface_ind = if_nametoindex(iface);
 		if (iface_ind <= 0) {
-			ERROR("Unknown interface: %s", iface);
+			fr_perror("dhcpclient: Unknown interface: %s", iface);
 			exit(EXIT_FAILURE);
 		}
 
 		if (server_ipaddr.addr.v4.s_addr == 0xFFFFFFFF) {
-			ERROR("Using interface: %s (index: %d) in raw packet mode", iface, iface_ind);
+			fr_perror("dhcpclient: Using interface: %s (index: %d) in raw packet mode", iface, iface_ind);
 			raw_mode = true;
 		}
 	}
 
 	request = request_init(filename);
 	if (!request || !request->vps) {
-		ERROR("Nothing to send");
+		fr_perror("dhcpclient: Nothing to send");
 		exit(EXIT_FAILURE);
 	}
 
@@ -760,7 +758,7 @@ int main(int argc, char **argv)
 	 *	Sanity check.
 	 */
 	if (!request->code) {
-		ERROR("Command was %s, and request did not contain DHCP-Message-Type nor Packet-Type",
+		fr_perror("dhcpclient: Command was %s, and request did not contain DHCP-Message-Type nor Packet-Type",
 		      (argc >= 3) ? "'auto'" : "unspecified");
 		exit(EXIT_FAILURE);
 	}
@@ -776,7 +774,7 @@ int main(int argc, char **argv)
 	 *	Encode the packet
 	 */
 	if (fr_dhcpv4_packet_encode(request) < 0) {
-		ERROR("Failed encoding packet");
+		fr_perror("dhcpclient: Failed encoding packet");
 		exit(EXIT_FAILURE);
 	}
 
@@ -799,7 +797,7 @@ int main(int argc, char **argv)
 
 	if (reply) {
 		if (fr_dhcpv4_packet_decode(reply) < 0) {
-			ERROR("Failed decoding packet");
+			fr_perror("dhcpclient: Failed decoding packet");
 			ret = -1;
 		}
 		dhcp_packet_debug(reply, true);
