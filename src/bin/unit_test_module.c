@@ -746,7 +746,9 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
 	if (tls_dict_init() < 0) EXIT_WITH_FAILURE;
+#endif
 
 	/*
 	 *	Load the custom dictionary
