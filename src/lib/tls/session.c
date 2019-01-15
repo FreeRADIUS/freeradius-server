@@ -87,12 +87,6 @@ static char const *tls_content_type_str[] = {
 	[SSL3_RT_ALERT]				= "alert",
 	[SSL3_RT_HANDSHAKE]			= "handshake",
 	[SSL3_RT_APPLICATION_DATA]		= "application_data",
-#ifdef DTLS1_RT_HEARTBEAT
-	[DTLS1_RT_HEARTBEAT]			= "heartbeat",
-#endif
-#ifdef TLS1_RT_HEARTBEAT
-	[TLS1_RT_HEARTBEAT]			= "heartbeat",
-#endif
 #ifdef SSL3_RT_HEADER
 	[SSL3_RT_HEADER]			= "header",
 #endif
