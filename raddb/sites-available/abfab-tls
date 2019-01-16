@@ -21,6 +21,11 @@ listen {
 		ca_path = ${cadir}
 		cipher_list = "DEFAULT"
 
+		# Having a TLS configuration allowing both PSK and certificates at the
+		# same time does not work with OpenSSL 1.1 and TLS 1.3 at this time.
+		# We restrict ABFAB to TLS 1.2 until this is resolved
+		tls_max_version = 1.2
+
 		cache {
 			enable = no
 			lifetime = 24 # hours
