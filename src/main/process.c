@@ -384,7 +384,7 @@ static void coa_separate(REQUEST *request, bool retransmit) CC_HINT(nonnull);
 #  define COA_SEPARATE
 #endif
 
-#define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {request_done(request, FR_ACTION_DONE);return;}} while (0)
+#define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {request_done(request, FR_ACTION_CANCELLED);return;}} while (0)
 
 #undef USEC
 #define USEC (1000000)
@@ -593,6 +593,7 @@ static void proxy_reply_too_late(REQUEST *request)
  *
  *  \dot
  *	digraph done {
+ *		stopped -> done
  *		done -> done [ label = "still running" ];
  *	}
  *  \enddot
@@ -662,14 +663,24 @@ static void request_done(REQUEST *request, int action)
 	}
 #endif
 
-#ifdef WITH_COA
 	/*
-	 *	Move the CoA request to its own handler.
+	 *	If it was administratively canceled, then it's done.
 	 */
-	if (request->coa) {
-		coa_separate(request->coa, true);
-	} else if (request->parent && (request->parent->coa == request)) {
-		coa_separate(request, true);
+	if (action == FR_ACTION_CANCELLED) {
+		action = FR_ACTION_DONE;
+	}
+#ifdef WITH_COA
+	else {
+		/*
+		 *	Move the CoA request to its own handler, but
+		 *	only if the request finished normally, and was
+		 *	not administatively canceled.
+		 */
+		if (request->coa) {
+			coa_separate(request->coa, true);
+		} else if (request->parent && (request->parent->coa == request)) {
+			coa_separate(request, true);
+		}
 	}
 #endif
 
@@ -937,7 +948,7 @@ static bool request_max_time(REQUEST *request)
 	 */
 	if (request->child_state == REQUEST_DONE) {
 	done:
-		request_done(request, FR_ACTION_DONE);
+		request_done(request, FR_ACTION_CANCELLED);
 		return true;
 	}
 
@@ -1007,7 +1018,7 @@ static void request_queue_or_run(REQUEST *request,
 				       child_state_names[request->child_state],
 				       child_state_names[REQUEST_DONE]);
 #endif
-		request_done(request, FR_ACTION_DONE);
+		request_done(request, FR_ACTION_CANCELLED);
 		return;
 	}
 
@@ -1038,7 +1049,7 @@ static void request_queue_or_run(REQUEST *request,
 			 *	Otherwise we're not going to do anything with
 			 *	it...
 			 */
-			request_done(request, FR_ACTION_DONE);
+			request_done(request, FR_ACTION_CANCELLED);
 			return;
 		}
 #endif
@@ -1704,7 +1715,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		 *	the request just as we're logging the
 		 *	complaint.
 		 */
-		request_done(request, FR_ACTION_DONE);
+		request_done(request, FR_ACTION_CANCELLED);
 		request = NULL;
 
 		/*
@@ -1793,7 +1804,7 @@ skip_dup:
 	if (!listener->nodup) {
 		if (!rbtree_insert(pl, &request->packet)) {
 			RERROR("Failed to insert request in the list of live requests: discarding it");
-			request_done(request, FR_ACTION_DONE);
+			request_done(request, FR_ACTION_CANCELLED);
 			return 1;
 		}
 
@@ -3013,7 +3024,7 @@ do_home:
 	 *	Once we've decided to proxy a request, we cannot send
 	 *	a CoA packet.  So we free up any CoA packet here.
 	 */
-	if (request->coa) request_done(request->coa, FR_ACTION_DONE);
+	if (request->coa) request_done(request->coa, FR_ACTION_CANCELLED);
 #endif
 
 	/*
@@ -3224,7 +3235,7 @@ static int request_proxy(REQUEST *request)
 #ifdef WITH_COA
 	if (request->coa) {
 		RWDEBUG("Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
-		request_done(request->coa, FR_ACTION_DONE);
+		request_done(request->coa, FR_ACTION_CANCELLED);
 	}
 #endif
 
@@ -4481,7 +4492,7 @@ static bool coa_max_time(REQUEST *request)
 	 */
 	if (request->child_state == REQUEST_DONE) {
 	done:
-		request_done(request, FR_ACTION_DONE);
+		request_done(request, FR_ACTION_CANCELLED);
 		return true;
 	}
 
@@ -4601,7 +4612,7 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 		    request->proxy_reply ||
 		    !request->proxy_listener ||
 		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
-			request_done(request, FR_ACTION_DONE);
+			request_done(request, FR_ACTION_CANCELLED);
 			break;
 		}
 
@@ -5724,7 +5735,7 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 	request->in_proxy_hash = false;
 
 	if (!request->in_request_hash) {
-		request_done(request, FR_ACTION_DONE);
+		request_done(request, FR_ACTION_CANCELLED);
 	}
 
 	/*

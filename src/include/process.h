@@ -42,6 +42,7 @@ typedef enum fr_state_action_t {	/* server action */
 #ifdef WITH_PROXY
 	FR_ACTION_PROXY_REPLY,
 #endif
+	FR_ACTION_CANCELLED,
 } fr_state_action_t;
 
 /*
