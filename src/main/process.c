@@ -668,9 +668,10 @@ static void request_done(REQUEST *request, int action)
 	 */
 	if (action == FR_ACTION_CANCELLED) {
 		action = FR_ACTION_DONE;
-	}
 #ifdef WITH_COA
-	else {
+		if (request->coa) TALLOC_FREE(request->coa);
+
+	} else {
 		/*
 		 *	Move the CoA request to its own handler, but
 		 *	only if the request finished normally, and was
@@ -681,8 +682,8 @@ static void request_done(REQUEST *request, int action)
 		} else if (request->parent && (request->parent->coa == request)) {
 			coa_separate(request, true);
 		}
-	}
 #endif
+	}
 
 	/*
 	 *	It doesn't hurt to send duplicate replies.  All other
