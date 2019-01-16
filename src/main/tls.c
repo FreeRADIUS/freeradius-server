@@ -2955,6 +2955,29 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 			return NULL;
 		}
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		/*
+		 *	OpenSSL appears to have a bug where it does
+		 *	not allow PSK and certs to be used at the same
+		 *	time.  RFC 8446 Section 2 (page 12) says:
+		 *
+		 *	"Note that implementations can use (EC)DHE and PSK
+		 *	together, in which case both extensions will be supplied."
+		 *
+		 *	Instead of having weird failures, we just warn
+		 *	the end user.
+		 */
+		if (((conf->psk_identity || conf->psk_password || conf->psk_query)) &&
+		    (conf->certificate_file || conf->private_key_password || conf->private_key_file)) {
+			radlog(L_DBG | L_WARN, "Disabling TLS 1.3 due to PSK and certificates being configured simultaneousy.  This is not supported by OpenSSL");
+
+			if (!SSL_CTX_set_max_proto_version(ctx, TLS1_2_VERSION)) {
+				ERROR("Failed setting maximum TLS version to 1.2 for OpenSSL 1.1, due to PSK and certs.");
+				return NULL;
+			}
+		}
+#endif	/* OpenSSL version >1.1.0 */
+
 		goto post_ca;
 	}
 #else
