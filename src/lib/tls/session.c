@@ -135,7 +135,7 @@ static char const *tls_alert_description_str[] = {
 	[TLS1_AD_UNRECOGNIZED_NAME]		= "unrecognised_name",
 #endif
 #ifdef TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE
-	[TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE] = "bad_sertificate_status_response",
+	[TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE] = "bad_certificate_status_response",
 #endif
 #ifdef TLS1_AD_BAD_CERTIFICATE_HASH_VALUE
 	[TLS1_AD_BAD_CERTIFICATE_HASH_VALUE]	= "bad_certificate_hash_value",
