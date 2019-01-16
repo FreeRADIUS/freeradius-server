@@ -117,7 +117,7 @@ static char const *tls_alert_description_str[] = {
 	[TLS1_AD_PROTOCOL_VERSION]		= "protocol_version",
 	[TLS1_AD_INSUFFICIENT_SECURITY]		= "insufficient_security",
 	[TLS1_AD_INTERNAL_ERROR]		= "internal_error",
-	[TLS1_AD_USER_CANCELLED]		= "user_canceled",
+	[TLS1_AD_USER_CANCELLED]		= "user_cancelled",
 	[TLS1_AD_NO_RENEGOTIATION]		= "no_renegotiation",
 #ifdef TLS13_AD_MISSING_EXTENSION
 	[TLS13_AD_MISSING_EXTENSION]		= "missing_extension",

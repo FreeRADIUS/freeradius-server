@@ -182,7 +182,7 @@ static pgerror errorcodes[] = {
 	 *	Forcing a reconnect here only eats more resources on the DB so we will
 	 *	no longer do so as of 3.0.4.
 	 */
-	{ "57014", "QUERY CANCELED", false },
+	{ "57014", "QUERY CANCELLED", false },
 	{ "57P01", "ADMIN SHUTDOWN", true },
 	{ "57P02", "CRASH SHUTDOWN", true },
 	{ "57P03", "CANNOT CONNECT NOW", true },
