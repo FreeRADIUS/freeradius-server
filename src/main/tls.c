@@ -3139,7 +3139,7 @@ post_ca:
 		if (openssl_bug &&
 		    (min_version < TLS1_3_VERSION) && (max_version >= TLS1_3_VERSION)) {
 			max_version = TLS1_2_VERSION;
-			radlog(L_DBG | L_WARN, "Disabling TLS 1.3 due to PSK and certificates being configured simultaneousy.  This is not supported by OpenSSL");
+			radlog(L_DBG | L_WARN, "Disabling TLS 1.3 due to PSK and certificates being configured simultaneously.  This is not supported by OpenSSL");
 		}
 
 		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
