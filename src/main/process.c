@@ -668,9 +668,12 @@ static void request_done(REQUEST *request, int action)
 	 */
 	if (action == FR_ACTION_CANCELLED) {
 		action = FR_ACTION_DONE;
-#ifdef WITH_COA
-		if (request->coa) TALLOC_FREE(request->coa);
 
+#ifdef WITH_COA
+		/*
+		 *	Don't touch request->coa, it's in the middle
+		 *	of being processed...
+		 */
 	} else {
 		/*
 		 *	Move the CoA request to its own handler, but
@@ -821,6 +824,15 @@ static void request_done(REQUEST *request, int action)
 #ifdef HAVE_PTHREAD_H
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 #endif
+
+#ifdef WITH_COA
+	/*
+	 *	Now that the child is done, free the CoA packet.  If
+	 *	the CoA is running, it's already been separated.
+	 */
+	if (request->coa) TALLOC_FREE(request->coa);
+#endif
+
 
 	/*
 	 *	@todo: do final states for TCP sockets, too?
