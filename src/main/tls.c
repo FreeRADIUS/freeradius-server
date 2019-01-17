@@ -2786,6 +2786,9 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 	int		ctx_options = 0;
 	int		ctx_tls_versions = 0;
 	int		type;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	bool		openssl_bug = false;
+#endif
 
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
@@ -2969,12 +2972,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 		 */
 		if (((conf->psk_identity || conf->psk_password || conf->psk_query)) &&
 		    (conf->certificate_file || conf->private_key_password || conf->private_key_file)) {
-			radlog(L_DBG | L_WARN, "Disabling TLS 1.3 due to PSK and certificates being configured simultaneousy.  This is not supported by OpenSSL");
-
-			if (!SSL_CTX_set_max_proto_version(ctx, TLS1_2_VERSION)) {
-				ERROR("Failed setting maximum TLS version to 1.2 for OpenSSL 1.1, due to PSK and certs.");
-				return NULL;
-			}
+			openssl_bug = true;
 		}
 #endif	/* OpenSSL version >1.1.0 */
 
@@ -3125,6 +3123,25 @@ post_ca:
 		}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		/*
+		 *	Disable TLS 1.3 when using OpenSSL 1.1 and
+		 *	PSKs and certs.  This doesn't appear to work,
+		 *	even if it should work.
+		 *
+		 *	It's best to disable the offending
+		 *	configuration and warn about it.  The
+		 *	alternative is to have the admin wonder why it
+		 *	doesn't work.
+		 *
+		 *	Note that the admin can over-ride this by
+		 *	setting "min_version = max_version = 1.3"
+		 */
+		if (openssl_bug &&
+		    (min_version < TLS1_3_VERSION) && (max_version >= TLS1_3_VERSION)) {
+			max_version = TLS1_2_VERSION;
+			radlog(L_DBG | L_WARN, "Disabling TLS 1.3 due to PSK and certificates being configured simultaneousy.  This is not supported by OpenSSL");
+		}
+
 		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
 			ERROR("Failed setting TLS maximum version");
 			return NULL;
