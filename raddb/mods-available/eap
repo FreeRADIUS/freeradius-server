@@ -215,7 +215,7 @@ eap {
 		#
 		#  The work around is to have two modules (or for
 		#  RadSec, two listen sections).  One will have PSK
-		#  comnfigured, and the other will have certificates
+		#  configured, and the other will have certificates
 		#  configured.
 		#
 #		psk_identity = "test"

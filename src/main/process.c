@@ -678,7 +678,7 @@ static void request_done(REQUEST *request, int action)
 		/*
 		 *	Move the CoA request to its own handler, but
 		 *	only if the request finished normally, and was
-		 *	not administatively canceled.
+		 *	not administratively canceled.
 		 */
 		if (request->coa) {
 			coa_separate(request->coa, true);
