@@ -2771,6 +2771,11 @@ static const FR_NAME_NUMBER version2int[] = {
 	{ NULL, 0 }
 };
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#ifdef TLS1_3_VERSION
+#define CHECK_FOR_PSK_CERTS (1)
+#endif
+#endif
 
 /** Create SSL context
  *
@@ -2786,8 +2791,8 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 	int		ctx_options = 0;
 	int		ctx_tls_versions = 0;
 	int		type;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	bool		openssl_bug = false;
+#ifdef CHECK_FOR_PSK_CERTS
+	bool		psk_and_certs = false;
 #endif
 
 	/*
@@ -2958,23 +2963,21 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 			return NULL;
 		}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#ifdef CHECK_FOR_PSK_CERTS
 		/*
-		 *	OpenSSL appears to have a bug where it does
-		 *	not allow PSK and certs to be used at the same
-		 *	time.  RFC 8446 Section 2 (page 12) says:
+		 *	RFC 8446 says:
 		 *
-		 *	"Note that implementations can use (EC)DHE and PSK
-		 *	together, in which case both extensions will be supplied."
-		 *
-		 *	Instead of having weird failures, we just warn
-		 *	the end user.
+		 *	When authenticating via a certificate, the server will send the
+     		 *	Certificate (Section 4.4.2) and CertificateVerify (Section 4.4.3)
+		 *	messages.  In TLS 1.3 as defined by this document, either a PSK or
+		 *	a certificate is always used, but not both.  Future documents may
+		 *	define how to use them together.
 		 */
 		if (((conf->psk_identity || conf->psk_password || conf->psk_query)) &&
 		    (conf->certificate_file || conf->private_key_password || conf->private_key_file)) {
-			openssl_bug = true;
+			psk_and_certs = true;
 		}
-#endif	/* OpenSSL version >1.1.0 */
+#endif
 
 		goto post_ca;
 	}
@@ -3123,10 +3126,10 @@ post_ca:
 		}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#ifdef CHECK_FOR_PSK_CERTS
 		/*
-		 *	Disable TLS 1.3 when using OpenSSL 1.1 and
-		 *	PSKs and certs.  This doesn't appear to work,
-		 *	even if it should work.
+		 *	Disable TLS 1.3 when using PSKs and certs.
+		 *	This doesn't work.
 		 *
 		 *	It's best to disable the offending
 		 *	configuration and warn about it.  The
@@ -3136,11 +3139,12 @@ post_ca:
 		 *	Note that the admin can over-ride this by
 		 *	setting "min_version = max_version = 1.3"
 		 */
-		if (openssl_bug &&
+		if (psk_and_certs &&
 		    (min_version < TLS1_3_VERSION) && (max_version >= TLS1_3_VERSION)) {
 			max_version = TLS1_2_VERSION;
-			radlog(L_DBG | L_WARN, "Disabling TLS 1.3 due to PSK and certificates being configured simultaneously.  This is not supported by OpenSSL");
+			radlog(L_DBG | L_WARN, "Disabling TLS 1.3 due to PSK and certificates being configured simultaneously.  This is not supported by the standards.");
 		}
+#endif
 
 		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
 			ERROR("Failed setting TLS maximum version");
