@@ -206,7 +206,17 @@ eap {
 		#  If OpenSSL supports TLS-PSK, then we can use a
 		#  fixed PSK identity and (hex) password.  As of
 		#  3.0.18, these can be used at the same time as the
-		#  certificate configuration.
+		#  certificate configuration, but only for TLS 1.0
+		#  through 1.2.
+		#
+		#  If PSK and certificates are configured at the same
+		#  time for TLS 1.3, then the server will warn you,
+		#  and will disable TLS 1.3, as it will not work.
+		#
+		#  The work around is to have two modules (or for
+		#  RadSec, two listen sections).  One will have PSK
+		#  comnfigured, and the other will have certificates
+		#  configured.
 		#
 #		psk_identity = "test"
 #		psk_hexphrase = "036363823"
