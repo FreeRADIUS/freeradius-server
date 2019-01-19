@@ -740,7 +740,7 @@ NEVER_RETURNS void fr_fault(int sig)
 		if (disable) {
 			FR_FAULT_LOG("Resetting PR_DUMPABLE to 0");
 			if (fr_set_dumpable_flag(false) < 0) {
-				FR_FAULT_LOG("Failed reseting dumpable flag to off: %s", fr_strerror());
+				FR_FAULT_LOG("Failed resetting dumpable flag to off: %s", fr_strerror());
 				FR_FAULT_LOG("Exiting due to insecure process state");
 				fr_exit_now(1);
 			}

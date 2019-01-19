@@ -3,7 +3,7 @@ freeradius-config: package-relation-with-self
 
 # There are example python scripts in the config, but it's the freeradius
 # package that includes dependencies on the python libraries.
-freeradius-config: python-script-but-no-python-dep etc/freeradius/mods-config/python/*.py
+freeradius-config: missing-dep-for-interpreter *etc/freeradius/mods-config/python/*
 
 # There's plenty in the description of this package to identify
 # what it does.

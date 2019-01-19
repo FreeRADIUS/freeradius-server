@@ -34,7 +34,7 @@ Section: net
 Priority: optional
 Maintainer: Josip Rodin <joy-packages@debian.org>
 Uploaders: Stephen Gran <sgran@debian.org>, Mark Hymers <mhy@debian.org>
-Standards-Version: 3.9.6
+Standards-Version: 3.9.8
 Homepage: http://www.freeradius.org/
 
 Package: freeradius

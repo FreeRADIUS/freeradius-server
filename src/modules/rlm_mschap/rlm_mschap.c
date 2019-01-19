@@ -1976,7 +1976,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			if (inst->with_ntdomain_hack) {
 				username_string++;
 			} else {
-				RWDEBUG2("NT Domain delimeter found, should with_ntdomain_hack of been enabled?");
+				RWDEBUG2("NT Domain delimiter found, should with_ntdomain_hack of been enabled?");
 				username_string = name_attr->vp_strvalue;
 			}
 		} else {

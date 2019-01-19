@@ -4,3 +4,8 @@
 
 freeradius source: license-problem-non-free-RFC-BCP78 doc/rfc/*
 freeradius source: license-problem-non-free-RFC doc/rfc/*
+
+# These aren't Debian repository "official" packages...
+freeradius source: changelog-should-mention-nmu
+freeradius source: source-nmu-has-incorrect-version-number
+freeradius source: debian-watch-file-in-native-package

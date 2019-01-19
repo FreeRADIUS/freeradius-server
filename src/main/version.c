@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 1999-2014  The FreeRADIUS server project
+ * Copyright 1999-2019  The FreeRADIUS server project
  * Copyright 2012  Alan DeKok <aland@ox.org>
  * Copyright 2000  Chris Parker <cparker@starnetusa.com>
  */
