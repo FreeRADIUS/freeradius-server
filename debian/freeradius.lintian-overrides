@@ -1,5 +1,3 @@
-freeradius: binary-or-shlib-defines-rpath
-
 # There's just too much documentation to register, and most of it isn't a
 # "book" or similar that really makes sense anyway. The lintian check is just
 # reporting a single file that happens to be .html in a sea of .txt and .rst

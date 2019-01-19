@@ -1,3 +1,6 @@
 # There's plenty in the description of this package to identify
 # what it does.
 freeradius-dhcp: extended-description-is-probably-too-short
+
+# The man page is in the freeradius-common package.
+freeradius-dhcp: binary-without-manpage usr/bin/dhcpclient

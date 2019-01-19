@@ -1,3 +1,8 @@
+Description: Rename from "radiusd" to "freeradius"
+ For their own special reasons, Debian want to call the main
+ binary "freeradius", rather than "radiusd". This set of patches
+ update all the things necessary to make that happen.
+
 Index: freeradius-server/Make.inc.in
 ===================================================================
 --- freeradius-server.orig/Make.inc.in
