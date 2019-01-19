@@ -67,6 +67,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  Fixes #2384.  Patch from Alejandro Perez.
 	* Allow PSK and certificates at the same time.
 	  Except for TLS 1.3 which does not support that.
+	* Update Debian packages for newer releases.
+	  Fixes #2391.  Patch from Matthew Newton.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
