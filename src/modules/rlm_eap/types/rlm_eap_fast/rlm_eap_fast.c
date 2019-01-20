@@ -337,7 +337,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 		errmsg = "PAC is not of type Opaque";
 error:
 		RERROR("%s, sending alert to client", errmsg);
-		if (tls_session_handshake_alert(request, tls_session, SSL3_AL_FATAL, SSL_AD_BAD_CERTIFICATE)) {
+		if (tls_session_alert(request, tls_session, SSL3_AL_FATAL, SSL_AD_BAD_CERTIFICATE)) {
 			RERROR("too many alerts");
 			return 0;
 		}
