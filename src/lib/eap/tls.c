@@ -486,18 +486,18 @@ static eap_tls_status_t eap_tls_session_status(eap_session_t *eap_session)
 		return EAP_TLS_RECORD_SEND;
 	}
 
-	if ((tls_session->info.content_type == handshake) && (tls_session->info.origin == 0)) {
+	if ((tls_session->info.content_type == SSL3_RT_HANDSHAKE) && (tls_session->info.origin == 0)) {
 		REDEBUG("Unexpected ACK received:  We sent no previous messages");
 		return EAP_TLS_INVALID;
 	}
 
 	switch (tls_session->info.content_type) {
-	case alert:
+	case SSL3_RT_ALERT:
 		RDEBUG2("Peer ACKed our alert");
 		return EAP_TLS_FAIL;
 
-	case handshake:
 		if ((tls_session->info.handshake_type == handshake_finished) && (tls_session->dirty_out.used == 0)) {
+	case SSL3_RT_HANDSHAKE:
 			RDEBUG2("Peer ACKed our handshake fragment.  handshake is finished");
 
 			/*
@@ -505,7 +505,7 @@ static eap_tls_status_t eap_tls_session_status(eap_session_t *eap_session)
 			 *	application data set it here as nobody else
 			 *	sets it.
 			 */
-			tls_session->info.content_type = application_data;
+			tls_session->info.content_type = SSL3_RT_APPLICATION_DATA;
 			return EAP_TLS_ESTABLISHED;
 		} /* else more data to send */
 
@@ -513,7 +513,7 @@ static eap_tls_status_t eap_tls_session_status(eap_session_t *eap_session)
 		/* Fragmentation handler, send next fragment */
 		return EAP_TLS_RECORD_SEND;
 
-	case application_data:
+	case SSL3_RT_APPLICATION_DATA:
 		RDEBUG2("Peer ACKed our application data fragment");
 		return EAP_TLS_RECORD_SEND;
 
