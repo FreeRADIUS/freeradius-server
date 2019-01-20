@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file lib/eap/mppe_keys.c
+ * @file lib/eap/crypto.c
  * @brief MPPE key calculation API
  *
  * @author Henrik Eriksson <henriken@axis.com>
@@ -197,7 +197,14 @@ void eap_crypto_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t size
 
 int eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
 			      SSL *ssl, uint8_t eap_type,
-			      char const *prf_label, size_t prf_len)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+			      UNUSED
+#endif
+			      char const *prf_label,
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+			      UNUSED
+#endif
+			      size_t prf_len)
 {
 	uint8_t		*buff = NULL, *p;
 
@@ -214,8 +221,8 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
 	case TLS1_VERSION:	/* No Method ID */
 	case TLS1_1_VERSION:	/* No Method ID */
 	case TLS1_2_VERSION:	/* No Method ID */
-#endif
 	random_based_session_id:
+#endif
 		MEM(buff = p = talloc_array(ctx, uint8_t, sizeof(eap_type) + (2 * SSL3_RANDOM_SIZE)));
 		*p++ = eap_type;
 
