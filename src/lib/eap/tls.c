@@ -250,7 +250,7 @@ int eap_tls_start(eap_session_t *eap_session)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_success(eap_session_t *eap_session)
+int eap_tls_success(eap_session_t *eap_session, char const *prf_label)
 {
 	REQUEST			*request = eap_session->request;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -291,14 +291,9 @@ int eap_tls_success(eap_session_t *eap_session)
 	/*
 	 *	Automatically generate MPPE keying material.
 	 */
-	if (tls_session->prf_label) {
-		eap_tls_gen_mppe_keys(eap_session->request, tls_session->ssl, tls_session->prf_label);
+	if (prf_label) eap_tls_gen_mppe_keys(eap_session->request, tls_session->ssl, prf_label);
 
-	} else if (eap_session->type != FR_EAP_FAST) {
-		RWDEBUG("Not adding MPPE keys because there is no PRF label");
-	}
-
-	eap_tls_gen_eap_key(eap_session->request->reply, tls_session->ssl, eap_session->type);
+	eap_tls_gen_session_id(eap_session->request->reply, tls_session->ssl, eap_session->type);
 
 	return 0;
 }

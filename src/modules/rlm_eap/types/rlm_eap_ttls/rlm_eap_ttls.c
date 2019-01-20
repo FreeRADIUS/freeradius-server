@@ -173,7 +173,7 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 			/*
 			 *	Success: Automatically return MPPE keys.
 			 */
-			if (eap_tls_success(eap_session) < 0) return RLM_MODULE_FAIL;
+			if (eap_tls_success(eap_session, "ttls keying material") < 0) return RLM_MODULE_FAIL;
 			return RLM_MODULE_OK;
 		} else {
 			eap_tls_request(eap_session);
@@ -234,8 +234,7 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case FR_CODE_ACCESS_ACCEPT:
-		if (eap_tls_success(eap_session) < 0) return 0;
-		return RLM_MODULE_OK;
+		goto do_keys;
 
 	/*
 	 *	No response packet, MUST be proxying it.
@@ -285,11 +284,6 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
 	if (!eap_tls_session) return RLM_MODULE_FAIL;
-
-	/*
-	 *	Set up type-specific information.
-	 */
-	eap_tls_session->tls_session->prf_label = "ttls keying material";
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS

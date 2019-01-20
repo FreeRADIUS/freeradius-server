@@ -308,20 +308,52 @@ void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_
  *	Actually generates EAP-Session-Id, which is an internal server
  *	attribute.  Not all systems want to send EAP-Key-Name
  */
-void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *ssl, uint32_t header)
+void eap_tls_gen_session_id(RADIUS_PACKET *packet, SSL *ssl, uint8_t eap_type)
 {
-	VALUE_PAIR *vp;
-	uint8_t *buff, *p;
+	VALUE_PAIR	*vp;
+	uint8_t		*buff = NULL, *p;
 
 	vp = fr_pair_afrom_da(packet, attr_eap_session_id);
 	if (!vp) return;
 
-	MEM(buff = p = talloc_array(vp, uint8_t, 1 + (2 * SSL3_RANDOM_SIZE)));
-	*p++ = header & 0xff;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	if (eap_type != FR_EAP_TLS) goto random_based_session_id;
 
-	SSL_get_client_random(ssl, p, SSL3_RANDOM_SIZE);
-	p += SSL3_RANDOM_SIZE;
-	SSL_get_server_random(ssl, p, SSL3_RANDOM_SIZE);
+	switch (SSL_SESSION_get_protocol_version(SSL_get_session(ssl))) {
+	case SSL2_VERSION:	/* Should never happen */
+	case SSL3_VERSION:	/* Should never happen */
+		return;
+
+	case TLS1_VERSION:	/* No Method ID */
+	case TLS1_1_VERSION:	/* No Method ID */
+	case TLS1_2_VERSION:	/* No Method ID */
+#endif
+	random_based_session_id:
+		MEM(buff = p = talloc_array(vp, uint8_t, sizeof(eap_type) + SSL3_RANDOM_SIZE + SSL3_RANDOM_SIZE));
+		*p++ = eap_type;
+
+		SSL_get_client_random(ssl, p, SSL3_RANDOM_SIZE);
+		p += SSL3_RANDOM_SIZE;
+		SSL_get_server_random(ssl, p, SSL3_RANDOM_SIZE);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		break;
+
+	/*
+	 *	Session-Id = <EAP-Type> || Method-Id
+	 *	Method-Id = TLS-Exporter("EXPORTER_EAP_TLS_Method-Id", "", 64)
+	 */
+	case TLS1_3_VERSION:
+	default:
+	{
+		char const prf_label[] = "EXPORTER_EAP_TLS_Method-Id";
+
+		MEM(buff = p = talloc_array(vp, uint8_t, sizeof(eap_type) + 64));
+		*p++ = eap_type;
+		SSL_export_keying_material(ssl, p, 64, prf_label, sizeof(prf_label) - 1, NULL, 0, 0);
+	}
+		break;
+	}
+#endif
 
 	fr_pair_value_memsteal(vp, buff);
 	fr_pair_add(&packet->vps, vp);

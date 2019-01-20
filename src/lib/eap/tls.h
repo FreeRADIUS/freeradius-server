@@ -157,7 +157,7 @@ eap_tls_status_t	eap_tls_process(eap_session_t *eap_session) CC_HINT(nonnull);
 
 int			eap_tls_start(eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_success(eap_session_t *eap_session) CC_HINT(nonnull);
+int			eap_tls_success(eap_session_t *eap_session, char const *prf_label) CC_HINT(nonnull(1));
 
 int			eap_tls_fail(eap_session_t *eap_session) CC_HINT(nonnull);
 
@@ -179,7 +179,7 @@ void			eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label) CC
 void			eap_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
 void			eap_fast_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
 
-void			eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header) CC_HINT(nonnull);
+void			eap_tls_gen_session_id(RADIUS_PACKET *packet, SSL *s, uint8_t type) CC_HINT(nonnull);
 
 /* EAP-TLS framework */
 eap_tls_session_t	*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert) CC_HINT(nonnull);
