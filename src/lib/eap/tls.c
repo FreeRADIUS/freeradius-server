@@ -496,8 +496,8 @@ static eap_tls_status_t eap_tls_session_status(eap_session_t *eap_session)
 		RDEBUG2("Peer ACKed our alert");
 		return EAP_TLS_FAIL;
 
-		if ((tls_session->info.handshake_type == handshake_finished) && (tls_session->dirty_out.used == 0)) {
 	case SSL3_RT_HANDSHAKE:
+		if (SSL_is_init_finished(tls_session->ssl) && (tls_session->dirty_out.used == 0)) {
 			RDEBUG2("Peer ACKed our handshake fragment.  handshake is finished");
 
 			/*
