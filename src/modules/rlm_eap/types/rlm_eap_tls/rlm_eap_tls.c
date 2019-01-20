@@ -206,8 +206,8 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 				    	    sessid_prf_label, sizeof(sessid_prf_label) - 1) < 0) return RLM_MODULE_FAIL;
 		}
 			break;
-#endif
 		}
+#endif
 
 
 	}
