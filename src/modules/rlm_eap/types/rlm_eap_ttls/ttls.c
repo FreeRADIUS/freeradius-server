@@ -267,7 +267,7 @@ do_value:
 				goto error;
 			}
 
-			eap_tls_gen_challenge(ssl, challenge, scratch,
+			eap_crypto_challenge(ssl, challenge, scratch,
 					      sizeof(challenge), "ttls challenge");
 
 			if (memcmp(challenge, vp->vp_octets, vp->vp_length) != 0) {

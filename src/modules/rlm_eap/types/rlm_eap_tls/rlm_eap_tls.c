@@ -168,8 +168,6 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 */
 	case EAP_TLS_ESTABLISHED:
 	{
-		char const *prf_label = NULL;
-
 		if (inst->virtual_server) return eap_tls_virtual_server(inst, eap_session);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -187,18 +185,31 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		case TLS1_1_VERSION:
 		case TLS1_2_VERSION:
 #endif
-			prf_label = "client EAP encryption";
+		{
+			static char const keying_prf_label[] = "client EAP encryption";
+
+			if (eap_tls_success(eap_session,
+				    	    keying_prf_label, sizeof(keying_prf_label) - 1,
+				    	    NULL, 0) < 0) return RLM_MODULE_FAIL;
+		}
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 			break;
 
 		case TLS1_3_VERSION:
 		default:
-			prf_label = "EXPORTER_EAP_TLS_Key_Material";
+		{
+			static char const keying_prf_label[] = "EXPORTER_EAP_TLS_Key_Material";
+			static char const sessid_prf_label[] = "EXPORTER_EAP_TLS_Method-Id";
+
+			if (eap_tls_success(eap_session,
+				    	    keying_prf_label, sizeof(keying_prf_label) - 1,
+				    	    sessid_prf_label, sizeof(sessid_prf_label) - 1) < 0) return RLM_MODULE_FAIL;
+		}
 			break;
 #endif
 		}
 
-		if (eap_tls_success(eap_session, prf_label) < 0) return RLM_MODULE_FAIL;
+
 	}
 		return RLM_MODULE_OK;
 

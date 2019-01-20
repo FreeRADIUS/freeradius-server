@@ -1027,7 +1027,7 @@ FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		}
 
 		/*
-		 * eap_tls_gen_mppe_keys() is unsuitable for EAP-FAST as Cisco decided
+		 * eap_crypto_mppe_keys() is unsuitable for EAP-FAST as Cisco decided
 		 * it would be a great idea to flip the recv/send keys around
 		 */
 		#define EAPTLS_MPPE_KEY_LEN 32

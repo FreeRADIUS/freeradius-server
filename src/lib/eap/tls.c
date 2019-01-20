@@ -245,12 +245,20 @@ int eap_tls_start(eap_session_t *eap_session)
  * We add the MPPE keys here.  These are used by the NAS.  The supplicant
  * will derive the same keys separately.
  *
- * @param eap_session that completed successfully.
+ * @param[in] eap_session		that completed successfully.
+ * @param[in] keying_prf_label		PRF label to use for generating keying material.
+ *					If NULL, no MPPE keys will be generated.
+ * @param[in] keying_prf_label_len	Length of the keying PRF label.
+ * @param[in] sessid_prf_label		PRF label to use when generating the session ID.
+ *					If NULL, session ID will be based on client/server randoms.
+ * @param[in] sessid_prf_label_len	Length of the session ID PRF label.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_success(eap_session_t *eap_session, char const *prf_label)
+int eap_tls_success(eap_session_t *eap_session,
+		    char const *keying_prf_label, size_t keying_prf_label_len,
+		    char const *sessid_prf_label, size_t sessid_prf_label_len)
 {
 	REQUEST			*request = eap_session->request;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -291,9 +299,27 @@ int eap_tls_success(eap_session_t *eap_session, char const *prf_label)
 	/*
 	 *	Automatically generate MPPE keying material.
 	 */
-	if (prf_label) eap_tls_gen_mppe_keys(eap_session->request, tls_session->ssl, prf_label);
+	if (keying_prf_label) eap_crypto_mppe_keys(eap_session->request, tls_session->ssl,
+						   keying_prf_label, keying_prf_label_len);
 
-	eap_tls_gen_session_id(eap_session->request->reply, tls_session->ssl, eap_session->type);
+	/*
+	 *	Add the TLS session ID to the request
+	 */
+	{
+		uint8_t		*session_id;
+		VALUE_PAIR	*vp;
+
+		if (eap_crypto_tls_session_id(eap_session->request->reply, &session_id,
+					   tls_session->ssl, eap_session->type,
+					   sessid_prf_label, sessid_prf_label_len) < 0) return -1;
+
+		MEM(pair_add_reply(&vp, attr_eap_session_id) >= 0);
+		fr_pair_value_memsteal(vp, session_id);
+
+		RINDENT();
+		RDEBUG2("&reply:%pP", vp);
+		REXDENT();
+	}
 
 	return 0;
 }
@@ -823,7 +849,7 @@ static eap_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 		 *	Init is finished.  The rest is
 		 *	application data.
 		 */
-		tls_session->info.content_type = application_data;
+		tls_session->info.content_type = SSL3_RT_APPLICATION_DATA;
 		return EAP_TLS_ESTABLISHED;
 	}
 

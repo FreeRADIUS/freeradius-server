@@ -5,7 +5,7 @@ SOURCES	:= \
 	chbind.c
 
 ifneq (${OPENSSL_LIBS},)
-SOURCES		+= tls.c mppe_keys.c
+SOURCES		+= tls.c crypto.c
 endif
 
 TGT_PREREQS	:= libfreeradius-radius.a libfreeradius-util.a

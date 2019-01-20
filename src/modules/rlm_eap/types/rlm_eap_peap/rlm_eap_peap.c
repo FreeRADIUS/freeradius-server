@@ -218,10 +218,16 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		break;
 
 	case RLM_MODULE_OK:
+	{
+		static char keying_prf_label[] = "client EAP encryption";
+
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		if (eap_tls_success(eap_session, "client EAP encryption") < 0) return 0;
+		if (eap_tls_success(eap_session,
+				    keying_prf_label, sizeof(keying_prf_label) - 1,
+				    NULL, 0) < 0) return 0;
+	}
 		break;
 
 		/*

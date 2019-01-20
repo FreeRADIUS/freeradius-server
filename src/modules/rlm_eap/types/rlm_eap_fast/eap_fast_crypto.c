@@ -29,12 +29,57 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <stdio.h>
 #include <freeradius-devel/util/base.h>
+#include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/eap/tls.h>
 
 #include <openssl/evp.h>
 #include <openssl/aes.h>
 #include <openssl/err.h>
 
 #include "eap_fast_crypto.h"
+
+/*  EAP-FAST Pseudo-Random Function (T-PRF): RFC 4851, Section 5.5 */
+void T_PRF(unsigned char const *secret, unsigned int secret_len,
+	   char const *prf_label,
+	   unsigned char const *seed, unsigned int seed_len,
+	   unsigned char *out, unsigned int out_len)
+{
+	size_t prf_size = strlen(prf_label);
+	size_t pos;
+	uint8_t	*buf;
+
+	if (prf_size > 128) prf_size = 128;
+	prf_size++;	/* include trailing zero */
+
+	buf = talloc_size(NULL, SHA1_DIGEST_LENGTH + prf_size + seed_len + 2 + 1);
+
+	memcpy(buf + SHA1_DIGEST_LENGTH, prf_label, prf_size);
+	if (seed) memcpy(buf + SHA1_DIGEST_LENGTH + prf_size, seed, seed_len);
+	*(uint16_t *)&buf[SHA1_DIGEST_LENGTH + prf_size + seed_len] = htons(out_len);
+	buf[SHA1_DIGEST_LENGTH + prf_size + seed_len + 2] = 1;
+
+	// T1 is just the seed
+	fr_hmac_sha1(buf, buf + SHA1_DIGEST_LENGTH, prf_size + seed_len + 2 + 1, secret, secret_len);
+
+#define MIN(a,b) (((a)>(b)) ? (b) : (a))
+	memcpy(out, buf, MIN(out_len, SHA1_DIGEST_LENGTH));
+
+	pos = SHA1_DIGEST_LENGTH;
+	while (pos < out_len) {
+		buf[SHA1_DIGEST_LENGTH + prf_size + seed_len + 2]++;
+
+		fr_hmac_sha1(buf, buf, SHA1_DIGEST_LENGTH + prf_size + seed_len + 2 + 1, secret, secret_len);
+		memcpy(&out[pos], buf, MIN(out_len - pos, SHA1_DIGEST_LENGTH));
+
+		if (out_len - pos <= SHA1_DIGEST_LENGTH)
+			break;
+
+		pos += SHA1_DIGEST_LENGTH;
+	}
+
+	memset(buf, 0, SHA1_DIGEST_LENGTH + prf_size + seed_len + 2 + 1);
+	talloc_free(buf);
+}
 
 // http://stackoverflow.com/a/29838852
 static void NEVER_RETURNS handleErrors(void)
@@ -170,4 +215,29 @@ int eap_fast_decrypt(uint8_t const *ciphertext, size_t ciphertext_len,
 		/* Verify failed */
 		return -1;
 	}
+}
+
+/*
+ *	Same as before, but for EAP-FAST the order of {server,client}_random is flipped
+ */
+void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label)
+{
+	uint8_t		*p;
+	size_t		len, master_key_len;
+	uint8_t		seed[128 + (2 * SSL3_RANDOM_SIZE)];
+	uint8_t		master_key[SSL_MAX_MASTER_KEY_LENGTH];
+
+	len = strlen(prf_label);
+	if (len > 128) len = 128;
+
+	p = seed;
+	memcpy(p, prf_label, len);
+	p += len;
+	(void) SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
+	p += SSL3_RANDOM_SIZE;
+	(void) SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
+	p += SSL3_RANDOM_SIZE;
+
+	master_key_len = SSL_SESSION_get_master_key(SSL_get_session(s), master_key, sizeof(master_key));
+	eap_crypto_rfc4346_prf(buffer, size, scratch, master_key, master_key_len, seed, p - seed);
 }

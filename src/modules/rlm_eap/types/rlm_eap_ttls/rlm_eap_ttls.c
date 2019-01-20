@@ -139,6 +139,7 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
 	ttls_tunnel_t		*tunnel = NULL;
 	REQUEST			*request = eap_session->request;
+	static char 		keying_prf_label[] = "ttls keying material";
 
 	if (tls_session->opaque) tunnel = talloc_get_type_abort(tls_session->opaque, ttls_tunnel_t);
 
@@ -169,11 +170,14 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 		}
 
 		if (tunnel && tunnel->authenticated) {
+
 		do_keys:
 			/*
 			 *	Success: Automatically return MPPE keys.
 			 */
-			if (eap_tls_success(eap_session, "ttls keying material") < 0) return RLM_MODULE_FAIL;
+			if (eap_tls_success(eap_session,
+					    keying_prf_label, sizeof(keying_prf_label) - 1,
+					    NULL, 0) < 0) return RLM_MODULE_FAIL;
 			return RLM_MODULE_OK;
 		} else {
 			eap_tls_request(eap_session);

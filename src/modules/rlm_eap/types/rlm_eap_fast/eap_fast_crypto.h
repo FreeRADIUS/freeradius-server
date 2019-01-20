@@ -27,6 +27,8 @@
  */
 RCSIDH(eap_fast_crypto_h, "$Id$")
 
+void T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed, unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
+
 int eap_fast_encrypt(uint8_t const *plaintext, size_t plaintext_len,
 		     uint8_t const *aad, size_t aad_len,
 		     uint8_t const *key, uint8_t *iv, unsigned char *ciphertext,
@@ -35,3 +37,5 @@ int eap_fast_encrypt(uint8_t const *plaintext, size_t plaintext_len,
 int eap_fast_decrypt(uint8_t const *ciphertext, size_t ciphertext_len,
 		     uint8_t const *aad, size_t aad_len,
 		     uint8_t const *tag, uint8_t const *key, uint8_t const *iv, uint8_t *plaintext);
+
+void eap_fast_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);

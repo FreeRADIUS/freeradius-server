@@ -157,7 +157,9 @@ eap_tls_status_t	eap_tls_process(eap_session_t *eap_session) CC_HINT(nonnull);
 
 int			eap_tls_start(eap_session_t *eap_session) CC_HINT(nonnull);
 
-int			eap_tls_success(eap_session_t *eap_session, char const *prf_label) CC_HINT(nonnull(1));
+int			eap_tls_success(eap_session_t *eap_session,
+					char const *keying_prf_label, size_t keying_prf_label_len,
+					char const *sessid_prf_label, size_t sessid_prf_label_len) CC_HINT(nonnull(1));
 
 int			eap_tls_fail(eap_session_t *eap_session) CC_HINT(nonnull);
 
@@ -167,19 +169,19 @@ int			eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8
 		    			tls_record_t *record, size_t record_len, size_t frag_len);
 
 /* MPPE key generation */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-size_t SSL_get_client_random(const SSL *ssl, unsigned char *out, size_t outlen);
-size_t SSL_get_server_random(const SSL *ssl, unsigned char *out, size_t outlen);
-#endif
 
-void			T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed, unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
+void			eap_crypto_rfc4346_prf(uint8_t *out, size_t out_len, uint8_t *scratch,
+					       uint8_t const *secret, size_t secret_len,
+					       uint8_t const *seed, size_t seed_len);
 
-void			eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label) CC_HINT(nonnull);
+void			eap_crypto_mppe_keys(REQUEST *request, SSL *ssl,
+					     char const *prf_label, size_t prf_label_len) CC_HINT(nonnull);
 
-void			eap_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
-void			eap_fast_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
+void			eap_crypto_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
 
-void			eap_tls_gen_session_id(RADIUS_PACKET *packet, SSL *s, uint8_t type) CC_HINT(nonnull);
+int			eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
+					       SSL *ssl, uint8_t eap_type,
+					       char const *prf_label, size_t prf_len);
 
 /* EAP-TLS framework */
 eap_tls_session_t	*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert) CC_HINT(nonnull);
