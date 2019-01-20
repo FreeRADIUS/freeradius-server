@@ -125,6 +125,11 @@ typedef struct _tls_record_t {
 	size_t  used;
 } tls_record_t;
 
+typedef enum {
+	TLS_INFO_ORIGIN_RECORD_RECEIVED,
+	TLS_INFO_ORIGIN_RECORD_SENT
+} tls_info_origin_t;
+
 typedef struct _tls_info_t {
 	int		origin;
 	int		content_type;
@@ -185,11 +190,10 @@ typedef struct _tls_session_t {
 
 	void		*opaque;			//!< Used to store module specific data.
 
-	struct {
-		unsigned int	count;
-		unsigned int	level;
-		unsigned int	description;
-	} handshake_alert;
+	uint8_t		alerts_sent;
+	bool		pending_alert;
+	uint8_t		pending_alert_level;
+	uint8_t		pending_alert_description;
 } tls_session_t;
 
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -573,7 +577,7 @@ int 		tls_session_send(REQUEST *request, tls_session_t *tls_session);
 
 int 		tls_session_handshake(REQUEST *request, tls_session_t *tls_session);
 
-int 		tls_session_handshake_alert(REQUEST *request, tls_session_t *tls_session, uint8_t level, uint8_t description);
+int 		tls_session_alert(REQUEST *request, tls_session_t *tls_session, uint8_t level, uint8_t description);
 
 tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf);
 

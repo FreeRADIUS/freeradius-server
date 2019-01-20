@@ -1156,16 +1156,21 @@ int tls_session_send(REQUEST *request, tls_session_t *session)
 	return 1;
 }
 
+/** Instruct tls_session_handshake to create a synthesised TLS alert record and send it to the peer
+ *
+ */
 int tls_session_handshake_alert(UNUSED REQUEST *request, tls_session_t *session, uint8_t level, uint8_t description)
 {
-	rad_assert(session->handshake_alert.level == 0);
+	if (session->alerts_sent > 3) return -1;		/* Some kind of sate machine brokenness */
 
-	session->handshake_alert.count++;
-	if (session->handshake_alert.count > 3)
-		return -1;
+	/*
+	 *	Ignore less severe alerts
+	 */
+	if (session->pending_alert && (level < session->pending_alert_level)) return 0;
 
-	session->handshake_alert.level = level;
-	session->handshake_alert.description = description;
+	session->pending_alert = true;
+	session->pending_alert_level = level;
+	session->pending_alert_description = description;
 
 	return 0;
 }
@@ -1371,32 +1376,46 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 	}
 
 	/*
-	 *	W would prefer to latch on info.content_type but
-	 *	(I think its...) tls_session_msg_cb() updates it
-	 *	after the call to tls_session_handshake_alert()
+	 *	Trash the current data in dirty_out, and synthesize
+	 *	a TLS error record.
+	 *
+	 *	OpensSL annoyingly provides no mechanism for us to
+	 *	do this, and we need to send alerts as part of
+	 *	RFC 5216, so this is our only option.
 	 */
-	if (session->handshake_alert.level) {
+	if (session->pending_alert) {
 		/*
 		 * FIXME RFC 4851 section 3.6.1 - peer might ACK alert and include a restarted ClientHello
 		 *                                 which eap_tls_session_status() will fail on
 		 */
+
+		/*
+		 *	Update our internal view of the session
+		 */
+		session->info.origin = TLS_INFO_ORIGIN_RECORD_SENT;
 		session->info.content_type = SSL3_RT_ALERT;
+		session->info.alert_level = session->pending_alert_level;
+		session->info.alert_description = session->pending_alert_description;
 
 		session->dirty_out.data[0] = session->info.content_type;
 		session->dirty_out.data[1] = 3;
 		session->dirty_out.data[2] = 1;
 		session->dirty_out.data[3] = 0;
 		session->dirty_out.data[4] = 2;
-		session->dirty_out.data[5] = session->handshake_alert.level;
-		session->dirty_out.data[6] = session->handshake_alert.description;
+		session->dirty_out.data[5] = session->pending_alert_level;
+		session->dirty_out.data[6] = session->pending_alert_description;
 
 		session->dirty_out.used = 7;
 
-		session->handshake_alert.level = 0;
+		session->pending_alert = false;
+		session->alerts_sent++;
+
+		session_msg_log(request, session);
 	}
 
 	/* We are done with dirty_in, reinitialize it */
 	record_init(&session->dirty_in);
+
 	return 1;
 }
 
