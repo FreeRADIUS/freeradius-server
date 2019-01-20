@@ -1280,6 +1280,7 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 
 		RDEBUG2("Cipher suite: %s", cipher_desc_clean);
 
+		RDEBUG2("Adding TLS session information to request");
 		vp = fr_pair_afrom_num(request->state_ctx, 0, FR_TLS_SESSION_CIPHER_SUITE);
 		if (vp) {
 			fr_pair_value_strcpy(vp,  SSL_CIPHER_get_name(cipher));
@@ -1300,7 +1301,9 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 		if (vp) {
 			fr_pair_value_strcpy(vp, version);
 			fr_pair_add(&request->state, vp);
-			RDEBUG2("    &session-state:TLS-Session-Version := \"%s\"", version);
+			RINDENT();
+			RDEBUG2("&session-state:TLS-Session-Version := \"%s\"", version);
+			REXDENT();
 		}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L

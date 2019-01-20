@@ -191,12 +191,12 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 
 		return RLM_MODULE_INVALID;
 
-		/*
-		 *	Anything else: fail.
-		 *
-		 *	Also, remove the session from the cache so that
-		 *	the client can't re-use it.
-		 */
+	/*
+	 *	Anything else: fail.
+	 *
+	 *	Also, remove the session from the cache so that
+	 *	the client can't re-use it.
+	 */
 	default:
 		tls_cache_deny(tls_session);
 
