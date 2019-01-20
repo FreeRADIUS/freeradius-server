@@ -30,12 +30,14 @@
 #  system we use that in preference.  To always build eapol_test, set
 #  FORCE_BUILD=1 in the environment.
 #
-TMP_BUILD_DIR="$(mktemp -d -t eapol_test.XXXXX)"
-HOSTAPD_DIR="${TMP_BUILD_DIR}/hostapd"
-WPA_SUPPLICANT_DIR="${HOSTAPD_DIR}/wpa_supplicant"
 
-BUILD_CONF_DIR="$(dirname $0)/eapol_test"
-EAPOL_TEST_PATH="${BUILD_CONF_DIR}/eapol_test"
+TMP_BUILD_DIR="${BUILD_DIR}"
+: ${TMP_BUILD_DIR:="$(mktemp -d -t eapol_test.XXXXX)"}
+: ${HOSTAPD_DIR:="${TMP_BUILD_DIR}/hostapd"}
+: ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
+
+: ${BUILD_CONF_DIR:="$(dirname $0)/eapol_test"}
+: ${EAPOL_TEST_PATH:="${BUILD_CONF_DIR}/eapol_test"}
 
 if [ -z "${FORCE_BUILD}" ]; then
     if [ -e "${EAPOL_TEST_PATH}" ]; then
@@ -75,9 +77,10 @@ if [ ! -e "${BUILD_CONF_FILE}" ]; then
 fi
 
 # Shallow clone so we don't use all Jouni's bandwidth
-if ! git clone --depth 1 http://w1.fi/hostap.git 1>&2 "${TMP_BUILD_DIR}/hostapd"; then
+
+if ! [ -e "${HOSTAPD_DIR}/.git" ] && ! git clone --depth 1 http://w1.fi/hostap.git 1>&2 "${TMP_BUILD_DIR}/hostapd"; then
     echo "Failed cloning hostapd" 1>&2
-    rm -rf "${TMP_BUILD_DIR}"
+    if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
     exit 1
 fi
 
@@ -85,11 +88,11 @@ cp "$BUILD_CONF_FILE" "$WPA_SUPPLICANT_DIR/.config"
 
 if ! make -C "${WPA_SUPPLICANT_DIR}" -j8 eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then
     echo "Build error" 1>&2
-    rm -rf "${TMP_BUILD_DIR}"
+    if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
     exit 1
 fi
 
 cp "${WPA_SUPPLICANT_DIR}/eapol_test" "${EAPOL_TEST_PATH}"
 
 echo "${EAPOL_TEST_PATH}"
-rm -rf "$TMP_BUILD_DIR"
+if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
