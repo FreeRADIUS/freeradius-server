@@ -134,7 +134,7 @@ static bool tidc_send_recv(const char *trustrouter, int port, const char *rpreal
 	int rcode;
 
 	/* Open TIDC connection */
-	DEBUG2("Opening TIDC connection to %s:%u", trustrouter, port);
+	DEBUG2("Opening TIDC connection to %s:%u for resolving realm %s", trustrouter, port, realm_name);
 	conn = tidc_open_connection(global_tidc, (char *) trustrouter, port, &gssctx);
 	if (conn < 0) {
 		DEBUG2("Error in tidc_open_connection.");
@@ -145,7 +145,7 @@ static bool tidc_send_recv(const char *trustrouter, int port, const char *rpreal
 	rcode = tidc_send_request(global_tidc, conn, gssctx, (char *) rprealm, (char *) realm_name,
 				  (char *) community, &tr_response_func, cookie);
 	if (rcode < 0) {
-		DEBUG2("Error in tidc_send_request, rc = %d.", rcode);
+		DEBUG2("Error in tidc_send_request for %s, rc = %d.", realm_name, rcode);
 		return false;
 	}
 
