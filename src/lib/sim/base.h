@@ -219,8 +219,6 @@ typedef struct {
 	size_t			hmac_extra_len;			//!< The length of the HMAC data.
 } fr_sim_encode_ctx_t;
 
-typedef struct _eap_session eap_session_t;
-
 extern size_t const fr_sim_attr_sizes[FR_TYPE_MAX + 1][2];
 
 /*

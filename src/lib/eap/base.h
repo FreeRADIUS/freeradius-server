@@ -57,7 +57,7 @@ typedef rlm_rcode_t (*eap_process_t)(void *instance, eap_session_t *eap_session)
 /** Tracks the progress of a single session of any EAP method
  *
  */
-struct _eap_session {
+struct eap_session_s {
 	eap_session_t	*prev, *next;			//!< Next/previous eap session in this doubly linked list.
 
 	eap_session_t	*child;				//!< Session for tunneled EAP method.

@@ -35,8 +35,9 @@
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 
+#include "attrs.h"
 #include "base.h"
-#include "tls_attrs.h"
+#include "missing.h"
 
 /** Validates a certificate using custom logic
  *

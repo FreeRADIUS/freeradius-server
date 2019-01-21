@@ -472,10 +472,10 @@ do {\
 		talloc_free(_tmp); \
 	} while(0)
 
-#define HEXDUMP(_lvl, _Data, _len, _fmt, ...) \
+#define HEXDUMP(_lvl, _data, _len, _fmt, ...) \
 	if (debug_enabled(L_DBG, _lvl)) do { \
-		_FR_LOG(L_DBG, _fmt, ## __VA_ARGS__) \
-		log_hex(L_DBG, _lvl, _data, _len); \
+		_FR_LOG(L_DBG, _fmt, ## __VA_ARGS__); \
+		log_hex(&default_log, L_DBG, _lvl, _data, _len); \
 	} while (0)
 
 

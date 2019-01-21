@@ -36,8 +36,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <openssl/ocsp.h>
 
+#include "attrs.h"
 #include "base.h"
-#include "tls_attrs.h"
+#include "missing.h"
 
 /** Rcodes returned by the OCSP check function
  */

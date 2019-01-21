@@ -31,7 +31,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
+
 #include "base.h"
+#include "missing.h"
 
 DIAG_OFF(format-nonliteral)
 /** Print errors in the TLS thread local error stack

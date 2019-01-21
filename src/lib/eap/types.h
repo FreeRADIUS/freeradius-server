@@ -139,4 +139,4 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t		data[1];
 } eap_packet_raw_t;
 
-typedef struct _eap_session eap_session_t;
+typedef struct eap_session_s eap_session_t;

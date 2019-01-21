@@ -32,8 +32,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/rad_assert.h>
+
 #include "base.h"
-#include "tls_attrs.h"
+#include "missing.h"
+#include "attrs.h"
 
 /** Add attributes identifying the TLS session to be acted upon, and the action to be performed
  *

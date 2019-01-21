@@ -21,7 +21,7 @@
  * @copyright 2017 The FreeRADIUS server project
  */
 #include <freeradius-devel/util/base64.h>
-#include <freeradius-devel/tls/tls_log.h>
+#include <freeradius-devel/tls/log.h>
 #include <openssl/evp.h>
 #include "base.h"
 #include "id.h"

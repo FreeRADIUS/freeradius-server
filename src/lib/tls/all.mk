@@ -10,7 +10,6 @@ SOURCES	:= \
 	conf.c \
 	ctx.c \
 	log.c \
-	missing.c \
 	ocsp.c \
 	session.c \
 	utils.c \

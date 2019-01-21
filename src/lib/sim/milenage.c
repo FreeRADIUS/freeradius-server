@@ -20,7 +20,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <freeradius-devel/tls/tls_log.h>
+#include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/util/proto.h>
 #include <openssl/evp.h>
 #include "milenage.h"

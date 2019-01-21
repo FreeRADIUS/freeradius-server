@@ -17,12 +17,14 @@
 
 /**
  * $Id$
- * @file tls_attrs.h
+ * @file attrs.h
  * @brief Attribute definitions used by the FreeRADIUS OpenSSL wrapper library
  *
  * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(tls_attrs_h, "$Id$")
+
+#include <freeradius-devel/util/dict.h>
 
 extern fr_dict_t *dict_freeradius;
 extern fr_dict_t *dict_radius;

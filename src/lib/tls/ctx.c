@@ -38,6 +38,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/dh.h>
 
 #include "base.h"
+#include "missing.h"
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #  ifndef OPENSSL_NO_ECDH

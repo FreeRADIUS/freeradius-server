@@ -38,8 +38,9 @@
 #include <openssl/x509v3.h>
 #include <ctype.h>
 
+#include "attrs.h"
 #include "base.h"
-#include "tls_attrs.h"
+#include "missing.h"
 
 /*
  *	For creating certificate attributes.
@@ -632,7 +633,7 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session, uint8_
 		}
 	} else {
 		if (DEBUG_ENABLED3) {
-			RHEXDUMP(L_DBG_LVL_3, data, data_len, "%s", tls_session->info.info_description);
+			HEXDUMP(L_DBG_LVL_3, data, data_len, "%s", tls_session->info.info_description);
 		} else {
 			DEBUG3("%s", tls_session->info.info_description);
 		}
@@ -1217,7 +1218,6 @@ static void tls_session_alert_send(REQUEST *request, tls_session_t *session)
 	SSL_clear(session->ssl);	/* Reset the SSL *, to allow the client to restart the session */
 
 	session_msg_log(request, session, session->dirty_out.data, session->dirty_out.used);
-
 }
 
 /** Continue a TLS handshake
@@ -1425,7 +1425,7 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 	 *	a TLS error record.
 	 *
 	 *	OpensSL annoyingly provides no mechanism for us to
-	 *	do this, and we need to send alerts as part of
+	 *	send alerts, and we need to send alerts as part of
 	 *	RFC 5216, so this is our only option.
 	 */
 	if (session->pending_alert) tls_session_alert_send(request, session);

@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/tls/tls_log.h
+ * @file lib/tls/log.h
  * @brief Prototypes for TLS logging functions
  *
  * @copyright 2017 The FreeRADIUS project
