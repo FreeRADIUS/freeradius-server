@@ -529,7 +529,7 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
  * @param[in] request	The current #REQUEST.
  * @param[in] tls_session	The current TLS session.
  */
-static void session_msg_log(REQUEST *request, tls_session_t *tls_session)
+static void session_msg_log(REQUEST *request, tls_session_t *tls_session, uint8_t const *data, size_t data_len)
 {
 	char const	*version, *content_type;
 	char const	*str_details1 = NULL;
@@ -620,7 +620,23 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session)
 		 str_details2 ? ", " : "",
 		 str_details2 ? str_details2 : "");
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "%s", tls_session->info.info_description);
+	/*
+	 *	Print out information about the record and print the
+	 *	data at higher debug levels.
+	 */
+	if (request) {
+		if (RDEBUG_ENABLED3) {
+			RHEXDUMP(L_DBG_LVL_3, data, data_len, "%s", tls_session->info.info_description);
+		} else {
+			RDEBUG2("%s", tls_session->info.info_description);
+		}
+	} else {
+		if (DEBUG_ENABLED3) {
+			RHEXDUMP(L_DBG_LVL_3, data, data_len, "%s", tls_session->info.info_description);
+		} else {
+			DEBUG3("%s", tls_session->info.info_description);
+		}
+	}
 }
 
 /** Record the progression of the TLS handshake
@@ -749,7 +765,7 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 		break;
 	}
 
-	session_msg_log(request, session);
+	session_msg_log(request, session, (uint8_t const *)inbuf, len);
 }
 
 static inline VALUE_PAIR *tls_session_cert_attr_add(TALLOC_CTX *ctx, REQUEST *request, fr_cursor_t *cursor,
@@ -1200,7 +1216,7 @@ static void tls_session_alert_send(REQUEST *request, tls_session_t *session)
 
 	SSL_clear(session->ssl);	/* Reset the SSL *, to allow the client to restart the session */
 
-	session_msg_log(request, session);
+	session_msg_log(request, session, session->dirty_out.data, session->dirty_out.used);
 
 }
 

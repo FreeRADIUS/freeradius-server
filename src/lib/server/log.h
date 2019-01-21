@@ -458,18 +458,24 @@ do {\
 } while (0)
 
 #define RHEXDUMP(_lvl, _data, _len, _fmt, ...) \
-	if (rad_debug_lvl >= _lvl) do { \
+	if (log_debug_enabled(L_DBG,_lvl, request)) do { \
 		log_request(L_DBG, _lvl, request, _fmt, ## __VA_ARGS__); \
 		log_request_hex(L_DBG, _lvl, request, _data, _len); \
 	} while (0)
 
 #define RHEXDUMP_INLINE(_lvl, _data, _len, _fmt, ...) \
-	if (rad_debug_lvl >= _lvl) do { \
+	if (log_debug_enabled(L_DBG,_lvl, request)) do { \
 		char *_tmp; \
 		_tmp = talloc_array(NULL, char, ((_len) * 2) + 1); \
 		fr_bin2hex(_tmp, _data, _len); \
 		log_request(L_DBG, _lvl, request, _fmt " 0x%s", ## __VA_ARGS__, _tmp); \
 		talloc_free(_tmp); \
 	} while(0)
+
+#define HEXDUMP(_lvl, _Data, _len, _fmt, ...) \
+	if (debug_enabled(L_DBG, _lvl)) do { \
+		_FR_LOG(L_DBG, _fmt, ## __VA_ARGS__) \
+		log_hex(L_DBG, _lvl, _data, _len); \
+	} while (0)
 
 
