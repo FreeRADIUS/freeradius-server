@@ -12,7 +12,7 @@
 
 server abfab-idp {
 authorize {
-        psk_authorize
+	psk_authorize
 	abfab_client_check
 	filter_username
 	preprocess
@@ -32,7 +32,7 @@ authorize {
 	suffix {
 	        updated = 1
 		noop = reject
-        }
+	}
 	eap {
 		ok = return
 	}
