@@ -34,8 +34,8 @@ realm suffix {
 	# they are ignored.
 #	trust_router = "localhost"
 #	tr_port = 12309
-#	rp_realm = "painless-security.com"
-#	default_community = "apc.moonshot.ja.net"
+#	rp_realm = "realm.example.com"
+#	default_community = "apc.communities.example.com"
 }
 
 #  'username%realm'
