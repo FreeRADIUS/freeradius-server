@@ -202,47 +202,6 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	return count;
 }
 
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config)
-{
-	rlm_sql_oracle_conn_t *conn = handle->conn;
-	int		fields, i, status;
-	char const	**names;
-	OCIParam	*param;
-
-	fields = sql_num_fields(handle, config);
-	if (fields <= 0) return RLM_SQL_ERROR;
-
-	MEM(names = talloc_array(handle, char const *, fields));
-
-	for (i = 0; i < fields; i++) {
-		OraText *pcol_name = NULL;
-		ub4 pcol_size = 0;
-
-		status = OCIParamGet(conn->query, OCI_HTYPE_STMT, conn->error, (dvoid **)&param, i + 1);
-		if (status != OCI_SUCCESS) {
-			ERROR("rlm_sql_oracle: OCIParamGet(OCI_HTYPE_STMT) failed in sql_fields()");
-		error:
-			talloc_free(names);
-
-			return RLM_SQL_ERROR;
-		}
-
-		status = OCIAttrGet((dvoid **)param, OCI_DTYPE_PARAM, &pcol_name, &pcol_size,
-				    OCI_ATTR_NAME, conn->error);
-		if (status != OCI_SUCCESS) {
-			ERROR("rlm_sql_oracle: OCIParamGet(OCI_ATTR_NAME) failed in sql_fields()");
-
-			goto error;
-		}
-
-		names[i] = (char const *)pcol_name;
-	}
-
-	*out = names;
-
-	return RLM_SQL_OK;
-}
-
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 	int status;
@@ -504,7 +463,6 @@ rlm_sql_module_t rlm_sql_oracle = {
 	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
-	.sql_fields			= sql_fields,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,

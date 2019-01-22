@@ -884,8 +884,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	/*
 	 *	Load the appropriate driver for our database.
-	 *
-	 *	We need this to check if the sql_fields callback is provided.
 	 */
 	inst->handle = fr_dlopenext(inst->config->sql_driver_name);
 	if (!inst->handle) {

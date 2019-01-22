@@ -206,7 +206,6 @@ typedef struct rlm_sql_module_t {
 	int (*sql_affected_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 	sql_rcode_t (*sql_fetch_row)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-	sql_rcode_t (*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 	sql_error_t	sql_error;				//!< Get any errors from the previous query.

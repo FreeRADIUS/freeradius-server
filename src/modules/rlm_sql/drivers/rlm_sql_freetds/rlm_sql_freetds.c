@@ -324,57 +324,6 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	return num;
 }
 
-/*************************************************************************
- *
- *	Function: sql_fields
- *
- *	Purpose:  Return name of regular result columns.
- *
- *************************************************************************/
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
-{
-	rlm_sql_freetds_conn_t *conn = handle->conn;
-	CS_DATAFMT datafmt;
-	int fields, i;
-	char const **names;
-
-	/* Get number of elements in row result */
-	if (ct_res_info(conn->command, CS_NUMDATA, (CS_INT *)&fields, CS_UNUSED, NULL) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: sql_fields() Error retrieving column count");
-
-		return RLM_SQL_ERROR;
-	}
-
-	if (fields <= 0) return RLM_SQL_ERROR;
-
-	MEM(names = talloc_array(handle, char const *, fields));
-
-	for (i = 0; i < fields; i++) {
-		int col = i + 1;
-		char *p;
-
-		/*
-		** Get the column description.  ct_describe() fills the
-		** datafmt parameter with a description of the column.
-		*/
-		if (ct_describe(conn->command, col, &datafmt) != CS_SUCCEED) {
-			ERROR("rlm_sql_freetds: sql_fields() Problems with ct_describe(), column %d", col);
-			talloc_free(names);
-			return RLM_SQL_ERROR;
-		}
-
-		if (datafmt.namelen > 0) {
-			MEM(p = talloc_array(names, char, (size_t)datafmt.namelen + 1));
-			strlcpy(p, datafmt.name, (size_t)datafmt.namelen + 1);
-			names[i] = p;
-		}
-	}
-
-	*out = names;
-
-	return RLM_SQL_OK;
-}
-
 /** Retrieves any errors associated with the connection handle
  *
  * @note Caller will free any memory allocated in ctx.
@@ -803,7 +752,6 @@ rlm_sql_module_t rlm_sql_freetds = {
 	.sql_select_query		= sql_select_query,
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
-	.sql_fields			= sql_fields,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
