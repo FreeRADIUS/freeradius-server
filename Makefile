@@ -317,10 +317,12 @@ docker-push: docker
 .PHONY: docker-tag-latest
 docker-tag-latest: docker
 	docker tag freeradius/freeradius-server:$(RADIUSD_VERSION_STRING) freeradius/freeradius-server:latest
+	docker tag freeradius/freeradius-server:$(RADIUSD_VERSION_STRING)-alpine freeradius/freeradius-server:latest-alpine
 
 .PHONY: docker-push-latest
 docker-push-latest: docker-push docker-tag-latest
 	docker push freeradius/freeradius-server:latest
+	docker push freeradius/freeradius-server:latest-alpine
 
 .PHONY: docker-publish
 docker-publish: docker-push-latest
