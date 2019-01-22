@@ -260,7 +260,9 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 				 *  Vendor-Specific is special, and matches any VSA if the
 				 *  comparison is always true.
 				 */
-				if ((check_item->da->attr == PW_VENDOR_SPECIFIC) && (input_item->da->vendor != 0) &&
+				if ((check_item->da->vendor == 0) &&
+				    (check_item->da->attr == PW_VENDOR_SPECIFIC) &&
+				    (input_item->da->vendor != 0) &&
 				    (check_item->op == T_OP_CMP_TRUE)) {
 					pass++;
 					continue;
