@@ -69,6 +69,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	  Except for TLS 1.3 which does not support that.
 	* Update Debian packages for newer releases.
 	  Fixes #2391.  Patch from Matthew Newton.
+	* Update docker scripts.  Fixes #2306.
+	  Patch from Matthew Newton.
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -127,6 +129,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Fix memory leak in EAP-PWD.
 	* Fix crash in "hints" file with Fall-Through = yes
 	* Fix crash / timer issues with many CoA packets.
+	* Fix attr_filter so that it does not treat
+	  vendor attributes of number 26 as Vendor-Specific.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
