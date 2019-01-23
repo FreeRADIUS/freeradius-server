@@ -1166,7 +1166,7 @@ int tls_session_send(REQUEST *request, tls_session_t *session)
 		if (ret > 0) {
 			session->dirty_out.used = ret;
 		} else {
-			if (!tls_log_io_error(request, session, ret, "Failed in SSL_write")) return 0;
+			if (tls_log_io_error(request, session, ret, "Failed in SSL_write") < 0) return 0;
 		}
 	}
 
@@ -1292,7 +1292,12 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 		session->clean_out.used += ret;
 		return 1;
 	}
-	if (!tls_log_io_error(request, session, ret, "Failed in SSL_read")) return 0;
+
+	/*
+	 *	Returns 0 if we can continue processing the handshake
+	 *	Returns -1 if we encountered a fatal error.
+	 */
+	if (tls_log_io_error(request, session, ret, "Failed in SSL_read") < 0) return 0;
 
 	/*
 	 *	This only occurs once per session, where calling

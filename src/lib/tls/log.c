@@ -256,8 +256,8 @@ int tls_strerror_printf(char const *msg, ...)
  * @param msg		Error message describing the operation being attempted.
  * @param ...		Arguments for msg.
  * @return
- *	- 0 TLS session cannot continue.
- *	- 1 TLS session may still be viable.
+ *	- 0 TLS session may still be viable.
+ *	- -1 TLS session cannot continue.
  */
 int tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char const *msg, ...)
 {
@@ -298,11 +298,11 @@ int tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char con
 	 */
 	case SSL_ERROR_SYSCALL:
 		ROPTIONAL(REDEBUG, ERROR, "System call (I/O) error (%i)", ret);
-		return 0;
+		return -1;
 
 	case SSL_ERROR_SSL:
 		ROPTIONAL(REDEBUG, ERROR, "TLS protocol error (%i)", ret);
-		return 0;
+		return -1;
 
 	/*
 	 *	For any other errors that (a) exist, and (b)
@@ -312,9 +312,9 @@ int tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char con
 	 */
 	default:
 		ROPTIONAL(REDEBUG, ERROR, "TLS session error %i (%i)", error, ret);
-		return 0;
+		return -1;
 	}
 
-	return 1;
+	return 0;
 }
 #endif /* WITH_TLS */
