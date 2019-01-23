@@ -74,7 +74,7 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *in, size_t 
 	HMAC_Init_ex(ctx, key, key_len, EVP_sha1(), NULL);
 	HMAC_Update(ctx, in, inlen);
 	HMAC_Final(ctx, digest, NULL);
-	HMAC_CTX_reset(ctx);
+	HMAC_CTX_free(ctx);
 }
 #else
 /** Calculate HMAC using internal SHA1 implementation
