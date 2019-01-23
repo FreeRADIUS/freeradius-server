@@ -383,6 +383,11 @@ asciidoc/%.pdf: raddb/%.md
 		-V papersize=letter \
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
-.PHONY: asciidoc html
+asciidoc-clean:
+	@echo Removing ./asciidoc/
+	@[ -d "./asciidoc" ] && rm -rf ./asciidoc/ || exit 0
+
+.PHONY: asciidoc-clean asciidoc html
 asciidoc: $(ADOC_FILES)
 html: $(HTML_FILES)
+
