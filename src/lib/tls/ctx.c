@@ -615,6 +615,10 @@ post_ca:
 		}
 	}
 #else
+	/*
+	 *	OpenSSL < 1.1.0 - This doesn't need to change when new TLS versions are issued
+	 *	as new TLS versions will never be added to older OpenSSL versions.
+	 */
 	{
 		int ctx_tls_versions = 0;
 
@@ -631,7 +635,7 @@ post_ca:
 
 		/*
 		 *	As of 3.0.5, we always allow TLSv1.1 and TLSv1.2.
-		 *	Though they can be *globally* disabled if necessary.x
+		 *	Though they can be *globally* disabled if necessary.
 		 */
 #  ifdef SSL_OP_NO_TLSv1
 		if (conf->tls_min_version > (float) 1.0) ctx_options |= SSL_OP_NO_TLSv1;
