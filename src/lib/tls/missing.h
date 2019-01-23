@@ -18,9 +18,39 @@
 #include <openssl/ssl.h>
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-#  define EVP_MD_CTX_new EVP_MD_CTX_create
-#  define EVP_MD_CTX_free EVP_MD_CTX_destroy
-#  define EVP_MD_CTX_reset EVP_MD_CTX_cleanup
+#  define EVP_MD_CTX_new	EVP_MD_CTX_create
+#  define EVP_MD_CTX_free	EVP_MD_CTX_destroy
+#  define EVP_MD_CTX_reset	EVP_MD_CTX_cleanup
+
+static inline HMAC_CTX *HMAC_CTX_new(void)
+{
+	HMAC_CTX *ctx;
+	ctx = OPENSSL_malloc(sizeof(*ctx));
+	if (!ctx) return NULL;
+
+	memset(ctx, 0, sizeof(*ctx));
+        HMAC_CTX_init(ctx);
+	return ctx;
+}
+
+static inline void HMAC_CTX_free(HMAC_CTX *ctx)
+{
+        if (ctx == NULL) {
+                return;
+        }
+        HMAC_CTX_cleanup(ctx);
+        OPENSSL_free(ctx);
+}
+
+static inline int HMAC_CTX_reset(HMAC_CTX *ctx)
+{
+	if (!ctx) return 0;
+
+	memset(ctx, 0, sizeof(*ctx));
+        HMAC_CTX_init(ctx);
+
+	return 1;
+}
 
 /*
  *	OpenSSL compatibility, to avoid ifdef's through the rest of the code.
