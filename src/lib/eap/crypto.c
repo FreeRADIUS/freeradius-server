@@ -237,7 +237,9 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
 	 *	Session-Id = <EAP-Type> || Method-Id
 	 *	Method-Id = TLS-Exporter("EXPORTER_EAP_TLS_Method-Id", "", 64)
 	 */
+#  ifdef TLS1_3_VERSION
 	case TLS1_3_VERSION:
+#  endif
 	default:
 	{
 		MEM(buff = p = talloc_array(ctx, uint8_t, sizeof(eap_type) + 64));

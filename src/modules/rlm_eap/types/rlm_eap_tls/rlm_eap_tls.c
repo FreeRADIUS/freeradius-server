@@ -195,7 +195,9 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 			break;
 
+#  ifdef TLS1_3_VERSION
 		case TLS1_3_VERSION:
+#  endif
 		default:
 		{
 			static char const keying_prf_label[] = "EXPORTER_EAP_TLS_Key_Material";
