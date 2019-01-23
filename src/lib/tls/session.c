@@ -1099,14 +1099,19 @@ int tls_session_recv(REQUEST *request, tls_session_t *session)
 
 		case SSL_ERROR_WANT_WRITE:
 			REDEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
+			return -1;
+
+		case SSL_ERROR_NONE:
+			RDEBUG2("No application data received.  Assuming handshake is continuing...");
+			ret = 0;
 			break;
 
 		default:
 			REDEBUG("Error in fragmentation logic");
 			tls_log_io_error(request, session, ret, "Failed in SSL_read");
-			break;
+			return -1;
 		}
-		return -1;
+
 	}
 
 	if (ret == 0) RWDEBUG("No data inside of the tunnel");
