@@ -221,8 +221,8 @@ rsa/client.pem: rsa/client.p12
 
 .PHONY: rsa/client.vrfy
 rsa/client.vrfy: rsa/ca.pem rsa/client.pem
-	c_rehash .
-	openssl verify -CApath . rsa/client.pem
+	c_rehash rsa/
+	openssl verify -CApath rsa/ rsa/client.pem
 
 ######################################################################
 #
@@ -247,8 +247,8 @@ ecc/client.pem: ecc/client.p12
 
 .PHONY: ecc/client.vrfy
 ecc/client.vrfy: ecc/ca.pem ecc/client.pem
-	c_rehash .
-	openssl verify -CApath . ecc/client.pem
+	c_rehash ecc/
+	openssl verify -CApath ecc/ ecc/client.pem
 
 ######################################################################
 #
