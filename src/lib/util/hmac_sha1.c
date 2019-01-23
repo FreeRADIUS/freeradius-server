@@ -39,8 +39,17 @@ unsigned int sha1_data_problems = 0;
 #endif
 
 #ifdef HAVE_OPENSSL_EVP_H
-#  include <freeradius-devel/tls/base.h>
 #  include <openssl/hmac.h>
+
+/*
+ *	This shim needs to be here to avoid the explicit
+ *	dependency on our TLS library.
+ */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#  define EVP_MD_CTX_new EVP_MD_CTX_create
+#  define EVP_MD_CTX_free EVP_MD_CTX_destroy
+#  define EVP_MD_CTX_reset EVP_MD_CTX_cleanup
+#endif
 
 fr_thread_local_setup(HMAC_CTX *, sha1_hmac_ctx)
 

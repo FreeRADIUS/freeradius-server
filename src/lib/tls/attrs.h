@@ -17,7 +17,7 @@
 
 /**
  * $Id$
- * @file attrs.h
+ * @file src/lib/tls/attrs.h
  * @brief Attribute definitions used by the FreeRADIUS OpenSSL wrapper library
  *
  * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
