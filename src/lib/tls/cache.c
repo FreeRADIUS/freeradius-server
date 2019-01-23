@@ -569,6 +569,15 @@ int tls_cache_disable_cb(SSL *ssl,
 void tls_cache_init(SSL_CTX *ctx, bool enabled, uint32_t lifetime)
 {
 	if (!enabled) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		/*
+		 *	This controls the number of stateful or stateless tickets
+		 *	generated with TLS 1.3.  In OpenSSL 1.1.0 it's also
+		 *      required to disable sending session tickets,
+		 *	SSL_SESS_CACHE_OFF is not good enough.
+		 */
+		SSL_CTX_set_num_tickets(ctx, 0);
+#endif
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 		return;
 	}
@@ -582,6 +591,7 @@ void tls_cache_init(SSL_CTX *ctx, bool enabled, uint32_t lifetime)
 	SSL_CTX_set_timeout(ctx, lifetime);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	SSL_CTX_set_num_tickets(ctx, 1);
 	SSL_CTX_set_not_resumable_session_callback(ctx, tls_cache_disable_cb);
 #endif
 }
