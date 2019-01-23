@@ -74,7 +74,7 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t in
 	HMAC_Init_ex(ctx, key, key_len, EVP_md5(), NULL);
 	HMAC_Update(ctx, in, inlen);
 	HMAC_Final(ctx, digest, NULL);
-	HMAC_CTX_free(ctx);
+	HMAC_CTX_reset(ctx);
 }
 #else
 /** Calculate HMAC using internal MD5 implementation
