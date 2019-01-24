@@ -1,51 +1,63 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
+#######################################################################
 #
-#	A module to cache attributes.  The idea is that you can look
-#	up information in a database, and then cache it.  Repeated
-#	requests for the same information will then have the cached
-#	values added to the request.
+# ## Cache Module
 #
-#	The module can cache a fixed set of attributes per key.
-#	It can be listed in "authorize", "post-auth", "pre-proxy"
-#	and "post-proxy".
+#  The `cache` module is used to cache attributes. The idea is that you can look
+#  up information in a database, and then cache it. Repeated requests for the same
+#  information will then have the cached values added to the request.
 #
-#	If you want different things cached for authorize and post-auth,
-#	you will need to define two instances of the "cache" module.
+#  The module can cache a fixed set of attributes per key.
+#  It can be listed in `authorize`, `post-auth`, `pre-proxy`
+#  and `post-proxy`.
 #
-#	The module returns "ok" if it found or created a cache entry.
-#	The module returns "updated" if it merged a cached entry.
-#	The module returns "noop" if it did nothing.
-#	The module returns "fail" on error.
+#  NOTE: If you want different things cached for `authorize` and `post-auth`,
+#  you will need to define two instances of the `cache <nameN> { ... }` module.
 #
+#  * The module returns `ok` if it found or created a cache entry.
+#  * The module returns `updated` if it merged a cached entry.
+#  * The module returns `noop` if it did nothing.
+#  * The module returns `fail` on error.
+#
+
+#
+#  Sample configuration:
+#
+
 cache {
-	#  The backend datastore used to store the cache entries.
-	#  Current datastores are
-	#    rlm_cache_rbtree    - An in memory, non persistent rbtree based datastore.
-	#                          Useful for caching data locally.
-	#    rlm_cache_memcached - A non persistent "webscale" distributed datastore.
-	#                          Useful if the cached data need to be shared between
-	#                          a cluster of RADIUS servers.
-	#    rlm_cache_redis     - A persistent "webscale" clustered, sharded, data store.
-	#			   Extremely fast, and a good candidate for sharing
-	#			   data such as EAP session blobs, between a cluster of
-	#			   servers.
+	#
+	# driver::
+	#
+	#  The current backend datastore used to store the cache entries are:
+	#  * `rlm_cache_rbtree`    - An in memory, non persistent rbtree based datastore.
+	#                            Useful for caching data locally.
+	#  * `rlm_cache_memcached` - A non persistent "webscale" distributed datastore.
+	#                            Useful if the cached data need to be shared between
+	#                            a cluster of RADIUS servers.
+	#  * `rlm_cache_redis`     - A persistent "webscale" clustered, sharded, data store.
+	#			                 Extremely fast, and a good candidate for sharing
+	#			                 data such as EAP session blobs, between a cluster of
+	#			                 servers.
 #	driver = "rlm_cache_rbtree"
 
 	#
-	#  Some drivers accept specific options, to set them a
-	#  config section with the the name as the driver should be added
-	#  to the cache instance.
-	#
+	#  NOTE: Some drivers accept specific options, to set them a config section with the
+	#  the name as the driver should be added to the cache instance.
 	#  Driver specific options are:
 	#
+
+#
+#  ### Memcached cache driver
 #	memcached {
 #		# Memcached configuration options, as documented here:
 #		#    http://docs.libmemcached.org/libmemcached_configuration.html#memcached
 #		options = "--SERVER=localhost"
-#
+#	
 #		pool {
 #			start = ${thread[pool].num_workers}
 #			min = ${thread[pool].num_workers}
@@ -57,6 +69,8 @@ cache {
 #		}
 #	}
 
+#
+#  ### Redis cache driver
 #	redis {
 #		#
 #		#  If using Redis cluster, multiple 'bootstrap' servers may be
@@ -73,16 +87,16 @@ cache {
 #		#  as a whole.
 #		#
 #		server = 127.0.0.1
-#
+#	
 #		#  Default port.
 #		port = 6379
-#
+#	
 #		#  Password to authenticate to the server.
 #		password = 'supersecret'
-#
+#	
 #		#  Database number to use.
 #		database = 0
-#
+#	
 #		pool {
 #			start = ${thread[pool].num_workers}
 #			min = ${thread[pool].num_workers}
@@ -94,34 +108,40 @@ cache {
 #		}
 #	}
 
-	#  The key used to index the cache.  It is dynamically expanded
-	#  at run time.
+	#
+	# key::
+	#
+	#  The key used to index the cache. It is dynamically expanded at run time.
 	key = &User-Name
 
+	#
+	# ttl::
+	#
 	#  The TTL of cache entries, in seconds.  Entries older than this
 	#  will be expired.
 	#
 	#  This value should be between 10 and 86400.
 	ttl = 10
 
-	#  You can flush the cache via
-	#
-	#	radmin -e "set module config cache epoch 123456789"
-	#
-	#  Where last value is a 32-bit Unix timestamp.  Cache entries older
+	#  
+	#  NOTE: You can flush the cache via
+	#  `radmin -e "set module config cache epoch 123456789"`
+	#  Where last value is a 32-bit Unix timestamp. Cache entries older
 	#  than this are expired, as new entries added.
-	#
 	#  You should never set the "epoch" configuration item in this file.
 
-	#  If yes the following attributes will be added to the request:
-	#      * &request:Cache-Entry-Hits - The number of times this entry
-	#				     has been retrieved.
 	#
-	#  Note: Not supported by the rlm_cache_memcached module.
+	# add_stats::
+	#
+	#  If `yes` the following attributes will be added to the request:
+	#  * `&request:Cache-Entry-Hits` - The number of times this entry
+	#  has been retrieved.
+	#
+	#  NOTE: Not supported by the `rlm_cache_memcached` module.
 	add_stats = no
 
 	#
-	#  The list of attributes to cache for a particular key.
+	# # The list of attributes to cache for a particular key.
 	#
 	#  Each key gets the same set of cached attributes. The attributes
 	#  are dynamically expanded at run time.
@@ -131,12 +151,14 @@ cache {
 	#  represents the cache entry. see man unlang for more information
 	#  on update blocks.
 	#
-	#  Note: Only request, reply, control and session-state lists
+	#  NOTE: Only *request*, *reply*, *control* and *session-state* lists
 	#  are available in cache entries. Attempting to store attributes
-	#  in other lists will raise an error during config validation.
+	#  in other lists *will raise an error* during config validation.
 	#
 	update {
-		# <list>:<attribute> <op> <value>
+		#
+		# <list>:<attribute> <op> <value>::
+		#
 
 		# Cache all instances of Reply-Message in the reply list
 		&reply:Reply-Message := &reply:Reply-Message
@@ -144,47 +166,51 @@ cache {
 		# Add our own to show when the cache was last updated
 		&reply:Reply-Message := "Cache last updated at %t"
 
+		# Add your own value for `Class`.
 		&reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
 	}
 
+	#
 	#  This module supports a number of runtime configuration parameters
-	#  represented by attributes in the &control: list.
+	#  represented by attributes in the `&control:` list.
 	#
-	#  &control:Cache-TTL - Sets the TTL of an entry to be created, or
-	#  modifies the TTL of an existing entry.
-	#    - Setting a Cache-TTL of > 0 means set the TTL of the entry to
-	#      the new value (and reset the expiry timer).
-	#    - Setting a Cache-TTL of < 0 means expire the existing entry
-	#      and create a new one with TTL set to Cache-TTL * -1.
-	#    - Setting a Cache-TTL of 0 means expire the existing entry
-	#      and create a new one.
+	#  &control:Cache-TTL:: Sets the TTL of an entry to be created, or
+	#   modifies the TTL of an existing entry.
 	#
-	#  &control:Cache-Status-Only - If present and set to 'yes' will
+	#  * Setting a `Cache-TTL` of > `0` means set the TTL of the entry to
+	#    the new value (and reset the expiry timer).
+	#  * Setting a `Cache-TTL` of < `0` means expire the existing entry
+	#    and create a new one with TTL set to `Cache-TTL` * `-1`.
+	#  * Setting a `Cache-TTL` of `0` means expire the existing entry
+	#    and create a new one.
+	#
+	#  &control:Cache-Status-Only:: If present and set to `yes` will
 	#  prevent a new entry from being created, and existing entries from
-	#  being merged.  It will also alter the module's return codes.
-	#    - The module will return "ok" if a cache entry was found.
-	#    - The module will return "notfound" if no cache entry was found.
-	#  Note: If this is set to yes, no other cache control attributes will
+	#  being merged. It will also alter the module's return codes.
+	#
+	#   * The module will return `ok` if a cache entry was found.
+	#   * The module will return `notfound` if no cache entry was found.
+	#
+	#  NOTE: If this is set to yes, no other cache control attributes will
 	#  be honoured, but they will still be cleared.
 	#
-	#  &control:Cache-Allow-Insert - If present and set to 'no' will
+	#  &control:Cache-Allow-Insert:: If present and set to `no` will
 	#  prevent a new entry from being created. If not present or set
-	#  to 'yes', and no entry exists, a new one will be created.
-	#  This is evaluated after Cache-TTL, so expired entries may be
+	#  to `yes`, and no entry exists, a new one will be created.
+	#  This is evaluated after `Cache-TTL`, so expired entries may be
 	#  recreated.
 	#
-	#  &control:Cache-Allow-Merge - If present and set to 'no' will
+	#  &control:Cache-Allow-Merge:: If present and set to `no` will
 	#  prevent existing entries from being merged. If not present or
-	#  set to 'yes', and an entry exists (and is valid), it will be
+	#  set to `yes`, and an entry exists (and is valid), it will be
 	#  merged with the current request.
-	#  This is evaluated before Cache-TTL, so entries being expired
+	#  This is evaluated before `Cache-TTL`, so entries being expired
 	#  may first be merged.
 	#
-	#  &control:Cache-Merge-New - If present and set to 'yes' will merge new
-	#  cache entries into the current request. Useful if results
-	#  of execs or expansions are stored directly in the cache.
+	#  &control:Cache-Merge-New:: If present and set to `yes` will merge new
+	#  cache entries into the current request. Useful if results of execs or
+	#  expansions are stored directly in the cache.
 	#
-	#  All runtime configuration attributes will be removed from the
-	#  &control: list after the cache module is called.
-
+	#  NOTE: All runtime configuration attributes will be removed from the
+	#  `&control:` list after the cache module is called.
 }
