@@ -13,11 +13,11 @@
 #  information will then have the cached values added to the request.
 #
 #  The module can cache a fixed set of attributes per key.
-#  It can be listed in `authorize`, `post-auth`, `pre-proxy`
-#  and `post-proxy`.
+#  It can be listed in any `recv` or `send` section.
 #
-#  NOTE: If you want different things cached for `authorize` and `post-auth`,
-#  you will need to define two instances of the `cache <nameN> { ... }` module.
+#  NOTE:: If you want to have different things cached for different
+#  sections, you will need to define multiple instances of the module,
+#  vbia `cache <nameN> { ... }`.
 #
 #  * The module returns `ok` if it found or created a cache entry.
 #  * The module returns `updated` if it merged a cached entry.
@@ -28,7 +28,6 @@
 #
 #  Sample configuration:
 #
-
 cache {
 	#
 	# driver::
@@ -54,10 +53,18 @@ cache {
 #
 #  ### Memcached cache driver
 #	memcached {
-#		# Memcached configuration options, as documented here:
-#		#    http://docs.libmemcached.org/libmemcached_configuration.html#memcached
+		#
+		# options:: Memcached configuration options
+		#
+		#  The memcached options are documented here:
+		#
+		#    http://docs.libmemcached.org/libmemcached_configuration.html#memcached
+		#
 #		options = "--SERVER=localhost"
-#	
+
+		#
+		#  pool:: Connection pool.
+		#
 #		pool {
 #			start = ${thread[pool].num_workers}
 #			min = ${thread[pool].num_workers}
@@ -72,31 +79,44 @@ cache {
 #
 #  ### Redis cache driver
 #	redis {
-#		#
-#		#  If using Redis cluster, multiple 'bootstrap' servers may be
-#		#  listed here (as separate config items). These will be contacted
-#		#  in turn until one provides us with a valid map for the cluster.
-#		#  Server strings may contain unique ports e.g.:
-#		#
-#		#    server = '127.0.0.1:30001'
-#		#    server = '[::1]:30002'
-#		#
-#		#  Instantiation failure behaviour is controlled by pool.start as
-#		#  with every other module, but with clustering, the pool section
-#		#  determines limits for each node in the cluster, not the cluster
-#		#  as a whole.
-#		#
+		#
+		# server:: Redis Server name
+		#
+		#  If using Redis cluster, multiple 'bootstrap' servers may be
+		#  listed here (as separate config items). These will be contacted
+		#  in turn until one provides us with a valid map for the cluster.
+		#  Server strings may contain unique ports e.g.:
+		#
+		#    server = '127.0.0.1:30001'
+		#    server = '[::1]:30002'
+		#
+		#  Instantiation failure behaviour is controlled by pool.start as
+		#  with every other module, but with clustering, the pool section
+		#  determines limits for each node in the cluster, not the cluster
+		#  as a whole.
+		#
 #		server = 127.0.0.1
-#	
-#		#  Default port.
+	
+		#
+		#  port:: Port to use for Redis server.
+		#
+		#  The default port is 6379.
+		#
 #		port = 6379
-#	
-#		#  Password to authenticate to the server.
+	
+		#
+		#  password: For authenticating ourselves to the Redis server.
+		#
 #		password = 'supersecret'
-#	
-#		#  Database number to use.
+
+		#
+		#  database:: The database number to use.
+		#  
 #		database = 0
-#	
+
+		#
+		#  pool:: Connection pool.
+		#
 #		pool {
 #			start = ${thread[pool].num_workers}
 #			min = ${thread[pool].num_workers}
@@ -121,10 +141,11 @@ cache {
 	#  will be expired.
 	#
 	#  This value should be between 10 and 86400.
+	#
 	ttl = 10
 
 	#  
-	#  NOTE: You can flush the cache via
+	#  NOTE:: You can flush the cache via
 	#  `radmin -e "set module config cache epoch 123456789"`
 	#  Where last value is a 32-bit Unix timestamp. Cache entries older
 	#  than this are expired, as new entries added.
@@ -137,11 +158,12 @@ cache {
 	#  * `&request:Cache-Entry-Hits` - The number of times this entry
 	#  has been retrieved.
 	#
-	#  NOTE: Not supported by the `rlm_cache_memcached` module.
+	#  NOTE:: Not supported by the `rlm_cache_memcached` module.
+	#
 	add_stats = no
 
 	#
-	# # The list of attributes to cache for a particular key.
+	#  update:: The list of attributes to cache for a particular key.
 	#
 	#  Each key gets the same set of cached attributes. The attributes
 	#  are dynamically expanded at run time.
@@ -151,7 +173,7 @@ cache {
 	#  represents the cache entry. see man unlang for more information
 	#  on update blocks.
 	#
-	#  NOTE: Only *request*, *reply*, *control* and *session-state* lists
+	#  NOTE:: Only `request`, `reply`, `control` and `session-state` lists
 	#  are available in cache entries. Attempting to store attributes
 	#  in other lists *will raise an error* during config validation.
 	#
@@ -211,6 +233,6 @@ cache {
 	#  cache entries into the current request. Useful if results of execs or
 	#  expansions are stored directly in the cache.
 	#
-	#  NOTE: All runtime configuration attributes will be removed from the
+	#  NOTE:: All runtime configuration attributes will be removed from the
 	#  `&control:` list after the cache module is called.
 }
