@@ -464,6 +464,7 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 		if (RDEBUG_ENABLED3) {
 			char const *abbrv = SSL_state_string(ssl);
 			size_t len;
+			STACK_OF(SSL_CIPHER) *client_ciphers;
 
 			/*
 			 *	Trim crappy OpenSSL state strings...
@@ -472,6 +473,24 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 			if ((len > 1) && (abbrv[len - 1] == ' ')) len--;
 
 			RDEBUG3("Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
+
+			/*
+			 *	After a ClientHello, list all the proposed ciphers from the client
+			 */
+			if (SSL_get_state(ssl) == TLS_ST_SR_CLNT_HELLO &&
+			    (client_ciphers = SSL_get_client_ciphers(ssl))) {
+				int i;
+				int num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
+				const SSL_CIPHER *this_cipher;
+
+				RDEBUG3("Client proposed the following ciphers:");
+				RINDENT();
+				for (i = 0; i < num_ciphers; i++) {
+					this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
+					RDEBUG3("%s\n", SSL_CIPHER_get_name(this_cipher));
+				}
+				REXDENT();
+			}
 		} else {
 			RDEBUG2("Handshake state - %s%s", role, state);
 		}
