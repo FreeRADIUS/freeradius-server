@@ -440,7 +440,7 @@ unsigned int tls_session_psk_server_cb(SSL *ssl, const char *identity,
  *
  * @param[in] ssl	session.
  * @param[in] where	Which context the callback is being called in.
- *			See https://www.openssl.org/docs/manmaster/ssl/SSL_CTX_set_info_callback.html
+ *			See https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_info_callback.html
  *			for additional info.
  * @param[in] ret	0 if an error occurred, or the alert type if an alert was received.
  */
