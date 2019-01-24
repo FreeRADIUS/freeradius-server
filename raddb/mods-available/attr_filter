@@ -12,14 +12,14 @@
 #
 
 #
-#  Sample configuration:
+# ## Sample configuration
 #
 
 #attr_filter attr_filter.<section> {
 	#
 	#  key::
 	#
-	#  The `key` to use for filter the packets:
+	#  The `key` to use for filter the packets.
 	#
 #	key = "<value>"
 	
@@ -33,7 +33,7 @@
 
 # ### Default instances
 #
-#  The following default instances
+#  The following default instances.
 
 #
 #  Filters the attributes in the packets we send to

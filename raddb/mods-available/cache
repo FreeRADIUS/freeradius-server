@@ -17,7 +17,7 @@
 #
 #  NOTE:: If you want to have different things cached for different
 #  sections, you will need to define multiple instances of the module,
-#  vbia `cache <nameN> { ... }`.
+#  via `cache <nameN> { ... }`.
 #
 #  * The module returns `ok` if it found or created a cache entry.
 #  * The module returns `updated` if it merged a cached entry.
@@ -26,7 +26,7 @@
 #
 
 #
-#  Sample configuration:
+# ## Sample configuration
 #
 cache {
 	#
@@ -54,7 +54,7 @@ cache {
 #  ### Memcached cache driver
 #	memcached {
 		#
-		# options:: Memcached configuration options
+		# options:: Memcached configuration options.
 		#
 		#  The memcached options are documented here:
 		#
@@ -80,7 +80,7 @@ cache {
 #  ### Redis cache driver
 #	redis {
 		#
-		# server:: Redis Server name
+		# server:: Redis Server name.
 		#
 		#  If using Redis cluster, multiple 'bootstrap' servers may be
 		#  listed here (as separate config items). These will be contacted
@@ -90,7 +90,7 @@ cache {
 		#    server = '127.0.0.1:30001'
 		#    server = '[::1]:30002'
 		#
-		#  Instantiation failure behaviour is controlled by pool.start as
+		#  Instantiation failure behaviour is controlled by `pool.start` as
 		#  with every other module, but with clustering, the pool section
 		#  determines limits for each node in the cluster, not the cluster
 		#  as a whole.
@@ -105,7 +105,7 @@ cache {
 #		port = 6379
 	
 		#
-		#  password: For authenticating ourselves to the Redis server.
+		#  password:: For authenticating ourselves to the Redis server.
 		#
 #		password = 'supersecret'
 
@@ -137,7 +137,7 @@ cache {
 	#
 	# ttl::
 	#
-	#  The TTL of cache entries, in seconds.  Entries older than this
+	#  The TTL of cache entries, in seconds. Entries older than this
 	#  will be expired.
 	#
 	#  This value should be between 10 and 86400.
@@ -168,7 +168,7 @@ cache {
 	#  Each key gets the same set of cached attributes. The attributes
 	#  are dynamically expanded at run time.
 	#
-	#  The semantics of this construct are identical to an unlang
+	#  The semantics of this construct are identical to an `unlang`
 	#  update block, except the left hand side of the expression
 	#  represents the cache entry. see man unlang for more information
 	#  on update blocks.
@@ -182,10 +182,10 @@ cache {
 		# <list>:<attribute> <op> <value>::
 		#
 
-		# Cache all instances of Reply-Message in the reply list
+		# Cache all instances of `Reply-Message in the reply list.
 		&reply:Reply-Message := &reply:Reply-Message
 
-		# Add our own to show when the cache was last updated
+		# Add our own to show when the cache was last updated.
 		&reply:Reply-Message := "Cache last updated at %t"
 
 		# Add your own value for `Class`.
@@ -213,7 +213,7 @@ cache {
 	#   * The module will return `ok` if a cache entry was found.
 	#   * The module will return `notfound` if no cache entry was found.
 	#
-	#  NOTE: If this is set to yes, no other cache control attributes will
+	#  NOTE: If this is set to `yes`, no other cache control attributes will
 	#  be honoured, but they will still be cleared.
 	#
 	#  &control:Cache-Allow-Insert:: If present and set to `no` will

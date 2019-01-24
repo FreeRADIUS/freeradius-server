@@ -14,7 +14,7 @@
 #
 
 #
-#  ## Sample configuration
+# ## Sample configuration
 #
 cache cache_eap {
 	#
@@ -22,10 +22,12 @@ cache cache_eap {
 	#
 	key = "%{%{control:State}:-%{%{reply:State}:-%{State}}}"
 
+	#
 	# ttl:: TTL for cache entries.
 	#
 	ttl = 15
 
+	#
 	# update <section> { ... }::
 	#
 	update reply {
