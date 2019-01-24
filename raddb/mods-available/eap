@@ -180,6 +180,13 @@ eap {
 		#  the last chain to be processed will be used for that
 		#  key type.
 		#
+		#  WARNING: The chain selected is based on the cipher
+		#  agreed by the client and server. Therefore, for example,
+		#  if the client includes EC ciphers in its proposal, but
+		#  only has an RSA certificate, then the authentication is
+		#  likely to fail as cipher negotiation can select an EC
+		#  cipher.
+		#
 		#  The key type does not need to be explicitly specified as
 		#  it is determined from the certificate provided.
 		#
@@ -272,12 +279,17 @@ eap {
 		#
 		#  Load the ECC certificate chain for key agility
 		#
-		chain {
-			certificate_file = ${certdir}/ecc/server.pem
-			ca_file = ${certdir}/ecc/ca.pem
-			private_key_password = whatever
-			private_key_file = ${certdir}/ecc/server.key
-		}
+		#  Disabled by default, see the warning above. If your
+		#  supplicants propose a mix of different types of ciphers
+		#  and have all the CA keys for each type available, then
+		#  multiple chains may be enabled simultaneously.
+		#
+#		chain {
+#			certificate_file = ${certdir}/ecc/server.pem
+#			ca_file = ${certdir}/ecc/ca.pem
+#			private_key_password = whatever
+#			private_key_file = ${certdir}/ecc/server.key
+#		}
 
 		#
 		#  Server certificate may also be specified at runtime on a per
@@ -415,12 +427,14 @@ eap {
 		#
 		cipher_list = "DEFAULT"
 
+		#
 		#  If enabled, OpenSSL will use server cipher list
 		#  (possibly defined by cipher_list option above)
 		#  for choosing right cipher suite rather than
 		#  using client-specified list which is OpenSSl default
 		#  behavior. Having it set to 'yes' is best practice
 		#  for TLS.
+		#
 		cipher_server_preference = yes
 
 		#
