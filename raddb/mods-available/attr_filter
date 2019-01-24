@@ -1,10 +1,39 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
+#######################################################################
 #
-#  This file defines a number of instances of the "attr_filter" module.
+# ## Attr_filter Module
 #
+#  The `attr_filter` module defines a number of instances of the "attr_filter".
+#
+
+#
+#  Sample configuration:
+#
+
+#attr_filter attr_filter.<section> {
+	#
+	#  key::
+	#
+	#  The `key` to use for filter the packets:
+	#
+#	key = "<value>"
+	
+	#
+	# filename::  
+	#
+	#  The `filename` with the attributes to filter.
+	#
+#	filename = </path/><section>
+#}
+
+# ### Default instances
+#
+#  The following default instances
 
 #
 #  Filters the attributes in the packets we send to
@@ -22,7 +51,7 @@ attr_filter attr_filter.pre-proxy {
 #  servers, to make sure we send back to our RADIUS client
 #  only allowed attributes.
 #
-#  Add this after calling rlm_radius for proxying.
+#  Add this after calling `rlm_radius` for proxying.
 #
 attr_filter attr_filter.post-proxy {
 	key = "%{Realm}"
@@ -30,7 +59,7 @@ attr_filter attr_filter.post-proxy {
 }
 
 #
-#  Enforce RFC requirements on the contents of Access-Reject
+#  Enforce RFC requirements on the contents of `Access-Reject`
 #  packets. This should be called from "send Access-Reject".
 #
 attr_filter attr_filter.access_reject {
@@ -39,7 +68,7 @@ attr_filter attr_filter.access_reject {
 }
 
 #
-#  Enforce RFC requirements on the contents of Access-Challenge
+#  Enforce RFC requirements on the contents of `Access-Challenge`
 #  packets. This is called from "send Access-Challenge".
 #
 attr_filter attr_filter.access_challenge {
@@ -49,7 +78,7 @@ attr_filter attr_filter.access_challenge {
 
 #
 #  Enforce RFC requirements on the contents of the
-#  Accounting-Response packets. Called from the
+#  `Accounting-Response` packets. Called from the
 #  "send Accounting-Response" section.
 #
 attr_filter attr_filter.accounting_response {
