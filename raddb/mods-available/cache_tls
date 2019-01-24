@@ -1,41 +1,79 @@
+# -*- text -*-
+#
+# :toc:
+#
+#  $Id$
+
+#######################################################################
+#
+# ## Cache TLS Session Module
+#
+#  The `cache_tls_session` module responses for resiliency on TLS sessions.
+#
+#  Please see the `cache` module for full documentation.
+#
+
+#
+# ## Sample configuration
+#
+
+#
+# ### Cache TLS Session
+#
 cache cache_tls_session {
+	#
+	# driver:: `cache` driver.
+	#
 	driver = "rlm_cache_rbtree"
 
-	#  The key used to index the cache.  It is dynamically expanded
-	#  at run time.
+	#
+	# key:: The `cache` key.
+	#
 	key = &TLS-Session-Id
 
-	#  The TTL of cache entries, in seconds.  Entries older than this
-	#  will be expired.
 	#
-	#  This value should be between 10 and 86400.
+	# ttl:: TTL for `cache` entries.
+	#
 	ttl = 3600	# 60 mins
 
+	#
+	# update <section> { ... }::
+	#
 	update {
 		&session-state:TLS-Session-Data := &session-state:TLS-Session-Data
 
 		#
-		#  If you want to store authorization attributes too, consider
-		#  performing LDAP/SQL lookups in the tls-cache virtual server
-		#  and storing the results in &session-state:
+		#  NOTE:: If you want to store authorization attributes too, consider
+		#  performing LDAP/SQL lookups in the tls-cache virtual server and
+		#  storing the results in `&session-state`.
 		#
 		#  The complete list can then be restored along with the
-		#  TLS-Session-Data using the entry below.
+		#  `TLS-Session-Data` using the entry below.
 		#
-		#  Policies run in Post-Auth then have access to the same data
+		#  Policies run in `Post-Auth` then have access to the same data
 		#  irrespective of whether the session is being resumed.
 		#
 #		&session-state: += &session-state:
 	}
 }
 
+#
+# ### Cache OCSP Session
+#
 cache cache_ocsp {
+	#
+	# driver:: `cache` driver.
+	#
 	driver = "rlm_cache_rbtree"
 
-	#  The key used to index the cache.  It is dynamically expanded
-	#  at run time.
+	#
+	# key:: `cache` key.
+	#
 	key = &session-state:TLS-Client-Cert-Serial
 
+	#
+	# update <section> { ... }::
+	#
 	update {
 		&control:TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
 		&control:TLS-OCSP-Response := &TLS-OCSP-Response
