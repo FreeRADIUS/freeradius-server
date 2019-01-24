@@ -5,20 +5,24 @@
 #  $Id$
 
 #######################################################################
+#
 # ## Cache EAP Module
 #
-# The `Cache EAP` module responses for resiliency on intermediary proxy `fail-over`.
+#  The `cache_eap` module responses for resiliency on intermediary proxy `fail-over`.
+#
+#  Please see the `cache` module for full documentation.
 #
 
 #
 #  ## Sample configuration
 #
 cache cache_eap {
-	# key::
+	#
+	# key:: Cache key
 	#
 	key = "%{%{control:State}:-%{%{reply:State}:-%{State}}}"
 
-	# ttl::
+	# ttl:: TTL for cache entries.
 	#
 	ttl = 15
 
