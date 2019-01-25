@@ -13,7 +13,7 @@
 #
 
 #
-#  Sample configuration:
+# ## Sample configuration
 #
 
 #always <value> {
@@ -39,15 +39,15 @@
 	#
 	# simulcount::  
 	#
-	#  If an instance of this module is listed in a session {}
-	#  section, this simulates a user having <integer> number of sessions.
+	#  If an instance of this module is listed in a `session {}`
+	#  section, this simulates a user having `<integer>` number of sessions.
 	#
 #	simulcount = <integer>
 
 	#
 	# mpp::
 	#
-	#  If an instance is listed in a session {} section, this
+	#  If an instance is listed in a `session {}` section, this
 	#  simulates the user having multilink sessions.
 	#
 #	mpp = <integer>
@@ -56,7 +56,7 @@
 # ### Default instances
 #
 #  The following default instances allow the use of return codes like
-#  `reject` or `ok` in Unlang policies.
+#  `reject` or `ok` in `unlang` policies.
 #
 always reject {
 	rcode = reject
