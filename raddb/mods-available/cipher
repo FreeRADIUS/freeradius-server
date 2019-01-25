@@ -13,10 +13,10 @@
 #
 #  Registers the following expansions:
 #
-#   * %{<inst>_encrypt:<plaintext>...}            - Encrypts plaintext using `certificate_file`
-#   * %{<inst>_decrypt:<ciphertext>...}           - Decrypts ciphertext using `private_key_file`
-#   * %{<inst>_sign:<plaintext>...}               - Signs plaintext using `private_key_file`
-#   * %{<inst>_verify:<signature> <plaintext>...} - Validates a signature using `certificate_file`
+#   * `%{<inst>_encrypt:<plaintext>...}`            - Encrypts plaintext using `certificate_file`
+#   * `%{<inst>_decrypt:<ciphertext>...}`           - Decrypts ciphertext using `private_key_file`
+#   * `%{<inst>_sign:<plaintext>...}`               - Signs plaintext using `private_key_file`
+#   * `%{<inst>_verify:<signature> <plaintext>...}` - Validates a signature using `certificate_file`
 #
 #  NOTE: `<ciphertext>` and `<signature>` are ingested and excreted to in their raw form.
 #  You should use armouring expansions i.e. `%{base64_encode:}`, `%{base64_decode:}` if the values
@@ -30,19 +30,24 @@
 #  Supported digest types vary *depending* on the version OpenSSL was built against.
 #  Reasonably modern >= 1.0.0 versions of OpenSSL should support at least:
 #
-#   * `md2`		(not recommended)
-#   * `md4`		(not recommended)
-#   * `md5`		(not recommended)
-#   * `sha1`	(widely used but deprecated)
+#   * `md2`     (not recommended)
+#   * `md4`     (not recommended)
+#   * `md5`     (not recommended)
+#   * `sha1`    (widely used but deprecated)
 #   * `sha224`
-#   * `sha256`	(*the default* - strongly recommended)
+#   * `sha256`  (the default)
 #   * `sha384`
 #   * `sha512`
 #
-#  Bleeding edge versions of OpenSSL may also support the `sha3` family of digest functions.
+#  OpenSSL >= 1.1.1 also support the `sha3` family of digest functions.
 #
-#  NOTE: Again, the supported versions are determined *entirely* by the version of OpenSSL used, we
-#  pass the name of the digest off to OpenSSL and it tells *us* whether it's valid/supported
+#   * `sha3_224`
+#   * `sha3_256`
+#   * `sha3_384`
+#   * `sha3_512`
+#
+#  NOTE: Again, the supported versions are determined _entirely_ by the version of OpenSSL used, we
+#  pass the name of the digest off to OpenSSL and it tells _us_ whether it's valid/supported
 #  or not.
 
 #
