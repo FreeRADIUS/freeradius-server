@@ -63,7 +63,7 @@ cipher {
 	#
 	#  Available schemes are:
 	#
-	#  * rsa
+	#  * `rsa`
 	#
 	type = rsa
 
@@ -107,11 +107,11 @@ cipher {
 		#
 		#  The type of padding applied to the plaintext being one of:
 		#
-		#  * none (no padding)
-		#  * pkcs
-		#  * oaep
-		#  * x931 (signing only)
-		#  * ssl (v1/v2)
+		#  * `none` (no padding)
+		#  * `pkcs`
+		#  * `oaep`
+		#  * `x931` (signing only)
+		#  * `ssl` (v1/v2)
 		#
 		#  NOTE: Defaults to *pkcs*.
 		#
