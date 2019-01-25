@@ -15,7 +15,7 @@
 #  The module can cache a fixed set of attributes per key.
 #  It can be listed in any `recv` or `send` section.
 #
-#  NOTE:: If you want to have different things cached for different
+#  NOTE: If you want to have different things cached for different
 #  sections, you will need to define multiple instances of the module,
 #  via `cache <nameN> { ... }`.
 #
@@ -144,7 +144,7 @@ cache {
 	ttl = 10
 
 	#  
-	#  NOTE:: You can flush the cache via
+	#  NOTE: You can flush the cache via
 	#  `radmin -e "set module config cache epoch 123456789"`
 	#  Where last value is a 32-bit Unix timestamp. Cache entries older
 	#  than this are expired, as new entries added.
@@ -157,7 +157,7 @@ cache {
 	#  * `&request:Cache-Entry-Hits` - The number of times this entry
 	#  has been retrieved.
 	#
-	#  NOTE:: Not supported by the `rlm_cache_memcached` module.
+	#  NOTE: Not supported by the `rlm_cache_memcached` module.
 	#
 	add_stats = no
 
@@ -172,7 +172,7 @@ cache {
 	#  represents the cache entry. see man unlang for more information
 	#  on update blocks.
 	#
-	#  NOTE:: Only `request`, `reply`, `control` and `session-state` lists
+	#  NOTE: Only `request`, `reply`, `control` and `session-state` lists
 	#  are available in cache entries. Attempting to store attributes
 	#  in other lists *will raise an error* during config validation.
 	#
@@ -232,6 +232,6 @@ cache {
 	#  cache entries into the current request. Useful if results of execs or
 	#  expansions are stored directly in the cache.
 	#
-	#  NOTE:: All runtime configuration attributes will be removed from the
+	#  NOTE: All runtime configuration attributes will be removed from the
 	#  `&control:` list after the cache module is called.
 }

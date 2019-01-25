@@ -54,7 +54,7 @@ cache cache_tls_session {
 		&session-state:TLS-Session-Data := &session-state:TLS-Session-Data
 
 		#
-		#  NOTE:: If you want to store authorization attributes too, consider
+		#  NOTE: If you want to store authorization attributes too, consider
 		#  performing LDAP/SQL lookups in the tls-cache virtual server and
 		#  storing the results in `&session-state`.
 		#

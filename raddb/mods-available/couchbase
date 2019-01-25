@@ -18,7 +18,7 @@ couchbase {
 	# server:: List of Couchbase hosts (hosts may be space, tab, comma or semi-colon separated).
 	# Ports are optional if servers are listening on the standard port.
 	# 
-	# NOTE:: Complete pool urls are preferred.
+	# NOTE: Complete pool urls are preferred.
 	#
 	server = "http://cb01.example.org:8091/ http://cb02.example.org:8091/"
 
@@ -54,7 +54,7 @@ couchbase {
 	#
 	# Configuration items are in the format `<radius attribute> = '<element name>'`
 	#
-	# NOTE:: Element names should be *single quoted*.
+	# NOTE: Element names should be *single quoted*.
 	# Attributes not in this map will not be recorded.
 	#
 	update {
