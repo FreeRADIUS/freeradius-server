@@ -350,8 +350,13 @@ eap {
 		#  (possibly defined by cipher_list option above)
 		#  for choosing right cipher suite rather than
 		#  using client-specified list which is OpenSSl default
-		#  behavior. Having it set to yes is a current best practice
-		#  for TLS.
+		#  behavior.  Setting this to "yes" means that OpenSSL
+		#  will choose the servers ciphers, even if they do not
+		#  best match what the client sends.
+		#
+		#  TLS negotiation is usually good, but can be imperfect.
+		#  This setting allows administrators to "fine tune" it
+		#  if necessary.
 		#
 		cipher_server_preference = no
 
