@@ -1,35 +1,59 @@
+# -*- text -*-
+#
+# :toc:
+#
+#  $Id$
+#######################################################################
+#
+# ## Couchbase Module
+#
+# The `coachbase` module is used to provides connections to a Couchbase database.
+#
+
+#
+# ## Default instance
+#
 couchbase {
 	#
-	# List of Couchbase hosts (hosts may be space, tab, comma or semi-colon separated).
+	# server:: List of Couchbase hosts (hosts may be space, tab, comma or semi-colon separated).
 	# Ports are optional if servers are listening on the standard port.
-	# Complete pool urls are preferred.
+	# 
+	# NOTE: Complete pool urls are preferred.
 	#
 	server = "http://cb01.example.org:8091/ http://cb02.example.org:8091/"
 
-	# Couchbase bucket name
+	#
+	# bucket:: Couchbase bucket name
+	#
 	bucket = "radius"
 
-	# Couchbase bucket password (optional)
-	#password = "password"
+	#
+	# password:: Couchbase bucket password (optional).
+	#
+#	password = "password"
 
-	# Couchbase accounting document key (unlang supported)
+	#
+	# acct_key:: Couchbase accounting document key (`unlang` supported).
+	#
 	acct_key = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"
 
-	# Value for the 'docType' element in the json body for accounting documents
+	#
+	# doctype:: Value for the 'docType' element in the json body for accounting documents
+	#
 	doctype = "radacct"
 
-	## Accounting document expire time in seconds (0 = never)
+	#
+	# expire:: Accounting document expire time in seconds (0 = never).
+	#
 	expire = 2592000
 
 	#
-	# Map attribute names to json element names for accounting.
+	# update {}:: Map attribute names to json element names for accounting.
 	#
-	# Configuration items are in the format:
-	#  <radius attribute> = '<element name>'
+	# Configuration items are in the format `<radius attribute> = '<element name>'`
 	#
-	# Element names should be single quoted.
-	#
-	# Note: Atrributes not in this map will not be recorded.
+	# NOTE: Element names should be *single quoted*.
+	# Atrributes *not in this map* will not be recorded.
 	#
 	update {
 		&Acct-Session-Id	= 'sessionId'
@@ -60,24 +84,30 @@ couchbase {
 		&Event-Timestamp	= 'lastUpdated'
 	}
 
-	# Couchbase document key for user documents (unlang supported)
+	#
+	# user_key:: Couchbase document key for user documents (`unlang` supported).
+	#
 	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
 
-	# Set to 'yes' to read radius clients from the Couchbase view specified below.
-	# NOTE: Clients will ONLY be read on server startup.
-	#read_clients = no
+	#
+	# read_clients:: Set to `yes` to read radius clients from the Couchbase view specified below.
+	# NOTE: Clients will *ONLY* be read on server *startup*.
+	#
+#	read_clients = no
 
 	#
-	#  Map attribute names to json element names when loading clients.
+	# client {}:: `Map` attribute names to jSON element names when loading clients.
 	#
-	#  Configuration follows the same rules as the accounting map above.
+	# Configuration follows the same rules as the accounting `map` above.
 	#
 	client {
-		# Couchbase view that should return all available client documents.
+		#
+		# view:: Couchbase view that should return all available client documents.
+		#
 		view = "_design/client/_view/by_id"
 
 		#
-		#  Sets default values (not obtained from couchbase) for new client entries
+		# template {}:: Sets default values (not obtained from couchbase) for new client entries.
 		#
 		template {
 #			login				= 'test'
@@ -87,17 +117,15 @@ couchbase {
 		}
 
 		#
-		# Client mappings are in the format:
-		#  <client attribute> = '<element name>'
-		#
-		# Element names should be single quoted.
+		# attribute{}:: Sets the client mappings following the format: `<client attribute> = '<element name>'`.
 		#
 		# The following attributes are required:
-		#  * ipaddr | ipv4addr | ipv6addr - Client IP Address.
-		#  * secret - RADIUS shared secret.
 		#
-		# All attributes usually supported in a client
-		# definition are also supported here.
+		# 	* `ipaddr` | `ipv4add` | `ipv6addr` - Client IP Address.
+		# 	* `secret` - RADIUS shared secret.
+		#
+		# NOTE: All attributes usually supported in a client definition are also supported here.
+		# Element names *should be single quoted*.
 		#
 		attribute {
 			ipaddr                          = 'clientIdentifier'
@@ -115,67 +143,86 @@ couchbase {
 	}
 
 	#
-	#  The connection pool is new for 3.0, and will be used in many
-	#  modules, for all kinds of connection-related activity.
+	# pool {}:: The connection pool is new for >= `3.0`, and will be used in many
+	# modules, for all kinds of connection-related activity.
 	#
 	pool {
-		#  Connections to create during module instantiation.
-		#  If the server cannot create specified number of
-		#  connections during instantiation it will exit.
-		#  Set to 0 to allow the server to start without the
-		#  couchbase being available.
+		#
+		#  start:: Connections to create during module instantiation.
+		#  If the server cannot create specified number of connections 
+		#  during instantiation it will exit.
+		#  Set to `0` to allow the server to start without the couchbase
+		#  being available.
+		#
 		start = ${thread[pool].num_workers}
 
-		#  Minimum number of connections to keep open
+		#
+		#  min:: Minimum number of connections to keep open.
+		#
 		min = ${thread[pool].num_workers}
 
-		#  Maximum number of connections
+		#
+		#  max:: Maximum number of connections.
 		#
 		#  If these connections are all in use and a new one
 		#  is requested, the request will NOT get a connection.
 		#
-		#  Setting 'max' to LESS than the number of threads means
+		#  Setting `max` to LESS than the number of threads means
 		#  that some threads may starve, and you will see errors
-		#  like 'No connections available and at max connection limit'
+		#  like '_No connections available and at max connection limit_'
 		#
-		#  Setting 'max' to MORE than the number of threads means
+		#  Setting `max` to MORE than the number of threads means
 		#  that there are more connections than necessary.
+		#
 		max = ${thread[pool].num_workers}
 
-		#  Spare connections to be left idle
 		#
-		#  NOTE: Idle connections WILL be closed if "idle_timeout"
-		#  is set.  This should be less than or equal to "max" above.
+		#  spare:: Spare connections to be left idle.
+		#
+		#  NOTE: Idle connections *WILL* be closed if `idle_timeout`
+		#  is set.  This should be less than or equal to `max` above.
+		#
 		spare = 1
 
-		#  Number of uses before the connection is closed
 		#
-		#  0 means "infinite"
+		#  uses:: Number of uses before the connection is closed.
+		#
+		#  NOTE: `0` means "infinite"
+		#
 		uses = 0
 
-		#  The lifetime (in seconds) of the connection
 		#
-		#  NOTE: A setting of 0 means infinite (no limit).
+		#  lifetime:: The lifetime (in seconds) of the connection
+		#
+		#  NOTE: A setting of `0` means infinite (no limit).
+		#
 		lifetime = 0
 
-		#  The idle timeout (in seconds).  A connection which is
+		#
+		#  idle_timeout:: The idle timeout (in seconds).  A connection which is
 		#  unused for this length of time will be closed.
 		#
-		#  NOTE: A setting of 0 means infinite (no timeout).
+		#  NOTE: A setting of `0` means infinite (no timeout).
+		#
 		idle_timeout = 1200
 
-		#  Connection timeout (in seconds).  The maximum amount of
+		#
+		#  connect_timeout:: Connection timeout (in seconds).  The maximum amount of
 		#  time to wait for a new connection to be established.
+		#
 		connect_timeout = 3.0
 
-		#  NOTE: All configuration settings are enforced.  If a
-		#  connection is closed because of "idle_timeout",
-		#  "uses", or "lifetime", then the total number of
-		#  connections MAY fall below "min".  When that
+		# [NOTE]
+		# ====
+		#  All configuration settings are enforced.  If a
+		#  connection is closed because of `idle_timeout`,
+		#  `uses`, or `lifetime`, then the total number of
+		#  connections *MAY* fall below `min`.  When that
 		#  happens, it will open a new connection.  It will
-		#  also log a WARNING message.
+		#  also log a *WARNING* message.
 		#
-		#  The solution is to either lower the "min" connections,
-		#  or increase lifetime/idle_timeout.
+		#  The solution is to either lower the `min` connections,
+		#  or increase `lifetime`/`idle_timeout`.
+		# ====
 	}
 }
