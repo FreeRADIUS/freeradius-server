@@ -35,9 +35,7 @@ static inline HMAC_CTX *HMAC_CTX_new(void)
 
 static inline void HMAC_CTX_free(HMAC_CTX *ctx)
 {
-        if (ctx == NULL) {
-                return;
-        }
+        if (ctx == NULL) return;
         HMAC_CTX_cleanup(ctx);
         OPENSSL_free(ctx);
 }
@@ -46,8 +44,7 @@ static inline int HMAC_CTX_reset(HMAC_CTX *ctx)
 {
 	if (!ctx) return 0;
 
-	memset(ctx, 0, sizeof(*ctx));
-        HMAC_CTX_init(ctx);
+        HMAC_CTX_cleanup(ctx);
 
 	return 1;
 }
