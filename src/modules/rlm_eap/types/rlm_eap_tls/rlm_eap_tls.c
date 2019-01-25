@@ -170,7 +170,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	{
 		if (inst->virtual_server) return eap_tls_virtual_server(inst, eap_session);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 		/*
 		 *	Set the PRF label based on the TLS version negotiated
 		 *	in the handshake.
@@ -192,12 +192,10 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 				    	    keying_prf_label, sizeof(keying_prf_label) - 1,
 				    	    NULL, 0) < 0) return RLM_MODULE_FAIL;
 		}
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 			break;
 
-#  ifdef TLS1_3_VERSION
 		case TLS1_3_VERSION:
-#  endif
 		default:
 		{
 			static char const keying_prf_label[] = "EXPORTER_EAP_TLS_Key_Material";

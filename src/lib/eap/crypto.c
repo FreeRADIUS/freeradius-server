@@ -230,16 +230,14 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
 		SSL_get_client_random(ssl, p, SSL3_RANDOM_SIZE);
 		p += SSL3_RANDOM_SIZE;
 		SSL_get_server_random(ssl, p, SSL3_RANDOM_SIZE);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 		break;
 
 	/*
 	 *	Session-Id = <EAP-Type> || Method-Id
 	 *	Method-Id = TLS-Exporter("EXPORTER_EAP_TLS_Method-Id", "", 64)
 	 */
-#  ifdef TLS1_3_VERSION
 	case TLS1_3_VERSION:
-#  endif
 	default:
 	{
 		MEM(buff = p = talloc_array(ctx, uint8_t, sizeof(eap_type) + 64));
