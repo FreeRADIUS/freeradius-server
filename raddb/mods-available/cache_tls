@@ -8,17 +8,28 @@
 #
 # ## Cache TLS Session Module
 #
-#  The `cache_tls_session` module responses for resiliency on TLS sessions.
+#  The `cache_tls_session` module caches TLS sessions for resiliency.
 #
-#  Please see the `cache` module for full documentation.
+#  This module should be listed in a `send Access-Accept` section to
+#  write the cache, and in `recv Access-Request` to read the cache.
+#  When it runs, it will cache the current TLS session.  That cache
+#  allows for fast session resumption.
+#
+#  The "rbtree" cache back-end is an "in memory" cache.  Which means
+#  that the TLS session cache will be lost if the server restarts.
+#  The TLS session cache can be preserved by using an external
+#  back-end, such as "memcached" or "redis".
+#
+#  Also, if an external backend is used, then the TLS session cache
+#  can be shared across multiple RADIUS servers.  That makes for
+#  simple load balancing with full session resumption.
+#
+#  Please see the `cache` module for full documentation on the cache
+#  configuration.
 #
 
 #
-# ## Sample configuration
-#
-
-#
-# ### Cache TLS Session
+# ### Cache TLS Session Configuration
 #
 cache cache_tls_session {
 	#
@@ -58,7 +69,9 @@ cache cache_tls_session {
 }
 
 #
-# ### Cache OCSP Session
+# ### Cache OCSP Session Configuration
+#
+# In addition to TLS sessions, the OCSP queries can be cached.
 #
 cache cache_ocsp {
 	#
