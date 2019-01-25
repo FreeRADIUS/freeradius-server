@@ -615,7 +615,7 @@ static ssize_t load_proto_library(char const *proto_name)
 
 static ssize_t load_test_point_by_command(void **symbol, char *command, size_t offset, char const *dflt_symbol)
 {
-	char		buffer[128];
+	char		buffer[256];
 	char const	*p, *q;
 	char const	*symbol_name;
 	void		*dl_symbol;
