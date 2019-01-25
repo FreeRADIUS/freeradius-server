@@ -195,3 +195,4 @@ Extended-Vendor-Specific-6 https://freeradius.org/rfc/rfc6929.html#Extended-Vend
 Class https://freeradius.org/rfc/rfc2865.html#Class
 State https://freeradius.org/rfc/rfc2865.html#State
 Delegated-IPv6-Prefix https://freeradius.org/rfc/rfc4818.html#Delegated-IPv6-Prefix
+ABFAB https://tools.ietf.org/html/draft-dwc-abfab-trust-model-00
