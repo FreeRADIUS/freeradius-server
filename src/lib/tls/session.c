@@ -490,7 +490,7 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 				RINDENT();
 				for (i = 0; i < num_ciphers; i++) {
 					this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
-					RDEBUG3("%s\n", SSL_CIPHER_get_name(this_cipher));
+					RDEBUG3("%s", SSL_CIPHER_get_name(this_cipher));
 				}
 				REXDENT();
 			}
