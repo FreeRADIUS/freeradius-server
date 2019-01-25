@@ -39,7 +39,7 @@ acct_unique {
 	}
 
 	#
-	#  Not All devices respect RFC 2865 when dealing with
+	#  Not All devices respect `RFC 2865` when dealing with
 	#  the class attribute, so be prepared to use the
 	#  older style of hashing scheme if a class attribute
 	#  is not included

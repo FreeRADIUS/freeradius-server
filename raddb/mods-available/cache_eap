@@ -33,7 +33,7 @@
 #  process the EAP data in the packet, it should just retransmit the
 #  previous reply.
 #
-#  These retransmits are not duplicate packets as per RFC 5080 Section
+#  These retransmits are not duplicate packets as per `RFC 5080` Section
 #  2.2.2, so the "duplicate detection cache" in the server cannot send
 #  a duplicate reply packet.  Instead, it has to send a different
 #  packet (i.e. different RADIUS packet header, different src/dst

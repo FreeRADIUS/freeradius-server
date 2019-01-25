@@ -5,7 +5,7 @@
 #
 #  Read CSV files and use them in maps.
 #
-#  The CSV files MUST be formatted according to RFC 4180.
+#  The CSV files MUST be formatted according to `RFC 4180`.
 #
 #  Multi-line fields are NOT allowed.
 #

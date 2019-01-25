@@ -2,7 +2,7 @@
 ######################################################################
 #
 #  Sample virtual server for receiving entries from an LDAP directory
-#  using the RFC 4533 (LDAP Content Synchronization Operation) in
+#  using the `RFC 4533` (LDAP Content Synchronization Operation) in
 #  refreshAndPersist mode.
 
 #

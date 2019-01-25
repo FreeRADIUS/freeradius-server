@@ -35,7 +35,7 @@
 #  strongly suggest doing that *only* if you are a vendor of
 #  RADIUS equipment.
 #
-#  See RFC 6158 for more details:
+#  See `RFC 6158` for more details:
 #    http://ietf.org/rfc/rfc6158.txt
 
 #

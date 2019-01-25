@@ -10,7 +10,7 @@ server channel_bindings {
 	recv Access-Request {
 		#  In general this section should include a policy for each type
 		#  of channel binding that may be in use.  For example each lower
-		#  layer such as GSS-EAP (RFC 7055) or IEEE 802.11I is likely to
+		#  layer such as GSS-EAP (`RFC 7055`) or IEEE 802.11I is likely to
 		#  need a separate channel binding policy.
 		abfab_channel_bindings
 	}

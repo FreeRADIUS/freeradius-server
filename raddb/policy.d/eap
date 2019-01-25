@@ -69,7 +69,7 @@ permit_only_eap {
 #
 #       Remove Reply-Message from response if were doing EAP
 #
-#  Be RFC 3579 2.6.5 compliant - EAP-Message and Reply-Message should
+#  Be `RFC 3579` 2.6.5 compliant - EAP-Message and Reply-Message should
 #  not be present in the same response.
 #
 remove_reply_message_if_eap {

@@ -621,7 +621,7 @@ recv Access-Request {
 	#  The `digest` module implements the SIP Digest
 	#  authentication method.
 	#
-	#  Note that the module does not implement RFC 4590.  Instead,
+	#  Note that the module does not implement `RFC 4590`.  Instead,
 	#  it implements an earlier draft of the specification.  Since
 	#  all of the NAS equipment also implements the earlier draft,
 	#  this limitation is fine.
@@ -641,7 +641,7 @@ recv Access-Request {
 	#  3580, and all common RADIUS practices. Un-commenting the
 	#  `wimax` module here allows the module to change the
 	#  `Calling-Station-Id` attribute to the normal format as
-	#  specified in RFC 3580 Section 3.21.
+	#  specified in `RFC 3580` Section 3.21.
 	#
 #	wimax
 

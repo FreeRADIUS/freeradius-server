@@ -1,5 +1,5 @@
 #
-#	Split User-Name in NAI format (RFC 4282) into components
+#	Split User-Name in NAI format (`RFC 4282`) into components
 #
 #  This policy writes the Username and Domain portions of the
 #  NAI into the Stripped-User-Name and Stripped-User-Domain

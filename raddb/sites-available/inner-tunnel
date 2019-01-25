@@ -252,7 +252,7 @@ authenticate eap {
 #
 send Access-Accept {
 	#  If you want privacy to remain, see the
-	#  Chargeable-User-Identity attribute from RFC 4372.
+	#  Chargeable-User-Identity attribute from `RFC 4372`.
 	#  If you want to use it just uncomment the line below.
 #       cui-inner
 

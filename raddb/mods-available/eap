@@ -210,7 +210,7 @@ eap {
 			#
 			#  Any certificate chain MUST be in order from server
 			#  certificate (first in the file) to intermediary CAs (second) to
-			#  Root CA (last in the file) as per RFC 4346 (see certificate_list)
+			#  Root CA (last in the file) as per `RFC 4346` (see certificate_list)
 			#  http://tools.ietf.org/html/rfc4346#section-7.4.2 )
 			#
 			#  If DER is being used the "certificate_file" should contain ONLY
@@ -468,7 +468,7 @@ eap {
 		#
 		#  TLS Session resumption
 		#
-		#  We currently support RFC 5246 style TLS session resumption
+		#  We currently support `RFC 5246` style TLS session resumption
 		#  only.
 		#
 		#  Once authentication has completed the TLS client is provided
@@ -560,7 +560,7 @@ eap {
 			#  Only allow session resumption if an extended master
 			#  secret has been created.  This requires client support.
 			#
-			#  Extended Master Secrets (RFC 7627) are required to
+			#  Extended Master Secrets (`RFC 7627`) are required to
 			#  prevent MITM attacks, where the attacker can resume
 			#  a session if it can insert itself into the path between
 			#  the TLS client and TLS server.
