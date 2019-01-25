@@ -25,10 +25,10 @@
 static inline HMAC_CTX *HMAC_CTX_new(void)
 {
 	HMAC_CTX *ctx;
-	ctx = OPENSSL_malloc(sizeof(*ctx));
+
+	ctx = OPENSSL_malloc(sizeof(*ctx));	/* Between HMAC_ctx_init and HMAC_init everything is zeroed */
 	if (!ctx) return NULL;
 
-	memset(ctx, 0, sizeof(*ctx));
 	HMAC_CTX_init(ctx);
 	return ctx;
 }
