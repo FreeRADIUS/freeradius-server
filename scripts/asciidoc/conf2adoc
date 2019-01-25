@@ -27,10 +27,10 @@ $filename = "$script_dir/links.txt";
 #
 open FILE, "<$filename" or die "Failed to open $filename: $!\n";
 while (<FILE>) {
-    chop;
-    ($name, $link) = split;
-    
-    $links{$name} = $link;
+	chop;
+	($name, $link) = split;
+
+	$links{$name} = $link;
 }
 close FILE;
 
@@ -38,150 +38,147 @@ $links{"sites-available/"} = "$opt_a/sites-available/README.adoc";
 $links{"mods-available/"} = "$opt_a/mods-available/README.adoc";
 
 sub process_file {
-    my $input = shift;
-    my $output = shift;
+	my $input = shift;
+	my $output = shift;
 
-    while (<$input>) {
-	#
-	#  Skip editor commands
-	#
-	if (/^# -\*- text -\*-/) {
-	    next;
+	while (<$input>) {
+		#
+		#  Skip editor commands
+		#
+		if (/^# -\*- text -\*-/) {
+			next;
+		}
+
+		if (/\$Id: /) {
+			next;
+		}
+
+		# Skip ###### banners
+		if (/^##+$/) {
+			next;
+		}
+
+		# Print one line of blank text, but suppress multiple blank lines.
+		if (/^\s*$/) {
+			print "\n" if (!$blank);
+			$blank = 1;
+			next;
+		}
+
+		$blank = 0;
+
+		undef $prefix;
+
+		#
+		#  Commented-out config blocks get converted to commented out raw text.
+		#
+		if (/^#[\t]/ || /^#[^\s]/) {
+			$raw = 1;
+		#	print "R";
+
+		#
+		#  Comments in the configuration files get converted to plain
+		#  text.
+		#
+		} elsif (/^\s*#/) {
+			s/^\s*#[\t ]{0,2}//;
+
+			#	print "T";
+
+			#
+			#  Ensure that lists get formatted correctly
+			#
+			if (/^\s*\*/) {
+				$prefix = "  ";
+			}
+
+			$raw = 0;
+		} else {
+			$raw = 1;
+
+		#	print "C";
+		}
+
+		if ($raw != $was_raw) {
+			print "```\n";
+			$was_raw = $raw;
+		}
+
+		print $prefix if defined $prefix;
+
+		$line = $_;
+
+		my @words = split;
+
+		#
+		#  See if we can automagically make cross-links
+		#
+		foreach $word (@words) {
+			next if ($word eq '\`\`\`');
+
+			next if ($word !~ /^`(.+?)`[,.]?$/);
+
+			$key = $1;
+
+			#
+			#  @todo - automatically add cross-links for:
+			#
+			#	mods-available/
+			#	sites-available/
+			#
+			#  etc.
+			#
+			if ($key =~ /^mods-available\/./) {
+				$links{$key} = "$opt_a/$key.adoc";
+			}
+			elsif ($key =~ /^sites-available\/./) {
+				$links{$key} = "$opt_a/$key.adoc";
+			}
+
+			#
+			#  A bare `eap` gets converted to a reference to the EAP
+			#  module, if the EAP module exists.
+			#
+			if (!$links{%key} && -e "$opt_a/../raddb/mods-available/$key") {
+				$links{$key} = "$opt_a/mods-available/$key.adoc";
+			}
+
+			next if (!$links{$key});
+
+			if ($links{$key} =~ /^http/) {
+				$link = "`link:" . $links{$key} . "[" . $key . "]`";
+			} else {
+				$link = "<<" . $links{$key} . "," . $key . ">>";
+			}
+
+			#
+			#  Yes, this is terrible.  We should really just print each
+			#  word individually, but that would also mess up (mildly)
+			#  whitespace.
+			#
+			$line =~ s/`$key`/$link/g;
+		}
+
+		#
+		#  And print out the raw text.
+		#
+		print $output $line;
 	}
 
-	if (/\$Id: /) {
-	    next;
-	}
-
-	# Skip ###### banners
-	if (/^##+$/) {
-	    next;
-	}
-
-	# Print one line of blank text, but suppress multiple blank lines.
-	if (/^\s*$/) {
-	    print "\n" if (!$blank);
-	    $blank = 1;
-	    next;
-	}
-
-	$blank = 0;
-
-	undef $prefix;
-
 	#
-	#  Commented-out config blocks get converted to commented out raw text.
+	#  Terminate any trailing "raw" text.
 	#
-	if (/^#[\t]/ || /^#[^\s]/) {
-	    $raw = 1;
-	    #	print "R";
-
-	    #
-	    #  Comments in the configuration files get converted to plain
-	    #  text.
-	    #
-	} elsif (/^\s*#/) {
-	    s/^\s*#[\t ]{0,2}//;
-
-	    #	print "T";
-
-	    #
-	    #  Ensure that lists get formatted correctly
-	    #
-	    if (/^\s*\*/) {
-		$prefix = "  ";
-	    }
-
-	    $raw = 0;
-
-	} else {
-	    $raw = 1;
-
-	    #	print "C";
-	}
-
-	if ($raw != $was_raw) {
-	    print "```\n";
-	    $was_raw = $raw;
-	}
-
-	print $prefix if defined $prefix;
-
-	$line = $_;
-
-	my @words = split;
-
-	#
-	#  See if we can automagically make cross-links
-	#
-	foreach $word (@words) {
-	    next if ($word eq '\`\`\`');
-
-	    next if ($word !~ /^`(.+?)`[,.]?$/);
-
-	    $key = $1;
-
-	    #
-	    #  @todo - automatically add cross-links for:
-	    #
-	    #	mods-available/
-	    #	sites-available/
-	    #
-	    #  etc.
-	    #
-	    if ($key =~ /^mods-available\/./) {
-		$links{$key} = "$opt_a/$key.adoc";
-	    }
-	    
-	    elsif ($key =~ /^sites-available\/./) {
-		$links{$key} = "$opt_a/$key.adoc";
-	    }
-
-	    #
-	    #  A bare `eap` gets converted to a reference to the EAP
-	    #  module, if the EAP module exists.
-	    #
-	    if (!$links{%key} && -e "$opt_a/../raddb/mods-available/$key") {
-		$links{$key} = "$opt_a/mods-available/$key.adoc";
-	    }
-
-	    next if (!$links{$key});
-
-	    if ($links{$key} =~ /^http/) {
-		$link = "`link:" . $links{$key} . "[" . $key . "]`";
-	    } else {
-		$link = "<<" . $links{$key} . "," . $key . ">>";
-	    }
-
-	    #
-	    #  Yes, this is terrible.  We should really just print each
-	    #  word individually, but that would also mess up (mildly)
-	    #  whitespace.
-	    #
-	    $line =~ s/`$key`/$link/g;
-	}
-
-	#
-	#  And print out the raw text.
-	#
-	print $output $line;
-    }
-
-    #
-    #  Terminate any trailing "raw" text.
-    #
-    print "```\n" if ($was_raw);
-
+	print "```\n" if ($was_raw);
 }
 
 sub HELP_MESSAGE {
-    print "usage: conf2adoc [opts]\n";
-    print "    -a <directory>\tthe root directory for Asciidoc conversion.\n";
-    exit 0;
+	print "usage: conf2adoc [opts]\n";
+	print "    -a <directory>\tthe root directory for Asciidoc conversion.\n";
+	exit 0;
 }
 
 if (!defined $opt_a) {
-    $opt_a = "";
+	$opt_a = "";
 }
 
 process_file(STDIN, STDOUT);
