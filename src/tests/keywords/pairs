@@ -2,31 +2,39 @@
 # PRE: update if
 #
 update {
-       &control:Cleartext-Password := 'hello'
-       &request:Tmp-String-0 := "This is a string"
-       &request:Tmp-String-0 += "This is another one"
-       &request:Tmp-Octets-0 := 0x000504030201
-       &request:Tmp-Integer-0 := 7331
-       &request:Tunnel-Private-Group-Id:5 = 127.0.0.1
+	&control:Cleartext-Password := 'hello'
+	&request:Tmp-String-0 := "This is a string"
+	&request:Tmp-String-0 += "This is another one"
+	&request:Tmp-Octets-0 := 0x000504030201
+	&request:Tmp-Integer-0 := 7331
+	&request:Tunnel-Private-Group-Id:5 = 127.0.0.1
 }
 
-if ("%{pairs:request:[*]}" != "User-Name = \"bob\", User-Password = \"hello\", Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331, Tunnel-Private-Group-Id:5 = \"127.0.0.1\"") {
+update {
+	&request:Tmp-String-1 := "%{concat:, %{pairs:request:[*]}}"
+	&request:Tmp-String-2 := "%{pairs:Tmp-String-0}"
+	&request:Tmp-String-3 := "%{concat:, %{pairs:Tmp-String-0[*]}}"
+	&request:Tmp-String-4 := "%{pairs:control:}"
+	&request:Tmp-String-5 := "%{pairs:control:User-Name}"
+}
+
+if (&request:Tmp-String-1 != "User-Name = \"bob\", User-Password = \"hello\", Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331, Tunnel-Private-Group-Id:5 = \"127.0.0.1\"") {
 	test_fail
 }
 
-if ("%{pairs:Tmp-String-0}" != "Tmp-String-0 = \"This is a string\"") {
+if (&request:Tmp-String-2 != "Tmp-String-0 = \"This is a string\"") {
 	test_fail
 }
 
-if ("%{pairs:Tmp-String-0[*]}" != "Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\"") {
+if (&request:Tmp-String-3 != "Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\"") {
 	test_fail
 }
 
-if ("%{pairs:control:}" != "Cleartext-Password = \"hello\"") {
+if (&request:Tmp-String-4 != "Cleartext-Password = \"hello\"") {
 	test_fail
 }
 
-if ("%{pairs:control:User-Name}" != '') {
+if (&request:Tmp-String-5 != '') {
 	test_fail
 }
 

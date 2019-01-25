@@ -3073,7 +3073,7 @@ int fr_value_box_bstrsnteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
 	dst->vb_strvalue = str;
-	dst->datum.length = len - 1;
+	dst->datum.length = inlen;
 	dst->enumv = enumv;
 	dst->next = NULL;
 
@@ -4649,4 +4649,3 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	return len;	/* Return the number of uint8s we would of written (for truncation detection) */
 }
-

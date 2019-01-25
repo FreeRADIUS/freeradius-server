@@ -1366,63 +1366,56 @@ static xlat_action_t hmac_sha1_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  * This is intended to serialize one or more attributes as a comma
  * delimited string.
  *
- * Example: "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar'"
+ * Example: "%{pairs:request:}" == "User-Name = 'foo'User-Password = 'bar'"
  */
-static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
-			  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			  REQUEST *request, char const *fmt)
+static xlat_action_t pairs_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+								REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+								fr_value_box_t **in)
 {
 	vp_tmpl_t	*vpt = NULL;
 	fr_cursor_t	cursor;
-	size_t		len, freespace = outlen;
-	char		*p = *out;
+	char		*buff;
+	fr_value_box_t	*vb;
+
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!in) return XLAT_ACTION_DONE;
+
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
 	VALUE_PAIR *vp;
 
-	if (tmpl_afrom_attr_str(ctx, &vpt, fmt,
+	if (tmpl_afrom_attr_str(ctx, &vpt, (*in)->vb_strvalue,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = VP_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {
 		RPEDEBUG("Invalid input");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-	     	FR_TOKEN op = vp->op;
+		FR_TOKEN op = vp->op;
 
-	     	vp->op = T_OP_EQ;
-		len = fr_pair_snprint(p, freespace, vp);
+		vp->op = T_OP_EQ;
+		buff = fr_pair_asprint(ctx, vp, '"');
 		vp->op = op;
 
-		if (is_truncated(len, freespace)) {
-		no_space:
-			talloc_free(vpt);
-			REDEBUG("Insufficient space to store pair string, needed %zu bytes have %zu bytes",
-				(p - *out) + len, outlen);
-			return -1;
-		}
-		p += len;
-		freespace -= len;
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		fr_value_box_bstrsteal(vb, vb, NULL, buff, false);
 
-		if (freespace < 2) {
-			len = 2;
-			goto no_space;
-		}
-
-		*p++ = ',';
-		*p++ = ' ';
-		freespace -= 2;
+		fr_cursor_append(out, vb);
 	}
 
-	/* Trim the trailing ', ' */
-	if (p != *out) p -= 2;
-	*p = '\0';
 	talloc_free(vpt);
 
-	return (p - *out);
+	return XLAT_ACTION_DONE;
 }
 
 /** Encode string or attribute as base64
@@ -1437,6 +1430,7 @@ static xlat_action_t base64_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	ssize_t		elen;
 	char		*buff;
 	fr_value_box_t	*vb;
+
 	/*
 	 *	If there's no input, there's no output
 	 */
@@ -1447,18 +1441,19 @@ static xlat_action_t base64_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
 	alen = FR_BASE64_ENC_LENGTH((*in)->vb_length);
 	MEM(buff = talloc_array(ctx, char, alen + 1));
 
 	elen = fr_base64_encode(buff, alen + 1, (*in)->vb_octets, (*in)->vb_length);
 	if (elen < 0) {
 		RPEDEBUG("Base64 encoding failed");
-		talloc_free(vb);
+		talloc_free(buff);
 		return XLAT_ACTION_FAIL;
 	}
 
 	rad_assert((size_t)elen <= alen);
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
 
 	if (fr_value_box_bstrsnteal(vb, vb, NULL, &buff, elen, false) < 0) {
 		RPEDEBUG("Failed assigning encoded data buffer to box");
@@ -1471,32 +1466,48 @@ static xlat_action_t base64_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-/** Convert base64 to hex
+/** Decode base64 string
  *
- * Example: "%{base64tohex:Zm9v}" == "666f6f"
+ * Example: "%{base64decode:Zm9v}" == "foo"
  */
-static ssize_t base64_to_hex_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-				  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				  REQUEST *request, char const *fmt)
+static xlat_action_t xlat_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
+					REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					fr_value_box_t **in)
 {
-	uint8_t decbuf[1024];
+	size_t		alen;
+	ssize_t		declen;
+	uint8_t		*decbuf;
+	fr_value_box_t	*vb;
 
-	ssize_t declen;
-	ssize_t len = strlen(fmt);
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!in) return XLAT_ACTION_DONE;
 
-	declen = fr_base64_decode(decbuf, sizeof(decbuf), fmt, len);
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	alen = FR_BASE64_DEC_LENGTH((*in)->vb_length);
+
+	MEM(decbuf = talloc_array(ctx, uint8_t, alen));
+
+	declen = fr_base64_decode(decbuf, alen, (*in)->vb_strvalue, (*in)->vb_length);
 	if (declen < 0) {
+		talloc_free(decbuf);
 		REDEBUG("Base64 string invalid");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
-	if ((size_t)((declen * 2) + 1) > outlen) {
-		REDEBUG("Base64 conversion failed, output buffer exhausted, needed %zd bytes, have %zd bytes",
-			(declen * 2) + 1, outlen);
-		return -1;
-	}
+	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	return fr_bin2hex(*out, decbuf, declen);
+	fr_value_box_memdup(vb, vb, NULL, decbuf, declen, false);
+	talloc_free(decbuf);
+
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Split an attribute into multiple new attributes based on a delimiter
@@ -2240,7 +2251,9 @@ static xlat_action_t concat_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				 fr_value_box_t **in)
 {
 	fr_value_box_t *result;
+	fr_value_box_t *separator;
 	char *buff;
+	char const *sep;
 
 	/*
 	 *	If there's no input, there's no output
@@ -2248,9 +2261,17 @@ static xlat_action_t concat_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	if (!in) return XLAT_ACTION_DONE;
 
 	/*
-	 *	Otherwise, join the boxes together commas
-	 *	FIXME It'd be nice to set a custom delimiter
+	 * Separator is first value box
 	 */
+	separator = *in;
+
+	if (!separator) {
+		REDEBUG("Missing separator for concat xlat");
+		return XLAT_ACTION_FAIL;
+	}
+
+	sep = separator->vb_strvalue;
+
 	result = fr_value_box_alloc_null(ctx);
 	if (!result) {
 	error:
@@ -2258,10 +2279,10 @@ static xlat_action_t concat_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	buff = fr_value_box_list_asprint(result, *in, ",", '\0');
+	buff = fr_value_box_list_asprint(result, (*in)->next, sep, '\0');
 	if (!buff) goto error;
 
-	fr_value_box_bstrsteal(result, result, NULL, buff, fr_value_box_list_tainted(*in));
+	fr_value_box_bstrsteal(result, result, NULL, buff, fr_value_box_list_tainted((*in)->next));
 
 	fr_cursor_insert(out, result);
 
@@ -2549,11 +2570,6 @@ int xlat_init(void)
 	XLAT_REGISTER(module);
 	XLAT_REGISTER(debug_attr);
 
-	xlat_register(NULL, "pairs", pairs_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
-
-	xlat_register(NULL, "base64tohex", base64_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
 	xlat_register(NULL, "explode", explode_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	xlat_register(NULL, "nexttime", next_time_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2566,6 +2582,7 @@ int xlat_init(void)
 	c->internal = true;
 
 	xlat_async_register(NULL, "base64", base64_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "base64decode", xlat_base64_decode, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "bin", bin_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "concat", concat_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "hex", hex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
@@ -2573,6 +2590,7 @@ int xlat_init(void)
 	xlat_async_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "md4", md4_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "md5", md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "pairs", pairs_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "rand", rand_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	xlat_async_register(NULL, "randstr", randstr_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
