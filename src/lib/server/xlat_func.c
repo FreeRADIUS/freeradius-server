@@ -1455,7 +1455,7 @@ static xlat_action_t base64_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	if (fr_value_box_bstrsnteal(vb, vb, NULL, &buff, elen, false) < 0) {
+	if (fr_value_box_bstrsnteal(vb, vb, NULL, &buff, elen, (*in)->tainted) < 0) {
 		RPEDEBUG("Failed assigning encoded data buffer to box");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
@@ -1502,8 +1502,12 @@ static xlat_action_t xlat_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	fr_value_box_memdup(vb, vb, NULL, decbuf, declen, false);
-	talloc_free(decbuf);
+	/*
+	 *	Should never fail as we're shrinking...
+	 */
+	if ((size_t)declen != alen) MEM(decbuf = talloc_realloc(ctx, decbuf, uint8_t, (size_t)declen));
+
+	fr_value_box_memsteal(vb, vb, NULL, decbuf, (*in)->tainted);
 
 	fr_cursor_append(out, vb);
 
