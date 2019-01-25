@@ -164,8 +164,7 @@ sub process_file {
 		#
 		if ($line =~ s,Section ([^ ]+) of RFC (\d+),https://tools.ietf.org/html/rfc${2}#section-${1}\[Section $1 of RFC $2\],g) {
 			# nothing
-
-		    } elsif ($line =~ s,RFC (\d+) Section ([\d\.]+),https://tools.ietf.org/html/rfc${1}#section-${2}\[RFC $1 Section $2\],g) {
+	    } elsif ($line =~ s,RFC (\d+) Section ([\d\.]+),https://tools.ietf.org/html/rfc${1}#section-${2}\[RFC $1 Section $2\],g) {
 			# and again nothing!
 		} else {
 			$line =~ s,RFC (\d+),https://tools.ietf.org/html/rfc${1}\[RFC $1\],g;
