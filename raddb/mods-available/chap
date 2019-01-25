@@ -1,12 +1,21 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
+#######################################################################
 #
-#  CHAP module
+# ## CHAP module
 #
-#  This module authenticates requests containing a CHAP-Password
-#  attribute. There is no configuration.
+#  This module authenticates requests containing a `CHAP-Password`
+#  attribute.
+#
+
+#
+# ## Default instance
+#
+# There is no configuration.
 #
 chap {
 }
