@@ -56,9 +56,8 @@ cache {
 		#
 		# options:: Memcached configuration options.
 		#
-		#  The memcached options are documented here:
-		#
-		#    http://docs.libmemcached.org/libmemcached_configuration.html#memcached
+		#  The memcached options are documented at
+		#  http://docs.libmemcached.org/libmemcached_configuration.html#memcached
 		#
 #		options = "--SERVER=localhost"
 
