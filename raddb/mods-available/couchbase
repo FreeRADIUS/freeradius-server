@@ -7,7 +7,7 @@
 #
 # ## Couchbase Module
 #
-# The `coachbase` module is used to provides connections to a Couchbase database.
+# The `couchbase` module is used to provides connections to a Couchbase database.
 #
 
 #
@@ -18,7 +18,7 @@ couchbase {
 	# server:: List of Couchbase hosts (hosts may be space, tab, comma or semi-colon separated).
 	# Ports are optional if servers are listening on the standard port.
 	# 
-	# NOTE: Complete pool urls are preferred.
+	# NOTE:: Complete pool urls are preferred.
 	#
 	server = "http://cb01.example.org:8091/ http://cb02.example.org:8091/"
 
@@ -33,7 +33,9 @@ couchbase {
 #	password = "password"
 
 	#
-	# acct_key:: Couchbase accounting document key (`unlang` supported).
+	# acct_key:: Couchbase accounting document key.
+	#
+	#  This key is dynamically expanded at run time.
 	#
 	acct_key = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"
 
@@ -52,8 +54,8 @@ couchbase {
 	#
 	# Configuration items are in the format `<radius attribute> = '<element name>'`
 	#
-	# NOTE: Element names should be *single quoted*.
-	# Atrributes *not in this map* will not be recorded.
+	# NOTE:: Element names should be *single quoted*.
+	# Attributes not in this map will not be recorded.
 	#
 	update {
 		&Acct-Session-Id	= 'sessionId'
