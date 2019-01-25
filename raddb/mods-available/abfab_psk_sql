@@ -1,15 +1,31 @@
 # -*- text -*-
-##
-## Module for PSK authorizations from ABFAB trust router
-##
-##	$Id$
+#
+# :toc:
+#
+#	$Id$
 
+#######################################################################
+#
+# ## ADFAB PSK Module
+#
+# The `abfab_psk_sql` module is used to authorize PSK from `ABFAB` trust router.
+#
+# ## Default instances
+#
+
+#
+# sql {}:: See `sql` documentation.
+#
 sql psksql {
+	#
+	# driver:: Database driver.
+	#
+    driver = "rlm_sql_sqlite"
 
-        driver = "rlm_sql_sqlite"
-
+    #
+    # sqlite {}:: Database statement based on `driver` setting.
+    #
 	sqlite {
-	        filename = "/var/lib/trust_router/keys"
+		filename = "/var/lib/trust_router/keys"
 	}
-
 }
