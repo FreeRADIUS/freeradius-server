@@ -33,13 +33,14 @@
 #  process the EAP data in the packet, it should just retransmit the
 #  previous reply.
 #
-#  These retransmits are not duplicate packets as per RFC 5080 Section
-#  2.2.2, so the "duplicate detection cache" in the server cannot send
+#  These retransmits are not duplicate packets as per
+#  https://freeradius.org/rfc/rfc5080.html[RFC 5080] Section 2.2.2,
+#  so the "duplicate detection cache" in the server cannot send
 #  a duplicate reply packet.  Instead, it has to send a different
 #  packet (i.e. different RADIUS packet header, different src/dst
 #  IP/port), but with the same contents.
 #
-#  This module enables that retransmit
+#  This module enables that retransmit.
 #
 #  The module is not enabled in the default configuration because that
 #  proxy architecture is used only in limited situations.  In the
