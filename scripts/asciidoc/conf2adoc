@@ -160,6 +160,12 @@ sub process_file {
 		}
 
 		#
+		#  Auto-link to RFCs
+		#
+		$line =~ s,Section ([^ ]+) of RFC (\d+),https://tools.ietf.org/html/rfc${2}#section-${1}\[Section $1 of RFC $2\],g;
+		$line =~ s,RFC (\d+) Section ([\d\.]+),https://tools.ietf.org/html/rfc${1}#section-${2}\[RFC $1 Section $2\],g;
+
+		#
 		#  And print out the raw text.
 		#
 		print $output $line;
