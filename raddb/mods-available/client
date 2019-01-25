@@ -22,7 +22,7 @@
 #
 #  * 3. Uncomment the `directory` entry in that client definition.
 #
-#  * 4. List `client` in the `recv` section of the `client` virtual server.
+#  * 4. List `client` in the `new client` section of the `client` virtual server.
 #    The default example already does this.
 #
 #  * 5. Put files into the above directory, one per IP.
@@ -31,30 +31,36 @@
 #
 #  NOTE: For more documentation, see the file `raddb/sites-available/dynamic-clients`
 #
+# ## Module Capabilities
 #
+#  #### Maps
 #
-# ## Module supports
-#
-#  #### maps
+#  The client files can be used as simple databases.  They can map from
+#  a client configuration item to an attribute at run-time via a map.
+#  This map can be placed in any `unlang` processing section/
 #
 #  e.g:
 #
-#		map client [<ipaddr>] {
+#		map client <ipaddr> {
 #			Tmp-String-0 := 'nas_type'
 #			Tmp-String-1 := 'shortname'
 #			Tmp-String-3 += 'groups'	# Creates multiple attributes from custom group
-#										# attribute associated with the client.
+#							# attribute associated with the client.
 #		}
 #
 # #### %{client:...} expansion
 #
+#  The client can also return one configuration item in a dynamic
+#  string expansion.
+#
 #  e.g:
 #
-#	"%{client:nas_type}"			# Expands to client's `nas_type` (or "" if nas_type not set)
+#	"%{client:nas_type}"		# Expands to the current client's `nas_type` (or "" if nas_type not set)
 #	"%{client:<ipaddr>.nas_type}"	# Expands to the specified client's nas_type (or "" if nas_type not set)
 #
 #
 # ## Default instance
+#
 client {
 
 }
