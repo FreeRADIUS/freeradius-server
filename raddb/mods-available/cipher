@@ -28,7 +28,7 @@
 #    %{cipher_decrypt:%{base64_decode:<ciphertext>}}
 #
 #  Supported digest types vary *depending* on the version OpenSSL was built against.
-#  Reasonably `modern >= 1.0.0` versions of OpenSSL should support at least:
+#  Reasonably modern >= 1.0.0 versions of OpenSSL should support at least:
 #
 #   * `md2`		(not recommended)
 #   * `md4`		(not recommended)
