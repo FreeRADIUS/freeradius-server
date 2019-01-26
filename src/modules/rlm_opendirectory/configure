@@ -2758,21 +2758,21 @@ _smart_try_dir=
 _smart_include_dir=
 
 for _prefix in $smart_prefix ""; do
-  for _dir in $smart_try_dir; do
-    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
-  done
+for _dir in $smart_try_dir; do
+  _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+done
 
-  for _dir in $smart_include_dir; do
-    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
-  done
+for _dir in $smart_include_dir; do
+  _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+done
 done
 
 if test "x$_smart_try_dir" != "x"; then
-  for try in $_smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for membership.h in $try" >&5
+for try in $_smart_try_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for membership.h in $try" >&5
 $as_echo_n "checking for membership.h in $try... " >&6; }
-    CPPFLAGS="-isystem $try $old_CPPFLAGS"
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 		    #include <membership.h>
@@ -2799,16 +2799,16 @@ $as_echo "no" >&6; }
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-  CPPFLAGS="$old_CPPFLAGS"
+done
+CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
-  for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/membership.h" >&5
+for _prefix in $smart_prefix; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/membership.h" >&5
 $as_echo_n "checking for ${_prefix}/membership.h... " >&6; }
 
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 		    #include <membership.h>
@@ -2835,14 +2835,14 @@ $as_echo "no" >&6; }
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
+done
 fi
 
 if test "x$smart_include" = "x"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for membership.h" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for membership.h" >&5
 $as_echo_n "checking for membership.h... " >&6; }
 
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 		    #include <membership.h>
@@ -2873,68 +2873,68 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-  for prefix in $smart_prefix; do
+for prefix in $smart_prefix; do
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
-  file="${_prefix}/${1}"
+DIRS=
+file="${_prefix}/${1}"
 
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
 
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
 
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
 fi
 
 eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
-  done
+done
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=membership.h
+DIRS=
+file=membership.h
 
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
 
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
 
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
 fi
 
 eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
 
-  for try in $_smart_include_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for membership.h in $try" >&5
+for try in $_smart_include_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for membership.h in $try" >&5
 $as_echo_n "checking for membership.h in $try... " >&6; }
-    CPPFLAGS="-isystem $try $old_CPPFLAGS"
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 		    #include <membership.h>
@@ -2961,14 +2961,14 @@ $as_echo "no" >&6; }
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-  CPPFLAGS="$old_CPPFLAGS"
+done
+CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
-  eval "ac_cv_header_$ac_safe=yes"
-  CPPFLAGS="$smart_include $old_CPPFLAGS"
-  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
+eval "ac_cv_header_$ac_safe=yes"
+CPPFLAGS="$smart_include $old_CPPFLAGS"
+SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
 smart_prefix=
@@ -3029,10 +3029,10 @@ fi
 
 
 
-  unset ac_cv_env_LIBS_set
-  unset ac_cv_env_LIBS_value
+unset ac_cv_env_LIBS_set
+unset ac_cv_env_LIBS_value
 
-  ac_config_files="$ac_config_files all.mk"
+ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
