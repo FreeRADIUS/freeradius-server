@@ -67,7 +67,7 @@ OUTPUT_DIRS := rsa/ ecc/
 rsa/:
 	@mkdir -p $@
 
-.PHONY: rsa/
+.PHONY: ecc/
 ecc/:
 	@mkdir -p $@
 
