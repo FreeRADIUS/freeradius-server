@@ -77,7 +77,7 @@ ecc:
 #
 ######################################################################
 dh:
-	openssl dhparam -outform PEM -out dh -2 $(DH_KEY_SIZE)
+	openssl dhparam -dsaparam -outform PEM -out dh $(DH_KEY_SIZE)
 
 ######################################################################
 #
