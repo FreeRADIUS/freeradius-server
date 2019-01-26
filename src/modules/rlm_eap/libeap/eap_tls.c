@@ -123,6 +123,21 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 	return 1;
 }
 
+
+/** Send an EAP-TLS success
+ *
+ * Composes an EAP-TLS-Success.  This is a message with code EAP_TLS_ESTABLISHED.
+ * It contains no cryptographic material, and is not protected.
+ *
+ * We add the MPPE keys here.  These are used by the NAS.  The supplicant
+ * will derive the same keys separately.
+ *
+ * @param handler handler of eap session that completed successfully.
+ * @param prf_label the prf label to use
+ * @param peap_flag to indicate PEAP version
+ * @return
+ *      - 1 on success.
+ */
 int eaptls_success(eap_handler_t *handler, int peap_flag)
 {
 	EAPTLS_PACKET	reply;
