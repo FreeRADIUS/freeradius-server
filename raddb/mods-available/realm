@@ -29,13 +29,14 @@ realm suffix {
 	format = suffix
 	delimiter = "@"
 
-	# The next 3 configuration items are valid ONLY
-	# for a trust-router.  For all other realms,
-	# they are ignored.
+	# The next configuration items are valid ONLY for a trust-router.
+	# For all other realms, they are ignored.
 #	trust_router = "localhost"
 #	tr_port = 12309
 #	rp_realm = "realm.example.com"
 #	default_community = "apc.communities.example.com"
+#	rekey_enabled = no
+#	realm_lifetime = 0
 }
 
 #  'username%realm'
