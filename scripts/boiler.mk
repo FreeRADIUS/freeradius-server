@@ -307,7 +307,12 @@ define ANALYZE_C_CMDS
 	$(Q)$(ECHO) SCAN $<
 	$(Q)$(strip ${ANALYZE.c} --analyze -Xanalyzer -analyzer-output=html -c $< -o $@ ${CPPFLAGS} \
 	    ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
-	$(Q)if $(ANALYZE_C_DUMP) && which lynx > /dev/null && test -d "$@"; then lynx -width=200 -dump $@/*.html; fi
+	$(Q)if $(ANALYZE_C_DUMP) && test -d "$@"; then \
+	    echo "Decode with:"; \
+	    echo -n "echo \""; \
+	    gzip -c "$@/*.html" | base64; \
+	    echo "\" | base64 -D | zcat > $@.html"; \
+	fi
 	$(Q)touch $@
 endef
 
@@ -621,7 +626,7 @@ $(BUILD_DIR):
 
 # Define compilers and linkers
 #
-BOOTSTRAP_BUILD = 
+BOOTSTRAP_BUILD =
 COMPILE.c = ${CC}
 COMPILE.cxx = ${CXX}
 CPP = cc -E
