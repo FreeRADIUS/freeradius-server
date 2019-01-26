@@ -176,20 +176,6 @@ static libssl_defect_t libssl_defects[] =
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
 	},
-	{
-		.low		= VM(1,0,1),			/* 1.0.1  */
-		.high		= Vm(1,0,1,'t'),		/* 1.0.1t */
-		.id		= "CVE-2016-6304",
-		.name		= "OCSP status request extension",
-		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
-	},
-	{
-		.low		= VM(1,0,1),			/* 1.0.1  */
-		.high		= Vm(1,0,1,'f'),		/* 1.0.1f */
-		.id		= "CVE-2014-0160",
-		.name		= "Heartbleed",
-		.comment	= "For more information see http://heartbleed.com"
-	},
 };
 #endif /* ENABLE_OPENSSL_VERSION_CHECK */
 
@@ -225,17 +211,11 @@ static unsigned long _thread_id(void)
  *	Use preprocessor magic to get the right function and argument
  *	to use.  This avoids ifdef's through the rest of the code.
  */
-#if OPENSSL_VERSION_NUMBER < 0x10000000L
-#define ssl_id_function  _thread_id
-#define set_id_callback CRYPTO_set_id_callback
-
-#else
 static void ssl_id_function(CRYPTO_THREADID *id)
 {
 	CRYPTO_THREADID_set_numeric(id, _thread_id());
 }
 #define set_id_callback CRYPTO_THREADID_set_callback
-#endif
 
 
 static void _global_mutex(int mode, int n, UNUSED char const *file, UNUSED int line)

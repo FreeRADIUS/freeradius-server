@@ -87,10 +87,8 @@ extern "C" {
  */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #  define FR_TLS_REMOVE_THREAD_STATE()
-#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
-#  define FR_TLS_REMOVE_THREAD_STATE() ERR_remove_thread_state(NULL);
 #else
-#  define FR_TLS_REMOVE_THREAD_STATE() ERR_remove_state(0);
+#  define FR_TLS_REMOVE_THREAD_STATE() ERR_remove_thread_state(NULL);
 #endif
 
 /*
@@ -136,9 +134,7 @@ typedef struct {
 typedef struct {
 	SSL_CTX		*ctx;				//!< TLS configuration context.
 	SSL 		*ssl;				//!< This SSL session.
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	SSL_SESSION	*session;			//!< Session resumption data.
-#endif
 	tls_info_t	info;				//!< Information about the state of the TLS session.
 
 	BIO 		*into_ssl;			//!< Basic I/O input to OpenSSL.
@@ -194,7 +190,6 @@ typedef struct {
 } fr_tls_ocsp_conf_t;
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 /** Different chain building modes
  *
  */
@@ -207,7 +202,6 @@ typedef enum {
 							///< the leaf cert back to a root.
 	FR_TLS_CHAIN_VERIFY_NONE			//!< Don't verify/build the chain.
 } fr_tls_chain_verify_mode_t;
-#endif
 
 /** Structure representing a certificate chain configuration
  *
@@ -222,11 +216,9 @@ typedef struct {
 	char const	*password;			//!< Password to decrypt the certificate(s).
 	char const	*private_key_file;		//!< Path to certificate.
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 	char const	**ca_files;			//!< Extra certificates to load.
 	fr_tls_chain_verify_mode_t	verify_mode;	//!< How hard we try to build up a complete certificate
 							///< chain.
-#endif
 	bool		include_root_ca;		//!< Include the root ca in the chain we built.
 } fr_tls_chain_conf_t;
 
@@ -303,10 +295,8 @@ struct fr_tls_conf_t {
 							//!< with ocsp.
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
-#  ifndef OPENSSL_NO_ECDH
+#ifndef OPENSSL_NO_ECDH
 	char const	*ecdh_curve;
-#  endif
 #endif
 
 #ifdef PSK_MAX_IDENTITY_LEN

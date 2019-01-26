@@ -160,15 +160,10 @@ do { \
  */
 inline static ssize_t tls_cache_id(uint8_t const **out, SSL_SESSION *sess)
 {
-#if OPENSSL_VERSION_NUMBER < 0x10001000L
-	*out = sess->session_id;
-	return sess->session_id_length;
-#else
 	unsigned int len;
 
 	*out = SSL_SESSION_get_id(sess, &len);
 	return len;
-#endif
 }
 
 /** Write a newly created session data to the tls_session structure
@@ -490,7 +485,7 @@ void tls_cache_deny(tls_session_t *session)
 	 *	will be called, so better to remove the session
 	 *	directly.
 	 */
-	SSL_CTX_remove_session(session->ctx, session->ssl_session);
+	SSL_CTX_remove_session(session->ctx, session->session);
 }
 
 /** Prevent a TLS session from being resumed in future
@@ -551,7 +546,7 @@ int tls_cache_disable_cb(SSL *ssl,
 	if (vp && (vp->vp_uint32 == 0)) {
 		RDEBUG2("&control:Allow-Session-Resumption == no, disabling session resumption");
 	disable:
-		SSL_CTX_remove_session(session->ctx, session->ssl_session);
+		SSL_CTX_remove_session(session->ctx, session->session);
 		session->allow_session_resumption = false;
 		return 1;
 	}

@@ -82,9 +82,3 @@ static inline size_t SSL_SESSION_get_master_key(const SSL_SESSION *s, unsigned c
 	return outlen;
 }
 #endif
-
-#if OPENSSL_VERSION_NUMBER < 0x10001000L
-#  define ssl_session ssl->session
-#else
-#  define ssl_session session
-#endif

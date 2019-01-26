@@ -190,9 +190,6 @@ eap {
 		#  The key type does not need to be explicitly specified as
 		#  it is determined from the certificate provided.
 		#
-		#  Note: OpenSSL >= 1.0.2 is required for crypto agility to
-		#        function correctly.
-		#
 		chain {
 			#
 			#  The format of the certificate(s) and private key file.
@@ -220,8 +217,6 @@ eap {
 			certificate_file = ${certdir}/rsa/server.pem
 
 			#
-			#  Only available with OpenSSL >= 1.0.2
-			#
 			#  Load an additional intermediary CA or Root CA for consideration in
 			#  chain compilation.  Multiple "ca_file" config items may be used
 			#  to load multiple certificates.
@@ -242,7 +237,7 @@ eap {
 			private_key_file = ${certdir}/rsa/server.key
 
 			#
-			#  With OpenSSL >= 1.0.2 we attempt to precompile the certificate chain
+			#  During startup we attempt to precompile the certificate chain
 			#  from server certificate to Root CA.  This configuration item specifies
 			#  what happens if compilation fails.
 			#
@@ -263,8 +258,6 @@ eap {
 			#
 #			verify_mode = "hard"
 
-			#
-			#  Only available with OpenSSL >= 1.0.2
 			#
 			#  Omit the Root CA from the compiled certificate chain.
 			#  The Root CA should already be known/trusted by the client so it is
@@ -568,15 +561,12 @@ eap {
 			#    https://mitls.org/pages/attacks/3SHAKE
 			#
 			#  Note: This attack is undetectable by the client.
-			#  Note: Only supported with OpenSSL >= 1.1.0
 			#
 #			require_extended_master_secret = yes
 
 			#
 			#  Only allow session resumption if a cipher which would
 			#  allow perfect forward secrecy has been selected.
-			#
-			#  Note: Only enforced with OpenSSL >= 1.1.0
 			#
 #			require_perfect_forward_secrecy = no
 

@@ -40,8 +40,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "base.h"
 #include "missing.h"
 
-#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
-#  ifndef OPENSSL_NO_ECDH
+#ifndef OPENSSL_NO_ECDH
 static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)
 {
 	int      nid;
@@ -71,7 +70,6 @@ static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable
 
 	return 0;
 }
-#  endif
 #endif
 
 /*
@@ -156,7 +154,6 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 		return -1;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 	{
 		size_t		extra_cnt, i;
 		/*
@@ -203,7 +200,6 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 			SSL_CTX_add0_chain_cert(ctx, cert);
 		}
 	}
-#endif
 
 	/*
 	 *	Check if the last loaded private key matches the last
@@ -217,7 +213,6 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 		return -1;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 	{
 		int mode = SSL_BUILD_CHAIN_FLAG_CHECK;
 
@@ -259,11 +254,9 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 			break;
 		}
 	}
-#endif
 	return 0;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 static void _tls_ctx_print_cert_line(int index, X509 *cert)
 {
 	char		subject[1024];
@@ -273,7 +266,6 @@ static void _tls_ctx_print_cert_line(int index, X509 *cert)
 
 	DEBUG3("[%i] %s %s", index, tls_utils_x509_pkey_type(cert), subject);
 }
-#endif
 
 /** Create SSL context
  *
@@ -291,10 +283,8 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 {
 	SSL_CTX		*ctx;
 	X509_STORE	*cert_vpstore;
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 	X509_STORE	*chain_store;
 	X509_STORE 	*verify_store;
-#endif
 	int		verify_mode = SSL_VERIFY_NONE;
 	int		ctx_options = 0;
 	void		*app_data_index;
@@ -415,7 +405,6 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		if (mode) SSL_CTX_set_mode(ctx, mode);
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 	/*
 	 *	If we're using a sufficiently new version of
 	 *	OpenSSL, initialise different stores for creating
@@ -436,7 +425,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		MEM(verify_store = X509_STORE_new());
 		SSL_CTX_set0_verify_cert_store(ctx, verify_store);
 	}
-#endif
+
 	/*
 	 *	Load the CAs we trust
 	 */
@@ -471,7 +460,6 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			}
 		}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 		/*
 		 *	Print out our certificate chains.
 		 *
@@ -531,7 +519,6 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			}
 			(void)SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);	/* Reset */
 		}
-#endif
 	}
 
 	/*
@@ -723,12 +710,10 @@ post_ca:
 	/*
 	 *	Set eliptical curve crypto configuration.
 	 */
-#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
 	if (ctx_ecdh_curve_set(ctx, conf->ecdh_curve, conf->disable_single_dh_use) < 0) {
 		goto error;
 	}
-#endif
 #endif
 
 	/* Set Info callback */

@@ -731,7 +731,7 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 #endif
 
 	/*
-	 *	OpenSSL 1.0.2 calls this function with 'pseudo'
+	 *	OpenSSL >= 1.0.2 calls this function with 'pseudo'
 	 *	content types.  Which breaks our tracking of
 	 *	the SSL Session state.
 	 */
@@ -1389,15 +1389,14 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 			REXDENT();
 		}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
 		/*
 		 *	Cache the SSL_SESSION pointer.
 		 *
 		 *	Which contains all the data we need for session resumption.
 		 */
-		if (!session->ssl_session) {
-			session->ssl_session = SSL_get_session(session->ssl);
-			if (!session->ssl_session) {
+		if (!session->session) {
+			session->session = SSL_get_session(session->ssl);
+			if (!session->session) {
 				REDEBUG("Failed getting TLS session");
 				return 0;
 			}
@@ -1408,14 +1407,13 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 
 			MEM(ssl_log = BIO_new(BIO_s_mem()));
 
-			if (SSL_SESSION_print(ssl_log, session->ssl_session) == 1) {
+			if (SSL_SESSION_print(ssl_log, session->session) == 1) {
 				SSL_DRAIN_ERROR_QUEUE(RDEBUG3, "", ssl_log);
 			} else {
 				RDEBUG3("Failed retrieving session data");
 			}
 			BIO_free(ssl_log);
 		}
-#endif
 
 		/*
 		 *	Session was resumed, add attribute to mark it as such.

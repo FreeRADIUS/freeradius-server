@@ -130,11 +130,7 @@ void eap_crypto_mppe_keys(REQUEST *request, SSL *ssl, char const *prf_label, siz
 	uint8_t		scratch[sizeof(out)];
 	uint8_t		master_key[SSL_MAX_MASTER_KEY_LENGTH];
 
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	if (SSL_export_keying_material(ssl, out, sizeof(out), prf_label, prf_label_len, NULL, 0, 0) != 1) /* Fallback */
-#endif
-
-	{
+	if (SSL_export_keying_material(ssl, out, sizeof(out), prf_label, prf_label_len, NULL, 0, 0) != 1) {
 		p = seed;
 		memcpy(p, prf_label, seed_len);
 		p += seed_len;
@@ -174,11 +170,8 @@ void eap_crypto_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t size
 	uint8_t		master_key[SSL_MAX_MASTER_KEY_LENGTH];
 	uint8_t		seed[128 + (2 * SSL3_RANDOM_SIZE)];
 
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	if (SSL_export_keying_material(s, buffer, size, prf_label,
 				       strlen(prf_label), NULL, 0, 0) == 1) return;
-
-#endif
 
 	len = strlen(prf_label);
 	if (len > 128) len = 128;

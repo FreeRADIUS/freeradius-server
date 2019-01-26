@@ -1092,10 +1092,10 @@ if test "x$WITH_OPENSSL" = xyes; then
       ]
     )
 
-    AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
+    AC_MSG_CHECKING([for OpenSSL version >= 1.0.2])
     AC_EGREP_CPP(yes,
       [#include <openssl/crypto.h>
-       #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
+       #if (OPENSSL_VERSION_NUMBER >= 0x10002000L)
        yes
        #endif
       ],

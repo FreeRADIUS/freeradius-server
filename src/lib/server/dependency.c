@@ -432,15 +432,14 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
-#ifdef WITH_TLS
+
 	dependency_feature_add(cs, "tls-key-agility",
-#  if OPENSSL_VERSION_NUMBER >= 0x10002000L
+#ifdef WITH_TLS
 				true
-#  else
+#else
 				false
-#  endif
-				);
 #endif
+				);
 
 	dependency_feature_add(cs, "unlang",
 #ifdef WITH_UNLANG
