@@ -327,4 +327,4 @@ clean:
 #	Make a target that people won't run too often.
 #
 distclean:
-	rm -rf *~ dh ecc/ rsa/ index.txt* serial*  *\.0 *\.1
+	rm -rf *~ *.pem dh ecc/ rsa/ passwords.mk index.txt* serial*  *\.0 *\.1
