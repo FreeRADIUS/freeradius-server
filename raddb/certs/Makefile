@@ -61,14 +61,14 @@ passwords.mk: server.cnf ca.cnf client.cnf inner-server.cnf ocsp.cnf
 #  Output directories
 #
 ######################################################################
-OUTPUT_DIRS := rsa ecc
+OUTPUT_DIRS := rsa/ ecc/
 
-.PHONY: rsa
-rsa:
+.PHONY: rsa/
+rsa/:
 	@mkdir -p $@
 
-.PHONY: rsa
-ecc:
+.PHONY: rsa/
+ecc/:
 	@mkdir -p $@
 
 ######################################################################
