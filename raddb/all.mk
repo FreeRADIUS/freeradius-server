@@ -142,21 +142,21 @@ build.raddb: $(GENERATED_CERT_FILES)
 #
 #  Make certs/{rsa,ecc}/ directories
 #
-.PHONY: ${top_srcdir}/src/tests/certs/rsa
-${top_srcdir}/src/tests/certs/rsa:
-	@mkdir -p $@
+.PHONY: ${top_srcdir}/src/tests/certs/rsa/
+${top_srcdir}/src/tests/certs/rsa/:
+	${Q}mkdir -p $@
 
-.PHONY: ${top_srcdir}/src/tests/certs/ecc
-${top_srcdir}/src/tests/certs/ecc:
-	@mkdir -p $@
+.PHONY: ${top_srcdir}/src/tests/certs/ecc/
+${top_srcdir}/src/tests/certs/ecc/:
+	${Q}mkdir -p $@
 
-.PHONY: ${top_srcdir}/raddb/certs/rsa
-${top_srcdir}/raddb/certs/rsa:
-	@mkdir -p $@
+.PHONY: ${top_srcdir}/raddb/certs/rsa/
+${top_srcdir}/raddb/certs/rsa/:
+	${Q}mkdir -p $@
 
-.PHONY: ${top_srcdir}/raddb/certs/ecc
-${top_srcdir}/raddb/certs/ecc:
-	@mkdir -p $@
+.PHONY: ${top_srcdir}/raddb/certs/ecc/
+${top_srcdir}/raddb/certs/ecc/:
+	${Q}mkdir -p $@
 
 #
 #  Copy the generated certs to the test directory.
@@ -165,8 +165,8 @@ define CP_FILE
 ${top_srcdir}/raddb/certs/${1}: | $(dir ${top_srcdir}/raddb/certs/${1})
 
 ${top_srcdir}/raddb/certs/${1}: ${top_srcdir}/src/tests/certs/${1} | $(dir ${top_srcdir}/src/tests/certs/${1})
-	@${Q}echo TEST_CERTS cp src/tests/certs/${1} raddb/certs/${1}
-	@${Q}cp src/tests/certs/${1} raddb/certs/${1}
+	${Q}echo TEST_CERTS cp src/tests/certs/${1} raddb/certs/${1}
+	${Q}cp src/tests/certs/${1} raddb/certs/${1}
 endef
 
 $(foreach x,$(LOCAL_CERT_FILES),$(eval $(call CP_FILE,${x})))
