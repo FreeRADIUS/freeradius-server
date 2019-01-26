@@ -60,6 +60,9 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
  */
 static inline bool is_whitespace(char const *value)
 {
+#ifdef __clang_analyzer__
+	if (*value == '\0') return false;	/* clang analyzer doesn't seem to know what isspace does */
+#endif
 	do {
 		if (!isspace(*value)) return false;
 	} while (*++value);
@@ -95,10 +98,13 @@ static inline bool is_whitespace(char const *value)
  *
  * @return
  *	- true if the entirety of the string is number chars.
- *	- false if string contains no number chars.
+ *	- false if string contains non-numeric chars or is empty.
  */
 static inline bool is_integer(char const *value)
 {
+#ifdef __clang_analyzer__
+	if (*value == '\0') return false;	/* clang analyzer doesn't seem to know what isdigit does */
+#endif
 	do {
 		if (!isdigit(*value)) return false;
 	} while (*++value);
@@ -110,7 +116,7 @@ static inline bool is_integer(char const *value)
  *
  * @return
  *	- true if the entirety of the string is all zeros.
- *	- false if string contains no zeros.
+ *	- false if string contains non-zero chars or is empty.
  */
 static inline bool is_zero(char const *value)
 {
