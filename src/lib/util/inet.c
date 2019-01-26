@@ -430,7 +430,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 */
 	if (inlen >= 0) {
 		if (inlen >= (ssize_t)sizeof(buffer)) {
-			fr_strerror_printf("Invalid IPv4 address string \"%s\"", value);
+			fr_strerror_printf("Invalid IPv4 address string \"%pV\"", fr_box_strvalue_len(value, inlen));
 			return -1;
 		}
 		memcpy(buffer, value, inlen);
@@ -555,7 +555,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 */
 	if (inlen >= 0) {
 		if (inlen >= (ssize_t)sizeof(buffer)) {
-			fr_strerror_printf("Invalid IPv6 address string \"%s\"", value);
+			fr_strerror_printf("Invalid IPv6 address string \"%pV\"", fr_box_strvalue_len(value, inlen));
 			return -1;
 		}
 		memcpy(buffer, value, inlen);
