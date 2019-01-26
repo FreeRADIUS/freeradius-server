@@ -310,7 +310,7 @@ define ANALYZE_C_CMDS
 	$(Q)if $(ANALYZE_C_DUMP) && test -d "$@"; then \
 	    echo "Decode with:"; \
 	    echo -n "echo \""; \
-	    gzip -c "$@/*.html" | base64; \
+	    gzip -c $@/*.html | base64; \
 	    echo "\" | base64 -D | zcat > $@.html"; \
 	fi
 	$(Q)touch $@
