@@ -194,6 +194,11 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 			talloc_free(fake);
 			/* success */
 		}
+
+		/*
+		 *	Success: Automatically return MPPE keys.
+		 */
+		ret = eaptls_success(handler, 0);
 		break;
 
 		/*
@@ -203,7 +208,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 		 */
 	case FR_TLS_HANDLED:
 		ret = 1;
-		goto done;
+		break;
 
 		/*
 		 *	Handshake is done, proceed with decoding tunneled
@@ -232,7 +237,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 
 		eaptls_fail(handler, 0);
 		ret = 0;
-		goto done;
+		break;
 
 		/*
 		 *	Anything else: fail.
@@ -242,15 +247,8 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 		 */
 	default:
 		tls_fail(tls_session);
-
 		ret = 0;
-		goto done;
 	}
-
-	/*
-	 *	Success: Automatically return MPPE keys.
-	 */
-	ret = eaptls_success(handler, 0);
 
 done:
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
