@@ -3,7 +3,7 @@ compiler:
 - clang
 - gcc
 sudo: true
-dist: trusty
+dist: xenial
 env:
   global:
   - ASAN_OPTIONS="symbolize=1 detect_leaks=1 detect_stack_use_after_return=1"
@@ -40,8 +40,7 @@ addons:
   postgresql: '9.4'
   apt:
     sources:
-    - couchbase-trusty
-    - llvm-toolchain-trusty-6.0
+    - llvm-toolchain-xenial-7
     # For newer GCC
     - ubuntu-toolchain-r-test
     # For newer libkqueue
@@ -49,7 +48,7 @@ addons:
     packages:
     - autoconf
     - build-essential
-    - clang-6.0
+    - clang-7
     - debhelper
     - devscripts
     - dh-make
@@ -60,7 +59,7 @@ addons:
     - gdb
     - graphviz
     - lintian
-    - mysql-server-5.6
+    - mysql-server
     - pbuilder
     - python-dev
     - quilt
@@ -99,7 +98,7 @@ addons:
     - libykclient-dev
     - libyubikey-dev
     # Needed for llvm-symbolizer
-    - llvm-6.0
+    - llvm-7
     # For rendering clang scan results
     - lynx
     - slapd
@@ -111,8 +110,8 @@ services:
 before_install:
 - rvm --install --default --binary use 2.4
 - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 && sudo update-alternatives --config gcc; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-6.0 60 && sudo update-alternatives --config clang; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-6.0 60 && sudo update-alternatives --config llvm-symbolizer; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-7 60 && sudo update-alternatives --config clang; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-7 60 && sudo update-alternatives --config llvm-symbolizer; fi
 - $CC --version
 before_script:
 - ./scripts/travis/build.sh
