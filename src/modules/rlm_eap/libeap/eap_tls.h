@@ -57,7 +57,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  */
 fr_tls_status_t eaptls_process(eap_handler_t *handler);
 
-int	eaptls_success(eap_handler_t *handler, int peap_flag) CC_HINT(nonnull);
+int	eaptls_success(eap_handler_t *handler, char const *prf_label, int peap_flag) CC_HINT(nonnull(1));
 int	eaptls_fail(eap_handler_t *handler, int peap_flag) CC_HINT(nonnull);
 int	eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn) CC_HINT(nonnull);
 
@@ -65,7 +65,7 @@ int	eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn) CC_HINT(nonnull);
 void			T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed,  unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
 void	eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);
 void	eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
-void	eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
+void	eaptls_gen_session_id(RADIUS_PACKET *packet, SSL *s, uint32_t header);
 void			eap_fast_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
 
 #define BUFFER_SIZE 1024

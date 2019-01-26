@@ -158,6 +158,9 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 	 *	it accepts the certificates, too.
 	 */
 	case FR_TLS_SUCCESS:
+	{
+		char const *prf_label = NULL;
+
 		if (inst->virtual_server) {
 			VALUE_PAIR *vp;
 			REQUEST *fake;
@@ -195,10 +198,38 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 			/* success */
 		}
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		/*
+		 *	Set the PRF label based on the TLS version negotiated
+		 *	in the handshake.
+		 */
+		switch (SSL_SESSION_get_protocol_version(SSL_get_session(tls_session->ssl))) {
+		case SSL2_VERSION:			/* Should never happen */
+		case SSL3_VERSION:			/* Should never happen */
+			rad_assert(0);
+			ret = 0;
+			goto done;
+
+		case TLS1_VERSION:
+		case TLS1_1_VERSION:
+		case TLS1_2_VERSION:
+#endif
+			prf_label = "client EAP encryption";
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+			break;
+
+		case TLS1_3_VERSION:
+		default:
+			prf_label = "EXPORTER_EAP_TLS_Key_Material";
+			break;
+#endif
+		}
+
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		ret = eaptls_success(handler, 0);
+		ret = eaptls_success(handler, prf_label, 0);
+	}
 		break;
 
 		/*

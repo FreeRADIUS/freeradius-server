@@ -919,7 +919,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		return eaptls_success(handler, 0);
+		return eaptls_success(handler, "ttls keying material", 0);
 
 	default:
 		RDEBUG("Reply was unknown");

@@ -189,11 +189,6 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->opaque = ((void *)ssn);
 
 	/*
-	 *	Set up type-specific information.
-	 */
-	ssn->prf_label = "ttls keying material";
-
-	/*
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
@@ -274,7 +269,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			/*
 			 *	Success: Automatically return MPPE keys.
 			 */
-			ret = eaptls_success(handler, 0);
+			ret = eaptls_success(handler, "ttls keying material", 0);
 			goto done;
 		} else {
 			eaptls_request(handler->eap_ds, tls_session);
@@ -342,8 +337,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case PW_CODE_ACCESS_ACCEPT:
-		ret = eaptls_success(handler, 0);
-		goto done;
+		goto do_keys;
 
 		/*
 		 *	No response packet, MUST be proxying it.

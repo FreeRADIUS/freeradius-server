@@ -674,7 +674,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		return eaptls_success(handler, 0);
+		return eaptls_success(handler, "client EAP encryption", 0);
 
 	default:
 		RDEBUG2("Reply was unknown");

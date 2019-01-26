@@ -200,11 +200,6 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->opaque = ((void *)ssn);
 
 	/*
-	 *	Set up type-specific information.
-	 */
-	ssn->prf_label = "client EAP encryption";
-
-	/*
 	 *	As it is a poorly designed protocol, PEAP uses
 	 *	bits in the TLS header to indicate PEAP
 	 *	version numbers.  For now, we only support
@@ -376,7 +371,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		ret = eaptls_success(handler, 0);
+		ret = eaptls_success(handler, "client EAP encryption", 0);
 		goto done;
 
 		/*

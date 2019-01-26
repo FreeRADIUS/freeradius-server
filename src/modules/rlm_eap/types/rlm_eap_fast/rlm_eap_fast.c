@@ -477,7 +477,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		} else if (t->use_tunneled_reply) {
 			RDEBUG2("No saved attributes in the original Access-Accept");
 		}
-		ret = eaptls_success(handler, EAP_FAST_VERSION);
+		ret = eaptls_success(handler, NULL, EAP_FAST_VERSION);
 		goto done;
 
 		/*
