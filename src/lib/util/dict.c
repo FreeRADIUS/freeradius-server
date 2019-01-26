@@ -2097,8 +2097,6 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 
 /** Allocates an unknown attribute
  *
- * @copybrief fr_dict_unknown_from_fields
- *
  * @note If vendor != 0, an unknown vendor (may) also be created, parented by
  *	the correct EVS or VSA attribute. This is accessible via da->parent,
  *	and will be use the unknown da as its talloc parent.
@@ -2186,7 +2184,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
  *  - Attr-%d
  *  - Attr-%d.%d.%d...
  *
- * @copybrief fr_dict_unknown_from_fields
+ * @copybrief fr_dict_unknown_afrom_fields
  *
  * @param[in] ctx		to allocate the attribute in.
  * @param[out] out		Where to write the new attribute to.
@@ -2226,7 +2224,7 @@ static int dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
  *  - Attr-%d
  *  - Attr-%d.%d.%d...
  *
- * @copybrief fr_dict_unknown_from_fields
+ * @copybrief fr_dict_unknown_afrom_fields
  *
  * @note If vendor != 0, an unknown vendor (may) also be created, parented by
  *	the correct EVS or VSA attribute. This is accessible via vp->parent,

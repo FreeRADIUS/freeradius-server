@@ -95,7 +95,7 @@ static inline void fr_dlist_entry_init(fr_dlist_t *entry)
  * @note This variant *DOES* perform talloc validation.  All items inserted
  *	 into the list must be allocated with talloc.
  *
- * @copybrief fr_dlist_init.
+ * @copybrief fr_dlist_init
  *
  * @param[in] _head	structure to initialise.
  * @param[in] _type	of item being stored in the list, e.g. fr_value_box_t,
