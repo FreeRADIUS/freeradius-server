@@ -8,8 +8,8 @@
 #
 # ## Cipher Module
 #
-# The `cipher` module is used to transform plaintext in some way that is dependent
-# on a key or key pair, producing ciphertext.
+#  The `cipher` module is used to transform plaintext in some way that is dependent
+#  on a key or key pair, producing encrypted ciphertext.
 #
 #  Registers the following expansions:
 #
@@ -27,8 +27,11 @@
 #    %{base64_encode:%{cipher_encrypt:<plaintext>}}
 #    %{cipher_decrypt:%{base64_decode:<ciphertext>}}
 #
-#  Supported digest types vary *depending* on the version OpenSSL was built against.
-#  Reasonably modern >= 1.0.0 versions of OpenSSL should support at least:
+#  NOTE: The supported versions are determined _entirely_ by the version of OpenSSL used, we
+#  pass the name of the digest off to OpenSSL and it tells _us_ whether it's valid/supported
+#  or not.
+#
+#  OpenSSL >= 1.0.0 should support at least:
 #
 #   * `md2`     (not recommended)
 #   * `md4`     (not recommended)
@@ -39,16 +42,13 @@
 #   * `sha384`
 #   * `sha512`
 #
-#  OpenSSL >= 1.1.1 also support the `sha3` family of digest functions.
+#  OpenSSL >= 1.1.1 also supports the `sha3` family of digest functions.
 #
 #   * `sha3_224`
 #   * `sha3_256`
 #   * `sha3_384`
 #   * `sha3_512`
 #
-#  NOTE: Again, the supported versions are determined _entirely_ by the version of OpenSSL used, we
-#  pass the name of the digest off to OpenSSL and it tells _us_ whether it's valid/supported
-#  or not.
 
 #
 # ## Default instances
@@ -83,7 +83,7 @@ cipher {
 		certificate_file = ${certdir}/server.pem
 
 		#
-		#  oaep {}::
+		#  oaep { ... }::
 		#
 		#  Parameters for the OAEP RSA padding scheme.
 		#
