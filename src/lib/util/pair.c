@@ -546,7 +546,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vp
 	 *	It's not found in the dictionary, so we use
 	 *	another method to create the attribute.
 	 */
-	if (fr_dict_attr_by_qualified_name(&da, dict, attrname, true) < 0) {
+	if (fr_dict_attr_by_qualified_name(&da, dict, attrname, true) <= 0) {
 		if (tag != TAG_NONE) {
 			fr_strerror_printf("Invalid tag for attribute %s", attribute);
 			return NULL;
