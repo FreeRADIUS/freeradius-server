@@ -3328,6 +3328,8 @@ again:
 
 	p += slen;
 
+	rad_assert(*out);	/* If we're returning a success code indication, ensure we populated out */
+
 	return p - name;
 }
 
