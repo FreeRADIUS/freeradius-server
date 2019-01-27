@@ -541,6 +541,10 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 		return true;
 	}
 
+#ifdef __clang_analyzer__
+	if (!da) return false;	/* This can't happen, but clang analyzer can't deal with the call depth */
+#endif
+
 	vpt->tmpl_da = da;
 	vpt->type = TMPL_TYPE_ATTR;
 	return true;
