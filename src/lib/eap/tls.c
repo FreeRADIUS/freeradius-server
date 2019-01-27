@@ -818,7 +818,7 @@ static eap_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 	/*
 	 *	Continue the TLS handshake
 	 */
-	if (!tls_session_handshake(eap_session->request, tls_session)) {
+	if (tls_session_handshake(eap_session->request, tls_session) < 0) {
 		REDEBUG("TLS receive handshake failed during operation");
 		tls_cache_deny(tls_session);
 		return EAP_TLS_FAIL;
@@ -898,8 +898,6 @@ eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	if (!request) return EAP_TLS_FAIL;
 
 	RDEBUG2("Continuing EAP-TLS");
-
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 
 	/*
 	 *	Call eap_tls_verify to sanity check the incoming EAP data.
@@ -1032,8 +1030,6 @@ eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	}
 
  done:
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);	//-V575
-
 	return status;
 }
 
