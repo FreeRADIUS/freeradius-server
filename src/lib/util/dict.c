@@ -3328,7 +3328,14 @@ again:
 
 	p += slen;
 
-	rad_assert(*out);	/* If we're returning a success code indication, ensure we populated out */
+	/*
+	 *	If we're returning a success code indication,
+	 *	ensure we populated out
+	 */
+	if (!fr_cond_assert(*out)) {
+		if (err) *err = FR_DICT_ATTR_EINVAL;
+		return 0;
+	}
 
 	return p - name;
 }
