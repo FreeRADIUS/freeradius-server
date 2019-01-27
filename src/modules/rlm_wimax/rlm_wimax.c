@@ -58,12 +58,13 @@ fr_dict_autoload_t rlm_wimax_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_calling_station_id;
-static fr_dict_attr_t const *attr_eap_msk;
 static fr_dict_attr_t const *attr_eap_emsk;
+static fr_dict_attr_t const *attr_eap_msk;
+static fr_dict_attr_t const *attr_wimax_mn_nai;
+
+static fr_dict_attr_t const *attr_calling_station_id;
 
 static fr_dict_attr_t const *attr_wimax_msk;
-static fr_dict_attr_t const *attr_wimax_mn_nai;
 static fr_dict_attr_t const *attr_wimax_ip_technology;
 static fr_dict_attr_t const *attr_wimax_mn_hha_mip4_key;
 static fr_dict_attr_t const *attr_wimax_mn_hha_mip4_spi;
@@ -82,13 +83,13 @@ static fr_dict_attr_t const *attr_ms_mppe_recv_key;
 
 extern fr_dict_attr_autoload_t rlm_wimax_dict_attr[];
 fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
+	{ .out = &attr_eap_emsk, .name = "EAP-EMSK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_wimax_mn_nai, .name = "WiMAX-MN-NAI", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
 	{ .out = &attr_calling_station_id, .name = "Calling-Station-ID", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
-	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_emsk, .name = "EAP-EMSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-
 	{ .out = &attr_wimax_msk, .name = "WiMAX-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_wimax_mn_nai, .name = "WiMAX-MN-NAI", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_wimax_ip_technology, .name = "WiMAX-IP-Technology", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_wimax_mn_hha_mip4_key, .name = "WiMAX-MN-hHA-MIP4-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_wimax_mn_hha_mip4_spi, .name = "WiMAX-MN-hHA-MIP4-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },

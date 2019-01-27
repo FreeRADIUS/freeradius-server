@@ -86,6 +86,8 @@ fr_dict_autoload_t rlm_eap_fast_dict[] = {
 	{ NULL }
 };
 
+fr_dict_attr_t const *attr_eap_emsk;
+fr_dict_attr_t const *attr_eap_msk;
 fr_dict_attr_t const *attr_eap_tls_require_client_cert;
 fr_dict_attr_t const *attr_eap_type;
 fr_dict_attr_t const *attr_ms_chap_challenge;
@@ -93,8 +95,6 @@ fr_dict_attr_t const *attr_ms_chap_peer_challenge;
 fr_dict_attr_t const *attr_proxy_to_realm;
 
 fr_dict_attr_t const *attr_eap_message;
-fr_dict_attr_t const *attr_eap_msk;
-fr_dict_attr_t const *attr_eap_emsk;
 fr_dict_attr_t const *attr_freeradius_proxied_to;
 fr_dict_attr_t const *attr_ms_mppe_send_key;
 fr_dict_attr_t const *attr_ms_mppe_recv_key;
@@ -131,6 +131,8 @@ fr_dict_attr_t const *attr_eap_fast_vendor_specific;
 
 extern fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[] = {
+	{ .out = &attr_eap_emsk, .name = "EAP-EMSK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
@@ -138,8 +140,6 @@ fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[] = {
 	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_emsk, .name = "EAP-EMSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_freeradius_proxied_to, .name = "FreeRADIUS-Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
