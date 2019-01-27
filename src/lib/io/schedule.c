@@ -478,9 +478,9 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	SEM_WAIT_INTR(&sc->semaphore);
 	if (sc->sn->status != FR_CHILD_RUNNING) {
 	fail:
+		fr_schedule_destroy(sc);
 		if (sc->sn->ctx) TALLOC_FREE(sc->sn->ctx);
 		TALLOC_FREE(sc->sn);
-		fr_schedule_destroy(sc);
 		return NULL;
 	}
 
