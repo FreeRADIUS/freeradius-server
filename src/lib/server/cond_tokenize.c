@@ -251,14 +251,10 @@ static ssize_t cond_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out
 		 *	things.  For now, we allow pretty much anything.
 		 */
 		if (*p == '\\') {
-			ssize_t slen;
-
 			*error = "Unexpected escape";
 		error:
 			*out = NULL;
-			slen = -(p - start);
-			rad_assert(slen <= 0);	/* For stupidity in clang scan */
-			return slen;
+			return start - p;	/* clang scan doesn't like -(p - start) */
 		}
 
 		/*
@@ -561,7 +557,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				return_P("Empty octet string is invalid");
 			}
 
-			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CAST_BASE + FR_TYPE_OCTETS);
+			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+							    FR_CAST_BASE + FR_TYPE_OCTETS);
 		}
 
 		while (isspace((int)*p)) p++; /* skip spaces after LHS */

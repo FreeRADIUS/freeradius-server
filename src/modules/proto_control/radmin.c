@@ -649,10 +649,10 @@ int main(int argc, char **argv)
 			usage(0);	/* never returns */
 
 		case 'i':
-#ifdef __clang_analyzer__
-			rad_assert(optarg);	/* clang analyzer bug */
-#endif
-			if (strcmp(optarg, "-") != 0) input_file = optarg;
+			/*
+			 *	optarg check is to quiet clang scan
+			 */
+			if (optarg && (strcmp(optarg, "-") != 0)) input_file = optarg;
 			quiet = true;
 			break;
 
