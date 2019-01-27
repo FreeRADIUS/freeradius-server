@@ -179,9 +179,7 @@ char const *fr_syserror(int num)
 		 *	even if the thread is exiting.
 		 */
 		if (logging_stop) {
-			if (HAVE_DEFINITION(num)) {
-				return fr_syserror_macro_names[num];
-			}
+			if (HAVE_DEFINITION(num)) return fr_syserror_macro_names[num];
 			return "";
 		}
 
@@ -261,6 +259,5 @@ char const *fr_syserror(int num)
 		return buffer;
 	}
 #endif
-
 }
 
