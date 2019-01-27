@@ -261,6 +261,7 @@ do_value:
 		if ((vp->da == attr_chap_challenge) || (vp->da == attr_ms_chap_challenge)) {
 			uint8_t	challenge[16];
 			uint8_t	scratch[16];
+			char	label[] = "ttls challenge";
 
 			if ((vp->vp_length < 8) || (vp->vp_length > 16)) {
 				fr_strerror_printf("Tunneled challenge has invalid length");
@@ -268,7 +269,7 @@ do_value:
 			}
 
 			eap_crypto_challenge(ssl, challenge, scratch,
-					      sizeof(challenge), "ttls challenge");
+					     sizeof(challenge), label, sizeof(label) - 1);
 
 			if (memcmp(challenge, vp->vp_octets, vp->vp_length) != 0) {
 				fr_strerror_printf("Tunneled challenge is incorrect");

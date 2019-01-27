@@ -177,11 +177,12 @@ void			eap_crypto_rfc4346_prf(uint8_t *out, size_t out_len, uint8_t *scratch,
 void			eap_crypto_mppe_keys(REQUEST *request, SSL *ssl,
 					     char const *prf_label, size_t prf_label_len) CC_HINT(nonnull);
 
-void			eap_crypto_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
+void			eap_crypto_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size,
+					     char const *prf_label, size_t prf_label_len) CC_HINT(nonnull);
 
 int			eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
-					       SSL *ssl, uint8_t eap_type,
-					       char const *prf_label, size_t prf_len);
+						  SSL *ssl, uint8_t eap_type,
+						  char const *prf_label, size_t prf_label_len);
 
 /* EAP-TLS framework */
 eap_tls_session_t	*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert) CC_HINT(nonnull);

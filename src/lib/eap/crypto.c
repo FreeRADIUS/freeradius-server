@@ -163,29 +163,30 @@ void eap_crypto_mppe_keys(REQUEST *request, SSL *ssl, char const *prf_label, siz
  *	It's in the TLS module simply because it's only a few lines
  *	of code, and it needs access to the TLS PRF functions.
  */
-void eap_crypto_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label)
+void eap_crypto_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size,
+			  char const *prf_label, size_t prf_label_len)
 {
 	uint8_t		*p;
 	size_t		len, master_key_len;
 	uint8_t		master_key[SSL_MAX_MASTER_KEY_LENGTH];
 	uint8_t		seed[128 + (2 * SSL3_RANDOM_SIZE)];
 
-	if (SSL_export_keying_material(s, buffer, size, prf_label,
-				       strlen(prf_label), NULL, 0, 0) == 1) return;
+	if (SSL_export_keying_material(ssl, buffer, size, prf_label,
+				       prf_label_len, NULL, 0, 0) == 1) return;
 
-	len = strlen(prf_label);
+	len = prf_label_len;
 	if (len > 128) len = 128;
 
 	p = seed;
 	memcpy(p, prf_label, len);
 	p += len;
 
-	(void) SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
+	(void) SSL_get_client_random(ssl, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
-	(void) SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
+	(void) SSL_get_server_random(ssl, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 
-	master_key_len = SSL_SESSION_get_master_key(SSL_get_session(s), master_key, sizeof(master_key));
+	master_key_len = SSL_SESSION_get_master_key(SSL_get_session(ssl), master_key, sizeof(master_key));
 	eap_crypto_rfc4346_prf(buffer, size, scratch, master_key, master_key_len, seed, p - seed);
 }
 
@@ -198,7 +199,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 			      UNUSED
 #endif
-			      size_t prf_len)
+			      size_t prf_label_len)
 {
 	uint8_t		*buff = NULL, *p;
 
@@ -235,7 +236,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
 	{
 		MEM(buff = p = talloc_array(ctx, uint8_t, sizeof(eap_type) + 64));
 		*p++ = eap_type;
-		SSL_export_keying_material(ssl, p, 64, prf_label, prf_len, NULL, 0, 0);
+		SSL_export_keying_material(ssl, p, 64, prf_label, prf_label_len, NULL, 0, 0);
 	}
 		break;
 	}
