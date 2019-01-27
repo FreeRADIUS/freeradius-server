@@ -299,8 +299,8 @@ int eap_tls_success(eap_session_t *eap_session,
 	/*
 	 *	Automatically generate MPPE keying material.
 	 */
-	if (keying_prf_label) eap_crypto_mppe_keys(eap_session->request, tls_session->ssl,
-						   keying_prf_label, keying_prf_label_len);
+	if (keying_prf_label) if (eap_crypto_mppe_keys(eap_session->request, tls_session->ssl,
+						       keying_prf_label, keying_prf_label_len) < 0) return -1;
 
 	/*
 	 *	Add the TLS session ID to the request
@@ -309,8 +309,8 @@ int eap_tls_success(eap_session_t *eap_session,
 		uint8_t		*session_id;
 		VALUE_PAIR	*vp;
 
-		if (eap_crypto_tls_session_id(eap_session->request->reply, &session_id,
-					      tls_session->ssl, eap_session->type,
+		if (eap_crypto_tls_session_id(eap_session->request->reply, request, tls_session->ssl,
+					      &session_id, eap_session->type,
 					      sessid_prf_label, sessid_prf_label_len) < 0) return -1;
 
 		MEM(pair_add_reply(&vp, attr_eap_session_id) >= 0);

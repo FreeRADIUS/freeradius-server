@@ -169,20 +169,11 @@ int			eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8
 		    			tls_record_t *record, size_t record_len, size_t frag_len);
 
 /* MPPE key generation */
-
-void			eap_crypto_rfc4346_prf(uint8_t *out, size_t out_len, uint8_t *scratch,
-					       uint8_t const *secret, size_t secret_len,
-					       uint8_t const *seed, size_t seed_len);
-
-void			eap_crypto_mppe_keys(REQUEST *request, SSL *ssl,
+int			eap_crypto_mppe_keys(REQUEST *request, SSL *ssl,
 					     char const *prf_label, size_t prf_label_len) CC_HINT(nonnull);
 
-void			eap_crypto_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size,
-					     char const *prf_label, size_t prf_label_len) CC_HINT(nonnull);
-
-int			eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
-						  SSL *ssl, uint8_t eap_type,
-						  char const *prf_label, size_t prf_label_len);
+int			eap_crypto_tls_session_id(TALLOC_CTX *ctx, REQUEST *request, SSL *ssl, uint8_t **out,
+						  uint8_t eap_type, char const *prf_label, size_t prf_label_len);
 
 /* EAP-TLS framework */
 eap_tls_session_t	*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert) CC_HINT(nonnull);

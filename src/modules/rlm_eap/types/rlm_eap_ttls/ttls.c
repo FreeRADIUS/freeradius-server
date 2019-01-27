@@ -260,7 +260,6 @@ do_value:
 		 */
 		if ((vp->da == attr_chap_challenge) || (vp->da == attr_ms_chap_challenge)) {
 			uint8_t	challenge[16];
-			uint8_t	scratch[16];
 			char	label[] = "ttls challenge";
 
 			if ((vp->vp_length < 8) || (vp->vp_length > 16)) {
@@ -268,8 +267,11 @@ do_value:
 				goto error;
 			}
 
-			eap_crypto_challenge(ssl, challenge, scratch,
-					     sizeof(challenge), label, sizeof(label) - 1);
+			if (SSL_export_keying_material(ssl, challenge, sizeof(challenge),
+						       label, sizeof(label) - 1, NULL, 0, 0) != 1) {
+				tls_strerror_printf("Failed generating phase2 challenge");
+				goto error;
+			}
 
 			if (memcmp(challenge, vp->vp_octets, vp->vp_length) != 0) {
 				fr_strerror_printf("Tunneled challenge is incorrect");

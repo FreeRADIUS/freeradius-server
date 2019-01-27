@@ -42,108 +42,37 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "base.h"
 #include "attrs.h"
 
-static void crypto_rfc4346_p_hash(uint8_t *out, size_t out_len,
-				  EVP_MD const *evp_md,
-				  uint8_t const *secret, size_t secret_len,
-				  uint8_t const *seed,  size_t seed_len)
-{
-	HMAC_CTX *ctx_a, *ctx_out;
-	uint8_t a[HMAC_MAX_MD_CBLOCK];
-	size_t size;
-
-	ctx_a = HMAC_CTX_new();
-	ctx_out = HMAC_CTX_new();
-#ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
-	HMAC_CTX_set_flags(ctx_a, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
-	HMAC_CTX_set_flags(ctx_out, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
-#endif
-	HMAC_Init_ex(ctx_a, secret, secret_len, evp_md, NULL);
-	HMAC_Init_ex(ctx_out, secret, secret_len, evp_md, NULL);
-
-	size = HMAC_size(ctx_out);
-
-	/* Calculate A(1) */
-	HMAC_Update(ctx_a, seed, seed_len);
-	HMAC_Final(ctx_a, a, NULL);
-
-	while (1) {
-		/* Calculate next part of output */
-		HMAC_Update(ctx_out, a, size);
-		HMAC_Update(ctx_out, seed, seed_len);
-
-		/* Check if last part */
-		if (out_len < size) {
-			HMAC_Final(ctx_out, a, NULL);
-			memcpy(out, a, out_len);
-			break;
-		}
-
-		/* Place digest in output buffer */
-		HMAC_Final(ctx_out, out, NULL);
-		HMAC_Init_ex(ctx_out, NULL, 0, NULL, NULL);
-		out += size;
-		out_len -= size;
-
-		/* Calculate next A(i) */
-		HMAC_Init_ex(ctx_a, NULL, 0, NULL, NULL);
-		HMAC_Update(ctx_a, a, size);
-		HMAC_Final(ctx_a, a, NULL);
-	}
-
-	HMAC_CTX_free(ctx_a);
-	HMAC_CTX_free(ctx_out);
-#ifdef __STDC_LIB_EXT1__
-	memset_s(a, 0, sizeof(a), sizeof(a));
-#else
-	memset(a, 0, sizeof(a));
-#endif
-}
-
-
-void eap_crypto_rfc4346_prf(uint8_t *out, size_t out_len, uint8_t *scratch,
-			    uint8_t const *secret, size_t secret_len,
-			    uint8_t const *seed, size_t seed_len)
-{
-	unsigned int	i;
-	unsigned int	len = (secret_len + 1) / 2;
-	uint8_t const	*s1 = secret;
-	uint8_t const	*s2 = secret + (secret_len - len);
-
-	crypto_rfc4346_p_hash(out, out_len, EVP_md5(), s1, len, seed, seed_len);
-	crypto_rfc4346_p_hash(scratch, out_len, EVP_sha1(), s2, len, seed, seed_len);
-
-	for (i = 0; i < out_len; i++) out[i] ^= scratch[i];
-}
-
 #define EAP_TLS_MPPE_KEY_LEN     32
 
 /** Generate keys according to RFC 2716 and add to the reply
  *
  */
-void eap_crypto_mppe_keys(REQUEST *request, SSL *ssl, char const *prf_label, size_t prf_label_len)
+int eap_crypto_mppe_keys(REQUEST *request, SSL *ssl, char const *prf_label, size_t prf_label_len)
 {
 	uint8_t		out[4 * EAP_TLS_MPPE_KEY_LEN];
 	uint8_t		*p;
-	size_t		seed_len = prf_label_len;
-	size_t		master_key_len;
-	uint8_t		seed[64 + (2 * SSL3_RANDOM_SIZE)];
-	uint8_t		scratch[sizeof(out)];
-	uint8_t		master_key[SSL_MAX_MASTER_KEY_LENGTH];
 
 	if (SSL_export_keying_material(ssl, out, sizeof(out), prf_label, prf_label_len, NULL, 0, 0) != 1) {
-		p = seed;
-		memcpy(p, prf_label, seed_len);
-		p += seed_len;
+		tls_log_error(request, "Failed generating MPPE keys");
+		return -1;
+	}
 
-		(void) SSL_get_client_random(ssl, p, SSL3_RANDOM_SIZE);
-		p += SSL3_RANDOM_SIZE;
-		seed_len += SSL3_RANDOM_SIZE;
+	if (RDEBUG_ENABLED3) {
+		uint8_t	random[SSL3_RANDOM_SIZE];
+		size_t random_len;
+		uint8_t	master_key[SSL_MAX_MASTER_KEY_LENGTH];
+		size_t master_key_len;
 
-		(void) SSL_get_server_random(ssl, p, SSL3_RANDOM_SIZE);
-		seed_len += SSL3_RANDOM_SIZE;
-
+		RDEBUG3("Key Derivation Function input");
+		RINDENT();
+		RDEBUG3("prf label          : %pV", fr_box_strvalue_len(prf_label, prf_label_len));
 		master_key_len = SSL_SESSION_get_master_key(SSL_get_session(ssl), master_key, sizeof(master_key));
-		eap_crypto_rfc4346_prf(out, sizeof(out), scratch, master_key, master_key_len, seed, seed_len);
+		RDEBUG3("master session key : %pH", fr_box_octets(master_key, master_key_len));
+		random_len = SSL_get_client_random(ssl, random, SSL3_RANDOM_SIZE);
+		RDEBUG3("client random      : %pH", fr_box_octets(random, random_len));
+		random_len = SSL_get_server_random(ssl, random, SSL3_RANDOM_SIZE);
+		RDEBUG3("server random      : %pH", fr_box_octets(random, random_len));
+		REXDENT();
 	}
 
 	RDEBUG2("Adding session keys");
@@ -154,44 +83,16 @@ void eap_crypto_mppe_keys(REQUEST *request, SSL *ssl, char const *prf_label, siz
 
 	eap_add_reply(request, attr_eap_msk, out, 64);
 	eap_add_reply(request, attr_eap_emsk, out + 64, 64);
+
+	return 0;
 }
 
-
-/*
- *	Generate the challenge using a PRF label.
- *
- *	It's in the TLS module simply because it's only a few lines
- *	of code, and it needs access to the TLS PRF functions.
- */
-void eap_crypto_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size,
-			  char const *prf_label, size_t prf_label_len)
-{
-	uint8_t		*p;
-	size_t		len, master_key_len;
-	uint8_t		master_key[SSL_MAX_MASTER_KEY_LENGTH];
-	uint8_t		seed[128 + (2 * SSL3_RANDOM_SIZE)];
-
-	if (SSL_export_keying_material(ssl, buffer, size, prf_label,
-				       prf_label_len, NULL, 0, 0) == 1) return;
-
-	len = prf_label_len;
-	if (len > 128) len = 128;
-
-	p = seed;
-	memcpy(p, prf_label, len);
-	p += len;
-
-	(void) SSL_get_client_random(ssl, p, SSL3_RANDOM_SIZE);
-	p += SSL3_RANDOM_SIZE;
-	(void) SSL_get_server_random(ssl, p, SSL3_RANDOM_SIZE);
-	p += SSL3_RANDOM_SIZE;
-
-	master_key_len = SSL_SESSION_get_master_key(SSL_get_session(ssl), master_key, sizeof(master_key));
-	eap_crypto_rfc4346_prf(buffer, size, scratch, master_key, master_key_len, seed, p - seed);
-}
-
-int eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
-			      SSL *ssl, uint8_t eap_type,
+int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+			      UNUSED
+#endif
+			      REQUEST *request, SSL *ssl,
+			      uint8_t **out, uint8_t eap_type,
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 			      UNUSED
 #endif
@@ -236,7 +137,10 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx, uint8_t **out,
 	{
 		MEM(buff = p = talloc_array(ctx, uint8_t, sizeof(eap_type) + 64));
 		*p++ = eap_type;
-		SSL_export_keying_material(ssl, p, 64, prf_label, prf_label_len, NULL, 0, 0);
+		if (SSL_export_keying_material(ssl, p, 64, prf_label, prf_label_len, NULL, 0, 0) != 1) {
+			tls_log_error(request, "Failed generating TLS session ID");
+			return -1;
+		}
 	}
 		break;
 	}

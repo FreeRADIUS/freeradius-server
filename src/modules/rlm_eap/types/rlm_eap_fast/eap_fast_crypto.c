@@ -217,6 +217,81 @@ int eap_fast_decrypt(uint8_t const *ciphertext, size_t ciphertext_len,
 	}
 }
 
+
+static void crypto_rfc4346_p_hash(uint8_t *out, size_t out_len,
+				  EVP_MD const *evp_md,
+				  uint8_t const *secret, size_t secret_len,
+				  uint8_t const *seed,  size_t seed_len)
+{
+	HMAC_CTX *ctx_a, *ctx_out;
+	uint8_t a[HMAC_MAX_MD_CBLOCK];
+	size_t size;
+
+	ctx_a = HMAC_CTX_new();
+	ctx_out = HMAC_CTX_new();
+#ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
+	HMAC_CTX_set_flags(ctx_a, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+	HMAC_CTX_set_flags(ctx_out, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+#endif
+	HMAC_Init_ex(ctx_a, secret, secret_len, evp_md, NULL);
+	HMAC_Init_ex(ctx_out, secret, secret_len, evp_md, NULL);
+
+	size = HMAC_size(ctx_out);
+
+	/* Calculate A(1) */
+	HMAC_Update(ctx_a, seed, seed_len);
+	HMAC_Final(ctx_a, a, NULL);
+
+	while (1) {
+		/* Calculate next part of output */
+		HMAC_Update(ctx_out, a, size);
+		HMAC_Update(ctx_out, seed, seed_len);
+
+		/* Check if last part */
+		if (out_len < size) {
+			HMAC_Final(ctx_out, a, NULL);
+			memcpy(out, a, out_len);
+			break;
+		}
+
+		/* Place digest in output buffer */
+		HMAC_Final(ctx_out, out, NULL);
+		HMAC_Init_ex(ctx_out, NULL, 0, NULL, NULL);
+		out += size;
+		out_len -= size;
+
+		/* Calculate next A(i) */
+		HMAC_Init_ex(ctx_a, NULL, 0, NULL, NULL);
+		HMAC_Update(ctx_a, a, size);
+		HMAC_Final(ctx_a, a, NULL);
+	}
+
+	HMAC_CTX_free(ctx_a);
+	HMAC_CTX_free(ctx_out);
+#ifdef __STDC_LIB_EXT1__
+	memset_s(a, 0, sizeof(a), sizeof(a));
+#else
+	memset(a, 0, sizeof(a));
+#endif
+}
+
+
+static void eap_crypto_rfc4346_prf(uint8_t *out, size_t out_len, uint8_t *scratch,
+				   uint8_t const *secret, size_t secret_len,
+				   uint8_t const *seed, size_t seed_len)
+{
+	unsigned int	i;
+	unsigned int	len = (secret_len + 1) / 2;
+	uint8_t const	*s1 = secret;
+	uint8_t const	*s2 = secret + (secret_len - len);
+
+	crypto_rfc4346_p_hash(out, out_len, EVP_md5(), s1, len, seed, seed_len);
+	crypto_rfc4346_p_hash(scratch, out_len, EVP_sha1(), s2, len, seed, seed_len);
+
+	for (i = 0; i < out_len; i++) out[i] ^= scratch[i];
+}
+
+
 /*
  *	Same as before, but for EAP-FAST the order of {server,client}_random is flipped
  */
