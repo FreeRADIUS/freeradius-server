@@ -25,6 +25,7 @@
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/value.h>
 
 #include <ctype.h>
 #include <netdb.h>
