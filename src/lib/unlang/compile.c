@@ -531,10 +531,18 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 		 */
 		slen = fr_dict_unknown_afrom_oid_str(vpt, &unknown_da, fr_dict_root(rules->dict_def),
 						     vpt->tmpl_unknown_name);
-		if ((slen < 0) || (vpt->tmpl_unknown_name[slen] != '\0')) {
+		if ((slen <= 0) || (vpt->tmpl_unknown_name[slen] != '\0')) {
 			cf_log_perr(ci, "Failed resolving undefined attribute");
 			return false;
 		}
+
+#ifdef __clang_analyzer__
+		/*
+		 *	This can't happen, but clang analyzer
+		 *	can't deal with the call depth.
+		 */
+		if (!unknown_da) return false;
+#endif
 
 		vpt->tmpl_da = vpt->tmpl_unknown = unknown_da;
 		vpt->type = TMPL_TYPE_ATTR;
@@ -542,7 +550,11 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 	}
 
 #ifdef __clang_analyzer__
-	if (!da) return false;	/* This can't happen, but clang analyzer can't deal with the call depth */
+	/*
+	 *	This can't happen, but clang analyzer
+	 *	can't deal with the call depth.
+	 */
+	if (!da) return false;
 #endif
 
 	vpt->tmpl_da = da;

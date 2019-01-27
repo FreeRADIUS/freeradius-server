@@ -2320,7 +2320,8 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 					fr_strerror_printf("Parent OID component (%s) in \"%.*s\" specified a "
 							   "non-structural type (%s)", our_parent->name,
 							   (int)(p - oid_str), oid_str,
-							   fr_int2str(fr_value_box_type_names, our_parent->type, "<INVALID>"));
+							   fr_int2str(fr_value_box_type_names,
+							   	      our_parent->type, "<INVALID>"));
 					goto error;
 				}
 			}
