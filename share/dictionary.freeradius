@@ -1,13 +1,10 @@
 # -*- text -*-
 # Copyright (C) 2015 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 #
 #	The FreeRADIUS Vendor-Specific dictionary.
 #
 # Version:	$Id$
-#
-#	For a complete list of Private Enterprise Codes, see:
-#
-#	http://www.isi.edu/in-notes/iana/assignments/enterprise-numbers
 #
 
 VENDOR		FreeRADIUS			11344

@@ -1,6 +1,6 @@
 # -*- text -*-
 # Copyright (C) 2015 The FreeRADIUS Server project and contributors
-#  Gandalf dictionary
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 #
 # Version:	1.00	24-July-2003 Blaise St-Laurent <bstlaurent@okiok.com>
 #
@@ -11,9 +11,6 @@
 #
 VENDOR		Gandalf				64
 
-#
-#	Vendor-specific attributes
-#
 BEGIN-VENDOR	Gandalf
 
 ATTRIBUTE	Gandalf-Remote-LAN-Name			0	string

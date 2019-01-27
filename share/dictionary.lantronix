@@ -1,4 +1,5 @@
-# dictionary.lantronix
+# Copyright (C) 2015 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 #
 # Lantronix SLC Secure Lantronix Console Manager
 # Provides SLC-specific user attributes
