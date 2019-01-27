@@ -522,7 +522,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_r
 
 	rad_assert(vpt->type == TMPL_TYPE_ATTR_UNDEFINED);
 
-	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, vpt->tmpl_unknown_name, true) <= 0) {
+	if (fr_dict_attr_by_qualified_name(&da, rules->dict_def, vpt->tmpl_unknown_name, true) != FR_DICT_ATTR_OK) {
 		ssize_t slen;
 		fr_dict_attr_t *unknown_da;
 

@@ -1059,7 +1059,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			goto error;
 		}
 
-		if (fr_dict_attr_by_qualified_name(&inst->group_da, dict_freeradius, group_attribute, false) <= 0) {
+		if (fr_dict_attr_by_qualified_name(&inst->group_da, dict_freeradius,
+						   group_attribute, false) != FR_DICT_ATTR_OK) {
 			PERROR("Failed resolving group attribute");
 			goto error;
 		}
