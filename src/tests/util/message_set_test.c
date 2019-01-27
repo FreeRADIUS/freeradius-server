@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 	memset(array, 0, sizeof(array));
 	memset(messages, 0, sizeof(messages));
 
-	while ((c = getopt(argc, argv, "hs:tx")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "hs:tx")) != -1) switch (c) {
 		case 's':
 			seed_string = optarg;
 			seed_string_len = strlen(optarg);

@@ -1346,7 +1346,7 @@ int main(int argc, char *argv[])
 	static ippool_tool_operation_t	ops[128];
 	ippool_tool_operation_t		*p = ops, *end = ops + (sizeof(ops) / sizeof(*ops));
 
-	int				opt;
+	int				c;
 
 	uint8_t				*range_arg = NULL;
 	uint8_t				*pool_arg = NULL;
@@ -1380,82 +1380,81 @@ do { \
 	need_pool = true; \
 } while (0);
 
-	while ((opt = getopt(argc, argv, "a:d:r:s:Sm:p:ilLhxo:f:")) != EOF)
-	switch (opt) {
-	case 'a':
-		ADD_ACTION(IPPOOL_TOOL_ADD);
-		break;
+	while ((c = getopt(argc, argv, "a:d:r:s:Sm:p:ilLhxo:f:")) != -1) switch (c) {
+		case 'a':
+			ADD_ACTION(IPPOOL_TOOL_ADD);
+			break;
 
-	case 'd':
-		ADD_ACTION(IPPOOL_TOOL_REMOVE);
-		break;
+		case 'd':
+			ADD_ACTION(IPPOOL_TOOL_REMOVE);
+			break;
 
-	case 'r':
-		ADD_ACTION(IPPOOL_TOOL_RELEASE);
-		break;
+		case 'r':
+			ADD_ACTION(IPPOOL_TOOL_RELEASE);
+			break;
 
-	case 's':
-		ADD_ACTION(IPPOOL_TOOL_SHOW);
-		break;
+		case 's':
+			ADD_ACTION(IPPOOL_TOOL_SHOW);
+			break;
 
-	case 'm':
-		ADD_ACTION(IPPOOL_TOOL_MODIFY);
-		break;
+		case 'm':
+			ADD_ACTION(IPPOOL_TOOL_MODIFY);
+			break;
 
-	case 'p':
-	{
-		unsigned long tmp;
-		char *q;
+		case 'p':
+		{
+			unsigned long tmp;
+			char *q;
 
-		if (p == ops) {
-			ERROR("Prefix may only be specified after a pool management action");
-			usage(64);
+			if (p == ops) {
+				ERROR("Prefix may only be specified after a pool management action");
+				usage(64);
+			}
+
+			tmp = strtoul(optarg, &q, 10);
+			if (q != (optarg + strlen(optarg))) {
+				ERROR("Prefix must be an integer value");
+
+			}
+
+			(p - 1)->prefix = (uint8_t)tmp & 0xff;
 		}
+			break;
 
-		tmp = strtoul(optarg, &q, 10);
-		if (q != (optarg + strlen(optarg))) {
-			ERROR("Prefix must be an integer value");
+		case 'i':
+			do_import = optarg;
+			break;
 
-		}
+		case 'I':
+			do_export = true;
+			break;
 
-		(p - 1)->prefix = (uint8_t)tmp & 0xff;
-	}
-		break;
+		case 'l':
+			if (list_pools) usage(1);	/* Only allowed once */
+			list_pools = true;
+			break;
 
-	case 'i':
-		do_import = optarg;
-		break;
+		case 'S':
+			print_stats = true;
+			break;
 
-	case 'I':
-		do_export = true;
-		break;
+		case 'h':
+			usage(0);
 
-	case 'l':
-		if (list_pools) usage(1);	/* Only allowed once */
-		list_pools = true;
-		break;
+		case 'x':
+			fr_debug_lvl++;
+			rad_debug_lvl++;
+			break;
 
-	case 'S':
-		print_stats = true;
-		break;
+		case 'o':
+			break;
 
-	case 'h':
-		usage(0);
+		case 'f':
+			if (cf_file_read(conf->cs, optarg) < 0 || (cf_section_pass2(conf->cs) < 0)) exit(EXIT_FAILURE);
+			break;
 
-	case 'x':
-		fr_debug_lvl++;
-		rad_debug_lvl++;
-		break;
-
-	case 'o':
-		break;
-
-	case 'f':
-		if (cf_file_read(conf->cs, optarg) < 0 || (cf_section_pass2(conf->cs) < 0)) exit(EXIT_FAILURE);
-		break;
-
-	default:
-		usage(1);
+		default:
+			usage(1);
 	}
 	argc -= optind;
 	argv += optind;

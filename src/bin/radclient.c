@@ -1211,7 +1211,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhn:p:P:qr:sS:t:vx")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhn:p:P:qr:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;

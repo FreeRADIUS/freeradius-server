@@ -223,7 +223,7 @@ int main(int argc, char **argv)
 		main_config_name_set_default(config, p + 1, false);
 	}
 
-	while((c = getopt(argc, argv, "d:D:fF:nN:sSipP:crRu:U:Z")) != EOF) switch (c) {
+	while((c = getopt(argc, argv, "d:D:fF:nN:sSipP:crRu:U:Z")) != -1) switch (c) {
 		case 'd':
 			main_config_raddb_dir_set(config, optarg);
 			break;

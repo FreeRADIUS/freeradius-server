@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 
 	fr_log_init(&default_log, false);
 
-	while ((c = getopt(argc, argv, "n:w:x")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "n:w:x")) != -1) switch (c) {
 		case 'n':
 			num_networks = atoi(optarg);
 			if ((num_networks <= 0) || (num_networks > 16)) usage();

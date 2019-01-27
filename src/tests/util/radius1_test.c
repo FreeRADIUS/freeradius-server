@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
 	my_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
 	my_port = 1812;
 
-	while ((c = getopt(argc, argv, "c:hi:qs:w:x")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "c:hi:qs:w:x")) != -1) switch (c) {
 		case 'x':
 			debug_lvl++;
 			break;

@@ -1367,7 +1367,7 @@ int main(int argc, char *argv[])
 	MEM(features = cf_section_alloc(cs, cs, "feature", NULL));
 	dependency_features_init(features);	/* Add build time features to the config section */
 
-	while ((c = getopt(argc, argv, "d:D:fxMh")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "d:D:fxMh")) != -1) switch (c) {
 		case 'd':
 			raddb_dir = optarg;
 			break;

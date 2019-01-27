@@ -583,7 +583,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, U
 int main(int argc, char *argv[])
 {
 	int			ret = EXIT_SUCCESS;
-	int			argval;
+	int			c;
 	const char 		*input_file = NULL;
 	const char		*output_file = NULL;
 	const char		*filter_file = NULL;
@@ -647,9 +647,8 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "d:D:f:hi:mMn:o:O:xX")) != EOF) {
-
-		switch (argval) {
+	while ((c = getopt(argc, argv, "d:D:f:hi:mMn:o:O:xX")) != -1) {
+		switch (c) {
 			case 'd':
 				main_config_raddb_dir_set(config, optarg);
 				break;

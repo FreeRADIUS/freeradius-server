@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
 
 	fr_time_start();
 
-	while ((c = getopt(argc, argv, "hm:o:tx")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "hm:o:tx")) != -1) switch (c) {
 		case 'x':
 			debug_lvl++;
 			break;

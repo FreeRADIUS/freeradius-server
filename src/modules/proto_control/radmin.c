@@ -567,7 +567,7 @@ static void add_history(UNUSED char *line)
 
 int main(int argc, char **argv)
 {
-	int		argval;
+	int		c;
 	bool		quiet = false;
 	char		*line = NULL;
 	ssize_t		len;
@@ -606,8 +606,7 @@ int main(int argc, char **argv)
 
 	rad_debug_lvl = L_DBG_LVL_1;
 
-	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:Sx")) != EOF) {
-		switch (argval) {
+	while ((c = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:Sx")) != -1) switch (c) {
 		case 'd':
 			if (file) {
 				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);
@@ -627,8 +626,7 @@ int main(int argc, char **argv)
 		case 'e':
 			num_commands++; /* starts at -1 */
 			if (num_commands >= MAX_COMMANDS) {
-				fprintf(stderr, "%s: Too many '-e'\n",
-					progname);
+				fprintf(stderr, "%s: Too many '-e'\n", progname);
 				exit(EXIT_FAILURE);
 			}
 
@@ -685,7 +683,6 @@ int main(int argc, char **argv)
 		case 'x':
 			rad_debug_lvl++;
 			break;
-		}
 	}
 
 	/*

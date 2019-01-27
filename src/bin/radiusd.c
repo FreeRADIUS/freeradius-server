@@ -154,7 +154,7 @@ do { \
 int main(int argc, char *argv[])
 {
 	int		status;
-	int		argval;
+	int		c;
 	bool		display_version = false;
 	bool		radmin = false;
 	int		from_child[2] = {-1, -1};
@@ -273,8 +273,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:L:Mn:p:PrstTvxX")) != EOF) {
-		switch (argval) {
+	while ((c = getopt(argc, argv, "Cd:D:fhi:l:L:Mn:p:PrstTvxX")) != -1) switch (c) {
 		case 'C':
 			check_config = true;
 			config->spawn_workers = false;
@@ -382,7 +381,6 @@ int main(int argc, char *argv[])
 		default:
 			usage(config, EXIT_FAILURE);
 			break;
-		}
 	}
 
 	fr_debug_lvl = req_debug_lvl = config->debug_level = rad_debug_lvl;

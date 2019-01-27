@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 	my_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
 	my_port = 1812;
 
-	while ((c = getopt(argc, argv, "i:n:s:w:x")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "i:n:s:w:x")) != -1) switch (c) {
 		case 'i':
 			if (fr_inet_pton_port(&my_ipaddr, &port16, optarg, -1, AF_INET, true, false) < 0) {
 				fr_perror("Failed parsing ipaddr");

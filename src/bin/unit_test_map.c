@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	while ((c = getopt(argc, argv, "d:D:xMh")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "d:D:xMh")) != -1) switch (c) {
 		case 'd':
 			raddb_dir = optarg;
 			break;

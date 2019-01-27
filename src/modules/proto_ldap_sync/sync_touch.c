@@ -69,8 +69,7 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:l:n:p:qr:sS:t:vx")) != EOF) switch (c) {
-
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:l:n:p:qr:sS:t:vx")) != -1) switch (c) {
 		case 'S':
 		{
 			char *p;

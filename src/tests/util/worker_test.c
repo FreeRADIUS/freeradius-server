@@ -498,7 +498,7 @@ int main(int argc, char *argv[])
 
 	fr_log_init(&default_log, false);
 
-	while ((c = getopt(argc, argv, "c:hm:o:qtw:x")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "c:hm:o:qtw:x")) != -1) switch (c) {
 		case 'x':
 			debug_lvl++;
 			break;

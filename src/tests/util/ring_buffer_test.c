@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 
 	TALLOC_CTX	*autofree = talloc_autofree_context();
 
-	while ((c = getopt(argc, argv, "hs:x")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "hs:x")) != -1) switch (c) {
 		case 's':
 			seed_string = optarg;
 			seed_string_len = strlen(optarg);

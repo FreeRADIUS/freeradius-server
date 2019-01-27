@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 
 	size = 4;
 
-	while ((c = getopt(argc, argv, "hs:tx")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "hs:tx")) != -1) switch (c) {
 		case 's':
 			size = atoi(optarg);
 			break;

@@ -619,7 +619,7 @@ int main(int argc, char **argv)
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
 
-	while ((c = getopt(argc, argv, "d:D:f:hr:t:vxi:")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:D:f:hr:t:vxi:")) != -1) switch(c) {
 		case 'D':
 			dict_dir = optarg;
 			break;

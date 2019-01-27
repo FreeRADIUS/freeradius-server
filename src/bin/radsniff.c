@@ -2203,7 +2203,7 @@ int main(int argc, char *argv[])
 	char		errbuf[PCAP_ERRBUF_SIZE];			/* Error buffer */
 	int		port = FR_AUTH_UDP_PORT;
 
-	int		opt;
+	int		c;
 	char const	*raddb_dir = RADDBDIR;
 	char const	*dict_dir = DICTDIR;
 	TALLOC_CTX	*autofree = talloc_autofree_context();
@@ -2259,8 +2259,8 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "ab:c:C:d:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
-		switch (opt) {
+	while ((c = getopt(argc, argv, "ab:c:C:d:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != -1) {
+		switch (c) {
 		case 'a':
 		{
 			pcap_if_t *all_devices = NULL;

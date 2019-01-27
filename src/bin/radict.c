@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 
 	fr_debug_lvl = 1;
 
-	while ((c = getopt(argc, argv, "ED:xh")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "ED:xh")) != -1) switch (c) {
 		case 'E':
 			export = true;
 			break;
