@@ -254,7 +254,11 @@ static ssize_t cond_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out
 			*error = "Unexpected escape";
 		error:
 			*out = NULL;
-			return start - p;	/* clang scan doesn't like -(p - start) */
+#ifdef __clang_analyzer__
+			return 0;	/* clang analyzer bug.  Determines p < start in same cases */
+#else
+			return -(p - start);
+#endif
 		}
 
 		/*
