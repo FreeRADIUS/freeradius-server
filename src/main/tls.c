@@ -3947,6 +3947,11 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 			DEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
 			break;
 
+		case SSL_ERROR_NONE:
+			RDEBUG2("No application data received.  Assuming handshake is continuing...");
+			err = 0;
+			break;
+
 		default:
 			REDEBUG("Error in fragmentation logic");
 			tls_error_io_log(request, ssn, err,
