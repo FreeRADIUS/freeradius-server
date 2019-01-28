@@ -171,6 +171,12 @@ sub process_file {
 		}
 
 		#
+		#  Auto-link to MANs
+		#
+		if ($line =~ s,man (\w+),https://linux.die.net/man/3/${1}\[man $1\],g) {
+			# nothing
+		}
+		#
 		#  And print out the raw text.
 		#
 		print $output $line;
