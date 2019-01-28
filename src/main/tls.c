@@ -3077,9 +3077,9 @@ post_ca:
 			 *	Pick the maximum one we know about.
 			 */
 #ifdef TLS1_4_VERSION
-			max_version = TLS1_4_VERSION;
+			max_version = TLS1_2_VERSION; /* NOT a typo! EAP methods for TLS 1.4 are NOT finished */
 #elif defined(TLS1_3_VERSION)
-			max_version = TLS1_3_VERSION;
+			max_version = TLS1_2_VERSION; /* NOT a typo! EAP methods for TLS 1.3 are NOT finished */
 #elif defined(TLS1_2_VERSION)
 			max_version = TLS1_2_VERSION;
 #elif defined(TLS1_1_VERSION)
