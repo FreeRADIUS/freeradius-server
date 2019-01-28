@@ -50,7 +50,7 @@ couchbase {
 	expire = 2592000
 
 	#
-	# update {}:: Map attribute names to json element names for accounting.
+	# update { ... }:: Map attribute names to json element names for accounting.
 	#
 	# Configuration items are in the format `<radius attribute> = '<element name>'`
 	#
@@ -98,7 +98,7 @@ couchbase {
 #	read_clients = no
 
 	#
-	# client {}:: `Map` attribute names to jSON element names when loading clients.
+	# client { ... }:: `Map` attribute names to jSON element names when loading clients.
 	#
 	# Configuration follows the same rules as the accounting `map` above.
 	#
@@ -109,7 +109,7 @@ couchbase {
 		view = "_design/client/_view/by_id"
 
 		#
-		# template {}:: Sets default values (not obtained from couchbase) for new client entries.
+		# template { ... }:: Sets default values (not obtained from couchbase) for new client entries.
 		#
 		template {
 #			login				= 'test'
@@ -119,7 +119,7 @@ couchbase {
 		}
 
 		#
-		# attribute{}:: Sets the client mappings following the format: `<client attribute> = '<element name>'`.
+		# attribute { ... }:: Sets the client mappings following the format: `<client attribute> = '<element name>'`.
 		#
 		# The following attributes are required:
 		#
@@ -145,7 +145,7 @@ couchbase {
 	}
 
 	#
-	# pool {}:: The connection pool is new for >= `3.0`, and will be used in many
+	# pool { ... }:: The connection pool is new for >= `3.0`, and will be used in many
 	# modules, for all kinds of connection-related activity.
 	#
 	pool {
