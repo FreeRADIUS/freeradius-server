@@ -94,7 +94,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	uint8_t const *p = data;
 
 	FR_PROTO_TRACE("%s called to parse %zu bytes", __FUNCTION__, data_len);
-	FR_PROTO_HEX_DUMP(NULL, data, data_len);
+	FR_PROTO_HEX_DUMP(data, data_len, NULL);
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
@@ -233,7 +233,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 	if (data_len < 3) return -1; /* type, length, value */
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
-	FR_PROTO_HEX_DUMP(NULL, data, data_len);
+	FR_PROTO_HEX_DUMP(data, data_len, NULL);
 
 	/*
 	 *	Each TLV may contain multiple children
@@ -313,7 +313,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	ssize_t		len;
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
-	FR_PROTO_HEX_DUMP(NULL, data, data_len);
+	FR_PROTO_HEX_DUMP(data, data_len, NULL);
 
 	/*
 	 *	TLVs can't be coalesced as they're variable length
@@ -372,7 +372,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 	if (data_len == 0) return 0;
 
-	FR_PROTO_HEX_DUMP(NULL, data, data_len);
+	FR_PROTO_HEX_DUMP(data, data_len, NULL);
 
 	parent = fr_dict_root(dict);
 
@@ -385,7 +385,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 		for (i = 1; i < data_len; i++) {
 			if (p[i] != 0) {
-				FR_PROTO_HEX_DUMP("ignoring trailing junk at end of packet", p + i, data_len - i);
+				FR_PROTO_HEX_DUMP(p + i, data_len - i, "ignoring trailing junk at end of packet");
 				break;
 			}
 		}

@@ -150,7 +150,7 @@ static ssize_t encode_iv(uint8_t *out, size_t outlen, void *encoder_ctx)
 	memcpy(p, packet_ctx->iv, sizeof(packet_ctx->iv));
 	p += sizeof(packet_ctx->iv);
 
-	FR_PROTO_HEX_DUMP("Initialisation vector", out, p - out);
+	FR_PROTO_HEX_DUMP(out, p - out, "Initialisation vector");
 
 	packet_ctx->iv_included = true;
 
@@ -214,7 +214,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 		p[0] = FR_SIM_PADDING;
 		p[1] = pad_len >> 2;
 		memset(p + 2, 0, pad_len - 2);	/* Ensure the rest is zeroed out */
-		FR_PROTO_HEX_DUMP("Done padding attribute", p, pad_len);
+		FR_PROTO_HEX_DUMP(p, pad_len, "Done padding attribute");
 	}
 
 	evp_ctx = EVP_CIPHER_CTX_new();
@@ -240,7 +240,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 
 	p = out;	/* Because we're using out to store our plaintext (and out usually == in) */
 
-	FR_PROTO_HEX_DUMP("plaintext", p, total_len);
+	FR_PROTO_HEX_DUMP(p, total_len, "plaintext");
 
 	/*
 	 *	By default OpenSSL expects 16 bytes of plaintext
@@ -273,7 +273,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 		goto error;
 	}
 
-	FR_PROTO_HEX_DUMP("ciphertext", encr, encr_len);
+	FR_PROTO_HEX_DUMP(encr, encr_len, "ciphertext");
 
 	p = out;
 
@@ -747,7 +747,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 	out[0] = da->attr & 0xff;
 	out[1] = (p - out) >> 2;
 
-	FR_PROTO_HEX_DUMP("Done RFC attribute", out, p - out);
+	FR_PROTO_HEX_DUMP(out, p - out, "Done RFC attribute");
 
 	return (p - out);	/* AT + Length + Data */
 }
@@ -814,7 +814,7 @@ static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
 		p = value + slen;
 	}
 
-	FR_PROTO_HEX_DUMP("Done TLV", out, p - out);
+	FR_PROTO_HEX_DUMP(out, p - out, "Done TLV");
 
 	return p - out;
 }
@@ -872,7 +872,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	*p++ = total_len >> 2;			/* Length */
 	p += len;				/* Now increment */
 
-	FR_PROTO_HEX_DUMP("Done TLV attribute", out, p - out);
+	FR_PROTO_HEX_DUMP(out, p - out, "Done TLV attribute");
 
 	return p - out;	/* AT_IV + AT_*(TLV) - Can't use total_len, doesn't include IV */
 }
@@ -1059,9 +1059,9 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 						 packet_ctx->keys->k_aut, packet_ctx->keys->k_aut_len,
 						 packet_ctx->hmac_extra, packet_ctx->hmac_extra_len);
 		if (slen < 0) goto error;
-		FR_PROTO_HEX_DUMP("hmac attribute", hmac - 4, SIM_MAC_SIZE);
+		FR_PROTO_HEX_DUMP(hmac - 4, SIM_MAC_SIZE, "hmac attribute");
 	}
-	FR_PROTO_HEX_DUMP("sim packet", buff, eap_packet->type.length);
+	FR_PROTO_HEX_DUMP(buff, eap_packet->type.length, "sim packet");
 
 	/*
 	 *	Shrink buffer to the correct size

@@ -194,7 +194,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		if (struct_da != tlv_stack[depth]) break;
 		vp = fr_cursor_current(cursor);
 
-		FR_PROTO_HEX_DUMP("Done STRUCT", out, p - out);
+		FR_PROTO_HEX_DUMP(out, p - out, "Done STRUCT");
 	}
 
 	return p - out;
@@ -565,7 +565,7 @@ static ssize_t encode_tlv(uint8_t *out, size_t outlen,
 	}
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP("Done TLV body", out, p - out);
+	FR_PROTO_HEX_DUMP(out, p - out, "Done TLV body");
 #endif
 
 	return p - out;
@@ -612,7 +612,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen,
 	if (slen < 0) return slen;
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP("Done RFC header", out, p - out);
+	FR_PROTO_HEX_DUMP(out, p - out, "Done RFC header");
 #endif
 
 	return p - out;
@@ -658,7 +658,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	if (slen < 0) return slen;
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP("Done TLV header", out, p - out);
+	FR_PROTO_HEX_DUMP(out, p - out, "Done TLV header");
 #endif
 
 	return p - out;
@@ -801,7 +801,7 @@ static ssize_t encode_vsio_suboption_hdr(uint8_t *out, size_t outlen,
 	}
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP("Done VSIO body", out, end - p);
+	FR_PROTO_HEX_DUMP(out, end - p, "Done VSIO body");
 #endif
 
 	return p - out;
@@ -877,7 +877,7 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 	encode_option_hdr(out, outlen, da->attr, p - out);
 
 #ifndef NDEBUG
-	FR_PROTO_HEX_DUMP("Done VSIO header", out, end - p);
+	FR_PROTO_HEX_DUMP(out, end - p, "Done VSIO header");
 #endif
 
 	return p - out;
@@ -939,7 +939,7 @@ ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	if (slen <= 0) return slen;
 
 	FR_PROTO_TRACE("Complete option is %zu byte(s)", slen);
-	FR_PROTO_HEX_DUMP(NULL, out, slen);
+	FR_PROTO_HEX_DUMP(out, slen, NULL);
 
 	return slen;
 }

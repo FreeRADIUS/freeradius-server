@@ -38,17 +38,17 @@ do { \
 
 #ifndef NDEBUG
 #  define FR_PROTO_TRACE(_x, ...)	if (fr_log_fp && (fr_debug_lvl > 3)) fr_proto_print(__FILE__, __LINE__, _x, ## __VA_ARGS__)
-#  define FR_PROTO_HEX_DUMP(_x, _y, _z)	if (fr_log_fp && (fr_debug_lvl > 3)) fr_proto_print_hex_data(__FILE__, __LINE__, _x, _y, _z)
+#  define FR_PROTO_HEX_DUMP(_data, _data_len, _fmt, ...)	if (fr_log_fp && (fr_debug_lvl > 3)) fr_proto_print_hex_data(__FILE__, __LINE__, _data, _data_len, _fmt, ## __VA_ARGS__)
 #  define FR_PROTO_STACK_PRINT(_x, _y)	if (fr_log_fp && (fr_debug_lvl > 3)) fr_proto_tlv_stack_print( __FILE__, __LINE__, __FUNCTION__, _x, _y)
 #else
 #  define FR_PROTO_TRACE(_x, ...)
-#  define FR_PROTO_HEX_DUMP(_x, _y, _z)
+#  define FR_PROTO_HEX_DUMP(_z, ..., _x, _y)
 #  define FR_PROTO_STACK_PRINT(_x, _y)
 #endif
 
 void fr_proto_print(char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
 
-void fr_proto_print_hex_data(char const *file, int line, char const *msg, uint8_t const *data, size_t len);
+void fr_proto_print_hex_data(char const *file, int line, uint8_t const *data, size_t data_len, char const *fmt, ...);
 
 void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_dict_attr_t const **tlv_stack, unsigned int depth);
 

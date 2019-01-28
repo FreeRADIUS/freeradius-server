@@ -532,11 +532,11 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 				int num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
 				const SSL_CIPHER *this_cipher;
 
-				RDEBUG3("Client proposed the following ciphers:");
+				RDEBUG3("Client's preferred ciphers (by priority)");
 				RINDENT();
 				for (i = 0; i < num_ciphers; i++) {
 					this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
-					RDEBUG3("%s", SSL_CIPHER_get_name(this_cipher));
+					RDEBUG3("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
 				}
 				REXDENT();
 			}

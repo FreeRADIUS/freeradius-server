@@ -261,7 +261,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[static SIM_MAC_DIGEST_SIZE],
 		return -1;
 	}
 
-	FR_PROTO_HEX_DUMP("MAC key", key, key_len);
+	FR_PROTO_HEX_DUMP(key, key_len, "MAC key");
 	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
 	if (!pkey) {
 		tls_strerror_printf("Failed creating HMAC signing key");
@@ -293,7 +293,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[static SIM_MAC_DIGEST_SIZE],
 	memcpy(&eap_hdr.length, &packet_len, sizeof(packet_len));
 	eap_hdr.data[0] = eap_packet->type.num;
 
-	FR_PROTO_HEX_DUMP("MAC digest input (eap header)", (uint8_t *)&eap_hdr, sizeof(eap_hdr));
+	FR_PROTO_HEX_DUMP((uint8_t *)&eap_hdr, sizeof(eap_hdr), "MAC digest input (eap header)");
 	if (EVP_DigestSignUpdate(md_ctx, &eap_hdr, sizeof(eap_hdr)) != 1) {
 		tls_strerror_printf("Failed digesting EAP data");
 		goto error;
@@ -310,7 +310,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[static SIM_MAC_DIGEST_SIZE],
 			uint8_t zero[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-			FR_PROTO_HEX_DUMP("MAC digest input", p, mac - p);
+			FR_PROTO_HEX_DUMP(p, mac - p, "MAC digest input");
 
 			/*
 			 *	Digest everything up to the hash
@@ -324,7 +324,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[static SIM_MAC_DIGEST_SIZE],
 			p += mac - p;
 
 
-			FR_PROTO_HEX_DUMP("MAC digest input", zero, sizeof(zero));
+			FR_PROTO_HEX_DUMP(zero, sizeof(zero), "MAC digest input");
 			/*
 			 *	Feed in 16 bytes of zeroes to
 			 *	simulated the zeroed out Mac.
@@ -347,7 +347,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[static SIM_MAC_DIGEST_SIZE],
 	}
 
 	if (p < end) {
-		FR_PROTO_HEX_DUMP("MAC digest input", p, (end - p));
+		FR_PROTO_HEX_DUMP(p, (end - p), "MAC digest input");
 
 		/*
 		 *	Digest the rest of the packet.
@@ -365,7 +365,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[static SIM_MAC_DIGEST_SIZE],
 	 *	a concatenation of packet data, and something extra...
 	 */
 	if (hmac_extra) {
-		FR_PROTO_HEX_DUMP("MAC digest input (extra)", hmac_extra, hmac_extra_len);
+		FR_PROTO_HEX_DUMP(hmac_extra, hmac_extra_len, "MAC digest input (extra)");
 		if (EVP_DigestSignUpdate(md_ctx, hmac_extra, hmac_extra_len) != 1) {
 			tls_strerror_printf("Failed digesting HMAC extra data");
 			goto error;
@@ -377,7 +377,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[static SIM_MAC_DIGEST_SIZE],
 		goto error;
 	}
 
-	FR_PROTO_HEX_DUMP("MAC", digest, digest_len);
+	FR_PROTO_HEX_DUMP(digest, digest_len, "MAC");
 
 	/*
 	 *	Truncate by four bytes.
@@ -450,7 +450,7 @@ int fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys)
 	memcpy(p, keys->gsm.version_select, sizeof(keys->gsm.version_select));
 	p += sizeof(keys->gsm.version_select);
 
-	FR_PROTO_HEX_DUMP("Identity || n*Kc || NONCE_MT || Version List || Selected Version", buf, p - buf);
+	FR_PROTO_HEX_DUMP(buf, p - buf, "Identity || n*Kc || NONCE_MT || Version List || Selected Version");
 
 	/*
 	 *	Do the master key first
@@ -459,7 +459,7 @@ int fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys)
 	fr_sha1_update(&context, buf, p - buf);
 	fr_sha1_final(keys->master_key, &context);
 
-	FR_PROTO_HEX_DUMP("Master key", keys->master_key, sizeof(keys->master_key));
+	FR_PROTO_HEX_DUMP(keys->master_key, sizeof(keys->master_key), "Master key");
 
 	/*
 	 *	Now use the PRF to expand it, generated
@@ -473,19 +473,19 @@ int fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys)
 	p = fk;
 	memcpy(keys->k_encr, p, 16);				/* 128 bits for encryption */
 	p += 16;
-	FR_PROTO_HEX_DUMP("K_encr", keys->k_encr, sizeof(keys->k_encr));
+	FR_PROTO_HEX_DUMP(keys->k_encr, sizeof(keys->k_encr), "K_encr");
 
 	memcpy(keys->k_aut, p, EAP_SIM_AUTH_SIZE);		/* 128 bits for auth */
 	p += EAP_SIM_AUTH_SIZE;
 	keys->k_aut_len = EAP_SIM_AUTH_SIZE;
-	FR_PROTO_HEX_DUMP("K_aut", keys->k_aut, keys->k_aut_len);
+	FR_PROTO_HEX_DUMP(keys->k_aut, keys->k_aut_len, "K_aut");
 
 	memcpy(keys->msk, p, 64);				/* 64 bytes for Master Session Key */
 	p += 64;
-	FR_PROTO_HEX_DUMP("K_msk", keys->msk, sizeof(keys->msk));
+	FR_PROTO_HEX_DUMP(keys->msk, sizeof(keys->msk), "K_msk");
 
 	memcpy(keys->emsk, p, 64);				/* 64 bytes for Extended Master Session Key */
-	FR_PROTO_HEX_DUMP("K_emsk", keys->emsk, sizeof(keys->emsk));
+	FR_PROTO_HEX_DUMP(keys->emsk, sizeof(keys->emsk), "K_emsk");
 
 	return 0;
 }
@@ -647,12 +647,12 @@ int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
 	p = fk;
 	memcpy(keys->k_encr, p, 16);				/* 128 bits for encryption */
 	p += 16;
-	FR_PROTO_HEX_DUMP("K_encr", keys->k_encr, sizeof(keys->k_encr));
+	FR_PROTO_HEX_DUMP(keys->k_encr, sizeof(keys->k_encr), "K_encr");
 
 	memcpy(keys->k_aut,  p, EAP_SIM_AUTH_SIZE);		/* 128 bits for auth */
 
 	keys->k_aut_len = EAP_SIM_AUTH_SIZE;
-	FR_PROTO_HEX_DUMP("K_aut", keys->k_aut, keys->k_aut_len);
+	FR_PROTO_HEX_DUMP(keys->k_aut, keys->k_aut_len, "K_aut");
 
 	/*
 	 *	Derive a new MSK and EMSK
@@ -667,7 +667,7 @@ int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
 	p = buf;
 	memcpy(p, keys->identity, keys->identity_len);
 	p += keys->identity_len;
-	FR_PROTO_HEX_DUMP("identity", keys->identity, keys->identity_len);
+	FR_PROTO_HEX_DUMP(keys->identity, keys->identity_len, "identity");
 
 	/*
 	 *	Counter
@@ -687,7 +687,7 @@ int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
 	memcpy(p, keys->master_key, sizeof(keys->master_key));
 	p += sizeof(keys->master_key);
 
-	FR_PROTO_HEX_DUMP("Identity || counter || NONCE_S || MK", buf, p - buf);
+	FR_PROTO_HEX_DUMP(buf, p - buf, "Identity || counter || NONCE_S || MK");
 
 	/*
 	 *	Digest re-auth key with SHA1
@@ -717,7 +717,7 @@ int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
 
 	EVP_MD_CTX_destroy(md_ctx);
 
-	FR_PROTO_HEX_DUMP("xkey'", xkey_prime, sizeof(xkey_prime));
+	FR_PROTO_HEX_DUMP(xkey_prime, sizeof(xkey_prime), "xkey'");
 
 	/*
 	 *	Expand XKEY' with PRF
@@ -730,10 +730,10 @@ int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
 	p = fk;
 	memcpy(keys->msk, p, 64);				/* 64 bytes for Master Session Key */
 	p += 64;
-	FR_PROTO_HEX_DUMP("K_msk", keys->msk, sizeof(keys->msk));
+	FR_PROTO_HEX_DUMP(keys->msk, sizeof(keys->msk), "K_msk");
 
 	memcpy(keys->emsk, p, 64);				/* 64 bytes for Extended Master Session Key */
-	FR_PROTO_HEX_DUMP("K_emsk", keys->emsk, sizeof(keys->emsk));
+	FR_PROTO_HEX_DUMP(keys->emsk, sizeof(keys->emsk), "K_emsk");
 
 	return 0;
 }
@@ -790,10 +790,10 @@ static int sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 			     SIM_SQN_AK_SIZE +
 			     sizeof(l1)) <= sizeof(s))) return -1;
 
-	FR_PROTO_HEX_DUMP("Network", keys->network, keys->network_len);
-	FR_PROTO_HEX_DUMP("CK", keys->umts.vector.ck, sizeof(keys->umts.vector.ck));
-	FR_PROTO_HEX_DUMP("IK", keys->umts.vector.ik, sizeof(keys->umts.vector.ik));
-	FR_PROTO_HEX_DUMP("SQN ⊕ AK", sqn_ak_buff, SIM_SQN_AK_SIZE);
+	FR_PROTO_HEX_DUMP(keys->network, keys->network_len, "Network");
+	FR_PROTO_HEX_DUMP(keys->umts.vector.ck, sizeof(keys->umts.vector.ck), "CK");
+	FR_PROTO_HEX_DUMP(keys->umts.vector.ik, sizeof(keys->umts.vector.ik), "IK");
+	FR_PROTO_HEX_DUMP(sqn_ak_buff, SIM_SQN_AK_SIZE, "SQN ⊕ AK");
 
 	/*
 	 *	FC || P0 || L0 || P1 || L1 || ... || Pn || Ln
@@ -815,7 +815,7 @@ static int sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 
 	s_len = p - s;
 
-	FR_PROTO_HEX_DUMP("FC || P0 || L0 || P1 || L1 || ... || Pn || Ln", s, s_len);
+	FR_PROTO_HEX_DUMP(s, s_len, "FC || P0 || L0 || P1 || L1 || ... || Pn || Ln");
 
 	/*
 	 *	CK || IK
@@ -825,7 +825,7 @@ static int sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 	p += sizeof(keys->umts.vector.ck);
 	memcpy(p, keys->umts.vector.ik, sizeof(keys->umts.vector.ik));
 
-	FR_PROTO_HEX_DUMP("CK || IK", k, sizeof(k));
+	FR_PROTO_HEX_DUMP(k, sizeof(k), "CK || IK");
 
 	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, k, sizeof(k));
 	if (!pkey) {
@@ -853,8 +853,8 @@ static int sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 	memcpy(keys->ik_prime, digest, sizeof(keys->ik_prime));
 	memcpy(keys->ck_prime, digest + sizeof(keys->ik_prime), sizeof(keys->ck_prime));
 
-	FR_PROTO_HEX_DUMP("CK'", keys->ck_prime, sizeof(keys->ck_prime));
-	FR_PROTO_HEX_DUMP("IK'", keys->ik_prime, sizeof(keys->ik_prime));
+	FR_PROTO_HEX_DUMP(keys->ck_prime, sizeof(keys->ck_prime), "CK'");
+	FR_PROTO_HEX_DUMP(keys->ik_prime, sizeof(keys->ik_prime), "IK'");
 
 	EVP_MD_CTX_destroy(md_ctx);;
 	EVP_PKEY_free(pkey);
@@ -1061,7 +1061,7 @@ int fr_sim_crypto_kdf_1_reauth(fr_sim_keys_t *keys)
 	 */
 	memcpy(p, keys->identity, keys->identity_len);
 	p += keys->identity_len;
-	FR_PROTO_HEX_DUMP("identity", keys->identity, keys->identity_len);
+	FR_PROTO_HEX_DUMP(keys->identity, keys->identity_len, "identity");
 
 	/*
 	 *	Counter
@@ -1075,22 +1075,22 @@ int fr_sim_crypto_kdf_1_reauth(fr_sim_keys_t *keys)
 	memcpy(p, keys->reauth.nonce_s, sizeof(keys->reauth.nonce_s));
 	p += sizeof(keys->reauth.nonce_s);
 
-	FR_PROTO_HEX_DUMP("\"EAP-AKA' re-auth\" || Identity || counter || NONCE_S", s, p - s);
+	FR_PROTO_HEX_DUMP(s, p - s, "\"EAP-AKA' re-auth\" || Identity || counter || NONCE_S");
 
 	/*
 	 *	Feed into PRF
 	 */
 	if (sim_crypto_aka_prime_prf(mk, sizeof(mk), keys->k_re, sizeof(keys->k_re), s, p - s) < 0) return -1;
 
-	FR_PROTO_HEX_DUMP("mk", mk, sizeof(mk));
+	FR_PROTO_HEX_DUMP(mk, sizeof(mk), "mk");
 
 	p = mk;
 	memcpy(keys->msk, p, sizeof(keys->msk));			/* 64 bytes for Master Session Key */
 	p += sizeof(keys->msk);
-	FR_PROTO_HEX_DUMP("K_msk", keys->msk, sizeof(keys->msk));
+	FR_PROTO_HEX_DUMP(keys->msk, sizeof(keys->msk), "K_msk");
 
 	memcpy(keys->emsk, p, sizeof(keys->msk));			/* 64 bytes for Extended Master Session Key */
-	FR_PROTO_HEX_DUMP("K_emsk", keys->emsk, sizeof(keys->emsk));
+	FR_PROTO_HEX_DUMP(keys->emsk, sizeof(keys->emsk), "K_emsk");
 
 	return 0;
 }

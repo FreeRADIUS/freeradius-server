@@ -125,7 +125,7 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 
 	if (!fr_cond_assert(attr_len <= data_len)) return -1;
 
-	FR_PROTO_HEX_DUMP("ciphertext", data, attr_len);
+	FR_PROTO_HEX_DUMP(data, attr_len, "ciphertext");
 
 	/*
 	 *	Encrypted values must be a multiple of 16.
@@ -234,7 +234,7 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	}
 
 	FR_PROTO_TRACE("decryption successful, got %zu bytes of cleartext", decr_len);
-	FR_PROTO_HEX_DUMP("cleartext", decr, decr_len);
+	FR_PROTO_HEX_DUMP(decr, decr_len, "cleartext");
 
 	*out = decr;
 
@@ -407,7 +407,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		p += 2;	/* Skip the reserved bytes */
 	}
 
-	FR_PROTO_HEX_DUMP("tlvs", p, end - p);
+	FR_PROTO_HEX_DUMP(p, end - p, "tlvs");
 
 	/*
 	 *  Record where we were in the list when packet_ctx function was called
@@ -540,7 +540,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	if (!fr_cond_assert(parent)) return -1;
 
 	FR_PROTO_TRACE("Parent %s len %zu", parent->name, attr_len);
-	FR_PROTO_HEX_DUMP(__FUNCTION__ , data, attr_len);
+	FR_PROTO_HEX_DUMP(data, attr_len, __FUNCTION__ );
 
 	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(fr_value_box_type_names, parent->type, "?Unknown?"), parent->type);
 

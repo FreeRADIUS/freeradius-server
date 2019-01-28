@@ -144,7 +144,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
-	FR_PROTO_HEX_DUMP("Value", out, (p - out));
+	FR_PROTO_HEX_DUMP(out, (p - out), "Value");
 
 	return p - out;
 }
@@ -212,7 +212,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 
 		FR_PROTO_STACK_PRINT(tlv_stack, depth);
 		FR_PROTO_TRACE("Encoded value is %zu byte(s)", len);
-		FR_PROTO_HEX_DUMP(NULL, out, (p - out));
+		FR_PROTO_HEX_DUMP(out, (p - out), NULL);
 
 		p += len;
 		out[1] += len;
@@ -284,7 +284,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 		out[1] += len;
 
 		FR_PROTO_STACK_PRINT(tlv_stack, depth);
-		FR_PROTO_HEX_DUMP("TLV header and sub TLVs", out, (p - out));
+		FR_PROTO_HEX_DUMP(out, (p - out), "TLV header and sub TLVs");
 
 		/*
 		 *	If nothing updated the attribute, stop
@@ -352,7 +352,7 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	if (len < 0) return len;
 
 	FR_PROTO_TRACE("Complete option is %zu byte(s)", len);
-	FR_PROTO_HEX_DUMP(NULL, out, len);
+	FR_PROTO_HEX_DUMP(out, len, NULL);
 
 	return len;
 }

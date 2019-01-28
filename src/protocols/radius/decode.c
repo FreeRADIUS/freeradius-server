@@ -255,7 +255,7 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 
 	FR_PROTO_TRACE("Checking TLV %u/%u", (unsigned int) dv_type, (unsigned int) dv_length);
 
-	FR_PROTO_HEX_DUMP("tlv_ok", data, length);
+	FR_PROTO_HEX_DUMP(data, length, "tlv_ok");
 
 	if ((dv_length > 2) || (dv_type == 0) || (dv_type > 4)) {
 		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
@@ -420,7 +420,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t con
 
 	if (data_len < 3) return -1; /* type, length, value */
 
-	FR_PROTO_HEX_DUMP("tlvs", p, data_len);
+	FR_PROTO_HEX_DUMP(p, data_len, "tlvs");
 
 	if (fr_radius_decode_tlv_ok(p, data_len, 1, 1) < 0) return -1;
 
@@ -643,7 +643,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t c
 		fragments--;
 	}
 
-	FR_PROTO_HEX_DUMP("long-extended fragments", head, fraglen);
+	FR_PROTO_HEX_DUMP(head, fraglen, "long-extended fragments");
 
 	rcode = fr_radius_decode_pair_value(ctx, cursor, dict,
 					    parent, head, fraglen, fraglen, decoder_ctx);
@@ -807,7 +807,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t cons
 		attr += 2;		 /* skip Vendor-Specific header */
 	}
 
-	FR_PROTO_HEX_DUMP("Wimax fragments", head, wimax_len);
+	FR_PROTO_HEX_DUMP(head, wimax_len, "Wimax fragments");
 
 	rcode = fr_radius_decode_pair_value(ctx, cursor, dict,
 					    da, head, wimax_len, wimax_len, decoder_ctx);
@@ -988,7 +988,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		return -1;
 	}
 
-	FR_PROTO_HEX_DUMP(__FUNCTION__ , data, attr_len);
+	FR_PROTO_HEX_DUMP(data, attr_len, __FUNCTION__ );
 
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_len);
 

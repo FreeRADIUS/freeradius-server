@@ -428,41 +428,41 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 
 	uint48_to_buff(sqn_buff, sqn);
 
-	FR_PROTO_HEX_DUMP("AUTN", autn, MILENAGE_AUTN_SIZE);
-	FR_PROTO_HEX_DUMP("RAND", rand, MILENAGE_RAND_SIZE);
+	FR_PROTO_HEX_DUMP(autn, MILENAGE_AUTN_SIZE, "AUTN");
+	FR_PROTO_HEX_DUMP(rand, MILENAGE_RAND_SIZE, "RAND");
 
 	if (milenage_f2345(res, ck, ik, ak, NULL, opc, ki, rand)) return -1;
 
-	FR_PROTO_HEX_DUMP("RES", res, MILENAGE_RES_SIZE);
-	FR_PROTO_HEX_DUMP("CK", ck, MILENAGE_CK_SIZE);
-	FR_PROTO_HEX_DUMP("IK", ik, MILENAGE_IK_SIZE);
-	FR_PROTO_HEX_DUMP("AK", ak, MILENAGE_AK_SIZE);
+	FR_PROTO_HEX_DUMP(res, MILENAGE_RES_SIZE, "RES");
+	FR_PROTO_HEX_DUMP(ck, MILENAGE_CK_SIZE, "CK");
+	FR_PROTO_HEX_DUMP(ik, MILENAGE_IK_SIZE, "IK");
+	FR_PROTO_HEX_DUMP(ak, MILENAGE_AK_SIZE, "AK");
 
 	/* AUTN = (SQN ^ AK) || AMF || MAC */
 	for (i = 0; i < 6; i++) rx_sqn[i] = autn[i] ^ ak[i];
-	FR_PROTO_HEX_DUMP("SQN", rx_sqn, MILENAGE_SQN_SIZE);
+	FR_PROTO_HEX_DUMP(rx_sqn, MILENAGE_SQN_SIZE, "SQN");
 
 	if (memcmp(rx_sqn, sqn_buff, sizeof(rx_sqn)) <= 0) {
 		uint8_t auts_amf[MILENAGE_AMF_SIZE] = { 0x00, 0x00 }; /* TS 33.102 v7.0.0, 6.3.3 */
 
 		if (milenage_f2345(NULL, NULL, NULL, NULL, ak, opc, ki, rand)) return -1;
 
-		FR_PROTO_HEX_DUMP("AK*", ak, sizeof(ak));
+		FR_PROTO_HEX_DUMP(ak, sizeof(ak), "AK*");
 		for (i = 0; i < 6; i++) auts[i] = sqn_buff[i] ^ ak[i];
 
 		if (milenage_f1(NULL, auts + 6, opc, ki, rand, sqn_buff, auts_amf) < 0) return -1;
-		FR_PROTO_HEX_DUMP("AUTS", auts, 14);
+		FR_PROTO_HEX_DUMP(auts, 14, "AUTS");
 		return -2;
 	}
 
 	amf = autn + 6;
-	FR_PROTO_HEX_DUMP("AMF", amf, MILENAGE_AMF_SIZE);
+	FR_PROTO_HEX_DUMP(amf, MILENAGE_AMF_SIZE, "AMF");
 	if (milenage_f1(mac_a, NULL, opc, ki, rand, rx_sqn, amf) < 0) return -1;
 
-	FR_PROTO_HEX_DUMP("MAC_A", mac_a, MILENAGE_MAC_A_SIZE);
+	FR_PROTO_HEX_DUMP(mac_a, MILENAGE_MAC_A_SIZE, "MAC_A");
 
 	if (CRYPTO_memcmp(mac_a, autn + 8, 8) != 0) {
-		FR_PROTO_HEX_DUMP("Received MAC_A", autn + 8, 8);
+		FR_PROTO_HEX_DUMP(autn + 8, 8, "Received MAC_A");
 		fr_strerror_printf("MAC mismatch");
 		return -1;
 	}
@@ -530,20 +530,20 @@ void test_set_1(void)
 	ret = milenage_opc_generate(opc_out, op, ki);
 	TEST_CHECK(ret == 0);
 
-	FR_PROTO_HEX_DUMP("opc", opc_out, sizeof(opc_out));
+	FR_PROTO_HEX_DUMP(opc_out, sizeof(opc_out), "opc");
 
 	TEST_CHECK(memcmp(opc_out, opc, sizeof(opc_out)) == 0);
 
 	if ((milenage_f1(mac_a_out, mac_s_out, opc, ki, rand, sqn, amf) < 0) ||
 	    (milenage_f2345(res_out, ik_out, ck_out, ak_out, ak_resync_out, opc, ki, rand) < 0)) ret = -1;
 
-	FR_PROTO_HEX_DUMP("mac_a", mac_a, sizeof(mac_a_out));
-	FR_PROTO_HEX_DUMP("mac_s", mac_s, sizeof(mac_s_out));
-	FR_PROTO_HEX_DUMP("ik", ik_out, sizeof(ik_out));
-	FR_PROTO_HEX_DUMP("ck", ck_out, sizeof(ck_out));
-	FR_PROTO_HEX_DUMP("res", res_out, sizeof(res_out));
-	FR_PROTO_HEX_DUMP("ak", ak_out, sizeof(ak_out));
-	FR_PROTO_HEX_DUMP("ak_resync", ak_resync_out, sizeof(ak_resync_out));
+	FR_PROTO_HEX_DUMP(mac_a, sizeof(mac_a_out), "mac_a");
+	FR_PROTO_HEX_DUMP(mac_s, sizeof(mac_s_out), "mac_s");
+	FR_PROTO_HEX_DUMP(ik_out, sizeof(ik_out), "ik");
+	FR_PROTO_HEX_DUMP(ck_out, sizeof(ck_out), "ck");
+	FR_PROTO_HEX_DUMP(res_out, sizeof(res_out), "res");
+	FR_PROTO_HEX_DUMP(ak_out, sizeof(ak_out), "ak");
+	FR_PROTO_HEX_DUMP(ak_resync_out, sizeof(ak_resync_out), "ak_resync");
 
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(memcmp(mac_a_out, mac_a, sizeof(mac_a_out)) == 0);
@@ -610,20 +610,20 @@ void test_set_19(void)
 	ret = milenage_opc_generate(opc_out, op, ki);
 	TEST_CHECK(ret == 0);
 
-	FR_PROTO_HEX_DUMP("opc", opc_out, sizeof(opc_out));
+	FR_PROTO_HEX_DUMP(opc_out, sizeof(opc_out), "opc");
 
 	TEST_CHECK(memcmp(opc_out, opc, sizeof(opc_out)) == 0);
 
 	if ((milenage_f1(mac_a_out, mac_s_out, opc, ki, rand, sqn, amf) < 0) ||
 	    (milenage_f2345(res_out, ik_out, ck_out, ak_out, ak_resync_out, opc, ki, rand) < 0)) ret = -1;
 
-	FR_PROTO_HEX_DUMP("mac_a", mac_a, sizeof(mac_a_out));
-	FR_PROTO_HEX_DUMP("mac_s", mac_s, sizeof(mac_s_out));
-	FR_PROTO_HEX_DUMP("ik", ik_out, sizeof(ik_out));
-	FR_PROTO_HEX_DUMP("ck", ck_out, sizeof(ck_out));
-	FR_PROTO_HEX_DUMP("res", res_out, sizeof(res_out));
-	FR_PROTO_HEX_DUMP("ak", ak_out, sizeof(ak_out));
-	FR_PROTO_HEX_DUMP("ak_resync", ak_resync_out, sizeof(ak_resync_out));
+	FR_PROTO_HEX_DUMP(mac_a, sizeof(mac_a_out), "mac_a");
+	FR_PROTO_HEX_DUMP(mac_s, sizeof(mac_s_out), "mac_s");
+	FR_PROTO_HEX_DUMP(ik_out, sizeof(ik_out), "ik");
+	FR_PROTO_HEX_DUMP(ck_out, sizeof(ck_out), "ck");
+	FR_PROTO_HEX_DUMP(res_out, sizeof(res_out), "res");
+	FR_PROTO_HEX_DUMP(ak_out, sizeof(ak_out), "ak");
+	FR_PROTO_HEX_DUMP(ak_resync_out, sizeof(ak_resync_out), "ak_resync");
 
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(memcmp(mac_a_out, mac_a, sizeof(mac_a_out)) == 0);

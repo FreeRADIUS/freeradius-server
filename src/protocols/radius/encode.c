@@ -473,8 +473,6 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 		 */
 		if (da != tlv_stack[depth]) break;
 		vp = fr_cursor_current(cursor);
-
-		FR_PROTO_HEX_DUMP("Done TLV", out, p - out);
 	}
 
 	return p - out;
@@ -783,6 +781,8 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		break;
 	} /* switch over encryption flags */
 
+	FR_PROTO_HEX_DUMP(out, len, "value %s", fr_int2str(fr_value_box_type_names, vp->vp_type, "<UNKNOWN>"));
+
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute
 	 */
@@ -908,7 +908,6 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	}
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
-	FR_PROTO_HEX_DUMP("Extended header", out, out[1]);
 
 	/*
 	 *	Handle EVS
@@ -929,8 +928,9 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 		out[1] += 5;
 
 		FR_PROTO_STACK_PRINT(tlv_stack, depth);
-		FR_PROTO_HEX_DUMP("EVS", out, out[1]);
-
+		FR_PROTO_HEX_DUMP(out, out[1], "header extended vendor specific");
+	} else {
+		FR_PROTO_HEX_DUMP(out, out[1], "header extended");
 	}
 
 	/*
@@ -962,27 +962,10 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	if ((fr_debug_lvl > 3) && fr_log_fp) {
 		int jump = 3;
 
-		fprintf(fr_log_fp, "\t\t%02x %02x  ", out[0], out[1]);
-		if (attr_type == FR_TYPE_EXTENDED) {
-			fprintf(fr_log_fp, "%02x  ", out[2]);
+		if (attr_type != FR_TYPE_EXTENDED) jump = 4;
+		if (vsa_type == FR_TYPE_EVS) jump += 5;
 
-		} else {
-			fprintf(fr_log_fp, "%02x %02x  ", out[2], out[3]);
-			jump = 4;
-		}
-
-		if (vsa_type == FR_TYPE_EVS) {
-			fprintf(fr_log_fp, "%02x%02x%02x%02x (%u)  %02x  ",
-				out[jump], out[jump + 1],
-				out[jump + 2], out[jump + 3],
-				((out[jump + 1] << 16) |
-				 (out[jump + 2] << 8) |
-				 out[jump + 3]),
-				out[jump + 4]);
-			jump += 5;
-		}
-
-		FR_PROTO_HEX_DUMP("Done extended header", out + jump, len);
+		FR_PROTO_HEX_DUMP(out, jump, "header extended");
 	}
 #endif
 
@@ -993,6 +976,9 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
  *
  * If there isn't enough freespace in the packet, the data is
  * truncated to fit.
+ *
+ * The attribute is split on 253 byte boundaries, with a header
+ * prepended to each chunk.
  */
 static ssize_t encode_concat(uint8_t *out, size_t outlen,
 			     fr_dict_attr_t const **tlv_stack, unsigned int depth,
@@ -1024,12 +1010,9 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 
 		memcpy(ptr + 2, p, left);
 
-#ifndef NDEBUG
-		if ((fr_debug_lvl > 3) && fr_log_fp) {
-			fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
-			FR_PROTO_HEX_DUMP("Done concat", ptr + 2, len);
-		}
-#endif
+		FR_PROTO_HEX_DUMP(ptr + 2, left, "concat value octets");
+		FR_PROTO_HEX_DUMP(ptr, 2, "concat header rfc");
+
 		ptr[1] += left;
 		ptr += ptr[1];
 		p += left;
@@ -1091,12 +1074,7 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 
 	out[1] += len;
 
-#ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) {
-		fprintf(fr_log_fp, "\t\t%02x %02x  ", out[0], out[1]);
-		FR_PROTO_HEX_DUMP("Done RFC header", out + 2, len);
-	}
-#endif
+	FR_PROTO_HEX_DUMP(out, 2, "header rfc");
 
 	return out[1];
 }
@@ -1192,46 +1170,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 
 	if (dv->flags.length) out[hdr_len - 1] += len;
 
-#ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) {
-		switch (dv->flags.type_size) {
-		default:
-			break;
-
-		case 4:
-			if ((fr_debug_lvl > 3) && fr_log_fp)
-				fprintf(fr_log_fp, "\t\t%02x%02x%02x%02x ", out[0], out[1], out[2], out[3]);
-			break;
-
-		case 2:
-			if ((fr_debug_lvl > 3) && fr_log_fp) fprintf(fr_log_fp, "\t\t%02x%02x ", out[0], out[1]);
-			break;
-
-		case 1:
-			if ((fr_debug_lvl > 3) && fr_log_fp) fprintf(fr_log_fp, "\t\t%02x ", out[0]);
-			break;
-		}
-
-		switch (dv->flags.length) {
-		default:
-			break;
-
-		case 0:
-			fprintf(fr_log_fp, "  ");
-			break;
-
-		case 1:
-			fprintf(fr_log_fp, "%02x  ", out[dv->flags.type_size]);
-			break;
-
-		case 2:
-			fprintf(fr_log_fp, "%02x%02x  ", out[dv->flags.type_size], out[dv->flags.type_size] + 1);
-			break;
-		}
-
-		FR_PROTO_HEX_DUMP("Done RFC header", out + hdr_len, len);
-	}
-#endif
+	FR_PROTO_HEX_DUMP(out, hdr_len, "header vsa");
 
 	return hdr_len + len;
 }
@@ -1312,16 +1251,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	out[1] += len;
 	out[7] += len;
 
-#ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) {
-		fprintf(fr_log_fp, "\t\t%02x %02x  %02x%02x%02x%02x (%u)  %02x %02x %02x   ",
-			out[0], out[1],
-			out[2], out[3], out[4], out[5],
-			(out[3] << 16) | (out[4] << 8) | out[5],
-			out[6], out[7], out[8]);
-		FR_PROTO_HEX_DUMP("Done wimax header", out + 9, len);
-	}
-#endif
+	FR_PROTO_HEX_DUMP(out, 9, "header wimax");
 
 	return (out + out[1]) - start;
 }
@@ -1383,16 +1313,9 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	len = encode_vendor_attr_hdr(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 	if (len < 0) return len;
 
-#ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) {
-		fprintf(fr_log_fp, "\t\t%02x %02x  %02x%02x%02x%02x (%u)  ",
-			out[0], out[1],
-			out[2], out[3], out[4], out[5],
-			(out[3] << 16) | (out[4] << 8) | out[5]);
-		FR_PROTO_HEX_DUMP("Done VSA header", out + 6, len);
-	}
-#endif
 	out[1] += len;
+
+	FR_PROTO_HEX_DUMP(out, 6, "header vsa");
 
 	return out[1];
 }
@@ -1438,6 +1361,8 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 		out[0] = (uint8_t)vp->da->attr;
 		out[1] = 2;
 
+		FR_PROTO_HEX_DUMP(out, 2, "header rfc");
+
 		vp = next_encodable(cursor);
 		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 		return out[1];
@@ -1452,11 +1377,10 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 		out[0] = (uint8_t)vp->da->attr;
 		out[1] = 18;
 		memset(out + 2, 0, 16);
-#ifndef NDEBUG
-		if ((fr_debug_lvl > 3) && fr_log_fp) {
-			fprintf(fr_log_fp, "\t\t50 12 ...\n");
-		}
-#endif
+
+		FR_PROTO_HEX_DUMP(out + 2, RADIUS_MESSAGE_AUTHENTICATOR_LENGTH, "message-authenticator");
+		FR_PROTO_HEX_DUMP(out, 2, "header rfc");
+
 		vp = next_encodable(cursor);
 		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 		return out[1];
