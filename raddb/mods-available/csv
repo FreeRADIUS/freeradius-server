@@ -1,42 +1,50 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
+#######################################################################
+#
+#  ## CSV Module
 #
 #  Read CSV files and use them in maps.
 #
-#  The CSV files MUST be formatted according to RFC 4180.
+#  The CSV files MUST be formatted according to `RFC 4180`.
 #
-#  Multi-line fields are NOT allowed.
+#  WARNING: Multi-line fields are NOT allowed.
+#
+# ## Default instance
 #
 csv {
 	#
-	#  The field delimiter. MUST be a one-character string.
-	#
-	delimiter = ","
-
-	#
-	#  The file which contains the CSV data.
+	#  filename:: The file which contains the CSV data.
 	#
 	filename = ${modconfdir}/csv/${.:instance}
 
 	#
-	#  A header which defines field names.
+	#  delimiter:: The field delimiter. MUST be a one-character string.
 	#
-	#  MUST have the same number of fields as are in the CSV file.
+	delimiter = ","
+
 	#
-	#  MUST NOT include whitespace.
+	#  header:: A header which defines field names.
 	#
-	#  Fields which are not used should have no name,
-	#  e.g. "foo,,bar" defines 3 fields, where the second
-	#  is unused.
+	#  [NOTE]
+	#  =====
+	#  * MUST have the same number of fields as are in the CSV file.
+	#  * MUST NOT include whitespace.
+	#  * Fields which are not used should have no name.
 	#
+	#  e.g. *"foo,,bar"* defines 3 fields, where the second is unused.
+	#  =====
 	header = "field1,,field3,field4"
 
 	#
-	#  The name of the key field, which is used to index the
-	#  entries. It can be any one of the field names defined
-	#  above.
+	#  key_field:: The name of the key field, which is used to index the
+	#  entries.
+	#
+	#  It can be any one of the field names defined above.
 	#
 	key_field = "field1"
 }
