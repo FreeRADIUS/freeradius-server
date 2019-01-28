@@ -303,7 +303,7 @@ int eap_tls_success(eap_session_t *eap_session,
 						       keying_prf_label, keying_prf_label_len) < 0) return -1;
 
 	/*
-	 *	Add the TLS session ID to the request
+	 *	Add the EAP session ID to the request
 	 */
 	{
 		uint8_t		*session_id;
