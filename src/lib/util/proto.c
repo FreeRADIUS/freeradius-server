@@ -58,7 +58,7 @@ void fr_proto_print_hex_data(char const *file, int line, char const *msg, uint8_
 		if ((i & 0x0f) == 0) fprintf(fr_log_fp, "hex: %s%.*s: %04x: ", prefix,
 					     (int)(proto_log_indent - len), spaces, (unsigned int) i);
 		fprintf(fr_log_fp, "%02x ", data[i]);
-		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
+		if (((i & 0x0f) == 0x0f) && ((i + 1) < data_len)) fprintf(fr_log_fp, "\n");
 	}
 	if ((data_len == 0x0f) || ((data_len & 0x0f) != 0x0f)) fprintf(fr_log_fp, "\n");
 	fflush(fr_log_fp);
@@ -86,7 +86,8 @@ void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_d
 			fr_dict_vendor_num_by_da(tlv_stack[i]), fr_dict_vendor_num_by_da(tlv_stack[i]),
 			tlv_stack[i]->attr, tlv_stack[i]->attr);
 	}
-	fprintf(fr_log_fp, "\n");
+	fprintf(fr_log_fp, "stk: %s%.*s:\n",
+		prefix, (int)(proto_log_indent - len), spaces);
 	fflush(fr_log_fp);
 }
 
