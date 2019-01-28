@@ -15,16 +15,16 @@
 #  When it runs, it will cache the current TLS session.  That cache
 #  allows for fast session resumption.
 #
-#  The "rbtree" cache back-end is an "in memory" cache.  Which means
+#  The `rbtree` cache back-end is an "in memory" cache.  Which means
 #  that the TLS session cache will be lost if the server restarts.
 #  The TLS session cache can be preserved by using an external
-#  back-end, such as "memcached" or "redis".
+#  back-end, such as `memcached` or `redis`.
 #
 #  Also, if an external backend is used, then the TLS session cache
 #  can be shared across multiple RADIUS servers.  That makes for
 #  simple load balancing with full session resumption.
 #
-#  Please see the `cache` module for full documentation on the cache
+#  NOTE: Please see the `cache` module for full documentation on the cache
 #  configuration.
 #
 
@@ -61,7 +61,7 @@ cache cache_tls_session {
 		#  The complete list can then be restored along with the
 		#  `TLS-Session-Data` using the entry below.
 		#
-		#  Policies run in `Post-Auth` then have access to the same data
+		#  Policies run in `post-auth` then have access to the same data
 		#  irrespective of whether the session is being resumed.
 		#
 #		&session-state: += &session-state:

@@ -46,7 +46,7 @@
 #  interest of efficiency, the cache is not used where it is not
 #  needed.
 #
-#  Please see the `cache` module for full documentation on the cache
+#  NOTE: Please see the `cache` module for full documentation on the cache
 #  configuration.
 #
 
@@ -55,7 +55,7 @@
 #
 cache cache_eap {
 	#
-	# key:: Cache key
+	# key:: Cache key.
 	#
 	key = "%{%{control:State}:-%{%{reply:State}:-%{State}}}"
 
