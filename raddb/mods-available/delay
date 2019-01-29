@@ -19,6 +19,9 @@
 #  responses.
 #
 
+#
+# ## Default instance
+#
 delay {
 	#
 	#  delay:: How long to delay request processing for.
@@ -45,7 +48,7 @@ delay {
 	#  NAS will only allow a limited number of request to be in
 	#  flight.
 	#
-	#  The default is "no", which means that 
+	#  The default is `no`, which means that.
 	#
 #	relative = no
 }

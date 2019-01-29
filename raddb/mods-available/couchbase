@@ -23,7 +23,7 @@ couchbase {
 	server = "http://cb01.example.org:8091/ http://cb02.example.org:8091/"
 
 	#
-	# bucket:: Couchbase bucket name
+	# bucket:: Couchbase bucket name.
 	#
 	bucket = "radius"
 
@@ -40,7 +40,7 @@ couchbase {
 	acct_key = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"
 
 	#
-	# doctype:: Value for the 'docType' element in the json body for accounting documents
+	# doctype:: Value for the 'docType' element in the json body for accounting documents.
 	#
 	doctype = "radacct"
 
@@ -194,7 +194,7 @@ couchbase {
 		uses = 0
 
 		#
-		#  lifetime:: The lifetime (in seconds) of the connection
+		#  lifetime:: The lifetime (in seconds) of the connection.
 		#
 		#  NOTE: A setting of `0` means infinite (no limit).
 		#
