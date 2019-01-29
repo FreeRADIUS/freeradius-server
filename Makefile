@@ -363,7 +363,7 @@ asciidoc/%.adoc: raddb/%.md
 asciidoc/%.adoc: raddb/%
 	@echo ADOC $^
 	@mkdir -p $(dir $@)
-	@./scripts/asciidoc/conf2adoc -a ${top_srcdir}/asciidoc < $^ > $@
+	@./scripts/asciidoc/conf2adoc -a ${top_srcdir}/asciidoc -o $@ < $^
 
 asciidoc/%.html: asciidoc/%.adoc
 	@echo HTML $^

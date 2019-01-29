@@ -6,13 +6,14 @@
 #
 #
 use File::Basename;
+use File::Spec;
 use Getopt::Std;
 
 $was_raw = 0;
 $raw = 0;
 $blank = 0;
 
-getopts('a:');
+getopts('a:o:');
 
 $script_dir = dirname(__FILE__);
 $filename = "$script_dir/links.txt";
@@ -39,7 +40,13 @@ $links{"mods-available/"} = "$opt_a/mods-available/README.adoc";
 
 sub process_file {
 	my $input = shift;
-	my $output = shift;
+	my $output_file = shift;
+
+	if (!defined $output_file) {
+	    $output = STDOUT;
+	} else {
+	    open $output, ">$output_file" or die "Failed creating $output_file: $!\n";
+	}
 
 	while (<$input>) {
 		#
@@ -147,6 +154,21 @@ sub process_file {
 
 			if ($links{$key} =~ /^http/) {
 				$link = "`link:" . $links{$key} . "[" . $key . "]`";
+
+			} elsif ($links{$key} =~ /^$opt_a/) {
+				#
+				#  Link to the *relative* path for the file.
+				#  Note that we're passed "-a foo/asciidoc",
+				#  and also an output file of "asciidoc/bar.adoc"
+				#  So we need to strip out one level of "asciidoc/"
+				#
+				my $absdir = dirname($opt_a . "/" . $output_file);
+				$absdir =~ s,asciidoc/asciidoc,asciidoc/,;
+
+				my $relative = File::Spec->abs2rel($links{$key}, $absdir);
+
+				$link = "link:" . $relative . "[" . $key . "]";
+
 			} else {
 				$link = "<<" . $links{$key} . "," . $key . ">>";
 			}
@@ -192,4 +214,4 @@ if (!defined $opt_a) {
 	$opt_a = "";
 }
 
-process_file(STDIN, STDOUT);
+process_file(STDIN, $opt_o);
