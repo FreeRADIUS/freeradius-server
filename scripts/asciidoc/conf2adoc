@@ -60,7 +60,7 @@ sub process_file {
 
 		# Print one line of blank text, but suppress multiple blank lines.
 		if (/^\s*$/) {
-			print "\n" if (!$blank);
+			print $output "\n" if (!$blank);
 			$blank = 1;
 			next;
 		}
@@ -100,11 +100,11 @@ sub process_file {
 		}
 
 		if ($raw != $was_raw) {
-			print "```\n";
+			print $output "```\n";
 			$was_raw = $raw;
 		}
 
-		print $prefix if defined $prefix;
+		print $output $prefix if defined $prefix;
 
 		$line = $_;
 
@@ -179,7 +179,7 @@ sub process_file {
 	#
 	#  Terminate any trailing "raw" text.
 	#
-	print "```\n" if ($was_raw);
+	print $output "```\n" if ($was_raw);
 }
 
 sub HELP_MESSAGE {
