@@ -18,10 +18,13 @@
 #
 detail {
 	#
-	#  filename:: The filename used to e following line creates a new `detail`
-	#  file for every radius client (by IP address or hostname). In addition,
-	#  a new detail file is created every day, so that the `detail` file
-	#  doesn't have to go through a 'log rotation'.
+	#  filename:: The filename used when creating "detail" files.
+	#
+	#  The default configuration creates a new `detail` file for
+	#  every radius client (by IP address or hostname). In
+	#  addition, a new detail file is created every day, so that
+	#  the `detail` file doesn't have to go through a 'log
+	#  rotation'.
 	#
 	#  If your detail files are large, you may also want to
 	#  add a `:%H` (see `doc/configuration/variables.rst`) to
@@ -37,7 +40,8 @@ detail {
 	#  (e.g. as in `raddb/sites-available/robust-proxy-accounting`),
 	#  you MUST use a unique directory for each combination of a `detail`
 	#  file writer, and reader.
-	#  That is, there can only be *ONE* `listen { ... }` section reading
+	#
+	#  That is, only *one* `listen { ... }` section can read
 	#  detail files from a particular directory.
 	#
 	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/detail-%Y-%m-%d
@@ -49,32 +53,40 @@ detail {
 #	filename = ${radacctdir}/detail
 
 	#
-	#  escape_filenames:: Most file systems can handly nearly the full range of
-	#  UTF-8 characters. Ones that can deal with a limited range should set
-	#  this to `yes`.
+	#  escape_filenames:: Whether or not to escape "special"
+	#  characters in filenames.
+	#
+	#  Most file systems can handly nearly the full range of UTF-8
+	#  characters. Ones that can deal with a limited range should
+	#  set this to `yes`.
 	#
 	escape_filenames = no
 
 	#
-	#  permissions:: The Unix-style permissions on the 'detail' file.
+	#  permissions:: The Unix permissions on the `detail` file.
 	#
-	#  NOTE: The detail file often contains secret or private information about users.
-	#  So by keeping the file permissions restrictive, we can prevent unwanted people
-	#  from seeing that information.
+	#  NOTE: The detail file often contains secret or private
+	#  information about users.  The file permissions should be
+	#  restrictive, so that unwanted people are prevented from
+	#  seeing any secret information.
 	#
 	permissions = 0600
 
 	#
 	#  group:: The Unix group of the log file.
 	#
-	#  NOTE: The user that the server runs as must be in the specified system group
-	#  otherwise this will fail to work.
+	#  NOTE: The user that the server runs as must be in the
+	#  specified system group otherwise the server will not have
+	#  permission to change the group ownership of the file.
 	#
 #	group = ${security.group}
 
 	#
-	#  header:: Every entry in the detail file has a header which is a timestamp.
-	#  By default, we use the ctime format (see `man ctime` for details).
+	#  header:: The header of a `detail` file entry/
+	#
+	#  Every entry in the detail file has a header which is a
+	#  timestamp.  By default, we use the ctime format (see `man
+	#  ctime` for details).
 	#
 	#  The header can be customised by editing this string.
 	#  See "doc/configuration/variables.rst" for a description
@@ -83,20 +95,28 @@ detail {
 	header = "%t"
 
 	#
-	#  locking:: if the detail file reader will be reading this detail file.
+	#  locking:: Whether or not we should lock the detail file
+	#  before writing to it.
+	#
+	#   Mainly used if the detail file reader is be reading this file.
 	#
 #	locking = yes
 
 	#
-	#  log_packet_header::: Log the Packet src/dst IP/port. This is disabled by
-	#  default, as that information isn't used by many people.
+	#  log_packet_header::: Log the Packet src/dst IP/port.
+	#
+	#  This is disabled by default, as that information isn't used
+	#  by many people.
 	#
 #	log_packet_header = yes
 
 	#
-	#  suppress { ... }:: Certain attributes such as `User-Password` may be
-	#  "sensitive", so they should not be printed in the detail file. This
-	#  section lists the attributes that should be suppressed.
+	#  suppress { ... }:: Suppress "secret" information from appearing in the `detail` file.
+	#
+	#  Certain attributes such as `User-Password` may be
+	#  "sensitive", so they should not be printed in the detail
+	#  file. This section lists the attributes that should be
+	#  suppressed.
 	#
 	#  NOTE: The attributes should be listed one to a line.
 	#
