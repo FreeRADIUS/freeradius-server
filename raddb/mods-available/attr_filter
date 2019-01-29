@@ -31,10 +31,12 @@
 #	filename = </path/><section>
 #}
 
-# ### Default instances
+# ## Default instances
 #
 #  The following default instances.
 
+#
+#  ### pre-proxy
 #
 #  Filters the attributes in the packets we send to
 #  the RADIUS home servers.
@@ -46,6 +48,8 @@ attr_filter attr_filter.pre-proxy {
 	filename = ${modconfdir}/${.:name}/pre-proxy
 }
 
+#
+#  ### post-proxy
 #
 #  Filters the attributes received in replies from proxied
 #  servers, to make sure we send back to our RADIUS client
@@ -59,8 +63,10 @@ attr_filter attr_filter.post-proxy {
 }
 
 #
+#  ### access_reject
+#
 #  Enforce RFC requirements on the contents of `Access-Reject`
-#  packets. This should be called from "send Access-Reject".
+#  packets. This should be called from `send Access-Reject`.
 #
 attr_filter attr_filter.access_reject {
 	key = "%{User-Name}"
@@ -68,8 +74,10 @@ attr_filter attr_filter.access_reject {
 }
 
 #
+#  ### access_challenge
+#
 #  Enforce RFC requirements on the contents of `Access-Challenge`
-#  packets. This is called from "send Access-Challenge".
+#  packets. This is called from `send Access-Challenge`.
 #
 attr_filter attr_filter.access_challenge {
 	key = "%{User-Name}"
@@ -77,9 +85,11 @@ attr_filter attr_filter.access_challenge {
 }
 
 #
+#  ### accounting_response
+#
 #  Enforce RFC requirements on the contents of the
 #  `Accounting-Response` packets. Called from the
-#  "send Accounting-Response" section.
+#  `send Accounting-Response` section.
 #
 attr_filter attr_filter.accounting_response {
 	key = "%{User-Name}"
