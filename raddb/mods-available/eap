@@ -190,21 +190,41 @@ eap {
 		#  name.
 		#
 		#  If ca_file (below) is not used, then the
-		#  certificate_file below SHOULD also include
-		#  all of the intermediate CA certificates used 
-		#  to sign the server certificate. Including the
-		#  ROOT CA certificate is not useful and merely
-		#  inflates the exchanged data volume during the
-		#  TLS negotiation.
-		#  If included, the intermediate CA certificates
-		#  have to come AFTER the server certificate.
+		#  certificate_file below SHOULD also include all of
+		#  the intermediate CA certificates used to sign the
+		#  server certificate, but NOT the root CA.
+		#
+		#  Including the ROOT CA certificate is not useful and
+		#  merely inflates the exchanged data volume during
+		#  the TLS negotiation.
+		#
+		#  This file should contain the server certificate,
+		#  followed by intermediate certificates, in order.
+		#  i.e. If we have a server certificate signed by CA1,
+		#  which is signed by CA2, which is signed by a root
+		#  CA, then the "certificate_file" should contain
+		#  server.pem, followed by CA1.pem, followed by
+		#  CA2.pem.
+		#
+		#  When using "ca_file" or "ca_dir", the
+		#  "certificate_file" should contain only
+		#  "server.pem".  And then you may (or may not) need
+		#  to set "auto_chain", depending on your version of
+		#  OpenSSL.
+		#
+		#  In short, SSL / TLS certificates are complex.
+		#  There are many versions of software, each of which
+		#  behave slightly differently.  It is impossible to
+		#  give advice which will work everywhere.  Instead,
+		#  we give general guidelines.
 		#
 		certificate_file = ${certdir}/server.pem
 
 		#  Trusted Root CA list
 		#
-		#  ALL of the CA's in this list will be trusted
-		#  to issue client certificates for authentication.
+		#  This file can contain multiple CA certificates.
+		#  ALL of the CA's in this list will be trusted to
+		#  issue client certificates for authentication.
 		#
 		#  In general, you should use self-signed
 		#  certificates for 802.1x (EAP) authentication.
