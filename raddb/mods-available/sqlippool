@@ -1,59 +1,78 @@
-#  Configuration for the SQL based IP Pool module (rlm_sqlippool)
+# -*- text -*-
 #
-#  The database schemas are available at:
-#
-#       raddb/sql/ippool/<DB>/schema.sql
+# :toc:
 #
 #  $Id$
 
+#######################################################################
+#
+#  ## SQL-IP-Pool Module
+#
+#  The module `sqlippool` provide configuration for the SQL based IP Pool module.
+#
+#  NOTE: The database schemas are available at `raddb/sql/ippool/<DB>/schema.sql`.
+#
+#  ## Default instance
+#
 sqlippool {
-	# SQL instance to use (from sql.conf)
 	#
-	#  If you have multiple sql instances, such as "sql sql1 {...}",
-	#  use the *instance* name here: sql1.
+	#  sql_module_instance:: SQL instance to use (from `sql.conf`)
+	#
+	#  If you have multiple sql instances, such as `sql sql1 {...}`,
+	#  use the *instance* name here: `sql1`.
+	#
 	sql_module_instance = "sql"
 
-	#  This is duplicative of info available in the SQL module, but
+	#
+	#  dialect:: This is duplicative of info available in the SQL module, but
 	#  we have to list it here as we do not yet support nested
 	#  reference expansions.
+	#
 	dialect = "mysql"
 
-	# SQL table to use for ippool range and lease info
+	#
+	#  ippool_table:: SQL table to use for ippool range and lease info.
+	#
 	ippool_table = "radippool"
 
-	# IP lease duration. (Leases expire even if Acct Stop packet is lost)
+	#
+	#  lease_duration:: IP lease duration. (Leases expire even if `Acct Stop` packet is lost).
+	#
 	lease_duration = 3600
 
-	# Attribute to use for querying / updating IP addresses.
-	# It MUST be a type which contains IP addresses.
-	#  e.g. ipaddr, ipv4prefix, ipv6addr, or ipv6prefix
+	#
+	#  attribute_name:: Attribute to use for querying / updating IP addresses.
+	#
+	#  [NOTE]
+	#  ====
+	#  It MUST be a type which contains IP addresses.
+	#
+	#  e.g. `ipaddr`, `ipv4prefix,` `ipv6addr`, or `ipv6prefix`.
+	#  ====
 	#
 	attribute_name = Framed-IP-Address
 
-	# Attribute which should be considered unique per NAS
 	#
-	#  Using NAS-Port gives behaviour similar to rlm_ippool. (And ACS)
-	#  Using Calling-Station-Id works for NAS that send fixed NAS-Port
-	#  ONLY change this if you know what you are doing!
+	#  pool_key:: Attribute which should be considered unique per NAS.
+	#
+	#  * Using `NAS-Port` gives behaviour similar to `rlm_ippool` and ACS. (default).
+	#  * Using `Calling-Station-Id` works for NAS that send fixed `NAS-Port`.
+	#  
+	#  WARNING: ONLY change this if you know what you are doing!
+	#
 	pool_key = "%{NAS-Port}"
-	# pool_key = "%{Calling-Station-Id}"
 
-	################################################################
 	#
-	#  WARNING: MySQL (MyISAM) has certain limitations that means it can
-	#           hand out the same IP address to 2 different users.
+	#  messages { ... }:: These messages are added to the `control::` items, as
+	#  `Module-Success-Message`. They are not logged anywhere else, unlike
+	#  previous versions.
+	#  If you want to have them logged to a file, see the `linelog` module,
+	#  and create an entry which writes `Module-Success-Message` message.
 	#
-	#           We suggest using an SQL DB with proper transaction
-	#           support, such as PostgreSQL, or using MySQL
-	#	     with InnoDB.
-	#
-	################################################################
-
-	#  These messages are added to the "control" items, as
-	#  Module-Success-Message.  They are not logged anywhere else,
-	#  unlike previous versions.  If you want to have them logged
-	#  to a file, see the "linelog" module, and create an entry
-	#  which writes Module-Success-Message message.
+	#  WARNING: MySQL (MyISAM) has certain limitations that means it can hand out
+	#  the same IP address to 2 different users.
+	#  *We suggest* using an SQL DB with proper transaction support, such as PostgreSQL,
+	#  or using MySQL with InnoDB.
 	#
 	messages {
 		exists = "Existing IP: %{reply:${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
@@ -67,5 +86,8 @@ sqlippool {
 		nopool = "No Pool-Name defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 	}
 
+	#
+	#  .Load the queries from a separate file.
+	#
 	$INCLUDE ${modconfdir}/sql/ippool/${dialect}/queries.conf
 }
