@@ -97,7 +97,7 @@ sql cuisql {
 	sql_user_name = "%{User-Name}"
 
 	#
-	#  Load the queries from a separate file.
+	#  .Load the queries from a separate file.
 	#
 	$INCLUDE ${modconfdir}/${.:name}/cui/${dialect}/queries.conf
 }
