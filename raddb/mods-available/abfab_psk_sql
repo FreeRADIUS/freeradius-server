@@ -14,17 +14,17 @@
 #
 
 #
-# sql {}:: See `sql` documentation.
+# sql { ... }:: See `sql` documentation.
 #
 sql psksql {
 	#
 	# driver:: Database driver.
 	#
-    driver = "rlm_sql_sqlite"
+    	driver = "rlm_sql_sqlite"
 
-    #
-    # sqlite {}:: Database statement based on `driver` setting.
-    #
+	#
+	# sqlite { ... }:: Database statement based on `driver` setting.
+	#
 	sqlite {
 		filename = "/var/lib/trust_router/keys"
 	}
