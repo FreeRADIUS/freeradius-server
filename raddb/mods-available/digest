@@ -2,12 +2,20 @@
 #
 #  $Id$
 
+#######################################################################
 #
-#  The 'digest' module currently has no configuration.
+#  ## Digest Module
 #
-#  "Digest" authentication against a Cisco SIP server.
-#  See 'doc/rfc/draft-sterman-aaa-sip-00.txt' for details
-#  on performing digest authentication for Cisco SIP servers.
+#  The `digest` module is used for performing authentication against a Cisco SIP server.
+#
+#  See `RFC 5090` for more details.
+#
+#  NOTE: The `digest` module currently has no configuration.
+#
+
+#
+#  ## Default instance
 #
 digest {
+
 }
