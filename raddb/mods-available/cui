@@ -8,10 +8,11 @@
 #
 #  ## CUI Module
 #
-#  The module `cui` (Chargeable-User-Identity) writes to the database.
+#  The module `cui` (Chargeable-User-Identity) writes
+#  Chargeable-User-Identity log to an SQL database.
 #
-#  * Schema	`raddb/sql/cui/<DB>/schema.sql`
-#  * Queries `raddb/sql/cui/<DB>/queries.conf`
+#  * Schema is in `raddb/sql/cui/<DB>/schema.sql`
+#  * Queries are in `raddb/sql/cui/<DB>/queries.conf`
 #
 
 #
@@ -47,7 +48,7 @@ sql cuisql {
 	#
 	#  [NOTE]
 	#  ====
-	#  For dialect `mysql` and `postgresql` the following should be provided:
+	#  For dialect `mysql` and `postgresql` the following information should be provided:
 	#
 #	server = "localhost"
 #	port = 3306
@@ -57,7 +58,7 @@ sql cuisql {
 	#  ====
 
 	#
-	# sqlite { ... }:: SQLite config statement.
+	# sqlite { ... }:: SQLite configuration
 	#
 	sqlite {
 		filename = ${radacctdir}/cui.sqlite
@@ -96,7 +97,7 @@ sql cuisql {
 	sql_user_name = "%{User-Name}"
 
 	#
-	# .It includes the queries to update the CUI table.
+	#  Load the queries from a separate file.
 	#
 	$INCLUDE ${modconfdir}/${.:name}/cui/${dialect}/queries.conf
 }
