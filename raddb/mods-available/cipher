@@ -13,16 +13,20 @@
 #
 #  Registers the following expansions:
 #
-#   * `%{<inst>_encrypt:<plaintext>...}`            - Encrypts plaintext using `certificate_file`
-#   * `%{<inst>_decrypt:<ciphertext>...}`           - Decrypts ciphertext using `private_key_file`
-#   * `%{<inst>_sign:<plaintext>...}`               - Signs plaintext using `private_key_file`
-#   * `%{<inst>_verify:<signature> <plaintext>...}` - Validates a signature using `certificate_file`
+#  [options="header,autowidth"]
+#  |===
+#  | XLAT                                          | Description
+#  | `%{<inst>_encrypt:<plaintext>...}`            | Encrypts plaintext using `certificate_file`
+#  | `%{<inst>_decrypt:<ciphertext>...}`           | Decrypts ciphertext using `private_key_file`
+#  | `%{<inst>_sign:<plaintext>...}`               | Signs plaintext using `private_key_file`
+#  | `%{<inst>_verify:<signature> <plaintext>...}` | Validates a signature using `certificate_file`
+#  |===
 #
 #  NOTE: `<ciphertext>` and `<signature>` are ingested and excreted to in their raw form.
 #  You should use armouring expansions i.e. `%{base64_encode:}`, `%{base64_decode:}` if the values
 #  are to be passed outside of FreeRADIUS.
 #
-#  Example:
+#  E.g:
 #
 #    %{base64_encode:%{cipher_encrypt:<plaintext>}}
 #    %{cipher_decrypt:%{base64_decode:<ciphertext>}}
