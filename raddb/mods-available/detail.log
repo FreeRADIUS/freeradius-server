@@ -1,34 +1,39 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
+#######################################################################
+#
+#  ## Detail Module (Log Sample)
 #
 #  More examples of doing detail logs.
 #
+#  NOTE: For full explanation of the configuration options,
+#  please see the `detail` module.
+#
 
 #
+#  ## Default instance
+#
+
+#  ### Access-Request
+#
 #  Many people want to log authentication requests. Different
-#  instances of the 'detail' module can be used to log the
+#  instances of the `detail` module can be used to log the
 #  authentication requests to one or more files.
 #
-#  You will also need to un-comment the 'auth_log' line in the
-#  'recv Access-Request' section of raddb/sites-enabled/default.
-#
-#  For full explanation of the configuration options, see
-#  the comments in raddb/mods-available/detail.
+#  NOTE: You will also need to un-comment the `auth_log` line in the
+#  `recv Access-Request` section of `raddb/sites-enabled/default`.
 #
 detail auth_log {
 	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/auth-detail-%Y-%m-%d
 
-	#
-	#  This should be 0600 to ensure private data in the
-	#  detail logs cannot be read by other users of the
-	#  system.
-	#
 	permissions = 0600
 
 	#
-	#  This will stop passwords being written to the log.
+	#  supress { ... }:: This will stop passwords being written to the log.
 	#
 	suppress {
 		User-Password
@@ -36,11 +41,13 @@ detail auth_log {
 }
 
 #
-#  This module logs authentication reply packets sent to a NAS.
-#  Both Access-Accept and Access-Reject packets are logged.
+#  ### Access-Accept
 #
-#  You will also need to un-comment the 'reply_log' line in the
-#  'send Access-Accept' section of raddb/sites-enabled/default.
+#  This module logs authentication reply packets sent to a NAS.
+#  Both `Access-Accept` and `Access-Reject` packets are logged.
+#
+#  NOTE: You will also need to un-comment the 'reply_log' line in the
+#  `send Access-Accept` section of `raddb/sites-enabled/default`.
 #
 detail reply_log {
 	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/reply-detail-%Y-%m-%d
@@ -49,10 +56,12 @@ detail reply_log {
 }
 
 #
+#  ### pre_proxy
+#
 #  This module logs packets proxied to a home server.
 #
-#  You will need to call it before rlm_radius is used for
-#  proxying. See the example in raddb/sites-available/default.
+#  NOTE: You will need to call it before rlm_radius is used for
+#  proxying. See the example in `raddb/sites-available/default`.
 #
 detail pre_proxy_log {
 	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/pre-proxy-detail-%Y-%m-%d
@@ -65,10 +74,12 @@ detail pre_proxy_log {
 }
 
 #
+#  ### post_proxy
+#
 #  This module logs response packets from a home server.
 #
-#  You will need to call it after rlm_radius is used for proxying.
-#  See the example in raddb/sites-available/default.
+#  NOTE: You will need to call it after rlm_radius is used for proxying.
+#  See the example in `raddb/sites-available/default`.
 #
 detail post_proxy_log {
 	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/post-proxy-detail-%Y-%m-%d
