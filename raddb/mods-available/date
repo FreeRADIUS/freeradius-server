@@ -13,6 +13,10 @@
 #
 # ## Default instance
 #
+
+#
+# ### Simple date
+#
 date {
 	#
 	# format:: 
@@ -71,7 +75,9 @@ date {
 }
 
 #
-#  The core xlat, "%T" returns the request timestamp in ISO format
+# ### ISO format
+#
+#  The core xlat, `%T` returns the request timestamp in `ISO` format
 #  including milliseconds. This expansion returns it without the
 #  millisecond component.
 #

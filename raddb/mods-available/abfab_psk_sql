@@ -10,7 +10,7 @@
 #
 # The `abfab_psk_sql` module is used to authorize PSK from `ABFAB` trust router.
 #
-# ## Default instances
+# ## Default instance
 #
 
 #

@@ -13,9 +13,9 @@
 #
 
 #
-# ## Default instance
+#  ## Default instance
 #
-# There is no configuration.
+#  This module takes no configuration.
 #
 chap {
 }

@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-# ## Exec Module
+#  ## Exec Module
 #
 #  The module `exec` is used for executing external programs.
 #
@@ -18,7 +18,7 @@
 #
 #  The value of the attribute will be replaced with the output of the
 #  program which is executed.  Due to RADIUS protocol limitations,
-#  any output over 253 bytes will be ignored.
+#  any output over `253` bytes will be ignored.
 #
 #  The RADIUS attributes from the user request will be placed
 #  into environment variables of the executed program, as
@@ -43,6 +43,10 @@
 #  | = 9  | updated   | the module updated information in the request.
 #  | > 9  | fail      | the module failed.
 #  |===
+#
+
+#
+#  ## Default instance
 #
 exec {
 	#
