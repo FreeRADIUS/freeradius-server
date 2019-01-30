@@ -28,6 +28,12 @@ sqlippool {
 	lease_duration = 3600
 
 	#
+	# Timeout between each consecutive 'allocate_clear' queries (default: 1s)
+	# This will avoid having too many deadlock issues, especially on MySQL backend.
+	#
+	allocate_clear_timeout = 1
+
+	#
 	#  As of 3.0.16, the 'ipv6 = yes' configuration is deprecated.
 	#  You should use the "attribute_name" configuration item
 	#  below, instead.
