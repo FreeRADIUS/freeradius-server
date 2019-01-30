@@ -8,7 +8,7 @@
 #
 # ## Exec Module
 #
-#  The module `exec` is used for execute external programs.
+#  The module `exec` is used for executing external programs.
 #
 #  This module is useful only for `xlat`.  To use it, put `exec` into
 #  the `instantiate` section.  You can then do dynamic translation of
