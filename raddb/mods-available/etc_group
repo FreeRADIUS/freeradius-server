@@ -1,20 +1,29 @@
 # -*- text -*-
 #
 #  $Id$
+#######################################################################
+#
+#  ## Passwd Module
+#
+#  The `passwd` module provides authentication against unix passwd files.
+#
 
-#  "passwd" configuration, for the /etc/group file. Adds a Etc-Group-Name
+#
+#  ## Sample configuration
+#
+#  The `passwd` configuration, for the /etc/group file. Adds a `Etc-Group-Name`
 #  attribute for every group that the user is member of.
 #
-#  You will have to define the Etc-Group-Name in the 'dictionary' file
+#  You will have to define the `Etc-Group-Name` in the 'dictionary' file
 #  as a 'string' type.
 #
-#  The Group and Group-Name attributes are automatically created by
-#  the Unix module, and do checking against /etc/group automatically.
-#  This means that you CANNOT use Group or Group-Name to do any other
-#  kind of grouping in the server.  You MUST define a new group
-#  attribute.
+#  The `Group` and `Group-Name` attributes are automatically created by
+#  the Unix module, and do checking against `/etc/group` automatically.
 #
-#  i.e. this module should NOT be used as-is, but should be edited to
+#  This means that you *CANNOT* use `Group` or `Group-Name` to do any other
+#  kind of grouping in the server. You *MUST* define a new group attribute.
+#
+#  WARNING: This module should NOT be used as-is, but should be edited to
 #  point to a different group file.
 #
 passwd etc_group {
