@@ -1,19 +1,34 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
+#######################################################################
 #
-#  This module is useful only for 'xlat'.  To use it,
-#  put 'dhcp' into the 'instantiate' section.
+#  ## DHCPv4 Module
 #
-#  %{dhcp_options:<Attribute-ref>} may be used to decode
+#  The `dhcpv4` module is useful only for `xlat`. To use it,
+#  put `dhcp` into the `instantiate { ... }` section.
+#
+#  `%{dhcp_options:<Attribute-ref>}` may be used to decode
 #  DHCP options data included in RADIUS packets by vendors
 #  of DHCP to RADIUS gateways.
 #
 #  This is known to work with the following VSAs:
-#	* Juniper		- ERX-Dhcp-Options
-#	* Alcatel lucent SR	- Alc-ToServer-Dhcp-Options
-#				- Alc-ToClient-Dhcp-Options
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Vendor            | VSAs
+#  | Juniper           | `ERX-Dhcp-Options`
+#  | Alcatel lucent SR | `Alc-ToServer-Dhcp-Options`, `Alc-ToClient-Dhcp-Options`
+#  |===
+#
+#  e.g: `%{dhcp_options:RX-Dhcp-Options}`
+#
+
+#
+#  ## Default instance
 #
 dhcpv4 {
 }
