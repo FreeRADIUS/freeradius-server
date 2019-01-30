@@ -1724,6 +1724,9 @@ else
   AC_CHECK_FUNC(crypt, AC_DEFINE(HAVE_CRYPT, [], [Do we have the crypt function]))
 fi
 
+dnl crypt_r is the GNU thread-safe version
+AC_CHECK_LIB(crypt, crypt_r, AC_DEFINE(HAVE_CRYPT_R, [], [Do we have the crypt_r function]))
+
 dnl Check for libcipher
 AC_CHECK_LIB(cipher, setkey,
    CRYPTLIB="${CRYPTLIB} -lcipher"

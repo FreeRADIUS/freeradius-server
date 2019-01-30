@@ -1,0 +1,148 @@
+#
+# PRE: update if
+#
+
+# Skip all these tests if crypt_r was not available
+#
+if ("%{crypt:&User-Password}") {
+	noop
+}
+if ("%{request:Module-Failure-Message[0]}" !~ /^Crypt not available at compile time/) {
+
+
+# Set required attributes
+#
+update reply {
+	&Filter-Id := "filter"
+}
+
+update request {
+	&Tmp-String-0 := 'foo'
+	&Tmp-String-1 := 'foo:bar'
+	&Tmp-String-2 := 'f:'
+	&Tmp-String-3 := &User-Password
+	&Tmp-String-4 := &control:Cleartext-Password
+	&Tmp-String-5 := 'fwtLWDtMiSbH8lmXCMIVfrSMJjF'
+	&Tmp-String-8 := 'aa'
+	&Tmp-String-9 := '$1$abcdefgh'
+}
+
+
+# Check for error on no salt
+#
+if ("%{crypt:&User-Password}") {
+	update reply {
+		&Filter-Id += 'fail 1a'
+	}
+}
+
+if ("%{request:Module-Failure-Message[0]}" != 'No salt specified in crypt xlat') {
+        update reply {
+                &Filter-Id += 'fail 1b'
+        }
+}
+
+
+# Check DES - all crypt_r() implementations should do this.
+#
+if ("%{crypt:aa:foo}" != "aaKNIEDOaueR6") {
+	update reply {
+		&Filter-Id += 'fail 2a'
+	}
+}
+
+if ("%{crypt:&Tmp-String-8:foo}" != "aaKNIEDOaueR6") {
+	update reply {
+		&Filter-Id += 'fail 2b'
+	}
+}
+
+if ("%{crypt:aa:&User-Password}" != "aaPwJ9XL9Y99E") {
+	update reply {
+		&Filter-Id += 'fail 2c'
+	}
+}
+
+
+# Test we can encrypt and then authenticate
+#
+update {
+	&request:User-Password := &request:Tmp-String-5
+	&control:Crypt-Password := "%{crypt:AZ:&Tmp-String-5}"
+	&control:Cleartext-Password !* ""
+}
+
+group {
+	pap.authenticate {
+		fail = 1
+		reject = 1
+	}
+
+	if (!ok) {
+		update reply {
+			&Filter-Id += 'fail 3'
+		}
+	}
+}
+
+update {
+	&request:User-Password := &Tmp-String-3
+	&control:Cleartext-Password := &Tmp-String-4
+}
+
+
+# Clear Module-Failure-Message so below tests work no matter what
+# happened above
+#
+update request {
+	&Module-Failure-Message !* ""
+}
+
+
+# Check colons in password
+#
+if ("%{crypt:aa:foo:bar}" != "aadzEnaZwH90k") {
+	update reply {
+		&Filter-Id += 'fail 4a'
+	}
+}
+
+if ("%{crypt:aa:&Tmp-String-1}" != "aadzEnaZwH90k") {
+	update reply {
+		&Filter-Id += 'fail 4b'
+	}
+}
+
+
+# Check invalid chars in salt
+#
+if ("%{crypt:&Tmp-String-2:foo}") {
+	update reply {
+		&Filter-Id += 'fail 5a'
+	}
+}
+
+if ("%{request:Module-Failure-Message[0]}" !~ /Crypt salt has the wrong format/) {
+        update reply {
+                &Filter-Id += 'fail 5b'
+        }
+}
+
+
+# Convert the Cleartext-Password to Password-With-Header and auth with that
+#
+update control {
+	&Password-With-Header := "{crypt}%{crypt:$1$abcdefgh:&Tmp-String-4}"
+	&Crypt-Password !* ""
+	&Cleartext-Password !* ""
+}
+
+
+# Crypt not available at compile time? Force the test to pass.
+#
+}
+else {
+	update reply {
+		&Filter-Id := "filter"
+	}
+}

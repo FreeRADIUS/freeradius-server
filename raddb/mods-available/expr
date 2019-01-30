@@ -110,6 +110,11 @@
 #  hmacsha1	generate HMAC-SHA1 of string
 #		"%{hmacsha1:foo bar}" == "85d155c55ed286a300bd1cf124de08d87e914f3a"
 #
+#  crypt	encrypt with a salt: %{crypt:salt:password}
+#		"%{crypt:aa:foo}" == "aaKNIEDOaueR6"
+#		"%{crypt:$1$abcdefgh:foo}" == "$1$abcdefgh$XxzGe9Muun7wTYbZO4sdr0"
+#		"%{crypt:$5$%{randstr:aaaaaaaaaaaaaaaa}:foo}" == "$1$fu4P2fcAdo9gM..."
+#
 #  pairs	serialize attributes as comma-delimited string
 #		"%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar', ..."
 #
