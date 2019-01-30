@@ -24,11 +24,105 @@
 #  into environment variables of the executed program, as
 #  described in `man unlang` and in `doc/configuration/variables.rst`
 #
-#  TIP: See also `echo` for more sample configuration.
+#  The return value of the program run determines the result of the exec
+#  instance call as follows:
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Code | Return    | Description
+#  | < 0  | fail      | the module failed.
+#  | = 0  | ok        | the module succeeded.
+#  | = 1  | reject    | the module rejected the user.
+#  | = 2  | fail      | the module failed.
+#  | = 3  | ok        | the module succeeded.
+#  | = 4  | handled   | the module has done everything to handle the request.
+#  | = 5  | invalid   | the user's configuration entry was invalid.
+#  | = 6  | userlock  | the user was locked out.
+#  | = 7  | notfound  | the user was not found.
+#  | = 8  | noop      | the module did nothing.
+#  | = 9  | updated   | the module updated information in the request.
+#  | > 9  | fail      | the module failed.
+#  |===
 #
 exec {
-	wait = no
+	#
+	#  wait:: Wait for the program to finish.
+	#
+	#  If we do NOT wait, then the program is "fire and
+	#  forget", and any output attributes from it are ignored.
+	#
+	wait = yes
+
+	#
+	#  program:: The name of the program to execute, and it's
+	#  arguments. 
+	#  
+	#  Dynamic translation is done on this field, so things like
+	#  the following example will work.
+	#
+	#  If 'program' is set to a value, then the module *cannot* be
+	#  used in an `xlat`.  See the `echo` module for examples of
+	#  how to use the module "in line".
+	#
+#	program = "/bin/true %{User-Name}"
+
+	#
+	#  input_pairs:: The attributes which are placed into the
+	#  environment variables for the program.
+	#
+	#  Allowed values are:
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Pairs         | Description
+	#  | request       | attributes from the request
+	#  | config        | attributes from the configuration items list
+	#  | reply         | attributes from the reply
+	#  | proxy-request | attributes from the proxy request
+	#  | proxy-reply   | attributes from the proxy reply
+	#  |===
+	#
+	#  NOTE: Some attributes may not exist at some stages.
+	#  e.g. There may be no proxy-reply attributes if this module is used
+	#  in the `recv` section.
+	#
 	input_pairs = request
+
+	#
+	#  output_pairs::: Where to place the output attributes (if any) from
+	#  the executed program. 
+	# 
+	#  The values allowed, and the restrictions as to availability, are the
+	#  same as for the `input_pairs`.
+	#
+	#  This configuration item is used only when the `program`
+	#  configuration item is set, and when `wait = yes` is set.
+	#
+#	output_pairs = reply
+
+	#
+	#  shell_escape:: Escape the environment variables.
+	#
+	#  If this is set, all the RADIUS attributes are capitalised and dashes
+	#  replaced with underscores. Also, RADIUS values are surrounded with
+	#  double-quotes.
+	#
+	#  That is to say:
+	#
+	#    User-Name=BobUser => USER_NAME="BobUser"
+	#
 	shell_escape = yes
+
+	#
+	#  timeout:: Set a time wait for the program to finish.
+	#
+	#  Default is `10` seconds, which should be plenty for nearly
+	#  anything. Range is `1` to `30` seconds.
+	# 
+	#  WARNING: You are strongly encouraged to NOT increase this
+	#  value.  In fact, you are much better off decreasing it to a
+	#  lower value.  Doing so will improve network stability and
+	#  responsiveness.
+	#
 	timeout = 10
 }
