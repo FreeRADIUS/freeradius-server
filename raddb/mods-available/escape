@@ -1,20 +1,30 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
 #######################################################################
 #
-# ## Escape Module
+#  ## Escape Module
 #
-# The `escape` module registers two `xlat` functions.
+#  The `escape` module registers two `xlat` functions.
 #
 #  [options="header,autowidth"]
 #  |===
 #  | Function          | Description
-#  | `<module inst>`   | Replaces characters not in the `safe_characters` list with escaped versions
+#  | `<module inst>`   | Replaces characters not in the `safe_characters` list with escaped versions.
 #  | `un<module inst>` | Replaces escape sequences with the original character.
 #  |===
 #
+
+#
+#  ## Default instance
+#
 escape {
+	#
+	# safe_characters:: List with allowed characters.
+	#
 	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /äéöüàâæçèéêëîïôœùûüaÿÄÉÖÜßÀÂÆÇÈÉÊËÎÏÔŒÙÛÜŸ"
 }
+

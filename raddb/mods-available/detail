@@ -18,7 +18,7 @@
 #
 detail {
 	#
-	#  filename:: The filename used when creating "detail" files.
+	#  filename:: The filename used when creating `detail` files.
 	#
 	#  The default configuration creates a new `detail` file for
 	#  every radius client (by IP address or hostname). In
@@ -82,14 +82,14 @@ detail {
 #	group = ${security.group}
 
 	#
-	#  header:: The header of a `detail` file entry/
+	#  header:: The header of a `detail` file entry.
 	#
 	#  Every entry in the detail file has a header which is a
-	#  timestamp.  By default, we use the ctime format (see `man
-	#  ctime` for details).
+	#  timestamp.
+	#  By default, we use the ctime format (see `man 3 ctime` for details).
 	#
 	#  The header can be customised by editing this string.
-	#  See "doc/configuration/variables.rst" for a description
+	#  See `doc/configuration/variables.rst` for a description
 	#  of what can be put here.
 	#
 	header = "%t"
@@ -98,7 +98,7 @@ detail {
 	#  locking:: Whether or not we should lock the detail file
 	#  before writing to it.
 	#
-	#   Mainly used if the detail file reader is be reading this file.
+	#  Mainly used if the detail file reader is be reading this file.
 	#
 #	locking = yes
 
