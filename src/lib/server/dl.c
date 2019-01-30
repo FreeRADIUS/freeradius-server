@@ -557,6 +557,7 @@ void *dl_by_name(char const *name)
 #ifdef RTLD_DEEPBIND
 	if (fr_get_lsan_state() != 1) {
 		flags |= RTLD_DEEPBIND;
+		fr_strerror();	/* clear error buffer */
 	}
 #endif
 

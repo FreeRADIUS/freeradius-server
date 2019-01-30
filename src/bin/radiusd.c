@@ -1005,6 +1005,7 @@ cleanup:
 	 *  we don't inteferere with the onexit() handler.
 	 */
 	if (!rad_suid_is_down_permanent() && (fr_get_lsan_state() == 1)) rad_suid_up();
+	fr_strerror();	/* clear error buffer */
 
 	return ret;
 }
