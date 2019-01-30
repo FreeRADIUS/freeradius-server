@@ -13,11 +13,11 @@
 #  [NOTE]
 #  ====
 #  * See the `raddb/policy.d/dhcp_sqlippool` for the "glue" code that allows
-#  the RADIUS based "sqlippool" module to be used for DHCP.
+#  the RADIUS based `sqlippool` module to be used for DHCP.
 #  * See `raddb/sites-available/dhcp` for instructions on how to configure the DHCP server.
 #  ====
 #
-# ## Default instance
+#  ## Default instance
 #
 sqlippool dhcp_sqlippool {
 	#
@@ -43,7 +43,7 @@ sqlippool dhcp_sqlippool {
 	$INCLUDE ${modconfdir}/sql/ippool-dhcp/mysql/queries.conf
 
 	# 
-	# NOTE: To use sqlite you need to add `%` to safe_characters in
+	# NOTE: To use sqlite you need to add `%` to `safe_characters` in
 	# `raddb/mods-config/sql/main/sqlite/queries.conf.`
 	#
 #	$INCLUDE ${modconfdir}/sql/ippool-dhcp/sqlite/queries.conf

@@ -1,18 +1,21 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
+
 #######################################################################
 #
 #  ## etc_group Module
 #
 #  The `etc_group` module provides group names from the `/etc/group` file.
 #
-#  Please see the `passwd` module for full doucmentation on the
+#  NOTE: Please see the `passwd` module for full doucmentation on the
 #  configuration items used here.
 #
 
 #
-#  ## Sample configuration
+#  ## Default instance
 #
 #  The `passwd` module configuration, for the /etc/group file. Adds a
 #  `Etc-Group-Name` attribute for every group that the user is member
@@ -24,11 +27,13 @@
 #  The `Group` and `Group-Name` attributes are automatically created by
 #  the Unix module, and do checking against `/etc/group` automatically.
 #
-#  This means that you *CANNOT* use `Group` or `Group-Name` to do any other
-#  kind of grouping in the server. You *MUST* define a new group attribute.
-#
-#  WARNING: This module should NOT be used as-is, but should be edited to
-#  point to a different group file.
+#  [WARNING]
+#  ====
+#  * This means that you *CANNOT* use `Group` or `Group-Name` to do any other
+#    kind of grouping in the server. You *MUST* define a new group attribute.
+#  * This module should *NOT* be used as-is, but should be edited to
+#    point to a different group file.
+#  ====
 #
 passwd etc_group {
 	filename = /etc/group

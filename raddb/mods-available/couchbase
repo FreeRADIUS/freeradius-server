@@ -189,7 +189,7 @@ couchbase {
 		#
 		#  uses:: Number of uses before the connection is closed.
 		#
-		#  NOTE: `0` means "infinite"
+		#  NOTE: `0` means "infinite".
 		#
 		uses = 0
 
@@ -214,7 +214,7 @@ couchbase {
 		#
 		connect_timeout = 3.0
 
-		# [NOTE]
+		# [WARNING]
 		# ====
 		#  All configuration settings are enforced.  If a
 		#  connection is closed because of `idle_timeout`,

@@ -15,12 +15,16 @@
 #  Instead of having a specific "reject delay" configuration, it is
 #  instead possible to have a policy that delays the response.
 #
-#  The module can also be used to introduce artificial jitter into
+#  TIP: The module can also be used to introduce artificial jitter into
 #  responses.
 #
 
 #
 # ## Default instance
+#
+
+#
+# ### Simple delay
 #
 delay {
 	#
@@ -54,9 +58,9 @@ delay {
 }
 
 #
-# ## Delaying Access-Reject packets
+# ### Delaying Access-Reject packets
 #
-#  The `delay_reject` module should be used in a 'send Access-Reject' section, as
+#  The `delay_reject` module should be used in a `send Access-Reject` section, as
 #  the last module in that section.  When `delay_reject` is used
 #  there, the reject will be delayed for either the Response-Delay
 #  seconds, or if that attribute does not exist, then one second.
@@ -65,7 +69,7 @@ delay {
 #  other requests.  It will simply set a timer to wake up and send the
 #  response after the delay.
 #
-#  Note that we set `relative = yes` here.  That setting ensures that
+#  NOTE: We set `relative = yes` here.  That setting ensures that
 #  if the server takes more than one second to process the request,
 #  then the `delay_reject` module will not add *additional* delays.
 #  Instead, this module will ensure that the `Access-Reject` is sent
