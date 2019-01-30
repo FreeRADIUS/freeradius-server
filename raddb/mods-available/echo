@@ -12,7 +12,7 @@
 #  one section (e.g. `recv`, `pre_proxy`, etc), then it is probably best
 #  to define a different instance of the `exec` module for every section.
 #
-#  NOTE: This is a more general example of the execute module.
+#  NOTE: This is a more specific example of the `exec` module.
 #
 #    Attribute-Name = `%{echo:/path/to/program args}`
 #
