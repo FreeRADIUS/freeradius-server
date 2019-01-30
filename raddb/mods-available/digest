@@ -8,17 +8,15 @@
 #
 #  The `digest` module is used for performing authentication against a Cisco SIP server.
 #
-#  NOTE: Digest authentication is standardized in `RFC 5090`.
-#  However, most implementations do not use that.  Instead, they
-#  implement the draft given below.
-#
-#  See `doc/rfc/draft-sterman-aaa-sip-00.txt' for more details.
-#
-#  NOTE: The `digest` module currently has no configuration.
+#  TIP: Digest authentication is standardized in `RFC 5090`. However, most implementations
+#  do not use that.	Instead, they implement the draft
+#  as can be seen at `draft-sterman-aaa-sip-01` for more details.
 #
 
 #
 #  ## Default instance
+#
+#  This module takes no configuration.
 #
 digest {
 
