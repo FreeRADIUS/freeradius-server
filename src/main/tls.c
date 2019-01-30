@@ -3377,8 +3377,22 @@ post_ca:
 		 */
 		SSL_CTX_sess_set_cache_size(ctx, conf->session_cache_size);
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+		SSL_CTX_set_num_tickets(ctx, 1);
+#endif
+
 	} else {
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+		/*
+		 *	This controls the number of stateful or stateless tickets
+		 *	generated with TLS 1.3.  In OpenSSL 1.1.1 it's also
+		 *	required to disable sending session tickets,
+		 *	SSL_SESS_CACHE_OFF is not good enough.
+		 */
+		SSL_CTX_set_num_tickets(ctx, 0);
+#endif
 	}
 
 	return ctx;
