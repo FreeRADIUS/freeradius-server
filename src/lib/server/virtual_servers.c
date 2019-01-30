@@ -161,6 +161,13 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
 	dl_t const		*module;
 
+	if (!namespace) {
+		cf_log_err(listen_cs, "No namespace set for virtual server");  inside)
+		cf_log_err(listen_cs, "Add namespace = <protocol> inside %s %s { ... } section",
+			   cf_section_name1(listen_cs), cf_section_name2(listen_cs));
+		return -1;
+	}
+
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading proto_%s", cf_pair_value(namespace));
 
 	module = dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO);
