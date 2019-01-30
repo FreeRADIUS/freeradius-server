@@ -55,7 +55,7 @@ typedef struct rlm_sqlippool_t {
 	time_t		last_clear;		//!< So we only do it once a second.
 	char const	*allocate_begin;	//!< SQL query to begin.
 	char const	*allocate_clear;	//!< SQL query to clear an IP.
-	uint32_t    allocate_clear_timeout; //!< Number of second between two allocate_clear SQL query
+	uint32_t	allocate_clear_timeout; //!< Number of second between two allocate_clear SQL query
 	char const	*allocate_find;		//!< SQL query to find an unused IP.
 	char const	*allocate_update;	//!< SQL query to mark an IP as used.
 	char const	*allocate_commit;	//!< SQL query to commit.
@@ -141,7 +141,6 @@ static CONF_PARSER module_config[] = {
 	{ "allocate-clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_clear), NULL },
 	{ "allocate_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT , rlm_sqlippool_t, allocate_clear), ""  },
 
-	{ "allocate-clear-timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_clear_timeout), NULL },
 	{ "allocate_clear_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlippool_t, allocate_clear_timeout), "1" },
 
 	{ "allocate-find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_find), NULL },
@@ -489,6 +488,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+	if (inst->allocate_clear) {
+		FR_INTEGER_BOUND_CHECK("allocate_clear_timeout", inst->allocate_clear_timeout, >, 1);
+		FR_INTEGER_BOUND_CHECK("allocate_clear_timeout", inst->allocate_clear_timeout, <=, 600);
+	}
+	
 	inst->sql_inst = (rlm_sql_t *) sql_inst->insthandle;
 	return 0;
 }
@@ -560,12 +564,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *	actual work is protected by a transaction.  The idea
 	 *	here is that if we're allocating 100 IPs a second,
 	 *	we're only do 1 CLEAR per allocate_clear_timeout.
-	 *  This will avoid having several queries to deadlock and blocking all
-	 *  the sqlippool module.
+	 *
+	 *	This will avoid having several queries to deadlock and blocking all
+	 *	the sqlippool module.
 	 */
 	now = time(NULL);
 	diff_time = difftime(now, inst->last_clear);
-	if (inst->allocate_clear && *inst->allocate_clear && diff_time >= inst->allocate_clear_timeout) {
+	if (inst->allocate_clear && *inst->allocate_clear && (diff_time >= inst->allocate_clear_timeout)) {
 		inst->last_clear = now;
 
 		DO_PART(allocate_begin);
