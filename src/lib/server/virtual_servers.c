@@ -162,7 +162,7 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	dl_t const		*module;
 
 	if (!namespace) {
-		cf_log_err(listen_cs, "No namespace set for virtual server");  inside)
+		cf_log_err(listen_cs, "No namespace set for virtual server");
 		cf_log_err(listen_cs, "Add namespace = <protocol> inside %s %s { ... } section",
 			   cf_section_name1(listen_cs), cf_section_name2(listen_cs));
 		return -1;
