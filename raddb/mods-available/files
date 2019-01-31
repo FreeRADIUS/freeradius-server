@@ -1,30 +1,49 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
-# Livingston-style 'users' file
+#######################################################################
 #
-# See "man users" for more information.
+#  = Files Module
+#
+#  Livingston-style 'users' file.
+#
+#  See "man 1 users" for more information.
+#
+
+#
+#  ## Default instance
 #
 files {
-	# Search for files in a subdirectory of mods-config which
+	#
+	# moddir:: Search for files in a subdirectory of mods-config which
 	# matches this instance of the files module.
+	#
 	moddir = ${modconfdir}/${.:instance}
 
-	# The default key attribute to use for matches.  The content
-	# of this attribute is used to match the "name" of the
-	# entry.
-	#key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+	#
+	# key:: The default key attribute to use for matches.  The content
+	# of this attribute is used to match the `name` of the entry.
+	#
+#	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
-	#  The old "users" style file is now located here.
+	#
+	# filename:: The old `users` style file is now located here.
+	#
 	filename = ${moddir}/authorize
 
-	#  This is accepted for backwards compatibility
-	#  It will be removed in a future release.
+	#
+	# usersfile:: This is accepted for backwards compatibility
+	# It will be removed in a future release.
+	#
 #	usersfile = ${moddir}/authorize
 
-	#  These are accepted for backwards compatibility.
-	#  They will be renamed in a future release.
+	#
+	# WARNING: These are accepted for backwards compatibility.
+	# They will be renamed in a future release.
+	#
 	acctusersfile = ${moddir}/accounting
 	preproxy_usersfile = ${moddir}/pre-proxy
 }
