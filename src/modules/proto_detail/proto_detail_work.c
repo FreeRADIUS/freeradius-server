@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file proto_detail_file.c
+ * @file proto_detail_work.c
  * @brief Detail handler for files
  *
  * @copyright 2017 The FreeRADIUS server project.
