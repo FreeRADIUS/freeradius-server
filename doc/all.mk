@@ -34,7 +34,4 @@ DOCRST := $(wildcard *.rst)
 %.html: %.rst
 	${Q}rst2html.py $^ > $@
 
-.PHONY: html
-html: $(DOCRST:.rst=.html)
-
 endif
