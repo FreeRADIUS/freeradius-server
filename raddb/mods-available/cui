@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-#  ## CUI Module
+#  = CUI Module
 #
 #  The module `cui` (`Chargeable-User-Identity`) writes
 #  `Chargeable-User-Identity` log to an SQL database.   It uses the `sql`

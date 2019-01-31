@@ -4,7 +4,7 @@
 
 #######################################################################
 #
-#  ## Digest Module
+#  = Digest Module
 #
 #  The `digest` module is used for performing authentication against a Cisco SIP server.
 #

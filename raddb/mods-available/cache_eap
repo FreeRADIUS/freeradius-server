@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-# ## Cache EAP Module
+#  = Cache EAP Module
 #
 #  The `cache_eap` module caches EAP replies.
 #

@@ -3,9 +3,10 @@
 # :toc:
 #
 #  $Id$
+
 #######################################################################
 #
-# ## Date Module
+# = Date Module
 #
 # The `date` module xlat does convert time formats.
 #
@@ -42,11 +43,11 @@ date {
 	#
 	#  ."Get time" mode:
 	#
-	#  If the input is the string "request", the `xlat` will format the
+	#  If the input is the string `request`, the `xlat` will format the
 	#  time the current request packet arrived according to the format
 	#  string, and return it as a string.
 	#
-	#  If the input is the string "now", the `xlat` will behave as
+	#  If the input is the string `now`, the `xlat` will behave as
 	#  above, for the current time.
 	#
 	#  See also the core provided expansions which are equivalent to
@@ -77,7 +78,7 @@ date {
 #
 # ### ISO format
 #
-#  The core xlat, `%T` returns the request timestamp in `ISO` format
+#  The core `xlat`, `%T` returns the request timestamp in `ISO` format
 #  including milliseconds. This expansion returns it without the
 #  millisecond component.
 #

@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-#  ## DHCP SQL-IP-Pool Module
+#  = DHCP SQL-IP-Pool Module
 #
 #  The module `dhcp_sqlippool` provides configuration for `DHCP` to use `SQL IP Pools`.
 #
@@ -17,7 +17,7 @@
 #  * See `raddb/sites-available/dhcp` for instructions on how to configure the DHCP server.
 #  ====
 #
-#  ## Default instance
+#  # Default instance
 #
 sqlippool dhcp_sqlippool {
 	#

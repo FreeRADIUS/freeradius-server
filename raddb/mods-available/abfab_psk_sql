@@ -2,15 +2,17 @@
 #
 # :toc:
 #
-#	$Id$
+# $Id$
 
 #######################################################################
 #
-# ## ADFAB PSK Module
+#  = ADFAB PSK Module
 #
-# The `abfab_psk_sql` module is used to authorize PSK from `ABFAB` trust router.
+#  The `abfab_psk_sql` module is used to authorize PSK from `ABFAB` trust router.
 #
-# ## Default instance
+
+#
+#  ## Default instance
 #
 
 #
@@ -20,7 +22,7 @@ sql psksql {
 	#
 	# driver:: Database driver.
 	#
-    	driver = "rlm_sql_sqlite"
+	driver = "rlm_sql_sqlite"
 
 	#
 	# sqlite { ... }:: Database statement based on `driver` setting.

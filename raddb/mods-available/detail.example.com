@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-#  ## Detail Module (Sample)
+#  = Detail Module (Sample)
 #
 #  Please see the `detail` module for full documentation.
 #
