@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-# ## Delay Module
+# = Delay Module
 #
 #  The `delay` module delays the processing of a request in a
 #  non-blocking fashion.

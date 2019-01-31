@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-#  ## Escape Module
+#  = Escape Module
 #
 #  The `escape` module registers two `xlat` functions.
 #
@@ -23,7 +23,9 @@
 #
 escape {
 	#
-	# safe_characters:: List with allowed characters.
+	#  safe_characters::
+	#
+	#  Characters that will not be encoded by the `%{escape}` `xlat` function.
 	#
 	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /äéöüàâæçèéêëîïôœùûüaÿÄÉÖÜßÀÂÆÇÈÉÊËÎÏÔŒÙÛÜŸ"
 }

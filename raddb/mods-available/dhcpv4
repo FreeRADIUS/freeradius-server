@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-#  ## DHCPv4 Module
+#  = DHCPv4 Module
 #
 #  The `dhcpv4` module is useful only for `xlat`. To use it,
 #  put `dhcp` into the `instantiate { ... }` section.
@@ -28,7 +28,7 @@
 #
 
 #
-#  ## Default instance
+#  # Default instance
 #
 #  This module takes no configuration.
 #

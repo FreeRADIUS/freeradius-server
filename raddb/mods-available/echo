@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-# ## Echo Module
+#  = Echo Module
 #
 #  The `echo` module is used for execute an external program in more than
 #  one section (e.g. `recv`, `pre_proxy`, etc), then it is probably best

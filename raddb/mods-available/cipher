@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-# ## Cipher Module
+#  = Cipher Module
 #
 #  The `cipher` module is used to transform plaintext in some way that is dependent
 #  on a key or key pair, producing encrypted ciphertext.
@@ -26,7 +26,7 @@
 #  You should use armouring expansions i.e. `%{base64_encode:}`, `%{base64_decode:}` if the values
 #  are to be passed outside of FreeRADIUS.
 #
-#  E.g:
+#  e.g:
 #
 #    %{base64_encode:%{cipher_encrypt:<plaintext>}}
 #    %{cipher_decrypt:%{base64_decode:<ciphertext>}}
@@ -59,11 +59,7 @@
 #
 cipher {
 	#
-	# ### RSA asymmetrically keyed ciphering
-	#
-
-	#
-	# type::
+	#  type::
 	#
 	#  Available schemes are:
 	#
@@ -71,6 +67,9 @@ cipher {
 	#
 	type = rsa
 
+	#
+	#  ### RSA asymmetrically keyed ciphering
+	#
 	rsa {
 		#  private_key_password::
 		#

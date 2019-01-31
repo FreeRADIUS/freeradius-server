@@ -6,16 +6,11 @@
 
 #######################################################################
 #
-# ## Always Module
+#  = Always Module
 #
 #  The `always` module simply returns the same result, always, without
 #  doing anything else.  It is here for use in complex policies.
 #
-
-#
-# ## Sample configuration
-#
-
 #always <value> {
 	#
 	#  rcode:: Return code.
@@ -58,7 +53,7 @@
 #}
 
 #
-# ### Default instances
+# ## Default instances
 #
 #  The following default instances allow the use of return codes like
 #  `reject` or `ok` in `unlang` policies.

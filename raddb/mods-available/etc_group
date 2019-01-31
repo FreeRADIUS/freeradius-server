@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-#  ## etc_group Module
+#  = etc_group Module
 #
 #  The `etc_group` module provides group names from the `/etc/group` file.
 #

@@ -6,9 +6,9 @@
 
 #######################################################################
 #
-# ## Cache TLS Session Module
+#  = Cache TLS Session Module
 #
-#  The `cache_tls_session` module caches TLS sessions for resiliency.
+#  The `cache_tls` module caches TLS sessions for resiliency.
 #
 #  This module should be listed in a `send Access-Accept` section to
 #  write the cache, and in `recv Access-Request` to read the cache.

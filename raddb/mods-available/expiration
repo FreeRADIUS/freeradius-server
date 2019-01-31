@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-# ## Expiration Module
+# = Expiration Module
 #
 # The `expiration` module manages the `Expiration` attribute.
 #
@@ -16,7 +16,7 @@
 #
 
 #
-# ## Sample configuration
+# ## Default instance
 #
 # This module takes no configuration.
 #

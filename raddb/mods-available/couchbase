@@ -3,9 +3,10 @@
 # :toc:
 #
 #  $Id$
+
 #######################################################################
 #
-# ## Couchbase Module
+# = Couchbase Module
 #
 # The `couchbase` module is used to provides connections to a Couchbase database.
 #

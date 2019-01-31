@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-# ## Cache Module
+#  = Cache Module
 #
 #  The `cache` module is used to cache attributes. The idea is that you can look
 #  up information in a database, and then cache it. Repeated requests for the same
@@ -63,9 +63,10 @@ cache {
 
 #
 #  ### Memcached cache driver
+#
 #	memcached {
 		#
-		# options:: Memcached configuration options.
+		#  options:: Memcached configuration options.
 		#
 		#  The memcached options are documented at
 		#  http://docs.libmemcached.org/libmemcached_configuration.html#memcached
@@ -88,9 +89,10 @@ cache {
 
 #
 #  ### Redis cache driver
+#
 #	redis {
 		#
-		# server:: Redis Server name.
+		#  server:: Redis Server name.
 		#
 		#  If using Redis cluster, multiple 'bootstrap' servers may be
 		#  listed here (as separate config items). These will be contacted
@@ -141,12 +143,12 @@ cache {
 #	}
 
 	#
-	# key:: The `key` used to index the cache. It is dynamically expanded at run time.
+	#  key:: The `key` used to index the cache. It is dynamically expanded at run time.
 	#
 	key = &User-Name
 
 	#
-	# ttl::
+	#  ttl::
 	#
 	#  The TTL of cache entries, in seconds. Entries older than this
 	#  will be expired.
@@ -163,7 +165,7 @@ cache {
 	#  You should never set the "epoch" configuration item in this file.
 
 	#
-	# add_stats::
+	#  add_stats::
 	#
 	#  If `yes` the following attributes will be added to the request:
 	#  * `&request:Cache-Entry-Hits` - The number of times this entry
