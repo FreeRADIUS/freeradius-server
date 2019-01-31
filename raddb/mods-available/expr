@@ -1,25 +1,36 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
+#######################################################################
+#
+#  = Expr Module
 #
 #  This module performs mathematical calculations:
 #
-#	Attribute-Name = "%{expr:2 + 3 + &NAS-Port}"
+#  e.g:
 #
-#  It supports the following operators (in order of precedence)
+#    Attribute-Name = "%{expr:2 + 3 + &NAS-Port}"
 #
-#	&	binary AND
-#	|	binary OR
-#	<<	left shift
-#	>>	right shift
-#	+	addition
-#	-	subtraction
-#	*	multiply
-#	/	divide
-#	%%	remainder
-#	^	exponentiation
-#	(...)	sub-expression
+#  It supports the following operators (in order of precedence).
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Operator  | Description
+#  | &         | binary AND
+#  | \|        | binary OR
+#  | <<	       | left shift
+#  | >>        | right shift
+#  | +         | addition
+#  | -         | subtraction
+#  | *         | multiply
+#  | /         | divide
+#  | %%        | remainder
+#  | ^         | exponentiation
+#  | (...)     | sub-expression
+#  |===
 #
 #  Operator precedence follows the normal rules.
 #  Division by zero means that the entire expression is invalid.
@@ -28,32 +39,37 @@
 #  was parsed strictly left to right, and ignored operator
 #  precedence.
 #
-#  It also allows unary negation:	-1
-#  And twos complement:			~1
+#    It also allows unary negation:	-1
+#    And twos complement:			~1
 #
 #  All calculations are done on signed 63-bit integers.
-#  e.g. int64_t.  This should be sufficient for all normal
+#  e.g. `int64_t`.  This should be sufficient for all normal
 #  purposes.
 #
-#  Hex numbers are supported:		0xabcdef
+#    Hex numbers are supported:		0xabcdef
 #
 #  As with all string expansions, you can nest the expansions:
 #
-#	%{expr: %{NAS-Port} + 1}
-#	%{expr: %{sql:SELECT ... } + 1}
+#    %{expr: %{NAS-Port} + 1}
+#    %{expr: %{sql:SELECT ... } + 1}
 #
 #  Attribute references are supported for integer attributes.
-#  e.g. &NAS-Port.  The benefit of using attribute references
+#  e.g. `&NAS-Port`.  The benefit of using attribute references
 #  is that the expression is calculated directly on the
-#  attribute.  It skips the step of "print to string, and then
-#  parse to number".  This means it's a little faster.
+#  attribute.  It skips the step of _print to string, and then
+#  parse to number_.  This means it's a little faster.
 #
 #  Otherwise, all numbers are decimal.
 #
+
+#
+#  ## Default instance
+#
 expr {
 	#
-	# Characters that will not be encoded by the %{escape}
-	# xlat function.
+	#  safe_characters::
+	#
+	#  Characters that will not be encoded by the `%{escape}` `xlat` function.
 	#
 	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /äéöüàâæçèéêëîïôœùûüaÿÄÉÖÜßÀÂÆÇÈÉÊËÎÏÔŒÙÛÜŸ"
 }
