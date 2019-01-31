@@ -40,6 +40,14 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool);
 #endif
 #endif
 
+/*
+ *	We don't need to pollute the logs with "open / close"
+ *	connection information.  Instead, only print these messages
+ *	when debugging.
+ */
+#undef INFO
+#define INFO(fmt, ...) if (rad_debug_lvl) radlog(L_INFO,  fmt, ## __VA_ARGS__)
+
 /** An individual connection within the connection pool
  *
  * Defines connection counters, timestamps, and holds a pointer to the
