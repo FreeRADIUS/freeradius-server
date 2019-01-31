@@ -116,6 +116,7 @@ ldap {
 		
 		#
 		# proxy:: SASL authorisation identity to proxy.
+		#
 #		proxy = 'autz_id'
 
 		#
@@ -212,7 +213,27 @@ ldap {
 #	edir_autz = no
 
 	#
-	#  ### User object identification
+	#  [NOTE]
+	#  ====
+	#  * The option `set_auth_type` was removed in `v3.x.x`.
+	#  * Equivalent functionality can be achieved by adding the following
+	#    stanza to the `recv Access-Request {}` section of your virtual server.
+	#
+	#  e.g:
+	#
+	#  ```
+	#    ldap
+	#    if ((ok || updated) && User-Password) {
+	#        update {
+	#            control:Auth-Type := ldap
+	#        }
+	#    }
+	#  ```
+	#  ====
+	#
+
+	#
+	#  ### User object Identification
 	#
 	user {
 		#
@@ -261,9 +282,6 @@ ldap {
 		#
 		#  sort_by:: Server side result sorting.
 		#
-		#  [NOTE]
-		#  ====
-		#
 		#  A list of space delimited attributes to order the result set by.
 		#
 		#  * If the filter matches multiple objects only the first
@@ -272,12 +290,11 @@ ldap {
 		#  * If the attribute name is prefixed with a hyphen '-' the
 		#  sorting order will be reversed for that attribute.
 		#
-		#  * If sort_by is set, and the server does not support sorting
+		#  * If `sort_by` is set, and the server does not support sorting
 		#  the search will fail.
 		#
 		#  * If a search returns multiple user objects and `sort_by` is not
 		#  set, the search will fail.
-		#  ====
 		#
 #		sort_by = '-uid'
 
@@ -293,32 +310,25 @@ ldap {
 		#  access_positive:: Control whether the presence of `access_attribute`
 		#  allows access, or denys access.
 		#
-		#  [NOTE]
-		#  ====
-		#  If `yes`, and the `access_attribute` is present, or `no` and the
+		#  * If `yes`, and the `access_attribute` is present, or `no` and the
 		#  `access_attribute` is absent then access  will be allowed.
 		#
-		#  If `yes`, and the `access_attribute` is absent, or `no` and the
+		#  * If `yes`, and the `access_attribute` is absent, or `no` and the
 		#  `access_attribute` is present, then access will not be allowed.
 		#
-		#  If the value of the retrieved `access_attribute` is `false`, it will
+		#  * If the value of the retrieved `access_attribute` is `false`, it will
 		#  negate the result.
 		#
 		#  e.g:
 		#
-		#  ```
 		#    access_positive = yes
 		#    access_attribute = userAccessAllowed
-		#  ```
 		#
 		#  With an LDAP object containing:
 		#
-		#  ```
 		#    userAccessAllowed: false
-		#  ```
 		#
 		#  Will result in the user being locked out.
-		#  ====
 		#
 #		access_positive = yes
 	}
@@ -369,10 +379,13 @@ ldap {
 		#  needed, there's no requirement for the group objects
 		#  referenced to actually exist.
 		#
+		#  [NOTE]
+		#  ====
 		#  If the LDAP server does not support the `memberOf` attribute (or equivalent),
 		#  then you will need to use the membership_filter option above instead.
 		#  If you can't see the `memberOf` attribute then it is also possible that the
 		#  LDAP bind user does not have the correct permissions to view it.
+		#  ====
 		#
 		membership_attribute = 'memberOf'
 
@@ -578,7 +591,7 @@ ldap {
 		#
 		#  Default: `20`
 		#
-		#  `LDAP_OPT_TIMELIMIT` is set to this value.
+		#  NOTE: `LDAP_OPT_TIMELIMIT` is set to this value.
 		#
 		srv_timelimit = 3
 
@@ -586,7 +599,7 @@ ldap {
 		#  idle:: Set the number of seconds a connection needs to remain idle
 		#  before  TCP starts sending keepalive probes.
 		#
-		#  `LDAP_OPT_X_KEEPALIVE_IDLE` is set to this value.
+		#  NOTE: `LDAP_OPT_X_KEEPALIVE_IDLE` is set to this value.
 		#
 		idle = 60
 
@@ -594,14 +607,14 @@ ldap {
 		#  probles:: Set the maximum number of keepalive probes TCP should send
 		#  before dropping  the  connection.
 		#
-        #  `LDAP_OPT_X_KEEPALIVE_PROBES` is set to this value.
-        #
+		#  NOTE: `LDAP_OPT_X_KEEPALIVE_PROBES` is set to this value.
+		#
 		probes = 3
 
 		#
 		#  interval:: Set the interval in seconds between individual keepalive probes.
 		#
-		#  `LDAP_OPT_X_KEEPALIVE_INTERVAL` is set to this value.
+		#  NOTE: `LDAP_OPT_X_KEEPALIVE_INTERVAL` is set to this value.
 		#
 		interval = 3
 
@@ -611,11 +624,40 @@ ldap {
 		#
 		#  TIP: You should only use this if you are an LDAP expert.
 		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Option             | Value
+		#  | LDAP_DEBUG_TRACE   | 0x0001
+		#  | LDAP_DEBUG_PACKETS | 0x0002
+		#  | LDAP_DEBUG_ARGS    | 0x0004
+		#  | LDAP_DEBUG_CONNS   | 0x0008
+		#  | LDAP_DEBUG_BER     | 0x0010
+		#  | LDAP_DEBUG_FILTER  | 0x0020
+		#  | LDAP_DEBUG_CONFIG  | 0x0040
+		#  | LDAP_DEBUG_ACL     | 0x0080
+		#  | LDAP_DEBUG_STATS   | 0x0100
+		#  | LDAP_DEBUG_STATS2  | 0x0200
+		#  | LDAP_DEBUG_SHELL   | 0x0400
+		#  | LDAP_DEBUG_PARSE   | 0x0800
+		#  | LDAP_DEBUG_SYNC    | 0x4000
+		#  | LDAP_DEBUG_NONE    | 0x8000
+		#  | LDAP_DEBUG_ANY     | (-1)
+		#  |===
+		#
+		#  e.g:
+		#
+		#  If you want to see the LDAP logs only for `trace` and `parse`,
+		#  you should do:
+		#
+		#    (LDAP_DEBUG_TRACE + LDAP_DEBUG_PARSE) = 0x0801
+		#
+		#  Then, fill the option `ldap_debug`.
+		#
+		#     ldap_debug = 0x0801
+		#
 		#  Default: 0x0000 (no debugging messages)
-		#
-		#  Example: (`LDAP_DEBUG_FILTER` + `LDAP_DEBUG_CONNS`)
-		#
-		ldap_debug = 0x0028
+		#  
+		ldap_debug = 0x0000
 	}
 
 	#
@@ -745,7 +787,7 @@ ldap {
 		#
 		#  The maximum amount of time to wait for a new connection to be established.
 		#
-		#  Sets `LDAP_OPT_NETWORK_TIMEOUT` in libldap.
+		#  NOTE: Sets `LDAP_OPT_NETWORK_TIMEOUT` in libldap.
 		#
 		connect_timeout = 3.0
 
