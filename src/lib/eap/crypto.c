@@ -144,7 +144,9 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 	}
 		break;
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	}
+#endif
 	*out = buff;
 
 	return 0;
