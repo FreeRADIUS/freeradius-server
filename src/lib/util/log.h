@@ -49,7 +49,7 @@ extern bool	log_dates_utc;
 
 extern const FR_NAME_NUMBER fr_log_levels[];
 
-typedef enum fr_log_type {
+typedef enum {
 	L_AUTH = 2,				//!< Authentication message.
 	L_INFO = 3,				//!< Informational message.
 	L_ERR = 4,				//!< Error message.
