@@ -239,8 +239,8 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	verification if they don't match.
 	 */
 	if (conf->check_cert_issuer && (strcmp(issuer, conf->check_cert_issuer) != 0)) {
-		AUTH("Certificate issuer (%s) does not match specified value (%s)!",
-		     issuer, conf->check_cert_issuer);
+		REDEBUG("Certificate issuer (%s) does not match specified value (%s)!",
+			issuer, conf->check_cert_issuer);
 		my_ok = 0;
 	}
 
@@ -258,8 +258,8 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		} else {
 			RDEBUG2("checking certificate CN (%s) with xlat'ed value (%s)", common_name, cn_str);
 			if (strcmp(cn_str, common_name) != 0) {
-				AUTH("Certificate CN (%s) does not match specified value (%s)!",
-				     common_name, cn_str);
+				REDEBUG("Certificate CN (%s) does not match specified value (%s)!",
+					common_name, cn_str);
 				my_ok = 0;
 			}
 		}

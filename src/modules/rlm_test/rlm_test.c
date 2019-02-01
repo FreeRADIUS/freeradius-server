@@ -270,10 +270,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, void *t
 	RWDEBUG("RWDEBUG message");
 	RWDEBUG("RWDEBUG2 message");
 
-	RAUTH("RAUTH message");
-	RACCT("RACCT message");
-	RPROXY("RPROXY message");
-
 	/*
 	 *	 Should appear wavy
 	 */
