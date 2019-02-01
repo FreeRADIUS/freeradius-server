@@ -383,9 +383,10 @@ asciidoc/%.pdf: raddb/%.md
 		-V papersize=letter \
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
-.PHONY: asciidoc html clean.asciidoc
+.PHONY: asciidoc html pdf clean clean.asciidoc
 asciidoc: $(ADOC_FILES)
 html: $(HTML_FILES)
+pdf: $(PDF_FILES)
 
 #
 #  Make sure everything is clean.
