@@ -88,7 +88,7 @@ int eap_crypto_mppe_keys(REQUEST *request, SSL *ssl, char const *prf_label, size
 }
 
 int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10101000L
 			      UNUSED
 #endif
 			      REQUEST *request, SSL *ssl,
@@ -97,7 +97,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 			      UNUSED
 #endif
 			      char const *prf_label,
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10101000L
 			      UNUSED
 #endif
 			      size_t prf_label_len)
@@ -143,8 +143,8 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 		}
 	}
 		break;
-	}
 #endif
+	}
 	*out = buff;
 
 	return 0;
