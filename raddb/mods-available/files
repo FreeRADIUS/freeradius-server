@@ -8,7 +8,7 @@
 #
 #  = Files Module
 #
-#  Livingston-style 'users' file.
+#  The `users` file as located in `raddb/mods-config/files/authorize`. (Livingston-style format).
 #
 #  See "man 1 users" for more information.
 #
@@ -24,8 +24,9 @@ files {
 	moddir = ${modconfdir}/${.:instance}
 
 	#
-	# key:: The default key attribute to use for matches.  The content
-	# of this attribute is used to match the `name` of the entry.
+	# key:: The default key attribute to use for matches.
+	#
+	# The content of this attribute is used to match the `name` of the entry.
 	#
 #	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
