@@ -113,7 +113,7 @@ ldap {
 		# mech:: SASL mechanism.
 		#
 #		mech = 'PLAIN'
-		
+
 		#
 		# proxy:: SASL authorisation identity to proxy.
 		#
@@ -166,7 +166,7 @@ ldap {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Parameter   | Description
-	#  | <fr attr>   | Is the destination RADIUS attribute 
+	#  | <fr attr>   | Is the destination RADIUS attribute
 	#                  with any valid list and request qualifiers.
 	#  | <op>        | Is any assignment attribute (=, :=, +=, -=).
 	#  | <ldap attr> | Is the attribute associated with user or
@@ -221,14 +221,15 @@ ldap {
 	#
 	#  e.g:
 	#
-	#  ```
-	#    ldap
-	#    if ((ok || updated) && User-Password) {
-	#        update {
-	#            control:Auth-Type := ldap
-	#        }
-	#    }
-	#  ```
+	#  [source, unlang]
+	#  ----
+	#  ldap
+	#  if ((ok || updated) && User-Password) {
+	#  	update {
+	#  		control:Auth-Type := ldap
+	#  	}
+	#  }
+	#  ----
 	#  ====
 	#
 
@@ -562,7 +563,7 @@ ldap {
 		#  session_tracking:: If `yes`, then include `draft-wahl-ldap-session` tracking
 		#  controls.
 		#
-		#  These encode the `NAS-IP-Address`, `NAS-IPv6-Address`, `User-Name`, `Acct-Session-Id`, 
+		#  These encode the `NAS-IP-Address`, `NAS-IPv6-Address`, `User-Name`, `Acct-Session-Id`,
 		#  `Acct-Multi-Session-Id` as session tracking controls, in applicable LDAP operations.
 		#
 		#  Default `no`
@@ -619,10 +620,10 @@ ldap {
 		interval = 3
 
 		#
-		#  ldap_debug:: Debug flag for LDAP SDK (see OpenLDAP documentation).
-		#  Set this to enable huge amounts of LDAP debugging on the screen.
+		#  ldap_debug:: Debug flags for libldap (see OpenLDAP documentation).
+		#  Set this to enable debugging output from different code areas within libldap.
 		#
-		#  TIP: You should only use this if you are an LDAP expert.
+		#  NOTE: These debugging options can produce significant amounts of logging output.
 		#
 		#  [options="header,autowidth"]
 		#  |===
@@ -647,16 +648,16 @@ ldap {
 		#  e.g:
 		#
 		#  If you want to see the LDAP logs only for `trace` and `parse`,
-		#  you should do:
+		#  facilities you should use:
 		#
 		#    (LDAP_DEBUG_TRACE + LDAP_DEBUG_PARSE) = 0x0801
 		#
-		#  Then, fill the option `ldap_debug`.
+		#  Setting the `ldap_debug` configuration item as follows:
 		#
 		#     ldap_debug = 0x0801
 		#
 		#  Default: 0x0000 (no debugging messages)
-		#  
+		#
 		ldap_debug = 0x0000
 	}
 
@@ -690,7 +691,7 @@ ldap {
 
 		#
 		# require_cert:: Certificate Verification requirements.
-		# 
+		#
 		# Can be:
 		#
 		#  [options="header,autowidth"]

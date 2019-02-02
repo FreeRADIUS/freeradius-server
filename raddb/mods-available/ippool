@@ -28,13 +28,13 @@
 #  [source, unlang]
 #  ----
 #  ippool students { [...] }
-#  
+#
 #  ippool teachers { [...] }
 #  ----
 #
 #  <2> Then the `raddb/users` should have.
 #
-#  [source, unlang]
+#  [source, rlm_users]
 #  ----
 #  DEFAULT Group == students, Pool-Name := "students"
 #  DEFAULT Group == teachers, Pool-Name := "teachers"
@@ -87,7 +87,7 @@ ippool main_pool {
 
 	#
 	#  maximum_timeout:: Specifies the maximum time in seconds that an entry
-	#  may be active.  If set to zero, means _no timeout_. 
+	#  may be active.  If set to zero, means _no timeout_.
 	#  The default value is 0
 	#
 	maximum_timeout = 0
