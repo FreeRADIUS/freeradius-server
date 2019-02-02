@@ -346,6 +346,16 @@ PDF_FILES := $(patsubst asciidoc/%.adoc,asciidoc/%.pdf,$(ADOC_FILES))
 HTML_FILES := $(patsubst asciidoc/%.adoc,asciidoc/%.html,$(ADOC_FILES))
 
 #
+#  Pandoc v2 onwards renamed --latex-engine to --pdf-engine
+#
+PANDOC_ENGINE=pdf
+ifneq ($(shell which pandoc),)
+ifneq ($(shell pandoc --help | grep latex-engine),)
+PANDOC_ENGINE=latex
+endif
+endif
+
+#
 #  Markdown files get converted to asciidoc via pandoc.
 #
 #  Many documentation files are in markdown because it's a simpler
@@ -372,14 +382,14 @@ asciidoc/%.html: asciidoc/%.adoc
 asciidoc/%.pdf: asciidoc/%.adoc
 	@echo PDF $^
 	@asciidoctor $< -b docbook5 -o - | \
-		pandoc -f docbook -t latex --pdf-engine=xelatex \
+		pandoc -f docbook -t latex --${PANDOC_ENGINE}-engine=xelatex \
 			-V papersize=letter \
 			-V images=yes \
 			--template=./scripts/asciidoc/freeradius.template -o $@
 
 asciidoc/%.pdf: raddb/%.md
 	@echo PDF $^
-	pandoc -f markdown -t latex --pdf-engine=xelatex \
+	pandoc -f markdown -t latex --${PANDOC_ENGINE}-engine=xelatex \
 		-V papersize=letter \
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
