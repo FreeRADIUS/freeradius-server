@@ -312,12 +312,12 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	Identify the type of certificates that needs to be loaded
 	 */
 #ifdef PSK_MAX_IDENTITY_LEN
-	if (!client) {
-		/*
-		 *	No dynamic query exists.  There MUST be a
-		 *	statically configured identity and password.
-		 */
-		if (conf->psk_query && !*conf->psk_query) {
+	/*
+	 *	A dynamic query exists.  There MUST NOT be a
+	 *	statically configured identity and password.
+	 */
+	if (conf->psk_query) {
+		if (!*conf->psk_query) {
 			ERROR("Invalid PSK Configuration: psk_query cannot be empty");
 		error:
 			SSL_BIND_MEMORY_END;
@@ -325,37 +325,55 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			return NULL;
 		}
 
-		/*
-		 *	Set the callback only if we can check things.
-		 */
-		if (conf->psk_identity || conf->psk_query) {
-			SSL_CTX_set_psk_server_callback(ctx, tls_session_psk_server_cb);
+		if (conf->psk_identity && *conf->psk_identity) {
+			ERROR("Invalid PSK Configuration: psk_identity and psk_query cannot be used at the same time.");
+			goto error;
 		}
 
-	} else if (conf->psk_query) {
-		ERROR("Invalid PSK Configuration: psk_query cannot be used for outgoing connections");
+		if (conf->psk_password && *conf->psk_password) {
+			ERROR("Invalid PSK Configuration: psk_password and psk_query cannot be used at the same time.");
+			goto error;
+		}
+
+		if (client) {
+			ERROR("Invalid PSK Configuration: psk_query cannot be used for outgoing connections");
+			goto error;
+		}
+
+		/*
+		 *	Now check that if PSK is being used, that the config is valid.
+		 */
+	} else if (conf->psk_identity) {
+		if (!*conf->psk_identity) {
+			ERROR("Invalid PSK Configuration: psk_identity is empty");
+			goto error;
+		}
+
+
+		if (!conf->psk_password || !*conf->psk_password) {
+			ERROR("Invalid PSK Configuration: psk_identity is set, but there is no psk_password");
+			goto error;
+		}
+
+	} else if (conf->psk_password) {
+		ERROR("Invalid PSK Configuration: psk_password is set, but there is no psk_identity");
 		goto error;
 	}
 
 	/*
-	 *	Now check that if PSK is being used, the config is valid.
+	 *	Set the server PSK callback if necessary.
 	 */
-	if ((conf->psk_identity && !conf->psk_password) ||
-	    (!conf->psk_identity && conf->psk_password) ||
-	    (conf->psk_identity && !*conf->psk_identity) ||
-	    (conf->psk_password && !*conf->psk_password)) {
-		ERROR("Invalid PSK Configuration: psk_identity or psk_password are empty");
-		goto error;
+	if (!client && (conf->psk_identity || conf->psk_query)) {
+		SSL_CTX_set_psk_server_callback(ctx, tls_session_psk_server_cb);
 	}
 
+	/*
+	 *	Do more sanity checking if we have a PSK identity.  We
+	 *	check the password, and convert it to it's final form.
+	 */
 	if (conf->psk_identity) {
 		size_t psk_len, hex_len;
 		uint8_t buffer[PSK_MAX_PSK_LEN];
-
-		if (conf->chains || conf->ca_file || conf->ca_path) {
-			ERROR("When PSKs are used, No certificate configuration is permitted");
-			goto error;
-		}
 
 		if (client) {
 			SSL_CTX_set_psk_client_callback(ctx, tls_session_psk_client_cb);

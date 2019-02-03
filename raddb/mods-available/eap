@@ -341,25 +341,30 @@ eap {
 
 		#
 		#  If OpenSSL supports TLS-PSK, then we can use a PSK identity
-		#  and (hex) password.  When the following two configuration
-		#  items are specified, then certificate-based configuration
-		#  items are not allowed.  e.g.:
+		#  and (hex) password.
 		#
-		#	private_key_password
-		#	private_key_file
-		#	certificate_file
-		#	ca_file
-		#	ca_path
-		#
-		#  For now, the identity is fixed, and must be the same on the
-		#  client.  The passphrase must be a hex value, and can be up to
-		#  256 hex digits.
-		#
-		#  Future versions of the server may be able to look up the
-		#  shared key (hexphrase) based on the identity.
+		#  If using a fixed identity, it must be the same on
+		#  the client.  The passphrase must be a hex value,
+		#  and can be up to 256 hex characters.
 		#
 #		psk_identity = "test"
 #		psk_hexphrase = "036363823"
+
+		#  Dynamic queries for the PSK.  If TLS-PSK is used,
+		#  and psk_query is set, then you MUST NOT use
+		#  psk_identity or psk_hexphrase.
+		#
+		#  Instead, use a dynamic expansion similar to the one
+		#  below.  It keys off of TLS-PSK-Identity.  It should
+		#  return a of string no more than 512 hex characters.
+		#  That string will be converted to binary, and will
+		#  be used as the dynamic PSK hexphrase.
+		#
+		#  Note that this query is just an example.  You will
+		#  need to customize it for your installation.
+		#
+#		psk_query = "%{sql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
+
 
 		#
 		#  For DH cipher suites to work, you have to run OpenSSL to
