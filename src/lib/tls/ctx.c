@@ -763,16 +763,6 @@ post_ca:
 	}
 
 	/*
-	 *	Load randomness
-	 */
-	if (conf->random_file) {
-		if (!(RAND_load_file(conf->random_file, 1024 * 10))) {
-			tls_log_error(NULL, "Failed loading randomness");
-			goto error;
-		}
-	}
-
-	/*
 	 *	Set the cipher list if we were told to
 	 */
 	if (conf->cipher_list) {
