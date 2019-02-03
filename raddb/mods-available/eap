@@ -67,19 +67,19 @@ eap {
 	type = sim
 
 	#
-	#  We do NOT recommend using EAP-MD5 authentication for wireless
-	#  connections.  It is insecure, and does not provide for dynamic WEP
-	#  keys or WPA enterprise.
+	#  EAP-MD5 authentication cannot be used for wireless
+	#  connections.  It is insecure, and does not provide for
+	#  dynamic WEP keys or WPA enterprise.
 	#
 	md5 {
 	}
 
 	## EAP-PWD (Secure password-based authentication)
 	#
-	#  In v4, the "known good" is taken from the
+	#  In v4, the "known good" password is taken from the
 	#  &request.control:Cleartext-Password list, as is done by
-	#  other modules.  The "inner-tunnel" virtual server is no
-	#  longer used by EAP-PWD.
+	#  other modules.  The change from v3 is that the
+	#  "inner-tunnel" virtual server is not used.
 	#
 #	pwd {
 #		group = 19
@@ -101,8 +101,7 @@ eap {
 	#  attributes) to perform it's authentication.
 	#
 	#  As a result, LEAP *requires* access to the plain-text User-Password,
-	#  or the NT-Password attributes. 'System' authentication is impossible
-	#  with LEAP.
+	#  or the NT-Password attributes.
 	#
 #	leap {
 #	}
@@ -149,14 +148,16 @@ eap {
 	#    cd raddb/certs
 	#    make
 	#
-	#  These test certificates SHOULD NOT be used in a normal deployment.
-	#  They are created only to make it easier to install the server, and to
-	#  perform some simple tests with EAP-TLS, TTLS, or PEAP.
+	#  These test certificates SHOULD NOT be used in a normal
+	#  deployment.  They are created only to make it easier to
+	#  install the server, and to perform some simple tests with
+	#  EAP-TLS, TTLS, or PEAP.
 	#
-	#  Note that you should NOT use a globally known CA here! e.g. using a
-	#  Verisign cert as a "known CA" means that ANYONE who has a certificate
-	#  signed by them can authenticate via EAP-TLS!  This is likely not what
-	#  you want.
+	#  Note that you should NOT use a globally known CA here!
+	#  e.g. using a Verisign cert as a "known CA" means that
+	#  ANYONE who has a certificate signed by them may be able to
+	#  authenticate via EAP-TLS!  This is likely not what you
+	#  want.
 	#
 	tls-config tls-common {
 		#
@@ -190,7 +191,7 @@ eap {
 		#  The key type does not need to be explicitly specified as
 		#  it is determined from the certificate provided.
 		#
-		chain {
+		chain rsa {
 			#
 			#  The format of the certificate(s) and private key file.
 			#  May be one of PEM, DER or ASN1 (ASN1 is an alias for DER).
@@ -214,6 +215,10 @@ eap {
 			#  the server's certificate, and one or more "ca_file" items should be
 			#  used to load intermediary CAs and the Root CA.
 			#
+			#  We recommend using `ca_file` to load the
+			#  root CAs, instead of putting them in
+			#  `certificate_file`.
+			#
 			certificate_file = ${certdir}/rsa/server.pem
 
 			#
@@ -221,11 +226,18 @@ eap {
 			#  chain compilation.  Multiple "ca_file" config items may be used
 			#  to load multiple certificates.
 			#
+			#  When multiple `ca_file`s are used, the
+			#  server will still present only one
+			#  `certificate_file` to the clients.  The
+			#  main use of multiple `ca_file` is to permit
+			#  the use of EAP-TLS with client certificates
+			#  from multiple Root CAs.
+			#
 			ca_file = ${certdir}/rsa/ca.pem
 
 			#
 			#  Password used to encrypt the private key.  If the private key is
-			#  not encrypted, this config item will have no effect.
+			#  not encrypted, this configuration item will have no effect.
 			#
 			private_key_password = whatever
 
@@ -266,18 +278,21 @@ eap {
 			#  Note: The Root CA must still be available for chain compilation to
 			#  succeed even if "include_root_ca = no".
 			#
-#			include_root_ca = no
+			#  The default here is "no".
+			#
+			include_root_ca = no
 		}
 
 		#
 		#  Load the ECC certificate chain for key agility
 		#
-		#  Disabled by default, see the warning above. If your
-		#  supplicants propose a mix of different types of ciphers
-		#  and have all the CA keys for each type available, then
-		#  multiple chains may be enabled simultaneously.
+		#  This is disabled by default, see the warning above.
+		#  If your supplicants propose a mix of different
+		#  types of ciphers and have all of the CA keys for
+		#  each type available, then multiple chains may be
+		#  enabled simultaneously.
 		#
-#		chain {
+#		chain ecc {
 #			certificate_file = ${certdir}/ecc/server.pem
 #			ca_file = ${certdir}/ecc/ca.pem
 #			private_key_password = whatever
@@ -285,25 +300,31 @@ eap {
 #		}
 
 		#
-		#  Server certificate may also be specified at runtime on a per
-		#  session basis.  Here, the certificate file must consist
-		#  of the certificate and private key, PEM encoded, with no
-		#  password or the password set above.
+		#  The server certificate may also be specified at
+		#  runtime on a per session basis.  In that use-case,
+		#  the certificate file must consist of the
+		#  certificate and private key, PEM encoded.  The
+		#  password should either be set above with
+		#  `password`, or the certificate should have no
+		#  password.
 		#
 		#  The file should be provided as the attribute:
 		#
 		#      &control:TLS-Session-Cert-File
 		#
-		#  If there are any errors, authentication will not continue.
+		#  If there are any errors loading or verifying the
+		#  certificate, authentication will fail.
 		#
-		#  This can be used to periodically verify correct supplicant
-		#  behaviour, by presenting an untrusted or invalid server
-		#  certificate and verifying that the supplicant returns the
-		#  correct TLS alert (available in Module-Failure-Message).
+		#  This configuration can be used to periodically
+		#  verify correct supplicant behaviour, by presenting
+		#  an untrusted or invalid server certificate and
+		#  verifying that the supplicant returns the correct
+		#  TLS alert (available in Module-Failure-Message).
 		#
-		#  Note that after receiving a fatal alert, TLS negotiation
-		#  cannot continue, but as most supplicants retry
-		#  enthusiastically this probably won't be an issue.
+		#  Note that after receiving a fatal alert, TLS
+		#  negotiation cannot continue.  However, as most
+		#  supplicants will immediately retry authenticaton,
+		#  this failure will likely not be an issue.
 		#
 
 		#
