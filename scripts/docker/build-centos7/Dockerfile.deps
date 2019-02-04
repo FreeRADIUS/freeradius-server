@@ -8,11 +8,11 @@ RUN yum update -y
 RUN yum install -y rpmdevtools openssl epel-release git
 
 #
-#  Install GCC-4.9 as it has the requisite support for C11 keywords and atomics
+#  Install GCC that has the requisite support for C11 keywords and atomics
 #
 RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-3-gcc devtoolset-3-gcc-c++
-ENV CC=/opt/rh/devtoolset-3/root/usr/bin/gcc
+RUN yum install -y devtoolset-6-gcc devtoolset-6-gcc-c++
+ENV CC=/opt/rh/devtoolset-6/root/usr/bin/gcc
 
 #
 #  Setup a src dir in /usr/local
@@ -62,7 +62,7 @@ RUN git clone --depth 1 --no-single-branch ${source}
 #  Install build dependencies for all branches from v3 onwards
 #
 WORKDIR freeradius-server
-RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^v[3-9]*\.[0-9x]*\.x$");\
+RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master)$");\
 	do \
 		git checkout $i; \
 		[ -e redhat/freeradius.spec ] && yum-builddep -y redhat/freeradius.spec; \

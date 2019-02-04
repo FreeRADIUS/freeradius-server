@@ -5,12 +5,6 @@ RUN apt-get update && apt-get install -y sudo firebird-dev freetds-dev libcap-de
 #
 #  Install GCC-4.9 as it has the requisite support for C11 keywords and atomics
 #
-#  (This doesn't work, so for now wheezy is limited to FreeRADIUS
-#  v3 only, which isn't really much of a concern.)
-#
-# RUN echo "deb http://http.debian.net/debian wheezy-backports main" >> /etc/apt/sources.list
-# RUN apt-get update && apt-get install -y gcc-4.9 g++-4.9
-# RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 50 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 && update-alternatives --config gcc
 
 #
 #  Install eapol_test dependencies
@@ -25,7 +19,7 @@ RUN git clone --depth=1 --no-single-branch https://github.com/FreeRADIUS/freerad
 WORKDIR freeradius-server
 
 # Install build dependencies for all branches
-RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^v[0-3]*\.[0-9x]*\.x$"); \
+RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master)$");\
 	do \
 		git checkout $i; \
 		[ -e ./debian/control.in ] && debian/rules debian/control; \

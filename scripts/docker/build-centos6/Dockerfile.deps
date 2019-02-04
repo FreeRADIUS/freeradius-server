@@ -1,21 +1,14 @@
 FROM centos:centos6
 
 #
-#  Install devtools like Make and git
+#  Install devtools like make and git and the EPEL
+#  repository for freetds and hiredis
 #
-RUN yum groupinstall -y "Development Tools"
-RUN yum install -y rpmdevtools
-RUN yum install -y vim emacs nano
-RUN yum install -y openssl
-RUN yum install -y yum-utils
+RUN yum update -y
+RUN yum install -y rpmdevtools openssl epel-release git
 
 #
-#  Add the EPEL repository for freetds and hiredis
-#
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm
-
-#
-#  Install GCC-6.3 as it has the requisite support for C11 keywords and atomics
+#  Install GCC that has the requisite support for C11 keywords and atomics
 #
 RUN yum install -y centos-release-scl
 RUN yum install -y devtoolset-6-gcc devtoolset-6-gcc-c++
@@ -74,19 +67,18 @@ RUN v=$(rpm -q --qf '%{VERSION}\n' --specfile hiredis/redhat/hiredis.spec | head
     rpmbuild -bb hiredis-$v/redhat/hiredis.spec
 RUN yum localinstall -y $HOME/rpmbuild/RPMS/*/hiredis-*.rpm
 
-WORKDIR /usr/local/src/repositories
-
 #
 #  Shallow clone the FreeRADIUS source
 #
+WORKDIR /usr/local/src/repositories
 ARG source=https://github.com/FreeRADIUS/freeradius-server.git
 RUN git clone --depth 1 ${source}
-WORKDIR freeradius-server
 
 #
-#  Install build dependencies for all branches
+#  Install build dependencies for all branches from v3 onwards
 #
-RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^v[0-9]*\.[0-9x]*\.x$");\
+WORKDIR freeradius-server
+RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master)$");\
 	do \
 		git checkout $i; \
 		[ -e redhat/freeradius.spec ] && yum-builddep -y redhat/freeradius.spec; \
@@ -97,4 +89,3 @@ RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 
 #
 ENV BUILDDIR=/root/rpmbuild
 RUN rpmdev-setuptree
-
