@@ -1,4 +1,35 @@
+# -*- text -*-
+#
+#  :toc:
+#
+#  $Id$
+
+#######################################################################
+#
+#  = Ruby Module
+#
+#  The `mruby` module handles the requests between the server an a Ruby
+#  interpreter.
+#
+#  * Please see the `src/modules/rlm_mruby/example.rb` sample.
+#  * Please see https://www.ruby-lang.org/en/documentation/ for more
+#  information about the Ruby language.
+#
+
+#
+#  ## Sample
+#
+#  If `rlm_mruby` is called for a section which does not have a function defined,
+#  it will return `NOOP`.
+#
 mruby {
+	#
+	#  filename:: Module to load functions from.
+	#
 	filename = "${modconfdir}/${.name}/example.rb"
+
+	#
+	#  module:: Name of the loaded module.
+	#
 	module = "Radiusd"
 }
