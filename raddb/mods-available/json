@@ -44,6 +44,15 @@
 #
 
 #
+# ## Default instance
+#
+# This module takes no configuration.
+#
+json {
+
+}
+
+#
 # ## Sample
 #
 # Assuming that you have the url http://example.org/api/user/$username
@@ -73,12 +82,3 @@
 # }
 # ----
 #
-
-#
-# ## Default instance
-#
-# This module takes no configuration.
-#
-json {
-
-}
