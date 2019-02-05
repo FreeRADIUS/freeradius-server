@@ -8,10 +8,11 @@
 #
 #  = Lua Module
 #
-#  The `lua` module handles the requests between the server an a Lua interpreter.
+#  The `lua` module processes attributes thrugh a Lua interpreter.
 #
-#  NOTE: Uncomment any func_* which are included in your module. If rlm_lua is called
-#  for a section which does not have a function defined, it will return *NOOP*.
+#  NOTE: Uncomment any `func_*` configuration items below which are
+#  included in your module. If rlm_lua is called for a section which
+#  does not have a function defined, it will return `noop`.
 #
 #  * Please see the `src/modules/rlm_lua/example.lua` sample.
 #  * Please see https://www.lua.org/ for more information about the Lua language.
@@ -26,9 +27,9 @@ lua {
 	#
 	filename = ${modconfdir}/${.:instance}/example.lua
 
-    #
-    #  NOTE: Uncomment func_<section> lines your module provides methods for.
-    #  
+	#
+	#  NOTE: Uncomment func_<section> lines that have methods in your lua module.
+	#
 	func_authenticate = authenticate
 	func_authorize = authorize
 #	func_preacct = preacct

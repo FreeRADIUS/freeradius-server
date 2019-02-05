@@ -14,7 +14,7 @@
 #
 #  See also `raddb/sites-available/inner-tunnel`
 #
-#  See `eap` for full documentation on the meaning of these
+#  See the `eap` module for full documentation on the meaning of these
 #  configuration entries.
 #
 
@@ -158,11 +158,8 @@ eap inner-eap {
 	#       vi inner-server.cnf
 	#       make inner-server
 	#
-	#  NOTE: The certificate MUST be different from the `server.cnf`
-	#  file.
-	#
-	#  CAUTION: Support for `PEAP/TLS` and `RFC 5176` `TLS/TLS` is experimental.
-	#  It might work, or it might not.
+	#  NOTE: The inner certificate MUST be different from the
+	#  `server.cnf` file.
 	#
 	tls {
 		tls = tls-peer
