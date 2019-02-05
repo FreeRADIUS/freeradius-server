@@ -1,15 +1,30 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
-#  A simple file to map a MAC address to a VLAN.
+######################################################################
 #
-#  The file should be in the format MAC,VLAN
-#  the VLAN name cannot have spaces in it, for example:
+#  = Mac2Vlan Module
 #
-#	00:01:02:03:04:05,VLAN1
-#	03:04:05:06:07:08,VLAN2
-#	...
+#  The `mac2vlan` module is a simple file to map a MAC address to a VLAN.
+#
+#  The file should be in the format `<mac>,<vlan>`.
+#
+#  e.g:
+#
+#    00:01:02:03:04:05,VLAN1
+#    03:04:05:06:07:08,VLAN2
+#    00:07:0b:12:01:09,VLAN55
+#
+#  WARNING: the VLAN name cannot have spaces in it.
+#
+
+#
+#  ## Default instance
+#
+#  See the `passwd` module for common configuration explanation.
 #
 passwd mac2vlan {
 	filename = ${modconfdir}/${.:name}/${.:instance}

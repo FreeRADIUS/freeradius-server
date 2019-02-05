@@ -1,29 +1,45 @@
 # -*- text -*-
 #
+# :toc:
+#
 #  $Id$
 
+#######################################################################
 #
-#  The "linelog" module will log one line of text to a file.
-#  Both the filename and the line of text are dynamically expanded.
+#  = Linelog Module
 #
-#  We STRONGLY suggest that you do not use data from the
-#  packet as part of the filename.
+#  The `linelog` module will log entries from attributes, string expansions,
+#  or static strings, and writes them to a variety of backends, including syslog,
+#  flat files, and raw UDP/TCP sockets.
+#
+#  WARNING: We STRONGLY suggest that you do not use data from the packet
+#  as part of the filename. Unless `escape_filenames = yes`.
+#
+
+#
+#  ## Default instance
 #
 linelog {
 	#
-	#  Custom line delimiters. Defaults to \n (newline) but may be
+	#  delimiter::
+	#
+	#  Custom line delimiters. Defaults to `\n` (newline) but may be
 	#  any UTF8 multichar string.
 	#
 #	delimiter = "\n"
 
-	#  The default format string.
 	#
-	#  May be an attribute ref, xlat, literal or exec.
+	#  format:: The default format string.
+	#
+	#  May be an attribute reference, e.g. `Usert-Name`, or `xlat`, `literal` or `exec`.
+	#
 	format = "This is a log message for %{User-Name}"
 
 	#
+	#  [NOTE]
+	#  ====
 	#  This next line can be omitted.  If it is omitted, then
-	#  the log message is static, and is always given by "format",
+	#  the log message is static, and is always given by `format`,
 	#  above.
 	#
 	#  If it is defined, then the string is dynamically expanded,
@@ -34,22 +50,30 @@ linelog {
 	#  If the configuration entry cannot be found, then no log
 	#  message is printed.
 	#
-	#  i.e. You can have many log messages in one "linelog" module.
+	#  i.e: You can have many log messages in one `linelog` module.
 	#  If this two-step expansion did not exist, you would have
-	#  needed to configure one "linelog" module for each log message.
+	#  needed to configure one `linelog` module for each log message.
+	#  ====
+	#
 
 	#
-	#  Reference the Packet-Type (Access-Request, etc.)  If it doesn't
-	#  exist, reference the "format" entry, above.
+	#  reference::
 	#
-	#  May be an attribute ref, xlat, literal or exec.
+	#  Reference the `Packet-Type` (`Access-Request`, etc.)  If it doesn't
+	#  exist, reference the `format` entry, above.
+	#
+	#  May be an attribute reference, e.g. `Usert-Name`, or `xlat`, `literal` or `exec`.
+	#
 	reference = "messages.%{%{reply:Packet-Type}:-default}"
 
 	#
-	#  The messages defined here are taken from the "reference"
+	#  messages { ... }::
+	#
+	#  The messages defined here are taken from the `reference`
 	#  expansion, above.
 	#
-	#  Pairs may be attributes refs, xlats, literals or execs.
+	#  Pairs may be attributes `ref` , `xlat`, `literal` or `exec`.
+	#
 	messages {
 		default = "Unknown packet type %{Packet-Type}"
 
@@ -59,38 +83,55 @@ linelog {
 	}
 
 	#
-	#  What should be done with log messages
+	#  destination:: What should be done with log messages.
 	#
 	#  May be one of:
-	#  - file      - Write to a file
-	#  - syslog    - Send via the system's syslog() function
-	#  - tcp       - Write to a TCP socket
-	#  - udp       - Write to a UDP socket
-	#  - unix      - Write to a UNIX socket
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Option | Description
+	#  | file   | Write to a file.
+	#  | syslog | Send via the system's syslog() function.
+	#  | file   | Write to a file - NYI.
+	#  | tcp    | Write to a TCP socket.
+	#  | udp    | Write to a UDP socket.
+	#  | unix   | Write to a UNIX socket.
+	#  |===
 	#
 	destination = 'file'
 
+	#
+	#  .File as destination
+	#
 	file {
-		#  The file where the logs will go.
+		#
+		#  filename:: The file where the logs will go.
+		#
 		filename = ${logdir}/linelog
 
-		#  The Unix-style permissions on the log file.
+		#
+		#  permissions:: The Unix-style permissions on the log file.
 		#
 		#  Depending on format string, the log file may contain secret or
 		#  private information about users.  Keep the file permissions as
 		#  restrictive as possible.
+		#
 		permissions = 0600
 
-		#  The Unix group which owns the log file.
+		#
+		#  group:: The Unix group which owns the log file.
 		#
 		#  The user that freeradius runs as must be in the specified
 		#  group, otherwise it will not be possible to set the group.
+		#
 #		group = ${security.group}
 
 		#
+		#  escape_filenames::
+		#
 		#  Most file systems can handly nearly the full range of UTF-8
 		#  characters.  Ones that can deal with a limited range should
-		#  set this to "yes".
+		#  set this to `yes`.
 		#
 		escape_filenames = no
 	}
@@ -100,161 +141,242 @@ linelog {
 	#  modules, for all kinds of connection-related activity.
 	#
 	pool {
+		#
+		#  start::
+		#
 		#  Connections to create during module instantiation.
 		#  If the server cannot create specified number of
 		#  connections during instantiation it will exit.
-		#  Set to 0 to allow the server to start without the
+		#  Set to 0 to allow the server to `start` without the
 		#  web service being available.
+		#
 		start = ${thread[pool].num_workers}
 
-		#  Minimum number of connections to keep open
+		#
+		#  min:: Minimum number of connections to keep open.
+		#
 		min = ${thread[pool].num_workers}
 
-		#  Maximum number of connections
+		#
+		#  max:: Maximum number of connections.
 		#
 		#  If these connections are all in use and a new one
 		#  is requested, the request will NOT get a connection.
 		#
-		#  Setting 'max' to LESS than the number of threads means
+		#  Setting `max` to LESS than the number of threads means
 		#  that some threads may starve, and you will see errors
-		#  like 'No connections available and at max connection limit'
+		#  like 'No connections available and at `max` connection limit'
 		#
-		#  Setting 'max' to MORE than the number of threads means
+		#  Setting `max` to MORE than the number of threads means
 		#  that there are more connections than necessary.
+		#
 		max = ${thread[pool].num_workers}
 
-		#  Spare connections to be left idle
 		#
-		#  NOTE: Idle connections WILL be closed if "idle_timeout"
-		#  is set.  This should be less than or equal to "max" above.
+		#  spare:: Spare connections to be left idle.
+		#
+		#  NOTE: Idle connections WILL be closed if `idle_timeout`
+		#  is set.  This should be less than or equal to `max` above.
+		#
 		spare = 1
 
-		#  Number of uses before the connection is closed
 		#
-		# 0 means "infinite"
+		#  uses:: Number of uses before the connection is closed.
+		#
+		#  `0` means "infinite"
+		#
 		uses = 0
 
+		#
+		#  retry_delay::
+		#
 		#  The number of seconds to wait after the server tries
 		#  to open a connection, and fails.  During this time,
 		#  no new connections will be opened.
+		#
 		retry_delay = 30
 
-		#  The lifetime (in seconds) of the connection
+		#
+		#  lifetime:: The lifetime (in seconds) of the connection.
+		#
 		lifetime = 0
 
-		#  idle timeout (in seconds).  A connection which is
-		#  unused for this length of time will be closed.
+		#
+		#  idle_timeout:: A connection which is unused for this length
+		#  of time will be closed.
+		#
+		#  Default `60` seconds.
+		#
 		idle_timeout = 60
 
+		#
 		#  NOTE: All configuration settings are enforced.  If a
-		#  connection is closed because of "idle_timeout",
-		#  "uses", or "lifetime", then the total number of
-		#  connections MAY fall below "min".  When that
+		#  connection is closed because of `idle_timeout`,
+		#  `uses`, or `lifetime`, then the total number of
+		#  connections MAY fall below `min`.  When that
 		#  happens, it will open a new connection.  It will
 		#  also log a WARNING message.
 		#
-		#  The solution is to either lower the "min" connections,
-		#  or increase lifetime/idle_timeout.
+		#  The solution is to either lower the `min` connections,
+		#  or increase `lifetime`/`idle_timeout`.
+		#
 	}
 
+	#
+	#  .UNIX socket-file as destination
+	#
 #	unix {
+		#
+		#  filename:: Fullpath to the `unix socket` file.
+		#
 #		filename = /path/to/unix.socket
-#
+
+		#
+		#  pool:: The `pool { ... }` of connections.
+		#
 #		pool = ${..pool}
 #	}
 
+	#
+	#  .TCP-server as a destination
+	#
 	tcp {
-		#  Server to connect to
-#		server = example.org
+		#
+		#  server:: Server to connect to.
+		#
+		server = "example.org"
 
-		#  Port to connect to
+		#
+		#  port:: Port to connect to.
+		#
 		port = 514
 
-		#  Connect and write timeout (in seconds)
+		#
+		#  timeout:: Connect and write timeout (in seconds).
+		#
 		timeout = 2.0
 
+		#
+		#  pool:: The `pool { ... }` of connections.
+		#
 #		pool = ${..pool}
 	}
 
+	#
+	#  .UDP-server as a destination
+	#
 	udp {
-		#  Server to connect to
-#		server = example.org
+		#
+		#  server:: Server to connect to.
+		#
+		server = "example.org"
 
-		#  Port to connect to
+		#
+		#  port:: Port to connect to.
+		#
 		port = 514
 
-		#  Connect and write timeout (in seconds)
+		#
+		#  timeout:: Connect and write timeout (in seconds).
+		#
 		timeout = 2.0
 
+		#
+		#  pool:: The `pool { ... }` of connections.
+		#
 		pool = ${..pool}
 	}
 
+	#
+	#  .Syslog-server as a destination
+	#
 	syslog {
-		#  Syslog facility (if logging via syslog).
+		#
+		#  facility:: Syslog facility (if logging via syslog).
+		#
 		#  Defaults to the syslog_facility config item in radiusd.conf.
+		#
 		#  Standard facilities are:
-		#  - kern        Messages generated by the kernel.  These cannot
-		#                be generated by any user processes.
-		#  - user        Messages generated by random user processes.
-		#                This is the default facility identifier if
-		#                none is specified.
-		#  - mail        The mail system.
-		#  - daemon      System daemons, such as routed(8), that are not
-		#                provided for explicitly by other facilities.
-		#  - auth        The authorization system: login(1), su(1),
-		#                getty(8), etc.
-		#  - lpr         The line printer spooling system: cups-lpd(8),
-		#                cupsd(8), etc.
-		#  - news        The network news system.
-		#  - uucp        The uucp system.
-		#  - cron        The cron daemon: cron(8).
-		#  - authpriv    The same as LOG_AUTH, but logged to a file
-		#                readable only by selected individuals.
-		#  - ftp         The file transfer protocol daemons: ftpd(8),
-		#                tftpd(8).
-		#  - local[0-7]  Reserved for local use.
+		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Option     | Description
+		#  | kern       | Messages generated by the kernel.  These cannot
+		#                 be generated by any user processes.
+		#  | user       | Messages generated by random user processes.
+		#                 This is the default facility identifier if
+		#                 none is specified.
+		#  | mail       | The mail system.
+		#  | daemon     | System daemons, such as routed(8), that are not
+		#                 provided for explicitly by other facilities.
+		#  | auth       | The authorization system: login(1), su(1),
+		#                 getty(8), etc.
+		#  | lpr        | The line printer spooling system: cups-lpd(8),
+		#                 cupsd(8), etc.
+		#  | news       | The network news system.
+		#  | uucp       | The uucp system.
+		#  | cron       | The cron daemon: cron(8).
+		#  | authpriv   | The same as LOG_AUTH, but logged to a file
+		#                 readable only by selected individuals.
+		#  | ftp        | The file transfer protocol daemons: ftpd(8),
+		#                 tftpd(8).
+		#  | local[0-7] | Reserved for local use.
+		#  |===
+		#
+		#  Default is `daemon`.
+		#
 #		facility = daemon
 
-		#  Syslog severity (if logging via syslog). Defaults to info.
+		#
+		#  severity:: Syslog severity (if logging via `syslog`).
+		#
 		#  Possible values are:
-		#  - emergency   A panic condition.  This is normally broadcast
-		#                to all users.
-		#  - alert       A condition that should be corrected immediately,
-		#                such as a corrupted system database.
-		#  - critical    Critical conditions, e.g., hard device errors.
-		#  - error       Errors.
-		#  - warning     Warning messages.
-		#  - notice      Conditions that are not error conditions, but
-		#                should possibly be handled specially.
-		#  - info        Informational messages.
-		#  - debug       Messages that contain information normally of use
-		#                only when debugging a program.
+		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Option     | Description
+		#  | emergency  | A panic condition.  This is normally broadcast
+		#                 to all users.
+		#  | alert      | A condition that should be corrected immediately,
+		#                 such as a corrupted system database.
+		#  | critical   | Critical conditions, e.g., hard device errors.
+		#  | error      | Errors.
+		#  | warning    | Warning messages.
+		#  | notice     | Conditions that are not error conditions, but
+		#                 should possibly be handled specially.
+		#  | info       | Informational messages.
+		#  | debug      | Messages that contain information normally of use
+		#                 only when debugging a program.
+		#  |===
+		#
+		#  Defaults is `info`.
+		#
 #		severity = info
 	}
 }
 
 #
+#  ## Sample
+#
 #  Another example, for accounting packets.
 #
 linelog log_accounting {
+	#
+	#  Please see the `linelog` module for common configuration explanation.
+	#
 	destination = file
 
-	#
-	#  Used if the expansion of "reference" fails.
-	#
 	format = ""
 
 	file {
 		filename = ${logdir}/linelog-accounting
-
 		permissions = 0600
 	}
 
 	reference = "Accounting-Request.%{%{Acct-Status-Type}:-unknown}"
 
 	#
-	#  Another example:
-	#
+	#  Example for `Accounting-Request`.
 	#
 	Accounting-Request {
 		Start = "Connect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address})"
@@ -266,7 +388,7 @@ linelog log_accounting {
 		Accounting-On = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just came online"
 		Accounting-Off = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just went offline"
 
-		# don't log anything for other Acct-Status-Types.
+		# Don't log anything for other `Acct-Status-Type` 's.
 		unknown = "NAS %{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
 	}
 }
