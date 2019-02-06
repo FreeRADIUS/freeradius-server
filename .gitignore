@@ -71,7 +71,3 @@ appendonly*.aof
 
 # Local scripts
 run.sh
-
-# Doc directory
-asciidoc
-
