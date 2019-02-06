@@ -1,25 +1,28 @@
-# Installation
+# FreeRADIUS Documentation
 
-See the `INSTALL.md` file, in the parent directory.
+This directory contains documentation for FreeRADIUS.  It is organized as follows:
 
-# Configuration Files
+* `doc/introduction` - Introduction to FreeRADIUS and RADIUS
 
-For every file there is a fully commented example file included, that
-explains what is does, and how to use it. Read those sample files too!
+* `doc/upgrade/` - documentation on upgrading from Version 3 to Version 4.
 
-Again, many of the configuration files are ONLY documented in the
-comments included in the files.  Reading the configuration files is
-*required* to fully understand how to create complex configurations of
-the server.
+* `doc/raddb/` - documentation for the files in the `raddb` directory, including configuration files that have been converted to Asciidoc
 
-See the `raddb/radiusd.conf` file for the base configuration file.
+* `doc/source` - API / developer documentation.  Most people can ignore this.
 
-# Additional information
+## Installation
 
-The latest version of FreeRADIUS is always available from
-the git repository hosted on GitHub at
+Please see the `INSTALL.md` file, in the parent directory.
 
-https://github.com/FreeRADIUS/freeradius-server
+## Configuration Files
+
+Every configuration file contains documentation that explains in
+detail what it does, and what each configuration item does.
+
+Reading the configuration files is *required* to fully understand how
+to create complex configurations of the server.
+
+## Getting Help
 
 There are two mailing lists for users and developers. General
 user, administrator and configuration issues should be discussed
@@ -39,8 +42,18 @@ http://lists.freeradius.org/mailman/listinfo/freeradius-devel
 
 Please do not raise general configuration issues there.
 
-# Directories
-## Documentation
+## Where to get it
+
+The latest version of FreeRADIUS is always available from
+the git repository hosted on GitHub at
+
+https://github.com/FreeRADIUS/freeradius-server
+
+## Directories
+
+There are a number of directories included here:
+
+### Documentation
 
 | Directory			| Description
 |---				|---
@@ -49,14 +62,14 @@ Please do not raise general configuration issues there.
 | ``doc/rfc/``			| Copies of the RFC's.  If you have Perl, do a 'make' in that directory, and look at the HTML output.
 | ``man/``			| Unix Manual pages for the server, configuration files, and associated utilities.
 
-## Utility
+### Utility
 
 | Directory			| Description
 |---				|---
 | ``mibs/``			| SNMP Mibs for the server.
 | ``scripts/``			| Sample scripts for startup and maintenance.
 
-## Configuration
+### Configuration
 
 | Directory			| Description
 |---				|---
@@ -66,13 +79,13 @@ Please do not raise general configuration issues there.
 | ``raddb/sites-available``	| Virtual servers.
 | ``raddb/sites-enabled``	| Directory containing symlinks to raddb/sites-available. Control which virtual servers are enabled.
 
-## Packaging
+### Packaging
 | Directory			| Description
 |---				|---
 | ``redhat/``			| Additional files for a RedHat Linux system.
 | ``suse/``			| Additional files for a SuSE (UnitedLinux) system.
 
-## Source
+### Source
 | Directory			| Description
 |---				|---
 | ``src/``			| Source code
@@ -82,7 +95,7 @@ Please do not raise general configuration issues there.
 | ``src/protocols/``		| Dynamic frontend plug-in modules.
 | ``src/modules/``		| Dynamic backend plug-in modules.
 
-# Debugging
+## Debugging
 
 If you have ANY problems, concerns, or surprises when running
 the server, then run it in debugging mode, as root, from the
@@ -96,6 +109,4 @@ these messages.
 
 For further details, see:
 
-https://www.freeradius.org/faq/
-
-and the `bugs.md` file, in this directory.
+http://wiki.freeradius.org/radiusd-X
