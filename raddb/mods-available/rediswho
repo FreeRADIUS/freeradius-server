@@ -1,13 +1,22 @@
 # -*- text -*-
 #
+#  :toc:
+#
 #  $Id$
 
+#######################################################################
 #
-#  Configuration file for the "rediswho" module.
+#  = REDISWho Module
 #
-#  This module tracks the last set of login sessions for a user.
+#  The module `rediswho` tracks the last set of login sessions for a user.
+#
+
+#
+#  ## Default instance
 #
 rediswho {
+	#
+	#  server::
 	#
 	#  If using Redis cluster, multiple 'bootstrap' servers may be
 	#  listed here (as separate config items). These will be contacted
@@ -17,45 +26,65 @@ rediswho {
 	#    server = '127.0.0.1:30001'
 	#    server = '[::1]:30002'
 	#
-	#  Instantiation failure behaviour is controlled by pool.start as
-	#  with every other module, but with clustering, the pool section
-	#  determines limits for each node in the cluster, not the cluster
-	#  as a whole.
+	#  NOTE: Instantiation failure behaviour is controlled by `pool.start`
+	#  as with every other module, but with clustering, the `pool { ... }`
+	#  section determines limits for each node in the cluster, not the
+	#  cluster as a whole.
 	#
 	server = 127.0.0.1
 
-	#  How many sessions to keep track of per user.
+	#
+	#  trim_count:: How many sessions to keep track of per user.
+	#
 	#  If there are more than this number, older sessions are deleted.
+	#
 	trim_count = 15
 
-	#  Expiry time in seconds.  Any sessions which have not received
-	#  an update in this time will be automatically expired.
+	#
+	#  expire_time:: Expiry time in seconds.
+	#
+	#  Any sessions which have not received an update in this time will be
+	#  automatically expired.
+	#
 	expire_time = 86400
 
 	#
-	#  Each subsection contains insert / trim / expire queries.
-	#  The subsections are named after the contents of the
-	#  Acct-Status-Type attribute.  See dictionary.rfc2866 for names
-	#  of the various Acct-Status-Type values, or look at the output
-	#  of debug mode.
+	#  ### Queries by Acct-Status-Type
 	#
-	#  This module supports *any* Acct-Status-Type.  Just add a subsection
+	#  Each subsection contains insert / trim / expire queries.
+	#
+	#  The subsections are named after the contents of the `Acct-Status-Type` attribute.
+	#
+	#  See `dictionary.rfc2866` for names of the various Acct-Status-Type values,
+	#  or look at the output of debug mode.
+	#
+	#  This module supports *any* `Acct-Status-Type`.  Just add a subsection
 	#  of the appropriate name, along with insert / trim / expire queries.
 	#
+
+	#
+	#  .Start
+	#
 	Start {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
+		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
 		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
 		expire = "EXPIRE %{User-Name} ${..expire_time}"
 	}
 
+	#
+	#  .Interim-Update
+	#
 	Interim-Update {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
+		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
 		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
 		expire = "EXPIRE %{User-Name} ${..expire_time}"
 	}
 
+	#
+	#  .Stop
+	#
 	Stop {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
+		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
 		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
 		expire = "EXPIRE %{User-Name} ${..expire_time}"
 	}
