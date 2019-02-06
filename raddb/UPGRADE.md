@@ -496,6 +496,11 @@ Note that `%{expr:1 * &Attr-Name[*]}` does *not* mean repeated
 multiplication.  Instead, the sum of the attributes is taken as
 before, and then the result is multiplied by one.
 
+### rlm_mschap
+
+The `winbind_*` configuration options are now in a `winbind`
+subsection.  See `mods-available/mschap` for details.
+
 ### rlm_perl
 
 Attributes of type `octets` are now passed directly to Perl as binary
