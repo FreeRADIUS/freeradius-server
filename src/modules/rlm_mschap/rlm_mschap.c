@@ -75,6 +75,15 @@ static const CONF_PARSER passchange_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const CONF_PARSER winbind_config[] = {
+	{ FR_CONF_OFFSET("username", FR_TYPE_TMPL, rlm_mschap_t, wb_username) },
+	{ FR_CONF_OFFSET("domain", FR_TYPE_TMPL, rlm_mschap_t, wb_domain) },
+#ifdef WITH_AUTH_WINBIND
+	{ FR_CONF_OFFSET("retry_with_normalised_username", FR_TYPE_BOOL, rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
+#endif
+	CONF_PARSER_TERMINATOR
+};
+
 static const CONF_PARSER module_config[] = {
 	/*
 	 *	Cache the password by default.
@@ -85,16 +94,24 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOL, rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
 	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_auth) },
 	{ FR_CONF_OFFSET("ntlm_auth_timeout", FR_TYPE_UINT32, rlm_mschap_t, ntlm_auth_timeout) },
+
 	{ FR_CONF_POINTER("passchange", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) passchange_config },
 	{ FR_CONF_OFFSET("allow_retry", FR_TYPE_BOOL, rlm_mschap_t, allow_retry), .dflt = "yes" },
 	{ FR_CONF_OFFSET("retry_msg", FR_TYPE_STRING, rlm_mschap_t, retry_msg) },
-	{ FR_CONF_OFFSET("winbind_username", FR_TYPE_TMPL, rlm_mschap_t, wb_username) },
-	{ FR_CONF_OFFSET("winbind_domain", FR_TYPE_TMPL, rlm_mschap_t, wb_domain) },
-#ifdef WITH_AUTH_WINBIND
-	{ FR_CONF_OFFSET("winbind_retry_with_normalised_username", FR_TYPE_BOOL, rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
-#endif
+
 #ifdef __APPLE__
 	{ FR_CONF_OFFSET("use_open_directory", FR_TYPE_BOOL, rlm_mschap_t, open_directory), .dflt = "yes" },
+#endif
+
+	{ FR_CONF_POINTER("winbind", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) winbind_config },
+
+	/*
+	 *	These are now in a subsection above.
+	 */
+	{ FR_CONF_OFFSET("winbind_username", FR_TYPE_TMPL | FR_TYPE_DEPRECATED, rlm_mschap_t, wb_username) },
+	{ FR_CONF_OFFSET("winbind_domain", FR_TYPE_TMPL | FR_TYPE_DEPRECATED, rlm_mschap_t, wb_domain) },
+#ifdef WITH_AUTH_WINBIND
+	{ FR_CONF_OFFSET("winbind_retry_with_normalised_username", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, rlm_mschap_t, wb_retry_with_normalised_username) },
 #endif
 	CONF_PARSER_TERMINATOR
 };

@@ -112,35 +112,40 @@ mschap {
 	#
 #	ntlm_auth_timeout = 10
 
-	# 
-	#  winbind_username:: User name for winbind
-	#  winbind_domain:: Domain name for winbind
 	#
-	#  An alternative to using `ntlm_auth` is to connect to the
-	#  winbind daemon directly for authentication. This option
-	#  is likely to be faster and may be useful on busy systems.
+	#  winbind { ...}:: Configuration options for talking to Winbind.
 	#
-	#  Performance seems to be about twice that of `ntlm_auth`,
-	#  which still isn't a lot.
-	#
-	#  Using this option requires libwbclient from Samba 4.2.1 or
-	#  later to be installed. Make sure that `ntlm_auth` above is
-	#  commented out.
-	#
-#	winbind_username = "%{mschap:User-Name}"
-#	winbind_domain = "%{mschap:NT-Domain}"
+	winbind {
+		#
+		#  username:: User name for winbind
+		#  domain:: Domain name for winbind
+		#
+		#  An alternative to using `ntlm_auth` is to connect to the
+		#  winbind daemon directly for authentication. This option
+		#  is likely to be faster and may be useful on busy systems.
+		#
+		#  Performance seems to be about twice that of `ntlm_auth`,
+		#  which still isn't a lot.
+		#
+		#  Using this option requires libwbclient from Samba 4.2.1 or
+		#  later to be installed. Make sure that `ntlm_auth` above is
+		#  commented out.
+		#
+#		username = "%{mschap:User-Name}"
+#		domain = "%{mschap:NT-Domain}"
 
-	#
-	#  winbind_retry_with_normalised_username::
-	#
-	#  When using single sign-on with a winbind connection and the
-	#  client uses a different casing for the username than the
-	#  casing is according to the backend, reauth may fail because
-	#  of some Windows internals.
-	#  This switch tries to find the user in the correct casing in
-	#  the backend, and retry authentication with that username.
-	#
-#	winbind_retry_with_normalised_username = no
+		#
+		#  retry_with_normalised_username::
+		#
+		#  When using single sign-on with a winbind connection and the
+		#  client uses a different casing for the username than the
+		#  casing is according to the backend, reauth may fail because
+		#  of some Windows internals.
+		#  This switch tries to find the user in the correct casing in
+		#  the backend, and retry authentication with that username.
+		#
+#		retry_with_normalised_username = no
+	}
 
 	#
 	#  .Pool
