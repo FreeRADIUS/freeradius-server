@@ -158,12 +158,12 @@ sub process_file {
 			} elsif ($links{$key} =~ /^$opt_a/) {
 				#
 				#  Link to the *relative* path for the file.
-				#  Note that we're passed "-a foo/asciidoc",
-				#  and also an output file of "asciidoc/bar.adoc"
-				#  So we need to strip out one level of "asciidoc/"
+				#  Note that we're passed "-a foo/doc/raddb",
+				#  and also an output file of "doc/raddb/bar.adoc"
+				#  So we need to strip out the duplicate directories.
 				#
 				my $absdir = dirname($opt_a . "/" . $output_file);
-				$absdir =~ s,asciidoc/asciidoc,asciidoc/,;
+				$absdir =~ s,doc/raddb/,/,;
 
 				my $relative = File::Spec->abs2rel($links{$key}, $absdir);
 
