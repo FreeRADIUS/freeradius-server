@@ -8,14 +8,14 @@
 #
 #  = Lua Module
 #
-#  The `lua` module processes attributes thrugh a Lua interpreter.
+#  The `lua` module processes attributes through a Lua interpreter.
+#
+#  * Please see the `src/modules/rlm_lua/example.lua` for a sample Lua script.
+#  * Please see https://www.lua.org/ for more information about the Lua language.
 #
 #  NOTE: Uncomment any `func_*` configuration items below which are
-#  included in your module. If rlm_lua is called for a section which
+#  included in your module. If the module is called for a section which
 #  does not have a function defined, it will return `noop`.
-#
-#  * Please see the `src/modules/rlm_lua/example.lua` sample.
-#  * Please see https://www.lua.org/ for more information about the Lua language.
 #
 
 #

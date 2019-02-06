@@ -8,20 +8,19 @@
 #
 #  = Perl Module
 #
-#  The `perl` module handles the requests between the server an a Perl
-#  interpreter.
+#  The `perl` module processes attributes through a Perl interpreter.
 #
 #  * Please see the `raddb/mods-config/perl/example.pl` sample.
 #  * Please see http://www.perl.org/docs.html for more information about the
 #  Perl language.
 #
+#  NOTE: Uncomment any `func_*` configuration items below which are
+#  included in your module. If the module is called for a section which
+#  does not have a function defined, it will return `noop`.
+#
 
 #
-#  ## Sample
-#
-#  Uncomment any `func_*` which are included in your module. If `rlm_perl`
-#  is called for a section which does not have a function defined,
-#  it will return `NOOP`.
+#  ## Default instance
 #
 #  The following hashes are given to the module and
 #  filled with value-pairs (Attribute names and values)
@@ -56,10 +55,9 @@ perl {
 	#
 	#  filename:: Module to load functions from.
 	#
-	#  The Perl script to execute on `authorize`, ` authenticate`,
-	#  `accounting`, `xlat`, etc.  This is very similar to using
-	#  'rlm_exec' module, but it is persistent, and therefore
-	#  faster.
+	#  The Perl script to execute when the moduile is called.
+	#  This is very similar to using the `exec` module, but it is
+	#  persistent, and therefore faster.
 	#
 	filename = ${modconfdir}/${.:instance}/example.pl
 

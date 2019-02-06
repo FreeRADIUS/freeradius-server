@@ -8,30 +8,29 @@
 #
 #  = Python Module
 #
-#  The `python` module handles the requests between the server an a Python
-#  interpreter.
+#  The `python` module processes attributes through a Python interpreter.
 #
 #  * Please see the `src/modules/rlm_python/example.py` sample.
 #  * Please see https://www.python.org/doc/ for more information about the
 #  Python language.
 #
+#  NOTE: Uncomment any `func_*` configuration items below which are
+#  included in your module. If the module is called for a section which
+#  does not have a function defined, it will return `noop`.
+#
 
 #
-#  ## Sample
+#  ## Default instance
 #
-#  Uncomment any `func_*` which are included in your module. If `rlm_python`
-#  is called for a section which does not have a function defined,
-#  it will return `NOOP`.
-#
-#  `threading.local()`  may be used store thread specific data such as connection
-#  handles.
+#  The Python API `threading.local()` may be used store thread
+#  specific data such as connection handles.
 #
 python {
-    #
-    #  module::
-    #
-    #  Module to load functions from.
-    #
+	#
+	#  module::
+	#
+	#  Module to load functions from.
+	#
 	module = example
 
 	#
@@ -55,33 +54,33 @@ python {
 	#
 #	cext_compat = false
 
-    #
-    #  python_path::
-    #
-    #  Search path for Python modules, must include the path to your
-    #  python module.
-    #
+	#
+	#  python_path::
+	#
+	#  The search path for Python modules.  It must include the path to your
+	#  python module.
+	#
 #	python_path = ${modconfdir}/${.:name}
 
-    #
-    #  [NOTE]
-    #  ====
-    #  * You may set `mod_<section>` for any of the section to module
-    #  mappings below, if you want to reference a function in a  different
-    #  module.
-    #
-    #  * Uncomment `func_<section>` lines your module provides methods for.
-    #  ====
-    #
+	#
+	#  [NOTE]
+	#  ====
+	#  * You may set `mod_<section>` for any of the section to module
+	#  mappings below, if you want to reference a function in a  different
+	#  module.
+	#
+	#  * Uncomment `func_<section>` lines your module provides methods for.
+	#  ====
+	#
 
-    #
-    #  func_instantiate:: Called on module instantiation.
-    #
+	#
+	#  func_instantiate:: Called on module instantiation.
+	#
 #	func_instantiate = instantiate
 
 	#
-    #  func_detach:: Called on module unload.
-    #
+	#  func_detach:: Called on module unload.
+	#
 #	func_detach = detach
 
 #	func_authorize = authorize
@@ -109,10 +108,10 @@ python {
 	#  radiusd.config['sub-config']['name']
 	#  ----
 	#
-#   config {
-#	    name = "value"
-#	    sub-config {
-#		    name = "value of name from config.sub-config"
-#	    }
-#   }
+#	config {
+#		name = "value"
+#		sub-config {
+#			name = "value of name from config.sub-config"
+#		}
+#	}
 }

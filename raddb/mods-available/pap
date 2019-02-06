@@ -27,7 +27,7 @@ pap {
 	#  handle base64 or hex encoded passwords. This behaviour can be
 	#  stopped by setting the following to `no`.
 	#
-	#  Default is `yes`
+	#  The default is `yes`
 	#
 #	normalise = no
 }

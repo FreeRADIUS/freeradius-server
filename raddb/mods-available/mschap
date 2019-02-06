@@ -5,11 +5,18 @@
 #  $Id$
 
 #######################################################################
+#
 #  = Microsoft CHAP authentication Module
 #
-#  The `mschap` module supports `MS-CHAP` and `MS-CHAPv2` authentication.
+#  The `mschap` module performs `MS-CHAP` and `MS-CHAPv2` authentication.
 #
-#  It also enforces the `SMB-Account-Ctrl` attribute.
+#  The module also enforces the `SMB-Account-Ctrl` attribute.
+#
+#  For more documentation on integrating FreeRADIUS with Active Directory, please
+#  see the following web page:
+#
+#	http://deployingradius.com/documents/configuration/active_directory.html
+
 #
 
 #
@@ -21,120 +28,126 @@
 mschap {
 
 	#
-	# use_mppe::
+	#  use_mppe::
 	#
-	# By default the `mschap` will add `MS-CHAP-MPPE-Keys` for `MS-CHAPv1` and 
-	# `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` for `MS-CHAPv2`.
+	#  By default the `mschap` will add `MS-CHAP-MPPE-Keys` for `MS-CHAPv1` and
+	#  `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` for `MS-CHAPv2`.  Set this
+	#  configuration item to `no` in order to not add the MPPE keys.
 	#
-	# Default is `yes`.
+	#  Default is `yes`.
 	#
 #	use_mppe = no
 
 	#
-	# require_encryption::
+	#  require_encryption::
 	#
-	# if `use_mppe` is enabled, the `require_encryption` makes encryption moderate.
+	#  if `use_mppe` is enabled, the `require_encryption` makes encryption moderate.
 	#
-	# Default is `no`.
+	#  Default is `no`.
 	#
 #	require_encryption = yes
 
 	#
-	# require_strong::
+	#  require_strong::
 	#
-	# It always requires 128 bit key encryption.
+	#  It always requires 128 bit key encryption.
 	#
-	# Default is `no`.
+	#  Default is `no`.
 	#
 #	require_strong = yes
 
 	#
-	# ntlm_auth::
+	#  ntlm_auth:: Path and arguments to the `ntlm_auth` program.
 	#
-	# The module can perform authentication itself, OR
-	# use a Windows Domain Controller.  This configuration
-	# directive tells the module to call the `ntlm_auth`
-	# program, which will do the authentication, and return
-	# the `NT-Key`.
+	#  The module can perform authentication itself, OR
+	#  use a Windows Domain Controller.  This configuration
+	#  directive tells the module to call the `ntlm_auth`
+	#  program, which will do the authentication, and return
+	#  the `NT-Key`.
 	#
-	# NOTE: you MUST have the such services "winbindd" and "nmbd"
-	# running on the local machine for `ntlm_auth` to work.
+	#  NOTE: you MUST have the such services "winbindd" and "nmbd"
+	#  running on the local machine for `ntlm_auth` to work.
 	#
-	# See the `ntlm_auth` program documentation for details.
+	#  See the `ntlm_auth` program documentation for details.
 	#
-	# If `ntlm_auth` is configured below, then the `mschap` module
-	# will call `ntlm_auth` for every `MS-CHAP` authentication request.
+	#  If `ntlm_auth` is configured below, then the `mschap` module
+	#  will call `ntlm_auth` for every `MS-CHAP` authentication request.
 	#
-	# If there is a cleartext or NT hashed password available, you can set
-	# `MS-CHAP-Use-NTLM-Auth := No` in the control items, and the `mschap`
-	# module will do the authentication itself, without calling `ntlm_auth`.
+	#  If there is a cleartext or NT hashed password available, you can set
+	#  `MS-CHAP-Use-NTLM-Auth := No` in the control items, and the `mschap`
+	#  module will do the authentication itself, without calling `ntlm_auth`.
 	#
-	# WARNING: Be VERY careful when editing the following line!
-	#
-	# You can also try setting the user name as:
+	#  You can also try setting the user name as:
 	#
 	# `... --username=%{mschap:User-Name} ...`
 	#
-	# In that case, the `mschap` module will look at the `User-Name`
-	# attribute, and do prefix/suffix checks in order to obtain the _best_
-	# user name for the request.
+	#  In that case, the `mschap` module will look at the `User-Name`
+	#  attribute, and do prefix/suffix checks in order to obtain the _best_
+	#  user name for the request.
 	#
 	#  Depending on the AD / Samba configuration, you may also need to add:
 	#
-	# `--allow-mschapv2`
+	#  `--allow-mschapv2`
 	#
 	#  to the list of command-line options.
+	#
+	#  WARNING: Be VERY careful when editing the following line!
+	#  Change the path, and ideally nothing else.
 	#
 #	ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%{mschap:Challenge}:-00} --nt-response=%{%{mschap:NT-Response}:-00}"
 
 	#
-	# ntlm_auth_timeout::
+	#  ntlm_auth_timeout:: Time to wait for `ntlm_auth` to run.
 	#
-	# This is a long time, and if it's taking that long then you likely have other
-	# problems in your domain.
-	# The length of time can be decreased with the following option, which can save
-	# clients waiting if your `ntlm_auth` usually finishes quicker.
+	#  This is a long time, and if `ntlm_auth` is taking that long
+	#  then you likely have other problems in your domain.
 	#
-	# Range `1` to `10` seconds.
+	#  The length of time can be decreased with the following
+	#  option, which can save clients waiting if your `ntlm_auth`
+	#  usually finishes quicker.
 	#
-	# Default is `10` seconds.
+	#  Range `1` to `10` seconds.
+	#
+	#  Default is `10` seconds.
 	#
 #	ntlm_auth_timeout = 10
 
 	# 
-	# winbind_username::
-	# winbind_domain::
+	#  winbind_username:: User name for winbind
+	#  winbind_domain:: Domain name for winbind
 	#
-	# An alternative to using `ntlm_auth` is to connect to the
-	# winbind daemon directly for authentication. This option
-	# is likely to be faster and may be useful on busy systems,
-	# but is less well tested.
+	#  An alternative to using `ntlm_auth` is to connect to the
+	#  winbind daemon directly for authentication. This option
+	#  is likely to be faster and may be useful on busy systems.
 	#
-	# Using this option requires libwbclient from Samba 4.2.1
-	# or later to be installed. Make sure that `ntlm_auth above` is
-	# commented out.
+	#  Performance seems to be about twice that of `ntlm_auth`,
+	#  which still isn't a lot.
+	#
+	#  Using this option requires libwbclient from Samba 4.2.1 or
+	#  later to be installed. Make sure that `ntlm_auth` above is
+	#  commented out.
 	#
 #	winbind_username = "%{mschap:User-Name}"
 #	winbind_domain = "%{mschap:NT-Domain}"
 
 	#
-	# winbind_retry_with_normalised_username::
+	#  winbind_retry_with_normalised_username::
 	#
-	# When using single sign-on with a winbind connection and the
-	# client uses a different casing for the username than the
-	# casing is according to the backend, reauth may fail because
-	# of some Windows internals.
-	# This switch tries to find the user in the correct casing in
-	# the backend, and retry authentication with that username.
+	#  When using single sign-on with a winbind connection and the
+	#  client uses a different casing for the username than the
+	#  casing is according to the backend, reauth may fail because
+	#  of some Windows internals.
+	#  This switch tries to find the user in the correct casing in
+	#  the backend, and retry authentication with that username.
 	#
 #	winbind_retry_with_normalised_username = no
 
 	#
 	#  .Pool
 	#
-	#  TIP: Information for the winbind connection pool.  The configuration
-	#  items below are the same for all modules which use the new
-	#  connection pool.
+	#  TIP: Information for the winbind connection pool.  The
+	#  configuration items below are the same for all modules
+	#  which use the connection pool.
 	#
 	pool {
 		#
@@ -243,12 +256,15 @@ mschap {
 	#
 	passchange {
 		#
-		# ntlm_auth::
-		# ntlm_auth_username::
-		# ntlm_auth_domain::
+		# ntlm_auth:: Path and arguments to ntlm_auth for password change.
 		#
-		# This support `MS-CHAPv2` (not v1) password change requests.
-		# See `doc/mschap.rst` for more IMPORTANT information.
+		# ntlm_auth_username:: The user name for ntlm_auth password change.
+		#
+		# ntlm_auth_domain:: The domain name for ntlm_auth password change.
+		#
+		# This module support `MS-CHAPv2` (not v1) password
+		# change requests.  See `doc/modules/mschap.rst` for
+		# some IMPORTANT information.
 		#
 		# Samba/ntlm_auth - if you are using `ntlm_auth` to validate
 		# passwords, you will need to use `ntlm_auth` to change passwords.
@@ -260,38 +276,38 @@ mschap {
 #		ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
 
 		#
-		# local_cpw::
+		#  local_cpw::
 		#
-		# To implement a local password change, you need to supply a string
-		# which is then expanded, so that the password can be placed somewhere.
+		#  To implement a local password change, you need to supply a string
+		#  which is then expanded, so that the password can be placed somewhere.
 		#
-		# e.g. passed to a script (`exec`), or written to SQL (UPDATE/INSERT).
+		#  e.g. passed to a script (`exec`), or written to SQL (UPDATE/INSERT).
 		#
-		# TIP: We give both examples here, but *only one should be used*.
+		#  TIP: We give both examples here, but *only one should be used*.
 		#
 #		local_cpw = "%{exec:/path/to/script %{mschap:User-Name} %{MS-CHAP-New-Cleartext-Password}}"
 #		local_cpw = "%{sql:UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='NT-Password'}"
 	}
 
 	#
-	# use_open_directory::
+	#  use_open_directory::
 	#
-	# For Apple Server, when running on the same machine as Open Directory.
-	# It has no effect on other systems.
+	#  For Apple Server, when running on the same machine as Open Directory.
+	#  It has no effect on other systems.
 	#
 #	use_open_directory = yes
 
 	#
-	# allow_retry::
+	#  allow_retry::
 	#
-	# On failure, set (or not) the `MS-CHAP` error code saying _retries allowed_.
+	#  On failure, set (or not) the `MS-CHAP` error code saying _retries allowed_.
 	#
 #	allow_retry = yes
 
 	#
-	# retry_msg::
+	#  retry_msg::
 	#
-	# An optional retry message.
+	#  An optional retry message.
 	#
 #	retry_msg = "Re-enter (or reset) the password"
 }
