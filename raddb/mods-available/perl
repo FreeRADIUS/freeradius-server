@@ -1,24 +1,77 @@
 # -*- text -*-
 #
+#  :toc:
+#
 #  $Id$
 
-#  Persistent, embedded Perl interpreter.
+#######################################################################
+#
+#  = Perl Module
+#
+#  The `perl` module handles the requests between the server an a Perl
+#  interpreter.
+#
+#  * Please see the `raddb/mods-config/perl/example.pl` sample.
+#  * Please see http://www.perl.org/docs.html for more information about the
+#  Perl language.
+#
+
+#
+#  ## Sample
+#
+#  Uncomment any `func_*` which are included in your module. If `rlm_perl`
+#  is called for a section which does not have a function defined,
+#  it will return `NOOP`.
+#
+#  The following hashes are given to the module and
+#  filled with value-pairs (Attribute names and values)
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Value                    | Description
+#  | %RAD_CONFIG              | Config items (was %RAD_CHECK).
+#  | %RAD_REQUEST             | Attributes from the request.
+#  | %RAD_REPLY               | Attributes for the reply.
+#  | %RAD_REQUEST_PROXY       | Attributes from the proxied request.
+#  | %RAD_REQUEST_PROXY_REPLY | Attributes from the proxy reply.
+#  |===
+#
+#  The interface between FreeRADIUS and Perl is strings. That is, attributes
+#  of type `octets`  are converted to printable strings, such as `0xabcdef`.
+#  If you want to access the binary values of the attributes, you should
+#  call the Perl `pack` function.  Then to send any binary data back to
+#  FreeRADIUS, call the Perl `unpack` function, so that the contents of the
+#  hashes are printable strings.
+#
+#  IP addresses are sent as strings, e.g. "192.0.2.25", and not as a 4-byte
+#  binary value.  The same applies to other attribute data types.
+#
+#  Attributes of type `string` are copied to Perl as-is. 
+#  They are not escaped or interpreted.
+#
+#  The return codes from functions in the `perl_script` are passed directly back
+#  to the server.  These codes are defined in `mods-config/example.pl`
 #
 perl {
 	#
-	#  The Perl script to execute on authorize, authenticate,
-	#  accounting, xlat, etc.  This is very similar to using
+	#  filename:: Module to load functions from.
+	#
+	#  The Perl script to execute on `authorize`, ` authenticate`,
+	#  `accounting`, `xlat`, etc.  This is very similar to using
 	#  'rlm_exec' module, but it is persistent, and therefore
 	#  faster.
 	#
 	filename = ${modconfdir}/${.:instance}/example.pl
 
 	#
-	#  Options which are passed to the Perl interpreter.
-	#  These are (mostly) the same options as are passed
-	#  to the "perl" command line.
+	#  perl_flags::
 	#
-	#  The most useful flag is "-T".  This sets tainting on.
+	#  Options which are passed to the Perl interpreter.
+	#
+	#  These are (mostly) the same options as are passed
+	#  to the `perl` command line.
+	#
+	#  The most useful flag is `-T`.  This sets tainting on.
 	#  Using this flag makes it impossible to leverage bad
 	#  User-Names into local command execution.
 	#
@@ -26,71 +79,53 @@ perl {
 	#  FreeRADIUS server.
 	#
 	perl_flags = "-T"
-
-	#
-	#  The following hashes are given to the module and
-	#  filled with value-pairs (Attribute names and values)
-	#
-	#  %RAD_CONFIG              Config items (was %RAD_CHECK)
-	#  %RAD_REQUEST             Attributes from the request
-	#  %RAD_REPLY               Attributes for the reply
-	#  %RAD_REQUEST_PROXY       Attributes from the proxied request
-	#  %RAD_REQUEST_PROXY_REPLY Attributes from the proxy reply
-	#
-	#  The interface between FreeRADIUS and Perl is strings.
-	#  That is, attributes of type "octets" are converted to
-	#  printable strings, such as "0xabcdef".  If you want to
-	#  access the binary values of the attributes, you should
-	#  call the Perl "pack" function.  Then to send any binary
-	#  data back to FreeRADIUS, call the Perl "unpack" function,
-	#  so that the contents of the hashes are printable strings.
-	#
-	#  IP addresses are sent as strings, e.g. "192.0.2.25", and
-	#  not as a 4-byte binary value.  The same applies to other
-	#  attribute data types.
-	#
-	#  Attributes of type "string" are copied to Perl as-is.
-	#  They are not escaped or interpreted.
-	#
-	#  The return codes from functions in the perl_script
-	#  are passed directly back to the server.  These
-	#  codes are defined in mods-config/example.pl
-	#
-
-	# You can define configuration items (and nested sub-sections) in perl "config" section.
-	# These items will be accessible in the perl script through %RAD_PERLCONF hash.
-	# For instance: $RAD_PERLCONF{'name'} $RAD_PERLCONF{'sub-config'}->{'name'}
-	#
-	#config {
-	#	name = "value"
-	#	sub-config {
-	#		name = "value of name from config.sub-config"
-	#	}
-	#}
 	
 	#
-	#  List of functions in the module to call.
-	#  Uncomment and change if you want to use function
-	#  names other than the defaults.
+	#  List of functions in the module to call. Uncomment and change if you
+	#  want to use function names other than the defaults.
 	#
-	#func_authenticate = authenticate
-	#func_authorize = authorize
-	#func_preacct = preacct
-	#func_accounting = accounting
-	#func_pre_proxy = pre_proxy
-	#func_post_proxy = post_proxy
-	#func_post_auth = post_auth
-	#func_recv_coa = recv_coa
-	#func_send_coa = send_coa
-	#func_xlat = xlat
-	#func_detach = detach
+#	func_authenticate = authenticate
+#	func_authorize = authorize
+#	func_preacct = preacct
+#	func_accounting = accounting
+#	func_pre_proxy = pre_proxy
+#	func_post_proxy = post_proxy
+#	func_post_auth = post_auth
+#	func_recv_coa = recv_coa
+#	func_send_coa = send_coa
+#	func_xlat = xlat
+#	func_detach = detach
 
 	#
-	#  Uncomment the following lines if you wish
-	#  to use separate functions for Start and Stop
-	#  accounting packets. In that case, the
-	#  func_accounting function is not called.
+	#  func_start_accounting::
+	#  func_stop_accounting::
 	#
-	#func_start_accounting = accounting_start
-	#func_stop_accounting = accounting_stop
+	#  Uncomment the following lines if you wish to use separate functions
+	#  for `Start` and `Stop` accounting packets.
+	#  In that case, the `func_accounting` function is not called.
+	#
+#	func_start_accounting = accounting_start
+#	func_stop_accounting = accounting_stop
+
+	#
+	#  config { ... }::
+	#
+	#  You can define configuration items (and nested sub-sections) in perl `config { ... }`
+	#  section.
+	#  These items will be accessible in the perl script through `%RAD_PERLCONF` hash.
+	#
+	#  For instance:
+	#
+	#  [source,perl]
+	#  ----
+	#  $RAD_PERLCONF{'name'}
+	#  $RAD_PERLCONF{'sub-config'}->{'name'}`
+	#  ----
+	#
+#	config {
+#		name = "value"
+#		sub-config {
+#			name = "value of name from config.sub-config"
+#		}
+#	}
 }

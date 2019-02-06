@@ -1,16 +1,31 @@
+# -*- text -*-
 #
-#  For testing ntlm_auth authentication with PAP.
+# :toc:
+#
+#  $Id$
+
+#######################################################################
+#
+#  = NTLM Auth Module
+#
+#  For testing `ntlm_auth` authentication with PAP.
 #
 #  If you have problems with authentication failing, even when the
 #  password is good, it may be a bug in Samba:
 #
-#	https://bugzilla.samba.org/show_bug.cgi?id=6563
+#    https://bugzilla.samba.org/show_bug.cgi?id=6563
 #
 #  Depending on the AD / Samba configuration, you may also need to add:
 #
-#	--allow-mschapv2
+#    --allow-mschapv2
 #
 #  to the list of command-line options.
+#
+
+#
+#  ## Default instance
+#
+#  See the `exec` module for common configuration explanation.
 #
 exec ntlm_auth {
 	wait = yes
