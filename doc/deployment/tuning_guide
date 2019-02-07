@@ -45,14 +45,6 @@ o Add AcctUniqueId in the accounting_stop query. Especially if you have a lot of
   servers or your NAS does not send very random Session-Ids. That way you will always have
   one candidate row to search for, instead of all the rows that have the same AcctSessionId
 
------------- COUNTER MODULE ----------
-o Enable noatime on the counter db files.
-o Tune the cache_size configuration directive to match your needs.
-  The cache size should be set to 2-3 * number of available nas ports.
-o Keep the database in a memory mapped file if you can help. Backup the
-  file every 10 mins to the disk and copy it to the memory mapped one
-  on server startup.
-
 ------------ RADUTMP MODULE ----------
 o Enable noatime on the radutmp file
 o Don't use it
