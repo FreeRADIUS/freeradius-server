@@ -3124,13 +3124,13 @@ do_home:
 	}
 
 	/*
-	 *	home_pool may be NULL when originating CoA packets,
-	 *	because they go directly to an IP address.
+	 *	If the home server is virtual, just run pre_proxy from
+	 *	that section.
 	 */
-	if (request->home_pool && request->home_pool->virtual_server) {
+	if (request->home_server->server) {
 		char const *old_server = request->server;
 
-		request->server = request->home_pool->virtual_server;
+		request->server = request->home_server->server;
 
 		RDEBUG2("server %s {", request->server);
 		RINDENT();
