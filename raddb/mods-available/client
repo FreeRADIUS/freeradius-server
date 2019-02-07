@@ -40,12 +40,16 @@
 #
 #  NOTE: For more documentation, see the file `raddb/sites-available/dynamic-clients`
 #
-#  ## Module provides
+
+#
+#  ## Client Configuration
 #
 #  In addition to loading `client` definitions in from flat files, the clients module can
 #  also be used to access data from previously defined clients.
 #
-#  ### Client config item to attribute mapping.
+
+#
+#  ### Attribute Mapping
 #
 #  Maps arbitrary fields from a client definition to attributes in the current request.
 #
@@ -66,8 +70,9 @@
 #      `&Tmp-String-1`.
 #  <4> Creates multiple `&Tmp-String-3` attributes from a custom group field associated
 #      with the client.
+
 #
-#  ### Client config item access expansion.
+#  ### Access Expansion
 #
 #  [options="header,autowidth"]
 #  |===
