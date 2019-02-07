@@ -1,13 +1,30 @@
 # -*- text -*-
 #
+#  :toc:
+#
 #  $Id$
 
+#######################################################################
 #
-# The "sometimes" module is here for debugging purposes. Each instance
-# randomly returns the configured result, or "noop".
+#  = Sometimes Module
 #
-# It is based on the "always" module.
+#  The `sometimes` module is used for `debugging` purposes. Each instance
+#  randomly returns the configured result, or `noop`.
+#
+#  NOTE: It is based on the `always` module.
+#
+
+#
+#  ## Default instance
+#
 sometimes {
+	#
+	#  key:: The `key` used for index.
+	#
 	key = &User-Name
+
+	#
+	#  rcode:: Return code.
+	#
 	rcode = fail
 }
