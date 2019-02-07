@@ -8,7 +8,7 @@
 #
 # = Couchbase Module
 #
-# The `couchbase` module is used to provides connections to a Couchbase database.
+# The `couchbase` module is used to provides connections to a `Couchbase` database.
 #
 
 #
@@ -124,11 +124,15 @@ couchbase {
 		#
 		# The following attributes are required:
 		#
-		# 	* `ipaddr` | `ipv4add` | `ipv6addr` - Client IP Address.
-		# 	* `secret` - RADIUS shared secret.
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Attr                            | Description
+		#  | `ipaddr`, `ipv4add`, `ipv6addr` | Client IP Address.
+		#  | `secret`                        | RADIUS shared secret.
+		#  |===
 		#
-		# NOTE: All attributes usually supported in a client definition are also supported here.
-		# Element names *should be single quoted*.
+		# NOTE: All attributes usually supported in a `client` definition are also
+		# supported here. Element names *should be single quoted*.
 		#
 		attribute {
 			ipaddr                          = 'clientIdentifier'

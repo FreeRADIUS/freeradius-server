@@ -6,7 +6,7 @@
 
 #######################################################################
 #
-#  ## SQL-IP-Pool Module
+#  = SQL-IP-Pool Module
 #
 #  The module `sqlippool` provide configuration for the SQL based IP Pool module.
 #

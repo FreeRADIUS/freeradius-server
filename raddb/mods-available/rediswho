@@ -12,7 +12,7 @@
 #
 
 #
-#  ## Default instance
+#  # Default instance
 #
 rediswho {
 	#
@@ -50,7 +50,7 @@ rediswho {
 	expire_time = 86400
 
 	#
-	#  ### Queries by Acct-Status-Type
+	#  ## Queries by Acct-Status-Type
 	#
 	#  Each subsection contains insert / trim / expire queries.
 	#
@@ -64,7 +64,7 @@ rediswho {
 	#
 
 	#
-	#  .Start
+	#  ### Start
 	#
 	Start {
 		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
@@ -73,7 +73,7 @@ rediswho {
 	}
 
 	#
-	#  .Interim-Update
+	#  ### Interim-Update
 	#
 	Interim-Update {
 		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
@@ -82,7 +82,7 @@ rediswho {
 	}
 
 	#
-	#  .Stop
+	#  ### Stop
 	#
 	Stop {
 		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"

@@ -10,6 +10,10 @@
 #
 #  The `attr_filter` module defines a number of instances of the "attr_filter".
 #
+
+#
+#  ## Syntax
+#
 #attr_filter attr_filter.<section> {
 	#
 	#  key::
@@ -26,9 +30,11 @@
 #	filename = </path/><section>
 #}
 
-#  ## Default instances
+#
+#  ## Default instance
 #
 #  The following default instances.
+#
 
 #
 #  ### pre-proxy
