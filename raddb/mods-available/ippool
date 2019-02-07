@@ -70,6 +70,7 @@ ippool main_pool {
 
 	#
 	#  cache_size:: The `gdbm` cache size for the db files.
+	#
 	#  Should be equal to the number of ip's available in the ip pool.
 	#
 	cache_size = 800
@@ -88,7 +89,8 @@ ippool main_pool {
 	#
 	#  maximum_timeout:: Specifies the maximum time in seconds that an entry
 	#  may be active.  If set to zero, means _no timeout_.
-	#  The default value is 0
+	#
+	#  Default value is `0`.
 	#
 	maximum_timeout = 0
 
