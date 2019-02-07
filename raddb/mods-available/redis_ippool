@@ -6,21 +6,22 @@
 
 #######################################################################
 #
-#  = REDIS IP Pool Module
+#  = Redis IP Pool Module
 #
-#  The module `redis_ippool` implements a fast and scalable IP allocation
-#  system using Redis.
+#  The `redis_ippool` module implements a fast and scalable IP
+#  allocation system using Redis.
 #
-#  Supports both IPv4 and IPv6 address and prefix allocation, and
-#  implements pre-allocation for use with DHCPv4.
-#  Lease allocation throughput scales with the number of members in the
-#  Redis cluster.
+#  The module supports both IPv4 and IPv6 address and prefix
+#  allocation, and implements pre-allocation for use with DHCPv4.
+#
+#  Lease allocation throughput scales with the number of members in
+#  the Redis cluster.
 #
 
 #
 #  ## Default instance
 #
-#  Note all configuration items at this level (below the `redis` block)
+#  Al configuration items at this level (below the `redis` block)
 #  are polymorphic, meaning `xlats`, attribute references, literal values
 #  and execs may be specified.
 #
@@ -29,14 +30,15 @@
 #
 redis_ippool {
 	#
-	#  pool_name:: Name of the pool to allocate leases from.
+	#  pool_name:: Name of the pool from which leases are allocated.
 	#
 	pool_name = &control:Pool-Name
 
 	#
-	#  offer_time:: How long a lease is reserved for after making an offer to
-	#  the DHCP client if no value is provided, the value from lease_time
-	#  is used for initial allocations.
+	#  offer_time:: How long a lease is reserved for after making an offer.
+	#
+	#  If no value is provided, the value from lease_time is used
+	#  for initial allocations.
 	#
 	#  NOTE: No value should be provided for _PPP/VPNs_, this is mainly for the
 	#  _DORA_ flow in _DHCP_.
@@ -44,14 +46,17 @@ redis_ippool {
 	offer_time = 30
 
 	#
-	#  lease_time:: How long a lease is allocated for.
+	#  lease_time:: How long a lease is allocated.
 	#
 	lease_time = 3600
 
 	#
-	#  device:: The device identifier, usually the `Mac-Address` but could be a combination
-	#  of attributes, a `user-name` or a certificate serial number (if the number
-	#  of sessions were limited to one per user/serial).
+	#  device:: The device identifier.
+	#
+	#  This is usually the MAC address.  It could be a combination
+	#  of attributes, a `User-Name` or a certificate serial number
+	#  (if the number of sessions were limited to one per
+	#  user/serial).
 	#
 	device = &DHCP-Client-Hardware-Address
 
@@ -79,15 +84,18 @@ redis_ippool {
 
 	#
 	#  expiry_attr:: If set - the list and attribute to write the remaining lease time to.
-	#  This can be populated on alloc, or renew, if an IP address was available for the
-	#  alloc.
+	#
+	#  This attribute can be populated on alloc, or renew, if an
+	#  IP address was available for the alloc.
 	#
 	expiry_attr = &reply:DHCP-IP-Address-Lease-Time
 
 	#
 	#  copy_on_update:: If true - Copy the value of ip_address to the attribute specified by
-	#  `reply_attr` when performing an update/renew.  This is needed for DHCP where
-	#  we need to send back `DHCP-Your-IP-Address` in ACKs.
+	#  `reply_attr` when performing an update/renew.
+	#
+	#  This behavior is needed for DHCP where we need to send back
+	#  `DHCP-Your-IP-Address` in ACKs.
 	#
 	copy_on_update = yes
 
@@ -96,7 +104,7 @@ redis_ippool {
 	#
 	#  Identical to all other Redis based modules.
 	#
-	#  NOTE: See `redis` for more information.
+	#  NOTE: See the `redis` module for more information.
 	#
 	redis {
 		server = localhost

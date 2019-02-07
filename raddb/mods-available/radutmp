@@ -29,7 +29,7 @@ radutmp {
 	filename = ${logdir}/radutmp
 
 	#
-	#  username:: The field in the packet to key on for the `user` name.
+	#  username:: The field in the packet to key on for the users name.
 	#
 	#  If you have other fields which you want to use to key on to control
 	#  `Simultaneous-Use`, then you can use them here.
