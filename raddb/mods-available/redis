@@ -125,8 +125,10 @@ redis {
 		#
 		cleanup_interval = 300
 
-		#  The idle timeout (in seconds).  A connection which is
-		#  unused for this length of time will be closed.
+		#
+		#  idle_timeout:: The idle timeout (in seconds).
+		#
+		#  A connection which is unused for this length of time will be closed.
 		#
 		#  NOTE: `0` means "infinite".
 		#

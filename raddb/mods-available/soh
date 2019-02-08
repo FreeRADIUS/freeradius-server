@@ -1,4 +1,30 @@
-# SoH module
+# -*- text -*-
+#
+#  :toc:
+#
+#  $Id$
+
+#######################################################################
+#
+#  = SoH Module
+#
+#  The `soh` module is used for decodes Microsoft's Statement of Health
+#  sub-protocol.
+#
+#  See the below link for additional information about the SoH Protocol.
+#
+#  https://trustedcomputinggroup.org/resource/tnc-if-tnccs-protocol-bindings-for-soh-version-1-0/ 
+#  https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/WinArchive/[MS-SOH].pdf
+#
+
+#
+#  ## Default instance
+#
 soh {
+	#
+	#  dhcp:: If enabled, It will do SoH over DHCP.
+	#
+	#  Default is `no`.
+	#	
 	dhcp = yes
 }

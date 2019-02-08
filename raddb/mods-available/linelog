@@ -12,7 +12,7 @@
 #  or static strings, and writes them to a variety of backends, including syslog,
 #  flat files, and raw UDP/TCP sockets.
 #
-#  NOTE: Multiple `linelog`s modules may be used for any given request.
+#  NOTE: Multiple linelog's modules may be used for any given request.
 #  The `logtee` modules will not affect normal logging output.
 #  i.e. This logging is *in addition* to any other logging that is
 #  done by the server.
@@ -31,9 +31,9 @@ linelog {
 #	delimiter = "\n"
 
 	#
-	#  format:: The default format string.
+	#  format:: The default format string. May be an attribute reference.
 	#
-	#  May be an attribute reference, e.g. `&User-Name`, or `xlat`, `literal` or `exec`.
+	#  e.g. `&User-Name`, or `xlat`, `literal` or `exec`.
 	#
 	format = "This is a log message for %{User-Name}"
 

@@ -1,16 +1,31 @@
+# -*- text -*-
 #
-#  The "stats" module tracks RADIUS statistics.
+#  :toc:
 #
-#  It should be listed LAST in any "send ... { }" section.
+#  $Id$
+
+#######################################################################
 #
-#  When listed in a "send" section, it will increment statistics for
+#  = Stats Module
+#
+#  The `stats` module tracks RADIUS statistics.
+#
+#  It should be listed LAST in any `send ... { }` section.
+#
+#  When listed in a `send` section, it will increment statistics for
 #  input / output packets.
 #
-#  When listed in a "recv Status-Server" section, it will add global
-#  server statistics to the packet.  See "dictionary.freeradius", and
-#  the "FreeRADIUS-Stats4" attributes, for a list of which attributes
-#  it adds.
+#  When listed in a `recv Status-Server` section, it will add global
+#  server statistics to the packet. 
 #
+#  See `dictionary.freeradius`, and the `FreeRADIUS-Stats4` attributes,
+#  for a list of which attributes it adds.
+#
+
+#
+#  ## Default instance
+#
+#  This module takes no configuration.
 #
 stats {
 

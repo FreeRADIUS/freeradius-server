@@ -1,10 +1,20 @@
 # -*- text -*-
 #
+#  :toc:
+#
 #  $Id$
 
-#  An example configuration for using /etc/smbpasswd.
+#######################################################################
 #
-#  See the "passwd" file for documentation on the configuration items
+#  = SMBPasswd Module
+#
+#  An example configuration for using `/etc/smbpasswd`.
+#
+
+#
+#  ## Default instance
+#
+#  See the `passwd` module for documentation on the configuration items
 #  for this module.
 #
 passwd smbpasswd {
