@@ -8,8 +8,8 @@
 #
 #  = SoH Module
 #
-#  The `soh` module is used for decodes Microsoft's Statement of Health
-#  sub-protocol.
+#  The `soh` module is used for decoding Microsoft's "Statement of
+#  Health" sub-protocol.
 #
 #  See the below link for additional information about the SoH Protocol.
 #

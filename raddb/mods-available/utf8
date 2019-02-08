@@ -16,6 +16,10 @@
 #  An attribute of type "string" containing non-UTF-8 data makes
 #  the module return `FAIL`.
 #
+#  The module can be used as a simple check for non-conforming
+#  packets.  If the contents of the Access-Request packets are not
+#  UTF-8, it's likely best to just reject the request.
+#
 
 #
 #  ## Default instance
