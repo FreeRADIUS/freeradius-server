@@ -477,7 +477,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *reques
 	 *	If there's no existing cache entry, go and create a new one.
 	 */
 	if (!c) {
-		if (ttl <= 0) ttl = inst->ttl;
+		if (ttl < 0) ttl *= -1;
+		if (ttl == 0) ttl = inst->ttl;
 		goto insert;
 	}
 
