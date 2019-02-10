@@ -89,4 +89,31 @@ rediswho {
 		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
 		expire = "EXPIRE %{User-Name} ${..expire_time}"
 	}
+
+	#
+	#  ### Accounting-On
+	#
+#	Accounting-On {
+#		insert = ""
+#		trim =   ""
+#		expire = ""
+#	}
+
+	#
+	#  ### Accounting-Off
+	#
+#	Accounting-Off {
+#		insert = ""
+#		trim =   ""
+#		expire = ""
+#	}
+
+	#
+	#  ### Failed
+	#
+#	Failed {
+#		insert = ""
+#		trim =   ""
+#		expire = ""
+#	}
 }
