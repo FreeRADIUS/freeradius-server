@@ -178,7 +178,7 @@ sub process_file {
 			#  word individually, but that would also mess up (mildly)
 			#  whitespace.
 			#
-			$line =~ s/`$key`/$link/g;
+			$line =~ s/`\Q$key`/$link/g;
 		}
 
 		#
