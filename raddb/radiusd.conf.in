@@ -1,55 +1,61 @@
 # -*- text -*-
-##
-## radiusd.conf	-- FreeRADIUS server configuration file - @RADIUSD_VERSION_STRING@
-##
-##	http://www.freeradius.org/
-##	$Id$
-##
+#
+#
+#	http://www.freeradius.org/
+#	$Id$
+#
 
 ######################################################################
 #
-#	Read "man radiusd" before editing this file.  See the section
-#	titled DEBUGGING.  It outlines a method where you can quickly
-#	obtain the configuration you want, without running into
-#	trouble.
+# # FreeRADIUS server configuration file - @RADIUSD_VERSION_STRING@
 #
-#	Run the server in debugging mode, and READ the output.
+#  Read "man radiusd" before editing this file.  See the section
+#  titled DEBUGGING.  It outlines a method where you can quickly
+#  obtain the configuration you want, without running into
+#  trouble.
 #
-#		$ radiusd -X
+#  Run the server in debugging mode, and READ the output.
 #
-#	We cannot emphasize this point strongly enough.  The vast
-#	majority of problems can be solved by carefully reading the
-#	debugging output, which includes warnings about common issues,
-#	and suggestions for how they may be fixed.
+#      $ radiusd -X
 #
-#	There may be a lot of output, but look carefully for words like:
-#	"warning", "error", "reject", or "failure".  The messages there
-#	will usually be enough to guide you to a solution.
+#  We cannot emphasize this point strongly enough.  The vast
+#  majority of problems can be solved by carefully reading the
+#  debugging output, which includes warnings about common issues,
+#  and suggestions for how they may be fixed.
 #
-#	If you are going to ask a question on the mailing list, then
-#	explain what you are trying to do, and include the output from
-#	debugging mode (radiusd -X).  Failure to do so means that all
-#	of the responses to your question will be people telling you
-#	to "post the output of radiusd -X".
+#  There may be a lot of output, but look carefully for words like:
+#  "warning", "error", "reject", or "failure".  The messages there
+#  will usually be enough to guide you to a solution.
+#
+#  If you are going to ask a question on the mailing list, then
+#  explain what you are trying to do, and include the output from
+#  debugging mode (`radiusd -X`).  Failure to do so means that all
+#  of the responses to your question will be people telling you
+#  to "post the output of `radiusd -X`".
 
 ######################################################################
 #
-#  	The location of other config files and logfiles are declared
-#  	in this file.
+#  The location of other config files and logfiles are declared
+#  in this file.
 #
-#  	Also general configuration for modules can be done in this
-#  	file, it is exported through the API to modules that ask for
-#  	it.
+#  Also general configuration for modules can be done in this
+#  file, it is exported through the API to modules that ask for
+#  it.
 #
-#	See "man radiusd.conf" for documentation on the format of this
-#	file.  Note that the individual configuration items are NOT
-#	documented in that "man" page.  They are only documented here,
-#	in the comments.
+#  See `man radiusd.conf` for documentation on the format of this
+#  file.  Note that the individual configuration items are NOT
+#  documented in that "man" page.  They are only documented here,
+#  in the comments.
 #
-#	The "unlang" policy language can be used to create complex
-#	if / else policies.  See "man unlang" for details.
+#  The "unlang" policy language can be used to create complex
+#  if / else policies.  See `man unlang` for details.
 #
 
+#
+#  The paths used for installed server files. They are set
+#  automatically at install time and will not normally need to be
+#  changed.
+#
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 sysconfdir = @sysconfdir@
@@ -60,65 +66,74 @@ raddbdir = @raddbdir@
 radacctdir = @radacctdir@
 
 #
-#  name of the running server.  See also the "-n" command-line option.
+#  name:: the name of the running server.  See also the `-n`
+#  command-line option.
+#
 name = radiusd
 
+#
 #  Location of config and logfiles.
+#
 confdir = ${raddbdir}
 modconfdir = ${confdir}/mods-config
 certdir = ${confdir}/certs
 cadir   = ${confdir}/certs
 run_dir = ${localstatedir}/run/${name}
 
+#
 # Should likely be ${localstatedir}/lib/radiusd
+#
 db_dir = ${raddbdir}
 
 #
-# libdir: Where to find the rlm_* modules.
+#  libdir:: Where to find the rlm_* modules.
 #
-#   This should be automatically set at configuration time.
+#  This should be automatically set at configuration time.
 #
-#   If the server builds and installs, but fails at execution time
-#   with an 'undefined symbol' error, then you can use the libdir
-#   directive to work around the problem.
+#  If the server builds and installs, but fails at execution time
+#  with an 'undefined symbol' error, then you can use the `libdir`
+#  directive to work around the problem.
 #
-#   The cause is usually that a library has been installed on your
-#   system in a place where the dynamic linker CANNOT find it.  When
-#   executing as root (or another user), your personal environment MAY
-#   be set up to allow the dynamic linker to find the library.  When
-#   executing as a daemon, FreeRADIUS MAY NOT have the same
-#   personalized configuration.
+#  The cause is usually that a library has been installed on your
+#  system in a place where the dynamic linker *cannot* find it.  When
+#  executing as root (or another user), your personal environment
+#  *may* be set up to allow the dynamic linker to find the
+#  library. When executing as a daemon, FreeRADIUS *may not* have
+#  the same personalized configuration.
 #
-#   To work around the problem, find out which library contains that symbol,
-#   and add the directory containing that library to the end of 'libdir',
-#   with a colon separating the directory names.  NO spaces are allowed.
+#  To work around the problem, find out which library contains
+#  that symbol, and add the directory containing that library to
+#  the end of `libdir`, with a colon separating the directory
+#  names. *No* spaces are allowed. e.g.
 #
-#   e.g. libdir = /usr/local/lib:/opt/package/lib
+#      libdir = /usr/local/lib:/opt/package/lib
 #
-#   You can also try setting the LD_LIBRARY_PATH environment variable
-#   in a script which starts the server.
+#  You can also try setting the `LD_LIBRARY_PATH` environment
+#  variable in a script which starts the server.
 #
-#   If that does not work, then you can re-configure and re-build the
-#   server to NOT use shared libraries, via:
+#  If that does not work, then you can re-configure and re-build the
+#  server to NOT use shared libraries, via:
 #
-#	./configure --disable-shared
-#	make
-#	make install
+#      ./configure --disable-shared
+#      make
+#      make install
 #
 libdir = @libdir@
 
-#  pidfile: Where to place the PID of the RADIUS server.
+#
+#  pidfile:: Where to place the PID of the RADIUS server.
 #
 #  The server may be signalled while it's running by using this
 #  file.
 #
-#  This file is written when ONLY running in daemon mode.
+#  This file is written when _only_ running in daemon mode.
 #
-#  e.g.:  kill -HUP `cat /var/run/radiusd/radiusd.pid`
+#  e.g.:  `kill -HUP $(cat /var/run/radiusd/radiusd.pid)`
 #
 pidfile = ${run_dir}/${name}.pid
 
-#  panic_action: Command to execute if the server dies unexpectedly.
+#
+#  panic_action:: Command to execute if the server dies unexpectedly.
 #
 #  FOR PRODUCTION SYSTEMS, ACTIONS SHOULD ALWAYS EXIT.
 #  AN INTERACTIVE ACTION MEANS THE SERVER IS NOT RESPONDING TO REQUESTS.
@@ -154,7 +169,8 @@ pidfile = ${run_dir}/${name}.pid
 #  That command can be used on a production system.
 #
 
-#  max_request_time: The maximum time (in seconds) to handle a request.
+#
+#  max_request_time:: The maximum time (in seconds) to handle a request.
 #
 #  Requests which take more time than this to process may be killed, and
 #  a REJECT message is returned.
@@ -172,7 +188,8 @@ pidfile = ${run_dir}/${name}.pid
 #
 max_request_time = 30
 
-#  max_requests: The maximum number of requests which the server keeps
+#
+#  max_requests:: The maximum number of requests which the server keeps
 #  track of.  This should be 256 multiplied by the number of clients.
 #  e.g. With 4 clients, this number should be 1024.
 #
@@ -191,7 +208,8 @@ max_request_time = 30
 #
 max_requests = 16384
 
-#  reverse_lookups: Log the names of clients or just their IP addresses
+#
+#  reverse_lookups:: Log the names of clients or just their IP addresses
 #  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
 #
 #  The default is 'off' because it would be overall better for the net
@@ -209,7 +227,8 @@ max_requests = 16384
 #
 reverse_lookups = no
 
-#  hostname_lookups: Global toggle for preventing hostname resolution
+#
+#  hostname_lookups:: Global toggle for preventing hostname resolution
 #
 #  The default is 'on' because people often use hostnames in configuration
 #  files.  The main disadvantage of enabling this is the server may block
