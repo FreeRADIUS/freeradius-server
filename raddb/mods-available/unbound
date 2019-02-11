@@ -1,3 +1,20 @@
+# -*- text -*-
+#
+#  :toc:
+#
+#  $Id$
+
+#######################################################################
+#
+#  = Unbound Module
+#
+#  The `unbound` module performs queries against a DNS service to allow
+#  FQDNs to be resolved during request processing.
+#
+
+#
+#  ## Default instance
+#
 unbound dns {
 	# filename = "${raddbdir}/mods-config/unbound/default.conf"
 	# timeout = 3000
