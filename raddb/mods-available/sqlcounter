@@ -1,42 +1,96 @@
-#  Rather than maintaining separate (GDBM) databases of
-#  accounting info for each counter, this module uses the data
-#  stored in the raddacct table by the sql modules. This
-#  module NEVER does any database INSERTs or UPDATEs.  It is
-#  totally dependent on the SQL module to process Accounting
-#  packets.
+# -*- text -*-
 #
-#  The sql-module-instance' parameter holds the instance of the sql
-#  module to use when querying the SQL database. Normally it
-#  is just "sql".  If you define more and one SQL module
-#  instance (usually for failover situations), you can
-#  specify which module has access to the Accounting Data
-#  (radacct table).
+#  :toc:
 #
-#  The 'reset' parameter defines when the counters are all
-#  reset to zero.  It can be hourly, daily, weekly, monthly or
-#  never.  It can also be user defined. It should be of the
-#  form:
-#  	num[hdwm] where:
-#  	h: hours, d: days, w: weeks, m: months
-#  	If the letter is ommited days will be assumed. In example:
-#  	reset = 10h (reset every 10 hours)
-#  	reset = 12  (reset every 12 days)
+#  $Id$
+
+#######################################################################
 #
-#  The 'key' parameter specifies the unique identifier for the
-#  counter records (usually 'User-Name').
+#  = SQL Counter Module
 #
-#  The 'query' parameter specifies the SQL query used to get
-#  the current Counter value from the database. There are 2
-#  parameters that can be used in the query:
-#		%%b	unix time value of beginning of reset period
-#		%%e	unix time value of end of reset period
+#  The `sqlcounter` module records statistics for users such as data transfer
+#  and session time, and prevent further logins when limits are reached.
 #
-#  The 'counter_name' parameter is the name of the 'check'
-#  attribute to use to access the counter in the 'users' file
-#  or SQL radcheck or radcheckgroup tables.
+#  Rather than maintaining separate (`GDBM`) databases of accounting info
+#  for each counter, this module uses the data stored in the `raddacct` table
+#  by the `sql` modules.
 #
-#  DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
-#      Reply-Message = "You've used up more than one hour today"
+#  NOTE: This module *NEVER* does any database INSERTs or UPDATEs.  It is totally
+#  dependent on the SQL module to process `Accounting` packets.
+#
+
+#
+#  ## Syntax
+#
+#  Configuration explanation.
+#
+#	sqlcounter <name> {
+#
+#  sql_module_instance:: Holds the instance of the `sql` module to use when
+#  querying the SQL database.
+#
+#  NOTE: Normally it is just `sql`. If you define more and one SQL module instance
+#  (usually for failover situations), you can specify which module has access to
+#  the Accounting Data (`radacct table`).
+#
+#	sql_module_instance = sql_foo
+#
+#  reset:: Defines when the counters are all reset to zero.
+#
+#  It can be `hourly`, `daily`, `weekly`, `monthly` or `never`.
+#
+#  It can also be user defined as the form: `num[hdwm]`
+#
+#  where:
+#  [options="header,autowidth"]
+#  |===
+#  | Parameter | Description
+#  | `h`       | hours
+#  | `d`       | days
+#  | `w`       | weeks
+#  | `m`       | months
+#  |===
+#
+#  If the letter is ommited days will be assumed.
+#
+#  In example:
+#
+#  * `reset` = 10h (reset every 10 hours)
+#  * `reset` = 12  (reset every 12 days)
+#
+#	reset = 12h
+#
+#  key:: Specifies the unique identifier for the counter records (usually `User-Name`).
+#
+#  The `query` parameter specifies the SQL query used to get the current Counter value
+#  from the database.
+#
+#  There are `2` parameters that can be used in the query:
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Parameter | Description
+#  | `%%b`	   | unix time value of beginning of reset period.
+#  | `%%e`	   | unix time value of end of reset period.
+#  |===
+#
+#	key = &User-Name
+#
+#  counter_name:: Name of the `check` attribute to use to access the counter in
+#  the `users` file or SQL `radcheck` or `radcheckgroup` tables.
+#
+#	DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
+#		 Reply-Message = "You've used up more than one hour today"
+#
+#	}
+#
+
+#
+#  ## Default instance
+#
+
+#
+#  ### Daily Counter
 #
 sqlcounter dailycounter {
 	sql_module_instance = sql
@@ -52,6 +106,9 @@ sqlcounter dailycounter {
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
 
+#
+#  ### Monthly Counter
+#
 sqlcounter monthlycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
@@ -66,6 +123,9 @@ sqlcounter monthlycounter {
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
 
+#
+#  ### No Reset Counter
+#
 sqlcounter noresetcounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
@@ -80,10 +140,13 @@ sqlcounter noresetcounter {
 }
 
 #
-#  Set an account to expire T seconds after first login.
-#  Requires the Expire-After attribute to be set, in seconds.
-#  You may need to edit raddb/dictionary to add the Expire-After
-#  attribute.
+#  ### Expire on login
+#
+#  Set an account to expire T seconds after first login. Requires the `Expire-After`
+#  attribute to be set, in seconds.
+#
+#  NOTE: You may need to edit `raddb/dictionary` to add the `Expire-After` attribute.
+#
 sqlcounter expire_on_login {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
