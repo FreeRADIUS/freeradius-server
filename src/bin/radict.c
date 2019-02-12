@@ -54,7 +54,7 @@ static void usage(void)
 	fprintf(stderr, "  -E               Export dictionary definitions.\n");
 	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x               Debugging mode.\n");
-	fprintf(stderr, "");
+	fprintf(stderr, "\n");
 	fprintf(stderr, "Very simple interface to extract attribute definitions from FreeRADIUS dictionaries\n");
 }
 
