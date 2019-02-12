@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -13,6 +13,8 @@
 #  NOTE: we do NOT use `NAS-IP-Address` here, as that
 #  attribute MAY BE from the originating NAS, and NOT from
 #  the proxy which actually sent us the request.
+#
+
 #
 #  ## Default instance
 #
@@ -32,7 +34,7 @@ detail {
 	#
 	#  e.g.:
 	#
-	#      ..../detail-%Y-%m-%dT%H:00:00
+	#     ..../detail-%Y-%m-%dT%H:00:00
 	#
 	#  This will create a new `detail` file for every hour.
 	#

@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -24,11 +24,13 @@
 #  | Alcatel lucent SR | `Alc-ToServer-Dhcp-Options`, `Alc-ToClient-Dhcp-Options`
 #  |===
 #
-#  e.g: `%{dhcp_options:RX-Dhcp-Options}`
+#  e.g:
+#
+#   %{dhcp_options:RX-Dhcp-Options}
 #
 
 #
-#  # Default instance
+#  ## Default instance
 #
 #  This module takes no configuration.
 #

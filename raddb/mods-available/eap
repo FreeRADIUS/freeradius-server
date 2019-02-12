@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -21,7 +21,7 @@
 #
 
 #
-#  # Default instance
+#  ## Default instance
 #
 eap {
 	#
@@ -87,7 +87,6 @@ eap {
 	#  WARNING: EAP-MD5 authentication cannot be used for wireless
 	#  connections.  It is insecure, and does not provide for dynamic WEP
 	#  keys or WPA enterprise.
-
 	#
 	md5 {
 	}
@@ -173,8 +172,8 @@ eap {
 	#
 	#  If these certificates have not been auto-generated:
 	#
-	#    cd raddb/certs
-	#    make
+	#   cd raddb/certs
+	#   make
 	#
 	#  These test certificates *SHOULD NOT* be used in a normal
 	#  deployment.  They are created only to make it easier to
@@ -307,7 +306,7 @@ eap {
 			#  [NOTE]
 			#  ====
 			#  * Depending on the value of `auto_chain` we may still be able to
-			#    build a complete chain, but this will be done at runtime.
+		#  build a complete chain, but this will be done at runtime.
 			#
 			#  * `auto_chain` has no effect on which certificates are considered
 			#  for pre-compilation.  Only those listed in this `chain {}` section
@@ -360,7 +359,7 @@ eap {
 		#
 		#  The file should be provided as the attribute:
 		#
-		#      &control:TLS-Session-Cert-File
+		#   &control:TLS-Session-Cert-File
 		#
 		#  If there are any errors loading or verifying the
 		#  certificate, authentication will fail.
@@ -425,7 +424,7 @@ eap {
 		#  For DH cipher suites to work, you have to run OpenSSL to
 		#  create the DH file first:
 		#
-		#  	openssl dhparam -out certs/dh 2048
+		#    openssl dhparam -out certs/dh 2048
 		#
 		dh_file = ${certdir}/dh
 
@@ -447,7 +446,7 @@ eap {
 		#
 		#  <1> Copy CA certificates and CRLs to same directory.
 		#  <2> Execute `c_rehash <CA certs&CRLs Directory>`. `c_rehash` is
-		#     OpenSSL's command.
+		#  OpenSSL's command.
 		#  <3> uncomment the lines below.
 		#  <4> Restart radiusd.
 		#
@@ -598,7 +597,7 @@ eap {
 			#  adding the following attribute to the control item
 			#  list:
 			#
-			#    Allow-Session-Resumption = No
+			#   Allow-Session-Resumption = No
 			#
 			#  NOTE: If no virtual_server is specified you *CANNOT* enable
 			#  resumption for just one user by setting the above
@@ -876,7 +875,7 @@ eap {
 		#  OCSP response to pass back to the TLS client.
 		#
 		#  staple { ... }::
-		#		
+		#
 		#  This allows TLS clients to check for certificate revocation before
 		#  divulging credentials to a (possibly rogue) server, that may be
 		#  presenting a compromised certificate.
@@ -965,13 +964,17 @@ eap {
 	}
 
 	#
-	# ### EAP-TLS
+	#  ### EAP-TLS
 	#
 	#  As of Version 3.0, the TLS configuration for `TLS-based`
 	#  EAP types is above in the `tls-config { ... }` section.
 	#
 	tls {
-		# Point to the common TLS configuration
+		#
+		#  tls::
+		#
+		#  Point to the common TLS configuration.
+		#
 		tls = tls-common
 
 		#
@@ -988,7 +991,7 @@ eap {
 		#
 		#  You can override this option by setting:
 		#
-		#    EAP-TLS-Require-Client-Cert = Yes/No
+		#   EAP-TLS-Require-Client-Cert = Yes/No
 		#
 		#  in the control items for a request.
 		#
@@ -1090,7 +1093,7 @@ eap {
 		#  following option. You can also override this option by
 		#  setting
 		#
-		#    EAP-TLS-Require-Client-Cert = Yes
+		#   EAP-TLS-Require-Client-Cert = Yes
 		#
 		#  in the control items for a request.
 		#
@@ -1221,7 +1224,7 @@ eap {
 		#  However, you can require one by setting the following
 		#  option. You can also override this option by setting
 		#
-		#	EAP-TLS-Require-Client-Cert = Yes
+		#   EAP-TLS-Require-Client-Cert = Yes
 		#
 		#  in the `control` items for a request.
 		#
@@ -1338,7 +1341,7 @@ eap {
 		pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
 
 		#
-		# virtual_server:: Same as for `TTLS`, `PEAP`, etc.
+		#  virtual_server:: Same as for `TTLS`, `PEAP`, etc.
 		#
 		virtual_server = inner-tunnel
 	}

@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -17,11 +17,11 @@
 #  * See `raddb/sites-available/dhcp` for instructions on how to configure the DHCP server.
 #  ====
 #
-#  # Default instance
+#  ## Default instance
 #
 sqlippool dhcp_sqlippool {
 	#
-	# See the `sqlippool` module for common configuration explanation.
+	#  See the `sqlippool` module for common configuration explanation.
 	#
 
 	sql_module_instance = "sql"
@@ -31,20 +31,20 @@ sqlippool dhcp_sqlippool {
 	lease_duration = 7200
 
 	#
-	# NOTE: Client's MAC address is mapped to `Calling-Station-Id` in `policy.conf`.
+	#  NOTE: Client's MAC address is mapped to `Calling-Station-Id` in `policy.conf`.
 	#
 	pool_key = "%{Calling-Station-Id}"
 
 	attribute_name = DHCP-Your-IP-Address
 
-	# 
-	# The current sample is prepared to work with MySQL.
+	#
+	#  The current sample is prepared to work with MySQL.
 	#
 	$INCLUDE ${modconfdir}/sql/ippool-dhcp/mysql/queries.conf
 
-	# 
-	# NOTE: To use sqlite you need to add `%` to `safe_characters` in
-	# `raddb/mods-config/sql/main/sqlite/queries.conf.`
+	#
+	#  NOTE: To use sqlite you need to add `%` to `safe_characters` in
+	#  `raddb/mods-config/sql/main/sqlite/queries.conf.`
 	#
 #	$INCLUDE ${modconfdir}/sql/ippool-dhcp/sqlite/queries.conf
 

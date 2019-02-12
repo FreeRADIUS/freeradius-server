@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -51,7 +51,7 @@ ldap {
 #	port = 389
 
 	#
-	#  identity::  Administrator account for searching and possibly modifying.
+	#  identity:: Administrator account for searching and possibly modifying.
 	#
 	#  WARNING: If using SASL + KRB5 these should be commented out.
 	#
@@ -74,14 +74,14 @@ ldap {
 	#  You can run the `ldapsearch` command line tool using the
 	#  parameters from this module's configuration.
 	#
-	#    ldapsearch -D ${identity} -w ${password} -h ${server} -b 'CN=user,${base_dn}'
+	#   ldapsearch -D ${identity} -w ${password} -h ${server} -b 'CN=user,${base_dn}'
 	#
 	#  That will give you the LDAP information for 'user'.
 	#
 	#  Group membership can be queried by using the above "ldapsearch" string,
 	#  and adding "memberof" qualifiers.  For ActiveDirectory, use:
 	#
-	#    ldapsearch ... '(&(objectClass=user)(sAMAccountName=user)(memberof=CN=group,${base_dn}))'
+	#   ldapsearch ... '(&(objectClass=user)(sAMAccountName=user)(memberof=CN=group,${base_dn}))'
 	#
 	#  Where 'user' is the user as above, and 'group' is the group you are querying for.
 	#  ====
@@ -97,7 +97,7 @@ ldap {
 	#  determine the responses given.
 	#
 	#  If any directive is commented out, a NULL response will be
-	#  provided to cyrus-sasl.
+	#  provided to `cyrus-sasl`.
 	#
 	#  Unfortunately the only way to control Keberos here is through
 	#  environmental variables, as cyrus-sasl provides no API to
@@ -110,17 +110,17 @@ ldap {
 	#
 	sasl {
 		#
-		# mech:: SASL mechanism.
+		#  mech:: SASL mechanism.
 		#
 #		mech = 'PLAIN'
 
 		#
-		# proxy:: SASL authorisation identity to proxy.
+		#  proxy:: SASL authorisation identity to proxy.
 		#
 #		proxy = 'autz_id'
 
 		#
-		# realm:: SASL realm. Used for kerberos.
+		#  realm:: SASL realm. Used for kerberos.
 		#
 #		realm = 'example.org'
 	}
@@ -133,7 +133,7 @@ ldap {
 	#
 	#  Values should be in the format:
 	#
-	#    <fr attr> <op> <value>
+	#   <fr attr> <op> <value>
 	#
 	#  Where:
 	#
@@ -141,11 +141,11 @@ ldap {
 	#  |===
 	#  | Parameter  | Description
 	#  | <fr attr>  | Is the attribute you wish to create,
-	#                 with any valid list and request qualifiers.
+	#                with any valid list and request qualifiers.
 	#  | <op>       | Is any assignment operator (`=`, `:=`, `+=`, `-=`).
 	#  | <value>    | Is the value to parse into the new attribute.
-	#                 If the value is wrapped in double quotes it
-	#                 will be xlat expanded.
+	#                If the value is wrapped in double quotes it
+	#                will be xlat expanded.
 	#  |===
 	#
 #	valuepair_attribute = 'radiusAttribute'
@@ -159,7 +159,7 @@ ldap {
 	#
 	#  Configuration items are in the format:
 	#
-	#    <fr attr> <op> <ldap attr>
+	#   <fr attr> <op> <ldap attr>
 	#
 	#  Where:
 	#
@@ -167,12 +167,12 @@ ldap {
 	#  |===
 	#  | Parameter   | Description
 	#  | <fr attr>   | Is the destination RADIUS attribute
-	#                  with any valid list and request qualifiers.
+	#                 with any valid list and request qualifiers.
 	#  | <op>        | Is any assignment attribute (=, :=, +=, -=).
 	#  | <ldap attr> | Is the attribute associated with user or
-	#                  profile objects in the LDAP directory.
-	#                  If the attribute name is wrapped in double quotes
-	#                  it will be `xlat` expanded.
+	#                 profile objects in the LDAP directory.
+	#                 If the attribute name is wrapped in double quotes
+	#                 it will be `xlat` expanded.
 	#  |===
 	#
 	#  Request and list qualifiers may be placed after the `update`
@@ -217,7 +217,7 @@ ldap {
 	#  ====
 	#  * The option `set_auth_type` was removed in `v3.x.x`.
 	#  * Equivalent functionality can be achieved by adding the following
-	#    stanza to the `recv Access-Request {}` section of your virtual server.
+	#   stanza to the `recv Access-Request {}` section of your virtual server.
 	#
 	#  e.g:
 	#
@@ -225,9 +225,9 @@ ldap {
 	#  ----
 	#  ldap
 	#  if ((ok || updated) && User-Password) {
-	#  	update {
-	#  		control:Auth-Type := ldap
-	#  	}
+	#     update {
+	#         control:Auth-Type := ldap
+	#     }
 	#  }
 	#  ----
 	#  ====
@@ -322,12 +322,12 @@ ldap {
 		#
 		#  e.g:
 		#
-		#    access_positive = yes
-		#    access_attribute = userAccessAllowed
+		#   access_positive = yes
+		#   access_attribute = userAccessAllowed
 		#
 		#  With an LDAP object containing:
 		#
-		#    userAccessAllowed: false
+		#   userAccessAllowed: false
 		#
 		#  Will result in the user being locked out.
 		#
@@ -376,9 +376,8 @@ ldap {
 		#  membership_attribute:: The attribute, in user objects, which contain
 		#  the names or DNs of groups a user is a member of.
 		#
-		#  Unless a conversion between group name and group DN is
-		#  needed, there's no requirement for the group objects
-		#  referenced to actually exist.
+		#  Unless a conversion between group name and group DN is needed, there's no
+		#  requirement for the group objects referenced to actually exist.
 		#
 		#  [NOTE]
 		#  ====
@@ -424,7 +423,7 @@ ldap {
 
 		#
 		#  group_attribute:: Override the normal group comparison attribute name
-		#  `(<inst>-Group` or `LDAP-Group` if using the default instance).
+		#  (`<inst>-Group` or `LDAP-Group` if using the default instance).
 		#
 		group_attribute = "${.:instance}-Group"
 	}
@@ -465,11 +464,11 @@ ldap {
 	#  ### Modify user object on receiving Accounting-Request
 	#
 	#  Useful for recording things like the last time the user logged
-	#  in, or the `Acct-Session-ID` for CoA/DM.
+	#  in, or the `Acct-Session-ID` for `CoA/DM`.
 	#
 	#  LDAP modification items are in the format:
 	#
-	#    <ldap attr> <op> <value>
+	#   <ldap attr> <op> <value>
 	#
 	#  Where:
 	#
@@ -478,7 +477,7 @@ ldap {
 	#  | Parameter   | Description
 	#  | <ldap attr> | The LDAP attribute to add modify or delete.
 	#  | <op>        | One of the assignment operators: (`:=`, `+=`, `-=`, `++`).
-	#                  Note: `=` is *not* supported.
+	#                 Note: `=` is *not* supported.
 	#  | <value>     | The value to add modify or delete.
 	#  |===
 	#
@@ -650,11 +649,11 @@ ldap {
 		#  If you want to see the LDAP logs only for `trace` and `parse`,
 		#  facilities you should use:
 		#
-		#    (LDAP_DEBUG_TRACE + LDAP_DEBUG_PARSE) = 0x0801
+		#   (LDAP_DEBUG_TRACE + LDAP_DEBUG_PARSE) = 0x0801
 		#
 		#  Setting the `ldap_debug` configuration item as follows:
 		#
-		#     ldap_debug = 0x0801
+		#   ldap_debug = 0x0801
 		#
 		#  Default: 0x0000 (no debugging messages)
 		#
@@ -672,16 +671,16 @@ ldap {
 	#
 	tls {
 		#
-		# start_tls:: Set this to `yes` to use TLS encrypted connections
-		# to the LDAP database by using the StartTLS extended operation.
+		#  start_tls:: Set this to `yes` to use TLS encrypted connections
+		#  to the LDAP database by using the StartTLS extended operation.
 		#
-		# The StartTLS operation is supposed to be used with normal ldap connections
-		# instead of using ldaps (port 636) connections
+		#  The StartTLS operation is supposed to be used with normal ldap connections
+		#  instead of using ldaps (port 636) connections
 		#
 #		start_tls = yes
 
 		#
-		# NOTE: If `start_tls = yes`, then fill up those such options with the certificate information.
+		#  NOTE: If `start_tls = yes`, then fill up those such options with the certificate information.
 		#
 #		ca_file	= ${certdir}/cacert.pem
 #		ca_path	= ${certdir}
@@ -690,9 +689,9 @@ ldap {
 #		random_file = /dev/urandom
 
 		#
-		# require_cert:: Certificate Verification requirements.
+		#  require_cert:: Certificate Verification requirements.
 		#
-		# Can be:
+		#  Can be:
 		#
 		#  [options="header,autowidth"]
 		#  |===

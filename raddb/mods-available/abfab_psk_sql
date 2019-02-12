@@ -1,8 +1,8 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
-# $Id$
+#  $Id$
 
 #######################################################################
 #
@@ -16,16 +16,16 @@
 #
 
 #
-# sql { ... }:: See `sql` documentation.
+#  sql { ... }:: See `sql` documentation.
 #
 sql psksql {
 	#
-	# driver:: Database driver.
+	#  driver:: Database driver.
 	#
 	driver = "rlm_sql_sqlite"
 
 	#
-	# sqlite { ... }:: Database statement based on `driver` setting.
+	#  sqlite { ... }:: Database statement based on `driver` setting.
 	#
 	sqlite {
 		filename = "/var/lib/trust_router/keys"

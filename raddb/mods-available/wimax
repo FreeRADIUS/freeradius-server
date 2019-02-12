@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -27,10 +27,10 @@
 #  |===
 #  | Attribute   | Description
 #  | `WiMAX-MSK` | EAP MSK, but is 64 octets.
-#  | `MIP-RK-1`  | HMAC-SHA256(ESMK, "miprk@wimaxforum.org" \| 0x00020001)
-#  | `MIP-RK-2`  | HMAC-SHA256(ESMK, MIP-RK-1 \| "miprk@wimaxforum.org" \| 0x00020002)
+#  | `MIP-RK-1`  | `HMAC-SHA256(ESMK, "miprk@wimaxforum.org" \| 0x00020001)`
+#  | `MIP-RK-2`  | `HMAC-SHA256(ESMK, MIP-RK-1 \| "miprk@wimaxforum.org" \| 0x00020002)`
 #  | `MIP-RK`    | Same as `MIP-RK-1` \| `MIP-RK-2`
-#  | `MIP-SPI`   | First 4 octets of HMAC-SHA256(MIP-RK, "SPI CMIP PMIP")
+#  | `MIP-SPI`   | First 4 octets of `HMAC-SHA256(MIP-RK, "SPI CMIP PMIP")`
 #  |===
 #
 #  You have got to track *all* MIP-SPI's on your system!
@@ -47,7 +47,7 @@
 #
 #  You have to create it, and put it into the request or reply as something like:
 #
-#    WiMAX-MN-NAI = "%{User-Name}"
+#   WiMAX-MN-NAI = "%{User-Name}"
 #
 #  You will also have to have the appropriate IP address (`v4` or `v6`)
 #  in order to calculate the keys below.
@@ -59,7 +59,7 @@
 #
 #  MN-HA-CMIP4::
 #
-#    MN-HA-CMIP4 = H(MIP-RK, "CMIP4 MN HA" | HA-IPv4 | MN-NAI)
+#   MN-HA-CMIP4 = `H(MIP-RK, "CMIP4 MN HA" | HA-IPv4 | MN-NAI)`
 #
 #  Where `HA-IPv4` is `WiMAX-hHA-IP-MIP4` or maybe `WiMAX-vHA-IP-MIP4`
 #
@@ -73,16 +73,16 @@
 #  * or maybe `WiMAX-RRQ-MN-HA-SPI`
 #  * or even `WiMAX-MN-vHA-MIP4-SPI`
 #
-#    MN-HA-PMIP4 = H(MIP-RK, "PMIP4 MN HA" | HA-IPv4 | MN-NAI)
-#    MN-HA-CMIP6 = H(MIP-RK, "CMIP6 MN HA" | HA-IPv6 | MN-NAI)
+#   MN-HA-PMIP4 = H(MIP-RK, "PMIP4 MN HA" | HA-IPv4 | MN-NAI)
+#   MN-HA-CMIP6 = H(MIP-RK, "CMIP6 MN HA" | HA-IPv6 | MN-NAI)
 #
 #  Both with similar comments to above for `MN-HA-CMIP4`.
 #
 #  In order to tell which one to use (`CMIP4`, `PMIP4`, or `CMIP6`), you have to
 #  set `WiMAX-IP-Technology` in the reply to one of the appropriate values.
 #
-#    FA-RK = H(MIP-RK, "FA-RK")
-#    MN-FA = H(FA-RK, "MN FA" | FA-IP | MN-NAI)
+#   FA-RK = H(MIP-RK, "FA-RK")
+#   MN-FA = H(FA-RK, "MN FA" | FA-IP | MN-NAI)
 #
 #  Where does the `FA-IP` come from?  No idea...
 #
@@ -94,7 +94,7 @@
 #  `FA-HA` = H(HA-RK, "FA-HA" | HA-IPv4 | FA-CoAv4 | SPI)
 #
 #  where `HA-IPv4` is as above.
-#  
+#
 #  and `FA-CoAv4` address of the `FA` as seen by the `HA`
 #  and `SPI` is the relevant `SPI` for the `HA-RK`.
 #

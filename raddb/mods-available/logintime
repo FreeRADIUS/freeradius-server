@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -32,7 +32,7 @@ logintime {
 	#  to have. If the calculated timeout is lower we don't
 	#  allow the login.
 	#
-	#  NOTE: Some NAS do not handle values lower than 60 seconds.
+	#  NOTE: Some NAS do not handle values lower than `60` seconds.
 	#  They will either ignore the result, or set it to some
 	#  larger value.
 	#

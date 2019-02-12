@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -15,14 +15,14 @@
 #  [options="header,autowidth"]
 #  |===
 #  | Directory                      | Description
-#  | sql/<driver>/main/schema.sql	| Schema
-#  | sql/<driver>/main/queries.conf	| Authorisation and Accounting queries
+#  | sql/<driver>/main/schema.sql   | Schema
+#  | sql/<driver>/main/queries.conf | Authorisation and Accounting queries
 #  |===
 #
 #  Driver specific configuration options are located in `sql` prefix
 #  config files in:
 #
-#    mods-config/sql/driver/<driver>
+#   mods-config/sql/driver/<driver>
 #
 #  Where `<driver>` is cassandra, db2, firebird, freetds, null, mysql
 #  oracle, postgresql, sqlite and unixodbc.
@@ -33,39 +33,39 @@
 #
 sql {
 	#
-	# dialect:: The dialect of SQL you want to use.
+	#  dialect:: The dialect of SQL you want to use.
 	#
-	# NOTE: If you're using `rlm_sql_null`, then it should be the type of
-	# database the logged queries are going to be executed against.
+	#  NOTE: If you're using `rlm_sql_null`, then it should be the type of
+	#  database the logged queries are going to be executed against.
 	#
 	dialect = "sqlite"
 
 	#
-	# driver:: The sub-module to use to execute queries. This should match
-	# the database you're attempting to connect to.
+	#  driver:: The sub-module to use to execute queries. This should match
+	#  the database you're attempting to connect to.
 	#
-	#    * rlm_sql_cassandra
-	#    * rlm_sql_db2
-	#    * rlm_sql_firedbird
-	#    * rlm_sql_freetds (mssql)
-	#    * rlm_sql_null (log queries to disk)
-	#    * rlm_sql_mysql
-	#    * rlm_sql_oracle
-	#    * rlm_sql_postgresql
-	#    * rlm_sql_sqlite
-	#    * rlm_sql_unixodbc
+	#   * rlm_sql_cassandra
+	#   * rlm_sql_db2
+	#   * rlm_sql_firedbird
+	#   * rlm_sql_freetds (mssql)
+	#   * rlm_sql_null (log queries to disk)
+	#   * rlm_sql_mysql
+	#   * rlm_sql_oracle
+	#   * rlm_sql_postgresql
+	#   * rlm_sql_sqlite
+	#   * rlm_sql_unixodbc
 	#
 	driver = "rlm_sql_${dialect}"
 
 	#
-	# $-INCLUDE:: Include driver specific configuration file if one
-	# exists. These are in a separate configuration file
-	# in mods-config/sql/driver/<driver>.
+	#  $-INCLUDE:: Include driver specific configuration file if one
+	#  exists. These are in a separate configuration file
+	#  in mods-config/sql/driver/<driver>.
 	#
 	$-INCLUDE ${modconfdir}/sql/driver/${dialect}
 
 	#
-	# .Connection info:
+	#  .Connection info:
 	#
 #	server = "localhost"
 #	port = 3306
@@ -73,142 +73,142 @@ sql {
 #	password = "radpass"
 
 	#
-	# radius_db:: Database table configuration for everything.
+	#  radius_db:: Database table configuration for everything.
 	#
-	# WARNING: Except for Oracle database.
+	#  WARNING: Except for Oracle database.
 	#
 	radius_db = "radius"
 
 	#
-	# .If you are using `Oracle` then use this instead.
+	#  .If you are using `Oracle` then use this instead.
 	#
 #	radius_db = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=your_sid)))"
 
 	#
-	# .If you're using `postgresql` this can also be used instead of the connection info parameters.
+	#  .If you're using `postgresql` this can also be used instead of the connection info parameters.
 	#
 #	radius_db = "dbname=radius host=localhost user=radius password=raddpass"
 
 	#
-	# .If you're using `postgresql` this can also be used instead of the connection info parameters.
+	#  .If you're using `postgresql` this can also be used instead of the connection info parameters.
 	#
 #	radius_db = "dbname=radius host=localhost user=radius password=raddpass"
 
 	#
-	# NOTE: Postgreql doesn't take `tls{}` options in its module config like mysql does,
-	# if you want to use SSL connections then use this form of connection info parameter.
+	#  NOTE: Postgreql doesn't take `tls{}` options in its module config like mysql does,
+	#  if you want to use SSL connections then use this form of connection info parameter.
 	#
 #	radius_db = "host=localhost port=5432 dbname=radius user=radius password=raddpass sslmode=verify-full sslcert=/etc/ssl/client.crt sslkey=/etc/ssl/client.key sslrootcert=/etc/ssl/ca.crt"
 
 	#
-	# acct_table1::
-	# acct_table2::
+	#  acct_table1::
+	#  acct_table2::
 	#
-	# If you want both stop and start records logged to the same SQL table, leave this as is.
-	# If you want them in different tables, put the start table in `acct_table1` and stop
-	# table in `acct_table2`.
+	#  If you want both stop and start records logged to the same SQL table, leave this as is.
+	#  If you want them in different tables, put the start table in `acct_table1` and stop
+	#  table in `acct_table2`.
 	#
 	acct_table1 = "radacct"
 	acct_table2 = "radacct"
 
 	#
-	# postauth_table:: Allow for storing data after authentication.
+	#  postauth_table:: Allow for storing data after authentication.
 	#
 	postauth_table = "radpostauth"
 
 	#
-	# authcheck_table::
-	# groupcheck_table::
+	#  authcheck_table::
+	#  groupcheck_table::
 	#
-	# Tables containing `check` items.
+	#  Tables containing `check` items.
 	#
 	authcheck_table = "radcheck"
 	groupcheck_table = "radgroupcheck"
 
 	#
-	# authreply_table::
-	# groupreply_table::
+	#  authreply_table::
+	#  groupreply_table::
 	#
-	# Tables containing `reply` items.
+	#  Tables containing `reply` items.
 	#
 	authreply_table = "radreply"
 	groupreply_table = "radgroupreply"
 
 	#
-	# usergroup_table:: Table to keep group info.
+	#  usergroup_table:: Table to keep group info.
 	#
 	usergroup_table = "radusergroup"
 
 	#
-	# read_groups:: Read the groups from the database.
+	#  read_groups:: Read the groups from the database.
 	#
-	# If set to `yes`, we read the group tables unless `Fall-Through = no` in the reply table.
-	# If set to `no`, we do not read the group tables unless `Fall-Through = yes` in the
-	# reply table.
+	#  If set to `yes`, we read the group tables unless `Fall-Through = no` in the reply table.
+	#  If set to `no`, we do not read the group tables unless `Fall-Through = yes` in the
+	#  reply table.
 	#
-	# Default is `yes`.
+	#  Default is `yes`.
 	#
 #	read_groups = yes
 
 	#
-	# read_profiles:: Read the profiles from the database.
+	#  read_profiles:: Read the profiles from the database.
 	#
-	# If set to `yes`, we read profiles unless `Fall-Through = no` in the groupreply table.
-	# If set to `no` we do not read profiles unless `Fall-Through = yes` in the groupreply table.
+	#  If set to `yes`, we read profiles unless `Fall-Through = no` in the groupreply table.
+	#  If set to `no` we do not read profiles unless `Fall-Through = yes` in the groupreply table.
 	#
-	# Default is `yes`.
+	#  Default is `yes`.
 	#
 #	read_profiles = yes
 
 	#
-	# logfile:: Write SQL queries to a logfile.
+	#  logfile:: Write SQL queries to a logfile.
 	#
-	# This is potentially useful for tracing issues with authorization queries.
-	# See also `logfile` directives in `mods-config/sql/main/*/queries.conf`.
-	# You can enable per-section logging by enabling `logfile` there, or global logging by
-	# enabling `logfile` here.
+	#  This is potentially useful for tracing issues with authorization queries.
+	#  See also `logfile` directives in `mods-config/sql/main/*/queries.conf`.
+	#  You can enable per-section logging by enabling `logfile` there, or global logging by
+	#  enabling `logfile` here.
 	#
-	# Per-section logging can be disabled by setting "logfile = ''"
+	#  Per-section logging can be disabled by setting "logfile = ''"
 	#
 #	logfile = ${logdir}/sqllog.sql
 
 	#
-	# query_timeout:: Set the maximum query duration for `rlm_sql_mysql` and `rlm_sql_cassandra`.
+	#  query_timeout:: Set the maximum query duration for `rlm_sql_mysql` and `rlm_sql_cassandra`.
 	#
 #	query_timeout = 5
 
 	#
-	# pool { ... }::
+	#  pool { ... }::
 	#
-	# The connection pool is new for 3.0, and will be used in many modules, for all kinds of
-	# connection-related activity.
+	#  The connection pool is new for 3.0, and will be used in many modules, for all kinds of
+	#  connection-related activity.
 	#
-	# When the server is not threaded, the connection pool limits are ignored, and only one
-	# connection is used.
+	#  When the server is not threaded, the connection pool limits are ignored, and only one
+	#  connection is used.
 	#
-	# [NOTE]
-	# ====
-	# If you want to have multiple SQL modules re-use the same connection pool, use `pool = name`
-	# instead of a `pool` section.
+	#  [NOTE]
+	#  ====
+	#  If you want to have multiple SQL modules re-use the same connection pool, use `pool = name`
+	#  instead of a `pool` section.
 	#
-	# e.g:
+	#  e.g:
 	#
-	# [source,sql]
-	# ----
-	# sql1 {
-	#   ...
-	#   pool {
-	#     ...
-	#   }
-	# }
+	#  [source,sql]
+	#  ----
+	#  sql1 {
+	#  ...
+	#  pool {
+	#    ...
+	#  }
+	#  }
 	#
-	# # sql2 will use the connection pool from sql1
-	# sql2 {
-	#   ...
-	#   pool = sql1
-	# }
-	# ----
-	# ====
+	#  # sql2 will use the connection pool from sql1
+	#  sql2 {
+	#  ...
+	#  pool = sql1
+	#  }
+	#  ----
+	#  ====
 	#
 	pool {
 		#
@@ -264,7 +264,7 @@ sql {
 		retry_delay = 30
 
 		#
-		# lifetime:: The lifetime (in seconds) of the connection.
+		#  lifetime:: The lifetime (in seconds) of the connection.
 		#
 		lifetime = 0
 
@@ -306,15 +306,15 @@ sql {
 	}
 
 	#
-	# group_attribute:: The group attribute specific to this instance of `rlm_sql`.
+	#  group_attribute:: The group attribute specific to this instance of `rlm_sql`.
 	#
 	group_attribute = "${.:instance}-Group"
 
 	#
-	# .Read database-specific queries.
+	#  .Read database-specific queries.
 	#
-	# Not all drivers ship with `query.conf` or `schema.sql` files. For those which don't,
-	# please create them and contribute them back to the project.
+	#  Not all drivers ship with `query.conf` or `schema.sql` files. For those which don't,
+	#  please create them and contribute them back to the project.
 	#
 	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }

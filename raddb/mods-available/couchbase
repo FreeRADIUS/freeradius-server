@@ -1,62 +1,62 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
 #######################################################################
 #
-# = Couchbase Module
+#  = Couchbase Module
 #
-# The `couchbase` module is used to provides connections to a `Couchbase` database.
+#  The `couchbase` module is used to provides connections to a `Couchbase` database.
 #
 
 #
-# ## Default instance
+#  ## Default instance
 #
 couchbase {
 	#
-	# server:: List of Couchbase hosts (hosts may be space, tab, comma or semi-colon separated).
-	# Ports are optional if servers are listening on the standard port.
-	# 
-	# NOTE: Complete pool urls are preferred.
+	#  server:: List of Couchbase hosts (hosts may be space, tab, comma or semi-colon separated).
+	#  Ports are optional if servers are listening on the standard port.
+	#
+	#  NOTE: Complete pool urls are preferred.
 	#
 	server = "http://cb01.example.org:8091/ http://cb02.example.org:8091/"
 
 	#
-	# bucket:: Couchbase bucket name.
+	#  bucket:: Couchbase bucket name.
 	#
 	bucket = "radius"
 
 	#
-	# password:: Couchbase bucket password (optional).
+	#  password:: Couchbase bucket password (optional).
 	#
 #	password = "password"
 
 	#
-	# acct_key:: Couchbase accounting document key.
+	#  acct_key:: Couchbase accounting document key.
 	#
 	#  This key is dynamically expanded at run time.
 	#
 	acct_key = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"
 
 	#
-	# doctype:: Value for the 'docType' element in the json body for accounting documents.
+	#  doctype:: Value for the 'docType' element in the json body for accounting documents.
 	#
 	doctype = "radacct"
 
 	#
-	# expire:: Accounting document expire time in seconds (0 = never).
+	#  expire:: Accounting document expire time in seconds (0 = never).
 	#
 	expire = 2592000
 
 	#
-	# update { ... }:: Map attribute names to json element names for accounting.
+	#  update { ... }:: Map attribute names to json element names for accounting.
 	#
-	# Configuration items are in the format `<radius attribute> = '<element name>'`
+	#  Configuration items are in the format `<radius attribute> = '<element name>'`
 	#
-	# NOTE: Element names should be *single quoted*.
-	# Attributes not in this map will not be recorded.
+	#  NOTE: Element names should be *single quoted*.
+	#  Attributes not in this map will not be recorded.
 	#
 	update {
 		&Acct-Session-Id	= 'sessionId'
@@ -88,29 +88,30 @@ couchbase {
 	}
 
 	#
-	# user_key:: Couchbase document key for user documents (`unlang` supported).
+	#  user_key:: Couchbase document key for user documents (`unlang` supported).
 	#
 	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
 
 	#
-	# read_clients:: Set to `yes` to read radius clients from the Couchbase view specified below.
-	# NOTE: Clients will *ONLY* be read on server *startup*.
+	#  read_clients:: Set to `yes` to read radius clients from the Couchbase view specified below.
+	#
+	#  NOTE: Clients will *ONLY* be read on server *startup*.
 	#
 #	read_clients = no
 
 	#
-	# client { ... }:: `Map` attribute names to jSON element names when loading clients.
+	#  client { ... }:: `Map` attribute names to jSON element names when loading clients.
 	#
-	# Configuration follows the same rules as the accounting `map` above.
+	#  Configuration follows the same rules as the accounting `map` above.
 	#
 	client {
 		#
-		# view:: Couchbase view that should return all available client documents.
+		#  view:: Couchbase view that should return all available client documents.
 		#
 		view = "_design/client/_view/by_id"
 
 		#
-		# template { ... }:: Sets default values (not obtained from couchbase) for new client entries.
+		#  template { ... }:: Sets default values (not obtained from couchbase) for new client entries.
 		#
 		template {
 #			login				= 'test'
@@ -120,9 +121,9 @@ couchbase {
 		}
 
 		#
-		# attribute { ... }:: Sets the client mappings following the format: `<client attribute> = '<element name>'`.
+		#  attribute { ... }:: Sets the client mappings following the format: `<client attribute> = '<element name>'`.
 		#
-		# The following attributes are required:
+		#  The following attributes are required:
 		#
 		#  [options="header,autowidth"]
 		#  |===
@@ -131,8 +132,8 @@ couchbase {
 		#  | `secret`                        | RADIUS shared secret.
 		#  |===
 		#
-		# NOTE: All attributes usually supported in a `client` definition are also
-		# supported here. Element names *should be single quoted*.
+		#  NOTE: All attributes usually supported in a `client` definition are also
+		#  supported here. Element names *should be single quoted*.
 		#
 		attribute {
 			ipaddr                          = 'clientIdentifier'
@@ -150,13 +151,16 @@ couchbase {
 	}
 
 	#
-	# pool { ... }:: The connection pool is new for >= `3.0`, and will be used in many
-	# modules, for all kinds of connection-related activity.
+	#  pool { ... }::
+	#
+	#  The connection pool is new for >= `3.0`, and will be used in many
+	#  modules, for all kinds of connection-related activity.
 	#
 	pool {
 		#
 		#  start:: Connections to create during module instantiation.
-		#  If the server cannot create specified number of connections 
+		#
+		#  If the server cannot create specified number of connections
 		#  during instantiation it will exit.
 		#  Set to `0` to allow the server to start without the couchbase
 		#  being available.
@@ -219,8 +223,8 @@ couchbase {
 		#
 		connect_timeout = 3.0
 
-		# [WARNING]
-		# ====
+		#  [WARNING]
+		#  ====
 		#  All configuration settings are enforced.  If a
 		#  connection is closed because of `idle_timeout`,
 		#  `uses`, or `lifetime`, then the total number of
@@ -230,6 +234,6 @@ couchbase {
 		#
 		#  The solution is to either lower the `min` connections,
 		#  or increase `lifetime`/`idle_timeout`.
-		# ====
+		#  ====
 	}
 }

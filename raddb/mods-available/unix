@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -12,7 +12,7 @@
 #  password.  This password is usually in the `crypt` form, and is
 #  incompatible with `CHAP`, `MS-CHAP`, `PEAP`, etc.
 #
-#  If passwords are in /etc/shadow, you will need to set the `group`
+#  If passwords are in `/etc/shadow`, you will need to set the `group`
 #  configuration in `radiusd.conf`.
 #
 #  Look for `shadow`, and follow the instructions there.
@@ -29,7 +29,7 @@ unix {
 	#  then you can comment out this item.
 	#
 	#  NOTE: The radwtmp file may get large!  You should rotate it
-	#  (cp /dev/null radwtmp), or just not use it.
+	#  (`cp /dev/null radwtmp`), or just not use it.
 	#
 	radwtmp = ${logdir}/radwtmp
 }

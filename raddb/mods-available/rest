@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -15,7 +15,7 @@
 #
 
 #
-#  # Default instance 
+#  ## Default instance
 #
 #  If you want different instances of `rest`, just replicate the section
 #  and give a name.
@@ -25,14 +25,11 @@
 #  [source,unlang]
 #  ----
 #  rest backend_check {
-#  ...	
+#  ...
 #  }
 #  ----
 #
 
-#
-#  ## Sample
-#
 rest {
 	#
 	#  tls { ... }:: Configure the tls related items that control
@@ -40,7 +37,7 @@ rest {
 	#
 	tls {
 		#
-		# .Set options about the certificate.
+		#  .Set options about the certificate.
 		#
 #		ca_file	             = ${certdir}/cacert.pem
 #		ca_path	             = ${certdir}
@@ -114,13 +111,13 @@ rest {
 	#  |===
 	#  | Option     | Description
 	#  | `default`  | Use whichever negotiation scheme and version is the default
-	#                 for `libcurl`.
+	#                for `libcurl`.
 	#  | `1.0`      | Disable negotiation.  Force HTTP `1.0`.
 	#  | `1.1`      | Disable negotiation.  Force HTTP `1.1`.
 	#  | `2.0`      | Disable negotiation.  Force HTTP `2.0`.
 	#  | `2.0+auto` | Try and negotiate 2.0 and fallback to `1.1`.
 	#  | `2.0+tls`  | For `https` try and negotiate 2.0 and fallback to `1.1`.
-	#                 For `http` try and negotiate 2.0 and fallback to `1.1`.
+	#                For `http` try and negotiate 2.0 and fallback to `1.1`.
 	#  |===
 	#
 #	http_negotiation = "default"
@@ -150,19 +147,19 @@ rest {
 	#  | `uri`          | To send the request to.
 	#  | `proxy`        | Rhe request via this server, supports `socks/http/https` uri and `:port`.
 	#  | `method`       | HTTP method to use, one of 'get', 'post', 'put', 'patch',
-	#                     'delete' or any custom HTTP method.
+	#                    'delete' or any custom HTTP method.
 	#  | `body`         | The format of the HTTP body sent to the remote server.
-	#                     May be 'none', 'post' or 'json', defaults to 'none'.
+	#                    May be 'none', 'post' or 'json', defaults to 'none'.
 	#  | `data`         | Send custom freeform data in the HTTP body. `Content-type`
-	#                     may be specified with `body`. Will be expanded.
-	#                     Values from expansion will not be escaped, this should be
-	#                     done using the appropriate `xlat` method e.g. `%{urlencode:<attr>}`
+	#                    may be specified with `body`. Will be expanded.
+	#                    Values from expansion will not be escaped, this should be
+	#                    done using the appropriate `xlat` method e.g. `%{urlencode:<attr>}`
 	#  | `force_to`     | Force the response to be decoded with this decoder.
-	#                     May be 'plain' (creates reply:REST-HTTP-Body), 'post' or 'json'.
+	#                    May be 'plain' (creates reply:REST-HTTP-Body), 'post' or 'json'.
 	#  | `tls`          | TLS settings for HTTPS.
 	#  | `auth`         | HTTP auth method to use, one of 'none', 'srp', 'basic',
-	#                     'digest', 'digest-ie', 'gss-negotiate', 'ntlm',
-	#                     'ntlm-winbind', 'any', 'safe'. defaults to _'none'_.
+	#                    'digest', 'digest-ie', 'gss-negotiate', 'ntlm',
+	#                    'ntlm-winbind', 'any', 'safe'. defaults to _'none'_.
 	#  | `username`     | User to authenticate as, will be expanded.
 	#  | `password`     | Password to use for authentication, will be expanded.
 	#  | `require_auth` | Require HTTP authentication.
@@ -173,8 +170,8 @@ rest {
 	#
 	#  The values of those attributes should be in the format:
 	#
-	#    <attribute>: <value>
-	#                                      
+	#   <attribute>: <value>
+	#
 	#  `control:REST-HTTP-Header` attributes will be consumed after each call
 	#  to the rest module, and each `%{rest:}` expansion.
 	#
@@ -186,7 +183,7 @@ rest {
 	#
 	#  e.g:
 	#
-	#  `[outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attributeN>=<valueN>`
+	#   [outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attributeN>=<valueN>
 	#
 	#  JSON - All attributes and values are escaped according to the JSON specification.
 	#
@@ -195,18 +192,18 @@ rest {
 	#  [source,json]
 	#  ----
 	#  {
-	#      "<attribute0>":{
-	#          "type":"<type0>",
-	#          "value":[<value0>,<value1>,<valueN>]
-	#      },
-	#      "<attribute1>":{
-	#          "type":"<type1>",
-	#          "value":[...]
-	#      },
-	#      "<attributeN>":{
-	#          "type":"<typeN>",
-	#          "value":[...]
-	#      },
+	#     "<attribute0>":{
+	#         "type":"<type0>",
+	#         "value":[<value0>,<value1>,<valueN>]
+	#     },
+	#     "<attribute1>":{
+	#         "type":"<type1>",
+	#         "value":[...]
+	#     },
+	#     "<attributeN>":{
+	#         "type":"<typeN>",
+	#         "value":[...]
+	#     },
 	#  }
 	#  ----
 	#
@@ -217,30 +214,30 @@ rest {
 	#  | Fields    | Description
 	#  | `do_xlat` | If `true`, any values will be xlat expanded. Defaults to `true`.
 	#  | `is_json` | If `true`, any nested JSON data will be copied to the attribute
-	#                in string form. Defaults to `true`.
+	#               in string form. Defaults to `true`.
 	#  | `op`      | Controls how the attribute is inserted into the target list.
-	#                Defaults to `:=`. To create multiple attributes from multiple
-	#                values, this should be set to `+=`, otherwise only the last
-	#                value will be used, and it will be assigned to a single
-	#                attribute.
+	#               Defaults to `:=`. To create multiple attributes from multiple
+	#               values, this should be set to `+=`, otherwise only the last
+	#               value will be used, and it will be assigned to a single
+	#               attribute.
 	#  |===
 	#
 	#  [source,json]
 	#  ----
 	#  {
-	#      "[outer.][<list>:]<attribute0>":{
-	#          "is_json":<bool>,
-	#          "do_xlat":<bool>,
-	#          "op":"<operator>",
-	#          "value":[<value0>,<value1>,<valueN>]
-	#      },
-	#      "<attribute1>":"value",
-	#      "<attributeN>":{
-	#          "value":[<value0>,<value1>,<valueN>],
-	#          "op":"+="
-	#      }
+	#     "[outer.][<list>:]<attribute0>":{
+	#         "is_json":<bool>,
+	#         "do_xlat":<bool>,
+	#         "op":"<operator>",
+	#         "value":[<value0>,<value1>,<valueN>]
+	#     },
+	#     "<attribute1>":"value",
+	#     "<attributeN>":{
+	#         "value":[<value0>,<value1>,<valueN>],
+	#         "op":"+="
+	#     }
 	#  }
-	# ----
+	#  ----
 	#
 	#  [NOTE]
 	#  ====
@@ -424,7 +421,7 @@ rest {
 		#  ====
 		#  All configuration settings are enforced.  If a connection is closed because of
 		#  `idle_timeout`, `uses`, or `lifetime`, then the total number of connections MAY
-		#  fall below `min`. 
+		#  fall below `min`.
 		#
 		#  When that happens, it will open a new connection.  It will also log a *WARNING*
 		#  message.

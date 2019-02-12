@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -30,9 +30,9 @@
 #  [WARNING]
 #  ====
 #  * This means that you *CANNOT* use `Group` or `Group-Name` to do any other
-#    kind of grouping in the server. You *MUST* define a new group attribute.
+#   kind of grouping in the server. You *MUST* define a new group attribute.
 #  * This module should *NOT* be used as-is, but should be edited to
-#    point to a different group file.
+#   point to a different group file.
 #  ====
 #
 passwd etc_group {

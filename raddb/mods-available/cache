@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -30,11 +30,11 @@
 #
 
 #
-# ## Default instance
+#  ## Default instance
 #
 cache {
 	#
-	# driver::
+	#  driver::
 	#
 	#  The current backend datastore used to store the cache entries are:
 	#
@@ -42,14 +42,14 @@ cache {
 	#  |===
 	#  | Driver                | Description
 	#  | `rlm_cache_rbtree`    | An in memory, non persistent rbtree based datastore.
-	#                            Useful for caching data locally.
+	#                           Useful for caching data locally.
 	#  | `rlm_cache_memcached` | A non persistent "webscale" distributed datastore.
-	#                            Useful if the cached data need to be shared between
-	#                            a cluster of RADIUS servers.
+	#                           Useful if the cached data need to be shared between
+	#                           a cluster of RADIUS servers.
 	#  | `rlm_cache_redis`     | A persistent "webscale" clustered, sharded, data store.
-	#                            Extremely fast, and a good candidate for sharing
-	#                            data such as EAP session blobs, between a cluster of
-	#                            servers.
+	#                           Extremely fast, and a good candidate for sharing
+	#                           data such as EAP session blobs, between a cluster of
+	#                           servers.
 	#  |===
 	#
 #	driver = "rlm_cache_rbtree"
@@ -101,8 +101,8 @@ cache {
 		#
 		#  e.g.:
 		#
-		#    server = '127.0.0.1:30001'
-		#    server = '[::1]:30002'
+		#   server = '127.0.0.1:30001'
+		#   server = '[::1]:30002'
 		#
 		#  Instantiation failure behaviour is controlled by `pool.start` as
 		#  with every other module, but with clustering, the pool section
@@ -192,16 +192,16 @@ cache {
 	#
 	update {
 		#
-		# <list>:<attribute> <op> <value>::
+		#  <list>:<attribute> <op> <value>::
 		#
 
-		# Cache all instances of `Reply-Message in the reply list.
+		#  Cache all instances of `Reply-Message in the reply list.
 		&reply:Reply-Message := &reply:Reply-Message
 
-		# Add our own to show when the cache was last updated.
+		#  Add our own to show when the cache was last updated.
 		&reply:Reply-Message := "Cache last updated at %t"
 
-		# Add your own value for `Class`.
+		#  Add your own value for `Class`.
 		&reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
 	}
 
@@ -210,15 +210,15 @@ cache {
 	#  represented by attributes in the `&control:` list.
 	#
 	#  &control:Cache-TTL:: Sets the TTL of an entry to be created, or
-	#   modifies the TTL of an existing entry.
+	#  modifies the TTL of an existing entry.
 	#
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Condition            | Description
-	#  | `Cache-TTL` of > `0` | Set the TTL of the entry to the new value 
-	#                           (and reset the expiry timer).
-	#  | `Cache-TTL` of < `0` | Expire the existing entry and create a new 
-	#                           one with TTL set to `Cache-TTL` * `-1`.
+	#  | `Cache-TTL` of > `0` | Set the TTL of the entry to the new value
+	#                          (and reset the expiry timer).
+	#  | `Cache-TTL` of < `0` | Expire the existing entry and create a new
+	#                          one with TTL set to `Cache-TTL` * `-1`.
 	#  | `Cache-TTL` of `0`   | Expire the existing entry and create a new one.
 	#  |===
 	#
@@ -226,8 +226,8 @@ cache {
 	#  prevent a new entry from being created, and existing entries from
 	#  being merged. It will also alter the module's return codes.
 	#
-	#   * The module will return `ok` if a cache entry was found.
-	#   * The module will return `notfound` if no cache entry was found.
+	#  * The module will return `ok` if a cache entry was found.
+	#  * The module will return `notfound` if no cache entry was found.
 	#
 	#  NOTE: If this is set to `yes`, no other cache control attributes will
 	#  be honoured, but they will still be cleared.

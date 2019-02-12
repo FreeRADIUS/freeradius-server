@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -21,9 +21,9 @@
 	#  The `key` to use for filter the packets.
 	#
 #	key = "<value>"
-	
+
 	#
-	# filename::  
+	#  filename::
 	#
 	#  The `filename` with the attributes to filter.
 	#

@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -33,26 +33,26 @@
 #
 
 #
-# ### TLS Session Configuration
+#  ### TLS Session Configuration
 #
 cache cache_tls_session {
 	#
-	# driver:: `cache` driver.
+	#  driver:: `cache` driver.
 	#
 	driver = "rlm_cache_rbtree"
 
 	#
-	# key:: The `cache` key.
+	#  key:: The `cache` key.
 	#
 	key = &TLS-Session-Id
 
 	#
-	# ttl:: TTL for `cache` entries.
+	#  ttl:: TTL for `cache` entries.
 	#
 	ttl = 3600	# 60 mins
 
 	#
-	# update <section> { ... }::
+	#  update <section> { ... }::
 	#
 	update {
 		&session-state:TLS-Session-Data := &session-state:TLS-Session-Data
@@ -73,26 +73,27 @@ cache cache_tls_session {
 }
 
 #
-# ### OCSP Session Configuration
+#  ### OCSP Session Configuration
 #
-# In addition to TLS sessions, the OCSP queries can be cached.
+#  In addition to TLS sessions, the OCSP queries can be cached.
 #
 cache cache_ocsp {
 	#
-	# driver:: `cache` driver.
+	#  driver:: `cache` driver.
 	#
 	driver = "rlm_cache_rbtree"
 
 	#
-	# key:: `cache` key.
+	#  key:: `cache` key.
 	#
 	key = &session-state:TLS-Client-Cert-Serial
 
 	#
-	# update <section> { ... }::
+	#  update <section> { ... }::
 	#
 	update {
 		&control:TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
 		&control:TLS-OCSP-Response := &TLS-OCSP-Response
 	}
 }
+

@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -34,15 +34,15 @@
 #  |===
 #  | Code        | Description
 #  | invalid     | Something went wrong sending the request,
-#                  or the reply packet is invalid.
+#                 or the reply packet is invalid.
 #  | ok          | the module received an `ack` (`Access-Accept`,
-#                  `Accounting-Response`, `CoA-ACK`, etc.)
+#                 `Accounting-Response`, `CoA-ACK`, etc.)
 #  | handled     | the module received an `Access-Challenge`
 #  | fail        | there was no response to the proxied request
 #  | reject      | the module received a `nak` (`Access-Reject`, `CoA-NAK`, etc.)
 #  | noop        | the module saw it's own `Proxy-State` attribute,
-#                  and is will not proxy the request.  This behavior
-#                  prevents proxy loops.
+#                 and is will not proxy the request.  This behavior
+#                 prevents proxy loops.
 #  |===
 #
 radius {
@@ -210,14 +210,14 @@ radius {
 	#  ## Packets
 	#
 	#  Each packet can have it's own retransmission timers.
-	#  
+	#
 	#  The sections are named for each packet type. The contents
 	#  are the same for all packet types.  Only the relevant ones
 	#  are parsed (see `type` above).
 	#
 
 	#
-	#  ### Access requests packets
+	#  ### Access Requests Packets
 	#
 	Access-Request {
 		#
@@ -266,8 +266,8 @@ radius {
 	#
 	#  i.e. If you want `retransmit forever`, you should set:
 	#
-	#    maximum_retransmission_time = 0
-	#    maximum_retransmission_count = 0
+	#   maximum_retransmission_time = 0
+	#   maximum_retransmission_count = 0
 	#
 	Accounting-Request {
 		initial_retransmission_time = 2
@@ -297,7 +297,7 @@ radius {
 	}
 
 	#
-	#  ### Status-Server packets
+	#  ### Status-Server Packets
 	#
 	#  The configuration here helps the module determine if a home
 	#  server is alive and responding to requests.

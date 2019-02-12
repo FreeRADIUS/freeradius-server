@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -57,7 +57,7 @@ sqlippool {
 	#
 	#  * Using `NAS-Port` gives behaviour similar to `rlm_ippool` and ACS. (default).
 	#  * Using `Calling-Station-Id` works for NAS that send fixed `NAS-Port`.
-	#  
+	#
 	#  WARNING: ONLY change this if you know what you are doing!
 	#
 	pool_key = "%{NAS-Port}"

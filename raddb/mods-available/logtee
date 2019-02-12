@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 
 #  $Id$
 
@@ -39,8 +39,8 @@ logtee {
 	#  |===
 	#  | Option           | Description
 	#  | `%{Log-Message}` | The log message
-	#  | `%{Log-Level}`	  | Debugging level
-	#  | `%{Log-Type}`	  | Error, Warn, Info, Debug etc...
+	#  | `%{Log-Level}`   | Debugging level
+	#  | `%{Log-Type}`    | Error, Warn, Info, Debug etc...
 	#  |===
 	#
 	#  NOTE: Format could contain markup (JSON for example), but it's up
@@ -137,7 +137,7 @@ logtee {
 	}
 
 	#
-	#  .UNIX socket-file as the destination for log outputx
+	#  .UNIX socket-file as the destination for log output
 	#
 	unix {
 		#
@@ -147,7 +147,7 @@ logtee {
 	}
 
 	#
-	#  .TCP-server as the destination for log output
+	#  .TCP-server as the destination for log output.
 	#
 	tcp {
 		#
@@ -162,7 +162,7 @@ logtee {
 	}
 
 	#
-	#  .UDP-server as the destination for log output
+	#  .UDP-server as the destination for log output.
 	#
 	udp {
 		#

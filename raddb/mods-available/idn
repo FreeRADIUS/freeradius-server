@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -41,3 +41,4 @@ idn {
 	#
 	use_std3_ascii_rules = yes
 }
+

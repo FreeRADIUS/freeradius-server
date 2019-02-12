@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -95,7 +95,7 @@ python {
 
 	#
 	#  config { ... }::
-	#  
+	#
 	#  You can define configuration items (and nested sub-sections) in python `config { ... }`
 	#  section. These items will be accessible in the python script through `radiusd.config`
 	#  dict for instance:

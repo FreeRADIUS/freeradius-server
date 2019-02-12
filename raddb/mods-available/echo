@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -14,7 +14,7 @@
 #
 #  NOTE: This is a more specific example of the `exec` module.
 #
-#    Attribute-Name = `%{echo:/path/to/program args}`
+#   Attribute-Name = `%{echo:/path/to/program args}`
 #
 #  The return value of the program run determines the result of the exec
 #  instance call as follows:
@@ -40,7 +40,7 @@
 #
 
 #
-# ## Default instance
+#  ## Default instance
 #
 exec echo {
 	#
@@ -58,8 +58,8 @@ exec echo {
 
 	#
 	#  program:: The name of the program to execute, and it's
-	#  arguments. 
-	#  
+	#  arguments.
+	#
 	#  Dynamic translation is done on this field, so things like
 	#  the following example will work.
 	#
@@ -89,8 +89,8 @@ exec echo {
 
 	#
 	#  output_pairs::: Where to place the output attributes (if any) from
-	#  the executed program. 
-	# 
+	#  the executed program.
+	#
 	#  The values allowed, and the restrictions as to availability, are the
 	#  same as for the `input_pairs`.
 	#
@@ -105,7 +105,7 @@ exec echo {
 	#
 	#  That is to say:
 	#
-	#    User-Name=BobUser => USER_NAME="BobUser"
+	#   User-Name=BobUser => USER_NAME="BobUser"
 	#
 	shell_escape = yes
 
@@ -114,7 +114,7 @@ exec echo {
 	#
 	#  Default is `10` seconds, which should be plenty for nearly
 	#  anything. Range is `1` to `30` seconds.
-	# 
+	#
 	#  WARNING: You are strongly encouraged to NOT increase this value.
 	#  Decreasing can be used to cause authentication to fail sooner
 	#  when you know it's going to fail anyway due to the time taken,

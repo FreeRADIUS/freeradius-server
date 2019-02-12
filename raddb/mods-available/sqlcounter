@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -55,8 +55,8 @@
 #
 #  In example:
 #
-#  * `reset` = 10h (reset every 10 hours)
-#  * `reset` = 12  (reset every 12 days)
+#  * `reset = 10h` # reset every 10 hours.
+#  * `reset = 12d` # reset every 12 days.
 #
 #	reset = 12h
 #

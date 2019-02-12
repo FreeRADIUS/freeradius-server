@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -60,7 +60,7 @@ sql cuisql {
 	#  ====
 
 	#
-	# sqlite { ... }:: SQLite configuration.
+	#  sqlite { ... }:: SQLite configuration.
 	#
 	sqlite {
 		filename = ${radacctdir}/cui.sqlite
@@ -68,12 +68,12 @@ sql cuisql {
 	}
 
 	#
-	# logfile:: Write CUI queries to a logfile. Useful for debugging.
+	#  logfile:: Write CUI queries to a logfile. Useful for debugging.
 	#
 #	logfile = ${logdir}/cuilog.sql
 
 	#
-	# pool { ... }:: persistent connections to external resources.
+	#  pool { ... }:: persistent connections to external resources.
 	#
 	pool {
 		start = 5
@@ -86,15 +86,16 @@ sql cuisql {
 	}
 
 	#
-	# cui_table:: The name of the database table to use for store.
+	#  cui_table:: The name of the database table to use for store.
 	#
 	cui_table = "cui"
 
 	#
-	# sql_user_name:: `SQL-User-Name` is used as the user for SQL queries.
-	# Normally it is the same as `User-Name`, but sometimes it needs to be different.
-	# Then instead of editing `User-Name` (*which we dont' recommend*), you can
-	# set `SQL-User-Name` to the new value.
+	#  sql_user_name:: `SQL-User-Name` is used as the user for SQL queries.
+	#
+	#  Normally it is the same as `User-Name`, but sometimes it needs to be different.
+	#  Then instead of editing `User-Name` (*which we dont' recommend*), you can
+	#  set `SQL-User-Name` to the new value.
 	#
 	sql_user_name = "%{User-Name}"
 
