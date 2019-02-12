@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -58,17 +58,17 @@
 #
 cache cache_eap {
 	#
-	# key:: Cache key.
+	#  key:: Cache key.
 	#
 	key = "%{%{control:State}:-%{%{reply:State}:-%{State}}}"
 
 	#
-	# ttl:: TTL for cache entries.
+	#  ttl:: TTL for cache entries.
 	#
 	ttl = 15
 
 	#
-	# update <section> { ... }::
+	#  update <section> { ... }::
 	#
 	update reply {
 		&reply: += &reply:

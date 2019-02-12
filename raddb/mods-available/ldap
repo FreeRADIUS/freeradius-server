@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -110,17 +110,17 @@ ldap {
 	#
 	sasl {
 		#
-		# mech:: SASL mechanism.
+		#  mech:: SASL mechanism.
 		#
 #		mech = 'PLAIN'
 
 		#
-		# proxy:: SASL authorisation identity to proxy.
+		#  proxy:: SASL authorisation identity to proxy.
 		#
 #		proxy = 'autz_id'
 
 		#
-		# realm:: SASL realm. Used for kerberos.
+		#  realm:: SASL realm. Used for kerberos.
 		#
 #		realm = 'example.org'
 	}
@@ -672,16 +672,16 @@ ldap {
 	#
 	tls {
 		#
-		# start_tls:: Set this to `yes` to use TLS encrypted connections
-		# to the LDAP database by using the StartTLS extended operation.
+		#  start_tls:: Set this to `yes` to use TLS encrypted connections
+		#  to the LDAP database by using the StartTLS extended operation.
 		#
-		# The StartTLS operation is supposed to be used with normal ldap connections
-		# instead of using ldaps (port 636) connections
+		#  The StartTLS operation is supposed to be used with normal ldap connections
+		#  instead of using ldaps (port 636) connections
 		#
 #		start_tls = yes
 
 		#
-		# NOTE: If `start_tls = yes`, then fill up those such options with the certificate information.
+		#  NOTE: If `start_tls = yes`, then fill up those such options with the certificate information.
 		#
 #		ca_file	= ${certdir}/cacert.pem
 #		ca_path	= ${certdir}
@@ -690,9 +690,9 @@ ldap {
 #		random_file = /dev/urandom
 
 		#
-		# require_cert:: Certificate Verification requirements.
+		#  require_cert:: Certificate Verification requirements.
 		#
-		# Can be:
+		#  Can be:
 		#
 		#  [options="header,autowidth"]
 		#  |===

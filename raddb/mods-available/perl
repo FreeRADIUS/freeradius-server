@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -37,7 +37,7 @@
 #
 #  The interface between FreeRADIUS and Perl is mostly strings.
 #
-#  Attributes of type `string` are copied to Perl as-is. 
+#  Attributes of type `string` are copied to Perl as-is.
 #  They are not escaped or interpreted.
 #
 #  Attributes of type `octets` are copied to Perl as-is.
@@ -77,7 +77,7 @@ perl {
 	#  FreeRADIUS server.
 	#
 	perl_flags = "-T"
-	
+
 	#
 	#  List of functions in the module to call. Uncomment and change if you
 	#  want to use function names other than the defaults.

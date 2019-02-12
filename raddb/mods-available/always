@@ -1,7 +1,7 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
-# 
+#  :toc:
+#
 #  $Id$
 
 #######################################################################
@@ -36,11 +36,11 @@
 	#  | `noop`     | Simulate a no-op.
 	#  | `updated`  | Indicate that the request has been updated.
 	#  |===
-	# 
-#	rcode = <value>
-	
 	#
-	# simulcount::  
+#	rcode = <value>
+
+	#
+	#  simulcount::
 	#
 	#  If an instance of this module is listed in a `session {}`
 	#  section, this simulates a user having `<integer>` number of sessions.
@@ -48,7 +48,7 @@
 #	simulcount = <integer>
 
 	#
-	# mpp::
+	#  mpp::
 	#
 	#  If an instance is listed in a `session {}` section, this
 	#  simulates the user having multilink sessions.

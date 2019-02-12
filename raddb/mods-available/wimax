@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -94,7 +94,7 @@
 #  `FA-HA` = H(HA-RK, "FA-HA" | HA-IPv4 | FA-CoAv4 | SPI)
 #
 #  where `HA-IPv4` is as above.
-#  
+#
 #  and `FA-CoAv4` address of the `FA` as seen by the `HA`
 #  and `SPI` is the relevant `SPI` for the `HA-RK`.
 #

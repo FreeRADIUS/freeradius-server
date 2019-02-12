@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -210,7 +210,7 @@ radius {
 	#  ## Packets
 	#
 	#  Each packet can have it's own retransmission timers.
-	#  
+	#
 	#  The sections are named for each packet type. The contents
 	#  are the same for all packet types.  Only the relevant ones
 	#  are parsed (see `type` above).

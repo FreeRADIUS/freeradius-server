@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -32,7 +32,7 @@
 #  corner cases.
 
 #
-# ## Default instance
+#  ## Default instance
 #
 detail detail.example.com {
 	filename = ${radacctdir}/detail.example.com/detail-%Y-%m-%dT%H:%G:00

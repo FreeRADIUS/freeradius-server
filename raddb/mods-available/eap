@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -876,7 +876,7 @@ eap {
 		#  OCSP response to pass back to the TLS client.
 		#
 		#  staple { ... }::
-		#		
+		#
 		#  This allows TLS clients to check for certificate revocation before
 		#  divulging credentials to a (possibly rogue) server, that may be
 		#  presenting a compromised certificate.
@@ -965,13 +965,13 @@ eap {
 	}
 
 	#
-	# ### EAP-TLS
+	#  ### EAP-TLS
 	#
 	#  As of Version 3.0, the TLS configuration for `TLS-based`
 	#  EAP types is above in the `tls-config { ... }` section.
 	#
 	tls {
-		# Point to the common TLS configuration
+		#  Point to the common TLS configuration
 		tls = tls-common
 
 		#
@@ -1338,7 +1338,7 @@ eap {
 		pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
 
 		#
-		# virtual_server:: Same as for `TTLS`, `PEAP`, etc.
+		#  virtual_server:: Same as for `TTLS`, `PEAP`, etc.
 		#
 		virtual_server = inner-tunnel
 	}

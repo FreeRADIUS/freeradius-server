@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -40,7 +40,7 @@
 #
 
 #
-# ## Default instance
+#  ## Default instance
 #
 exec echo {
 	#
@@ -58,8 +58,8 @@ exec echo {
 
 	#
 	#  program:: The name of the program to execute, and it's
-	#  arguments. 
-	#  
+	#  arguments.
+	#
 	#  Dynamic translation is done on this field, so things like
 	#  the following example will work.
 	#
@@ -89,8 +89,8 @@ exec echo {
 
 	#
 	#  output_pairs::: Where to place the output attributes (if any) from
-	#  the executed program. 
-	# 
+	#  the executed program.
+	#
 	#  The values allowed, and the restrictions as to availability, are the
 	#  same as for the `input_pairs`.
 	#
@@ -114,7 +114,7 @@ exec echo {
 	#
 	#  Default is `10` seconds, which should be plenty for nearly
 	#  anything. Range is `1` to `30` seconds.
-	# 
+	#
 	#  WARNING: You are strongly encouraged to NOT increase this value.
 	#  Decreasing can be used to cause authentication to fail sooner
 	#  when you know it's going to fail anyway due to the time taken,

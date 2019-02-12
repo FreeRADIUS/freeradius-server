@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -15,7 +15,7 @@
 #
 
 #
-#  # Default instance 
+#  # Default instance
 #
 #  If you want different instances of `rest`, just replicate the section
 #  and give a name.
@@ -25,7 +25,7 @@
 #  [source,unlang]
 #  ----
 #  rest backend_check {
-#  ...	
+#  ...
 #  }
 #  ----
 #
@@ -40,7 +40,7 @@ rest {
 	#
 	tls {
 		#
-		# .Set options about the certificate.
+		#  .Set options about the certificate.
 		#
 #		ca_file	             = ${certdir}/cacert.pem
 #		ca_path	             = ${certdir}
@@ -174,7 +174,7 @@ rest {
 	#  The values of those attributes should be in the format:
 	#
 	#    <attribute>: <value>
-	#                                      
+	#
 	#  `control:REST-HTTP-Header` attributes will be consumed after each call
 	#  to the rest module, and each `%{rest:}` expansion.
 	#
@@ -240,7 +240,7 @@ rest {
 	#          "op":"+="
 	#      }
 	#  }
-	# ----
+	#  ----
 	#
 	#  [NOTE]
 	#  ====
@@ -424,7 +424,7 @@ rest {
 		#  ====
 		#  All configuration settings are enforced.  If a connection is closed because of
 		#  `idle_timeout`, `uses`, or `lifetime`, then the total number of connections MAY
-		#  fall below `min`. 
+		#  fall below `min`.
 		#
 		#  When that happens, it will open a new connection.  It will also log a *WARNING*
 		#  message.

@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -30,11 +30,11 @@
 #
 
 #
-# ## Default instance
+#  ## Default instance
 #
 cache {
 	#
-	# driver::
+	#  driver::
 	#
 	#  The current backend datastore used to store the cache entries are:
 	#
@@ -192,16 +192,16 @@ cache {
 	#
 	update {
 		#
-		# <list>:<attribute> <op> <value>::
+		#  <list>:<attribute> <op> <value>::
 		#
 
-		# Cache all instances of `Reply-Message in the reply list.
+		#  Cache all instances of `Reply-Message in the reply list.
 		&reply:Reply-Message := &reply:Reply-Message
 
-		# Add our own to show when the cache was last updated.
+		#  Add our own to show when the cache was last updated.
 		&reply:Reply-Message := "Cache last updated at %t"
 
-		# Add your own value for `Class`.
+		#  Add your own value for `Class`.
 		&reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
 	}
 
@@ -215,9 +215,9 @@ cache {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Condition            | Description
-	#  | `Cache-TTL` of > `0` | Set the TTL of the entry to the new value 
+	#  | `Cache-TTL` of > `0` | Set the TTL of the entry to the new value
 	#                           (and reset the expiry timer).
-	#  | `Cache-TTL` of < `0` | Expire the existing entry and create a new 
+	#  | `Cache-TTL` of < `0` | Expire the existing entry and create a new
 	#                           one with TTL set to `Cache-TTL` * `-1`.
 	#  | `Cache-TTL` of `0`   | Expire the existing entry and create a new one.
 	#  |===

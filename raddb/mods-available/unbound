@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -16,6 +16,6 @@
 #  ## Default instance
 #
 unbound dns {
-	# filename = "${raddbdir}/mods-config/unbound/default.conf"
-	# timeout = 3000
+	#  filename = "${raddbdir}/mods-config/unbound/default.conf"
+	#  timeout = 3000
 }

@@ -1,12 +1,12 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
 #######################################################################
 #
-# = Delay Module
+#  = Delay Module
 #
 #  The `delay` module delays the processing of a request in a
 #  non-blocking fashion.
@@ -20,11 +20,11 @@
 #
 
 #
-# ## Default instance
+#  ## Default instance
 #
 
 #
-# ### Simple delay
+#  ### Simple delay
 #
 delay {
 	#
@@ -58,7 +58,7 @@ delay {
 }
 
 #
-# ### Delaying Access-Reject packets
+#  ### Delaying Access-Reject packets
 #
 #  The `delay_reject` module should be used in a `send Access-Reject` section, as
 #  the last module in that section.  When `delay_reject` is used

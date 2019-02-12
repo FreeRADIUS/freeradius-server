@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -25,6 +25,6 @@ soh {
 	#  dhcp:: If enabled, It will do SoH over DHCP.
 	#
 	#  Default is `no`.
-	#	
+	#
 	dhcp = yes
 }

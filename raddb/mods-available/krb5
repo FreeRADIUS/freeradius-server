@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -121,25 +121,25 @@ krb5 {
 #
 #  You can configure the module with the following parameters:
 #
-# [source, unlang]
-# ----
-# krb5 {
+#  [source, unlang]
+#  ----
+#  krb5 {
 # 	# Keytab containing the key used by rlm_krb5
 # 	keytab = /path/to/keytab
 #
 # 	# Principal that is used by rlm_krb5
 # 	service_principal = radius/some.host.com
-# }
-# ----
+#  }
+#  ----
 #
 #  Make sure the keytab is readable by the user that is used to run `radiusd` and
 #  that your authorization configuration really uses `krb5` to do the
 #  authentication. You will need to add the following to the `authenticate`
 #  section of your `radiusd.conf` file:
 #
-# [source, unlang]
-# Auth-Type Kerberos {
+#  [source, unlang]
+#  Auth-Type Kerberos {
 # 	krb5
-# }
-# ----
+#  }
+#  ----
 #

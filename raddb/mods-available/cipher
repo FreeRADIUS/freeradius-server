@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -55,7 +55,7 @@
 #
 
 #
-# ## Default instances
+#  ## Default instances
 #
 cipher {
 	#
@@ -97,9 +97,9 @@ cipher {
 		}
 
 		#
-		# signature_digest::
+		#  signature_digest::
 		#
-		# Digest used to ingest the plaintext before signing or verification.
+		#  Digest used to ingest the plaintext before signing or verification.
 		#
 #		signature_digest = "sha256"
 

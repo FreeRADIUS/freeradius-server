@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -55,7 +55,7 @@ yubikey {
 	#  Each account will need a password added (either using attribute `Cleartext-Password`,
 	#  `SSHA-Password`, etc.).
 	#
-	#  The module itself does not provide persistent storage as this would be duplicative of 
+	#  The module itself does not provide persistent storage as this would be duplicative of
 	#  functionality already in the server.
 	#
 	#  Yubikey authentication needs two attributes retrieved from persistent storage:
@@ -64,14 +64,14 @@ yubikey {
 	#  |===
 	#  | Attributes                 | Description
 	#  | `&control:Yubikey-Key`     | The AES key used to decrypt the OTP data.
-	#                                 The `Yubikey-Public-Id` and/or User-Name 
+	#                                 The `Yubikey-Public-Id` and/or User-Name
 	#                                 attributes may be used to retrieve the key.
 	#                                 The value is a `16-byte` binary blob.
 	#  | `&control:Yubikey-Counter` | This is compared with the counter in the OTP
 	#                                 data and used to prevent replay attacks.
 	#                                 This attribute will also be available in
 	#                                 the request list after successful decryption.
-	# |===
+	#  |===
 	#
 	#  NOTE: `Yubikey-Counter` isn't strictly required, but the server will generate
 	#  warnings if it's not present when `yubikey.authenticate` is called.
@@ -230,20 +230,20 @@ yubikey {
 			idle_timeout = 60
 
 			#
-			# spread:: Enable LRU (Least Recently Used).
+			#  spread:: Enable LRU (Least Recently Used).
 			#
-			# The `yubico` library uses `curl` multihandles. If the multihandle is reused
-			# before all requests are completed the connections are re-established.
+			#  The `yubico` library uses `curl` multihandles. If the multihandle is reused
+			#  before all requests are completed the connections are re-established.
 			#
-			# The cost of re-establishing the connections is greater than the benefit of
-			# maintaining a small pool of connections or optimising for link latency.
+			#  The cost of re-establishing the connections is greater than the benefit of
+			#  maintaining a small pool of connections or optimising for link latency.
 			#
 			spread = yes
 
 			#
 			#  [NOTE]
 			#  ====
-			#  All configuration settings are enforced.  If a connection is closed because of 
+			#  All configuration settings are enforced.  If a connection is closed because of
 			#  `idle_timeout`, `uses`, or `lifetime`, then the total
 			#  number of connections MAY fall below `min`.
 			#

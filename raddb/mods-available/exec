@@ -1,6 +1,6 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
 #  $Id$
 
@@ -59,8 +59,8 @@ exec {
 
 	#
 	#  program:: The name of the program to execute, and it's
-	#  arguments. 
-	#  
+	#  arguments.
+	#
 	#  Dynamic translation is done on this field, so things like
 	#  the following example will work.
 	#
@@ -94,8 +94,8 @@ exec {
 
 	#
 	#  output_pairs::: Where to place the output attributes (if any) from
-	#  the executed program. 
-	# 
+	#  the executed program.
+	#
 	#  The values allowed, and the restrictions as to availability, are the
 	#  same as for the `input_pairs`.
 	#
@@ -122,7 +122,7 @@ exec {
 	#
 	#  Default is `10` seconds, which should be plenty for nearly
 	#  anything. Range is `1` to `30` seconds.
-	# 
+	#
 	#  WARNING: You are strongly encouraged to NOT increase this
 	#  value.  In fact, you are much better off decreasing it to a
 	#  lower value.  Doing so will improve network stability and

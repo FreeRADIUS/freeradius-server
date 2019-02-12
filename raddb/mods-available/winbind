@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 #
 #  :toc:
 #
@@ -8,15 +8,15 @@
 #
 #  = WinModule
 #
-# The `winbind` module authenticate PAP users against Microsoft Active
-# Directory or Samba, via `winbind`.
+#  The `winbind` module authenticate PAP users against Microsoft Active
+#  Directory or Samba, via `winbind`.
 #
-# This module is for PAP authentication (where plaintext passwords
-# are sent in the `User-Password` attribute) only. For authenticating
-# `mschap` requests against AD/Samba see the options available in the
-# `rlm_mschap` module.
+#  This module is for PAP authentication (where plaintext passwords
+#  are sent in the `User-Password` attribute) only. For authenticating
+#  `mschap` requests against AD/Samba see the options available in the
+#  `rlm_mschap` module.
 #
-# NOTE: Samba version 4.2.1 or higher is required to use this module.
+#  NOTE: Samba version 4.2.1 or higher is required to use this module.
 #
 
 #
@@ -24,61 +24,61 @@
 #
 winbind {
 	#
-	# winbind_username:: The username to pass to `winbind` for authentication.
+	#  winbind_username:: The username to pass to `winbind` for authentication.
 	#
 	winbind_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
 	#
-	# winbind_domain:: The windows domain.
+	#  winbind_domain:: The windows domain.
 	#
-	# While not required to be set, it is likely authentication will fail
-	# if it is not set correctly.
+	#  While not required to be set, it is likely authentication will fail
+	#  if it is not set correctly.
 	#
-	# This configuration option, as the username above, is also expanded before use.
+	#  This configuration option, as the username above, is also expanded before use.
 	#
-	# If unset then winbind will be queried for the correct value. If you
-	# actually want it blank it should be explicitly set here.
+	#  If unset then winbind will be queried for the correct value. If you
+	#  actually want it blank it should be explicitly set here.
 	#
 #	winbind_domain = ""
 
 	#
-	# group { ... }:: Group membership checking.
+	#  group { ... }:: Group membership checking.
 	#
 	group {
 		#
-		# group_search_username:: AD username to search for group searches.
+		#  group_search_username:: AD username to search for group searches.
 		#
-		# This should generally not include a realm, so `Stripped-User-Name`
-		# is likely the best attribute if it exists.
+		#  This should generally not include a realm, so `Stripped-User-Name`
+		#  is likely the best attribute if it exists.
 		#
 		group_search_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
 		#
-		# group_add_domain:: Include the domain in group searches.
+		#  group_add_domain:: Include the domain in group searches.
 		#
-		# When this is enabled, winbind_domain is prepended to the
-		# username (as `domain\username`) before searching. This is
-		# generally required.
+		#  When this is enabled, winbind_domain is prepended to the
+		#  username (as `domain\username`) before searching. This is
+		#  generally required.
 		#
 #		group_add_domain = yes
 
 		#
-		# group_attribute:: Attribute to use for group comparisons.
+		#  group_attribute:: Attribute to use for group comparisons.
 		#
-		# This will normally be `Winbind-Group` if this instance is
-		# unnamed, otherwise it will be `name-Winbind-Group`. The
-		# name of this attribute can be overridden here.
+		#  This will normally be `Winbind-Group` if this instance is
+		#  unnamed, otherwise it will be `name-Winbind-Group`. The
+		#  name of this attribute can be overridden here.
 		#
 #		group_attribute = "Winbind-Group"
 	}
 
 	#
-	# pool { ... }::
+	#  pool { ... }::
 	#
-	# Information for the `winbind` connection pool.
+	#  Information for the `winbind` connection pool.
 	#
-	# The configuration items below are the same for all modules which
-	# use the new connection pool.
+	#  The configuration items below are the same for all modules which
+	#  use the new connection pool.
 	#
 	pool {
 		#
@@ -163,7 +163,7 @@ winbind {
 		#
 		#  [NOTE]
 		#  ====
-		#  All configuration settings are enforced.  If a connection is closed because of 
+		#  All configuration settings are enforced.  If a connection is closed because of
 		#  `idle_timeout`, `uses`, or `lifetime`, then the total
 		#  number of connections MAY fall below `min`.
 		#
