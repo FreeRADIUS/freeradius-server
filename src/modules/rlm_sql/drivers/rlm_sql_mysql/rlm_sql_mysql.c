@@ -99,8 +99,10 @@ static CONF_PARSER tls_config[] = {
 	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_certificate_file) },
 	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_private_key_file) },
 
-#if defined(MYSQL_OPT_SSL_CRL) && defined(MYSQL_OPT_SSL_CRLPATH)
+#ifdef MYSQL_OPT_SSL_CRL
 	{ FR_CONF_OFFSET("crl_file", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_crl_file) },
+#endif
+#ifdef MYSQL_OPT_SSL_CRLPATH
 	{ FR_CONF_OFFSET("crl_path", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_crl_path) },
 #endif
 	/*
@@ -233,7 +235,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		bool		ssl_mode_isset = false;
 
 		if (inst->tls_required) {
-			ssl_mode = MYSQL_OPT_SSL_MODE;
+			ssl_mode = SSL_MODE_REQUIRED;
 			ssl_mode_isset = true;
 		}
 #  ifdef SSL_MODE_VERIFY_CA
@@ -252,9 +254,11 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	}
 #endif
 
-#if defined(MYSQL_OPT_SSL_CRL) && defined(MYSQL_OPT_SSL_CRLPATH)
-	if (inst->crl_file) mysql_options(&(conn->db), MYSQL_OPT_SSL_CRL, inst->crl_file);
-	if (inst->crl_path) mysql_options(&(conn->db), MYSQL_OPT_SSL_CRL_PATH, inst->crl_path);
+#ifdef MYSQL_OPT_SSL_CRL
+	if (inst->tls_crl_file) mysql_options(&(conn->db), MYSQL_OPT_SSL_CRL, inst->tls_crl_file);
+#endif
+#ifdef MYSQL_OPT_SSL_CRLPATH
+	if (inst->tls_crl_path) mysql_options(&(conn->db), MYSQL_OPT_SSL_CRLPATH, inst->tls_crl_path);
 #endif
 
 	mysql_options(&(conn->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
