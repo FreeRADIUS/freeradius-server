@@ -1,42 +1,62 @@
 # -*- text -*-
 #
+#  :toc:
+#
 #  $Id$
 
+#######################################################################
 #
-#  This module is useful only for 'xlat'.  To use it,
-#  add it to the raddb/mods-enabled/ directory.  Then,
+#  = Unpack Module
+#
+#  The `unpack` module unpacks binary data from octets type attributes
+#  into individual attributes.
+#
+#  It is used when vendors put multiple fields into one attribute
+#  of type "octets".
+#
+#  NOTE: The module is useful only for `xlat`.
+#
+
+#
+#  ## Syntax
+#
+#  To use it, add it to the `raddb/mods-enabled/` directory.  Then,
 #  use it on the right-hand side of a variable assignment.
 #
-#  ... = "%{unpack:data 1 integer}"
+#   %{unpack:<data> <offset> <data_type>}
 #
 #  The arguments are three fields:
 #
-#	data
-#		Either &Attribute-Name
-#		the name of the attribute to unpack.
-#		MUST be a "string" or "octets" type.
+#  data::
 #
-#		or 0xabcdef
-#		e.g. hex data.
+#  Either `&Attribute-Name` the name of the attribute to unpack.
+#  MUST be a `string` or `octets` type.
+#  or 0xabcdef e.g. hex data.
 #
-#	1
-#		The offset into the string from which
-#		it starts unpacking.  The offset starts
-#		at zero, for the first attribute.
+#  offset::
 #
-#	integer
-#		the data type to unpack at that offset.
-#		e.g. integer, ipaddr, byte, short, etc.
+#  The offset into the string from which it starts unpacking. The offset starts
+#  at zero, for the first attribute.
 #
-#  e.g. if we have Class = 0x00000001020304, then
+#  data_type::
 #
-#	%{unpack:&Class 4 short}
+#  the data type to unpack at that offset. e.g. `integer`, `ipaddr`, `byte`, `short`, etc.
 #
-#  will unpack octets 4 and 5 as a "short", which has
-#  value 0x0304.
+
 #
-#  This module is used when vendors put multiple fields
-#  into one attribute of type "octets".
+#  ## Sample
+#
+#  if we have `Class = 0x00000001020304`, then
+#
+#    %{unpack:&Class 4 short}
+#
+#  will unpack octets `4` and `5` as a `short`, which has value `0x0304`.
+#
+
+#
+#  ## Default instance
+#
+#  This module takes no configuration.
 #
 unpack {
 }
