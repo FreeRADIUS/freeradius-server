@@ -202,3 +202,5 @@ draft-sterman-aaa-sip-01 https://tools.ietf.org/html/draft-sterman-aaa-sip-01
 draft-wahl-ldap-session https://tools.ietf.org/html/draft-wahl-ldap-session-03
 PAM http://www.kernel.org/pub/linux/libs/pam/index.html
 Couchbase https://www.couchbase.com/
+GDBM https://www.gnu.org.ua/software/gdbm/
+
