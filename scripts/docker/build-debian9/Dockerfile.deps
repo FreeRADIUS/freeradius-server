@@ -59,8 +59,8 @@ RUN git clone --branch master --depth=1 https://github.com/mheily/libkqueue.git
 WORKDIR libkqueue
 RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
     make && \
-    cpack -P libkqueue-dev -G DEB && \
-    dpkg -i --force-all ./libkqueue-*deb
+    cpack -G DEB && \
+    dpkg -i --force-all ./libkqueue*.deb
 
 
 #
