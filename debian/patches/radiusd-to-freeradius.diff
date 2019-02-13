@@ -11,16 +11,16 @@
 
 --- a/raddb/radiusd.conf.in
 +++ b/raddb/radiusd.conf.in
-@@ -61,7 +61,7 @@
-
+@@ -69,7 +69,7 @@
+ #  name:: the name of the running server.  See also the `-n`
+ #  command-line option.
  #
- #  name of the running server.  See also the "-n" command-line option.
 -name = radiusd
 +name = freeradius
-
+ 
+ #
  #  Location of config and logfiles.
- confdir = ${raddbdir}
-@@ -397,8 +397,8 @@
+@@ -416,8 +416,8 @@
  	#  member.  This can allow for some finer-grained access
  	#  controls.
  	#
