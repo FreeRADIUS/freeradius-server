@@ -49,6 +49,7 @@ DIAG_ON(strict-prototypes)
 #  include <mysqld_error.h>
 #endif
 
+#ifndef MARIADB_BASE_VERSION
 #if (MYSQL_VERSION_ID >= 50555) && (MYSQL_VERSION_ID < 50600)
 #define HAVE_TLS_OPTIONS        1
 #define HAVE_CRL_OPTIONS        0
@@ -61,6 +62,11 @@ DIAG_ON(strict-prototypes)
 #define HAVE_TLS_OPTIONS        1
 #define HAVE_CRL_OPTIONS        1
 #define HAVE_TLS_VERIFY_OPTIONS 1
+#endif
+#else
+#define HAVE_TLS_OPTIONS        0
+#define HAVE_CRL_OPTIONS        0
+#define HAVE_TLS_VERIFY_OPTIONS 0
 #endif
 
 #include "rlm_sql.h"
