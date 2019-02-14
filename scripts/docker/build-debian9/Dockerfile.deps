@@ -4,6 +4,8 @@ ARG gccver=6
 ARG clangver=5.0
 ARG osname=stretch
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 #
 #  Install add-apt-repository
 #

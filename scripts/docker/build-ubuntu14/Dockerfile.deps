@@ -4,6 +4,8 @@ ARG gccver=4.9
 ARG clangver=5.0
 ARG osname=trusty
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 #
 #  Install add-apt-repository
 #

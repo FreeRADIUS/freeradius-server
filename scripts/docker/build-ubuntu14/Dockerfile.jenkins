@@ -3,6 +3,8 @@ FROM ${from}
 
 ARG osname=trusty
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 #
 #  This is necessary for the jenkins server to talk to the docker instance
 #
