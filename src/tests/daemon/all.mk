@@ -13,7 +13,7 @@ ifneq "$(TMUX)" ""
 #
 #  Create a unique TMUX key for this user, directory, and machine
 #
-TMUX_KEY  := $(shell (id;pwd;ifconfig -a) | md5sum | awk '{print $$1}')
+TMUX_KEY  := $(shell { id; pwd; hostid; } | md5sum | awk '{print $$1}')
 
 endif
 endif
