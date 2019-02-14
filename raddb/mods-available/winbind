@@ -8,8 +8,8 @@
 #
 #  = WinModule
 #
-#  The `winbind` module authenticate PAP users against Microsoft Active
-#  Directory or Samba, via `winbind`.
+#  The `winbind` module authenticate PAP passwords against Microsoft Active
+#  Directory or Samba, via the winbind API.
 #
 #  This module is for PAP authentication (where plaintext passwords
 #  are sent in the `User-Password` attribute) only. For authenticating
@@ -24,12 +24,12 @@
 #
 winbind {
 	#
-	#  winbind_username:: The username to pass to `winbind` for authentication.
+	#  username:: The username to pass to `winbind` for authentication.
 	#
-	winbind_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
+	username = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
 	#
-	#  winbind_domain:: The windows domain.
+	#  domain:: The windows domain.
 	#
 	#  While not required to be set, it is likely authentication will fail
 	#  if it is not set correctly.
@@ -39,37 +39,37 @@ winbind {
 	#  If unset then winbind will be queried for the correct value. If you
 	#  actually want it blank it should be explicitly set here.
 	#
-#	winbind_domain = ""
+#	domain = ""
 
 	#
 	#  group { ... }:: Group membership checking.
 	#
 	group {
 		#
-		#  group_search_username:: AD username to search for group searches.
+		#  search_username:: AD username to search for group searches.
 		#
 		#  This should generally not include a realm, so `Stripped-User-Name`
 		#  is likely the best attribute if it exists.
 		#
-		group_search_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
+		search_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
 		#
-		#  group_add_domain:: Include the domain in group searches.
+		#  add_domain:: Include the domain in group searches.
 		#
 		#  When this is enabled, winbind_domain is prepended to the
 		#  username (as `domain\username`) before searching. This is
 		#  generally required.
 		#
-#		group_add_domain = yes
+#		add_domain = yes
 
 		#
-		#  group_attribute:: Attribute to use for group comparisons.
+		#  attribute:: Attribute to use for group comparisons.
 		#
 		#  This will normally be `Winbind-Group` if this instance is
 		#  unnamed, otherwise it will be `name-Winbind-Group`. The
 		#  name of this attribute can be overridden here.
 		#
-#		group_attribute = "Winbind-Group"
+#		attribute = "Winbind-Group"
 	}
 
 	#
