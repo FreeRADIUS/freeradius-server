@@ -4,6 +4,8 @@ ARG gccver=7
 ARG clangver=5.0
 ARG osname=unstable
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 #
 #  Install add-apt-repository
 #
