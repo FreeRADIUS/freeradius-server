@@ -8,8 +8,12 @@
 #
 #  = Yubikey Module
 #
-#  This module decrypts and validates Yubikey static and dynamic
-#  OTP tokens.
+#  The `yubikey` module decrypts and validates Yubikey static and
+#  dynamic One-Time Password (OTP) tokens.
+#
+#  For more information about Yubikey, please see:
+#
+#	https://www.yubico.com/
 #
 
 #
@@ -34,7 +38,7 @@ yubikey {
 #	split = yes
 
 	#
-	#  decrypt:: Tokens will be decrypted and processed locally.
+	#  decrypt:: Whether tokens will be decrypted and processed locally.
 	#
 	#  In the `authorize` section, this module should be placed before the
 	#  persistent storage module.
@@ -55,8 +59,8 @@ yubikey {
 	#  Each account will need a password added (either using attribute `Cleartext-Password`,
 	#  `SSHA-Password`, etc.).
 	#
-	#  The module itself does not provide persistent storage as this would be duplicative of
-	#  functionality already in the server.
+	#  The module itself does not provide persistent storage as
+	#  this would duplicate functionality already in the server.
 	#
 	#  Yubikey authentication needs two attributes retrieved from persistent storage:
 	#

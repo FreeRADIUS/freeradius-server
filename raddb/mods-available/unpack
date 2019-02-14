@@ -48,9 +48,9 @@
 #
 #  if we have `Class = 0x00000001020304`, then
 #
-#    %{unpack:&Class 4 short}
+#    %{unpack:&Class 4 uint16}
 #
-#  will unpack octets `4` and `5` as a `short`, which has value `0x0304`.
+#  will unpack octets `4` and `5` as a `uint16`, which has value `0x0304`.
 #
 
 #

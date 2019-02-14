@@ -46,7 +46,8 @@ server control {
 			#  if it doesn't exist and set the appropriate ownership and
 			#  permissions.
 			#
-			filename = ${run_dir}/control/${name}.sock
+#			filename = ${run_dir}/control/${name}.sock
+			filename = ${confdir}/radiusd.sock
 
 			#
 			#  Peercred is enabled by default, and offers an additional layer
@@ -87,7 +88,7 @@ server control {
 			#	ro = read only access (default)
 			#	rw = read/write access.
 			#
-#			mode = rw
+			mode = rw
 		}
 	}
 
