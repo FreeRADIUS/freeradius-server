@@ -192,7 +192,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 *	We need to know about connection errors, and are capable
 	 *	of reconnecting automatically.
 	 */
-#ifdef MYSQL_OPT_RECONNECT
+#if MYSQL_VERSION_ID >= 50013
 	{
 		int reconnect = 0;
 		mysql_options(&(conn->db), MYSQL_OPT_RECONNECT, &reconnect);
