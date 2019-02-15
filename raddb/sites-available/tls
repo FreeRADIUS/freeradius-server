@@ -1,6 +1,21 @@
 ######################################################################
 #
-#  Initial implementation of RADIUS over TLS (radsec)
+#  RADIUS over TLS (radsec)
+#
+#  When a new client connects, the various TLS parameters for the
+#  connection are available as dynamic expansions, e.g.
+#
+#	%{listen:TLS-Client-Cert-Common-Name}
+#
+#  Along with other TLS-Client-Cert-... attributes.
+#  These expansions will only exist if the relevant fields
+#  are in the client certificate.  Read the debug output to see
+#  which fields are available.  Look for output like the following:
+#
+# (0) TLS - Creating attributes from certificate OIDs
+# (0)   TLS-Client-Cert-Subject-Alt-Name-Dns := "one.example.org"
+# (0)   TLS-Client-Cert-Subject-Alt-Name-Dns := "two.example.org"
+# ...
 #
 ######################################################################
 
