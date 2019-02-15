@@ -56,12 +56,14 @@ organizationName	= Example Inc
 emailAddress		= user.example@example.org
 commonName		= Example user
 
-# Should be the user's NAI as per RFC 5216 (EAP-TLS)
-subjectAltName		= user@example.org
-
 [ v3_client ]
 basicConstraints	= CA:FALSE
 keyUsage		= nonRepudiation, digitalSignature, keyEncipherment
 extendedKeyUsage	= 1.3.6.1.5.5.7.3.2
 crlDistributionPoints	= URI:http://www.example.com/example_ca.crl
 authorityInfoAccess	= OCSP;URI:http://www.example.org/ocsp
+subjectAltName		= @alt_names
+
+# Should be the user's NAI as per RFC 5216 (EAP-TLS)
+[ alt_names ]
+email.1 = user@example.org
