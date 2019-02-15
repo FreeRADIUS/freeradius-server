@@ -59,6 +59,10 @@ sql {
 #			certificate_file = "/etc/ssl/certs/private/client.crt"
 #			private_key_file = "/etc/ssl/certs/private/client.key"
 #			cipher = "DHE-RSA-AES256-SHA:AES128-SHA"
+#
+#			tls_required = yes
+#			tls_check_cert = no
+#			tls_check_cert_cn = no
 #		}
 #
 #		# If yes, (or auto and libmysqlclient reports warnings are
