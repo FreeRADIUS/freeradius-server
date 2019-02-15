@@ -575,13 +575,6 @@ The `ipv6` configuration item has been deleted.  It was deprecated in
 Instead, use `attribute-name`.  See `mods-available/sqlippool` for
 more information.
 
-### rlm_winbind
-
-The `winbind_*` configuration options have the redundant `winbind_`
-prefix removed.  The same goes for `group_`.
-
-See `mods-available/winbind` for details.
-
 
 ## Deleted Modules
 
