@@ -29,10 +29,19 @@ authorize {
 	#  cui below and set "add_cui = yes" for these clients in clients.conf
 #	cui
 
-	suffix {
-	        updated = 1
-		noop = reject
+	#
+	# Do RFC 7542 bang path routing. If you want to only do standard
+	# RADIUS NAI routing, comment out the below line.
+	rfc7542
+
+	#  Standard RADIUS NAI routing
+	if (!updated) {
+		suffix {
+			updated = 1
+			noop = reject
+		}
 	}
+
 	eap {
 		ok = return
 	}
