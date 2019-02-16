@@ -906,6 +906,9 @@ static void session_init(tls_session_t *ssn)
 static void session_close(tls_session_t *ssn)
 {
 	if (ssn->ssl) {
+		void *request = SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_REQUEST);
+		talloc_free(request);
+
 		SSL_set_quiet_shutdown(ssn->ssl, 1);
 		SSL_shutdown(ssn->ssl);
 
