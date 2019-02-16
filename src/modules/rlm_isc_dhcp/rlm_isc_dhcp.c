@@ -40,6 +40,7 @@ RCSID("$Id$")
 typedef struct {
 	char const	*name;
 	char const	*filename;
+	bool		debug;
 } rlm_isc_dhcp_t;
 
 /*
@@ -47,6 +48,7 @@ typedef struct {
  */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_isc_dhcp_t, filename) },
+	{ FR_CONF_OFFSET("debug", FR_TYPE_BOOL, rlm_isc_dhcp_t, debug) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -84,7 +86,7 @@ typedef struct rlm_isc_dhcp_cmd_t {
 } rlm_isc_dhcp_cmd_t;
 
 static const rlm_isc_dhcp_cmd_t top_keywords[];
-static int read_file(char const *filename);
+static int read_file(char const *filename, bool debug);
 static int parse_section(rlm_isc_dhcp_tokenizer_t *state);
 
 static int refill(rlm_isc_dhcp_tokenizer_t *state)
@@ -571,7 +573,7 @@ static int parse_include(rlm_isc_dhcp_tokenizer_t *state, UNUSED int argc, rlm_i
 	memcpy(p, argv[1].name, argv[1].len);
 	p[argv[1].len] = '\0';
 
-	rcode = read_file(pathname);
+	rcode = read_file(pathname, state->debug);
 	if (rcode < 0) return rcode;
 
 	return 1;
@@ -623,7 +625,7 @@ static int match_top_keyword(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t
 	return 1;
 }
 
-static int read_file(char const *filename)
+static int read_file(char const *filename, bool debug)
 {
 	FILE *fp;
 	char buffer[8192];
@@ -651,7 +653,7 @@ static int read_file(char const *filename)
 	state.braces = 0;
 	state.ptr = buffer;
 
-	state.debug = true;	/* only for development */
+	state.debug = debug;
 
 	/*
 	 *	Tell the state machine that the buffer is empty.
@@ -701,7 +703,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	if (read_file(inst->filename) < 0) {
+	if (read_file(inst->filename, inst->debug) < 0) {
 		cf_log_err(conf, "%s", fr_strerror());
 		return -1;
 	}

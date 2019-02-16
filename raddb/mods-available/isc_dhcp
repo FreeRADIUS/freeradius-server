@@ -22,4 +22,9 @@ isc_dhcp {
 	#  filename:: The ISC DHCP configuration file
 	#
 	filename = ${moddir}/dhcpd.conf
+
+	#
+	#  debug:: For developers, we print out what we're parsing.
+	#
+	debug = true
 }
