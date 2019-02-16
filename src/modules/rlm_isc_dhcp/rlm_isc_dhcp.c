@@ -30,6 +30,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/map_proc.h>
 
+typedef struct rlm_isc_dhcp_info_t rlm_isc_dhcp_info_t;
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -38,9 +40,10 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
-	char const	*name;
-	char const	*filename;
-	bool		debug;
+	char const		*name;
+	char const		*filename;
+	bool			debug;
+	rlm_isc_dhcp_info_t	*head;
 } rlm_isc_dhcp_t;
 
 /*
@@ -59,6 +62,15 @@ typedef struct rlm_isc_dhcp_str_t {
 	int		len;
 } rlm_isc_dhcp_str_t;
 
+/*
+ *	A struct that holds information about the thing we parsed.
+ */
+struct rlm_isc_dhcp_info_t {
+	int			argc;
+	char			**argv;
+	rlm_isc_dhcp_info_t	*child;
+	rlm_isc_dhcp_info_t	*next;
+};
 
 typedef struct rlm_isc_dhcp_tokenizer_t {
 	FILE		*fp;
@@ -76,18 +88,22 @@ typedef struct rlm_isc_dhcp_tokenizer_t {
 	char		*ptr;
 
 	rlm_isc_dhcp_str_t token;
+
+	rlm_isc_dhcp_info_t	*head;
+	rlm_isc_dhcp_info_t	**last;
 } rlm_isc_dhcp_tokenizer_t;
 
-typedef int (*rlm_isc_dhcp_parse_t)(rlm_isc_dhcp_tokenizer_t *state, int argc, rlm_isc_dhcp_str_t const *argv);
+typedef int (*rlm_isc_dhcp_parse_t)(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
 
 typedef struct rlm_isc_dhcp_cmd_t {
 	char const		*name;
 	rlm_isc_dhcp_parse_t  	*parse;
+	int			max_argc;
 } rlm_isc_dhcp_cmd_t;
 
 static const rlm_isc_dhcp_cmd_t top_keywords[];
-static int read_file(char const *filename, bool debug);
-static int parse_section(rlm_isc_dhcp_tokenizer_t *state);
+static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_dhcp_info_t **head);
+static int parse_section(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
 
 static int refill(rlm_isc_dhcp_tokenizer_t *state)
 {
@@ -328,7 +344,7 @@ redo:
 	return 1;
 }
 
-static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd)
+static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_isc_dhcp_info_t *info)
 {
 	int rcode;
 	bool semicolon = false;
@@ -375,7 +391,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd)
 		 *	more.  Recurse.
 		 */
 		if (isspace((int) *q)) {
-			return match_subword(state, q);
+			return match_subword(state, q, info);
 		}
 
 		/*
@@ -393,8 +409,12 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd)
 		rcode = read_token(state, T_LCBRACE, false, false);
 		if (rcode <= 0) return rcode;
 
-		rcode = parse_section(state);
-		if (rcode <= 0) return rcode;
+		rcode = parse_section(info, state, info);
+		if (rcode < 0) return rcode;
+
+		/*
+		 *	Empty sections are allowed.
+		 */
 
 		q += 7;
 		if (*q != '\0') return -1; /* internal error */
@@ -403,12 +423,15 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd)
 	}
 
 	/*
-	 *	@todo - validate the data type here.
+	 *	@todo - validate the string against the given data
+	 *	type, and error out if it doesn't match.
 	 */
 	rcode = read_token(state, T_DOUBLE_QUOTED_STRING, semicolon, false);
 	if (rcode <= 0) return rcode;
 
 	IDEBUG("... DATA %.*s ", state->token.len, state->token.name);
+
+	info->argv[info->argc++] = talloc_strndup(info, state->token.name, state->token.len);
 
 	/*
 	 *	No more data, return OK.
@@ -418,12 +441,50 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd)
 	/*
 	 *	Keep matching more things
 	 */
-	return match_subword(state, next);
+	return match_subword(state, next, info);
 }
 
-static int match_keyword(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens)
+/*
+ *	include FILENAME ;
+ */
+static int include_filename(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, char const *name, rlm_isc_dhcp_info_t **last)
+{
+	int rcode;
+	char *p, pathname[8192];
+
+	if ((name[0] == '/') ||
+	    ((name[0] == '.') && (name[1] == '.'))) {
+		fr_strerror_printf("Error in file %s at line %d: invalid (insecure) filename",
+				   state->filename, state->lineno);
+		return -1;
+	}
+
+	IDEBUG("include %s ;", name);
+
+	p = strrchr(state->filename, '/');
+	if (p) {
+		strlcpy(pathname, state->filename, sizeof(pathname));
+		p = pathname + (p - state->filename) + 1;
+	}
+
+	strlcpy(p, name, sizeof(pathname) - (p - pathname));
+
+	rcode = read_file(ctx, pathname, state->debug, last);
+	if (rcode < 0) return rcode;
+
+	return 1;
+}
+
+
+static const rlm_isc_dhcp_cmd_t include_keyword[] = {
+	{ "include STRING", NULL, 1},
+	{ NULL, NULL }
+};
+
+static int match_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens, rlm_isc_dhcp_info_t **last)
 {
 	int i;
+	rlm_isc_dhcp_info_t *info;
 
 	for (i = 0; tokens[i].name != NULL; i++) {
 		char const *q;
@@ -463,6 +524,16 @@ static int match_keyword(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t con
 
 		IDEBUG("... TOKEN %.*s ", state->token.len, state->token.name);
 
+		info = talloc_zero(ctx, rlm_isc_dhcp_info_t);
+		if (tokens[i].max_argc) {
+			info->argv = talloc_zero_array(info, char *, tokens[i].max_argc);
+		}
+
+		/*
+		 *	Remember which command we parsed.
+		 */
+		info->name = tokens[i].name;
+
 		/*
 		 *	There's more to this command,
 		 *	go parse that, too.
@@ -470,7 +541,7 @@ static int match_keyword(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t con
 		if (isspace((int) *q)) {
 			if (state->semicolon) goto unexpected;
 
-			rcode = match_subword(state, q);
+			rcode = match_subword(state, q, info);
 			if (rcode <= 0) return rcode;
 
 			/*
@@ -486,18 +557,60 @@ static int match_keyword(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t con
 		unexpected:
 			fr_strerror_printf("Syntax error in %s at line %d: Unexpected ';'",
 					   state->filename, state->lineno);
+			talloc_free(info);
 			return -1;
 		}
 
 		if (semicolon && !state->semicolon) {
 			fr_strerror_printf("Syntax error in %s at line %d: Missing ';'",
 					   state->filename, state->lineno);
+			talloc_free(info);
 			return -1;
 		}
 
 		/*
+		 *	Call the "parse" function which should do
+		 *	validation, etc.
+		 */
+		if (tokens[i].parse) {
+			rcode = tokens[i].parse(state, info);
+			if (rcode <= 0) {
+				talloc_free(info);
+				return rcode;
+			}
+		}
+
+		/*
+		 *	Add the parsed structure to the tail of the
+		 *	current list.  Note that we can only add ONE
+		 *	command at a time.
+		 */
+		*last = info;
+
+		/*
 		 *	It's a match, and it's OK.
 		 */
+		return 1;
+	}
+
+	/*
+	 *	As a special case, match "include filename".  Which
+	 *	doesn't get put into the command structure, but
+	 *	instead mashes all of the structs in place.
+	 */
+	if ((state->token.len == 7) && (strncmp(state->token.name, "include", 7) == 0)) {
+		int rcode;
+
+		rcode = match_keyword(ctx, state, include_keyword, last);
+		if (rcode <= 0) return rcode;
+
+		info = *last;
+		*last = NULL;
+
+		rcode = include_filename(ctx, state, info->argv[0], last);
+		talloc_free(info);
+		if (rcode <= 0) return 0;
+
 		return 1;
 	}
 
@@ -508,21 +621,23 @@ static int match_keyword(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t con
 }
 
 static const rlm_isc_dhcp_cmd_t section_commands[] = {
-	{ "adandon-lease-time INTEGER", NULL},
-	{ "adaptive-lease-time-threshold INTEGER", NULL},
-	{ "always-broadcast BOOL", NULL},
-	{ "fixed-address STRING", NULL},
-	{ "hardware ethernet ETHER", NULL},
+	{ "adandon-lease-time INTEGER", NULL, 1},
+	{ "adaptive-lease-time-threshold INTEGER", NULL, 1},
+	{ "always-broadcast BOOL", NULL, 1},
+	{ "fixed-address STRING", NULL, 1},
+	{ "hardware ethernet ETHER", NULL, 1},
 	{ NULL, NULL }
 };
 
-static int parse_section(rlm_isc_dhcp_tokenizer_t *state)
+static int parse_section(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	int rcode;
 
 	IDEBUG("{");
 
 	while (true) {
+		rlm_isc_dhcp_info_t **last = &(info->child);
+
 		rcode = read_token(state, T_BARE_WORD, true, true);
 		if (rcode <= 0) return rcode;
 
@@ -531,8 +646,11 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state)
 		 */
 		if (*state->token.name == '}') break;
 
-		rcode = match_keyword(state, section_commands);
+		rcode = match_keyword(ctx, state, section_commands, last);
 		if (rcode <= 0) return rcode;
+
+		rad_assert(*last != NULL);
+		while (*last) last = &((*last)->next);
 	}
 
 	IDEBUG("}");
@@ -541,54 +659,16 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state)
 }
 
 
-#if 0
-/*
- *	include FILENAME ;
- */
-static int parse_include(rlm_isc_dhcp_tokenizer_t *state, UNUSED int argc, rlm_isc_dhcp_str_t const *argv)
-{
-	int rcode;
-	char *p, pathname[8192];
-
-	if ((argv[1].name[0] == '/') ||
-	    ((argv[1].name[0] == '.') && (argv[1].name[1] == '.'))) {
-		fr_strerror_printf("Error in file %s at line %d: invalid (insecure) filename",
-				   state->filename, state->lineno);
-		return -1;
-	}
-
-	IDEBUG("include %.*s ;", argv[1].len, argv[1].name);
-
-	p = strrchr(state->filename, '/');
-	if (p) {
-		strlcpy(pathname, state->filename, sizeof(pathname));
-		p = pathname + (p - state->filename) + 1;
-	}
-
-	if ((p + argv[1].len) >= (pathname + sizeof(pathname))) {
-		fr_strerror_printf("Error in file %s at line %d: Filename is too long",
-				   state->filename, state->lineno);
-	}
-
-	memcpy(p, argv[1].name, argv[1].len);
-	p[argv[1].len] = '\0';
-
-	rcode = read_file(pathname, state->debug);
-	if (rcode < 0) return rcode;
-
-	return 1;
-}
-#endif
-
 static const rlm_isc_dhcp_cmd_t top_keywords[] = {
-	{ "host STRING SECTION", NULL},
+	{ "host STRING SECTION", NULL, 1},
 	{ NULL, NULL }
 };
 
 /*
  *	Match a top-level keyword
  */
-static int match_top_keyword(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens)
+static int match_top_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens,
+			     rlm_isc_dhcp_info_t **last)
 {
 	int rcode;
 
@@ -608,7 +688,7 @@ static int match_top_keyword(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t
 		return -1;
 	}
 
-	rcode = match_keyword(state, tokens);
+	rcode = match_keyword(ctx, state, tokens, last);
 	if (rcode < 0) return rcode;
 
 	if (rcode == 0) {
@@ -625,11 +705,12 @@ static int match_top_keyword(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t
 	return 1;
 }
 
-static int read_file(char const *filename, bool debug)
+static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_dhcp_info_t **head)
 {
 	FILE *fp;
 	char buffer[8192];
 	rlm_isc_dhcp_tokenizer_t state;
+	rlm_isc_dhcp_info_t **last;
 
 	/*
 	 *	Read the file line by line.
@@ -653,6 +734,9 @@ static int read_file(char const *filename, bool debug)
 	state.braces = 0;
 	state.ptr = buffer;
 
+	state.head = NULL;
+	last = &state.head;
+
 	state.debug = debug;
 
 	/*
@@ -667,7 +751,7 @@ static int read_file(char const *filename, bool debug)
 		 *	This will automatically re-fill the buffer,
 		 *	and find a matching token.
 		 */
-		rcode = match_top_keyword(&state, top_keywords);
+		rcode = match_top_keyword(ctx, &state, top_keywords, last);
 		if (rcode < 0) {
 			fclose(fp);
 			return -1;
@@ -676,13 +760,19 @@ static int read_file(char const *filename, bool debug)
 		if (rcode == 0) {
 			break;
 		}
+
+		while (*last) last = &((*last)->next);
 	}
 
 	// @todo - check that we actually did something
 
 	fclose(fp);
 
-	return 0;
+	*head = state.head;
+
+	if (!state.head) return 0;
+
+	return 1;
 }
 
 
@@ -698,13 +788,20 @@ static int read_file(char const *filename, bool debug)
  */
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
+	int rcode;
 	rlm_isc_dhcp_t *inst = instance;
 	
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	if (read_file(inst->filename, inst->debug) < 0) {
+	rcode = read_file(inst, inst->filename, inst->debug, &inst->head);
+	if (rcode < 0) {
 		cf_log_err(conf, "%s", fr_strerror());
+		return -1;
+	}
+
+	if (rcode == 0) {
+		cf_log_err(conf, "No configuration read from %s", inst->filename);
 		return -1;
 	}
 
