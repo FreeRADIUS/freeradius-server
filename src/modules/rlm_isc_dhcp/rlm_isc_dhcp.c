@@ -66,6 +66,7 @@ typedef struct rlm_isc_dhcp_str_t {
  *	A struct that holds information about the thing we parsed.
  */
 struct rlm_isc_dhcp_info_t {
+	char const		*name;
 	int			argc;
 	char			**argv;
 	rlm_isc_dhcp_info_t	*child;
@@ -97,7 +98,7 @@ typedef int (*rlm_isc_dhcp_parse_t)(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhc
 
 typedef struct rlm_isc_dhcp_cmd_t {
 	char const		*name;
-	rlm_isc_dhcp_parse_t  	*parse;
+	rlm_isc_dhcp_parse_t	parse;
 	int			max_argc;
 } rlm_isc_dhcp_cmd_t;
 
@@ -346,11 +347,13 @@ redo:
 
 static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_isc_dhcp_info_t *info)
 {
-	int rcode;
+	int rcode, type;
 	bool semicolon = false;
 	char *p;
 	char const *q = cmd;
 	char const *next;
+	char type_name[64];
+	fr_value_box_t box;
 
 	while (isspace((int) *q)) q++;
 
@@ -422,14 +425,25 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		return 2;	/* SECTION */
 	}
 
-	/*
-	 *	@todo - validate the string against the given data
-	 *	type, and error out if it doesn't match.
-	 */
+	p = type_name;
+	while (*q && !isspace((int) *q)) {
+		*(p++) = tolower((int) *(q++));
+	}
+
+	type = fr_str2int(fr_value_box_type_names, type_name, -1);
+	if (type < 0) {
+		fr_strerror_printf("Unknown data type %s", cmd);
+		return -1;
+	}
+
 	rcode = read_token(state, T_DOUBLE_QUOTED_STRING, semicolon, false);
 	if (rcode <= 0) return rcode;
 
 	IDEBUG("... DATA %.*s ", state->token.len, state->token.name);
+
+	rcode = fr_value_box_from_str(info, &box, (fr_type_t *) &type, NULL,
+				      state->token.name, state->token.len, 0, false);
+	if (rcode < 0) return rcode;
 
 	info->argv[info->argc++] = talloc_strndup(info, state->token.name, state->token.len);
 
