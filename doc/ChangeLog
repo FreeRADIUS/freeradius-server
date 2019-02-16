@@ -72,7 +72,6 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Update docker scripts.  Fixes #2306.
 	  Patch from Matthew Newton.
 	* Add crypt xlat.
-	* Fix reconnect correctly in rlm_sql_mysql.
 	* MySQL connections can now skip verifying the server
 	  certificate.  Fixes #2481.  See mods-available/sql
 	* Add better mechanism to detect MariaDB (Old MySQL).
@@ -136,6 +135,7 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Fix crash / timer issues with many CoA packets.
 	* Fix attr_filter so that it does not treat
 	  vendor attributes of number 26 as Vendor-Specific.
+	* Fix reconnect correctly in rlm_sql_mysql.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
