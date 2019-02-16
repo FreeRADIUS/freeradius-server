@@ -152,6 +152,27 @@ if test x$with_[]modname != xno; then
 	    fi
 	fi
 
+	dnl # Check for MariaDB
+	dnl # If that's not available check for libmariadb
+	if test "x$have_a_libmysqlclient" != "xyes"; then
+		mysql_libs="$(mariadb_config --libs)"
+		old_LIBS="$LIBS"
+		LIBS="$mysql_libs $LIBS"
+
+		AC_MSG_CHECKING([for mysql_init in -lmariadb (using mariadb_config)])
+		AC_TRY_LINK_FUNC([mysql_init], [have_libmysqlclient=yes])
+
+		LIBS="$old_LIBS"
+		if test "x$have_libmysqlclient" = "xyes"; then
+			AC_MSG_RESULT(yes)
+
+			have_a_libmysqlclient=yes
+			SMART_LIBS="$mysql_libs $SMART_LIBS"
+		else
+			AC_MSG_RESULT(no)
+		fi
+	fi
+
 	if test "x$have_a_libmysqlclient" != "xyes"; then
 		AC_MSG_WARN([MySQL libraries not found. Use --with-mysql-lib-dir=<path>.])
 		fail="$fail libmysqlclient || libmysqlclient_r"
@@ -176,6 +197,35 @@ if test x$with_[]modname != xno; then
 			mod_cflags="$(mysql_config --include)"
 			CFLAGS="$old_CFLAGS $mod_cflags"
 			AC_MSG_CHECKING([for mysql.h (using mysql_config --include)])
+			AC_TRY_COMPILE([#include <mysql.h>], [int a = 1;], have_mysql_h=yes)
+			if test "x$have_mysql_h" = "xyes"; then
+				AC_MSG_RESULT(yes)
+				AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
+				SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
+			else
+				AC_MSG_RESULT(no)
+			fi
+		fi
+		CFLAGS="$old_CFLAGS"
+    fi
+
+    # MariaDB
+    if test "x$have_mysql_h" != "xyes"; then
+		mod_cflags="$(mariadb_config --cflags)"
+		old_CFLAGS="$CFLAGS"
+		CFLAGS="$CFLAGS $mod_cflags"
+		AC_MSG_CHECKING([for mysql.h (using mariadb_config --cflags)])
+		AC_TRY_COMPILE([#include <mysql.h>], [int a = 1;], have_mysql_h=yes)
+		if test "x$have_mysql_h" = "xyes"; then
+			AC_MSG_RESULT(yes)
+			AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
+			SMART_CPPFLAGS="$SMART_CPPFLAGS $mod_cflags"
+		else
+			AC_MSG_RESULT(no)
+
+			mod_cflags="$(mariadb_config --include)"
+			CFLAGS="$old_CFLAGS $mod_cflags"
+			AC_MSG_CHECKING([for mysql.h (using mariadb_config --include)])
 			AC_TRY_COMPILE([#include <mysql.h>], [int a = 1;], have_mysql_h=yes)
 			if test "x$have_mysql_h" = "xyes"; then
 				AC_MSG_RESULT(yes)
