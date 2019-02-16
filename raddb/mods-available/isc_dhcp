@@ -1,0 +1,25 @@
+#  -*- text -*-
+#
+#  :toc:
+#
+#  $Id$
+
+#######################################################################
+#
+#  = isc_dhcp Module
+#
+#  The `isc_dhcp` module reads ISC DHCO configuration files.
+#
+#  NOTE: The module currently does nothing, and only parses a tiny
+#  subset of the ISC DHCP configurationf ile format.
+#
+
+#
+#  ## Default instance
+#
+isc_dhcp {
+	#
+	#  filename:: The ISC DHCP configuration file
+	#
+	filename = ${moddir}/dhcpd.conf
+}
