@@ -466,11 +466,21 @@ static int include_filename(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, ch
 	int rcode;
 	char *p, pathname[8192];
 
-	if ((name[0] == '/') ||
-	    ((name[0] == '.') && (name[1] == '.'))) {
+	if (name[0] == '/') {
+	insecure:
 		fr_strerror_printf("Error in file %s at line %d: invalid (insecure) filename",
 				   state->filename, state->lineno);
 		return -1;
+	}
+
+	/*
+	 *	There's no real reason to ban this, but it's
+	 *	reasonable practice.
+	 */
+	for (p = strchr(name, '.');
+	     p != NULL;
+	     p = strchr(p + 1, '.')) {
+		if (p[1] == '.') goto insecure;
 	}
 
 	IDEBUG("include %s ;", name);
@@ -479,11 +489,18 @@ static int include_filename(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, ch
 	if (p) {
 		strlcpy(pathname, state->filename, sizeof(pathname));
 		p = pathname + (p - state->filename) + 1;
+		strlcpy(p, name, sizeof(pathname) - (p - pathname));
+
+		rcode = read_file(ctx, pathname, state->debug, last);
+
+	} else {
+		/*
+		 *	No '/' in the input filename, just use the one
+		 *	we're given as-is.
+		 */
+		rcode = read_file(ctx, name, state->debug, last);
 	}
 
-	strlcpy(p, name, sizeof(pathname) - (p - pathname));
-
-	rcode = read_file(ctx, pathname, state->debug, last);
 	if (rcode < 0) return rcode;
 
 	return 1;
