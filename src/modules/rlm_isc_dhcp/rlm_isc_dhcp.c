@@ -102,7 +102,6 @@ typedef struct rlm_isc_dhcp_cmd_t {
 	int			max_argc;
 } rlm_isc_dhcp_cmd_t;
 
-static const rlm_isc_dhcp_cmd_t top_keywords[];
 static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug);
 static int parse_section(rlm_isc_dhcp_info_t *self, rlm_isc_dhcp_tokenizer_t *state);
 
@@ -652,10 +651,12 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		 *	from, we can point to the filename herein..
 		 */
 		rcode = include_filename(parent, state, (*last)->argv[0]);
-		if (rcode <= 0) return 0;
+		if (rcode <= 0) return rcode;
 
 		return 1;
 	}
+
+	DEBUG("input '%.*s' did not match anything", state->token.len, state->token.name);
 
 	/*
 	 *	No match.
@@ -663,94 +664,56 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	return 0;
 }
 
-static const rlm_isc_dhcp_cmd_t section_commands[] = {
+static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "adandon-lease-time INTEGER", NULL, 1},
 	{ "adaptive-lease-time-threshold INTEGER", NULL, 1},
 	{ "always-broadcast BOOL", NULL, 1},
 	{ "fixed-address STRING", NULL, 1},
 	{ "hardware ethernet ETHER", NULL, 1},
+	{ "host STRING SECTION", NULL, 1},
 	{ NULL, NULL }
 };
 
 static int parse_section(rlm_isc_dhcp_info_t *self, rlm_isc_dhcp_tokenizer_t *state)
 {
 	int rcode;
+	int entries = 0;
 
 	IDEBUG("{");
+	state->allow_eof = false; /* can't have EOF in the middle of a section */
 
 	while (true) {
 		rcode = read_token(state, T_BARE_WORD, true, true);
-		if (rcode <= 0) return rcode;
+		if (rcode < 0) return rcode;
+		if (rcode == 0) break;
 
 		/*
 		 *	End of section is allowed here.
 		 */
 		if (*state->token.name == '}') break;
 
-		rcode = match_keyword(self, state, section_commands);
-		if (rcode <= 0) return rcode;
+		rcode = match_keyword(self, state, commands);
+		if (rcode < 0) return rcode;
+		if (rcode == 0) break;
+
+		entries = 1;
 	}
+
+	state->allow_eof = (state->braces == 0);
 
 	IDEBUG("}");
 
-	return 1;
+	return entries;
 }
 
-
-static const rlm_isc_dhcp_cmd_t top_keywords[] = {
-	{ "host STRING SECTION", NULL, 1},
-	{ NULL, NULL }
-};
-
-/*
- *	Match a top-level keyword
- *
- *	There's likly not a lot of reason for this... the instantiate
- *	function could likely just call include_filename() instead.
- */
-static int match_top_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens)
-{
-	int rcode;
-
-	/*
-	 *	Fill the buffer, and grab the length of the first word
-	 *	in it.  As a hack, we allow for terminal words here,
-	 *	and then check them later.
-	 */
-	state->allow_eof = true;
-	rcode = read_token(state, T_BARE_WORD, true, false);
-	if (rcode <= 0) return rcode;
-
-	if (!isalpha((int) *state->token.name)) {
-		fr_strerror_printf("Unexpected text '%.*s' in file %s line %d",
-				   state->token.len, state->token.name,
-				   state->filename, state->lineno);
-		return -1;
-	}
-
-	rcode = match_keyword(parent, state, tokens);
-	if (rcode < 0) return rcode;
-
-	if (rcode == 0) {
-		fr_strerror_printf("Unknown keyword '%.*s' in file %s line %d",
-				   state->token.len, state->token.name,
-				   state->filename, state->lineno);
-		return -1;
-	}
-
-	/*
-	 *	Don't allow EOF when parsing blocks of text.
-	 */
-	state->allow_eof = false;
-	return 1;
-}
 
 static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug)
 {
+	int rcode;
 	FILE *fp;
-	char buffer[8192];
 	rlm_isc_dhcp_tokenizer_t state;
 	rlm_isc_dhcp_info_t **last = parent->last;
+	char buffer[8192];
 
 	/*
 	 *	Read the file line by line.
@@ -775,6 +738,7 @@ static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool deb
 	state.ptr = buffer;
 
 	state.debug = debug;
+	state.allow_eof = true;
 
 	/*
 	 *	Tell the state machine that the buffer is empty.
@@ -782,24 +746,22 @@ static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool deb
 	*state.ptr = '\0';
 
 	while (true) {
-		int rcode;
+		rcode = read_token(&state, T_BARE_WORD, true, false);
+		if (rcode < 0) {
+		fail:
+			fclose(fp);
+			return rcode;
+		}
+		if (rcode == 0) break;
 
 		/*
 		 *	This will automatically re-fill the buffer,
 		 *	and find a matching token.
 		 */
-		rcode = match_top_keyword(parent, &state, top_keywords);
-		if (rcode < 0) {
-			fclose(fp);
-			return -1;
-		}
-
-		if (rcode == 0) {
-			break;
-		}
+		rcode = match_keyword(parent, &state, commands);
+		if (rcode < 0) goto fail;
+		if (rcode == 0) break;
 	}
-
-	// @todo - check that we actually did something
 
 	fclose(fp);
 
