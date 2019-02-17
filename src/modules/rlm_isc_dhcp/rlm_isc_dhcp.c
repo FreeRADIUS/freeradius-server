@@ -67,31 +67,6 @@ static const CONF_PARSER module_config[] = {
  *	from full files, and empty subsections from full sections, etc.
  */
 
-/** Holds information about the thing we parsed.
- *
- *	Note that this parser is forgiving.  We would rather accept
- *	things ISC DHCP doesn't accept, than reject things it accepts.
- *
- *	Since we only implement a tiny portion of it's configuration,
- *	we tend to accept all kinds of things, and then just ignore them.
- */
-struct rlm_isc_dhcp_info_t {
-	char const		*name;
-	int			argc;
-	fr_value_box_t 		**argv;
-
-	rlm_isc_dhcp_info_t	*parent;
-	rlm_isc_dhcp_info_t	*next;
-	void			*data;		//!< per-thing parsed data.
-
-	/*
-	 *	Only for things that have sections
-	 */
-	fr_hash_table_t		*host_table;	//!< by MAC address
-	rlm_isc_dhcp_info_t	*child;
-	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
-};
-
 /**  Holds the state of the current tokenizer
  *
  */
@@ -115,7 +90,7 @@ typedef struct rlm_isc_dhcp_tokenizer_t {
 } rlm_isc_dhcp_tokenizer_t;
 
 typedef int (*rlm_isc_dhcp_parse_t)(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
-typedef int (*rlm_isc_dhcp_eval_t)(REQUEST *request, rlm_isc_dhcp_info_t *info);
+typedef int (*rlm_isc_dhcp_apply_t)(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *info);
 
 /** Describes the commands that we accept, including it's syntax (i.e. name), etc.
  *
@@ -123,12 +98,38 @@ typedef int (*rlm_isc_dhcp_eval_t)(REQUEST *request, rlm_isc_dhcp_info_t *info);
 typedef struct rlm_isc_dhcp_cmd_t {
 	char const		*name;
 	rlm_isc_dhcp_parse_t	parse;
-	rlm_isc_dhcp_eval_t	eval;
+	rlm_isc_dhcp_apply_t	apply;
 	int			max_argc;
 } rlm_isc_dhcp_cmd_t;
 
+/** Holds information about the thing we parsed.
+ *
+ *	Note that this parser is forgiving.  We would rather accept
+ *	things ISC DHCP doesn't accept, than reject things it accepts.
+ *
+ *	Since we only implement a tiny portion of it's configuration,
+ *	we tend to accept all kinds of things, and then just ignore them.
+ */
+struct rlm_isc_dhcp_info_t {
+	rlm_isc_dhcp_cmd_t const *cmd;
+	int			argc;
+	fr_value_box_t 		**argv;
+
+	rlm_isc_dhcp_info_t	*parent;
+	rlm_isc_dhcp_info_t	*next;
+	void			*data;		//!< per-thing parsed data.
+
+	/*
+	 *	Only for things that have sections
+	 */
+	fr_hash_table_t		*host_table;	//!< by MAC address
+	rlm_isc_dhcp_info_t	*child;
+	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
+};
+
 static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug);
 static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
+static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *head);
 
 /** Refills the read buffer with one line from the file.
  *
@@ -608,7 +609,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		 *	Remember which command we parsed.
 		 */
 		info->parent = parent;
-		info->name = tokens[i].name;
+		info->cmd = &tokens[i];
 		info->last = &(info->child);
 
 		/*
@@ -649,12 +650,30 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		 *	Call the "parse" function which should do
 		 *	validation, etc.
 		 */
+		rcode = 0;
 		if (tokens[i].parse) {
 			rcode = tokens[i].parse(state, info);
 			if (rcode <= 0) {
 				talloc_free(info);
 				return rcode;
 			}
+
+			/*
+			 *	The parse function took care of
+			 *	remembering the "info" structure.  So
+			 *	we don't add it to the parent list.
+			 *
+			 *	This process ensures that for some
+			 *	things (e.g. hosts and subnets), we
+			 *	have have O(1) lookups instead of
+			 *	O(N).
+			 *
+			 *	It also means that the *rest* of the
+			 *	commands we parse are in a relatively
+			 *	tiny list, which makes the O(N)
+			 *	processing of it fairly minor.
+			 */
+			if (rcode == 2) return 1;
 		}
 
 		/*
@@ -679,24 +698,30 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	return 0;
 }
 
+typedef struct isc_host_t {
+	uint8_t			ether[6];
+	rlm_isc_dhcp_info_t	*info;
+} isc_host_t;
+
 static uint32_t host_hash(void const *data)
 {
-	rlm_isc_dhcp_info_t const *info = data;
+	isc_host_t const *host = data;
 
-	return fr_hash(info->data, 6);
+	return fr_hash(host->ether, sizeof(host->ether));
 }
 
 static int host_cmp(void const *one, void const *two)
 {
-	rlm_isc_dhcp_info_t const *a = one;
-	rlm_isc_dhcp_info_t const *b = two;
+	isc_host_t const *a = one;
+	isc_host_t const *b = two;
 
-	return memcmp(a->data, b->data, 6);
+	return memcmp(a->ether, b->ether, 6);
 }
 
 static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
-	rlm_isc_dhcp_info_t *old, *child;
+	isc_host_t *host, *old;
+	rlm_isc_dhcp_info_t *child, *parent;
 
 	/*
 	 *	A host MUST have at least one "hardware ethernet" in
@@ -709,7 +734,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 		 *	@todo - Use enums or something.  Yes, this is
 		 *	fugly.
 		 */
-		if (strncmp(child->name, "hardware ethernet ", 18) == 0) {
+		if (strncmp(child->cmd->name, "hardware ethernet ", 18) == 0) {
 			break;
 		}
 	}
@@ -723,21 +748,25 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	/*
 	 *	Point directly to the ethernet address.
 	 */
-	info->data = &(child->argv[0]->vb_ether);
+	host = talloc_zero(info, isc_host_t);
+	memcpy(host->ether, &(child->argv[0]->vb_ether), sizeof(host->ether));
+	host->info = info;
 
-	if (!info->host_table) {
-		info->host_table = fr_hash_table_create(info, host_hash, host_cmp, NULL);
-		if (!info->host_table) return -1;
+	parent = info->parent;
+
+	if (!parent->host_table) {
+		parent->host_table = fr_hash_table_create(parent, host_hash, host_cmp, NULL);
+		if (!parent->host_table) return -1;
 	}
 
-	old = fr_hash_table_finddata(info->host_table, info);
+	old = fr_hash_table_finddata(parent->host_table, host);
 	if (old) {
 		fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'hardware ethernet' fields",
-				   info->argv[0]->vb_strvalue, old->argv[0]->vb_strvalue);
+				   info->argv[0]->vb_strvalue, old->info->argv[0]->vb_strvalue);
 		return -1;
 	}
 
-	if (fr_hash_table_insert(info->host_table, info) < 0) {
+	if (fr_hash_table_insert(parent->host_table, host) < 0) {
 		fr_strerror_printf("Failed inserting 'host %s' into hash table",
 				   info->argv[0]->vb_strvalue);
 		return -1;
@@ -745,20 +774,79 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 
 	IDEBUG("host %s { ... }", info->argv[0]->vb_strvalue);
 
-	return 1;
+	/*
+	 *	We've remembered the host in the parent host_table.
+	 *	There's no need to add it to the linked list here.
+	 */
+	return 2;
 }
+
+/*
+ *	Apply functions
+ */
+static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *head)
+{
+	int rcode, child_rcode;
+	rlm_isc_dhcp_info_t *info;
+
+	rcode = 0;
+
+	/*
+	 *	First, apply any "host" options
+	 */
+	if (head->host_table) {
+		isc_host_t *host, my_host;
+
+		// @todo - figure out what ether attribute to
+		// use... maybe in inst->ether, and copy it here.
+		memset(&my_host, 0, sizeof(my_host));
+
+		host = fr_hash_table_finddata(head->host_table, &my_host);
+		if (host) {
+			child_rcode = apply(inst, request, host->info);
+			if (child_rcode < 0) return child_rcode;
+			if (child_rcode == 1) rcode = 1;
+		}
+	}
+
+	for (info = head->child; info != NULL; info = info->next) {
+		if (!info->cmd) return -1; /* internal error */
+
+		if (!info->cmd->apply) continue;
+
+		child_rcode = info->cmd->apply(inst, request, info);
+		if (child_rcode < 0) return child_rcode;
+		if (child_rcode == 0) continue;
+
+		rcode = 1;
+	}
+
+	return rcode;
+}
+
 
 /** Table of commands that we allow.
  *
  */
 static const rlm_isc_dhcp_cmd_t commands[] = {
-	{ "adandon-lease-time INTEGER", NULL, NULL, 1},
+	{ "abandon-lease-time INTEGER",		NULL, NULL, 1},
 	{ "adaptive-lease-time-threshold INTEGER", NULL, NULL, 1},
-	{ "always-broadcast BOOL", NULL, NULL, 1},
-	{ "fixed-address STRING", NULL, NULL, 1},
-	{ "hardware ethernet ETHER", NULL, NULL, 1},
-	{ "host STRING SECTION", parse_host, NULL, 1},
-	{ "include STRING", parse_include, NULL, 1},
+	{ "always-broadcast BOOL",		NULL, NULL, 1},
+	{ "authoritative",			NULL, NULL, 0},
+	{ "default-lease-time INTEGER", 	NULL, NULL, 1},
+	{ "delayed-ack UINT16",			NULL, NULL, 1},
+	{ "filename STRING",			NULL, NULL, 1},
+	{ "fixed-address STRING",		NULL, NULL, 1},
+	{ "group SECTION",			NULL, NULL, 1},
+	{ "hardware ethernet ETHER",		NULL, NULL, 1},
+	{ "host STRING SECTION",		parse_host, NULL, 1},
+	{ "include STRING",			parse_include, NULL, 1},
+	{ "min-lease-time INTEGER",		NULL, NULL, 1},
+	{ "max-ack-delay UINT32",		NULL, NULL, 1},
+	{ "max-lease-time INTEGER",		NULL, NULL, 1},
+	{ "not authoritative",			NULL, NULL, 0},
+	{ "shared-network STRING SECTION",	NULL, NULL, 1},
+	{ "subnet IPADDR netmask IPADDR SECTION", NULL, NULL, 2},
 	{ NULL, NULL }
 };
 
@@ -893,6 +981,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return -1;
 }
 
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+{
+	int rcode;
+	rlm_isc_dhcp_t *inst = instance;
+
+	rcode = apply(inst, request, inst->head);
+	if (rcode < 0) return RLM_MODULE_FAIL;
+	if (rcode == 0) return RLM_MODULE_NOOP;
+
+	return RLM_MODULE_OK;
+}
 
 extern rad_module_t rlm_isc_dhcp;
 rad_module_t rlm_isc_dhcp = {
@@ -902,4 +1001,9 @@ rad_module_t rlm_isc_dhcp = {
 	.inst_size	= sizeof(rlm_isc_dhcp_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
+
+	.methods = {
+		[MOD_AUTHORIZE]	= mod_process,
+		[MOD_POST_AUTH]	= mod_process,
+	},
 };
