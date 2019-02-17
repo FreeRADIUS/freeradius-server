@@ -752,13 +752,21 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	memcpy(host->ether, &(child->argv[0]->vb_ether), sizeof(host->ether));
 	host->info = info;
 
+	/*
+	 *	Add the host to the *parents* hash table.  That way
+	 *	when we apply the parent, we can look up the host in
+	 *	its hash table.  And avoid the O(N) issue of having
+	 *	thousands of "host" entries in the parent->child list.
+	 */
 	parent = info->parent;
-
 	if (!parent->host_table) {
 		parent->host_table = fr_hash_table_create(parent, host_hash, host_cmp, NULL);
 		if (!parent->host_table) return -1;
 	}
 
+	/*
+	 *	Duplicate "host" entries aren't allowd.
+	 */
 	old = fr_hash_table_finddata(parent->host_table, host);
 	if (old) {
 		fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'hardware ethernet' fields",
