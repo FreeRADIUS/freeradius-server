@@ -1,0 +1,46 @@
+#
+#  The following policy is for RFC7542-style bang path
+#  management.
+#
+#  It hands control from the standard 'suffix' realm
+#  processor to the 'bangpath' processer, allowing the
+#  definition of specific routing information in the
+#  decoration of the User-Name.
+#
+#  Use this with caution. In particular, read the following
+#  RFC document sections for reasons why you shouldn't use
+#  this, and also why this is used:
+#
+#  1. https://tools.ietf.org/html/rfc4282#section-2.7
+#  2. https://tools.ietf.org/html/rfc7542#section-3.3.1
+#
+#	$Id$
+#
+
+#  This is a |-separated list of realms this specific service
+#  is responsible for. We cannot read this from the proxy.conf
+#  file, so we turn this into an 'or list' regex.
+#  Examples: rfc7542_realms = 'example.com'
+#            rfc7542_realms = 'example.com|another.net|this.org'
+#
+rfc7542_realms = 'changeme'
+
+#  This policy checks the User-Name attribute whether it is in
+#  RFC7542 bang-path format. If it is, it lets the bangpath realm
+#  processor handle it, otherwise it leaves it for suffix to handle
+#
+rfc7542.authorize {
+	# Format: not_local_realm!...@local_realm: Handle with bangpath
+	if ( (&request:User-Name =~ /(.+)!(.*)\@(${policy.rfc7542_realms})/) && \
+	    !(&request:User-Name =~ /(${policy.rfc7542_realms})!(.*)\@(.+)/) ) {
+		bangpath
+		updated
+	}
+
+	# Format: local_realm!...@not_local_realm: Handle with bangpath
+	elsif ( (&request:User-Name =~ /(${policy.rfc7542_realms})!(.*)\@(.+)/) && \
+	       !(&request:User-Name =~ /(.+)!(.*)\@(${policy.rfc7542_realms})/) ) {
+		bangpath
+		updated
+	}
+}
