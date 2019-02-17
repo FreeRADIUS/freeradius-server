@@ -68,11 +68,16 @@ typedef struct rlm_isc_dhcp_str_t {
 struct rlm_isc_dhcp_info_t {
 	char const		*name;
 	int			argc;
-	char			**argv;
+	fr_value_box_t 		**argv;
 
 	rlm_isc_dhcp_info_t	*parent;
-	rlm_isc_dhcp_info_t	*child;
 	rlm_isc_dhcp_info_t	*next;
+
+	/*
+	 *	Only for things that have sections
+	 */
+	fr_hash_table_t		*host_table;	//!< by MAC address
+	rlm_isc_dhcp_info_t	*child;
 	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
 };
 
@@ -352,7 +357,6 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	char const *q;
 	char const *next;
 	char type_name[64];
-	fr_value_box_t box;
 
 	while (isspace((int) *cmd)) cmd++;
 
@@ -444,11 +448,13 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 
 	IDEBUG("... DATA %.*s ", state->token.len, state->token.name);
 
-	rcode = fr_value_box_from_str(info, &box, (fr_type_t *) &type, NULL,
+	info->argv[info->argc] = talloc_zero(info, fr_value_box_t);
+
+	rcode = fr_value_box_from_str(info, info->argv[info->argc], (fr_type_t *) &type, NULL,
 				      state->token.name, state->token.len, 0, false);
 	if (rcode < 0) return rcode;
 
-	info->argv[info->argc++] = talloc_strndup(info, state->token.name, state->token.len);
+	info->argc++;
 
 	/*
 	 *	No more data, return OK.
@@ -560,7 +566,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 
 		info = talloc_zero(parent, rlm_isc_dhcp_info_t);
 		if (tokens[i].max_argc) {
-			info->argv = talloc_zero_array(info, char *, tokens[i].max_argc);
+			info->argv = talloc_zero_array(info, fr_value_box_t *, tokens[i].max_argc);
 		}
 
 		/*
@@ -650,7 +656,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		 *	if we care to note where each command came
 		 *	from, we can point to the filename herein..
 		 */
-		rcode = include_filename(parent, state, (*last)->argv[0]);
+		rcode = include_filename(parent, state, (*last)->argv[0]->vb_strvalue);
 		if (rcode <= 0) return rcode;
 
 		return 1;
