@@ -71,6 +71,7 @@ struct rlm_isc_dhcp_info_t {
 	char			**argv;
 	rlm_isc_dhcp_info_t	*child;
 	rlm_isc_dhcp_info_t	*next;
+	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
 };
 
 typedef struct rlm_isc_dhcp_tokenizer_t {
@@ -100,8 +101,8 @@ typedef struct rlm_isc_dhcp_cmd_t {
 } rlm_isc_dhcp_cmd_t;
 
 static const rlm_isc_dhcp_cmd_t top_keywords[];
-static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_dhcp_info_t **head);
-static int parse_section(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
+static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_dhcp_info_t *parent);
+static int parse_section(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *self);
 
 static int refill(rlm_isc_dhcp_tokenizer_t *state)
 {
@@ -347,18 +348,20 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	int rcode, type;
 	bool semicolon = false;
 	char *p;
-	char const *q = cmd;
+	char const *q;
 	char const *next;
 	char type_name[64];
 	fr_value_box_t box;
 
-	while (isspace((int) *q)) q++;
+	while (isspace((int) *cmd)) cmd++;
 
-	if (!*q) return -1;	/* internal error */
+	if (!*cmd) return -1;	/* internal error */
 
-	next = q;
+	next = cmd;
 	while (*next && !isspace((int) *next)) next++;
 	if (!*next) semicolon = true;
+
+	q = cmd;
 
 	if (islower((int) *q)) {
 		char const *start = q;
@@ -424,12 +427,14 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 
 	p = type_name;
 	while (*q && !isspace((int) *q)) {
+		if ((p - type_name) >= (int) sizeof(type_name)) return -1; /* internal error */
 		*(p++) = tolower((int) *(q++));
 	}
+	*p = '\0';
 
 	type = fr_str2int(fr_value_box_type_names, type_name, -1);
 	if (type < 0) {
-		fr_strerror_printf("Unknown data type %s", cmd);
+		fr_strerror_printf("Unknown data type '%s'", cmd);
 		return -1;
 	}
 
@@ -458,7 +463,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 /*
  *	include FILENAME ;
  */
-static int include_filename(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, char const *name, rlm_isc_dhcp_info_t **last)
+static int include_filename(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, char const *name, rlm_isc_dhcp_info_t *parent)
 {
 	int rcode;
 	char *p, pathname[8192];
@@ -488,14 +493,14 @@ static int include_filename(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, ch
 		p = pathname + (p - state->filename) + 1;
 		strlcpy(p, name, sizeof(pathname) - (p - pathname));
 
-		rcode = read_file(ctx, pathname, state->debug, last);
+		rcode = read_file(ctx, pathname, state->debug, parent);
 
 	} else {
 		/*
 		 *	No '/' in the input filename, just use the one
 		 *	we're given as-is.
 		 */
-		rcode = read_file(ctx, name, state->debug, last);
+		rcode = read_file(ctx, name, state->debug, parent);
 	}
 
 	if (rcode < 0) return rcode;
@@ -509,16 +514,16 @@ static const rlm_isc_dhcp_cmd_t include_keyword[] = {
 	{ NULL, NULL }
 };
 
-static int match_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens, rlm_isc_dhcp_info_t **last)
+static int match_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens, rlm_isc_dhcp_info_t *parent)
 {
 	int i;
-	rlm_isc_dhcp_info_t *info;
 
 	for (i = 0; tokens[i].name != NULL; i++) {
 		char const *q;
 		char *p;
 		bool semicolon;
 		int rcode;
+		rlm_isc_dhcp_info_t *info;
 
 		p = state->token.name;
 
@@ -561,6 +566,7 @@ static int match_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_i
 		 *	Remember which command we parsed.
 		 */
 		info->name = tokens[i].name;
+		info->last = &(info->child);
 
 		/*
 		 *	There's more to this command,
@@ -610,10 +616,11 @@ static int match_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_i
 
 		/*
 		 *	Add the parsed structure to the tail of the
-		 *	current list.  Note that we can only add ONE
-		 *	command at a time.
+		 *	current list.  Note that this portion adds
+		 *	only ONE command at a time.
 		 */
-		*last = info;
+		*(parent->last) = info;
+		parent->last = &(info->next);
 
 		/*
 		 *	It's a match, and it's OK.
@@ -628,15 +635,14 @@ static int match_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_i
 	 */
 	if ((state->token.len == 7) && (strncmp(state->token.name, "include", 7) == 0)) {
 		int rcode;
+		rlm_isc_dhcp_info_t **last = parent->last;
 
-		rcode = match_keyword(ctx, state, include_keyword, last);
+		rcode = match_keyword(ctx, state, include_keyword, parent);
 		if (rcode <= 0) return rcode;
 
-		info = *last;
-		*last = NULL;
+		rad_assert(*last != NULL);
 
-		rcode = include_filename(ctx, state, info->argv[0], last);
-		talloc_free(info);
+		rcode = include_filename(ctx, state, (*last)->argv[0], parent);
 		if (rcode <= 0) return 0;
 
 		return 1;
@@ -657,15 +663,13 @@ static const rlm_isc_dhcp_cmd_t section_commands[] = {
 	{ NULL, NULL }
 };
 
-static int parse_section(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+static int parse_section(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *self)
 {
 	int rcode;
 
 	IDEBUG("{");
 
 	while (true) {
-		rlm_isc_dhcp_info_t **last = &(info->child);
-
 		rcode = read_token(state, T_BARE_WORD, true, true);
 		if (rcode <= 0) return rcode;
 
@@ -674,11 +678,8 @@ static int parse_section(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_i
 		 */
 		if (*state->token.name == '}') break;
 
-		rcode = match_keyword(ctx, state, section_commands, last);
+		rcode = match_keyword(ctx, state, section_commands, self);
 		if (rcode <= 0) return rcode;
-
-		rad_assert(*last != NULL);
-		while (*last) last = &((*last)->next);
 	}
 
 	IDEBUG("}");
@@ -696,7 +697,7 @@ static const rlm_isc_dhcp_cmd_t top_keywords[] = {
  *	Match a top-level keyword
  */
 static int match_top_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens,
-			     rlm_isc_dhcp_info_t **last)
+			     rlm_isc_dhcp_info_t *parent)
 {
 	int rcode;
 
@@ -716,7 +717,7 @@ static int match_top_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, r
 		return -1;
 	}
 
-	rcode = match_keyword(ctx, state, tokens, last);
+	rcode = match_keyword(ctx, state, tokens, parent);
 	if (rcode < 0) return rcode;
 
 	if (rcode == 0) {
@@ -733,13 +734,12 @@ static int match_top_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, r
 	return 1;
 }
 
-static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_dhcp_info_t **phead)
+static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_dhcp_info_t *parent)
 {
 	FILE *fp;
 	char buffer[8192];
 	rlm_isc_dhcp_tokenizer_t state;
-	rlm_isc_dhcp_info_t **last;
-	rlm_isc_dhcp_info_t *head;
+	rlm_isc_dhcp_info_t **last = parent->last;
 
 	/*
 	 *	Read the file line by line.
@@ -763,9 +763,6 @@ static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_
 	state.braces = 0;
 	state.ptr = buffer;
 
-	head = NULL;
-	last = &head;
-
 	state.debug = debug;
 
 	/*
@@ -780,7 +777,7 @@ static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_
 		 *	This will automatically re-fill the buffer,
 		 *	and find a matching token.
 		 */
-		rcode = match_top_keyword(ctx, &state, top_keywords, last);
+		rcode = match_top_keyword(ctx, &state, top_keywords, parent);
 		if (rcode < 0) {
 			fclose(fp);
 			return -1;
@@ -789,17 +786,17 @@ static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_
 		if (rcode == 0) {
 			break;
 		}
-
-		while (*last) last = &((*last)->next);
 	}
 
 	// @todo - check that we actually did something
 
 	fclose(fp);
 
-	*phead = head;
-
-	if (!head) return 0;
+	/*
+	 *	The input "last" pointer didn't change, so we didn't
+	 *	read anything.
+	 */
+	if (!*last) return 0;
 
 	return 1;
 }
@@ -819,11 +816,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	int rcode;
 	rlm_isc_dhcp_t *inst = instance;
-	
+	rlm_isc_dhcp_info_t *info;
+
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	rcode = read_file(inst, inst->filename, inst->debug, &inst->head);
+	inst->head = info = talloc_zero(inst, rlm_isc_dhcp_info_t);
+	info->last = &(info->child);
+
+	rcode = read_file(inst, inst->filename, inst->debug, info);
 	if (rcode < 0) {
 		cf_log_err(conf, "%s", fr_strerror());
 		return -1;
