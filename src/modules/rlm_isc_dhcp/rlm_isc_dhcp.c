@@ -76,6 +76,9 @@ static const CONF_PARSER module_config[] = {
  *	we tend to accept all kinds of things, and then just ignore them.
  */
 struct rlm_isc_dhcp_info_t {
+	/*
+	 * Internal control
+	 */
 	char const		*name;
 	int			argc;
 	fr_value_box_t 		**argv;
@@ -83,13 +86,13 @@ struct rlm_isc_dhcp_info_t {
 	rlm_isc_dhcp_info_t	*parent;
 	rlm_isc_dhcp_info_t	*next;
 	void			*data;		//!< per-thing parsed data.
+	rlm_isc_dhcp_info_t	*child;
+	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
 
 	/*
 	 *	Only for things that have sections
 	 */
 	fr_hash_table_t		*host_table;	//!< by MAC address
-	rlm_isc_dhcp_info_t	*child;
-	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
 };
 
 /**  Holds the state of the current tokenizer
@@ -376,7 +379,6 @@ redo:
 			return -1;
 		}
 	}
-
 
 	return 1;
 }
@@ -890,9 +892,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	return -1;
+	return 0;
 }
-
 
 extern rad_module_t rlm_isc_dhcp;
 rad_module_t rlm_isc_dhcp = {
