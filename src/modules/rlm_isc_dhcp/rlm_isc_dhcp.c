@@ -57,13 +57,23 @@ static const CONF_PARSER module_config[] = {
 
 #define IDEBUG if (state->debug) DEBUG
 
-typedef struct rlm_isc_dhcp_str_t {
-	char		*name;
-	int		len;
-} rlm_isc_dhcp_str_t;
-
 /*
- *	A struct that holds information about the thing we parsed.
+ *	The parsing functions return:
+ *	  <0 on error
+ *	   0 for "I did nothing"
+ *	   1 for "I did something"
+ *
+ *	This pattern allows us to distinguish things like empty files
+ *	from full files, and empty subsections from full sections, etc.
+ */
+
+/** Holds information about the thing we parsed.
+ *
+ *	Note that this parser is forgiving.  We would rather accept
+ *	things ISC DHCP doesn't accept, than reject things it accepts.
+ *
+ *	Since we only implement a tiny portion of it's configuration,
+ *	we tend to accept all kinds of things, and then just ignore them.
  */
 struct rlm_isc_dhcp_info_t {
 	char const		*name;
@@ -82,35 +92,49 @@ struct rlm_isc_dhcp_info_t {
 	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
 };
 
+/**  Holds the state of the current tokenizer
+ *
+ */
 typedef struct rlm_isc_dhcp_tokenizer_t {
 	FILE		*fp;
 	char const	*filename;
 	int		lineno;
 
-	int		braces;
-	bool		semicolon;
-	bool		eof;
-	bool		allow_eof;
-	bool		debug;
+	int		braces;		//!< how many levels deep we are in a { ... }
+	bool		semicolon;	//!< whether we saw a semicolong
+	bool		eof;		//!< are we at EOF?
+	bool		allow_eof;	//!< do we allow EOF?  (i.e. braces == 0)
+	bool		debug;		//!< internal developer debugging
 
-	char		*buffer;
-	size_t		bufsize;
-	char		*ptr;
+	char		*buffer;	//!< read buffer
+	size_t		bufsize;	//!< size of read buffer
+	char		*ptr;		//!< pointer into read buffer
 
-	rlm_isc_dhcp_str_t token;
+	char		*token;		//!< current token that we parsed
+	int		token_len;	//!< length of the token
 } rlm_isc_dhcp_tokenizer_t;
 
 typedef int (*rlm_isc_dhcp_parse_t)(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
+typedef int (*rlm_isc_dhcp_eval_t)(REQUEST *request, rlm_isc_dhcp_info_t *info);
 
+/** Describes the commands that we accept, including it's syntax (i.e. name), etc.
+ *
+ */
 typedef struct rlm_isc_dhcp_cmd_t {
 	char const		*name;
 	rlm_isc_dhcp_parse_t	parse;
+	rlm_isc_dhcp_eval_t	eval;
 	int			max_argc;
 } rlm_isc_dhcp_cmd_t;
 
 static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug);
-static int parse_section(rlm_isc_dhcp_info_t *self, rlm_isc_dhcp_tokenizer_t *state);
+static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
 
+/** Refills the read buffer with one line from the file.
+ *
+ *	This function also takes care of suppressing blank lines, and
+ *	lines which only contain comments.
+ */
 static int refill(rlm_isc_dhcp_tokenizer_t *state)
 {
 	char *p;
@@ -118,7 +142,8 @@ static int refill(rlm_isc_dhcp_tokenizer_t *state)
 	if (state->eof) return 0;
 
 	/*
-	 *	We've hit EOL, refill the buffer with text.
+	 *	We've run out of data to parse, reset to the start of
+	 *	the buffer.
 	 */
 	if (!*state->ptr) state->ptr = state->buffer;
 
@@ -153,7 +178,8 @@ redo:
 	return 1;
 }
 
-/*
+/** Reads one token into state->token
+ *
  *	Note that this function *destroys* the input buffer.  So if
  *	you need to read two tokens, you have to save the first one
  *	somewhere *outside* of the input buffer.
@@ -170,12 +196,6 @@ redo:
 	if (!*state->ptr) {
 		int rcode;
 		
-		/*
-		 *	Read the next line into the start of the
-		 *	buffer.
-		 */
-		state->ptr = state->buffer;
-
 		rcode = refill(state);
 		if (rcode < 0) return rcode;
 
@@ -188,31 +208,31 @@ redo:
 
 			return 0;
 		}
-
-	} else {
-		/*
-		 *	The previous token may have ended on a space
-		 *	or semi-colon.  We skip those characters
-		 *	before looking for the next token.
-		 */
-		while (isspace((int) *state->ptr) || (*state->ptr == ';')) state->ptr++;
-
-		if (!*state->ptr) goto redo;
 	}
+
+	/*
+	 *	The previous token may have ended on a space
+	 *	or semi-colon.  We skip those characters
+	 *	before looking for the next token.
+	 */
+	while (isspace((int) *state->ptr) || (*state->ptr == ';')) state->ptr++;
+
+	if (!*state->ptr) goto redo;
 
 	/*
 	 *	Start looking for the next token from where we left
 	 *	off last time.
 	 */
-	state->token.name = state->ptr;
+	state->token = state->ptr;
 	state->semicolon = false;
 
 	/*
-	 *	The "skip spaces at the end" may mangle this.
+	 *	Remember which line this input was read from.  Any
+	 *	refill later will change the line number.
 	 */
 	lineno = state->lineno;
 
-	for (p = state->token.name; *p != '\0'; p++) {
+	for (p = state->token; *p != '\0'; p++) {
 		/*
 		 *	"end of word" character.  It might be allowed
 		 *	here, or it might not be.
@@ -230,13 +250,12 @@ redo:
 		}
 
 		/*
-		 *	These are also "end of word" markers.
-		 *
-		 *	Allow them as single character tokens if
-		 *	they're the first thing we saw.
+		 *	Allow braces as single character tokens if
+		 *	they're the first character we saw.
+		 *	Otherwise, they are "end of word" markers/
 		 */
 		if ((*p == '{') || (*p == '}')) {
-			if (p == state->token.name) p++;
+			if (p == state->token) p++;
 
 			state->ptr = p;
 			break;
@@ -253,7 +272,7 @@ redo:
 			/*
 			 *	Nothing here, get more text
 			 */
-			if (state->token.name == state->ptr) goto redo;
+			if (state->token == state->ptr) goto redo;
 			break;
 		}
 
@@ -294,9 +313,12 @@ redo:
 		}
 	}
 
-	state->token.len = p - state->token.name;
+	/*
+	 *	Protect the rest of the code from buffer overflows.
+	 */
+	state->token_len = p - state->token;
 
-	if (state->token.len >= 256) {
+	if (state->token_len >= 256) {
 		fr_strerror_printf("Token too large");
 		return -1;
 	}
@@ -306,7 +328,7 @@ redo:
 	 *	to read.
 	 */
 	if (hint == T_LCBRACE) {
-		if (*state->token.name != '{') {
+		if (*state->token != '{') {
 			fr_strerror_printf("Failed reading %s line %d - Missing '{'",
 					   state->filename, lineno);
 			return -1;
@@ -317,7 +339,7 @@ redo:
 	}
 
 	if (hint == T_RCBRACE) {
-		if (*state->token.name != '}') {
+		if (*state->token != '}') {
 			fr_strerror_printf("Failed reading %s line %d - Missing '}'",
 					   state->filename, lineno);
 			return -1;
@@ -327,7 +349,12 @@ redo:
 		return 1;
 	}
 
-	if (*state->token.name == '}') {
+	/*
+	 *	If we're inside of a section, we may also allow
+	 *	right-brace as the first keyword.  In that case, it's
+	 *	the end of the enclosing section.
+	 */
+	if (*state->token == '}') {
 		if (!allow_rcbrace) {
 			fr_strerror_printf("Failed reading %s line %d - Unexpected '}'",
 					   state->filename, lineno);
@@ -338,8 +365,12 @@ redo:
 		return 1;
 	}
 
+	/*
+	 *	Don't return left brace if we were looking for a
+	 *	something else.
+	 */
 	if ((hint == T_BARE_WORD) || (hint == T_DOUBLE_QUOTED_STRING)) {
-		if (*state->token.name == '{') {
+		if (*state->token == '{') {
 			fr_strerror_printf("Failed reading %s line %d - Unexpected '{'",
 					   state->filename, lineno);
 			return -1;
@@ -350,6 +381,9 @@ redo:
 	return 1;
 }
 
+/** Recursively match subwords inside of a command string.
+ *
+ */
 static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_isc_dhcp_info_t *info)
 {
 	int rcode, type;
@@ -363,12 +397,18 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 
 	if (!*cmd) return -1;	/* internal error */
 
+	/*
+	 *	Remember the next command.
+	 */
 	next = cmd;
 	while (*next && !isspace((int) *next)) next++;
 	if (!*next) semicolon = true;
 
 	q = cmd;
 
+	/*
+	 *	Matching an in-line word.
+	 */
 	if (islower((int) *q)) {
 		char const *start = q;
 
@@ -378,11 +418,11 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		/*
 		 *	Look for a verbatim word.
 		 */
-		for (p = state->token.name; p < (state->token.name + state->token.len); p++, q++) {
+		for (p = state->token; p < (state->token + state->token_len); p++, q++) {
 			if (*p != *q) {
 			fail:
 				fr_strerror_printf("Expected '%s', not '%.*s'",
-						   start, state->token.len, state->token.name);
+						   start, state->token_len, state->token);
 				return -1;
 			}
 		}
@@ -391,16 +431,16 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		 *	Matched all of 'q', we're done.
 		 */
 		if (!*q) {
-			IDEBUG("... WORD %.*s ", state->token.len, state->token.name);
+			IDEBUG("... WORD %.*s ", state->token_len, state->token);
 			return 1;
 		}
 
 		/*
-		 *	Matched all of this word of 'q', but there's
-		 *	more.  Recurse.
+		 *	Matched all of this word in 'q', but there are
+		 *	more words after this one..  Recurse.
 		 */
 		if (isspace((int) *q)) {
-			return match_subword(state, q, info);
+			return match_subword(state, next, info);
 		}
 
 		/*
@@ -415,22 +455,24 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	 *	SECTION must be the last thing in the command
 	 */
 	if (strcmp(q, "SECTION") == 0) {
+		if (q[7] != '\0') return -1; /* internal error */
+
 		rcode = read_token(state, T_LCBRACE, false, false);
 		if (rcode <= 0) return rcode;
 
-		rcode = parse_section(info, state);
+		rcode = parse_section(state, info);
 		if (rcode < 0) return rcode;
 
 		/*
 		 *	Empty sections are allowed.
 		 */
-
-		q += 7;
-		if (*q != '\0') return -1; /* internal error */
-
 		return 2;	/* SECTION */
 	}
 
+	/*
+	 *	Uppercase words are INTEGER or STRING or IPADDR, which
+	 *	are FreeRADIUS data types.
+	 */
 	p = type_name;
 	while (*q && !isspace((int) *q)) {
 		if ((p - type_name) >= (int) sizeof(type_name)) return -1; /* internal error */
@@ -444,21 +486,31 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		return -1;
 	}
 
+	/*
+	 *	We were asked to parse a data type, so instead allow
+	 *	just about anything.
+	 *
+	 *	@todo - if we get fancy, dynamically expand this, too.
+	 *	ISC doesn't support it, but we can.
+	 */
 	rcode = read_token(state, T_DOUBLE_QUOTED_STRING, semicolon, false);
 	if (rcode <= 0) return rcode;
 
-	IDEBUG("... DATA %.*s ", state->token.len, state->token.name);
+	IDEBUG("... DATA %.*s ", state->token_len, state->token);
 
+	/*
+	 *	Parse the data to its final form.
+	 */
 	info->argv[info->argc] = talloc_zero(info, fr_value_box_t);
 
 	rcode = fr_value_box_from_str(info, info->argv[info->argc], (fr_type_t *) &type, NULL,
-				      state->token.name, state->token.len, 0, false);
+				      state->token, state->token_len, 0, false);
 	if (rcode < 0) return rcode;
 
 	info->argc++;
 
 	/*
-	 *	No more data, return OK.
+	 *	No more command to parse, return OK.
 	 */
 	if (!*next) return 1;
 
@@ -471,27 +523,11 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 /*
  *	include FILENAME ;
  */
-static int include_filename(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state, char const *name)
+static int parse_include(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	int rcode;
 	char *p, pathname[8192];
-
-	if (name[0] == '/') {
-	insecure:
-		fr_strerror_printf("Error in file %s at line %d: invalid (insecure) filename",
-				   state->filename, state->lineno);
-		return -1;
-	}
-
-	/*
-	 *	There's no real reason to ban this, but it's
-	 *	reasonable practice.
-	 */
-	for (p = strchr(name, '.');
-	     p != NULL;
-	     p = strchr(p + 1, '.')) {
-		if (p[1] == '.') goto insecure;
-	}
+	char const *name = info->argv[0]->vb_strvalue;
 
 	IDEBUG("include %s ;", name);
 
@@ -501,26 +537,24 @@ static int include_filename(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_
 		p = pathname + (p - state->filename) + 1;
 		strlcpy(p, name, sizeof(pathname) - (p - pathname));
 
-		rcode = read_file(parent, pathname, state->debug);
-
-	} else {
-		/*
-		 *	No '/' in the input filename, just use the one
-		 *	we're given as-is.
-		 */
-		rcode = read_file(parent, name, state->debug);
+		name = pathname;
 	}
+
+	/*
+	 *	Note that we read the included file into the PARENT's
+	 *	list.  i.e. as if the file was included in-place.
+	 */
+	rcode = read_file(info->parent, name, state->debug);
 
 	if (rcode < 0) return rcode;
 
+	/*
+	 *	Even if the file was empty, we return "1" to indicate
+	 *	that we successfully parsed the file.  Returning "0"
+	 *	would indicate that the parent file was at EOF.
+	 */
 	return 1;
 }
-
-
-static const rlm_isc_dhcp_cmd_t include_keyword[] = {
-	{ "include STRING", NULL, 1},
-	{ NULL, NULL }
-};
 
 static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens)
 {
@@ -533,7 +567,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		int rcode;
 		rlm_isc_dhcp_info_t *info;
 
-		p = state->token.name;
+		p = state->token;
 
 		/*
 		 *	We've gone past the name and not found it.
@@ -549,7 +583,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 
 		q = tokens[i].name;
 
-		while (p < (state->token.name + state->token.len)) {
+		while (p < (state->token + state->token_len)) {
 			if (*p != *q) break;
 
 			p++;
@@ -559,11 +593,11 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		/*
 		 *	Not a match, go to the next token in the list.
 		 */
-		if (p < (state->token.name + state->token.len)) continue;
+		if (p < (state->token + state->token_len)) continue;
 
 		semicolon = true; /* default to always requiring this */
 
-		IDEBUG("... TOKEN %.*s ", state->token.len, state->token.name);
+		IDEBUG("... TOKEN %.*s ", state->token_len, state->token);
 
 		info = talloc_zero(parent, rlm_isc_dhcp_info_t);
 		if (tokens[i].max_argc) {
@@ -637,33 +671,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		return 1;
 	}
 
-	/*
-	 *	As a special case, match "include filename".  Which
-	 *	doesn't get put into the command structure, but
-	 *	instead mashes all of the structs in place.
-	 */
-	if ((state->token.len == 7) && (strncmp(state->token.name, "include", 7) == 0)) {
-		int rcode;
-		rlm_isc_dhcp_info_t **last = parent->last;
-
-		rcode = match_keyword(parent, state, include_keyword);
-		if (rcode <= 0) return rcode;
-
-		rad_assert(*last != NULL);
-
-		/*
-		 *	We leave the "include" in the list of
-		 *	children, not that it matters a lot.  This way
-		 *	if we care to note where each command came
-		 *	from, we can point to the filename herein..
-		 */
-		rcode = include_filename(parent, state, (*last)->argv[0]->vb_strvalue);
-		if (rcode <= 0) return rcode;
-
-		return 1;
-	}
-
-	DEBUG("input '%.*s' did not match anything", state->token.len, state->token.name);
+	DEBUG("input '%.*s' did not match anything", state->token_len, state->token);
 
 	/*
 	 *	No match.
@@ -691,7 +699,10 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	rlm_isc_dhcp_info_t *old, *child;
 
 	/*
-	 *	A host MUST have at least one "hardware ethernet" in it.
+	 *	A host MUST have at least one "hardware ethernet" in
+	 *	it.
+	 *
+	 *	@todo - complain if there are multiple ones...
 	 */
 	for (child = info->child; child != NULL; child = child->next) {
 		/*
@@ -737,18 +748,24 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	return 1;
 }
 
-
+/** Table of commands that we allow.
+ *
+ */
 static const rlm_isc_dhcp_cmd_t commands[] = {
-	{ "adandon-lease-time INTEGER", NULL, 1},
-	{ "adaptive-lease-time-threshold INTEGER", NULL, 1},
-	{ "always-broadcast BOOL", NULL, 1},
-	{ "fixed-address STRING", NULL, 1},
-	{ "hardware ethernet ETHER", NULL, 1},
-	{ "host STRING SECTION", parse_host, 1},
+	{ "adandon-lease-time INTEGER", NULL, NULL, 1},
+	{ "adaptive-lease-time-threshold INTEGER", NULL, NULL, 1},
+	{ "always-broadcast BOOL", NULL, NULL, 1},
+	{ "fixed-address STRING", NULL, NULL, 1},
+	{ "hardware ethernet ETHER", NULL, NULL, 1},
+	{ "host STRING SECTION", parse_host, NULL, 1},
+	{ "include STRING", parse_include, NULL, 1},
 	{ NULL, NULL }
 };
 
-static int parse_section(rlm_isc_dhcp_info_t *self, rlm_isc_dhcp_tokenizer_t *state)
+/** Parse a section { ... }
+ *
+ */
+static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	int rcode;
 	int entries = 0;
@@ -764,9 +781,9 @@ static int parse_section(rlm_isc_dhcp_info_t *self, rlm_isc_dhcp_tokenizer_t *st
 		/*
 		 *	End of section is allowed here.
 		 */
-		if (*state->token.name == '}') break;
+		if (*state->token == '}') break;
 
-		rcode = match_keyword(self, state, commands);
+		rcode = match_keyword(info, state, commands);
 		if (rcode < 0) return rcode;
 		if (rcode == 0) break;
 
@@ -780,7 +797,9 @@ static int parse_section(rlm_isc_dhcp_info_t *self, rlm_isc_dhcp_tokenizer_t *st
 	return entries;
 }
 
-
+/** Open a file and read it into a parent.
+ *
+ */
 static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug)
 {
 	int rcode;
