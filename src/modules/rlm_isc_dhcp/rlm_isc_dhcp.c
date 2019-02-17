@@ -89,9 +89,6 @@ typedef struct rlm_isc_dhcp_tokenizer_t {
 	char		*ptr;
 
 	rlm_isc_dhcp_str_t token;
-
-	rlm_isc_dhcp_info_t	*head;
-	rlm_isc_dhcp_info_t	**last;
 } rlm_isc_dhcp_tokenizer_t;
 
 typedef int (*rlm_isc_dhcp_parse_t)(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
@@ -736,12 +733,13 @@ static int match_top_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, r
 	return 1;
 }
 
-static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_dhcp_info_t **head)
+static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_dhcp_info_t **phead)
 {
 	FILE *fp;
 	char buffer[8192];
 	rlm_isc_dhcp_tokenizer_t state;
 	rlm_isc_dhcp_info_t **last;
+	rlm_isc_dhcp_info_t *head;
 
 	/*
 	 *	Read the file line by line.
@@ -765,8 +763,8 @@ static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_
 	state.braces = 0;
 	state.ptr = buffer;
 
-	state.head = NULL;
-	last = &state.head;
+	head = NULL;
+	last = &head;
 
 	state.debug = debug;
 
@@ -799,9 +797,9 @@ static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_
 
 	fclose(fp);
 
-	*head = state.head;
+	*phead = head;
 
-	if (!state.head) return 0;
+	if (!head) return 0;
 
 	return 1;
 }
