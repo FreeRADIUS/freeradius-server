@@ -72,6 +72,7 @@ struct rlm_isc_dhcp_info_t {
 
 	rlm_isc_dhcp_info_t	*parent;
 	rlm_isc_dhcp_info_t	*next;
+	void			*data;		//!< per-thing parsed data.
 
 	/*
 	 *	Only for things that have sections
@@ -670,13 +671,80 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	return 0;
 }
 
+static uint32_t host_hash(void const *data)
+{
+	rlm_isc_dhcp_info_t const *info = data;
+
+	return fr_hash(info->data, 6);
+}
+
+static int host_cmp(void const *one, void const *two)
+{
+	rlm_isc_dhcp_info_t const *a = one;
+	rlm_isc_dhcp_info_t const *b = two;
+
+	return memcmp(a->data, b->data, 6);
+}
+
+static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+{
+	rlm_isc_dhcp_info_t *old, *child;
+
+	/*
+	 *	A host MUST have at least one "hardware ethernet" in it.
+	 */
+	for (child = info->child; child != NULL; child = child->next) {
+		/*
+		 *	@todo - Use enums or something.  Yes, this is
+		 *	fugly.
+		 */
+		if (strncmp(child->name, "hardware ethernet ", 18) == 0) {
+			break;
+		}
+	}
+
+	if (!child) {
+		fr_strerror_printf("host %s does not contain a 'hardware ethernet' field",
+				   info->argv[0]->vb_strvalue);
+		return -1;
+	}
+
+	/*
+	 *	Point directly to the ethernet address.
+	 */
+	info->data = &(child->argv[0]->vb_ether);
+
+	if (!info->host_table) {
+		info->host_table = fr_hash_table_create(info, host_hash, host_cmp, NULL);
+		if (!info->host_table) return -1;
+	}
+
+	old = fr_hash_table_finddata(info->host_table, info);
+	if (old) {
+		fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'hardware ethernet' fields",
+				   info->argv[0]->vb_strvalue, old->argv[0]->vb_strvalue);
+		return -1;
+	}
+
+	if (fr_hash_table_insert(info->host_table, info) < 0) {
+		fr_strerror_printf("Failed inserting 'host %s' into hash table",
+				   info->argv[0]->vb_strvalue);
+		return -1;
+	}
+
+	IDEBUG("host %s { ... }", info->argv[0]->vb_strvalue);
+
+	return 1;
+}
+
+
 static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "adandon-lease-time INTEGER", NULL, 1},
 	{ "adaptive-lease-time-threshold INTEGER", NULL, 1},
 	{ "always-broadcast BOOL", NULL, 1},
 	{ "fixed-address STRING", NULL, 1},
 	{ "hardware ethernet ETHER", NULL, 1},
-	{ "host STRING SECTION", NULL, 1},
+	{ "host STRING SECTION", parse_host, 1},
 	{ NULL, NULL }
 };
 
