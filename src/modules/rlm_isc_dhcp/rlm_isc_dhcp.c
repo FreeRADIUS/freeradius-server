@@ -69,6 +69,8 @@ struct rlm_isc_dhcp_info_t {
 	char const		*name;
 	int			argc;
 	char			**argv;
+
+	rlm_isc_dhcp_info_t	*parent;
 	rlm_isc_dhcp_info_t	*child;
 	rlm_isc_dhcp_info_t	*next;
 	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
@@ -101,8 +103,8 @@ typedef struct rlm_isc_dhcp_cmd_t {
 } rlm_isc_dhcp_cmd_t;
 
 static const rlm_isc_dhcp_cmd_t top_keywords[];
-static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_dhcp_info_t *parent);
-static int parse_section(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *self);
+static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug);
+static int parse_section(rlm_isc_dhcp_info_t *self, rlm_isc_dhcp_tokenizer_t *state);
 
 static int refill(rlm_isc_dhcp_tokenizer_t *state)
 {
@@ -412,7 +414,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		rcode = read_token(state, T_LCBRACE, false, false);
 		if (rcode <= 0) return rcode;
 
-		rcode = parse_section(info, state, info);
+		rcode = parse_section(info, state);
 		if (rcode < 0) return rcode;
 
 		/*
@@ -463,7 +465,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 /*
  *	include FILENAME ;
  */
-static int include_filename(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, char const *name, rlm_isc_dhcp_info_t *parent)
+static int include_filename(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state, char const *name)
 {
 	int rcode;
 	char *p, pathname[8192];
@@ -493,14 +495,14 @@ static int include_filename(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, ch
 		p = pathname + (p - state->filename) + 1;
 		strlcpy(p, name, sizeof(pathname) - (p - pathname));
 
-		rcode = read_file(ctx, pathname, state->debug, parent);
+		rcode = read_file(parent, pathname, state->debug);
 
 	} else {
 		/*
 		 *	No '/' in the input filename, just use the one
 		 *	we're given as-is.
 		 */
-		rcode = read_file(ctx, name, state->debug, parent);
+		rcode = read_file(parent, name, state->debug);
 	}
 
 	if (rcode < 0) return rcode;
@@ -514,7 +516,7 @@ static const rlm_isc_dhcp_cmd_t include_keyword[] = {
 	{ NULL, NULL }
 };
 
-static int match_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens, rlm_isc_dhcp_info_t *parent)
+static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens)
 {
 	int i;
 
@@ -557,7 +559,7 @@ static int match_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_i
 
 		IDEBUG("... TOKEN %.*s ", state->token.len, state->token.name);
 
-		info = talloc_zero(ctx, rlm_isc_dhcp_info_t);
+		info = talloc_zero(parent, rlm_isc_dhcp_info_t);
 		if (tokens[i].max_argc) {
 			info->argv = talloc_zero_array(info, char *, tokens[i].max_argc);
 		}
@@ -565,6 +567,7 @@ static int match_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_i
 		/*
 		 *	Remember which command we parsed.
 		 */
+		info->parent = parent;
 		info->name = tokens[i].name;
 		info->last = &(info->child);
 
@@ -637,12 +640,18 @@ static int match_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_i
 		int rcode;
 		rlm_isc_dhcp_info_t **last = parent->last;
 
-		rcode = match_keyword(ctx, state, include_keyword, parent);
+		rcode = match_keyword(parent, state, include_keyword);
 		if (rcode <= 0) return rcode;
 
 		rad_assert(*last != NULL);
 
-		rcode = include_filename(ctx, state, (*last)->argv[0], parent);
+		/*
+		 *	We leave the "include" in the list of
+		 *	children, not that it matters a lot.  This way
+		 *	if we care to note where each command came
+		 *	from, we can point to the filename herein..
+		 */
+		rcode = include_filename(parent, state, (*last)->argv[0]);
 		if (rcode <= 0) return 0;
 
 		return 1;
@@ -663,7 +672,7 @@ static const rlm_isc_dhcp_cmd_t section_commands[] = {
 	{ NULL, NULL }
 };
 
-static int parse_section(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *self)
+static int parse_section(rlm_isc_dhcp_info_t *self, rlm_isc_dhcp_tokenizer_t *state)
 {
 	int rcode;
 
@@ -678,7 +687,7 @@ static int parse_section(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_i
 		 */
 		if (*state->token.name == '}') break;
 
-		rcode = match_keyword(ctx, state, section_commands, self);
+		rcode = match_keyword(self, state, section_commands);
 		if (rcode <= 0) return rcode;
 	}
 
@@ -695,9 +704,11 @@ static const rlm_isc_dhcp_cmd_t top_keywords[] = {
 
 /*
  *	Match a top-level keyword
+ *
+ *	There's likly not a lot of reason for this... the instantiate
+ *	function could likely just call include_filename() instead.
  */
-static int match_top_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens,
-			     rlm_isc_dhcp_info_t *parent)
+static int match_top_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens)
 {
 	int rcode;
 
@@ -717,7 +728,7 @@ static int match_top_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, r
 		return -1;
 	}
 
-	rcode = match_keyword(ctx, state, tokens, parent);
+	rcode = match_keyword(parent, state, tokens);
 	if (rcode < 0) return rcode;
 
 	if (rcode == 0) {
@@ -734,7 +745,7 @@ static int match_top_keyword(TALLOC_CTX *ctx, rlm_isc_dhcp_tokenizer_t *state, r
 	return 1;
 }
 
-static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_dhcp_info_t *parent)
+static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug)
 {
 	FILE *fp;
 	char buffer[8192];
@@ -777,7 +788,7 @@ static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_
 		 *	This will automatically re-fill the buffer,
 		 *	and find a matching token.
 		 */
-		rcode = match_top_keyword(ctx, &state, top_keywords, parent);
+		rcode = match_top_keyword(parent, &state, top_keywords);
 		if (rcode < 0) {
 			fclose(fp);
 			return -1;
@@ -801,18 +812,7 @@ static int read_file(TALLOC_CTX *ctx, char const *filename, bool debug, rlm_isc_
 	return 1;
 }
 
-
-/*
- *	Do any per-module initialization that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	int rcode;
 	rlm_isc_dhcp_t *inst = instance;
@@ -824,7 +824,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->head = info = talloc_zero(inst, rlm_isc_dhcp_info_t);
 	info->last = &(info->child);
 
-	rcode = read_file(inst, inst->filename, inst->debug, info);
+	rcode = read_file(info, inst->filename, inst->debug);
 	if (rcode < 0) {
 		cf_log_err(conf, "%s", fr_strerror());
 		return -1;
@@ -846,5 +846,5 @@ rad_module_t rlm_isc_dhcp = {
 	.type		= 0,
 	.inst_size	= sizeof(rlm_isc_dhcp_t),
 	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 };
