@@ -76,6 +76,9 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* MySQL connections can now skip verifying the server
 	  certificate.  Fixes #2481.  See mods-available/sql
 	* Add better mechanism to detect MariaDB (Old MySQL).
+	* Add RFC 7532 "bang path" support for realms.
+	  Fixes #2492.
+	* Update dictionary.ukerna documentation.  Fixes #2493
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -136,6 +139,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Fix crash / timer issues with many CoA packets.
 	* Fix attr_filter so that it does not treat
 	  vendor attributes of number 26 as Vendor-Specific.
+	* Fix rlm_cache to properly use Cache-TTL < 0.
+	  Fixes #2485.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
