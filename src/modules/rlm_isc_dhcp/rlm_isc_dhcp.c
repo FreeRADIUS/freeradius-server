@@ -78,6 +78,7 @@ typedef struct rlm_isc_dhcp_tokenizer_t {
 	FILE		*fp;
 	char const	*filename;
 	int		lineno;
+	char		*line;		//!< where the current line started
 
 	int		braces;		//!< how many levels deep we are in a { ... }
 	bool		saw_semicolon;	//!< whether we saw a semicolon
@@ -155,6 +156,8 @@ static int refill(rlm_isc_dhcp_tokenizer_t *state)
 
 redo:
 	state->lineno++;
+	state->line = state->ptr;
+
 	if (!fgets(state->ptr, (state->buffer + state->bufsize) - state->ptr, state->fp)) {
 		if (feof(state->fp)) {
 			state->eof = true;
@@ -207,8 +210,7 @@ redo:
 
 		if (rcode == 0) {
 			if (!state->allow_eof) {
-				fr_strerror_printf("Failed reading %s line %d: Unexpected EOF",
-						   state->filename, state->lineno);
+				fr_strerror_printf("Unexpected EOF");
 				return -1;
 			}
 
@@ -333,7 +335,7 @@ redo:
 	state->token_len = p - state->token;
 
 	if (state->token_len >= 256) {
-		fr_strerror_printf("Token too large");
+		fr_strerror_printf("token too large");
 		return -1;
 	}
 
@@ -343,8 +345,7 @@ redo:
 	 */
 	if (hint == T_LCBRACE) {
 		if (*state->token != '{') {
-			fr_strerror_printf("Failed reading %s line %d - Missing '{'",
-					   state->filename, lineno);
+			fr_strerror_printf("missing '{'");
 			return -1;
 		}
 
@@ -354,8 +355,7 @@ redo:
 
 	if (hint == T_RCBRACE) {
 		if (*state->token != '}') {
-			fr_strerror_printf("Failed reading %s line %d - Missing '}'",
-					   state->filename, lineno);
+			fr_strerror_printf("missing '}'");
 			return -1;
 		}
 
@@ -370,8 +370,7 @@ redo:
 	 */
 	if (*state->token == '}') {
 		if (!allow_rcbrace) {
-			fr_strerror_printf("Failed reading %s line %d - Unexpected '}'",
-					   state->filename, lineno);
+			fr_strerror_printf("unexpected '}'");
 			return -1;
 		}
 
@@ -385,8 +384,7 @@ redo:
 	 */
 	if ((hint == T_BARE_WORD) || (hint == T_DOUBLE_QUOTED_STRING)) {
 		if (*state->token == '{') {
-			fr_strerror_printf("Failed reading %s line %d - Unexpected '{'",
-					   state->filename, lineno);
+			fr_strerror_printf("unexpected '{'");
 			return -1;
 		}
 	}
@@ -415,20 +413,16 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	/*
 	 *	Remember the next command.
 	 */
-	next = cmd;
+	next = q = cmd;
 	while (*next && !isspace((int) *next) && (*next != ',')) next++;
 	if (!*next) semicolon = YES_SEMICOLON;
-
-	q = cmd;
 
 	/*
 	 *	Matching an in-line word.
 	 */
 	if (islower((int) *q)) {
-		char const *start = q;
-
 		rcode = read_token(state, T_BARE_WORD, semicolon, false);
-		if (rcode <= 0) return rcode;
+		if (rcode <= 0) return -1;
 
 		/*
 		 *	Look for a verbatim word.
@@ -436,8 +430,9 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		for (p = state->token; p < (state->token + state->token_len); p++, q++) {
 			if (*p != *q) {
 			fail:
-				fr_strerror_printf("Expected '%s', not '%.*s'",
-						   start, state->token_len, state->token);
+				fr_strerror_printf("Expected '%.*s', got unknown text '%.*s'",
+						   state->token_len, state->token,
+						   (int) (next - cmd), cmd);
 				return -1;
 			}
 		}
@@ -526,8 +521,9 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 
 	type = fr_str2int(fr_value_box_type_names, type_name, -1);
 	if (type < 0) {
-		fr_strerror_printf("Unknown data type '%s'", cmd);
-		return -1;
+		fr_strerror_printf("unknown data type '%.*s'",
+				   (int) (next - cmd), cmd);
+		return -1;	/* internal error */
 	}
 
 redo_multi:
@@ -602,7 +598,6 @@ static int parse_include(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 	 *	list.  i.e. as if the file was included in-place.
 	 */
 	rcode = read_file(info->parent, name, state->debug);
-
 	if (rcode < 0) return rcode;
 
 	/*
@@ -1033,6 +1028,7 @@ static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool deb
 
 	state.braces = 0;
 	state.ptr = buffer;
+	state.token = NULL;
 
 	state.debug = debug;
 	state.allow_eof = true;
@@ -1046,6 +1042,16 @@ static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool deb
 		rcode = read_token(&state, T_BARE_WORD, true, false);
 		if (rcode < 0) {
 		fail:
+			if (!state.token) {
+				fr_strerror_printf("Failed reading %s:[%d] - %s",
+						   filename, state.lineno,
+						   fr_strerror());
+			} else {
+				fr_strerror_printf("Failed reading %s:[%d] offset %d - %s",
+						   filename, state.lineno,
+						   (int) (state.token - state.line),
+						   fr_strerror());
+			}
 			fclose(fp);
 			return rcode;
 		}
