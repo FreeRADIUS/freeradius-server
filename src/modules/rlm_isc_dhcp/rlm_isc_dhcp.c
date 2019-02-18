@@ -30,6 +30,22 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/map_proc.h>
 
+static fr_dict_t *dict_dhcpv4;
+
+extern fr_dict_autoload_t rlm_isc_dhcp_dict[];
+fr_dict_autoload_t rlm_isc_dhcp_dict[] = {
+	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_client_hardware_address;
+
+extern fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[];
+fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
+	{ .out = &attr_client_hardware_address, .name = "DHCP-Client-Hardware-Address", .type = FR_TYPE_ETHERNET, .dict = &dict_dhcpv4},
+	{ NULL }
+};
+
 typedef struct rlm_isc_dhcp_info_t rlm_isc_dhcp_info_t;
 
 #define NO_SEMICOLON	(0)
@@ -883,10 +899,12 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 	 */
 	if (head->hosts) {
 		isc_host_t *host, my_host;
+		VALUE_PAIR *vp;
 
-		// @todo - figure out what ether attribute to
-		// use... maybe in inst->ether, and copy it here.
-		memset(&my_host, 0, sizeof(my_host));
+		vp = fr_pair_find_by_da(request->packet->vps, attr_client_hardware_address, TAG_ANY);
+		if (!vp) goto options;
+
+		memcpy(&my_host.ether, vp->vp_ether, sizeof(my_host.ether));
 
 		host = fr_hash_table_finddata(head->hosts, &my_host);
 		if (host) {
@@ -910,6 +928,7 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 		}
 	}
 
+options:
 	if (head->options) {
 		// copy head->options and append to to request->reply->vps
 	}
@@ -1096,8 +1115,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	}
 
 	if (rcode == 0) {
-		cf_log_err(conf, "No configuration read from %s", inst->filename);
-		return -1;
+		cf_log_warn(conf, "No configuration read from %s", inst->filename);
+		return 0;
 	}
 
 	return 0;
