@@ -1180,6 +1180,8 @@ static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr
 	}
 }
 
+/* ATD - all of this to "end" is 100% RADIUS only */
+
 /** Turn a reply code into a module rcode;
  *
  */
@@ -1286,6 +1288,7 @@ static void status_server_reply(fr_io_connection_t *c, fr_io_request_t *u, REQUE
 
 }
 
+/* ATD END */
 
 /** Read reply packets.
  *
@@ -1328,6 +1331,8 @@ check_active:
 		conn_error(el, fd, 0, errno, c);
 		return;
 	}
+
+ { /* RADIUS START - do various protocol-specific validations */
 
 	/*
 	 *	Replicating?  Drain the socket, but ignore all responses.
@@ -1539,6 +1544,7 @@ check_reply:
 		 */
 		if (u == radius->status_u) status_server_reply(c, u, request);
 	}
+} /* RADIUS END */
 
 done:
 	rad_assert(request != NULL);
@@ -2472,7 +2478,7 @@ static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t s
 static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void *uctx)
 {
 	fr_io_connection_t		*c = talloc_get_type_abort(uctx, fr_io_connection_t);
-	fr_io_connection_thread_t		*t = c->thread;
+	fr_io_connection_thread_t	*t = c->thread;
 	rlm_radius_udp_connection_t	*radius = c->ctx;
 
 	talloc_const_free(c->name);
@@ -2500,6 +2506,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 	memset(&c->zombie_start, 0, sizeof(c->zombie_start));
 	fr_dlist_init(&c->sent, fr_io_request_t, entry);
 
+{ /* RADIUS start */
 	/*
 	 *	Status-Server checks.  Manually build the packet, and
 	 *	all of it's associated glue.
@@ -2613,6 +2620,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 		u->timer.retry = &c->inst->parent->retry[u->code];
 		radius->status_check_blocked = false;
 	}
+} /* RADIUS end */
 
 	/*
 	 *	Now that we're open, assume that the connection is
@@ -2845,7 +2853,7 @@ static void mod_signal(REQUEST *request, void *instance, UNUSED void *thread, vo
 	if (action != FR_SIGNAL_DUP) return;
 
 	/*
-	 *	ASychronous mode means that we do retransmission, and
+	 *	Asychronous mode means that we do retransmission, and
 	 *	we don't rely on the retransmission from the NAS.
 	 */
 	if (!inst->parent->synchronous) return;
