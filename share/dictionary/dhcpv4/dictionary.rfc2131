@@ -269,7 +269,8 @@ ATTRIBUTE	DHCP-Authentication			90	octets
 
 ATTRIBUTE	DHCP-Client-Last-Txn-Time		91	octets
 
-ATTRIBUTE	DHCP-associated-ip			92	octets
+ATTRIBUTE	DHCP-associated-ip			92	ipaddr array
+
 # Client System Architecture
 ATTRIBUTE	DHCP-Client-System			93	octets
 # Client Network Device Interface
