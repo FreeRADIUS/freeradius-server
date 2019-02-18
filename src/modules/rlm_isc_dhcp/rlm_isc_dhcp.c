@@ -126,7 +126,8 @@ struct rlm_isc_dhcp_info_t {
 	/*
 	 *	Only for things that have sections
 	 */
-	fr_hash_table_t		*host_table;	//!< by MAC address
+	fr_hash_table_t		*hosts;		//!< by MAC address
+	VALUE_PAIR		*options;	//!< DHCP options
 	rlm_isc_dhcp_info_t	*child;
 	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
 };
@@ -813,22 +814,22 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	 *	thousands of "host" entries in the parent->child list.
 	 */
 	parent = info->parent;
-	if (!parent->host_table) {
-		parent->host_table = fr_hash_table_create(parent, host_hash, host_cmp, NULL);
-		if (!parent->host_table) return -1;
+	if (!parent->hosts) {
+		parent->hosts = fr_hash_table_create(parent, host_hash, host_cmp, NULL);
+		if (!parent->hosts) return -1;
 	}
 
 	/*
 	 *	Duplicate "host" entries aren't allowd.
 	 */
-	old = fr_hash_table_finddata(parent->host_table, host);
+	old = fr_hash_table_finddata(parent->hosts, host);
 	if (old) {
 		fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'hardware ethernet' fields",
 				   info->argv[0]->vb_strvalue, old->info->argv[0]->vb_strvalue);
 		return -1;
 	}
 
-	if (fr_hash_table_insert(parent->host_table, host) < 0) {
+	if (fr_hash_table_insert(parent->hosts, host) < 0) {
 		fr_strerror_printf("Failed inserting 'host %s' into hash table",
 				   info->argv[0]->vb_strvalue);
 		return -1;
@@ -837,12 +838,37 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	IDEBUG("host %s { ... }", info->argv[0]->vb_strvalue);
 
 	/*
-	 *	We've remembered the host in the parent host_table.
-	 *	There's no need to add it to the linked list here.
+	 *	We've remembered the host in the parent hosts hash.
+	 *	There's no need to add it to the child list here.
 	 */
 	return 2;
 }
 
+static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+{
+	rlm_isc_dhcp_info_t *parent;
+
+	/*
+	 *	Add the option to the *parents* hash table.  That way
+	 *	when we apply the parent, we can look up the host in
+	 *	its hash table.  And avoid the O(N) issue of having
+	 *	thousands of "host" entries in the parent->child list.
+	 */
+	parent = info->parent;
+
+	// look up arg[0] in the dictionary
+	// create VP from attribute
+	// fr_pair_value_from_str() to parse argv[1]
+	// add VP to the tail of parent->options
+
+	IDEBUG("option %s %s", info->argv[0]->vb_strvalue, info->argv[1]->vb_strvalue);
+
+	/*
+	 *	We've remembered the host in the parent option list.
+	 *	There's no need to add it to the child list here.
+	 */
+	return 2;
+}
 /*
  *	Apply functions
  */
@@ -856,14 +882,14 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 	/*
 	 *	First, apply any "host" options
 	 */
-	if (head->host_table) {
+	if (head->hosts) {
 		isc_host_t *host, my_host;
 
 		// @todo - figure out what ether attribute to
 		// use... maybe in inst->ether, and copy it here.
 		memset(&my_host, 0, sizeof(my_host));
 
-		host = fr_hash_table_finddata(head->host_table, &my_host);
+		host = fr_hash_table_finddata(head->hosts, &my_host);
 		if (host) {
 			/*
 			 *	@todo - call a new apply_host()
@@ -883,6 +909,10 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 			if (child_rcode < 0) return child_rcode;
 			if (child_rcode == 1) rcode = 1;
 		}
+	}
+
+	if (head->options) {
+		// copy head->options and append to to request->reply->vps
 	}
 
 	/*
@@ -926,6 +956,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "max-ack-delay UINT32",		NULL, NULL, 1},
 	{ "max-lease-time INTEGER",		NULL, NULL, 1},
 	{ "not authoritative",			NULL, NULL, 0},
+	{ "option STRING STRING",		parse_option, NULL, 2},
 	{ "shared-network STRING SECTION",	NULL, NULL, 1},
 	{ "subnet IPADDR netmask IPADDR SECTION", NULL, NULL, 2},
 	{ NULL, NULL }
