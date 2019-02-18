@@ -844,8 +844,9 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	return 2;
 }
 
-static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+static int parse_option(UNUSED rlm_isc_dhcp_tokenizer_t *state, UNUSED rlm_isc_dhcp_info_t *info)
 {
+#if 0
 	rlm_isc_dhcp_info_t *parent;
 
 	/*
@@ -868,6 +869,9 @@ static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 	 *	There's no need to add it to the child list here.
 	 */
 	return 2;
+#else
+	return -1;
+#endif
 }
 /*
  *	Apply functions
