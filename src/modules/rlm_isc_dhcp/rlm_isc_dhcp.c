@@ -32,6 +32,10 @@ RCSID("$Id$")
 
 typedef struct rlm_isc_dhcp_info_t rlm_isc_dhcp_info_t;
 
+#define NO_SEMICOLON	(0)
+#define YES_SEMICOLON	(1)
+#define MAYBE_SEMICOLON (2)
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -76,7 +80,7 @@ typedef struct rlm_isc_dhcp_tokenizer_t {
 	int		lineno;
 
 	int		braces;		//!< how many levels deep we are in a { ... }
-	bool		semicolon;	//!< whether we saw a semicolong
+	bool		saw_semicolon;	//!< whether we saw a semicolon
 	bool		eof;		//!< are we at EOF?
 	bool		allow_eof;	//!< do we allow EOF?  (i.e. braces == 0)
 	bool		debug;		//!< internal developer debugging
@@ -185,7 +189,7 @@ redo:
  *	you need to read two tokens, you have to save the first one
  *	somewhere *outside* of the input buffer.
  */
-static int read_token(rlm_isc_dhcp_tokenizer_t *state, FR_TOKEN hint, bool semicolon, bool allow_rcbrace)
+static int read_token(rlm_isc_dhcp_tokenizer_t *state, FR_TOKEN hint, int semicolon, bool allow_rcbrace)
 {
 	char *p;
 	int lineno;
@@ -216,7 +220,7 @@ redo:
 	 *	or semi-colon.  We skip those characters
 	 *	before looking for the next token.
 	 */
-	while (isspace((int) *state->ptr) || (*state->ptr == ';')) state->ptr++;
+	while (isspace((int) *state->ptr) || (*state->ptr == ';') || (*state->ptr == ',')) state->ptr++;
 
 	if (!*state->ptr) goto redo;
 
@@ -225,7 +229,7 @@ redo:
 	 *	off last time.
 	 */
 	state->token = state->ptr;
-	state->semicolon = false;
+	state->saw_semicolon = false;
 
 	/*
 	 *	Remember which line this input was read from.  Any
@@ -239,14 +243,22 @@ redo:
 		 *	here, or it might not be.
 		 */
 		if (*p == ';') {
-			if (!semicolon) {
+			if (semicolon == NO_SEMICOLON) {
 				fr_strerror_printf("Syntax error in %s at line %d: Unexpected ';'",
 						   state->filename, state->lineno);
 				return -1;			
 			}
 
 			state->ptr = p;
-			state->semicolon = true;
+			state->saw_semicolon = true;
+			break;
+		}
+
+		/*
+		 *	For lists of things.
+		 */
+		if (*p == ',') {
+			state->ptr = p;
 			break;
 		}
 
@@ -308,7 +320,7 @@ redo:
 			 *	ahead", so that the various other
 			 *	parsers don't need to check it.
 			 */
-			if (*state->ptr == ';') state->semicolon = true;
+			if (*state->ptr == ';') state->saw_semicolon = true;
 
 			break;
 		}
@@ -388,7 +400,8 @@ redo:
 static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_isc_dhcp_info_t *info)
 {
 	int rcode, type;
-	bool semicolon = false;
+	int semicolon = NO_SEMICOLON;
+	bool multi = false;
 	char *p;
 	char const *q;
 	char const *next;
@@ -402,8 +415,8 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	 *	Remember the next command.
 	 */
 	next = cmd;
-	while (*next && !isspace((int) *next)) next++;
-	if (!*next) semicolon = true;
+	while (*next && !isspace((int) *next) && (*next != ',')) next++;
+	if (!*next) semicolon = YES_SEMICOLON;
 
 	q = cmd;
 
@@ -458,7 +471,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	if (strcmp(q, "SECTION") == 0) {
 		if (q[7] != '\0') return -1; /* internal error */
 
-		rcode = read_token(state, T_LCBRACE, false, false);
+		rcode = read_token(state, T_LCBRACE, NO_SEMICOLON, false);
 		if (rcode <= 0) return rcode;
 
 		rcode = parse_section(state, info);
@@ -473,13 +486,42 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	/*
 	 *	Uppercase words are INTEGER or STRING or IPADDR, which
 	 *	are FreeRADIUS data types.
+	 *
+	 *	We copy the name here because some options allow for
+	 *	multiple fields.
 	 */
 	p = type_name;
-	while (*q && !isspace((int) *q)) {
+	while (*q && !isspace((int) *q) && (*q != ',')) {
 		if ((p - type_name) >= (int) sizeof(type_name)) return -1; /* internal error */
 		*(p++) = tolower((int) *(q++));
 	}
 	*p = '\0';
+
+	/*
+	 *	"fixed-address IPADDR," means it can take multiple IP
+	 *	addresses.
+	 *
+	 *	@todo - pre-parse the field and save the strings
+	 *	somewhere, so that we can create info->argv of the
+	 *	right size.  Or, just create an array of 2 by default,
+	 *	and then double it every time we run out... a little
+	 *	more work, but it doesn't involve further mangling the
+	 *	parser.
+	 *
+	 *	We could likely just manually parse state->ptr, look
+	 *	until ';' or '\0', and count the words.  That would
+	 *	work 99% of the time.
+	 *
+	 *	@todo - We should also note that the ISC default is to
+	 *	allow hostnames, in which case it will add all IPs
+	 *	associated with that hostname, while we will add only
+	 *	one.  That could likely be fixed, too.
+	 */
+	if (*q == ',') {
+		if (q[1]) return -1; /* internal error */
+		multi = true;
+		semicolon = MAYBE_SEMICOLON;
+	}
 
 	type = fr_str2int(fr_value_box_type_names, type_name, -1);
 	if (type < 0) {
@@ -487,6 +529,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		return -1;
 	}
 
+redo_multi:
 	/*
 	 *	We were asked to parse a data type, so instead allow
 	 *	just about anything.
@@ -509,6 +552,18 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	if (rcode < 0) return rcode;
 
 	info->argc++;
+
+	if (multi) {
+		if (state->saw_semicolon) return 1;
+
+		if (info->argc >= info->cmd->max_argc) {
+			fr_strerror_printf("Too many arguments (%d) for command '%s'",
+					   info->cmd->max_argc, info->cmd->name);
+			return -1;
+		}
+
+		goto redo_multi;
+	}
 
 	/*
 	 *	No more command to parse, return OK.
@@ -564,7 +619,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	for (i = 0; tokens[i].name != NULL; i++) {
 		char const *q;
 		char *p;
-		bool semicolon;
+		int semicolon;
 		int rcode;
 		rlm_isc_dhcp_info_t *info;
 
@@ -596,7 +651,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		 */
 		if (p < (state->token + state->token_len)) continue;
 
-		semicolon = true; /* default to always requiring this */
+		semicolon = YES_SEMICOLON; /* default to always requiring this */
 
 		IDEBUG("... TOKEN %.*s ", state->token_len, state->token);
 
@@ -617,7 +672,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		 *	go parse that, too.
 		 */
 		if (isspace((int) *q)) {
-			if (state->semicolon) goto unexpected;
+			if (state->saw_semicolon) goto unexpected;
 
 			rcode = match_subword(state, q, info);
 			if (rcode <= 0) return rcode;
@@ -625,13 +680,13 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 			/*
 			 *	SUBSECTION must be at the end
 			 */
-			if (rcode == 2) semicolon = false;
+			if (rcode == 2) semicolon = NO_SEMICOLON;
 		}
 
 		/*
 		 *	*q must be empty at this point.
 		 */
-		if (!semicolon && state->semicolon) {
+		if ((semicolon == NO_SEMICOLON) && state->saw_semicolon) {
 		unexpected:
 			fr_strerror_printf("Syntax error in %s at line %d: Unexpected ';'",
 					   state->filename, state->lineno);
@@ -639,7 +694,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 			return -1;
 		}
 
-		if (semicolon && !state->semicolon) {
+		if ((semicolon == YES_SEMICOLON) && !state->saw_semicolon) {
 			fr_strerror_printf("Syntax error in %s at line %d: Missing ';'",
 					   state->filename, state->lineno);
 			talloc_free(info);
@@ -810,11 +865,30 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 
 		host = fr_hash_table_finddata(head->host_table, &my_host);
 		if (host) {
+			/*
+			 *	@todo - call a new apply_host()
+			 *	function, which will look for matching
+			 *	"fixed-address".
+			 *
+			 *	If there's no "fixed-address", it will
+			 *	apply all the rules.
+			 *
+			 *	If there is a "fixed-address", it will
+			 *	apply the host rules only if one of
+			 *	the addresses is valid for the network
+			 *	to which the client is connected.
+			 */
+
 			child_rcode = apply(inst, request, host->info);
 			if (child_rcode < 0) return child_rcode;
 			if (child_rcode == 1) rcode = 1;
 		}
 	}
+
+	/*
+	 *	@todo - look in a trie for matching subnets, and apply
+	 *	any subnets that match.
+	 */
 
 	for (info = head->child; info != NULL; info = info->next) {
 		if (!info->cmd) return -1; /* internal error */
@@ -843,7 +917,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "default-lease-time INTEGER", 	NULL, NULL, 1},
 	{ "delayed-ack UINT16",			NULL, NULL, 1},
 	{ "filename STRING",			NULL, NULL, 1},
-	{ "fixed-address STRING",		NULL, NULL, 1},
+	{ "fixed-address IPADDR,",		NULL, NULL, 16},
 	{ "group SECTION",			NULL, NULL, 1},
 	{ "hardware ethernet ETHER",		NULL, NULL, 1},
 	{ "host STRING SECTION",		parse_host, NULL, 1},
@@ -869,7 +943,7 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 	state->allow_eof = false; /* can't have EOF in the middle of a section */
 
 	while (true) {
-		rcode = read_token(state, T_BARE_WORD, true, true);
+		rcode = read_token(state, T_BARE_WORD, YES_SEMICOLON, true);
 		if (rcode < 0) return rcode;
 		if (rcode == 0) break;
 
