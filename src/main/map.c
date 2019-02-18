@@ -1668,6 +1668,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		break;
 
 	default:
+		RDEBUG("map %s = %s", fr_int2str(tmpl_names, map->lhs->type, "???"), value);
 		break;
 	}
 
