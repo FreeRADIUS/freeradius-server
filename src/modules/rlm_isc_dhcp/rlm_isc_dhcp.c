@@ -650,7 +650,6 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		 *	Call the "parse" function which should do
 		 *	validation, etc.
 		 */
-		rcode = 0;
 		if (tokens[i].parse) {
 			rcode = tokens[i].parse(state, info);
 			if (rcode <= 0) {
