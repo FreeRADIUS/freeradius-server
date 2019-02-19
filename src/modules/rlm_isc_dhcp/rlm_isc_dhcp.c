@@ -78,6 +78,11 @@ static const CONF_PARSER module_config[] = {
 #define IDEBUG if (state->debug) DEBUG
 
 /*
+ *	For developer debugging.  Likely not needed
+ */
+#define DDEBUG(...)
+
+/*
  *	The parsing functions return:
  *	  <0 on error
  *	   0 for "I did nothing"
@@ -109,6 +114,7 @@ typedef struct rlm_isc_dhcp_tokenizer_t {
 	char		*token;		//!< current token that we parsed
 	int		token_len;	//!< length of the token
 } rlm_isc_dhcp_tokenizer_t;
+
 
 typedef int (*rlm_isc_dhcp_parse_t)(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
 typedef int (*rlm_isc_dhcp_apply_t)(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *info);
@@ -152,6 +158,8 @@ struct rlm_isc_dhcp_info_t {
 static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug);
 static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
 static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *head);
+
+static char const *spaces = "                                                                                ";
 
 /** Refills the read buffer with one line from the file.
  *
@@ -357,6 +365,11 @@ redo:
 			return -1;
 		}
 
+		if ((size_t) state->braces >= (sizeof(spaces) - 1)) {
+			fr_strerror_printf("sections are nested too deep");
+			return -1;
+		}
+
 		state->braces++;
 		return 1;
 	}
@@ -449,7 +462,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		 *	Matched all of 'q', we're done.
 		 */
 		if (!*q) {
-			IDEBUG("... WORD %.*s ", state->token_len, state->token);
+			DDEBUG("... WORD %.*s ", state->token_len, state->token);
 			return 1;
 		}
 
@@ -545,7 +558,7 @@ redo_multi:
 	rcode = read_token(state, T_DOUBLE_QUOTED_STRING, semicolon, false);
 	if (rcode <= 0) return rcode;
 
-	IDEBUG("... DATA %.*s ", state->token_len, state->token);
+	DDEBUG("... DATA %.*s ", state->token_len, state->token);
 
 	/*
 	 *	Parse the data to its final form.
@@ -590,7 +603,7 @@ static int parse_include(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 	char *p, pathname[8192];
 	char const *name = info->argv[0]->vb_strvalue;
 
-	IDEBUG("include %s ;", name);
+	IDEBUG("%.*s include %s ;", state->braces, spaces, name);
 
 	p = strrchr(state->filename, '/');
 	if (p) {
@@ -657,7 +670,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 
 		semicolon = YES_SEMICOLON; /* default to always requiring this */
 
-		IDEBUG("... TOKEN %.*s ", state->token_len, state->token);
+		DDEBUG("... TOKEN %.*s ", state->token_len, state->token);
 
 		info = talloc_zero(parent, rlm_isc_dhcp_info_t);
 		if (tokens[i].max_argc) {
@@ -705,6 +718,8 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 			return -1;
 		}
 
+		// @todo - print out the thing we parsed
+
 		/*
 		 *	Call the "parse" function which should do
 		 *	validation, etc.
@@ -748,12 +763,9 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		return 1;
 	}
 
-	DEBUG("input '%.*s' did not match anything", state->token_len, state->token);
+	fr_strerror_printf("unknown command '%.*s'", state->token_len, state->token);
 
-	/*
-	 *	No match.
-	 */
-	return 0;
+	return -1;
 }
 
 typedef struct isc_host_t {
@@ -838,7 +850,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 		return -1;
 	}
 
-	IDEBUG("host %s { ... }", info->argv[0]->vb_strvalue);
+	IDEBUG("%.*s host %s { ... }", state->braces, spaces, info->argv[0]->vb_strvalue);
 
 	/*
 	 *	We've remembered the host in the parent hosts hash.
@@ -847,10 +859,14 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	return 2;
 }
 
-static int parse_option(UNUSED rlm_isc_dhcp_tokenizer_t *state, UNUSED rlm_isc_dhcp_info_t *info)
+static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
-#if 0
+	int rcode;
+	VALUE_PAIR *vp;
+	fr_dict_attr_t const *da;
+	vp_cursor_t cursor;
 	rlm_isc_dhcp_info_t *parent;
+	char name[256 + 5];
 
 	/*
 	 *	Add the option to the *parents* hash table.  That way
@@ -860,22 +876,43 @@ static int parse_option(UNUSED rlm_isc_dhcp_tokenizer_t *state, UNUSED rlm_isc_d
 	 */
 	parent = info->parent;
 
-	// look up arg[0] in the dictionary
-	// create VP from attribute
-	// fr_pair_value_from_str() to parse argv[1]
-	// add VP to the tail of parent->options
+	memcpy(name, "DHCP-", 5);
+	memcpy(name + 5, info->argv[0]->vb_strvalue, info->argv[0]->vb_length + 1);
 
-	IDEBUG("option %s %s", info->argv[0]->vb_strvalue, info->argv[1]->vb_strvalue);
+	da = fr_dict_attr_by_name(dict_dhcpv4, name);
+	if (!da) {
+		fr_strerror_printf("unknown option '%s'", info->argv[0]->vb_strvalue);
+		return -1;
+	}
+
+	vp = fr_pair_afrom_da(parent, da);
+	if (!vp) {
+		fr_strerror_printf("out of memory");
+		return -1;
+	}
+
+	rcode = fr_pair_value_from_str(vp, info->argv[0]->vb_strvalue, info->argv[0]->vb_length,
+				       '\0', false);
+	if (rcode < 0) return rcode;
+
+	(void) fr_pair_cursor_init(&cursor, &parent->options);
+	fr_pair_cursor_append(&cursor, vp);
+
+	IDEBUG("%.*s option %s %s ", state->braces, spaces, info->argv[0]->vb_strvalue, info->argv[1]->vb_strvalue);
+
+	/*
+	 *	We don't need this any more.
+	 */
+	talloc_free(info);
 
 	/*
 	 *	We've remembered the host in the parent option list.
 	 *	There's no need to add it to the child list here.
 	 */
 	return 2;
-#else
-	return -1;
-#endif
 }
+
+
 /*
  *	Apply functions
  */
@@ -922,7 +959,10 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 
 options:
 	if (head->options) {
-		// copy head->options and append to to request->reply->vps
+		rcode = fr_pair_list_copy(request->reply, &request->reply->vps, head->options);
+		if (rcode < 0) {
+			RDEBUG("Failed copying some options: %s", fr_strerror());
+		}
 	}
 
 	/*
@@ -980,7 +1020,7 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 	int rcode;
 	int entries = 0;
 
-	IDEBUG("{");
+	IDEBUG("%.*s {", state->braces - 1, spaces); /* "braces" was already incremented */
 	state->allow_eof = false; /* can't have EOF in the middle of a section */
 
 	while (true) {
@@ -1002,7 +1042,7 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 
 	state->allow_eof = (state->braces == 0);
 
-	IDEBUG("}");
+	IDEBUG("%.*s }", state->braces, spaces);
 
 	return entries;
 }
