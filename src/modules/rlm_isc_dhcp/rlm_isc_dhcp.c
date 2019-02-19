@@ -212,7 +212,6 @@ redo:
 static int read_token(rlm_isc_dhcp_tokenizer_t *state, FR_TOKEN hint, int semicolon, bool allow_rcbrace)
 {
 	char *p;
-	int lineno;
 
 redo:
 	/*
@@ -250,12 +249,6 @@ redo:
 	state->token = state->ptr;
 	state->saw_semicolon = false;
 
-	/*
-	 *	Remember which line this input was read from.  Any
-	 *	refill later will change the line number.
-	 */
-	lineno = state->lineno;
-
 	for (p = state->token; *p != '\0'; p++) {
 		/*
 		 *	"end of word" character.  It might be allowed
@@ -263,8 +256,7 @@ redo:
 		 */
 		if (*p == ';') {
 			if (semicolon == NO_SEMICOLON) {
-				fr_strerror_printf("Syntax error in %s at line %d: Unexpected ';'",
-						   state->filename, state->lineno);
+				fr_strerror_printf("unexpected ';'");
 				return -1;			
 			}
 
