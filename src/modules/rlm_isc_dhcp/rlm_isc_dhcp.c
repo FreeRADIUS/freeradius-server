@@ -151,6 +151,7 @@ struct rlm_isc_dhcp_info_t {
 	 */
 	fr_hash_table_t		*hosts;		//!< by MAC address
 	VALUE_PAIR		*options;	//!< DHCP options
+	fr_trie_t		*subnets;
 	rlm_isc_dhcp_info_t	*child;
 	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
 };
@@ -870,10 +871,9 @@ static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 	char name[256 + 5];
 
 	/*
-	 *	Add the option to the *parents* hash table.  That way
-	 *	when we apply the parent, we can look up the host in
-	 *	its hash table.  And avoid the O(N) issue of having
-	 *	thousands of "host" entries in the parent->child list.
+	 *	Add the option to the *parents* option list.  That way
+	 *	when we apply the parent, we just copy all of the VPs
+	 *	instead of walking through the children.
 	 */
 	parent = info->parent;
 
@@ -929,7 +929,85 @@ static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 	talloc_free(info);
 
 	/*
-	 *	We've remembered the host in the parent option list.
+	 *	We've remembered the option in the parent option list.
+	 *	There's no need to add it to the child list here.
+	 */
+	return 2;
+}
+
+/*
+ *	Utter laziness
+ */
+#define vb_ipv4addr vb_ip.addr.v4.s_addr
+
+static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+{
+	rlm_isc_dhcp_info_t *parent;
+	int rcode, bits;
+	uint32_t netmask = info->argv[1]->vb_ipv4addr;
+
+	/*
+	 *	Check if argv[1] is a valid netmask
+	 */
+	if (!(netmask & (~netmask >> 1))) {
+		fr_strerror_printf("invalid netmask '%pV'", info->argv[1]);
+		return -1;
+	}
+
+	/*
+	 *	192.168.2.1/16 is wrong.
+	 */
+	if ((info->argv[0]->vb_ipv4addr & netmask) != info->argv[0]->vb_ipv4addr) {
+		fr_strerror_printf("subnet '%pV' does not match netmask '%pV'", info->argv[0], info->argv[1]);
+		return -1;
+	}
+
+	/*
+	 *	Get number of bits set in netmask.
+	 */
+	netmask = netmask - ((netmask >> 1) & 0x55555555);
+	netmask = (netmask & 0x33333333) + ((netmask >> 2) & 0x33333333);
+	netmask = (netmask + (netmask >> 4)) & 0x0F0F0F0F;
+	netmask = netmask + (netmask >> 8);
+	netmask = netmask + (netmask >> 16);
+	bits = netmask & 0x0000003F;
+
+	parent = info->parent;
+	if (parent->subnets) {
+		rlm_isc_dhcp_info_t *old;
+
+		/*
+		 *	Duplicate or overlapping "subnet" entries aren't allowd.
+		 */
+		old = fr_trie_lookup(parent->subnets, &(info->argv[0]->vb_ipv4addr), bits);
+		if (old) {
+			fr_strerror_printf("subnet %pV netmask %pV' overlaps with existing subnet", info->argv[0], info->argv[1]);
+			return -1;
+
+		}
+	} else {
+		parent->subnets = fr_trie_alloc(parent);
+		if (!parent->subnets) return -1;
+	}
+
+	/*
+	 *	Add the subnet to the *parents* trie.  That way when
+	 *	we apply the parent, we can look up the subnet in its
+	 *	trie.  And avoid the O(N) issue of having thousands of
+	 *	"subnet" entries in the parent->child list.
+	 */
+
+	rcode = fr_trie_insert(parent->subnets, &(info->argv[0]->vb_ipv4addr), bits, info);
+	if (rcode < 0) {
+		fr_strerror_printf("Failed inserting 'subnet %pV netmask %pV' into trie",
+				   info->argv[0], info->argv[1]);
+		return -1;
+	}
+
+	IDEBUG("%.*s subnet %pV netmask %pV { ... }", state->braces, spaces, info->argv[0], info->argv[1]);
+
+	/*
+	 *	We've remembered the subnet in the parent trie.
 	 *	There's no need to add it to the child list here.
 	 */
 	return 2;
@@ -959,25 +1037,24 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 		memcpy(&my_host.ether, vp->vp_ether, sizeof(my_host.ether));
 
 		host = fr_hash_table_finddata(head->hosts, &my_host);
-		if (host) {
-			/*
-			 *	@todo - call a new apply_host()
-			 *	function, which will look for matching
-			 *	"fixed-address".
-			 *
-			 *	If there's no "fixed-address", it will
-			 *	apply all the rules.
-			 *
-			 *	If there is a "fixed-address", it will
-			 *	apply the host rules only if one of
-			 *	the addresses is valid for the network
-			 *	to which the client is connected.
-			 */
+		if (!host) goto options;
 
-			child_rcode = apply(inst, request, host->info);
-			if (child_rcode < 0) return child_rcode;
-			if (child_rcode == 1) rcode = 1;
-		}
+		/*
+		 *	@todo - call a new apply_host()
+		 *	function, which will look for matching
+		 *	"fixed-address".
+		 *
+		 *	If there's no "fixed-address", it will
+		 *	apply all the rules.
+		 *
+		 *	If there is a "fixed-address", it will
+		 *	apply the host rules only if one of
+		 *	the addresses is valid for the network
+		 *	to which the client is connected.
+		 */
+		child_rcode = apply(inst, request, host->info);
+		if (child_rcode < 0) return child_rcode;
+		if (child_rcode == 1) rcode = 1;
 	}
 
 options:
@@ -999,10 +1076,22 @@ options:
 	}
 
 	/*
-	 *	@todo - look in a trie for matching subnets, and apply
-	 *	any subnets that match.
+	 *	Look in the trie for matching subnets, and apply any
+	 *	subnets that match.
+	 *
+	 *	@todo - figure out which subnet to choose?  Maybe
+	 *	based on the assigned IP, or maybe something else...
 	 */
+	if (head->subnets) {
+		info = fr_trie_lookup(head->subnets, "0000", 32);
+		if (!info) goto recurse;
 
+		child_rcode = apply(inst, request, info);
+		if (child_rcode < 0) return child_rcode;
+		if (child_rcode == 1) rcode = 1;
+	}
+
+recurse:
 	for (info = head->child; info != NULL; info = info->next) {
 		if (!info->cmd) return -1; /* internal error */
 
@@ -1042,7 +1131,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "option STRING STRING,",		parse_option, NULL, 16},
 	{ "range IPADDR IPADDR",		NULL, NULL, 2},
 	{ "shared-network STRING SECTION",	NULL, NULL, 1},
-	{ "subnet IPADDR netmask IPADDR SECTION", NULL, NULL, 2},
+	{ "subnet IPADDR netmask IPADDR SECTION", parse_subnet, NULL, 2},
 	{ NULL, NULL }
 };
 
