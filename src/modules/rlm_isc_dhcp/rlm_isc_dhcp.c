@@ -861,8 +861,9 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 
 static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
-	int rcode;
+	int i, rcode;
 	VALUE_PAIR *vp;
+	FR_TOKEN op;
 	fr_dict_attr_t const *da;
 	vp_cursor_t cursor;
 	rlm_isc_dhcp_info_t *parent;
@@ -885,26 +886,42 @@ static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 		return -1;
 	}
 
+	if ((info->argc > 2) && !da->flags.array) {
+		fr_strerror_printf("option '%s' cannot have multiple values", info->argv[0]->vb_strvalue);
+		return -1;
+	}
+
 	vp = fr_pair_afrom_da(parent, da);
 	if (!vp) {
 		fr_strerror_printf("out of memory");
 		return -1;
 	}
 
-	rcode = fr_pair_value_from_str(vp, info->argv[0]->vb_strvalue, info->argv[0]->vb_length,
-				       '\0', false);
-	if (rcode < 0) return rcode;
-
 	/*
-	  *	When we evaluate the config from top-down, we want
-	  *	child options to over-ride parent options.
-	  */
-	vp->op = T_OP_SET;
+	 *	Add versus set, for options with multiple parameters.
+	 */
+	if (info->argc == 2) {
+		op = T_OP_SET;
+	} else {
+		op = T_OP_ADD;
+	}
 
 	(void) fr_pair_cursor_init(&cursor, &parent->options);
-	fr_pair_cursor_append(&cursor, vp);
 
-	IDEBUG("%.*s option %s %s ", state->braces, spaces, info->argv[0]->vb_strvalue, info->argv[1]->vb_strvalue);
+	/*
+	 *	Add in all of the options
+	 */
+	for (i = 1; i < info->argc; i++) {
+		rcode = fr_pair_value_from_str(vp, info->argv[1]->vb_strvalue, info->argv[1]->vb_length,
+					       '\0', false);
+		if (rcode < 0) return rcode;
+
+		vp->op = op;
+
+		fr_pair_cursor_append(&cursor, vp);
+
+		IDEBUG("%.*s option %s %s ", state->braces, spaces, info->argv[1]->vb_strvalue, info->argv[1]->vb_strvalue);
+	}
 
 	/*
 	 *	We don't need this any more.
@@ -1022,7 +1039,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "max-ack-delay UINT32",		NULL, NULL, 1},
 	{ "max-lease-time INTEGER",		NULL, NULL, 1},
 	{ "not authoritative",			NULL, NULL, 0},
-	{ "option STRING STRING",		parse_option, NULL, 2},
+	{ "option STRING STRING,",		parse_option, NULL, 16},
 	{ "range IPADDR IPADDR",		NULL, NULL, 2},
 	{ "shared-network STRING SECTION",	NULL, NULL, 1},
 	{ "subnet IPADDR netmask IPADDR SECTION", NULL, NULL, 2},
