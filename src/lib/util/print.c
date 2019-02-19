@@ -518,9 +518,13 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	done_flags:
 
 		/*
-		 *	Check for width field
+		 *	Check for width field.  First for strings, and
+		 *	then for other parameters.
 		 */
-		if (*p == '*') {
+		if ((*p == '.') && (*(p + 1) == '*') && (*(p + 2) == 's')) {
+			(void) va_arg(ap_q, int);
+			p += 2;
+		} else if (*p == '*') {
 			(void) va_arg(ap_q, int);
 			p++;
 		} else {
