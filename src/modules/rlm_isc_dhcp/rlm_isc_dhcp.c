@@ -895,6 +895,12 @@ static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 				       '\0', false);
 	if (rcode < 0) return rcode;
 
+	/*
+	  *	When we evaluate the config from top-down, we want
+	  *	child options to over-ride parent options.
+	  */
+	vp->op = T_OP_SET;
+
 	(void) fr_pair_cursor_init(&cursor, &parent->options);
 	fr_pair_cursor_append(&cursor, vp);
 
@@ -959,10 +965,20 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 
 options:
 	if (head->options) {
-		rcode = fr_pair_list_copy(request->reply, &request->reply->vps, head->options);
+		VALUE_PAIR *copy = NULL;
+
+		rcode = fr_pair_list_copy(request->reply, &copy, head->options);
 		if (rcode < 0) {
 			RDEBUG("Failed copying some options: %s", fr_strerror());
 		}
+
+		/*
+		 *	All of the options are ":=".  We evaluate /
+		 *	add options from the top down, so using ":="
+		 *	lets child options over-ride parent options.
+		 */
+		fr_pair_list_move(&request->reply->vps, &copy);
+		fr_pair_list_free(&copy);
 	}
 
 	/*
@@ -1007,6 +1023,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "max-lease-time INTEGER",		NULL, NULL, 1},
 	{ "not authoritative",			NULL, NULL, 0},
 	{ "option STRING STRING",		parse_option, NULL, 2},
+	{ "range IPADDR IPADDR",		NULL, NULL, 2},
 	{ "shared-network STRING SECTION",	NULL, NULL, 1},
 	{ "subnet IPADDR netmask IPADDR SECTION", NULL, NULL, 2},
 	{ NULL, NULL }
