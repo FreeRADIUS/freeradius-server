@@ -893,7 +893,6 @@ static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 {
 	int i, rcode;
 	VALUE_PAIR *vp;
-	FR_TOKEN op;
 	fr_dict_attr_t const *da;
 	vp_cursor_t cursor;
 	rlm_isc_dhcp_info_t *parent;
@@ -926,15 +925,6 @@ static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 		return -1;
 	}
 
-	/*
-	 *	Add versus set, for options with multiple parameters.
-	 */
-	if (info->argc == 2) {
-		op = T_OP_SET;
-	} else {
-		op = T_OP_ADD;
-	}
-
 	(void) fr_pair_cursor_init(&cursor, &parent->options);
 
 	/*
@@ -945,7 +935,7 @@ static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 					       '\0', false);
 		if (rcode < 0) return rcode;
 
-		vp->op = op;
+		vp->op = T_OP_EQ;
 
 		fr_pair_cursor_append(&cursor, vp);
 
@@ -1214,12 +1204,12 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 			isc_host_ether_t *ether, my_ether;
 
 			vp = fr_pair_find_by_da(request->packet->vps, attr_client_hardware_address, TAG_ANY);
-			if (!vp) goto options;
+			if (!vp) goto subnet;
 
 			memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));
 
 			ether = fr_hash_table_finddata(head->hosts, &my_ether);
-			if (!ether) goto options;
+			if (!ether) goto subnet;
 
 			host = ether->host;
 		}
@@ -1236,24 +1226,7 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 		if (child_rcode == 1) rcode = 1;
 	}
 
-options:
-	if (head->options) {
-		VALUE_PAIR *copy = NULL;
-
-		rcode = fr_pair_list_copy(request->reply, &copy, head->options);
-		if (rcode < 0) {
-			RDEBUG("Failed copying some options: %s", fr_strerror());
-		}
-
-		/*
-		 *	All of the options are ":=".  We evaluate /
-		 *	add options from the top down, so using ":="
-		 *	lets child options over-ride parent options.
-		 */
-		fr_pair_list_move(&request->reply->vps, &copy);
-		fr_pair_list_free(&copy);
-	}
-
+subnet:
 	/*
 	 *	Look in the trie for matching subnets, and apply any
 	 *	subnets that match.
@@ -1280,6 +1253,72 @@ recurse:
 		if (child_rcode < 0) return child_rcode;
 		if (child_rcode == 0) continue;
 
+		rcode = 1;
+	}
+
+	/*
+	 *	Now that our children have added options, see if we
+	 *	can add some, too.
+	 */
+	if (head->options) {
+		VALUE_PAIR *vp = NULL;
+		vp_cursor_t option_cursor;
+		vp_cursor_t reply_cursor;
+
+		(void) fr_pair_cursor_init(&reply_cursor, &request->reply->vps);
+		(void) fr_pair_cursor_tail(&reply_cursor);
+
+		/*
+		 *	Walk over the input list, adding the options
+		 *	only if they don't already exist in the reply.
+		 *
+		 *	Yes, we know that this is O(R*P*D), complexity
+		 *	is (reply VPs * option VPs * depth of options).
+		 *
+		 *	Unless we make the code a lot smarter, this is
+		 *	the best we can do.  Since there are likely
+		 *	only a few options (i.e. less than 100), this
+		 *	is deemed to be OK.
+		 *
+		 *	In order to fix this, we would need to sort
+		 *	all of the options first, sort the reply VPs,
+		 *	then walk over the reply VPs, and look at each
+		 *	option list in turn, seeing if there are
+		 *	options that match.  This would likely be
+		 *	faster.
+		 */
+		for (vp = fr_pair_cursor_init(&option_cursor, &head->options);
+		     vp != NULL;
+		     vp = fr_pair_cursor_next(&option_cursor)) {
+			VALUE_PAIR *reply;
+
+			reply = fr_pair_find_by_da(request->reply->vps, vp->da, TAG_ANY);
+			if (reply) continue;
+
+			/*
+			 *	Copy all of the same options to the
+			 *	reply.
+			 */
+			while (vp) {
+				VALUE_PAIR *next, *copy;
+
+				copy = fr_pair_copy(request->reply, vp);
+				if (!copy) return -1;
+
+				fr_pair_cursor_append(&reply_cursor, copy);
+				(void) fr_pair_cursor_tail(&reply_cursor);
+
+				next = fr_pair_cursor_next_peek(&option_cursor);
+				if (!next) break;
+				if (next->da != vp->da) break;
+
+				vp = fr_pair_cursor_next(&option_cursor);
+			}
+		}
+
+		/*
+		 *	We applied some options.
+		 */
 		rcode = 1;
 	}
 
