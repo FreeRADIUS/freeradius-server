@@ -749,6 +749,10 @@ size_t		fr_prints_uint128(char *out, size_t outlen, uint128_t const num);
 int		fr_get_time(char const *date_str, time_t *date);
 int8_t		fr_pointer_cmp(void const *a, void const *b);
 void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
+
+void 		fr_timeval_from_ms(struct timeval *out, uint64_t ms);
+void 		fr_timeval_from_usec(struct timeval *out, uint64_t usec);
+
 /*
  *	Define TALLOC_DEBUG to check overflows with talloc.
  *	we can't use valgrind, because the memory used by
