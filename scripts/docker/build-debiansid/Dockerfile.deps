@@ -22,7 +22,7 @@ RUN echo "deb http://apt.llvm.org/${osname}/ llvm-toolchain-${clangver} main" >>
 
 RUN apt-get update && \
 #  Development utilities
-    apt-get install -y devscripts equivs git quilt && \
+    apt-get install -y devscripts equivs git quilt ssl-cert && \
 #  Compilers
     apt-get install -y g++-${gccver} llvm-${clangver} clang-${clangver} lldb-${clangver} && \
 #  eapol_test dependencies
