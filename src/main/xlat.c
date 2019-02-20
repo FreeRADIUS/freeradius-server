@@ -2233,6 +2233,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		}
 		RDEBUG2("EXPAND %s", node->xlat->name);
 		RDEBUG2("   --> %s", str);
+
+		/*
+		 *	Resize the buffer to the correct size.
+		 */
+		if (rcode < 2047) {
+			child = talloc_memdup(ctx, str, rcode + 1);
+			talloc_free(str);
+			str = child;
+		}
 		break;
 
 	case XLAT_MODULE:
