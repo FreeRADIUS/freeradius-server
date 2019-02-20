@@ -44,8 +44,18 @@ RCSID("$Id$")
 #	include <sys/wait.h>
 #endif
 
+#ifdef HAVE_SYSTEMD_WATCHDOG
+#  include <systemd/sd-daemon.h>
+#endif
+
 extern pid_t radius_pid;
 extern fr_cond_t *debug_condition;
+
+#ifdef HAVE_SYSTEMD_WATCHDOG
+struct timeval sd_watchdog_interval;
+static fr_event_t *sd_watchdog_ev;
+
+#endif
 
 static bool spawn_flag = false;
 static bool just_started = true;
@@ -345,6 +355,32 @@ void radius_update_listener(rad_listen_t *this)
  */
 #  define FD_MUTEX_LOCK(_x)
 #  define FD_MUTEX_UNLOCK(_x)
+#endif
+
+/*
+ *	Emit a systemd watchdog notification and reschedule the event.
+ */
+#ifdef HAVE_SYSTEMD_WATCHDOG
+typedef struct {
+	fr_event_list_t *el;
+	struct timeval now;
+} sd_watchdog_data_t;
+
+static sd_watchdog_data_t sdwd;
+
+static void sd_watchdog_event(void *ctx)
+{
+	sd_watchdog_data_t *s = (sd_watchdog_data_t *)ctx;
+	struct timeval when;
+
+	DEBUG("Emitting systemd watchdog notification");
+	sd_notify(0, "WATCHDOG=1");
+
+	timeradd(&when, &sd_watchdog_interval, &s->now);
+	if (!fr_event_insert(s->el, sd_watchdog_event, ctx, &when, &sd_watchdog_ev)) {
+		rad_panic("Failed to insert event");
+	}
+}
 #endif
 
 static int request_num_counter = 1;
@@ -5457,6 +5493,19 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 int radius_event_init(TALLOC_CTX *ctx) {
 	el = fr_event_list_create(ctx, event_status);
 	if (!el) return 0;
+
+#ifdef HAVE_SYSTEMD_WATCHDOG
+	if (sd_watchdog_interval.tv_sec || sd_watchdog_interval.tv_usec) {
+		struct timeval now;
+
+		fr_event_now(el, &now);
+
+		sdwd.now = now;
+		sdwd.el = el;
+
+		sd_watchdog_event(&sdwd);
+	}
+#endif
 
 	return 1;
 }

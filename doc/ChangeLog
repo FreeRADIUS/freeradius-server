@@ -78,6 +78,7 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Add RFC 7532 "bang path" support for realms.
 	  Fixes #2492.
 	* Update dictionary.ukerna documentation.  Fixes #2493
+	* Add support for systemd service and watchdogs. #2499
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the

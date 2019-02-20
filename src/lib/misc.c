@@ -2147,6 +2147,30 @@ void fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp
 	fr_quick_sort(to_sort, part + 1, max_idx, cmp);
 }
 
+#define USEC 1000000
+
+/** Convert a time specified in milliseconds to a timeval
+ *
+ * @param[out] out	Where to write the result.
+ * @param[in] ms	To convert to a timeval struct.
+ */
+void fr_timeval_from_ms(struct timeval *out, uint64_t ms)
+{
+	out->tv_sec = ms / 1000;
+	out->tv_usec = (ms % 1000) * 1000;
+}
+
+/** Convert a time specified in microseconds to a timeval
+ *
+ * @param[out] out	Where to write the result.
+ * @param[in] usec	To convert to a timeval struct.
+ */
+void fr_timeval_from_usec(struct timeval *out, uint64_t usec)
+{
+	out->tv_sec = usec / USEC;
+	out->tv_usec = usec % USEC;
+}
+
 #ifdef TALLOC_DEBUG
 void fr_talloc_verify_cb(UNUSED const void *ptr, UNUSED int depth,
 			 UNUSED int max_depth, UNUSED int is_ref,
