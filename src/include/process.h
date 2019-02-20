@@ -33,6 +33,10 @@ RCSIDH(process_h, "$Id$")
 extern "C" {
 #endif
 
+#ifdef HAVE_SYSTEMD_WATCHDOG
+extern struct timeval sd_watchdog_interval;
+#endif
+
 typedef enum fr_state_action_t {	/* server action */
 	FR_ACTION_INVALID = 0,
 	FR_ACTION_RUN,

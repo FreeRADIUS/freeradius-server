@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/autoconf.h>
 
 #include <sys/file.h>
 
@@ -49,6 +50,10 @@ RCSID("$Id$")
 #endif
 #ifndef WIFEXITED
 #	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
+#endif
+
+#ifdef HAVE_SYSTEMD
+#  include <systemd/sd-daemon.h>
 #endif
 
 /*
@@ -378,6 +383,25 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	/*
+	 *  The systemd watchdog enablement must be checked before we
+	 *  daemonize, but the notifications can come from any process.
+	 */
+#ifdef HAVE_SYSTEMD_WATCHDOG
+	if (!check_config) {
+		uint64_t usec;
+
+		if ((sd_watchdog_enabled(0, &usec) > 0) && (usec > 0)) {
+			usec /= 2;
+			fr_timeval_from_usec(&sd_watchdog_interval, usec);
+
+			INFO("systemd watchdog interval is %pT secs", &sd_watchdog_interval);
+		} else {
+			INFO("systemd watchdog is disabled");
+		}
+	}
+#endif
 
 #ifndef __MINGW32__
 	/*
