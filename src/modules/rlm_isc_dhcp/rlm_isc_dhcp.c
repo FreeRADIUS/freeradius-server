@@ -938,6 +938,7 @@ static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 		vp->op = T_OP_EQ;
 
 		fr_pair_cursor_append(&cursor, vp);
+		(void) fr_pair_cursor_tail(&cursor);
 
 		IDEBUG("%.*s option %s %s ", state->braces, spaces, info->argv[1]->vb_strvalue, info->argv[1]->vb_strvalue);
 	}
@@ -1083,6 +1084,39 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 	return 2;
 }
 
+static rlm_isc_dhcp_info_t *get_host(REQUEST *request, rlm_isc_dhcp_info_t *head)
+{
+	VALUE_PAIR *vp;
+	isc_host_ether_t *ether, my_ether;
+
+	/*
+	 *	Look up the host first by client identifier.
+	 *	If that doesn't match, use client hardware
+	 *	address.
+	 */
+	vp = fr_pair_find_by_da(request->packet->vps, attr_client_identifier, TAG_ANY);
+	if (vp) {
+		isc_host_client_t *client, my_client;
+
+		my_client.client = &(vp->data);
+
+		client = fr_hash_table_finddata(head->client_identifiers, &my_client);
+		if (client) return client->host;
+	}
+
+
+	vp = fr_pair_find_by_da(request->packet->vps, attr_client_hardware_address, TAG_ANY);
+	if (!vp) return NULL;
+
+	memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));
+
+	ether = fr_hash_table_finddata(head->hosts, &my_ether);
+	if (!ether) return NULL;
+
+	return ether->host;
+}
+
+
 /*
  *  When a client is to be booted, its boot parameters are determined
  *  by consulting that client’s host declaration (if any), and then
@@ -1110,35 +1144,19 @@ static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_i
 {
 	int rcode, child_rcode;
 	rlm_isc_dhcp_info_t *info;
+	VALUE_PAIR *yiaddr;
+
+	/*
+	 *	If there's already a fixed IP, don't do anything
+	 */
+	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address, TAG_ANY);
+	if (yiaddr) return 0;
 
 	rcode = 0;
 
 	/*
-	 *	Find any "host", and apply the fixed IP.
+	 *	The most specific entry is preferred over the most generic one.
 	 */
-	if (head->hosts) {
-		isc_host_ether_t *host, my_host;
-		VALUE_PAIR *vp;
-
-		vp = fr_pair_find_by_da(request->packet->vps, attr_client_hardware_address, TAG_ANY);
-		if (!vp) goto recurse;
-
-		memcpy(&my_host.ether, vp->vp_ether, sizeof(my_host.ether));
-
-		host = fr_hash_table_finddata(head->hosts, &my_host);
-		if (!host) goto recurse;
-
-		// @todo - actually set the fixed IP... oops
-
-
-		/*
-		 *	If we've found a fixed IP, then we don't
-		 *	recurse.
-		 */
-		return 2;
-	}
-
-recurse:
 	for (info = head->child; info != NULL; info = info->next) {
 		if (!info->cmd) return -1; /* internal error */
 
@@ -1163,6 +1181,60 @@ recurse:
 		rcode = 1;
 	}
 
+	/*
+	 *	If there's now a fixed IP, don't do anything
+	 */
+	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address, TAG_ANY);
+	if (yiaddr) return rcode;
+
+	/*
+	 *	Find any "host", and apply the fixed IP.
+	 */
+	if (head->hosts) {
+		VALUE_PAIR *vp;
+		rlm_isc_dhcp_info_t *host;
+
+		host = get_host(request, head);
+		if (!host) return 0;
+
+		/*
+		 *	Find a "fixed address" sub-statement.
+		 */
+		for (info = host->child; info != NULL; info = info->next) {
+			vp_cursor_t cursor;
+
+			if (!info->cmd) return -1; /* internal error */
+
+			/*
+			 *	Skip complex statements
+			 */
+			if (info->child) continue;
+
+			// @todo - this is getting increasingly retarded
+			if (strncmp(info->cmd->name, "fixed-address", 13) != 0) continue;
+
+			vp = fr_pair_afrom_da(request->reply->vps, attr_your_ip_address);
+			if (!vp) return -1;
+
+			rcode = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
+			if (rcode < 0) return rcode;
+
+			/*
+			 *	<sigh> I miss pair_add()
+			 */
+			(void) fr_pair_cursor_init(&cursor, &request->reply->vps);
+			(void) fr_pair_cursor_tail(&cursor);
+			fr_pair_cursor_append(&cursor, vp);
+
+			/*
+			 *	If we've found a fixed IP, then tell
+			 *	the parent to stop iterating over
+			 *	children.
+			 */
+			return 2;
+		}
+	}
+
 	return rcode;
 }
 
@@ -1182,37 +1254,10 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 	 *	First, apply any "host" options
 	 */
 	if (head->hosts) {
-		VALUE_PAIR *vp;
 		rlm_isc_dhcp_info_t *host = NULL;
 
-		/*
-		 *	Look up the host first by client identifier.
-		 *	If that doesn't match, use client hardware
-		 *	address.
-		 */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_client_identifier, TAG_ANY);
-		if (vp) {
-			isc_host_client_t *client, my_client;
-
-			my_client.client = &(vp->data);
-
-			client = fr_hash_table_finddata(head->client_identifiers, &my_client);
-			if (client) host = client->host;
-		}
-
-		if (!host) {
-			isc_host_ether_t *ether, my_ether;
-
-			vp = fr_pair_find_by_da(request->packet->vps, attr_client_hardware_address, TAG_ANY);
-			if (!vp) goto subnet;
-
-			memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));
-
-			ether = fr_hash_table_finddata(head->hosts, &my_ether);
-			if (!ether) goto subnet;
-
-			host = ether->host;
-		}
+		host = get_host(request, head);
+		if (!host) goto subnet;
 
 		/*
 		 *	Apply any options in the "host" section.
