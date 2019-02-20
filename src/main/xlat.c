@@ -2237,7 +2237,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		/*
 		 *	Resize the buffer to the correct size.
 		 */
-		if (rcode < 2047) {
+		if (rcode == 0) {
+			talloc_free(str);
+			str = talloc_strdup(ctx, "");
+		} else if (rcode < 2047) {
 			child = talloc_memdup(ctx, str, rcode + 1);
 			talloc_free(str);
 			str = child;
