@@ -332,6 +332,7 @@ docker-publish: docker-push-latest
 #
 .PHONY: deb
 deb:
+	fakeroot debian/rules debian/control #clean
 	fakeroot dpkg-buildpackage -b -uc
 
 # Developer checks

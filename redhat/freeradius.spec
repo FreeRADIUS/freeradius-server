@@ -62,6 +62,9 @@ BuildRequires: net-snmp-utils
 %{?el7:BuildRequires: libwbclient-devel}
 %{?el7:BuildRequires: samba-devel}
 %{?el6:BuildRequires: samba4-devel}
+%if %{?_unitdir:1}%{!?_unitdir:0}
+BuildRequires: systemd-devel
+%endif
 BuildRequires: readline-devel
 BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel

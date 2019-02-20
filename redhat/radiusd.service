@@ -4,7 +4,9 @@ After=network-online.target
 Documentation=man:radiusd(8) man:radiusd.conf(5) http://wiki.freeradius.org/ http://networkradius.com/doc/
 
 [Service]
-Type=forking
+Type=notify
+WatchdogSec=60
+NotifyAccess=all
 PIDFile=/var/run/radiusd/radiusd.pid
 EnvironmentFile=-/etc/sysconfig/radiusd
 
@@ -16,15 +18,18 @@ EnvironmentFile=-/etc/sysconfig/radiusd
 # We provide HOSTNAME here for convenience.
 Environment=HOSTNAME=%H
 
+# Limit memory to 2G this is fine for %99.99 of deployments.  FreeRADIUS
+# is not memory hungry, if it's using more than this, then there's probably
+# a leak somewhere.
+MemoryLimit=2G
+
 RuntimeDirectory=radiusd
 RuntimeDirectoryMode=0775
-ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cxm -lstdout
+ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cx -lstdout
 ExecStartPre=/usr/bin/chown radiusd:radiusd /var/run/radiusd
-ExecStart=/usr/sbin/radiusd $FREERADIUS_OPTIONS -m
+ExecStart=/usr/sbin/radiusd $FREERADIUS_OPTIONS
 Restart=on-failure
 RestartSec=5
-ExecReload=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cxm -lstdout
-ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]
 WantedBy=multi-user.target
