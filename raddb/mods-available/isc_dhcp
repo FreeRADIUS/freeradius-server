@@ -10,8 +10,18 @@
 #
 #  The `isc_dhcp` module reads ISC DHCO configuration files.
 #
-#  NOTE: The module currently does nothing, and only parses a tiny
-#  subset of the ISC DHCP configurationf ile format.
+#  When the module is listed in the `recv DHCP-Discover` section, as
+#  "isc_dhcp.authorize" (sorry), it will look up the client by
+#  `client-identifier`, or failing that, `hardware ethernet`.  If
+#  found, the module will apply a `fixed-address` option to assign an
+#  IP address.
+#
+#  Leases are *not* handled by this module.  Instead, you should use
+#  an "ip pool" module in the `send DHCP-Offer" section.  Then after
+#  an IP address has been allocated, list `isc_dhcp` (without the
+#  `authorize`).
+#
+#  The module will then apply any matching options to the packet.
 #
 
 #
