@@ -869,7 +869,7 @@ void fr_timeval_from_ms(struct timeval *out, uint64_t ms)
 void fr_timeval_from_usec(struct timeval *out, uint64_t usec)
 {
 	out->tv_sec = usec / USEC;
-	out->tv_usec = (usec % USEC) * USEC;
+	out->tv_usec = usec % USEC;
 }
 
 /** Subtract one timeval from another
