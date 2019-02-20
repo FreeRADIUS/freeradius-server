@@ -1143,6 +1143,33 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 	int rcode;
 	int entries = 0;
 
+	/*
+	 *	We don't allow "host" inside of "host", even with
+	 *	multiple layers of nesting.  The same rules apply to
+	 *	every section except "group".
+	 */
+	if (strncmp(info->cmd->name, "group", 5) != 0) {
+		rlm_isc_dhcp_info_t *parent;
+
+		for (parent = info->parent; parent != NULL; parent = parent->parent) {
+			char const *q;
+
+			if (!parent->cmd) break; /* top level */
+
+			if (parent->cmd != info->cmd) continue;
+
+			/*
+			 *	Be gentle to the end user
+			 */
+			q = parent->cmd->name;
+			while (*q && !isspace((int) *q)) q++;
+
+			fr_strerror_printf("cannot nest '%.*s' statements",
+					   (int) (q - parent->cmd->name), parent->cmd->name);
+			return -1;
+		}
+	}
+
 	IDEBUG("%.*s {", state->braces - 1, spaces); /* "braces" was already incremented */
 	state->allow_eof = false; /* can't have EOF in the middle of a section */
 
