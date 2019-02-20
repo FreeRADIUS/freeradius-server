@@ -984,7 +984,83 @@ else
   HAVE_LIBCAP=1
 fi
 
+dnl #
+dnl #  Check for libreadline
+dnl #
 VL_LIB_READLINE
+
+dnl #
+dnl #  Check for libsystemd
+dnl #
+libsystemd_ver="221"
+AC_ARG_WITH([systemd],
+            AS_HELP_STRING([--with-systemd], [Enable use of libsystemd for journal output]),
+            [with_libsystemd=$enableval],
+            [with_libsystemd=auto])
+
+AS_IF([test x$with_libsystemd != xno], [
+  AC_MSG_CHECKING([for libsystemd])
+  PKG_CHECK_MODULES([SYSTEMD], [libsystemd >= ${libsystemd_ver}],
+                    [WITH_SYSTEMD=yes],
+                    [WITH_SYSTEMD=no])
+  AC_MSG_RESULT($WITH_SYSTEMD)
+])
+
+AC_MSG_RESULT($with_libsystemd)
+
+
+dnl #
+dnl #  Check for systemd
+dnl #
+if test "x$WITH_SYSTEMD" = xyes; then
+  smart_try_dir="$systemd_lib_dir"
+  FR_SMART_CHECK_LIB(systemd, sd_notify)
+  if test "x$ac_cv_lib_systemd_sd_notify" != "xyes"; then
+    AC_MSG_WARN([systemd library not found. Use --with-systemd-lib-dir=<path>.])
+  else
+    AC_DEFINE([HAVE_SYSTEMD], [1],
+      [Define to 1 if you have the `systemd' library (-lsystemd).]
+    )
+    HAVE_SYSTEMD=1
+    SYSTEMD_LIBS="${smart_lib}"
+    SYSTEMD_LDFLAGS="${smart_ldflags}"
+  fi
+  dnl Set by FR_SMART_CHECKLIB
+  LIBS="${old_LIBS}"
+fi
+
+if test "x$HAVE_SYSTEMD" = x; then
+  AC_MSG_NOTICE([skipping test for systemd watchdog])
+else
+  smart_try_dir="$systemd_lib_dir"
+  FR_SMART_CHECK_LIB(systemd, sd_watchdog_enabled)
+  if test "x$ac_cv_lib_systemd_sd_watchdog_enabled" != "xyes"; then
+    AC_MSG_WARN([systemd watchdog is only available from systemd 209.])
+  else
+    AC_DEFINE([HAVE_SYSTEMD_WATCHDOG], [1],
+      [Define to 1 if you have watchdog support in the `systemd' library (-lsystemd).]
+    )
+  fi
+  dnl Set by FR_SMART_CHECKLIB
+  LIBS="${old_LIBS}"
+fi
+
+dnl #
+dnl #  Check for the systemd headers
+dnl #
+if test "x$WITH_SYSTEMD" != xyes || test "x$SYSTEMD_LIBS" = x; then
+  AC_MSG_NOTICE([skipping test for systemd/sd-daemon.h.])
+else
+  smart_try_dir="$systemd_include_dir"
+  FR_SMART_CHECK_INCLUDE([systemd/sd-daemon.h])
+  if test "x$ac_cv_header_systemd_sdmdaemon_h" = "xyes"; then
+    AC_DEFINE(HAVE_SYSTEMD_SD_DAEMON_H, 1, [Define to 1 if you have the <systemd/sd-daemon.h> header file.])
+    AC_SUBST(SYSTEMD_LIBS)
+    AC_SUBST(SYSTEMD_LDFLAGS)
+  else
+    AC_MSG_WARN([systemd headers not found.  Use --with-systemd-include-dir=<path>.])
+  fi
+fi
 
 dnl #############################################################
 dnl #
