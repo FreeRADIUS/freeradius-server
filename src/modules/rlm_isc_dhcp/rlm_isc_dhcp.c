@@ -39,10 +39,12 @@ fr_dict_autoload_t rlm_isc_dhcp_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_client_hardware_address;
+static fr_dict_attr_t const *attr_your_ip_address;
 
 extern fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[];
 fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
 	{ .out = &attr_client_hardware_address, .name = "DHCP-Client-Hardware-Address", .type = FR_TYPE_ETHERNET, .dict = &dict_dhcpv4},
+	{ .out = &attr_your_ip_address, .name = "DHCP-Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ NULL }
 };
 
@@ -158,7 +160,6 @@ struct rlm_isc_dhcp_info_t {
 
 static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug);
 static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
-static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *head);
 
 static char const *spaces = "                                                                                ";
 
@@ -1013,16 +1014,110 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 	return 2;
 }
 
-
 /*
- *	Apply functions
+ *  When a client is to be booted, its boot parameters are determined
+ *  by consulting that client’s host declaration (if any), and then
+ *  consulting any class declarations matching the client, followed by
+ *  the pool, subnet and shared-network declarations for the IP
+ *  address assigned to the client. Each of these declarations itself
+ *  appears within a lexical scope, and all declarations at less
+ *  specific lexical scopes are also consulted for client option
+ *  declarations. Scopes are never considered twice, and if parameters
+ *  are declared in more than one scope, the parameter declared in the
+ *  most specific scope is the one that is used.
+ *
+ *  When dhcpd tries to find a host declaration for a client, it first
+ *  looks for a host declaration which has a fixed-address declaration
+ *  that lists an IP address that is valid for the subnet or shared
+ *  network on which the client is booting. If it doesn’t find any
+ *  such entry, it tries to find an entry which has no fixed-address
+ *  declaration.
+ *
+ *  Host declarations are matched to actual DHCP or BOOTP clients by
+ *  matching the dhcp-client-identifier option specified in the host
+ *  declaration to the one supplied by the client, or, if the host
+ *  declaration or the client does not provide a
+ *  dhcp-client-identifier option, by matching the hardware parameter
+ *  in the host declaration to the network hardware address supplied
+ *  by the client. BOOTP clients do not normally provide a
+ *  dhcp-client-identifier, so the hardware address must be used for
+ *  all clients that may boot using the BOOTP protocol.
  */
-static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *head)
+
+/** Apply fixed IPs
+ *
+ */
+static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *head)
 {
 	int rcode, child_rcode;
 	rlm_isc_dhcp_info_t *info;
 
 	rcode = 0;
+
+	/*
+	 *	Find any "host", and apply the fixed IP.
+	 */
+	if (head->hosts) {
+		isc_host_t *host, my_host;
+		VALUE_PAIR *vp;
+
+		vp = fr_pair_find_by_da(request->packet->vps, attr_client_hardware_address, TAG_ANY);
+		if (!vp) goto recurse;
+
+		memcpy(&my_host.ether, vp->vp_ether, sizeof(my_host.ether));
+
+		host = fr_hash_table_finddata(head->hosts, &my_host);
+		if (!host) goto recurse;
+
+		// @todo - actually set the fixed IP... oops
+
+
+		/*
+		 *	If we've found a fixed IP, then we don't
+		 *	recurse.
+		 */
+		return 2;
+	}
+
+recurse:
+	for (info = head->child; info != NULL; info = info->next) {
+		if (!info->cmd) return -1; /* internal error */
+
+		/*
+		 *	Skip simple statements
+		 */
+		if (!info->child) continue;
+
+		/*
+		 *	Recurse for children which have subsections.
+		 */
+		child_rcode = apply_fixed_ip(inst, request, info);
+		if (child_rcode < 0) return child_rcode;
+		if (child_rcode == 0) continue;
+
+		/*
+		 *	We've found a "fixed address" statement and
+		 *	applied it.  Don't look for another one.
+		 */
+		if (child_rcode == 2) return child_rcode;
+
+		rcode = 1;
+	}
+
+	return rcode;
+}
+
+/** Apply all rules *except* fixed IP
+ *
+ */
+static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *head)
+{
+	int rcode, child_rcode;
+	rlm_isc_dhcp_info_t *info;
+	VALUE_PAIR *yiaddr;
+
+	rcode = 0;
+	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address, TAG_ANY);
 
 	/*
 	 *	First, apply any "host" options
@@ -1040,17 +1135,11 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 		if (!host) goto options;
 
 		/*
-		 *	@todo - call a new apply_host()
-		 *	function, which will look for matching
-		 *	"fixed-address".
+		 *	Apply any options in the "host" section.
 		 *
-		 *	If there's no "fixed-address", it will
-		 *	apply all the rules.
-		 *
-		 *	If there is a "fixed-address", it will
-		 *	apply the host rules only if one of
-		 *	the addresses is valid for the network
-		 *	to which the client is connected.
+		 *	@todo - only apply the options if there's no
+		 *	YIADDR, OR the YIADDR matches one of the
+		 *	addresses listed in `fixed address`.
 		 */
 		child_rcode = apply(inst, request, host->info);
 		if (child_rcode < 0) return child_rcode;
@@ -1078,17 +1167,17 @@ options:
 	/*
 	 *	Look in the trie for matching subnets, and apply any
 	 *	subnets that match.
-	 *
-	 *	@todo - figure out which subnet to choose?  Maybe
-	 *	based on the assigned IP, or maybe something else...
 	 */
-	if (head->subnets) {
-		info = fr_trie_lookup(head->subnets, "0000", 32);
+	if (head->subnets && yiaddr) {
+		info = fr_trie_lookup(head->subnets, &yiaddr->vp_ipv4addr, 32);
 		if (!info) goto recurse;
 
 		child_rcode = apply(inst, request, info);
 		if (child_rcode < 0) return child_rcode;
 		if (child_rcode == 1) rcode = 1;
+
+		// @todo - look for subnet mask.  If one doesn't
+		// exist, use the mask from the subnet declaration.
 	}
 
 recurse:
@@ -1304,7 +1393,23 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+{
+	int rcode;
+	rlm_isc_dhcp_t *inst = instance;
+
+	rcode = apply_fixed_ip(inst, request, inst->head);
+	if (rcode < 0) return RLM_MODULE_FAIL;
+	if (rcode == 0) return RLM_MODULE_NOOP;
+
+	if (rcode == 2) return RLM_MODULE_UPDATED;
+
+	return RLM_MODULE_OK;
+}
+
+
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	int rcode;
 	rlm_isc_dhcp_t *inst = instance;
@@ -1312,6 +1417,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 	rcode = apply(inst, request, inst->head);
 	if (rcode < 0) return RLM_MODULE_FAIL;
 	if (rcode == 0) return RLM_MODULE_NOOP;
+
+	// @todo - check for subnet mask option.  If none exists, use one from the enclosing network?
 
 	return RLM_MODULE_OK;
 }
@@ -1326,7 +1433,7 @@ rad_module_t rlm_isc_dhcp = {
 	.instantiate	= mod_instantiate,
 
 	.methods = {
-		[MOD_AUTHORIZE]	= mod_process,
-		[MOD_POST_AUTH]	= mod_process,
+		[MOD_AUTHORIZE]	= mod_authorize,
+		[MOD_POST_AUTH]	= mod_post_auth,
 	},
 };
