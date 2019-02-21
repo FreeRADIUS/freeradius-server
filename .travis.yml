@@ -37,7 +37,7 @@ addons:
     build_command_prepend: ./configure -with-rlm-python-bin=/usr/bin/python2.7
     build_command: make
     branch_pattern: coverity_scan
-  postgresql: '9.4'
+  postgresql: '10'
   apt:
     sources:
     - llvm-toolchain-xenial-7
@@ -54,18 +54,14 @@ addons:
     - dh-make
     - doxygen
     - fakeroot
+    - firebird-dev
+    - freetds-dev
     - gcc-7
     - gccgo-7
     - gdb
     - graphviz
-    - lintian
-    - mysql-server
-    - pbuilder
-    - python-dev
-    - quilt
+    - ldap-utils
     - libcollectdclient-dev
-    - firebird-dev
-    - freetds-dev
     - libcap-dev
     - libcurl4-openssl-dev
     - libgdbm-dev
@@ -97,12 +93,18 @@ addons:
     - libwbclient-dev
     - libykclient-dev
     - libyubikey-dev
+    - lintian
     # Needed for llvm-symbolizer
     - llvm-7
-    # For rendering clang scan results
     - lynx
+    - mysql-server
+    - pbuilder
+    - postgresql-10
+    - postgresql-client-10
+    - python-dev
+    - quilt
+    # For rendering clang scan results
     - slapd
-    - ldap-utils
 services:
 - mysql
 - postgresql
