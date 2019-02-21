@@ -2837,6 +2837,63 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	}
 }
 
+/** Print a formatted string using our internal printf wrapper and assign it to a value box
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
+ * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] fmt	The printf format string to process.
+ * @param[in] ap	Substitution arguments.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_vasprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv, bool tainted,
+			   char const *fmt, va_list ap)
+{
+	va_list aq;
+	char *str;
+
+	va_copy(aq, ap);	/* See vlog_module_failure_msg for why */
+	str = fr_vasprintf(ctx, fmt, aq);
+	va_end(aq);
+
+	if (!str) return -1;
+
+	dst->type = FR_TYPE_STRING;
+	dst->tainted = tainted;
+	dst->vb_strvalue = str;
+	dst->datum.length = talloc_array_length(str) - 1;
+	dst->enumv = enumv;
+	dst->next = NULL;
+
+	return 0;
+}
+
+/** Print a formatted string using our internal printf wrapper and assign it to a value box
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
+ * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] fmt	The printf format string to process.
+ * @param[in] ...	Substitution arguments.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_asprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv, bool tainted,
+			  char const *fmt, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, fmt);
+	ret = fr_value_box_vasprintf(ctx, dst, enumv, tainted, fmt, ap);
+	va_end(ap);
+
+	return ret;
+}
+
 /** Copy a nul terminated string to a #fr_value_box_t
  *
  * @param[in] ctx 	to allocate any new buffers in.
@@ -2892,59 +2949,6 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 	dst->datum.length = len;
 	dst->enumv = enumv;
 	dst->next = NULL;
-
-	return 0;
-}
-
-/** Append a buffer to an existing fr_value_box_t
- *
- * @param[in] dst	value box to append to.
- * @param[in] src	octets data to append.
- * @param[in] len	length of octets data.
- * @param[in] tainted	Whether src is tainted.
- * @return
- *	- 0 on success.
- * 	- -1 on failure.
- */
-int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, bool tainted)
-{
-	char *ptr, *nptr;
-	size_t nlen;
-
-	if (len == 0) return 0;
-
-	if (dst->type != FR_TYPE_STRING) {
-		fr_strerror_printf("%s: Expected boxed value of type %s, got type %s", __FUNCTION__,
-				   fr_int2str(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
-				   fr_int2str(fr_value_box_type_table, dst->type, "<INVALID>"));
-		return -1;
-	}
-
-	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
-	if (!fr_cond_assert(ptr)) return -1;
-
-	if (talloc_reference_count(ptr) > 0) {
-		fr_strerror_printf("%s: Boxed value has two many references", __FUNCTION__);
-		return -1;
-	}
-
-	nlen = dst->vb_length + len + 1;
-	nptr = talloc_realloc(talloc_parent(ptr), ptr, char, dst->vb_length + len + 1);
-	if (!nptr) {
-		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
-				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
-		return -1;
-	}
-	ptr = nptr;
-
-	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
-
-	dst->datum.ptr = ptr;
-	dst->vb_length += len;
-
-	ptr[dst->vb_length] = '\0';
-
-	if (tainted) dst->tainted = true;
 
 	return 0;
 }
@@ -3076,6 +3080,59 @@ int fr_value_box_bstrsnteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t
 	dst->datum.length = inlen;
 	dst->enumv = enumv;
 	dst->next = NULL;
+
+	return 0;
+}
+
+/** Append a buffer to an existing fr_value_box_t
+ *
+ * @param[in] dst	value box to append to.
+ * @param[in] src	octets data to append.
+ * @param[in] len	length of octets data.
+ * @param[in] tainted	Whether src is tainted.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+{
+	char *ptr, *nptr;
+	size_t nlen;
+
+	if (len == 0) return 0;
+
+	if (dst->type != FR_TYPE_STRING) {
+		fr_strerror_printf("%s: Expected boxed value of type %s, got type %s", __FUNCTION__,
+				   fr_int2str(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
+				   fr_int2str(fr_value_box_type_table, dst->type, "<INVALID>"));
+		return -1;
+	}
+
+	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
+	if (!fr_cond_assert(ptr)) return -1;
+
+	if (talloc_reference_count(ptr) > 0) {
+		fr_strerror_printf("%s: Boxed value has two many references", __FUNCTION__);
+		return -1;
+	}
+
+	nlen = dst->vb_length + len + 1;
+	nptr = talloc_realloc(talloc_parent(ptr), ptr, char, dst->vb_length + len + 1);
+	if (!nptr) {
+		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
+				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
+		return -1;
+	}
+	ptr = nptr;
+
+	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
+
+	dst->datum.ptr = ptr;
+	dst->vb_length += len;
+
+	ptr[dst->vb_length] = '\0';
+
+	if (tainted) dst->tainted = true;
 
 	return 0;
 }
