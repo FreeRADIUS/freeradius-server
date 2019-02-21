@@ -123,11 +123,23 @@ typedef struct rlm_isc_dhcp_tokenizer_t {
 typedef int (*rlm_isc_dhcp_parse_t)(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
 typedef int (*rlm_isc_dhcp_apply_t)(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *info);
 
+typedef enum rlm_isc_dhcp_type_t {
+	ISC_INVALID = 0,		//!< we recognize it, but don't implement it
+	ISC_NOOP,			//!< we parse and ignore it
+	ISC_GROUP,
+	ISC_HOST,
+	ISC_SUBNET,
+	ISC_OPTION,
+	ISC_HARDWARE_ETHERNET,
+	ISC_FIXED_ADDRESS,
+} rlm_isc_dhcp_type_t;
+
 /** Describes the commands that we accept, including it's syntax (i.e. name), etc.
  *
  */
 typedef struct rlm_isc_dhcp_cmd_t {
 	char const		*name;
+	rlm_isc_dhcp_type_t	type;
 	rlm_isc_dhcp_parse_t	parse;
 	rlm_isc_dhcp_apply_t	apply;
 	int			max_argc;
@@ -832,7 +844,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 		 *	@todo - Use enums or something.  Yes, this is
 		 *	fugly.
 		 */
-		if (strncmp(child->cmd->name, "hardware ethernet ", 18) == 0) {
+		if (child->cmd->type == ISC_HARDWARE_ETHERNET) {
 			break;
 		}
 	}
@@ -954,7 +966,7 @@ static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 	 *	option list.  That way the client identifier is always
 	 *	returned to the client, as per RFC 6842.
 	 */
-	if (da == attr_client_identifier && parent->cmd && (strncmp(parent->cmd->name, "host ", 5) == 0)) {
+	if (da == attr_client_identifier && parent->cmd && (parent->cmd->type == ISC_HOST)) {
 		isc_host_client_t *self, *old;
 		rlm_isc_dhcp_info_t *host;
 
@@ -1211,7 +1223,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_i
 			if (info->child) continue;
 
 			// @todo - this is getting increasingly retarded
-			if (strncmp(info->cmd->name, "fixed-address", 13) != 0) continue;
+			if (info->cmd->type == ISC_FIXED_ADDRESS) continue;
 
 			vp = fr_pair_afrom_da(request->reply->vps, attr_your_ip_address);
 			if (!vp) return -1;
@@ -1375,26 +1387,26 @@ recurse:
  *
  */
 static const rlm_isc_dhcp_cmd_t commands[] = {
-	{ "abandon-lease-time INTEGER",		NULL, NULL, 1},
-	{ "adaptive-lease-time-threshold INTEGER", NULL, NULL, 1},
-	{ "always-broadcast BOOL",		NULL, NULL, 1},
-	{ "authoritative",			NULL, NULL, 0},
-	{ "default-lease-time INTEGER", 	NULL, NULL, 1},
-	{ "delayed-ack UINT16",			NULL, NULL, 1},
-	{ "filename STRING",			NULL, NULL, 1},
-	{ "fixed-address IPADDR,",		NULL, NULL, 16},
-	{ "group SECTION",			NULL, NULL, 1},
-	{ "hardware ethernet ETHER",		NULL, NULL, 1},
-	{ "host STRING SECTION",		parse_host, NULL, 1},
-	{ "include STRING",			parse_include, NULL, 1},
-	{ "min-lease-time INTEGER",		NULL, NULL, 1},
-	{ "max-ack-delay UINT32",		NULL, NULL, 1},
-	{ "max-lease-time INTEGER",		NULL, NULL, 1},
-	{ "not authoritative",			NULL, NULL, 0},
-	{ "option STRING STRING,",		parse_option, NULL, 16},
-	{ "range IPADDR IPADDR",		NULL, NULL, 2},
-	{ "shared-network STRING SECTION",	NULL, NULL, 1},
-	{ "subnet IPADDR netmask IPADDR SECTION", parse_subnet, NULL, 2},
+	{ "abandon-lease-time INTEGER",		ISC_NOOP, NULL, NULL, 1},
+	{ "adaptive-lease-time-threshold INTEGER", ISC_NOOP, NULL, NULL, 1},
+	{ "always-broadcast BOOL",		ISC_NOOP, NULL, NULL, 1},
+	{ "authoritative",			ISC_NOOP, NULL, NULL, 0},
+	{ "default-lease-time INTEGER", 	ISC_NOOP, NULL, NULL, 1},
+	{ "delayed-ack UINT16",			ISC_NOOP, NULL, NULL, 1},
+	{ "filename STRING",			ISC_NOOP, NULL, NULL, 1},
+	{ "fixed-address IPADDR,",		ISC_FIXED_ADDRESS, NULL, NULL, 16},
+	{ "group SECTION",			ISC_GROUP, NULL, NULL, 1},
+	{ "hardware ethernet ETHER",		ISC_HARDWARE_ETHERNET, NULL, NULL, 1},
+	{ "host STRING SECTION",		ISC_HOST, parse_host, NULL, 1},
+	{ "include STRING",			ISC_NOOP, parse_include, NULL, 1},
+	{ "min-lease-time INTEGER",		ISC_NOOP, NULL, NULL, 1},
+	{ "max-ack-delay UINT32",		ISC_NOOP, NULL, NULL, 1},
+	{ "max-lease-time INTEGER",		ISC_NOOP, NULL, NULL, 1},
+	{ "not authoritative",			ISC_NOOP, NULL, NULL, 0},
+	{ "option STRING STRING,",		ISC_OPTION, parse_option, NULL, 16},
+	{ "range IPADDR IPADDR",		ISC_NOOP, NULL, NULL, 2},
+	{ "shared-network STRING SECTION",	ISC_NOOP, NULL, NULL, 1},
+	{ "subnet IPADDR netmask IPADDR SECTION", ISC_SUBNET, parse_subnet, NULL, 2},
 	{ NULL, NULL }
 };
 
@@ -1407,11 +1419,10 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 	int entries = 0;
 
 	/*
-	 *	We don't allow "host" inside of "host", even with
-	 *	multiple layers of nesting.  The same rules apply to
-	 *	every section except "group".
+	 *	We allow "group" inside of "group".  But we don't
+	 *	allow other sections to nest.
 	 */
-	if (strncmp(info->cmd->name, "group", 5) != 0) {
+	if (info->cmd->type != ISC_GROUP) {
 		rlm_isc_dhcp_info_t *parent;
 
 		for (parent = info->parent; parent != NULL; parent = parent->parent) {
