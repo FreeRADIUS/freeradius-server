@@ -668,7 +668,7 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session, uint8_
 
 	if ((size_t)tls_session->info.content_type == SSL3_RT_HANDSHAKE) {
 		if (tls_session->info.record_len > 0) {
-			if (((size_t)tls_session->info.handshake_type >= NUM_ELEMENTS(tls_handshake_type_str)) ||
+			if ((tls_session->info.handshake_type >= (uint8_t)NUM_ELEMENTS(tls_handshake_type_str)) ||
 			    !tls_handshake_type_str[tls_session->info.handshake_type]) {
 				sprintf(unknown_handshake_type,
 					"unknown_handshake_type_0x%04x", tls_session->info.handshake_type);
