@@ -29,6 +29,12 @@
 #
 isc_dhcp {
 	#
+	#  moddir:: Search for files in a subdirectory of mods-config which
+	#  matches this instance of the files module.
+	#
+	moddir = ${modconfdir}/${.:instance}
+
+	#
 	#  filename:: The ISC DHCP configuration file
 	#
 	filename = ${moddir}/dhcpd.conf
