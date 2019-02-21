@@ -660,7 +660,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		switch (type) {
 		default:
 			fr_strerror_printf("The 'array' flag cannot be used with attributes of type '%s'",
-					   fr_int2str(fr_value_box_type_names, type, "<UNKNOWN>"));
+					   fr_int2str(fr_value_box_type_table, type, "<UNKNOWN>"));
 			goto error;
 
 		case FR_TYPE_IPV4_ADDR:
@@ -739,7 +739,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 				case FR_TYPE_EVS:
 					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
 							   "of type '%s'", flags->encrypt,
-							   fr_int2str(fr_value_box_type_names, type, "<UNKNOWN>"));
+							   fr_int2str(fr_value_box_type_table, type, "<UNKNOWN>"));
 					goto error;
 
 				default:
@@ -753,7 +753,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		default:
 		encrypt_fail:
 			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
-					   fr_int2str(fr_value_box_type_names, type, "<UNKNOWN>"));
+					   fr_int2str(fr_value_box_type_table, type, "<UNKNOWN>"));
 			goto error;
 
 		case FR_TYPE_TLV:
@@ -781,7 +781,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 //	case FR_TYPE_VSA:
 		if (!parent->flags.is_root) {
 			fr_strerror_printf("Attributes of type '%s' can only be used in the RFC space",
-					   fr_int2str(fr_value_box_type_names, type, "?Unknown?"));
+					   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
 			goto error;
 		}
 		break;
@@ -792,7 +792,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	case FR_TYPE_EVS:
 		if ((parent->type != FR_TYPE_EXTENDED) && (parent->type != FR_TYPE_LONG_EXTENDED)) {
 			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', "
-					   "instead of '%s'", fr_int2str(fr_value_box_type_names, parent->type, "?Unknown?"));
+					   "instead of '%s'", fr_int2str(fr_value_box_type_table, parent->type, "?Unknown?"));
 			goto error;
 		}
 		break;
@@ -801,7 +801,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		if ((parent->type != FR_TYPE_VSA) && (parent->type != FR_TYPE_EVS)) {
 			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' or "
 					   "'evs', instead of '%s'",
-					   fr_int2str(fr_value_box_type_names, parent->type, "?Unknown?"));
+					   fr_int2str(fr_value_box_type_table, parent->type, "?Unknown?"));
 			goto error;
 		}
 
@@ -837,7 +837,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		 */
 		if (!v) {
 			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
-					   fr_int2str(fr_value_box_type_names, type, "?Unknown?"));
+					   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
 			goto error;
 		}
 
@@ -861,7 +861,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 
 		if (!v) {
 			fr_strerror_printf("Attributes of type '%s' can only be used in VSA dictionaries",
-					   fr_int2str(fr_value_box_type_names, type, "?Unknown?"));
+					   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
 			goto error;
 		}
 		break;
@@ -871,7 +871,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_COMBO_IP_PREFIX:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
-				   fr_int2str(fr_value_box_type_names, type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
 		goto error;
 
 	default:
@@ -1540,7 +1540,7 @@ static int dict_attr_ref_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (!ref->flags.is_root && (ref->type != FR_TYPE_TLV)) {
 		fr_strerror_printf("Referenced attribute \"%s\" must be of type '%s' not a 'tlv'", ref->name,
-				   fr_int2str(fr_value_box_type_names, ref->type, "<INVALID>"));
+				   fr_int2str(fr_value_box_type_table, ref->type, "<INVALID>"));
 		return -1;
 	}
 
@@ -1549,7 +1549,7 @@ static int dict_attr_ref_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (type != FR_TYPE_TLV) {
 		fr_strerror_printf("Reference attribute must be of type 'tlv', not type '%s'",
-				   fr_int2str(fr_value_box_type_names, type, "<INVALID>"));
+				   fr_int2str(fr_value_box_type_table, type, "<INVALID>"));
 		return -1;
 	}
 
@@ -1628,8 +1628,8 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (old->type != type) {
 			fr_strerror_printf_push("Cannot add duplicate name %s with different type (old %s, new %s)",
 						name,
-						fr_int2str(fr_value_box_type_names, old->type, "?Unknown?"),
-						fr_int2str(fr_value_box_type_names, type, "?Unknown?"));
+						fr_int2str(fr_value_box_type_table, old->type, "?Unknown?"),
+						fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
 			return -1;
 		}
 
@@ -1723,16 +1723,16 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 		if (!coerce) {
 			fr_strerror_printf("%s: Type mismatch between attribute (%s) and enum (%s)",
 					   __FUNCTION__,
-					   fr_int2str(fr_value_box_type_names, da->type, "<INVALID>"),
-					   fr_int2str(fr_value_box_type_names, value->type, "<INVALID>"));
+					   fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"),
+					   fr_int2str(fr_value_box_type_table, value->type, "<INVALID>"));
 			return -1;
 		}
 
 		if (fr_value_box_cast(enumv, enum_value, da->type, NULL, value) < 0) {
 			fr_strerror_printf_push("%s: Failed coercing enum type (%s) to attribute type (%s)",
 						__FUNCTION__,
-					   	fr_int2str(fr_value_box_type_names, value->type, "<INVALID>"),
-					   	fr_int2str(fr_value_box_type_names, da->type, "<INVALID>"));
+					   	fr_int2str(fr_value_box_type_table, value->type, "<INVALID>"),
+					   	fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"));
 
 			return -1;
 		}
@@ -1853,7 +1853,7 @@ int fr_dict_enum_add_alias_next(fr_dict_attr_t const *da, char const *alias)
 
 	default:
 		fr_strerror_printf("Attribute is wrong type for auto-numbering, expected numeric type, got %s",
-				   fr_int2str(fr_value_box_type_names, da->type, "?Unknown?"));
+				   fr_int2str(fr_value_box_type_table, da->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -2090,7 +2090,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 
 	default:
 		fr_strerror_printf("Unknown vendors can only be parented by 'vsa' or 'evs' "
-				   "attributes, not '%s'", fr_int2str(fr_value_box_type_names, parent->type, "?Unknown?"));
+				   "attributes, not '%s'", fr_int2str(fr_value_box_type_table, parent->type, "?Unknown?"));
 		return -1;
 	}
 }
@@ -2320,7 +2320,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 					fr_strerror_printf("Parent OID component (%s) in \"%.*s\" specified a "
 							   "non-structural type (%s)", our_parent->name,
 							   (int)(p - oid_str), oid_str,
-							   fr_int2str(fr_value_box_type_names,
+							   fr_int2str(fr_value_box_type_table,
 							   	      our_parent->type, "<INVALID>"));
 					goto error;
 				}
@@ -2541,7 +2541,7 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 	printf("%u%.*s%s \"%s\" vendor: %x (%u), num: %x (%u), type: %s, flags: %s\n", da->depth, depth,
 	       "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t", name, da->name,
 	       fr_dict_vendor_num_by_da(da), fr_dict_vendor_num_by_da(da), da->attr, da->attr,
-	       fr_int2str(fr_value_box_type_names, da->type, "?Unknown?"), buff);
+	       fr_int2str(fr_value_box_type_table, da->type, "?Unknown?"), buff);
 
 	if (da->children) for (i = 0; i < talloc_array_length(da->children); i++) {
 		if (da->children[i]) {
@@ -3097,9 +3097,9 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
 
 	default:
 		fr_strerror_printf("Wrong type for vendor root, expected '%s' or '%s' got '%s'",
-				   fr_int2str(fr_value_box_type_names, FR_TYPE_VSA, "<INVALID>"),
-				   fr_int2str(fr_value_box_type_names, FR_TYPE_EVS, "<INVALID>"),
-				   fr_int2str(fr_value_box_type_names, vendor_root->type, "<INVALID>"));
+				   fr_int2str(fr_value_box_type_table, FR_TYPE_VSA, "<INVALID>"),
+				   fr_int2str(fr_value_box_type_table, FR_TYPE_EVS, "<INVALID>"),
+				   fr_int2str(fr_value_box_type_table, vendor_root->type, "<INVALID>"));
 		return NULL;
 	}
 
@@ -3111,8 +3111,8 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
 
 	if (vendor->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("Wrong type for vendor, expected '%s' got '%s'",
-				   fr_int2str(fr_value_box_type_names, vendor->type, "<INVALID>"),
-				   fr_int2str(fr_value_box_type_names, FR_TYPE_VENDOR, "<INVALID>"));
+				   fr_int2str(fr_value_box_type_table, vendor->type, "<INVALID>"),
+				   fr_int2str(fr_value_box_type_table, FR_TYPE_VENDOR, "<INVALID>"));
 		return NULL;
 	}
 
@@ -3952,7 +3952,7 @@ get_by_oid:
 	/*
 	 *	find the type of the attribute.
 	 */
-	type = fr_str2int(fr_value_box_type_names, argv[2], -1);
+	type = fr_str2int(fr_value_box_type_table, argv[2], -1);
 	if (type < 0) {
 		fr_strerror_printf("Unknown data type '%s'", argv[2]);
 		return -1;
@@ -4144,7 +4144,7 @@ static int dict_read_process_named_attribute(fr_dict_t *dict, fr_dict_attr_t con
 	/*
 	 *	find the type of the attribute.
 	 */
-	type = fr_str2int(fr_value_box_type_names, argv[1], -1);
+	type = fr_str2int(fr_value_box_type_table, argv[1], -1);
 	if (type < 0) {
 		fr_strerror_printf("Unknown data type '%s'", argv[1]);
 		return -1;
@@ -4870,7 +4870,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf_push("Attribute '%s' should be a 'tlv', but is a '%s'",
 							argv[1],
-							fr_int2str(fr_value_box_type_names, da->type, "?Unknown?"));
+							fr_int2str(fr_value_box_type_table, da->type, "?Unknown?"));
 				goto error;
 			}
 
@@ -4960,7 +4960,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				if (da->type != FR_TYPE_EVS) {
 					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR.  "
 								"Attribute '%s' should be 'evs' but is '%s'", p,
-								fr_int2str(fr_value_box_type_names, da->type, "?Unknown?"));
+								fr_int2str(fr_value_box_type_table, da->type, "?Unknown?"));
 					goto error;
 				}
 
@@ -5134,7 +5134,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	 *	fr_dict_attr_add(), because we know what we're doing, and
 	 *	that function does too many checks.
 	 */
-	for (p = fr_value_box_type_names; p->name; p++) {
+	for (p = fr_value_box_type_table; p->name; p++) {
 		fr_dict_attr_t *n;
 
 		/*
@@ -5340,8 +5340,8 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 
 		if (da->type != p->type) {
 			fr_strerror_printf("Attribute \"%s\" should be type %s, but defined as type %s", da->name,
-					   fr_int2str(fr_value_box_type_names, p->type, "?Unknown?"),
-					   fr_int2str(fr_value_box_type_names, da->type, "?Unknown?"));
+					   fr_int2str(fr_value_box_type_table, p->type, "?Unknown?"),
+					   fr_int2str(fr_value_box_type_table, da->type, "?Unknown?"));
 			return -1;
 		}
 
@@ -5412,7 +5412,7 @@ static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)
 	fr_dict_snprint_flags(flags, sizeof(flags), &da->flags);
 
 	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
-	       da->name, da->attr, fr_int2str(fr_value_box_type_names, da->type, "<INVALID>"), flags);
+	       da->name, da->attr, fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"), flags);
 
 	len = talloc_array_length(da->children);
 	for (i = 0; i < len; i++) {

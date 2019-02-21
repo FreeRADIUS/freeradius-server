@@ -738,8 +738,8 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	if ((*in)->type != FR_TYPE_OCTETS) {
 		REDEBUG("Signature argument wrong type, expected %s, got %s.  "
 			"Use %%{base64_decode:<text>} or %%{hex_decode:<text>} if signature is armoured",
-			fr_int2str(fr_value_box_type_names, FR_TYPE_OCTETS, "?Unknown?"),
-			fr_int2str(fr_value_box_type_names, (*in)->type, "?Unknown?"));
+			fr_int2str(fr_value_box_type_table, FR_TYPE_OCTETS, "?Unknown?"),
+			fr_int2str(fr_value_box_type_table, (*in)->type, "?Unknown?"));
 		return XLAT_ACTION_FAIL;
 	}
 	sig = (*in)->vb_octets;

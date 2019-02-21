@@ -1432,8 +1432,8 @@ int tmpl_define_undefined_attr(fr_dict_t *dict_def, vp_tmpl_t *vpt,
 
 	if (type != da->type) {
 		fr_strerror_printf("Attribute %s of type %s already defined with type %s",
-				   da->name, fr_int2str(fr_value_box_type_names, type, "<UNKNOWN>"),
-				   fr_int2str(fr_value_box_type_names, da->type, "<UNKNOWN>"));
+				   da->name, fr_int2str(fr_value_box_type_table, type, "<UNKNOWN>"),
+				   fr_int2str(fr_value_box_type_table, da->type, "<UNKNOWN>"));
 		return -1;
 	}
 
@@ -2674,7 +2674,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "attribute \"%s\" (%s) not rooted in a dictionary",
 					     file, line, vpt->tmpl_da->name,
-					     fr_int2str(fr_value_box_type_names, vpt->tmpl_da->type, "<INVALID>"));
+					     fr_int2str(fr_value_box_type_table, vpt->tmpl_da->type, "<INVALID>"));
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
 
@@ -2684,7 +2684,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" (%s) not found in dictionary (%s)",
 						     file, line, vpt->tmpl_da->name,
-						     fr_int2str(fr_value_box_type_names,
+						     fr_int2str(fr_value_box_type_table,
 						     		vpt->tmpl_da->type, "<INVALID>"),
 						     fr_dict_root(dict)->name);
 					if (!fr_cond_assert(0)) fr_exit_now(1);
@@ -2698,7 +2698,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" variant (%s) not found in dictionary (%s)",
 						     file, line, vpt->tmpl_da->name,
-						     fr_int2str(fr_value_box_type_names, vpt->tmpl_da->type,
+						     fr_int2str(fr_value_box_type_table, vpt->tmpl_da->type,
 						     		"<INVALID>"),
 						     fr_dict_root(dict)->name);
 					if (!fr_cond_assert(0)) fr_exit_now(1);
@@ -2711,9 +2711,9 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 					     "and global dictionary pointer %p \"%s\" (%s) differ",
 					     file, line,
 					     vpt->tmpl_da, vpt->tmpl_da->name,
-					     fr_int2str(fr_value_box_type_names, vpt->tmpl_da->type, "<INVALID>"),
+					     fr_int2str(fr_value_box_type_table, vpt->tmpl_da->type, "<INVALID>"),
 					     da, da->name,
-					     fr_int2str(fr_value_box_type_names, da->type, "<INVALID>"));
+					     fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"));
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
 		}

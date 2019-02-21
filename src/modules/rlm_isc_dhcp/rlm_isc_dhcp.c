@@ -545,7 +545,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		semicolon = MAYBE_SEMICOLON;
 	}
 
-	type = fr_str2int(fr_value_box_type_names, type_name, -1);
+	type = fr_str2int(fr_value_box_type_table, type_name, -1);
 	if (type < 0) {
 		fr_strerror_printf("unknown data type '%.*s'",
 				   (int) (next - cmd), cmd);
