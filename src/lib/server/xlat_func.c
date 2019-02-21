@@ -453,13 +453,42 @@ static ssize_t xlat_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	int		ret;
 
 	vp_tmpl_rules_t parse_rules = {
-		.dict_def = request->dict
+		.dict_def = request->dict,
+		.prefix = VP_ATTR_REF_PREFIX_AUTO
 	};
 
 
 	if (map_afrom_attr_str(request, &map, fmt, &parse_rules, &parse_rules) < 0) {
 		RPEDEBUG("Failed parsing \"%s\" as map", fmt);
 		return -1;
+	}
+
+	switch (map->lhs->type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_XLAT:
+		break;
+
+	default:
+		REDEBUG("Unexpected type %s in left hand side of expression",
+			fr_int2str(tmpl_type_table, map->lhs->type, "<INVALID>"));
+		return strlcpy(*out, "0", outlen);
+	}
+
+	switch (map->rhs->type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_DATA:
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_XLAT:
+		break;
+
+	default:
+		REDEBUG("Unexpected type %s in right hand side of expression",
+			fr_int2str(tmpl_type_table, map->rhs->type, "<INVALID>"));
+		return strlcpy(*out, "0", outlen);
 	}
 
 	RINDENT();
