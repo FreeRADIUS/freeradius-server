@@ -2843,6 +2843,7 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
  * @param[in] dst 	to assign new buffer to.
  * @param[in] enumv	Aliases for values.
  * @param[in] fmt	The printf format string to process.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @param[in] ap	Substitution arguments.
  * @return
  *	- 0 on success.
@@ -2875,6 +2876,7 @@ int fr_value_box_vasprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
  * @param[in] enumv	Aliases for values.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @param[in] fmt	The printf format string to process.
  * @param[in] ...	Substitution arguments.
  * @return
