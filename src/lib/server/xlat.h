@@ -247,6 +247,9 @@ typedef int (*xlat_thread_detach_t)(void *xlat_thread_inst, void *uctx);
 int		xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name);
 int		xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name);
 
+int		xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
+				   bool *tainted, REQUEST *requst, char const *fmt);
+
 ssize_t		xlat_eval(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_t escape,
 			  void const *escape_ctx)
 			  CC_HINT(nonnull (1 ,3 ,4));
