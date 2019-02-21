@@ -50,7 +50,8 @@ SOURCES		:= \
 		   udp.c \
 		   udpfromto.c \
 		   value.c \
-		   version.c
+		   version.c \
+		   libgen.c
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/util/*.h))
 
