@@ -690,6 +690,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/attr_filter/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/files
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/files/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/isc_dhcp
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/isc_dhcp/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/lua
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/lua/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/perl
