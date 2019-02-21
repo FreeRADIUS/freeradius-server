@@ -136,7 +136,7 @@ static xlat_action_t dhcp_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (xlat_fmt_to_cursor(NULL, &cursor, tainted, request, (*in)->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
+	if (xlat_fmt_to_cursor(NULL, &cursor, &tainted, request, (*in)->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
 
 	if (!fr_cursor_head(cursor)) return XLAT_ACTION_DONE;	/* Nothing to encode */
 
