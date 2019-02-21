@@ -23,9 +23,12 @@ dnl #############################################################
 AC_PREREQ([2.59])
 export CFLAGS LIBS LDFLAGS CPPFLAGS
 
-AC_INIT([freeradius],[$]Id[$],[http://bugs.freeradius.org],,[http://www.freeradius.org])
+AC_INIT([freeradius], m4_esyscmd([tr -d '\n' < VERSION]),
+        [http://bugs.freeradius.org],,
+        [http://www.freeradius.org])
 AC_CONFIG_SRCDIR([src/bin/radiusd.c])
 AC_CONFIG_HEADER([src/include/autoconf.h])
+
 m4_include([m4/ax_cc.m4])
 m4_include([m4/ax_with_lib_args.m4])
 m4_include([m4/ax_with_feature_args.m4])
