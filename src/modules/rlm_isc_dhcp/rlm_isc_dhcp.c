@@ -1121,6 +1121,7 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, rlm_isc_dhcp_info_t *head
 {
 	VALUE_PAIR *vp;
 	isc_host_ether_t *ether, my_ether;
+	rlm_isc_dhcp_info_t *host = NULL;
 
 	/*
 	 *	Look up the host first by client identifier.
@@ -1134,7 +1135,10 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, rlm_isc_dhcp_info_t *head
 		my_client.client = &(vp->data);
 
 		client = fr_hash_table_finddata(head->client_identifiers, &my_client);
-		if (client) return client->host;
+		if (client) {
+			host = client->host;
+			goto done;
+		}
 	}
 
 
@@ -1146,7 +1150,16 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, rlm_isc_dhcp_info_t *head
 	ether = fr_hash_table_finddata(head->hosts, &my_ether);
 	if (!ether) return NULL;
 
-	return ether->host;
+	host = ether->host;
+
+done:
+	/*
+	 *	@todo - check "fixed-address".  This host entry should
+	 *	match ONLY if one of the addresses matches the network
+	 *	on which the client is booting.
+	 */
+
+	return host;
 }
 
 
