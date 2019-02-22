@@ -646,143 +646,164 @@ static int parse_include(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 	return 1;
 }
 
-static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens)
+static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens, int num_tokens)
 {
-	int i;
+	int start, end, half;
+	int semicolon;
+	int rcode;
+	char const *q = NULL;
+	rlm_isc_dhcp_info_t *info;
 
-	for (i = 0; tokens[i].name != NULL; i++) {
-		char const *q;
-		char *p;
-		int semicolon;
-		int rcode;
-		rlm_isc_dhcp_info_t *info;
+	start = 0;
+	end = num_tokens - 1;
+	half = -1;
 
-		p = state->token;
+	/*
+	 *	Walk over the input token, doing a binary search on
+	 *	the token list.
+	 */
+	while (start <= end) {
+		half = (start + end) / 2;
 
-		/*
-		 *	We've gone past the name and not found it.
-		 *	Oops.
-		 */
-		if (*p < tokens[i].name[0]) break;
-
-		/*
-		 *	Not yet reached the correct name, don't do a
-		 *	full strcmp()
-		 */
-		if (*p > tokens[i].name[0]) continue;
-
-		q = tokens[i].name;
-
-		while (p < (state->token + state->token_len)) {
-			if (*p != *q) break;
-
-			p++;
-			q++;
-		}
+		rcode = strncmp(state->token, tokens[half].name, state->token_len);
 
 		/*
-		 *	Not a match, go to the next token in the list.
+		 *	Exact match.  But maybe we have "foo" input,
+		 *	and "food" command?
 		 */
-		if (p < (state->token + state->token_len)) continue;
-
-		semicolon = YES_SEMICOLON; /* default to always requiring this */
-
-		DDEBUG("... TOKEN %.*s ", state->token_len, state->token);
-
-		info = talloc_zero(parent, rlm_isc_dhcp_info_t);
-		if (tokens[i].max_argc) {
-			info->argv = talloc_zero_array(info, fr_value_box_t *, tokens[i].max_argc);
-		}
-
-		/*
-		 *	Remember which command we parsed.
-		 */
-		info->parent = parent;
-		info->cmd = &tokens[i];
-		info->last = &(info->child);
-
-		/*
-		 *	There's more to this command,
-		 *	go parse that, too.
-		 */
-		if (isspace((int) *q)) {
-			if (state->saw_semicolon) goto unexpected;
-
-			rcode = match_subword(state, q, info);
-			if (rcode <= 0) return rcode;
+		if (rcode == 0) {
+			char c = tokens[half].name[state->token_len];
 
 			/*
-			 *	SUBSECTION must be at the end
+			 *	The token exactly matches the command.
 			 */
-			if (rcode == 2) semicolon = NO_SEMICOLON;
-		}
-
-		/*
-		 *	*q must be empty at this point.
-		 */
-		if ((semicolon == NO_SEMICOLON) && state->saw_semicolon) {
-		unexpected:
-			fr_strerror_printf("Syntax error in %s at line %d: Unexpected ';'",
-					   state->filename, state->lineno);
-			talloc_free(info);
-			return -1;
-		}
-
-		if ((semicolon == YES_SEMICOLON) && !state->saw_semicolon) {
-			fr_strerror_printf("Syntax error in %s at line %d: Missing ';'",
-					   state->filename, state->lineno);
-			talloc_free(info);
-			return -1;
-		}
-
-		// @todo - print out the thing we parsed
-
-		/*
-		 *	Call the "parse" function which should do
-		 *	validation, etc.
-		 */
-		if (tokens[i].parse) {
-			rcode = tokens[i].parse(state, info);
-			if (rcode <= 0) {
-				talloc_free(info);
-				return rcode;
+			if (!c || isspace((int) c)) {
+				q = &(tokens[half].name[state->token_len]);
+				break;
 			}
 
 			/*
-			 *	The parse function took care of
-			 *	remembering the "info" structure.  So
-			 *	we don't add it to the parent list.
-			 *
-			 *	This process ensures that for some
-			 *	things (e.g. hosts and subnets), we
-			 *	have have O(1) lookups instead of
-			 *	O(N).
-			 *
-			 *	It also means that the *rest* of the
-			 *	commands we parse are in a relatively
-			 *	tiny list, which makes the O(N)
-			 *	processing of it fairly minor.
+			 *	The token is "foo", but the command is
+			 *	"food".  Go search the lower half of
+			 *	the command table.
 			 */
-			if (rcode == 2) return 1;
+			rcode = -1;
 		}
 
 		/*
-		 *	Add the parsed structure to the tail of the
-		 *	current list.  Note that this portion adds
-		 *	only ONE command at a time.
+		 *	Token is smaller than the command we checked,
+		 *	go check the lower half of the table.
 		 */
-		*(parent->last) = info;
-		parent->last = &(info->next);
-
-		/*
-		 *	It's a match, and it's OK.
-		 */
-		return 1;
+		if (rcode < 0) {
+			end = half - 1;
+		} else {
+			start = half + 1;
+		}
 	}
 
-	fr_strerror_printf("unknown command '%.*s'", state->token_len, state->token);
+	/*
+	 *	Nothing matched, it's a failure.
+	 */
+	if (!q) {
+		fr_strerror_printf("unknown command '%.*s'", state->token_len, state->token);
+		return -1;
+	}
 
-	return -1;
+	rad_assert(half >= 0);
+
+	semicolon = YES_SEMICOLON; /* default to always requiring this */
+
+	DDEBUG("... TOKEN %.*s ", state->token_len, state->token);
+
+	info = talloc_zero(parent, rlm_isc_dhcp_info_t);
+	if (tokens[half].max_argc) {
+		info->argv = talloc_zero_array(info, fr_value_box_t *, tokens[half].max_argc);
+	}
+
+	/*
+	 *	Remember which command we parsed.
+	 */
+	info->parent = parent;
+	info->cmd = &tokens[half];
+	info->last = &(info->child);
+
+	/*
+	 *	There's more to this command,
+	 *	go parse that, too.
+	 */
+	if (isspace((int) *q)) {
+		if (state->saw_semicolon) goto unexpected;
+
+		rcode = match_subword(state, q, info);
+		if (rcode <= 0) return rcode;
+
+		/*
+		 *	SUBSECTION must be at the end
+		 */
+		if (rcode == 2) semicolon = NO_SEMICOLON;
+	}
+
+	/*
+	 *	*q must be empty at this point.
+	 */
+	if ((semicolon == NO_SEMICOLON) && state->saw_semicolon) {
+	unexpected:
+		fr_strerror_printf("Syntax error in %s at line %d: Unexpected ';'",
+				   state->filename, state->lineno);
+		talloc_free(info);
+		return -1;
+	}
+
+	if ((semicolon == YES_SEMICOLON) && !state->saw_semicolon) {
+		fr_strerror_printf("Syntax error in %s at line %d: Missing ';'",
+				   state->filename, state->lineno);
+		talloc_free(info);
+		return -1;
+	}
+
+	// @todo - print out the thing we parsed
+
+	/*
+	 *	Call the "parse" function which should do
+	 *	validation, etc.
+	 */
+	if (tokens[half].parse) {
+		rcode = tokens[half].parse(state, info);
+		if (rcode <= 0) {
+			talloc_free(info);
+			return rcode;
+		}
+
+		/*
+		 *	The parse function took care of
+		 *	remembering the "info" structure.  So
+		 *	we don't add it to the parent list.
+		 *
+		 *	This process ensures that for some
+		 *	things (e.g. hosts and subnets), we
+		 *	have have O(1) lookups instead of
+		 *	O(N).
+		 *
+		 *	It also means that the *rest* of the
+		 *	commands we parse are in a relatively
+		 *	tiny list, which makes the O(N)
+		 *	processing of it fairly minor.
+		 */
+		if (rcode == 2) return 1;
+	}
+
+	/*
+	 *	Add the parsed structure to the tail of the
+	 *	current list.  Note that this portion adds
+	 *	only ONE command at a time.
+	 */
+	*(parent->last) = info;
+	parent->last = &(info->next);
+
+	/*
+	 *	It's a match, and it's OK.
+	 */
+	return 1;
 }
 
 typedef struct isc_host_ether_t {
@@ -1610,7 +1631,6 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "vivso VENDOR_ENCAPSULATED,", ISC_NOOP, NULL, NULL, 1}, // vendor option declaration [arg1, ... ]
 	{ "www-server IPADDR,", ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
 	{ "x-display-manager IPADDR,", ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ NULL, ISC_INVALID, NULL, NULL, -1 }
 };
 
 /** Parse a section { ... }
@@ -1660,7 +1680,7 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 		 */
 		if (*state->token == '}') break;
 
-		rcode = match_keyword(info, state, commands);
+		rcode = match_keyword(info, state, commands, sizeof(commands) / sizeof(commands[0]));
 		if (rcode < 0) return rcode;
 		if (rcode == 0) break;
 
@@ -1739,7 +1759,7 @@ static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool deb
 		 *	This will automatically re-fill the buffer,
 		 *	and find a matching token.
 		 */
-		rcode = match_keyword(parent, &state, commands);
+		rcode = match_keyword(parent, &state, commands, sizeof(commands) / sizeof(commands[0]));
 		if (rcode < 0) goto fail;
 		if (rcode == 0) break;
 	}
