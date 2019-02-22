@@ -1436,229 +1436,26 @@ recurse:
  *
  */
 static const rlm_isc_dhcp_cmd_t commands[] = {
-	{ "agent-id IPADDR",			ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "all-subnets-local BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "allow-booting BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "allow-bootp BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "always-reply-rfc1048 BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "arp-cache-timeout UINT32",		ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "associated-ip IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "auto-config UINT8",			ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "bcms-controller-address IPADDR,",   	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "bcms-controller-names STRING",      	ISC_NOOP, NULL, NULL, 1}, // domain list
-	{ "bind-local-address6 BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "boot-size UINT16",			ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "boot-unknown-clients BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "bootfile-name STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "broadcast-address IPADDR",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "capwap-ac-v4 IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "check-secs-byte-order BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "circuit-id STRING",			ISC_NOOP, NULL, NULL, 1}, // vendor option declaration statement
-	{ "client-last-transaction-time UINT32", ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "client-updates BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "cookie-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "ddns-domainname STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ddns-dual-stack-mixed-mode BOOL",	ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "ddns-guard-id-must-match BOOL",	ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "ddns-hostname STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ddns-local-address4 IPADDR",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "ddns-local-address6 IPADDR6",	ISC_NOOP, NULL, NULL, 1}, // ipv6 addr
-	{ "ddns-other-guard-is-dynamic BOOL",	ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "ddns-rev-domainname STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ddns-ttl UINT32",			ISC_NOOP, NULL, NULL, 1}, // Lease interval
-	{ "ddns-update-style STRING,,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ddns-updates BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "declines BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "default-ip-ttl UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "default-tcp-ttl UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "default-url STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "dhcp-cache-threshold UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "dhcp-client-identifier STRING",	ISC_NOOP, NULL, NULL, 1}, // vendor option declaration statement
-	{ "dhcp-lease-time UINT32",		ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "dhcp-max-message-size UINT16",	ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "dhcp-message STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "dhcp-message-type UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "dhcp-option-overload UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "dhcp-parameter-request-list UINT8,", ISC_NOOP, NULL, NULL, 1}, // integer uint8_t [arg1, ... ]
-	{ "dhcp-rebinding-time UINT32",		ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "dhcp-renewal-time UINT32",		ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "dhcp-requested-address IPADDR",	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "dhcp-server-identifier IPADDR",	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "dhcpv6-lease-file-name STRING",	ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "dhcpv6-pid-file-name STRING",	ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "dhcpv6-set-tee-times BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "do-forward-updates BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "do-reverse-updates BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "DOCSIS-device-class UINT32",		ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "domain-name STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "domain-name-servers IPADDR,",	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "domain-search STRING,",		ISC_NOOP, NULL, NULL, 1}, // domain list [arg1, ... ]
-	{ "dont-use-fsync BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "duplicates BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "dynamic-bootp BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "dynamic-bootp-lease-cutoff UINT32",	ISC_NOOP, NULL, NULL, 1}, // Lease interval
-	{ "dynamic-bootp-lease-length UINT32",	ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "echo-client-id BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "extensions-path STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "finger-server IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
+	{ "abandon-lease-time INTEGER",		ISC_NOOP, NULL, NULL, 1},
+	{ "adaptive-lease-time-threshold INTEGER", ISC_NOOP, NULL, NULL, 1},
+	{ "always-broadcast BOOL",		ISC_NOOP, NULL, NULL, 1},
+	{ "authoritative",			ISC_NOOP, NULL, NULL, 0},
+	{ "default-lease-time INTEGER", 	ISC_NOOP, NULL, NULL, 1},
+	{ "delayed-ack UINT16",			ISC_NOOP, NULL, NULL, 1},
+	{ "filename STRING",			ISC_NOOP, NULL, NULL, 1},
 	{ "fixed-address IPADDR,",		ISC_FIXED_ADDRESS, NULL, NULL, 16},
-	{ "font-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-//	{ "fqdn VENDOR_ENCAPSULATED,",		ISC_NOOP, NULL, NULL, 1}, // vendor option declaration [arg1, ... ]
-	{ "fqdn-reply BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "geoconf-civic STRING",		ISC_NOOP, NULL, NULL, 1}, // vendor option declaration statement
-	{ "get-lease-hostnames BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
 	{ "group SECTION",			ISC_GROUP, NULL, NULL, 1},
 	{ "hardware ethernet ETHER",		ISC_HARDWARE_ETHERNET, NULL, NULL, 1},
 	{ "host STRING SECTION",		ISC_HOST, parse_host, NULL, 1},
-	{ "host-name STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ieee802-3-encapsulation BOOL",	ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "ien116-name-servers IPADDR,",	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "ignore-client-uids BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "impress-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
 	{ "include STRING",			ISC_NOOP, parse_include, NULL, 1},
-	{ "infinite-is-reserved BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "interface-mtu UINT16",		ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "ip-forwarding BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "ipv4-address-andsf IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "irc-server IPADDR,",			ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "ldap-base-dn STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-debug-file STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-dhcp-server-cn STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-gssapi-keytab STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-gssapi-principal STRING",	ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-init-retry STRING",		ISC_NOOP, NULL, NULL, 1}, // domain name
-	{ "ldap-method STRING,,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-password STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-port STRING",			ISC_NOOP, NULL, NULL, 1}, // domain name
-	{ "ldap-referrals BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "ldap-server STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-ssl STRING,,",			ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-tls-ca-dir STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-ca-file STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-cert STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-ciphers STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-crlcheck STRING,,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-tls-key STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-randfile STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-reqcert STRING,,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-username STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "lease-file-name STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "leasequery BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "limit-addrs-per-ia UINT32",		ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "limit-prefs-per-ia UINT32",		ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "limited-broadcast-address IPADDR",	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "link-selection IPADDR",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "loader-configfile STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "loader-pathprefix STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "loader-reboottime UINT32",		ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "local-address IPADDR",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "local-address6 IPADDR6",		ISC_NOOP, NULL, NULL, 1}, // ipv6 addr
-	{ "local-port UINT16",			ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "log-facility STRING,,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "log-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "log-threshold-high UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "log-threshold-low UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "lpr-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "mask-supplier BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "max-dgram-reassembly UINT16",       	ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "merit-dump STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "min-secs UINT8",			ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "mobile-ip-home-agent IPADDR,",      	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "name-service-search UINT16,",       	ISC_NOOP, NULL, NULL, 1}, // integer uint16_t [arg1, ... ]
-	{ "nds-context STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "nds-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "nds-tree-name STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "netbios-dd-server IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "netbios-name-servers IPADDR,",      	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "netbios-node-type UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "netbios-scope STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "netinfo-server-address IPADDR,",    	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "netinfo-server-tag STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "next-server IPADDR",			ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "nis-domain STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "nis-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "nisplus-domain STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "nisplus-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "nntp-server IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "non-local-source-routing BOOL",     	ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
+	{ "min-lease-time INTEGER",		ISC_NOOP, NULL, NULL, 1},
+	{ "max-ack-delay UINT32",		ISC_NOOP, NULL, NULL, 1},
+	{ "max-lease-time INTEGER",		ISC_NOOP, NULL, NULL, 1},
 	{ "not authoritative",			ISC_NOOP, NULL, NULL, 0},
-	{ "ntp-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "nwip-domain STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-//	{ "nwip-suboptions VENDOR_ENCAPSULATED,",	ISC_NOOP, NULL, NULL, 1}, // vendor option declaration [arg1, ... ]
-	{ "omapi-key STRING",			ISC_NOOP, NULL, NULL, 1}, // domain name
-	{ "omapi-port UINT16",			ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "one-lease-per-client BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
 	{ "option STRING STRING,",		ISC_OPTION, parse_option, NULL, 16},
-	{ "option-6rd UINT8,",			ISC_NOOP, NULL, NULL, 1}, // integer uint8_t [arg1, ... ]
-	{ "pana-agent IPADDR,",			ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "path-mtu-aging-timeout UINT32",     	ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "path-mtu-plateau-table UINT16,",    	ISC_NOOP, NULL, NULL, 1}, // integer uint16_t [arg1, ... ]
-	{ "pcode STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "perform-mask-discovery BOOL",       	ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "pid-file-name STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ping-check BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "ping-timeout UINT32",		ISC_NOOP, NULL, NULL, 1}, // Lease interval
-	{ "policy-filter IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "pop-server IPADDR,",			ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "preferred-lifetime UINT32",		ISC_NOOP, NULL, NULL, 1}, // Lease interval
-	{ "prefix-length-mode STRING,,",       	ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "pxe-client-id UINT8,",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t [arg1, ... ]
-	{ "pxe-interface-id UINT8,",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t [arg1, ... ]
-	{ "pxe-system-type UINT16,",		ISC_NOOP, NULL, NULL, 1}, // integer uint16_t [arg1, ... ]
 	{ "range IPADDR IPADDR",		ISC_NOOP, NULL, NULL, 2},
-	{ "rdnss-selection UINT8,",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t [arg1, ... ]
-//	{ "relay-agent-information VENDOR_ENCAPSULATED,",		ISC_NOOP, NULL, NULL, 1}, // vendor option declaration [arg1, ... ]
-	{ "relay-port PORT",			ISC_NOOP, NULL, NULL, 1}, // Zero-lenght option
-	{ "release-on-roam BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "remote-id STRING",			ISC_NOOP, NULL, NULL, 1}, // vendor option declaration statement
-	{ "remote-port UINT16",			ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "resource-location-servers IPADDR,", 	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "root-path STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "router-discovery BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "router-solicitation-address IPADDR",	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "routers IPADDR,",			ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "server-id-check BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "server-name STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "shared-network STRING SECTION",	ISC_NOOP, NULL, NULL, 1},
-	{ "sip-ua-cs-domains STRING,",		ISC_NOOP, NULL, NULL, 1}, // domain list [arg1, ... ]
-	{ "site-option-space STRING",		ISC_NOOP, NULL, NULL, 1}, // vendor option declaration statement
-	{ "slp-directory-agent BOOL,",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore [arg1, ... ]
-	{ "slp-service-scope BOOL,",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore [arg1, ... ]
-	{ "smtp-server IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "stash-agent-options BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "static-routes IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "streettalk-directory-assistance-server IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "streettalk-server IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "subnet IPADDR netmask IPADDR SECTION",ISC_SUBNET, parse_subnet, NULL, 2},
-	{ "subnet-mask IPADDR",			ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "subnet-selection IPADDR",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "swap-server IPADDR",			ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "tcode STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "tcp-keepalive-garbage BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "tcp-keepalive-interval UINT32",     	ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "tftp-server-address IPADDR,",       	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "tftp-server-name STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "time-offset INT32",			ISC_NOOP, NULL, NULL, 1}, // integer int32_t
-	{ "time-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "trailer-encapsulation BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "uap-servers STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "update-conflict-detection BOOL",    	ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "update-optimization BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "update-static-leases BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "use-host-decl-names BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "use-lease-addr-for-default-route BOOL", ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
-	{ "user-class STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "v4-access-domain STRING",		ISC_NOOP, NULL, NULL, 1}, // domain name
-	{ "v4-captive-portal STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "v4-lost STRING",			ISC_NOOP, NULL, NULL, 1}, // domain name
-	{ "v4-portparams UINT8,",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t [arg1, ... ]
-	{ "vendor-class-identifier STRING",	ISC_NOOP, NULL, NULL, 1}, // vendor option declaration statement
-//	{ "vendor-encapsulated-options VENDOR_ENCAPSULATED,",		ISC_NOOP, NULL, NULL, 1}, // vendor option declaration [arg1, ... ]
-//	{ "vendor-option-space VENDOR_ENCAPSULATED",		ISC_NOOP, NULL, NULL, 1}, // vendor option declaration
-//	{ "vivco VENDOR_ENCAPSULATED,",		ISC_NOOP, NULL, NULL, 1}, // vendor option declaration [arg1, ... ]
-//	{ "vivso VENDOR_ENCAPSULATED,",		ISC_NOOP, NULL, NULL, 1}, // vendor option declaration [arg1, ... ]
-	{ "www-server IPADDR,",			ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
-	{ "x-display-manager IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
+	{ "subnet IPADDR netmask IPADDR SECTION", ISC_SUBNET, parse_subnet, NULL, 2},
 };
 
 /** Parse a section { ... }
