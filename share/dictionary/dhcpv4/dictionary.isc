@@ -1,0 +1,240 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#	ISC DHCP dictionary.
+#
+#	dhcpd.conf - https://www.isc.org/wp-content/uploads/2018/02/dhcp44.html
+#	dhcp-options https://www.isc.org/wp-content/uploads/2017/08/dhcp41options.html
+#
+#	It was used that below code to generate the entries.
+#	https://gist.github.com/jpereira/ab05d733afc519ae929286d6f270e5f8
+#
+#	$Id$
+#
+##############################################################################
+FLAGS		internal
+
+ATTRIBUTE	abandon-lease-time		89	integer
+ATTRIBUTE	adaptive-lease-time-threshold		50	octets
+ATTRIBUTE	agent-id		3	ipaddr
+ATTRIBUTE	all-subnets-local		27	bool
+ATTRIBUTE	allow-booting		9	bool
+ATTRIBUTE	allow-bootp		8	bool
+ATTRIBUTE	always-broadcast		22	bool
+ATTRIBUTE	always-reply-rfc1048		20	bool
+ATTRIBUTE	arp-cache-timeout		35	integer
+ATTRIBUTE	associated-ip		92	ipaddr array
+ATTRIBUTE	authoritative		18	bool
+ATTRIBUTE	auto-config		116	octets
+ATTRIBUTE	bcms-controller-address		89	ipaddr array
+ATTRIBUTE	bcms-controller-names		88	string
+ATTRIBUTE	bind-local-address6		97	bool
+ATTRIBUTE	boot-size		13	short
+ATTRIBUTE	boot-unknown-clients		6	bool
+ATTRIBUTE	bootfile-name		67	string
+ATTRIBUTE	broadcast-address		28	ipaddr
+ATTRIBUTE	capwap-ac-v4		138	ipaddr array
+ATTRIBUTE	check-secs-byte-order		91	bool
+ATTRIBUTE	circuit-id		1	raw
+ATTRIBUTE	client-last-transaction-time		91	integer
+ATTRIBUTE	client-updates		40	bool
+ATTRIBUTE	cookie-servers		8	ipaddr array
+ATTRIBUTE	ddns-domainname		23	string
+ATTRIBUTE	ddns-dual-stack-mixed-mode		92	bool
+ATTRIBUTE	ddns-guard-id-must-match		93	bool
+ATTRIBUTE	ddns-hostname		24	string
+ATTRIBUTE	ddns-local-address4		80	ipaddr
+ATTRIBUTE	ddns-local-address6		81	ipaddr
+ATTRIBUTE	ddns-other-guard-is-dynamic		94	bool
+ATTRIBUTE	ddns-rev-domainname		25	string
+ATTRIBUTE	ddns-ttl		38	integer
+ATTRIBUTE	ddns-update-style		39	string array
+ATTRIBUTE	ddns-updates		30	bool
+ATTRIBUTE	declines		29	bool
+ATTRIBUTE	default-ip-ttl		23	octets
+ATTRIBUTE	default-lease-time		1	integer
+ATTRIBUTE	default-tcp-ttl		37	octets
+ATTRIBUTE	default-url		114	string
+ATTRIBUTE	delayed-ack		58	short
+ATTRIBUTE	dhcp-cache-threshold		78	octets
+ATTRIBUTE	dhcp-client-identifier		61	raw
+ATTRIBUTE	dhcp-lease-time		51	integer
+ATTRIBUTE	dhcp-max-message-size		57	short
+ATTRIBUTE	dhcp-message		56	string
+ATTRIBUTE	dhcp-message-type		53	octets
+ATTRIBUTE	dhcp-option-overload		52	octets
+ATTRIBUTE	dhcp-parameter-request-list		55	octets array
+ATTRIBUTE	dhcp-rebinding-time		59	integer
+ATTRIBUTE	dhcp-renewal-time		58	integer
+ATTRIBUTE	dhcp-requested-address		50	ipaddr
+ATTRIBUTE	dhcp-server-identifier		54	ipaddr
+ATTRIBUTE	dhcpv6-lease-file-name		54	string
+ATTRIBUTE	dhcpv6-pid-file-name		55	string
+ATTRIBUTE	dhcpv6-set-tee-times		88	bool
+ATTRIBUTE	do-forward-updates		45	bool
+ATTRIBUTE	do-reverse-updates		51	bool
+ATTRIBUTE	DOCSIS-device-class		4	integer
+ATTRIBUTE	domain-name		15	string
+ATTRIBUTE	domain-name-servers		6	ipaddr array
+ATTRIBUTE	domain-search		119	string array
+ATTRIBUTE	dont-use-fsync		79	bool
+ATTRIBUTE	duplicates		28	bool
+ATTRIBUTE	dynamic-bootp		7	bool
+ATTRIBUTE	dynamic-bootp-lease-cutoff		4	integer
+ATTRIBUTE	dynamic-bootp-lease-length		5	integer
+ATTRIBUTE	echo-client-id		85	bool
+ATTRIBUTE	extensions-path		18	string
+ATTRIBUTE	filename		15	string
+ATTRIBUTE	finger-server		73	ipaddr array
+ATTRIBUTE	font-servers		48	ipaddr array
+ATTRIBUTE	fqdn		81	raw array
+ATTRIBUTE	fqdn-reply		52	bool
+ATTRIBUTE	geoconf-civic		99	raw
+ATTRIBUTE	get-lease-hostnames		11	bool
+ATTRIBUTE	host-name		12	string
+ATTRIBUTE	ieee802-3-encapsulation		36	bool
+ATTRIBUTE	ien116-name-servers		5	ipaddr array
+ATTRIBUTE	ignore-client-uids		82	bool
+ATTRIBUTE	impress-servers		10	ipaddr array
+ATTRIBUTE	infinite-is-reserved		47	bool
+ATTRIBUTE	interface-mtu		26	short
+ATTRIBUTE	ip-forwarding		19	bool
+ATTRIBUTE	ipv4-address-andsf		142	ipaddr array
+ATTRIBUTE	irc-server		74	ipaddr array
+ATTRIBUTE	ldap-base-dn		64	string
+ATTRIBUTE	ldap-debug-file		66	string
+ATTRIBUTE	ldap-dhcp-server-cn		67	string
+ATTRIBUTE	ldap-gssapi-keytab		179	string
+ATTRIBUTE	ldap-gssapi-principal		180	string
+ATTRIBUTE	ldap-init-retry		178	string
+ATTRIBUTE	ldap-method		65	string array
+ATTRIBUTE	ldap-password		63	string
+ATTRIBUTE	ldap-port		61	string
+ATTRIBUTE	ldap-referrals		68	bool
+ATTRIBUTE	ldap-server		60	string
+ATTRIBUTE	ldap-ssl		69	string array
+ATTRIBUTE	ldap-tls-ca-dir		72	string
+ATTRIBUTE	ldap-tls-ca-file		71	string
+ATTRIBUTE	ldap-tls-cert		73	string
+ATTRIBUTE	ldap-tls-ciphers		76	string
+ATTRIBUTE	ldap-tls-crlcheck		75	string array
+ATTRIBUTE	ldap-tls-key		74	string
+ATTRIBUTE	ldap-tls-randfile		77	string
+ATTRIBUTE	ldap-tls-reqcert		70	string array
+ATTRIBUTE	ldap-username		62	string
+ATTRIBUTE	lease-file-name		26	string
+ATTRIBUTE	leasequery		49	bool
+ATTRIBUTE	limit-addrs-per-ia		56	integer
+ATTRIBUTE	limit-prefs-per-ia		57	integer
+ATTRIBUTE	limited-broadcast-address		33	ipaddr
+ATTRIBUTE	link-selection		5	ipaddr
+ATTRIBUTE	loader-configfile		209	string
+ATTRIBUTE	loader-pathprefix		210	string
+ATTRIBUTE	loader-reboottime		211	integer
+ATTRIBUTE	local-address		35	ipaddr
+ATTRIBUTE	local-address6		96	ipaddr
+ATTRIBUTE	local-port		32	short
+ATTRIBUTE	log-facility		44	string array
+ATTRIBUTE	log-servers		7	ipaddr array
+ATTRIBUTE	log-threshold-high		84	octets
+ATTRIBUTE	log-threshold-low		83	octets
+ATTRIBUTE	lpr-servers		9	ipaddr array
+ATTRIBUTE	mask-supplier		30	bool
+ATTRIBUTE	max-ack-delay		59	integer
+ATTRIBUTE	max-dgram-reassembly		22	short
+ATTRIBUTE	max-lease-time		2	integer
+ATTRIBUTE	merit-dump		14	string
+ATTRIBUTE	min-lease-time		3	integer
+ATTRIBUTE	min-secs		14	octets
+ATTRIBUTE	mobile-ip-home-agent		68	ipaddr array
+ATTRIBUTE	name-service-search		117	short array
+ATTRIBUTE	nds-context		87	string
+ATTRIBUTE	nds-servers		85	ipaddr array
+ATTRIBUTE	nds-tree-name		86	string
+ATTRIBUTE	netbios-dd-server		45	ipaddr array
+ATTRIBUTE	netbios-name-servers		44	ipaddr array
+ATTRIBUTE	netbios-node-type		46	octets
+ATTRIBUTE	netbios-scope		47	string
+ATTRIBUTE	netinfo-server-address		112	ipaddr array
+ATTRIBUTE	netinfo-server-tag		113	string
+ATTRIBUTE	next-server		17	ipaddr
+ATTRIBUTE	nis-domain		40	string
+ATTRIBUTE	nis-servers		41	ipaddr array
+ATTRIBUTE	nisplus-domain		64	string
+ATTRIBUTE	nisplus-servers		65	ipaddr array
+ATTRIBUTE	nntp-server		71	ipaddr array
+ATTRIBUTE	non-local-source-routing		20	bool
+ATTRIBUTE	ntp-servers		42	ipaddr array
+ATTRIBUTE	nwip-domain		62	string
+ATTRIBUTE	nwip-suboptions		63	raw array
+ATTRIBUTE	omapi-key		36	string
+ATTRIBUTE	omapi-port		31	short
+ATTRIBUTE	one-lease-per-client		10	bool
+ATTRIBUTE	option-6rd		212	octets array
+ATTRIBUTE	pana-agent		136	ipaddr array
+ATTRIBUTE	path-mtu-aging-timeout		24	integer
+ATTRIBUTE	path-mtu-plateau-table		25	short array
+ATTRIBUTE	pcode		100	string
+ATTRIBUTE	perform-mask-discovery		29	bool
+ATTRIBUTE	pid-file-name		27	string
+ATTRIBUTE	ping-check		42	bool
+ATTRIBUTE	ping-timeout		46	integer
+ATTRIBUTE	policy-filter		21	ipaddr array
+ATTRIBUTE	pop-server		70	ipaddr array
+ATTRIBUTE	preferred-lifetime		53	integer
+ATTRIBUTE	prefix-length-mode		87	string array
+ATTRIBUTE	pxe-client-id		97	octets array
+ATTRIBUTE	pxe-interface-id		94	octets array
+ATTRIBUTE	pxe-system-type		93	short array
+ATTRIBUTE	rdnss-selection		146	octets array
+ATTRIBUTE	relay-agent-information		82	raw array
+ATTRIBUTE	relay-port		19	short
+ATTRIBUTE	release-on-roam		95	bool
+ATTRIBUTE	remote-id		2	raw
+ATTRIBUTE	remote-port		34	short
+ATTRIBUTE	resource-location-servers		11	ipaddr array
+ATTRIBUTE	root-path		17	string
+ATTRIBUTE	router-discovery		31	bool
+ATTRIBUTE	router-solicitation-address		32	ipaddr
+ATTRIBUTE	routers		3	ipaddr array
+ATTRIBUTE	server-id-check		86	bool
+ATTRIBUTE	server-name		16	string
+ATTRIBUTE	sip-ua-cs-domains		141	string array
+ATTRIBUTE	site-option-space		21	raw
+ATTRIBUTE	slp-directory-agent		78	bool array
+ATTRIBUTE	slp-service-scope		79	bool array
+ATTRIBUTE	smtp-server		69	ipaddr array
+ATTRIBUTE	stash-agent-options		37	bool
+ATTRIBUTE	static-routes		33	ipaddr array
+ATTRIBUTE	streettalk-directory-assistance-server		76	ipaddr array
+ATTRIBUTE	streettalk-server		75	ipaddr array
+ATTRIBUTE	subnet-mask		1	ipaddr
+ATTRIBUTE	subnet-selection		118	ipaddr
+ATTRIBUTE	swap-server		16	ipaddr
+ATTRIBUTE	tcode		101	string
+ATTRIBUTE	tcp-keepalive-garbage		39	bool
+ATTRIBUTE	tcp-keepalive-interval		38	integer
+ATTRIBUTE	tftp-server-address		150	ipaddr array
+ATTRIBUTE	tftp-server-name		66	string
+ATTRIBUTE	time-offset		2	integer
+ATTRIBUTE	time-servers		4	ipaddr array
+ATTRIBUTE	trailer-encapsulation		34	bool
+ATTRIBUTE	uap-servers		98	string
+ATTRIBUTE	update-conflict-detection		48	bool
+ATTRIBUTE	update-optimization		41	bool
+ATTRIBUTE	update-static-leases		43	bool
+ATTRIBUTE	use-host-decl-names		12	bool
+ATTRIBUTE	use-lease-addr-for-default-route		13	bool
+ATTRIBUTE	user-class		77	string
+ATTRIBUTE	v4-access-domain		213	string
+ATTRIBUTE	v4-captive-portal		160	string
+ATTRIBUTE	v4-lost		137	string
+ATTRIBUTE	v4-portparams		159	octets array
+ATTRIBUTE	vendor-class-identifier		60	raw
+ATTRIBUTE	vendor-encapsulated-options		43	raw array
+ATTRIBUTE	vendor-option-space		19	raw
+ATTRIBUTE	vivco		124	raw array
+ATTRIBUTE	vivso		125	raw array
+ATTRIBUTE	www-server		72	ipaddr array
+ATTRIBUTE	x-display-manager		49	ipaddr array
