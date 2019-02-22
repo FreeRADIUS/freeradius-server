@@ -174,6 +174,7 @@ int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 	}
 
 	MEM(cursor = talloc(ctx, fr_cursor_t));
+	talloc_steal(cursor, vpt);
 	vp = tmpl_cursor_init(NULL, cursor, request, vpt);
 	*out = cursor;
 
