@@ -34,45 +34,56 @@
 #include "dhcpv4.h"
 #include "attrs.h"
 
-/** Determine if the current attribute is encodable, or find the first one that is
- *
- * @param cursor to iterate over.
- * @return encodable VALUE_PAIR, or NULL if none available.
- */
-static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor)
+static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
 {
-	VALUE_PAIR *vp;
+	if (!vp) return false;
+	if (vp->da->flags.internal) return false;
+	if (!fr_dict_parent_common(root, vp->da, true)) return false;
 
-	for (vp = fr_cursor_current(cursor); vp && vp->da->flags.internal; vp = fr_cursor_next(cursor));
-	return fr_cursor_current(cursor);
+	return true;
 }
 
 /** Find the next attribute to encode
  *
  * @param cursor to iterate over.
+ * @param encoder_ctx the context for the encoder
  * @return encodable VALUE_PAIR, or NULL if none available.
  */
-static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor)
+static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR	*vp;
+	fr_dhcpv4_ctx_t	*packet_ctx = encoder_ctx;
 
-	for (;;) {
-		vp = fr_cursor_next(cursor);
-		if (!vp || !vp->da->flags.internal) break;
-	}
-
+	while ((vp = fr_cursor_next(cursor))) if (is_encodable(packet_ctx->root, vp)) break;
 	return fr_cursor_current(cursor);
+}
+
+/** Determine if the current attribute is encodable, or find the first one that is
+ *
+ * @param cursor to iterate over.
+ * @param encoder_ctx the context for the encoder
+ * @return encodable VALUE_PAIR, or NULL if none available.
+ */
+static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx)
+{
+	VALUE_PAIR	*vp;
+	fr_dhcpv4_ctx_t	*packet_ctx = encoder_ctx;
+
+	vp = fr_cursor_current(cursor);
+	if (is_encodable(packet_ctx->root, vp)) return vp;
+
+	return next_encodable(cursor, encoder_ctx);
 }
 
 /** Write DHCP option value into buffer
  *
  * Does not include DHCP option length or number.
  *
- * @param[in,out] out buffer to write the option to.
- * @param[out] outlen length of the output buffer.
- * @param[in] tlv_stack	Describing nesting of options.
- * @param[in] depth in tlv_stack.
- * @param[in,out] cursor Current attribute we're encoding.
+ * @param[in,out] out		buffer to write the option to.
+ * @param[out] outlen		length of the output buffer.
+ * @param[in] tlv_stack		Describing nesting of options.
+ * @param[in] depth		in tlv_stack.
+ * @param[in,out] cursor	Current attribute we're encoding.
  * @return
  *	- The length of data writen.
  *	- -1 if out of buffer.
@@ -80,7 +91,7 @@ static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor)
  */
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			    fr_cursor_t *cursor)
+			    fr_cursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
 {
 	uint32_t lvalue;
 
@@ -137,10 +148,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	default:
 		fr_strerror_printf("Unsupported option type %d", vp->vp_type);
-		(void)next_encodable(cursor);
+		(void)next_encodable(cursor, encoder_ctx);
 		return -2;
 	}
-	vp = next_encodable(cursor);	/* We encoded a leaf, advance the cursor */
+	vp = next_encodable(cursor, encoder_ctx);	/* We encoded a leaf, advance the cursor */
 	fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -153,18 +164,19 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
  *
  * @note May coalesce options with fixed width values
  *
- * @param[in,out] out buffer to write the TLV to.
- * @param[out] outlen length of the output buffer.
- * @param[in] tlv_stack	Describing nesting of options.
- * @param[in] depth in the tlv_stack.
- * @param[in,out] cursor Current attribute we're encoding.
+ * @param[in,out] out		buffer to write the TLV to.
+ * @param[out] outlen		length of the output buffer.
+ * @param[in] tlv_stack		Describing nesting of options.
+ * @param[in] depth		in the tlv_stack.
+ * @param[in,out] cursor	Current attribute we're encoding.
  * @return
  *	- >0 length of data encoded.
  *	- 0 if we ran out of space.
  *	- < 0 on error.
  */
 static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
-			      fr_dict_attr_t const **tlv_stack, unsigned int depth, fr_cursor_t *cursor)
+			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			      fr_cursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
 {
 	ssize_t			len;
 	uint8_t			*p = out;
@@ -199,7 +211,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 	do {
 		VALUE_PAIR *next;
 
-		len = encode_value(p, outlen - out[1], tlv_stack, depth, cursor);
+		len = encode_value(p, outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 		if (len < -1) return len;
 		if (len == -1) {
 			FR_PROTO_TRACE("No more space in option");
@@ -229,18 +241,19 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 
 /** Write out a TLV header (and any sub TLVs or values)
  *
- * @param[in,out] out buffer to write the TLV to.
- * @param[out] outlen length of the output buffer.
- * @param[in] tlv_stack Describing nesting of options.
- * @param[in] depth in the tlv_stack.
- * @param[in,out] cursor Current attribute we're encoding.
+ * @param[in,out] out		buffer to write the TLV to.
+ * @param[out] outlen		length of the output buffer.
+ * @param[in] tlv_stack		Describing nesting of options.
+ * @param[in] depth		in the tlv_stack.
+ * @param[in,out] cursor	Current attribute we're encoding.
  * @return
  *	- >0 length of data encoded.
  *	- 0 if we ran out of space.
  *	- < 0 on error.
  */
 static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
-			      fr_dict_attr_t const **tlv_stack, unsigned int depth, fr_cursor_t *cursor)
+			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			      fr_cursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
 {
 	ssize_t			len;
 	uint8_t			*p = out;
@@ -273,9 +286,9 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (tlv_stack[depth + 1]->type == FR_TYPE_TLV) {
-			len = encode_tlv_hdr(p, outlen - out[1], tlv_stack, depth + 1, cursor);
+			len = encode_tlv_hdr(p, outlen - out[1], tlv_stack, depth + 1, cursor, encoder_ctx);
 		} else {
-			len = encode_rfc_hdr(p, outlen - out[1], tlv_stack, depth + 1, cursor);
+			len = encode_rfc_hdr(p, outlen - out[1], tlv_stack, depth + 1, cursor, encoder_ctx);
 		}
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
@@ -314,21 +327,21 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
  *	- < 0 error.
  *	- 0 not valid option for DHCP (skipping).
  */
-ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor, UNUSED void *encoder_ctx)
+ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR		*vp;
 	unsigned int		depth = 0;
 	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 	ssize_t			len;
 
-	vp = first_encodable(cursor);
+	vp = first_encodable(cursor, encoder_ctx);
 	if (!vp) return -1;
 
 	if (vp->da == attr_dhcp_message_type) goto next; /* already done */
 	if ((vp->da->attr > 255) && (vp->da->attr != FR_DHCP_OPTION_82)) {
 	next:
 		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
-		next_encodable(cursor);
+		next_encodable(cursor, encoder_ctx);
 		return 0;
 	}
 
@@ -341,11 +354,11 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	 */
 	switch (tlv_stack[depth]->type) {
 	case FR_TYPE_TLV:
-		len = encode_tlv_hdr(out, outlen, tlv_stack, depth, cursor);
+		len = encode_tlv_hdr(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 		break;
 
 	default:
-		len = encode_rfc_hdr(out, outlen, tlv_stack, depth, cursor);
+		len = encode_rfc_hdr(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 		break;
 	}
 
