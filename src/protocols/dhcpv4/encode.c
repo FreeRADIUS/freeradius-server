@@ -45,9 +45,11 @@ static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
 
 /** Find the next attribute to encode
  *
- * @param cursor to iterate over.
- * @param encoder_ctx the context for the encoder
- * @return encodable VALUE_PAIR, or NULL if none available.
+ * @param[in] cursor		to iterate over.
+ * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
+ * @return
+ *	- encodable VALUE_PAIR.
+ *	- NULL if none available.
  */
 static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 {
@@ -60,9 +62,11 @@ static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 
 /** Determine if the current attribute is encodable, or find the first one that is
  *
- * @param cursor to iterate over.
- * @param encoder_ctx the context for the encoder
- * @return encodable VALUE_PAIR, or NULL if none available.
+ * @param[in] cursor		to iterate over.
+ * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
+ * @return
+ *	- encodable VALUE_PAIR.
+ *	- NULL if none available.
  */
 static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 {
@@ -79,11 +83,12 @@ static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx
  *
  * Does not include DHCP option length or number.
  *
- * @param[in,out] out		buffer to write the option to.
- * @param[out] outlen		length of the output buffer.
+ * @param[out] out		buffer to write the option to.
+ * @param[in] outlen		length of the output buffer.
  * @param[in] tlv_stack		Describing nesting of options.
  * @param[in] depth		in tlv_stack.
  * @param[in,out] cursor	Current attribute we're encoding.
+ * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
  * @return
  *	- The length of data writen.
  *	- -1 if out of buffer.
@@ -164,11 +169,12 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
  *
  * @note May coalesce options with fixed width values
  *
- * @param[in,out] out		buffer to write the TLV to.
- * @param[out] outlen		length of the output buffer.
+ * @param[out] out		buffer to write the TLV to.
+ * @param[in] outlen		length of the output buffer.
  * @param[in] tlv_stack		Describing nesting of options.
  * @param[in] depth		in the tlv_stack.
  * @param[in,out] cursor	Current attribute we're encoding.
+ * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
  * @return
  *	- >0 length of data encoded.
  *	- 0 if we ran out of space.
@@ -241,11 +247,12 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 
 /** Write out a TLV header (and any sub TLVs or values)
  *
- * @param[in,out] out		buffer to write the TLV to.
- * @param[out] outlen		length of the output buffer.
+ * @param[out] out		buffer to write the TLV to.
+ * @param[in] outlen		length of the output buffer.
  * @param[in] tlv_stack		Describing nesting of options.
  * @param[in] depth		in the tlv_stack.
  * @param[in,out] cursor	Current attribute we're encoding.
+ * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
  * @return
  *	- >0 length of data encoded.
  *	- 0 if we ran out of space.
@@ -318,10 +325,11 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 
 /** Encode a DHCP option and any sub-options.
  *
- * @param out Where to write encoded DHCP attributes.
- * @param outlen Length of out buffer.
- * @param cursor with current VP set to the option to be encoded. Will be advanced to the next option to encode.
- * @param encoder_ctx Unused.
+ * @param[out] out		Where to write encoded DHCP attributes.
+ * @param[in] outlen		Length of out buffer.
+ * @param[in] cursor		with current VP set to the option to be encoded.
+ *				Will be advanced to the next option to encode.
+ * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
  * @return
  *	- > 0 length of data written.
  *	- < 0 error.
