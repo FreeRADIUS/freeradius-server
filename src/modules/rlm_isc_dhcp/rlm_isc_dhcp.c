@@ -592,8 +592,8 @@ redo_multi:
 		if (state->saw_semicolon) return 1;
 
 		if (info->argc >= info->cmd->max_argc) {
-			fr_strerror_printf("Too many arguments (%d) for command '%s'",
-					   info->cmd->max_argc, info->cmd->name);
+			fr_strerror_printf("Too many arguments (%d > %d) for command '%s'",
+					   info->argc, info->cmd->max_argc, info->cmd->name);
 			return -1;
 		}
 
