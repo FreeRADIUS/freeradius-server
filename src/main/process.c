@@ -2608,6 +2608,15 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		return 0;
 	}
 
+	/*
+	 *	This shouldn't happen, but threads and race
+	 *	conditions.
+	 */
+	if (!request->proxy_listener || !request->proxy_listener->data) {
+		proxy_reply_too_late(request);
+		return 0;
+	}
+
 	gettimeofday(&now, NULL);
 
 	/*
