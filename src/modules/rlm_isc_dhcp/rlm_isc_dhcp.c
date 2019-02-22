@@ -578,6 +578,21 @@ redo_multi:
 	DDEBUG("... DATA %.*s ", state->token_len, state->token);
 
 	/*
+	 *	BOOLs in ISC are "true", "false", or "ignore".
+	 *
+	 *	Isn't that smart?  "ignore" means "ignore this option
+	 *	as if it was commented out".  So we do that.
+	 *
+	 *	I sure wish I was smart enough to allow 3 values for a
+	 *	boolean data type.
+	 */
+	if ((type == FR_TYPE_BOOL) && (state->token_len == 6) &&
+	    (strcmp(state->token, "ignore") == 0)) {
+		talloc_free(info);
+		return 2;
+	}
+
+	/*
 	 *	Parse the data to its final form.
 	 */
 	info->argv[info->argc] = talloc_zero(info, fr_value_box_t);
