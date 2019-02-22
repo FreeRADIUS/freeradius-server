@@ -2581,7 +2581,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 #ifdef WITH_TCP
 		listen_socket_t *sock = request->proxy_listener->data;
 
-		sock->last_packet = now.tv_sec;
+		if (sock) sock->last_packet = now.tv_sec;
 #endif
 		request->home_server->last_packet_recv = now.tv_sec;
 	}

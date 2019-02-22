@@ -141,6 +141,7 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Fix reconnect correctly in rlm_sql_mysql.
 	* Fix rlm_cache to properly use Cache-TTL < 0.
 	  Fixes #2485.
+	* Fix proxy reply due lack of any response. ref #2055
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
