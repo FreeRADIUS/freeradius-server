@@ -52,11 +52,6 @@ static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
 {
 	if (!vp) return false;
 	if (vp->da->flags.internal) return false;
-	/*
-	 *	Bool attribute presence is 'true' in SIM
-	 *	and absence is 'false'
-	 */
-	if ((vp->da->type == FR_TYPE_BOOL) && (vp->vp_bool == false)) return false;
 	if (!fr_dict_parent_common(root, vp->da, true)) return false;
 
 	return true;
