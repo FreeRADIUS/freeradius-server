@@ -321,6 +321,14 @@ dist-tag: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$
 #
 .PHONY: deb
 deb:
+	@if ! which fakeroot; then \
+		if ! which apt-get; then \
+		  echo "'make deb' only works on debian systems" ; \
+		  exit 1; \
+		fi ; \
+		echo "Please run 'apt-get install build-essentials' "; \
+		exit 1; \
+	fi
 	fakeroot debian/rules debian/control #clean
 	fakeroot dpkg-buildpackage -b -uc
 
