@@ -2157,7 +2157,7 @@ xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_a
 
 	if (!name || !*name) {
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
-		return -1;
+		return NULL;
 	}
 
 	/*
