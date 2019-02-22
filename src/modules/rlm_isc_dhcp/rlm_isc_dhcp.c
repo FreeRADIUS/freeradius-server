@@ -1466,7 +1466,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "ddns-other-guard-is-dynamic BOOL",	ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
 	{ "ddns-rev-domainname STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "ddns-ttl UINT32",			ISC_NOOP, NULL, NULL, 1}, // Lease interval
-	{ "ddns-update-style STRING,,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ddns-update-style STRING,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
 	{ "ddns-updates BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
 	{ "declines BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
 	{ "default-ip-ttl UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
@@ -1527,20 +1527,20 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "ldap-gssapi-keytab STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "ldap-gssapi-principal STRING",	ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "ldap-init-retry STRING",		ISC_NOOP, NULL, NULL, 1}, // domain name
-	{ "ldap-method STRING,,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-method STRING,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
 	{ "ldap-password STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "ldap-port STRING",			ISC_NOOP, NULL, NULL, 1}, // domain name
 	{ "ldap-referrals BOOL",		ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
 	{ "ldap-server STRING",			ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-ssl STRING,,",			ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-ssl STRING,",			ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
 	{ "ldap-tls-ca-dir STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "ldap-tls-ca-file STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "ldap-tls-cert STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "ldap-tls-ciphers STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-crlcheck STRING,,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-tls-crlcheck STRING,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
 	{ "ldap-tls-key STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "ldap-tls-randfile STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-reqcert STRING,,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-tls-reqcert STRING,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
 	{ "ldap-username STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "lease-file-name STRING",		ISC_NOOP, NULL, NULL, 1}, // text string
 	{ "leasequery BOOL",			ISC_NOOP, NULL, NULL, 1}, // boolean should be true, false or ignore
@@ -1554,7 +1554,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "local-address IPADDR",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
 	{ "local-address6 IPADDR6",		ISC_NOOP, NULL, NULL, 1}, // ipv6 addr
 	{ "local-port UINT16",			ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "log-facility STRING,,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "log-facility STRING,",		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
 	{ "log-servers IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
 	{ "log-threshold-high UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
 	{ "log-threshold-low UINT8",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
@@ -1601,7 +1601,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "policy-filter IPADDR,",		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
 	{ "pop-server IPADDR,",			ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname [arg1, ... ]
 	{ "preferred-lifetime UINT32",		ISC_NOOP, NULL, NULL, 1}, // Lease interval
-	{ "prefix-length-mode STRING,,",       	ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "prefix-length-mode STRING,",       	ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
 	{ "pxe-client-id UINT8,",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t [arg1, ... ]
 	{ "pxe-interface-id UINT8,",		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t [arg1, ... ]
 	{ "pxe-system-type UINT16,",		ISC_NOOP, NULL, NULL, 1}, // integer uint16_t [arg1, ... ]
