@@ -466,12 +466,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 			if ((fr_type_t) type->number == vp->vp_type) goto next_type;
 
 			switch (type->number) {
-			case FR_TYPE_INVALID:		/* Not real type */
-			case FR_TYPE_MAX:		/* Not real type */
-			case FR_TYPE_COMBO_IP_ADDR:	/* Covered by IPv4 address IPv6 address */
-			case FR_TYPE_COMBO_IP_PREFIX:	/* Covered by IPv4 address IPv6 address */
-			case FR_TYPE_TIMEVAL:		/* Not a VALUE_PAIR type */
-			case FR_TYPE_STRUCTURAL:
+			case FR_TYPE_NON_VALUES:	/* Skip everything that's not a value */
 				goto next_type;
 
 			default:
