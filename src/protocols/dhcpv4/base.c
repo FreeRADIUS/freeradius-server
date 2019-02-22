@@ -450,7 +450,8 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, uint32_t xid,
 	 *  and sub options.
 	 */
 	while ((vp = fr_cursor_current(&cursor))) {
-		len = fr_dhcpv4_encode_option(p, buflen - (p - buffer), &cursor, NULL);
+		len = fr_dhcpv4_encode_option(p, buflen - (p - buffer),
+					      &cursor, &(fr_dhcpv4_ctx_t){ .root = fr_dict_root(dict_dhcpv4) });
 		if (len < 0) break;
 		p += len;
 	};

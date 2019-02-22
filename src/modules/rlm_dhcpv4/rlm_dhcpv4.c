@@ -50,9 +50,9 @@ typedef struct {
 	int nothing;
 } rlm_dhcpv4_t;
 
-static xlat_action_t dhcp_options_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				       fr_value_box_t **in)
+static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				        REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				        fr_value_box_t **in)
 {
 	fr_cursor_t	in_cursor, cursor;
 	fr_value_box_t	*vb, *vb_decoded;
@@ -118,16 +118,18 @@ static xlat_action_t dhcp_options_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_action_t dhcp_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-			       REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-			       fr_value_box_t **in)
+static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+					REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					fr_value_box_t **in)
 {
 	fr_cursor_t	*cursor;
 	bool		tainted = false;
 	fr_value_box_t	*encoded;
+	VALUE_PAIR	*vp;
 
 	uint8_t		binbuf[2048];
-	ssize_t		len;
+	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);
+	ssize_t		len = 0;
 
 	if (!*in) return XLAT_ACTION_DONE;
 
@@ -140,12 +142,17 @@ static xlat_action_t dhcp_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	if (!fr_cursor_head(cursor)) return XLAT_ACTION_DONE;	/* Nothing to encode */
 
-	len = fr_dhcpv4_encode_option(binbuf, sizeof(binbuf), cursor, NULL);
-	talloc_free(cursor);
-	if (len <= 0) {
-		RPEDEBUG("DHCP option encoding failed");
-		return XLAT_ACTION_FAIL;
+	while ((vp = fr_cursor_current(cursor))) {
+		len = fr_dhcpv4_encode_option(p, end - p, cursor,
+					      &(fr_dhcpv4_ctx_t){ .root = fr_dict_root(dict_dhcpv4) });
+		if (len < 0) {
+			RPEDEBUG("DHCP option encoding failed");
+			talloc_free(cursor);
+			return XLAT_ACTION_FAIL;
+		}
+		p += len;
 	}
+	talloc_free(cursor);
 
 	/*
 	 *	Pass the options string back
@@ -164,8 +171,8 @@ static int dhcp_load(void)
 		return -1;
 	}
 
-	xlat_async_register(NULL, "dhcp_options", dhcp_options_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "dhcp", dhcp_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "dhcpv4_decode", dhcpv4_decode_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "dhcpv4_encode", dhcpv4_encode_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }
