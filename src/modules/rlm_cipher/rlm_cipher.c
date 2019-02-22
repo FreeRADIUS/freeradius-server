@@ -1135,41 +1135,74 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		if (inst->rsa->private_key_file) {
 			char *decrypt_name;
 			char *verify_name;
+			xlat_t const *xlat;
 
+			/*
+			 *	Register decrypt xlat
+			 */
 			decrypt_name = talloc_asprintf(inst, "%s_decrypt", inst->xlat_name);
-			verify_name = talloc_asprintf(inst, "%s_verify", inst->xlat_name);
-
-			xlat_async_register(inst, decrypt_name, cipher_rsa_decrypt_xlat,
-					    cipher_xlat_instantiate, rlm_cipher_t *, NULL,
-					    cipher_xlat_thread_instantiate, rlm_cipher_rsa_thread_inst_t *,
-				    	    NULL, inst);
-
-			xlat_async_register(inst, verify_name, cipher_rsa_verify_xlat,
-					    cipher_xlat_instantiate, rlm_cipher_t *, NULL,
-					    cipher_xlat_thread_instantiate, rlm_cipher_rsa_thread_inst_t *,
-					    NULL, inst);
-
+			xlat = xlat_async_register(inst, decrypt_name, cipher_rsa_decrypt_xlat);
+			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
+						   rlm_cipher_t *,
+						   NULL,
+						   inst);
+			xlat_async_thread_instantiate_set(xlat,
+							  cipher_xlat_thread_instantiate,
+							  rlm_cipher_rsa_thread_inst_t *,
+							  NULL,
+							  inst);
 			talloc_free(decrypt_name);
+
+			/*
+			 *	Verify sign xlat
+			 */
+			verify_name = talloc_asprintf(inst, "%s_verify", inst->xlat_name);
+			xlat = xlat_async_register(inst, verify_name, cipher_rsa_verify_xlat);
+			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
+						   rlm_cipher_t *,
+						   NULL,
+						   inst);
+			xlat_async_thread_instantiate_set(xlat,
+							  cipher_xlat_thread_instantiate,
+							  rlm_cipher_rsa_thread_inst_t *,
+							  NULL,
+							  inst);
 			talloc_free(verify_name);
 		}
 
 		if (inst->rsa->certificate_file) {
 			char *encrypt_name;
 			char *sign_name;
+			xlat_t const *xlat;
 
+			/*
+			 *	Register encrypt xlat
+			 */
 			encrypt_name = talloc_asprintf(inst, "%s_encrypt", inst->xlat_name);
-			sign_name = talloc_asprintf(inst, "%s_sign", inst->xlat_name);
-
-			xlat_async_register(inst, encrypt_name, cipher_rsa_encrypt_xlat,
-				    	    cipher_xlat_instantiate, rlm_cipher_t *, NULL,
-				    	    cipher_xlat_thread_instantiate, rlm_cipher_rsa_thread_inst_t *,
-				    	    NULL, inst);
-			xlat_async_register(inst, sign_name, cipher_rsa_sign_xlat,
-				    	    cipher_xlat_instantiate, rlm_cipher_t *, NULL,
-				    	    cipher_xlat_thread_instantiate, rlm_cipher_rsa_thread_inst_t *,
-				    	    NULL, inst);
-
+			xlat = xlat_async_register(inst, encrypt_name, cipher_rsa_encrypt_xlat);
+			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
+						   rlm_cipher_t *,
+						   NULL,
+						   inst);
+			xlat_async_thread_instantiate_set(xlat, cipher_xlat_thread_instantiate,
+							  rlm_cipher_rsa_thread_inst_t *,
+							  NULL,
+							  inst);
 			talloc_free(encrypt_name);
+
+			/*
+			 *	Register sign xlat
+			 */
+			sign_name = talloc_asprintf(inst, "%s_sign", inst->xlat_name);
+			xlat = xlat_async_register(inst, sign_name, cipher_rsa_sign_xlat);
+			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
+						   rlm_cipher_t *,
+						   NULL,
+						   inst);
+			xlat_async_thread_instantiate_set(xlat, cipher_xlat_thread_instantiate,
+							  rlm_cipher_rsa_thread_inst_t *,
+							  NULL,
+							  inst);
 			talloc_free(sign_name);
 		}
 		break;

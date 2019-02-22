@@ -286,14 +286,13 @@ static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, v
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_delay_t *inst = instance;
+	xlat_t const *xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
-	xlat_async_register(inst, inst->xlat_name, xlat_delay,
-			    mod_xlat_instantiate, rlm_delay_t *, NULL,
-			    NULL, NULL, NULL, inst);
-
+	xlat = xlat_async_register(inst, inst->xlat_name, xlat_delay);
+	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_delay_t *, NULL, inst);
 	return 0;
 }
 

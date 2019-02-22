@@ -1062,14 +1062,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_rest_t *inst = instance;
+	xlat_t const *xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
-	xlat_async_register(inst, inst->xlat_name, rest_xlat,
-			    NULL, NULL, NULL,
-			    mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL,
-			    inst);
+	xlat = xlat_async_register(inst, inst->xlat_name, rest_xlat);
+	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL, inst);
 
 	return 0;
 }

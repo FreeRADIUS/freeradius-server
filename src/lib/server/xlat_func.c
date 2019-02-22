@@ -2141,40 +2141,14 @@ int xlat_register(void *mod_inst, char const *name,
  *
  * All functions registered must be async_safe.
  *
- * @param[in] ctx			Used to automate deregistration of the xlat fnction.
- * @param[in] name			of the xlat.
- * @param[in] func			to register.
- * @param[in] instantiate		Instantiation function. Called whenever a xlat is
- *					compiled.
- * @param[in] inst_type			Name of the instance structure.
- * @param[in] inst_size			The size of the instance struct.
- *					Pre-allocated for use by the instantiate function.
- *					If 0, no memory will be allocated.
- * @param[in] detach			Called when an xlat_exp_t is freed.
- * @param[in] thread_instantiate	thread_instantiation_function. Called whenever a
- *					a thread is started to create thread local instance
- *					data.
- * @param[in] thread_inst_type		Name of the thread instance structure.
- * @param[in] thread_inst_size		The size of the thread instance struct.
- *					Pre-allocated for use by the thread instance function.
- *					If 0, no memory will be allocated.
- * @param[in] thread_detach		Called when an xlat_exp_t is freed (if ephemeral),
- *					or when a thread exits.
- * @param[in] uctx			To pass to instantiate callbacks and the xlat function
- *					when it's called.  Usually the module instance that
- *					registered the xlat.
+ * @param[in] ctx		Used to automate deregistration of the xlat fnction.
+ * @param[in] name		of the xlat.
+ * @param[in] func		to register.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int _xlat_async_register(TALLOC_CTX *ctx,
-			 char const *name, xlat_func_async_t func,
-			 xlat_instantiate_t instantiate, char const *inst_type, size_t inst_size,
-			 xlat_detach_t detach,
-			 xlat_thread_instantiate_t thread_instantiate,
-			 char const *thread_inst_type, size_t thread_inst_size,
-			 xlat_thread_detach_t thread_detach,
-			 void *uctx)
+xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_async_t func)
 {
 	xlat_t	*c;
 	bool	new = false;
@@ -2193,12 +2167,12 @@ int _xlat_async_register(TALLOC_CTX *ctx,
 	if (c) {
 		if (c->internal) {
 			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
-			return -1;
+			return NULL;
 		}
 
 		if (!c->async_safe) {
 			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
-			return -1;
+			return NULL;
 		}
 
 	/*
@@ -2213,31 +2187,78 @@ int _xlat_async_register(TALLOC_CTX *ctx,
 
 	c->func.async = func;
 	c->type = XLAT_FUNC_ASYNC;
-
-	c->instantiate = instantiate;
-	c->thread_instantiate = thread_instantiate;
-
-	c->inst_type = inst_type;
-	c->inst_size = inst_size;
-
-	c->thread_inst_type = thread_inst_type;
-	c->thread_inst_size = thread_inst_size;
-
-	c->detach = detach;
-	c->thread_detach = thread_detach;
-
 	c->async_safe = false;	/* async safe in this case means it might yield */
-	c->uctx = uctx;
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
 	if (new && !rbtree_insert(xlat_root, c)) {
 		ERROR("%s: Failed inserting xlat registration for %s", __FUNCTION__, c->name);
 		talloc_free(c);
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return c;
+}
+
+/** Set global instantiation/detach callbacks
+ *
+ * All functions registered must be async_safe.
+ *
+ * @param[in] xlat		to set instantiation callbacks for.
+ * @param[in] instantiate	Instantiation function. Called whenever a xlat is
+ *				compiled.
+ * @param[in] inst_type		Name of the instance structure.
+ * @param[in] inst_size		The size of the instance struct.
+ *				Pre-allocated for use by the instantiate function.
+ *				If 0, no memory will be allocated.
+ * @param[in] detach		Called when an xlat_exp_t is freed.
+ * @param[in] uctx		Passed to the instantiation function.
+ */
+void _xlat_async_instantiate_set(xlat_t const *xlat,
+				 xlat_instantiate_t instantiate, char const *inst_type, size_t inst_size,
+				 xlat_detach_t detach,
+				 void *uctx)
+{
+	xlat_t *c;
+
+	memcpy(&c, &xlat, sizeof(c));
+
+	c->instantiate = instantiate;
+	c->inst_type = inst_type;
+	c->inst_size = inst_size;
+	c->detach = detach;
+	c->uctx = uctx;
+}
+
+/** Register an async xlat
+ *
+ * All functions registered must be async_safe.
+ *
+ * @param[in] xlat			to set instantiation callbacks for.
+ * @param[in] thread_instantiate	Instantiation function. Called for every compiled xlat
+ *					every time a thread is started.
+ * @param[in] thread_inst_type		Name of the thread instance structure.
+ * @param[in] thread_inst_size		The size of the thread instance struct.
+ *					Pre-allocated for use by the instantiate function.
+ *					If 0, no memory will be allocated.
+ * @param[in] thread_detach		Called when the thread is freed.
+ * @param[in] uctx			Passed to the thread instantiate function.
+ */
+void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
+					xlat_thread_instantiate_t thread_instantiate,
+				        char const *thread_inst_type, size_t thread_inst_size,
+				        xlat_thread_detach_t thread_detach,
+				        void *uctx)
+{
+	xlat_t *c;
+
+	memcpy(&c, &xlat, sizeof(c));
+
+	c->thread_instantiate = thread_instantiate;
+	c->thread_inst_type = thread_inst_type;
+	c->thread_inst_size = thread_inst_size;
+	c->thread_detach = thread_detach;
+	c->thread_uctx = uctx;
 }
 
 /** Unregister an xlat function
@@ -2678,42 +2699,42 @@ int xlat_init(void)
 	rad_assert(c != NULL);
 	c->internal = true;
 
-	xlat_async_register(NULL, "base64", base64_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "base64decode", xlat_base64_decode, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "bin", bin_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "concat", concat_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "hex", hex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "hmacmd5", hmac_md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "hmacsha1", hmac_sha1_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "md4", md4_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "md5", md5_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "pairs", pairs_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "rand", rand_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "randstr", randstr_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "base64", base64_xlat);
+	xlat_async_register(NULL, "base64decode", xlat_base64_decode);
+	xlat_async_register(NULL, "bin", bin_xlat);
+	xlat_async_register(NULL, "concat", concat_xlat);
+	xlat_async_register(NULL, "hex", hex_xlat);
+	xlat_async_register(NULL, "hmacmd5", hmac_md5_xlat);
+	xlat_async_register(NULL, "hmacsha1", hmac_sha1_xlat);
+	xlat_async_register(NULL, "md4", md4_xlat);
+	xlat_async_register(NULL, "md5", md5_xlat);
+	xlat_async_register(NULL, "pairs", pairs_xlat);
+	xlat_async_register(NULL, "rand", rand_xlat);
+	xlat_async_register(NULL, "randstr", randstr_xlat);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
-	xlat_async_register(NULL, "regex", regex_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "regex", regex_xlat);
 #endif
-	xlat_async_register(NULL, "sha1", sha1_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha1", sha1_xlat);
 
 #ifdef HAVE_OPENSSL_EVP_H
-	xlat_async_register(NULL, "sha224", sha224_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "sha256", sha256_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "sha384", sha384_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "sha512", sha512_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha224", sha224_xlat);
+	xlat_async_register(NULL, "sha256", sha256_xlat);
+	xlat_async_register(NULL, "sha384", sha384_xlat);
+	xlat_async_register(NULL, "sha512", sha512_xlat);
 
 #  ifdef HAVE_EVP_SHA3_512
-	xlat_async_register(NULL, "sha3_224", sha3_224_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "sha3_256", sha3_256_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "sha3_384", sha3_384_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "sha3_512", sha3_512_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "sha3_224", sha3_224_xlat);
+	xlat_async_register(NULL, "sha3_256", sha3_256_xlat);
+	xlat_async_register(NULL, "sha3_384", sha3_384_xlat);
+	xlat_async_register(NULL, "sha3_512", sha3_512_xlat);
 #  endif
 #endif
 
-	xlat_async_register(NULL, "string", string_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "tolower", tolower_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "toupper", toupper_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "urlquote", urlquote_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	xlat_async_register(NULL, "urlunquote", urlunquote_xlat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "string", string_xlat);
+	xlat_async_register(NULL, "tolower", tolower_xlat);
+	xlat_async_register(NULL, "toupper", toupper_xlat);
+	xlat_async_register(NULL, "urlquote", urlquote_xlat);
+	xlat_async_register(NULL, "urlunquote", urlunquote_xlat);
 
 	return 0;
 }

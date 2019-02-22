@@ -86,7 +86,7 @@ static int _xlat_thread_inst_detach(xlat_thread_inst_t *thread_inst)
 	rad_assert(thread_inst->node->type == XLAT_FUNC);
 
 	if (thread_inst->node->xlat->thread_detach) {
-		(void) thread_inst->node->xlat->thread_detach(thread_inst->data, thread_inst->node->xlat->uctx);
+		(void) thread_inst->node->xlat->thread_detach(thread_inst->data, thread_inst->node->xlat->thread_uctx);
 	}
 
 	return 0;
@@ -270,7 +270,8 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, UNUSED void *uct
 	if (!node->thread_inst) goto error;
 
 	if (node->xlat->thread_instantiate &&
-	    node->xlat->thread_instantiate(node->inst, node->thread_inst->data, node, node->xlat->uctx) < 0) goto error;
+	    node->xlat->thread_instantiate(node->inst, node->thread_inst->data,
+	    				   node, node->xlat->thread_uctx) < 0) goto error;
 
 	/*
 	 *	Mark this up as an ephemeral node, so the destructors
@@ -310,7 +311,7 @@ static int _xlat_thread_instantiate(void *ctx, void *data)
 		int ret;
 
 		ret = inst->node->xlat->thread_instantiate(inst->data, thread_inst->data,
-							   inst->node, inst->node->xlat->uctx);
+							   inst->node, inst->node->xlat->thread_uctx);
 		if (ret < 0) {
 			talloc_free(thread_inst);
 			return -1;

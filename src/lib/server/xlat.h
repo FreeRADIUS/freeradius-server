@@ -70,6 +70,8 @@ struct xlat_thread_inst {
 	uint64_t		active_callers; //! number of active callers.  i.e. number of current yields
 };
 
+typedef struct xlat_s xlat_t;
+
 extern FR_NAME_NUMBER const xlat_action_table[];
 
 typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
@@ -283,24 +285,22 @@ int		xlat_register(void *mod_inst, char const *name,
 			      xlat_instantiate_t instantiate, size_t inst_size,
 			      size_t buf_len, bool async_safe);
 
-#define		xlat_async_register(_ctx, \
-				     _name, _func, \
-				    _instantiate, _inst_struct, _detach, \
-				    _thread_instantiate, _thread_inst_struct, _thread_detach, _uctx) \
-		_xlat_async_register(_ctx, \
-				     _name, _func, \
-				     _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, \
-				     _thread_instantiate, #_thread_inst_struct, sizeof(_thread_inst_struct), _thread_detach, \
-				     _uctx)
+xlat_t const *xlat_async_register(TALLOC_CTX *ctx, char const *name, xlat_func_async_t func);
 
-int		_xlat_async_register(TALLOC_CTX *ctx,
-				     char const *name, xlat_func_async_t func,
-				     xlat_instantiate_t instantiate, char const *inst_name, size_t inst_size,
-				     xlat_detach_t detach,
-				     xlat_thread_instantiate_t thread_instantiate, char const *thread_inst_name,
-				     size_t thread_inst_size,
-				     xlat_thread_detach_t thread_detach,
-				     void *uctx);
+#define	xlat_async_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
+	_xlat_async_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)
+void _xlat_async_instantiate_set(xlat_t const *xlat,
+				        xlat_instantiate_t instantiate, char const *inst_type, size_t inst_size,
+				        xlat_detach_t detach,
+				        void *uctx);
+
+#define	xlat_async_thread_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
+	_xlat_async_thread_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)
+void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
+					xlat_thread_instantiate_t thread_instantiate,
+				        char const *thread_inst_type, size_t thread_inst_size,
+				        xlat_thread_detach_t thread_detach,
+					void *uctx);
 
 void		xlat_unregister(char const *name);
 void		xlat_unregister_module(void *instance);
