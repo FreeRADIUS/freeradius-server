@@ -98,10 +98,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			    fr_cursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
 {
-	uint32_t lvalue;
-
-	VALUE_PAIR *vp = fr_cursor_current(cursor);
-	uint8_t *p = out;
+	VALUE_PAIR	*vp = fr_cursor_current(cursor);
+	uint8_t		*p = out;
+	size_t		need = 0;
+	ssize_t		len;
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 	FR_PROTO_TRACE("%zu byte(s) available for value", outlen);
@@ -110,45 +110,17 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	switch (tlv_stack[depth]->type) {
 	case FR_TYPE_UINT8:
-		p[0] = vp->vp_uint8;
-		p ++;
-		break;
-
 	case FR_TYPE_UINT16:
-		p[0] = (vp->vp_uint16 >> 8) & 0xff;
-		p[1] = vp->vp_uint16 & 0xff;
-		p += 2;
-		break;
-
 	case FR_TYPE_UINT32:
-		lvalue = htonl(vp->vp_uint32);
-		memcpy(p, &lvalue, 4);
-		p += 4;
-		break;
-
 	case FR_TYPE_IPV4_ADDR:
-		memcpy(p, &vp->vp_ipv4addr, 4);
-		p += 4;
-		break;
-
 	case FR_TYPE_IPV6_ADDR:
-		memcpy(p, &vp->vp_ipv6addr, 16);
-		p += 16;
-		break;
-
 	case FR_TYPE_ETHERNET:
-		memcpy(p, vp->vp_ether, 6);
-		p += 6;
-		break;
-
 	case FR_TYPE_STRING:
-		memcpy(p, vp->vp_strvalue, vp->vp_length);
-		p += vp->vp_length;
-		break;
-
 	case FR_TYPE_OCTETS:
-		memcpy(p, vp->vp_octets, vp->vp_length);
-		p += vp->vp_length;
+		len = fr_value_box_to_network(&need, p, outlen, &vp->data);
+		if (len < 0) return -2;
+		if (need > 0) return -1;
+		p += len;
 		break;
 
 	default:
