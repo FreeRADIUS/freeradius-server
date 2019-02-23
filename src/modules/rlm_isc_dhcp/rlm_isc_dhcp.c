@@ -1442,120 +1442,122 @@ recurse:
 	return rcode;
 }
 
+#define isc_not_done ISC_NOOP, NULL, NULL
+
 
 /** Table of commands that we allow.
  *
  */
 static const rlm_isc_dhcp_cmd_t commands[] = {
-	{ "abandon-lease-time INTEGER",		ISC_NOOP, NULL, NULL, 1},
-	{ "adaptive-lease-time-threshold INTEGER", ISC_NOOP, NULL, NULL, 1},
-	{ "allow-booting BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "allow-bootp BOOL", 			ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "always-broadcast BOOL",		ISC_NOOP, NULL, NULL, 1},
-	{ "always-reply-rfc1048 BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "authoritative",			ISC_NOOP, NULL, NULL, 0},
-	{ "bind-local-address6 BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "boot-unknown-clients BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "check-secs-byte-order BOOL",        	ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "client-updates BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "ddns-domainname STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ddns-dual-stack-mixed-mode BOOL",   	ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "ddns-guard-id-must-match BOOL",     	ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "ddns-hostname STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ddns-local-address4 IPADDR",        	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "ddns-local-address6 IPADDR6",       	ISC_NOOP, NULL, NULL, 1}, // ipv6 addr
-	{ "ddns-other-guard-is-dynamic BOOL",  	ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "ddns-rev-domainname STRING",        	ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ddns-ttl UINT32", 			ISC_NOOP, NULL, NULL, 1}, // Lease time interval
-	{ "ddns-update-style STRING,", 		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ddns-updates BOOL", 			ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "declines BOOL", 			ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "default-lease-time INTEGER", 	ISC_NOOP, NULL, NULL, 1},
-	{ "delayed-ack UINT16",			ISC_NOOP, NULL, NULL, 1},
-	{ "dhcp-cache-threshold UINT8",        	ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "dhcpv6-lease-file-name STRING",     	ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "dhcpv6-pid-file-name STRING",       	ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "dhcpv6-set-tee-times BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "do-forward-updates BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "do-reverse-updates BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "dont-use-fsync BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "duplicates BOOL", 			ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "dynamic-bootp BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "dynamic-bootp-lease-cutoff UINT32", 	ISC_NOOP, NULL, NULL, 1}, // Lease time interval
-	{ "dynamic-bootp-lease-length UINT32", 	ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "echo-client-id BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "filename STRING",			ISC_NOOP, NULL, NULL, 1},
+	{ "abandon-lease-time INTEGER",		isc_not_done, 1},
+	{ "adaptive-lease-time-threshold INTEGER", isc_not_done, 1},
+	{ "allow-booting BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "allow-bootp BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "always-broadcast BOOL",		isc_not_done, 1},
+	{ "always-reply-rfc1048 BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "authoritative",			isc_not_done, 0},
+	{ "bind-local-address6 BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "boot-unknown-clients BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "check-secs-byte-order BOOL",        	isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "client-updates BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "ddns-domainname STRING", 		isc_not_done, 1}, // text string
+	{ "ddns-dual-stack-mixed-mode BOOL",   	isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "ddns-guard-id-must-match BOOL",     	isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "ddns-hostname STRING", 		isc_not_done, 1}, // text string
+	{ "ddns-local-address4 IPADDR",        	isc_not_done, 1}, // ipaddr or hostname
+	{ "ddns-local-address6 IPADDR6",       	isc_not_done, 1}, // ipv6 addr
+	{ "ddns-other-guard-is-dynamic BOOL",  	isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "ddns-rev-domainname STRING",        	isc_not_done, 1}, // text string
+	{ "ddns-ttl UINT32", 			isc_not_done, 1}, // Lease time interval
+	{ "ddns-update-style STRING,", 		isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ddns-updates BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "declines BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "default-lease-time INTEGER", 	isc_not_done, 1},
+	{ "delayed-ack UINT16",			isc_not_done, 1},
+	{ "dhcp-cache-threshold UINT8",        	isc_not_done, 1}, // integer uint8_t
+	{ "dhcpv6-lease-file-name STRING",     	isc_not_done, 1}, // text string
+	{ "dhcpv6-pid-file-name STRING",       	isc_not_done, 1}, // text string
+	{ "dhcpv6-set-tee-times BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "do-forward-updates BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "do-reverse-updates BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "dont-use-fsync BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "duplicates BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "dynamic-bootp BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "dynamic-bootp-lease-cutoff UINT32", 	isc_not_done, 1}, // Lease time interval
+	{ "dynamic-bootp-lease-length UINT32", 	isc_not_done, 1}, // integer uint32_t
+	{ "echo-client-id BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "filename STRING",			isc_not_done, 1},
 	{ "fixed-address IPADDR,",		ISC_FIXED_ADDRESS, NULL, NULL, 16},
-	{ "fqdn-reply BOOL", 			ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "get-lease-hostnames BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
+	{ "fqdn-reply BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "get-lease-hostnames BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "group SECTION",			ISC_GROUP, NULL, NULL, 1},
 	{ "hardware ethernet ETHER",		ISC_HARDWARE_ETHERNET, NULL, NULL, 1},
 	{ "host STRING SECTION",		ISC_HOST, parse_host, NULL, 1},
-	{ "ignore-client-uids BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
+	{ "ignore-client-uids BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "include STRING",			ISC_NOOP, parse_include, NULL, 1},
-	{ "infinite-is-reserved BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "ldap-base-dn STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-debug-file STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-dhcp-server-cn STRING", 	ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-gssapi-keytab STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-gssapi-principal STRING", 	ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-init-retry STRING", 		ISC_NOOP, NULL, NULL, 1}, // domain name
-	{ "ldap-method STRING,", 		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-password STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-port STRING", 			ISC_NOOP, NULL, NULL, 1}, // domain name
-	{ "ldap-referrals BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "ldap-server STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-ssl STRING,", 			ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-tls-ca-dir STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-ca-file STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-cert STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-ciphers STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-crlcheck STRING,", 		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-tls-key STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-randfile STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ldap-tls-reqcert STRING,", 		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-username STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "lease-file-name STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "leasequery BOOL", 			ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "limit-addrs-per-ia UINT32", 		ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "limit-prefs-per-ia UINT32", 		ISC_NOOP, NULL, NULL, 1}, // integer uint32_t
-	{ "limited-broadcast-address IPADDR", 	ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "local-address IPADDR", 		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "local-address6 IPADDR6", 		ISC_NOOP, NULL, NULL, 1}, // ipv6 addr
-	{ "local-port UINT16", 			ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "log-facility STRING,", 		ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "log-threshold-high UINT8", 		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "log-threshold-low UINT8", 		ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "max-ack-delay UINT32",		ISC_NOOP, NULL, NULL, 1},
-	{ "max-lease-time INTEGER",		ISC_NOOP, NULL, NULL, 1},
-	{ "min-lease-time INTEGER",		ISC_NOOP, NULL, NULL, 1},
-	{ "min-secs UINT8", 			ISC_NOOP, NULL, NULL, 1}, // integer uint8_t
-	{ "next-server IPADDR", 		ISC_NOOP, NULL, NULL, 1}, // ipaddr or hostname
-	{ "not authoritative",			ISC_NOOP, NULL, NULL, 0},
-	{ "omapi-key STRING", 			ISC_NOOP, NULL, NULL, 1}, // domain name
-	{ "omapi-port UINT16", 			ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "one-lease-per-client BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
+	{ "infinite-is-reserved BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "ldap-base-dn STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-debug-file STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-dhcp-server-cn STRING", 	isc_not_done, 1}, // text string
+	{ "ldap-gssapi-keytab STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-gssapi-principal STRING", 	isc_not_done, 1}, // text string
+	{ "ldap-init-retry STRING", 		isc_not_done, 1}, // domain name
+	{ "ldap-method STRING,", 		isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-password STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-port STRING", 			isc_not_done, 1}, // domain name
+	{ "ldap-referrals BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "ldap-server STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-ssl STRING,", 			isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-tls-ca-dir STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-tls-ca-file STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-tls-cert STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-tls-ciphers STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-tls-crlcheck STRING,", 		isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-tls-key STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-tls-randfile STRING", 		isc_not_done, 1}, // text string
+	{ "ldap-tls-reqcert STRING,", 		isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-username STRING", 		isc_not_done, 1}, // text string
+	{ "lease-file-name STRING", 		isc_not_done, 1}, // text string
+	{ "leasequery BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "limit-addrs-per-ia UINT32", 		isc_not_done, 1}, // integer uint32_t
+	{ "limit-prefs-per-ia UINT32", 		isc_not_done, 1}, // integer uint32_t
+	{ "limited-broadcast-address IPADDR", 	isc_not_done, 1}, // ipaddr or hostname
+	{ "local-address IPADDR", 		isc_not_done, 1}, // ipaddr or hostname
+	{ "local-address6 IPADDR6", 		isc_not_done, 1}, // ipv6 addr
+	{ "local-port UINT16", 			isc_not_done, 1}, // integer uint16_t
+	{ "log-facility STRING,", 		isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "log-threshold-high UINT8", 		isc_not_done, 1}, // integer uint8_t
+	{ "log-threshold-low UINT8", 		isc_not_done, 1}, // integer uint8_t
+	{ "max-ack-delay UINT32",		isc_not_done, 1},
+	{ "max-lease-time INTEGER",		isc_not_done, 1},
+	{ "min-lease-time INTEGER",		isc_not_done, 1},
+	{ "min-secs UINT8", 			isc_not_done, 1}, // integer uint8_t
+	{ "next-server IPADDR", 		isc_not_done, 1}, // ipaddr or hostname
+	{ "not authoritative",			isc_not_done, 0},
+	{ "omapi-key STRING", 			isc_not_done, 1}, // domain name
+	{ "omapi-port UINT16", 			isc_not_done, 1}, // integer uint16_t
+	{ "one-lease-per-client BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "option STRING STRING,",		ISC_OPTION, parse_option, NULL, 16},
-	{ "pid-file-name STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "ping-check BOOL", 			ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "ping-timeout UINT32", 		ISC_NOOP, NULL, NULL, 1}, // Lease time interval
-	{ "preferred-lifetime UINT32", 		ISC_NOOP, NULL, NULL, 1}, // Lease time interval
-	{ "prefix-length-mode STRING,",        	ISC_NOOP, NULL, NULL, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "range IPADDR IPADDR",		ISC_NOOP, NULL, NULL, 2},
-	{ "release-on-roam BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "remote-port UINT16", 		ISC_NOOP, NULL, NULL, 1}, // integer uint16_t
-	{ "server-id-check BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "server-name STRING", 		ISC_NOOP, NULL, NULL, 1}, // text string
-	{ "shared-network STRING SECTION",	ISC_NOOP, NULL, NULL, 1},
-	{ "site-option-space RAW", 		ISC_NOOP, NULL, NULL, 1}, // vendor option declaration statement
-	{ "stash-agent-options BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
+	{ "pid-file-name STRING", 		isc_not_done, 1}, // text string
+	{ "ping-check BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "ping-timeout UINT32", 		isc_not_done, 1}, // Lease time interval
+	{ "preferred-lifetime UINT32", 		isc_not_done, 1}, // Lease time interval
+	{ "prefix-length-mode STRING,",        	isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "range IPADDR IPADDR",		isc_not_done, 2},
+	{ "release-on-roam BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "remote-port UINT16", 		isc_not_done, 1}, // integer uint16_t
+	{ "server-id-check BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "server-name STRING", 		isc_not_done, 1}, // text string
+	{ "shared-network STRING SECTION",	isc_not_done, 1},
+	{ "site-option-space RAW", 		isc_not_done, 1}, // vendor option declaration statement
+	{ "stash-agent-options BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "subnet IPADDR netmask IPADDR SECTION", ISC_SUBNET, parse_subnet, NULL, 2},
-	{ "update-conflict-detection BOOL", 	ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "update-optimization BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "update-static-leases BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "use-host-decl-names BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "use-lease-addr-for-default-route BOOL", 		ISC_NOOP, NULL, NULL, 1}, // boolean can be true, false or ignore
-	{ "vendor-option-space RAW", 		ISC_NOOP, NULL, NULL, 1}, // vendor option declaration
+	{ "update-conflict-detection BOOL", 	isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "update-optimization BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "update-static-leases BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "use-host-decl-names BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "use-lease-addr-for-default-route BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "vendor-option-space RAW", 		isc_not_done, 1}, // vendor option declaration
 };
 
 /** Parse a section { ... }
