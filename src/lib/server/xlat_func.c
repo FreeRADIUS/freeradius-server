@@ -403,7 +403,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 	fr_cursor_t	cursor;
 	vp_tmpl_t	*vpt;
 
-	if (!RDEBUG_ENABLED2) return -1;
+	if (!RDEBUG_ENABLED2) return 0;	/* NOOP if debugging isn't enabled */
 
 	while (isspace((int) *fmt)) fmt++;
 
