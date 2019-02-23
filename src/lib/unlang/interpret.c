@@ -471,8 +471,18 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 
 			if (unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
-				RDEBUG2("} # %s (%s)", instruction->debug_name,
-					fr_int2str(mod_rcode_table, *result, "<invalid>"));
+
+				/*
+				 *	If we're at debug level 1, don't emit the closing
+				 *	brace as the opening brace wasn't emitted.
+				 */
+				if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
+					RDEBUG("# %s (%s)", instruction->debug_name,
+					       fr_int2str(mod_rcode_table, *result, "<invalid>"));
+				} else {
+					RDEBUG2("} # %s (%s)", instruction->debug_name,
+						fr_int2str(mod_rcode_table, *result, "<invalid>"));
+				}
 			}
 
 			if (unlang_calculate_result(request, frame, result, priority) == UNLANG_FRAME_ACTION_POP) {
@@ -582,8 +592,18 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			 */
 			if (unlang_ops[frame->instruction->type].debug_braces) {
 				REXDENT();
-				RDEBUG2("} # %s (%s)", frame->instruction->debug_name,
-					fr_int2str(mod_rcode_table, stack->result, "<invalid>"));
+
+				/*
+				 *	If we're at debug level 1, don't emit the closing
+				 *	brace as the opening brace wasn't emitted.
+				 */
+				if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
+					RDEBUG("# %s (%s)", frame->instruction->debug_name,
+					       fr_int2str(mod_rcode_table, stack->result, "<invalid>"));
+				} else {
+					RDEBUG2("} # %s (%s)", frame->instruction->debug_name,
+						fr_int2str(mod_rcode_table, stack->result, "<invalid>"));
+				}
 			}
 
 			fa = unlang_calculate_result(request, frame, &stack->result, &priority);
