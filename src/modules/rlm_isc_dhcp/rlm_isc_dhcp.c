@@ -117,6 +117,8 @@ typedef struct rlm_isc_dhcp_tokenizer_t {
 
 	char		*token;		//!< current token that we parsed
 	int		token_len;	//!< length of the token
+
+	char		string[256];	//!< double quoted strings go here, so we don't mangle the input buffer
 } rlm_isc_dhcp_tokenizer_t;
 
 
@@ -228,6 +230,84 @@ redo:
 	return 1;
 }
 
+static int skip_spaces(rlm_isc_dhcp_tokenizer_t *state, char *p)
+{
+	state->ptr = p;
+	char *start = p;
+
+	while (isspace((int) *state->ptr)) state->ptr++;
+
+	/*
+	 *	If we ran out of text on this line, re-fill the
+	 *	buffer.  Note that refill() also takes care of
+	 *	suppressing blank lines and comments.  refill() also
+	 *	takes care of skipping leading spaces, too.
+	 */
+	if (!state->eof && !*state->ptr) {
+		int rcode;
+
+		state->ptr = start;
+
+		rcode = refill(state);
+		if (rcode < 0) return -1;
+	}
+
+	/*
+	 *	Set the semicolon flag as a "peek
+	 *	ahead", so that the various other
+	 *	parsers don't need to check it.
+	 */
+	if (*state->ptr == ';') state->saw_semicolon = true;
+
+	return 0;
+}
+
+
+
+/*
+ *	ISC's double quoted strings allow all kinds of extra magic, so
+ *	we re-implement string parsing yet again.
+ */
+static int read_string(rlm_isc_dhcp_tokenizer_t *state)
+{
+	char *p = state->ptr + 1;
+	char *q = state->string;
+
+	while (true) {
+		if (!*p) {
+			fr_strerror_printf("unterminated string");
+			return -1;
+		}
+
+		if (*p == '"') {
+			p++;
+			if (isspace((int) *p)) {
+				if (skip_spaces(state, p) < 0) return -1;
+				break;
+			}
+		}
+
+		if ((size_t) (q - state->string) >= sizeof(state->string)) {
+			fr_strerror_printf("string is too long");
+			return -1;
+		}
+
+		if (*p != '\\') {
+			*(q++) = *(p++);
+			continue;
+		}
+
+		// @todo - all of ISC's string escapes, e.g. \x...
+	}
+
+	*q = '\0';
+
+	state->token = state->string;
+	state->token_len = (q - state->string);
+	return 1;
+}
+
+
 /** Reads one token into state->token
  *
  *	Note that this function *destroys* the input buffer.  So if
@@ -273,6 +353,18 @@ redo:
 	 */
 	state->token = state->ptr;
 	state->saw_semicolon = false;
+
+	/*
+	 *	Special-case quoted strings.
+	 */
+	if (state->token[0] == '"') {
+		if (hint != T_DOUBLE_QUOTED_STRING) {
+			fr_strerror_printf("Unexpected '\"'");
+			return -1;
+		}
+
+		return read_string(state);
+	}
 
 	for (p = state->token; *p != '\0'; p++) {
 		/*
@@ -326,38 +418,10 @@ redo:
 		}
 
 		/*
-		 *	Be nice and eat trailing spaces, too.
+		 *	Whitespace, we're done.
 		 */
 		if (isspace((int) *p)) {
-			state->ptr = p;
-			char *start = p;
-
-		skip_spaces:
-			while (isspace((int) *state->ptr)) state->ptr++;
-			
-			/*
-			 *	If we ran out of text on this line,
-			 *	re-fill the buffer.  Note that
-			 *	refill() also takes care of
-			 *	suppressing blank lines and comments.
-			 */
-			if (!state->eof && !*state->ptr) {
-				int rcode;
-
-				state->ptr = start;
-
-				rcode = refill(state);
-				if (rcode < 0) return -1;
-				goto skip_spaces;
-			}
-
-			/*
-			 *	Set the semicolon flag as a "peek
-			 *	ahead", so that the various other
-			 *	parsers don't need to check it.
-			 */
-			if (*state->ptr == ';') state->saw_semicolon = true;
-
+			if (skip_spaces(state, p) < 0) return -1;
 			break;
 		}
 	}
