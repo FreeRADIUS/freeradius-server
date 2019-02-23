@@ -257,7 +257,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	/* sanity check */
 	if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY)) == NULL) {
 		/* log debug */
-		RDEBUG("could not find status type in packet");
+		RDEBUG2("could not find status type in packet");
 		/* return */
 		return RLM_MODULE_NOOP;
 	}
@@ -268,7 +268,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	/* acknowledge the request but take no action */
 	if (status == FR_STATUS_ACCOUNTING_ON || status == FR_STATUS_ACCOUNTING_OFF) {
 		/* log debug */
-		RDEBUG("handling accounting on/off request without action");
+		RDEBUG2("handling accounting on/off request without action");
 		/* return */
 		return RLM_MODULE_OK;
 	}
@@ -321,7 +321,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	/* start json document if needed */
 	if (docfound != 1) {
 		/* debugging */
-		RDEBUG("no existing document found - creating new json document");
+		RDEBUG2("no existing document found - creating new json document");
 		/* create new json object */
 		cookie->jobj = json_object_new_object();
 		/* set 'docType' element for new document */

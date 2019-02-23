@@ -284,7 +284,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		 *	common choices.
 		 */
 		if (nak->data[i] == 0) {
-			RDEBUG("Peer NAK'd indicating it is not willing to continue ");
+			REDEBUG("Peer NAK'd indicating it is not willing to continue ");
 
 			return FR_EAP_INVALID;
 		}
@@ -339,7 +339,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 			continue;
 		}
 
-		RDEBUG("Found mutually acceptable type %s (%d)", eap_type2name(nak->data[i]), nak->data[i]);
+		RDEBUG2("Found mutually acceptable type %s (%d)", eap_type2name(nak->data[i]), nak->data[i]);
 
 		method = nak->data[i];
 

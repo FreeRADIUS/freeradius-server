@@ -379,7 +379,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 
 	rlen = strlen(row[0]);
 	if (rlen >= outlen) {
-		RDEBUG("insufficient string space");
+		RDEBUG2("insufficient string space");
 		goto finish;
 	}
 
@@ -486,13 +486,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
 	if (fr_pair_find_by_da(request->reply->vps, inst->framed_ip_address, TAG_ANY) != NULL) {
-		RDEBUG("Framed-IP-Address already exists");
+		RDEBUG2("Framed-IP-Address already exists");
 
 		return do_logging(inst, request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
 	if (fr_pair_find_by_da(request->control, attr_pool_name, TAG_ANY) == NULL) {
-		RDEBUG("No Pool-Name defined");
+		RDEBUG2("No Pool-Name defined");
 
 		return do_logging(inst, request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
@@ -560,7 +560,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 				 *	that case, we should return
 				 *	NOTFOUND
 				 */
-				RDEBUG("pool appears to be full");
+				RDEBUG2("pool appears to be full");
 				return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
 
 			}
@@ -571,14 +571,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 			 *	sqlippool, so we should just ignore this
 			 *	allocation failure and return NOOP
 			 */
-			RDEBUG("IP address could not be allocated as no pool exists with that name");
+			RDEBUG2("IP address could not be allocated as no pool exists with that name");
 			return RLM_MODULE_NOOP;
 
 		}
 
 		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
-		RDEBUG("IP address could not be allocated");
+		RDEBUG2("IP address could not be allocated");
 		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
@@ -590,12 +590,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	if (fr_pair_value_from_str(vp, allocation, allocation_len, '\0', true) < 0) {
 		DO_PART(allocate_commit);
 
-		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
+		RDEBUG2("Invalid IP number [%s] returned from instbase query.", allocation);
 		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 		return do_logging(inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
-	RDEBUG("Allocated IP %s", allocation);
+	RDEBUG2("Allocated IP %s", allocation);
 	fr_pair_add(&request->reply->vps, vp);
 
 	/*
@@ -677,7 +677,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 
 	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 	if (!vp) {
-		RDEBUG("Could not find account status type in packet");
+		RDEBUG2("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;
 	}
 	acct_status_type = vp->vp_uint32;
@@ -697,7 +697,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 
 	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
 	if (!handle) {
-		RDEBUG("Failed reserving SQL connection");
+		RDEBUG2("Failed reserving SQL connection");
 		return RLM_MODULE_FAIL;
 	}
 

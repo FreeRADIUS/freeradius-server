@@ -747,7 +747,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 *	on the caller to look at request->reply->code.
 	 */
 	if (final == FR_IO_YIELD) {
-		RDEBUG("Noo yield for you!");
+		RDEBUG2("Noo yield for you!");
 	}
 
 	/*
@@ -966,7 +966,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Run this entry.
 			 */
 		case CHILD_RUNNABLE:
-			RDEBUG("parallel - running entry %d/%d", i + 1, state->num_children);
+			RDEBUG2("parallel - running entry %d/%d", i + 1, state->num_children);
 			result = unlang_run(state->children[i].child);
 			if (result == RLM_MODULE_YIELD) {
 				state->children[i].state = CHILD_YIELDED;
@@ -995,8 +995,8 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	parallel section".
 			 */
 			if (priority == MOD_ACTION_RETURN) {
-				RDEBUG("child %d/%d says 'return' - skipping the remaining children",
-				       i + 1, state->num_children);
+				RDEBUG2("child %d/%d says 'return' - skipping the remaining children",
+				        i + 1, state->num_children);
 
 				/*
 				 *	Fall through to processing the

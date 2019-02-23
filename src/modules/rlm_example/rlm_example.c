@@ -125,7 +125,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	 */
 	vp = fr_pair_find_by_da(request->packet->vps, attr_state, TAG_ANY);
 	if (vp != NULL) {
-		RDEBUG("Found reply to access challenge");
+		RDEBUG2("Found reply to access challenge");
 		return RLM_MODULE_OK;
 	}
 
@@ -141,7 +141,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	 *  The server will take care of sending it to the user.
 	 */
 	request->reply->code = FR_CODE_ACCESS_CHALLENGE;
-	RDEBUG("Sending Access-Challenge");
+	RDEBUG2("Sending Access-Challenge");
 
 	return RLM_MODULE_HANDLED;
 }

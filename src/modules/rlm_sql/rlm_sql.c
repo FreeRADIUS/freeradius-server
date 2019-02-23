@@ -205,7 +205,7 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 
 		numaffected = (inst->driver->sql_affected_rows)(handle, inst->config);
 		if (numaffected < 1) {
-			RDEBUG("SQL query affected no rows");
+			RDEBUG2("SQL query affected no rows");
 			(inst->driver->sql_finish_query)(handle, inst->config);
 
 			goto finish;
@@ -227,14 +227,14 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	case RLM_SQL_OK:
 		if (row[0]) break;
 
-		RDEBUG("NULL value in first column of result");
+		RDEBUG2("NULL value in first column of result");
 		(inst->driver->sql_finish_select_query)(handle, inst->config);
 		ret = -1;
 
 		goto finish;
 
 	case RLM_SQL_NO_MORE_ROWS:
-		RDEBUG("SQL query returned no results");
+		RDEBUG2("SQL query returned no results");
 		(inst->driver->sql_finish_select_query)(handle, inst->config);
 		ret = -1;
 
@@ -448,7 +448,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	 *	in the result set.
 	 */
 	if (!found_field) {
-		RDEBUG("No fields matching map found in query result");
+		RDEBUG2("No fields matching map found in query result");
 		rcode = RLM_MODULE_NOOP;
 		(inst->driver->sql_finish_select_query)(handle, inst->config);
 		goto finish;
@@ -474,7 +474,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	if (ret == RLM_SQL_ERROR) goto error;
 
 	if (rows == 0) {
-		RDEBUG("SQL query returned no results");
+		RDEBUG2("SQL query returned no results");
 		rcode = RLM_MODULE_NOOP;
 	}
 
@@ -687,7 +687,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, R
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
 		if (!row[0]){
-			RDEBUG("row[0] returned NULL");
+			RDEBUG2("row[0] returned NULL");
 			(inst->driver->sql_finish_select_query)(*handle, inst->config);
 			talloc_free(entry);
 			return -1;
@@ -738,10 +738,10 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 		return 1;
 	}
 
-	RDEBUG("sql_groupcmp");
+	RDEBUG2("sql_groupcmp");
 
 	if (check->vp_length == 0){
-		RDEBUG("sql_groupcmp: Illegal group name");
+		RDEBUG2("sql_groupcmp: Illegal group name");
 		return 1;
 	}
 
@@ -770,7 +770,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 
 	for (entry = head; entry != NULL; entry = entry->next) {
 		if (strcmp(entry->name, check->vp_strvalue) == 0){
-			RDEBUG("sql_groupcmp finished: User is a member of group %s",
+			RDEBUG2("sql_groupcmp finished: User is a member of group %s",
 			       check->vp_strvalue);
 			talloc_free(head);
 			fr_pool_connection_release(inst->pool, request, handle);
@@ -782,7 +782,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	talloc_free(head);
 	fr_pool_connection_release(inst->pool, request, handle);
 
-	RDEBUG("sql_groupcmp finished: User is NOT a member of group %pV", &check->data);
+	RDEBUG2("sql_groupcmp finished: User is NOT a member of group %pV", &check->data);
 
 	return 1;
 }
@@ -1488,7 +1488,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 	while (true) {
 		value = cf_pair_value(pair);
 		if (!value) {
-			RDEBUG("Ignoring null query");
+			RDEBUG2("Ignoring null query");
 			rcode = RLM_MODULE_NOOP;
 
 			goto finish;
@@ -1501,7 +1501,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 		}
 
 		if (!*expanded) {
-			RDEBUG("Ignoring null query");
+			RDEBUG2("Ignoring null query");
 			rcode = RLM_MODULE_NOOP;
 
 			goto finish;
@@ -1511,7 +1511,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 
 		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
 		TALLOC_FREE(expanded);
-		RDEBUG("SQL query returned: %s", fr_int2str(sql_rcode_table, sql_ret, "<INVALID>"));
+		RDEBUG2("SQL query returned: %s", fr_int2str(sql_rcode_table, sql_ret, "<INVALID>"));
 
 		switch (sql_ret) {
 		/*
@@ -1556,7 +1556,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 		 */
 		numaffected = (inst->driver->sql_affected_rows)(handle, inst->config);
 		(inst->driver->sql_finish_query)(handle, inst->config);
-		RDEBUG("%i record(s) updated", numaffected);
+		RDEBUG2("%i record(s) updated", numaffected);
 
 		if (numaffected > 0) break;	/* A query succeeded, were done! */
 	next:
@@ -1567,13 +1567,13 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 		pair = cf_pair_find_next(section->cs, pair, attr);
 
 		if (!pair) {
-			RDEBUG("No additional queries configured");
+			RDEBUG2("No additional queries configured");
 			rcode = RLM_MODULE_NOOP;
 
 			goto finish;
 		}
 
-		RDEBUG("Trying next query...");
+		RDEBUG2("Trying next query...");
 	}
 
 

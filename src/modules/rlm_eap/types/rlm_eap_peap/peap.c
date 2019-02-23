@@ -169,37 +169,36 @@ static void eap_peap_soh_verify(REQUEST *request, RADIUS_PACKET *packet,
 	fr_pair_add(&packet->vps, vp);
 
 	if (data && data[0] == FR_EAP_NAK) {
-		RDEBUG("SoH - client NAKed");
+		REDEBUG("SoH - client NAKed");
 		return;
 	}
 
 	if (!data || data_len < 8) {
-		RDEBUG("SoH - eap payload too short");
+		REDEBUG("SoH - eap payload too short");
 		return;
 	}
 
 	eap_method_base = *data++;
 	if (eap_method_base != 254) {
-		RDEBUG("SoH - response is not extended EAP: %i", eap_method_base);
+		REDEBUG("SoH - response is not extended EAP: %i", eap_method_base);
 		return;
 	}
 
 	eap_vendor = soh_pull_be_24(data); data += 3;
 	if (eap_vendor != 0x137) {
-		RDEBUG("SoH - extended eap vendor %08x is not Microsoft", eap_vendor);
+		REDEBUG("SoH - extended eap vendor %08x is not Microsoft", eap_vendor);
 		return;
 	}
 
 	eap_method = soh_pull_be_32(data); data += 4;
 	if (eap_method != 0x21) {
-		RDEBUG("SoH - response eap type %08x is not EAP-SoH", eap_method);
+		REDEBUG("SoH - response eap type %08x is not EAP-SoH", eap_method);
 		return;
 	}
 
-
 	rv = soh_verify(request, data, data_len - 8);
-	if (rv<0) {
-		RDEBUG("SoH - error decoding payload: %s", fr_strerror());
+	if (rv < 0) {
+		REDEBUG("SoH - error decoding payload: %s", fr_strerror());
 	} else {
 		vp->vp_uint32 = 1;
 	}
@@ -370,7 +369,7 @@ static int eap_peap_check_tlv(REQUEST *request, uint8_t const *data, size_t data
 		}
 	}
 
-	RDEBUG("Unknown TLV %02x", data[10]);
+	RDEBUG2("Unknown TLV %02x", data[10]);
 
 	return 0;
 }
@@ -553,7 +552,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 		fr_pair_value_bstrncpy(t->username, data + 1, data_len - 1);
 
-		RDEBUG("Got inner identity \"%pV\"", &t->username->data);
+		RDEBUG2("Got inner identity \"%pV\"", &t->username->data);
 		if (t->soh) {
 			t->status = PEAP_STATUS_WAIT_FOR_SOH_RESPONSE;
 			RDEBUG2("Requesting SoH from client");
@@ -572,7 +571,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 		if (t->soh_virtual_server) fake->server_cs = virtual_server_find(t->soh_virtual_server);
 
-		RDEBUG("Sending SoH request to server %s",
+		RDEBUG2("Sending SoH request to server %s",
 		       fake->server_cs ? cf_section_name2(fake->server_cs) : "NULL");
 		rad_virtual_server(fake);
 
@@ -654,7 +653,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		return RLM_MODULE_REJECT;
 
 		case PEAP_STATUS_PHASE2_INIT:
-			RDEBUG("In state machine in phase2 init?");
+			RDEBUG2("In state machine in phase2 init?");
 
 		case PEAP_STATUS_PHASE2:
 			break;

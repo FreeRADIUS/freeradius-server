@@ -122,7 +122,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 */
 		len = strlen(data_name + 2);
 		if ((len & 0x01) != 0) {
-			RDEBUG("Invalid hex string in '%s'", data_name);
+			REDEBUG("Invalid hex string in '%s'", data_name);
 			goto nothing;
 		}
 		input = blob;

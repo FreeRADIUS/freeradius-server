@@ -105,7 +105,7 @@ static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t 
 	 *	This frees up 0, for success where it'd normally be reject.
 	 */
 	if (status == 0) {
-		RDEBUG("Program executed successfully");
+		RDEBUG2("Program executed successfully");
 
 		return RLM_MODULE_OK;
 	}

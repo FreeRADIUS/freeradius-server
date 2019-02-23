@@ -356,7 +356,7 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	values = ldap_get_values_len(conn->handle, entry, ldap_url->lud_attrs[0]);
 	if (!values) {
-		RDEBUG("No \"%s\" attributes found in specified object", ldap_url->lud_attrs[0]);
+		RDEBUG2("No \"%s\" attributes found in specified object", ldap_url->lud_attrs[0]);
 		goto free_result;
 	}
 
@@ -593,7 +593,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 	rad_assert(inst->groupobj_base_dn);
 
-	RDEBUG("Searching for user in group \"%pV\"", &check->data);
+	RDEBUG2("Searching for user in group \"%pV\"", &check->data);
 
 	if (check->vp_length == 0) {
 		REDEBUG("Cannot do comparison (group name is empty)");
@@ -684,7 +684,7 @@ finish:
 	if (conn) mod_conn_release(inst, request, conn);
 
 	if (!found) {
-		RDEBUG("User is not a member of \"%pV\"", &check->data);
+		RDEBUG2("User is not a member of \"%pV\"", &check->data);
 
 		return 1;
 	}
@@ -772,7 +772,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		}
 	}
 
-	RDEBUG("Login attempt by \"%pV\"", &request->username->data);
+	RDEBUG2("Login attempt by \"%pV\"", &request->username->data);
 
 	/*
 	 *	Get the DN by doing a search.
@@ -793,7 +793,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		rcode = RLM_MODULE_OK;
-		RDEBUG("Bind as user \"%s\" was successful", dn);
+		RDEBUG2("Bind as user \"%s\" was successful", dn);
 		break;
 
 	case LDAP_PROC_NOT_PERMITTED:
@@ -866,7 +866,7 @@ static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request
 
 	case LDAP_PROC_BAD_DN:
 	case LDAP_PROC_NO_RESULT:
-		RDEBUG("Profile object \"%s\" not found", dn);
+		RDEBUG2("Profile object \"%s\" not found", dn);
 		return RLM_MODULE_NOTFOUND;
 
 	default:
@@ -886,7 +886,7 @@ static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request
 		goto free_result;
 	}
 
-	RDEBUG("Processing profile attributes");
+	RDEBUG2("Processing profile attributes");
 	RINDENT();
 	if (fr_ldap_map_do(request, *pconn, inst->valuepair_attr, expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 	REXDENT();
@@ -1033,7 +1033,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 			switch (status) {
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;
-				RDEBUG("Bind as user '%s' was successful", dn);
+				RDEBUG2("Bind as user '%s' was successful", dn);
 				break;
 
 			case LDAP_PROC_NOT_PERMITTED:
@@ -1119,7 +1119,7 @@ skip_edir:
 	}
 
 	if (inst->user_map || inst->valuepair_attr) {
-		RDEBUG("Processing user attributes");
+		RDEBUG2("Processing user attributes");
 		RINDENT();
 		if (fr_ldap_map_do(request, conn, inst->valuepair_attr,
 				   &expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
@@ -1234,7 +1234,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 		op = cf_pair_operator(cp);
 
 		if (!value || (*value == '\0')) {
-			RDEBUG("Empty value string, skipping attribute \"%s\"", attr);
+			RDEBUG2("Empty value string, skipping attribute \"%s\"", attr);
 
 			continue;
 		}
@@ -1260,7 +1260,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 			char *exp = NULL;
 
 			if (xlat_aeval(request, &exp, request, value, NULL, NULL) <= 0) {
-				RDEBUG("Skipping attribute \"%s\"", attr);
+				RDEBUG2("Skipping attribute \"%s\"", attr);
 
 				talloc_free(exp);
 

@@ -251,8 +251,8 @@ void	log_global_free(void);
  * **Debug levels**
  * Level    | Debug arguments         | Macro(s) enabled      | When to use
  * -------- | ----------------------- | --------------------- | -----------
- * 1        | ``-x``                  | R*DEBUG               | Never - Deprecated
- * 2        | ``-xx`` or ``-X``       | R*DEBUG, R*DEBUG2     | Normal request flow. Operations, Results of queries, or execs, etc...
+ * 1        | ``-x``                  | R*DEBUG               | Packet processing, entering/exiting virtual servers, results of module calls
+ * 2        | ``-xx`` or ``-X``       | R*DEBUG, R*DEBUG2     | Unlang keyword evaluation. Module debug output, results of queries, or execs, etc...
  * 3        | ``-xxx`` or ``-Xx``     | R*DEBUG, R*DEBUG[2-3] | Internal server state or packet input. State machine changes, extra attribute info, etc...
  * 4        | ``-xxxx`` or ``-Xxx``   | R*DEBUG, R*DEBUG[2-4] | Verbose internal server state messages or packet input. Hex dumps, structure dumps, pointer values.
  * 5        | ``-xxxxx`` or ``-Xxxx`` | R*DEBUG, R*DEBUG[2-5] | Low level internal server state messages.

@@ -284,21 +284,21 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 #endif
 		fd = mkstemp(filename);
 		if (fd < 0) {
-			RDEBUG("Failed creating file in %s: %s",
-			       conf->verify_tmp_dir, fr_syserror(errno));
+			RDEBUG2("Failed creating file in %s: %s",
+			        conf->verify_tmp_dir, fr_syserror(errno));
 			break;
 		}
 
 		fp = fdopen(fd, "w");
 		if (!fp) {
 			close(fd);
-			RDEBUG("Failed opening file \"%s\": %s", filename, fr_syserror(errno));
+			REDEBUG("Failed opening file \"%s\": %s", filename, fr_syserror(errno));
 			break;
 		}
 
 		if (!PEM_write_X509(fp, cert)) {
 			fclose(fp);
-			RDEBUG("Failed writing certificate to file");
+			REDEBUG("Failed writing certificate to file");
 			goto do_unlink;
 		}
 		fclose(fp);
@@ -312,7 +312,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			REDEBUG("Client certificate CN \"%s\" failed external verification", common_name);
 			my_ok = 0;
 		} else {
-			RDEBUG("Client certificate CN \"%s\" passed external validation", common_name);
+			RDEBUG2("Client certificate CN \"%s\" passed external validation", common_name);
 		}
 
 	do_unlink:

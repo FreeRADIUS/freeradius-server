@@ -170,7 +170,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 				if (vlen <= 1) {
 					uint8_t *p;
 
-					RDEBUG("SoH adding NAP marker to DHCP reply");
+					RDEBUG2("SoH adding NAP marker to DHCP reply");
 					/* client probe; send "NAP" in the reply */
 					vp = fr_pair_afrom_da(request->reply, attr_dhcp_vendor);
 					p = talloc_array(vp, uint8_t, 5);
@@ -183,7 +183,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 					fr_pair_add(&request->reply->vps, vp);
 
 				} else {
-					RDEBUG("SoH decoding NAP from DHCP request");
+					RDEBUG2("SoH decoding NAP from DHCP request");
 					/* SoH payload */
 					rcode = soh_verify(request, data, vlen);
 					if (rcode < 0) {
@@ -212,11 +212,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	/* try to find the MS-SoH payload */
 	vp = fr_pair_find_by_da(request->packet->vps, attr_ms_quarantine_soh, TAG_ANY);
 	if (!vp) {
-		RDEBUG("SoH radius VP not found");
+		RDEBUG2("SoH radius VP not found");
 		return RLM_MODULE_NOOP;
 	}
 
-	RDEBUG("SoH radius VP found");
+	RDEBUG2("SoH radius VP found");
 	/* decode it */
 	rv = soh_verify(request, vp->vp_octets, vp->vp_length);
 	if (rv < 0) {

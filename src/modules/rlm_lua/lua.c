@@ -262,7 +262,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 
 			p = (uint8_t const *) lua_tolstring(L, -1, &len);
 			if (!p) {
-				RDEBUG("Unmarshalling failed: Lua bstring was NULL");
+				REDEBUG("Unmarshalling failed: Lua bstring was NULL");
 				return -1;
 			}
 			fr_pair_value_memcpy(vp, p, len);
@@ -763,7 +763,7 @@ static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 
 	while ((q = strchr(field, '.'))) {
 		if ((size_t) (p - q) >= sizeof(buffer)) {
-			RDEBUG("Field name too long, maximum is %zu", sizeof(buffer));
+			REDEBUG("Field name too long, maximum is %zu", sizeof(buffer));
 			return -1;
 		}
 
@@ -774,7 +774,7 @@ static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 			lua_getfield(L, -1, buffer);
 		}
 		if (lua_isnil(L, -1)) {
-			RDEBUG("Field '%s' does not exist", p);
+			REDEBUG("Field '%s' does not exist", p);
 			return -1;
 		}
 	}

@@ -481,7 +481,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	switch (reply->code) {
 	case FR_CODE_ACCESS_ACCEPT:
 	{
-		RDEBUG("Got tunneled Access-Accept");
+		RDEBUG2("Got tunneled Access-Accept");
 
 		fr_cursor_init(&to_tunnel, &tunnel_vps);
 		rcode = RLM_MODULE_OK;
@@ -494,7 +494,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (vp->da == attr_ms_chap2_success) {
-				RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
+				RDEBUG2("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
 
 				rcode = RLM_MODULE_HANDLED;
 				t->authenticated = true;
@@ -509,7 +509,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		break;
 
 	case FR_CODE_ACCESS_REJECT:
-		RDEBUG("Got tunneled Access-Reject");
+		REDEBUG("Got tunneled Access-Reject");
 		rcode = RLM_MODULE_REJECT;
 		break;
 
@@ -520,7 +520,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 *	a Reply-Message to the client.
 	 */
 	case FR_CODE_ACCESS_CHALLENGE:
-		RDEBUG("Got tunneled Access-Challenge");
+		RDEBUG2("Got tunneled Access-Challenge");
 
 		fr_cursor_init(&to_tunnel, &tunnel_vps);
 
@@ -541,7 +541,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		break;
 
 	default:
-		RDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		REDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
 		rcode = RLM_MODULE_INVALID;
 		break;
 	}
@@ -552,7 +552,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 *	to the supplicant.
 	 */
 	if (tunnel_vps) {
-		RDEBUG("Sending tunneled reply attributes");
+		RDEBUG2("Sending tunneled reply attributes");
 		log_request_pair_list(L_DBG_LVL_2, request, tunnel_vps, NULL);
 
 		vp2diameter(request, tls_session, tunnel_vps);
@@ -595,7 +595,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	 */
 	if (data_len == 0) {
 		if (t->authenticated) {
-			RDEBUG("Got ACK, and the user was already authenticated");
+			RDEBUG2("Got ACK, and the user was already authenticated");
 			code = FR_CODE_ACCESS_ACCEPT;
 			goto finish;
 		} /* else no session, no data, die. */
@@ -638,7 +638,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
-	RDEBUG("Got tunneled request");
+	RDEBUG2("Got tunneled request");
 	log_request_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
 
 	/*
@@ -671,7 +671,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
-				RDEBUG("Got tunneled identity of %pV", &t->username->data);
+				RDEBUG2("Got tunneled identity of %pV", &t->username->data);
 			} else {
 				/*
 				 *	Don't reject the request outright,
@@ -697,7 +697,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		FR_CODE chbind_code;
 		CHBIND_REQ *req = talloc_zero(fake, CHBIND_REQ);
 
-		RDEBUG("received chbind request");
+		RDEBUG2("received chbind request");
 		req->request = chbind;
 		if (fake->username) {
 			req->username = fake->username;
@@ -708,11 +708,11 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 		/* encapsulate response here */
 		if (req->response) {
-			RDEBUG("sending chbind response");
+			RDEBUG2("sending chbind response");
 			fr_pair_add(&fake->reply->vps,
 				    eap_chbind_packet2vp(fake->reply, req->response));
 		} else {
-			RDEBUG("no chbind response");
+			RDEBUG2("no chbind response");
 		}
 
 		/* clean up chbind req */
@@ -734,7 +734,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	 *	Decide what to do with the reply.
 	 */
 	if (!fake->reply->code) {
-		RDEBUG("No tunneled reply was found for request %" PRIu64 ", and the request was not "
+		RDEBUG2("No tunneled reply was found for request %" PRIu64 ", and the request was not "
 		       "proxied: rejecting the user", request->number);
 		code = FR_CODE_ACCESS_REJECT;
 	} else {

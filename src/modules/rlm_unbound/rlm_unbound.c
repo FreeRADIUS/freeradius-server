@@ -180,7 +180,7 @@ static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request,
 	if ((void const *)*ub == (void const *)inst) {
 		int res;
 
-		RDEBUG("%s - DNS took too long", name);
+		REDEBUG2("%s - DNS took too long", name);
 
 		res = ub_cancel(inst->ub, async_id);
 		if (res) {
@@ -200,12 +200,12 @@ static int ub_common_fail(REQUEST *request, char const *name, struct ub_result *
 	}
 
 	if (ub->nxdomain) {
-		RDEBUG("%s - NXDOMAIN", name);
+		RDEBUG2("%s - NXDOMAIN", name);
 		return -1;
 	}
 
 	if (!ub->havedata) {
-		RDEBUG("%s - Empty result", name);
+		RDEBUG2("%s - Empty result", name);
 		return -1;
 	}
 

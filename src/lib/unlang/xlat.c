@@ -380,7 +380,7 @@ static unlang_action_t unlang_xlat_inline(REQUEST *request,
 		unlang_xlat_push(pool, &state->result, request, mx->exp, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 	} else {
-		RDEBUG("`%s`", mx->xlat_name);
+		RDEBUG2("`%s`", mx->xlat_name);
 		radius_exec_program(request, NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
 				    false, true, EXEC_TIMEOUT);
 		return UNLANG_ACTION_CONTINUE;

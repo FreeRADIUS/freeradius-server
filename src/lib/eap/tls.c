@@ -503,7 +503,7 @@ static eap_tls_status_t eap_tls_session_status(eap_session_t *eap_session)
 		return EAP_TLS_INVALID;
 	}
 	if (!tls_session->info.initialized) {
-		RDEBUG("No SSL info available.  Waiting for more SSL data");
+		RDEBUG2("No SSL info available.  Waiting for more SSL data");
 		return EAP_TLS_RECORD_SEND;
 	}
 
@@ -593,7 +593,7 @@ static eap_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 	 */
 	eap_tls_data = (eap_tls_data_t *)this_round->response->type.data;
 	if (!eap_tls_data) {
-		RDEBUG("Invalid EAP-TLS packet; no data");
+		REDEBUG("Invalid EAP-TLS packet; no data");
 		return EAP_TLS_INVALID;
 	}
 

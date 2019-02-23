@@ -139,7 +139,7 @@ static void eap_fast_send_identity_request(REQUEST *request, tls_session_t *tls_
 {
 	eap_packet_raw_t eap_packet;
 
-	RDEBUG("Sending EAP-Identity");
+	RDEBUG2("Sending EAP-Identity");
 
 	eap_packet.code = FR_EAP_CODE_REQUEST;
 	eap_packet.id = eap_session->this_round->response->id + 1;
@@ -160,7 +160,7 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_sessio
 	memset(&pac, 0, sizeof(pac));
 	memset(&opaque_plaintext, 0, sizeof(opaque_plaintext));
 
-	RDEBUG("Sending Tunnel PAC");
+	RDEBUG2("Sending Tunnel PAC");
 
 	pac.key.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_key->attr);
 	pac.key.hdr.length = htons(sizeof(pac.key.data));
@@ -218,7 +218,7 @@ static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	eap_tlv_crypto_binding_tlv_t	binding = {0};
 	int const			len = sizeof(binding) - (&binding.reserved - (uint8_t *)&binding);
 
-	RDEBUG("Sending Cryptobinding");
+	RDEBUG2("Sending Cryptobinding");
 
 	binding.tlv_type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_crypto_binding->attr);
 	binding.length = htons(len);
@@ -274,22 +274,22 @@ static int eap_fast_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 			present |= 1 << attr;
 
 			if (num[attr_eap_fast_eap_payload->attr] > 1) {
-				RDEBUG("Too many EAP-Payload TLVs");
+				REDEBUG("Too many EAP-Payload TLVs");
 unexpected:
 				for (int i = 0; i < EAP_FAST_TLV_MAX; i++) {
-					if (present & (1 << i)) RDEBUG(" - attribute %d is present", i);
+					if (present & (1 << i)) RDEBUG2(" - attribute %d is present", i);
 				}
 				eap_fast_send_error(tls_session, EAP_FAST_ERR_UNEXPECTED_TLV);
 				return 0;
 			}
 
 			if (num[attr_eap_fast_intermediate_result->attr] > 1) {
-				RDEBUG("Too many Intermediate-Result TLVs");
+				REDEBUG("Too many Intermediate-Result TLVs");
 				goto unexpected;
 			}
 		} else {
 			if ((data[0] & 0x80) != 0) {
-				RDEBUG("Unknown mandatory TLV %02x", attr);
+				REDEBUG("Unknown mandatory TLV %02x", attr);
 				goto unexpected;
 			}
 
@@ -331,7 +331,7 @@ unexpected:
 			uint16_t status;
 
 			if (length < 2) {
-				RDEBUG("EAP-FAST TLV %u is too short.  Expected 2, got %d.", attr, length);
+				REDEBUG("EAP-FAST TLV %u is too short.  Expected 2, got %d", attr, length);
 				return 0;
 			}
 
@@ -339,12 +339,12 @@ unexpected:
 			status = ntohs(status);
 
 			if (status == EAP_FAST_TLV_RESULT_FAILURE) {
-				RDEBUG("EAP-FAST TLV %u indicates failure.  Rejecting request.", attr);
+				REDEBUG("EAP-FAST TLV %u indicates failure.  Rejecting request", attr);
 				return 0;
 			}
 
 			if (status != EAP_FAST_TLV_RESULT_SUCCESS) {
-				RDEBUG("EAP-FAST TLV %u contains unknown value.  Rejecting request.", attr);
+				REDEBUG("EAP-FAST TLV %u contains unknown value.  Rejecting request", attr);
 				goto unexpected;
 			}
 		}
@@ -360,12 +360,12 @@ unexpected:
 	 * Check if the peer mixed & matched TLVs.
 	 */
 	if ((num[attr_eap_fast_nak->attr] > 0) && (num[attr_eap_fast_nak->attr] != total)) {
-		RDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request.");
+		REDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request");
 		goto unexpected;
 	}
 
 	if (num[attr_eap_fast_intermediate_result->attr] > 0) {
-		RDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request.");
+		REDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request");
 		goto unexpected;
 	}
 
@@ -375,13 +375,13 @@ unexpected:
 	switch (t->stage) {
 	case EAP_FAST_TLS_SESSION_HANDSHAKE:
 		if (present) {
-			RDEBUG("Unexpected TLVs in TLS Session Handshake stage");
+			REDEBUG("Unexpected TLVs in TLS Session Handshake stage");
 			goto unexpected;
 		}
 		break;
 	case EAP_FAST_AUTHENTICATION:
 		if (present != (uint32_t)(1 << attr_eap_fast_eap_payload->attr)) {
-			RDEBUG("Unexpected TLVs in authentication stage");
+			REDEBUG("Unexpected TLVs in authentication stage");
 			goto unexpected;
 		}
 		break;
@@ -391,25 +391,25 @@ unexpected:
 				? 1 << attr_eap_fast_result->attr
 				: 1 << attr_eap_fast_intermediate_result->attr;
 		if (present & ~(bits | (1 << attr_eap_fast_crypto_binding->attr) | (1 << attr_eap_fast_pac_tlv->attr))) {
-			RDEBUG("Unexpected TLVs in cryptobind checking stage");
+			REDEBUG("Unexpected TLVs in cryptobind checking stage");
 			goto unexpected;
 		}
 		break;
 	}
 	case EAP_FAST_PROVISIONING:
 		if (present & ~((1 << attr_eap_fast_pac_tlv->attr) | (1 << attr_eap_fast_result->attr))) {
-			RDEBUG("Unexpected TLVs in provisioning stage");
+			REDEBUG("Unexpected TLVs in provisioning stage");
 			goto unexpected;
 		}
 		break;
 	case EAP_FAST_COMPLETE:
 		if (present) {
-			RDEBUG("Unexpected TLVs in complete stage");
+			REDEBUG("Unexpected TLVs in complete stage");
 			goto unexpected;
 		}
 		break;
 	default:
-		RDEBUG("Unexpected stage %d", t->stage);
+		REDEBUG("Unexpected stage %d", t->stage);
 		return 0;
 	}
 
@@ -493,7 +493,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 */
 	switch (reply->code) {
 	case FR_CODE_ACCESS_ACCEPT:
-		RDEBUG("Got tunneled Access-Accept");
+		RDEBUG2("Got tunneled Access-Accept");
 
 		rcode = RLM_MODULE_OK;
 
@@ -522,7 +522,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 				break;
 
 			case FR_MSCHAP2_SUCCESS:
-				RDEBUG("Got %s, tunneling it to the client in a challenge", vp->da->name);
+				RDEBUG2("Got %s, tunneling it to the client in a challenge", vp->da->name);
 				rcode = RLM_MODULE_HANDLED;
 				t->authenticated = true;
 				break;
@@ -536,12 +536,12 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		break;
 
 	case FR_CODE_ACCESS_REJECT:
-		RDEBUG("Got tunneled Access-Reject");
+		REDEBUG("Got tunneled Access-Reject");
 		rcode = RLM_MODULE_REJECT;
 		break;
 
 	case FR_CODE_ACCESS_CHALLENGE:
-		RDEBUG("Got tunneled Access-Challenge");
+		RDEBUG2("Got tunneled Access-Challenge");
 
 		/*
 		 *	Copy the EAP-Message back to the tunnel.
@@ -558,7 +558,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		break;
 
 	default:
-		RDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		REDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
 		rcode = RLM_MODULE_INVALID;
 		break;
 	}
@@ -575,7 +575,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	eap_fast_tunnel_t	*t;
 	REQUEST			*fake;
 
-	RDEBUG("Processing received EAP Payload");
+	RDEBUG2("Processing received EAP Payload");
 
 	/*
 	 * Allocate a fake REQUEST structure.
@@ -592,7 +592,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	fake->packet->vps = fr_pair_afrom_da(fake->packet, attr_eap_message);
 	fr_pair_value_memcpy(fake->packet->vps, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length);
 
-	RDEBUG("Got tunneled request");
+	RDEBUG2("Got tunneled request");
 	log_request_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
 
 	/*
@@ -629,7 +629,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 				t->username->vp_tainted = true;
 				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
-				RDEBUG("Got tunneled identity of %pV", &t->username->data);
+				RDEBUG2("Got tunneled identity of %pV", &t->username->data);
 			} else {
 				/*
 				 * Don't reject the request outright,
@@ -687,7 +687,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
 
-			RDEBUG("Tunneled authentication will be proxied to %pV", &vp->data);
+			RDEBUG2("Tunneled authentication will be proxied to %pV", &vp->data);
 
 			/*
 			 *	Tell the original request that it's going to be proxied.
@@ -745,7 +745,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		} else
 #endif	/* WITH_PROXY */
 		  {
-			  RDEBUG("No tunneled reply was found, and the request was not proxied: rejecting the user.");
+			  REDEBUG("No tunneled reply was found, and the request was not proxied: rejecting the user");
 			  code = FR_CODE_ACCESS_REJECT;
 		  }
 		break;
@@ -874,7 +874,7 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 				}
 			} else if (vp->da == attr_eap_fast_pac_info_pac_type) {
 				if (vp->vp_uint32 != PAC_TYPE_TUNNEL) {
-					RDEBUG("only able to serve Tunnel PAC's, ignoring request");
+					RDEBUG2("only able to serve Tunnel PAC's, ignoring request");
 					continue;
 				}
 				t->pac.send = true;
@@ -947,7 +947,7 @@ FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			t->pac.send = true;
 		} else {
 			if (SSL_session_reused(tls_session->ssl)) {
-				RDEBUG("Session Resumed from PAC");
+				RDEBUG2("Session Resumed from PAC");
 				t->mode = EAP_FAST_NORMAL_AUTH;
 			} else {
 				RDEBUG2("Using authenticated provisioning");
@@ -971,7 +971,7 @@ FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	if (eap_fast_decode_pair(request, &cursor, attr_eap_fast_tlv,
 				 data, data_len, NULL) < 0) return FR_CODE_ACCESS_REJECT;
 
-	RDEBUG("Got Tunneled FAST TLVs");
+	RDEBUG2("Got Tunneled FAST TLVs");
 	log_request_pair_list(L_DBG_LVL_1, request, fast_vps, NULL);
 	code = eap_fast_process_tlvs(request, eap_session, tls_session, fast_vps);
 	fr_pair_list_free(&fast_vps);
@@ -1002,7 +1002,7 @@ FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		eap_fast_append_result(tls_session, code);
 
 		if (t->pac.send) {
-			RDEBUG("Peer requires new PAC");
+			RDEBUG2("Peer requires new PAC");
 			eap_fast_send_pac_tunnel(request, tls_session);
 			code = FR_CODE_ACCESS_CHALLENGE;
 			break;

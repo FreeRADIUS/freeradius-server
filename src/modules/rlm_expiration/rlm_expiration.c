@@ -75,7 +75,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 
 			return RLM_MODULE_USERLOCK;
 		}
-		RDEBUG("Account will expire at '%pV'", &check_item->data);
+		RDEBUG2("Account will expire at '%pV'", &check_item->data);
 
 		left = (uint32_t)(((time_t) check_item->vp_date) - request->packet->timestamp.tv_sec);
 
@@ -88,13 +88,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 			/* just update... */
 			if (vp->vp_uint32 > (uint32_t)left) {
 				vp->vp_uint32 = (uint32_t)left;
-				RDEBUG("&reply:Session-Timeout := %pV", &vp->data);
+				RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
 			}
 			break;
 
 		case 0:	/* no pre-existing */
 			vp->vp_uint32 = (uint32_t)left;
-			RDEBUG("&reply:Session-Timeout := %pV", &vp->data);
+			RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
 			break;
 
 		default: /* malloc failure */

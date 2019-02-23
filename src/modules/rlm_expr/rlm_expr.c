@@ -287,7 +287,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		if (!get_expression(request, &p, &x, TOKEN_NONE)) return false;
 
 		if (*p != ')') {
-			RDEBUG("No trailing ')'");
+			REDEBUG("No trailing ')'");
 			return false;
 		}
 		p++;
@@ -295,7 +295,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	}
 
 	if ((*p < '0') || (*p > '9')) {
-		RDEBUG2("Not a number at \"%s\"", p);
+		REDEBUG("Not a number at \"%s\"", p);
 		return false;
 	}
 
@@ -353,7 +353,7 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 
 	case TOKEN_REMAINDER:
 		if (rhs == 0) {
-			RDEBUG("Division by zero!");
+			REDEBUG("Division by zero!");
 			return false;
 		}
 
@@ -366,7 +366,7 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 
 	case TOKEN_LSHIFT:
 		if (rhs > 62) {
-			RDEBUG("Shift must be less than 62 (was %lld)", (long long int) rhs);
+			REDEBUG("Shift must be less than 62 (was %lld)", (long long int) rhs);
 			return false;
 		}
 
@@ -375,7 +375,7 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 
 	case TOKEN_RSHIFT:
 		if (rhs > 62) {
-			RDEBUG("Shift must be less than 62 (was %lld)", (long long int) rhs);
+			REDEBUG("Shift must be less than 62 (was %lld)", (long long int) rhs);
 			return false;
 		}
 
@@ -519,7 +519,7 @@ static ssize_t expr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	}
 
 	if (*p) {
-		RDEBUG("Invalid text after expression: %s", p);
+		REDEBUG("Invalid text after expression: %s", p);
 		return -1;
 	}
 

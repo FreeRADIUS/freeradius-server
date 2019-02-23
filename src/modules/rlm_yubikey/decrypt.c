@@ -51,7 +51,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, cha
 		return RLM_MODULE_REJECT;
 	}
 
-	RDEBUG("Token data decrypted successfully");
+	RDEBUG2("Token data decrypted successfully");
 
 	counter = (yubikey_counter(token.ctr) << 8) | token.use;
 	timestamp = (token.tstph << 16) | token.tstpl;

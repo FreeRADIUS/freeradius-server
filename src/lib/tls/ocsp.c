@@ -137,7 +137,7 @@ static int ocsp_staple_to_pair(VALUE_PAIR **out, REQUEST *request, OCSP_RESPONSE
 	uint8_t		*buff, *p;
 
 	if (!resp) {
-		RDEBUG("No response available");
+		REDEBUG("No OCSP response available");
 		return -1;
 	}
 

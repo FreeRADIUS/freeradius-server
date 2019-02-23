@@ -295,7 +295,7 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 
 	if (!t->pac.key) return 0;
 
-	RDEBUG("processing PAC-Opaque");
+	RDEBUG2("processing PAC-Opaque");
 
 	eap_fast_session_ticket(tls_session, s, secret, secret_len);
 
@@ -330,7 +330,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
-	RDEBUG("PAC provided via ClientHello SessionTicket extension");
+	RDEBUG2("PAC provided via ClientHello SessionTicket extension");
 	RHEXDUMP(L_DBG_LVL_MAX, data, len, "PAC-Opaque");
 
 	if ((ntohs(opaque->hdr.type) & EAP_FAST_TLV_TYPE) != attr_eap_fast_pac_opaque_tlv->attr) {
@@ -602,7 +602,7 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	tls_session = eap_tls_session->tls_session;
 
 	if (inst->cipher_list) {
-		RDEBUG("Over-riding main cipher list with '%s'", inst->cipher_list);
+		RDEBUG2("Over-riding main cipher list with '%s'", inst->cipher_list);
 
 		if (!SSL_set_cipher_list(tls_session->ssl, inst->cipher_list)) {
 			REDEBUG("Failed over-riding cipher list to '%s'.  EAP-FAST will likely not work",

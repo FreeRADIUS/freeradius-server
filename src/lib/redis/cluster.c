@@ -1004,14 +1004,14 @@ static cluster_rcode_t cluster_remap(REQUEST *request, fr_redis_cluster_t *clust
 	 */
 	if (cluster->remapping) {
 	in_progress:
-		RDEBUG("Cluster remapping in progress, ignoring remap request");
+		RDEBUG2("Cluster remapping in progress, ignoring remap request");
 		return CLUSTER_OP_IGNORED;
 	}
 
 	now = time(NULL);
 	if (now == cluster->last_updated) {
 	too_soon:
-		RDEBUG("Cluster was updated less than a second ago, ignoring remap request");
+		RWARN("Cluster was updated less than a second ago, ignoring remap request");
 		return CLUSTER_OP_IGNORED;
 	}
 
@@ -1903,7 +1903,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 		if (!fr_cond_assert(*reply)) return REDIS_RCODE_ERROR;
 
-		RDEBUG("[%i] Processing redirect \"%s\"", state->node->id, (*reply)->str);
+		RDEBUG2("[%i] Processing redirect \"%s\"", state->node->id, (*reply)->str);
 		if (state->redirects++ >= cluster->conf->max_redirects) {
 			REDEBUG("[%i] Reached max_redirects (%i)", state->node->id, state->redirects);
 			return REDIS_RCODE_ERROR;
@@ -1917,8 +1917,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 				return REDIS_RCODE_ERROR;
 			}
 
-			RDEBUG("[%i] Redirected from %s:%i to [%i] %s:%i", state->node->id, state->node->name,
-			       state->node->addr.port, new->id, new->name, new->addr.port);
+			RDEBUG2("[%i] Redirected from %s:%i to [%i] %s:%i", state->node->id, state->node->name,
+			        state->node->addr.port, new->id, new->name, new->addr.port);
 			state->node = new;
 
 			*conn = fr_pool_connection_get(state->node->pool, request);

@@ -44,12 +44,12 @@ RCSID("$Id$")
 #ifdef DEBUG_MAP
 static void map_dump(REQUEST *request, vp_map_t const *map)
 {
-	RDEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
-	       fr_int2str(tmpl_type_table, map->lhs->type, "???"),
-	       fr_int2str(tmpl_type_table, map->rhs->type, "???"));
+	RDEBUG2(">>> MAP TYPES LHS: %s, RHS: %s",
+	        fr_int2str(tmpl_type_table, map->lhs->type, "???"),
+	        fr_int2str(tmpl_type_table, map->rhs->type, "???"));
 
 	if (map->rhs) {
-		RDEBUG(">>> MAP NAMES %s %s", map->lhs->name, map->rhs->name);
+		RDEBUG2(">>> MAP NAMES %s %s", map->lhs->name, map->rhs->name);
 	}
 }
 #endif
@@ -1594,8 +1594,8 @@ static inline void map_list_mod_debug(REQUEST *request,
 	 *	If it's an exec, ignore the list
 	 */
 	if (map->rhs->type == TMPL_TYPE_EXEC) {
-		RDEBUG("%s %s %s%pV%s", mod->lhs->name, fr_int2str(fr_tokens_table, mod->op, "<INVALID>"),
-		       quote, vb, quote);
+		RDEBUG2("%s %s %s%pV%s", mod->lhs->name, fr_int2str(fr_tokens_table, mod->op, "<INVALID>"),
+		        quote, vb, quote);
 		return;
 	}
 
@@ -1637,7 +1637,7 @@ static inline void map_list_mod_debug(REQUEST *request,
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		RDEBUG("%s %s %s", map->lhs->name, fr_int2str(fr_tokens_table, mod->op, "<INVALID>"), rhs);
+		RDEBUG2("%s %s %s", map->lhs->name, fr_int2str(fr_tokens_table, mod->op, "<INVALID>"), rhs);
 		break;
 
 	default:
@@ -2922,14 +2922,14 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 */
 		if (vp) {
 			tmpl_snprint(buffer, sizeof(buffer), map->lhs);
-			RDEBUG("%s%s %s %s", buffer, vp->da->name, fr_int2str(fr_tokens_table, vp->op, "<INVALID>"), rhs);
+			RDEBUG2("%s%s %s %s", buffer, vp->da->name, fr_int2str(fr_tokens_table, vp->op, "<INVALID>"), rhs);
 			break;
 		}
 		/* FALL-THROUGH */
 
 	case TMPL_TYPE_ATTR:
 		tmpl_snprint(buffer, sizeof(buffer), map->lhs);
-		RDEBUG("%s %s %s", buffer, fr_int2str(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);
+		RDEBUG2("%s %s %s", buffer, fr_int2str(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);
 		break;
 
 	default:

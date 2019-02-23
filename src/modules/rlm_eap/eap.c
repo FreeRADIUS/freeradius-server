@@ -866,7 +866,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		case FR_EAP_IDENTITY:
 			eap_session->identity = eap_identity(request, eap_session, eap_packet);
 			if (!eap_session->identity) {
-				RDEBUG("Invalid identity response");
+				REDEBUG("Invalid identity response");
 				goto error_session;
 			}
 
@@ -891,7 +891,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		case FR_EAP_INVALID:
 		case FR_EAP_NOTIFICATION:
 		case FR_EAP_NAK:
-			RDEBUG("Initial EAP method (%u) invalid", eap_packet->data[0]);
+			REDEBUG("Initial EAP method (%u) invalid", eap_packet->data[0]);
 			goto error_session;
 
 		/*

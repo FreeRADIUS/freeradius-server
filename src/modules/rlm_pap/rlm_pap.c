@@ -410,7 +410,7 @@ redo:
 				RDEBUG3("Unknown header {%s} in Password-With-Header = \"%s\", re-writing to "
 					"Cleartext-Password", buffer, vp->vp_strvalue);
 			} else {
-				RDEBUG("Unknown header {%s} in Password-With-Header, re-writing to "
+				RDEBUG2("Unknown header {%s} in Password-With-Header, re-writing to "
 				       "Cleartext-Password", buffer);
 			}
 			goto unknown_header;
@@ -463,7 +463,7 @@ redo:
 		RDEBUG3("No {...} in &Password-With-Header = \"%s\", re-writing to Cleartext-Password",
 			vp->vp_strvalue);
 	} else {
-		RDEBUG("No {...} in &Password-With-Header, re-writing to Cleartext-Password");
+		RDEBUG2("No {...} in &Password-With-Header, re-writing to Cleartext-Password");
 	}
 unknown_header:
 	new = fr_pair_afrom_da(request, attr_cleartext_password);
@@ -619,7 +619,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t const *inst,
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\" (%zd)", vp->vp_strvalue, vp->vp_length);
 	} else {
-		RDEBUG("Comparing with \"known good\" Cleartext-Password");
+		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
 
 	if ((vp->vp_length != request->password->vp_length) ||
@@ -638,7 +638,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_crypt(UNUSED rlm_pap_t const *inst,
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Comparing with \"known good\" Crypt-Password \"%s\"", vp->vp_strvalue);
 	} else {
-		RDEBUG("Comparing with \"known-good\" Crypt-password");
+		RDEBUG2("Comparing with \"known-good\" Crypt-password");
 	}
 
 	if (fr_crypt_check(request->password->vp_strvalue, vp->vp_strvalue) != 0) {
@@ -653,7 +653,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t const *inst, REQUEST 
 {
 	uint8_t digest[128];
 
-	RDEBUG("Comparing with \"known-good\" MD5-Password");
+	RDEBUG2("Comparing with \"known-good\" MD5-Password");
 
 	if (inst->normify) {
 		normify(request, vp, MD5_DIGEST_LENGTH);
@@ -682,7 +682,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t const *inst, REQUEST
 	fr_md5_ctx_t *md5_ctx;
 	uint8_t digest[128];
 
-	RDEBUG("Comparing with \"known-good\" SMD5-Password");
+	RDEBUG2("Comparing with \"known-good\" SMD5-Password");
 
 	if (inst->normify) normify(request, vp, MD5_DIGEST_LENGTH);
 	if (vp->vp_length <= MD5_DIGEST_LENGTH) {
@@ -715,7 +715,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t const *inst, REQUEST 
 	fr_sha1_ctx sha1_context;
 	uint8_t digest[128];
 
-	RDEBUG("Comparing with \"known-good\" SHA-Password");
+	RDEBUG2("Comparing with \"known-good\" SHA-Password");
 
 	if (inst->normify) normify(request, vp, SHA1_DIGEST_LENGTH);
 
@@ -744,7 +744,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t const *inst, REQUEST
 	fr_sha1_ctx sha1_context;
 	uint8_t digest[128];
 
-	RDEBUG("Comparing with \"known-good\" SSHA-Password");
+	RDEBUG2("Comparing with \"known-good\" SSHA-Password");
 
 	if (inst->normify) normify(request, vp, SHA1_DIGEST_LENGTH);
 
@@ -784,7 +784,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(rlm_pap_t const *inst, REQU
 	if (inst->normify) normify(request, vp, SHA224_DIGEST_LENGTH);
 
 	if (vp->da == attr_sha2_password) {
-		RDEBUG("Comparing with \"known-good\" SHA2-Password");
+		RDEBUG2("Comparing with \"known-good\" SHA2-Password");
 
 		/*
 		 *	All the SHA-2 algorithms produce digests of different lengths,
@@ -823,7 +823,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(rlm_pap_t const *inst, REQU
 	}
 # ifdef HAVE_EVP_SHA3_512
 	else if (vp->da == attr_sha3_password) {
-		RDEBUG("Comparing with \"known-good\" SHA3-Password");
+		RDEBUG2("Comparing with \"known-good\" SHA3-Password");
 		/*
 		 *	All the SHA-3 algorithms produce digests of different lengths,
 		 *	so it's trivial to determine which EVP_MD to use.
@@ -933,7 +933,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha_evp(rlm_pap_t const *inst, REQ
 		return RLM_MODULE_INVALID;
 	}
 
-	RDEBUG("Comparing with \"known-good\" %s-Password", name);
+	RDEBUG2("Comparing with \"known-good\" %s-Password", name);
 
 	/*
 	 *	Unlike plain SHA2/3 we already know what length
@@ -1002,7 +1002,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 	uint8_t			hash[EVP_MAX_MD_SIZE];
 	uint8_t			digest[EVP_MAX_MD_SIZE];
 
-	RDEBUG("Comparing with \"known-good\" PBKDF2-Password");
+	RDEBUG2("Comparing with \"known-good\" PBKDF2-Password");
 
 	if (len <= 1) {
 		REDEBUG("PBKDF2-Password is too short");
@@ -1259,7 +1259,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t const *inst, REQUEST *
 	uint8_t digest[MD4_DIGEST_LENGTH];
 	uint8_t ucs2_password[512];
 
-	RDEBUG("Comparing with \"known-good\" NT-Password");
+	RDEBUG2("Comparing with \"known-good\" NT-Password");
 
 	rad_assert(request->password != NULL);
 	rad_assert(request->password->da == attr_user_password);
@@ -1296,7 +1296,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t const *inst, REQUEST *
 	char	charbuf[32 + 1];
 	ssize_t	len;
 
-	RDEBUG("Comparing with \"known-good\" LM-Password");
+	RDEBUG2("Comparing with \"known-good\" LM-Password");
 
 	if (inst->normify) normify(request, vp, MD4_DIGEST_LENGTH);
 
@@ -1325,7 +1325,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *
 	uint8_t buff[FR_MAX_STRING_LEN];
 	uint8_t buff2[FR_MAX_STRING_LEN + 50];
 
-	RDEBUG("Using NT-MTA-MD5-Password");
+	RDEBUG2("Using NT-MTA-MD5-Password");
 
 	if (vp->vp_length != 64) {
 		REDEBUG("\"known good\" NS-MTA-MD5-Password has incorrect length, expected 64 got %zu", vp->vp_length);
@@ -1406,7 +1406,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		RDEBUG3("Login attempt with password \"%s\" (%zd)",
 			request->password->vp_strvalue, request->password->vp_length);
 	} else {
-		RDEBUG("Login attempt with password");
+		RDEBUG2("Login attempt with password");
 	}
 
 	/*
@@ -1483,7 +1483,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 	if (rc == RLM_MODULE_REJECT) REDEBUG("Passwords don't match");
 
-	if (rc == RLM_MODULE_OK) RDEBUG("User authenticated successfully");
+	if (rc == RLM_MODULE_OK) RDEBUG2("User authenticated successfully");
 
 	return rc;
 }

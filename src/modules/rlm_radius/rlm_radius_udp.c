@@ -882,7 +882,7 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 	 *	Insert the next retransmission timer.
 	 */
 	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next, status_check_timeout, u) < 0) {
-		RDEBUG("Failed inserting retransmission timer for status check - closing connection %s", c->name);
+		REDEBUG("Failed inserting retransmission timer for status check - closing connection %s", c->name);
 		talloc_free(c);
 		return;
 	}

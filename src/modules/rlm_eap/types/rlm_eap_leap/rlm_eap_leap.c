@@ -133,7 +133,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 		 *	Stage 2 is handled by initiate()
 		 */
 	default:
-		RDEBUG("Internal sanity check failed on stage");
+		REDEBUG("Internal sanity check failed on stage");
 		break;
 	}
 

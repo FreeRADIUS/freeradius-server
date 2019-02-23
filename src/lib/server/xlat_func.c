@@ -1852,7 +1852,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 	while (isspace((int) *p)) p++;
 
 	if (*p != '&') {
-		RDEBUG("First argument must be an attribute reference");
+		REDEBUG("First argument must be an attribute reference");
 		return 0;
 	}
 
@@ -1869,7 +1869,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 	pad_len = strtoul(p, &end, 10);
 	if ((pad_len == ULONG_MAX) || (pad_len > 8192)) {
 		talloc_free(vpt);
-		RDEBUG("Invalid pad_len found at: %s", p);
+		REDEBUG("Invalid pad_len found at: %s", p);
 		return fmt - p;
 	}
 
@@ -1884,7 +1884,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 	if (*p) {
 		if (!isspace(*p)) {
 			talloc_free(vpt);
-			RDEBUG("Invalid text found at: %s", p);
+			REDEBUG("Invalid text found at: %s", p);
 			return fmt - p;
 		}
 
@@ -1892,7 +1892,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 
 		if (p[1] != '\0') {
 			talloc_free(vpt);
-			RDEBUG("Invalid text found at: %s", p);
+			REDEBUG("Invalid text found at: %s", p);
 			return fmt - p;
 		}
 

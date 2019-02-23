@@ -1328,7 +1328,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		 */
 		q = memchr(p, ' ', s);
 		if (!q) {
-			RDEBUG("Malformed HTTP header: Missing reason code");
+			REDEBUG("Malformed HTTP header: Missing reason code");
 			goto malformed;
 		}
 

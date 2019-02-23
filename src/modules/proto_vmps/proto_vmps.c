@@ -221,10 +221,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
-	if (DEBUG_ENABLED3) {
-		RDEBUG("proto_vmps decode packet");
-		fr_vmps_print_hex(fr_log_fp, data, data_len);
-	}
+	RHEXDUMP(L_DBG_LVL_3, data, data_len, "proto_vmps decode packet");
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -369,10 +366,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		return -1;
 	}
 
-	if (DEBUG_ENABLED3) {
-		RDEBUG("proto_vmps encode packet");
-		fr_vmps_print_hex(fr_log_fp, buffer, data_len);
-	}
+	RHEXDUMP(L_DBG_LVL_3, buffer, data_len, "proto_vmps encode packet");
 
 	return data_len;
 }

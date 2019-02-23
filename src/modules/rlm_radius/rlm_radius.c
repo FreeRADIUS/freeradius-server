@@ -466,7 +466,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	void *request_io_ctx;
 
 	if (!request->packet->code) {
-		RDEBUG("You MUST specify a packet code");
+		REDEBUG("You MUST specify a packet code");
 		return RLM_MODULE_FAIL;
 	}
 

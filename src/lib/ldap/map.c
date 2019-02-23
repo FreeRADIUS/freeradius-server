@@ -266,7 +266,7 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t c
 
 	for (map = maps; map != NULL; map = map->next) {
 		if (tmpl_expand(&attr, attr_buff, sizeof(attr_buff), request, map->rhs, NULL, NULL) < 0) {
-			RDEBUG("Expansion of LDAP attribute \"%s\" failed", map->rhs->name);
+			REDEBUG("Expansion of LDAP attribute \"%s\" failed", map->rhs->name);
 			TALLOC_FREE(ctx);
 			return -1;
 		}

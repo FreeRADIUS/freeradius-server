@@ -570,7 +570,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 		fr_bin2hex(*out, buffer, NT_DIGEST_LENGTH);
 		(*out)[32] = '\0';
-		RDEBUG("NT-Hash of \"known-good\" password: %s", *out);
+		RDEBUG2("NT-Hash of \"known-good\" password: %s", *out);
 		return 32;
 
 	/*
@@ -588,7 +588,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		smbdes_lmpwdhash(p, buffer);
 		fr_bin2hex(*out, buffer, LM_DIGEST_LENGTH);
 		(*out)[32] = '\0';
-		RDEBUG("LM-Hash of %s = %s", p, *out);
+		RDEBUG2("LM-Hash of %s = %s", p, *out);
 		return 32;
 	} else {
 		REDEBUG("Unknown expansion string '%s'", fmt);
@@ -755,7 +755,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		char *pmsg;
 		char const *emsg;
 
-		RDEBUG("Doing MS-CHAPv2 password change via ntlm_auth helper");
+		RDEBUG2("Doing MS-CHAPv2 password change via ntlm_auth helper");
 
 		/*
 		 * Start up ntlm_auth with a pipe on stdin and stdout
@@ -919,10 +919,10 @@ ntlm_auth_err:
 		size_t len = 0;
 
 		if (!nt_password) {
-			RDEBUG("Local MS-CHAPv2 password change requires NT-Password attribute");
+			RDEBUG2("Local MS-CHAPv2 password change requires NT-Password attribute");
 			return -1;
 		} else {
-			RDEBUG("Doing MS-CHAPv2 password change locally");
+			RDEBUG2("Doing MS-CHAPv2 password change locally");
 		}
 
 		/*
@@ -1047,7 +1047,7 @@ ntlm_auth_err:
 			return -1;
 		}
 
-		RDEBUG("MS-CHAPv2 password change succeeded: %s", result);
+		RDEBUG2("MS-CHAPv2 password change succeeded: %s", result);
 
 		/*
 		 *  Update the NT-Password attribute with the new hash this lets us
@@ -1651,7 +1651,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t const *inst
 	 *	and then jump into mschap2 auth with the challenge/
 	 *	response.
 	 */
-	RDEBUG("MS-CHAPv2 password change request received");
+	RDEBUG2("MS-CHAPv2 password change request received");
 
 	if (cpw->vp_length != 68) {
 		REDEBUG("MS-CHAP2-CPW has the wrong format: length %zu != 68", cpw->vp_length);
@@ -1751,7 +1751,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t const *inst
 		return RLM_MODULE_REJECT;
 	}
 
-	RDEBUG("Password change successful");
+	RDEBUG2("Password change successful");
 
 	return RLM_MODULE_OK;
 }
@@ -1869,7 +1869,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		 *	to have cleared this bit in the config/SQL/wherever.
 		 */
 		if (smb_ctrl && smb_ctrl->vp_uint32 & ACB_FR_EXPIRED) {
-			RDEBUG("Clearing expiry bit in SMB-Acct-Ctrl to allow authentication");
+			RDEBUG2("Clearing expiry bit in SMB-Acct-Ctrl to allow authentication");
 			smb_ctrl->vp_uint32 &= ~ACB_FR_EXPIRED;
 		}
 

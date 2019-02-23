@@ -270,7 +270,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, rlm_krb5_t const *ins
 	}
 
 	krb5_unparse_name(context, *client, &princ_name);
-	RDEBUG("Using client principal \"%s\"", princ_name);
+	RDEBUG2("Using client principal \"%s\"", princ_name);
 #ifdef HEIMDAL_KRB5
 	free(princ_name);
 #else
@@ -307,7 +307,7 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, REQUEST *request, 
 		return RLM_MODULE_USERLOCK;
 
 	case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-		RDEBUG("User not found (%i): %s", ret, rlm_krb5_error(inst, conn->context, ret));
+		RDEBUG2("User not found (%i): %s", ret, rlm_krb5_error(inst, conn->context, ret));
 		return RLM_MODULE_NOTFOUND;
 
 	default:
@@ -426,7 +426,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
 	 */
 	memcpy(&password, &request->password->vp_strvalue, sizeof(password));
-	RDEBUG("Retrieving and decrypting TGT");
+	RDEBUG2("Retrieving and decrypting TGT");
 	ret = krb5_get_init_creds_password(conn->context, &init_creds, client, password,
 					   NULL, NULL, 0, NULL, inst->gic_options);
 	if (ret) {
@@ -434,7 +434,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		goto cleanup;
 	}
 
-	RDEBUG("Attempting to authenticate against service principal");
+	RDEBUG2("Attempting to authenticate against service principal");
 	ret = krb5_verify_init_creds(conn->context, &init_creds, inst->server, conn->keytab, NULL, inst->vic_options);
 	if (ret) rcode = krb5_process_error(inst, request, conn, ret);
 

@@ -127,8 +127,11 @@ static unlang_action_t unlang_module(REQUEST *request,
 	request->rcode = *presult;
 
 done:
-	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
-		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
+	/*
+	 *	Must be left at RDEBUG() level otherwise RDEBUG becomes pointless
+	 */
+	RDEBUG("%s (%s)", instruction->name ? instruction->name : "",
+	       fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 
 	switch (*presult) {
 	case RLM_MODULE_YIELD:

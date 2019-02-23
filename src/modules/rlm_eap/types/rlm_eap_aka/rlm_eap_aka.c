@@ -814,7 +814,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		}
 
 		if (memcmp(checkcode->vp_octets, eap_aka_session->checkcode, eap_aka_session->checkcode_len) == 0) {
-			RDEBUG("EAP-AKA-Checkcode matches calculated checkcode");
+			RDEBUG2("EAP-AKA-Checkcode matches calculated checkcode");
 		} else {
 			REDEBUG("EAP-AKA-Checkcode does not match calculated checkcode");
 			RHEXDUMP_INLINE(L_DBG_LVL_2, checkcode->vp_octets, checkcode->vp_length, "Received");

@@ -177,7 +177,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	msk = fr_pair_find_by_da(request->reply->vps, attr_eap_msk, TAG_ANY);
 	emsk = fr_pair_find_by_da(request->reply->vps, attr_eap_emsk, TAG_ANY);
 	if (!msk || !emsk) {
-		RDEBUG("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys");
+		REDEBUG2("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -239,8 +239,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		   (mip_rk_1[2] << 8) | mip_rk_1[3]);
 	if (mip_spi < 256) mip_spi += 256;
 
-	RDEBUG("MIP-RK = 0x%pH", fr_box_octets(mip_rk, rk_len));
-	RDEBUG("MIP-SPI = %08x", ntohl(mip_spi));
+	REDEBUG2("MIP-RK = 0x%pH", fr_box_octets(mip_rk, rk_len));
+	REDEBUG2("MIP-SPI = %08x", ntohl(mip_spi));
 
 	/*
 	 *	FIXME: Perform SPI collision prevention
@@ -405,7 +405,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 */
 	vp = fr_pair_find_by_da(request->packet->vps, attr_wimax_rrq_mn_ha_spi, TAG_ANY);
 	if (vp) {
-		RDEBUG("Client requested MN-HA key: Should use SPI to look up key from storage");
+		REDEBUG2("Client requested MN-HA key: Should use SPI to look up key from storage");
 		if (!mn_nai) {
 			RWDEBUG("MN-NAI was not found!");
 		}
@@ -422,7 +422,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		 */
 		vp = fr_pair_find_by_da(request->packet->vps, attr_wimax_ha_rk_key_requested, TAG_ANY);
 		if (vp && (vp->vp_uint32 == 1)) {
-			RDEBUG("Client requested HA-RK: Should use IP to look it up from storage");
+			REDEBUG2("Client requested HA-RK: Should use IP to look it up from storage");
 		}
 	}
 

@@ -173,7 +173,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_ca
 
 			map_snprint(buffer, sizeof(buffer), map);
 			REXDENT();
-			RDEBUG("Skipping %s", buffer);
+			RDEBUG2("Skipping %s", buffer);
 			RINDENT();
 			continue;
 		}
@@ -212,7 +212,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, 
 		ret = inst->driver->find(&c, &inst->config, inst->driver_inst->data, request, *handle, key, key_len);
 		switch (ret) {
 		case CACHE_RECONNECT:
-			RDEBUG("Reconnecting...");
+			RDEBUG2("Reconnecting...");
 			if (cache_reconnect(handle, inst, request) == 0) continue;
 			return RLM_MODULE_FAIL;
 
@@ -264,7 +264,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, 
 static rlm_rcode_t cache_expire(rlm_cache_t const *inst, REQUEST *request,
 				rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
 {
-	RDEBUG("Expiring cache entry");
+	RDEBUG2("Expiring cache entry");
 	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_inst->data, request,
 					      *handle, key, key_len)) {
 	case CACHE_RECONNECT:
@@ -318,7 +318,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 
 	last = &c->maps;
 
-	RDEBUG("Creating new cache entry");
+	RDEBUG2("Creating new cache entry");
 
 	/*
 	 *	Alloc a pool so we don't have excessive allocs when
@@ -336,7 +336,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 		 *	as if this were an update section.
 		 */
 		if (map_to_vp(pool, &to_cache, request, map, NULL) < 0) {
-			RDEBUG("Skipping %s", map->rhs->name);
+			RDEBUG2("Skipping %s", map->rhs->name);
 			continue;
 		}
 
@@ -457,7 +457,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			return RLM_MODULE_FAIL;
 
 		case CACHE_OK:
-			RDEBUG("Committed entry, TTL %d seconds", ttl);
+			RDEBUG2("Committed entry, TTL %d seconds", ttl);
 			cache_free(inst, &c);
 			return merge ? RLM_MODULE_UPDATED :
 				       RLM_MODULE_OK;
@@ -491,7 +491,7 @@ static rlm_rcode_t cache_set_ttl(rlm_cache_t const *inst, REQUEST *request,
 			return RLM_MODULE_FAIL;
 
 		case CACHE_OK:
-			RDEBUG("Updated entry TTL");
+			RDEBUG2("Updated entry TTL");
 			return RLM_MODULE_OK;
 
 		default:
@@ -513,7 +513,7 @@ static rlm_rcode_t cache_set_ttl(rlm_cache_t const *inst, REQUEST *request,
 			return RLM_MODULE_FAIL;
 
 		case CACHE_OK:
-			RDEBUG("Updated entry TTL");
+			RDEBUG2("Updated entry TTL");
 			return RLM_MODULE_OK;
 
 		default:

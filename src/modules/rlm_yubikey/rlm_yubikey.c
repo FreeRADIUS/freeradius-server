@@ -290,7 +290,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		if (RDEBUG_ENABLED3) {
 			RDMARKER(otp, -ret, "User-Password (aes-block) value contains non modhex chars");
 		} else {
-			RDEBUG("User-Password (aes-block) value contains non modhex chars");
+			RDEBUG2("User-Password (aes-block) value contains non modhex chars");
 		}
 		return RLM_MODULE_NOOP;
 	}

@@ -165,7 +165,7 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 	 */
 	case EAP_TLS_ESTABLISHED:
 		if (SSL_session_reused(tls_session->ssl)) {
-			RDEBUG("Skipping Phase2 due to session resumption");
+			RDEBUG2("Skipping Phase2 due to session resumption");
 			goto do_keys;
 		}
 

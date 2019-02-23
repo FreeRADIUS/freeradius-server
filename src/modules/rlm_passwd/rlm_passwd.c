@@ -524,10 +524,10 @@ static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, REQUEST *reque
 				vp = fr_pair_make(ctx, request->dict,
 						  vps, inst->pwd_fmt->field[i], pw->field[i], T_OP_EQ);
 				if (vp) {
-					RDEBUG("Added %s: '%s' to %s ", inst->pwd_fmt->field[i], pw->field[i], listname);
+					RDEBUG2("Added %s: '%s' to %s ", inst->pwd_fmt->field[i], pw->field[i], listname);
 				}
 			} else
-				RDEBUG("NOOP %s: '%s' to %s ", inst->pwd_fmt->field[i], pw->field[i], listname);
+				RDEBUG2("NOOP %s: '%s' to %s ", inst->pwd_fmt->field[i], pw->field[i], listname);
 		}
 	}
 }

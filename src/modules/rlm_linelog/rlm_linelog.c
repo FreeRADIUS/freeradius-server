@@ -626,7 +626,7 @@ build_vector:
 	}
 
 	if (vector_len == 0) {
-		RDEBUG("No data to write");
+		RDEBUG2("No data to write");
 		rcode = RLM_MODULE_NOOP;
 		goto finish;
 	}

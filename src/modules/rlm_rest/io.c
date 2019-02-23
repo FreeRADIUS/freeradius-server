@@ -351,7 +351,7 @@ void rest_io_module_action(REQUEST *request, void *instance, void *thread, void 
 
 	if (action != FR_SIGNAL_CANCEL) return;
 
-	RDEBUG("Forcefully cancelling pending REST request");
+	RDEBUG2("Forcefully cancelling pending REST request");
 
 	ret = curl_multi_remove_handle(t->mandle, randle->candle);	/* Gracefully terminate the request */
 	if (ret != CURLM_OK) {

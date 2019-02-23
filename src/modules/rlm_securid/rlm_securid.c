@@ -127,13 +127,13 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 
 		acm_ret = SD_Init(&sdiHandle);
 		if (acm_ret != ACM_OK) {
-			ERROR("Cannot communicate with the ACE/Server");
+			RERROR("Cannot communicate with the ACE/Server");
 			return -1;
 		}
 
 		acm_ret = SD_Lock(sdiHandle, securid_user);
 		if (acm_ret != ACM_OK) {
-			ERROR("SecurID: Access denied. Name [%s] lock failed", username);
+			REDEBUG("SecurID: Access denied. Name [%s] lock failed", username);
 			return -2;
 		}
 
@@ -141,19 +141,19 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 		switch (acm_ret) {
 		case ACM_OK:
 			/* we are in now */
-			RDEBUG("SecurID authentication successful for %s", username);
+			RDEBUG2("SecurID authentication successful for %s", username);
 			SD_Close(sdiHandle);
 
 			return RC_SECURID_AUTH_SUCCESS;
 
 		case ACM_ACCESS_DENIED:
 			/* not this time */
-			RDEBUG("SecurID Access denied for %s", username);
+			RDEBUG2("SecurID Access denied for %s", username);
 			SD_Close(sdiHandle);
 			return RC_SECURID_AUTH_ACCESS_DENIED_FAILURE;
 
 		case ACM_INVALID_SERVER:
-			ERROR("SecurID: Invalid ACE server");
+			RERROR("SecurID: Invalid ACE server");
 			return RC_SECURID_AUTH_INVALID_SERVER_FAILURE;
 
 		case ACM_NEW_PIN_REQUIRED:
@@ -221,7 +221,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 		}
 	} else {
 		/* existing session found */
-		RDEBUG("Continuing previous session found for user [%s]", username);
+		RDEBUG2("Continuing previous session found for user [%s]", username);
 
 		/* continue previous session */
 		switch (securid_session->securidSessionState) {
@@ -290,7 +290,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 				RDEBUG2("Pin confirmation succeeded. Pins match");
 				acm_ret = SD_Pin(securid_session->sdiHandle, securid_pass);
 				if (acm_ret == ACM_NEW_PIN_ACCEPTED) {
-					RDEBUG("New SecurID pin accepted for %s.", securid_session->identity);
+					RDEBUG2("New SecurID pin accepted for %s.", securid_session->identity);
 
 					securid_session->securidSessionState = NEW_PIN_AUTH_VALIDATE_STATE;
 
@@ -300,7 +300,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 					rc = RC_SECURID_AUTH_CHALLENGE;
 					strlcpy(replyMsgBuffer, " \r\n\r\nWait for the code on your card to change, then enter new PIN and TokenCode\r\n\r\nEnter PASSCODE:", replyMsgBufferSize);
 				} else {
-					RDEBUG("SecurID: New SecurID pin rejected for %s.", securid_session->identity);
+					RDEBUG2("SecurID: New SecurID pin rejected for %s.", securid_session->identity);
 					SD_Pin(securid_session->sdiHandle, &empty_pin[0]);  /* cancel PIN */
 
 
@@ -314,7 +314,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 		case NEW_PIN_AUTH_VALIDATE_STATE:
 			acm_ret = SD_Check(securid_session->sdiHandle, securid_pass, securid_user);
 			if (acm_ret == ACM_OK) {
-				RDEBUG("New SecurID passcode accepted for %s", securid_session->identity);
+				RDEBUG2("New SecurID passcode accepted for %s", securid_session->identity);
 				rc = RC_SECURID_AUTH_SUCCESS;
 
 			} else {
@@ -511,7 +511,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Login attempt with password \"%s\"", password);
 	} else {
-		RDEBUG("Login attempt with password");
+		RDEBUG2("Login attempt with password");
 	}
 
 	rcode = securidAuth(inst, request, username, password,
@@ -531,7 +531,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 		/* Mark the packet as a Acceess-Challenge Packet */
 		request->reply->code = FR_CODE_ACCESS_CHALLENGE;
-		RDEBUG("Sending Access-Challenge");
+		RDEBUG2("Sending Access-Challenge");
 		rcode = RLM_MODULE_HANDLED;
 		break;
 

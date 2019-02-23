@@ -161,7 +161,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	/*
 	 *      Authentication is OK. Now see if this user may login at this time of the day.
 	 */
-	RDEBUG("Checking Login-Time");
+	RDEBUG2("Checking Login-Time");
 
 	/*
 	 *	Compare the time the request was received with the current Login-Time value
@@ -193,20 +193,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	There's time left in the users session, inform the NAS by including a Session-vp
 	 *	attribute in the reply, or modifying the existing one.
 	 */
-	RDEBUG("Login within allowed time-slot, %d seconds left in this session", left);
+	RDEBUG2("Login within allowed time-slot, %d seconds left in this session", left);
 
 	switch (pair_update_reply(&vp, attr_session_timeout)) {
 	case 1:
 		/* just update... */
 		if (vp->vp_uint32 > (uint32_t)left) {
 			vp->vp_uint32 = (uint32_t)left;
-			RDEBUG("&reply:Session-Timeout := %pV", &vp->data);
+			RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
 		}
 		break;
 
 	case 0:	/* no pre-existing */
 		vp->vp_uint32 = (uint32_t)left;
-		RDEBUG("&reply:Session-Timeout := %pV", &vp->data);
+		RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
 		break;
 
 	case -1: /* malloc failure */

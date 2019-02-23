@@ -436,7 +436,7 @@ static ssize_t perl_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			strlcpy(*out, tmp, outlen);
 			ret = strlen(*out);
 
-			RDEBUG("Len is %zu , out is %s freespace is %zu", ret, *out, outlen);
+			RDEBUG2("Len is %zu , out is %s freespace is %zu", ret, *out, outlen);
 		}
 
 		PUTBACK ;
@@ -645,14 +645,14 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 
 	switch (vp->vp_type) {
 	case FR_TYPE_STRING:
-		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
-		       list_name, vp->da->name, vp->vp_strvalue);
+		RDEBUG2("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
+		        list_name, vp->da->name, vp->vp_strvalue);
 		sv = newSVpvn(vp->vp_strvalue, vp->vp_length);
 		break;
 
 	case FR_TYPE_OCTETS:
-		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> 0x%pH", hash_name, vp->da->name, *i,
-		       list_name, vp->da->name, &vp->data);
+		RDEBUG2("$%s{'%s'}[%i] = &%s:%s -> 0x%pH", hash_name, vp->da->name, *i,
+		        list_name, vp->da->name, &vp->data);
 		sv = newSVpvn((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
@@ -662,8 +662,8 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 		size_t	len;
 
 		len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
-		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
-		       list_name, vp->da->name, buffer);
+		RDEBUG2("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
+		        list_name, vp->da->name, buffer);
 		sv = newSVpvn(buffer, truncate_len(len, sizeof(buffer)));
 	}
 		break;
@@ -736,13 +736,13 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 */
 		switch (vp->vp_type) {
 		case FR_TYPE_STRING:
-			RDEBUG("$%s{'%s'} = &%s:%s -> '%pV'", hash_name, vp->da->name, list_name,
+			RDEBUG2("$%s{'%s'} = &%s:%s -> '%pV'", hash_name, vp->da->name, list_name,
 			       vp->da->name, &vp->data);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->vp_length), 0);
 			break;
 
 		case FR_TYPE_OCTETS:
-			RDEBUG("$%s{'%s'} = &%s:%s -> %pV", hash_name, vp->da->name, list_name,
+			RDEBUG2("$%s{'%s'} = &%s:%s -> %pV", hash_name, vp->da->name, list_name,
 			       vp->da->name, &vp->data);
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn((char const *)vp->vp_octets, vp->vp_length), 0);
@@ -754,7 +754,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			size_t len;
 
 			len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
-			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
+			RDEBUG2("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
 			       list_name, vp->da->name, buffer);
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn(buffer, truncate_len(len, sizeof(buffer))), 0);
@@ -804,8 +804,8 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 
 	VP_VERIFY(vp);
 
-	RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens_table, op, "<INVALID>"),
-	       hash_name, key, val);
+	RDEBUG2("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens_table, op, "<INVALID>"),
+	        hash_name, key, val);
 	return 0;
 }
 
@@ -937,8 +937,8 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		SPAGAIN;
 
 		if (SvTRUE(ERRSV)) {
-			RDEBUG("perl_embed:: module = %s , func = %s exit status= %s\n",
-			       inst->module, function_name, SvPV(ERRSV,n_a));
+			REDEBUG("perl_embed:: module = %s , func = %s exit status= %s\n",
+			        inst->module, function_name, SvPV(ERRSV,n_a));
 			(void)POPs;
 			exitstatus = RLM_MODULE_FAIL;
 		} else if (count == 1) {
@@ -1043,7 +1043,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	if (pair != NULL) {
 		acct_status_type = pair->vp_uint32;
 	} else {
-		RDEBUG("Invalid Accounting Packet");
+		REDEBUG("Invalid Accounting Packet");
 		return RLM_MODULE_INVALID;
 	}
 

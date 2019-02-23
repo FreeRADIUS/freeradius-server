@@ -222,7 +222,7 @@ static long od_check_passwd(REQUEST *request, char const *uname, char const *pas
 		uiCurr = 0;
 
 		if (!pUserName) {
-			RDEBUG("Failed to find user name");
+			RDEBUG2("Failed to find user name");
 			break;
 		}
 
@@ -351,7 +351,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	}
 
 	if (ret != RLM_MODULE_OK) {
-		RDEBUG("Invalid password: %pV", &request->username->data);
+		RDEBUG2("Invalid password: %pV", &request->username->data);
 		return ret;
 	}
 
@@ -376,7 +376,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	gid_t			gid;
 
 	if (!request->username) {
-		RDEBUG("OpenDirectory requires a User-Name attribute");
+		RDEBUG2("OpenDirectory requires a User-Name attribute");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -384,7 +384,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	uuid_clear(guid_sacl);
 
 	if (rad_getgid(request, &gid, kRadiusSACLName) < 0) {
-		RDEBUG("The SACL group \"%s\" does not exist on this system", kRadiusSACLName);
+		RDEBUG2("The SACL group \"%s\" does not exist on this system", kRadiusSACLName);
 	} else {
 		err = mbr_gid_to_uuid(gid, guid_sacl);
 		if (err != 0) {
@@ -421,16 +421,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 #endif
 	{
 		if (!rad_client) {
-			RDEBUG("The client record could not be found for host %s",
+			RDEBUG2("The client record could not be found for host %s",
 			       fr_inet_ntoh(&request->packet->src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
 		} else {
-			RDEBUG("The host %s does not have an access group",
+			RDEBUG2("The host %s does not have an access group",
 			       fr_inet_ntoh(&request->packet->src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
 		}
 	}
 
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
-		RDEBUG("No access control groups, all users allowed");
+		RDEBUG2("No access control groups, all users allowed");
 
 		if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
 
