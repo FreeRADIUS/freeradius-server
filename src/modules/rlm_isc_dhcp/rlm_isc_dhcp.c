@@ -680,6 +680,16 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	while (start <= end) {
 		half = (start + end) / 2;
 
+		/*
+		 *	Skips a function call, and is better for 99%
+		 *	of the situations.
+		 */
+		rcode = state->token[0] - tokens[half].name[0];
+		if (rcode != 0) goto recurse;
+
+		/*
+		 *	Compare all of the strings.
+		 */
 		rcode = strncmp(state->token, tokens[half].name, state->token_len);
 
 		/*
@@ -705,6 +715,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 			rcode = -1;
 		}
 
+	recurse:
 		/*
 		 *	Token is smaller than the command we checked,
 		 *	go check the lower half of the table.
