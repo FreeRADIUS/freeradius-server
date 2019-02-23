@@ -1736,9 +1736,8 @@ static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool deb
 						   filename, state.lineno,
 						   fr_strerror());
 			} else {
-				fr_strerror_printf("Failed reading %s:[%d] offset %d - %s",
+				fr_strerror_printf("Failed reading %s:[%d] - %s",
 						   filename, state.lineno,
-						   (int) (state.token - state.line),
 						   fr_strerror());
 			}
 			fclose(fp);
