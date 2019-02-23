@@ -538,7 +538,7 @@ fr_ldap_rcode_t fr_ldap_bind(REQUEST *request,
 
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
-		ROPTIONAL(RDEBUG, DEBUG, "Bind successful");
+		ROPTIONAL(RDEBUG2, DEBUG2, "Bind successful");
 		break;
 
 	case LDAP_PROC_NOT_PERMITTED:
@@ -626,10 +626,10 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 	}
 
 	if (filter) {
-		ROPTIONAL(RDEBUG, DEBUG, "Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
+		ROPTIONAL(RDEBUG2, DEBUG2, "Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
 			  fr_int2str(fr_ldap_scope, scope, "<INVALID>"));
 	} else {
-		ROPTIONAL(RDEBUG, DEBUG, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
+		ROPTIONAL(RDEBUG2, DEBUG2, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
 			  fr_int2str(fr_ldap_scope, scope, "<INVALID>"));
 	}
 	/*
@@ -642,7 +642,7 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 	(void) ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs,
 			       0, our_serverctrls, our_clientctrls, NULL, 0, &msgid);
 
-	ROPTIONAL(RDEBUG, DEBUG, "Waiting for search result...");
+	ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for search result...");
 	status = fr_ldap_result(&our_result, NULL, *pconn, msgid, 1, dn, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
@@ -662,7 +662,7 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 		ldap_msgfree(our_result);
 		our_result = NULL;
 	} else if (count == 0) {
-		ROPTIONAL(RDEBUG, DEBUG, "Search returned no results");
+		ROPTIONAL(RDEBUG2, DEBUG2, "Search returned no results");
 		status = LDAP_PROC_NO_RESULT;
 
 		ldap_msgfree(our_result);
@@ -746,10 +746,10 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
 	}
 
 	if (filter) {
-		ROPTIONAL(RDEBUG, DEBUG, "Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
+		ROPTIONAL(RDEBUG2, DEBUG2, "Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
 			  fr_int2str(fr_ldap_scope, scope, "<INVALID>"));
 	} else {
-		ROPTIONAL(RDEBUG, DEBUG, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
+		ROPTIONAL(RDEBUG2, DEBUG2, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
 			  fr_int2str(fr_ldap_scope, scope, "<INVALID>"));
 	}
 	/*

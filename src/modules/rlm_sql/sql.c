@@ -299,7 +299,7 @@ void rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle
 		case L_DBG:
 		default:
 		debug:
-			ROPTIONAL(RDEBUG, DEBUG, "%s: %s", driver, log[i].msg);
+			ROPTIONAL(RDEBUG2, DEBUG2, "%s: %s", driver, log[i].msg);
 			break;
 		}
 	}

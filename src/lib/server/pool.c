@@ -418,7 +418,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 	 */
 	pending_window = (pool->max - pool->state.num);
 	if (pool->pending_window < pending_window) pending_window = pool->pending_window;
-	ROPTIONAL(RDEBUG, DEBUG, "Opening additional connection (%" PRIu64 "), %u of %u pending slots used",
+	ROPTIONAL(RDEBUG2, DEBUG2, "Opening additional connection (%" PRIu64 "), %u of %u pending slots used",
 		  number, pool->state.pending, pending_window);
 
 	/*
@@ -770,7 +770,7 @@ static int connection_check(fr_pool_t *pool, REQUEST *request)
 
 		if (!fr_cond_assert(found)) goto done;
 
-		ROPTIONAL(RDEBUG, DEBUG, "Closing connection (%" PRIu64 "), from %d unused connections",
+		ROPTIONAL(RDEBUG2, DEBUG2, "Closing connection (%" PRIu64 "), from %d unused connections",
 			  found->number, extra);
 		connection_close_internal(pool, request, found);
 
