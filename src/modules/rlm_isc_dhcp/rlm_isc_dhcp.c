@@ -892,12 +892,34 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	}
 
 	if ((state->token_len == 5) && (memcmp(state->token, "array", 5) == 0)) {
-		fr_strerror_printf("'array' is not supported in option definition");
-		return -1;
+		flags.array = 1;
+
+		rcode = read_token(state, T_BARE_WORD, NO_SEMICOLON, false);
+		if (rcode <= 0) {
+			talloc_free(name);
+			return rcode;
+		}
+
+		if (! ((state->token_len == 2) && (memcmp(state->token, "of", 2) == 0))) {
+			fr_strerror_printf("expected 'array of', not 'array %.*s'",
+					   state->token_len, state->token);
+			talloc_free(name);
+			return -1;
+		}
+
+		/*
+		 *	Grab the next token.  For now, it MUST have a semicolon
+		 */
+		rcode = read_token(state, T_BARE_WORD, YES_SEMICOLON, false);
+		if (rcode <= 0) {
+			talloc_free(name);
+			return rcode;
+		}
 	}
 
 	if ((state->token_len == 1) && (state->token[0] == '{')) {
 		fr_strerror_printf("records are not supported in option definition");
+		talloc_free(name);
 		return -1;
 	}
 
@@ -909,11 +931,15 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 */
 	if (!state->saw_semicolon) {
 		fr_strerror_printf("expected ';'");
+		talloc_free(name);
 		return -1;
 	}
 
 	type = isc2fr_type(state);
-	if (type == FR_TYPE_INVALID) return -1;
+	if (type == FR_TYPE_INVALID) {
+		talloc_free(name);
+		return -1;
+	}
 
 	/*
 	 *	Now that we've parsed everything, look up the name.
@@ -922,6 +948,7 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	da = fr_dict_attr_by_name(dict_dhcpv4, name);
 	if (da &&
 	    ((da->attr != box.vb_uint32) || (da->type != type))) {
+		talloc_free(name);
 		fr_strerror_printf("cannot add different code / type for a pre-existing name '%s'", name);
 		return -1;
 	}
@@ -946,6 +973,7 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 *	have better error messages.
 	 */
 	rcode = fr_dict_attr_add(dict_dhcpv4, root, name, box.vb_uint32, type, &flags);
+	talloc_free(name);
 	if (rcode < 0) return rcode;
 
 	/*
@@ -1135,7 +1163,7 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 *	type.  Which MAY be a "struct" data type, or an
 	 *	"array" data type.
 	 */
-	if (state->saw_semicolon) {
+	if (state->saw_semicolon || (state->ptr[0] == ',')) {
 		fr_dict_attr_t const *da;
 
 		da = fr_dict_attr_by_name(dict_dhcpv4, argv[0]);
