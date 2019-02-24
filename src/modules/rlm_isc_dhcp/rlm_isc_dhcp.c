@@ -1062,6 +1062,9 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 		rcode = read_token(state, T_DOUBLE_QUOTED_STRING, MAYBE_SEMICOLON, false);
 		if (rcode <= 0) return rcode;
 
+		vp = fr_pair_afrom_da(parent, da);
+		if (!vp) return -1;
+
 		rcode = fr_pair_value_from_str(vp, state->token, state->token_len, '\0', false);
 		if (rcode < 0) return rcode;
 
