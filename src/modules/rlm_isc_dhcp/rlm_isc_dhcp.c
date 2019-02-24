@@ -384,7 +384,7 @@ redo:
 		}
 
 		/*
-		 *	For lists of things.
+		 *	For lists of things and code definitions.
 		 */
 		if (*p == ',') {
 			state->ptr = p;
@@ -392,11 +392,12 @@ redo:
 		}
 
 		/*
-		 *	Allow braces as single character tokens if
-		 *	they're the first character we saw.
-		 *	Otherwise, they are "end of word" markers/
+		 *	Allow braces / equal as single character
+		 *	tokens if they're the first character we saw.
+		 *	Otherwise, the characters are "end of word"
+		 *	markers/
 		 */
-		if ((*p == '{') || (*p == '}')) {
+		if ((*p == '{') || (*p == '}') || (*p == '=')) {
 			if (p == state->token) p++;
 
 			state->ptr = p;
@@ -431,6 +432,11 @@ redo:
 	 *	Protect the rest of the code from buffer overflows.
 	 */
 	state->token_len = p - state->token;
+
+	if (state->token_len == 0) {
+		fr_strerror_printf("FUCK");
+		return -1;
+	}
 
 	if (state->token_len >= 256) {
 		fr_strerror_printf("token too large");
@@ -783,12 +789,156 @@ static int parse_option_space(UNUSED rlm_isc_dhcp_info_t *parent, UNUSED rlm_isc
 	return -1;
 }
 
+
+/** Parse one type string.
+ *
+
+ *	boolean
+ *	[signed|unsigned] integer [width]
+ *		width is 8, 16, or 32
+ *	ip-address
+ *	ip6-address
+ *	text
+ *	string
+ *	domain-list [compressed]
+ *	encapsulate _identifier_
+ */
+
+#define TYPE_CHECK(name, type) if ((state->token_len == (sizeof(name) - 1)) && (memcmp(state->token, name, sizeof(name) - 1) == 0)) return type
+static fr_type_t isc2fr_type(rlm_isc_dhcp_tokenizer_t *state)
+{
+	TYPE_CHECK("boolean", FR_TYPE_BOOL);
+	TYPE_CHECK("integer", FR_TYPE_UINT32);
+	TYPE_CHECK("ip-address", FR_TYPE_IPV4_ADDR);
+	TYPE_CHECK("ip6-address", FR_TYPE_IPV6_ADDR);
+	TYPE_CHECK("text", FR_TYPE_STRING);
+	TYPE_CHECK("string", FR_TYPE_OCTETS);
+
+	fr_strerror_printf("unknown type '%.*s'", state->token_len, state->token);
+	return FR_TYPE_INVALID;
+}
+
+
 /** option new-name code new-code = definition ;
  *
+ *	"new-name" can also be SPACE.NAME
+ *
  */
-static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, UNUSED rlm_isc_dhcp_tokenizer_t *state,
-				   UNUSED char *name)
+static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state,
+				   char *name)
 {
+	int rcode;
+	char *p;
+	fr_type_t type;
+	fr_dict_attr_t const *da;
+	fr_value_box_t box;
+
+	p = strchr(name, '.');
+	if (p) {
+		fr_strerror_printf("cannot (yet) define options in spaces");
+		talloc_free(name);
+		return -1;
+	}
+
+	/*
+	 *	Grab the integer code value.
+	 */
+	rcode = read_token(state, T_BARE_WORD, NO_SEMICOLON, false);
+	if (rcode <= 0) {
+		talloc_free(name);
+		return rcode;
+	}
+
+	type = FR_TYPE_UINT32;
+	rcode = fr_value_box_from_str(NULL, &box, &type, NULL,
+				      state->token, state->token_len, 0, false);
+	if (rcode < 0) {
+		talloc_free(name);
+		return -1;
+	}
+
+	/*
+	 *	Look for '='
+	 */
+	rcode = read_token(state, T_BARE_WORD, NO_SEMICOLON, false);
+	if (rcode <= 0) {
+		talloc_free(name);
+		return rcode;
+	}
+
+	if ((state->token_len != 1) || (state->token[0] != '=')) {
+		fr_strerror_printf("expected '=' after code definition got '%.*s'", state->token_len, state->token);
+		return -1;
+	}
+
+	/*
+	 *	Data type is:
+	 *
+	 *	TYPE
+	 *	array of TYPE
+	 *	{ TYPE, ... }
+	 *
+	 *	Note that it also supports
+	 *
+	 *	array of { TYPE, ... }
+	 */
+	rcode = read_token(state, T_BARE_WORD, MAYBE_SEMICOLON, false);
+	if (rcode <= 0) {
+		talloc_free(name);
+		return rcode;
+	}
+
+	if ((state->token_len == 5) && (memcmp(state->token, "array", 5) == 0)) {
+		fr_strerror_printf("'array' is not supported in option definition");
+		return -1;
+	}
+
+	if ((state->token_len == 1) && (state->token[0] == '{')) {
+		fr_strerror_printf("records are not supported in option definition");
+		return -1;
+	}
+
+	/*
+	 *	This check is needed only because we have
+	 *	MAYBE_SEMICOLON above.  That's in order to allow
+	 *	"array of.." statements to product an *array* error,
+	 *	not a *semicolon* error.
+	 */
+	if (!state->saw_semicolon) {
+		fr_strerror_printf("unexpected ';'");
+		return -1;
+	}
+
+	type = isc2fr_type(state);
+	if (type == FR_TYPE_INVALID) return -1;
+
+	/*
+	 *	Now that we've parsed everything, look up the name.
+	 *	We forbid conflicts, but silently allow duplicates.
+	 */
+	da = fr_dict_attr_by_name(dict_dhcpv4, name);
+	if (da &&
+	    ((da->attr != box.vb_uint32) || (da->type != type))) {
+		fr_strerror_printf("cannot add different code / type for a pre-existing name '%s'", name);
+		return -1;
+	}
+
+	/*
+	 *	And look it up by code, too.
+	 *
+	 *	We allow multiple attributes of the same code / type,
+	 *	but with different names.
+	 */
+	da = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), box.vb_uint32);
+	if (da && (da->type != type)) {
+		fr_strerror_printf("cannot add different type for a pre-existing code %d", box.vb_uint32);
+		return -1;
+	}
+
+	/*
+	 *	<whew>  Let's go add it in by name, and by code.
+	 */
+
 	fr_strerror_printf("please implement 'option NAME code NUMBER = DEFINITION'");
 	return -1;
 }
@@ -806,7 +956,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 	 *	semicolon after it.
 	 */
 	if (!da->flags.array && !state->saw_semicolon) {
-		fr_strerror_printf("unexpected ';'");
+		fr_strerror_printf("expected ';'");
 		return -1;
 	}
 
@@ -970,6 +1120,8 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 *	parse the following options according to the data
 	 *	type.  Which MAY be a "struct" data type, or an
 	 *	"array" data type.
+	 *
+	 *	@todo - nuke this once we have dictionary.isc defined.
 	 */
 	memcpy(name, "DHCP-", 5);
 	strcpy(name + 5, argv[0]);
@@ -986,7 +1138,9 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 *	It must be "option NAME code NUMBER = DEFINITION"
 	 */
 	if (strcmp(argv[1], "code") != 0) {
-		fr_strerror_printf("invalid syntax in 'option' statement");
+		fr_strerror_printf("unknown option '%s'", argv[0]);
+		talloc_free(argv[0]);
+		talloc_free(argv[1]);
 		return -1;
 	}
 
