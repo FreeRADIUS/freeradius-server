@@ -830,8 +830,9 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	int rcode;
 	char *p;
 	fr_type_t type;
-	fr_dict_attr_t const *da;
+	fr_dict_attr_t const *da, *root;
 	fr_value_box_t box;
+	fr_dict_attr_flags_t flags;
 
 	p = strchr(name, '.');
 	if (p) {
@@ -871,6 +872,8 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 		return -1;
 	}
 
+	memset(&flags, 0, sizeof(flags));
+
 	/*
 	 *	Data type is:
 	 *
@@ -905,7 +908,7 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 *	not a *semicolon* error.
 	 */
 	if (!state->saw_semicolon) {
-		fr_strerror_printf("unexpected ';'");
+		fr_strerror_printf("expected ';'");
 		return -1;
 	}
 
@@ -929,18 +932,27 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 *	We allow multiple attributes of the same code / type,
 	 *	but with different names.
 	 */
-	da = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), box.vb_uint32);
+	root = fr_dict_root(dict_dhcpv4);
+	da = fr_dict_attr_child_by_num(root, box.vb_uint32);
 	if (da && (da->type != type)) {
 		fr_strerror_printf("cannot add different type for a pre-existing code %d", box.vb_uint32);
 		return -1;
 	}
 
 	/*
-	 *	<whew>  Let's go add it in by name, and by code.
+	 *	Add it in.  Note that this function adds it by name
+	 *	and by code.  So we don't *necessarily* have to do the
+	 *	name/code checks above.  But doing so allows us to
+	 *	have better error messages.
 	 */
+	rcode = fr_dict_attr_add(dict_dhcpv4, root, name, box.vb_uint32, type, &flags);
+	if (rcode < 0) return rcode;
 
-	fr_strerror_printf("please implement 'option NAME code NUMBER = DEFINITION'");
-	return -1;
+	/*
+	 *	Caller doesn't need to do anything else with the thing
+	 *	we just parsed.
+	 */
+	return 2;
 }
 
 
@@ -956,7 +968,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 	 *	semicolon after it.
 	 */
 	if (!da->flags.array && !state->saw_semicolon) {
-		fr_strerror_printf("expected ';'");
+		fr_strerror_printf("expected ';' %s", state->ptr);
 		return -1;
 	}
 
@@ -1084,7 +1096,6 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 {
 	int rcode, argc = 0;
 	char *argv[2];
-	fr_dict_attr_t const *da;
 	char name[256 + 5];
 
 	/*
@@ -1120,16 +1131,27 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 *	parse the following options according to the data
 	 *	type.  Which MAY be a "struct" data type, or an
 	 *	"array" data type.
-	 *
-	 *	@todo - nuke this once we have dictionary.isc defined.
 	 */
-	memcpy(name, "DHCP-", 5);
-	strcpy(name + 5, argv[0]);
+	if (state->saw_semicolon) {
+		fr_dict_attr_t const *da;
 
-	da = fr_dict_attr_by_name(dict_dhcpv4, name);
-	if (da) {
-		talloc_free(argv[0]);
-		return parse_option(parent, state, da, argv[1]);
+		da = fr_dict_attr_by_name(dict_dhcpv4, argv[0]);
+		if (da) {
+			talloc_free(argv[0]);
+			return parse_option(parent, state, da, argv[1]);
+		}
+
+		/*
+		 *	@todo - nuke this extra step once we have dictionary.isc defined.
+		 */
+		memcpy(name, "DHCP-", 5);
+		strcpy(name + 5, argv[0]);
+
+		da = fr_dict_attr_by_name(dict_dhcpv4, name);
+		if (da) {
+			talloc_free(argv[0]);
+			return parse_option(parent, state, da, argv[1]);
+		}
 	}
 
 	/*
