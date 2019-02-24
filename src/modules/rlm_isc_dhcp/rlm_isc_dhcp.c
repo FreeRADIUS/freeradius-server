@@ -127,7 +127,8 @@ typedef int (*rlm_isc_dhcp_apply_t)(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_
 
 typedef enum rlm_isc_dhcp_type_t {
 	ISC_INVALID = 0,		//!< we recognize it, but don't implement it
-	ISC_NOOP,			//!< we parse and ignore it
+	ISC_NOOP,			//!< we don't do anything with it
+	ISC_IGNORE,			//!< we deliberately ignore it
 	ISC_GROUP,
 	ISC_HOST,
 	ISC_SUBNET,
@@ -725,6 +726,275 @@ static int parse_include(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 	return 1;
 }
 
+
+typedef struct isc_host_ether_t {
+	uint8_t			ether[6];
+	rlm_isc_dhcp_info_t	*host;
+} isc_host_ether_t;
+
+static uint32_t host_ether_hash(void const *data)
+{
+	isc_host_ether_t const *self = data;
+
+	return fr_hash(self->ether, sizeof(self->ether));
+}
+
+static int host_ether_cmp(void const *one, void const *two)
+{
+	isc_host_ether_t const *a = one;
+	isc_host_ether_t const *b = two;
+
+	return memcmp(a->ether, b->ether, 6);
+}
+
+typedef struct isc_host_client_t {
+	fr_value_box_t		*client;
+	rlm_isc_dhcp_info_t	*host;
+} isc_host_client_t;
+
+static uint32_t host_client_hash(void const *data)
+{
+	isc_host_client_t const *self = data;
+
+	return fr_hash(self->client->vb_octets, self->client->vb_length);
+}
+
+static int host_client_cmp(void const *one, void const *two)
+{
+	isc_host_client_t const *a = one;
+	isc_host_client_t const *b = two;
+
+	if ( a->client->vb_length < b->client->vb_length) return -1;
+	if ( a->client->vb_length > b->client->vb_length) return +1;
+
+	return memcmp(a->client->vb_octets, b->client->vb_octets, a->client->vb_length);
+}
+
+
+/**	option space name [ [ code width number ] [ length width number ] [ hash size number ] ] ;
+ *
+ */
+static int parse_option_space(UNUSED rlm_isc_dhcp_info_t *parent, UNUSED rlm_isc_dhcp_tokenizer_t *state,
+			      UNUSED char *name)
+{
+	// @todo - register the named option space with inst->option_space
+	//	   and create inst->option_space
+	fr_strerror_printf("please implement 'option space name [ [ code width number ] [ length width number ] [ hash size number ] ]'");
+	return -1;
+}
+
+/** option new-name code new-code = definition ;
+ *
+ */
+static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, UNUSED rlm_isc_dhcp_tokenizer_t *state,
+				   UNUSED char *name)
+{
+	fr_strerror_printf("please implement 'option NAME code NUMBER = DEFINITION'");
+	return -1;
+}
+
+
+static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state,
+			fr_dict_attr_t const *da, char *value)
+{
+	int rcode;
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
+
+	/*
+	 *	The attribute isn't an array, so it MUST have a
+	 *	semicolon after it.
+	 */
+	if (!da->flags.array && !state->saw_semicolon) {
+		fr_strerror_printf("unexpected ';'");
+		return -1;
+	}
+
+	vp = fr_pair_afrom_da(parent, da);
+	if (!vp) {
+		fr_strerror_printf("out of memory");
+		talloc_free(value);
+		return -1;
+	}
+
+	(void) fr_pair_cursor_init(&cursor, &parent->options);
+
+	/*
+	 *	Add in the first value.
+	 */
+	rcode = fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, '\0', false);
+	if (rcode < 0) {
+		talloc_free(value);
+		return rcode;
+	}
+
+	vp->op = T_OP_EQ;
+
+	fr_pair_cursor_append(&cursor, vp);
+	(void) fr_pair_cursor_tail(&cursor);
+
+	// @todo - print out ISC names...
+	IDEBUG("%.*s option %s %s ", state->braces, spaces, da->name, value);
+	talloc_free(value);
+
+	/*
+	 *	Hosts are looked up by client identifier, too.
+	 *
+	 *	The client-identifier option exists within the host,
+	 *	BUT we have to add the host to the grandparent of the
+	 *	option.
+	 *
+	 *	Note that we still leave the option in the host option
+	 *	list.  That way the client identifier is always
+	 *	returned to the client, as per RFC 6842.
+	 */
+	if (da == attr_client_identifier && parent->cmd && (parent->cmd->type == ISC_HOST)) {
+		isc_host_client_t *self, *old;
+		rlm_isc_dhcp_info_t *host;
+
+		/*
+		 *	Add our parent (the host) to the hosts parent
+		 *	client identifier hash table.
+		 */
+		host = parent;
+		parent = host->parent;
+		if (!parent) return -1; /* internal error */
+
+		if (!parent->client_identifiers) {
+			parent->client_identifiers = fr_hash_table_create(parent, host_client_hash, host_client_cmp, NULL);
+			if (!parent->client_identifiers) return -1;
+		}
+
+		self = talloc_zero(host, isc_host_client_t);
+		self->client = &vp->data;
+		self->host = host;
+
+		/*
+		 *	Duplicate "client identifier" entries aren't allowd.
+		 *
+		 *	@todo - maybe they are?  And we just apply all of them?
+		 */
+		old = fr_hash_table_finddata(parent->client_identifiers, self);
+		if (old) {
+			fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'option client-identifier' fields",
+					   parent->argv[0]->vb_strvalue, old->host->argv[0]->vb_strvalue);
+			return -1;
+		}
+
+		if (fr_hash_table_insert(parent->client_identifiers, self) < 0) {
+			fr_strerror_printf("Failed inserting 'option client identifier' into parent hash table");
+			return -1;
+		}
+	}
+
+	/*
+	 *	We've remembered the option in the parent option list.
+	 *	There's no need to add it to the child list here.
+	 */
+	if (!da->flags.array) return 2;
+
+	/*
+	 *	For "array" types, loop through the remaining tokens.
+	 */
+	while (!state->saw_semicolon) {
+		rcode = read_token(state, T_DOUBLE_QUOTED_STRING, MAYBE_SEMICOLON, false);
+		if (rcode <= 0) return rcode;
+
+		rcode = fr_pair_value_from_str(vp, state->token, state->token_len, '\0', false);
+		if (rcode < 0) return rcode;
+
+		vp->op = T_OP_EQ;
+
+		fr_pair_cursor_append(&cursor, vp);
+		(void) fr_pair_cursor_tail(&cursor);
+
+		// @todo - print out ISC names...
+		IDEBUG("%.*s option %s %.*ss ", state->braces, spaces, da->name, state->token_len, state->token);
+	}
+
+	/*
+	 *	We've remembered the option in the parent option list.
+	 *	There's no need to add it to the child list here.
+	 */
+	return 2;
+}
+
+/** Parse "option" command
+ *
+ *	In any sane system, commands which do different things should
+ *	have different names.  In this syntax, it's all miracles and
+ *	unicorns.
+ *
+ *	option NAME VALUE ;
+ *	option new-name code new-code = definition ;
+ *
+ *	option space name [ [ code width number ] [ length width number ] [ hash size number ] ] ;
+ */
+static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state)
+{
+	int rcode, argc = 0;
+	char *argv[2];
+	fr_dict_attr_t const *da;
+	char name[256 + 5];
+
+	/*
+	 *	Since read_token() mashes the input buffer, we have to save the tokens somewhere.
+	 */
+	while (!state->saw_semicolon) {
+		rcode = read_token(state, T_BARE_WORD, MAYBE_SEMICOLON, false);
+		if (rcode < 0) return rcode;
+
+		argv[argc++] = talloc_strndup(parent, state->token, state->token_len);
+
+		if (argc == 2) break;
+	}
+
+	/*
+	 *	Must have at least two arguments.
+	 */
+	if (argc < 2) {
+		fr_strerror_printf("unexpected ';'");
+		return -1;
+	}
+
+	/*
+	 *	Define an option space.
+	 */
+	if (strcmp(argv[0], "space") == 0) {
+		talloc_free(argv[0]);
+		return parse_option_space(parent, state, argv[1]);
+	}
+
+	/*
+	 *	Look up the name.  If the option is defined, then
+	 *	parse the following options according to the data
+	 *	type.  Which MAY be a "struct" data type, or an
+	 *	"array" data type.
+	 */
+	memcpy(name, "DHCP-", 5);
+	strcpy(name + 5, argv[0]);
+
+	da = fr_dict_attr_by_name(dict_dhcpv4, name);
+	if (da) {
+		talloc_free(argv[0]);
+		return parse_option(parent, state, da, argv[1]);
+	}
+
+	/*
+	 *	The NAME isn't a known option.
+	 *
+	 *	It must be "option NAME code NUMBER = DEFINITION"
+	 */
+	if (strcmp(argv[1], "code") != 0) {
+		fr_strerror_printf("invalid syntax in 'option' statement");
+		return -1;
+	}
+
+	talloc_free(argv[1]);
+	return parse_option_definition(parent, state, argv[0]);
+}
+
+
 static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_cmd_t const *tokens, int num_tokens)
 {
 	int start, end, half;
@@ -801,6 +1071,14 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 
 	rad_assert(half >= 0);
 
+	/*
+	 *	"option" has multiple parse possibilities, so we treat
+	 *	it specially.
+	 */
+	if (tokens[half].type == ISC_OPTION) {
+		return parse_options(parent, state);
+	}
+
 	semicolon = YES_SEMICOLON; /* default to always requiring this */
 
 	DDEBUG("... TOKEN %.*s ", state->token_len, state->token);
@@ -838,15 +1116,13 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 */
 	if ((semicolon == NO_SEMICOLON) && state->saw_semicolon) {
 	unexpected:
-		fr_strerror_printf("Syntax error in %s at line %d: Unexpected ';'",
-				   state->filename, state->lineno);
+		fr_strerror_printf("unexpected ';'");
 		talloc_free(info);
 		return -1;
 	}
 
 	if ((semicolon == YES_SEMICOLON) && !state->saw_semicolon) {
-		fr_strerror_printf("Syntax error in %s at line %d: Missing ';'",
-				   state->filename, state->lineno);
+		fr_strerror_printf("missing ';'");
 		talloc_free(info);
 		return -1;
 	}
@@ -896,48 +1172,6 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	return 1;
 }
 
-typedef struct isc_host_ether_t {
-	uint8_t			ether[6];
-	rlm_isc_dhcp_info_t	*host;
-} isc_host_ether_t;
-
-static uint32_t host_ether_hash(void const *data)
-{
-	isc_host_ether_t const *self = data;
-
-	return fr_hash(self->ether, sizeof(self->ether));
-}
-
-static int host_ether_cmp(void const *one, void const *two)
-{
-	isc_host_ether_t const *a = one;
-	isc_host_ether_t const *b = two;
-
-	return memcmp(a->ether, b->ether, 6);
-}
-
-typedef struct isc_host_client_t {
-	fr_value_box_t		*client;
-	rlm_isc_dhcp_info_t	*host;
-} isc_host_client_t;
-
-static uint32_t host_client_hash(void const *data)
-{
-	isc_host_client_t const *self = data;
-
-	return fr_hash(self->client->vb_octets, self->client->vb_length);
-}
-
-static int host_client_cmp(void const *one, void const *two)
-{
-	isc_host_client_t const *a = one;
-	isc_host_client_t const *b = two;
-
-	if ( a->client->vb_length < b->client->vb_length) return -1;
-	if ( a->client->vb_length > b->client->vb_length) return +1;
-
-	return memcmp(a->client->vb_octets, b->client->vb_octets, a->client->vb_length);
-}
 
 static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
@@ -1007,123 +1241,6 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 
 	/*
 	 *	We've remembered the host in the parent hosts hash.
-	 *	There's no need to add it to the child list here.
-	 */
-	return 2;
-}
-
-static int parse_option(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
-{
-	int i, rcode;
-	VALUE_PAIR *vp;
-	fr_dict_attr_t const *da;
-	vp_cursor_t cursor;
-	rlm_isc_dhcp_info_t *parent;
-	char name[256 + 5];
-
-	/*
-	 *	Add the option to the *parents* option list.  That way
-	 *	when we apply the parent, we just copy all of the VPs
-	 *	instead of walking through the children.
-	 */
-	parent = info->parent;
-
-	memcpy(name, "DHCP-", 5);
-	memcpy(name + 5, info->argv[0]->vb_strvalue, info->argv[0]->vb_length + 1);
-
-	da = fr_dict_attr_by_name(dict_dhcpv4, name);
-	if (!da) {
-		fr_strerror_printf("unknown option '%s'", info->argv[0]->vb_strvalue);
-		return -1;
-	}
-
-	if ((info->argc > 2) && !da->flags.array) {
-		fr_strerror_printf("option '%s' cannot have multiple values", info->argv[0]->vb_strvalue);
-		return -1;
-	}
-
-	vp = fr_pair_afrom_da(parent, da);
-	if (!vp) {
-		fr_strerror_printf("out of memory");
-		return -1;
-	}
-
-	(void) fr_pair_cursor_init(&cursor, &parent->options);
-
-	/*
-	 *	Add in all of the options
-	 */
-	for (i = 1; i < info->argc; i++) {
-		rcode = fr_pair_value_from_str(vp, info->argv[1]->vb_strvalue, info->argv[1]->vb_length,
-					       '\0', false);
-		if (rcode < 0) return rcode;
-
-		vp->op = T_OP_EQ;
-
-		fr_pair_cursor_append(&cursor, vp);
-		(void) fr_pair_cursor_tail(&cursor);
-
-		IDEBUG("%.*s option %s %s ", state->braces, spaces, info->argv[1]->vb_strvalue, info->argv[1]->vb_strvalue);
-	}
-
-	/*
-	 *	Hosts are looked up by client identifier, too.
-	 *
-	 *	The client-identifier option exists within the host,
-	 *	BUT we have to add the host to the grandparent of the
-	 *	option.
-	 *
-	 *	Note that we still leave the option in the parents
-	 *	option list.  That way the client identifier is always
-	 *	returned to the client, as per RFC 6842.
-	 */
-	if (da == attr_client_identifier && parent->cmd && (parent->cmd->type == ISC_HOST)) {
-		isc_host_client_t *self, *old;
-		rlm_isc_dhcp_info_t *host;
-
-		/*
-		 *	Add our parent (the host) to the hosts parent
-		 *	client identifier hash table.
-		 */
-		host = parent;
-		parent = host->parent;
-		if (!parent) goto done; /* internal error */
-
-		if (!parent->client_identifiers) {
-			parent->client_identifiers = fr_hash_table_create(parent, host_client_hash, host_client_cmp, NULL);
-			if (!parent->client_identifiers) return -1;
-		}
-
-		self = talloc_zero(host, isc_host_client_t);
-		self->client = &vp->data;
-		self->host = host;
-
-		/*
-		 *	Duplicate "client identifier" entries aren't allowd.
-		 *
-		 *	@todo - maybe they are?  And we just apply all of them?
-		 */
-		old = fr_hash_table_finddata(parent->client_identifiers, self);
-		if (old) {
-			fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'option client-identifier' fields",
-					   info->argv[0]->vb_strvalue, old->host->argv[0]->vb_strvalue);
-			return -1;
-		}
-
-		if (fr_hash_table_insert(parent->client_identifiers, self) < 0) {
-			fr_strerror_printf("Failed inserting 'option client identifier' into parent hash table");
-			return -1;
-		}
-	}
-
-done:
-	/*
-	 *	We don't need this any more.
-	 */
-	talloc_free(info);
-
-	/*
-	 *	We've remembered the option in the parent option list.
 	 *	There's no need to add it to the child list here.
 	 */
 	return 2;
@@ -1506,7 +1623,9 @@ recurse:
 	return rcode;
 }
 
-#define isc_not_done ISC_NOOP, NULL, NULL
+#define isc_not_done	ISC_NOOP, NULL, NULL
+#define isc_ignore	ISC_IGNORE, NULL, NULL
+#define isc_invalid	ISC_INVALID, NULL, NULL
 
 
 /** Table of commands that we allow.
@@ -1520,9 +1639,10 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "always-broadcast BOOL",		isc_not_done, 1},
 	{ "always-reply-rfc1048 BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "authoritative",			isc_not_done, 0},
-	{ "bind-local-address6 BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "bind-local-address6 BOOL", 		isc_ignore,   1}, // boolean can be true, false or ignore
 	{ "boot-unknown-clients BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "check-secs-byte-order BOOL",        	isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "class STRING SECTION",       		isc_invalid,  1}, // put systems into different classes
 	{ "client-updates BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "ddns-domainname STRING", 		isc_not_done, 1}, // text string
 	{ "ddns-dual-stack-mixed-mode BOOL",   	isc_not_done, 1}, // boolean can be true, false or ignore
@@ -1537,10 +1657,10 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "ddns-updates BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "declines BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "default-lease-time INTEGER", 	isc_not_done, 1},
-	{ "delayed-ack UINT16",			isc_not_done, 1},
+	{ "delayed-ack UINT16",			isc_invalid,  1},
 	{ "dhcp-cache-threshold UINT8",        	isc_not_done, 1}, // integer uint8_t
-	{ "dhcpv6-lease-file-name STRING",     	isc_not_done, 1}, // text string
-	{ "dhcpv6-pid-file-name STRING",       	isc_not_done, 1}, // text string
+	{ "dhcpv6-lease-file-name STRING",     	isc_ignore,   1}, // text string
+	{ "dhcpv6-pid-file-name STRING",       	isc_ignore,   1}, // text string
 	{ "dhcpv6-set-tee-times BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "do-forward-updates BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "do-reverse-updates BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
@@ -1560,68 +1680,77 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "ignore-client-uids BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "include STRING",			ISC_NOOP, parse_include, NULL, 1},
 	{ "infinite-is-reserved BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "ldap-base-dn STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-debug-file STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-dhcp-server-cn STRING", 	isc_not_done, 1}, // text string
-	{ "ldap-gssapi-keytab STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-gssapi-principal STRING", 	isc_not_done, 1}, // text string
-	{ "ldap-init-retry STRING", 		isc_not_done, 1}, // domain name
-	{ "ldap-method STRING,", 		isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-password STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-port STRING", 			isc_not_done, 1}, // domain name
-	{ "ldap-referrals BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "ldap-server STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-ssl STRING,", 			isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-tls-ca-dir STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-tls-ca-file STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-tls-cert STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-tls-ciphers STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-tls-crlcheck STRING,", 		isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-tls-key STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-tls-randfile STRING", 		isc_not_done, 1}, // text string
-	{ "ldap-tls-reqcert STRING,", 		isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "ldap-username STRING", 		isc_not_done, 1}, // text string
-	{ "lease-file-name STRING", 		isc_not_done, 1}, // text string
+
+	/*
+	 *	Group configuration into sections?  Why the heck would
+	 *	we do that?  A flat name space worked for Fortran 77.
+	 *	It should be good enough for us here.
+	 */
+	{ "ldap-base-dn STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-debug-file STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-dhcp-server-cn STRING", 	isc_ignore,   1}, // text string
+	{ "ldap-gssapi-keytab STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-gssapi-principal STRING", 	isc_ignore,   1}, // text string
+	{ "ldap-init-retry STRING", 		isc_ignore,   1}, // domain name
+	{ "ldap-method STRING,", 		isc_ignore,   1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-password STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-port STRING", 			isc_ignore,   1}, // domain name
+	{ "ldap-referrals BOOL", 		isc_ignore,   1}, // boolean can be true, false or ignore
+	{ "ldap-server STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-ssl STRING,", 			isc_ignore,   1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-tls-ca-dir STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-tls-ca-file STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-tls-cert STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-tls-ciphers STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-tls-crlcheck STRING,", 		isc_ignore,   1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "ldap-tls-key STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-tls-randfile STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-tls-reqcert STRING,", 		isc_ignore,   1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+
+	{ "ldap-username STRING", 		isc_ignore,   1}, // text string
+	{ "lease-file-name STRING", 		isc_ignore,   1}, // text string
 	{ "leasequery BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "limit-addrs-per-ia UINT32", 		isc_not_done, 1}, // integer uint32_t
 	{ "limit-prefs-per-ia UINT32", 		isc_not_done, 1}, // integer uint32_t
 	{ "limited-broadcast-address IPADDR", 	isc_not_done, 1}, // ipaddr or hostname
-	{ "local-address IPADDR", 		isc_not_done, 1}, // ipaddr or hostname
-	{ "local-address6 IPADDR6", 		isc_not_done, 1}, // ipv6 addr
-	{ "local-port UINT16", 			isc_not_done, 1}, // integer uint16_t
-	{ "log-facility STRING,", 		isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-	{ "log-threshold-high UINT8", 		isc_not_done, 1}, // integer uint8_t
-	{ "log-threshold-low UINT8", 		isc_not_done, 1}, // integer uint8_t
-	{ "max-ack-delay UINT32",		isc_not_done, 1},
+	{ "local-address IPADDR", 		isc_ignore,   1}, // ipaddr or hostname
+	{ "local-address6 IPADDR6", 		isc_ignore,   1}, // ipv6 addr
+	{ "local-port UINT16", 			isc_ignore,   1}, // integer uint16_t
+	{ "log-facility STRING,", 		isc_ignore,   1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
+	{ "log-threshold-high UINT8", 		isc_ignore,   1}, // integer uint8_t
+	{ "log-threshold-low UINT8", 		isc_ignore,   1}, // integer uint8_t
+	{ "match",				isc_invalid,  0}, // we don't do this at all yet
+	{ "max-ack-delay UINT32",		isc_invalid,  1},
 	{ "max-lease-time INTEGER",		isc_not_done, 1},
 	{ "min-lease-time INTEGER",		isc_not_done, 1},
 	{ "min-secs UINT8", 			isc_not_done, 1}, // integer uint8_t
 	{ "next-server IPADDR", 		isc_not_done, 1}, // ipaddr or hostname
 	{ "not authoritative",			isc_not_done, 0},
-	{ "omapi-key STRING", 			isc_not_done, 1}, // domain name
-	{ "omapi-port UINT16", 			isc_not_done, 1}, // integer uint16_t
+	{ "omapi-key STRING", 			isc_ignore,   1}, // domain name
+	{ "omapi-port UINT16", 			isc_ignore,   1}, // integer uint16_t
 	{ "one-lease-per-client BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "option STRING STRING,",		ISC_OPTION, parse_option, NULL, 16},
-	{ "pid-file-name STRING", 		isc_not_done, 1}, // text string
+	{ "option STRING STRING,",		ISC_OPTION, NULL, NULL, 16},
+	{ "pid-file-name STRING", 		isc_ignore, 1}, // text string
 	{ "ping-check BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "ping-timeout UINT32", 		isc_not_done, 1}, // Lease time interval
+	{ "pool SECTION",			isc_invalid, 0}, // sub pools
 	{ "preferred-lifetime UINT32", 		isc_not_done, 1}, // Lease time interval
 	{ "prefix-length-mode STRING,",        	isc_not_done, 1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
 	{ "range IPADDR IPADDR",		isc_not_done, 2},
 	{ "release-on-roam BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "remote-port UINT16", 		isc_not_done, 1}, // integer uint16_t
+	{ "remote-port UINT16", 		isc_ignore,   1}, // integer uint16_t
 	{ "server-id-check BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "server-name STRING", 		isc_not_done, 1}, // text string
 	{ "shared-network STRING SECTION",	isc_not_done, 1},
-	{ "site-option-space RAW", 		isc_not_done, 1}, // vendor option declaration statement
+	{ "site-option-space STRING", 		isc_invalid,  1}, // vendor option declaration statement
 	{ "stash-agent-options BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "subnet IPADDR netmask IPADDR SECTION", ISC_SUBNET, parse_subnet, NULL, 2},
 	{ "update-conflict-detection BOOL", 	isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "update-optimization BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "update-static-leases BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "use-host-decl-names BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "use-lease-addr-for-default-route BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "vendor-option-space RAW", 		isc_not_done, 1}, // vendor option declaration
+	{ "use-lease-addr-for-default-route BOOL", isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "vendor-option-space STRING",		isc_invalid,  1}, // vendor option declaration
 };
 
 /** Parse a section { ... }
@@ -1728,7 +1857,7 @@ static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool deb
 	*state.ptr = '\0';
 
 	while (true) {
-		rcode = read_token(&state, T_BARE_WORD, true, false);
+		rcode = read_token(&state, T_BARE_WORD, YES_SEMICOLON, false);
 		if (rcode < 0) {
 		fail:
 			if (!state.token) {
