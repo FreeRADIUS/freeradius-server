@@ -869,6 +869,7 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 
 	if ((state->token_len != 1) || (state->token[0] != '=')) {
 		fr_strerror_printf("expected '=' after code definition got '%.*s'", state->token_len, state->token);
+		talloc_free(name);
 		return -1;
 	}
 
