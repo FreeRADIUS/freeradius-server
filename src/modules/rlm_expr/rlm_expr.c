@@ -505,26 +505,40 @@ redo:
 /*
  *  Do xlat of strings!
  */
-static ssize_t expr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+static xlat_action_t expr_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+			REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			fr_value_box_t **in)
 {
 	int64_t		result;
 	char const 	*p;
+	fr_value_box_t	*vb;
 
-	p = fmt;
+	if (!*in) {
+		REDEBUG("xlat requires arguments. e.g: 2 + 3");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		REDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	p = (*in)->vb_strvalue;
 
 	if (!get_expression(request, &p, &result, TOKEN_NONE)) {
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	if (*p) {
 		REDEBUG("Invalid text after expression: %s", p);
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
-	snprintf(*out, outlen, "%lld", (long long int) result);
-	return strlen(*out);
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+	vb->vb_int64 = result;
+	fr_cursor_insert(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /*
@@ -537,16 +551,22 @@ static ssize_t expr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
+static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_expr_t);
+	return 0;
+}
+
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_expr_t *inst = instance;
+	xlat_t const *xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
-	}
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
-	xlat_register(inst, inst->xlat_name, expr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat = xlat_async_register(inst, inst->xlat_name, expr_xlat);
+	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_expr_t *, NULL, inst);
 
 	return 0;
 }
@@ -565,5 +585,6 @@ rad_module_t rlm_expr = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "expr",
 	.inst_size	= sizeof(rlm_expr_t),
+
 	.bootstrap	= mod_bootstrap,
 };
