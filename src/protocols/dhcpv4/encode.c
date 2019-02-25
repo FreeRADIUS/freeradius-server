@@ -109,6 +109,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	if (outlen < vp->vp_length) return -1;	/* Not enough output buffer space. */
 
 	switch (tlv_stack[depth]->type) {
+	case FR_TYPE_BOOL:
 	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
