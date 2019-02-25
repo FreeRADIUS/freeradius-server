@@ -2743,7 +2743,9 @@ void tls_global_cleanup(void)
 #elif OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 	ERR_remove_thread_state(NULL);
 #endif
+#ifndef OPENSSL_NO_ENGINE
 	ENGINE_cleanup();
+#endif
 	CONF_modules_unload(1);
 	ERR_free_strings();
 	EVP_cleanup();
