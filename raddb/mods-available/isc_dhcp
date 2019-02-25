@@ -40,6 +40,14 @@ isc_dhcp {
 	filename = ${moddir}/dhcpd.conf
 
 	#
+	#  pedantic:: Tells the parser to adhere strictly to the
+	#  ISC dhcp supported config options.
+	#
+	#  Default is `yes`.
+	#
+#	pedantic = no
+
+	#
 	#  debug:: For developers, we print out what we're parsing.
 	#
 	debug = true

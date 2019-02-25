@@ -67,6 +67,7 @@ typedef struct {
 	char const		*name;
 	char const		*filename;
 	bool			debug;
+	bool 			pedantic;
 	rlm_isc_dhcp_info_t	*head;
 } rlm_isc_dhcp_t;
 
@@ -76,6 +77,7 @@ typedef struct {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_isc_dhcp_t, filename) },
 	{ FR_CONF_OFFSET("debug", FR_TYPE_BOOL, rlm_isc_dhcp_t, debug) },
+	{ FR_CONF_OFFSET("pedantic", FR_TYPE_BOOL, rlm_isc_dhcp_t, pedantic), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -110,6 +112,7 @@ typedef struct rlm_isc_dhcp_tokenizer_t {
 	bool		eof;		//!< are we at EOF?
 	bool		allow_eof;	//!< do we allow EOF?  (i.e. braces == 0)
 	bool		debug;		//!< internal developer debugging
+	bool 		pedantic;	//!< load the config file without ignoring unsupported options
 
 	char		*buffer;	//!< read buffer
 	size_t		bufsize;	//!< size of read buffer
@@ -176,7 +179,7 @@ struct rlm_isc_dhcp_info_t {
 	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
 };
 
-static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug);
+static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug, bool pedantic);
 static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
 
 static char const *spaces = "                                                                                ";
@@ -498,7 +501,6 @@ redo:
 		}
 	}
 
-
 	return 1;
 }
 
@@ -721,7 +723,7 @@ static int parse_include(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 	 *	Note that we read the included file into the PARENT's
 	 *	list.  i.e. as if the file was included in-place.
 	 */
-	rcode = read_file(info->parent, name, state->debug);
+	rcode = read_file(info->parent, name, state->debug, state->pedantic);
 	if (rcode < 0) return rcode;
 
 	/*
@@ -1363,6 +1365,22 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		 *	processing of it fairly minor.
 		 */
 		if (rcode == 2) return 1;
+	} else {
+		//	The 'commands[]' without 'parse()' usually are invalid, noop or ignored.
+		if (tokens[half].type == ISC_INVALID) {
+			ERROR("%s:[%d] %s (We don't do anything with it)",
+					state->filename, state->lineno, info->cmd->name);
+			return -1;
+		}
+		if (tokens[half].type == ISC_NOOP) {
+			WARN("%s:[%d] %s (We recognize it, but don't implement it)",
+					state->filename, state->lineno, info->cmd->name);
+		} else if (tokens[half].type == ISC_IGNORE) {
+			WARN("%s:[%d] %s (We recognize it, but we ignore it)",
+					state->filename, state->lineno, info->cmd->name);
+		}
+
+		if (state->pedantic) return -2;
 	}
 
 	/*
@@ -2024,7 +2042,7 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 /** Open a file and read it into a parent.
  *
  */
-static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug)
+static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug, bool pedantic)
 {
 	int rcode;
 	FILE *fp;
@@ -2056,6 +2074,7 @@ static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool deb
 	state.token = NULL;
 
 	state.debug = debug;
+	state.pedantic = pedantic;
 	state.allow_eof = true;
 
 	/*
@@ -2113,7 +2132,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	inst->head = info = talloc_zero(inst, rlm_isc_dhcp_info_t);
 	info->last = &(info->child);
 
-	rcode = read_file(info, inst->filename, inst->debug);
+	if (inst->pedantic) {
+		WARN("isc_dhcp: Pedantic mode is on, all unsuported/ignored options will terminate the execution.");
+	}
+
+	rcode = read_file(info, inst->filename, inst->debug, inst->pedantic);
 	if (rcode < 0) {
 		cf_log_err(conf, "%s", fr_strerror());
 		return -1;
