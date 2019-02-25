@@ -80,6 +80,13 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Update dictionary.ukerna documentation.  Fixes #2493
 	* Add support for systemd service and watchdogs.
 	  Fixes #2499.
+	* Check for openss/rand.h, and allow building without
+	  OpenSSL engine.  Patch from Eneas U de Queiroz.
+	  Fixes #2517.
+	* The default PosgtreSQL queries now use "ON CONFLICT"
+	  to better deal with issues.  This requires PostgreSQL
+	  9.5 or later.  Please use a recent version of PostgreSQL,
+	  or edit the default queries to remove "ON CONFLICT".
 
 	Bug fixes
 	* The session-state list is no longer cleaned in the
@@ -144,6 +151,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Fix rlm_cache to properly use Cache-TTL < 0.
 	  Fixes #2485.
 	* Fix rare occurance of bad xlat expansion.
+	* Check for rare race condition when a proxy reply
+	  arrives too late.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
