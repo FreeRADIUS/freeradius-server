@@ -100,6 +100,7 @@ static const CONF_PARSER module_config[] = {
  *
  */
 typedef struct rlm_isc_dhcp_tokenizer_t {
+	rlm_isc_dhcp_t	*inst;		//!< module instance
 	FILE		*fp;
 	char const	*filename;
 	int		lineno;
@@ -176,7 +177,7 @@ struct rlm_isc_dhcp_info_t {
 	rlm_isc_dhcp_info_t	**last;		//!< pointer to last child
 };
 
-static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug);
+static int read_file(rlm_isc_dhcp_t *inst, rlm_isc_dhcp_info_t *parent, char const *filename);
 static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info);
 
 static char const *spaces = "                                                                                ";
@@ -721,7 +722,7 @@ static int parse_include(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 	 *	Note that we read the included file into the PARENT's
 	 *	list.  i.e. as if the file was included in-place.
 	 */
-	rcode = read_file(info->parent, name, state->debug);
+	rcode = read_file(state->inst, info->parent, name);
 	if (rcode < 0) return rcode;
 
 	/*
@@ -2038,7 +2039,7 @@ static int parse_section(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *i
 /** Open a file and read it into a parent.
  *
  */
-static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool debug)
+static int read_file(rlm_isc_dhcp_t *inst, rlm_isc_dhcp_info_t *parent, char const *filename)
 {
 	int rcode;
 	FILE *fp;
@@ -2059,6 +2060,7 @@ static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool deb
 	}
 
 	memset(&state, 0, sizeof(state));
+	state.inst = inst;
 	state.fp = fp;
 	state.filename = filename;
 	state.buffer = buffer;
@@ -2069,7 +2071,7 @@ static int read_file(rlm_isc_dhcp_info_t *parent, char const *filename, bool deb
 	state.ptr = buffer;
 	state.token = NULL;
 
-	state.debug = debug;
+	state.debug = inst->debug;
 	state.allow_eof = true;
 
 	/*
@@ -2127,7 +2129,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	inst->head = info = talloc_zero(inst, rlm_isc_dhcp_info_t);
 	info->last = &(info->child);
 
-	rcode = read_file(info, inst->filename, inst->debug);
+	rcode = read_file(inst, info, inst->filename);
 	if (rcode < 0) {
 		cf_log_err(conf, "%s", fr_strerror());
 		return -1;
