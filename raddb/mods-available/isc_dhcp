@@ -43,4 +43,31 @@ isc_dhcp {
 	#  debug:: For developers, we print out what we're parsing.
 	#
 	debug = true
+
+	#
+	#  pedantic:: Be harsh or forgiving about what we parse
+	#
+	#  The `isc_dhcp` module implements only a small subset of the
+	#  ISC DHCP configuration file commands.  However, the module
+	#  *parses* just about everything that is allowable in the ISC
+	#  DHCP configuration.
+	#
+	#  The goal here is to allow an easy migration from ISC DHCP
+	#  to FreeRADIUS, by just copying over "dhcpd.conf".
+	#  FreeRADIUS will at least start, instead of complaining
+	#  about everything.
+	#
+	#  If `pedantic = true`, then the module will fail with an
+	#  error when it sees a command it knows it can't implement.
+	#  The module will also issue warnings for commands which are
+	#  ignored (e.g. OMAPI ones, "listen on port X", and similar).
+	#  The module will also issue warnings for commands which
+	#  should be implemented at some point.
+	#
+	#  If a command does not produce any errors or warnings, it is
+	#  implemented and supported.
+	#
+	#  The default is `pedantic = false`
+	#
+#	pedantic = true
 }

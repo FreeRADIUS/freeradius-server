@@ -67,6 +67,7 @@ typedef struct {
 	char const		*name;
 	char const		*filename;
 	bool			debug;
+	bool			pedantic;
 	rlm_isc_dhcp_info_t	*head;
 } rlm_isc_dhcp_t;
 
@@ -76,6 +77,7 @@ typedef struct {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_isc_dhcp_t, filename) },
 	{ FR_CONF_OFFSET("debug", FR_TYPE_BOOL, rlm_isc_dhcp_t, debug) },
+	{ FR_CONF_OFFSET("pedantic", FR_TYPE_BOOL, rlm_isc_dhcp_t, pedantic) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1299,6 +1301,34 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 */
 	if (tokens[half].type == ISC_OPTION) {
 		return parse_options(parent, state);
+	}
+
+	/*
+	 *	Print out more warnings / errors in pedantic mode.
+	 */
+	if (state->inst->pedantic && !tokens[half].parse) {
+		if (tokens[half].type == ISC_INVALID) {
+			ERROR("Command '%.*s' is not supported.",
+			      state->token_len, state->token);
+			return -1;
+		}
+
+		/*
+		 *	Print out WARNING messages only in debug mode.
+		 *	We don't need to spam the main log file every
+		 *	time the server starts.
+		 */
+		if (rad_debug_lvl) {
+			if (tokens[half].type == ISC_NOOP) {
+				WARN("Command '%.*s' is not yet implemented.",
+				     state->token_len, state->token);
+			}
+
+			if (tokens[half].type == ISC_IGNORE) {
+				WARN("Ignoring command '%.*s'.  It is not relevant.",
+				     state->token_len, state->token);
+			}
+		}
 	}
 
 	semicolon = YES_SEMICOLON; /* default to always requiring this */
