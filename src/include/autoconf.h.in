@@ -306,6 +306,9 @@
 /* Define to 1 if you have the <openssl/ocsp.h> header file. */
 #undef HAVE_OPENSSL_OCSP_H
 
+/* Define to 1 if you have the <openssl/rand.h> header file. */
+#undef HAVE_OPENSSL_RAND_H
+
 /* Define to 1 if you have the <openssl/sha.h> header file. */
 #undef HAVE_OPENSSL_SHA_H
 

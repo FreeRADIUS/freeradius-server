@@ -1222,6 +1222,7 @@ if test "x$WITH_OPENSSL" = xyes; then
       openssl/hmac.h \
       openssl/md5.h \
       openssl/md4.h \
+      openssl/rand.h \
       openssl/sha.h \
       openssl/ssl.h \
       openssl/ocsp.h \
