@@ -134,7 +134,7 @@ build-indep: patch build-indep-stamp
 build-indep-stamp: config.status
 	touch $@
 
-clean: unpatch
+clean: debian/control unpatch
 	dh_testdir
 	dh_testroot
 	rm -f build-arch-stamp build-indep-stamp
@@ -156,6 +156,8 @@ ifeq (config.guess.dist,$(wildcard config.guess.dist))
 	rm -f config.guess
 	mv config.guess.dist config.guess
 endif
+	# distclean destroys debian/control, however we need it for dh_clean
+	$(MAKE) -f debian/rules debian/control
 	dh_clean
 
 install: install-arch
