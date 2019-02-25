@@ -8,7 +8,7 @@
 #
 #  = isc_dhcp Module
 #
-#  The `isc_dhcp` module reads ISC DHCO configuration files.
+#  The `isc_dhcp` module reads ISC DHCP configuration files.
 #
 #  When the module is listed in the `recv DHCP-Discover` section, as
 #  "isc_dhcp.authorize" (sorry), it will look up the client by
