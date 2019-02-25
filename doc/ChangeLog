@@ -144,6 +144,8 @@ FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	* Fix rlm_cache to properly use Cache-TTL < 0.
 	  Fixes #2485.
 	* Fix rare occurance of bad xlat expansion.
+	* Allow build with no openssl engine support.
+	  Fixes #2517
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
