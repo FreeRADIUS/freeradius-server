@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
+FreeRADIUS 3.0.18 Mon 25 Feb 2019 15:00:00 EST urgency=low
 	Feature improvements
 	* cleanup_delay can now be 30 seconds.  This helps
 	  with proxies that have packet loss.
