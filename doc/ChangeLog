@@ -1,3 +1,7 @@
+FreeRADIUS 3.0.19 Mon 25 Feb 2019 15:00:00 EST urgency=low
+	Feature improvements
+	Bug fixes
+
 FreeRADIUS 3.0.18 Mon 25 Feb 2019 15:00:00 EST urgency=low
 	Feature improvements
 	* cleanup_delay can now be 30 seconds.  This helps
