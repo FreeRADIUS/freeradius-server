@@ -46,7 +46,7 @@ extern fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[];
 fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
 	{ .out = &attr_client_hardware_address, .name = "DHCP-Client-Hardware-Address", .type = FR_TYPE_ETHERNET, .dict = &dict_dhcpv4},
 	{ .out = &attr_your_ip_address, .name = "DHCP-Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
-	{ .out = &attr_client_identifier, .name = "DHCP-Client-IDentifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4},
+	{ .out = &attr_client_identifier, .name = "DHCP-Client-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4},
 	{ NULL }
 };
 
@@ -1216,6 +1216,11 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	half = -1;
 
 	/*
+	 *	There are no super-short commands.
+	 */
+	if (state->token_len < 4) goto unknown;
+
+	/*
 	 *	Walk over the input token, doing a binary search on
 	 *	the token list.
 	 */
@@ -1224,9 +1229,16 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 
 		/*
 		 *	Skips a function call, and is better for 99%
-		 *	of the situations.
+		 *	of the situations.  Since there are no 1 or 2
+		 *	character keywords, this always works.
 		 */
 		rcode = state->token[0] - tokens[half].name[0];
+		if (rcode != 0) goto recurse;
+
+		rcode = state->token[1] - tokens[half].name[1];
+		if (rcode != 0) goto recurse;
+
+		rcode = state->token[2] - tokens[half].name[2];
 		if (rcode != 0) goto recurse;
 
 		/*
@@ -1273,6 +1285,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 *	Nothing matched, it's a failure.
 	 */
 	if (!q) {
+	unknown:
 		fr_strerror_printf("unknown command '%.*s'", state->token_len, state->token);
 		return -1;
 	}
