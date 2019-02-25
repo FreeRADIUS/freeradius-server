@@ -837,7 +837,6 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	p = strchr(name, '.');
 	if (p) {
 		fr_strerror_printf("cannot (yet) define options in spaces");
-		talloc_free(name);
 		return -1;
 	}
 
@@ -846,7 +845,6 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 */
 	rcode = read_token(state, T_BARE_WORD, NO_SEMICOLON, false);
 	if (rcode <= 0) {
-		talloc_free(name);
 		return rcode;
 	}
 
@@ -854,7 +852,6 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	rcode = fr_value_box_from_str(NULL, &box, &type, NULL,
 				      state->token, state->token_len, 0, false);
 	if (rcode < 0) {
-		talloc_free(name);
 		return -1;
 	}
 
@@ -863,13 +860,11 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 */
 	rcode = read_token(state, T_BARE_WORD, NO_SEMICOLON, false);
 	if (rcode <= 0) {
-		talloc_free(name);
 		return rcode;
 	}
 
 	if ((state->token_len != 1) || (state->token[0] != '=')) {
 		fr_strerror_printf("expected '=' after code definition got '%.*s'", state->token_len, state->token);
-		talloc_free(name);
 		return -1;
 	}
 
@@ -888,7 +883,6 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 */
 	rcode = read_token(state, T_BARE_WORD, MAYBE_SEMICOLON, false);
 	if (rcode <= 0) {
-		talloc_free(name);
 		return rcode;
 	}
 
@@ -897,14 +891,12 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 
 		rcode = read_token(state, T_BARE_WORD, NO_SEMICOLON, false);
 		if (rcode <= 0) {
-			talloc_free(name);
 			return rcode;
 		}
 
 		if (! ((state->token_len == 2) && (memcmp(state->token, "of", 2) == 0))) {
 			fr_strerror_printf("expected 'array of', not 'array %.*s'",
 					   state->token_len, state->token);
-			talloc_free(name);
 			return -1;
 		}
 
@@ -913,14 +905,12 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 		 */
 		rcode = read_token(state, T_BARE_WORD, YES_SEMICOLON, false);
 		if (rcode <= 0) {
-			talloc_free(name);
 			return rcode;
 		}
 	}
 
 	if ((state->token_len == 1) && (state->token[0] == '{')) {
 		fr_strerror_printf("records are not supported in option definition");
-		talloc_free(name);
 		return -1;
 	}
 
@@ -932,13 +922,11 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 */
 	if (!state->saw_semicolon) {
 		fr_strerror_printf("expected ';'");
-		talloc_free(name);
 		return -1;
 	}
 
 	type = isc2fr_type(state);
 	if (type == FR_TYPE_INVALID) {
-		talloc_free(name);
 		return -1;
 	}
 
@@ -949,7 +937,6 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	da = fr_dict_attr_by_name(dict_dhcpv4, name);
 	if (da &&
 	    ((da->attr != box.vb_uint32) || (da->type != type))) {
-		talloc_free(name);
 		fr_strerror_printf("cannot add different code / type for a pre-existing name '%s'", name);
 		return -1;
 	}
@@ -974,7 +961,6 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 *	have better error messages.
 	 */
 	rcode = fr_dict_attr_add(dict_dhcpv4, root, name, box.vb_uint32, type, &flags);
-	talloc_free(name);
 	if (rcode < 0) return rcode;
 
 	/*
@@ -1198,8 +1184,12 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		return -1;
 	}
 
+	rcode = parse_option_definition(parent, state, argv[0]);
+
+	talloc_free(argv[0]);
 	talloc_free(argv[1]);
-	return parse_option_definition(parent, state, argv[0]);
+
+	return rcode;
 }
 
 
