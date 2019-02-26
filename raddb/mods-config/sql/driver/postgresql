@@ -7,12 +7,67 @@
 # $Id$
 #
 postgresql {
+	#
+	#  NOTE: unlike MySQL, which has a tls{} connection configuration, postgresql
+	#  uses its connection parameters - see the radius_db option in
+	#  the main raddb/mods-available/sql file
+	#
 
-	# unlike MySQL, which has a tls{} connection configuration, postgresql
-	# uses its connection parameters - see the radius_db option in
-	# the main raddb/mods-available/sql file
-
-	# Send application_name to the postgres server
-	# Only supported in PG 9.0 and greater. Defaults to no.
+	#
+	#  states::  Send application_name to the postgres server
+	#  Only supported in PG 9.0 and greater. Defaults to yes.
+	#
 #	send_application_name = yes
+
+	#
+	#  states {}:: Behaviour override for various sqlstates.
+	#
+	#  ISO/IEC 9075:2011 defines standard error codes or 'sqlstates' which relate to
+	#  common error conditions in SQL databases.
+	#
+	#  FreeRADIUS maps sqlstates to internal rcodes which determine what action the
+	#  SQL module should perform next.
+	#
+	#  Matching states returned from the database to states within FreeRADIUS is done
+	#  using a prefix trie, with the longest (most specific) match being used.
+	#
+	#  Each sqstate consists of five alphanumeric characters in the format `CCSSS`,
+	#  where `C` is a class identifier, and `S` is a subclass identifier.
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | rcode       | Action
+	#  | `ok`        | Behave as though the previous query executed successfully.
+	#  | `alternate` | Execute an alternate query if available.
+	#  | `error`     | Cause the SQL module to return 'fail'.  Used for error conditions.
+	#  | `invalid`   | Cause the SQL module to return 'invalid'.  Used for invalid queries.
+	#  | `reconnect` | Forcefully close the current connection and establish a new one.
+	#  | `empty`     | Behave as though the previous query returned no result.
+	#  |===
+	#
+	#  Each entry in the `states {}` section below should be in the form
+	#  `<sqlstate> = <rcode>`, where `<sqlstate>` is between two and five alphanumeric
+	#  characters.
+	#
+	#  With very few exceptions the default rules only specify rcodes for _classes_
+	#  of sqlstates.  This means if you want to change the behaviour for whole classes of
+	#  sqlstates you can just specify the class identifier instead of specifying sqlstates.
+	#
+	#  If for example you wanted all warnings to be treated as errors you could add
+	#  `01 = error` to the states section below.
+	#
+	#  NOTE: In the vast majority of situations you will not need to override the default
+	#  sqlstate actions.  This is provided to allow you to 'hotpatch' your configuration
+	#  to work around issues with your DB, or in the case where you've discovered the
+	#  default classification of an sqlstate is incorrect (in which case please inform the
+	#  development team and we'll correct it).
+	#
+	states {
+		# Re-establish the connection after each successful query.
+		# Useful for annoying your DBA.
+#		00000 = reconnect
+
+		# Treat all warnings as errors
+#		01 = error
+	}
 }
