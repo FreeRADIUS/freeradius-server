@@ -1075,7 +1075,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 	}
 
 	if (IS_USER(a) && IS_USER(b)) {
-		printf("FAIL %d\n", __LINE__);
+		MPRINT("FAIL %d\n", __LINE__);
 		return -1;
 	}
 
