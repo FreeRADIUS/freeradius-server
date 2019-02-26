@@ -46,7 +46,6 @@ authorize {
 		ok = return
 	}
 
-	#
 	expiration
 	logintime
 }
@@ -76,7 +75,7 @@ post-auth {
 
 	if (session-state:User-Name && reply:User-Name && request:User-Name && (reply:User-Name == request:User-Name)) {
 		update reply {
-			User-Name !* ANY
+			&User-Name !* ANY
 		}
 	}
 	update {
