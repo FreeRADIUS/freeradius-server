@@ -4,7 +4,7 @@
 #	Sample configuration file for dynamically updating the list
 #	of RADIUS clients at run time.
 #
-#	Everything is keyed off of a client "network".  (e.g. 192.0.2/24)
+#	Everything is keyed off of a client "network".  (e.g. 192.0.2.0/24)
 #	This configuration lets the server know that clients within
 #	that network are defined dynamically.
 #
