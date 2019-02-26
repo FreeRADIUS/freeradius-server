@@ -46,7 +46,6 @@ authorize {
 		ok = return
 	}
 
-	#
 	expiration
 	logintime
 }
