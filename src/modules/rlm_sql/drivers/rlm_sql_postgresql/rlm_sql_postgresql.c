@@ -151,8 +151,8 @@ static void free_result_row(rlm_sql_postgres_conn_t *conn)
 #if defined(PG_DIAG_SQLSTATE) && defined(PG_DIAG_MESSAGE_PRIMARY)
 static sql_rcode_t sql_classify_error(rlm_sql_postgres_t *inst, ExecStatusType status, PGresult const *result)
 {
-	char			*error_code;
-	char			*error_msg;
+	char const		*error_code;
+	char const		*error_msg;
 	sql_state_entry_t const	*entry;
 
 	error_code = PQresultErrorField(result, PG_DIAG_SQLSTATE);
