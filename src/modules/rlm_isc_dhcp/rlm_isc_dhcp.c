@@ -44,6 +44,7 @@ static fr_dict_attr_t const *attr_your_ip_address;
 static fr_dict_attr_t const *attr_client_identifier;
 static fr_dict_attr_t const *attr_server_name;
 static fr_dict_attr_t const *attr_boot_filename;
+static fr_dict_attr_t const *attr_server_ip_address;
 
 extern fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[];
 fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
@@ -52,6 +53,7 @@ fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
 	{ .out = &attr_client_identifier, .name = "DHCP-Client-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4},
 	{ .out = &attr_server_name, .name = "DHCP-Server-Host-Name", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4},
 	{ .out = &attr_boot_filename, .name = "DHCP-Boot-Filename", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4},
+	{ .out = &attr_server_ip_address, .name = "DHCP-Server-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 
 	{ NULL }
 };
@@ -1725,6 +1727,14 @@ static int parse_server_name(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhc
 	return add_header_option(info, attr_server_name);
 }
 
+/** next-server IPADDR
+ *
+ */
+static int parse_next_server(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+{
+	return add_header_option(info, attr_server_ip_address);
+}
+
 /*
  *  When a client is to be booted, its boot parameters are determined
  *  by consulting that client’s host declaration (if any), and then
@@ -2029,7 +2039,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "max-lease-time INTEGER",		isc_not_done, 1},
 	{ "min-lease-time INTEGER",		isc_not_done, 1},
 	{ "min-secs UINT8", 			isc_not_done, 1}, // integer uint8_t
-	{ "next-server IPADDR", 		isc_not_done, 1}, // ipaddr or hostname
+	{ "next-server IPADDR", 		ISC_NOOP, parse_next_server, NULL, 1}, // ipaddr or hostname
 	{ "not authoritative",			isc_not_done, 0},
 	{ "omapi-key STRING", 			isc_ignore,   1}, // domain name
 	{ "omapi-port UINT16", 			isc_ignore,   1}, // integer uint16_t
