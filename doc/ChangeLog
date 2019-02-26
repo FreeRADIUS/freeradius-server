@@ -1,6 +1,8 @@
 FreeRADIUS 3.0.19 Mon 25 Feb 2019 15:00:00 EST urgency=low
 	Feature improvements
 	Bug fixes
+	* Update dynamic_client module and server core so that the
+	  functionality works.
 
 FreeRADIUS 3.0.18 Mon 25 Feb 2019 15:00:00 EST urgency=low
 	Feature improvements
