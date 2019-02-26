@@ -1674,6 +1674,69 @@ error:
 	return -1;
 }
 
+/** Callback to receive debugging data from libcurl
+ *
+ * @note Should only be set on a handle if RDEBUG_ENABLED3 is true.
+ *
+ * @param[in] candle	Curl handle the debugging data pertains to.
+ * @param[in] type	The type of debugging data we received.
+ * @param[in] data	Buffer containing debug data (not \0 terminated).  Despite the
+ *			type being char *, this can be binary data depending on the
+ *			curl_infotype.
+ * @param[in] len	The length of the data in the buffer.
+ * @param[in] uctx	The current request.
+ */
+static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, size_t len, void *uctx)
+{
+	REQUEST *request = talloc_get_type_abort(uctx, REQUEST);
+
+	switch (type) {
+	case CURLINFO_TEXT:
+		RDEBUG3("libcurl - %pV", fr_box_strvalue_len(data, len));
+		break;
+
+	case CURLINFO_HEADER_IN:
+		if (RDEBUG_ENABLED4) {
+			RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len,
+				 "<<< recv - header - %pV", fr_box_strvalue_len(data, len));
+		} else {
+			RDEBUG3("<<< recv - header - %pV", fr_box_strvalue_len(data, len));
+		}
+		break;
+
+	case CURLINFO_HEADER_OUT:
+		if (RDEBUG_ENABLED4) {
+			RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len,
+				 ">>> send - header - %pV", fr_box_strvalue_len(data, len));
+		} else {
+			RDEBUG3(">>> send - header - %pV", fr_box_strvalue_len(data, len));
+		}
+		break;
+
+	case CURLINFO_DATA_IN:
+		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "<<< recv - data");
+		break;
+
+	case CURLINFO_DATA_OUT:
+		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, ">>> send - data");
+		break;
+
+	case CURLINFO_SSL_DATA_OUT:
+		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, ">>> send - ssl-data");
+		break;
+
+	case CURLINFO_SSL_DATA_IN:
+		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "<<< recv - ssl-data");
+		break;
+
+	default:
+		RHEXDUMP(L_DBG_LVL_3, (uint8_t const *)data, len, "libcurl - debug data (unknown type %i)", (int)type);
+		break;
+	}
+
+	return 0;
+}
+
 /** Configures request curlopts.
  *
  * Configures libcurl handle setting various curlopts for things like local
@@ -1728,6 +1791,15 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	rad_assert((!username && !password) || (username && password));
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
+
+	/*
+	 *	Set the debugging function if needed
+	 */
+	if (RDEBUG_ENABLED3) {
+		SET_OPTION(CURLOPT_DEBUGFUNCTION, rest_debug_log);
+		SET_OPTION(CURLOPT_DEBUGDATA, request);
+		SET_OPTION(CURLOPT_VERBOSE, 1L);
+	}
 
 	/*
 	 *	Control which HTTP version we're going to use
