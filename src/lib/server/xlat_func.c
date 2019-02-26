@@ -370,19 +370,41 @@ static xlat_action_t hex_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 /** Return the tag of an attribute reference
  *
  */
-static ssize_t xlat_tag(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			REQUEST *request, char const *fmt)
+static xlat_action_t xlat_tag(TALLOC_CTX *ctx, fr_cursor_t *out,
+			UNUSED REQUEST *request, UNUSED void const *xlat_inst,
+			UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 {
-	VALUE_PAIR *vp;
+	fr_value_box_t	*vb;
+	VALUE_PAIR 	*vp;
+	char const 	*var;
 
-	while (isspace((int) *fmt)) fmt++;
 
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if (!*in) return XLAT_ACTION_FAIL;
 
-	if (!vp->da->flags.has_tag || !TAG_VALID(vp->tag)) return 0;
+	/*
+	 * Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
-	return snprintf(*out, outlen, "%u", vp->tag);
+	var = (*in)->vb_strvalue;
+	while (isspace((int) *var)) var++;
+
+	if ((xlat_fmt_get_vp(&vp, request, var) < 0) || !vp) {
+	error:
+		RPEDEBUG("Invalid input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (!vp->da->flags.has_tag || !TAG_VALID(vp->tag)) goto error;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+	vb->vb_int8 = vp->tag;
+	fr_cursor_insert(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Print out attribute info
@@ -2677,7 +2699,6 @@ int xlat_init(void)
 	XLAT_REGISTER(integer);
 	XLAT_REGISTER(strlen);
 	XLAT_REGISTER(length);
-	XLAT_REGISTER(tag);
 	XLAT_REGISTER(xlat);
 	XLAT_REGISTER(map);
 	XLAT_REGISTER(module);
@@ -2694,6 +2715,7 @@ int xlat_init(void)
 	rad_assert(c != NULL);
 	c->internal = true;
 
+	xlat_async_register(NULL, "tag", xlat_tag);
 	xlat_async_register(NULL, "base64", base64_xlat);
 	xlat_async_register(NULL, "base64decode", xlat_base64_decode);
 	xlat_async_register(NULL, "bin", bin_xlat);
