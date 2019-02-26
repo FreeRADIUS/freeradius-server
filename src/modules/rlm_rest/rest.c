@@ -1688,45 +1688,67 @@ error:
  */
 static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, size_t len, void *uctx)
 {
-	REQUEST *request = talloc_get_type_abort(uctx, REQUEST);
+	REQUEST		*request = talloc_get_type_abort(uctx, REQUEST);
+	char const	*p = data, *q, *end = p + len;
 
 	switch (type) {
 	case CURLINFO_TEXT:
-		RDEBUG3("libcurl - %pV", fr_box_strvalue_len(data, len));
+		/*
+		 *	Curl debug output has trailing newlines, and could conceivably
+		 *	span multiple lines.  Take care of both cases.
+		 */
+		while (p < end) {
+			q = memchr(p, '\n', end - p);
+			RDEBUG3("libcurl - %pV", fr_box_strvalue_len(p, q ? q - p : p - end));
+			p = q + 1;
+		}
+
 		break;
 
 	case CURLINFO_HEADER_IN:
-		if (RDEBUG_ENABLED4) {
-			RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len,
-				 "<<< recv header: %pV", fr_box_strvalue_len(data, len));
-		} else {
-			RDEBUG3("<<< recv header: %pV", fr_box_strvalue_len(data, len));
+		while (p < end) {
+			q = memchr(p, '\n', end - p);
+			if (RDEBUG_ENABLED4) {
+				RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len,
+					 "received header: %pV",
+					 fr_box_strvalue_len(p, q ? (q - p) + 1 : p - end));
+			} else {
+				RDEBUG3("received header: %pV",
+					fr_box_strvalue_len(p, q ? (q - p) + 1 : p - end));
+			}
+			p = q + 1;
 		}
 		break;
 
 	case CURLINFO_HEADER_OUT:
-		if (RDEBUG_ENABLED4) {
-			RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len,
-				 ">>> send header: %pV", fr_box_strvalue_len(data, len));
-		} else {
-			RDEBUG3(">>> send header: %pV", fr_box_strvalue_len(data, len));
+		while (p < end) {
+			q = memchr(p, '\n', end - p);
+			if (RDEBUG_ENABLED4) {
+				RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len,
+					 "sending header: %pV",
+					 fr_box_strvalue_len(p, q ? (q - p) + 1 : p - end));
+			} else {
+				RDEBUG3("sending header: %pV",
+					fr_box_strvalue_len(p, q ? (q - p) + 1 : p - end));
+			}
+			p = q + 1;
 		}
 		break;
 
 	case CURLINFO_DATA_IN:
-		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "<<< recv data[length %zu]", len);
+		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "received data[length %zu]", len);
 		break;
 
 	case CURLINFO_DATA_OUT:
-		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, ">>> send data[length %zu]", len);
+		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "sending data[length %zu]", len);
 		break;
 
 	case CURLINFO_SSL_DATA_OUT:
-		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, ">>> send ssl-data[length %zu]", len);
+		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "sending ssl-data[length %zu]", len);
 		break;
 
 	case CURLINFO_SSL_DATA_IN:
-		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "<<< recv ssl-data[length %zu]", len);
+		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "received ssl-data[length %zu]", len);
 		break;
 
 	default:
