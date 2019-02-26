@@ -1739,7 +1739,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 */
 	SET_OPTION(CURLOPT_URL, uri);
 	if (section->proxy) SET_OPTION(CURLOPT_PROXY, section->proxy);
-	SET_OPTION(CURLOPT_NOSIGNAL, 1);
+	SET_OPTION(CURLOPT_NOSIGNAL, 1L);
 	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
 
 	/*
@@ -1754,8 +1754,8 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	}
 
 	timeout = fr_pool_timeout(t->pool);
-	DEBUG3("CONNECT TIMEOUT IS %" PRIu64", REQUEST TIMEOUT IS %" PRIu64,
-	       FR_TIMEVAL_TO_MS(&timeout), FR_TIMEVAL_TO_MS(&section->timeout_tv));
+	RDEBUG3("Connect timeout is %" PRIu64", request timeout is %" PRIu64,
+	        FR_TIMEVAL_TO_MS(&timeout), FR_TIMEVAL_TO_MS(&section->timeout_tv));
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(&timeout));
 	SET_OPTION(CURLOPT_TIMEOUT_MS, FR_TIMEVAL_TO_MS(&section->timeout_tv));
 
@@ -1917,9 +1917,9 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
 	}
 
-	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1 : 0);
-	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2 : 0);
-	if (section->tls_extract_cert_attrs) SET_OPTION(CURLOPT_CERTINFO, 1);
+	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1L : 0L);
+	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2L : 0L);
+	if (section->tls_extract_cert_attrs) SET_OPTION(CURLOPT_CERTINFO, 1L);
 
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process incoming data.
