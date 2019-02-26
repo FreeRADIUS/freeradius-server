@@ -276,6 +276,7 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 {
 	int blocked;
 	int indent = request->log.indent;
+	char const *old;
 
 	/*
 	 *	If the request should stop, refuse to do anything.
@@ -296,13 +297,14 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	/*
 	 *	For logging unresponsive children.
 	 */
+	old = request->module;
 	request->module = sp->modinst->name;
 
 	safe_lock(sp->modinst);
 	request->rcode = sp->modinst->entry->module->methods[component](sp->modinst->insthandle, request);
 	safe_unlock(sp->modinst);
 
-	request->module = "";
+	request->module = old;
 
 	/*
 	 *	Wasn't blocked, and now is.  Complain!

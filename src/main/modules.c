@@ -1027,11 +1027,9 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 		}
 	}
 	request->component = section_type_value[comp].section;
-
 	rcode = modcall(comp, list, request);
-
-	request->module = "";
 	request->component = "<core>";
+
 	return rcode;
 }
 
