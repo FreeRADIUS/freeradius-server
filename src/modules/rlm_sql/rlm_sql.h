@@ -61,6 +61,12 @@ typedef struct {
 	char const	*msg;		//!< Log message.
 } sql_log_entry_t;
 
+typedef struct {
+	char const	*sql_state;	//!< 2-5 char error code.
+	char const	*meaning;	//!< Verbose description.
+	sql_rcode_t 	rcode;		//!< What should happen if we receive this error.
+} sql_state_entry_t;
+
 /*
  * Sections where we dynamically resolve the config entry to use,
  * by xlating reference.
@@ -245,3 +251,11 @@ sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
 int		sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username);
+
+/*
+ *	sql_state.c
+ */
+fr_trie_t	*sql_state_trie_alloc(TALLOC_CTX *ctx);
+int		sql_state_entries_from_table(fr_trie_t *states, sql_state_entry_t const table[]);
+int		sql_sate_entries_from_cs(fr_trie_t *states, CONF_SECTION *overrides);
+sql_state_entry_t const		*sql_state_entry_find(fr_trie_t const *states, char const *sql_state);

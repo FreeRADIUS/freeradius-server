@@ -51,7 +51,6 @@ RCSID("$Id$")
 
 #include "config.h"
 #include "rlm_sql.h"
-#include "sql_postgresql.h"
 
 #ifndef NAMEDATALEN
 #  define NAMEDATALEN 64
@@ -63,6 +62,7 @@ RCSID("$Id$")
 typedef struct {
 	char const	*db_string;		//!< Text based configuration string.
 	bool		send_application_name;	//!< Whether we send the application name to PostgreSQL.
+	fr_trie_t	*states;		//!< sql state trie.
 } rlm_sql_postgres_t;
 
 typedef struct {
@@ -77,6 +77,58 @@ typedef struct {
 static CONF_PARSER driver_config[] = {
 	{ FR_CONF_OFFSET("send_application_name", FR_TYPE_BOOL, rlm_sql_postgres_t, send_application_name), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
+};
+
+/** These are PostgreSQL specific error codes which are not covered in SQL 2011
+ *
+ */
+static sql_state_entry_t sql_state_table[] = {
+	{ "03", "SQL statement not yet complete",			RLM_SQL_OK },
+	{ "0B", "Invalid transaction initiation",			RLM_SQL_ERROR },
+	{ "53", "Insufficient resources",				RLM_SQL_ERROR },
+	/*
+	 *	54000	program_limit_exceeded
+	 *	54001	statement_too_complex
+	 *	54011	too_many_columns
+	 *	54023	too_many_arguments
+	 */
+//	{ "54", "Program limit exceeded",				RLM_SQL_QUERY_INVALID },
+
+//	{ "55", "Object not in prerequisite state",			RLM_SQL_ERROR },
+
+	/*
+	 *	Error seen when NOWAIT is used to abort queries that involve rows
+	 *	which are already locked.
+	 *
+	 *	Listed specifically for efficiency.
+	 */
+	{ "55P03", "Lock not available",				RLM_SQL_ERROR },
+
+	{ "57", "Operator intervention",				RLM_SQL_ERROR },
+
+	/*
+	 *	This is really 'statement_timeout' or the error which is returned when
+	 *	'statement_timeout' is hit.
+	 *
+	 *	It's unlikely that this has been caused by a connection failure, and
+	 *	most likely to have been caused by a long running query.
+	 *
+	 *	If the query is persistently long running then the database/query should
+	 *	be optimised, or 'statement_timeout' should be increased.
+	 *
+	 *	Forcing a reconnect here only eats more resources on the DB so we will
+	 *	no longer do so as of 3.0.4.
+	 */
+	{ "57014", "Query cancelled",					RLM_SQL_ERROR },
+	{ "57P01", "Admin shutdown",					RLM_SQL_RECONNECT },
+	{ "57P02", "Crash shutdown",					RLM_SQL_RECONNECT },
+	{ "57P03", "Cannot connect now",				RLM_SQL_RECONNECT },
+	{ "58", "System error",						RLM_SQL_RECONNECT },
+	{ "72", "Snapshot failure",					RLM_SQL_ERROR },
+	{ "F0", "Configuration file error",				RLM_SQL_ERROR },
+	{ "P0", "PL/PGSQL error",					RLM_SQL_ERROR },
+	{ "XX", "Internal error",					RLM_SQL_ERROR },
+	{ NULL, NULL,							RLM_SQL_ERROR }		/* Default code */
 };
 
 /** Return the number of affected rows of the result as an int instead of the string that postgresql provides
@@ -97,54 +149,61 @@ static void free_result_row(rlm_sql_postgres_conn_t *conn)
 }
 
 #if defined(PG_DIAG_SQLSTATE) && defined(PG_DIAG_MESSAGE_PRIMARY)
-static sql_rcode_t sql_classify_error(PGresult const *result)
+static sql_rcode_t sql_classify_error(rlm_sql_postgres_t *inst, ExecStatusType status, PGresult const *result)
 {
-	int i;
+	char			*error_code;
+	char			*error_msg;
+	sql_state_entry_t const	*entry;
 
-	char *errorcode;
-	char *errormsg;
+	error_code = PQresultErrorField(result, PG_DIAG_SQLSTATE);
+	if (!error_code) {
+		switch (status){
+		/*
+		 *  Successful completion of a command returning no data.
+		 */
+		case PGRES_COMMAND_OK:
+	#ifdef HAVE_PGRES_SINGLE_TUPLE
+		case PGRES_SINGLE_TUPLE:
+	#endif
+		case PGRES_TUPLES_OK:
+	#ifdef HAVE_PGRES_COPY_BOTH
+		case PGRES_COPY_BOTH:
+	#endif
+		case PGRES_COPY_OUT:
+		case PGRES_COPY_IN:
+			error_code = "00000";
+			break;
 
-	/*
-	 *	Check the error code to see if we should reconnect or not
-	 *	Error Code table taken from:
-	 *	http://www.postgresql.org/docs/8.1/interactive/errcodes-appendix.html
-	 */
-	errorcode = PQresultErrorField(result, PG_DIAG_SQLSTATE);
-	errormsg = PQresultErrorField(result, PG_DIAG_MESSAGE_PRIMARY);
-	if (!errorcode) {
-		ERROR("Error occurred, but unable to retrieve error code");
-		return RLM_SQL_ERROR;
-	}
+		case PGRES_EMPTY_QUERY:	/* Shouldn't happen */
+			error_code = "42000";
+			break;
 
-	/* SUCCESSFUL COMPLETION */
-	if (strcmp("00000", errorcode) == 0) {
-		return RLM_SQL_OK;
-	}
-
-	/* WARNING */
-	if (strcmp("01000", errorcode) == 0) {
-		WARN("%s", errormsg);
-		return RLM_SQL_OK;
-	}
-
-	/* UNIQUE VIOLATION */
-	if (strcmp("23505", errorcode) == 0) {
-		return RLM_SQL_ALT_QUERY;
-	}
-
-	/* others */
-	for (i = 0; errorcodes[i].errorcode != NULL; i++) {
-		if (strcmp(errorcodes[i].errorcode, errorcode) == 0) {
-			ERROR("%s: %s", errorcode, errorcodes[i].meaning);
-
-			return (errorcodes[i].reconnect == true) ?
-				RLM_SQL_RECONNECT :
-				RLM_SQL_ERROR;
+		case PGRES_BAD_RESPONSE:
+		case PGRES_NONFATAL_ERROR:
+		case PGRES_FATAL_ERROR:
+			ERROR("libpq provided no error code");
+			return RLM_SQL_ERROR;
 		}
 	}
 
-	ERROR("Can't classify: %s", errorcode);
-	return RLM_SQL_ERROR;
+	entry = sql_state_entry_find(inst->states, error_code);
+	if (!entry) {
+		ERROR("Can't classify: %s", error_code);
+		return RLM_SQL_ERROR;
+	}
+
+	DEBUG2("sqlstate %s matched %s: %s (%s)", error_code,
+	       entry->sql_state, entry->meaning, fr_int2str(sql_rcode_table, entry->rcode, "<DEFAULT>"));
+
+	/*
+	 *	WARNING error class.
+	 */
+	if ((entry->sql_state[0] == '0') && (entry->sql_state[1] == '1')) {
+		error_msg = PQresultErrorField(result, PG_DIAG_MESSAGE_PRIMARY);
+		if (error_msg) WARN("%s", error_msg);
+	}
+
+	return entry->rcode;
 }
 #  else
 static sql_rcode_t sql_classify_error(UNUSED PGresult const *result)
@@ -195,12 +254,13 @@ static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_co
 	return 0;
 }
 
-static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
+static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 					      char const *query)
 {
-	rlm_sql_postgres_conn_t *conn = handle->conn;
-	ExecStatusType status;
-	int numfields = 0;
+	rlm_sql_postgres_conn_t	*conn = handle->conn;
+	rlm_sql_postgres_t	*inst = config->driver;
+	int			numfields = 0;
+	ExecStatusType		status;
 
 	if (!conn->db) {
 		ERROR("Socket not connected");
@@ -228,8 +288,6 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 	}
 
 	status = PQresultStatus(conn->result);
-	DEBUG("Status: %s", PQresStatus(status));
-
 	switch (status){
 	/*
 	 *  Successful completion of a command returning no data.
@@ -240,8 +298,8 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 		 *  returning no data...
 		 */
 		conn->affected_rows = affected_rows(conn->result);
-		DEBUG("query affected rows = %i", conn->affected_rows);
-		return RLM_SQL_OK;
+		DEBUG2("query affected rows = %i", conn->affected_rows);
+		break;
 	/*
 	 *  Successful completion of a command returning data (such as a SELECT or SHOW).
 	 */
@@ -252,38 +310,28 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 		conn->cur_row = 0;
 		conn->affected_rows = PQntuples(conn->result);
 		numfields = PQnfields(conn->result); /*Check row storing functions..*/
-		DEBUG("query affected rows = %i , fields = %i", conn->affected_rows, numfields);
-		return RLM_SQL_OK;
+		DEBUG2("query returned rows = %i, fields = %i", conn->affected_rows, numfields);
+		break;
 
 #ifdef HAVE_PGRES_COPY_BOTH
 	case PGRES_COPY_BOTH:
 #endif
 	case PGRES_COPY_OUT:
 	case PGRES_COPY_IN:
-		DEBUG("Data transfer started");
-		return RLM_SQL_OK;
+		DEBUG2("Data transfer started");
+		break;
 
 	/*
 	 *  Weird.. this shouldn't happen.
 	 */
 	case PGRES_EMPTY_QUERY:
-		ERROR("Empty query");
-		return RLM_SQL_QUERY_INVALID;
-
-	/*
-	 *  The server's response was not understood.
-	 */
-	case PGRES_BAD_RESPONSE:
-		ERROR("Bad Response From Server");
-		return RLM_SQL_RECONNECT;
-
-
+	case PGRES_BAD_RESPONSE:	/* The server's response was not understood */
 	case PGRES_NONFATAL_ERROR:
 	case PGRES_FATAL_ERROR:
-		return sql_classify_error(conn->result);
+		break;
 	}
 
-	return RLM_SQL_ERROR;
+	return sql_classify_error(inst, status, conn->result);;
 }
 
 static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char const *query)
@@ -510,6 +558,23 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 	}
 	inst->db_string = db_string;
 
+	inst->states = sql_state_trie_alloc(inst);
+
+	/*
+	 *	Load in the PostgreSQL specific sqlstates
+	 */
+	if (sql_state_entries_from_table(inst->states, sql_state_table) < 0) return -1;
+
+	/*
+	 *	Load in overrides from the driver's configuration section
+	 */
+	{
+		CONF_SECTION *cs;
+
+		cs = cf_section_find(conf, "states", NULL);
+		if (cs && (sql_sate_entries_from_cs(inst->states, cs) < 0)) return -1;
+	}
+
 	return 0;
 }
 
@@ -530,7 +595,7 @@ extern rlm_sql_driver_t rlm_sql_postgresql;
 rlm_sql_driver_t rlm_sql_postgresql = {
 	.name				= "rlm_sql_postgresql",
 	.magic				= RLM_MODULE_INIT,
-//	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,	/* Needs more testing */
+	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.inst_size			= sizeof(rlm_sql_postgres_t),
 	.onload				= mod_load,
 	.config				= driver_config,
