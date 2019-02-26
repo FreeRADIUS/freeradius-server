@@ -44,9 +44,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance,
 	 *	Ensure we're only being called from the main thread,
 	 *	with fake packets.
 	 */
-	if ((request->packet->src_port != 0) || (request->packet->vps != NULL) ||
-	    (request->parent != NULL)) {
-		RDEBUG("Improper configuration");
+	if ((request->packet->vps != NULL) || (request->parent != NULL)) {
+		RDEBUG("Cannot use `dynamic_clients` for normal packets");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -88,6 +87,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance,
 	 *	hack.
 	 */
 	request->client = c;
+	c->dynamic = true;
 
 	return RLM_MODULE_OK;
 }
