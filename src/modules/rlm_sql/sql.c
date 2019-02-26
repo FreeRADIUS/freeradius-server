@@ -43,13 +43,23 @@ RCSID("$Id$")
  *	Translate rlm_sql rcodes to humanly
  *	readable reason strings.
  */
-const FR_NAME_NUMBER sql_rcode_table[] = {
+const FR_NAME_NUMBER sql_rcode_description_table[] = {
 	{ "success",		RLM_SQL_OK		},
 	{ "need alt query",	RLM_SQL_ALT_QUERY	},
 	{ "server error",	RLM_SQL_ERROR		},
 	{ "query invalid",	RLM_SQL_QUERY_INVALID	},
 	{ "no connection",	RLM_SQL_RECONNECT	},
 	{ "no more rows",	RLM_SQL_NO_MORE_ROWS	},
+	{ NULL, 0 }
+};
+
+const FR_NAME_NUMBER sql_rcode_table[] = {
+	{ "ok",			RLM_SQL_OK		},
+	{ "alternate",		RLM_SQL_ALT_QUERY	},
+	{ "error",		RLM_SQL_ERROR		},
+	{ "invalid",		RLM_SQL_QUERY_INVALID	},
+	{ "reconnect",		RLM_SQL_RECONNECT	},
+	{ "done",		RLM_SQL_NO_MORE_ROWS	},
 	{ NULL, 0 }
 };
 

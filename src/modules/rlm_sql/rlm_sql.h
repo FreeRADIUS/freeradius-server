@@ -27,11 +27,6 @@
  */
 RCSIDH(rlm_sql_h, "$Id$")
 
-#ifndef LOG_PREFIX
-#  define LOG_PREFIX "rlm_sql (%s) - "
-#  define LOG_PREFIX_ARGS inst->name
-#endif
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/server/modpriv.h>
@@ -41,7 +36,9 @@ RCSIDH(rlm_sql_h, "$Id$")
 #define FR_ITEM_REPLY 1
 
 
-/* SQL Errors */
+/** Action to take at end of an SQL query
+ *
+ */
 typedef enum {
 	RLM_SQL_QUERY_INVALID = -3,	//!< Query syntax error.
 	RLM_SQL_ERROR = -2,		//!< General connection/server error.
@@ -56,7 +53,6 @@ typedef enum {
 	FALL_THROUGH_YES,
 	FALL_THROUGH_DEFAULT,
 } sql_fall_through_t;
-
 
 typedef char **rlm_sql_row_t;
 
@@ -147,7 +143,9 @@ typedef struct {
 								//!< when log strings need to be copied.
 } rlm_sql_handle_t;
 
+extern const FR_NAME_NUMBER sql_rcode_description_table[];
 extern const FR_NAME_NUMBER sql_rcode_table[];
+
 /*
  *	Capabilities flags for drivers
  */
