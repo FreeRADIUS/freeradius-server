@@ -1179,6 +1179,14 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 	if (!clients || !request) return NULL;
 
+	/*
+	 *	Hack for the "dynamic_clients" module.
+	 */
+	if (request->client->dynamic) {
+		c = request->client;
+		goto validate;
+	}
+
 	snprintf(buffer, sizeof(buffer), "dynamic%i", cnt++);
 
 	c = talloc_zero(clients, RADCLIENT);
@@ -1390,6 +1398,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	}
 	REXDENT();
 
+validate:
 	if (c->ipaddr.af == AF_UNSPEC) {
 		RERROR("Cannot add client %s: No IP address was specified.",
 		       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
