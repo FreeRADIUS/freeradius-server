@@ -31,7 +31,7 @@ postgresql {
 	#  Matching states returned from the database to states within FreeRADIUS is done
 	#  using a prefix trie, with the longest (most specific) match being used.
 	#
-	#  Each sqstate consists of five alphanumeric characters in the format `CCSSS`,
+	#  Each sqlstate consists of five alphanumeric characters in the format `CCSSS`,
 	#  where `C` is a class identifier, and `S` is a subclass identifier.
 	#
 	#  [options="header,autowidth"]
@@ -59,7 +59,7 @@ postgresql {
 	#  NOTE: In the vast majority of situations you will not need to override the default
 	#  sqlstate actions.  This is provided to allow you to 'hotpatch' your configuration
 	#  to work around issues with your DB, or in the case where you've discovered the
-	#  default classification of an sqlstate is incorrect (in which case please inform the
+	#  default rcode for an sqlstate is incorrect (in which case please inform the
 	#  development team and we'll correct it).
 	#
 	states {
