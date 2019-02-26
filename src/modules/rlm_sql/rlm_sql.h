@@ -57,14 +57,15 @@ typedef enum {
 typedef char **rlm_sql_row_t;
 
 typedef struct {
-	fr_log_type_t	type;		//!< Type of log entry L_ERR, L_WARN, L_INFO, L_DBG etc..
-	char const	*msg;		//!< Log message.
+	fr_log_type_t		type;				//!< Type of log entry L_ERR, L_WARN, L_INFO,
+								///< L_DBG etc..
+	char const		*msg;				//!< Log message.
 } sql_log_entry_t;
 
 typedef struct {
-	char const	*sql_state;	//!< 2-5 char error code.
-	char const	*meaning;	//!< Verbose description.
-	sql_rcode_t 	rcode;		//!< What should happen if we receive this error.
+	char const		*sql_state;			//!< 2-5 char error code.
+	char const		*meaning;			//!< Verbose description.
+	sql_rcode_t 		rcode;				//!< What should happen if we receive this error.
 } sql_state_entry_t;
 
 /*
