@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/server/rad_assert.h>
 
 #include <freeradius-devel/server/map_proc.h>
@@ -41,12 +42,17 @@ fr_dict_autoload_t rlm_isc_dhcp_dict[] = {
 static fr_dict_attr_t const *attr_client_hardware_address;
 static fr_dict_attr_t const *attr_your_ip_address;
 static fr_dict_attr_t const *attr_client_identifier;
+static fr_dict_attr_t const *attr_server_name;
+static fr_dict_attr_t const *attr_boot_filename;
 
 extern fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[];
 fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
 	{ .out = &attr_client_hardware_address, .name = "DHCP-Client-Hardware-Address", .type = FR_TYPE_ETHERNET, .dict = &dict_dhcpv4},
 	{ .out = &attr_your_ip_address, .name = "DHCP-Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ .out = &attr_client_identifier, .name = "DHCP-Client-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4},
+	{ .out = &attr_server_name, .name = "DHCP-Server-Host-Name", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4},
+	{ .out = &attr_boot_filename, .name = "DHCP-Boot-Filename", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4},
+
 	{ NULL }
 };
 
@@ -1385,7 +1391,11 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	return 1;
 }
 
-
+/** host NAME { ... }
+ *
+ *	Hosts are global, and are keyed by MAC `hardware ethernet`, and by
+ *	`client-identifier`.
+ */
 static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	isc_host_ether_t *my_ether, *old_ether;
@@ -1399,18 +1409,20 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	/*
 	 *	A host MUST have at least one "hardware ethernet" in
 	 *	it.
-	 *
-	 *	@todo - complain if there are multiple ones...
 	 */
 	for (child = info->child; child != NULL; child = child->next) {
 		if (child->cmd->type == ISC_HARDWARE_ETHERNET) {
+			if (ether) {
+				fr_strerror_printf("cannot have two 'hardware ethernet' entries in a 'host'");
+				return -1;
+			}
+
 			ether = child;
-			break;
 		}
 	}
 
 	if (!ether) {
-		fr_strerror_printf("host %s does not contain a 'hardware ethernet' field",
+		fr_strerror_printf("host %s does not contain a 'hardware ethernet' entry",
 				   info->argv[0]->vb_strvalue);
 		return -1;
 	}
@@ -1533,6 +1545,9 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
  */
 #define vb_ipv4addr vb_ip.addr.v4.s_addr
 
+/** subnet IPADDR netmask MASK { ... }
+ *
+ */
 static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	rlm_isc_dhcp_info_t *parent;
@@ -1597,6 +1612,13 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 		return -1;
 	}
 
+	/*
+	 *	@todo - if there's no 'option subnet-mask', add one
+	 *	from the netmask given here.  If there is an 'option
+	 *	subnet-mask', then assume that the admin knows what
+	 *	he's doing, and don't add one.
+	 */
+
 	IDEBUG("%.*s subnet %pV netmask %pV { ... }", state->braces, spaces, info->argv[0], info->argv[1]);
 
 	/*
@@ -1645,12 +1667,63 @@ done:
 	/*
 	 *	@todo - check "fixed-address".  This host entry should
 	 *	match ONLY if one of the addresses matches the network
-	 *	on which the client is booting.
+	 *	on which the client is booting.  OR if there's no
+	 *	'fixed-address' field.  OR if there's no 'yiaddr' in
+	 *	the request.
 	 */
 
 	return host;
 }
 
+
+static int add_header_option(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
+{
+	int rcode;
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
+
+	if (!info->parent) return -1; /* internal error */
+
+	vp = fr_pair_afrom_da(info->parent, da);
+
+	rcode = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
+	if (rcode < 0) return rcode;
+
+	(void) fr_pair_cursor_init(&cursor, &info->parent->options);
+	(void) fr_pair_cursor_tail(&cursor);
+	fr_pair_cursor_append(&cursor, vp);
+
+	talloc_free(info);
+	return 2;
+}
+
+#define member_size(type, member) sizeof(((type *)0)->member)
+
+/** filename STRING
+ *
+ */
+static int parse_filename(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+{
+	if (info->argv[0]->vb_length > member_size(dhcp_packet_t, file)) {
+		fr_strerror_printf("filename is too long");
+		return -1;
+	}
+
+	return add_header_option(info, attr_boot_filename);
+}
+
+/** server-name STRING
+ *
+ */
+static int parse_server_name(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+{
+	if (info->argv[0]->vb_length > member_size(dhcp_packet_t, sname)) {
+		fr_strerror_printf("filename is too long");
+		return -1;
+	}
+
+	return add_header_option(info, attr_server_name);
+}
 
 /*
  *  When a client is to be booted, its boot parameters are determined
@@ -1753,10 +1826,6 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 
 		/*
 		 *	Apply any options in the "host" section.
-		 *
-		 *	@todo - only apply the options if there's no
-		 *	YIADDR, OR the YIADDR matches one of the
-		 *	addresses listed in `fixed address`.
 		 */
 		child_rcode = apply(inst, request, host);
 		if (child_rcode < 0) return child_rcode;
@@ -1775,9 +1844,6 @@ subnet:
 		child_rcode = apply(inst, request, info);
 		if (child_rcode < 0) return child_rcode;
 		if (child_rcode == 1) rcode = 1;
-
-		// @todo - look for subnet mask.  If one doesn't
-		// exist, use the mask from the subnet declaration.
 	}
 
 recurse:
@@ -1909,7 +1975,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "dynamic-bootp-lease-cutoff UINT32", 	isc_not_done, 1}, // Lease time interval
 	{ "dynamic-bootp-lease-length UINT32", 	isc_not_done, 1}, // integer uint32_t
 	{ "echo-client-id BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "filename STRING",			isc_not_done, 1},
+	{ "filename STRING",			ISC_NOOP, parse_filename, NULL, 1},
 	{ "fixed-address IPADDR,",		ISC_FIXED_ADDRESS, NULL, NULL, 16},
 	{ "fqdn-reply BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "get-lease-hostnames BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
@@ -1945,8 +2011,8 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "ldap-tls-key STRING", 		isc_ignore,   1}, // text string
 	{ "ldap-tls-randfile STRING", 		isc_ignore,   1}, // text string
 	{ "ldap-tls-reqcert STRING,", 		isc_ignore,   1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-
 	{ "ldap-username STRING", 		isc_ignore,   1}, // text string
+
 	{ "lease-file-name STRING", 		isc_ignore,   1}, // text string
 	{ "leasequery BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "limit-addrs-per-ia UINT32", 		isc_not_done, 1}, // integer uint32_t
@@ -1979,7 +2045,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "release-on-roam BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "remote-port UINT16", 		isc_ignore,   1}, // integer uint16_t
 	{ "server-id-check BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "server-name STRING", 		isc_not_done, 1}, // text string
+	{ "server-name STRING", 		ISC_NOOP, parse_server_name, NULL, 1}, // text string
 	{ "shared-network STRING SECTION",	isc_not_done, 1},
 	{ "site-option-space STRING", 		isc_invalid,  1}, // vendor option declaration statement
 	{ "stash-agent-options BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
