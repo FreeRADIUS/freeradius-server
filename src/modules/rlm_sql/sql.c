@@ -59,7 +59,7 @@ const FR_NAME_NUMBER sql_rcode_table[] = {
 	{ "error",		RLM_SQL_ERROR		},
 	{ "invalid",		RLM_SQL_QUERY_INVALID	},
 	{ "reconnect",		RLM_SQL_RECONNECT	},
-	{ "done",		RLM_SQL_NO_MORE_ROWS	},
+	{ "empty",		RLM_SQL_NO_MORE_ROWS	},
 	{ NULL, 0 }
 };
 
