@@ -1419,7 +1419,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	 *	Point directly to the ethernet address.
 	 */
 	my_ether = talloc_zero(info, isc_host_ether_t);
-	memcpy(my_ether->ether, &(child->argv[0]->vb_ether), sizeof(my_ether->ether));
+	memcpy(my_ether->ether, &(ether->argv[0]->vb_ether), sizeof(my_ether->ether));
 	my_ether->host = info;
 
 	/*
