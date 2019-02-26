@@ -58,7 +58,7 @@ sql {
 	driver = "rlm_sql_${dialect}"
 
 	#
-	#  $-INCLUDE:: Include driver specific configuration file if one
+	#  Include driver specific configuration file if one
 	#  exists. These are in a separate configuration file
 	#  in mods-config/sql/driver/<driver>.
 	#
