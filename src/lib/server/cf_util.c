@@ -1204,6 +1204,15 @@ void cf_pair_add(CONF_SECTION *parent, CONF_PAIR *cp)
 	cf_item_add(parent, cf_pair_to_item(cp));
 }
 
+/** Mark a pair as parsed
+ *
+ * @param[in] cp	to mark as parsed.
+ */
+void cf_pair_parsed_set(CONF_PAIR *cp)
+{
+	cp->parsed = true;
+}
+
 /** Return the next child that's a #CONF_PAIR
  *
  * @param[in] cs	to return children from.
