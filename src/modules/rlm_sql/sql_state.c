@@ -154,7 +154,7 @@ int sql_sate_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 	while ((cp = cf_pair_find_next(cs, cp, NULL))) {
 		char const		*state;
 		size_t			len;
-		sql_rcode_t		*rcode;
+		sql_rcode_t		rcode;
 		sql_state_entry_t	*entry;
 
 		state = cf_pair_attr(cp);
@@ -167,7 +167,7 @@ int sql_sate_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 		/*
 		 *	Resolve value to sql_rcode_t
 		 */
-		if (cf_pair_in_table((int32_t)&rcode, sql_rcode_table, cp) < 0) return -1;/* Logs own error */
+		if (cf_pair_in_table((int32_t *)&rcode, sql_rcode_table, cp) < 0) return -1;/* Logs own error */
 
 		/*
 		 *	No existing match, create a new entry
