@@ -704,7 +704,7 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session, uint8_
 		if (DEBUG_ENABLED3) {
 			HEXDUMP(L_DBG_LVL_3, data, data_len, "%s", tls_session->info.info_description);
 		} else {
-			DEBUG3("%s", tls_session->info.info_description);
+			DEBUG2("%s", tls_session->info.info_description);
 		}
 	}
 }
