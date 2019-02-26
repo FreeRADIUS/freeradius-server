@@ -57,9 +57,12 @@ RCSID("$Id$")
 #  define NAMEDATALEN 64
 #endif
 
+/** PostgreSQL configuration
+ *
+ */
 typedef struct {
-	char const	*db_string;
-	bool		send_application_name;
+	char const	*db_string;		//!< Text based configuration string.
+	bool		send_application_name;	//!< Whether we send the application name to PostgreSQL.
 } rlm_sql_postgres_t;
 
 typedef struct {
@@ -72,7 +75,7 @@ typedef struct {
 } rlm_sql_postgres_conn_t;
 
 static CONF_PARSER driver_config[] = {
-	{ FR_CONF_OFFSET("send_application_name", FR_TYPE_BOOL, rlm_sql_postgres_t, send_application_name), .dflt = "no" },
+	{ FR_CONF_OFFSET("send_application_name", FR_TYPE_BOOL, rlm_sql_postgres_t, send_application_name), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
