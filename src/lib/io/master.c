@@ -364,7 +364,7 @@ error:
  *  are closed.  The alternative is to walk through all connections
  *  for each client, which would be a long time.
  */
-static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED int keylen, void *data)
+static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED size_t keylen, void *data)
 {
 	fr_io_client_t *client = data;
 	int connections;

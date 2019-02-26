@@ -1901,7 +1901,7 @@ fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
  *	- <0 on error
  *	- 0 on success
  */
-int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void *data)
+int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *data)
 {
 	fr_trie_user_t *user;
 
@@ -1923,7 +1923,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void *data)
 	user = talloc_zero(ft, fr_trie_user_t);
 	if (!user) return -1;
 
-	user->data = data;
+	memcpy(&user->data, &data, sizeof(user->data));
 	user->number = ft->number++;
 
 	if (fr_trie_key_insert(ft, ft, &ft->trie, key, 0, keylen, PUT_USER(user)) < 0) {
