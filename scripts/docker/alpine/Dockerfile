@@ -27,7 +27,7 @@ WORKDIR freeradius-server
 #
 # essential
 RUN apk add libc-dev talloc-dev
-RUN apk add libressl libressl-dev
+RUN apk add openssl openssl-dev
 RUN apk add linux-headers
 # general
 RUN apk add pcre-dev libidn-dev krb5-dev samba-dev curl-dev json-c-dev
