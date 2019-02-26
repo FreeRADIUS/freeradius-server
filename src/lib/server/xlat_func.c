@@ -242,7 +242,6 @@ static xlat_action_t xlat_length(UNUSED TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	fr_cursor_insert(out, vb);
-	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
