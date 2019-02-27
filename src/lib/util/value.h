@@ -238,6 +238,22 @@ struct value_box {
  * @{
  */
 
+/** Counts all elements in a box.
+ *
+ * @param[in] box	to count the elements.
+ * @return
+ *	- number of elements.
+ */
+static inline size_t fr_value_box_list_length(fr_value_box_t *box)
+{
+	size_t i = 0;
+
+	for (; box; box = box->next) i++;
+
+	return i;
+}
+
+
 /** Initialise a fr_value_box_t
  *
  * The value should be set later with one of the fr_value_box_* functions.
