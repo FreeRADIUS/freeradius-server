@@ -199,29 +199,73 @@ int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 /** Print length of its RHS.
  *
  */
-static ssize_t xlat_strlen(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   UNUSED REQUEST *request, char const *fmt)
+static xlat_action_t xlat_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
+				 UNUSED REQUEST *request, UNUSED void const *xlat_inst,
+				 UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 {
-	snprintf(*out, outlen, "%u", (unsigned int) strlen(fmt));
-	return strlen(*out);
+	fr_value_box_t	*vb;
+
+	/*
+	 * Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
+
+	vb->vb_size = 0;
+
+	if (*in) {
+		char const *str = (*in)->vb_strvalue;
+
+		vb->vb_size = strlen(str);
+	}
+
+	fr_cursor_insert(out, vb);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Print the size of the attribute in bytes.
  *
  */
-static ssize_t xlat_length(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+static xlat_action_t xlat_length(UNUSED TALLOC_CTX *ctx, fr_cursor_t *out,
+				REQUEST *request, UNUSED void const *xlat_inst,
+				UNUSED void *xlat_thread_inst, fr_value_box_t **in)
+
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR 	*vp;
+	fr_value_box_t	*vb;
 
-	while (isspace((int) *fmt)) fmt++;
+	/*
+	 * Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
 
-	snprintf(*out, outlen, "%zu", fr_value_box_network_length(&vp->data));
-	return strlen(*out);
+	vb->vb_size = 0;
+
+	if (*in) {
+		char const *var = (*in)->vb_strvalue;
+
+		if ((xlat_fmt_get_vp(&vp, request, var) < 0) || !vp) {
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
+
+		vb->vb_size = fr_value_box_network_length(&vp->data);
+	}
+
+	fr_cursor_insert(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Print data as integer, not as VALUE.
@@ -584,13 +628,21 @@ static ssize_t xlat_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 /** Prints the current module processing the request
  *
  */
-static ssize_t xlat_module(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, UNUSED char const *fmt)
+static xlat_action_t xlat_module(TALLOC_CTX *ctx, fr_cursor_t *out,
+				  REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				  UNUSED fr_value_box_t **in)
 {
-	strlcpy(*out, request->module, outlen);
+	fr_value_box_t	*vb = NULL;
 
-	return strlen(*out);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	if (fr_value_box_strdup(vb, vb, NULL, request->module, false) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_cursor_insert(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 #ifdef WITH_UNLANG
@@ -2697,11 +2749,8 @@ int xlat_init(void)
 	c->internal = true
 
 	XLAT_REGISTER(integer);
-	XLAT_REGISTER(strlen);
-	XLAT_REGISTER(length);
 	XLAT_REGISTER(xlat);
 	XLAT_REGISTER(map);
-	XLAT_REGISTER(module);
 	XLAT_REGISTER(debug_attr);
 
 	xlat_register(NULL, "explode", explode_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2716,6 +2765,9 @@ int xlat_init(void)
 	c->internal = true;
 
 	xlat_async_register(NULL, "tag", xlat_tag);
+	xlat_async_register(NULL, "length", xlat_length);
+	xlat_async_register(NULL, "strlen", xlat_strlen);
+	xlat_async_register(NULL, "module", xlat_module);
 	xlat_async_register(NULL, "base64", base64_xlat);
 	xlat_async_register(NULL, "base64decode", xlat_base64_decode);
 	xlat_async_register(NULL, "bin", bin_xlat);
