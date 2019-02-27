@@ -2053,7 +2053,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "release-on-roam BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "remote-port UINT16", 		isc_ignore,   1}, // integer uint16_t
 	{ "server-id-check BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "server-identifier IPADDR", 		ISC_NOOP, parse_server_identifier, 1}, // ipaddr or host name
+	{ "server-identifier IPADDR", 		ISC_NOOP, parse_server_identifier, NULL, 1}, // ipaddr or host name
 	{ "server-name STRING", 		ISC_NOOP, parse_server_name, NULL, 1}, // text string
 	{ "shared-network STRING SECTION",	isc_not_done, 1},
 	{ "site-option-space STRING", 		isc_invalid,  1}, // vendor option declaration statement
