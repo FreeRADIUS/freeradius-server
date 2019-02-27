@@ -707,7 +707,7 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	uint8_t		unlang_indent;
 	uint8_t		module_indent;
 	va_list		ap;
-	char const	*errstr;
+	char		*errstr;
 
 	if (idx >= sizeof(spaces)) {
 		size_t offset = (idx - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
