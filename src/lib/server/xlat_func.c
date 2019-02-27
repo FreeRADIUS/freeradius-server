@@ -1685,18 +1685,33 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Example: "%{explode:&ref <delim>}"
  */
-static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
-				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				 REQUEST *request, char const *fmt)
+static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_cursor_t *out,
+					REQUEST *request, UNUSED void const *xlat_inst,
+					UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 {
-	vp_tmpl_t	*vpt = NULL;
-	VALUE_PAIR	*vp;
+	vp_tmpl_t	*vpt;
 	fr_cursor_t	cursor, to_merge;
-	VALUE_PAIR 	*head = NULL;
-	ssize_t		slen;
-	int		count = 0;
-	char const	*p = fmt;
+	fr_value_box_t  *vb;
+	VALUE_PAIR	*vp, *head;
+	ssize_t		slen, count = 0;
+	char const	*p;
 	char		delim;
+
+	if (!*in) {
+		REDEBUG("explode needs exactly two arguments: &ref <delim>");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+
+	p = fr_value_box_list_get(*in, 0)->vb_strvalue;
 
 	/*
 	 *  Trim whitespace
@@ -1705,8 +1720,8 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	slen = tmpl_afrom_attr_substr(ctx, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
-		RPEDEBUG("Invalid input");
-		return -1;
+		RPEDEBUG("Invalid '%s' input", p);
+		return XLAT_ACTION_FAIL;
 	}
 
 	p += slen;
@@ -1715,7 +1730,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 	arg_error:
 		talloc_free(vpt);
 		REDEBUG("explode needs exactly two arguments: &ref <delim>");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	if (*p == '\0') goto arg_error;
@@ -1726,8 +1741,8 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	while (vp) {
-	     	VALUE_PAIR *nvp;
-	     	char const *end;
+		VALUE_PAIR *nvp;
+		char const *end;
 		char const *q;
 
 		/*
@@ -1762,7 +1777,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 			nvp = fr_pair_afrom_da(talloc_parent(vp), vp->da);
 			if (!nvp) {
 				fr_pair_list_free(&head);
-				return -1;
+				goto arg_error;
 			}
 			nvp->tag = vp->tag;
 
@@ -1812,14 +1827,18 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 		continue;
 
 	next:
-	    	vp = fr_cursor_next(&cursor);
+		vp = fr_cursor_next(&cursor);
 	}
 
 	fr_cursor_head(&to_merge);
 	fr_cursor_merge(&cursor, &to_merge);
 	talloc_free(vpt);
 
-	return snprintf(*out, outlen, "%i", count);
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
+	vb->vb_size = count;
+	fr_cursor_insert(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Calculate number of seconds until the next n hour(s), day(s), week(s), year(s).
@@ -2756,8 +2775,6 @@ int xlat_init(void)
 	XLAT_REGISTER(map);
 	XLAT_REGISTER(debug_attr);
 
-	xlat_register(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
 	xlat_register(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "lpad", xlat_func_lpad, NULL, NULL, 0, 0, true);
 	xlat_register(NULL, "rpad", xlat_func_rpad, NULL, NULL, 0, 0, true);
@@ -2767,6 +2784,7 @@ int xlat_init(void)
 	rad_assert(c != NULL);
 	c->internal = true;
 
+	xlat_async_register(NULL, "explode", xlat_func_explode);
 	xlat_async_register(NULL, "base64", xlat_func_base64_encode);
 	xlat_async_register(NULL, "base64decode", xlat_func_base64_decode);
 	xlat_async_register(NULL, "bin", xlat_func_bin);
