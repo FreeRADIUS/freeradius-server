@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/server/rad_assert.h>
 
 #include <freeradius-devel/server/map_proc.h>
@@ -41,12 +42,19 @@ fr_dict_autoload_t rlm_isc_dhcp_dict[] = {
 static fr_dict_attr_t const *attr_client_hardware_address;
 static fr_dict_attr_t const *attr_your_ip_address;
 static fr_dict_attr_t const *attr_client_identifier;
+static fr_dict_attr_t const *attr_server_name;
+static fr_dict_attr_t const *attr_boot_filename;
+static fr_dict_attr_t const *attr_server_ip_address;
 
 extern fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[];
 fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
 	{ .out = &attr_client_hardware_address, .name = "DHCP-Client-Hardware-Address", .type = FR_TYPE_ETHERNET, .dict = &dict_dhcpv4},
 	{ .out = &attr_your_ip_address, .name = "DHCP-Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ .out = &attr_client_identifier, .name = "DHCP-Client-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4},
+	{ .out = &attr_server_name, .name = "DHCP-Server-Host-Name", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4},
+	{ .out = &attr_boot_filename, .name = "DHCP-Boot-Filename", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4},
+	{ .out = &attr_server_ip_address, .name = "DHCP-Server-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
+
 	{ NULL }
 };
 
@@ -69,6 +77,17 @@ typedef struct {
 	bool			debug;
 	bool			pedantic;
 	rlm_isc_dhcp_info_t	*head;
+
+	/*
+	 *	While "host" blocks can appear anywhere, their
+	 *	definitions are global.  We use these hashes for
+	 *	dedup, and for assigning IP addresses in the `recv`
+	 *	section.  We still need to have host hashes in the
+	 *	subsections, so that we can apply options from the
+	 *	bottom up.
+	 */
+	fr_hash_table_t		*hosts_by_ether;       	//!< by MAC address
+	fr_hash_table_t		*hosts_by_uid;		//!< by client identifier
 } rlm_isc_dhcp_t;
 
 /*
@@ -171,8 +190,8 @@ struct rlm_isc_dhcp_info_t {
 	/*
 	 *	Only for things that have sections
 	 */
-	fr_hash_table_t		*hosts;		//!< by MAC address
-	fr_hash_table_t		*client_identifiers; //!< by client identifier
+	fr_hash_table_t		*hosts_by_ether;  //!< by MAC address
+	fr_hash_table_t		*hosts_by_uid;	//!< by client identifier
 	VALUE_PAIR		*options;	//!< DHCP options
 	fr_trie_t		*subnets;
 	rlm_isc_dhcp_info_t	*child;
@@ -756,22 +775,22 @@ static int host_ether_cmp(void const *one, void const *two)
 	return memcmp(a->ether, b->ether, 6);
 }
 
-typedef struct isc_host_client_t {
+typedef struct isc_host_uid_t {
 	fr_value_box_t		*client;
 	rlm_isc_dhcp_info_t	*host;
-} isc_host_client_t;
+} isc_host_uid_t;
 
-static uint32_t host_client_hash(void const *data)
+static uint32_t host_uid_hash(void const *data)
 {
-	isc_host_client_t const *self = data;
+	isc_host_uid_t const *self = data;
 
 	return fr_hash(self->client->vb_octets, self->client->vb_length);
 }
 
-static int host_client_cmp(void const *one, void const *two)
+static int host_uid_cmp(void const *one, void const *two)
 {
-	isc_host_client_t const *a = one;
-	isc_host_client_t const *b = two;
+	isc_host_uid_t const *a = one;
+	isc_host_uid_t const *b = two;
 
 	if ( a->client->vb_length < b->client->vb_length) return -1;
 	if ( a->client->vb_length > b->client->vb_length) return +1;
@@ -1030,56 +1049,6 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 	// @todo - print out ISC names...
 	IDEBUG("%.*s option %s %s ", state->braces, spaces, da->name, value);
 	talloc_free(value);
-
-	/*
-	 *	Hosts are looked up by client identifier, too.
-	 *
-	 *	The client-identifier option exists within the host,
-	 *	BUT we have to add the host to the grandparent of the
-	 *	option.
-	 *
-	 *	Note that we still leave the option in the host option
-	 *	list.  That way the client identifier is always
-	 *	returned to the client, as per RFC 6842.
-	 */
-	if (da == attr_client_identifier && parent->cmd && (parent->cmd->type == ISC_HOST)) {
-		isc_host_client_t *self, *old;
-		rlm_isc_dhcp_info_t *host;
-
-		/*
-		 *	Add our parent (the host) to the hosts parent
-		 *	client identifier hash table.
-		 */
-		host = parent;
-		parent = host->parent;
-		if (!parent) return -1; /* internal error */
-
-		if (!parent->client_identifiers) {
-			parent->client_identifiers = fr_hash_table_create(parent, host_client_hash, host_client_cmp, NULL);
-			if (!parent->client_identifiers) return -1;
-		}
-
-		self = talloc_zero(host, isc_host_client_t);
-		self->client = &vp->data;
-		self->host = host;
-
-		/*
-		 *	Duplicate "client identifier" entries aren't allowd.
-		 *
-		 *	@todo - maybe they are?  And we just apply all of them?
-		 */
-		old = fr_hash_table_finddata(parent->client_identifiers, self);
-		if (old) {
-			fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'option client-identifier' fields",
-					   parent->argv[0]->vb_strvalue, old->host->argv[0]->vb_strvalue);
-			return -1;
-		}
-
-		if (fr_hash_table_insert(parent->client_identifiers, self) < 0) {
-			fr_strerror_printf("Failed inserting 'option client identifier' into parent hash table");
-			return -1;
-		}
-	}
 
 	/*
 	 *	We've remembered the option in the parent option list.
@@ -1424,30 +1393,38 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	return 1;
 }
 
-
+/** host NAME { ... }
+ *
+ *	Hosts are global, and are keyed by MAC `hardware ethernet`, and by
+ *	`client-identifier`.
+ */
 static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
-	isc_host_ether_t *self, *old;
-	rlm_isc_dhcp_info_t *child, *parent;
+	isc_host_ether_t *my_ether, *old_ether;
+	isc_host_uid_t *my_uid, *old_uid;
+	rlm_isc_dhcp_info_t *ether, *child, *parent;
+	VALUE_PAIR *vp;
+
+	ether = NULL;
+	my_uid = NULL;
 
 	/*
 	 *	A host MUST have at least one "hardware ethernet" in
 	 *	it.
-	 *
-	 *	@todo - complain if there are multiple ones...
 	 */
 	for (child = info->child; child != NULL; child = child->next) {
-		/*
-		 *	@todo - Use enums or something.  Yes, this is
-		 *	fugly.
-		 */
 		if (child->cmd->type == ISC_HARDWARE_ETHERNET) {
-			break;
+			if (ether) {
+				fr_strerror_printf("cannot have two 'hardware ethernet' entries in a 'host'");
+				return -1;
+			}
+
+			ether = child;
 		}
 	}
 
-	if (!child) {
-		fr_strerror_printf("host %s does not contain a 'hardware ethernet' field",
+	if (!ether) {
+		fr_strerror_printf("host %s does not contain a 'hardware ethernet' entry",
 				   info->argv[0]->vb_strvalue);
 		return -1;
 	}
@@ -1455,9 +1432,68 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	/*
 	 *	Point directly to the ethernet address.
 	 */
-	self = talloc_zero(info, isc_host_ether_t);
-	memcpy(self->ether, &(child->argv[0]->vb_ether), sizeof(self->ether));
-	self->host = info;
+	my_ether = talloc_zero(info, isc_host_ether_t);
+	memcpy(my_ether->ether, &(ether->argv[0]->vb_ether), sizeof(my_ether->ether));
+	my_ether->host = info;
+
+	/*
+	 *	We can't have duplicate ethernet addresses for hosts.
+	 */
+	old_ether = fr_hash_table_finddata(state->inst->hosts_by_ether, my_ether);
+	if (old_ether) {
+		fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'hardware ethernet' fields",
+				   info->argv[0]->vb_strvalue, old_ether->host->argv[0]->vb_strvalue);
+		talloc_free(my_ether);
+		return -1;
+	}
+
+	/*
+	 *	The 'host' entry might not have a client identifier option.
+	 */
+	vp = fr_pair_find_by_da(info->options, attr_client_identifier, TAG_ANY);
+	if (vp) {
+		my_uid = talloc_zero(info, isc_host_uid_t);
+		my_uid->client = &vp->data;
+		my_uid->host = info;
+
+		old_uid = fr_hash_table_finddata(state->inst->hosts_by_uid, my_uid);
+		if (old_uid) {
+			fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'option client-identifier' fields",
+					   info->argv[0]->vb_strvalue, old_uid->host->argv[0]->vb_strvalue);
+			talloc_free(my_ether);
+			talloc_free(my_uid);
+			return -1;
+		}
+	}
+
+	/*
+	 *	Insert into the ether hashes.
+	 */
+	if (fr_hash_table_insert(state->inst->hosts_by_ether, my_ether) < 0) {
+		fr_strerror_printf("Failed inserting 'host %s' into hash table",
+				   info->argv[0]->vb_strvalue);
+		talloc_free(my_ether);
+		if (my_uid) talloc_free(my_uid);
+		return -1;
+	}
+
+	if (my_uid) {
+		if (fr_hash_table_insert(state->inst->hosts_by_uid, my_uid) < 0) {
+			fr_strerror_printf("Failed inserting 'host %s' into hash table",
+					   info->argv[0]->vb_strvalue);
+			talloc_free(my_uid);
+			return -1;
+		}
+	}
+
+	/*
+	 *	The host doesn't have a parent, that's fine..
+	 *
+	 *	It typically should tho...
+	 */
+	if (!info->parent) return 2;
+
+	parent = info->parent;
 
 	/*
 	 *	Add the host to the *parents* hash table.  That way
@@ -1465,28 +1501,36 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	 *	its hash table.  And avoid the O(N) issue of having
 	 *	thousands of "host" entries in the parent->child list.
 	 */
-	parent = info->parent;
-	if (!parent->hosts) {
-		parent->hosts = fr_hash_table_create(parent, host_ether_hash, host_ether_cmp, NULL);
-		if (!parent->hosts) return -1;
+	if (!parent->hosts_by_ether) {
+		parent->hosts_by_ether = fr_hash_table_create(parent, host_ether_hash, host_ether_cmp, NULL);
+		if (!parent->hosts_by_ether) {
+			return -1;
+		}
 	}
 
-	/*
-	 *	Duplicate "host" entries aren't allowd.
-	 *
-	 *	@todo - maybe they are?  And we just apply all of them?
-	 */
-	old = fr_hash_table_finddata(parent->hosts, self);
-	if (old) {
-		fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'hardware ethernet' fields",
-				   info->argv[0]->vb_strvalue, old->host->argv[0]->vb_strvalue);
-		return -1;
-	}
-
-	if (fr_hash_table_insert(parent->hosts, self) < 0) {
+	if (fr_hash_table_insert(parent->hosts_by_ether, my_ether) < 0) {
 		fr_strerror_printf("Failed inserting 'host %s' into hash table",
 				   info->argv[0]->vb_strvalue);
 		return -1;
+	}
+
+	/*
+	 *	If we have a UID, insert into the UID hashes.
+	 */
+	if (my_uid) {
+		if (!parent->hosts_by_uid) {
+			parent->hosts_by_uid = fr_hash_table_create(parent, host_uid_hash, host_uid_cmp, NULL);
+			if (!parent->hosts_by_uid) {
+				return -1;
+			}
+		}
+
+
+		if (fr_hash_table_insert(parent->hosts_by_uid, my_uid) < 0) {
+			fr_strerror_printf("Failed inserting 'host %s' into hash table",
+					   info->argv[0]->vb_strvalue);
+			return -1;
+		}
 	}
 
 	IDEBUG("%.*s host %s { ... }", state->braces, spaces, info->argv[0]->vb_strvalue);
@@ -1503,6 +1547,9 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
  */
 #define vb_ipv4addr vb_ip.addr.v4.s_addr
 
+/** subnet IPADDR netmask MASK { ... }
+ *
+ */
 static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	rlm_isc_dhcp_info_t *parent;
@@ -1567,6 +1614,13 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 		return -1;
 	}
 
+	/*
+	 *	@todo - if there's no 'option subnet-mask', add one
+	 *	from the netmask given here.  If there is an 'option
+	 *	subnet-mask', then assume that the admin knows what
+	 *	he's doing, and don't add one.
+	 */
+
 	IDEBUG("%.*s subnet %pV netmask %pV { ... }", state->braces, spaces, info->argv[0], info->argv[1]);
 
 	/*
@@ -1576,7 +1630,7 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 	return 2;
 }
 
-static rlm_isc_dhcp_info_t *get_host(REQUEST *request, rlm_isc_dhcp_info_t *head)
+static rlm_isc_dhcp_info_t *get_host(REQUEST *request, fr_hash_table_t *hosts_by_ether, fr_hash_table_t *hosts_by_uid)
 {
 	VALUE_PAIR *vp;
 	isc_host_ether_t *ether, my_ether;
@@ -1589,11 +1643,11 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, rlm_isc_dhcp_info_t *head
 	 */
 	vp = fr_pair_find_by_da(request->packet->vps, attr_client_identifier, TAG_ANY);
 	if (vp) {
-		isc_host_client_t *client, my_client;
+		isc_host_uid_t *client, my_client;
 
 		my_client.client = &(vp->data);
 
-		client = fr_hash_table_finddata(head->client_identifiers, &my_client);
+		client = fr_hash_table_finddata(hosts_by_uid, &my_client);
 		if (client) {
 			host = client->host;
 			goto done;
@@ -1606,7 +1660,7 @@ static rlm_isc_dhcp_info_t *get_host(REQUEST *request, rlm_isc_dhcp_info_t *head
 
 	memcpy(&my_ether.ether, vp->vp_ether, sizeof(my_ether.ether));
 
-	ether = fr_hash_table_finddata(head->hosts, &my_ether);
+	ether = fr_hash_table_finddata(hosts_by_ether, &my_ether);
 	if (!ether) return NULL;
 
 	host = ether->host;
@@ -1615,12 +1669,71 @@ done:
 	/*
 	 *	@todo - check "fixed-address".  This host entry should
 	 *	match ONLY if one of the addresses matches the network
-	 *	on which the client is booting.
+	 *	on which the client is booting.  OR if there's no
+	 *	'fixed-address' field.  OR if there's no 'yiaddr' in
+	 *	the request.
 	 */
 
 	return host;
 }
 
+
+static int add_header_option(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
+{
+	int rcode;
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
+
+	if (!info->parent) return -1; /* internal error */
+
+	vp = fr_pair_afrom_da(info->parent, da);
+
+	rcode = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
+	if (rcode < 0) return rcode;
+
+	(void) fr_pair_cursor_init(&cursor, &info->parent->options);
+	(void) fr_pair_cursor_tail(&cursor);
+	fr_pair_cursor_append(&cursor, vp);
+
+	talloc_free(info);
+	return 2;
+}
+
+#define member_size(type, member) sizeof(((type *)0)->member)
+
+/** filename STRING
+ *
+ */
+static int parse_filename(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+{
+	if (info->argv[0]->vb_length > member_size(dhcp_packet_t, file)) {
+		fr_strerror_printf("filename is too long");
+		return -1;
+	}
+
+	return add_header_option(info, attr_boot_filename);
+}
+
+/** server-name STRING
+ *
+ */
+static int parse_server_name(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+{
+	if (info->argv[0]->vb_length > member_size(dhcp_packet_t, sname)) {
+		fr_strerror_printf("filename is too long");
+		return -1;
+	}
+
+	return add_header_option(info, attr_server_name);
+}
+
+/** next-server IPADDR
+ *
+ */
+static int parse_next_server(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+{
+	return add_header_option(info, attr_server_ip_address);
+}
 
 /*
  *  When a client is to be booted, its boot parameters are determined
@@ -1645,10 +1758,11 @@ done:
 /** Apply fixed IPs
  *
  */
-static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *head)
+static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request)
 {
-	int rcode, child_rcode;
-	rlm_isc_dhcp_info_t *info;
+	int rcode;
+	rlm_isc_dhcp_info_t *host, *info;
+	VALUE_PAIR *vp;
 	VALUE_PAIR *yiaddr;
 
 	/*
@@ -1657,90 +1771,46 @@ static int apply_fixed_ip(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_i
 	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address, TAG_ANY);
 	if (yiaddr) return 0;
 
-	rcode = 0;
+	host = get_host(request, inst->hosts_by_ether, inst->hosts_by_uid);
+	if (!host) return 0;
 
 	/*
-	 *	The most specific entry is preferred over the most generic one.
+	 *	Find a "fixed-address" sub-statement.
 	 */
-	for (info = head->child; info != NULL; info = info->next) {
+	for (info = host->child; info != NULL; info = info->next) {
+		vp_cursor_t cursor;
+
 		if (!info->cmd) return -1; /* internal error */
 
 		/*
-		 *	Skip simple statements
+		 *	Skip complex statements
 		 */
-		if (!info->child) continue;
+		if (info->child) continue;
+
+		if (info->cmd->type != ISC_FIXED_ADDRESS) continue;
+
+		vp = fr_pair_afrom_da(request->reply->vps, attr_your_ip_address);
+		if (!vp) return -1;
+
+		rcode = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
+		if (rcode < 0) return rcode;
 
 		/*
-		 *	Recurse for children which have subsections.
+		 *	<sigh> I miss pair_add()
 		 */
-		child_rcode = apply_fixed_ip(inst, request, info);
-		if (child_rcode < 0) return child_rcode;
-		if (child_rcode == 0) continue;
+		(void) fr_pair_cursor_init(&cursor, &request->reply->vps);
+		(void) fr_pair_cursor_tail(&cursor);
+		fr_pair_cursor_append(&cursor, vp);
 
 		/*
-		 *	We've found a "fixed address" statement and
-		 *	applied it.  Don't look for another one.
+		 *	If we've found a fixed IP, then tell
+		 *	the parent to stop iterating over
+		 *	children.
 		 */
-		if (child_rcode == 2) return child_rcode;
-
-		rcode = 1;
+		return 2;
 	}
 
-	/*
-	 *	If there's now a fixed IP, don't do anything
-	 */
-	yiaddr = fr_pair_find_by_da(request->reply->vps, attr_your_ip_address, TAG_ANY);
-	if (yiaddr) return rcode;
-
-	/*
-	 *	Find any "host", and apply the fixed IP.
-	 */
-	if (head->hosts) {
-		VALUE_PAIR *vp;
-		rlm_isc_dhcp_info_t *host;
-
-		host = get_host(request, head);
-		if (!host) return 0;
-
-		/*
-		 *	Find a "fixed address" sub-statement.
-		 */
-		for (info = host->child; info != NULL; info = info->next) {
-			vp_cursor_t cursor;
-
-			if (!info->cmd) return -1; /* internal error */
-
-			/*
-			 *	Skip complex statements
-			 */
-			if (info->child) continue;
-
-			// @todo - this is getting increasingly retarded
-			if (info->cmd->type == ISC_FIXED_ADDRESS) continue;
-
-			vp = fr_pair_afrom_da(request->reply->vps, attr_your_ip_address);
-			if (!vp) return -1;
-
-			rcode = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
-			if (rcode < 0) return rcode;
-
-			/*
-			 *	<sigh> I miss pair_add()
-			 */
-			(void) fr_pair_cursor_init(&cursor, &request->reply->vps);
-			(void) fr_pair_cursor_tail(&cursor);
-			fr_pair_cursor_append(&cursor, vp);
-
-			/*
-			 *	If we've found a fixed IP, then tell
-			 *	the parent to stop iterating over
-			 *	children.
-			 */
-			return 2;
-		}
-	}
-
-	return rcode;
+	return 0;
 }
 
 /** Apply all rules *except* fixed IP
@@ -1758,18 +1828,14 @@ static int apply(rlm_isc_dhcp_t *inst, REQUEST *request, rlm_isc_dhcp_info_t *he
 	/*
 	 *	First, apply any "host" options
 	 */
-	if (head->hosts) {
+	if (head->hosts_by_ether) {
 		rlm_isc_dhcp_info_t *host = NULL;
 
-		host = get_host(request, head);
+		host = get_host(request, head->hosts_by_ether, head->hosts_by_uid);
 		if (!host) goto subnet;
 
 		/*
 		 *	Apply any options in the "host" section.
-		 *
-		 *	@todo - only apply the options if there's no
-		 *	YIADDR, OR the YIADDR matches one of the
-		 *	addresses listed in `fixed address`.
 		 */
 		child_rcode = apply(inst, request, host);
 		if (child_rcode < 0) return child_rcode;
@@ -1788,9 +1854,6 @@ subnet:
 		child_rcode = apply(inst, request, info);
 		if (child_rcode < 0) return child_rcode;
 		if (child_rcode == 1) rcode = 1;
-
-		// @todo - look for subnet mask.  If one doesn't
-		// exist, use the mask from the subnet declaration.
 	}
 
 recurse:
@@ -1922,7 +1985,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "dynamic-bootp-lease-cutoff UINT32", 	isc_not_done, 1}, // Lease time interval
 	{ "dynamic-bootp-lease-length UINT32", 	isc_not_done, 1}, // integer uint32_t
 	{ "echo-client-id BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "filename STRING",			isc_not_done, 1},
+	{ "filename STRING",			ISC_NOOP, parse_filename, NULL, 1},
 	{ "fixed-address IPADDR,",		ISC_FIXED_ADDRESS, NULL, NULL, 16},
 	{ "fqdn-reply BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "get-lease-hostnames BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
@@ -1958,8 +2021,8 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "ldap-tls-key STRING", 		isc_ignore,   1}, // text string
 	{ "ldap-tls-randfile STRING", 		isc_ignore,   1}, // text string
 	{ "ldap-tls-reqcert STRING,", 		isc_ignore,   1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
-
 	{ "ldap-username STRING", 		isc_ignore,   1}, // text string
+
 	{ "lease-file-name STRING", 		isc_ignore,   1}, // text string
 	{ "leasequery BOOL", 			isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "limit-addrs-per-ia UINT32", 		isc_not_done, 1}, // integer uint32_t
@@ -1976,7 +2039,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "max-lease-time INTEGER",		isc_not_done, 1},
 	{ "min-lease-time INTEGER",		isc_not_done, 1},
 	{ "min-secs UINT8", 			isc_not_done, 1}, // integer uint8_t
-	{ "next-server IPADDR", 		isc_not_done, 1}, // ipaddr or hostname
+	{ "next-server IPADDR", 		ISC_NOOP, parse_next_server, NULL, 1}, // ipaddr or hostname
 	{ "not authoritative",			isc_not_done, 0},
 	{ "omapi-key STRING", 			isc_ignore,   1}, // domain name
 	{ "omapi-port UINT16", 			isc_ignore,   1}, // integer uint16_t
@@ -1992,7 +2055,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "release-on-roam BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "remote-port UINT16", 		isc_ignore,   1}, // integer uint16_t
 	{ "server-id-check BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
-	{ "server-name STRING", 		isc_not_done, 1}, // text string
+	{ "server-name STRING", 		ISC_NOOP, parse_server_name, NULL, 1}, // text string
 	{ "shared-network STRING SECTION",	isc_not_done, 1},
 	{ "site-option-space STRING", 		isc_invalid,  1}, // vendor option declaration statement
 	{ "stash-agent-options BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
@@ -2170,6 +2233,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return 0;
 	}
 
+	inst->hosts_by_ether = fr_hash_table_create(inst, host_ether_hash, host_ether_cmp, NULL);
+	if (!inst->hosts_by_ether) return -1;
+
+	inst->hosts_by_uid = fr_hash_table_create(inst, host_uid_hash, host_uid_cmp, NULL);
+	if (!inst->hosts_by_uid) return -1;
+
+
 	return 0;
 }
 
@@ -2179,7 +2249,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	int rcode;
 	rlm_isc_dhcp_t *inst = instance;
 
-	rcode = apply_fixed_ip(inst, request, inst->head);
+	rcode = apply_fixed_ip(inst, request);
 	if (rcode < 0) return RLM_MODULE_FAIL;
 	if (rcode == 0) return RLM_MODULE_NOOP;
 
