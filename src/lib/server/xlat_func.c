@@ -1685,18 +1685,32 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * Example: "%{explode:&ref <delim>}"
  */
-static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
-				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				 REQUEST *request, char const *fmt)
+static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_cursor_t *out,
+					REQUEST *request, UNUSED void const *xlat_inst,
+					UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 {
 	vp_tmpl_t	*vpt = NULL;
 	VALUE_PAIR	*vp;
-	fr_cursor_t	cursor, to_merge;
-	VALUE_PAIR 	*head = NULL;
 	ssize_t		slen;
-	int		count = 0;
-	char const	*p = fmt;
+	char const	*p;
 	char		delim;
+	fr_cursor_t	cursor;
+
+	if (!*in) {
+		REDEBUG("explode needs exactly two arguments: &ref <delim>");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+
+	p = fr_value_box_list_get(*in, 0)->vb_strvalue;
 
 	/*
 	 *  Trim whitespace
@@ -1705,8 +1719,8 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	slen = tmpl_afrom_attr_substr(ctx, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
-		RPEDEBUG("Invalid input");
-		return -1;
+		RPEDEBUG("Invalid '%s' input", p);
+		return XLAT_ACTION_FAIL;
 	}
 
 	p += slen;
@@ -1715,41 +1729,41 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 	arg_error:
 		talloc_free(vpt);
 		REDEBUG("explode needs exactly two arguments: &ref <delim>");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	if (*p == '\0') goto arg_error;
 
 	delim = *p;
 
-	fr_cursor_init(&to_merge, &head);
-
-	vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
-	while (vp) {
-	     	VALUE_PAIR *nvp;
-	     	char const *end;
-		char const *q;
+	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		fr_value_box_t	*vb = &vp->data;
+		fr_value_box_t 	*result;
+		char const 		*end;
+		char const 		*q;
 
 		/*
 		 *	This can theoretically operate on lists too
 		 *	so we need to check the type of each attribute.
 		 */
-		switch (vp->vp_type) {
+		switch (vb->type) {
 		case FR_TYPE_OCTETS:
 		case FR_TYPE_STRING:
 			break;
 
 		default:
-			goto next;
+			continue;
 		}
 
-		p = vp->vp_ptr;
-		end = p + vp->vp_length;
+		p = vb->datum.ptr;
+		end = p + vb->vb_length;
 		while (p < end) {
 			q = memchr(p, delim, end - p);
 			if (!q) {
 				/* Delimiter not present in attribute */
-				if (p == vp->vp_ptr) goto next;
+				if (p == vb->datum.ptr) continue;
 				q = end;
 			}
 
@@ -1759,21 +1773,21 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 				continue;
 			}
 
-			nvp = fr_pair_afrom_da(talloc_parent(vp), vp->da);
-			if (!nvp) {
-				fr_pair_list_free(&head);
-				return -1;
-			}
-			nvp->tag = vp->tag;
-
-			switch (vp->vp_type) {
+			switch (vb->type) {
 			case FR_TYPE_OCTETS:
 			{
 				uint8_t *buff;
 
-				buff = talloc_array(nvp, uint8_t, q - p);
+				buff = talloc_array(ctx, uint8_t, q - p);
 				memcpy(buff, p, q - p);
-				fr_pair_value_memsteal(nvp, buff);
+
+				MEM(result = fr_value_box_alloc_null(ctx));
+				if (fr_value_box_memdup(result, result, NULL, buff, q - p, false) < 0) {
+					talloc_free(buff);
+					talloc_free(result);
+					goto arg_error;
+				}
+				talloc_free(buff);
 			}
 				break;
 
@@ -1781,10 +1795,18 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 			{
 				char *buff;
 
-				buff = talloc_array(nvp, char, (q - p) + 1);
+				buff = talloc_array(ctx, char, (q - p) + 1);
 				memcpy(buff, p, q - p);
 				buff[q - p] = '\0';
-				fr_pair_value_strsteal(nvp, (char *)buff);
+
+				MEM(result = fr_value_box_alloc_null(ctx));
+				if (fr_value_box_strdup(result, result, NULL, buff, false) < 0) {
+					talloc_free(buff);
+					talloc_free(result);
+					goto arg_error;
+				}
+
+				talloc_free(buff);
 			}
 				break;
 
@@ -1792,34 +1814,15 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 				rad_assert(0);
 			}
 
-			fr_cursor_append(&to_merge, nvp);
+			fr_cursor_append(out, result);
 
 			p = q + 1;	/* next */
-
-			count++;
 		}
-
-		/*
-		 *	Remove the unexploded version
-		 */
-		vp = fr_cursor_remove(&cursor);
-		talloc_free(vp);
-		/*
-		 *	Remove sets cursor->current to
-		 *	the next iter value.
-		 */
-		vp = fr_cursor_current(&cursor);
-		continue;
-
-	next:
-	    	vp = fr_cursor_next(&cursor);
 	}
 
-	fr_cursor_head(&to_merge);
-	fr_cursor_merge(&cursor, &to_merge);
 	talloc_free(vpt);
 
-	return snprintf(*out, outlen, "%i", count);
+	return XLAT_ACTION_DONE;
 }
 
 /** Calculate number of seconds until the next n hour(s), day(s), week(s), year(s).
@@ -2756,8 +2759,6 @@ int xlat_init(void)
 	XLAT_REGISTER(map);
 	XLAT_REGISTER(debug_attr);
 
-	xlat_register(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
 	xlat_register(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "lpad", xlat_func_lpad, NULL, NULL, 0, 0, true);
 	xlat_register(NULL, "rpad", xlat_func_rpad, NULL, NULL, 0, 0, true);
@@ -2767,6 +2768,7 @@ int xlat_init(void)
 	rad_assert(c != NULL);
 	c->internal = true;
 
+	xlat_async_register(NULL, "explode", xlat_func_explode);
 	xlat_async_register(NULL, "base64", xlat_func_base64_encode);
 	xlat_async_register(NULL, "base64decode", xlat_func_base64_decode);
 	xlat_async_register(NULL, "bin", xlat_func_bin);
