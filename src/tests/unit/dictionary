@@ -1,3 +1,5 @@
+BEGIN-PROTOCOL	RADIUS
+
 #
 #  Dictionary for the unit tests
 #
@@ -9,16 +11,16 @@
 #  Needed for the extended tests where this dictionary is used instead
 #  of the standard RADIUS dictionary.
 #
-ATTRIBUTE	Unit-String		1		string
-ATTRIBUTE	Unit-Enumv		2		integer
+#ATTRIBUTE	Unit-String		1		string
+#ATTRIBUTE	Unit-Enumv		2		integer
 
-VALUE		Unit-Enumv		Bar		1
-VALUE		Unit-Enumv		Baz		2
+#VALUE		Unit-Enumv		Bar		1
+#VALUE		Unit-Enumv		Baz		2
 
-ATTRIBUTE	Unit-Byte		3		byte
-ATTRIBUTE	Unit-Short		4		short
-ATTRIBUTE	Unit-Integer64		5		integer64
-ATTRIBUTE	Unit-Octets		6		octets
+#ATTRIBUTE	Unit-Byte		3		byte
+#ATTRIBUTE	Unit-Short		4		short
+#ATTRIBUTE	Unit-Integer64		5		integer64
+#ATTRIBUTE	Unit-Octets		6		octets
 
 ATTRIBUTE	Unit-Ext-241		241		extended
 ATTRIBUTE	Unit-Ext-241-Integer	241.241		integer
@@ -80,3 +82,5 @@ ATTRIBUTE	Unit-EVS-5-Integer	1 integer
 ATTRIBUTE	Unit-EVS-5-Octets	2 octets
 
 END-Vendor FreeRADIUS
+
+END-PROTOCOL RADIUS
