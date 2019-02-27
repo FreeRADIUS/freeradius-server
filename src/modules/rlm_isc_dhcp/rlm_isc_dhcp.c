@@ -537,7 +537,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 	char const *next;
 	char type_name[64];
 
-	while (isspace((int) *cmd)) cmd++;
+	fr_skip_spaces(cmd);
 
 	if (!*cmd) return -1;	/* internal error */
 
