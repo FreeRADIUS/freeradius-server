@@ -665,9 +665,7 @@ static ssize_t xlat_foreach(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 /** Print data as string, if possible.
  *
- * If attribute "Foo" is defined as "octets" it will normally
- * be printed as 0x0a0a0a. The xlat "%{string:Foo}" will instead
- * expand to "\n\n\n"
+ * Concat and cast one or more input boxes to a single output box string.
  */
 static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
