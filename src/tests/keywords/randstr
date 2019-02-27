@@ -3,9 +3,9 @@ update request {
         &Tmp-String-0           := "%{randstr:%{Tmp-String-0}}"
         &Tmp-String-1           := "%{randstr:nnn}"
         &Tmp-String-2           := "%{randstr:24a}"
-        &Tmp-String-3           := "%{randstr:123aa}"
-        &Tmp-String-4           := "%{randstr:123G}"
-        &Tmp-String-5           := "%{randstr:10H}"
+        &Tmp-String-3           := "%{randstr:1030aa}"
+        &Tmp-String-4           := "%{randstr:G}"
+        &Tmp-String-5           := "%{randstr:10b}"
 }
 
 #
@@ -28,7 +28,7 @@ if ("%{strlen:%{Tmp-String-2}}" != 24) {
 #
 #  Check maximum repitition
 #
-if ("%{strlen:%{Tmp-String-3}}" != 101) {
+if ("%{strlen:%{Tmp-String-3}}" != 1025) {
 	test_fail
 }
 
@@ -40,9 +40,9 @@ if (&Tmp-String-4 != "") {
 }
 
 #
-#  Check repitition of hexit
+#  Check repitition of binary output
 #
-if ("%{strlen:%{Tmp-String-5}}" != 20) {
+if ("%{strlen:%{Tmp-String-5}}" != 10) {
 	test_fail
 }
 

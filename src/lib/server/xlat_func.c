@@ -821,10 +821,13 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 	char		*endptr;
 	char		*buff, *buff_p;
 	unsigned int	result;
-	unsigned int	number;
+	unsigned int	reps;
 	size_t		outlen = 0;
 	fr_value_box_t*	vb;
 
+	/** Max repetitions of a single character class
+	 *
+	 */
 #define REPETITION_MAX 1024
 
 	/*
@@ -847,12 +850,17 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 *	Calculate size of output
 	 */
 	while (p < end) {
+		/*
+		 *	Repetition modifiers.
+		 *
+		 *	We limit it to REPETITION_MAX, because we don't want
+		 *	utter stupidity.
+		 */
 		if (isdigit((int) *p)) {
-			number = strtol(p, &endptr, 10);
-			if (number > REPETITION_MAX) number = REPETITION_MAX;
+			reps = strtol(p, &endptr, 10);
+			if (reps > REPETITION_MAX) reps = REPETITION_MAX;
 			/* hexits take up 2 characters */
-			if (*endptr == 'h' || *endptr == 'H') number *= 2;
-			outlen += number;
+			outlen += reps;
 			p = endptr;
 		} else {
 			outlen++;
@@ -866,114 +874,99 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 	p = start;
 
 	while (p < end) {
-		number = 0;
+		size_t i;
 
-		/*
-		 *	Modifiers are polite.
-		 *
-		 *	But we limit it to 100, because we don't want
-		 *	utter stupidity.
-		 */
 		if (isdigit((int) *p)) {
-			number = strtol(p, &endptr, 10);
-			if (number > REPETITION_MAX) {
-				number = REPETITION_MAX;
+			reps = strtol(p, &endptr, 10);
+			if (reps > REPETITION_MAX) {
+				reps = REPETITION_MAX;
 				RMARKER(L_WARN, L_DBG_LVL_2, start, start - p,
 					"Forcing repetition to %u", (unsigned int)REPETITION_MAX);
 			}
 			p = endptr;
+		} else {
+			reps = 1;
 		}
 
-	redo:
-		result = fr_rand();
+		for (i = 0; i < reps; i++) {
+			result = fr_rand();
+			switch (*p) {
+			/*
+			 *  Lowercase letters
+			 */
+			case 'c':
+				*buff_p++ = 'a' + (result % 26);
+				break;
 
-		switch (*p) {
-		/*
-		 *  Lowercase letters
-		 */
-		case 'c':
-			*buff_p++ = 'a' + (result % 26);
-			break;
+			/*
+			 *  Uppercase letters
+			 */
+			case 'C':
+				*buff_p++ = 'A' + (result % 26);
+				break;
 
-		/*
-		 *  Uppercase letters
-		 */
-		case 'C':
-			*buff_p++ = 'A' + (result % 26);
-			break;
+			/*
+			 *  Numbers
+			 */
+			case 'n':
+				*buff_p++ = '0' + (result % 10);
+				break;
 
-		/*
-		 *  Numbers
-		 */
-		case 'n':
-			*buff_p++ = '0' + (result % 10);
-			break;
+			/*
+			 *  Alpha numeric
+			 */
+			case 'a':
+				*buff_p++ = randstr_salt[result % (sizeof(randstr_salt) - 3)];
+				break;
 
-		/*
-		 *  Alpha numeric
-		 */
-		case 'a':
-			*buff_p++ = randstr_salt[result % (sizeof(randstr_salt) - 3)];
-			break;
+			/*
+			 *  Punctuation
+			 */
+			case '!':
+				*buff_p++ = randstr_punc[result % (sizeof(randstr_punc) - 1)];
+				break;
 
-		/*
-		 *  Punctuation
-		 */
-		case '!':
-			*buff_p++ = randstr_punc[result % (sizeof(randstr_punc) - 1)];
-			break;
+			/*
+			 *  Alpa numeric + punctuation
+			 */
+			case '.':
+				*buff_p++ = '!' + (result % 95);
+				break;
 
-		/*
-		 *  Alpa numeric + punctuation
-		 */
-		case '.':
-			*buff_p++ = '!' + (result % 95);
-			break;
+			/*
+			 *  Alpha numeric + salt chars './'
+			 */
+			case 's':
+				*buff_p++ = randstr_salt[result % (sizeof(randstr_salt) - 1)];
+				break;
 
-		/*
-		 *  Alpha numeric + salt chars './'
-		 */
-		case 's':
-			*buff_p++ = randstr_salt[result % (sizeof(randstr_salt) - 1)];
-			break;
+			/*
+			 *  Chars suitable for One Time Password tokens.
+			 *  Alpha numeric with easily confused char pairs removed.
+			 */
+			case 'o':
+				*buff_p++ = randstr_otp[result % (sizeof(randstr_otp) - 1)];
+				break;
 
-		/*
-		 *  Chars suitable for One Time Password tokens.
-		 *  Alpha numeric with easily confused char pairs removed.
-		 */
-		case 'o':
-			*buff_p++ = randstr_otp[result % (sizeof(randstr_otp) - 1)];
-			break;
+			/*
+			 *	Binary data - Copy between 1-4 bytes at a time
+			 */
+			case 'b':
+			{
+				size_t copy = (reps - i) > sizeof(result) ? sizeof(result) : reps - i;
 
-		/*
-		 *  Binary data as hexits (we don't really support
-		 *  non printable chars).
-		 */
-		case 'h':
-			snprintf(buff_p, 3, "%02x", result % 256);
+				memcpy(buff_p, (uint8_t *)&result, copy);
+				buff_p += copy;
+				i += (copy - 1);	/* Loop +1 */
+			}
+				break;
 
-			buff_p += 2;
-			break;
+			default:
+				REDEBUG("Invalid character class '%c'", *p);
+				talloc_free(buff);
 
-		/*
-		 *  Binary data with uppercase hexits
-		 */
-		case 'H':
-			snprintf(buff_p, 3, "%02X", result % 256);
-
-			buff_p += 2;
-			break;
-
-		default:
-			REDEBUG("Invalid character class '%c'", *p);
-			talloc_free(buff);
-
-			return XLAT_ACTION_FAIL;
-		}
-
-		if (number > 1) {
-			number--;
-			goto redo;
+				return XLAT_ACTION_FAIL;
+			}
 		}
 
 		p++;
