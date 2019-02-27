@@ -317,7 +317,7 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	 */
 	sqlippool_expand(query, sizeof(query), fmt, data, param, param_len);
 
-	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, data->sql_inst) < 0) return -1;
+	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, *handle) < 0) return -1;
 
 	ret = data->sql_inst->sql_query(data->sql_inst, request, handle, expanded);
 	if (ret < 0){
@@ -365,7 +365,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	/*
 	 *	Do an xlat on the provided string
 	 */
-	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, data->sql_inst) < 0) {
+	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, handle) < 0) {
 		return 0;
 	}
 	retval = data->sql_inst->sql_select_query(data->sql_inst, request, &handle, expanded);
@@ -492,7 +492,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		FR_INTEGER_BOUND_CHECK("allocate_clear_timeout", inst->allocate_clear_timeout, >, 1);
 		FR_INTEGER_BOUND_CHECK("allocate_clear_timeout", inst->allocate_clear_timeout, <=, 2*86400);
 	}
-	
+
 	inst->sql_inst = (rlm_sql_t *) sql_inst->insthandle;
 	return 0;
 }
