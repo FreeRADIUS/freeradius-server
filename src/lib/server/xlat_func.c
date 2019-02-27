@@ -199,12 +199,34 @@ int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 /** Print length of its RHS.
  *
  */
-static ssize_t xlat_strlen(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   UNUSED REQUEST *request, char const *fmt)
+static xlat_action_t xlat_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
+				 UNUSED REQUEST *request, UNUSED void const *xlat_inst,
+				 UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 {
-	snprintf(*out, outlen, "%u", (unsigned int) strlen(fmt));
-	return strlen(*out);
+	fr_value_box_t	*vb;
+
+	/*
+	 * Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
+
+	vb->vb_size = 0;
+
+	if (*in) {
+		char const *str = (*in)->vb_strvalue;
+
+		vb->vb_size = strlen(str);
+	}
+
+	fr_cursor_insert(out, vb);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Print the size of the attribute in bytes.
@@ -2683,7 +2705,6 @@ int xlat_init(void)
 	c->internal = true
 
 	XLAT_REGISTER(integer);
-	XLAT_REGISTER(strlen);
 	XLAT_REGISTER(length);
 	XLAT_REGISTER(tag);
 	XLAT_REGISTER(xlat);
@@ -2701,8 +2722,8 @@ int xlat_init(void)
 	rad_assert(c != NULL);
 	c->internal = true;
 
+	xlat_async_register(NULL, "strlen", xlat_strlen);
 	xlat_async_register(NULL, "module", xlat_module);
-
 	xlat_async_register(NULL, "base64", base64_xlat);
 	xlat_async_register(NULL, "base64decode", xlat_base64_decode);
 	xlat_async_register(NULL, "bin", bin_xlat);
