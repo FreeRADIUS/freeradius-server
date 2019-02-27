@@ -1,8 +1,6 @@
 # Load libfreeradius-radius
 load radius
-
-encode-pair Unit-EVS-5-Integer = 1, Unit-EVS-5-Integer = 2
-data f5 0d 1a 00 00 00 2c 50 01 00 00 00 01 f5 0d 1a 00 00 00 2c 50 01 00 00 00 02
+load-dictionary radius
 
 # Example attributes as used in RFC 6929
 raw 241.1 "bob"
