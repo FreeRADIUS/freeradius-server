@@ -562,13 +562,21 @@ static ssize_t xlat_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 /** Prints the current module processing the request
  *
  */
-static ssize_t xlat_module(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, UNUSED char const *fmt)
+static xlat_action_t xlat_module(TALLOC_CTX *ctx, fr_cursor_t *out,
+				  REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				  UNUSED fr_value_box_t **in)
 {
-	strlcpy(*out, request->module, outlen);
+	fr_value_box_t	*vb = NULL;
 
-	return strlen(*out);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	if (fr_value_box_strdup(vb, vb, NULL, request->module, false) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_cursor_insert(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 #ifdef WITH_UNLANG
@@ -2680,7 +2688,6 @@ int xlat_init(void)
 	XLAT_REGISTER(tag);
 	XLAT_REGISTER(xlat);
 	XLAT_REGISTER(map);
-	XLAT_REGISTER(module);
 	XLAT_REGISTER(debug_attr);
 
 	xlat_register(NULL, "explode", explode_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
@@ -2693,6 +2700,8 @@ int xlat_init(void)
 	c = xlat_func_find("debug");
 	rad_assert(c != NULL);
 	c->internal = true;
+
+	xlat_async_register(NULL, "module", xlat_module);
 
 	xlat_async_register(NULL, "base64", base64_xlat);
 	xlat_async_register(NULL, "base64decode", xlat_base64_decode);
