@@ -24,6 +24,8 @@
 %{!?_with_rlm_sql_oracle: %global _without_rlm_sql_oracle --without-rlm_sql_oracle}
 %endif
 
+%{?el6: %global _without_libwbclient --with-winbind-dir=/nonexistant}
+
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
 Version: 3.0.19
@@ -61,7 +63,6 @@ BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
 %{?el7:BuildRequires: libwbclient-devel}
 %{?el7:BuildRequires: samba-devel}
-%{?el6:BuildRequires: samba4-devel}
 %if %{?_unitdir:1}%{!?_unitdir:0}
 BuildRequires: systemd-devel
 %endif
@@ -80,8 +81,6 @@ Requires: readline
 Requires: libtalloc
 Requires: net-snmp
 %{?el7:Requires: libwbclient}
-%{?el6:Requires: samba4-libs}
-%{?el6:Requires: samba4-winbind-clients}
 Requires: zlib
 Requires: pam
 
@@ -373,6 +372,7 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_ruby} \
         %{?_with_rlm_cache_memcached} \
         %{?_without_rlm_cache_memcached} \
+        %{?_without_libwbclient} \
 #        --with-modules="rlm_wimax" \
 
 make %_smp_mflags
