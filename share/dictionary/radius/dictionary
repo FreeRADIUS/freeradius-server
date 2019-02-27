@@ -71,13 +71,17 @@ $INCLUDE dictionary.compat
 
 #
 #	These dictionaries define attributes in the IETF managed space.
-#	(i.e. 1..255). This is wrong.  We include them here to allow them.
-#	The IETF allocated ones are listed below, which gives them priority.
+#	(i.e. 1..255). This is wrong.
 #
-#	i.e. don't do this.  Don't use these attributes
+#	The IETF allocated ones are listed lower down, which gives
+#	them priority.
 #
-$INCLUDE dictionary.usr.illegal
-$INCLUDE dictionary.ascend.illegal
+#	i.e. don't do this.  Don't use these attributes.  If you do
+#	need to use them, list them in the raddb/dictionary, instead
+#	of here.
+#
+#$INCLUDE dictionary.usr.illegal
+#$INCLUDE dictionary.ascend.illegal
 
 #
 #	IETF allocated attributes and values.  Split out into
