@@ -725,12 +725,13 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	request->log.unlang_indent = 0;
 	request->log.module_indent = 0;
 
-	va_start(ap, fmt);
-	errstr = fr_vasprintf(NULL, fmt, ap);
-	va_end(ap);
-
 	log_request(type, lvl, request, "%s%s", prefix, str);
+
+	va_start(ap, fmt);
+	errstr = fr_vasprintf(request, fmt, ap);
+	va_end(ap);
 	log_request(type, lvl, request, "%s%.*s^ %s", prefix, (int) idx, spaces, errstr);
+	talloc_free(errstr);
 
 	request->log.unlang_indent = unlang_indent;
 	request->log.module_indent = module_indent;
