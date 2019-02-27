@@ -57,7 +57,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
  *
  * @param[in,out] _p	string to trim.
  */
-#define fr_skip_spaces(_p) while(isspace((int)*(_p))) _p++
+#define fr_skip_spaces(_p) while(*_p && isspace((int)*(_p))) _p++
 
 /** Check whether the string is all whitespace
  *
