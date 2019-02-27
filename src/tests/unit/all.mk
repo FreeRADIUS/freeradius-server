@@ -39,14 +39,10 @@ FILES  := \
 $(BUILD_DIR)/tests/unit:
 	${Q}mkdir -p $@
 
-.PHONY: $(BUILD_DIR)/share
-$(BUILD_DIR)/share:
-	${Q}mkdir -p $@
-
 #
 #  Files in the output dir depend on the unit tests
 #
-$(BUILD_DIR)/tests/unit/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTBINDIR)/unit_test_attribute $(BUILD_DIR)/share/dictionary | $(BUILD_DIR)/tests/unit
+$(BUILD_DIR)/tests/unit/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTBINDIR)/unit_test_attribute | $(BUILD_DIR)/tests/unit
 	${Q}echo UNIT-TEST $(notdir $@)
 	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit $(BUILD_DIR)/share $<; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit $<"; \
