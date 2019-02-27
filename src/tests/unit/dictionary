@@ -1,3 +1,4 @@
+PROTOCOL RADIUS 1
 BEGIN-PROTOCOL	RADIUS
 
 #
@@ -11,18 +12,27 @@ BEGIN-PROTOCOL	RADIUS
 #  Needed for the extended tests where this dictionary is used instead
 #  of the standard RADIUS dictionary.
 #
-#ATTRIBUTE	Unit-String		1		string
-#ATTRIBUTE	Unit-Enumv		2		integer
 
-#VALUE		Unit-Enumv		Bar		1
-#VALUE		Unit-Enumv		Baz		2
+ATTRIBUTE	Unit-String		248		string
+ATTRIBUTE	Unit-Enumv		249		integer
 
-#ATTRIBUTE	Unit-Byte		3		byte
-#ATTRIBUTE	Unit-Short		4		short
-#ATTRIBUTE	Unit-Integer64		5		integer64
-#ATTRIBUTE	Unit-Octets		6		octets
+VALUE		Unit-Enumv		Bar		1
+VALUE		Unit-Enumv		Baz		2
 
-ATTRIBUTE	Unit-Ext-241		241		extended
+ATTRIBUTE	Unit-Byte		250		byte
+ATTRIBUTE	Unit-Short		251		short
+ATTRIBUTE	Unit-Integer64		252		integer64
+ATTRIBUTE	Unit-Octets		253		octets
+
+#
+#  Copied here for simplicity
+#
+ATTRIBUTE	Extended-Attribute-1			241	extended
+ATTRIBUTE	Extended-Attribute-2			242	extended
+ATTRIBUTE	Extended-Attribute-5			245	long-extended
+ATTRIBUTE	Extended-Vendor-Specific-2		242.26	evs
+ATTRIBUTE	Extended-Vendor-Specific-5		245.26	evs
+
 ATTRIBUTE	Unit-Ext-241-Integer	241.241		integer
 ATTRIBUTE	Unit-Ext-241-Octets	241.242		octets
 ATTRIBUTE	Unit-Ext-241-TLV	241.243		tlv
@@ -59,14 +69,8 @@ ATTRIBUTE	Unit-Struct4-Short	.3		uint16
 
 ATTRIBUTE	Unit-TLV-Integer	241.243.1	integer
 
-ATTRIBUTE	Unit-Root-246		246		tlv
-ATTRIBUTE	Unit-Long-Octets	246.241		octets
-
-ATTRIBUTE	Extended-Attribute-2			242	extended
-ATTRIBUTE	Extended-Attribute-5			245	long-extended
-
-ATTRIBUTE	Extended-Vendor-Specific-2		242.26	evs
-ATTRIBUTE	Extended-Vendor-Specific-5		245.26	evs
+ATTRIBUTE	Unit-Root-247		247		tlv
+ATTRIBUTE	Unit-Long-Octets	247.241		octets
 
 VENDOR FreeRADIUS 11344
 BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-2

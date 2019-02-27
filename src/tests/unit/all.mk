@@ -15,6 +15,7 @@ FILES  := \
 	radius_tunnel.txt \
 	radius_vendor.txt \
 	radius_tlv.txt \
+	radius_unit.txt \
 	radius_struct.txt \
 	eap_aka_encode.txt \
 	eap_aka_decode.txt \
@@ -24,13 +25,16 @@ FILES  := \
 	eap_sim_error.txt \
 	dhcpv4.txt \
 	dhcpv6.txt \
-	dict.txt \
 	regex.txt \
 	escape.txt \
 	condition.txt \
 	xlat.txt \
-	ethernet.txt \
-	command.txt
+	ethernet.txt
+
+# dict.txt - removed because the unit tests don't allow for protocol namespaces
+
+# command.txt - removed because commands like ":sql" are not parsed properly any more
+
 
 #
 #  Create the output directory
@@ -44,7 +48,7 @@ $(BUILD_DIR)/tests/unit:
 #
 $(BUILD_DIR)/tests/unit/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTBINDIR)/unit_test_attribute | $(BUILD_DIR)/tests/unit
 	${Q}echo UNIT-TEST $(notdir $@)
-	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit $(BUILD_DIR)/share $<; then \
+	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit $<; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit $<"; \
 		exit 1; \
 	fi

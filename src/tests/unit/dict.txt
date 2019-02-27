@@ -1,3 +1,5 @@
+load-dictionary radius
+
 #
 #  Tests for dictionaries
 #
