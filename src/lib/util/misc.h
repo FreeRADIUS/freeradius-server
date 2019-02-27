@@ -53,7 +53,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
 #  define VERIFY_ALL_TALLOC
 #endif
 
-/** Strip whitespace ('\t', '\n', '\v', '\f', '\r', ' ') from the beginning of a string
+/** Strip whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ') from the beginning of a string
  *
  * @param[in,out] _p	string to trim.
  */
