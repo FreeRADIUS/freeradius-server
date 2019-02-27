@@ -526,7 +526,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 				      cf_pair_value_quote(cp),
 				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
 		if (slen <= 0) {
-			REMARKER(tmpl_str, -slen, fr_strerror());
+			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
 			return RLM_MODULE_FAIL;
 		}
 		vpt_p = vpt;

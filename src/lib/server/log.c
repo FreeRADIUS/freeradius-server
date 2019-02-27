@@ -695,21 +695,24 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR 
  * @param[in] type	the log category.
  * @param[in] lvl	of debugging this message should be logged at.
  * @param[in] request	The current request.
- * @param[in] msg	string we were parsing.
+ * @param[in] str	string we were parsing.
  * @param[in] idx	The position of the marker relative to the string.
- * @param[in] error	What the parse error was.
+ * @param[in] fmt	What the parse error was.
+ * @param[in] ...	Arguments for fmt string.
  */
 void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
-			char const *msg, size_t idx, char const *error)
+			char const *str, size_t idx, char const *fmt, ...)
 {
-	char const *prefix = "";
-	uint8_t unlang_indent;
-	uint8_t module_indent;
+	char const	*prefix = "";
+	uint8_t		unlang_indent;
+	uint8_t		module_indent;
+	va_list		ap;
+	char const	*errstr;
 
 	if (idx >= sizeof(spaces)) {
 		size_t offset = (idx - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
 		idx -= offset;
-		msg += offset;
+		str += offset;
 
 		prefix = "... ";
 	}
@@ -722,8 +725,12 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	request->log.unlang_indent = 0;
 	request->log.module_indent = 0;
 
-	log_request(type, lvl, request, "%s%s", prefix, msg);
-	log_request(type, lvl, request, "%s%.*s^ %s", prefix, (int) idx, spaces, error);
+	va_start(ap, fmt);
+	errstr = fr_vasprintf(NULL, fmt, ap);
+	va_end(ap);
+
+	log_request(type, lvl, request, "%s%s", prefix, str);
+	log_request(type, lvl, request, "%s%.*s^ %s", prefix, (int) idx, spaces, errstr);
 
 	request->log.unlang_indent = unlang_indent;
 	request->log.module_indent = module_indent;

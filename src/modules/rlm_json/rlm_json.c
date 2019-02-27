@@ -285,7 +285,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 	tok = json_tokener_new();
 	to_eval.root = json_tokener_parse_ex(tok, json_str, (int)(talloc_array_length(json_str) - 1));
 	if (!to_eval.root) {
-		REMARKER(json_str, tok->char_offset, json_tokener_error_desc(json_tokener_get_error(tok)));
+		REMARKER(json_str, tok->char_offset, "%s", json_tokener_error_desc(json_tokener_get_error(tok)));
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
@@ -322,7 +322,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 			}
 			slen = fr_jpath_parse(request, &node, to_parse, talloc_array_length(to_parse) - 1);
 			if (slen <= 0) {
-				REMARKER(to_parse, -(slen), fr_strerror());
+				REMARKER(to_parse, -(slen), "%s", fr_strerror());
 				talloc_free(to_parse);
 				rcode = RLM_MODULE_FAIL;
 				goto finish;

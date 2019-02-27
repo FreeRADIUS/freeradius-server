@@ -288,7 +288,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	ret = otp_string_valid(inst, otp, (inst->id_len + YUBIKEY_TOKEN_LEN));
 	if (ret <= 0) {
 		if (RDEBUG_ENABLED3) {
-			RDMARKER(otp, -ret, "User-Password (aes-block) value contains non modhex chars");
+			RDMARKER(otp, -(ret), "User-Password (aes-block) value contains non modhex chars");
 		} else {
 			RDEBUG2("User-Password (aes-block) value contains non modhex chars");
 		}

@@ -789,7 +789,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, REQUEST *req
 		talloc_free(tokens);
 		rad_assert(error != NULL);
 
-		REMARKER(fmt, -slen, error);
+		REMARKER(fmt, -slen, "%s", error);
 		return slen;
 	}
 

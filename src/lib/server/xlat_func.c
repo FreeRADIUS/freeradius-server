@@ -817,7 +817,7 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
  	 */
 	static char	randstr_otp[] = "469ACGHJKLMNPQRUVWXYabdfhijkprstuvwxyz";
 
-	char const 	*p, *end;
+	char const 	*p, *start, *end;
 	char		*endptr;
 	char		*buff, *buff_p;
 	unsigned int	result;
@@ -825,33 +825,31 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 	size_t		outlen = 0;
 	fr_value_box_t*	vb;
 
-
+#define REPETITION_MAX 1024
 
 	/*
-	 * Nothing to do if input is empty
+	 *	Nothing to do if input is empty
 	 */
-	if (!(*in)) {
-		return XLAT_ACTION_DONE;
-	}
+	if (!(*in)) return XLAT_ACTION_DONE;
 
 	/*
-	 * Concatenate all input
+	 *	Concatenate all input
 	 */
 	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	p = (*in)->vb_strvalue;
+	start = p = (*in)->vb_strvalue;
 	end = p + (*in)->vb_length;
 
 	/*
-	 * Calculate size of output
+	 *	Calculate size of output
 	 */
 	while (p < end) {
 		if (isdigit((int) *p)) {
 			number = strtol(p, &endptr, 10);
-			if (number > 100) number = 100;
+			if (number > REPETITION_MAX) number = REPETITION_MAX;
 			/* hexits take up 2 characters */
 			if (*endptr == 'h' || *endptr == 'H') number *= 2;
 			outlen += number;
@@ -865,7 +863,7 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 	buff = buff_p = talloc_array(NULL, char, outlen + 1);
 
 	/* Reset p to start position */
-	p = (*in)->vb_strvalue;
+	p = start;
 
 	while (p < end) {
 		number = 0;
@@ -878,8 +876,12 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 		 */
 		if (isdigit((int) *p)) {
 			number = strtol(p, &endptr, 10);
+			if (number > REPETITION_MAX) {
+				number = REPETITION_MAX;
+				RMARKER(L_WARN, L_DBG_LVL_2, start, start - p,
+					"Forcing repetition to %u", (unsigned int)REPETITION_MAX);
+			}
 			p = endptr;
-			if (number > 100) number = 100;
 		}
 
 	redo:
@@ -1204,7 +1206,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 		/* Don't need \0 check, as it won't be in the hextab */
 		if (!(c1 = memchr(hextab, tolower(*++p), 16)) ||
 		    !(c2 = memchr(hextab, tolower(*++p), 16))) {
-			REMARKER((*in)->vb_strvalue, p - (*in)->vb_strvalue, "Non-hex char in % sequence");
+			REMARKER((*in)->vb_strvalue, p - (*in)->vb_strvalue, "Non-hex char in %% sequence");
 			talloc_free(buff);
 
 			return XLAT_ACTION_FAIL;

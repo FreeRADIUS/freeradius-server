@@ -354,7 +354,7 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		slen = regex_compile(request, &preg, expr_p, talloc_array_length(expr_p) - 1,
 				     false, false, true, true);
 		if (slen <= 0) {
-			REMARKER(expr_p, -slen, fr_strerror());
+			REMARKER(expr_p, -slen, "%s", fr_strerror());
 
 			goto regex_error;
 		}

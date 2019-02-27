@@ -76,10 +76,10 @@ extern FR_NAME_NUMBER const log_str2dst[];
 bool	log_debug_enabled(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request)
 	CC_HINT(nonnull);
 
-void	vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap, void *uctx)
+void	vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *fmt, va_list ap, void *uctx)
 	CC_HINT(format (printf, 4, 0)) CC_HINT(nonnull (3, 4));
 
-void	log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void	log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *fmt, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
 
 void	log_module_failure_msg(REQUEST *request, char const *fmt, ...)
@@ -88,10 +88,10 @@ void	log_module_failure_msg(REQUEST *request, char const *fmt, ...)
 void	vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 2, 0));
 
-void	log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void	log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *fmt, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
 
-void	log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void	log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *fmt, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3));
 
 void	log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
@@ -99,11 +99,11 @@ void	log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, c
 void	log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
 
 void	log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
-			      char const *fmt, size_t indent, char const *error)
-	CC_HINT(nonnull);
+			   char const *str, size_t indent, char const *fmt, ...)
+			   CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull);
 
 void	log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
-			   uint8_t const *data, size_t data_len)
+			uint8_t const *data, size_t data_len)
 	CC_HINT(nonnull);
 
 void	log_hex(fr_log_t const *log, fr_log_type_t type, fr_log_lvl_t lvl, uint8_t const *data, size_t data_len)
@@ -367,13 +367,14 @@ void	log_global_free(void);
  * @param _m string to mark e.g. "my pet kitty".
  * @param _i index e.g. 3 (starts from 0).
  * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts".
+ * @param ... arguments for error string.
  */
 #ifndef DEBUG_INDENT
-#define RMARKER(_l, _p, _m, _i, _e)	log_request_marker(_l, _p, request, _m, _i, _e)
+#define RMARKER(_l, _p, _m, _i, _e, ...)	log_request_marker(_l, _p, request, _m, _i, _e, ## __VA_ARGS__)
 #else
-#define RMARKER(_l, _p, _m, _i, _e) do { \
+#define RMARKER(_l, _p, _m, _i, _e, ...) do { \
 		RDEBUG4("== (0) at %s[%u]", __FILE__, __LINE__); \
-		log_request_marker(_l, _p, request, _m, _i, _e); \
+		log_request_marker(_l, _p, request, _m, _i, _e, ## __VA_ARGS__); \
 	} while (0)
 #endif
 
@@ -391,8 +392,9 @@ void	log_global_free(void);
  * @param _m string to mark e.g. "my pet kitty".
  * @param _i index e.g. 3 (starts from 0).
  * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts".
+ * @param ... arguments for error string.
  */
-#define REMARKER(_m, _i, _e)		RMARKER(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e)
+#define REMARKER(_m, _i, _e, ...)	RMARKER(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e, ## __VA_ARGS__)
 
 /** Output string with error marker, showing where format error occurred
  *
@@ -408,8 +410,9 @@ void	log_global_free(void);
  * @param _m string to mark e.g. "my pet kitty".
  * @param _i index e.g. 3 (starts from 0).
  * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts".
+ * @param ... arguments for error string.
  */
-#define RDMARKER(_m, _i, _e)		RMARKER(L_DBG, L_DBG_LVL_1, _m, _i, _e)
+#define RDMARKER(_m, _i, _e, ...)	RMARKER(L_DBG, L_DBG_LVL_1, _m, _i, _e, ## __VA_ARGS__)
 
 /** Use different logging functions depending on whether request is NULL or not.
  *
@@ -464,7 +467,7 @@ do {\
 	} while (0)
 
 #define RHEXDUMP_INLINE(_lvl, _data, _len, _fmt, ...) \
-	if (log_debug_enabled(L_DBG,_lvl, request)) do { \
+	if (log_debug_enabled(L_DBG, _lvl, request)) do { \
 		char *_tmp; \
 		_tmp = talloc_array(NULL, char, ((_len) * 2) + 1); \
 		fr_bin2hex(_tmp, _data, _len); \

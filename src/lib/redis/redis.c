@@ -291,7 +291,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 	map = talloc_zero(ctx, vp_map_t);
 	slen = tmpl_afrom_attr_str(map, &map->lhs, key->str, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen < 0) {
-		REMARKER(key->str, -slen, fr_strerror());
+		REMARKER(key->str, -slen, "%s", fr_strerror());
 		goto error;
 	}
 

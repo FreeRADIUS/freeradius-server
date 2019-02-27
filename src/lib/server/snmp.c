@@ -1046,7 +1046,7 @@ int fr_snmp_process(REQUEST *request)
 			len = fr_dict_print_attr_oid(oid_str + 1, sizeof(oid_str) - 1, attr_snmp_root, tlv_stack[depth]);
 
 			/* Use the difference in OID string length to place the marker */
-			REMARKER(oid_str, oid_len - (len - oid_len), fr_strerror());
+			REMARKER(oid_str, oid_len - (len - oid_len), "%s", fr_strerror());
 
 			return -1;
 		}
