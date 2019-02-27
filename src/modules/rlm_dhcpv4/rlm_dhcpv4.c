@@ -134,7 +134,7 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	if (!*in) return XLAT_ACTION_DONE;
 
 	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
-		REDEBUG("Failed concatenating input string for attribute reference");
+		RPEDEBUG("Failed concatenating input string for attribute reference");
 		return XLAT_ACTION_FAIL;
 	}
 
