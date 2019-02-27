@@ -45,6 +45,7 @@ static fr_dict_attr_t const *attr_client_identifier;
 static fr_dict_attr_t const *attr_server_name;
 static fr_dict_attr_t const *attr_boot_filename;
 static fr_dict_attr_t const *attr_server_ip_address;
+static fr_dict_attr_t const *attr_server_identifier;
 
 extern fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[];
 fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
@@ -54,6 +55,7 @@ fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
 	{ .out = &attr_server_name, .name = "DHCP-Server-Host-Name", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4},
 	{ .out = &attr_boot_filename, .name = "DHCP-Boot-Filename", .type = FR_TYPE_STRING, .dict = &dict_dhcpv4},
 	{ .out = &attr_server_ip_address, .name = "DHCP-Server-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
+	{ .out = &attr_server_identifier, .name = "DHCP-DHCP-Server-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 
 	{ NULL }
 };
@@ -846,7 +848,7 @@ static fr_type_t isc2fr_type(rlm_isc_dhcp_tokenizer_t *state)
  *	"new-name" can also be SPACE.NAME
  *
  */
-static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state,
+static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *state,
 				   char *name)
 {
 	int rcode;
@@ -859,8 +861,14 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	p = strchr(name, '.');
 	if (p) {
 		fr_strerror_printf("cannot (yet) define options in spaces");
+	error:
 		talloc_free(name);
 		return -1;
+	}
+
+	if (parent != state->inst->head) {
+		fr_strerror_printf("option definitions cannot be scoped");
+		goto error;
 	}
 
 	/*
@@ -868,6 +876,7 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 */
 	rcode = read_token(state, T_BARE_WORD, NO_SEMICOLON, false);
 	if (rcode <= 0) {
+	error_rcode:
 		talloc_free(name);
 		return rcode;
 	}
@@ -875,24 +884,17 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	type = FR_TYPE_UINT32;
 	rcode = fr_value_box_from_str(NULL, &box, &type, NULL,
 				      state->token, state->token_len, 0, false);
-	if (rcode < 0) {
-		talloc_free(name);
-		return -1;
-	}
+	if (rcode < 0) goto error;
 
 	/*
 	 *	Look for '='
 	 */
 	rcode = read_token(state, T_BARE_WORD, NO_SEMICOLON, false);
-	if (rcode <= 0) {
-		talloc_free(name);
-		return rcode;
-	}
+	if (rcode <= 0) goto error_rcode;
 
 	if ((state->token_len != 1) || (state->token[0] != '=')) {
 		fr_strerror_printf("expected '=' after code definition got '%.*s'", state->token_len, state->token);
-		talloc_free(name);
-		return -1;
+		goto error;
 	}
 
 	memset(&flags, 0, sizeof(flags));
@@ -909,41 +911,31 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 *	array of { TYPE, ... }
 	 */
 	rcode = read_token(state, T_BARE_WORD, MAYBE_SEMICOLON, false);
-	if (rcode <= 0) {
-		talloc_free(name);
-		return rcode;
-	}
+	if (rcode <= 0) goto error_rcode;
+
 
 	if ((state->token_len == 5) && (memcmp(state->token, "array", 5) == 0)) {
 		flags.array = 1;
 
 		rcode = read_token(state, T_BARE_WORD, NO_SEMICOLON, false);
-		if (rcode <= 0) {
-			talloc_free(name);
-			return rcode;
-		}
+		if (rcode <= 0) goto error_rcode;
 
 		if (! ((state->token_len == 2) && (memcmp(state->token, "of", 2) == 0))) {
 			fr_strerror_printf("expected 'array of', not 'array %.*s'",
 					   state->token_len, state->token);
-			talloc_free(name);
-			return -1;
+			goto error;
 		}
 
 		/*
 		 *	Grab the next token.  For now, it MUST have a semicolon
 		 */
 		rcode = read_token(state, T_BARE_WORD, YES_SEMICOLON, false);
-		if (rcode <= 0) {
-			talloc_free(name);
-			return rcode;
-		}
+		if (rcode <= 0) goto error_rcode;
 	}
 
 	if ((state->token_len == 1) && (state->token[0] == '{')) {
 		fr_strerror_printf("records are not supported in option definition");
-		talloc_free(name);
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -954,15 +946,11 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	 */
 	if (!state->saw_semicolon) {
 		fr_strerror_printf("expected ';'");
-		talloc_free(name);
-		return -1;
+		goto error;
 	}
 
 	type = isc2fr_type(state);
-	if (type == FR_TYPE_INVALID) {
-		talloc_free(name);
-		return -1;
-	}
+	if (type == FR_TYPE_INVALID) goto error;
 
 	/*
 	 *	Now that we've parsed everything, look up the name.
@@ -971,9 +959,8 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	da = fr_dict_attr_by_name(dict_dhcpv4, name);
 	if (da &&
 	    ((da->attr != box.vb_uint32) || (da->type != type))) {
-		talloc_free(name);
 		fr_strerror_printf("cannot add different code / type for a pre-existing name '%s'", name);
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -986,7 +973,7 @@ static int parse_option_definition(UNUSED rlm_isc_dhcp_info_t *parent, rlm_isc_d
 	da = fr_dict_attr_child_by_num(root, box.vb_uint32);
 	if (da && (da->type != type)) {
 		fr_strerror_printf("cannot add different type for a pre-existing code %d", box.vb_uint32);
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -1678,7 +1665,7 @@ done:
 }
 
 
-static int add_header_option(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
+static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 {
 	int rcode;
 	VALUE_PAIR *vp;
@@ -1711,7 +1698,7 @@ static int parse_filename(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_i
 		return -1;
 	}
 
-	return add_header_option(info, attr_boot_filename);
+	return add_option_by_da(info, attr_boot_filename);
 }
 
 /** server-name STRING
@@ -1724,7 +1711,18 @@ static int parse_server_name(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhc
 		return -1;
 	}
 
-	return add_header_option(info, attr_server_name);
+	return add_option_by_da(info, attr_server_name);
+}
+
+/** server-identifier IPADDR
+ *
+ *
+ *	This is really "option dhcp-server-identifier IPADDR"
+ *	But whatever
+ */
+static int parse_server_identifier(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
+{
+	return add_option_by_da(info, attr_server_identifier);
 }
 
 /** next-server IPADDR
@@ -1732,7 +1730,7 @@ static int parse_server_name(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhc
  */
 static int parse_next_server(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
-	return add_header_option(info, attr_server_ip_address);
+	return add_option_by_da(info, attr_server_ip_address);
 }
 
 /*
@@ -2055,6 +2053,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "release-on-roam BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
 	{ "remote-port UINT16", 		isc_ignore,   1}, // integer uint16_t
 	{ "server-id-check BOOL", 		isc_not_done, 1}, // boolean can be true, false or ignore
+	{ "server-identifier IPADDR", 		ISC_NOOP, parse_server_identifier, 1}, // ipaddr or host name
 	{ "server-name STRING", 		ISC_NOOP, parse_server_name, NULL, 1}, // text string
 	{ "shared-network STRING SECTION",	isc_not_done, 1},
 	{ "site-option-space STRING", 		isc_invalid,  1}, // vendor option declaration statement
