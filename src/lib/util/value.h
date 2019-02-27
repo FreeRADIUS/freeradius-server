@@ -55,8 +55,6 @@ extern size_t const fr_value_box_field_sizes[];
 
 extern size_t const fr_value_box_offsets[];
 
-#define fr_value_box_foreach(_v, _iv) for (fr_value_box_t *_iv = _v; _iv; _iv = _iv->next)
-
 /** Union containing all data types supported by the server
  *
  * This union contains all data types that can be represented by VALUE_PAIRs. It may also be used in other parts
@@ -229,6 +227,49 @@ struct value_box {
 #define fr_box_timeval(_val)			_fr_box(FR_TYPE_TIMEVAL, .vb_timeval, _val)
 /* @} **/
 
+/** @name Convenience functions
+ *
+ * These macros and inline functions simplify working
+ * with lists of value boxes.
+ *
+ * @{
+ */
+#define fr_value_box_foreach(_v, _iv) for (fr_value_box_t *_iv = _v; _iv; _iv = _iv->next)
+
+/** Returns the number of boxes in a list of value boxes
+ *
+ * @param[in] head	of the value box list.
+ * @return Number of boxes in the list.
+ */
+static inline size_t fr_value_box_list_len(fr_value_box_t *head)
+{
+	size_t i;
+
+	for (i = 0; head; head = head->next, i++);
+
+	return i;
+}
+
+/** Determines whether a list contains the number of boxes required
+ *
+ * @note More efficient than fr_value_box_list_len for argument validation as it
+ *	doesn't walk the entire list.
+ *
+ * @param[in] head	of the list of value boxes.
+ * @param[in] min	The number of boxes required to return true.
+ * @return
+ *	- true if the list has at least min boxes.
+ *	- false if the list has fewer than min boxes.
+ */
+static inline bool fr_value_box_list_len_min(fr_value_box_t const *head, size_t min)
+{
+	size_t i;
+
+	for (i = 0; head && i < min; head = head->next, i++);
+
+	return (i == min);
+}
+/* @} **/
 
 /** @name Value box assignment functions
  *
@@ -237,22 +278,6 @@ struct value_box {
  *
  * @{
  */
-
-/** Counts all elements in a box.
- *
- * @param[in] box	to count the elements.
- * @return
- *	- number of elements.
- */
-static inline size_t fr_value_box_list_length(fr_value_box_t *box)
-{
-	size_t i = 0;
-
-	for (; box; box = box->next) i++;
-
-	return i;
-}
-
 
 /** Initialise a fr_value_box_t
  *
