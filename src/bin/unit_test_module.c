@@ -484,7 +484,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 		 *	Ignore blank lines and comments
 		 */
 		p = input;
-		while (isspace((int) *p)) p++;
+		fr_skip_spaces(p);
 
 		if (*p < ' ') continue;
 		if (*p == '#') continue;

@@ -259,12 +259,12 @@ ssize_t fr_pair_afrom_substr(TALLOC_CTX *ctx, VALUE_PAIR **out,
 
 	p += slen;
 
-	while (isspace(*p)) p++;
+	fr_skip_spaces(p);
 	if (*p != '=') {
 		fr_strerror_printf("Invalid operator '%c'", *p);
 		return -(p - in);
 	}
-	while (isspace(*p)) p++;
+	fr_skip_spaces(p);
 
 	switch (*p) {
 

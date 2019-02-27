@@ -23,6 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/trie.h>
@@ -2856,7 +2857,6 @@ static fr_trie_command_t commands[] = {
 };
 
 #define MAX_ARGC (16)
-
 int main(int argc, char **argv)
 {
 	int lineno = 0;
@@ -2912,7 +2912,7 @@ int main(int argc, char **argv)
 		 *	Skip leading whitespace.
 		 */
 		p = buffer;
-		while (isspace((int) *p)) p++;
+		fr_skip_spaces(p);
 
 		/*
 		 *	Skip (now) blank lines.

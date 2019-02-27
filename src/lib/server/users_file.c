@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/users_file.h>
 
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/misc.h>
 
 #include <sys/stat.h>
 
@@ -136,7 +137,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		 *	ignore it.
 		 */
 		ptr = buffer;
-		while (isspace((int) *ptr)) ptr++;
+		fr_skip_spaces(ptr);
 
 		if (*ptr == '#' || *ptr == '\n' || !*ptr) continue;
 
@@ -164,7 +165,7 @@ parse_again:
 			 *	$INCLUDE filename
 			 */
 			if (strcasecmp(entry, "$INCLUDE") == 0) {
-				while (isspace((int) *ptr)) ptr++;
+				fr_skip_spaces(ptr);
 
 				/*
 				 *	If it's an absolute pathname,

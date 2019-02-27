@@ -1354,8 +1354,6 @@ int fr_command_tab_expand(TALLOC_CTX *ctx, fr_cmd_t *head, fr_cmd_info_t *info, 
 /*
  *	Magic parsing macros
  */
-#define SKIP_SPACES while (isspace((int) *word)) word++
-
 #define SKIP_NAME(name) do { p = word; q = name; while (*p && *q && (*p == *q)) { \
 				p++; \
 				q++; \
@@ -1871,7 +1869,7 @@ static char const *skip_word(char const *text)
 	char const *word = text;
 
 	if ((*word != '"') && (*word != '\'')) {
-		while (*word && !isspace((int) *word)) word++;
+		fr_skip_spaces(word);
 		return word;
 	}
 
@@ -1911,7 +1909,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 	*runnable = false;
 
 	while (argv) {
-		SKIP_SPACES;
+		fr_skip_spaces(word);
 
 		if (!*word) goto done;
 
@@ -2174,7 +2172,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 		cmd = info->cmd[argc];
 		rad_assert(cmd != NULL);
 
-		SKIP_SPACES;
+		fr_skip_spaces(word);
 
 		if ((word[0] == '*') && isspace(word[1]) && cmd->added_name) {
 			p = word + 1;
@@ -2212,7 +2210,7 @@ skip_matched:
 	 *	Search the remaining text for matching commands.
 	 */
 	while (cmd) {
-		SKIP_SPACES;
+		fr_skip_spaces(word);
 
 		/*
 		 *	Skip commands which we shouldn't know about...
@@ -2332,7 +2330,7 @@ check_syntax:
 	 *	runnable.
 	 */
 	if (!cmd->syntax_argv) {
-		SKIP_SPACES;
+		fr_skip_spaces(word);
 
 		if (*word > 0) goto too_many;
 
@@ -2354,7 +2352,7 @@ check_syntax:
 	 *	input.
 	 */
 	if (!info->runnable && *word) {
-		SKIP_SPACES;
+		fr_skip_spaces(word);
 		if (*word) goto too_many;
 	}
 
@@ -2478,7 +2476,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 	 *	Loop over syntax_argv, looking for matches.
 	 */
 	for (/* nothing */ ; argv != NULL; argv = argv->next) {
-		SKIP_SPACES;
+		fr_skip_spaces(word);
 
 		if (!*word) {
 			return expand_all(cmd, info, argv, count, max_expansions, expansions);
@@ -2675,7 +2673,7 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 	 *	Try to do this without mangling "text".
 	 */
 	while (cmd) {
-		SKIP_SPACES;
+		fr_skip_spaces(word);
 
 		/*
 		 *	Skip commands which we shouldn't know about...
@@ -2800,7 +2798,7 @@ int fr_command_print_help(FILE *fp, fr_cmd_t *head, char const *text)
 	 *	Try to do this without mangling "text".
 	 */
 	while (cmd) {
-		SKIP_SPACES;
+		fr_skip_spaces(word);
 
 		/*
 		 *	End of the input.  Tab expand everything here.

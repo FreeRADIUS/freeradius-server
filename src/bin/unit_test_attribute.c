@@ -164,7 +164,7 @@ static int encode_data_tlv(char *buffer, char **endptr,
 	*p = '\0';
 
 	p = buffer + 1;
-	while (isspace((int) *p)) p++;
+	fr_skip_spaces(p);
 
 	length = encode_tlv(p, output, outlen);
 	if (length == 0) return 0;
@@ -178,7 +178,7 @@ static int encode_hex(char *p, uint8_t *output, size_t outlen)
 	while (*p) {
 		char *c1, *c2;
 
-		while (isspace((int) *p)) p++;
+		fr_skip_spaces(p);
 
 		if (!*p) break;
 
@@ -215,7 +215,7 @@ static int encode_data(char *p, uint8_t *output, size_t outlen)
 		return 0;
 	}
 
-	while (isspace((int) *p)) p++;
+	fr_skip_spaces(p);
 
 	if (*p == '{') {
 		int sublen;
@@ -224,7 +224,7 @@ static int encode_data(char *p, uint8_t *output, size_t outlen)
 		length = 0;
 
 		do {
-			while (isspace((int) *p)) p++;
+			fr_skip_spaces(p);
 			if (!*p) {
 				if (length == 0) {
 					fprintf(stderr, "No data\n");
@@ -713,14 +713,14 @@ static void command_add(TALLOC_CTX *ctx, char *input, char *output, size_t outle
 	 *	Set the name and try to find the syntax.
 	 */
 	name = p;
-	while (*p && !isspace((int) *p)) p++;
+	fr_skip_spaces(p);
 
 	if (isspace(*p)) {
 		*p = '\0';
 		p++;
 	}
 
-	while (*p && isspace((int) *p)) p++;
+	fr_skip_spaces(p);
 
 	if (*p) {
 		table->syntax = talloc_strdup(table, p);
@@ -871,7 +871,7 @@ do { \
 			  ((p > buffer) && (p[-1] != '[')))) *p = '\0';
 
 		p = buffer;
-		while (isspace((int) *p)) p++;
+		fr_skip_spaces(p);
 		if (!*p) continue;
 
 		DEBUG2("%s[%d]: %s\n", filename, lineno, buffer);
@@ -1116,7 +1116,7 @@ do { \
 
 		if (strcmp(test_type, "$INCLUDE") == 0) {
 			p += 9;
-			while (isspace((int) *p)) p++;
+			fr_skip_spaces(p);
 
 			q = strrchr(directory, '/');
 			if (q) {

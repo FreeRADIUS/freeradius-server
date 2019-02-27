@@ -303,7 +303,7 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 	char const	*q;
 	fr_type_t	cast;
 
-	while (isspace((int) *p)) p++; /* skip spaces before condition */
+	fr_skip_spaces(p); /* skip spaces before condition */
 
 	if (*p != '<') {
 		*pda = NULL;
@@ -340,7 +340,7 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 
 	q++;
 
-	while (isspace((int) *q)) q++; /* skip spaces after cast */
+	fr_skip_spaces(q); /* skip spaces after cast */
 
 	return q - start;
 }
@@ -478,7 +478,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	lhs = rhs = NULL;
 	lhs_type = rhs_type = T_INVALID;
 
-	while (isspace((int) *p)) p++; /* skip spaces before condition */
+	fr_skip_spaces(p); /* skip spaces before condition */
 
 	if (!*p) {
 		return_P("Empty condition is invalid");
@@ -490,7 +490,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 	if (*p == '!') {
 		p++;
 		c->negate = true;
-		while (isspace((int) *p)) p++; /* skip spaces after negation */
+		fr_skip_spaces(p); /* skip spaces after negation */
 
 		/*
 		 *  Just for stupidity
@@ -520,7 +520,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		}
 
 		p += slen;
-		while (isspace((int) *p)) p++; /* skip spaces after (COND)*/
+		fr_skip_spaces(p); /* skip spaces after (COND)*/
 
 	} else { /* it's a bare FOO==BAR */
 		/*
@@ -565,7 +565,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 							    FR_CAST_BASE + FR_TYPE_OCTETS);
 		}
 
-		while (isspace((int)*p)) p++; /* skip spaces after LHS */
+		fr_skip_spaces(p); /* skip spaces after LHS */
 
 		/*
 		 *	We may (or not) have an operator
@@ -718,7 +718,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				break;
 			}
 
-			while (isspace((int) *p)) p++; /* skip spaces after operator */
+			fr_skip_spaces(p); /* skip spaces after operator */
 
 			if (!*p) {
 				return_P("Expected text after operator");
@@ -1229,7 +1229,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		keep_going:
 			p += slen;
 
-			while (isspace((int) *p)) p++; /* skip spaces after RHS */
+			fr_skip_spaces(p); /* skip spaces after RHS */
 		} /* parse OP RHS */
 	} /* parse a condition (COND) or FOO OP BAR*/
 
@@ -1242,7 +1242,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 		}
 
 		p++;
-		while (isspace((int) *p)) p++; /* skip spaces after closing brace */
+		fr_skip_spaces(p); /* skip spaces after closing brace */
 		goto done;
 	}
 

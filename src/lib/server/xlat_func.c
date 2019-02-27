@@ -154,7 +154,7 @@ int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 	VALUE_PAIR	*vp;
 	fr_cursor_t	*cursor;
 
-	while (isspace((int) *fmt)) fmt++;	/* Not binary safe, but attr refs should only contain printable chars */
+	fr_skip_spaces(fmt);	/* Not binary safe, but attr refs should only contain printable chars */
 
 	if (tmpl_afrom_attr_str(NULL, &vpt, fmt,
 				&(vp_tmpl_rules_t){
@@ -272,7 +272,7 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	uint64_t 	int64 = 0;	/* Needs to be initialised to zero */
 	uint32_t	int32 = 0;	/* Needs to be initialised to zero */
 
-	while (isspace((int) *fmt)) fmt++;
+	fr_skip_spaces(fmt);
 
 	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
@@ -463,7 +463,7 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 
 	if (!RDEBUG_ENABLED2) return 0;	/* NOOP if debugging isn't enabled */
 
-	while (isspace((int) *fmt)) fmt++;
+	fr_skip_spaces(fmt);
 
 	if (tmpl_afrom_attr_str(request, &vpt, fmt,
 				&(vp_tmpl_rules_t){
@@ -695,7 +695,7 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 	ssize_t slen;
 	VALUE_PAIR *vp;
 
-	while (isspace((int) *fmt)) fmt++;
+	fr_skip_spaces(fmt);
 
 	if (outlen < 3) {
 	nothing:
@@ -1703,7 +1703,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 *  Trim whitespace
 	 */
-	while (isspace(*p) && p++);
+	fr_skip_spaces(p);
 
 	slen = tmpl_afrom_attr_substr(ctx, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
@@ -1928,7 +1928,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 	*vpt_p = NULL;
 
 	p = fmt;
-	while (isspace((int) *p)) p++;
+	fr_skip_spaces(p);
 
 	if (*p != '&') {
 		REDEBUG("First argument must be an attribute reference");
@@ -1943,7 +1943,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 
 	p = fmt + slen;
 
-	while (isspace((int) *p)) p++;
+	fr_skip_spaces(p);
 
 	pad_len = strtoul(p, &end, 10);
 	if ((pad_len == ULONG_MAX) || (pad_len > 8192)) {
@@ -1967,7 +1967,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 			return fmt - p;
 		}
 
-		while (isspace((int) *p)) p++;
+		fr_skip_spaces(p);
 
 		if (p[1] != '\0') {
 			talloc_free(vpt);

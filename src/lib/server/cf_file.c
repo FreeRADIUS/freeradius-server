@@ -38,6 +38,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/misc.h>
 
 #include "cf_priv.h"
 
@@ -815,7 +816,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		if (has_spaces) {
 			ptr = cbuff;
-			while (isspace((int) *ptr)) ptr++;
+			fr_skip_spaces(ptr);
 
 			if (ptr > cbuff) {
 				memmove(cbuff, ptr, len - (ptr - cbuff));
@@ -831,7 +832,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			if (at_eof) break;
 
 			ptr = buff[0];
-			while (*ptr && isspace((int) *ptr)) ptr++;
+			fr_skip_spaces(ptr);
 
 #ifdef WITH_CONF_WRITE
 			/*
@@ -1395,7 +1396,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		case T_OP_EQ:
 		case T_OP_SET:
-			while (isspace((int) *ptr)) ptr++;
+			fr_skip_spaces(ptr);
 
 			/*
 			 *	New parser: non-quoted strings are
@@ -1496,7 +1497,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Require a comma, unless there's a comment.
 			 */
-			while (isspace(*ptr)) ptr++;
+			fr_skip_spaces(ptr);
 
 			if (*ptr == ',') {
 				ptr++;
@@ -1584,7 +1585,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		/*
 		 *	Done parsing one thing.  Skip to EOL if possible.
 		 */
-		while (isspace(*ptr)) ptr++;
+		fr_skip_spaces(ptr);
 
 		if (*ptr == '#') continue;
 

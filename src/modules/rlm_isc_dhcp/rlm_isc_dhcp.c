@@ -237,7 +237,7 @@ redo:
 	 *	Skip leading spaces
 	 */
 	p = state->ptr;
-	while (isspace((int) *p)) p++;
+	fr_skip_spaces(p);
 
 	/*
 	 *	The line is all spaces, OR we've hit a comment.  Go
@@ -258,7 +258,7 @@ static int skip_spaces(rlm_isc_dhcp_tokenizer_t *state, char *p)
 	state->ptr = p;
 	char *start = p;
 
-	while (isspace((int) *state->ptr)) state->ptr++;
+	fr_skip_spaces(state->ptr);
 
 	/*
 	 *	If we ran out of text on this line, re-fill the
@@ -347,7 +347,7 @@ redo:
 	 */
 	if (!*state->ptr) {
 		int rcode;
-		
+
 		rcode = refill(state);
 		if (rcode < 0) return rcode;
 
@@ -397,7 +397,7 @@ redo:
 		if (*p == ';') {
 			if (semicolon == NO_SEMICOLON) {
 				fr_strerror_printf("unexpected ';'");
-				return -1;			
+				return -1;
 			}
 
 			state->ptr = p;

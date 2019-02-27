@@ -1519,7 +1519,7 @@ static ssize_t xlat_interpreter(UNUSED TALLOC_CTX *ctx, char **out, size_t outle
 	unlang_stack_frame_t	*frame;
 	unlang_t		*instruction;
 
-	while (isspace((int) *fmt)) fmt++;
+	fr_skip_spaces(fmt);
 
 	/*
 	 *	Find the correct stack frame.

@@ -356,7 +356,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	/*
 	 *  Trim whitespace
 	 */
-	while (isspace(*p) && p++);
+	fr_skip_spaces(p);
 
 	handle = rctx->handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) return XLAT_ACTION_FAIL;

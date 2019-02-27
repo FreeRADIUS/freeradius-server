@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include "token.h"
 
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/misc.h>
 
 #include <ctype.h>
 #include <stdio.h>
@@ -267,7 +268,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 	/* Skip whitespace */
 	p = *ptr;
 
-	while (*p && isspace((int) *p)) p++;
+	fr_skip_spaces(p);
 
 	if (!*p) {
 		*ptr = p;
@@ -320,9 +321,8 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		 *	comma.
 		 */
 		if (!quote) {
-			if (isspace((int) *p)) {
-				break;
-			}
+			if (isspace((int) *p)) break;
+
 
 			if (tok) {
 				for (t = tokenlist; t->name; t++) {
@@ -419,7 +419,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 done:
 	/* Skip whitespace again. */
-	while (*p && isspace((int) *p)) p++;
+	fr_skip_spaces(p);
 
 	*ptr = p;
 
@@ -471,7 +471,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 
 	p = *ptr;
 
-	while (*p && (isspace((int)*p))) p++;
+	fr_skip_spaces(p);
 
 	*ptr = p;
 
