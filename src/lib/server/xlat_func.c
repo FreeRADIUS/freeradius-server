@@ -625,6 +625,11 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
 {
 	fr_value_box_t	*vb = NULL;
 
+	/*
+	 *	Don't do anything if we're outside of a module
+	 */
+	if (!request->module || !*request->module) return XLAT_ACTION_DONE;
+
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	if (fr_value_box_strdup(vb, vb, NULL, request->module, false) < 0) {
 		talloc_free(vb);
