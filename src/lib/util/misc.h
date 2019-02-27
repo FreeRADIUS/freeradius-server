@@ -39,6 +39,11 @@ extern "C" {
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 
 /*
+ * Strip whitespace from the beginning of a string
+ */
+#define fr_skip_spaces(_x) while (isspace((int) *_x)) _x++
+
+/*
  *	Define TALLOC_DEBUG to check overflows with talloc.
  *	we can't use valgrind, because the memory used by
  *	talloc is valid memory... just not for us.
