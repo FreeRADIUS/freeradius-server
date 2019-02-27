@@ -38,11 +38,6 @@ extern "C" {
 
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 
-/** Strip whitespace ('\t', '\n', '\v', '\f', '\r', ' ') from the beginning of a string
- *
- * @param[in,out] _p	string to trim.
- */
-#define fr_skip_spaces(_p) while(isspace((int)*(_p))) _p++
 
 /*
  *	Define TALLOC_DEBUG to check overflows with talloc.
@@ -57,6 +52,12 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
 #else
 #  define VERIFY_ALL_TALLOC
 #endif
+
+/** Strip whitespace ('\t', '\n', '\v', '\f', '\r', ' ') from the beginning of a string
+ *
+ * @param[in,out] _p	string to trim.
+ */
+#define fr_skip_spaces(_p) while(isspace((int)*(_p))) _p++
 
 /** Check whether the string is all whitespace
  *
