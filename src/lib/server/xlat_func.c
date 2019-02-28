@@ -216,46 +216,26 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-/** Return the on-the-wire size of the attribute(s) in bytes
+/** Return the on-the-wire size of the boxes in bytes
  *
  */
 static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      REQUEST *request, UNUSED void const *xlat_inst,
+				      UNUSED REQUEST *request, UNUSED void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 
 {
-	VALUE_PAIR 	*vp;
 	fr_value_box_t	*vb;
-	fr_cursor_t	*cursor;
+	fr_cursor_t	cursor;
 
-	if (!*in) {
-		REDEBUG("Missing attribute reference");
-		return XLAT_ACTION_FAIL;
+	for (vb = fr_cursor_talloc_init(&cursor, in, fr_value_box_t);
+	     vb;
+	     vb = fr_cursor_next(&cursor)) {
+	     fr_value_box_t *new;
+
+		MEM(new = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
+		new->vb_size = fr_value_box_network_length(vb);
+		fr_cursor_append(out, new);
 	}
-
-	/*
-	 *	Concatenate input boxes to form the reference
-	 */
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input string for attribute reference");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (xlat_fmt_to_cursor(NULL, &cursor, NULL, request, (*in)->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
-
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
-	vb->vb_size = 0;
-
-	/*
-	 *	Get the length of all VPs
-	 */
-	for (vp = fr_cursor_head(cursor);
-	     vp;
-	     vp = fr_cursor_next(cursor)) {
-	     	vb->vb_size += fr_value_box_network_length(&vp->data);
-	}
-	talloc_free(cursor);
-	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
