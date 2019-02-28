@@ -54,6 +54,13 @@ static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
 	if (vp->da->flags.internal) return false;
 	if (!fr_dict_parent_common(root, vp->da, true)) return false;
 
+	/*
+	 *	False bools are represented by the absence of
+	 *	an option, i.e. only bool attributes which are
+	 *	true get encoded.
+	 */
+	if ((vp->da->type == FR_TYPE_BOOL) && !vp->vp_bool) return false;
+
 	return true;
 }
 

@@ -37,7 +37,7 @@ encode-pair DHCPv6-Rapid-Commit = yes
 data 00 0e 00 00
 
 encode-pair DHCPv6-Rapid-Commit = no
-data 00 0e 00 00
+data
 
 #
 #  1 byte unsigned integer (uint8)
