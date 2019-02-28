@@ -67,6 +67,27 @@ ATTRIBUTE	h323-incoming-conf-id			35	string
 ATTRIBUTE	Cisco-Policy-Up				37	string
 ATTRIBUTE	Cisco-Policy-Down			38	string
 
+ATTRIBUTE	Cisco-Relay-Information-Option		46	string
+ATTRIBUTE	Cisco-DHCP-User-Class			47	string
+ATTRIBUTE	Cisco-DHCP-Vendor-Class			48	string
+
+ATTRIBUTE	Cisco-DHCP-Relay-GiAddr			50	string
+ATTRIBUTE	Cisco-Service-Name			51	string
+ATTRIBUTE	Cisco-Parent-Session-Id			52	string
+
+ATTRIBUTE	Cisco-Sub-QoS-Pol-In			55	string
+ATTRIBUTE	Cisco-Sub-QoS-Pol-Out			56	string
+ATTRIBUTE	Cisco-In-ACL				57	string
+ATTRIBUTE	Cisco-Out-ACL				58	string
+ATTRIBUTE	Cisco-Sub-PBR-Policy-In			59	string
+ATTRIBUTE	Cisco-Sub-Activate-Service		60	string
+ATTRIBUTE	Cisco-IPv6-In-ACL			61	string
+ATTRIBUTE	Cisco-IPv6-Out-ACL			62	string
+ATTRIBUTE	Cisco-Sub-Deactivate-Service		63	string
+
+ATTRIBUTE	Cisco-DHCP-Subscriber-Id		65	string
+ATTRIBUTE	Cisco-DHCPv6-Link-Address		66	string
+
 ATTRIBUTE	sip-conf-id				100	string
 ATTRIBUTE	h323-credit-amount			101	string
 ATTRIBUTE	h323-credit-time			102	string
