@@ -54,7 +54,6 @@ extern fr_cond_t *debug_condition;
 #ifdef HAVE_SYSTEMD_WATCHDOG
 struct timeval sd_watchdog_interval;
 static fr_event_t *sd_watchdog_ev;
-
 #endif
 
 static bool spawn_flag = false;
@@ -363,7 +362,7 @@ void radius_update_listener(rad_listen_t *this)
 #ifdef HAVE_SYSTEMD_WATCHDOG
 typedef struct {
 	fr_event_list_t *el;
-	struct timeval now;
+	struct timeval when;
 } sd_watchdog_data_t;
 
 static sd_watchdog_data_t sdwd;
@@ -371,13 +370,12 @@ static sd_watchdog_data_t sdwd;
 static void sd_watchdog_event(void *ctx)
 {
 	sd_watchdog_data_t *s = (sd_watchdog_data_t *)ctx;
-	struct timeval when;
 
 	DEBUG("Emitting systemd watchdog notification");
 	sd_notify(0, "WATCHDOG=1");
 
-	timeradd(&when, &sd_watchdog_interval, &s->now);
-	if (!fr_event_insert(s->el, sd_watchdog_event, ctx, &when, &sd_watchdog_ev)) {
+	timeradd(&s->when, &sd_watchdog_interval, &s->when);
+	if (!fr_event_insert(s->el, sd_watchdog_event, ctx, &s->when, &sd_watchdog_ev)) {
 		rad_panic("Failed to insert event");
 	}
 }
@@ -5509,7 +5507,7 @@ int radius_event_init(TALLOC_CTX *ctx) {
 
 		fr_event_now(el, &now);
 
-		sdwd.now = now;
+		sdwd.when = now;
 		sdwd.el = el;
 
 		sd_watchdog_event(&sdwd);
