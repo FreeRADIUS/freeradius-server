@@ -83,6 +83,7 @@ Requires: net-snmp
 %{?el7:Requires: libwbclient}
 Requires: zlib
 Requires: pam
+%{?el6:Requires: redhat-lsb-core}
 
 %if %{?_with_rlm_idn:1}%{?!_with_rlm_idn:0}
 Requires: libidn
