@@ -263,100 +263,57 @@ static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_cursor_t *out,
 /** Print data as integer, not as VALUE.
  *
  */
-static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				 REQUEST *request, char const *fmt)
+static xlat_action_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, fr_cursor_t *out,
+					REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					fr_value_box_t **in)
+
 {
+	vp_tmpl_t	*vpt = NULL;
+	fr_cursor_t	cursor;
+	fr_value_box_t  *vb;
 	VALUE_PAIR 	*vp;
+	char const  	*fmt;
 
-	uint64_t 	int64 = 0;	/* Needs to be initialised to zero */
-	uint32_t	int32 = 0;	/* Needs to be initialised to zero */
+	if (!*in) {
+		REDEBUG("Input string invalid");
+		return XLAT_ACTION_FAIL;
+	}
 
+	/*
+	 *	Concatenate input boxes to form the reference
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input string for attribute reference");
+		return XLAT_ACTION_FAIL;
+	}
+
+	fmt = fr_value_box_list_get(*in, 0)->vb_strvalue;
 	fr_skip_spaces(fmt);
 
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-
-	switch (vp->vp_type) {
-	case FR_TYPE_STRING:
-	{
-		fr_value_box_t vb;
-
-		if (fr_value_box_cast(NULL, &vb, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
-			RPEDEBUG("Input string invalid");
-			return -1;
-		}
-
-		return snprintf(*out, outlen, "%" PRIu64, vb.vb_uint64);
+	if (tmpl_afrom_attr_str(ctx, &vpt, fmt,
+				&(vp_tmpl_rules_t){
+					.dict_def = request->dict,
+					.prefix = VP_ATTR_REF_PREFIX_AUTO
+				}) <= 0) {
+		RPEDEBUG("Invalid input");
+		return XLAT_ACTION_FAIL;
 	}
 
-	case FR_TYPE_OCTETS:
-		if (vp->vp_length > 8) {
-			break;
-		}
+	vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+	vb->vb_uint64 = 0;
 
-		if (vp->vp_length > 4) {
-			memcpy(&int64, vp->vp_octets, vp->vp_length);
-			return snprintf(*out, outlen, "%" PRIu64, htonll(int64));
-		}
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
 
-		memcpy(&int32, vp->vp_octets, vp->vp_length);
-		return snprintf(*out, outlen, "%i", htonl(int32));
-
-	case FR_TYPE_UINT64:
-		return snprintf(*out, outlen, "%" PRIu64, vp->vp_uint64);
-
-	/*
-	 *	IP addresses are treated specially, as parsing functions assume the value
-	 *	is bigendian and will convert it for us.
-	 */
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:	/* Same addr field */
-		return snprintf(*out, outlen, "%u", ntohl(vp->vp_ipv4addr));
-
-	case FR_TYPE_UINT32:
-		return snprintf(*out, outlen, "%u", vp->vp_uint32);
-
-	case FR_TYPE_DATE:
-		return snprintf(*out, outlen, "%u", vp->vp_date);
-
-	case FR_TYPE_UINT8:
-		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_uint8);
-
-	case FR_TYPE_UINT16:
-		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_uint16);
-
-	/*
-	 *	Ethernet is weird... It's network related, so it
-	 *	should be bigendian.
-	 */
-	case FR_TYPE_ETHERNET:
-		int64 = vp->vp_ether[0];
-		int64 <<= 8;
-		int64 |= vp->vp_ether[1];
-		int64 <<= 8;
-		int64 |= vp->vp_ether[2];
-		int64 <<= 8;
-		int64 |= vp->vp_ether[3];
-		int64 <<= 8;
-		int64 |= vp->vp_ether[4];
-		int64 <<= 8;
-		int64 |= vp->vp_ether[5];
-		return snprintf(*out, outlen, "%" PRIu64, int64);
-
-	case FR_TYPE_INT32:
-		return snprintf(*out, outlen, "%i", vp->vp_int32);
-
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV6_PREFIX:
-		return fr_snprint_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
-
-	default:
-		break;
+	if (fr_value_box_cast(ctx, vb, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
+		REDEBUG("Error to cast from '%s' (%s) to integer", fmt,
+				fr_int2str(fr_value_box_type_table, vp->vp_type, "???"));
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
 	}
 
-	REDEBUG("Type '%s' cannot be converted to integer", fr_int2str(fr_value_box_type_table, vp->vp_type, "???"));
+	fr_cursor_append(out, vb);
 
-	return -1;
+	return XLAT_ACTION_DONE;
 }
 
 /** Print data as hex, not as VALUE.
@@ -2751,7 +2708,6 @@ int xlat_init(void)
 	rad_assert(c != NULL); \
 	c->internal = true
 
-	XLAT_REGISTER(integer);
 	XLAT_REGISTER(xlat);
 	XLAT_REGISTER(map);
 	XLAT_REGISTER(debug_attr);
@@ -2767,6 +2723,7 @@ int xlat_init(void)
 	rad_assert(c != NULL);
 	c->internal = true;
 
+	xlat_async_register(NULL, "integer", xlat_func_integer);
 	xlat_async_register(NULL, "base64", xlat_func_base64_encode);
 	xlat_async_register(NULL, "base64decode", xlat_func_base64_decode);
 	xlat_async_register(NULL, "bin", xlat_func_bin);
