@@ -1821,27 +1821,29 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
  * some jitter, unless the desired effect is every subscriber on the network
  * re-authenticating at the same time.
  */
-static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-				   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				   REQUEST *request, char const *fmt)
+static xlat_action_t xlat_func_nexttime(TALLOC_CTX *ctx, fr_cursor_t *out,
+					REQUEST *request, UNUSED void const *xlat_inst,
+					UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 {
-	long		num;
-
+	uint64_t	num;
 	char const 	*p;
 	char 		*q;
 	time_t		now;
 	struct tm	*local, local_buff;
+	fr_value_box_t	*vb;
 
-	now = time(NULL);
-	local = localtime_r(&now, &local_buff);
-
-	p = fmt;
-
-	num = strtoul(p, &q, 10);
-	if (!q || *q == '\0') {
+	if (!*in) {
+	arg_error:
 		REDEBUG("nexttime: <int> must be followed by period specifier (h|d|w|m|y)");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
+
+	now   = time(NULL);
+	local = localtime_r(&now, &local_buff);
+	p     = fr_value_box_list_get(*in, 0)->vb_strvalue;
+	num   = strtoul(p, &q, 10);
+
+	if (!q || *q == '\0') goto arg_error;
 
 	if (p == q) {
 		num = 1;
@@ -1882,10 +1884,14 @@ static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 
 	default:
 		REDEBUG("nexttime: Invalid period specifier '%c', must be h|d|w|m|y", *p);
-		return -1;
+		goto arg_error;
 	}
 
-	return snprintf(*out, outlen, "%" PRIu64, (uint64_t)(mktime(local) - now));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+	vb->vb_uint64 = (uint64_t)(mktime(local) - now);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 
@@ -2982,8 +2988,6 @@ int xlat_init(void)
 	XLAT_REGISTER(debug_attr);
 
 	xlat_register(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
-	xlat_register(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "lpad", xlat_func_lpad, NULL, NULL, 0, 0, true);
 	xlat_register(NULL, "rpad", xlat_func_rpad, NULL, NULL, 0, 0, true);
 	xlat_register(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0, false);	/* On behalf of trigger.c */
@@ -2993,6 +2997,7 @@ int xlat_init(void)
 	rad_assert(c != NULL);
 	c->internal = true;
 
+	xlat_async_register(NULL, "nexttime", xlat_func_nexttime);
 	xlat_async_register(NULL, "base64", xlat_func_base64_encode);
 	xlat_async_register(NULL, "base64decode", xlat_func_base64_decode);
 	xlat_async_register(NULL, "bin", xlat_func_bin);
