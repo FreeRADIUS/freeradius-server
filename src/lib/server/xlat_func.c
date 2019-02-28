@@ -1879,122 +1879,86 @@ static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 }
 
 
-/** Parse the 3 arguments to lpad / rpad.
+/** Parse the 2 arguments to lpad / rpad.
  *
- * Parses a fmt string with the components @verbatim <tmpl> <pad_len> <pad_char>@endverbatim
+ * Parses a fmt string with the components @verbatim <pad_char> <pad_len>@endverbatim
  *
- * @param[out] vpt_p		Template to retrieve value to pad.
+ * @param[in] request		The current request.
+ * @param[in] arg 		string to parse.
  * @param[out] pad_len_p	Length the string needs to be padded to.
  * @param[out] pad_char_p	Char to use for padding.
- * @param[in] request		The current request.
- * @param[in] fmt		string to parse.
  *
  * @return
- *	- <= 0 the negative offset the parse error ocurred at.
- *	- >0 how many bytes of fmt were parsed.
+ *	- true or false
  */
-static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, REQUEST *request, char const *fmt)
+static bool parse_pad(REQUEST *request, char const *arg,
+			size_t *pad_len_p, char *pad_char_p)
 {
-	ssize_t		slen;
 	unsigned long	pad_len;
+	char 		pad_char;
 	char const	*p;
-	char		*end;
-	vp_tmpl_t	*vpt;
+	char 		*end;
 
-	*pad_char_p = ' ';		/* the default */
+	p = arg;
 
-	*vpt_p = NULL;
+	/* #1 should be the 'pad` (char) */
+	pad_char = ' ';
+	if (p[1] == ' ') pad_char = *p++;
 
-	p = fmt;
+	/* #2 length */
+	errno = 0;
 	fr_skip_spaces(p);
-
-	if (*p != '&') {
-		REDEBUG("First argument must be an attribute reference");
-		return 0;
-	}
-
-	slen = tmpl_afrom_attr_substr(request, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
-	if (slen <= 0) {
-		RPEDEBUG("Failed parsing input string");
-		return slen;
-	}
-
-	p = fmt + slen;
-
-	fr_skip_spaces(p);
-
 	pad_len = strtoul(p, &end, 10);
-	if ((pad_len == ULONG_MAX) || (pad_len > 8192)) {
-		talloc_free(vpt);
-		REDEBUG("Invalid pad_len found at: %s", p);
-		return fmt - p;
+	if ((pad_len == ULONG_MAX) || (pad_len > 8192) || errno != 0) {
+		REDEBUG("Invalid pad_len found at: '%s'", p);
+		return false;
 	}
 
-	p += (end - p);
-
-	/*
-	 *	The pad_char_p character is optional.
-	 *
-	 *	But we must have a space after the previous number,
-	 *	and we must have only ONE pad_char_p character.
-	 */
-	if (*p) {
-		if (!isspace(*p)) {
-			talloc_free(vpt);
-			REDEBUG("Invalid text found at: %s", p);
-			return fmt - p;
-		}
-
-		fr_skip_spaces(p);
-
-		if (p[1] != '\0') {
-			talloc_free(vpt);
-			REDEBUG("Invalid text found at: %s", p);
-			return fmt - p;
-		}
-
-		*pad_char_p = *p++;
-	}
-
-	*vpt_p = vpt;
+	*pad_char_p = pad_char;
 	*pad_len_p = pad_len;
 
-	return p - fmt;
+	return true;
 }
 
 
 /** left pad a string
  *
- *  %{lpad:&Attribute-Name length 'x'}
+ *  %{lpad:pad length %{Attribute-Name}}
+ * 	e.g: %{lpad:x 10 %{Attribute-Name}}
  */
-static ssize_t xlat_func_lpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
+static xlat_action_t xlat_func_lpad(TALLOC_CTX *ctx, fr_cursor_t *out,
+				      REQUEST *request, UNUSED void const *xlat_inst,
+				      UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 {
 	char		fill;
 	size_t		pad;
 	ssize_t		len;
-	vp_tmpl_t	*vpt;
+	fr_value_box_t  *vb, *vb_pad, *vb_str;
 	char		*to_pad = NULL;
 
-	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
+	if (!*in) {
+	arg_error:
+		REDEBUG("lpad needs exactly three arguments: <pad> <length> <string>");
+		return XLAT_ACTION_FAIL;
+	}
 
-	if (!fr_cond_assert(vpt)) return 0;
+	if (fr_value_box_list_len(*in) != 2) goto arg_error;
 
-	/*
-	 *	Print the attribute (left justified).  If it's too
-	 *	big, we're done.
-	 */
-	len = tmpl_aexpand(ctx, &to_pad, request, vpt, NULL, NULL);
-	if (len <= 0) return -1;
+	/* #1 & #2 arg: It should have at least: 'x 1' (3 chars) */
+	vb_pad = fr_value_box_list_get(*in, 0); /* <pad> <length> */
+	if (vb_pad->vb_length <= 1) goto arg_error;
+
+	if (!parse_pad(request, vb_pad->vb_strvalue, &pad, &fill)) goto arg_error;
+
+	/* #3 arg */
+	vb_str = fr_value_box_list_get(*in, 1); /* <string> */
+	to_pad = (char *)vb_str->vb_ptr;
+	len = vb_str->vb_length; 
 
 	/*
 	 *	Already big enough, no padding required...
 	 */
-	if ((size_t) len >= pad) {
-		*out = to_pad;
-		return pad;
-	}
+	if ((size_t)len >= pad) goto done;
 
 	/*
 	 *	Realloc is actually pretty cheap in most cases...
@@ -2008,43 +1972,57 @@ static ssize_t xlat_func_lpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	memmove(to_pad + (pad - len), to_pad, len + 1);
 	memset(to_pad, fill, pad - len);
 
-	*out = to_pad;
+done:
 
-	return pad;
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	fr_value_box_bstrsteal(vb, vb, NULL, to_pad, false);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** right pad a string
  *
- *  %{rpad:&Attribute-Name length 'x'}
+ *  %{rpad:pad length %{Attribute-Name}}
+ * 	e.g: %{rpad:x 10 %{Attribute-Name}}
  */
-static ssize_t xlat_func_rpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
+static xlat_action_t xlat_func_rpad(TALLOC_CTX *ctx, fr_cursor_t *out,
+				      REQUEST *request, UNUSED void const *xlat_inst,
+				      UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 {
 	char		fill;
 	size_t		pad;
 	ssize_t		len;
-	vp_tmpl_t	*vpt;
+	fr_value_box_t  *vb, *vb_pad, *vb_str;
 	char		*to_pad = NULL;
 
-	rad_assert(!*out);
-
-	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
-
-	if (!fr_cond_assert(vpt)) return 0;
-
-	/*
-	 *	Print the attribute (left justified).  If it's too
-	 *	big, we're done.
-	 */
-	len = tmpl_aexpand(ctx, &to_pad, request, vpt, NULL, NULL);
-	if (len <= 0) return 0;
-
-	if ((size_t) len >= pad) {
-		*out = to_pad;
-		return pad;
+	if (!*in) {
+	arg_error:
+		REDEBUG("rpad needs exactly three arguments: <pad> <length> <string>");
+		return XLAT_ACTION_FAIL;
 	}
 
+	if (fr_value_box_list_len(*in) != 2) goto arg_error;
+
+	/* #1 & #2 arg: It should have at least: 'x 1' (3 chars) */
+	vb_pad = fr_value_box_list_get(*in, 0); /* <pad> <length> */
+	if (vb_pad->vb_length <= 1) goto arg_error;
+
+	if (!parse_pad(request, vb_pad->vb_strvalue, &pad, &fill)) goto arg_error;
+
+	/* #3 arg */
+	vb_str = fr_value_box_list_get(*in, 1); /* <string> */
+	to_pad = (char *)vb_str->vb_ptr;
+	len = vb_str->vb_length; 
+
+	/*
+	 *	Already big enough, no padding required...
+	 */
+	if ((size_t)len >= pad) goto done;
+
+	/*
+	 *	Realloc is actually pretty cheap in most cases...
+	 */
 	MEM(to_pad = talloc_realloc(ctx, to_pad, char, pad + 1));
 
 	/*
@@ -2053,9 +2031,13 @@ static ssize_t xlat_func_rpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	memset(to_pad + len, fill, pad - len);
 	to_pad[pad] = '\0';
 
-	*out = to_pad;
+done:
 
-	return pad;
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	fr_value_box_bstrsteal(vb, vb, NULL, to_pad, false);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
 /*
@@ -2739,14 +2721,14 @@ int xlat_init(void)
 	xlat_register(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	xlat_register(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(NULL, "lpad", xlat_func_lpad, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "rpad", xlat_func_rpad, NULL, NULL, 0, 0, true);
 
 	xlat_register(&xlat_foreach_inst[0], "debug", xlat_func_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	c = xlat_func_find("debug");
 	rad_assert(c != NULL);
 	c->internal = true;
 
+	xlat_async_register(NULL, "lpad", xlat_func_lpad);
+	xlat_async_register(NULL, "rpad", xlat_func_rpad);
 	xlat_async_register(NULL, "base64", xlat_func_base64_encode);
 	xlat_async_register(NULL, "base64decode", xlat_func_base64_decode);
 	xlat_async_register(NULL, "bin", xlat_func_bin);

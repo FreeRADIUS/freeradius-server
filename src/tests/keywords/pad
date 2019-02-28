@@ -9,17 +9,17 @@ update request {
 #
 #	rpad tests
 #
-if ("%{rpad:&Tmp-String-0 7}" != "test   ") {
+if ("%{rpad: 7 %{Tmp-String-0}}" != "test   ") {
 	test_fail
 	return
 }
 
-if ("%{rpad:&Tmp-String-0 2}" != "test") {
+if ("%{rpad: 2 %{Tmp-String-0}}" != "test") {
 	test_fail
 	return
 }
 
-if ("%{rpad:&Tmp-String-0 7 x}" != "testxxx") {
+if ("%{rpad:x 7 %{Tmp-String-0}}" != "testxxx") {
 	test_fail
 	return
 }
@@ -27,17 +27,17 @@ if ("%{rpad:&Tmp-String-0 7 x}" != "testxxx") {
 #
 #	lpad tests
 #
-if ("%{lpad:&Tmp-String-0 7}" != "   test") {
+if ("%{lpad: 7 %{Tmp-String-0}}" != "   test") {
 	test_fail
 	return
 }
 
-if ("%{lpad:&Tmp-String-0 2}" != "test") {
+if ("%{lpad: 2 %{Tmp-String-0}}" != "test") {
 	test_fail
 	return
 }
 
-if ("%{lpad:&Tmp-String-0 7 x}" != "xxxtest") {
+if ("%{lpad:x 7 %{Tmp-String-0}}" != "xxxtest") {
 	test_fail
 	return
 }
