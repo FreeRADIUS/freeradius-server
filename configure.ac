@@ -990,28 +990,47 @@ dnl #
 VL_LIB_READLINE
 
 dnl #
-dnl #  Check for libsystemd
+dnl #  Checks for systemd
 dnl #
-libsystemd_ver="221"
+dnl #  extra argument: --with-systemd
+dnl #
 AC_ARG_WITH([systemd],
-            AS_HELP_STRING([--with-systemd], [Enable use of libsystemd for journal output]),
-            [with_libsystemd=$enableval],
-            [with_libsystemd=auto])
-
-AS_IF([test x$with_libsystemd != xno], [
-  AC_MSG_CHECKING([for libsystemd])
-  PKG_CHECK_MODULES([SYSTEMD], [libsystemd >= ${libsystemd_ver}],
-                    [WITH_SYSTEMD=yes],
-                    [WITH_SYSTEMD=no])
-  AC_MSG_RESULT($WITH_SYSTEMD)
-])
-
-AC_MSG_RESULT($with_libsystemd)
-
+            AS_HELP_STRING([--with-systemd], [add systemd support, if available (default=no)]),
+            [ case "$withval" in
+              no)
+                WITH_SYSTEMD=no
+                ;;
+              *)
+                WITH_SYSTEMD=yes
+              esac ],
+            [WITH_SYSTEMD=no])
 
 dnl #
-dnl #  Check for systemd
+dnl #  extra argument: --systemd-lib-dir=dir
 dnl #
+systemd_lib_dir=
+AC_ARG_WITH(systemd-lib-dir,
+  [AS_HELP_STRING([--with-systemd-lib-dir=DIR],
+  [directory to look for systemd library files])],
+  [ case "$withval" in
+    *) systemd_lib_dir="$withval"
+      ;;
+    esac ]
+)
+
+dnl #
+dnl #  extra argument: --with-systemd-includes=dir
+dnl #
+systemd_include_dir=
+AC_ARG_WITH(systemd-include-dir,
+  [AS_HELP_STRING([--with-systemd-include-dir=DIR],
+  [directory to look for systemd include files])],
+  [ case "$withval" in
+    *) systemd_include_dir="$withval"
+      ;;
+    esac ]
+)
+
 if test "x$WITH_SYSTEMD" = xyes; then
   smart_try_dir="$systemd_lib_dir"
   FR_SMART_CHECK_LIB(systemd, sd_notify)
