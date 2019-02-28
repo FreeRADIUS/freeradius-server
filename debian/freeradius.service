@@ -23,8 +23,16 @@ Environment=HOSTNAME=%H
 # a leak somewhere.
 MemoryLimit=2G
 
+# Ensure the daemon can still write its pidfile after it drops
+# privileges. Combination of options that work on a variety of
+# systems. Test very carefully if you alter these lines.
 RuntimeDirectory=freeradius
 RuntimeDirectoryMode=0775
+# This does not work on Debian Jessie:
+Group=freerad
+# This does not work on Ubuntu Bionic:
+ExecStartPre=/bin/chown freerad:freerad /var/run/freeradius
+
 ExecStartPre=/usr/sbin/freeradius $FREERADIUS_OPTIONS -Cx -lstdout
 ExecStart=/usr/sbin/freeradius $FREERADIUS_OPTIONS
 Restart=on-failure
