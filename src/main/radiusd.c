@@ -468,6 +468,10 @@ int main(int argc, char *argv[])
 				exit(EXIT_FAILURE);
 			}
 
+#  ifdef HAVE_SYSTEMD
+			sd_notify(0, "READY=1");
+#  endif
+
 			exit(EXIT_SUCCESS);
 		}
 
