@@ -396,7 +396,7 @@ int main(int argc, char *argv[])
 			usec /= 2;
 			fr_timeval_from_usec(&sd_watchdog_interval, usec);
 
-			INFO("systemd watchdog interval is %pT secs", &sd_watchdog_interval);
+			INFO("systemd watchdog interval is %ld.%.2ld secs", sd_watchdog_interval.tv_sec, sd_watchdog_interval.tv_usec);
 		} else {
 			INFO("systemd watchdog is disabled");
 		}
