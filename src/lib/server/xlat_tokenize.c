@@ -215,7 +215,6 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char 
 	num = strtol(p, &q, 10);
 	if (p != q && (*q == '}')) {
 		XLAT_DEBUG("REGEX <-- %s", fmt);
-		*q = '\0';
 
 		if ((num > REQUEST_MAX_REGEX) || (num < 0)) {
 			talloc_free(node);
@@ -251,7 +250,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char 
 	 *	when what's being referenced is obviously an attribute.
 	 */
 	p = start;
-	for (q = p; *q != '\0'; q++) {
+	for (q = p; *q; q++) {
 		if (*q == ':') break;
 
 		if (isspace((int) *q)) break;
@@ -276,7 +275,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, char 
 	 *	If it's not, it's an attribute or parse error.
 	 */
 	if (*q == ':') {
-		*q = '\0';
+		*q = '\0';	/* Is restored later */
 		node->xlat = xlat_func_find(node->fmt);
 		if (node->xlat) {
 			/*
@@ -433,7 +432,6 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
-			*p = '\0'; /* end the literal */
 			p += slen;
 
 			rad_assert(node->next != NULL);
@@ -498,7 +496,6 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 			}
 
 			node->next = next;
-			*p = '\0';
 			p += 2;
 
 			if (!*p) break;
@@ -523,7 +520,6 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 		 */
 		if (brace && (*p == '}')) {
 			brace = false;
-			*p = '\0';
 			p++;
 			break;
 		}
