@@ -88,7 +88,7 @@ typedef enum {
 	XLAT_REGEX		= 0x11,		//!< regex reference
 #endif
 	XLAT_ALTERNATE		= 0x12		//!< xlat conditional syntax :-
-} xlat_state_t;
+} xlat_type_t;
 
 /** An xlat expansion node
  *
@@ -100,7 +100,7 @@ struct xlat_exp {
 
 	bool		async_safe;	//!< carried from all of the children
 
-	xlat_state_t	type;		//!< type of this expansion.
+	xlat_type_t	type;		//!< type of this expansion.
 	xlat_exp_t	*next;		//!< Next in the list.
 
 	xlat_exp_t	*child;		//!< Nested expansion.
@@ -161,7 +161,7 @@ xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t const **child,
 				REQUEST *request, xlat_exp_t const **in);
 
-int		xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_state_t type, void *uctx);
+int		xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void *uctx);
 
 int		xlat_eval_init(void);
 

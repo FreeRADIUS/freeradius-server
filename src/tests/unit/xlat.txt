@@ -8,7 +8,7 @@ data %{Tunnel-Password}
 #
 
 xlat %{foo: bar}
-data ERROR offset 2 'Unknown module'
+data ERROR offset 2 'Unknown module or invalid list qualifier'
 
 xlat %{test:bar}
 data %{test:bar}
@@ -92,7 +92,26 @@ xlat %{}
 data ERROR offset 2 'Empty expression is invalid'
 
 xlat %{ }
-data ERROR offset 2 'Invalid attribute name'
+data ERROR offset 2 'Invalid char ' ' in expression'
+
+xlat %{foo }
+data ERROR offset 5 'Invalid char ' ' in expression'
+
+xlat %{foo bar}
+data ERROR offset 5 'Invalid char ' ' in expression'
+
+xlat %{test:
+data ERROR offset 1 'No matching closing brace'
+
+xlat %{test:%{User-Name
+data ERROR offset 8 'No matching closing brace'
+
+# Discuss - Not sure the offset is correct here, but not sure if we can determine the correct offset either
+xlat %{test:%{User-Name}
+data ERROR offset 19 'Missing closing brace at end of string'
+
+xlat %{myfirstxlat
+data ERROR offset 1 'No matching closing brace'
 
 xlat %{%{User-Name}:-}
 data %{%{User-Name}:-}
@@ -127,9 +146,6 @@ data "%t\tfoo"
 
 xlat "%t\t%{Client-IP-Address}"
 data "%t\t%{Client-IP-Address}"
-
-xlat "foo %{test}"
-data ERROR offset 11 'Missing content in expansion'
 
 xlat "foo %{test:foo}"
 data "foo %{test:foo}"

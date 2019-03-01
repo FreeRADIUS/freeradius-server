@@ -1645,7 +1645,7 @@ int xlat_eval_pair(REQUEST *request, VALUE_PAIR *vp)
  *	- 0 on success (walker always returned 0).
  *	- <0 if walker returned <0.
  */
-int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_state_t type, void *uctx)
+int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void *uctx)
 {
 	xlat_exp_t	*node;
 	int		ret;
