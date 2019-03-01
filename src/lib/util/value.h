@@ -140,6 +140,7 @@ struct value_box {
  */
 #define vb_strvalue				datum.strvalue
 #define vb_octets				datum.octets
+#define vb_ptr					datum.ptr
 
 #define vb_ip					datum.ip
 
