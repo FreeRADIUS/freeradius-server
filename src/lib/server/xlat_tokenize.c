@@ -432,8 +432,6 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head,
 	XLAT_DEBUG("EXPANSION HINT TOKEN '%c'", *q);
 
 	/*
-	 *	Might be
-	 *
 	 *      Hint token is a ':' it's either:
 	 *	- An xlat function %{<func>:<args}
 	 *	- An attribute reference with a list separator %{<list>:<attr>}
