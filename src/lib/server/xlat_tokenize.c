@@ -48,7 +48,7 @@ RCSID("$Id$")
  * @param[in] len	Portion of the fmt string this node represents.
  * @return A new xlat node.
  */
-static inline xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx, xlat_type_t *type, char const *fmt, size_t len)
+static inline xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx, xlat_type_t type, char const *fmt, size_t len)
 {
 	xlat_exp_t *node;
 
@@ -397,7 +397,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head,
 	/*
 	 *	Handle regex's %{<num>} specially.
 	 */
-	if (isnumber(fmt[2])) {
+	if (isdigit(fmt[2])) {
 		slen = xlat_tokenize_regex(ctx, head, fmt);
 		if (slen != 0) return slen;	/* If slen == 0 means this wasn't a regex */
 	}
