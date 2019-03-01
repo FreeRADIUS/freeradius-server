@@ -10,6 +10,8 @@ FreeRADIUS 3.0.19 Mon 25 Feb 2019 15:00:00 EST urgency=low
 	  functionality works.
 	* Fix crash in sqlippool due to escaping changes.
 	  Patch from Nathan Ward.  Fixes #2532, #2533.
+	* Fix systemd notify, watchdog and unit files.
+	  Fixes #2541, #2499.
 
 FreeRADIUS 3.0.18 Mon 25 Feb 2019 15:00:00 EST urgency=low
 	Feature improvements
