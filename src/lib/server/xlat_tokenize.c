@@ -397,7 +397,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head,
 	/*
 	 *	Handle regex's %{<num>} specially.
 	 */
-	if (isnumber(fmt[2])) {
+	if (isdigit(fmt[2])) {
 		slen = xlat_tokenize_regex(ctx, head, fmt);
 		if (slen != 0) return slen;	/* If slen == 0 means this wasn't a regex */
 	}
