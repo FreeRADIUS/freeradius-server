@@ -253,7 +253,7 @@ linelog {
 		#
 		#  server:: Server to connect to.
 		#
-		server = "example.org"
+		server = "localhost"
 
 		#
 		#  port:: Port to connect to.
@@ -278,7 +278,7 @@ linelog {
 		#
 		#  server:: Server to connect to.
 		#
-		server = "example.org"
+		server = "localhost"
 
 		#
 		#  port:: Port to connect to.
