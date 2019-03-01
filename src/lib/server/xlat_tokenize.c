@@ -48,7 +48,7 @@ RCSID("$Id$")
  * @param[in] len	Portion of the fmt string this node represents.
  * @return A new xlat node.
  */
-static inline xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx, xlat_type_t *type, char const *fmt, size_t len)
+static inline xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx, xlat_type_t type, char const *fmt, size_t len)
 {
 	xlat_exp_t *node;
 
