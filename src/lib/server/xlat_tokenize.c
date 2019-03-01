@@ -188,8 +188,8 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, cha
 #ifdef HAVE_REGEX
 /** Parse an xlat reference
  *
- * Parses a function call string in the format
- * @verbatim %{<func>:<arguments} @endverbatim
+ * Allows access to a subcapture groups
+ * @verbatim %{<num>} @endverbatim
  *
  */
 static inline ssize_t xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, char const *fmt)
