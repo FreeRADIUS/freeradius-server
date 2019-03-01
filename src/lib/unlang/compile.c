@@ -388,7 +388,6 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 {
 	ssize_t slen;
 	char *fmt;
-	char const *error;
 	xlat_exp_t *head;
 	vp_tmpl_t *vpt;
 
@@ -397,7 +396,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 	rad_assert(vpt->type == TMPL_TYPE_XLAT);
 
 	fmt = talloc_typed_strdup(vpt, vpt->name);
-	slen = xlat_tokenize(vpt, &head, &error, fmt, rules);
+	slen = xlat_tokenize(vpt, &head, fmt, rules);
 
 	if (slen < 0) {
 		char *spaces, *text;
@@ -406,7 +405,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 
 		cf_log_err(ci, "Failed parsing expansion string:");
 		cf_log_err(ci, "%s", text);
-		cf_log_err(ci, "%s^ %s", spaces, error);
+		cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
 
 		talloc_free(spaces);
 		talloc_free(text);
@@ -2362,11 +2361,10 @@ static unlang_t *compile_xlat_inline(unlang_t *parent,
 	mx->xlat_name = talloc_typed_strdup(mx, cf_pair_attr(cp));
 	if (mx->xlat_name[0] == '%') {
 		ssize_t		slen;
-		char const	*error;
 
-		slen = xlat_tokenize(mx, &mx->exp, &error, mx->xlat_name, unlang_ctx->rules);
+		slen = xlat_tokenize(mx, &mx->exp, mx->xlat_name, unlang_ctx->rules);
 		if (slen < 0) {
-			cf_log_err(cp, "%s", error);
+			cf_log_err(cp, "%s", fr_strerror());
 			talloc_free(mx);
 			return NULL;
 		}

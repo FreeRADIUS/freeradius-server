@@ -1307,7 +1307,6 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 *	to FR_TYPE_TMPL.
 		 */
 		if (is_xlat) {
-			char const	*error;
 			ssize_t		slen;
 			char		*value;
 			xlat_exp_t	*xlat;
@@ -1319,7 +1318,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			 *	xlat expansions should be parseable.
 			 */
 			value = talloc_typed_strdup(cs, cp->value); /* modified by xlat_tokenize */
-			slen = xlat_tokenize(cs, &xlat, &error, value, NULL);
+			slen = xlat_tokenize(cs, &xlat, value, NULL);
 			if (slen < 0) {
 				char *spaces, *text;
 
@@ -1327,7 +1326,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 				cf_log_err(cp, "Failed parsing expansion string:");
 				cf_log_err(cp, "%s", text);
-				cf_log_err(cp, "%s^ %s", spaces, error);
+				cf_log_err(cp, "%s^ %s", spaces, fr_strerror());
 
 				talloc_free(spaces);
 				talloc_free(text);

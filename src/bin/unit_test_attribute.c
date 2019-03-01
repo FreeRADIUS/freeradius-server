@@ -553,15 +553,14 @@ static void parse_condition(fr_dict_t const *dict, char const *input, char *outp
 static void parse_xlat(fr_dict_t const *dict, char const *input, char *output, size_t outlen)
 {
 	ssize_t		dec_len;
-	char const	*error = NULL;
 	char		*fmt;
 	xlat_exp_t	*head;
 
 	fmt = talloc_typed_strdup(NULL, input);
-	dec_len = xlat_tokenize(fmt, &head, &error, fmt, &(vp_tmpl_rules_t) { .dict_def = dict });
+	dec_len = xlat_tokenize(fmt, &head, fmt, &(vp_tmpl_rules_t) { .dict_def = dict });
 
 	if (dec_len <= 0) {
-		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -dec_len, error);
+		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -dec_len, fr_strerror());
 		talloc_free(fmt);
 		return;
 	}

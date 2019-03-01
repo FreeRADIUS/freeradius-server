@@ -1538,6 +1538,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 	}
 
 	if (len < 0) {
+		REMARKER(fmt, -(len), "%s", fr_strerror());
 		if (*out) **out = '\0';
 		REXDENT();
 		return -1;
