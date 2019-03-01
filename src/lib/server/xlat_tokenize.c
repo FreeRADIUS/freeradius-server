@@ -432,6 +432,14 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head,
 	XLAT_DEBUG("EXPANSION HINT TOKEN '%c'", *q);
 
 	/*
+	 *	Check for empty expressions %{} %{: %{[
+	 */
+	if ((q == (p + 2)) && ((*q == '}') || (*q == ':') || (*q == '['))) {
+		fr_strerror_printf("Empty expression is invalid");
+		return -2;				/* error @ third character of format string */
+	}
+
+	/*
 	 *      Hint token is a ':' it's either:
 	 *	- An xlat function %{<func>:<args}
 	 *	- An attribute reference with a list separator %{<list>:<attr>}
@@ -447,16 +455,8 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head,
 	 *	- '[' - Which is an attribute index, so it must be an attribute.
 	 *      - '}' - The end of the expansion, which means it was a bareword.
 	 */
-	case '[':
 	case '}':
-		/*
-		 *	Check for empty expressions %{}
-		 */
-		if (q == (p + 2)) {
-			fr_strerror_printf("Empty expression is invalid");
-			return -2;				/* error @ third character of format string */
-		}
-
+	case '[':
 		slen = xlat_tokenize_attribute(ctx, head, fmt, rules);
 		if (slen < 0) return slen;
 		rad_assert(slen != 0);
