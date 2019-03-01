@@ -301,7 +301,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 			}
 		}
 
-		if (tmpl_afrom_attr_str(ctx, &dst, s1,
+		if (tmpl_afrom_attr_str(ctx, NULL, &dst, s1,
 					&(vp_tmpl_rules_t){
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY

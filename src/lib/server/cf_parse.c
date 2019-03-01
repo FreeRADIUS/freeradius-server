@@ -182,7 +182,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 *	xlat strings.
 		 */
 		if (attribute) {
-			slen = tmpl_afrom_attr_str(cp, &vpt, cp->value,
+			slen = tmpl_afrom_attr_str(cp, NULL, &vpt, cp->value,
 						   &(vp_tmpl_rules_t){
 							.allow_unknown = true,
 							.allow_undefined = true

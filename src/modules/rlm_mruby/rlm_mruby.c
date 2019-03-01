@@ -367,7 +367,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		}
 		DEBUG("%s: %s %s %s", function_name, ckey, fr_int2str(fr_tokens_table, op, "="), cval);
 
-		if (tmpl_afrom_attr_str(request, &dst, ckey,
+		if (tmpl_afrom_attr_str(request, NULL, &dst, ckey,
 					&(vp_tmpl_rules_t){
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY

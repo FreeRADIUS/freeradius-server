@@ -48,7 +48,7 @@ static ssize_t sim_xlat_id_method(TALLOC_CTX *ctx, char **out, UNUSED size_t out
 	 */
 	fr_skip_spaces(p);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &vpt, p,
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -102,7 +102,7 @@ static ssize_t sim_xlat_id_type(TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 */
 	fr_skip_spaces(p);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &vpt, p,
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -155,7 +155,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_key_index(TALLOC_CTX *ctx, char **out, UN
 	 */
 	fr_skip_spaces(p);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &vpt, p,
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -203,7 +203,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt(TALLOC_CTX *ctx, char **out, UNUS
 	 */
 	fr_skip_spaces(p);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &id_vpt, p,
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, p,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -222,7 +222,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt(TALLOC_CTX *ctx, char **out, UNUS
 	}
 	p++;
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &key_vpt, p,
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, p,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -314,7 +314,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUS
 	 */
 	fr_skip_spaces(p);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &id_vpt, p,
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, p,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -333,7 +333,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUS
 	}
 	p++;
 
-	slen = tmpl_afrom_attr_substr(our_ctx, &key_vpt, p,
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, p,
 				      &(vp_tmpl_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = VP_ATTR_REF_PREFIX_AUTO

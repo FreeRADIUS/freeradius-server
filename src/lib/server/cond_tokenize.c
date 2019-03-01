@@ -1212,7 +1212,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 					if (!hyphens || (hyphens > 3)) may_be_attr = false;
 
 					if (may_be_attr) {
-						attr_slen = tmpl_afrom_attr_str(c->data.map, &vpt, lhs,
+						attr_slen = tmpl_afrom_attr_str(c->data.map, NULL, &vpt, lhs,
 										&(vp_tmpl_rules_t){
 											.allow_unknown = true,
 											.allow_undefined = true

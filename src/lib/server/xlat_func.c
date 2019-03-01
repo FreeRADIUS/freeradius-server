@@ -84,7 +84,7 @@ int xlat_fmt_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 
 	*out = NULL;
 
-	if (tmpl_afrom_attr_str(request, &vpt, name,
+	if (tmpl_afrom_attr_str(request, NULL, &vpt, name,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -116,7 +116,8 @@ int xlat_fmt_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char c
 
 	*out = NULL;
 
-	if (tmpl_afrom_attr_str(request, &vpt, name, &(vp_tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
+	if (tmpl_afrom_attr_str(request, NULL,
+				&vpt, name, &(vp_tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
 
 	rcode = tmpl_copy_vps(ctx, out, request, vpt);
 	talloc_free(vpt);
@@ -156,7 +157,7 @@ int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
 
 	fr_skip_spaces(fmt);	/* Not binary safe, but attr refs should only contain printable chars */
 
-	if (tmpl_afrom_attr_str(NULL, &vpt, fmt,
+	if (tmpl_afrom_attr_str(NULL, NULL, &vpt, fmt,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -445,7 +446,7 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 
 	fr_skip_spaces(fmt);
 
-	if (tmpl_afrom_attr_str(request, &vpt, fmt,
+	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -1532,7 +1533,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	VALUE_PAIR *vp;
 
-	if (tmpl_afrom_attr_str(ctx, &vpt, (*in)->vb_strvalue,
+	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, (*in)->vb_strvalue,
 				&(vp_tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = VP_ATTR_REF_PREFIX_AUTO
@@ -1683,7 +1684,7 @@ static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	fr_skip_spaces(p);
 
-	slen = tmpl_afrom_attr_substr(ctx, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
+	slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid input");
 		return -1;
@@ -1913,7 +1914,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 		return 0;
 	}
 
-	slen = tmpl_afrom_attr_substr(request, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
+	slen = tmpl_afrom_attr_substr(request, NULL, &vpt, p, &(vp_tmpl_rules_t){ .dict_def = request->dict });
 	if (slen <= 0) {
 		RPEDEBUG("Failed parsing input string");
 		return slen;

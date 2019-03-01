@@ -356,6 +356,27 @@ struct vp_tmpl_rules_s {
 							///< a prefix.
 };
 
+typedef enum {
+	ATTR_REF_ERROR_NONE = 0,			//!< No error.
+	ATTR_REF_ERROR_EMPTY,				//!< Attribute ref contains no data.
+	ATTR_REF_ERROR_BAD_PREFIX,			//!< Missing '&' or has '&' when it shouldn't.
+	ATTR_REF_ERROR_INVALID_LIST_QUALIFIER,		//!< List qualifier is invalid.
+	ATTR_REF_ERROR_UNKNOWN_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute specified as OID, could not be
+							///< found in the dictionaries, and is disallowed
+							///< because 'disallow_internal' in vp_tmpl_rules_t
+							///< is trie.
+	ATTR_REF_ERROR_UNDEFINED_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute couldn't be found in the dictionaries.
+	ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME,		//!< Attribute ref length is zero, or longer than
+							///< the maximum.
+	ATTR_REF_ERROR_INTERNAL_ATTRIBUTE_NOT_ALLOWED,	//!< Attribute resolved to an internal attribute
+							///< which is disallowed.
+	ATTR_REF_ERROR_FOREIGN_ATTRIBUTES_NOT_ALLOWED,	//!< Attribute resolved in a dictionary different
+							///< to the one specified.
+	ATTR_REF_ERROR_TAGGED_ATTRIBUTE_NOT_ALLOWED,	//!< Tagged attributes not allowed here.
+	ATTR_REF_ERROR_INVALID_TAG,			//!< Invalid tag value.
+	ATTR_REF_ERROR_INVALID_ARRAY_INDEX		//!< Invalid array index.
+} attr_ref_error_t;
+
 /** Map ptr type to a boxed type
  *
  */
@@ -416,11 +437,13 @@ void			tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int nu
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data, bool steal);
 
-ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
+ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
+					       vp_tmpl_t **out, char const *name,
 					       vp_tmpl_rules_t const *rules);
 
-ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
-					    vp_tmpl_rules_t const *rules) CC_HINT(nonnull (2, 3));
+ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
+					    vp_tmpl_t **out, char const *name,
+					    vp_tmpl_rules_t const *rules) CC_HINT(nonnull (3, 4));
 
 ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, size_t inlen,
 				       FR_TOKEN type, vp_tmpl_rules_t const *rules, bool do_escape);

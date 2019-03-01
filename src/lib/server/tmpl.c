@@ -588,6 +588,8 @@ static vp_tmpl_rules_t const default_rules = {
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
  *
  * @param[in,out] ctx		to allocate #vp_tmpl_t in.
+ * @param[out] err		May be NULL.  Provides the exact error that the parser hit
+ *				when processing the attribute ref.
  * @param[out] out		Where to write pointer to new #vp_tmpl_t.
  * @param[in] name		of attribute including #request_ref_t and #pair_list_t qualifiers.
  *				If only #request_ref_t #pair_list_t qualifiers are found,
@@ -626,7 +628,8 @@ static vp_tmpl_rules_t const default_rules = {
  *	- <= 0 on error (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  */
-ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, vp_tmpl_rules_t const *rules)
+ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, attr_ref_error_t *err,
+			       vp_tmpl_t **out, char const *name, vp_tmpl_rules_t const *rules)
 {
 	char const	*p;
 	long		num;
@@ -635,10 +638,13 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 
 	if (!rules) rules = &default_rules;	/* Use the defaults */
 
+	if (err) *err = ATTR_REF_ERROR_NONE;
+
 	p = name;
 
 	if (!*p) {
 		fr_strerror_printf("Empty attribute reference");
+		if (err) *err = ATTR_REF_ERROR_EMPTY;
 		return 0;
 	}
 
@@ -649,6 +655,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	case VP_ATTR_REF_PREFIX_YES:
 		if (*p != '&') {
 			fr_strerror_printf("Invalid attribute reference, missing '&' prefix");
+			if (err) *err = ATTR_REF_ERROR_BAD_PREFIX;
 			return 0;
 		}
 		p++;
@@ -657,6 +664,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	case VP_ATTR_REF_PREFIX_NO:
 		if (*p == '&') {
 			fr_strerror_printf("Attribute references used here must not have a '&' prefix");
+			if (err) *err = ATTR_REF_ERROR_BAD_PREFIX;
 			return 0;
 		}
 		break;
@@ -692,6 +700,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	p += radius_list_name(&vpt->tmpl_list, p, rules->list_def);
 	if (vpt->tmpl_list == PAIR_LIST_UNKNOWN) {
 		fr_strerror_printf("Invalid list qualifier");
+		if (err) *err = ATTR_REF_ERROR_INVALID_LIST_QUALIFIER;
 		slen = -(p - name);
 	error:
 		talloc_free(vpt);
@@ -742,6 +751,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		if (slen > 0) {
 			if (!rules->allow_unknown) {
 				fr_strerror_printf("Unknown attribute");
+				if (err) *err = ATTR_REF_ERROR_UNKNOWN_ATTRIBUTE_NOT_ALLOWED;
 				slen = -(p - name);
 				goto error;
 			}
@@ -766,7 +776,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		 *	error from fr_dict_unknown_from_suboid.
 		 */
 		if (!rules->allow_undefined) {
-			fr_strerror_printf("Undefined attributes not allowed here");
+			fr_strerror_printf_push("Undefined attributes not allowed here");
+			if (err) *err = ATTR_REF_ERROR_UNDEFINED_ATTRIBUTE_NOT_ALLOWED;
 			slen = -(p - name);
 			goto error;
 		}
@@ -778,12 +789,14 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		for (q = p; fr_dict_attr_allowed_chars[(uint8_t) *q]; q++);
 		if (q == p) {
 			fr_strerror_printf("Invalid attribute name");
+			if (err) *err = ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME;
 			slen = -(p - name);
 			goto error;
 		}
 
 		if ((q - p) > FR_DICT_ATTR_MAX_NAME_LEN) {
 			fr_strerror_printf("Attribute name is too long");
+			if (err) *err = ATTR_REF_ERROR_INVALID_ATTRIBUTE_NAME;
 			slen = -(p - name);
 			goto error;
 		}
@@ -806,6 +819,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		if (found_in == fr_dict_internal) {
 			if (rules->disallow_internal) {
 				fr_strerror_printf("Internal attributes not allowed here");
+				if (err) *err = ATTR_REF_ERROR_INTERNAL_ATTRIBUTE_NOT_ALLOWED;
 				slen = -(p - name);
 				goto error;
 			}
@@ -830,6 +844,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 			if (!rules->allow_foreign) {
 				fr_strerror_printf("Only attributes from the %s protocol are allowed here",
 						   fr_dict_root(rules->dict_def)->name);
+				if (err) *err = ATTR_REF_ERROR_FOREIGN_ATTRIBUTES_NOT_ALLOWED;
 				slen = -(p - name);
 				goto error;
 			}
@@ -854,6 +869,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 
 		if (!vpt->tmpl_da->flags.has_tag) { /* Lists don't have a da */
 			fr_strerror_printf("Attribute '%s' cannot have a tag", vpt->tmpl_da->name);
+			if (err) *err = ATTR_REF_ERROR_TAGGED_ATTRIBUTE_NOT_ALLOWED;
 			slen = -(p - name);
 			goto error;
 		}
@@ -869,6 +885,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 			num = strtol(p + 1, &q, 10);
 			if (!TAG_VALID_ZERO(num)) {
 				fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
+				if (err) *err = ATTR_REF_ERROR_INVALID_TAG;
 				slen = -((p + 1) - name);
 				goto error;
 			}
@@ -916,12 +933,14 @@ do_num:
 			num = strtol(p, &q, 10);
 			if (p == q) {
 				fr_strerror_printf("Array index is not an integer");
+				if (err) *err = ATTR_REF_ERROR_INVALID_ARRAY_INDEX;
 				slen = -(p - name);
 				goto error;
 			}
 
 			if ((num > 1000) || (num < 0)) {
 				fr_strerror_printf("Invalid array reference '%li' (should be between 0-1000)", num);
+				if (err) *err = ATTR_REF_ERROR_INVALID_ARRAY_INDEX;
 				slen = -(p - name);
 				goto error;
 			}
@@ -933,6 +952,7 @@ do_num:
 
 		if (*p != ']') {
 			fr_strerror_printf("No closing ']' for array index");
+			if (err) *err = ATTR_REF_ERROR_INVALID_ARRAY_INDEX;
 			slen = -(p - name);
 			goto error;
 		}
@@ -964,13 +984,14 @@ finish:
  *
  * @copydetails tmpl_afrom_attr_substr
  */
-ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, vp_tmpl_rules_t const *rules)
+ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, attr_ref_error_t *err,
+			    vp_tmpl_t **out, char const *name, vp_tmpl_rules_t const *rules)
 {
 	ssize_t slen;
 
 	if (!rules) rules = &default_rules;	/* Use the defaults */
 
-	slen = tmpl_afrom_attr_substr(ctx, out, name, rules);
+	slen = tmpl_afrom_attr_substr(ctx, err, out, name, rules);
 	if (slen <= 0) return slen;
 
 	if (!fr_cond_assert(*out)) return -1;
@@ -1088,7 +1109,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out,
 
 		mrules.allow_undefined = (in[0] == '&');
 
-		slen = tmpl_afrom_attr_str(ctx, &vpt, in, &mrules);
+		slen = tmpl_afrom_attr_str(ctx, NULL, &vpt, in, &mrules);
 		if (mrules.allow_undefined && (slen <= 0)) return slen;
 		if (slen > 0) break;
 	}

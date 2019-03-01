@@ -247,7 +247,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		break;
 
 	default:
-		slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, lhs_rules);
+		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, lhs_rules);
 		if (slen <= 0) {
 			cf_log_err(cp, "Failed parsing attribute reference");
 
@@ -1059,7 +1059,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			goto error;
 		}
 
-		slen = tmpl_afrom_attr_str(tmp_ctx, &map_tmp.lhs, (*lhs_result)->vb_strvalue,
+		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, (*lhs_result)->vb_strvalue,
 					   &(vp_tmpl_rules_t){
 					   	.dict_def = request->dict,
 					   	.prefix = VP_ATTR_REF_PREFIX_NO
@@ -1099,7 +1099,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			goto error;
 		}
 
-		slen = tmpl_afrom_attr_str(tmp_ctx, &map_tmp.lhs, attr_str,
+		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, attr_str,
 					   &(vp_tmpl_rules_t){ .dict_def = request->dict });
 		if (slen <= 0) {
 			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference", attr_str);
@@ -2378,7 +2378,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			goto finish;
 		}
 
-		slen = tmpl_afrom_attr_str(tmp_ctx, &exp_lhs, attr_str,
+		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &exp_lhs, attr_str,
 					   &(vp_tmpl_rules_t){
 					   	.dict_def = request->dict,
 					   	.prefix = VP_ATTR_REF_PREFIX_NO
