@@ -1148,6 +1148,12 @@ cleanup:
 	fr_dict_free(&dict);
 
 	/*
+	 *	Explicitly cleanup the buffer used for storing syserror messages
+	 *	This cuts down on address sanitiser output on error.
+	 */
+	fr_syserror_free();
+
+	/*
 	 *	Call pthread destructors.  Which aren't normally
 	 *	called for the main thread.
 	 *
