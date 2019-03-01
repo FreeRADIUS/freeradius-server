@@ -331,7 +331,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 		 *	than a request qualifier.
 		 */
 		if (err == ATTR_REF_ERROR_INVALID_LIST_QUALIFIER) {
-			fr_strerror_printf_push("Unknown module or invalid list qualifier");
+			fr_strerror_printf("Unknown module or invalid list qualifier");
 		}
 		return slen - (p - fmt);		/* error somewhere after second character */
 	}
