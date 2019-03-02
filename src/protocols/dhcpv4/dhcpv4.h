@@ -78,8 +78,6 @@ typedef struct {
 	uint8_t		options[DHCP_VEND_LEN];
 } dhcp_packet_t;
 
-#define DHCP_MAGIC_VENDOR (54)
-
 /*
  *	Some clients silently ignore responses less than 300 bytes.
  */
