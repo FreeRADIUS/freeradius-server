@@ -19,8 +19,8 @@
  * @file proto_dhcpv4.c
  * @brief DHCPV4 master protocol handler.
  *
- * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freedhcpv4.org)
- * @copyright 2016 Alan DeKok (aland@freedhcpv4.org)
+ * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/io/listen.h>
