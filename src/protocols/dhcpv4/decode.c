@@ -406,7 +406,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		 *	Unknown attribute, create an octets type
 		 *	attribute with the contents of the sub-option.
 		 */
-		child = fr_dict_unknown_afrom_fields(ctx, parent, DHCP_MAGIC_VENDOR, p[0]);
+		child = fr_dict_unknown_afrom_fields(ctx, parent, fr_dict_vendor_num_by_da(parent), p[0]);
 		if (!child) return -1;
 	}
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
