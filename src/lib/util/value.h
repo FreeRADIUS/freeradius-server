@@ -508,7 +508,7 @@ int		fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t co
 /*
  *	Conversion
  */
-size_t		value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote);
+size_t		fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote);
 
 int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src);
 

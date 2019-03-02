@@ -772,7 +772,7 @@ static char const hextab[] = "0123456789abcdef";
  *
  * @return >= 0 the number of uint8s written to out.
  */
-size_t value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote)
+size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote)
 {
 	char const	*p = in;
 	uint8_t		*out_p = out;
@@ -3595,7 +3595,7 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
  * @param[in] inlen		may be < 0 in which case strlen(len) is used to determine
  *				length, else inlen should be the length of the string or
  *				sub string to parse.
- * @param[in] quote		character used set unescape mode.  @see value_str_unescape.
+ * @param[in] quote		character used set unescape mode.  @see fr_value_str_unescape.
  * @param[in] tainted		Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
@@ -3633,17 +3633,17 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			tmp = talloc_array(NULL, char, len + 1);
 			if (!tmp) return -1;
 
-			alias_len = value_str_unescape((uint8_t *)tmp, in, len, quote);
+			alias_len = fr_value_str_unescape((uint8_t *)tmp, in, len, quote);
 			alias = tmp;
 		} else {
-			alias_len = value_str_unescape((uint8_t *)buffer, in, len, quote);
+			alias_len = fr_value_str_unescape((uint8_t *)buffer, in, len, quote);
 			alias = buffer;
 		}
 		alias[alias_len] = '\0';
 
 		/*
 		 *	Check the alias name is valid first before bothering
-		 *	it look up up.
+		 *	to look it up.
 		 *
 		 *	Catches any embedded \0 bytes that might cause
 		 *	incorrect results.
@@ -3684,7 +3684,7 @@ parse:
 			goto finish;
 		}
 
-		len = value_str_unescape((uint8_t *)buff, in, len, quote);
+		len = fr_value_str_unescape((uint8_t *)buff, in, len, quote);
 
 		/*
 		 *	Shrink the buffer to the correct size
@@ -4364,7 +4364,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
  * @param[in] ctx	to allocate the buffer in.
  * @param[in] head	of the list of value boxes.
  * @param[in] delim	to insert between value box values.
- * @param[in] quote	character used set unescape mode.  @see value_str_unescape.
+ * @param[in] quote	character used set unescape mode.  @see fr_value_str_unescape.
  * @return
  *	- NULL on error.
  *	- The concatenation of the string values of the value box list on success.

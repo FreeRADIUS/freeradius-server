@@ -67,6 +67,9 @@ data %{User-Name[*]}
 xlat %{User-Name[#]}
 data %{User-Name[#]}
 
+xlat %{User-Name[n]}
+data %{User-Name[n]}
+
 xlat %{request:User-Name[3]}
 data %{User-Name[3]}
 
@@ -91,8 +94,26 @@ data ERROR offset 4 'Empty expression is invalid'
 xlat %{}
 data ERROR offset 2 'Empty expression is invalid'
 
+xlat %{:}
+data ERROR offset 2 'Empty expression is invalid'
+
+xlat %{:bar}
+data ERROR offset 2 'Empty expression is invalid'
+
+xlat %{[}
+data ERROR offset 2 'Empty expression is invalid'
+
+xlat %{[baz}
+data ERROR offset 2 'Empty expression is invalid'
+
 xlat %{ }
 data ERROR offset 2 'Invalid char ' ' in expression'
+
+xlat %{\t}
+data ERROR offset 2 'Invalid char '\t' in expression'
+
+xlat %{\n}
+data ERROR offset 2 'Invalid char '\n' in expression'
 
 xlat %{foo }
 data ERROR offset 5 'Invalid char ' ' in expression'
@@ -116,36 +137,36 @@ data ERROR offset 1 'No matching closing brace'
 xlat %{%{User-Name}:-}
 data %{%{User-Name}:-}
 
-xlat "Hello %S goo"
-data "Hello %S goo"
+xlat \"Hello %S goo\"
+data \"Hello %S goo\"
 
-xlat "%{Foreach-Variable-0}"
-data "%{Foreach-Variable-0}"
+xlat \"%{Foreach-Variable-0}\"
+data \"%{Foreach-Variable-0}\"
 
 #
 #  3GPP stuff, to distinguish "list:3GPP" from
 #  "attribute:tag"
 #
-xlat "%{request:3GPP-IMSI}"
-data "%{3GPP-IMSI}"
+xlat \"%{request:3GPP-IMSI}\"
+data \"%{3GPP-IMSI}\"
 
-xlat "%{reply:3GPP-IMSI}"
-data "%{reply:3GPP-IMSI}"
+xlat \"%{reply:3GPP-IMSI}\"
+data \"%{reply:3GPP-IMSI}\"
 
-xlat "%{reply:3GPP-IMSI[2]}"
-data "%{reply:3GPP-IMSI[2]}"
+xlat \"%{reply:3GPP-IMSI[2]}\"
+data \"%{reply:3GPP-IMSI[2]}\"
 
-xlat /([A-Z0-9\-]*)_%{Calling-Station-Id}/
-data /([A-Z0-9\-]*)_%{Calling-Station-Id}/
+xlat /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
+data /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
 
 xlat %{length:1 + 2
 data ERROR offset 14 'Missing closing brace at end of string'
 
-xlat "%t\tfoo"
-data "%t\tfoo"
+xlat \"%t\tfoo\"
+data \"%t\tfoo\"
 
-xlat "%t\t%{Client-IP-Address}"
-data "%t\t%{Client-IP-Address}"
+xlat \"%t\t%{Client-IP-Address}\"
+data \"%t\t%{Client-IP-Address}\"
 
-xlat "foo %{test:foo}"
-data "foo %{test:foo}"
+xlat \"foo %{test:foo}\"
+data \"foo %{test:foo}\"

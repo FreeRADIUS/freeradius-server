@@ -2136,7 +2136,7 @@ int fr_pair_list_move_by_ancestor(TALLOC_CTX *ctx, VALUE_PAIR **to,
  * @param[in] inlen	may be < 0 in which case strlen(len) is used
  *			to determine length, else inlen should be the
  *			length of the string or sub string to parse.
- * @param[in] quote	character used set unescape mode.  @see value_str_unescape.
+ * @param[in] quote	character used set unescape mode.  @see fr_value_str_unescape.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.

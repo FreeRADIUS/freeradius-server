@@ -555,23 +555,31 @@ static void parse_xlat(fr_dict_t const *dict, char const *input, char *output, s
 	ssize_t		dec_len;
 	char		*fmt;
 	xlat_exp_t	*head;
+	size_t		input_len = strlen(input), len;
+	char		buff[1024];
 
-	fmt = talloc_typed_strdup(NULL, input);
+	/*
+	 *	Process special chars, octal escape sequences and hex sequences
+	 */
+	MEM(fmt = talloc_array(NULL, char, input_len + 1));
+	len = fr_value_str_unescape((uint8_t *)fmt, input, input_len, '\"');
+	fmt[len] = '\0';
+
 	dec_len = xlat_tokenize(fmt, &head, fmt, &(vp_tmpl_rules_t) { .dict_def = dict });
-
 	if (dec_len <= 0) {
 		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -dec_len, fr_strerror());
 		talloc_free(fmt);
 		return;
 	}
 
-	if (input[dec_len] != '\0') {
+	if (fmt[dec_len] != '\0') {
 		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) dec_len);
 		talloc_free(fmt);
 		return;
 	}
 
-	xlat_snprint(output, outlen, head);
+	len = xlat_snprint(buff, sizeof(buff), head);
+	fr_snprint(output, outlen, buff, len, '"');
 	talloc_free(fmt);
 }
 

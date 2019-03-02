@@ -482,7 +482,10 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head,
 	 *	e.g. '%{my '
 	 */
 	default:
-		fr_strerror_printf("Invalid char '%c' in expression", *q);
+		/*
+		 *	Box is so we get \t \n etc..
+		 */
+		fr_strerror_printf("Invalid char '%pV' in expression", fr_box_strvalue_len(q, 1));
 		return -(q - fmt);
 	}
 
