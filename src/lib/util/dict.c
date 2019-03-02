@@ -641,22 +641,9 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	}
 
 	/*
-	 *	DHCP options allow for packing multiple values into one option.
-	 *
-	 *	We allow it for DHCP and FreeDHCP dictionaries.  Not anywhere else.
+	 *	Allow arrays anywhere.
 	 */
 	if (flags->array) {
-		for (v = parent; v != NULL; v = v->parent) {
-			if (v->type != FR_TYPE_VENDOR) continue;
-
-			if ((v->attr != 34673) && /* freedhcp */
-			    (v->attr != DHCP_MAGIC_VENDOR)) {
-				fr_strerror_printf("The 'array' flag can only be used with DHCP options");
-				goto error;
-			}
-			break;
-		}
-
 		switch (type) {
 		default:
 			fr_strerror_printf("The 'array' flag cannot be used with attributes of type '%s'",
