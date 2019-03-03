@@ -155,29 +155,31 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, cha
 	 *	Allow the RHS to be empty as a special case.
 	 */
 	if (*p == '}') {
-		/*
-		 *	Hack up an empty string.
-		 */
 		node->alternate = xlat_exp_alloc(node, XLAT_LITERAL, "", 0);
-		p++;
-	} else {
-		slen = xlat_tokenize_literal(node, &node->alternate, p, true, rules);
-		if (slen <= 0) {
-			talloc_free(node);
-			return slen - (p - fmt);
-		}
-
-		if (!node->alternate) {
-			talloc_free(node);
-			fr_strerror_printf("Empty expansion is invalid");
-			return -(p - fmt);
-		}
-		p += slen;
+		node->async_safe = node->child->async_safe;
+		*head = node;
+		return (p + 1) - fmt;
 	}
 
-	node->async_safe = (node->child->async_safe && node->alternate->async_safe);
+	/*
+	 *	Parse the alternate expansion.
+	 */
+	slen = xlat_tokenize_literal(node, &node->alternate, p, true, rules);
+	if (slen <= 0) {
+		talloc_free(node);
+		return slen - (p - fmt);
+	}
 
+	if (!node->alternate) {
+		talloc_free(node);
+		fr_strerror_printf("Empty expansion is invalid");
+		return -(p - fmt);
+	}
+	p += slen;
+
+	node->async_safe = (node->child->async_safe && node->alternate->async_safe);
 	*head = node;
+
 	return p - fmt;
 }
 
