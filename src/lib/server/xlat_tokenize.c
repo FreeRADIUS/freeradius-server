@@ -331,7 +331,7 @@ static inline ssize_t xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head
 		 *	than a request qualifier.
 		 */
 		if (err == ATTR_REF_ERROR_INVALID_LIST_QUALIFIER) {
-			fr_strerror_printf("Unknown module or invalid list qualifier");
+			fr_strerror_printf("Unknown expansion function or invalid list qualifier");
 		}
 		return slen - (p - fmt);		/* error somewhere after second character */
 	}
@@ -434,9 +434,23 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head,
 	/*
 	 *	Check for empty expressions %{} %{: %{[
 	 */
-	if ((q == (p + 2)) && ((*q == '}') || (*q == ':') || (*q == '['))) {
-		fr_strerror_printf("Empty expression is invalid");
-		return -2;				/* error @ third character of format string */
+	if (q == (p + 2)) {
+		switch (*q) {
+		case '}':
+			fr_strerror_printf("Empty expression is invalid");
+			return -2;				/* error @ third character of format string */
+
+		case ':':
+			fr_strerror_printf("Missing expansion function or list qualifier");
+			return -2;
+
+		case '[':
+			fr_strerror_printf("Missing attribute name");
+			return -2;
+
+		default:
+			break;
+		}
 	}
 
 	/*

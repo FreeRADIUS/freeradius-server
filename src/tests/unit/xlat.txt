@@ -8,7 +8,7 @@ data %{Tunnel-Password}
 #
 
 xlat %{foo: bar}
-data ERROR offset 2 'Unknown module or invalid list qualifier'
+data ERROR offset 2 'Unknown expansion function or invalid list qualifier'
 
 xlat %{test:bar}
 data %{test:bar}
@@ -95,16 +95,16 @@ xlat %{}
 data ERROR offset 2 'Empty expression is invalid'
 
 xlat %{:}
-data ERROR offset 2 'Empty expression is invalid'
+data ERROR offset 2 'Missing expansion function or list qualifier'
 
 xlat %{:bar}
-data ERROR offset 2 'Empty expression is invalid'
+data ERROR offset 2 'Missing expansion function or list qualifier'
 
 xlat %{[}
-data ERROR offset 2 'Empty expression is invalid'
+data ERROR offset 2 'Missing attribute name'
 
 xlat %{[baz}
-data ERROR offset 2 'Empty expression is invalid'
+data ERROR offset 2 'Missing attribute name'
 
 xlat %{ }
 data ERROR offset 2 'Invalid char ' ' in expression'
