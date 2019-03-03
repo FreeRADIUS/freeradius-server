@@ -54,7 +54,7 @@ static inline xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx, xlat_type_t type, char
 
 	MEM(node = talloc_zero(ctx, xlat_exp_t));
 	node->type = type;
-	node->fmt = talloc_bstrndup(node, fmt, len);
+	if (fmt) node->fmt = talloc_bstrndup(node, fmt, len);
 
 	return node;
 }
@@ -117,9 +117,9 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, char const *fmt,
 					 vp_tmpl_rules_t const *rules)
 {
-	ssize_t slen;
-	char *p;
-	xlat_exp_t *node;
+	ssize_t		slen;
+	char const	*p = fmt;
+	xlat_exp_t	*node;
 
 	rad_assert(fmt[0] == '%');
 	rad_assert(fmt[1] == '{');
@@ -128,10 +128,7 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, cha
 
 	XLAT_DEBUG("ALTERNATE <-- %s", fmt);
 
-	node = talloc_zero(ctx, xlat_exp_t);
-	node->type = XLAT_ALTERNATE;
-
-	memcpy(&p, &fmt, sizeof(p));	/* Hack - Fixme */
+	node = xlat_exp_alloc(ctx, XLAT_ALTERNATE, NULL, 0);
 	p += 2;
 	slen = xlat_tokenize_expansion(node, &node->child, p, rules);
 	if (slen <= 0) {
@@ -162,8 +159,7 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, cha
 		 *	Hack up an empty string.
 		 */
 		node->alternate = xlat_exp_alloc(node, XLAT_LITERAL, "", 0);
-		*(p++) = '\0';
-
+		p++;
 	} else {
 		slen = xlat_tokenize_literal(node, &node->alternate, p, true, rules);
 		if (slen <= 0) {
