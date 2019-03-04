@@ -13,6 +13,15 @@ data the quick brown fox jumped over the lazy dog
 xlat should not start %%{expansion
 data should not start %{expansion
 
+xlat %
+data ERROR offset 1 'Invalid variable expansion'
+
+xlat %%
+data %
+
+xlat \
+data ERROR offset 0 'Invalid escape at end of string'
+
 #
 #  Regex capture groups
 #
@@ -193,6 +202,9 @@ data ERROR offset 14 'Expected ':' after first expansion, got '}''
 #
 #  Empty and malformed expansions
 #
+xlat %{
+data ERROR offset 1 'No matching closing brace'
+
 xlat %{}
 data ERROR offset 2 'Empty expression is invalid'
 

@@ -959,6 +959,8 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, char *fmt, vp_tmpl_rul
 {
 	int ret;
 
+	*head = NULL;
+
 	fr_strerror();	/* Clear error buffer */
 	ret = xlat_tokenize_literal(ctx, head, fmt, false, rules);
 	if (ret < 0) return ret;
