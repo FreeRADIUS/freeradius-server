@@ -139,7 +139,8 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, cha
 
 	if (p[0] != ':') {
 		talloc_free(node);
-		fr_strerror_printf("Expected ':' after first expansion");
+		fr_strerror_printf("Expected ':' after first expansion, got '%pV'",
+				   fr_box_strvalue_len(p, 1));
 		return -(p - fmt);
 	}
 	p++;
@@ -154,11 +155,17 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, cha
 	/*
 	 *	Allow the RHS to be empty as a special case.
 	 */
-	if (*p == '}') {
+	switch (*p) {
+	case '}':
 		node->alternate = xlat_exp_alloc(node, XLAT_LITERAL, "", 0);
 		node->async_safe = node->child->async_safe;
 		*head = node;
 		return (p + 1) - fmt;
+
+	case '\0':
+		fr_strerror_printf("No matching closing brace");
+		talloc_free(node);
+		return -2;
 	}
 
 	/*
@@ -390,6 +397,14 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head,
 	 *	%{%{...}:-bar}
 	 */
 	if ((fmt[2] == '%') && (fmt[3] == '{')) return xlat_tokenize_alternation(ctx, head, fmt, rules);
+
+	/*
+	 *	%{:-bar}
+	 */
+	if ((fmt[2] == ':') && (fmt[3] == '-')) {
+		fr_strerror_printf("First item in alternation cannot be empty");
+		return -2;
+	}
 
 #ifdef HAVE_REGEX
 	/*
