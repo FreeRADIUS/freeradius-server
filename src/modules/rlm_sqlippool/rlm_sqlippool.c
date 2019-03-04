@@ -347,7 +347,7 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
  * Query the database expecting a single result row
  */
 static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen, char const *fmt,
-							  rlm_sql_handle_t *handle, rlm_sqlippool_t *data,
+							  rlm_sql_handle_t **handle, rlm_sqlippool_t *data,
 							  REQUEST *request, char *param, int param_len)
 {
 	char query[MAX_QUERY_LEN];
@@ -364,43 +364,48 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 
 	/*
 	 *	Do an xlat on the provided string
+	 *
+	 *	Note that on an escaping error the handle is still valid!
 	 */
-	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, handle) < 0) {
+	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, *handle) < 0) {
 		return 0;
 	}
-	retval = data->sql_inst->sql_select_query(data->sql_inst, request, &handle, expanded);
+
+	retval = data->sql_inst->sql_select_query(data->sql_inst, request, handle, expanded);
 	talloc_free(expanded);
 
-	if (retval != 0){
+	if ((retval != 0) || !*handle) {
 		REDEBUG("database query error on '%s'", query);
 		return 0;
 	}
 
-	if (data->sql_inst->sql_fetch_row(data->sql_inst, request, &handle) < 0) {
+	if (data->sql_inst->sql_fetch_row(data->sql_inst, request, handle) < 0) {
 		REDEBUG("Failed fetching query result");
 		goto finish;
 	}
 
-	if (!handle->row) {
+	rad_assert(handle != NULL);
+
+	if (!(*handle)->row) {
 		REDEBUG("SQL query did not return any results");
 		goto finish;
 	}
 
-	if (!handle->row[0]) {
+	if (!(*handle)->row[0]) {
 		REDEBUG("The first column of the result was NULL");
 		goto finish;
 	}
 
-	rlen = strlen(handle->row[0]);
+	rlen = strlen((*handle)->row[0]);
 	if (rlen >= outlen) {
 		RDEBUG("insufficient string space");
 		goto finish;
 	}
 
-	strcpy(out, handle->row[0]);
+	strcpy(out, (*handle)->row[0]);
 	retval = rlen;
 finish:
-	(data->sql_inst->module->sql_finish_select_query)(handle, data->sql_inst->config);
+	(data->sql_inst->module->sql_finish_select_query)(*handle, data->sql_inst->config);
 
 	return retval;
 }
@@ -581,8 +586,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	DO_PART(allocate_begin);
 
 	allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-					  inst->allocate_find, handle,
+					  inst->allocate_find, &handle,
 					  inst, request, (char *) NULL, 0);
+	if (!handle) return RLM_MODULE_FAIL;
 
 	/*
 	 *	Nothing found...
@@ -600,8 +606,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 			 *Let's check if the pool exists at all
 			 */
 			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-							  inst->pool_check, handle, inst, request,
+							  inst->pool_check, &handle, inst, request,
 							  (char *) NULL, 0);
+			if (!handle) return RLM_MODULE_FAIL;
 
 			fr_connection_release(inst->sql_inst->pool, handle);
 
@@ -659,13 +666,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	if (sqlippool_command(inst->allocate_update, &handle, inst, request,
 			      allocation, allocation_len) < 0) {
 	error:
-		fr_connection_release(inst->sql_inst->pool, handle);
+		if (handle) fr_connection_release(inst->sql_inst->pool, handle);
 		return RLM_MODULE_FAIL;
 	}
 
 	DO_PART(allocate_commit);
 
-	fr_connection_release(inst->sql_inst->pool, handle);
+	if (handle) fr_connection_release(inst->sql_inst->pool, handle);
 
 	return do_logging(request, inst->log_success, RLM_MODULE_OK);
 }
