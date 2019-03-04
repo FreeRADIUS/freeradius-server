@@ -299,12 +299,11 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-#if 0
-	if (fr_dict_from_file(&dict, FR_DICTIONARY_FILE) < 0) {
-		fr_perror("%s", main_config->name);
-		return 1;
+
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+		fr_perror("%s", config->name);
+		exit(EXIT_FAILURE);
 	}
-#endif
 
 	if (fr_dict_read(dict, config->raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
