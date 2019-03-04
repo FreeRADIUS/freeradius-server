@@ -313,6 +313,11 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	if (!fmt || !*fmt) return 0;
 
 	/*
+	 *	No handle?  That's an error.
+	 */
+	if (!handle || !*handle) return -1;
+
+	/*
 	 *	@todo this needs to die (should just be done in xlat expansion)
 	 */
 	sqlippool_expand(query, sizeof(query), fmt, data, param, param_len);
