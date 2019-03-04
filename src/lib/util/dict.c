@@ -4535,6 +4535,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 	char			buf[256];
 	char			*p;
 	int			line = 0;
+	size_t 			len = 0;
 
 	struct stat		statbuf;
 	char			*argv[MAX_ARGV];
@@ -4548,7 +4549,9 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 	if (!fr_cond_assert(!ctx->dict->root || ctx->parent)) return -1;
 
-	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
+	if (dir_name) len += strlen(dir_name);
+
+	if ((len + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf_push("%s: Filename name too long", "Error reading dictionary");
 		return -1;
 	}
