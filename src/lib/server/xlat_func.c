@@ -2742,6 +2742,7 @@ int xlat_init(void)
 	xlat_register(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	xlat_register(NULL, "lpad", xlat_func_lpad, NULL, NULL, 0, 0, true);
 	xlat_register(NULL, "rpad", xlat_func_rpad, NULL, NULL, 0, 0, true);
+	xlat_register(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0, false);	/* On behalf of trigger.c */
 
 	xlat_register(&xlat_foreach_inst[0], "debug", xlat_func_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	c = xlat_func_find("debug");

@@ -35,6 +35,10 @@ extern "C" {
 
 #include <talloc.h>
 
+ssize_t		trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
+		     	     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			     REQUEST *request, char const *fmt);
+
 void		trigger_exec_init(CONF_SECTION const *cs);
 
 int		trigger_exec(REQUEST *request, CONF_SECTION const *cs,

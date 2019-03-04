@@ -459,10 +459,13 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 
 	fr_ipaddr_t			ipaddr = op->start;
 	int				s_ret = REDIS_RCODE_SUCCESS;
-	REQUEST				*request = request_alloc(inst);
+	REQUEST				*request;
 	redisReply			**replies = NULL;
 
 	unsigned int			pipelined = 0;
+
+	request = request_alloc(inst);
+	request->module = "rlm_redis_ippool_tool";	/* For debug output */
 
 	while (more) {
 		fr_ipaddr_t	acked = ipaddr; 		/* Record our progress */
@@ -863,8 +866,11 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 	redis_driver_conf_t	*inst = talloc_get_type_abort(instance, redis_driver_conf_t);
 	uint8_t			key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t			*key_p = key;
-	REQUEST			*request = request_alloc(inst);
+	REQUEST			*request;
 	uint8_t 		**result;
+
+	request = request_alloc(inst);
+	request->module = "rlm_redis_ippool_tool";	/* For debug output */
 
 	IPPOOL_BUILD_KEY(key, key_p, "*}:pool", 1);
 
@@ -1051,13 +1057,16 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 	struct timeval			now;
 
 	int				s_ret = REDIS_RCODE_SUCCESS;
-	REQUEST				*request = request_alloc(inst);
+	REQUEST				*request;
 	redisReply			**replies = NULL, *reply;
 	unsigned int			pipelined = 0;		/* Update if additional commands added */
 
 	size_t				reply_cnt = 0, i = 0;
 
 #define STATS_COMMANDS_TOTAL 8
+
+	request = request_alloc(inst);
+	request->module = "rlm_redis_ippool_tool";	/* For debug output */
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 

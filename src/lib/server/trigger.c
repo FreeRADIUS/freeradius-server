@@ -49,9 +49,9 @@ typedef struct {
 /** Retrieve attributes from a special trigger list
  *
  */
-static ssize_t xlat_trigger(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			    REQUEST *request, char const *fmt)
+ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
+		     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+		     REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR		*head;
 	fr_dict_attr_t const	*da;
@@ -133,7 +133,11 @@ void trigger_exec_init(CONF_SECTION const *cs)
 	pthread_mutex_init(trigger_mutex, 0);
 	talloc_set_destructor(trigger_mutex, _mutex_free);
 
-	xlat_register(NULL, "trigger", xlat_trigger, NULL, NULL, 0, 0, false);
+	/*
+	 *	Don't register the trigger xlat here, as we may inadvertently
+	 *	ininitialise the xlat code, which is annoying when this is
+	 *	called from a utility.
+	 */
 }
 
 /** Free trigger resources
