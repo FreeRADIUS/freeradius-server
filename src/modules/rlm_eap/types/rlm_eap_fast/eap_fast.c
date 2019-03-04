@@ -504,20 +504,22 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
 			if (fr_dict_vendor_num_by_da(vp->da) != VENDORPEC_MICROSOFT) continue;
 
-			if (vp->vp_length != RADIUS_CHAP_CHALLENGE_LENGTH) {
-				REDEBUG("Found CHAP-Challenge with incorrect length.  Expected %u, got %zu",
-					RADIUS_CHAP_CHALLENGE_LENGTH, vp->vp_length);
-				rcode = RLM_MODULE_INVALID;
-				break;
-			}
-
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
 			switch (vp->da->attr) {
 			case FR_MSCHAP_MPPE_SEND_KEY:
+				if (vp->vp_length != RADIUS_CHAP_CHALLENGE_LENGTH) {
+				wrong_length:
+					REDEBUG("Found %s with incorrect length.  Expected %u, got %zu",
+						vp->da->name, RADIUS_CHAP_CHALLENGE_LENGTH, vp->vp_length);
+					rcode = RLM_MODULE_INVALID;
+					break;
+				}
+
 				memcpy(t->isk.mppe_send, vp->vp_octets, RADIUS_CHAP_CHALLENGE_LENGTH);
 				break;
 
 			case FR_MSCHAP_MPPE_RECV_KEY:
+				if (vp->vp_length != RADIUS_CHAP_CHALLENGE_LENGTH) goto wrong_length;
 				memcpy(t->isk.mppe_recv, vp->vp_octets, RADIUS_CHAP_CHALLENGE_LENGTH);
 				break;
 
