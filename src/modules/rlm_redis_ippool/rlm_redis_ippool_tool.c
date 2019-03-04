@@ -1362,7 +1362,10 @@ int main(int argc, char *argv[])
 	bool				do_export = false, print_stats = false, list_pools = false;
 	bool				need_pool = false;
 	char				*do_import = NULL;
+	char const			*dict_dir = DICTDIR;
+	char const			*filename = NULL;
 
+	fr_dict_t			*dict = NULL;
 	CONF_SECTION			*pool_cs;
 	CONF_PAIR			*cp;
 	ippool_tool_t			*conf;
@@ -1374,8 +1377,6 @@ int main(int argc, char *argv[])
 	conf = talloc_zero(NULL, ippool_tool_t);
 	conf->cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!conf->cs) exit(EXIT_FAILURE);
-
-	trigger_exec_init(conf->cs);
 
 #define ADD_ACTION(_action) \
 do { \
@@ -1389,13 +1390,17 @@ do { \
 	need_pool = true; \
 } while (0);
 
-	while ((c = getopt(argc, argv, "a:d:r:s:Sm:p:ilLhxo:f:")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "a:d:D:r:s:Sm:p:ilLhxo:f:")) != -1) switch (c) {
 		case 'a':
 			ADD_ACTION(IPPOOL_TOOL_ADD);
 			break;
 
 		case 'd':
 			ADD_ACTION(IPPOOL_TOOL_REMOVE);
+			break;
+
+		case 'D':
+			dict_dir = optarg;
 			break;
 
 		case 'r':
@@ -1459,7 +1464,7 @@ do { \
 			break;
 
 		case 'f':
-			if (cf_file_read(conf->cs, optarg) < 0 || (cf_section_pass2(conf->cs) < 0)) exit(EXIT_FAILURE);
+			filename = optarg;
 			break;
 
 		default:
@@ -1477,6 +1482,28 @@ do { \
 		usage(64);
 	}
 	if (argc > 3) usage(64);
+
+	if (fr_dict_global_init(conf, dict_dir) < 0) {
+		fr_perror("Failed initializing dictionaries");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+		fr_perror("Failed reading dictionaries");
+		exit(EXIT_FAILURE);
+	}
+
+	/*
+	 *	This requires the dictionaries, too.
+	 */
+	trigger_exec_init(conf->cs);
+
+	/*
+	 *	Read configuration files if necessary.
+	 */
+	if (filename && (cf_file_read(conf->cs, filename) < 0 || (cf_section_pass2(conf->cs) < 0))) {
+		exit(EXIT_FAILURE);
+	}
 
 	cp = cf_pair_alloc(conf->cs, "server", argv[0], T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
 	if (!cp) {
