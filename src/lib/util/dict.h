@@ -227,7 +227,7 @@ fr_dict_attr_t		*fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da
 
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old) CC_HINT(nonnull);
 
-void			fr_dict_unknown_free(fr_dict_attr_t const **da) CC_HINT(nonnull);
+void			fr_dict_unknown_free(fr_dict_attr_t const **da);
 
 int			fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 							 fr_dict_attr_t const *parent, unsigned int vendor);
@@ -241,7 +241,7 @@ ssize_t			fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 ssize_t			fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 							 fr_dict_attr_t const *parent, char const *name);
 
-fr_dict_attr_t const	*fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *da) CC_HINT(nonnull(2));
+fr_dict_attr_t const	*fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *da);
 /** @} */
 
 /** @name Attribute lineage
@@ -250,17 +250,17 @@ fr_dict_attr_t const	*fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *
  */
 ssize_t			fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t const *flags);
 
-void			fr_dict_print(fr_dict_attr_t const *da, int depth) CC_HINT(nonnull);
+void			fr_dict_print(fr_dict_attr_t const *da, int depth);
 
-fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor) CC_HINT(nonnull);
+fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
 
-int			fr_dict_oid_component(unsigned int *out, char const **oid) CC_HINT(nonnull);
+int			fr_dict_oid_component(unsigned int *out, char const **oid);
 
 size_t			fr_dict_print_attr_oid(char *buffer, size_t outlen,
-					       fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da) CC_HINT(nonnull(1,4));
+					       fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da);
 
 ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
-					    unsigned int *attr, char const *oid) CC_HINT(nonnull(2,3,4));
+					    unsigned int *attr, char const *oid);
 /** @} */
 
 /** @name Attribute, vendor and dictionary lookup
@@ -269,15 +269,15 @@ ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
  */
 fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
 
-ssize_t			fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_dict_t const *dict_def) CC_HINT(nonnull);
+ssize_t			fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_dict_t const *dict_def);
 
-fr_dict_t		*fr_dict_by_protocol_name(char const *name) CC_HINT(nonnull);
+fr_dict_t		*fr_dict_by_protocol_name(char const *name);
 
 fr_dict_t		*fr_dict_by_protocol_num(unsigned int num);
 
-fr_dict_t		*fr_dict_by_da(fr_dict_attr_t const *da) CC_HINT(nonnull);
+fr_dict_t		*fr_dict_by_da(fr_dict_attr_t const *da);
 
-fr_dict_t		*fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name) CC_HINT(nonnull);
+fr_dict_t		*fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
 
 /** Return true if this attribute is parented directly off the dictionary root
  *
@@ -314,84 +314,84 @@ static inline uint32_t fr_dict_vendor_num_by_da(fr_dict_attr_t const *da)
 	return da_p->attr;
 }
 
-fr_dict_vendor_t const	*fr_dict_vendor_by_da(fr_dict_attr_t const *da) CC_HINT(nonnull);
+fr_dict_vendor_t const	*fr_dict_vendor_by_da(fr_dict_attr_t const *da);
 
-fr_dict_vendor_t const	*fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name) CC_HINT(nonnull);
+fr_dict_vendor_t const	*fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name);
 
-fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t vendor_pen) CC_HINT(nonnull);
+fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t vendor_pen);
 
-fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da) CC_HINT(nonnull);
+fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
 
-fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen) CC_HINT(nonnull);
+fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen);
 
 ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 						    fr_dict_t const *dict, char const *name) CC_HINT(nonnull(2,4));
 
-fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *attr) CC_HINT(nonnull);
+fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *attr);
 
 ssize_t			fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 							      fr_dict_t const *dict_def,
-							      char const *attr, bool fallback) CC_HINT(nonnull(2,3,4));
+							      char const *attr, bool fallback);
 
 fr_dict_attr_err_t	fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out,
-						       fr_dict_t const *dict_def, char const *attr, bool fallback) CC_HINT(nonnull);
+						       fr_dict_t const *dict_def, char const *attr, bool fallback);
 
-fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type) CC_HINT(nonnull);
+fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type);
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child) CC_HINT(nonnull);
 
-fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr) CC_HINT(nonnull);
+fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 
-fr_dict_enum_t		*fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value) CC_HINT(nonnull);
+fr_dict_enum_t		*fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 
-char const		*fr_dict_enum_alias_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value) CC_HINT(nonnull);
+char const		*fr_dict_enum_alias_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 
-fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alias, ssize_t len) CC_HINT(nonnull);
+fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *alias, ssize_t len);
 /** @} */
 
 /** @name Dictionary and protocol loading
  *
  * @{
  */
-int			fr_dict_internal_afrom_file(fr_dict_t **out, char const *internal_name) CC_HINT(nonnull);
+int			fr_dict_internal_afrom_file(fr_dict_t **out, char const *internal_name);
 
-int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name) CC_HINT(nonnull);
+int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name);
 
-int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename) CC_HINT(nonnull);
+int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename);
 /** @} */
 
 /** @name Autoloader interface
  *
  * @{
  */
-int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load) CC_HINT(nonnull);
+int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load);
 
-int			fr_dict_autoload(fr_dict_autoload_t const *to_load) CC_HINT(nonnull);
+int			fr_dict_autoload(fr_dict_autoload_t const *to_load);
 
-void			fr_dict_autofree(fr_dict_autoload_t const *to_free) CC_HINT(nonnull);
+void			fr_dict_autofree(fr_dict_autoload_t const *to_free);
 /** @} */
 
-void			fr_dict_free(fr_dict_t **dict) CC_HINT(nonnull);
+void			fr_dict_free(fr_dict_t **dict);
 
 /** @name Initialisation
  *
  * @{
  */
- int			fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir) CC_HINT(nonnull);
+ int			fr_dict_global_init(TALLOC_CTX *ctx, char const *dict_dir);
 /** @} */
 
 /** @name Dictionary testing and validation
  *
  * @{
  */
-void			fr_dict_dump(fr_dict_t *dict) CC_HINT(nonnull);
+void			fr_dict_dump(fr_dict_t *dict);
 
 int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
-					  fr_dict_attr_t const *parent, unsigned int vendor) CC_HINT(nonnull);
+					  fr_dict_attr_t const *parent, unsigned int vendor);
 
-ssize_t			fr_dict_valid_name(char const *name, ssize_t len) CC_HINT(nonnull);
+ssize_t			fr_dict_valid_name(char const *name, ssize_t len);
 
-void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da) CC_HINT(nonnull);
+void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da);
 /** @} */
 
 #ifdef __cplusplus
