@@ -305,6 +305,11 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 
 		fr_pool_enable_triggers(pool, trigger_prefix, trigger_args);
 
+		if (fr_pool_start(pool) < 0) {
+			ERROR("%s: Starting initial connections failed", log_prefix);
+			return -1;
+		}
+
 		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
 		cf_data_add(cs, pool, NULL, false);
 		return pool;

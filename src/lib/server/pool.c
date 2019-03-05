@@ -35,6 +35,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/misc.h>
 
+#include <time.h>
+
 typedef struct fr_pool_connection_s fr_pool_connection_t;
 
 static int connection_check(fr_pool_t *pool, REQUEST *request);
@@ -948,26 +950,16 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 			fr_pool_connection_create_t c, fr_pool_connection_alive_t a,
 			char const *log_prefix)
 {
-	uint32_t i;
-	fr_pool_t *pool = NULL;
-	fr_pool_connection_t *this;
-	time_t now;
+	fr_pool_t		*pool = NULL;
 
 	if (!cs || !opaque || !c) return NULL;
-
-	now = time(NULL);
 
 	/*
 	 *	Pool is allocated in the NULL context as
 	 *	threads are likely to allocate memory
 	 *	beneath the pool.
 	 */
-	pool = talloc_zero(NULL, fr_pool_t);
-	if (!pool) {
-		/* Simply using ERROR here results in a null pointer dereference */
-		fr_log(&default_log, L_ERR, "%s: Out of memory", __FUNCTION__);
-		return NULL;
-	}
+	MEM(pool = talloc_zero(NULL, fr_pool_t));
 
 	/*
 	 *	Ensure the pool is freed at the same time
@@ -1030,8 +1022,9 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	}
 	if (!pool->heap) {
 		ERROR("%s: Failed creating connection heap", __FUNCTION__);
-		talloc_free(pool);
-		return NULL;
+	error:
+		fr_pool_free(pool);
+		return -1;
 	}
 
 	pool->log_prefix = log_prefix ? talloc_typed_strdup(pool, log_prefix) : "core";
@@ -1098,24 +1091,33 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 		return pool;
 	}
 
+	return pool;
+}
+
+int fr_pool_start(fr_pool_t *pool)
+{
+	uint32_t		i;
+	fr_pool_connection_t 	*this;
+
 	/*
 	 *	Create all of the connections, unless the admin says
 	 *	not to.
 	 */
 	for (i = 0; i < pool->start; i++) {
-		this = connection_spawn(pool, NULL, now, false, true);
+		/*
+		 *	Call time() once for each spawn attempt as there
+		 *	could be a significant delay.
+		 */
+		this = connection_spawn(pool, NULL, time(NULL), false, true);
 		if (!this) {
 			ERROR("Failed spawning initial connections");
-		error:
-			/* coverity[missing_unlock] */
-			fr_pool_free(pool);
-			return NULL;
+			return -1;
 		}
 	}
 
 	fr_pool_trigger_exec(pool, NULL, "start");
 
-	return pool;
+	return 0;
 }
 
 /** Allocate a new pool using an existing one as a template
@@ -1164,7 +1166,7 @@ struct timeval fr_pool_timeout(fr_pool_t *pool)
  * @param[in] pool to get connection start for.
  * @return the connection start value configured for the pool.
  */
-int fr_pool_start(fr_pool_t *pool)
+int fr_pool_start_num(fr_pool_t *pool)
 {
 	return pool->start;
 }

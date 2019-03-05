@@ -138,6 +138,7 @@ fr_pool_t	*fr_pool_init(TALLOC_CTX *ctx,
 			      fr_pool_connection_create_t c,
 			      fr_pool_connection_alive_t a,
 			      char const *log_prefix);
+int		fr_pool_start(fr_pool_t *pool);
 
 fr_pool_t	*fr_pool_copy(TALLOC_CTX *ctx, fr_pool_t *pool, void *opaque);
 
@@ -150,7 +151,7 @@ void	fr_pool_enable_triggers(fr_pool_t *pool,
 
 struct timeval fr_pool_timeout(fr_pool_t *pool);
 
-int fr_pool_start(fr_pool_t *pool);
+int fr_pool_start_num(fr_pool_t *pool);
 
 void const *fr_pool_opaque(fr_pool_t *pool);
 

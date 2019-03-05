@@ -998,6 +998,11 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 		return -1;
 	}
 
+	if (fr_pool_start(t->pool) < 0) {
+		ERROR("Starting initial connections failed");
+		return -1;
+	}
+
 	return rest_io_init(t, inst->multiplex);
 }
 

@@ -407,6 +407,8 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, fr_redi
 			fr_pair_list_free(&args);
 		}
 
+		if (fr_pool_start(node->pool) < 0) goto error;
+
 		return CLUSTER_OP_SUCCESS;
 	}
 
@@ -2375,7 +2377,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		/*
 		 * 	Only get cluster map config if required
 		 */
-		if (fr_pool_start(node->pool) > 0) {
+		if (fr_pool_start_num(node->pool) > 0) {
 			/*
 			 *	Fine to leave this node configured, if we do find
 			 *	a live node, and it's not in the map, it'll be cleared out.
