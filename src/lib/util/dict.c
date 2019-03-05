@@ -4548,6 +4548,11 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 	if (!fr_cond_assert(!ctx->dict->root || ctx->parent)) return -1;
 
+	if (!dir_name) {
+		fr_strerror_printf_push("Missing the directory containing the dictionaries");
+		return -1;
+	}
+
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf_push("%s: Filename name too long", "Error reading dictionary");
 		return -1;
