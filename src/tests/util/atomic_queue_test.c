@@ -69,7 +69,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -s size                set queue size.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(EXIT_FAILURE);
+	exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])

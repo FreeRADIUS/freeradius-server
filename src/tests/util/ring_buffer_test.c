@@ -90,10 +90,10 @@ static void  alloc_blocks(fr_ring_buffer_t *rb, uint32_t *seed, UNUSED int *star
 		array[index] = hash;
 		p = fr_ring_buffer_reserve(rb, 2048);
 
-		if (fr_cond_assert(!p)) exit(EXIT_FAILURE);
+		if (!fr_cond_assert(p != NULL)) exit(EXIT_FAILURE);
 
 		data[index] = fr_ring_buffer_alloc(rb, hash);
-		if (fr_cond_assert(data[index] != p)) exit(EXIT_FAILURE);
+		if (!fr_cond_assert(data[index] == p)) exit(EXIT_FAILURE);
 
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
