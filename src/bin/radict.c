@@ -225,6 +225,7 @@ int main(int argc, char *argv[])
 		case 'h':
 		default:
 			usage();
+			found = true;
 			goto finish;
 	}
 	argc -= optind;
