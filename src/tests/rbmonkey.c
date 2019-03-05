@@ -182,7 +182,7 @@ again:
 	fprintf(stderr, "filter = %x mask = %x n= %i\n",
 		thresh, mask, n);
 
-	t = rbtree_create(NULL, comp, free, RBTREE_FLAG_LOCK);
+	t = rbtree_create(NULL, comp, NULL, RBTREE_FLAG_LOCK);
 	/* Find out the value of the NIL node */
 	NIL = t->root->left;
 
