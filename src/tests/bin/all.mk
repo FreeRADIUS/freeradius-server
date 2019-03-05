@@ -1,7 +1,6 @@
 FILES  := \
 	radict \
 	radclient \
-	radiusd \
 	radsniff \
 	radsnmp \
 	radwho \
