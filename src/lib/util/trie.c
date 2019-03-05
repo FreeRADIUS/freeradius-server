@@ -2870,7 +2870,7 @@ int main(int argc, char **argv)
 
 	if (argc < 2) {
 		fprintf(stderr, "Please specify filename\n");
-		exit(1);
+		exit(EXIT_SUCCESS);
 	}
 
 	fp = fopen(argv[1], "r");

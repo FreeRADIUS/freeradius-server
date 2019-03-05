@@ -139,7 +139,7 @@ static void NEVER_RETURNS usage(void)
 	DEBUG("  -v                     Show program version information.");
 	DEBUG("  -x                     Debugging mode.");
 
-	exit(EXIT_FAILURE);
+	exit(EXIT_SUCCESS);
 }
 
 

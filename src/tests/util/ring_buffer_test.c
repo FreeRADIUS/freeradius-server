@@ -137,7 +137,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 	fprintf(stderr, "  -s <string>            Set random seed to <string>.\n");
 
-	exit(EXIT_FAILURE);
+	exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
