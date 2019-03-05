@@ -1,3 +1,6 @@
 #!/bin/sh
 
-exec $TESTBIN/radict -D $DICT_DIR User-Name
+. src/tests/bin/lib.test.bin.sh
+
+do_test $TESTBIN/radict -h
+do_test $TESTBIN/radict -D $DICT_DIR User-Name

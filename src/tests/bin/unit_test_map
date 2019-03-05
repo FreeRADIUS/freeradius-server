@@ -1,0 +1,5 @@
+#!/bin/sh
+
+. src/tests/bin/lib.test.bin.sh
+
+do_test $TESTBIN/unit_test_map -h

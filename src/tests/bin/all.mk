@@ -1,5 +1,13 @@
 FILES  := \
-	radict
+	radict \
+	radclient \
+	radiusd \
+	radsniff \
+	radsnmp \
+	radwho \
+	unit_test_attribute \
+	unit_test_map \
+	unit_test_module
 
 DICT_DIR := $(top_srcdir)/share/dictionary
 
@@ -15,7 +23,7 @@ $(BUILD_DIR)/tests/bin:
 #
 $(BUILD_DIR)/tests/bin/%: $(DIR)/% | $(BUILD_DIR)/tests/bin
 	${Q}echo BIN-TEST $(notdir $@)
-	${Q}TESTBIN="$(TESTBIN)" DICT_DIR="$(DICT_DIR)" $<
+	${Q}TESTBIN="$(TESTBIN)" TESTBINDIR="$(TESTBINDIR)" DICT_DIR="$(DICT_DIR)" $<
 	${Q}touch $@
 
 #
