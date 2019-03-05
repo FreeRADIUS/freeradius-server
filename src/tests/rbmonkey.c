@@ -158,6 +158,11 @@ ascend:
 
 #define REPS 10
 
+static void freenode(void *data)
+{
+	talloc_free(data);
+}
+
 int main(UNUSED int argc, UNUSED char *argv[])
 {
 	rbtree_t *t;
@@ -182,13 +187,13 @@ again:
 	fprintf(stderr, "filter = %x mask = %x n= %i\n",
 		thresh, mask, n);
 
-	t = rbtree_create(NULL, comp, NULL, RBTREE_FLAG_LOCK);
+	t = rbtree_create(NULL, comp, freenode, RBTREE_FLAG_LOCK);
 	/* Find out the value of the NIL node */
 	NIL = t->root->left;
 
 	for (i = 0; i < n; i++) {
 		int *p;
-		p = talloc(NULL, int);
+		p = talloc(t, int);
 		*p = fr_rand();
 		vals[i] = *p;
 		rbtree_insert(t, p);
