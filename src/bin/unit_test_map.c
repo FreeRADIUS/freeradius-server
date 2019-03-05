@@ -70,7 +70,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 	fprintf(stderr, "  -M                     Show program version information.\n");
 
-	exit(EXIT_FAILURE);
+	exit(EXIT_SUCCESS);
 }
 
 static int process_file(char const *filename)

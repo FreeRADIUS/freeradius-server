@@ -182,7 +182,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -v                     Show program version information.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(1);
+	exit(EXIT_SUCCESS);
 }
 
 /*
