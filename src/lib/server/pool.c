@@ -1024,7 +1024,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 		ERROR("%s: Failed creating connection heap", __FUNCTION__);
 	error:
 		fr_pool_free(pool);
-		return -1;
+		return NULL;
 	}
 
 	pool->log_prefix = log_prefix ? talloc_typed_strdup(pool, log_prefix) : "core";
