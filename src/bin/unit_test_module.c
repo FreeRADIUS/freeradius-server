@@ -826,6 +826,11 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Initialise the trigger rate limiting tree
+	 */
+	if (trigger_exec_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
+
+	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
 	if (unlang_init() < 0) EXIT_WITH_FAILURE;
@@ -1146,6 +1151,12 @@ cleanup:
 	 *	Free our explicitly loaded internal dictionary
 	 */
 	fr_dict_free(&dict);
+
+	/*
+	 *  Now we're sure no more triggers can fire, free the
+	 *  trigger tree
+	 */
+	trigger_exec_free();
 
 	/*
 	 *	Explicitly cleanup the buffer used for storing syserror messages
