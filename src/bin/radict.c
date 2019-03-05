@@ -106,13 +106,18 @@ static int load_dicts(TALLOC_CTX *ctx, char const *dict_dir)
 					fr_strerror_printf("Reached maximum number of dictionaries");
 					goto error;
 				}
-				INFO("Loading dictionary: %s/%s", dict_dir, dp->d_name);
-				if (fr_dict_protocol_afrom_file(dict_end++, dp->d_name) < 0) goto error;
-			/*
-			 *	...otherwise recurse to process sub-protocols (maybe?)
-			 */
-			} else {
-				if (load_dicts(ctx, file_str) < 0) goto error;
+
+				INFO("Loading dictionary: %s/dictionary", file_str);
+				if (fr_dict_read(*dict_end, file_str, "dictionary") < 0) {
+					goto error;
+				}
+				dict_end++;
+
+				/*
+				 *	...otherwise recurse to process sub-protocols (maybe?)
+				 */
+			} else if (load_dicts(ctx, file_str) < 0) {
+				goto error;
 			}
 		}
 		talloc_free(file_str);
@@ -237,7 +242,7 @@ int main(int argc, char *argv[])
 
 	INFO("Loading dictionary: %s/%s", dict_dir, FR_DICTIONARY_FILE);
 
-	if (fr_dict_internal_afrom_file(dict_end++, NULL) < 0) {
+	if (fr_dict_internal_afrom_file(dict_end++, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fr_perror("radict");
 		ret = 1;
 		goto finish;
