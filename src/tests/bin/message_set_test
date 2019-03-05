@@ -3,3 +3,4 @@
 . src/tests/bin/lib.sh
 
 do_test $TESTBIN/message_set_test -h
+do_test $TESTBIN/message_set_test -s caipirinha -tx
