@@ -3,3 +3,4 @@
 . src/tests/bin/lib.sh
 
 do_test $TESTBIN/atomic_queue_test -h
+do_test $TESTBIN/atomic_queue_test -s 40480
