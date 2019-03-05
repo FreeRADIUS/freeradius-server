@@ -1,12 +1,22 @@
 FILES  := \
-	radict \
-	radclient \
-	radsniff \
-	radsnmp \
-	radwho \
-	unit_test_attribute \
-	unit_test_map \
+	atomic_queue_test 	\
+	control_test 		\
+	dhcpclient		\
+	message_set_test	\
+	radclient		\
+	radict 			\
+	radmin			\
+	radsniff 		\
+	radsnmp 		\
+	radwho 			\
+	rbmonkey 		\
+	ring_buffer_test 	\
+	rlm_redis_ippool_tool 	\
+	smbencrypt 		\
+	unit_test_attribute 	\
+	unit_test_map 		\
 	unit_test_module
+
 
 DICT_DIR := $(top_srcdir)/share/dictionary
 
