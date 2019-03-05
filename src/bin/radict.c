@@ -58,10 +58,12 @@ static void usage(void)
 	fprintf(stderr, "Very simple interface to extract attribute definitions from FreeRADIUS dictionaries\n");
 }
 
-static int load_dicts(TALLOC_CTX *ctx, char const *dict_dir)
+static int load_dicts(char const *dict_dir)
 {
 	DIR		*dir;
 	struct dirent	*dp;
+
+	INFO("Reading directory %s", dict_dir);
 
 	dir = opendir(dict_dir);
 	if (!dir) {
@@ -74,6 +76,11 @@ static int load_dicts(TALLOC_CTX *ctx, char const *dict_dir)
 		char *file_str;
 
 		if (dp->d_name[0] == '.') continue;
+
+		/*
+		 *	Skip the internal FreeRADIUS dictionary.
+		 */
+		if (strcmp(dp->d_name, "freeradius") == 0) continue;
 
 		file_str = talloc_asprintf(NULL, "%s/%s", dict_dir, dp->d_name);
 
@@ -108,17 +115,15 @@ static int load_dicts(TALLOC_CTX *ctx, char const *dict_dir)
 				}
 
 				INFO("Loading dictionary: %s/dictionary", file_str);
-				if (fr_dict_read(*dict_end, file_str, "dictionary") < 0) {
+				if (fr_dict_protocol_afrom_file(dict_end, dp->d_name) < 0) {
 					goto error;
 				}
 				dict_end++;
-
-				/*
-				 *	...otherwise recurse to process sub-protocols (maybe?)
-				 */
-			} else if (load_dicts(ctx, file_str) < 0) {
-				goto error;
 			}
+
+			/*
+			 *	For now, don't do sub-protocols.
+			 */
 		}
 		talloc_free(file_str);
 	}
@@ -248,7 +253,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (load_dicts(autofree, dict_dir) < 0) {
+	if (load_dicts(dict_dir) < 0) {
 		fr_perror("radict");
 		ret = 1;
 		goto finish;
