@@ -204,7 +204,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	/*
 	 *	noop if trigger_exec_init was never called
 	 */
-	if (!triggers_enabled) return NULL;
+	if (!triggers_enabled) return 0;
 
 	/*
 	 *	Use global "trigger" section if no local config is given.
