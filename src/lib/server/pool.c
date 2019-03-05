@@ -126,6 +126,8 @@ struct fr_pool_s {
 	char const	*log_prefix;		//!< Log prefix to prepend to all log messages created
 						//!< by the connection pool code.
 
+	bool		triggers_enabled;	//!< Whether we call the trigger functions.
+
 	char const	*trigger_prefix;	//!< Prefix to prepend to names of all triggers
 						//!< fired by the connection pool code.
 	VALUE_PAIR	*trigger_args;		//!< Arguments to make available in connection pool triggers.
@@ -260,7 +262,7 @@ static inline void fr_pool_trigger_exec(fr_pool_t *pool, REQUEST *request, char 
 	rad_assert(pool != NULL);
 	rad_assert(event != NULL);
 
-	if (!pool->trigger_prefix) return;
+	if (!pool->triggers_enabled) return;
 
 	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, event);
 	trigger_exec(request, pool->cs, name, true, pool->trigger_args);
@@ -908,6 +910,8 @@ do_return:
  */
 void fr_pool_enable_triggers(fr_pool_t *pool, char const *trigger_prefix, VALUE_PAIR *trigger_args)
 {
+	pool->triggers_enabled = true;
+
 	talloc_const_free(pool->trigger_prefix);
 	MEM(pool->trigger_prefix = trigger_prefix ? talloc_typed_strdup(pool, trigger_prefix) : "");
 
