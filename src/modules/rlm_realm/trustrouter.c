@@ -31,9 +31,7 @@
 #include "trustrouter.h"
 
 #include <trust_router/tr_dh.h>
-
-/* This instance is supposed to be thread-safe as it is always used read-only (except in the initiation) */
-static TIDC_INSTANCE *global_tidc = NULL;
+#include <ctype.h>
 
 struct resp_opaque {
 	REALM *orig_realm;
@@ -65,13 +63,17 @@ static fr_event_list_t *rekey_evl = NULL;
 static pthread_mutex_t evl_mutex;
 static pthread_mutexattr_t evl_mutex_attr;
 
-/* Simultaneous TIDC connections do not work well. We use this mutext to serialize them */
-static pthread_mutex_t tidc_mutex;
+/* Mutex to control concurrent acceses to the realm tree */
+static pthread_mutex_t realm_tree_mutex;
+
+/* Mutexes to serialise TID queries for the same realm */
+#define REALM_MUTEX_MAX	16
+static pthread_mutex_t realm_mutex[REALM_MUTEX_MAX];
 
 /* Constant declarations */
 static uint MAX_FAILED_REKEYS	= 5;	// Max number of tolerable consecutive rekey errors
 static uint REKEY_ERROR_DELAY	= 10;	// Number of seconds we wait until we start a new rekey after a failure
-static uint REKEY_THRESHOLD	= 120;	// Number of seconds before the REALM expires to start a rekey
+static uint REKEY_THRESHOLD	= 60;	// Number of seconds before the REALM expires to start a rekey
 
 /* Configuration parameters */
 static uint32_t realm_lifetime	= 0;		// Number of seconds the REALM can be used
@@ -80,6 +82,40 @@ static bool rekey_enabled	= false;	// Is the rekey functionality enabled?
 /* Forward declarations */
 static void tr_response_func(TIDC_INSTANCE*, TID_REQ*, TID_RESP*, void*);
 static void _tr_do_rekey(void *);
+
+/* Copied from dict_hashname */
+#define FNV_MAGIC_INIT (0x811c9dc5)
+#define FNV_MAGIC_PRIME (0x01000193)
+
+static uint32_t realm_name_hash(const char* realm_name)
+{
+	uint32_t hash = FNV_MAGIC_INIT;
+	char const *p;
+
+	for (p = realm_name; *p != '\0'; p++) {
+		int c = *(unsigned char const *) p;
+		if (isalpha(c)) c = tolower(c);
+
+		hash *= FNV_MAGIC_PRIME;
+		hash ^= (uint32_t ) (c & 0xff);
+	}
+
+	return hash % REALM_MUTEX_MAX;
+}
+
+static void realm_lock(const char *realm_name)
+{
+	int index = realm_name_hash(realm_name);
+	DEBUG2("Locking realm %s using mutex %d", realm_name, index);
+	pthread_mutex_lock(&realm_mutex[index]);
+}
+
+static void realm_unlock(const char *realm_name)
+{
+	int index = realm_name_hash(realm_name);
+	DEBUG2("Unlocking realm %s using mutex %d", realm_name, index);
+	pthread_mutex_unlock(&realm_mutex[index]);
+}
 
 /*
  * Builds a rekey_ctx context using the given parameters.
@@ -132,24 +168,40 @@ static bool tidc_send_recv(const char *trustrouter, int port, const char *rpreal
 	gss_ctx_id_t gssctx;
 	int conn = 0;
 	int rcode;
+	bool result = false;
 
 	/* Open TIDC connection */
 	DEBUG2("Opening TIDC connection to %s:%u for resolving realm %s", trustrouter, port, realm_name);
-	conn = tidc_open_connection(global_tidc, (char *) trustrouter, port, &gssctx);
+	TIDC_INSTANCE *tidc = tidc_create();
+	if (!tidc) {
+		DEBUG2( "tr_init: Error creating global TIDC instance.\n");
+		goto cleanup;
+	}
+
+	if (!tidc_set_dh(tidc, tr_create_dh_params(NULL, 0))) {
+		DEBUG2( "tr_init: Error creating client DH params.\n");
+		goto cleanup;
+	}
+
+
+	conn = tidc_open_connection(tidc, (char *) trustrouter, port, &gssctx);
 	if (conn < 0) {
 		DEBUG2("Error in tidc_open_connection.");
-		return false;
+		goto cleanup;
 	}
 
 	/* Send TIDC request */
-	rcode = tidc_send_request(global_tidc, conn, gssctx, (char *) rprealm, (char *) realm_name,
+	rcode = tidc_send_request(tidc, conn, gssctx, (char *) rprealm, (char *) realm_name,
 				  (char *) community, &tr_response_func, cookie);
 	if (rcode < 0) {
 		DEBUG2("Error in tidc_send_request for %s, rc = %d.", realm_name, rcode);
-		return false;
+		goto cleanup;
 	}
 
-	return true;
+	result = true;
+cleanup:
+	tidc_destroy(tidc);
+	return result;
 }
 
 /*
@@ -168,7 +220,7 @@ static time_t get_realm_expiration(REALM const *realm)
 
 /*
  * Schedules a rekey event with the indicated context by inserting a new event in the list.
- * It uses the evl_mutex to make no other thread accesses the event list at the same time.
+ * It uses the evl_mutex to make sure no other thread accesses the event list at the same time.
  */
 static int schedule_rekey(struct rekey_ctx *rekey_ctx)
 {
@@ -208,11 +260,11 @@ static void _tr_do_rekey(void *ctx){
 
 	DEBUG2("Rekeying realm %s for the %dth time", rekey_ctx->realm_name, ++rekey_ctx->times);
 
-	/* send the TIDC request and get the response. Use GLOBAL mutext to protect global_tidc and the realm */
-	pthread_mutex_lock(&tidc_mutex);
+	/* send the TIDC request and get the response. Use REALM mutext */
+	realm_lock(rekey_ctx->realm_name);
 	result = tidc_send_recv(rekey_ctx->trustrouter, rekey_ctx->port, rekey_ctx->rprealm,
 			        rekey_ctx->realm_name, rekey_ctx->community, &cookie);
-	pthread_mutex_unlock(&tidc_mutex);
+	realm_unlock(rekey_ctx->realm_name);
 
 	/* If the rekey failed, schedule a new rekey in REKEY_ERROR_DELAY seconds, unless we have failed more
 	   than MAX_FAILED_REKEYS times in a row. In that case, return without scheduling a rekey */
@@ -239,24 +291,16 @@ static void _tr_do_rekey(void *ctx){
 
 bool tr_init(bool cnf_rekey_enabled, uint32_t cnf_realm_lifetime)
 {
-	if (global_tidc) return true;
-
-	global_tidc = tidc_create();
-	if (!global_tidc) {
-		DEBUG2( "tr_init: Error creating global TIDC instance.\n");
-		return false;
-	}
-
-	if (!tidc_set_dh(global_tidc, tr_create_dh_params(NULL, 0))) {
-		DEBUG2( "tr_init: Error creating client DH params.\n");
-		return false;
-	}
+	int i = 0;
+	DEBUG2( "tr_init: Init Trust Router module.\n");
 
 	realm_lifetime = cnf_realm_lifetime;
 	rekey_enabled = cnf_rekey_enabled;
 
-	/* create the TIDC mutex */
-	pthread_mutex_init(&tidc_mutex, NULL);
+	/* create the locks */
+	pthread_mutex_init(&realm_tree_mutex, NULL);
+	for (i=0; i<REALM_MUTEX_MAX; i++)
+		pthread_mutex_init(&realm_mutex[i], NULL);
 
 	/* If rekey is enabled, set up and create the rekeyer thread, event list and event mutex (recursive) */
 	if (rekey_enabled) {
@@ -496,6 +540,7 @@ static void tr_response_func( TIDC_INSTANCE *inst,
 		return;
 	}
 
+	pthread_mutex_lock(&realm_tree_mutex);
 	if (!nr) {
 		nr = talloc_zero(NULL, REALM);
 		if (!nr) goto error;
@@ -521,6 +566,7 @@ static void tr_response_func( TIDC_INSTANCE *inst,
 	}
 
 	opaque->output_realm = nr;
+	pthread_mutex_unlock(&realm_tree_mutex);
 	return;
 
 error:
@@ -528,6 +574,7 @@ error:
 		talloc_free(nr);
 	}
 
+	pthread_mutex_unlock(&realm_tree_mutex);
 	return;
 }
 
@@ -610,19 +657,19 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	if (cookie.orig_realm && !update_required(cookie.orig_realm))
 		goto cleanup;
 
-	/*  We use this lock for serializing TIDC requests and protect access to the TIDC calls */
-	pthread_mutex_lock(&tidc_mutex);
+	/*  We use this lock for serializing TID requests for this realm */
+	realm_lock(realm);
 
 	/* Check again that the realm was not created while we were waiting to acquire the lock. */
 	cookie.orig_realm = cookie.output_realm = realm_find(cookie.fr_realm_name);
 	if (cookie.orig_realm && !update_required(cookie.orig_realm)){
-		pthread_mutex_unlock(&tidc_mutex);
+		realm_unlock(realm);
 		goto cleanup;
 	}
 
 	/* Perform the request/response exchange with the trust router server */
 	rv = tidc_send_recv(trustrouter, port, (char *) rprealm, (char *) realm, (char *)community, &cookie);
-	pthread_mutex_unlock(&tidc_mutex);
+	realm_unlock(realm);
 
 	/* If we weren't able to get a response from the trust router server, goto cleanup (hence return NULL realm) */
 	if (!rv) {
