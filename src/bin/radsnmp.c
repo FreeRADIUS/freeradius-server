@@ -139,7 +139,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -v                     Show program version information.\n");
 	fprintf(stderr, "  -x                     Increase debug level.\n");
 
-	exit(EXIT_FAILURE);
+	exit(EXIT_SUCCESS);
 }
 
 #define RESPOND_STATIC(_cmd) \

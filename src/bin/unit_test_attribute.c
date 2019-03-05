@@ -1410,7 +1410,7 @@ int main(int argc, char *argv[])
 		case 'h':
 		default:
 			usage();
-			ret = EXIT_FAILURE;
+			ret = EXIT_SUCCESS;
 			goto done;
 	}
 	argc -= (optind - 1);

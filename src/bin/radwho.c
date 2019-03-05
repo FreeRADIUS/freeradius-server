@@ -223,7 +223,7 @@ int main(int argc, char **argv)
 		main_config_name_set_default(config, p + 1, false);
 	}
 
-	while((c = getopt(argc, argv, "d:D:fF:nN:sSipP:crRu:U:Z")) != -1) switch (c) {
+	while((c = getopt(argc, argv, "d:D:fF:hnN:sSipP:crRu:U:Z")) != -1) switch (c) {
 		case 'd':
 			main_config_raddb_dir_set(config, optarg);
 			break;
@@ -234,8 +234,7 @@ int main(int argc, char **argv)
 			radutmp_file = optarg;
 			break;
 		case 'h':
-			usage(0);	/* never returns */
-
+			usage(EXIT_SUCCESS);	/* never returns */
 		case 'S':
 			hideshell = 1;
 			break;
@@ -244,7 +243,7 @@ int main(int argc, char **argv)
 			break;
 		case 'N':
 			if (inet_pton(AF_INET, optarg, &nas_ip_address) <= 0) {
-				usage(1);
+				usage(EXIT_FAILURE);
 			}
 			break;
 		case 's':
