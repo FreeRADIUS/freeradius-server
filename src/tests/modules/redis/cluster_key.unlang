@@ -11,9 +11,9 @@ $INCLUDE cluster_reset.inc
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
 update control {
-    Tmp-String-0 := "1-%{randstr:aaaaaaaa}"
-    Tmp-String-1 := "2-%{randstr:aaaaaaaa}"
-    Tmp-String-2 := "3-%{randstr:aaaaaaaa}"
+	&Tmp-String-0 := "1-%{randstr:aaaaaaaa}"
+	&Tmp-String-1 := "2-%{randstr:aaaaaaaa}"
+	&Tmp-String-2 := "3-%{randstr:aaaaaaaa}"
 }
 
 #  Hashes to Redis cluster node master 1 (1)
@@ -41,20 +41,20 @@ if ("%{redis:SET d '%{control:Tmp-String-2}'}" == 'OK') {
 #  Now check they are where we expect
 #
 if ("%{redis:@$ENV{REDIS_TEST_SERVER}:30001 GET b}" == "%{control:Tmp-String-0}") {
-    test_pass
+	test_pass
 } else {
-    test_fail
+	test_fail
 }
 
 if ("%{redis:@$ENV{REDIS_TEST_SERVER}:30002 GET c}" == "%{control:Tmp-String-1}") {
-    test_pass
+	test_pass
 } else {
-    test_fail
+	test_fail
 }
 
 if ("%{redis:@$ENV{REDIS_TEST_SERVER}:30003 GET d}" == "%{control:Tmp-String-2}") {
-    test_pass
+	test_pass
 } else {
-    test_fail
+	test_fail
 }
 

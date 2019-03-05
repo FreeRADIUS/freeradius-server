@@ -4,40 +4,40 @@
 
 # Some values we need for startup
 update control {
-	Tmp-Integer-0 := 0
-	Tmp-Integer-0 += 1
-	Tmp-Integer-0 += 2
-	Tmp-Integer-0 += 3
-	Tmp-Integer-0 += 4
-	Tmp-Integer-0 += 5
-	Tmp-Integer-0 += 6
-	Tmp-Integer-0 += 7
-	Tmp-Integer-0 += 8
-	Tmp-Integer-0 += 9
-	Tmp-Integer-0 += 10
-	Tmp-String-0 := "1-%{randstr:aaaaaaaa}"
-	Tmp-String-1 := "2-%{randstr:aaaaaaaa}"
-	Tmp-String-2 := "3-%{randstr:aaaaaaaa}"
+	&Tmp-Integer-0 := 0
+	&Tmp-Integer-0 += 1
+	&Tmp-Integer-0 += 2
+	&Tmp-Integer-0 += 3
+	&Tmp-Integer-0 += 4
+	&Tmp-Integer-0 += 5
+	&Tmp-Integer-0 += 6
+	&Tmp-Integer-0 += 7
+	&Tmp-Integer-0 += 8
+	&Tmp-Integer-0 += 9
+	&Tmp-Integer-0 += 10
+	&Tmp-String-0 := "1-%{randstr:aaaaaaaa}"
+	&Tmp-String-1 := "2-%{randstr:aaaaaaaa}"
+	&Tmp-String-2 := "3-%{randstr:aaaaaaaa}"
 }
 
 if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
-    update control {
-        Tmp-String-8 := '/tmp/redis/create-cluster'
-    }
+	update control {
+		&Tmp-String-8 := '/tmp/redis/create-cluster'
+	}
 } else {
-    update control {
-        Tmp-String-8 := "$ENV{REDIS_CLUSTER_CONTROL}"
-    }
+	update control {
+		&Tmp-String-8 := "$ENV{REDIS_CLUSTER_CONTROL}"
+	}
 }
 
 #
 #  Reset the cluster
 #
 update control {
-    Tmp-String-0 = `%{control:Tmp-String-8} stop`
-    Tmp-String-0 = `%{control:Tmp-String-8} clean`
-    Tmp-String-0 = `%{control:Tmp-String-8} start`
-    Tmp-String-0 = `%{control:Tmp-String-8} create`
+	&Tmp-String-0 = `%{control:Tmp-String-8} stop`
+	&Tmp-String-0 = `%{control:Tmp-String-8} clean`
+	&Tmp-String-0 = `%{control:Tmp-String-8} start`
+	&Tmp-String-0 = `%{control:Tmp-String-8} create`
 }
 
 #  Hashes to Redis cluster node master 0 (1)
@@ -81,7 +81,7 @@ foreach &control:Tmp-Integer-0 {
 
 	# Perform checks every 0.5 seconds
 	update {
-		Tmp-Integer-0 := `/bin/sleep 0.5`
+		&Tmp-Integer-0 := `/bin/sleep 0.5`
 	}
 
 	if ("%{Foreach-Variable-0}" == 10) {
@@ -90,5 +90,5 @@ foreach &control:Tmp-Integer-0 {
 }
 
 update request {
-	Module-Failure-Message !* ANY
+	&Module-Failure-Message !* ANY
 }
