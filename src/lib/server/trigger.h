@@ -47,6 +47,8 @@ int		trigger_exec(REQUEST *request, CONF_SECTION const *cs,
 
 void		trigger_exec_free(void);
 
+bool		trigger_enabled(void);
+
 VALUE_PAIR	*trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
 
 #ifdef __cplusplus

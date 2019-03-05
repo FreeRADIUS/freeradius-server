@@ -32,7 +32,7 @@ RCSID("$Id$")
 /** Whether triggers are enabled globally
  *
  */
-static bool			triggers_enabled;
+static bool			triggers_init;
 static CONF_SECTION const	*trigger_exec_main, *trigger_exec_subcs;
 static rbtree_t			*trigger_last_fired_tree;
 static pthread_mutex_t		*trigger_mutex;
@@ -59,7 +59,7 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	fr_dict_attr_t const	*da;
 	VALUE_PAIR		*vp;
 
-	if (!triggers_enabled) {
+	if (!triggers_init) {
 		ERROR("Triggers are not enabled");
 		return -1;
 	}
@@ -156,7 +156,7 @@ int trigger_exec_init(CONF_SECTION const *cs)
 	pthread_mutex_init(trigger_mutex, 0);
 	talloc_set_destructor(trigger_mutex, _mutex_free);
 
-	triggers_enabled = true;
+	triggers_init = true;
 
 	return 0;
 }
@@ -168,6 +168,14 @@ void trigger_exec_free(void)
 {
 	TALLOC_FREE(trigger_last_fired_tree);
 	TALLOC_FREE(trigger_mutex);
+}
+
+/** Return whether triggers are enabled
+ *
+ */
+bool trigger_enabled(void)
+{
+	return triggers_init;
 }
 
 /** Execute a trigger - call an executable to process an event
@@ -204,7 +212,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	/*
 	 *	noop if trigger_exec_init was never called
 	 */
-	if (!triggers_enabled) return 0;
+	if (!triggers_init) return 0;
 
 	/*
 	 *	Use global "trigger" section if no local config is given.
@@ -351,8 +359,6 @@ VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint1
 	fr_dict_attr_t const	*port_da;
 	VALUE_PAIR		*out = NULL, *vp;
 	fr_cursor_t		cursor;
-
-	if (!triggers_enabled) return NULL;
 
 	server_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CONNECTION_POOL_SERVER);
 	if (!server_da) {

@@ -396,7 +396,7 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, fr_redi
 		}
 		fr_pool_reconnect_func(node->pool, _cluster_node_conf_apply);
 
-		if (cluster->triggers_enabled) {
+		if (trigger_enabled() && cluster->triggers_enabled) {
 			args = trigger_args_afrom_server(node->pool, node->name, node->addr.port);
 			if (!args) goto error;
 
