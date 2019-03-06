@@ -235,6 +235,17 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		if (!reply) goto fail;
 
 		switch (status) {
+		case REDIS_RCODE_MOVE:
+		{
+			fr_value_box_t vb;
+
+			if (fr_redis_reply_to_value_box(NULL, &vb, reply, FR_TYPE_STRING, NULL) == 0) {
+				REDEBUG("Key served by a different node: %pV", &vb);
+				fr_value_box_clear(&vb);
+			}
+			goto fail;
+		}
+
 		case REDIS_RCODE_SUCCESS:
 			goto reply_parse;
 
