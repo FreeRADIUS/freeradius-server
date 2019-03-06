@@ -863,7 +863,6 @@ static int cipher_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp
 	return 0;
 }
 
-
 static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_t const *rsa_inst)
 {
 	if (unlikely(EVP_PKEY_CTX_set_rsa_padding(evp_pkey_ctx, rsa_inst->padding)) <= 0) {
