@@ -1,0 +1,5 @@
+#!/bin/sh
+
+. src/tests/bin/lib.sh
+
+do_test $TESTBIN/rlm_redis_ippool_tool -h

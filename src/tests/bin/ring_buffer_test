@@ -1,0 +1,6 @@
+#!/bin/sh
+
+. src/tests/bin/lib.sh
+
+do_test $TESTBIN/ring_buffer_test
+do_test $TESTBIN/ring_buffer_test -s caipirinha -x -l 8096

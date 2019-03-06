@@ -1,0 +1,6 @@
+#!/bin/sh
+
+. src/tests/bin/lib.sh
+
+do_test $TESTBIN/control_test -h
+do_test $TESTBIN/control_test -m 40480
