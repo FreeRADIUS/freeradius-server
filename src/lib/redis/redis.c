@@ -232,14 +232,14 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 		break;
 
 	case REDIS_REPLY_STRING:
+	case REDIS_REPLY_STATUS:
+	case REDIS_REPLY_ERROR:
 		in.type = FR_TYPE_STRING;
 		in.datum.ptr = reply->str;
 		in.datum.length = reply->len;
 		break;
 
 	case REDIS_REPLY_ARRAY:
-	case REDIS_REPLY_STATUS:
-	case REDIS_REPLY_ERROR:
 		rad_assert(0);
 	}
 
