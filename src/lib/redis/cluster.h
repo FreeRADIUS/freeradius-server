@@ -34,6 +34,7 @@ RCSIDH(cluster_h, "$Id$")
 #include <freeradius-devel/server/pool.h>
 
 typedef struct fr_redis_cluster fr_redis_cluster_t;
+typedef struct fr_redis_cluster_key_slot_s fr_redis_cluster_key_slot_t;
 typedef struct fr_redis_cluster_node_s fr_redis_cluster_node_t;
 
 /** Redis connection sequence state
@@ -59,10 +60,42 @@ typedef struct {
 	uint32_t		reconnects;	//!< How many connections we've tried in this pool.
 } fr_redis_cluster_state_t;
 
+/** Return values for internal functions
+ */
+typedef enum {
+	CLUSTER_OP_IGNORED		= 1,		//!< Operation ignored.
+	CLUSTER_OP_SUCCESS		= 0,		//!< Operation completed successfully.
+	CLUSTER_OP_FAILED		= -1,		//!< Operation failed.
+	CLUSTER_OP_NO_CONNECTION	= -2,		//!< Operation failed because we couldn't find
+							//!< a live connection.
+	CLUSTER_OP_BAD_INPUT		= -3		//!< Validation error.
+} cluster_rcode_t;
+
+cluster_rcode_t fr_redis_cluster_remap(REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn);
+
 /*
  *	Callback for the connection pool to create a new connection
  */
 void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
+
+/*
+ *	Functions to resolve a key to a cluster node
+ */
+fr_redis_cluster_key_slot_t const	*fr_redis_cluster_slot_by_key(fr_redis_cluster_t *cluster, REQUEST *request,
+								      uint8_t const *key, size_t key_len);
+
+fr_redis_cluster_node_t const	*fr_redis_cluster_master(fr_redis_cluster_t *cluster,
+							 fr_redis_cluster_key_slot_t const *key_slot);
+
+fr_redis_cluster_node_t const	*fr_redis_cluster_slave(fr_redis_cluster_t *cluster,
+							fr_redis_cluster_key_slot_t const *key_slot,
+							uint8_t slave_num);
+
+int fr_redis_cluster_ipaddr(fr_ipaddr_t *out, fr_redis_cluster_node_t const *node);
+
+int fr_redis_cluster_port(uint16_t *out, fr_redis_cluster_node_t const *node);
+
+
 
 /*
  *	Reserve/release connections, follow redirects, reconnect

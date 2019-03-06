@@ -183,17 +183,6 @@
 
 #define RELEASED_MIN_WEIGHT	1000			//!< Minimum weight to assign to node.
 
-/** Return values for internal functions
- */
-typedef enum {
-	CLUSTER_OP_IGNORED		= 1,		//!< Operation ignored.
-	CLUSTER_OP_SUCCESS		= 0,		//!< Operation completed successfully.
-	CLUSTER_OP_FAILED		= -1,		//!< Operation failed.
-	CLUSTER_OP_NO_CONNECTION	= -2,		//!< Operation failed because we couldn't find
-							//!< a live connection.
-	CLUSTER_OP_BAD_INPUT		= -3		//!< Validation error.
-} cluster_rcode_t;
-
 /** Live nodes data, used to perform weighted random selection of alternative nodes
  */
 typedef struct {
@@ -236,11 +225,11 @@ struct fr_redis_cluster_node_s {
  * more memory efficient to use 8bit indexes than 64bit pointers for each
  * of the key slot to node mappings.
  */
-typedef struct {
+struct fr_redis_cluster_key_slot_s {
 	uint8_t			slave[MAX_SLAVES];	//!< R/O node (slave) for this key slot.
 	uint8_t			slave_num;		//!< Number of slaves associated with this key slot.
 	uint8_t			master;			//!< R/W node (master) for this key slot.
-} cluster_key_slot_t;
+};
 
 /** A redis cluster
  *
@@ -267,8 +256,8 @@ struct fr_redis_cluster {
 	fr_fifo_t		*free_nodes;		//!< Queue of free nodes (or nodes waiting to be reused).
 	rbtree_t		*used_nodes;		//!< Tree of used nodes.
 
-	cluster_key_slot_t	key_slot[KEY_SLOTS];		//!< Lookup table of slots to pools.
-	cluster_key_slot_t	key_slot_pending[KEY_SLOTS];	//!< Pending key slot table.
+	fr_redis_cluster_key_slot_t	key_slot[KEY_SLOTS];		//!< Lookup table of slots to pools.
+	fr_redis_cluster_key_slot_t	key_slot_pending[KEY_SLOTS];	//!< Pending key slot table.
 
 	pthread_mutex_t		mutex;			//!< Mutex to synchronise cluster operations.
 };
@@ -594,7 +583,7 @@ do { \
 		int			slaves = 0;
 		fr_redis_cluster_node_t		*found, *spare;
 		fr_redis_cluster_node_t		find;
-		cluster_key_slot_t	tmpl_slot;
+		fr_redis_cluster_key_slot_t	tmpl_slot;
 		redisReply		*map = reply->element[i];
 
 		memset(&tmpl_slot, 0, sizeof(tmpl_slot));
@@ -993,7 +982,7 @@ static cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_t *conn)
  *	- CLUSTER_OP_NO_CONNECTION connection failure.
  *	- CLUSTER_OP_BAD_INPUT on validation failure (bad data returned from Redis).
  */
-static cluster_rcode_t cluster_remap(REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn)
+cluster_rcode_t fr_redis_cluster_remap(REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn)
 {
 	time_t		now;
 	redisReply	*map;
@@ -1573,10 +1562,10 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
  * @param key_len the length of the key.
  * @return pointer to key slot key resolves to.
  */
-static cluster_key_slot_t *cluster_slot_by_key(fr_redis_cluster_t *cluster, REQUEST *request,
-					       uint8_t const *key, size_t key_len)
+fr_redis_cluster_key_slot_t const *fr_redis_cluster_slot_by_key(fr_redis_cluster_t *cluster, REQUEST *request,
+								uint8_t const *key, size_t key_len)
 {
-	cluster_key_slot_t *key_slot;
+	fr_redis_cluster_key_slot_t *key_slot;
 
 	if (!key || (key_len == 0)) {
 		key_slot = &cluster->key_slot[(uint16_t)(fr_rand() & (KEY_SLOTS - 1))];
@@ -1599,6 +1588,73 @@ static cluster_key_slot_t *cluster_slot_by_key(fr_redis_cluster_t *cluster, REQU
 	RDEBUG3("Single node available, skipping key selection");
 
 	return &cluster->key_slot[0];
+}
+
+/** Return the master node that would be used for a particular key
+ *
+ * @param[in] cluster		To resolve key in.
+ * @param[in] key_slot		to resolve to node.
+ * @return
+ *      - The current master node.
+ *	- NULL if no master node is currently assigned to a particular key slot.
+ */
+fr_redis_cluster_node_t const *fr_redis_cluster_master(fr_redis_cluster_t *cluster,
+						       fr_redis_cluster_key_slot_t const *key_slot)
+{
+	return &cluster->node[key_slot->master];
+}
+
+/** Return the slave node that would be used for a particular key
+ *
+ * @param[in] cluster		To resolve key in.
+ * @param[in] key_slot		To resolve to node.
+ * @param[in] slave_num		0..n.
+ * @return
+ *	- A slave node.
+ *	- NULL if no slave node is assigned, or is at the specific key slot.
+ *
+ */
+fr_redis_cluster_node_t const *fr_redis_cluster_slave(fr_redis_cluster_t *cluster,
+						      fr_redis_cluster_key_slot_t const *key_slot,
+						      uint8_t slave_num)
+{
+	if (slave_num >= key_slot->slave_num) return NULL;	/* No slave available */
+
+	return &cluster->node[key_slot->slave[slave_num]];
+}
+
+/** Return the ipaddr of a particular node
+ *
+ * @param[out] out	Ipaddr of the node.
+ * @param[in] node	to get ip address from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (node is NULL).
+ */
+int fr_redis_cluster_ipaddr(fr_ipaddr_t *out, fr_redis_cluster_node_t const *node)
+{
+	if (!node) return -1;
+
+	memcpy(out, &node->addr.ipaddr, sizeof(*out));
+
+	return 0;
+}
+
+/** Return the port of a particular node
+ *
+ * @param[out] out	Port of the node.
+ * @param[in] node	to get ip address from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (node is NULL).
+ */
+int fr_redis_cluster_port(uint16_t *out, fr_redis_cluster_node_t const *node)
+{
+	if (!node) return -1;
+
+	*out = node->addr.port;
+
+	return 0;
 }
 
 /** Resolve a key to a pool, and reserve a connection in that pool
@@ -1648,10 +1704,10 @@ fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr
 					     fr_redis_cluster_t *cluster, REQUEST *request,
 					     uint8_t const *key, size_t key_len, bool read_only)
 {
-	fr_redis_cluster_node_t		*node;
-	cluster_key_slot_t	*key_slot;
-	uint8_t			first, i;
-	int			used_nodes;
+	fr_redis_cluster_node_t			*node;
+	fr_redis_cluster_key_slot_t const	*key_slot;
+	uint8_t					first, i;
+	int					used_nodes;
 
 	rad_assert(cluster);
 	rad_assert(state);
@@ -1666,7 +1722,7 @@ fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr
 	}
 
 again:
-	key_slot = cluster_slot_by_key(cluster, request, key, key_len);
+	key_slot = fr_redis_cluster_slot_by_key(cluster, request, key, key_len);
 
 	/*
 	 *	1. Try each of the slaves for the key slot
@@ -1713,7 +1769,7 @@ finish:
 	 *	Something set the remap_needed flag, and we have a live connection
 	 */
 	if (cluster->remap_needed) {
-		if (cluster_remap(request, cluster, *conn) == CLUSTER_OP_SUCCESS) {
+		if (fr_redis_cluster_remap(request, cluster, *conn) == CLUSTER_OP_SUCCESS) {
 			fr_pool_connection_release(node->pool, request, *conn);
 			goto again;	/* New map, try again */
 		}
@@ -1800,7 +1856,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		 *	Remap the cluster. On success, will clear the
 		 *	remap_needed flag.
 		 */
-		if (cluster_remap(request, cluster, *conn) != CLUSTER_OP_SUCCESS) RDEBUG2("%s", fr_strerror());
+		if (fr_redis_cluster_remap(request, cluster, *conn) != CLUSTER_OP_SUCCESS) RDEBUG2("%s", fr_strerror());
 	}
 
 	/*
@@ -1851,7 +1907,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 */
 	case REDIS_RCODE_RECONNECT:
 	{
-		cluster_key_slot_t *key_slot;
+		fr_redis_cluster_key_slot_t const *key_slot;
 
 		RERROR("[%i] Failed communicating with %s:%i: %s", state->node->id, state->node->name,
 		       state->node->addr.port, fr_strerror());
@@ -1867,7 +1923,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		/*
 		 *	Refresh the key slot
 		 */
-		key_slot = cluster_slot_by_key(cluster, request, state->key, state->key_len);
+		key_slot = fr_redis_cluster_slot_by_key(cluster, request, state->key, state->key_len);
 		state->node = &cluster->node[key_slot->master];
 
 		*conn = fr_pool_connection_get(state->node->pool, request);
@@ -1875,7 +1931,11 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 			REDEBUG("[%i] No connections available for %s:%i", state->node->id, state->node->name,
 				state->node->addr.port);
 			cluster->remap_needed = true;
-			return REDIS_RCODE_RECONNECT;
+
+			if (cluster_node_find_live(&state->node, conn, request,
+						   cluster, state->node) < 0) return REDIS_RCODE_RECONNECT;
+
+			return REDIS_RCODE_TRY_AGAIN;
 		}
 
 		state->retries = 0;
@@ -1889,7 +1949,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	case REDIS_RCODE_MOVE:
 		rad_assert(*reply);
 
-		if (*conn && (cluster_remap(request, cluster, *conn) != CLUSTER_OP_SUCCESS)) {
+		if (*conn && (fr_redis_cluster_remap(request, cluster, *conn) != CLUSTER_OP_SUCCESS)) {
 			RDEBUG2("%s", fr_strerror());
 		}
 		/* FALL-THROUGH */
