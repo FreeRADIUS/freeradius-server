@@ -40,19 +40,19 @@ if ("%{redis:SET d '%{control:Tmp-String-2}'}" == 'OK') {
 #
 #  Now check they are where we expect
 #
-if ("%{redis:@$ENV{REDIS_TEST_SERVER}:30001 GET b}" == "%{control:Tmp-String-0}") {
+if ("%{redis:@%{redis_node:b 0} GET b}" == "%{control:Tmp-String-0}") {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{redis:@$ENV{REDIS_TEST_SERVER}:30002 GET c}" == "%{control:Tmp-String-1}") {
+if ("%{redis:@%{redis_node:c 0} GET c}" == "%{control:Tmp-String-1}") {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{redis:@$ENV{REDIS_TEST_SERVER}:30003 GET d}" == "%{control:Tmp-String-2}") {
+if ("%{redis:@%{redis_node:d 0} GET d}" == "%{control:Tmp-String-2}") {
 	test_pass
 } else {
 	test_fail

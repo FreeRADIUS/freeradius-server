@@ -141,6 +141,138 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 	return 0;
 }
 
+static int redis_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((rlm_redis_t **)xlat_inst) = talloc_get_type_abort(uctx, rlm_redis_t);
+
+	return 0;
+}
+
+static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+				      REQUEST *request, void const *xlat_inst,
+				      UNUSED void *xlat_thread_inst,
+				      fr_value_box_t **in)
+{
+	rlm_redis_t const	*inst = *talloc_get_type_abort(xlat_inst, rlm_redis_t *);
+
+	fr_socket_addr_t	node_addr;
+	fr_pool_t		*pool;
+	fr_redis_conn_t		*conn;
+	cluster_rcode_t		rcode;
+
+	if (!in) {
+		REDEBUG("Missing key");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_inet_pton_port(&node_addr.ipaddr, &node_addr.port, (*in)->vb_strvalue, (*in)->vb_length,
+			      AF_UNSPEC, true, true) < 0) {
+		RPEDEBUG("Failed parsing node address");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &node_addr, true) < 0) {
+		RPEDEBUG("Failed locating cluster node");
+		return XLAT_ACTION_FAIL;
+	}
+
+	conn = fr_pool_connection_get(pool, request);
+	if (!conn) {
+		REDEBUG("No connections available for cluster node");
+		return XLAT_ACTION_FAIL;
+	}
+
+	rcode = fr_redis_cluster_remap(request, inst->cluster, conn);
+	fr_pool_connection_release(pool, request, conn);
+
+	switch (rcode) {
+	case CLUSTER_OP_IGNORED:
+	case CLUSTER_OP_SUCCESS:
+		return XLAT_ACTION_DONE;
+
+	default:
+		break;
+	}
+
+	return XLAT_ACTION_FAIL;
+}
+
+/** Return the node that is currently servicing a particular key
+ *
+ *
+ */
+static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				     REQUEST *request, void const *xlat_inst,
+				     UNUSED void *xlat_thread_inst,
+				     fr_value_box_t **in)
+{
+	rlm_redis_t const			*inst = *talloc_get_type_abort(xlat_inst, rlm_redis_t *);
+
+	fr_redis_cluster_key_slot_t const	*key_slot;
+	fr_redis_cluster_node_t const		*node;
+	fr_ipaddr_t				ipaddr;
+	uint16_t				port;
+
+	char const				*p;
+	char					*q;
+	char const				*key;
+	size_t					key_len;
+	unsigned long				idx = 0;
+	fr_value_box_t				*vb;
+
+	if (!in) {
+		REDEBUG("Missing key");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	key = p = (*in)->vb_strvalue;
+	p = strchr(p, ' ');		/* Look for index */
+	if (p) {
+		key_len = p - key;
+
+		idx = strtoul(p, &q, 10);
+		if (q == p) {
+			REDEBUG("Tailing garbage after node index");
+			return XLAT_ACTION_FAIL;
+		}
+	} else {
+		key_len = (*in)->vb_length;
+	}
+
+	key_slot = fr_redis_cluster_slot_by_key(inst->cluster, request, (uint8_t const *)key, key_len);
+	if (idx == 0) {
+		node = fr_redis_cluster_master(inst->cluster, key_slot);
+	} else {
+		node = fr_redis_cluster_slave(inst->cluster, key_slot, idx - 1);
+	}
+
+	if (!node) {
+		RDEBUG2("No node available for this key slot");
+		return XLAT_ACTION_DONE;
+	}
+
+	if ((fr_redis_cluster_ipaddr(&ipaddr, node) < 0) || (fr_redis_cluster_port(&port, node) < 0)) {
+		REDEBUG("Failed retrieving node information");
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_asprintf(vb, vb, NULL, false, "%pV:%u", fr_box_ipaddr(ipaddr), port);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt)
@@ -176,7 +308,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	if (p[0] == '@') {
 		fr_socket_addr_t	node_addr;
-		fr_pool_t	*pool;
+		fr_pool_t		*pool;
 
 		RDEBUG3("Overriding node selection");
 
@@ -345,12 +477,27 @@ finish:
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_redis_t *inst = instance;
+	rlm_redis_t	*inst = instance;
+	char		*name;
+	xlat_t const	*xlat;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	xlat_register(inst, inst->name, redis_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
+
+	/*
+	 *	%{redis_node:<key>[ idx]}
+	 */
+	name = talloc_asprintf(NULL, "%s_node", inst->name);
+	xlat = xlat_async_register(inst, name, redis_node_xlat);
+	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
+	talloc_free(name);
+
+	name = talloc_asprintf(NULL, "%s_remap", inst->name);
+	xlat = xlat_async_register(inst, name, redis_remap_xlat);
+	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
+	talloc_free(name);
 
 	return 0;
 }
