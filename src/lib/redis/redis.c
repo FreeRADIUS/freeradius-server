@@ -566,6 +566,8 @@ fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t
 	}
 	strlcpy(out, p, (q - p) + 1);
 
+	fr_redis_reply_free(&reply);
+
 	return REDIS_RCODE_SUCCESS;
 }
 
