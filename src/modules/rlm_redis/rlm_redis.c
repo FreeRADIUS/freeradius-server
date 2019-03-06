@@ -93,19 +93,18 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 
 		if (maybe_more) {
 			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) return -1;
-			fr_redis_reply_free(reply);
+			fr_redis_reply_free(&reply);
 			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) return -1;
-			fr_redis_reply_free(reply);
+			fr_redis_reply_free(&reply);
 		}
 		return -1;
 	}
 
-	fr_redis_reply_free(reply);
+	fr_redis_reply_free(&reply);
 
 	/*
 	 *	Process the response for the command
 	 */
-	reply = NULL;
 	if (redisGetReply(conn->handle, (void **)&reply) == REDIS_OK) maybe_more = true;
 	status = fr_redis_command_status(conn, reply);
 	if (status != REDIS_RCODE_SUCCESS) {
@@ -114,28 +113,31 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 
 		if (maybe_more) {
 			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) return -1;
-			fr_redis_reply_free(reply);
+			fr_redis_reply_free(&reply);
 		}
 		return -1;
 	}
 
 	*reply_out = reply;
+	reply = NULL;
 	*status_out = status;
 
 	/*
 	 *	Process the response for READWRITE
 	 */
-	reply = NULL;
-	status = fr_redis_command_status(conn, reply);
-	if ((redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) || (status != REDIS_RCODE_SUCCESS)) {
+	if ((redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) ||
+	    (fr_redis_command_status(conn, reply) != REDIS_RCODE_SUCCESS)) {
 		REDEBUG("Setting READWRITE failed");
 
-		fr_redis_reply_free(*reply_out);
+		fr_redis_reply_free(&reply);	/* There could be a response we need to free */
+		fr_redis_reply_free(reply_out);
 		*reply_out = reply;
 		*status_out = status;
 
 		return -2;
 	}
+	fr_redis_reply_free(&reply);	/* Free READWRITE response */
+
 	return 0;
 }
 
@@ -326,7 +328,7 @@ reply_parse:
 	}
 
 finish:
-	fr_redis_reply_free(reply);
+	fr_redis_reply_free(&reply);
 	return ret;
 }
 

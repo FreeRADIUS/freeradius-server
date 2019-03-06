@@ -930,7 +930,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 
 			reply_error:
 				fr_pool_connection_release(pool, request, conn);
-				fr_redis_reply_free(reply);
+				fr_redis_reply_free(&reply);
 				goto error;
 			}
 
@@ -944,7 +944,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 			if (reply->elements != 2) {
 				ERROR("Failed retrieving result, expected array with two elements, got %zu elements",
 				      reply->elements);
-				fr_redis_reply_free(reply);
+				fr_redis_reply_free(&reply);
 				goto reply_error;
 			}
 
@@ -978,7 +978,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 				 */
 				if (pool_key->len < 7) { /* { + [<name>] + }:pool */
 				skip:
-					fr_redis_reply_free(reply);
+					fr_redis_reply_free(&reply);
 					continue;
 				}
 
@@ -998,7 +998,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 				result[used++] = talloc_memdup(result, pool_key->str + 1, (p - pool_key->str) - 1);
 			}
 
-			fr_redis_reply_free(reply);
+			fr_redis_reply_free(&reply);
 		} while (!((cursor[0] == '0') && (cursor[1] == '\0')));	/* Cursor value of 0 means no more results */
 
 		fr_pool_connection_release(pool, request, conn);

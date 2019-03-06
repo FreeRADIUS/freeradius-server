@@ -150,7 +150,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		RERROR("Failed retrieving entry for key \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
 
 	error:
-		fr_redis_reply_free(reply);
+		fr_redis_reply_free(&reply);
 		return CACHE_ERROR;
 	}
 
@@ -165,7 +165,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	RDEBUG3("Entry contains %zu elements", reply->elements);
 
 	if (reply->elements == 0) {
-		fr_redis_reply_free(reply);
+		fr_redis_reply_free(&reply);
 		return CACHE_MISS;
 	}
 
@@ -202,12 +202,12 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		if (fr_redis_reply_to_map(c, last, request,
 					  reply->element[i], reply->element[i + 1], reply->element[i + 2]) < 0) {
 			talloc_free(c);
-			fr_redis_reply_free(reply);
+			fr_redis_reply_free(&reply);
 			return CACHE_ERROR;
 		}
 		last = &(*last)->next;
 	}
-	fr_redis_reply_free(reply);
+	fr_redis_reply_free(&reply);
 
 	/*
 	 *	Pull out the cache created date
@@ -405,7 +405,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	RINDENT();
 	for (i = 0; i < reply_num; i++) {
 		fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);
-		fr_redis_reply_free(replies[i]);
+		fr_redis_reply_free(&replies[i]);
 	}
 	REXDENT();
 
@@ -437,7 +437,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	if (s_ret != REDIS_RCODE_SUCCESS) {
 		RERROR("Failed expiring entry");
 	error:
-		fr_redis_reply_free(reply);
+		fr_redis_reply_free(&reply);
 		return CACHE_ERROR;
 	}
 	if (!fr_cond_assert(reply)) goto error;
@@ -445,13 +445,13 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	if (reply->type == REDIS_REPLY_INTEGER) {
 		cache_status = CACHE_MISS;
 		if (reply->integer) cache_status = CACHE_OK;    /* Affected */
-		fr_redis_reply_free(reply);
+		fr_redis_reply_free(&reply);
 		return cache_status;
 	}
 
 	REDEBUG("Bad result type, expected integer, got %s",
 		fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
-	fr_redis_reply_free(reply);
+	fr_redis_reply_free(&reply);
 
 	return CACHE_ERROR;
 }

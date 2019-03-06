@@ -858,7 +858,7 @@ static cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_t *conn)
 	reply = redisCommand(conn->handle, "cluster slots");
 	switch (fr_redis_command_status(conn, reply)) {
 	case REDIS_RCODE_RECONNECT:
-		fr_redis_reply_free(reply);
+		fr_redis_reply_free(&reply);
 		fr_strerror_printf("No connections available");
 		return CLUSTER_OP_NO_CONNECTION;
 
@@ -866,7 +866,7 @@ static cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_t *conn)
 	default:
 		if (reply && reply->type == REDIS_REPLY_ERROR) {
 			fr_strerror_printf("%.*s", (int)reply->len, reply->str);
-			fr_redis_reply_free(reply);
+			fr_redis_reply_free(&reply);
 			return CLUSTER_OP_IGNORED;
 		}
 		fr_strerror_printf("Unknown client error");
@@ -902,7 +902,7 @@ static cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_t *conn)
 			fr_strerror_printf("Cluster map %zu is wrong type, expected array got %s",
 				   	   i, fr_int2str(redis_reply_types, map->type, "<UNKNOWN>"));
 		error:
-			fr_redis_reply_free(reply);
+			fr_redis_reply_free(&reply);
 			return CLUSTER_OP_BAD_INPUT;
 		}
 
@@ -1069,19 +1069,19 @@ static cluster_rcode_t cluster_remap(REQUEST *request, fr_redis_cluster_t *clust
 	pthread_mutex_lock(&cluster->mutex);
 	if (cluster->remapping) {
 		pthread_mutex_unlock(&cluster->mutex);
-		fr_redis_reply_free(map);	/* Free the map */
+		fr_redis_reply_free(&map);	/* Free the map */
 		goto in_progress;
 	}
 	if (now == cluster->last_updated) {
 		pthread_mutex_unlock(&cluster->mutex);
-		fr_redis_reply_free(map);	/* Free the map */
+		fr_redis_reply_free(&map);	/* Free the map */
 		goto too_soon;
 	}
 	ret = cluster_map_apply(cluster, map);
 	if (ret == CLUSTER_OP_SUCCESS) cluster->remap_needed = false;	/* Change on successful remap */
 	pthread_mutex_unlock(&cluster->mutex);
 
-	fr_redis_reply_free(map);	/* Free the map */
+	fr_redis_reply_free(&map);	/* Free the map */
 	if (ret < 0) return CLUSTER_OP_FAILED;
 
 	return CLUSTER_OP_SUCCESS;
@@ -1264,7 +1264,7 @@ static cluster_rcode_t cluster_node_ping(REQUEST *request, fr_redis_cluster_node
 	rcode = fr_redis_command_status(conn, reply);
 	if (rcode != REDIS_RCODE_SUCCESS) {
 		RPERROR("[%i] PING failed to %s:%i", node->id, node->name, node->addr.port);
-		fr_redis_reply_free(reply);
+		fr_redis_reply_free(&reply);
 		return CLUSTER_OP_NO_CONNECTION;
 	}
 
@@ -1272,12 +1272,12 @@ static cluster_rcode_t cluster_node_ping(REQUEST *request, fr_redis_cluster_node
 		RERROR("[%i] Bad PING response from %s:%i, expected status got %s",
 		       node->id, node->name, node->addr.port,
 		       fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
-		fr_redis_reply_free(reply);
+		fr_redis_reply_free(&reply);
 		return CLUSTER_OP_BAD_INPUT;
 	}
 
 	RDEBUG2("[%i] Got response: %s", node->id, reply->str);
-	fr_redis_reply_free(reply);
+	fr_redis_reply_free(&reply);
 	return CLUSTER_OP_SUCCESS;
 }
 
@@ -1495,7 +1495,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 		if (!reply) {
 			ERROR("%s [%i]: Failed authenticating: %s", log_prefix, node->id, handle->errstr);
 		error:
-			if (reply) fr_redis_reply_free(reply);
+			if (reply) fr_redis_reply_free(&reply);
 			redisFree(handle);
 			return NULL;
 		}
@@ -1507,7 +1507,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 				      node->id, reply->str);
 				goto error;
 			}
-			fr_redis_reply_free(reply);
+			fr_redis_reply_free(&reply);
 			break;	/* else it's OK */
 
 		case REDIS_REPLY_ERROR:
@@ -1537,7 +1537,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 				      node->cluster->conf->database, reply->str);
 				goto error;
 			}
-			fr_redis_reply_free(reply);
+			fr_redis_reply_free(&reply);
 			break;	/* else it's OK */
 
 		case REDIS_REPLY_ERROR:
@@ -1624,7 +1624,7 @@ static cluster_key_slot_t *cluster_slot_by_key(fr_redis_cluster_t *cluster, REQU
     }
     // Reply is freed if ret == REDIS_RCODE_TRY_AGAIN, but left in all other cases to allow error
     // processing, or extraction of results.
-    fr_redis_reply_free(reply);
+    fr_redis_reply_free(&reply);
     if (s_ret != REDIS_RCODE_SUCCESS) {
     	// Error
     }
@@ -1948,7 +1948,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 try_again:
 	RDEBUG2("[%i] >>> Sending command(s) to %s:%i", state->node->id, state->node->name, state->node->addr.port);
 
-	fr_redis_reply_free(*reply);
+	fr_redis_reply_free(&*reply);
 	*reply = NULL;
 
 	return REDIS_RCODE_TRY_AGAIN;
@@ -2417,10 +2417,10 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 
 			if (cluster_map_apply(cluster, map) < 0) {
 				WARN("%s: Applying cluster map failed: %s", cluster->log_prefix, fr_strerror());
-				fr_redis_reply_free(map);
+				fr_redis_reply_free(&map);
 				continue;
 			}
-			fr_redis_reply_free(map);
+			fr_redis_reply_free(&map);
 
 			return cluster;
 

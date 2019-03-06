@@ -537,7 +537,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 	switch (reply_cnt) {
 	case 2:	/* EVALSHA with wait */
 		if (ippool_wait_check(request, wait_num, replies[1]) < 0) goto error;
-		fr_redis_reply_free(replies[1]);	/* Free the wait response */
+		fr_redis_reply_free(&replies[1]);	/* Free the wait response */
 		break;
 
 	case 1:	/* EVALSHA */
@@ -546,16 +546,16 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 
 	case 5: /* LOADSCRIPT + EVALSHA + WAIT */
 		if (ippool_wait_check(request, wait_num, replies[4]) < 0) goto error;
-		fr_redis_reply_free(replies[4]);	/* Free the wait response */
+		fr_redis_reply_free(&replies[4]);	/* Free the wait response */
 		/* FALL-THROUGH */
 
 	case 4: /* LOADSCRIPT + EVALSHA */
-		fr_redis_reply_free(replies[2]);	/* Free the queued cmd response*/
-		fr_redis_reply_free(replies[1]);	/* Free the queued script load response */
-		fr_redis_reply_free(replies[0]);	/* Free the queued multi response */
+		fr_redis_reply_free(&replies[2]);	/* Free the queued cmd response*/
+		fr_redis_reply_free(&replies[1]);	/* Free the queued script load response */
+		fr_redis_reply_free(&replies[0]);	/* Free the queued multi response */
 		*out = replies[3]->element[1];
 		replies[3]->element[1] = NULL;		/* Prevent double free */
-		fr_redis_reply_free(replies[3]);	/* This works because hiredis checks for NULL elements */
+		fr_redis_reply_free(&replies[3]);	/* This works because hiredis checks for NULL elements */
 		break;
 
 	case 0:
@@ -771,7 +771,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 		}
 	}
 finish:
-	fr_redis_reply_free(reply);
+	fr_redis_reply_free(&reply);
 	return ret;
 }
 
@@ -914,7 +914,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	}
 
 finish:
-	fr_redis_reply_free(reply);
+	fr_redis_reply_free(&reply);
 
 	return ret;
 }
@@ -997,7 +997,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 	if (ret < 0) goto finish;
 
 finish:
-	fr_redis_reply_free(reply);
+	fr_redis_reply_free(&reply);
 
 	return ret;
 }

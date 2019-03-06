@@ -56,7 +56,11 @@ RCSIDH(redis_h, "$Id$")
  * and attempt to determine code paths that may result in it being
  * called on a NULL pointer, we use this to always check.
  */
-#define fr_redis_reply_free(_p) if (_p) freeReplyObject(_p)
+static inline void fr_redis_reply_free(redisReply **reply)
+{
+	if (*reply) freeReplyObject(*reply);
+	*reply = NULL;
+}
 
 extern const FR_NAME_NUMBER redis_reply_types[];
 extern const FR_NAME_NUMBER redis_rcodes[];
@@ -145,7 +149,7 @@ fr_redis_rcode_t	fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 do {\
 	size_t _i; \
 	for (_i = 0; _i < _n; _i++) {\
-		fr_redis_reply_free(_r[_i]); \
+		fr_redis_reply_free(&(_r[_i])); \
 		_r[_i] = NULL; \
 	} \
 } while (0)

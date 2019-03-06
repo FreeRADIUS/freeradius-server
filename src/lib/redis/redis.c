@@ -439,7 +439,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 	if ((size_t) *pipelined > out_len) {
 		for (i = 0; i < (size_t)*pipelined; i++) {
 			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) break;
-			fr_redis_reply_free(reply);
+			fr_redis_reply_free(&reply);
 		}
 
 		*pipelined = 0;			/* all outstanding responses should be cleared */
@@ -478,7 +478,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 			 *	Free everything that came before the bad reply
 			 */
 			for (j = 0; j < i; j++) {
-				fr_redis_reply_free(out[j]);
+				fr_redis_reply_free(&out[j]);
 				out[j] = NULL;
 			}
 
@@ -489,7 +489,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 				redisReply *to_clear;
 
 				if (redisGetReply(conn->handle, (void **)&to_clear) != REDIS_OK) break;
-				fr_redis_reply_free(to_clear);
+				fr_redis_reply_free(&to_clear);
 			}
 
 			out[0] = reply;
@@ -543,7 +543,7 @@ fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t
 		fr_strerror_printf("Bad value type, expected string or integer, got %s",
 				   fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 	error:
-		fr_redis_reply_free(reply);
+		fr_redis_reply_free(&reply);
 		return REDIS_RCODE_ERROR;
 	}
 

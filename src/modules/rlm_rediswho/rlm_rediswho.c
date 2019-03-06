@@ -145,7 +145,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 	if (s_ret != REDIS_RCODE_SUCCESS) {
 		RERROR("Failed inserting accounting data");
 	error:
-		fr_redis_reply_free(reply);
+		fr_redis_reply_free(&reply);
 		return -1;
 	}
 	if (!fr_cond_assert(reply)) goto error;
@@ -172,7 +172,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 		break;
 	}
-	fr_redis_reply_free(reply);
+	fr_redis_reply_free(&reply);
 
 	return ret;
 }
