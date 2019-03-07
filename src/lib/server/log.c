@@ -358,11 +358,13 @@ print_msg:
 	 *
 	 *	(0) <msg>
 	 */
-	if ((request->seq_start == 0) || (request->number == request->seq_start)) {
-		msg_prefix = talloc_typed_asprintf(request, "(%s)  ", request->name);
-	} else {
-		msg_prefix = talloc_typed_asprintf(request, "(%s,%" PRIu64 ")  ",
-					     request->name, request->seq_start);
+	if (request->name) {
+		if ((request->seq_start == 0) || (request->number == request->seq_start)) {
+			msg_prefix = talloc_typed_asprintf(request, "(%s)  ", request->name);
+		} else {
+			msg_prefix = talloc_typed_asprintf(request, "(%s,%" PRIu64 ")  ",
+						     request->name, request->seq_start);
+		}
 	}
 
 	/*
@@ -425,7 +427,7 @@ print_msg:
 		if (p) p[0] = '\0';
 
 		fprintf(fp, "%s" "%s : " "%s" "%.*s" "%s" "%s" "\n",
-			msg_prefix,
+			msg_prefix ? msg_prefix : "",
 			time_buff,
 			fr_int2str(fr_log_levels, type, ""),
 			unlang_indent, spaces,
@@ -453,12 +455,12 @@ print_msg:
 	};
 
 	log_always(log_dst,
-		      type, "%s" "%.*s" "%s" "%s" "%s",
-		      msg_prefix,
-		      unlang_indent, spaces,
-		      msg_module ? msg_module : "",
-		      extra,
-		      msg_exp);
+		   type, "%s" "%.*s" "%s" "%s" "%s",
+		   msg_prefix ? msg_prefix : "",
+		   unlang_indent, spaces,
+		   msg_module ? msg_module : "",
+		   extra,
+		   msg_exp);
 
 finish:
 	talloc_free(msg_exp);

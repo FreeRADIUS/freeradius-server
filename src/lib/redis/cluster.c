@@ -1466,23 +1466,23 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 	redisReply		*reply = NULL;
 	char const		*log_prefix = node->cluster->log_prefix;
 
-	DEBUG2("%s [%i]: Connecting node to %s:%i", log_prefix, node->id, node->name, node->addr.port);
+	DEBUG2("%s - [%i] Connecting node to %s:%i", log_prefix, node->id, node->name, node->addr.port);
 
 	handle = redisConnectWithTimeout(node->name, node->addr.port, *timeout);
 	if ((handle != NULL) && handle->err) {
-		ERROR("%s [%i]: Connection failed: %s", log_prefix, node->id, handle->errstr);
+		ERROR("%s - [%i] Connection failed: %s", log_prefix, node->id, handle->errstr);
 		redisFree(handle);
 		return NULL;
 	} else if (!handle) {
-		ERROR("%s [%i]: Connection failed", log_prefix, node->id);
+		ERROR("%s - [%i] Connection failed", log_prefix, node->id);
 		return NULL;
 	}
 
 	if (node->cluster->conf->password) {
-		DEBUG3("%s [%i]: Executing: AUTH %s", log_prefix, node->id, node->cluster->conf->password);
+		DEBUG3("%s - [%i] Executing: AUTH %s", log_prefix, node->id, node->cluster->conf->password);
 		reply = redisCommand(handle, "AUTH %s", node->cluster->conf->password);
 		if (!reply) {
-			ERROR("%s [%i]: Failed authenticating: %s", log_prefix, node->id, handle->errstr);
+			ERROR("%s - [%i] Failed authenticating: %s", log_prefix, node->id, handle->errstr);
 		error:
 			if (reply) fr_redis_reply_free(&reply);
 			redisFree(handle);
@@ -1492,7 +1492,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
 			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("%s [%i]: Failed authenticating: %s", log_prefix,
+				ERROR("%s - [%i] Failed authenticating: %s", log_prefix,
 				      node->id, reply->str);
 				goto error;
 			}
@@ -1500,21 +1500,21 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 			break;	/* else it's OK */
 
 		case REDIS_REPLY_ERROR:
-			ERROR("%s [%i]: Failed authenticating: %s", log_prefix, node->id, reply->str);
+			ERROR("%s - [%i] Failed authenticating: %s", log_prefix, node->id, reply->str);
 			goto error;
 
 		default:
-			ERROR("%s [%i]: Unexpected reply of type %s to AUTH", log_prefix, node->id,
+			ERROR("%s - [%i] Unexpected reply of type %s to AUTH", log_prefix, node->id,
 			      fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 			goto error;
 		}
 	}
 
 	if (node->cluster->conf->database) {
-		DEBUG3("%s [%i]: Executing: SELECT %i", log_prefix, node->id, node->cluster->conf->database);
+		DEBUG3("%s - [%i] Executing: SELECT %i", log_prefix, node->id, node->cluster->conf->database);
 		reply = redisCommand(handle, "SELECT %i", node->cluster->conf->database);
 		if (!reply) {
-			ERROR("%s [%i]: Failed selecting database %i: %s", log_prefix, node->id,
+			ERROR("%s - [%i] Failed selecting database %i: %s", log_prefix, node->id,
 			      node->cluster->conf->database, handle->errstr);
 			goto error;
 		}
@@ -1522,7 +1522,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
 			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("%s [%i]: Failed selecting database %i: %s", log_prefix, node->id,
+				ERROR("%s - [%i] Failed selecting database %i: %s", log_prefix, node->id,
 				      node->cluster->conf->database, reply->str);
 				goto error;
 			}
@@ -1530,12 +1530,12 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 			break;	/* else it's OK */
 
 		case REDIS_REPLY_ERROR:
-			ERROR("%s [%i]: Failed selecting database %i: %s", log_prefix, node->id,
+			ERROR("%s - [%i] Failed selecting database %i: %s", log_prefix, node->id,
 			      node->cluster->conf->database, reply->str);
 			goto error;
 
 		default:
-			ERROR("%s [%i]: Unexpected reply of type %s, to SELECT", log_prefix, node->id,
+			ERROR("%s - [%i] Unexpected reply of type %s, to SELECT", log_prefix, node->id,
 			      fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 			goto error;
 		}
@@ -2274,7 +2274,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 
 	cluster = talloc_zero(NULL, fr_redis_cluster_t);
 	if (!cluster) {
-		ERROR("%s: Out of memory", log_prefix);
+		ERROR("%s - Out of memory", log_prefix);
 		return NULL;
 	}
 
@@ -2316,20 +2316,20 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	}
 
 	if (conf->max_nodes == UINT8_MAX) {
-		ERROR("%s: Maximum number of connected nodes allowed is %i", cluster->log_prefix, UINT8_MAX - 1);
+		ERROR("%s - Maximum number of connected nodes allowed is %i", cluster->log_prefix, UINT8_MAX - 1);
 		talloc_free(cluster);
 		return NULL;
 	}
 
 	if (conf->max_nodes == 0) {
-		ERROR("%s: Minimum number of nodes allowed is 1", cluster->log_prefix);
+		ERROR("%s - Minimum number of nodes allowed is 1", cluster->log_prefix);
 		talloc_free(cluster);
 		return NULL;
 	}
 
 	cp = cf_pair_find(module, "server");
 	if (!cp) {
-		ERROR("%s: No servers configured", cluster->log_prefix);
+		ERROR("%s - No servers configured", cluster->log_prefix);
 		talloc_free(cluster);
 		return NULL;
 	}
@@ -2346,7 +2346,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	 */
 	if (talloc_link_ctx(ctx, cluster) < 0) {
 	oom:
-		ERROR("%s: Out of memory", cluster->log_prefix);
+		ERROR("%s - Out of memory", cluster->log_prefix);
 
 	error:
 		talloc_free(cluster);
@@ -2405,25 +2405,25 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 
 		node = fr_fifo_peek(cluster->free_nodes);
 		if (!node) {
-			ERROR("%s: Number of bootstrap servers exceeds 'max_nodes'", cluster->log_prefix);
+			ERROR("%s - Number of bootstrap servers exceeds 'max_nodes'", cluster->log_prefix);
 			goto error;
 		}
 
 		server = cf_pair_value(cp);
 		if (fr_inet_pton_port(&node->pending_addr.ipaddr, &node->pending_addr.port, server,
 				 talloc_array_length(server) - 1, af, true, true) < 0) {
-			PERROR("%s: Failed parsing server \"%s\"", cluster->log_prefix, server);
+			PERROR("%s - Failed parsing server \"%s\"", cluster->log_prefix, server);
 			goto error;
 		}
 		if (!node->pending_addr.port) node->pending_addr.port = conf->port;
 
 		if (cluster_node_connect(cluster, node) < 0) {
-			WARN("%s: Connecting to %s:%i failed", cluster->log_prefix, node->name, node->pending_addr.port);
+			WARN("%s - Connecting to %s:%i failed", cluster->log_prefix, node->name, node->pending_addr.port);
 			continue;
 		}
 
 		if (!rbtree_insert(cluster->used_nodes, node)) {
-			WARN("%s: Skipping duplicate bootstrap server \"%s\"", cluster->log_prefix, server);
+			WARN("%s - Skipping duplicate bootstrap server \"%s\"", cluster->log_prefix, server);
 			continue;
 		}
 		node->is_active = true;
@@ -2444,7 +2444,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 			 */
 			conn = fr_pool_connection_get(node->pool, NULL);
 			if (!conn) {
-				WARN("%s: Can't contact bootstrap server \"%s\"", cluster->log_prefix, server);
+				WARN("%s - Can't contact bootstrap server \"%s\"", cluster->log_prefix, server);
 				continue;
 			}
 		} else {
@@ -2458,18 +2458,18 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		case CLUSTER_OP_SUCCESS:
 			fr_pool_connection_release(node->pool, NULL, conn);
 
-			DEBUG("%s: Cluster map consists of %zu key ranges", cluster->log_prefix, map->elements);
+			DEBUG("%s - Cluster map consists of %zu key ranges", cluster->log_prefix, map->elements);
 			for (j = 0; j < map->elements; j++) {
 				redisReply *map_node = map->element[j];
 
-				DEBUG("%s: %zu - keys %lli-%lli", cluster->log_prefix, j,
+				DEBUG("%s - %zu - keys %lli-%lli", cluster->log_prefix, j,
 				      map_node->element[0]->integer,
 				      map_node->element[1]->integer);
-				DEBUG("%s:  master: %s:%lli", cluster->log_prefix,
+				DEBUG("%s -  master: %s:%lli", cluster->log_prefix,
 				      map_node->element[2]->element[0]->str,
 				      map_node->element[2]->element[1]->integer);
 				for (k = 3; k < map_node->elements; k++) {
-					DEBUG("%s:  slave%zu: %s:%lli", cluster->log_prefix, k - 3,
+					DEBUG("%s -  slave%zu: %s:%lli", cluster->log_prefix, k - 3,
 					      map_node->element[k]->element[0]->str,
 					      map_node->element[k]->element[1]->integer);
 				}
@@ -2488,13 +2488,13 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		 *	Unusable bootstrap node
 		 */
 		case CLUSTER_OP_BAD_INPUT:
-			WARN("%s: Bootstrap server \"%s\" returned invalid data: %s",
+			WARN("%s - Bootstrap server \"%s\" returned invalid data: %s",
 			     cluster->log_prefix, server, fr_strerror());
 			fr_pool_connection_release(node->pool, NULL, conn);
 			continue;
 
 		case CLUSTER_OP_NO_CONNECTION:
-			WARN("%s: Can't contact bootstrap server \"%s\": %s",
+			WARN("%s - Can't contact bootstrap server \"%s\": %s",
 			     cluster->log_prefix, server, fr_strerror());
 			fr_pool_connection_close(node->pool, NULL, conn);
 			continue;
@@ -2505,7 +2505,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		 */
 		case CLUSTER_OP_FAILED:
 		case CLUSTER_OP_IGNORED:
-			DEBUG2("%s: Bootstrap server \"%s\" returned: %s",
+			DEBUG2("%s - Bootstrap server \"%s\" returned: %s",
 			       cluster->log_prefix, server, fr_strerror());
 			fr_pool_connection_release(node->pool, NULL, conn);
 			break;
@@ -2517,7 +2517,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	 */
 	num_nodes = rbtree_num_elements(cluster->used_nodes);
 	if (!num_nodes) {
-		ERROR("%s: Can't contact any bootstrap servers", cluster->log_prefix);
+		ERROR("%s - Can't contact any bootstrap servers", cluster->log_prefix);
 		goto error;
 	}
 
