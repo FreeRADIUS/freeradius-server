@@ -171,7 +171,7 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 	return client;
 }
 
-static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *client)
+static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el, RADCLIENT *client)
 {
 	VALUE_PAIR	*vp;
 	REQUEST		*request;
@@ -183,7 +183,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc(NULL);
+	request = request_alloc(ctx);
 	gettimeofday(&now, NULL);
 
 	/*
@@ -929,7 +929,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Grab the VPs from stdin, or from the file.
 	 */
-	request = request_from_file(fp, el, client);
+	request = request_from_file(autofree, fp, el, client);
 	if (!request) {
 		fprintf(stderr, "Failed reading input: %s\n", fr_strerror());
 		EXIT_WITH_FAILURE;
