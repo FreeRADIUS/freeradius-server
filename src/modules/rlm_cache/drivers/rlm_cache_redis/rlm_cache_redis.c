@@ -270,7 +270,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	unsigned int		pipelined = 0;	/* How many commands pending in the pipeline */
 	redisReply		*replies[5];	/* Should have the same number of elements as pipelined commands */
-	size_t			reply_num = 0, i;
+	size_t			reply_cnt = 0, i;
 
 	int			cnt;
 
@@ -389,7 +389,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 			pipelined++;
 		}
 
-		reply_num = fr_redis_pipeline_result(&pipelined, &status,
+		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
 						     replies, sizeof(replies) / sizeof(*replies),
 						     conn);
 		reply = replies[0];
@@ -403,10 +403,8 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	RDEBUG3("Command results");
 	RINDENT();
-	for (i = 0; i < reply_num; i++) {
-		fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);
-		fr_redis_reply_free(&replies[i]);
-	}
+	if (RDEBUG_ENABLED3) for (i = 0; i < reply_cnt; i++) fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);
+	fr_redis_pipeline_free(replies, reply_cnt);
 	REXDENT();
 
 	return CACHE_OK;
