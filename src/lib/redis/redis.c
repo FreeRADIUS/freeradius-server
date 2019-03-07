@@ -411,13 +411,14 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
  * If the number of responses != pipelined, that's also an error, a very serious one,
  * in libhiredis or Redis.  We can't really do much here apart from error out.
  *
- * @param[out] pipelined Number of pipelined commands we sent to the server.
- * @param[out] rcode Status of the first errored response, or REDIS_RCODE_SUCCESS
- *	if all responses were processed.
- * @param[out] out Where to write the replies from pipelined commands.
- *	Will contain exactly 1 element on error, else the number passed in pipelined.
- * @param[in] out_len number of elements in out.
- * @param[in] conn the pipelined commands were issued on.
+ * @param[out] pipelined	Number of pipelined commands we sent to the server.
+ * @param[out] rcode		Status of the first errored response, or REDIS_RCODE_SUCCESS
+ *				if all responses were processed.
+ * @param[out] out		Where to write the replies from pipelined commands.
+ *				Will contain exactly 1 element on error WHICH MUST BE FREED,
+ *				else the number passed in pipelined.
+ * @param[in] out_len		number of elements in out.
+ * @param[in] conn		the pipelined commands were issued on.
  * @return
  *	- #REDIS_RCODE_SUCCESS on success.
  *	- #REDIS_RCODE_ERROR on command/response mismatch or command error.
