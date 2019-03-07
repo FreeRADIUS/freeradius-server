@@ -458,7 +458,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 	fr_redis_rcode_t		status;
 
 	fr_ipaddr_t			ipaddr = op->start;
-	int				s_ret = REDIS_RCODE_SUCCESS;
+	fr_redis_rcode_t		s_ret = REDIS_RCODE_SUCCESS;
 	REQUEST				*request;
 	redisReply			**replies = NULL;
 
@@ -468,7 +468,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 	request->module = "rlm_redis_ippool_tool";	/* For debug output */
 
 	while (more) {
-		fr_ipaddr_t	acked = ipaddr; 		/* Record our progress */
+		fr_ipaddr_t	acked = ipaddr; 	/* Record our progress */
 		size_t		reply_cnt = 0;
 
 		for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request,
