@@ -62,20 +62,24 @@ if (("%{redis:SET b '%{control:Tmp-String-0}'}" != 'OK') || \
 #  - 127.0.0.1:30006 - slave
 foreach &control:Tmp-Integer-0 {
 	update request {
-		&Tmp-String-0 := $ENV{REDIS_TEST_SERVER}
+		&Tmp-String-0 := $ENV{REDIS_IPPOOL_TEST_SERVER}
 	}
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
-	"%{redis_remap:%{Tmp-String-0}:30001}"
+	if ("%{redis_remap:%{Tmp-String-0}:30001}" == 'success') {
+		#  The actual node to keyslot mapping seems to be somewhat random
+		#  so we now need to figure out which slave each of those keys
+		#  ended up on.
+		if (("%{redis:-@%{redis_node:b 1} GET b}" == "%{control:Tmp-String-0}") && \
+		    ("%{redis:-@%{redis_node:c 1} GET c}" == "%{control:Tmp-String-1}") && \
+		    ("%{redis:-@%{redis_node:d 1} GET d}" == "%{control:Tmp-String-2}")) {
+			break
+		}
 
-	#  The actual node to keyslot mapping seems to be somewhat random
-	#  so we now need to figure out which slave each of those keys
-	#  ended up on.
-	if (("%{redis:-@%{redis_node:b 1} GET b}" == "%{control:Tmp-String-0}") && \
-	    ("%{redis:-@%{redis_node:c 1} GET c}" == "%{control:Tmp-String-1}") && \
-	    ("%{redis:-@%{redis_node:d 1} GET d}" == "%{control:Tmp-String-2}")) {
-		break
+		update request {
+			&Module-Failure-Message !* ANY
+		}
 	}
 
 	# Perform checks every 0.5 seconds
@@ -85,9 +89,5 @@ foreach &control:Tmp-Integer-0 {
 
 	if ("%{Foreach-Variable-0}" == 10) {
 		test_fail
-	}
-
-	update request {
-		&Module-Failure-Message !* ANY
 	}
 }

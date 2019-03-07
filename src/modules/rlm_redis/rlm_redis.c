@@ -148,17 +148,19 @@ static int redis_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp,
 	return 0;
 }
 
-static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      REQUEST *request, void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
-	rlm_redis_t const	*inst = *talloc_get_type_abort_const(xlat_inst, rlm_redis_t *);
+	rlm_redis_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
+									    rlm_redis_t);
 
-	fr_socket_addr_t	node_addr;
-	fr_pool_t		*pool;
-	fr_redis_conn_t		*conn;
-	cluster_rcode_t		rcode;
+	fr_socket_addr_t		node_addr;
+	fr_pool_t			*pool;
+	fr_redis_conn_t			*conn;
+	fr_redis_cluster_rcode_t	rcode;
+	fr_value_box_t			*vb;
 
 	if (!in) {
 		REDEBUG("Missing key");
@@ -190,16 +192,11 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	rcode = fr_redis_cluster_remap(request, inst->cluster, conn);
 	fr_pool_connection_release(pool, request, conn);
 
-	switch (rcode) {
-	case CLUSTER_OP_IGNORED:
-	case CLUSTER_OP_SUCCESS:
-		return XLAT_ACTION_DONE;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_strdup(vb, vb, NULL, fr_int2str(fr_redis_cluster_rcodes_table, rcode, "<INVALID>"), false);
+	fr_cursor_append(out, vb);
 
-	default:
-		break;
-	}
-
-	return XLAT_ACTION_FAIL;
+	return XLAT_ACTION_DONE;
 }
 
 /** Return the node that is currently servicing a particular key
@@ -211,7 +208,8 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
-	rlm_redis_t const			*inst = *talloc_get_type_abort_const(xlat_inst, rlm_redis_t *);
+	rlm_redis_t const			*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
+										    rlm_redis_t);
 
 	fr_redis_cluster_key_slot_t const	*key_slot;
 	fr_redis_cluster_node_t const		*node;

@@ -68,8 +68,8 @@ static inline void fr_redis_pipeline_free(redisReply *reply[], size_t num)
 	for (i = 0; i < num; i++) fr_redis_reply_free(&(reply[i]));
 }
 
-extern const FR_NAME_NUMBER redis_reply_types[];
-extern const FR_NAME_NUMBER redis_rcodes[];
+extern FR_NAME_NUMBER const redis_reply_types[];
+extern FR_NAME_NUMBER const redis_rcodes[];
 
 /** Codes are ordered inversely by priority
  *

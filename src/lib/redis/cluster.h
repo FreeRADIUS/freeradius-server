@@ -63,15 +63,17 @@ typedef struct {
 /** Return values for internal functions
  */
 typedef enum {
-	CLUSTER_OP_IGNORED		= 1,		//!< Operation ignored.
-	CLUSTER_OP_SUCCESS		= 0,		//!< Operation completed successfully.
-	CLUSTER_OP_FAILED		= -1,		//!< Operation failed.
-	CLUSTER_OP_NO_CONNECTION	= -2,		//!< Operation failed because we couldn't find
+	FR_REDIS_CLUSTER_RCODE_IGNORED		= 1,	//!< Operation ignored.
+	FR_REDIS_CLUSTER_RCODE_SUCCESS		= 0,	//!< Operation completed successfully.
+	FR_REDIS_CLUSTER_RCODE_FAILED		= -1,	//!< Operation failed.
+	FR_REDIS_CLUSTER_RCODE_NO_CONNECTION	= -2,	//!< Operation failed because we couldn't find
 							//!< a live connection.
-	CLUSTER_OP_BAD_INPUT		= -3		//!< Validation error.
-} cluster_rcode_t;
+	FR_REDIS_CLUSTER_RCODE_BAD_INPUT	= -3	//!< Validation error.
+} fr_redis_cluster_rcode_t;
 
-cluster_rcode_t fr_redis_cluster_remap(REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn);
+extern FR_NAME_NUMBER const fr_redis_cluster_rcodes_table[];
+
+fr_redis_cluster_rcode_t fr_redis_cluster_remap(REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn);
 
 /*
  *	Callback for the connection pool to create a new connection
