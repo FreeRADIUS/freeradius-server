@@ -44,15 +44,6 @@ update control {
 #  Determine when initial synchronisation has been completed
 #
 
-#  Hashes to Redis cluster node master 0 (1)
-if (("%{redis:SET b '%{control:Tmp-String-0}'}" != 'OK') || \
-    ("%{redis:SET c '%{control:Tmp-String-1}'}" != 'OK') || \
-    ("%{redis:SET d '%{control:Tmp-String-2}'}" != 'OK')) {
-	test_fail
-} else {
-	test_pass
-}
-
 #  Test nodes should be running on
 #  - 127.0.0.1:30001 - master [0-5460]
 #  - 127.0.0.1:30004 - slave
@@ -68,13 +59,20 @@ foreach &control:Tmp-Integer-0 {
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
 	if ("%{redis_remap:%{Tmp-String-0}:30001}" == 'success') {
-		#  The actual node to keyslot mapping seems to be somewhat random
-		#  so we now need to figure out which slave each of those keys
-		#  ended up on.
-		if (("%{redis:-@%{redis_node:b 1} GET b}" == "%{control:Tmp-String-0}") && \
-		    ("%{redis:-@%{redis_node:c 1} GET c}" == "%{control:Tmp-String-1}") && \
-		    ("%{redis:-@%{redis_node:d 1} GET d}" == "%{control:Tmp-String-2}")) {
-			break
+		#  Hashes to Redis cluster node master 0 (1)
+		if (("%{redis:SET b '%{control:Tmp-String-0}'}" == 'OK') && \
+		    ("%{redis:SET c '%{control:Tmp-String-1}'}" == 'OK') && \
+		    ("%{redis:SET d '%{control:Tmp-String-2}'}" == 'OK')) {
+			#
+			#  The actual node to keyslot mapping seems to be somewhat random
+			#  so we now need to figure out which slave each of those keys
+			#  ended up on.
+			#
+			if (("%{redis:-@%{redis_node:b 1} GET b}" == "%{control:Tmp-String-0}") && \
+			    ("%{redis:-@%{redis_node:c 1} GET c}" == "%{control:Tmp-String-1}") && \
+			    ("%{redis:-@%{redis_node:d 1} GET d}" == "%{control:Tmp-String-2}")) {
+				break
+			}
 		}
 
 		update request {
