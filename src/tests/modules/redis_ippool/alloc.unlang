@@ -4,14 +4,14 @@
 $INCLUDE cluster_reset.inc
 
 update control {
-	Pool-Name := 'test_alloc'
+	&Pool-Name := 'test_alloc'
 }
 
 #
 #  Add IP addresses
 #
 update request {
-	Tmp-String-0 := `./build/bin/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
 }
 
 #
@@ -24,7 +24,7 @@ if (updated) {
 	test_fail
 }
 
-if (&reply:DHCP-Your-IP-Address == 192.168.0.1) {
+if (&reply:Framed-IP-Address == 192.168.0.1) {
 	test_pass
 } else {
 	test_fail
@@ -33,13 +33,17 @@ if (&reply:DHCP-Your-IP-Address == 192.168.0.1) {
 #
 #  Check ZSCORE
 #
-if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:DHCP-Your-IP-Address}'} - %l}" > 20) {
+update request {
+	&Tmp-Date-0 := "%l"
+}
+
+if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" > 20) {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:DHCP-Your-IP-Address}'} - %l}" < 40) {
+if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" < 40) {
 	test_pass
 } else {
 	test_fail
@@ -48,19 +52,19 @@ if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:DHCP-Your-IP-
 #
 #  Verify the IP hash has been set
 #
-if ("%{redis:HGET '{%{control:Pool-Name}%}:ip:%{reply:DHCP-Your-IP-Address}' 'device'}" == '00:11:22:33:44:55') {
+if ("%{redis:HGET '{%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address}' 'device'}" == '00:11:22:33:44:55') {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:DHCP-Your-IP-Address} gateway}" == '127.0.0.1') {
+if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address} gateway}" == '127.0.0.1') {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:DHCP-Your-IP-Address} range}" == '192.168.0.0') {
+if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address} range}" == '192.168.0.0') {
 	test_pass
 } else {
 	test_fail
@@ -75,7 +79,7 @@ if (&reply:Pool-Range == '192.168.0.0') {
 #
 #  Verify the lease has been associated with the device
 #
-if (&reply:DHCP-Your-IP-Address == "%{redis:GET '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}") {
+if (&reply:Framed-IP-Address == "%{redis:GET '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}") {
 	test_pass
 } else {
 	test_fail
@@ -84,7 +88,7 @@ if (&reply:DHCP-Your-IP-Address == "%{redis:GET '{%{control:Pool-Name}%}:device:
 #
 #  Check we got the correct lease time back
 #
-if (&reply:DHCP-IP-Address-Lease-Time == 30) {
+if (&reply:Session-Timeout == 30) {
 	test_pass
 } else {
 	test_fail
@@ -92,16 +96,16 @@ if (&reply:DHCP-IP-Address-Lease-Time == 30) {
 
 update {
 	&request:Pool-Range := &reply:Pool-Range
-	&request:DHCP-Your-IP-Address := &reply:DHCP-Your-IP-Address
-	&request:DHCP-IP-Address-Lease-Time := &reply:DHCP-IP-Address-Lease-Time # We should get the same lease time
-	reply: !* ANY
+	&request:Framed-IP-Address := &reply:Framed-IP-Address
+	&request:Session-Timeout := &reply:Session-Timeout # We should get the same lease time
+	&reply: !* ANY
 }
 
 #
 #  Add IP addresses
 #
 update request {
-	Tmp-String-0 := `./build/bin/rlm_redis_ippool_tool -a 192.168.1.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.1.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.1.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.1.0`
 }
 
 #
@@ -126,30 +130,33 @@ if (&request:Pool-Range == &reply:Pool-Range) {
 #
 #  Check the IP addresses are the same
 #
-if (&request:DHCP-Your-IP-Address == &reply:DHCP-Your-IP-Address) {
+if (&request:Framed-IP-Address == &reply:Framed-IP-Address) {
 	test_pass
 } else {
 	test_fail
 }
 
 #
-#  Check lease time is the same
+#  Check lease time is the same(ish)
 #
-if (&request:DHCP-IP-Address-Lease-Time == &reply:DHCP-IP-Address-Lease-Time) {
+#  The fudge factor is to allow for delays running ippool tool and script interpretation
+#  as we should be allocating the same lesase as before, but its TTL could be slightly lower.
+#
+if ("%{expr:&request:Session-Timeout - &reply:Session-Timeout}" < 5) {
 	test_pass
 } else {
 	test_fail
 }
 
 update {
-	reply: !* ANY
+	&reply: !* ANY
 }
 
 #
 #  Now change the Calling-Station-ID and check we get a different lease
 #
 update request {
-	Calling-Station-ID := 'another_mac'
+	&Calling-Station-ID := 'another_mac'
 }
 
 redis_ippool
@@ -162,12 +169,12 @@ if (updated) {
 #
 #  Check we got the right lease
 #
-if (&reply:DHCP-Your-IP-Address == 192.168.1.1) {
+if (&reply:Framed-IP-Address == 192.168.1.1) {
 	test_pass
 } else {
 	test_fail
 }
 
 update {
-	reply: !* ANY
+	&reply: !* ANY
 }

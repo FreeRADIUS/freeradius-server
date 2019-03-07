@@ -86,8 +86,8 @@ foreach &control:Tmp-Integer-0 {
 	if ("%{Foreach-Variable-0}" == 10) {
 		test_fail
 	}
-}
 
-update request {
-	&Module-Failure-Message !* ANY
+	update request {
+		&Module-Failure-Message !* ANY
+	}
 }

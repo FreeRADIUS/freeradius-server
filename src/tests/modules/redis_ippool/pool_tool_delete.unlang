@@ -4,14 +4,14 @@
 $INCLUDE cluster_reset.inc
 
 update control {
-	Pool-Name := 'test_delete'
+	&Pool-Name := 'test_delete'
 }
 
 #
 #  Add IP addresses
 #
 update request {
-	Tmp-String-0 := `./build/bin/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
 }
 
 #
@@ -26,7 +26,7 @@ if (updated) {
 	test_fail
 }
 
-if (&reply:DHCP-Your-IP-Address == 192.168.0.1) {
+if (&reply:Framed-IP-Address == 192.168.0.1) {
 	test_pass
 } else {
 	test_fail
@@ -36,7 +36,7 @@ if (&reply:DHCP-Your-IP-Address == 192.168.0.1) {
 #  Delete the IP address
 #
 update request {
-	Tmp-String-0 := `./build/bin/rlm_redis_ippool_tool -d 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -d 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
 }
 
 #
@@ -51,7 +51,7 @@ if ("%{redis:EXISTS '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == 
 #
 #  Verify the hash information is removed
 #
-if ("%{redis:EXISTS '{%{control:Pool-Name}%}:ip:%{reply:DHCP-Your-IP-Address}'}" == '0') {
+if ("%{redis:EXISTS '{%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address}'}" == '0') {
 	test_pass
 } else {
 	test_fail
