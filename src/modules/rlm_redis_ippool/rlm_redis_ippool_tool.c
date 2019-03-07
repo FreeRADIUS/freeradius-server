@@ -974,20 +974,16 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 				/*
 				 *	Skip over things which are not pool names
 				 */
-				if (pool_key->len < 7) { /* { + [<name>] + }:pool */
-				skip:
-					fr_redis_reply_free(&reply);
-					continue;
-				}
+				if (pool_key->len < 7) continue; /* { + [<name>] + }:pool */
 
-				if ((pool_key->str[0]) != '{') goto skip;
+				if ((pool_key->str[0]) != '{') continue;
 				p = memchr(pool_key->str + 1, '}', pool_key->len - 1);
-				if (!p) goto skip;
+				if (!p) continue;
 
 				len = (pool_key->len - ((p + 1) - pool_key->str));
-				if (len != (sizeof(IPPOOL_POOL_KEY) - 1) + 1) goto skip;
+				if (len != (sizeof(IPPOOL_POOL_KEY) - 1) + 1) continue;
 				if (memcmp(p + 1, ":" IPPOOL_POOL_KEY, (sizeof(IPPOOL_POOL_KEY) - 1) + 1) != 0) {
-					goto skip;
+					continue;
 				}
 
 				/*
