@@ -62,6 +62,12 @@ static inline void fr_redis_reply_free(redisReply **reply)
 	*reply = NULL;
 }
 
+static inline void fr_redis_pipeline_free(redisReply *reply[], size_t num)
+{
+	size_t i;
+	for (i = 0; i < num; i++) fr_redis_reply_free(&(reply[i]));
+}
+
 extern const FR_NAME_NUMBER redis_reply_types[];
 extern const FR_NAME_NUMBER redis_rcodes[];
 
@@ -144,13 +150,4 @@ uint32_t		fr_redis_version_num(char const *version);
 fr_redis_rcode_t	fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcode_t *rcode,
 						 redisReply *out[], size_t out_len,
 						 fr_redis_conn_t *conn) CC_HINT(nonnull);
-
-#define fr_redis_pipeline_free(_r, _n) \
-do {\
-	size_t _i; \
-	for (_i = 0; _i < _n; _i++) {\
-		fr_redis_reply_free(&(_r[_i])); \
-		_r[_i] = NULL; \
-	} \
-} while (0)
 #endif /* LIBFREERADIUS_REDIS_H */
