@@ -460,6 +460,10 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 
 	*out = NULL;
 
+#ifndef NDEBUG
+	memset(replies, 0, sizeof(replies));
+#endif
+
 	va_start(ap, cmd);
 
 	for (s_ret = fr_redis_cluster_state_init(&state, &conn, cluster, request, key, key_len, false);
@@ -480,6 +484,11 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 						     replies, sizeof(replies) / sizeof(*replies),
 						     conn);
 		if (status != REDIS_RCODE_NO_SCRIPT) continue;
+
+		/*
+		 *	Clear out the existing reply
+		 */
+		fr_redis_pipeline_free(replies, reply_cnt);
 
 		/*
 		 *	Last command failed with NOSCRIPT, this means
@@ -665,7 +674,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 				tmp.type = FR_TYPE_UINT32;
 
 				if (fr_value_box_cast(NULL, &ip_map.rhs->tmpl_value, FR_TYPE_IPV4_ADDR,
-						    NULL, &tmp)) {
+						      NULL, &tmp)) {
 					RPEDEBUG("Failed converting integer to IPv4 address");
 					ret = IPPOOL_RCODE_FAIL;
 					goto finish;
