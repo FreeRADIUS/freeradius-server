@@ -473,6 +473,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 							 op->pool, op->pool_len, false);
 		     s_ret == REDIS_RCODE_TRY_AGAIN;
 		     s_ret = fr_redis_cluster_state_next(&state, &conn, inst->cluster, request, status, &replies[0])) {
+		     	more = true;	/* Reset to true, may have errored last loop */
 			status = REDIS_RCODE_SUCCESS;
 
 			/*
