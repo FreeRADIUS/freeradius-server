@@ -253,7 +253,10 @@ static char lua_update_cmd[] =
 	 */
 	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ARGV[3]" EOL	/* 6 */
 	"found = redis.call('HMGET', address_key, 'range', 'device', 'gateway', 'counter' )" EOL	/* 7 */
-	"if not found[1] then" EOL							/* 8 */
+	/*
+	 *	Range may be nil (if not used), so we use the device key
+	 */
+	"if not found[2] then" EOL							/* 8 */
 	"  return {" STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL				/* 9 */
 	"end" EOL									/* 10 */
 	"if found[2] ~= ARGV[4] then" EOL						/* 11 */
