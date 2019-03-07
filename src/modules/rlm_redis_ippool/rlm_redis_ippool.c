@@ -428,18 +428,18 @@ static void ippool_action_print(REQUEST *request, ippool_action_t action,
  *
  * @note All replies will be freed on error.
  *
- * @param[out] out Where to write Redis reply object resulting from the command.
- * @param[in] request The current request.
- * @param[in] cluster configuration.
- * @param[in] key to use to determine the cluster node.
- * @param[in] key_len length of the key.
- * @param[in] wait_num If > 0 wait until this many slaves have replicated the data
- *	from the last command.
- * @param[in] wait_timeout How long to wait for slaves.
- * @param[in] digest of script.
- * @param[in] script to upload.
- * @param[in] cmd EVALSHA command to execute.
- * @param[in] ... Arguments for the eval command.
+ * @param[out] out		Where to write Redis reply object resulting from the command.
+ * @param[in] request		The current request.
+ * @param[in] cluster		configuration.
+ * @param[in] key		to use to determine the cluster node.
+ * @param[in] key_len		length of the key.
+ * @param[in] wait_num		If > 0 wait until this many slaves have replicated the data
+ *				from the last command.
+ * @param[in] wait_timeout	How long to wait for slaves.
+ * @param[in] digest		of script.
+ * @param[in] script		to upload.
+ * @param[in] cmd		EVALSHA command to execute.
+ * @param[in] ...		Arguments for the eval command.
  * @return status of the command.
  */
 static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_redis_cluster_t *cluster,
