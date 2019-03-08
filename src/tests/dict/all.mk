@@ -14,11 +14,15 @@ FILES := $(wildcard $(DIR)/*.dict)
 #  "foo_dir" directory, and copy "foo" into "foo_dir/dictionary"
 #
 $(BUILD_DIR)/tests/dict/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTBINDIR)/unit_test_attribute | $(BUILD_DIR)/tests/dict
-	${Q}echo UNIT-TEST $(notdir $@)
+	${Q}echo DICT UNIT-TEST $(notdir $@)
 	${Q}mkdir -p $@_dir
 	${Q}cp $< $@_dir/dictionary
-	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $@_dir $(dir $<)/empty.txt; then \
-		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $@_dir $(dir $<)/empty.txt"; \
+	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $@_dir -r "$@.ok" -xxx $(dir $<)/empty.txt; then \
+		if [ ! -f "$@.ok" ]; then \
+			echo "FAILED: Problems during execution, Crash? exiting!"; \
+			exit 666; \
+		fi; \
+		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $@_dir -r "$@.ok" $(dir $<)/empty.txt"; \
 		exit 1; \
 	fi
 	${Q}touch $@

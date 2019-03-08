@@ -19,11 +19,15 @@ $(MAP_OUTPUT): $(MAP_UNIT_BIN) | $(BUILD_DIR)/tests/map/
 #
 $(BUILD_DIR)/tests/map/%.out: $(top_srcdir)/src/tests/map/%
 	${Q}echo MAP_TEST $(notdir $<)
-	${Q}if ! $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary $< > $@ 2>&1; then \
+	${Q}if ! $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -R -r "$@.ok" $< > $@ 2>&1; then \
+		if [ ! -f "$@.ok" ]; then \
+			echo "FAILED: Problems during execution, Crash? exiting!"; \
+			exit 666; \
+		fi; \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@; \
 			echo "# $@"; \
-			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary $<"; \
+			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -R -r "$@.ok" $<"; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep $< $@ | head -1 | sed 's,^.*$(top_srcdir),,;s/:.*//;s/.*\[//;s/\].*//'); \
@@ -32,13 +36,13 @@ $(BUILD_DIR)/tests/map/%.out: $(top_srcdir)/src/tests/map/%
 			cat $@; \
 			echo "# $@"; \
 			echo "E $$EXPECTED F $$FOUND"; \
-			echo UNEXPECTED ERROR: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary $<"; \
+			echo UNEXPECTED ERROR: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -R -r "$@.ok" $<"; \
 			exit 1; \
 		fi; \
 	else \
 		if ! diff $<.out $@; then \
 			echo FAILED: " diff $<.out $@"; \
-			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary $<"; \
+			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -R -r "$@.ok" $<"; \
 			exit 1; \
 		fi; \
 	fi

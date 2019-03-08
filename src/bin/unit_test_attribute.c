@@ -1338,14 +1338,16 @@ do { \
 	return 0;
 }
 
-static void usage(void)
+static void usage(char *argv[])
 {
-	fprintf(stderr, "usage: unit_test_attribute [OPTS] filename\n");
-	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
-	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
-	fprintf(stderr, "  -x                     Debugging mode.\n");
-	fprintf(stderr, "  -f                     Print features.\n");
-	fprintf(stderr, "  -M                     Show talloc memory report.\n");
+	fprintf(stderr, "usage: %s [OPTS] filename\n", argv[0]);
+	fprintf(stderr, "  -d <raddb>         Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -D <dictdir>       Set main dictionary directory (defaults to " DICTDIR ").\n");
+	fprintf(stderr, "  -x                 Debugging mode.\n");
+	fprintf(stderr, "  -f                 Print features.\n");
+	fprintf(stderr, "  -M                 Show talloc memory report.\n");
+	fprintf(stderr, "  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.\n");
+	fprintf(stderr, "  -R                 Force the creation of <receipt_file> even if rcode != EXIT_SUCCESS.\n");
 }
 
 int main(int argc, char *argv[])
@@ -1353,11 +1355,12 @@ int main(int argc, char *argv[])
 	int		c;
 	char const	*raddb_dir = RADDBDIR;
 	char const	*dict_dir = DICTDIR;
+	char const	*receipt_file = NULL;
 	int		*inst = &c;
 	CONF_SECTION	*cs, *features;
 	fr_dict_t	*dict = NULL;
 	int		ret = EXIT_SUCCESS;
-
+	bool 		force_receipt = false;
 	TALLOC_CTX	*autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
@@ -1374,7 +1377,7 @@ int main(int argc, char *argv[])
 	MEM(features = cf_section_alloc(cs, cs, "feature", NULL));
 	dependency_features_init(features);	/* Add build time features to the config section */
 
-	while ((c = getopt(argc, argv, "d:D:fxMh")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "d:D:fxMhr:R")) != -1) switch (c) {
 		case 'd':
 			raddb_dir = optarg;
 			break;
@@ -1407,14 +1410,29 @@ int main(int argc, char *argv[])
 			talloc_enable_leak_report();
 			break;
 
+		case 'r':
+			receipt_file = optarg;
+			break;
+
+		case 'R':
+			force_receipt = true;
+			break;
+
 		case 'h':
 		default:
-			usage();
+			usage(argv);
 			ret = EXIT_SUCCESS;
 			goto done;
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);
+
+	if (receipt_file) {
+		if (force_receipt) DEBUG("Force <receipt_file> creation");
+
+		DEBUG("Removing the file %s", receipt_file);
+		fr_file_unlink(receipt_file);
+	}
 
 	/*
 	 *	Mismatch between the binary and the libraries it depends on
@@ -1475,6 +1493,11 @@ done:
 	fr_dict_free(&dict);
 	xlat_free();
 	fr_strerror_free();
+
+	if (receipt_file && (force_receipt || ret == EXIT_SUCCESS)) {
+		DEBUG("Touching the file %s", receipt_file);
+		fr_file_touch(receipt_file, 0644);
+	}
 
 	return ret;
 }
