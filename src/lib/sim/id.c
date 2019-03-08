@@ -96,7 +96,7 @@ ssize_t fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
 	char *q;
 	unsigned long num;
 
-	if (((p + 8) < end) || (memcmp(p, "wlan.mnc", 8) != 0)) return -1;
+	if (((p + 8) < end) || (CRYPTO_memcmp(p, "wlan.mnc", 8) != 0)) return -1;
 	p += 8;
 
 	if (((p + 3) < end)) {
@@ -111,7 +111,7 @@ ssize_t fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
 	*mnc = (uint16_t)num;
 	p = q + 1;
 
-	if (((p + 3) < end) || (memcmp(p, "mcc", 3) != 0)) {
+	if (((p + 3) < end) || (CRYPTO_memcmp(p, "mcc", 3) != 0)) {
 		fr_strerror_printf("Missing MCC component");
 		return (domain - p);
 	}
@@ -123,7 +123,7 @@ ssize_t fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
 	*mcc = (uint16_t)num;
 
 	p = q + 1;
-	if (((p + 15) < end) || (memcmp(p, "3gppnetwork.org", 15) != 0)) {
+	if (((p + 15) < end) || (CRYPTO_memcmp(p, "3gppnetwork.org", 15) != 0)) {
 		fr_strerror_printf("Missing 3gppnetwork.org suffix");
 		return (domain - p);
 	}

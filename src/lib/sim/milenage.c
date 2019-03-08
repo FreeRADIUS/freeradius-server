@@ -442,7 +442,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 	for (i = 0; i < 6; i++) rx_sqn[i] = autn[i] ^ ak[i];
 	FR_PROTO_HEX_DUMP(rx_sqn, MILENAGE_SQN_SIZE, "SQN");
 
-	if (memcmp(rx_sqn, sqn_buff, sizeof(rx_sqn)) <= 0) {
+	if (CRYPTO_memcmp(rx_sqn, sqn_buff, sizeof(rx_sqn)) <= 0) {
 		uint8_t auts_amf[MILENAGE_AMF_SIZE] = { 0x00, 0x00 }; /* TS 33.102 v7.0.0, 6.3.3 */
 
 		if (milenage_f2345(NULL, NULL, NULL, NULL, ak, opc, ki, rand)) return -1;
