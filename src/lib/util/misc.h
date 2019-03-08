@@ -171,6 +171,9 @@ int8_t		fr_pointer_cmp(void const *a, void const *b);
 void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
 int		fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length) CC_HINT(nonnull);
 
+int 		fr_file_touch(char const *filename, mode_t mode);
+int 		fr_file_unlink(char const *filename);
+
 #ifdef __cplusplus
 }
 #endif

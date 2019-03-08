@@ -35,7 +35,9 @@ RCSID("$Id$")
 #include <stdio.h>
 #include <string.h>
 #include <sys/file.h>
+#include <sys/types.h>
 #include <sys/uio.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #ifdef HAVE_DIRENT_H
@@ -1184,4 +1186,44 @@ int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 	for (i = 0; i < length; i++) result |= a[i] ^ b[i];
 
 	return result;		/* 0 is OK, !0 is !OK, just like memcmp */
+}
+
+/** Create an empty file
+ *
+ * @param[in] filename path to file.
+ * @param[in] mode Specifies the file mode bits be applied.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_file_touch(char const *filename, mode_t mode) {
+	int fd;
+
+	fd = open(filename, O_WRONLY | O_CREAT, mode);
+	if (fd < 0) {
+		fr_strerror_printf("Failed creating file \"%s\": %s", filename, fr_syserror(errno));
+		return -1;
+	}
+
+	close(fd);
+
+	return 0;
+}
+
+/** Remove a regular file from the filesystem
+ *
+ * @param[in] filename path to file.
+ * @return
+ * 	- -1 On error.
+ * 	- 0 if the file was removed.
+ * 	- 1 if the file didn't exist.
+ */
+int fr_file_unlink(char const *filename) {
+	if (unlink(filename) == 0) return 0;
+
+	if (errno == ENOENT) return 1;
+
+	fr_strerror_printf("Failed removing regular file \"%s\": %s", filename, fr_syserror(errno));
+
+	return -1;
 }
