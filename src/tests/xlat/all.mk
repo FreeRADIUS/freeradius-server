@@ -34,12 +34,11 @@ $(BUILD_DIR)/tests/xlat:
 #
 $(BUILD_DIR)/tests/xlat/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/xlat build.raddb
 	${Q}echo XLAT-TEST $(notdir $@)
-	${Q}if ! $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -i $< -xx -O xlat_only > $@.log 2>&1; then \
+	${Q}if ! $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r "$@" -i "$<" -xx -O xlat_only > "$@.log" 2>&1 || ! test -f "$@"; then \
 		cat $@.log; \
-		echo "./$(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -i $< -xx -O xlat_only"; \
+		echo "./$(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r \"$@\" -i \"$<\" -xx -O xlat_only"; \
 		exit 1; \
 	fi
-	${Q}touch $@
 
 #
 #  Get all of the unit test output files

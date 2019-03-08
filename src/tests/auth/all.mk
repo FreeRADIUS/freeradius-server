@@ -84,11 +84,11 @@ AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 #
 $(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/auth $(AUTH_RADDB) $(AUTH_LIBS) build.raddb
 	${Q}echo AUTH-TEST $(notdir $@)
-	${Q}if ! TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
+	${Q}if ! TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo "TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1"; \
+			echo "TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xxx > \"$@.log\" 2>&1"; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep ^$< $@.log | head -1 | sed 's/:.*//;s/.*\[//;s/\].*//'); \
@@ -96,11 +96,10 @@ $(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo "TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1"; \
+			echo "TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xxx > \"$@.log\" 2>&1"; \
 			exit 1; \
 		fi \
 	fi
-	${Q}touch $@
 
 #
 #  Get all of the unit test output files

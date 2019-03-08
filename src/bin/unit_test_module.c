@@ -598,6 +598,7 @@ int main(int argc, char *argv[])
 	CONF_SECTION		*unlang;
 	char			*auth_type;
 	fr_dict_t		*dict;
+	char const 		*receipt_file = NULL;
 
 	TALLOC_CTX		*autofree = talloc_autofree_context();
 	TALLOC_CTX		*thread_ctx = talloc_new(autofree);
@@ -647,7 +648,7 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "d:D:f:hi:mMn:o:O:xX")) != -1) {
+	while ((c = getopt(argc, argv, "d:D:f:hi:mMn:o:O:r:xX")) != -1) {
 		switch (c) {
 			case 'd':
 				main_config_raddb_dir_set(config, optarg);
@@ -690,6 +691,10 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "Unknown option '%s'\n", optarg);
 				exit(EXIT_FAILURE);
 
+			case 'r':
+				receipt_file = optarg;
+				break;
+
 			case 'X':
 				rad_debug_lvl += 2;
 				break;
@@ -702,6 +707,11 @@ int main(int argc, char *argv[])
 				usage(config, EXIT_FAILURE);
 				break;
 		}
+	}
+
+	if (receipt_file && (fr_file_unlink(receipt_file) < 0)) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
 	}
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
@@ -1164,6 +1174,11 @@ cleanup:
 	 */
 	fr_syserror_free();
 
+	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_file_touch(receipt_file, 0644) < 0)) {
+		fr_perror("unit_test_module");
+		ret = EXIT_FAILURE;
+	}
+
 	/*
 	 *	Call pthread destructors.  Which aren't normally
 	 *	called for the main thread.
@@ -1189,14 +1204,16 @@ static void NEVER_RETURNS usage(main_config_t const *config, int status)
 
 	fprintf(output, "Usage: %s [options]\n", config->name);
 	fprintf(output, "Options:\n");
-	fprintf(output, "  -d raddb_dir  Configuration files are in \"raddb_dir/*\".\n");
-	fprintf(output, "  -D dict_dir   Dictionary files are in \"dict_dir/*\".\n");
-	fprintf(output, "  -f file       Filter reply against attributes in 'file'.\n");
-	fprintf(output, "  -h            Print this help message.\n");
-	fprintf(output, "  -i file       File containing request attributes.\n");
-	fprintf(output, "  -m            On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
-	fprintf(output, "  -n name       Read raddb/name.conf instead of raddb/radiusd.conf.\n");
-	fprintf(output, "  -X            Turn on full debugging.\n");
-	fprintf(output, "  -x            Turn on additional debugging. (-xx gives more debugging).\n");
+	fprintf(output, "  -d <raddb_dir>     Configuration files are in \"raddb_dir/*\".\n");
+	fprintf(output, "  -D <dict_dir>      Dictionary files are in \"dict_dir/*\".\n");
+	fprintf(output, "  -f <file>          Filter reply against attributes in 'file'.\n");
+	fprintf(output, "  -h                 Print this help message.\n");
+	fprintf(output, "  -i <file>          File containing request attributes.\n");
+	fprintf(output, "  -m                 On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
+	fprintf(output, "  -n <name>          Read raddb/name.conf instead of raddb/radiusd.conf.\n");
+	fprintf(output, "  -X                 Turn on full debugging.\n");
+	fprintf(output, "  -x                 Turn on additional debugging. (-xx gives more debugging).\n");
+	fprintf(output, "  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.\n");
+
 	exit(status);
 }
