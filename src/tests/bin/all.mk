@@ -46,3 +46,8 @@ $(TESTS.BIN_FILES): $(TESTS.DICT_FILES)
 #  Depend on the output files, and create the directory first.
 #
 tests.bin: $(TESTS.BIN_FILES)
+
+.PHONY: clean.tests.bin
+clean.tests.bin:
+	${Q}rm -rf $(BUILD_DIR)/tests/bin/
+

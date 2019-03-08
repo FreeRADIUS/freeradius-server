@@ -48,3 +48,8 @@ TESTS.MAP_FILES := $(MAP_OUTPUT)
 $(TESTS.MAP_FILES): $(TESTS.UNIT_FILES)
 
 tests.map: $(MAP_OUTPUT)
+
+.PHONY: clean.tests.map
+clean.tests.map:
+	${Q}rm -rf $(BUILD_DIR)/tests/map/
+

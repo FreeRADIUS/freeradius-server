@@ -28,3 +28,8 @@ TESTS.DICT_FILES := $(addprefix $(BUILD_DIR)/tests/dict/,$(notdir $(FILES)))
 $(TESTS.DICT_FILES): | $(BUILD_DIR)/tests/dict
 
 tests.dict: $(TESTS.DICT_FILES)
+
+.PHONY: clean.tests.dict
+clean.tests.dict:
+	${Q}rm -rf $(BUILD_DIR)/tests/dict/
+
