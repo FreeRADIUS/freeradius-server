@@ -765,56 +765,35 @@ static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 	if (!q) {	/* No field, just global */
 		lua_getglobal(L, p);
 		if (lua_isnil(L, -1)) {
-			REDEBUG("Global \"%s\" does not exist", field);
+		does_not_exist:
+			REMARKER(field, p - field, "Field does not exist");
 			return -1;
 		}
 		return 0;
 	}
 
 	if ((size_t) (q - p) >= sizeof(buff)) {
-		REDEBUG("Global name too long, expected %zu, got %zu", q - p, sizeof(buff));
+	too_long:
+		REDEBUG("Field name too long, expected %zu, got %zu", q - p, sizeof(buff));
 		return -1;
 	}
 
 	strlcpy(buff, p, (q - p) + 1);
 	lua_getglobal(L, buff);
-	if (lua_isnil(L, -1)) {
-		REDEBUG("Global \"%s\" does not exist", buff);
-		return -1;
-	}
+	if (lua_isnil(L, -1)) goto does_not_exist;
 	p = q + 1;	/* Skip the '.' */
 
-	for (;;) {
-		q = strchr(p, '.');
-		if (!q) {
-			lua_getfield(L, -1, p);
-			if (lua_isnil(L, -1)) {
-				/*
-			 	*	Print the entire path
-			 	*/
-				REDEBUG("Field \"%s\" does not exist", field);
-				return -1;
-			}
-			break;
-		}
-
-		if ((size_t) (q - p) >= sizeof(buff)) {
-			REDEBUG("Field name too long, expected %zu, got %zu", q - p, sizeof(buff));
-			return -1;
-		}
+	while ((q = strchr(p, '.'))) {
+		if ((size_t) (q - p) >= sizeof(buff)) goto too_long;
 
 		strlcpy(buff, p, (q - p) + 1);
 		lua_getfield(L, -1, buff);
-		if (lua_isnil(L, -1)) {
-			/*
-			 *	Print the path we've parsed so far
-			 */
-			REDEBUG("Field \"%pV\" does not exist", fr_box_strvalue_len(field, q - field));
-			return -1;
-		}
-
+		if (lua_isnil(L, -1)) goto does_not_exist;
 		p = q + 1;
 	}
+
+	lua_getfield(L, -1, p);
+	if (lua_isnil(L, -1)) goto does_not_exist;
 
 	return 0;
 }
