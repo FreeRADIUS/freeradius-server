@@ -7,6 +7,9 @@ m4_include([m4/ax_lua.m4])
 if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
+	AC_PROG_SED
+
+	LUA_VERSION="5.2"
 
 	dnl extra argument: --with-lua-include-dir=DIR
 	AC_ARG_WITH(lua-include-dir,
@@ -43,62 +46,54 @@ if test x$with_[]modname != xno; then
 		esac])
 
 	if test "x$lua_lib_dir" != "x"; then
-		LDFLAGS="-L$lua_lib_dir"
+		LUA_LIB="-L$lua_lib_dir -llua${LUA_VERSION}"
 	fi
 
-	dnl #
-	dnl # This is the version of Lua we expect to be returned by the Lua headers/Lua libs
-	dnl #
-	LUA_COMPAT_VERSION=5.1
+	dnl
+	dnl Not specified? then use the m4/ax_lua
+	dnl
+	if test "x$LUA_LIB" = "x" -a "x$LUA_INCLUDE" = "x"; then
+		_LUA_VERSIONS="jit-2.1 5.3 5.2 5.1"
 
-	dnl #
-	dnl # First look in the directory structure for LuaJIT 2.0
-	dnl #
-	LUA_VERSION=jit-2.0
-	AX_LUA_HEADERS
-	dnl #
-	dnl # ... then fall back to standard Lua if we can't find LuaJIT
-	dnl #
-	if test "x$ac_cv_header_lua_h" = "xno"; then
-		LUA_VERSION=5.2
-		AX_LUA_HEADERS
-	fi
+		for _v in ${_LUA_VERSIONS}; do
+			AS_UNSET([ac_cv_search_dlopen])
+			AS_UNSET([ac_cv_search_exp])
+			AS_UNSET([ac_cv_search_lua_load])
 
-	if test "x$ac_cv_header_lua_h" = "xno"; then
-		fail="lua.h"
-	else
-		if test "x$ax_header_version_match" = "xno"; then
-			fail="lua.h version"
-		else
-			AC_CACHE_CHECK([ldflags], [_cv_lua_ldflags],
-			[
-			if test "x$ac_cv_header_luajit_h" = "xno"; then
-				AC_MSG_NOTICE([Falling back to Lua 5.2, for optimal performance rebuild with LuaJIT 2.x.x])
-			else
-				AC_MSG_NOTICE([Found LuaJIT headers, module will perform optimally])
-				LUA_VERSION=jit-5.1
+			echo "Looking for Lua $_v"
+			LUA_VERSION="$_v"
+
+			AX_PROG_LUA
+			AX_LUA_LIBS(have_lua_libs="yes", have_lua_libs="no")
+			AX_LUA_HEADERS(have_lua_headers="yes", have_lua_headers="no")
+		
+			if test "x$have_lua_libs" = "xyes" -a "x$have_lua_headers" = "xyes"; then
+				LUA_INCLUDE="$ac_cv_lua_include -DLUA_COMPAT_ALL"
+				LUA_LIB="$ac_cv_search_lua_load"
+
+				# luajit has different lib name.
+				if test "x$ac_cv_header_luajit_h" = "xyes"; then
+					LUA_LIB="-lluajit-${ax_cv_lua_header_version}"
+				fi
+
+				break
 			fi
-
-			AX_LUA_LIBS
-			if test "x$_ax_found_lua_libs" = 'xno' && test "x$lua_lib_dir" = "x"; then
-				AS_UNSET([ac_cv_search_dlopen])
-				AS_UNSET([ac_cv_search_exp])
-				AS_UNSET([ac_cv_search_lua_load])
-
-				LDFLAGS="-L/usr/local/lib/"
-				AX_LUA_LIBS
-			fi
-
-			if test "x$_ax_found_lua_libs" != 'xyes'; then
-				fail="Lua libs"
-			fi
-			_cv_lua_ldflags="$LUA_LIB $LDFLAGS"
-			])
-		fi
+		done
 	fi
 
 	lua_cflags="$LUA_INCLUDE"
-	lua_ldflags="$_cv_lua_ldflags"
+	lua_ldflags="$LUA_LIB"
+
+	if test x"$lua_cflags" = "x" -o "x$lua_ldflags" = "x"; then
+		AC_MSG_ERROR([We did not found Lua $LUA_VERSION support])
+	fi
+
+	echo
+	echo "Lua Library:"
+	echo "   Using Lua version.......... : $LUA_VERSION"
+	echo "   Using Lua headers.......... : $lua_cflags"
+	echo "   Using Lua lib.............. : $lua_ldflags"
+	echo
 
 	targetname=modname     # keep this!  Don't change!
 else
@@ -120,8 +115,6 @@ fi
 AC_SUBST(lua_cflags)
 AC_SUBST(lua_ldflags)
 
-
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_CONFIG_HEADER(config.h)
 AC_OUTPUT([all.mk rlm_lua.mk libfreeradius-lua.mk])  # keep this!  Don't change!
-
