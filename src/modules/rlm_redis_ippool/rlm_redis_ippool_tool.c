@@ -224,7 +224,9 @@ static void NEVER_RETURNS usage(int ret) {
 	INFO("  -h                     Print this help message and exit");
 	INFO("  -x                     Increase the verbosity level");
 //	INFO("  -o attr=value          Set option, these are specific to the backends [NYI]");
-	INFO("  -f file                Load connection options from a FreeRADIUS (radisud) format config file");
+	INFO("  -f file                Load connection options from a FreeRADIUS format config file");
+	INFO("                         This file should contain a pool { ... } section and one or more");
+	INFO("                         `server = <fqdn>` pairs`");
 	INFO(" ");
 	INFO("<range> is range \"127.0.0.1-127.0.0.254\" or CIDR network \"127.0.0.1/24\" or host \"127.0.0.1\"");
 	INFO("CIDR host bits set start address, e.g. 127.0.0.200/24 -> 127.0.0.200-127.0.0.254");
