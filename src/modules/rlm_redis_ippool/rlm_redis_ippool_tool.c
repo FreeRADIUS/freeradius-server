@@ -1760,7 +1760,5 @@ do { \
 
 	talloc_free(conf);
 
-	trigger_exec_free();
-
 	return 0;
 }
