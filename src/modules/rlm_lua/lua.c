@@ -163,126 +163,46 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 	MEM(vp = fr_pair_afrom_da(request, da));
 	switch (lua_type(L, -1)) {
 	case LUA_TNUMBER:
-		switch (vp->vp_type) {
-		case FR_TYPE_STRING:
-		{
-			char *p;
-			p = talloc_typed_asprintf(vp, "%f", lua_tonumber(L, -1));
-			fr_pair_value_strsteal(vp, p);
-			break;
-		}
-
-		case FR_TYPE_IPV4_ADDR:
-		case FR_TYPE_COMBO_IP_ADDR:
-			vp->vp_ipv4addr = (uint32_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_OCTETS:
-		{
-			lua_Number number = lua_tonumber(L, -1);
-			fr_pair_value_memcpy(vp, (uint8_t*) &number, sizeof(number));
-		}
-			break;
+	{
+		fr_value_box_t	vb;
 
 		/*
-		 *	FIXME: Check to see if values overflow
+		 *	lua_tonumber actually returns ptrdiff_t
+		 *	so we need to check if our input box
+		 *	type is the same width or greater.
 		 */
-		case FR_TYPE_UINT8:
-			vp->vp_uint8 = (uint8_t) lua_tointeger(L, -1);
-			break;
+		static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int64) >= sizeof(ptrdiff_t),
+			      "fr_value_box_t field smaller than return from lua_tonumber");
 
-		case FR_TYPE_UINT16:
-			vp->vp_uint16 = (uint16_t) lua_tointeger(L, -1);
-			break;
+		fr_value_box_init(&vb, FR_TYPE_INT64, NULL, true);
+		vb.vb_int64 = (int64_t)lua_tonumber(L, -1);
 
-		case FR_TYPE_UINT32:
-			vp->vp_uint32 = (uint32_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_UINT64:
-			vp->vp_uint64 = (uint64_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_INT8:
-			vp->vp_int8 = (int8_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_INT16:
-			vp->vp_int16 = (int16_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_INT32:
-			vp->vp_int32 = (int32_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_INT64:
-			vp->vp_int64 = (int64_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_FLOAT32:
-			vp->vp_float32 = (float) lua_tonumber(L, -1);
-			break;
-
-		case FR_TYPE_FLOAT64:
-			vp->vp_float64 = (double) lua_tonumber(L, -1);
-			break;
-
-		case FR_TYPE_DATE:
-			vp->vp_date = (uint32_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_DATE_MILLISECONDS:
-			vp->vp_date_milliseconds = (uint64_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_DATE_MICROSECONDS:
-			vp->vp_date_microseconds = (uint64_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_DATE_NANOSECONDS:
-			vp->vp_date_nanoseconds = (uint64_t) lua_tointeger(L, -1);
-			break;
-
-		default:
-			REDEBUG("Invalid attribute type");
+		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &vb) < 0) {
+			RPEDEBUG("Failed unmarshalling Lua number for \"%s\"", vp->da->name);
 			return -1;
 		}
+	}
 		break;
 
 	case LUA_TSTRING:
-		/*
-		 *	Special case for binary data. Lua strings can be used to represent
-		 *	both printable strings and binary data. They do not treat NULLs or
-		 *	any other unprintable chars any different from those in a plaintext
-		 *	string.
-		 */
-		if (da->type == FR_TYPE_OCTETS) {
-			uint8_t const *p;
-			size_t len;
+	{
+		fr_value_box_t	vb;
+		uint8_t const	*p;
+		size_t		len;
 
-			p = (uint8_t const *) lua_tolstring(L, -1, &len);
-			if (!p) {
-				REDEBUG("Unmarshalling failed: Lua bstring was NULL");
-				return -1;
-			}
-			fr_pair_value_memcpy(vp, p, len);
-		/*
-		 *	We don't have any special types in Lua for things likes IP addresses
-		 *	or dates, so everything gets converted to a string, then back to
-		 *	it's original binary form by pairparsevalue.
-		 */
-		} else {
-			char const *p;
-			p = lua_tostring(L, -1);
-			if (!p) {
-				REDEBUG("Unmarshalling failed: Lua string was NULL");
-				return -1;
-			}
-			if (fr_pair_value_from_str(vp, p, strlen(p), '\0', false) < 0) {
-				RPEDEBUG("Unmarshalling failed");
-				return -1;
-			}
+		p = (uint8_t const *)lua_tolstring(L, -1, &len);
+		if (!p) {
+			REDEBUG("Unmarshalling failed, Lua bstring was NULL");
+			return -1;
 		}
+
+		fr_value_box_bstrndup_shallow(&vb, NULL, p, len, true);
+
+		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &vb) < 0) {
+			RPEDEBUG("Failed unmarshalling Lua string for \"%s\"", vp->da->name);
+			return -1;
+		}
+	}
 		break;
 
 	case LUA_TLIGHTUSERDATA:
@@ -293,12 +213,12 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 
 		len = lua_objlen(L, -1);
 		if (len == 0) {
-			REDEBUG("Unmarshalling failed: Can't determine length of user data");
+			REDEBUG("Unmarshalling failed, can't determine length of user data");
 			return -1;
 		}
 		p = lua_touserdata(L, -1);
 		if (!p) {
-			REDEBUG("Unmarshalling failed: User data was NULL");
+			REDEBUG("Unmarshalling failed, user data was NULL");
 		}
 		fr_pair_value_memcpy(vp, p, len);
 	}
@@ -307,7 +227,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 	default:
 	{
 		int type = lua_type(L, -1);
-		REDEBUG("Unmarshalling failed: Unknown type %s (%i)", lua_typename(L, type), type);
+		REDEBUG("Unmarshalling failed, unsupported Lua type %s (%i)", lua_typename(L, type), type);
 
 		return -1;
 	}
