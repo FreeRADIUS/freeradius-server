@@ -94,8 +94,10 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_lua_thread_t *this_thread = thread;
 
-	lua_close(this_thread->interpreter);
-	this_thread->interpreter = NULL;
+	if (this_thread->interpreter) {
+		lua_close(this_thread->interpreter);
+		this_thread->interpreter = NULL;
+	}
 
 	return 0;
 }
@@ -127,7 +129,10 @@ static int mod_detach(void *instance)
 {
 	rlm_lua_t *inst = instance;
 
-	lua_close(inst->interpreter);
+	if (inst->interpreter) {
+		lua_close(inst->interpreter);
+		inst->interpreter = NULL;
+	}
 
 	return 0;
 }

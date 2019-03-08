@@ -744,6 +744,7 @@ error:
 	*out = NULL;
 
 	lua_close(L);
+
 	return -1;
 }
 
@@ -819,7 +820,7 @@ static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 	return 0;
 }
 
-#define rlm_lua_release_interp(_x)  if (!_x->threads) pthread_mutex_unlock(_x->mutex)
+#define rlm_lua_release_interp(_x)  if (!_x->threads && _x->mutex != NULL) pthread_mutex_unlock(_x->mutex)
 
 int do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 {
