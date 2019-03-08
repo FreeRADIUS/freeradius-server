@@ -1463,6 +1463,19 @@ static void add_minus_l(count_chars *cc, char const *arg)
 		strcpy(newarg, "-l");
 		strcat(newarg, file);
 		push_count_chars(cc, newarg);
+	}
+	/* special case for FreeRADIUS loadable modules */
+	else if ((name != NULL) && (file != NULL) &&
+		(strstr(name, "rlm_") == (name + 1))) {
+		*name = '\0';
+		file = name+1;
+		push_count_chars(cc, "-L");
+		push_count_chars(cc, arg);
+		/* we need one argument like -lapr-1 */
+		newarg = lt_malloc(strlen(file) + 4);
+		strcpy(newarg, "-l:");
+		strcat(newarg, file);
+		push_count_chars(cc, newarg);
 	} else {
 		push_count_chars(cc, arg);
 	}
