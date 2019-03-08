@@ -3237,7 +3237,7 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 
 	*out = NULL;
 
-	INTERNAL_IF_NULL(dict_def, NULL);
+	INTERNAL_IF_NULL(dict_def, -1);
 
 	if (err) *err = FR_DICT_ATTR_OK;
 
