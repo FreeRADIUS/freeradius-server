@@ -49,7 +49,7 @@ static _Thread_local REQUEST *rlm_lua_request;
  */
 static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 {
-	char buffer[1024];
+	char buff[1024];
 
 	if (!vp) return -1;
 
@@ -62,8 +62,8 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 	case FR_TYPE_IFID:
 	case FR_TYPE_TIMEVAL:
 	case FR_TYPE_ABINARY:
-		fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
-		lua_pushstring(L, buffer);
+		fr_pair_value_snprint(buff, sizeof(buff), vp, '\0');
+		lua_pushstring(L, buff);
 		break;
 
 	case FR_TYPE_STRING:
@@ -749,7 +749,7 @@ error:
 
 /** Resolve a path string to a field value in Lua
  *
- * Parses a string in the format FIELD1 or FIELD1.FIELD2, adding all tables
+ * Parses a string in the format <obj0>[.<obj1>][.<objN>], adding all tables
  * it traverses to the stack.
  *
  * All paths are assumed to start at a global, so the first field
@@ -758,25 +758,62 @@ error:
  */
 static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 {
-	char buffer[512];
+	char buff[512];
 	char const *p = field, *q;
 
-	while ((q = strchr(field, '.'))) {
-		if ((size_t) (p - q) >= sizeof(buffer)) {
-			REDEBUG("Field name too long, maximum is %zu", sizeof(buffer));
+	q = strchr(p, '.');
+	if (!q) {	/* No field, just global */
+		lua_getglobal(L, p);
+		if (lua_isnil(L, -1)) {
+			REDEBUG("Global \"%s\" does not exist", field);
+			return -1;
+		}
+		return 0;
+	}
+
+	if ((size_t) (q - p) >= sizeof(buff)) {
+		REDEBUG("Global name too long, expected %zu, got %zu", q - p, sizeof(buff));
+		return -1;
+	}
+
+	strlcpy(buff, p, (q - p) + 1);
+	lua_getglobal(L, buff);
+	if (lua_isnil(L, -1)) {
+		REDEBUG("Global \"%s\" does not exist", buff);
+		return -1;
+	}
+	p = q + 1;	/* Skip the '.' */
+
+	for (;;) {
+		q = strchr(p, '.');
+		if (!q) {
+			lua_getfield(L, -1, p);
+			if (lua_isnil(L, -1)) {
+				/*
+			 	*	Print the entire path
+			 	*/
+				REDEBUG("Field \"%s\" does not exist", field);
+				return -1;
+			}
+			break;
+		}
+
+		if ((size_t) (q - p) >= sizeof(buff)) {
+			REDEBUG("Field name too long, expected %zu, got %zu", q - p, sizeof(buff));
 			return -1;
 		}
 
-		strlcpy(buffer, p, p - q);
-		if (!(p - buffer)) {
-			lua_getglobal(L, buffer);
-		} else {
-			lua_getfield(L, -1, buffer);
-		}
+		strlcpy(buff, p, (q - p) + 1);
+		lua_getfield(L, -1, buff);
 		if (lua_isnil(L, -1)) {
-			REDEBUG("Field '%s' does not exist", p);
+			/*
+			 *	Print the path we've parsed so far
+			 */
+			REDEBUG("Field \"%pV\" does not exist", fr_box_strvalue_len(field, q - field));
 			return -1;
 		}
+
+		p = q + 1;
 	}
 
 	return 0;
