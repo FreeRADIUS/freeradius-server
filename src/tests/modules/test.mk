@@ -142,9 +142,9 @@ $(foreach x,$(MODULE_TESTS),$(eval $(call MODULE_TEST_TARGET,$x)))
 
 $(TESTS.MODULES_FILES): $(TESTS.AUTH_FILES)
 
-.PHONY: clean.modules.test
-clean.modules.test:
-	@rm -rf $(BUILD_DIR)/tests/modules/
+.PHONY: clean.tests.modules
+clean.tests.modules:
+	${Q}rm -rf $(BUILD_DIR)/tests/modules/
 
 #
 #  For each file, look for precursor test.
