@@ -2928,7 +2928,7 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 /** Copy a string to to a #fr_value_box_t
  *
  * @param[in] ctx 	to allocate any new buffers in.
- * @param[in] dst 	to assign new buffer to.
+ * @param[in] dst 	to assign buffer to.
  * @param[in] enumv	Aliases for values.
  * @param[in] src 	a string.
  * @param[in] len	of src.
@@ -2953,6 +2953,25 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 	dst->next = NULL;
 
 	return 0;
+}
+
+/** Assign a string to to a #fr_value_box_t
+ *
+ * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src 	a string.
+ * @param[in] len	of src.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ */
+void fr_value_box_bstrndup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				   char const *src, size_t len, bool tainted)
+{
+	dst->type = FR_TYPE_STRING;
+	dst->tainted = tainted;
+	dst->vb_strvalue = src;
+	dst->datum.length = len;
+	dst->enumv = enumv;
+	dst->next = NULL;
 }
 
 /** Copy a nul terminated talloced buffer to a #fr_value_box_t
@@ -3145,12 +3164,9 @@ int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, b
  * @param[in] enumv	Aliases for values.
  * @param[in] src	to copy string to.
  * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
  */
-int fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				char const *src, bool tainted)
+void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				 char const *src, bool tainted)
 {
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
@@ -3158,8 +3174,6 @@ int fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv
 	dst->datum.length = strlen(src);
 	dst->enumv = enumv;
 	dst->next = NULL;
-
-	return 0;
 }
 
 /** Assign a talloced buffer containing a nul terminated string to a box, but don't copy it
@@ -3346,12 +3360,9 @@ void fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
  * @param[in] src	a talloced buffer.
  * @param[in] len	of buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
  */
-int fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				uint8_t *src, size_t len, bool tainted)
+void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				 uint8_t *src, size_t len, bool tainted)
 {
 	dst->type = FR_TYPE_OCTETS;
 	dst->tainted = tainted;
@@ -3359,8 +3370,6 @@ int fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv
 	dst->datum.length = len;
 	dst->enumv = enumv;
 	dst->next = NULL;
-
-	return 0;
 }
 
 /** Assign a talloced buffer to a box, but don't copy it
@@ -3372,12 +3381,9 @@ int fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv
  * @param[in] enumv	Aliases for values.
  * @param[in] src	a talloced buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
  */
-int fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				       uint8_t *src, bool tainted)
+void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				        uint8_t *src, bool tainted)
 {
 	(void) talloc_get_type_abort(src, uint8_t);
 
@@ -3387,8 +3393,6 @@ int fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
 	dst->datum.length = talloc_array_length(src);
 	dst->enumv = enumv;
 	dst->next = NULL;
-
-	return 0;
 }
 
 /** Increment a boxed value
