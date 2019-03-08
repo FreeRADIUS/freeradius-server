@@ -197,14 +197,21 @@ bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
 #define FNV_MAGIC_INIT (0x811c9dc5)
 #define FNV_MAGIC_PRIME (0x01000193)
 
-#ifdef __clang_analyzer__
-#  define INTERNAL_IF_NULL(_dict) do {\
-	if (!_dict) _dict = fr_dict_internal; \
-	if (!_dict) return NULL; \
-} while (0)
-#else
-#  define INTERNAL_IF_NULL(_dict) if (!_dict) _dict = fr_dict_internal
-#endif
+/** Set the internal dictionary if none was provided
+ *
+ * @param _dict		Dict pointer to check/set.
+ * @param _ret		Value to return if no dictionaries are available.
+ */
+#define INTERNAL_IF_NULL(_dict, _ret) \
+	do { \
+		if (!(_dict)) { \
+			_dict = fr_dict_internal; \
+			if (unlikely(!(_dict))) { \
+				fr_strerror_printf("No dictionaries available for attribute resolution"); \
+				return (_ret); \
+			} \
+		} \
+	} while (0)
 
 /** Empty callback for hash table initialization
  *
@@ -1225,9 +1232,10 @@ static int dict_protocol_add(fr_dict_t *dict)
  */
 static int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 {
-	INTERNAL_IF_NULL(dict);
 	size_t			len;
 	fr_dict_vendor_t	*vendor;
+
+	INTERNAL_IF_NULL(dict, -1);
 
 	len = strlen(name);
 	if (len >= FR_DICT_VENDOR_MAX_NAME_LEN) {
@@ -2418,7 +2426,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx, fr_dict_attr_t **out,
  */
 fr_dict_attr_t const *fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *da)
 {
-	INTERNAL_IF_NULL(dict);
+	INTERNAL_IF_NULL(dict, NULL);
 
 	if (!da->flags.is_unknown) return da;	/* It's known */
 
@@ -2698,7 +2706,8 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsi
 	ssize_t			slen;
 
 	if (!fr_cond_assert(parent)) return 0;
-	INTERNAL_IF_NULL(dict);
+
+	INTERNAL_IF_NULL(dict, 0);
 
 	/*
 	 *	It's a partial OID.  Grab it, and skip to the next bit.
@@ -3014,8 +3023,9 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
 {
 	fr_dict_vendor_t	*found;
 
+	INTERNAL_IF_NULL(dict, NULL);
+
 	if (!name) return 0;
-	INTERNAL_IF_NULL(dict);
 
 	found = fr_hash_table_finddata(dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
 	if (!found) return 0;
@@ -3034,7 +3044,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
  */
 fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t vendor_pen)
 {
-	INTERNAL_IF_NULL(dict);
+	INTERNAL_IF_NULL(dict, NULL);
 
 	return fr_hash_table_finddata(dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
 }
@@ -3139,12 +3149,15 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	size_t			len;
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 
+	*out = NULL;
+
+	INTERNAL_IF_NULL(dict, NULL);
+
 	if (!*name) {
 		fr_strerror_printf("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return 0;
 	}
-	INTERNAL_IF_NULL(dict);
 
 	if (err) *err = FR_DICT_ATTR_OK;
 
@@ -3189,8 +3202,9 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
  */
 fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *name)
 {
+	INTERNAL_IF_NULL(dict, NULL);
+
 	if (!name) return NULL;
-	INTERNAL_IF_NULL(dict);
 
 	return fr_hash_table_finddata(dict->attributes_by_name, &(fr_dict_attr_t) { .name = name });
 }
@@ -3221,7 +3235,9 @@ ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_a
 	bool			internal = false;
 	fr_hash_iter_t  	iter;
 
-	INTERNAL_IF_NULL(dict_def);
+	*out = NULL;
+
+	INTERNAL_IF_NULL(dict_def, NULL);
 
 	if (err) *err = FR_DICT_ATTR_OK;
 
@@ -5266,10 +5282,13 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
  * @param[in] dict	Existing dictionary.
  * @param[in] dir	dictionary is located in.
  * @param[in] filename	of the dictionary.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
  */
 int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 {
-	INTERNAL_IF_NULL(dict);
+	INTERNAL_IF_NULL(dict, -1);
 
 	if (!dict->attributes_by_name) {
 		fr_strerror_printf("%s: Must call fr_dict_internal_afrom_file() before fr_dict_read()", __FUNCTION__);
@@ -5425,7 +5444,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 
 	fr_dict_attr_flags_t base_flags;
 
-	INTERNAL_IF_NULL(dict);
+	INTERNAL_IF_NULL(dict, -1);
 
 	argc = fr_dict_str_to_argv(buf, argv, MAX_ARGV);
 	if (argc == 0) return 0;

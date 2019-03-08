@@ -327,7 +327,7 @@ fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
 ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 						    fr_dict_t const *dict, char const *name) CC_HINT(nonnull(2,4));
 
-fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *attr);
+fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *attr) CC_HINT(nonnull(2));
 
 ssize_t			fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 							      fr_dict_t const *dict_def,
