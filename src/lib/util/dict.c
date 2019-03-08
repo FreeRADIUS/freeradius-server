@@ -3151,7 +3151,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 
 	*out = NULL;
 
-	INTERNAL_IF_NULL(dict, NULL);
+	INTERNAL_IF_NULL(dict, 0);
 
 	if (!*name) {
 		fr_strerror_printf("Zero length attribute name");
