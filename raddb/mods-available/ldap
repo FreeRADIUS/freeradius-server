@@ -151,15 +151,23 @@ ldap {
 #	edir_autz = no
 
 	#  Note: set_auth_type was removed in v3.x.x
-	#  Equivalent functionality can be achieved by adding the following
-	#  stanza to the authorize {} section of your virtual server.
 	#
+	#  Equivalent functionality can be achieved by adding the
+	#  following "if" statement to the authorize {} section of
+	#  the virtual server, after the "ldap" module.  For example:
+	#
+	#    ...
 	#    ldap
-	#    if ((ok || updated) && User-Password) {
+	#    if ((ok || updated) && User-Password && !control:Auth-Type) {
 	#        update {
 	#            control:Auth-Type := ldap
 	#        }
 	#    }
+	#    ...
+	#
+	#  You will also need to uncomment the "Auth-Type LDAP" block in the
+	#  "authenticate" section.
+	#
 
 	#
 	#  Name of the attribute that contains the user DN.
