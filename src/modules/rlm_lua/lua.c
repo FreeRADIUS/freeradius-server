@@ -187,10 +187,10 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 	case LUA_TSTRING:
 	{
 		fr_value_box_t	vb;
-		uint8_t const	*p;
+		char const	*p;
 		size_t		len;
 
-		p = (uint8_t const *)lua_tolstring(L, -1, &len);
+		p = (char const *)lua_tolstring(L, -1, &len);
 		if (!p) {
 			REDEBUG("Unmarshalling failed, Lua bstring was NULL");
 			return -1;
