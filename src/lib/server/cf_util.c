@@ -1123,6 +1123,20 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	}
 
 	if (value) {
+		char buffer[1024];
+
+		if (strchr(value, '$') != NULL) {
+			value = cf_expand_variables(cp->item.filename,
+						    &parent->item.lineno,
+						    parent,
+						    buffer, sizeof(buffer), value, NULL);
+			if (!value) {
+				ERROR("Failed expanding pair name");
+				goto error;
+			}
+		}
+
+
 #ifdef WITH_CONF_WRITE
 		cp->orig_value = talloc_typed_strdup(cp, value);
 #endif
