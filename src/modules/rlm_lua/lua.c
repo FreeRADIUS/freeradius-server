@@ -175,7 +175,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 			      "fr_value_box_t field smaller than return from lua_tonumber");
 
 		fr_value_box_init(&vb, FR_TYPE_INT64, NULL, true);
-		vb.vb_int64 = (int64_t)lua_tonumber(L, -1);
+		vb.vb_int64 = lua_tointeger(L, -1);
 
 		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &vb) < 0) {
 			RPEDEBUG("Failed unmarshalling Lua number for \"%s\"", vp->da->name);
