@@ -31,7 +31,7 @@ BEGIN
 	ORDER BY expiry_time
 	LIMIT 1
 	FOR UPDATE SKIP LOCKED;
-	IF r_address <> NULL THEN
+	IF r_address IS NOT NULL THEN
 		RETURN r_address;
 	END IF;
  SELECT framedipaddress INTO r_address
@@ -42,7 +42,7 @@ BEGIN
 	ORDER BY expiry_time
 	LIMIT 1
 	FOR UPDATE SKIP LOCKED;
-	IF r_address <> NULL THEN
+	IF r_address IS NOT NULL THEN
 		RETURN r_address;
 	END IF;
  SELECT framedipaddress INTO r_address
