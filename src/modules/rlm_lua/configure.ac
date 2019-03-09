@@ -100,6 +100,12 @@ if test x$with_[]modname != xno; then
 	lua_cflags="$LUA_INCLUDE"
 	lua_ldflags="$_cv_lua_ldflags"
 
+	echo "Lua Library:"
+	echo "  Using Lua version.......... : $ax_cv_lua_version"
+	echo "  Using Lua header version... : $ax_cv_lua_header_version"
+	echo "  Using Lua headers.......... : $lua_cflags"
+	echo "  Using Lua lib.............. : $lua_ldflags"
+
 	targetname=modname     # keep this!  Don't change!
 else
 	targetname=            # keep this!  Don't change!
