@@ -669,7 +669,7 @@ error:
 
 /** Resolve a path string to a field value in Lua
  *
- * Parses a string in the format <obj0>[.<obj1>][.<objN>], adding all tables
+ * Parses a string in the format obj0[.obj1][.objN], adding all tables
  * it traverses to the stack.
  *
  * All paths are assumed to start at a global, so the first field
