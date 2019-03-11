@@ -172,10 +172,30 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 		 *	type is the same width or greater.
 		 */
 		static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int64) >= sizeof(ptrdiff_t),
+			      "fr_value_box_t field smaller than return from lua_tointeger");
+
+		static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float64) >= sizeof(double),
 			      "fr_value_box_t field smaller than return from lua_tonumber");
 
-		fr_value_box_init(&vb, FR_TYPE_INT64, NULL, true);
-		vb.vb_int64 = lua_tointeger(L, -1);
+		switch (vp->da->type) {
+		/*
+		 *	Preserve decimal precision.
+		 *
+		 *	Our FR_TYPE_FLOAT64 is a double, which is apparently
+		 *	what lua_tonumber returns on most platforms.
+		 */
+		case FR_TYPE_FLOAT32:
+		case FR_TYPE_FLOAT64:
+			fr_value_box_init(&vb, FR_TYPE_FLOAT64, NULL, true);
+			vb.vb_float64 = lua_tonumber(L, -1);
+			break;
+
+		default:
+			fr_value_box_init(&vb, FR_TYPE_INT64, NULL, true);
+			vb.vb_int64 = lua_tointeger(L, -1);
+			break;
+		}
+
 
 		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &vb) < 0) {
 			RPEDEBUG("Failed unmarshalling Lua number for \"%s\"", vp->da->name);
