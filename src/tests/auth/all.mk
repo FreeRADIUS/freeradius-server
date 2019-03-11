@@ -36,6 +36,7 @@ AUTH_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/auth,$(AUTH_NEEDS))
 
 $(BUILD_DIR)/tests/auth/depends.mk: $(addprefix $(DIR)/,$(AUTH_FILES)) | $(BUILD_DIR)/tests/auth
 	${Q}rm -f $@
+	${Q}touch $@
 	${Q}for x in $^; do \
 		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/auth/,g'`; \
 		if [ "$$y" != "" ]; then \
