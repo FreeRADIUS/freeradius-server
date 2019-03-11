@@ -19,26 +19,26 @@ $(MAP_OUTPUT): $(MAP_UNIT_BIN) | $(BUILD_DIR)/tests/map/
 #
 $(BUILD_DIR)/tests/map/%: $(top_srcdir)/src/tests/map/%
 	${Q}echo MAP_TEST $(notdir $<)
-	${Q}if ! $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r "$@" $< > "$@.log" 2>&1 || ! test -f "$@"; then \
+	${Q}if ! $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r "$@" "$<" > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
-			cat $@; \
+			cat "$@.log"; \
 			echo "# $@"; \
-			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r \"$@\" $<"; \
+			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r \"$@\" \"$<\""; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep $< $@ | head -1 | sed 's,^.*$(top_srcdir),,;s/:.*//;s/.*\[//;s/\].*//'); \
 		EXPECTED=$$(grep -n ERROR $< | sed 's/:.*//'); \
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
-			cat $@; \
+			cat "$@.log"; \
 			echo "# $@"; \
 			echo "E $$EXPECTED F $$FOUND"; \
-			echo UNEXPECTED ERROR: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r \"$@\" $<"; \
+			echo "UNEXPECTED ERROR: $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r \"$@\" \"$<\""; \
 			exit 1; \
 		fi; \
 	else \
-		if ! diff $<.log $@; then \
-			echo FAILED: " diff $<.log $@"; \
-			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r \"$@\" $<"; \
+		if ! diff "$<.log" "$@.log"; then \
+			echo "FAILED: diff \"$<.log\" \"$@.log\""; \
+			echo "FAILED: $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r \"$@\" \"$<\""; \
 			exit 1; \
 		fi; \
 	fi

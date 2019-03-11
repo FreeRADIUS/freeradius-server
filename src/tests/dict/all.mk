@@ -17,8 +17,9 @@ $(BUILD_DIR)/tests/dict/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTB
 	${Q}echo DICT UNIT-TEST $(notdir $@)
 	${Q}mkdir -p $@_dir
 	${Q}cp $< $@_dir/dictionary
-	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d "$@_dir" -r "$@" -xxx "$(dir $<)/empty.txt" || ! test -f "$@"; then \
+	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d "$@_dir" -r "$@" -xxx "$(dir $<)/empty.txt" > "$@.log" 2>&1 || ! test -f "$@"; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d \"$@_dir\" -r \"$@\" \"$(dir $<)/empty.txt\""; \
+		cat "$@.log"; \
 		exit 1; \
 	fi
 

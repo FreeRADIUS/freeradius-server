@@ -48,11 +48,10 @@ $(BUILD_DIR)/tests/unit:
 #
 $(BUILD_DIR)/tests/unit/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTBINDIR)/unit_test_attribute | $(BUILD_DIR)/tests/unit
 	${Q}echo UNIT-TEST $(notdir $@)
-	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit $<; then \
-		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit $<"; \
+	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit -r "$@" $<; then \
+		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit -r \"$@\" $<"; \
 		exit 1; \
 	fi
-	${Q}touch $@
 
 #
 #  Get all of the unit test output files
