@@ -3,25 +3,67 @@
 #
 
 #
+#  Test name
+#
+TEST := tests.auth
+
+#
 #  The test files are files without extensions.
 #  The list is unordered.  The order is added in the next step by looking
 #  at precursors.
 #
-AUTH_FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
+FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
+
+OUTPUT := $(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 #
 #  Create the output directory
 #
-.PHONY: $(BUILD_DIR)/tests/auth
-$(BUILD_DIR)/tests/auth:
+.PHONY: $(OUTPUT)
+$(OUTPUT):
 	${Q}mkdir -p $@
+
+#
+#  All of the output files depend on the input files
+#
+FILES.$(TEST) := $(addprefix $(OUTPUT),$(notdir $(FILES)))
+
+#
+#  The output files also depend on the directory
+#  and on the previous test.
+#
+$(FILES.$(TEST)): | $(OUTPUT)
+
+#
+#  We have a real file that's created if all of the tests pass.
+#
+$(BUILD_DIR)/tests/$(TEST): $(FILES.$(TEST))
+	${Q}touch $@
+
+#
+#  For simplicity, we create a phony target so that the poor developer
+#  doesn't need to remember path names
+#
+$(TEST): $(BUILD_DIR)/tests/$(TEST)
+
+#
+#  Clean the ouput directory and files.
+#
+#  Note that we have to specify the actual filenames here, because
+#  of stupidities with GNU Make.
+#
+.PHONY: clean.$(TEST)
+clean.$(TEST):
+	${Q}rm -rf $(BUILD_DIR)/src/tests/auth $(BUILD_DIR)/tests/tests.auth
+
+clean.test: clean.$(TEST)
 
 #
 #  Find which input files are needed by the tests
 #  strip out the ones which exist
 #  move the filenames to the build directory.
 #
-AUTH_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(AUTH_FILES)))
+AUTH_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(FILES)))
 AUTH_NEEDS	 := $(filter-out $(wildcard $(AUTH_EXISTS)),$(AUTH_EXISTS))
 AUTH	 := $(subst $(DIR),$(BUILD_DIR)/tests/auth,$(AUTH_NEEDS))
 
@@ -34,7 +76,7 @@ AUTH_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/auth,$(AUTH_NEEDS))
 #
 -include $(BUILD_DIR)/tests/auth/depends.mk
 
-$(BUILD_DIR)/tests/auth/depends.mk: $(addprefix $(DIR)/,$(AUTH_FILES)) | $(BUILD_DIR)/tests/auth
+$(BUILD_DIR)/tests/auth/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(BUILD_DIR)/tests/auth
 	${Q}rm -f $@
 	${Q}touch $@
 	${Q}for x in $^; do \
@@ -101,19 +143,3 @@ $(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR
 			exit 1; \
 		fi \
 	fi
-
-#
-#  Get all of the unit test output files
-#
-TESTS.AUTH_FILES := $(addprefix $(BUILD_DIR)/tests/auth/,$(AUTH_FILES))
-
-#
-#  Depend on the output files, and create the directory first.
-#
-tests.auth: $(TESTS.AUTH_FILES)
-
-.PHONY: clean.tests.auth
-clean.tests.auth:
-	${Q}rm -rf $(BUILD_DIR)/tests/auth/
-
-clean.test: clean.tests.auth
