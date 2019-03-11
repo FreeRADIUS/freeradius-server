@@ -62,7 +62,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/src/tests/keywords $(BUILD_DIR)/tests/tests.keywords
+	${Q}rm -rf $(BUILD_DIR)/tests/keywords $(BUILD_DIR)/tests/tests.keywords
 
 clean.test: clean.$(TEST)
 
@@ -73,21 +73,21 @@ clean.test: clean.$(TEST)
 #
 BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(FILES)))
 BOOTSTRAP_NEEDS	 := $(filter-out $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
-BOOTSTRAP	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
+BOOTSTRAP	 := $(subst $(DIR),$(OUTPUT),$(BOOTSTRAP_NEEDS))
 
 #
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.
 #
--include $(BUILD_DIR)/tests/keywords/depends.mk
+-include $(OUTPUT)/depends.mk
 
 export OPENSSL_LIBS
 
-$(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(BUILD_DIR)/tests/keywords
+$(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 	${Q}rm -f $@
 	${Q}touch $@
 	${Q}for x in $^; do \
-		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/keywords/,g'`; \
+		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(OUTPUT)/,g'`; \
 		if [ "$$y" != "" ]; then \
 			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
 			echo "$$z: $$y" >> $@; \
@@ -98,20 +98,20 @@ $(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(BUILD_
 #
 #  These ones get copied over from the default input
 #
-$(BOOTSTRAP): $(DIR)/default-input.attrs | $(BUILD_DIR)/tests/keywords
+$(BOOTSTRAP): $(DIR)/default-input.attrs | $(OUTPUT)
 	${Q}cp $< $@
 
 #
 #  These ones get copied over from their original files
 #
-$(BUILD_DIR)/tests/keywords/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/keywords
+$(OUTPUT)/%.attrs: $(DIR)/%.attrs | $(OUTPUT)
 	${Q}cp $< $@
 
 #
 #  Don't auto-remove the files copied by the rule just above.
 #  It's unnecessary, and it clutters the output with crap.
 #
-.PRECIOUS: $(BUILD_DIR)/tests/keywords/%.attrs
+.PRECIOUS: $(OUTPUT)/%.attrs
 
 KEYWORD_MODULES := $(shell grep -- mods-enabled src/tests/keywords/unit_test_module.conf | sed 's,.*/,,')
 KEYWORD_RADDB	:= $(addprefix raddb/mods-enabled/,$(KEYWORD_MODULES))
@@ -133,7 +133,7 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_exampl
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
+$(OUTPUT)/%: $(DIR)/% $(OUTPUT)/%.attrs $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
 	${Q}echo UNIT-TEST $(notdir $@)
 	${Q}if ! KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
