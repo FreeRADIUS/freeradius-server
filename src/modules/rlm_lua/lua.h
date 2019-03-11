@@ -45,10 +45,6 @@ typedef struct {
 	bool 		threads;		//!< Whether to create new interpreters on a per-instance/per-thread
 						//!< basis, or use a single mutex protected interpreter.
 
-	pthread_key_t	key;			//!< Key to access the thread local and instance specific interpreter.
-	pthread_mutex_t	*mutex;			//!< Mutex used to protect interpreter, when running with a single
-						//!< interpreter (threads = no).
-
 	bool 		jit;			//!< Whether the linked interpreter is Lua 5.1 or LuaJIT.
 	const char	*xlat_name;		//!< Name of this instance.
 	const char 	*module;		//!< Full path to lua script to load and execute.
