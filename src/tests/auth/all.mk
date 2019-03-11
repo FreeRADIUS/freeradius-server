@@ -90,13 +90,13 @@ $(BUILD_DIR)/tests/auth/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(BUILD_DIR)
 #
 #  These ones get copied over from the default input
 #
-$(AUTH): $(DIR)/default-input.attrs | $(BUILD_DIR)/tests/auth
+$(AUTH): $(DIR)/default-input.attrs | $(OUTPUT)
 	${Q}cp $< $@
 
 #
 #  These ones get copied over from their original files
 #
-$(BUILD_DIR)/tests/auth/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/auth
+$(BUILD_DIR)/tests/auth/%.attrs: $(DIR)/%.attrs | $(OUTPUT)
 	${Q}cp $< $@
 
 #
@@ -125,7 +125,7 @@ AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/auth $(AUTH_RADDB) $(AUTH_LIBS) build.raddb
+$(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR)/unit_test_module | $(AUTH_RADDB) $(AUTH_LIBS) build.raddb
 	${Q}echo AUTH-TEST $(notdir $@)
 	${Q}if ! TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
