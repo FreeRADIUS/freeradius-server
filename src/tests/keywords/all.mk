@@ -2,30 +2,76 @@
 #  Unit tests for unlang keywords
 #
 
+
+#
+#  Test name
+#
+TEST := tests.keywords
+
 #
 #  The test files are files without extensions.
 #  The list is unordered.  The order is added in the next step by looking
 #  at precursors.
 #
-KEYWORD_FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
+FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
+#
+#  Don't run SSHA tests if there's no SSL
+#
 ifeq "$(OPENSSL_LIBS)" ""
-KEYWORD_FILES := $(filter-out pap-ssha2,$(KEYWORD_FILES))
+FILES := $(filter-out pap-ssha2,$(FILES))
 endif
+
+OUTPUT := $(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 #
 #  Create the output directory
 #
-.PHONY: $(BUILD_DIR)/tests/keywords
-$(BUILD_DIR)/tests/keywords:
+.PHONY: $(OUTPUT)
+$(OUTPUT):
 	${Q}mkdir -p $@
+
+#
+#  All of the output files depend on the input files
+#
+FILES.$(TEST) := $(addprefix $(OUTPUT),$(notdir $(FILES)))
+
+#
+#  The output files also depend on the directory
+#  and on the previous test.
+#
+$(FILES.$(TEST)): | $(OUTPUT)
+
+#
+#  We have a real file that's created if all of the tests pass.
+#
+$(BUILD_DIR)/tests/$(TEST): $(FILES.$(TEST))
+	${Q}touch $@
+
+#
+#  For simplicity, we create a phony target so that the poor developer
+#  doesn't need to remember path names
+#
+$(TEST): $(BUILD_DIR)/tests/$(TEST)
+
+#
+#  Clean the ouput directory and files.
+#
+#  Note that we have to specify the actual filenames here, because
+#  of stupidities with GNU Make.
+#
+.PHONY: clean.$(TEST)
+clean.$(TEST):
+	${Q}rm -rf $(BUILD_DIR)/src/tests/keywords $(BUILD_DIR)/tests/tests.keywords
+
+clean.test: clean.$(TEST)
 
 #
 #  Find which input files are needed by the tests
 #  strip out the ones which exist
 #  move the filenames to the build directory.
 #
-BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(KEYWORD_FILES)))
+BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(FILES)))
 BOOTSTRAP_NEEDS	 := $(filter-out $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
 BOOTSTRAP	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
 
@@ -37,8 +83,9 @@ BOOTSTRAP	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
 
 export OPENSSL_LIBS
 
-$(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(KEYWORD_FILES)) | $(BUILD_DIR)/tests/keywords
+$(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(BUILD_DIR)/tests/keywords
 	${Q}rm -f $@
+	${Q}touch $@
 	${Q}for x in $^; do \
 		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/keywords/,g'`; \
 		if [ "$$y" != "" ]; then \
@@ -86,13 +133,14 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_exampl
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/keywords $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
+$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
 	${Q}echo UNIT-TEST $(notdir $@)
 	${Q}if ! KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
 			echo "KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
+			rm -f $(BUILD_DIR)/tests/tests.keywords; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep -E '^(Error : )?$<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
@@ -101,24 +149,9 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TE
 			cat $@.log; \
 			echo "# $@.log"; \
 			echo "KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
+			rm -f $(BUILD_DIR)/tests/tests.keywords; \
 			exit 1; \
 		else \
 			touch "$@"; \
 		fi \
 	fi
-
-#
-#  Get all of the unit test output files
-#
-TESTS.KEYWORDS_FILES := $(addprefix $(BUILD_DIR)/tests/keywords/,$(KEYWORD_FILES))
-
-#
-#  Depend on the output files, and create the directory first.
-#
-tests.keywords: $(TESTS.KEYWORDS_FILES)
-
-$(TESTS.KEYWORDS_FILES): $(TESTS.XLAT_FILES) $(TESTS.MAP_FILES)
-
-.PHONY: clean.tests.keywords
-clean.tests.keywords:
-	${Q}rm -rf $(BUILD_DIR)/tests/keywords/
