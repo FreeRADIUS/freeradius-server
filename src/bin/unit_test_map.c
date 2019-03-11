@@ -158,7 +158,7 @@ static int process_file(char const *filename)
 
 int main(int argc, char *argv[])
 {
-	int			c, rcode = EXIT_SUCCESS;
+	int			c, ret = EXIT_SUCCESS;
 	char const		*raddb_dir = RADDBDIR;
 	char const		*dict_dir = DICTDIR;
 	fr_dict_t		*dict = NULL;
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
 	argc -= (optind - 1);
 	argv += (optind - 1);
 
-	if (receipt_file && (fr_file_unlink(receipt_file) < 0) {
+	if (receipt_file && (fr_file_unlink(receipt_file) < 0)) {
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}
@@ -240,13 +240,13 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc < 2) {
-		rcode = process_file("-");
+		ret = process_file("-");
 
 	} else {
-		rcode = process_file(argv[1]);
+		ret = process_file(argv[1]);
 	}
 
-	if (rcode < 0) rcode = 1; /* internal to Unix process return code */
+	if (ret < 0) ret = 1; /* internal to Unix process return code */
 
 cleanup:
 	/*
@@ -269,5 +269,5 @@ cleanup:
 		ret = EXIT_FAILURE;
 	}
 
-	return rcode;
+	return ret;
 }
