@@ -134,17 +134,14 @@ int aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
 		ffi = require(\"ffi\")\
 		ffi.cdef [[\
 			typedef enum log_type {\
-				L_AUTH = 2,\
-				l_log_info = 3,\
+				L_INFO = 3,\
 				L_ERR = 4,\
 				L_WARN = 5,\
-				L_PROXY	= 6,\
-				L_ACCT = 7,\
 				L_DBG = 16,\
 				L_DBG_WARN = 17,\
 				L_DBG_ERR = 18,\
-				L_DBG_WARN2 = 19,\
-				L_DBG_ERR2 = 20\
+				L_DBG_WARN_REQ = 20,\
+				L_DBG_ERR_REQ = 21\
 			} fr_log_type_t;\
 			int fr_log(fr_log_type_t lvl, char const *fmt, ...);\
 			]]\
