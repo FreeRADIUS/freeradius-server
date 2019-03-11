@@ -56,6 +56,12 @@ typedef struct rad_request REQUEST;
 #include <freeradius-devel/server/log.h>
 #include <sys/wait.h>
 
+#define EXIT_WITH_FAILURE \
+do { \
+	ret = EXIT_FAILURE; \
+	goto cleanup; \
+} while (0)
+
 static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 UNUSED REQUEST *request, UNUSED char const *fmt)
@@ -1364,7 +1370,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("unit_test_attribute");
-		goto done;
+		goto cleanup;
 	}
 #endif
 	/*
@@ -1393,7 +1399,7 @@ int main(int argc, char *argv[])
 			     cp = cf_pair_find_next(features, cp, CF_IDENT_ANY)) {
 				fprintf(stdout, "%s %s\n", cf_pair_attr(cp), cf_pair_value(cp));
 			}
-			goto done;
+			goto cleanup;
 		}
 
 		case 'x':
@@ -1416,7 +1422,7 @@ int main(int argc, char *argv[])
 		default:
 			usage(argv);
 			ret = EXIT_SUCCESS;
-			goto done;
+			goto cleanup;
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);
@@ -1431,20 +1437,17 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("unit_test_attribute");
-		ret = EXIT_FAILURE;
-		goto done;
+		EXIT_WITH_FAILURE;
 	}
 
 	if (fr_dict_global_init(autofree, dict_dir) < 0) {
 		fr_perror("unit_test_attribute");
-		ret = EXIT_FAILURE;
-		goto done;
+		EXIT_WITH_FAILURE;
 	}
 
 	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fr_perror("unit_test_attribute");
-		ret = EXIT_FAILURE;
-		goto done;
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -1452,14 +1455,12 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
-		ret = EXIT_FAILURE;
-		goto done;
+		EXIT_WITH_FAILURE;
 	}
 
 	if (xlat_register(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true) < 0) {
 		fprintf(stderr, "Failed registering xlat");
-		ret = EXIT_FAILURE;
-		goto done;
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -1481,7 +1482,7 @@ int main(int argc, char *argv[])
 	 *	Try really hard to free any allocated
 	 *	memory, so we get clean talloc reports.
 	 */
-done:
+cleanup:
 	fr_dict_free(&dict);
 	xlat_free();
 	fr_strerror_free();

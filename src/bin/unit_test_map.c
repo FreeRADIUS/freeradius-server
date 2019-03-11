@@ -38,6 +38,12 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/log.h>
 
+#define EXIT_WITH_FAILURE \
+do { \
+	ret = EXIT_FAILURE; \
+	goto cleanup; \
+} while (0)
+
 static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
 
@@ -206,20 +212,17 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("unit_test_map");
-		rcode = EXIT_FAILURE;
-		goto done;
+		EXIT_WITH_FAILURE;
 	}
 
 	if (fr_dict_global_init(autofree, dict_dir) < 0) {
 		fr_perror("unit_test_map");
-		rcode = EXIT_FAILURE;
-		goto done;
+		EXIT_WITH_FAILURE;
 	}
 
 	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fr_perror("unit_test_map");
-		rcode = EXIT_FAILURE;
-		goto done;
+		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -228,14 +231,12 @@ int main(int argc, char *argv[])
 	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_strerror_printf_push("Failed to initialize the dictionaries");
 		fr_perror("unit_test_map");
-		rcode = EXIT_FAILURE;
-		goto done;
+		EXIT_WITH_FAILURE;
 	}
 
 	if (fr_dict_autoload(unit_test_module_dict) < 0) {
 		fr_perror("unit_test_map");
-		rcode = EXIT_FAILURE;
-		goto done;
+		EXIT_WITH_FAILURE;
 	}
 
 	if (argc < 2) {
@@ -247,7 +248,7 @@ int main(int argc, char *argv[])
 
 	if (rcode < 0) rcode = 1; /* internal to Unix process return code */
 
-done:
+cleanup:
 	/*
 	 *	Try really hard to free any allocated
 	 *	memory, so we get clean talloc reports.
