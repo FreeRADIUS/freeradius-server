@@ -513,12 +513,12 @@ bool rlm_lua_isjit(lua_State *L)
 	bool ret = false;
 	RLM_LUA_STACK_SET();
 	lua_getglobal(L, "jit");
-	if (lua_isnil(L, -1)) {
-		goto done;
-	}
+	if (lua_isnil(L, -1)) goto done;
+
 	ret = true;
 done:
 	RLM_LUA_STACK_RESET();
+
 	return ret;
 }
 
@@ -555,6 +555,7 @@ static int rlm_lua_check_func(rlm_lua_t const *inst, lua_State *L, char const *n
 {
 	int ret;
 	int type;
+
 	RLM_LUA_STACK_SET();
 
 	if (name == NULL) return 0;
@@ -615,7 +616,11 @@ int rlm_lua_init(lua_State **out, rlm_lua_t const *instance)
 		ERROR("rlm_lua (%s): Failed loading file: %s", inst->xlat_name,
 		      lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
 
-		goto error;
+	error:
+		*out = NULL;
+
+		lua_close(L);
+		return -1;
 	}
 
 	if (lua_pcall(L, 0, LUA_MULTRET, 0) != 0) {
@@ -659,18 +664,13 @@ int rlm_lua_init(lua_State **out, rlm_lua_t const *instance)
 
 	*out = L;
 	return 0;
-
-error:
-	*out = NULL;
-
-	lua_close(L);
-	return -1;
 }
 
 /** Resolve a path string to a field value in Lua
  *
- * Parses a string in the format obj0[.obj1][.objN], adding all tables
- * it traverses to the stack.
+ * Parses a string in the format
+ * @verbatim obj0[.obj1][.objN] @endverbatim, adding all tables it traverses
+ * to the stack.
  *
  * All paths are assumed to start at a global, so the first field
  * will be looked up in the global table.
@@ -694,7 +694,7 @@ static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 
 	if ((size_t) (q - p) >= sizeof(buff)) {
 	too_long:
-		REDEBUG("Field name too long, expected %zu, got %zu", q - p, sizeof(buff));
+		REDEBUG("Field name too long, expected < %zu, got %zu", q - p, sizeof(buff));
 		return -1;
 	}
 
@@ -752,7 +752,8 @@ int do_lua(rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 	 *	Get the function were going to be calling
 	 */
 	if (rlm_lua_get_field(L, request, funcname) < 0) {
-		goto error;
+error:
+		return -1;
 	}
 
 	if (!lua_isfunction(L, -1)) {
@@ -768,7 +769,4 @@ int do_lua(rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 	}
 
 	return 0;
-
-error:
-	return -1;
 }
