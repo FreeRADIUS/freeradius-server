@@ -68,12 +68,8 @@ static const CONF_PARSER module_config[] = {
 #define DO_LUA(_s)\
 static rlm_rcode_t mod_##_s(void *instance, void *thread, REQUEST *request) {\
 	rlm_lua_t const *inst = instance;\
-	if (!inst->func_##_s) {\
-		return RLM_MODULE_NOOP;\
-	}\
-	if (do_lua(inst, thread, request, inst->func_##_s) < 0) {\
-		return RLM_MODULE_FAIL;\
-	}\
+	if (!inst->func_##_s) return RLM_MODULE_NOOP;\
+	if (do_lua(thread, request, inst->func_##_s) < 0) return RLM_MODULE_FAIL;\
 	return RLM_MODULE_OK;\
 }
 

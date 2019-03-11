@@ -718,7 +718,7 @@ static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 	return 0;
 }
 
-int do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
+int do_lua(rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 {
 	fr_cursor_t cursor;
 	lua_State *L = thread->interpreter;
