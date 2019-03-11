@@ -1,5 +1,5 @@
-MAP_TESTS	:= $(patsubst $(top_srcdir)/src/tests/map/%,%,$(filter-out %.conf %.md %.attrs %.c %.mk %~ %.rej %.out,$(wildcard $(top_srcdir)/src/tests/map/*)))
-MAP_OUTPUT	:= $(addsuffix .out,$(addprefix $(BUILD_DIR)/tests/map/,$(MAP_TESTS)))
+MAP_TESTS	:= $(patsubst $(top_srcdir)/src/tests/map/%,%,$(filter-log %.conf %.md %.attrs %.c %.mk %~ %.rej %.log,$(wildcard $(top_srcdir)/src/tests/map/*)))
+MAP_OUTPUT	:= $(addsuffix .log,$(addprefix $(BUILD_DIR)/tests/map/,$(MAP_TESTS)))
 MAP_UNIT_BIN	:= $(BUILD_DIR)/bin/local/unit_test_map
 MAP_UNIT	:= ./build/make/jlibtool --silent --mode=execute $(MAP_UNIT_BIN)
 
@@ -10,7 +10,7 @@ $(BUILD_DIR)/tests/map/:
 #
 #	Re-run the tests if the test program changes
 #
-#	Create the output directory before the files
+#	Create the logput directory before the files
 #
 $(MAP_OUTPUT): $(MAP_UNIT_BIN) | $(BUILD_DIR)/tests/map/
 
