@@ -64,6 +64,6 @@ $(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
 	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d "$@_dir" -r "$@" -xxx "$(dir $<)/empty.txt" > "$@.log" 2>&1 || ! test -f "$@"; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d \"$@_dir\" -r \"$@\" \"$(dir $<)/empty.txt\""; \
 		cat "$@.log"; \
-		rm -f $(BUILD_DIR)/tests/$(TEST); \
+		rm -f $(BUILD_DIR)/tests/tests.dict; \
 		exit 1; \
 	fi

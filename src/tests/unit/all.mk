@@ -91,6 +91,6 @@ $(BUILD_DIR)/tests/unit/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
 	${Q}echo UNIT-TEST $(notdir $@)
 	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit -r "$@" $<; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit -r \"$@\" $<"; \
-		rm -f $(BUILD_DIR)/tests/$(TEST); \
+		rm -f $(BUILD_DIR)/tests/tests.unit; \
 		exit 1; \
 	fi
