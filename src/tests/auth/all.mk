@@ -54,7 +54,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/src/tests/auth $(BUILD_DIR)/tests/tests.auth
+	${Q}rm -rf $(BUILD_DIR)/tests/auth $(BUILD_DIR)/tests/tests.auth
 
 clean.test: clean.$(TEST)
 

@@ -48,7 +48,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/src/tests/dict $(BUILD_DIR)/tests/tests.dict
+	${Q}rm -rf $(BUILD_DIR)/tests/dict $(BUILD_DIR)/tests/tests.dict
 
 clean.test: clean.$(TEST)
 

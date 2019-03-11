@@ -55,7 +55,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/src/tests/xlat $(BUILD_DIR)/tests/tests.xlat
+	${Q}rm -rf $(BUILD_DIR)/tests/xlat $(BUILD_DIR)/tests/tests.xlat
 
 clean.test: clean.$(TEST)
 

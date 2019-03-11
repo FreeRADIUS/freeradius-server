@@ -80,7 +80,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 #
 .PHONY: clean.$(TEST)
 clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/src/tests/unit $(BUILD_DIR)/tests/tests.unit
+	${Q}rm -rf $(BUILD_DIR)/tests/unit $(BUILD_DIR)/tests/tests.unit
 
 clean.test: clean.$(TEST)
 
