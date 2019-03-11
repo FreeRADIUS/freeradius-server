@@ -3,6 +3,11 @@
 #
 
 #
+#  Test name
+#
+TEST := tests.unit
+
+#
 #  The files are put here in order.  Later tests need
 #  functionality from earlier tests.
 #
@@ -36,31 +41,55 @@ FILES  := \
 # command.txt - removed because commands like ":sql" are not parsed properly any more
 
 
+OUTPUT := $(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+
 #
 #  Create the output directory
 #
-.PHONY: $(BUILD_DIR)/tests/unit
-$(BUILD_DIR)/tests/unit:
+.PHONY: $(OUTPUT)
+$(OUTPUT):
 	${Q}mkdir -p $@
 
 #
-#  Files in the output dir depend on the unit tests
+#  All of the output files depend on the input files
 #
-$(BUILD_DIR)/tests/unit/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTBINDIR)/unit_test_attribute | $(BUILD_DIR)/tests/unit
+FILES.$(TEST) := $(addprefix $(OUTPUT),$(notdir $(FILES)))
+
+#
+#  The output files also depend on the directory
+#  and on the previous test.
+#
+$(FILES.$(TEST)): | $(OUTPUT)
+
+#
+#  We have a real file that's created if all of the tests pass.
+#
+$(BUILD_DIR)/tests/$(TEST): $(FILES.$(TEST))
+	${Q}touch $@
+
+#
+#  For simplicity, we create a phony target so that the poor developer
+#  doesn't need to remember path names
+#
+$(TEST): $(BUILD_DIR)/tests/$(TEST)
+
+#
+#  Clean the ouput directory and files.
+#
+#  Note that we have to specify the actual filenames here, because
+#  of stupidities with GNU Make.
+#
+.PHONY: clean.$(TEST)
+clean.$(TEST):
+	${Q}rm -rf $(BUILD_DIR)/src/tests/unit $(BUILD_DIR)/tests/tests.unit
+
+#
+#  And the actual script to run each test.
+#
+$(BUILD_DIR)/tests/unit/%: $(DIR)/% $(TESTBINDIR)/unit_test_attribute
 	${Q}echo UNIT-TEST $(notdir $@)
 	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit -r "$@" $<; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -d $(top_srcdir)/src/tests/unit -r \"$@\" $<"; \
+		rm -f $(BUILD_DIR)/tests/$(TEST); \
 		exit 1; \
 	fi
-
-#
-#  Get all of the unit test output files
-#
-TESTS.UNIT_FILES := $(addprefix $(BUILD_DIR)/tests/unit/,$(FILES))
-
-$(TESTS.UNIT_FILES): $(TESTS.DICT_FILES)
-
-#
-#  Depend on the output files, and create the directory first.
-#
-tests.unit: $(TESTS.UNIT_FILES)
