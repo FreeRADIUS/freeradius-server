@@ -538,7 +538,7 @@ void *dl_by_name(char const *name)
 	void		*handle;
 	char		buffer[2048];
 	char		*env;
-	char const	*search_path;
+	char const	*search_path = NULL;
 
 #ifdef RTLD_GLOBAL
 	if (strcmp(name, "rlm_perl") == 0) {
@@ -574,7 +574,7 @@ void *dl_by_name(char const *name)
 		DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
 		search_path = env;
 	} else {
-		search_path = dl_loader->lib_dir;
+		if (dl_loader) search_path = dl_loader->lib_dir;
 	}
 
 	/*
