@@ -24,8 +24,6 @@ $(BUILD_DIR)/tests/xlat:
 #	build/tests/keywords/FOO	updated if the test succeeds
 #	build/tests/keywords/FOO.log	debug output for the test
 #
-#  Auto-depend on modules via $(shell grep INCLUDE $(DIR)/radiusd.conf | grep mods-enabled | sed 's/.*}/raddb/'))
-#
 #  If the test fails, then look for ERROR in the input.  No error
 #  means it's unexpected, so we die.
 #
@@ -49,8 +47,6 @@ TESTS.XLAT_FILES := $(addprefix $(BUILD_DIR)/tests/xlat/,$(XLAT_FILES))
 #  Depend on the output files, and create the directory first.
 #
 tests.xlat: $(TESTS.XLAT_FILES)
-
-$(TESTS.XLAT_FILES): $(TESTS.UNIT_FILES)
 
 .PHONY: clean.tests.xlat
 clean.tests.xlat:
