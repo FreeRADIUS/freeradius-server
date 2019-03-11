@@ -102,6 +102,8 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TE
 			echo "# $@.log"; \
 			echo "KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
 			exit 1; \
+		else \
+			touch "$@"; \
 		fi \
 	fi
 
