@@ -138,6 +138,8 @@ set state for given home server
 do sub-command of show
 .IP show\ client\ <command>
 do sub-command of client
+.IP show\ client\ config\ <ipaddr>\ [udp|tcp]
+shows configuration for a given client.
 .IP show\ client\ list
 shows list of global clients
 .IP show\ debug\ <command>
@@ -176,7 +178,7 @@ Prints out configuration as XML
 do sub-command of stats
 .IP stats\ client\ [auth/acct]\ <ipaddr>
 show statistics for given client, or for all clients (auth or acct)
-.IP stats\ home_server\ [<ipaddr>/auth/acct]\ <port>
+.IP stats\ home_server\ [<ipaddr>|auth|acct]\ <port>
 show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)
 .IP stats\ detail\ <filename>
 show statistics for the given detail file

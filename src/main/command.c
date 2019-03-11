@@ -926,6 +926,56 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 	cprintf(listener, "%.*s}\n", indent, tabs);
 }
 
+static void cprint_conf_section(rad_listen_t *listener, int indent, CONF_SECTION *cs)
+{
+	char const *name1 = cf_section_name1(cs);
+	char const *name2 = cf_section_name2(cs);
+	CONF_ITEM *ci;
+
+	if (name2) {
+		cprintf(listener, "%.*s%s %s {\n", indent, tabs, name1, name2);
+	} else {
+		cprintf(listener, "%.*s%s {\n", indent, tabs, name1);
+	}
+
+	indent++;
+
+
+	for (ci = cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(cs, ci)) {
+		CONF_PAIR const *cp;
+		char const *value;
+
+		if (cf_item_is_section(ci)) {
+			cprint_conf_section(listener, indent, cf_item_to_section(ci));
+			continue;
+		}
+
+		if (!cf_item_is_pair(ci)) continue;
+
+		cp = cf_item_to_pair(ci);
+		value = cf_pair_value(cp);
+
+		if (value) {
+			/*
+			 *	@todo - quote the value if necessary.
+			 */
+			cprintf(listener, "%.*s%s = %s\n",
+				indent, tabs,
+				cf_pair_attr(cp), value);
+		} else {
+			cprintf(listener, "%.*s%s\n",
+				indent, tabs,
+				cf_pair_attr(cp));
+		}
+	}
+
+	indent--;
+
+	cprintf(listener, "%.*s}\n", indent, tabs);
+}
+
 static int command_show_module_config(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
@@ -1171,6 +1221,24 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 	return CMD_OK;
 }
 #endif
+
+static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[]);
+
+static int command_show_client_config(rad_listen_t *listener, int argc, char *argv[])
+{
+	RADCLIENT *client;
+
+	client = get_client(listener, argc, argv);
+	if (!client) {
+		return 0;
+	}
+
+	if (!client->cs) return 1;
+
+	cprint_conf_section(listener, 0, client->cs);
+	return 1;
+}
+
 
 static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
 {
@@ -1971,6 +2039,13 @@ static fr_command_table_t command_table_show_module[] = {
 };
 
 static fr_command_table_t command_table_show_client[] = {
+	{ "config", FR_READ,
+	  "show client config <ipaddr> "
+#ifdef WITH_TCP
+	  "[udp|tcp] "
+#endif
+	  "- show configuration for given client",
+	  command_show_client_config, NULL },
 	{ "list", FR_READ,
 	  "show client list - shows list of global clients",
 	  command_show_clients, NULL },
