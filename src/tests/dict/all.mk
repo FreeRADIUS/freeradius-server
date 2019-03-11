@@ -50,6 +50,8 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 clean.$(TEST):
 	${Q}rm -rf $(BUILD_DIR)/src/tests/dict $(BUILD_DIR)/tests/tests.dict
 
+clean.test: clean.$(TEST)
+
 #  And the actual script to run each test.
 #
 #  The parser expects to read "foo/dictionary", so we make a

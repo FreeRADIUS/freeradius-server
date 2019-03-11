@@ -112,8 +112,8 @@ TESTS.AUTH_FILES := $(addprefix $(BUILD_DIR)/tests/auth/,$(AUTH_FILES))
 #
 tests.auth: $(TESTS.AUTH_FILES)
 
-$(TESTS.AUTH_FILES): $(TESTS.KEYWORDS_FILES)
-
 .PHONY: clean.tests.auth
 clean.tests.auth:
 	${Q}rm -rf $(BUILD_DIR)/tests/auth/
+
+clean.test: clean.tests.auth

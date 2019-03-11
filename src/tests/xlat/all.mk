@@ -57,6 +57,8 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 clean.$(TEST):
 	${Q}rm -rf $(BUILD_DIR)/src/tests/xlat $(BUILD_DIR)/tests/tests.xlat
 
+clean.test: clean.$(TEST)
+
 #
 #  And the actual script to run each test.
 #

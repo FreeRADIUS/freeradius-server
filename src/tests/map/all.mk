@@ -53,3 +53,4 @@ tests.map: $(MAP_OUTPUT)
 clean.tests.map:
 	${Q}rm -rf $(BUILD_DIR)/tests/map/
 
+clean.test: clean.tests.map

@@ -82,6 +82,8 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 clean.$(TEST):
 	${Q}rm -rf $(BUILD_DIR)/src/tests/unit $(BUILD_DIR)/tests/tests.unit
 
+clean.test: clean.$(TEST)
+
 #
 #  And the actual script to run each test.
 #

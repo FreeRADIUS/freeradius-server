@@ -47,9 +47,6 @@ $(CONFIG_PATH)/methods-enabled:
 $(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)/methods-enabled
 	${Q}ln -sf $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
 
-.PHONY: eap clean clean.tests.eap
-clean: clean.tests.eap
-
 #
 #   Only run EAP tests if we have a "test" target
 #
@@ -80,10 +77,13 @@ radiusd.kill: | $(OUTPUT_DIR)
 		exit $$ret; \
 	fi
 
+.PHONY: clean.tests.eap
 clean.tests.eap:
 	${Q}rm -f $(OUTPUT_DIR)/*.ok $(OUTPUT_DIR)/*.log $(OUTPUT_DIR)/eapol_test.skip
 	${Q}rm -f "$(CONFIG_PATH)/test.conf"
 	${Q}rm -rf "$(CONFIG_PATH)/methods-enabled"
+
+clean.test: clean.tests.eap
 
 ifneq "$(EAPOL_TEST)" ""
 $(CONFIG_PATH)/dictionary:

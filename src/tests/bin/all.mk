@@ -51,3 +51,4 @@ tests.bin: $(TESTS.BIN_FILES)
 clean.tests.bin:
 	${Q}rm -rf $(BUILD_DIR)/tests/bin/
 
+clean.test: clean.tests.bin

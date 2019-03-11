@@ -34,3 +34,5 @@ $(TESTS.TRIE_FILES): $(TESTS.UNIT_FILES)
 .PHONY: clean.tests.trie
 clean.tests.trie:
 	${Q}rm -rf $(BUILD_DIR)/tests/trie/
+
+clean.test: clean.tests.trie
