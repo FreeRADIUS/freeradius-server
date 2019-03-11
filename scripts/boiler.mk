@@ -343,6 +343,7 @@ define INCLUDE_SUBMAKEFILE
     TGT_INSTALLDIR := ..
     TGT_CHECK_HEADERS :=
     TGT_CHECK_LIBS :=
+    TEST :=
 
     SOURCES :=
     HEADERS :=
@@ -351,6 +352,8 @@ define INCLUDE_SUBMAKEFILE
     SRC_DEFS :=
     SRC_INCDIRS :=
     MAN :=
+    FILES :=
+    OUTPUT :=
 
     SUBMAKEFILES :=
 
