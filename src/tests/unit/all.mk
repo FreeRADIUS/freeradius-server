@@ -19,7 +19,6 @@ FILES  := \
 	radius_wimax.txt \
 	radius_tunnel.txt \
 	radius_vendor.txt \
-	radius_tlv.txt \
 	radius_unit.txt \
 	radius_struct.txt \
 	eap_aka_encode.txt \
