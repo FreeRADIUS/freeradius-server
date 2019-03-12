@@ -1694,9 +1694,6 @@ if test "x$developer" = "xyes"; then
   AC_MSG_NOTICE([Developer CFLAGS are "$devcflags"])
   AC_MSG_NOTICE([Developer LDFLAGS are "$devldflags"])
 
-  CFLAGS="$CFLAGS $devcflags"
-  LDFLAGS="$LDFLAGS $devldflags"
-
   dnl #
   dnl #  Enable experimental modules (we want to know if code changes breaks one of them)
   dnl #
@@ -2285,10 +2282,13 @@ fi
 
 dnl #############################################################
 dnl #
-dnl #  Add -Werror last, so it doesn't interfere with autoconf's
-dnl #  test programs.
+dnl #  Add $devcflags, $devldflags and -Werror last, so they don't
+dnl #  interfere with autoconf's test programs.
 dnl #
 dnl #############################################################
+CFLAGS="$CFLAGS $devcflags"
+LDFLAGS="$LDFLAGS $devldflags"
+
 if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi

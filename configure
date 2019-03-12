@@ -12799,9 +12799,6 @@ $as_echo "$as_me: Developer CFLAGS are \"$devcflags\"" >&6;}
   { $as_echo "$as_me:${as_lineno-$LINENO}: Developer LDFLAGS are \"$devldflags\"" >&5
 $as_echo "$as_me: Developer LDFLAGS are \"$devldflags\"" >&6;}
 
-  CFLAGS="$CFLAGS $devcflags"
-  LDFLAGS="$LDFLAGS $devldflags"
-
         if test "x$EXPERIMENTAL" != "xno"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules" >&5
 $as_echo "$as_me: is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules" >&6;}
@@ -15397,6 +15394,9 @@ subdirs="$subdirs $mysubdirs"
 if test "x$ax_cv_cc_no_date_time_flag" = "xyes" && test "x$reproducible_builds" != "xyes"; then
   CFLAGS="-Wno-date-time $CFLAGS"
 fi
+
+CFLAGS="$CFLAGS $devcflags"
+LDFLAGS="$LDFLAGS $devldflags"
 
 if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
