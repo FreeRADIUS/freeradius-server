@@ -13065,7 +13065,6 @@ $as_echo "#define HAVE_BUILTIN_BSWAP_64 1" >>confdefs.h
 
 fi
 
-AX_CC_HAVE_BOUNDED_ATTRIBUTE
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for _Generic support in compiler" >&5
