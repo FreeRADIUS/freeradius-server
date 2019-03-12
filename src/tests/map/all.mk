@@ -34,7 +34,9 @@ $(BUILD_DIR)/tests/map/%: $(top_srcdir)/src/tests/map/%
 			echo "E $$EXPECTED F $$FOUND"; \
 			echo "UNEXPECTED ERROR: $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r \"$@\" \"$<\""; \
 			exit 1; \
-		fi; \
+		else \
+			touch "$@"; \
+		fi \
 	else \
 		if ! diff "$<.log" "$@.log"; then \
 			echo "FAILED: diff \"$<.log\" \"$@.log\""; \

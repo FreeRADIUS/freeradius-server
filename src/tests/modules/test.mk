@@ -66,6 +66,8 @@ $(BUILD_DIR)/tests/modules/%: src/tests/modules/%.unlang $(BUILD_DIR)/tests/modu
 			echo "# $@.log"; \
 			echo "MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
 			exit 1; \
+		else \
+			touch "$@"; \
 		fi \
 	fi
 
