@@ -43,6 +43,14 @@ update control {
 #
 #  Determine when initial synchronisation has been completed
 #
+update request {
+	&Tmp-String-0 := $ENV{REDIS_TEST_SERVER}
+}
+if (!&Tmp-String-0 || (&Tmp-String-0 == '')) {
+	update request {
+		&Tmp-String-0 = $ENV{REDIS_IPPOOL_TEST_SERVER}
+	}
+}
 
 #  Test nodes should be running on
 #  - 127.0.0.1:30001 - master [0-5460]
@@ -52,9 +60,7 @@ update control {
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
 foreach &control:Tmp-Integer-0 {
-	update request {
-		&Tmp-String-0 := $ENV{REDIS_IPPOOL_TEST_SERVER}
-	}
+
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
