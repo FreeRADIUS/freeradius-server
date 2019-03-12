@@ -48,7 +48,7 @@ update request {
 }
 if (!&Tmp-String-0 || (&Tmp-String-0 == '')) {
 	update request {
-		&Tmp-String-0 = $ENV{REDIS_IPPOOL_TEST_SERVER}
+		&Tmp-String-0 := $ENV{REDIS_IPPOOL_TEST_SERVER}
 	}
 }
 
@@ -60,7 +60,6 @@ if (!&Tmp-String-0 || (&Tmp-String-0 == '')) {
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
 foreach &control:Tmp-Integer-0 {
-
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
@@ -80,10 +79,10 @@ foreach &control:Tmp-Integer-0 {
 				break
 			}
 		}
+	}
 
-		update request {
-			&Module-Failure-Message !* ANY
-		}
+	update request {
+		&Module-Failure-Message !* ANY
 	}
 
 	# Perform checks every 0.5 seconds
