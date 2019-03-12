@@ -32,11 +32,10 @@ sed -ie "s#../../src/redis-cli#echo 'yes' | redis-cli#" "${TMP_REDIS_DIR}/create
 sed -ie "s#../../src/redis-server#redis-server#" "${TMP_REDIS_DIR}/create-cluster"
 
 # Again, not needed by travis, but useful for local testing
-if [ "$1" = 'stop' ]; then
-    create-cluster stop
-    create-cluster clean
-else
+if [ -z "$1" ]; then
     create-cluster start
     create-cluster create
-    echo "Run \"$0 stop\" to cleanup"
+    echo "Run \"$0 stop && $0 clean\" to cleanup"
+else
+    create-cluster $1
 fi

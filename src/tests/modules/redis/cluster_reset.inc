@@ -22,7 +22,7 @@ update control {
 
 if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 	update control {
-		&Tmp-String-8 := '/tmp/redis/create-cluster'
+		&Tmp-String-8 := 'scripts/travis/redis-setup.sh'
 	}
 } else {
 	update control {
