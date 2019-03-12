@@ -812,7 +812,8 @@ static void command_parse(TALLOC_CTX *ctx, char *input, char *output, size_t out
 	snprintf(output, outlen, "Unknown command '%s'", input);
 }
 
-static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *root_dir, char const *filename)
+static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
+			fr_dict_t *dict, const char *root_dir, char const *filename)
 {
 	int		lineno;
 	size_t		i, outlen;
@@ -822,7 +823,7 @@ static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *roo
 	char		output[8192];
 	char		directory[8192];
 	uint8_t		*attr, data[2048];
-	TALLOC_CTX	*tp_ctx = talloc_init("tp_ctx");
+	TALLOC_CTX	*tp_ctx = talloc_named_const(ctx, 0, "tp_ctx");
 	fr_dict_t	*proto_dict = NULL;
 
 	bool		encode_error = false;		//!< Whether the last encode errored.
@@ -1134,10 +1135,10 @@ do { \
 			q = strrchr(directory, '/');
 			if (q) {
 				*q = '\0';
-				process_file(features, dict, directory, p);
+				process_file(ctx, features, dict, directory, p);
 				*q = '/';
 			} else {
-				process_file(features, dict, NULL, p);
+				process_file(ctx, features, dict, NULL, p);
 			}
 			continue;
 		}
@@ -1469,7 +1470,7 @@ int main(int argc, char *argv[])
 	 *	Read tests from stdin
 	 */
 	if (argc < 2) {
-		if (process_file(features, dict, NULL, "-") < 0) ret = EXIT_FAILURE;
+		if (process_file(autofree, features, dict, NULL, "-") < 0) ret = EXIT_FAILURE;
 
 	/*
 	 *	...or process each file in turn.
@@ -1477,7 +1478,8 @@ int main(int argc, char *argv[])
 	} else {
 		int i;
 
-		for (i = 1; i < argc; i++) if (process_file(features, dict, NULL, argv[i]) < 0) ret = EXIT_FAILURE;
+		for (i = 1; i < argc; i++) if (process_file(autofree, features,
+							    dict, NULL, argv[i]) < 0) ret = EXIT_FAILURE;
 	}
 
 	/*
