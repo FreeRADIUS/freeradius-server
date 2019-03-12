@@ -56,6 +56,8 @@ RCSID("$Id$")
 #  define DL_EXTENSION ".so"
 #endif
 
+#define DL_INIT_CHECK rad_assert(dl_loader)
+
 /** Symbol dependent initialisation callback
  *
  * Call this function when the module is loaded for the first time.
@@ -325,7 +327,7 @@ static void dl_symbol_free_walk(dl_t const *dl_module)
 	fr_cursor_t		cursor;
 	void			*sym = NULL;
 
-	rad_assert(dl_loader != NULL);
+	DL_INIT_CHECK;
 	rad_assert(dl_loader->sym_free != NULL);
 
 	for (free = fr_cursor_init(&cursor, &dl_loader->sym_free);
@@ -399,6 +401,8 @@ int dl_symbol_init_cb_register(unsigned int priority, char const *symbol, dl_loa
 	dl_symbol_init_t	*n, *p;
 	fr_cursor_t		cursor;
 
+	DL_INIT_CHECK;
+
 	dl_symbol_init_cb_unregister(symbol, func);
 
 	MEM(n = talloc(dl_loader, dl_symbol_init_t));
@@ -407,7 +411,6 @@ int dl_symbol_init_cb_register(unsigned int priority, char const *symbol, dl_loa
 	n->func = func;
 	n->ctx = ctx;
 
-	rad_assert(dl_loader != NULL);
 	for (p = fr_cursor_init(&cursor, &dl_loader->sym_init); p && (p->priority >= priority); fr_cursor_next(&cursor));
 	fr_cursor_insert(&cursor, n);
 
@@ -421,13 +424,11 @@ int dl_symbol_init_cb_register(unsigned int priority, char const *symbol, dl_loa
  */
 void dl_symbol_init_cb_unregister(char const *symbol, dl_loader_init_t func)
 {
-	dl_symbol_init_t	*found, find;
-	fr_cursor_t	cursor;
+	dl_symbol_init_t	*found, find = { .symbol = symbol, .func = func };
+	fr_cursor_t		cursor;
 
-	find.symbol = symbol;
-	find.func = func;
+	DL_INIT_CHECK;
 
-	rad_assert(dl_loader != NULL);
 	for (found = fr_cursor_init(&cursor, &dl_loader->sym_init);
 	     found && (dl_symbol_init_cmp(&find, found) != 0);
 	     found = fr_cursor_next(&cursor));
@@ -457,9 +458,10 @@ int dl_symbol_free_cb_register(unsigned int priority, char const *symbol, dl_fre
 	dl_symbol_free_t	*n, *p;
 	fr_cursor_t		cursor;
 
+	DL_INIT_CHECK;
+
 	dl_symbol_free_cb_unregister(symbol, func);
 
-	rad_assert(dl_loader != NULL);
 	MEM(n = talloc(dl_loader, dl_symbol_free_t));
 	n->priority = priority;
 	n->symbol = symbol;
@@ -479,13 +481,11 @@ int dl_symbol_free_cb_register(unsigned int priority, char const *symbol, dl_fre
  */
 void dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func)
 {
-	dl_symbol_free_t	*found, find;
+	dl_symbol_free_t	*found, find = { .symbol = symbol, .func = func };
 	fr_cursor_t		cursor;
 
-	find.symbol = symbol;
-	find.func = func;
+	DL_INIT_CHECK;
 
-	rad_assert(dl_loader != NULL);
 	for (found = fr_cursor_init(&cursor, &dl_loader->sym_free);
 	     found && (dl_symbol_free_cmp(&find, found) != 0);
 	     found = fr_cursor_next(&cursor));
@@ -499,6 +499,8 @@ void dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func)
 dl_instance_t const *dl_instance_find(void *data)
 {
 	dl_instance_t find = { .data = data };
+
+	DL_INIT_CHECK;
 
 	return rbtree_finddata(dl_loader->inst_tree, &find);
 }
@@ -539,6 +541,8 @@ void *dl_by_name(char const *name)
 	char		buffer[2048];
 	char		*env;
 	char const	*search_path;
+
+	DL_INIT_CHECK;
 
 #ifdef RTLD_GLOBAL
 	if (strcmp(name, "rlm_perl") == 0) {
@@ -706,6 +710,8 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	char			*p, *q;
 	dl_common_t const	*module;
 
+	DL_INIT_CHECK;
+
 	if (parent) {
 		module_name = talloc_typed_asprintf(NULL, "%s_%s_%s",
 						    fr_int2str(dl_type_prefix, parent->type, "<INVALID>"),
@@ -870,6 +876,8 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 {
 	dl_instance_t	*dl_inst;
 	char const	*name2;
+
+	DL_INIT_CHECK;
 
 	MEM(dl_inst = talloc_zero(ctx, dl_instance_t));
 	talloc_set_destructor(dl_inst, _dl_instance_free);
