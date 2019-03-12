@@ -160,5 +160,5 @@ are available from [Network RADIUS](https://www.networkradius.com).
 
 [CoverityStatus]: https://scan.coverity.com/projects/58/badge.svg? "Coverity Status"
 [CoverityStatusLink]: https://scan.coverity.com/projects/58
-[BuildStatus]: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=v4.0.x "Travis CI status"
+[BuildStatus]: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=master "Travis CI status"
 [BuildStatusLink]: https://travis-ci.org/FreeRADIUS/freeradius-server
