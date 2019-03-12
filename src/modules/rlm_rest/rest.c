@@ -1699,6 +1699,8 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
 		 */
 		while (p < end) {
 			q = memchr(p, '\n', end - p);
+			if (!q) q = end;
+
 			RDEBUG3("libcurl - %pV", fr_box_strvalue_len(p, q ? q - p : p - end));
 			p = q + 1;
 		}
@@ -1708,6 +1710,8 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
 	case CURLINFO_HEADER_IN:
 		while (p < end) {
 			q = memchr(p, '\n', end - p);
+			if (!q) q = end;
+
 			if (RDEBUG_ENABLED4) {
 				RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len,
 					 "received header: %pV",
@@ -1723,6 +1727,8 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
 	case CURLINFO_HEADER_OUT:
 		while (p < end) {
 			q = memchr(p, '\n', end - p);
+			if (!q) q = end;
+
 			if (RDEBUG_ENABLED4) {
 				RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len,
 					 "sending header: %pV",
