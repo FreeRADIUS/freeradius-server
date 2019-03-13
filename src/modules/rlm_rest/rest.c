@@ -785,11 +785,12 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			goto skip;
 		}
 		ctx = radius_list_ctx(current, dst->tmpl_list);
+		da = dst->tmpl_da;
 
 		rad_assert(vps);
 
 		RINDENT();
-		RDEBUG3("Type  : %s", fr_int2str(fr_value_box_type_table, dst->tmpl_da->type, "<INVALID>"));
+		RDEBUG3("Type  : %s", fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"));
 
 		q = strchr(p, '&');
 		len = (!q) ? (rawlen - (p - raw)) : (unsigned)(q - p);
