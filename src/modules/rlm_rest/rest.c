@@ -1672,6 +1672,7 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
 {
 	REQUEST		*request = talloc_get_type_abort(uctx, REQUEST);
 	char const	*p = data, *q, *end = p + len;
+	char const	*verb;
 
 	switch (type) {
 	case CURLINFO_TEXT:
@@ -1690,38 +1691,27 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
 		break;
 
 	case CURLINFO_HEADER_IN:
+		verb = "received";
+	print_header:
 		while (p < end) {
 			q = memchr(p, '\n', end - p);
-			if (!q) q = end;
+			q = q ? q + 1 : end;
 
 			if (RDEBUG_ENABLED4) {
-				RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len,
-					 "received header: %pV",
-					 fr_box_strvalue_len(p, q ? (q - p) + 1 : p - end));
+				RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)p, q - p,
+					 "%s header: %pV",
+					 verb, fr_box_strvalue_len(p, q - p));
 			} else {
-				RDEBUG3("received header: %pV",
-					fr_box_strvalue_len(p, q ? (q - p) + 1 : p - end));
+				RDEBUG3("%s header: %pV",
+					verb, fr_box_strvalue_len(p, q - p));
 			}
 			p = q + 1;
 		}
 		break;
 
 	case CURLINFO_HEADER_OUT:
-		while (p < end) {
-			q = memchr(p, '\n', end - p);
-			if (!q) q = end;
-
-			if (RDEBUG_ENABLED4) {
-				RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len,
-					 "sending header: %pV",
-					 fr_box_strvalue_len(p, q ? (q - p) + 1 : p - end));
-			} else {
-				RDEBUG3("sending header: %pV",
-					fr_box_strvalue_len(p, q ? (q - p) + 1 : p - end));
-			}
-			p = q + 1;
-		}
-		break;
+		verb = "sending";
+		goto print_header;
 
 	case CURLINFO_DATA_IN:
 		RHEXDUMP(L_DBG_LVL_4, (uint8_t const *)data, len, "received data[length %zu]", len);
