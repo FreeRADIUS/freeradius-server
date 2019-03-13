@@ -91,8 +91,10 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_lua_thread_t *this_thread = thread;
 
-	lua_close(this_thread->interpreter);
-	this_thread->interpreter = NULL;
+	/*
+	 *	May be NULL if rlm_lua_init failed
+	 */
+	if (this_thread->interpreter) lua_close(this_thread->interpreter);
 
 	return 0;
 }
@@ -124,7 +126,10 @@ static int mod_detach(void *instance)
 {
 	rlm_lua_t *inst = instance;
 
-	lua_close(inst->interpreter);
+	/*
+	 *	May be NULL if rlm_lua_init failed
+	 */
+	if (inst->interpreter) lua_close(inst->interpreter);
 
 	return 0;
 }
@@ -163,6 +168,7 @@ rad_module_t rlm_lua = {
 	.name			= "lua",
 	.type			= RLM_TYPE_THREAD_SAFE,
 	.inst_size		= sizeof(rlm_lua_t),
+
 	.thread_inst_size	= sizeof(rlm_lua_thread_t),
 
 	.config			= module_config,
