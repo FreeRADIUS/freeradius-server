@@ -52,7 +52,7 @@ rest {
 		#
 		#  check_cert:: Server certificate verification requirements.
 		#
-		#  Can be:
+		#  May be one of:
 		#
 		#  [options="header,autowidth"]
 		#  |===
@@ -68,7 +68,7 @@ rest {
 		#
 		#  check_cert_cn:: Server certificate CN verification requirements.
 		#
-		#  Can be:
+		#  May be one of:
 		#
 		#  [options="header,autowidth"]
 		#  |===
@@ -108,7 +108,7 @@ rest {
 	#
 	#  http_negotiation:: The negotiation scheme and target HTTP version.
 	#
-	#  Can be:
+	#  May be one of:
 	#
 	#  [options="header,autowidth"]
 	#  |===

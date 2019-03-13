@@ -29,7 +29,7 @@ listen {
 	#  Port as normal
 	port = 10000
 
-	#  BFD Authentication method.  Can be:
+	#  BFD Authentication method.  May be one of:
 	#
 	#	none - no password, not recommended
 	#	simple - cleartext password in the packet, not recommended

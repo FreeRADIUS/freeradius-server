@@ -692,7 +692,7 @@ ldap {
 		#
 		#  require_cert:: Certificate Verification requirements.
 		#
-		#  Can be:
+		#  May be one of:
 		#
 		#  [options="header,autowidth"]
 		#  |===
