@@ -1705,7 +1705,7 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
 				RDEBUG3("%s header: %pV",
 					verb, fr_box_strvalue_len(p, q - p));
 			}
-			p = q + 1;
+			p = q;
 		}
 		break;
 
