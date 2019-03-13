@@ -121,7 +121,7 @@ DIAG_OFF(unused-macros)
 // all internal function.
 
 #ifndef DEFAULT_SIZE
-#define DEFAULT_SIZE	(4)
+#define DEFAULT_SIZE	(1)
 #endif
 
 /*
