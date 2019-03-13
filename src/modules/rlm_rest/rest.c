@@ -724,28 +724,10 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->candle;
 
-	char const *p = raw, *q;
+	char const		*p = raw, *q;
 
-	char const *attribute;
-	char *name  = NULL;
-	char *value = NULL;
-
-	char *expanded = NULL;
-
-	fr_dict_attr_t const *da;
-	VALUE_PAIR *vp;
-
-	pair_list_t list_name;
-	request_ref_t request_name;
-	REQUEST *reference = request;
-	VALUE_PAIR **vps;
-	TALLOC_CTX *ctx;
-
-	size_t len;
-	int curl_len; /* Length from last curl_easy_unescape call */
-
-	int count = 0;
-	int ret;
+	int			count = 0;
+	int			ret;
 
 	/*
 	 *	Empty response?
@@ -754,59 +736,60 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 	if (*p == '\0') return 0;
 
 	while (((q = strchr(p, '=')) != NULL) && (count < REST_BODY_MAX_ATTRS)) {
-		reference = request;
+		vp_tmpl_t		*dst;
+		REQUEST			*current;
+		VALUE_PAIR		**vps;
+		TALLOC_CTX		*ctx;
+		fr_dict_attr_t const	*da;
+		VALUE_PAIR		*vp;
+
+		char			*name  = NULL;
+		char			*value = NULL;
+
+		char			*expanded = NULL;
+
+		size_t			len;
+		int			curl_len; /* Length from last curl_easy_unescape call */
+
+		current = request;
 
 		name = curl_easy_unescape(candle, p, (q - p), &curl_len);
 		p = (q + 1);
 
-		RDEBUG2("Parsing attribute \"%s\"", name);
-
 		/*
-		 *  The attribute pointer is updated to point to the portion of
-		 *  the string after the list qualifier.
+		 *  Resolve attribute name to a dictionary entry and pairlist.
 		 */
-		attribute = name;
-		attribute += radius_request_name(&request_name, attribute, REQUEST_CURRENT);
-		if (request_name == REQUEST_UNKNOWN) {
-			RWDEBUG("Invalid request qualifier, skipping");
+		RDEBUG2("Parsing attribute \"%pV\"", fr_box_strvalue_len(name, curl_len));
 
-			curl_free(name);
-
-			continue;
+		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
+					&(vp_tmpl_rules_t){
+						.prefix = VP_ATTR_REF_PREFIX_NO,
+						.dict_def = request->dict,
+						.list_def = PAIR_LIST_REPLY
+					}) <= 0) {
+			RPWDEBUG("Failed parsing attribute (skipping)");
+			talloc_free(dst);
+			goto skip;
 		}
 
-		if (radius_request(&reference, request_name) < 0) {
-			RWDEBUG("Attribute name refers to outer request but not in a tunnel, skipping");
-
-			curl_free(name);
-
-			continue;
+		if (radius_request(&current, dst->tmpl_request) < 0) {
+			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
+			talloc_free(dst);
+			goto skip;
 		}
 
-		attribute += radius_list_name(&list_name, attribute, PAIR_LIST_REPLY);
-		if (list_name == PAIR_LIST_UNKNOWN) {
-			RWDEBUG("Invalid list qualifier, skipping");
-			curl_free(name);
-
-			continue;
+		vps = radius_list(current, dst->tmpl_list);
+		if (!vps) {
+			RWDEBUG("List not valid in this context (skipping)");
+			talloc_free(dst);
+			goto skip;
 		}
+		ctx = radius_list_ctx(current, dst->tmpl_list);
 
-		da = fr_dict_attr_by_name(request->dict, attribute);
-		if (!da) {
-			RWDEBUG("Attribute \"%s\" unknown, skipping", attribute);
-
-			curl_free(name);
-
-			continue;
-		}
-
-		vps = radius_list(reference, list_name);
 		rad_assert(vps);
 
 		RINDENT();
-		RDEBUG3("Type  : %s", fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"));
-
-		ctx = radius_list_ctx(reference, list_name);
+		RDEBUG3("Type  : %s", fr_int2str(fr_value_box_type_table, dst->tmpl_da->type, "<INVALID>"));
 
 		q = strchr(p, '&');
 		len = (!q) ? (rawlen - (p - raw)) : (unsigned)(q - p);
@@ -824,18 +807,21 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		RDEBUG3("Value  : \"%s\"", value);
 		REXDENT();
 
+		talloc_free(dst);	/* Free our temporary tmpl */
+
 		RDEBUG2("Performing xlat expansion of response value");
 
-		if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) {
-			goto skip;
-		}
+		if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) goto skip;
 
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) {
 			REDEBUG("Failed creating valuepair");
 			talloc_free(expanded);
 
-			goto error;
+			curl_free(name);
+			curl_free(value);
+
+			return count;
 		}
 
 		ret = fr_pair_value_from_str(vp, expanded, -1, '\0', true);
@@ -855,12 +841,6 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		curl_free(value);
 
 		continue;
-
-	error:
-		curl_free(name);
-		curl_free(value);
-
-		return count;
 	}
 
 	if (!count) {
@@ -1070,6 +1050,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 
 		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
 					&(vp_tmpl_rules_t){
+						.prefix = VP_ATTR_REF_PREFIX_NO,
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY
 					}) <= 0) {
