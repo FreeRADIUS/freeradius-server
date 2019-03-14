@@ -24,6 +24,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_lua (%s) - "
+#define LOG_PREFIX_ARGS inst->xlat_name
+
 #include <freeradius-devel/server/base.h>
 
 #include "config.h"
@@ -31,6 +34,9 @@ RCSID("$Id$")
 
 #include <lauxlib.h>
 #include <lualib.h>
+
+static _Thread_local REQUEST *rlm_lua_request;
+static _Thread_local rlm_lua_t const *rlm_lua_inst;
 
 /** Lua function to output debug messages
  *
@@ -41,14 +47,16 @@ RCSID("$Id$")
  */
 static int _aux_log_debug(lua_State *L)
 {
-	int idx;
+	rlm_lua_t const		*inst = rlm_lua_inst;
+	REQUEST			*request = rlm_lua_request;
+	int			idx;
 
 	while ((idx = lua_gettop(L))) {
 		char const *msg = lua_tostring(L, idx);
 		lua_pop(L, 1);
 		if (!msg) continue;
 
-		DEBUG("%s", msg);
+		ROPTIONAL(RDEBUG2, DEBUG2, "%s", msg);
 	}
 
 	return 0;
@@ -63,14 +71,16 @@ static int _aux_log_debug(lua_State *L)
  */
 static int _aux_log_info(lua_State *L)
 {
-	int idx;
+	rlm_lua_t const		*inst = rlm_lua_inst;
+	REQUEST			*request = rlm_lua_request;
+	int 			idx;
 
 	while ((idx = lua_gettop(L))) {
 		char const *msg = lua_tostring(L, idx);
 		lua_pop(L, 1);
 		if (!msg) continue;
 
-		INFO("%s", msg);
+		ROPTIONAL(RINFO, INFO, "%s", msg);
 	}
 
 	return 0;
@@ -86,14 +96,16 @@ static int _aux_log_info(lua_State *L)
  */
 static int _aux_log_warn(lua_State *L)
 {
-	int idx;
+	rlm_lua_t const		*inst = rlm_lua_inst;
+	REQUEST			*request = rlm_lua_request;
+	int			idx;
 
 	while ((idx = lua_gettop(L))) {
 		char const *msg = lua_tostring(L, idx);
 		lua_pop(L, 1);
 		if (!msg) continue;
 
-		WARN("%s", msg);
+		ROPTIONAL(RWARN, WARN, "%s", msg);
 	}
 
 	return 0;
@@ -108,12 +120,16 @@ static int _aux_log_warn(lua_State *L)
  */
 static int _aux_log_error(lua_State *L)
 {
-	int idx;
+	rlm_lua_t const		*inst = rlm_lua_inst;
+	REQUEST			*request = rlm_lua_request;
+	int			idx;
 
 	while ((idx = lua_gettop(L))) {
-		char const *message = lua_tostring(L, idx);
-		ERROR("%i: %s", idx, message);
+		char const *msg = lua_tostring(L, idx);
 		lua_pop(L, 1);
+		if (!msg) continue;
+
+		ROPTIONAL(RERROR, ERROR, "%s", msg);
 	}
 
 	return 0;
@@ -128,7 +144,7 @@ static int _aux_log_error(lua_State *L)
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
-int aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
+int fr_lua_aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
 {
 	if (luaL_dostring(L,"\
 		ffi = require(\"ffi\")\
@@ -146,21 +162,21 @@ int aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
 			int fr_log(fr_log_type_t lvl, char const *fmt, ...);\
 			]]\
 		fr_srv = ffi.load(\"freeradius-server\")\
-		fr = ffi.load(\"freeradius-lua\")\
-		debug = function(msg)\
+		fr_lua = ffi.load(\"freeradius-lua\")\
+		fr.debug = function(msg)\
 		   fr_srv.fr_log(16, \"%s\", msg)\
 		end\
-		info = function(msg)\
+		fr.info = function(msg)\
 		   fr_srv.fr_log(3, \"%s\", msg)\
 		end\
-		warn = function(msg)\
+		fr.warn = function(msg)\
 		   fr_srv.fr_log(5, \"%s\", msg)\
 		end\
-		error = function(msg)\
+		fr.error = function(msg)\
 		   fr_srv.fr_log(4, \"%s\", msg)\
 		end\
 		") != 0) {
-		ERROR("rlm_lua (%s): Failed setting up FFI: %s", inst->xlat_name,
+		ERROR("Failed setting up FFI: %s",
 		      lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
 		return -1;
 	}
@@ -174,7 +190,7 @@ int aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
-int aux_funcs_register(UNUSED rlm_lua_t const *inst, lua_State *L)
+int fr_lua_aux_funcs_register(UNUSED rlm_lua_t const *inst, lua_State *L)
 {
 	lua_newtable(L);
 	lua_pushcfunction(L, _aux_log_debug);
@@ -192,3 +208,40 @@ int aux_funcs_register(UNUSED rlm_lua_t const *inst, lua_State *L)
 
 	return 0;
 }
+
+/** Set the thread local instance
+ *
+ * @param[in] inst	all helper and C functions callable from Lua should use.
+ */
+void fr_lua_aux_set_inst(rlm_lua_t const *inst)
+{
+	rlm_lua_inst = inst;
+}
+
+/** Get the thread local instance
+ *
+ * @return inst all helper and C functions callable from Lua should use.
+ */
+rlm_lua_t const *fr_lua_aux_get_inst(void)
+{
+	return rlm_lua_inst;
+}
+
+/** Set the thread local request
+ *
+ * @param[in] request	all helper and C functions callable from Lua should use.
+ */
+void fr_lua_aux_set_request(REQUEST *request)
+{
+	rlm_lua_request = request;
+}
+
+/** Get the thread local request
+ *
+ * @return request all helper and C functions callable from Lua should use.
+ */
+REQUEST *fr_lua_aux_get_request(void)
+{
+	return rlm_lua_request;
+}
+

@@ -25,6 +25,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_lua (%s) - "
+#define LOG_PREFIX_ARGS inst->xlat_name
+
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 
@@ -38,21 +41,19 @@ RCSID("$Id$")
 #define RLM_LUA_STACK_SET()	int _rlm_lua_stack_state = lua_gettop(L)
 #define RLM_LUA_STACK_RESET()	lua_settop(L, _rlm_lua_stack_state)
 
-static _Thread_local REQUEST *rlm_lua_request;
-
 /** Convert VALUE_PAIRs to Lua values
  *
  * Pushes a Lua representation of an attribute value onto the stack.
  *
- * @param L Lua interpreter.
- * @param vp to convert.
- * @return 0 on success, -1 on failure.
+ * @param[in] request	The current request.
+ * @param[in] L		Lua interpreter.
+ * @param[in] vp	to convert.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
+static int rlm_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 {
-
-	REQUEST *request = rlm_lua_request;
-
 	if (!vp) return -1;
 
 #define IN_RANGE_INTEGER_SIGNED(_x) \
@@ -205,13 +206,17 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
  * Convert Lua values back to VALUE_PAIRs. How the Lua value is converted is dependent
  * on the type of the DA.
  *
- * @param out Where to write a pointer to the new VALUE_PAIR.
- * @param request the current request.
- * @param L Lua interpreter.
- * @param da specifying the type of attribute to create.
- * @return 0 on success, -1 on failure.
+ * @param[out] out	Where to write a pointer to the new VALUE_PAIR.
+ * @param[in] inst	the current instance.
+ * @param[in] request	the current request.
+ * @param[in] L		Lua interpreter.
+ * @param[in] da	specifying the type of attribute to create.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, fr_dict_attr_t const *da)
+static int rlm_lua_unmarshall(VALUE_PAIR **out,
+			      rlm_lua_t const *inst, REQUEST *request, lua_State *L, fr_dict_attr_t const *da)
 {
 	VALUE_PAIR *vp;
 
@@ -316,18 +321,22 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
  *
  * @note Should only be present in the Lua environment as a closure.
  * @note Takes one upvalue - the fr_dict_attr_t to search for as light user data.
- * @note Is called as an __index metamethod, so takes the table (can be ignored) and the field (an integer index value)
+ * @note Is called as an __index metamethod, so takes the table (can be ignored)
+ *	 and the field (an integer index value)
  *
- * @param L Lua interpreter.
- * @return 0 (no results) on success, 1 on success with the VALUE_PAIR value on the stack.
+ * @param[in] L Lua interpreter.
+ * @return
+ *	- 0 (no results) on success.
+ *	- 1 on success with the VALUE_PAIR value on the stack.
  */
 static int _lua_pair_get(lua_State *L)
 {
-	fr_cursor_t cursor;
+	REQUEST			*request = fr_lua_aux_get_request();
+
+	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	VALUE_PAIR		*vp = NULL;
 	int			index;
-	REQUEST			*request = rlm_lua_request;
 
 	rad_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
 
@@ -344,7 +353,7 @@ static int _lua_pair_get(lua_State *L)
 		if (!vp) return 0;
 	}
 
-	if (rlm_lua_marshall(L, vp) < 0) return -1;
+	if (rlm_lua_marshall(request, L, vp) < 0) return -1;
 
 	return 1;
 }
@@ -353,26 +362,29 @@ static int _lua_pair_get(lua_State *L)
  *
  * @note Should only be present in the Lua environment as a closure.
  * @note Takes one upvalue - the fr_dict_attr_t to search for as light user data.
- * @note Is called as an __newindex metamethod, so takes the table (can be ignored), the field (an integer index value)
- *	 and the new value.
+ * @note Is called as an __newindex metamethod, so takes the table (can be ignored),
+ *	 the field (an integer index value) and the new value.
  *
- * @param L Lua interpreter.
- * @return 0 on success, -1 on failure.
+ * @param[in] L Lua interpreter.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int _lua_pair_set(lua_State *L)
 {
-	fr_cursor_t cursor;
-	fr_dict_attr_t const *da;
-	VALUE_PAIR *vp = NULL, *new;
-	int index;
-	bool delete = false;
-	REQUEST *request = rlm_lua_request;
+	rlm_lua_t const		*inst = fr_lua_aux_get_inst();
+	REQUEST			*request = fr_lua_aux_get_request();
+	fr_cursor_t		cursor;
+	fr_dict_attr_t const	*da;
+	VALUE_PAIR		*vp = NULL, *new;
+	lua_Integer		index;
+	bool			delete = false;
+
 
 	/*
 	 *	This function should only be called as a closure.
 	 *	As we control the upvalues, we should assert on errors.
 	 */
-
 	rad_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
 
 	da = lua_touserdata(L, lua_upvalueindex(1));
@@ -385,7 +397,7 @@ static int _lua_pair_set(lua_State *L)
 	 */
 	fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, da);
 
-	for (index = (int) lua_tointeger(L, -2); index >= 0; index--) {
+	for (index = lua_tointeger(L, -2); index >= 0; index--) {
 		vp = fr_cursor_next(&cursor);
 		if (vp) break;
 	}
@@ -399,9 +411,7 @@ static int _lua_pair_set(lua_State *L)
 		return 0;
 	}
 
-	if (rlm_lua_unmarshall(&new, request, L, da) < 0) {
-		return -1;
-	}
+	if (rlm_lua_unmarshall(&new, inst, request, L, da) < 0) return -1;
 
 	/*
 	 *	If there was already a VP at that index we replace it
@@ -418,8 +428,10 @@ static int _lua_pair_set(lua_State *L)
 
 static int _lua_pair_iterator(lua_State *L)
 {
-	fr_cursor_t *cursor;
-	VALUE_PAIR *vp;
+	REQUEST			*request = fr_lua_aux_get_request();
+
+	fr_cursor_t		*cursor;
+	VALUE_PAIR		*vp;
 
 	/*
 	 *	This function should only be called as a closure.
@@ -438,18 +450,18 @@ static int _lua_pair_iterator(lua_State *L)
 		return 1;
 	}
 
-	if (rlm_lua_marshall(L, vp) < 0) {
-		return -1;
-	}
+	if (rlm_lua_marshall(request, L, vp) < 0) return -1;
 
 	return 1;
 }
 
 static int _lua_pair_iterator_init(lua_State *L)
 {
-	fr_cursor_t *cursor;
-	fr_dict_attr_t const *da;
-	REQUEST *request = rlm_lua_request;
+	REQUEST			*request = fr_lua_aux_get_request();
+
+	fr_cursor_t		*cursor;
+	fr_dict_attr_t const	*da;
+
 
 	/*
 	 *	This function should only be called as a closure.
@@ -474,8 +486,10 @@ static int _lua_pair_iterator_init(lua_State *L)
 
 static int _lua_list_iterator(lua_State *L)
 {
-	fr_cursor_t *cursor;
-	VALUE_PAIR *vp;
+	REQUEST			*request = fr_lua_aux_get_request();
+
+	fr_cursor_t		*cursor;
+	VALUE_PAIR		*vp;
 
 	rad_assert(lua_isuserdata(L, lua_upvalueindex(1)));
 
@@ -491,9 +505,7 @@ static int _lua_list_iterator(lua_State *L)
 
 	lua_pushstring(L, vp->da->name);
 
-	if (rlm_lua_marshall(L, vp) < 0) {
-		return -1;
-	}
+	if (rlm_lua_marshall(request, L, vp) < 0) return -1;
 
 	fr_cursor_next(cursor);
 
@@ -505,8 +517,8 @@ static int _lua_list_iterator(lua_State *L)
  */
 static int _lua_list_iterator_init(lua_State *L)
 {
-	fr_cursor_t *cursor;
-	REQUEST *request = rlm_lua_request;
+	REQUEST			*request = fr_lua_aux_get_request();
+	fr_cursor_t		*cursor;
 
 	cursor = (fr_cursor_t*) lua_newuserdata(L, sizeof(fr_cursor_t));
 	if (!cursor) {
@@ -526,7 +538,7 @@ static int _lua_list_iterator_init(lua_State *L)
  */
 static int _lua_rcode_table_newindex(UNUSED lua_State *L)
 {
-	REQUEST *request = rlm_lua_request;
+	REQUEST			*request = fr_lua_aux_get_request();
 
 	RWDEBUG("You can't modify the table 'fr.*' (read-only)");
 
@@ -569,10 +581,10 @@ static void rlm_lua_rcode_table_init(lua_State *L, char const *name)
  */
 static int _lua_pair_accessor_init(lua_State *L)
 {
-	char const *attr;
-	fr_dict_attr_t const *da;
-	fr_dict_attr_t *up;
-	REQUEST *request = rlm_lua_request;
+	REQUEST			*request = fr_lua_aux_get_request();
+	char const		*attr;
+	fr_dict_attr_t const	*da;
+	fr_dict_attr_t		*up;
 
 	attr = lua_tostring(L, -1);
 	if (!attr) {
@@ -687,13 +699,12 @@ static int rlm_lua_check_func(rlm_lua_t const *inst, lua_State *L, char const *n
 		break;
 
 	case LUA_TNIL:
-		ERROR("rlm_lua (%s): Function \"%s\" not found ", inst->xlat_name, name);
+		ERROR("Function \"%s\" not found ", name);
 		ret = -1;
 		goto done;
 
 	default:
-		ERROR("rlm_lua (%s): Value found at index \"%s\" is not a function (is a %s)",
-		      inst->xlat_name, name, lua_typename(L, type));
+		ERROR("Value found at index \"%s\" is not a function (is a %s)", name, lua_typename(L, type));
 		ret = -1;
 		goto done;
 	}
@@ -707,19 +718,22 @@ done:
  *
  * Creates a new lua_State and verifies all required functions have been loaded correctly.
  *
- * @param out Where to write a pointer to the new state.
- * @param instance Current instance of rlm_lua, a talloc marker context will be inserted into the context of instance
- *	to ensure the interpreter is freed when instance data is freed.
+ * @param[in] out	Where to write a pointer to the new state.
+ * @param[in] instance	Current instance of rlm_lua, a talloc marker
+ *			context will be inserted into the context of instance
+ *			to ensure the interpreter is freed when instance data is freed.
  * @return 0 on success else -1.
  */
 int rlm_lua_init(lua_State **out, rlm_lua_t const *instance)
 {
-	rlm_lua_t const *inst = instance;
-	lua_State *L;
+	rlm_lua_t const		*inst = instance;
+	lua_State		*L;
+
+	fr_lua_aux_set_inst(inst);
 
 	L = luaL_newstate();
 	if (!L) {
-		ERROR("rlm_lua (%s): Failed initialising Lua state", inst->xlat_name);
+		ERROR("Failed initialising Lua state");
 		return -1;
 	}
 
@@ -729,29 +743,27 @@ int rlm_lua_init(lua_State **out, rlm_lua_t const *instance)
 	 *	Load the Lua file into our environment.
 	 */
 	if (luaL_loadfile(L, inst->module) != 0) {
-		ERROR("rlm_lua (%s): Failed loading file: %s", inst->xlat_name,
-		      lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
+		ERROR("Failed loading file: %s", lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
 
 	error:
 		*out = NULL;
-
+		fr_lua_aux_set_inst(NULL);
 		lua_close(L);
 		return -1;
 	}
 
 	if (lua_pcall(L, 0, LUA_MULTRET, 0) != 0) {
-		ERROR("rlm_lua (%s): Failed executing script: %s", inst->xlat_name,
-		      lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
+		ERROR("Failed executing script: %s", lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
 
 		goto error;
 	}
 
 	if (inst->jit) {
-		DEBUG4("rlm_lua (%s): Initialised new LuaJIT interpreter %p", inst->xlat_name, L);
-		aux_jit_funcs_register(inst, L);
+		DEBUG4("Initialised new LuaJIT interpreter %p", L);
+		fr_lua_aux_jit_funcs_register(inst, L);
 	} else {
-		DEBUG4("rlm_lua (%s): Initialised new Lua interpreter %p", inst->xlat_name, L);
-		aux_funcs_register(inst, L);
+		DEBUG4("Initialised new Lua interpreter %p", L);
+		fr_lua_aux_funcs_register(inst, L);
 	}
 
 	/*
@@ -834,12 +846,14 @@ static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 	return 0;
 }
 
-int do_lua(rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
+int do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 {
-	fr_cursor_t cursor;
-	lua_State *L = thread->interpreter;
-	int ret = RLM_MODULE_OK;
-	rlm_lua_request = request;
+	fr_cursor_t 	cursor;
+	lua_State	*L = thread->interpreter;
+	int		ret = RLM_MODULE_OK;
+
+	fr_lua_aux_set_inst(inst);
+	fr_lua_aux_set_request(request);
 
 	RDEBUG2("Calling %s() in interpreter %p", funcname, L);
 
@@ -874,17 +888,22 @@ int do_lua(rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 	 */
 	if (rlm_lua_get_field(L, request, funcname) < 0) {
 error:
+		fr_lua_aux_set_inst(NULL);
+		fr_lua_aux_set_request(NULL);
+
 		return RLM_MODULE_FAIL;
 	}
 
 	if (!lua_isfunction(L, -1)) {
 		int type = lua_type(L, -1);
+
 		REDEBUG("'%s' is not a function, is a %s (%i)", funcname, lua_typename(L, type), type);
 		goto error;
 	}
 
 	if (lua_pcall(L, 0, 1, 0) != 0) {
 		char const *msg = lua_tostring(L, -1);
+
 		REDEBUG("Call to %s failed: %s", funcname, msg ? msg : "unknown error");
 		goto error;
 	}
@@ -914,5 +933,8 @@ error:
 	}
 
 done:
+	fr_lua_aux_set_inst(NULL);
+	fr_lua_aux_set_request(NULL);
+
 	return ret;
 }

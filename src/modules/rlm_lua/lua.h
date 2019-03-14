@@ -76,11 +76,15 @@ typedef struct {
 } rlm_lua_thread_t;
 
 /* lua.c */
-int rlm_lua_init(lua_State **out, rlm_lua_t const *instance);
-int do_lua(rlm_lua_thread_t *thread, REQUEST *request, char const *funcname);
-bool rlm_lua_isjit(lua_State *L);
-char const *rlm_lua_version(lua_State *L);
+int		rlm_lua_init(lua_State **out, rlm_lua_t const *instance);
+int		do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname);
+bool		rlm_lua_isjit(lua_State *L);
+char const	*rlm_lua_version(lua_State *L);
 
 /* aux.c */
-int aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L);
-int aux_funcs_register(rlm_lua_t const *inst, lua_State *L);
+int		fr_lua_aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L);
+int		fr_lua_aux_funcs_register(rlm_lua_t const *inst, lua_State *L);
+void		fr_lua_aux_set_inst(rlm_lua_t const *inst);
+rlm_lua_t const	*fr_lua_aux_get_inst(void);
+void		fr_lua_aux_set_request(REQUEST *request);
+REQUEST		*fr_lua_aux_get_request(void);
