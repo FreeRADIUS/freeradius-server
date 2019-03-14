@@ -872,9 +872,6 @@ int do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, ch
 	lua_pushcclosure(L, _lua_pair_accessor_init, 1);
 	lua_setfield(L, -2, "__index");
 
-//	lua_pushcfunction(L, new_index);
-//	lua_setfield(L, -2, "__newindex");
-
 	lua_setmetatable(L, -2);
 	lua_setglobal(L, "request");
 
