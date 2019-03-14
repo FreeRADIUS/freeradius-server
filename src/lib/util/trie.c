@@ -403,6 +403,12 @@ typedef enum fr_trie_type_t {
 #endif
 } fr_trie_type_t;
 
+#ifdef WITH_PATH_COMPRESSION
+#define FR_TRIE_MAX (FR_TRIE_PATH + 1)
+#else
+#define FR_TRIE_MAX (FR_TRIE_NODE + 1)
+#endif
+
 #ifdef TESTING
 static int trie_number = 0;
 #endif
@@ -785,6 +791,82 @@ fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
 	return (fr_trie_t *) fr_trie_user_alloc(ctx, NULL, ctx);
 }
 
+static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact);
+
+static void *fr_trie_user_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
+{
+	fr_trie_user_t *user = (fr_trie_user_t *) trie;
+	void *data;
+
+	/*
+	 *	We've matched the input exactly.  Return the
+	 *	user data.
+	 */
+	if (start_bit == end_bit) return user->data;
+
+	/*
+	 *	We're not at the end of the input.  Go find a
+	 *	deeper match.  If a match is found, return
+	 *	that.
+	 */
+	data = fr_trie_key_match(user->trie, key, start_bit, end_bit, exact);
+	if (data) return data;
+
+	/*
+	 *	We didn't find anything deeper in the trie,
+	 *	AND we require an exact match.  That's a
+	 *	failure.
+	 */
+	if (exact) {
+		MPRINT2("no exact match at %d\n", __LINE__);
+		return NULL;
+	}
+
+	/*
+	 *	Return the closest (i.e. inexact) match.
+	 */
+	return user->data;	
+}
+
+
+static void *fr_trie_node_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
+{
+	uint16_t chunk;
+	fr_trie_node_t *node = (fr_trie_node_t *) trie;
+
+	chunk = get_chunk(key, node->bits, start_bit, end_bit);
+	if (!node->trie[chunk]) {
+		MPRINT2("no match for node chunk %02x at %d\n", chunk, __LINE__);
+		return NULL;
+	}
+
+	return fr_trie_key_match(node->trie[chunk], key, start_bit + node->bits, end_bit, exact);
+}
+
+#ifdef WITH_PATH_COMPRESSION
+static void *fr_trie_path_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
+{
+	uint16_t chunk;
+	fr_trie_path_t *path = (fr_trie_path_t *) trie;
+
+	chunk = get_chunk(key, path->bits, start_bit, end_bit);
+	if (chunk != path->chunk) return NULL;
+
+	return fr_trie_key_match(path->trie, key, start_bit + path->bits, end_bit, exact);
+}
+#endif
+
+typedef void *(*fr_trie_key_match_t)(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact);
+
+static fr_trie_key_match_t trie_match[FR_TRIE_MAX] = {
+	[ FR_TRIE_USER ] = fr_trie_user_match,
+	[ FR_TRIE_NODE ] = fr_trie_node_match,
+#ifdef WITH_PATH_COMPRESSION
+	[ FR_TRIE_PATH ] = fr_trie_path_match,
+#endif
+};
+
+
 /** Match a key in a trie and return user ctx, if any
  *
  *  The key may be LONGER than entries in the trie.  In which case the
@@ -801,8 +883,6 @@ fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
  */
 static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
 {
-	void *data = NULL;
-
 	if (!trie) return NULL;
 
 	/*
@@ -817,66 +897,20 @@ static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bi
 		return NULL;
 	}
 
-	if (trie->type == FR_TRIE_USER) {
-		fr_trie_user_t *user = (fr_trie_user_t *) trie;
-
-		/*
-		 *	We've matched the input exactly.  Return the
-		 *	user data.
-		 */
-		if (start_bit == end_bit) return user->data;
-
-		/*
-		 *	We're not at the end of the input.  Go find a
-		 *	deeper match.  If a match is found, return
-		 *	that.
-		 */
-		data = fr_trie_key_match(user->trie, key, start_bit, end_bit, exact);
-		if (data) return data;
-
-		/*
-		 *	We didn't find anything deeper in the trie,
-		 *	AND we require an exact match.  That's a
-		 *	failure.
-		 */
-		if (exact) {
-			MPRINT2("no exact match at %d\n", __LINE__);
-			return NULL;
-		}
-
-		/*
-		 *	Return the closest (i.e. inexact) match.
-		 */
-		return user->data;
+	/*
+	 *	Catch problems.
+	 */
+	if ((trie->type == FR_TRIE_INVALID) ||
+	    (trie->type >= FR_TRIE_MAX) ||
+	    !trie_match[trie->type]) {
+		fr_strerror_printf("unknown trie type %d in match", trie->type);
+		return NULL;
 	}
 
-	if (trie->type == FR_TRIE_NODE) {
-		uint16_t chunk;
-		fr_trie_node_t *node = (fr_trie_node_t *) trie;
-
-		chunk = get_chunk(key, node->bits, start_bit, end_bit);
-		if (!node->trie[chunk]) {
-			MPRINT2("no match for node chunk %02x at %d\n", chunk, __LINE__);
-			return NULL;
-		}
-
-		return fr_trie_key_match(node->trie[chunk], key, start_bit + node->bits, end_bit, exact);
-	}
-
-#ifdef WITH_PATH_COMPRESSION
-	if (trie->type == FR_TRIE_PATH) {
-		uint16_t chunk;
-		fr_trie_path_t *path = (fr_trie_path_t *) trie;
-
-		chunk = get_chunk(key, path->bits, start_bit, end_bit);
-		if (chunk != path->chunk) return NULL;
-
-		return fr_trie_key_match(path->trie, key, start_bit + path->bits, end_bit, exact);
-	}
-#endif
-
-	fr_strerror_printf("unknown trie type %d in match", trie->type);
-	return NULL;
+	/*
+	 *	Recursively match each type.
+	 */
+	return trie_match[trie->type](trie, key, start_bit, end_bit, exact);
 }
 
 
