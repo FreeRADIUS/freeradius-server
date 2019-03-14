@@ -100,11 +100,14 @@ if test x$with_[]modname != xno; then
 	lua_cflags="$LUA_INCLUDE"
 	lua_ldflags="$_cv_lua_ldflags"
 
-	echo "Lua Library:"
-	echo "  Using Lua version.......... : $ax_cv_lua_version"
-	echo "  Using Lua header version... : $ax_cv_lua_header_version"
-	echo "  Using Lua headers.......... : $lua_cflags"
-	echo "  Using Lua lib.............. : $lua_ldflags"
+	if test "x$_ax_found_lua_libs" = 'xyes'; then
+		AC_MSG_NOTICE([Lua Library:])
+		AC_MSG_NOTICE([  Using Lua version.......... : $ax_cv_lua_version])
+		AC_MSG_NOTICE([  Using Lua header version... : $ax_cv_lua_header_version])
+		AC_MSG_NOTICE([  Using Lua headers.......... : $lua_cflags])
+		AC_MSG_NOTICE([  Using Lua lib.............. : $lua_ldflags])
+	fi
+
 
 	targetname=modname     # keep this!  Don't change!
 else
