@@ -158,7 +158,7 @@ DIAG_OFF(format-nonliteral)
  * @param[in] ap	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-static int tls_strerror_printf_va(char const *msg, va_list ap)
+static int tls_strerror_vasprintf(char const *msg, va_list ap)
 {
 	unsigned long	error;
 	char		*p = NULL;
@@ -231,7 +231,7 @@ int tls_strerror_printf(char const *msg, ...)
 	int ret;
 
 	va_start(ap, msg);
-	ret = tls_strerror_printf_va(msg, ap);
+	ret = tls_strerror_vasprintf(msg, ap);
 	va_end(ap);
 
 	return ret;
