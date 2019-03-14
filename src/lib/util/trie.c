@@ -947,17 +947,29 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **tr
 		return 0;
 	}
 
-	if (trie->type == FR_TRIE_USER) {
-		fr_trie_user_t *user = (fr_trie_user_t *) trie;
+	/*
+	 *	We've reached the end of the key.  Insert a user node
+	 *	here.
+	 */
+	if (start_bit == end_bit) {
+		fr_trie_user_t *user;
 
-		/*
-		 *	We're supposed to insert it here, but there's
-		 *	already user data.  That's an error.
-		 */
-		if (start_bit == end_bit) {
-			MPRINT("already has a user node at %d\n", __LINE__);
+		if (trie->type == FR_TRIE_USER) {
+			fr_strerror_printf("already has a user node at %d\n", __LINE__);
 			return -1;
 		}
+
+		user = fr_trie_user_alloc(ctx, parent, data);
+		if (!user) return -1;
+
+		user->trie = trie;
+		trie->parent = (fr_trie_t *) user;
+		*trie_p = (fr_trie_t *) user;
+		return 0;
+	}
+
+	if (trie->type == FR_TRIE_USER) {
+		fr_trie_user_t *user = (fr_trie_user_t *) trie;
 
 		/*
 		 *	This is in normal form already.  Don't change
@@ -968,22 +980,6 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **tr
 			return -1;
 		}
 
-		return 0;
-	}
-
-	/*
-	 *	We've reached the end of the key.  Insert a user node
-	 *	here.
-	 */
-	if (start_bit == end_bit) {
-		fr_trie_user_t *user;
-
-		user = fr_trie_user_alloc(ctx, parent, data);
-		if (!user) return -1;
-
-		user->trie = trie;
-		trie->parent = (fr_trie_t *) user;
-		*trie_p = (fr_trie_t *) user;
 		return 0;
 	}
 
