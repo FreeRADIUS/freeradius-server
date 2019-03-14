@@ -43,8 +43,8 @@ path	bbbb	1	bbbb=1
 #  But doing so makes things easier.
 #
 insert	aaa	1
-print	aaa=1
 lookup	aaa	1
+print	aaa=1
 remove	aaa	1
 print	{}
 
@@ -226,3 +226,4 @@ print	{}
 insert	a	1
 insert	ab	2
 print	a=1,ab=2
+clear
