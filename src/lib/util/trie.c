@@ -1275,7 +1275,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *da
 	 *	place without worry.
 	 */
 	if (fr_trie_key_match(ft->trie, key, 0, keylen, true) != NULL) {
-		MPRINT2("already matches at %d\n", __LINE__);
+		fr_strerror_printf("Cannot insert due to pre-existing key");
 		return -1;
 	}
 
