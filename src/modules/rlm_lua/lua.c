@@ -41,6 +41,48 @@ RCSID("$Id$")
 #define RLM_LUA_STACK_SET()	int _rlm_lua_stack_state = lua_gettop(L)
 #define RLM_LUA_STACK_RESET()	lua_settop(L, _rlm_lua_stack_state)
 
+/*
+ * 	Initialise the table "fr." with all valid return codes.
+ */
+static int _lua_rcode_table_newindex(UNUSED lua_State *L)
+{
+	REQUEST	*request = fr_lua_aux_get_request();
+
+	RWDEBUG("You can't modify the table 'fr.*' (read-only)");
+
+	return 1;
+}
+
+static int _lua_rcode_table_index(lua_State *L)
+{
+	char const *key = lua_tostring(L, -1);
+	int ret;
+
+	ret = fr_str2int(mod_rcode_table, key, -1);
+	if (ret != -1) {
+		lua_pushinteger(L, ret);
+		return 1;
+	}
+
+	lua_pushfstring(L, "The fr.%s is not found", key);
+	return -1;
+}
+
+static void fr_lua_rcode_table_register(lua_State *L, char const *name)
+{
+	lua_newtable(L);
+	luaL_newmetatable(L, name);
+
+	lua_pushcfunction(L, _lua_rcode_table_index);
+	lua_setfield(L, -2, "__index");
+
+	lua_pushcfunction(L, _lua_rcode_table_newindex);
+	lua_setfield(L, -2, "__newindex");
+
+	lua_setmetatable(L, -2);
+	lua_setglobal(L, name);
+}
+
 /** Convert VALUE_PAIRs to Lua values
  *
  * Pushes a Lua representation of an attribute value onto the stack.
@@ -533,48 +575,6 @@ static int _lua_list_iterator_init(lua_State *L)
 	return 1;
 }
 
-/*
- * 	Initialise the table "fr." with all valid return codes.
- */
-static int _lua_rcode_table_newindex(UNUSED lua_State *L)
-{
-	REQUEST			*request = fr_lua_aux_get_request();
-
-	RWDEBUG("You can't modify the table 'fr.*' (read-only)");
-
-	return 1;
-}
-
-static int _lua_rcode_table_index(lua_State *L)
-{
-	char const *key = lua_tostring(L, -1);
-	int ret;
-
-	ret = fr_str2int(mod_rcode_table, key, -1);
-	if (ret != -1) {
-		lua_pushinteger(L, ret);
-		return 1;
-	}
-
-	lua_pushfstring(L, "The fr.%s is not found", key);
-	return -1;
-}
-
-static void rlm_lua_rcode_table_init(lua_State *L, char const *name)
-{
-	lua_newtable(L);
-	luaL_newmetatable(L, name);
-
-	lua_pushcfunction(L, _lua_rcode_table_index);
-	lua_setfield(L, -2, "__index");
-
-	lua_pushcfunction(L, _lua_rcode_table_newindex);
-	lua_setfield(L, -2, "__newindex");
-
-	lua_setmetatable(L, -2);
-	lua_setglobal(L, name);
-}
-
 /** Initialise and return a new accessor table
  *
  *
@@ -767,6 +767,11 @@ int rlm_lua_init(lua_State **out, rlm_lua_t const *instance)
 	}
 
 	/*
+	 *	Setup the "fr" global table. with all RLM_MODULE_* values. e.g: "fr.reject", "fr.ok", ...
+	 */
+	fr_lua_rcode_table_register(L, "fr");
+
+	/*
 	 *	Verify all the functions were provided.
 	 */
 	if (rlm_lua_check_func(inst, L, inst->func_authorize)
@@ -874,11 +879,6 @@ int do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, ch
 
 	lua_setmetatable(L, -2);
 	lua_setglobal(L, "request");
-
-	/*
-	 *	Setup the "fr" global table. with all RLM_MODULE_* values. e.g: "fr.reject", "fr.ok", ...
-	 */
-	rlm_lua_rcode_table_init(L, "fr");
 
 	/*
 	 *	Get the function were going to be calling
