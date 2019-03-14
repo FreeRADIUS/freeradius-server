@@ -70,8 +70,7 @@ static rlm_rcode_t mod_##_s(void *instance, void *thread, REQUEST *request) \
 {\
 	rlm_lua_t const *inst = instance;\
 	if (!inst->func_##_s) return RLM_MODULE_NOOP;\
-	if (do_lua(thread, request, inst->func_##_s) < 0) return RLM_MODULE_FAIL;\
-	return RLM_MODULE_OK;\
+	return do_lua(thread, request, inst->func_##_s);\
 }
 
 DO_LUA(authorize)

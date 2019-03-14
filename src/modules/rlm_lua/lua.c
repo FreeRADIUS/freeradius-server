@@ -466,6 +466,47 @@ static int _lua_list_iterator_init(lua_State *L)
 	return 1;
 }
 
+/*
+ * 	Initialise the table "fr." with all valid return codes.
+ */
+static int _lua_rcode_table_newindex(UNUSED lua_State *L)
+{
+	REQUEST *request = rlm_lua_request;
+
+	RWDEBUG("You can't modify the table 'fr.*' (read-only)");
+
+	return 1;
+}
+
+static int _lua_rcode_table_index(lua_State *L)
+{
+	char const *key = lua_tostring(L, -1);
+	int ret;
+
+	ret = fr_str2int(mod_rcode_table, key, -1);
+	if (ret != -1) {
+		lua_pushinteger(L, ret);
+		return 1;
+	}
+
+	lua_pushfstring(L, "The fr.%s is not found", key);
+	return -1;
+}
+
+static void rlm_lua_rcode_table_init(lua_State *L, char const *name)
+{
+	lua_newtable(L);
+	luaL_newmetatable(L, name);
+
+	lua_pushcfunction(L, _lua_rcode_table_index);
+	lua_setfield(L, -2, "__index");
+
+	lua_pushcfunction(L, _lua_rcode_table_newindex);
+	lua_setfield(L, -2, "__newindex");
+
+	lua_setmetatable(L, -2);
+	lua_setglobal(L, name);
+}
 
 /** Initialise and return a new accessor table
  *
@@ -742,7 +783,7 @@ int do_lua(rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 {
 	fr_cursor_t cursor;
 	lua_State *L = thread->interpreter;
-
+	int ret = RLM_MODULE_OK;
 	rlm_lua_request = request;
 
 	RDEBUG2("Calling %s() in interpreter %p", funcname, L);
@@ -769,11 +810,16 @@ int do_lua(rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 	lua_setglobal(L, "request");
 
 	/*
+	 *	Setup the "fr" global table. with all RLM_MODULE_* values. e.g: "fr.reject", "fr.ok", ...
+	 */
+	rlm_lua_rcode_table_init(L, "fr");
+
+	/*
 	 *	Get the function were going to be calling
 	 */
 	if (rlm_lua_get_field(L, request, funcname) < 0) {
 error:
-		return -1;
+		return RLM_MODULE_FAIL;
 	}
 
 	if (!lua_isfunction(L, -1)) {
@@ -782,11 +828,36 @@ error:
 		goto error;
 	}
 
-	if (lua_pcall(L, 0, 0, 0) != 0) {
+	if (lua_pcall(L, 0, 1, 0) != 0) {
 		char const *msg = lua_tostring(L, -1);
 		REDEBUG("Call to %s failed: %s", funcname, msg ? msg : "unknown error");
 		goto error;
 	}
 
-	return 0;
+	/*
+	 *	functions without return or returning none/nil will be RLM_MODULE_OK
+	 */
+	if (!lua_isnoneornil(L, -1)) {
+		/*
+		 *	e.g: return 2, return "2", return fr.handled, fr.fail, ...
+		 */
+		if (lua_isnumber(L, -1)) {
+			ret = lua_tointeger(L, -1);
+			if (fr_int2str(mod_rcode_table, ret, NULL) != NULL) goto done;
+		}
+
+		/*
+		 *	e.g: return "handled", "ok", "fail", ...
+		 */
+		if (lua_isstring(L, -1)) {
+			ret = fr_str2int(mod_rcode_table, lua_tostring(L, -1), -1);
+			if (ret != -1) goto done;
+		}
+
+		REDEBUG("Lua function %s() returned invalid rcode \"%s\"", funcname, lua_tostring(L, -1));
+		goto error;
+	}
+
+done:
+	return ret;
 }

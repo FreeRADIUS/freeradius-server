@@ -14,42 +14,52 @@ end
 
 function preacct()
   print("example.lua/preacct()")
+  return fr.ok
 end
 
 function accounting()
   print("example.lua/accounting()")
+  return fr.ok
 end
 
 function pre_proxy()
   print("example.lua/pre_proxy()")
+  return fr.ok
 end
 
 function post_proxy()
   print("example.lua/post_proxy()")
+  return fr.ok
 end
 
 function post_auth()
   print("example.lua/post_auth()")
+  return fr.ok
 end
 
 function recv_coa()
   print("example.lua/recv_coa()")
+  return fr.ok
 end
 
 function send_coa()
   print("example.lua/send_coa()")
+  return fr.ok
 end
 
 function detach()
   print("example.lua/detach()")
+  return fr.ok
 end
 
 function xlat()
   print("example.lua/xlat()")
+  return fr.ok
 end
 
 function authenticate()
   print("example.lua/authenticate()")
+  return fr.ok
 end
 
 function authorize()
@@ -69,4 +79,6 @@ function authorize()
   print("example.lua/authorize()")
   print("Request list contents:")
   tprint(request, 2)
+
+  return fr.ok
 end
