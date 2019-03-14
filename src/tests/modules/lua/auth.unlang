@@ -1,0 +1,49 @@
+# fr.*
+lmod1_check_fr_istable
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
+
+lmod2_check_fr_values
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
+
+lmod3_check_request_value
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
+
+lmod4_request_check_user
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
+
+lmod5_check_if_return_is_string_ok
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
+
+lmod6_check_if_return_is_const_ok
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
+
+lmod7_check_fr_overwrite
+if (!noop) {
+    test_fail
+} else {
+    test_pass
+}
