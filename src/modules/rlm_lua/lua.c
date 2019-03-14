@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include "config.h"
 #include "lua.h"
 
+#include <float.h>
 #include <lauxlib.h>
 #include <lualib.h>
 
@@ -49,9 +50,37 @@ static _Thread_local REQUEST *rlm_lua_request;
  */
 static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 {
-	char buff[1024];
+
+	REQUEST *request = rlm_lua_request;
 
 	if (!vp) return -1;
+
+#define IN_RANGE_INTEGER_SIGNED(_x) \
+	do { \
+		if ((((int64_t)(_x)) < PTRDIFF_MIN) || (((int64_t)(_x)) > PTRDIFF_MAX)) { \
+			REDEBUG("Value (%" PRId64 ") cannot be represented as Lua integer.  Must be between %td-%td", \
+				(int64_t)(_x), (ptrdiff_t)PTRDIFF_MIN, (ptrdiff_t)PTRDIFF_MAX); \
+			return -1; \
+		} \
+	} while (0)
+
+#define IN_RANGE_INTEGER_UNSIGNED(_x) \
+	do { \
+		if (((uint64_t)(_x)) > PTRDIFF_MAX) { \
+			REDEBUG("Value (%" PRIu64 ") cannot be represented as Lua integer.  Must be between 0-%td", \
+				(uint64_t)(_x), (ptrdiff_t)PTRDIFF_MAX); \
+			return -1; \
+		} \
+	} while (0)
+
+#define IN_RANGE_FLOAT_SIGNED(_x) \
+	do { \
+		if ((((double)(_x)) < DBL_MIN) || (((double)(_x)) > DBL_MAX)) { \
+			REDEBUG("Value (%f) cannot be represented as Lua number.  Must be between %f-%f", \
+				(double)(_x), DBL_MIN, DBL_MAX); \
+			return -1; \
+		} \
+	} while (0)
 
 	switch (vp->vp_type) {
 	case FR_TYPE_ETHERNET:
@@ -62,8 +91,19 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 	case FR_TYPE_IFID:
 	case FR_TYPE_TIMEVAL:
 	case FR_TYPE_ABINARY:
-		fr_pair_value_snprint(buff, sizeof(buff), vp, '\0');
-		lua_pushstring(L, buff);
+	{
+		char	buff[128];
+		size_t	len;
+
+		len = fr_pair_value_snprint(buff, sizeof(buff), vp, '\0');
+		if (is_truncated(len, sizeof(buff))) {
+			REDEBUG("Cannot convert %s to Lua type, insufficient buffer space",
+				fr_int2str(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
+			return -1;
+		}
+
+		lua_pushlstring(L, buff, len);
+	}
 		break;
 
 	case FR_TYPE_STRING:
@@ -75,71 +115,86 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 		break;
 
 	case FR_TYPE_BOOL:
-		lua_pushinteger(L, vp->vp_bool ? 1 : 0);
+		lua_pushinteger(L, (lua_Integer)(vp->vp_bool ? 1 : 0));
 		break;
 
 	case FR_TYPE_UINT8:
-		lua_pushinteger(L, vp->vp_uint8);
+		IN_RANGE_INTEGER_UNSIGNED(vp->vp_uint8);
+		lua_pushinteger(L, (lua_Integer)vp->vp_uint8);
 		break;
 
 	case FR_TYPE_UINT16:
-		lua_pushinteger(L, vp->vp_uint16);
+		IN_RANGE_INTEGER_UNSIGNED(vp->vp_uint16);
+		lua_pushinteger(L, (lua_Integer)vp->vp_uint16);
 		break;
 
 	case FR_TYPE_UINT32:
-		lua_pushinteger(L, vp->vp_uint32);
+		IN_RANGE_INTEGER_UNSIGNED(vp->vp_uint32);
+		lua_pushinteger(L, (lua_Integer)vp->vp_uint32);
 		break;
 
 	case FR_TYPE_UINT64:
-		lua_pushinteger(L, vp->vp_uint64);
+		IN_RANGE_INTEGER_UNSIGNED(vp->vp_uint64);
+		lua_pushinteger(L, (lua_Integer)vp->vp_uint64);
 		break;
 
 	case FR_TYPE_INT8:
-		lua_pushinteger(L, vp->vp_int8);
+		IN_RANGE_INTEGER_SIGNED(vp->vp_int8);
+		lua_pushinteger(L, (lua_Integer)vp->vp_int8);
 		break;
 
 	case FR_TYPE_INT16:
-		lua_pushinteger(L, vp->vp_int16);
+		IN_RANGE_INTEGER_SIGNED(vp->vp_int16);
+		lua_pushinteger(L, (lua_Integer)vp->vp_int16);
 		break;
 
 	case FR_TYPE_INT32:
-		lua_pushinteger(L, vp->vp_int32);
+		IN_RANGE_INTEGER_SIGNED(vp->vp_int32);
+		lua_pushinteger(L, (lua_Integer)vp->vp_int32);
 		break;
 
 	case FR_TYPE_INT64:
-		lua_pushinteger(L, vp->vp_int64);
+		IN_RANGE_INTEGER_SIGNED(vp->vp_int64);
+		lua_pushinteger(L, (lua_Integer)vp->vp_int64);
 		break;
 
 	case FR_TYPE_DATE:
-		lua_pushinteger(L, vp->vp_date);
+		IN_RANGE_INTEGER_UNSIGNED(vp->vp_date);
+		lua_pushinteger(L, (lua_Integer)vp->vp_date);
 		break;
 
 	case FR_TYPE_DATE_MILLISECONDS:
-		lua_pushinteger(L, vp->vp_date_milliseconds);
+		IN_RANGE_INTEGER_UNSIGNED(vp->vp_date_milliseconds);
+		lua_pushinteger(L, (lua_Integer)vp->vp_date_milliseconds);
 		break;
 
 	case FR_TYPE_DATE_MICROSECONDS:
-		lua_pushinteger(L, vp->vp_date_microseconds);
+		IN_RANGE_INTEGER_UNSIGNED(vp->vp_date_microseconds);
+		lua_pushinteger(L, (lua_Integer)vp->vp_date_microseconds);
 		break;
 
 	case FR_TYPE_DATE_NANOSECONDS:
-		lua_pushinteger(L, vp->vp_date_nanoseconds);
+		IN_RANGE_INTEGER_UNSIGNED(vp->vp_date_nanoseconds);
+		lua_pushinteger(L, (lua_Integer)vp->vp_date_nanoseconds);
 		break;
 
 	case FR_TYPE_FLOAT32:
-		lua_pushnumber(L, (double) vp->vp_float32);
+		IN_RANGE_FLOAT_SIGNED(vp->vp_float32);
+		lua_pushnumber(L, (lua_Number)vp->vp_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
-		lua_pushnumber(L, vp->vp_float64);
+		IN_RANGE_FLOAT_SIGNED(vp->vp_float64);
+		lua_pushnumber(L, (lua_Number)vp->vp_float64);
 		break;
 
 	case FR_TYPE_SIZE:
-		lua_pushnumber(L, vp->vp_size);
+		IN_RANGE_INTEGER_UNSIGNED(vp->vp_size);
+		lua_pushinteger(L, (lua_Integer)vp->vp_size);
 		break;
 
 	case FR_TYPE_NON_VALUES:
-		ERROR("Cannot convert %s to Lua type", fr_int2str(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
+		REDEBUG("Cannot convert %s to Lua type", fr_int2str(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
 		return -1;
 	}
 	return 0;
