@@ -1,3 +1,3 @@
 function authorize()
-	return "ok"
+	return fr.rcode.noop
 end

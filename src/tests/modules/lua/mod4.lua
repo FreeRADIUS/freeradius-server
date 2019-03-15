@@ -1,8 +1,8 @@
 function authorize()
-	for k, v in request.pairs() do
+	for k, v in fr.request.pairs() do
 		if k == "User-Name" and v == "caipirinha" then
-			return fr.ok
+			return fr.rcode.ok
 		end
 	end
-	return fr.fail
+	return fr.rcode.fail
 end
