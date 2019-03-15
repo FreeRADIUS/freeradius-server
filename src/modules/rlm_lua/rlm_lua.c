@@ -25,12 +25,14 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_lua (%s) - "
+#define LOG_PREFIX_ARGS inst->xlat_name
+
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/module.h>
 
 #include "lua.h"
-
 /*
  *	A mapping of configuration file names to internal variables.
  *
@@ -61,7 +63,7 @@ static rlm_rcode_t mod_##_s(void *instance, void *thread, REQUEST *request) \
 {\
 	rlm_lua_t const *inst = instance;\
 	if (!inst->func_##_s) return RLM_MODULE_NOOP;\
-	return do_lua(inst, thread, request, inst->func_##_s);\
+	return fr_lua_run(inst, thread, request, inst->func_##_s);\
 }
 
 DO_LUA(authorize)
@@ -79,7 +81,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	rlm_lua_thread_t *this_thread = thread;
 
 	/*
-	 *	May be NULL if rlm_lua_init failed
+	 *	May be NULL if fr_lua_init failed
 	 */
 	if (this_thread->interpreter) lua_close(this_thread->interpreter);
 
@@ -101,7 +103,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 {
 	rlm_lua_thread_t *this_thread = thread;
 
-	if (rlm_lua_init(&this_thread->interpreter, instance) < 0) return -1;
+	if (fr_lua_init(&this_thread->interpreter, instance) < 0) return -1;
 
 	return 0;
 }
@@ -114,7 +116,7 @@ static int mod_detach(void *instance)
 	rlm_lua_t *inst = instance;
 
 	/*
-	 *	May be NULL if rlm_lua_init failed
+	 *	May be NULL if fr_lua_init failed
 	 */
 	if (inst->interpreter) lua_close(inst->interpreter);
 
@@ -131,11 +133,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Get an instance global interpreter to use with various things...
 	 */
-	if (rlm_lua_init(&inst->interpreter, inst) < 0) return -1;
-	inst->jit = rlm_lua_isjit(inst->interpreter);
+	if (fr_lua_init(&inst->interpreter, inst) < 0) return -1;
+	inst->jit = fr_lua_isjit(inst->interpreter);
 	if (!inst->jit) WARN("Using standard Lua interpreter, performance will be suboptimal");
 
-	DEBUG("rlm_lua (%s): Using %s interpreter", inst->xlat_name, rlm_lua_version(inst->interpreter));
+	DEBUG("Using %s interpreter", fr_lua_version(inst->interpreter));
 
 	return 0;
 }

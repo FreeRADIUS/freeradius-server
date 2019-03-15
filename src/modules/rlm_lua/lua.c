@@ -38,50 +38,8 @@ RCSID("$Id$")
 #include <lauxlib.h>
 #include <lualib.h>
 
-#define RLM_LUA_STACK_SET()	int _rlm_lua_stack_state = lua_gettop(L)
-#define RLM_LUA_STACK_RESET()	lua_settop(L, _rlm_lua_stack_state)
-
-/*
- * 	Initialise the table "fr." with all valid return codes.
- */
-static int _lua_rcode_table_newindex(UNUSED lua_State *L)
-{
-	REQUEST	*request = fr_lua_aux_get_request();
-
-	RWDEBUG("You can't modify the table 'fr.*' (read-only)");
-
-	return 1;
-}
-
-static int _lua_rcode_table_index(lua_State *L)
-{
-	char const *key = lua_tostring(L, -1);
-	int ret;
-
-	ret = fr_str2int(mod_rcode_table, key, -1);
-	if (ret != -1) {
-		lua_pushinteger(L, ret);
-		return 1;
-	}
-
-	lua_pushfstring(L, "The fr.%s is not found", key);
-	return -1;
-}
-
-static void fr_lua_rcode_table_register(lua_State *L, char const *name)
-{
-	lua_newtable(L);
-	luaL_newmetatable(L, name);
-
-	lua_pushcfunction(L, _lua_rcode_table_index);
-	lua_setfield(L, -2, "__index");
-
-	lua_pushcfunction(L, _lua_rcode_table_newindex);
-	lua_setfield(L, -2, "__newindex");
-
-	lua_setmetatable(L, -2);
-	lua_setglobal(L, name);
-}
+#define RLM_LUA_STACK_SET()	int _fr_lua_stack_state = lua_gettop(L)
+#define RLM_LUA_STACK_RESET()	lua_settop(L, _fr_lua_stack_state)
 
 /** Convert VALUE_PAIRs to Lua values
  *
@@ -94,7 +52,7 @@ static void fr_lua_rcode_table_register(lua_State *L, char const *name)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int rlm_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
+static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 {
 	if (!vp) return -1;
 
@@ -257,8 +215,8 @@ static int rlm_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int rlm_lua_unmarshall(VALUE_PAIR **out,
-			      rlm_lua_t const *inst, REQUEST *request, lua_State *L, fr_dict_attr_t const *da)
+static int fr_lua_unmarshall(VALUE_PAIR **out,
+			     rlm_lua_t const *inst, REQUEST *request, lua_State *L, fr_dict_attr_t const *da)
 {
 	VALUE_PAIR *vp;
 
@@ -395,7 +353,7 @@ static int _lua_pair_get(lua_State *L)
 		if (!vp) return 0;
 	}
 
-	if (rlm_lua_marshall(request, L, vp) < 0) return -1;
+	if (fr_lua_marshall(request, L, vp) < 0) return -1;
 
 	return 1;
 }
@@ -453,7 +411,7 @@ static int _lua_pair_set(lua_State *L)
 		return 0;
 	}
 
-	if (rlm_lua_unmarshall(&new, inst, request, L, da) < 0) return -1;
+	if (fr_lua_unmarshall(&new, inst, request, L, da) < 0) return -1;
 
 	/*
 	 *	If there was already a VP at that index we replace it
@@ -492,7 +450,7 @@ static int _lua_pair_iterator(lua_State *L)
 		return 1;
 	}
 
-	if (rlm_lua_marshall(request, L, vp) < 0) return -1;
+	if (fr_lua_marshall(request, L, vp) < 0) return -1;
 
 	return 1;
 }
@@ -547,7 +505,7 @@ static int _lua_list_iterator(lua_State *L)
 
 	lua_pushstring(L, vp->da->name);
 
-	if (rlm_lua_marshall(request, L, vp) < 0) return -1;
+	if (fr_lua_marshall(request, L, vp) < 0) return -1;
 
 	fr_cursor_next(cursor);
 
@@ -636,7 +594,7 @@ static int _lua_pair_accessor_init(lua_State *L)
  * @param L Lua interpreter.
  * @return true if were running with LuaJIT else false.
  */
-bool rlm_lua_isjit(lua_State *L)
+bool fr_lua_isjit(lua_State *L)
 {
 	bool ret = false;
 	RLM_LUA_STACK_SET();
@@ -650,7 +608,7 @@ done:
 	return ret;
 }
 
-char const *rlm_lua_version(lua_State *L)
+char const *fr_lua_version(lua_State *L)
 {
 	char const *version;
 
@@ -674,12 +632,12 @@ char const *rlm_lua_version(lua_State *L)
  *
  * Also check what was loaded there is a function and that it accepts the correct arguments.
  *
- * @param inst Current instance of rlm_lua
+ * @param inst Current instance of fr_lua
  * @param L the lua state
  * @param name of function to check.
  * @returns 0 on success (function is present and correct), or -1 on failure.
  */
-static int rlm_lua_check_func(rlm_lua_t const *inst, lua_State *L, char const *name)
+static int fr_lua_check_func(rlm_lua_t const *inst, lua_State *L, char const *name)
 {
 	int ret;
 	int type;
@@ -714,91 +672,6 @@ done:
 	return ret;
 }
 
-/** Initialise a new Lua/LuaJIT interpreter
- *
- * Creates a new lua_State and verifies all required functions have been loaded correctly.
- *
- * @param[in] out	Where to write a pointer to the new state.
- * @param[in] instance	Current instance of rlm_lua, a talloc marker
- *			context will be inserted into the context of instance
- *			to ensure the interpreter is freed when instance data is freed.
- * @return 0 on success else -1.
- */
-int rlm_lua_init(lua_State **out, rlm_lua_t const *instance)
-{
-	rlm_lua_t const		*inst = instance;
-	lua_State		*L;
-
-	fr_lua_aux_set_inst(inst);
-
-	L = luaL_newstate();
-	if (!L) {
-		ERROR("Failed initialising Lua state");
-		return -1;
-	}
-
-	luaL_openlibs(L);
-
-	/*
-	 *	Load the Lua file into our environment.
-	 */
-	if (luaL_loadfile(L, inst->module) != 0) {
-		ERROR("Failed loading file: %s", lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
-
-	error:
-		*out = NULL;
-		fr_lua_aux_set_inst(NULL);
-		lua_close(L);
-		return -1;
-	}
-
-	if (lua_pcall(L, 0, LUA_MULTRET, 0) != 0) {
-		ERROR("Failed executing script: %s", lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
-
-		goto error;
-	}
-
-	if (inst->jit) {
-		DEBUG4("Initialised new LuaJIT interpreter %p", L);
-		fr_lua_aux_jit_funcs_register(inst, L);
-	} else {
-		DEBUG4("Initialised new Lua interpreter %p", L);
-		fr_lua_aux_funcs_register(inst, L);
-	}
-
-	/*
-	 *	Setup the "fr" global table. with all RLM_MODULE_* values. e.g: "fr.reject", "fr.ok", ...
-	 */
-	fr_lua_rcode_table_register(L, "fr");
-
-	/*
-	 *	Verify all the functions were provided.
-	 */
-	if (rlm_lua_check_func(inst, L, inst->func_authorize)
-	    || rlm_lua_check_func(inst, L, inst->func_authenticate)
-#ifdef WITH_ACCOUNTING
-	    || rlm_lua_check_func(inst, L, inst->func_preacct)
-	    || rlm_lua_check_func(inst, L, inst->func_accounting)
-#endif
-	    || rlm_lua_check_func(inst, L, inst->func_checksimul)
-#ifdef WITH_PROXY
-	    || rlm_lua_check_func(inst, L, inst->func_pre_proxy)
-	    || rlm_lua_check_func(inst, L, inst->func_post_proxy)
-#endif
-	    || rlm_lua_check_func(inst, L, inst->func_post_auth)
-#ifdef WITH_COA
-	    || rlm_lua_check_func(inst, L, inst->func_recv_coa)
-	    || rlm_lua_check_func(inst, L, inst->func_send_coa)
-#endif
-	    || rlm_lua_check_func(inst, L, inst->func_detach)
-	    || rlm_lua_check_func(inst, L, inst->func_xlat)) {
-	 	goto error;
-	}
-
-	*out = L;
-	return 0;
-}
-
 /** Resolve a path string to a field value in Lua
  *
  * Parses a string in the format
@@ -809,7 +682,7 @@ int rlm_lua_init(lua_State **out, rlm_lua_t const *instance)
  * will be looked up in the global table.
  *
  */
-static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
+static int fr_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 {
 	char buff[512];
 	char const *p = field, *q;
@@ -851,7 +724,7 @@ static int rlm_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 	return 0;
 }
 
-int do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
+int fr_lua_run(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 {
 	fr_cursor_t 	cursor;
 	lua_State	*L = thread->interpreter;
@@ -883,7 +756,7 @@ int do_lua(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, ch
 	/*
 	 *	Get the function were going to be calling
 	 */
-	if (rlm_lua_get_field(L, request, funcname) < 0) {
+	if (fr_lua_get_field(L, request, funcname) < 0) {
 error:
 		fr_lua_aux_set_inst(NULL);
 		fr_lua_aux_set_request(NULL);
@@ -934,4 +807,131 @@ done:
 	fr_lua_aux_set_request(NULL);
 
 	return ret;
+}
+
+/*
+ * 	Initialise the table "fr." with all valid return codes.
+ */
+static int _lua_rcode_table_newindex(UNUSED lua_State *L)
+{
+	REQUEST	*request = fr_lua_aux_get_request();
+
+	RWDEBUG("You can't modify the table 'fr.*' (read-only)");
+
+	return 1;
+}
+
+static int _lua_rcode_table_index(lua_State *L)
+{
+	char const *key = lua_tostring(L, -1);
+	int ret;
+
+	ret = fr_str2int(mod_rcode_table, key, -1);
+	if (ret != -1) {
+		lua_pushinteger(L, ret);
+		return 1;
+	}
+
+	lua_pushfstring(L, "The fr.%s is not found", key);
+	return -1;
+}
+
+static void fr_lua_rcode_table_register(lua_State *L, char const *name)
+{
+	lua_newtable(L);
+	luaL_newmetatable(L, name);
+
+	lua_pushcfunction(L, _lua_rcode_table_index);
+	lua_setfield(L, -2, "__index");
+
+	lua_pushcfunction(L, _lua_rcode_table_newindex);
+	lua_setfield(L, -2, "__newindex");
+
+	lua_setmetatable(L, -2);
+	lua_setglobal(L, name);
+}
+
+/** Initialise a new Lua/LuaJIT interpreter
+ *
+ * Creates a new lua_State and verifies all required functions have been loaded correctly.
+ *
+ * @param[in] out	Where to write a pointer to the new state.
+ * @param[in] instance	Current instance of fr_lua, a talloc marker
+ *			context will be inserted into the context of instance
+ *			to ensure the interpreter is freed when instance data is freed.
+ * @return 0 on success else -1.
+ */
+int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
+{
+	rlm_lua_t const		*inst = instance;
+	lua_State		*L;
+
+	fr_lua_aux_set_inst(inst);
+
+	L = luaL_newstate();
+	if (!L) {
+		ERROR("Failed initialising Lua state");
+		return -1;
+	}
+
+	luaL_openlibs(L);
+
+	/*
+	 *	Load the Lua file into our environment.
+	 */
+	if (luaL_loadfile(L, inst->module) != 0) {
+		ERROR("Failed loading file: %s", lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
+
+	error:
+		*out = NULL;
+		fr_lua_aux_set_inst(NULL);
+		lua_close(L);
+		return -1;
+	}
+
+	if (lua_pcall(L, 0, LUA_MULTRET, 0) != 0) {
+		ERROR("Failed executing script: %s", lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
+
+		goto error;
+	}
+
+	if (inst->jit) {
+		DEBUG4("Initialised new LuaJIT interpreter %p", L);
+		fr_lua_aux_jit_funcs_register(inst, L);
+	} else {
+		DEBUG4("Initialised new Lua interpreter %p", L);
+		fr_lua_aux_funcs_register(inst, L);
+	}
+
+	/*
+	 *	Setup the "fr" global table. with all RLM_MODULE_* values. e.g: "fr.reject", "fr.ok", ...
+	 */
+	fr_lua_rcode_table_register(L, "fr");
+
+	/*
+	 *	Verify all the functions were provided.
+	 */
+	if (fr_lua_check_func(inst, L, inst->func_authorize)
+	    || fr_lua_check_func(inst, L, inst->func_authenticate)
+#ifdef WITH_ACCOUNTING
+	    || fr_lua_check_func(inst, L, inst->func_preacct)
+	    || fr_lua_check_func(inst, L, inst->func_accounting)
+#endif
+	    || fr_lua_check_func(inst, L, inst->func_checksimul)
+#ifdef WITH_PROXY
+	    || fr_lua_check_func(inst, L, inst->func_pre_proxy)
+	    || fr_lua_check_func(inst, L, inst->func_post_proxy)
+#endif
+	    || fr_lua_check_func(inst, L, inst->func_post_auth)
+#ifdef WITH_COA
+	    || fr_lua_check_func(inst, L, inst->func_recv_coa)
+	    || fr_lua_check_func(inst, L, inst->func_send_coa)
+#endif
+	    || fr_lua_check_func(inst, L, inst->func_detach)
+	    || fr_lua_check_func(inst, L, inst->func_xlat)) {
+	 	goto error;
+	}
+
+	*out = L;
+	return 0;
 }

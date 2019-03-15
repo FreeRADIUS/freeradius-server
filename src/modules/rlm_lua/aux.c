@@ -35,8 +35,8 @@ RCSID("$Id$")
 #include <lauxlib.h>
 #include <lualib.h>
 
-static _Thread_local REQUEST *rlm_lua_request;
-static _Thread_local rlm_lua_t const *rlm_lua_inst;
+static _Thread_local REQUEST *fr_lua_request;
+static _Thread_local rlm_lua_t const *fr_lua_inst;
 
 /** Lua function to output debug messages
  *
@@ -47,8 +47,8 @@ static _Thread_local rlm_lua_t const *rlm_lua_inst;
  */
 static int _aux_log_debug(lua_State *L)
 {
-	rlm_lua_t const		*inst = rlm_lua_inst;
-	REQUEST			*request = rlm_lua_request;
+	rlm_lua_t const		*inst = fr_lua_inst;
+	REQUEST			*request = fr_lua_request;
 	int			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -71,8 +71,8 @@ static int _aux_log_debug(lua_State *L)
  */
 static int _aux_log_info(lua_State *L)
 {
-	rlm_lua_t const		*inst = rlm_lua_inst;
-	REQUEST			*request = rlm_lua_request;
+	rlm_lua_t const		*inst = fr_lua_inst;
+	REQUEST			*request = fr_lua_request;
 	int 			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -96,8 +96,8 @@ static int _aux_log_info(lua_State *L)
  */
 static int _aux_log_warn(lua_State *L)
 {
-	rlm_lua_t const		*inst = rlm_lua_inst;
-	REQUEST			*request = rlm_lua_request;
+	rlm_lua_t const		*inst = fr_lua_inst;
+	REQUEST			*request = fr_lua_request;
 	int			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -120,8 +120,8 @@ static int _aux_log_warn(lua_State *L)
  */
 static int _aux_log_error(lua_State *L)
 {
-	rlm_lua_t const		*inst = rlm_lua_inst;
-	REQUEST			*request = rlm_lua_request;
+	rlm_lua_t const		*inst = fr_lua_inst;
+	REQUEST			*request = fr_lua_request;
 	int			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -140,7 +140,7 @@ static int _aux_log_error(lua_State *L)
  * For LuaJIT using the FFI is significantly faster than the Lua interface.
  * Help people wishing to use the FFI by inserting cdefs for standard functions.
  *
- * @param inst Current instance of the rlm_lua module.
+ * @param inst Current instance of the fr_lua module.
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
@@ -186,7 +186,7 @@ int fr_lua_aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
 
 /** Register auxiliary functions in the lua environment
  *
- * @param inst Current instance of the rlm_lua module.
+ * @param inst Current instance of the fr_lua module.
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
@@ -215,7 +215,7 @@ int fr_lua_aux_funcs_register(UNUSED rlm_lua_t const *inst, lua_State *L)
  */
 void fr_lua_aux_set_inst(rlm_lua_t const *inst)
 {
-	rlm_lua_inst = inst;
+	fr_lua_inst = inst;
 }
 
 /** Get the thread local instance
@@ -224,7 +224,7 @@ void fr_lua_aux_set_inst(rlm_lua_t const *inst)
  */
 rlm_lua_t const *fr_lua_aux_get_inst(void)
 {
-	return rlm_lua_inst;
+	return fr_lua_inst;
 }
 
 /** Set the thread local request
@@ -233,7 +233,7 @@ rlm_lua_t const *fr_lua_aux_get_inst(void)
  */
 void fr_lua_aux_set_request(REQUEST *request)
 {
-	rlm_lua_request = request;
+	fr_lua_request = request;
 }
 
 /** Get the thread local request
@@ -242,6 +242,6 @@ void fr_lua_aux_set_request(REQUEST *request)
  */
 REQUEST *fr_lua_aux_get_request(void)
 {
-	return rlm_lua_request;
+	return fr_lua_request;
 }
 
