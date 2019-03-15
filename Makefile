@@ -27,9 +27,11 @@ endif
 #  the debian packages.
 #
 ifneq "$(MAKECMDGOALS)" "deb"
+ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
+endif
 endif
 
 MFLAGS += --no-print-directory
@@ -45,7 +47,9 @@ export PROJECT_NAME := freeradius
 
 # And over-ride all of the other magic.
 ifneq "$(MAKECMDGOALS)" "deb"
+ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 include scripts/boiler.mk
+endif
 endif
 
 #
@@ -350,3 +354,18 @@ warnings:
 whitespace:
 	@for x in $$(git ls-files raddb/ src/); do unexpand $$x > $$x.bak; cp $$x.bak $$x; rm -f $$x.bak;done
 	@perl -p -i -e 'trim' $$(git ls-files src/)
+
+
+#
+#  Include crossbuild targets, to test building on lots of
+#  different OSes. Uses Docker.
+#
+ifneq ($(shell which docker),)
+include scripts/docker/crossbuild/crossbuild.mk
+else
+.PHONY: crossbuild crossbuild.help
+crossbuild:
+	@echo crossbuild requires Docker to be installed
+
+crossbuild.help: crossbuild
+endif
