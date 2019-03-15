@@ -38,6 +38,13 @@ RCSID("$Id$")
 static _Thread_local REQUEST *fr_lua_request;
 static _Thread_local rlm_lua_t const *fr_lua_inst;
 
+void fr_lua_aux_fr_register(lua_State *L)
+{
+	lua_newtable(L);
+	lua_setglobal(L, "fr");
+	lua_settop(L, 0);
+}
+
 /** Lua function to output debug messages
  *
  * Lua arguments are one or more strings. Each successive argument will be printed on a new line.
@@ -144,7 +151,7 @@ static int _aux_log_error(lua_State *L)
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
-int fr_lua_aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
+int fr_lua_aux_jit_log_register(rlm_lua_t const *inst, lua_State *L)
 {
 	if (luaL_dostring(L,"\
 		ffi = require(\"ffi\")\
@@ -163,16 +170,17 @@ int fr_lua_aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
 			]]\
 		fr_srv = ffi.load(\"freeradius-server\")\
 		fr_lua = ffi.load(\"freeradius-lua\")\
-		fr.debug = function(msg)\
+		fr.log = {}\
+		fr.log.debug = function(msg)\
 		   fr_srv.fr_log(16, \"%s\", msg)\
 		end\
-		fr.info = function(msg)\
+		fr.log.info = function(msg)\
 		   fr_srv.fr_log(3, \"%s\", msg)\
 		end\
-		fr.warn = function(msg)\
+		fr.log.warn = function(msg)\
 		   fr_srv.fr_log(5, \"%s\", msg)\
 		end\
-		fr.error = function(msg)\
+		fr.log.error = function(msg)\
 		   fr_srv.fr_log(4, \"%s\", msg)\
 		end\
 		") != 0) {
@@ -190,21 +198,28 @@ int fr_lua_aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
-int fr_lua_aux_funcs_register(UNUSED rlm_lua_t const *inst, lua_State *L)
+int fr_lua_aux_log_register(UNUSED rlm_lua_t const *inst, lua_State *L)
 {
+	// fr.{}
+	lua_getglobal(L, "fr");
+	luaL_checktype(L, -1, LUA_TTABLE);
+
+	// fr.log.{}
 	lua_newtable(L);
-	lua_pushcfunction(L, _aux_log_debug);
-	lua_setfield(L, -2, "debug");
+	{
+		lua_pushcfunction(L, _aux_log_debug);
+		lua_setfield(L, -2, "debug");
 
-	lua_pushcfunction(L, _aux_log_info);
-	lua_setfield(L, -2, "info");
+		lua_pushcfunction(L, _aux_log_info);
+		lua_setfield(L, -2, "info");
 
-	lua_pushcfunction(L, _aux_log_warn);
-	lua_setfield(L, -2, "warn");
+		lua_pushcfunction(L, _aux_log_warn);
+		lua_setfield(L, -2, "warn");
 
-	lua_pushcfunction(L, _aux_log_error);
-	lua_setfield(L, -2, "error");
-	lua_setglobal(L, "fr");
+		lua_pushcfunction(L, _aux_log_error);
+		lua_setfield(L, -2, "error");
+	}
+	lua_setfield(L, -2, "log");
 
 	return 0;
 }

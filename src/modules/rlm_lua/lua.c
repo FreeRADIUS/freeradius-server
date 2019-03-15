@@ -724,9 +724,41 @@ static int fr_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 	return 0;
 }
 
+static void _lua_fr_request_register(lua_State *L, REQUEST *request)
+{
+	// fr = {}
+	lua_getglobal(L, "fr");
+	luaL_checktype(L, -1, LUA_TTABLE);
+
+	// fr = { request {} }
+	lua_newtable(L);
+
+	if (request) {
+		fr_cursor_t 	cursor;
+
+		/* Attribute list table */
+		fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da_tag);
+		fr_cursor_init(&cursor, &request->packet->vps);
+
+		/*
+		 *	Setup the environment
+		 */
+		lua_pushlightuserdata(L, &cursor);
+		lua_pushcclosure(L, _lua_list_iterator_init, 1);
+		lua_setfield(L, -2, "pairs");
+
+		lua_newtable(L);		/* Attribute list meta-table */
+		lua_pushinteger(L, PAIR_LIST_REQUEST);
+		lua_pushcclosure(L, _lua_pair_accessor_init, 1);
+		lua_setfield(L, -2, "__index");
+		lua_setmetatable(L, -2);
+	}
+
+	lua_setfield(L, -2, "request");
+}
+
 int fr_lua_run(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request, char const *funcname)
 {
-	fr_cursor_t 	cursor;
 	lua_State	*L = thread->interpreter;
 	int		ret = RLM_MODULE_OK;
 
@@ -735,23 +767,7 @@ int fr_lua_run(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request
 
 	RDEBUG2("Calling %s() in interpreter %p", funcname, L);
 
-	fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da_tag);
-	fr_cursor_init(&cursor, &request->packet->vps);
-
-	/*
-	 *	Setup the environment
-	 */
-	lua_newtable(L);		/* Attribute list table */
-	lua_pushlightuserdata(L, &cursor);
-	lua_pushcclosure(L, _lua_list_iterator_init, 1);
-	lua_setfield(L, -2, "pairs");
-	lua_newtable(L);		/* Attribute list meta-table */
-	lua_pushinteger(L, PAIR_LIST_REQUEST);
-	lua_pushcclosure(L, _lua_pair_accessor_init, 1);
-	lua_setfield(L, -2, "__index");
-
-	lua_setmetatable(L, -2);
-	lua_setglobal(L, "request");
+	_lua_fr_request_register(L, request);
 
 	/*
 	 *	Get the function were going to be calling
@@ -816,7 +832,7 @@ static int _lua_rcode_table_newindex(UNUSED lua_State *L)
 {
 	REQUEST	*request = fr_lua_aux_get_request();
 
-	RWDEBUG("You can't modify the table 'fr.*' (read-only)");
+	RWDEBUG("You can't modify the table 'fr.rcode.{}' (read-only)");
 
 	return 1;
 }
@@ -832,23 +848,43 @@ static int _lua_rcode_table_index(lua_State *L)
 		return 1;
 	}
 
-	lua_pushfstring(L, "The fr.%s is not found", key);
+	lua_pushfstring(L, "The fr.rcode.%s is not found", key);
 	return -1;
 }
 
-static void fr_lua_rcode_table_register(lua_State *L, char const *name)
+/*
+ *	As can be seen in http://luajit.org/extensions.html, the pairs() is disabled by default.
+ *	ps: We add pairs() method just to inform the user that it does not work.
+ */
+static int _lua_rcode_table_pairs(lua_State *L)
 {
+	lua_pushfstring(L, "The pairs(fr.rcode) is not available. Access directly! e.g: 'fr.rcode.reject'");
+	return -1;
+}
+
+static void fr_lua_rcode_register(lua_State *L, char const *name)
+{
+	const luaL_Reg meta_rcode[] = {
+		{ "__index",    _lua_rcode_table_index },
+		{ "__newindex", _lua_rcode_table_newindex },
+		{ "__pairs",    _lua_rcode_table_pairs },
+#ifdef HAVE_LUAJIT_H
+		{ "pairs",      _lua_rcode_table_pairs },
+#endif
+		{ NULL, NULL }
+	};
+
+	// fr = {}
+	lua_getglobal(L, "fr");
+	luaL_checktype(L, -1, LUA_TTABLE);
+
+	// fr = { rcode = {} }
 	lua_newtable(L);
-	luaL_newmetatable(L, name);
-
-	lua_pushcfunction(L, _lua_rcode_table_index);
-	lua_setfield(L, -2, "__index");
-
-	lua_pushcfunction(L, _lua_rcode_table_newindex);
-	lua_setfield(L, -2, "__newindex");
-
-	lua_setmetatable(L, -2);
-	lua_setglobal(L, name);
+	{
+		luaL_register(L, name, meta_rcode);
+		lua_setmetatable(L, -2);
+		lua_setfield(L, -2, name);
+	}
 }
 
 /** Initialise a new Lua/LuaJIT interpreter
@@ -895,18 +931,27 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 		goto error;
 	}
 
+	/*
+	 * 	Setup "fr.{}"
+	 */
+	fr_lua_aux_fr_register(L);
+
+	/*
+	 *	Setup "fr.log.{}"
+	 */
 	if (inst->jit) {
 		DEBUG4("Initialised new LuaJIT interpreter %p", L);
-		fr_lua_aux_jit_funcs_register(inst, L);
+		fr_lua_aux_jit_log_register(inst, L);
 	} else {
 		DEBUG4("Initialised new Lua interpreter %p", L);
-		fr_lua_aux_funcs_register(inst, L);
+		fr_lua_aux_log_register(inst, L);
 	}
 
 	/*
-	 *	Setup the "fr" global table. with all RLM_MODULE_* values. e.g: "fr.reject", "fr.ok", ...
+	 *	Setup the "fr.rcode.{}"  with all RLM_MODULE_* 
+	 * 	e.g: "fr.rcode.reject", "fr.rcode.ok", ...
 	 */
-	fr_lua_rcode_table_register(L, "fr");
+	fr_lua_rcode_register(L, "rcode");
 
 	/*
 	 *	Verify all the functions were provided.
