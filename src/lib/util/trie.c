@@ -74,7 +74,7 @@ RCSID("$Id$")
  *  would have only one edge.
  */
 #ifndef NO_PATH_COMPRESSION
-#define WITH_PATH_COMPRESSION
+//#define WITH_PATH_COMPRESSION
 #endif
 
 #define MAX_KEY_BYTES (256)
@@ -117,6 +117,20 @@ DIAG_ON(unused-macros)
 // @todo - generalized function to normalize the trie.
 
 
+#ifdef WITH_PATH_COMPRESSION
+static uint8_t start_bit_mask[8] = {
+	0xff, 0x7f, 0x3f, 0x1f,
+	0x0f, 0x07, 0x03, 0x01
+};
+#endif
+
+static uint8_t end_bit_mask[8] = {
+	0x80, 0xc0, 0xe0, 0xf0,
+	0xf8, 0xfc, 0xfe, 0xff,
+};
+
+
+#if defined(WITH_PATH_COMPRESSION) || defined(TESTING)
 /*
  *	Table of how many leading bits there are in KEY1^KEY2.
  */
@@ -188,18 +202,6 @@ static uint8_t lcp_end_bit[9] = {
 	0x02,
 	0x01,
 	0x00
-};
-
-#ifdef WITH_PATH_COMPRESSION
-static uint8_t start_bit_mask[8] = {
-	0xff, 0x7f, 0x3f, 0x1f,
-	0x0f, 0x07, 0x03, 0x01
-};
-#endif
-
-static uint8_t end_bit_mask[8] = {
-	0x80, 0xc0, 0xe0, 0xf0,
-	0xf8, 0xfc, 0xfe, 0xff,
 };
 
 
@@ -336,7 +338,7 @@ done:
 	fr_cond_assert(lcp <= keylen2);
 	return lcp;
 }
-
+#endif
 
 //#define HEX_DUMP
 
