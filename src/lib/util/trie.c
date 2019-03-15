@@ -498,6 +498,8 @@ typedef struct {
 */
 
 
+/* ALLOC FUNCTIONS */
+
 static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, int bits)
 {
 	fr_trie_node_t *node;
@@ -566,61 +568,6 @@ static void fr_trie_free(fr_trie_t *trie)
 }
 
 
-static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_node_t *node, int bits)
-{
-	fr_trie_node_t *split;
-	int i, remaining_bits;
-
-	if (node->type != FR_TRIE_NODE) return NULL;
-	if ((bits == 0) || (bits >= node->bits)) {
-		fr_strerror_printf("invalid value for split (%d / %d)", bits, node->bits);
-		return NULL;
-	}
-
-	split = fr_trie_node_alloc(ctx, parent, bits);
-	if (!split) return NULL;
-
-	remaining_bits = node->bits - bits;
-
-	/*
-	 *	Allocate the children.  For now, just brute-force all
-	 *	of the children.  We take a later pass at optimizing this.
-	 */
-	for (i = 0; i < (1 << bits); i++) {
-		int j;
-		fr_trie_node_t *child;
-
-		child = fr_trie_node_alloc(ctx, parent, remaining_bits);
-		if (!child) {
-			fr_trie_free((fr_trie_t *) split);
-			return NULL;
-		}
-
-		for (j = 0; j < (1 << remaining_bits); j++) {
-			if (!node->trie[(i << remaining_bits) + j]) continue;
-
-			child->trie[j] = node->trie[(i << remaining_bits) + j];
-			child->trie[j]->parent = (fr_trie_t *) split;
-			node->trie[(i << remaining_bits) + j] = NULL; /* so we don't free it when freeing 'node' */
-			child->used++;
-		}
-
-		if (!child->used) {
-			talloc_free(child); /* no children, so no need to recurse */
-			continue;
-		}
-
-		split->trie[i] = (fr_trie_t *) child;
-		split->used++;
-	}
-
-	/*
-	 *	Note that we do NOT free "node".  The caller still
-	 *	needs it for some activies.
-	 */
-	return split;
-}
-
 static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, void *data)
 {
 	fr_trie_user_t *user;
@@ -688,7 +635,81 @@ static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, ui
 
 	return path;
 }
+#endif	/* WITH_PATH_COMPRESSION */
 
+/** Allocate a trie
+ *
+ * @param ctx The talloc ctx
+ * @return
+ *	- NULL on error
+ *	- fr_trie_node_t on success
+ */
+fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
+{
+	/*
+	 *	The trie itself is just a user node with user data that is the talloc ctx
+	 */
+	return (fr_trie_t *) fr_trie_user_alloc(ctx, NULL, ctx);
+}
+
+/* SPLIT FUNCTIONS */
+
+static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_node_t *node, int bits)
+{
+	fr_trie_node_t *split;
+	int i, remaining_bits;
+
+	if (node->type != FR_TRIE_NODE) return NULL;
+	if ((bits == 0) || (bits >= node->bits)) {
+		fr_strerror_printf("invalid value for split (%d / %d)", bits, node->bits);
+		return NULL;
+	}
+
+	split = fr_trie_node_alloc(ctx, parent, bits);
+	if (!split) return NULL;
+
+	remaining_bits = node->bits - bits;
+
+	/*
+	 *	Allocate the children.  For now, just brute-force all
+	 *	of the children.  We take a later pass at optimizing this.
+	 */
+	for (i = 0; i < (1 << bits); i++) {
+		int j;
+		fr_trie_node_t *child;
+
+		child = fr_trie_node_alloc(ctx, parent, remaining_bits);
+		if (!child) {
+			fr_trie_free((fr_trie_t *) split);
+			return NULL;
+		}
+
+		for (j = 0; j < (1 << remaining_bits); j++) {
+			if (!node->trie[(i << remaining_bits) + j]) continue;
+
+			child->trie[j] = node->trie[(i << remaining_bits) + j];
+			child->trie[j]->parent = (fr_trie_t *) split;
+			node->trie[(i << remaining_bits) + j] = NULL; /* so we don't free it when freeing 'node' */
+			child->used++;
+		}
+
+		if (!child->used) {
+			talloc_free(child); /* no children, so no need to recurse */
+			continue;
+		}
+
+		split->trie[i] = (fr_trie_t *) child;
+		split->used++;
+	}
+
+	/*
+	 *	Note that we do NOT free "node".  The caller still
+	 *	needs it for some activies.
+	 */
+	return split;
+}
+
+#ifdef WITH_PATH_COMPRESSION
 static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_path_t *path, int start_bit, int lcp)
 {
 	fr_trie_path_t *split, *child;
@@ -776,20 +797,9 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 }
 #endif
 
-/** Allocate a trie
- *
- * @param ctx The talloc ctx
- * @return
- *	- NULL on error
- *	- fr_trie_node_t on success
- */
-fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
-{
-	/*
-	 *	The trie itself is just a user node with user data that is the talloc ctx
-	 */
-	return (fr_trie_t *) fr_trie_user_alloc(ctx, NULL, ctx);
-}
+/* MATCH FUNCTIONS */
+
+typedef void *(*fr_trie_key_match_t)(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact);
 
 static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact);
 
@@ -828,7 +838,6 @@ static void *fr_trie_user_match(fr_trie_t *trie, uint8_t const *key, int start_b
 	return user->data;	
 }
 
-
 static void *fr_trie_node_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
 {
 	uint16_t chunk;
@@ -855,8 +864,6 @@ static void *fr_trie_path_match(fr_trie_t *trie, uint8_t const *key, int start_b
 	return fr_trie_key_match(path->trie, key, start_bit + path->bits, end_bit, exact);
 }
 #endif
-
-typedef void *(*fr_trie_key_match_t)(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact);
 
 static fr_trie_key_match_t trie_match[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = fr_trie_user_match,
@@ -912,6 +919,49 @@ static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bi
 	 */
 	return trie_match[trie->type](trie, key, start_bit, end_bit, exact);
 }
+
+/** Lookup a key in a trie and return user ctx, if any
+ *
+ *  The key may be LONGER than entries in the trie.  In which case the
+ *  closest match is returned.
+ *
+ * @param ft	 the trie
+ * @param key	 the key bytes
+ * @param keylen length in bits of the key
+ * @return
+ *	- NULL on not found
+ *	- void* user ctx on found
+ */
+void *fr_trie_lookup(fr_trie_t const *ft, void const *key, size_t keylen)
+{
+	if (keylen > MAX_KEY_BITS) return NULL;
+
+	if (!ft->trie) return NULL;
+
+	return fr_trie_key_match(ft->trie, key, 0, keylen, false);
+}
+
+/** Match a key and length in a trie and return user ctx, if any
+ *
+ * Only the exact match is returned.
+ *
+ * @param ft	 the trie
+ * @param key	 the key bytes
+ * @param keylen length in bits of the key
+ * @return
+ *	- NULL on not found
+ *	- void* user ctx on found
+ */
+void *fr_trie_match(fr_trie_t const *ft, void const *key, size_t keylen)
+{
+	if (keylen > MAX_KEY_BITS) return NULL;
+
+	if (!ft->trie) return NULL;
+
+	return fr_trie_key_match(ft->trie, key, 0, keylen, true);
+}
+
+/* INSERT FUNCTIONS */
 
 static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data);
 
@@ -1319,6 +1369,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *da
 	return 0;
 }
 
+/* REMOVE FUNCTIONS */
 static void *fr_trie_key_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit);
 
 typedef void *(*fr_trie_key_remove_t)(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit);
@@ -1471,46 +1522,7 @@ void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen)
 	return fr_trie_key_remove(user->data, ft, &ft->trie, key, 0, (int) keylen);
 }
 
-/** Lookup a key in a trie and return user ctx, if any
- *
- *  The key may be LONGER than entries in the trie.  In which case the
- *  closest match is returned.
- *
- * @param ft	 the trie
- * @param key	 the key bytes
- * @param keylen length in bits of the key
- * @return
- *	- NULL on not found
- *	- void* user ctx on found
- */
-void *fr_trie_lookup(fr_trie_t const *ft, void const *key, size_t keylen)
-{
-	if (keylen > MAX_KEY_BITS) return NULL;
-
-	if (!ft->trie) return NULL;
-
-	return fr_trie_key_match(ft->trie, key, 0, keylen, false);
-}
-
-/** Match a key and length in a trie and return user ctx, if any
- *
- * Only the exact match is returned.
- *
- * @param ft	 the trie
- * @param key	 the key bytes
- * @param keylen length in bits of the key
- * @return
- *	- NULL on not found
- *	- void* user ctx on found
- */
-void *fr_trie_match(fr_trie_t const *ft, void const *key, size_t keylen)
-{
-	if (keylen > MAX_KEY_BITS) return NULL;
-
-	if (!ft->trie) return NULL;
-
-	return fr_trie_key_match(ft->trie, key, 0, keylen, true);
-}
+/* MISCELLANEOUS FUNCTIONS */
 
 typedef struct fr_trie_callback_t fr_trie_callback_t;
 
