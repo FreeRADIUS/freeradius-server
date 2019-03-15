@@ -374,7 +374,7 @@ static uint16_t get_chunk(uint8_t const *key, int num_bits, int start_bit, int e
 	chunk = key[BYTEOF(start_bit)];
 	chunk <<= 8;
 
-	if ((start_bit + 8) < end_bit) {
+	if (BYTEOF(start_bit + num_bits) != BYTEOF(start_bit)) {
 		chunk |= key[BYTEOF(start_bit) + 1];
 	}
 
