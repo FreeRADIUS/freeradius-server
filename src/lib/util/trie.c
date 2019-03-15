@@ -74,7 +74,7 @@ RCSID("$Id$")
  *  would have only one edge.
  */
 #ifndef NO_PATH_COMPRESSION
-#define WITH_PATH_COMPRESSION
+//#define WITH_PATH_COMPRESSION
 #endif
 
 #define MAX_KEY_BYTES (256)
@@ -1190,11 +1190,9 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		 */
 		parent = (fr_trie_t *) split;
 		*trie_p = parent;
-		path = (fr_trie_path_t *) split->trie;
 		trie_p = &split->trie;
 
 		start_bit += lcp;
-		bits -= lcp;
 
 		/*
 		 *	Recurse to insert the key into the child node.
