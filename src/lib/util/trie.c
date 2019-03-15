@@ -360,13 +360,12 @@ static void hex_dump(FILE *fp, char const *msg, uint8_t const *key, int start_bi
 /** Return a chunk of a key (in the low bits) for use in 2^N node de-indexing
  *
  */
-static uint16_t get_chunk(uint8_t const *key, int num_bits, int start_bit, int end_bit)
+static uint16_t get_chunk(uint8_t const *key, int start_bit, int num_bits)
 {
 	uint16_t chunk;
 
 	fr_cond_assert(num_bits > 0);
 	fr_cond_assert(num_bits <= 8);
-	fr_cond_assert(start_bit < end_bit);
 
 	/*
 	 *	Load the byte
@@ -617,7 +616,7 @@ static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, ui
 	path->type = FR_TRIE_PATH;
 	path->bits = end_bit - start_bit;
 	path->parent = parent;
-	path->chunk = get_chunk(key, path->bits, start_bit, end_bit);
+	path->chunk = get_chunk(key, start_bit, path->bits);
 
 	/*
 	 *	Copy the key over, being sure to zero out unused bits
@@ -787,7 +786,7 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 	node = fr_trie_node_alloc(ctx, parent, bits);
 	if (!node) return NULL;
 
-	chunk = get_chunk(key, node->bits, start_bit, end_bit);
+	chunk = get_chunk(key, start_bit, node->bits);
 	node->trie[chunk] = fr_trie_key_alloc(ctx, (fr_trie_t *) node, key, start_bit + node->bits, end_bit, data);
 	if (!node->trie[chunk]) {
 		talloc_free(node); /* no children */
@@ -845,7 +844,7 @@ static void *fr_trie_node_match(fr_trie_t *trie, uint8_t const *key, int start_b
 	uint16_t chunk;
 	fr_trie_node_t *node = (fr_trie_node_t *) trie;
 
-	chunk = get_chunk(key, node->bits, start_bit, end_bit);
+	chunk = get_chunk(key, start_bit, node->bits);
 	if (!node->trie[chunk]) {
 		MPRINT2("no match for node chunk %02x at %d\n", chunk, __LINE__);
 		return NULL;
@@ -860,7 +859,7 @@ static void *fr_trie_path_match(fr_trie_t *trie, uint8_t const *key, int start_b
 	uint16_t chunk;
 	fr_trie_path_t *path = (fr_trie_path_t *) trie;
 
-	chunk = get_chunk(key, path->bits, start_bit, end_bit);
+	chunk = get_chunk(key, start_bit, path->bits);
 	if (chunk != path->chunk) return NULL;
 
 	return fr_trie_key_match(path->trie, key, start_bit + path->bits, end_bit, exact);
@@ -1020,7 +1019,7 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		node = split;
 	}
 
-	chunk = get_chunk(key, node->bits, start_bit, end_bit);
+	chunk = get_chunk(key, start_bit, node->bits);
 
 	/*
 	 *	The current node exactly fits the key bits.
@@ -1130,7 +1129,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		MPRINT2("forcing bits %d\n", bits);
 
 	} else {	/* the key is equal in length to, or longer than the path */
-		chunk = get_chunk(key, path->bits, start_bit, end_bit);
+		chunk = get_chunk(key, start_bit, path->bits);
 
 		/*
 		 *	The chunk matches exactly.  Recurse to
@@ -1226,7 +1225,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	node = fr_trie_node_alloc(ctx, parent, bits);
 	if (!node) return -1; /* @todo - don't leave "path" split in two */
 
-	chunk = get_chunk(key, node->bits, start_bit, end_bit);
+	chunk = get_chunk(key, start_bit, node->bits);
 	node->trie[chunk] = fr_trie_key_alloc(ctx, (fr_trie_t *) node, key, start_bit + node->bits, end_bit, data);
 	if (!node->trie[chunk]) {
 		MPRINT("Failed key_alloc at %d\n", __LINE__);
@@ -1410,7 +1409,7 @@ static void *fr_trie_node_remove(TALLOC_CTX *ctx, UNUSED fr_trie_t *parent, fr_t
 	uint32_t chunk;
 	void *data;
 
-	chunk = get_chunk(key, node->bits, start_bit, end_bit);
+	chunk = get_chunk(key, start_bit, node->bits);
 	if (!node->trie[chunk]) return NULL;
 
 	data = fr_trie_key_remove(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit);
@@ -1450,7 +1449,7 @@ static void *fr_trie_path_remove(TALLOC_CTX *ctx, UNUSED fr_trie_t *parent, fr_t
 	uint32_t chunk;
 	void *data;
 
-	chunk = get_chunk(key, path->bits, start_bit, end_bit);
+	chunk = get_chunk(key, start_bit, path->bits);
 
 	/*
 	 *	No match, can't remove it.
