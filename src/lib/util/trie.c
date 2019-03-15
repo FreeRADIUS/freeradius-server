@@ -1318,7 +1318,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **tr
 	    (trie->type >= FR_TRIE_MAX) ||
 	    !trie_insert[trie->type]) {
 		fr_strerror_printf("unknown trie type %d in insert", trie->type);
-		return NULL;
+		return -1;
 	}
 
 	return trie_insert[trie->type](ctx, parent, trie_p, key, start_bit, end_bit, data);
@@ -1421,6 +1421,13 @@ static void *fr_trie_node_remove(TALLOC_CTX *ctx, UNUSED fr_trie_t *parent, fr_t
 	 */
 	node->used--;
 	if (node->used > 0) return data;
+
+	/*
+	 *	@todo - if we have path compression, and
+	 *	node->used==1, then create a fr_trie_path_t from the
+	 *	chunk, and concatenate it (if necessary) to any
+	 *	trailing path compression node.
+	 */
 
 	/*
 	 *	Our entire node is empty.  Delete it as we walk back up the trie.
