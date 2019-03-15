@@ -92,9 +92,9 @@ static sql_state_entry_t sql_state_table[] = {
 	 *	54011	too_many_columns
 	 *	54023	too_many_arguments
 	 */
-//	{ "54", "Program limit exceeded",				RLM_SQL_QUERY_INVALID },
+	{ "54", "Program limit exceeded",				RLM_SQL_QUERY_INVALID },
 
-//	{ "55", "Object not in prerequisite state",			RLM_SQL_ERROR },
+	{ "55", "Object not in prerequisite state",			RLM_SQL_ERROR },
 
 	/*
 	 *	Error seen when NOWAIT is used to abort queries that involve rows
