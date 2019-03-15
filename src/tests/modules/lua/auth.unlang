@@ -1,13 +1,13 @@
 # fr.*
 lmod1_check_fr_istable
-if (!ok) {
+if (!noop) {
     test_fail
 } else {
     test_pass
 }
 
 lmod2_check_fr_values
-if (!ok) {
+if (!noop) {
     test_fail
 } else {
     test_pass
@@ -27,21 +27,28 @@ if (!ok) {
     test_pass
 }
 
-lmod5_check_if_return_is_string_ok
-if (!ok) {
+lmod5_check_if_return_is_string_noop
+if (!noop) {
     test_fail
 } else {
     test_pass
 }
 
-lmod6_check_if_return_is_const_ok
-if (!ok) {
+lmod6_check_if_return_is_const_noop
+if (!noop) {
     test_fail
 } else {
     test_pass
 }
 
 lmod7_check_fr_overwrite
+if (!noop) {
+    test_fail
+} else {
+    test_pass
+}
+
+lmod8_check_request
 if (!noop) {
     test_fail
 } else {

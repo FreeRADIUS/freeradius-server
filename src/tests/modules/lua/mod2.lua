@@ -1,17 +1,18 @@
 function authorize()
-	for k, v in pairs(fr) do
-		-- print("debug: table fr = { k: "..k.. "=("..type(k).."), v: "..v.."=("..type(v)..") }")
-
-		if not type(k) == "string" then
-			print("error: the k should be a string")
-			return fr.fail
-		end
-
-		if not type(v) == "number" then
-			print("error: the v should be a number")
-			return fr.fail
-		end
+	if not type(fr.rcode) == "table" then 
+		print("error: The 'fr.rcode.{}' should be table")
+		return fr.rcode.fail
 	end
 
-	return fr.ok
+	if not type(fr.log) == "table" then 
+		print("error: The 'fr.log.{}' should be table")
+		return fr.rcode.fail
+	end
+
+	if not type(fr.request) == "table" then 
+		print("error: The 'fr.request.{}' should be table")
+		return fr.rcode.fail
+	end
+
+	return fr.rcode.noop
 end
