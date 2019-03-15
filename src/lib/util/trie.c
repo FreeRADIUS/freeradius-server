@@ -986,7 +986,7 @@ static int fr_trie_user_insert(TALLOC_CTX *ctx, UNUSED fr_trie_t *parent, fr_tri
 	 *	it.
 	 */
 	if (fr_trie_key_insert(ctx, (fr_trie_t *) user, &user->trie, key, start_bit, end_bit, data) < 0) {
-		MPRINT("failed key_insert at %d\n", __LINE__);
+//		fr_strerror_printf("failed key_insert at %d\n", __LINE__);
 		return -1;
 	}
 
@@ -1011,7 +1011,7 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 
 		split = fr_trie_node_split(ctx, parent, node, (start_bit + node->bits) - end_bit);
 		if (!split) {
-			MPRINT("Failed splitting node at %d\n", __LINE__);
+			fr_strerror_printf("Failed splitting node at %d\n", __LINE__);
 			return -1;
 		}
 
@@ -1044,7 +1044,7 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		 *	data.
 		 */
 		if (node->trie[chunk]->type == FR_TRIE_USER) {
-			MPRINT("already has a user node at %d\n", __LINE__);
+			fr_strerror_printf("already has a user node at %d\n", __LINE__);
 
 		fail:
 			if (trie_to_free) fr_trie_free(trie_to_free);
@@ -1059,7 +1059,7 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		 */
 		user = fr_trie_user_alloc(ctx, (fr_trie_t *) node, data);
 		if (!user) {
-			MPRINT("Failed user_alloc at %d\n", __LINE__);
+			fr_strerror_printf("Failed user_alloc at %d\n", __LINE__);
 			goto fail;
 		}
 
@@ -1086,7 +1086,7 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	if (!node->trie[chunk]) {
 		node->trie[chunk] = fr_trie_key_alloc(ctx, (fr_trie_t *) node, key, start_bit + node->bits, end_bit, data);
 		if (!node->trie[chunk]) {
-			MPRINT("Failed key_alloc at %d\n", __LINE__);
+			fr_strerror_printf("Failed key_alloc at %d\n", __LINE__);
 			goto fail;
 		}
 		goto add_new;
@@ -1179,7 +1179,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 
 		split = fr_trie_path_split(ctx, parent, path, start_bit2, lcp);
 		if (!split) {
-			MPRINT("failed path split at %d\n", __LINE__);
+			fr_strerror_printf("failed path split at %d\n", __LINE__);
 			return -1;
 		}
 
@@ -1274,7 +1274,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	 */
 	split = fr_trie_path_split(ctx, parent, path, start_bit2, node->bits);
 	if (!split) {
-		MPRINT("failed path split at %d\n", __LINE__);
+		fr_strerror_printf("failed path split at %d\n", __LINE__);
 		return -1;
 	}
 
