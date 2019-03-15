@@ -934,11 +934,15 @@ static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bi
  */
 void *fr_trie_lookup(fr_trie_t const *ft, void const *key, size_t keylen)
 {
+	fr_trie_user_t *user;
+
 	if (keylen > MAX_KEY_BITS) return NULL;
 
 	if (!ft->trie) return NULL;
 
-	return fr_trie_key_match(ft->trie, key, 0, keylen, false);
+	memcpy(&user, &ft, sizeof(user)); /* const issues */
+
+	return fr_trie_key_match(user->trie, key, 0, keylen, false);
 }
 
 /** Match a key and length in a trie and return user ctx, if any
@@ -954,11 +958,15 @@ void *fr_trie_lookup(fr_trie_t const *ft, void const *key, size_t keylen)
  */
 void *fr_trie_match(fr_trie_t const *ft, void const *key, size_t keylen)
 {
+	fr_trie_user_t *user;
+
 	if (keylen > MAX_KEY_BITS) return NULL;
 
 	if (!ft->trie) return NULL;
 
-	return fr_trie_key_match(ft->trie, key, 0, keylen, true);
+	memcpy(&user, &ft, sizeof(user)); /* const issues */
+
+	return fr_trie_key_match(user->trie, key, 0, keylen, true);
 }
 
 /* INSERT FUNCTIONS */
@@ -1344,6 +1352,8 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *da
 		return -1;
 	}
 
+	user = (fr_trie_user_t *) ft;
+
 	/*
 	 *	Do a lookup before insertion.  If we tried to insert
 	 *	the key with new nodes and then discovered a conflict,
@@ -1351,7 +1361,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *da
 	 *	ensures that the insertion can modify the trie in
 	 *	place without worry.
 	 */
-	if (fr_trie_key_match(ft->trie, key, 0, keylen, true) != NULL) {
+	if (fr_trie_key_match(user->trie, key, 0, keylen, true) != NULL) {
 		fr_strerror_printf("Cannot insert due to pre-existing key");
 		return -1;
 	}
@@ -1359,14 +1369,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *da
 	memcpy(&my_data, &data, sizeof(data)); /* const issues */
 	MPRINT2("No match for data, inserting...\n");
 
-	user = (fr_trie_user_t *) ft;
-
-	if (fr_trie_key_insert(user->data, ft, &ft->trie, key, 0, keylen, my_data) < 0) {
-		MPRINT("failed key_insert at %d\n", __LINE__);
-		return -1;
-	}
-
-	return 0;
+	return fr_trie_key_insert(user->data, (fr_trie_t *) user, &user->trie, key, 0, keylen, my_data);
 }
 
 /* REMOVE FUNCTIONS */
@@ -1524,9 +1527,12 @@ void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen)
 
 	if (!ft->trie) return NULL;
 
-	user = (fr_trie_user_t *) ft->trie;
+	user = (fr_trie_user_t *) ft;
 
-	return fr_trie_key_remove(user->data, ft, &ft->trie, key, 0, (int) keylen);
+	/*
+	 *	Remove the user trie, not ft->trie.
+	 */
+	return fr_trie_key_remove(user->data, (fr_trie_t *) user, &user->trie, key, 0, (int) keylen);
 }
 
 /* MISCELLANEOUS FUNCTIONS */
