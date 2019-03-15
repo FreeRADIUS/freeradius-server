@@ -50,17 +50,8 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("func_accounting", FR_TYPE_STRING, rlm_lua_t, func_accounting), NULL},
 	{ FR_CONF_OFFSET("func_preacct", FR_TYPE_STRING, rlm_lua_t, func_preacct), NULL},
 #endif
-	{ FR_CONF_OFFSET("func_checksimul", FR_TYPE_STRING, rlm_lua_t, func_checksimul), NULL},
 	{ FR_CONF_OFFSET("func_xlat", FR_TYPE_STRING, rlm_lua_t, func_xlat), NULL},
-#ifdef WITH_PROXY
-	{ FR_CONF_OFFSET("func_pre_proxy", FR_TYPE_STRING, rlm_lua_t, func_pre_proxy), NULL},
-	{ FR_CONF_OFFSET("func_post_proxy", FR_TYPE_STRING, rlm_lua_t, func_post_proxy), NULL},
-#endif
 	{ FR_CONF_OFFSET("func_post_auth", FR_TYPE_STRING, rlm_lua_t, func_post_auth), NULL},
-#ifdef WITH_COA
-	{ FR_CONF_OFFSET("func_recv_coa", FR_TYPE_STRING, rlm_lua_t, func_recv_coa), NULL},
-	{ FR_CONF_OFFSET("func_send_coa", FR_TYPE_STRING, rlm_lua_t, func_send_coa), NULL},
-#endif
 
 	CONF_PARSER_TERMINATOR
 };
@@ -77,11 +68,8 @@ DO_LUA(authorize)
 DO_LUA(authenticate)
 DO_LUA(preacct)
 DO_LUA(accounting)
-DO_LUA(pre_proxy)
-DO_LUA(post_proxy)
 DO_LUA(post_auth)
-DO_LUA(recv_coa)
-DO_LUA(send_coa)
+
 
 /** Free any thread specific interpreters
  *
@@ -182,13 +170,6 @@ rad_module_t rlm_lua = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
 		[MOD_POST_AUTH]		= mod_post_auth
-#ifdef WITH_COA
-		,
-		[MOD_RECV_COA]		= mod_recv_coa,
-		[MOD_SEND_COA]		= mod_send_coa
-#endif
 	}
 };

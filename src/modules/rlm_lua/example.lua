@@ -22,28 +22,8 @@ function accounting()
   return fr.ok
 end
 
-function pre_proxy()
-  print("example.lua/pre_proxy()")
-  return fr.ok
-end
-
-function post_proxy()
-  print("example.lua/post_proxy()")
-  return fr.ok
-end
-
 function post_auth()
   print("example.lua/post_auth()")
-  return fr.ok
-end
-
-function recv_coa()
-  print("example.lua/recv_coa()")
-  return fr.ok
-end
-
-function send_coa()
-  print("example.lua/send_coa()")
   return fr.ok
 end
 
