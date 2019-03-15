@@ -74,7 +74,7 @@ RCSID("$Id$")
  *  would have only one edge.
  */
 #ifndef NO_PATH_COMPRESSION
-//#define WITH_PATH_COMPRESSION
+#define WITH_PATH_COMPRESSION
 #endif
 
 #define MAX_KEY_BYTES (256)
@@ -1117,6 +1117,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	uint8_t const *key2;
 	int start_bit2;
 	fr_trie_node_t *node;
+	fr_trie_path_t *split;
 
 	bits = path->bits;
 
@@ -1173,8 +1174,6 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	}
 
 	if (lcp > 0) {
-		fr_trie_path_t *split;
-
 		MPRINT2("splitting path length %d at lcp %d\n",
 			path->bits, lcp);
 
@@ -1198,20 +1197,16 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		bits -= lcp;
 
 		/*
-		 *	We've split "path" into two, and have
-		 *	reached the end of the key.  Just
-		 *	insert a user node.
+		 *	Recurse to insert the key into the child node.
+		 *	Note that if "bits > DEFAULT_BITS", we will
+		 *	have to split "path" again.
 		 */
-		if (start_bit == end_bit) {
-			if (fr_trie_key_insert(ctx, parent, trie_p, key, start_bit, end_bit, data) < 0) {
-				MPRINT("failed key insert at %d\n", __LINE__);
-				return -1;
-			}
-
-			return 0;
+		if (fr_trie_key_insert(ctx, parent, trie_p, key, start_bit, end_bit, data) < 0) {
+			MPRINT("failed key insert at %d\n", __LINE__);
+			return -1;
 		}
 
-		/* else start_bit < end_bit */
+		return 0;
 	}
 
 	/*
@@ -1222,23 +1217,37 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 
 	MPRINT2("path key alloc after split bits %d, start=%d end %d \n", bits, start_bit, end_bit);
 
+	/*
+	 *	We're asked to use more bits than in the trie.  This
+	 *	should have already been caught above.
+	 */
+	if (bits > path->bits) {
+		fr_strerror_printf("Failed splitting properly in path split");
+		return -1;
+	}
+
 	node = fr_trie_node_alloc(ctx, parent, bits);
 	if (!node) return -1; /* @todo - don't leave "path" split in two */
 
 	chunk = get_chunk(key, start_bit, node->bits);
-	node->trie[chunk] = fr_trie_key_alloc(ctx, (fr_trie_t *) node, key, start_bit + node->bits, end_bit, data);
-	if (!node->trie[chunk]) {
-		MPRINT("Failed key_alloc at %d\n", __LINE__);
-		return -1;
-	}
-	node->used++;
 
 	/*
-	 *	We may have to split "path" *again*.
+	 *	There's no LCP, so we have two edges here.  One in
+	 *	"path", and one is in the key.  They MUST be disjoint.
 	 */
-	if (node->bits == path->bits) {
+	if (bits == path->bits) {
+		node->trie[chunk] = fr_trie_key_alloc(ctx, (fr_trie_t *) node, key, start_bit + node->bits, end_bit, data);
+		if (!node->trie[chunk]) {
+			MPRINT("Failed key_alloc at %d\n", __LINE__);
+			return -1;
+		}
+		node->used++;
+
+		/*
+		 *	There's no LCP, so it can't be the same entry.
+		 */
 		if (node->trie[path->chunk]) {
-			MPRINT("False duplicate in insert at %d\n", __LINE__);
+			fr_strerror_printf("False duplicate in insert node %d path %d lcp %d", node->bits, path->bits, lcp);
 			fr_trie_free((fr_trie_t *) node);
 			return -1;
 		}
@@ -1252,8 +1261,48 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		return 0;
 	}
 
-	fr_strerror_printf("logic not implemented for path in key_insert");
-	return -1;
+	/*
+	 *	The path is longer than the bits we can use in a
+	 *	fr_trie_node_t.  We need to split the path again,
+	 *	create a new node.  One edge will be the result of the
+	 *	split.  Another edge will be the new key to insert.
+	 */
+
+	MPRINT2("splitting path length %d at node %d\n",
+		path->bits, node->bits);
+
+	/*
+	 *	@todo - have a "skip prefix" function?
+	 */
+	split = fr_trie_path_split(ctx, parent, path, start_bit2, node->bits);
+	if (!split) {
+		MPRINT("failed path split at %d\n", __LINE__);
+		return -1;
+	}
+
+	if (chunk == split->chunk) {
+		fr_strerror_printf("False duplicate in insert node %d path %d", node->bits, path->bits);
+		return 01;
+	}
+
+	node->trie[split->chunk] = split->trie;
+	split->trie->parent = (fr_trie_t *) node;
+	node->used++;
+
+	talloc_free(split);
+	*trie_p = (fr_trie_t *) node;
+
+	/*
+	 *	Recurse to insert the key into the child node.
+	 *	Note that if "bits > DEFAULT_BITS", we will
+	 *	have to split "path" again.
+	 */
+	if (fr_trie_key_insert(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
+		MPRINT("failed key insert at %d\n", __LINE__);
+		return -1;
+	}
+
+	return 0;
 }
 #endif
 
