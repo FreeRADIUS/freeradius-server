@@ -11,7 +11,7 @@ CB_COMMON:=centos7 debian9 ubuntu18
 DT:=scripts/docker
 
 # Location of this makefile, and where to put stamp files
-DD:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+DD:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 
 # List of all the docker images
 CB_IMAGES:=$(patsubst $(DT)/build-%,%,$(wildcard $(DT)/build-*))
