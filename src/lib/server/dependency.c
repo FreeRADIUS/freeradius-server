@@ -402,6 +402,14 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
+	dependency_feature_add(cs, "regex-pcre2",
+#ifdef HAVE_REGEX_PCRE2
+				true
+#else
+				false
+#endif
+				);
+
 #ifdef HAVE_REGEX_POSIX
 	dependency_feature_add(cs, "regex-posix", true);
 	dependency_feature_add(cs, "regex-posix-extended",
