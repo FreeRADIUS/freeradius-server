@@ -1319,13 +1319,112 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *da
 	return 0;
 }
 
+static void *fr_trie_key_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit);
+
+typedef void *(*fr_trie_key_remove_t)(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit);
+
+static void *fr_trie_user_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
+{
+	fr_trie_t *trie = *trie_p;
+	fr_trie_user_t *user = (fr_trie_user_t *) trie;
+
+	/*
+	 *	We're at the end of the key, return the data
+	 *	given here, and free the node that we're
+	 *	removing.
+	 */
+	if (start_bit == end_bit) {
+		void *data = user->data;
+
+		*trie_p = user->trie;
+		if (user->trie) user->trie->parent = parent;
+		talloc_free(user); /* child has been reparented */
+
+		// @todo - normalize "parent"
+		return data;
+	}
+
+	return fr_trie_key_remove(ctx, (fr_trie_t *) user, &user->trie, key, start_bit, end_bit);
+}
+
+static void *fr_trie_node_remove(TALLOC_CTX *ctx, UNUSED fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
+{
+	fr_trie_t *trie = *trie_p;
+	fr_trie_node_t *node = (fr_trie_node_t *) trie;
+	uint32_t chunk;
+	void *data;
+
+	chunk = get_chunk(key, node->bits, start_bit, end_bit);
+	if (!node->trie[chunk]) return NULL;
+
+	data = fr_trie_key_remove(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit);
+	if (!data) return NULL;
+
+	/*
+	 *	The trie still has a subtrie.  Just return the data.
+	 */
+	if (node->trie[chunk]) return data;
+
+	/*
+	 *	One less used edge.
+	 */
+	node->used--;
+	if (node->used > 0) return data;
+
+	/*
+	 *	Our entire node is empty.  Delete it as we walk back up the trie.
+	 */
+	*trie_p = NULL;
+	talloc_free(node); /* no children */
+	return data;
+}
+
+#ifdef WITH_PATH_COMPRESSION
+static void *fr_trie_path_remove(TALLOC_CTX *ctx, UNUSED fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
+{
+	fr_trie_t *trie = *trie_p;
+	fr_trie_path_t *path = (fr_trie_path_t *) trie;
+	uint32_t chunk;
+	void *data;
+
+	chunk = get_chunk(key, path->bits, start_bit, end_bit);
+
+	/*
+	 *	No match, can't remove it.
+	 */
+	if (path->chunk != chunk) return NULL;
+
+	data = fr_trie_key_remove(ctx, (fr_trie_t *) path, &path->trie, key, start_bit + path->bits, end_bit);
+	if (!data) return NULL;
+
+	/*
+	 *	The trie still has a subtrie.  Just return the data.
+	 */
+	if (path->trie) return data;
+
+	/*
+	 *	Our entire path is empty.  Delete it as we walk back up the trie.
+	 */
+	*trie_p = NULL;
+	talloc_free(path); /* no children */
+	return data;
+}
+#endif
+
+static fr_trie_key_remove_t trie_remove[FR_TRIE_MAX] = {
+	[ FR_TRIE_USER ] = fr_trie_user_remove,
+	[ FR_TRIE_NODE ] = fr_trie_node_remove,
+#ifdef WITH_PATH_COMPRESSION
+	[ FR_TRIE_PATH ] = fr_trie_path_remove,
+#endif
+};
+
 /** Remove a key from a trie, and return the user data.
  *
  */
 static void *fr_trie_key_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
 {
 	fr_trie_t *trie = *trie_p;
-	void *data;
 
 	if (!trie) return NULL;
 
@@ -1335,87 +1434,17 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **
 	 */
 	if ((start_bit + trie->bits) > end_bit) return NULL;
 
-	if (trie->type == FR_TRIE_USER) {
-		fr_trie_user_t *user = (fr_trie_user_t *) trie;
-
-		/*
-		 *	We're at the end of the key, return the data
-		 *	given here, and free the node that we're
-		 *	removing.
-		 */
-		if (start_bit == end_bit) {
-			data = user->data;
-
-			*trie_p = user->trie;
-			if (user->trie) user->trie->parent = parent;
-			talloc_free(user); /* child has been reparented */
-
-			// @todo - normalize "parent"
-			return data;
-		}
-
-		return fr_trie_key_remove(ctx, (fr_trie_t *) user, &user->trie, key, start_bit, end_bit);
+	/*
+	 *	Catch problems.
+	 */
+	if ((trie->type == FR_TRIE_INVALID) ||
+	    (trie->type >= FR_TRIE_MAX) ||
+	    !trie_remove[trie->type]) {
+		fr_strerror_printf("unknown trie type %d in remove", trie->type);
+		return NULL;
 	}
 
-	if (trie->type == FR_TRIE_NODE) {
-		fr_trie_node_t *node = (fr_trie_node_t *) trie;
-		uint32_t chunk;
-
-		chunk = get_chunk(key, node->bits, start_bit, end_bit);
-		if (!node->trie[chunk]) return NULL;
-
-		data = fr_trie_key_remove(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit);
-		if (!data) return NULL;
-
-		/*
-		 *	The trie still has a subtrie.  Just return the data.
-		 */
-		if (node->trie[chunk]) return data;
-
-		/*
-		 *	One less used edge.
-		 */
-		node->used--;
-		if (node->used > 0) return data;
-
-		/*
-		 *	Our entire node is empty.  Delete it as we walk back up the trie.
-		 */
-		*trie_p = NULL;
-		talloc_free(node); /* no children */
-		return data;
-	}
-
-#ifdef WITH_PATH_COMPRESSION
-	if (trie->type == FR_TRIE_PATH) {
-		fr_trie_path_t *path = (fr_trie_path_t *) trie;
-		uint32_t chunk;
-
-		chunk = get_chunk(key, path->bits, start_bit, end_bit);
-
-		/*
-		 *	No match, can't remove it.
-		 */
-		if (path->chunk != chunk) return NULL;
-
-		data = fr_trie_key_remove(ctx, (fr_trie_t *) path, &path->trie, key, start_bit + path->bits, end_bit);
-		if (!data) return NULL;
-
-		/*
-		 *	The trie still has a subtrie.  Just return the data.
-		 */
-		if (path->trie) return data;
-
-		/*
-		 *	Our entire path is empty.  Delete it as we walk back up the trie.
-		 */
-		*trie_p = NULL;
-		talloc_free(path); /* no children */
-		return data;
-	}
-#endif
-
-	return NULL;
+	return trie_remove[trie->type](ctx, parent, trie_p, key, start_bit, end_bit);
 }
 
 /** Remove a key and return the associated user ctx
