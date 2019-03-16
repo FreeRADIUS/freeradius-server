@@ -795,6 +795,9 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 	bits = end_bit - start_bit;
 	if (bits > DEFAULT_BITS) bits = DEFAULT_BITS;
 
+	/*
+	 *	We only want one edge here.
+	 */
 	node = fr_trie_node_alloc(ctx, parent, bits);
 	if (!node) return NULL;
 
@@ -807,6 +810,32 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 	node->used++;
 
 	return (fr_trie_t *) node;
+}
+#endif
+
+/* ADD EDGES */
+
+#ifdef WITH_PATH_COMPRESSION
+/** Add an edge to a node.
+ *
+ *  This functin is so that we can abstract 2^N-way nodes, or
+ *  compressed edge nodes.
+ *
+ *  Note that it takes a `fr_trie_t**`, as it may have to re-allocate
+ *  the node in order to add more children to it.
+ */
+static fr_trie_t **fr_trie_add_edge(fr_trie_t **trie_p, uint16_t chunk)
+{
+	fr_trie_node_t *node = *(fr_trie_node_t **) trie_p;
+
+	if (node->type != FR_TRIE_NODE) return NULL;
+
+	if (chunk >= (1 << node->bits)) return NULL;
+
+	if (node->trie[chunk] != NULL) return NULL;
+
+	node->used++;
+	return &(node->trie[chunk]);
 }
 #endif
 
@@ -1067,8 +1096,8 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	int lcp, bits;
 	uint8_t const *key2;
 	int start_bit2;
-	fr_trie_node_t *node;
-	fr_trie_t *child;
+	fr_trie_t *node;
+	fr_trie_t *child, **edge;
 
 	/*
 	 *	The key exactly matches the path.  Recurse.
@@ -1170,7 +1199,10 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		return -1;
 	}
 
-	node = fr_trie_node_alloc(ctx, parent, bits);
+	/*
+	 *	We only want two edges here.
+	 */
+	node = (fr_trie_t *) fr_trie_node_alloc(ctx, parent, bits);
 	if (!node) return -1;
 
 	/*
@@ -1186,45 +1218,60 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		/*
 		 *	Skip the common prefix.
 		 */
-		child = (fr_trie_t *) fr_trie_path_alloc(ctx, (fr_trie_t *) node, &path->key[0], start_bit2 + node->bits, start_bit2 + path->bits);
+		child = (fr_trie_t *) fr_trie_path_alloc(ctx, node, &path->key[0], start_bit2 + node->bits, start_bit2 + path->bits);
 		if (!child) {
 			fr_strerror_printf("failed allocating path child at %d", __LINE__);
 			return -1;
 		}
 	}
 
-	node->trie[chunk] = child;
-	node->used++;
+	/*
+	 *	Add in the first edge.
+	 */
+	edge = fr_trie_add_edge(&node, chunk);
+	if (!edge) {
+		fr_strerror_printf("chunk failure in insert node %d at %d", node->bits, __LINE__);
+		talloc_free(node);
+		if (child != path->trie) talloc_free(child);
+		return -1;
+	}
+	*edge = child;
 
 	/*
-	 *	Now get the chunk from the key.
+	 *	Now get the chunk from the key, and add it to the
+	 *	node.
 	 */
 	chunk = get_chunk(key, start_bit, node->bits);
 
-	if (node->trie[chunk]) {
+	edge = fr_trie_add_edge(&node, chunk);
+	if (!edge) {
 		fr_strerror_printf("False duplicate in insert node %d at %d", node->bits, __LINE__);
+	fail:
+		/*
+		 *	We know that "add_edge" hasn't reparented any
+		 *	child nodes, so we can just free memory and
+		 *	exit.
+		 */
 		talloc_free(node);
 		if (child != path->trie) talloc_free(child);
 		return -1;
 	}
 
 	/*
-	 *	Recurse to insert the key into the child node.
-	 *	Note that if "bits > DEFAULT_BITS", we will
-	 *	have to split "path" again.
+	 *	Recurse to insert the key into the second edge.
+	 *
+	 *	Note that if "bits > DEFAULT_BITS", we will have to
+	 *	split "path" again.
 	 */
-	if (fr_trie_key_insert(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
-		talloc_free(node);
-		if (child != path->trie) talloc_free(child);
-		return -1;
+	if (fr_trie_key_insert(ctx, node, edge, key, start_bit + node->bits, end_bit, data) < 0) {
+		goto fail;
 	}
 
 	/*
 	 *	Only update this if it succeeded.
 	 */
-	child->parent = (fr_trie_t *) node;
-	node->used++;
-	*trie_p = (fr_trie_t *) node;
+	child->parent = node;
+	*trie_p = node;
 	node->parent = parent;
 	talloc_free(path);
 	return 0;
