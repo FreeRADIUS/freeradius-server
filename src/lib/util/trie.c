@@ -74,7 +74,7 @@ RCSID("$Id$")
  *  would have only one edge.
  */
 #ifndef NO_PATH_COMPRESSION
-#define WITH_PATH_COMPRESSION
+//#define WITH_PATH_COMPRESSION
 #endif
 
 #define MAX_KEY_BYTES (256)
