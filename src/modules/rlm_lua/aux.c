@@ -40,6 +40,7 @@ static _Thread_local rlm_lua_t const *fr_lua_inst;
 
 void fr_lua_aux_fr_register(lua_State *L)
 {
+	// fr.{}
 	lua_newtable(L);
 	lua_setglobal(L, "fr");
 	lua_settop(L, 0);
@@ -142,6 +143,15 @@ static int _aux_log_error(lua_State *L)
 	return 0;
 }
 
+static int _aux_log_newindex(UNUSED lua_State *L)
+{
+	REQUEST	*request = fr_lua_aux_get_request();
+
+	RWDEBUG("You can't modify the table 'fr.log.$func()' (read-only)");
+
+	return 1;
+}
+
 /** Insert cdefs into the lua environment
  *
  * For LuaJIT using the FFI is significantly faster than the Lua interface.
@@ -207,6 +217,15 @@ int fr_lua_aux_log_register(UNUSED rlm_lua_t const *inst, lua_State *L)
 	// fr.log.{}
 	lua_newtable(L);
 	{
+		lua_newtable(L); //__metatable
+		{
+			lua_pushvalue(L, -1);
+			lua_setfield(L, -2, "__index");
+
+			lua_pushcfunction(L, _aux_log_newindex);
+			lua_setfield(L, -2, "__newindex");
+		}
+
 		lua_pushcfunction(L, _aux_log_debug);
 		lua_setfield(L, -2, "debug");
 
@@ -219,6 +238,8 @@ int fr_lua_aux_log_register(UNUSED rlm_lua_t const *inst, lua_State *L)
 		lua_pushcfunction(L, _aux_log_error);
 		lua_setfield(L, -2, "error");
 	}
+
+	lua_setmetatable(L, -2);
 	lua_setfield(L, -2, "log");
 
 	return 0;
