@@ -1,6 +1,6 @@
 # PRE: if
 #
-if ('${feature.regex-pcre}' == 'yes') {
+if (('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) {
 update request {
 	&Tmp-Integer-0 := '123456789'
 }

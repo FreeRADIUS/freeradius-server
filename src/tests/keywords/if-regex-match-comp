@@ -82,10 +82,9 @@ if (&Tmp-String-0 =~ /^foo$/) {
 }
 
 # compiled - ref - non-multiline
-
 # Not all POSIX implementations support the \n character classes
 # so only run this test if the server was built with libpcre.
-if (("${feature.regex-pcre}" == 'yes') && (&Tmp-String-0 !~ /^foo\nbar$/)) {
+if ((('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) && (&Tmp-String-0 !~ /^foo\nbar$/)) {
 	test_fail
 }
 

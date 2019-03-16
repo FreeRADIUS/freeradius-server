@@ -395,7 +395,7 @@ void dependency_features_init(CONF_SECTION *cs)
 				);
 
 	dependency_feature_add(cs, "regex-pcre",
-#if defined(HAVE_REGEX_PCRE2) || defined(HAVE_REGEX_PCRE)
+#ifdef HAVE_REGEX_PCRE
 				true
 #else
 				false
