@@ -2492,7 +2492,7 @@ int main(int argc, char **argv)
 
 	fclose(fp);
 
-	talloc_free(ft);
+	fr_trie_free(ft);
 	talloc_free(data_ctx);
 
 	talloc_report_full(NULL, stdout);	/* Print details of any leaked memory */
