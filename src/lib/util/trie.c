@@ -117,12 +117,10 @@ DIAG_ON(unused-macros)
 // @todo - generalized function to normalize the trie.
 
 
-#ifdef WITH_PATH_COMPRESSION
 static uint8_t start_bit_mask[8] = {
 	0xff, 0x7f, 0x3f, 0x1f,
 	0x0f, 0x07, 0x03, 0x01
 };
-#endif
 
 static uint8_t end_bit_mask[8] = {
 	0x80, 0xc0, 0xe0, 0xf0,
@@ -363,34 +361,49 @@ static void hex_dump(FILE *fp, char const *msg, uint8_t const *key, int start_bi
 static uint16_t get_chunk(uint8_t const *key, int start_bit, int num_bits)
 {
 	uint16_t chunk;
+	int end_bit;
 
 	fr_cond_assert(num_bits > 0);
-	fr_cond_assert(num_bits <= 8);
+	fr_cond_assert(num_bits <= 16);
 
 	/*
-	 *	Load the byte
+	 *	Normalize it so that the caller doesn't have to.
 	 */
-	chunk = key[BYTEOF(start_bit)];
-	chunk <<= 8;
-
-	if (BYTEOF(start_bit + num_bits) != BYTEOF(start_bit)) {
-		chunk |= key[BYTEOF(start_bit) + 1];
+	if (start_bit > 7) {
+		key += (start_bit >> 3);
+		start_bit -= 8 * (start_bit >> 3);
 	}
 
 	/*
-	 *	Shift out the bits at the start, that we don't
+	 *	Load the first byte and mask off the bits we don't
 	 *	want.
 	 */
-	chunk <<= (start_bit & 0x07);
+	chunk = key[0] & start_bit_mask[start_bit & 0x07];
+
+	if (BYTEOF(start_bit + num_bits - 1) != 0) {
+		chunk <<= 8;
+		chunk |= key[1];
+	}
 
 	/*
-	 *	The bits we want are now all in the high bits
+	 *	No more shifting to do, just return.
+	 */
+	if (num_bits == 16) {
+		fr_cond_assert((start_bit & 0x07) == 0);
+		return chunk;
+	}
+
+	/*
+	 *	The bits we want are now all in the higher bits
 	 *	of "chunk".  But we only want some of them.
 	 *
 	 *	Shift the chunk so that the bits we want are now in
 	 *	the low bits.
 	 */
-	chunk >>= 8 + (8 - num_bits);
+	end_bit = (start_bit + num_bits) & 0x07;
+	if (end_bit != 0) chunk >>= 8 - end_bit;
+
+	fr_cond_assert(chunk < (1 << num_bits));
 
 	return chunk;
 }
@@ -776,15 +789,19 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 		return NULL;
 	}
 
-	next_bit = start_bit + 8;
+	/*
+	 *	Try to grab 16 bits at a time.
+	 */
+	next_bit = (start_bit & ~0x07) + 8;
 
-	if (next_bit > end_bit) {
+	if (next_bit >= end_bit) {
 		path = fr_trie_path_alloc(ctx, parent, key, start_bit, end_bit);
 		if (!path) return NULL;
 
 		path->trie = (fr_trie_t *) fr_trie_user_alloc(ctx, parent, data);
 		return (fr_trie_t *) path;
 	}
+
 
 	path = fr_trie_path_alloc(ctx, parent, key, start_bit, next_bit);
 	if (!path) return NULL;
@@ -2007,7 +2024,7 @@ static int command_insert(fr_trie_t *ft, UNUSED int argc, char **argv, UNUSED ch
 	}
 
 	if (fr_trie_insert(ft, key, bits, data) < 0) {
-		MPRINT("Failed inserting key %s=%s\n", key, argv[1]);
+		MPRINT("Failed inserting key %s=%s - %s\n", key, argv[1], fr_strerror());
 		return -1;
 	}
 
@@ -2312,7 +2329,7 @@ static int command_path(fr_trie_t *ft, int argc, char **argv, char *out, size_t 
 	}
 
 	if (fr_trie_insert(ft, argv[0], BITSOF(strlen(argv[0])), data) < 0) {
-		MPRINT("Could not insert key %s=%s\n", argv[0], argv[1]);
+		MPRINT("Could not insert key %s=%s - %s\n", argv[0], argv[1], fr_strerror());
 		return -1;
 	}
 
