@@ -98,6 +98,7 @@ addons:
     - lintian
     # Needed for llvm-symbolizer
     - llvm-7
+    - luajit
     - lynx
     - mysql-server
     - pbuilder
