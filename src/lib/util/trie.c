@@ -848,7 +848,7 @@ static void *fr_trie_user_match(fr_trie_t *trie, uint8_t const *key, int start_b
 	/*
 	 *	Return the closest (i.e. inexact) match.
 	 */
-	return user->data;	
+	return user->data;
 }
 
 static void *fr_trie_node_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
@@ -1244,7 +1244,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		child = (fr_trie_t *) fr_trie_path_alloc(ctx, (fr_trie_t *) node, &path->key[0], start_bit2 + node->bits, start_bit2 + path->bits);
 		if (!child) {
 			fr_strerror_printf("failed allocating path child at %d", __LINE__);
-			return NULL;
+			return -1;
 		}
 	}
 
