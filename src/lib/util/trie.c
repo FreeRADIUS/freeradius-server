@@ -2157,6 +2157,43 @@ static int command_remove(fr_trie_t *ft, UNUSED int argc, char **argv, char *out
 }
 
 
+/**  Remove a key from the trie.
+ *
+ *  Try to remove a key, but don't error if we can't.
+ */
+static int command_try_to_remove(fr_trie_t *ft, UNUSED int argc, char **argv, char *out, size_t outlen)
+{
+	int bits;
+	void *answer;
+	char *key;
+
+	if (arg2key(argv[0], &key, &bits) < 0) {
+		return -1;
+	}
+
+	answer = fr_trie_remove(ft, key, bits);
+	if (!answer) {
+		strlcpy(out, ".", outlen);
+		return 0;
+	}
+
+	strlcpy(out, answer, outlen);
+
+	talloc_free(answer);
+
+	/*
+	 *	We now try to find an exact match.  i.e. we don't want
+	 *	to find a shorter prefix.
+	 */
+	answer = fr_trie_key_match(ft->trie, (uint8_t *) key, 0, bits, true);
+	if (answer) {
+		MPRINT("Still in trie after 'remove' for key %s, found data %s\n", key, (char const *) answer);
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Print a trie to a string
  *
  *  The trie is printed one one line.  If the trie contains keys which
@@ -2332,6 +2369,7 @@ static fr_trie_command_t commands[] = {
 	{ "match",	command_match,	1, 1, true },
 	{ "lookup",	command_lookup,	1, 1, true },
 	{ "remove",	command_remove,	1, 1, true },
+	{ "-remove",	command_try_to_remove, 1, 1, true },
 	{ "print",	command_print,	0, 0, true },
 	{ "dump",	command_dump,	0, 0, false },
 	{ "keys",	command_keys,	0, 0, false },
