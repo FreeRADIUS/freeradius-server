@@ -604,10 +604,6 @@ static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, ui
 		fr_strerror_printf("path asked for start >= end, %d >= %d", start_bit, end_bit);
 		return NULL;
 	}
-	if ((end_bit - start_bit) > 8) {
-		fr_strerror_printf("path asked for too many bits (%d)", end_bit - start_bit);
-		return NULL;
-	}
 
 	/*
 	 *	Normalize it so that the caller doesn't have to.
@@ -616,6 +612,20 @@ static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, ui
 		key += (start_bit >> 3);
 		end_bit -= 8 * (start_bit >> 3);
 		start_bit -= 8 * (start_bit >> 3);
+	}
+
+	if ((end_bit - start_bit) > 16) {
+		fr_strerror_printf("path asked for too many bits (%d)", end_bit - start_bit);
+		return NULL;
+	}
+
+	/*
+	 *	The "end_bit" is the bit we're not using, so it's
+	 *	allowed to point past the end of path->key.
+	 */
+	if ((BYTEOF(start_bit) - BYTEOF(end_bit - 1)) > 1) {
+		fr_strerror_printf("path asked for too many bits / bytes (%d)", end_bit - start_bit);
+		return NULL;
 	}
 
 	path = talloc_zero(ctx, fr_trie_path_t);
@@ -639,6 +649,9 @@ static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, ui
 
 	} else if ((end_bit > 8) && (end_bit < 16)) {
 		path->key[1] = key[1] & end_bit_mask[end_bit & 0x03];
+
+	} else {
+		path->key[1] = key[1];
 	}
 
 #ifdef TESTING
@@ -754,6 +767,7 @@ static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr
 static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	fr_trie_path_t *path;
+	int next_bit;
 
 	if (start_bit == end_bit) return (fr_trie_t *) fr_trie_user_alloc(ctx, parent, data);
 
@@ -762,7 +776,9 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 		return NULL;
 	}
 
-	if ((end_bit - start_bit) <= 8) {
+	next_bit = start_bit + 8;
+
+	if (next_bit > end_bit) {
 		path = fr_trie_path_alloc(ctx, parent, key, start_bit, end_bit);
 		if (!path) return NULL;
 
@@ -770,10 +786,10 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 		return (fr_trie_t *) path;
 	}
 
-	path = fr_trie_path_alloc(ctx, parent, key, start_bit, start_bit + 8);
+	path = fr_trie_path_alloc(ctx, parent, key, start_bit, next_bit);
 	if (!path) return NULL;
 
-	path->trie = (fr_trie_t *) fr_trie_key_alloc(ctx, (fr_trie_t *) path, key, start_bit + 8, end_bit, data);
+	path->trie = (fr_trie_t *) fr_trie_key_alloc(ctx, (fr_trie_t *) path, key, next_bit, end_bit, data);
 	if (!path->trie) {
 		talloc_free(path); /* no children */
 		return NULL;
