@@ -31,6 +31,11 @@ RCSID("$Id$")
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/talloc.h>
 
+/*
+ *######################################
+ *#      FUNCTIONS FOR LIBPCRE2        #
+ *######################################
+ */
 #ifdef HAVE_REGEX_PCRE2
 /*
  *	Wrapper functions for libpcre2. Much more powerful, and guaranteed
@@ -53,7 +58,7 @@ typedef struct {
 	bool			do_jit;		//!< Whether we have runtime JIT support.
 } fr_pcre2_tls_t;
 
-/** Thread local storage for PCRE2
+/** Thread local storage for pcre2
  *
  */
 fr_thread_local_setup(fr_pcre2_tls_t *, fr_pcre2_tls)
@@ -173,8 +178,7 @@ static int _regex_free(regex_t *preg)
  *				the compiled expression.
  * @param[in] pattern		to compile.
  * @param[in] len		of pattern.
- * @param[in] ignore_case	Whether to do case insensitive matching.
- * @param[in] multiline		If true $ matches newlines.
+ * @param[in] flags		controlling matching. May be NULL.
  * @param[in] subcaptures	Whether to compile the regular expression to store subcapture
  *				data.
  * @param[in] runtime		If false run the pattern through the PCRE JIT to convert it
@@ -185,7 +189,7 @@ static int _regex_free(regex_t *preg)
  *	- <= 0 on error. Negative value is offset of parse error.
  */
 ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
-		      bool ignore_case, bool multiline, bool subcaptures, bool runtime)
+		      fr_regex_flags_t const *flags, bool subcaptures, bool runtime)
 {
 	int		ret;
 	PCRE2_SIZE	offset;
@@ -193,14 +197,14 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	regex_t		*preg;
 
 	/*
-	 *	Thread local initialisation
-	 */
-	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
-
-	/*
 	 *	Check inputs
 	 */
 	*out = NULL;
+
+	/*
+	 *	Thread local initialisation
+	 */
+	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
 
 	if (len == 0) {
 		fr_strerror_printf("Empty expression");
@@ -210,8 +214,15 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	/*
 	 *	Options
 	 */
-	if (ignore_case) cflags |= PCRE2_CASELESS;
-	if (multiline) cflags |= PCRE2_MULTILINE;
+	if (flags) {
+		 /* flags->global implemented by substitution function */
+		if (flags->ignore_case) cflags |= PCRE2_CASELESS;
+		if (flags->multiline) cflags |= PCRE2_MULTILINE;
+		if (flags->dot_all) cflags |= PCRE2_DOTALL;
+		if (flags->unicode) cflags |= PCRE2_UTF;
+		if (flags->extended) cflags |= PCRE2_EXTENDED;
+	}
+
 	if (!subcaptures) cflags |= PCRE2_NO_AUTO_CAPTURE;
 
 	preg = talloc_zero(ctx, regex_t);
@@ -398,6 +409,11 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 
 	return regmatch;
 }
+/*
+ *######################################
+ *#       FUNCTIONS FOR LIBPCRE        #
+ *######################################
+ */
 #elif defined(HAVE_REGEX_PCRE)
 /*
  *	Wrapper functions for libpcre. Much more powerful, and guaranteed
@@ -454,8 +470,7 @@ static void _pcre_talloc_free(void *to_free)
  *				the compiled expression.
  * @param[in] pattern		to compile.
  * @param[in] len		of pattern.
- * @param[in] ignore_case	Whether to do case insensitive matching.
- * @param[in] multiline		If true $ matches newlines.
+ * @param[in] flags		controlling matching.  May be NULL.
  * @param[in] subcaptures	Whether to compile the regular expression to store subcapture
  *				data.
  * @param[in] runtime		If false run the pattern through the PCRE JIT to convert it
@@ -466,7 +481,7 @@ static void _pcre_talloc_free(void *to_free)
  *	- <= 0 on error. Negative value is offset of parse error.
  */
 ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
-		      bool ignore_case, bool multiline, bool subcaptures, bool runtime)
+		      fr_regex_flags_t const *flags, bool subcaptures, bool runtime)
 {
 	char const	*error;
 	int		offset;
@@ -510,8 +525,18 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	/*
 	 *	Options
 	 */
-	if (ignore_case) cflags |= PCRE_CASELESS;
-	if (multiline) cflags |= PCRE_MULTILINE;
+	if (flags) {
+		if (flags->global) {
+			fr_strerror_printf("g - Global matching/substitution not supported with libpcre");
+			return 0;
+		}
+		if (flags->ignore_case) cflags |= PCRE_CASELESS;
+		if (flags->multiline) cflags |= PCRE_MULTILINE;
+		if (flags->dot_all) cflags |= PCRE_DOTALL;
+		if (flags->unicode) cflags |= PCRE_UTF8;
+		if (flags->extended) cflags |= PCRE_EXTENDED;
+	}
+
 	if (!subcaptures) cflags |= PCRE_NO_AUTO_CAPTURE;
 
 	preg = talloc_zero(ctx, regex_t);
@@ -692,6 +717,11 @@ uint32_t regex_subcapture_count(regex_t const *preg)
 
 	return (uint32_t)count + 1;
 }
+/*
+ *######################################
+ *#    FUNCTIONS FOR POSIX-REGEX      #
+ *######################################
+ */
 #  else
 /*
  *	Wrapper functions for POSIX like, and extended regular
@@ -727,8 +757,7 @@ static int _regex_free(regex_t *preg)
  *				to the structure containing the compiled expression.
  * @param[in] pattern		to compile.
  * @param[in] len		of pattern.
- * @param[in] ignore_case	Whether the match should be case ignore_case.
- * @param[in] multiline		If true $ matches newlines.
+ * @param[in] flags		controlling matching.  May be NULL.
  * @param[in] subcaptures	Whether to compile the regular expression
  *				to store subcapture data.
  * @param[in] runtime		Whether the compilation is being done at runtime.
@@ -738,7 +767,7 @@ static int _regex_free(regex_t *preg)
  *	With POSIX regex we only give the correct offset for embedded \0 errors.
  */
 ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
-		      bool ignore_case, bool multiline, bool subcaptures, UNUSED bool runtime)
+		      fr_regex_flags_t const *flags, bool subcaptures, UNUSED bool runtime)
 {
 	int ret;
 	int cflags = REG_EXTENDED;
@@ -752,8 +781,29 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	/*
 	 *	Options
 	 */
-	if (ignore_case) cflags |= REG_ICASE;
-	if (multiline) cflags |= REG_NEWLINE;
+	if (flags) {
+		if (flags->global) {
+			fr_strerror_printf("g - Global matching/substitution not supported with posix-regex");
+			return 0;
+		}
+		if (flags->dot_all) {
+			fr_strerror_printf("s - Single line matching is not supported with posix-regex");
+			return 0;
+		}
+		if (flags->unicode) {
+			fr_strerror_printf("u - Unicode matching not supported with posix-regex");
+			return 0;
+		}
+		if (flags->extended) {
+			fr_strerror_printf("x - Whitespace and comments not supported with posix-regex");
+			return 0;
+		}
+
+		if (flags->ignore_case) cflags |= REG_ICASE;
+		if (flags->multiline) cflags |= REG_NEWLINE;
+	}
+
+
 	if (!subcaptures) cflags |= REG_NOSUB;
 
 #ifndef HAVE_REGNCOMP
@@ -929,4 +979,97 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 	return regmatch;
 }
 #  endif
+
+/*
+ *########################################
+ *#         UNIVERSAL FUNCTIONS          #
+ *########################################
+ */
+
+/** Parse a string containing one or more regex flags
+ *
+ * @param[out] err		May be NULL. If not NULL will be set to:
+ *				- 0 on success.
+ *				- -1 on unknown flag.
+ *				- -2 on duplicate.
+ * @param[out] out		Flag structure to populate.  Must be initialised to zero
+ *				if this is the first call to regex_flags_parse.
+ * @param[in] in		Flag string to parse.
+ * @param[in] len		Length of input string.
+ * @param[in] err_on_dup	Error if the flag is already set.
+ * @return
+ *      - > 0 on success.  The number of flag bytes parsed.
+ *	- <= 0 on failure.  Negative offset of first unrecognised flag.
+ */
+ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, char const *in, size_t len, bool err_on_dup)
+{
+	char const *p = in, *end = p + len;
+
+	if (err) *err = 0;
+
+	while (p < end) {
+		switch (*p) {
+#define DO_REGEX_FLAG(_f, _c) \
+		case _c: \
+			if (err_on_dup && out->_f) { \
+				fr_strerror_printf("Duplicate regex flag '%c'", *p); \
+				if (err) *err = -2; \
+				return -(p - in); \
+			} \
+			out->_f = 1; \
+			break
+
+		DO_REGEX_FLAG(global, 'g');
+		DO_REGEX_FLAG(ignore_case, 'i');
+		DO_REGEX_FLAG(multiline, 'm');
+		DO_REGEX_FLAG(dot_all, 's');
+		DO_REGEX_FLAG(unicode, 'u');
+		DO_REGEX_FLAG(extended, 'x');
+#undef DO_REGEX_FLAG
+
+		default:
+			fr_strerror_printf("Unsupported regex flag '%c'", *p);
+			if (err) *err = -1;
+			return -(p - in);
+		}
+		p++;
+	}
+	return len;
+}
+
+/** Print the flags
+ *
+ * @param[out] out	where to write flags.
+ * @param[in] outlen	Space in output buffer.
+ * @param[in] flags	to print.
+ * @return
+ *	- The number of bytes written to the out buffer.
+ *	- A number >= outlen if truncation has occurred.
+ */
+size_t regex_flags_snprint(char *out, size_t outlen, fr_regex_flags_t const *flags)
+{
+	char *p = out, *end = p + outlen;
+
+#define DO_REGEX_FLAG(_f, _c) \
+	do { \
+		if (flags->_f) { \
+			if ((end - p) <= 1) { \
+				*end = '\0'; \
+				return outlen + 1; \
+			} \
+			*p++ = _c; \
+		} \
+	} while(0)
+
+	DO_REGEX_FLAG(global, 'g');
+	DO_REGEX_FLAG(ignore_case, 'i');
+	DO_REGEX_FLAG(multiline, 'm');
+	DO_REGEX_FLAG(dot_all, 's');
+	DO_REGEX_FLAG(unicode, 'u');
+	DO_REGEX_FLAG(extended, 'x');
+
+#undef DO_REGEX_FLAG
+
+	return p - out;
+}
 #endif

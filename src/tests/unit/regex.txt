@@ -22,6 +22,30 @@ condition !foo !~ /bar/
 data foo =~ /bar/
 
 #
+#  Flags
+#
+condition foo =~ /bar/i
+data foo =~ /bar/i
+
+condition foo =~ /bar/m
+data foo =~ /bar/m
+
+condition foo =~ /bar/im
+data foo =~ /bar/im
+
+condition foo =~ /bar/gimsux
+data foo =~ /bar/gimsux
+
+condition foo =~ /bar/ima
+data ERROR offset 14 Invalid flag
+
+condition foo =~ /bar/ii
+data ERROR offset 13 Duplicate flag
+
+condition foo =~ /bar/iia
+data ERROR offset 13 Duplicate flag
+
+#
 #  Escape the backslashes correctly
 #  And print them correctly
 #

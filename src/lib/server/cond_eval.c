@@ -162,9 +162,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	if (!fr_cond_assert(lhs != NULL)) return -1;
 	if (!fr_cond_assert(lhs->type == FR_TYPE_STRING)) return -1;
 
-	EVAL_DEBUG("CMP WITH REGEX %s %s",
-		   map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE",
-		   map->rhs->tmpl_mflag ? "MULTILINE" : "SINGLELINE");
+	EVAL_DEBUG("CMP WITH REGEX");
 
 	switch (map->rhs->type) {
 	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
@@ -175,7 +173,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		if (!fr_cond_assert(rhs && rhs->type == FR_TYPE_STRING)) return -1;
 		if (!fr_cond_assert(rhs && rhs->vb_strvalue)) return -1;
 		slen = regex_compile(request, &rreg, rhs->vb_strvalue, rhs->datum.length,
-				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
+				     &map->rhs->tmpl_regex_flags, true, true);
 		if (slen <= 0) {
 			REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
 			EVAL_DEBUG("FAIL %d", __LINE__);

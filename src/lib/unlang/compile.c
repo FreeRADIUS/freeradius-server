@@ -491,8 +491,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt, vp_tmpl_rules
 		return pass2_fixup_xlat(ci, &vpt, false, NULL, rules);
 	}
 
-	slen = regex_compile(vpt, &preg, vpt->name, vpt->len,
-			     vpt->tmpl_iflag, vpt->tmpl_mflag, true, false);
+	slen = regex_compile(vpt, &preg, vpt->name, vpt->len, &vpt->tmpl_regex_flags, true, false);
 	if (slen <= 0) {
 		char *spaces, *text;
 

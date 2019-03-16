@@ -625,9 +625,10 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 
 		} else { /* it's an operator */
 #ifdef HAVE_REGEX
-			bool regex = false;
-			bool iflag = false;
-			bool mflag = false;
+			bool		regex = false;
+			fr_regex_flags_t	regex_flags;
+
+			memset(&regex_flags, 0, sizeof(regex_flags));
 #endif
 			vp_map_t *map;
 
@@ -757,31 +758,40 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 			 *	Sanity checks for regexes.
 			 */
 			if (regex) {
+				int	err;
+				ssize_t flen;
+
 				if (*p != '/') {
 					return_P("Expected regular expression");
-				}
-				for (;;) {
-					switch (p[slen]) {
-					/*
-					 *	/foo/i
-					 */
-					case 'i':
-						iflag = true;
-						slen++;
-						continue;
+			        }
 
-					/*
-					 *	/foo/m
-					 */
-					case 'm':
-						mflag = true;
-						slen++;
-						continue;
+				flen = regex_flags_parse(&err, &regex_flags, p + slen, strlen(p + slen), true);
+				switch (err) {
+				/*
+				 *	Got flags all the way to the end of the string
+				 */
+				case 0:
+					rad_assert(flen >= 0);
+					slen += (size_t)flen;
+					break;
 
-					default:
-						break;
+				/*
+				 *	Found non-flag, this is OK.
+				 */
+				case -1:
+					rad_assert(flen <= 0);
+					slen += (size_t)(-flen);
+					if (p[slen] != ')') {
+						p += slen;
+						return_P("Invalid flag");
 					}
 					break;
+
+				case -2:
+					rad_assert(flen <= 0);
+					p += slen;
+					p += (size_t)(-flen);
+					return_P("Duplicate flag");
 				}
 			} else if (!regex && (*p == '/')) {
 				return_P("Unexpected regular expression");
@@ -864,8 +874,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 
 #ifdef HAVE_REGEX
 			if (c->data.map->rhs->type == TMPL_TYPE_REGEX) {
-				c->data.map->rhs->tmpl_iflag = iflag;
-				c->data.map->rhs->tmpl_mflag = mflag;
+				c->data.map->rhs->tmpl_regex_flags = regex_flags;
 			}
 #endif
 

@@ -352,7 +352,7 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		 *	Include substring matches.
 		 */
 		slen = regex_compile(request, &preg, expr_p, talloc_array_length(expr_p) - 1,
-				     false, false, true, true);
+				     NULL, true, true);
 		if (slen <= 0) {
 			REMARKER(expr_p, -slen, "%s", fr_strerror());
 

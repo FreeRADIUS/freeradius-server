@@ -2152,9 +2152,9 @@ size_t tmpl_snprint_attr_str(char *out, size_t outlen, vp_tmpl_t const *vpt)
 
 /** Print a #vp_tmpl_t to a string
  *
- * @param[out] out Where to write the presentation format #vp_tmpl_t string.
- * @param[in] outlen Size of output buffer.
- * @param[in] vpt to print.
+ * @param[out] out	Where to write the presentation format #vp_tmpl_t string.
+ * @param[in] outlen	Size of output buffer.
+ * @param[in] vpt	to print.
  * @return
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
@@ -2166,14 +2166,16 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 	char		c;
 	char		*out_p = out, *end = out_p + outlen;
 
-	if (!vpt || (outlen < 3)) {
-	empty:
+	if (outlen == 0) return 1;
+
+	if (!vpt) {
+empty:
 		*out = '\0';
 		return 0;
 	}
 	TMPL_VERIFY(vpt);
 
-	out[outlen - 1] = '\0';	/* Always terminate for safety */
+	*end = '\0';	/* Always terminate for safety */
 
 	switch (vpt->type) {
 	case TMPL_TYPE_LIST:
@@ -2187,11 +2189,23 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 	 */
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_STRUCT:
-		if (outlen < 4) goto empty;	/* / + <c> + / + \0 */
+		if ((end - out_p) <= 3) {	/* / + <c> + / + \0 */
+		no_space:
+			if (out_p > end) out_p = end;	/* Safety */
+			*out_p = '\0';
+			return outlen + 1;
+		}
+
 		*out_p++ = '/';
-		len = fr_snprint(out_p, (end - out_p) - 1, vpt->name, vpt->len, '\0');
-		RETURN_IF_TRUNCATED(out_p, len, (end - out_p) - 1);
+		len = fr_snprint(out_p, end - out_p, vpt->name, vpt->len, '\0');
+		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+
+		if ((end - out_p) <= 1) goto no_space;
 		*out_p++ = '/';
+
+		len = regex_flags_snprint(out_p, end - out_p, &vpt->tmpl_regex_flags);
+		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+
 		goto finish;
 
 	case TMPL_TYPE_XLAT:
@@ -2219,15 +2233,17 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 		c = *p ? '"' : '\0';
 
 do_literal:
-		if (outlen < 4) goto empty;	/* / + <c> + / + \0 */
+		if ((end - out_p) <= 3) goto no_space;	/* / + <c> + / + \0 */
 		if (c != '\0') *out_p++ = c;
 		len = fr_snprint(out_p, (end - out_p) - ((c == '\0') ? 0 : 1), vpt->name, vpt->len, c);
 		RETURN_IF_TRUNCATED(out_p, len, (end - out_p) - ((c == '\0') ? 0 : 1));
+
+		if ((end - out_p) <= 1) goto no_space;
 		if (c != '\0') *out_p++ = c;
 		break;
 
 	case TMPL_TYPE_DATA:
-		return fr_value_box_snprint(out, outlen, &vpt->tmpl_value, fr_token_quote[vpt->quote]);
+		return fr_value_box_snprint(out, end - out_p, &vpt->tmpl_value, fr_token_quote[vpt->quote]);
 
 	default:
 		goto empty;
@@ -2799,30 +2815,9 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 
 	case TMPL_TYPE_REGEX:
 #ifdef HAVE_REGEX
-		/*
-		 *	iflag field is used for non compiled regexes too.
-		 */
-		if (CHECK_ZEROED(vpt->data.preg)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
-				     "has non-zero bytes after the data.preg struct in the union", file, line);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
-		}
-
 		if (vpt->tmpl_preg != NULL) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
 				     "preg field was not NULL", file, line);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
-		}
-
-		if ((vpt->tmpl_iflag != true) && (vpt->tmpl_iflag != false)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
-				     "iflag field was neither true or false", file, line);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
-		}
-
-		if ((vpt->tmpl_mflag != true) && (vpt->tmpl_mflag != false)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
-				     "mflag field was neither true or false", file, line);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 #else
@@ -2832,29 +2827,12 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 
 	case TMPL_TYPE_REGEX_STRUCT:
 #ifdef HAVE_REGEX
-		if (CHECK_ZEROED(vpt->data.preg)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_STRUCT "
-				     "has non-zero bytes after the data.preg struct in the union", file, line);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
-		}
-
 		if (vpt->tmpl_preg == NULL) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_STRUCT "
 				     "comp field was NULL", file, line);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
-		if ((vpt->tmpl_iflag != true) && (vpt->tmpl_iflag != false)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_STRUCT "
-				     "iflag field was neither true or false", file, line);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
-		}
-
-		if ((vpt->tmpl_mflag != true) && (vpt->tmpl_mflag != false)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
-				     "mflag field was neither true or false", file, line);
-			if (!fr_cond_assert(0)) fr_exit_now(1);
-		}
 #else
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 #endif

@@ -167,11 +167,6 @@ struct vp_tmpl_s {
 	size_t		len;		//!< Length of the raw string used to create the template.
 	FR_TOKEN	quote;		//!< What type of quoting was around the raw string.
 
-#ifdef HAVE_REGEX
-	bool		iflag;		//!< regex - case insensitive (if operand is used in regex comparison)
-	bool		mflag;		//!< regex - multiline flags (controls $ matching)
-#endif
-
 	union {
 		struct {
 			request_ref_t		request;		//!< Request to search or insert in.
@@ -195,7 +190,10 @@ struct vp_tmpl_s {
 		xlat_exp_t	*xlat;	 //!< pre-parsed xlat_exp_t
 
 #ifdef HAVE_REGEX
-		regex_t		*preg;	//!< pre-parsed regex_t
+		struct {
+			regex_t		*preg;		//!< pre-parsed regex_t
+			fr_regex_flags_t	regex_flags;	//!< Flags for regular expressions.
+		};
 #endif
 	} data;
 };
@@ -235,8 +233,7 @@ struct vp_tmpl_s {
  */
 #ifdef HAVE_REGEX
 #  define tmpl_preg			data.preg	//!< #TMPL_TYPE_REGEX_STRUCT only.
-#  define tmpl_iflag			iflag
-#  define tmpl_mflag			mflag
+#  define tmpl_regex_flags			data.regex_flags
 #endif
 /* @} **/
 
