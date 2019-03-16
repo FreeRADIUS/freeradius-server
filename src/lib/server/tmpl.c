@@ -2175,7 +2175,7 @@ empty:
 	}
 	TMPL_VERIFY(vpt);
 
-	*end = '\0';	/* Always terminate for safety */
+	*(end - 1) = '\0';	/* Always terminate for safety */
 
 	switch (vpt->type) {
 	case TMPL_TYPE_LIST:

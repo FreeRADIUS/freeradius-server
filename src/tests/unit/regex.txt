@@ -37,7 +37,7 @@ condition foo =~ /bar/gimsux
 data foo =~ /bar/gimsux
 
 condition foo =~ /bar/ima
-data ERROR offset 14 Invalid flag
+data ERROR offset 14 Unexpected text after condition
 
 condition foo =~ /bar/ii
 data ERROR offset 13 Duplicate flag

@@ -625,7 +625,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 
 		} else { /* it's an operator */
 #ifdef HAVE_REGEX
-			bool		regex = false;
+			bool			regex = false;
 			fr_regex_flags_t	regex_flags;
 
 			memset(&regex_flags, 0, sizeof(regex_flags));
@@ -781,10 +781,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				case -1:
 					rad_assert(flen <= 0);
 					slen += (size_t)(-flen);
-					if (p[slen] != ')') {
-						p += slen;
-						return_P("Invalid flag");
-					}
 					break;
 
 				case -2:
