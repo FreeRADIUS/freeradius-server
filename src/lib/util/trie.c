@@ -1205,6 +1205,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 			return -1;
 		}
 
+		talloc_free(path);
 		*trie_p = (fr_trie_t *) split;
 		split->parent = parent;
 		return 0;
@@ -1281,6 +1282,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	node->used++;
 	*trie_p = (fr_trie_t *) node;
 	node->parent = parent;
+	talloc_free(path);
 	return 0;
 }
 #endif
