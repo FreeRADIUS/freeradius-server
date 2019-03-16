@@ -188,6 +188,8 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *msg, va_list ap
 	size_t		len;
 	int		colourise = log->colourise;
 
+	rad_assert(log != NULL);
+
 	/*
 	 *	If we don't want any messages, then
 	 *	throw them away.
