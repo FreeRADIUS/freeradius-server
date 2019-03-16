@@ -673,18 +673,37 @@ believe that you need to execute many programs, we suggest finding
 alternative ways to achieve the same result.  In some cases, using a
 real language may be sufficient.
 
-.IP /regex/im
+.IP /regex/[i][m][s][u][x]
 These strings are valid only on the right-hand side of a comparison,
 and then only when the comparison operator is "=~" or "!~".  They are
 regular expressions, as implemented by the local regular expression
-library on the system.  This is usually Posix regular expressions.
+library on the system.  Supported regular expression implementations
+are Posix, libpcre, and libpcre2.
 
-The trailing 'i' is optional, and indicates that the regular
-expression match should be done in a case-insensitive fashion.
+The trailing characters after the end of the expression are flags
+which alter how the expression is interpreted.
 
-The trailing 'm' is also optional, and indicates that carrot '^'
-and dollar '$' anchors should match on new lines as well as at the
-start and end of the subject string.
+The 'i' flag indicates that the regular expression match should be
+done in a case-insensitive fashion.
+
+The 'm' flag indicates that carrot '^' and dollar '$' anchors should
+match on new lines as well as at the start and end of the subject
+string.
+
+The 's' flag causes '.' to match all characters including newlines.
+
+The 'u' flag tells the regex engine to assume all input and pattern
+strings are UTF8 encoded, this affects how the regex engine
+performs case insensitive matching, and causes it to treat multibyte
+characters as single atoms.
+
+The 'x' flag  causes most whitespace characters are ignored, and if
+a line contains a '#' char, the line content after the '#' is ignored.
+The primary use of the 'x' flag is to aid readability of complex
+expressions.
+
+Note the 's', 'u', and 'x' flags are only supported when the server
+is built with libpcre or libpcre2.
 
 If the comparison operator is "=~", then parentheses in the regular
 expression will define variables containing the matching text, as
@@ -709,9 +728,10 @@ the input string.  The variables %{1} through %{32} will contain the
 substring matches, starting from the left-most capture group, onwards.
 If there are more than 32 capture groups, the additional results will
 not be accessible.
-If the server is built with libpcre, the results of named capture groups
-are available using the "%{regex:capture group}" expansion.  They will
-also be accessible using the variables described above.
+If the server is built with libpcre or libpcre2, the results of named
+capture groups are available using the "%{regex:capture group}"
+expansion.  They will also be accessible using the variables described
+above.
 Every time a regular expression is evaluated, whether it matches or not,
 the capture group values will be cleared.
 .RE

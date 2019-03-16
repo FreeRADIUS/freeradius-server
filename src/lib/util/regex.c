@@ -1067,7 +1067,6 @@ size_t regex_flags_snprint(char *out, size_t outlen, fr_regex_flags_t const *fla
 	DO_REGEX_FLAG(dot_all, 's');
 	DO_REGEX_FLAG(unicode, 'u');
 	DO_REGEX_FLAG(extended, 'x');
-
 #undef DO_REGEX_FLAG
 
 	return p - out;
