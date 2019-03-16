@@ -1028,64 +1028,6 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	chunk = get_chunk(key, start_bit, node->bits);
 
 	/*
-	 *	The current node exactly fits the key bits.
-	 */
-	if ((start_bit + node->bits == end_bit)) {
-		fr_trie_user_t *user;
-
-		/*
-		 *	No existing trie, create a brand new
-		 *	user node from the key.
-		 */
-		if (!node->trie[chunk]) {
-			node->trie[chunk] = (fr_trie_t *) fr_trie_user_alloc(ctx, (fr_trie_t *) node, data);
-
-		add_new:
-			node->used++;
-			goto done_set;
-		}
-
-		/*
-		 *	Can't insert user data on top of user
-		 *	data.
-		 */
-		if (node->trie[chunk]->type == FR_TRIE_USER) {
-			fr_strerror_printf("already has a user node at %d\n", __LINE__);
-
-		fail:
-			if (trie_to_free) fr_trie_free(trie_to_free);
-			return -1;
-		}
-
-		/*
-		 *	Otherwise there is already a trie at
-		 *	the end of the key, so there's another
-		 *	key which is longer.  Just create a
-		 *	user node and wedge it into place.
-		 */
-		user = fr_trie_user_alloc(ctx, (fr_trie_t *) node, data);
-		if (!user) {
-			fr_strerror_printf("Failed user_alloc at %d\n", __LINE__);
-			goto fail;
-		}
-
-		/*
-		 *	Add the existing trie *after* the new
-		 *	user data.  We do this by just
-		 *	rearranging the trie.
-		 */
-		user->trie = node->trie[chunk];
-		user->trie->parent = (fr_trie_t *) user;
-		node->trie[chunk] = (fr_trie_t *) user;
-		goto done_set;
-	}
-
-	/*
-	 *	The current node is all within the key bits.
-	 */
-	// assert ((start_bit + node->bits) < end_bit)
-
-	/*
 	 *	No existing trie, create a brand new trie from
 	 *	the key.
 	 */
@@ -1093,21 +1035,23 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		node->trie[chunk] = fr_trie_key_alloc(ctx, (fr_trie_t *) node, key, start_bit + node->bits, end_bit, data);
 		if (!node->trie[chunk]) {
 			fr_strerror_printf("Failed key_alloc at %d\n", __LINE__);
-			goto fail;
+			if (trie_to_free) fr_trie_free(trie_to_free);
+			return -1;
 		}
-		goto add_new;
+		node->used++;
+
+	} else {
+		/*
+		 *	Recurse in order to insert the key
+		 *	into the current node.
+		 */
+		if (fr_trie_key_insert(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
+			MPRINT("Failed recursing at %d\n", __LINE__);
+			if (trie_to_free) fr_trie_free(trie_to_free);
+			return -1;
+		}
 	}
 
-	/*
-	 *	Recurse in order to insert the key
-	 *	into the current node.
-	 */
-	if (fr_trie_key_insert(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
-		MPRINT("Failed recursing at %d\n", __LINE__);
-		goto fail;
-	}
-
-done_set:
 	if (trie_to_free) fr_trie_free(trie_to_free);
 	*trie_p = (fr_trie_t *) node;
 	node->parent = parent;
