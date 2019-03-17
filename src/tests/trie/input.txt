@@ -25,13 +25,24 @@ lcp	a	1	A	1	0	1
 
 lcp	aaa	24	aab	24	4	18
 
-chunk	a	0 8	61
-chunk	a	0 7	30
-chunk	a	0 6	18
-chunk	aa	1 8	c2
+#
+#  Note that we can't ask for more than 16 bits,
+#  and we can't ask for bits that go over 3 bytes.
+#  The code will assert.
+#
+chunk	a	0 8	0061
+chunk	a	0 7	0030
+chunk	a	0 6	0018
+chunk	aa	1 8	00c2
 chunk	aa	0 16	6161
-chunk	aaa	8 8	61
-chunk	aaa	7 2	02
+chunk	aaa	8 8	0061
+chunk	aaa	7 2	0002
+chunk	aaa	1 15	6161
+chunk	aaa	2 14	2161
+chunk	aaa	3 13	0161
+chunk	aaa	4 11	00b0
+chunk	aaa	5 10	00b0
+chunk	aaa	6 9	00b0
 
 #
 #  Insert a path and user data

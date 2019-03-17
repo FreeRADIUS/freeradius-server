@@ -385,8 +385,10 @@ static uint16_t get_chunk(uint8_t const *key, int start_bit, int num_bits)
 	 *	Catch some simple use-cases.
 	 */
 	if (start_bit == 0) {
+		if (num_bits < 7) return key[0] >> (8 - num_bits);
 		if (num_bits == 8) return key[0];
 		if (num_bits == 16) return (key[0] << 8) | key[1];
+		return ((key[0] << 8) | key[1]) >> (16 - num_bits);
 	}
 
 	/*
@@ -2470,7 +2472,7 @@ static int command_chunk(UNUSED fr_trie_t *ft, UNUSED int argc, char **argv, cha
 
 	chunk = get_chunk((uint8_t const *) argv[0], start_bit, num_bits);
 
-	snprintf(out, outlen, "%02x", chunk);
+	snprintf(out, outlen, "%04x", chunk);
 	return 0;
 }
 
