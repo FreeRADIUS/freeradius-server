@@ -1774,93 +1774,44 @@ static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, 
  */
 static void fr_trie_dump_edge(FILE *fp, fr_trie_t *trie)
 {
-	if (trie->type == FR_TRIE_USER) {
-		fr_trie_user_t *user = (fr_trie_user_t *) trie;
+	fr_cond_assert(trie != NULL);
 
-		fprintf(fp, "NODE-%d\n", user->number);
-		return;
-	}
-
-	if (trie->type == FR_TRIE_NODE) {
-		fr_trie_node_t *node = (fr_trie_node_t *) trie;
-
-		fprintf(fp, "NODE-%d\n", node->number);
-		return;
-	}
-
-#ifdef WITH_PATH_COMPRESSION
-	if (trie->type == FR_TRIE_PATH) {
-		fr_trie_path_t *path = (fr_trie_path_t *) trie;
-
-		fprintf(fp, "NODE-%d\n", path->number);
-		return;
-	}
-#endif
-
-	fprintf(fp, "NODE-???");
+	fprintf(fp, "NODE-%d\n", trie->number);
+	return;
 }
 
 
-/**  Dump the trie nodes
- *
- */
-static int fr_trie_dump_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
+typedef void (*fr_trie_dump_t)(FILE *fp, fr_trie_t *trie, char const *key, int keylen);
+
+static void fr_trie_user_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
 {
-	int i, bytes;
-	FILE *fp = cb->ctx;
-	fr_trie_node_t *node;
+	fr_trie_user_t *user = (fr_trie_user_t *) trie;
+	int bytes = BYTES(keylen);
 
-	if (!trie) return 0;
+	fprintf(fp, "{ NODE-%d\n", user->number);
+	fprintf(fp, "\ttype\tUSER\n");
+	fprintf(fp, "\tinput\t{%d}%.*s\n", keylen, bytes, key);
 
-	bytes = BYTES(keylen);
-
-	if (trie->type == FR_TRIE_USER) {
-		fr_trie_user_t *user = (fr_trie_user_t *) trie;
-
-		fprintf(fp, "{ NODE-%d\n", user->number);
-		fprintf(fp, "\ttype\tUSER\n");
-		fprintf(fp, "\tinput\t{%d}%.*s\n", keylen, bytes, cb->start);
-
-		fprintf(fp, "\tdata\t\"%s\"\n", (char const *) user->data);
-		if (!user->trie) {
-			fprintf(fp, "}\n\n");
-			return 0;
-		}
-
-		fprintf(fp, "\tnext\t");
-		fr_trie_dump_edge(fp, user->trie);
+	fprintf(fp, "\tdata\t\"%s\"\n", (char const *) user->data);
+	if (!user->trie) {
 		fprintf(fp, "}\n\n");
-		return 0;
+		return;
 	}
 
-#ifdef WITH_PATH_COMPRESSION
-	if (trie->type == FR_TRIE_PATH) {
-		fr_trie_path_t *path = (fr_trie_path_t *) trie;
-		fprintf(fp, "{ NODE-%d\n", path->number);
-		fprintf(fp, "\ttype\tPATH\n");
-		fprintf(fp, "\tinput\t{%d}%.*s\n", keylen, bytes, cb->start);
+	fprintf(fp, "\tnext\t");
+	fr_trie_dump_edge(fp, user->trie);
+	fprintf(fp, "}\n\n");
+}
 
-		fprintf(fp, "\tbits\t%d\n", (int) path->bits);
-		fprintf(fp, "\tpath\t");
-
-		fprintf(fp, "%02x %02x", path->key[0], path->key[1]);
-
-		fprintf(fp, "\n");
-
-		fprintf(fp, "\tnext\t");
-		fr_trie_dump_edge(fp, path->trie);
-
-		fprintf(fp, "}\n\n");
-		return 0;
-	}
-#endif
-
-
-	node = (fr_trie_node_t *) trie;
+static void fr_trie_node_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
+{
+	fr_trie_node_t *node = (fr_trie_node_t *) trie;
+	int i;
+	int bytes = BYTES(keylen);
 
 	fprintf(fp, "{ NODE-%d\n", node->number);
 	fprintf(fp, "\ttype\tNODE\n");
-	fprintf(fp, "\tinput\t{%d}%.*s\n", keylen, bytes, cb->start);
+	fprintf(fp, "\tinput\t{%d}%.*s\n", keylen, bytes, key);
 
 	fprintf(fp, "\tbits\t%d\n", node->bits);
 	fprintf(fp, "\tused\t%d\n", node->used);
@@ -1872,7 +1823,62 @@ static int fr_trie_dump_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, 
 		fr_trie_dump_edge(fp, node->trie[i]);
 	}
 	fprintf(fp, "}\n\n");
+}
 
+#ifdef WITH_PATH_COMPRESSION
+static void fr_trie_path_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
+{
+	fr_trie_path_t *path = (fr_trie_path_t *) trie;
+	int bytes = BYTES(keylen);
+
+	fprintf(fp, "{ NODE-%d\n", path->number);
+	fprintf(fp, "\ttype\tPATH\n");
+	fprintf(fp, "\tinput\t{%d}%.*s\n", keylen, bytes, key);
+
+	fprintf(fp, "\tbits\t%d\n", (int) path->bits);
+	fprintf(fp, "\tpath\t");
+
+	fprintf(fp, "%02x %02x", path->key[0], path->key[1]);
+
+	fprintf(fp, "\n");
+
+	fprintf(fp, "\tnext\t");
+	fr_trie_dump_edge(fp, path->trie);
+
+	fprintf(fp, "}\n\n");
+}
+#endif
+
+static fr_trie_dump_t trie_dump[FR_TRIE_MAX] = {
+	[ FR_TRIE_USER ] = fr_trie_user_dump,
+	[ FR_TRIE_NODE ] = fr_trie_node_dump,
+
+#ifdef WITH_PATH_COMPRESSION
+	[ FR_TRIE_PATH ] = fr_trie_path_dump,
+#endif
+};
+
+
+/**  Dump the trie nodes
+ *
+ */
+static int fr_trie_dump_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
+{
+	FILE *fp = cb->ctx;
+
+	if (!trie) return 0;
+
+	/*
+	 *	Catch problems.
+	 */
+	if ((trie->type == FR_TRIE_INVALID) ||
+	    (trie->type >= FR_TRIE_MAX) ||
+	    !trie_dump[trie->type]) {
+		fr_strerror_printf("unknown trie type %d in dump", trie->type);
+		return 0;
+	}
+
+	trie_dump[trie->type](fp, trie, (char const *) cb->start, keylen);
 	return 0;
 }
 
