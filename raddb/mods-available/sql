@@ -34,7 +34,8 @@ sql {
 	#
 	#  The driver module used to execute the queries.  Since we
 	#  don't know which SQL drivers are being used, the default is
-	#  "rlm_sql_null", which just logs the queries to disk.
+	#  "rlm_sql_null", which just logs the queries to disk via the
+	#  "logfile" directive, below.
 	#
 	#  In order to talk to a real database, delete the next line,
 	#  and uncomment the one after it.
@@ -42,59 +43,57 @@ sql {
 	driver = "rlm_sql_null"
 #	driver = "rlm_sql_${driver}"
 
+	#
+	#  Driver-specific subsections.  They will only be loaded and
+	#  used if "driver" is something other than "rlm_sql_null".
+	#  When a real driver is used, the relevant driver
+	#  configuration section is loaded, and all other driver
+	#  configuration sections are ignored.
+	#
+	sqlite {
+		# Path to the sqlite database
+		filename = "/tmp/freeradius.db"
 
-#
-#	Several drivers accept specific options, to set them, a
-#	config section with the the name as the driver should be added
-#	to the sql instance.
-#
-#	Driver specific options are:
-#
-#	sqlite {
-#		# Path to the sqlite database
-#		filename = "/tmp/freeradius.db"
-#
-#		# How long to wait for write locks on the database to be
-#		# released (in ms) before giving up.
-#		busy_timeout = 200
-#
-#		# If the file above does not exist and bootstrap is set
-#		# a new database file will be created, and the SQL statements
-#		# contained within the bootstrap file will be executed.
-#		bootstrap = "${modconfdir}/${..:name}/main/sqlite/schema.sql"
-# 	}
-#
-#	mysql {
-#		# If any of the files below are set, TLS encryption is enabled
-#		tls {
-#			ca_file = "/etc/ssl/certs/my_ca.crt"
-#			ca_path = "/etc/ssl/certs/"
-#			certificate_file = "/etc/ssl/certs/private/client.crt"
-#			private_key_file = "/etc/ssl/certs/private/client.key"
-#			cipher = "DHE-RSA-AES256-SHA:AES128-SHA"
-#
-#			tls_required = yes
-#			tls_check_cert = no
-#			tls_check_cert_cn = no
-#		}
-#
-#		# If yes, (or auto and libmysqlclient reports warnings are
-#		# available), will retrieve and log additional warnings from
-#		# the server if an error has occured. Defaults to 'auto'
-#		warnings = auto
-#	}
-#
-#	postgresql {
-#
-#		# unlike MySQL, which has a tls{} connection configuration, postgresql
-#		# uses its connection parameters - see the radius_db option below in
-#		# this file
-#
-#		# Send application_name to the postgres server
-#		# Only supported in PG 9.0 and greater. Defaults to no.
-#		send_application_name = yes
-#	}
-#
+		# How long to wait for write locks on the database to be
+		# released (in ms) before giving up.
+		busy_timeout = 200
+
+		# If the file above does not exist and bootstrap is set
+		# a new database file will be created, and the SQL statements
+		# contained within the bootstrap file will be executed.
+		bootstrap = "${modconfdir}/${..:name}/main/sqlite/schema.sql"
+	}
+
+	mysql {
+		# If any of the files below are set, TLS encryption is enabled
+		tls {
+			ca_file = "/etc/ssl/certs/my_ca.crt"
+			ca_path = "/etc/ssl/certs/"
+			certificate_file = "/etc/ssl/certs/private/client.crt"
+			private_key_file = "/etc/ssl/certs/private/client.key"
+			cipher = "DHE-RSA-AES256-SHA:AES128-SHA"
+
+			tls_required = yes
+			tls_check_cert = no
+			tls_check_cert_cn = no
+		}
+
+		# If yes, (or auto and libmysqlclient reports warnings are
+		# available), will retrieve and log additional warnings from
+		# the server if an error has occured. Defaults to 'auto'
+		warnings = auto
+	}
+
+	postgresql {
+
+		# unlike MySQL, which has a tls{} connection configuration, postgresql
+		# uses its connection parameters - see the radius_db option below in
+		# this file
+
+		# Send application_name to the postgres server
+		# Only supported in PG 9.0 and greater. Defaults to no.
+		send_application_name = yes
+	}
 
 	# Connection info:
 	#
