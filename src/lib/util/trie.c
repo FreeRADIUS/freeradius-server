@@ -129,12 +129,10 @@ static uint8_t used_bit_mask[8] = {
 	0xf8, 0xfc, 0xfe, 0xff,
 };
 
-#ifdef WITH_PATH_COMPRESSION
 static uint8_t end_bit_mask[8] = {
 	0x00, 0x80, 0xc0, 0xe0,
 	0xf0, 0xf8, 0xfc, 0xfe,
 };
-#endif
 
 
 #if defined(WITH_PATH_COMPRESSION) || defined(TESTING)
@@ -419,6 +417,60 @@ static uint16_t get_chunk(uint8_t const *key, int start_bit, int num_bits)
 	return chunk;
 }
 
+
+/** Write a chunk to an output buffer
+ *
+ */
+static void write_chunk(uint8_t *out, int depth, int num_bits, uint16_t chunk)
+{
+	int bits_used = depth & 0x07;
+
+	fr_cond_assert(chunk < (1 << num_bits));
+
+	/*
+	 *	Fast path when "depth" ends on a byte boundary.
+	 */
+	if (bits_used == 0) {
+		if (num_bits < 16) chunk <<= (16 - num_bits);
+
+		out[0] = (chunk >> 8) & 0xff;
+
+	set_bits:
+		if (num_bits < 8) {
+			out[0] &= end_bit_mask[num_bits];
+		} else if (num_bits > 8) {
+			out[1] = chunk & 0xff;
+
+			if (num_bits < 16) {
+				out[1] &= end_bit_mask[num_bits & 0x07];
+			}
+		}
+
+		return;
+	}
+
+	/*
+	 *	More complex code when we don't start on a byte boundary.
+	 */
+	fr_cond_assert(num_bits < 16); /* can only be 16 bits on a byte boundary */
+
+	/*
+	 *	Shift the chunk to the high bits, but leave room for
+	 *	"bits_used".
+	 */
+	chunk <<= (16 - num_bits - bits_used);
+
+	/*
+	 *	Mask off the low bits that are already in the output.
+	 *	Then OR in the relevant bits of "chunk".
+	 */
+	out[0] &= used_bit_mask[bits_used];
+	out[0] |= chunk >> 8;
+
+	num_bits += bits_used;	/* number of bits we're now pretending is in chunk */
+	goto set_bits;
+}
+
 typedef enum fr_trie_type_t {
 	FR_TRIE_INVALID = 0,
 	FR_TRIE_USER,
@@ -664,21 +716,9 @@ static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, ui
 	path->chunk = get_chunk(key, start_bit, path->bits);
 
 	/*
-	 *	Copy the key over, being sure to zero out unused bits
+	 *	Write the chunk back to the key.
 	 */
-	path->key[0] = key[0] & start_bit_mask[start_bit];
-
-	if (end_bit < 8) {
-		fr_cond_assert(end_bit > 0);
-		path->key[0] &= end_bit_mask[end_bit];
-
-	} else if (end_bit > 8) {
-		path->key[1] = key[1];
-
-		if (end_bit < 16) {
-			path->key[1] &= end_bit_mask[end_bit & 0x07];
-		}
-	}
+	write_chunk(&path->key[0], start_bit, path->bits, path->chunk);
 
 #if 0
 	fprintf(stderr, "PATH ALLOC key %02x%02x start %d end %d bits %d == chunk %04x key %02x%02x\n",
@@ -1625,11 +1665,13 @@ void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen)
 	return fr_trie_key_remove(user->data, (fr_trie_t *) user, &user->trie, key, 0, (int) keylen);
 }
 
-/* MISCELLANEOUS FUNCTIONS */
+/* WALK FUNCTIONS */
 
 typedef struct fr_trie_callback_t fr_trie_callback_t;
 
-typedef int (*fr_trie_key_walk_t)(void *trie, fr_trie_callback_t *cb, int depth, bool more);
+typedef int (*fr_trie_key_walk_t)(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more);
+
+static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more);
 
 struct fr_trie_callback_t {
 	fr_trie_t	*ft;
@@ -1643,115 +1685,25 @@ struct fr_trie_callback_t {
 	fr_trie_walk_t		user_callback;
 };
 
-static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
+static int fr_trie_user_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
+{
+	fr_trie_user_t *user = (fr_trie_user_t *) trie;
+
+	if (!user->trie) return 0;
+
+	return fr_trie_key_walk(user->trie, cb, depth, more);
+}
+
+static int fr_trie_node_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
 {
 	int i, used;
-	int bits_used;
-	uint8_t *out, out_0;
-	fr_trie_node_t *node;
+	fr_trie_node_t *node = (fr_trie_node_t *) trie;
 
-	/*
-	 *	Do the callback before anything else.
-	 */
-	if (cb->callback(trie, cb, depth, more) < 0) return -1;
-
-	/*
-	 *	Nothing more to do, return.
-	 */
-	if (!trie) {
-		fr_cond_assert(depth == 0);
-		return 0;
-	}
-
-	/*
-	 *	No more buffer space, stop.
-	 */
-	if ((cb->start + BYTEOF(depth + trie->bits + 8)) >= cb->end) return 0;
-
-	/*
-	 *	User ctx data.  Recurse (if necessary) for any
-	 *	subtrie.
-	 */
-	if (trie->type == FR_TRIE_USER) {
-		fr_trie_user_t *user = (fr_trie_user_t *) trie;
-
-		if (!user->trie) return 0; /* shouldn't happen */
-
-//		MPRINT("Recursing into user at depth %d\n", depth);
-		return fr_trie_key_walk(user->trie, cb, depth, more);
-	}
-
-	/*
-	 *	Bits used in the last byte.
-	 */
-	bits_used = depth & 0x07;
-
-	/*
-	 *	Where we're writing the output string.
-	 */
-	out = cb->start + BYTEOF(depth);
-
-	/*
-	 *	Mask out the low bits.  They may have been written to
-	 *	in a previous invocation of the function.
-	 */
-	if (bits_used > 0) {
-		out[0] &= used_bit_mask[bits_used];
-	} else {
-		out[0] = 0;
-	}
-
-#ifdef WITH_PATH_COMPRESSION
-	/*
-	 *	Copy the path over.  By bytes if possible, otherwise
-	 *	by bits.
-	 */
-	if (trie->type == FR_TRIE_PATH) {
-		fr_trie_path_t *path = (fr_trie_path_t *) trie;
-
-		out[0] |= path->key[0];
-		if (BYTEOF(depth) != BYTEOF(depth + path->bits)) {
-			out[1] = path->key[1];
-		}
-
-//		MPRINT("Recursing into path length %d at depth %d\n", path->bits, depth);
-		return fr_trie_key_walk(path->trie, cb, depth + path->bits, more);
-	}
-#endif
-
-	node = (fr_trie_node_t *) trie;
-
-	/*
-	 *	Track when we're done, and remember the output byte at
-	 *	the start.
-	 */
 	used = 0;
-	out_0 = out[0];
-
 	for (i = 0; i < node->size; i++) {
-		uint16_t chunk;
-
-		/*
-		 *	Nothing on this terminal node, skip it.
-		 */
 		if (!node->trie[i]) continue;
 
-		/*
-		 *	Get the bits we need, OR in the previous data,
-		 *	and write it to the output buffer.
-		 */
-		chunk = i;	/* node->size bits are used here */
-
-#if 0
-		MPRINT("Recursing into node length %d chunk %04x bit_used %d out = %02x%02x at depth %d\n",
-		       node->bits, chunk, bits_used, out_0, out[1], depth);
-#endif
-
-		chunk <<= (16 - node->bits - bits_used);
-
-		out[0] = out_0 | (chunk >> 8);
-		out[1] = chunk & 0xff;
-
+		write_chunk(cb->start + BYTEOF(depth), depth, node->bits, (uint16_t) i);
 		used++;
 
 		if (fr_trie_key_walk(node->trie[i], cb, depth + node->bits,
@@ -1762,6 +1714,57 @@ static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, 
 
 	return 0;
 }
+
+#ifdef WITH_PATH_COMPRESSION
+static int fr_trie_path_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
+{
+	fr_trie_path_t *path = (fr_trie_path_t *) trie;
+
+	write_chunk(cb->start + BYTEOF(depth), depth, path->bits, path->chunk);
+
+	return fr_trie_key_walk(path->trie, cb, depth + path->bits, more);
+}
+#endif
+
+static fr_trie_key_walk_t trie_walk[FR_TRIE_MAX] = {
+	[ FR_TRIE_USER ] = fr_trie_user_walk,
+	[ FR_TRIE_NODE ] = fr_trie_node_walk,
+#ifdef WITH_PATH_COMPRESSION
+	[ FR_TRIE_PATH ] = fr_trie_path_walk,
+#endif
+};
+
+static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
+{
+	/*
+	 *	Do the callback before anything else.
+	 */
+	if (cb->callback(trie, cb, depth, more) < 0) return -1;
+
+	if (!trie) {
+		fr_cond_assert(depth == 0);
+		return 0;
+	}
+
+	/*
+	 *	Catch problems.
+	 */
+	if ((trie->type == FR_TRIE_INVALID) ||
+	    (trie->type >= FR_TRIE_MAX) ||
+	    !trie_walk[trie->type]) {
+		fr_strerror_printf("unknown trie type %d in walk", trie->type);
+		return 0;
+	}
+
+	/*
+	 *	No more buffer space, stop.
+	 */
+	if ((cb->start + BYTEOF(depth + trie->bits + 8)) >= cb->end) return 0;
+
+	return trie_walk[trie->type](trie, cb, depth, more);
+}
+
+/* MISCELLANEOUS FUNCTIONS */
 
 #ifdef TESTING
 /** Dump a trie edge in canonical form.
@@ -1799,12 +1802,11 @@ static void fr_trie_dump_edge(FILE *fp, fr_trie_t *trie)
 /**  Dump the trie nodes
  *
  */
-static int fr_trie_dump_cb(void *ctx, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
+static int fr_trie_dump_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
 {
 	int i, bytes;
 	FILE *fp = cb->ctx;
 	fr_trie_node_t *node;
-	fr_trie_t *trie = ctx;
 
 	if (!trie) return 0;
 
@@ -1875,12 +1877,11 @@ static int fr_trie_dump_cb(void *ctx, fr_trie_callback_t *cb, int keylen, UNUSED
 /**  Print the strings accepted by a trie to a file
  *
  */
-static int fr_trie_print_cb(void *ctx, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
+static int fr_trie_print_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
 {
 	int bytes;
 	FILE *fp = cb->ctx;
 	fr_trie_user_t *user;
-	fr_trie_t *trie = ctx;
 
 	if (!trie || (trie->type != FR_TRIE_USER)) {
 		return 0;
@@ -1903,18 +1904,19 @@ static int fr_trie_print_cb(void *ctx, fr_trie_callback_t *cb, int keylen, UNUSE
 /**  Implement the user-visible side of the walk callback.
  *
  */
-static int fr_trie_user_cb(void *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
+static int fr_trie_user_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
 {
 	fr_trie_user_t *user;
 	void *data;
 
-	if (!trie) return 0;
+	if (!trie || (trie->type != FR_TRIE_USER)) return 0;
 
 	user = (fr_trie_user_t *) trie;
-	if (user->type != FR_TRIE_USER) return 0;
-
 	memcpy(&data, &user->data, sizeof(data)); /* const issues */
 
+	/*
+	 *	Call the user function with the key, key length, and data.
+	 */
 	if (cb->user_callback(cb->ctx, cb->start, keylen, data) < 0) {
 		return -1;
 	}
@@ -1954,12 +1956,11 @@ typedef struct {
 
 /**  Print the strings accepted by a trie to one line
  */
-static int fr_trie_sprint_cb(void *trie_ctx, fr_trie_callback_t *cb, int keylen, bool more)
+static int fr_trie_sprint_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, bool more)
 {
 	int bytes, len;
 	fr_trie_sprint_ctx_t *ctx;
 	fr_trie_user_t *user;
-	fr_trie_t *trie = trie_ctx;
 
 	ctx = cb->ctx;
 
