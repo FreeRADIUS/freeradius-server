@@ -80,7 +80,9 @@ RCSID("$Id$")
 #define MAX_KEY_BYTES (256)
 #define MAX_KEY_BITS (MAX_KEY_BYTES * 8)
 
+#ifndef DEFAULT_BITS
 #define DEFAULT_BITS (4)
+#endif
 
 /**  Internal sanity checks for debugging.
  *

@@ -1,6 +1,6 @@
 TARGET		:= trie
 
-SRC_CFLAGS	:= -DTESTING
+SRC_CFLAGS	:= -DTESTING -DWITH_PATH_COMPRESSION
 SOURCES		:= trie.c
 TGT_LDLIBS	:= $(LIBS)
 TGT_PREREQS	:= libfreeradius-util.a
