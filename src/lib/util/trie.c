@@ -1214,6 +1214,8 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	fr_trie_t *node;
 	fr_trie_t *child, **edge;
 
+	VERIFY(path);
+
 	/*
 	 *	The key exactly matches the path.  Recurse.
 	 */
@@ -1345,6 +1347,8 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		 *	Patch in the child trie.
 		 */
 		((fr_trie_path_t *)child)->trie = path->trie;
+
+		VERIFY(child);
 	}
 
 	/*
@@ -1358,6 +1362,8 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		return -1;
 	}
 	*edge = child;
+
+	VERIFY(node);
 
 	/*
 	 *	Now get the chunk from the key, and add it to the
