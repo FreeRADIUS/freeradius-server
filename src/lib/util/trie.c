@@ -791,6 +791,23 @@ static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr
 	 *	We only do that on successful insertion.
 	 */
 
+#ifdef TESTING
+	/*
+	 *	Check that the two chunks add up to the parent chunk.
+	 */
+	fr_cond_assert(path->chunk == ((split->chunk << (path->bits - lcp)) | child->chunk));
+
+	/*
+	 *	Check that the two keys match the parent key.  This is
+	 *	a little more difficult as the child key may be
+	 *	shifted left a byte,
+	 */
+	if (BYTEOF(start_bit + path->bits - 1) == BYTEOF(start_bit)) {
+		fr_cond_assert(path->key[0] == (split->key[0] | child->key[0]));
+	}
+#endif
+
+
 	return split;
 }
 
