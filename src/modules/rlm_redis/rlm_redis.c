@@ -75,7 +75,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 
 	if (conn && conn->err) {
 		ERROR("rlm_redis (%s): Problems with redisConnectWithTimeout('%s', %d, %d), %s",
-				inst->xlat_name, inst->hostname, inst->port, inst->query_timeout, redisReplyReaderGetError(conn));
+				inst->xlat_name, inst->hostname, inst->port, inst->query_timeout, redisReaderGetError(conn));
 		redisFree(conn);
 		return NULL;
 	}
