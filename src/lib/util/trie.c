@@ -2406,9 +2406,6 @@ static int command_path(fr_trie_t *ft, int argc, char **argv, char *out, size_t 
 
 /**  Return the longest common prefix of two bit strings.
  *
- *  This function doesn't use argv2key because that makes the input
- *  look confusing.  And, we want to be able to specify a common start
- *  bit.
  */
 static int command_lcp(UNUSED fr_trie_t *ft, int argc, char **argv, char *out, size_t outlen)
 {
@@ -2459,6 +2456,22 @@ static int command_lcp(UNUSED fr_trie_t *ft, int argc, char **argv, char *out, s
 	return 0;
 }
 
+/** Get chunks from raw data
+ *
+ */
+static int command_chunk(UNUSED fr_trie_t *ft, UNUSED int argc, char **argv, char *out, size_t outlen)
+{
+	int start_bit, num_bits;
+	uint16_t chunk;
+
+	start_bit = atoi(argv[1]);
+	num_bits = atoi(argv[2]);
+
+	chunk = get_chunk((uint8_t const *) argv[0], start_bit, num_bits);
+
+	snprintf(out, outlen, "%02x", chunk);
+	return 0;
+}
 
 /**  A function to parse a trie command line.
  *
@@ -2482,6 +2495,7 @@ typedef struct {
  */
 static fr_trie_command_t commands[] = {
 	{ "lcp",	command_lcp,	2, 5, true },
+	{ "chunk",	command_chunk,	3, 3, true },
 	{ "path",	command_path,	2, 2, true },
 	{ "insert",	command_insert,	2, 2, false },
 	{ "match",	command_match,	1, 1, true },

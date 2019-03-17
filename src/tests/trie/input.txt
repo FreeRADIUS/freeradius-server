@@ -25,6 +25,14 @@ lcp	a	1	A	1	0	1
 
 lcp	aaa	24	aab	24	4	18
 
+chunk	a	0 8	61
+chunk	a	0 7	30
+chunk	a	0 6	18
+chunk	aa	1 8	c2
+chunk	aa	0 16	6161
+chunk	aaa	8 8	61
+chunk	aaa	7 2	02
+
 #
 #  Insert a path and user data
 #  Look up the key, and ensure that the user data matches
