@@ -127,10 +127,12 @@ static uint8_t used_bit_mask[8] = {
 	0xf8, 0xfc, 0xfe, 0xff,
 };
 
+#ifdef WITH_PATH_COMPRESSION
 static uint8_t end_bit_mask[8] = {
 	0x00, 0x80, 0xc0, 0xe0,
 	0xf0, 0xf8, 0xfc, 0xfe,
 };
+#endif
 
 
 #if defined(WITH_PATH_COMPRESSION) || defined(TESTING)
