@@ -122,9 +122,14 @@ static uint8_t start_bit_mask[8] = {
 	0x0f, 0x07, 0x03, 0x01
 };
 
-static uint8_t end_bit_mask[8] = {
+static uint8_t used_bit_mask[8] = {
 	0x80, 0xc0, 0xe0, 0xf0,
 	0xf8, 0xfc, 0xfe, 0xff,
+};
+
+static uint8_t end_bit_mask[8] = {
+	0x00, 0x80, 0xc0, 0xe0,
+	0xf0, 0xf8, 0xfc, 0xfe,
 };
 
 
@@ -375,22 +380,24 @@ static uint16_t get_chunk(uint8_t const *key, int start_bit, int num_bits)
 	}
 
 	/*
+	 *	Catch some simple use-cases.
+	 */
+	if (start_bit == 0) {
+		if (num_bits == 8) return key[0];
+		if (num_bits == 16) return (key[0] << 8) | key[1];
+	}
+
+	/*
 	 *	Load the first byte and mask off the bits we don't
 	 *	want.
 	 */
 	chunk = key[0] & start_bit_mask[start_bit & 0x07];
 
+	fr_cond_assert(BYTEOF(start_bit + num_bits - 1) <= 1);
+
 	if (BYTEOF(start_bit + num_bits - 1) != 0) {
 		chunk <<= 8;
 		chunk |= key[1];
-	}
-
-	/*
-	 *	No more shifting to do, just return.
-	 */
-	if (num_bits == 16) {
-		fr_cond_assert((start_bit & 0x07) == 0);
-		return chunk;
 	}
 
 	/*
@@ -658,14 +665,23 @@ static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, ui
 	path->key[0] = key[0] & start_bit_mask[start_bit];
 
 	if (end_bit < 8) {
+		fr_cond_assert(end_bit > 0);
 		path->key[0] &= end_bit_mask[end_bit];
 
-	} else if ((end_bit > 8) && (end_bit < 16)) {
-		path->key[1] = key[1] & end_bit_mask[end_bit & 0x03];
-
-	} else {
+	} else if (end_bit > 8) {
 		path->key[1] = key[1];
+
+		if (end_bit < 16) {
+			path->key[1] &= end_bit_mask[end_bit & 0x07];
+		}
 	}
+
+#if 0
+	fprintf(stderr, "PATH ALLOC key %02x%02x start %d end %d bits %d == chunk %04x key %02x%02x\n",
+		key[0], key[1],
+		start_bit, end_bit, path->bits,
+		path->chunk, path->key[0], path->key[1]);
+#endif
 
 #ifdef TESTING
 	path->number = trie_number++;
@@ -790,9 +806,9 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 	}
 
 	/*
-	 *	Try to grab 16 bits at a time.
+	 *	Grab some more bits.
 	 */
-	next_bit = (start_bit & ~0x07) + 8;
+	next_bit = start_bit + 8;
 
 	if (next_bit >= end_bit) {
 		path = fr_trie_path_alloc(ctx, parent, key, start_bit, end_bit);
@@ -1194,6 +1210,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		 *	parents itself from "path".  That pointer will
 		 *	be rewritten on the way back up the stack.
 		 */
+//		fprintf(stderr, "SPLIT %d at lcp %d\n", path->bits, lcp);
 		split = fr_trie_path_split(ctx, parent, path, start_bit2, lcp);
 		if (!split) {
 			fr_strerror_printf("failed path split at %d\n", __LINE__);
@@ -1658,7 +1675,7 @@ static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, 
 	 *	in a previous invocation of the function.
 	 */
 	if (bits_used > 0) {
-		out[0] &= end_bit_mask[bits_used];
+		out[0] &= used_bit_mask[bits_used];
 	} else {
 		out[0] = 0;
 	}
