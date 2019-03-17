@@ -94,11 +94,14 @@ RCSID("$Id$")
  */
 DIAG_OFF(unused-macros)
 #ifdef TESTING
+static int fr_trie_verify(fr_trie_t *trie);
+#define VERIFY(_x) fr_cond_assert(fr_trie_verify((fr_trie_t *) _x) == 0);
 #  define MPRINT(...) fprintf(stderr, ## __VA_ARGS__)
 
    /* define this to be MPRINT for additional debugging */
 #  define MPRINT2(...)
 #else
+#  define VERIFY(_x)
 #  define MPRINT(...)
 #  define MPRINT2(...)
 #endif
@@ -1294,6 +1297,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		talloc_free(path);
 		*trie_p = (fr_trie_t *) split;
 		split->parent = parent;
+		VERIFY(split);
 		return 0;
 	}
 
@@ -1387,6 +1391,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	*trie_p = node;
 	node->parent = parent;
 	talloc_free(path);
+	VERIFY(node);
 	return 0;
 }
 #endif
@@ -1724,6 +1729,7 @@ static int fr_trie_path_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth,
 
 	write_chunk(cb->start + BYTEOF(depth), depth, path->bits, path->chunk);
 
+	fr_cond_assert(path->trie != NULL);
 	return fr_trie_key_walk(path->trie, cb, depth + path->bits, more);
 }
 #endif
@@ -1816,7 +1822,7 @@ static void fr_trie_node_dump(FILE *fp, fr_trie_t *trie, char const *key, int ke
 	fprintf(fp, "\tbits\t%d\n", node->bits);
 	fprintf(fp, "\tused\t%d\n", node->used);
 
-	for (i = 0; i < (1 << node->bits); i++) {
+	for (i = 0; i < node->size; i++) {
 		if (!node->trie[i]) continue;
 
 		fprintf(fp, "\t%02x\t", (int) i);
@@ -1905,6 +1911,117 @@ static int fr_trie_print_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen,
 	}
 
 	return 0;
+}
+
+/* VERIFY FUNCTIONS */
+
+typedef int (*fr_trie_verify_t)(fr_trie_t *trie);
+
+static int fr_trie_user_verify(fr_trie_t *trie)
+{
+	fr_trie_user_t *user = (fr_trie_user_t *) trie;
+
+	if (!user->data) {
+		fr_strerror_printf("user node %d has no user data",
+				   user->number);
+		return -1;
+	}
+
+	if (!user->trie) return 0;
+
+	return fr_trie_verify(user->trie);
+}
+
+static int fr_trie_node_verify(fr_trie_t *trie)
+{
+	fr_trie_node_t *node = (fr_trie_node_t *) trie;
+	int i, used;
+
+	if ((node->bits == 0) || (node->bits > DEFAULT_BITS)) {
+		fr_strerror_printf("N-way node %d has invalid bits %d",
+				   node->number, node->bits);
+		return -1;
+	}
+
+	if (node->size != (1 << node->bits)) {
+		fr_strerror_printf("N-way node %d has invalid bits %d for size %d",
+				   node->number, node->bits, node->size);
+		return -1;
+	}
+
+	if ((node->used == 0) || (node->used > node->size)) {
+		fr_strerror_printf("N-way node %d has invalid used %d for bits %d size %d",
+				   node->number, node->used, node->bits, node->size);
+		return -1;
+	}
+
+	used = 0;
+	for (i = 0; i < node->size; i++) {
+		if (!node->trie[i]) continue;
+
+		if (fr_trie_verify(node->trie[i]) < 0) return -1;
+
+		used++;
+	}
+
+	if (used != node->used) {
+		fr_strerror_printf("N-way node %d has incorrect used %d when actually used %d",
+				   node->number, node->used, used);
+		return -1;
+	}
+
+	return 0;
+}
+
+#ifdef WITH_PATH_COMPRESSION
+static int fr_trie_path_verify(fr_trie_t *trie)
+{
+	fr_trie_path_t *path = (fr_trie_path_t *) trie;
+
+	if ((path->bits == 0) || (path->bits > 16)) {
+		fr_strerror_printf("path node %d has invalid bits %d",
+				   path->number, path->bits);
+		return -1;
+	}
+
+	if (!path->trie) {
+		fr_strerror_printf("path node %d has no child trie",
+				   path->number);
+		return -1;
+	}
+
+	return fr_trie_verify(path->trie);
+}
+#endif
+
+static fr_trie_verify_t trie_verify[FR_TRIE_MAX] = {
+	[ FR_TRIE_USER ] = fr_trie_user_verify,
+	[ FR_TRIE_NODE ] = fr_trie_node_verify,
+
+#ifdef WITH_PATH_COMPRESSION
+	[ FR_TRIE_PATH ] = fr_trie_path_verify,
+#endif
+};
+
+
+/**  Verify the trie nodes
+ *
+ */
+static int fr_trie_verify(fr_trie_t *trie)
+{
+	if (!trie) return 0;
+
+	/*
+	 *	Catch problems.
+	 */
+	if ((trie->type == FR_TRIE_INVALID) ||
+	    (trie->type >= FR_TRIE_MAX) ||
+	    !trie_verify[trie->type]) {
+		fr_strerror_printf("unknown trie type %d in verify", trie->type);
+		return -1;
+	}
+
+	return trie_verify[trie->type](trie);
 }
 #endif	/* TESTING */
 
@@ -2098,7 +2215,19 @@ static int command_verify(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, UN
 {
 	fr_cond_assert(ft != NULL);
 
-	// @todo - verify the trie...
+	/*
+	 *	The top-level node may have a NULL talloc ctx, which
+	 *	is OK.  So we skip that.
+	 */
+	if (ft->type != FR_TRIE_USER) {
+		fprintf(stderr, "Verify failed: trie is malformed\n");
+		return -1;
+	}
+
+	if (fr_trie_verify(ft->trie) < 0) {
+		fprintf(stderr, "Verify failed: %s\n", fr_strerror());
+		return -1;
+	}
 
 	return 0;
 }
