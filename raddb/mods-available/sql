@@ -18,17 +18,30 @@
 #
 
 sql {
-	# The sub-module to use to execute queries. This should match
-	# the database you're attempting to connect to.
 	#
-	#    * rlm_sql_mysql
-	#    * rlm_sql_mssql
-	#    * rlm_sql_oracle
-	#    * rlm_sql_postgresql
-	#    * rlm_sql_sqlite
-	#    * rlm_sql_null (log queries to disk)
+	#  The dialect of SQL being used.x
+	#
+	#  Allowed dialects are:
+	#
+	#	mssql
+	#	mysql
+	#	oracle
+	#	postgresql
+	#	sqlite
+	#
+	dialect = "sqlite"
+
+	#
+	#  The driver module used to execute the queries.  Since we
+	#  don't know which SQL drivers are being used, the default is
+	#  "rlm_sql_null", which just logs the queries to disk.
+	#
+	#  In order to talk to a real database, delete the next line,
+	#  and uncomment the one after it.
 	#
 	driver = "rlm_sql_null"
+#	driver = "rlm_sql_${driver}"
+
 
 #
 #	Several drivers accept specific options, to set them, a
@@ -82,13 +95,6 @@ sql {
 #		send_application_name = yes
 #	}
 #
-
-	# The dialect of SQL you want to use, this should usually match
-	# the driver you selected above.
-	#
-	# If you're using rlm_sql_null, then it should be the type of
-	# database the logged queries are going to be executed against.
-	dialect = "sqlite"
 
 	# Connection info:
 	#
