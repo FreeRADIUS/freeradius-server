@@ -61,5 +61,10 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 		    char const *query, REQUEST *request);
 int rlm_redis_finish_query(REDISSOCK *dissocket);
 
+/* Compatibility with older versions */
+#ifndef redisReaderGetError
+#define redisReaderGetError redisReplyReaderGetError
+#endif
+
 #endif	/* RLM_REDIS_H */
 
