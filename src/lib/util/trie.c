@@ -383,8 +383,17 @@ static uint16_t get_chunk(uint8_t const *key, int start_bit, int num_bits)
 	 *	Normalize it so that the caller doesn't have to.
 	 */
 	if (start_bit > 7) {
-		key += (start_bit >> 3);
-		start_bit -= 8 * (start_bit >> 3);
+		key += BYTEOF(start_bit);
+		start_bit &= 0x07;
+	}
+
+	/*
+	 *	Special-case 1-bit lookups.
+	 */
+	if (num_bits == 1) {
+		chunk = key[0] >> (7 - start_bit);
+		chunk &= 0x01;
+		return chunk;
 	}
 
 	/*
@@ -434,6 +443,15 @@ static void write_chunk(uint8_t *out, int depth, int num_bits, uint16_t chunk)
 	int bits_used = depth & 0x07;
 
 	fr_cond_assert(chunk < (1 << num_bits));
+
+	/*
+	 *	Special-case 1-bit writes.
+	 */
+	if (num_bits == 1) {
+		out[0] &= ~((1 << (7 - bits_used)) - 1);
+		out[0] |= chunk << (7 - bits_used);
+		return;
+	}
 
 	/*
 	 *	Fast path when "depth" ends on a byte boundary.
@@ -765,7 +783,11 @@ static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr
 	fr_trie_node_t *split;
 	int i, remaining_bits;
 
-	if ((bits == 0) || (bits >= node->bits)) {
+	/*
+	 *	Can't split zero bits, more bits than the node has, or
+	 *	a node which has 1 bit.
+	 */
+	if ((bits == 0) || (bits >= node->bits) || (node->bits == 1)) {
 		fr_strerror_printf("invalid value for split (%d / %d)", bits, node->bits);
 		return NULL;
 	}
