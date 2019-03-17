@@ -74,7 +74,7 @@ RCSID("$Id$")
  *  would have only one edge.
  */
 #ifndef NO_PATH_COMPRESSION
-//#define WITH_PATH_COMPRESSION
+#define WITH_PATH_COMPRESSION
 #endif
 
 #define MAX_KEY_BYTES (256)
@@ -872,9 +872,9 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 	}
 
 	/*
-	 *	Grab some more bits.
+	 *	Grab some more bits.  Try to grab 16 bits at a time.
 	 */
-	next_bit = start_bit + 8;
+	next_bit = start_bit + 16 - (start_bit & 0x07);
 
 	if (next_bit >= end_bit) {
 		path = fr_trie_path_alloc(ctx, parent, key, start_bit, end_bit);
