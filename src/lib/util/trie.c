@@ -73,7 +73,7 @@ RCSID("$Id$")
  *  create a large number of intermediate 2^N-way nodes, all of which
  *  would have only one edge.
  */
-#ifndef NO_PATH_COMPRESSION
+#if !defined(NO_PATH_COMPRESSION) && !defined(WITH_PATH_COMPRESSION)
 #define WITH_PATH_COMPRESSION
 #endif
 
