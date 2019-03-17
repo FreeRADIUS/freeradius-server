@@ -1340,6 +1340,11 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 			fr_strerror_printf("failed allocating path child at %d", __LINE__);
 			return -1;
 		}
+
+		/*
+		 *	Patch in the child trie.
+		 */
+		((fr_trie_path_t *)child)->trie = path->trie;
 	}
 
 	/*
