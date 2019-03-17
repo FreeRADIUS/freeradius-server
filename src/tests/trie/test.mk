@@ -12,11 +12,11 @@ $(BUILD_DIR)/tests/trie:
 
 $(BUILD_DIR)/tests/trie/trie-%: $(DIR)/% $(TESTBINDIR)/trie | $(BUILD_DIR)/tests/trie
 	@echo TRIE-TEST $(notdir $@)
-	@$(TESTBINDIR)/trie $^ > $@
+	@$(TESTBIN)/trie $^ > $@
 
 $(BUILD_DIR)/tests/trie/nopc-%: $(DIR)/% $(TESTBINDIR)/nopc | $(BUILD_DIR)/tests/trie
 	@echo TRIE-NO-PC-TEST $(notdir $@)
-	@$(TESTBINDIR)/nopc $^ > $@
+	@$(TESTBIN)/nopc $^ > $@
 
 #
 #  Get all of the unit test output files
