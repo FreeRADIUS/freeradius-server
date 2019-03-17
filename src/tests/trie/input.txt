@@ -102,8 +102,14 @@ print	{}
 
 
 insert	aaab	1
+verify
+print	aaab=1
 insert	aaac	2
+verify
+print	aaab=1,aaac=2
 insert	b	3
+verify
+print	aaab=1,aaac=2,b=3
 insert	c	4
 print	aaab=1,aaac=2,b=3,c=4
 remove	c	4
