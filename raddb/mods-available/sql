@@ -35,25 +35,40 @@ sql {
 	#
 	#  dialect:: The dialect of SQL you want to use.
 	#
-	#  NOTE: If you're using `rlm_sql_null`, then it should be the type of
-	#  database the logged queries are going to be executed against.
+	#  Allowed dialects are:
+	#
+	#    * cassandra
+	#    * mysql
+	#    * mssql
+	#    * oracle
+	#    * postgresql
+	#    * sqlite
 	#
 	dialect = "sqlite"
 
 	#
-	#  driver:: The sub-module to use to execute queries. This should match
-	#  the database you're attempting to connect to.
+	#  driver:: The sub-module to use to execute queries. It
+	#  should usually match the `dialect` above.
 	#
-	#    * rlm_sql_cassandra
-	#    * rlm_sql_db2
-	#    * rlm_sql_firedbird
-	#    * rlm_sql_freetds (mssql)
-	#    * rlm_sql_null (log queries to disk)
-	#    * rlm_sql_mysql
-	#    * rlm_sql_oracle
-	#    * rlm_sql_postgresql
-	#    * rlm_sql_sqlite
-	#    * rlm_sql_unixodbc
+	#  In some cases, the driver is different from the `dialect`.
+	#
+	#  The rlm_sql_null driver can be used with any `dialect`,
+	#  along with the `logfile` directive below.  It will then
+	#  write the SQL queries to a log file.
+	#
+	#  For MS-SQL, there are multiple driver options, as given in
+	#  the table below.  If the databases require syntax
+	#  *different* from MS-SQL, please submit bug reports so that
+	#  we can fix them,
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | driver            | dialect |
+	#  | rlm_sql_db2       | mssql   |
+	#  | rlm_sql_firebird  | mssql   |
+	#  | rlm_sql_freetds   | mssql   |
+	#  | rlm_sql_null      | any     |
+	#  | rlm_sql_unixodbc  | mssql   |
 	#
 	driver = "rlm_sql_${dialect}"
 
