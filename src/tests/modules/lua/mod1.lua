@@ -4,5 +4,5 @@ function authorize()
 		return "fail"
 	end
 
-	return "noop"
+	return fr.rcode.ok
 end

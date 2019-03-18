@@ -1,6 +1,6 @@
 # fr.*
 lmod1_check_fr_istable
-if (!noop) {
+if (!ok) {
     test_fail
 } else {
     test_pass
