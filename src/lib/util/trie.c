@@ -821,6 +821,9 @@ static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr
 static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_path_t *path, int start_bit, int lcp)
 {
 	fr_trie_path_t *split, *child;
+#ifdef TESTING
+	uint8_t key[2] = { 0, 0 };
+#endif
 
 	if ((lcp <= 0) || (lcp > path->bits) || (start_bit < 0)) {
 		fr_strerror_printf("invalid parameter %d %d to path split", lcp, start_bit);
@@ -851,15 +854,15 @@ static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr
 	fr_cond_assert(path->chunk == ((split->chunk << (path->bits - lcp)) | child->chunk));
 
 	/*
-	 *	Check that the two keys match the parent key.  This is
-	 *	a little more difficult as the child key may be
-	 *	shifted left a byte,
+	 *	Check that the two keys match the parent key.
 	 */
-	if (BYTEOF(start_bit + path->bits - 1) == BYTEOF(start_bit)) {
-		fr_cond_assert(path->key[0] == (split->key[0] | child->key[0]));
-	}
-#endif
 
+	write_chunk(&key[0], start_bit, split->bits, split->chunk);
+	write_chunk(&key[0], start_bit + split->bits, child->bits, child->chunk);
+
+	fr_cond_assert(key[0] == path->key[0]);
+	fr_cond_assert(key[1] == path->key[1]);
+#endif
 
 	return split;
 }
