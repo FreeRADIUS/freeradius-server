@@ -135,11 +135,6 @@ static uint8_t used_bit_mask[8] = {
 	0xf8, 0xfc, 0xfe, 0xff,
 };
 
-static uint8_t end_bit_mask[8] = {
-	0x00, 0x80, 0xc0, 0xe0,
-	0xf0, 0xf8, 0xfc, 0xfe,
-};
-
 
 #if defined(WITH_PATH_COMPRESSION) || defined(TESTING)
 /*
@@ -438,63 +433,49 @@ static uint16_t get_chunk(uint8_t const *key, int start_bit, int num_bits)
 /** Write a chunk to an output buffer
  *
  */
-static void write_chunk(uint8_t *out, int depth, int num_bits, uint16_t chunk)
+static void write_chunk(uint8_t *out, int start_bit, int num_bits, uint16_t chunk)
 {
-	int bits_used = depth & 0x07;
-
 	fr_cond_assert(chunk < (1 << num_bits));
+
+	/*
+	 *	Normalize it so that the caller doesn't have to.
+	 */
+	if (start_bit > 7) {
+		out += BYTEOF(start_bit);
+		start_bit &= 0x07;
+	}
 
 	/*
 	 *	Special-case 1-bit writes.
 	 */
 	if (num_bits == 1) {
-		out[0] &= ~((1 << (7 - bits_used)) - 1);
-		out[0] |= chunk << (7 - bits_used);
+		out[0] &= ~((1 << (7 - start_bit)) - 1);
+		out[0] |= chunk << (7 - start_bit);
 		return;
 	}
 
 	/*
-	 *	Fast path when "depth" ends on a byte boundary.
+	 *	Ensure that we don't write to more than 2 octets at
+	 *	the same time.
 	 */
-	if (bits_used == 0) {
-		if (num_bits < 16) chunk <<= (16 - num_bits);
-
-		out[0] = (chunk >> 8) & 0xff;
-
-	set_bits:
-		if (num_bits < 8) {
-			out[0] &= end_bit_mask[num_bits];
-		} else if (num_bits > 8) {
-			out[1] = chunk & 0xff;
-
-			if (num_bits < 16) {
-				out[1] &= end_bit_mask[num_bits & 0x07];
-			}
-		}
-
-		return;
-	}
-
-	/*
-	 *	More complex code when we don't start on a byte boundary.
-	 */
-	fr_cond_assert(num_bits < 16); /* can only be 16 bits on a byte boundary */
+	fr_cond_assert((start_bit + num_bits) <= 16);
 
 	/*
 	 *	Shift the chunk to the high bits, but leave room for
-	 *	"bits_used".
+	 *	start_bit
 	 */
-	chunk <<= (16 - num_bits - bits_used);
+	if ((start_bit + num_bits) < 16) chunk <<= (16 - (start_bit + num_bits));
 
 	/*
 	 *	Mask off the low bits that are already in the output.
 	 *	Then OR in the relevant bits of "chunk".
 	 */
-	out[0] &= used_bit_mask[bits_used];
+	out[0] &= used_bit_mask[start_bit];
 	out[0] |= chunk >> 8;
 
-	num_bits += bits_used;	/* number of bits we're now pretending is in chunk */
-	goto set_bits;
+	if ((start_bit + num_bits) > 8) {
+		out[1] = chunk & 0xff;
+	}
 }
 
 typedef enum fr_trie_type_t {
@@ -1746,7 +1727,7 @@ static int fr_trie_node_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth,
 	for (i = 0; i < node->size; i++) {
 		if (!node->trie[i]) continue;
 
-		write_chunk(cb->start + BYTEOF(depth), depth, node->bits, (uint16_t) i);
+		write_chunk(cb->start, depth, node->bits, (uint16_t) i);
 		used++;
 
 		if (fr_trie_key_walk(node->trie[i], cb, depth + node->bits,
@@ -1763,7 +1744,7 @@ static int fr_trie_path_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth,
 {
 	fr_trie_path_t *path = (fr_trie_path_t *) trie;
 
-	write_chunk(cb->start + BYTEOF(depth), depth, path->bits, path->chunk);
+	write_chunk(cb->start, depth, path->bits, path->chunk);
 
 	fr_cond_assert(path->trie != NULL);
 	return fr_trie_key_walk(path->trie, cb, depth + path->bits, more);
