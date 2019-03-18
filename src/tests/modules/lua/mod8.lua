@@ -28,6 +28,9 @@ function authorize()
 	print("for k,v in pairs(fr.log)")
 	for k,v in pairs(fr.log) do print("\t"..k, v) end
 	print()
+	fr.log.debug("Powered by Luajit+FFI & fr_log()")
+	fr.log.debug = "Tapioca"
+	fr.log.debug("Powered by Luajit+FFI & fr_log()")
 
 	-- fr.request {}
 	print("# fr.request.{}")

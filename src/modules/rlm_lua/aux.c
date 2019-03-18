@@ -152,6 +152,20 @@ static int _aux_log_newindex(UNUSED lua_State *L)
 	return 1;
 }
 
+/** Wrapper function for fr_log() using the global 'default_log'
+ *
+ * @param type	of log message.
+ * @param msg	to be printed.
+ */
+int fr_lua_aux_wrapper_fr_log(int type, char const *msg)
+{
+	/*
+	 * We avoid to declare in FFI the fr_log_type_t and fr_log_t
+	 * because it could be simpler just passing the equivalent.
+	 */
+	return fr_log(&default_log, (fr_log_type_t)type, "%s", msg);
+}
+
 /** Insert cdefs into the lua environment
  *
  * For LuaJIT using the FFI is significantly faster than the Lua interface.
@@ -166,33 +180,32 @@ int fr_lua_aux_jit_log_register(rlm_lua_t const *inst, lua_State *L)
 	if (luaL_dostring(L,"\
 		ffi = require(\"ffi\")\
 		ffi.cdef [[\
-			typedef enum log_type {\
-				L_INFO = 3,\
-				L_ERR = 4,\
-				L_WARN = 5,\
-				L_DBG = 16,\
-				L_DBG_WARN = 17,\
-				L_DBG_ERR = 18,\
-				L_DBG_WARN_REQ = 20,\
-				L_DBG_ERR_REQ = 21\
-			} fr_log_type_t;\
-			int fr_log(fr_log_type_t lvl, char const *fmt, ...);\
-			]]\
-		fr_srv = ffi.load(\"freeradius-server\")\
+			int fr_lua_aux_wrapper_fr_log(int type, char const *msg); \
+		]]\
 		fr_lua = ffi.load(\"freeradius-lua\")\
-		fr.log = {}\
-		fr.log.debug = function(msg)\
-		   fr_srv.fr_log(16, \"%s\", msg)\
+		_fr_log = {}\
+		_fr_log.debug = function(msg)\
+			fr_lua.fr_lua_aux_wrapper_fr_log(16, msg)\
 		end\
-		fr.log.info = function(msg)\
-		   fr_srv.fr_log(3, \"%s\", msg)\
+		_fr_log.info = function(msg)\
+			fr_lua.fr_lua_aux_wrapper_fr_log(3, msg)\
 		end\
-		fr.log.warn = function(msg)\
-		   fr_srv.fr_log(5, \"%s\", msg)\
+		_fr_log.warn = function(msg)\
+			fr_lua.fr_lua_aux_wrapper_fr_log(5, msg)\
 		end\
-		fr.log.error = function(msg)\
-		   fr_srv.fr_log(4, \"%s\", msg)\
+		_fr_log.error = function(msg)\
+			fr_lua.fr_lua_aux_wrapper_fr_log(4, msg)\
 		end\
+		function _ro_log(table) \
+			return setmetatable({}, { \
+				__index = table,\
+				__newindex = function(table, key, value)\
+					_fr_log.warn(\"You can't modify the table 'fr.log.$func()' (read-only)\")\
+				end, \
+				__metatable = false \
+			}); \
+		end\
+		fr.log = _ro_log(_fr_log)\
 		") != 0) {
 		ERROR("Failed setting up FFI: %s",
 		      lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
