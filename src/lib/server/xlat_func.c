@@ -2642,13 +2642,22 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 #endif
 
 static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
-				   REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+				   REQUEST *request,
+#ifdef HAVE_REGEX_PCRE2
+				   void const *xlat_inst, void *xlat_thread_inst,
+#else
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+#endif
 				   fr_value_box_t **in)
 {
-	char const		*p, *q, *end;
+	char const		*p, *end;
+#if 0
 	char const		*pattern, *rep, *subject;
 	char			*buff;
 	size_t			pattern_len, rep_len, subject_len;
+#endif
+	fr_value_box_t		*vb;
+
 	/*
 	 *	If there's no input, there's no output
 	 */
@@ -2683,7 +2692,11 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 #endif
 	}
 
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_strdup(vb, vb, NULL, (*in)->vb_strvalue, false);
+	fr_cursor_append(out, vb);
 
+	return XLAT_ACTION_DONE;
 }
 
 static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
