@@ -692,7 +692,7 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
-	RDEBUG2("EXPAND %s", fmt);
+	RDEBUG2("EXPAND %pV", fr_box_strvalue_buffer(fmt));
 	RINDENT();
 
 	/*
@@ -2528,7 +2528,6 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 	regex_t			*pattern;
 	fr_regex_flags_t	flags;
 	fr_value_box_t		*vb;
-
 
 	/*
 	 *	If there's no input, there's no output

@@ -1592,7 +1592,7 @@ ssize_t _tmpl_to_type(void *out,
 
 	case TMPL_TYPE_XLAT_STRUCT:
 		RDEBUG4("EXPAND TMPL XLAT STRUCT");
-		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
+		RDEBUG2("EXPAND %pV", fr_box_strvalue_buffer(vpt->name)); /* xlat_struct doesn't do this */
 		if (!buff) {
 			fr_strerror_printf("Missing expansion buffer for XLAT_STRUCT");
 			return -1;
