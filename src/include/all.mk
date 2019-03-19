@@ -127,7 +127,7 @@ $(SRC_INCLUDE_DIR):
 #  it already created, and fails...
 #
 ${SRC_INCLUDE_DIR}/%.h: src/include/%.h | $(SRC_INCLUDE_DIR)
-	${Q}echo INSTALL $(notdir $<)
+	${Q}echo INSTALL $(subst src/include,freeradius-server,$<)
 	${Q}$(INSTALL) -d -m 755 `echo $(dir $@) | sed 's/\/$$//'`
 # Expression must deal with indentation after the hash and copy it to the substitution string.
 # Hash not anchored to allow substitution in function documentation.
