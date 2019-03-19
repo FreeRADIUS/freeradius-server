@@ -1,0 +1,72 @@
+#
+# PRE: update
+#
+update request {
+	&Tmp-String-0 := 'aaa'
+	&Tmp-String-1 := "\n\n\n"
+}
+
+if ("${feature.regex-pcre2}" == 'yes') {
+# Basic substitutions
+if ("%{sub:/a/ b %{Tmp-String-0}}" != 'baa') {
+	test_fail
+}
+
+# Global substitution
+if ("%{sub:/a/g b %{Tmp-String-0}}" != 'bbb') {
+	test_fail
+}
+
+# No match
+if ("%{sub:/z/ b %{Tmp-String-0}}" != 'aaa') {
+	test_fail
+}
+
+#
+#  Newline manipulation
+#
+
+# Check that newlines really are newlines
+if ("%{length:%{Tmp-String-1}}" != 3) {
+	test_fail
+}
+
+# Strip out just the first newline
+if ("%{sub:/^./s  %{Tmp-String-1}}" != "\n\n") {
+	test_fail
+}
+
+if ("%{sub:/\n/  %{Tmp-String-1}}" != "\n\n") {
+	test_fail
+}
+
+# Strip out all the newlines
+if ("%{sub:/\n/g  %{Tmp-String-1}}" != '') {
+	test_fail
+}
+
+# Line ending switch
+if ("%{sub:/\n/g \r %{Tmp-String-1}}" != "\r\r\r") {
+	test_fail
+}
+
+# Bad regex
+if ("%{sub:/***/g . %{Tmp-String-0}}" != '') {
+	test_fail
+}
+
+if (&Module-Failure-Message[0] != 'Failed compiling regex: quantifier does not follow a repeatable item') {
+	test_fail
+}
+
+# Empty regex
+if ("%{sub://g . %{Tmp-String-0}}" != '') {
+	test_fail
+}
+
+if (&Module-Failure-Message[0] != 'Failed compiling regex: Empty expression') {
+	test_fail
+}
+}
+
+success

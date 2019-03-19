@@ -234,7 +234,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 		PCRE2_UCHAR errbuff[128];
 
 		pcre2_get_error_message(ret, errbuff, sizeof(errbuff));
-		fr_strerror_printf("Pattern compilation failed: %s", (char *)errbuff);
+		fr_strerror_printf("%s", (char *)errbuff);
 		talloc_free(preg);
 
 		return -(ssize_t)offset;
@@ -428,7 +428,7 @@ int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg,
 	/*
 	 *	Guess (badly) what the length of the output buffer should be
 	 */
-	actual_len = buff_len = subject_len + 1;
+	actual_len = buff_len = subject_len + 1;	/* +1 for the \0 */
 	buff = talloc_array(ctx, char, buff_len);
 	if (!buff) {
 #ifndef PCRE2_COPY_MATCHED_SUBJECT
@@ -442,6 +442,15 @@ int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg,
 	if (flags->global) options |= PCRE2_SUBSTITUTE_GLOBAL;
 
 again:
+	/*
+	 *	actual_len input value should be the size of the
+	 *	buffer including space for '\0'.
+	 *	If input buffer is too small, then actual_len will be set
+	 *      to the buffer space needed including space for '\0'.
+	 *	If input buffer is the correct size, then actual_len
+	 *	will be set to the size of the string written to buff
+	 *	without the terminating '\0'.
+	 */
 	ret = pcre2_substitute(preg->compiled,
 			       (PCRE2_SPTR8)subject, (PCRE2_SIZE)subject_len, 0,
 			       options, regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext,
@@ -472,7 +481,7 @@ again:
 			}
 
 			talloc_free(buff);
-			buff_len = actual_len;
+			buff_len = actual_len;	/* The length we get passed back includes the \0 */
 			buff = talloc_array(ctx, char, buff_len);
 			goto again;
 		}
@@ -489,9 +498,12 @@ again:
 
 	/*
 	 *	Trim the replacement buffer to the correct length
+	 *
+	 *	buff_len includes \0.
+	 *	...and as pcre2_substitute just succeeded actual_len does not include \0.
 	 */
-	if (actual_len < buff_len) {
-		buff = talloc_realloc_bstr(buff, actual_len - 1);	/* actual_len has space for '\0' */
+	if (actual_len < (buff_len - 1)) {
+		buff = talloc_realloc_bstr(buff, actual_len);
 		if (!buff) {
 			fr_strerror_printf("reallocing pcre2_substitute result buffer failed");
 			return -1;
@@ -703,7 +715,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 
 	preg->compiled = pcre_compile(pattern, cflags, &error, &offset, NULL);
 	if (!preg->compiled) {
-		fr_strerror_printf("Pattern compilation failed: %s", error);
+		fr_strerror_printf("%s", error);
 		talloc_free(preg);
 
 		return -(ssize_t)offset;
@@ -992,7 +1004,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 		char errbuf[128];
 
 		regerror(ret, preg, errbuf, sizeof(errbuf));
-		fr_strerror_printf("Pattern compilation failed: %s", errbuf);
+		fr_strerror_printf("%s", errbuf);
 
 		talloc_free(preg);
 

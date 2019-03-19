@@ -42,6 +42,10 @@ RCSID("$Id$")
 #  include <openssl/evp.h>
 #endif
 
+#ifdef HAVE_REGEX_PCRE2
+#  include <pcre2.h>
+#endif
+
 #include <ctype.h>
 #include "xlat_priv.h"
 
@@ -2507,6 +2511,137 @@ finish:
 	return XLAT_ACTION_DONE;
 }
 
+#ifdef HAVE_REGEX_PCRE2
+/**
+ * @verbatim %{sub:/<regex>/[flags] <replace> <subject>} @endverbatim
+ *
+ */
+static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
+				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   fr_value_box_t **in)
+{
+	char const		*p, *q, *end;
+	char const		*regex, *rep, *subject;
+	char			*buff;
+	size_t			regex_len, rep_len, subject_len;
+	ssize_t			slen;
+	regex_t			*pattern;
+	fr_regex_flags_t	flags;
+	fr_value_box_t		*vb;
+
+
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!*in) {
+		REDEBUG("No input arguments");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	p = (*in)->vb_strvalue;
+	end = p + (*in)->vb_length;
+
+	if (p == end) {
+		REDEBUG("Regex must not be empty");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Parse '/<regex>/'
+	 */
+	if (*p != '/') {
+		REDEBUG("Regex must start with '/'");
+		return XLAT_ACTION_FAIL;
+	}
+	p++;
+
+	regex = p;
+
+	q = memchr(p, '/', end - p);
+	if (!q) {
+		REDEBUG("No terminating '/' found for regex");
+		return XLAT_ACTION_FAIL;
+	}
+	regex_len = q - p;
+
+	p = q + 1;
+
+	/*
+	 *	Parse '[flags]'
+	 */
+	q = memchr(p, ' ', end - p);
+	if (!q) {
+		REDEBUG("Missing replacement");
+		return XLAT_ACTION_FAIL;
+	}
+
+	memset(&flags, 0, sizeof(flags));
+
+	slen = regex_flags_parse(NULL, &flags, p, q - p, true);
+	if (slen < 0) {
+		RPEDEBUG("Failed parsing regex flags");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Parse ' <replace>'
+	 */
+	p += slen;
+
+	rad_assert(*p == ' ');
+
+	p++;	/* Skip space */
+	rep = p;
+
+	/*
+	 *	Parse ' <subject>'
+	 */
+	q = memchr(p, ' ', end - p);
+	if (!q) {
+		REDEBUG("Missing subject");
+		return XLAT_ACTION_FAIL;
+	}
+	rep_len = q - p;
+
+	p = q + 1;
+
+	subject = p;
+	subject_len = end - p;
+
+	/*
+	 *	Process the substitution
+	 */
+	if (regex_compile(NULL, &pattern, regex, regex_len, &flags, false, true) <= 0) {
+		RPEDEBUG("Failed compiling regex");
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	if (regex_substitute(vb, &buff, 0, pattern, &flags,
+			     subject, subject_len, rep, rep_len, NULL) < 0) {
+		RPEDEBUG("Failed performing substitution");
+		talloc_free(vb);
+		talloc_free(pattern);
+		return XLAT_ACTION_FAIL;
+	}
+	fr_value_box_bstrsteal(vb, vb, NULL, buff, (*in)->tainted);
+
+	fr_cursor_append(out, vb);
+
+	talloc_free(pattern);
+
+	return XLAT_ACTION_DONE;
+}
+
+#endif
 
 static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,
@@ -2784,6 +2919,10 @@ int xlat_init(void)
 
 	xlat_async_register(NULL, "string", xlat_func_string);
 	xlat_async_register(NULL, "strlen", xlat_func_strlen);
+
+#ifdef HAVE_REGEX_PCRE2
+	xlat_async_register(NULL, "sub", xlat_func_sub);
+#endif
 	xlat_async_register(NULL, "tag", xlat_func_tag);
 	xlat_async_register(NULL, "tolower", xlat_func_tolower);
 	xlat_async_register(NULL, "toupper", xlat_func_toupper);
