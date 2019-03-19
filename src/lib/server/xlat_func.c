@@ -2975,10 +2975,7 @@ int xlat_init(void)
 
 	xlat_async_register(NULL, "string", xlat_func_string);
 	xlat_async_register(NULL, "strlen", xlat_func_strlen);
-
-#ifdef HAVE_REGEX_PCRE2
 	xlat_async_register(NULL, "sub", xlat_func_sub);
-#endif
 	xlat_async_register(NULL, "tag", xlat_func_tag);
 	xlat_async_register(NULL, "tolower", xlat_func_tolower);
 	xlat_async_register(NULL, "toupper", xlat_func_toupper);
