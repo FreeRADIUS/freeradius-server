@@ -21,7 +21,11 @@ src/include/${2}:
 	$${Q}[ -e $$@ ] || ln -sf $${top_srcdir}/src/${1}/${2} $$@
 	@echo LN-SF src/lib/${2} $$@
 
-install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${2}/base.h)
+ifeq "${1}" "lib"
+install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,src/${1}/base.h)
+else
+install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,src/${1}/${1}.h)
+endif
 endef
 
 
