@@ -2516,9 +2516,9 @@ finish:
  * @verbatim %{sub:/<regex>/[flags] <replace> <subject>} @endverbatim
  *
  */
-static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
-				   REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_t **in)
+static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
+					 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					 fr_value_box_t **in)
 {
 	char const		*p, *q, *end;
 	char const		*regex, *rep, *subject;
@@ -2639,8 +2639,52 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
-
 #endif
+
+static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
+				   REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+				   fr_value_box_t **in)
+{
+	char const		*p, *q, *end;
+	char const		*pattern, *rep, *subject;
+	char			*buff;
+	size_t			pattern_len, rep_len, subject_len;
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!*in) {
+		REDEBUG("No input arguments");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Concatenate all input
+	 */
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	p = (*in)->vb_strvalue;
+	end = p + (*in)->vb_length;
+
+	if (p == end) {
+		REDEBUG("Substitution arguments must not be empty");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (*p == '/') {
+#ifdef HAVE_REGEX_PCRE2
+		return xlat_func_sub_regex(ctx, out, request, xlat_inst, xlat_thread_inst, in);
+#else
+		REDEBUG("regex based substitutions require libpcre2.  "
+			"Check ${features.regex-pcre2} to determine support");
+		return XLAT_ACTION_FAIL;
+#endif
+	}
+
+
+}
 
 static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,

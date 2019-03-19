@@ -205,7 +205,7 @@ static inline void xlat_debug_log_expansion(REQUEST *request, xlat_exp_t const *
 	if (!RDEBUG_ENABLED2) return;
 
 	str = xlat_fmt_aprint(NULL, node);
-	RDEBUG2("EXPAND %pV", fr_box_strvalue_buffer(str));
+	RDEBUG2("EXPAND %pV", fr_box_strvalue(str));
 
 	/*
 	 *	Because it's difficult to keep track of what
@@ -214,7 +214,7 @@ static inline void xlat_debug_log_expansion(REQUEST *request, xlat_exp_t const *
 	 *	well as the original fmt string.
 	 */
 	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->child)) {
-		RDEBUG2("      (%%{%pV:%pM})", fr_box_strvalue_buffer(node->xlat->name), args);
+		RDEBUG2("      (%%{%pV:%pM})", fr_box_strvalue(node->xlat->name), args);
 	}
 	talloc_free(str);
 }
