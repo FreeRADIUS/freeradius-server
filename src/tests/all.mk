@@ -3,10 +3,10 @@ SUBMAKEFILES := rbmonkey.mk eapol_test/all.mk dict/all.mk trie/all.mk unit/all.m
 #
 #  Include all of the autoconf definitions into the Make variable space
 #
--include $(BUILD_DIR)/tests/keywords/autoconf.h.mk
+-include $(BUILD_DIR)/tests/autoconf.h.mk
 
 #
 #  Pull all of the autoconf stuff into here.
 #
-$(BUILD_DIR)/tests/keywords/autoconf.h.mk: src/include/autoconf.h
+$(BUILD_DIR)/tests/autoconf.h.mk: src/include/autoconf.h
 	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
