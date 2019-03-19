@@ -1520,7 +1520,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 	ssize_t len;
 	xlat_exp_t *node;
 
-	RDEBUG2("EXPAND %pV", fr_box_strvalue_buffer(fmt));
+	RDEBUG2("EXPAND %pV", fr_box_strvalue(fmt));
 	RINDENT();
 
 	/*
