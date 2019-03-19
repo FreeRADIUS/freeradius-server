@@ -302,6 +302,10 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		 *	in the regmatch structure.
 		 */
 		subject = our_subject = talloc_bstrndup(regmatch, subject, len);
+		if (!subject) {
+			fr_strerror_printf("Out of memory");
+			return -1;
+		}
 #else
 		/*
 		 *	If PCRE2_COPY_MATCHED_SUBJECT is available
@@ -333,7 +337,10 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		talloc_free(our_subject);
 #endif
 
-		if (ret == PCRE2_ERROR_NOMATCH) return 0;
+		if (ret == PCRE2_ERROR_NOMATCH) {
+			if (regmatch) regmatch->used = 0;
+			return 0;
+		}
 
 		pcre2_get_error_message(ret, errbuff, sizeof(errbuff));
 		fr_strerror_printf("regex evaluation failed with code (%i): %s", ret, errbuff);
@@ -345,6 +352,158 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 
 	return 1;
 }
+
+/** Wrapper around pcre2_substitute
+ *
+ * @param[in] ctx		to allocate output string in.
+ * @param[out] out		Output string with replacements performed.
+ * @param[in] max_out		Maximum length of output buffer.  If this is 0 then
+ *				the output length is unlimited.
+ * @param[in] preg		The compiled expression.
+ * @param[in] flags		that affect matching.
+ * @param[in] subject		to perform replacements on.
+ * @param[in] subject_len	the length of the subject.
+ * @param[in] replacement	replacement string containing substitution
+ *				markers.
+ * @param[in] replacement_len	Length of the replacement string.
+ * @param[in] regmatch		Array of match pointers.
+ * @return
+ *	- >= 0 the length of the output string.
+ *	- < 0 on error.
+ */
+int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg, fr_regex_flags_t *flags,
+		     char const *subject, size_t subject_len,
+		     char const *replacement, size_t replacement_len,
+		     fr_regmatch_t *regmatch)
+{
+	int			ret;
+	uint32_t		options = 0;
+	size_t			buff_len, actual_len;
+	char			*buff;
+
+#ifndef PCRE2_COPY_MATCHED_SUBJECT
+	char			*our_subject = NULL;
+#endif
+
+	/*
+	 *	Thread local initialisation
+	 */
+	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+
+	/*
+	 *	Internally pcre2_substitute just calls pcre2_match to
+	 *	generate the match data, so the same hack as the
+	 *	regex_exec function above is required.
+	 */
+	if (regmatch) {
+#ifndef PCRE2_COPY_MATCHED_SUBJECT
+		/*
+		 *	We have to dup and operate on the duplicate
+		 *	of the subject, because pcre2_jit_match and
+		 *	pcre2_match store a pointer to the subject
+		 *	in the regmatch structure.
+		 */
+		subject = our_subject = talloc_bstrndup(regmatch, subject, subject_len);
+		if (!subject) {
+			fr_strerror_printf("Out of memory");
+			return -1;
+		}
+#else
+		/*
+		 *	If PCRE2_COPY_MATCHED_SUBJECT is available
+		 *	and set as an options flag, pcre2_match will
+		 *	strdup the subject string if pcre2_match is
+		 *	successful and store a pointer to it in the
+		 *	regmatch struct.
+		 *
+		 *	The lifetime of the string memory will be
+		 *	bound to the regmatch struct.  This is more
+		 *	efficient that doing it ourselves, as the
+		 *	strdup only occurs if the subject matches.
+		 */
+		options |= PCRE2_COPY_MATCHED_SUBJECT;
+#endif
+	}
+
+	/*
+	 *	Guess (badly) what the length of the output buffer should be
+	 */
+	actual_len = buff_len = subject_len + 1;
+	buff = talloc_array(ctx, char, buff_len);
+	if (!buff) {
+#ifndef PCRE2_COPY_MATCHED_SUBJECT
+		talloc_free(our_subject);
+#endif
+		fr_strerror_printf("Out of memory");
+		return -1;
+	}
+
+	options |= PCRE2_SUBSTITUTE_OVERFLOW_LENGTH;
+	if (flags->global) options |= PCRE2_SUBSTITUTE_GLOBAL;
+
+again:
+	ret = pcre2_substitute(preg->compiled,
+			       (PCRE2_SPTR8)subject, (PCRE2_SIZE)subject_len, 0,
+			       options, regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext,
+			       (PCRE2_UCHAR const *)replacement, replacement_len, (PCRE2_UCHAR *)buff, &actual_len);
+
+	if (ret < 0) {
+		PCRE2_UCHAR errbuff[128];
+
+#ifndef PCRE2_COPY_MATCHED_SUBJECT
+		talloc_free(our_subject);
+#endif
+		talloc_free(buff);
+
+		if (ret == PCRE2_ERROR_NOMEMORY) {
+			if ((max_out > 0) && (actual_len > max_out)) {
+				fr_strerror_printf("String length with substitutions (%zu) "
+						    "exceeds max string length (%zu)", actual_len - 1, max_out - 1);
+				return -1;
+			}
+
+			/*
+			 *	Check that actual_len != buff_len as that'd be
+			 *	an actual error.
+			 */
+			if (actual_len == buff_len) {
+				fr_strerror_printf("libpcre2 out of memory");
+				return -1;
+			}
+
+			talloc_free(buff);
+			buff_len = actual_len;
+			buff = talloc_array(ctx, char, buff_len);
+			goto again;
+		}
+
+		if (ret == PCRE2_ERROR_NOMATCH) {
+			if (regmatch) regmatch->used = 0;
+			return 0;
+		}
+
+		pcre2_get_error_message(ret, errbuff, sizeof(errbuff));
+		fr_strerror_printf("regex evaluation failed with code (%i): %s", ret, errbuff);
+		return -1;
+	}
+
+	/*
+	 *	Trim the replacement buffer to the correct length
+	 */
+	if (actual_len < buff_len) {
+		buff = talloc_realloc_bstr(buff, actual_len - 1);	/* actual_len has space for '\0' */
+		if (!buff) {
+			fr_strerror_printf("reallocing pcre2_substitute result buffer failed");
+			return -1;
+		}
+	}
+
+	if (regmatch) regmatch->used = ret;
+	*out = buff;
+
+	return 1;
+}
+
 
 /** Returns the number of subcapture groups
  *

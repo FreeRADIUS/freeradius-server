@@ -187,11 +187,11 @@ struct vp_tmpl_s {
 		 */
 		fr_value_box_t	literal;			 //!< Value data.
 
-		xlat_exp_t	*xlat;	 //!< pre-parsed xlat_exp_t
+		xlat_exp_t	*xlat;	 			//!< pre-parsed xlat_exp_t
 
 #ifdef HAVE_REGEX
 		struct {
-			regex_t		*preg;		//!< pre-parsed regex_t
+			regex_t			*preg;		//!< pre-parsed regex_t
 			fr_regex_flags_t	regex_flags;	//!< Flags for regular expressions.
 		};
 #endif
