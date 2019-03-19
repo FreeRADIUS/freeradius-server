@@ -1074,7 +1074,7 @@ static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bi
 	 *	Catch problems.
 	 */
 	if ((trie->type == FR_TRIE_INVALID) ||
-	    (trie->type >= FR_TRIE_MAX) ||
+	    ((int) trie->type >= FR_TRIE_MAX) ||
 	    !trie_match[trie->type]) {
 		fr_strerror_printf("unknown trie type %d in match", trie->type);
 		return NULL;
@@ -1480,7 +1480,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **tr
 	 *	Catch problems.
 	 */
 	if ((trie->type == FR_TRIE_INVALID) ||
-	    (trie->type >= FR_TRIE_MAX) ||
+	    ((int) trie->type >= FR_TRIE_MAX) ||
 	    !trie_insert[trie->type]) {
 		fr_strerror_printf("unknown trie type %d in insert", trie->type);
 		return -1;
@@ -1656,7 +1656,7 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **
 	 *	Catch problems.
 	 */
 	if ((trie->type == FR_TRIE_INVALID) ||
-	    (trie->type >= FR_TRIE_MAX) ||
+	    ((int) trie->type >= FR_TRIE_MAX) ||
 	    !trie_remove[trie->type]) {
 		fr_strerror_printf("unknown trie type %d in remove", trie->type);
 		return NULL;
@@ -1778,7 +1778,7 @@ static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, 
 	 *	Catch problems.
 	 */
 	if ((trie->type == FR_TRIE_INVALID) ||
-	    (trie->type >= FR_TRIE_MAX) ||
+	    ((int) trie->type >= FR_TRIE_MAX) ||
 	    !trie_walk[trie->type]) {
 		fr_strerror_printf("unknown trie type %d in walk", trie->type);
 		return 0;
@@ -1893,7 +1893,7 @@ static int fr_trie_verify(fr_trie_t *trie)
 	 *	Catch problems.
 	 */
 	if ((trie->type == FR_TRIE_INVALID) ||
-	    (trie->type >= FR_TRIE_MAX) ||
+	    ((int) trie->type >= FR_TRIE_MAX) ||
 	    !trie_verify[trie->type]) {
 		fr_strerror_printf("unknown trie type %d in verify", trie->type);
 		return -1;
@@ -2009,7 +2009,7 @@ static int fr_trie_dump_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, 
 	 *	Catch problems.
 	 */
 	if ((trie->type == FR_TRIE_INVALID) ||
-	    (trie->type >= FR_TRIE_MAX) ||
+	    ((int) trie->type >= FR_TRIE_MAX) ||
 	    !trie_dump[trie->type]) {
 		fr_strerror_printf("unknown trie type %d in dump", trie->type);
 		return 0;
