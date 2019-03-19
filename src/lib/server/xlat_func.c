@@ -692,7 +692,7 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
-	RDEBUG2("EXPAND %pV", fr_box_strvalue_buffer(fmt));
+	RDEBUG2("EXPAND %pV", fr_box_strvalue(fmt));
 	RINDENT();
 
 	/*
