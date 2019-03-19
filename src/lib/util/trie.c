@@ -99,9 +99,11 @@ DIAG_OFF(unused-macros)
 
    /* define this to be MPRINT for additional debugging */
 #  define MPRINT2(...)
+#  define MPRINT3(...)
 #else
 #  define MPRINT(...)
 #  define MPRINT2(...)
+#  define MPRINT3(...)
 #endif
 
 #ifdef WITH_TRIE_VERIFY
@@ -134,6 +136,13 @@ static uint8_t used_bit_mask[8] = {
 	0x80, 0xc0, 0xe0, 0xf0,
 	0xf8, 0xfc, 0xfe, 0xff,
 };
+
+#if 0
+/*
+ *	For testing and debugging.
+ */
+static char const *spaces = "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ";
+#endif
 
 
 #if defined(WITH_PATH_COMPRESSION) || defined(TESTING)
@@ -1066,6 +1075,27 @@ void *fr_trie_match(fr_trie_t const *ft, void const *key, size_t keylen)
 
 /* INSERT FUNCTIONS */
 
+#ifdef TESTING
+static void fr_trie_check(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, void *data, UNUSED int lineno)
+{
+	void *answer;
+
+	answer = fr_trie_key_match(trie, key, start_bit, end_bit, true);
+	if (!answer) {
+		// print out the current trie!
+		MPRINT3("Failed to find user data from start %d end %d at %d\n", start_bit, end_bit, lineno);
+		fr_cond_assert(0);
+	}
+
+	if (answer != data) {
+		MPRINT3("Found wrong user data from start %d end %d at %d\n", start_bit, end_bit, lineno);
+		fr_cond_assert(0);
+	}
+}
+#else
+#define fr_trie_check(_trie, _key, _start_bit, _end_bit, _data, _lineno)
+#endif
+
 static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data);
 
 typedef int (*fr_trie_key_insert_t)(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data);
@@ -1415,7 +1445,19 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **tr
 		return -1;
 	}
 
+#ifndef TESTING
 	return trie_insert[trie->type](ctx, parent, trie_p, key, start_bit, end_bit, data);
+#else
+	MPRINT3("%.*srecurse at start %d end %d with data %s\n", start_bit, spaces, start_bit, end_bit, (char *) data);
+
+	if (trie_insert[trie->type](ctx, parent, trie_p, key, start_bit, end_bit, data) < 0) {
+		return -1;
+	}
+
+	fr_trie_check(*trie_p, key, start_bit, end_bit, data, __LINE__);
+
+	return 0;
+#endif
 }
 
 /** Insert a key and user ctx into a trie
@@ -2119,7 +2161,7 @@ static void *data_ctx = NULL;
 static int command_insert(fr_trie_t *ft, UNUSED int argc, char **argv, UNUSED char *out, UNUSED size_t outlen)
 {
 	int bits;
-	void *answer, *data;
+	void *data;
 	char *key;
 
 	if (arg2key(argv[0], &key, &bits) < 0) {
@@ -2138,17 +2180,6 @@ static int command_insert(fr_trie_t *ft, UNUSED int argc, char **argv, UNUSED ch
 
 	if (fr_trie_insert(ft, key, bits, data) < 0) {
 		MPRINT("Failed inserting key %s=%s - %s\n", key, argv[1], fr_strerror());
-		return -1;
-	}
-
-	answer = fr_trie_key_match(ft->trie, (uint8_t *) key, 0, bits, true);
-	if (!answer) {
-		MPRINT("Could not match key %s bits %d\n", key, bits);
-		return -1;
-	}
-
-	if (answer != data) {
-		MPRINT("Inserted %s, but looked up %s\n", argv[1], (char const *) answer);
 		return -1;
 	}
 
