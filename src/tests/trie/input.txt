@@ -25,6 +25,10 @@ lcp	a	1	A	1	0	1
 
 lcp	aaa	24	aab	24	4	18
 
+lcp	13	16	40	16	6	1
+
+
+
 #
 #  Note that we can't ask for more than 16 bits,
 #  and we can't ask for bits that go over 3 bytes.

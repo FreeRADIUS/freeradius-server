@@ -192,34 +192,12 @@ static uint8_t xor2lcp[256] = {
 };
 
 
-/*
- *  This table is used to set the "end bit" for LCP.  We OR in this
- *  value into the XOR of the two keys, and then look up the resulting
- *  value in the xor2lcp[] table above.  Setting the last bit to 1
- *  ensures that the LCP lookup is no more than (end_bit - start_bit)
- */
-static uint8_t lcp_end_bit[9] = {
-	0,			/* can't exist */
-	0x40,
-	0x20,
-	0x10,
-	0x08,
-	0x04,
-	0x02,
-	0x01,
-	0x00
-};
-
-
 /** Get the longest prefix of the two keys.
  *
  */
 static int fr_trie_key_lcp(uint8_t const *key1, int keylen1, uint8_t const *key2, int keylen2, int start_bit)
 {
-	uint8_t xor;
-	int i, bytes, lcp, end_bit, recheck;
-	int s2, e2;
-	int start_byte, end_byte;
+	int lcp, end_bit;
 
 	if (!keylen1 || !keylen2) return 0;
 	fr_cond_assert((start_bit & 0x07) == start_bit);
@@ -228,120 +206,71 @@ static int fr_trie_key_lcp(uint8_t const *key1, int keylen1, uint8_t const *key2
 	if (end_bit > keylen2) end_bit = keylen2;
 	end_bit += start_bit;
 
-	/*
-	 *	Compare bits in the first byte
-	 */
+	MPRINT2("%.*sLCP %02x%02x %02x%02x start %d length %d, %d\n",
+		start_bit, spaces, key1[0], key1[1], key2[0], key2[1], start_bit, keylen1, keylen2);
+
 	lcp = 0;
-	if ((start_bit != 0) || (end_bit <= 8)) {
-		if (end_bit <= 8) {
-			e2 = end_bit;
-		} else {
-			e2 = 8;
-		}
 
-		s2 = start_bit;
-		fr_cond_assert(s2 <= e2);
+	while (end_bit > 0) {
+		int num_bits;
+		uint8_t cmp1, cmp2, xor;
 
-		xor = key1[0] ^ key2[0];
+		MPRINT2("END %d\n", end_bit);
 
 		/*
-		 *	Push the bits into the high bits,
-		 *	and set the lowest bit which is possible
-		 *	for the LCP.
+		 *	Default to grabbing the whole byte.
 		 */
-		xor <<= s2;
-		xor |= lcp_end_bit[e2 - s2];
-
-		lcp = xor2lcp[xor];
+		cmp1 = key1[0];
+		cmp2 = key2[0];
+		num_bits = 8;
 
 		/*
-		 *	We haven't found any common prefix, we're done.
+		 *	The LCP ends in this byte.  Mask off the
+		 *	trailing bits so that they don't affect the
+		 *	result.
 		 */
-		if (!lcp) return 0;
-
-		/*
-		 *	We only have one byte, and we've checked that.
-		 *	Return the longest prefix.
-		 */
-		if (end_bit <= 8) {
-			goto done;
+		if (end_bit < 8) {
+			cmp1 &= used_bit_mask[end_bit - 1];
+			cmp2 &= used_bit_mask[end_bit - 1];
+			num_bits = end_bit;
 		}
 
 		/*
-		 *	Skip the first byte, we've already checked it.
+		 *	The key doesn't start on the leading bit.
+		 *	Shift the data left until it does start there.
 		 */
-		start_byte = 1;
-	} else {
-		start_byte = 0;
-	}
+		if ((start_bit & 0x07) != 0) {
+			cmp1 <<= start_bit;
+			cmp2 <<= start_bit;
+			num_bits -= start_bit;
+			end_bit -= start_bit;
 
-	/*
-	 *	If the key ends on a byte boundary, check the last
-	 *	byte.  Othewise, check all but the last byte.  We will
-	 *	do a separate bit check for the last byte.
-	 */
-	end_byte = BYTEOF(end_bit);
-	fr_cond_assert(start_byte <= end_byte);
-
-	bytes = 0;
-
-	/*
-	 *	Compare the keys byte by byte.
-	 */
-	recheck = -1;
-	for (i = start_byte; i < end_byte; i++) {
-		if (key1[i] == key2[i]) {
-			bytes++;
-			continue;
+			/*
+			 *	From now on we start on a byte boundary.
+			 */
+			start_bit = 0;
 		}
 
-		recheck = i;
-		break;
-	}
+		xor = cmp1 ^ cmp2;
 
-	lcp += 8 * bytes;
+		if (xor2lcp[xor] < num_bits) {
+			MPRINT2("RETURN %d + %d\n", lcp, xor2lcp[xor]);
+			return lcp + xor2lcp[xor];
+		}
 
-	/*
-	 *	Do we need to recheck the last byte?
-	 */
-	if (recheck < 0) {
 		/*
-		 *	Nope.  We're done.
+		 *	The LCP may be longer than num_bits if we're
+		 *	checking the first byte, which has only
+		 *	"start_bit" things we care about.  Ignore that
+		 *	case, and just keep going.
 		 */
-		if ((end_bit & 0x07) == 0) goto done;
 
-		recheck = BYTEOF(end_bit);
+		lcp += num_bits;
+		end_bit -= num_bits;
+		key1++;
+		key2++;
 	}
 
-	/*
-	 *	We recheck starting at the recheck byte, and
-	 *	continuing to the end of the keys.
-	 */
-	s2 = recheck * 8;
-	e2 = end_bit;
-
-	/*
-	 *	If there are more than 8 bits to check, max out at the
-	 *	bits in this byte (8).  Otherwise, just check the
-	 *	remaining bits in this byte.
-	 */
-	if ((e2 - s2) > 8) {
-		s2 = 0;
-		e2 = 8;
-	} else {
-		fr_cond_assert(end_bit > s2);
-		e2 = end_bit - s2;
-		s2 = 0;
-	}
-
-	xor = key1[recheck] ^ key2[recheck];
-	xor <<= s2;
-	xor |= lcp_end_bit[e2 - s2];
-	lcp += xor2lcp[xor];
-
-done:
-	fr_cond_assert(lcp <= keylen1);
-	fr_cond_assert(lcp <= keylen2);
 	return lcp;
 }
 #endif
