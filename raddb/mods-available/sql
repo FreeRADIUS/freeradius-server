@@ -19,7 +19,7 @@
 
 sql {
 	#
-	#  The dialect of SQL being used.x
+	#  The dialect of SQL being used.
 	#
 	#  Allowed dialects are:
 	#
@@ -40,7 +40,7 @@ sql {
 	#  In order to talk to a real database, delete the next line,
 	#  and uncomment the one after it.
 	#
-	#  If the dialect is "mssq", then the driver should be set to
+	#  If the dialect is "mssql", then the driver should be set to
 	#  one of the following values, depending on your system:
 	#
 	#	rlm_sql_db2
@@ -50,7 +50,7 @@ sql {
 	#	rlm_sql_unixodbc
 	#
 	driver = "rlm_sql_null"
-#	driver = "rlm_sql_${driver}"
+#	driver = "rlm_sql_${dialect}"
 
 	#
 	#  Driver-specific subsections.  They will only be loaded and
