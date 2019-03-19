@@ -22,7 +22,7 @@ src/include/${2}:
 	@echo LN-SF src/lib/${2} $$@
 
 ifeq "${1}" "lib"
-install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,src/${1}/base.h)
+install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,src/${1}/${2}/base.h)
 else
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,src/${1}/${1}.h)
 endif
