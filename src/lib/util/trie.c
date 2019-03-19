@@ -697,6 +697,9 @@ fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
 
 /* SPLIT FUNCTIONS */
 
+/** Split a node at bits
+ *
+ */
 static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_node_t *node, int bits)
 {
 	fr_trie_node_t *split;
@@ -768,6 +771,7 @@ static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr
 		return NULL;
 	}
 
+	MPRINT3("%.*sSPLIT start %d\n", start_bit, spaces, start_bit);
 	start_bit &= 0x07;
 
 	split = fr_trie_path_alloc(ctx, parent, &path->key[0], start_bit, start_bit + lcp);
@@ -800,6 +804,13 @@ static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr
 
 	fr_cond_assert(key[0] == path->key[0]);
 	fr_cond_assert(key[1] == path->key[1]);
+
+	MPRINT3("%.*ssplit %02x%02x start %d split %d -> %02x%02x %02x%02x\n",
+		start_bit, spaces,
+		path->key[0], path->key[1],
+		start_bit, split->bits,
+		split->key[0], split->key[1],
+		child->key[0], child->key[1]);
 #endif
 
 	return split;
@@ -1105,6 +1116,8 @@ static int fr_trie_user_insert(TALLOC_CTX *ctx, UNUSED fr_trie_t *parent, fr_tri
 	fr_trie_t *trie = *trie_p;
 	fr_trie_user_t *user = (fr_trie_user_t *) trie;
 
+	MPRINT3("user insert to start %d end %d with data %s\n", start_bit, end_bit, (char *) data);
+
 	/*
 	 *	Just insert the key into user->trie.
 	 */
@@ -1118,6 +1131,9 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	fr_trie_t *trie_to_free = NULL;
 	uint32_t chunk;
 
+	MPRINT3("%.*snode insert end %d with data %s\n",
+		start_bit, spaces, end_bit, (char *) data);
+
 	/*
 	 *	The current node is longer than the input bits
 	 *	for the key.  Split the node into a smaller
@@ -1127,7 +1143,12 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	if ((start_bit + node->bits) > end_bit) {
 		fr_trie_node_t *split;
 
-		split = fr_trie_node_split(ctx, parent, node, (start_bit + node->bits) - end_bit);
+		MPRINT3("%.*snode insert splitting %d at %d start %d end %d with data %s\n",
+			start_bit, spaces,
+			node->bits, start_bit - end_bit,
+			start_bit, end_bit, (char *) data);
+
+		split = fr_trie_node_split(ctx, parent, node, end_bit - start_bit);
 		if (!split) {
 			fr_strerror_printf("Failed splitting node at %d\n", __LINE__);
 			return -1;
@@ -1164,6 +1185,11 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		}
 	}
 
+	fr_trie_check((fr_trie_t *) node, key, start_bit, end_bit, data, __LINE__);
+
+	MPRINT3("%.*snode insert returning at %d\n",
+		start_bit, spaces, __LINE__);
+
 	if (trie_to_free) fr_trie_free(trie_to_free);
 	*trie_p = (fr_trie_t *) node;
 	node->parent = parent;
@@ -1182,6 +1208,9 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	fr_trie_t *node;
 	fr_trie_t *child, **edge;
 
+	MPRINT3("%.*spath insert start %d end %d with key %02x%02x data %s\n",
+		start_bit, spaces, start_bit, end_bit, key[0], key[1], (char *) data);
+
 	VERIFY(path);
 
 	/*
@@ -1195,16 +1224,21 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		 *	insert the key into the child trie.
 		 */
 		if (chunk == path->chunk) {
+			MPRINT3("%.*spath chunk matches %04x bits of %d\n",
+				start_bit, spaces, chunk, path->bits);
 			return fr_trie_key_insert(ctx, (fr_trie_t *) path, &path->trie, key, start_bit + path->bits, end_bit, data);
 		}
 
 		bits = path->bits;
+		MPRINT3("%.*spath using %d\n", start_bit, spaces, path->bits);
+
 	} else {
 		/*
 		 *	Limit the number of bits we check to
 		 *	the number of bits left in the key.
 		 */
 		bits = end_bit - start_bit;
+		MPRINT3("%.*spath limiting %d to %d\n", start_bit, spaces, path->bits, bits);
 	}
 
 	/*
@@ -1225,6 +1259,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	 *	node for the second half.
 	 */
 	lcp = fr_trie_key_lcp(&path->key[0], bits, key2, bits, start_bit2);
+	MPRINT3("%.*spath lcp %d\n", start_bit, spaces, lcp);
 
 	/*
 	 *	This should have been caught above.
@@ -1234,11 +1269,9 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		return -1;
 	}
 
+
 	if (lcp > 0) {
 		fr_trie_path_t *split;
-
-		MPRINT2("splitting path length %d at lcp %d\n",
-			path->bits, lcp);
 
 		/*
 		 *	Note that "path" is still valid after this
@@ -1246,7 +1279,15 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		 *	parents itself from "path".  That pointer will
 		 *	be rewritten on the way back up the stack.
 		 */
-//		fprintf(stderr, "SPLIT %d at lcp %d\n", path->bits, lcp);
+		MPRINT3("%.*spath split depth %d bits %d at lcp %d with data %s\n",
+			start_bit, spaces, start_bit, path->bits, lcp, (char *) data);
+
+		MPRINT3("%.*spath key %02x%02x input key %02x%02x, offset %d\n",
+			start_bit, spaces,
+			path->key[0],path->key[1],
+			key[0], key[1],
+			start_bit2);
+
 		split = fr_trie_path_split(ctx, parent, path, start_bit2, lcp);
 		if (!split) {
 			fr_strerror_printf("failed path split at %d\n", __LINE__);
@@ -1264,12 +1305,24 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 			return -1;
 		}
 
+		/*
+		 *	We can't have two LCPs in a row here, as we
+		 *	SHOULD have found the LCP above!
+		 */
+		fr_cond_assert(split->type == FR_TRIE_PATH);
+		fr_cond_assert(split->trie->type != FR_TRIE_PATH);
+
+		fr_trie_check((fr_trie_t *) split, key, start_bit, end_bit, data, __LINE__);
+
+		MPRINT3("%.*spath returning at %d\n", start_bit, spaces, __LINE__);
 		talloc_free(path);
 		*trie_p = (fr_trie_t *) split;
 		split->parent = parent;
 		VERIFY(split);
 		return 0;
 	}
+
+	MPRINT3("%.*sFanout at depth %d data %s\n", start_bit, spaces, start_bit, (char *) data);
 
 	/*
 	 *	Else there's no common prefix.  Just create an
@@ -1362,6 +1415,10 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	if (fr_trie_key_insert(ctx, node, edge, key, start_bit + node->bits, end_bit, data) < 0) {
 		goto fail;
 	}
+
+	fr_trie_check((fr_trie_t *) node, key, start_bit, end_bit, data, __LINE__);
+
+	MPRINT3("%.*spath returning at %d\n", start_bit, spaces, __LINE__);
 
 	/*
 	 *	Only update this if it succeeded.
