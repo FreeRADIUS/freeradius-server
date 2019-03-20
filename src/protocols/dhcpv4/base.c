@@ -268,7 +268,7 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	return true;
 }
 
-ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, dhcp_packet_t *original, uint32_t xid, VALUE_PAIR *vps)
+ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, VALUE_PAIR *vps)
 {
 	uint8_t		*p;
 	fr_cursor_t	cursor;
