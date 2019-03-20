@@ -4,6 +4,62 @@
 update request {
 	&Tmp-String-0 := 'aaa'
 	&Tmp-String-1 := "\n\n\n"
+	&Tmp-String-2 := "the quick brown fox jumped over the lazy dog"
+	&Tmp-String-3 := "peter picked peter picked"
+}
+
+#
+#  Non-regex base substitutions
+#
+
+# Global substitution
+if ("%{sub:a b %{Tmp-String-0}}" != 'bbb') {
+	test_fail
+}
+
+# No match
+if ("%{sub:c b %{Tmp-String-0}}" != 'aaa') {
+	test_fail
+}
+
+# Line ending rewrite
+if ("%{sub:\n \r %{Tmp-String-1}}" != "\r\r\r") {
+	test_fail
+}
+
+# Removal
+if ("%{sub:a  %{Tmp-String-0}}" != "") {
+	test_fail
+}
+
+# Removal of last word only
+if ("%{sub:dog  %{Tmp-String-2}}" != "the quick brown fox jumped over the lazy ") {
+	test_fail
+}
+
+# Removal of first and subsequent word
+if ("%{sub:the  %{Tmp-String-2}}" != " quick brown fox jumped over  lazy dog") {
+	test_fail
+}
+
+# Removal of middle word
+if ("%{sub:jumped  %{Tmp-String-2}}" != "the quick brown fox  over the lazy dog") {
+	test_fail
+}
+
+# Replacement of last word only
+if ("%{sub:dog cat %{Tmp-String-2}}" != "the quick brown fox jumped over the lazy cat") {
+	test_fail
+}
+
+# Replacement of first and subsequent word
+if ("%{sub:the cat %{Tmp-String-2}}" != "cat quick brown fox jumped over cat lazy dog") {
+	test_fail
+}
+
+# Replacement of middle word
+if ("%{sub:jumped cat %{Tmp-String-2}}" != "the quick brown fox cat over the lazy dog") {
+	test_fail
 }
 
 if ("${feature.regex-pcre2}" == 'yes') {

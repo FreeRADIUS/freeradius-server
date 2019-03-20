@@ -2651,12 +2651,12 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 #endif
 				   fr_value_box_t **in)
 {
-	char const		*p, *end;
-#if 0
-	char const		*pattern, *rep, *subject;
-	char			*buff;
-	size_t			pattern_len, rep_len, subject_len;
-#endif
+	char const		*p, *q, *end;
+	char			*vb_str;
+
+	char const		*pattern, *rep;
+	size_t			pattern_len, rep_len;
+
 	fr_value_box_t		*vb;
 
 	/*
@@ -2693,8 +2693,55 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 #endif
 	}
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_strdup(vb, vb, NULL, (*in)->vb_strvalue, false);
+	/*
+	 *	Parse '<pattern> '
+	 */
+	q = memchr(p, ' ', end - p);
+	if (!q || (q == p)) {
+		REDEBUG("Missing pattern");
+		return XLAT_ACTION_FAIL;
+	}
+
+	pattern = p;
+	pattern_len = q - p;
+	p = q + 1;
+
+	/*
+	 *	Parse '<replacement> '
+	 */
+	q = memchr(p, ' ', end - p);
+	if (!q) {
+		REDEBUG("Missing subject");
+		return XLAT_ACTION_FAIL;
+	}
+	rep = p;
+	rep_len = q - p;
+	p = q + 1;
+
+	/*
+	 *	Parse '<subject>'
+	 */
+	vb = fr_value_box_alloc_null(ctx);
+	vb_str = talloc_bstrndup(vb, "", 0);
+
+	while (p < end) {
+		q = memmem(p, end - p, pattern, pattern_len);
+		if (!q) {
+			MEM(vb_str = talloc_bstr_append(vb, vb_str, p, end - p));
+			break;
+		}
+
+		if (q > p) MEM(vb_str = talloc_bstr_append(vb, vb_str, p, q - p));
+		if (rep_len) MEM(vb_str = talloc_bstr_append(vb, vb_str, rep, rep_len));
+		p = q + pattern_len;
+	}
+
+	if (fr_value_box_strdup_buffer_shallow(vb, vb, NULL, vb_str, (*in)->vb_strvalue) < 0) {
+		RPEDEBUG("Failed creating output box");
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+	rad_assert(vb->type != FR_TYPE_INVALID);
 	fr_cursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
