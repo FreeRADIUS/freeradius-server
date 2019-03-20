@@ -726,11 +726,11 @@ static int fr_lua_get_field(lua_State *L, REQUEST *request, char const *field)
 
 static void _lua_fr_request_register(lua_State *L, REQUEST *request)
 {
-	// fr = {}
+	/* fr = {} */
 	lua_getglobal(L, "fr");
 	luaL_checktype(L, -1, LUA_TTABLE);
 
-	// fr = { request {} }
+	/* fr = { request {} } */
 	lua_newtable(L);
 
 	if (request) {
@@ -864,7 +864,7 @@ static int _lua_rcode_table_pairs(lua_State *L)
 
 static void fr_lua_rcode_register(lua_State *L, char const *name)
 {
-	const luaL_Reg meta_rcode[] = {
+	const luaL_Reg metatable[] = {
 		{ "__index",    _lua_rcode_table_index },
 		{ "__newindex", _lua_rcode_table_newindex },
 		{ "__pairs",    _lua_rcode_table_pairs },
@@ -874,14 +874,14 @@ static void fr_lua_rcode_register(lua_State *L, char const *name)
 		{ NULL, NULL }
 	};
 
-	// fr = {}
+	/* fr = {} */
 	lua_getglobal(L, "fr");
 	luaL_checktype(L, -1, LUA_TTABLE);
 
-	// fr = { rcode = {} }
+	/* fr = { rcode = {} } */
 	lua_newtable(L);
 	{
-		luaL_register(L, name, meta_rcode);
+		luaL_register(L, name, metatable);
 		lua_setmetatable(L, -2);
 		lua_setfield(L, -2, name);
 	}
@@ -948,7 +948,7 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 	}
 
 	/*
-	 *	Setup the "fr.rcode.{}"  with all RLM_MODULE_* 
+	 *	Setup the "fr.rcode.{}"  with all RLM_MODULE_*
 	 * 	e.g: "fr.rcode.reject", "fr.rcode.ok", ...
 	 */
 	fr_lua_rcode_register(L, "rcode");
