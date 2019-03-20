@@ -94,7 +94,7 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 		       "%s%s%s"
 #endif
 		       "",
-		       received ? "Received" : "Sent",
+		       received ? "Received" : "Sending",
 		       dhcp_message_types[packet->code],
 		       packet->id,
 		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",

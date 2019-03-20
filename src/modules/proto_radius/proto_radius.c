@@ -503,7 +503,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	}
 
 	if (RDEBUG_ENABLED) {
-		RDEBUG("Sent %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
+		RDEBUG("Sending %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
 		       fr_packet_codes[request->reply->code],
 		       request->reply->id,
 		       fr_box_ipaddr(request->reply->src_ipaddr),
