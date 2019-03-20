@@ -268,7 +268,7 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	return true;
 }
 
-ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, uint32_t xid, VALUE_PAIR *vps)
+ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, dhcp_packet_t *original, uint32_t xid, VALUE_PAIR *vps)
 {
 	uint8_t		*p;
 	fr_cursor_t	cursor;
@@ -312,17 +312,35 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, uint32_t xid,
 
 	/* DHCP-Hardware-Type */
 	vp = fr_pair_find_by_da(vps, attr_dhcp_hardware_type, TAG_ANY);
-	if (vp) *p = vp->vp_uint8;
+	if (vp) {
+		*p = vp->vp_uint8;
+
+	} else if (original) {
+		*p = original->htype;
+
+	} /* else leave it unset */
 	p += 1;
 
 	/* DHCP-Hardware-Address-len */
 	vp = fr_pair_find_by_da(vps, attr_dhcp_hardware_address_length, TAG_ANY);
-	if (vp) *p = vp->vp_uint8;
+	if (vp) {
+		*p = vp->vp_uint8;
+
+	} else if (original) {
+		*p = original->hlen;
+
+	} /* else leave it unset */
 	p += 1;
 
 	/* DHCP-Hop-Count */
 	vp = fr_pair_find_by_da(vps, attr_dhcp_hop_count, TAG_ANY);
-	if (vp) *p = vp->vp_uint8;
+	if (vp) {
+		*p = vp->vp_uint8;
+
+	} else if (original) {
+		*p = original->hops;
+
+	} /* else leave it unset */
 	p++;
 
 	/* DHCP-Transaction-Id */
@@ -377,10 +395,15 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, uint32_t xid,
 	vp = fr_pair_find_by_da(vps, attr_dhcp_gateway_ip_address, TAG_ANY);
 	if (vp) {
 		lvalue = vp->vp_ipv4addr;
+		memcpy(p, &lvalue, 4);
+
+	} else if (original) {	/* copy whatever value was in the original */
+		memcpy(p, original->giaddr, sizeof(original->giaddr));
+
 	} else {
 		lvalue = htonl(INADDR_ANY);
+		memcpy(p, &lvalue, 4);
 	}
-	memcpy(p, &lvalue, 4);
 	p += 4;
 
 	/* DHCP-Client-Hardware-Address */
@@ -394,6 +417,10 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, uint32_t xid,
 
 			memcpy(p, vp->vp_ether, sizeof(vp->vp_ether));
 		} /* else ignore it */
+
+	} else if (original) {	/* copy whatever value was in the original */
+		memcpy(p, original->chaddr, sizeof(original->chaddr));
+
 	}
 	p += DHCP_CHADDR_LEN;
 
