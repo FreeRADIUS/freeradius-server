@@ -82,7 +82,11 @@ bool		fr_lua_isjit(lua_State *L);
 char const	*fr_lua_version(lua_State *L);
 
 /* aux.c */
-int 		fr_lua_aux_wrapper_fr_log(int type, char const *msg);
+void		fr_lua_aux_jit_log_debug(char const *msg);
+void		fr_lua_aux_jit_log_info(char const *msg);
+void		fr_lua_aux_jit_log_warn(char const *msg);
+void		fr_lua_aux_jit_log_error(char const *msg);
+
 int		fr_lua_aux_jit_log_register(rlm_lua_t const *inst, lua_State *L);
 int		fr_lua_aux_log_register(rlm_lua_t const *inst, lua_State *L);
 void		fr_lua_aux_set_inst(rlm_lua_t const *inst);

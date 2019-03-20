@@ -40,7 +40,7 @@ static _Thread_local rlm_lua_t const *fr_lua_inst;
 
 void fr_lua_aux_fr_register(lua_State *L)
 {
-	// fr.{}
+	/* fr.{} */
 	lua_newtable(L);
 	lua_setglobal(L, "fr");
 	lua_settop(L, 0);
@@ -147,23 +147,57 @@ static int _aux_log_newindex(UNUSED lua_State *L)
 {
 	REQUEST	*request = fr_lua_aux_get_request();
 
-	RWDEBUG("You can't modify the table 'fr.log.$func()' (read-only)");
+	RWDEBUG("fr.log.$func() is read-only");
 
 	return 1;
 }
 
-/** Wrapper function for fr_log() using the global 'default_log'
+/** Emit a debug log message
  *
- * @param type	of log message.
  * @param msg	to be printed.
  */
-int fr_lua_aux_wrapper_fr_log(int type, char const *msg)
+void fr_lua_aux_jit_log_debug(char const *msg)
 {
-	/*
-	 * We avoid to declare in FFI the fr_log_type_t and fr_log_t
-	 * because it could be simpler just passing the equivalent.
-	 */
-	return fr_log(&default_log, (fr_log_type_t)type, "%s", msg);
+	rlm_lua_t const		*inst = fr_lua_inst;
+	REQUEST			*request = fr_lua_request;
+
+	ROPTIONAL(RDEBUG2, DEBUG2, "%s", msg);
+}
+
+/** Emit an info log message
+ *
+ * @param msg	to be printed.
+ */
+void fr_lua_aux_jit_log_info(char const *msg)
+{
+	rlm_lua_t const		*inst = fr_lua_inst;
+	REQUEST			*request = fr_lua_request;
+
+	ROPTIONAL(RINFO, INFO, "%s", msg);
+}
+
+/** Emit a warning log message
+ *
+ * @param msg	to be printed.
+ */
+void fr_lua_aux_jit_log_warn(char const *msg)
+{
+	rlm_lua_t const		*inst = fr_lua_inst;
+	REQUEST			*request = fr_lua_request;
+
+	ROPTIONAL(RWARN, WARN, "%s", msg);
+}
+
+/** Emit a error log message
+ *
+ * @param msg	to be printed.
+ */
+void fr_lua_aux_jit_log_error(char const *msg)
+{
+	rlm_lua_t const		*inst = fr_lua_inst;
+	REQUEST			*request = fr_lua_request;
+
+	ROPTIONAL(RERROR, ERROR, "%s", msg);
 }
 
 /** Insert cdefs into the lua environment
@@ -180,27 +214,30 @@ int fr_lua_aux_jit_log_register(rlm_lua_t const *inst, lua_State *L)
 	if (luaL_dostring(L,"\
 		ffi = require(\"ffi\")\
 		ffi.cdef [[\
-			int fr_lua_aux_wrapper_fr_log(int type, char const *msg); \
+			void fr_lua_aux_jit_log_debug(char const *msg);\
+			void fr_lua_aux_jit_log_info(char const *msg);\
+			void fr_lua_aux_jit_log_warn(char const *msg);\
+			void fr_lua_aux_jit_log_error(char const *msg);\
 		]]\
 		fr_lua = ffi.load(\"freeradius-lua\")\
 		_fr_log = {}\
 		_fr_log.debug = function(msg)\
-			fr_lua.fr_lua_aux_wrapper_fr_log(16, msg)\
+			fr_lua.fr_lua_aux_jit_log_debug(msg)\
 		end\
 		_fr_log.info = function(msg)\
-			fr_lua.fr_lua_aux_wrapper_fr_log(3, msg)\
+			fr_lua.fr_lua_aux_jit_log_info(msg)\
 		end\
 		_fr_log.warn = function(msg)\
-			fr_lua.fr_lua_aux_wrapper_fr_log(5, msg)\
+			fr_lua.fr_lua_aux_jit_log_warn(msg)\
 		end\
 		_fr_log.error = function(msg)\
-			fr_lua.fr_lua_aux_wrapper_fr_log(4, msg)\
+			fr_lua.fr_lua_aux_jit_log_error(msg)\
 		end\
 		function _ro_log(table) \
 			return setmetatable({}, { \
 				__index = table,\
 				__newindex = function(table, key, value)\
-					_fr_log.warn(\"You can't modify the table 'fr.log.$func()' (read-only)\")\
+					_fr_log.warn(\"fr.log.$func() is read-only\")\
 				end, \
 				__metatable = false \
 			}); \
@@ -223,11 +260,11 @@ int fr_lua_aux_jit_log_register(rlm_lua_t const *inst, lua_State *L)
  */
 int fr_lua_aux_log_register(UNUSED rlm_lua_t const *inst, lua_State *L)
 {
-	// fr.{}
+	/* fr.{} */
 	lua_getglobal(L, "fr");
 	luaL_checktype(L, -1, LUA_TTABLE);
 
-	// fr.log.{}
+	/* fr.log.{} */
 	lua_newtable(L);
 	{
 		lua_newtable(L); //__metatable
