@@ -1161,7 +1161,7 @@ static fr_dict_attr_t *dict_attr_ref_alloc(fr_dict_t *dict, fr_dict_attr_t const
 	}
 
 	ref_n = talloc_zero(dict->pool, fr_dict_attr_ref_t);
-	ref_n->tlv.name = talloc_typed_strdup(ref, name);
+	ref_n->tlv.name = talloc_typed_strdup(ref_n, name);
 	if (!ref_n->tlv.name) {
 		talloc_free(ref_n);
 		fr_strerror_printf("Out of memory");

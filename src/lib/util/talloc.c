@@ -227,17 +227,17 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
  * memory chunk type to char, which causes all kinds of issues with
  * verifying VALUE_PAIRs.
  *
- * @param[in] t The talloc context to hang the result off.
- * @param[in] p The string you want to duplicate.
+ * @param[in] ctx	The talloc context to hang the result off.
+ * @param[in] p		The string you want to duplicate.
  * @return
  *	- Duplicated string.
  *	- NULL on error.
  */
-char *talloc_typed_strdup(void const *t, char const *p)
+char *talloc_typed_strdup(TALLOC_CTX *ctx, char const *p)
 {
 	char *n;
 
-	n = talloc_strdup(t, p);
+	n = talloc_strdup(ctx, p);
 	if (!n) return NULL;
 	talloc_set_type(n, char);
 
@@ -250,19 +250,19 @@ char *talloc_typed_strdup(void const *t, char const *p)
  * memory chunk type to char, which causes all kinds of issues with
  * verifying VALUE_PAIRs.
  *
- * @param[in] t The talloc context to hang the result off.
- * @param[in] fmt The format string.
+ * @param[in] ctx	The talloc context to hang the result off.
+ * @param[in] fmt	The format string.
  * @return
  *	- Formatted string.
  *	- NULL on error.
  */
-char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
+char *talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...)
 {
 	char *n;
 	va_list ap;
 
 	va_start(ap, fmt);
-	n = talloc_vasprintf(t, fmt, ap);
+	n = talloc_vasprintf(ctx, fmt, ap);
 	va_end(ap);
 	if (!n) return NULL;
 	talloc_set_type(n, char);
@@ -276,18 +276,18 @@ char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
  * memory chunk type to char, which causes all kinds of issues with
  * verifying VALUE_PAIRs.
  *
- * @param[in] t The talloc context to hang the result off.
- * @param[in] fmt The format string.
- * @param[in] ap varadic arguments.
+ * @param[in] ctx	The talloc context to hang the result off.
+ * @param[in] fmt	The format string.
+ * @param[in] ap	varadic arguments.
  * @return
  *	- Formatted string.
  *	- NULL on error.
  */
-char *talloc_typed_vasprintf(void const *t, char const *fmt, va_list ap)
+char *talloc_typed_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 {
 	char *n;
 
-	n = talloc_vasprintf(t, fmt, ap);
+	n = talloc_vasprintf(ctx, fmt, ap);
 	if (!n) return NULL;
 	talloc_set_type(n, char);
 
@@ -297,16 +297,16 @@ char *talloc_typed_vasprintf(void const *t, char const *fmt, va_list ap)
 
 /** Binary safe strndup function
  *
- * @param[in] t 	he talloc context to allocate new buffer in.
+ * @param[in] ctx 	he talloc context to allocate new buffer in.
  * @param[in] in	String to dup, may contain embedded '\0'.
  * @param[in] inlen	Number of bytes to dup.
  * @return duped string.
  */
-char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
+char *talloc_bstrndup(TALLOC_CTX *ctx, char const *in, size_t inlen)
 {
 	char *p;
 
-	p = talloc_array(t, char, inlen + 1);
+	p = talloc_array(ctx, char, inlen + 1);
 	if (!p) return NULL;
 
 	/*
@@ -316,6 +316,34 @@ char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
 	p[inlen] = '\0';
 
 	return p;
+}
+
+/** Append a bstr to a bstr
+ *
+ * @param[in] ctx	to allocated.
+ * @param[in] to	string to append to.
+ * @param[in] from	string to append from.
+ * @param[in] from_len	Length of from.
+ * @return
+ *	- Realloced buffer containing both to and from.
+ *	- NULL on failure. To will still be valid.
+ */
+char *talloc_bstr_append(TALLOC_CTX *ctx, char *to, char const *from, size_t from_len)
+{
+	char	*n;
+	size_t	to_len;
+
+	to_len = talloc_array_length(to);
+	if (to[to_len - 1] == '\0') to_len--;	/* Inlen should be length of input string */
+
+	n = talloc_realloc_size(ctx, to, to_len + from_len + 1);
+	if (!n) return NULL;
+
+	memcpy(n + to_len, from, from_len);
+	n[to_len + from_len] = '\0';
+	talloc_set_type(n, char);
+
+	return n;
 }
 
 /** Trim a bstr (char) buffer
@@ -329,11 +357,11 @@ char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
  *	- The realloced string on success.  in then points to invalid memory.
  *	- NULL on failure. In will still be valid.
  */
-char *talloc_realloc_bstr(char *in, size_t inlen)
+char *talloc_realloc_bstr(TALLOC_CTX *ctx, char *in, size_t inlen)
 {
 	char *n;
 
-	n = talloc_realloc_size(talloc_parent(in), in, inlen + 1);
+	n = talloc_realloc_size(ctx, in, inlen + 1);
 	if (!n) return NULL;
 
 	n[inlen] = '\0';
@@ -344,6 +372,7 @@ char *talloc_realloc_bstr(char *in, size_t inlen)
 
 /** Concatenate to + from
  *
+ * @param[in] ctx	to allocate realloced buffer in.
  * @param[in] to	talloc string buffer to append to.
  * @param[in] from	talloc string buffer to append.
  * @return
@@ -354,7 +383,7 @@ char *talloc_realloc_bstr(char *in, size_t inlen)
  *	  returns to may point to invalid memory and should
  *	  not be used.
  */
-char *talloc_buffer_append_buffer(char *to, char const *from)
+char *talloc_buffer_append_buffer(TALLOC_CTX *ctx, char *to, char const *from)
 {
 	size_t to_len, from_len, total_len;
 	char *out;
@@ -365,7 +394,7 @@ char *talloc_buffer_append_buffer(char *to, char const *from)
 	from_len = talloc_array_length(from);
 	total_len = to_len + (from_len - 1);
 
-	out = talloc_realloc(talloc_parent(to), to, char, total_len);
+	out = talloc_realloc(ctx, to, char, total_len);
 	if (!out) return NULL;
 
 	memcpy(out + (to_len - 1), from, from_len);
@@ -376,6 +405,7 @@ char *talloc_buffer_append_buffer(char *to, char const *from)
 
 /** Concatenate to + ...
  *
+ * @param[in] ctx	to allocate realloced buffer in.
  * @param[in] to	talloc string buffer to append to.
  * @param[in] argc	how many variadic arguments were passed.
  * @param[in] ...	talloc string buffer(s) to append.
@@ -389,7 +419,7 @@ char *talloc_buffer_append_buffer(char *to, char const *from)
  *	  returns to may point to invalid memory and should
  *	  not be used.
  */
-char *talloc_buffer_append_variadic_buffer(char *to, int argc, ...)
+char *talloc_buffer_append_variadic_buffer(TALLOC_CTX *ctx, char *to, int argc, ...)
 {
 	va_list		ap_val, ap_len;
 	int		i;
@@ -425,7 +455,7 @@ char *talloc_buffer_append_variadic_buffer(char *to, int argc, ...)
 		return to;
 	}
 
-	out = talloc_realloc(talloc_parent(to), to, char, total_len + 1);
+	out = talloc_realloc(ctx, to, char, total_len + 1);
 	if (!out) goto finish;
 
 	p = out + to_len;

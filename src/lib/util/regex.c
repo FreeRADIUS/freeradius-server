@@ -503,7 +503,7 @@ again:
 	 *	...and as pcre2_substitute just succeeded actual_len does not include \0.
 	 */
 	if (actual_len < (buff_len - 1)) {
-		buff = talloc_realloc_bstr(buff, actual_len);
+		buff = talloc_realloc_bstr(ctx, buff, actual_len);
 		if (!buff) {
 			fr_strerror_printf("reallocing pcre2_substitute result buffer failed");
 			return -1;

@@ -3197,7 +3197,7 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
 	(void) talloc_get_type_abort_const(src, char);
 
 	len = talloc_array_length(src);
-	if ((len == 1) || (src[len - 1] != '\0')) {
+	if ((len == 0) || (src[len - 1] != '\0')) {
 		fr_strerror_printf("Input buffer not \\0 terminated");
 		return -1;
 	}
@@ -4398,7 +4398,7 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 		str = fr_value_box_asprint(pool, vb, quote);
 		if (!str) continue;
 
-		new_aggr = talloc_buffer_append_variadic_buffer(aggr, 2, td, str);
+		new_aggr = talloc_buffer_append_variadic_buffer(ctx, aggr, 2, td, str);
 		if (unlikely(!new_aggr)) {
 			talloc_free(aggr);
 			talloc_free(pool);

@@ -674,7 +674,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	{
 		char *n;
 
-		n = talloc_realloc_bstr(plaintext, plaintext_len);
+		n = talloc_realloc_bstr(ctx, plaintext, plaintext_len);
 		if (unlikely(!n)) {
 			REDEBUG("Failed shrinking plaintext buffer");
 			talloc_free(plaintext);

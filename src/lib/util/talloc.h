@@ -42,19 +42,21 @@ int		talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
 
 TALLOC_CTX	*talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, size_t size);
 
-char		*talloc_typed_strdup(void const *t, char const *p);
+char		*talloc_typed_strdup(TALLOC_CTX *ctx, char const *p);
 
-char		*talloc_typed_asprintf(void const *t, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+char		*talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
-char		*talloc_typed_vasprintf(void const *t, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull (2));
+char		*talloc_typed_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull (2));
 
-char		*talloc_bstrndup(void const *t, char const *in, size_t inlen);
+char		*talloc_bstrndup(TALLOC_CTX *ctx, char const *in, size_t inlen);
 
-char		*talloc_realloc_bstr(char *in, size_t inlen);
+char		*talloc_bstr_append(TALLOC_CTX *ctx, char *to, char const *from, size_t from_len);
 
-char		*talloc_buffer_append_buffer(char *to, char const *from);
+char		*talloc_realloc_bstr(TALLOC_CTX *ctx, char *in, size_t inlen);
 
-char		*talloc_buffer_append_variadic_buffer(char *to, int argc, ...);
+char		*talloc_buffer_append_buffer(TALLOC_CTX *ctx, char *to, char const *from);
+
+char		*talloc_buffer_append_variadic_buffer(TALLOC_CTX *ctx, char *to, int argc, ...);
 
 int		talloc_memcmp_array(uint8_t const *a, uint8_t const *b);
 

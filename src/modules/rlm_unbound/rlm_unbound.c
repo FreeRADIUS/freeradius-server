@@ -212,7 +212,7 @@ static int ub_common_fail(REQUEST *request, char const *name, struct ub_result *
 	return 0;
 }
 
-static ssize_t xlat_a(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+static ssize_t xlat_a(TALLOC_CTX *ctx, char **out, size_t outlen,
 		      void const *mod_inst, UNUSED void const *xlat_inst,
 		      REQUEST *request, char const *fmt)
 {
@@ -227,7 +227,7 @@ static ssize_t xlat_a(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/* Used and thus impossible value from heap to designate incomplete */
 	memcpy(ubres, &mod_inst, sizeof(*ubres));
 
-	fmt2 = talloc_typed_strdup(inst, fmt);
+	fmt2 = talloc_typed_strdup(ctx, fmt);
 	ub_resolve_async(inst->ub, fmt2, 1, 1, ubres, link_ubres, &async_id);
 	talloc_free(fmt2);
 
@@ -259,7 +259,7 @@ static ssize_t xlat_a(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	return -1;
 }
 
-static ssize_t xlat_aaaa(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+static ssize_t xlat_aaaa(TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
@@ -274,7 +274,7 @@ static ssize_t xlat_aaaa(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/* Used and thus impossible value from heap to designate incomplete */
 	memcpy(ubres, &mod_inst, sizeof(*ubres));
 
-	fmt2 = talloc_typed_strdup(inst, fmt);
+	fmt2 = talloc_typed_strdup(ctx, fmt);
 	ub_resolve_async(inst->ub, fmt2, 28, 1, ubres, link_ubres, &async_id);
 	talloc_free(fmt2);
 
@@ -304,7 +304,7 @@ error0:
 	return -1;
 }
 
-static ssize_t xlat_ptr(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+static ssize_t xlat_ptr(TALLOC_CTX *ctx, char **out, size_t outlen,
 			void const *mod_inst, UNUSED void const *xlat_inst,
 			REQUEST *request, char const *fmt)
 {
@@ -319,7 +319,7 @@ static ssize_t xlat_ptr(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/* Used and thus impossible value from heap to designate incomplete */
 	memcpy(ubres, &mod_inst, sizeof(*ubres));
 
-	fmt2 = talloc_typed_strdup(inst, fmt);
+	fmt2 = talloc_typed_strdup(ctx, fmt);
 	ub_resolve_async(inst->ub, fmt2, 12, 1, ubres, link_ubres, &async_id);
 	talloc_free(fmt2);
 

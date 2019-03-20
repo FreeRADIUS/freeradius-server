@@ -155,7 +155,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 
 			child_str = xlat_fmt_aprint(pool, child);
 			if (child_str) {
-				n_out = talloc_buffer_append_buffer(out, child_str);
+				n_out = talloc_buffer_append_buffer(ctx, out, child_str);
 				if (!n_out) {
 					talloc_free(out);
 					talloc_free(pool);
@@ -797,7 +797,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			/*
 			 *	Shrink the buffer
 			 */
-			if ((node->xlat->buf_len > 0) && (slen > 0)) MEM(str = talloc_realloc_bstr(str, (size_t)slen));
+			if ((node->xlat->buf_len > 0) && (slen > 0)) {
+				MEM(str = talloc_realloc_bstr(ctx, str, (size_t)slen));
+			}
 
 			/*
 			 *	Fixup talloc lineage and assign the
