@@ -397,8 +397,8 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		if (data_len > 0) return data_len;
 	}
 
-	data_len = fr_dhcpv4_encode(buffer, buffer_len, original,
-				    request->reply->code, ntohl(original->xid), request->reply->vps);
+	data_len = fr_dhcpv4_encode(buffer, buffer_len, request->reply->code, original,
+				    ntohl(original->xid), request->reply->vps);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding DHCPV4 reply");
 		return -1;
