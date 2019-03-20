@@ -205,7 +205,7 @@ static inline void xlat_debug_log_expansion(REQUEST *request, xlat_exp_t const *
 	if (!RDEBUG_ENABLED2) return;
 
 	str = xlat_fmt_aprint(NULL, node);
-	RDEBUG2("EXPAND %pV", fr_box_strvalue(str));
+	RDEBUG2("EXPAND %s", str);
 
 	/*
 	 *	Because it's difficult to keep track of what
@@ -214,7 +214,7 @@ static inline void xlat_debug_log_expansion(REQUEST *request, xlat_exp_t const *
 	 *	well as the original fmt string.
 	 */
 	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->child)) {
-		RDEBUG2("      (%%{%pV:%pM})", fr_box_strvalue(node->xlat->name), args);
+		RDEBUG2("      (%%{%s:%pM})", node->xlat->name, args);
 	}
 	talloc_free(str);
 }
@@ -707,7 +707,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	xa = resume(ctx, out, request, exp->inst, thread_inst->data, result, rctx);
 	if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
 
-	RDEBUG2("EXPAND %%{%pV:...}", fr_box_strvalue_buffer(exp->xlat->name));
+	RDEBUG2("EXPAND %%{%s:...}", exp->xlat->name);
 	switch (xa) {
 	default:
 		break;
@@ -1520,7 +1520,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 	ssize_t len;
 	xlat_exp_t *node;
 
-	RDEBUG2("EXPAND %pV", fr_box_strvalue(fmt));
+	RDEBUG2("EXPAND %s", fmt);
 	RINDENT();
 
 	/*
