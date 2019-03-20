@@ -958,20 +958,10 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 	 */
 	if (fr_lua_check_func(inst, L, inst->func_authorize)
 	    || fr_lua_check_func(inst, L, inst->func_authenticate)
-#ifdef WITH_ACCOUNTING
 	    || fr_lua_check_func(inst, L, inst->func_preacct)
 	    || fr_lua_check_func(inst, L, inst->func_accounting)
-#endif
 	    || fr_lua_check_func(inst, L, inst->func_checksimul)
-#ifdef WITH_PROXY
-	    || fr_lua_check_func(inst, L, inst->func_pre_proxy)
-	    || fr_lua_check_func(inst, L, inst->func_post_proxy)
-#endif
 	    || fr_lua_check_func(inst, L, inst->func_post_auth)
-#ifdef WITH_COA
-	    || fr_lua_check_func(inst, L, inst->func_recv_coa)
-	    || fr_lua_check_func(inst, L, inst->func_send_coa)
-#endif
 	    || fr_lua_check_func(inst, L, inst->func_detach)
 	    || fr_lua_check_func(inst, L, inst->func_xlat)) {
 	 	goto error;
