@@ -398,7 +398,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, dhcp_packet_t
 		memcpy(p, &lvalue, 4);
 
 	} else if (original) {	/* copy whatever value was in the original */
-		memcpy(p, original->giaddr, sizeof(original->giaddr));
+		memcpy(p, &original->giaddr, sizeof(original->giaddr));
 
 	} else {
 		lvalue = htonl(INADDR_ANY);
@@ -419,7 +419,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, dhcp_packet_t
 		} /* else ignore it */
 
 	} else if (original) {	/* copy whatever value was in the original */
-		memcpy(p, original->chaddr, sizeof(original->chaddr));
+		memcpy(p, &original->chaddr[0], sizeof(original->chaddr));
 
 	}
 	p += DHCP_CHADDR_LEN;
