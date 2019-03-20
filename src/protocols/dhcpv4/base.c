@@ -460,7 +460,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, dhcp_packet_t
 	memcpy(p, &lvalue, 4);
 	p += 4;
 
-	p[0] = 0x35;		/* DHCP-Message-Type */
+	p[0] = FR_DHCP_MESSAGE_TYPE;
 	p[1] = 1;
 	p[2] = code;
 	p += 3;
@@ -483,7 +483,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, int code, dhcp_packet_t
 		p += len;
 	};
 
-	p[0] = 0xff;		/* end of option option */
+	p[0] = FR_DHCP_END_OF_OPTIONS;
 	p[1] = 0x00;
 	p += 2;
 	dhcp_size = p - buffer;
