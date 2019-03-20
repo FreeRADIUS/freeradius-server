@@ -299,6 +299,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 */
 		memcpy(&ipaddr, &packet->giaddr, 4);
 		if (ipaddr != INADDR_ANY) {
+			DEBUG("Reply will be sent to giaddr.");
 			address.dst_ipaddr.addr.v4.s_addr = ipaddr;
 			address.dst_port = inst->port;
 			address.src_port = inst->port;
@@ -419,7 +420,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 send_reply:
 	/*
-	 *	proto_radius_dhcpv4 takes care of suppressing do-not-respond, etc.
+	 *	proto_dhcpv4 takes care of suppressing do-not-respond, etc.
 	 */
 	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
 			     &address.src_ipaddr, address.src_port,
