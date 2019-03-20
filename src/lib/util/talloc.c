@@ -350,6 +350,7 @@ char *talloc_bstr_append(TALLOC_CTX *ctx, char *to, char const *from, size_t fro
  *
  * Reallocs to inlen + 1 and '\0' terminates the string buffer.
  *
+ * @param[in] ctx	to realloc buffer into.
  * @param[in] in	string to trim.  Will be invalid after
  *			this function returns.
  * @param[in] inlen	Length to trim string to.
