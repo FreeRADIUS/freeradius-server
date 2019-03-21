@@ -3652,7 +3652,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 *	Catches any embedded \0 bytes that might cause
 		 *	incorrect results.
 		 */
-		if (fr_dict_valid_name(alias, alias_len) < 0) {
+		if (fr_dict_valid_name(alias, alias_len) <= 0) {
 			if (tmp) talloc_free(tmp);
 			goto parse;
 		}

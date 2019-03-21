@@ -476,7 +476,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		return false;
 	}
 
-	if (fr_dict_valid_name(name, -1) < 0) return NULL;
+	if (fr_dict_valid_name(name, -1) <= 0) return NULL;
 
 	/*
 	 *	type_size is used to limit the maximum attribute number, so it's checked first.
@@ -2149,6 +2149,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	}
 
 	n = dict_attr_alloc(ctx, parent, NULL, attr, FR_TYPE_OCTETS, &flags);
+	if (!n) return NULL;
 
 	/*
 	 *	The config files may reference the unknown by name.
@@ -2251,7 +2252,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 
 	*out = NULL;
 
-	if (fr_dict_valid_name(oid_str, -1) < 0) return -1;
+	if (fr_dict_valid_oid_str(oid_str, -1) < 0) return -1;
 
 	/*
 	 *	All unknown attributes are of the form "Attr-#-#-#-#"
@@ -5183,9 +5184,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 
 /** (Re)-initialize a protocol dictionary
  *
- * Initialize the directory, then fix the attr member of all attributes.
- *
- * First dictionary initialised will be set as the default internal dictionary.
+ * Initialize the directory, then fix the attr number of all attributes.
  *
  * @param[out] out		Where to write a pointer to the new dictionary.  Will free existing
  *				dictionary if files have changed and *out is not NULL.
@@ -5548,7 +5547,27 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 		p++;
 	} while (p < end);
 
-	return 0;
+	return len;
+}
+
+ssize_t fr_dict_valid_oid_str(char const *name, ssize_t len)
+{
+	char const *p = name, *end;
+
+	if (len < 0) len = strlen(name);
+	end = p + len;
+
+	do {
+		if (!fr_dict_attr_allowed_chars[(uint8_t)*p] && (*p != '.')) {
+			fr_strerror_printf("Invalid character '%pV' in oid string \"%pV\"",
+					   fr_box_strvalue_len(p, 1), fr_box_strvalue_len(name, len));
+
+			return -(p - name);
+		}
+		p++;
+	} while (p < end);
+
+	return len;
 }
 
 void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
