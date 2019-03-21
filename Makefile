@@ -360,7 +360,7 @@ whitespace:
 #  Include crossbuild targets, to test building on lots of
 #  different OSes. Uses Docker.
 #
-ifneq ($(shell which docker),)
+ifneq ($(shell which docker 2> /dev/null),)
 include scripts/docker/crossbuild/crossbuild.mk
 else
 .PHONY: crossbuild crossbuild.help

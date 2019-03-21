@@ -43,7 +43,7 @@ clean.doc:
 #  Pandoc v2 onwards renamed --latex-engine to --pdf-engine
 #
 PANDOC_ENGINE=pdf
-ifneq ($(shell which pandoc),)
+ifneq ($(shell which pandoc 2> /dev/null),)
 ifneq ($(shell pandoc --help | grep latex-engine),)
 PANDOC_ENGINE=latex
 endif
