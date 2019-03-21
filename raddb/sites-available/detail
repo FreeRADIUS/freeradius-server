@@ -12,10 +12,12 @@ server detail {
 	#  In v4, all "server" sections MUST start with a "namespace"
 	#  parameter.  This tells the server which protocol is being used.
 	#
-	#  All of the subsequent "listen" sections in this server will
-	#  only accept packets for that protocol.
+	#  Namespace for the proto_detail module also controls which 
+	#  dictionary the textual attribute names from the detail file are 
+	#  resolved in, so must match the namespace of the server which
+	#  generated the detail files originally.
 	#
-	namespace = detail
+	namespace = radius
 
 	listen {
 		#
