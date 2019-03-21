@@ -887,7 +887,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, funcs, &ef->active);
 		if (count < 0) goto free;
 		if (count && (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0))) {
-			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
+			fr_strerror_printf("Failed inserting filters for FD %i: %s", fd, fr_syserror(errno));
 			goto free;
 		}
 
