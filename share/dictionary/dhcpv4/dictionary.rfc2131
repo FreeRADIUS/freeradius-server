@@ -253,8 +253,8 @@ ATTRIBUTE	DHCP-Call-Server-IP-address		129	octets
 ATTRIBUTE	DHCP-Ethernet-Interface			130	octets
 ATTRIBUTE	DHCP-Vendor-Discrimination-Str		130	octets
 ATTRIBUTE	DHCP-Remote-Stats-Svr-IP-Address	131	octets
-ATTRIBUTE	DHCP-IEEE-802.1P-VLAN-ID		132	octets
-ATTRIBUTE	DHCP-IEEE-802.1Q-L2-Priority		133	octets
+ATTRIBUTE	DHCP-IEEE-802dot1P-VLAN-ID		132	octets
+ATTRIBUTE	DHCP-IEEE-802dot1Q-L2-Priority		133	octets
 ATTRIBUTE	DHCP-Diffserv-Code-Point		134	octets
 ATTRIBUTE	DHCP-HTTP-Proxy				135	octets
 
@@ -480,7 +480,7 @@ VALUE	DHCP-Parameter-Request-List	DHCP-Call-Server-IP-address 129
 VALUE	DHCP-Parameter-Request-List	DHCP-Ethernet-Interface	130
 VALUE	DHCP-Parameter-Request-List	DHCP-Vendor-Discrimination-Str 130
 VALUE	DHCP-Parameter-Request-List	DHCP-Remote-Stats-Svr-IP-Address 131
-VALUE	DHCP-Parameter-Request-List	DHCP-IEEE-802.1P-VLAN-ID 132
-VALUE	DHCP-Parameter-Request-List	DHCP-IEEE-802.1Q-L2-Priority 133
+VALUE	DHCP-Parameter-Request-List	DHCP-IEEE-802dot1P-VLAN-ID 132
+VALUE	DHCP-Parameter-Request-List	DHCP-IEEE-802dot1Q-L2-Priority 133
 VALUE	DHCP-Parameter-Request-List	DHCP-Diffserv-Code-Point 134
 VALUE	DHCP-Parameter-Request-List	DHCP-HTTP-Proxy		135
