@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 4994 - DHCPv6 Relay Agent Echo Request Option
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Relay-Agent-Echo-Request		43	uint16 array	# Array of option numbers

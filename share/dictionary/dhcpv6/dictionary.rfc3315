@@ -1,0 +1,29 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC3315 - Dynamic Host Configuration Protocol for IPv6 (DHCPv6)
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Client-ID			1	octets
+ATTRIBUTE	Server-ID			2	octets
+ATTRIBUTE	IA-NA				3	octets		# Complex struct see RFC 3315
+ATTRIBUTE	IA-TA				4	octets		# Complex struct see RFC 3315
+ATTRIBUTE	IA-ADDR				5	octets		# Complex struct see RFC 3315
+ATTRIBUTE	Option-Request			6	octets		# Magic option listing requested options
+ATTRIBUTE	Preference			7	uint8
+ATTRIBUTE	Elapsed-Time			8	uint16
+ATTRIBUTE	Relay-Message			9	octets
+ATTRIBUTE	Auth				11	octets		# Complex struct see RFC 3315
+ATTRIBUTE	Unicast				12	ipv6addr
+ATTRIBUTE	Status-Code			13	octets		# Complex struct see RFC 3315
+ATTRIBUTE	Rapid-Commit			14	bool
+ATTRIBUTE	User-Class			15	octets array
+ATTRIBUTE	Vendor-Class			16	octets		# Complex struct see RFC 3315
+ATTRIBUTE	Vendor-Opts			17	vsa
+ATTRIBUTE	Interface-ID			18	octets
+ATTRIBUTE	Reconf-Msg			19	uint8
+ATTRIBUTE	Reconf-Accept			20	bool

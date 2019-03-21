@@ -1,0 +1,12 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 5417 - Control And Provisioning of Wireless Access Points (CAPWAP)
+#             Access Controller DHCP Option
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Capwap-AC			52	ipv6addr array

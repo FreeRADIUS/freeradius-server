@@ -1,0 +1,13 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC3646 - DNS Configuration options for Dynamic Host
+#	     Configuration Protocol for IPv6 (DHCPv6)
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	DNS-Servers			23	ipv6addr array
+ATTRIBUTE	Domain-List			24	octets		# Domain name list (DNS encoding)

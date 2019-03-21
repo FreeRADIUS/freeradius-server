@@ -1,0 +1,49 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 5970 - DHCPv6 Options for Network Boot
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Bootfile-URL			59	string
+ATTRIBUTE	Bootfile-Param			60	string array
+ATTRIBUTE	Client-Arch-Type			61	uint16 array
+
+VALUE	Client-Arch-Type		x86-BIOS		0
+VALUE	Client-Arch-Type		NEC-PC98		1
+VALUE	Client-Arch-Type		Itanium			2
+VALUE	Client-Arch-Type		DEC-Alpha		3
+VALUE	Client-Arch-Type		Arc-x86			4
+VALUE	Client-Arch-Type		Intel-Lean-Client	5
+VALUE	Client-Arch-Type		x86-UEFI		6
+VALUE	Client-Arch-Type		x64-UEFI		7
+VALUE	Client-Arch-Type		EFI-Xscale		8
+VALUE	Client-Arch-Type		EBC			9
+VALUE	Client-Arch-Type		ARM-32-bit-UEFI		10
+VALUE	Client-Arch-Type		ARM-64-bit-UEFI		11
+VALUE	Client-Arch-Type		PowerPC-Open-Firmware	12
+VALUE	Client-Arch-Type		PowerPC-ePAPR		13
+VALUE	Client-Arch-Type		POWER-OPAL-v3		14
+VALUE	Client-Arch-Type		x86-UEFI-Boot-From-HTTP	15
+VALUE	Client-Arch-Type		x64-UEFI-Boot-From-HTTP	16
+VALUE	Client-Arch-Type		EBC-Boot-From-HTTP	17
+VALUE	Client-Arch-Type		ARM-UEFI-32-Boot-From-HTTP 18
+VALUE	Client-Arch-Type		ARM-UEFI-64-Boot-From-HTTP 19
+VALUE	Client-Arch-Type		PCAT-BIOS-Boot-From-HTTP 20
+VALUE	Client-Arch-Type		ARM-32-Uboot		21
+VALUE	Client-Arch-Type		ARM-64-Uboot		22
+VALUE	Client-Arch-Type		ARM-Uboot-32-Boot-From-HTTP 23
+VALUE	Client-Arch-Type		ARM-Uboot-64-Boot-From-HTTP 24
+VALUE	Client-Arch-Type		RISC-V-32-Bit-UEFI	25
+VALUE	Client-Arch-Type		RISC-V-32-Bit-UEFI-Boot-From-HTTP 26
+VALUE	Client-Arch-Type		RISC-V-64-Bit-UEFI	27
+VALUE	Client-Arch-Type		RISC-V-64-Bit-UEFI-Boot-From-HTTP 28
+VALUE	Client-Arch-Type		RISC-V-128-Bit-UEFI	29
+VALUE	Client-Arch-Type		RISC-V-128-Bit-UEFI-Boot-From-HTTP 30
+VALUE	Client-Arch-Type		S390-Basic		31
+VALUE	Client-Arch-Type		S390-Extended		32
+
+ATTRIBUTE	Client-Network-Interface-ID	62	octets		# Complex struct see RFC 5970

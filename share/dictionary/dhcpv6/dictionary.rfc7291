@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 7291 - DHCP Options for the Port Control Protocol (PCP)
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	PCP-Server			86	ipv6addr array

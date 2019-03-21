@@ -1,32 +1,66 @@
 # -*- text -*-
-# Copyright (C) 2015 The FreeRADIUS Server project and contributors
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
 ##############################################################################
 #
-#	DHCP dictionary.
+#  DHCPv6 dictionary.
 #
-#	http://www.iana.org/assignments/bootp-dhcp-parameters
-#
-#	Also http://www.networksorcery.com/enp/protocol/bootp/options.htm
-#
-#	http://www.bind9.net/rfc-dhcp
-#
-#	$Id$
+#  $Id$
 #
 ##############################################################################
 
-#
-#
-#	The vendor codes are 2 octets, because we need 256 numbers
-#	for the base DHCP options, PLUS a few for the DHCP headers,
-#	which aren't in option format.
-#
-#	On top of that, a number of options are really TLV's.
-#	We need to be able to understand them, too.
-#
 PROTOCOL	DHCPv6	3
 BEGIN-PROTOCOL	DHCPv6
 
-# Fixme should be broken out into separate RFCs
-$INCLUDE dictionary.dhcpv6
+$INCLUDE dictionary.freeradius.internal
+$INCLUDE dictionary.rfc3315
+$INCLUDE dictionary.rfc3319
+$INCLUDE dictionary.rfc3633
+$INCLUDE dictionary.rfc3646
+$INCLUDE dictionary.rfc3898
+$INCLUDE dictionary.rfc4075
+$INCLUDE dictionary.rfc4242
+$INCLUDE dictionary.rfc4280
+$INCLUDE dictionary.rfc4580
+$INCLUDE dictionary.rfc4649
+$INCLUDE dictionary.rfc4704
+$INCLUDE dictionary.rfc4776
+$INCLUDE dictionary.rfc4833
+$INCLUDE dictionary.rfc4994
+$INCLUDE dictionary.rfc5007
+$INCLUDE dictionary.rfc5192
+$INCLUDE dictionary.rfc5223
+$INCLUDE dictionary.rfc5417
+$INCLUDE dictionary.rfc5460
+$INCLUDE dictionary.rfc5678
+$INCLUDE dictionary.rfc5908
+$INCLUDE dictionary.rfc5970
+$INCLUDE dictionary.rfc5986
+$INCLUDE dictionary.rfc6011
+$INCLUDE dictionary.rfc6153
+$INCLUDE dictionary.rfc6225
+$INCLUDE dictionary.rfc6334
+$INCLUDE dictionary.rfc6422
+$INCLUDE dictionary.rfc6440
+$INCLUDE dictionary.rfc6603
+$INCLUDE dictionary.rfc6607
+$INCLUDE dictionary.rfc6610
+$INCLUDE dictionary.rfc6731
+$INCLUDE dictionary.rfc6784
+$INCLUDE dictionary.rfc6939
+$INCLUDE dictionary.rfc6977
+$INCLUDE dictionary.rfc7037
+$INCLUDE dictionary.rfc7078
+$INCLUDE dictionary.rfc7083
+$INCLUDE dictionary.rfc7291
+$INCLUDE dictionary.rfc7341
+$INCLUDE dictionary.rfc7598
+$INCLUDE dictionary.rfc7600
+$INCLUDE dictionary.rfc7653
+$INCLUDE dictionary.rfc7710
+$INCLUDE dictionary.rfc7774
+$INCLUDE dictionary.rfc7839
+$INCLUDE dictionary.rfc8026
+$INCLUDE dictionary.rfc8115
+$INCLUDE dictionary.rfc8156
 
 END-PROTOCOL 	DHCPv6

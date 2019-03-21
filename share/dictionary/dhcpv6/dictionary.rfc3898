@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC3898 - Network Information Service (NIS)
+#	     Configuration Options for
+#	     Dynamic Host Configuration Protocol for IPv6 (DHCPv6)
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	NIS-Servers			27	ipv6addr array
+ATTRIBUTE	NIS-Plus-Servers			28	ipv6addr array
+ATTRIBUTE	NIS-Domain-Name			29	octets		# Domain name
+ATTRIBUTE	NIS-Plus-Domain-Name		30	octets		# Domain name

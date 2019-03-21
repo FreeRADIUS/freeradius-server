@@ -1,0 +1,12 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 7083 - Modification to Default Values of SOL_MAX_RT and INF_MAX_RT
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	SOL-Max-RT			82	uint32
+ATTRIBUTE	INF-Max-RT			83	uint32

@@ -1,0 +1,12 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 4833 - Timezone Options for DHCP
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	New-Posix-Timezone		41	string
+ATTRIBUTE	New-TZDB-Timezone		42	string

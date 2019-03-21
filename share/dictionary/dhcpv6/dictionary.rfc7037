@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 7037 - RADIUS Option for the DHCPv6 Relay Agent
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	RADIUS				81	octets		# Foreign protocol (RADIUS)

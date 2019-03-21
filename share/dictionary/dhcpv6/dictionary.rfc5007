@@ -1,0 +1,15 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 5007 - DHCPv6 Leasequery
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Lease-Query			44	octets		# Complex struct see RFC 5007
+ATTRIBUTE	Client-Data			45	octets		# Complex struct see RFC 5007
+ATTRIBUTE	Client-Last-Transaction-Time	46	uint32
+ATTRIBUTE	Lease-Query-Relay-Data		47	octets		# Complex struct see RFC 5007
+ATTRIBUTE	Lease-Query-Client-Link		48	ipv6addr array

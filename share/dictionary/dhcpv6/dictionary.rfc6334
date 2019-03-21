@@ -1,0 +1,12 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 6334 - Dynamic Host Configuration Protocol for IPv6 (DHCPv6) Option
+#             for Dual-Stack Lite.
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	AFTR-Name			64	octets		# Domain name

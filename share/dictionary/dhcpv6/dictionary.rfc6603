@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 6603 - PD Exclude
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	PD-Exclude			67	ipv6prefix

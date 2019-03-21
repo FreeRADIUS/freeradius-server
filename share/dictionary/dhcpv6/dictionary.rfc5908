@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 5908 - Network Time Protocol (NTP) Server Option for DHCPv6
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	NTP-Server			56	tlv
+BEGIN-TLV	NTP-Server
+ATTRIBUTE	NTP-Server-Address		1	ipv6addr
+ATTRIBUTE	NTP-Server-Multicast-Address	2	ipv6addr
+ATTRIBUTE	NTP-Server-FQDN			3	octets		# Domain name
+END-TLV		NTP-Server

@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 7341 - DHCPv4-over-DHCPv6 (DHCP 4o6) Transport
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	DHCPv4-Msg			87	octets		# Foreign protocol (DHCPv4)

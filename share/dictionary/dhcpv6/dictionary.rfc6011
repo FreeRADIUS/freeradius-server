@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 6011 - Session Initiation Protocol (SIP) User Agent Configuration
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	SIP-US-CS-Domain-List		58	octets		# Domain name list

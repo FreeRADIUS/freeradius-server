@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 5986 - Discovering the Local Location Information Server (LIS)
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	LIS-Access-Domain		57	octets		# Domain name

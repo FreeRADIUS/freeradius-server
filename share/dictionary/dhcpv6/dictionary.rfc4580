@@ -1,0 +1,12 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 4580 - Dynamic Host Configuration Protocol for IPv6 (DHCPv6)
+#             Relay Agent Subscriber-ID Option
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Subscriber-ID			38	string

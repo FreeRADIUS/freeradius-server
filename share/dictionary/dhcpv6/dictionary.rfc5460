@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 5460 - DHCPv6 Bulk Leasequery
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Relay-ID				53	octets

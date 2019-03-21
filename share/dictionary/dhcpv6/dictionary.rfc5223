@@ -1,0 +1,12 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 5223 - Discovering Location-to-Service Translation (LoST) Servers Using the
+#             Dynamic Host Configuration Protocol (DHCP)
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	LoST				51	octets		# Domain name

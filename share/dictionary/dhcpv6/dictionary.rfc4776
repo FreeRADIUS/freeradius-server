@@ -1,0 +1,12 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 4776 - Dynamic Host Configuration Protocol (DHCPv4 and DHCPv6) Option
+#             for Civic Addresses Configuration Information
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Geoconf-Civic			36	octets		# Complex struct see RFC 4776

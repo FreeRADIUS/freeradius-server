@@ -1,0 +1,29 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 7839 - Access-Network-Identifier
+#
+#  $Id$
+#
+ATTRIBUTE	ANI-Access-Technology-Type	105	uint16
+
+VALUE	ANI-Access-Technology-Type Virtual		1
+VALUE	ANI-Access-Technology-Type PPP			2
+VALUE	ANI-Access-Technology-Type IEEE802-3		3
+VALUE	ANI-Access-Technology-Type IEEE802-11abg		4
+VALUE	ANI-Access-Technology-Type IEEE802-16e		5
+VALUE	ANI-Access-Technology-Type 3GPP-GERAN		6
+VALUE	ANI-Access-Technology-Type 3GPP-UTRAN		7
+VALUE	ANI-Access-Technology-Type 3GPP-E-UTRAN		8
+VALUE	ANI-Access-Technology-Type 3GPP2-eHRPD		9
+VALUE	ANI-Access-Technology-Type 3GPP-HRPD		10
+VALUE	ANI-Access-Technology-Type 3GPP2-1xRTT		11
+VALUE	ANI-Access-Technology-Type 3GPP2-UMB		12
+VALUE	ANI-Access-Technology-Type 3GPP2-NB-IOT		13
+
+ATTRIBUTE	ANI-Network-Name			106	string
+ATTRIBUTE	ANI-Access-Point-Name		107	string
+ATTRIBUTE	ANI-Access-Point-BSSID		108	ether
+ATTRIBUTE	ANI-Operator-Identifier		109	uint32
+ATTRIBUTE	ANI-Operator-Realm		110	string

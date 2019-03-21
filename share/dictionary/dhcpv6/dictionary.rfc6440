@@ -1,0 +1,11 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#  RFC 6440 - The EAP Re-authentication Protocol (ERP) Local Domain Name DHCPv6 Option
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	ERP-Local-Domain-Name		65	octets		# Domain name
