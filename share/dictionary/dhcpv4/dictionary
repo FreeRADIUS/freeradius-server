@@ -26,6 +26,8 @@
 PROTOCOL	DHCPv4	2
 BEGIN-PROTOCOL	DHCPv4
 
+$INCLUDE dictionary.freeradius.internal
+
 # Fixme should be broken out into separate RFCs
 $INCLUDE dictionary.rfc2131
 
