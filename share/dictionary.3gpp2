@@ -154,7 +154,7 @@ ATTRIBUTE	3GPP2-DNS-Update-Capability		95	integer
 ATTRIBUTE	3GPP2-Disconnect-Reason			96	integer
 
 ATTRIBUTE	3GPP2-Remote-IPv6-Octet-Count		97	tlv
-ATTRIBUTE	3GPP2-Remote-IPv6-Address		97.1	ipv6addr
+ATTRIBUTE	3GPP2-Remote-IPv6-Count-Address		97.1	ipv6addr
 ATTRIBUTE	3GPP2-Remote-IPv6-Prefix-Length		97.2	short
 ATTRIBUTE	3GPP2-Remote-IPv6-Forward-Octet-Count	97.3	integer
 ATTRIBUTE	3GPP2-Remote-IPv6-Reverse-Octet-Count	97.4	integer
