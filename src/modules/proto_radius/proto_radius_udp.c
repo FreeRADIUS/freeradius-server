@@ -472,10 +472,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	/*
 	 *	Parse and create the trie for dynamic clients, even if
 	 *	there's no dynamic clients.
-	 *
-	 *	@todo - we could use this for source IP filtering?
-	 *	e.g. allow clients from a /16, but not from a /24
-	 *	within that /16.
 	 */
 	num = talloc_array_length(inst->allow);
 	if (!num) {

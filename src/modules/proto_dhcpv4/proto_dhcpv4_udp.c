@@ -635,10 +635,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	/*
 	 *	Parse and create the trie for dynamic clients, even if
 	 *	there's no dynamic clients.
-	 *
-	 *	@todo - we could use this for source IP filtering?
-	 *	e.g. allow clients from a /16, but not from a /24
-	 *	within that /16.
 	 */
 	num = talloc_array_length(inst->allow);
 	if (!num) {
@@ -657,9 +653,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-// @todo - allow for "wildcard" clients, which allow anything
-// and then rely on "networks" to filter source IPs...
-// which means we probably want to filter on "networks" even if there are no dynamic clients
 static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
 	return client_find(NULL, ipaddr, ipproto);
