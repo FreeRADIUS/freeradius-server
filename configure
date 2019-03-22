@@ -7774,7 +7774,7 @@ fi
 if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: talloc library not found. Use --with-talloc-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: talloc library not found. Use --with-talloc-lib-dir=<path>." >&2;}
-  as_fn_error $? "FreeRADIUS requires libtalloc.  Please read doc/developer/dependencies.rst for further instructions." "$LINENO" 5
+  as_fn_error $? "FreeRADIUS requires libtalloc.  Please read doc/source/dependencies.rst for further instructions." "$LINENO" 5
 fi
 
 TALLOC_LIBS="${smart_lib}"
