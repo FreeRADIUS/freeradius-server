@@ -89,7 +89,7 @@ ATTRIBUTE	3GPP2-Remote-IP-Qualifier		59.3	short
 ATTRIBUTE	3GPP2-Remote-IPv6-Address		70	tlv
 ATTRIBUTE	3GPP2-Remote-IPv6-Address-Value		70.1	ipv6addr
 ATTRIBUTE	3GPP2-Remote-IPv6-Address-Prefix-Length	70.2	integer
-ATTRIBUTE	3GPP2-Remote-IPv6-Address		70.3	tlv
+ATTRIBUTE	3GPP2-Remote-IPv6-Address-Qualifier	70.3	tlv
 
 ATTRIBUTE	3GPP2-Remote-Address-Table-Index	71	tlv
 ATTRIBUTE	3GPP2-Remote-Address-Table-Index-Value	71.1	short
