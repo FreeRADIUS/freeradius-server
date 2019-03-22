@@ -7967,7 +7967,7 @@ fi
   if test "x$ac_cv_lib_kqueue_kqueue" != "xyes"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: kqueue library not found. Use --with-kqueue-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: kqueue library not found. Use --with-kqueue-lib-dir=<path>." >&2;}
-    as_fn_error $? "FreeRADIUS requires libkqueue (or system kqueue).  Please read doc/developer/dependencies.rst for further instructions." "$LINENO" 5
+    as_fn_error $? "FreeRADIUS requires libkqueue (or system kqueue).  Please read doc/source/dependencies.rst for further instructions." "$LINENO" 5
   fi
 fi
 
