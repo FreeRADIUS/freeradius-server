@@ -1290,8 +1290,9 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		 *  HTTP/<version> <reason_code>[ <reason_phrase>]\r\n
 		 *
 		 *  "HTTP/1.1 " (8) + "100 " (4) + "\r\n" (2) = 14
+		 *  "HTTP/2 " (8) + "100 " (4) + "\r\n" (2) = 12
 		 */
-		if (s < 14) {
+		if (s < 12) {
 			REDEBUG("Malformed HTTP header: Status line too short");
 			goto malformed;
 		}
