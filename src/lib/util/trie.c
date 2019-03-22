@@ -77,11 +77,23 @@ RCSID("$Id$")
 //#define WITH_PATH_COMPRESSION
 #endif
 
+//#define WITH_NODE_COMPRESSION
+
+#ifdef WITH_NODE_COMPRESSION
+#ifndef WITH_PATH_COMPRESSION
+#define WITH_PATH_COMPRESSION
+#endif
+
+#ifndef MAX_COMP_BITS
+#define MAX_COMP_BITS (8)
+#endif
+#endif
+
 #define MAX_KEY_BYTES (256)
 #define MAX_KEY_BITS (MAX_KEY_BYTES * 8)
 
-#ifndef DEFAULT_BITS
-#define DEFAULT_BITS (4)
+#ifndef MAX_NODE_BITS
+#define MAX_NODE_BITS (4)
 #endif
 
 /**  Internal sanity checks for debugging.
@@ -109,6 +121,8 @@ DIAG_OFF(unused-macros)
 #ifdef WITH_TRIE_VERIFY
 static int fr_trie_verify(fr_trie_t *trie);
 #define VERIFY(_x) fr_cond_assert(fr_trie_verify((fr_trie_t *) _x) == 0);
+#else
+#define VERIFY(_x)
 #endif
 
 /*
@@ -255,13 +269,24 @@ static int fr_trie_key_lcp(uint8_t const *key1, int keylen1, uint8_t const *key2
 			end_bit -= start_bit;
 
 			/*
-			 *	From now on we start on a byte boundary.
+			 *	For subsequent bytes we start on a
+			 *	byte boundary.
 			 */
 			start_bit = 0;
 		}
 
 		xor = cmp1 ^ cmp2;
 
+		/*
+		 *	A table lookup is faster than looping through
+		 *	the bits.  If the LCP is smaller than the
+		 *	number of bits we're looking up, we can stop.
+		 *
+		 *	On the other hand, if it returns the same or
+		 *	too many bits, just do another round through
+		 *	the loop, so that we can update the pointers
+		 *	and check the exit conditions.
+		 */
 		if (xor2lcp[xor] < num_bits) {
 			MPRINT2("RETURN %d + %d\n", lcp, xor2lcp[xor]);
 			return lcp + xor2lcp[xor];
@@ -419,17 +444,16 @@ static void write_chunk(uint8_t *out, int start_bit, int num_bits, uint16_t chun
 typedef enum fr_trie_type_t {
 	FR_TRIE_INVALID = 0,
 	FR_TRIE_USER,
-	FR_TRIE_NODE,
 #ifdef WITH_PATH_COMPRESSION
 	FR_TRIE_PATH,
 #endif
+#ifdef WITH_NODE_COMPRESSION
+	FR_TRIE_COMP,		/* 4-way, N bits deep */
+#endif
+	FR_TRIE_NODE,
 } fr_trie_type_t;
 
-#ifdef WITH_PATH_COMPRESSION
-#define FR_TRIE_MAX (FR_TRIE_PATH + 1)
-#else
 #define FR_TRIE_MAX (FR_TRIE_NODE + 1)
-#endif
 
 #ifdef TESTING
 static int trie_number = 0;
@@ -480,16 +504,14 @@ typedef struct {
 	int		number;
 #endif
 
+	fr_trie_t	*trie;
+
 	uint16_t	chunk;
 	uint8_t		key[2];
-	fr_trie_t	*trie;
 } fr_trie_path_t;
 #endif
 
-/* @todo - compressed N-way nodes.  And then do linear search on the
- * indexes for matching.
-
-4-way nodes when bits > 2 and used < 4
+#ifdef WITH_NODE_COMPRESSION
 typedef struct {
 	fr_trie_type_t	type;
 	fr_trie_t	*parent;
@@ -498,26 +520,11 @@ typedef struct {
 	int		number;
 #endif
 
-
-	int		used;
+	int		used;		//!< number of used entries
 	uint8_t		index[4];
 	fr_trie_t	*trie[4];
-} fr_trie_4way_t;
-
-4-way nodes when bits >= 4 and used < 16
-typedef struct {
-	fr_trie_type_t	type;
-	fr_trie_t	*parent;
-	int		bits;
-#ifdef TESTING
-	int		number;
+} fr_trie_comp_t;
 #endif
-
-	int		used;
-	uint8_t		index[16];
-	fr_trie_t	*trie[16];
-} fr_trie_16way_t;
-*/
 
 
 /* ALLOC FUNCTIONS */
@@ -536,7 +543,7 @@ static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, in
 
 	node = (fr_trie_node_t *) talloc_zero_array(ctx, uint8_t, sizeof(fr_trie_node_t) + sizeof(node->trie[0]) * size);
 	if (!node) {
-		fr_strerror_printf("failed allocating user trie");
+		fr_strerror_printf("failed allocating node trie");
 		return NULL;
 	}
 
@@ -680,6 +687,37 @@ static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, ui
 }
 #endif	/* WITH_PATH_COMPRESSION */
 
+#ifdef WITH_NODE_COMPRESSION
+static fr_trie_comp_t *fr_trie_comp_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, int bits)
+{
+	fr_trie_comp_t *comp;
+
+	/*
+	 *	For 1 && 2 bits, just allocate fr_trie_node_t.
+	 */
+	if ((bits <= 2) || (bits > MAX_COMP_BITS)) {
+		fr_strerror_printf("Invalid bit size %d passed to comp alloc", bits);
+		return NULL;
+	}
+
+	comp = talloc_zero(ctx, fr_trie_comp_t);
+	if (!comp) {
+		fr_strerror_printf("failed allocating comp trie");
+		return NULL;
+	}
+
+	comp->type = FR_TRIE_COMP;
+	comp->parent = parent;
+	comp->bits = bits;
+	comp->used = 0;
+
+#ifdef TESTING
+	comp->number = trie_number++;
+#endif
+	return comp;
+}
+#endif	/* WITH_NODE_COMPRESSION */
+
 /** Allocate a trie
  *
  * @param ctx The talloc ctx
@@ -710,7 +748,7 @@ static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr
 	 *	a node which has 1 bit.
 	 */
 	if ((bits == 0) || (bits >= node->bits) || (node->bits == 1)) {
-		fr_strerror_printf("invalid value for split (%d / %d)", bits, node->bits);
+		fr_strerror_printf("invalid value for node split (%d / %d)", bits, node->bits);
 		return NULL;
 	}
 
@@ -859,14 +897,14 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 {
 	fr_trie_node_t *node;
 	uint16_t chunk;
-	int bits = DEFAULT_BITS;
+	int bits = MAX_NODE_BITS;
 
 	if (start_bit == end_bit) {
 		return (fr_trie_t *) fr_trie_user_alloc(ctx, parent, data);
 	}
 
 	bits = end_bit - start_bit;
-	if (bits > DEFAULT_BITS) bits = DEFAULT_BITS;
+	if (bits > MAX_NODE_BITS) bits = MAX_NODE_BITS;
 
 	/*
 	 *	We only want one edge here.
@@ -886,29 +924,150 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 }
 #endif
 
+
+#if 0
+/** Split a compressed at bits
+ *
+ */
+#ifdef WITH_NODE_COMPRESSION
+static fr_trie_t *fr_trie_comp_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_comp_t *comp, int start_bit, int bits)
+{
+	int i;
+	fr_trie_comp_t *split;
+
+	/*
+	 *	Can't split zero bits, more bits than the node has, or
+	 *	a node which has 1 bit.
+	 */
+	if ((bits == 0) || (bits >= comp->bits)) {
+		fr_strerror_printf("invalid value for comp split (%d / %d)", bits, comp->bits);
+		return NULL;
+	}
+
+	split = fr_trie_comp_alloc(ctx, parent, bits);
+	if (!split) return NULL;
+
+	if (start_bit > 7) start_bit &= 0x07;
+
+	// walk over the edges, seeing how many edges have the same before bits
+	//
+	// if all have the same bits, then split by creating a path
+	// node, and then a child split node.
+
+	/*
+	 *	Walk over each edge, inserting the first chunk into
+	 *	the new node, and the split node...
+	 */
+	for (i = 0; i < comp->used; i++) {
+		int j, where;
+		uint16_t before, after;
+		uint8_t key[2];
+		fr_trie_path_t *path;
+
+		before = i >> (comp->bits - bits);
+		after = i & ((1 << bits) - 1);
+
+		write_chunk(&key[0], start_bit, comp->bits, i);
+
+		// see if "before" was already used in the newly created node.
+
+		where = 0;
+
+		for (j = 0; j < split->used; j++) {
+			if (before == split->index[j]) {
+				where = j;
+				break;
+			}
+		}
+
+		if (split->index[where]) {
+			// the children MUST be different
+			// create another compressed node as a child, and go from there.
+
+		} else {
+			split->index[split->used] = before;
+			path = fr_trie_path_alloc(ctx, (fr_trie_t *) split, &key[0], start_bit, start_bit + bits);
+			if (!path) goto fail;
+
+			split->trie[split->used++] = (fr_trie_t *) path;
+			path->trie = comp->trie[i];
+		}
+	}
+
+	return (fr_trie_t *) split;
+
+fail:
+	for (i = 0; i < split->used; i++) {
+		talloc_free(split->trie[i]);
+	}
+	talloc_free(split);
+	return NULL;
+}
+#endif	/* WITH_NODE_COMPRESSION */
+#endif
+
 /* ADD EDGES */
 
 #ifdef WITH_PATH_COMPRESSION
 /** Add an edge to a node.
  *
- *  This functin is so that we can abstract 2^N-way nodes, or
+ *  This function is so that we can abstract 2^N-way nodes, or
  *  compressed edge nodes.
- *
- *  Note that it takes a `fr_trie_t**`, as it may have to re-allocate
- *  the node in order to add more children to it.
  */
-static fr_trie_t **fr_trie_add_edge(fr_trie_t **trie_p, uint16_t chunk)
+static int fr_trie_add_edge(fr_trie_t *trie, uint16_t chunk, fr_trie_t *child)
 {
-	fr_trie_node_t *node = *(fr_trie_node_t **) trie_p;
+	fr_trie_node_t *node;
 
-	if (node->type != FR_TRIE_NODE) return NULL;
+#ifdef WITH_NODE_COMPRESSION
+	if (trie->type == FR_TRIE_COMP) {
+		fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
+		int i, edge;
 
-	if (chunk >= (1 << node->bits)) return NULL;
+		if (chunk >= (1 << comp->bits)) return -1;
 
-	if (node->trie[chunk] != NULL) return NULL;
+		if (comp->used >= 4) return -1;
+
+		edge = 0;
+		for (i = 0; i < comp->used; i++) {
+			if (comp->index[i] < chunk) continue;
+
+			if (comp->index[edge] == chunk) return -1;
+
+			edge = i;
+			break;
+		}
+
+		if (edge == 4) return -1;
+
+		/*
+		 *	Move the nodes up so that we have room for the
+		 *	new edge.
+		 */
+		for (i = comp->used; i > edge; i--) {
+			comp->index[i] = comp->index[i - 1];
+			comp->trie[i] = comp->trie[i - 1];
+		}
+
+		comp->index[edge] = chunk;
+		comp->trie[edge] = child;
+
+		comp->used++;
+		return 0;
+	}
+#endif
+
+	if (trie->type != FR_TRIE_NODE) return -1;
+
+	node = (fr_trie_node_t *) trie;
+
+	if (chunk >= (1 << node->bits)) return -1;
+
+	if (node->trie[chunk] != NULL) return -1;
 
 	node->used++;
-	return &(node->trie[chunk]);
+	node->trie[chunk] = child;
+
+	return 0;
 }
 #endif
 
@@ -980,11 +1139,43 @@ static void *fr_trie_path_match(fr_trie_t *trie, uint8_t const *key, int start_b
 }
 #endif
 
+#ifdef WITH_NODE_COMPRESSION
+static void *fr_trie_comp_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
+{
+	int i;
+	uint16_t chunk;
+	fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
+
+	chunk = get_chunk(key, start_bit, comp->bits);
+
+	for (i = 0; i < comp->used; i++) {
+		MPRINT3("%.*scomp[%d] = index %04x ? chunk %04x\n",
+			start_bit, spaces, i, comp->index[i], chunk);
+
+		if (comp->index[i] == chunk) {
+			return fr_trie_key_match(comp->trie[i], key, start_bit + comp->bits, end_bit, exact);
+		}
+
+		/*
+		 *	The edges are ordered smallest to largest.  So
+		 *	if the edge is larger than the chunk, NO edge
+		 *	will match the chunk.
+		 */
+		if (comp->index[i] > chunk) return NULL;
+	}
+
+	return NULL;
+}
+#endif
+
 static fr_trie_key_match_t trie_match[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = fr_trie_user_match,
 	[ FR_TRIE_NODE ] = fr_trie_node_match,
 #ifdef WITH_PATH_COMPRESSION
 	[ FR_TRIE_PATH ] = fr_trie_path_match,
+#endif
+#ifdef WITH_NODE_COMPRESSION
+	[ FR_TRIE_COMP ] = fr_trie_comp_match,
 #endif
 };
 
@@ -1087,18 +1278,22 @@ void *fr_trie_match(fr_trie_t const *ft, void const *key, size_t keylen)
 /* INSERT FUNCTIONS */
 
 #ifdef TESTING
-static void fr_trie_check(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, void *data, UNUSED int lineno)
+static void fr_trie_check(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, void *data, int lineno)
 {
 	void *answer;
 
 	answer = fr_trie_key_match(trie, key, start_bit, end_bit, true);
 	if (!answer) {
+		fr_strerror_printf("Failed trie check answer at %d", lineno);
+
 		// print out the current trie!
 		MPRINT3("Failed to find user data from start %d end %d at %d\n", start_bit, end_bit, lineno);
 		fr_cond_assert(0);
 	}
 
 	if (answer != data) {
+		fr_strerror_printf("Failed trie check answer == data at %d", lineno);
+
 		MPRINT3("Found wrong user data from start %d end %d at %d\n", start_bit, end_bit, lineno);
 		fr_cond_assert(0);
 	}
@@ -1206,7 +1401,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	uint8_t const *key2;
 	int start_bit2;
 	fr_trie_t *node;
-	fr_trie_t *child, **edge;
+	fr_trie_t *child;
 
 	MPRINT3("%.*spath insert start %d end %d with key %02x%02x data %s\n",
 		start_bit, spaces, start_bit, end_bit, key[0], key[1], (char *) data);
@@ -1269,7 +1464,6 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		return -1;
 	}
 
-
 	if (lcp > 0) {
 		fr_trie_path_t *split;
 
@@ -1296,7 +1490,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 
 		/*
 		 *	Recurse to insert the key into the child node.
-		 *	Note that if "bits > DEFAULT_BITS", we will
+		 *	Note that if "bits > MAX_NODE_BITS", we will
 		 *	have to split "path" again.
 		 */
 		if (fr_trie_key_insert(ctx, (fr_trie_t *) split, &split->trie, key, start_bit + split->bits, end_bit, data) < 0) {
@@ -1322,27 +1516,32 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		return 0;
 	}
 
-	MPRINT3("%.*sFanout at depth %d data %s\n", start_bit, spaces, start_bit, (char *) data);
-
 	/*
 	 *	Else there's no common prefix.  Just create an
-	 *	N-way node.
+	 *	fanout node.
 	 */
-	if (bits > DEFAULT_BITS) bits = DEFAULT_BITS;
-
 	/*
-	 *	We're asked to use more bits than in the trie.  This
-	 *	should have already been caught above.
+	 *	We only want two edges here. Try to create a
+	 *	compressed N-way node if possible.
 	 */
-	if (bits > path->bits) {
-		fr_strerror_printf("Failed splitting properly in path split");
-		return -1;
+#ifdef WITH_NODE_COMPRESSION
+	if (bits > 2) {
+		if (bits > MAX_COMP_BITS) bits = MAX_COMP_BITS;
+
+		MPRINT3("%.*sFanout to comp %d at depth %d data %s\n", start_bit, spaces, bits, start_bit, (char *) data);
+		node = (fr_trie_t *) fr_trie_comp_alloc(ctx, parent, bits);
+	} else
+#endif
+	{
+		/*
+		 *	Without path compression create no more than a
+		 *	16-way node.
+		 */
+		if (bits > MAX_NODE_BITS) bits = MAX_NODE_BITS;
+
+		MPRINT3("%.*sFanout to node %d at depth %d data %s\n", start_bit, spaces, bits, start_bit, (char *) data);
+		node = (fr_trie_t *) fr_trie_node_alloc(ctx, parent, bits);
 	}
-
-	/*
-	 *	We only want two edges here.
-	 */
-	node = (fr_trie_t *) fr_trie_node_alloc(ctx, parent, bits);
 	if (!node) return -1;
 
 	/*
@@ -1372,48 +1571,41 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		VERIFY(child);
 	}
 
+	trie = NULL;
+
 	/*
-	 *	Add in the first edge.
+	 *	Recurse to insert the key into the second edge.  If
+	 *	this fails, then we haven't changed anything.  So just
+	 *	free memory and return.
+	 *
+	 *	Note that if "bits > DEFAULT_BITS", we will have to
+	 *	split "path" again.
 	 */
-	edge = fr_trie_add_edge(&node, chunk);
-	if (!edge) {
+	if (fr_trie_key_insert(ctx, node, &trie, key, start_bit + node->bits, end_bit, data) < 0) {
+		talloc_free(node);
+		if (child != path->trie) talloc_free(child);
+		return -1;
+	}
+
+	/*
+	 *	Copy the first edge over to the first chunk.
+	 */
+	if (fr_trie_add_edge(node, chunk, child) < 0) {
 		fr_strerror_printf("chunk failure in insert node %d at %d", node->bits, __LINE__);
 		talloc_free(node);
 		if (child != path->trie) talloc_free(child);
 		return -1;
 	}
-	*edge = child;
-
-	VERIFY(node);
 
 	/*
-	 *	Now get the chunk from the key, and add it to the
-	 *	node.
+	 *	Copy the second edge from the new chunk.
 	 */
 	chunk = get_chunk(key, start_bit, node->bits);
-
-	edge = fr_trie_add_edge(&node, chunk);
-	if (!edge) {
-		fr_strerror_printf("False duplicate in insert node %d at %d", node->bits, __LINE__);
-	fail:
-		/*
-		 *	We know that "add_edge" hasn't reparented any
-		 *	child nodes, so we can just free memory and
-		 *	exit.
-		 */
+	if (fr_trie_add_edge(node, chunk, trie) < 0) {
+		fr_strerror_printf("chunk failure in insert node %d at %d", node->bits, __LINE__);
 		talloc_free(node);
-		if (child != path->trie) talloc_free(child);
+		fr_trie_free(trie);
 		return -1;
-	}
-
-	/*
-	 *	Recurse to insert the key into the second edge.
-	 *
-	 *	Note that if "bits > DEFAULT_BITS", we will have to
-	 *	split "path" again.
-	 */
-	if (fr_trie_key_insert(ctx, node, edge, key, start_bit + node->bits, end_bit, data) < 0) {
-		goto fail;
 	}
 
 	fr_trie_check((fr_trie_t *) node, key, start_bit, end_bit, data, __LINE__);
@@ -1421,7 +1613,8 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	MPRINT3("%.*spath returning at %d\n", start_bit, spaces, __LINE__);
 
 	/*
-	 *	Only update this if it succeeded.
+	 *	Only update the child's parent pointer if everything
+	 *	succeeded.
 	 */
 	child->parent = node;
 	*trie_p = node;
@@ -1432,11 +1625,126 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 }
 #endif
 
+#ifdef WITH_NODE_COMPRESSION
+static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
+{
+	int i, edge;
+	fr_trie_t *trie = *trie_p;
+	fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
+	uint16_t chunk;
+
+	MPRINT3("%.*scomp insert start %d end %d with key %02x%02x data %s\n",
+		start_bit, spaces, start_bit, end_bit, key[0], key[1], (char *) data);
+
+	if ((end_bit - start_bit) < comp->bits) {
+		fr_strerror_printf("Not implemented at %d", __LINE__);
+		return -1;
+	}
+
+	chunk = get_chunk(key, start_bit, comp->bits);
+
+	/*
+	 *	All edges are used.  Create an N-way node.
+	 */
+	if (comp->used == 4) {
+		int bits = comp->bits;
+		fr_trie_node_t *node;
+
+		/*
+		 *	@todo - limit bits to DEFAULT_BITS by calling
+		 *	fr_trie_comp_split()?
+		 */
+//		if (bits > DEFAULT_BITS) bits = DEFAULT_BITS;
+
+		MPRINT3("%.*scomp swapping to node bits %d at %d", start_bit, spaces, bits, __LINE__);
+
+		node = fr_trie_node_alloc(ctx, parent, bits);
+		if (!node) return -1;
+
+		for (i = 0; i < comp->used; i++) {
+			node->trie[comp->index[i]] = comp->trie[i];
+		}
+
+		if (fr_trie_key_insert(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
+			MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
+			talloc_free(node);
+			return -1;
+		}
+
+		/*
+		 *	Reparent everything properly.
+		 */
+		for (i = 0; i < comp->used; i++) {
+			node->trie[comp->index[i]]->parent = (fr_trie_t *) node;
+		}
+
+		fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
+
+		MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
+
+		talloc_free(comp);
+		*trie_p = (fr_trie_t *) node;
+		return 0;
+	}
+
+	edge = 0;
+	for (i = 0; i < comp->used; i++) {
+		if (comp->index[i] < chunk) continue;
+
+		/*
+		 *	We've found a matching chunk, recurse.
+		 */
+		if (comp->index[i] == chunk) {
+			if (fr_trie_key_insert(ctx, (fr_trie_t *) comp, &comp->trie[i], key, start_bit + comp->bits, end_bit, data) < 0) {
+				MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
+				return -1;
+			}
+
+			fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
+
+			MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
+			return 0;
+		}
+
+		edge = i;
+		break;
+	}
+
+	/*
+	 *	No chunk matches.  insert the key into a place-holder
+	 *	entry, so that we don't modify the current node on
+	 *	failure.
+	 */
+	if (fr_trie_key_insert(ctx, (fr_trie_t *) comp, &trie, key, start_bit + comp->bits, end_bit, data) < 0) {
+		MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
+		return -1;
+	}
+
+	/*
+	 *	Move the rest of the edges up one.
+	 */
+	for (i = edge; i < comp->used; i++) {
+		comp->index[i + 1] = comp->index[i];
+		comp->trie[i + 1] = comp->trie[i];
+	}
+
+	fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
+
+	MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
+	comp->index[edge] = chunk;
+	comp->trie[edge] = trie;
+	return 0;
+}
+#endif
+
 static fr_trie_key_insert_t trie_insert[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = fr_trie_user_insert,
 	[ FR_TRIE_NODE ] = fr_trie_node_insert,
 #ifdef WITH_PATH_COMPRESSION
 	[ FR_TRIE_PATH ] = fr_trie_path_insert,
+#endif
+#ifdef WITH_NODE_COMPRESSION
+	[ FR_TRIE_COMP ] = fr_trie_comp_insert,
 #endif
 };
 
@@ -1657,11 +1965,105 @@ static void *fr_trie_path_remove(TALLOC_CTX *ctx, UNUSED fr_trie_t *parent, fr_t
 }
 #endif
 
+#ifdef WITH_NODE_COMPRESSION
+static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
+{
+	int i;
+	uint16_t chunk;
+	void *data;
+	fr_trie_comp_t *comp = *(fr_trie_comp_t **) trie_p;
+	fr_trie_path_t *path;
+
+	chunk = get_chunk(key, start_bit, comp->bits);
+
+	for (i = 0; i < comp->used; i++) {
+		if (comp->index[i] < chunk) continue;
+
+		if (comp->index[i] == chunk) {
+			break;
+		}
+
+		/*
+		 *	The edges are ordered smallest to largest.  So
+		 *	if the edge is larger than the chunk, NO edge
+		 *	will match the chunk.
+		 */
+		if (comp->index[i] > chunk) return NULL;
+	}
+
+	/*
+	 *	Didn't find it, fail.
+	 */
+	if (i >= comp->used) return NULL;
+
+	fr_cond_assert(chunk == comp->index[i]);
+
+	data = fr_trie_key_remove(ctx, (fr_trie_t *) comp, &comp->trie[i], key, start_bit + comp->bits, end_bit);
+	if (!data) return NULL;
+
+	/*
+	 *	The trie still has a subtrie.  Just return the data.
+	 */
+	if (comp->trie[i]) return data;
+
+	/*
+	 *	Shrinking at the end is easy, we don't need to do
+	 *	anything.  For shrinking in the middle, we just copy
+	 *	the entries down.
+	 */
+	if (i < comp->used) {
+		int j;
+
+		for (j = i; j < comp->used; j++) {
+			comp->index[j] = comp->index[j + 1];
+			comp->trie[j] = comp->trie[j + 1];
+		}
+	}
+	comp->used--;
+
+	if (comp->used >= 2) return data;
+
+	/*
+	 *	Our entire path is empty.  Delete it as we walk back
+	 *	up the trie.  We hope that this doesn't happen.
+	 */
+	if (!comp->used) {
+		*trie_p = NULL;
+		talloc_free(comp); /* no children */
+		return data;
+	}
+
+	/*
+	 *	Only one edge.  Turn it back into a path node.
+	 */
+	path = fr_trie_path_alloc(ctx, parent, key, start_bit, start_bit + comp->bits);
+	if (!path) return data;
+
+#ifdef TESTING
+	fr_cond_assert(path->chunk == chunk);
+#endif
+
+	/*
+	 *	Tie the parent to the child, and the child to the
+	 *	parent.
+	 */
+	path->trie = comp->trie[0];
+	path->trie->parent = (fr_trie_t *) path;
+
+	*trie_p = (fr_trie_t *) path;
+	talloc_free(comp);
+	return data;
+}
+#endif
+
 static fr_trie_key_remove_t trie_remove[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = fr_trie_user_remove,
 	[ FR_TRIE_NODE ] = fr_trie_node_remove,
 #ifdef WITH_PATH_COMPRESSION
 	[ FR_TRIE_PATH ] = fr_trie_path_remove,
+#endif
+#ifdef WITH_NODE_COMPRESSION
+	[ FR_TRIE_COMP ] = fr_trie_comp_remove,
 #endif
 };
 
@@ -1782,11 +2184,37 @@ static int fr_trie_path_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth,
 }
 #endif
 
+#ifdef WITH_NODE_COMPRESSION
+static int fr_trie_comp_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
+{
+	int i, used;
+	fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
+
+	used = 0;
+	for (i = 0; i < comp->used; i++) {
+		write_chunk(cb->start, depth, comp->bits, comp->index[i]);
+
+		fr_cond_assert(comp->trie[i] != NULL);
+
+		used++;
+		if (fr_trie_key_walk(comp->trie[i], cb, depth + comp->bits,
+				     more || (used < comp->used)) < 0) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
+#endif
+
 static fr_trie_key_walk_t trie_walk[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = fr_trie_user_walk,
 	[ FR_TRIE_NODE ] = fr_trie_node_walk,
 #ifdef WITH_PATH_COMPRESSION
 	[ FR_TRIE_PATH ] = fr_trie_path_walk,
+#endif
+#ifdef WITH_NODE_COMPRESSION
+	[ FR_TRIE_COMP ] = fr_trie_comp_walk,
 #endif
 };
 
@@ -1844,7 +2272,7 @@ static int fr_trie_node_verify(fr_trie_t *trie)
 	fr_trie_node_t *node = (fr_trie_node_t *) trie;
 	int i, used;
 
-	if ((node->bits == 0) || (node->bits > DEFAULT_BITS)) {
+	if ((node->bits == 0) || (node->bits > MAX_NODE_BITS)) {
 		fr_strerror_printf("N-way node has invalid bits %d",
 				   node->bits);
 		return -1;
@@ -1900,12 +2328,47 @@ static int fr_trie_path_verify(fr_trie_t *trie)
 }
 #endif
 
+#ifdef WITH_NODE_COMPRESSION
+static int fr_trie_comp_verify(fr_trie_t *trie)
+{
+	int i, used;
+	fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
+
+	if ((comp->bits == 0) || (comp->bits > MAX_COMP_BITS)) {
+		fr_strerror_printf("comp node has invalid bits %d",
+				   comp->bits);
+		return -1;
+	}
+
+	used = 0;
+	for (i = 0; i < comp->used; i++) {
+		if (!comp->trie[i]) {
+			fr_strerror_printf("comp node has no child trie at %d", i);
+			return -1;
+		}
+
+		if (fr_trie_verify(comp->trie[i]) < 0) return -1;
+		used++;
+	}
+
+	if (used != comp->used) {
+		fr_strerror_printf("Compressed node has incorrect used %d when actually used %d",
+				   comp->used, used);
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
 static fr_trie_verify_t trie_verify[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = fr_trie_user_verify,
 	[ FR_TRIE_NODE ] = fr_trie_node_verify,
-
 #ifdef WITH_PATH_COMPRESSION
 	[ FR_TRIE_PATH ] = fr_trie_path_verify,
+#endif
+#ifdef WITH_NODE_COMPRESSION
+	[ FR_TRIE_COMP ] = fr_trie_comp_verify,
 #endif
 };
 
@@ -2014,12 +2477,37 @@ static void fr_trie_path_dump(FILE *fp, fr_trie_t *trie, char const *key, int ke
 }
 #endif
 
+#ifdef WITH_NODE_COMPRESSION
+static void fr_trie_comp_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
+{
+	fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
+	int i;
+	int bytes = BYTES(keylen);
+
+	fprintf(fp, "{ NODE-%d\n", comp->number);
+	fprintf(fp, "\ttype\tCOMP\n");
+	fprintf(fp, "\tinput\t{%d}%.*s\n", keylen, bytes, key);
+
+	fprintf(fp, "\tbits\t%d\n", comp->bits);
+	fprintf(fp, "\tused\t%d\n", comp->used);
+
+	for (i = 0; i < comp->used; i++) {
+		fprintf(fp, "\t%d = %02x\t", i, comp->index[i]);
+		fr_trie_dump_edge(fp, comp->trie[i]);
+	}
+	fprintf(fp, "}\n\n");
+}
+
+#endif
+
 static fr_trie_dump_t trie_dump[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = fr_trie_user_dump,
 	[ FR_TRIE_NODE ] = fr_trie_node_dump,
-
 #ifdef WITH_PATH_COMPRESSION
 	[ FR_TRIE_PATH ] = fr_trie_path_dump,
+#endif
+#ifdef WITH_NODE_COMPRESSION
+	[ FR_TRIE_COMP ] = fr_trie_comp_dump,
 #endif
 };
 
