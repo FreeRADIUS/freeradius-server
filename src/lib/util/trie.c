@@ -1968,7 +1968,7 @@ static void *fr_trie_path_remove(TALLOC_CTX *ctx, UNUSED fr_trie_t *parent, fr_t
 #ifdef WITH_NODE_COMPRESSION
 static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
 {
-	int i;
+	int i, j;
 	uint16_t chunk;
 	void *data;
 	fr_trie_comp_t *comp = *(fr_trie_comp_t **) trie_p;
@@ -2004,20 +2004,20 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t *
 	/*
 	 *	The trie still has a subtrie.  Just return the data.
 	 */
-	if (comp->trie[i]) return data;
+	if (comp->trie[i]) {
+		fprintf(stderr, "%.*sremove at %d\n", start_bit, spaces, __LINE__);
+		fr_trie_sprint((fr_trie_t *) comp, key, start_bit, __LINE__);
+		return data;
+	}
 
 	/*
 	 *	Shrinking at the end is easy, we don't need to do
 	 *	anything.  For shrinking in the middle, we just copy
 	 *	the entries down.
 	 */
-	if (i < comp->used) {
-		int j;
-
-		for (j = i; j < comp->used; j++) {
-			comp->index[j] = comp->index[j + 1];
-			comp->trie[j] = comp->trie[j + 1];
-		}
+	for (j = i; j < comp->used - 1; j++) {
+		comp->index[j] = comp->index[j + 1];
+		comp->trie[j] = comp->trie[j + 1];
 	}
 	comp->used--;
 
@@ -2030,18 +2030,21 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t *
 	if (!comp->used) {
 		*trie_p = NULL;
 		talloc_free(comp); /* no children */
+		fprintf(stderr, "%.*sremove at %d\n", start_bit, spaces, __LINE__);
 		return data;
 	}
 
 	/*
-	 *	Only one edge.  Turn it back into a path node.
+	 *	Only one edge.  Turn it back into a path node.  Note
+	 *	that we pass "key" here, which is wrong... that's the
+	 *	key we're removing, not the key left in the node.  But
+	 *	we fix that later.
+	 *
+	 *	@todo - check the child. If it's also a path node, try
+	 *	to concatenate the nodes together.
 	 */
 	path = fr_trie_path_alloc(ctx, parent, key, start_bit, start_bit + comp->bits);
 	if (!path) return data;
-
-#ifdef TESTING
-	fr_cond_assert(path->chunk == chunk);
-#endif
 
 	/*
 	 *	Tie the parent to the child, and the child to the
@@ -2050,8 +2053,16 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t *
 	path->trie = comp->trie[0];
 	path->trie->parent = (fr_trie_t *) path;
 
+	/*
+	 *	Fix up the chunk and key to be the one left in the
+	 *	trie, not the one which was removed.
+	 */
+	path->chunk = comp->index[0];
+	write_chunk(&path->key[0], start_bit & 0x07, path->bits, path->chunk);
+
 	*trie_p = (fr_trie_t *) path;
 	talloc_free(comp);
+
 	return data;
 }
 #endif
