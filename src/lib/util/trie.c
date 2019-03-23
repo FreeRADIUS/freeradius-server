@@ -135,6 +135,7 @@ static int fr_trie_verify(fr_trie_t *trie);
 #define BYTES(_x)	(((_x) + 0x07) >> 3)
 DIAG_ON(unused-macros)
 
+
 // @todo - do level compression
 // stop merging nodes if a key ends at the top of the level
 // otherwise merge so we have at least 2^4 way fan-out, but no more than 2^8
@@ -1284,6 +1285,8 @@ static void fr_trie_check(fr_trie_t *trie, uint8_t const *key, int start_bit, in
 {
 	void *answer;
 
+	fr_trie_sprint(trie, key, start_bit, lineno);
+
 	answer = fr_trie_key_match(trie, key, start_bit, end_bit, true);
 	if (!answer) {
 		fr_strerror_printf("Failed trie check answer at %d", lineno);
@@ -1318,6 +1321,7 @@ static int fr_trie_user_insert(TALLOC_CTX *ctx, UNUSED fr_trie_t *parent, fr_tri
 	/*
 	 *	Just insert the key into user->trie.
 	 */
+	MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
 	return fr_trie_key_insert(ctx, (fr_trie_t *) user, &user->trie, key, start_bit, end_bit, data);
 }
 
@@ -1375,6 +1379,7 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		 *	Recurse in order to insert the key
 		 *	into the current node.
 		 */
+		MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
 		if (fr_trie_key_insert(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
 			MPRINT("Failed recursing at %d\n", __LINE__);
 			if (trie_to_free) fr_trie_free(trie_to_free);
@@ -1410,6 +1415,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		start_bit, spaces, start_bit, end_bit, key[0], key[1], (char *) data);
 
 	VERIFY(path);
+	fr_trie_sprint((fr_trie_t *) path, key, start_bit, __LINE__);
 
 	/*
 	 *	The key exactly matches the path.  Recurse.
@@ -1424,7 +1430,16 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		if (chunk == path->chunk) {
 			MPRINT3("%.*spath chunk matches %04x bits of %d\n",
 				start_bit, spaces, chunk, path->bits);
-			return fr_trie_key_insert(ctx, (fr_trie_t *) path, &path->trie, key, start_bit + path->bits, end_bit, data);
+			MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
+			if (fr_trie_key_insert(ctx, (fr_trie_t *) path, &path->trie, key, start_bit + path->bits, end_bit, data) < 0) {
+				return -1;
+			}
+
+			fr_trie_check((fr_trie_t *) path, key, start_bit, end_bit, data, __LINE__);
+
+			MPRINT3("%.*spath returning at %d\n", start_bit, spaces, __LINE__);
+			VERIFY(path);
+			return 0;
 		}
 
 		bits = path->bits;
@@ -1491,11 +1506,16 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 			return -1;
 		}
 
+		fr_trie_sprint((fr_trie_t *) path, key, start_bit, __LINE__);
+		fr_trie_sprint((fr_trie_t *) split, key, start_bit, __LINE__);
+		fr_trie_sprint((fr_trie_t *) split->trie, key, start_bit + split->bits, __LINE__);
+
 		/*
 		 *	Recurse to insert the key into the child node.
 		 *	Note that if "bits > MAX_NODE_BITS", we will
 		 *	have to split "path" again.
 		 */
+		MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
 		if (fr_trie_key_insert(ctx, (fr_trie_t *) split, &split->trie, key, start_bit + split->bits, end_bit, data) < 0) {
 			talloc_free(split->trie);
 			talloc_free(split);
@@ -1584,6 +1604,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	 *	Note that if "bits > DEFAULT_BITS", we will have to
 	 *	split "path" again.
 	 */
+	MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
 	if (fr_trie_key_insert(ctx, node, &trie, key, start_bit + node->bits, end_bit, data) < 0) {
 		talloc_free(node);
 		if (child != path->trie) talloc_free(child);
@@ -1668,6 +1689,11 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 			node->trie[comp->index[i]] = comp->trie[i];
 		}
 
+		/*
+		 *	Insert the new chunk, which may or may not
+		 *	overlap with an existing one.
+		 */
+		MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
 		if (fr_trie_key_insert(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
 			MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
 			talloc_free(node);
@@ -1699,6 +1725,7 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		 *	We've found a matching chunk, recurse.
 		 */
 		if (comp->index[i] == chunk) {
+			MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
 			if (fr_trie_key_insert(ctx, (fr_trie_t *) comp, &comp->trie[i], key, start_bit + comp->bits, end_bit, data) < 0) {
 				MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
 				return -1;
@@ -1720,6 +1747,7 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	 *	entry, so that we don't modify the current node on
 	 *	failure.
 	 */
+	MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
 	if (fr_trie_key_insert(ctx, (fr_trie_t *) comp, &trie, key, start_bit + comp->bits, end_bit, data) < 0) {
 		MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
 		return -1;
@@ -1783,6 +1811,9 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **tr
 		if (!*trie_p) return -1;
 		return 0;
 	}
+
+	MPRINT3("%.*sIN recurse at %d\n", start_bit, spaces, __LINE__);
+	fr_trie_sprint(trie, key, start_bit, __LINE__);
 
 	/*
 	 *	We've reached the end of the key.  Insert a user node
@@ -1868,6 +1899,8 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *da
 	memcpy(&my_data, &data, sizeof(data)); /* const issues */
 	MPRINT2("No match for data, inserting...\n");
 
+	MPRINT3("%.*srecurse STARTS at %d with %.*s=%s\n", 0, spaces, __LINE__,
+		(int) keylen, key, my_data);
 	return fr_trie_key_insert(user->data, (fr_trie_t *) user, &user->trie, key, 0, keylen, my_data);
 }
 
@@ -1982,6 +2015,9 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t *
 
 	chunk = get_chunk(key, start_bit, comp->bits);
 
+	MPRINT3("%.*sremove at %d\n", start_bit, spaces, __LINE__);
+	fr_trie_sprint(*trie_p, key, start_bit, __LINE__);
+
 	for (i = 0; i < comp->used; i++) {
 		if (comp->index[i] < chunk) continue;
 
@@ -2011,7 +2047,7 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t *
 	 *	The trie still has a subtrie.  Just return the data.
 	 */
 	if (comp->trie[i]) {
-		fprintf(stderr, "%.*sremove at %d\n", start_bit, spaces, __LINE__);
+		MPRINT3("%.*sremove at %d\n", start_bit, spaces, __LINE__);
 		fr_trie_sprint((fr_trie_t *) comp, key, start_bit, __LINE__);
 		VERIFY(comp);
 		return data;
@@ -2040,7 +2076,7 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t *
 	if (!comp->used) {
 		*trie_p = NULL;
 		talloc_free(comp); /* no children */
-		fprintf(stderr, "%.*sremove at %d\n", start_bit, spaces, __LINE__);
+		MPRINT3("%.*sremove at %d\n", start_bit, spaces, __LINE__);
 		return data;
 	}
 
@@ -2677,7 +2713,7 @@ done:
 }
 
 
-static void fr_trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, int lineno)
+static void fr_trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, UNUSED int lineno)
 {
 	fr_trie_callback_t my_cb;
 	fr_trie_sprint_ctx_t my_sprint;
@@ -2714,7 +2750,7 @@ static void fr_trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, i
 	 */
 	(void) fr_trie_key_walk(trie, &my_cb, start_bit, false);
 
-	fprintf(stderr, "%.*s%s at %d\n", start_bit, spaces, out, lineno);
+	MPRINT3("%.*s%s at %d\n", start_bit, spaces, out, lineno);
 }
 
 
@@ -3040,6 +3076,7 @@ static int command_try_to_remove(fr_trie_t *ft, UNUSED int argc, char **argv, ch
 	return 0;
 }
 
+
 /** Print a trie to a string
  *
  *  The trie is printed one one line.  If the trie contains keys which
@@ -3334,6 +3371,7 @@ int main(int argc, char **argv)
 			fflush(stdout);
 		}
 
+		MPRINT3("[%d] %s\n", lineno, my_argv[0]);
 		if (commands[cmd].function(ft, my_argc - 1 - commands[cmd].output, &my_argv[1], output, sizeof(output)) < 0) {
 			fprintf(stderr, "Failed running %s at line %d\n",
 				my_argv[0], lineno);
