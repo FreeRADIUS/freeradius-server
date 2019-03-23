@@ -333,6 +333,7 @@ static void hex_dump(FILE *fp, char const *msg, uint8_t const *key, int start_bi
 }
 #endif
 
+static uint16_t get_chunk(uint8_t const *key, int start_bit, int num_bits) CC_HINT(nonnull);
 
 /** Return a chunk of a key (in the low bits) for use in 2^N node de-indexing
  *
@@ -400,6 +401,8 @@ static uint16_t get_chunk(uint8_t const *key, int start_bit, int num_bits)
 	return chunk;
 }
 
+
+static void write_chunk(uint8_t *out, int start_bit, int num_bits, uint16_t chunk) CC_HINT(nonnull);
 
 /** Write a chunk to an output buffer
  *
