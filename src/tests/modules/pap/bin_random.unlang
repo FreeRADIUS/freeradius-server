@@ -1,0 +1,15 @@
+if (&User-Name == 'test') {
+	update request {
+		&User-Password := "%{randstr:bbbbbbbbbbbbbbbb}"
+	}
+	update control {
+		&Cleartext-Password := "%{User-Password}"
+	}
+	pap.authorize
+	pap.authenticate
+	if (!ok) {
+		test_fail
+	} else {
+		test_pass
+	}
+}

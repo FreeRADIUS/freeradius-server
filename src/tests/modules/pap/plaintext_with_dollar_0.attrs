@@ -1,0 +1,10 @@
+#
+#  Input packet
+#
+User-Name = 'plaintext_with_dollar_0'
+User-Password = 'password$'
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
