@@ -1388,6 +1388,7 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	if (trie_to_free) fr_trie_free(trie_to_free);
 	*trie_p = (fr_trie_t *) node;
 	node->parent = parent;
+	VERIFY(node);
 	return 0;
 }
 
@@ -1684,6 +1685,7 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 
 		talloc_free(comp);
 		*trie_p = (fr_trie_t *) node;
+		VERIFY(node);
 		return 0;
 	}
 
@@ -1703,6 +1705,7 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 			fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
 
 			MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
+			VERIFY(comp);
 			return 0;
 		}
 
@@ -1733,6 +1736,7 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
 	comp->index[edge] = chunk;
 	comp->trie[edge] = trie;
+	VERIFY(comp);
 	return 0;
 }
 #endif
@@ -2007,6 +2011,7 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t *
 	if (comp->trie[i]) {
 		fprintf(stderr, "%.*sremove at %d\n", start_bit, spaces, __LINE__);
 		fr_trie_sprint((fr_trie_t *) comp, key, start_bit, __LINE__);
+		VERIFY(comp);
 		return data;
 	}
 
@@ -2021,7 +2026,10 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t *
 	}
 	comp->used--;
 
-	if (comp->used >= 2) return data;
+	if (comp->used >= 2) {
+		VERIFY(comp);
+		return data;
+	}
 
 	/*
 	 *	Our entire path is empty.  Delete it as we walk back
@@ -2062,7 +2070,7 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t *
 
 	*trie_p = (fr_trie_t *) path;
 	talloc_free(comp);
-
+	VERIFY(path);
 	return data;
 }
 #endif
