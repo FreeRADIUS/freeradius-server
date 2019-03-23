@@ -1244,31 +1244,29 @@ static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t const
  * Matches prototype for CURLOPT_HEADERFUNCTION, and will be called directly
  * by libcurl.
  *
- * @param[in] in Char buffer where inbound header data is written.
- * @param[in] size Multiply by nmemb to get the length of ptr.
- * @param[in] nmemb Multiply by size to get the length of ptr.
- * @param[in] userdata rlm_rest_response_t to keep parsing state between calls.
+ * @param[in] in	Char buffer where inbound header data is written.
+ * @param[in] size	Multiply by nmemb to get the length of ptr.
+ * @param[in] nmemb	Multiply by size to get the length of ptr.
+ * @param[in] userdata	rlm_rest_response_t to keep parsing state between calls.
  * @return
  *	- Length of data processed.
  *	- 0 on error.
  */
 static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *userdata)
 {
-	rlm_rest_response_t *ctx = userdata;
-	REQUEST *request = ctx->request; /* Used by RDEBUG */
+	rlm_rest_response_t	*ctx = userdata;
+	REQUEST			*request = ctx->request; /* Used by RDEBUG */
 
-	char const *p = in, *q;
+	char const		*start = (char *)in, *p = start, *end = p + (size * nmemb);
+	char			*q;
+	size_t			len;
 
-	size_t const t = (size * nmemb);
-	size_t s = t;
-	size_t len;
-
-	http_body_type_t type;
+	http_body_type_t	type;
 
 	/*
 	 *  This seems to be curl's indication there are no more header lines.
 	 */
-	if (t == 2 && ((p[0] == '\r') && (p[1] == '\n'))) {
+	if (((end - p) == 2) && ((p[0] == '\r') && (p[1] == '\n'))) {
 		/*
 		 *  If we got a 100 Continue, we need to send additional payload data.
 		 *  reset the state to WRITE_STATE_INIT, so that when were called again
@@ -1279,7 +1277,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			ctx->state = WRITE_STATE_INIT;
 		}
 
-		return t;
+		return (end - start);
 	}
 
 	switch (ctx->state) {
@@ -1292,9 +1290,20 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		 *  "HTTP/1.1 " (8) + "100 " (4) + "\r\n" (2) = 14
 		 *  "HTTP/2 " (8) + "100 " (4) + "\r\n" (2) = 12
 		 */
-		if (s < 12) {
+		if ((end - p) < 12) {
 			REDEBUG("Malformed HTTP header: Status line too short");
-			goto malformed;
+		malformed:
+			REDEBUG("Received %zu bytes of invalid header data: %pV",
+				(end - start), fr_box_strvalue_len(in, (end - start)));
+			ctx->code = 0;
+
+			/*
+			 *	Indicate we parsed the entire line, otherwise
+			 *	bad things seem to happen internally with
+			 *	libcurl when we try and use it with asynchronous
+			 *      I/O handlers.
+			 */
+			return (end - start);
 		}
 		/*
 		 *  Check start of header matches...
@@ -1304,51 +1313,55 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			goto malformed;
 		}
 		p += 5;
-		s -= 5;
 
 		/*
 		 *  Skip the version field, next space should mark start of reason_code.
 		 */
-		q = memchr(p, ' ', s);
+		q = memchr(p, ' ', (end - p));
 		if (!q) {
 			REDEBUG("Malformed HTTP header: Missing reason code");
 			goto malformed;
 		}
 
-		s -= (q - p);
-		p  = q;
+		p = q;
 
 		/*
 		 *  Process reason_code.
 		 *
 		 *  " 100" (4) + "\r\n" (2) = 6
 		 */
-		if (s < 6) {
+		if ((end - p) < 6) {
 			REDEBUG("Malformed HTTP header: Reason code too short");
 			goto malformed;
 		}
 		p++;
-		s--;
 
-		/*  Char after reason code must be a space, or \r */
-		if (!((p[3] == ' ') || (p[3] == '\r'))) goto malformed;
+		/*
+		 *  "xxx( |\r)" status code and terminator.
+		 */
+		if (!isdigit(p[0]) || !isdigit(p[1]) || !isdigit(p[2]) || !((p[3] == ' ') || (p[3] == '\r'))) {
+			REDEBUG("Malformed HTTP header: Reason code malformed. "
+				"Expected three digits then space or end of header, got \"%pV\"",
+				fr_box_strvalue_len(p, 4));
+			goto malformed;
+		}
 
-		ctx->code = atoi(p);
+		/*
+		 *  Convert status code into an integer value
+		 */
+		q = NULL;
+		ctx->code = (int)strtoul(p, &q, 10);
+		rad_assert(q == (p + 3));	/* We check this above */
+		p = q;
 
 		/*
 		 *  Process reason_phrase (if present).
 		 */
 		RINDENT();
-		if (p[3] == ' ') {
-			p += 4;
-			s -= 4;
-
-			q = memchr(p, '\r', s);
+		if (*p == ' ') {
+			q = memchr(p, '\r', (end - p));
 			if (!q) goto malformed;
-
-			len = (q - p);
-
-			RDEBUG2("Status : %i (%.*s)", ctx->code, (int) len, p);
+			RDEBUG2("Status : %i (%pV)", ctx->code, fr_box_strvalue_len(p, q - p));
 		} else {
 			RDEBUG2("Status : %i", ctx->code);
 		}
@@ -1359,27 +1372,26 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		break;
 
 	case WRITE_STATE_PARSE_HEADERS:
-		if ((s >= 14) &&
+		if (((end - p) >= 14) &&
 		    (strncasecmp("Content-Type: ", p, 14) == 0)) {
 			p += 14;
-			s -= 14;
 
 			/*
 			 *  Check to see if there's a parameter separator.
 			 */
-			q = memchr(p, ';', s);
+			q = memchr(p, ';', (end - p));
 
 			/*
 			 *  If there's not, find the end of this header.
 			 */
-			if (!q) q = memchr(p, '\r', s);
+			if (!q) q = memchr(p, '\r', (end - p));
 
-			len = !q ? s : (size_t) (q - p);
+			len = !q ? (end - p) : (size_t) (q - p);
 			type = fr_substr2int(http_content_type_table, p, HTTP_BODY_UNKNOWN, len);
 
 			RINDENT();
-			RDEBUG2("Type   : %s (%.*s)", fr_int2str(http_body_type_table, type, "<INVALID>"),
-				(int) len, p);
+			RDEBUG2("Type   : %s (%pV)", fr_int2str(http_body_type_table, type, "<INVALID>"),
+				fr_box_strvalue_len(p, len));
 			REXDENT();
 
 			/*
@@ -1429,19 +1441,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		break;
 	}
 
-	return t;
-
-malformed:
-	{
-		char escaped[1024];
-
-		fr_snprint(escaped, sizeof(escaped), (char *) in, t, '\0');
-
-		REDEBUG("Received %zu bytes of response data: %s", t, escaped);
-		ctx->code = -1;
-	}
-
-	return (t - s);
+	return (end - start);
 }
 
 /** Processes incoming HTTP body data from libcurl.
@@ -1449,10 +1449,10 @@ malformed:
  * Writes incoming body data to an intermediary buffer for later parsing by
  * one of the decode functions.
  *
- * @param[in] ptr Char buffer where inbound header data is written
- * @param[in] size Multiply by nmemb to get the length of ptr.
- * @param[in] nmemb Multiply by size to get the length of ptr.
- * @param[in] userdata rlm_rest_response_t to keep parsing state between calls.
+ * @param[in] ptr	Char buffer where inbound header data is written
+ * @param[in] size	Multiply by nmemb to get the length of ptr.
+ * @param[in] nmemb	Multiply by size to get the length of ptr.
+ * @param[in] userdata	rlm_rest_response_t to keep parsing state between calls.
  * @return
  *	- Length of data processed.
  *	- 0 on error.
@@ -1473,9 +1473,7 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 	/*
 	 *  Any post processing of headers should go here...
 	 */
-	if (ctx->state == WRITE_STATE_PARSE_HEADERS) {
-		ctx->state = WRITE_STATE_PARSE_CONTENT;
-	}
+	if (ctx->state == WRITE_STATE_PARSE_HEADERS) ctx->state = WRITE_STATE_PARSE_CONTENT;
 
 	switch (ctx->type) {
 	case HTTP_BODY_UNSUPPORTED:
