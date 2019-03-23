@@ -1389,7 +1389,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			 */
 			if (!q) q = memchr(p, '\r', (end - p));
 
-			len = !q ? (end - p) : (size_t) (q - p);
+			len = (size_t)(!q ? (end - p) : (q - p));
 			type = fr_substr2int(http_content_type_table, p, HTTP_BODY_UNKNOWN, len);
 
 			RINDENT();
