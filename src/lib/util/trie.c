@@ -540,6 +540,8 @@ typedef struct {
 
 /* ALLOC FUNCTIONS */
 
+static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, int bits) CC_HINT(nonnull(2));
+
 static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, int bits)
 {
 	fr_trie_node_t *node;
@@ -612,6 +614,7 @@ static void fr_trie_free(fr_trie_t *trie)
 #endif
 }
 
+static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, void *data) CC_HINT(nonnull(3));
 
 static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, void *data)
 {
@@ -635,6 +638,8 @@ static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, vo
 }
 
 #ifdef WITH_PATH_COMPRESSION
+static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t const *key, int start_bit, int end_bit) CC_HINT(nonnull(2,3));
+
 static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t const *key, int start_bit, int end_bit)
 {
 	fr_trie_path_t *path;
@@ -699,6 +704,8 @@ static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, ui
 #endif	/* WITH_PATH_COMPRESSION */
 
 #ifdef WITH_NODE_COMPRESSION
+static fr_trie_comp_t *fr_trie_comp_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, int bits) CC_HINT(nonnull(2));
+
 static fr_trie_comp_t *fr_trie_comp_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, int bits)
 {
 	fr_trie_comp_t *comp;
@@ -749,6 +756,8 @@ fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
 /** Split a node at bits
  *
  */
+static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_node_t *node, int bits) CC_HINT(nonnull(2,3));
+
 static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_node_t *node, int bits)
 {
 	fr_trie_node_t *split;
@@ -808,6 +817,8 @@ static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr
 }
 
 #ifdef WITH_PATH_COMPRESSION
+static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_path_t *path, int start_bit, int lcp) CC_HINT(nonnull(2,3));
+
 static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_path_t *path, int start_bit, int lcp)
 {
 	fr_trie_path_t *split, *child;
@@ -866,6 +877,8 @@ static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_t *parent, fr
 }
 
 
+static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2,3));
+
 static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	fr_trie_path_t *path;
@@ -904,6 +917,8 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t 
 	return (fr_trie_t *) path;
 }
 #else  /* WITH_PATH_COMPRESSION */
+static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2,3));
+
 static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	fr_trie_node_t *node;
@@ -1408,6 +1423,8 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 }
 
 #ifdef WITH_PATH_COMPRESSION
+static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnnull(3,4,5,7));
+
 static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	fr_trie_t *trie = *trie_p;
@@ -1658,6 +1675,8 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 #endif
 
 #ifdef WITH_NODE_COMPRESSION
+static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2,3,4,7));
+
 static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	int i, edge;
@@ -1790,6 +1809,8 @@ static fr_trie_key_insert_t trie_insert[FR_TRIE_MAX] = {
 #endif
 };
 
+
+static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2,3,4,7));
 
 /** Insert a binary key into the trie
  *
