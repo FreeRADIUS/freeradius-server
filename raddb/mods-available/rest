@@ -126,10 +126,10 @@ rest {
 #	http_negotiation = "default"
 
 	#
-	#  multiplex:: `>= 2.0` is required for multiplexing to succeed.
+	#  multiplex:: Execute multiple requests simultaneously using the same HTTP connection.
 	#
-	#  NOTE: If we can't negotiate a high enough http version, multiplexing will be
-	#  silently disabled.
+	#  NOTE: HTTP >= 2.0 is required for multiplexing to succeed. If we can't negotiate
+	#  a high enough http version, multiplexing will be silently disabled.
 	#
 #	multiplex = yes
 
@@ -167,6 +167,7 @@ rest {
 	#  | `password`     | Password to use for authentication, will be expanded.
 	#  | `require_auth` | Require HTTP authentication.
 	#  | `timeout`      | HTTP request timeout in seconds, defaults to 4.0.
+	#  | `max_body_in`  | Maximum size of incoming HTTP body, defaults to 16k.
 	#  |===
 	#
 	#  Additional HTTP headers may be specified with `control:REST-HTTP-Header`.

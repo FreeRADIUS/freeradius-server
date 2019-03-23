@@ -47,7 +47,7 @@ RCSIDH(other_h, "$Id$")
 
 #define REST_URI_MAX_LEN		2048
 #define REST_BODY_MAX_LEN		8192
-#define REST_BODY_INIT			1024
+#define REST_BODY_ALLOC_CHUNK		1024
 #define REST_BODY_MAX_ATTRS		256
 
 typedef enum {
@@ -147,6 +147,7 @@ typedef struct {
 
 	struct timeval		timeout_tv;	//!< Timeout timeval.
 	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
+	size_t			max_body_in;	//!< Maximum size of incoming data.
 } rlm_rest_section_t;
 
 /*
@@ -221,6 +222,8 @@ typedef enum {
  */
 typedef struct {
 	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
+	rlm_rest_section_t const *section;	//!< Section configuration.
+
 	REQUEST			*request;	//!< Current request.
 	read_state_t		state;		//!< Encoder state
 
@@ -237,6 +240,8 @@ typedef struct {
  */
 typedef struct {
 	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
+	rlm_rest_section_t const *section;	//!< Section configuration.
+
 	REQUEST			*request;	//!< Current request.
 	write_state_t		state;		//!< Decoder state.
 

@@ -295,6 +295,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval con
 
 	curl_ctx->headers = NULL; /* CURL needs this to be NULL */
 	curl_ctx->request.instance = inst;
+	curl_ctx->response.instance = inst;
 
 	randle->ctx = curl_ctx;
 	randle->candle = candle;
@@ -593,11 +594,11 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 /** Emulates successive libcurl calls to an encoding function
  *
  * This function is used when the request will be sent to the HTTP server as one
- * contiguous entity. A buffer of REST_BODY_INIT bytes is allocated and passed
+ * contiguous entity. A buffer of REST_BODY_ALLOC_CHUNK bytes is allocated and passed
  * to the stream encoding function.
  *
  * If the stream function does not return 0, a new buffer is allocated which is
- * the size of the previous buffer + REST_BODY_INIT bytes, the data from the
+ * the size of the previous buffer + REST_BODY_ALLOC_CHUNK bytes, the data from the
  * previous buffer is copied, and freed, and another call is made to the stream
  * function, passing a pointer into the new buffer at the end of the previously
  * written data.
@@ -621,7 +622,7 @@ static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
 {
 	char *buff = NULL;
 
-	size_t alloc = REST_BODY_INIT;	/* Size of buffer to alloc */
+	size_t alloc = REST_BODY_ALLOC_CHUNK;	/* Size of buffer to alloc */
 	size_t used = 0;		/* Size of data written */
 	size_t len = 0;
 
@@ -653,11 +654,13 @@ static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
  * @param[in] ctx to initialise.
  *	pointer array.
  */
-static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx)
+static void rest_request_init(rlm_rest_section_t const *section,
+			      REQUEST *request, rlm_rest_request_t *ctx)
 {
 	/*
 	 * 	Setup stream read data
 	 */
+	ctx->section = section;
 	ctx->request = request;
 	ctx->state = READ_STATE_INIT;
 }
@@ -1449,7 +1452,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
  * Writes incoming body data to an intermediary buffer for later parsing by
  * one of the decode functions.
  *
- * @param[in] ptr	Char buffer where inbound header data is written
+ * @param[in] in	Char buffer where inbound header data is written
  * @param[in] size	Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb	Multiply by size to get the length of ptr.
  * @param[in] userdata	rlm_rest_response_t to keep parsing state between calls.
@@ -1457,18 +1460,18 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
  *	- Length of data processed.
  *	- 0 on error.
  */
-static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *userdata)
+static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *userdata)
 {
-	rlm_rest_response_t *ctx = userdata;
-	REQUEST *request = ctx->request; /* Used by RDEBUG */
+	rlm_rest_response_t	*ctx = userdata;
+	rlm_rest_t const	*inst = ctx->instance;
+	REQUEST			*request = ctx->request; /* Used by RDEBUG */
 
-	char const *p = ptr, *q;
-	char *tmp;
+	char const		*start = in, *p = start, *end = p + (size * nmemb);
+	char			*q;
 
-	size_t const t = (size * nmemb);
-	size_t needed;
+	size_t			needed;
 
-	if (t == 0) return 0;
+	if (start == end) return 0; 	/* Nothing to process */
 
 	/*
 	 *  Any post processing of headers should go here...
@@ -1479,47 +1482,51 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 	case HTTP_BODY_UNSUPPORTED:
 	case HTTP_BODY_UNAVAILABLE:
 	case HTTP_BODY_INVALID:
-		while ((q = memchr(p, '\n', t - (p - (char *)ptr)))) {
-			REDEBUG("%.*s", (int) (q - p), p);
+		while ((q = memchr(p, '\n', (end - p)))) {
+			REDEBUG("%pV", fr_box_strvalue_len(p, q - p));
 			p = q + 1;
 		}
 
-		if (*p != '\0') REDEBUG("%.*s", (int)(t - (p - (char *)ptr)), p);
-
-		return t;
+		if (p != end) REDEBUG("%pV", fr_box_strvalue_len(p, end - p));
+		break;
 
 	case HTTP_BODY_NONE:
-		while ((q = memchr(p, '\n', t - (p - (char *)ptr)))) {
-			RDEBUG3("%.*s", (int) (q - p), p);
+		while ((q = memchr(p, '\n', (end - p)))) {
+			RDEBUG3("%pV", fr_box_strvalue_len(p, q - p));
 			p = q + 1;
 		}
 
-		if (*p != '\0') RDEBUG3("%.*s", (int)(t - (p - (char *)ptr)), p);
-
-		return t;
+		if (p != end) RDEBUG3("%pV", fr_box_strvalue_len(p, end - p));
+		break;
 
 	default:
-		needed = ctx->used + t + 1;
-		if (needed < REST_BODY_INIT) needed = REST_BODY_INIT;
+	{
+		char *out_p;
 
-		if (needed > ctx->alloc) {
-			ctx->alloc = needed;
-
-			tmp = ctx->buffer;
-			ctx->buffer = talloc_array(NULL, char, ctx->alloc);
-			/* If data has been written previously */
-			if (tmp) {
-				memcpy(ctx->buffer, tmp, ctx->used);
-				talloc_free(tmp);
-			}
+		if ((ctx->section->max_body_in > 0) && ((ctx->used + (end - p)) > ctx->section->max_body_in)) {
+			REDEBUG("Incoming data (%zu bytes) exceeds max_body_in (%zu bytes).  "
+				"Forcing body to type 'invalid'", ctx->used + (end - p), ctx->section->max_body_in);
+			ctx->type = HTTP_BODY_INVALID;
+			TALLOC_FREE(ctx->buffer);
+			break;
 		}
-		strlcpy(ctx->buffer + ctx->used, p, t + 1);
-		ctx->used += t;	/* don't include the trailing zero */
 
+		needed = ROUND_UP(ctx->used + (end - p), REST_BODY_ALLOC_CHUNK);
+		if (needed > ctx->alloc) {
+			MEM(ctx->buffer = talloc_bstr_realloc(NULL, ctx->buffer, needed));
+			ctx->alloc = needed;
+		}
+
+		out_p = ctx->buffer + ctx->used;
+		memcpy(out_p, p, (end - p));
+		out_p += (end - p);
+		*out_p = '\0';
+		ctx->used += (end - p);
+	}
 		break;
 	}
 
-	return t;
+	return (end - start);
 }
 
 /** Print out the response text as error lines
@@ -1529,7 +1536,8 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
  */
 void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
 {
-	char const *p, *q;
+	char const	*p, *end;
+	char		*q;
 	size_t len;
 
 	len = rest_get_handle_data(&p, handle);
@@ -1537,13 +1545,15 @@ void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
 		RERROR("Server returned no data");
 		return;
 	}
+	end = p + len;
 
 	RERROR("Server returned:");
-	while ((q = strchr(p, '\n'))) {
-		RERROR("%.*s", (int) (q - p), p);
+	while ((q = memchr(p, '\n', (end - p)))) {
+		RERROR("%pV", fr_box_strvalue_len(p, q - p));
 		p = q + 1;
 	}
-	if (*p != '\0') RERROR("%s", p);
+
+	if (p != end) RERROR("%pV", fr_box_strvalue_len(p, end - p));
 }
 
 /** (Re-)Initialises the data in a rlm_rest_response_t.
@@ -1554,19 +1564,22 @@ void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
  * @see rest_response_body
  * @see rest_response_header
  *
- * @param[in] request Current request.
- * @param[in] ctx data to initialise.
- * @param[in] type Default http_body_type to use when decoding raw data, may be
+ * @param[in] section	that created the request.
+ * @param[in] request	Current request.
+ * @param[in] ctx	data to initialise.
+ * @param[in] type	Default http_body_type to use when decoding raw data, may be
  * overwritten by rest_response_header.
  */
-static void rest_response_init(REQUEST *request, rlm_rest_response_t *ctx, http_body_type_t type)
+static void rest_response_init(rlm_rest_section_t const *section,
+			       REQUEST *request, rlm_rest_response_t *ctx, http_body_type_t type)
 {
+	ctx->section = section;
 	ctx->request = request;
 	ctx->type = type;
 	ctx->state = WRITE_STATE_INIT;
 	ctx->alloc = 0;
 	ctx->used = 0;
-	ctx->buffer = NULL;
+	TALLOC_FREE(ctx->buffer);
 }
 
 /** Extracts pointer to buffer containing response data
@@ -1995,7 +2008,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process incoming data.
 	 */
-	rest_response_init(request, &ctx->response, type);
+	rest_response_init(section, request, &ctx->response, type);
 
 	SET_OPTION(CURLOPT_HEADERFUNCTION, rest_response_header);
 	SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
@@ -2093,7 +2106,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		data = talloc_zero(request, rest_custom_data_t);
 		ctx->request.encoder = data;
 
-		rest_request_init(request, &ctx->request);
+		rest_request_init(section, request, &ctx->request);
 
 		if (rest_request_config_body(inst, section, request, handle,
 					     rest_encode_json) < 0) {
@@ -2105,7 +2118,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 #endif
 
 	case HTTP_BODY_POST:
-		rest_request_init(request, &ctx->request);
+		rest_request_init(section, request, &ctx->request);
 		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
 
 		if (rest_request_config_body(inst, section, request, handle,

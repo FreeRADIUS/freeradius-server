@@ -91,6 +91,7 @@ static const CONF_PARSER section_config[] = {
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, rlm_rest_section_t, timeout_tv), .dflt = "4.0" },
 	{ FR_CONF_OFFSET("chunk", FR_TYPE_UINT32, rlm_rest_section_t, chunk), .dflt = "0" },
+	{ FR_CONF_OFFSET("max_body_in", FR_TYPE_SIZE, rlm_rest_section_t, max_body_in), .dflt = "16k" },
 
 	/* TLS Parameters */
 	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
