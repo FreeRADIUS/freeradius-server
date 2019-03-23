@@ -53,6 +53,14 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
 #  define VERIFY_ALL_TALLOC
 #endif
 
+/** Round up - Only works if _mul is a power of 2 but avoids division
+ */
+#define ROUND_UP_POW2(_num, _mul)	(((_num) + ((_mul) - 1)) & ~((_mul) - 1))
+
+/** Round up - Works in all cases, but is slower
+ */
+#define ROUND_UP(_num, _mul)		(((((_num) + ((_mul) - 1))) / (_mul)) * (_mul))
+
 /** Strip whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ') from the beginning of a string
  *
  * @param[in,out] _p	string to trim.

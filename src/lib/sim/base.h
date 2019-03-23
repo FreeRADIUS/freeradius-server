@@ -60,14 +60,6 @@ RCSIDH(sim_h, "$Id$")
 #define SIM_VECTOR_UMTS_XRES_MAX_SIZE	16
 #define SIM_VECTOR_UMTS_RES_MAX_SIZE	16
 
-/** Round up - Only works if _mul is a power of 2 but avoids division
- */
-#define ROUND_UP_POW2(_num, _mul)	(((_num) + ((_mul) - 1)) & ~((_mul) - 1))
-
-/** Round up - Works in all cases, but is slower
- */
-#define ROUND_UP(_num, _mul)		(((((_num) + ((_mul) - 1))) / (_mul)) * (_mul))
-
 /** The type of auth vector held by a fr_sim_keys_t
  */
 typedef enum {
