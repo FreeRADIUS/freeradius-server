@@ -141,18 +141,20 @@ insert	aaabb	3
 remove	aaabb	3
 insert	aaabb	3
 verify
+print	a=1,aaabb=3,ab=2
 
 insert	aabcd	4
 remove	aabcd	4
 insert	aabcd	4
 verify
+print	a=1,aaabb=3,aabcd=4,ab=2
 
 insert	ad	5
 remove	ad	5
 insert	ad	5
 verify
-
 print	a=1,aaabb=3,aabcd=4,ab=2,ad=5
+
 insert	abd	6
 match	abd	6
 print	a=1,aaabb=3,aabcd=4,ab=2,abd=6,ad=5
