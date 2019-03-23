@@ -52,7 +52,7 @@ char		*talloc_bstrndup(TALLOC_CTX *ctx, char const *in, size_t inlen);
 
 char		*talloc_bstr_append(TALLOC_CTX *ctx, char *to, char const *from, size_t from_len);
 
-char		*talloc_realloc_bstr(TALLOC_CTX *ctx, char *in, size_t inlen);
+char		*talloc_bstr_realloc(TALLOC_CTX *ctx, char *in, size_t inlen);
 
 char		*talloc_buffer_append_buffer(TALLOC_CTX *ctx, char *to, char const *from);
 

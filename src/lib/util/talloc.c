@@ -352,15 +352,22 @@ char *talloc_bstr_append(TALLOC_CTX *ctx, char *to, char const *from, size_t fro
  *
  * @param[in] ctx	to realloc buffer into.
  * @param[in] in	string to trim.  Will be invalid after
- *			this function returns.
+ *			this function returns. If NULL a new zero terminated
+ *			buffer of inlen bytes will be allocated.
  * @param[in] inlen	Length to trim string to.
  * @return
  *	- The realloced string on success.  in then points to invalid memory.
  *	- NULL on failure. In will still be valid.
  */
-char *talloc_realloc_bstr(TALLOC_CTX *ctx, char *in, size_t inlen)
+char *talloc_bstr_realloc(TALLOC_CTX *ctx, char *in, size_t inlen)
 {
 	char *n;
+
+	if (!in) {
+		n = talloc_array(ctx, char, inlen);
+		n[0] = '\0';
+		return n;
+	}
 
 	n = talloc_realloc_size(ctx, in, inlen + 1);
 	if (!n) return NULL;

@@ -798,7 +798,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			 *	Shrink the buffer
 			 */
 			if ((node->xlat->buf_len > 0) && (slen > 0)) {
-				MEM(str = talloc_realloc_bstr(ctx, str, (size_t)slen));
+				MEM(str = talloc_bstr_realloc(ctx, str, (size_t)slen));
 			}
 
 			/*

@@ -1752,7 +1752,7 @@ int cf_pair_in_table(int32_t *out, FR_NAME_NUMBER const *table, CONF_PAIR *cp)
 	/*
 	 *	Trim the final ", "
 	 */
-	MEM(list = talloc_realloc_bstr(NULL, list, talloc_array_length(list) - 3));
+	MEM(list = talloc_bstr_realloc(NULL, list, talloc_array_length(list) - 3));
 
 	cf_log_err(cp, "Invalid value \"%s\". Expected one of %s", cf_pair_value(cp), list);
 

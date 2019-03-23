@@ -685,7 +685,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, char co
 	/*
 	 *	Shrink the buffer to the right size
 	 */
-	MEM(start = talloc_realloc_bstr(ctx, start, node->len));
+	MEM(start = talloc_bstr_realloc(ctx, start, node->len));
 	node->fmt = start;
 
 	return p - fmt;
