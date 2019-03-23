@@ -87,12 +87,12 @@ RCSID("$Id$")
 #ifndef MAX_COMP_BITS
 #define MAX_COMP_BITS (8)
 #endif
-#endif
 
 #ifndef MAX_COMP_EDGES
 #define MAX_COMP_EDGES (4)
 #endif
-#endif
+
+#endif	/* WITH_NODE_COMPRESSION */
 
 #define MAX_KEY_BYTES (256)
 #define MAX_KEY_BITS (MAX_KEY_BYTES * 8)
@@ -117,13 +117,13 @@ DIAG_OFF(unused-macros)
    /* define this to be MPRINT for additional debugging */
 #  define MPRINT2(...)
 #  define MPRINT3(...)
+static void fr_trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, int lineno);
 #else
 #  define MPRINT(...)
 #  define MPRINT2(...)
 #  define MPRINT3(...)
+#define fr_trie_sprint(_trie, _key, _start_bit, _lineno)
 #endif
-
-static void fr_trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, int lineno);
 
 #ifdef WITH_TRIE_VERIFY
 static int fr_trie_verify(fr_trie_t *trie);
