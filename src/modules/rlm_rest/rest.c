@@ -650,6 +650,7 @@ static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
  *
  * Resets the values of a rlm_rest_request_t to their defaults.
  *
+ * @param[in] section which section we're processing.
  * @param[in] request Current request.
  * @param[in] ctx to initialise.
  *	pointer array.
