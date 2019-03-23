@@ -433,7 +433,7 @@ static void write_chunk(uint8_t *out, int start_bit, int num_bits, uint16_t chun
 	 *	Mask off the low bits that are already in the output.
 	 *	Then OR in the relevant bits of "chunk".
 	 */
-	out[0] &= used_bit_mask[start_bit];
+	out[0] &= (used_bit_mask[start_bit] << 1);
 	out[0] |= chunk >> 8;
 
 	if ((start_bit + num_bits) > 8) {
