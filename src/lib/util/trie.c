@@ -2142,8 +2142,6 @@ typedef int (*fr_trie_key_walk_t)(fr_trie_t *trie, fr_trie_callback_t *cb, int d
 static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more);
 
 struct fr_trie_callback_t {
-	fr_trie_t	*ft;
-
 	uint8_t		*start;
 	uint8_t const	*end;
 
@@ -2609,7 +2607,6 @@ int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback)
 	fr_trie_callback_t my_cb;
 	uint8_t buffer[MAX_KEY_BYTES + 1];
 
-	my_cb.ft = ft;
 	my_cb.start = buffer;
 	my_cb.end = buffer + sizeof(buffer);
 	my_cb.callback = fr_trie_user_cb;
@@ -2786,7 +2783,6 @@ static int command_keys(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, char
 {
 	fr_trie_callback_t my_cb;
 
-	my_cb.ft = ft;
 	my_cb.start = (uint8_t *) out;
 	my_cb.end = (uint8_t *) (out + outlen);
 	my_cb.callback = fr_trie_print_cb;
@@ -2813,7 +2809,6 @@ static int command_dump(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, char
 {
 	fr_trie_callback_t my_cb;
 
-	my_cb.ft = ft;
 	my_cb.start = (uint8_t *) out;
 	my_cb.end = (uint8_t *) (out + outlen);
 	my_cb.callback = fr_trie_dump_cb;
@@ -3016,7 +3011,6 @@ static int command_print(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, cha
 	/*
 	 *	Where the keys are built.
 	 */
-	my_cb.ft = ft;
 	my_cb.start = buffer;
 	my_cb.end = buffer + sizeof(buffer);
 	my_cb.callback = fr_trie_sprint_cb;
