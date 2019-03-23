@@ -2358,6 +2358,14 @@ static int fr_trie_comp_verify(fr_trie_t *trie)
 			return -1;
 		}
 
+		if ((i + 1) < comp->used) {
+			if (comp->index[i] >= comp->index[i + 1]) {
+				fr_strerror_printf("comp node has inverted edges at %d (%04x >= %04x)",
+						   i, comp->index[i], comp->index[i + 1]);
+				return -1;
+			}
+		}
+
 		if (fr_trie_verify(comp->trie[i]) < 0) return -1;
 		used++;
 	}
