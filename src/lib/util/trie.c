@@ -1027,7 +1027,7 @@ static int fr_trie_add_edge(fr_trie_t *trie, uint16_t chunk, fr_trie_t *child)
 
 		if (comp->used >= 4) return -1;
 
-		edge = 0;
+		edge = comp->used;
 		for (i = 0; i < comp->used; i++) {
 			if (comp->index[i] < chunk) continue;
 
@@ -1043,15 +1043,16 @@ static int fr_trie_add_edge(fr_trie_t *trie, uint16_t chunk, fr_trie_t *child)
 		 *	Move the nodes up so that we have room for the
 		 *	new edge.
 		 */
-		for (i = comp->used; i > edge; i--) {
-			comp->index[i] = comp->index[i - 1];
-			comp->trie[i] = comp->trie[i - 1];
+		for (i = edge; i < comp->used; i++) {
+			comp->index[i + 1] = comp->index[i];
+			comp->trie[i + 1] = comp->trie[i];
 		}
 
 		comp->index[edge] = chunk;
 		comp->trie[edge] = child;
 
 		comp->used++;
+		VERIFY(comp);
 		return 0;
 	}
 #endif
@@ -1149,8 +1150,7 @@ static void *fr_trie_comp_match(fr_trie_t *trie, uint8_t const *key, int start_b
 	chunk = get_chunk(key, start_bit, comp->bits);
 
 	for (i = 0; i < comp->used; i++) {
-		MPRINT3("%.*scomp[%d] = index %04x ? chunk %04x\n",
-			start_bit, spaces, i, comp->index[i], chunk);
+		if (comp->index[i] < chunk) continue;
 
 		if (comp->index[i] == chunk) {
 			return fr_trie_key_match(comp->trie[i], key, start_bit + comp->bits, end_bit, exact);
@@ -1161,7 +1161,7 @@ static void *fr_trie_comp_match(fr_trie_t *trie, uint8_t const *key, int start_b
 		 *	if the edge is larger than the chunk, NO edge
 		 *	will match the chunk.
 		 */
-		if (comp->index[i] > chunk) return NULL;
+		return NULL;
 	}
 
 	return NULL;
