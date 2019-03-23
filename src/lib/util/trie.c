@@ -745,10 +745,19 @@ static fr_trie_comp_t *fr_trie_comp_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, in
  */
 fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
 {
+	fr_trie_user_t *user;
+
 	/*
 	 *	The trie itself is just a user node with user data that is the talloc ctx
 	 */
-	return (fr_trie_t *) fr_trie_user_alloc(ctx, NULL, ctx);
+	user = (fr_trie_user_t *) fr_trie_user_alloc(ctx, NULL, "");
+	if (!user) return NULL;
+
+	/*
+	 *	Only the top-level node here can have 'user->data == NULL'
+	 */
+	user->data = ctx;
+	return (fr_trie_t *) user;
 }
 
 /* SPLIT FUNCTIONS */
