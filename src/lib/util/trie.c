@@ -89,6 +89,11 @@ RCSID("$Id$")
 #endif
 #endif
 
+#ifndef MAX_COMP_EDGES
+#define MAX_COMP_EDGES (4)
+#endif
+#endif
+
 #define MAX_KEY_BYTES (256)
 #define MAX_KEY_BITS (MAX_KEY_BYTES * 8)
 
@@ -524,8 +529,8 @@ typedef struct {
 #endif
 
 	int		used;		//!< number of used entries
-	uint8_t		index[4];
-	fr_trie_t	*trie[4];
+	uint8_t		index[MAX_COMP_EDGES];
+	fr_trie_t	*trie[MAX_COMP_EDGES];
 } fr_trie_comp_t;
 #endif
 
@@ -1028,7 +1033,7 @@ static int fr_trie_add_edge(fr_trie_t *trie, uint16_t chunk, fr_trie_t *child)
 
 		if (chunk >= (1 << comp->bits)) return -1;
 
-		if (comp->used >= 4) return -1;
+		if (comp->used >= MAX_COMP_EDGES) return -1;
 
 		edge = comp->used;
 		for (i = 0; i < comp->used; i++) {
@@ -1040,7 +1045,7 @@ static int fr_trie_add_edge(fr_trie_t *trie, uint16_t chunk, fr_trie_t *child)
 			break;
 		}
 
-		if (edge == 4) return -1;
+		if (edge == MAX_COMP_EDGES) return -1;
 
 		/*
 		 *	Move the nodes up so that we have room for the
@@ -1670,7 +1675,7 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	/*
 	 *	All edges are used.  Create an N-way node.
 	 */
-	if (comp->used == 4) {
+	if (comp->used == MAX_COMP_EDGES) {
 		int bits = comp->bits;
 		fr_trie_node_t *node;
 
