@@ -118,9 +118,11 @@ DIAG_OFF(unused-macros)
 #  define MPRINT3(...)
 #endif
 
+static void fr_trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, int lineno);
+
 #ifdef WITH_TRIE_VERIFY
 static int fr_trie_verify(fr_trie_t *trie);
-#define VERIFY(_x) fr_cond_assert(fr_trie_verify((fr_trie_t *) _x) == 0);
+#define VERIFY(_x) fr_cond_assert(fr_trie_verify((fr_trie_t *) _x) == 0)
 #else
 #define VERIFY(_x)
 #endif
@@ -2672,6 +2674,47 @@ done:
 	ctx->buflen -= len;
 
 	return 0;
+}
+
+
+static void fr_trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, int lineno)
+{
+	fr_trie_callback_t my_cb;
+	fr_trie_sprint_ctx_t my_sprint;
+	uint8_t buffer[MAX_KEY_BYTES + 1];
+	char out[8192];
+
+	/*
+	 *	Initialize the buffer
+	 */
+	memset(buffer, 0, sizeof(buffer));
+	memset(out, 0, sizeof(out));
+	if (key) {
+		memcpy(buffer, key, BYTES(start_bit) + 1);
+	}
+
+	/*
+	 *	Where the output data goes.
+	 */
+	my_sprint.start = out;
+	my_sprint.buffer = out;
+	my_sprint.buflen = sizeof(out);
+
+	/*
+	 *	Where the keys are built.
+	 */
+	my_cb.start = buffer;
+	my_cb.end = buffer + sizeof(buffer);
+	my_cb.callback = fr_trie_sprint_cb;
+	my_cb.user_callback = NULL;
+	my_cb.ctx = &my_sprint;
+
+	/*
+	 *	Call the internal walk function to do the work.
+	 */
+	(void) fr_trie_key_walk(trie, &my_cb, start_bit, false);
+
+	fprintf(stderr, "%.*s%s at %d\n", start_bit, spaces, out, lineno);
 }
 
 
