@@ -614,9 +614,9 @@ static void fr_trie_free(fr_trie_t *trie)
 #endif
 }
 
-static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, void *data) CC_HINT(nonnull(3));
+static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, void const *data) CC_HINT(nonnull(3));
 
-static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, void *data)
+static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, void const *data)
 {
 	fr_trie_user_t *user;
 
@@ -628,7 +628,7 @@ static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, vo
 
 	user->type = FR_TRIE_USER;
 	user->parent = parent;
-	user->data = data;
+	memcpy(&user->data, &data, sizeof(user->data));
 
 #ifdef TESTING
 	user->number = trie_number++;
@@ -1339,7 +1339,7 @@ static void fr_trie_check(fr_trie_t *trie, uint8_t const *key, int start_bit, in
 #define fr_trie_check(_trie, _key, _start_bit, _end_bit, _data, _lineno)
 #endif
 
-static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data);
+static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2,3,4,7));
 
 typedef int (*fr_trie_key_insert_t)(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data);
 
@@ -1817,9 +1817,6 @@ static fr_trie_key_insert_t trie_insert[FR_TRIE_MAX] = {
 	[ FR_TRIE_COMP ] = fr_trie_comp_insert,
 #endif
 };
-
-
-static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2,3,4,7));
 
 /** Insert a binary key into the trie
  *
