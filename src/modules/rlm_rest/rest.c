@@ -1548,10 +1548,8 @@ void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
 	size_t len;
 
 	len = rest_get_handle_data(&p, handle);
-	if (len == 0) {
-		RERROR("Server returned no data");
-		return;
-	}
+	if (len == 0) return;
+
 	end = p + len;
 
 	RERROR("Server returned:");
@@ -1561,6 +1559,31 @@ void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
 	}
 
 	if (p != end) RERROR("%pV", fr_box_strvalue_len(p, end - p));
+}
+
+/** Print out the response text
+ *
+ * @param request	The Current request.
+ * @param handle	rlm_rest_handle_t used to execute the previous request.
+ */
+void rest_response_debug(REQUEST *request, rlm_rest_handle_t *handle)
+{
+	char const	*p, *end;
+	char		*q;
+	size_t len;
+
+	len = rest_get_handle_data(&p, handle);
+	if (len == 0) return;
+
+	end = p + len;
+
+	RDEBUG3("Server returned:");
+	while ((q = memchr(p, '\n', (end - p)))) {
+		RDEBUG3("%pV", fr_box_strvalue_len(p, q - p));
+		p = q + 1;
+	}
+
+	if (p != end) RDEBUG3("%pV", fr_box_strvalue_len(p, end - p));
 }
 
 /** (Re-)Initialises the data in a rlm_rest_response_t.

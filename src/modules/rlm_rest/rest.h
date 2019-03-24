@@ -324,6 +324,7 @@ int rest_response_decode(rlm_rest_t const *instance,
 			void *handle);
 
 void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle);
+void rest_response_debug(REQUEST *request, rlm_rest_handle_t *handle);
 
 void rest_request_cleanup(rlm_rest_t const *instance, void *handle);
 

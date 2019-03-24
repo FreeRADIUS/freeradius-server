@@ -492,6 +492,7 @@ static rlm_rcode_t mod_authorize_result(REQUEST *request, void *instance, void *
 		break;
 
 	default:
+		rest_response_debug(request, handle);
 		break;
 	}
 
@@ -605,6 +606,7 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, voi
 		break;
 
 	default:
+		rest_response_debug(request, handle);
 		break;
 	}
 
@@ -701,6 +703,7 @@ static rlm_rcode_t mod_accounting_result(REQUEST *request, void *instance, void 
 		break;
 
 	default:
+		rest_response_debug(request, handle);
 		break;
 	}
 
@@ -779,6 +782,7 @@ static rlm_rcode_t mod_post_auth_result(REQUEST *request, void *instance, void *
 		break;
 
 	default:
+		rest_response_debug(request, handle);
 		break;
 	}
 
