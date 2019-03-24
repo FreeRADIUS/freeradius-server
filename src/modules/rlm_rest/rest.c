@@ -1951,7 +1951,6 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 				SET_OPTION(CURLOPT_USERNAME, username);
 			} else if (section->username) {
 				if (xlat_eval(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
-					option = STRINGIFY(CURLOPT_USERNAME);
 					goto error;
 				}
 				SET_OPTION(CURLOPT_USERNAME, buffer);
@@ -1961,7 +1960,6 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 				SET_OPTION(CURLOPT_PASSWORD, password);
 			} else if (section->password) {
 				if (xlat_eval(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
-					option = STRINGIFY(CURLOPT_PASSWORD);
 					goto error;
 				}
 				SET_OPTION(CURLOPT_PASSWORD, buffer);
