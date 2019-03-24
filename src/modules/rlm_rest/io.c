@@ -99,6 +99,35 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 	}
 }
 
+/** libcurl's timer expired
+ *
+ * @param[in] el	the timer was inserted into.
+ * @param[in] now	The current time according to the event loop.
+ * @param[in] ctx	The rlm_rest_thread_t specific to this thread.
+ */
+static void _rest_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *ctx)
+{
+	rlm_rest_thread_t	*t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
+	CURLMcode		ret;
+	CURLM			*mandle = t->mandle;
+	int			running = 0;
+
+	t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
+
+	DEBUG4("libcurl timer expired");
+
+	ret = curl_multi_socket_action(mandle, CURL_SOCKET_TIMEOUT, 0, &running);
+	if (ret != CURLM_OK) {
+		ERROR("Failed servicing curl multi-handle: %s (%i)", curl_multi_strerror(ret), ret);
+		return;
+	}
+
+	DEBUG3("multi-handle %p serviced by timer.  %i request(s) in progress, %i requests(s) to dequeue",
+	       mandle, running, t->transfers - running);
+
+	_rest_io_demux(t, mandle);
+}
+
 /** Service an IO event on a file descriptor
  *
  * @param[in] t		Thread the event ocurred in.
@@ -117,32 +146,34 @@ static inline void _rest_io_service(rlm_rest_thread_t *t, int fd, int event)
 		return;
 	}
 
-	if (fd == CURL_SOCKET_TIMEOUT) {
-		DEBUG3("multi-handle %p serviced by timer event.  %i request(s) in progress, %i requests(s) to dequeue",
-		       mandle, running, t->transfers - running);
-	} else {
-		DEBUG3("multi-handle %p serviced on fd %i event.  %i request(s) in progress, %i requests(s) to dequeue",
-		       mandle, fd, running, t->transfers - running);
+	if (DEBUG_ENABLED3) {
+		char const *event_str;
+
+		switch (event) {
+		case CURL_CSELECT_ERR:
+			event_str = "error";
+			break;
+
+		case CURL_CSELECT_OUT:
+			event_str = "socket-writable";
+			break;
+
+		case CURL_CSELECT_IN:
+			event_str = "socket-readable";
+			break;
+
+		default:
+			event_str = "<INVALID>";
+			break;
+		}
+
+		DEBUG3("multi-handle %p serviced on fd %i event (%s).  "
+		       "%i request(s) in progress, %i requests(s) to dequeue",
+		       mandle, fd, event_str, running, t->transfers - running);
 	}
 
+
 	_rest_io_demux(t, mandle);
-}
-
-/** libcurl's timer expired
- *
- * @param[in] el	the timer was inserted into.
- * @param[in] now	The current time according to the event loop.
- * @param[in] ctx	The rlm_rest_thread_t specific to this thread.
- */
-static void _rest_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *ctx)
-{
-	rlm_rest_thread_t *t;
-
-	t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
-
-	DEBUG4("libcurl timer expired");
-
-	_rest_io_service(t, CURL_SOCKET_TIMEOUT, 0);
 }
 
 /** File descriptor experienced an error
@@ -229,8 +260,9 @@ static int _rest_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 			return -1;
 		}
 
-		DEBUG3("multi-handle %p serviced from timer_modify.  %i request(s) in progress, %i requests(s) "
-		       "to dequeue", mandle, running, t->transfers - running);
+		DEBUG3("multi-handle %p serviced from CURLMOPT_TIMERFUNCTION callback (%s).  "
+		       "%i request(s) in progress, %i requests(s) to dequeue",
+		        mandle, __FUNCTION__, running, t->transfers - running);
 		return 0;
 	}
 
@@ -243,7 +275,7 @@ static int _rest_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 		return 0;
 	}
 
-	DEBUG3("multi-handle %p needs servicing in %li ms", mandle, timeout_ms);
+	DEBUG3("multi-handle %p will need servicing in %li ms", mandle, timeout_ms);
 
 	gettimeofday(&now, NULL);
 	fr_timeval_from_ms(&to_add, (uint64_t)timeout_ms);
