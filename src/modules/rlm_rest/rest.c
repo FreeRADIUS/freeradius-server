@@ -1475,7 +1475,7 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 
 #ifndef NDEBUG
 	if (ctx->instance->fail_body_decode) {
-		REDEBUG("Forcing header body failure");
+		REDEBUG("Forcing body read failure");
 		return 0;
 	}
 #endif

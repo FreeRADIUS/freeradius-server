@@ -128,7 +128,7 @@ static const CONF_PARSER module_config[] = {
 
 #ifndef NDEBUG
 	{ FR_CONF_OFFSET("fail_header_decode", FR_TYPE_BOOL, rlm_rest_t, fail_header_decode), .dflt = "no" },
-	{ FR_CONF_OFFSET("fail_body_decode", FR_TYPE_BOOL, rlm_rest_t, fail_body_decode), .dflt = "yes" },
+	{ FR_CONF_OFFSET("fail_body_decode", FR_TYPE_BOOL, rlm_rest_t, fail_body_decode), .dflt = "no" },
 #endif
 
 	CONF_PARSER_TERMINATOR
