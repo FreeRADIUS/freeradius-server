@@ -306,10 +306,10 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval con
 
 /** Copies a pre-expanded xlat string to the output buffer
  *
- * @param[out] out Char buffer to write encoded data to.
- * @param[in] size Multiply by nmemb to get the length of ptr.
- * @param[in] nmemb Multiply by size to get the length of ptr.
- * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
+ * @param[out] out	Char buffer to write encoded data to.
+ * @param[in] size	Multiply by nmemb to get the length of ptr.
+ * @param[in] nmemb	Multiply by size to get the length of ptr.
+ * @param[in] userdata	rlm_rest_request_t to keep encoding state between calls.
  * @return
  *	- Length of data (including NULL) written to ptr.
  *	- 0 if no more data to write.
@@ -365,10 +365,10 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
  *
  * @see rest_decode_post
  *
- * @param[out] out Char buffer to write encoded data to.
- * @param[in] size Multiply by nmemb to get the length of ptr.
- * @param[in] nmemb Multiply by size to get the length of ptr.
- * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
+ * @param[out] out	Char buffer to write encoded data to.
+ * @param[in] size	Multiply by nmemb to get the length of ptr.
+ * @param[in] nmemb	Multiply by size to get the length of ptr.
+ * @param[in] userdata	rlm_rest_request_t to keep encoding state between calls.
  * @return
  *	- Length of data (including NULL) written to ptr.
  *	- 0 if no more data to write.
@@ -544,10 +544,10 @@ no_space:
 }
 @endverbatim
  *
- * @param[out] out Char buffer to write encoded data to.
- * @param[in] size Multiply by nmemb to get the length of ptr.
- * @param[in] nmemb Multiply by size to get the length of ptr.
- * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
+ * @param[out] out	Char buffer to write encoded data to.
+ * @param[in] size	Multiply by nmemb to get the length of ptr.
+ * @param[in] nmemb	Multiply by size to get the length of ptr.
+ * @param[in] userdata	rlm_rest_request_t to keep encoding state between calls.
  * @return
  *	- Length of data (including NULL) written to ptr.
  *	- 0 if no more data to write.
@@ -606,13 +606,13 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
  * This process continues until the stream function signals (by returning 0)
  * that it has no more data to write.
  *
- * @param[out] out where the pointer to the alloced buffer should
- *	be written.
- * @param[in] inst of rlm_rest.
- * @param[in] func Stream function.
- * @param[in] limit Maximum buffer size to alloc.
- * @param[in] userdata rlm_rest_request_t to keep encoding state between calls to
- *	stream function.
+ * @param[out] out	where the pointer to the alloced buffer should
+ *			be written.
+ * @param[in] inst	of rlm_rest.
+ * @param[in] func	Stream function.
+ * @param[in] limit	Maximum buffer size to alloc.
+ * @param[in] userdata	rlm_rest_request_t to keep encoding state between calls to
+ *			stream function.
  * @return
  *	- Length of the data written to the buffer (excluding NULL).
  *	- -1 if alloc >= limit.
@@ -650,10 +650,9 @@ static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
  *
  * Resets the values of a rlm_rest_request_t to their defaults.
  *
- * @param[in] section which section we're processing.
- * @param[in] request Current request.
- * @param[in] ctx to initialise.
- *	pointer array.
+ * @param[in] section	configuration data.
+ * @param[in] request	Current request.
+ * @param[in] ctx	to initialise.
  */
 static void rest_request_init(rlm_rest_section_t const *section,
 			      REQUEST *request, rlm_rest_request_t *ctx)
@@ -668,12 +667,12 @@ static void rest_request_init(rlm_rest_section_t const *section,
 
 /** Converts plain response into a single VALUE_PAIR
  *
- * @param[in] inst configuration data.
- * @param[in] section configuration data.
- * @param[in] handle rlm_rest_handle_t to use.
- * @param[in] request Current request.
- * @param[in] raw buffer containing POST data.
- * @param[in] rawlen Length of data in raw buffer.
+ * @param[in] inst	configuration data.
+ * @param[in] section	configuration data.
+ * @param[in] handle	rlm_rest_handle_t to use.
+ * @param[in] request	Current request.
+ * @param[in] raw	buffer containing POST data.
+ * @param[in] rawlen	Length of data in raw buffer.
  * @return
  *	- Number of VALUE_PAIR processed.
  *	- -1 on unrecoverable error.
@@ -712,12 +711,12 @@ static int rest_decode_plain(rlm_rest_t const *inst, UNUSED rlm_rest_section_t c
  *
  * @see rest_encode_post
  *
- * @param[in] instance configuration data.
- * @param[in] section configuration data.
- * @param[in] handle rlm_rest_handle_t to use.
- * @param[in] request Current request.
- * @param[in] raw buffer containing POST data.
- * @param[in] rawlen Length of data in raw buffer.
+ * @param[in] instance	configuration data.
+ * @param[in] section	configuration data.
+ * @param[in] handle	rlm_rest_handle_t to use.
+ * @param[in] request	Current request.
+ * @param[in] raw	buffer containing POST data.
+ * @param[in] rawlen	Length of data in raw buffer.
  * @return
  *	- Number of VALUE_PAIRs processed.
  *	- -1 on unrecoverable error.
@@ -862,14 +861,14 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
  * If leaf is not in fact a leaf node, but contains JSON data, the data will
  * written to the attribute in JSON string format.
  *
- * @param[in] instance configuration data.
- * @param[in] section configuration data.
- * @param[in] ctx to allocate new VALUE_PAIRs in.
- * @param[in] request Current request.
- * @param[in] da Attribute to create.
- * @param[in] flags containing the operator other flags controlling value
- *	expansion.
- * @param[in] leaf object containing the VALUE_PAIR value.
+ * @param[in] instance	configuration data.
+ * @param[in] section	configuration data.
+ * @param[in] ctx	to allocate new VALUE_PAIRs in.
+ * @param[in] request	Current request.
+ * @param[in] da	Attribute to create.
+ * @param[in] flags	containing the operator other flags controlling value
+ *			expansion.
+ * @param[in] leaf	object containing the VALUE_PAIR value.
  * @return
  *	- #VALUE_PAIR just created.
  *	- NULL on error.
@@ -1000,13 +999,13 @@ static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSE
  *
  * @see fr_tokens_table
  *
- * @param[in] instance configuration data.
- * @param[in] section configuration data.
- * @param[in] request Current request.
- * @param[in] object containing root node, or parent node.
- * @param[in] level Current nesting level.
- * @param[in] max counter, decremented after each VALUE_PAIR is created,
- * 	      when 0 no more attributes will be processed.
+ * @param[in] instance	configuration data.
+ * @param[in] section	configuration data.
+ * @param[in] request	Current request.
+ * @param[in] object	containing root node, or parent node.
+ * @param[in] level	Current nesting level.
+ * @param[in] max	counter, decremented after each VALUE_PAIR is created,
+ *			when 0 no more attributes will be processed.
  * @return
  *	- Number of attributes created.
  *	- < 0 on error.
@@ -1198,12 +1197,12 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
  * @see rest_encode_json
  * @see json_pair_alloc
  *
- * @param[in] instance configuration data.
- * @param[in] section configuration data.
+ * @param[in] instance	configuration data.
+ * @param[in] section	configuration data.
  * @param[in,out] request Current request.
- * @param[in] handle REST handle.
- * @param[in] raw buffer containing JSON data.
- * @param[in] rawlen Length of data in raw buffer.
+ * @param[in] handle	REST handle.
+ * @param[in] raw	buffer containing JSON data.
+ * @param[in] rawlen	Length of data in raw buffer.
  * @return
  *	- The number of #VALUE_PAIR processed.
  *	- -1 on unrecoverable error.
@@ -1532,8 +1531,8 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 
 /** Print out the response text as error lines
  *
- * @param request The Current request.
- * @param handle rlm_rest_handle_t used to execute the previous request.
+ * @param request	The Current request.
+ * @param handle	rlm_rest_handle_t used to execute the previous request.
  */
 void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
 {
@@ -1569,7 +1568,7 @@ void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
  * @param[in] request	Current request.
  * @param[in] ctx	data to initialise.
  * @param[in] type	Default http_body_type to use when decoding raw data, may be
- * overwritten by rest_response_header.
+ * 			overwritten by rest_response_header.
  */
 static void rest_response_init(rlm_rest_section_t const *section,
 			       REQUEST *request, rlm_rest_response_t *ctx, http_body_type_t type)
@@ -1585,9 +1584,11 @@ static void rest_response_init(rlm_rest_section_t const *section,
 
 /** Extracts pointer to buffer containing response data
  *
- * @param[out] out Where to write the pointer to the buffer.
- * @param[in] handle used for the last request.
- * @return > 0 if data is available.
+ * @param[out] out	Where to write the pointer to the buffer.
+ * @param[in] handle	used for the last request.
+ * @return
+ *	- 0 if no data i available.
+ *	- > 0 if data is available.
  */
 size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
 {
@@ -1605,12 +1606,12 @@ size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
  * data will be sent using multiple HTTP requests, or contiguous mode where
  * the request data will be sent in a single HTTP request.
  *
- * @param[in] instance configuration data.
- * @param[in] section configuration data.
- * @param[in] request Current request.
- * @param[in] handle rlm_rest_handle_t to configure.
- * @param[in] func to pass to libcurl for chunked.
- *	      transfers (NULL if not using chunked mode).
+ * @param[in] instance	configuration data.
+ * @param[in] section	configuration data.
+ * @param[in] request	Current request.
+ * @param[in] handle	rlm_rest_handle_t to configure.
+ * @param[in] func	to pass to libcurl for chunked.
+ *	      		transfers (NULL if not using chunked mode).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -1680,6 +1681,8 @@ error:
  *			curl_infotype.
  * @param[in] len	The length of the data in the buffer.
  * @param[in] uctx	The current request.
+ * @return
+ *	- 0 (we always indicate success)
  */
 static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, size_t len, void *uctx)
 {
@@ -1762,19 +1765,19 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
  *
  * Sets up callbacks for all response processing (buffers and body data).
  *
- * @param[in] inst		configuration data.
- * @param[in] t			Thread specific instance data.
- * @param[in] section		configuration data.
- * @param[in] handle		to configure.
- * @param[in] request		Current request.
- * @param[in] method		to use (HTTP verbs PUT, POST, DELETE etc...).
- * @param[in] type		Content-Type for request encoding, also sets
- *				the default for decoding.
- * @param[in] username		to use for HTTP authentication, may be NULL in
- *				which case configured defaults will be used.
- * @param[in] password		to use for HTTP authentication, may be NULL in
- *				which case configured defaults will be used.
- * @param[in] uri		buffer containing the expanded URI to send the request to.
+ * @param[in] inst	configuration data.
+ * @param[in] t		Thread specific instance data.
+ * @param[in] section	configuration data.
+ * @param[in] handle	to configure.
+ * @param[in] request	Current request.
+ * @param[in] method	to use (HTTP verbs PUT, POST, DELETE etc...).
+ * @param[in] type	Content-Type for request encoding, also sets
+ *			the default for decoding.
+ * @param[in] username	to use for HTTP authentication, may be NULL in
+ *			which case configured defaults will be used.
+ * @param[in] password	to use for HTTP authentication, may be NULL in
+ *			which case configured defaults will be used.
+ * @param[in] uri	buffer containing the expanded URI to send the request to.
  * @return
  *	- 0 on success (all opts configured).
  *	- -1 on failure.
@@ -2249,10 +2252,10 @@ int rest_response_certinfo(rlm_rest_t const *inst, UNUSED rlm_rest_section_t con
  * determine the correct decode function to use. The decode function will
  * then convert the raw received data into VALUE_PAIRs.
  *
- * @param[in] instance configuration data.
- * @param[in] section configuration data.
- * @param[in] request Current request.
- * @param[in] handle to use.
+ * @param[in] instance	configuration data.
+ * @param[in] section	configuration data.
+ * @param[in] request	Current request.
+ * @param[in] handle	to use.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -2348,11 +2351,11 @@ void rest_request_cleanup(UNUSED rlm_rest_t const *instance, void *handle)
  *
  * Encode special chars as per RFC 3986 section 4.
  *
- * @param[in] request Current request.
- * @param[out] out Where to write escaped string.
- * @param[in] outlen Size of out buffer.
- * @param[in] raw string to be urlencoded.
- * @param[in] arg pointer, gives context for escaping.
+ * @param[in] request	Current request.
+ * @param[out] out	Where to write escaped string.
+ * @param[in] outlen	Size of out buffer.
+ * @param[in] raw	string to be urlencoded.
+ * @param[in] arg	pointer, gives context for escaping.
  * @return length of data written to out (excluding NULL).
  */
 size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *raw, UNUSED void *arg)
@@ -2372,10 +2375,10 @@ size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char c
  * Both components are expanded, but values expanded for the second component
  * are also url encoded.
  *
- * @param[out] out Where to write the pointer to the new buffer containing the escaped URI.
- * @param[in] inst of rlm_rest.
- * @param[in] uri configuration data.
- * @param[in] request Current request
+ * @param[out] out	Where to write the pointer to the new buffer containing the escaped URI.
+ * @param[in] inst	of rlm_rest.
+ * @param[in] uri	configuration data.
+ * @param[in] request	Current request
  * @return
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
@@ -2442,11 +2445,12 @@ ssize_t rest_uri_build(char **out, rlm_rest_t const *inst, REQUEST *request, cha
  * This is required because the xlat functions which operate on the input string
  * cannot distinguish between host and path components.
  *
- * @param[out] out Where to write the pointer to the new buffer containing the escaped URI.
- * @param[in] inst of rlm_rest.
- * @param[in] request Current request
- * @param[in] handle to use.
- * @param[in] uri configuration data.
+ * @param[out] out	Where to write the pointer to the new
+ *			buffer containing the escaped URI.
+ * @param[in] inst	of rlm_rest.
+ * @param[in] request	Current request
+ * @param[in] handle	to use.
+ * @param[in] uri	configuration data.
  * @return
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
