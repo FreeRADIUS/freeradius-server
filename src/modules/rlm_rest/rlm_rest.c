@@ -126,6 +126,11 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("multiplex", FR_TYPE_BOOL, rlm_rest_t, multiplex), .dflt = "yes" },
 #endif
 
+#ifndef NDEBUG
+	{ FR_CONF_OFFSET("fail_header_decode", FR_TYPE_BOOL, rlm_rest_t, fail_header_decode), .dflt = "no" },
+	{ FR_CONF_OFFSET("fail_body_decode", FR_TYPE_BOOL, rlm_rest_t, fail_body_decode), .dflt = "yes" },
+#endif
+
 	CONF_PARSER_TERMINATOR
 };
 

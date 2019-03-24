@@ -173,6 +173,11 @@ typedef struct {
 	rlm_rest_section_t	checksimul;	//!< Configuration specific to simultaneous session
 						//!< checking.
 	rlm_rest_section_t	post_auth;	//!< Configuration specific to Post-auth
+
+#ifndef NDEBUG
+	bool			fail_header_decode;	//!< Force header decoding to fail for debugging purposes.
+	bool			fail_body_decode;	//!< Force body decoding to fail for debugging purposes.
+#endif
 } rlm_rest_t;
 
 /** Thread specific rlm_rest instance data

@@ -20,7 +20,7 @@
  * @brief Functions and datatypes for the REST (HTTP) transport.
  * @file rest.c
  *
- * @copyright 2012-2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2012-2019 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 
 RCSID("$Id$")
@@ -102,6 +102,7 @@ DIAG_OFF(disabled-macro-expansion)
 do {\
 	if ((ret = curl_easy_setopt(candle, _x, _y)) != CURLE_OK) {\
 		option = STRINGIFY(_x);\
+		REDEBUG("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret); \
 		goto error;\
 	}\
 } while (0)
@@ -379,17 +380,15 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	REQUEST			*request = ctx->request; /* Used by RDEBUG */
 	VALUE_PAIR		*vp;
 
-	char *p = out;		/* Position in buffer */
-	char *encoded = p;	/* Position in buffer of last fully encoded attribute or value */
-	char *escaped;		/* Pointer to current URL escaped data */
+	char			*p = out;	/* Position in buffer */
+	char			*encoded = p;	/* Position in buffer of last fully encoded attribute or value */
+	char			*escaped;	/* Pointer to current URL escaped data */
 
-	size_t len = 0;
-	size_t freespace = (size * nmemb) - 1;
+	size_t			len = 0;
+	size_t			freespace = (size * nmemb) - 1;
 
 	/* Allow manual chunking */
-	if ((ctx->chunk) && (ctx->chunk <= freespace)) {
-		freespace = (ctx->chunk - 1);
-	}
+	if ((ctx->chunk) && (ctx->chunk <= freespace)) freespace = (ctx->chunk - 1);
 
 	if (ctx->state == READ_STATE_END) return 0;
 
@@ -416,7 +415,27 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 			len = strlen(escaped);
 			if (freespace < (1 + len)) {
 				curl_free(escaped);
-				goto no_space;
+				/*
+				 *  Cleanup for error conditions
+				 */
+			no_space:
+				*encoded = '\0';
+
+				len = encoded - (char *)out;
+
+				RDEBUG3("POST Data: %pV", fr_box_strvalue_len(out, len));
+
+				/*
+				 *  The buffer wasn't big enough to encode a single attribute chunk.
+				 */
+				if (len == 0) {
+					REDEBUG("Failed encoding attribute");
+				} else {
+					RDEBUG3("Returning %zd bytes of POST data "
+						"(buffer full or chunk exceeded)", len);
+				}
+
+				return len;
 			}
 
 			len = sprintf(p, "%s=", escaped);
@@ -490,27 +509,6 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	RDEBUG3("Returning %zd bytes of POST data", len);
 
 	return len;
-
-	/*
-	 *  Cleanup for error conditions
-	 */
-no_space:
-	*encoded = '\0';
-
-	len = encoded - (char *)out;
-
-	RDEBUG3("POST Data: %s", (char *)out);
-
-	/*
-	 *  The buffer wasn't big enough to encode a single attribute chunk.
-	 */
-	if (len == 0) {
-		REDEBUG("Failed encoding attribute");
-	} else {
-		RDEBUG3("Returning %zd bytes of POST data (buffer full or chunk exceeded)", len);
-	}
-
-	return len;
 }
 
 #ifdef HAVE_JSON
@@ -555,13 +553,13 @@ no_space:
 static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_request_t	*ctx = userdata;
-	REQUEST *request = ctx->request;
-	rest_custom_data_t *data = ctx->encoder;
+	REQUEST			*request = ctx->request;
+	rest_custom_data_t	*data = ctx->encoder;
 
-	size_t freespace = (size * nmemb) - 1;		/* account for the \0 byte here */
-	size_t len;
-	size_t to_copy;
-	const char *encoded;
+	size_t			freespace = (size * nmemb) - 1;		/* account for the \0 byte here */
+	size_t			len;
+	size_t			to_copy;
+	const char		*encoded;
 
 	rad_assert(freespace > 0);
 
@@ -581,13 +579,11 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	to_copy = data->len - (data->p - data->start);
 	len = to_copy > freespace ? freespace : to_copy;
 
-	if (len == 0) {
-		return 0;
-	} else {
-		memcpy(out, data->p, len);
-		data->p += len;
-		return len;
-	}
+	if (len == 0) return 0;
+
+	memcpy(out, data->p, len);
+	data->p += len;
+	return len;
 }
 #endif
 
@@ -620,11 +616,10 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
 					   rest_read_t func, size_t limit, void *userdata)
 {
-	char *buff = NULL;
-
-	size_t alloc = REST_BODY_ALLOC_CHUNK;	/* Size of buffer to alloc */
-	size_t used = 0;		/* Size of data written */
-	size_t len = 0;
+	char	*buff = NULL;
+	size_t	alloc = REST_BODY_ALLOC_CHUNK;	/* Size of buffer to alloc */
+	size_t	used = 0;			/* Size of data written */
+	size_t	len = 0;
 
 	buff = talloc_array(NULL, char, alloc);
 	for (;;) {
@@ -847,9 +842,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		continue;
 	}
 
-	if (!count) {
-		REDEBUG("Malformed POST data \"%s\"", raw);
-	}
+	if (!count) REDEBUG("Malformed POST data \"%s\"", raw);
 
 	return count;
 
@@ -874,8 +867,8 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
  *	- NULL on error.
  */
 static VALUE_PAIR *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
-				      TALLOC_CTX *ctx, REQUEST *request,
-				      fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
+				        TALLOC_CTX *ctx, REQUEST *request,
+				        fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
 {
 	char const	*value;
 	char		*expanded = NULL;
@@ -1266,6 +1259,13 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 
 	http_body_type_t	type;
 
+#ifndef NDEBUG
+	if (ctx->instance->fail_header_decode) {
+		REDEBUG("Forcing header decode failure");
+		return 0;
+	}
+#endif
+
 	/*
 	 *  This seems to be curl's indication there are no more header lines.
 	 */
@@ -1473,6 +1473,13 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 
 	if (start == end) return 0; 	/* Nothing to process */
 
+#ifndef NDEBUG
+	if (ctx->instance->fail_body_decode) {
+		REDEBUG("Forcing header body failure");
+		return 0;
+	}
+#endif
+
 	/*
 	 *  Any post processing of headers should go here...
 	 */
@@ -1665,8 +1672,6 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	return 0;
 
 error:
-	REDEBUG("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret);
-
 	return -1;
 }
 
@@ -1794,14 +1799,14 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 
 	http_auth_type_t	auth = section->auth;
 
-	CURLcode	ret = CURLE_OK;
-	char const	*option = "unknown";
-	char const	*content_type;
+	CURLcode		ret = CURLE_OK;
+	char const		*option = "unknown";
+	char const		*content_type;
 
-	VALUE_PAIR 	*header;
-	fr_cursor_t	headers;
+	VALUE_PAIR 		*header;
+	fr_cursor_t		headers;
 
-	char buffer[512];
+	char			buffer[512];
 
 	rad_assert(candle);
 	rad_assert((!username && !password) || (username && password));
@@ -1838,7 +1843,11 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		content_type = fr_int2str(http_content_type_table, type, section->body_str);
 		snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
 		ctx->headers = curl_slist_append(ctx->headers, buffer);
-		if (!ctx->headers) goto error_header;
+		if (!ctx->headers) {
+		error_header:
+			REDEBUG("Failed creating header");
+			return -1;
+		}
 	}
 
 	timeout = fr_pool_timeout(t->pool);
@@ -1855,14 +1864,18 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 *	FreeRADIUS custom headers
 	 */
 	RDEBUG3("Adding custom headers:");
-	RINDENT();
 	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Section: %s", section->name);
+
+	RINDENT();
 	RDEBUG3("%s", buffer);
+	REXDENT();
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
 	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Server: %s", cf_section_name2(request->server_cs));
+	RINDENT();
 	RDEBUG3("%s", buffer);
+	REXDENT();
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
@@ -1876,11 +1889,13 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 			talloc_free(header);
 			continue;
 		}
+		RINDENT();
 		RDEBUG3("%s", header->vp_strvalue);
+		REXDENT();
+
 		ctx->headers = curl_slist_append(ctx->headers, header->vp_strvalue);
 		talloc_free(header);
 	}
-	REXDENT();
 
 	/*
 	 *	Configure HTTP verb (GET, POST, PUT, PATCH, DELETE, other...)
@@ -1981,29 +1996,12 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	/*
 	 *	Set SSL/TLS authentication parameters
 	 */
-	if (section->tls_certificate_file) {
-		SET_OPTION(CURLOPT_SSLCERT, section->tls_certificate_file);
-	}
-
-	if (section->tls_private_key_file) {
-		SET_OPTION(CURLOPT_SSLKEY, section->tls_private_key_file);
-	}
-
-	if (section->tls_private_key_password) {
-		SET_OPTION(CURLOPT_KEYPASSWD, section->tls_private_key_password);
-	}
-
-	if (section->tls_ca_file) {
-		SET_OPTION(CURLOPT_ISSUERCERT, section->tls_ca_file);
-	}
-
-	if (section->tls_ca_path) {
-		SET_OPTION(CURLOPT_CAPATH, section->tls_ca_path);
-	}
-
-	if (section->tls_random_file) {
-		SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
-	}
+	if (section->tls_certificate_file) SET_OPTION(CURLOPT_SSLCERT, section->tls_certificate_file);
+	if (section->tls_private_key_file) SET_OPTION(CURLOPT_SSLKEY, section->tls_private_key_file);
+	if (section->tls_private_key_password) SET_OPTION(CURLOPT_KEYPASSWD, section->tls_private_key_password);
+	if (section->tls_ca_file) SET_OPTION(CURLOPT_ISSUERCERT, section->tls_ca_file);
+	if (section->tls_ca_path) SET_OPTION(CURLOPT_CAPATH, section->tls_ca_path);
+	if (section->tls_random_file) SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
 
 	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1L : 0L);
 	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2L : 0L);
@@ -2075,8 +2073,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(inst, section, request, handle,
-					     rest_encode_custom) < 0) {
+		if (rest_request_config_body(inst, section, request, handle, rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
 		}
@@ -2112,10 +2109,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 
 		rest_request_init(section, request, &ctx->request);
 
-		if (rest_request_config_body(inst, section, request, handle,
-					     rest_encode_json) < 0) {
-			return -1;
-		}
+		if (rest_request_config_body(inst, section, request, handle, rest_encode_json) < 0) return -1;
 	}
 
 		break;
@@ -2125,10 +2119,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		rest_request_init(section, request, &ctx->request);
 		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
 
-		if (rest_request_config_body(inst, section, request, handle,
-					     rest_encode_post) < 0) {
-			return -1;
-		}
+		if (rest_request_config_body(inst, section, request, handle, rest_encode_post) < 0) return -1;
 
 		break;
 
@@ -2143,12 +2134,6 @@ finish:
 	return 0;
 
 error:
-	REDEBUG("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret);
-	return -1;
-
-error_header:
-	REDEBUG("Failed creating header");
-	REXDENT();
 	return -1;
 }
 
@@ -2332,11 +2317,6 @@ void rest_request_cleanup(UNUSED rlm_rest_t const *instance, void *handle)
 		curl_slist_free_all(ctx->headers);
 		ctx->headers = NULL;
 	}
-
-	/*
-	 *  Free body data (only used if chunking is disabled)
-	 */
-
 
 	/*
 	 *  Free response data
