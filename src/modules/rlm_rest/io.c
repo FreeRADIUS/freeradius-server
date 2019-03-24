@@ -418,12 +418,19 @@ int rest_io_request_enqueue(rlm_rest_thread_t *t, REQUEST *request, void *handle
 		return -1;
 	}
 
+	/*
+	 *	Increment here, else the debug output looks
+	 *	messed up is curl_multi_add_handle triggers
+	 *      event loop modifications calls immediately.
+	 */
+	t->transfers++;
 	ret = curl_multi_add_handle(t->mandle, candle);
 	if (ret != CURLE_OK) {
+		t->transfers--;
 		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
 		return -1;
 	}
-	t->transfers++;
+
 
 	return 0;
 }
