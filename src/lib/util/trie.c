@@ -1811,11 +1811,12 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		comp->trie[i + 1] = comp->trie[i];
 	}
 
-	fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
-
 	MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
 	comp->index[edge] = chunk;
 	comp->trie[edge] = trie;
+
+	fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
+
 	VERIFY(comp);
 	return 0;
 }
