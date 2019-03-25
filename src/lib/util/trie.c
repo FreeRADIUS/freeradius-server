@@ -1702,9 +1702,10 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 
 static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
-	int i, edge;
+	int i, bits;
 	fr_trie_t *trie = *trie_p;
 	fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
+	fr_trie_node_t *node;
 	uint16_t chunk;
 
 	MPRINT3("%.*scomp insert start %d end %d with key %02x%02x data %s\n",
@@ -1718,56 +1719,9 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	chunk = get_chunk(key, start_bit, comp->bits);
 
 	/*
-	 *	All edges are used.  Create an N-way node.
+	 *	Search for a matching edge.  If found, recurse and
+	 *	insert the key there.
 	 */
-	if (comp->used == MAX_COMP_EDGES) {
-		int bits = comp->bits;
-		fr_trie_node_t *node;
-
-		/*
-		 *	@todo - limit bits to DEFAULT_BITS by calling
-		 *	fr_trie_comp_split()?
-		 */
-//		if (bits > DEFAULT_BITS) bits = DEFAULT_BITS;
-
-		MPRINT3("%.*scomp swapping to node bits %d at %d", start_bit, spaces, bits, __LINE__);
-
-		node = fr_trie_node_alloc(ctx, parent, bits);
-		if (!node) return -1;
-
-		for (i = 0; i < comp->used; i++) {
-			node->trie[comp->index[i]] = comp->trie[i];
-		}
-
-		/*
-		 *	Insert the new chunk, which may or may not
-		 *	overlap with an existing one.
-		 */
-		MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
-		if (fr_trie_key_insert(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
-			MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
-			talloc_free(node);
-			return -1;
-		}
-
-		/*
-		 *	Reparent everything properly.
-		 */
-		for (i = 0; i < comp->used; i++) {
-			node->trie[comp->index[i]]->parent = (fr_trie_t *) node;
-		}
-
-		fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
-
-		MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
-
-		talloc_free(comp);
-		*trie_p = (fr_trie_t *) node;
-		VERIFY(node);
-		return 0;
-	}
-
-	edge = 0;
 	for (i = 0; i < comp->used; i++) {
 		if (comp->index[i] < chunk) continue;
 
@@ -1788,36 +1742,82 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 			return 0;
 		}
 
-		edge = i;
+		/*
+		 *	The chunk is larger than the current edge,
+		 *	stop.
+		 */
 		break;
 	}
 
 	/*
-	 *	No chunk matches.  insert the key into a place-holder
+	 *	No chunk matches.  Insert the key into a place-holder
 	 *	entry, so that we don't modify the current node on
 	 *	failure.
 	 */
+	if (comp->used < MAX_COMP_EDGES) {
+		MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
+		trie = NULL;
+		if (fr_trie_key_insert(ctx, (fr_trie_t *) comp, &trie, key, start_bit + comp->bits, end_bit, data) < 0) {
+			MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
+			return -1;
+		}
+		fr_cond_assert(trie != NULL);
+
+		if (fr_trie_add_edge((fr_trie_t *) comp, chunk, trie) < 0) {
+			talloc_free(trie); // @todo - there may be multiple nodes here?
+			return -1;
+		}
+
+		fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
+
+		VERIFY(comp);
+		return 0;
+	}
+
+	/*
+	 *	All edges are used.  Create an N-way node.
+	 */
+
+	/*
+	 *	@todo - limit bits by calling
+	 *	fr_trie_comp_split()?
+	 */
+//	if (bits > MAX_NODE_BITS) bits = MAX_NODE_BITS;
+
+	MPRINT3("%.*scomp swapping to node bits %d at %d", start_bit, spaces, bits, __LINE__);
+
+	node = fr_trie_node_alloc(ctx, parent, bits);
+	if (!node) return -1;
+
+	for (i = 0; i < comp->used; i++) {
+		node->trie[comp->index[i]] = comp->trie[i];
+	}
+
+	/*
+	 *	Insert the new chunk, which may or may not
+	 *	overlap with an existing one.
+	 */
 	MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
-	if (fr_trie_key_insert(ctx, (fr_trie_t *) comp, &trie, key, start_bit + comp->bits, end_bit, data) < 0) {
+	if (fr_trie_key_insert(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
 		MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
+		talloc_free(node);
 		return -1;
 	}
 
 	/*
-	 *	Move the rest of the edges up one.
+	 *	Reparent everything properly.
 	 */
-	for (i = edge; i < comp->used; i++) {
-		comp->index[i + 1] = comp->index[i];
-		comp->trie[i + 1] = comp->trie[i];
+	for (i = 0; i < comp->used; i++) {
+		node->trie[comp->index[i]]->parent = (fr_trie_t *) node;
 	}
-
-	MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
-	comp->index[edge] = chunk;
-	comp->trie[edge] = trie;
 
 	fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
 
-	VERIFY(comp);
+	MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
+
+	talloc_free(comp);
+	*trie_p = (fr_trie_t *) node;
+	VERIFY(node);
 	return 0;
 }
 #endif
