@@ -2,22 +2,23 @@ Certificate:
     Data:
         Version: 3 (0x2)
         Serial Number: 4 (0x4)
-        Signature Algorithm: ecdsa-with-SHA1
+    Signature Algorithm: ecdsa-with-SHA256
         Issuer: C=FR, ST=Radius, L=Somewhere, O=Example Inc/emailAddress=admin@example.org, CN=Example Certificate Authority
         Validity
-            Not Before: Mar 24 20:00:59 2018 GMT
-            Not After : Mar 24 20:00:59 2019 GMT
+            Not Before: Mar 25 12:43:55 2019 GMT
+            Not After : Mar 24 12:43:55 2020 GMT
         Subject: C=FR, ST=Radius, O=Example Inc, CN=Example user/emailAddress=user.example@example.org
         Subject Public Key Info:
             Public Key Algorithm: id-ecPublicKey
-            EC Public Key:
+                Public-Key: (256 bit)
                 pub:
-                    04:09:ec:b9:12:04:a7:09:54:95:73:40:da:28:46:
-                    62:da:b1:2a:88:fa:f0:d8:6f:0d:cf:a1:be:34:31:
-                    7f:11:a9:7a:de:11:7e:12:47:c8:5b:c4:8a:cc:a5:
-                    58:ca:68:6f:e5:50:c0:8e:cd:d8:2a:b3:06:da:35:
-                    a4:50:f3:82:8f
+                    04:45:aa:e7:77:fa:66:0c:0c:fe:38:68:50:ae:a5:
+                    cc:9b:ab:6c:26:59:c8:46:1d:34:b4:c3:9e:6d:56:
+                    72:46:1a:6b:2a:65:d6:00:db:91:f9:9e:4a:6b:73:
+                    45:8d:cc:a3:76:ea:e4:46:06:ae:ad:10:f7:df:ab:
+                    2c:bb:33:83:d6
                 ASN1 OID: prime256v1
+                NIST CURVE: P-256
         X509v3 extensions:
             X509v3 Basic Constraints:
                 CA:FALSE
@@ -26,29 +27,34 @@ Certificate:
             X509v3 Extended Key Usage:
                 TLS Web Client Authentication
             X509v3 CRL Distribution Points:
-                URI:http://www.example.com/example_ca.crl
+
+                Full Name:
+                  URI:http://www.example.com/example_ca.crl
 
             Authority Information Access:
                 OCSP - URI:http://www.example.org/ocsp
 
-    Signature Algorithm: ecdsa-with-SHA1
-        30:46:02:21:00:92:65:dc:e8:ce:c1:ae:96:a2:e8:2a:eb:d2:
-        42:5c:91:ab:43:82:48:e4:d9:7b:b0:4c:a0:61:99:2e:85:fa:
-        7f:02:21:00:b6:68:48:3c:db:ab:11:70:c0:ec:e1:be:bc:ea:
-        04:62:5f:07:1f:89:c0:43:97:74:69:09:d3:7d:eb:69:9d:89
+            X509v3 Subject Alternative Name:
+                email:user@example.org
+    Signature Algorithm: ecdsa-with-SHA256
+         30:45:02:20:19:91:90:4b:c5:83:3d:df:8c:56:cd:60:40:fe:
+         19:06:81:a5:64:19:61:77:b8:f9:b2:62:1f:29:0e:bc:a2:d7:
+         02:21:00:a3:85:30:91:b2:86:8f:03:c4:c9:fe:12:ec:95:95:
+         de:6c:91:3c:11:34:bf:29:24:c3:17:f7:56:30:d7:e5:55
 -----BEGIN CERTIFICATE-----
-MIIClzCCAj2gAwIBAgIBBDAJBgcqhkjOPQQBMIGSMQswCQYDVQQGEwJGUjEPMA0G
-A1UECAwGUmFkaXVzMRIwEAYDVQQHDAlTb21ld2hlcmUxFDASBgNVBAoMC0V4YW1w
-bGUgSW5jMSAwHgYJKoZIhvcNAQkBFhFhZG1pbkBleGFtcGxlLm9yZzEmMCQGA1UE
-AwwdRXhhbXBsZSBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkwHhcNMTgwMzI0MjAwMDU5
-WhcNMTkwMzI0MjAwMDU5WjB0MQswCQYDVQQGEwJGUjEPMA0GA1UECAwGUmFkaXVz
-MRQwEgYDVQQKDAtFeGFtcGxlIEluYzEVMBMGA1UEAwwMRXhhbXBsZSB1c2VyMScw
-JQYJKoZIhvcNAQkBFhh1c2VyLmV4YW1wbGVAZXhhbXBsZS5vcmcwWTATBgcqhkjO
-PQIBBggqhkjOPQMBBwNCAAQJ7LkSBKcJVJVzQNooRmLasSqI+vDYbw3Pob40MX8R
-qXreEX4SR8hbxIrMpVjKaG/lUMCOzdgqswbaNaRQ84KPo4GhMIGeMAkGA1UdEwQC
-MAAwCwYDVR0PBAQDAgXgMBMGA1UdJQQMMAoGCCsGAQUFBwMCMDYGA1UdHwQvMC0w
-K6ApoCeGJWh0dHA6Ly93d3cuZXhhbXBsZS5jb20vZXhhbXBsZV9jYS5jcmwwNwYI
-KwYBBQUHAQEEKzApMCcGCCsGAQUFBzABhhtodHRwOi8vd3d3LmV4YW1wbGUub3Jn
-L29jc3AwCQYHKoZIzj0EAQNJADBGAiEAkmXc6M7Brpai6Crr0kJckatDgkjk2Xuw
-TKBhmS6F+n8CIQC2aEg826sRcMDs4b686gRiXwcficBDl3RpCdN962mdiQ==
+MIICtTCCAlugAwIBAgIBBDAKBggqhkjOPQQDAjCBkjELMAkGA1UEBhMCRlIxDzAN
+BgNVBAgMBlJhZGl1czESMBAGA1UEBwwJU29tZXdoZXJlMRQwEgYDVQQKDAtFeGFt
+cGxlIEluYzEgMB4GCSqGSIb3DQEJARYRYWRtaW5AZXhhbXBsZS5vcmcxJjAkBgNV
+BAMMHUV4YW1wbGUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MB4XDTE5MDMyNTEyNDM1
+NVoXDTIwMDMyNDEyNDM1NVowdDELMAkGA1UEBhMCRlIxDzANBgNVBAgMBlJhZGl1
+czEUMBIGA1UECgwLRXhhbXBsZSBJbmMxFTATBgNVBAMMDEV4YW1wbGUgdXNlcjEn
+MCUGCSqGSIb3DQEJARYYdXNlci5leGFtcGxlQGV4YW1wbGUub3JnMFkwEwYHKoZI
+zj0CAQYIKoZIzj0DAQcDQgAERarnd/pmDAz+OGhQrqXMm6tsJlnIRh00tMOebVZy
+RhprKmXWANuR+Z5Ka3NFjcyjdurkRgaurRD336ssuzOD1qOBvjCBuzAJBgNVHRME
+AjAAMAsGA1UdDwQEAwIF4DATBgNVHSUEDDAKBggrBgEFBQcDAjA2BgNVHR8ELzAt
+MCugKaAnhiVodHRwOi8vd3d3LmV4YW1wbGUuY29tL2V4YW1wbGVfY2EuY3JsMDcG
+CCsGAQUFBwEBBCswKTAnBggrBgEFBQcwAYYbaHR0cDovL3d3dy5leGFtcGxlLm9y
+Zy9vY3NwMBsGA1UdEQQUMBKBEHVzZXJAZXhhbXBsZS5vcmcwCgYIKoZIzj0EAwID
+SAAwRQIgGZGQS8WDPd+MVs1gQP4ZBoGlZBlhd7j5smIfKQ68otcCIQCjhTCRsoaP
+A8TJ/hLslZXebJE8ETS/KSTDF/dWMNflVQ==
 -----END CERTIFICATE-----

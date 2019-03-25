@@ -2,22 +2,23 @@ Certificate:
     Data:
         Version: 3 (0x2)
         Serial Number: 6 (0x6)
-        Signature Algorithm: ecdsa-with-SHA1
+    Signature Algorithm: ecdsa-with-SHA256
         Issuer: C=FR, ST=Radius, L=Somewhere, O=Example Inc/emailAddress=admin@example.org, CN=Example Certificate Authority
         Validity
-            Not Before: Mar 24 20:00:59 2018 GMT
-            Not After : Mar 24 20:00:59 2019 GMT
+            Not Before: Mar 25 12:43:55 2019 GMT
+            Not After : Mar 24 12:43:55 2020 GMT
         Subject: C=FR, ST=Radius, O=Example Inc, CN=Example OCSP Responder Certificate/emailAddress=admin@example.org
         Subject Public Key Info:
             Public Key Algorithm: id-ecPublicKey
-            EC Public Key:
+                Public-Key: (256 bit)
                 pub:
-                    04:9f:11:2d:9b:d0:76:07:2c:01:8a:9a:28:29:10:
-                    78:ec:67:f8:2b:f9:c3:15:8c:1b:3b:ef:d4:f1:93:
-                    18:07:cf:33:bd:50:85:f2:a1:2a:de:59:a3:59:84:
-                    ca:25:f8:46:34:6b:d4:bc:7d:52:42:fa:9a:78:40:
-                    ec:d1:93:f0:bd
+                    04:7f:69:ff:23:e9:2b:93:81:15:8f:e6:19:a1:72:
+                    95:1a:13:e9:8d:2c:77:47:55:e1:6b:43:9c:4b:ba:
+                    9d:79:1f:c0:e7:e6:0f:af:66:28:5f:b4:c7:8e:8c:
+                    c5:93:b1:80:9f:d9:b0:4e:5a:8a:d6:24:ec:4f:ff:
+                    c6:88:73:d1:44
                 ASN1 OID: prime256v1
+                NIST CURVE: P-256
         X509v3 extensions:
             X509v3 Basic Constraints:
                 CA:FALSE
@@ -25,22 +26,22 @@ Certificate:
                 Digital Signature, Non Repudiation, Key Encipherment
             X509v3 Extended Key Usage:
                 OCSP Signing
-    Signature Algorithm: ecdsa-with-SHA1
-        30:44:02:20:57:10:5d:3c:52:57:63:32:fa:db:00:33:c8:aa:
-        28:dd:2e:6f:4f:70:6f:29:39:33:ca:61:0f:91:a2:5b:a0:bb:
-        02:20:3a:1f:fa:43:71:95:33:75:b3:3b:5a:7b:fb:85:ea:c6:
-        3f:96:00:b6:71:11:b0:bf:a9:0c:66:d1:f6:32:f2:3f
+    Signature Algorithm: ecdsa-with-SHA256
+         30:45:02:20:0f:34:c9:38:bd:33:8b:18:ce:54:80:91:2b:b5:
+         ee:35:f7:4d:ff:40:74:67:fd:f8:be:0f:99:23:29:2c:eb:f3:
+         02:21:00:ff:8e:a5:82:f9:5d:02:0f:c5:ff:4d:f2:cb:7a:d3:
+         a9:b6:5c:eb:98:3b:b2:3f:12:21:c7:37:69:ec:c6:ec:27
 -----BEGIN CERTIFICATE-----
-MIICMjCCAdqgAwIBAgIBBjAJBgcqhkjOPQQBMIGSMQswCQYDVQQGEwJGUjEPMA0G
-A1UECAwGUmFkaXVzMRIwEAYDVQQHDAlTb21ld2hlcmUxFDASBgNVBAoMC0V4YW1w
-bGUgSW5jMSAwHgYJKoZIhvcNAQkBFhFhZG1pbkBleGFtcGxlLm9yZzEmMCQGA1UE
-AwwdRXhhbXBsZSBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkwHhcNMTgwMzI0MjAwMDU5
-WhcNMTkwMzI0MjAwMDU5WjCBgzELMAkGA1UEBhMCRlIxDzANBgNVBAgMBlJhZGl1
-czEUMBIGA1UECgwLRXhhbXBsZSBJbmMxKzApBgNVBAMMIkV4YW1wbGUgT0NTUCBS
-ZXNwb25kZXIgQ2VydGlmaWNhdGUxIDAeBgkqhkiG9w0BCQEWEWFkbWluQGV4YW1w
-bGUub3JnMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnxEtm9B2BywBipooKRB4
-7Gf4K/nDFYwbO+/U8ZMYB88zvVCF8qEq3lmjWYTKJfhGNGvUvH1SQvqaeEDs0ZPw
-vaMvMC0wCQYDVR0TBAIwADALBgNVHQ8EBAMCBeAwEwYDVR0lBAwwCgYIKwYBBQUH
-AwkwCQYHKoZIzj0EAQNHADBEAiBXEF08UldjMvrbADPIqijdLm9PcG8pOTPKYQ+R
-oluguwIgOh/6Q3GVM3WzO1p7+4Xqxj+WALZxEbC/qQxm0fYy8j8=
+MIICNTCCAdugAwIBAgIBBjAKBggqhkjOPQQDAjCBkjELMAkGA1UEBhMCRlIxDzAN
+BgNVBAgMBlJhZGl1czESMBAGA1UEBwwJU29tZXdoZXJlMRQwEgYDVQQKDAtFeGFt
+cGxlIEluYzEgMB4GCSqGSIb3DQEJARYRYWRtaW5AZXhhbXBsZS5vcmcxJjAkBgNV
+BAMMHUV4YW1wbGUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MB4XDTE5MDMyNTEyNDM1
+NVoXDTIwMDMyNDEyNDM1NVowgYMxCzAJBgNVBAYTAkZSMQ8wDQYDVQQIDAZSYWRp
+dXMxFDASBgNVBAoMC0V4YW1wbGUgSW5jMSswKQYDVQQDDCJFeGFtcGxlIE9DU1Ag
+UmVzcG9uZGVyIENlcnRpZmljYXRlMSAwHgYJKoZIhvcNAQkBFhFhZG1pbkBleGFt
+cGxlLm9yZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABH9p/yPpK5OBFY/mGaFy
+lRoT6Y0sd0dV4WtDnEu6nXkfwOfmD69mKF+0x46MxZOxgJ/ZsE5aitYk7E//xohz
+0USjLzAtMAkGA1UdEwQCMAAwCwYDVR0PBAQDAgXgMBMGA1UdJQQMMAoGCCsGAQUF
+BwMJMAoGCCqGSM49BAMCA0gAMEUCIA80yTi9M4sYzlSAkSu17jX3Tf9AdGf9+L4P
+mSMpLOvzAiEA/46lgvldAg/F/03yy3rTqbZc65g7sj8SIcc3aezG7Cc=
 -----END CERTIFICATE-----
