@@ -612,6 +612,20 @@ static void fr_trie_free(fr_trie_t *trie)
 		return;
 	}
 #endif
+
+#ifdef WITH_NODE_COMPRESSION
+	if (trie->type == FR_TRIE_COMP) {
+		fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
+		int i;
+
+		for (i = 0; i < comp->used; i++) {
+			fr_trie_free(comp->trie[i]);
+		}
+
+		talloc_free(comp);
+		return;
+	}
+#endif
 }
 
 static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, fr_trie_t *parent, void const *data) CC_HINT(nonnull(3));
