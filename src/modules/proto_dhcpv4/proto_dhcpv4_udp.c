@@ -70,6 +70,8 @@ typedef struct {
 								//!< buffer value.
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 
+	RADCLIENT_LIST			*clients;		//!< local clients
+
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
@@ -650,11 +652,33 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		}
 	}
 
+	/*
+	 *	Look up local clients, if they exist.
+	 *
+	 *	@todo - ensure that we only parse clients which are
+	 *	for IPPROTO_UDP, and require a "secret".
+	 */
+	if (cf_section_find_next(server_cs, NULL, "client", CF_IDENT_ANY)) {
+		inst->clients = client_list_parse_section(server_cs, false);
+		if (!inst->clients) {
+			cf_log_err(cs, "Failed creating local clients");
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
 static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
+	/*
+	 *	Prefer local clients.
+	 */
+	if (inst->clients) {
+		client = client_find(inst->clients, ipaddr, ipproto);
+		if (client) return client;
+	}
+
 	return client_find(NULL, ipaddr, ipproto);
 }
 
