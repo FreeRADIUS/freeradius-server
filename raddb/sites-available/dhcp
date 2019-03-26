@@ -94,6 +94,14 @@ listen {
 	type = DHCP-Decline
 }
 
+#
+#  Allow all source IPs.
+#
+client all {
+       ipaddr = 0/0
+}
+
+
 #  Packets received on the socket will be processed through one
 #  of the following sections, named after the DHCP packet type.
 #  See dictionary.dhcpv4 for the packet types.
