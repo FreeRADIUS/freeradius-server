@@ -643,7 +643,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 				return;
 			}
 
-			PERROR("Failed writing to socket %d", s->listen->fd);
+			PERROR("Closing socket %d due to failed write", s->listen->fd);
 			fr_network_socket_dead(nr, s);
 			return;
 		}
