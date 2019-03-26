@@ -1338,14 +1338,16 @@ static void fr_trie_check(fr_trie_t *trie, uint8_t const *key, int start_bit, in
 		fr_strerror_printf("Failed trie check answer at %d", lineno);
 
 		// print out the current trie!
-		MPRINT3("Failed to find user data from start %d end %d at %d\n", start_bit, end_bit, lineno);
+		MPRINT3("%.*sFailed to find user data %s from start %d end %d at %d\n", start_bit, spaces, data,
+			start_bit, end_bit, lineno);
 		fr_cond_assert(0);
 	}
 
 	if (answer != data) {
 		fr_strerror_printf("Failed trie check answer == data at %d", lineno);
 
-		MPRINT3("Found wrong user data from start %d end %d at %d\n", start_bit, end_bit, lineno);
+		MPRINT3("%.*sFound wrong user data %s != %s, from start %d end %d at %d\n", start_bit, spaces,
+			answer, data, start_bit, end_bit, lineno);
 		fr_cond_assert(0);
 	}
 }
