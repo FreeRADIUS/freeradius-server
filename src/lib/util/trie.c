@@ -478,13 +478,12 @@ static int trie_number = 0;
 struct fr_trie_t {
 	TRIE_HEADER;
 
-	fr_trie_t	*trie;	/* only correct for USER */
+	fr_trie_t	*trie;	/* for USER and PATH nodes*/
 };
 
 typedef struct {
 	TRIE_HEADER;
 
-	int		size;
 	int		used;
 	fr_trie_t	*trie[];
 } fr_trie_node_t;
@@ -541,7 +540,6 @@ static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, int bits)
 	talloc_set_name_const(node, "fr_trie_node_t");
 	node->type = FR_TRIE_NODE;
 	node->bits = bits;
-	node->size = size;
 
 #ifdef TESTING
 	node->number = trie_number++;
@@ -571,7 +569,7 @@ static void fr_trie_free(fr_trie_t *trie)
 		fr_trie_node_t *node = (fr_trie_node_t *) trie;
 		int i;
 
-		for (i = 0; i < node->size; i++) {
+		for (i = 0; i < (1 << node->bits); i++) {
 			if (!node->trie[i]) continue; /* save a function call in the common case */
 
 			fr_trie_free(node->trie[i]);
@@ -2219,7 +2217,7 @@ static int fr_trie_node_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth,
 	fr_trie_node_t *node = (fr_trie_node_t *) trie;
 
 	used = 0;
-	for (i = 0; i < node->size; i++) {
+	for (i = 0; i < (1 << node->bits); i++) {
 		if (!node->trie[i]) continue;
 
 		write_chunk(cb->start, depth, node->bits, (uint16_t) i);
@@ -2340,20 +2338,14 @@ static int fr_trie_node_verify(fr_trie_t *trie)
 		return -1;
 	}
 
-	if (node->size != (1 << node->bits)) {
-		fr_strerror_printf("N-way node has invalid bits %d for size %d",
-				   node->bits, node->size);
-		return -1;
-	}
-
-	if ((node->used == 0) || (node->used > node->size)) {
-		fr_strerror_printf("N-way node has invalid used %d for bits %d size %d",
-				   node->used, node->bits, node->size);
+	if ((node->used == 0) || (node->used > (1 << node->bits))) {
+		fr_strerror_printf("N-way node has invalid used %d for bits %d",
+				   node->used, node->bits);
 		return -1;
 	}
 
 	used = 0;
-	for (i = 0; i < node->size; i++) {
+	for (i = 0; i < (1 << node->bits); i++) {
 		if (!node->trie[i]) continue;
 
 		if (fr_trie_verify(node->trie[i]) < 0) return -1;
@@ -2514,7 +2506,7 @@ static void fr_trie_node_dump(FILE *fp, fr_trie_t *trie, char const *key, int ke
 	fprintf(fp, "\tbits\t%d\n", node->bits);
 	fprintf(fp, "\tused\t%d\n", node->used);
 
-	for (i = 0; i < node->size; i++) {
+	for (i = 0; i < (1 << node->bits); i++) {
 		if (!node->trie[i]) continue;
 
 		fprintf(fp, "\t%02x\t", (int) i);
