@@ -566,6 +566,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	proto_dhcpv4_udp_t	*inst = talloc_get_type_abort(instance, proto_dhcpv4_udp_t);
 	size_t			num;
+	CONF_ITEM		*ci;
+	CONF_SECTION		*server_cs;
 
 	inst->cs = cs;
 
@@ -652,6 +654,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		}
 	}
 
+	ci = cf_parent(inst->cs); /* listen { ... } */
+	rad_assert(ci != NULL);
+	ci = cf_parent(ci);
+	rad_assert(ci != NULL);
+
+	server_cs = cf_item_to_section(ci);
+
 	/*
 	 *	Look up local clients, if they exist.
 	 *
@@ -669,12 +678,16 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
+static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
+	proto_dhcpv4_udp_t	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
+
 	/*
 	 *	Prefer local clients.
 	 */
 	if (inst->clients) {
+		RADCLIENT *client;
+
 		client = client_find(inst->clients, ipaddr, ipproto);
 		if (client) return client;
 	}
