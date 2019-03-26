@@ -469,24 +469,20 @@ typedef enum fr_trie_type_t {
 
 #ifdef TESTING
 static int trie_number = 0;
+
+#define TRIE_HEADER uint8_t type; uint8_t bits; int number
+#else
+#define TRIE_HEADER uint8_t type; uint8_t bits
 #endif
 
 struct fr_trie_t {
-	fr_trie_type_t	type;
-	int		bits;
-#ifdef TESTING
-	int		number;
-#endif
+	TRIE_HEADER;
 
 	fr_trie_t	*trie;	/* only correct for USER */
 };
 
 typedef struct {
-	fr_trie_type_t	type;
-	int		bits;
-#ifdef TESTING
-	int		number;
-#endif
+	TRIE_HEADER;
 
 	int		size;
 	int		used;
@@ -494,11 +490,7 @@ typedef struct {
 } fr_trie_node_t;
 
 typedef struct {
-	fr_trie_type_t	type;
-	int		bits;
-#ifdef TESTING
-	int		number;
-#endif
+	TRIE_HEADER;
 
 	fr_trie_t	*trie;
 	void     	*data;
@@ -506,11 +498,7 @@ typedef struct {
 
 #ifdef WITH_PATH_COMPRESSION
 typedef struct {
-	fr_trie_type_t	type;
-	int		bits;
-#ifdef TESTING
-	int		number;
-#endif
+	TRIE_HEADER;
 
 	fr_trie_t	*trie;
 
@@ -521,11 +509,7 @@ typedef struct {
 
 #ifdef WITH_NODE_COMPRESSION
 typedef struct {
-	fr_trie_type_t	type;
-	int		bits;
-#ifdef TESTING
-	int		number;
-#endif
+	TRIE_HEADER;
 
 	int		used;		//!< number of used entries
 	uint8_t		index[MAX_COMP_EDGES];
