@@ -680,7 +680,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto)
 {
-	proto_dhcpv4_udp_t	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
+	proto_dhcpv4_udp_t const *inst = talloc_get_type_abort_const(li->app_io_instance, proto_dhcpv4_udp_t);
 
 	/*
 	 *	Prefer local clients.
