@@ -471,8 +471,16 @@ typedef enum fr_trie_type_t {
 static int trie_number = 0;
 
 #define TRIE_HEADER uint8_t type; uint8_t bits; int number
+#define TRIE_TYPE_CHECK(_x, _r) do { if ((trie->type == FR_TRIE_INVALID) || \
+					 (trie->type >= FR_TRIE_MAX) || \
+					 !trie_ ## _x [trie->type]) { \
+						fr_strerror_printf("unknown trie type %d", trie->type); \
+						return _r; \
+				     } } while (0)
+
 #else
 #define TRIE_HEADER uint8_t type; uint8_t bits
+#define TRIE_TYPE_CHECK(_x, _r)
 #endif
 
 struct fr_trie_t {
@@ -1228,15 +1236,7 @@ static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bi
 		return NULL;
 	}
 
-	/*
-	 *	Catch problems.
-	 */
-	if ((trie->type == FR_TRIE_INVALID) ||
-	    ((int) trie->type >= FR_TRIE_MAX) ||
-	    !trie_match[trie->type]) {
-		fr_strerror_printf("unknown trie type %d in match", trie->type);
-		return NULL;
-	}
+	TRIE_TYPE_CHECK(match, NULL);
 
 	/*
 	 *	Recursively match each type.
@@ -1846,15 +1846,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const
 		return 0;
 	}
 
-	/*
-	 *	Catch problems.
-	 */
-	if ((trie->type == FR_TRIE_INVALID) ||
-	    ((int) trie->type >= FR_TRIE_MAX) ||
-	    !trie_insert[trie->type]) {
-		fr_strerror_printf("unknown trie type %d in insert", trie->type);
-		return -1;
-	}
+	TRIE_TYPE_CHECK(insert, -1);
 
 #ifndef TESTING
 	return trie_insert[trie->type](ctx, trie_p, key, start_bit, end_bit, data);
@@ -2144,15 +2136,7 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t con
 	 */
 	if ((start_bit + trie->bits) > end_bit) return NULL;
 
-	/*
-	 *	Catch problems.
-	 */
-	if ((trie->type == FR_TRIE_INVALID) ||
-	    ((int) trie->type >= FR_TRIE_MAX) ||
-	    !trie_remove[trie->type]) {
-		fr_strerror_printf("unknown trie type %d in remove", trie->type);
-		return NULL;
-	}
+	TRIE_TYPE_CHECK(remove, NULL);
 
 	return trie_remove[trie->type](ctx, trie_p, key, start_bit, end_bit);
 }
@@ -2290,15 +2274,7 @@ static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, 
 		return 0;
 	}
 
-	/*
-	 *	Catch problems.
-	 */
-	if ((trie->type == FR_TRIE_INVALID) ||
-	    ((int) trie->type >= FR_TRIE_MAX) ||
-	    !trie_walk[trie->type]) {
-		fr_strerror_printf("unknown trie type %d in walk", trie->type);
-		return 0;
-	}
+	TRIE_TYPE_CHECK(walk, -1);
 
 	/*
 	 *	No more buffer space, stop.
@@ -2442,15 +2418,7 @@ static int fr_trie_verify(fr_trie_t *trie)
 {
 	if (!trie) return 0;
 
-	/*
-	 *	Catch problems.
-	 */
-	if ((trie->type == FR_TRIE_INVALID) ||
-	    ((int) trie->type >= FR_TRIE_MAX) ||
-	    !trie_verify[trie->type]) {
-		fr_strerror_printf("unknown trie type %d in verify", trie->type);
-		return -1;
-	}
+	TRIE_TYPE_CHECK(verify, -1);
 
 	return trie_verify[trie->type](trie);
 }
@@ -2583,15 +2551,7 @@ static int fr_trie_dump_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, 
 
 	if (!trie) return 0;
 
-	/*
-	 *	Catch problems.
-	 */
-	if ((trie->type == FR_TRIE_INVALID) ||
-	    ((int) trie->type >= FR_TRIE_MAX) ||
-	    !trie_dump[trie->type]) {
-		fr_strerror_printf("unknown trie type %d in dump", trie->type);
-		return 0;
-	}
+	TRIE_TYPE_CHECK(dump, -1);
 
 	trie_dump[trie->type](fp, trie, (char const *) cb->start, keylen);
 	return 0;
