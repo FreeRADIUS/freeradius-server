@@ -1752,9 +1752,9 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	}
 
 	/*
-	 *	No chunk matches.  Insert the key into a place-holder
-	 *	entry, so that we don't modify the current node on
-	 *	failure.
+	 *	No edge matches the chunk from the key.  Insert the
+	 *	child trie into a place-holder entry, so that we don't
+	 *	modify the current node on failure.
 	 */
 	if (comp->used < MAX_COMP_EDGES) {
 		MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
@@ -1784,20 +1784,23 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 	 *	@todo - limit bits by calling
 	 *	fr_trie_comp_split()?
 	 */
-//	if (bits > MAX_NODE_BITS) bits = MAX_NODE_BITS;
+	bits = comp->bits;
 
-	MPRINT3("%.*scomp swapping to node bits %d at %d", start_bit, spaces, bits, __LINE__);
+	MPRINT3("%.*scomp swapping to node bits %d at %d\n", start_bit, spaces, bits, __LINE__);
 
 	node = fr_trie_node_alloc(ctx, parent, bits);
 	if (!node) return -1;
 
 	for (i = 0; i < comp->used; i++) {
+		fr_cond_assert(node->trie[comp->index[i]] == NULL);
 		node->trie[comp->index[i]] = comp->trie[i];
 	}
+	node->used = comp->used;
+	node->used += (node->trie[chunk] == NULL); /* will get set if the recursive insert succeeds */
 
 	/*
-	 *	Insert the new chunk, which may or may not
-	 *	overlap with an existing one.
+	 *	Insert the new chunk, which may or may not overlap
+	 *	with an existing one.
 	 */
 	MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
 	if (fr_trie_key_insert(ctx, (fr_trie_t *) node, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
@@ -1813,7 +1816,7 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *parent, fr_trie_t **t
 		node->trie[comp->index[i]]->parent = (fr_trie_t *) node;
 	}
 
-	fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
+	fr_trie_check((fr_trie_t *) node, key, start_bit, end_bit, data, __LINE__);
 
 	MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
 
