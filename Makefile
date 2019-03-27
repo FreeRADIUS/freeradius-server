@@ -45,6 +45,11 @@ endif
 export DESTDIR := $(R)
 export PROJECT_NAME := freeradius
 
+#
+#  src/include/all.mk needs these, so define them before we include that file.
+#
+PROTOCOLS    := dhcpv4 eap freeradius snmp vqp dhcpv6 ethernet radius tacacs
+
 # And over-ride all of the other magic.
 ifneq "$(MAKECMDGOALS)" "deb"
 ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
@@ -117,7 +122,8 @@ endif
 #
 export DESTDIR := $(R)
 
-DICTIONARIES := $(shell find share/dictionary -type f -name dictionary*)
+DICTIONARIES := $(wildcard $(addsuffix /dictionary*,$(addprefix share/dictionary/,$(PROTOCOLS))))
+
 install.share: $(addprefix $(R)$(dictdir)/,$(patsubst share/dictionary/%,%,$(DICTIONARIES)))
 
 $(R)$(dictdir)/%: share/dictionary/%
