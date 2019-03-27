@@ -124,6 +124,10 @@ $(R)$(dictdir)/%: share/dictionary/%
 	@echo INSTALL $(patsubst share/dictionary/%,%,$<)
 	@$(INSTALL) -m 644 $< $@
 
+.PHONY: dictionary.format
+dictionary.format: $(DICTIONARIES)
+	@./scripts/dict/format.pl $(DICTIONARIES)
+
 MANFILES := $(wildcard man/man*/*.?)
 install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
 
