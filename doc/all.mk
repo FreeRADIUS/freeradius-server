@@ -1,4 +1,14 @@
 ifneq "$(docdir)" "no"
+
+#
+#  Running "shell" is expensive on OSX.  Building the documentation
+#  requires running a bunch of shell commands, because we're too lazy
+#  to fix that.  So, only run those shell scripts if we're going to
+#  build the documentation.
+#
+BUILD_DOC := $(strip $(foreach x,doc html pdf adoc install clean,$(findstring $(x),$(MAKECMDGOALS))))
+ifneq "$(BUILD_DOC)" ""
+
 install: install.doc
 
 clean: clean.doc
@@ -91,4 +101,5 @@ doc/%.pdf: doc/%.md
 asciidoc: $(ADOC_FILES)
 html: $(HTML_FILES)
 pdf: $(PDF_FILES)
+endif
 endif
