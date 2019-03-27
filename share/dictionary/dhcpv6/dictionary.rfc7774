@@ -9,4 +9,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	MPL-Parameters			104	octets		# Complex struct see RFC 7774
+ATTRIBUTE	MPL-Parameters				104	octets		# Complex struct see RFC 7774

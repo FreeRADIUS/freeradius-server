@@ -8,4 +8,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	PD-Exclude			67	ipv6prefix
+ATTRIBUTE	PD-Exclude				67	ipv6prefix

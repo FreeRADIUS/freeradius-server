@@ -7,5 +7,5 @@
 #
 ##############################################################################
 
-ATTRIBUTE	IA-PD				25	octets		# Complex struct see RFC 3633
-ATTRIBUTE	IA-Prefix			26	octets		# Complex struct see RFC 3633
+ATTRIBUTE	IA-PD					25	octets		# Complex struct see RFC 3633
+ATTRIBUTE	IA-Prefix				26	octets		# Complex struct see RFC 3633

@@ -7,16 +7,16 @@
 #
 #  Internal (Non-Protocol) attributes
 #
-FLAGS		internal
+FLAGS	internal
 ATTRIBUTE	EAP-AKA-Subtype				256	integer
 
-VALUE	EAP-AKA-Subtype			AKA-Challenge			1
-VALUE	EAP-AKA-Subtype			AKA-Authentication-Reject	2
-VALUE	EAP-AKA-Subtype			AKA-Synchronization-Failure	4
-VALUE	EAP-AKA-Subtype			AKA-Identity			5
-VALUE	EAP-AKA-Subtype			AKA-Notification		12
-VALUE	EAP-AKA-Subtype			AKA-Reauthentication		13
-VALUE	EAP-AKA-Subtype			AKA-Client-Error		14
+VALUE	EAP-AKA-Subtype			AKA-Challenge		1
+VALUE	EAP-AKA-Subtype			AKA-Authentication-Reject 2
+VALUE	EAP-AKA-Subtype			AKA-Synchronization-Failure 4
+VALUE	EAP-AKA-Subtype			AKA-Identity		5
+VALUE	EAP-AKA-Subtype			AKA-Notification	12
+VALUE	EAP-AKA-Subtype			AKA-Reauthentication	13
+VALUE	EAP-AKA-Subtype			AKA-Client-Error	14
 
 ATTRIBUTE	EAP-AKA-HMAC				257	string
 ATTRIBUTE	EAP-AKA-Key				258	octets

@@ -80,37 +80,37 @@ ATTRIBUTE	3GPP2-MN-HA-SPI				57	integer
 ATTRIBUTE	3GPP2-MN-HA-Shared-Key			58	string encrypt=2
 
 ATTRIBUTE	3GPP2-Remote-IP-Address			59	tlv
-ATTRIBUTE	3GPP2-Remote-IP-Address-Value		59.1	ipaddr
-ATTRIBUTE	3GPP2-Remote-IP-Address-Mask		59.2	integer
-ATTRIBUTE	3GPP2-Remote-IP-Qualifier		59.3	short
+ATTRIBUTE	3GPP2-Remote-IP-Address-Value		.1	ipaddr
+ATTRIBUTE	3GPP2-Remote-IP-Address-Mask		.2	integer
+ATTRIBUTE	3GPP2-Remote-IP-Qualifier		.3	short
 
 # 60 - 69 are marked "reserved"
 
 ATTRIBUTE	3GPP2-Remote-IPv6-Address		70	tlv
-ATTRIBUTE	3GPP2-Remote-IPv6-Address-Value		70.1	ipv6addr
-ATTRIBUTE	3GPP2-Remote-IPv6-Address-Prefix-Length	70.2	integer
-ATTRIBUTE	3GPP2-Remote-IPv6-Address-Qualifier	70.3	tlv
+ATTRIBUTE	3GPP2-Remote-IPv6-Address-Value		.1	ipv6addr
+ATTRIBUTE	3GPP2-Remote-IPv6-Address-Prefix-Length	.2	integer
+ATTRIBUTE	3GPP2-Remote-IPv6-Address-Qualifier	.3	tlv
 
 ATTRIBUTE	3GPP2-Remote-Address-Table-Index	71	tlv
-ATTRIBUTE	3GPP2-Remote-Address-Table-Index-Value	71.1	short
-ATTRIBUTE	3GPP2-Remote-Address-Table-Index-Qualifier 71.2	short
+ATTRIBUTE	3GPP2-Remote-Address-Table-Index-Value	.1	short
+ATTRIBUTE	3GPP2-Remote-Address-Table-Index-Qualifier .2	short
 
 ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count	72	tlv
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Address 72.1	ipaddr
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Mask	72.2	integer
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Forward 72.3	integer
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Reverse 72.4	integer
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Table-Index 72.5	short
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Forward-Overflow 72.6	short
-ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Reverse-Overflow 72.7	short
+ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Address .1	ipaddr
+ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Mask	.2	integer
+ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Forward .3	integer
+ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Reverse .4	integer
+ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Table-Index .5	short
+ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Forward-Overflow .6	short
+ATTRIBUTE	3GPP2-Remote-IPv4-Addr-Octet-Count-Reverse-Overflow .7	short
 
 ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking		73	tlv
-ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking-Allowed	73.1	short
-ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking-Max-Class 73.2	short
-ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking-Reverse-Runnel 73.3	short
+ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking-Allowed	.1	short
+ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking-Max-Class .2	short
+ATTRIBUTE	3GPP2-Allowed-Diffserv-Marking-Reverse-Runnel .3	short
 
 ATTRIBUTE	3GPP2-Service-Option-Profile		74	tlv
-ATTRIBUTE	3GPP2-Service-Option-Profile-Option	74.1	short
+ATTRIBUTE	3GPP2-Service-Option-Profile-Option	.1	short
 
 ATTRIBUTE	3GPP2-DNS-Update-Required		75	integer
 
@@ -132,12 +132,12 @@ ATTRIBUTE	3GPP2-Allowed-Persistent-TFTs		89	integer
 
 ATTRIBUTE	3GPP2-Prepaid-Acct-Quota		90	tlv
 
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-QuotaIDentifier 90.1	integer
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeQuota	90.2	integer
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeQuotaOverflow 90.3	integer
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeThreshold 90.4	integer
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeThresholdOverflow 90.5	integer
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-UpdateReason	90.8	short
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-QuotaIDentifier .1	integer
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeQuota	.2	integer
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeQuotaOverflow .3	integer
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeThreshold .4	integer
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeThresholdOverflow .5	integer
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-UpdateReason	.8	short
 
 # The next two attributes contain sub-types
 ATTRIBUTE	3GPP2-Prepaid-acct-Capability		91	octets
@@ -146,34 +146,34 @@ ATTRIBUTE	3GPP2-MIP-Lifetime			92	octets
 ATTRIBUTE	3GPP2-Acct-Stop-Trigger			93	integer
 
 ATTRIBUTE	3GPP2-Service-Reference-Id		94	tlv
-ATTRIBUTE	3GPP2-Service-Reference-Id-Value	94.1	short
-ATTRIBUTE	3GPP2-Service-Reference-Main-SC-Indicator 94.2	short
+ATTRIBUTE	3GPP2-Service-Reference-Id-Value	.1	short
+ATTRIBUTE	3GPP2-Service-Reference-Main-SC-Indicator .2	short
 
 ATTRIBUTE	3GPP2-DNS-Update-Capability		95	integer
 ATTRIBUTE	3GPP2-Disconnect-Reason			96	integer
 
 ATTRIBUTE	3GPP2-Remote-IPv6-Octet-Count		97	tlv
-ATTRIBUTE	3GPP2-Remote-IPv6-Count-Address		97.1	ipv6addr
-ATTRIBUTE	3GPP2-Remote-IPv6-Prefix-Length		97.2	short
-ATTRIBUTE	3GPP2-Remote-IPv6-Forward-Octet-Count	97.3	integer
-ATTRIBUTE	3GPP2-Remote-IPv6-Reverse-Octet-Count	97.4	integer
-ATTRIBUTE	3GPP2-Remote-IPv6-Table-Index		97.5	short
-ATTRIBUTE	3GPP2-Remote-IPv6-Reverse-Octet-Count-Overflow 97.6	short
+ATTRIBUTE	3GPP2-Remote-IPv6-Count-Address		.1	ipv6addr
+ATTRIBUTE	3GPP2-Remote-IPv6-Prefix-Length		.2	short
+ATTRIBUTE	3GPP2-Remote-IPv6-Forward-Octet-Count	.3	integer
+ATTRIBUTE	3GPP2-Remote-IPv6-Reverse-Octet-Count	.4	integer
+ATTRIBUTE	3GPP2-Remote-IPv6-Table-Index		.5	short
+ATTRIBUTE	3GPP2-Remote-IPv6-Reverse-Octet-Count-Overflow .6	short
 
 ATTRIBUTE	3GPP2-PrePaid-Tariff-Switching		98	tlv
-ATTRIBUTE	3GPP2-Prepaid-Quota-Identifier		98.1	integer
-ATTRIBUTE	3GPP2-Prepaid-Volume-Used-After-Tariff-Switch 98.2	integer
-ATTRIBUTE	3GPP2-Prepaid-Volume-Used-ATS-Overflow	98.3	short
-ATTRIBUTE	3GPP2-Prepaid-Tariff-Switch-Interval	98.4	integer
-ATTRIBUTE	3GPP2-Prepaid-Time-Interval-After-Tariff-Switch-Update 98.5	integer
+ATTRIBUTE	3GPP2-Prepaid-Quota-Identifier		.1	integer
+ATTRIBUTE	3GPP2-Prepaid-Volume-Used-After-Tariff-Switch .2	integer
+ATTRIBUTE	3GPP2-Prepaid-Volume-Used-ATS-Overflow	.3	short
+ATTRIBUTE	3GPP2-Prepaid-Tariff-Switch-Interval	.4	integer
+ATTRIBUTE	3GPP2-Prepaid-Time-Interval-After-Tariff-Switch-Update .5	integer
 
 ATTRIBUTE	3GPP2-MEID				116	octets	# sub tlvs?
 
 ATTRIBUTE	3GPP2-DNS-Server-IP-Address		117	tlv
-ATTRIBUTE	3GPP2-DNS-Server-Primary-IP-Address	117.1	ipaddr
-ATTRIBUTE	3GPP2-DNS-Server-Secondary-IP-Address	117.2	ipaddr
-ATTRIBUTE	3GPP2-DNS-Server-Flag			117.3	byte
-ATTRIBUTE	3GPP2-DNS-Server-Entity-Type		117.4	byte
+ATTRIBUTE	3GPP2-DNS-Server-Primary-IP-Address	.1	ipaddr
+ATTRIBUTE	3GPP2-DNS-Server-Secondary-IP-Address	.2	ipaddr
+ATTRIBUTE	3GPP2-DNS-Server-Flag			.3	byte
+ATTRIBUTE	3GPP2-DNS-Server-Entity-Type		.4	byte
 
 VALUE	3GPP2-DNS-Server-Entity-Type	HAAA			1
 VALUE	3GPP2-DNS-Server-Entity-Type	VAAA			2

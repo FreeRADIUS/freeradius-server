@@ -8,4 +8,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	SNTP-Servers			31	ipv6addr array
+ATTRIBUTE	SNTP-Servers				31	ipv6addr array

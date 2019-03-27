@@ -9,4 +9,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	PANA-Authentication-Agent	40	ipv6addr array
+ATTRIBUTE	PANA-Authentication-Agent		40	ipv6addr array

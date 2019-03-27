@@ -8,6 +8,6 @@
 #
 ##############################################################################
 
-ATTRIBUTE	4RD				97	octets		# Complex struct see RFC 7600
-ATTRIBUTE	4RD-Map-Rule			98	octets		# Complex struct see RFC 7600
+ATTRIBUTE	4RD					97	octets		# Complex struct see RFC 7600
+ATTRIBUTE	4RD-Map-Rule				98	octets		# Complex struct see RFC 7600
 ATTRIBUTE	4RD-Non-Map-Rule			99	octets		# Complex struct see RFC 7600

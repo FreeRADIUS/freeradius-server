@@ -39,8 +39,8 @@ VALUE	HP-Port-Auth-Mode-Dot1x		User-Based		2
 
 ATTRIBUTE	HP-Port-MA-Port-Mode			14	integer
 
-VALUE	HP-Port-MA-Port-Mode		User-Based			0
-VALUE	HP-Port-MA-Port-Mode		Port-Based			1
+VALUE	HP-Port-MA-Port-Mode		User-Based		0
+VALUE	HP-Port-MA-Port-Mode		Port-Based		1
 
 ATTRIBUTE	HP-Port-Bounce-Host			23	integer
 ATTRIBUTE	HP-Captive-Portal-URL			24	string

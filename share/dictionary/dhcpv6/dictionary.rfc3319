@@ -9,5 +9,5 @@
 #
 ##############################################################################
 
-ATTRIBUTE	SIP-Server-Domain-Name-List	21	octets		# Domain name list (DNS encoding)
-ATTRIBUTE	SIP-Server-Address		22	ipv6addr array
+ATTRIBUTE	SIP-Server-Domain-Name-List		21	octets		# Domain name list (DNS encoding)
+ATTRIBUTE	SIP-Server-Address			22	ipv6addr array

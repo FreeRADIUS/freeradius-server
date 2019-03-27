@@ -17,7 +17,7 @@
 ##############################################################################
 
 #
-FLAGS		internal
+FLAGS	internal
 ATTRIBUTE	DHCP-Opcode				256	byte
 
 VALUE	DHCP-Opcode			Client-Message		1

@@ -9,5 +9,5 @@
 #
 ##############################################################################
 
-ATTRIBUTE	DNS-Servers			23	ipv6addr array
-ATTRIBUTE	Domain-List			24	octets		# Domain name list (DNS encoding)
+ATTRIBUTE	DNS-Servers				23	ipv6addr array
+ATTRIBUTE	Domain-List				24	octets		# Domain name list (DNS encoding)

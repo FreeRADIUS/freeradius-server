@@ -149,11 +149,11 @@ ATTRIBUTE	DHCP-Client-FQDN			81	string
 # Relay Agent Information
 ATTRIBUTE	DHCP-Relay-Agent-Information		82	tlv
 
-ATTRIBUTE	DHCP-Agent-Circuit-Id			82.1	octets
-ATTRIBUTE	DHCP-Agent-Remote-Id			82.2	octets
+ATTRIBUTE	DHCP-Agent-Circuit-Id			.1	octets
+ATTRIBUTE	DHCP-Agent-Remote-Id			.2	octets
 
-ATTRIBUTE	DHCP-Relay-Circuit-Id			82.1	octets
-ATTRIBUTE	DHCP-Relay-Remote-Id			82.2	octets
+ATTRIBUTE	DHCP-Relay-Circuit-Id			.1	octets
+ATTRIBUTE	DHCP-Relay-Remote-Id			.2	octets
 
 # 3 is reserved and shouldn't be used for anything
 ATTRIBUTE	DHCP-Docsis-Device-Class		82.4	integer
@@ -269,14 +269,14 @@ ATTRIBUTE	DHCP-CAPWAP-AC-IPv4-Address		138	ipaddr array
 
 # RFC 5678 - Options for IEEE 802.21 Mobility Services (MoS)
 ATTRIBUTE	DHCP-MoS-IPv4-Address			139	tlv
-ATTRIBUTE	DHCP-MoS-IPv4-Address-IS		139.1	ipaddr array
-ATTRIBUTE	DHCP-MoS-IPv4-Address-CS		139.2	ipaddr array
-ATTRIBUTE	DHCP-MoS-IPv4-Address-ES		139.3	ipaddr array
+ATTRIBUTE	DHCP-MoS-IPv4-Address-IS		.1	ipaddr array
+ATTRIBUTE	DHCP-MoS-IPv4-Address-CS		.2	ipaddr array
+ATTRIBUTE	DHCP-MoS-IPv4-Address-ES		.3	ipaddr array
 
 ATTRIBUTE	DHCP-MoS-IPv4-FQDN			140	tlv
-ATTRIBUTE	DHCP-MoS-IPv4-FQDN-IS			140.1	string array
-ATTRIBUTE	DHCP-MoS-IPv4-FQDN-CS			140.2	string array
-ATTRIBUTE	DHCP-MoS-IPv4-FQDN-ES			140.3	string array
+ATTRIBUTE	DHCP-MoS-IPv4-FQDN-IS			.1	string array
+ATTRIBUTE	DHCP-MoS-IPv4-FQDN-CS			.2	string array
+ATTRIBUTE	DHCP-MoS-IPv4-FQDN-ES			.3	string array
 
 # RFC 6011 - SIP UA Configuration Service Domains
 ATTRIBUTE	DHCP-SIP-UA-Configuration-Service-Domains 141	string

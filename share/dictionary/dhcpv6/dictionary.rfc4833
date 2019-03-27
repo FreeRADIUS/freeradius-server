@@ -8,5 +8,5 @@
 #
 ##############################################################################
 
-ATTRIBUTE	New-Posix-Timezone		41	string
-ATTRIBUTE	New-TZDB-Timezone		42	string
+ATTRIBUTE	New-Posix-Timezone			41	string
+ATTRIBUTE	New-TZDB-Timezone			42	string

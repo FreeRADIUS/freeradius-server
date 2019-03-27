@@ -8,4 +8,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Client-Link-Layer		79	octets		# Complex struct see RFC 6939
+ATTRIBUTE	Client-Link-Layer			79	octets		# Complex struct see RFC 6939

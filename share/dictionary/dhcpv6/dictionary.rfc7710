@@ -8,4 +8,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Captive-Portal-URI		103	string
+ATTRIBUTE	Captive-Portal-URI			103	string

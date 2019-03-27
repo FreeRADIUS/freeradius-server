@@ -9,4 +9,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Geolocation			63	octets		# Complex struct see RFC 6225
+ATTRIBUTE	Geolocation				63	octets		# Complex struct see RFC 6225

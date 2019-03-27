@@ -8,5 +8,5 @@
 #
 ##############################################################################
 
-ATTRIBUTE	SOL-Max-RT			82	uint32
-ATTRIBUTE	INF-Max-RT			83	uint32
+ATTRIBUTE	SOL-Max-RT				82	uint32
+ATTRIBUTE	INF-Max-RT				83	uint32

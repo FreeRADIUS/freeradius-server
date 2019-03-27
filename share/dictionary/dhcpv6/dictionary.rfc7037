@@ -8,4 +8,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	RADIUS				81	octets		# Foreign protocol (RADIUS)
+ATTRIBUTE	RADIUS					81	octets		# Foreign protocol (RADIUS)

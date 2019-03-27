@@ -8,8 +8,8 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Lease-Query			44	octets		# Complex struct see RFC 5007
-ATTRIBUTE	Client-Data			45	octets		# Complex struct see RFC 5007
-ATTRIBUTE	Client-Last-Transaction-Time	46	uint32
-ATTRIBUTE	Lease-Query-Relay-Data		47	octets		# Complex struct see RFC 5007
-ATTRIBUTE	Lease-Query-Client-Link		48	ipv6addr array
+ATTRIBUTE	Lease-Query				44	octets		# Complex struct see RFC 5007
+ATTRIBUTE	Client-Data				45	octets		# Complex struct see RFC 5007
+ATTRIBUTE	Client-Last-Transaction-Time		46	uint32
+ATTRIBUTE	Lease-Query-Relay-Data			47	octets		# Complex struct see RFC 5007
+ATTRIBUTE	Lease-Query-Client-Link			48	ipv6addr array

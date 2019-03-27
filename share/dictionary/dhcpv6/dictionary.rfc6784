@@ -8,7 +8,7 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Kerberos-Principal-Name		75	octets		# Complex struct see RFC 6784
-ATTRIBUTE	Kerberos-Realm-Name		76	octets		# Complex struct see RFC 6784
-ATTRIBUTE	Kerberos-Default-Realm-Name	77	octets		# Complex struct see RFC 6784
-ATTRIBUTE	Kerberos-KDC			78	octets		# Complex struct see RFC 6784
+ATTRIBUTE	Kerberos-Principal-Name			75	octets		# Complex struct see RFC 6784
+ATTRIBUTE	Kerberos-Realm-Name			76	octets		# Complex struct see RFC 6784
+ATTRIBUTE	Kerberos-Default-Realm-Name		77	octets		# Complex struct see RFC 6784
+ATTRIBUTE	Kerberos-KDC				78	octets		# Complex struct see RFC 6784

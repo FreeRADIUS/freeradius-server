@@ -8,4 +8,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Link-Address			80	ipv6addr
+ATTRIBUTE	Link-Address				80	ipv6addr

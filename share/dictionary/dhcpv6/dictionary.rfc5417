@@ -9,4 +9,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Capwap-AC			52	ipv6addr array
+ATTRIBUTE	Capwap-AC				52	ipv6addr array

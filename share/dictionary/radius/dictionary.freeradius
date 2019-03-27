@@ -21,12 +21,12 @@ ATTRIBUTE	FreeRADIUS-Acct-Session-Start-Time	2	date
 #  FreeRADIUS v4 produces statistics in its own TLV
 #
 ATTRIBUTE	FreeRADIUS-Stats4-TLV			15	tlv
-ATTRIBUTE	FreeRADIUS-Stats4-Type			15.1	integer
-ATTRIBUTE	FreeRADIUS-Stats4-Name			15.2	string
-ATTRIBUTE	FreeRADIUS-Stats4-Number		15.3	string
-ATTRIBUTE	FreeRADIUS-Stats4-IPv4-Address		15.4	ipaddr
-ATTRIBUTE	FreeRADIUS-Stats4-IPv6-Address		15.5	ipv6addr
-ATTRIBUTE	FreeRADIUS-Stats4-Port			15.6	integer
+ATTRIBUTE	FreeRADIUS-Stats4-Type			.1	integer
+ATTRIBUTE	FreeRADIUS-Stats4-Name			.2	string
+ATTRIBUTE	FreeRADIUS-Stats4-Number		.3	string
+ATTRIBUTE	FreeRADIUS-Stats4-IPv4-Address		.4	ipaddr
+ATTRIBUTE	FreeRADIUS-Stats4-IPv6-Address		.5	ipv6addr
+ATTRIBUTE	FreeRADIUS-Stats4-Port			.6	integer
 
 VALUE	FreeRADIUS-Stats4-Type		Global			1
 VALUE	FreeRADIUS-Stats4-Type		Client			2
@@ -36,14 +36,14 @@ VALUE	FreeRADIUS-Stats4-Type		Listener		3
 #  All of the counters are in a sub-TLV
 #
 ATTRIBUTE	FreeRADIUS-Stats4-Counters		15.8	TLV
-ATTRIBUTE	FreeRADIUS-Stats4-Requests		15.8.1	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Responses		15.8.2	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Invalid-Requests	15.8.3	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Dup-Requests		15.8.4	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Malformed-Requests	15.8.5	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Packets-Dropped	15.8.6	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Bad-Authenticators	15.8.7	integer64
-ATTRIBUTE	FreeRADIUS-Stats4-Unknown-Types		15.8.8	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Requests		.1	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Responses		.2	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Invalid-Requests	.3	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Dup-Requests		.4	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Malformed-Requests	.5	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Packets-Dropped	.6	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Bad-Authenticators	.7	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Unknown-Types		.8	integer64
 
 #
 #  These count request and response packets for each type of packet.

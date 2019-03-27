@@ -9,4 +9,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Geoconf-Civic			36	octets		# Complex struct see RFC 4776
+ATTRIBUTE	Geoconf-Civic				36	octets		# Complex struct see RFC 4776

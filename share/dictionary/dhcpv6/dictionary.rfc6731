@@ -8,4 +8,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	DNS-Recursive-Name-Server	74	octets		# Complex struct see RFC 6731
+ATTRIBUTE	DNS-Recursive-Name-Server		74	octets		# Complex struct see RFC 6731

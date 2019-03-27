@@ -8,5 +8,5 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Address-Selection		84	octets		# Complex struct see RFC 7078
-ATTRIBUTE	Address-Selection-Table		85	octets		# Complex struct see RFC 7078
+ATTRIBUTE	Address-Selection			84	octets		# Complex struct see RFC 7078
+ATTRIBUTE	Address-Selection-Table			85	octets		# Complex struct see RFC 7078

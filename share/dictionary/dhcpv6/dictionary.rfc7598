@@ -12,8 +12,8 @@
 ATTRIBUTE	S46-Rule				89	octets		# Complex struct see RFC 7598
 ATTRIBUTE	S46-Border-Relay			90	ipv6addr
 ATTRIBUTE	S46-Default-Mapping-Rule		91	ipv6prefix
-ATTRIBUTE	S46-Address-Binding		92	octets		# Complex struct see RFC 7598
-ATTRIBUTE	S46-Port-Parameters		93	octets		# Complex struct see RFC 7598
-ATTRIBUTE	S46-MAP-Cont-E			94	octets		# Complex struct see RFC 7598
-ATTRIBUTE	S46-MAP-Cont-T			95	octets		# Complex struct see RFC 7598
-ATTRIBUTE	S46-Cont-LW			96	octets		# Complex struct see RFC 7598
+ATTRIBUTE	S46-Address-Binding			92	octets		# Complex struct see RFC 7598
+ATTRIBUTE	S46-Port-Parameters			93	octets		# Complex struct see RFC 7598
+ATTRIBUTE	S46-MAP-Cont-E				94	octets		# Complex struct see RFC 7598
+ATTRIBUTE	S46-MAP-Cont-T				95	octets		# Complex struct see RFC 7598
+ATTRIBUTE	S46-Cont-LW				96	octets		# Complex struct see RFC 7598

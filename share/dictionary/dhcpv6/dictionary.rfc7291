@@ -8,4 +8,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	PCP-Server			86	ipv6addr array
+ATTRIBUTE	PCP-Server				86	ipv6addr array

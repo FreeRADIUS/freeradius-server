@@ -8,4 +8,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	DHCPv4-Msg			87	octets		# Foreign protocol (DHCPv4)
+ATTRIBUTE	DHCPv4-Msg				87	octets		# Foreign protocol (DHCPv4)

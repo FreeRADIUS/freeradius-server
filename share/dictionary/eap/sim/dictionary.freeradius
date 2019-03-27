@@ -7,7 +7,7 @@
 #
 #  Internal (Non-Protocol) attributes
 #
-FLAGS		internal
+FLAGS	internal
 ATTRIBUTE	EAP-SIM-Subtype				256	integer
 
 VALUE	EAP-SIM-Subtype			SIM-Start		10

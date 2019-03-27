@@ -9,4 +9,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Client-FQDN			39	octets		# Complex struct see RFC 4704
+ATTRIBUTE	Client-FQDN				39	octets		# Complex struct see RFC 4704
