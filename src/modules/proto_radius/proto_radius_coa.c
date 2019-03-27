@@ -94,7 +94,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		/* FALL-THROUGH */
 
 	case REQUEST_RECV:
-		rcode = unlang_interpret_continue(request);
+		rcode = unlang_interpret_resume(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
 
@@ -150,7 +150,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		/* FALL-THROUGH */
 
 	case REQUEST_SEND:
-		rcode = unlang_interpret_continue(request);
+		rcode = unlang_interpret_resume(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
 

@@ -732,10 +732,10 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action,
 	DUMP_STACK;
 }
 
-/** Continue interpreting after a previous push or yield.
+/** Resume interpreting after a previous push or yield.
  *
  */
-rlm_rcode_t unlang_interpret_continue(REQUEST *request)
+rlm_rcode_t unlang_interpret_resume(REQUEST *request)
 {
 	return unlang_run(request);
 }
@@ -815,7 +815,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 		while ((sub_request = fr_heap_pop(backlog))) {
 			rlm_rcode_t srcode;
 
-			srcode = unlang_interpret_continue(sub_request);
+			srcode = unlang_interpret_resume(sub_request);
 			if (sub_request == request) {
 				rcode = srcode;
 				break;

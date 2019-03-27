@@ -415,7 +415,7 @@ static rlm_rcode_t mod_process_auth_type(void *instance, eap_session_t *eap_sess
 	rlm_eap_mschapv2_t	*inst = instance;
 	REQUEST		*request = eap_session->request;
 
-	rcode = unlang_interpret_continue(request);
+	rcode = unlang_interpret_resume(request);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_REJECT;
 
@@ -730,7 +730,7 @@ packet_ready:
 		rcode = process_authenticate(inst->auth_type->value->vb_uint32, request);
 	} else {
 		unlang_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME);
-		rcode = unlang_interpret_continue(request);
+		rcode = unlang_interpret_resume(request);
 
 		/*
 		 *	If it's yielding, set up the process function

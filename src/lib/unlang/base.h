@@ -113,7 +113,7 @@ bool		unlang_section(CONF_SECTION *cs);
 
 void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action, bool top_frame);
 
-rlm_rcode_t	unlang_interpret_continue(REQUEST *request);
+rlm_rcode_t	unlang_interpret_resume(REQUEST *request);
 
 rlm_rcode_t	unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
 

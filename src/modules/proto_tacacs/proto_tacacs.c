@@ -277,7 +277,7 @@ static void tacacs_running(REQUEST *request, fr_state_signal_t action)
 		/* FALL-THROUGH */
 
 	case REQUEST_RECV:
-		rcode = unlang_interpret_continue(request);
+		rcode = unlang_interpret_resume(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) {
 stop_processing:
@@ -376,7 +376,7 @@ stop_processing:
 		/* FALL-THROUGH */
 
 	case REQUEST_PROCESS:
-		rcode = unlang_interpret_continue(request);
+		rcode = unlang_interpret_resume(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
 
@@ -426,7 +426,7 @@ setup_send:
 		/* FALL-THROUGH */
 
 	case REQUEST_SEND:
-		rcode = unlang_interpret_continue(request);
+		rcode = unlang_interpret_resume(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
 

@@ -466,7 +466,7 @@ static fr_io_final_t unlang_process_continue(UNUSED void const *instance, REQUES
 		return FR_IO_DONE;
 	}
 
-	rcode = unlang_interpret_continue(request);
+	rcode = unlang_interpret_resume(request);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
 
