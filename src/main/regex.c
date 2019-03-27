@@ -63,10 +63,10 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value, s
 	 */
 	old_sc = request_data_get(request, request, REQUEST_DATA_REGEX);
 	if (old_sc) {
-		DEBUG4("Clearing %zu matches", old_sc->nmatch);
+		DEBUG4("Clearing %zu old matches", old_sc->nmatch);
 		talloc_free(old_sc);
 	} else {
-		DEBUG4("No matches");
+		DEBUG4("No old matches");
 	}
 
 	if (nmatch == 0) return;
