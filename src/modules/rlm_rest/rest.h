@@ -130,7 +130,10 @@ typedef struct {
 	char const		*data;		//!< Custom body data (optional).
 
 	char const		*auth_str;	//!< The string version of the Auth-Type.
+	bool			auth_str_is_set;	//!< Whether a value was provided for auth_str.
+
 	http_auth_type_t	auth;		//!< HTTP auth type.
+
 	bool			require_auth;	//!< Whether HTTP-Auth is required or not.
 	char const		*username;	//!< Username used for HTTP-Auth
 	char const		*password;	//!< Password used for HTTP-Auth
