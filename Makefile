@@ -365,17 +365,9 @@ whitespace:
 	@for x in $$(git ls-files raddb/ src/); do unexpand $$x > $$x.bak; cp $$x.bak $$x; rm -f $$x.bak;done
 	@perl -p -i -e 'trim' $$(git ls-files src/)
 
-
 #
-#  Include crossbuild targets, to test building on lots of
-#  different OSes. Uses Docker.
+#  Include the crossbuild make file only if we're cross building
 #
-ifneq ($(shell which docker 2> /dev/null),)
+ifneq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 include scripts/docker/crossbuild/crossbuild.mk
-else
-.PHONY: crossbuild crossbuild.help
-crossbuild:
-	@echo crossbuild requires Docker to be installed
-
-crossbuild.help: crossbuild
 endif

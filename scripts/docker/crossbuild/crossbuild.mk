@@ -1,6 +1,13 @@
 #
-# Makefile for cross-building on many different Docker images
+#  Include crossbuild targets, to test building on lots of
+#  different OSes. Uses Docker.
 #
+ifneq ($(shell which docker 2> /dev/null),)
+else
+.PHONY: crossbuild crossbuild.help
+crossbuild crossbuild.help :
+	@echo crossbuild requires Docker to be installed
+else
 
 #
 #  Short list of common builds
@@ -169,3 +176,6 @@ endef
 $(foreach IMAGE,$(CB_IMAGES),\
   $(eval $(call CROSSBUILD_IMAGE_RULE,$(IMAGE))))
 
+
+# if docker is defined
+endif
