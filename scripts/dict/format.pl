@@ -259,7 +259,7 @@ while (@ARGV) {
 		$tabs = " ";
 	    }
 
-	    push @output, "FLAGS\t$name$stuff\n";
+	    push @output, "FLAGS\t$name$2\n";
 	    next;
 	}
 
