@@ -51,6 +51,8 @@ endif
 
 LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users)
 
+BUILD_RADDB := $(strip $(foreach x,install clean,$(findstring $(x),$(MAKECMDGOALS))))
+ifneq "$(BUILD_RADDB)" ""
 RADDB_DIRS :=		certs mods-available mods-enabled policy.d \
 			sites-available sites-enabled \
 			$(patsubst raddb/%,%,$(shell find raddb/mods-config -type d -print))
@@ -68,6 +70,7 @@ INSTALL_FILES := 	$(wildcard raddb/sites-available/* raddb/mods-available/*) \
 # Re-write local files to installed files, filtering out editor backups
 INSTALL_RADDB :=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\
 			$(filter-out %~,$(INSTALL_FILES)))
+endif
 
 all: build.raddb
 
@@ -92,6 +95,7 @@ raddb/sites-enabled/%: raddb/sites-available/% | raddb/sites-enabled
 	${Q}echo "LN-S $@"
 	${Q}cd $(dir $@) && ln -sf ../sites-available/$(notdir $@)
 
+ifneq "$(BUILD_RADDB)" ""
 # Installation rules for directories.  Note permissions are 750!
 $(INSTALL_RADDB_DIRS):
 	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)%,raddb%,$@)
@@ -130,6 +134,7 @@ $(R)$(raddbdir)/%: | raddb/%
 $(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
 	${Q}[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	${Q}[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
+endif
 
 ifeq ("$(PACKAGE)","")
 ifeq ("$(TEST_CERTS)","yes")
