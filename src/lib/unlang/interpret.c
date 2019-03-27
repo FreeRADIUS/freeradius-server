@@ -34,7 +34,7 @@ RCSID("$Id$")
 
 static FR_NAME_NUMBER unlang_action_table[] = {
 	{ "calculate-result",	UNLANG_ACTION_CALCULATE_RESULT },
-	{ "continue",		UNLANG_ACTION_CONTINUE },
+	{ "next",		UNLANG_ACTION_EXECUTE_NEXT },
 	{ "pushed-child",	UNLANG_ACTION_PUSHED_CHILD },
 	{ "break", 		UNLANG_ACTION_BREAK },
 	{ "yield",		UNLANG_ACTION_YIELD },
@@ -170,7 +170,7 @@ void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, b
 #ifndef NDEBUG
 	if (DEBUG_ENABLED5) DEBUG("unlang_push called with instruction %s - args %s %s",
 				  program ? program->debug_name : "<none>",
-				  do_next_sibling ? "UNLANG_NEXT_CONTINUE" : "UNLANG_NEXT_STOP",
+				  do_next_sibling ? "UNLANG_NEXT_SUBLING" : "UNLANG_NEXT_STOP",
 				  top_frame ? "UNLANG_TOP_FRAME" : "UNLANG_SUB_FRAME");
 #endif
 
@@ -231,7 +231,7 @@ static inline void unlang_pop(unlang_stack_t *stack)
  * @param[in,out] result	The current section result.
  * @param[in,out] priority	The current section priority.
  * @return
- *	- UNLANG_FRAME_ACTION_CONTINUE	evaluate more instructions.
+ *	- UNLANG_FRAME_ACTION_NEXT	evaluate more instructions.
  *	- UNLANG_FRAME_ACTION_POP	the final result has been calculated for this frame.
  */
 static inline unlang_frame_action_t unlang_calculate_result(REQUEST *request, unlang_stack_frame_t *frame,
@@ -250,7 +250,7 @@ static inline unlang_frame_action_t unlang_calculate_result(REQUEST *request, un
 	/*
 	 *	Don't set action or priority if we don't have one.
 	 */
-	if (*result == RLM_MODULE_UNKNOWN) return UNLANG_FRAME_ACTION_CONTINUE;
+	if (*result == RLM_MODULE_UNKNOWN) return UNLANG_FRAME_ACTION_NEXT;
 
 	/*
 	 *	The child's action says return.  Do so.
@@ -322,7 +322,7 @@ static inline unlang_frame_action_t unlang_calculate_result(REQUEST *request, un
 		return UNLANG_FRAME_ACTION_POP;
 	}
 
-	return frame->next ? UNLANG_FRAME_ACTION_CONTINUE : UNLANG_FRAME_ACTION_POP;
+	return frame->next ? UNLANG_FRAME_ACTION_NEXT : UNLANG_FRAME_ACTION_POP;
 }
 
 /** Evaluates all the unlang nodes in a section
@@ -332,7 +332,7 @@ static inline unlang_frame_action_t unlang_calculate_result(REQUEST *request, un
  * @param[in,out] result	The current section result.
  * @param[in,out] priority	The current section priority.
  * @return
- *	- UNLANG_FRAME_ACTION_CONTINUE	evaluate more instructions in the current stack frame
+ *	- UNLANG_FRAME_ACTION_NEXT	evaluate more instructions in the current stack frame
  *					which may not be the same frame as when this function
  *					was called.
  *	- UNLANG_FRAME_ACTION_POP	the final result has been calculated for this frame.
@@ -410,7 +410,7 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 		case UNLANG_ACTION_PUSHED_CHILD:
 			rad_assert(&stack->frame[stack->depth] > frame);
 			*result = frame->result;
-			return UNLANG_FRAME_ACTION_CONTINUE;
+			return UNLANG_FRAME_ACTION_NEXT;
 
 		/*
 		 *	We're in a looping construct and need to stop
@@ -493,8 +493,8 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 		/*
 		 *	Execute the next instruction in this frame
 		 */
-		case UNLANG_ACTION_CONTINUE:
-			if ((action == UNLANG_ACTION_CONTINUE) && unlang_ops[instruction->type].debug_braces) {
+		case UNLANG_ACTION_EXECUTE_NEXT:
+			if ((action == UNLANG_ACTION_EXECUTE_NEXT) && unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("}");
 			}
@@ -519,7 +519,7 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 rlm_rcode_t unlang_run(REQUEST *request)
 {
 	int			priority;
-	unlang_frame_action_t	fa = UNLANG_FRAME_ACTION_CONTINUE;
+	unlang_frame_action_t	fa = UNLANG_FRAME_ACTION_NEXT;
 
 	/*
 	 *	We don't have a return code yet.
@@ -538,7 +538,7 @@ rlm_rcode_t unlang_run(REQUEST *request)
 
 	for (;;) {
 		switch (fa) {
-		case UNLANG_FRAME_ACTION_CONTINUE:	/* Evaluate the current frame */
+		case UNLANG_FRAME_ACTION_NEXT:	/* Evaluate the current frame */
 			priority = -1;
 
 			rad_assert(stack->depth > 0);
@@ -578,7 +578,7 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			 *	back on up the stack.
 			 */
 			if (frame->repeat) {
-				fa = UNLANG_FRAME_ACTION_CONTINUE;
+				fa = UNLANG_FRAME_ACTION_NEXT;
 				continue;
 			}
 
@@ -612,7 +612,7 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			 *	then we advance the instruction else we
 			 *	end up executing the same code over and over...
 			 */
-			if (fa == UNLANG_FRAME_ACTION_CONTINUE) {
+			if (fa == UNLANG_FRAME_ACTION_NEXT) {
 				RDEBUG4("** [%i] %s - continuing after subsection with (%s %d)",
 					stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, stack->result, "<invalid>"),
@@ -725,7 +725,7 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action,
 	 *	no action.
 	 */
 	if (top_frame) unlang_push(stack, NULL, action, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
-	if (instruction) unlang_push(stack, instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
+	if (instruction) unlang_push(stack, instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
 

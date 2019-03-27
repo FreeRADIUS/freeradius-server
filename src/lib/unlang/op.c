@@ -440,10 +440,10 @@ static unlang_action_t unlang_group(REQUEST *request,
 	 */
 	if (!g->children) {
 		RDEBUG2("} # %s ... <ignoring empty subsection>", instruction->debug_name);
-		return UNLANG_ACTION_CONTINUE;
+		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
-	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
+	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
@@ -764,7 +764,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	/*
 	 *	And then call the children to process the answer.
 	 */
-	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
+	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
@@ -785,7 +785,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	/*
 	 *	Allocate the child request.
 	 */
-	child = unlang_child_alloc(request, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_DETACHABLE);
+	child = unlang_child_alloc(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_DETACHABLE);
 	if (!child) {
 		*presult = RLM_MODULE_FAIL;
 		*priority = instruction->actions[*presult];
@@ -1407,7 +1407,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
+	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 	frame->repeat = true;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -1550,7 +1550,7 @@ do_null_case:
 	 *	Nothing found.  Just continue, and ignore the "switch"
 	 *	statement.
 	 */
-	if (!found) return UNLANG_ACTION_CONTINUE;
+	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
 	unlang_push(stack, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -1592,7 +1592,7 @@ static unlang_action_t unlang_if(REQUEST *request,
 
 		if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
 
-		return UNLANG_ACTION_CONTINUE;
+		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
 	/*

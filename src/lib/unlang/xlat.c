@@ -383,7 +383,7 @@ static unlang_action_t unlang_xlat_inline(REQUEST *request,
 		RDEBUG2("`%s`", mx->xlat_name);
 		radius_exec_program(request, NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
 				    false, true, EXEC_TIMEOUT);
-		return UNLANG_ACTION_CONTINUE;
+		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 }
 

@@ -87,7 +87,7 @@ typedef enum {
 typedef enum {
 	UNLANG_FRAME_ACTION_POP = 1,		//!< Pop the current frame, and check the next one further
 						///< up in the stack for what to do next.
-	UNLANG_FRAME_ACTION_CONTINUE,		//!< Process the next instruction at this level.
+	UNLANG_FRAME_ACTION_NEXT,		//!< Process the next instruction at this level.
 	UNLANG_FRAME_ACTION_YIELD		//!< Temporarily return control back to the caller on the C
 						///< stack.
 } unlang_frame_action_t;
@@ -100,8 +100,8 @@ typedef enum {
 	UNLANG_GROUP_TYPE_MAX			//!< Number of group types.
 } unlang_group_type_t;
 
-#define UNLANG_NEXT_STOP (false)
-#define UNLANG_NEXT_CONTINUE (true)
+#define UNLANG_NEXT_STOP	(false)
+#define UNLANG_NEXT_SIBLING	(true)
 
 #define UNLANG_DETACHABLE (true)
 #define UNLANG_NORMAL_CHILD (false)
@@ -121,7 +121,7 @@ typedef struct unlang_s unlang_t;
  */
 struct unlang_s {
 	unlang_t		*parent;	//!< Previous node.
-	unlang_t		*next;		//!< Next node (executed on #UNLANG_ACTION_CONTINUE et al).
+	unlang_t		*next;		//!< Next node (executed on #UNLANG_ACTION_EXECUTE_NEXT et al).
 	char const		*name;		//!< Unknown...
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.

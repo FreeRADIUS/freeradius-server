@@ -33,7 +33,7 @@
  */
 typedef enum {
 	UNLANG_ACTION_CALCULATE_RESULT = 1,	//!< Calculate a new section #rlm_rcode_t value.
-	UNLANG_ACTION_CONTINUE,			//!< Execute the next #unlang_t.
+	UNLANG_ACTION_EXECUTE_NEXT,    		//!< Execute the next #unlang_t.
 	UNLANG_ACTION_PUSHED_CHILD,		//!< #unlang_t pushed a new child onto the stack,
 						//!< execute it instead of continuing.
 	UNLANG_ACTION_BREAK,			//!< Break out of the current group.
