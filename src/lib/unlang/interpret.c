@@ -170,7 +170,7 @@ void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, b
 #ifndef NDEBUG
 	if (DEBUG_ENABLED5) DEBUG("unlang_push called with instruction %s - args %s %s",
 				  program ? program->debug_name : "<none>",
-				  do_next_sibling ? "UNLANG_NEXT_SUBLING" : "UNLANG_NEXT_STOP",
+				  do_next_sibling ? "UNLANG_NEXT_SIBLING" : "UNLANG_NEXT_STOP",
 				  top_frame ? "UNLANG_TOP_FRAME" : "UNLANG_SUB_FRAME");
 #endif
 

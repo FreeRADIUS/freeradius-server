@@ -447,11 +447,11 @@ static unlang_action_t unlang_group(REQUEST *request,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Continue after creating a subrequest.
+/** Run the interpreter after creating a subrequest.
  *
  *  Just run some "unlang", but don't do anything else.
  */
-static fr_io_final_t unlang_process_continue(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
+static fr_io_final_t unlang_process_interpret(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
 {
 	rlm_rcode_t rcode;
 
@@ -526,7 +526,7 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 	 *	bare-bones function which just runs on section of
 	 *	"unlang", and doesn't send replies or anything else.
 	 */
-	child->async->process = unlang_process_continue;
+	child->async->process = unlang_process_interpret;
 
 	/*
 	 *	Note that we don't do time tracking on the child.
@@ -705,7 +705,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 *	able to access request->async->listener, and muck with
 	 *	it's statistics, see it's configuration, etc.
 	 */
-	rad_assert(request->async->process == unlang_process_continue);
+	rad_assert(request->async->process == unlang_process_interpret);
 
 	/*
 	 *	@todo - We probably want to just remove the 'stack'
@@ -754,7 +754,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 *	@todo - save these in a resume state somewhere...
 	 */
 	request->log.unlang_indent = indent;
-	request->async->process = unlang_process_continue;
+	request->async->process = unlang_process_interpret;
 	talloc_free(request->stack);
 	request->stack = current;
 	request->server_cs = server_cs;
