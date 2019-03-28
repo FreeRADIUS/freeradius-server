@@ -1966,52 +1966,54 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 *	Set user based authentication parameters
 	 */
 	if (auth) {
+		TALLOC_CTX *cred_ctx = NULL;
+
+#define SET_AUTH_OPTION(_x, _y)\
+do {\
+	if ((ret = curl_easy_setopt(candle, _x, _y)) != CURLE_OK) {\
+		option = STRINGIFY(_x);\
+		REDEBUG("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret); \
+		talloc_free(cred_ctx);\
+		goto error;\
+	}\
+} while (0)
+
+		if (!username || !password) cred_ctx = talloc_init("cred_ctx");
+
+		if (!username) {
+			char *tmp = NULL;
+			if (xlat_aeval(cred_ctx, &tmp, request, section->username, NULL, NULL) < 0) {
+				REDEBUG("Failed expanding username");
+				talloc_free(cred_ctx);
+				goto error;
+			}
+			username = tmp;
+		}
+
+		if (!password) {
+			char *tmp = NULL;
+			if (xlat_aeval(cred_ctx, &tmp, request, section->password, NULL, NULL) < 0) {
+				REDEBUG("Failed expanding password");
+				talloc_free(cred_ctx);
+				goto error;
+			}
+			password = tmp;
+		}
+
+		RDEBUG3("Configuring HTTP auth type %s, user \"%pV\", password \"%pV\"",
+			fr_int2str(http_auth_table, auth, "<INVALID>"),
+			fr_box_strvalue_buffer(username), fr_box_strvalue_buffer(password));
+
 		if ((auth >= REST_HTTP_AUTH_BASIC) &&
 		    (auth <= REST_HTTP_AUTH_ANY_SAFE)) {
-			SET_OPTION(CURLOPT_HTTPAUTH, http_curl_auth[auth]);
-
-			if (username) {
-				SET_OPTION(CURLOPT_USERNAME, username);
-			} else if (section->username) {
-				if (xlat_eval(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
-					REDEBUG("Failed expanding username");
-					goto error;
-				}
-				SET_OPTION(CURLOPT_USERNAME, buffer);
-			}
-
-			if (password) {
-				SET_OPTION(CURLOPT_PASSWORD, password);
-			} else if (section->password) {
-				if (xlat_eval(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
-					REDEBUG("Failed expanding password");
-					goto error;
-				}
-				SET_OPTION(CURLOPT_PASSWORD, buffer);
-			}
-#ifdef CURLOPT_TLSAUTH_USERNAME
+			SET_AUTH_OPTION(CURLOPT_HTTPAUTH, http_curl_auth[auth]);
+			SET_AUTH_OPTION(CURLOPT_USERNAME, username);
+			SET_AUTH_OPTION(CURLOPT_PASSWORD, password);
+#if CURL_AT_LEAST_VERSION(7,21,4)
 		} else if (auth == REST_HTTP_AUTH_TLS_SRP) {
-			SET_OPTION(CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
-
-			if (username) {
-				SET_OPTION(CURLOPT_TLSAUTH_USERNAME, username);
-			} else if (section->username) {
-				if (xlat_eval(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
-					option = STRINGIFY(CURLOPT_TLSAUTH_USERNAME);
-					goto error;
-				}
-				SET_OPTION(CURLOPT_TLSAUTH_USERNAME, buffer);
-			}
-
-			if (password) {
-				SET_OPTION(CURLOPT_TLSAUTH_PASSWORD, password);
-			} else if (section->password) {
-				if (xlat_eval(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
-					option = STRINGIFY(CURLOPT_TLSAUTH_PASSWORD);
-					goto error;
-				}
-				SET_OPTION(CURLOPT_TLSAUTH_PASSWORD, buffer);
-			}
+			SET_AUTH_OPTION(CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
+			SET_AUTH_OPTION(CURLOPT_TLSAUTH_USERNAME, username);
+			SET_AUTH_OPTION(CURLOPT_TLSAUTH_PASSWORD, password);
 #endif
 		}
 	}
