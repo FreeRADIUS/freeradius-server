@@ -2,8 +2,7 @@
 #  Include crossbuild targets, to test building on lots of
 #  different OSes. Uses Docker.
 #
-ifneq ($(shell which docker 2> /dev/null),)
-else
+ifeq ($(shell which docker 2> /dev/null),)
 .PHONY: crossbuild crossbuild.help
 crossbuild crossbuild.help :
 	@echo crossbuild requires Docker to be installed
