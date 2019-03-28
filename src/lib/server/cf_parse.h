@@ -474,6 +474,9 @@ int		_cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char con
 /*
  *	Generic parsing callback functions
  */
+int		cf_table_parse_int(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			 	   CONF_ITEM *ci, CONF_PARSER const *rule);
+
 int		cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 				      CONF_ITEM *ci, CONF_PARSER const *rule);
 

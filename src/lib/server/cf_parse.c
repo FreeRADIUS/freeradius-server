@@ -1538,6 +1538,24 @@ int _cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char cons
 	return 0;
 }
 
+/** Generic function for parsing conf pair values as int
+ *
+ * @note This should be used for enum types as c99 6.4.4.3 states that the enumeration
+ * constants are of type int.
+ *
+ */
+int cf_table_parse_int(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+		       CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	int num;
+
+	if (cf_pair_in_table(&num, rule->uctx, cf_item_to_pair(ci)) < 0) return -1;
+
+	*((int *)out) = num;
+
+	return 0;
+}
+
 /** Generic function for parsing conf pair values as int32_t (FR_TYPE_INT32)
  *
  */
