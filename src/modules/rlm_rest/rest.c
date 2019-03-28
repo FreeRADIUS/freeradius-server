@@ -1965,7 +1965,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	/*
 	 *	Set user based authentication parameters
 	 */
-	if (auth) {
+	if (auth > REST_HTTP_AUTH_NONE) {
 		TALLOC_CTX *cred_ctx = NULL;
 
 #define SET_AUTH_OPTION(_x, _y)\

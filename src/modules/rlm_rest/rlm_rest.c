@@ -86,7 +86,7 @@ static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, rlm_rest_section_t, auth),
 	  .func = cf_table_parse_int, .uctx = http_auth_table, .dflt = "none" },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, username) },
-	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, password) },
+	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET | FR_TYPE_XLAT, rlm_rest_section_t, password) },
 	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
@@ -869,7 +869,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	/*
 	 *	Enable Basic-Auth automatically if username/password were passed
 	 */
-	if (!config->auth_is_set && config->username && config->password && http_curl_auth[config->auth]) {
+	if (!config->auth_is_set && config->username && config->password && http_curl_auth[REST_HTTP_AUTH_BASIC]) {
 		cf_log_debug(cs, "Setting auth = 'basic' as credentials were provided, but no auth method "
 			     "was set");
 		config->auth = REST_HTTP_AUTH_BASIC;
