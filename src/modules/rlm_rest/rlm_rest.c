@@ -83,7 +83,8 @@ static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("force_to", FR_TYPE_STRING, rlm_rest_section_t, force_to_str) },
 
 	/* User authentication */
-	{ FR_CONF_OFFSET("auth", FR_TYPE_STRING, rlm_rest_section_t, auth_str), .dflt = "none" },
+	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, rlm_rest_section_t, auth),
+	  .func = cf_table_parse_int, .uctx = http_auth_table, .dflt = "none" },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, username) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, password) },
 	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
@@ -102,14 +103,15 @@ static const CONF_PARSER xlat_config[] = {
 	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy) },
 
 	/* User authentication */
-	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_STRING, rlm_rest_section_t, auth_str), .dflt = "none" },
+	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, rlm_rest_section_t, auth),
+	  .func = cf_table_parse_int, .uctx = http_auth_table, .dflt = "none" },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, username) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, password) },
 	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, rlm_rest_section_t, timeout_tv), .dflt = "4.0" },
-	{ FR_CONF_OFFSET("chunk", FR_TYPE_UINT32, rlm_rest_section_t, chunk), .dflt = "0" },
+	{ FR_CONF_OFFSET("chunk", FR_TYPE_SIZE, rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
 	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
@@ -119,8 +121,8 @@ static const CONF_PARSER xlat_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_DEPRECATED("connect_timeout", FR_TYPE_TIMEVAL, rlm_rest_t, connect_timeout) },
 	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, rlm_rest_t, connect_proxy) },
-	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_INT32, rlm_rest_t, http_negotiation),
-	  .func = cf_table_parse_int32, .uctx = http_negotiation_table, .dflt = "default" },
+	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_VOID, rlm_rest_t, http_negotiation),
+	  .func = cf_table_parse_int, .uctx = http_negotiation_table, .dflt = "default" },
 
 #ifdef CURLPIPE_MULTIPLEX
 	{ FR_CONF_OFFSET("multiplex", FR_TYPE_BOOL, rlm_rest_t, multiplex), .dflt = "yes" },
@@ -857,22 +859,19 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	/*
 	 *  Convert HTTP method auth and body type strings into their integer equivalents.
 	 */
-	if (config->auth_str_is_set) {
-		config->auth = fr_str2int(http_auth_table, config->auth_str, HTTP_AUTH_UNKNOWN);
-		if (config->auth == HTTP_AUTH_UNKNOWN) {
-			cf_log_err(cs, "Unknown HTTP auth type '%s'", config->auth_str);
+	if ((config->auth != HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
+		cf_log_err(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
+			   "configuration, then recompile this module",
+			   fr_int2str(http_auth_table, config->auth, "<INVALID>"));
 
-			return -1;
-		} else if ((config->auth != HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
-			cf_log_err(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
-				   "configuration, then recompile this module", config->auth_str);
-
-			return -1;
-		}
+		return -1;
+	}
 	/*
 	 *	Enable Basic-Auth automatically if username/password were passed
 	 */
-	} else if (config->username && config->password && http_curl_auth[config->auth]) {
+	if (!config->auth_is_set && config->username && config->password && http_curl_auth[config->auth]) {
+		cf_log_debug(cs, "Setting auth = 'basic' as credentials were provided, but no auth method "
+			     "was set");
 		config->auth = HTTP_AUTH_BASIC;
 	}
 	config->method = fr_str2int(http_method_table, config->method_str, HTTP_METHOD_CUSTOM);

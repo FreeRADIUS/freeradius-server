@@ -129,8 +129,7 @@ typedef struct {
 
 	char const		*data;		//!< Custom body data (optional).
 
-	char const		*auth_str;	//!< The string version of the Auth-Type.
-	bool			auth_str_is_set;	//!< Whether a value was provided for auth_str.
+	bool			auth_is_set;	//!< Whether a value was provided for auth_str.
 
 	http_auth_type_t	auth;		//!< HTTP auth type.
 
@@ -161,7 +160,7 @@ typedef struct {
 
 	char const		*connect_proxy;	//!< Send request via this proxy.
 
-	int32_t			http_negotiation; //!< What HTTP version to negotiate, and how to
+	int			http_negotiation; //!< What HTTP version to negotiate, and how to
 						///< negotiate it.  One or the CURL_HTTP_VERSION_ macros.
 
 	bool			multiplex;	//!< Whether to perform multiple requests using a single
