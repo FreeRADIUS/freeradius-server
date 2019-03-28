@@ -1,0 +1,7 @@
+subrequest {
+	update parent.control {
+		&Cleartext-Password := 'hello'
+	}
+
+	success
+}
