@@ -785,7 +785,6 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 #undef ID_j
 #undef ID_k
 		if (fd >= 0) break;
-		break;
 	}
 
 	/*
