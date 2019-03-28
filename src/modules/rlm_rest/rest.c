@@ -46,24 +46,24 @@ RCSID("$Id$")
  *
  * @see http_body_type_t
  */
-const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
-	HTTP_BODY_UNKNOWN,		// HTTP_BODY_UNKNOWN
-	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_UNSUPPORTED
-	HTTP_BODY_UNSUPPORTED,  	// HTTP_BODY_UNAVAILABLE
-	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_INVALID
-	HTTP_BODY_NONE,			// HTTP_BODY_NONE
-	HTTP_BODY_CUSTOM_XLAT,		// HTTP_BODY_CUSTOM_XLAT
-	HTTP_BODY_CUSTOM_LITERAL,	// HTTP_BODY_CUSTOM_LITERAL
-	HTTP_BODY_POST,			// HTTP_BODY_POST
+const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
+	REST_HTTP_BODY_UNKNOWN,		// REST_HTTP_BODY_UNKNOWN
+	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_UNSUPPORTED
+	REST_HTTP_BODY_UNSUPPORTED,  	// REST_HTTP_BODY_UNAVAILABLE
+	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_INVALID
+	REST_HTTP_BODY_NONE,			// REST_HTTP_BODY_NONE
+	REST_HTTP_BODY_CUSTOM_XLAT,		// REST_HTTP_BODY_CUSTOM_XLAT
+	REST_HTTP_BODY_CUSTOM_LITERAL,	// REST_HTTP_BODY_CUSTOM_LITERAL
+	REST_HTTP_BODY_POST,			// REST_HTTP_BODY_POST
 #ifdef HAVE_JSON
-	HTTP_BODY_JSON,			// HTTP_BODY_JSON
+	REST_HTTP_BODY_JSON,			// REST_HTTP_BODY_JSON
 #else
-	HTTP_BODY_UNAVAILABLE,
+	REST_HTTP_BODY_UNAVAILABLE,
 #endif
-	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_XML
-	HTTP_BODY_UNSUPPORTED,		// HTTP_BODY_YAML
-	HTTP_BODY_INVALID,		// HTTP_BODY_HTML
-	HTTP_BODY_PLAIN			// HTTP_BODY_PLAIN
+	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_XML
+	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_YAML
+	REST_HTTP_BODY_INVALID,		// REST_HTTP_BODY_HTML
+	REST_HTTP_BODY_PLAIN			// REST_HTTP_BODY_PLAIN
 };
 
 /*
@@ -107,18 +107,18 @@ do {\
 	}\
 } while (0)
 
-const unsigned long http_curl_auth[HTTP_AUTH_NUM_ENTRIES] = {
-	[HTTP_AUTH_UNKNOWN]		= 0,
-	[HTTP_AUTH_NONE]		= 0,
-	[HTTP_AUTH_TLS_SRP]		= CURLOPT_TLSAUTH_SRP,
-	[HTTP_AUTH_BASIC]		= CURLAUTH_BASIC,
-	[HTTP_AUTH_DIGEST]		= CURLAUTH_DIGEST,
-	[HTTP_AUTH_DIGEST_IE]		= CURLAUTH_DIGEST_IE,
-	[HTTP_AUTH_GSSNEGOTIATE]	= CURLAUTH_GSSNEGOTIATE,
-	[HTTP_AUTH_NTLM]		= CURLAUTH_NTLM,
-	[HTTP_AUTH_NTLM_WB]		= CURLAUTH_NTLM_WB,
-	[HTTP_AUTH_ANY]			= CURLAUTH_ANY,
-	[HTTP_AUTH_ANY_SAFE]		= CURLAUTH_ANYSAFE
+const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES] = {
+	[REST_HTTP_AUTH_UNKNOWN]		= 0,
+	[REST_HTTP_AUTH_NONE]			= 0,
+	[REST_HTTP_AUTH_TLS_SRP]		= CURLOPT_TLSAUTH_SRP,
+	[REST_HTTP_AUTH_BASIC]			= CURLAUTH_BASIC,
+	[REST_HTTP_AUTH_DIGEST]			= CURLAUTH_DIGEST,
+	[REST_HTTP_AUTH_DIGEST_IE]		= CURLAUTH_DIGEST_IE,
+	[REST_HTTP_AUTH_GSSNEGOTIATE]		= CURLAUTH_GSSNEGOTIATE,
+	[REST_HTTP_AUTH_NTLM]			= CURLAUTH_NTLM,
+	[REST_HTTP_AUTH_NTLM_WB]		= CURLAUTH_NTLM_WB,
+	[REST_HTTP_AUTH_ANY]			= CURLAUTH_ANY,
+	[REST_HTTP_AUTH_ANY_SAFE]		= CURLAUTH_ANYSAFE
 };
 
 
@@ -135,12 +135,12 @@ const unsigned long http_curl_auth[HTTP_AUTH_NUM_ENTRIES] = {
  * @see fr_int2str
  */
 const FR_NAME_NUMBER http_method_table[] = {
-	{ "UNKNOWN",				HTTP_METHOD_UNKNOWN	},
-	{ "GET",				HTTP_METHOD_GET		},
-	{ "POST",				HTTP_METHOD_POST	},
-	{ "PUT",				HTTP_METHOD_PUT		},
-	{ "PATCH",				HTTP_METHOD_PATCH	},
-	{ "DELETE",				HTTP_METHOD_DELETE	},
+	{ "UNKNOWN",				REST_HTTP_METHOD_UNKNOWN	},
+	{ "GET",				REST_HTTP_METHOD_GET		},
+	{ "POST",				REST_HTTP_METHOD_POST		},
+	{ "PUT",				REST_HTTP_METHOD_PUT		},
+	{ "PATCH",				REST_HTTP_METHOD_PATCH		},
+	{ "DELETE",				REST_HTTP_METHOD_DELETE		},
 
 	{  NULL , -1 }
 };
@@ -155,32 +155,32 @@ const FR_NAME_NUMBER http_method_table[] = {
  * @see fr_int2str
  */
 const FR_NAME_NUMBER http_body_type_table[] = {
-	{ "unknown",				HTTP_BODY_UNKNOWN	},
-	{ "unsupported",			HTTP_BODY_UNSUPPORTED	},
-	{ "unavailable",			HTTP_BODY_UNAVAILABLE	},
-	{ "invalid",				HTTP_BODY_INVALID	},
-	{ "none",				HTTP_BODY_NONE		},
-	{ "post",				HTTP_BODY_POST		},
-	{ "json",				HTTP_BODY_JSON		},
-	{ "xml",				HTTP_BODY_XML		},
-	{ "yaml",				HTTP_BODY_YAML		},
-	{ "html",				HTTP_BODY_HTML		},
-	{ "plain",				HTTP_BODY_PLAIN		},
+	{ "unknown",				REST_HTTP_BODY_UNKNOWN		},
+	{ "unsupported",			REST_HTTP_BODY_UNSUPPORTED	},
+	{ "unavailable",			REST_HTTP_BODY_UNAVAILABLE	},
+	{ "invalid",				REST_HTTP_BODY_INVALID		},
+	{ "none",				REST_HTTP_BODY_NONE		},
+	{ "post",				REST_HTTP_BODY_POST		},
+	{ "json",				REST_HTTP_BODY_JSON		},
+	{ "xml",				REST_HTTP_BODY_XML		},
+	{ "yaml",				REST_HTTP_BODY_YAML		},
+	{ "html",				REST_HTTP_BODY_HTML		},
+	{ "plain",				REST_HTTP_BODY_PLAIN		},
 
 	{  NULL , -1 }
 };
 
 const FR_NAME_NUMBER http_auth_table[] = {
-	{ "none",				HTTP_AUTH_NONE		},
-	{ "srp",				HTTP_AUTH_TLS_SRP	},
-	{ "basic",				HTTP_AUTH_BASIC		},
-	{ "digest",				HTTP_AUTH_DIGEST	},
-	{ "digest-ie",				HTTP_AUTH_DIGEST_IE	},
-	{ "gss-negotiate",			HTTP_AUTH_GSSNEGOTIATE	},
-	{ "ntlm",				HTTP_AUTH_NTLM		},
-	{ "ntlm-winbind",			HTTP_AUTH_NTLM_WB	},
-	{ "any",				HTTP_AUTH_ANY		},
-	{ "safe",				HTTP_AUTH_ANY_SAFE	},
+	{ "none",				REST_HTTP_AUTH_NONE		},
+	{ "srp",				REST_HTTP_AUTH_TLS_SRP		},
+	{ "basic",				REST_HTTP_AUTH_BASIC		},
+	{ "digest",				REST_HTTP_AUTH_DIGEST		},
+	{ "digest-ie",				REST_HTTP_AUTH_DIGEST_IE	},
+	{ "gss-negotiate",			REST_HTTP_AUTH_GSSNEGOTIATE	},
+	{ "ntlm",				REST_HTTP_AUTH_NTLM		},
+	{ "ntlm-winbind",			REST_HTTP_AUTH_NTLM_WB		},
+	{ "any",				REST_HTTP_AUTH_ANY		},
+	{ "safe",				REST_HTTP_AUTH_ANY_SAFE		},
 
 	{  NULL , -1 }
 };
@@ -200,15 +200,15 @@ const FR_NAME_NUMBER http_auth_table[] = {
  * @see fr_int2str
  */
 const FR_NAME_NUMBER http_content_type_table[] = {
-	{ "application/x-www-form-urlencoded",	HTTP_BODY_POST		},
-	{ "application/json",			HTTP_BODY_JSON		},
-	{ "text/html",				HTTP_BODY_HTML		},
-	{ "text/plain",				HTTP_BODY_PLAIN		},
-	{ "text/xml",				HTTP_BODY_XML		},
-	{ "text/yaml",				HTTP_BODY_YAML		},
-	{ "text/x-yaml",			HTTP_BODY_YAML		},
-	{ "application/yaml",			HTTP_BODY_YAML		},
-	{ "application/x-yaml",			HTTP_BODY_YAML		},
+	{ "application/x-www-form-urlencoded",	REST_HTTP_BODY_POST		},
+	{ "application/json",			REST_HTTP_BODY_JSON		},
+	{ "text/html",				REST_HTTP_BODY_HTML		},
+	{ "text/plain",				REST_HTTP_BODY_PLAIN		},
+	{ "text/xml",				REST_HTTP_BODY_XML		},
+	{ "text/yaml",				REST_HTTP_BODY_YAML		},
+	{ "text/x-yaml",			REST_HTTP_BODY_YAML		},
+	{ "application/yaml",			REST_HTTP_BODY_YAML		},
+	{ "application/x-yaml",			REST_HTTP_BODY_YAML		},
 
 	{  NULL , -1 }
 };
@@ -1390,7 +1390,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			if (!q) q = memchr(p, '\r', (end - p));
 
 			len = (size_t)(!q ? (end - p) : (q - p));
-			type = fr_substr2int(http_content_type_table, p, HTTP_BODY_UNKNOWN, len);
+			type = fr_substr2int(http_content_type_table, p, REST_HTTP_BODY_UNKNOWN, len);
 
 			RINDENT();
 			RDEBUG2("Type   : %s (%pV)", fr_int2str(http_body_type_table, type, "<INVALID>"),
@@ -1400,7 +1400,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			/*
 			 *  Assume the force_to value has already been validated.
 			 */
-			if (ctx->force_to != HTTP_BODY_UNKNOWN) {
+			if (ctx->force_to != REST_HTTP_BODY_UNKNOWN) {
 				if (ctx->force_to != ctx->type) {
 					RDEBUG3("Forcing body type to \"%s\"",
 						fr_int2str(http_body_type_table, ctx->force_to, "<INVALID>"));
@@ -1412,22 +1412,22 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			} else {
 				ctx->type = http_body_type_supported[type];
 				switch (ctx->type) {
-				case HTTP_BODY_UNKNOWN:
+				case REST_HTTP_BODY_UNKNOWN:
 					RWDEBUG("Couldn't determine type, using the request's type \"%s\".",
 						fr_int2str(http_body_type_table, type, "<INVALID>"));
 					break;
 
-				case HTTP_BODY_UNSUPPORTED:
+				case REST_HTTP_BODY_UNSUPPORTED:
 					REDEBUG("Type \"%s\" is currently unsupported",
 						fr_int2str(http_body_type_table, type, "<INVALID>"));
 					break;
 
-				case HTTP_BODY_UNAVAILABLE:
+				case REST_HTTP_BODY_UNAVAILABLE:
 					REDEBUG("Type \"%s\" is unavailable, please rebuild this module with the required "
 						"library", fr_int2str(http_body_type_table, type, "<INVALID>"));
 					break;
 
-				case HTTP_BODY_INVALID:
+				case REST_HTTP_BODY_INVALID:
 					REDEBUG("Type \"%s\" is not a valid web API data markup format",
 						fr_int2str(http_body_type_table, type, "<INVALID>"));
 					break;
@@ -1486,9 +1486,9 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 	if (ctx->state == WRITE_STATE_PARSE_HEADERS) ctx->state = WRITE_STATE_PARSE_CONTENT;
 
 	switch (ctx->type) {
-	case HTTP_BODY_UNSUPPORTED:
-	case HTTP_BODY_UNAVAILABLE:
-	case HTTP_BODY_INVALID:
+	case REST_HTTP_BODY_UNSUPPORTED:
+	case REST_HTTP_BODY_UNAVAILABLE:
+	case REST_HTTP_BODY_INVALID:
 		while ((q = memchr(p, '\n', (end - p)))) {
 			REDEBUG("%pV", fr_box_strvalue_len(p, q - p));
 			p = q + 1;
@@ -1497,7 +1497,7 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 		if (p != end) REDEBUG("%pV", fr_box_strvalue_len(p, end - p));
 		break;
 
-	case HTTP_BODY_NONE:
+	case REST_HTTP_BODY_NONE:
 		while ((q = memchr(p, '\n', (end - p)))) {
 			RDEBUG3("%pV", fr_box_strvalue_len(p, q - p));
 			p = q + 1;
@@ -1513,7 +1513,7 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 		if ((ctx->section->max_body_in > 0) && ((ctx->used + (end - p)) > ctx->section->max_body_in)) {
 			REDEBUG("Incoming data (%zu bytes) exceeds max_body_in (%zu bytes).  "
 				"Forcing body to type 'invalid'", ctx->used + (end - p), ctx->section->max_body_in);
-			ctx->type = HTTP_BODY_INVALID;
+			ctx->type = REST_HTTP_BODY_INVALID;
 			TALLOC_FREE(ctx->buffer);
 			break;
 		}
@@ -1862,7 +1862,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 *	HTTP/1.1 doesn't require a content type, so only set it
 	 *	if we were provided with one explicitly.
 	 */
-	if (type != HTTP_BODY_NONE) {
+	if (type != REST_HTTP_BODY_NONE) {
 		content_type = fr_int2str(http_content_type_table, type, section->body_str);
 		snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
 		ctx->headers = curl_slist_append(ctx->headers, buffer);
@@ -1924,15 +1924,15 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 *	Configure HTTP verb (GET, POST, PUT, PATCH, DELETE, other...)
 	 */
 	switch (method) {
-	case HTTP_METHOD_GET:
+	case REST_HTTP_METHOD_GET:
 		SET_OPTION(CURLOPT_HTTPGET, 1L);
 		break;
 
-	case HTTP_METHOD_POST:
+	case REST_HTTP_METHOD_POST:
 		SET_OPTION(CURLOPT_POST, 1L);
 		break;
 
-	case HTTP_METHOD_PUT:
+	case REST_HTTP_METHOD_PUT:
 		/*
 		 *	Do not set CURLOPT_PUT, this will cause libcurl
 		 *	to ignore CURLOPT_POSTFIELDs and attempt to read
@@ -1945,15 +1945,15 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		SET_OPTION(CURLOPT_CUSTOMREQUEST, "PUT");
 		break;
 
-	case HTTP_METHOD_PATCH:
+	case REST_HTTP_METHOD_PATCH:
 		SET_OPTION(CURLOPT_CUSTOMREQUEST, "PATCH");
 		break;
 
-	case HTTP_METHOD_DELETE:
+	case REST_HTTP_METHOD_DELETE:
 		SET_OPTION(CURLOPT_CUSTOMREQUEST, "DELETE");
 		break;
 
-	case HTTP_METHOD_CUSTOM:
+	case REST_HTTP_METHOD_CUSTOM:
 		SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
 		break;
 
@@ -1966,8 +1966,8 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 *	Set user based authentication parameters
 	 */
 	if (auth) {
-		if ((auth >= HTTP_AUTH_BASIC) &&
-		    (auth <= HTTP_AUTH_ANY_SAFE)) {
+		if ((auth >= REST_HTTP_AUTH_BASIC) &&
+		    (auth <= REST_HTTP_AUTH_ANY_SAFE)) {
 			SET_OPTION(CURLOPT_HTTPAUTH, http_curl_auth[auth]);
 
 			if (username) {
@@ -1990,7 +1990,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 				SET_OPTION(CURLOPT_PASSWORD, buffer);
 			}
 #ifdef CURLOPT_TLSAUTH_USERNAME
-		} else if (auth == HTTP_AUTH_TLS_SRP) {
+		} else if (auth == REST_HTTP_AUTH_TLS_SRP) {
 			SET_OPTION(CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
 
 			if (username) {
@@ -2046,15 +2046,15 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	ctx->response.force_to = section->force_to;
 
 	switch (method) {
-	case HTTP_METHOD_GET:
-	case HTTP_METHOD_DELETE:
+	case REST_HTTP_METHOD_GET:
+	case REST_HTTP_METHOD_DELETE:
 		RDEBUG3("Using a HTTP method which does not require a body.  Forcing request body type to \"none\"");
 		goto finish;
 
-	case HTTP_METHOD_POST:
-	case HTTP_METHOD_PUT:
-	case HTTP_METHOD_PATCH:
-	case HTTP_METHOD_CUSTOM:
+	case REST_HTTP_METHOD_POST:
+	case REST_HTTP_METHOD_PUT:
+	case REST_HTTP_METHOD_PATCH:
+	case REST_HTTP_METHOD_CUSTOM:
 		if (section->chunk > 0) {
 			ctx->request.chunk = section->chunk;
 
@@ -2077,12 +2077,12 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 *  Setup encoder specific options
 	 */
 	switch (type) {
-	case HTTP_BODY_NONE:
+	case REST_HTTP_BODY_NONE:
 		if (rest_request_config_body(inst, section, request, handle, NULL) < 0) return -1;
 
 		break;
 
-	case HTTP_BODY_CUSTOM_XLAT:
+	case REST_HTTP_BODY_CUSTOM_XLAT:
 	{
 		rest_custom_data_t *data;
 		char *expanded = NULL;
@@ -2104,7 +2104,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		break;
 	}
 
-	case HTTP_BODY_CUSTOM_LITERAL:
+	case REST_HTTP_BODY_CUSTOM_LITERAL:
 	{
 		rest_custom_data_t *data;
 
@@ -2123,7 +2123,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		break;
 
 #ifdef HAVE_JSON
-	case HTTP_BODY_JSON:
+	case REST_HTTP_BODY_JSON:
 	{
 		rest_custom_data_t *data;
 
@@ -2138,7 +2138,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		break;
 #endif
 
-	case HTTP_BODY_POST:
+	case REST_HTTP_BODY_POST:
 		rest_request_init(section, request, &ctx->request);
 		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
 
@@ -2282,26 +2282,26 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *s
 	}
 
 	switch (ctx->response.type) {
-	case HTTP_BODY_NONE:
+	case REST_HTTP_BODY_NONE:
 		return 0;
 
-	case HTTP_BODY_PLAIN:
+	case REST_HTTP_BODY_PLAIN:
 		ret = rest_decode_plain(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
 		break;
 
-	case HTTP_BODY_POST:
+	case REST_HTTP_BODY_POST:
 		ret = rest_decode_post(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
 		break;
 
 #ifdef HAVE_JSON
-	case HTTP_BODY_JSON:
+	case REST_HTTP_BODY_JSON:
 		ret = rest_decode_json(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
 		break;
 #endif
 
-	case HTTP_BODY_UNSUPPORTED:
-	case HTTP_BODY_UNAVAILABLE:
-	case HTTP_BODY_INVALID:
+	case REST_HTTP_BODY_UNSUPPORTED:
+	case REST_HTTP_BODY_UNAVAILABLE:
+	case REST_HTTP_BODY_INVALID:
 		return -1;
 
 	default:

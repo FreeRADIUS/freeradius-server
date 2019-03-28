@@ -341,8 +341,8 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	/*
 	 *  Extract the method from the start of the format string (if there is one)
 	 */
-	method = fr_substr2int(http_method_table, p, HTTP_METHOD_UNKNOWN, -1);
-	if (method != HTTP_METHOD_UNKNOWN) {
+	method = fr_substr2int(http_method_table, p, REST_HTTP_METHOD_UNKNOWN, -1);
+	if (method != REST_HTTP_METHOD_UNKNOWN) {
 		section->method = method;
 		p += strlen(http_method_table[method].name);
 	/*
@@ -356,11 +356,11 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 		 *	then assume this is a verb.
 		 */
 		if ((*q == ' ') && (q != p)) {
-			section->method = HTTP_METHOD_CUSTOM;
+			section->method = REST_HTTP_METHOD_CUSTOM;
 			MEM(section->method_str = talloc_bstrndup(rctx, p, q - p));
 			p = q;
 		} else {
-			section->method = HTTP_METHOD_GET;
+			section->method = REST_HTTP_METHOD_GET;
 		}
 	}
 
@@ -391,12 +391,12 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	 */
 	q = strchr(p, ' ');
 	if (q && (*++q != '\0')) {
-		section->body = HTTP_BODY_CUSTOM_LITERAL;
+		section->body = REST_HTTP_BODY_CUSTOM_LITERAL;
 		section->data = q;
 	}
 
 	RDEBUG2("Sending HTTP %s to \"%s\"",
-	       (section->method == HTTP_METHOD_CUSTOM) ?
+	       (section->method == REST_HTTP_METHOD_CUSTOM) ?
 	       	section->method_str : fr_int2str(http_method_table, section->method, NULL),
 	       uri);
 
@@ -859,7 +859,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	/*
 	 *  Convert HTTP method auth and body type strings into their integer equivalents.
 	 */
-	if ((config->auth != HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
+	if ((config->auth != REST_HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
 		cf_log_err(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
 			   "configuration, then recompile this module",
 			   fr_int2str(http_auth_table, config->auth, "<INVALID>"));
@@ -872,9 +872,9 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	if (!config->auth_is_set && config->username && config->password && http_curl_auth[config->auth]) {
 		cf_log_debug(cs, "Setting auth = 'basic' as credentials were provided, but no auth method "
 			     "was set");
-		config->auth = HTTP_AUTH_BASIC;
+		config->auth = REST_HTTP_AUTH_BASIC;
 	}
-	config->method = fr_str2int(http_method_table, config->method_str, HTTP_METHOD_CUSTOM);
+	config->method = fr_str2int(http_method_table, config->method_str, REST_HTTP_METHOD_CUSTOM);
 
 	/*
 	 *  We don't have any custom user data, so we need to select the right encoder based
@@ -884,28 +884,28 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	 *  and content_types.
 	 */
 	if (!config->data) {
-		config->body = fr_str2int(http_body_type_table, config->body_str, HTTP_BODY_UNKNOWN);
-		if (config->body == HTTP_BODY_UNKNOWN) {
-			config->body = fr_str2int(http_content_type_table, config->body_str, HTTP_BODY_UNKNOWN);
+		config->body = fr_str2int(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+		if (config->body == REST_HTTP_BODY_UNKNOWN) {
+			config->body = fr_str2int(http_content_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
 		}
 
-		if (config->body == HTTP_BODY_UNKNOWN) {
+		if (config->body == REST_HTTP_BODY_UNKNOWN) {
 			cf_log_err(cs, "Unknown HTTP body type '%s'", config->body_str);
 			return -1;
 		}
 
 		switch (http_body_type_supported[config->body]) {
-		case HTTP_BODY_UNSUPPORTED:
+		case REST_HTTP_BODY_UNSUPPORTED:
 			cf_log_err(cs, "Unsupported HTTP body type \"%s\", please submit patches",
 				      config->body_str);
 			return -1;
 
-		case HTTP_BODY_INVALID:
+		case REST_HTTP_BODY_INVALID:
 			cf_log_err(cs, "Invalid HTTP body type.  \"%s\" is not a valid web API data "
 				      "markup format", config->body_str);
 			return -1;
 
-		case HTTP_BODY_UNAVAILABLE:
+		case REST_HTTP_BODY_UNAVAILABLE:
 			cf_log_err(cs, "Unavailable HTTP body type.  \"%s\" is not available in this "
 				      "build", config->body_str);
 			return -1;
@@ -914,39 +914,39 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 			break;
 		}
 	/*
-	 *  We have custom body data so we set HTTP_BODY_CUSTOM_XLAT, but also need to try and
+	 *  We have custom body data so we set REST_HTTP_BODY_CUSTOM_XLAT, but also need to try and
 	 *  figure out what content-type to use. So if they've used the canonical form we
 	 *  need to convert it back into a proper HTTP content_type value.
 	 */
 	} else {
 		http_body_type_t body;
 
-		config->body = HTTP_BODY_CUSTOM_XLAT;
+		config->body = REST_HTTP_BODY_CUSTOM_XLAT;
 
-		body = fr_str2int(http_body_type_table, config->body_str, HTTP_BODY_UNKNOWN);
-		if (body != HTTP_BODY_UNKNOWN) {
+		body = fr_str2int(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+		if (body != REST_HTTP_BODY_UNKNOWN) {
 			config->body_str = fr_int2str(http_content_type_table, body, config->body_str);
 		}
 	}
 
 	if (config->force_to_str) {
-		config->force_to = fr_str2int(http_body_type_table, config->force_to_str, HTTP_BODY_UNKNOWN);
-		if (config->force_to == HTTP_BODY_UNKNOWN) {
-			config->force_to = fr_str2int(http_content_type_table, config->force_to_str, HTTP_BODY_UNKNOWN);
+		config->force_to = fr_str2int(http_body_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
+		if (config->force_to == REST_HTTP_BODY_UNKNOWN) {
+			config->force_to = fr_str2int(http_content_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
 		}
 
-		if (config->force_to == HTTP_BODY_UNKNOWN) {
+		if (config->force_to == REST_HTTP_BODY_UNKNOWN) {
 			cf_log_err(cs, "Unknown forced response body type '%s'", config->force_to_str);
 			return -1;
 		}
 
 		switch (http_body_type_supported[config->force_to]) {
-		case HTTP_BODY_UNSUPPORTED:
+		case REST_HTTP_BODY_UNSUPPORTED:
 			cf_log_err(cs, "Unsupported forced response body type \"%s\", please submit patches",
 				      config->force_to_str);
 			return -1;
 
-		case HTTP_BODY_INVALID:
+		case REST_HTTP_BODY_INVALID:
 			cf_log_err(cs, "Invalid HTTP forced response body type.  \"%s\" is not a valid web API data "
 				      "markup format", config->force_to_str);
 			return -1;
@@ -1058,7 +1058,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	rlm_rest_t *inst = instance;
 
 	inst->xlat.method_str = "GET";
-	inst->xlat.body = HTTP_BODY_NONE;
+	inst->xlat.body = REST_HTTP_BODY_NONE;
 	inst->xlat.body_str = "application/x-www-form-urlencoded";
 	inst->xlat.force_to_str = "plain";
 
@@ -1116,7 +1116,7 @@ static int mod_load(void)
 	curl_version_info_data *curlversion;
 
 	/* developer sanity */
-	rad_assert((sizeof(http_body_type_supported) / sizeof(*http_body_type_supported)) == HTTP_BODY_NUM_ENTRIES);
+	rad_assert((sizeof(http_body_type_supported) / sizeof(*http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
 
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {
