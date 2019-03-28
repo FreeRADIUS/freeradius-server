@@ -28,9 +28,10 @@ $(BUILD_DIR)/tests/bin:
 	${Q}mkdir -p $@
 
 #
-#  Files in the output dir depend on the bin tests
+#  Files in the output dir depend on the bin tests, and on the binary
+#  that we're running
 #
-$(BUILD_DIR)/tests/bin/%: $(DIR)/% | $(BUILD_DIR)/tests/bin
+$(BUILD_DIR)/tests/bin/%: $(DIR)/% $(TESTBINDIR)/% | $(BUILD_DIR)/tests/bin
 	${Q}echo BIN-TEST $(notdir $@)
 	${Q}TESTBIN="$(TESTBIN)" TESTBINDIR="$(TESTBINDIR)" DICT_DIR="$(DICT_DIR)" $<
 	${Q}touch $@
