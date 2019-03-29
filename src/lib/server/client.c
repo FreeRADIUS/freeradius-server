@@ -450,10 +450,12 @@ static const CONF_PARSER client_config[] = {
  * Iterates over all client definitions in the specified section, adding them to a client list.
  */
 #ifdef WITH_TLS
-RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, bool tls_required)
+#define TLS_UNUSED
 #else
-RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls_required)
+#define TLS_UNUSED UNUSED
 #endif
+
+RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, int proto, TLS_UNUSED bool tls_required)
 {
 	bool		global = false;
 	CONF_SECTION	*cs = NULL;
@@ -488,6 +490,51 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	 *	them to the client list.
 	 */
 	while ((cs = cf_section_find_next(section, cs, "client", CF_IDENT_ANY))) {
+		/*
+		 *	Check this before parsing the client.
+		 */
+		if (proto) {
+			CONF_PAIR *cp;
+			int client_proto = IPPROTO_UDP;
+
+			cp = cf_pair_find(cs, "proto");
+			if (cp) {
+				char const *value = cf_pair_value(cp);
+
+				if (!value) {
+					cf_log_err(cs, "'proto' field must have a value");
+					talloc_free(clients);
+					return NULL;
+				}
+
+				if (strcmp(value, "udp") == 0) {
+					/* do nothing */
+
+				} else if (strcmp(value, "tcp") == 0) {
+					client_proto = IPPROTO_TCP;
+#ifdef WITH_TLS
+				} else if (strcmp(value, "tls") == 0) {
+					client_proto = IPPROTO_TCP;
+#endif
+				} else if (strcmp(value, "*") == 0) {
+					client_proto = IPPROTO_IP; /* fake for dual */
+				} else {
+					cf_log_err(cs, "Unknown proto \"%s\".", value);
+					talloc_free(clients);
+					return NULL;
+				}
+			}
+
+			/*
+			 *	We don't have "proto = *", so the
+			 *	protocol MUST match what the caller
+			 *	asked for.  Otherwise, we ignore the
+			 *	client.
+			 */
+			if ((client_proto != IPPROTO_IP) && (proto != client_proto)) continue;
+		}
+
+
 		c = client_afrom_cs(cs, cs, server_cs);
 		if (!c) {
 		error:

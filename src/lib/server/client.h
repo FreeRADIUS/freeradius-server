@@ -123,7 +123,7 @@ RADCLIENT_LIST	*client_list_init(CONF_SECTION *cs);
 
 void		client_list_free(void);
 
-RADCLIENT_LIST	*client_list_parse_section(CONF_SECTION *section, bool tls_required);
+RADCLIENT_LIST	*client_list_parse_section(CONF_SECTION *section, int proto, bool tls_required);
 
 void		client_free(RADCLIENT *client);
 

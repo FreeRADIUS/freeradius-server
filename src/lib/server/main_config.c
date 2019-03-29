@@ -1218,7 +1218,7 @@ do {\
 	rad_assert(config->root_cs == NULL);
 
 	DEBUG2("%s: #### Loading Clients ####", config->name);
-	if (!client_list_parse_section(cs, false)) goto failure;
+	if (!client_list_parse_section(cs, 0, false)) goto failure;
 
 	/*
 	 *	Register the %{config:section.subsection} xlat function.

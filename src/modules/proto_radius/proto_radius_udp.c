@@ -501,7 +501,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	for IPPROTO_UDP, and require a "secret".
 	 */
 	if (cf_section_find_next(server_cs, NULL, "client", CF_IDENT_ANY)) {
-		inst->clients = client_list_parse_section(server_cs, false);
+		inst->clients = client_list_parse_section(server_cs, IPPROTO_UDP, false);
 		if (!inst->clients) {
 			cf_log_err(cs, "Failed creating local clients");
 			return -1;
