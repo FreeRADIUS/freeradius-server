@@ -78,12 +78,6 @@ static CONF_PARSER const proto_dhcpv4_config[] = {
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_dhcpv4_t, io.submodule),
 	  .func = transport_parse },
 
-	/*
-	 *	Check whether or not the *trailing* bits of a
-	 *	Tunnel-Password are zero, as they should be.
-	 */
-	{ FR_CONF_OFFSET("tunnel_password_zeros", FR_TYPE_BOOL, proto_dhcpv4_t, tunnel_password_zeros) } ,
-
 	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 
 	CONF_PARSER_TERMINATOR
