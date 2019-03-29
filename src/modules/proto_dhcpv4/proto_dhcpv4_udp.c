@@ -71,6 +71,7 @@ typedef struct {
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 
 	RADCLIENT_LIST			*clients;		//!< local clients
+	RADCLIENT			*default_client;	//!< default 0/0 client
 
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
@@ -568,6 +569,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	size_t			num;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;
+	RADCLIENT		*client;
 
 	inst->cs = cs;
 
@@ -675,6 +677,19 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		}
 	}
 
+	/*
+	 *	Create a fake client.
+	 */
+	client = inst->default_client = talloc_zero(inst, RADCLIENT);
+	if (!inst->default_client) return 0;
+
+	client->ipaddr.af = AF_INET;
+	client->ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
+	client->src_ipaddr = client->ipaddr;
+
+	client->longname = client->shortname = client->secret = talloc_strdup(client, "default");
+	client->nas_type = talloc_strdup(client, "other");
+
 	return 0;
 }
 
@@ -692,7 +707,7 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, in
 		if (client) return client;
 	}
 
-	return client_find(NULL, ipaddr, ipproto);
+	return inst->default_client;
 }
 
 fr_app_io_t proto_dhcpv4_udp = {

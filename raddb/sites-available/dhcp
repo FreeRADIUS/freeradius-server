@@ -95,11 +95,20 @@ listen {
 }
 
 #
-#  Allow all source IPs.
+#  If there is no `client` entry in a DHCPv4 virtual server, it will
+#  automatically create and use a "0/0" client.
 #
-client all {
-       ipaddr = 0/0
-}
+#  If there is one or more clients defined in a DHCPv4 virtual server,
+#  they will be used to limit source IP addresses for DHCPv4 packets.
+#  Only packets from known clients or networks will be accepted.
+#
+#  If a `client` is defined, you should list all subnets used for end
+#  user machines, along with all DHCPv4 gateways that send packets to
+#  the server.
+#
+#client private {
+#       ipaddr = 192.168.0.0/16
+#}
 
 
 #  Packets received on the socket will be processed through one
