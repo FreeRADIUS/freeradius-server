@@ -2605,7 +2605,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 }
 
 
-static int _client_heap_free(fr_heap_t *heap)
+static int _thread_io_free(fr_io_thread_t *thread)
 {
 	fr_io_client_t *client;
 
@@ -2615,8 +2615,11 @@ static int _client_heap_free(fr_heap_t *heap)
 	 *
 	 *	The client destructor will remove them from the heap,
 	 *	so we don't need to do that here.
+	 *
+	 *	Note that the clients *also* use thread->trie, so we
+	 *	have to free the clients *before* freeing thread->trie.
 	 */
-	while ((client = fr_heap_peek(heap)) != NULL) {
+	while ((client = fr_heap_peek(thread->alive_clients)) != NULL) {
 		talloc_free(client);
 	}
 
@@ -2687,14 +2690,14 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	thread->listen = li;
 	thread->sc = sc;
 
+	talloc_set_destructor(thread, _thread_io_free);
+
 	/*
 	 *	Create the trie of clients for this socket.
 	 */
 	MEM(thread->trie = fr_trie_alloc(thread));
-
 	MEM(thread->alive_clients = fr_heap_create(thread, pending_client_cmp,
-						 fr_io_client_t, alive_id));
-	talloc_set_destructor(thread->alive_clients, _client_heap_free);
+						   fr_io_client_t, alive_id));
 
 	/*
 	 *	Set the listener to call our master trampoline function.
