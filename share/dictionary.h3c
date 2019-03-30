@@ -19,6 +19,9 @@ BEGIN-VENDOR	H3C
 ATTRIBUTE	H3C-Input-Peak-Rate			1	integer
 ATTRIBUTE	H3C-Input-Average-Rate			2	integer
 ATTRIBUTE	H3C-Input-Basic-Rate			3	integer
+ATTRIBUTE	H3C-Output-Peak-Rate			4	integer
+ATTRIBUTE	H3C-Output-Average-Rate			5	integer
+ATTRIBUTE	H3C-Output-Basic-Rate			6	integer
 ATTRIBUTE	H3C-Remanent-Volume			15	integer
 ATTRIBUTE	H3C-Command				20	integer
 
