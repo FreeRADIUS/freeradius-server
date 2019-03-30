@@ -351,8 +351,23 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 	data_len = BN_num_bytes(session->order);
 	BN_bin2bn(ptr, data_len, session->peer_scalar);
 
+	/* validate received scalar */
+	if (BN_is_zero(session->peer_scalar) ||
+	    BN_is_one(session->peer_scalar) ||
+	    BN_cmp(session->peer_scalar, session->order) >= 0) {
+		ERROR("Peer's scalar is not within the allowed range");
+		goto finish;
+	}
+
 	if (!EC_POINT_set_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
 		ERROR("Unable to get coordinates of peer's element");
+		goto finish;
+	}
+
+	/* validate received element */
+	if (!EC_POINT_is_on_curve(session->group, session->peer_element, bn_ctx) ||
+	    EC_POINT_is_at_infinity(session->group, session->peer_element)) {
+		ERROR("Peer's element is not a point on the elliptic curve");
 		goto finish;
 	}
 
@@ -367,6 +382,13 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 			ERROR("Peer's element is in small sub-group");
 			goto finish;
 		}
+	}
+
+	/* detect reflection attacks */
+	if (BN_cmp(session->peer_scalar, session->my_scalar) == 0 ||
+	    EC_POINT_cmp(session->group, session->peer_element, session->my_element, bn_ctx) == 0) {
+		ERROR("Reflection attack detected");
+		goto finish;
 	}
 
 	/* compute the shared key, k */
