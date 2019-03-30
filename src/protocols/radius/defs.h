@@ -59,7 +59,7 @@ typedef enum {
 #define FR_AUTH_UDP_PORT_ALT		1645
 #define FR_ACCT_UDP_PORT		1813
 #define FR_ACCT_UDP_PORT_ALT		1646
-#define FR_POD_UDP_PORT			1700
+#define FR_POD_UDP_PORT			3799
 #define FR_RADIUS_TLS_PORT	       	2083
 #define FR_COA_UDP_PORT			3799
 
