@@ -90,9 +90,6 @@ static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_protocol;
 
-static fr_dict_attr_t const *attr_event_timestamp;
-static fr_dict_attr_t const *attr_acct_delay_time;
-
 extern fr_dict_attr_autoload_t proto_detail_dict_attr[];
 fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
@@ -104,8 +101,6 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
@@ -365,27 +360,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	next:
 		lineno++;
 		while ((p < end) && (*p)) p++;
-	}
-
-	/*
-	 *	Create / update accounting attributes.
-	 */
-	if (request->packet->code == FR_CODE_ACCOUNTING_REQUEST) {
-		/*
-		 *	Prefer the Event-Timestamp in the packet, if it
-		 *	exists.  That is when the event occurred, whereas the
-		 *	"Timestamp" field is when we wrote the packet to the
-		 *	detail file, which could have been much later.
-		 */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY);
-		if (vp) timestamp = vp->vp_uint32;
-
-		/*
-		 *	Look for Acct-Delay-Time, and update
-		 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
-		 */
-		MEM(pair_update_request(&vp, attr_acct_delay_time) >= 0);
-		if (timestamp != 0) vp->vp_uint32 += time(NULL) - timestamp;
 	}
 
 	/*

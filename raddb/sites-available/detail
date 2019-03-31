@@ -224,6 +224,9 @@ server detail {
 #  'recv' section.  Note that there is no second name to the section.
 #
 recv {
+	update request {
+		Acct-Delay-Time := "%{expr:%{Acct-Delay-Time} + %l - %{%{Event-Timestamp}:-%{Packet-Original-Timestamp}}"
+	}
 
 	#
 	#  We handled the packet successfully.  Run the "send ok" section.
