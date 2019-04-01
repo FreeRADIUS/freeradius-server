@@ -5,7 +5,8 @@ FreeRADIUS 3.0.19 Mon 25 Feb 2019 15:00:00 EST urgency=low
 	  PostgreSQL.  This increases performance substantially.
 	  Patch from Nathan Ward.  Fixes #2540.
 	* Re-added "show client config" command to radmin.
-	* Added pfSense dictionary. ##2581
+	* Added pfSense dictionary. #2581
+	* Update dictionary.h3c #2592
 
 	Bug fixes
 	* Update dynamic_client module and server core so that the
@@ -16,6 +17,7 @@ FreeRADIUS 3.0.19 Mon 25 Feb 2019 15:00:00 EST urgency=low
 	* Fix systemd notify, watchdog and unit files.
 	  Fixes #2541, #2499.
 	* Fix erroneous length check in EAP-FAST.
+	* Fix default POD port. Should be 3799 #2591
 
 FreeRADIUS 3.0.18 Mon 25 Feb 2019 15:00:00 EST urgency=low
 	Feature improvements
