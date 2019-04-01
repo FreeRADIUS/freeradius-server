@@ -53,6 +53,7 @@ typedef struct {
 	CONF_SECTION			*work_io_conf;			//!< Easy access to the app_io's config secti
 
 
+	fr_dict_t			*dict;				//!< root dictionary
 	dl_instance_t			*type_submodule;		//!< Instance of the type
 
 	uint32_t			code;				//!< packet code to use for incoming packets

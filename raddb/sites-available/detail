@@ -17,18 +17,16 @@ server detail {
 	#  resolved in, so must match the namespace of the server which
 	#  generated the detail files originally.
 	#
-	namespace = radius
+	namespace = detail
 
 	listen {
 		#
-		#  The packet types are NOT in the detail file,
-		#  so they need to be listed here.
+		#  This has to be listed first, sorry.
 		#
-		#  Supported types are:
+		dictionary = radius
+
 		#
-		#  Accounting-Request
-		#  CoA-Request
-		#  Disconnect-Request
+		#  Types of packets we are reading.
 		#
 		type = Accounting-Request
 

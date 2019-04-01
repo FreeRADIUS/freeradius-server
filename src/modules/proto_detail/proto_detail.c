@@ -31,6 +31,7 @@
 #include "proto_detail.h"
 
 extern fr_app_t proto_detail;
+static int dictionary_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
@@ -48,6 +49,8 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
  *
  */
 static CONF_PARSER const proto_detail_config[] = {
+	{ FR_CONF_OFFSET("dictionary", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_detail_t,
+			  dict), .dflt = "radius", .func = dictionary_parse },
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_detail_t,
 			  type_submodule), .dflt = "Accounting-Request", .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_detail_t, io_submodule),
@@ -106,6 +109,33 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
+
+/** Wrapper around fr_dict_t* which translates the dictionary name into a dictionary
+ *
+ * @param[in] ctx	to allocate data in (instance of proto_detail).
+ * @param[out] out	Where to write a fr_dict_t *
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int dictionary_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const		*dict_str = cf_pair_value(cf_item_to_pair(ci));
+	fr_dict_t		*dict;
+
+	dict = fr_dict_by_protocol_name(dict_str);
+	if (!dict) {
+		cf_log_err(ci, "Unknown dictionary");
+		return -1;
+	}
+
+	*(fr_dict_t **) out = dict;
+
+	return 0;
+}
 
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
