@@ -195,20 +195,15 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 	process_inst->dict = inst->dict;
 	process_inst->attr_packet_type = attr_packet_type;
 
-	switch (code) {
-	default:
-		return -1;
-
-	case FR_CODE_ACCOUNTING_REQUEST:
+	/*
+	 *	Hacks for now.
+	 */
+	if (code == FR_CODE_ACCOUNTING_REQUEST) {
 		process_inst->recv_type = MOD_PREACCT;
 		process_inst->send_type = MOD_ACCOUNTING;
-		break;
-
-	case FR_CODE_COA_REQUEST:
-	case FR_CODE_DISCONNECT_REQUEST:
-		process_inst->recv_type = MOD_RECV_COA;
-		process_inst->send_type = MOD_SEND_COA;
-		break;
+	} else {
+		process_inst->recv_type = MOD_POST_AUTH;
+		process_inst->send_type = MOD_POST_AUTH;
 	}
 
 	return 0;
