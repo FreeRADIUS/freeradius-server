@@ -55,7 +55,7 @@ typedef struct {
 
 	dl_instance_t			*type_submodule;		//!< Instance of the type
 
-	uint32_t			code;				//!< RADIUS code to use for incoming packets
+	uint32_t			code;				//!< packet code to use for incoming packets
 	uint32_t			max_packet_size;		//!< for message ring buffer
 	uint32_t			num_messages;			//!< for message ring buffer
 	uint32_t			priority;			//!< for packet processing, larger == higher

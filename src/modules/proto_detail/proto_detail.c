@@ -58,6 +58,8 @@ static CONF_PARSER const proto_detail_config[] = {
 	 */
 	{ FR_CONF_OFFSET("max_entry_size", FR_TYPE_UINT32, proto_detail_t, max_packet_size) } ,
 
+	{ FR_CONF_OFFSET("code", FR_TYPE_UINT32 | FR_TYPE_REQUIRED, proto_detail_t, code) } ,
+
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
@@ -507,12 +509,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			return -1;
 		}
 
-		/*
-		 *	For now, every 'type' uses the same "process"
-		 *	function.  The only difference is what kind of
-		 *	packet is created.
-		 */
-		inst->code = fr_dict_enum_by_alias(attr_packet_type, cf_pair_value(cp), -1)->value->vb_uint32;
 		break;
 	}
 
