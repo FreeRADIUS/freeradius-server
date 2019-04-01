@@ -467,17 +467,6 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	return 0;
 }
 
-/*
- *	@todo - put these into configuration!
- */
-static uint32_t priorities[FR_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_REQUEST] = PRIORITY_HIGH,
-	[FR_CODE_ACCOUNTING_REQUEST] = PRIORITY_LOW - 1,
-	[FR_CODE_COA_REQUEST] = PRIORITY_NORMAL,
-	[FR_CODE_DISCONNECT_REQUEST] = PRIORITY_NORMAL,
-	[FR_CODE_STATUS_SERVER] = PRIORITY_NOW,
-};
-
 
 /** Instantiate the application
  *
@@ -541,9 +530,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
 
-	if (!inst->priority && inst->code && (inst->code < FR_MAX_PACKET_CODE)) {
-		inst->priority = priorities[inst->code];
-	}
+	if (!inst->priority) inst->priority = PRIORITY_NORMAL;
 
 	/*
 	 *	If the IO is "file" and not the worker, instantiate the worker now.
