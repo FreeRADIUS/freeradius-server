@@ -369,7 +369,12 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		return sizeof(new_client);
 	}
 
-	memset(reply, 0, sizeof(*reply));
+	if (buffer_len < MIN_PACKET_SIZE) {
+		REDEBUG("Output buffer is too small to hold a DHCPv4 packet.");
+		return -1;
+	}
+
+	memset(buffer, 0, buffer_len);
 
 	/*
 	 *	Initialize the output packet from the input packet.
