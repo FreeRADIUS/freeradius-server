@@ -44,7 +44,7 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 	size_t where, size;
 	uint8_t const *data;
 
-	if (packet_size < sizeof(dhcp_packet_t)) return NULL;
+	if (packet_size < MIN_PACKET_SIZE) return NULL;
 
 	where = 0;
 	size = packet_size - offsetof(dhcp_packet_t, options);
