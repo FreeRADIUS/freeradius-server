@@ -790,6 +790,11 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 	my_track.address = address;
 	my_track.client = client;
+
+	/*
+	 *	@todo - convert the packet to a tracking structure,
+	 *	and look that up instead of the packet.
+	 */
 	memcpy(my_track.packet, packet, sizeof(my_track.packet));
 
 	if (client->inst->app_io->track_duplicates) track = rbtree_finddata(client->table, &my_track);
@@ -806,6 +811,9 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 			track->address = client->connection->address;
 		}
 
+		/*
+		 *	@todo - copy my_track structure, not the packet.
+		 */
 		memcpy(track->packet, packet, sizeof(track->packet));
 		track->timestamp = recv_time;
 		track->packets = 1;
@@ -816,6 +824,8 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 	/*
 	 *	Is it exactly the same packet?
+	 *
+	 *	@todo - compare the tracking structure, not the packet
 	 */
 	if (memcmp(track->packet, my_track.packet, sizeof(my_track.packet)) == 0) {
 		/*
@@ -835,6 +845,8 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 
 	/*
 	 *	The new packet is different from the old one.
+	 *
+	 *	@todo - copy my_track structure, not the packet.
 	 */
 	memcpy(track->packet, my_track.packet, sizeof(my_track.packet));
 	track->timestamp = recv_time;
