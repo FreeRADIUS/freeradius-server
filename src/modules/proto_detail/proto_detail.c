@@ -49,7 +49,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
  *
  */
 static CONF_PARSER const proto_detail_config[] = {
-	{ FR_CONF_OFFSET("dictionary", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_detail_t,
+	{ FR_CONF_OFFSET("dictionary", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_detail_t,
 			  dict), .dflt = "radius", .func = dictionary_parse },
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_detail_t,
 			  type_submodule), .dflt = "Accounting-Request", .func = type_parse },
@@ -60,8 +60,6 @@ static CONF_PARSER const proto_detail_config[] = {
 	 *	Add this as a synonym so normal humans can understand it.
 	 */
 	{ FR_CONF_OFFSET("max_entry_size", FR_TYPE_UINT32, proto_detail_t, max_packet_size) } ,
-
-	{ FR_CONF_OFFSET("code", FR_TYPE_UINT32 | FR_TYPE_REQUIRED, proto_detail_t, code) } ,
 
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
@@ -75,12 +73,10 @@ static CONF_PARSER const proto_detail_config[] = {
 };
 
 static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t proto_detail_dict[];
 fr_dict_autoload_t proto_detail_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 
 	{ NULL }
 };
@@ -92,7 +88,6 @@ static fr_dict_attr_t const *attr_packet_original_timestamp;
 static fr_dict_attr_t const *attr_packet_src_ip_address;
 static fr_dict_attr_t const *attr_packet_src_ipv6_address;
 static fr_dict_attr_t const *attr_packet_src_port;
-static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_protocol;
 
 extern fr_dict_attr_autoload_t proto_detail_dict_attr[];
@@ -106,7 +101,6 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -148,7 +142,7 @@ static int dictionary_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
@@ -157,8 +151,21 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	uint32_t		code;
 	dl_instance_t		*process_dl;
 	proto_detail_process_t	*process_inst;
+	fr_dict_attr_t const	*attr_packet_type;
+	proto_detail_t		*inst = parent;
 
 	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
+
+	if (!inst->dict) {
+		cf_log_err(ci, "Please define 'dictionary' BEFORE 'type'");
+		return -1;
+	}
+
+	attr_packet_type = fr_dict_attr_by_name(inst->dict, "Packet-Type");
+	if (!attr_packet_type) {
+		cf_log_err(ci, "Failed to find 'Packet-Type' attribute");
+		return -1;
+	}
 
 	/*
 	 *	Allow the process module to be specified by
@@ -170,18 +177,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 		return -1;
 	}
 
-	code = type_enum->value->vb_uint32;
-	if (!code || (code > FR_CODE_MAX)) {
-		cf_log_err(ci, "Invalid value for 'type = %s'", type_str);
-		return -1;
-	}
-
-	if ((code != FR_CODE_ACCOUNTING_REQUEST) &&
-	    (code != FR_CODE_COA_REQUEST) &&
-	    (code != FR_CODE_DISCONNECT_REQUEST)) {
-		cf_log_err(ci, "Cannot process packets of Packet-Type = '%s'", type_str);
-		return -1;
-	}
+	code = inst->code = type_enum->value->vb_uint32;
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_detail"));
 	rad_assert(parent_inst);
