@@ -597,8 +597,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 {
 	proto_radius_t 	*inst = talloc_get_type_abort(instance, proto_radius_t);
 
-	rad_assert(inst->io.app == &proto_radius);
-	rad_assert(inst->io.app_instance == instance);
+	inst->io.app = &proto_radius;
+	inst->io.app_instance = instance;
 
 	/*
 	 *	io.app_io should already be set
