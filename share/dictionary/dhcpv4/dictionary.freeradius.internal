@@ -79,3 +79,22 @@ VALUE	DHCP-Hardware-Type		ARPSec			30
 VALUE	DHCP-Hardware-Type		IPSec-Tunnel		31
 VALUE	DHCP-Hardware-Type		Infiniband		32
 VALUE	DHCP-Hardware-Type		CAI-TIA-102		33
+
+ATTRIBUTE	Packet-Type			273	uint8
+
+VALUE	Packet-Type		DHCP-Do-Not-Respond	0
+VALUE	Packet-Type		DHCP-Discover		1
+VALUE	Packet-Type		DHCP-Offer		2
+VALUE	Packet-Type		DHCP-Request		3
+VALUE	Packet-Type		DHCP-Decline		4
+VALUE	Packet-Type		DHCP-Ack		5
+VALUE	Packet-Type		DHCP-NAK		6
+VALUE	Packet-Type		DHCP-Release		7
+VALUE	Packet-Type		DHCP-Inform		8
+VALUE	Packet-Type		DHCP-Force-Renew	9
+VALUE	Packet-Type		DHCP-Lease-Query	10
+VALUE	Packet-Type		DHCP-Lease-Unassigned	11
+VALUE	Packet-Type		DHCP-Lease-Unknown	12
+VALUE	Packet-Type		DHCP-Lease-Active	13
+VALUE	Packet-Type		DHCP-Bulk-Lease-Query	14
+VALUE	Packet-Type		DHCP-Lease-Query-Done	15
