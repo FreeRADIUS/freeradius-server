@@ -192,6 +192,9 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 	process_dl = *(dl_instance_t **) out;
 	process_inst = process_dl->data;
 
+	process_inst->dict = inst->dict;
+	process_inst->attr_packet_type = attr_packet_type;
+
 	switch (code) {
 	default:
 		return -1;

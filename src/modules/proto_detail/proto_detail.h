@@ -139,8 +139,10 @@ struct proto_detail_work_thread_s {
 };
 
 typedef struct {
-	rlm_components_t	recv_type;
-	rlm_components_t	send_type;
+	fr_dict_t			*dict;				//!< root dictionary
+	fr_dict_attr_t const		*attr_packet_type;
+	rlm_components_t		recv_type;
+	rlm_components_t		send_type;
 } proto_detail_process_t;
 
 #include <pthread.h>

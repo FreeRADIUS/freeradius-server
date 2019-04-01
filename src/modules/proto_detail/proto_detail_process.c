@@ -34,29 +34,25 @@
 #include "proto_detail.h"
 
 static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
 
 extern fr_dict_autoload_t proto_detail_process_dict[];
 fr_dict_autoload_t proto_detail_process_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 
 	{ NULL }
 };
-
-static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t proto_detail_process_dict_attr[];
 fr_dict_attr_autoload_t proto_detail_process_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
-static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
+static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_action_t action)
 {
 	VALUE_PAIR		*vp;
 	rlm_rcode_t		rcode;
 	CONF_SECTION		*unlang;
+	proto_detail_process_t const *inst = instance;
 
 	REQUEST_VERIFY(request);
 
@@ -72,7 +68,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		RDEBUG("Received %s ID %i",
-		       fr_dict_enum_alias_by_value(attr_packet_type, fr_box_uint32(request->reply->code)),
+		       fr_dict_enum_alias_by_value(inst->attr_packet_type, fr_box_uint32(request->packet->code)),
 		       request->packet->id);
 		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
@@ -145,7 +141,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
+		vp = fr_pair_find_by_da(request->reply->vps, inst->attr_packet_type, TAG_ANY);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
@@ -192,7 +188,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 			REDEBUG("Failed ID %i", request->reply->id);
 		} else {
 			RDEBUG("Sent %s ID %i",
-			       fr_dict_enum_alias_by_value(attr_packet_type, fr_box_uint32(request->reply->code)),
+			       fr_dict_enum_alias_by_value(inst->attr_packet_type, fr_box_uint32(request->reply->code)),
 			       request->reply->id);
 		}
 
@@ -215,7 +211,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 	vp_tmpl_rules_t		parse_rules;
 
 	memset(&parse_rules, 0, sizeof(parse_rules));
-	parse_rules.dict_def = dict_freeradius;
+	parse_rules.dict_def = inst->dict;
 
 	rad_assert(listen_cs);
 
