@@ -988,12 +988,17 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 	 *	Group attributes with similar lineages together
 	 */
 	fr_pair_list_sort(&to_encode, fr_pair_cmp_by_parent_num_tag);
-	(void)fr_cursor_init(&cursor, &to_encode);
+	if (fr_cursor_init(&cursor, &to_encode) == vp) fr_cursor_next(&cursor);	/* Skip subtype if it came out first */
 
 	/*
-	 *	Fast path...
+	 *	Will we need to generate a HMAC?
 	 */
-	if (!next_encodable(&cursor, packet_ctx)) {
+	if (fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_EAP_SIM_MAC, TAG_ANY)) do_hmac = true;
+
+	/*
+	 *	Fast path, we just need to encode a subtype
+	 */
+	if (!do_hmac && !first_encodable(&cursor, packet_ctx)) {
 		MEM(buff = talloc_array(eap_packet, uint8_t, 3));
 
 		buff[0] = subtype;	/* SIM or AKA subtype */
@@ -1002,6 +1007,8 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 
 		eap_packet->type.length = 3;
 		eap_packet->type.data = buff;
+
+		FR_PROTO_HEX_DUMP(buff, eap_packet->type.length, "sim packet");
 
 		return 0;
 	}
@@ -1017,11 +1024,8 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 	/*
 	 *	Add space in the packet for AT_MAC
 	 */
-	vp = fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_EAP_SIM_MAC, TAG_ANY);
-	if (vp) {
+	if (do_hmac) {
 		CHECK_FREESPACE(end - p, SIM_MAC_SIZE);
-
-		do_hmac = true;
 
 		*p++ = FR_SIM_MAC;
 		*p++ = (SIM_MAC_SIZE >> 2);
