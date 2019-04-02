@@ -108,12 +108,19 @@ server detail {
 			#
 			filename = "${...directory}/detail-*"
 
-		#
+			#
 			#  If there are no detail files in the directory,
 			#  the listener will periodically wake up to check
 			#  for new entries.
 			#
-			#  Allowed values: 1 to 3600
+			#  If this is set to `0`. then the server will
+			#  rely on file system notifications to
+			#  discover when a detail file has been added.
+			#  Setting it to `0` only works on Linux.  On
+			#  other operating systems, it MUST be set to
+			#  a non-zero value.
+			#
+			#  Allowed values: 0 to 3600
 			poll_interval = 5
 		}
 

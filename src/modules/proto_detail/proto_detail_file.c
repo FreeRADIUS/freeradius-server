@@ -129,15 +129,19 @@ static int mod_open(fr_listen_t *li)
 {
 	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
-	int oflag;
+
+	if (inst->poll_interval == 0) {
+		int oflag;
 
 #ifdef O_EVTONLY
-	oflag = O_EVTONLY;
+		oflag = O_EVTONLY;
 #else
-	oflag = O_RDONLY;
+		oflag = O_RDONLY;
 #endif
-
-	li->fd = thread->fd = open(inst->directory, oflag);
+		li->fd = thread->fd = open(inst->directory, oflag);
+	} else {
+		li->fd = thread->fd = open("/dev/null", O_RDONLY);
+	}
 	if (thread->fd < 0) {
 		cf_log_err(inst->cs, "Failed opening %s: %s", inst->directory, fr_syserror(errno));
 		return -1;
@@ -506,13 +510,11 @@ retry:
 	if (fd < 0) {
 		struct timeval when, now;
 
-#ifdef __linux__
 		/*
 		 *	Wait for the directory to change before
 		 *	looking for another "detail" file.
 		 */
 		if (!inst->poll_interval) return;
-#endif
 
 delay:
 		/*
