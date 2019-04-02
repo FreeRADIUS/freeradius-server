@@ -142,7 +142,7 @@ static int mod_open(fr_listen_t *li)
 	}
 
 	thread->inst = inst;
-	thread->name = talloc_typed_asprintf(thread, "proto_detail polling for files matching %s", inst->filename);
+	thread->name = talloc_typed_asprintf(thread, "detail polling for files matching %s", inst->filename);
 	thread->vnode_fd = -1;
 	pthread_mutex_init(&thread->worker_mutex, NULL);
 
