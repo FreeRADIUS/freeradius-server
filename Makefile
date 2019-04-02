@@ -8,6 +8,11 @@
 #
 
 #
+#	we didn't called ./configure? just define the version.
+#
+RADIUSD_VERSION_STRING := $(shell cat VERSION)
+
+#
 #  The default rule is "all".
 #
 all:
@@ -27,9 +32,11 @@ endif
 #  the debian packages.
 #
 ifneq "$(MAKECMDGOALS)" "deb"
+ifneq "$(MAKECMDGOALS)" "rpm"
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
+endif
 endif
 
 MFLAGS += --no-print-directory
@@ -44,7 +51,9 @@ export DESTDIR := $(R)
 
 # And over-ride all of the other magic.
 ifneq "$(MAKECMDGOALS)" "deb"
+ifneq "$(MAKECMDGOALS)" "rpm"
 include scripts/boiler.mk
+endif
 endif
 
 #
@@ -334,6 +343,22 @@ docker-publish: docker-push-latest
 deb:
 	fakeroot debian/rules debian/control #clean
 	fakeroot dpkg-buildpackage -b -uc
+
+#
+#	Build a rpm package
+#
+.PHONY: rpm
+rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
+	@mkdir -p $(addprefix rpmbuild/,SOURCES SPECS BUILD RPMS SRPMS BUILDROOT)
+	@for file in `awk '/^Source...:/ {print $$2}' redhat/freeradius.spec` ; do cp redhat/$$file rpmbuild/SOURCES/$$file ; done
+	@cp $< $@
+
+rpm: rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
+	@if ! yum-builddep -q -C --assumeno redhat/freeradius.spec 1> /dev/null 2>&1; then \
+		echo "ERROR: Dependencies issues, please call first: yum-builddep redhat/freeradius.spec"; \
+		exit 1; \
+	fi
+	@QA_RPATHS=0x0003 rpmbuild --define "_topdir `pwd`/rpmbuild" -bb redhat/freeradius.spec
 
 # Developer checks
 .PHONY: warnings
