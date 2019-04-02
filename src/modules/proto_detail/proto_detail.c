@@ -51,8 +51,8 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 static CONF_PARSER const proto_detail_config[] = {
 	{ FR_CONF_OFFSET("dictionary", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_detail_t,
 			  dict), .dflt = "radius", .func = dictionary_parse },
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_detail_t,
-			  type_submodule), .dflt = "Accounting-Request", .func = type_parse },
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_detail_t,
+			  type_submodule), .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_detail_t, io_submodule),
 	  .func = transport_parse },
 
