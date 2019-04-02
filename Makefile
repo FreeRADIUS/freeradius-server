@@ -360,6 +360,7 @@ rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: freeradius
 	@cp $< $@
 
 rpm: rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
+	@yum-builddep -y redhat/freeradius.spec
 	@rpmbuild --define "_topdir `pwd`/rpmbuild" -bb redhat/freeradius.spec
 
 
