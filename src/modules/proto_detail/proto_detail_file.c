@@ -327,7 +327,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 
 	li->app_io_instance = inst->parent->work_io_instance;
 	work->inst = li->app_io_instance;
-	work->file_parent = li->thread_instance;
+	work->file_parent = thread;
 	work->ev = NULL;
 
 	li->fd = work->fd = dup(fd);
