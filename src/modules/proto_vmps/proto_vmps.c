@@ -40,9 +40,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			   CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static const CONF_PARSER priority_config[] = {
-	{ FR_CONF_OFFSET("VMPS-Join-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST]),
+	{ FR_CONF_OFFSET("Join-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_PACKET_TYPE_VALUE_JOIN_REQUEST]),
 	   .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "low" },
-	{ FR_CONF_OFFSET("VMPS-Reconfirm-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST]),
+	{ FR_CONF_OFFSET("Reconfirm-Request", FR_TYPE_UINT32, proto_vmps_t, priorities[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST]),
 	   .func = cf_table_parse_uint32, .uctx = channel_packet_priority, .dflt = "low" },
 
 	CONF_PARSER_TERMINATOR
@@ -87,11 +87,11 @@ fr_dict_autoload_t proto_vmps_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_vmps_packet_type;
+static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t proto_vmps_dict_attr[];
 fr_dict_attr_autoload_t proto_vmps_dict_attr[] = {
-	{ .out = &attr_vmps_packet_type, .name = "VMPS-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps},
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps},
 	{ NULL }
 };
 
@@ -123,7 +123,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(attr_vmps_packet_type, type_str, -1);
+	type_enum = fr_dict_enum_by_alias(attr_packet_type, type_str, -1);
 	if (!type_enum) {
 		cf_log_err(ci, "Invalid type \"%s\"", type_str);
 		return -1;
@@ -133,8 +133,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 	code = type_enum->value->vb_uint32;
 
-	if ((code != FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST) &&
-	    (code != FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST)) {
+	if ((code != FR_PACKET_TYPE_VALUE_JOIN_REQUEST) &&
+	    (code != FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST)) {
 		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
 		return -1;
 	}
@@ -228,7 +228,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	generic->protocol attribute conversions as
 	 *	the request runs through the server.
 	 */
-	request->dict = dict_vqp;
+	request->dict = dict_vmps;
 
 	client = address->radclient;
 
@@ -378,7 +378,7 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 	fr_io_track_t		*track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
-	rad_assert(request->packet->code <= FR_MAX_VMPS_CODE);
+	rad_assert(request->packet->code <= FR_VMPS_MAX_CODE);
 
 	request->server_cs = inst->io.server_cs;
 
@@ -514,13 +514,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	Check that the packet type is known.
 		 */
 		packet_type = cf_section_name2(subcs);
-		dv = fr_dict_enum_by_alias(attr_vmps_packet_type, packet_type, -1);
+		dv = fr_dict_enum_by_alias(attr_packet_type, packet_type, -1);
 		if (!dv ||
-		    ((dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST) &&
-		     (dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_RESPONSE) &&
-		     (dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST) &&
-		     (dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_RESPONSE) &&
-		     (dv->value->vb_uint32 != FR_VMPS_PACKET_TYPE_VALUE_DO_NOT_RESPOND))) {
+		    ((dv->value->vb_uint32 != FR_PACKET_TYPE_VALUE_JOIN_REQUEST) &&
+		     (dv->value->vb_uint32 != FR_PACKET_TYPE_VALUE_JOIN_RESPONSE) &&
+		     (dv->value->vb_uint32 != FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST) &&
+		     (dv->value->vb_uint32 != FR_PACKET_TYPE_VALUE_RECONFIRM_RESPONSE) &&
+		     (dv->value->vb_uint32 != FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND))) {
 			cf_log_err(subcs, "Invalid VMPS packet type in '%s %s {...}'",
 				   name, packet_type);
 			return -1;
@@ -602,7 +602,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
 	rad_assert(dict_vmps != NULL);
-	rad_assert(attr_vmps_packet_type != NULL);
+	rad_assert(attr_packet_type != NULL);
 
 	/*
 	 *	Bootstrap the app_process modules.

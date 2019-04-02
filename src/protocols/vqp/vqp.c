@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/vqp/vqp.h>
 
 #include "vqp.h"
+#include "attrs.h"
 
 #define MAX_VMPS_LEN (FR_MAX_STRING_LEN - 1)
 
@@ -69,11 +70,11 @@ RCSID("$Id$")
 #define VQP_VERSION (1)
 #define VQP_MAX_ATTRIBUTES (12)
 
-char const *fr_vmps_codes[FR_MAX_VMPS_CODE] = {
-	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST] = "VMPS-Join-Request",
-	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_RESPONSE] = "VMPS-Join-Response",
-	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST] = "VMPS-Reconfirm-Request",
-	[FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_RESPONSE] = "VMPS-Reconfirm-Response",
+char const *fr_vmps_codes[FR_VMPS_MAX_CODE] = {
+	[FR_PACKET_TYPE_VALUE_JOIN_REQUEST] = "Join-Request",
+	[FR_PACKET_TYPE_VALUE_JOIN_RESPONSE] = "Join-Response",
+	[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST] = "Reconfirm-Request",
+	[FR_PACKET_TYPE_VALUE_RECONFIRM_RESPONSE] = "Reconfirm-Response",
 };
 
 
@@ -284,19 +285,19 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 	fr_cursor_init(&cursor, &packet->vps);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_vqp_packet_type));
+	MEM(vp = fr_pair_afrom_da(packet, attr_packet_type));
 	vp->vp_uint32 = packet->data[1];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
 	fr_cursor_append(&cursor, vp);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_vqp_error_code));
+	MEM(vp = fr_pair_afrom_da(packet, attr_error_code));
 	vp->vp_uint32 = packet->data[2];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
 	fr_cursor_append(&cursor, vp);
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_vqp_sequence_number));
+	MEM(vp = fr_pair_afrom_da(packet, attr_sequence_number));
 	vp->vp_uint32 = packet->id; /* already set by vqp_recv */
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
@@ -325,9 +326,8 @@ int vqp_decode(RADIUS_PACKET *packet)
 		}
 
 		/*
-		 *	Hack to get the dictionaries to work correctly.
+		 *	Create the VP.
 		 */
-		attr |= 0x2000;
 		vp = fr_pair_afrom_child_num(packet, fr_dict_root(dict_vqp), attr);
 		if (!vp) {
 			fr_strerror_printf("No memory");
@@ -523,22 +523,22 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	code = packet->code;
 	if (!code) {
-		vp = fr_pair_find_by_da(packet->vps, attr_vqp_packet_type, TAG_ANY);
+		vp = fr_pair_find_by_da(packet->vps, attr_packet_type, TAG_ANY);
 		if (!vp) {
-			fr_strerror_printf("Failed to find %s in response packet", attr_vqp_packet_type->name);
+			fr_strerror_printf("Failed to find %s in response packet", attr_packet_type->name);
 			return -1;
 		}
 
 		code = vp->vp_uint32;
 		if ((code < 1) || (code > 4)) {
-			fr_strerror_printf("Invalid value %d for %s", code, attr_vqp_packet_type->name);
+			fr_strerror_printf("Invalid value %d for %s", code, attr_packet_type->name);
 			return -1;
 		}
 	}
 
 	length = VQP_HDR_LEN;
 
-	vp = fr_pair_find_by_da(packet->vps, attr_vqp_error_code, TAG_ANY);
+	vp = fr_pair_find_by_da(packet->vps, attr_error_code, TAG_ANY);
 	if (vp) {
 		packet->data = talloc_array(packet, uint8_t, length);
 		if (!packet->data) {
@@ -572,7 +572,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		if (!contents[code][i]) break;
 
 		vps[i] = fr_pair_find_by_child_num(packet->vps, fr_dict_root(dict_vqp),
-						   contents[code][i] | 0x2000, TAG_ANY);
+						   contents[code][i], TAG_ANY);
 
 		/*
 		 *	FIXME: Print the name...
@@ -812,13 +812,13 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 	fprintf(fp, "  Version:\t\t%u\n", packet[0]);
 
-	if ((packet[1] > 0) && (packet[1] < FR_MAX_VMPS_CODE) && fr_vmps_codes[packet[1]]) {
+	if ((packet[1] > 0) && (packet[1] < FR_VMPS_MAX_CODE) && fr_vmps_codes[packet[1]]) {
 		fprintf(fp, "  OpCode:\t\t%s\n", fr_vmps_codes[packet[1]]);
 	} else {
 		fprintf(fp, "  OpCode:\t\t%u\n", packet[1]);
 	}
 
-	if ((packet[2] > 0) && (packet[2] < FR_MAX_VMPS_CODE) && fr_vmps_codes[packet[2]]) {
+	if ((packet[2] > 0) && (packet[2] < FR_VMPS_MAX_CODE) && fr_vmps_codes[packet[2]]) {
 		fprintf(fp, "  OpCode:\t\t%s\n", fr_vmps_codes[packet[2]]);
 	} else {
 		fprintf(fp, "  OpCode:\t\t%u\n", packet[2]);

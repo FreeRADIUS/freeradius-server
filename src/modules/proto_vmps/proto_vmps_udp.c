@@ -161,8 +161,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 		return 0;
 	}
 
-	if ((buffer[1] != FR_VMPS_PACKET_TYPE_VALUE_VMPS_JOIN_REQUEST) &&
-	    (buffer[1] != FR_VMPS_PACKET_TYPE_VALUE_VMPS_RECONFIRM_REQUEST)) {
+	if ((buffer[1] != FR_PACKET_TYPE_VALUE_JOIN_REQUEST) &&
+	    (buffer[1] != FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST)) {
 		DEBUG("proto_vmps_udp got invalid packet code %d", buffer[0]);
 		thread->stats.total_unknown_types++;
 		return 0;

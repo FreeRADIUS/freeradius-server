@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 #include "vqp.h"
+#include "attrs.h"
 
 static int instance_count = 0;
 
@@ -38,15 +39,15 @@ fr_dict_autoload_t libfreeradius_vqp[] = {
 	{ NULL }
 };
 
-fr_dict_attr_t const *attr_vqp_error_code;
-fr_dict_attr_t const *attr_vqp_packet_type;
-fr_dict_attr_t const *attr_vqp_sequence_number;
+fr_dict_attr_t const *attr_error_code;
+fr_dict_attr_t const *attr_packet_type;
+fr_dict_attr_t const *attr_sequence_number;
 
 extern fr_dict_attr_autoload_t libfreeradius_vqp_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_vqp_dict_attr[] = {
-	{ .out = &attr_vqp_error_code, .name = "VQP-Error-Code", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
-	{ .out = &attr_vqp_packet_type, .name = "VQP-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
-	{ .out = &attr_vqp_sequence_number, .name = "VQP-Sequence-Number", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
+	{ .out = &attr_error_code, .name = "Error-Code", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
+	{ .out = &attr_sequence_number, .name = "Sequence-Number", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
 	{ NULL }
 };
 

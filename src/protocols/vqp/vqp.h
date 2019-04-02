@@ -31,13 +31,7 @@ RCSIDH(vqp_h, "$Id$")
 extern "C" {
 #endif
 
-extern fr_dict_t *dict_vqp;
-
-extern fr_dict_attr_t const *attr_vqp_error_code;
-extern fr_dict_attr_t const *attr_vqp_packet_type;
-extern fr_dict_attr_t const *attr_vqp_sequence_number;
-
-#define FR_MAX_VMPS_CODE (5)
+#define FR_VMPS_MAX_CODE (5)
 
 RADIUS_PACKET		*vqp_recv(TALLOC_CTX *ctx, int sockfd);
 
@@ -56,7 +50,7 @@ void			fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 ssize_t			fr_vmps_encode(uint8_t *buffer, size_t buflen, uint8_t const *original,
 				       int code, uint32_t id, VALUE_PAIR *vps) CC_HINT(nonnull(1));
 
-extern char const	*fr_vmps_codes[FR_MAX_VMPS_CODE];
+extern char const	*fr_vmps_codes[FR_VMPS_MAX_CODE];
 
 int			fr_vqp_init(void);
 

@@ -22,8 +22,8 @@ server vmps {
 		transport = udp
 
 		#  Type of VMPS packets to listen for.
-		type = VMPS-Join-Request
-		type = VMPS-Reconfirm-Request
+		type = Join-Request
+		type = Reconfirm-Request
 
 		udp {
 			# VMPS sockets only support IPv4 addresses.
@@ -56,21 +56,21 @@ server vmps {
 	#  be used for anything.
 
 	#
-	#  This section is called when it receives a VMPS-Join-Request.
+	#  This section is called when it receives a Join-Request.
 	#
-	recv VMPS-Join-Request {
+	recv Join-Request {
 		#
 		#  Some requests may not have a MAC address.  Try to
 		#  create one using other attributes.
-		if (!&VMPS-Mac) {
-			if (&VMPS-Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
+		if (!&MAC-Address) {
+			if (&Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
 				update request {
-					&VMPS-Mac = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
+					&MAC-Address = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
 				}
 			}
 			else {
 				update request {
-					&VMPS-Mac = &VMPS-Cookie
+					&MAC-Address = &Cookie
 				}
 			}
 		}
@@ -84,30 +84,30 @@ server vmps {
 
 		# required VMPS reply attributes
 		update reply {
-			&VMPS-Packet-Type = VMPS-Join-Response
-			&VMPS-Cookie = &VMPS-Mac
+			&Packet-Type = Join-Response
+			&Cookie = &MAC-Address
 
-			&VMPS-VLAN-Name = "please_use_real_vlan_here"
+			&VLAN-Name = "please_use_real_vlan_here"
 
 			#
 			#  If you have VLAN's in a database, you can select
 			#  the VLAN name based on the MAC address.
 			#
-			#&VMPS-VLAN-Name = "%{sql:select ... where mac='%{VMPS-Mac}'}"
+			#&VLAN-Name = "%{sql:select ... where mac='%{Mac}'}"
 		}
 	}
 
 	#
-	#  This section is called when it sends a VMPS-Join-Response.
+	#  This section is called when it sends a Join-Response.
 	#
-	send VMPS-Join-Response {
+	send Join-Response {
 	     ok
 	}
 
 	#
-	#  This section is called when it receives a VMPS-Reconfirm-Request.
+	#  This section is called when it receives a Reconfirm-Request.
 	#
-	recv VMPS-Reconfirm-Request {
+	recv Reconfirm-Request {
 		#
 		#  Add contents here!
 		#
@@ -115,9 +115,9 @@ server vmps {
 	}
 
 	#
-	#  This section is called when it receives a VMPS-Reconfirm-Response
+	#  This section is called when it receives a Reconfirm-Response
 	#
-	recv VMPS-Reconfirm-Response {
+	recv Reconfirm-Response {
 		#
 		#  Add contents here!
 		#
