@@ -33,6 +33,13 @@ extern "C" {
 #endif
 
 typedef struct {
+	fr_dict_t			*dict;				//!< root dictionary
+	fr_dict_attr_t const		*attr_packet_type;
+	rlm_components_t		recv_type;
+	rlm_components_t		send_type;
+} proto_detail_process_t;
+
+typedef struct {
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 	CONF_SECTION			*cs;				//!< my configuration
 	fr_app_t			*self;				//!< child / parent linking issues
@@ -52,6 +59,7 @@ typedef struct {
 	void				*work_io_instance;		//!< Easy access to the app_io instance.
 	CONF_SECTION			*work_io_conf;			//!< Easy access to the app_io's config secti
 
+	void				*process_instance;		//!< app_process instance
 
 	fr_dict_t			*dict;				//!< root dictionary
 	dl_instance_t			*type_submodule;		//!< Instance of the type
@@ -137,13 +145,6 @@ struct proto_detail_work_thread_s {
 	pthread_mutex_t			worker_mutex;		//!< for the workers
 	int				num_workers;		//!< number of workers
 };
-
-typedef struct {
-	fr_dict_t			*dict;				//!< root dictionary
-	fr_dict_attr_t const		*attr_packet_type;
-	rlm_components_t		recv_type;
-	rlm_components_t		send_type;
-} proto_detail_process_t;
 
 #include <pthread.h>
 

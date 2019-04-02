@@ -190,7 +190,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 	}
 
 	process_dl = *(dl_instance_t **) out;
-	process_inst = process_dl->data;
+	process_inst = inst->process_instance = process_dl->data;
 
 	process_inst->dict = inst->dict;
 	process_inst->attr_packet_type = attr_packet_type;
@@ -414,6 +414,7 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 
 	request->server_cs = inst->server_cs;
 	request->async->process = app_process->entry_point;
+	request->async->process_inst = inst->process_instance;
 }
 
 /** Open listen sockets/connect to external event source
