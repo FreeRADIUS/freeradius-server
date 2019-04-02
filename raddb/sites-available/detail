@@ -12,16 +12,21 @@ server detail {
 	#  In v4, all "server" sections MUST start with a "namespace"
 	#  parameter.  This tells the server which protocol is being used.
 	#
-	#  Namespace for the proto_detail module also controls which 
-	#  dictionary the textual attribute names from the detail file are 
-	#  resolved in, so must match the namespace of the server which
-	#  generated the detail files originally.
-	#
 	namespace = detail
+
+	#
+	#  This virtual server will read detail files from the
+	#  following directory.
+	#
+	directory = ${radacctdir}/detail
 
 	listen {
 		#
 		#  This has to be listed first, sorry.
+		#
+		#  The value given here must match the `namespace` of
+		#  the virtual server which originally created the
+		#  detail files.
 		#
 		dictionary = radius
 
@@ -101,7 +106,7 @@ server detail {
 			#
 			#  The wildcard to use for finding detail files
 			#
-			filename = "${confdir}/detail-*"
+			filename = "${...directory}/detail-*"
 
 		#
 			#  If there are no detail files in the directory,
@@ -121,10 +126,11 @@ server detail {
 		#
 		work {
 			#
-			#  The name of the current working file.
-			#  If ommitted, it is the directory from
-			#  the 'filename' above, with "/detail.work"
-			#  appended to it.
+			#  The name of the current working file.  If
+			#  omitted, it is the directory from the
+			#  `file` subsection, `filename` argument
+			#  given above, with "/detail.work" appended
+			#  to it.
 			#
 			#  As of v4, you can have multiple detail file
 			#  readers in the same directory.  The only
@@ -133,15 +139,15 @@ server detail {
 			#  The best way to enforce that is to give the
 			#  the files different prefixes.
 			#
-			filename = "${confdir}/detail.work"
+			filename = "${...directory}/detail.work"
 
 			#
 			#  Track progress through the detail file.  When the detail
 			#  file is large, and the server is re-started, it will
 			#  read from the START of the file.
 			#
-			#  Setting "track = yes" means it will skip packets which
-			#  have already been processed.  The default is "no".
+			#  Setting `track = yes` means it will skip packets which
+			#  have already been processed.  The default is `no`.
 			#
 			track = yes
 
