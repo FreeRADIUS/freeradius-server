@@ -3937,15 +3937,21 @@ parse:
 		size_t p_len = 0;
 
 		/*
-		 *	Convert things which are obviously uint32s to Ethernet addresses
+		 *	Convert things which are obviously integers to Ethernet addresses
 		 *
-		 *	We assume the number is the bigendian representation of the
-		 *	ethernet address.
+		 *	We assume the number is the decimal
+		 *	representation of the ethernet address.
+		 *	i.e. the ethernet address converted to a
+		 *	number, and printed.
+		 *
+		 *	The string gets converted to a network-order
+		 *	8-byte number, and then the lower bytes of
+		 *	that get copied to the ethernet address.
 		 */
 		if (is_integer(in)) {
-			uint64_t uint32 = htonll(atoll(in));
+			uint64_t lvalue = htonll(atoll(in));
 
-			memcpy(dst->vb_ether, &uint32, sizeof(dst->vb_ether));
+			memcpy(dst->vb_ether, ((uint8_t *) &lvalue) + 2, sizeof(dst->vb_ether));
 			break;
 		}
 
