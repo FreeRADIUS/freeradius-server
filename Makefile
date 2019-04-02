@@ -8,6 +8,11 @@
 #
 
 #
+#	we didn't called ./configure? just define the version.
+#
+RADIUSD_VERSION_STRING := $(shell cat VERSION)
+
+#
 #  The default rule is "all".
 #
 all:
@@ -360,8 +365,11 @@ rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: freeradius
 	@cp $< $@
 
 rpm: rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
-	@rpmbuild --define "_topdir `pwd`/rpmbuild" -bb redhat/freeradius.spec
-
+	@if ! yum-builddep -q -C --assumeno redhat/freeradius.spec 1> /dev/null 2>&1; then \
+		echo "ERROR: Required depdendencies not found, install them with: yum-builddep redhat/freeradius.spec"; \
+		exit 1; \
+	fi
+	@QA_RPATHS=0x0003 rpmbuild --define "_topdir `pwd`/rpmbuild" -bb redhat/freeradius.spec
 
 # Developer checks
 .PHONY: warnings
