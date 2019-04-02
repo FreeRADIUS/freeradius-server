@@ -81,6 +81,8 @@ static const CONF_PARSER file_listen_config[] = {
 
 	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_UINT32, proto_detail_file_t, poll_interval), .dflt = "5" },
 
+	{ FR_CONF_OFFSET("immediate", FR_TYPE_BOOL, proto_detail_file_t, immediate) },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -564,25 +566,13 @@ delay:
  */
 static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void *nr)
 {
+	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
-#ifdef __linux__
 	struct timeval when;
-#endif
 
 	thread->el = el;
 
-	/*
-	 *	Initialize the work state machine.
-	 */
-#ifndef __linux__
-	work_init(thread);
-#else
-
-	/*
-	 *	We're not changing UID, etc.  Start processing the
-	 *	detail files now.
-	 */
-	if (!main_config->allow_core_dumps) {
+	if (inst->immediate) {
 		work_init(thread);
 		return;
 	}
@@ -601,7 +591,6 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 				  &when, work_retry_timer, thread) < 0) {
 		ERROR("Failed inserting poll timer for %s", thread->filename_work);
 	}
-#endif
 }
 
 
