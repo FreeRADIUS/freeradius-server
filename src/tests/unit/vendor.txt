@@ -36,3 +36,13 @@ data 1a 28 00 00 02 11 f2 22 01 01 01 00 01 02 03 04 0a 0b 0c 0d 05 20 06 00 00 
 decode 1a2800000211f22201010100010203040a0b0c0d05200600000504d2020200000000000000000000
 data Ascend-Data-Filter = "ip in forward srcip 1.2.3.4/5 dstip 10.11.12.13/32 tcp srcport = 5 dstport = 1234"
 
+# this untagged tunnel encrypted VSA is valid in both access accepts and CoA requests
+encode ERX-LI-Action = off
+decode -
+data ERX-LI-Action = off
+
+packet coa_request
+original null
+encode ERX-LI-Action = off
+decode -
+data ERX-LI-Action = off
