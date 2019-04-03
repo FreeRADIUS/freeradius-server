@@ -3,36 +3,71 @@
 #
 #  Sample virtual server for receiving a CoA or Disconnect-Request packet.
 #
-
-#  Listen on the CoA port.
-#
-#  This uses the normal set of clients, with the same secret as for
-#  authentication and accounting.
-#
-listen {
-	type = coa
-	ipaddr = *
-	port = 3799
-	virtual_server = coa
-}
-
 server coa {
-	#  When a packet is received, it is processed through the
-	#  recv-coa section.  This applies to *both* CoA-Request and
-	#  Disconnect-Request packets.
-	recv-coa {
+	namespace = radius
+
+	#  Listen on the CoA port.
+	#
+	#  This uses the normal set of clients, with the same secret as for
+	#  authentication and accounting.
+	#
+	listen {
+		type = CoA-Request
+		type = Disconnect-Request
+
+		transport = udp
+
+		udp {
+			ipaddr = *
+			port = 3799
+		}
+	}
+
+	#
+	#  Receive a CoA request
+	#
+	recv CoA-Request {
 		#  Insert your own policies here.
 		ok
 	}
 
-	#  When a packet is sent, it is processed through the
-	#  send-coa section.  This applies to *both* CoA-Request and
-	#  Disconnect-Request packets.
-	send-coa {
+	#
+	#  Send a CoA ACK
+	#
+	send CoA-ACK {
 		#  Sample module.
 		ok
 	}
 
-	#  You can use pre-proxy and post-proxy sections here, too.
-	#  They will be processed for sending && receiving proxy packets.
+	#
+	#  Send a CoA NAK
+	#
+	send CoA-NAK {
+		#  Sample module.
+		ok
+	}
+
+	#
+	#  Receive a Disconnect request
+	#
+	recv Disconnect-Request {
+		#  Insert your own policies here.
+		ok
+	}
+
+	#
+	#  Send a Disconnect ACK
+	#
+	send Disconnect-ACK {
+		#  Sample module.
+		ok
+	}
+
+	#
+	#  Send a Disconnect NAK
+	#
+	send Disconnect-NAK {
+		#  Sample module.
+		ok
+	}
 }
