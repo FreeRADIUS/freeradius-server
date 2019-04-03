@@ -65,21 +65,29 @@ static ssize_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
 	return 0;
 }
 
-static RADIUS_PACKET my_original = {
+static RADIUS_PACKET access_request = {
 	.sockfd = -1,
 	.id = 0,
 	.code = PW_CODE_ACCESS_REQUEST,
 	.vector = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f },
 };
 
-
-static RADIUS_PACKET my_packet = {
+static RADIUS_PACKET access_accept = {
 	.sockfd = -1,
 	.id = 0,
 	.code = PW_CODE_ACCESS_ACCEPT,
 	.vector = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f },
 };
 
+static RADIUS_PACKET coa_request = {
+	.sockfd = -1,
+	.id = 0,
+	.code = PW_CODE_COA_REQUEST,
+	.vector = { 0 },
+};
+
+static RADIUS_PACKET *my_original = &access_request;
+static RADIUS_PACKET *my_packet = &access_accept;
 
 static char const *my_secret = "testing123";
 
@@ -682,6 +690,33 @@ static void process_file(const char *root_dir, char const *filename)
 			continue;
 		}
 
+		if (strncmp(p, "packet ", 7) == 0) {
+			p += 7;
+			if (strncmp(p, "access_accept", 13) == 0) {
+				my_packet = &access_accept;
+			} else if (strncmp(p, "coa_request", 11) == 0) {
+				my_packet = &coa_request;
+			} else {
+				fprintf(stderr, "Unsupported packet type at line %d of %s: %s\n",
+					lineno, directory, p);
+				exit(1);
+			}
+			continue;
+		}
+		if (strncmp(p, "original ", 9) == 0) {
+			p += 9;
+			if (strncmp(p, "null", 4) == 0) {
+				my_original = NULL;
+			} else if (strncmp(p, "access_request", 14) == 0) {
+				my_original = &access_request;
+			} else {
+				fprintf(stderr, "Unsupported original type at line %d of %s: %s\n",
+					lineno, directory, p);
+				exit(1);
+			}
+			continue;
+		}
+
 		if (strncmp(p, "encode ", 7) == 0) {
 			if (strcmp(p + 7, "-") == 0) {
 				p = output;
@@ -702,7 +737,7 @@ static void process_file(const char *root_dir, char const *filename)
 
 				memcpy(&qvp, &pvp, sizeof(pvp));
 
-				len = rad_vp2attr(&my_packet, &my_original, my_secret, qvp,
+				len = rad_vp2attr(my_packet, my_original, my_secret, qvp,
 						  attr, data + sizeof(data) - attr);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
@@ -737,7 +772,7 @@ static void process_file(const char *root_dir, char const *filename)
 			my_len = 0;
 			while (len > 0) {
 				vp = NULL;
-				my_len = rad_attr2vp(NULL, &my_packet, &my_original, my_secret, attr, len, &vp);
+				my_len = rad_attr2vp(NULL, my_packet, my_original, my_secret, attr, len, &vp);
 				if (my_len < 0) {
 					fr_pair_list_free(&head);
 					break;
