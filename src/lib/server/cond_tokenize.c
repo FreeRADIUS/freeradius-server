@@ -780,6 +780,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 				 */
 				case -1:
 					rad_assert(flen <= 0);
+					fr_strerror(); /* Clear out the error buffer */
 					slen += (size_t)(-flen);
 					break;
 
