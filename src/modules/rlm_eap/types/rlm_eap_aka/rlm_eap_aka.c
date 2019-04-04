@@ -51,12 +51,15 @@ static FR_NAME_NUMBER const aka_state_table[] = {
 };
 
 static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session);
+static int mod_section_compile(eap_aka_actions_t *actions, CONF_SECTION *server_cs);
+static int virtual_server_parse(TALLOC_CTX *ctx, void *out, void *parent,
+				CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("network_name", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_aka_t, network_name ) },
 	{ FR_CONF_OFFSET("request_identity", FR_TYPE_BOOL, rlm_eap_aka_t, request_identity ), .dflt = "no" },
 	{ FR_CONF_OFFSET("protected_success", FR_TYPE_BOOL, rlm_eap_aka_t, protected_success ), .dflt = "no" },
-	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_eap_aka_t, virtual_server) },
+	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_VOID, rlm_eap_aka_t, actions), .func = virtual_server_parse },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -122,6 +125,24 @@ fr_dict_attr_autoload_t rlm_eap_aka_dict_attr[] = {
 	{ .out = &attr_eap_aka_subtype, .name = "EAP-AKA-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka },
 	{ NULL }
 };
+
+static int virtual_server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const	*virtual_server;
+	CONF_SECTION	*server_cs;
+
+	virtual_server = cf_pair_value(cf_item_to_pair(ci));
+	server_cs = virtual_server_find(virtual_server);
+	if (!server_cs) {
+		cf_log_err(ci, "Can't find virtual server \"%s\"", virtual_server);
+		return -1;
+	}
+
+	if (mod_section_compile(out, server_cs) < 0) return -1;
+
+	return 0;
+}
 
 static int eap_aka_compose(eap_session_t *eap_session)
 {
@@ -1235,7 +1256,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	return RLM_MODULE_HANDLED;
 }
 
-#define ACTION_SECTION(_out, _verb, _name) \
+#define ACTION_SECTION(_out, _field, _verb, _name) \
 do { \
 	CONF_SECTION *_tmp; \
 	_tmp = cf_section_find(server_cs, _verb, _name); \
@@ -1243,10 +1264,18 @@ do { \
 		if (unlang_compile(_tmp, MOD_AUTHORIZE, NULL) < 0) return -1; \
 		found = true; \
 	} \
-	if (actions) _out = _tmp; \
+	if (_out) _out->_field = _tmp; \
 } while (0)
 
 /** Compile virtual server sections
+ *
+ * Called twice, once when a server with an eap-aka namespace is found, and once
+ * when an EAP-AKA module is instantiated.
+ *
+ * The first time is with actions == NULL and is to compile the sections and
+ * perform validation.
+ * The second time is to write out pointers to the compiled sections which the
+ * EAP-AKA module will use to execute unlang code.
  *
  */
 static int mod_section_compile(eap_aka_actions_t *actions, CONF_SECTION *server_cs)
@@ -1264,57 +1293,57 @@ static int mod_section_compile(eap_aka_actions_t *actions, CONF_SECTION *server_
 	 *	- Start fast re-authentication
 	 *	- Fail...
 	 */
-	ACTION_SECTION(actions->recv_eap_identity_response, "recv", "EAP-Identity-Response");
+	ACTION_SECTION(actions, recv_eap_identity_response, "recv", "EAP-Identity-Response");
 
 	/*
 	 *	Identity negotiation
 	 */
-	ACTION_SECTION(actions->send_identity_request, "send", "Identity-Request");
-	ACTION_SECTION(actions->recv_identity_response, "recv", "Identity-Response");
+	ACTION_SECTION(actions, send_identity_request, "send", "Identity-Request");
+	ACTION_SECTION(actions, recv_identity_response, "recv", "Identity-Response");
 
 	/*
 	 *	Full-Authentication
 	 */
-	ACTION_SECTION(actions->send_challenge_request, "send", "Challenge-Request");
-	ACTION_SECTION(actions->recv_challenge_response, "recv", "Challenge-Response");
+	ACTION_SECTION(actions, send_challenge_request, "send", "Challenge-Request");
+	ACTION_SECTION(actions, recv_challenge_response, "recv", "Challenge-Response");
 
 	/*
 	 *	Fast-Re-Authentication
 	 */
-	ACTION_SECTION(actions->send_fast_reauth_request, "send", "Fast-Reauth-Request");
-	ACTION_SECTION(actions->recv_fast_reauth_response, "recv", "Fast-Reauth-Response");
+	ACTION_SECTION(actions, send_fast_reauth_request, "send", "Fast-Reauth-Request");
+	ACTION_SECTION(actions, recv_fast_reauth_response, "recv", "Fast-Reauth-Response");
 
 	/*
 	 *	Failures originating from the supplicant
 	 */
-	ACTION_SECTION(actions->recv_client_error, "recv", "Client-Error");
-	ACTION_SECTION(actions->recv_authentication_reject, "recv", "Authentication-Reject");
-	ACTION_SECTION(actions->recv_syncronization_failure, "recv", "Syncronization-Failure");
+	ACTION_SECTION(actions, recv_client_error, "recv", "Client-Error");
+	ACTION_SECTION(actions, recv_authentication_reject, "recv", "Authentication-Reject");
+	ACTION_SECTION(actions, recv_syncronization_failure, "recv", "Syncronization-Failure");
 
 	/*
 	 *	Failure originating from the server
 	 */
-	ACTION_SECTION(actions->send_failure_notification, "send", "Failure-Notification");
-	ACTION_SECTION(actions->recv_failure_notification_ack, "recv", "Failure-Notification-ACK");
+	ACTION_SECTION(actions, send_failure_notification, "send", "Failure-Notification");
+	ACTION_SECTION(actions, recv_failure_notification_ack, "recv", "Failure-Notification-ACK");
 
 	/*
 	 *	Protected success indication
 	 */
-	ACTION_SECTION(actions->send_success_notification, "send", "Success-Notification");
-	ACTION_SECTION(actions->recv_success_notification_ack, "recv", "Success-Notification-ACK");
+	ACTION_SECTION(actions, send_success_notification, "send", "Success-Notification");
+	ACTION_SECTION(actions, recv_success_notification_ack, "recv", "Success-Notification-ACK");
 
 	/*
 	 *	Final EAP-Success and EAP-Failure messages
 	 */
-	ACTION_SECTION(actions->send_eap_success, "send", "EAP-Success");
-	ACTION_SECTION(actions->send_eap_failure, "send", "EAP-Failure");
+	ACTION_SECTION(actions, send_eap_success, "send", "EAP-Success");
+	ACTION_SECTION(actions, send_eap_failure, "send", "EAP-Failure");
 
 	/*
 	 *	Fast-Reauth vectors
 	 */
-	ACTION_SECTION(actions->load_session, "load", "session");
-	ACTION_SECTION(actions->store_session, "store", "session");
-	ACTION_SECTION(actions->clear_session, "clear", "session");
+	ACTION_SECTION(actions, load_session, "load", "session");
+	ACTION_SECTION(actions, store_session, "store", "session");
+	ACTION_SECTION(actions, clear_session, "clear", "session");
 
 	/*
 	 *	Warn if we couldn't find any actions.
@@ -1364,6 +1393,7 @@ rlm_eap_submodule_t rlm_eap_aka = {
 
 	.provides	= { FR_EAP_AKA, FR_EAP_AKA_PRIME },
 	.inst_size	= sizeof(rlm_eap_aka_t),
+	.inst_type	= "rlm_eap_aka_t",
 	.config		= submodule_config,
 
 	.onload		= mod_load,
