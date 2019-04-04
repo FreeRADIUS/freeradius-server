@@ -1,5 +1,7 @@
 # -*- text -*-
 # Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
 ##############################################################################
 #
 #  RFC 5678 - Dynamic Host Configuration Protocol (DHCPv4 and DHCPv6) Options for

@@ -45,7 +45,26 @@ while (@ARGV) {
 
     @output = ();
 
+    my $year = 1900 + (localtime)[5];
+
+    #
+    #  Print a common header
+    #
+    push @output, "# -*- text -*-\n";
+    push @output, "# Copyright (C) ", $year, " The FreeRADIUS Server project and contributors\n";
+    push @output, "# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0\n";
+    push @output, "# Version \$Id$\n";
+
+
     while (<FILE>) {
+	#
+	#  Suppress any existing header
+	#
+	next if (/^# -\*- text/);
+	next if (/^# Copyright/);
+	next if (/^# This work is licensed/);
+	next if (/^# Version \$/);
+
 	#
 	#  Clear out trailing whitespace
 	#

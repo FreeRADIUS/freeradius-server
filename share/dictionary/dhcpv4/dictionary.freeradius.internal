@@ -1,3 +1,7 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
 #
 #
 #	The vendor codes are 2 octets, because we need 256 numbers
@@ -6,8 +10,6 @@
 #
 #	On top of that, a number of options are really TLV's.
 #	We need to be able to understand them, too.
-# -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
 ##############################################################################
 #
 #	Internal FreeRADIUS DHCP dictionary.
@@ -80,21 +82,21 @@ VALUE	DHCP-Hardware-Type		IPSec-Tunnel		31
 VALUE	DHCP-Hardware-Type		Infiniband		32
 VALUE	DHCP-Hardware-Type		CAI-TIA-102		33
 
-ATTRIBUTE	Packet-Type			273	integer
+ATTRIBUTE	Packet-Type				273	integer
 
-VALUE	Packet-Type		DHCP-Do-Not-Respond	0
-VALUE	Packet-Type		DHCP-Discover		1
-VALUE	Packet-Type		DHCP-Offer		2
-VALUE	Packet-Type		DHCP-Request		3
-VALUE	Packet-Type		DHCP-Decline		4
-VALUE	Packet-Type		DHCP-Ack		5
-VALUE	Packet-Type		DHCP-NAK		6
-VALUE	Packet-Type		DHCP-Release		7
-VALUE	Packet-Type		DHCP-Inform		8
-VALUE	Packet-Type		DHCP-Force-Renew	9
-VALUE	Packet-Type		DHCP-Lease-Query	10
-VALUE	Packet-Type		DHCP-Lease-Unassigned	11
-VALUE	Packet-Type		DHCP-Lease-Unknown	12
-VALUE	Packet-Type		DHCP-Lease-Active	13
-VALUE	Packet-Type		DHCP-Bulk-Lease-Query	14
-VALUE	Packet-Type		DHCP-Lease-Query-Done	15
+VALUE	Packet-Type			DHCP-Do-Not-Respond	0
+VALUE	Packet-Type			DHCP-Discover		1
+VALUE	Packet-Type			DHCP-Offer		2
+VALUE	Packet-Type			DHCP-Request		3
+VALUE	Packet-Type			DHCP-Decline		4
+VALUE	Packet-Type			DHCP-Ack		5
+VALUE	Packet-Type			DHCP-NAK		6
+VALUE	Packet-Type			DHCP-Release		7
+VALUE	Packet-Type			DHCP-Inform		8
+VALUE	Packet-Type			DHCP-Force-Renew	9
+VALUE	Packet-Type			DHCP-Lease-Query	10
+VALUE	Packet-Type			DHCP-Lease-Unassigned	11
+VALUE	Packet-Type			DHCP-Lease-Unknown	12
+VALUE	Packet-Type			DHCP-Lease-Active	13
+VALUE	Packet-Type			DHCP-Bulk-Lease-Query	14
+VALUE	Packet-Type			DHCP-Lease-Query-Done	15
