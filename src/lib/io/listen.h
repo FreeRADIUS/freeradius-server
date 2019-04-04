@@ -58,7 +58,7 @@ struct fr_async_t {
 	fr_listen_t		*listen;	//!< How we received this request,
 						//!< and how we'll send the reply.
 	uint32_t		priority;
-	bool			detached;	//!< if detached, we don't send real replies
+	bool			fake;		//!< is it a fake request
 };
 
 int fr_io_listen_free(fr_listen_t *li);

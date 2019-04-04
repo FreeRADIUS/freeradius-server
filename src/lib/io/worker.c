@@ -459,10 +459,10 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	now = fr_time();
 
 	/*
-	 *	If it's a detached request, don't send a real reply.
+	 *	If it's a fake request, don't send a real reply.
 	 *	Just toss the request.
 	 */
-	if (request->async->detached) {
+	if (request->async->fake) {
 		fr_time_tracking_end(&request->async->tracking, now, &worker->tracking);
 		goto finished;
 	}
@@ -1010,7 +1010,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 *	active, run it.  Otherwise, tell it that it's done.
 	 */
 	if ((*request->async->original_recv_time == request->async->recv_time) &&
-	    (request->async->detached ||
+	    (request->async->fake ||
 	     fr_channel_active(request->async->channel))) {
 		final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
 
@@ -1053,7 +1053,13 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 
 	RDEBUG("done request");
 
-	(void) rbtree_deletebydata(worker->dedup, request);
+	/*
+	 *	Only real packets are in the dedup tree.  And even
+	 *	then, only some of the time.
+	 */
+	if (!request->async->fake && request->async->listen->app_io->track_duplicates) {
+		(void) rbtree_deletebydata(worker->dedup, request);
+	}
 
 	fr_worker_send_reply(worker, request, size);
 	if (!worker->num_active) worker_reset_timer(worker);

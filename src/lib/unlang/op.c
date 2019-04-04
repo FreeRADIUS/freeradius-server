@@ -520,6 +520,7 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 	COPY_FIELD(listen);
 	COPY_FIELD(recv_time);
 	child->async->original_recv_time = &child->async->recv_time;
+	child->async->fake = true;
 
 	/*
 	 *	Always set the "process" function to the local
@@ -668,10 +669,9 @@ static unlang_action_t unlang_detach(REQUEST *request,
 	}
 
 	/*
-	 *	request_detach() doesn't set the "detached" flag, but
+	 *	request_detach() sets the backlog
 	 *	it does set the backlog...
 	 */
-	request->async->detached = true;
 	rad_assert(request->backlog != NULL);
 
 	*presult = RLM_MODULE_YIELD;

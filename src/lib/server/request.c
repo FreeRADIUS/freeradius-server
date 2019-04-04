@@ -254,8 +254,6 @@ REQUEST *request_alloc_detachable(REQUEST *request)
 
 
 /** Detach a detachable request.
- *
- *  @note the caller still has to set fake->async->detached
  */
 int request_detach(REQUEST *fake)
 {
