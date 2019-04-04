@@ -122,7 +122,7 @@ if test "x$fail" != x; then
 	fi
 fi
 
-mod_ldflags="$SMART_LIBS $(pkg-config --libs-only-other libosmocore) $(pkg-config --libs-only-other libosmo-sccp) $(pkg-config --libs-only-other libosmo-xua) $(pkg-config --libs-only-other libosmo-mtp) $(net-snmp-config --agent-libs) -lsctp"
+mod_ldflags="$SMART_LIBS $(pkg-config --libs-only-other libosmocore) $(pkg-config --libs-only-other libosmo-sccp) $(pkg-config --libs-only-other libosmo-xua) $(pkg-config --libs-only-other libosmo-mtp) $(net-snmp-config --agent-libs 2>&-) -lsctp"
 mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
