@@ -2,15 +2,16 @@
 
 # Create an elasticsearch template mapping for RADIUS data
 # Matthew Newton
-# April 2015
+# April 2019
 
 # This should be run on an elasticsearch node. Alternatively,
 # adjust the curl URI below.
 
-# This version has been tested on elasticsearch 5.1.2
+# This version has been tested on elasticsearch 6.7.0
 
 # The template will be called "radius", and will apply to all
-# indices prefixed with "radius-" that contain data type "detail".
+# indices prefixed with "radius-".
+#
 # As not all RADIUS attributes are known to begin with it has the
 # following starting point that can be modified to suit the local
 # configuration:
@@ -35,12 +36,12 @@
 # This mapping ensures that these have an appropriate data type.
 
 
-curl -XPUT '127.0.0.1:9200/_template/radius' -d '
+curl -s -XPUT -H 'Content-Type: application/json' '127.0.0.1:9200/_template/radius' -d '
 {
   "template":"radius-*",
   "order":0,
   "mappings":{
-    "detail":{
+    "doc":{
 
       "properties": {
         "@timestamp": { "format" : "date_optional_time", "type" : "date" },

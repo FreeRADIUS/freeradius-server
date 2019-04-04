@@ -58,7 +58,7 @@ log-courier.conf
 
 kibana4-dashboard.json
 
-  Basic RADIUS dashboard for Kibana 4 and Kibana 5.
+  Basic RADIUS dashboard (for Kibana 4 to Kibana 6).
 
   To import the dashboard first create a new index called "radius-*" in
   Settings/Indices. Then go to Kibana's Settings page, "Objects" and "Import".
@@ -77,6 +77,8 @@ in:
 
     # /usr/share/logstash/bin/logstash --path.settings=/etc/logstash -f logstash-radius.conf
 
+To view debug output, append `--log.level=debug`.
+
 
 See also
 --------
@@ -84,14 +86,10 @@ See also
 elasticsearch web site: http://www.elastic.co/
 
 The configuration examples presented here have been tested with the
-following software versions (note that elasticsearch 2.x may not yet
-work with this config).
+following software versions:
 
-  elasticsearch 5.1.2
-  logstash 5.1.2
+  elasticsearch 6.7.0
+  logstash 6.7.0
+  kibana 6.7.0
   kibana 5.1.2
   kibana 4.1.11
-
-Matthew Newton
-January 2017
-
