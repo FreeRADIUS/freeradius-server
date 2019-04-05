@@ -75,9 +75,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *e
 
 static rlm_rcode_t eap_tls_success_with_prf(eap_session_t *eap_session)
 {
-		tls_session_t		*tls_session = eap_tls_session->tls_session;
-
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	tls_session_t		*tls_session = eap_tls_session->tls_session;
+
 	/*
 	 *	Set the PRF label based on the TLS version negotiated
 	 *	in the handshake.
