@@ -191,10 +191,10 @@ static char lua_alloc_cmd[] =
 	"  if expires_in > 0 then" EOL									/* 11 */
 	"    ip = redis.call('HMGET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. exists, 'device', 'range', 'counter')" EOL	/* 12 */
 	"    if ip and (ip[1] == ARGV[3]) then" EOL							/* 13 */
-	"      if expires_in < ARGV[2] then" EOL							/* 14 */
-	"        redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL			/* 15 */
-	"        expires_in = ARGV[2]" EOL								/* 16 */
-	"      end" EOL											/* 17 */
+//	"      if expires_in < ARGV[2] then" EOL							/* 14 */
+//	"        redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL			/* 15 */
+//	"        expires_in = ARGV[2]" EOL								/* 16 */
+//	"      end" EOL											/* 17 */
 	"      return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in, ip[3] }" EOL	/* 18 */
 	"    end" EOL											/* 19 */
 	"  end" EOL											/* 20 */
