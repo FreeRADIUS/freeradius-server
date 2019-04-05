@@ -1663,12 +1663,22 @@ int unlang_init(void)
 	unlang_op_register(UNLANG_TYPE_RESUME, &(unlang_op_t){ .name = "resume", .func = unlang_resume });
 
 	/* Register operations for the default keywords */
-	if (unlang_op_init() < 0) return -1;
+	unlang_condition_init();
+	unlang_foreach_init();
+	unlang_function_init();
+	unlang_group_init();
+	unlang_load_balance_init();
+	unlang_map_init();
+	unlang_module_init();
+	unlang_parallel_init();
+	unlang_return_init();
+	if (unlang_subrequest_init() < 0) return -1;
+	unlang_switch_init();
 
 	return 0;
 }
 
 void unlang_free(void)
 {
-	unlang_op_free();
+	unlang_subrequest_free();
 }

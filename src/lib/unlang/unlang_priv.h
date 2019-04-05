@@ -391,7 +391,15 @@ REQUEST		*unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction, rlm_rcod
  *
  * @{
  */
+void		unlang_call_init(void);
+
+void		unlang_condition_init(void);
+
 void		unlang_foreach_init(void);
+
+void		unlang_function_init(void);
+
+void		unlang_group_init(void);
 
 void		unlang_load_balance_init(void);
 
@@ -399,11 +407,15 @@ void		unlang_map_init(void);
 
 void		unlang_module_init(void);
 
+void		unlang_return_init(void);
+
 void		unlang_parallel_init(void);
 
 int		unlang_subrequest_init(void);
 
 void		unlang_subrequest_free(void);
+
+void		unlang_switch_init(void);
  /* @} **/
 
 #ifdef __cplusplus

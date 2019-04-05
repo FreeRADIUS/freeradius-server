@@ -1,15 +1,20 @@
 TARGET		:= libfreeradius-unlang.a
 
-SOURCES	:=	compile.c \
+SOURCES	:=	call.c \
+		compile.c \
+		condition.c \
 		foreach.c \
+		function.c \
+		group.c \
 		interpret.c \
 		io.c \
-		op.c \
 		load_balance.c \
 		map.c \
 		module.c \
 		parallel.c \
+		return.c \
 		subrequest.c \
+		switch.c \
 		xlat.c
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/unlang/*.h))

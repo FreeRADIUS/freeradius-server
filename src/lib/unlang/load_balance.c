@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file unlang/parallel.c
+ * @file unlang/load_balance.c
  * @brief Implementation of the unlang "load-balance" keyword.
  *
  * @copyright 2006-2019 The FreeRADIUS server project

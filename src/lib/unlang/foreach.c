@@ -25,6 +25,9 @@
 RCSID("$Id$")
 
 #include "unlang_priv.h"
+#include "return.h"
+
+#define unlang_break unlang_return
 
 /** State of a foreach loop
  *
@@ -176,5 +179,11 @@ void unlang_foreach_init(void)
 				.name = "foreach",
 				.func = unlang_foreach,
 				.debug_braces = true
+			   });
+
+	unlang_op_register(UNLANG_TYPE_BREAK,
+			   &(unlang_op_t){
+				.name = "break",
+				.func = unlang_break,
 			   });
 }
