@@ -334,6 +334,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 {
 	ssize_t			len;
 	uint8_t			*p = out;
+	uint8_t			*start, *end;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
@@ -347,34 +348,75 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 	out[0] = da->attr & 0xff;
 	out[1] = 0;	/* Length of the value only (unlike RADIUS) */
 
-	outlen -= 2;
 	p += 2;
-
-	/*
-	 *	Check here so we get the full 255 bytes
-	 */
-	if (outlen > UINT8_MAX) outlen = UINT8_MAX;
+	start = out;
+	end = out + outlen;
 
 	/*
 	 *	Encode any sub TLVs or values
 	 */
-	while (outlen >= 3) {
+	while ((end - out) >= 3) {
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (tlv_stack[depth + 1]->type == FR_TYPE_TLV) {
-			len = encode_tlv_hdr(p, outlen - out[1], tlv_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_tlv_hdr(p, end - p, tlv_stack, depth + 1, cursor, encoder_ctx);
 		} else {
-			len = encode_rfc_hdr(p, outlen - out[1], tlv_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_rfc_hdr(p, end - p, tlv_stack, depth + 1, cursor, encoder_ctx);
 		}
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
 
-		p += len;
-		out[1] += len;
+		/*
+		 *	If the newly added data fits within the
+		 *	current option, then update the header, and go
+		 *	to the next option.
+		 */
+		if (((p + len) - out) < (255 + 2)) {
+			out[1] += len;
+			p += len;
+
+		} else {
+			p += len;
+
+			/*
+			 *	The encoder added more data than fits
+			 *	into the current option.  Wind the
+			 *	pointers to the end of the encoded
+			 *	data.
+			 */
+			while ((out + out[1]) < p) {
+				out += out[1]; /* should be 255 */
+			}
+
+			/*
+			 *	The current option ends at p, which is
+			 *	what we want.  However, if the current
+			 *	option ALSO is full, then we need to
+			 *	add a new option header.
+			 */
+			if (out[1] == 255) {
+				out += out[1];
+
+				/*
+				 *	Don't add in an option header.
+				 *	Rely on the caller to check
+				 *	that there's no more room in
+				 *	the buffer.
+				 */
+				if ((end - out) < 3) {
+					p = out;
+					break;
+				}
+
+				out[0] = start[0];
+				out[1] = 0;
+				p = out + 2;
+			}
+		}
 
 		FR_PROTO_STACK_PRINT(tlv_stack, depth);
-		FR_PROTO_HEX_DUMP(out, (p - out), "TLV header and sub TLVs");
+		FR_PROTO_HEX_DUMP(out, (p - start), "TLV header and sub TLVs");
 
 		/*
 		 *	If nothing updated the attribute, stop
@@ -390,7 +432,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 		vp = fr_cursor_current(cursor);
 	}
 
-	return p - out;
+	return p - start;
 }
 
 /** Encode a DHCP option and any sub-options.
