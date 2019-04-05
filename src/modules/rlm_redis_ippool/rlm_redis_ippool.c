@@ -210,7 +210,7 @@ static char lua_alloc_cmd[] =
 	"if ip[2] >= ARGV[1] then" EOL									/* 26 */
 	"  return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 27 */
 	"end" EOL											/* 28 */
-	"redis.call('ZADD', pool_key, ARGV[1] + ARGV[2], ip[1])" EOL					/* 29 */
+	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL				/* 29 */
 
 	/*
 	 *	Set the device/gateway keys
