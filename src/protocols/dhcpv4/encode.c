@@ -343,7 +343,7 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 		break;
 	}
 
-	if (len < 0) return len;
+	if (len <= 0) return len;
 
 	FR_PROTO_TRACE("Complete option is %zu byte(s)", len);
 	FR_PROTO_HEX_DUMP(out, len, NULL);
