@@ -686,6 +686,7 @@ static const char xlat_spaces[] = "                                             
  * @param[in] request		The current request.
  * @param[in] rctx		Opaque (to us), resume ctx provided by the xlat function
  *				when it yielded.
+ * @param[in] action		What the request should do (the type of signal).
  */
 void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 		 REQUEST *request, void *rctx, fr_state_signal_t action)

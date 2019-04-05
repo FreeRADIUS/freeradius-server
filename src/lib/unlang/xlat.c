@@ -320,7 +320,7 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
  *
  * @param[in] request		The current request.
  * @param[in] rctx		created by #unlang_module.
- * @param[in] action		to signal.
+ * @param[in] action		What the request should do (the type of signal).
  */
 static void unlang_xlat_signal(REQUEST *request, void *rctx, fr_state_signal_t action)
 {
