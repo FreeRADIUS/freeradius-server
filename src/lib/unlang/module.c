@@ -189,7 +189,7 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	unlang_module_t		*mc = unlang_generic_to_module(mr->parent);
+	unlang_module_t			*mc = unlang_generic_to_module(mr->parent);
 	int				stack_depth = stack->depth;
 	char const			*caller;
 
@@ -205,9 +205,9 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	caller = request->module;
 	request->module = mc->module_instance->name;
 	safe_lock(mc->module_instance);
-	*presult = request->rcode = ((fr_unlang_module_resume_t)mr->callback)(request,
-									      mc->module_instance->dl_inst->data,
-									      ms->thread->data, mr->rctx);
+	*presult = request->rcode = ((fr_unlang_module_resume_t)mr->resume)(request,
+									    mc->module_instance->dl_inst->data,
+									    ms->thread->data, mr->rctx);
 	safe_unlock(mc->module_instance);
 	request->module = caller;
 

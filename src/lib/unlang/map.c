@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief map and unlang integration.
- * @file unlang/map.c
+ * @brief Unlang "map" keyword evaluation.
  *
  * @ingroup AVP
  *

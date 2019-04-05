@@ -267,13 +267,13 @@ static unlang_action_t unlang_xlat(REQUEST *request,
  *	A common pattern is to use ``return unlang_xlat_yield(...)``.
  *
  * @param[in] request		The current request.
- * @param[in] callback		to call on unlang_resumable().
- * @param[in] signal		to call on unlang_action().
- * @param[in] rctx	to pass to the callbacks.
+ * @param[in] resume		Called on unlang_resumable().
+ * @param[in] signal		Called on unlang_action().
+ * @param[in] rctx		to pass to the callbacks.
  * @return always returns RLM_MODULE_YIELD.
  */
 xlat_action_t unlang_xlat_yield(REQUEST *request,
-				xlat_func_resume_t callback, xlat_func_signal_t signal,
+				xlat_func_resume_t resume, xlat_func_signal_t signal,
 				void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -285,7 +285,7 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 	switch (frame->instruction->type) {
 	case UNLANG_TYPE_XLAT:
 	{
-		mr = unlang_resume_alloc(request, (void *)callback, (void *)signal, rctx);
+		mr = unlang_resume_alloc(request, (void *)resume, (void *)signal, rctx);
 		if (!fr_cond_assert(mr)) {
 			return XLAT_ACTION_FAIL;
 		}
@@ -300,7 +300,7 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 		 *	Re-use the current RESUME frame, but override
 		 *	the callbacks and context.
 		 */
-		mr->callback = (void *)callback;
+		mr->resume = (void *)resume;
 		mr->signal = (void *)signal;
 		mr->rctx = rctx;
 		return XLAT_ACTION_YIELD;
@@ -358,7 +358,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 	xlat_action_t			xa;
 
 	xa = xlat_frame_eval_resume(xs->ctx, &xs->values,
-				    (xlat_func_resume_t)mr->callback, xs->exp,
+				    (xlat_func_resume_t)mr->resume, xs->exp,
 				    request, &xs->rhead, rctx);
 	switch (xa) {
 	case XLAT_ACTION_YIELD:

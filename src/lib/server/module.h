@@ -325,15 +325,15 @@ void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for 
 int		unlang_event_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
 						void const *ctx, struct timeval *timeout);
 
-int 		unlang_event_fd_add(REQUEST *request,
+int 		unlang_module_event_fd_add(REQUEST *request,
 				    fr_unlang_module_fd_event_t read,
 				    fr_unlang_module_fd_event_t write,
 				    fr_unlang_module_fd_event_t error,
-				    void const *ctx, int fd);
+				    void const *rctx, int fd);
 
 int		unlang_event_timeout_delete(REQUEST *request, void const *ctx);
 
-int		unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd);
+int		unlang_event_fd_delete(REQUEST *request, void const *rctx, int fd);
 
 rlm_rcode_t	unlang_module_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					REQUEST *request, xlat_exp_t const *xlat,
@@ -342,8 +342,6 @@ rlm_rcode_t	unlang_module_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 
 rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback,
 				    fr_unlang_module_signal_t signal_callback, void *ctx);
-
-void		unlang_module_init(void);
 #ifdef __cplusplus
 }
 #endif
