@@ -138,6 +138,84 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	return p - out;
 }
 
+
+/** Extend an encoded option in-place.
+ *
+ * @param[in] start		buffer where the option starts
+ * @param[in] end		where we must stop writing
+ * @param[in] p			buffer where the current data resides
+ * @param[in] len		length of the data being written
+ * @return
+ *	- NULL if we can't extend the option
+ *	- !NULL which is the start of the next option
+ */
+static uint8_t *extend_option(uint8_t *start, uint8_t *end, uint8_t *p, int len)
+{
+	int headers;
+	uint8_t *out = start;
+
+	/*
+	 *	How many extra headers we will need to add.
+	 */
+	headers = ((out[1] + len) / 255) * 2;
+
+	/*
+	 *	No room for the new headers and data, we're done.
+	 */
+	if ((out + out[1] + headers + len) > end) {
+		return NULL;
+	}
+
+	/*
+	 *	Moving the same data repeatedly in a loop is simpler
+	 *	and less error-prone than anything smarter.
+	 */
+	while (len > 0) {
+		int sublen;
+
+		/*
+		 *	Figure out how much data goes into this
+		 *	option, and how much data we have to move out
+		 *	of the way.
+		 */
+		sublen = 255 - out[1];
+		if (sublen > len) sublen = len;
+
+		/*
+		 *	Add in the data left at the current pointer.
+		 */
+		out[1] += sublen;
+		len -= sublen;
+
+		/*
+		 *	Nothing more to do?  Exit.
+		 */
+		if (!len) {
+			break;
+		}
+
+		/*
+		 *	The current option is full.  So move the
+		 *	trailing data up by 2 bytes.  Then add a new
+		 *	header, and keep looping in order to process
+		 *	the next chunk.
+		 */
+		p += sublen;
+		memmove(p + 2, p, len);
+
+		/*
+		 *	Build the new header, then jump to it and use it.
+		 */
+		p[0] = out[0];
+		p[1] = 0;
+		out = p;
+		p += 2;
+	}
+
+	return out;
+}
+
+
 /** Write out an RFC option header and option data
  *
  * @note May coalesce options with fixed width values
@@ -159,6 +237,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 {
 	ssize_t			len;
 	uint8_t			*p = out;
+	uint8_t			*start, *end;
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 	VALUE_PAIR		*vp = fr_cursor_current(cursor);
 
@@ -172,13 +251,9 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 	out[0] = da->attr & 0xff;
 	out[1] = 0;	/* Length of the value only (unlike RADIUS) */
 
-	outlen -= 2;
 	p += 2;
-
-	/*
-	 *	Check here so we get the full 255 bytes
-	 */
-	if (outlen > UINT8_MAX) outlen = UINT8_MAX;
+	start = out;
+	end = out + outlen;
 
 	/*
 	 *	DHCP options with the same number (and array flag set)
@@ -190,7 +265,21 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 	do {
 		VALUE_PAIR *next;
 
-		len = encode_value(p, outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
+		/*
+		 *	As a quick hack, check if there's enough room
+		 *	for fixed-size attributes.  If we're encoding
+		 *	the second or later value into this option,
+		 *	AND we're encoding fixed size values, AND
+		 *	there's no room for the next fixed-size value,
+		 *	then don't encode this VP.
+		 */
+		if (out[1] && vp->da->flags.array &&
+		    (dict_attr_sizes[vp->da->type][0] == dict_attr_sizes[vp->da->type][1]) &&
+		    (out[1] + dict_attr_sizes[vp->da->type][0]) > 255) {
+			break;
+		}
+
+		len = encode_value(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
 		if (len < -1) return len;
 		if (len == -1) {
 			FR_PROTO_TRACE("No more space in option");
@@ -203,19 +292,27 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 
 		FR_PROTO_STACK_PRINT(tlv_stack, depth);
 		FR_PROTO_TRACE("Encoded value is %zu byte(s)", len);
-		FR_PROTO_HEX_DUMP(out, (p - out), NULL);
+		FR_PROTO_HEX_DUMP(start, (p - start), NULL);
 
-		p += len;
-		out[1] += len;
+		if ((out[1] + len) <= 255) {
+			p += len;
+			out[1] += len;
+			FR_PROTO_TRACE("%u byte(s) available in option", 255 - out[1]);
 
-		FR_PROTO_TRACE("%zu byte(s) available in option", outlen - out[1]);
+		} else {
+			out = extend_option(out, end, p, len);
+			if (!out) break;
+
+			p = out + 2;
+			p += out[1];
+		}
 
 		next = fr_cursor_current(cursor);
 		if (!next || (vp->da != next->da)) break;
 		vp = next;
 	} while (vp->da->flags.array);
 
-	return p - out;
+	return p - start;
 }
 
 /** Write out a TLV header (and any sub TLVs or values)
