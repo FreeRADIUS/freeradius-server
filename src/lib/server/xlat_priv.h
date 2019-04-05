@@ -149,6 +149,9 @@ xlat_t	*xlat_func_find(char const *name);
 /*
  *	xlat_eval.c
  */
+void		xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
+			    REQUEST *request, void *rctx, fr_state_signal_t action);
+
 xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       xlat_func_resume_t resume, xlat_exp_t const *exp,
 				       REQUEST *request, fr_value_box_t **result, void *rctx);

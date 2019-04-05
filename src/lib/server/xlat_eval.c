@@ -679,6 +679,20 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, REQU
 static const char xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
 #endif
 
+/** Signal an xlat function
+ *
+ * @param[in] signal		function to call.
+ * @param[in] exp		Xlat node that previously yielded.
+ * @param[in] request		The current request.
+ * @param[in] rctx		Opaque (to us), resume ctx provided by the xlat function
+ *				when it yielded.
+ */
+void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
+		 REQUEST *request, void *rctx, fr_state_signal_t action)
+{
+	signal(request, exp->inst, xlat_thread_instance_find(exp)->data, rctx, action);
+}
+
 /** Call an xlat's resumption method
  *
  * @param[in] ctx		to allocate value boxes in.

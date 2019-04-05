@@ -311,6 +311,31 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 	}
 }
 
+/** Send a signal (usually stop) to a request that's running an xlat expansions
+ *
+ * This is typically called via an "async" action, i.e. an action
+ * outside of the normal processing of the request.
+ *
+ * If there is no #xlat_func_signal_t callback defined, the action is ignored.
+ *
+ * @param[in] request		The current request.
+ * @param[in] rctx		created by #unlang_module.
+ * @param[in] action		to signal.
+ */
+static void unlang_xlat_signal(REQUEST *request, void *rctx, fr_state_signal_t action)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_resume_t			*mr = unlang_generic_to_resume(frame->instruction);
+	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
+
+	rad_assert(stack->depth > 0);
+
+	if (!mr->signal) return;
+
+	xlat_signal((xlat_func_signal_t)mr->signal, xs->exp, request, rctx, action);
+}
+
 /** Called when we're ready to resume processing the request
  *
  * @param[in] request	to resume processing.
@@ -328,13 +353,13 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
+	unlang_resume_t			*mr = unlang_generic_to_resume(frame->instruction);
 	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
 
-	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, (xlat_func_resume_t)mr->callback,
-				    xs->exp, request, &xs->rhead, rctx);
+	xa = xlat_frame_eval_resume(xs->ctx, &xs->values,
+				    (xlat_func_resume_t)mr->callback, xs->exp,
+				    request, &xs->rhead, rctx);
 	switch (xa) {
 	case XLAT_ACTION_YIELD:
 		*presult = RLM_MODULE_YIELD;
@@ -397,6 +422,7 @@ void unlang_xlat_init(void)
 				.name = "xlat_eval",
 				.func = unlang_xlat,
 				.resume = unlang_xlat_resume,
+				.signal = unlang_xlat_signal,
 				.debug_braces = false
 			   });
 
