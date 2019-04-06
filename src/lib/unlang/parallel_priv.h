@@ -19,7 +19,7 @@
  * $Id$
  *
  * @file unlang/parallel_priv.h
- * @brief Private interpreter structures and functions
+ * @brief Declarations for the unlang "parallel" keyword
  *
  * Should be moved into parallel.c when the parallel stuff is fully extracted
  * from interpret.c
@@ -32,22 +32,22 @@
 extern "C" {
 #endif
 
-/** Parallel children have states
+/** Parallel child states
  *
  */
-typedef enum unlang_parallel_child_state_t {
-	CHILD_INIT = 0,				//!< needs initialization
-	CHILD_RUNNABLE,
-	CHILD_YIELDED,
-	CHILD_DONE
+typedef enum {
+	CHILD_INIT = 0,					//!< Initial state.
+	CHILD_RUNNABLE,					//!< Child can continue running.
+	CHILD_YIELDED,					//!< Child is yielded waiting on an event.
+	CHILD_DONE					//!< The child has completed.
 } unlang_parallel_child_state_t;
 
 /** Each parallel child has a state, and an associated request
  *
  */
 typedef struct {
-	unlang_parallel_child_state_t	state;		//!< state of the child
-	REQUEST				*child; 	//!< child request
+	unlang_parallel_child_state_t	state;		//!< State of the child.
+	REQUEST				*child; 	//!< Child request.
 	unlang_t			*instruction;	//!< broken out of g->children
 } unlang_parallel_child_t;
 
@@ -55,11 +55,11 @@ typedef struct {
 	rlm_rcode_t		result;
 	int			priority;
 
-	int			num_children;
+	int			num_children;		//!< How many children are executing.
 
 	unlang_group_t		*g;
 
-	unlang_parallel_child_t children[];
+	unlang_parallel_child_t children[];		//!< Array of children.
 } unlang_parallel_t;
 
 #ifdef __cplusplus
