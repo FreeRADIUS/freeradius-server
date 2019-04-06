@@ -18,14 +18,16 @@
 /**
  * $Id$
  *
- * @file lib/unlang/base.h
- * @brief Public interface to the interpreter
+ * @file unlang/base.h
+ * @brief Public interface to the unlang interpreter
  *
+ * @copyright 2016-2019 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/components.h>
 #include <freeradius-devel/server/signal.h>
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/unlang/module.h>
 
 /** Returned by #unlang_op_t calls, determine the next action of the interpreter
  *

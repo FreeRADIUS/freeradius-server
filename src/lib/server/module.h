@@ -136,67 +136,6 @@ typedef int (*module_thread_t)(CONF_SECTION const *mod_cs, void *instance, fr_ev
  */
 typedef int (*module_thread_detach_t)(fr_event_list_t *el, void *thread);
 
-
-/** A callback when the the timeout occurs
- *
- * Used when a module needs wait for an event.
- * Typically the callback is set, and then the module returns unlang_module_yield().
- *
- * @note The callback is automatically removed on unlang_resumable(), i.e. if an event
- *	on a registered FD occurs before the timeout event fires.
- *
- * @param[in] request		the request.
- * @param[in] instance		the module instance.
- * @param[in] thread		data specific to this module instance.
- * @param[in] rctx		a local context for the callback.
- * @param[in] fired		the time the timeout event actually fired.
- */
-typedef	void (*fr_unlang_module_timeout_t)(REQUEST *request, void *instance, void *thread, void *rctx,
-					   struct timeval *fired);
-
-/** A callback when the FD is ready for reading
- *
- * Used when a module needs to read from an FD.  Typically the callback is set, and then the
- * module returns unlang_module_yield().
- *
- * @note The callback is automatically removed on unlang_resumable(), so
- *
- * @param[in] request		the current request.
- * @param[in] instance		the module instance.
- * @param[in] thread		data specific to this module instance.
- * @param[in] rctx		a local context for the callback.
- * @param[in] fd		the file descriptor.
- */
-typedef void (*fr_unlang_module_fd_event_t)(REQUEST *request, void *instance, void *thread, void *rctx, int fd);
-
-/** A callback for when the request is resumed.
- *
- * The resumed request cannot call the normal "authorize", etc. method.  It needs a separate callback.
- *
- * @param[in] request		the current request.
- * @param[in] instance		The module instance.
- * @param[in] thread		data specific to this module instance.
- * @param[in] rctx		a local context for the callback.
- * @return a normal rlm_rcode_t.
- */
-typedef rlm_rcode_t (*fr_unlang_module_resume_t)(REQUEST *request, void *instance, void *thread, void *rctx);
-
-/** A callback when the request gets a fr_state_signal_t.
- *
- * A module may call unlang_yeild(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
- * set here.
- *
- * @note The callback is automatically removed on unlang_resumable().
- *
- * @param[in] request		The current request.
- * @param[in] instance		The module instance.
- * @param[in] thread		data specific to this module instance.
- * @param[in] rctx		Resume ctx for the callback.
- * @param[in] action		which is signalling the request.
- */
-typedef void (*fr_unlang_module_signal_t)(REQUEST *request, void *instance, void *thread,
-					  void *rctx, fr_state_signal_t action);
-
 /** Struct exported by a rlm_* module
  *
  * Determines the capabilities of the module, and maps internal functions
@@ -319,29 +258,6 @@ int		virtual_server_namespace_register(char const *namespace, fr_virtual_server_
 
 void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for unit_test_module */
 
-/*
- *	unlang_module.c
- */
-int		unlang_event_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
-						void const *ctx, struct timeval *timeout);
-
-int 		unlang_module_event_fd_add(REQUEST *request,
-				    fr_unlang_module_fd_event_t read,
-				    fr_unlang_module_fd_event_t write,
-				    fr_unlang_module_fd_event_t error,
-				    void const *rctx, int fd);
-
-int		unlang_event_timeout_delete(REQUEST *request, void const *ctx);
-
-int		unlang_event_fd_delete(REQUEST *request, void const *rctx, int fd);
-
-rlm_rcode_t	unlang_module_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
-					REQUEST *request, xlat_exp_t const *xlat,
-					fr_unlang_module_resume_t callback,
-					fr_unlang_module_signal_t signal_callback, void *uctx);
-
-rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback,
-				    fr_unlang_module_signal_t signal_callback, void *ctx);
 #ifdef __cplusplus
 }
 #endif

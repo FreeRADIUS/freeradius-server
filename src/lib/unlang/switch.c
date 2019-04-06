@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include "unlang_priv.h"
-#include "group.h"
+#include "group_priv.h"
 
 static unlang_action_t unlang_switch(REQUEST *request,
 				       UNUSED rlm_rcode_t *presult, UNUSED int *priority)

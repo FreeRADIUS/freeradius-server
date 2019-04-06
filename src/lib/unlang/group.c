@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include "unlang_priv.h"
-#include "group.h"
+#include "group_priv.h"
 
 #define unlang_policy unlang_group
 

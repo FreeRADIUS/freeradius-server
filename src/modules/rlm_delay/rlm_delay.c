@@ -141,7 +141,7 @@ static void mod_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED voi
 
 	RDEBUG2("Cancelling delay");
 
-	if (!fr_cond_assert(unlang_event_timeout_delete(request, ctx) == 0)) return;
+	if (!fr_cond_assert(unlang_module_timeout_delete(request, ctx) == 0)) return;
 }
 
 static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *thread, REQUEST *request)
@@ -173,7 +173,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *threa
 
 	RDEBUG3("Current time %pV, resume time %pV", fr_box_timeval(*yielded_at), fr_box_timeval(resume_at));
 
-	if (unlang_event_module_timeout_add(request, _delay_done, yielded_at, &resume_at) < 0) {
+	if (unlang_module_timeout_add(request, _delay_done, yielded_at, &resume_at) < 0) {
 		RPEDEBUG("Adding event failed");
 		return RLM_MODULE_FAIL;
 	}
@@ -211,7 +211,7 @@ static void xlat_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED vo
 
 	RDEBUG2("Cancelling delay");
 
-	if (!fr_cond_assert(unlang_event_timeout_delete(request, rctx) == 0)) return;
+	if (!fr_cond_assert(unlang_module_timeout_delete(request, rctx) == 0)) return;
 }
 
 static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,

@@ -22,6 +22,8 @@
  * @brief Private interpreter structures and functions
  *
  * @author Alan DeKok <aland@freeradius.org>
+ *
+ * @copyright 2016-2019 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/cf_util.h> /* Need CONF_* definitions */
 #include <freeradius-devel/server/cond_eval.h>
@@ -167,15 +169,6 @@ typedef struct {
 	};
 } unlang_group_t;
 
-/** A call to a module method
- *
- */
-typedef struct {
-	unlang_t		self;
-	module_instance_t	*module_instance;	//!< Instance of the module we're calling.
-	module_method_t		method;
-} unlang_module_t;
-
 /** Pushed onto the interpreter stack by a yielding module, xlat, or keyword to indicate a resumption point
  *
  * Unlike normal coroutines in other languages, we represent resumption points as states in a state
@@ -309,22 +302,11 @@ extern char const *const comp2str[];
  *
  * @{
  */
-static inline unlang_module_t *unlang_generic_to_module(unlang_t *p)
-{
-	rad_assert(p->type == UNLANG_TYPE_MODULE);
-	return talloc_get_type_abort(p, unlang_module_t);
-}
-
 static inline unlang_group_t *unlang_generic_to_group(unlang_t *p)
 {
 	rad_assert((p->type > UNLANG_TYPE_MODULE) && (p->type <= UNLANG_TYPE_POLICY));
 
 	return (unlang_group_t *)p;
-}
-
-static inline unlang_t *unlang_module_to_generic(unlang_module_t *p)
-{
-	return (unlang_t *)p;
 }
 
 static inline unlang_t *unlang_group_to_generic(unlang_group_t *p)

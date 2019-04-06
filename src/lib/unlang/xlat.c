@@ -119,7 +119,7 @@ static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
  *
  * @param[in] el	the event timer was inserted into.
  * @param[in] now	The current time, as held by the event_list.
- * @param[in] ctx	unlang_event_t structure holding callbacks.
+ * @param[in] ctx	unlang_module_event_t structure holding callbacks.
  *
  */
 static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, struct timeval *now, void *ctx)

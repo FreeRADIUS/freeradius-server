@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include "unlang_priv.h"
-#include "return.h"
+#include "return_priv.h"
 
 unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult, int *priority)
 {

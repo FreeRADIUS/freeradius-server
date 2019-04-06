@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include "unlang_priv.h"
-#include "return.h"
+#include "return_priv.h"
 
 #define unlang_break unlang_return
 

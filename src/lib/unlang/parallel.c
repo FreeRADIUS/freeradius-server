@@ -25,7 +25,8 @@
 RCSID("$Id$")
 
 #include "unlang_priv.h"
-#include "parallel.h"
+#include "parallel_priv.h"
+#include "module_priv.h"
 
 /** Run one or more sub-sections from the parallel section.
  *

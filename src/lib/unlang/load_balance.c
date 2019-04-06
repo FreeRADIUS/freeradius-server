@@ -23,6 +23,7 @@
  * @copyright 2006-2019 The FreeRADIUS server project
  */
 #include "unlang_priv.h"
+#include "module_priv.h"
 
 #define unlang_redundant_load_balance unlang_load_balance
 

@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/parser.h>
 #include <freeradius-devel/unlang/base.h>
 #include "unlang_priv.h"
+#include "module_priv.h"
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
