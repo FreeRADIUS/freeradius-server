@@ -18,11 +18,8 @@
 /**
  * $Id$
  *
- * @file unlang/parallel.h
- * @brief Private interpreter structures and functions
- *
- * Should be moved into parallel.c when the parallel stuff is fully extracted
- * from interpret.c
+ * @file unlang/group_priv.h
+ * @brief Declarations for the "group" keyword
  *
  * @copyright 2006-2019 The FreeRADIUS server project
  */

@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file unlang/parallel.h
+ * @file unlang/parallel_priv.h
  * @brief Private interpreter structures and functions
  *
  * Should be moved into parallel.c when the parallel stuff is fully extracted

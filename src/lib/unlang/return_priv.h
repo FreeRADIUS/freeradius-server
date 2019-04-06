@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file unlang/return.h
+ * @file unlang/return_priv.h
  * @brief Declarations for the "return" keyword, used to implement other keywords
  *
  * @copyright 2006-2019 The FreeRADIUS server project
