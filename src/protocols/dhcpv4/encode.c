@@ -303,8 +303,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 			out = extend_option(out, end, p, len);
 			if (!out) break;
 
-			p = out + 2;
-			p += out[1];
+			p = out + 2 + out[1];
 		}
 
 		next = fr_cursor_current(cursor);
@@ -367,6 +366,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
 
+
 		/*
 		 *	If the newly added data fits within the
 		 *	current option, then update the header, and go
@@ -377,41 +377,44 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 			p += len;
 
 		} else {
-			p += len;
+			/*
+			 *	The data doesn't fit within the
+			 *	current option.  Start a new option.
+			 */
 
 			/*
-			 *	The encoder added more data than fits
-			 *	into the current option.  Wind the
-			 *	pointers to the end of the encoded
-			 *	data.
+			 *	Not enough space for the 2 byte
+			 *	header.
 			 */
-			while ((out + out[1]) < p) {
-				out += out[1]; /* should be 255 */
-			}
+			if ((p + 2 + len) >= end) break;
 
 			/*
-			 *	The current option ends at p, which is
-			 *	what we want.  However, if the current
-			 *	option ALSO is full, then we need to
-			 *	add a new option header.
+			 *	Move the data up and start a new
+			 *	option.
 			 */
-			if (out[1] == 255) {
-				out += out[1];
+			memmove(p + 2, p, len);
+			p[0] = start[0];
+			p[1] = 0;
+			out = p;
+			p = out + 2;
 
+			/*
+			 *	The data fits entirely within the new
+			 *	option.  Just use that.
+			 */
+			if (len <= 255) {
+				out[1] = len;
+				p += len;
+
+			} else {
 				/*
-				 *	Don't add in an option header.
-				 *	Rely on the caller to check
-				 *	that there's no more room in
-				 *	the buffer.
+				 *	The data has to be split
+				 *	across multiple options.
 				 */
-				if ((end - out) < 3) {
-					p = out;
-					break;
-				}
+				out = extend_option(out, end, p, len);
+				if (!out) break;
 
-				out[0] = start[0];
-				out[1] = 0;
-				p = out + 2;
+				p = out + 2 + out[1];
 			}
 		}
 
