@@ -63,6 +63,8 @@ static void unlang_dump_frame(REQUEST *request, unlang_stack_frame_t *frame)
 	unlang_dump_instruction(request, frame->instruction);
 
 	RINDENT();
+
+	if (frame->state) RDEBUG2("state          %s (%p)", talloc_get_name(frame->state), frame->state);
 	if (frame->next) {
 		RDEBUG2("next           %s", frame->next->debug_name);
 	} else {
@@ -261,6 +263,12 @@ void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, b
 	frame->state = NULL;
 }
 
+static inline void unlang_frame_cleanup(unlang_stack_frame_t *frame)
+{
+	frame->repeat = false;
+	if (frame->state) TALLOC_FREE(frame->state);
+}
+
 /** Pop a stack frame, removing any associated dynamically allocated state
  *
  * @param[in] stack	frame to pop.
@@ -272,7 +280,7 @@ static inline void unlang_pop(unlang_stack_t *stack)
 	rad_assert(stack->depth > 1);
 
 	frame = &stack->frame[stack->depth];
-	if (frame->state) talloc_free(frame->state);
+	unlang_frame_cleanup(frame);
 
 	frame = &stack->frame[--stack->depth];
 	next = frame + 1;
@@ -553,6 +561,7 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 		 *	Execute the next instruction in this frame
 		 */
 		case UNLANG_ACTION_EXECUTE_NEXT:
+			unlang_frame_cleanup(frame);
 			if ((action == UNLANG_ACTION_EXECUTE_NEXT) && unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("}");
