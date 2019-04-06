@@ -941,10 +941,10 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 	 */
 	if (inst->jit) {
 		DEBUG4("Initialised new LuaJIT interpreter %p", L);
-		fr_lua_aux_jit_log_register(inst, L);
+		if (fr_lua_aux_jit_log_register(inst, L) < 0) goto error;
 	} else {
 		DEBUG4("Initialised new Lua interpreter %p", L);
-		fr_lua_aux_log_register(inst, L);
+		if (fr_lua_aux_log_register(inst, L) < 0) goto error;
 	}
 
 	/*
