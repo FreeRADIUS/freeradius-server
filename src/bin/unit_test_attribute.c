@@ -920,8 +920,22 @@ do { \
 			}
 
 			if (strcmp(p + 5, output) != 0) {
+				char *a, *b;
+
 				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
 					lineno, directory, output, p + 5);
+
+				a = p + 5;
+				b = output;
+
+				while (*a == *b) {
+					a++;
+					b++;
+				}
+
+				fprintf(stderr, "\tdiffer at %zd\n\tgot      ... %s\n\texpected ... %s\n",
+					(b - output), b, a);
+
 				goto error;
 			}
 			fr_strerror();	/* Clear the error buffer */
