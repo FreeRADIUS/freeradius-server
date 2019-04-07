@@ -66,7 +66,7 @@ int		virtual_server_namespace_register(char const *namespace, fr_virtual_server_
 
 fr_dict_t	*virtual_server_namespace(char const *virtual_server);
 
-bool		virtual_server_has_namespace(CONF_SECTION **out,
+int		virtual_server_has_namespace(CONF_SECTION **out,
 					     char const *virtual_server, fr_dict_t const *namespace,
 					     CONF_ITEM *ci);
 /** @} */

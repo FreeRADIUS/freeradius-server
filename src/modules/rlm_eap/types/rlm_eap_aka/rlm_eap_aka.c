@@ -131,8 +131,8 @@ static int virtual_server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *
 {
 	CONF_SECTION	*server_cs;
 
-	if (!virtual_server_has_namespace(&server_cs, cf_pair_value(cf_item_to_pair(ci)),
-					  dict_eap_aka, ci)) return -1;
+	if (virtual_server_has_namespace(&server_cs, cf_pair_value(cf_item_to_pair(ci)),
+					 dict_eap_aka, ci) < 0) return -1;
 
 	if (mod_section_compile(out, server_cs) < 0) return -1;
 

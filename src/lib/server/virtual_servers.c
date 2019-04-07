@@ -739,8 +739,8 @@ fr_dict_t *virtual_server_namespace(char const *virtual_server)
  *	- -1 if no virtual server could be found.
  *	- -2 if virtual server is not of the correct namespace.
  */
-bool virtual_server_has_namespace(CONF_SECTION **out,
-				  char const *virtual_server, fr_dict_t const *namespace, CONF_ITEM *ci)
+int virtual_server_has_namespace(CONF_SECTION **out,
+				 char const *virtual_server, fr_dict_t const *namespace, CONF_ITEM *ci)
 {
 	CONF_SECTION	*server_cs;
 	fr_dict_t const	*dict;
