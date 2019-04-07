@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/base.h>
 
-
+#include "virtual_servers.h"
 
 /*
  *	Ordered by component
@@ -309,83 +309,6 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	return 0;
 }
 
-/**
- */
-rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
-{
-	rlm_rcode_t	rcode;
-	CONF_SECTION	*cs, *server_cs;
-	char const	*module;
-	char const	*component;
-	fr_dict_attr_t const *da;
-	fr_dict_enum_t const *dv;
-	CONF_SECTION	*subcs;
-
-	rad_assert(request->server_cs != NULL);
-
-	/*
-	 *	Cache the old server_cs in case it was changed.
-	 *
-	 *	FIXME: request->server_cs should NOT be changed.
-	 *	Instead, we should always create a child REQUEST when
-	 *	we need to use a different virtual server.
-	 *
-	 *	This is mainly for things like proxying
-	 */
-	server_cs = request->server_cs;
-	cs = cf_section_find(request->server_cs, "authenticate", NULL);
-	if (!cs) {
-		RDEBUG2("Empty 'authenticate' section in virtual server \"%s\".  Using default return value (%s)",
-			cf_section_name2(request->server_cs),
-			fr_int2str(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"));
-		return RLM_MODULE_REJECT;
-	}
-
-	/*
-	 *	Figure out which section to run.
-	 */
-	if (!auth_type) {
-		RERROR("An 'Auth-Type' MUST be specified");
-		return RLM_MODULE_REJECT;
-	}
-
-	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_AUTH_TYPE);
-	if (!da) return RLM_MODULE_FAIL;
-
-	dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t) auth_type));
-	if (!dv) return RLM_MODULE_FAIL;
-
-	subcs = cf_section_find(cs, da->name, dv->alias);
-	if (!subcs) {
-		RDEBUG2("%s %s sub-section not found.  Using default return values.",
-			da->name, dv->alias);
-		return RLM_MODULE_REJECT;
-	}
-
-	RDEBUG("Running %s %s from file %s",
-	       da->name, dv->alias, cf_filename(subcs));
-	cs = subcs;
-
-	/*
-	 *	Cache and restore these, as they're re-set when
-	 *	looping back from inside a module like eap-gtc.
-	 */
-	module = request->module;
-	component = request->component;
-
-	request->module = NULL;
-	request->component = "authenticate";
-
-	rcode = unlang_interpret(request, cs, RLM_MODULE_REJECT);
-
-	request->component = component;
-	request->module = module;
-	request->server_cs = server_cs;
-
-	return rcode;
-}
-
-
 /** Define a values for Auth-Type attributes by the sections present in a virtual-server
  *
  * The ident2 value of any sections found will be converted into values of the specified da.
@@ -471,63 +394,6 @@ static fr_cmd_table_t cmd_table[] = {
 	CMD_TABLE_END
 
 };
-/** Open all the listen sockets
- *
- * @param[in] sc	Scheduler to add I/O paths to.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int virtual_servers_open(fr_schedule_t *sc)
-{
-	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
-
-	rad_assert(virtual_servers);
-
-	DEBUG2("#### Opening listener interfaces ####");
-
-	for (i = 0; i < server_cnt; i++) {
-		fr_virtual_listen_t	**listener;
-		size_t			j, listen_cnt;
-
- 		listener = virtual_servers[i]->listener;
- 		listen_cnt = talloc_array_length(listener);
-
-		for (j = 0; j < listen_cnt; j++) {
-			fr_virtual_listen_t *listen = listener[j];
-
-			rad_assert(listen != NULL);
-			rad_assert(listen->proto_module != NULL);
-			rad_assert(listen->app != NULL);
-
-			/*
-			 *	The socket is opened with app_instance,
-			 *	but all subsequent calls (network.c, etc.) use app_io_instance.
-			 *
-			 *	The reason is that we call (for example) proto_radius to
-			 *	open the socket, and proto_radius is responsible for setting up
-			 *	proto_radius_udp, and then calling proto_radius_udp->open.
-			 *
-			 *	Even then, proto_radius usually calls fr_master_io_listen() in order
-			 *	to create the fr_listen_t structure.
-			 */
-			if (listen->app->open &&
-			    listen->app->open(listen->proto_module->data, sc, listen->proto_module->conf) < 0) {
-				cf_log_err(listen->proto_module->conf, "Opening %s I/O interface failed",
-					   listen->app->name);
-				return -1;
-			}
-
-			/*
-			 *	Socket information is printed out by
-			 *	the socket handlers.  e.g. proto_radius_udp
-			 */
-			DEBUG3("Opened listener for %s", listen->app->name);
-		}
-	}
-
-	return 0;
-}
 
 /** Instantiate all the virtual servers
  *
@@ -710,6 +576,64 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	return 0;
 }
 
+/** Open all the listen sockets
+ *
+ * @param[in] sc	Scheduler to add I/O paths to.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int virtual_servers_open(fr_schedule_t *sc)
+{
+	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
+
+	rad_assert(virtual_servers);
+
+	DEBUG2("#### Opening listener interfaces ####");
+
+	for (i = 0; i < server_cnt; i++) {
+		fr_virtual_listen_t	**listener;
+		size_t			j, listen_cnt;
+
+ 		listener = virtual_servers[i]->listener;
+ 		listen_cnt = talloc_array_length(listener);
+
+		for (j = 0; j < listen_cnt; j++) {
+			fr_virtual_listen_t *listen = listener[j];
+
+			rad_assert(listen != NULL);
+			rad_assert(listen->proto_module != NULL);
+			rad_assert(listen->app != NULL);
+
+			/*
+			 *	The socket is opened with app_instance,
+			 *	but all subsequent calls (network.c, etc.) use app_io_instance.
+			 *
+			 *	The reason is that we call (for example) proto_radius to
+			 *	open the socket, and proto_radius is responsible for setting up
+			 *	proto_radius_udp, and then calling proto_radius_udp->open.
+			 *
+			 *	Even then, proto_radius usually calls fr_master_io_listen() in order
+			 *	to create the fr_listen_t structure.
+			 */
+			if (listen->app->open &&
+			    listen->app->open(listen->proto_module->data, sc, listen->proto_module->conf) < 0) {
+				cf_log_err(listen->proto_module->conf, "Opening %s I/O interface failed",
+					   listen->app->name);
+				return -1;
+			}
+
+			/*
+			 *	Socket information is printed out by
+			 *	the socket handlers.  e.g. proto_radius_udp
+			 */
+			DEBUG3("Opened listener for %s", listen->app->name);
+		}
+	}
+
+	return 0;
+}
+
 /** Return virtual server matching the specified name
  *
  * @note May be called in bootstrap or instantiate as all servers should be present.
@@ -782,6 +706,149 @@ int virtual_server_namespace_register(char const *namespace, fr_virtual_server_c
 	}
 
 	return 0;
+}
+
+/** Return the namespace for a given virtual server
+ *
+ * @param[in] virtual_server	to look for namespace in.
+ * @return
+ *	- NULL on error.
+ *	- Namespace on success.
+ */
+fr_dict_t *virtual_server_namespace(char const *virtual_server)
+{
+	CONF_SECTION const *server_cs;
+
+	server_cs = virtual_server_find(virtual_server);
+	if (!server_cs) return NULL;
+
+	return cf_data_value(cf_data_find(server_cs, fr_dict_t, "dictionary"));
+}
+
+/** Verify that a given virtual_server exists and is of a particular namespace
+ *
+ * Mostly used by modules to check virtual servers specified by their configs.
+ *
+ * @param[out] out		we found. May be NULL if just checking for existence.
+ * @param[in] virtual_server	to check.
+ * @param[in] namespace		the virtual server must belong to.
+ * @param[in] ci		to log errors against. May be NULL if caller
+ *				doesn't want errors logged.
+ * @return
+ *	- 0 on success.
+ *	- -1 if no virtual server could be found.
+ *	- -2 if virtual server is not of the correct namespace.
+ */
+bool virtual_server_has_namespace(CONF_SECTION **out,
+				  char const *virtual_server, fr_dict_t const *namespace, CONF_ITEM *ci)
+{
+	CONF_SECTION	*server_cs;
+	fr_dict_t const	*dict;
+
+	if (out) *out = NULL;
+
+	server_cs = virtual_server_find(virtual_server);
+	if (!server_cs) {
+		if (ci) cf_log_err(ci, "Can't find virtual server");
+		return -1;
+	}
+	dict = virtual_server_namespace(virtual_server);
+	if (!dict) {
+		/*
+		 *	Not sure this is even a valid state?
+		 */
+		if (ci) cf_log_err(ci, "No namespace found in virtual server");
+		return -2;
+	}
+
+	if (dict != namespace) {
+		if (ci) {
+			cf_log_err(ci,
+				   "Expected virtual server of namespace \"%s\", got namespace \"%s\"",
+				   fr_dict_root(namespace)->name, fr_dict_root(dict)->name);
+		}
+		return -2;
+	}
+
+	if (out) *out = server_cs;
+
+	return 0;
+}
+
+/**
+ */
+rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
+{
+	rlm_rcode_t	rcode;
+	CONF_SECTION	*cs, *server_cs;
+	char const	*module;
+	char const	*component;
+	fr_dict_attr_t const *da;
+	fr_dict_enum_t const *dv;
+	CONF_SECTION	*subcs;
+
+	rad_assert(request->server_cs != NULL);
+
+	/*
+	 *	Cache the old server_cs in case it was changed.
+	 *
+	 *	FIXME: request->server_cs should NOT be changed.
+	 *	Instead, we should always create a child REQUEST when
+	 *	we need to use a different virtual server.
+	 *
+	 *	This is mainly for things like proxying
+	 */
+	server_cs = request->server_cs;
+	cs = cf_section_find(request->server_cs, "authenticate", NULL);
+	if (!cs) {
+		RDEBUG2("Empty 'authenticate' section in virtual server \"%s\".  Using default return value (%s)",
+			cf_section_name2(request->server_cs),
+			fr_int2str(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"));
+		return RLM_MODULE_REJECT;
+	}
+
+	/*
+	 *	Figure out which section to run.
+	 */
+	if (!auth_type) {
+		RERROR("An 'Auth-Type' MUST be specified");
+		return RLM_MODULE_REJECT;
+	}
+
+	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_AUTH_TYPE);
+	if (!da) return RLM_MODULE_FAIL;
+
+	dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t) auth_type));
+	if (!dv) return RLM_MODULE_FAIL;
+
+	subcs = cf_section_find(cs, da->name, dv->alias);
+	if (!subcs) {
+		RDEBUG2("%s %s sub-section not found.  Using default return values.",
+			da->name, dv->alias);
+		return RLM_MODULE_REJECT;
+	}
+
+	RDEBUG("Running %s %s from file %s",
+	       da->name, dv->alias, cf_filename(subcs));
+	cs = subcs;
+
+	/*
+	 *	Cache and restore these, as they're re-set when
+	 *	looping back from inside a module like eap-gtc.
+	 */
+	module = request->module;
+	component = request->component;
+
+	request->module = NULL;
+	request->component = "authenticate";
+
+	rcode = unlang_interpret(request, cs, RLM_MODULE_REJECT);
+
+	request->component = component;
+	request->module = module;
+	request->server_cs = server_cs;
+
+	return rcode;
 }
 
 /*

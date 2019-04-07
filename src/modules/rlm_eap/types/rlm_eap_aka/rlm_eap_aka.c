@@ -129,15 +129,10 @@ fr_dict_attr_autoload_t rlm_eap_aka_dict_attr[] = {
 static int virtual_server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 				CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	char const	*virtual_server;
 	CONF_SECTION	*server_cs;
 
-	virtual_server = cf_pair_value(cf_item_to_pair(ci));
-	server_cs = virtual_server_find(virtual_server);
-	if (!server_cs) {
-		cf_log_err(ci, "Can't find virtual server \"%s\"", virtual_server);
-		return -1;
-	}
+	if (!virtual_server_has_namespace(&server_cs, cf_pair_value(cf_item_to_pair(ci)),
+					  dict_eap_aka, ci)) return -1;
 
 	if (mod_section_compile(out, server_cs) < 0) return -1;
 

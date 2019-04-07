@@ -350,7 +350,7 @@ rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out,
 	/*
 	 *	Work out the dictionary from the server section's cf_data
 	 */
-	dict = cf_data_value(cf_data_find(server_cs, fr_dict_t, "dictionary"));
+	dict = virtual_server_namespace(cf_section_name2(server_cs));
 
 	/*
 	 *	If this fires, fix the validation logic
