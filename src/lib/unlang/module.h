@@ -104,10 +104,22 @@ int 		unlang_module_fd_add(REQUEST *request,
 
 int		unlang_module_fd_delete(REQUEST *request, void const *rctx, int fd);
 
+rlm_rcode_t	unlang_module_yield_to_subrequest(rlm_rcode_t *out,
+						  REQUEST *request,
+						  CONF_SECTION *server_cs, CONF_SECTION *section_cs,
+						  rlm_rcode_t default_rcode,
+						  fr_unlang_module_resume_t resume,
+						  fr_unlang_module_signal_t signal, void *rctx);
+
 rlm_rcode_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					    REQUEST *request, xlat_exp_t const *xlat,
-					    fr_unlang_module_resume_t callback,
-					    fr_unlang_module_signal_t signal_callback, void *uctx);
+					    fr_unlang_module_resume_t resume,
+					    fr_unlang_module_signal_t signal, void *uctx);
 
-rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback,
-				    fr_unlang_module_signal_t signal_callback, void *ctx);
+rlm_rcode_t	unlang_module_yield(REQUEST *request,
+				    fr_unlang_module_resume_t resume,
+				    fr_unlang_module_signal_t signal, void *ctx);
+
+#ifdef __cplusplus
+}
+#endif

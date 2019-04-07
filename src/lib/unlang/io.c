@@ -62,12 +62,24 @@ fr_io_final_t unlang_io_process_interpret(UNUSED void const *instance, REQUEST *
 
 /** Allocate a child request based on the parent.
  *
+ * @param[in] parent		spawning the child request.
+ * @param[in] instruction	child starts executing.
+ * @param[in] server_cs		the child is operating in.  If NULL the parent's server is used.
+ * @param[in] namespace		the child request operates in. If NULL the parent's namespace is used.
+ * @param[in] default_rcode	for the section the child is executing.
+ * @param[in] do_next_sibling	Execute next sibling.
+ * @param[in] detachable	Allow/disallow the child to be detached.
+ * @return
+ *      - The new child request.
+ *	- NULL on error.
  */
-REQUEST *unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction, rlm_rcode_t default_rcode,
+REQUEST *unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction,
+			       CONF_SECTION *server_cs, fr_dict_t const *namespace,
+			       rlm_rcode_t default_rcode,
 			       bool do_next_sibling, bool detachable)
 {
-	REQUEST *child;
-	unlang_stack_t *stack;
+	REQUEST			*child;
+	unlang_stack_t		*stack;
 
 	if (!detachable) {
 		child = request_alloc_fake(parent);
@@ -77,7 +89,7 @@ REQUEST *unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction, rlm_rcode
 	if (!child) return NULL;
 
 	/*
-	 *	Push the children, and set it's top frame to be true.
+	 *	Push the child, and set it's top frame to be true.
 	 */
 	stack = child->stack;
 	child->log.unlang_indent = parent->log.unlang_indent;
@@ -92,7 +104,8 @@ REQUEST *unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction, rlm_rcode
 	 */
 	child->number = parent->number;
 	child->el = parent->el;
-	child->server_cs = parent->server_cs;
+	child->server_cs = server_cs;
+	child->dict = namespace;
 
 	/*
 	 *	Initialize all of the async fields.
@@ -118,10 +131,6 @@ REQUEST *unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction, rlm_rcode
 	 *	parent.
 	 */
 	fr_dlist_init(&child->async->tracking.list, fr_time_tracking_t, list.entry);
-
-	/*
-	 *	create {...} creates an empty copy.
-	 */
 
 	return child;
 }

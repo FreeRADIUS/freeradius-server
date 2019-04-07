@@ -363,8 +363,11 @@ void		unlang_op_free(void);
  */
 fr_io_final_t	unlang_io_process_interpret(UNUSED void const *instance, REQUEST *request, fr_io_action_t action);
 
-REQUEST		*unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction, rlm_rcode_t default_rcode,
+REQUEST		*unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction,
+				       CONF_SECTION *server_cs, fr_dict_t const *namespace,
+				       rlm_rcode_t default_rcode,
 				       bool do_next_sibling, bool detachable);
+
 /* @} **/
 
 /** @name op init functions

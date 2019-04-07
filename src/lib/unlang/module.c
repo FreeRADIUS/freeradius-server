@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/xlat.h>
 #include "unlang_priv.h"
 #include "module_priv.h"
+#include "subrequest_priv.h"
 
 /** Wrap an #fr_event_timer_t providing data needed for unlang events
  *
@@ -319,6 +320,57 @@ int unlang_module_fd_delete(REQUEST *request, void const *ctx, int fd)
 
 	talloc_free(ev);
 	return 0;
+}
+
+/** Yield, spawning a child request, and resuming once the child request is complete
+ *
+ * @param[out] out		Final rcode from when evaluation of the child request finishes.
+ * @param[in] request		The current request.
+ * @param[in] server_cs		the subrequest will execute in.
+ * @param[in] section_cs	to execute.
+ * @param[in] default_rcode	The rcode the child starts executing its section with.
+ * @param[in] resume		function to call when the child has finished executing.
+ * @param[in] signal		function to call if a signal is received.
+ * @param[in] rctx		to pass to the resume() and signal() callbacks.
+ * @return
+ *	- RLM_MODULE_YIELD.
+ */
+rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out,
+					      REQUEST *request,
+					      CONF_SECTION *server_cs, CONF_SECTION *section_cs,
+					      rlm_rcode_t default_rcode,
+					      fr_unlang_module_resume_t resume,
+					      fr_unlang_module_signal_t signal, void *rctx)
+{
+	unlang_t	*instruction = (unlang_t *)cf_data_value(cf_data_find(section_cs, unlang_group_t, NULL));
+	fr_dict_t	*dict;
+
+	rad_assert(instruction);
+
+	/*
+	 *	Work out the dictionary from the server section's cf_data
+	 */
+	dict = cf_data_value(cf_data_find(server_cs, fr_dict_t, "dictionary"));
+
+	/*
+	 *	If this fires, fix the validation logic
+	 *	don't just set a default value.
+	 *
+	 *	*ALL* virtual servers should have a namespace.
+	 */
+	rad_assert(dict);
+
+	/*
+	 *	Push the resumption point
+	 */
+	(void) unlang_module_yield(request, resume, signal, rctx);
+
+	/*
+	 *	Push the subrequest frame.
+	 */
+	unlang_subrequest_push(out, request, server_cs, instruction, dict, default_rcode, true);
+
+	return RLM_MODULE_YIELD;	/* This may allow us to do optimisations in future */
 }
 
 /** Push a pre-compiled xlat and resumption state onto the stack for evaluation

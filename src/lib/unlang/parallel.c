@@ -73,8 +73,9 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			RDEBUG3("parallel child %d is INIT", i + 1);
 			rad_assert(state->children[i].instruction != NULL);
 			state->children[i].child = unlang_io_child_alloc(request, state->children[i].instruction,
-								      RLM_MODULE_FAIL, /* @todo - fixme ? */
-								      UNLANG_NEXT_STOP, UNLANG_NORMAL_CHILD);
+									 request->server_cs, request->dict,
+									 RLM_MODULE_FAIL, /* @todo - fixme ? */
+									 UNLANG_NEXT_STOP, UNLANG_NORMAL_CHILD);
 			state->children[i].state = CHILD_RUNNABLE;
 			state->children[i].child->packet->code = request->packet->code;
 
