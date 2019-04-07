@@ -324,9 +324,20 @@ int unlang_module_fd_delete(REQUEST *request, void const *ctx, int fd)
 
 /** Yield, spawning a child request, and resuming once the child request is complete
  *
- * @param[out] out		Final rcode from when evaluation of the child request finishes.
- * @param[in] request		The current request.
- * @param[in] server_cs		the subrequest will execute in.
+ * @param[in] out		Final rcode from when evaluation of the child request finishes.
+ * @param[out] child		- If not NULL, and points to a NULL pointer a pointer to the
+ *				child will be provided.
+ *				The caller can then manipulate the child, adding request data
+ *				and/or attributes.
+ *				The child pointer must be explicitly freed with
+ *				#unlang_subrequest_free once it is no longer needed.
+ *				- If not NULL, and points to a request, the request will be run
+ *				through the section passed as section_cs.  The request must
+ *				have been allocated during a previous call to
+ *				unlang_module_yield_to_subrequest.
+ *				- If NULL the child will be automatically freed when the subrequest
+ *				completes.
+ * @param[in] parent		The current request.
  * @param[in] section_cs	to execute.
  * @param[in] default_rcode	The rcode the child starts executing its section with.
  * @param[in] resume		function to call when the child has finished executing.
@@ -335,40 +346,52 @@ int unlang_module_fd_delete(REQUEST *request, void const *ctx, int fd)
  * @return
  *	- RLM_MODULE_YIELD.
  */
-rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out,
-					      REQUEST *request,
-					      CONF_SECTION *server_cs, CONF_SECTION *section_cs,
-					      rlm_rcode_t default_rcode,
+rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST **child, REQUEST *parent,
+					      CONF_SECTION *section_cs, rlm_rcode_t default_rcode,
 					      fr_unlang_module_resume_t resume,
 					      fr_unlang_module_signal_t signal, void *rctx)
 {
 	unlang_t	*instruction = (unlang_t *)cf_data_value(cf_data_find(section_cs, unlang_group_t, NULL));
-	fr_dict_t	*dict;
+
 
 	rad_assert(instruction);
 
 	/*
-	 *	Work out the dictionary from the server section's cf_data
-	 */
-	dict = virtual_server_namespace(cf_section_name2(server_cs));
-
-	/*
-	 *	If this fires, fix the validation logic
-	 *	don't just set a default value.
-	 *
-	 *	*ALL* virtual servers should have a namespace.
-	 */
-	rad_assert(dict);
-
-	/*
 	 *	Push the resumption point
 	 */
-	(void) unlang_module_yield(request, resume, signal, rctx);
+	(void) unlang_module_yield(parent, resume, signal, rctx);
 
-	/*
-	 *	Push the subrequest frame.
-	 */
-	unlang_subrequest_push(out, request, server_cs, instruction, dict, default_rcode, true);
+	if (!child || !*child) {
+		CONF_SECTION	*server_cs;
+		fr_dict_t	*dict;
+
+		server_cs = virtual_server_by_child(section_cs);
+		/*
+		 *	We don't support executing orphaned sections.
+		 */
+		rad_assert(server_cs);
+
+		/*
+		 *	Work out the dictionary from the server section's cf_data
+		 */
+		dict = virtual_server_namespace(cf_section_name2(server_cs));
+
+		/*
+		 *	If this asserts, fix the validation logic
+		 *	don't just set a default value.
+		 *
+		 *	*ALL* virtual servers should have a namespace.
+		 */
+		rad_assert(dict);
+
+		/*
+		 *	Push the subrequest frame.
+		 */
+		unlang_subrequest_push(out, child, parent, server_cs, instruction, dict, default_rcode, true);
+	} else {
+		unlang_subrequest_push_again(out, talloc_get_type_abort(*child, REQUEST),
+					     parent, instruction, default_rcode, true);
+	}
 
 	return RLM_MODULE_YIELD;	/* This may allow us to do optimisations in future */
 }

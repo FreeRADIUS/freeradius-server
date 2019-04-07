@@ -396,9 +396,9 @@ void		unlang_return_init(void);
 
 void		unlang_parallel_init(void);
 
-int		unlang_subrequest_init(void);
+int		unlang_subrequest_op_init(void);
 
-void		unlang_subrequest_free(void);
+void		unlang_subrequest_op_free(void);
 
 void		unlang_switch_init(void);
  /* @} **/

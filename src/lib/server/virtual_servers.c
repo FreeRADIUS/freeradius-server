@@ -648,6 +648,18 @@ CONF_SECTION *virtual_server_find(char const *name)
 	return cf_section_find(virtual_server_root, "server", name);
 }
 
+/** Find a virtual server using one of its sections
+ *
+ * @param[in] section	to find parent virtual server for.
+ * @return
+ *	- The virtual server section on success.
+ *	- NULL if the child isn't associated with any virtual server section.
+ */
+CONF_SECTION *virtual_server_by_child(CONF_SECTION *section)
+{
+	return cf_section_find_in_parent(section, "server", CF_IDENT_ANY);
+}
+
 /** Free a virtual namespace callback
  *
  */

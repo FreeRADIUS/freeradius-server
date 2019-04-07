@@ -62,6 +62,8 @@ typedef int (*fr_virtual_server_compile_t)(CONF_SECTION *server);
 
 CONF_SECTION	*virtual_server_find(char const *name);
 
+CONF_SECTION	*virtual_server_by_child(CONF_SECTION *section);
+
 int		virtual_server_namespace_register(char const *namespace, fr_virtual_server_compile_t func);
 
 fr_dict_t	*virtual_server_namespace(char const *virtual_server);
