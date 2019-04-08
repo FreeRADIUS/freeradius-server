@@ -26,7 +26,7 @@ if ("%{strlen:%{Tmp-String-2}}" != 24) {
 	test_fail
 }
 #
-#  Check maximum repitition
+#  Check maximum repetition
 #
 if ("%{strlen:%{Tmp-String-3}}" != 1025) {
 	test_fail
@@ -40,7 +40,7 @@ if (&Tmp-String-4 != "") {
 }
 
 #
-#  Check repitition of binary output
+#  Check repetition of binary output
 #
 if ("%{length:%{Tmp-String-5}}" != 10) {
 	test_fail
