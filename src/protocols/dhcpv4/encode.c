@@ -372,31 +372,34 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 		 *	current option, then update the header, and go
 		 *	to the next option.
 		 */
-		if (((p + len) - out) < (255 + 2)) {
+		if ((out[1] + len) <= 255) {
 			out[1] += len;
 			p += len;
 
 		} else {
 			/*
 			 *	The data doesn't fit within the
-			 *	current option.  Start a new option.
+			 *	current option.  Maybe start a new
+			 *	option.
 			 */
-
-			/*
-			 *	Not enough space for the 2 byte
-			 *	header.
-			 */
-			if ((p + 2 + len) >= end) break;
 
 			/*
 			 *	Move the data up and start a new
-			 *	option.
+			 *	option if necessary.
 			 */
-			memmove(p + 2, p, len);
-			p[0] = start[0];
-			p[1] = 0;
-			out = p;
-			p = out + 2;
+			if (out[1] > 0) {
+				/*
+				 *	Not enough space for another 2 byte
+				 *	header.
+				 */
+				if ((p + 2 + len) >= end) break;
+
+				memmove(p + 2, p, len);
+				p[0] = start[0];
+				p[1] = 0;
+				out = p;
+				p = out + 2;
+			}
 
 			/*
 			 *	The data fits entirely within the new
