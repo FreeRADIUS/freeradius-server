@@ -423,9 +423,12 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 
 	rad_assert(blk != NULL);
 	tid_srvr_get_address(blk, &sa, &sa_len);
+	if (sa == NULL) {
+		DEBUG2("tid_srvr_get_address failed");
+		return NULL;
+	}
 
 	fr_sockaddr2ipaddr((struct sockaddr_storage *) sa, sa_len, &home_server_ip, &port);
-
 	if (0 != getnameinfo(sa, sa_len,
 			     nametemp,
 			     sizeof nametemp,
