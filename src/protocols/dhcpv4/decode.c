@@ -292,7 +292,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 			       fr_int2str(fr_value_box_type_table, child->type, "<invalid>"), child->name);
 
 		tlv_len = decode_value(ctx, cursor, child, p + 2, p[1]);
-		if (tlv_len <= 0) {
+		if (tlv_len < 0) {
 			fr_dict_unknown_free(&child);
 			return tlv_len;
 		}
