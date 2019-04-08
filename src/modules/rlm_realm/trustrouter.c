@@ -525,7 +525,6 @@ static void tr_response_func( TIDC_INSTANCE *inst,
 	REALM *nr = opaque->orig_realm;
 
 	if (tid_resp_get_result(resp) != TID_SUCCESS) {
-
 		size_t err_msg_len;
 		opaque->result = tid_resp_get_result(resp);
 		memset(opaque->err_msg, 0, sizeof(opaque->err_msg));
@@ -546,6 +545,10 @@ static void tr_response_func( TIDC_INSTANCE *inst,
 		if (!nr) goto error;
 		nr->name = talloc_move(nr, &opaque->fr_realm_name);
 		nr->auth_pool = servers_to_pool(nr, inst, resp, nr->name);
+		if (!nr->auth_pool) {
+			ERROR("Unable to create pool for %s", nr->name);
+			goto error;
+		}
 		if (!realm_realm_add(nr, NULL)) goto error;
 
 	} else {
@@ -573,7 +576,8 @@ error:
 	if (nr && !opaque->orig_realm) {
 		talloc_free(nr);
 	}
-
+	opaque->result = TID_ERROR;
+	sprintf(opaque->err_msg, "There was an error creating the pool for %s", opaque->fr_realm_name);
 	pthread_mutex_unlock(&realm_tree_mutex);
 	return;
 }
@@ -683,7 +687,7 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 		DEBUG2("TID response is error, rc = %d: %s.\n", cookie.result,
 		       cookie.err_msg?cookie.err_msg:"(NO ERROR TEXT)");
 		module_failure_msg(request, "TID response is error, rc = %d: %s.\n", cookie.result,
-		       cookie.err_msg?cookie.err_msg:"(NO ERROR TEXT)");
+				cookie.err_msg?cookie.err_msg:"(NO ERROR TEXT)");
 		if (cookie.err_msg)
 			pair_make_reply("Reply-Message", cookie.err_msg, T_OP_SET);
 		pair_make_reply("Error-Cause", "502", T_OP_SET); /*proxy unroutable*/
