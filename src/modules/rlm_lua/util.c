@@ -15,7 +15,7 @@
 
 /**
  * $Id$
- * @file util.c
+ * @file rlm_lua/util.c
  * @brief Helper Lua land functions.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
