@@ -844,7 +844,6 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 		if (isdigit((int) *p)) {
 			reps = strtol(p, &endptr, 10);
 			if (reps > REPETITION_MAX) reps = REPETITION_MAX;
-			/* hexits take up 2 characters */
 			outlen += reps;
 			p = endptr;
 		} else {
@@ -912,7 +911,7 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 				break;
 
 			/*
-			 *  Alpa numeric + punctuation
+			 *  Alpha numeric + punctuation
 			 */
 			case '.':
 				*buff_p++ = '!' + (result % 95);
