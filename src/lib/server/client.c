@@ -220,7 +220,12 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			CONF_SECTION *cs;
 			CONF_SECTION *subcs;
 
-			cs = virtual_server_find(client->server);
+			if (!client->cs) {
+				ERROR("Failed to find configuration section in client.  Ignoring 'virtual_server' directive");
+				return false;
+			}
+
+			cs = cf_section_find(cf_root(client->cs), "server", client->server);
 			if (!cs) {
 				ERROR("Failed to find virtual server %s", client->server);
 				return false;
