@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.19 Mon 25 Feb 2019 15:00:00 EST urgency=high
+FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
 	* Update dictionary.cisco
 	* Update sqlippool to allow for stored procedures with
