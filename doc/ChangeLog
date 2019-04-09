@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.19 Mon 25 Feb 2019 15:00:00 EST urgency=low
+FreeRADIUS 3.0.19 Mon 25 Feb 2019 15:00:00 EST urgency=high
 	Feature improvements
 	* Update dictionary.cisco
 	* Update sqlippool to allow for stored procedures with
@@ -10,6 +10,8 @@ FreeRADIUS 3.0.19 Mon 25 Feb 2019 15:00:00 EST urgency=low
 	* Added pfSense dictionary. Closes #2581
 	* Update dictionary.h3c Closes #2592
 	* Update elasticsearch/logstash config for v6.7.0.
+	* EAP-PWD security fixes from Mathy Vanhoef. See
+	  http://freeradius.org/security/
 
 	Bug fixes
 	* Update dynamic_client module and server core so that
