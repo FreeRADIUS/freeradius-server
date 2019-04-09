@@ -580,7 +580,8 @@ error:
 		talloc_free(nr);
 	}
 	opaque->result = TID_ERROR;
-	sprintf(opaque->err_msg, "There was an error creating the pool for %s", opaque->fr_realm_name);
+	snprintf(opaque->err_msg, sizeof(opaque->err_msg),
+		     "There was an error creating the pool for %s", opaque->fr_realm_name);
 	pthread_mutex_unlock(&realm_tree_mutex);
 	return;
 }
