@@ -387,7 +387,7 @@ int process_peer_commit (pwd_session_t *session, uint8_t *in, size_t in_len, BN_
 	}
 
 	/* validate received element */
-	if (!EC_POINT_is_on_curve(session->group, session->peer_element, bn_ctx) ||
+	if (!EC_POINT_is_on_curve(session->group, session->peer_element, bnctx) ||
 	    EC_POINT_is_at_infinity(session->group, session->peer_element)) {
 		ERROR("Peer's element is not a point on the elliptic curve");
 		goto finish;
@@ -408,7 +408,7 @@ int process_peer_commit (pwd_session_t *session, uint8_t *in, size_t in_len, BN_
 
 	/* detect reflection attacks */
 	if (BN_cmp(session->peer_scalar, session->my_scalar) == 0 ||
-	    EC_POINT_cmp(session->group, session->peer_element, session->my_element, bn_ctx) == 0) {
+	    EC_POINT_cmp(session->group, session->peer_element, session->my_element, bnctx) == 0) {
 		ERROR("Reflection attack detected");
 		goto finish;
 	}
