@@ -68,6 +68,7 @@ static fr_ipaddr_t client_ipaddr;
 static uint16_t client_port = 0;
 
 static int sockfd;
+static int last_used_id = -1;
 
 static char const *proto = NULL;
 static int ipproto = IPPROTO_UDP;
@@ -169,6 +170,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "                         If a second file is provided, it will be used to verify responses\n");
 	fprintf(stderr, "  -F                     Print the file name, packet number and reply code.\n");
 	fprintf(stderr, "  -h                     Print usage help information.\n");
+	fprintf(stderr, "  -i <id>                Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, "  -n <num>               Send N requests/s\n");
 	fprintf(stderr, "  -p <num>               Send 'num' packets from a file in parallel.\n");
 	fprintf(stderr, "  -P <proto>             Use proto (tcp or udp) for transport.\n");
@@ -1207,7 +1209,7 @@ int main(int argc, char **argv)
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhn:p:P:qr:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:n:p:P:qr:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -1253,6 +1255,15 @@ int main(int argc, char **argv)
 
 		case 'F':
 			print_filename = true;
+			break;
+
+		case 'i':
+			if (!isdigit((int) *optarg))
+				usage();
+			last_used_id = atoi(optarg);
+			if ((last_used_id < 0) || (last_used_id > 255)) {
+				usage();
+			}
 			break;
 
 		case 'n':
