@@ -509,6 +509,8 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 */
 
 	id = fd = -1;
+	if (request->id >= 0 && request->id < 256)
+		id = request->id;
 	start_i = fr_rand() & SOCKOFFSET_MASK;
 
 #define ID_i ((i + start_i) & SOCKOFFSET_MASK)
@@ -589,6 +591,18 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		/*
 		 *	Otherwise, this socket is OK to use.
 		 */
+
+		/*
+		 *	An explicit ID was requested
+		 */
+
+		if (id != -1) {
+			if  ((ps->id[(id >> 3) & 0x1f] & (1 << (id & 0x07))) != 0) continue;
+
+			ps->id[(id >> 3) & 0x1f] |= (1 << (id & 0x07));
+			fd = i;
+			break;
+		}
 
 		/*
 		 *	Look for a free Id, starting from a random number.
