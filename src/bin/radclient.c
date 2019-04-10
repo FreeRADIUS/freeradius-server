@@ -408,7 +408,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		request->packet->proto = ipproto;
 
 		request->files = files;
-		request->packet->id = -1; /* allocate when sending */
+		request->packet->id = last_used_id;
 		request->num = num++;
 
 		/*
@@ -845,7 +845,7 @@ static int send_one_packet(rc_request_t *request)
 	/*
 	 *	Haven't sent the packet yet.  Initialize it.
 	 */
-	if (request->packet->id == -1) {
+	if (!request->tries) {
 		bool rcode;
 
 		assert(request->reply == NULL);
