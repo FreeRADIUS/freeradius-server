@@ -35,7 +35,13 @@ realm suffix {
 #	tr_port = 12309
 #	rp_realm = "realm.example.com"
 #	default_community = "apc.communities.example.com"
+#	# if rekey_enabled is enabled, dynamic realms are automatically rekeyed
+#	# before they expire to avoid having to recreate them from scrach on
+#	# demand (implying lengthy authentications)
 #	rekey_enabled = no
+#	# if realm_lifetime is > 0, the rekey is scheduled to happen the
+#	# specified number of seconds after its creation or rekeying. Otherwise,
+#	# the key material expiration timestamp is used
 #	realm_lifetime = 0
 }
 
