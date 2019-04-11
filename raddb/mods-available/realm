@@ -51,8 +51,6 @@ realm bangpath {
 	format = prefix
 	delimiter = "!"
 
-	# The next configuration items are valid ONLY for a trust-router.
-	# For all other realms, they are ignored.
 #	trust_router = "localhost"
 #	tr_port = 12309
 #	rp_realm = "realm.example.com"
