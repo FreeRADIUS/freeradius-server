@@ -331,7 +331,7 @@ static int fr_lua_unmarshall(VALUE_PAIR **out,
  */
 static int _lua_pair_get(lua_State *L)
 {
-	REQUEST			*request = fr_lua_aux_get_request();
+	REQUEST			*request = fr_lua_util_get_request();
 
 	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
@@ -372,8 +372,8 @@ static int _lua_pair_get(lua_State *L)
  */
 static int _lua_pair_set(lua_State *L)
 {
-	rlm_lua_t const		*inst = fr_lua_aux_get_inst();
-	REQUEST			*request = fr_lua_aux_get_request();
+	rlm_lua_t const		*inst = fr_lua_util_get_inst();
+	REQUEST			*request = fr_lua_util_get_request();
 	fr_cursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	VALUE_PAIR		*vp = NULL, *new;
@@ -428,7 +428,7 @@ static int _lua_pair_set(lua_State *L)
 
 static int _lua_pair_iterator(lua_State *L)
 {
-	REQUEST			*request = fr_lua_aux_get_request();
+	REQUEST			*request = fr_lua_util_get_request();
 
 	fr_cursor_t		*cursor;
 	VALUE_PAIR		*vp;
@@ -457,7 +457,7 @@ static int _lua_pair_iterator(lua_State *L)
 
 static int _lua_pair_iterator_init(lua_State *L)
 {
-	REQUEST			*request = fr_lua_aux_get_request();
+	REQUEST			*request = fr_lua_util_get_request();
 
 	fr_cursor_t		*cursor;
 	fr_dict_attr_t const	*da;
@@ -486,7 +486,7 @@ static int _lua_pair_iterator_init(lua_State *L)
 
 static int _lua_list_iterator(lua_State *L)
 {
-	REQUEST			*request = fr_lua_aux_get_request();
+	REQUEST			*request = fr_lua_util_get_request();
 
 	fr_cursor_t		*cursor;
 	VALUE_PAIR		*vp;
@@ -517,7 +517,7 @@ static int _lua_list_iterator(lua_State *L)
  */
 static int _lua_list_iterator_init(lua_State *L)
 {
-	REQUEST			*request = fr_lua_aux_get_request();
+	REQUEST			*request = fr_lua_util_get_request();
 	fr_cursor_t		*cursor;
 
 	cursor = (fr_cursor_t*) lua_newuserdata(L, sizeof(fr_cursor_t));
@@ -539,7 +539,7 @@ static int _lua_list_iterator_init(lua_State *L)
  */
 static int _lua_pair_accessor_init(lua_State *L)
 {
-	REQUEST			*request = fr_lua_aux_get_request();
+	REQUEST			*request = fr_lua_util_get_request();
 	char const		*attr;
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_t		*up;
@@ -762,8 +762,8 @@ int fr_lua_run(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request
 	lua_State	*L = thread->interpreter;
 	int		ret = RLM_MODULE_OK;
 
-	fr_lua_aux_set_inst(inst);
-	fr_lua_aux_set_request(request);
+	fr_lua_util_set_inst(inst);
+	fr_lua_util_set_request(request);
 
 	RDEBUG2("Calling %s() in interpreter %p", funcname, L);
 
@@ -774,8 +774,8 @@ int fr_lua_run(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *request
 	 */
 	if (fr_lua_get_field(L, request, funcname) < 0) {
 error:
-		fr_lua_aux_set_inst(NULL);
-		fr_lua_aux_set_request(NULL);
+		fr_lua_util_set_inst(NULL);
+		fr_lua_util_set_request(NULL);
 
 		return RLM_MODULE_FAIL;
 	}
@@ -819,8 +819,8 @@ error:
 	}
 
 done:
-	fr_lua_aux_set_inst(NULL);
-	fr_lua_aux_set_request(NULL);
+	fr_lua_util_set_inst(NULL);
+	fr_lua_util_set_request(NULL);
 
 	return ret;
 }
@@ -830,7 +830,7 @@ done:
  */
 static int _lua_rcode_table_newindex(UNUSED lua_State *L)
 {
-	REQUEST	*request = fr_lua_aux_get_request();
+	REQUEST	*request = fr_lua_util_get_request();
 
 	RWDEBUG("You can't modify the table 'fr.rcode.{}' (read-only)");
 
@@ -902,7 +902,7 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 	rlm_lua_t const		*inst = instance;
 	lua_State		*L;
 
-	fr_lua_aux_set_inst(inst);
+	fr_lua_util_set_inst(inst);
 
 	L = luaL_newstate();
 	if (!L) {
@@ -920,7 +920,7 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 
 	error:
 		*out = NULL;
-		fr_lua_aux_set_inst(NULL);
+		fr_lua_util_set_inst(NULL);
 		lua_close(L);
 		return -1;
 	}
@@ -934,17 +934,17 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 	/*
 	 * 	Setup "fr.{}"
 	 */
-	fr_lua_aux_fr_register(L);
+	fr_lua_util_fr_register(L);
 
 	/*
 	 *	Setup "fr.log.{}"
 	 */
 	if (inst->jit) {
 		DEBUG4("Initialised new LuaJIT interpreter %p", L);
-		if (fr_lua_aux_jit_log_register(inst, L) < 0) goto error;
+		if (fr_lua_util_jit_log_register(inst, L) < 0) goto error;
 	} else {
 		DEBUG4("Initialised new Lua interpreter %p", L);
-		if (fr_lua_aux_log_register(inst, L) < 0) goto error;
+		if (fr_lua_util_log_register(inst, L) < 0) goto error;
 	}
 
 	/*

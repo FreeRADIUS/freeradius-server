@@ -38,7 +38,7 @@ RCSID("$Id$")
 static _Thread_local REQUEST *fr_lua_request;
 static _Thread_local rlm_lua_t const *fr_lua_inst;
 
-void fr_lua_aux_fr_register(lua_State *L)
+void fr_lua_util_fr_register(lua_State *L)
 {
 	/* fr.{} */
 	lua_newtable(L);
@@ -53,7 +53,7 @@ void fr_lua_aux_fr_register(lua_State *L)
  * @param L Lua interpreter.
  * @return 0 (no arguments)
  */
-static int _aux_log_debug(lua_State *L)
+static int _util_log_debug(lua_State *L)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
 	REQUEST			*request = fr_lua_request;
@@ -77,7 +77,7 @@ static int _aux_log_debug(lua_State *L)
  * @param L Lua interpreter.
  * @return 0 (no arguments)
  */
-static int _aux_log_info(lua_State *L)
+static int _util_log_info(lua_State *L)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
 	REQUEST			*request = fr_lua_request;
@@ -102,7 +102,7 @@ static int _aux_log_info(lua_State *L)
  * @param L Lua interpreter.
  * @return 0 (no arguments)
  */
-static int _aux_log_warn(lua_State *L)
+static int _util_log_warn(lua_State *L)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
 	REQUEST			*request = fr_lua_request;
@@ -126,7 +126,7 @@ static int _aux_log_warn(lua_State *L)
  * @param L Lua interpreter.
  * @return 0 (no arguments)
  */
-static int _aux_log_error(lua_State *L)
+static int _util_log_error(lua_State *L)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
 	REQUEST			*request = fr_lua_request;
@@ -143,9 +143,9 @@ static int _aux_log_error(lua_State *L)
 	return 0;
 }
 
-static int _aux_log_newindex(UNUSED lua_State *L)
+static int _util_log_newindex(UNUSED lua_State *L)
 {
-	REQUEST	*request = fr_lua_aux_get_request();
+	REQUEST	*request = fr_lua_util_get_request();
 
 	RWDEBUG("fr.log.$func() is read-only");
 
@@ -156,7 +156,7 @@ static int _aux_log_newindex(UNUSED lua_State *L)
  *
  * @param msg	to be printed.
  */
-void fr_lua_aux_jit_log_debug(char const *msg)
+void fr_lua_util_jit_log_debug(char const *msg)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
 	REQUEST			*request = fr_lua_request;
@@ -168,7 +168,7 @@ void fr_lua_aux_jit_log_debug(char const *msg)
  *
  * @param msg	to be printed.
  */
-void fr_lua_aux_jit_log_info(char const *msg)
+void fr_lua_util_jit_log_info(char const *msg)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
 	REQUEST			*request = fr_lua_request;
@@ -180,7 +180,7 @@ void fr_lua_aux_jit_log_info(char const *msg)
  *
  * @param msg	to be printed.
  */
-void fr_lua_aux_jit_log_warn(char const *msg)
+void fr_lua_util_jit_log_warn(char const *msg)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
 	REQUEST			*request = fr_lua_request;
@@ -192,7 +192,7 @@ void fr_lua_aux_jit_log_warn(char const *msg)
  *
  * @param msg	to be printed.
  */
-void fr_lua_aux_jit_log_error(char const *msg)
+void fr_lua_util_jit_log_error(char const *msg)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
 	REQUEST			*request = fr_lua_request;
@@ -209,29 +209,34 @@ void fr_lua_aux_jit_log_error(char const *msg)
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
-int fr_lua_aux_jit_log_register(rlm_lua_t const *inst, lua_State *L)
+int fr_lua_util_jit_log_register(rlm_lua_t const *inst, lua_State *L)
 {
-	if (luaL_dostring(L,"\
+	char const *search_path;
+	char *lua_str;
+	int ret;
+
+	search_path = dl_search_path();
+	lua_str = talloc_asprintf(NULL, "\
 		ffi = require(\"ffi\")\
 		ffi.cdef [[\
-			void fr_lua_aux_jit_log_debug(char const *msg);\
-			void fr_lua_aux_jit_log_info(char const *msg);\
-			void fr_lua_aux_jit_log_warn(char const *msg);\
-			void fr_lua_aux_jit_log_error(char const *msg);\
+			void fr_lua_util_jit_log_debug(char const *msg);\
+			void fr_lua_util_jit_log_info(char const *msg);\
+			void fr_lua_util_jit_log_warn(char const *msg);\
+			void fr_lua_util_jit_log_error(char const *msg);\
 		]]\
-		fr_lua = ffi.load(\"freeradius-lua\")\
+		fr_lua = ffi.load(\"%s%clibfreeradius-lua%s\")\
 		_fr_log = {}\
 		_fr_log.debug = function(msg)\
-			fr_lua.fr_lua_aux_jit_log_debug(msg)\
+			fr_lua.fr_lua_util_jit_log_debug(msg)\
 		end\
 		_fr_log.info = function(msg)\
-			fr_lua.fr_lua_aux_jit_log_info(msg)\
+			fr_lua.fr_lua_util_jit_log_info(msg)\
 		end\
 		_fr_log.warn = function(msg)\
-			fr_lua.fr_lua_aux_jit_log_warn(msg)\
+			fr_lua.fr_lua_util_jit_log_warn(msg)\
 		end\
 		_fr_log.error = function(msg)\
-			fr_lua.fr_lua_aux_jit_log_error(msg)\
+			fr_lua.fr_lua_util_jit_log_error(msg)\
 		end\
 		function _ro_log(table) \
 			return setmetatable({}, { \
@@ -243,22 +248,26 @@ int fr_lua_aux_jit_log_register(rlm_lua_t const *inst, lua_State *L)
 			}); \
 		end\
 		fr.log = _ro_log(_fr_log)\
-		") != 0) {
+		", search_path, FR_DIR_SEP, DL_EXTENSION);
+	ret = luaL_dostring(L, lua_str);
+	talloc_free(lua_str);
+	if (ret != 0) {
 		ERROR("Failed setting up FFI: %s",
 		      lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
+
 		return -1;
 	}
 
 	return 0;
 }
 
-/** Register auxiliary functions in the lua environment
+/** Register utililiary functions in the lua environment
  *
  * @param inst Current instance of the fr_lua module.
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
-int fr_lua_aux_log_register(UNUSED rlm_lua_t const *inst, lua_State *L)
+int fr_lua_util_log_register(UNUSED rlm_lua_t const *inst, lua_State *L)
 {
 	/* fr.{} */
 	lua_getglobal(L, "fr");
@@ -272,20 +281,20 @@ int fr_lua_aux_log_register(UNUSED rlm_lua_t const *inst, lua_State *L)
 			lua_pushvalue(L, -1);
 			lua_setfield(L, -2, "__index");
 
-			lua_pushcfunction(L, _aux_log_newindex);
+			lua_pushcfunction(L, _util_log_newindex);
 			lua_setfield(L, -2, "__newindex");
 		}
 
-		lua_pushcfunction(L, _aux_log_debug);
+		lua_pushcfunction(L, _util_log_debug);
 		lua_setfield(L, -2, "debug");
 
-		lua_pushcfunction(L, _aux_log_info);
+		lua_pushcfunction(L, _util_log_info);
 		lua_setfield(L, -2, "info");
 
-		lua_pushcfunction(L, _aux_log_warn);
+		lua_pushcfunction(L, _util_log_warn);
 		lua_setfield(L, -2, "warn");
 
-		lua_pushcfunction(L, _aux_log_error);
+		lua_pushcfunction(L, _util_log_error);
 		lua_setfield(L, -2, "error");
 	}
 
@@ -299,7 +308,7 @@ int fr_lua_aux_log_register(UNUSED rlm_lua_t const *inst, lua_State *L)
  *
  * @param[in] inst	all helper and C functions callable from Lua should use.
  */
-void fr_lua_aux_set_inst(rlm_lua_t const *inst)
+void fr_lua_util_set_inst(rlm_lua_t const *inst)
 {
 	fr_lua_inst = inst;
 }
@@ -308,7 +317,7 @@ void fr_lua_aux_set_inst(rlm_lua_t const *inst)
  *
  * @return inst all helper and C functions callable from Lua should use.
  */
-rlm_lua_t const *fr_lua_aux_get_inst(void)
+rlm_lua_t const *fr_lua_util_get_inst(void)
 {
 	return fr_lua_inst;
 }
@@ -317,7 +326,7 @@ rlm_lua_t const *fr_lua_aux_get_inst(void)
  *
  * @param[in] request	all helper and C functions callable from Lua should use.
  */
-void fr_lua_aux_set_request(REQUEST *request)
+void fr_lua_util_set_request(REQUEST *request)
 {
 	fr_lua_request = request;
 }
@@ -326,7 +335,7 @@ void fr_lua_aux_set_request(REQUEST *request)
  *
  * @return request all helper and C functions callable from Lua should use.
  */
-REQUEST *fr_lua_aux_get_request(void)
+REQUEST *fr_lua_util_get_request(void)
 {
 	return fr_lua_request;
 }

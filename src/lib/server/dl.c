@@ -48,14 +48,6 @@ RCSID("$Id$")
 #  define RTLD_LOCAL (0)
 #endif
 
-#ifdef __APPLE__
-#  define DL_EXTENSION ".dylib"
-#elif defined (WIN32)
-#  define DL_EXTENSION ".dll"
-#else
-#  define DL_EXTENSION ".so"
-#endif
-
 #define DL_INIT_CHECK rad_assert(dl_loader)
 
 /** Symbol dependent initialisation callback
@@ -530,6 +522,28 @@ static void dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *mod
 	}
 }
 
+/** Return current library path
+ *
+ */
+char const *dl_search_path(void)
+{
+	char		*env;
+	char const	*search_path;
+
+	/*
+	 *	Apple removed support for DYLD_LIBRARY_PATH in rootless mode.
+	 */
+	env = getenv("FR_LIBRARY_PATH");
+	if (env) {
+		DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
+		search_path = env;
+	} else {
+		search_path = dl_loader->lib_dir;
+	}
+
+	return search_path;
+}
+
 /** Search for a module's shared object in various locations
  *
  * @param name of module to load.
@@ -539,8 +553,8 @@ void *dl_by_name(char const *name)
 	int		flags = RTLD_NOW;
 	void		*handle;
 	char		buffer[2048];
-	char		*env;
 	char const	*search_path;
+	char const	*env;
 
 	DL_INIT_CHECK;
 
@@ -570,16 +584,7 @@ void *dl_by_name(char const *name)
 	 */
 	flags |= RTLD_NOW;
 
-	/*
-	 *	Apple removed support for DYLD_LIBRARY_PATH in rootless mode.
-	 */
-	env = getenv("FR_LIBRARY_PATH");
-	if (env) {
-		DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
-		search_path = env;
-	} else {
-		search_path = dl_loader->lib_dir;
-	}
+	search_path = dl_search_path();
 
 	/*
 	 *	Prefer loading our libraries by absolute path.

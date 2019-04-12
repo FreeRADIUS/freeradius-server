@@ -38,6 +38,14 @@ RCSIDH(dl_h, "$Id$")
 extern "C" {
 #endif
 
+#ifdef __APPLE__
+#  define DL_EXTENSION ".dylib"
+#elif defined (WIN32)
+#  define DL_EXTENSION ".dll"
+#else
+#  define DL_EXTENSION ".so"
+#endif
+
 /** Stop people using different module/library/server versions together
  *
  */
@@ -180,6 +188,8 @@ int			dl_symbol_free_cb_register(unsigned int priority, char const *symbol,
 						   dl_free_t func, void *ctx);
 
 void			dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func);
+
+char const		*dl_search_path(void);
 
 void			*dl_by_name(char const *name);
 

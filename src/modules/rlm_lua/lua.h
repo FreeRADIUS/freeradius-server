@@ -81,16 +81,16 @@ int		fr_lua_run(rlm_lua_t const *inst, rlm_lua_thread_t *thread, REQUEST *reques
 bool		fr_lua_isjit(lua_State *L);
 char const	*fr_lua_version(lua_State *L);
 
-/* aux.c */
-void		fr_lua_aux_jit_log_debug(char const *msg);
-void		fr_lua_aux_jit_log_info(char const *msg);
-void		fr_lua_aux_jit_log_warn(char const *msg);
-void		fr_lua_aux_jit_log_error(char const *msg);
+/* util.c */
+void		fr_lua_util_jit_log_debug(char const *msg);
+void		fr_lua_util_jit_log_info(char const *msg);
+void		fr_lua_util_jit_log_warn(char const *msg);
+void		fr_lua_util_jit_log_error(char const *msg);
 
-int		fr_lua_aux_jit_log_register(rlm_lua_t const *inst, lua_State *L);
-int		fr_lua_aux_log_register(rlm_lua_t const *inst, lua_State *L);
-void		fr_lua_aux_set_inst(rlm_lua_t const *inst);
-rlm_lua_t const	*fr_lua_aux_get_inst(void);
-void		fr_lua_aux_set_request(REQUEST *request);
-REQUEST		*fr_lua_aux_get_request(void);
-void		fr_lua_aux_fr_register(lua_State *L);
+int		fr_lua_util_jit_log_register(rlm_lua_t const *inst, lua_State *L);
+int		fr_lua_util_log_register(rlm_lua_t const *inst, lua_State *L);
+void		fr_lua_util_set_inst(rlm_lua_t const *inst);
+rlm_lua_t const	*fr_lua_util_get_inst(void);
+void		fr_lua_util_set_request(REQUEST *request);
+REQUEST		*fr_lua_util_get_request(void);
+void		fr_lua_util_fr_register(lua_State *L);
