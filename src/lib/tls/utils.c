@@ -85,7 +85,7 @@ int tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl)
 {
 	const EVP_CIPHER *c;
 	const EVP_MD *h;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	int md_size;
 
 	if (ssl->enc_read_ctx == NULL || ssl->enc_read_ctx->cipher == NULL || ssl->read_hash == NULL)

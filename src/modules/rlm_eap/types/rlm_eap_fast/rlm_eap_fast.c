@@ -273,7 +273,7 @@ static void eap_fast_session_ticket(tls_session_t *tls_session, const SSL *s,
 }
 
 // hostap:src/crypto/tls_openssl.c:tls_sess_sec_cb()
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 static int _session_secret(SSL *s, void *secret, int *secret_len,
 			   UNUSED STACK_OF(SSL_CIPHER) *peer_ciphers,
 			   UNUSED SSL_CIPHER **cipher, void *arg)
