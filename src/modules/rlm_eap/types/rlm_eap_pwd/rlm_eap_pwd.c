@@ -1,7 +1,5 @@
 /*
- * @copyright (c) Dan Harkins, 2012
- *
- *  @copyright holder grants permission for redistribution and use in source
+ *  Copyright holder grants permission for redistribution and use in source
  *  and binary forms, with or without modification, provided that the
  *  following conditions are met:
  *     1. Redistribution of source code must retain the above copyright
@@ -29,6 +27,8 @@
  * This license and distribution terms cannot be changed. In other words,
  * this code cannot simply be copied and put under a different distribution
  * license (including the GNU public license).
+ *
+ * @copyright (c) Dan Harkins, 2012
  */
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */

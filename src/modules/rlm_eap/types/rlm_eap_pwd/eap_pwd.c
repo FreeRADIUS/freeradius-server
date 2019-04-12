@@ -1,7 +1,5 @@
-/*
- * @copyright (c) Dan Harkins, 2012
- *
- *  @copyright holder grants permission for redistribution and use in source
+/**
+ *  copyright holder grants permission for redistribution and use in source
  *  and binary forms, with or without modification, provided that the
  *  following conditions are met:
  *     1. Redistribution of source code must retain the above copyright
@@ -15,7 +13,7 @@
  *  "DISCLAIMER OF LIABILITY
  *
  *  THIS SOFTWARE IS PROVIDED BY DAN HARKINS ``AS IS'' AND
- *  ANY EXPretS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  *  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE INDUSTRIAL LOUNGE BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
@@ -29,6 +27,8 @@
  * This license and distribution terms cannot be changed. In other words,
  * this code cannot simply be copied and put under a different distribution
  * license (including the GNU public license).
+ *
+ * @copyright (c) Dan Harkins, 2012
  */
 
 RCSID("$Id$")
