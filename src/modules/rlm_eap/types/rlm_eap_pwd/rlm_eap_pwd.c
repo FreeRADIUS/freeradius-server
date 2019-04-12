@@ -277,7 +277,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		BIGNUM	*x = NULL, *y = NULL;
 
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_ID) {
-			RDEBUG2("PWD exchange is incorrect, Not ID");
+			REDEBUG("PWD exchange is incorrect, Not ID");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -378,7 +378,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 
 	case PWD_STATE_COMMIT:
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_COMMIT) {
-			RDEBUG2("PWD exchange is incorrect, not commit!");
+			REDEBUG("PWD exchange is incorrect, not commit!");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -386,7 +386,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		 *	Process the peer's commit and generate the shared key, k
 		 */
 		if (process_peer_commit(request, session, in, in_len, inst->bnctx)) {
-			RDEBUG2("Failed processing peer's commit");
+			REDEBUG("Failed processing peer's commit");
 			return RLM_MODULE_FAIL;
 		}
 
@@ -418,7 +418,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		}
 
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_CONFIRM) {
-			RDEBUG2("PWD exchange is incorrect, not commit");
+			REDEBUG("PWD exchange is incorrect, not commit");
 			return RLM_MODULE_INVALID;
 		}
 		if (compute_peer_confirm(request, session, peer_confirm, inst->bnctx)) {
@@ -445,7 +445,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		break;
 
 	default:
-		RDEBUG2("Unknown PWD state");
+		REDEBUG("Unknown PWD state");
 		return RLM_MODULE_FAIL;
 	}
 
