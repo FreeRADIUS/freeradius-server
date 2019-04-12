@@ -42,18 +42,18 @@ RCSIDH(eap_pwd_h, "$Id$")
 
 typedef struct {
     uint8_t lm_exchange;
-#define EAP_PWD_EXCH_ID		 1
-#define EAP_PWD_EXCH_COMMIT	     2
-#define EAP_PWD_EXCH_CONFIRM	    3
+#define EAP_PWD_EXCH_ID		1
+#define EAP_PWD_EXCH_COMMIT	2
+#define EAP_PWD_EXCH_CONFIRM	3
 //    uint16_t total_length;      /* there if the L-bit is set */
     uint8_t data[];
 } CC_HINT(packed) pwd_hdr;
 
 #define EAP_PWD_GET_LENGTH_BIT(x)       ((x)->lm_exchange & 0x80)
 #define EAP_PWD_SET_LENGTH_BIT(x)       ((x)->lm_exchange |= 0x80)
-#define EAP_PWD_GET_MORE_BIT(x)	 ((x)->lm_exchange & 0x40)
-#define EAP_PWD_SET_MORE_BIT(x)	 ((x)->lm_exchange |= 0x40)
-#define EAP_PWD_GET_EXCHANGE(x)	 ((x)->lm_exchange & 0x3f)
+#define EAP_PWD_GET_MORE_BIT(x)	 	((x)->lm_exchange & 0x40)
+#define EAP_PWD_SET_MORE_BIT(x)	 	((x)->lm_exchange |= 0x40)
+#define EAP_PWD_GET_EXCHANGE(x)	 	((x)->lm_exchange & 0x3f)
 #define EAP_PWD_SET_EXCHANGE(x,y)       ((x)->lm_exchange |= (y))
 
 typedef struct {
@@ -71,45 +71,45 @@ typedef struct {
 } CC_HINT(packed) pwd_id_packet_t;
 
 typedef struct {
-    uint16_t state;
-#define PWD_STATE_ID_REQ		1
-#define PWD_STATE_COMMIT		2
-#define PWD_STATE_CONFIRM	       3
-    uint16_t group_num;
-    uint32_t ciphersuite;
-    uint32_t token;
-    char peer_id[FR_MAX_STRING_LEN];
-    size_t peer_id_len;
-    size_t mtu;
-    uint8_t *in;      /* reassembled fragments */
-    size_t in_pos;
-    size_t in_len;
-    uint8_t *out;     /* message to fragment */
-    size_t out_pos;
-    size_t out_len;
-    EC_GROUP *group;
-    EC_POINT *pwe;
-    BIGNUM *order;
-    BIGNUM *prime;
-    BIGNUM *k;
-    BIGNUM *private_value;
-    BIGNUM *peer_scalar;
-    BIGNUM *my_scalar;
-    EC_POINT *my_element;
-    EC_POINT *peer_element;
-    uint8_t my_confirm[SHA256_DIGEST_LENGTH];
+    uint16_t	state;
+#define PWD_STATE_ID_REQ	1
+#define PWD_STATE_COMMIT	2
+#define PWD_STATE_CONFIRM	3
+    uint16_t	group_num;
+    uint32_t	ciphersuite;
+    uint32_t	token;
+    char	peer_id[FR_MAX_STRING_LEN];
+    size_t	peer_id_len;
+    size_t	mtu;
+    uint8_t	*in;      /* reassembled fragments */
+    size_t	in_pos;
+    size_t	in_len;
+    uint8_t	*out;     /* message to fragment */
+    size_t	out_pos;
+    size_t	out_len;
+    EC_GROUP	*group;
+    EC_POINT	*pwe;
+    BIGNUM	*order;
+    BIGNUM	*prime;
+    BIGNUM	*k;
+    BIGNUM	*private_value;
+    BIGNUM	*peer_scalar;
+    BIGNUM	*my_scalar;
+    EC_POINT	*my_element;
+    EC_POINT	*peer_element;
+    uint8_t	my_confirm[SHA256_DIGEST_LENGTH];
 } pwd_session_t;
 
-int compute_password_element(pwd_session_t *sess, uint16_t grp_num,
+int compute_password_element(REQUEST *request, pwd_session_t *sess, uint16_t grp_num,
 			     char const *password, int password_len,
 			     char const *id_server, int id_server_len,
 			     char const *id_peer, int id_peer_len,
 			     uint32_t *token);
-int compute_scalar_element(pwd_session_t *sess, BN_CTX *bnctx);
-int process_peer_commit (pwd_session_t *sess, uint8_t *in, size_t in_len, BN_CTX *bnctx);
-int compute_server_confirm(pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
-int compute_peer_confirm(pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
-int compute_keys(pwd_session_t *sess, uint8_t *peer_confirm,
+int compute_scalar_element(REQUEST *request, pwd_session_t *sess, BN_CTX *bnctx);
+int process_peer_commit(REQUEST *request, pwd_session_t *sess, uint8_t *in, size_t in_len, BN_CTX *bnctx);
+int compute_server_confirm(REQUEST *request, pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
+int compute_peer_confirm(REQUEST *request, pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
+int compute_keys(REQUEST *request, pwd_session_t *sess, uint8_t *peer_confirm,
 		 uint8_t *msk, uint8_t *emsk);
 #ifdef PRINTBUF
 void print_buf(char *str, uint8_t *buf, int len);

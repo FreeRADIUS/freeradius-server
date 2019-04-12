@@ -62,8 +62,7 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 	unsigned int	mdlen = SHA256_DIGEST_LENGTH;
 	uint8_t		mask = 0xff;
 
-	hmac_ctx = HMAC_CTX_new();
-	if (!hmac_ctx) return;
+	MEM(hmac_ctx = HMAC_CTX_new());
 	retult_byte_len = (retult_bit_len + 7) / 8;
 
 	ctr = 0;
@@ -95,7 +94,7 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 	HMAC_CTX_free(hmac_ctx);
 }
 
-int compute_password_element(pwd_session_t *session, uint16_t grp_num,
+int compute_password_element(REQUEST *request, pwd_session_t *session, uint16_t grp_num,
 			     char const *password, int password_len,
 			     char const *id_server, int id_server_len,
 			     char const *id_peer, int id_peer_len,
@@ -128,7 +127,7 @@ int compute_password_element(pwd_session_t *session, uint16_t grp_num,
 		break;
 
 	default:
-		ERROR("Unknown group %d", grp_num);
+		REDEBUG("Unknown group %d", grp_num);
 	error:
 		ret = -1;
 		goto finish;
@@ -139,7 +138,7 @@ int compute_password_element(pwd_session_t *session, uint16_t grp_num,
 	session->prime = NULL;
 	session->group = EC_GROUP_new_by_curve_name(nid);
 	if (!session->group) {
-		ERROR("Unable to create EC_GROUP");
+		REDEBUG("Unable to create EC_GROUP");
 		goto error;
 	}
 
@@ -151,36 +150,29 @@ int compute_password_element(pwd_session_t *session, uint16_t grp_num,
 	MEM(cofactor = BN_new());
 	MEM(x_candidate = BN_new());
 
-
 	if (!EC_GROUP_get_curve_GFp(session->group, session->prime, NULL, NULL, NULL)) {
-		ERROR("Unable to get prime for GFp curve");
+		REDEBUG("Unable to get prime for GFp curve");
 		goto error;
 	}
 
 	if (!EC_GROUP_get_order(session->group, session->order, NULL)) {
-		ERROR("Unable to get order for curve");
+		REDEBUG("Unable to get order for curve");
 		goto error;
 	}
 
 	if (!EC_GROUP_get_cofactor(session->group, cofactor, NULL)) {
-		DEBUG("unable to get cofactor for curve");
+		REDEBUG("unable to get cofactor for curve");
 		goto error;
 	}
 
 	prime_bit_len = BN_num_bits(session->prime);
 	prime_byte_len = BN_num_bytes(session->prime);
-	prf_buf = talloc_zero_array(session, uint8_t, prime_byte_len);
-	if (!prf_buf) {
-		ERROR("Unable to alloc space for prf buffer");
-		goto error;
-	}
-
-	hmac_ctx = HMAC_CTX_new();
-	if (!hmac_ctx) goto error;
+	MEM(prf_buf = talloc_zero_array(session, uint8_t, prime_byte_len));
+	MEM(hmac_ctx = HMAC_CTX_new());
 	ctr = 0;
 	for (;;) {
 		if (ctr > 10) {
-			ERROR("Unable to find random point on curve for group %d, something's fishy", grp_num);
+			REDEBUG("Unable to find random point on curve for group %d, something's fishy", grp_num);
 			goto error;
 		}
 		ctr++;
@@ -234,7 +226,7 @@ int compute_password_element(pwd_session_t *session, uint16_t grp_num,
 		 * hurt just to be sure.
 		 */
 		if (!EC_POINT_is_on_curve(session->group, session->pwe, NULL)) {
-			ERROR("Point is not on curve");
+			REDEBUG("Point is not on curve");
 			continue;
 		}
 
@@ -242,12 +234,12 @@ int compute_password_element(pwd_session_t *session, uint16_t grp_num,
 			/* make sure the point is not in a small sub-group */
 			if (!EC_POINT_mul(session->group, session->pwe, NULL, session->pwe,
 				cofactor, NULL)) {
-				ERROR("Cannot multiply generator by order");
+				RDEBUG("Cannot multiply generator by order");
 				continue;
 			}
 
 			if (EC_POINT_is_at_infinity(session->group, session->pwe)) {
-				ERROR("Point is at infinity");
+				REDEBUG("Point is at infinity");
 				continue;
 			}
 		}
@@ -268,7 +260,7 @@ finish:
 	return ret;
 }
 
-int compute_scalar_element(pwd_session_t *session, BN_CTX *bn_ctx)
+int compute_scalar_element(REQUEST *request, pwd_session_t *session, BN_CTX *bn_ctx)
 {
 	BIGNUM *mask = NULL;
 	int ret = -1;
@@ -280,23 +272,23 @@ int compute_scalar_element(pwd_session_t *session, BN_CTX *bn_ctx)
 	MEM(mask = BN_new());
 
 	if (BN_rand_range(session->private_value, session->order) != 1) {
-		ERROR("Unable to get randomness for private_value");
+		REDEBUG("Unable to get randomness for private_value");
 		goto error;
 	}
 	if (BN_rand_range(mask, session->order) != 1) {
-		ERROR("Unable to get randomness for mask");
+		REDEBUG("Unable to get randomness for mask");
 		goto error;
 	}
 	BN_add(session->my_scalar, session->private_value, mask);
 	BN_mod(session->my_scalar, session->my_scalar, session->order, bn_ctx);
 
 	if (!EC_POINT_mul(session->group, session->my_element, NULL, session->pwe, mask, bn_ctx)) {
-		ERROR("Server element allocation failed");
+		REDEBUG("Server element allocation failed");
 		goto error;
 	}
 
 	if (!EC_POINT_invert(session->group, session->my_element, bn_ctx)) {
-		ERROR("Server element inversion failed");
+		REDEBUG("Server element inversion failed");
 		goto error;
 	}
 
@@ -308,7 +300,7 @@ error:
 	return ret;
 }
 
-int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_CTX *bn_ctx)
+int process_peer_commit(REQUEST *request, pwd_session_t *session, uint8_t *in, size_t in_len, BN_CTX *bn_ctx)
 {
 	uint8_t		*ptr;
 	size_t		data_len;
@@ -327,7 +319,7 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 	MEM(y = BN_new());
 
 	if (!EC_GROUP_get_cofactor(session->group, cofactor, NULL)) {
-		ERROR("Unable to get group co-factor");
+		REDEBUG("Unable to get group co-factor");
 		goto finish;
 	}
 
@@ -339,7 +331,7 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 	 *	Did the peer send enough data?
 	 */
 	if (in_len < (2 * data_len + BN_num_bytes(session->order))) {
-		ERROR("Invalid commit packet");
+		REDEBUG("Invalid commit packet");
 		goto finish;
 	}
 
@@ -355,31 +347,31 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 	if (BN_is_zero(session->peer_scalar) ||
 	    BN_is_one(session->peer_scalar) ||
 	    BN_cmp(session->peer_scalar, session->order) >= 0) {
-		ERROR("Peer's scalar is not within the allowed range");
+		REDEBUG("Peer's scalar is not within the allowed range");
 		goto finish;
 	}
 
 	if (!EC_POINT_set_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
-		ERROR("Unable to get coordinates of peer's element");
+		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
 
 	/* validate received element */
 	if (!EC_POINT_is_on_curve(session->group, session->peer_element, bn_ctx) ||
 	    EC_POINT_is_at_infinity(session->group, session->peer_element)) {
-		ERROR("Peer's element is not a point on the elliptic curve");
+		REDEBUG("Peer's element is not a point on the elliptic curve");
 		goto finish;
 	}
 
 	/* check to ensure peer's element is not in a small sub-group */
 	if (BN_cmp(cofactor, BN_value_one())) {
 		if (!EC_POINT_mul(session->group, point, NULL, session->peer_element, cofactor, NULL)) {
-			ERROR("Unable to multiply element by co-factor");
+			REDEBUG("Unable to multiply element by co-factor");
 			goto finish;
 		}
 
 		if (EC_POINT_is_at_infinity(session->group, point)) {
-			ERROR("Peer's element is in small sub-group");
+			REDEBUG("Peer's element is in small sub-group");
 			goto finish;
 		}
 	}
@@ -387,7 +379,7 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 	/* detect reflection attacks */
 	if (BN_cmp(session->peer_scalar, session->my_scalar) == 0 ||
 	    EC_POINT_cmp(session->group, session->peer_element, session->my_element, bn_ctx) == 0) {
-		ERROR("Reflection attack detected");
+		REDEBUG("Reflection attack detected");
 		goto finish;
 	}
 
@@ -395,14 +387,14 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 	if ((!EC_POINT_mul(session->group, K, NULL, session->pwe, session->peer_scalar, bn_ctx)) ||
 	    (!EC_POINT_add(session->group, K, K, session->peer_element, bn_ctx)) ||
 	    (!EC_POINT_mul(session->group, K, NULL, K, session->private_value, bn_ctx))) {
-		ERROR("Unable to compute shared key, k");
+		REDEBUG("Unable to compute shared key, k");
 		goto finish;
 	}
 
 	/* ensure that the shared key isn't in a small sub-group */
 	if (BN_cmp(cofactor, BN_value_one())) {
 		if (!EC_POINT_mul(session->group, K, NULL, K, cofactor, NULL)) {
-			ERROR("Unable to multiply k by co-factor");
+			REDEBUG("Unable to multiply k by co-factor");
 			goto finish;
 		}
 	}
@@ -414,12 +406,12 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 	 * sure" so let's be safe.
 	 */
 	if (EC_POINT_is_at_infinity(session->group, K)) {
-		ERROR("K is point-at-infinity");
+		REDEBUG("K is point-at-infinity");
 		goto finish;
 	}
 
 	if (!EC_POINT_get_affine_coordinates_GFp(session->group, K, session->k, NULL, bn_ctx)) {
-		ERROR("Unable to get shared secret from K");
+		REDEBUG("Unable to get shared secret from K");
 		goto finish;
 	}
 	ret = 0;
@@ -434,7 +426,7 @@ finish:
 	return ret;
 }
 
-int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
+int compute_server_confirm(REQUEST *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 {
 	BIGNUM		*x = NULL, *y = NULL;
 	HMAC_CTX	*hmac_ctx = NULL;
@@ -452,8 +444,7 @@ int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	 * commit is H(k | server_element | server_scalar | peer_element |
 	 *	       peer_scalar | ciphersuite)
 	 */
-	hmac_ctx = HMAC_CTX_new();
-	if (!hmac_ctx) goto finish;
+	MEM(hmac_ctx = HMAC_CTX_new());
 	HMAC_Init_ex(hmac_ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(), NULL);
 
 	/*
@@ -470,7 +461,7 @@ int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	 * next is server element: x, y
 	 */
 	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, bn_ctx)) {
-		ERROR("Unable to get coordinates of server element");
+		REDEBUG("Unable to get coordinates of server element");
 		goto finish;
 	}
 	memset(cruft, 0, BN_num_bytes(session->prime));
@@ -495,7 +486,7 @@ int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	 * next is peer element: x, y
 	 */
 	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
-		ERROR("Unable to get coordinates of peer's element");
+		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
 
@@ -535,7 +526,7 @@ finish:
 	return req;
 }
 
-int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
+int compute_peer_confirm(REQUEST *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 {
 	BIGNUM		*x = NULL, *y = NULL;
 	HMAC_CTX	*hmac_ctx = NULL;
@@ -553,8 +544,7 @@ int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	 * commit is H(k | server_element | server_scalar | peer_element |
 	 *	       peer_scalar | ciphersuite)
 	 */
-	hmac_ctx = HMAC_CTX_new();
-	if (!hmac_ctx) goto finish;
+	MEM(hmac_ctx = HMAC_CTX_new());
 	HMAC_Init_ex(hmac_ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(), NULL);
 
 	/*
@@ -571,7 +561,7 @@ int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	* then peer element: x, y
 	*/
 	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
-		ERROR("Unable to get coordinates of peer's element");
+		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
 
@@ -597,7 +587,7 @@ int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	 * then server element: x, y
 	 */
 	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, bn_ctx)) {
-		ERROR("Unable to get coordinates of server element");
+		REDEBUG("Unable to get coordinates of server element");
 		goto finish;
 	}
 	memset(cruft, 0, BN_num_bytes(session->prime));
@@ -635,7 +625,7 @@ finish:
 	return req;
 }
 
-int compute_keys(pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, uint8_t *emsk)
+int compute_keys(UNUSED REQUEST *request, pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, uint8_t *emsk)
 {
 	HMAC_CTX	*hmac_ctx;
 	uint8_t		mk[SHA256_DIGEST_LENGTH], *cruft;
@@ -643,14 +633,8 @@ int compute_keys(pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, ui
 	uint8_t		msk_emsk[128];		/* 64 each */
 	int	 	offset;
 
-	cruft = talloc_array(session, uint8_t, BN_num_bytes(session->prime));
-	if (!cruft) {
-		ERROR("Unable to allocate space to compute keys");
-		return -1;
-	}
-
-	hmac_ctx = HMAC_CTX_new();
-	if (!hmac_ctx) return -1;
+	MEM(cruft = talloc_array(session, uint8_t, BN_num_bytes(session->prime)));
+	MEM(hmac_ctx = HMAC_CTX_new());
 
 	/*
 	 * first compute the session-id = TypeCode | H(ciphersuite | scal_p |

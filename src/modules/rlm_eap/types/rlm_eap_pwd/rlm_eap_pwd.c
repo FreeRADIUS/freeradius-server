@@ -84,7 +84,7 @@ fr_dict_attr_autoload_t rlm_eap_pwd_dict_attr[] = {
 	{ NULL }
 };
 
-static int send_pwd_request(pwd_session_t *session, eap_round_t *eap_round)
+static int send_pwd_request(REQUEST *request, pwd_session_t *session, eap_round_t *eap_round)
 {
 	size_t		len;
 	uint16_t	totlen;
@@ -112,7 +112,7 @@ static int send_pwd_request(pwd_session_t *session, eap_round_t *eap_round)
 		break;
 
 	default:
-		ERROR("PWD state is invalid.  Can't send request");
+		REDEBUG("PWD state is invalid.  Can't send request");
 		return -1;
 	}
 
@@ -197,7 +197,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 */
 	if (session->out_pos) {
 		if (in_len) REDEBUG("PWD got something more than an ACK for a fragment");
-		if (send_pwd_request(session, eap_round) < 0) return RLM_MODULE_FAIL;
+		if (send_pwd_request(request, session, eap_round) < 0) return RLM_MODULE_FAIL;
 
 		return RLM_MODULE_OK;
 	}
@@ -321,7 +321,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 			return RLM_MODULE_REJECT;
 		}
 
-		if (compute_password_element(session, session->group_num,
+		if (compute_password_element(request, session, session->group_num,
 					     vp->vp_strvalue, vp->vp_length,
 					     inst->server_id, strlen(inst->server_id),
 					     session->peer_id, strlen(session->peer_id),
@@ -333,7 +333,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		/*
 		 *	Compute our scalar and element
 		 */
-		if (compute_scalar_element(session, inst->bnctx)) {
+		if (compute_scalar_element(request, session, inst->bnctx)) {
 			REDEBUG("Failed to compute server's scalar and element");
 			return RLM_MODULE_FAIL;
 		}
@@ -372,7 +372,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		BN_bn2bin(session->my_scalar, ptr + offset);
 
 		session->state = PWD_STATE_COMMIT;
-		rcode = send_pwd_request(session, eap_round) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
+		rcode = send_pwd_request(request, session, eap_round) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
 	}
 		break;
 
@@ -385,7 +385,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		/*
 		 *	Process the peer's commit and generate the shared key, k
 		 */
-		if (process_peer_commit(session, in, in_len, inst->bnctx)) {
+		if (process_peer_commit(request, session, in, in_len, inst->bnctx)) {
 			RDEBUG2("Failed processing peer's commit");
 			return RLM_MODULE_FAIL;
 		}
@@ -393,7 +393,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		/*
 		 *	Compute our confirm blob
 		 */
-		if (compute_server_confirm(session, session->my_confirm, inst->bnctx)) {
+		if (compute_server_confirm(request, session, session->my_confirm, inst->bnctx)) {
 			REDEBUG("Failed computing confirm");
 			return RLM_MODULE_FAIL;
 		}
@@ -408,7 +408,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		memcpy(session->out, session->my_confirm, SHA256_DIGEST_LENGTH);
 
 		session->state = PWD_STATE_CONFIRM;
-		rcode = send_pwd_request(session, eap_round) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
+		rcode = send_pwd_request(request, session, eap_round) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
 		break;
 
 	case PWD_STATE_CONFIRM:
@@ -421,7 +421,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 			RDEBUG2("PWD exchange is incorrect, not commit");
 			return RLM_MODULE_INVALID;
 		}
-		if (compute_peer_confirm(session, peer_confirm, inst->bnctx)) {
+		if (compute_peer_confirm(request, session, peer_confirm, inst->bnctx)) {
 			REDEBUG("Cannot compute peer's confirm");
 			return RLM_MODULE_FAIL;
 		}
@@ -429,7 +429,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 			REDEBUG("PWD exchange failed, peer confirm is incorrect");
 			return RLM_MODULE_FAIL;
 		}
-		if (compute_keys(session, peer_confirm, msk, emsk)) {
+		if (compute_keys(request, session, peer_confirm, msk, emsk)) {
 			REDEBUG("Failed generating (E)MSK");
 			return RLM_MODULE_FAIL;
 		}
@@ -438,8 +438,8 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		/*
 		 *	Return the MSK (in halves).
 		 */
-		eap_add_reply(eap_session->request, attr_ms_mppe_recv_key, msk, MPPE_KEY_LEN);
-		eap_add_reply(eap_session->request, attr_ms_mppe_send_key, msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
+		eap_add_reply(request, attr_ms_mppe_recv_key, msk, MPPE_KEY_LEN);
+		eap_add_reply(request, attr_ms_mppe_send_key, msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
 
 		rcode = RLM_MODULE_FAIL;
 		break;
@@ -482,6 +482,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	rlm_eap_pwd_t		*inst = talloc_get_type_abort(instance, rlm_eap_pwd_t);
 	VALUE_PAIR		*vp;
 	pwd_id_packet_t		*packet;
+	REQUEST			*request = eap_session->request;
 
 	MEM(session = talloc_zero(eap_session, pwd_session_t));
 	talloc_set_destructor(session, _free_pwd_session);
@@ -494,7 +495,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	The admin can dynamically change the MTU.
 	 */
 	session->mtu = inst->fragment_size;
-	vp = fr_pair_find_by_da(eap_session->request->packet->vps, attr_framed_mtu, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_framed_mtu, TAG_ANY);
 
 	/*
 	 *	session->mtu is *our* MTU.  We need to subtract off the EAP
@@ -526,7 +527,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	packet->prep = EAP_PWD_PREP_NONE;
 	memcpy(packet->identity, inst->server_id, session->out_len - sizeof(pwd_id_packet_t) );
 
-	if (send_pwd_request(session, eap_session->this_round) < 0) return RLM_MODULE_FAIL;
+	if (send_pwd_request(request, session, eap_session->this_round) < 0) return RLM_MODULE_FAIL;
 
 	eap_session->process = mod_process;
 
