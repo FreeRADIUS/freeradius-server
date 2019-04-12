@@ -304,6 +304,22 @@ AC_ARG_ENABLE(llvm-address-sanitizer,
 )
 
 dnl #
+dnl #  Enable the -fsanitize=undefined and link in the address sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(llvm-undefined-behaviour-sanitizer,
+[AS_HELP_STRING([--enable-llvm-undefined-behaviour-sanitizer],
+                [build with support for LLVM's undefined behaviour sanitizer (if building with clang).])],
+[ case "$enableval" in
+  no)
+    llvm_undefined_behaviour_sanitizer=no
+    ;;
+  *)
+    llvm_undefined_behaviour_sanitizer=yes
+  esac ]
+)
+
+dnl #
 dnl #  extra argument: --disable-openssl-version-check
 dnl #
 AC_ARG_ENABLE(openssl-version-check,
@@ -1683,6 +1699,18 @@ if test "x$developer" = "xyes"; then
     AC_CHECK_HEADERS(sanitizer/lsan_interface.h)
 
     devldflags="$devldflags -fsanitize=address"
+  fi
+
+  dnl #
+  dnl #  If running with clang, add in UBSAN
+  dnl #
+  if test "x$llvm_undefined_behaviour_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=undefined		- Build with ubsan support
+    dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
+    dnl #
+    devcflags="$devcflags -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
+    devldflags="$devldflags -fno-sanitize-recover=undefined"
   fi
 
   dnl #
