@@ -937,44 +937,48 @@ skip_cap:
 	 *	Bind to a device BEFORE touching IP addresses.
 	 */
 	if (interface) {
-#ifdef SO_BINDTODEVICE
-		struct ifreq ifreq;
+#ifdef HAVE_NET_IF_H
+		uint32_t scope_id;
 
-		memset(&ifreq, 0, sizeof(ifreq));
-		strlcpy(ifreq.ifr_name, interface, sizeof(ifreq.ifr_name));
-
-		rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
-		if (rcode < 0) {
-			fr_strerror_printf_push("Failed binding to interface %s: %s", interface, fr_syserror(errno));
+		scope_id = if_nametoindex(interface);
+		if (!scope_id) {
+			fr_strerror_printf_push("Failed finding interface %s: %s",
+						interface, fr_syserror(errno));
 			return -1;
-		} /* else it worked. */
-#else
+		}
 
-#  ifdef HAVE_STRUCT_SOCKADDR_IN6
-#  ifdef HAVE_NET_IF_H
 		/*
-		 *	Odds are that any system supporting "bind to
-		 *	device" also supports IPv6, so this next bit
-		 *	isn't necessary.  But it's here for
-		 *	completeness.
-		 *
-		 *	If we're doing IPv6, and the scope hasn't yet
-		 *	been defined, set the scope to the scope of
-		 *	the interface.
+		 *	If the scope ID hasn't already been set, then
+		 *	set it.  This allows us to get the scope from the interface name.
 		 */
-		if (my_ipaddr.af == AF_INET6) {
-			if (my_ipaddr.scope_id == 0) {
-				my_ipaddr.scope_id = if_nametoindex(interface);
-				if (my_ipaddr.scope_id == 0) {
-					fr_strerror_printf_push("Failed finding interface %s: %s",
-								interface, fr_syserror(errno));
-					return -1;
-				}
-			} /* else scope was defined: we're OK. */
-		} else
-#  endif
+		if ((my_ipaddr.scope_id != 0) && (scope_id != my_ipaddr.scope_id)) {
+			fr_strerror_printf_push("Cannot bind to interface %s: Socket is already about to another interface",
+						interface);
+			return -1;
+		}
 #endif
-		{
+
+#ifdef SO_BINDTODEVICE
+		if (!my_ipaddr.scope_id) {
+			struct ifreq ifreq;
+
+			memset(&ifreq, 0, sizeof(ifreq));
+			strlcpy(ifreq.ifr_name, interface, sizeof(ifreq.ifr_name));
+
+			rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
+			if (rcode < 0) {
+				fr_strerror_printf_push("Failed binding to interface %s: %s", interface, fr_syserror(errno));
+				return -1;
+			} /* else it worked. */
+
+			/*
+			 *	Set the scope ID.
+			 */
+			my_ipaddr.scope_id = scope_id;
+		}
+#endif
+
+		if (!my_ipaddr.scope_id) {
 			/*
 			 *	IPv4: no link local addresses,
 			 *	and no bind to device.
@@ -983,7 +987,6 @@ skip_cap:
 						interface);
 			return -1;
 		}
-#endif
 	} /* else no interface */
 
 	/*
