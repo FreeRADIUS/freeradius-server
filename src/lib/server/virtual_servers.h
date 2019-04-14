@@ -78,6 +78,9 @@ rlm_rcode_t	process_authenticate(int type, REQUEST *request);
 
 void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for unit_test_module */
 
+fr_listen_t *  	listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
+bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
+
 #ifdef __cplusplus
 }
 #endif

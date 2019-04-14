@@ -87,6 +87,8 @@ static fr_virtual_server_t **virtual_servers;
  */
 static CONF_SECTION *virtual_server_root;
 
+static rbtree_t *listen_addr_root = NULL;
+
 static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
 			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int listen_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
@@ -395,6 +397,104 @@ static fr_cmd_table_t cmd_table[] = {
 
 };
 
+/** Compare listeners by app_io_addr
+ *
+ *  Only works for IP addresses, and will blow up on file names
+ */
+static int listen_addr_cmp(void const *one, void const *two)
+{
+	fr_listen_t const *a = one;
+	fr_listen_t const *b = two;
+	fr_ipaddr_t aip, bip;
+	int rcode;
+
+	/*
+	 *	The caller must ensure that the address field is set.
+	 */
+	if (!a->app_io_addr && !b->app_io_addr) return 0;
+	if (!a->app_io_addr && b->app_io_addr) return -1;
+	if (a->app_io_addr && !b->app_io_addr) return +1;
+
+	/*
+	 *	UDP vs TCP
+	 */
+	rcode = a->app_io_addr->proto - b->app_io_addr->proto;
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	Check ports.
+	 */
+	rcode = a->app_io_addr->port - b->app_io_addr->port;
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	Don't call fr_ipaddr_cmp(), as we need to do our own
+	 *	checks here.  We have various wildcard checks which
+	 *	aren't globally applicable.
+	 */
+
+	/*
+	 *	Different address families.
+	 */
+	rcode = a->app_io_addr->ipaddr.af - b->app_io_addr->ipaddr.af;
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	If both are bound to interfaces, AND the interfaces
+	 *	are different, then there is no conflict.
+	 */
+	if (a->app_io_addr->ipaddr.scope_id && b->app_io_addr->ipaddr.scope_id) {
+		rcode = a->app_io_addr->ipaddr.scope_id - b->app_io_addr->ipaddr.scope_id;
+		if (rcode != 0) return rcode;
+	}
+
+	rcode = a->app_io_addr->ipaddr.prefix - b->app_io_addr->ipaddr.prefix;
+	aip = a->app_io_addr->ipaddr;
+	bip = b->app_io_addr->ipaddr;
+
+	/*
+	 *	Mask out the longer prefix to match the shorter
+	 *	prefix.
+	 */
+	if (rcode < 0) {
+		fr_ipaddr_mask(&bip, a->app_io_addr->ipaddr.prefix);
+
+	} else if (rcode > 0) {
+		fr_ipaddr_mask(&aip, b->app_io_addr->ipaddr.prefix);
+
+	}
+
+	return fr_ipaddr_cmp(&aip, &bip);
+}
+
+/** See if another global listener is using a particular IP / port
+ *
+ */
+fr_listen_t *listen_find_any(fr_listen_t *li)
+{
+	if (!listen_addr_root) return false;
+
+	return rbtree_finddata(listen_addr_root, li);
+}
+
+
+/**  Record that we're listening on a particular IP / port
+ *
+ */
+bool listen_record(fr_listen_t *li)
+{
+	if (!listen_addr_root) return false;
+
+	if (!li->app_io_addr) return true;
+
+	if (listen_find_any(li) != NULL) return false;
+
+	fprintf(stderr, "ADD %s\n", li->name);
+
+	return rbtree_insert(listen_addr_root, li);
+}
+
+
 /** Instantiate all the virtual servers
  *
  * @return
@@ -509,6 +609,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		ERROR("No server { ... } sections found");
 		return -1;
 	}
+
+	listen_addr_root = rbtree_create(config, listen_addr_cmp, NULL, RBTREE_FLAG_NONE);
 
 	/*
 	 *	Check the talloc hierarchy is sane
