@@ -160,11 +160,18 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
 	dl_t const		*module;
+	char const		*name;
+
+	name = cf_section_name1(server_cs);
+	if (strcmp(name, "server") != 0) {
+		cf_log_err(listen_cs, "The 'listen' section can only be used inside of a 'server { ...}' section");
+		return -1;
+	}
 
 	if (!namespace) {
-		cf_log_err(listen_cs, "No namespace set for virtual server");
-		cf_log_err(listen_cs, "Add namespace = <protocol> inside %s %s { ... } section",
-			   cf_section_name1(listen_cs), cf_section_name2(listen_cs));
+		cf_log_err(listen_cs, "No 'namespace' configuration item set for virtual server");
+		cf_log_err(listen_cs, "Please add a 'namespace = <protocol>' inside of the 'server %s { ... }' section",
+			   cf_section_name2(server_cs));
 		return -1;
 	}
 
