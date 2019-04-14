@@ -1626,6 +1626,20 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = thread->child->fd;	/* copy this back up */
 
+	/*
+	 *	Set the name of the socket.
+	 */
+	if (!li->app_io->get_name) {
+		li->name = li->app_io->name;
+	} else {
+		li->name = li->app_io->get_name(li);
+	}
+
+	/*
+	 *	Note that we're opening a child socket, so we don't
+	 *	put it into the list of global listeners.
+	 */
+
 	return 0;
 }
 
@@ -2770,11 +2784,31 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	li->fd = child->fd;	/* copy this back up */
 
 	if (!child->app_io->get_name) {
-		li->name = child->app_io->name;
+		child->name = child->app_io->name;
 	} else {
-		li->name = child->app_io->get_name(child);
+		child->name = child->app_io->get_name(child);
 	}
-	child->name = li->name;
+	li->name = child->name;
+
+	/*
+	 *	Record which socket we opened.
+	 */
+	if (child->app_io_addr) {
+		fr_listen_t *other;
+
+		other = listen_find_any(thread->child);
+		if (other) {
+			ERROR("Failed opening %s - that port is already in use by another listener in server %s { ... } - %s",
+			      child->name, cf_section_name2(other->server_cs), other->name);
+
+			ERROR("got socket %d %d\n", child->app_io_addr->port, other->app_io_addr->port);
+
+			talloc_free(li);
+			return -1;
+		}
+
+		(void) listen_record(child);
+	}
 
 	/*
 	 *	Add the socket to the scheduler, where it might end up
