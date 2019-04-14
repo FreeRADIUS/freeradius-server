@@ -33,6 +33,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/rad_assert.h>
+
 #include "proto_radius.h"
 
 extern fr_app_io_t proto_radius_udp;
@@ -312,6 +313,8 @@ static int mod_open(fr_listen_t *li)
 	error:
 		return -1;
 	}
+
+	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &inst->ipaddr, port);
 
 	/*
 	 *	Set SO_REUSEPORT before bind, so that all packets can

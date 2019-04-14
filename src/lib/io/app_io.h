@@ -80,9 +80,13 @@ typedef struct {
 } fr_app_io_t;
 
 /*
- *	A common function to get a socket name.
+ *	A common function to get a humanly readable socket name.
  */
 char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 				  fr_ipaddr_t const *src_ipaddr, int src_port,
 				  fr_ipaddr_t const *dst_ipaddr, int dst_port,
 				  char const *interface);
+/*
+ *	A common function to get a machine readable socket name
+ */
+fr_socket_addr_t *fr_app_io_socket_addr(TALLOC_CTX *ctx, int proto, fr_ipaddr_t const *ipaddr, int port);

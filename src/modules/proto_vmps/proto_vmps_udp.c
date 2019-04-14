@@ -315,6 +315,8 @@ static int mod_open(fr_listen_t *li)
 		return -1;
 	}
 
+	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &inst->ipaddr, port);
+
 	/*
 	 *	Set SO_REUSEPORT before bind, so that all packets can
 	 *	listen on the same destination IP address.
