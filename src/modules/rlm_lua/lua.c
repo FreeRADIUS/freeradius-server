@@ -41,6 +41,7 @@ RCSID("$Id$")
 #define RLM_LUA_STACK_SET()	int _fr_lua_stack_state = lua_gettop(L)
 #define RLM_LUA_STACK_RESET()	lua_settop(L, _fr_lua_stack_state)
 
+DIAG_OFF(type-limits)
 /** Convert VALUE_PAIRs to Lua values
  *
  * Pushes a Lua representation of an attribute value onto the stack.
@@ -200,6 +201,7 @@ static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 	}
 	return 0;
 }
+DIAG_ON(type-limits)
 
 /** Convert Lua values to VALUE_PAIRs
  *

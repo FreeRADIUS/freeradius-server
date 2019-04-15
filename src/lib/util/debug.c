@@ -322,9 +322,9 @@ int fr_get_debug_state(void)
 		lsan_disable = true;
 #endif
 
-DIAG_OFF(deprecated-declarations);
+DIAG_OFF(deprecated-declarations)
 		flags = PT_ATTACH;
-DIAG_ON(deprecated-declarations);
+DIAG_ON(deprecated-declarations)
 
 		/* Close parent's side */
 		close(from_child[0]);
