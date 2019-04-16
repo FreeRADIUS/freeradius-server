@@ -816,7 +816,6 @@ AC_CHECK_HEADERS( \
   stdio.h \
   sys/event.h \
   sys/fcntl.h \
-  sys/event.h \
   sys/prctl.h \
   sys/ptrace.h \
   sys/resource.h \
