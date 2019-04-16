@@ -13,8 +13,12 @@ endif
 #
 -include $(BUILD_DIR)/tests/autoconf.h.mk
 
+.PHONY: $(BUILD_DIR)/tests
+$(BUILD_DIR)/tests:
+	@mkdir -p $@
+
 #
 #  Pull all of the autoconf stuff into here.
 #
-$(BUILD_DIR)/tests/autoconf.h.mk: src/include/autoconf.h
+$(BUILD_DIR)/tests/autoconf.h.mk: src/include/autoconf.h | $(BUILD_DIR)/tests
 	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
