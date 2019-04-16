@@ -1032,6 +1032,8 @@ if test "x$ac_cv_header_sys_event_h" != "xyes"; then
   if test "x$ac_cv_header_sys_event_h" != "xyes"; then
     AC_MSG_WARN([kqueue headers not found. Use --with-kqueue-include-dir=<path>.])
     AC_MSG_ERROR([FreeRADIUS requires libkqueue (or system kqueue)])
+  else
+    CPPFLAGS="$CPPFLAGS $smart_include"
   fi
 fi
 
