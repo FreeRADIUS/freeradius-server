@@ -438,7 +438,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the process modules
 	 */
-	if (fr_app_process_instantiate(inst->type_submodule, NULL, 0,
+	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, NULL, 0,
 				       conf) < 0) {
 		return -1;
 	}
@@ -491,7 +491,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Bootstrap the app_process modules.
 	 */
-	if (fr_app_process_bootstrap(inst->type_submodule, conf, inst->io.server_cs) < 0) return -1;
+	if (fr_app_process_bootstrap(inst->io.server_cs, inst->type_submodule, conf) < 0) return -1;
 
 	/*
 	 *	No IO module, it's an empty listener.
