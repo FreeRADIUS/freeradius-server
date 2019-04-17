@@ -11,8 +11,6 @@
 #  The `radius` module in v4, can be used to implement proxying and request
 #  fan-out, as well as synchronous and asynchronous `CoA` and `DM`.
 #
-
-#
 #  ## Default instance
 #
 #  Any proxied packet (including `Accounting-Request`) can
