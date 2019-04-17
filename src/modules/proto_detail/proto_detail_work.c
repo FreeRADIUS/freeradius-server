@@ -79,7 +79,10 @@ static CONF_PARSER limit_config[] = {
 	 *	Retransmit indefinitely, as v2 and v3 did.
 	 */
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, proto_detail_work_t, mrc), .dflt = STRINGIFY(0) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, proto_detail_work_t, mrd), .dflt = STRINGIFY(30) },
+	/*
+	 *	...again same as v2 and v3.
+	 */
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, proto_detail_work_t, mrd), .dflt = STRINGIFY(0) },
 	{ FR_CONF_OFFSET("maximum_outstanding", FR_TYPE_UINT32, proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
 	CONF_PARSER_TERMINATOR
 };
