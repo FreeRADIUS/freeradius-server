@@ -84,21 +84,21 @@ static unlang_action_t unlang_if(REQUEST *request,
 
 void unlang_condition_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_IF,
+	unlang_register(UNLANG_TYPE_IF,
 			   &(unlang_op_t){
 				.name = "if",
 				.func = unlang_if,
 				.debug_braces = true
 			   });
 
-	unlang_op_register(UNLANG_TYPE_ELSE,
+	unlang_register(UNLANG_TYPE_ELSE,
 			   &(unlang_op_t){
 				.name = "else",
 				.func = unlang_group,
 				.debug_braces = true
 			   });
 
-	unlang_op_register(UNLANG_TYPE_ELSIF,
+	unlang_register(UNLANG_TYPE_ELSIF,
 			   &(unlang_op_t){
 				.name = "elseif",
 				.func = unlang_if,

@@ -298,14 +298,14 @@ static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult, int *p
 
 void unlang_map_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_UPDATE,
+	unlang_register(UNLANG_TYPE_UPDATE,
 			   &(unlang_op_t){
 				.name = "update",
 				.func = unlang_update,
 				.debug_braces = true
 			   });
 
-	unlang_op_register(UNLANG_TYPE_MAP,
+	unlang_register(UNLANG_TYPE_MAP,
 			   &(unlang_op_t){
 				.name = "map",
 				.func = unlang_map,

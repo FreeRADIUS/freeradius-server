@@ -1165,7 +1165,7 @@ static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr
 		rad_assert(u->rr == NULL);
 		rad_assert(u->c == NULL);
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
-		if (u->yielded) unlang_resumable(u->request);
+		if (u->yielded) unlang_interpret_resumable(u->request);
 		break;
 
 	case REQUEST_IO_STATE_DONE:

@@ -180,12 +180,12 @@ static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, eap_session_t *ea
 	/*
 	 *	Catch the interpreter on the way back up the stack
 	 */
-	unlang_push_function(request, NULL, eap_tls_virtual_server_result, eap_session);
+	unlang_interpret_push_function(request, NULL, eap_tls_virtual_server_result, eap_session);
 
 	/*
 	 *	Push unlang instructions for the virtual server section
 	 */
-	unlang_push_section(request, section, RLM_MODULE_NOOP, UNLANG_SUB_FRAME);
+	unlang_interpret_push_section(request, section, RLM_MODULE_NOOP, UNLANG_SUB_FRAME);
 
 	return RLM_MODULE_YIELD;
 }

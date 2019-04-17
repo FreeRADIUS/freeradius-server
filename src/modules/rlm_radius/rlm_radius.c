@@ -409,7 +409,7 @@ static void mod_radius_signal(REQUEST *request, void *instance, void *thread, vo
 }
 
 
-/** Continue after unlang_resumable()
+/** Continue after unlang_interpret_resumable()
  *
  */
 static rlm_rcode_t mod_radius_resume(REQUEST *request, void *instance, void *thread, void *ctx)

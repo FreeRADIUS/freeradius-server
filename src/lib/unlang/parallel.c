@@ -102,7 +102,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 */
 		case CHILD_RUNNABLE:
 			RDEBUG2("parallel - running entry %d/%d", i + 1, state->num_children);
-			result = unlang_run(state->children[i].child);
+			result = unlang_interpret_run(state->children[i].child);
 			if (result == RLM_MODULE_YIELD) {
 				state->children[i].state = CHILD_YIELDED;
 				done = CHILD_YIELDED;
@@ -211,7 +211,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	stopped.  This tells any child modules
 			 *	to clean up timers, etc.
 			 */
-			unlang_signal(state->children[i].child, FR_SIGNAL_CANCEL);
+			unlang_interpret_signal(state->children[i].child, FR_SIGNAL_CANCEL);
 			TALLOC_FREE(state->children[i].child);
 			/* FALL-THROUGH */
 
@@ -251,7 +251,7 @@ static void unlang_parallel_signal(UNUSED REQUEST *request, void *rctx, fr_state
 		case CHILD_RUNNABLE:
 		case CHILD_YIELDED:
 			rad_assert(state->children[i].child != NULL);
-			unlang_signal(state->children[i].child, action);
+			unlang_interpret_signal(state->children[i].child, action);
 			break;
 		}
 	}
@@ -361,7 +361,7 @@ static unlang_action_t unlang_parallel(REQUEST *request,
 	/*
 	 *	Create the "resume" stack frame, and have it replace our stack frame.
 	 */
-	mr = unlang_resume_alloc(request, NULL, NULL, state);
+	mr = unlang_interpret_resume_alloc(request, NULL, NULL, state);
 	if (!mr) {
 		*presult = RLM_MODULE_FAIL;
 		*priority = instruction->actions[*presult];
@@ -374,7 +374,7 @@ static unlang_action_t unlang_parallel(REQUEST *request,
 
 void unlang_parallel_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_PARALLEL,
+	unlang_register(UNLANG_TYPE_PARALLEL,
 			   &(unlang_op_t){
 				.name = "parallel",
 				.func = unlang_parallel,

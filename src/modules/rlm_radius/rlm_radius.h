@@ -19,6 +19,7 @@
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/unlang/module.h>
 
 /*
  * $Id$

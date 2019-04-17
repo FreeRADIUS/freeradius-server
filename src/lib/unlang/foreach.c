@@ -166,7 +166,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	unlang_interpret_push(stack, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 	frame->repeat = true;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -174,14 +174,14 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 
 void unlang_foreach_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_FOREACH,
+	unlang_register(UNLANG_TYPE_FOREACH,
 			   &(unlang_op_t){
 				.name = "foreach",
 				.func = unlang_foreach,
 				.debug_braces = true
 			   });
 
-	unlang_op_register(UNLANG_TYPE_BREAK,
+	unlang_register(UNLANG_TYPE_BREAK,
 			   &(unlang_op_t){
 				.name = "break",
 				.func = unlang_break,

@@ -166,7 +166,7 @@ do_null_case:
 	 */
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
-	unlang_push(stack, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+	unlang_interpret_push(stack, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
@@ -192,14 +192,14 @@ static unlang_action_t unlang_case(REQUEST *request,
 
 void unlang_switch_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_SWITCH,
+	unlang_register(UNLANG_TYPE_SWITCH,
 			   &(unlang_op_t){
 				.name = "switch",
 				.func = unlang_switch,
 				.debug_braces = true
 			   });
 
-	unlang_op_register(UNLANG_TYPE_CASE,
+	unlang_register(UNLANG_TYPE_CASE,
 			   &(unlang_op_t){
 				.name = "case",
 				.func = unlang_case,

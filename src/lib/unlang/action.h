@@ -18,26 +18,29 @@
 /**
  * $Id$
  *
- * @file unlang/base.h
- * @brief Public interface to the unlang interpreter
+ * @file unlang/action.h
+ * @brief Unlang interpreter actions
  *
- * @copyright 2016-2019 The FreeRADIUS server project
+ * @copyright 2019 The FreeRADIUS server project
  */
-#include <freeradius-devel/unlang/compile.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/unlang/module.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool		unlang_section(CONF_SECTION *cs);
-
-void		unlang_register(int type, unlang_op_t *op);
-
-int		unlang_init(void);
-
-void		unlang_free(void);
+/** Returned by #unlang_op_t calls, determine the next action of the interpreter
+ *
+ * These deal exclusively with control flow.
+ */
+typedef enum {
+	UNLANG_ACTION_CALCULATE_RESULT = 1,	//!< Calculate a new section #rlm_rcode_t value.
+	UNLANG_ACTION_EXECUTE_NEXT,    		//!< Execute the next #unlang_t.
+	UNLANG_ACTION_PUSHED_CHILD,		//!< #unlang_t pushed a new child onto the stack,
+						//!< execute it instead of continuing.
+	UNLANG_ACTION_BREAK,			//!< Break out of the current group.
+	UNLANG_ACTION_YIELD,			//!< Temporarily pause execution until an event occurs.
+	UNLANG_ACTION_STOP_PROCESSING		//!< Break out of processing the current request (unwind).
+} unlang_action_t;
 
 #ifdef __cplusplus
 }

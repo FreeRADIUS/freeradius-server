@@ -27,18 +27,6 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "subrequest_priv.h"
 
-/** Parameters for initialising the subrequest
- *
- * State of one level of nesting within an xlat expansion.
- */
-typedef struct {
-	rlm_rcode_t		*presult;		//!< Where to store the result.
-	REQUEST			*child;			//!< Pre-allocated child request.
-	bool			persist : 1;		//!< Whether we should free the child after it completes.
-	bool			detachable : 1;		//!< Whether the request can be detached.
-
-} unlang_frame_state_subrequest_t;
-
 static fr_dict_t *dict_freeradius;
 
 extern fr_dict_autoload_t subrequest_dict[];
@@ -76,7 +64,7 @@ static void unlang_subrequest_signal(UNUSED REQUEST *request, void *ctx, fr_stat
 {
 	REQUEST			*child = talloc_get_type_abort(ctx, REQUEST);
 
-	unlang_signal(child, action);
+	unlang_interpret_signal(child, action);
 }
 
 
@@ -97,7 +85,7 @@ static unlang_action_t unlang_subrequest_resume(REQUEST *request, rlm_rcode_t *p
 	/*
 	 *	Continue running the child.
 	 */
-	rcode = unlang_run(child);
+	rcode = unlang_interpret_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
@@ -165,8 +153,8 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	 *	configuration for the subrequest from the parent.
 	 *
 	 *	If this function is being called because
-	 *	unlang_push_subrequest was called, the frame->state
-	 *	should be filled out by unlang_push_subrequest.
+	 *	unlang_interpret_push_subrequest was called, the frame->state
+	 *	should be filled out by unlang_interpret_push_subrequest.
 	 */
 	if (!state) {
 		frame->state = state = talloc(stack, unlang_frame_state_subrequest_t);
@@ -225,7 +213,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	 *	virtual server callback, and not directly in the
 	 *	interpreter.
 	 */
-	rcode = unlang_run(child);
+	rcode = unlang_interpret_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
 		if (!state->persist) unlang_subrequest_free(&child);
 
@@ -274,7 +262,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	/*
 	 *	Create the "resume" stack frame, and have it replace our stack frame.
 	 */
-	mr = unlang_resume_alloc(request, NULL, NULL, child);
+	mr = unlang_interpret_resume_alloc(request, NULL, NULL, child);
 	if (!mr) {
 		rcode = RLM_MODULE_FAIL;
 		priority = instruction->actions[*presult];
@@ -347,9 +335,17 @@ static unlang_action_t unlang_detach(REQUEST *request,
 	return UNLANG_ACTION_YIELD;
 }
 
-/** Static instruction for running subrequests
+/** Free a child request, detaching it from its parent and freeing allocated memory
  *
+ * @param[in] child to free.
  */
+void unlang_subrequest_free(REQUEST **child)
+{
+	request_detach(*child);	/* Doesn't actually detach the client, just does cleanups */
+	talloc_free(*child);
+	*child = NULL;
+}
+
 static unlang_t subrequest_instruction = {
 	.type = UNLANG_TYPE_SUBREQUEST,
 	.name = "subrequest",
@@ -366,17 +362,6 @@ static unlang_t subrequest_instruction = {
 		[RLM_MODULE_UPDATED]	= 0
 	},
 };
-
-/** Free a child request, detaching it from its parent and freeing allocated memory
- *
- * @param[in] child to free.
- */
-void unlang_subrequest_free(REQUEST **child)
-{
-	request_detach(*child);	/* Doesn't actually detach the client, just does cleanups */
-	talloc_free(*child);
-	*child = NULL;
-}
 
 /** Push a pre-existing child back onto the stack as a subrequest
  *
@@ -406,7 +391,7 @@ void unlang_subrequest_push_again(rlm_rcode_t *out, REQUEST *child, REQUEST *par
 	/*
 	 *	Push a new subrequest frame onto the stack
 	 */
-	unlang_push(stack, &subrequest_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	unlang_interpret_push(stack, &subrequest_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -423,7 +408,7 @@ void unlang_subrequest_push_again(rlm_rcode_t *out, REQUEST *child, REQUEST *par
 	 *	Push the instruction to execute onto the child's stack.
 	 */
 	stack = child->stack;
-	unlang_push(stack, instruction, default_rcode, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	unlang_interpret_push(stack, instruction, default_rcode, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 	stack->frame[stack->depth].top_frame = true;
 }
 
@@ -458,7 +443,7 @@ void unlang_subrequest_push(rlm_rcode_t *out, REQUEST **child,
 	/*
 	 *	Push a new subrequest frame onto the stack
 	 */
-	unlang_push(stack, &subrequest_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	unlang_interpret_push(stack, &subrequest_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -490,7 +475,7 @@ int unlang_subrequest_op_init(void)
 		return -1;
 	}
 
-	unlang_op_register(UNLANG_TYPE_SUBREQUEST,
+	unlang_register(UNLANG_TYPE_SUBREQUEST,
 			   &(unlang_op_t){
 				.name = "subrequest",
 				.func = unlang_subrequest,
@@ -499,7 +484,7 @@ int unlang_subrequest_op_init(void)
 				.debug_braces = true
 			   });
 
-	unlang_op_register(UNLANG_TYPE_DETACH,
+	unlang_register(UNLANG_TYPE_DETACH,
 			   &(unlang_op_t){
 				.name = "detach",
 				.func = unlang_detach,

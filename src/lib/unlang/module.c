@@ -26,11 +26,10 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/parser.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/xlat.h>
 #include "unlang_priv.h"
 #include "module_priv.h"
 #include "subrequest_priv.h"
@@ -117,7 +116,7 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, stru
  * Used when a module needs wait for an event.  Typically the callback is set, and then the
  * module returns unlang_module_yield().
  *
- * @note The callback is automatically removed on unlang_resumable().
+ * @note The callback is automatically removed on unlang_interpret_resumable().
  *
  * param[in] request		the current request.
  * param[in] callback		to call.
@@ -235,7 +234,7 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
  * Used when a module needs to read from an FD.  Typically the callback is set, and then the
  * module returns unlang_module_yield().
  *
- * @note The callback is automatically removed on unlang_resumable().
+ * @note The callback is automatically removed on unlang_interpret_resumable().
  *
  * @param[in] request		The current request.
  * @param[in] read		callback.  Used for receiving and demuxing/decoding data.
@@ -353,7 +352,6 @@ rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST **child,
 {
 	unlang_t	*instruction = (unlang_t *)cf_data_value(cf_data_find(section_cs, unlang_group_t, NULL));
 
-
 	rad_assert(instruction);
 
 	/*
@@ -450,7 +448,7 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
  *	A common pattern is to use ``return unlang_module_yield(...)``.
  *
  * @param[in] request		The current request.
- * @param[in] resume		Called on unlang_resumable().
+ * @param[in] resume		Called on unlang_interpret_resumable().
  * @param[in] signal		Called on unlang_action().
  * @param[in] rctx		to pass to the callbacks.
  * @return
@@ -471,7 +469,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request,
 
 	switch (frame->instruction->type) {
 	case UNLANG_TYPE_MODULE:
-		mr = unlang_resume_alloc(request, (void *)resume, (void *)signal, rctx);
+		mr = unlang_interpret_resume_alloc(request, (void *)resume, (void *)signal, rctx);
 		if (!fr_cond_assert(mr)) {
 			return RLM_MODULE_FAIL;
 		}
@@ -513,10 +511,9 @@ static inline void safe_unlock(module_instance_t *instance)
 	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
 }
 
-static unlang_action_t unlang_module(REQUEST *request,
-					  rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult, int *ppriority)
 {
-	unlang_module_t		*sp;
+	unlang_module_t			*sp;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
@@ -586,7 +583,7 @@ static unlang_action_t unlang_module(REQUEST *request,
 
 	rad_assert(*presult >= RLM_MODULE_REJECT);
 	rad_assert(*presult < RLM_MODULE_NUMCODES);
-	*priority = instruction->actions[*presult];
+	*ppriority = instruction->actions[*presult];
 
 	request->rcode = *presult;
 
@@ -693,7 +690,7 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 
 void unlang_module_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_MODULE,
+	unlang_register(UNLANG_TYPE_MODULE,
 			   &(unlang_op_t){
 				.name = "module",
 				.func = unlang_module,

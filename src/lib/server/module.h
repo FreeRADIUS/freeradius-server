@@ -46,9 +46,6 @@ typedef struct module_thread_instance_s  module_thread_instance_t;
 #include <freeradius-devel/server/rcode.h>
 
 #include <freeradius-devel/io/schedule.h>
-
-#include <freeradius-devel/unlang/base.h>
-
 #include <freeradius-devel/features.h>
 
 #ifdef __cplusplus

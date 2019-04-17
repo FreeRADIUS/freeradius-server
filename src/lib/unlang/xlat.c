@@ -191,7 +191,7 @@ void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 	/*
 	 *	Push a new xlat eval frame onto the stack
 	 */
-	unlang_push(stack, &xlat_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	unlang_interpret_push(stack, &xlat_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -267,7 +267,7 @@ static unlang_action_t unlang_xlat(REQUEST *request,
  *	A common pattern is to use ``return unlang_xlat_yield(...)``.
  *
  * @param[in] request		The current request.
- * @param[in] resume		Called on unlang_resumable().
+ * @param[in] resume		Called on unlang_interpret_resumable().
  * @param[in] signal		Called on unlang_action().
  * @param[in] rctx		to pass to the callbacks.
  * @return always returns RLM_MODULE_YIELD.
@@ -285,7 +285,7 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 	switch (frame->instruction->type) {
 	case UNLANG_TYPE_XLAT:
 	{
-		mr = unlang_resume_alloc(request, (void *)resume, (void *)signal, rctx);
+		mr = unlang_interpret_resume_alloc(request, (void *)resume, (void *)signal, rctx);
 		if (!fr_cond_assert(mr)) {
 			return XLAT_ACTION_FAIL;
 		}
@@ -417,7 +417,7 @@ static unlang_action_t unlang_xlat_inline(REQUEST *request,
  */
 void unlang_xlat_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_XLAT,
+	unlang_register(UNLANG_TYPE_XLAT,
 			   &(unlang_op_t){
 				.name = "xlat_eval",
 				.func = unlang_xlat,
@@ -427,7 +427,7 @@ void unlang_xlat_init(void)
 			   });
 
 
-	unlang_op_register(UNLANG_TYPE_XLAT_INLINE,
+	unlang_register(UNLANG_TYPE_XLAT_INLINE,
 			   &(unlang_op_t){
 				.name = "xlat_inline",
 				.func = unlang_xlat_inline,

@@ -67,7 +67,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 	 *	is waiting for something to happen.
 	 */
 	if (action != FR_IO_ACTION_RUN) {
-		unlang_signal(request, (fr_state_signal_t) action);
+		unlang_interpret_signal(request, (fr_state_signal_t) action);
 		return FR_IO_DONE;
 	}
 
@@ -86,7 +86,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		}
 
 		RDEBUG("Running 'new client' from file %s", cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
 		/* FALL-THROUGH */
@@ -122,7 +122,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 	rerun_nak:
 		RDEBUG("Running '%s client' from file %s", cf_section_name1(unlang), cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_SEND;
 		/* FALL-THROUGH */

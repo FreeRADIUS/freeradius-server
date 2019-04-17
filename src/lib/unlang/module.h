@@ -30,12 +30,14 @@
 extern "C" {
 #endif
 
+#include <freeradius-devel/server/module.h>
+
 /** A callback when the the timeout occurs
  *
  * Used when a module needs wait for an event.
  * Typically the callback is set, and then the module returns unlang_module_yield().
  *
- * @note The callback is automatically removed on unlang_resumable(), i.e. if an event
+ * @note The callback is automatically removed on unlang_interpret_resumable(), i.e. if an event
  *	on a registered FD occurs before the timeout event fires.
  *
  * @param[in] request		the request.
@@ -52,7 +54,7 @@ typedef	void (*fr_unlang_module_timeout_t)(REQUEST *request, void *instance, voi
  * Used when a module needs to read from an FD.  Typically the callback is set, and then the
  * module returns unlang_module_yield().
  *
- * @note The callback is automatically removed on unlang_resumable(), so
+ * @note The callback is automatically removed on unlang_interpret_resumable(), so
  *
  * @param[in] request		the current request.
  * @param[in] instance		the module instance.
@@ -79,7 +81,7 @@ typedef rlm_rcode_t (*fr_unlang_module_resume_t)(REQUEST *request, void *instanc
  * A module may call unlang_yeild(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
  * set here.
  *
- * @note The callback is automatically removed on unlang_resumable().
+ * @note The callback is automatically removed on unlang_interpret_resumable().
  *
  * @param[in] request		The current request.
  * @param[in] instance		The module instance.

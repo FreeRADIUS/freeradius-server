@@ -106,7 +106,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->module = NULL;
 	request->component = "<core>";
 
-	MEM(request->stack = unlang_stack_alloc(request));
+	MEM(request->stack = unlang_interpret_stack_alloc(request));
 
 	request->runnable_id = -1;
 	request->time_order_id = -1;

@@ -1033,7 +1033,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	inst_name = cf_section_name2(cs);
 	if (!inst_name) inst_name = name1;
 
-	if (unlang_keyword(inst_name)) {
+	if (unlang_compile_is_keyword(inst_name)) {
 		ERROR("Module names cannot use a reserved word \"%s\"", inst_name);
 		return NULL;
 	}
@@ -1120,7 +1120,7 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
 			return -1;
 		}
 
-		if (unlang_keyword(name)) {
+		if (unlang_compile_is_keyword(name)) {
 		is_reserved:
 			cf_log_err(vm_cs, "Virtual modules cannot overload unlang keywords");
 			return -1;
@@ -1232,7 +1232,7 @@ int modules_bootstrap(CONF_SECTION *root)
 
 		name1 = cf_section_name1(subcs);
 
-		if (unlang_keyword(name1)) {
+		if (unlang_compile_is_keyword(name1)) {
 			cf_log_err(subcs, "Modules cannot overload unlang keywords");
 			return -1;
 		}

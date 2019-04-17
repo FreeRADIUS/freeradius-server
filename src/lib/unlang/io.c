@@ -44,7 +44,7 @@ fr_io_final_t unlang_io_process_interpret(UNUSED void const *instance, REQUEST *
 	 *	is waiting for something to happen.
 	 */
 	if (action != FR_IO_ACTION_RUN) {
-		unlang_signal(request, (fr_state_signal_t) action);
+		unlang_interpret_signal(request, (fr_state_signal_t) action);
 		return FR_IO_DONE;
 	}
 
@@ -93,7 +93,7 @@ REQUEST *unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction,
 	 */
 	stack = child->stack;
 	child->log.unlang_indent = parent->log.unlang_indent;
-	unlang_push(stack, instruction, default_rcode, do_next_sibling, UNLANG_SUB_FRAME);
+	unlang_interpret_push(stack, instruction, default_rcode, do_next_sibling, UNLANG_SUB_FRAME);
 	stack->frame[stack->depth].top_frame = true;
 
 	/*

@@ -86,7 +86,7 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 			 */
 			curl_multi_remove_handle(mandle, candle);
 
-			unlang_resumable(request);
+			unlang_interpret_resumable(request);
 		}
 			break;
 

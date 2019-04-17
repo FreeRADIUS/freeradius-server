@@ -49,20 +49,20 @@ unlang_action_t unlang_group(REQUEST *request,
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
-	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	unlang_interpret_push(stack, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 void unlang_group_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_GROUP,
+	unlang_register(UNLANG_TYPE_GROUP,
 			   &(unlang_op_t){
 				.name = "group",
 				.func = unlang_group,
 				.debug_braces = true
 			   });
 
-	unlang_op_register(UNLANG_TYPE_POLICY,
+	unlang_register(UNLANG_TYPE_POLICY,
 			   &(unlang_op_t){
 				.name = "policy",
 				.func = unlang_policy,

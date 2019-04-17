@@ -136,7 +136,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 				unlang_t *child = redundant->child;
 
 				if (child->type != UNLANG_TYPE_MODULE) {
-					active_callers = unlang_active_callers(child);
+					active_callers = unlang_interpret_active_callers(child);
 					RDEBUG3("load-balance child %d sub-section has %" PRIu64 " active", num, active_callers);
 
 				} else {
@@ -190,7 +190,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 		}
 
 		if (instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
-			unlang_push(stack, redundant->found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+			unlang_interpret_push(stack, redundant->found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 
@@ -238,7 +238,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_push(stack, redundant->child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+	unlang_interpret_push(stack, redundant->child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 	frame->repeat = true;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -246,14 +246,14 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 
 void unlang_load_balance_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_LOAD_BALANCE,
+	unlang_register(UNLANG_TYPE_LOAD_BALANCE,
 			   &(unlang_op_t){
 				.name = "load-balance group",
 				.func = unlang_load_balance,
 				.debug_braces = true
 			   });
 
-	unlang_op_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
+	unlang_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
 			   &(unlang_op_t){
 				.name = "redundant-load-balance group",
 				.func = unlang_redundant_load_balance,

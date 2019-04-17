@@ -1,6 +1,7 @@
 TARGET		:= libfreeradius-unlang.a
 
-SOURCES	:=	call.c \
+SOURCES	:=	base.c \
+		call.c \
 		compile.c \
 		condition.c \
 		foreach.c \

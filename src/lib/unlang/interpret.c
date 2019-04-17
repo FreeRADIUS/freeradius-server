@@ -44,7 +44,7 @@ static FR_NAME_NUMBER unlang_action_table[] = {
 };
 
 #ifndef NDEBUG
-static void unlang_dump_instruction(REQUEST *request, unlang_t *instruction)
+static void instruction_dump(REQUEST *request, unlang_t *instruction)
 {
 	RINDENT();
 	if (!instruction) {
@@ -58,9 +58,9 @@ static void unlang_dump_instruction(REQUEST *request, unlang_t *instruction)
 	REXDENT();
 }
 
-static void unlang_dump_frame(REQUEST *request, unlang_stack_frame_t *frame)
+static void frame_dump(REQUEST *request, unlang_stack_frame_t *frame)
 {
-	unlang_dump_instruction(request, frame->instruction);
+	instruction_dump(request, frame->instruction);
 
 	RINDENT();
 
@@ -78,8 +78,7 @@ static void unlang_dump_frame(REQUEST *request, unlang_stack_frame_t *frame)
 	REXDENT();
 }
 
-
-static void unlang_dump_stack(REQUEST *request)
+static void stack_dump(REQUEST *request)
 {
 	int i;
 	unlang_stack_t *stack = request->stack;
@@ -89,12 +88,12 @@ static void unlang_dump_stack(REQUEST *request)
 		unlang_stack_frame_t *frame = &stack->frame[i];
 
 		RDEBUG2("[%d] Frame contents", i);
-		unlang_dump_frame(request, frame);
+		frame_dump(request, frame);
 	}
 
 	RDEBUG2("----- End stack debug [depth %i] -------", stack->depth);
 }
-#define DUMP_STACK if (DEBUG_ENABLED5) unlang_dump_stack(request)
+#define DUMP_STACK if (DEBUG_ENABLED5) stack_dump(request)
 #else
 #define DUMP_STACK
 #endif
@@ -114,14 +113,14 @@ unlang_op_t unlang_ops[UNLANG_TYPE_MAX];
  * prototype that OP uses for resumption or signalling.
  *
  * @param[in] request		The current request.
- * @param[in] resume		Called on unlang_resumable().
+ * @param[in] resume		Called on unlang_interpret_resumable().
  * @param[in] signal		Called on unlang_action().
  * @param[in] rctx		to pass to the callbacks.
  * @return
  *	unlang_resume_t on success
  *	NULL on error
  */
-unlang_resume_t *unlang_resume_alloc(REQUEST *request, void *resume, void *signal, void *rctx)
+unlang_resume_t *unlang_interpret_resume_alloc(REQUEST *request, void *resume, void *signal, void *rctx)
 {
 	unlang_resume_t 		*mr;
 	unlang_stack_t			*stack = request->stack;
@@ -162,10 +161,10 @@ unlang_resume_t *unlang_resume_alloc(REQUEST *request, void *resume, void *signa
 	return mr;
 }
 
-/*
- *	Recursively collect active callers.  Slow, but correct.
+/** Recursively collect active callers.  Slow, but correct
+ *
  */
-uint64_t unlang_active_callers(unlang_t *instruction)
+uint64_t unlang_interpret_active_callers(unlang_t *instruction)
 {
 	uint64_t active_callers;
 	unlang_t *child;
@@ -204,7 +203,7 @@ uint64_t unlang_active_callers(unlang_t *instruction)
 		for (child = g->children;
 		     child != NULL;
 		     child = child->next) {
-			active_callers += unlang_active_callers(child);
+			active_callers += unlang_interpret_active_callers(child);
 		}
 		break;
 	}
@@ -222,14 +221,15 @@ uint64_t unlang_active_callers(unlang_t *instruction)
  * @param[in] top_frame		Return out of the unlang interpreter when popping this frame.
  *				Hands execution back to whatever called the interpreter.
  */
-void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, bool do_next_sibling, bool top_frame)
+void unlang_interpret_push(unlang_stack_t *stack, unlang_t *program,
+			   rlm_rcode_t result, bool do_next_sibling, bool top_frame)
 {
 	unlang_stack_frame_t *frame;
 
 	rad_assert(program || top_frame);
 
 #ifndef NDEBUG
-	if (DEBUG_ENABLED5) DEBUG("unlang_push called with instruction %s - args %s %s",
+	if (DEBUG_ENABLED5) DEBUG("unlang_interpret_push called with instruction %s - args %s %s",
 				  program ? program->debug_name : "<none>",
 				  do_next_sibling ? "UNLANG_NEXT_SIBLING" : "UNLANG_NEXT_STOP",
 				  top_frame ? "UNLANG_TOP_FRAME" : "UNLANG_SUB_FRAME");
@@ -263,34 +263,6 @@ void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, b
 	frame->state = NULL;
 }
 
-static inline void unlang_frame_cleanup(unlang_stack_frame_t *frame)
-{
-	frame->repeat = false;
-	if (frame->state) TALLOC_FREE(frame->state);
-}
-
-/** Pop a stack frame, removing any associated dynamically allocated state
- *
- * @param[in] stack	frame to pop.
- */
-static inline void unlang_pop(unlang_stack_t *stack)
-{
-	unlang_stack_frame_t *frame, *next;
-
-	rad_assert(stack->depth > 1);
-
-	frame = &stack->frame[stack->depth];
-	unlang_frame_cleanup(frame);
-
-	frame = &stack->frame[--stack->depth];
-	next = frame + 1;
-
-	/*
-	 *	Unwind back up the stack
-	 */
-	if (next->unwind != 0) frame->unwind = next->unwind;
-}
-
 /** Update the current result after each instruction, and after popping each stack frame
  *
  * @param[in] request		The current request.
@@ -301,8 +273,8 @@ static inline void unlang_pop(unlang_stack_t *stack)
  *	- UNLANG_FRAME_ACTION_NEXT	evaluate more instructions.
  *	- UNLANG_FRAME_ACTION_POP	the final result has been calculated for this frame.
  */
-static inline unlang_frame_action_t unlang_calculate_result(REQUEST *request, unlang_stack_frame_t *frame,
-							    rlm_rcode_t *result, int *priority)
+static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_stack_frame_t *frame,
+						     rlm_rcode_t *result, int *priority)
 {
 	unlang_t	*instruction = frame->instruction;
 	unlang_stack_t	*stack = request->stack;
@@ -392,6 +364,34 @@ static inline unlang_frame_action_t unlang_calculate_result(REQUEST *request, un
 	return frame->next ? UNLANG_FRAME_ACTION_NEXT : UNLANG_FRAME_ACTION_POP;
 }
 
+static inline void frame_cleanup(unlang_stack_frame_t *frame)
+{
+	frame->repeat = false;
+	if (frame->state) TALLOC_FREE(frame->state);
+}
+
+/** Pop a stack frame, removing any associated dynamically allocated state
+ *
+ * @param[in] stack	frame to pop.
+ */
+static inline void frame_pop(unlang_stack_t *stack)
+{
+	unlang_stack_frame_t *frame, *next;
+
+	rad_assert(stack->depth > 1);
+
+	frame = &stack->frame[stack->depth];
+	frame_cleanup(frame);
+
+	frame = &stack->frame[--stack->depth];
+	next = frame + 1;
+
+	/*
+	 *	Unwind back up the stack
+	 */
+	if (next->unwind != 0) frame->unwind = next->unwind;
+}
+
 /** Evaluates all the unlang nodes in a section
  *
  * @param[in] request		The current request.
@@ -404,8 +404,8 @@ static inline unlang_frame_action_t unlang_calculate_result(REQUEST *request, un
  *					was called.
  *	- UNLANG_FRAME_ACTION_POP	the final result has been calculated for this frame.
  */
-static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_stack_frame_t *frame,
-						      rlm_rcode_t *result, int *priority)
+static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_frame_t *frame,
+					       rlm_rcode_t *result, int *priority)
 {
 	unlang_stack_t	*stack = request->stack;
 
@@ -552,7 +552,7 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 				}
 			}
 
-			if (unlang_calculate_result(request, frame, result, priority) == UNLANG_FRAME_ACTION_POP) {
+			if (result_calculate(request, frame, result, priority) == UNLANG_FRAME_ACTION_POP) {
 				return UNLANG_FRAME_ACTION_POP;
 			}
 			/* FALL-THROUGH */
@@ -561,7 +561,7 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 		 *	Execute the next instruction in this frame
 		 */
 		case UNLANG_ACTION_EXECUTE_NEXT:
-			unlang_frame_cleanup(frame);
+			frame_cleanup(frame);
 			if ((action == UNLANG_ACTION_EXECUTE_NEXT) && unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("}");
@@ -584,7 +584,7 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 /*
  *	Interpret the various types of blocks.
  */
-rlm_rcode_t unlang_run(REQUEST *request)
+rlm_rcode_t unlang_interpret_run(REQUEST *request)
 {
 	int			priority;
 	unlang_frame_action_t	fa = UNLANG_FRAME_ACTION_NEXT;
@@ -596,7 +596,7 @@ rlm_rcode_t unlang_run(REQUEST *request)
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];	/* Quiet static analysis */
 
 #ifndef NDEBUG
-	if (DEBUG_ENABLED5) DEBUG("###### unlang_run is starting");
+	if (DEBUG_ENABLED5) DEBUG("###### unlang_interpret_run is starting");
 	DUMP_STACK;
 #endif
 
@@ -613,10 +613,10 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			rad_assert(stack->depth < UNLANG_STACK_MAX);
 
 			frame = &stack->frame[stack->depth];
-			fa = unlang_frame_eval(request, frame, &stack->result, &priority);
+			fa = frame_eval(request, frame, &stack->result, &priority);
 
 			/*
-			 *	We were executing a frame, unlang_frame_eval()
+			 *	We were executing a frame, frame_eval()
 			 *	indicated we should pop it, but we're now at
 			 *	a top_frame, so we need to break out of the loop
 			 *	and calculate the final result for this substack.
@@ -636,7 +636,7 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			/*
 			 *	Head on back up the stack
 			 */
-			unlang_pop(stack);
+			frame_pop(stack);
 			frame = &stack->frame[stack->depth];
 			DUMP_STACK;
 
@@ -674,7 +674,7 @@ rlm_rcode_t unlang_run(REQUEST *request)
 				}
 			}
 
-			fa = unlang_calculate_result(request, frame, &stack->result, &priority);
+			fa = result_calculate(request, frame, &stack->result, &priority);
 			/*
 			 *	If we're continuing after popping a frame
 			 *	then we advance the instruction else we
@@ -737,42 +737,32 @@ rlm_rcode_t unlang_run(REQUEST *request)
 	return stack->result;
 }
 
-static unlang_group_t empty_group = {
-	.self = {
-		.type = UNLANG_TYPE_GROUP,
-		.debug_name = "empty-group",
-		.actions = { MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN,
-			     MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN,
-			     MOD_ACTION_RETURN
-		},
-	},
-	.group_type = UNLANG_GROUP_TYPE_SIMPLE,
-};
-
-/** Return whether a section has unlang data associated with it
- *
- * @param[in] cs	to check.
- * @return
- *	- true if it has data.
- *	- false if it doesn't have data.
- */
-bool unlang_section(CONF_SECTION *cs)
-{
-	unlang_t	*instruction = NULL;
-
-	instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
-	if (instruction) return true;
-
-	return false;
-}
-
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */
-void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action, bool top_frame)
+void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action, bool top_frame)
 {
 	unlang_t	*instruction = NULL;
 	unlang_stack_t	*stack = request->stack;
+
+	static unlang_group_t empty_group = {
+		.self = {
+			.type = UNLANG_TYPE_GROUP,
+			.debug_name = "empty-group",
+			.actions = {
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN
+			},
+		},
+		.group_type = UNLANG_GROUP_TYPE_SIMPLE,
+	};
 
 	/*
 	 *	Interpretable unlang instructions are stored as CONF_DATA
@@ -792,8 +782,8 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action,
 	 *	Push the default action, and the instruction which has
 	 *	no action.
 	 */
-	if (top_frame) unlang_push(stack, NULL, action, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
-	if (instruction) unlang_push(stack, instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	if (top_frame) unlang_interpret_push(stack, NULL, action, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
+	if (instruction) unlang_interpret_push(stack, instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
 
@@ -805,7 +795,7 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action,
  */
 rlm_rcode_t unlang_interpret_resume(REQUEST *request)
 {
-	return unlang_run(request);
+	return unlang_interpret_run(request);
 }
 
 /** Call a module, iteratively, with a local stack, rather than recursively
@@ -818,9 +808,9 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	 *	This pushes a new frame onto the stack, which is the
 	 *	start of a new unlang section...
 	 */
-	unlang_push_section(request, cs, action, UNLANG_TOP_FRAME);
+	unlang_interpret_push_section(request, cs, action, UNLANG_TOP_FRAME);
 
-	return unlang_run(request);
+	return unlang_interpret_run(request);
 }
 
 static int _unlang_request_ptr_cmp(void const *a, void const *b)
@@ -906,7 +896,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
  *	- A new stack on success.
  *	- NULL on OOM.
  */
-void *unlang_stack_alloc(TALLOC_CTX *ctx)
+void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 {
 	unlang_stack_t *stack;
 
@@ -949,7 +939,7 @@ void *unlang_stack_alloc(TALLOC_CTX *ctx)
  * @param[in] action		to signal.
  * @param[in] limit		the frame at which to stop signaling.
  */
-static void unlang_signal_frames(REQUEST *request, fr_state_signal_t action, int limit)
+static void frame_signal(REQUEST *request, fr_state_signal_t action, int limit)
 {
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
@@ -992,7 +982,6 @@ static void unlang_signal_frames(REQUEST *request, fr_state_signal_t action, int
 	stack->depth = depth;				/* Reset */
 }
 
-
 /** Send a signal (usually stop) to a request
  *
  * This is typically called via an "async" action, i.e. an action
@@ -1003,12 +992,15 @@ static void unlang_signal_frames(REQUEST *request, fr_state_signal_t action, int
  * @param[in] request		The current request.
  * @param[in] action		to signal.
  */
-void unlang_signal(REQUEST *request, fr_state_signal_t action)
+void unlang_interpret_signal(REQUEST *request, fr_state_signal_t action)
 {
-	unlang_signal_frames(request, action, 0);
+	frame_signal(request, action, 0);
 }
 
-int unlang_stack_depth(REQUEST *request)
+/** Return the depth of the request's stack
+ *
+ */
+int unlang_interpret_stack_depth(REQUEST *request)
 {
 	unlang_stack_t	*stack = request->stack;
 
@@ -1023,7 +1015,7 @@ int unlang_stack_depth(REQUEST *request)
  * @param[in] request	The current request.
  * @return the current rcode for the frame.
  */
-rlm_rcode_t unlang_stack_result(REQUEST *request)
+rlm_rcode_t unlang_interpret_stack_result(REQUEST *request)
 {
 
 	unlang_stack_t		*stack = request->stack;
@@ -1033,7 +1025,7 @@ rlm_rcode_t unlang_stack_result(REQUEST *request)
 
 /** Mark a request as resumable.
  *
- * It's not called "unlang_resume", because it doesn't actually
+ * It's not called "unlang_interpret_resume", because it doesn't actually
  * resume the request, it just schedules it for resumption.
  *
  * @note that this schedules the request for resumption.  It does not immediately
@@ -1041,7 +1033,7 @@ rlm_rcode_t unlang_stack_result(REQUEST *request)
  *
  * @param[in] request		The current request.
  */
-void unlang_resumable(REQUEST *request)
+void unlang_interpret_resumable(REQUEST *request)
 {
 	REQUEST				*parent = request->parent;
 	unlang_stack_t			*stack;
@@ -1151,7 +1143,7 @@ void unlang_resumable(REQUEST *request)
  * @param[out] presult	the rcode returned by the resume function.
  * @param[out] priority associated with the rcode.
  */
-static unlang_action_t unlang_resume(REQUEST *request, rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_interpret_resume_dispatch(REQUEST *request, rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -1197,9 +1189,9 @@ static unlang_action_t unlang_resume(REQUEST *request, rlm_rcode_t *presult, int
 /** Get information about the interpreter state
  *
  */
-static ssize_t xlat_interpreter(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				REQUEST *request, char const *fmt)
+static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+				     REQUEST *request, char const *fmt)
 {
 	unlang_stack_t		*stack = request->stack;
 	int			depth = stack->depth;
@@ -1291,58 +1283,8 @@ static ssize_t xlat_interpreter(UNUSED TALLOC_CTX *ctx, char **out, size_t outle
 	return 0;
 }
 
-/** Register an operation with the interpreter
- *
- * The main purpose of this registration API is to avoid intermixing the xlat,
- * condition, map APIs with the interpreter, i.e. the callbacks needed for that
- * functionality can be in their own source files, and we don't need to include
- * supporting types and function declarations in the interpreter.
- *
- * Later, this could potentially be used to register custom operations for modules.
- *
- * The reason why there's a function instead of accessing the unlang_op array
- * directly, is because 'type' really needs to go away, as needing to add ops to
- * the unlang_type_t enum breaks the pluggable module model. If there's no
- * explicit/consistent type values we need to enumerate the operations ourselves.
- *
- * @param[in] type		Operation identifier.  Used to map compiled unlang code
- *				to operations.
- * @param[in] op		unlang_op to register.
- */
-void unlang_op_register(int type, unlang_op_t *op)
+void unlang_interpret_init(void)
 {
-	rad_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
-
-	memcpy(&unlang_ops[type], op, sizeof(unlang_ops[type]));
-}
-
-/** Initialize the unlang compiler / interpreter.
- *
- *  For now, just register the magic xlat function.
- */
-int unlang_init(void)
-{
-	(void) xlat_register(NULL, "interpreter", xlat_interpreter, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
-	unlang_op_register(UNLANG_TYPE_RESUME, &(unlang_op_t){ .name = "resume", .func = unlang_resume });
-
-	/* Register operations for the default keywords */
-	unlang_condition_init();
-	unlang_foreach_init();
-	unlang_function_init();
-	unlang_group_init();
-	unlang_load_balance_init();
-	unlang_map_init();
-	unlang_module_init();
-	unlang_parallel_init();
-	unlang_return_init();
-	if (unlang_subrequest_op_init() < 0) return -1;
-	unlang_switch_init();
-
-	return 0;
-}
-
-void unlang_free(void)
-{
-	unlang_subrequest_op_free();
+	unlang_register(UNLANG_TYPE_RESUME, &(unlang_op_t){ .name = "resume", .func = unlang_interpret_resume_dispatch });
+	(void) xlat_register(NULL, "interpreter", unlang_interpret_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 }

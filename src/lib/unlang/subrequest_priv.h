@@ -25,6 +25,18 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** Parameters for initialising the subrequest
+ *
+ * State of one level of nesting within an xlat expansion.
+ */
+typedef struct {
+	rlm_rcode_t		*presult;		//!< Where to store the result.
+	REQUEST			*child;			//!< Pre-allocated child request.
+	bool			persist : 1;		//!< Whether we should free the child after it completes.
+	bool			detachable : 1;		//!< Whether the request can be detached.
+} unlang_frame_state_subrequest_t;
+
 void	unlang_subrequest_free(REQUEST **child);
 
 void	unlang_subrequest_push_again(rlm_rcode_t *out, REQUEST *child, REQUEST *parent,

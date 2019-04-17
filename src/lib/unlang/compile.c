@@ -868,20 +868,17 @@ static bool pass2_fixup_map(fr_cond_t *c, vp_tmpl_rules_t const *rules)
 	if (!paircmp_find(map->lhs->tmpl_da)) return true;
 
 	if (map->rhs->type == TMPL_TYPE_REGEX) {
-		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex",
-			   map->lhs->name);
+		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex", map->lhs->name);
 		return false;
 	}
 
 	if (c->cast) {
-		cf_log_err(map->ci, "Cannot cast virtual attribute %s",
-			   map->lhs->name);
+		cf_log_err(map->ci, "Cannot cast virtual attribute %s", map->lhs->name);
 		return false;
 	}
 
 	if (map->op != T_OP_CMP_EQ) {
-		cf_log_err(map->ci, "Must use '==' for comparisons with virtual attribute %s",
-			   map->lhs->name);
+		cf_log_err(map->ci, "Must use '==' for comparisons with virtual attribute %s", map->lhs->name);
 		return false;
 	}
 
@@ -1014,26 +1011,24 @@ static void unlang_dump(unlang_t *mc, int depth)
 		default:
 			break;
 
-		case UNLANG_TYPE_MODULE: {
+		case UNLANG_TYPE_MODULE:
+		{
 			unlang_module_t *single = unlang_generic_to_module(inst);
 
-			DEBUG("%.*s%s", depth, modcall_spaces,
-				single->module_instance->name);
-			}
+			DEBUG("%.*s%s", depth, modcall_spaces, single->module_instance->name);
+		}
 			break;
 
 #ifdef WITH_UNLANG
 		case UNLANG_TYPE_MAP:
 			g = unlang_generic_to_group(inst); /* FIXMAP: print option 3, too */
-			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-			      unlang_ops[inst->type].name,
+			DEBUG("%.*s%s %s {", depth, modcall_spaces, unlang_ops[inst->type].name,
 			      cf_section_name2(g->cs));
 			goto print_map;
 
 		case UNLANG_TYPE_UPDATE:
 			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_ops[inst->type].name);
+			DEBUG("%.*s%s {", depth, modcall_spaces, unlang_ops[inst->type].name);
 
 		print_map:
 			for (map = g->map; map != NULL; map = map->next) {
@@ -1046,8 +1041,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 
 		case UNLANG_TYPE_ELSE:
 			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_ops[inst->type].name);
+			DEBUG("%.*s%s {", depth, modcall_spaces, unlang_ops[inst->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1056,8 +1050,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 		case UNLANG_TYPE_ELSIF:
 			g = unlang_generic_to_group(inst);
 			cond_snprint(buffer, sizeof(buffer), g->cond);
-			DEBUG("%.*s%s (%s) {", depth, modcall_spaces,
-				unlang_ops[inst->type].name, buffer);
+			DEBUG("%.*s%s (%s) {", depth, modcall_spaces, unlang_ops[inst->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1066,8 +1059,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 		case UNLANG_TYPE_CASE:
 			g = unlang_generic_to_group(inst);
 			tmpl_snprint(buffer, sizeof(buffer), g->vpt);
-			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				unlang_ops[inst->type].name, buffer);
+			DEBUG("%.*s%s %s {", depth, modcall_spaces, unlang_ops[inst->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1075,8 +1067,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 		case UNLANG_TYPE_POLICY:
 		case UNLANG_TYPE_FOREACH:
 			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				unlang_ops[inst->type].name, inst->name);
+			DEBUG("%.*s%s %s {", depth, modcall_spaces, unlang_ops[inst->type].name, inst->name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1088,8 +1079,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 #endif
 		case UNLANG_TYPE_GROUP:
 			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, modcall_spaces,
-			      unlang_ops[inst->type].name);
+			DEBUG("%.*s%s {", depth, modcall_spaces, unlang_ops[inst->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1097,8 +1087,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 		case UNLANG_TYPE_LOAD_BALANCE:
 		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
 			g = unlang_generic_to_group(inst);
-			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_ops[inst->type].name);
+			DEBUG("%.*s%s {", depth, modcall_spaces, unlang_ops[inst->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -2994,7 +2983,9 @@ static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_compone
 }
 
 
-static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci, module_instance_t *inst, unlang_group_type_t parentgroup_type, char const *realname)
+static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
+				CONF_ITEM *ci, module_instance_t *inst,
+				unlang_group_type_t parentgroup_type, char const *realname)
 {
 	unlang_t *c;
 	unlang_module_t *single;
@@ -3005,10 +2996,12 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 */
 	if (!inst->module->methods[unlang_ctx->component]) {
 		if (unlang_ctx->section_name1 && unlang_ctx->section_name2) {
-			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s %s { ... }' sections -- they have no such method.", inst->module->name,
+			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s %s { ... }' "
+				   "sections -- they have no such method.", inst->module->name,
 				   unlang_ctx->section_name1, unlang_ctx->section_name2);
 		} else {
-			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s { ... }' sections -- they have no such method.", inst->module->name,
+			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s { ... }' "
+				   "sections -- they have no such method.", inst->module->name,
 				   unlang_ctx->name);
 		}
 
@@ -3461,7 +3454,7 @@ int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char c
  *	- true if it is a keyword.
  *	- false if it's not a keyword.
  */
-bool unlang_keyword(const char *name)
+bool unlang_compile_is_keyword(const char *name)
 {
 	int i;
 

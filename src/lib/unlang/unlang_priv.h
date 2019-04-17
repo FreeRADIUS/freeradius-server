@@ -218,14 +218,6 @@ typedef struct {
 	xlat_exp_t		*exp;				//!< First xlat node to execute.
 } unlang_xlat_inline_t;
 
-/** A module stack entry
- *
- * Represents a single module
- */
-typedef struct {
-	module_thread_instance_t *thread;			//!< thread-local data for this module
-} unlang_frame_state_module_t;
-
 /** State of a redundant operation
  *
  */
@@ -342,13 +334,13 @@ static inline unlang_t *unlang_resume_to_generic(unlang_resume_t *p)
  *
  * @{
  */
-uint64_t	unlang_active_callers(unlang_t *instruction);
+uint64_t	unlang_interpret_active_callers(unlang_t *instruction);
 
-unlang_resume_t *unlang_resume_alloc(REQUEST *request, void *callback, void *signal, void *rctx);
+unlang_resume_t *unlang_interpret_resume_alloc(REQUEST *request, void *callback, void *signal, void *rctx);
 
-void		unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result,
+void		unlang_interpret_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result,
 			    bool do_next_sibling, bool top_frame);
-rlm_rcode_t	unlang_run(REQUEST *request);
+rlm_rcode_t	unlang_interpret_run(REQUEST *request);
 
 int		unlang_op_init(void);
 

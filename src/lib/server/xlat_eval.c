@@ -791,7 +791,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				str[0] = '\0';	/* Be sure the string is \0 terminated */
 			}
 
-			XLAT_DEBUG("** [%i] %s(func) - %%{%s:%pV}", unlang_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(func) - %%{%s:%pV}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt,
 				   fr_box_strvalue_len(result_str, talloc_array_length(result_str) - 1));
 
@@ -836,7 +836,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 			thread_inst = xlat_thread_instance_find(node);
 
-			XLAT_DEBUG("** [%i] %s(func-async) - %%{%s:%pM}", unlang_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(func-async) - %%{%s:%pM}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt, result);
 
 			/*
@@ -890,7 +890,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			 */
 			if (*alternate) {
 				XLAT_DEBUG("** [%i] %s(alt-second) - string empty, null expansion, continuing...",
-					   unlang_stack_depth(request), __FUNCTION__);
+					   unlang_interpret_stack_depth(request), __FUNCTION__);
 				*alternate = false;	/* Reset */
 
 				xlat_debug_log_expansion(request, *in, NULL);
@@ -899,7 +899,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			}
 
 			XLAT_DEBUG("** [%i] %s(alt-first) - string empty, evaluating alternate: %s",
-				   unlang_stack_depth(request), __FUNCTION__, (*in)->alternate->fmt);
+				   unlang_interpret_stack_depth(request), __FUNCTION__, (*in)->alternate->fmt);
 			*child = (*in)->alternate;
 			*alternate = true;
 
@@ -967,7 +967,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 
 	if (!node) return XLAT_ACTION_DONE;
 
-	XLAT_DEBUG("** [%i] %s >> entered", unlang_stack_depth(request), __FUNCTION__);
+	XLAT_DEBUG("** [%i] %s >> entered", unlang_interpret_stack_depth(request), __FUNCTION__);
 
 	for (node = *in; node; node = (*in)->next) {
 	     	*in = node;		/* Update node in our caller */
@@ -975,7 +975,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 
 		switch (node->type) {
 		case XLAT_LITERAL:
-			XLAT_DEBUG("** [%i] %s(literal) - %s", unlang_stack_depth(request), __FUNCTION__, node->fmt);
+			XLAT_DEBUG("** [%i] %s(literal) - %s", unlang_interpret_stack_depth(request), __FUNCTION__, node->fmt);
 
 			/*
 			 *	We unfortunately need to dup the buffer
@@ -987,7 +987,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			continue;
 
 		case XLAT_ONE_LETTER:
-			XLAT_DEBUG("** [%i] %s(one-letter) - %%%s", unlang_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(one-letter) - %%%s", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
 			xlat_debug_log_expansion(request, node, NULL);
@@ -1001,7 +1001,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			continue;
 
 		case XLAT_ATTRIBUTE:
-			XLAT_DEBUG("** [%i] %s(attribute) - %%{%s}", unlang_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(attribute) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
 			xlat_debug_log_expansion(request, node, NULL);
@@ -1014,7 +1014,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			char	*str = NULL;
 			ssize_t	slen;
 
-			XLAT_DEBUG("** [%i] %s(virtual) - %%{%s}", unlang_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(virtual) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
 			xlat_debug_log_expansion(request, node, NULL);
@@ -1036,7 +1036,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 		{
 			fr_value_box_t *result = NULL;
 
-			XLAT_DEBUG("** [%i] %s(func) - %%{%s:...}", unlang_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(func) - %%{%s:...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
 			/*
@@ -1063,7 +1063,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 		{
 			char *str = NULL;
 
-			XLAT_DEBUG("** [%i] %s(regex) - %%{%s}", unlang_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(regex) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 			if (regex_request_to_sub(ctx, &str, request, node->regex_index) < 0) continue;
 
@@ -1080,7 +1080,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 #endif
 
 		case XLAT_ALTERNATE:
-			XLAT_DEBUG("** [%i] %s(alternate) - %%{%%{%s}:-%%{%s}}", unlang_stack_depth(request),
+			XLAT_DEBUG("** [%i] %s(alternate) - %%{%%{%s}:-%%{%s}}", unlang_interpret_stack_depth(request),
 				   __FUNCTION__, node->child->fmt, node->alternate->fmt);
 			rad_assert(node->child != NULL);
 			rad_assert(node->alternate != NULL);
@@ -1092,7 +1092,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 	}
 
 finish:
-	XLAT_DEBUG("** [%i] %s << %s", unlang_stack_depth(request),
+	XLAT_DEBUG("** [%i] %s << %s", unlang_interpret_stack_depth(request),
 		   __FUNCTION__, fr_int2str(xlat_action_table, xa, "<INVALID>"));
 
 	return xa;
@@ -1215,7 +1215,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			 */
 			unlang_xlat_push(pool, &result, request, node, true);
 
-			switch (unlang_run(request)) {
+			switch (unlang_interpret_run(request)) {
 			default:
 				break;
 

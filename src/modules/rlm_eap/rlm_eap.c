@@ -33,6 +33,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/dl.h>
 #include <freeradius-devel/server/dl.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+#include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/unlang/module.h>
 #include "rlm_eap.h"
 
 extern rad_module_t rlm_eap;
@@ -439,7 +441,7 @@ finish:
 static rlm_rcode_t mod_authenticate_result_async(REQUEST *request, void *instance, void *thread, void *uctx)
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
-	rlm_rcode_t	result = unlang_stack_result(request);
+	rlm_rcode_t	result = unlang_interpret_stack_result(request);
 
 	return mod_authenticate_result(request, instance, thread, eap_session, result);
 }

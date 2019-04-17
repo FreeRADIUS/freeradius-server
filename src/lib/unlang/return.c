@@ -57,7 +57,7 @@ unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult, int *prior
 
 void unlang_return_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_RETURN,
+	unlang_register(UNLANG_TYPE_RETURN,
 			   &(unlang_op_t){
 				.name = "return",
 				.func = unlang_return,

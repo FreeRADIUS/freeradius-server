@@ -69,7 +69,7 @@ static void _delay_done(REQUEST *request, UNUSED void *instance, UNUSED void *th
 	 */
 	if (!fr_cond_assert(fr_timeval_cmp(fired, yielded) >= 0)) REDEBUG("Unexpected resume time");
 
-	unlang_resumable(request);
+	unlang_interpret_resumable(request);
 }
 
 static int delay_add(REQUEST *request, struct timeval *resume_at, struct timeval *now,

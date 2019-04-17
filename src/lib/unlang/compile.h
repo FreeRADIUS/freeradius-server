@@ -18,26 +18,26 @@
 /**
  * $Id$
  *
- * @file unlang/base.h
- * @brief Public interface to the unlang interpreter
+ * @file unlang/interpret.h
+ * @brief Declarations for the unlang interpreter.
  *
- * @copyright 2016-2019 The FreeRADIUS server project
+ * @copyright 2019 The FreeRADIUS server project
  */
-#include <freeradius-devel/unlang/compile.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/unlang/module.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool		unlang_section(CONF_SECTION *cs);
+#include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/components.h>
+#include <freeradius-devel/server/tmpl.h>
 
-void		unlang_register(int type, unlang_op_t *op);
+int		unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules);
 
-int		unlang_init(void);
+int		unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2,
+					  rlm_components_t component, vp_tmpl_rules_t const *rules);
 
-void		unlang_free(void);
+bool		unlang_compile_is_keyword(const char *name);
 
 #ifdef __cplusplus
 }

@@ -98,7 +98,7 @@ static unlang_action_t unlang_function_call(REQUEST *request,
  *			This may be the same as func.
  * @param[in] uctx	to pass to func.
  */
-void unlang_push_function(REQUEST *request, unlang_function_t func, unlang_function_t repeat, void *uctx)
+void unlang_interpret_push_function(REQUEST *request, unlang_function_t func, unlang_function_t repeat, void *uctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -107,7 +107,7 @@ void unlang_push_function(REQUEST *request, unlang_function_t func, unlang_funct
 	/*
 	 *	Push module's function
 	 */
-	unlang_push(stack, &function_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false);
+	unlang_interpret_push(stack, &function_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false);
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -128,7 +128,7 @@ void unlang_push_function(REQUEST *request, unlang_function_t func, unlang_funct
 
 void unlang_function_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_FUNCTION,
+	unlang_register(UNLANG_TYPE_FUNCTION,
 			   &(unlang_op_t){
 				.name = "function",
 				.func = unlang_function_call,

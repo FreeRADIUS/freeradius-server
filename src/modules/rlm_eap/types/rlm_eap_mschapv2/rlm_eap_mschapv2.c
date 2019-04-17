@@ -729,7 +729,7 @@ packet_ready:
 	if (!unlang) {
 		rcode = process_authenticate(inst->auth_type->value->vb_uint32, request);
 	} else {
-		unlang_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME);
+		unlang_interpret_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME);
 		rcode = unlang_interpret_resume(request);
 
 		/*

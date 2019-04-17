@@ -33,10 +33,19 @@ extern "C" {
  *
  */
 typedef struct {
-	unlang_t		self;
-	module_instance_t	*module_instance;	//!< Instance of the module we're calling.
-	module_method_t		method;
+	unlang_t			self;
+	module_instance_t		*module_instance;	//!< Instance of the module we're calling.
+	module_method_t			method;
 } unlang_module_t;
+
+/** A module stack entry
+ *
+ * Represents a single module
+ */
+typedef struct {
+	rlm_rcode_t			*presult;		//!< Where to store the result.
+	module_thread_instance_t 	*thread;		//!< thread-local data for this module
+} unlang_frame_state_module_t;
 
 static inline unlang_module_t *unlang_generic_to_module(unlang_t *p)
 {
