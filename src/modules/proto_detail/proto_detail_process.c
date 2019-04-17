@@ -49,10 +49,10 @@ fr_dict_attr_autoload_t proto_detail_process_dict_attr[] = {
 
 static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_action_t action)
 {
-	VALUE_PAIR		*vp;
-	rlm_rcode_t		rcode;
-	CONF_SECTION		*unlang;
-	proto_detail_process_t const *inst = instance;
+	VALUE_PAIR			*vp;
+	rlm_rcode_t			rcode;
+	CONF_SECTION			*unlang;
+	proto_detail_process_t const	*inst = instance;
 
 	REQUEST_VERIFY(request);
 
@@ -118,9 +118,10 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 				request->reply->code = 0;
 				break;
 			}
-			break;
+			/* FALL-THROUGH */
 
 		case RLM_MODULE_HANDLED:
+			unlang = cf_section_find(request->server_cs, "send", "ok");
 			break;
 
 		/*
@@ -135,6 +136,7 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 		case RLM_MODULE_USERLOCK:
 		default:
 			request->reply->code = 0;
+			unlang = cf_section_find(request->server_cs, "send", "fail");
 			break;
 		}
 
@@ -148,7 +150,6 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 			RWARN("Ignoring 'do_not_respond' as it does not apply to detail files");
 		}
 
-		unlang = cf_section_find(request->server_cs, "send", "ok");
 		if (!unlang) goto send_reply;
 
 		RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
