@@ -117,7 +117,7 @@ struct proto_detail_work_thread_s {
 	fr_event_list_t			*el;			//!< for various timers
 	fr_network_t			*nr;			//!< for Linux-specific callbacks
 	fr_listen_t			*listen;		//!< talloc_parent() is slow
-	proto_detail_work_thread_t	*file_parent;	//!< thread instance of the directory reader that spawned us
+	proto_detail_work_thread_t	*file_parent;		//!< thread instance of the directory reader that spawned us
 
 	char const			*filename_work;		//!< work file name
 	fr_dlist_head_t			list;			//!< for retransmissions

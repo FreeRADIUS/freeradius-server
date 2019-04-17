@@ -567,7 +567,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 	(void) lseek(thread->fd, 0, SEEK_SET);
 
 #ifdef __linux__
-	fr_network_listen_read(thread->nr, talloc_parent(thread->inst));
+	fr_network_listen_read(thread->nr, thread->listen);
 #endif
 }
 
