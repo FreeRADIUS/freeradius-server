@@ -740,7 +740,8 @@ static int mod_open(fr_listen_t *li)
 
 	rad_assert(thread->name == NULL);
 	rad_assert(thread->filename_work != NULL);
-	thread->name = talloc_typed_asprintf(thread, "proto_detail working file %s", thread->filename_work);
+	thread->name = talloc_typed_asprintf(thread, "proto_detail working file %s (fd=%d)",
+		thread->filename_work, thread->fd);
 
 	DEBUG("Listening on %s bound to virtual server %s",
 	      thread->name, cf_section_name2(inst->parent->server_cs));
