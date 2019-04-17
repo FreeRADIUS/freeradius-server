@@ -2578,6 +2578,7 @@ int main(int argc, char *argv[])
 		ret = 64;
 		goto finish;
 	}
+	fr_radius_init();	/* Initialise the protocol library */
 
 	fr_strerror();	/* Clear out any non-fatal errors */
 
@@ -2957,6 +2958,7 @@ finish:
 	if (conf->daemonize) unlink(conf->pidfile);
 
 	fr_dict_autofree(radsniff_dict);
+	fr_radius_free();
 
 	/*
 	 *	Free all the things! This also closes all the sockets and file descriptors
