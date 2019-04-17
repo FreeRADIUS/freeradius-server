@@ -84,6 +84,16 @@ bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
 int fr_app_process_bootstrap(CONF_SECTION *server, dl_instance_t **type_submodule, CONF_SECTION *conf);
 int fr_app_process_instantiate(CONF_SECTION *server, dl_instance_t **type_submodule, dl_instance_t **type_submodule_by_code, int code_max, CONF_SECTION *conf);
 
+typedef struct {
+	char const		*name;
+	char const		*name2;
+	rlm_components_t	component;
+} virtual_server_compile_t;
+
+#define COMPILE_TERMINATOR { .name = NULL, .name2 = NULL }
+
+int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t *list, vp_tmpl_rules_t const *rules);
+
 #ifdef __cplusplus
 }
 #endif
