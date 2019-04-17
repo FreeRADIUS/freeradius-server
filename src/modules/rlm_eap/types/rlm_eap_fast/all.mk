@@ -1,4 +1,4 @@
-TARGETNAME	:= @targetname@
+TARGETNAME	:= rlm_eap_fast
 
 ifneq "$(OPENSSL_LIBS)" ""
 TARGET		:= $(TARGETNAME).a
