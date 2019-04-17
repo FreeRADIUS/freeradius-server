@@ -195,9 +195,37 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 }
 
 
+static virtual_server_compile_t compile_list[] = {
+	{ "recv", "Status-Server",	MOD_AUTHORIZE },
+	{ "send", "Access-Accept",	MOD_POST_AUTH },
+	{ "send", "Access-Reject",	MOD_POST_AUTH },
+	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
+	{ "send", "Protocol-Error",    	MOD_POST_AUTH },
+
+	COMPILE_TERMINATOR
+};
+
+static int mod_instantiate(UNUSED void *instance, CONF_SECTION *process_app_cs)
+{
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
+	CONF_SECTION		*server_cs;
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_radius;
+
+	rad_assert(listen_cs);
+
+	server_cs = cf_item_to_section(cf_parent(listen_cs));
+	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+
+	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules);
+}
+
 extern fr_app_worker_t proto_radius_status;
 fr_app_worker_t proto_radius_status = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_status",
 	.entry_point	= mod_process,
+	.instantiate	= mod_instantiate,
 };

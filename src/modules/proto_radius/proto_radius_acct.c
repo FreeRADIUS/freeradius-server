@@ -45,6 +45,7 @@ fr_dict_attr_autoload_t proto_radius_acct_dict_attr[] = {
 	{ NULL }
 };
 
+
 static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
 {
 	VALUE_PAIR 	*vp;
@@ -182,9 +183,37 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 }
 
 
+static virtual_server_compile_t compile_list[] = {
+	{ "recv", "Accounting-Request",	MOD_PREACCT },
+	{ "send", "Accounting-Response", MOD_ACCOUNTING },
+	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
+	{ "send", "Protocol-Error",    	MOD_POST_AUTH },
+
+	COMPILE_TERMINATOR
+};
+
+static int mod_instantiate(UNUSED void *instance, CONF_SECTION *process_app_cs)
+{
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
+	CONF_SECTION		*server_cs;
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_radius;
+
+	rad_assert(listen_cs);
+
+	server_cs = cf_item_to_section(cf_parent(listen_cs));
+	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+
+	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules);
+}
+
+
 extern fr_app_worker_t proto_radius_acct;
 fr_app_worker_t proto_radius_acct = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_acct",
+	.instantiate	= mod_instantiate,
 	.entry_point	= mod_process,
 };

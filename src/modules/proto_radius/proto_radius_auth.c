@@ -631,12 +631,23 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 	return FR_IO_REPLY;
 }
 
+static virtual_server_compile_t compile_list[] = {
+	{ "recv", "Access-Request",	MOD_AUTHORIZE },
+	{ "send", "Access-Accept",	MOD_POST_AUTH },
+	{ "send", "Access-Challenge",	MOD_POST_AUTH },
+	{ "send", "Access-Reject",	MOD_POST_AUTH },
+	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
+	{ "send", "Protocol-Error",    	MOD_POST_AUTH },
+	{ "authenticate", CF_IDENT_ANY,	MOD_POST_AUTH },
+
+	COMPILE_TERMINATOR
+};
+
 static int mod_instantiate(void *instance, CONF_SECTION *process_app_cs)
 {
 	proto_radius_auth_t	*inst = instance;
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
 	CONF_SECTION		*server_cs;
-	CONF_SECTION		*subcs = NULL;
 	vp_tmpl_rules_t		parse_rules;
 
 	memset(&parse_rules, 0, sizeof(parse_rules));
@@ -647,27 +658,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *process_app_cs)
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
-	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", CF_IDENT_ANY))) {
-		int rcode;
-		char const	*name2;
-
-		name2 = cf_section_name2(subcs);
-		if (!name2) {
-			cf_log_err(subcs, "Invalid 'authenticate { ... }' section, it must have a name");
-			return -1;
-		}
-
-		rcode = unlang_compile_subsection(server_cs, "authenticate", name2, MOD_AUTHENTICATE, &parse_rules);
-		if (rcode < 0) {
-			cf_log_err(subcs, "Failed compiling 'authenticate %s { ... }' section", name2);
-			return -1;
-		}
-	}
-
 	inst->state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->max_session,
 					      inst->session_timeout, inst->state_server_id);
 
-	return 0;
+	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules);
 }
 
 static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
