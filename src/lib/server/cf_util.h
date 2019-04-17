@@ -185,7 +185,7 @@ CONF_DATA 	*_cf_data_find_in_parent(CONF_ITEM const *ci, char const *type, char 
 
 void		*cf_data_value(CONF_DATA const *cd);
 
-#define		cf_data_add(_cf, _data, _name, _free) _cf_data_add(CF_TO_ITEM(_cf), _data, _name, _free, __FILE__, __LINE__)
+#define		cf_data_add(_cf, _data, _name, _free) _cf_data_add(CF_TO_ITEM(_cf), (void const *) _data, _name, _free, __FILE__, __LINE__)
 CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name, bool free, char const *filename, int lineno);
 
 #define		cf_data_add_static(_cf, _data, _type, _name) _cf_data_add_static(CF_TO_ITEM(_cf), _data, #_type, _name, __FILE__, __LINE__)
