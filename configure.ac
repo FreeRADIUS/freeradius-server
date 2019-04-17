@@ -1039,7 +1039,7 @@ if test "x$WITH_SYSTEMD" = xyes; then
     AC_MSG_WARN([systemd library not found. Use --with-systemd-lib-dir=<path>.])
   else
     AC_DEFINE([HAVE_SYSTEMD], [1],
-      [Define to 1 if you have the `systemd' library (-lsystemd).]
+      [Define to 1 if you have the 'systemd' library (-lsystemd).]
     )
     HAVE_SYSTEMD=1
     SYSTEMD_LIBS="${smart_lib}"
@@ -1058,7 +1058,7 @@ else
     AC_MSG_WARN([systemd watchdog is only available from systemd 209.])
   else
     AC_DEFINE([HAVE_SYSTEMD_WATCHDOG], [1],
-      [Define to 1 if you have watchdog support in the `systemd' library (-lsystemd).]
+      [Define to 1 if you have watchdog support in the 'systemd' library (-lsystemd).]
     )
   fi
   dnl Set by FR_SMART_CHECKLIB
