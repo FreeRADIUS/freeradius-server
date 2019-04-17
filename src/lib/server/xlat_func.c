@@ -741,7 +741,7 @@ static ssize_t xlat_func_debug(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen
 	if (level == 0) {
 		request->log.lvl = RAD_REQUEST_LVL_NONE;
 	} else {
-		if (level > 4) level = 4;
+		if (level > L_DBG_LVL_MAX) level = L_DBG_LVL_MAX;
 		request->log.lvl = level;
 	}
 
