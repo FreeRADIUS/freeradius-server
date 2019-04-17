@@ -204,11 +204,19 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 }
 
 
+static virtual_server_compile_t compile_list[] = {
+	{ "recv", NULL,			MOD_AUTHORIZE },
+	{ "send", "ok",			MOD_POST_AUTH },
+	{ "send", "fail",		MOD_POST_AUTH },
+
+	COMPILE_TERMINATOR
+};
+
+
 static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 {
-	int rcode;
-	CONF_SECTION *server_cs;
 	proto_detail_process_t *inst = talloc_get_type_abort(instance, proto_detail_process_t);
+	CONF_SECTION		*server_cs;
 	vp_tmpl_rules_t		parse_rules;
 
 	memset(&parse_rules, 0, sizeof(parse_rules));
@@ -219,22 +227,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
-	rcode = unlang_compile_subsection(server_cs, "recv", NULL, inst->recv_type, &parse_rules);
-	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'recv { ... }' section of virtual server %s",
-			   cf_section_name2(server_cs));
-		return -1;
-	}
-
-	rcode = unlang_compile_subsection(server_cs, "send", "ok", inst->send_type, &parse_rules);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "fail", inst->send_type, &parse_rules);
-	if (rcode < 0) return rcode;
-
-	return 0;
+	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules);
 }
+
 
 extern fr_app_worker_t proto_detail_process;
 fr_app_worker_t proto_detail_process = {

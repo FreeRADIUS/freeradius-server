@@ -35,8 +35,6 @@ extern "C" {
 typedef struct {
 	fr_dict_t			*dict;				//!< root dictionary
 	fr_dict_attr_t const		*attr_packet_type;
-	rlm_components_t		recv_type;
-	rlm_components_t		send_type;
 } proto_detail_process_t;
 
 typedef struct {
