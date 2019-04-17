@@ -97,7 +97,7 @@ doc/%.pdf: doc/%.md
 		-V papersize=letter \
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 
-.PHONY: asciidoc html pdf clean clean.asciidoc
+.PHONY: asciidoc html pdf clean clean.doc
 asciidoc: $(ADOC_FILES)
 html: $(HTML_FILES)
 pdf: $(PDF_FILES)
