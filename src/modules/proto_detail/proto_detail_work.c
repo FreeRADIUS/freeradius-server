@@ -548,7 +548,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 	DEBUG("%s - retransmitting packet %d", thread->name, track->id);
 	track->count++;
 
-	fr_dlist_insert_tail(&thread->list, &track);
+	fr_dlist_insert_tail(&thread->list, track);
 
 	if (thread->paused && (thread->outstanding < thread->inst->max_outstanding)) {
 		(void) fr_event_filter_update(thread->el, thread->fd, FR_EVENT_FILTER_IO, resume_read);
