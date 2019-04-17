@@ -203,9 +203,37 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 }
 
 
+static virtual_server_compile_t compile_list[] = {
+	{ "recv", "Join-Request",	MOD_AUTHORIZE },
+	{ "send", "Join-Response",	MOD_POST_AUTH },
+	{ "recv", "Reconfirm-Request",	MOD_AUTHORIZE },
+	{ "send", "Reconfirm-Response",	MOD_POST_AUTH },
+	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
+
+	COMPILE_TERMINATOR
+};
+
+static int mod_instantiate(UNUSED void *instance, CONF_SECTION *process_app_cs)
+{
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
+	CONF_SECTION		*server_cs;
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_vmps;
+
+	rad_assert(listen_cs);
+
+	server_cs = cf_item_to_section(cf_parent(listen_cs));
+	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+
+	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules);
+}
+
 extern fr_app_worker_t proto_vmps_all;
 fr_app_worker_t proto_vmps_all = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "vmps_all",
+	.instantiate	= mod_instantiate,
 	.entry_point	= mod_process,
 };
