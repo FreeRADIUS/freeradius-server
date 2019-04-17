@@ -36,7 +36,9 @@ static unlang_action_t unlang_call(REQUEST *request,
 	int			indent;
 	fr_io_final_t		final;
 	unlang_stack_t		*current;
-	CONF_SECTION		*server_cs;
+	CONF_SECTION		*old_server_cs;
+	fr_io_process_t		old_process;
+	void			*old_process_inst;
 
 	g = unlang_generic_to_group(instruction);
 	rad_assert(g->children != NULL);
@@ -68,10 +70,13 @@ static unlang_action_t unlang_call(REQUEST *request,
 	current = request->stack;
 	request->stack = talloc_zero(request, unlang_stack_t);
 
-	server_cs = request->server_cs;
-	request->server_cs = g->server_cs;
+	old_server_cs = request->server_cs;
+	old_process = request->async->process;
+	old_process_inst = request->async->process_inst;
 
-	memcpy(&request->async->process, &g->process, sizeof(request->async->process));
+	request->server_cs = g->server_cs;
+	request->async->process = g->process;
+	request->async->process_inst = g->process_inst;
 
 	RDEBUG("server %s {", cf_section_name2(g->server_cs));
 
@@ -95,17 +100,19 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 *	on the caller to look at request->reply->code.
 	 */
 	if (final == FR_IO_YIELD) {
-		RDEBUG2("Noo yield for you!");
+		RDEBUG2("No yield for you!");
 	}
 
 	/*
 	 *	@todo - save these in a resume state somewhere...
 	 */
 	request->log.unlang_indent = indent;
-	request->async->process = unlang_io_process_interpret;
 	talloc_free(request->stack);
 	request->stack = current;
-	request->server_cs = server_cs;
+
+	request->server_cs = old_server_cs;
+	request->async->process = old_process;
+	request->async->process_inst = old_process_inst;
 
 	RDEBUG("Continuing with contents of %s { ...", instruction->debug_name);
 

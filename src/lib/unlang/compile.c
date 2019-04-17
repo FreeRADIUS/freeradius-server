@@ -2890,7 +2890,8 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 
-	g->process = (void *)*process_p;
+	g->process = *process_p;
+	g->process_inst = cf_data_value(cf_data_find(server_cs, void, packet));
 	g->server_cs = server_cs;
 
 	c = unlang_group_to_generic(g);
