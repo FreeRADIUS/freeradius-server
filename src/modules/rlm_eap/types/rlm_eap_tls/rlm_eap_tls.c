@@ -307,28 +307,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
-	/*
-	 *	Compile virtual server sections.
-	 *
-	 *	FIXME - We can use proper section names now instead of relying on Autz-Type
-	 */
-	if (inst->virtual_server) {
-		CONF_SECTION	*server_cs;
-		int		ret;
-
-		server_cs = virtual_server_find(inst->virtual_server);
-		if (!server_cs) {
-			ERROR("Can't find virtual server \"%s\"", inst->virtual_server);
-			return -1;
-		}
-
-		ret = unlang_compile_subsection(server_cs, "recv", "Access-Request", MOD_AUTHORIZE, NULL);
-		if (ret == 0) {
-			cf_log_err(server_cs, "Failed finding 'recv Access-Request { ... }' "
-				   "section of virtual server %s", cf_section_name2(server_cs));
-			return -1;
-		}
-		if (ret < 0) return -1;
+	if (inst->virtual_server && !virtual_server_find(inst->virtual_server)) {
+		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+		return -1;
 	}
 
 	return 0;
