@@ -36,7 +36,7 @@ static fr_dict_t *dict_vmps;
 
 extern fr_dict_autoload_t proto_vmps_all_dict[];
 fr_dict_autoload_t proto_vmps_all_dict[] = {
-	{ .out = &dict_vmps, .proto = "vmps" },
+	{ .out = &dict_vmps, .proto = "vqp" },
 	{ NULL }
 };
 
@@ -44,7 +44,7 @@ static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t proto_vmps_all_dict_attr[];
 fr_dict_attr_autoload_t proto_vmps_all_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "VMPS-Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
 	{ NULL }
 };
 
