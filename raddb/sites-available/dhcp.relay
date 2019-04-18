@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	This is a virtual server that handles DHCP relaying
@@ -21,11 +21,11 @@ server dhcp.eth1 {
 	#  See dictionary.dhcp for the packet types.
 	dhcp DHCP-Discover {
 		update config {
-			# IP Address of the DHCP server
+			#  IP Address of the DHCP server
 			&DHCP-Relay-To-IP-Address := 192.0.2.2
 		}
 		update request {
-			# IP Address of the DHCP relay (ourselves)
+			#  IP Address of the DHCP relay (ourselves)
 			&DHCP-Gateway-IP-Address := 192.0.2.1
 		}
 		ok
@@ -33,7 +33,7 @@ server dhcp.eth1 {
 
 	dhcp DHCP-Request {
 		update config {
-			# IP Address of the DHCP server
+			#  IP Address of the DHCP server
 			&DHCP-Relay-To-IP-Address := 192.0.2.2
 		}
 		update request {

@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	Sample virtual server for internally proxied requests.
@@ -33,7 +33,7 @@ server virtual.example.com {
 	namespace = radius
 
 	#
-	# Define our listeners and the types of application packets we expect.
+	#  Define our listeners and the types of application packets we expect.
 	#
 	listen {
 		type = Access-Request
@@ -47,7 +47,7 @@ server virtual.example.com {
 	}
 
 	#
-	# Our listener for Accounting
+	#  Our listener for Accounting
 	#
 	listen {
 		type = Accounting-Request
@@ -61,12 +61,12 @@ server virtual.example.com {
 	}
 
 	#
-	# Now we define our policy framework for how this virtual server will handle various application packets.
-	# Consult the default file for information on the syntax and available options.
+	#  Now we define our policy framework for how this virtual server will handle various application packets.
+	#  Consult the default file for information on the syntax and available options.
 	recv Access-Request {
-		# insert policies here
+		#  insert policies here
 
-		# In this example we simply validate locally
+		#  In this example we simply validate locally
 
 		filter_username
 
@@ -78,11 +78,11 @@ server virtual.example.com {
 	}
 
 	send Access-Accept {
-		# insert policies here
+		#  insert policies here
 	}
 
 	recv Accounting-Request {
-		# insert policies here
+		#  insert policies here
 
 		#
 		#  Ensure that we have a semi-unique identifier for every
@@ -91,7 +91,7 @@ server virtual.example.com {
 		acct_unique
 
 		#
-		# Read the 'acct_users' file
+		#  Read the 'acct_users' file
 		#
 		files
 	}
@@ -113,11 +113,11 @@ server virtual.example.com {
 	}
 
 	#
-	# Allow for PAP in our example
+	#  Allow for PAP in our example
 	#
 	authenticate pap {
 		pap
 	}
 
-# etc.
+#  etc.
 }

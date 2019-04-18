@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #  Sample virtual server for receiving entries from an LDAP directory
@@ -59,13 +59,13 @@ server ldap {
 		#  SASL parameters to use for binding as the sync user.
 		#
 		sasl {
-			# SASL mechanism
+			#  SASL mechanism
 #			mech = 'PLAIN'
 
-			# SASL authorisation identity to proxy.
+			#  SASL authorisation identity to proxy.
 #			proxy = 'autz_id'
 
-			# SASL realm. Used for kerberos.
+			#  SASL realm. Used for kerberos.
 #			realm = 'example.org'
 		}
 

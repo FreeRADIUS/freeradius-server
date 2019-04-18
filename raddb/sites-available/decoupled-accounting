@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	This is a sample configuration for "decoupled" accounting.
@@ -31,7 +31,7 @@ server write_detail.example.com {
 		detail.example.com
 	}
 
-	# That's it!
+	#  That's it!
 }
 
 #  Define a virtual server to process the accounting packets.

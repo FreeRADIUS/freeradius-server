@@ -20,10 +20,10 @@
 server bfd {
 
 listen {
-	# Type is bfd
+	#  Type is bfd
 	type = bfd
 
-	# IP address, or IPv6 address as normal
+	#  IP address, or IPv6 address as normal
 	ipaddr = 127.0.0.1
 
 	#  Port as normal
@@ -85,7 +85,7 @@ listen {
 #  But you could run an external shell script, Perl, etc.
 #
 	bfd {
-		# Say it's OK.
+		#  Say it's OK.
 		ok
 
 		#  Any other modules listed here will have their

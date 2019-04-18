@@ -10,7 +10,7 @@ listen {
 	proto = tcp
 
 	tls {
-		# Moonshot tends to distribute certs separate from keys
+		#  Moonshot tends to distribute certs separate from keys
 		chain {
 			certificate_file = ${certdir}/server.pem
 

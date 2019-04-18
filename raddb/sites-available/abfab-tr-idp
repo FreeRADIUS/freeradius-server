@@ -87,7 +87,7 @@ send Access-Accept {
 	#
 #	ldap
 
-	# For Exec-Program and Exec-Program-Wait
+	#  For Exec-Program and Exec-Program-Wait
 	exec
 
 	#  Remove reply message if the response contains an EAP-Message
@@ -101,15 +101,15 @@ send Access-Accept {
 #  'edir_account_policy_check = yes' in the ldap module configuration
 #
 send Access-Reject {
-	# log failed authentications in SQL, too.
+	#  log failed authentications in SQL, too.
 	-sql
 	attr_filter.access_reject
 
-	# Insert EAP-Failure message if the request was
-	# rejected by policy instead of because of an
-	# authentication failure And already has an EAP message
-	# For non-ABFAB, we insert the failure all the time, but for ABFAB
-	# It's more desirable to preserve reply-message when we can
+	#  Insert EAP-Failure message if the request was
+	#  rejected by policy instead of because of an
+	#  authentication failure And already has an EAP message
+	#  For non-ABFAB, we insert the failure all the time, but for ABFAB
+	#  It's more desirable to preserve reply-message when we can
 	if (&reply:Eap-Message) {
 		eap
 	}
@@ -127,10 +127,10 @@ send Access-Reject {
 #  Only a few modules currently have this method.
 #
 pre-proxy {
-	# Before proxing the request add an Operator-Name attribute identifying
-	# if the operator-name is found for this client.
-	# No need to uncomment this if you have already enabled this in
-	# the authorize section.
+	#  Before proxing the request add an Operator-Name attribute identifying
+	#  if the operator-name is found for this client.
+	#  No need to uncomment this if you have already enabled this in
+	#  the authorize section.
 #	operator-name
 
 	#  The client requests the CUI by sending a CUI attribute

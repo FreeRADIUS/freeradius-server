@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	This is a virtual server that handles DHCP.
@@ -67,26 +67,26 @@ listen {
 		#
 		src_ipaddr = 127.0.0.1
 
-		# The DHCP server defaults to allowing broadcast packets.
-		# Set this to "no" only when the server receives *all* packets
-		# from a relay agent.  i.e. when *no* clients are on the same
-		# LAN as the DHCP server.
+		#  The DHCP server defaults to allowing broadcast packets.
+		#  Set this to "no" only when the server receives *all* packets
+		#  from a relay agent.  i.e. when *no* clients are on the same
+		#  LAN as the DHCP server.
 		#
-		# It's set to "no" here for testing. It will usually want to
-		# be "yes" in production, unless you are only dealing with
-		# relayed packets.
+		#  It's set to "no" here for testing. It will usually want to
+		#  be "yes" in production, unless you are only dealing with
+		#  relayed packets.
 		broadcast = no
 
-		# On Linux if you're running the server as non-root, you
-		# will need to do:
+		#  On Linux if you're running the server as non-root, you
+		#  will need to do:
 		#
 		#	sudo setcap cap_net_admin=ei /path/to/radiusd
 		#
-		# This will allow the server to set ARP table entries
-		# for newly allocated IPs
+		#  This will allow the server to set ARP table entries
+		#  for newly allocated IPs
 	}
 	transport = udp
-	
+
 	type = DHCP-Discover
 	type = DHCP-Request
 	type = DHCP-Inform
@@ -163,7 +163,7 @@ recv DHCP-Discover {
 	#  You could call a Perl, Python, or Java script here.
 
 	#if (notfound) {
-	# ...
+	#  ...
 	#}
 
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
@@ -183,7 +183,7 @@ recv DHCP-Discover {
 
 recv DHCP-Request {
 
-	# Response packet type. See DHCP-Discover section above.
+	#  Response packet type. See DHCP-Discover section above.
 	update reply {
 	       &DHCP-Message-Type = DHCP-Ack
 	}
@@ -209,7 +209,7 @@ recv DHCP-Request {
 	#  You could call a Perl, Python, or Java script here.
 
 	#if (notfound) {
-	# ...
+	#  ...
 	#}
 
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
@@ -274,19 +274,19 @@ recv DHCP-Lease-Query {
 	#  The thing being queried for is implicit
 	#  in the packets.
 
-	# has MAC, asking for IP, etc.
+	#  has MAC, asking for IP, etc.
 	if (&DHCP-Client-Hardware-Address) {
-		# look up MAC in database
+		#  look up MAC in database
 	}
 
-	# has IP, asking for MAC, etc.
+	#  has IP, asking for MAC, etc.
 	elsif (&DHCP-Your-IP-Address) {
-		# look up IP in database
+		#  look up IP in database
 	}
 
-	# has host name, asking for IP, MAC, etc.
+	#  has host name, asking for IP, MAC, etc.
 	elsif (&DHCP-Client-Identifier) {
-		# look up identifier in database
+		#  look up identifier in database
 	}
 	else {
 		update reply {
@@ -295,7 +295,7 @@ recv DHCP-Lease-Query {
 
 		ok
 
-		# stop processing
+		#  stop processing
 		return
 	}
 

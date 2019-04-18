@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	Control socket interface.
@@ -27,7 +27,7 @@ server control {
 #		type = all
 		transport = unix
 
-		# @todo - add "limit" section
+		#  @todo - add "limit" section
 
 		unix {
 			#
