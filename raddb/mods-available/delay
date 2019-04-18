@@ -60,10 +60,11 @@ delay {
 #
 #  ### Delaying Access-Reject packets
 #
-#  The `delay_reject` module should be used in a `send Access-Reject` section, as
-#  the last module in that section.  When `delay_reject` is used
-#  there, the reject will be delayed for either the Response-Delay
-#  seconds, or if that attribute does not exist, then one second.
+#  The `delay_reject` module should be used in a `send Access-Reject`
+#  section, as the last module in that section. When `delay_reject`
+#  is used there, the reject will be delayed for either
+#  FreeRADIUS-Response-Delay seconds, or if that attribute does
+#  not exist, then one second.
 #
 #  While the response is delayed, the server will continue processing
 #  other requests.  It will simply set a timer to wake up and send the
@@ -77,6 +78,6 @@ delay {
 #  received.
 #
 delay delay_reject {
-	delay = "%{reply:Response-Delay:-1}"
+	delay = "%{%{reply:FreeRADIUS-Response-Delay}:-1}"
 	relative = yes
 }

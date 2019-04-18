@@ -1326,6 +1326,12 @@ send Access-Reject {
 	#  drop the network connection.
 	#
 	remove_reply_message_if_eap
+
+	#
+	#  Delay sending the `Access-Reject` packet. This is no
+	#  longer automatic as it was in version 3.
+	#
+	delay_reject
 }
 
 
