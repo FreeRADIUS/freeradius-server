@@ -338,7 +338,10 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 * buffer those fragments!
 	 */
 	if (EAP_PWD_GET_MORE_BIT(hdr)) {
-		rad_assert(session->in != NULL);
+		if (!session->in) {
+			RDEBUG2("Unexpected fragment.");
+			return 0;
+		}
 
 		if ((session->in_pos + in_len) > session->in_len) {
 			RDEBUG2("Fragment overflows packet.");
