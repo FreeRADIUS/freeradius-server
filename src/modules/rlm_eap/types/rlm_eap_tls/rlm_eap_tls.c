@@ -328,14 +328,6 @@ do { \
 
 /** Compile virtual server sections
  *
- * Called twice, once when a server with an eap-aka namespace is found, and once
- * when an EAP-AKA module is instantiated.
- *
- * The first time is with actions == NULL and is to compile the sections and
- * perform validation.
- * The second time is to write out pointers to the compiled sections which the
- * EAP-AKA module will use to execute unlang code.
- *
  */
 static int mod_section_compile(eap_tls_actions_t *actions, CONF_SECTION *server_cs)
 {
@@ -343,29 +335,20 @@ static int mod_section_compile(eap_tls_actions_t *actions, CONF_SECTION *server_
 
 	if (!fr_cond_assert(server_cs)) return -1;
 
-	/*
-	 *	Initial Identity-Response
-	 *
-	 *	We then either:
-	 *	- Request a new identity
-	 *	- Start full authentication
-	 *	- Start fast re-authentication
-	 *	- Fail...
-	 */
 	ACTION_SECTION(actions, recv_access_request, "recv", "Access-Request");
 
 	/*
 	 *	Warn if we couldn't find any actions.
 	 */
 	if (!found) {
-		cf_log_warn(server_cs, "No \"eap-aka\" actions found in virtual server \"%s\"",
+		cf_log_warn(server_cs, "No \"eap-tls\" actions found in virtual server \"%s\"",
 			    cf_section_name2(server_cs));
 	}
 
 	return 0;
 }
 
-/** Compile any virtual servers with the "eap-aka" namespace
+/** Compile any virtual servers with the "eap-tls" namespace
  *
  */
 static int mod_namespace_load(CONF_SECTION *server_cs)
