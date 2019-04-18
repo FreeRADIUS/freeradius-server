@@ -1085,6 +1085,7 @@ int fr_app_process_instantiate(UNUSED CONF_SECTION *server, dl_instance_t **type
 int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t *list, vp_tmpl_rules_t const *rules)
 {
 	int i;
+	CONF_SECTION *subcs = NULL;
 
 	/*
 	 *	The sections are in trees, so this isn't as bad as it
@@ -1094,28 +1095,39 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 	for (i = 0; list[i].name != NULL; i++) {
 		int rcode;
 
+		/*
+		 *	We are looking for a specific subsection.
+		 *	Warn if it isn't found, or compile it if
+		 *	found.
+		 */
 		if (list[i].name2 != CF_IDENT_ANY) {
-			rcode = unlang_compile_subsection(server, list[i].name, list[i].name2, list[i].component, rules);
-			if (rcode < 0) return -1;
-		} else {
-			CONF_SECTION *subcs = NULL;
-
-			/*
-			 *	Find all subsections with the given first name.
-			 */
-			while ((subcs = cf_section_find_next(server, subcs, list[i].name, CF_IDENT_ANY))) {
-				char const	*name2;
-
-				name2 = cf_section_name2(subcs);
-				if (!name2) {
-					cf_log_err(subcs, "Invalid '%s { ... }' section, it must have a name", list[i].name);
-					return -1;
-				}
-
-				// @todo - pass subcs here, so that we don't need to search for it by name
-				rcode = unlang_compile_subsection(server, list[i].name, name2, list[i].component, rules);
-				if (rcode < 0) return -1;
+			subcs = cf_section_find(server, list[i].name, list[i].name2);
+			if (!subcs) {
+				DEBUG3("Warning: Skipping %s %s { ... } as it was not found.",
+				       list[i].name, list[i].name2);
+				continue;
 			}
+
+			rcode = unlang_compile_subsection(server, subcs, list[i].component, rules);
+			if (rcode < 0) return -1;
+			continue;
+		}
+
+		/*
+		 *	Find all subsections with the given first name
+		 *	and compile them.
+		 */
+		while ((subcs = cf_section_find_next(server, subcs, list[i].name, CF_IDENT_ANY))) {
+			char const	*name2;
+
+			name2 = cf_section_name2(subcs);
+			if (!name2) {
+				cf_log_err(subcs, "Invalid '%s { ... }' section, it must have a name", list[i].name);
+				return -1;
+			}
+
+			rcode = unlang_compile_subsection(server, subcs, list[i].component, rules);
+			if (rcode < 0) return -1;
 		}
 	}
 

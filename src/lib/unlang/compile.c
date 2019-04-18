@@ -3422,22 +3422,23 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
  *	- 1 on successfully compiled
  *
  */
-int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component,
+int unlang_compile_subsection(CONF_SECTION *server_cs, CONF_SECTION *cs, rlm_components_t component,
 			      vp_tmpl_rules_t const *rules)
 {
-	CONF_SECTION *cs;
-
-	cs = cf_section_find(server_cs, name1, name2);
-	if (!cs) return 0;
+	char const *name1, *name2;
 
 	/*
-	 *	Don't print out debug messages twice.
+	 *	Don't compile it twice, and don't print out debug
+	 *	messages twice.
 	 */
 	if (cf_data_find(cs, unlang_group_t, NULL) != NULL) return 1;
 
+	name1 = cf_section_name1(cs);
+	name2 = cf_section_name2(cs);
+
 	if (!name2) name2 = "";
 
-	cf_log_debug(cs, "Compiling policies - %s %s {...}", name1, name2);
+	cf_log_debug(cs, "Compiling policies in - %s %s {...}", name1, name2);
 
 	if (unlang_compile(cs, component, rules) < 0) {
 		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
