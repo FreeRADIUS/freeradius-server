@@ -157,7 +157,8 @@ required for the new features in v4.
 | post-auth			| send Access-Accept
 |				| 
 | preacct			| recv Accounting-Request
-| accounting			| send Access-Accept
+| accounting			| accounting %{Acct-Status-Type}
+| accounting			| send Accounting-Response
 |				| 
 | recv-coa			| recv CoA-Request
 | send-coa			| send CoA-ACK
@@ -171,6 +172,14 @@ names are now consistent.  The `recv` sections receive packets from
 the network.  The `send` sections send packets back to the network.
 The second name of the section is the *type* of the packet that is
 being received or sent.
+
+Note that for accounting, packets are also processed through an
+`accounting` section named after Acct-Status-Type.  This process is
+similar to `authenticate` for `Access-Request` packets.  The goal here
+is to allow a common pre-processing of accounting packets in the `recv
+Accounting-Request` packet, followed by type-specific processing in
+`accounting %{Acct-Status-Type}`.  See sites-available/default for
+examples and more information.
 
 ## Proxying
 

@@ -1387,52 +1387,52 @@ recv Accounting-Request {
 #  Version 4 allows for sections specific to Acct-Status-Type.
 #
 #  Once the `recv Accounting-Request` section is processed, one of the
-#  `Acct-Status-Type ... { ... }` sections will be run, based on the
+#  `accounting ... { ... }` sections will be run, based on the
 #  value of the `Acct-Status-Type` attribute.
 #
-#  After the `Acct-Status-Type` section has been run, it will then
-#  process the `send Accounting-Response` section
+#  After the `accounting ... { ... }` section has been run, it will
+#  then process the `send Accounting-Response` section
 #
 
 #
 #  Session start
 #
-Acct-Status-Type Start {
+accounting Start {
 
 }
 
 #
 #  Session stop
 #
-Acct-Status-Type Stop {
+accounting Stop {
 
 }
 
 #
 #  Session is still alive
 #
-Acct-Status-Type Alive {
+accounting Alive {
 
 }
 
 #
-#  The NAS has just booted
+#  The NAS has just booted up.
 #
-Acct-Status-Type Accounting-On {
+accounting Accounting-On {
 
 }
 
 #
 #  The NAS is about to go down
 #
-Acct-Status-Type Accounting-Off {
+accounting Accounting-Off {
 
 }
 
 #
 #  Session failed to do something
 #
-Acct-Status-Type Failed {
+accounting Failed {
 
 }
 

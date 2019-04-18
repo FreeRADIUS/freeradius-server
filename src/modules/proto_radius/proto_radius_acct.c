@@ -121,7 +121,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		}
 
 		/*
-		 *	Run Acct-Status-Type foo { ... }
+		 *	Run accounting foo { ... }
 		 */
 		vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 		if (!vp) goto setup_send;
@@ -129,13 +129,13 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		dv = fr_dict_enum_by_value(vp->da, &vp->data);
 		if (!dv) goto setup_send;
 
-		unlang = cf_section_find(request->server_cs, "Acct-Status-Type", dv->alias);
+		unlang = cf_section_find(request->server_cs, "accounting", dv->alias);
 		if (!unlang) {
-			REDEBUG2("No 'Acct-Status-Type %s' section found: Ignoring it.", dv->alias);
+			REDEBUG2("No 'accounting %s' section found: Ignoring it.", dv->alias);
 			goto setup_send;
 		}
 
-		RDEBUG("Running 'Acct-Status-Type %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+		RDEBUG("Running 'accounting %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_PROCESS;
@@ -244,7 +244,7 @@ static virtual_server_compile_t compile_list[] = {
 	{ "send", "Accounting-Response", MOD_ACCOUNTING },
 	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
 	{ "send", "Protocol-Error",    	MOD_POST_AUTH },
-	{ "Acct-Status-Type", CF_IDENT_ANY, MOD_ACCOUNTING },
+	{ "accounting", CF_IDENT_ANY,	MOD_ACCOUNTING },
 
 	COMPILE_TERMINATOR
 };
