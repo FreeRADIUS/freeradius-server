@@ -52,12 +52,16 @@ clean.doc:
 #
 #	Checking some dependencies
 #
+ifneq "$(strip $(foreach x,html pdf adoc asciidoc,$(findstring $(x),$(MAKECMDGOALS))))" ""
 ifeq ($(shell which pandoc 2>/dev/null),)
 $(error You need to install pandoc)
 endif
+endif
 
+ifneq "$(strip $(foreach x,adoc asciidoc,$(findstring $(x),$(MAKECMDGOALS))))" ""
 ifeq ($(shell which asciidoctor 2>/dev/null),)
 $(error You need to install asciidoctor)
+endif
 endif
 
 #
