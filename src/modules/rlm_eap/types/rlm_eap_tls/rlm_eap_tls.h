@@ -28,6 +28,13 @@ RCSIDH(rlm_eap_tls_h, "$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 
+/** Cache sections to call on various protocol events
+ *
+ */
+typedef struct {
+	CONF_SECTION			*recv_access_request;
+} eap_tls_actions_t;
+
 typedef struct {
 	/*
 	 *	TLS configuration

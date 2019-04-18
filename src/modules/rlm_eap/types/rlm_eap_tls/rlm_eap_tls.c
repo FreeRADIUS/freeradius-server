@@ -315,6 +315,71 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
+#define ACTION_SECTION(_out, _field, _verb, _name) \
+do { \
+	CONF_SECTION *_tmp; \
+	_tmp = cf_section_find(server_cs, _verb, _name); \
+	if (_tmp) { \
+		if (unlang_compile(_tmp, MOD_AUTHORIZE, NULL) < 0) return -1; \
+		found = true; \
+	} \
+	if (_out) _out->_field = _tmp; \
+} while (0)
+
+/** Compile virtual server sections
+ *
+ * Called twice, once when a server with an eap-aka namespace is found, and once
+ * when an EAP-AKA module is instantiated.
+ *
+ * The first time is with actions == NULL and is to compile the sections and
+ * perform validation.
+ * The second time is to write out pointers to the compiled sections which the
+ * EAP-AKA module will use to execute unlang code.
+ *
+ */
+static int mod_section_compile(eap_tls_actions_t *actions, CONF_SECTION *server_cs)
+{
+	bool found = false;
+
+	if (!fr_cond_assert(server_cs)) return -1;
+
+	/*
+	 *	Initial Identity-Response
+	 *
+	 *	We then either:
+	 *	- Request a new identity
+	 *	- Start full authentication
+	 *	- Start fast re-authentication
+	 *	- Fail...
+	 */
+	ACTION_SECTION(actions, recv_access_request, "recv", "Access-Request");
+
+	/*
+	 *	Warn if we couldn't find any actions.
+	 */
+	if (!found) {
+		cf_log_warn(server_cs, "No \"eap-aka\" actions found in virtual server \"%s\"",
+			    cf_section_name2(server_cs));
+	}
+
+	return 0;
+}
+
+/** Compile any virtual servers with the "eap-aka" namespace
+ *
+ */
+static int mod_namespace_load(CONF_SECTION *server_cs)
+{
+	return mod_section_compile(NULL, server_cs);
+}
+
+static int mod_load(void)
+{
+	if (virtual_server_namespace_register("eap-tls", mod_namespace_load) < 0) return -1;
+
+	return 0;
+}
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -329,6 +394,7 @@ rlm_eap_submodule_t rlm_eap_tls = {
 	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 
+	.onload		= mod_load,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.entry_point	= mod_process		/* Process next round of EAP method */
 };
