@@ -830,11 +830,15 @@ int virtual_server_namespace_register(char const *namespace, fr_virtual_server_c
 fr_dict_t *virtual_server_namespace(char const *virtual_server)
 {
 	CONF_SECTION const *server_cs;
+	CONF_DATA const *cd;
 
 	server_cs = virtual_server_find(virtual_server);
 	if (!server_cs) return NULL;
 
-	return cf_data_value(cf_data_find(server_cs, fr_dict_t, "dictionary"));
+	cd = cf_data_find(server_cs, fr_dict_t *, "dictionary");
+	if (!cd) return NULL;
+
+	return *(fr_dict_t **) cf_data_value(cd);
 }
 
 /** Verify that a given virtual_server exists and is of a particular namespace
@@ -1047,7 +1051,7 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_instance_t **type_submod
 	vp_tmpl_rules_t		parse_rules;
 
 	memset(&parse_rules, 0, sizeof(parse_rules));
-	parse_rules.dict_def = cf_data_value(cf_data_find(server, fr_dict_t, "dictionary"));
+	parse_rules.dict_def = virtual_server_namespace(cf_section_name2(server));
 
 	/*
 	 *	Instantiate the process modules
