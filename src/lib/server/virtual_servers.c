@@ -489,8 +489,6 @@ bool listen_record(fr_listen_t *li)
 
 	if (listen_find_any(li) != NULL) return false;
 
-	fprintf(stderr, "ADD %s\n", li->name);
-
 	return rbtree_insert(listen_addr_root, li);
 }
 
