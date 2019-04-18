@@ -106,6 +106,9 @@ int 		unlang_module_fd_add(REQUEST *request,
 
 int		unlang_module_fd_delete(REQUEST *request, void const *rctx, int fd);
 
+void		unlang_module_push(rlm_rcode_t *out, REQUEST *request,
+				   module_instance_t *module_instance, module_method_t method, bool top_frame);
+
 rlm_rcode_t	unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST **child, REQUEST *request,
 						  CONF_SECTION *section_cs,
 						  rlm_rcode_t default_rcode,

@@ -321,6 +321,63 @@ int unlang_module_fd_delete(REQUEST *request, void const *ctx, int fd)
 	return 0;
 }
 
+/** Push a module or submodule onto the stack for evaluation
+ *
+ * @param[out] out		Where to write the result of calling the module.
+ * @param[in] request		The current request.
+ * @param[in] module_instance	Instance of the module to call.
+ * @param[in] method		to call.
+ * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
+ *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ */
+void unlang_module_push(rlm_rcode_t *out, REQUEST *request,
+			module_instance_t *module_instance, module_method_t method, bool top_frame)
+{
+	unlang_frame_state_module_t	*ms;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame;
+	unlang_module_t			*mi;
+
+	static unlang_t module_instruction = {
+		.type = UNLANG_TYPE_MODULE,
+		.name = "module",
+		.debug_name = "module",
+		.actions = {
+			[RLM_MODULE_REJECT]	= 0,
+			[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+			[RLM_MODULE_OK]		= 0,
+			[RLM_MODULE_HANDLED]	= 0,
+			[RLM_MODULE_INVALID]	= 0,
+			[RLM_MODULE_USERLOCK]	= 0,
+			[RLM_MODULE_NOTFOUND]	= 0,
+			[RLM_MODULE_NOOP]	= 0,
+			[RLM_MODULE_UPDATED]	= 0
+		},
+	};
+
+	/*
+	 *	Allocate a state for module.
+	 */
+	MEM(ms = talloc_zero(stack, unlang_frame_state_module_t));
+	ms->presult = out;
+	ms->thread = module_thread_instance_find(module_instance);
+	rad_assert(ms->thread != NULL);
+
+	MEM(mi = talloc_zero(ms, unlang_module_t));	/* Free at the same time as the state */
+	mi->self = module_instruction;
+	mi->self.name = module_instance->module->name;
+	mi->self.debug_name = mi->self.name;
+	mi->module_instance = module_instance;
+	mi->method = method;
+
+	/*
+	 *	Push a new module frame onto the stack
+	 */
+	unlang_interpret_push(stack, unlang_module_to_generic(mi), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	frame = &stack->frame[stack->depth];
+	frame->state = ms;
+}
+
 /** Yield, spawning a child request, and resuming once the child request is complete
  *
  * @param[in] out		Final rcode from when evaluation of the child request finishes.
@@ -520,6 +577,7 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult, int
 	unlang_frame_state_module_t	*ms;
 	int				stack_depth = stack->depth;
 	char const 			*caller;
+	rlm_rcode_t			rcode;
 
 #ifndef NDEBUG
 	int unlang_indent		= request->log.unlang_indent;
@@ -535,21 +593,27 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult, int
 	RDEBUG4("[%i] %s - %s (%s)", stack->depth, __FUNCTION__,
 		sp->module_instance->name, sp->module_instance->module->name);
 
+	if (!frame->state) {
+		frame->state = ms = talloc_zero(stack, unlang_frame_state_module_t);
+
+		/*
+		 *	Grab the thread/module specific data if any exists.
+		 */
+		ms->thread = module_thread_instance_find(sp->module_instance);
+		ms->presult = NULL;
+		rad_assert(ms->thread != NULL);
+	} else {
+		ms = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+		rad_assert(ms->thread != NULL);
+	}
+
 	/*
 	 *	Return administratively configured return code
 	 */
 	if (sp->module_instance->force) {
-		*presult = request->rcode = sp->module_instance->code;
+		rcode = request->rcode = sp->module_instance->code;
 		goto done;
 	}
-
-	frame->state = ms = talloc_zero(stack, unlang_frame_state_module_t);
-
-	/*
-	 *	Grab the thread/module specific data if any exists.
-	 */
-	ms->thread = module_thread_instance_find(sp->module_instance);
-	rad_assert(ms->thread != NULL);
 
 	/*
 	 *	For logging unresponsive children.
@@ -559,7 +623,7 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult, int
 	caller = request->module;
 	request->module = sp->module_instance->name;
 	safe_lock(sp->module_instance);	/* Noop unless instance->mutex set */
-	*presult = sp->method(sp->module_instance->dl_inst->data, ms->thread->data, request);
+	rcode = sp->method(sp->module_instance->dl_inst->data, ms->thread->data, request);
 	safe_unlock(sp->module_instance);
 	request->module = caller;
 
@@ -568,10 +632,15 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult, int
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 		RWARN("Module %s became unblocked", sp->module_instance->module->name);
+		if (ms->presult) {
+			*ms->presult = rcode;
+		} else {
+			*presult = rcode;
+		}
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
-	if (*presult == RLM_MODULE_YIELD) {
+	if (rcode == RLM_MODULE_YIELD) {
 		ms->thread->active_callers++;
 		goto done;
 	}
@@ -580,12 +649,8 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult, int
 	 *	Module execution finished, ident should be the same.
 	 */
 	rad_assert(unlang_indent == request->log.unlang_indent);
-
-	rad_assert(*presult >= RLM_MODULE_REJECT);
-	rad_assert(*presult < RLM_MODULE_NUMCODES);
-	*ppriority = instruction->actions[*presult];
-
-	request->rcode = *presult;
+	rad_assert(rcode >= RLM_MODULE_REJECT);
+	rad_assert(rcode < RLM_MODULE_NUMCODES);
 
 done:
 	/*
@@ -594,15 +659,27 @@ done:
 	RDEBUG("%s (%s)", instruction->name ? instruction->name : "",
 	       fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 
-	switch (*presult) {
+	switch (rcode) {
 	case RLM_MODULE_YIELD:
 		if (stack_depth < stack->depth) return UNLANG_ACTION_PUSHED_CHILD;
 		rad_assert(stack_depth == stack->depth);
+		*presult = rcode;
 		return UNLANG_ACTION_YIELD;
 
 	default:
+		break;
+	}
+
+	request->rcode = rcode;
+	if (ms->presult) {
+		*ms->presult = rcode;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+
+	*presult = rcode;
+	*ppriority = instruction->actions[rcode];
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /** Send a signal (usually stop) to a request
@@ -653,6 +730,7 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	unlang_module_t			*mc = unlang_generic_to_module(mr->parent);
 	int				stack_depth = stack->depth;
 	char const			*caller;
+	rlm_rcode_t			rcode;
 
 	unlang_frame_state_module_t	*ms = NULL;
 
@@ -666,26 +744,37 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	caller = request->module;
 	request->module = mc->module_instance->name;
 	safe_lock(mc->module_instance);
-	*presult = request->rcode = ((fr_unlang_module_resume_t)mr->resume)(request,
-									    mc->module_instance->dl_inst->data,
-									    ms->thread->data, mr->rctx);
+	rcode = request->rcode = ((fr_unlang_module_resume_t)mr->resume)(request,
+									 mc->module_instance->dl_inst->data,
+									 ms->thread->data, mr->rctx);
 	safe_unlock(mc->module_instance);
 	request->module = caller;
 
-	if (*presult != RLM_MODULE_YIELD) ms->thread->active_callers--;
+	if (rcode != RLM_MODULE_YIELD) ms->thread->active_callers--;
 
 	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
-		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
+		fr_int2str(mod_rcode_table, rcode, "<invalid>"));
 
-	switch (*presult) {
+	switch (rcode) {
 	case RLM_MODULE_YIELD:
 		if (stack_depth < stack->depth) return UNLANG_ACTION_PUSHED_CHILD;
 		rad_assert(stack_depth == stack->depth);
+		*presult = rcode;
 		return UNLANG_ACTION_YIELD;
 
 	default:
+		break;
+	}
+
+	request->rcode = rcode;
+	if (ms->presult) {
+		*ms->presult = rcode;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+
+	*presult = rcode;
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 void unlang_module_init(void)
