@@ -638,7 +638,7 @@ static virtual_server_compile_t compile_list[] = {
 	{ "send", "Access-Reject",	MOD_POST_AUTH },
 	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
 	{ "send", "Protocol-Error",    	MOD_POST_AUTH },
-	{ "authenticate", CF_IDENT_ANY,	MOD_POST_AUTH },
+	{ "authenticate", CF_IDENT_ANY,	MOD_AUTHENTICATE },
 
 	COMPILE_TERMINATOR
 };
