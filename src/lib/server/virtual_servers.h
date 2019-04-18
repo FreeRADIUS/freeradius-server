@@ -92,7 +92,7 @@ typedef struct {
 
 #define COMPILE_TERMINATOR { .name = NULL, .name2 = NULL }
 
-int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t *list, vp_tmpl_rules_t const *rules);
+int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

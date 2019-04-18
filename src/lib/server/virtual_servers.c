@@ -1082,7 +1082,7 @@ int fr_app_process_instantiate(UNUSED CONF_SECTION *server, dl_instance_t **type
 	return 0;
 }
 
-int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t *list, vp_tmpl_rules_t const *rules)
+int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules)
 {
 	int i;
 	CONF_SECTION *subcs = NULL;
