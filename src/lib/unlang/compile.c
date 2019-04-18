@@ -3412,8 +3412,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 /** Compile a named subsection
  *
  * @param server_cs the server CONF_SECTION
- * @param name1 the first name of the subsection to compile
- * @param name2 the second name of the subsection to compile.
+ * @param cs	the subsection to compile
  * @param component the component to compile
  * @param rules the rules to follow
  * @return
@@ -3422,7 +3421,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
  *	- 1 on successfully compiled
  *
  */
-int unlang_compile_subsection(CONF_SECTION *server_cs, CONF_SECTION *cs, rlm_components_t component,
+int unlang_compile_subsection(UNUSED CONF_SECTION *server_cs, CONF_SECTION *cs, rlm_components_t component,
 			      vp_tmpl_rules_t const *rules)
 {
 	char const *name1, *name2;
