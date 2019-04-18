@@ -134,8 +134,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*process_app_cs;
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
+	CONF_SECTION		*process_app_cs;
 	proto_radius_t		*inst;
 	dl_instance_t		*parent_inst;
 	char const		*name = NULL;

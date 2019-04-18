@@ -112,6 +112,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
+	CONF_SECTION		*process_app_cs;
 	proto_vmps_t		*inst;
 	dl_instance_t		*parent_inst;
 	fr_dict_enum_t const	*type_enum;
@@ -160,12 +161,22 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 	inst->code_allowed[code] = true;
 
+	process_app_cs = cf_section_find(listen_cs, type_enum->alias, NULL);
+
+	/*
+	 *	Allocate an empty section if one doesn't exist
+	 *	this is so defaults get parsed.
+	 */
+	if (!process_app_cs) {
+		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->alias, NULL));
+	}
+
 	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
 	 *
 	 *	We allow "type = foo", but we just load proto_vmps_all.a
 	 */
-	return dl_instance(ctx, out, listen_cs,	parent_inst, "all", DL_TYPE_SUBMODULE);
+	return dl_instance(ctx, out, process_app_cs, parent_inst, "all", DL_TYPE_SUBMODULE);
 }
 
 /** Wrapper around dl_instance
