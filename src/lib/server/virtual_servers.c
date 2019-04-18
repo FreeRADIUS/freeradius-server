@@ -120,13 +120,17 @@ const CONF_PARSER virtual_servers_on_read_config[] = {
 };
 
 static const CONF_PARSER server_config[] = {
-	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING | FR_TYPE_ON_READ, fr_virtual_server_t, namespace),
-	  .func = namespace_on_read },
-
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
-			 fr_virtual_server_t, listener), \
+			 fr_virtual_server_t, listener),		\
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .func = listen_parse },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER namespace_config[] = {
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING | FR_TYPE_ON_READ, fr_virtual_server_t, namespace),
+	  .func = namespace_on_read },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -214,9 +218,14 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Initialising namespace \"%s\"", namespace);
 
 	if (fr_dict_protocol_afrom_file(&dict, namespace) < 0) {
-		cf_log_perr(ci, "Failed initialising namespace \"%s\"", namespace);
+#if 1
+		return 0;
+#else
+		cf_log_perr("Failed initialising namespace \"%s\" - %s", namespace, fr_strerror());
 		return -1;
+#endif
 	}
+
 	dict_p = talloc_zero(ctx, fr_dict_t *);
 	*dict_p = dict;
 	talloc_set_destructor(dict_p, namespace_dict_free);
@@ -238,8 +247,9 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
  *	- -1 on failure.
  */
 static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			  UNUSED CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
+	cf_section_rules_push(cf_item_to_section(ci), namespace_config);
 
 	/*
 	 *	Just a place-holder which does nothing.
