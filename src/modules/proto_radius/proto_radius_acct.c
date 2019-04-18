@@ -38,10 +38,12 @@ fr_dict_autoload_t proto_radius_acct_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_acct_status_type;
 
 extern fr_dict_attr_autoload_t proto_radius_acct_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_acct_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -119,6 +121,60 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		}
 
 		/*
+		 *	Run Acct-Status-Type foo { ... }
+		 */
+		vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
+		if (!vp) goto setup_send;
+
+		dv = fr_dict_enum_by_value(vp->da, &vp->data);
+		if (!dv) goto setup_send;
+
+		unlang = cf_section_find(request->server_cs, "Acct-Status-Type", dv->alias);
+		if (!unlang) {
+			REDEBUG2("No 'Acct-Status-Type %s' section found: Ignoring it.", dv->alias);
+			goto setup_send;
+		}
+
+		RDEBUG("Running 'Acct-Status-Type %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME);
+
+		request->request_state = REQUEST_PROCESS;
+		/* FALL-THROUGH */
+
+	case REQUEST_PROCESS:
+		rcode = unlang_interpret_resume(request);
+
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
+
+		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
+
+		rad_assert(request->log.unlang_indent == 0);
+
+		switch (rcode) {
+		/*
+		 *	The module has a number of OK return codes.
+		 */
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+		case RLM_MODULE_HANDLED:
+			break;
+
+		/*
+		 *	The module failed, or said the request is
+		 *	invalid, therefore we stop here.
+		 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_USERLOCK:
+		default:
+			return FR_IO_FAIL;
+		}
+
+	setup_send:
+		/*
 		 *	Allow for over-ride of reply code.
 		 */
 		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
@@ -188,6 +244,7 @@ static virtual_server_compile_t compile_list[] = {
 	{ "send", "Accounting-Response", MOD_ACCOUNTING },
 	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
 	{ "send", "Protocol-Error",    	MOD_POST_AUTH },
+	{ "Acct-Status-Type", CF_IDENT_ANY, MOD_ACCOUNTING },
 
 	COMPILE_TERMINATOR
 };

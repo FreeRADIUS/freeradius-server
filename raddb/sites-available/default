@@ -1384,6 +1384,72 @@ recv Accounting-Request {
 }
 
 #
+#  Version 4 allows for sections specific to Acct-Status-Type.
+#
+#  Once the `recv Accounting-Request` section is processed, one of the
+#  `Acct-Status-Type ... { ... }` sections will be run, based on the
+#  value of the `Acct-Status-Type` attribute.
+#
+#  After the `Acct-Status-Type` section has been run, it will then
+#  process the `send Accounting-Response` section
+#
+
+#
+#  Session start
+#
+Acct-Status-Type Start {
+
+}
+
+#
+#  Session stop
+#
+Acct-Status-Type Stop {
+
+}
+
+#
+#  Session is still alive
+#
+Acct-Status-Type Alive {
+
+}
+
+#
+#  The NAS has just booted
+#
+Acct-Status-Type Accounting-On {
+
+}
+
+#
+#  The NAS is about to go down
+#
+Acct-Status-Type Accounting-Off {
+
+}
+
+#
+#  Session failed to do something
+#
+Acct-Status-Type Failed {
+
+}
+
+#
+#  There are many other values for `Acct-Status-Type` such as:
+#
+#  * Tunnel-Start
+#  * Tunnel-Stop
+#  * Tunnel-Reject
+#  * Tunnel-Link-Start
+#  * Tunnel-Link-Stop
+#  * Tunnel-Link-Reject
+#
+#  Some vendors also define their own values, which is a very bad idea.
+#
+
+#
 #  Send Accounting-Response.
 #
 #  Log the accounting data before replying. If logging fails then
