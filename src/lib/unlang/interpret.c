@@ -378,7 +378,7 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
  */
 static inline void frame_next(unlang_stack_frame_t *frame)
 {
-	frame_cleanup(cleanup);
+	frame_cleanup(frame);
 	frame->instruction = frame->next;
 	if (frame->instruction) frame->next = frame->instruction->next;
 }
