@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	As of version 4.0.0, the server also supports the TACACS+
@@ -51,9 +51,9 @@ server tacacs {
 			}
 		}
 
-		# draft-ietf-opsawg-tacacs section 4.4.2
+		#  draft-ietf-opsawg-tacacs section 4.4.2
 		switch &TACACS-Authentication-Type {
-			# ASCII is very generic and driven via unlang so go wild!
+			#  ASCII is very generic and driven via unlang so go wild!
 			case "ASCII" {
 				if (&TACACS-Sequence-Number == 1) {
 					update request {
@@ -250,7 +250,7 @@ server tacacs {
 	send Accounting-Response {
 	}
 
-	# Proxying of TACACS+ requests is NOT supported.
+	#  Proxying of TACACS+ requests is NOT supported.
 
 	authenticate mschap {
 		mschap

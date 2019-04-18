@@ -1,8 +1,8 @@
-# -*- text -*-
+#  -*- text -*-
 #
-# :toc:
+#  :toc:
 #
-# # The default Virtual Server
+#  # The default Virtual Server
 #
 #  $Id$
 #
@@ -26,7 +26,7 @@
 #  in via PAP, CHAP, MS-CHAP, etc.  You should so test the server via
 #  `radtest` to verify that it works.
 #
-# ## Editing this file
+#  ## Editing this file
 #
 #  Please read "man radiusd" before editing this file.  See the
 #  section titled DEBUGGING.  It outlines a method where you can
@@ -55,7 +55,7 @@
 #  In most cases, those small changes will result in the server being
 #  able to connect to the database, and to authenticate users.
 
-# ## The Virtual Server
+#  ## The Virtual Server
 #
 #  This is the `default` virtual server.
 #
@@ -70,7 +70,7 @@ server default {
 	namespace = radius
 
 	#
-	# ### The listen section
+	#  ### The listen section
 	#
 	#  The `listen` sections in v4 are very different from the
 	#  `listen sections in v3.  The changes were necessary in
@@ -416,7 +416,7 @@ server default {
 				#  `User-Name` attribute, as it was
 				#  found in the request.
 				#
-				# allowed values: {no, yes}
+				#  allowed values: {no, yes}
 				#
 				stripped_names = no
 
@@ -573,7 +573,7 @@ server default {
 				#  `User-Name` attribute, as it was
 				#  found in the request.
 				#
-				# allowed values: {no, yes}
+				#  allowed values: {no, yes}
 				#
 				stripped_names = no
 
@@ -662,7 +662,7 @@ server default {
 
 
 	#
-	# ### Local Clients
+	#  ### Local Clients
 	#
 	#  The "client" sections can can also be placed here.  Unlike
 	#  v3, they do not need to be wrapped in a "clients" section.
@@ -679,8 +679,8 @@ server default {
 		ipaddr = 192.0.2.1
 		secret = testing123
 
-		# The other "client" configuration items can be added
-		# here, too.
+		#  The other "client" configuration items can be added
+		#  here, too.
 	}
 
 
@@ -962,7 +962,7 @@ recv Status-Server {
 ######################################################################
 
 #
-# ### PAP Authentication
+#  ### PAP Authentication
 #
 #  For users who are using PAP authentication. A back-end database
 #  listed in the "recv Access-Request" section MUST supply a "known
@@ -974,7 +974,7 @@ authenticate pap {
 }
 
 #
-# ### CHAP Authentication
+#  ### CHAP Authentication
 #
 #  For users who are using CHAP authentication. A back-end database
 #  listed in the "recv Access-Request" section MUST supply a
@@ -997,7 +997,7 @@ authenticate mschap {
 }
 
 #
-# ### SIP Digest Authentication
+#  ### SIP Digest Authentication
 #
 #  For users who are using SIP Digest authentication.
 #
@@ -1302,19 +1302,19 @@ send Access-Accept {
 #
 send Access-Reject {
 	#
-	# Log failed authentications in SQL, too.
+	#  Log failed authentications in SQL, too.
 	#
 	-sql
 
 	#
-	# Filter out attributes that should not be in
-	# Access-Reject packets.
+	#  Filter out attributes that should not be in
+	#  Access-Reject packets.
 	#
 	attr_filter.access_reject
 
 	#
-	# Insert an EAP-Failure message if the request was rejected by
-	# policy, instead of from an authentication failure.
+	#  Insert an EAP-Failure message if the request was rejected by
+	#  policy, instead of from an authentication failure.
 	#
 	eap
 

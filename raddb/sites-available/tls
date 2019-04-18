@@ -129,7 +129,7 @@ server radsec {
 		#	check_crl = yes
 			ca_path = ${cadir}
 
-			# Accept an expired Certificate Revocation List
+			#  Accept an expired Certificate Revocation List
 			#
 		#	allow_expired_crl = no
 

@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	This is a sample configuration for robust proxy accounting.
@@ -67,9 +67,9 @@ home_server_pool acct_pool.example.com {
 
 	home_server = home1.example.com
 	home_server = home2.example.com
-	# add more home_server's here.
+	#  add more home_server's here.
 
-	# for pre/post-proxy policies
+	#  for pre/post-proxy policies
 	virtual_server = home.example.com
 }
 
@@ -113,7 +113,7 @@ server home.example.com {
 		#  proxying Access-Request packets
 		#
 		Post-Proxy-Type Fail-Authentication {
-			# add policies here
+			#  add policies here
 		}
 
 	}
@@ -147,7 +147,7 @@ server home.example.com {
 	#  When the home servers come back up, the packets are forwarded,
 	#  and the detail file processed as normal.
 	recv Accounting-Request {
-		# You may want accounting policies here...
+		#  You may want accounting policies here...
 
 		update control {
 			&Proxy-To-Realm := 'acct_realm.example.com'

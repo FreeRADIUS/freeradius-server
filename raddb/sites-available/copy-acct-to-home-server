@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	In 2.0.0, radrelay functionality is integrated into the
@@ -125,9 +125,9 @@ server copy-acct-to-home-server {
 	#
 	send Accounting-Response {
 		   #
-		   # Since we're proxying, we don't log anything
-		   # locally.  Ensure that the accounting section
-		   # "succeeds" by forcing an "ok" return.
+		   #  Since we're proxying, we don't log anything
+		   #  locally.  Ensure that the accounting section
+		   #  "succeeds" by forcing an "ok" return.
 		   ok
 	}
 

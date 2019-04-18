@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	This is a virtual server that handles *only* inner tunnel
@@ -300,7 +300,7 @@ send Access-Accept {
 #  'edir_account_policy_check = yes' in the ldap module configuration
 #
 send Access-Reject {
-	# log failed authentications in SQL, too.
+	#  log failed authentications in SQL, too.
 	-sql
 	attr_filter.access_reject
 

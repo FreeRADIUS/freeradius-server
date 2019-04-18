@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #  Sample virtual server for receiving a CoA or Disconnect-Request packet.

@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	In 2.0.0, radrelay functionality is integrated into the
@@ -154,6 +154,6 @@ server buffered-sql {
 
 	}
 
-	# The requests are not being proxied, so no pre/post-proxy
-	# sections are necessary.
+	#  The requests are not being proxied, so no pre/post-proxy
+	#  sections are necessary.
 }

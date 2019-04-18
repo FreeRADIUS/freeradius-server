@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ######################################################################
 #
 #	As of version 2.0.0, the server also supports the VMPS
@@ -26,7 +26,7 @@ server vmps {
 		type = Reconfirm-Request
 
 		udp {
-			# VMPS sockets only support IPv4 addresses.
+			#  VMPS sockets only support IPv4 addresses.
 			ipaddr = *
 
 			#  Port on which to listen.
@@ -82,7 +82,7 @@ server vmps {
 		#
 		#mac2vlan
 
-		# required VMPS reply attributes
+		#  required VMPS reply attributes
 		update reply {
 			&Packet-Type = Join-Response
 			&Cookie = &MAC-Address
