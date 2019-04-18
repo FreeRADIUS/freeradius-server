@@ -148,7 +148,6 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
 	dl_instance_t		*parent_inst;
 	fr_dict_enum_t const	*type_enum;
-	uint32_t		code;
 	dl_instance_t		*process_dl;
 	proto_detail_process_t	*process_inst;
 	fr_dict_attr_t const	*attr_packet_type;
@@ -177,7 +176,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 		return -1;
 	}
 
-	code = inst->code = type_enum->value->vb_uint32;
+	inst->code = type_enum->value->vb_uint32;
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_detail"));
 	rad_assert(parent_inst);
