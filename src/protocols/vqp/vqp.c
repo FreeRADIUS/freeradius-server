@@ -328,7 +328,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		/*
 		 *	Create the VP.
 		 */
-		vp = fr_pair_afrom_child_num(packet, fr_dict_root(dict_vqp), attr);
+		vp = fr_pair_afrom_child_num(packet, fr_dict_root(dict_vmps), attr);
 		if (!vp) {
 			fr_strerror_printf("No memory");
 
@@ -571,7 +571,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
 		if (!contents[code][i]) break;
 
-		vps[i] = fr_pair_find_by_child_num(packet->vps, fr_dict_root(dict_vqp),
+		vps[i] = fr_pair_find_by_child_num(packet->vps, fr_dict_root(dict_vmps),
 						   contents[code][i], TAG_ANY);
 
 		/*

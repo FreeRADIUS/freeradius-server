@@ -26,7 +26,7 @@ RCSIDH(vqp_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t *dict_vqp;
+extern fr_dict_t *dict_vmps;
 
 extern fr_dict_attr_t const *attr_error_code;
 extern fr_dict_attr_t const *attr_packet_type;

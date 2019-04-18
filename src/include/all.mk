@@ -47,7 +47,7 @@ DICT += $(wildcard $(addsuffix /dictionary.freeradius*,$(addprefix share/diction
 DICT += $(wildcard $(addsuffix /dictionary,$(addprefix share/dictionary/,$(PROTOCOLS))))
 
 # Add in protocol specific dictionaries (should be done in proto_* modules?)
-DICT += share/dictionary/vqp/dictionary.vqp
+DICT += share/dictionary/vmps/dictionary.vmps
 
 NORMALIZE	:= tr -- '[:lower:]/+.-' '[:upper:]____' | sed 's/241_//;'
 HEADER		:= "/* AUTO_GENERATED FILE.  DO NOT EDIT */"

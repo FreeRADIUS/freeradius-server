@@ -31,11 +31,11 @@ RCSID("$Id$")
 
 static int instance_count = 0;
 
-fr_dict_t *dict_vqp;
+fr_dict_t *dict_vmps;
 
 extern fr_dict_autoload_t libfreeradius_vqp[];
 fr_dict_autoload_t libfreeradius_vqp[] = {
-	{ .out = &dict_vqp, .proto = "vqp" },
+	{ .out = &dict_vmps, .proto = "vmps" },
 	{ NULL }
 };
 
@@ -45,9 +45,9 @@ fr_dict_attr_t const *attr_sequence_number;
 
 extern fr_dict_attr_autoload_t libfreeradius_vqp_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_vqp_dict_attr[] = {
-	{ .out = &attr_error_code, .name = "Error-Code", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
-	{ .out = &attr_sequence_number, .name = "Sequence-Number", .type = FR_TYPE_UINT32, .dict = &dict_vqp },
+	{ .out = &attr_error_code, .name = "Error-Code", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
+	{ .out = &attr_sequence_number, .name = "Sequence-Number", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
 	{ NULL }
 };
 
@@ -59,8 +59,13 @@ int fr_vqp_init(void)
 		return 0;
 	}
 
-	if (fr_dict_autoload(libfreeradius_vqp) < 0) return -1;
+	if (fr_dict_autoload(libfreeradius_vqp) < 0) {
+		fr_strerror_printf("Failed loading the 'vmps' dictionary - %s", fr_strerror());
+		return -1;
+	}
+
 	if (fr_dict_attr_autoload(libfreeradius_vqp_dict_attr) < 0) {
+		fr_strerror_printf("Failed loading the 'vmps' attributes");
 		fr_dict_autofree(libfreeradius_vqp);
 		return -1;
 	}

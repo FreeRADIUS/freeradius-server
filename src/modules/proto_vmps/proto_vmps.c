@@ -83,7 +83,7 @@ static fr_dict_t *dict_vmps;
 
 extern fr_dict_autoload_t proto_vmps_dict[];
 fr_dict_autoload_t proto_vmps_dict[] = {
-	{ .out = &dict_vmps, .proto = "vqp" },
+	{ .out = &dict_vmps, .proto = "vmps" },
 	{ NULL }
 };
 
@@ -570,7 +570,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 static int mod_load(void)
 {
-	if (fr_vqp_init() < 0) return -1;
+	if (fr_vqp_init() < 0) {
+		ERROR("Failed initializing the VMPS dictionaries: %s", fr_strerror());
+		return -1;
+	}
 
 	return 0;
 }
