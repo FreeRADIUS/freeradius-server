@@ -661,7 +661,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *process_app_cs)
 	inst->state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->max_session,
 					      inst->session_timeout, inst->state_server_id);
 
-	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules);
+	return 0;
 }
 
 static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
@@ -690,4 +690,5 @@ fr_app_worker_t proto_radius_auth = {
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.entry_point	= mod_process,
+	.compile_list	= compile_list,
 };

@@ -1042,10 +1042,14 @@ int fr_app_process_bootstrap(CONF_SECTION *server, dl_instance_t **type_submodul
 }
 
 
-int fr_app_process_instantiate(UNUSED CONF_SECTION *server, dl_instance_t **type_submodule, dl_instance_t **type_submodule_by_code, int code_max, CONF_SECTION *conf)
+int fr_app_process_instantiate(CONF_SECTION *server, dl_instance_t **type_submodule, dl_instance_t **type_submodule_by_code, int code_max, CONF_SECTION *conf)
 {
 	int i;
 	CONF_PAIR *cp = NULL;
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = cf_data_value(cf_data_find(server, fr_dict_t, "dictionary"));
 
 	/*
 	 *	Instantiate the process modules
@@ -1060,6 +1064,14 @@ int fr_app_process_instantiate(UNUSED CONF_SECTION *server, dl_instance_t **type
 		if (app_process->instantiate &&
 		    (app_process->instantiate(type_submodule[i]->data, type_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
+			return -1;
+		}
+
+		/*
+		 *	Compile the processing sections.
+		 */
+		if (app_process->compile_list &&
+		    (virtual_server_compile_sections(server, app_process->compile_list, &parse_rules) < 0)) {
 			return -1;
 		}
 
