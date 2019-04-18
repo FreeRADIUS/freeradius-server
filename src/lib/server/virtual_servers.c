@@ -1098,7 +1098,7 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 			rcode = unlang_compile_subsection(server, list[i].name, list[i].name2, list[i].component, rules);
 			if (rcode < 0) return -1;
 		} else {
-			CONF_SECTION *subcs;
+			CONF_SECTION *subcs = NULL;
 
 			/*
 			 *	Find all subsections with the given first name.
