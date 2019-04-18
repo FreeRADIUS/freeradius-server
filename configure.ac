@@ -976,7 +976,7 @@ if test "x$WITH_SYSTEMD" = xyes; then
     AC_MSG_WARN([systemd library not found. Use --with-systemd-lib-dir=<path>.])
   else
     AC_DEFINE(HAVE_SYSTEMD, 1,
-      [Define to 1 if you have the `systemd' library (-lsystemd).]
+      [Define to 1 if you have the 'systemd' library (-lsystemd).]
     )
     HAVE_SYSTEMD=1
     SYSTEMD_LIBS="${smart_lib}"
@@ -1032,8 +1032,6 @@ if test "x$ac_cv_header_sys_event_h" != "xyes"; then
   if test "x$ac_cv_header_sys_event_h" != "xyes"; then
     AC_MSG_WARN([kqueue headers not found. Use --with-kqueue-include-dir=<path>.])
     AC_MSG_ERROR([FreeRADIUS requires libkqueue (or system kqueue)])
-  else
-    CPPFLAGS="$CPPFLAGS $smart_include"
   fi
 fi
 
