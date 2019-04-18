@@ -281,9 +281,48 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 }
 
 
+static virtual_server_compile_t compile_list[] = {
+	{ "recv", "DHCP-Discover",	MOD_POST_AUTH },
+	{ "send", "DHCP-Offer",		MOD_POST_AUTH },
+	{ "recv", "DHCP-Request",	MOD_POST_AUTH },
+
+	{ "send", "DHCP-Ack",		MOD_POST_AUTH },
+	{ "send", "DHCP-NAK",		MOD_POST_AUTH },
+	{ "send", "DHCP-Decline",	MOD_POST_AUTH },
+
+	{ "recv", "DHCP-Release",	MOD_POST_AUTH },
+	{ "recv", "DHCP-Inform",	MOD_POST_AUTH },
+	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
+
+	{ "recv", "DHCP-Lease-Query",	MOD_POST_AUTH },
+	{ "send", "DHCP-Lease-Unassigned", MOD_POST_AUTH },
+	{ "send", "DHCP-Lease-Unknown",	MOD_POST_AUTH },
+	{ "send", "DHCP-Lease-Active",	MOD_POST_AUTH },
+
+	COMPILE_TERMINATOR
+};
+
+static int mod_instantiate(UNUSED void *instance, CONF_SECTION *process_app_cs)
+{
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
+	CONF_SECTION		*server_cs;
+	vp_tmpl_rules_t		parse_rules;
+
+	memset(&parse_rules, 0, sizeof(parse_rules));
+	parse_rules.dict_def = dict_dhcpv4;
+
+	rad_assert(listen_cs);
+
+	server_cs = cf_item_to_section(cf_parent(listen_cs));
+	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+
+	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules);
+}
+
 extern fr_app_worker_t proto_dhcpv4_base;
 fr_app_worker_t proto_dhcpv4_base = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcpv4_base",
+	.instantiate	= mod_instantiate,
 	.entry_point	= mod_process,
 };
