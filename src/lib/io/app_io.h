@@ -30,7 +30,7 @@
  * This structure is exported by I/O modules e.g. proto_radius_udp.
  */
 typedef struct {
-	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
+	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;

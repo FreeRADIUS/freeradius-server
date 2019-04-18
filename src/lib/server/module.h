@@ -120,7 +120,7 @@ typedef int (*module_instantiate_t)(void *instance, CONF_SECTION *mod_cs);
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*module_thread_t)(CONF_SECTION const *mod_cs, void *instance, fr_event_list_t *el, void *thread);
+typedef int (*module_thread_instantiate_t)(CONF_SECTION const *mod_cs, void *instance, fr_event_list_t *el, void *thread);
 
 /** Module thread destruction callback
  *
@@ -133,25 +133,47 @@ typedef int (*module_thread_t)(CONF_SECTION const *mod_cs, void *instance, fr_ev
  */
 typedef int (*module_thread_detach_t)(fr_event_list_t *el, void *thread);
 
+#define FR_MODULE_COMMON \
+	struct { \
+		module_instantiate_t		bootstrap;		\
+		module_instantiate_t		instantiate;		\
+	}
+
+/** Common fields for the interface struct modules export
+ *
+ */
+#define FR_MODULE_THREADED_COMMON \
+	struct { \
+		module_thread_instantiate_t	thread_instantiate;	\
+		module_thread_detach_t		thread_detach;		\
+		size_t				thread_inst_size;	\
+	}
+
+/** Common fields for submodules
+ *
+ * This should either be the first field in the structure exported from
+ * the submodule or the submodule should export an identical set of fields
+ * in the same order, preferably using the macros above.
+ */
+struct rad_submodule_s {
+	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
+	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
+	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
+};
+
 /** Struct exported by a rlm_* module
  *
  * Determines the capabilities of the module, and maps internal functions
  * within the module to different sections.
  */
 struct rad_module_s {
-	RAD_MODULE_COMMON;
+	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
+	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
+	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
 
-	int			type;			//!< Type flags that control calling conventions for modules.
-
-	module_instantiate_t	bootstrap;		//!< Callback to register dynamic attrs, xlats, etc.
-	module_instantiate_t	instantiate;		//!< Callback to configure a new module instance.
-
-	module_thread_t		thread_instantiate;	//!< Callback to configure a module's instance for
-							//!< a new worker thread.
-	module_thread_detach_t	thread_detach;		//!< Destroy thread specific data.
-	size_t			thread_inst_size;	//!< Size of data to allocate to the thread instance.
-
-	module_method_t		methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
+	int				type;			//!< Type flags that control calling conventions
+								//!< for modules.
+	module_method_t			methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
 };
 
 /** Per instance data
@@ -168,7 +190,8 @@ struct module_instance_s {
 
 	rad_module_t const		*module;	//!< Public module structure.  Cached for convenience.
 
-	pthread_mutex_t			*mutex;
+	pthread_mutex_t			*mutex;		//!< To prevent multiple threads entering a thread unsafe
+							///< module.
 
 	size_t				number;		//!< unique module number
 	bool				instantiated;	//!< Whether the module has been instantiated yet.

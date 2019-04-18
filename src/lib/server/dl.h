@@ -121,7 +121,7 @@ typedef void (*dl_free_t)(dl_t const *module, void *symbol, void *user_ctx);
 /** Common fields for the interface struct modules export
  *
  */
-#define RAD_MODULE_COMMON \
+#define DL_MODULE_COMMON \
 	struct { \
 		uint64_t 			magic;		\
 		char const			*name;		\
@@ -136,7 +136,7 @@ typedef void (*dl_free_t)(dl_t const *module, void *symbol, void *user_ctx);
 /** Fields common to all types of loadable modules
  */
 typedef struct {
-	RAD_MODULE_COMMON;
+	DL_MODULE_COMMON;
 } dl_common_t;
 
 /** Module handle

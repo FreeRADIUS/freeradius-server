@@ -54,7 +54,7 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
  * protocol type.
  */
 typedef struct rad_protocol_s {
-	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
+	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	uint32_t			transports;	//!< What can transport this protocol.
 	bool				tls;		//!< Whether protocol can be wrapped in TLS.

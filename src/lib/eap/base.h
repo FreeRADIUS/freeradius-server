@@ -92,7 +92,7 @@ struct eap_session_s {
  *
  */
 typedef struct {
-	RAD_MODULE_COMMON;					//!< Common fields to all loadable modules.
+	DL_MODULE_COMMON;					//!< Common fields to all loadable modules.
 
 	eap_type_t		provides[MAX_PROVIDED_METHODS];	//!< Allow the module to register itself for more
 								///< than one EAP-Method.

@@ -155,7 +155,7 @@ typedef int (*fr_proto_set_option_t)(void *proto_ctx, fr_proto_opt_group_t opt_g
  *
  */
 typedef struct {
-	RAD_MODULE_COMMON;					//!< Common fields to all loadable modules.
+	DL_MODULE_COMMON;					//!< Common fields to all loadable modules.
 
 	size_t				proto_ctx_size;		//!< Size required for the packet ctx structure.
 

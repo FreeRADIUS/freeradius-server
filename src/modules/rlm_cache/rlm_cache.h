@@ -278,7 +278,7 @@ typedef int		(*cache_reconnect_t)(rlm_cache_handle_t **handle, rlm_cache_config_
 					     void *instance, REQUEST *request);
 
 struct cache_driver {
-	RAD_MODULE_COMMON;					//!< Common fields for all loadable modules.
+	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
 
 	cache_instantiate_t		instantiate;		//!< (optional) Instantiate a driver.
 	cache_entry_alloc_t		alloc;			//!< (optional) Allocate a new entry.

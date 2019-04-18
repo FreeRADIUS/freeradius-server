@@ -183,7 +183,7 @@ typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t out
 			      rlm_sql_config_t *config);
 
 typedef struct {
-	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
+	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	int		flags;
 
