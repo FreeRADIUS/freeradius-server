@@ -1,7 +1,12 @@
+#  -*- text -*-
 #
-#  # Local dictionary definitions
+#  :toc:
 #
 #  $Id$
+
+#######################################################################
+#
+#  = Local dictionary definitions
 #
 #  This is the local dictionary file which can be
 #  edited by local administrators.  It will be loaded
