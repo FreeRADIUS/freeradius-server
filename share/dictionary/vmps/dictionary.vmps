@@ -1,0 +1,54 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#	Cisco's VLAN Query Protocol
+#
+#	The default destination port is 1589.
+#
+#	$Id$
+#
+##############################################################################
+
+#
+#  VQP / VMPS internal attributes for the packet header
+#
+ATTRIBUTE	Packet-Type				1	integer	internal
+ATTRIBUTE	Error-Code				2	integer internal
+ATTRIBUTE	Sequence-Number				3	integer internal
+
+#
+#  VQP / VMPS Attributes
+#
+ATTRIBUTE	Client-IPv4-Address			0x0c01	ipaddr
+ATTRIBUTE	Port-Name				0x0c02	string
+ATTRIBUTE	VLAN-Name				0x0c03	string
+
+# VTP domain
+ATTRIBUTE	Domain-Name				0x0c04	string
+
+# Encapsulates an Ethernet frame...
+ATTRIBUTE	Ethernet-Frame				0x0c05	octets
+ATTRIBUTE	MAC-Address				0x0c06	ether
+ATTRIBUTE	Unknown					0x0c07	octets
+ATTRIBUTE	Cookie					0x0c08	ether
+
+#
+#	VQP integer mappings
+#
+
+VALUE	Packet-Type			Join-Request		1
+VALUE	Packet-Type			Join-Response		2
+VALUE	Packet-Type			Reconfirm-Request	3
+VALUE	Packet-Type			Reconfirm-Response	4
+
+VALUE	Packet-Type			Do-Not-Respond		256
+
+VALUE	Error-Code			No-Error		0
+VALUE	Error-Code			Wrong-Version		1
+VALUE	Error-Code			Insufficient-Resources	2
+VALUE	Error-Code			Deny			3
+VALUE	Error-Code			Shutdown		4
+VALUE	Error-Code			Wrong-Mgmt-Domain	5

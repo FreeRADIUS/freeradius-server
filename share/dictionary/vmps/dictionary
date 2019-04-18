@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	The FreeRADIUS Vendor-Specific dictionary for VMPS / VQP operations.
+#
+# Version:	$Id$
+#
+
+PROTOCOL	VMPS	6		format=2
+BEGIN-PROTOCOL	VMPS
+
+$INCLUDE dictionary.vmps
+
+END-PROTOCOL	VMPS
