@@ -50,13 +50,22 @@ clean.doc:
 	${Q}rm -f *~ rfc/*~ examples/*~ $(ADOC_FILES) $(HTML_FILES) $(PDF_FILES)
 
 #
+#	Checking some dependencies
+#
+ifeq ($(shell which pandoc 2>/dev/null),)
+$(error You need to install pandoc)
+endif
+
+ifeq ($(shell which asciidoctor 2>/dev/null),)
+$(error You need to install asciidoctor)
+endif
+
+#
 #  Pandoc v2 onwards renamed --latex-engine to --pdf-engine
 #
 PANDOC_ENGINE=pdf
-ifneq ($(shell which pandoc 2> /dev/null),)
 ifneq ($(shell pandoc --help | grep latex-engine),)
 PANDOC_ENGINE=latex
-endif
 endif
 
 #
