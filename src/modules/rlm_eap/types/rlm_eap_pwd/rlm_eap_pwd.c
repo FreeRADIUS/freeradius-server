@@ -232,7 +232,10 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 *	buffer those fragments!
 	 */
 	if (EAP_PWD_GET_MORE_BIT(hdr)) {
-		rad_assert(session->in != NULL);
+		if (!session->in) {
+			RDEBUG2("Unexpected fragment.");
+			return 0;
+		}
 
 		if ((session->in_pos + in_len) > session->in_len) {
 			REDEBUG("Fragment overflows packet");
