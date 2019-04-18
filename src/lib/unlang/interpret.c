@@ -364,10 +364,23 @@ static inline unlang_frame_action_t result_calculate(REQUEST *request, unlang_st
 	return frame->next ? UNLANG_FRAME_ACTION_NEXT : UNLANG_FRAME_ACTION_POP;
 }
 
+/** Cleanup any lingering frame state
+ *
+ */
 static inline void frame_cleanup(unlang_stack_frame_t *frame)
 {
 	frame->repeat = false;
 	if (frame->state) TALLOC_FREE(frame->state);
+}
+
+/** Advance to the next sibling instruction
+ *
+ */
+static inline void frame_next(unlang_stack_frame_t *frame)
+{
+	frame_cleanup(cleanup);
+	frame->instruction = frame->next;
+	if (frame->instruction) frame->next = frame->instruction->next;
 }
 
 /** Pop a stack frame, removing any associated dynamically allocated state
@@ -561,7 +574,6 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 		 *	Execute the next instruction in this frame
 		 */
 		case UNLANG_ACTION_EXECUTE_NEXT:
-			frame_cleanup(frame);
 			if ((action == UNLANG_ACTION_EXECUTE_NEXT) && unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("}");
@@ -569,8 +581,7 @@ static inline unlang_frame_action_t frame_eval(REQUEST *request, unlang_stack_fr
 			break;
 		} /* switch over return code from the interpreter function */
 
-		frame->instruction = frame->next;
-		if (frame->instruction) frame->next = frame->instruction->next;
+		frame_next(frame);
 	}
 
 	RDEBUG4("** [%i] %s - done current subsection with (%s %d)",
@@ -685,8 +696,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 					stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, stack->result, "<invalid>"),
 					priority);
-				frame->instruction = frame->next;
-				if (frame->instruction) frame->next = frame->instruction->next;
+				frame_next(frame);
 			/*
 			 *	Else if we're really done with this frame
 			 *	print some helpful debug...
