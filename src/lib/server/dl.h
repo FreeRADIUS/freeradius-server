@@ -195,7 +195,7 @@ void			*dl_by_name(char const *name);
 
 dl_t const		*dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, dl_type_t type);
 
-dl_instance_t const	*dl_instance_find(void *data);
+dl_instance_t const	*dl_instance_find(void const *data);
 
 void			*dl_instance_symbol(dl_instance_t const *instance, char const *sym_name);
 

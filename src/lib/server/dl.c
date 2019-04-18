@@ -488,13 +488,15 @@ void dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func)
 /** Lookup a dl_instance_t via instance data
  *
  */
-dl_instance_t const *dl_instance_find(void *data)
+dl_instance_t const *dl_instance_find(void const *data)
 {
-	dl_instance_t find = { .data = data };
+	void *mutable;
 
 	DL_INIT_CHECK;
 
-	return rbtree_finddata(dl_loader->inst_tree, &find);
+	memcpy(&mutable, &data, sizeof(mutable));
+
+	return rbtree_finddata(dl_loader->inst_tree, &(dl_instance_t){ .data = mutable });
 }
 
 /** Allocate module instance data, and parse the module's configuration
