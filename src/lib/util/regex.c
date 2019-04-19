@@ -284,9 +284,8 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	int			ret;
 	uint32_t		options = 0;
 
-#ifndef PCRE2_COPY_MATCHED_SUBJECT
 	char			*our_subject = NULL;
-#endif
+	bool			dup_subject = true;
 
 	/*
 	 *	Thread local initialisation
@@ -294,33 +293,45 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
 
 	if (regmatch) {
-#ifndef PCRE2_COPY_MATCHED_SUBJECT
+#ifdef PCRE2_COPY_MATCHED_SUBJECT
 		/*
-		 *	We have to dup and operate on the duplicate
-		 *	of the subject, because pcre2_jit_match and
-		 *	pcre2_match store a pointer to the subject
-		 *	in the regmatch structure.
+		 *	This is apparently only supported for pcre2_match
+		 *	NOT pcre2_jit_match.
 		 */
-		subject = our_subject = talloc_bstrndup(regmatch, subject, len);
-		if (!subject) {
-			fr_strerror_printf("Out of memory");
-			return -1;
+		if (!preg->jitd) {
+			dup_subject = false;
+
+			/*
+			 *	If PCRE2_COPY_MATCHED_SUBJECT is available
+			 *	and set as an options flag, pcre2_match will
+			 *	strdup the subject string if pcre2_match is
+			 *	successful and store a pointer to it in the
+			 *	regmatch struct.
+			 *
+			 *	The lifetime of the string memory will be
+			 *	bound to the regmatch struct.  This is more
+			 *	efficient that doing it ourselves, as the
+			 *	strdup only occurs if the subject matches.
+			 */
+			options |= PCRE2_COPY_MATCHED_SUBJECT;
 		}
-#else
-		/*
-		 *	If PCRE2_COPY_MATCHED_SUBJECT is available
-		 *	and set as an options flag, pcre2_match will
-		 *	strdup the subject string if pcre2_match is
-		 *	successful and store a pointer to it in the
-		 *	regmatch struct.
-		 *
-		 *	The lifetime of the string memory will be
-		 *	bound to the regmatch struct.  This is more
-		 *	efficient that doing it ourselves, as the
-		 *	strdup only occurs if the subject matches.
-		 */
-		options |= PCRE2_COPY_MATCHED_SUBJECT;
 #endif
+		if (dup_subject) {
+			/*
+			 *	We have to dup and operate on the duplicate
+			 *	of the subject, because pcre2_jit_match and
+			 *	pcre2_match store a pointer to the subject
+			 *	in the regmatch structure.
+			 */
+			subject = our_subject = talloc_bstrndup(regmatch, subject, len);
+			if (!subject) {
+				fr_strerror_printf("Out of memory");
+				return -1;
+			}
+#ifndef NDEBUG
+			regmatch->subject = subject; /* Stored only for tracking memory issues */
+#endif
+		}
 	}
 
 	if (preg->jitd) {
@@ -333,9 +344,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	if (ret < 0) {
 		PCRE2_UCHAR errbuff[128];
 
-#ifndef PCRE2_COPY_MATCHED_SUBJECT
-		talloc_free(our_subject);
-#endif
+		if (dup_subject) talloc_free(our_subject);
 
 		if (ret == PCRE2_ERROR_NOMATCH) {
 			if (regmatch) regmatch->used = 0;

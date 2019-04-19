@@ -55,6 +55,9 @@ typedef struct {
 	pcre2_match_data	*match_data;	//!< Match data containing the subject
 						///< and various match offsets.
 	size_t			used;		//!< Number of slots filled with match data.
+#ifndef NDEBUG
+	char const		*subject;	//!< Here for debugging purposes if we explicitly duped the string.
+#endif
 } fr_regmatch_t;
 
 typedef struct {
