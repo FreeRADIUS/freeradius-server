@@ -54,6 +54,172 @@ static fr_cmd_table_t cmd_module_table[];
 
 static int _module_instantiate(void *instance, UNUSED void *ctx);
 
+static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	module_instance_t *mi = ctx;
+
+	rad_assert(mi->dl_inst->conf != NULL);
+
+	(void) cf_section_write(fp, mi->dl_inst->conf, 0);
+
+	return 0;
+}
+
+typedef struct {
+	char const *text;
+	int count;
+	int max_expansions;
+	char const **expansions;
+} module_tab_expand_t;
+
+
+static int _module_tab_expand(void *instance, void *ctx)
+{
+	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
+	module_tab_expand_t *mt = ctx;
+
+	if (mt->count >= mt->max_expansions) return 1;
+
+	if (fr_command_strncmp(mt->text, mi->name)) {
+		mt->expansions[mt->count] = strdup(mi->name);
+		mt->count++;
+	}
+
+	return 0;
+}
+
+static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
+{
+	module_tab_expand_t mt;
+
+	if (info->argc <= 0) return 0;
+
+	mt.text = info->argv[info->argc - 1];
+	mt.count = 0;
+	mt.max_expansions = max_expansions;
+	mt.expansions = expansions;
+
+	(void) rbtree_walk(module_instance_tree, RBTREE_IN_ORDER, _module_tab_expand, &mt);
+
+	return mt.count;
+}
+
+
+static int _module_list(void *instance, void *uctx)
+{
+	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
+	FILE *fp = uctx;
+
+	fprintf(fp, "\t%s\n", mi->name);
+
+	return 0;
+}
+
+static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info)
+{
+	(void) rbtree_walk(module_instance_tree, RBTREE_IN_ORDER, _module_list, fp);
+
+	return 0;
+}
+
+static int cmd_show_module_status(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	module_instance_t *mi = ctx;
+
+	if (!mi->force) {
+		fprintf(fp, "alive\n");
+		return 0;
+	}
+
+	fprintf(fp, "%s\n", fr_int2str(rcode_table, mi->code, "<invalid>"));
+
+	return 0;
+}
+
+static int cmd_set_module_status(UNUSED FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+{
+	module_instance_t *mi = ctx;
+	rlm_rcode_t rcode;
+
+	if (strcmp(info->argv[1], "alive") == 0) {
+		mi->force = false;
+		return 0;
+	}
+
+	rcode = fr_str2int(rcode_table, info->argv[1], RLM_MODULE_UNKNOWN);
+	rad_assert(rcode != RLM_MODULE_UNKNOWN);
+
+	mi->code = rcode;
+	mi->force = true;
+
+	return 0;
+}
+
+
+static fr_cmd_table_t cmd_module_table[] = {
+	{
+		.parent = "show module",
+		.add_name = true,
+		.name = "status",
+		.func = cmd_show_module_status,
+		.help = "Show the status of a particular module.",
+		.read_only = true,
+	},
+
+	{
+		.parent = "show module",
+		.add_name = true,
+		.name = "config",
+		.func = cmd_show_module_config,
+		.help = "Show configuration for a module",
+		// @todo - do tab expand, by walking over the whole module list...
+		.read_only = true,
+	},
+
+	{
+		.parent = "set module",
+		.add_name = true,
+		.name = "status",
+		.syntax = "(alive|ok|fail|reject|handled|invalid|userlock|notfound|noop|updated)",
+		.func = cmd_set_module_status,
+		.help = "Change module status to fixed value.",
+		.read_only = false,
+	},
+
+	CMD_TABLE_END
+};
+
+
+static fr_cmd_table_t cmd_table[] = {
+	{
+		.parent = "show",
+		.name = "module",
+		.help = "Show information about modules.",
+		.tab_expand = module_name_tab_expand,
+		.read_only = true,
+	},
+
+	// @todo - what if there's a module called "list" ?
+	{
+		.parent = "show module",
+		.name = "list",
+		.func = cmd_show_module_list,
+		.help = "Show the list of modules loaded in the server.",
+		.read_only = true,
+	},
+
+	{
+		.parent = "set",
+		.name = "module",
+		.help = "Change module settings.",
+		.tab_expand = module_name_tab_expand,
+		.read_only = false,
+	},
+
+
+	CMD_TABLE_END
+};
+
 /** Compare module instances by parent and name
  *
  * The reason why we need parent, is because we could have submodules with names
@@ -748,172 +914,6 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 
 	return 0;
 }
-
-static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
-{
-	module_instance_t *mi = ctx;
-
-	rad_assert(mi->dl_inst->conf != NULL);
-
-	(void) cf_section_write(fp, mi->dl_inst->conf, 0);
-
-	return 0;
-}
-
-typedef struct {
-	char const *text;
-	int count;
-	int max_expansions;
-	char const **expansions;
-} module_tab_expand_t;
-
-
-static int _module_tab_expand(void *instance, void *ctx)
-{
-	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
-	module_tab_expand_t *mt = ctx;
-
-	if (mt->count >= mt->max_expansions) return 1;
-
-	if (fr_command_strncmp(mt->text, mi->name)) {
-		mt->expansions[mt->count] = strdup(mi->name);
-		mt->count++;
-	}
-
-	return 0;
-}
-
-static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
-{
-	module_tab_expand_t mt;
-
-	if (info->argc <= 0) return 0;
-
-	mt.text = info->argv[info->argc - 1];
-	mt.count = 0;
-	mt.max_expansions = max_expansions;
-	mt.expansions = expansions;
-
-	(void) rbtree_walk(module_instance_tree, RBTREE_IN_ORDER, _module_tab_expand, &mt);
-
-	return mt.count;
-}
-
-
-static int _module_list(void *instance, void *uctx)
-{
-	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
-	FILE *fp = uctx;
-
-	fprintf(fp, "\t%s\n", mi->name);
-
-	return 0;
-}
-
-static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info)
-{
-	(void) rbtree_walk(module_instance_tree, RBTREE_IN_ORDER, _module_list, fp);
-
-	return 0;
-}
-
-static int cmd_show_module_status(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
-{
-	module_instance_t *mi = ctx;
-
-	if (!mi->force) {
-		fprintf(fp, "alive\n");
-		return 0;
-	}
-
-	fprintf(fp, "%s\n", fr_int2str(rcode_table, mi->code, "<invalid>"));
-
-	return 0;
-}
-
-static int cmd_set_module_status(UNUSED FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
-{
-	module_instance_t *mi = ctx;
-	rlm_rcode_t rcode;
-
-	if (strcmp(info->argv[1], "alive") == 0) {
-		mi->force = false;
-		return 0;
-	}
-
-	rcode = fr_str2int(rcode_table, info->argv[1], RLM_MODULE_UNKNOWN);
-	rad_assert(rcode != RLM_MODULE_UNKNOWN);
-
-	mi->code = rcode;
-	mi->force = true;
-
-	return 0;
-}
-
-
-static fr_cmd_table_t cmd_module_table[] = {
-	{
-		.parent = "show module",
-		.add_name = true,
-		.name = "status",
-		.func = cmd_show_module_status,
-		.help = "Show the status of a particular module.",
-		.read_only = true,
-	},
-
-	{
-		.parent = "show module",
-		.add_name = true,
-		.name = "config",
-		.func = cmd_show_module_config,
-		.help = "Show configuration for a module",
-		// @todo - do tab expand, by walking over the whole module list...
-		.read_only = true,
-	},
-
-	{
-		.parent = "set module",
-		.add_name = true,
-		.name = "status",
-		.syntax = "(alive|ok|fail|reject|handled|invalid|userlock|notfound|noop|updated)",
-		.func = cmd_set_module_status,
-		.help = "Change module status to fixed value.",
-		.read_only = false,
-	},
-
-	CMD_TABLE_END
-};
-
-
-static fr_cmd_table_t cmd_table[] = {
-	{
-		.parent = "show",
-		.name = "module",
-		.help = "Show information about modules.",
-		.tab_expand = module_name_tab_expand,
-		.read_only = true,
-	},
-
-	// @todo - what if there's a module called "list" ?
-	{
-		.parent = "show module",
-		.name = "list",
-		.func = cmd_show_module_list,
-		.help = "Show the list of modules loaded in the server.",
-		.read_only = true,
-	},
-
-	{
-		.parent = "set",
-		.name = "module",
-		.help = "Change module settings.",
-		.tab_expand = module_name_tab_expand,
-		.read_only = false,
-	},
-
-
-	CMD_TABLE_END
-};
 
 /** Completes instantiation of modules
  *
