@@ -90,6 +90,7 @@ doc/raddb/%.adoc: raddb/%.md
 doc/raddb/%.adoc: raddb/%
 	@echo ADOC $^
 	@mkdir -p $(dir $@)
+	@perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
 	@./scripts/asciidoc/conf2adoc -a ${top_srcdir}/asciidoc -o $@ < $^
 
 doc/%.html: doc/%.adoc
