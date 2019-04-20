@@ -35,9 +35,9 @@ extern "C" {
 #endif
 
 module_instance_t	*module_find_with_method(rlm_components_t *method,
-						 CONF_SECTION *modules, char const *asked_name);
+						 module_instance_t const *parent, char const *asked_name);
 
-module_instance_t	*module_find(CONF_SECTION *modules, char const *asked_name);
+module_instance_t	*module_find(module_instance_t const *parent, char const *asked_name);
 
 int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
 

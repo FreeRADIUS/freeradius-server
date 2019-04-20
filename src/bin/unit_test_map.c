@@ -55,7 +55,7 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 };
 
 module_instance_t *module_find_with_method(UNUSED rlm_components_t *method,
-					   UNUSED CONF_SECTION *modules, UNUSED char const *name)
+					   UNUSED module_instance_t const *parent, UNUSED char const *name)
 {
 	return NULL;
 }

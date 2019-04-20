@@ -126,11 +126,9 @@ static int talloc_config_set(main_config_t *config)
 /** Create module and xlat per-thread instances
  *
  */
-static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx)
+static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, UNUSED void *uctx)
 {
-	CONF_SECTION *root = talloc_get_type_abort(uctx, CONF_SECTION);
-
-	if (modules_thread_instantiate(ctx, root, el) < 0) return -1;
+	if (modules_thread_instantiate(ctx, el) < 0) return -1;
 	if (xlat_thread_instantiate(ctx) < 0) return -1;
 
 	return 0;

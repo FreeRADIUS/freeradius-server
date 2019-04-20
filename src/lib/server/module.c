@@ -45,8 +45,31 @@ static size_t instance_num = 0;
  */
 static _Thread_local module_thread_instance_t **module_thread_inst_array;
 
-static int module_instantiate(CONF_SECTION *root, char const *name);
+/*
+ *	Lookup module instances by name and lineage
+ */
+static rbtree_t *module_instance_tree;
+
 static fr_cmd_table_t cmd_module_table[];
+
+static int _module_instantiate(void *instance, UNUSED void *ctx);
+
+/** Compare module instances by parent and name
+ *
+ * The reason why we need parent, is because we could have submodules with names
+ * that conflict with their parent.
+ */
+static int module_instance_cmp(void const *one, void const *two)
+{
+	module_instance_t const *a = one;
+	module_instance_t const *b = two;
+	int ret;
+
+	ret = (a->dl_inst->parent > b->dl_inst->parent) - (a->dl_inst->parent < b->dl_inst->parent);
+	if (ret != 0) return ret;
+
+	return strcmp(a->name, b->name);
+}
 
 /** Initialise a module specific exfile handle
  *
@@ -158,7 +181,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	mi = module_find(cf_item_to_section(cf_parent(module)), inst_name);
+	mi = module_find(NULL, inst_name);
 	if (!mi) {
 		cf_log_err(cp, "Unknown module instance \"%s\"", inst_name);
 
@@ -180,7 +203,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 			parent = tmp;
 		} while (true);
 
-		module_instantiate(parent, inst_name);
+		_module_instantiate(module_find(NULL, inst_name), NULL);
 	}
 
 	/*
@@ -363,14 +386,13 @@ bool module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr
  *
  * This still allows memory to be modified, but not allocated
  */
-int module_instance_read_only(TALLOC_CTX *ctx, char const *name)
+int module_instance_read_only(void *inst, char const *name)
 {
-	int rcode;
-	size_t size;
+	int	rcode;
+	size_t	size;
 
-	size = talloc_total_size(ctx);
-
-	rcode = talloc_set_memlimit(ctx, size);
+	size = talloc_total_size(inst);
+	rcode = talloc_set_memlimit(inst, size);
 	if (rcode < 0) {
 		ERROR("Failed setting memory limit for module %s", name);
 	} else {
@@ -382,7 +404,7 @@ int module_instance_read_only(TALLOC_CTX *ctx, char const *name)
 
 /** Find an existing module instance
  *
- * @param[in] modules		section in the main config.
+ * @param[in] parent		to qualify search with.
  * @param[in] asked_name 	The name of the module we're attempting to find.
  *				May include '-' which indicates that it's ok for
  *				the module not to be loaded.
@@ -390,12 +412,18 @@ int module_instance_read_only(TALLOC_CTX *ctx, char const *name)
  *	- Module instance matching name.
  *	- NULL if not such module exists.
  */
-module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
+module_instance_t *module_find(module_instance_t const *parent, char const *asked_name)
 {
-	char const *inst_name;
-	void *inst;
+	char const		*inst_name;
+	void			*inst;
+	dl_instance_t const	*dl_inst = NULL;
 
-	if (!modules) return NULL;
+	if (!module_instance_tree) return NULL;
+
+ 	if (parent) {
+ 		dl_inst = dl_instance_find(parent);
+		rad_assert(dl_inst);
+	}
 
 	/*
 	 *	Look for the real name.  Ignore the first character,
@@ -405,7 +433,11 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 	inst_name = asked_name;
 	if (inst_name[0] == '-') inst_name++;
 
-	inst = cf_data_value(cf_data_find(modules, module_instance_t, inst_name));
+	inst = rbtree_finddata(module_instance_tree,
+			       &(module_instance_t){
+					.dl_inst = &(dl_instance_t){ .parent = dl_inst },
+					.name = inst_name
+			       });
 	if (!inst) return NULL;
 
 	return talloc_get_type_abort(inst, module_instance_t);
@@ -432,14 +464,14 @@ int modules_free(void)
  * and ensures the module implements the specified method.
  *
  * @param[out] method		the method component we found associated with the module. May be NULL.
- * @param[in] modules		section in the main config.
+ * @param[in] parent		of the module, usually NULL unless we're looking up submodules.
  * @param[in] name 		The name of the module we're attempting to find, concatenated with
  *				the method.
  * @return
  *	- The module instance on success.
  *	- NULL on error (or not found).
  */
-module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTION *modules, char const *name)
+module_instance_t *module_find_with_method(rlm_components_t *method, module_instance_t const *parent, char const *name)
 {
 	char			*p;
 	rlm_components_t	i;
@@ -449,7 +481,7 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 	 *	Module names are allowed to contain '.'
 	 *	so we search for the bare module name first.
 	 */
-	mi = module_find(modules, name);
+	mi = module_find(parent, name);
 	if (mi) return mi;
 
 	/*
@@ -468,7 +500,7 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 			char *inst_name;
 
 			inst_name = talloc_bstrndup(NULL, name, p - name);
-			mi = module_find(modules, inst_name);
+			mi = module_find(NULL, inst_name);
 			talloc_free(inst_name);
 			if (!mi) return NULL;
 
@@ -477,7 +509,7 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 			 *	the specified method.
 			 */
 			if (!mi->module->methods[i]) {
-				cf_log_debug(modules, "%s does not implement method \"%s\"",
+				cf_log_debug(mi->dl_inst->conf, "%s does not implement method \"%s\"",
 					     mi->module->name, p + 1);
 				return NULL;
 			}
@@ -569,18 +601,20 @@ typedef struct {
 
 /** Setup thread specific instance data for a module
  *
+ * @param[in] uctx	additional arguments to pass to a module's thread_instantiate function.
  * @param[in] instance	of module to perform thread instantiation for.
- * @param[in] ctx	additional arguments to pass to a module's thread_instantiate function.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _module_thread_instantiate(void *instance, void *ctx)
+static int _module_thread_instantiate(void *instance, void *uctx)
 {
 	module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t);
 	module_thread_instance_t	*ti;
-	_thread_intantiate_ctx_t	*thread_inst_ctx = ctx;
+	_thread_intantiate_ctx_t	*thread_inst_ctx = uctx;
 	int				ret;
+
+	DEBUG("Processing %p", mi);
 
 	MEM(ti = talloc_zero(thread_inst_ctx->array, module_thread_instance_t));
 	ti->el = thread_inst_ctx->el;
@@ -623,29 +657,23 @@ static int _module_thread_instantiate(void *instance, void *ctx)
  *
  * @param[in] ctx	to bind instance tree lifetime to.  Must not be
  *			shared between multiple threads.
- * @param[in] root	Configuration root.
  * @param[in] el	Event list servived by this thread.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int modules_thread_instantiate(TALLOC_CTX *ctx, CONF_SECTION *root, fr_event_list_t *el)
+int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 {
-	CONF_SECTION			*modules;
-	_thread_intantiate_ctx_t	uctx;
-
-	modules = cf_section_find(root, "modules", NULL);
-	if (!modules) return 0;
-
+	/*
+	 *	Initialise the thread specific tree if this is the first time through
+	 */
 	if (!module_thread_inst_array) {
 		MEM(module_thread_inst_array = talloc_zero_array(ctx, module_thread_instance_t *, instance_num + 1));
 		talloc_set_destructor(module_thread_inst_array, _module_thread_inst_array_free);
 	}
 
-	uctx.el = el;
-	uctx.array = module_thread_inst_array;
-
-	if (cf_data_walk(modules, module_instance_t, _module_thread_instantiate, &uctx) < 0) {
+	if (rbtree_walk(module_instance_tree, RBTREE_IN_ORDER, _module_thread_instantiate,
+			&(_thread_intantiate_ctx_t){ .el = el, .array = module_thread_inst_array }) < 0) {
 		TALLOC_FREE(module_thread_inst_array);
 		return -1;
 	}
@@ -679,7 +707,7 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
 	if (mi->module->config && (cf_section_parse_pass2(mi->dl_inst->data,
-								mi->dl_inst->conf) < 0)) return -1;
+							  mi->dl_inst->conf) < 0)) return -1;
 
 	/*
 	 *	Call the instantiate method, if any.
@@ -721,37 +749,6 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	return 0;
 }
 
-/** Force instantiation of a module
- *
- * Occasionally modules may share resources such as connection pools.
- * The only way for this to work reliably, and without introducing ordering
- * requirements for the user, for the module referenced to be instantiated
- * before (or during) the referencer being instantiated.
- *
- * In all other cases this function should not be used, and implicit
- * instantiation should be relied upon to instantiate modules.
- *
- * @param[in] root	Configuration root.
- * @param[in] name	of module to instantiate.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int module_instantiate(CONF_SECTION *root, char const *name)
-{
-	module_instance_t	*mi;
-	CONF_SECTION		*modules;
-
-	modules = cf_section_find(root, "modules", NULL);
-	if (!modules) return 0;
-
-	mi = cf_data_value(cf_data_find(modules, module_instance_t, name));
-	if (!mi) return -1;
-
-	return _module_instantiate(mi, NULL);
-}
-
-
 static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	module_instance_t *mi = ctx;
@@ -786,10 +783,9 @@ static int _module_tab_expand(void *instance, void *ctx)
 	return 0;
 }
 
-static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
+static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
 {
 	module_tab_expand_t mt;
-	CONF_SECTION *modules = (CONF_SECTION *) ctx;
 
 	if (info->argc <= 0) return 0;
 
@@ -798,27 +794,25 @@ static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, void *ctx, fr_c
 	mt.max_expansions = max_expansions;
 	mt.expansions = expansions;
 
-	(void) cf_data_walk(modules, module_instance_t, _module_tab_expand, &mt);
+	(void) rbtree_walk(module_instance_tree, RBTREE_IN_ORDER, _module_tab_expand, &mt);
 
 	return mt.count;
 }
 
 
-static int _module_list(void *instance, void *ctx)
+static int _module_list(void *instance, UNUSED void *uctx)
 {
 	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
-	FILE *fp = ctx;
+	FILE *fp = uctx;
 
 	fprintf(fp, "\t%s\n", mi->name);
 
 	return 0;
 }
 
-static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info)
 {
-	CONF_SECTION *modules = (CONF_SECTION *) ctx;
-
-	(void) cf_data_walk(modules, module_instance_t, _module_list, fp);
+	(void) rbtree_walk(module_instance_tree, RBTREE_IN_ORDER, _module_list, fp);
 
 	return 0;
 }
@@ -946,7 +940,7 @@ int modules_instantiate(CONF_SECTION *root)
 		return -1;
 	}
 
-	if (cf_data_walk(modules, module_instance_t, _module_instantiate, NULL) < 0) return -1;
+	if (rbtree_walk(module_instance_tree, RBTREE_IN_ORDER, _module_instantiate, NULL) < 0) return -1;
 
 #ifndef NDEBUG
 	{
@@ -1014,14 +1008,14 @@ static int _module_instance_free(module_instance_t *mi)
  * @note Adds module instance data to the specified CONF_SECTION.  Module will be
  *	freed if CONF_SECTION is freed.
  *
- * @param modules section from the main config.
- * @param cs A child of the modules section, specifying this specific instance of a module.
+ * @param cs	A child of the modules section,
+ *		specifying this specific instance of a module.
  * @return
  *	- A new module instance handle, containing the module's public interface,
  *	  and private instance data.
  *	- NULL on error.
  */
-static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *cs)
+static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 {
 	char const		*name1, *inst_name;
 	module_instance_t	*mi;
@@ -1041,7 +1035,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	See if the module already exists.
 	 */
-	mi = module_find(modules, inst_name);
+	mi = module_find(NULL, inst_name);
 	if (mi) {
 		ERROR("Duplicate module \"%s\" in file %s[%d] and file %s[%d]",
 		      inst_name,
@@ -1083,20 +1077,19 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Remember the module for later.
 	 */
-	cf_data_add(modules, mi, mi->name, false);
+	rbtree_insert(module_instance_tree, mi);
 
 	return mi;
 }
 
 /** Bootstrap a virtual module from an instantiate section
  *
- * @param[in] modules	section.
  * @param[in] vm_cs	that defines the virtual module.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
+static int virtual_module_bootstrap(CONF_SECTION *vm_cs)
 {
 	char const		*name;
 	bool			all_same = true;
@@ -1143,7 +1136,7 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
 			/*
 			 *	Allow "foo.authorize" in subsections.
 			 */
-			instance = module_find_with_method(NULL, modules, cf_pair_attr(cp));
+			instance = module_find_with_method(NULL, NULL, cf_pair_attr(cp));
 			if (!instance) {
 				cf_log_err(sub_ci, "Module instance \"%s\" referenced in %s block, does not exist",
 					   cf_pair_attr(cp), cf_section_name1(vm_cs));
@@ -1193,6 +1186,8 @@ int modules_bootstrap(CONF_SECTION *root)
 	instance_ctx = talloc_init("module instance context");
 	instance_num = 1;	/* to catch uninitialized thingies */
 
+	MEM(module_instance_tree = rbtree_create(instance_ctx, module_instance_cmp, NULL, RBTREE_FLAG_NONE));
+
 	/*
 	 *	Remember where the modules were stored.
 	 */
@@ -1225,7 +1220,7 @@ int modules_bootstrap(CONF_SECTION *root)
 
 		subcs = cf_item_to_section(ci);
 
-		instance = module_bootstrap(modules, subcs);
+		instance = module_bootstrap(subcs);
 		if (!instance) return -1;
 
 		if (!next || !cf_item_is_section(next)) continue;
@@ -1280,7 +1275,7 @@ int modules_bootstrap(CONF_SECTION *root)
 			 *	"load-balance" or
 			 *	"redundant-load-balance"
 			 */
-			if (virtual_module_bootstrap(modules, cf_item_to_section(ci)) < 0) return -1;
+			if (virtual_module_bootstrap(cf_item_to_section(ci)) < 0) return -1;
 		}
 
 		cf_log_debug(cs, "  }");

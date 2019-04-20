@@ -894,7 +894,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Simulate thread specific instantiation
 	 */
-	if (modules_thread_instantiate(thread_ctx, config->root_cs, el) < 0) EXIT_WITH_FAILURE;
+	if (modules_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
 	if (xlat_thread_instantiate(thread_ctx) < 0) EXIT_WITH_FAILURE;
 
 	state = fr_state_tree_init(autofree, attr_state, false, 256, 10, 0);
