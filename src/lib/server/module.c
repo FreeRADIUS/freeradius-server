@@ -788,17 +788,17 @@ static int _module_thread_instantiate(void *instance, void *uctx)
 	ti->mod_inst = mi->dl_inst->data;	/* For efficient lookups */
 
 	if (mi->module->thread_inst_size) {
-		char *type_name;
-
 		MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->module->thread_inst_size));
 
 		/*
 		 *	Fixup the type name, incase something calls
 		 *	talloc_get_type_abort() on it...
 		 */
-		MEM(type_name = talloc_typed_asprintf(NULL, "rlm_%s_thread_t", mi->module->name));
-		talloc_set_name(ti->data, "%s", type_name);
-		talloc_free(type_name);
+		if (!mi->module->thread_inst_type) {
+			talloc_set_name(ti->data, "rlm_%s_thread_t", mi->module->name);
+		} else {
+			talloc_set_name(ti->data, "%s", mi->module->thread_inst_type);
+		}
 	}
 
 	DEBUG4("Worker alloced %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);

@@ -146,6 +146,7 @@ typedef int (*module_thread_detach_t)(fr_event_list_t *el, void *thread);
 	struct { \
 		module_thread_instantiate_t	thread_instantiate;	\
 		module_thread_detach_t		thread_detach;		\
+		char const			*thread_inst_type;	\
 		size_t				thread_inst_size;	\
 	}
 
