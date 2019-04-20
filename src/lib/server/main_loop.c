@@ -26,12 +26,14 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/cond_eval.h>
-#include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/trigger.h>
+#include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/util.h>
+#include <freeradius-devel/util/syserror.h>
+
+#include "main_loop.h"
 
 #include <signal.h>
 #include <fcntl.h>
@@ -40,101 +42,23 @@ RCSID("$Id$")
 #  include <sys/wait.h>
 #endif
 
+extern pid_t			radius_pid;
+static bool			just_started = true;
+time_t				fr_start_time = (time_t)-1;
+static fr_event_list_t		*event_list = NULL;
+static int			self_pipe[2] = { -1, -1 };
+
 #ifdef HAVE_SYSTEMD_WATCHDOG
-#  include <systemd/sd-daemon.h>
-#endif
+#include <systemd/sd-daemon.h>
 
-extern pid_t radius_pid;
-extern fr_cond_t *debug_condition;
+struct timeval			sd_watchdog_interval;
+static fr_event_timer_t		const *sd_watchdog_ev;
 
-#ifdef HAVE_SYSTEMD_WATCHDOG
-struct timeval sd_watchdog_interval;
-static fr_event_timer_t const *sd_watchdog_ev;
-#endif
-
-static bool just_started = true;
-time_t fr_start_time = (time_t)-1;
-static fr_event_list_t *event_list = NULL;
-
-fr_event_list_t *fr_global_event_list(void) {
-	/* Currently we do not run a second event loop for modules. */
-	return event_list;
-}
-
-static int event_status(UNUSED void *ctx, struct timeval *wake)
-{
-	if (!DEBUG_ENABLED) {
-		if (just_started) {
-			INFO("Ready to process requests");
-			just_started = false;
-		}
-		return 0;
-	}
-
-	if (!wake) {
-		if (main_config->drop_requests) return 0;
-		INFO("Ready to process requests");
-	} else if ((wake->tv_sec != 0) ||
-		   (wake->tv_usec >= 100000)) {
-		DEBUG("Waking up in %d.%01u seconds.",
-		      (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
-	}
-
-	return 0;
-}
-
-static int event_new_fd(rad_listen_t *this)
-{
-	char buffer[1024];
-
-	if (this->status == RAD_LISTEN_STATUS_KNOWN) return 1;
-
-	this->print(this, buffer, sizeof(buffer));
-
-	if (this->status == RAD_LISTEN_STATUS_INIT) {
-		if (just_started) {
-			DEBUG("Listening on %s", buffer);
-		} else {
-			INFO(" ... adding new socket %s", buffer);
-		}
-
-		switch (this->type) {
-#ifdef WITH_DETAIL
-		/*
-		 *	Detail files are always known, and aren't
-		 *	put into the socket event loop.
-		 */
-		case RAD_LISTEN_DETAIL:
-			this->status = RAD_LISTEN_STATUS_KNOWN;
-			break;	/* add the FD to the list */
-#endif	/* WITH_DETAIL */
-
-			/*
-			 *	FIXME: put idle timers on command sockets.
-			 */
-
-		default:
-			break;
-		} /* switch over listener types */
-
-		this->status = RAD_LISTEN_STATUS_KNOWN;
-		return 1;
-	} /* end of INIT */
-
-	return 1;
-}
-
-void radius_update_listener(rad_listen_t *this)
-{
-	event_new_fd(this);
-}
-
-/*
- *	Emit a systemd watchdog notification and reschedule the event.
+/** Reoccurring watchdog event to inform systemd we're still alive
+ *
+ * Note actually a very good indicator of aliveness as the main event
+ * loop doesn't actually do any packet processing.
  */
-#ifdef HAVE_SYSTEMD_WATCHDOG
-#define rad_panic(_x, ...) log_fatal("%s[%u]: " _x, __FILE__, __LINE__, ## __VA_ARGS__)
-
 static void sd_watchdog_event(fr_event_list_t *our_el, struct timeval *now, void *ctx)
 {
 	struct timeval when;
@@ -143,18 +67,11 @@ static void sd_watchdog_event(fr_event_list_t *our_el, struct timeval *now, void
 	sd_notify(0, "WATCHDOG=1");
 
 	fr_timeval_add(&when, &sd_watchdog_interval, now);
-	if (fr_event_timer_insert(NULL, our_el, &sd_watchdog_ev,
-				  &when, sd_watchdog_event, ctx) < 0) {
-		rad_panic("Failed to insert watchdog event");
+	if (fr_event_timer_insert(NULL, our_el, &sd_watchdog_ev, &when, sd_watchdog_event, ctx) < 0) {
+		ERROR("Failed to insert watchdog event");
 	}
 }
 #endif
-
-/***********************************************************************
- *
- *	Signal handlers.
- *
- ***********************************************************************/
 
 static void handle_signal_self(int flag)
 {
@@ -192,12 +109,10 @@ static void handle_signal_self(int flag)
 	}
 }
 
-static int self_pipe[2] = { -1, -1 };
-
 /*
  *	Inform ourselves that we received a signal.
  */
-void radius_signal_self(int flag)
+void main_loop_signal_self(int flag)
 {
 	ssize_t rcode;
 	uint8_t buffer[16];
@@ -221,8 +136,8 @@ void radius_signal_self(int flag)
 	if (write(self_pipe[1], buffer, 1) < 0) fr_exit(0);
 }
 
-static void event_signal_handler(UNUSED fr_event_list_t *xel,
-				 UNUSED int fd, UNUSED int flags, UNUSED void *ctx)
+static void main_loop_signal_handler(UNUSED fr_event_list_t *xel,
+				     UNUSED int fd, UNUSED int flags, UNUSED void *ctx)
 {
 	ssize_t i, rcode;
 	uint8_t buffer[32];
@@ -233,37 +148,15 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 	/*
 	 *	Merge pending signals.
 	 */
-	for (i = 0; i < rcode; i++) {
-		buffer[0] |= buffer[i];
-	}
+	for (i = 0; i < rcode; i++) buffer[0] |= buffer[i];
 
 	handle_signal_self(buffer[0]);
 }
 
-/***********************************************************************
- *
- *	Bootstrapping code.
- *
- ***********************************************************************/
-
-/*
- *	Externally-visibly functions.
- */
-int radius_event_init(void)
+fr_event_list_t *main_loop_event_list(void)
 {
-	event_list = fr_event_list_alloc(NULL, event_status, NULL);	/* Must not be allocated in mprotected ctx */
-	if (!event_list) return 0;
-
-#ifdef HAVE_SYSTEMD_WATCHDOG
-	if (sd_watchdog_interval.tv_sec || sd_watchdog_interval.tv_usec) {
-		struct timeval now;
-
-		fr_event_list_time(&now, event_list);
-		sd_watchdog_event(event_list, &now, NULL);
-	}
-#endif
-
-	return 1;
+	/* Currently we do not run a second event loop for modules. */
+	return event_list;
 }
 
 /** Start the main event loop and initialise the listeners
@@ -273,7 +166,7 @@ int radius_event_init(void)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int radius_event_start(UNUSED bool have_children)
+int main_loop_start(UNUSED bool have_children)
 {
 	if (fr_start_time != (time_t)-1) return 0;
 
@@ -305,7 +198,7 @@ int radius_event_start(UNUSED bool have_children)
 	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
 	if (fr_event_fd_insert(NULL, event_list, self_pipe[0],
-			       event_signal_handler,
+			       main_loop_signal_handler,
 			       NULL,
 			       NULL,
 			       event_list) < 0) {
@@ -313,31 +206,60 @@ int radius_event_start(UNUSED bool have_children)
 		return -1;
 	}
 
-	/*
-	 *	At this point, no one has any business *ever* going
-	 *	back to root uid.
-	 */
-	rad_suid_down_permanent();
-
-	/*
-	 *	Dropping down may change the RLIMIT_CORE value, so
-	 *	reset it back to what to should be here.
-	 */
-	fr_reset_dumpable();
-
 	return 0;
 }
 
-void radius_event_free(void)
+void main_loop_free(void)
 {
 	TALLOC_FREE(event_list);
-
-	if (debug_condition) talloc_free(debug_condition);
 }
 
-int radius_event_process(void)
+int main_loop_process(void)
 {
 	if (!event_list) return 0;
 
 	return fr_event_loop(event_list);
 }
+
+static int _loop_status(UNUSED void *ctx, struct timeval *wake)
+{
+	if (!DEBUG_ENABLED) {
+		if (just_started) {
+			INFO("Ready to process requests");
+			just_started = false;
+		}
+		return 0;
+	}
+
+	if (!wake) {
+		if (main_config->drop_requests) return 0;
+		INFO("Ready to process requests");
+	} else if ((wake->tv_sec != 0) ||
+		   (wake->tv_usec >= 100000)) {
+		DEBUG("Waking up in %d.%01u seconds.",
+		      (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
+	}
+
+	return 0;
+}
+
+/*
+ *	Externally-visibly functions.
+ */
+int main_loop_init(void)
+{
+	event_list = fr_event_list_alloc(NULL, _loop_status, NULL);	/* Must not be allocated in mprotected ctx */
+	if (!event_list) return 0;
+
+#ifdef HAVE_SYSTEMD_WATCHDOG
+	if (sd_watchdog_interval.tv_sec || sd_watchdog_interval.tv_usec) {
+		struct timeval now;
+
+		fr_event_list_time(&now, event_list);
+		sd_watchdog_event(event_list, &now, NULL);
+	}
+#endif
+
+	return 1;
+}
+

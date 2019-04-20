@@ -24,7 +24,6 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/rad_assert.h>
 
@@ -578,7 +577,7 @@ static int tacacs_socket_recv(rad_listen_t *listener)
 		DEBUG("Client has closed connection");
 
 		listener->status = RAD_LISTEN_STATUS_EOL;
-		radius_update_listener(listener);
+		//radius_update_listener(listener);
 
 		return 0;
 	}
@@ -599,7 +598,7 @@ static int tacacs_socket_recv(rad_listen_t *listener)
 static int tacacs_socket_error(rad_listen_t *listener, UNUSED int fd)
 {
 	listener->status = RAD_LISTEN_STATUS_EOL;
-	radius_update_listener(listener);
+	//radius_update_listener(listener);
 
 	return 1;
 }

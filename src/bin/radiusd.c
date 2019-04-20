@@ -703,7 +703,7 @@ int main(int argc, char *argv[])
 	 *  This has to be done post-fork in case we're using kqueue, where the
 	 *  queue isn't inherited by the child process.
 	 */
-	if (!radius_event_init()) EXIT_WITH_FAILURE;
+	if (!main_loop_init()) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Redirect stderr/stdout as appropriate.
@@ -726,7 +726,7 @@ int main(int argc, char *argv[])
 		if (!config->spawn_workers) {
 			networks = 0;
 			workers = 0;
-			el = fr_global_event_list();
+			el = main_loop_event_list();
 		}
 
 		sc = fr_schedule_create(NULL, el, &default_log, rad_debug_lvl,
@@ -761,10 +761,22 @@ int main(int argc, char *argv[])
 	/*
 	 *  Start the main event loop.
 	 */
-	if (radius_event_start(config->spawn_workers) < 0) {
+	if (main_loop_start(config->spawn_workers) < 0) {
 		ERROR("Failed starting event loop");
 		EXIT_WITH_FAILURE;
 	}
+
+	/*
+	 *	At this point, no one has any business *ever* going
+	 *	back to root uid.
+	 */
+	rad_suid_down_permanent();
+
+	/*
+	 *	Dropping down may change the RLIMIT_CORE value, so
+	 *	reset it back to what to should be here.
+	 */
+	fr_reset_dumpable();
 
 	/*
 	 *  If we're debugging, then a CTRL-C will cause the server to die
@@ -853,7 +865,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Process requests until HUP or exit.
 	 */
-	while ((status = radius_event_process()) == 0x80) {
+	while ((status = main_loop_process()) == 0x80) {
 #ifdef WITH_STATS
 		radius_stats_init(1);
 #endif
@@ -919,7 +931,7 @@ int main(int argc, char *argv[])
 	 *  with destructors that may cause double frees and
 	 *  SEGVs.
 	 */
-	radius_event_free();		/* Free the requests */
+	main_loop_free();		/* Free the requests */
 
 cleanup:
 	/*
@@ -1050,14 +1062,14 @@ static void sig_fatal(int sig)
 
 	switch (sig) {
 	case SIGTERM:
-		radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
+		main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
 		break;
 
 	case SIGINT:
 #ifdef SIGQUIT
 	case SIGQUIT:
 #endif
-		radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
+		main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
 		break;
 		/* FALL-THROUGH */
 
@@ -1075,6 +1087,6 @@ static void sig_hup(UNUSED int sig)
 {
 	reset_signal(SIGHUP, sig_hup);
 
-	radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
+	main_loop_signal_self(RADIUS_SIGNAL_SELF_HUP);
 }
 #endif

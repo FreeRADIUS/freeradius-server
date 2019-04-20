@@ -48,21 +48,17 @@ extern struct timeval sd_watchdog_interval;
 #include <freeradius-devel/server/listen.h>
 #include <freeradius-devel/server/signal.h>
 
-typedef	void (*fr_request_process_t)(REQUEST *, fr_state_signal_t);	//!< Function handler for requests.
+fr_event_list_t		*main_loop_event_list(void);
 
-fr_event_list_t		*fr_global_event_list(void);
+void			main_loop_signal_self(int flag);
 
-void			radius_signal_self(int flag);
+int			main_loop_init(void);
 
-int			radius_event_init(void);
+int			main_loop_start(bool spawn_flag);
 
-int			radius_event_start(bool spawn_flag);
+void			main_loop_free(void);
 
-void			radius_event_free(void);
-
-int			radius_event_process(void);
-
-void			radius_update_listener(rad_listen_t *listener);
+int			main_loop_process(void);
 
 #ifdef __cplusplus
 }

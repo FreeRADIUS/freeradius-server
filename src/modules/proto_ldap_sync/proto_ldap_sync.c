@@ -31,7 +31,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/main_loop.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <sys/socket.h>
 
@@ -980,7 +980,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 	/*
 	 *	Fixme - Should be the network thread's event loop?
 	 */
-	inst->el = fr_global_event_list();
+	inst->el = main_loop_event_list();
 
 	/*
 	 *	Destroys any existing syncs and connections

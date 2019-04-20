@@ -49,7 +49,6 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/server/rad_assert.h>
 

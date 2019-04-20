@@ -160,7 +160,7 @@ static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED 
 
 	switch (in->vb_uint32) {
 	case FR_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RESET:
-		radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
+		main_loop_signal_self(RADIUS_SIGNAL_SELF_HUP);
 		gettimeofday(&reset_time, NULL);
 		return 0;
 

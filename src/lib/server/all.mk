@@ -17,13 +17,13 @@ SOURCES	:= \
 	exfile.c \
 	log.c \
 	main_config.c \
+	main_loop.c \
 	map_proc.c \
 	map.c \
 	module.c \
 	paircmp.c \
 	pairmove.c \
 	pool.c \
-	process.c \
 	rcode.c \
 	regex.c \
 	request.c \

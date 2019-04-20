@@ -45,11 +45,12 @@ typedef struct rad_client RADCLIENT;
 
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/main_config.h>
-#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/signal.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/packet.h>
+#include <freeradius-devel/util/dlist.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,6 +78,7 @@ typedef enum fr_request_state_t {
 	REQUEST_OTHER_4,
 } fr_request_state_t;
 
+typedef	void (*fr_request_process_t)(REQUEST *, fr_state_signal_t);	//!< Function handler for requests.
 typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(REQUEST *);
 
 struct rad_request {
