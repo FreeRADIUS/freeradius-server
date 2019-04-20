@@ -1642,8 +1642,8 @@ typedef struct {
 
 /** Wrap a cf_walker_t in an rb_walker_t
  *
- * @param[in] ctx	A cf_data_walk_ctx_t.
  * @param[in] data	A CONF_DATA entry.
+ * @param[in] uctx	A cf_data_walk_ctx_t.
  */
 static int _cf_data_walk_cb(void *data, void *uctx)
 {
