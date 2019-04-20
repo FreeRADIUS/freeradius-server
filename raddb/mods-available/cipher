@@ -76,14 +76,14 @@ cipher {
 		#  Private key used for decrypting and signing data.
 		#
 		private_key_password = whatever
-		private_key_file = ${certdir}/server.pem
+		private_key_file = ${certdir}/rsa/server.pem
 
 		#
 		#  certificate_file::
 		#
 		#  The PEM encoded certificate used for encrypting data and verifying signatures.
 		#
-		certificate_file = ${certdir}/server.pem
+		certificate_file = ${certdir}/rsa/server.pem
 
 		#
 		#  oaep { ... }::
