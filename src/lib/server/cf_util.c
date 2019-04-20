@@ -1449,7 +1449,6 @@ static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const 
  */
 CONF_DATA const *_cf_data_find(CONF_ITEM const *ci, char const *type, char const *name)
 {
-	rad_assert(strcmp(type, "module_instance_t") != 0);
 	return cf_item_to_data(cf_find(ci, CONF_ITEM_DATA, type, name));
 }
 
@@ -1468,7 +1467,6 @@ CONF_DATA const *_cf_data_find(CONF_ITEM const *ci, char const *type, char const
  */
 CONF_DATA const *_cf_data_find_next(CONF_ITEM const *ci, CONF_ITEM const *prev, char const *type, char const *name)
 {
-	rad_assert(strcmp(type, "module_instance_t") != 0);
 	return cf_item_to_data(cf_find_next(ci, prev, CONF_ITEM_DATA, type, name));
 }
 
@@ -1486,7 +1484,7 @@ CONF_DATA const *_cf_data_find_next(CONF_ITEM const *ci, CONF_ITEM const *prev, 
 CONF_DATA *_cf_data_find_in_parent(CONF_ITEM const *ci, char const *type, char const *name)
 {
 	CONF_ITEM const *parent = ci;
-	rad_assert(strcmp(type, "module_instance_t") != 0);
+
 	do {
 		CONF_ITEM *found;
 
@@ -1685,8 +1683,6 @@ int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 		.cb = cb,
 		.ctx = ctx
 	};
-
-	rad_assert(strcmp(type, "module_instance_t") != 0);
 
 	if (!ci->ident2) return 0;
 
