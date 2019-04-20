@@ -819,8 +819,6 @@ static int _module_thread_instantiate(void *instance, void *uctx)
 	_thread_intantiate_ctx_t	*thread_inst_ctx = uctx;
 	int				ret;
 
-	DEBUG("Processing %p", mi);
-
 	MEM(ti = talloc_zero(thread_inst_ctx->array, module_thread_instance_t));
 	ti->el = thread_inst_ctx->el;
 	ti->module = mi->module;
