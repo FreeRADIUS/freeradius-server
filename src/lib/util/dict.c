@@ -2255,9 +2255,11 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 {
 	char const		*p = oid_str, *end = oid_str + strlen(oid_str);
 	fr_dict_attr_t const	*our_parent = parent;
-	TALLOC_CTX		*top_ctx = NULL, *our_ctx = ctx;
-
-	fr_dict_attr_t		*n = NULL;
+	fr_dict_attr_t		*n = NULL, *our_da;
+	fr_dict_attr_flags_t	flags = {
+		.is_unknown = true,
+		.is_raw = true,
+	};
 
 	if (!fr_cond_assert(parent)) {
 		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
@@ -2269,7 +2271,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	if (fr_dict_valid_oid_str(oid_str, -1) < 0) return -1;
 
 	/*
-	 *	All unknown attributes are of the form "Attr-#-#-#-#"
+	 *	All unknown attributes are of the form "Attr-#.#.#.#"
 	 */
 	if (strncasecmp(p, "Attr-", 5) != 0) {
 		fr_strerror_printf("Unknown attribute '%s'", oid_str);
@@ -2277,13 +2279,31 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	}
 	p += 5;
 
+	/*
+	 *	Allocate the final attribute first, so that any
+	 *	unknown parents can be freed when this da is freed.
+	 *
+	 *      See fr_dict_unknown_acopy() for more details.
+	 *
+	 *	Note also that we copy the input name, even if it is
+	 *	not normalized.
+	 *
+	 *	While the name of this attribute is "Attr-#.#.#", one
+	 *	or more of the leading components may, in fact, be
+	 *	known.
+	 */
+	n = dict_attr_alloc_name(ctx, oid_str);
+
+	/*
+	 *	While the name of this attribu
+	 */
 	do {
 		unsigned int		num;
 		fr_dict_attr_t const	*da = NULL;
 
 		if (fr_dict_oid_component(&num, &p) < 0) {
 		error:
-			talloc_free(top_ctx);
+			talloc_free(n);
 			return -(p - oid_str);
 		}
 
@@ -2303,11 +2323,11 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 					if (!fr_cond_assert(!da || (da->type == FR_TYPE_VENDOR))) goto error;
 
 					if (!da) {
-						if (fr_dict_unknown_vendor_afrom_num(our_ctx, &n,
+						if (fr_dict_unknown_vendor_afrom_num(n, &our_da,
 										     our_parent, num) < 0) {
 							goto error;
 						}
-						da = n;
+						da = our_da;
 					}
 					break;
 
@@ -2315,11 +2335,10 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 				case FR_TYPE_EXTENDED:
 				case FR_TYPE_LONG_EXTENDED:
 				is_root:
-					if (dict_unknown_attr_afrom_num(our_ctx, &n, our_parent, num) < 0) {
+					if (dict_unknown_attr_afrom_num(n, &our_da, our_parent, num) < 0) {
 						goto error;
 					}
-
-					da = n;
+					da = our_da;
 					break;
 
 				/*
@@ -2336,41 +2355,21 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 				}
 			}
 			our_parent = da;
-
-			if (n && n->flags.is_unknown) {
-				if (top_ctx == NULL) top_ctx = n;	/* Track first unknown */
-				our_ctx = n;
-			}
-
-
 			break;
 
 		/*
 		 *	Leaf attribute
 		 */
 		case '\0':
-			if (dict_unknown_attr_afrom_num(our_ctx, &n, our_parent, num) < 0) goto error;
+			dict_attr_init(n, our_parent, num, FR_TYPE_OCTETS, &flags);
 			break;
 		}
 		p++;
 	} while (p < end);
 
-	if (!n) return 0;
-
 	/*
-	 *	Invert the talloc hierarchy, so that if the unknown
-	 *	attribute is freed, any unknown parents are also freed.
+	 *	@todo - if we really care about normalization, re-print the name here, normalized.
 	 */
-	talloc_steal(ctx, n);
-	for (our_parent = n->parent, our_ctx = n;
-	     our_parent && our_parent->flags.is_unknown;
-	     our_parent = our_parent->parent) {
-		fr_dict_attr_t *tmp;
-
-		memcpy(&tmp, &our_parent, sizeof(tmp));			/* const issues *sigh* */
-
-		our_ctx = talloc_steal(our_ctx, tmp);
-	}
 
 	DA_VERIFY(n);
 
