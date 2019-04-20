@@ -800,7 +800,7 @@ static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uc
 }
 
 
-static int _module_list(void *instance, UNUSED void *uctx)
+static int _module_list(void *instance, void *uctx)
 {
 	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
 	FILE *fp = uctx;
