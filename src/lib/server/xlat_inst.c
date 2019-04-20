@@ -382,7 +382,7 @@ int xlat_thread_instantiate(TALLOC_CTX *ctx)
 
 /** Walk over #xlat_exp_t that require instantiation
  *
- * @param[in] ctx	UNUSED.
+ * @param[in] uctx	UNUSED.
  * @param[in] data	node to perform
  */
 static int _xlat_instantiate_walker(void *data, UNUSED void *uctx)

@@ -1173,8 +1173,8 @@ static fr_redis_cluster_rcode_t cluster_redirect(fr_redis_cluster_node_t **out, 
 
 /** Walk all used pools adding them to the live node list
  *
- * @param context Where to write the node we found.
- * @param data node to check.
+ * @param[in] uctx	Where to write the node we found.
+ * @param[in] data	node to check.
  * @return
  *	- 0 continue walking.
  *	- -1 found suitable node.
@@ -2100,8 +2100,8 @@ typedef struct {
 
 /** Walk all used pools, recording the IP addresses of ones matching the filter
  *
- * @param context Where to write the node we found.
- * @param data node to check.
+ * @param[in] uctx	Where to write the node we found.
+ * @param[in] data	node to check.
  * @return
  *	- 0 continue walking.
  *	- -1 found suitable node.

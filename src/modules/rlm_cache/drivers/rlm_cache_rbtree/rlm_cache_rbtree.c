@@ -68,8 +68,8 @@ static int cache_heap_cmp(void const *one, void const *two)
  *
  * Used to free any entries left in the tree on detach.
  *
- * @param ctx unused.
- * @param data to free.
+ * @param[in] data	to free.
+ * @param[in] uctx	unused.
  * @return 2
  */
 static int _cache_entry_free(void *data, UNUSED void *uctx)
