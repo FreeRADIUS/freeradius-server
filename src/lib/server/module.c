@@ -244,8 +244,14 @@ static int module_instance_cmp(void const *one, void const *two)
 	ret = (a_depth > b_depth) - (a_depth < b_depth);
 	if (ret != 0) return ret;
 
-	rad_assert(a->dl_inst);
-	rad_assert(b->dl_inst);
+	/*
+	 *	This happens, as dl_inst is is used in
+	 *	as the loop condition above.
+	 */
+#ifdef __clang_analyzer__
+	if (!fr_cond_assert(a->dl_inst)) return +1;
+	if (!fr_cond_assert(b->dl_inst)) return -1;
+#endif
 
 	ret = (a->dl_inst->parent > b->dl_inst->parent) - (a->dl_inst->parent < b->dl_inst->parent);
 	if (ret != 0) return ret;
