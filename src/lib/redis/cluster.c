@@ -2179,8 +2179,8 @@ static int _fr_redis_cluster_free(fr_redis_cluster_t *cluster)
 
 /** Walk all used pools checking their versions
  *
- * @param context Where to write the node we found.
- * @param data node to check.
+ * @param[in] uctx	Where to write the node we found.
+ * @param[in] data	node to check.
  * @return
  *	- 0 continue walking.
  *	- -1 found suitable node.
