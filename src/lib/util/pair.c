@@ -406,17 +406,7 @@ void fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
 	 *	DA.  So we might as well tie it to this VP.
 	 */
 	if (vp->da->flags.is_unknown) {
-		fr_dict_attr_t *da;
-		char *p;
-		size_t size;
-
-		size = talloc_get_size(vp->da);
-
-		p = talloc_zero_array(vp, char, size);
-		da = (fr_dict_attr_t *) p;
-		talloc_set_type(p, fr_dict_attr_t);
-		memcpy(da, vp->da, size);
-		vp->da = da;
+		vp->da = fr_dict_unknown_acopy(vp, vp->da);
 	}
 }
 
