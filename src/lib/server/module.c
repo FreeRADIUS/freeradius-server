@@ -743,6 +743,9 @@ module_thread_instance_t *module_thread_instance_find(module_instance_t *mi)
 
 /** Retrieve module/thread specific instance data for a module
  *
+ * @note This function shouldn't be used during request processing as it's
+ *      quite slow.  You should use #module_thread_instance_find instead.
+ *
  * @param[in] mod_inst	Module specific instance to find thread_data for.
  * @return
  *	- Thread specific instance data on success.
@@ -758,7 +761,7 @@ void *module_thread_instance_by_data(void *mod_inst)
 	/*
 	 *	Linear search is fast enough for ~50 modules in a linear array.
 	 */
-	for (i = 1; i < len; i++) {
+	for (i = 0; i < len; i++) {
 		if (!array[i]) continue;
 		if (array[i]->mod_inst != mod_inst) continue;
 
@@ -779,7 +782,7 @@ static int _module_thread_inst_array_free(module_thread_instance_t **array)
 	size_t i, len;
 
 	len = talloc_array_length(array);
-	for (i = 1; i < len; i++) {
+	for (i = 0; i < len; i++) {
 		module_thread_instance_t *ti;
 
 		if (!array[i]) continue;
@@ -1041,6 +1044,8 @@ static int _module_instance_free(module_instance_t *mi)
  * Load the module shared library, allocate instance data for it,
  * parse the module configuration, and call the modules "bootstrap" method.
  *
+ * @param[in] parent	of the module being bootstrapped, if this is a submodule.
+ *			If this is not a submodule parent must be NULL.
  * @param[in] cs	containing the configuration for this module or submodule.
  * @return
  *	- A new module instance handle, containing the module's public interface,
