@@ -245,12 +245,21 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
  *	Create free and destroy module instances
  */
 module_thread_instance_t *module_thread_instance_find(module_instance_t *mi);
+
 void		*module_thread_instance_by_data(void *mod_data);
+
 int		modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull);
+
 int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
+
+module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTION *cs) CC_HINT(nonnull(2));
+
 int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
+
 int		modules_free(void);
+
 bool		module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv);
+
 int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
 
 

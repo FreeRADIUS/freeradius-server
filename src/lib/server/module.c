@@ -229,7 +229,20 @@ static int module_instance_cmp(void const *one, void const *two)
 {
 	module_instance_t const *a = one;
 	module_instance_t const *b = two;
+	dl_instance_t const	*dl_inst;
+	int a_depth = 0, b_depth = 0;
 	int ret;
+
+	/*
+	 *	Sort by depth, so for tree walking we start
+	 *	at the shallowest node, and finish with
+	 *	the deepest child.
+	 */
+	for (dl_inst = a->dl_inst; dl_inst; dl_inst = dl_inst->parent) a_depth++;
+	for (dl_inst = b->dl_inst; dl_inst; dl_inst = dl_inst->parent) b_depth++;
+
+	ret = (a_depth > b_depth) - (a_depth < b_depth);
+	if (ret != 0) return ret;
 
 	ret = (a->dl_inst->parent > b->dl_inst->parent) - (a->dl_inst->parent < b->dl_inst->parent);
 	if (ret != 0) return ret;
@@ -609,6 +622,16 @@ module_instance_t *module_find(module_instance_t const *parent, char const *aske
 	return talloc_get_type_abort(inst, module_instance_t);
 }
 
+/** Free an instance
+ *
+ */
+static int _instance_free(void *instance, UNUSED void *uctx)
+{
+	talloc_free(instance);
+	instance_num--;
+	return 0;
+}
+
 /** Free all modules loaded by the server
  *
  * @return 0.
@@ -618,8 +641,12 @@ int modules_free(void)
 	/*
 	 *	Free instances first, then dynamic libraries.
 	 */
+	if (module_instance_tree) {
+		rbtree_walk(module_instance_tree, RBTREE_DELETE_ORDER, _instance_free, NULL);
+		rad_assert(instance_num == 0);
+		TALLOC_FREE(module_instance_tree);
+	}
 	TALLOC_FREE(instance_ctx);
-	instance_num = 0;
 
 	return 0;
 }
@@ -1005,17 +1032,13 @@ static int _module_instance_free(module_instance_t *mi)
  * Load the module shared library, allocate instance data for it,
  * parse the module configuration, and call the modules "bootstrap" method.
  *
- * @note Adds module instance data to the specified CONF_SECTION.  Module will be
- *	freed if CONF_SECTION is freed.
- *
- * @param cs	A child of the modules section,
- *		specifying this specific instance of a module.
+ * @param[in] cs	containing the configuration for this module or submodule.
  * @return
  *	- A new module instance handle, containing the module's public interface,
  *	  and private instance data.
  *	- NULL on error.
  */
-static module_instance_t *module_bootstrap(CONF_SECTION *cs)
+module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTION *cs)
 {
 	char const		*name1, *inst_name;
 	module_instance_t	*mi;
@@ -1035,7 +1058,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 	/*
 	 *	See if the module already exists.
 	 */
-	mi = module_find(NULL, inst_name);
+	mi = module_find(parent, inst_name);
 	if (mi) {
 		ERROR("Duplicate module \"%s\" in file %s[%d] and file %s[%d]",
 		      inst_name,
@@ -1049,7 +1072,10 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 	MEM(mi = talloc_zero(instance_ctx, module_instance_t));
 	talloc_set_destructor(mi, _module_instance_free);
 
-	if (dl_instance(mi, &mi->dl_inst, cs, NULL, name1, DL_TYPE_MODULE) < 0) {
+	if (dl_instance(mi, &mi->dl_inst, cs,
+			parent ? parent->dl_inst : NULL,
+			name1,
+			parent ? DL_TYPE_SUBMODULE : DL_TYPE_MODULE) < 0) {
 		talloc_free(mi);
 		return NULL;
 	}
@@ -1184,7 +1210,6 @@ int modules_bootstrap(CONF_SECTION *root)
 	CONF_SECTION *cs, *modules;
 
 	instance_ctx = talloc_init("module instance context");
-	instance_num = 1;	/* to catch uninitialized thingies */
 
 	MEM(module_instance_tree = rbtree_create(instance_ctx, module_instance_cmp, NULL, RBTREE_FLAG_NONE));
 
@@ -1220,7 +1245,7 @@ int modules_bootstrap(CONF_SECTION *root)
 
 		subcs = cf_item_to_section(ci);
 
-		instance = module_bootstrap(subcs);
+		instance = module_bootstrap(NULL, subcs);
 		if (!instance) return -1;
 
 		if (!next || !cf_item_is_section(next)) continue;
