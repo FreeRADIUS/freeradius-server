@@ -173,3 +173,14 @@ ANALYZE.c       := @clang_path@
 #
 TESTBINDIR = ./$(BUILD_DIR)/bin/local
 TESTBIN    =  $(JLIBTOOL) --quiet --mode=execute $(TESTBINDIR)
+
+#
+#  Checking some dependencies for docs/all.mk
+#
+WITH_DOCS := @WITH_DOCS@
+ifeq ($(WITH_DOCS),yes)
+ASCIIDOCTOR := @ASCIIDOCTOR@
+PANDOC := @PANDOC@
+PANDOC_ENGINE := @PANDOC_ENGINE@
+endif
+
