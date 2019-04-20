@@ -244,6 +244,9 @@ static int module_instance_cmp(void const *one, void const *two)
 	ret = (a_depth > b_depth) - (a_depth < b_depth);
 	if (ret != 0) return ret;
 
+	rad_assert(a->dl_inst);
+	rad_assert(b->dl_inst);
+
 	ret = (a->dl_inst->parent > b->dl_inst->parent) - (a->dl_inst->parent < b->dl_inst->parent);
 	if (ret != 0) return ret;
 
