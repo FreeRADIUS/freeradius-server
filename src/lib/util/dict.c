@@ -1883,24 +1883,38 @@ int fr_dict_enum_add_alias_next(fr_dict_attr_t const *da, char const *alias)
  */
 fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t *n, *new_parent = NULL;
+	fr_dict_attr_t *n;
 	fr_dict_attr_t const *parent;
 
+	/*
+	 *	Allocate an attribute.
+	 */
+	n = dict_attr_alloc_name(ctx, da->name);
+	if (!n) return NULL;
+
+	/*
+	 *	We want to have parent / child relationships, AND to
+	 *	copy all unknown parents, AND to free the unknown
+	 *	parents when this 'da' is freed.  We therefore talloc
+	 *	the parent from the 'da'.
+	 */
 	if (da->parent->flags.is_unknown) {
-		new_parent = fr_dict_unknown_acopy(ctx, da->parent);
-		parent = new_parent;
+		parent = fr_dict_unknown_acopy(n, da->parent);
+		if (!parent) {
+			talloc_free(n);
+			return NULL;
+		}
+
 	} else {
 		parent = da->parent;
 	}
 
-	n = dict_attr_alloc(ctx, parent, da->name, da->attr, da->type, &da->flags);
-	n->parent = parent;
-	n->depth = da->depth;
-
 	/*
-	 *	Inverted tallloc hierarchy.
+	 *	Initialize the rest of the fields.
 	 */
-	if (new_parent) talloc_steal(n, parent);
+	dict_attr_init(n, parent, da->attr, da->type, &da->flags);
+
+	DA_VERIFY(n);
 
 	return n;
 }
