@@ -72,7 +72,7 @@ static int cache_heap_cmp(void const *one, void const *two)
  * @param data to free.
  * @return 2
  */
-static int _cache_entry_free(UNUSED void *ctx, void *data)
+static int _cache_entry_free(void *data, UNUSED void *uctx)
 {
 	talloc_free(data);
 

@@ -1179,10 +1179,10 @@ static fr_redis_cluster_rcode_t cluster_redirect(fr_redis_cluster_node_t **out, 
  *	- 0 continue walking.
  *	- -1 found suitable node.
  */
-static int _cluster_pool_walk(void *context, void *data)
+static int _cluster_pool_walk(void *data, void *uctx)
 {
-	cluster_nodes_live_t	*live = context;
-	fr_redis_cluster_node_t		*node = data;
+	cluster_nodes_live_t	*live = uctx;
+	fr_redis_cluster_node_t	*node = data;
 
 	rad_assert(node->pool);
 
@@ -2106,9 +2106,9 @@ typedef struct {
  *	- 0 continue walking.
  *	- -1 found suitable node.
  */
-static int _cluster_role_walk(void *context, void *data)
+static int _cluster_role_walk(void *data, void *uctx)
 {
-	addr_by_role_ctx_t	*ctx = context;
+	addr_by_role_ctx_t		*ctx = uctx;
 	fr_redis_cluster_node_t		*node = data;
 
 	if ((ctx->is_master && node->is_master) || (ctx->is_slave && !node->is_master)) {
@@ -2185,10 +2185,10 @@ static int _fr_redis_cluster_free(fr_redis_cluster_t *cluster)
  *	- 0 continue walking.
  *	- -1 found suitable node.
  */
-static int _cluster_version_walk(void *context, void *data)
+static int _cluster_version_walk(void *data, void *uctx)
 {
-	char const 		*min_version = context;
-	fr_redis_cluster_node_t		*node = data;
+	char const 		*min_version = uctx;
+	fr_redis_cluster_node_t	*node = data;
 	fr_redis_conn_t		*conn;
 	int			ret;
 	char			buffer[40];

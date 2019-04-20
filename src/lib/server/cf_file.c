@@ -607,9 +607,9 @@ typedef struct {
 /*
  *	Return 0 for keep going, 1 for stop.
  */
-static int _file_callback(void *ctx, void *data)
+static int _file_callback(void *data, void *uctx)
 {
-	cf_file_callback_t	*cb = ctx;
+	cf_file_callback_t	*cb = uctx;
 	cf_file_t		*file = data;
 	struct stat		buf;
 

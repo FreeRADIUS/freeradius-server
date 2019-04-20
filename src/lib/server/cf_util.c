@@ -1645,9 +1645,9 @@ typedef struct {
  * @param[in] ctx	A cf_data_walk_ctx_t.
  * @param[in] data	A CONF_DATA entry.
  */
-static int _cf_data_walk_cb(void *ctx, void *data)
+static int _cf_data_walk_cb(void *data, void *uctx)
 {
-	cf_data_walk_ctx_t	*cd_ctx = ctx;
+	cf_data_walk_ctx_t	*cd_ctx = uctx;
 	CONF_DATA		*cd = data;
 	CONF_ITEM		*ci = data;
 	void			*mutable;

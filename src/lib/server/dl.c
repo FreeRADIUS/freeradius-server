@@ -937,7 +937,7 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 }
 
 #ifndef NDEBUG
-static int _dl_walk_print(UNUSED void *context, void *data)
+static int _dl_walk_print(void *data, UNUSED void *uctx)
 {
 	dl_t *dl = talloc_get_type_abort(data, dl_t);
 
@@ -948,7 +948,7 @@ static int _dl_walk_print(UNUSED void *context, void *data)
 #endif
 
 #ifndef NDEBUG
-static int _dl_inst_walk_print(UNUSED void *context, void *data)
+static int _dl_inst_walk_print(void *data, UNUSED void *uctx)
 {
 	dl_instance_t *dl_inst = talloc_get_type_abort(data, dl_instance_t);
 

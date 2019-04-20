@@ -2338,7 +2338,7 @@ void xlat_unregister(char const *name)
 	talloc_free(c);	/* Should also remove from tree */
 }
 
-static int _xlat_unregister_callback(void *mod_inst, void *data)
+static int _xlat_unregister_callback(void *data, void *mod_inst)
 {
 	xlat_t *c = (xlat_t *) data;
 

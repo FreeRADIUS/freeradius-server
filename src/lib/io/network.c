@@ -1522,9 +1522,9 @@ static int cmd_stats_self(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cm
 	return 0;
 }
 
-static int socket_list(void *ctx, void *data)
+static int socket_list(void *data, void *uctx)
 {
-	FILE *fp = ctx;
+	FILE *fp = uctx;
 	fr_network_socket_t *s = data;
 
 	if (!s->listen->app_io->get_name) {

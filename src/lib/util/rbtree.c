@@ -617,7 +617,7 @@ void *rbtree_finddata(rbtree_t *tree, void const *data)
  * We call ourselves recursively for each function, but that's OK,
  * as the stack is only log(N) deep, which is ~12 entries deep.
  */
-static int walk_node_pre_order(rbnode_t *x, rb_walker_t compare, void *context)
+static int walk_node_pre_order(rbnode_t *x, rb_walker_t compare, void *uctx)
 {
 	int rcode;
 	rbnode_t *left, *right;
@@ -625,16 +625,16 @@ static int walk_node_pre_order(rbnode_t *x, rb_walker_t compare, void *context)
 	left = x->left;
 	right = x->right;
 
-	rcode = compare(context, x->data);
+	rcode = compare(x->data, uctx);
 	if (rcode != 0) return rcode;
 
 	if (left != NIL) {
-		rcode = walk_node_pre_order(left, compare, context);
+		rcode = walk_node_pre_order(left, compare, uctx);
 		if (rcode != 0) return rcode;
 	}
 
 	if (right != NIL) {
-		rcode = walk_node_pre_order(right, compare, context);
+		rcode = walk_node_pre_order(right, compare, uctx);
 		if (rcode != 0) return rcode;
 	}
 
@@ -644,23 +644,23 @@ static int walk_node_pre_order(rbnode_t *x, rb_walker_t compare, void *context)
 /** rbtree_in_order
  *
  */
-static int walk_node_in_order(rbnode_t *x, rb_walker_t compare, void *context)
+static int walk_node_in_order(rbnode_t *x, rb_walker_t compare, void *uctx)
 {
 	int rcode;
 	rbnode_t *right;
 
 	if (x->left != NIL) {
-		rcode = walk_node_in_order(x->left, compare, context);
+		rcode = walk_node_in_order(x->left, compare, uctx);
 		if (rcode != 0) return rcode;
 	}
 
 	right = x->right;
 
-	rcode = compare(context, x->data);
+	rcode = compare(x->data, uctx);
 	if (rcode != 0) return rcode;
 
 	if (right != NIL) {
-		rcode = walk_node_in_order(right, compare, context);
+		rcode = walk_node_in_order(right, compare, uctx);
 		if (rcode != 0) return rcode;
 	}
 
@@ -671,21 +671,21 @@ static int walk_node_in_order(rbnode_t *x, rb_walker_t compare, void *context)
 /** rbtree_post_order
  *
  */
-static int walk_node_post_order(rbnode_t *x, rb_walker_t compare, void *context)
+static int walk_node_post_order(rbnode_t *x, rb_walker_t compare, void *uctx)
 {
 	int rcode;
 
 	if (x->left != NIL) {
-		rcode = walk_node_post_order(x->left, compare, context);
+		rcode = walk_node_post_order(x->left, compare, uctx);
 		if (rcode != 0) return rcode;
 	}
 
 	if (x->right != NIL) {
-		rcode = walk_node_post_order(x->right, compare, context);
+		rcode = walk_node_post_order(x->right, compare, uctx);
 		if (rcode != 0) return rcode;
 	}
 
-	rcode = compare(context, x->data);
+	rcode = compare(x->data, uctx);
 	if (rcode != 0) return rcode;
 
 	return 0;		/* we know everything returned zero */
@@ -705,7 +705,7 @@ static int walk_node_post_order(rbnode_t *x, rb_walker_t compare, void *context)
  *		1    - delete the node and stop walking
  *		2    - delete the node and continue walking
  */
-static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *context)
+static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *uctx)
 {
 	rbnode_t *solid, *x;
 	int rcode = 0;
@@ -720,7 +720,7 @@ static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *context)
 			x = x->left;
 		}
 	visit:
-		rcode = compare(context, x->data);
+		rcode = compare(x->data, uctx);
 		if (rcode < 0) {
 			return rcode;
 		}
@@ -758,7 +758,7 @@ static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *context)
  *	The compare function should return 0 to continue walking.
  *	Any other value stops the walk, and is returned.
  */
-int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *context)
+int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *uctx)
 {
 	int rcode;
 
@@ -768,19 +768,19 @@ int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *con
 
 	switch (order) {
 	case RBTREE_PRE_ORDER:
-		rcode = walk_node_pre_order(tree->root, compare, context);
+		rcode = walk_node_pre_order(tree->root, compare, uctx);
 		break;
 
 	case RBTREE_IN_ORDER:
-		rcode = walk_node_in_order(tree->root, compare, context);
+		rcode = walk_node_in_order(tree->root, compare, uctx);
 		break;
 
 	case RBTREE_POST_ORDER:
-		rcode = walk_node_post_order(tree->root, compare, context);
+		rcode = walk_node_post_order(tree->root, compare, uctx);
 		break;
 
 	case RBTREE_DELETE_ORDER:
-		rcode = walk_delete_order(tree, compare, context);
+		rcode = walk_delete_order(tree, compare, uctx);
 		break;
 
 	default:

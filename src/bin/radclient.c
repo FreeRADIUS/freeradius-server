@@ -800,7 +800,7 @@ static int filename_cmp(void const *one, void const *two)
 	return strcmp(a->filters, b->filters);
 }
 
-static int filename_walk(UNUSED void *context, void *data)
+static int filename_walk(void *data, UNUSED void *uctx)
 {
 	rc_file_pair_t *files = data;
 

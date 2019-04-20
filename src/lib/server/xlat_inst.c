@@ -296,12 +296,12 @@ int xlat_instantiate_ephemeral(xlat_exp_t *root)
 /** Walker callback for xlat_inst_tree
  *
  */
-static int _xlat_thread_instantiate(void *ctx, void *data)
+static int _xlat_thread_instantiate(void *data, void *uctx)
 {
 	xlat_thread_inst_t	*thread_inst;
 	xlat_inst_t		*inst = talloc_get_type_abort(data, xlat_inst_t);
 
-	thread_inst = xlat_thread_inst_alloc(ctx, data);
+	thread_inst = xlat_thread_inst_alloc(uctx, data);
 	if (!thread_inst) return -1;
 
 	DEBUG3("Instantiating xlat \"%s\" node %p, instance %p, new thread instance %p",
@@ -385,7 +385,7 @@ int xlat_thread_instantiate(TALLOC_CTX *ctx)
  * @param[in] ctx	UNUSED.
  * @param[in] data	node to perform
  */
-static int _xlat_instantiate_walker(UNUSED void *ctx, void *data)
+static int _xlat_instantiate_walker(void *data, UNUSED void *uctx)
 {
 	xlat_inst_t *inst = talloc_get_type_abort(data, xlat_inst_t);
 
