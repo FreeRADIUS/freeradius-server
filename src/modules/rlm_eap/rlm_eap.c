@@ -150,7 +150,12 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	case FR_EAP_PWD:
 	case FR_EAP_AKA:
 	case FR_EAP_SIM:
+	{
+		rlm_eap_t *inst = cf_data_value(cf_data_find(eap_cs, dl_instance_t, "rlm_eap"))->data;
+
 		WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
+
+	}
 		return 0;
 
 	default:
