@@ -58,7 +58,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("default_eap_type", FR_TYPE_VOID, rlm_eap_t, default_method),
 			 .dflt = "md5", .func = eap_type_parse },
 
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, rlm_eap_t, submodule_instances),
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, rlm_eap_t, submodule_cs),
 			 .func = submodule_parse },
 
 	{ FR_CONF_DEPRECATED("timer_expire", FR_TYPE_UINT32, rlm_eap_t, timer_limit), .dflt = "60" },
@@ -109,7 +109,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 /** Wrapper around dl_instance which loads submodules based on type = foo pairs
  *
  * @param[in] ctx	to allocate data in (instance of rlm_eap_t).
- * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[out] out	Where to write child conf section to.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
@@ -117,32 +117,18 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int submodule_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	char const			*name = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION			*eap_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION			*submodule_cs;
-	eap_type_t			method;
-	dl_instance_t			*parent_inst;
-	dl_instance_t			*dl_inst;
-	rlm_eap_submodule_t const	*submodule;
-	rlm_eap_t			*inst;
-	int				ret;
-	uint8_t				i;
+{	char const	*name = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION	*eap_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION	*submodule_cs;
+	eap_type_t	method;
 
 	method = eap_name2type(name);
 	if (method == FR_EAP_INVALID) {
 		cf_log_err(ci, "Unknown EAP type %s", name);
 		return -1;
 	}
-
-	/*
-	 *	Helpfully stored for us by dl_instance()
-	 */
-	parent_inst = cf_data_value(cf_data_find(eap_cs, dl_instance_t, "rlm_eap"));
-	rad_assert(parent_inst);
-	inst = talloc_get_type_abort(parent_inst->data, rlm_eap_t);
 
 #if !defined(HAVE_OPENSSL_SSL_H) || !defined(HAVE_LIBSSL)
 	/*
@@ -183,38 +169,7 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 		cf_lineno_set(submodule_cs, cf_lineno(ci));
 	}
 
-	ret = dl_instance(ctx, &dl_inst, submodule_cs, parent_inst, name, DL_TYPE_SUBMODULE);
-	if (ret < 0) return -1;
-
-
-	submodule = (rlm_eap_submodule_t const *)dl_inst->module->common;
-
-	/*
-	 *	Add the methods the submodule provides
-	 */
-	for (i = 0; i < MAX_PROVIDED_METHODS; i++) {
-		if (!submodule->provides[i]) break;
-
-		method = submodule->provides[i];
-		/*
-		 *	Check for duplicates
-		 */
-		if (inst->methods[method].submodule) {
-			CONF_SECTION *conf = inst->methods[method].submodule_inst->conf;
-
-			cf_log_err(ci, "Duplicate EAP-Type %s.  Conflicting entry %s[%u]", name,
-				   cf_filename(conf), cf_lineno(conf));
-			talloc_free(dl_inst);
-			return -1;
-		}
-
-		inst->methods[method].submodule_inst = dl_inst;
-		inst->methods[method].submodule = submodule;
-	}
-
-	rad_assert(i > 0);	/* Yes this is a fatal error */
-
-	*(void **)out = dl_inst;
+	*(void **)out = submodule_cs;
 
 	return 0;
 }
@@ -586,7 +541,7 @@ module_call:
 	RDEBUG2("Calling submodule %s", method->submodule->name);
 //	caller = request->module;
 //	request->module = method->submodule->name;
-	rcode = eap_session->process(method->submodule_inst->data, eap_session);
+	rcode = eap_session->process(method->submodule_inst->dl_inst->data, eap_session);
 //	request->module = caller;
 
 	/*
@@ -960,8 +915,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
 	rlm_eap_t	*inst = talloc_get_type_abort(instance, rlm_eap_t);
-
-	size_t		i, loaded;
+	size_t		i;
 
 	/*
 	 *	Create our own random pool.
@@ -970,49 +924,16 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	fr_rand_init(&inst->rand_pool, 1);
 	inst->rand_pool.randcnt = 0;
 
-	loaded = talloc_array_length(inst->submodule_instances);
-	for (i = 0; i < loaded; i++) {
-		rlm_eap_submodule_t const	*method;
-		dl_instance_t			*dl_inst = inst->submodule_instances[i];
-
-		if (!dl_inst) continue;	/* Skipped as we don't have SSL support */
-
-		method = (rlm_eap_submodule_t const *)dl_inst->module->common;
-		if ((method->instantiate) &&
-		    ((method->instantiate)(dl_inst->data, dl_inst->conf) < 0)) {
-			return -1;
-		}
-
-#ifndef NDEBUG
-		if (dl_inst->data) module_instance_read_only(dl_inst->data, dl_inst->name);
-#endif
-	}
-
 	return 0;
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	rlm_eap_t	*inst = talloc_get_type_abort(instance, rlm_eap_t);
-	size_t		i, loaded, count = 0;
+	size_t		i, j, loaded, count = 0;
 
 	inst->name = cf_section_name2(cs);
 	if (!inst->name) inst->name = "eap";
-
-	loaded = talloc_array_length(inst->submodule_instances);
-
-	for (i = 0; i < loaded; i++) {
-		rlm_eap_submodule_t const	*method;
-		dl_instance_t			*dl_inst = inst->submodule_instances[i];
-
-		if (!dl_inst) continue;	/* Skipped as we don't have SSL support */
-
-		method = (rlm_eap_submodule_t const *)dl_inst->module->common;
-		if ((method->bootstrap) &&
-		    ((method->bootstrap)(dl_inst->data, dl_inst->conf) < 0)) return -1;
-
-		count++;
-	}
 
 	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
 		PERROR("Failed adding %s alias", inst->name);
@@ -1020,6 +941,52 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name, -1);
 	rad_assert(inst->name);
+
+	/*
+	 *	Load and bootstrap the submodules now
+	 *	We have to do that here instead of in a parse function
+	 *	Because the submodule might want to look at its parent
+	 *	and we haven't completed our own bootstrap phase yet.
+	 */
+	loaded = talloc_array_length(inst->submodule_cs);
+	for (i = 0; i < loaded; i++) {
+		eap_type_t			method;
+		CONF_SECTION			*submodule_cs = inst->submodule_cs[i];
+		rlm_eap_submodule_t const	*submodule;
+		module_instance_t		*submodule_inst;
+
+		if (!submodule_cs) continue;	/* Skipped as we don't have SSL support */
+
+		submodule_inst = module_bootstrap(module_by_data(inst), submodule_cs);
+		if (!submodule_inst) return -1;
+		submodule = (rlm_eap_submodule_t const *)submodule_inst->dl_inst->module->common;
+
+		/*
+		 *	Add the methods the submodule provides
+		 */
+		for (j = 0; i < MAX_PROVIDED_METHODS; j++) {
+			if (!submodule->provides[j]) break;
+
+			method = submodule->provides[j];
+			/*
+			 *	Check for duplicates
+			 */
+			if (inst->methods[method].submodule) {
+				CONF_SECTION *conf = inst->methods[method].submodule_inst->dl_inst->conf;
+
+				cf_log_err(submodule_cs, "Duplicate EAP-Type %s.  Conflicting entry %s[%u]",
+					   eap_type2name(method),
+					   cf_filename(conf), cf_lineno(conf));
+
+				return -1;
+			}
+
+			inst->methods[method].submodule_inst = submodule_inst;
+			inst->methods[method].submodule = submodule;
+		}
+
+		count++;
+	}
 
 	if (count == 0) {
 		cf_log_err(cs, "No EAP method configured, module cannot do anything");

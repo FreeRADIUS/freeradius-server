@@ -35,7 +35,7 @@ RCSIDH(rlm_eap_h, "$Id$")
  *
  */
 typedef struct {
-	dl_instance_t			*submodule_inst;		//!< Submodule's instance data
+	module_instance_t		*submodule_inst;		//!< Submodule's instance data
 	rlm_eap_submodule_t const	*submodule;			//!< Submodule's exported interface.
 } rlm_eap_method_t;
 
@@ -43,7 +43,8 @@ typedef struct {
  *
  */
 typedef struct {
-	dl_instance_t			**submodule_instances;		//!< All the submodules we loaded.
+	CONF_SECTION			**submodule_cs;			//!< Configuration sections for the submodules
+									///< we're going to load.
 	rlm_eap_method_t 		methods[FR_EAP_MAX_TYPES];	//!< Array of loaded (or not), submodules.
 
 	char const			*default_method_name;		//!< Default method to attempt to start.
