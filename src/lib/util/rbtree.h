@@ -91,13 +91,23 @@ rbtree_t	*_rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare,
 				char const *type, rb_free_t node_free, int flags);
 
 void		rbtree_node_talloc_free(void *data);
+
 bool		rbtree_insert(rbtree_t *tree, void const *data);
+
 rbnode_t	*rbtree_insert_node(rbtree_t *tree, void *data);
+
 void		rbtree_delete(rbtree_t *tree, rbnode_t *z);
+
 bool		rbtree_deletebydata(rbtree_t *tree, void const *data);
+
 rbnode_t	*rbtree_find(rbtree_t *tree, void const *data);
+
 void		*rbtree_finddata(rbtree_t *tree, void const *data);
+
 uint32_t	rbtree_num_elements(rbtree_t *tree);
+
+uint32_t	rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, rb_order_t order);
+
 void		*rbtree_node2data(rbtree_t *tree, rbnode_t *node);
 
 /*

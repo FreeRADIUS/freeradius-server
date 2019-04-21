@@ -799,6 +799,46 @@ uint32_t rbtree_num_elements(rbtree_t *tree)
 	return tree->num_elements;
 }
 
+typedef struct {
+	size_t			idx;
+	void			**data;
+} rbtree_flatten_ctx_t;
+
+static int _flatten_cb(void *data, void *uctx)
+{
+	rbtree_flatten_ctx_t *ctx = uctx;
+	ctx->data[ctx->idx++] = data;
+	return 0;
+}
+
+/** Return an array containing all elements in the tree, in the specified order
+ *
+ * @param[in] ctx	Where to allocate the array.
+ * @param[out] out	Where to write a pointer to the array.
+ * @param[in] tree	to flatten.
+ * @param[in] order	to flatten the tree in.
+ * @return
+ *	- The number of elements in the tree.
+ */
+uint32_t rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, rb_order_t order)
+{
+	uint32_t		num = rbtree_num_elements(tree);
+	rbtree_flatten_ctx_t	uctx;
+
+	if (unlikely(!tree)) {
+		*out = NULL;
+		return 0;
+	}
+
+	uctx.idx = 0;
+	uctx.data = talloc_array(ctx, void *, num);
+	if (!uctx.data) return 0;
+	rbtree_walk(tree, order, _flatten_cb, &uctx);
+	*out = uctx.data;
+
+	return uctx.idx;
+}
+
 /*
  *	Given a Node, return the data.
  */
