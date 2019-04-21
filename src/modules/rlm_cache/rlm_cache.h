@@ -66,7 +66,7 @@ typedef struct {
 typedef struct {
 	rlm_cache_config_t	config;			//!< Must come first because of icky hacks.
 
-	dl_instance_t		*driver_inst;		//!< Driver's instance data.
+	module_instance_t	*driver_inst;		//!< Driver's instance data.
 	cache_driver_t const	*driver;		//!< Driver's exported interface.
 
 	vp_map_t		*maps;			//!< Attribute map applied to users.
@@ -279,8 +279,9 @@ typedef int		(*cache_reconnect_t)(rlm_cache_handle_t **handle, rlm_cache_config_
 
 struct cache_driver {
 	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
+	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
+	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
 
-	cache_instantiate_t		instantiate;		//!< (optional) Instantiate a driver.
 	cache_entry_alloc_t		alloc;			//!< (optional) Allocate a new entry.
 	cache_entry_free_t		free;			//!< (optional) Free memory used by an entry.
 
