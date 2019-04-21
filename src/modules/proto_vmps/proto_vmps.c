@@ -559,7 +559,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
-	inst->io.dl_inst = dl_instance_find(inst);
+	inst->io.dl_inst = dl_instance_by_data(inst);
 	rad_assert(inst != NULL);
 
 	/*

@@ -101,12 +101,14 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
  *
  * @copydetails cache_instantiate_t
  */
-static int mod_instantiate(rlm_cache_config_t const *config, void *instance, CONF_SECTION *conf)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	rlm_cache_memcached_t	*driver = instance;
-	memcached_return_t	ret;
+	rlm_cache_memcached_t		*driver = instance;
+	memcached_return_t		ret;
+	char				buffer[256];
+	rlm_cache_config_t const	*config = dl_parent_data_by_child_data(instance);
 
-	char			buffer[256];
+	rad_assert(config);
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
 

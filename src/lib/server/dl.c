@@ -488,7 +488,7 @@ void dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func)
 /** Lookup a dl_instance_t via instance data
  *
  */
-dl_instance_t const *dl_instance_find(void const *data)
+dl_instance_t const *dl_instance_by_data(void const *data)
 {
 	void *mutable;
 
@@ -497,6 +497,25 @@ dl_instance_t const *dl_instance_find(void const *data)
 	memcpy(&mutable, &data, sizeof(mutable));
 
 	return rbtree_finddata(dl_loader->inst_tree, &(dl_instance_t){ .data = mutable });
+}
+
+/** A convenience function for returning a parent's private data
+ *
+ * @param[in] data	Private instance data for child.
+ * @return
+ *	- Parent's private instance data.
+ *	- NULL if no parent
+ */
+void *dl_parent_data_by_child_data(void const *data)
+{
+	dl_instance_t const *dl_inst;
+
+	dl_inst = dl_instance_by_data(data);
+	if (!dl_inst) return NULL;
+
+	if (!dl_inst->parent) return NULL;
+
+	return dl_inst->parent->data;
 }
 
 /** Allocate module instance data, and parse the module's configuration

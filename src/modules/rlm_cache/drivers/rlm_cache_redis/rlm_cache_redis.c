@@ -66,10 +66,13 @@ fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[] = {
  *
  * @copydetails cache_instantiate_t
  */
-static int mod_instantiate(rlm_cache_config_t const *config, void *instance, CONF_SECTION *conf)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	rlm_cache_redis_t	*driver = instance;
-	char			buffer[256];
+	rlm_cache_redis_t		*driver = instance;
+	char				buffer[256];
+	rlm_cache_config_t const	*config = dl_parent_data_by_child_data(instance);
+
+	rad_assert(config);
 
 	buffer[0] = '\0';
 

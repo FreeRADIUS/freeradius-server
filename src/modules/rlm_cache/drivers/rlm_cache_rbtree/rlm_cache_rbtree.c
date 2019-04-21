@@ -100,7 +100,7 @@ static int mod_detach(void *instance)
  *
  * @copydetails cache_instantiate_t
  */
-static int mod_instantiate(UNUSED rlm_cache_config_t const *config, void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 

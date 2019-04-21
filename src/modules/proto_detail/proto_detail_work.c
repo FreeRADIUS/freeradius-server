@@ -880,7 +880,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	so we can find out what the parent of our instance
 	 *	was.
 	 */
-	dl_inst = dl_instance_find(instance);
+	dl_inst = dl_instance_by_data(instance);
 	rad_assert(dl_inst);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
