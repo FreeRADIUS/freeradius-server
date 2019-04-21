@@ -775,8 +775,6 @@ void module_free(module_instance_t *mi)
 }
 
 /** Free all modules loaded by the server
- *
- * @return 0.
  */
 void modules_free(void)
 {
@@ -784,11 +782,10 @@ void modules_free(void)
 	size_t len, i;
 
 	rbtree_flatten(NULL, (void ***)&inst, module_instance_name_tree, RBTREE_IN_ORDER);
-
 	len = talloc_array_length(inst);
 	for (i = 0; i < len; i++) talloc_free(inst[(len - i) - 1]);
-
 	talloc_free(inst);
+
 	TALLOC_FREE(module_instance_name_tree);
 	TALLOC_FREE(module_instance_data_tree);
 	TALLOC_FREE(instance_ctx);
