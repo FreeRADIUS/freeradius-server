@@ -84,21 +84,6 @@ typedef struct {
 	vp_map_t		*maps;			//!< Head of the maps list.
 } rlm_cache_entry_t;
 
-/** Instantiate a driver
- *
- * Function to handle any driver specific instantiation.
- *
- * @param config	of the rlm_cache module.  Should not be modified.
- * @param instance	A uint8_t array of inst_size if inst_size > 0, else NULL,
- *			this should contain the result of parsing the driver's
- *			CONF_PARSER array that it specified in the interface struct.
- * @param conf		section holding driver specific #CONF_PAIR (s).
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-typedef int		(*cache_instantiate_t)(rlm_cache_config_t const *config, void *instance, CONF_SECTION *conf);
-
 /** Allocate a new cache entry
  *
  */

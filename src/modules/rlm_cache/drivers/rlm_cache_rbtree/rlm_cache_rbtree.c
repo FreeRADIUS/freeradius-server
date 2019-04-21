@@ -98,7 +98,13 @@ static int mod_detach(void *instance)
 
 /** Create a new cache_rbtree instance
  *
- * @copydetails cache_instantiate_t
+ * @param instance	A uint8_t array of inst_size if inst_size > 0, else NULL,
+ *			this should contain the result of parsing the driver's
+ *			CONF_PARSER array that it specified in the interface struct.
+ * @param conf		section holding driver specific #CONF_PAIR (s).
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
