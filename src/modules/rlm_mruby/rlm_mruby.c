@@ -530,8 +530,8 @@ static int mod_detach(void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_mruby;
-rad_module_t rlm_mruby = {
+extern module_t rlm_mruby;
+module_t rlm_mruby = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "mruby",
 	.type		= RLM_TYPE_THREAD_UNSAFE, /* Not sure */

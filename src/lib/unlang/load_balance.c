@@ -146,7 +146,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 					sp = unlang_generic_to_module(child);
 					rad_assert(sp != NULL);
 
-					thread = module_thread_instance_find(sp->module_instance);
+					thread = module_thread(sp->module_instance);
 					rad_assert(thread != NULL);
 
 					active_callers = thread->active_callers;

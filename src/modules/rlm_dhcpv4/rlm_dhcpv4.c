@@ -191,8 +191,8 @@ static void dhcp_unload(void)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_dhcpv4;
-rad_module_t rlm_dhcpv4 = {
+extern module_t rlm_dhcpv4;
+module_t rlm_dhcpv4 = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcpv4",
 	.inst_size	= sizeof(rlm_dhcpv4_t),

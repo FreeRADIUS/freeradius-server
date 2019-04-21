@@ -1382,8 +1382,8 @@ static int mod_load(void)
 	return 0;
 }
 
-extern rad_module_t rlm_redis_ippool;
-rad_module_t rlm_redis_ippool = {
+extern module_t rlm_redis_ippool;
+module_t rlm_redis_ippool = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "redis",
 	.type		= RLM_TYPE_THREAD_SAFE,

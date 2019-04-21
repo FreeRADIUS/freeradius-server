@@ -29,7 +29,7 @@ RCSIDH(modules_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct rad_module_s rad_module_t;
+typedef struct rad_module_s module_t;
 typedef struct module_instance_s module_instance_t;
 typedef struct section_type_value_s section_type_value_t;
 typedef struct module_thread_instance_s  module_thread_instance_t;
@@ -189,7 +189,7 @@ struct module_instance_s {
 	dl_instance_t			*dl_inst;	//!< Structure containing the module's instance data,
 							//!< configuration, and dl handle.
 
-	rad_module_t const		*module;	//!< Public module structure.  Cached for convenience.
+	module_t const			*module;	//!< Public module structure.  Cached for convenience.
 
 	pthread_mutex_t			*mutex;		//!< To prevent multiple threads entering a thread unsafe
 							///< module.
@@ -202,6 +202,8 @@ struct module_instance_s {
 
 	rlm_rcode_t			code;		//!< Code module will return when 'force' has
 							//!< has been set to true.
+	bool				in_name_tree;	//!< Whether this is in the name lookup tree.
+	bool				in_data_tree;	//!< Whether this is in the data lookup tree.
 };
 
 /** Per thread per instance data
@@ -213,7 +215,7 @@ struct module_thread_instance_s {
 
 	fr_event_list_t			*el;		//!< Event list associated with this thread.
 
-	rad_module_t const		*module;	//!< Public module structure.  Cached for convenience,
+	module_t const			*module;	//!< Public module structure.  Cached for convenience,
 							///< and to prevent use-after-free if the global data
 							///< is freed before the thread instance data.
 
@@ -224,29 +226,58 @@ struct module_thread_instance_s {
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 };
 
-/*
- *	Share connection pool instances between modules
+/** @name Convenience wrappers around other internal APIs to make them easier to instantiate with modules
+ *
+ * @{
  */
 fr_pool_t	*module_connection_pool_init(CONF_SECTION *module,
-						     void *opaque,
-						     fr_pool_connection_create_t c,
-						     fr_pool_connection_alive_t a,
-						     char const *log_prefix,
-						     char const *trigger_prefix,
-						     VALUE_PAIR *trigger_args);
-exfile_t *module_exfile_init(TALLOC_CTX *ctx,
-			     CONF_SECTION *module,
-			     uint32_t max_entries,
-			     uint32_t max_idle,
-			     bool locking,
-			     char const *trigger_prefix,
-			     VALUE_PAIR *trigger_args);
-/*
- *	Create free and destroy module instances
- */
-module_thread_instance_t *module_thread_instance_find(module_instance_t *mi);
+					     void *opaque,
+					     fr_pool_connection_create_t c,
+					     fr_pool_connection_alive_t a,
+					     char const *log_prefix,
+					     char const *trigger_prefix,
+					     VALUE_PAIR *trigger_args);
+exfile_t	*module_exfile_init(TALLOC_CTX *ctx,
+			     	    CONF_SECTION *module,
+				    uint32_t max_entries,
+				    uint32_t max_idle,
+				    bool locking,
+				    char const *trigger_prefix,
+				    VALUE_PAIR *trigger_args);
+/** @{ */
 
-void		*module_thread_instance_by_data(void *mod_data);
+/** @name Helper functions
+ *
+ * @{
+ */
+bool		module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv);
+
+int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
+/** @{ */
+
+/** @name Module and module thread lookup
+ *
+ * @{
+ */
+module_instance_t	*module_by_name(module_instance_t const *parent, char const *asked_name);
+
+module_instance_t	*module_by_name_and_method(rlm_components_t *method,
+						   module_instance_t const *parent, char const *asked_name);
+
+module_instance_t	*module_by_data(void const *data);
+
+module_thread_instance_t *module_thread(module_instance_t *mi);
+
+module_thread_instance_t *module_thread_by_data(void const *data);
+/** @} */
+
+/** @name Module and module thread initialisation and instantiation
+ *
+ * @{
+ */
+void		module_free(module_instance_t *mi);
+
+void		modules_free(void);
 
 int		modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull);
 
@@ -255,20 +286,7 @@ int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
 module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTION *cs) CC_HINT(nonnull(2));
 
 int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
-
-int		modules_free(void);
-
-bool		module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv);
-
-int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
-
-
-#ifdef WITH_COA
-#  define MODULE_NULL_COA_FUNCS ,NULL,NULL
-#else
-#  define MODULE_NULL_COA_FUNCS
-#endif
-
+/** @} */
 
 #ifdef __cplusplus
 }

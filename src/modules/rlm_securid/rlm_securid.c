@@ -560,8 +560,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_securid;
-rad_module_t rlm_securid = {
+extern module_t rlm_securid;
+module_t rlm_securid = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "securid",
 	.inst_size	= sizeof(rlm_securid_t),

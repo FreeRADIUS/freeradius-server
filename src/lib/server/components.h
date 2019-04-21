@@ -27,7 +27,7 @@ RCSIDH(components_h, "$Id$")
 
 /** The different section components of the server
  *
- * Used as indexes in the methods array in the rad_module_t struct.
+ * Used as indexes in the methods array in the module_t struct.
  */
 typedef enum rlm_components {
 	MOD_AUTHENTICATE = 0,			//!< 0 methods index for authenticate section.

@@ -1988,8 +1988,8 @@ static void mod_unload(void)
 }
 
 /* globally exported name */
-extern rad_module_t rlm_ldap;
-rad_module_t rlm_ldap = {
+extern module_t rlm_ldap;
+module_t rlm_ldap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "ldap",
 	.type		= 0,

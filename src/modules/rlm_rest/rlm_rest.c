@@ -976,7 +976,7 @@ static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread
 	rest_xlat_thread_inst_t	*xt = xlat_thread_inst;
 
 	xt->inst = inst;
-	xt->t = talloc_get_type_abort(module_thread_instance_by_data(inst), rlm_rest_thread_t);
+	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_rest_thread_t);
 
 	return 0;
 }
@@ -1157,8 +1157,8 @@ static void mod_unload(void)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_rest;
-rad_module_t rlm_rest = {
+extern module_t rlm_rest;
+module_t rlm_rest = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "rest",
 	.type			= RLM_TYPE_THREAD_SAFE,

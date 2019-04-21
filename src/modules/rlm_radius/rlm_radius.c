@@ -835,8 +835,8 @@ static void mod_unload(void)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_radius;
-rad_module_t rlm_radius = {
+extern module_t rlm_radius;
+module_t rlm_radius = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius",
 	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,

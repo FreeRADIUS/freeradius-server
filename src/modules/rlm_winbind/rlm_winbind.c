@@ -536,8 +536,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_winbind;
-rad_module_t rlm_winbind = {
+extern module_t rlm_winbind;
+module_t rlm_winbind = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "winbind",
 	.inst_size	= sizeof(rlm_winbind_t),

@@ -92,17 +92,15 @@ struct eap_session_s {
  *
  */
 typedef struct {
-	DL_MODULE_COMMON;					//!< Common fields to all loadable modules.
+	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
+	FR_MODULE_COMMON;				//!< Common fields for all instantiated modules.
+	FR_MODULE_THREADED_COMMON;			//!< Common fields for threaded modules.
 
 	eap_type_t		provides[MAX_PROVIDED_METHODS];	//!< Allow the module to register itself for more
 								///< than one EAP-Method.
-
-	module_instantiate_t	bootstrap;			//!< Register any attributes required for the module
-
-	module_instantiate_t	instantiate;			//!< Create a new submodule instance.
-	eap_process_t		session_init;			//!< Callback for creating a new #eap_session_t.
-	eap_process_t		entry_point;			//!< Callback for processing the next #eap_round_t of an
-								//!< #eap_session_t.
+	eap_process_t		session_init;		//!< Callback for creating a new #eap_session_t.
+	eap_process_t		entry_point;		//!< Callback for processing the next #eap_round_t of an
+							//!< #eap_session_t.
 } rlm_eap_submodule_t;
 
 #define REQUEST_DATA_EAP_SESSION	 (1)

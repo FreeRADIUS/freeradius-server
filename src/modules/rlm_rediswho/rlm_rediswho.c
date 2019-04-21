@@ -260,8 +260,8 @@ static int mod_load(void)
 	return 0;
 }
 
-extern rad_module_t rlm_rediswho;
-rad_module_t rlm_rediswho = {
+extern module_t rlm_rediswho;
+module_t rlm_rediswho = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "rediswho",
 	.type		= RLM_TYPE_THREAD_SAFE,

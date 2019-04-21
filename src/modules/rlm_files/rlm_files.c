@@ -493,8 +493,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 
 /* globally exported name */
-extern rad_module_t rlm_files;
-rad_module_t rlm_files = {
+extern module_t rlm_files;
+module_t rlm_files = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "files",
 	.inst_size	= sizeof(rlm_files_t),

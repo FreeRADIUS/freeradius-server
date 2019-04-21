@@ -253,8 +253,8 @@ static void mod_unload(void)
 	fr_soh_free();
 }
 
-extern rad_module_t rlm_soh;
-rad_module_t rlm_soh = {
+extern module_t rlm_soh;
+module_t rlm_soh = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "soh",
 	.type		= RLM_TYPE_THREAD_SAFE,

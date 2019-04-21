@@ -418,8 +418,8 @@ static int mod_detach(UNUSED void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_sigtran;
-rad_module_t rlm_sigtran = {
+extern module_t rlm_sigtran;
+module_t rlm_sigtran = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "sigtran",
 	.type			= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,

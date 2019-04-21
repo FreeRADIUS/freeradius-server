@@ -848,7 +848,7 @@ static int cipher_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thr
 	rlm_cipher_t			*inst = talloc_get_type_abort(uctx, rlm_cipher_t);
 
 	*((rlm_cipher_rsa_thread_inst_t **)xlat_thread_inst) =
-		talloc_get_type_abort(module_thread_instance_by_data(inst), rlm_cipher_rsa_thread_inst_t);
+		talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_cipher_rsa_thread_inst_t);
 
 	return 0;
 }
@@ -1230,8 +1230,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_cipher;
-rad_module_t rlm_cipher = {
+extern module_t rlm_cipher;
+module_t rlm_cipher = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "cipher",
 	.type			= RLM_TYPE_THREAD_SAFE,

@@ -571,8 +571,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, UNUSED void *
 	return RLM_MODULE_OK;
 }
 
-extern rad_module_t rlm_passwd;
-rad_module_t rlm_passwd = {
+extern module_t rlm_passwd;
+module_t rlm_passwd = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "passwd",
 	.inst_size	= sizeof(rlm_passwd_t),

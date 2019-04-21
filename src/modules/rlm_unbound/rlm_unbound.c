@@ -700,8 +700,8 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-extern rad_module_t rlm_unbound;
-rad_module_t rlm_unbound = {
+extern module_t rlm_unbound;
+module_t rlm_unbound = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "unbound",
 	.type		= RLM_TYPE_THREAD_SAFE,

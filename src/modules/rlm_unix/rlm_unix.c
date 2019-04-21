@@ -507,8 +507,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 }
 
 /* globally exported name */
-extern rad_module_t rlm_unix;
-rad_module_t rlm_unix = {
+extern module_t rlm_unix;
+module_t rlm_unix = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "unix",
 	.type		= RLM_TYPE_THREAD_UNSAFE,

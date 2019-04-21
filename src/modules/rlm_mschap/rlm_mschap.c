@@ -2250,8 +2250,8 @@ static int mod_detach(
 }
 
 
-extern rad_module_t rlm_mschap;
-rad_module_t rlm_mschap = {
+extern module_t rlm_mschap;
+module_t rlm_mschap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "mschap",
 	.type		= 0,

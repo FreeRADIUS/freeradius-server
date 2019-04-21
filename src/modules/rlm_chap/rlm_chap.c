@@ -204,8 +204,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_chap;
-rad_module_t rlm_chap = {
+extern module_t rlm_chap;
+module_t rlm_chap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "chap",
 	.inst_size	= sizeof(rlm_chap_t),

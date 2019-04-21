@@ -254,8 +254,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_logintime;
-rad_module_t rlm_logintime = {
+extern module_t rlm_logintime;
+module_t rlm_logintime = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "logintime",
 	.inst_size	= sizeof(rlm_logintime_t),

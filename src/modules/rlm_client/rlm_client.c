@@ -360,8 +360,8 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_client;
-rad_module_t rlm_client = {
+extern module_t rlm_client;
+module_t rlm_client = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dynamic_clients",
 	.type		= RLM_TYPE_THREAD_SAFE,		/* type */

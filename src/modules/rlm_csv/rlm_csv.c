@@ -541,8 +541,8 @@ finish:
 	return rcode;
 }
 
-extern rad_module_t rlm_csv;
-rad_module_t rlm_csv = {
+extern module_t rlm_csv;
+module_t rlm_csv = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "csv",
 	.type		= 0,

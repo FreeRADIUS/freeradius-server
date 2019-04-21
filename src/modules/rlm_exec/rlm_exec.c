@@ -340,8 +340,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_exec;
-rad_module_t rlm_exec = {
+extern module_t rlm_exec;
+module_t rlm_exec = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "exec",
 	.type		= RLM_TYPE_THREAD_SAFE,

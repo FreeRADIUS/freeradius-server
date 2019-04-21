@@ -538,8 +538,8 @@ static int mod_load(void)
 /*
  * Hook into the FreeRADIUS module system.
  */
-extern rad_module_t rlm_couchbase;
-rad_module_t rlm_couchbase = {
+extern module_t rlm_couchbase;
+module_t rlm_couchbase = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "couchbase",
 	.type		= RLM_TYPE_THREAD_SAFE,

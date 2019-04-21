@@ -552,8 +552,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 #endif
 
 /* globally exported name */
-extern rad_module_t rlm_radutmp;
-rad_module_t rlm_radutmp = {
+extern module_t rlm_radutmp;
+module_t rlm_radutmp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radutmp",
 	.type		= RLM_TYPE_THREAD_UNSAFE,

@@ -2272,8 +2272,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	return RLM_MODULE_OK;
 }
 
-extern rad_module_t rlm_isc_dhcp;
-rad_module_t rlm_isc_dhcp = {
+extern module_t rlm_isc_dhcp;
+module_t rlm_isc_dhcp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "isc_dhcp",
 	.type		= 0,

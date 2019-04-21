@@ -152,8 +152,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(void *instance, UNUSED v
 	return sometimes_return(instance, request, request->reply, NULL);
 }
 
-extern rad_module_t rlm_sometimes;
-rad_module_t rlm_sometimes = {
+extern module_t rlm_sometimes;
+module_t rlm_sometimes = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sometimes",
 	.inst_size	= sizeof(rlm_sometimes_t),

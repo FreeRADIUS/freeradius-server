@@ -419,7 +419,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	} else {
 		inst->pool_name = talloc_typed_strdup(inst, "ippool");
 	}
-	sql_inst = module_find(NULL, inst->sql_instance_name);
+	sql_inst = module_by_name(NULL, inst->sql_instance_name);
 	if (!sql_inst) {
 		cf_log_err(conf, "failed to find sql instance named %s",
 			   inst->sql_instance_name);
@@ -746,8 +746,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_sqlippool;
-rad_module_t rlm_sqlippool = {
+extern module_t rlm_sqlippool;
+module_t rlm_sqlippool = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sqlippool",
 	.type		= RLM_TYPE_THREAD_SAFE,

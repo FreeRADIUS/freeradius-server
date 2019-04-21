@@ -502,8 +502,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 }
 
 /* globally exported name */
-extern rad_module_t rlm_opendirectory;
-rad_module_t rlm_opendirectory = {
+extern module_t rlm_opendirectory;
+module_t rlm_opendirectory = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "opendirectory",
 	.inst_size	= sizeof(rlm_opendirectory_t),

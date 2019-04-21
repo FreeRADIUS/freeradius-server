@@ -631,8 +631,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	Externally visible module definition.
  */
-extern rad_module_t rlm_logtee;
-rad_module_t rlm_logtee = {
+extern module_t rlm_logtee;
+module_t rlm_logtee = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "logtee",
 	.inst_size		= sizeof(rlm_logtee_t),

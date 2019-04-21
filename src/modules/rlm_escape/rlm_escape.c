@@ -189,8 +189,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_escape;
-rad_module_t rlm_escape = {
+extern module_t rlm_escape;
+module_t rlm_escape = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "escape",
 	.inst_size	= sizeof(rlm_escape_t),

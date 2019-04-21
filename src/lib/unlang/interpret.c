@@ -182,7 +182,7 @@ uint64_t unlang_interpret_active_callers(unlang_t *instruction)
 		sp = unlang_generic_to_module(instruction);
 		rad_assert(sp != NULL);
 
-		thread = module_thread_instance_find(sp->module_instance);
+		thread = module_thread(sp->module_instance);
 		rad_assert(thread != NULL);
 
 		return thread->active_callers;

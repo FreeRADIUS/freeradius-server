@@ -34,7 +34,7 @@ RCSID("$Id$")
 
 #include "rlm_cache.h"
 
-extern rad_module_t rlm_cache;
+extern module_t rlm_cache;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("driver", FR_TYPE_STRING, rlm_cache_config_t, driver_name), .dflt = "rlm_cache_rbtree" },
@@ -1020,7 +1020,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-rad_module_t rlm_cache = {
+module_t rlm_cache = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "cache",
 	.inst_size	= sizeof(rlm_cache_t),

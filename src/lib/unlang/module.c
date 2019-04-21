@@ -360,7 +360,7 @@ void unlang_module_push(rlm_rcode_t *out, REQUEST *request,
 	 */
 	MEM(ms = talloc_zero(stack, unlang_frame_state_module_t));
 	ms->presult = out;
-	ms->thread = module_thread_instance_find(module_instance);
+	ms->thread = module_thread(module_instance);
 	rad_assert(ms->thread != NULL);
 
 	MEM(mi = talloc_zero(ms, unlang_module_t));	/* Free at the same time as the state */
@@ -599,7 +599,7 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult, int
 		/*
 		 *	Grab the thread/module specific data if any exists.
 		 */
-		ms->thread = module_thread_instance_find(sp->module_instance);
+		ms->thread = module_thread(sp->module_instance);
 		ms->presult = NULL;
 		rad_assert(ms->thread != NULL);
 	} else {

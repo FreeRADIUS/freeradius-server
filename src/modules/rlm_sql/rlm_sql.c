@@ -43,7 +43,7 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
-extern rad_module_t rlm_sql;
+extern module_t rlm_sql;
 
 /*
  *	So we can do pass2 xlat checks on the queries.
@@ -1616,7 +1616,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 
 
 /* globally exported name */
-rad_module_t rlm_sql = {
+module_t rlm_sql = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sql",
 	.type		= RLM_TYPE_THREAD_SAFE,

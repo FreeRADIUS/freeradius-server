@@ -296,8 +296,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-extern rad_module_t rlm_delay;
-rad_module_t rlm_delay = {
+extern module_t rlm_delay;
+module_t rlm_delay = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "delay",
 	.type		= 0,

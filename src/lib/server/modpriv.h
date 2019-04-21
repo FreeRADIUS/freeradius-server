@@ -33,12 +33,6 @@ RCSIDH(modpriv_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-module_instance_t	*module_find_with_method(rlm_components_t *method,
-						 module_instance_t const *parent, char const *asked_name);
-
-module_instance_t	*module_find(module_instance_t const *parent, char const *asked_name);
-
 int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
 
 int			unlang_fixup_update(vp_map_t *map, void *ctx);

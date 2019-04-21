@@ -151,8 +151,8 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_expiration;
-rad_module_t rlm_expiration = {
+extern module_t rlm_expiration;
+module_t rlm_expiration = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "expiration",
 	.type		= RLM_TYPE_THREAD_SAFE,

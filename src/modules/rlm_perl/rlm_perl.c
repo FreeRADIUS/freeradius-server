@@ -1134,8 +1134,8 @@ DIAG_ON(nested-externs)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_perl;
-rad_module_t rlm_perl = {
+extern module_t rlm_perl;
+module_t rlm_perl = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "perl",
 #ifdef USE_ITHREADS

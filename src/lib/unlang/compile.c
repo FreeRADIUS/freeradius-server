@@ -3332,7 +3332,7 @@ static unlang_t *compile_item(unlang_t *parent,
 	 *	modules belongs in raddb/mods-available/,
 	 *	which isn't loaded into the "modules" section.
 	 */
-	inst = module_find_with_method(&component, NULL, realname);
+	inst = module_by_name_and_method(&component, NULL, realname);
 	if (inst) {
 		UPDATE_CTX2;
 

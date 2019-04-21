@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/module.h>
 #include "rlm_eap.h"
 
-extern rad_module_t rlm_eap;
+extern module_t rlm_eap;
 
 /** Resume context for calling a submodule
  *
@@ -1050,7 +1050,7 @@ static void mod_unload(void)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-rad_module_t rlm_eap = {
+module_t rlm_eap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "eap",
 	.inst_size	= sizeof(rlm_eap_t),

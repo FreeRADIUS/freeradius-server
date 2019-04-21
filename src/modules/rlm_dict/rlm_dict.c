@@ -177,8 +177,8 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 	return 0;
 }
 
-extern rad_module_t rlm_dict;
-rad_module_t rlm_dict = {
+extern module_t rlm_dict;
+module_t rlm_dict = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dict",
 	.bootstrap	= mod_bootstrap,
