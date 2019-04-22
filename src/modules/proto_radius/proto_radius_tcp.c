@@ -61,9 +61,9 @@ typedef struct {
 
 	uint16_t			port;			//!< Port to listen on.
 
-	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
-								//!< buffer value.
+	bool				recv_buff_is_set;	//!< Whether we were provided with a recv_buff
 	bool				dynamic_clients;	//!< whether we have dynamic clients
+	bool				dedup_authenticator;	//!< dedup using the request authenticator
 
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
@@ -91,6 +91,7 @@ static const CONF_PARSER tcp_listen_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_radius_tcp_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_BOOL, proto_radius_tcp_t, dynamic_clients) } ,
+	{ FR_CONF_OFFSET("accept_conflicting_packets", FR_TYPE_BOOL, proto_radius_tcp_t, dedup_authenticator) } ,
 	{ FR_CONF_POINTER("networks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) networks_config },
 
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_radius_tcp_t, max_packet_size), .dflt = "4096" } ,
@@ -357,13 +358,22 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+static int mod_compare(void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
 		       void const *one, void const *two)
 {
 	int rcode;
+	proto_radius_tcp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_tcp_t);
 
 	uint8_t const *a = one;
 	uint8_t const *b = two;
+
+	/*
+	 *	Do a better job of deduping input packet.
+	 */
+	if (inst->dedup_authenticator) {
+		rcode = memcmp(a + 4, b + 4, RADIUS_AUTH_VECTOR_LENGTH);
+		if (rcode != 0) return rcode;
+	}
 
 	/*
 	 *	The tree is ordered by IDs, which are (hopefully)
