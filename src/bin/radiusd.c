@@ -668,7 +668,7 @@ int main(int argc, char *argv[])
 	 *	Call the module's initialisation methods.  These create
 	 *	connection pools and open connections to external resources.
 	 */
-	if (modules_instantiate(config->root_cs) < 0) EXIT_WITH_FAILURE;
+	if (modules_instantiate() < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	Instantiate "permanent" xlats

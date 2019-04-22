@@ -868,7 +868,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Instantiate the modules
 	 */
-	if (modules_instantiate(config->root_cs) < 0) EXIT_WITH_FAILURE;
+	if (modules_instantiate() < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	Create a dummy event list

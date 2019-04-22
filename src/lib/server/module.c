@@ -971,25 +971,13 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
  * Allows the module to initialise connection pools, and complete any registrations that depend on
  * attributes created during the bootstrap phase.
  *
- * @param[in] root	Configuration root.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int modules_instantiate(CONF_SECTION *root)
+int modules_instantiate(void)
 {
-	CONF_SECTION *modules;
-
-	modules = cf_section_find(root, "modules", NULL);
-	if (!modules) return 0;
-
 	DEBUG2("#### Instantiating modules ####");
-
-	if (fr_command_register_hook(NULL, NULL, modules, cmd_table) < 0) {
-		ERROR("Failed registering radmin commands for modules - %s",
-		      fr_strerror());
-		return -1;
-	}
 
 	if (rbtree_walk(module_instance_name_tree, RBTREE_IN_ORDER, _module_instantiate, NULL) < 0) return -1;
 
@@ -1428,6 +1416,12 @@ int modules_bootstrap(CONF_SECTION *root)
 	}
 
 	cf_log_debug(modules, " } # modules");
+
+	if (fr_command_register_hook(NULL, NULL, modules, cmd_table) < 0) {
+		ERROR("Failed registering radmin commands for modules - %s",
+		      fr_strerror());
+		return -1;
+	}
 
 	return 0;
 }
