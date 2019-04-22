@@ -396,7 +396,8 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static int mod_compare(UNUSED void const *instance, void const *one, void const *two)
+static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+		       void const *one, void const *two)
 {
 	int rcode;
 
@@ -411,7 +412,7 @@ static int mod_compare(UNUSED void const *instance, void const *one, void const 
 	if (rcode != 0) return rcode;
 
 	/*
-	 *	Then ordered by code, which is usally the same.
+	 *	Then ordered by code, which is usually the same.
 	 */
 	return (a[0] < b[0]) - (a[0] > b[0]);
 }

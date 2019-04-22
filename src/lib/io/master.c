@@ -251,19 +251,21 @@ static int track_cmp(void const *one, void const *two)
 	int rcode;
 
 	/*
-	 *	Call the per-protocol comparison function, if it
-	 *	exists.
-	 */
-	rcode = a->client->inst->app_io->compare(a->client->inst->app_io_instance,
-						 a->packet, b->packet);
-	if (rcode != 0) return rcode;
-
-	/*
 	 *	Connected sockets MUST have all tracking entries use
 	 *	the same client definition.
 	 */
 	if (a->client->connection) {
 		rad_assert(a->client == b->client);
+
+		/*
+		 *	Note that we pass the connection "client", as
+		 *	we may do negotiation specific to this connection.
+		 */
+		rcode = a->client->inst->app_io->compare(a->client->inst->app_io_instance,
+							 a->client->connection->child->thread_instance,
+							 a->client->connection->client->radclient,
+							 a->packet, b->packet);
+		if (rcode != 0) return rcode;
 		return 0;
 	}
 
@@ -272,7 +274,16 @@ static int track_cmp(void const *one, void const *two)
 	/*
 	 *	Unconnected sockets must check src/dst ip/port.
 	 */
-	return address_cmp(a->address, b->address);
+	rcode = address_cmp(a->address, b->address);
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	Call the per-protocol comparison function.
+	 */
+	return a->client->inst->app_io->compare(a->client->inst->app_io_instance,
+						a->client->thread->child->thread_instance,
+						a->client->radclient,
+						a->packet, b->packet);
 }
 
 

@@ -357,7 +357,8 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static int mod_compare(UNUSED void const *instance, void const *one, void const *two)
+static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+		       void const *one, void const *two)
 {
 	int rcode;
 

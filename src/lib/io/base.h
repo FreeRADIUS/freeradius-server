@@ -294,6 +294,8 @@ typedef void (*fr_io_data_vnode_t)(fr_listen_t *li, uint32_t fflags);
  * packets take the same place in any dedup tree.
  *
  * @param[in] instance		the context for this function
+ * @param[in] thread_instance	the thread instance for this function
+ * @param[in] client		the client associated with this packet
  * @param[in] packet1		one packet
  * @param[in] packet2		a second packet
  * @return
@@ -301,7 +303,7 @@ typedef void (*fr_io_data_vnode_t)(fr_listen_t *li, uint32_t fflags);
  *	- >0 on packet two "larger" than packet one
  *	- =0 on the two packets being identical
  */
-typedef int (*fr_io_data_cmp_t)(void const *instance, void const *packet1, void const *packet2);
+typedef int (*fr_io_data_cmp_t)(void const *instance, void *thread_instance, RADCLIENT *client, void const *packet1, void const *packet2);
 
 /**  Handle an error on the socket.
  *
