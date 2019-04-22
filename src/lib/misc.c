@@ -607,13 +607,6 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool res
 			fr_strerror_printf("Invalid address");
 			return -1;
 		}
-
-		/*
-		 *	Fall through to resolving the address, using
-		 *	whatever address family they prefer.  If they
-		 *	don't specify an address family, force IPv4.
-		 */
-		if (af == AF_UNSPEC) af = AF_INET;
 	}
 
 	/*
