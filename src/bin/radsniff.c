@@ -572,7 +572,7 @@ static void rs_stats_process_latency(rs_latency_t *stats)
 		stats->interval.latency_average = (stats->interval.latency_total / stats->interval.linked_total);
 	}
 
-	if (isnan(stats->latency_smoothed)) {
+	if (isnan((long double)stats->latency_smoothed)) {
 		stats->latency_smoothed = 0;
 	}
 	if (stats->interval.latency_average > 0) {
