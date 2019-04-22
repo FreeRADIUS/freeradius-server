@@ -1,8 +1,12 @@
-# -*- text -*-
+#  -*- text -*-
 #
-#  # `radrelay` Configuration
+#  :toc:
 #
 #  $Id$
+
+#######################################################################
+#
+#  = Radrelay Configuration
 #
 #  Use with:
 #
@@ -42,13 +46,14 @@ raddbdir = @raddbdir@
 radacctdir = @radacctdir@
 
 #
-#  This is the name of the running server. See also the `-n`
-#  command-line option.
+#  name:: This is the name of the running server.
+#
+#  See also the `-n` command-line option.
 #
 name = radrelay
 
 #
-#  Further file and directory locations
+#  Location of config and logfiles.
 #
 confdir = ${raddbdir}
 run_dir = ${localstatedir}/run/${name}
@@ -56,7 +61,10 @@ libdir = @libdir@
 pidfile = ${run_dir}/${name}.pid
 
 #
-#  Request handling configuration
+#  max_request_time::
+#  cleanup_delay::
+#
+#  Request handling configuration.
 #
 max_request_time = 30
 cleanup_delay = 5
@@ -69,18 +77,62 @@ cleanup_delay = 5
 #  should be used (`rlm_detail`, `rlm_linelog` etc.)
 #
 log {
+	#
+	#  destination: Destination for log messages.
+	#
+	#  This can be one of:
+	#
+	#  |===
+	#  | Destination | Description
+	#  | files       | Log to `file`, as defined below.
+	#  | syslog      | To syslog (see also the `syslog_facility`, below.
+	#  | stdout      | Standard output.
+	#  | stderr      | Standard error.
+	#  |===
+	#
+	#  The command-line option `-X` over-rides this option, and forces
+	#  logging to go to stdout.
+	#
 	destination = files
+
+	#
+	#  file:: The logging messages for the server are appended to the
+	#  tail of this file `if ${destination} == "files"`
+	#
+	#  NOTE: If the server is running in debugging mode, this file is
+	#  NOT used.
+	#
 	file = ${logdir}/${name}.log
 }
 
 #
-#  ## Security configuration
+#  .SECURITY CONFIGURATION
+#
+#  There may be multiple methods of attacking on the server.  This
+#  section holds the configuration items which minimize the impact
+#  of those attacks
 #
 security {
+	#
+	#  max_attributes:: The maximum number of attributes
+	#  permitted in a RADIUS packet.  Packets which have MORE
+	#  than this number of attributes in them will be dropped.
+	#
+	#  If this number is set too low, then no RADIUS packets
+	#  will be accepted.
+	#
+	#  If this number is set too high, then an attacker may be
+	#  able to send a small number of packets which will cause
+	#  the server to use all available memory on the machine.
+	#
+	#  Setting this number to 0 means "allow any number of attributes"
+	#
 	max_attributes = 200
 
+	#
 	# reject_delay && status_server don't apply when we are
 	# only reading accounting packets from the detail file
+	#
 
 @openssl_version_check_config@
 }
@@ -109,28 +161,34 @@ instantiate {
 proxy_requests  = yes
 
 #
-#  Define a "home server", which is where packets should be
+#  Define a `home server`, which is where packets should be
 #  relayed to.
 #
 home_server home1 {
+	#
+	#  type::
+	#
 	type = acct
 
 	#
-	#  This directive replaces the "-r" command-line option
+	#  ipaddr:: This directive replaces the `-r` command-line option
 	#  in `radrelay`.
 	#
 	ipaddr = 192.0.2.20
 
+	#
+	#  port::
+	#
 	port = 1812
 
 	#
-	#  This directive replaces the "-i" command-line option
+	#  src_ipaddr:: This directive replaces the `-i` command-line option
 	#  in `radrelay`.
 	#
 #	src_ipaddr = 192.0.2.1
 
 	#
-	#  This directive replaces the "-s", "-S", and "-n" command-line
+	#  secret:: This directive replaces the `-s`, `-S`, and `-n` command-line
 	#  options in `radrelay`.
 	#
 	secret = testing123
@@ -164,14 +222,22 @@ server radrelay {
 	#  Read the detail file:
 	#
 	listen {
+		#
+		#  type::
+		#
 		type = detail
 
 		#
-		#  The filename here should be the same as the one used by the
-		#  main `radiusd` program.  It writes the file using the `detail`
-		#  module (see `raddb/modules/detail`).
+		#  filename:: The filename here should be the same as the one used by the
+		#  main `radiusd` program.
+		#
+		#  It writes the file using the `detail` module (see `raddb/modules/detail`).
 		#
 		filename = ${radacctdir}/detail
+
+		#
+		#  load_factor::
+		#
 		load_factor = 90
 	}
 
