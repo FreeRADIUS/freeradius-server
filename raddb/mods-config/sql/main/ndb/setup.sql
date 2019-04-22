@@ -1,4 +1,4 @@
-# -*- text -*-
+#  -*- text -*-
 ##
 ## admin.sql -- MySQL commands for creating the RADIUS user.
 ##
