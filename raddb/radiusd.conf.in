@@ -1,15 +1,14 @@
-# -*- text -*-
+#  -*- text -*-
 #
+#  :toc:
 #
-#	http://www.freeradius.org/
-#	$Id$
-#
+#  $Id$
 
-######################################################################
+#######################################################################
 #
-# # FreeRADIUS server configuration file - @RADIUSD_VERSION_STRING@
+#  = FreeRADIUS server configuration file - @RADIUSD_VERSION_STRING@
 #
-#  Read "man radiusd" before editing this file.  See the section
+#  Read `man radiusd` before editing this file.  See the section
 #  titled DEBUGGING.  It outlines a method where you can quickly
 #  obtain the configuration you want, without running into
 #  trouble.
@@ -24,16 +23,17 @@
 #  and suggestions for how they may be fixed.
 #
 #  There may be a lot of output, but look carefully for words like:
-#  "warning", "error", "reject", or "failure".  The messages there
+#  `warning`, `error`, `reject`, or `failure`.  The messages there
 #  will usually be enough to guide you to a solution.
 #
 #  If you are going to ask a question on the mailing list, then
 #  explain what you are trying to do, and include the output from
 #  debugging mode (`radiusd -X`).  Failure to do so means that all
 #  of the responses to your question will be people telling you
-#  to "post the output of `radiusd -X`".
+#  to _post the output of `radiusd -X`_.
 
-######################################################################
+#
+#  ## Default instance
 #
 #  The location of other config files and logfiles are declared
 #  in this file.
@@ -47,12 +47,10 @@
 #  documented in that "man" page.  They are only documented here,
 #  in the comments.
 #
-#  The "unlang" policy language can be used to create complex
+#  The `unlang` policy language can be used to create complex
 #  if / else policies.  See `man unlang` for details.
 #
-
-#
-#  The paths used for installed server files. They are set
+#  NOTE: The paths used for installed server files. They are set
 #  automatically at install time and will not normally need to be
 #  changed.
 #
@@ -66,8 +64,9 @@ raddbdir = @raddbdir@
 radacctdir = @radacctdir@
 
 #
-#  name:: the name of the running server.  See also the `-n`
-#  command-line option.
+#  name:: the name of the running server.
+#
+#  See also the `-n` command-line option.
 #
 name = radiusd
 
@@ -81,7 +80,7 @@ cadir   = ${confdir}/certs
 run_dir = ${localstatedir}/run/${name}
 
 #
-# Should likely be ${localstatedir}/lib/radiusd
+#  Should likely be ${localstatedir}/lib/radiusd
 #
 db_dir = ${raddbdir}
 
@@ -135,26 +134,29 @@ pidfile = ${run_dir}/${name}.pid
 #
 #  panic_action:: Command to execute if the server dies unexpectedly.
 #
+#  [WARNING]
+#  ====
 #  FOR PRODUCTION SYSTEMS, ACTIONS SHOULD ALWAYS EXIT.
 #  AN INTERACTIVE ACTION MEANS THE SERVER IS NOT RESPONDING TO REQUESTS.
 #  AN INTERACTICE ACTION MEANS THE SERVER WILL NOT RESTART.
 #
 #  THE SERVER MUST NOT BE ALLOWED EXECUTE UNTRUSTED PANIC ACTION CODE
 #  PATTACH CAN BE USED AS AN ATTACK VECTOR.
+#  ====
 #
 #  The panic action is a command which will be executed if the server
-#  receives a fatal, non user generated signal, i.e. SIGSEGV, SIGBUS,
-#  SIGABRT or SIGFPE.
+#  receives a fatal, non user generated signal, i.e. `SIGSEGV`, `SIGBUS`,
+#  `SIGABRT` or `SIGFPE`.
 #
 #  This can be used to start an interactive debugging session so
 #  that information regarding the current state of the server can
 #  be acquired.
 #
 #  The following string substitutions are available:
-#  - %e   The currently executing program e.g. /sbin/radiusd
-#  - %p   The PID of the currently executing program e.g. 12345
+#  - `%e`   The currently executing program e.g. `/sbin/radiusd`
+#  - `%p`   The PID of the currently executing program e.g. `12345`
 #
-#  Standard ${} substitutions are also allowed.
+#  Standard `${}` substitutions are also allowed.
 #
 #  An example panic action for opening an interactive session in GDB would be:
 #
@@ -166,7 +168,7 @@ pidfile = ${run_dir}/${name}.pid
 #
 #panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p 2>&1 | tee ${logdir}/gdb-${name}-%p.log"
 #
-#  That command can be used on a production system.
+#  NOTE: That command can be used on a production system.
 #
 
 #
@@ -184,14 +186,14 @@ pidfile = ${run_dir}/${name}.pid
 #  then it probably means that you haven't indexed the database.  See your
 #  SQL server documentation for more information.
 #
-#  Useful range of values: 5 to 120
+#  Useful range of values: `5` to `120`
 #
 max_request_time = 30
 
 #
 #  max_requests:: The maximum number of requests which the server keeps
-#  track of.  This should be 256 multiplied by the number of clients.
-#  e.g. With 4 clients, this number should be 1024.
+#  track of.  This should be `256` multiplied by the number of clients.
+#  e.g. With `4` clients, this number should be `1024`.
 #
 #  If this number is too low, then when the server becomes busy,
 #  it will not respond to any new requests, until the 'cleanup_delay'
@@ -201,26 +203,27 @@ max_request_time = 30
 #  memory for no real benefit.
 #
 #  If you aren't sure what it should be set to, it's better to set it
-#  too high than too low.  Setting it to 1000 per client is probably
+#  too high than too low.  Setting it to `1000` per client is probably
 #  the highest it should be.
 #
-#  Useful range of values: 256 to infinity
+#  Useful range of values: `256` to `infinity`
 #
 max_requests = 16384
 
 #
 #  reverse_lookups:: Log the names of clients or just their IP addresses
-#  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
 #
-#  The default is 'off' because it would be overall better for the net
+#  e.g., www.freeradius.org (`on`) or 206.47.27.232 (`off`).
+#
+#  The default is `off` because it would be overall better for the net
 #  if people had to knowingly turn this feature on, since enabling it
 #  means that each client request will result in AT LEAST one lookup
-#  request to the nameserver.   Enabling hostname_lookups will also
-#  mean that your server may stop randomly for 30 seconds from time
+#  request to the nameserver.   Enabling `hostname_lookups` will also
+#  mean that your server may stop randomly for `30` seconds from time
 #  to time, if the DNS requests take too long.
 #
 #  Turning hostname lookups off also means that the server won't block
-#  for 30 seconds, if it sees an IP address which has no name associated
+#  for `30` seconds, if it sees an IP address which has no name associated
 #  with it.
 #
 #  allowed values: {no, yes}
@@ -230,7 +233,7 @@ reverse_lookups = no
 #
 #  hostname_lookups:: Global toggle for preventing hostname resolution
 #
-#  The default is 'on' because people often use hostnames in configuration
+#  The default is `on` because people often use hostnames in configuration
 #  files.  The main disadvantage of enabling this is the server may block
 #  at inopportune moments (like opening new connections) if the DNS servers
 #  are unavailable
@@ -240,67 +243,73 @@ reverse_lookups = no
 hostname_lookups = yes
 
 #
-#  Logging section.  The various "log_*" configuration items
+#  Logging section.  The various `log_*` configuration items
 #  will eventually be moved here.
 #
 log {
 	#
-	#  Destination for log messages.  This can be one of:
+	#  destination: Destination for log messages.
 	#
-	#	files - log to "file", as defined below.
-	#	syslog - to syslog (see also the "syslog_facility", below.
-	#	stdout - standard output
-	#	stderr - standard error.
+	#  This can be one of:
 	#
-	#  The command-line option "-X" over-rides this option, and forces
+	#  |===
+	#  | Destination | Description
+	#  | files       | Log to `file`, as defined below.
+	#  | syslog      | To syslog (see also the `syslog_facility`, below.
+	#  | stdout      | Standard output.
+	#  | stderr      | Standard error.
+	#  |===
+	#
+	#  The command-line option `-X` over-rides this option, and forces
 	#  logging to go to stdout.
 	#
 	destination = files
 
 	#
-	#  Highlight important messages sent to stderr and stdout.
+	#  colourise:: Highlight important messages sent to stderr and stdout.
 	#
-	#  Option will be ignored (disabled) if output if TERM is not
+	#  Option will be ignored (disabled) if output if `TERM` is not
 	#  an xterm or output is not to a TTY.
 	#
 	colourise = yes
 
 	#
-	#  Add a timestamp to the start of every log message.
+	#  timestamp:: Add a timestamp to the start of every log message.
 	#
-	#  By default this is done with log levels of -Xx or -xxx
+	#  By default this is done with log levels of `-Xx` or `-xxx`
 	#  where the destination is not syslog, or at all levels where the
 	#  output is a file.
 	#
 	#  The config option below forcefully enables or disables timestamps
 	#  irrespective of the log destination.
 	#
-	#  Note: Is overridden by the -T command line option.
+	#  NOTE: Is overridden by the `-T` command line option.
 	#
-#	timestamp = no
+#  timestamp = no
 
 	#
-	#  The logging messages for the server are appended to the
-	#  tail of this file if destination == "files"
+	#  file:: The logging messages for the server are appended to the
+	#  tail of this file `if ${destination} == "files"`
 	#
-	#  If the server is running in debugging mode, this file is
+	#  NOTE: If the server is running in debugging mode, this file is
 	#  NOT used.
 	#
 	file = ${logdir}/radius.log
 
 	#
-	#  Which syslog facility to use, if ${destination} == "syslog"
+	#  syslog_facility:: Which syslog facility to use, `if ${destination} == "syslog"`.
 	#
-	#  The exact values permitted here are OS-dependent.  You probably
+	#  The exact values permitted here are _OS-dependent_.  You probably
 	#  don't want to change this.
 	#
 	syslog_facility = daemon
 }
 
-# ENVIRONMENT VARIABLES
+#
+#  .ENVIRONMENT VARIABLES
 #
 #  You can reference environment variables using an expansion like
-#  $ENV{PATH}.  However it is sometimes useful to be able to also set
+#  `$ENV{PATH}`.  However it is sometimes useful to be able to also set
 #  environment variables.  This section lets you do that.
 #
 #  The main purpose of this section is to allow administrators to keep
@@ -311,27 +320,26 @@ log {
 #
 #  Note that these environment variables are set AFTER the
 #  configuration file is loaded.  So you cannot set FOO here, and
-#  expect to reference it via $ENV{FOO} in another configuration file.
+#  expect to reference it via `$ENV{FOO}` in another configuration file.
 #  You should instead just use a normal configuration variable for
 #  that.
 #
 ENV {
-
 	#
-	#  Set environment varable 'FOO' to value '/bar/baz'.
+	#  Set environment varable `FOO` to value '/bar/baz'.
 	#
-	#  Note that you MUST use '='.  You CANNOT use '+=' to append
+	#  NOTE: Note that you MUST use '='.  You CANNOT use '+=' to append
 	#  values.
 	#
-#	FOO = '/bar/baz'
+#  FOO = '/bar/baz'
 
 	#
-	#  Delete environment variable BAR.
+	#  Delete environment variable `BAR`.
 	#
-#	BAR
+#  BAR
 
 	#
-	#  LD_PRELOAD is special.  It is normally set before the
+	#  `LD_PRELOAD` is special.  It is normally set before the
 	#  application runs, and is interpreted by the dynamic linker.
 	#  Which means you cannot set it inside of an application, and
 	#  expect it to load libraries.
@@ -340,39 +348,41 @@ ENV {
 	#
 	#  You can set
 	#
-	#	LD_PRELOAD = /path/to/library.so
+	#  LD_PRELOAD = /path/to/library.so
 	#
 	#  and the server will load the named libraries.  Multiple
 	#  libraries can be loaded by specificing multiple individual
-	#  LD_PRELOAD entries.
+	#  `LD_PRELOAD` entries.
 	#
 	#
-#	LD_PRELOAD = /path/to/library1.so
-#	LD_PRELOAD = /path/to/library2.so
+#  LD_PRELOAD = /path/to/library1.so
+#  LD_PRELOAD = /path/to/library2.so
 }
 
-# SECURITY CONFIGURATION
+#
+#  .SECURITY CONFIGURATION
 #
 #  There may be multiple methods of attacking on the server.  This
 #  section holds the configuration items which minimize the impact
 #  of those attacks
 #
 security {
+	#
 	#  chroot: directory where the server does "chroot".
 	#
 	#  The chroot is done very early in the process of starting
 	#  the server.  After the chroot has been performed it
-	#  switches to the "user" listed below (which MUST be
-	#  specified).  If "group" is specified, it switches to that
+	#  switches to the `user` listed below (which MUST be
+	#  specified).  If `group` is specified, it switches to that
 	#  group, too.  Any other groups listed for the specified
-	#  "user" in "/etc/group" are also added as part of this
+	#  `user` in `/etc/group` are also added as part of this
 	#  process.
 	#
 	#  The current working directory (chdir / cd) is left
-	#  *outside* of the chroot until all of the modules have been
-	#  initialized.  This allows the "raddb" directory to be left
-	#  outside of the chroot.  Once the modules have been
-	#  initialized, it does a "chdir" to ${logdir}.  This means
+	#  *outside* of the `chroot` until all of the modules have been
+	#  initialized.  This allows the `raddb` directory to be left
+	#  outside of the `chroot`.  Once the modules have been
+	#  initialized, it does a `chdir` to `${logdir}`.  This means
 	#  that it should be impossible to break out of the chroot.
 	#
 	#  If you are worried about security issues related to this
@@ -381,53 +391,60 @@ security {
 	#  BEFORE starting the server.
 	#
 	#  If the server is statically linked, then the only files
-	#  that have to exist in the chroot are ${run_dir} and
-	#  ${logdir}.  If you do the "cd raddb" as discussed above,
-	#  then the "raddb" directory has to be inside of the chroot
+	#  that have to exist in the chroot are `${run_dir}` and
+	#  `${logdir}`.  If you do the `cd raddb` as discussed above,
+	#  then the `raddb` directory has to be inside of the `chroot`
 	#  directory, too.
 	#
-#	chroot = /path/to/chroot/directory
+#  chroot = /path/to/chroot/directory
 
-	# user/group: The name (or #number) of the user/group to run radiusd as.
 	#
-	#   If these are commented out, the server will run as the
-	#   user/group that started it.  In order to change to a
-	#   different user/group, you MUST be root ( or have root
-	#   privileges ) to start the server.
+	#  user::
+	#  group:: 
 	#
-	#   We STRONGLY recommend that you run the server with as few
-	#   permissions as possible.  That is, if you're not using
-	#   shadow passwords, the user and group items below should be
-	#   set to radius'.
+	#  The name (or `#number`) of the `user`/`group` to run `radiusd` as.
 	#
-	#  NOTE that some kernels refuse to setgid(group) when the
+	#  If these are commented out, the server will run as the
+	#  user/group that started it.  In order to change to a
+	#  different user/group, you MUST be root ( or have root
+	#  privileges ) to start the server.
+	#
+	#  We STRONGLY recommend that you run the server with as few
+	#  permissions as possible.  That is, if you're not using
+	#  shadow passwords, the user and group items below should be
+	#  set to radius'.
+	#
+	#  NOTE: Some kernels refuse to `setgid(group)` when the
 	#  value of (unsigned)group is above 60000; don't use group
-	#  "nobody" on these systems!
+	#  `nobody` on these systems!
 	#
 	#  On systems with shadow passwords, you might have to set
-	#  'group = shadow' for the server to be able to read the
+	#  `group = shadow` for the server to be able to read the
 	#  shadow password file.  If you can authenticate users while
 	#  in debug mode, but not in daemon mode, it may be that the
 	#  debugging mode server is running as a user that can read
 	#  the shadow info, and the user listed below can not.
 	#
-	#  The server will also try to use "initgroups" to read
+	#  The server will also try to use `initgroups` to read
 	#  /etc/groups.  It will join all groups where "user" is a
 	#  member.  This can allow for some finer-grained access
 	#  controls.
 	#
-#	user = radius
-#	group = radius
+#  user = radius
+#  group = radius
 
-	#  Core dumps are a bad thing.  This should only be set to
-	#  'yes' if you're debugging a problem with the server.
+	#
+	#  allow_core_dumps:: Core dumps are a bad thing.
+	#
+	#  This should only be set to `yes` if you're debugging
+	#  a problem with the server.
 	#
 	#  allowed values: {no, yes}
 	#
 	allow_core_dumps = no
 
 	#
-	#  max_attributes: The maximum number of attributes
+	#  max_attributes:: The maximum number of attributes
 	#  permitted in a RADIUS packet.  Packets which have MORE
 	#  than this number of attributes in them will be dropped.
 	#
@@ -439,33 +456,39 @@ security {
 	#  the server to use all available memory on the machine.
 	#
 	#  Setting this number to 0 means "allow any number of attributes"
+	#
 	max_attributes = 200
 
 @openssl_version_check_config@
 
 	#
-	#  openssl_fips_mode: Enable OpenSSL FIPS mode.
+	#  openssl_fips_mode:: Enable OpenSSL FIPS mode.
+	#
 	#  This disables non-FIPS compliant digests and algorithms
-#	openssl_fips_mode = no
+	#
+#  openssl_fips_mode = no
 }
 
-# CLIENTS CONFIGURATION
 #
-#  Client configuration is defined in "clients.conf".
+#  .CLIENTS CONFIGURATION
 #
-
-#  The 'clients.conf' file contains all of the information from the old
-#  'clients' and 'naslist' configuration files.  We recommend that you
-#  do NOT use 'client's or 'naslist', although they are still
+#  Client configuration is defined in `clients.conf`.
+#
+#  [WARNING]
+#  ====
+#  The `clients.conf` file contains all of the information from the old
+#  `clients` and `naslist` configuration files.  We recommend that you
+#  do NOT use `client's` or `naslist`, although they are still
 #  supported.
 #
 #  Anything listed in 'clients.conf' will take precedence over the
 #  information from the old-style configuration files.
+#  ====
 #
 $INCLUDE clients.conf
 
-
-# THREAD POOL CONFIGURATION
+#
+#  .THREAD POOL CONFIGURATION
 #
 #  In v4, the thread pool does not change size dynamically.  Instead,
 #  there are a small number of threads which read from the network,
@@ -473,27 +496,30 @@ $INCLUDE clients.conf
 #
 thread pool {
 	#
-	#  Only one network thread is supported for now
+	#  num_networks:: Only one network thread is supported for now.
 	#
 	num_networks = 1
 
 	#
-	#  The worker threads can be varied.  It should be at least one,
-	#  and no more than 32.  Since each request is non-blocking,
-	#  there is no reason to run hundreds of threads as in v3.
+	#  num_workers:: The worker threads can be varied.  It should be
+	#  at least one, and no more than 32.  Since each request is
+	#  non-blocking, there is no reason to run hundreds of threads
+	#  as in v3.
 	#
 	num_workers = 4
 }
 
-######################################################################
 #
-#  SNMP notifications.  Uncomment the following line to enable
-#  snmptraps.  Note that you MUST also configure the full path
-#  to the "snmptrap" command in the "trigger.conf" file.
+#  .SNMP notifications.
+#
+#  Uncomment the following line to enable snmptraps.  Note that you
+#  MUST also configure the full path to the `snmptrap` command in
+#  the `trigger.conf` file.
 #
 #$INCLUDE trigger.conf
 
-# MODULE CONFIGURATION
+#
+#  .MODULE CONFIGURATION
 #
 #  The names and configuration of each module is located in this section.
 #
@@ -504,12 +530,14 @@ modules {
 	#
 	#  Each module has a configuration as follows:
 	#
-	#	name [ instance ] {
-	#		config_item = value
-	#		...
-	#	}
+	#  ```
+	#  name [ instance ] {
+	#  	config_item = value
+	#  	...
+	#  }
+	#  ```
 	#
-	#  The 'name' is used to load the 'rlm_name' library
+	#  The `name` is used to load the `rlm_name` library
 	#  which implements the functionality of the module.
 	#
 	#  The 'instance' is optional.  To have two different instances
@@ -523,19 +551,22 @@ modules {
 	#
 
 	#
-	#  Some modules have ordering issues.  e.g. "sqlippool" uses
-	#  the configuration from "sql".  In that case, the "sql"
-	#  module must be read off of disk before the "sqlippool".
+	#  Some modules have ordering issues.
+	#
+	#  e.g. `sqlippool` uses  the configuration from `sql`.
+	#  In that case, the `sql` module must be read off of disk before
+	#  the `sqlippool`.
+	#
 	#  However, the directory inclusion below just reads the
 	#  directory from start to finish.  Which means that the
 	#  modules are read off of disk randomly.
 	#
-	#  As of 3.0.18, you can list individual modules *before* the
+	#  As of `>= 3.0.18`, you can list individual modules *before* the
 	#  directory inclusion.  Those modules will be loaded first.
 	#  Then, when the directory is read, those modules will be
 	#  skipped and not read twice.
 	#
-#	$INCLUDE mods-enabled/sql
+#  $INCLUDE mods-enabled/sql
 
 	#
 	#  Modules are in mods-enabled/.  Files matching
@@ -547,7 +578,8 @@ modules {
 	$INCLUDE mods-enabled/
 }
 
-# Instantiation
+#
+#  # Instantiation
 #
 #  This section orders the loading of the modules.  Modules
 #  listed here will get loaded BEFORE the later sections like
@@ -570,62 +602,66 @@ modules {
 #
 instantiate {
 	#
-	# We list the counter module here so that it registers
-	# the check_name attribute before any module which sets
-	# it
-#	daily
+	#  We list the counter module here so that it registers
+	#  the check_name attribute before any module which sets
+	#  it.
+	#
+#  daily
 
-	# subsections here can be thought of as "virtual" modules.
 	#
-	# e.g. If you have two redundant SQL servers, and you want to
-	# use them in the authorize and accounting sections, you could
-	# place a "redundant" block in each section, containing the
-	# exact same text.  Or, you could uncomment the following
-	# lines, and list "redundant_sql" in the authorize and
-	# accounting sections.
+	#  subsections here can be thought of as `virtual` modules.
 	#
-	#  The "virtual" module defined here can also be used with
+	#  e.g. If you have two redundant SQL servers, and you want to
+	#  use them in the authorize and accounting sections, you could
+	#  place a `redundant` block in each section, containing the
+	#  exact same text.  Or, you could uncomment the following
+	#  lines, and list `redundant_sql` in the authorize and
+	#  accounting sections.
+	#
+	#  The `virtual` module defined here can also be used with
 	#  dynamic expansions, under a few conditions:
 	#
-	#  * The section is "redundant", or "load-balance", or
-	#    "redundant-load-balance"
+	#  * The section is `redundant`, or `load-balance`, or
+	#    `redundant-load-balance`
 	#  * The section contains modules ONLY, and no sub-sections
-	#  * all modules in the section are using the same rlm_
+	#  * All modules in the section are using the same rlm_
 	#    driver, e.g. They are all sql, or all ldap, etc.
 	#
 	#  When those conditions are satisfied, the server will
 	#  automatically register a dynamic expansion, using the
-	#  name of the "virtual" module.  In the example below,
-	#  it will be "redundant_sql".  You can then use this expansion
+	#  name of the `virtual` module.  In the example below,
+	#  it will be `redundant_sql`.  You can then use this expansion
 	#  just like any other:
 	#
-	#	update reply {
-	#		Filter-Id := "%{redundant_sql: ... }"
-	#	}
+	#  	update reply {
+	#  		Filter-Id := "%{redundant_sql: ... }"
+	#  	}
 	#
-	#  In this example, the expansion is done via module "sql1",
-	#  and if that expansion fails, using module "sql2".
+	#  In this example, the expansion is done via module `sql1`,
+	#  and if that expansion fails, using module `sql2`.
 	#
-	#  For best results, configure the "pool" subsection of the
-	#  module so that "retry_delay" is non-zero.  That will allow
+	#  For best results, configure the `pool` subsection of the
+	#  module so that `retry_delay` is non-zero.  That will allow
 	#  the redundant block to quickly ignore all "down" SQL
-	#  databases.  If instead we have "retry_delay = 0", then
+	#  databases.  If instead we have `retry_delay = 0`, then
 	#  every time the redundant block is used, the server will try
-	#  to open a connection to every "down" database, causing
+	#  to open a connection to every `down` database, causing
 	#  problems.
 	#
-	#redundant redundant_sql {
-	#	sql1
-	#	sql2
-	#}
+#  redundant redundant_sql {
+#  	sql1
+#  	sql2
+#  }
 }
 
 ######################################################################
 #
-#  Policies are virtual modules, similar to those defined in the
-#  "instantiate" section above.
+#  .Policies
 #
-#  Defining a policy in one of the policy.d files means that it can be
+#  Policies are virtual modules, similar to those defined in the
+#  `instantiate` section above.
+#
+#  Defining a policy in one of the `policy.d` files means that it can be
 #  referenced in multiple places as a *name*, rather than as a series of
 #  conditions to match, and actions to take.
 #
@@ -633,38 +669,37 @@ instantiate {
 #  they cannot be called recursively. They MUST be defined in order.
 #  If policy A calls policy B, then B MUST be defined before A.
 #
-######################################################################
 policy {
 	$INCLUDE policy.d/
 }
 
 ######################################################################
 #
-#	Load virtual servers.
+#  .Load virtual servers.
 #
-#	This next $INCLUDE line loads files in the directory that
-#	match the regular expression: /[a-zA-Z0-9_.]+/
+#  This next $INCLUDE line loads files in the directory that
+#  match the regular expression: /[a-zA-Z0-9_.]+/
 #
-#	It allows you to define new virtual servers simply by placing
-#	a file into the raddb/sites-enabled/ directory.
+#  It allows you to define new virtual servers simply by placing
+#  a file into the raddb/sites-enabled/ directory.
+#
+#  All of the other configuration sections like:
+#
+#  * `recv Access-Request {}`
+#  * `process Access-Request {}`
+#  * `process Accounting-Request {}`
+#
+#  Have been moved to the the file:
+#
+#  `raddb/sites-available/default`
+#
+#  This is the `default` virtual server that has the same
+#  configuration as in version 1.0.x and 1.1.x.  The default
+#  installation enables this virtual server.  You should
+#  edit it to create policies for your local site.
+#
+#  For more documentation on virtual servers, see:
+#
+#  `raddb/sites-available/README`
 #
 $INCLUDE sites-enabled/
-
-######################################################################
-#
-#	All of the other configuration sections like "recv Access-Request {}",
-#	"process Access-Request {}", "process Accounting-Request {}", have been moved to the
-#	the file:
-#
-#		raddb/sites-available/default
-#
-#	This is the "default" virtual server that has the same
-#	configuration as in version 1.0.x and 1.1.x.  The default
-#	installation enables this virtual server.  You should
-#	edit it to create policies for your local site.
-#
-#	For more documentation on virtual servers, see:
-#
-#		raddb/sites-available/README
-#
-######################################################################
