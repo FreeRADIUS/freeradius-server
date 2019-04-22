@@ -1164,7 +1164,9 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 			name1,
 			parent ? DL_TYPE_SUBMODULE : DL_TYPE_MODULE) < 0) {
 	error:
+		mi->name = inst_name;	/* Assigned purely for debug log output when mi is freed */
 		talloc_free(mi);
+		talloc_free(inst_name);
 		return NULL;
 	}
 	rad_assert(mi->dl_inst);
