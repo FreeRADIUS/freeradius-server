@@ -2771,43 +2771,16 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type,
 			      unlang_type_t mod_type)
 {
-	ssize_t			slen;
-	char const		*name2;
 	unlang_group_t		*g;
 	unlang_t		*c;
 	FR_TOKEN		type;
-	char			*server;
-	char			*packet;
+	char const     		*server;
 	CONF_SECTION		*server_cs;
-	fr_io_process_t		*process_p;
 	fr_dict_t const		*dict;
 
-	vp_tmpl_rules_t		parse_rules;
-
-	/*
-	 *	We allow unknown attributes here.
-	 */
-	parse_rules = *(unlang_ctx->rules);
-	parse_rules.allow_unknown = true;
-
-	/*
-	 *	calls with a normal packet are not allowed.  It will
-	 *	work, but we don't know what it means.  If someone has
-	 *	a good use-case, we can try enabling it.
-	 */
-	for (c = parent; c != NULL; c = c->parent) {
-		if (c->type == UNLANG_TYPE_SUBREQUEST) break;
-	}
-
-	if (!c) {
-		cf_log_err(cs, "'%s' can only be used inside of a 'subrequest' section",
-			   unlang_ops[mod_type].name);
-		return NULL;
-	}
-
-	name2 = cf_section_name2(cs);
-	if (!name2) {
-		cf_log_err(cs, "'call' must be given with a server.PACKET argument");
+	server = cf_section_name2(cs);
+	if (!server) {
+		cf_log_err(cs, "You MUST specify a server name for 'call <server> { ... }'");
 		return NULL;
 	}
 
@@ -2820,53 +2793,12 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
-	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, &parse_rules, true);
-	if (slen < 0) {
-		char *spaces, *text;
-
-		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-		cf_log_err(cs, "Syntax error");
-		cf_log_err(cs, "%s", name2);
-		cf_log_err(cs, "%s^ %s", spaces, text);
-
-		talloc_free(g);
-		talloc_free(spaces);
-		talloc_free(text);
-
-		return NULL;
-	}
-
-	/*
-	 *      Convert TMPL_TYPE_UNPARSED (it might have been
-	 *      an attribute) to TMPL_TYPE_DATA, with
-	 *      FR_TYPE_STRING data.
-	 */
-	tmpl_cast_in_place_str(g->vpt);
-
-	/*
-	 *	Look up server and packet type.
-	 *
-	 *	memcpy for const issues... we know what we're doing.
-	 */
-	memcpy(&server, &g->vpt->tmpl_value.datum.strvalue, sizeof(server));
-	packet = strchr(server, '.');
-	if (!packet) {
-		cf_log_err(cs, "Invalid syntax: expected server.PACKET");
-		talloc_free(g);
-		return NULL;
-	}
-
-	*packet = '\0';		/* hack */
-	server_cs = cf_section_find(cf_root(cs), "server", server);
+	server_cs = virtual_server_find(server);
 	if (!server_cs) {
 		cf_log_err(cs, "Unknown virtual server '%s'", server);
 		talloc_free(g);
 		return NULL;
 	}
-
-	*packet = '.';
-	packet++;
 
 	/*
 	 *	The dictionaries are not compatible, forbid it.
@@ -2880,20 +2812,6 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 
-	/*
-	 *	Verify it exists, but don't bother caching it.  We can
-	 *	figure it out at run-time.
-	 */
-	process_p = (fr_io_process_t *) cf_data_value(cf_data_find(server_cs, fr_io_process_t, packet));
-	if (!process_p) {
-		cf_log_err(cs, "Virtual server %s cannot process '%s' packets",
-			   cf_section_name2(server_cs), packet);
-		talloc_free(g);
-		return NULL;
-	}
-
-	g->process = *process_p;
-	g->process_inst = cf_data_value(cf_data_find(server_cs, void, packet));
 	g->server_cs = server_cs;
 
 	c = unlang_group_to_generic(g);

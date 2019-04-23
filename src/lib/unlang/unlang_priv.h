@@ -158,8 +158,6 @@ typedef struct {
 					map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_TYPE_MAP.
 				};
 				struct {
-					void			*process_inst;	//!< #UNLANG_TYPE_CALL
-					fr_io_process_t		process;	//!< #UNLANG_TYPE_CALL
 					CONF_SECTION		*server_cs;	//!< #UNLANG_TYPE_CALL
 				};
 			};

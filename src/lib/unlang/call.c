@@ -37,8 +37,11 @@ static unlang_action_t unlang_call(REQUEST *request,
 	fr_io_final_t		final;
 	unlang_stack_t		*current;
 	CONF_SECTION		*old_server_cs;
-	fr_io_process_t		old_process;
-	void			*old_process_inst;
+	fr_io_process_t		*process_p, old_process;
+	void			*process_inst, *old_process_inst;
+	fr_dict_attr_t const	*da;
+	fr_dict_enum_t const	*type_enum;
+	char const		*server, *packet;
 
 	g = unlang_generic_to_group(instruction);
 	rad_assert(g->children != NULL);
@@ -56,6 +59,29 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 *	it's statistics, see it's configuration, etc.
 	 */
 	rad_assert(request->async->process == unlang_io_process_interpret);
+
+	server = cf_section_name2(g->server_cs);
+	da = fr_dict_attr_by_name(virtual_server_namespace(server), "Packet-Type");
+	if (!da) {
+		REDEBUG("No such attribute 'Packet-Type' for server %s", server);
+		return RLM_MODULE_FAIL;
+	}
+
+	type_enum = fr_dict_enum_by_value(da, fr_box_uint32(request->packet->code));
+	if (!type_enum) {
+		REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s", request->packet->code, server);
+		return RLM_MODULE_FAIL;
+	}
+	packet = type_enum->alias;
+
+	process_p = (fr_io_process_t *) cf_data_value(cf_data_find(g->server_cs, fr_io_process_t, packet));
+	if (!process_p) {
+		REDEBUG("No such packet type '%s' in server '%s'",
+			packet, cf_section_name2(g->server_cs));
+		return RLM_MODULE_FAIL;
+	}
+
+	process_inst = cf_data_value(cf_data_find(g->server_cs, void, packet));
 
 	/*
 	 *	@todo - We probably want to just remove the 'stack'
@@ -75,10 +101,10 @@ static unlang_action_t unlang_call(REQUEST *request,
 	old_process_inst = request->async->process_inst;
 
 	request->server_cs = g->server_cs;
-	request->async->process = g->process;
-	request->async->process_inst = g->process_inst;
+	request->async->process = *process_p;
+	request->async->process_inst = process_inst;
 
-	RDEBUG("server %s {", cf_section_name2(g->server_cs));
+	RDEBUG("server %s {", server);
 
 	/*
 	 *	@todo - we can't change packet types
@@ -87,7 +113,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 */
 	final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
 
-	RDEBUG("} # server %s", cf_section_name2(g->server_cs));
+	RDEBUG("} # server %s", server);
 
 	/*
 	 *	All other return codes are semantically equivalent for
