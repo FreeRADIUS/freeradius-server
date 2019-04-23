@@ -2780,6 +2780,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	char			*packet;
 	CONF_SECTION		*server_cs;
 	fr_io_process_t		*process_p;
+	fr_dict_t const		*dict;
 
 	vp_tmpl_rules_t		parse_rules;
 
@@ -2866,6 +2867,18 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 	*packet = '.';
 	packet++;
+
+	/*
+	 *	The dictionaries are not compatible, forbid it.
+	 */
+	dict = virtual_server_namespace(server);
+	if (dict && (dict != fr_dict_internal) && fr_dict_internal &&
+	    unlang_ctx->rules->dict_def && (unlang_ctx->rules->dict_def != dict)) {
+		cf_log_err(cs, "Cannot call namespace '%s' from namespaces '%s'",
+			   fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->dict_def)->name);
+		talloc_free(g);
+		return NULL;
+	}
 
 	/*
 	 *	Verify it exists, but don't bother caching it.  We can

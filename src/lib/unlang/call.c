@@ -81,9 +81,6 @@ static unlang_action_t unlang_call(REQUEST *request,
 	RDEBUG("server %s {", cf_section_name2(g->server_cs));
 
 	/*
-	 *	@todo - we can't change protocols (e.g. RADIUS ->
-	 *	DHCP) unless we're in a subrequest.
-	 *
 	 *	@todo - we can't change packet types
 	 *	(e.g. Access-Request -> Accounting-Request) unless
 	 *	we're in a subrequest.
