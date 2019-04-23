@@ -54,12 +54,12 @@ static const CONF_PARSER module_config[] = {
  * @param[in] request		The current request.
  * @param[in] instance		This instance of the delay module.
  * @param[in] thread		Thread specific module instance.
- * @param[in] ctx		Scheduled end of the delay.
+ * @param[in] rctx		Scheduled end of the delay.
  * @param[in] fired		When request processing was resumed.
  */
-static void _delay_done(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx, struct timeval *fired)
+static void _delay_done(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *rctx, struct timeval *fired)
 {
-	struct timeval *yielded = talloc_get_type_abort(ctx, struct timeval);
+	struct timeval *yielded = talloc_get_type_abort(rctx, struct timeval);
 
 	RDEBUG2("Delay done");
 
@@ -114,9 +114,9 @@ static int delay_add(REQUEST *request, struct timeval *resume_at, struct timeval
  *
  */
 static rlm_rcode_t mod_delay_return(REQUEST *request,
-				    UNUSED void *instance, UNUSED void *thread, void *ctx)
+				    UNUSED void *instance, UNUSED void *thread, void *rctx)
 {
-	struct timeval *yielded = talloc_get_type_abort(ctx, struct timeval);
+	struct timeval *yielded = talloc_get_type_abort(rctx, struct timeval);
 
 	/*
 	 *	Print how long the delay *really* was.
@@ -134,14 +134,14 @@ static rlm_rcode_t mod_delay_return(REQUEST *request,
 	return RLM_MODULE_OK;
 }
 
-static void mod_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
+static void mod_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *rctx,
 			     fr_state_signal_t action)
 {
 	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Cancelling delay");
 
-	if (!fr_cond_assert(unlang_module_timeout_delete(request, ctx) == 0)) return;
+	if (!fr_cond_assert(unlang_module_timeout_delete(request, rctx) == 0)) return;
 }
 
 static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *thread, REQUEST *request)

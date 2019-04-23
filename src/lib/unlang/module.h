@@ -118,11 +118,11 @@ rlm_rcode_t	unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST **child,
 rlm_rcode_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					    REQUEST *request, xlat_exp_t const *xlat,
 					    fr_unlang_module_resume_t resume,
-					    fr_unlang_module_signal_t signal, void *uctx);
+					    fr_unlang_module_signal_t signal, void *rctx);
 
 rlm_rcode_t	unlang_module_yield(REQUEST *request,
 				    fr_unlang_module_resume_t resume,
-				    fr_unlang_module_signal_t signal, void *ctx);
+				    fr_unlang_module_signal_t signal, void *rctx);
 
 #ifdef __cplusplus
 }

@@ -537,12 +537,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, 
 	return unlang_module_yield(request, mod_authorize_result, rest_io_module_action, handle);
 }
 
-static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, void *thread, void *ctx)
+static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, void *thread, void *rctx)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const 	*section = &inst->authenticate;
-	rlm_rest_handle_t		*handle = ctx;
+	rlm_rest_handle_t		*handle = rctx;
 
 	int				hcode;
 	int				rcode = RLM_MODULE_OK;
@@ -666,12 +666,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 	return unlang_module_yield(request, mod_authenticate_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_accounting_result(REQUEST *request, void *instance, void *thread, void *ctx)
+static rlm_rcode_t mod_accounting_result(REQUEST *request, void *instance, void *thread, void *rctx)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const 	*section = &inst->authenticate;
-	rlm_rest_handle_t		*handle = ctx;
+	rlm_rest_handle_t		*handle = rctx;
 
 	int				hcode;
 	int				rcode = RLM_MODULE_OK;
@@ -745,12 +745,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread,
 	return unlang_module_yield(request, mod_accounting_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_post_auth_result(REQUEST *request, void *instance, void *thread, void *ctx)
+static rlm_rcode_t mod_post_auth_result(REQUEST *request, void *instance, void *thread, void *rctx)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const 	*section = &inst->authenticate;
-	rlm_rest_handle_t		*handle = ctx;
+	rlm_rest_handle_t		*handle = rctx;
 
 	int				hcode;
 	int				rcode = RLM_MODULE_OK;
