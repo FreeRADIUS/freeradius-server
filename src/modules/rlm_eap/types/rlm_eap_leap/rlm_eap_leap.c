@@ -49,15 +49,15 @@ fr_dict_attr_autoload_t rlm_eap_leap_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
-
-static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	int		rcode;
-	REQUEST 	*request = eap_session->request;
+	rlm_rcode_t	rcode;
+
+	eap_session_t	*eap_session = eap_session_get(request);
 	leap_session_t	*session;
 	leap_packet_t	*packet;
 	leap_packet_t	*reply;
+
 	VALUE_PAIR	*password;
 
 	if (!eap_session->opaque) {
@@ -159,9 +159,9 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
  * len = header + type + leap_methoddata
  * leap_methoddata = value_size + value
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t CC_HINT(nonnull) mod_session_init(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	REQUEST 	*request = eap_session->request;
+	eap_session_t	*eap_session = eap_session_get(request);
 	leap_session_t	*session;
 	leap_packet_t	*reply;
 
@@ -175,7 +175,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_
 		return RLM_MODULE_REJECT;
 	}
 
-	reply = eap_leap_initiate(request, eap_session->this_round, eap_session->request->username);
+	reply = eap_leap_initiate(request, eap_session->this_round, request->username);
 	if (!reply) return RLM_MODULE_FAIL;
 
 	eap_leap_compose(request, eap_session->this_round, reply);

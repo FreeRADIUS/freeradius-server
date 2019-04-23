@@ -30,6 +30,7 @@ RCSIDH(sim_h, "$Id$")
 
 #include <assert.h>
 #include <openssl/evp.h>
+#include <freeradius-devel/eap/compose.h>
 #include <freeradius-devel/eap/types.h>
 
 #include "id.h"

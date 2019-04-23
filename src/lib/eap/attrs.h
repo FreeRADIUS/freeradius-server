@@ -24,6 +24,8 @@
  */
 RCSIDH(lib_eap_attrs_h, "$Id$")
 
+#include <freeradius-devel/util/dict.h>
+
 extern fr_dict_t *dict_freeradius;
 extern fr_dict_t *dict_radius;
 
@@ -40,3 +42,5 @@ extern fr_dict_attr_t const *attr_eap_emsk;
 extern fr_dict_attr_t const *attr_freeradius_proxied_to;
 extern fr_dict_attr_t const *attr_ms_mppe_send_key;
 extern fr_dict_attr_t const *attr_ms_mppe_recv_key;
+extern fr_dict_attr_t const *attr_user_name;
+extern fr_dict_attr_t const *attr_state;

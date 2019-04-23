@@ -44,72 +44,15 @@ fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session);
-
-/*
- *	Initiate the EAP-MD5 session by sending a challenge to the peer.
- */
-static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
-{
-	int		i;
-	MD5_PACKET	*reply;
-	REQUEST		*request = eap_session->request;
-
-	/*
-	 *	Allocate an EAP-MD5 packet.
-	 */
-	MEM(reply = talloc(eap_session, MD5_PACKET));
-
-	/*
-	 *	Fill it with data.
-	 */
-	reply->code = FR_MD5_CHALLENGE;
-	reply->length = 1 + MD5_CHALLENGE_LEN; /* one byte of value size */
-	reply->value_size = MD5_CHALLENGE_LEN;
-
-	/*
-	 *	Allocate user data.
-	 */
-	MEM(reply->value = talloc_array(reply, uint8_t, reply->value_size));
-	/*
-	 *	Get a random challenge.
-	 */
-	for (i = 0; i < reply->value_size; i++) reply->value[i] = fr_rand();
-	RDEBUG2("Issuing MD5 Challenge");
-
-	/*
-	 *	Keep track of the challenge.
-	 */
-	MEM(eap_session->opaque = talloc_array(eap_session, uint8_t, reply->value_size));
-	memcpy(eap_session->opaque, reply->value, reply->value_size);
-
-	/*
-	 *	Compose the EAP-MD5 packet out of the data structure,
-	 *	and free it.
-	 */
-	eap_md5_compose(eap_session->this_round, reply);
-
-	/*
-	 *	We don't need to authorize the user at this point.
-	 *
-	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'eap_session->this_round', which will be given back
-	 *	to us...
-	 */
-	eap_session->process = mod_process;
-
-	return RLM_MODULE_HANDLED;
-}
-
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
+	eap_session_t	*eap_session = eap_session_get(request);
 	MD5_PACKET	*packet;
 	MD5_PACKET	*reply;
 	VALUE_PAIR	*password;
-	REQUEST		*request = eap_session->request;
 
 	/*
 	 *	Get the Cleartext-Password for this user.
@@ -157,6 +100,61 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	talloc_free(packet);
 
 	return RLM_MODULE_OK;
+}
+
+/*
+ *	Initiate the EAP-MD5 session by sending a challenge to the peer.
+ */
+static rlm_rcode_t mod_session_init(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+{
+	eap_session_t	*eap_session = eap_session_get(request);
+	MD5_PACKET	*reply;
+	int		i;
+
+	/*
+	 *	Allocate an EAP-MD5 packet.
+	 */
+	MEM(reply = talloc(eap_session, MD5_PACKET));
+
+	/*
+	 *	Fill it with data.
+	 */
+	reply->code = FR_MD5_CHALLENGE;
+	reply->length = 1 + MD5_CHALLENGE_LEN; /* one byte of value size */
+	reply->value_size = MD5_CHALLENGE_LEN;
+
+	/*
+	 *	Allocate user data.
+	 */
+	MEM(reply->value = talloc_array(reply, uint8_t, reply->value_size));
+	/*
+	 *	Get a random challenge.
+	 */
+	for (i = 0; i < reply->value_size; i++) reply->value[i] = fr_rand();
+	RDEBUG2("Issuing MD5 Challenge");
+
+	/*
+	 *	Keep track of the challenge.
+	 */
+	MEM(eap_session->opaque = talloc_array(eap_session, uint8_t, reply->value_size));
+	memcpy(eap_session->opaque, reply->value, reply->value_size);
+
+	/*
+	 *	Compose the EAP-MD5 packet out of the data structure,
+	 *	and free it.
+	 */
+	eap_md5_compose(eap_session->this_round, reply);
+
+	/*
+	 *	We don't need to authorize the user at this point.
+	 *
+	 *	We also don't need to keep the challenge, as it's
+	 *	stored in 'eap_session->this_round', which will be given back
+	 *	to us...
+	 */
+	eap_session->process = mod_process;
+
+	return RLM_MODULE_HANDLED;
 }
 
 /*

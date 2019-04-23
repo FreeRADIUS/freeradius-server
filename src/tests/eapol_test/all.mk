@@ -120,6 +120,7 @@ $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.
 		echo "FAILED STARTING RADIUSD"; \
 		tail -n 40 "$(RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADIUS_LOG)):"; \
+		echo "TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D \"${top_builddir}/share/dictionary/\"" \
 	else \
 		echo "ok"; \
 	fi

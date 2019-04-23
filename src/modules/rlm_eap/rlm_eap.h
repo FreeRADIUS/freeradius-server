@@ -31,14 +31,6 @@ RCSIDH(rlm_eap_h, "$Id$")
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/eap/types.h>
 
-/** Private structure to hold handles and interfaces for an EAP method
- *
- */
-typedef struct {
-	module_instance_t		*submodule_inst;		//!< Submodule's instance data
-	rlm_eap_submodule_t const	*submodule;			//!< Submodule's exported interface.
-} rlm_eap_method_t;
-
 /** Instance data for rlm_eap
  *
  */
@@ -73,27 +65,3 @@ extern fr_dict_attr_t const *attr_user_name;
  *	EAP Method selection
  */
 int      	eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t num, CONF_SECTION *cs);
-
-/*
- *	EAP Method composition
- */
-int  		eap_start(rlm_eap_t const *inst, REQUEST *request) CC_HINT(nonnull);
-rlm_rcode_t	eap_continue(eap_session_t *eap_session) CC_HINT(nonnull);
-rlm_rcode_t	eap_fail(eap_session_t *eap_session) CC_HINT(nonnull);
-rlm_rcode_t 	eap_success(eap_session_t *eap_session) CC_HINT(nonnull);
-rlm_rcode_t 	eap_compose(eap_session_t *eap_session) CC_HINT(nonnull);
-
-/*
- *	Session management
- */
-void		eap_session_destroy(eap_session_t **eap_session);
-void		eap_session_freeze(eap_session_t **eap_session);
-eap_session_t	*eap_session_thaw(REQUEST *request);
-eap_session_t 	*eap_session_continue(eap_packet_raw_t **eap_packet, rlm_eap_t const *inst,
-				      REQUEST *request) CC_HINT(nonnull);
-
-/*
- *	Memory management
- */
-eap_round_t	*eap_round_alloc(eap_session_t *eap_session) CC_HINT(nonnull);
-eap_session_t	*eap_session_alloc(rlm_eap_t const *inst, REQUEST *request) CC_HINT(nonnull);

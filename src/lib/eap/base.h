@@ -31,84 +31,20 @@ RCSIDH(lib_eap_base_h, "$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 
 #include <freeradius-devel/eap/base.h>
+#include <freeradius-devel/eap/compose.h>
+#include <freeradius-devel/eap/types.h>
+#include <freeradius-devel/eap/session.h>
+#include <freeradius-devel/eap/submodule.h>
 #include <freeradius-devel/eap/types.h>
 
 /* TLS configuration name */
 #define TLS_CONFIG_SECTION "tls-config"
 
-#define MAX_PROVIDED_METHODS	10
-
-/** Contains a pair of request and response packets
- *
- * Helps with formulating/correlating requests to responses we've received.
- */
-typedef struct {
-	eap_packet_t	*response;			//!< Packet we received from the peer.
-	eap_packet_t	*request;			//!< Packet we will send to the peer.
-	bool		set_request_id;			//!< Whether the EAP-Method already set the next request ID.
-} eap_round_t;
-
-/*
- *	Function to process EAP packets.
- */
-typedef rlm_rcode_t (*eap_process_t)(void *instance, eap_session_t *eap_session);
-
 #define EAP_STATE_LEN (RADIUS_AUTH_VECTOR_LENGTH)
-/** Tracks the progress of a single session of any EAP method
- *
- */
-struct eap_session_s {
-	eap_session_t	*prev, *next;			//!< Next/previous eap session in this doubly linked list.
-
-	eap_session_t	*child;				//!< Session for tunneled EAP method.
-
-	void const	*inst;				//!< Instance of the eap module this session was created by.
-	eap_type_t	type;				//!< EAP method number.
-
-	REQUEST		*request;			//!< Current request.  Only used by OpenSSL callbacks to
-							///< access the current request.  Must be NULL if eap_session
-							///< is not being processed by rlm_eap.
-
-	char		*identity;			//!< NAI (User-Name) from EAP-Identity
-
-	eap_round_t 	*prev_round;			//!< Previous response/request pair. #this_round should contain
-							///< the response to the request in #prev_round.
-	eap_round_t 	*this_round;			//!< The EAP response we're processing, and the EAP request
-							///< we're building.
-
-	void 		*opaque;			//!< Opaque data used by EAP methods.
-
-	eap_process_t	process;			//!< Callback that should be used to process the next round.
-							///< Usually set to the process functino of an EAP submodule.
-	int		rounds;				//!< How many roundtrips have occurred this session.
-
-	time_t		updated;			//!< The last time we received a packet for this EAP session.
-
-	bool		tls;				//!< Whether EAP method uses TLS.
-	bool		finished;			//!< Whether we consider this session complete.
-};
-
-/** Interface exported by EAP submodules
- *
- */
-typedef struct {
-	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
-	FR_MODULE_COMMON;				//!< Common fields for all instantiated modules.
-	FR_MODULE_THREADED_COMMON;			//!< Common fields for threaded modules.
-
-	eap_type_t		provides[MAX_PROVIDED_METHODS];	//!< Allow the module to register itself for more
-								///< than one EAP-Method.
-	eap_process_t		session_init;		//!< Callback for creating a new #eap_session_t.
-	eap_process_t		entry_point;		//!< Callback for processing the next #eap_round_t of an
-							//!< #eap_session_t.
-} rlm_eap_submodule_t;
-
-#define REQUEST_DATA_EAP_SESSION	 (1)
-#define REQUEST_DATA_EAP_SESSION_PROXIED (2)
 
 #define REQUEST_DATA_EAP_TUNNEL_CALLBACK FR_EAP_MESSAGE
 #define REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK ((FR_EAP_MESSAGE << 16) | FR_EAP_MSCHAPV2)
-#define RAD_REQUEST_OPTION_PROXY_EAP	(1 << 16)
+
 
 /*
  *	This is for tunneled callbacks
@@ -124,12 +60,8 @@ typedef struct {
 /*
  *	interfaces in eapcommon.c
  */
-eap_type_t		eap_name2type(char const *name);
-char const		*eap_type2name(eap_type_t method);
-int			eap_wireformat(eap_packet_t *reply);
-
-VALUE_PAIR		*eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *reply);
-eap_packet_raw_t	*eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
+VALUE_PAIR		*eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *reply);
+eap_packet_raw_t	*eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps);
 void			eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, int len);
 
 rlm_rcode_t		eap_virtual_server(REQUEST *request, REQUEST *fake,

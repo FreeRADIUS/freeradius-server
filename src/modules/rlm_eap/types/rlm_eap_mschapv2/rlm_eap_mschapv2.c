@@ -246,7 +246,7 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *ea
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request);
 
 #ifdef WITH_PROXY
 /*
@@ -409,11 +409,11 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst,
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
-static rlm_rcode_t mod_process_auth_type(void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_process_auth_type(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_rcode_t	rcode;
-	rlm_eap_mschapv2_t	*inst = instance;
-	REQUEST		*request = eap_session->request;
+	rlm_rcode_t		rcode;
+	rlm_eap_mschapv2_t	*inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
+	eap_session_t		*eap_session = eap_session_get(request);
 
 	rcode = unlang_interpret_resume(request);
 
@@ -426,19 +426,20 @@ static rlm_rcode_t mod_process_auth_type(void *instance, eap_session_t *eap_sess
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thread, REQUEST *request)
 {
+	rlm_eap_mschapv2_t	*inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
+	eap_session_t		*eap_session = eap_session_get(request);
+	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
+	eap_round_t		*eap_round = eap_session->this_round;
+	VALUE_PAIR		*auth_challenge, *response, *name;
+
+	CONF_SECTION		*unlang;
 	rlm_rcode_t		rcode;
 	int			ccode;
 	uint8_t			*p;
 	size_t			length;
 	char			*q;
-	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
-	eap_round_t		*eap_round = eap_session->this_round;
-	VALUE_PAIR		*auth_challenge, *response, *name;
-	rlm_eap_mschapv2_t	*inst = (rlm_eap_mschapv2_t *)instance;
-	REQUEST			*request = eap_session->request;
-	CONF_SECTION		*unlang;
 
 	if (!fr_cond_assert(eap_session->inst)) return 0;
 
@@ -748,14 +749,15 @@ packet_ready:
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	int			i;
+	eap_session_t		*eap_session = eap_session_get(request);
 	VALUE_PAIR		*auth_challenge;
 	VALUE_PAIR		*peer_challenge;
 	mschapv2_opaque_t	*data;
-	REQUEST			*request = eap_session->request;
+
 	uint8_t 		*p;
+	int			i;
 	bool			created_auth_challenge;
 
 	if (!fr_cond_assert(instance)) return RLM_MODULE_FAIL;

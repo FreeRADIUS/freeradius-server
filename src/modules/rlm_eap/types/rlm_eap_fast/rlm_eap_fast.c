@@ -315,8 +315,8 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
  */
 static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 {
-	tls_session_t		*tls_session = arg;
-	REQUEST			*request = (REQUEST *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
+	tls_session_t		*tls_session = talloc_get_type_abort(arg, tls_session_t);
+	REQUEST			*request = talloc_get_type_abort(SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 	eap_fast_tunnel_t	*t;
 	VALUE_PAIR		*fast_vps = NULL, *vp;
 	fr_cursor_t		cursor;
@@ -451,17 +451,15 @@ error:
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	int rcode;
-	eap_tls_status_t status;
-	rlm_eap_fast_t *inst			= (rlm_eap_fast_t *)instance;
-	eap_tls_session_t *eap_tls_session	= talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t *tls_session		= eap_tls_session->tls_session;
-	eap_fast_tunnel_t *t			= (eap_fast_tunnel_t *) tls_session->opaque;
-	REQUEST *request			= eap_session->request;
+	eap_tls_status_t	status;
 
-	RDEBUG2("Authenticate");
+	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
+	eap_session_t		*eap_session = eap_session_get(request);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session, eap_fast_tunnel_t);
 
 	/*
 	 *	We need FAST data associated with the session, so
@@ -523,9 +521,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	/*
 	 *	Process the FAST portion of the request.
 	 */
-	rcode = eap_fast_process(eap_session, tls_session);
-
-	switch (rcode) {
+	switch (eap_fast_process(eap_session, tls_session)) {
 	case FR_CODE_ACCESS_REJECT:
 		eap_tls_fail(eap_session);
 		return RLM_MODULE_FAIL;
@@ -571,17 +567,17 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	int			rcode;
+	rlm_rcode_t		rcode;
+
+	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
+	eap_session_t		*eap_session = eap_session_get(request);
 	eap_tls_session_t 	*eap_tls_session;
 	tls_session_t		*tls_session;
-	rlm_eap_fast_t		*inst;
+
 	VALUE_PAIR		*vp;
 	bool			client_cert;
-	REQUEST			*request = eap_session->request;
-
-	inst = type_arg;
 
 	eap_session->tls = true;
 

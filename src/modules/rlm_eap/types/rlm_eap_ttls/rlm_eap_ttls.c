@@ -129,16 +129,16 @@ static ttls_tunnel_t *ttls_alloc(TALLOC_CTX *ctx, rlm_eap_ttls_t *inst)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
-static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	int rcode;
 	eap_tls_status_t	status;
-	rlm_eap_ttls_t		*inst = talloc_get_type_abort(arg, rlm_eap_ttls_t);
+
+	rlm_eap_ttls_t		*inst = talloc_get_type_abort(instance, rlm_eap_ttls_t);
+	eap_session_t		*eap_session = eap_session_get(request);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
+
 	ttls_tunnel_t		*tunnel = NULL;
-	REQUEST			*request = eap_session->request;
 	static char 		keying_prf_label[] = "ttls keying material";
 
 	if (tls_session->opaque) tunnel = talloc_get_type_abort(tls_session->opaque, ttls_tunnel_t);
@@ -221,8 +221,7 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 	/*
 	 *	Process the TTLS portion of the request.
 	 */
-	rcode = eap_ttls_process(eap_session, tls_session);
-	switch (rcode) {
+	switch (eap_ttls_process(eap_session, tls_session)) {
 	case FR_CODE_ACCESS_REJECT:
 		eap_tls_fail(eap_session);
 		return RLM_MODULE_REJECT;
@@ -266,10 +265,12 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
 {
+	rlm_eap_ttls_t		*inst = talloc_get_type_abort(instance, rlm_eap_ttls_t);
+	eap_session_t		*eap_session = eap_session_get(request);
+
 	eap_tls_session_t	*eap_tls_session;
-	rlm_eap_ttls_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_ttls_t);
 	VALUE_PAIR		*vp;
 	bool			client_cert;
 

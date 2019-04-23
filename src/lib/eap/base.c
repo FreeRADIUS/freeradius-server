@@ -91,12 +91,14 @@ fr_dict_attr_t const *attr_eap_emsk;
 fr_dict_attr_t const *attr_freeradius_proxied_to;
 fr_dict_attr_t const *attr_ms_mppe_send_key;
 fr_dict_attr_t const *attr_ms_mppe_recv_key;
+fr_dict_attr_t const *attr_state;
 
 extern fr_dict_attr_autoload_t eap_base_dict_attr[];
 fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ .out = &attr_chbind_response_code, .name = "Chbind-Response-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_session_id, .name = "EAP-Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -111,114 +113,7 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ NULL }
 };
 
-/** Return an EAP-Type for a particular name
- *
- * Converts a name into an IANA EAP type.
- *
- * @param name to convert.
- * @return
- *	- IANA EAP type.
- *	- #FR_EAP_INVALID if the name doesn't match any known types.
- */
-eap_type_t eap_name2type(char const *name)
-{
-	fr_dict_enum_t	*dv;
-
-	dv = fr_dict_enum_by_alias(attr_eap_type, name, -1);
-	if (!dv) return FR_EAP_INVALID;
-
-	if (dv->value->vb_uint32 >= FR_EAP_MAX_TYPES) return FR_EAP_INVALID;
-
-	return dv->value->vb_uint32;
-}
-
-/** Return an EAP-name for a particular type
- *
- * Resolve
- */
-char const *eap_type2name(eap_type_t method)
-{
-	fr_dict_enum_t	*dv;
-
-	dv = fr_dict_enum_by_value(attr_eap_type, fr_box_uint32(method));
-	if (dv) return dv->alias;
-
-	return "unknown";
-}
-
-/*
- *	EAP packet format to be sent over the wire
- *
- *	i.e. code+id+length+data where data = null/type+typedata
- *	based on code.
- *
- * INPUT to function is reply->code
- *		      reply->id
- *		      reply->type   - setup with data
- *
- * OUTPUT reply->packet is setup with wire format, and will
- *		      be allocated to the right size.
- *
- */
-int eap_wireformat(eap_packet_t *reply)
-{
-	eap_packet_raw_t	*header;
-	uint16_t total_length = 0;
-
-	if (!reply) return 0;
-
-	/*
-	 *	If reply->packet is set, then the wire format
-	 *	has already been calculated, just succeed.
-	 */
-	if(reply->packet != NULL) return 0;
-
-	total_length = EAP_HEADER_LEN;
-	if (reply->code < 3) {
-		total_length += 1/* EAP Method */;
-		if (reply->type.data && reply->type.length > 0) {
-			total_length += reply->type.length;
-		}
-	}
-
-	reply->packet = talloc_array(reply, uint8_t, total_length);
-	header = (eap_packet_raw_t *)reply->packet;
-	if (!header) {
-		return -1;
-	}
-
-	header->code = (reply->code & 0xFF);
-	header->id = (reply->id & 0xFF);
-
-	total_length = htons(total_length);
-	memcpy(header->length, &total_length, sizeof(total_length));
-
-	/*
-	 *	Request and Response packets are special.
-	 */
-	if ((reply->code == FR_EAP_CODE_REQUEST) ||
-	    (reply->code == FR_EAP_CODE_RESPONSE)) {
-		header->data[0] = (reply->type.num & 0xFF);
-
-		/*
-		 * Here since we cannot know the typedata format and length
-		 *
-		 * Type_data is expected to be wired by each EAP-Type
-		 *
-		 * Zero length/No typedata is supported as long as
-		 * type is defined
-		 */
-		if (reply->type.data && reply->type.length > 0) {
-			memcpy(&header->data[1], reply->type.data, reply->type.length);
-			talloc_free(reply->type.data);
-			reply->type.data = reply->packet + EAP_HEADER_LEN + 1/*EAPtype*/;
-		}
-	}
-
-	return 0;
-}
-
-VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
+VALUE_PAIR *eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 {
 	int		total, size;
 	uint8_t const *ptr;
@@ -256,6 +151,127 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 	return head;
 }
 
+/** Basic EAP packet verifications & validations
+ *
+ * @param[in] eap_packet	to validate.
+ * @return
+ *	- true the packet is valid.
+ *	- false the packet is invalid.
+ */
+static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
+{
+	uint16_t		len;
+	size_t			packet_len;
+	eap_packet_raw_t	*eap_packet = *eap_packet_p;
+
+	/*
+	 *	These length checks are also done by eap_packet_from_vp(),
+	 *	but that's OK.  The static analysis tools aren't smart
+	 *	enough to figure that out.
+	 */
+	packet_len = talloc_array_length((uint8_t *) eap_packet);
+	if (packet_len <= EAP_HEADER_LEN) {
+		fr_strerror_printf("Invalid EAP data lenth %zd <= 4", packet_len);
+		return false;
+	}
+
+	memcpy(&len, eap_packet->length, sizeof(uint16_t));
+	len = ntohs(len);
+
+	if ((len <= EAP_HEADER_LEN) || (len > packet_len)) {
+		fr_strerror_printf("Invalid EAP length field.  Expected value in range %u-%zu, was %u bytes",
+				   EAP_HEADER_LEN, packet_len, len);
+		return false;
+	}
+
+	/*
+	 *	High level EAP packet checks
+	 */
+	switch (eap_packet->code) {
+	case FR_EAP_CODE_RESPONSE:
+	case FR_EAP_CODE_REQUEST:
+		break;
+
+	default:
+		fr_strerror_printf("Invalid EAP code %d: Ignoring the packet", eap_packet->code);
+		return false;
+	}
+
+	if ((eap_packet->data[0] == 0) ||
+	    (eap_packet->data[0] >= FR_EAP_MAX_TYPES)) {
+		/*
+		 *	Handle expanded types by smashing them to
+		 *	normal types.
+		 */
+		if (eap_packet->data[0] == FR_EAP_EXPANDED_TYPE) {
+			uint8_t *p, *q;
+
+			if (len <= (EAP_HEADER_LEN + 1 + 3 + 4)) {
+				fr_strerror_printf("Expanded EAP type is too short: ignoring the packet");
+				return false;
+			}
+
+			if ((eap_packet->data[1] != 0) ||
+			    (eap_packet->data[2] != 0) ||
+			    (eap_packet->data[3] != 0)) {
+				fr_strerror_printf("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
+				return false;
+			}
+
+			if ((eap_packet->data[4] != 0) ||
+			    (eap_packet->data[5] != 0) ||
+			    (eap_packet->data[6] != 0)) {
+				fr_strerror_printf("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
+				return false;
+			}
+
+			if ((eap_packet->data[7] == 0) ||
+			    (eap_packet->data[7] >= FR_EAP_MAX_TYPES)) {
+				fr_strerror_printf("Unsupported Expanded EAP type %s (%u): ignoring the packet",
+						   eap_type2name(eap_packet->data[7]), eap_packet->data[7]);
+				return false;
+			}
+
+			if (eap_packet->data[7] == FR_EAP_NAK) {
+				fr_strerror_printf("Unsupported Expanded EAP-NAK: ignoring the packet");
+				return false;
+			}
+
+			/*
+			 *	Re-write the EAP packet to NOT have the expanded type.
+			 */
+			q = (uint8_t *) eap_packet;
+			memmove(q + EAP_HEADER_LEN, q + EAP_HEADER_LEN + 7, len - 7 - EAP_HEADER_LEN);
+
+			p = talloc_realloc(talloc_parent(eap_packet), eap_packet, uint8_t, len - 7);
+			if (!p) {
+				fr_strerror_printf("Unsupported EAP type %s (%u): ignoring the packet",
+						   eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
+				return false;
+			}
+
+			len -= 7;
+			p[2] = (len >> 8) & 0xff;
+			p[3] = len & 0xff;
+
+			*eap_packet_p = (eap_packet_raw_t *)p;
+
+			return true;
+		}
+
+		fr_strerror_printf("Unsupported EAP type %s (%u): ignoring the packet",
+				   eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
+		return false;
+	}
+
+	/* we don't expect notification, but we send it */
+	if (eap_packet->data[0] == FR_EAP_NOTIFICATION) {
+		fr_strerror_printf("Got NOTIFICATION, Ignoring the packet");
+		return false;
+	}
+
+	return true;
+}
 
 /*
  * Handles multiple EAP-Message attrs
@@ -264,7 +280,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
  * NOTE: Sometimes Framed-MTU might contain the length of EAP-Message,
  *      refer fragmentation in rfc2869.
  */
-eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
+eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 {
 	VALUE_PAIR		*vp;
 	eap_packet_raw_t	*eap_packet;
@@ -347,6 +363,11 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	     vp = fr_cursor_next(&cursor)) {
 		memcpy(ptr, vp->vp_strvalue, vp->vp_length);
 		ptr += vp->vp_length;
+	}
+
+	if (!eap_is_valid(&eap_packet)) {
+		talloc_free(eap_packet);
+		return NULL;
 	}
 
 	return eap_packet;

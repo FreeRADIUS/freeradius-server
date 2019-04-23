@@ -51,7 +51,6 @@ static FR_NAME_NUMBER const aka_state_table[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session);
 static int mod_section_compile(eap_aka_actions_t *actions, CONF_SECTION *server_cs);
 static int virtual_server_parse(TALLOC_CTX *ctx, void *out, void *parent,
 				CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
@@ -887,9 +886,9 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 /** Process the Peer's response and advantage the state machine
  *
  */
-static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	REQUEST			*request = eap_session->request;
+	eap_session_t		*eap_session = eap_session_get(request);
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 
 	fr_sim_decode_ctx_t	ctx = {
@@ -1113,11 +1112,12 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 /** Initiate the EAP-SIM session by starting the state machine
  *
  */
-static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	REQUEST				*request = eap_session->request;
+	rlm_eap_aka_t			*inst = talloc_get_type_abort(instance, rlm_eap_aka_t);
+	eap_session_t			*eap_session = eap_session_get(request);
 	eap_aka_session_t		*eap_aka_session;
-	rlm_eap_aka_t			*inst = instance;
+
 	fr_sim_id_type_t		type;
 	fr_sim_method_hint_t		method;
 

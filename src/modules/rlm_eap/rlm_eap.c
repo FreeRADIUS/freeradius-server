@@ -428,6 +428,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, void *thread, eap_session_
 	REQUEST				*request = eap_session->request;
 
 	rlm_eap_method_t const		*method;
+	void				*submodule_data;
 
 	eap_type_t			next = inst->default_method;
 	VALUE_PAIR			*vp;
@@ -537,6 +538,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, void *thread, eap_session_
 
 module_call:
 	method = &inst->methods[eap_session->type];
+	submodule_data = method->submodule_inst->dl_inst->data;
 
 	unlang_module_yield(request, mod_authenticate_result_async, NULL, eap_session);
 
@@ -547,7 +549,8 @@ module_call:
 	RDEBUG2("Calling submodule %s", method->submodule->name);
 //	caller = request->module;
 //	request->module = method->submodule->name;
-	rcode = eap_session->process(method->submodule_inst->dl_inst->data, eap_session);
+	rcode = eap_session->process(submodule_data,
+				     submodule_data ? module_thread_by_data(submodule_data) : NULL, request);
 //	request->module = caller;
 
 	/*
@@ -579,7 +582,7 @@ static rlm_rcode_t mod_authenticate(void *instance, void *thread, REQUEST *reque
 	 *	attribute.  The relevant decoder should have already
 	 *	concatenated the fragments into a single buffer.
 	 */
-	eap_packet = eap_vp2packet(request, request->packet->vps);
+	eap_packet = eap_packet_from_vp(request, request->packet->vps);
 	if (!eap_packet) {
 		RPERROR("Malformed EAP Message");
 		return RLM_MODULE_FAIL;
@@ -591,7 +594,7 @@ static rlm_rcode_t mod_authenticate(void *instance, void *thread, REQUEST *reque
 	 *	retrieve the existing eap_session from the request
 	 *	data.
 	 */
-	eap_session = eap_session_continue(&eap_packet, inst, request);
+	eap_session = eap_session_continue(instance, &eap_packet, request);
 	if (!eap_session) return RLM_MODULE_INVALID;	/* Don't emit error here, it will mask the real issue */
 
 	/*
@@ -631,7 +634,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *
 	 *	We therefore send an EAP Identity request.
 	 */
-	status = eap_start(inst, request);
+	status = eap_start(request, inst->methods, inst->ignore_unknown_types);
 	switch (status) {
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_FAIL:
@@ -887,7 +890,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	 *	Reconstruct the EAP packet from EAP-Message fragments
 	 *	in the request.
 	 */
-	eap_packet = eap_vp2packet(request, request->packet->vps);
+	eap_packet = eap_packet_from_vp(request, request->packet->vps);
 	if (!eap_packet) {
 		RPERROR("Malformed EAP Message");
 		return RLM_MODULE_FAIL;
@@ -898,7 +901,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	 *	data.  This will have been added to the request
 	 *	data by the state API.
 	 */
-	eap_session = eap_session_continue(&eap_packet, inst, request);
+	eap_session = eap_session_continue(instance, &eap_packet, request);
 	if (!eap_session) {
 		RDEBUG2("Failed to get eap_session, probably already removed, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;

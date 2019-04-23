@@ -864,13 +864,12 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 /** Authenticate a previously sent challenge
  *
  */
-static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	REQUEST			*request = eap_session->request;
+	eap_session_t		*eap_session = eap_session_get(request);
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
-	fr_sim_decode_ctx_t	ctx = {
-					.keys = &eap_sim_session->keys,
-				};
+
+	fr_sim_decode_ctx_t	ctx = { .keys = &eap_sim_session->keys };
 	VALUE_PAIR		*subtype_vp, *from_peer, *vp;
 	fr_cursor_t		cursor;
 
@@ -1068,11 +1067,12 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
  *	Initiate the EAP-SIM session by starting the state machine
  *      and initiating the state.
  */
-static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	REQUEST				*request = eap_session->request;
+	rlm_eap_sim_t			*inst = talloc_get_type_abort(instance, rlm_eap_sim_t);
+	eap_session_t			*eap_session = eap_session_get(request);
 	eap_sim_session_t		*eap_sim_session;
-	rlm_eap_sim_t			*inst = instance;
+
 	fr_sim_id_type_t		type;
 	fr_sim_method_hint_t		method;
 

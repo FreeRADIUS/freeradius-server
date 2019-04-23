@@ -112,20 +112,6 @@ typedef struct {
 	uint8_t		*data;
 } eap_type_data_t;
 
-/** Structure to hold EAP data
- *
- * length = code + id + length + type + type.data
- *	=  1   +  1 +   2    +  1   +  X
- */
-typedef struct {
-	eap_code_t	code;
-	uint8_t		id;
-	size_t		length;
-	eap_type_data_t	type;
-
-	uint8_t		*packet;
-} eap_packet_t;
-
 /** Structure to represent packet format of eap *on wire*
  *
  * @note Do not change field order, or field size. Code depends on
@@ -139,4 +125,5 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t		data[1];
 } eap_packet_raw_t;
 
-typedef struct eap_session_s eap_session_t;
+eap_type_t	eap_name2type(char const *name);
+char const	*eap_type2name(eap_type_t method);
