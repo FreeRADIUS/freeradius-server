@@ -148,7 +148,7 @@ fr_dict_autoload_t rlm_redis_ippool_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 #ifdef WITH_DHCP
-	{ .out = &dict_radius, .proto = "dhcpv4" },
+	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
 #endif
 	{ NULL }
 };
