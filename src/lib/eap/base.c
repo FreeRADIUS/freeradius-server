@@ -153,7 +153,7 @@ VALUE_PAIR *eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 
 /** Basic EAP packet verifications & validations
  *
- * @param[in] eap_packet	to validate.
+ * @param[in] eap_packet_p	to validate.
  * @return
  *	- true the packet is valid.
  *	- false the packet is invalid.
