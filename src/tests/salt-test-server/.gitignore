@@ -6,3 +6,6 @@
 # Salt runtime directories
 tmp
 cache
+
+# Temporary build products
+base.ldif-e
