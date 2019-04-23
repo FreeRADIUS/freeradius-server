@@ -739,6 +739,8 @@ module_thread_instance_t *module_thread(module_instance_t *mi)
 {
 	module_thread_instance_t **array = module_thread_inst_array;
 
+	if (!mi) return NULL;
+
 	rad_assert(mi->number < talloc_array_length(array));
 
 	return array[mi->number];
