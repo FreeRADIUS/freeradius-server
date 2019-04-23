@@ -486,7 +486,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 */
 	case EAP_TLS_ESTABLISHED:
 		tls_session_send(request, tls_session);
-		rad_assert(t != NULL);
+		rad_assert(tls_session->opaque != NULL);
 		break;
 
 	/*
