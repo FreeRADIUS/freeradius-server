@@ -47,6 +47,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.6
 	NAME 'radiusCalledStationId'
 	DESC 'controlItem: Called-Station-Id'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
@@ -55,6 +56,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.7
 	NAME 'radiusCallingStationId'
 	DESC 'controlItem: Calling-Station-Id'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
@@ -63,12 +65,14 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.8
 	NAME 'radiusClass'
 	DESC 'replyItem: Class'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
  )
 
 attributetype ( 1.3.6.1.4.1.11344.4.3.1.45
 	NAME 'radiusClientIPAddress'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
@@ -77,6 +81,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.9
 	NAME 'radiusFilterId'
 	DESC 'replyItem: Filter-Id'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
  )
 
@@ -114,6 +119,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.14
 	NAME 'radiusFramedIPAddress'
 	DESC 'replyItem: Framed-IP-Address'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
@@ -154,6 +160,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.19
 	NAME 'radiusFramedRoute'
 	DESC 'replyItem: Framed-Route'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
  )
 
@@ -161,6 +168,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.20
 	NAME 'radiusFramedRouting'
 	DESC 'replyItem: Framed-Routing'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
@@ -168,12 +176,14 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.20
 attributetype ( 1.3.6.1.4.1.11344.4.3.1.46
 	NAME 'radiusGroupName'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
  )
 
 attributetype ( 1.3.6.1.4.1.11344.4.3.1.47
 	NAME 'radiusHint'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
@@ -181,6 +191,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.47
 attributetype ( 1.3.6.1.4.1.11344.4.3.1.48
 	NAME 'radiusHuntgroupName'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
  )
 
@@ -265,6 +276,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.30
 attributetype ( 1.3.6.1.4.1.11344.4.3.1.49
 	NAME 'radiusProfileDN'
 	EQUALITY distinguishedNameMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.12
  )
 
@@ -278,6 +290,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.31
 attributetype ( 1.3.6.1.4.1.11344.4.3.1.50
 	NAME 'radiusProxyToRealm'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
@@ -286,6 +299,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.51
 	NAME 'radiusReplicateToRealm'
 	DESC 'control:Replicate-To-Realm'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
@@ -293,6 +307,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.51
 attributetype ( 1.3.6.1.4.1.11344.4.3.1.52
 	NAME 'radiusRealm'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
 	SINGLE-VALUE
  )
@@ -422,6 +437,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.59
 	NAME 'radiusAttribute'
 	DESC 'controlItem: $GENERIC$'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
  )
 
@@ -443,6 +459,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.63
 	NAME 'radiusControlAttribute'
 	DESC 'controlItem: $GENERIC$'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
  )
 
@@ -450,6 +467,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.64
 	NAME 'radiusReplyAttribute'
 	DESC 'replyItem: $GENERIC$'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
  )
 
@@ -457,6 +475,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.65
 	NAME 'radiusRequestAttribute'
 	DESC 'requestItem: $GENERIC$'
 	EQUALITY caseIgnoreMatch
+	SUBSTR caseIgnoreSubstringsMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
  )
 
