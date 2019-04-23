@@ -459,17 +459,12 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	eap_session_t		*eap_session = eap_session_get(request);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
-	eap_fast_tunnel_t	*t;
 
 	/*
 	 *	We need FAST data associated with the session, so
 	 *	allocate it here, if it wasn't already alloacted.
 	 */
-	if (!tls_session->opaque) {
-		t = tls_session->opaque = eap_fast_alloc(tls_session, inst);
-	} else {
-		t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
-	}
+	if (!tls_session->opaque) tls_session->opaque = eap_fast_alloc(tls_session, inst);
 
 	/*
 	 *	Process TLS layer until done.
