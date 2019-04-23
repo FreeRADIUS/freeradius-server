@@ -569,8 +569,6 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
  */
 static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_rcode_t		rcode;
-
 	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
 	eap_session_t		*eap_session = eap_session_get(request);
 	eap_tls_session_t 	*eap_tls_session;
@@ -626,11 +624,10 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	rcode = eap_tls_compose(eap_session, EAP_TLS_START_SEND,
-				SET_START(eap_tls_session->base_flags) | EAP_FAST_VERSION,
-				&tls_session->clean_in, tls_session->clean_in.used,
-				tls_session->clean_in.used);
-	if (rcode < 0) {
+	if (eap_tls_compose(eap_session, EAP_TLS_START_SEND,
+			    SET_START(eap_tls_session->base_flags) | EAP_FAST_VERSION,
+			    &tls_session->clean_in, tls_session->clean_in.used,
+			    tls_session->clean_in.used) < 0) {
 		talloc_free(tls_session);
 		return RLM_MODULE_FAIL;
 	}
