@@ -1161,7 +1161,7 @@ static unlang_action_t unlang_interpret_resume_dispatch(REQUEST *request, rlm_rc
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
 	unlang_action_t			action;
 
-	RDEBUG3("Resuming in %s", mr->self.debug_name);
+	RDEBUG2("%s - Resuming execution", mr->self.debug_name);
 
 	if (!unlang_ops[mr->parent->type].resume) {
 		*presult = RLM_MODULE_FAIL;
