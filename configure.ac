@@ -83,6 +83,29 @@ dnl #
 AC_CHECK_PROG(GIT, git, yes, no)
 
 dnl #
+dnl # check for ASCIIDOCTOR and pandoc
+dnl #
+AC_PATH_PROG(ASCIIDOCTOR, asciidoctor)
+if test "x$ac_cv_path_ASCIIDOCTOR" = "x"; then
+  AC_MSG_WARN([asciidoctor not found - Please install if you want build the docs])
+fi
+
+ AC_PATH_PROG(PANDOC, pandoc)
+if test "x$ac_cv_path_PANDOC" = "x"; then
+  AC_MSG_WARN([pandoc not found - Please install if you want build the docs])
+else
+  #
+  #  Pandoc v2 onwards renamed --latex-engine to --pdf-engine
+  #
+  if pandoc --help 2>&1 | grep -q "latex-engine"; then
+    PANDOC_ENGINE=latex
+  else
+    PANDOC_ENGINE=pdf
+  fi
+  AC_SUBST(PANDOC_ENGINE)
+fi
+
+dnl #
 dnl #  Enable developer features like debugging symbols.
 dnl #  These checks must be done before expanding the AC_PROG_CC
 dnl #  and AC_PROG_CXX macros.

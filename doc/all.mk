@@ -1,4 +1,24 @@
-ifneq "$(docdir)" "no"
+#
+#  Check if we can build the documentation.
+#
+#  We try to build it, but turn off the build unless
+#  all of the prerequisites have been found.
+#
+WITH_DOCS=yes
+
+ifeq "$(ASCIIDOCTOR)" ""
+WITH_DOCS=no
+endif
+
+ifeq "$(PANDOC)" ""
+WITH_DOCS=no
+endif
+
+ifeq "$(docdir)" "no"
+WITH_DOCS=no
+endif
+
+ifeq "$(WITH_DOCS)" "yes"
 
 #
 #  Running "shell" is expensive on OSX.  Building the documentation
@@ -50,29 +70,6 @@ clean.doc:
 	${Q}rm -f *~ rfc/*~ examples/*~ $(ADOC_FILES) $(HTML_FILES) $(PDF_FILES)
 
 #
-#	Checking some dependencies
-#
-ifneq "$(strip $(foreach x,html pdf adoc asciidoc,$(findstring $(x),$(MAKECMDGOALS))))" ""
-ifeq ($(shell which pandoc 2>/dev/null),)
-$(error You need to install pandoc)
-endif
-endif
-
-ifneq "$(strip $(foreach x,adoc asciidoc,$(findstring $(x),$(MAKECMDGOALS))))" ""
-ifeq ($(shell which asciidoctor 2>/dev/null),)
-$(error You need to install asciidoctor)
-endif
-endif
-
-#
-#  Pandoc v2 onwards renamed --latex-engine to --pdf-engine
-#
-PANDOC_ENGINE=pdf
-ifneq ($(shell pandoc --help | grep latex-engine),)
-PANDOC_ENGINE=latex
-endif
-
-#
 #  Markdown files get converted to asciidoc via pandoc.
 #
 #  Many documentation files are in markdown because it's a simpler
@@ -82,7 +79,7 @@ endif
 doc/raddb/%.adoc: raddb/%.md
 	@echo PANDOC $^
 	@mkdir -p $(dir $@)
-	@pandoc --filter=scripts/asciidoc/pandoc-filter -w asciidoc -o $@ $^
+	@$(PANDOC) --filter=scripts/asciidoc/pandoc-filter -w asciidoc -o $@ $^
 
 #
 #  Conf files get converted to Asciidoc via our own magic script.
@@ -95,19 +92,19 @@ doc/raddb/%.adoc: raddb/%
 
 doc/%.html: doc/%.adoc
 	@echo HTML $^
-	@asciidoctor $< -b html5 -o $@ $<
+	@$(ASCIIDOCTOR) $< -b html5 -o $@ $<
 
 doc/%.pdf: doc/%.adoc
 	@echo PDF $^
-	@asciidoctor $< -b docbook5 -o - | \
-		pandoc -f docbook -t latex --${PANDOC_ENGINE}-engine=xelatex \
+	@$(ASCIIDOCTOR) $< -b docbook5 -o - | \
+		$(PANDOC) -f docbook -t latex --${PANDOC_ENGINE}-engine=xelatex \
 			-V papersize=letter \
 			-V images=yes \
 			--template=./scripts/asciidoc/freeradius.template -o $@
 
 doc/%.pdf: doc/%.md
 	@echo PDF $^
-	pandoc -f markdown -t latex --${PANDOC_ENGINE}-engine=xelatex \
+	@$(PANDOC) -f markdown -t latex --${PANDOC_ENGINE}-engine=xelatex \
 		-V papersize=letter \
 		--template=./scripts/asciidoc/freeradius.template -o $@ $<
 

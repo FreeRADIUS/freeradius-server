@@ -693,6 +693,9 @@ build_os
 build_vendor
 build_cpu
 build
+PANDOC_ENGINE
+PANDOC
+ASCIIDOCTOR
 GIT
 RADIUSD_VERSION_STRING
 target_alias
@@ -2577,6 +2580,106 @@ $as_echo "no" >&6; }
 fi
 
 
+
+# Extract the first word of "asciidoctor", so it can be a program name with args.
+set dummy asciidoctor; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_ASCIIDOCTOR+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $ASCIIDOCTOR in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_ASCIIDOCTOR="$ASCIIDOCTOR" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_ASCIIDOCTOR="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+ASCIIDOCTOR=$ac_cv_path_ASCIIDOCTOR
+if test -n "$ASCIIDOCTOR"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ASCIIDOCTOR" >&5
+$as_echo "$ASCIIDOCTOR" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+if test "x$ac_cv_path_ASCIIDOCTOR" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: asciidoctor not found - Please install if you want build the docs" >&5
+$as_echo "$as_me: WARNING: asciidoctor not found - Please install if you want build the docs" >&2;}
+fi
+
+ # Extract the first word of "pandoc", so it can be a program name with args.
+set dummy pandoc; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_PANDOC+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $PANDOC in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PANDOC="$PANDOC" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_PANDOC="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PANDOC=$ac_cv_path_PANDOC
+if test -n "$PANDOC"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PANDOC" >&5
+$as_echo "$PANDOC" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+if test "x$ac_cv_path_PANDOC" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pandoc not found - Please install if you want build the docs" >&5
+$as_echo "$as_me: WARNING: pandoc not found - Please install if you want build the docs" >&2;}
+else
+  #
+  #  Pandoc v2 onwards renamed --latex-engine to --pdf-engine
+  #
+  if pandoc --help 2>&1 | grep -q "latex-engine"; then
+    PANDOC_ENGINE=latex
+  else
+    PANDOC_ENGINE=pdf
+  fi
+
+fi
 
 # Check whether --enable-developer was given.
 if test "${enable_developer+set}" = set; then :
