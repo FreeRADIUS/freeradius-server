@@ -365,7 +365,7 @@ void unlang_module_push(rlm_rcode_t *out, REQUEST *request,
 
 	MEM(mi = talloc_zero(ms, unlang_module_t));	/* Free at the same time as the state */
 	mi->self = module_instruction;
-	mi->self.name = module_instance->module->name;
+	mi->self.name = module_instance->name;
 	mi->self.debug_name = mi->self.name;
 	mi->module_instance = module_instance;
 	mi->method = method;
@@ -657,7 +657,7 @@ done:
 	 *	Must be left at RDEBUG() level otherwise RDEBUG becomes pointless
 	 */
 	RDEBUG("%s (%s)", instruction->name ? instruction->name : "",
-	       fr_int2str(mod_rcode_table, *presult, "<invalid>"));
+	       fr_int2str(mod_rcode_table, rcode, "<invalid>"));
 
 	switch (rcode) {
 	case RLM_MODULE_YIELD:
