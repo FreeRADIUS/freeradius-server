@@ -56,7 +56,6 @@ ATTRIBUTE	Alc-Create-Host				15	string	# CoA
 ATTRIBUTE	Alc-ANCP-Str				16	string	# CoA
 ATTRIBUTE	Alc-Retail-Serv-Id			17	integer
 ATTRIBUTE	Alc-Default-Router			18	ipaddr
-ATTRIBUTE	Alc-Client-Hardware-Addr		27	string
 
 # RADIUS subscriber accounting VSAs
 ATTRIBUTE	Alc-Acct-I-Inprof-Octets-64		19	struct
@@ -99,7 +98,7 @@ ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Selection	.1	byte
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Id		.2	byte
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts			.3	integer64
 
-ATTRIBUTE	Alc-Client-HardwareAddr			27	ether
+ATTRIBUTE	Alc-Client-Hardware-Addr		27	string
 
 ATTRIBUTE	Alc-Int-Dest-Id-Str			28	string
 ATTRIBUTE	Alc-Primary-Nbns			29	ipaddr
