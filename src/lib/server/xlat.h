@@ -85,12 +85,12 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
  *	on a registered FD occurs before the timeout event fires.
  *
  * @param[in] request		the request.
- * @param[in] instance		the xlat instance.
- * @param[in] thread		data specific to this xlat instance.
+ * @param[in] xlat_inst		the xlat instance.
+ * @param[in] xlat_thread_inst	data specific to this xlat instance.
  * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] fired		the time the timeout event actually fired.
  */
-typedef	void (*fr_unlang_xlat_timeout_t)(REQUEST *request, void *instance, void *thread, void *rctx,
+typedef	void (*fr_unlang_xlat_timeout_t)(REQUEST *request, void *xlat_inst, void *xlat_thread_inst, void *rctx,
 					 struct timeval *fired);
 
 /** A callback when the FD is ready for reading

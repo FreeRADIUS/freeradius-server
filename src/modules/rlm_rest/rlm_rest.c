@@ -423,7 +423,7 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_action, rctx);
 }
 
-static rlm_rcode_t mod_authorize_result(REQUEST *request, void *instance, void *thread, void *ctx)
+static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *request, void *ctx)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
@@ -537,7 +537,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, 
 	return unlang_module_yield(request, mod_authorize_result, rest_io_module_action, handle);
 }
 
-static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, void *thread, void *rctx)
+static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST *request, void *rctx)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
@@ -666,7 +666,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 	return unlang_module_yield(request, mod_authenticate_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_accounting_result(REQUEST *request, void *instance, void *thread, void *rctx)
+static rlm_rcode_t mod_accounting_result(void *instance, void *thread, REQUEST *request, void *rctx)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
@@ -745,7 +745,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread,
 	return unlang_module_yield(request, mod_accounting_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_post_auth_result(REQUEST *request, void *instance, void *thread, void *rctx)
+static rlm_rcode_t mod_post_auth_result(void *instance, void *thread, REQUEST *request, void *rctx)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;

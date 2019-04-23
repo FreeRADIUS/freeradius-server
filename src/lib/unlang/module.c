@@ -623,7 +623,7 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult, int
 	caller = request->module;
 	request->module = sp->module_instance->name;
 	safe_lock(sp->module_instance);	/* Noop unless instance->mutex set */
-	rcode = sp->method(sp->module_instance->dl_inst->data, ms->thread->data, request);
+	rcode = sp->method(request, sp->module_instance->dl_inst->data, ms->thread->data);
 	safe_unlock(sp->module_instance);
 	request->module = caller;
 
@@ -715,8 +715,7 @@ static void unlang_module_signal(REQUEST *request, void *rctx, fr_state_signal_t
 
 	caller = request->module;
 	request->module = mc->module_instance->name;
-	((fr_unlang_module_signal_t)mr->signal)(request,
-						mc->module_instance->dl_inst->data, ms->thread->data,
+	((fr_unlang_module_signal_t)mr->signal)(mc->module_instance->dl_inst->data, ms->thread->data, request,
 						rctx, action);
 	request->module = caller;
 }
@@ -744,9 +743,8 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	caller = request->module;
 	request->module = mc->module_instance->name;
 	safe_lock(mc->module_instance);
-	rcode = request->rcode = ((fr_unlang_module_resume_t)mr->resume)(request,
-									 mc->module_instance->dl_inst->data,
-									 ms->thread->data, mr->rctx);
+	rcode = request->rcode = ((fr_unlang_module_resume_t)mr->resume)(mc->module_instance->dl_inst->data,
+									 ms->thread->data, request, mr->rctx);
 	safe_unlock(mc->module_instance);
 	request->module = caller;
 

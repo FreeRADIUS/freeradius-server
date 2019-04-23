@@ -51,13 +51,29 @@ static const CONF_PARSER module_config[] = {
  *
  * Marks the request as resumable, and prints the delayed delay time.
  *
- * @param[in] request		The current request.
  * @param[in] instance		This instance of the delay module.
  * @param[in] thread		Thread specific module instance.
+ * @param[in] request		The current request.
  * @param[in] rctx		Scheduled end of the delay.
  * @param[in] fired		When request processing was resumed.
  */
-static void _delay_done(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *rctx, struct timeval *fired)
+static void _delay_done(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx, struct timeval *fired)
+{
+	struct timeval *yielded = talloc_get_type_abort(rctx, struct timeval);
+
+	RDEBUG2("Delay done");
+
+	/*
+	 *	timeout should never be *before* the scheduled time,
+	 *	if it is, something is very broken.
+	 */
+	if (!fr_cond_assert(fr_timeval_cmp(fired, yielded) >= 0)) REDEBUG("Unexpected resume time");
+
+	unlang_interpret_resumable(request);
+}
+
+static void _xlat_delay_done(REQUEST *request,
+			     UNUSED void *xlat_inst, UNUSED void *xlat_thread_inst, void *rctx, struct timeval *fired)
 {
 	struct timeval *yielded = talloc_get_type_abort(rctx, struct timeval);
 
@@ -113,8 +129,7 @@ static int delay_add(REQUEST *request, struct timeval *resume_at, struct timeval
 /** Called resume_at the delay is complete, and we're running from the interpreter
  *
  */
-static rlm_rcode_t mod_delay_return(REQUEST *request,
-				    UNUSED void *instance, UNUSED void *thread, void *rctx)
+static rlm_rcode_t mod_delay_return(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
 {
 	struct timeval *yielded = talloc_get_type_abort(rctx, struct timeval);
 
@@ -134,7 +149,7 @@ static rlm_rcode_t mod_delay_return(REQUEST *request,
 	return RLM_MODULE_OK;
 }
 
-static void mod_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *rctx,
+static void mod_delay_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx,
 			     fr_state_signal_t action)
 {
 	if (action != FR_SIGNAL_CANCEL) return;
@@ -269,7 +284,7 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 yield:
 	RDEBUG3("Current time %pV, resume time %pV", fr_box_timeval(*yielded_at), fr_box_timeval(resume_at));
 
-	if (unlang_xlat_event_timeout_add(request, _delay_done, yielded_at, &resume_at) < 0) {
+	if (unlang_xlat_event_timeout_add(request, _xlat_delay_done, yielded_at, &resume_at) < 0) {
 		RPEDEBUG("Adding event failed");
 		return XLAT_ACTION_FAIL;
 	}

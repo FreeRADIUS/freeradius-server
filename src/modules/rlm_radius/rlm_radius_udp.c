@@ -708,7 +708,7 @@ static int conn_thread_instantiate(fr_io_connection_thread_t *t, fr_event_list_t
 	return 0;
 }
 
-static rlm_rcode_t conn_request_resume(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
+static rlm_rcode_t conn_request_resume(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request, void *ctx)
 {
 	fr_io_request_t *u = talloc_get_type_abort(ctx, fr_io_request_t);
 	rlm_rcode_t rcode;

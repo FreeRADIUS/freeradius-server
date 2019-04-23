@@ -416,7 +416,7 @@ finish:
  * @param[in] rctx	the eap_session_t.
  * @return The result of this round of authentication.
  */
-static rlm_rcode_t mod_authenticate_result_async(REQUEST *request, void *instance, void *thread, void *rctx)
+static rlm_rcode_t mod_authenticate_result_async(void *instance, void *thread, REQUEST *request, void *rctx)
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(rctx, eap_session_t);
 
@@ -431,7 +431,7 @@ static rlm_rcode_t mod_authenticate_result_async(REQUEST *request, void *instanc
  * @param[in] rctx	the eap_session_t
  * @param[in] action	to perform.
  */
-static void mod_authenticate_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *rctx,
+static void mod_authenticate_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx,
 				    fr_state_signal_t action)
 {
 	eap_session_t	*eap_session;

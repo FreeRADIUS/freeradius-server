@@ -369,13 +369,13 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
  * If we're signalled that the request has been cancelled (FR_SIGNAL_CANCEL).
  * Cleanup any pending state and release the connection handle back into the pool.
  *
- * @param[in] request	being cancelled.
  * @param[in] instance	of rlm_rest.
  * @param[in] thread	Thread specific module instance.
+ * @param[in] request	being cancelled.
  * @param[in] rctx	rlm_rest_handle_t currently used by the request.
  * @param[in] action	What happened.
  */
-void rest_io_module_action(REQUEST *request, void *instance, void *thread, void *rctx, fr_state_signal_t action)
+void rest_io_module_action(void *instance, void *thread, REQUEST *request, void *rctx, fr_state_signal_t action)
 {
 	rlm_rest_handle_t	*randle = talloc_get_type_abort(rctx, rlm_rest_handle_t);
 	rlm_rest_thread_t	*t = thread;
@@ -416,7 +416,7 @@ void rest_io_xlat_action(REQUEST *request, UNUSED void *instance, void *thread, 
 	rlm_rest_xlat_rctx_t		*our_rctx = talloc_get_type_abort(rctx, rlm_rest_xlat_rctx_t);
 	rlm_rest_handle_t		*randle = talloc_get_type_abort(our_rctx->handle, rlm_rest_handle_t);
 
-	rest_io_module_action(request, mod_inst, t, randle, action);
+	rest_io_module_action(mod_inst, t, request, randle, action);
 }
 
 /** Sends a REST (HTTP) request.
