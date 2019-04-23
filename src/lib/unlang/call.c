@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 
 static unlang_action_t unlang_call(REQUEST *request,
-				   UNUSED rlm_rcode_t *presult, UNUSED int *priority)
+				   rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -64,13 +64,15 @@ static unlang_action_t unlang_call(REQUEST *request,
 	da = fr_dict_attr_by_name(virtual_server_namespace(server), "Packet-Type");
 	if (!da) {
 		REDEBUG("No such attribute 'Packet-Type' for server %s", server);
-		return RLM_MODULE_FAIL;
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	type_enum = fr_dict_enum_by_value(da, fr_box_uint32(request->packet->code));
 	if (!type_enum) {
 		REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s", request->packet->code, server);
-		return RLM_MODULE_FAIL;
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 	packet = type_enum->alias;
 
@@ -78,7 +80,8 @@ static unlang_action_t unlang_call(REQUEST *request,
 	if (!process_p) {
 		REDEBUG("No such packet type '%s' in server '%s'",
 			packet, cf_section_name2(g->server_cs));
-		return RLM_MODULE_FAIL;
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	process_inst = cf_data_value(cf_data_find(g->server_cs, void, packet));
