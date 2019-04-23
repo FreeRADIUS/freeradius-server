@@ -429,6 +429,7 @@ static rlm_rcode_t mod_authenticate_result_async(REQUEST *request, void *instanc
  * @param[in] instance	UNUSED.
  * @param[in] thread	UNUSED.
  * @param[in] rctx	the eap_session_t
+ * @param[in] action	to perform.
  */
 static void mod_authenticate_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *rctx,
 				    fr_state_signal_t action)
