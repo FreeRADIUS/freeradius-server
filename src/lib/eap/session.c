@@ -268,10 +268,13 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
  * @see eap_session_thaw
  * @see eap_session_destroy
  *
- * @param[in] eap_packet_p extracted from the RADIUS Access-Request.  Consumed or freed by this
- *	function.  Do not access after calling this function. Is a **so the packet pointer can be
- *	set to NULL.
- * @param[in] request The current request.
+ * @param[in] instance		of rlm_eap that created the session.
+ * @param[in] eap_packet_p	extracted from the RADIUS Access-Request.
+ *      			Consumed or freed by this function.
+ *				Do not access after calling this function.
+ *				Is a **so the packet pointer can be
+ *				set to NULL.
+ * @param[in] request		The current request.
  * @return
  *	- A newly allocated eap_session_t, or the one associated with the current request.
  *	  MUST be freed with #eap_session_destroy if being disposed of, OR
