@@ -623,7 +623,7 @@ static unlang_action_t unlang_module(REQUEST *request, rlm_rcode_t *presult, int
 	caller = request->module;
 	request->module = sp->module_instance->name;
 	safe_lock(sp->module_instance);	/* Noop unless instance->mutex set */
-	rcode = sp->method(request, sp->module_instance->dl_inst->data, ms->thread->data);
+	rcode = sp->method(sp->module_instance->dl_inst->data, ms->thread->data, request);
 	safe_unlock(sp->module_instance);
 	request->module = caller;
 

@@ -376,8 +376,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 }
 
 
-static void mod_radius_signal(REQUEST *request, void *instance, void *thread, void *ctx,
-			      fr_state_signal_t action)
+static void mod_radius_signal(void *instance, void *thread, REQUEST *request, void *rctx, fr_state_signal_t action)
 {
 	rlm_radius_t const *inst = talloc_get_type_abort_const(instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
@@ -392,7 +391,7 @@ static void mod_radius_signal(REQUEST *request, void *instance, void *thread, vo
 	 *	necessary.
 	 */
 	if (action == FR_SIGNAL_CANCEL) {
-		talloc_free(ctx);
+		talloc_free(rctx);
 		return;
 	}
 
@@ -405,7 +404,7 @@ static void mod_radius_signal(REQUEST *request, void *instance, void *thread, vo
 
 	if (!inst->io->signal) return;
 
-	inst->io->signal(request, inst->io_instance, t->thread_io_ctx, ctx, action);
+	inst->io->signal(request, inst->io_instance, t->thread_io_ctx, rctx, action);
 }
 
 

@@ -438,7 +438,7 @@ static void mod_authenticate_cancel(UNUSED void *instance, UNUSED void *thread, 
 
 	if (action != FR_SIGNAL_CANCEL) return;
 
-	RDEBUG2("Cancelling submodule call, destroying EAP-Session");
+	RDEBUG2("Request cancelled - Destroying EAP-Session");
 
 	eap_session = talloc_get_type_abort(rctx, eap_session_t);
 
@@ -471,7 +471,6 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 	REQUEST				*request = eap_session->request;
 
 	rlm_eap_method_t const		*method;
-	void				*submodule_data;
 
 	eap_type_t			next = inst->default_method;
 	VALUE_PAIR			*vp;
@@ -579,7 +578,6 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 
 module_call:
 	method = &inst->methods[eap_session->type];
-	submodule_data = method->submodule_inst->dl_inst->data;
 
 	RDEBUG2("Calling submodule %s", method->submodule->name);
 
