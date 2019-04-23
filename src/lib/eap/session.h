@@ -54,8 +54,10 @@ struct eap_session_s {
 
 	void 		*opaque;			//!< Opaque data used by EAP methods.
 
+	rlm_rcode_t	submodule_rcode;		//!< Result of last submodule call.
+
 	module_method_t	process;			//!< Callback that should be used to process the next round.
-							///< Usually set to the process functino of an EAP submodule.
+							///< Usually set to the process function of an EAP submodule.
 	int		rounds;				//!< How many roundtrips have occurred this session.
 
 	time_t		updated;			//!< The last time we received a packet for this EAP session.
