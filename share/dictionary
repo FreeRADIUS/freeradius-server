@@ -197,6 +197,7 @@ $INCLUDE dictionary.f5
 $INCLUDE dictionary.fdxtended
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.freeswitch
+$INCLUDE dictionary.force10
 $INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.gandalf
