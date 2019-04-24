@@ -2731,22 +2731,18 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				    unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
-	char const *name2;
-	unlang_t *c;
-	unlang_group_t *g;
-
-	/*
-	 *	async async is not allowed.  It will work, but we
-	 *	don't know what it means.  If someone has a good
-	 *	use-case, we can try enabling it.
-	 */
-	for (c = parent; c != NULL; c = c->parent) {
-		if (c->type == UNLANG_TYPE_SUBREQUEST) {
-			cf_log_err(cs, "'%s' sections cannot be nested inside of other '%s' sections",
-				   unlang_ops[mod_type].name, unlang_ops[mod_type].name);
-			return NULL;
-		}
-	}
+	char const		*name2;
+	unlang_t		*c;
+	unlang_group_t		*g;
+	unlang_compile_t	unlang_ctx2;
+	vp_tmpl_rules_t		parse_rules;
+	fr_dict_t const		*dict;
+	fr_dict_attr_t const	*da;
+	fr_dict_enum_t const	*type_enum;
+	char const		*namespace, *packet_name, *component_name, *p;
+	char			buffer[64];
+	char			buffer2[64];
+	char			buffer3[64];
 
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
@@ -2756,14 +2752,132 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	c->debug_name = c->name;
 
 	/*
-	 *	subrequests can't have an argument.
+	 *	subrequests can specify the dictionary if they want to.
 	 */
 	name2 = cf_section_name2(cs);
-	if (name2) {
-		cf_log_err(cs, "Invalid argument '%s' to subrequest", name2);
+	if (!name2) {
+		cf_log_err(cs, "Invalid syntax: expected <namespace>.<packet>");
 		return NULL;
 	}
-	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
+
+	p = strchr(name2, '.');
+	if (!p) {
+		dict = unlang_ctx->rules->dict_def;
+		namespace = fr_dict_root(dict)->name;
+		packet_name = name2;
+
+	} else {
+		if ((size_t) (p - name2) >= sizeof(buffer)) {
+			cf_log_err(cs, "Unknown namespace '%.*s'", (int) (p - name2), name2);
+			return NULL;
+		}
+
+		memcpy(buffer, name2, p - name2);
+		buffer[p - name2] = '\0';
+
+		dict = fr_dict_by_protocol_name(buffer);
+		if (!dict) {
+			cf_log_err(cs, "Unknown namespace '%.*s'", (int) (p - name2), name2);
+			return NULL;
+		}
+
+		namespace = buffer;
+		p++;
+		packet_name = p;	// need to quiet a stupid compiler
+	}
+
+	da = fr_dict_attr_by_name(dict, "Packet-Type");
+	if (!da) {
+		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", namespace);
+		return NULL;
+	}
+
+	/*
+	 *	Get the packet name.
+	 */
+	if (p) {
+		packet_name = p;
+		p = strchr(packet_name, '.');
+		if (p) {
+			if ((size_t) (p - packet_name) >= sizeof(buffer2)) {
+				cf_log_err(cs, "No such value '%.*s' for attribute 'Packet-Type' in namespace '%s'",
+					   (int) (p - packet_name), packet_name, namespace);
+				return NULL;
+			}
+
+			memcpy(buffer2, packet_name, p - packet_name);
+			buffer[p - packet_name] = '\0';
+			packet_name = buffer2;
+			p++;
+		}
+	}
+
+	type_enum = fr_dict_enum_by_alias(da, packet_name, -1);
+	if (!type_enum) {
+		cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
+			   packet_name, namespace);
+		return NULL;
+	}
+
+	unlang_ctx2.component = unlang_ctx->component;
+	unlang_ctx2.name = unlang_ctx->name;
+
+	/*
+	 *	Figure out the component name we're supposed to call.
+	 *	Which isn't necessarily the same as the one from the
+	 *	parent request.
+	 */
+	if (p) {
+		component_name = p;
+		p = strchr(component_name, '.');
+		if (p) {
+			rlm_components_t i;
+
+			if ((size_t) (p - component_name) >= sizeof(buffer3)) {
+			unknown_component:
+				cf_log_err(cs, "No such component '%.*s",
+					   (int) (p - component_name), component_name);
+				return NULL;
+			}
+
+			memcpy(buffer3, component_name, p - component_name);
+			buffer[p - component_name] = '\0';
+			component_name = buffer3;
+
+			for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
+				if (strcmp(comp2str[i], component_name) == 0) {
+				break;
+				}
+			}
+
+			if (i == MOD_COUNT) goto unknown_component;
+
+			unlang_ctx2.component = i;
+			unlang_ctx2.name = component_name;
+		}
+	}
+
+	parse_rules = *unlang_ctx->rules;
+	parse_rules.dict_def = dict;
+
+	unlang_ctx2.actions = unlang_ctx->actions;
+	unlang_ctx2.section_name1 = "subrequest";
+	unlang_ctx2.section_name2 = name2;
+	unlang_ctx2.rules = &parse_rules;
+
+	/*
+	 *	Compile the children of this subrequest in the context
+	 *	of the dictionary && namespace that was given by the
+	 *	subrequest.
+	 */
+	c = compile_children(g, parent, &unlang_ctx2, group_type, parentgroup_type);
+	if (!c) return NULL;
+
+	g->dict = dict;
+	g->attr_packet_type = da;
+	g->type_enum = type_enum;
+
+	return c;
 }
 
 

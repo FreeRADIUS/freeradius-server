@@ -283,12 +283,36 @@ The "subrequest" keyword creates an empty subrequest (i.e. child
 request).  Attributes in the child can be copied from the parent via
 an "update" block.
 
+The packet type and protocol can be changed in a subrequest, by
+changing the second paramater to the subrequest.  That parameter can
+be:
+
+* packet name, e.g. "Access-Request"
+* protocol followed by packet name, e.g. "dhcpv4.DHCP-Discover".
+
+This configuration allows the server to receive one type of packet,
+and then create another.  For example, the server can receive an
+Accounting-Request packet, and then create a subrequest that is a
+Disconnect-Request.  That subrequest can then be sent to a NAS.
+
+The subrequest is created with no attributes.  Any attributes needed
+by the subrequest should be manually copied from the parent request.
+
+The subrequest can also be used to change protocols.  For example, the
+server can receive a RADIUS Access-Request, and then create a DHCPv4
+packet of type DHCP-Discover.  Note that when the protocol changes,
+the attributes in the "subrequest" section are parsed in the context
+of the new protocol.
+
+The original request can be accessed from inside of q "subrequest"
+section.  Simple use "&parent.<ref>" to refer to an attribute in the
+parent.
 .DS
-	subrequest {
+	subrequest <type> {
 .br
 		update request {
 .br
-			User-Name = parent.request:User-Name
+			&User-Name = &parent.request:User-Name
 .br
 			...
 .br

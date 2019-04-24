@@ -1,7 +1,7 @@
 #
 #  PRE: subrequest
 #
-subrequest {
+subrequest Access-Request {
 	update request {
 		&User-Name := &parent.request:User-Name
 	}

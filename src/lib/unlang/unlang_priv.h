@@ -150,7 +150,7 @@ typedef struct {
 	 */
 	union {
 		struct {
-			vp_tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP, #UNLANG_TYPE_CALL
+			vp_tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP
 
 			union {
 				struct {
@@ -159,6 +159,11 @@ typedef struct {
 				};
 				struct {
 					CONF_SECTION		*server_cs;	//!< #UNLANG_TYPE_CALL
+				};
+				struct {
+					fr_dict_t const		*dict;		//!< #UNLANG_TYPE_SUBREQUEST
+					fr_dict_attr_t const	*attr_packet_type;
+					fr_dict_enum_t const	*type_enum;
 				};
 			};
 		};

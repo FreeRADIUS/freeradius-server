@@ -139,6 +139,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	rlm_rcode_t			rcode;
 	int				priority;
 	unlang_resume_t			*mr;
+	VALUE_PAIR			*vp;
 
 	if (frame->state) state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 
@@ -159,7 +160,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	if (!state) {
 		frame->state = state = talloc(stack, unlang_frame_state_subrequest_t);
 		state->child = unlang_io_child_alloc(request, g->children,
-						     request->server_cs, request->dict,
+						     request->server_cs, g->dict,
 						     frame->result,
 						     UNLANG_NEXT_SIBLING, UNLANG_DETACHABLE);
 		if (!state->child) {
@@ -204,15 +205,20 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	RDEBUG2("- creating subrequest (%s)", child->name);
 
 	/*
-	 *	Run the child in the same section as the master.  If
-	 *	we want to run a different virtual server, we have to
-	 *	create a "server" keyword.
+	 *	Set the packet type.
 	 *
-	 *	The only difficult there is setting child->async
-	 *	to... some magic value. :( That code should be in a
-	 *	virtual server callback, and not directly in the
-	 *	interpreter.
+	 *	@todo - this doesn't strictly work for DHCP, which
+	 *	uses DHCP-Message-Type, *and* which has message type
+	 *	by a uint8.  We should likely have some other mapping
+	 *	in the dictionary so that we can find the real
+	 *	attribute.
 	 */
+	vp = fr_pair_afrom_da(child->packet, g->attr_packet_type);
+	if (vp) {
+		child->packet->code = vp->vp_uint32 = g->type_enum->value->vb_uint32;
+		fr_pair_add(&child->packet->vps, vp);
+	}
+
 	rcode = unlang_interpret_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
 		if (!state->persist) unlang_subrequest_free(&child);
