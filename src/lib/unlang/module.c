@@ -68,7 +68,7 @@ static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNU
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_read(ev->request, mutable_inst, ev->thread, mutable_ctx, fd);
+	ev->fd_read(mutable_inst, ev->thread, ev->request, mutable_ctx, fd);
 }
 
 /** Frees an unlang event, removing it from the request's event loop
@@ -107,7 +107,7 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, stru
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->timeout(ev->request, mutable_inst, ev->thread, mutable_ctx, now);
+	ev->timeout(mutable_inst, ev->thread, ev->request, mutable_ctx, now);
 	talloc_free(ev);
 }
 
@@ -202,7 +202,7 @@ static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, UN
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_write(ev->request, mutable_inst, ev->thread, mutable_ctx, fd);
+	ev->fd_write(mutable_inst, ev->thread, ev->request, mutable_ctx, fd);
 }
 
 /** Call the callback registered for an I/O error event
@@ -225,7 +225,7 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_error(ev->request, mutable_inst, ev->thread, mutable_ctx, fd);
+	ev->fd_error( mutable_inst, ev->thread, ev->request, mutable_ctx, fd);
 }
 
 
