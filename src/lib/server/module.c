@@ -1137,12 +1137,6 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 
 	module_instance_name(NULL, &inst_name, parent, cs);
 
-	if (unlang_compile_is_keyword(inst_name)) {
-		ERROR("Module names cannot use a reserved word \"%s\"", inst_name);
-		talloc_free(inst_name);
-		return NULL;
-	}
-
 	/*
 	 *	See if the module already exists.
 	 */
@@ -1348,7 +1342,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	for (ci = cf_item_next(modules, NULL);
 	     ci != NULL;
 	     ci = next) {
-		char const *name1;
+		char const *name;
 		CONF_SECTION *subcs;
 		module_instance_t *instance;
 
@@ -1358,17 +1352,20 @@ int modules_bootstrap(CONF_SECTION *root)
 
 		subcs = cf_item_to_section(ci);
 
+		name = cf_section_name2(subcs);
+		if (name && unlang_compile_is_keyword(name)) {
+		invalid_name:
+			cf_log_err(subcs, "Module names cannot be unlang keywords '%s'", name);
+			return -1;
+		}
+
+		name = cf_section_name1(subcs);
+		if (unlang_compile_is_keyword(name)) goto invalid_name;
+
 		instance = module_bootstrap(NULL, subcs);
 		if (!instance) return -1;
 
 		if (!next || !cf_item_is_section(next)) continue;
-
-		name1 = cf_section_name1(subcs);
-
-		if (unlang_compile_is_keyword(name1)) {
-			cf_log_err(subcs, "Modules cannot overload unlang keywords");
-			return -1;
-		}
 	}
 
 	/*
