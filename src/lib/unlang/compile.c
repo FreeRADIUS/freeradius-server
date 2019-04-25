@@ -3509,5 +3509,9 @@ bool unlang_compile_is_keyword(const char *name)
 		if (strcmp(name, compile_table[i].name) == 0) return true;
 	}
 
+	if (strcmp(name, "break") == 0) return true;
+	if (strcmp(name, "detach") == 0) return true;
+	if (strcmp(name, "return") == 0) return true;
+
 	return false;
 }
