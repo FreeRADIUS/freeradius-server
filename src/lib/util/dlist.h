@@ -394,6 +394,21 @@ static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_
 	fr_dlist_entry_init(src);
 }
 
+/** Free all items in a doubly linked list (with talloc)
+ *
+ * @param[in] head of list to free.
+ */
+static inline void fr_dlist_talloc_free(fr_dlist_head_t *head)
+{
+	void *e = NULL, *p;
+
+	while ((e = fr_dlist_next(head, e))) {
+		p = fr_dlist_remove(head, e);
+		talloc_free(e);
+		e = p;
+	}
+}
+
 #ifdef __cplusplus
 }
 #endif
