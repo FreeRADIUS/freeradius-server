@@ -770,7 +770,7 @@ void fr_state_restore_to_child(REQUEST *request, void *unique_ptr, int unique_in
  * If the parent was freed before the child, we'd get all kinds of
  * use after free nastiness.
  *
- * @param[in] fake		request to detach.
+ * @param[in] request		to detach.
  * @param[in] will_free		Caller super pinky swears to free
  *				the request ASAP, and that it wont
  *				touch persistable request data,
