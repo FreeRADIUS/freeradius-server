@@ -252,12 +252,22 @@ REQUEST *request_alloc_detachable(REQUEST *request)
 	return fake;
 }
 
-
-/** Detach a detachable request.
+/** Unlink a subrequest from its parent
+ *
+ * @note This should be used for requests in preparation for freeing them.
+ *
+ * @param[in] fake		request to unlink.
+ * @param[in] will_free		Caller super pinky swears to free
+ *				the request ASAP, and that it wont
+ *				touch persistable request data,
+ *				request->state_ctx or request->state.
+ * @return
+ *	 - 0 on success.
+ *	 - -1 on failure.
  */
-int request_detach(REQUEST *fake)
+int request_detach(REQUEST *fake, bool will_free)
 {
-	REQUEST *request = fake->parent;
+	REQUEST		*request = fake->parent;
 
 	rad_assert(request != NULL);
 	rad_assert(talloc_parent(fake) != request);
@@ -265,9 +275,13 @@ int request_detach(REQUEST *fake)
 	/*
 	 *	Unlink the child from the parent.
 	 */
-	if (!request_data_get(request, fake, 0)) {
-		return -1;
-	}
+	if (!request_data_get(request, fake, 0)) return -1;
+
+	/*
+	 *	Fixup any sate or persistent
+	 *	request data.
+	 */
+	fr_state_detach(fake, will_free);
 
 	fake->parent = NULL;
 
@@ -578,6 +592,50 @@ void request_data_restore(REQUEST *request, fr_dlist_head_t *in)
 	fr_dlist_move(&request->data, in);
 }
 
+/** Realloc any request_data_t structs in a new ctx
+ *
+ */
+void request_data_ctx_change(TALLOC_CTX *state_ctx, REQUEST *request)
+{
+	fr_dlist_head_t		head;
+	request_data_t		*rd = NULL, *prev;
+
+	fr_dlist_talloc_init(&head, request_data_t, list);
+
+	while ((rd = fr_dlist_next(&request->data, rd))) {
+		request_data_t	*new;
+
+		if (!rd->persist) continue;	/* Parented by the request */
+
+		prev = fr_dlist_remove(&request->data, rd);	/* Unlink from the list */
+		new = talloc(state_ctx, request_data_t);
+		memcpy(new, rd, sizeof(*new));
+		rd->free_on_parent = false;
+		talloc_free(rd);
+		rd = prev;
+
+		fr_dlist_insert_tail(&head, new);
+	}
+
+	fr_dlist_move(&request->data, &head);
+}
+
+/** Used for removing data from subrequests that are about to be freed
+ *
+ * @param[in] request	to remove persistable data from.
+ */
+void request_data_persistable_free(REQUEST *request)
+{
+	fr_dlist_head_t	head;
+
+	fr_dlist_talloc_init(&head, request_data_t, list);
+
+	request_data_by_persistance(&head, request, true);
+
+	fr_dlist_talloc_free(&head);
+}
+
+
 /** Free any subrequest request data if the dlist head is freed
  *
  */
@@ -637,7 +695,13 @@ void request_data_restore_to_child(REQUEST *request, void *unique_ptr, int uniqu
 {
 	fr_dlist_head_t *head;
 
-	rad_assert(!request->state_ctx);
+	/*
+	 *	All requests are alloced with a state_ctx.
+	 *	In this case, nothing should be parented
+	 *	off it already, so we can just free it.
+	 */
+	rad_assert(talloc_get_size(request->state_ctx) == 0);
+	TALLOC_FREE(request->state_ctx);
 	request->state_ctx = request->parent->state_ctx;	/* Use top level state ctx */
 
 	head = request_data_get(request->parent, unique_ptr, unique_int);

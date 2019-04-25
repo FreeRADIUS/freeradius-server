@@ -45,7 +45,7 @@ int	fr_request_to_state(fr_state_tree_t *state, REQUEST *request);
 
 void	fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int);
 void	fr_state_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int);
-
+void	fr_state_detach(REQUEST *request, bool will_free);
 /*
  *	Stats
  */

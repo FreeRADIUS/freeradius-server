@@ -726,7 +726,7 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
  */
 void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int)
 {
-	rad_assert(request->parent);
+	if (unlikely(request->parent == NULL)) return;
 
 	RDEBUG3("Subrequest state - saved to %s", request->parent->name);
 
@@ -751,6 +751,8 @@ void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int
  */
 void fr_state_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int)
 {
+	if (unlikely(request->parent == NULL)) return;
+
 	RDEBUG3("Subrequest state - restored from %s", request->parent->name);
 
 	request_data_restore_to_child(request, unique_ptr, unique_int);
@@ -759,6 +761,61 @@ void fr_state_restore_to_child(REQUEST *request, void *unique_ptr, int unique_in
 	 *	Get the state vps back
 	 */
 	request->state = request_data_get(request, (void *)fr_state_store_in_parent, 0);
+}
+
+/** Move all request data and session-state VPs into a new state_ctx
+ *
+ * If we don't do this on detach, session-state VPs and persistable
+ * request data will be freed when the parent's state_ctx is freed.
+ * If the parent was freed before the child, we'd get all kinds of
+ * use after free nastiness.
+ *
+ * @param[in] fake		request to detach.
+ * @param[in] will_free		Caller super pinky swears to free
+ *				the request ASAP, and that it wont
+ *				touch persistable request data,
+ *				request->state_ctx or request->state.
+ */
+void fr_state_detach(REQUEST *request, bool will_free)
+{
+	VALUE_PAIR	*new_state = NULL;
+	TALLOC_CTX	*new_state_ctx;
+
+	if (unlikely(request->parent == NULL)) return;
+
+	if (will_free) {
+		fr_pair_list_free(&request->state);
+
+		/*
+		 *	The non-persistable stuff is
+		 *	prented directly by the request
+		 */
+		request_data_persistable_free(request);
+
+		/*
+		 *	Parent will take care of freeing
+		 *	honestly this should probably
+		 *	be an assert.
+		 */
+		if (request->state_ctx == request->parent->state_ctx) request->state_ctx = NULL;
+		return;
+	}
+
+	MEM(new_state_ctx = talloc_init("session-state"));
+	request_data_ctx_change(new_state_ctx, request);
+
+	fr_pair_list_copy(new_state_ctx, &new_state, request->state);
+	fr_pair_list_free(&request->state);
+
+	request->state = new_state;
+
+	/*
+	 *	...again, should probably
+	 *	not happen and should probably
+	 *	be an assert.
+	 */
+	if (request->state_ctx != request->parent->state_ctx) talloc_free(request->state_ctx);
+	request->state_ctx = new_state;
 }
 
 /** Return number of entries created

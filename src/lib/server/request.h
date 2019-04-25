@@ -186,7 +186,7 @@ REQUEST		*request_alloc_proxy(REQUEST *request);
 
 REQUEST		*request_alloc_detachable(REQUEST *request);
 
-int		request_detach(REQUEST *fake);
+int		request_detach(REQUEST *fake, bool will_free);
 
 void		request_data_list_init(fr_dlist_head_t *data);
 
@@ -210,6 +210,10 @@ int		request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool pe
 int		request_data_by_persistance_count(REQUEST *request, bool persist);
 
 void		request_data_restore(REQUEST *request, fr_dlist_head_t *in);
+
+void		request_data_ctx_change(TALLOC_CTX *state_ctx, REQUEST *request);
+
+void		request_data_persistable_free(REQUEST *request);
 
 void		request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int);
 

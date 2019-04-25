@@ -76,6 +76,7 @@ static unlang_action_t unlang_subrequest_resume(REQUEST *request, rlm_rcode_t *p
 	REQUEST				*child = talloc_get_type_abort(rctx, REQUEST);
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction->parent;
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 	rlm_rcode_t			rcode;
 #ifndef NDEBUG
@@ -93,7 +94,10 @@ static unlang_action_t unlang_subrequest_resume(REQUEST *request, rlm_rcode_t *p
 
 		frame->instruction->type = UNLANG_TYPE_SUBREQUEST; /* for debug purposes */
 
-		if (!state->persist) unlang_subrequest_free(&child);
+		if (!state->persist) {
+			fr_state_store_in_parent(child, instruction, 0);
+			unlang_subrequest_free(&child);
+		}
 
 		/*
 		 *	Pass the result back to the module
@@ -199,6 +203,14 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 		 */
 		state->presult = NULL;
 		state->persist = false;
+
+		/*
+		 *	Restore state from the parent to the
+		 *	subrequest.
+		 *	This is necessary for stateful modules like
+		 *	EAP to work.
+		 */
+		fr_state_restore_to_child(state->child, instruction, 0);
 	}
 	child = state->child;
 
@@ -221,7 +233,10 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 
 	rcode = unlang_interpret_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
-		if (!state->persist) unlang_subrequest_free(&child);
+		if (!state->persist) {
+			fr_state_store_in_parent(child, instruction, 0);
+			unlang_subrequest_free(&child);
+		}
 
 		priority = instruction->actions[*presult];
 
@@ -292,7 +307,7 @@ static unlang_action_t unlang_detach(REQUEST *request,
 
 	rad_assert(request->parent != NULL);
 
-	if (request_detach(request) < 0) {
+	if (request_detach(request, false) < 0) {
 		ERROR("Failed detaching child");
 		*presult = RLM_MODULE_FAIL;
 		*priority = 0;
@@ -333,7 +348,6 @@ static unlang_action_t unlang_detach(REQUEST *request,
 
 	/*
 	 *	request_detach() sets the backlog
-	 *	it does set the backlog...
 	 */
 	rad_assert(request->backlog != NULL);
 
@@ -347,7 +361,7 @@ static unlang_action_t unlang_detach(REQUEST *request,
  */
 void unlang_subrequest_free(REQUEST **child)
 {
-	request_detach(*child);	/* Doesn't actually detach the client, just does cleanups */
+	request_detach(*child, true);
 	talloc_free(*child);
 	*child = NULL;
 }
