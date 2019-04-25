@@ -545,6 +545,26 @@ int request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool per
 	return count;
 }
 
+/** Return how many request data entries exist of a given persistence
+ *
+ * @param[in] request	to check in.
+ * @param[in] persist	Whether to count persistable or non-persistable data.
+ * @return number of request_data_t that exist in persistable or non-persistable form
+ */
+int request_data_by_persistance_count(REQUEST *request, bool persist)
+{
+	int 		count = 0;
+	request_data_t	*rd = NULL;
+
+	while ((rd = fr_dlist_next(&request->data, rd))) {
+		if (rd->persist != persist) continue;
+
+		count++;
+	}
+
+	return count;
+}
+
 /** Add request data back to a request
  *
  * @note May add multiple entries (if they're linked).
@@ -556,6 +576,75 @@ int request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool per
 void request_data_restore(REQUEST *request, fr_dlist_head_t *in)
 {
 	fr_dlist_move(&request->data, in);
+}
+
+/** Free any subrequest request data if the dlist head is freed
+ *
+ */
+static int _free_subrequest_data(fr_dlist_head_t *head)
+{
+	request_data_t *rd = NULL, *prev;
+
+	while ((rd = fr_dlist_next(head, rd))) {
+		prev = fr_dlist_remove(head, rd);
+		talloc_free(rd);
+		rd = prev;
+	}
+
+	return 0;
+}
+
+/** Store persistable data from a subrequest in its parent
+ *
+ * @param[in] request		The child request to retrieve state from.
+ * @param[in] unique_ptr	A parent may have multiple subrequests spawned
+ *				by different modules.  This identifies the module
+ *      			or other facility that spawned the subrequest.
+ * @param[in] unique_int	Further identification.
+ */
+void request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int)
+{
+	fr_dlist_head_t	*head;
+
+	if (request_data_by_persistance_count(request, true) == 0) return;
+
+	MEM(head = talloc_zero(request->parent->state_ctx, fr_dlist_head_t));
+	fr_dlist_talloc_init(head, request_data_t, list);
+	talloc_set_destructor(head, _free_subrequest_data);
+
+	/*
+	 *	Pull everything out of the child,
+	 *	add it to our temporary list head...
+	 */
+	request_data_by_persistance(head, request, true);
+
+	/*
+	 *	...add that to the parent request under
+	 *	the specified unique identifiers.
+	 */
+	request_data_add(request->parent, unique_ptr, unique_int, head, true, false, true);
+}
+
+/** Restore subrequest data from a parent request
+ *
+ * @param[in] request		The child request to restore state to.
+ * @param[in] unique_ptr	A parent may have multiple subrequests spawned
+ *				by different modules.  This identifies the module
+ *      			or other facility that spawned the subrequest.
+ * @param[in] unique_int	Further identification.
+ */
+void request_data_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int)
+{
+	fr_dlist_head_t *head;
+
+	rad_assert(!request->state_ctx);
+	request->state_ctx = request->parent->state_ctx;	/* Use top level state ctx */
+
+	head = request_data_get(request->parent, unique_ptr, unique_int);
+	if (!head) return;
+
+	request_data_restore(request, head);
+	talloc_free(head);
 }
 
 #ifdef WITH_VERIFY_PTR

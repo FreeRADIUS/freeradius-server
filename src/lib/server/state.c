@@ -107,7 +107,7 @@ typedef struct {
 								//!< tied to the lifetime of the request progression.
 	VALUE_PAIR		*vps;				//!< session-state VALUE_PAIRs, parented by ctx.
 
-	fr_dlist_head_t		data;				//!< Persistable request data, also parented ctx.
+	fr_dlist_head_t		data;				//!< Persistable request data, also parented by ctx.
 
 	REQUEST			*thawed;			//!< The request that thawed this entry.
 } fr_state_entry_t;
@@ -714,6 +714,51 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 	REQUEST_VERIFY(request);
 
 	return 0;
+}
+
+/** Store subrequest's session-state list and persistable request data in its parent
+ *
+ * @param[in] request		The child request to retrieve state from.
+ * @param[in] unique_ptr	A parent may have multiple subrequests spawned
+ *				by different modules.  This identifies the module
+ *      			or other facility that spawned the subrequest.
+ * @param[in] unique_int	Further identification.
+ */
+void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int)
+{
+	rad_assert(request->parent);
+
+	RDEBUG3("Subrequest state - saved to %s", request->parent->name);
+
+	/*
+	 *	Shove this into the child to make
+	 *	it easier to store/restore the
+	 *	whole lot...
+	 */
+	request_data_add(request, (void *)fr_state_store_in_parent, 0, request->state, true, false, true);
+	request->state = NULL;
+
+	request_data_store_in_parent(request, unique_ptr, unique_int);
+}
+
+/** Restore subrequest data from a parent request
+ *
+ * @param[in] request		The child request to restore state to.
+ * @param[in] unique_ptr	A parent may have multiple subrequests spawned
+ *				by different modules.  This identifies the module
+ *      			or other facility that spawned the subrequest.
+ * @param[in] unique_int	Further identification.
+ */
+void fr_state_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int)
+{
+	RDEBUG3("Subrequest state - restored from %s", request->parent->name);
+
+	request_data_restore_to_child(request, unique_ptr, unique_int);
+
+	/*
+	 *	Get the state vps back
+	 */
+	request->state = request_data_get(request, (void *)fr_state_store_in_parent, 0);
 }
 
 /** Return number of entries created

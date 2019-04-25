@@ -207,7 +207,13 @@ void		*request_data_reference(REQUEST *request, void const *unique_ptr, int uniq
 
 int		request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool persist);
 
+int		request_data_by_persistance_count(REQUEST *request, bool persist);
+
 void		request_data_restore(REQUEST *request, fr_dlist_head_t *in);
+
+void		request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int);
+
+void		request_data_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int);
 
 #ifdef WITH_VERIFY_PTR
 void		request_verify(char const *file, int line, REQUEST const *request);	/* only for special debug builds */
