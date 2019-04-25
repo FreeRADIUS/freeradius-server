@@ -155,6 +155,8 @@ typedef struct {
 #define vp_date_microseconds	data.vb_date_microseconds
 #define vp_date_nanoseconds	data.vb_date_nanoseconds
 
+#define vp_group		data.datum.ptr
+
 #define vp_size			data.datum.size
 #define vp_filter		data.datum.filter
 
