@@ -728,3 +728,24 @@ void fr_pair_cursor_free(vp_cursor_t *cursor)
 	if (!found) cursor->found = cursor->current;
 	if (!last) cursor->last = cursor->current;
 }
+
+/** Recurse into a child of type #FR_TYPE_GROUP
+ *
+ * @param ctx	  talloc ctx for child cursor.  Can be freed with `talloc_free()`
+ * @param cursor  the parent cursor.  The current VP *must* be of #FR_TYPE_GROUP
+ */
+vp_cursor_t *fr_pair_cursor_recurse_child(TALLOC_CTX *ctx, vp_cursor_t *cursor)
+{
+	vp_cursor_t *child;
+
+	if (!cursor->current) return NULL;
+
+	if (cursor->current->da->type != FR_TYPE_GROUP) return NULL;
+
+	child = talloc_zero(ctx, vp_cursor_t);
+	if (!child) return NULL;
+
+	(void) fr_pair_cursor_init(child, (VALUE_PAIR * const *) &cursor->current->vp_group);
+
+	return child;
+}
