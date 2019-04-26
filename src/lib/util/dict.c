@@ -4261,21 +4261,13 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 	 *	Only a few data types can have VALUEs defined.
 	 */
 	switch (da->type) {
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-
-	case FR_TYPE_INT8:
-	case FR_TYPE_INT16:
-	case FR_TYPE_INT32:
-	case FR_TYPE_INT64:
-		break;
-
-	default:
+	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf_push("Cannot define VALUE for ATTRIBUTE \"%s\" of data type \"%s\"", da->name,
 					fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"));
 		return -1;
+
+	default:
+		break;
 	}
 
 	if (fr_dict_enum_add_alias(da, argv[1], &value, false, true) < 0) {
