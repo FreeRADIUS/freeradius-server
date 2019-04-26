@@ -4248,6 +4248,23 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 		return 0;
 	}
 
+	/*
+	 *	Only a few data types can have VALUEs defined.
+	 */
+	switch (da->type) {
+	case FR_TYPE_ABINARY:
+	case FR_TYPE_GROUP:
+	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_INVALID:
+	case FR_TYPE_MAX:
+		fr_strerror_printf_push("Cannot define VALUE for ATTRIBUTE \"%s\" of data type \"%s\"", da->name,
+					fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"));
+		return -1;
+
+	default:
+		break;
+	}
+
 	{
 		fr_type_t type = da->type;	/* Might change - Stupid combo IP */
 
@@ -4255,19 +4272,6 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 			fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\"", da->name);
 			return -1;
 		}
-	}
-
-	/*
-	 *	Only a few data types can have VALUEs defined.
-	 */
-	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
-		fr_strerror_printf_push("Cannot define VALUE for ATTRIBUTE \"%s\" of data type \"%s\"", da->name,
-					fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"));
-		return -1;
-
-	default:
-		break;
 	}
 
 	if (fr_dict_enum_add_alias(da, argv[1], &value, false, true) < 0) {
