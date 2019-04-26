@@ -257,7 +257,7 @@ ATTRIBUTE	ERX-Re-Authentication-Catalyst		206	integer
 ATTRIBUTE	ERX-DHCPv6-Options			207	octets
 ATTRIBUTE	ERX-DHCP-Header				208	octets
 ATTRIBUTE	ERX-DHCPv6-Header			209	octets
-ATTRIBUTE	ERX-Acct-Request-Reason			210	octets
+ATTRIBUTE	ERX-Acct-Request-Reason			210	integer
 
 #
 #  Values	Attribute		Name			Number
