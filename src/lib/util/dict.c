@@ -2542,6 +2542,10 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 		name = "STRUCT";
 		break;
 
+	case FR_TYPE_GROUP:
+		name = "GROUP";
+		break;
+
 	default:
 		name = "ATTRIBUTE";
 		break;
