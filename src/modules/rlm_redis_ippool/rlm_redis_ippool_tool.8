@@ -5,7 +5,7 @@
 .Nd FreeRADIUS Redis IP pool management tool.
 .Sh SYNOPSIS
 .Nm
-.Op Fl adrsm Ar prefix [ Fl p Ar prefix_len ]
+.Op Fl adrs Ar prefix [ Fl p Ar prefix_len ]
 .Op Fl lLs
 .Op Fl hx
 .Op Fl f Ar file
@@ -54,10 +54,6 @@ is ignored.
 Show leases.
 .Ar range
 is ignored.
-.It Fl m Ar range
-Modify the
-.Ar range
-associated with address(es) or prefix(es).
 .It Fl p Ar prefix_len
 Set the length of the network portion of IPv4 or IPv6 addresses in
 the previous
@@ -83,6 +79,8 @@ Alter the behaviour of
 Print usage information.
 .It Fl x
 Increase verbosity of log outbout.
+.It Fl D Ar raddb
+Set configuration directory.
 .It Fl f Ar file
 Load connection options from a FreeRADIUS (radiusd) \fBrlm_redis_ippool\fR file.
 .El

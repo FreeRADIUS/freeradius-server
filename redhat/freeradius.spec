@@ -705,6 +705,10 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/python/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-enabled
 %config(noreplace) %{_sysconfdir}/raddb/mods-enabled/*
+# redis
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/redis
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/redis/ippool
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/redis/ippool/*
 # mysql
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/driver

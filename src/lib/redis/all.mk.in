@@ -7,4 +7,4 @@ endif
 SOURCES		:= redis.c crc16.c cluster.c
 
 SRC_CFLAGS	:= @mod_cflags@
-TGT_LDLIBS	:= @mod_ldflags@
+TGT_LDLIBS	+= @mod_ldflags@
