@@ -128,44 +128,47 @@ typedef struct {
 	/*
 	 *	Inputs
 	 */
-	uint8_t	const	*identity;				//!< Identity from AT_IDENTITY.
+	uint8_t		*identity;				//!< Identity from AT_IDENTITY.
 	size_t		identity_len;				//!< Length of the identity.
 
-	uint8_t const	*network;				//!< Network name (EAP-AKA-Prime only).
+	uint8_t		*network;				//!< Network name (EAP-AKA-Prime only).
 	size_t		network_len;				//!< Length of the network name (EAP-AKA-Prime only).
 
 	uint64_t	sqn;					//!< Sequence number
 
-	union {
+	struct {
 		/*
 		 *	Authentication vectors from HLR or local AuC
 		 */
-		struct {
-			union {
-				/** Input to kdf_0_gsm
-				 */
-				struct {
-					fr_sim_vector_gsm_t	vector[3];	//!< GSM vectors.
-					uint32_t		num_vectors;	//!< Number of input vectors
-										//!< we're using (2 or 3).
+		union {
+			/** Input to kdf_0_gsm
+			 */
+			struct {
+				fr_sim_vector_gsm_t	vector[3];	//!< GSM vectors.
+				uint32_t		num_vectors;	//!< Number of input vectors
+									//!< we're using (2 or 3).
 
-					uint8_t	nonce_mt[EAP_SIM_NONCE_MT_SIZE];//!< Nonce provided by the client.
-					uint8_t	version_list[FR_MAX_STRING_LEN];//!< Version list from negotiation.
-					uint8_t	version_list_len;		//!< Length of version list.
-					uint8_t	version_select[2];		//!< Version we agreed.
-				} gsm;
+				uint8_t	nonce_mt[EAP_SIM_NONCE_MT_SIZE];//!< Nonce provided by the client.
+				uint8_t	version_list[FR_MAX_STRING_LEN];//!< Version list from negotiation.
+				uint8_t	version_list_len;		//!< Length of version list.
+				uint8_t	version_select[2];		//!< Version we agreed.
+			} gsm;
 
-				/** Input to kdf_*_umts
-				 */
-				struct {
-					fr_sim_vector_umts_t	vector;		//!< UMTS vector.
-					uint16_t		kdf_selected;
-				} umts;
-			};
-
-			fr_sim_vector_type_t	vector_type;		//!< What type of authentication vector
-									//!< we're using to authenticate the SIM.
+			/** Input to kdf_*_umts
+			 */
+			struct {
+				fr_sim_vector_umts_t	vector;		//!< UMTS vector.
+				uint16_t		kdf_selected;
+			} umts;
 		};
+
+		/*
+		 *	Original ki and OPc to allow AUTS validation
+		 */
+		struct {
+			uint8_t ki[SIM_KI_SIZE];		//!< Secret shared between AuC and SIM.
+			uint8_t opc[SIM_OPC_SIZE];		//!< Operator algorithm input.
+		} auc;
 
 		/*
 		 *	Re-authentication data
@@ -174,6 +177,11 @@ typedef struct {
 			uint16_t	counter;			//!< Re-authentication counter.
 			uint8_t		nonce_s[SIM_NONCE_S_SIZE];	//!< Re-authentication challenge.
 		} reauth;
+
+
+		fr_sim_vector_type_t	vector_type;		//!< What type of authentication vector
+								//!< we're using to authenticate the SIM.
+		fr_sim_vector_src_t	vector_src;		//!< Where the vector came from.
 	};
 
 	/*
@@ -183,10 +191,13 @@ typedef struct {
 	uint8_t		ik_prime[SIM_VECTOR_UMTS_IK_SIZE];	//!< Derived from IK, for AKA'.
 
 	/*
-	 *	Outputs
+	 *	Inputs/outputs
 	 */
 	uint8_t		master_key[SIM_MK_SIZE];		//!< Master key from session attributes.
 
+	/*
+	 *	Outputs
+	 */
 	uint8_t		k_aut[32];				//!< Derived authentication key.
 	size_t		k_aut_len;				//!< Length of k_aut.  16 for AKA/SIM, 32 for AKA'.
 	uint8_t		k_re[32];				//!< Derived reauthentication key.

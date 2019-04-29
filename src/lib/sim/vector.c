@@ -714,3 +714,100 @@ int fr_sim_vector_umts_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 
 	return 0;
 }
+
+/** Populate a fr_sim_keys_t structure from attributes in the session-state list
+ *
+ * @param[in] request	The current request.
+ * @param[in] vps	Session-state list
+ * @param[in] keys	key structure to populate.
+ * @return
+ *	- 1 if we do not have sufficient data.
+ *	- 0 on success.
+ *	- -1 on validation failure.
+ */
+int fr_sim_vector_umts_reauth_from_attrs(REQUEST *request, VALUE_PAIR *vps, fr_sim_keys_t *keys)
+{
+	VALUE_PAIR *counter_vp;
+	VALUE_PAIR *mk_vp;
+
+	/*
+	 *	This is the *old* counter value increment
+	 *	by 1 to get the *new* counter value
+	 */
+	counter_vp = fr_pair_find_by_da(vps, attr_eap_aka_counter, TAG_ANY);
+	if (!counter_vp) {
+		RDEBUG2("No &session-state:%s attribute found, can't calculate re-auth keys",
+			attr_eap_aka_counter->name);
+		return 1;
+	}
+	counter_vp->vp_uint16++;
+
+	mk_vp = fr_pair_find_by_da(vps, attr_eap_aka_mk, TAG_ANY);
+	if (!mk_vp) {
+		RDEBUG2("No &session-state:%s attribute found, can't calculate re-auth keys",
+			attr_eap_aka_mk->name);
+		return 1;
+	}
+
+	if (mk_vp->vp_length != SIM_MK_SIZE) {
+		REDEBUG("&control:%s incorrect length.  Expected "
+			STRINGIFY(SIM_MK_SIZE) " bytes, got %zu bytes",
+			attr_eap_aka_mk->name, mk_vp->vp_length);
+		return -1;
+	}
+
+	fr_sim_crypto_keys_init_reauth(keys, mk_vp->vp_octets, counter_vp->vp_uint16);
+
+	keys->vector_type = SIM_VECTOR_UMTS_REAUTH;	/* Didn't come from a vector */
+	keys->vector_src = SIM_VECTOR_SRC_REAUTH;
+
+	return 0;
+}
+
+/** Clear reauth data if reauthentication failed
+ *
+ * @param[in] keys	key structure to clear.
+ */
+void fr_sim_vector_umts_reauth_clear(fr_sim_keys_t *keys)
+{
+	memset(&keys->reauth, 0, sizeof(keys->reauth));
+	keys->vector_src = 0;
+	keys->vector_type = 0;
+}
+
+/** Perform milenage AUTS validation and resynchronisation
+ *
+ * @param[out] new_sqn	The new sequence number provided by the AUTS.
+ * @param[in] request	The current request.
+ * @param[in] auts_vp	The AUTS response.
+ * @param[in] keys	UMTS keys.
+ * @param[in] auts	The auts pair provided by the supplicant.
+ * @return
+ *	- 1 if we do not have sufficient data (lacking ki).
+ *	- 0 on success.
+ *	- -1 on validation failure.
+ */
+int fr_sim_umts_resync_from_attrs(uint64_t *new_sqn,
+				  REQUEST *request, VALUE_PAIR *auts_vp, fr_sim_keys_t *keys)
+{
+	if (keys->vector_src != SIM_VECTOR_SRC_KI) {
+		RDEBUG2("Original vectors were not generated locally, cannot perform AUTS validation");
+		return 1;
+	}
+
+	if (auts_vp->vp_length != MILENAGE_AUTS_SIZE) {
+		REDEBUG("&control:%s incorrect length.  Expected "
+			STRINGIFY(MILENAGE_AUTS_SIZE) " bytes, got %zu bytes",
+			attr_eap_aka_auts->name, auts_vp->vp_length);
+		return -1;
+	}
+
+	if (milenage_auts(new_sqn, keys->auc.opc, keys->auc.ki, keys->umts.vector.rand, auts_vp->vp_octets) < 0) {
+		REDEBUG("AUTS validation failed");
+		return -1;
+	}
+
+	RDEBUG2("AUTS validation success, new SQN %"PRIu64, *new_sqn);
+
+	return 0;
+}
