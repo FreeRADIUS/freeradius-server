@@ -61,11 +61,10 @@ extern const FR_NAME_NUMBER mod_rcode_table[];
  */
 struct section_type_value_s {
 	char const      *section;		//!< Section name e.g. "Authorize".
-	char const      *typename;		//!< Type name e.g. "Auth-Type".
 	int		attr;			//!< Attribute number.
 };
 
-/** Mappings between section names, typenames and control attributes
+/** Mappings between section names, and control attributes
  *
  * Defined in module.c.
  */

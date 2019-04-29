@@ -45,17 +45,17 @@ RCSID("$Id$")
  *	Ordered by component
  */
 const section_type_value_t section_type_value[MOD_COUNT] = {
-	{ "authenticate", "Auth-Type",      FR_AUTH_TYPE },
-	{ "authorize",   "Autz-Type",      FR_AUTZ_TYPE },
-	{ "preacct",     "Pre-Acct-Type",  FR_PRE_ACCT_TYPE },
-	{ "accounting",  "Acct-Type",      FR_ACCT_TYPE },
-	{ "pre-proxy",   "Pre-Proxy-Type", FR_PRE_PROXY_TYPE },
-	{ "post-proxy",  "Post-Proxy-Type", FR_POST_PROXY_TYPE },
-	{ "post-auth",   "Post-Auth-Type", FR_POST_AUTH_TYPE }
+	{ "authenticate", FR_AUTH_TYPE },
+	{ "authorize",   FR_AUTZ_TYPE },
+	{ "preacct",     FR_PRE_ACCT_TYPE },
+	{ "accounting",  FR_ACCT_TYPE },
+	{ "pre-proxy",   FR_PRE_PROXY_TYPE },
+	{ "post-proxy",  FR_POST_PROXY_TYPE },
+	{ "post-auth",   FR_POST_AUTH_TYPE }
 #ifdef WITH_COA
 	,
-	{ "recv-coa",    "Recv-CoA-Type",  FR_RECV_COA_TYPE },
-	{ "send-coa",    "Send-CoA-Type",  FR_SEND_COA_TYPE }
+	{ "recv-coa",    FR_RECV_COA_TYPE },
+	{ "send-coa",    FR_SEND_COA_TYPE }
 #endif
 };
 
