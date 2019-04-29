@@ -171,7 +171,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 		   (chbind->response == NULL));
 
 	/* Set-up the fake request */
-	fake = request_alloc_fake(request);
+	fake = request_alloc_fake(request, NULL);
 	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 

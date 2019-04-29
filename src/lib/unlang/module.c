@@ -373,80 +373,45 @@ void unlang_module_push(rlm_rcode_t *out, REQUEST *request,
 	/*
 	 *	Push a new module frame onto the stack
 	 */
-	unlang_interpret_push(stack, unlang_module_to_generic(mi), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	unlang_interpret_push(request, unlang_module_to_generic(mi), RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
 	frame = &stack->frame[stack->depth];
 	frame->state = ms;
+}
+
+/** Allocate a subrequest to run through a virtual server at some point in the future
+ *
+ * @param[in] parent		to hang sub request off of.
+ * @param[in] namespace		the child will operate in.
+ * @return
+ *	- A new child request.
+ *	- NULL on failure.
+ */
+REQUEST *unlang_module_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace)
+{
+	return unlang_io_subrequest_alloc(parent, namespace, UNLANG_NORMAL_CHILD);
 }
 
 /** Yield, spawning a child request, and resuming once the child request is complete
  *
  * @param[in] out		Final rcode from when evaluation of the child request finishes.
- * @param[out] child		- If not NULL, and points to a NULL pointer a pointer to the
- *				child will be provided.
- *				The caller can then manipulate the child, adding request data
- *				and/or attributes.
- *				The child pointer must be explicitly freed with
- *				#unlang_subrequest_free once it is no longer needed.
- *				- If not NULL, and points to a request, the request will be run
- *				through the section passed as section_cs.  The request must
- *				have been allocated during a previous call to
- *				unlang_module_yield_to_subrequest.
- *				- If NULL the child will be automatically freed when the subrequest
- *				completes.
- * @param[in] parent		The current request.
- * @param[in] section_cs	to execute.
- * @param[in] default_rcode	The rcode the child starts executing its section with.
+ * @param[out] child		to yield to.  The child knows about the parent,
+ *				which is why the parent isn't passed explicitly.
  * @param[in] resume		function to call when the child has finished executing.
  * @param[in] signal		function to call if a signal is received.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
  *	- RLM_MODULE_YIELD.
  */
-rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST **child, REQUEST *parent,
-					      CONF_SECTION *section_cs, rlm_rcode_t default_rcode,
+rlm_rcode_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
 					      fr_unlang_module_resume_t resume,
 					      fr_unlang_module_signal_t signal, void *rctx)
 {
-	unlang_t	*instruction = (unlang_t *)cf_data_value(cf_data_find(section_cs, unlang_group_t, NULL));
-
-	rad_assert(instruction);
-
 	/*
 	 *	Push the resumption point
 	 */
-	(void) unlang_module_yield(parent, resume, signal, rctx);
+	(void) unlang_module_yield(child->parent, resume, signal, rctx);
 
-	if (!child || !*child) {
-		CONF_SECTION	*server_cs;
-		fr_dict_t	*dict;
-
-		server_cs = virtual_server_by_child(section_cs);
-		/*
-		 *	We don't support executing orphaned sections.
-		 */
-		rad_assert(server_cs);
-
-		/*
-		 *	Work out the dictionary from the server section's cf_data
-		 */
-		dict = virtual_server_namespace(cf_section_name2(server_cs));
-
-		/*
-		 *	If this asserts, fix the validation logic
-		 *	don't just set a default value.
-		 *
-		 *	*ALL* virtual servers should have a namespace.
-		 */
-		rad_assert(dict);
-
-		/*
-		 *	Push the subrequest frame.
-		 */
-		unlang_subrequest_push(out, child, parent, server_cs, instruction, dict, default_rcode, true);
-	} else {
-		unlang_subrequest_push_again(out, talloc_get_type_abort(*child, REQUEST),
-					     parent, instruction, default_rcode, true);
-	}
+	unlang_subrequest_push(out, child, UNLANG_SUB_FRAME);
 
 	return RLM_MODULE_YIELD;	/* This may allow us to do optimisations in future */
 }
@@ -492,6 +457,50 @@ rlm_rcode_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 	unlang_xlat_push(ctx, out, request, exp, true);
 
 	return RLM_MODULE_YIELD;	/* This may allow us to do optimisations in future */
+}
+
+rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs,
+					   rlm_rcode_t default_rcode,
+					   fr_unlang_module_resume_t resume,
+					   fr_unlang_module_signal_t signal, void *rctx)
+{
+	if (!subcs) {
+		unlang_stack_t		*stack = request->stack;
+		unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+		unlang_t		*instruction = frame->instruction;
+
+		switch (instruction->type) {
+		case UNLANG_TYPE_RESUME:
+			instruction = instruction->parent;
+			if (!fr_cond_assert(instruction->type == UNLANG_TYPE_MODULE)) return RLM_MODULE_FAIL;
+			/* FALL-THROUGH */
+
+		case UNLANG_TYPE_MODULE:
+		{
+			unlang_module_t	*sp;
+
+			sp = unlang_generic_to_module(instruction);
+
+			/*
+			 *	Be transparent to the resume function.
+			 *	frame->result will be overwritten
+			 *	anyway when we return.
+			 */
+			request->rcode = frame->result = default_rcode;
+
+			return resume(sp->module_instance->dl_inst->data,
+				      module_thread(sp->module_instance)->data, request, rctx);
+		}
+
+		default:
+			if (!fr_cond_assert(0)) return RLM_MODULE_FAIL;
+		}
+	}
+
+	unlang_module_yield(request, resume, signal, rctx);
+	unlang_interpret_push_section(request, subcs, default_rcode, false);
+
+	return RLM_MODULE_YIELD;
 }
 
 /** Yield a request back to the interpreter from within a module

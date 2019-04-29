@@ -145,7 +145,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	/*
 	 *	And then call the children to process the answer.
 	 */
-	unlang_interpret_push(stack, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 

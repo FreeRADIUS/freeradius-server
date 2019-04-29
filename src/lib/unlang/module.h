@@ -109,11 +109,16 @@ int		unlang_module_fd_delete(REQUEST *request, void const *rctx, int fd);
 void		unlang_module_push(rlm_rcode_t *out, REQUEST *request,
 				   module_instance_t *module_instance, module_method_t method, bool top_frame);
 
-rlm_rcode_t	unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST **child, REQUEST *request,
-						  CONF_SECTION *section_cs,
-						  rlm_rcode_t default_rcode,
+REQUEST		*unlang_module_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace);
+
+rlm_rcode_t	unlang_module_yield_to_subrequest(rlm_rcode_t *out, REQUEST *child,
 						  fr_unlang_module_resume_t resume,
 						  fr_unlang_module_signal_t signal, void *rctx);
+
+rlm_rcode_t	unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs,
+					       rlm_rcode_t default_rcode,
+					       fr_unlang_module_resume_t resume,
+					       fr_unlang_module_signal_t signal, void *rctx);
 
 rlm_rcode_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					    REQUEST *request, xlat_exp_t const *xlat,

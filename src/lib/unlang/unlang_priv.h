@@ -341,8 +341,8 @@ uint64_t	unlang_interpret_active_callers(unlang_t *instruction);
 
 unlang_resume_t *unlang_interpret_resume_alloc(REQUEST *request, void *callback, void *signal, void *rctx);
 
-void		unlang_interpret_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result,
-			    bool do_next_sibling, bool top_frame);
+void		unlang_interpret_push(REQUEST *request, unlang_t *instruction,
+				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame);
 rlm_rcode_t	unlang_interpret_run(REQUEST *request);
 
 int		unlang_op_init(void);
@@ -359,10 +359,7 @@ void		unlang_op_free(void);
  */
 fr_io_final_t	unlang_io_process_interpret(UNUSED void const *instance, REQUEST *request, fr_io_action_t action);
 
-REQUEST		*unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction,
-				       CONF_SECTION *server_cs, fr_dict_t const *namespace,
-				       rlm_rcode_t default_rcode,
-				       bool do_next_sibling, bool detachable);
+REQUEST		*unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace, bool detachable);
 
 /* @} **/
 

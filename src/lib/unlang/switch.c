@@ -166,7 +166,7 @@ do_null_case:
 	 */
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
-	unlang_interpret_push(stack, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+	unlang_interpret_push(request, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 

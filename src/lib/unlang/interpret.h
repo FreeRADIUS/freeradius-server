@@ -98,7 +98,8 @@ typedef struct {
 void		unlang_interpret_push_function(REQUEST *request,
 					       unlang_function_t func, unlang_function_t repeat, void *uctx);
 
-void		unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action, bool top_frame);
+void		unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs,
+					      rlm_rcode_t default_action, bool top_frame);
 
 rlm_rcode_t	unlang_interpret_resume(REQUEST *request);
 

@@ -39,14 +39,7 @@ typedef struct {
 
 void	unlang_subrequest_free(REQUEST **child);
 
-void	unlang_subrequest_push_again(rlm_rcode_t *out, REQUEST *child, REQUEST *parent,
-				     unlang_t *instruction, rlm_rcode_t default_rcode, bool top_frame);
-
-void	unlang_subrequest_push(rlm_rcode_t *out, REQUEST **child, REQUEST *parent,
-			       CONF_SECTION *server_cs, unlang_t *instruction, fr_dict_t const *namespace,
-			       rlm_rcode_t default_rcode,
-			       bool top_frame);
-
+void	unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame);
 #ifdef __cplusplus
 }
 #endif

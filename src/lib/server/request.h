@@ -180,11 +180,9 @@ struct rad_request {
 
 REQUEST		*request_alloc(TALLOC_CTX *ctx);
 
-REQUEST		*request_alloc_fake(REQUEST *oldreq);
+REQUEST		*request_alloc_fake(REQUEST *parent, fr_dict_t const *namespace);
 
-REQUEST		*request_alloc_proxy(REQUEST *request);
-
-REQUEST		*request_alloc_detachable(REQUEST *request);
+REQUEST		*request_alloc_detachable(REQUEST *request, fr_dict_t const *namespace);
 
 int		request_detach(REQUEST *fake, bool will_free);
 

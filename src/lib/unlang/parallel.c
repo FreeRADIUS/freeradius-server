@@ -72,12 +72,17 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 		case CHILD_INIT:
 			RDEBUG3("parallel child %d is INIT", i + 1);
 			rad_assert(state->children[i].instruction != NULL);
-			state->children[i].child = unlang_io_child_alloc(request, state->children[i].instruction,
-									 request->server_cs, request->dict,
-									 RLM_MODULE_FAIL, /* @todo - fixme ? */
-									 UNLANG_NEXT_STOP, UNLANG_NORMAL_CHILD);
+			state->children[i].child = unlang_io_subrequest_alloc(request,
+									      request->dict, UNLANG_NORMAL_CHILD);
 			state->children[i].state = CHILD_RUNNABLE;
 			state->children[i].child->packet->code = request->packet->code;
+
+			/*
+			 *	Push first instruction for child to execute
+			 */
+			unlang_interpret_push(state->children[i].child,
+					      state->children[i].instruction, RLM_MODULE_FAIL,
+					      UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
 
 			if (state->g->clone) {
 				if ((fr_pair_list_copy(state->children[i].child->packet,

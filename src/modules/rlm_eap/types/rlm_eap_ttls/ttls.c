@@ -617,7 +617,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Allocate a fake REQUEST structure.
 	 */
-	fake = request_alloc_fake(request);
+	fake = request_alloc_fake(request, NULL);
 
 	rad_assert(!fake->packet->vps);
 

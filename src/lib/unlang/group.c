@@ -49,7 +49,7 @@ unlang_action_t unlang_group(REQUEST *request,
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
-	unlang_interpret_push(stack, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 

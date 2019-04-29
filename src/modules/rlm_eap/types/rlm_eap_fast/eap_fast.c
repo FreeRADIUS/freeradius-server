@@ -582,7 +582,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	/*
 	 * Allocate a fake REQUEST structure.
 	 */
-	fake = request_alloc_fake(request);
+	fake = request_alloc_fake(request, NULL);
 	rad_assert(!fake->packet->vps);
 
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
@@ -701,7 +701,10 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			 */
 			rad_assert(!request->proxy);
 
-			request->proxy = request_alloc_proxy(request);
+			/*
+			 *	FIXME: Actually proxy stuff
+			 */
+			request->proxy = request_alloc_fake(request, NULL);
 
 			request->proxy->packet = talloc_steal(request->proxy, fake->packet);
 			memset(&request->proxy->packet->src_ipaddr, 0,

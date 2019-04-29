@@ -138,17 +138,14 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_subrequest_t	*state = NULL;
-	unlang_group_t			*g;
 	REQUEST				*child;
+
 	rlm_rcode_t			rcode;
 	int				priority;
 	unlang_resume_t			*mr;
 	VALUE_PAIR			*vp;
 
 	if (frame->state) state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-
-	g = unlang_generic_to_group(instruction);
-	rad_assert(g->children != NULL);
 
 	/*
 	 *	When the subrequest is executed as part of an
@@ -162,12 +159,14 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	 *	should be filled out by unlang_interpret_push_subrequest.
 	 */
 	if (!state) {
+		unlang_group_t		*g;
+
+		g = unlang_generic_to_group(instruction);
+		rad_assert(g->children != NULL);
+
 		frame->state = state = talloc(stack, unlang_frame_state_subrequest_t);
-		state->child = unlang_io_child_alloc(request, g->children,
-						     request->server_cs, g->dict,
-						     frame->result,
-						     UNLANG_NEXT_SIBLING, UNLANG_DETACHABLE);
-		if (!state->child) {
+		child = state->child = unlang_io_subrequest_alloc(request, g->dict, UNLANG_DETACHABLE);
+		if (!child) {
 			rcode = RLM_MODULE_FAIL;
 			priority = instruction->actions[*presult];
 
@@ -190,6 +189,26 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 		}
 
 		/*
+		 *	Set the packet type.
+		 *
+		 *	@todo - this doesn't strictly work for DHCP, which
+		 *	uses DHCP-Message-Type, *and* which has message type
+		 *	by a uint8.  We should likely have some other mapping
+		 *	in the dictionary so that we can find the real
+		 *	attribute.
+		 */
+		MEM(vp = fr_pair_afrom_da(child->packet, g->attr_packet_type));
+		child->packet->code = vp->vp_uint32 = g->type_enum->value->vb_uint32;
+		fr_pair_add(&child->packet->vps, vp);
+
+		/*
+		 *	Push the first instruction the child's
+		 *	going to run.
+		 */
+		unlang_interpret_push(child, g->children, frame->result,
+				      UNLANG_NEXT_SIBLING, UNLANG_TOP_FRAME);
+
+		/*
 		 *	Probably not a great idea to set this
 		 *	to presult, as it could be a pointer
 		 *	to an rlm_rcode_t somewhere on the stack
@@ -210,26 +229,13 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 		 *	This is necessary for stateful modules like
 		 *	EAP to work.
 		 */
-		fr_state_restore_to_child(state->child, instruction, 0);
+		fr_state_restore_to_child(child, instruction, 0);
+	} else {
+		child = state->child;
 	}
-	child = state->child;
 
-	RDEBUG2("- creating subrequest (%s)", child->name);
-
-	/*
-	 *	Set the packet type.
-	 *
-	 *	@todo - this doesn't strictly work for DHCP, which
-	 *	uses DHCP-Message-Type, *and* which has message type
-	 *	by a uint8.  We should likely have some other mapping
-	 *	in the dictionary so that we can find the real
-	 *	attribute.
-	 */
-	vp = fr_pair_afrom_da(child->packet, g->attr_packet_type);
-	if (vp) {
-		child->packet->code = vp->vp_uint32 = g->type_enum->value->vb_uint32;
-		fr_pair_add(&child->packet->vps, vp);
-	}
+	RDEBUG2("Creating subrequest (%s)", child->name);
+	log_request_pair_list(L_DBG_LVL_1, request, child->packet->vps, NULL);
 
 	rcode = unlang_interpret_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
@@ -238,7 +244,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 			unlang_subrequest_free(&child);
 		}
 
-		priority = instruction->actions[*presult];
+		priority = instruction->actions[rcode];
 
 		goto calculate_result;
 	}
@@ -264,7 +270,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 				return UNLANG_ACTION_STOP_PROCESSING;
 			}
 
-			RDEBUG2("- detaching child request (%s)", child->name);
+			RDEBUG2("Detaching child request (%s)", child->name);
 
 			/*
 			 *	Tell the interpreter to skip the "detach"
@@ -286,7 +292,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	mr = unlang_interpret_resume_alloc(request, NULL, NULL, child);
 	if (!mr) {
 		rcode = RLM_MODULE_FAIL;
-		priority = instruction->actions[*presult];
+		priority = instruction->actions[rcode];
 		goto calculate_result;
 	}
 
@@ -385,33 +391,28 @@ static unlang_t subrequest_instruction = {
 
 /** Push a pre-existing child back onto the stack as a subrequest
  *
- * The child *MUST* have been allocated with unlang_subrequest_push. Instruction *MUST* belong to
- * the same virtual server as the original request was executed in.
+ * The child *MUST* have been allocated with unlang_io_subrequest_alloc, or something
+ * that calls it.
+ * Instruction *MUST* belong to the same virtual server as is set in the child.
  *
  * After the child is no longer required it *MUST* be freed with #unlang_subrequest_free.
  * It's not enough to free it with talloc_free.
  *
  * @param[in] out		Where to write the result of the subrequest.
  * @param[in] child		to push.
- * @param[in] parent		of the child.
- * @param[in] instruction	to execute in the child.
- * @param[in] default_rcode	for instruction being executed.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  */
-void unlang_subrequest_push_again(rlm_rcode_t *out, REQUEST *child, REQUEST *parent,
-				  unlang_t *instruction, rlm_rcode_t default_rcode, bool top_frame)
+void unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame)
 {
 	unlang_frame_state_subrequest_t	*state;
-	unlang_stack_t			*stack = parent->stack;
+	unlang_stack_t			*stack = child->parent->stack;
 	unlang_stack_frame_t		*frame;
-
-	rad_assert(child->parent == parent);
 
 	/*
 	 *	Push a new subrequest frame onto the stack
 	 */
-	unlang_interpret_push(stack, &subrequest_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	unlang_interpret_push(child->parent, &subrequest_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -423,65 +424,6 @@ void unlang_subrequest_push_again(rlm_rcode_t *out, REQUEST *child, REQUEST *par
 	state->presult = out;
 	state->persist = true;
 	state->child = child;
-
-	/*
-	 *	Push the instruction to execute onto the child's stack.
-	 */
-	stack = child->stack;
-	unlang_interpret_push(stack, instruction, default_rcode, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
-	stack->frame[stack->depth].top_frame = true;
-}
-
-/** Allocate a child and set it up for execution
- *
- * After the child is no longer required it *MUST* be freed with #unlang_subrequest_free.
- * It's not enough to free it with talloc_free.  This will be done automatically if
- * no child pointer is provided to store a pointer to the child.
- *
- * @param[in] out		Where to write the result of the subrequest.
- * @param[out] child		The child we allocated.  The caller can then add
- *				VALUE_PAIRs and request data before the child is executed.
- * @param[in] parent		to hang child request off of.
- * @param[in] server_cs		Server to execute subrequest in.
- * @param[in] instruction	Where to start the child.
- * @param[in] namespace		to use for the subrequest.
- * @param[in] default_rcode	To use when the child enters the section.
- * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
- *				Set to UNLANG_SUB_FRAME if the interprer should continue.
- */
-void unlang_subrequest_push(rlm_rcode_t *out, REQUEST **child,
-			    REQUEST *parent,
-			    CONF_SECTION *server_cs, unlang_t *instruction, fr_dict_t const *namespace,
-			    rlm_rcode_t default_rcode,
-			    bool top_frame)
-{
-
-	unlang_frame_state_subrequest_t	*state;
-	unlang_stack_t			*stack = parent->stack;
-	unlang_stack_frame_t		*frame;
-
-	/*
-	 *	Push a new subrequest frame onto the stack
-	 */
-	unlang_interpret_push(stack, &subrequest_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
-	frame = &stack->frame[stack->depth];
-
-	/*
-	 *	Allocate a state for the subrequest
-	 *	This lets us override the normal request
-	 *      the subrequest instruction would alloc.
-	 */
-	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_subrequest_t));
-	state->presult = out;
-	state->persist = child ? true : false;
-
-	/*
-	 *	Pushes instruction onto child
-	 */
-	state->child = unlang_io_child_alloc(parent, instruction,
-					     server_cs, namespace,
-					     default_rcode,
-					     UNLANG_NEXT_SIBLING, UNLANG_NORMAL_CHILD);
 }
 
 int unlang_subrequest_op_init(void)

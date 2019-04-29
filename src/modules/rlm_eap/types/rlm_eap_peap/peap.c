@@ -564,7 +564,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		break;
 
 	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
-		fake = request_alloc_fake(request);
+		fake = request_alloc_fake(request, NULL);
 		rad_assert(!fake->packet->vps);
 		eap_peap_soh_verify(fake, fake->packet, data, data_len);
 		setup_fake_request(request, fake, t);
@@ -664,7 +664,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			goto finish;
 	}
 
-	fake = request_alloc_fake(request);
+	fake = request_alloc_fake(request, NULL);
 	rad_assert(!fake->packet->vps);
 
 	switch (t->status) {

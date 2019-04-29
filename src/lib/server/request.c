@@ -207,14 +207,18 @@ static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
  *	This function allows modules to inject fake requests
  *	into the server, for tunneled protocols like TTLS & PEAP.
  */
-REQUEST *request_alloc_fake(REQUEST *request)
+REQUEST *request_alloc_fake(REQUEST *request, fr_dict_t const *namespace)
 {
 	REQUEST *fake;
 
 	fake = request_alloc(request);
 	if (!fake) return NULL;
 
-	return request_init_fake(request, fake);
+	if (!request_init_fake(request, fake)) return NULL;
+
+	if (namespace) fake->dict = namespace;
+
+	return fake;
 }
 
 /** Allocate a fake request which is detachable from the parent.
@@ -222,7 +226,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
  * run.
  *
  */
-REQUEST *request_alloc_detachable(REQUEST *request)
+REQUEST *request_alloc_detachable(REQUEST *request, fr_dict_t const *namespace)
 {
 	REQUEST *fake;
 
@@ -230,6 +234,8 @@ REQUEST *request_alloc_detachable(REQUEST *request)
 	if (!fake) return NULL;
 
 	if (!request_init_fake(request, fake)) return NULL;
+
+	if (namespace) fake->dict = namespace;
 
 	/*
 	 *	Ensure that we use our own version of the logging
@@ -270,12 +276,11 @@ int request_detach(REQUEST *fake, bool will_free)
 	REQUEST		*request = fake->parent;
 
 	rad_assert(request != NULL);
-	rad_assert(talloc_parent(fake) != request);
 
 	/*
 	 *	Unlink the child from the parent.
 	 */
-	if (!request_data_get(request, fake, 0)) return -1;
+	request_data_get(request, fake, 0);
 
 	/*
 	 *	Fixup any sate or persistent
@@ -293,20 +298,6 @@ int request_detach(REQUEST *fake, bool will_free)
 	fake->backlog = request->backlog;
 
 	return 0;
-}
-
-REQUEST *request_alloc_proxy(REQUEST *request)
-{
-	request->proxy = request_alloc(request);
-	if (!request->proxy) return NULL;
-
-	request->proxy->log = request->log;
-	request->proxy->parent = request;
-	request->proxy->number = request->number;
-	request->proxy->seq_start = request->seq_start;
-	request->proxy->config = request->config;
-
-	return request->proxy;
 }
 
 /* Initialise a dlist for storing request data

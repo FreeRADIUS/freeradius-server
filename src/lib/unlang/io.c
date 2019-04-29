@@ -73,28 +73,22 @@ fr_io_final_t unlang_io_process_interpret(UNUSED void const *instance, REQUEST *
  *      - The new child request.
  *	- NULL on error.
  */
-REQUEST *unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction,
-			       CONF_SECTION *server_cs, fr_dict_t const *namespace,
-			       rlm_rcode_t default_rcode,
-			       bool do_next_sibling, bool detachable)
+REQUEST *unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace, bool detachable)
 {
 	REQUEST			*child;
-	unlang_stack_t		*stack;
 
 	if (!detachable) {
-		child = request_alloc_fake(parent);
+		child = request_alloc_fake(parent, namespace);
 	} else {
-		child = request_alloc_detachable(parent);
+		child = request_alloc_detachable(parent, namespace);
 	}
 	if (!child) return NULL;
 
 	/*
 	 *	Push the child, and set it's top frame to be true.
 	 */
-	stack = child->stack;
+
 	child->log.unlang_indent = parent->log.unlang_indent;
-	unlang_interpret_push(stack, instruction, default_rcode, do_next_sibling, UNLANG_SUB_FRAME);
-	stack->frame[stack->depth].top_frame = true;
 
 	/*
 	 *	Initialize some basic information for the child.
@@ -104,8 +98,7 @@ REQUEST *unlang_io_child_alloc(REQUEST *parent, unlang_t *instruction,
 	 */
 	child->number = parent->number;
 	child->el = parent->el;
-	child->server_cs = server_cs;
-	child->dict = namespace;
+	child->server_cs = parent->server_cs;
 
 	/*
 	 *	Initialize all of the async fields.

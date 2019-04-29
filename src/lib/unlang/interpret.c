@@ -48,10 +48,11 @@ static void instruction_dump(REQUEST *request, unlang_t *instruction)
 {
 	RINDENT();
 	if (!instruction) {
-		RDEBUG2("instruction = NULL");
+		RDEBUG2("instruction    <none>");
 		REXDENT();
 		return;
 	}
+
 	RDEBUG2("type           %s", unlang_ops[instruction->type].name);
 	RDEBUG2("name           %s", instruction->name);
 	RDEBUG2("debug_name     %s", instruction->debug_name);
@@ -215,28 +216,29 @@ uint64_t unlang_interpret_active_callers(unlang_t *instruction)
  *
  * @param[in] stack		to push the frame onto.
  * @param[in] program		One or more unlang_t nodes describing the operations to execute.
- * @param[in] result		The default result.
+ * @param[in] default_rcode	The default result.
  * @param[in] do_next_sibling	Whether to only execute the first node in the #unlang_t program
  *				or to execute subsequent nodes.
  * @param[in] top_frame		Return out of the unlang interpreter when popping this frame.
  *				Hands execution back to whatever called the interpreter.
  */
-void unlang_interpret_push(unlang_stack_t *stack, unlang_t *program,
-			   rlm_rcode_t result, bool do_next_sibling, bool top_frame)
+void unlang_interpret_push(REQUEST *request, unlang_t *instruction,
+			   rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
 {
-	unlang_stack_frame_t *frame;
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame;
 
-	rad_assert(program || top_frame);
+	rad_assert(instruction || top_frame);
 
 #ifndef NDEBUG
-	if (DEBUG_ENABLED5) DEBUG("unlang_interpret_push called with instruction %s - args %s %s",
-				  program ? program->debug_name : "<none>",
-				  do_next_sibling ? "UNLANG_NEXT_SIBLING" : "UNLANG_NEXT_STOP",
-				  top_frame ? "UNLANG_TOP_FRAME" : "UNLANG_SUB_FRAME");
+	if (DEBUG_ENABLED5) RDEBUG3("unlang_interpret_push called with instruction %s - args %s %s",
+				    instruction ? instruction->debug_name : "<none>",
+				    do_next_sibling ? "UNLANG_NEXT_SIBLING" : "UNLANG_NEXT_STOP",
+				    top_frame ? "UNLANG_TOP_FRAME" : "UNLANG_SUB_FRAME");
 #endif
 
 	if (stack->depth >= (UNLANG_STACK_MAX - 1)) {
-		ERROR("Internal sanity check failed: module stack is too deep");
+		RERROR("Internal sanity check failed: module stack is too deep");
 		fr_exit(EXIT_FAILURE);
 	}
 
@@ -248,15 +250,15 @@ void unlang_interpret_push(unlang_stack_t *stack, unlang_t *program,
 	frame = &stack->frame[stack->depth];
 
 	if (do_next_sibling) {
-		rad_assert(program != NULL);
-		frame->next = program->next;
+		rad_assert(instruction != NULL);
+		frame->next = instruction->next;
 	} else {
 		frame->next = NULL;
 	}
 
 	frame->top_frame = top_frame;
-	frame->instruction = program;
-	frame->result = result;
+	frame->instruction = instruction;
+	frame->result = default_rcode;
 	frame->priority = -1;
 	frame->unwind = UNLANG_TYPE_NULL;
 	frame->repeat = false;
@@ -750,7 +752,7 @@ rlm_rcode_t unlang_interpret_run(REQUEST *request)
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */
-void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action, bool top_frame)
+void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_rcode, bool top_frame)
 {
 	unlang_t	*instruction = NULL;
 	unlang_stack_t	*stack = request->stack;
@@ -792,8 +794,9 @@ void unlang_interpret_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode
 	 *	Push the default action, and the instruction which has
 	 *	no action.
 	 */
-	if (top_frame) unlang_interpret_push(stack, NULL, action, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
-	if (instruction) unlang_interpret_push(stack, instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	if (top_frame) unlang_interpret_push(request, NULL, default_rcode, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
+	if (instruction) unlang_interpret_push(request,
+					       instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
 
@@ -812,13 +815,13 @@ rlm_rcode_t unlang_interpret_resume(REQUEST *request)
  *
  * What did Paul Graham say about Lisp...?
  */
-rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
+rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *subcs, rlm_rcode_t default_rcode)
 {
 	/*
 	 *	This pushes a new frame onto the stack, which is the
 	 *	start of a new unlang section...
 	 */
-	unlang_interpret_push_section(request, cs, action, UNLANG_TOP_FRAME);
+	unlang_interpret_push_section(request, subcs, default_rcode, UNLANG_TOP_FRAME);
 
 	return unlang_interpret_run(request);
 }
