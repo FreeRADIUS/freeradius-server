@@ -55,6 +55,16 @@ RCSIDH(server_pair_h, "$Id$")
  */
 #define pair_add_control(_attr, _da) fr_pair_add_by_da(request, _attr, &request->control, _da)
 
+/** Allocate a VALUE_PAIR in the session-state list
+ *
+ * @param[in] _attr	allocated.
+ * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+#define pair_add_session_state(_attr, _da) fr_pair_add_by_da(request->state_ctx, _attr, &request->state, _da)
+
 /** Return or allocate a VALUE_PAIR in the request list
  *
  * @param[in] _attr	allocated or found.
@@ -88,6 +98,18 @@ RCSIDH(server_pair_h, "$Id$")
  */
 #define pair_update_control(_attr, _da) fr_pair_update_by_da(request, _attr, &request->control, _da)
 
+/** Return or allocate a VALUE_PAIR in the session_state list
+ *
+ * @param[in] _attr	allocated or found.
+ * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
+ * @return
+ *	- 1 if attribute already existed.
+ *	- 0 if we allocated a new attribute.
+ *	- -1 on failure.
+ */
+#define pair_update_session_state(_attr, _da) fr_pair_update_by_da(request->state_ctx, _attr, &request->state, _da)
+
+
 /** Return or allocate a VALUE_PAIR in the request list
  *
  * @param[in] _da	#fr_dict_attr_t of the pair(s) to be deleted.
@@ -97,7 +119,7 @@ RCSIDH(server_pair_h, "$Id$")
  */
 #define pair_delete_request(_da) fr_pair_delete_by_da(&request->packet->vps, _da)
 
-/** Return or allocate a VALUE_PAIR in the reply list
+/** Delete a VALUE_PAIR in the reply list
  *
  * @param[in] _da	#fr_dict_attr_t of the pair(s) to be deleted.
  * @return
@@ -106,7 +128,7 @@ RCSIDH(server_pair_h, "$Id$")
  */
 #define pair_delete_reply(_da) fr_pair_delete_by_da(&request->reply->vps, _da)
 
-/** Return or allocate a VALUE_PAIR in the control list
+/** Delete a VALUE_PAIR in the control list
  *
  * @param[in] _da	#fr_dict_attr_t of the pair(s) to be deleted.
  * @return
@@ -114,4 +136,13 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 if no pairs were deleted.
  */
 #define pair_delete_control(_da) fr_pair_delete_by_da(&request->control, _da)
+
+/** Delete a VALUE_PAIR in the session_state list
+ *
+ * @param[in] _da	#fr_dict_attr_t of the pair(s) to be deleted.
+ * @return
+ *	- >0 the number of pairs deleted.
+ *	- 0 if no pairs were deleted.
+ */
+#define pair_delete_session_state(_da) fr_pair_delete_by_da(&request->state, _da)
 
