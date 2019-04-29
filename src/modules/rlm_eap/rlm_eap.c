@@ -80,13 +80,14 @@ fr_dict_autoload_t rlm_eap_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_auth_type;
-fr_dict_attr_t const *attr_eap_type;
+static fr_dict_attr_t const *attr_eap_type;
+static fr_dict_attr_t const *attr_eap_identity;
 
 static fr_dict_attr_t const *attr_cisco_avpair;
-fr_dict_attr_t const *attr_eap_message;
-fr_dict_attr_t const *attr_message_authenticator;
-fr_dict_attr_t const *attr_state;
-fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_eap_message;
+static fr_dict_attr_t const *attr_message_authenticator;
+static fr_dict_attr_t const *attr_state;
+static fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_eap_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
