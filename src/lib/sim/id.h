@@ -70,8 +70,8 @@ typedef enum {
 typedef enum {
 	SIM_NO_ID_REQ = 0,			//!< We're not requesting any ID.
 	SIM_ANY_ID_REQ,				//!< Request IMSI, Pseudonym or Fast-reauth.
+	SIM_FULLAUTH_ID_REQ,			//!< Request IMSI or Pseudonym.
 	SIM_PERMANENT_ID_REQ,			//!< Request IMSI.
-	SIM_FULLAUTH_ID_REQ			//!< Request IMSI or Pseudonym.
 } fr_sim_id_req_type_t;
 
 extern FR_NAME_NUMBER const sim_id_request_table[];
