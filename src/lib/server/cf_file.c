@@ -1500,11 +1500,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 				rule = cf_data_value(cd);
 				if ((rule->type & FR_TYPE_ON_READ) == 0) {
-					fprintf(stderr, "NOT ON READ for %s\n", buff[1]);
 					goto skip_on_read;
 				}
 
-				fprintf(stderr, "ON READ %s\n", buff[1]);
 				if (rule->func(this, NULL, NULL, cf_pair_to_item(cpn), rule) < 0) goto error;
 			}
 		skip_on_read:
