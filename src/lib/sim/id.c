@@ -29,7 +29,7 @@
 #define us(x) (uint8_t) x
 
 FR_NAME_NUMBER const sim_id_request_table[] = {
-	{ "Id-Any-Req",		SIM_ANY_ID_REQ			},
+	{ "Any-Id-Req",		SIM_ANY_ID_REQ			},
 	{ "Permanent-Id-Req",	SIM_PERMANENT_ID_REQ		},
 	{ "FullAuth-Id-Req",	SIM_FULLAUTH_ID_REQ		},
 	{ NULL }
@@ -140,6 +140,8 @@ ssize_t fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
  /** Determine what type of ID was provided in the initial identity response
   *
   * @param[out] hint	Whether this is a hint to do EAP-SIM or EAP-AKA[']:
+  *	- SIM_METHOD_HINT_AKA_PRIME	this ID was generated during an EAP-AKA' exchange
+  *					or the supplicant hints it wants to perform EAP-AKA'.
   *	- SIM_METHOD_HINT_AKA		this ID was generated during an EAP-AKA exchange
   *					or the supplicant hints it wants to perform EAP-AKA.
   *	- SIM_METHOD_HINT_SIM		this IS was generated during an EAP-SIM exchange
