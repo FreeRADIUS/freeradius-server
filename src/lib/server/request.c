@@ -639,11 +639,13 @@ void request_data_dump(REQUEST *request)
 	RDEBUG("Current request data:");
 	RINDENT();
 	while ((rd = fr_dlist_next(&request->data, rd))) {
-		RDEBUG("[%i] %s%s%p %s at %p:%i",
+		RDEBUG("[%i] %s%p %s at %p:%i",
 		       count,
-		       rd->type ? rd->type : "", rd->type ? " " : "",
+		       rd->type ? rd->type : "",
+		       rd->opaque,
 		       rd->persist ? "[persist]" : "",
-		       rd->opaque, rd->unique_ptr, rd->unique_int);
+		       rd->unique_ptr,
+		       rd->unique_int);
 
 		count++;
 	}
