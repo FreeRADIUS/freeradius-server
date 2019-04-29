@@ -255,6 +255,8 @@ int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
 
 int		module_section_register(char const *name1, char const *name2);
 
+bool		module_section_exists(char const *name1, char const *name2);
+
 /** @{ */
 
 /** @name Module and module thread lookup

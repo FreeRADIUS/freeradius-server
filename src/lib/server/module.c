@@ -1487,3 +1487,36 @@ int module_section_register(char const *name1, char const *name2)
 
 	return 0;
 }
+
+
+/** See if a named section exists
+ *
+ */
+bool module_section_exists(char const *name1, char const *name2)
+{
+	module_section_name_t *sname;
+
+	rad_assert(module_section_name_tree != NULL);
+
+	/*
+	 *	Look up the wildcard name first.
+	 */
+	if (name2 != CF_IDENT_ANY) {
+		sname = rbtree_finddata(module_section_name_tree,
+					&(module_section_name_t) {
+						.name1 = name2,
+							.name2 = CF_IDENT_ANY,
+							});
+		if (sname) return true;
+	}
+
+	/*
+	 *	Then the specific name.
+	 */
+	sname = rbtree_finddata(module_section_name_tree,
+				&(module_section_name_t) {
+					.name1 = name1,
+					.name2 = name2,
+				});
+	return (sname != NULL);
+}
