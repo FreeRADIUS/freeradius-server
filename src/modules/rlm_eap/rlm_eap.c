@@ -81,7 +81,6 @@ fr_dict_autoload_t rlm_eap_dict[] = {
 
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_eap_type;
-static fr_dict_attr_t const *attr_eap_identity;
 
 static fr_dict_attr_t const *attr_cisco_avpair;
 static fr_dict_attr_t const *attr_eap_message;
