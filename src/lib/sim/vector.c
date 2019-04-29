@@ -94,7 +94,7 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 	}
 
 	/*
-	 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
+	 *	Check to see if we have a Ki for the IMSI, this allows us to generate the rest
 	 *	of the triplets.
 	 */
 	version_vp = fr_pair_find_by_da(vps, attr_sim_algo_version, TAG_ANY);
@@ -153,12 +153,20 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 			RPEDEBUG2("Failed deriving GSM triplet");
 			return -1;
 		}
-		return 0;
+		break;
 
 	default:
 		REDEBUG("Unknown/unsupported algorithm %i", version);
 		return -1;
 	}
+
+	/*
+	 *	Store for completeness...
+	 */
+	memcpy(keys->auc.ki, ki_vp->vp_octets, sizeof(keys->auc.ki));
+	memcpy(keys->auc.opc, opc_p, sizeof(keys->auc.opc));
+	keys->vector_src = SIM_VECTOR_SRC_KI;
+
 	return 0;
 }
 
@@ -215,6 +223,7 @@ static int vector_gsm_from_triplets(eap_session_t *eap_session, VALUE_PAIR *vps,
 	memcpy(keys->gsm.vector[idx].kc, kc->vp_strvalue, SIM_VECTOR_GSM_KC_SIZE);
 	memcpy(keys->gsm.vector[idx].rand, rand->vp_octets, SIM_VECTOR_GSM_RAND_SIZE);
 	memcpy(keys->gsm.vector[idx].sres, sres->vp_octets, SIM_VECTOR_GSM_SRES_SIZE);
+	keys->vector_src = SIM_VECTOR_SRC_TRIPLETS;
 
 	return 0;
 }
@@ -294,6 +303,8 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 			       ik->vp_octets,
 			       ck->vp_octets,
 			       xres->vp_octets);
+
+	keys->vector_src = SIM_VECTOR_SRC_QUINTUPLETS;
 
 	return 0;
 }
@@ -471,8 +482,15 @@ static int vector_umts_from_ki(REQUEST *request, VALUE_PAIR *vps, fr_sim_keys_t 
 			RPEDEBUG2("Failed deriving UMTS Quintuplet");
 			return -1;
 		}
-
 		keys->umts.vector.xres_len = 8;
+
+		/*
+		 *	Store the keys we used for possible AUTS
+		 *	validation later.
+		 */
+		memcpy(keys->auc.ki, ki_vp->vp_octets, sizeof(keys->auc.ki));
+		memcpy(keys->auc.opc, opc_p, sizeof(keys->auc.opc));
+		keys->vector_src = SIM_VECTOR_SRC_KI;
 	}
 		return 0;
 
@@ -633,6 +651,8 @@ static int vector_umts_from_quintuplets(REQUEST *request, VALUE_PAIR *vps, fr_si
 	memcpy(keys->umts.vector.rand, rand_vp->vp_octets, SIM_VECTOR_UMTS_RAND_SIZE);
 	memcpy(keys->umts.vector.xres, xres_vp->vp_octets, xres_vp->vp_length);
 	keys->umts.vector.xres_len = xres_vp->vp_length;	/* xres is variable length */
+
+	keys->vector_src = SIM_VECTOR_SRC_QUINTUPLETS;
 
 	return 0;
 }
