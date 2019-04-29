@@ -215,6 +215,8 @@ void		request_data_ctx_change(TALLOC_CTX *state_ctx, REQUEST *request);
 
 void		request_data_persistable_free(REQUEST *request);
 
+void		request_data_dump(REQUEST *request);
+
 void		request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int);
 
 void		request_data_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int);

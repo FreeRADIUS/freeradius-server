@@ -635,6 +635,29 @@ void request_data_persistable_free(REQUEST *request)
 	fr_dlist_talloc_free(&head);
 }
 
+void request_data_dump(REQUEST *request)
+{
+	request_data_t	*rd = NULL;
+	int count = 0;
+
+	if (fr_dlist_empty(&request->data)) {
+		RDEBUG("No request data");
+		return;
+	}
+
+	RDEBUG("Current request data:");
+	RINDENT();
+	while ((rd = fr_dlist_next(&request->data, rd))) {
+		RDEBUG("[%i] %s%s%p %s at %p:%i",
+		       count,
+		       rd->type ? rd->type : "", rd->type ? " " : "",
+		       rd->persist ? "[persist]" : "",
+		       rd->opaque, rd->unique_ptr, rd->unique_int);
+
+		count++;
+	}
+	REXDENT();
+}
 
 /** Free any subrequest request data if the dlist head is freed
  *
