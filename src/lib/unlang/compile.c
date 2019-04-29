@@ -3170,6 +3170,17 @@ static unlang_t *compile_item(unlang_t *parent,
 			}
 		}
 
+		/*
+		 *	Allow for named subsections, to change processing method types.
+		 */
+		if (name2 && module_section_exists(modrefname, name2)) {
+			/*
+			 *	@todo - change the parse rules?
+			 */
+			cf_log_err(ci, "Placeholder not implemented");
+			return NULL;
+		}
+
 #ifdef WITH_UNLANG
 		if (strcmp(modrefname, "break") == 0) {
 			cf_log_err(ci, "Invalid use of 'break'");
