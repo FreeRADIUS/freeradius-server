@@ -125,7 +125,7 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	eap_type_t	method;
 
 	method = eap_name2type(name);
-	if (method == FR_EAP_INVALID) {
+	if (method == FR_EAP_METHOD_INVALID) {
 		cf_log_err(ci, "Unknown EAP type %s", name);
 		return -1;
 	}
@@ -144,12 +144,12 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	 *	have EAP without the TLS types.
 	 */
 	switch (method) {
-	case FR_EAP_TLS:
-	case FR_EAP_TTLS:
-	case FR_EAP_PEAP:
-	case FR_EAP_PWD:
-	case FR_EAP_AKA:
-	case FR_EAP_SIM:
+	case FR_EAP_METHOD_TLS:
+	case FR_EAP_METHOD_TTLS:
+	case FR_EAP_METHOD_PEAP:
+	case FR_EAP_METHOD_PWD:
+	case FR_EAP_METHOD_AKA:
+	case FR_EAP_METHOD_SIM:
 	{
 		rlm_eap_t *inst = ((dl_instance_t *)cf_data_value(cf_data_find(eap_cs,
 									       dl_instance_t, "rlm_eap")))->data;
@@ -201,7 +201,7 @@ static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent
 	 *	Ensure that the default EAP type is loaded.
 	 */
 	method = eap_name2type(default_method_name);
-	if (method == FR_EAP_INVALID) {
+	if (method == FR_EAP_METHOD_INVALID) {
 		cf_log_err(ci, "Unknown EAP type %s", default_method_name);
 		return -1;
 	}
@@ -220,7 +220,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 {
 	unsigned int i;
 	VALUE_PAIR *vp;
-	eap_type_t method = FR_EAP_INVALID;
+	eap_type_t method = FR_EAP_METHOD_INVALID;
 
 	/*
 	 *	The NAK data is the preferred EAP type(s) of
@@ -233,7 +233,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 	if (!nak->data) {
 		REDEBUG("Peer sent empty (invalid) NAK. Can't select method to continue with");
 
-		return FR_EAP_INVALID;
+		return FR_EAP_METHOD_INVALID;
 	}
 
 	/*
@@ -249,20 +249,20 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		if (nak->data[i] == 0) {
 			REDEBUG("Peer NAK'd indicating it is not willing to continue ");
 
-			return FR_EAP_INVALID;
+			return FR_EAP_METHOD_INVALID;
 		}
 
 		/*
 		 *	It is invalid to request identity,
 		 *	notification & nak in nak.
 		 */
-		if (nak->data[i] < FR_EAP_MD5) {
+		if (nak->data[i] < FR_EAP_METHOD_MD5) {
 			REDEBUG("Peer NAK'd asking for bad type %s (%d)", eap_type2name(nak->data[i]), nak->data[i]);
 
-			return FR_EAP_INVALID;
+			return FR_EAP_METHOD_INVALID;
 		}
 
-		if ((nak->data[i] >= FR_EAP_MAX_TYPES) ||
+		if ((nak->data[i] >= FR_EAP_METHOD_MAX) ||
 		    !inst->methods[nak->data[i]].submodule) {
 			RDEBUG2("Peer NAK'd asking for unsupported EAP type %s (%d), skipping...",
 				eap_type2name(nak->data[i]),
@@ -309,7 +309,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		break;
 	}
 
-	if (method == FR_EAP_INVALID) REDEBUG("No mutually acceptable types found");
+	if (method == FR_EAP_METHOD_INVALID) REDEBUG("No mutually acceptable types found");
 
 	return method;
 }
@@ -375,7 +375,7 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instan
 	 *	it's LEAP, and a response.
 	 */
 	if (((eap_session->this_round->request->code == FR_EAP_CODE_REQUEST) &&
-	    (eap_session->this_round->request->type.num >= FR_EAP_MD5)) ||
+	    (eap_session->this_round->request->type.num >= FR_EAP_METHOD_MD5)) ||
 
 		/*
 		 *	LEAP is a little different.  At Stage 4,
@@ -387,7 +387,7 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instan
 		 *	isn't put into the list.
 		 */
 	    ((eap_session->this_round->response->code == FR_EAP_CODE_RESPONSE) &&
-	     (eap_session->this_round->response->type.num == FR_EAP_LEAP) &&
+	     (eap_session->this_round->response->type.num == FR_EAP_METHOD_LEAP) &&
 	     (eap_session->this_round->request->code == FR_EAP_CODE_SUCCESS) &&
 	     (eap_session->this_round->request->type.num == 0))) {
 		talloc_free(eap_session->prev_round);
@@ -483,7 +483,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 	/*
 	 *	Don't trust anyone.
 	 */
-	if ((type->num == 0) || (type->num >= FR_EAP_MAX_TYPES)) {
+	if ((type->num == 0) || (type->num >= FR_EAP_METHOD_MAX)) {
 		REDEBUG("Peer sent EAP type number %d, which is outside known range", type->num);
 
 		return RLM_MODULE_INVALID;
@@ -512,7 +512,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 	 *	Figure out what to do.
 	 */
 	switch (type->num) {
-	case FR_EAP_IDENTITY:
+	case FR_EAP_METHOD_IDENTITY:
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
@@ -525,7 +525,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 		/*
 		 *	Ensure it's valid.
 		 */
-		if ((next < FR_EAP_MD5) || (next >= FR_EAP_MAX_TYPES) || (!inst->methods[next].submodule)) {
+		if ((next < FR_EAP_METHOD_MD5) || (next >= FR_EAP_METHOD_MAX) || (!inst->methods[next].submodule)) {
 			REDEBUG2("Tried to start unsupported EAP type %s (%d)",
 				 eap_type2name(next), next);
 			return RLM_MODULE_INVALID;
@@ -535,15 +535,15 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, UNUSED void *thread, eap_s
 		/*
 		 *	If any of these fail, we messed badly somewhere
 		 */
-		rad_assert(next >= FR_EAP_MD5);
-		rad_assert(next < FR_EAP_MAX_TYPES);
+		rad_assert(next >= FR_EAP_METHOD_MD5);
+		rad_assert(next < FR_EAP_METHOD_MAX);
 		rad_assert(inst->methods[next].submodule);
 
 		eap_session->process = inst->methods[next].submodule->session_init;
 		eap_session->type = next;
 		goto module_call;
 
-	case FR_EAP_NAK:
+	case FR_EAP_METHOD_NAK:
 		/*
 		 *	Delete old data, if necessary.  If we called a method
 		 *	before, and it initialized itself, we need to free
@@ -750,7 +750,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 		 *	it's LEAP, and a response.
 		 */
 		if ((eap_session->this_round->request->code == FR_EAP_CODE_REQUEST) &&
-		    (eap_session->this_round->request->type.num >= FR_EAP_MD5)) {
+		    (eap_session->this_round->request->type.num >= FR_EAP_METHOD_MD5)) {
 			talloc_free(eap_session->prev_round);
 			eap_session->prev_round = eap_session->this_round;
 			eap_session->this_round = NULL;

@@ -27,8 +27,8 @@
 
 RCSIDH(lib_eap_types, "$Id$")
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
+#include <stdint.h>
+#include <stddef.h>
 
 /* Code (1) + Identifier (1) + Length (2) */
 #define EAP_HEADER_LEN 		4
@@ -42,64 +42,64 @@ typedef enum eap_code {
 } eap_code_t;
 
 typedef enum eap_method {
-	FR_EAP_INVALID = 0,		/* 0 */
-	FR_EAP_IDENTITY,		/* 1 */
-	FR_EAP_NOTIFICATION,		/* 2 */
-	FR_EAP_NAK,			/* 3 */
-	FR_EAP_MD5,			/* 4 */
-	FR_EAP_OTP,			/* 5 */
-	FR_EAP_GTC,			/* 6 */
-	FR_EAP_7,			/* 7  - unused */
-	FR_EAP_8,			/* 8  - unused */
-	FR_EAP_RSA_PUBLIC_KEY,		/* 9 */
-	FR_EAP_DSS_UNILATERAL,		/* 10 */
-	FR_EAP_KEA,			/* 11 */
-	FR_EAP_KEA_VALIDATE,		/* 12 */
-	FR_EAP_TLS,			/* 13 */
-	FR_EAP_DEFENDER_TOKEN,		/* 14 */
-	FR_EAP_RSA_SECURID,		/* 15 */
-	FR_EAP_ARCOT_SYSTEMS,		/* 16 */
-	FR_EAP_LEAP,			/* 17 */
-	FR_EAP_SIM,			/* 18 */
-	FR_EAP_SRP_SHA1,		/* 19 */
-	FR_EAP_20,			/* 20 - unassigned */
-	FR_EAP_TTLS,			/* 21 */
-	FR_EAP_REMOTE_ACCESS_SERVICE,	/* 22 */
-	FR_EAP_AKA,			/* 23 */
-	FR_EAP_3COM,			/* 24 - should this be EAP-HP now? */
-	FR_EAP_PEAP,			/* 25 */
-	FR_EAP_MSCHAPV2,		/* 26 */
-	FR_EAP_MAKE,			/* 27 */
-	FR_EAP_CRYPTOCARD,		/* 28 */
-	FR_EAP_CISCO_MSCHAPV2,		/* 29 */
-	FR_EAP_DYNAMID,			/* 30 */
-	FR_EAP_ROB,			/* 31 */
-	FR_EAP_POTP,			/* 32 */
-	FR_EAP_MS_ATLV,			/* 33 */
-	FR_EAP_SENTRINET,		/* 34 */
-	FR_EAP_ACTIONTEC,		/* 35 */
-	FR_EAP_COGENT_BIOMETRIC,	/* 36 */
-	FR_EAP_AIRFORTRESS,		/* 37 */
-	FR_EAP_TNC,			/* 38 - fixme conflicts with HTTP DIGEST */
-//	FR_EAP_HTTP_DIGEST,		/* 38 */
-	FR_EAP_SECURISUITE,		/* 39 */
-	FR_EAP_DEVICECONNECT,		/* 40 */
-	FR_EAP_SPEKE,			/* 41 */
-	FR_EAP_MOBAC,			/* 42 */
-	FR_EAP_FAST,			/* 43 */
-	FR_EAP_ZONELABS,		/* 44 */
-	FR_EAP_LINK,			/* 45 */
-	FR_EAP_PAX,			/* 46 */
-	FR_EAP_PSK,			/* 47 */
-	FR_EAP_SAKE,			/* 48 */
-	FR_EAP_IKEV2,			/* 49 */
-	FR_EAP_AKA_PRIME,		/* 50 */
-	FR_EAP_GPSK,			/* 51 */
-	FR_EAP_PWD,			/* 52 */
-	FR_EAP_EKE,			/* 53 */
-	FR_EAP_PT,			/* 54 */
-	FR_EAP_TEAP,			/* 55 */
-	FR_EAP_MAX_TYPES		/* 56 - for validation */
+	FR_EAP_METHOD_INVALID = 0,		/* 0 */
+	FR_EAP_METHOD_IDENTITY,			/* 1 */
+	FR_EAP_METHOD_NOTIFICATION,		/* 2 */
+	FR_EAP_METHOD_NAK,			/* 3 */
+	FR_EAP_METHOD_MD5,			/* 4 */
+	FR_EAP_METHOD_OTP,			/* 5 */
+	FR_EAP_METHOD_GTC,			/* 6 */
+	FR_EAP_METHOD_7,			/* 7  - unused */
+	FR_EAP_METHOD_8,			/* 8  - unused */
+	FR_EAP_METHOD_RSA_PUBLIC_KEY,		/* 9 */
+	FR_EAP_METHOD_DSS_UNILATERAL,		/* 10 */
+	FR_EAP_METHOD_KEA,			/* 11 */
+	FR_EAP_METHOD_KEA_VALIDATE,		/* 12 */
+	FR_EAP_METHOD_TLS,			/* 13 */
+	FR_EAP_METHOD_DEFENDER_TOKEN,		/* 14 */
+	FR_EAP_METHOD_RSA_SECURID,		/* 15 */
+	FR_EAP_METHOD_ARCOT_SYSTEMS,		/* 16 */
+	FR_EAP_METHOD_LEAP,			/* 17 */
+	FR_EAP_METHOD_SIM,			/* 18 */
+	FR_EAP_METHOD_SRP_SHA1,			/* 19 */
+	FR_EAP_METHOD_20,			/* 20 - unassigned */
+	FR_EAP_METHOD_TTLS,			/* 21 */
+	FR_EAP_METHOD_REMOTE_ACCESS_SERVICE,	/* 22 */
+	FR_EAP_METHOD_AKA,			/* 23 */
+	FR_EAP_METHOD_3COM,			/* 24 - should this be EAP-HP now? */
+	FR_EAP_METHOD_PEAP,			/* 25 */
+	FR_EAP_METHOD_MSCHAPV2,			/* 26 */
+	FR_EAP_METHOD_MAKE,			/* 27 */
+	FR_EAP_METHOD_CRYPTOCARD,		/* 28 */
+	FR_EAP_METHOD_CISCO_MSCHAPV2,		/* 29 */
+	FR_EAP_METHOD_DYNAMID,			/* 30 */
+	FR_EAP_METHOD_ROB,			/* 31 */
+	FR_EAP_METHOD_POTP,			/* 32 */
+	FR_EAP_METHOD_MS_ATLV,			/* 33 */
+	FR_EAP_METHOD_SENTRINET,		/* 34 */
+	FR_EAP_METHOD_ACTIONTEC,		/* 35 */
+	FR_EAP_METHOD_COGENT_BIOMETRIC,		/* 36 */
+	FR_EAP_METHOD_AIRFORTRESS,		/* 37 */
+	FR_EAP_METHOD_TNC,			/* 38 - fixme conflicts with HTTP DIGEST */
+//	FR_EAP_METHOD_HTTP_DIGEST,		/* 38 */
+	FR_EAP_METHOD_SECURISUITE,		/* 39 */
+	FR_EAP_METHOD_DEVICECONNECT,		/* 40 */
+	FR_EAP_METHOD_SPEKE,			/* 41 */
+	FR_EAP_METHOD_MOBAC,			/* 42 */
+	FR_EAP_METHOD_FAST,			/* 43 */
+	FR_EAP_METHOD_ZONELABS,			/* 44 */
+	FR_EAP_METHOD_LINK,			/* 45 */
+	FR_EAP_METHOD_PAX,			/* 46 */
+	FR_EAP_METHOD_PSK,			/* 47 */
+	FR_EAP_METHOD_SAKE,			/* 48 */
+	FR_EAP_METHOD_IKEV2,			/* 49 */
+	FR_EAP_METHOD_AKA_PRIME,		/* 50 */
+	FR_EAP_METHOD_GPSK,			/* 51 */
+	FR_EAP_METHOD_PWD,			/* 52 */
+	FR_EAP_METHOD_EKE,			/* 53 */
+	FR_EAP_METHOD_PT,			/* 54 */
+	FR_EAP_METHOD_TEAP,			/* 55 */
+	FR_EAP_METHOD_MAX			/* 56 - for validation */
 } eap_type_t;
 
 #define FR_EAP_EXPANDED_TYPE	(254)

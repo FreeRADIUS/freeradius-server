@@ -93,7 +93,7 @@ static int send_pwd_request(REQUEST *request, pwd_session_t *session, eap_round_
 	len = (session->out_len - session->out_pos) + sizeof(pwd_hdr);
 	rad_assert(len > 0);
 	eap_round->request->code = FR_EAP_CODE_REQUEST;
-	eap_round->request->type.num = FR_EAP_PWD;
+	eap_round->request->type.num = FR_EAP_METHOD_PWD;
 	eap_round->request->type.length = (len > session->mtu) ? session->mtu : len;
 	eap_round->request->type.data = talloc_zero_array(eap_round->request, uint8_t, eap_round->request->type.length);
 	hdr = (pwd_hdr *)eap_round->request->type.data;
@@ -249,7 +249,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		 */
 		exch = EAP_PWD_GET_EXCHANGE(hdr);
 		eap_round->request->code = FR_EAP_CODE_REQUEST;
-		eap_round->request->type.num = FR_EAP_PWD;
+		eap_round->request->type.num = FR_EAP_METHOD_PWD;
 		eap_round->request->type.length = sizeof(pwd_hdr);
 
 		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, sizeof(pwd_hdr)));
@@ -583,7 +583,7 @@ rlm_eap_submodule_t rlm_eap_pwd = {
 	.name		= "eap_pwd",
 	.magic		= RLM_MODULE_INIT,
 
-	.provides	= { FR_EAP_PWD },
+	.provides	= { FR_EAP_METHOD_PWD },
 	.inst_size	= sizeof(rlm_eap_pwd_t),
 	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */

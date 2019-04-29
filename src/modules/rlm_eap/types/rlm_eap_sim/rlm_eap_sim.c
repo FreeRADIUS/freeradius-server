@@ -176,7 +176,7 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 	RDEBUG2("Encoding EAP-SIM attributes");
 	log_request_pair_list(L_DBG_LVL_2, request, head, NULL);
 
-	eap_session->this_round->request->type.num = FR_EAP_SIM;
+	eap_session->this_round->request->type.num = FR_EAP_METHOD_SIM;
 	eap_session->this_round->request->id = eap_sim_session->sim_id++ & 0xff;
 	eap_session->this_round->set_request_id = true;
 
@@ -1172,7 +1172,7 @@ rlm_eap_submodule_t rlm_eap_sim = {
 	.name		= "eap_sim",
 	.magic		= RLM_MODULE_INIT,
 
-	.provides	= { FR_EAP_SIM },
+	.provides	= { FR_EAP_METHOD_SIM },
 	.inst_size	= sizeof(rlm_eap_sim_t),
 	.config		= submodule_config,
 

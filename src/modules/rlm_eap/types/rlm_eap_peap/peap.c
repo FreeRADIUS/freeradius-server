@@ -107,7 +107,7 @@ static int eap_peap_identity(eap_session_t *eap_session, tls_session_t *tls_sess
 	eap_packet.id = eap_session->this_round->response->id + 1;
 	eap_packet.length[0] = 0;
 	eap_packet.length[1] = EAP_HEADER_LEN + 1;
-	eap_packet.data[0] = FR_EAP_IDENTITY;
+	eap_packet.data[0] = FR_EAP_METHOD_IDENTITY;
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, &eap_packet, sizeof(eap_packet));
 	tls_session_send(eap_session->request, tls_session);
@@ -168,7 +168,7 @@ static void eap_peap_soh_verify(REQUEST *request, RADIUS_PACKET *packet,
 	vp->vp_bool = false;
 	fr_pair_add(&packet->vps, vp);
 
-	if (data && data[0] == FR_EAP_NAK) {
+	if (data && data[0] == FR_EAP_METHOD_NAK) {
 		REDEBUG("SoH - client NAKed");
 		return;
 	}
@@ -217,7 +217,7 @@ static int eap_peap_verify(REQUEST *request, peap_tunnel_t *peap_tunnel,
 	/*
 	 *	No data, OR only 1 byte of EAP type.
 	 */
-	if (!data || (data_len == 0) || ((data_len <= 1) && (data[0] != FR_EAP_IDENTITY))) return 0;
+	if (!data || (data_len == 0) || ((data_len <= 1) && (data[0] != FR_EAP_METHOD_IDENTITY))) return 0;
 
 	/*
 	 *  Since the full EAP header is sent for the EAP Extensions type (Type 33),
@@ -243,7 +243,7 @@ static int eap_peap_verify(REQUEST *request, peap_tunnel_t *peap_tunnel,
 
 	eap_method = data[0];	/* Inner EAP header misses off code and identifier */
 	switch (eap_method) {
-	case FR_EAP_IDENTITY:
+	case FR_EAP_METHOD_IDENTITY:
 		RDEBUG2("Received EAP-Identity-Response");
 		return 0;
 
@@ -251,7 +251,7 @@ static int eap_peap_verify(REQUEST *request, peap_tunnel_t *peap_tunnel,
 	 *	We normally do Microsoft MS-CHAPv2 (26), versus
 	 *	Cisco MS-CHAPv2 (29).
 	 */
-	case FR_EAP_MSCHAPV2:
+	case FR_EAP_METHOD_MSCHAPV2:
 	default:
 		RDEBUG2("EAP method %s (%d)", eap_type2name(eap_method), eap_method);
 		return 0;
@@ -537,7 +537,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 	case PEAP_STATUS_INNER_IDENTITY_REQ_SENT:
 		/* we're expecting an identity response */
-		if (data[0] != FR_EAP_IDENTITY) {
+		if (data[0] != FR_EAP_METHOD_IDENTITY) {
 			REDEBUG("Expected EAP-Identity, got something else");
 			rcode = RLM_MODULE_REJECT;
 			goto finish;
@@ -690,7 +690,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		q[1] = eap_round->response->id;
 		q[2] = (len >> 8) & 0xff;
 		q[3] = len & 0xff;
-		q[4] = FR_EAP_IDENTITY;
+		q[4] = FR_EAP_METHOD_IDENTITY;
 		memcpy(q + EAP_HEADER_LEN + 1,
 		       t->username->vp_strvalue, t->username->vp_length);
 
@@ -728,7 +728,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		 *	so we add one here, by pulling it out of the
 		 *	EAP-Identity packet.
 		 */
-		if ((data[0] == FR_EAP_IDENTITY) && (data_len > 1)) {
+		if ((data[0] == FR_EAP_METHOD_IDENTITY) && (data_len > 1)) {
 			t->username = fr_pair_afrom_da(t, attr_user_name);
 			rad_assert(t->username != NULL);
 			t->username->vp_tainted = true;

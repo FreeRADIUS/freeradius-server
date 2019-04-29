@@ -198,7 +198,7 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
 	}
 
 	if ((eap_packet->data[0] == 0) ||
-	    (eap_packet->data[0] >= FR_EAP_MAX_TYPES)) {
+	    (eap_packet->data[0] >= FR_EAP_METHOD_MAX)) {
 		/*
 		 *	Handle expanded types by smashing them to
 		 *	normal types.
@@ -226,13 +226,13 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
 			}
 
 			if ((eap_packet->data[7] == 0) ||
-			    (eap_packet->data[7] >= FR_EAP_MAX_TYPES)) {
+			    (eap_packet->data[7] >= FR_EAP_METHOD_MAX)) {
 				fr_strerror_printf("Unsupported Expanded EAP type %s (%u): ignoring the packet",
 						   eap_type2name(eap_packet->data[7]), eap_packet->data[7]);
 				return false;
 			}
 
-			if (eap_packet->data[7] == FR_EAP_NAK) {
+			if (eap_packet->data[7] == FR_EAP_METHOD_NAK) {
 				fr_strerror_printf("Unsupported Expanded EAP-NAK: ignoring the packet");
 				return false;
 			}
@@ -265,7 +265,7 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
 	}
 
 	/* we don't expect notification, but we send it */
-	if (eap_packet->data[0] == FR_EAP_NOTIFICATION) {
+	if (eap_packet->data[0] == FR_EAP_METHOD_NOTIFICATION) {
 		fr_strerror_printf("Got NOTIFICATION, Ignoring the packet");
 		return false;
 	}

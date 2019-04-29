@@ -221,8 +221,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	if (((eap_round->request->code == FR_EAP_CODE_REQUEST) ||
 	     (eap_round->request->code == FR_EAP_CODE_RESPONSE)) &&
 	    (eap_round->request->type.num == 0)) {
-		rad_assert(eap_session->type >= FR_EAP_MD5);
-		rad_assert(eap_session->type < FR_EAP_MAX_TYPES);
+		rad_assert(eap_session->type >= FR_EAP_METHOD_MD5);
+		rad_assert(eap_session->type < FR_EAP_METHOD_MAX);
 
 		eap_round->request->type.num = eap_session->type;
 	}
@@ -352,7 +352,7 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 		p[1] = 0; /* ID */
 		p[2] = 0;
 		p[3] = 5; /* length */
-		p[4] = FR_EAP_IDENTITY;
+		p[4] = FR_EAP_METHOD_IDENTITY;
 		fr_pair_value_memsteal(vp, p);
 
 		return RLM_MODULE_HANDLED;
@@ -426,10 +426,10 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 	 *	EAP-Identity, Notification, and NAK are all handled
 	 *	internally, so they never have eap_sessions.
 	 */
-	if ((eap_msg->vp_octets[4] >= FR_EAP_MD5) &&
+	if ((eap_msg->vp_octets[4] >= FR_EAP_METHOD_MD5) &&
 	    ignore_unknown_types &&
 	    ((eap_msg->vp_octets[4] == 0) ||
-	     (eap_msg->vp_octets[4] >= FR_EAP_MAX_TYPES) ||
+	     (eap_msg->vp_octets[4] >= FR_EAP_METHOD_MAX) ||
 	     (!methods[eap_msg->vp_octets[4]].submodule))) {
 		RDEBUG2("Ignoring Unknown EAP type");
 		return RLM_MODULE_NOOP;
@@ -450,18 +450,18 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 	 *	returns NOOP, and another module may choose to proxy
 	 *	the request.
 	 */
-	if ((eap_msg->vp_octets[4] == FR_EAP_NAK) &&
+	if ((eap_msg->vp_octets[4] == FR_EAP_METHOD_NAK) &&
 	    (eap_msg->vp_length >= (EAP_HEADER_LEN + 2)) &&
 	    ignore_unknown_types &&
 	    ((eap_msg->vp_octets[5] == 0) ||
-	     (eap_msg->vp_octets[5] >= FR_EAP_MAX_TYPES) ||
+	     (eap_msg->vp_octets[5] >= FR_EAP_METHOD_MAX) ||
 	     (!methods[eap_msg->vp_octets[5]].submodule))) {
 		RDEBUG2("Ignoring NAK with request for unknown EAP type");
 		return RLM_MODULE_NOOP;
 	}
 
-	if ((eap_msg->vp_octets[4] == FR_EAP_TTLS) ||
-	    (eap_msg->vp_octets[4] == FR_EAP_PEAP)) {
+	if ((eap_msg->vp_octets[4] == FR_EAP_METHOD_TTLS) ||
+	    (eap_msg->vp_octets[4] == FR_EAP_METHOD_PEAP)) {
 		RDEBUG2("Continuing tunnel setup");
 		return RLM_MODULE_OK;
 	}
@@ -477,7 +477,7 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 	 *
 	 * ...in the inner-tunnel, to avoid expensive and unnecessary SQL/LDAP lookups
 	 */
-	if (eap_msg->vp_octets[4] == FR_EAP_IDENTITY) {
+	if (eap_msg->vp_octets[4] == FR_EAP_METHOD_IDENTITY) {
 		RDEBUG2("Peer sent EAP-Identity.  Returning 'ok' so we can short-circuit the rest of authorize");
 		return RLM_MODULE_OK;
 	}

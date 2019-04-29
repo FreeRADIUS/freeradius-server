@@ -338,7 +338,7 @@ rlm_eap_submodule_t rlm_eap_ttls = {
 	.name		= "eap_ttls",
 	.magic		= RLM_MODULE_INIT,
 
-	.provides	= { FR_EAP_TTLS },
+	.provides	= { FR_EAP_METHOD_TTLS },
 	.inst_size	= sizeof(rlm_eap_ttls_t),
 	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */

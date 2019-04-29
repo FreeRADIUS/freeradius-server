@@ -31,16 +31,16 @@
  * @param name to convert.
  * @return
  *	- IANA EAP type.
- *	- #FR_EAP_INVALID if the name doesn't match any known types.
+ *	- #FR_EAP_METHOD_INVALID if the name doesn't match any known types.
  */
 eap_type_t eap_name2type(char const *name)
 {
 	fr_dict_enum_t	*dv;
 
 	dv = fr_dict_enum_by_alias(attr_eap_type, name, -1);
-	if (!dv) return FR_EAP_INVALID;
+	if (!dv) return FR_EAP_METHOD_INVALID;
 
-	if (dv->value->vb_uint32 >= FR_EAP_MAX_TYPES) return FR_EAP_INVALID;
+	if (dv->value->vb_uint32 >= FR_EAP_METHOD_MAX) return FR_EAP_METHOD_INVALID;
 
 	return dv->value->vb_uint32;
 }

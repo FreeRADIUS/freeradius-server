@@ -210,7 +210,7 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
 
 	if (!eap_packet ||
 	    (eap_packet->code != FR_EAP_CODE_RESPONSE) ||
-	    (eap_packet->data[0] != FR_EAP_IDENTITY)) return NULL;
+	    (eap_packet->data[0] != FR_EAP_METHOD_IDENTITY)) return NULL;
 
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
@@ -321,7 +321,7 @@ eap_session_t *eap_session_continue(void *instance, eap_packet_raw_t **eap_packe
 		 *	All fields in the eap_session are set to zero.
 		 */
 		switch (eap_packet->data[0]) {
-		case FR_EAP_IDENTITY:
+		case FR_EAP_METHOD_IDENTITY:
 			eap_session->identity = eap_identity(request, eap_session, eap_packet);
 			if (!eap_session->identity) {
 				REDEBUG("Invalid identity response");
@@ -332,23 +332,16 @@ eap_session_t *eap_session_continue(void *instance, eap_packet_raw_t **eap_packe
 			 *	Sometimes we need the hex stream to determine where
 			 *	random junk is coming from.
 			 */
-			if (DEBUG_ENABLED3) {
-				RHEXDUMP(L_DBG_LVL_3, (uint8_t *const)eap_session->identity,
-					 talloc_array_length(eap_session->identity) - 1,
-					 "EAP Identity Response - \"%pV\"",
-					 fr_box_strvalue_len(eap_session->identity,
-						    	     talloc_array_length(eap_session->identity) - 1));
-			} else {
-				RDEBUG2("EAP Identity Response - \"%pV\"",
-					fr_box_strvalue_len(eap_session->identity,
-							    talloc_array_length(eap_session->identity) - 1));
-			}
-
+			RHEXDUMP(L_DBG_LVL_3, (uint8_t *const)eap_session->identity,
+				 talloc_array_length(eap_session->identity) - 1,
+				 "EAP Identity Response - \"%pV\"",
+				 fr_box_strvalue_len(eap_session->identity,
+						     talloc_array_length(eap_session->identity) - 1));
 			break;
 
-		case FR_EAP_INVALID:
-		case FR_EAP_NOTIFICATION:
-		case FR_EAP_NAK:
+		case FR_EAP_METHOD_INVALID:
+		case FR_EAP_METHOD_NOTIFICATION:
+		case FR_EAP_METHOD_NAK:
 			REDEBUG("Initial EAP method %s(%u) invalid",
 				eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
 			goto error_session;
@@ -404,7 +397,7 @@ eap_session_t *eap_session_continue(void *instance, eap_packet_raw_t **eap_packe
 		 *	to a request for a particular type, but it's NOT
 		 *	OK to blindly return data for another type.
 		 */
-		if ((eap_packet->data[0] != FR_EAP_NAK) &&
+		if ((eap_packet->data[0] != FR_EAP_METHOD_NAK) &&
 		    (eap_packet->data[0] != eap_session->type)) {
 			RERROR("Response appears to match a previous request, but the EAP type is wrong");
 			RERROR("We expected EAP type %s, but received type %s",

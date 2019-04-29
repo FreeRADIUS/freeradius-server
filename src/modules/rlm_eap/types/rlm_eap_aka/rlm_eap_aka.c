@@ -337,7 +337,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Toggle the AMF high bit to indicate we're doing AKA'
 	 */
-	if (eap_aka_session->type == FR_EAP_AKA_PRIME) {
+	if (eap_aka_session->type == FR_EAP_METHOD_AKA_PRIME) {
 		uint8_t	amf_buff[2] = { 0x80, 0x00 };	/* Set the AMF separation bit high */
 
 		MEM(pair_update_control(&vp, attr_sim_amf) >= 0);
@@ -356,7 +356,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Don't leave the AMF hanging around
 	 */
-	if (eap_aka_session->type == FR_EAP_AKA_PRIME) pair_delete_control(attr_sim_amf);
+	if (eap_aka_session->type == FR_EAP_METHOD_AKA_PRIME) pair_delete_control(attr_sim_amf);
 
 	/*
 	 *	All set, calculate keys!
@@ -404,7 +404,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Send the network name and KDF to the peer
 	 */
-	if (eap_aka_session->type == FR_EAP_AKA_PRIME) {
+	if (eap_aka_session->type == FR_EAP_METHOD_AKA_PRIME) {
 		if (!eap_aka_session->keys.network_len) {
 			REDEBUG2("No network name available, can't set EAP-AKA-KDF-Input");
 		failure:
@@ -1155,10 +1155,10 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	binds authentication to the network.
 	 */
 	switch (eap_session->type) {
-	case FR_EAP_AKA_PRIME:
+	case FR_EAP_METHOD_AKA_PRIME:
 	default:
 		RDEBUG2("New EAP-AKA' session");
-		eap_aka_session->type = FR_EAP_AKA_PRIME;
+		eap_aka_session->type = FR_EAP_METHOD_AKA_PRIME;
 		eap_aka_session->kdf = FR_EAP_AKA_KDF_VALUE_EAP_AKA_PRIME_WITH_CK_PRIME_IK_PRIME;
 		eap_aka_session->checkcode_md = eap_aka_session->mac_md = EVP_sha256();
 		eap_aka_session->keys.network = (uint8_t *)talloc_bstrndup(eap_aka_session, inst->network_name,
@@ -1176,9 +1176,9 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 		}
 		break;
 
-	case FR_EAP_AKA:
+	case FR_EAP_METHOD_AKA:
 		RDEBUG2("New EAP-AKA session");
-		eap_aka_session->type = FR_EAP_AKA;
+		eap_aka_session->type = FR_EAP_METHOD_AKA;
 		eap_aka_session->kdf = FR_EAP_AKA_KDF_VALUE_EAP_AKA;	/* Not actually sent */
 		eap_aka_session->checkcode_md = eap_aka_session->mac_md = EVP_sha1();
 		eap_aka_session->send_at_bidding = true;
@@ -1387,7 +1387,7 @@ rlm_eap_submodule_t rlm_eap_aka = {
 	.name		= "eap_aka",
 	.magic		= RLM_MODULE_INIT,
 
-	.provides	= { FR_EAP_AKA, FR_EAP_AKA_PRIME },
+	.provides	= { FR_EAP_METHOD_AKA, FR_EAP_METHOD_AKA_PRIME },
 	.inst_size	= sizeof(rlm_eap_aka_t),
 	.inst_type	= "rlm_eap_aka_t",
 	.config		= submodule_config,

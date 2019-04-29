@@ -68,7 +68,7 @@ leap_packet_t *eap_leap_extract(REQUEST *request, eap_round_t *eap_round)
 	 */
 	if (!eap_round || !eap_round->response ||
 	    ((eap_round->response->code != FR_EAP_CODE_RESPONSE) && (eap_round->response->code != FR_EAP_CODE_REQUEST)) ||
-	     (eap_round->response->type.num != FR_EAP_LEAP) || !eap_round->response->type.data ||
+	     (eap_round->response->type.num != FR_EAP_METHOD_LEAP) || !eap_round->response->type.data ||
 	     (eap_round->response->length < LEAP_HEADER_LEN) ||
 	     (eap_round->response->type.data[0] != 0x01)) {	/* version 1 */
 		REDEBUG("Corrupted data");
@@ -401,7 +401,7 @@ int eap_leap_compose(REQUEST *request, eap_round_t *eap_round, leap_packet_t *re
 	switch (reply->code) {
 	case FR_EAP_CODE_REQUEST:
 	case FR_EAP_CODE_RESPONSE:
-		eap_round->request->type.num = FR_EAP_LEAP;
+		eap_round->request->type.num = FR_EAP_METHOD_LEAP;
 		eap_round->request->type.length = reply->length;
 
 		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, reply->length);

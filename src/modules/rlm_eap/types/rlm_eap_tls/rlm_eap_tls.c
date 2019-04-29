@@ -375,7 +375,7 @@ rlm_eap_submodule_t rlm_eap_tls = {
 	.name		= "eap_tls",
 	.magic		= RLM_MODULE_INIT,
 
-	.provides	= { FR_EAP_TLS },
+	.provides	= { FR_EAP_METHOD_TLS },
 	.inst_size	= sizeof(rlm_eap_tls_t),
 	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */

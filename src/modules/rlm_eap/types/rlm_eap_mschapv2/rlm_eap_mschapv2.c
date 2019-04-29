@@ -144,7 +144,7 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *ea
 	REQUEST			*request = eap_session->request;
 
 	eap_round->request->code = FR_EAP_CODE_REQUEST;
-	eap_round->request->type.num = FR_EAP_MSCHAPV2;
+	eap_round->request->type.num = FR_EAP_METHOD_MSCHAPV2;
 
 	/*
 	 *	Always called with vendor Microsoft
@@ -871,7 +871,7 @@ rlm_eap_submodule_t rlm_eap_mschapv2 = {
 	.name		= "eap_mschapv2",
 	.magic		= RLM_MODULE_INIT,
 
-	.provides	= { FR_EAP_MSCHAPV2 },
+	.provides	= { FR_EAP_METHOD_MSCHAPV2 },
 	.inst_size	= sizeof(rlm_eap_mschapv2_t),
 	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
