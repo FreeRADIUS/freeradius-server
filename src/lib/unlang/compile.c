@@ -3173,12 +3173,15 @@ static unlang_t *compile_item(unlang_t *parent,
 		/*
 		 *	Allow for named subsections, to change processing method types.
 		 */
-		if (name2 && module_section_exists(modrefname, name2)) {
-			/*
-			 *	@todo - change the parse rules?
-			 */
-			cf_log_err(ci, "Placeholder not implemented");
-			return NULL;
+		if (name2 && (module_section_component(&component, modrefname, name2) == 0)) {
+			UPDATE_CTX2;
+
+			c = compile_group(parent, &unlang_ctx2, cs, UNLANG_GROUP_TYPE_SIMPLE, parent_group_type, UNLANG_TYPE_GROUP);
+			if (!c) return NULL;
+
+			c->name = modrefname;
+			c->debug_name = talloc_typed_asprintf(c, "%s %s", modrefname, name2);
+			return c;
 		}
 
 #ifdef WITH_UNLANG

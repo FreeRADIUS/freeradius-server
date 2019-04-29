@@ -253,9 +253,9 @@ bool		module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, f
 
 int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
 
-int		module_section_register(char const *name1, char const *name2);
+int		module_section_register(char const *name1, char const *name2, rlm_components_t component);
 
-bool		module_section_exists(char const *name1, char const *name2);
+int		module_section_component(rlm_components_t *component, char const *name1, char const *name2);
 
 /** @{ */
 

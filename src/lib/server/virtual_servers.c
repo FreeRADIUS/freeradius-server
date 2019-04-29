@@ -1058,7 +1058,7 @@ int fr_app_process_bootstrap(CONF_SECTION *server, dl_instance_t **type_submodul
 			for (j = 0; list[j].name != NULL; j++) {
 				if (list[j].name == CF_IDENT_ANY) continue;
 
-				if (module_section_register(list[j].name, list[j].name2) < 0) {
+				if (module_section_register(list[j].name, list[j].name2, list[j].component) < 0) {
 					cf_log_err(conf, "Failed registering section name for %s",
 						app_process->name);
 					return -1;

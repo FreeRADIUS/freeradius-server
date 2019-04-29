@@ -1436,6 +1436,7 @@ int modules_bootstrap(CONF_SECTION *root)
 typedef struct {
 	char const	*name1;
 	char const	*name2;
+	rlm_components_t component;
 } module_section_name_t;
 
 
@@ -1460,7 +1461,7 @@ static int module_section_name_cmp(void const *one, void const *two)
  *  This function is called from the virtual server bootstrap routine,
  *  which happens before module_bootstrap();
  */
-int module_section_register(char const *name1, char const *name2)
+int module_section_register(char const *name1, char const *name2, rlm_components_t component)
 {
 	module_section_name_t *sname;
 
@@ -1479,6 +1480,7 @@ int module_section_register(char const *name1, char const *name2)
 
 	sname->name1 = name1;
 	sname->name2 = name2;
+	sname->component = component;
 
 	if (!rbtree_insert(module_section_name_tree, sname)) {
 		talloc_free(sname);
@@ -1489,10 +1491,10 @@ int module_section_register(char const *name1, char const *name2)
 }
 
 
-/** See if a named section exists
+/** Find the component for a section
  *
  */
-bool module_section_exists(char const *name1, char const *name2)
+int module_section_component(rlm_components_t *component, char const *name1, char const *name2)
 {
 	module_section_name_t *sname;
 
@@ -1504,10 +1506,10 @@ bool module_section_exists(char const *name1, char const *name2)
 	if (name2 != CF_IDENT_ANY) {
 		sname = rbtree_finddata(module_section_name_tree,
 					&(module_section_name_t) {
-						.name1 = name2,
-							.name2 = CF_IDENT_ANY,
-							});
-		if (sname) return true;
+						.name1 = name1,
+						.name2 = CF_IDENT_ANY,
+					});
+		if (sname) goto done;
 	}
 
 	/*
@@ -1518,5 +1520,10 @@ bool module_section_exists(char const *name1, char const *name2)
 					.name1 = name1,
 					.name2 = name2,
 				});
-	return (sname != NULL);
+	if (!sname) return -1;
+
+done:
+	*component = sname->component;
+
+	return 0;
 }
