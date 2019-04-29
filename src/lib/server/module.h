@@ -252,6 +252,9 @@ exfile_t	*module_exfile_init(TALLOC_CTX *ctx,
 bool		module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv);
 
 int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
+
+int		module_section_register(char const *name1, char const *name2);
+
 /** @{ */
 
 /** @name Module and module thread lookup

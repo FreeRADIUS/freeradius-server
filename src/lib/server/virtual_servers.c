@@ -1047,10 +1047,31 @@ int fr_app_process_bootstrap(CONF_SECTION *server, dl_instance_t **type_submodul
 			}
 		}
 
+		/*
+		 *	Register the processing sections with the
+		 *	module manager.
+		 */
+		if (app_process->compile_list) {
+			int j;
+			virtual_server_compile_t const *list = app_process->compile_list;
+
+			for (j = 0; list[j].name != NULL; j++) {
+				if (list[j].name == CF_IDENT_ANY) continue;
+
+				if (module_section_register(list[j].name, list[j].name2) < 0) {
+					cf_log_err(conf, "Failed registering section name for %s",
+						app_process->name);
+					return -1;
+				}
+
+			}
+		}
+
+
 		i++;
 	}
 
-	return 0;
+	return i;
 }
 
 
@@ -1106,6 +1127,16 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_instance_t **type_submod
 	return 0;
 }
 
+
+/** Compile sections for a virtual server.
+ *
+ *  When the "proto_foo" module calls fr_app_process_instantiate(), it
+ *  loads the compile list from the #fr_app_worker_t, and calls this
+ *  function.
+ *
+ *  This function walks down the registration table, compiling each
+ *  named section.
+ */
 int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules)
 {
 	int i;

@@ -53,6 +53,10 @@ static rbtree_t *module_instance_name_tree;
  */
 static rbtree_t *module_instance_data_tree;
 
+/** Lookup allowed section names for modules
+ */
+static rbtree_t *module_section_name_tree = NULL;
+
 /** Module command table
  */
 static fr_cmd_table_t cmd_module_table[];
@@ -790,6 +794,7 @@ void modules_free(void)
 
 	TALLOC_FREE(module_instance_name_tree);
 	TALLOC_FREE(module_instance_data_tree);
+	TALLOC_FREE(module_section_name_tree);
 	TALLOC_FREE(instance_ctx);
 }
 
@@ -1421,6 +1426,62 @@ int modules_bootstrap(CONF_SECTION *root)
 	if (fr_command_register_hook(NULL, NULL, modules, cmd_table) < 0) {
 		ERROR("Failed registering radmin commands for modules - %s",
 		      fr_strerror());
+		return -1;
+	}
+
+	return 0;
+}
+
+
+typedef struct {
+	char const	*name1;
+	char const	*name2;
+} module_section_name_t;
+
+
+static int module_section_name_cmp(void const *one, void const *two)
+{
+	int rcode;
+	module_section_name_t const *a = one;
+	module_section_name_t const *b = two;
+
+	rcode = strcmp(a->name1, b->name1);
+	if (rcode != 0) return rcode;
+
+	if (a->name2 == b->name2) return 0;
+	if ((a->name2 == CF_IDENT_ANY) && (b->name2 != CF_IDENT_ANY)) return -1;
+	if ((a->name2 != CF_IDENT_ANY) && (b->name2 == CF_IDENT_ANY)) return +1;
+
+	return strcmp(a->name2, b->name2);
+}
+
+/** Register name1 / name2 as allowed processing sections
+ *
+ *  This function is called from the virtual server bootstrap routine,
+ *  which happens before module_bootstrap();
+ */
+int module_section_register(char const *name1, char const *name2)
+{
+	module_section_name_t *sname;
+
+	if (!module_section_name_tree) {
+		MEM(module_section_name_tree = rbtree_create(NULL, module_section_name_cmp, NULL, RBTREE_FLAG_NONE));
+	}
+
+	sname = rbtree_finddata(module_section_name_tree,
+				&(module_section_name_t) {
+					.name1 = name1,
+					.name2 = name2,
+				});
+	if (sname) return 0;
+
+	MEM(sname = talloc_zero(module_section_name_tree, module_section_name_t));
+
+	sname->name1 = name1;
+	sname->name2 = name2;
+
+	if (!rbtree_insert(module_section_name_tree, sname)) {
+		talloc_free(sname);
 		return -1;
 	}
 
