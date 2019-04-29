@@ -69,7 +69,6 @@ typedef int const unlang_action_table_t[UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCOD
 
 typedef struct {
 	rlm_components_t	component;
-	char const		*name;
 	char const		*section_name1;
 	char const		*section_name2;
 	unlang_action_table_t	*actions;
@@ -2820,7 +2819,6 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	}
 
 	unlang_ctx2.component = unlang_ctx->component;
-	unlang_ctx2.name = unlang_ctx->name;
 
 	/*
 	 *	Figure out the component name we're supposed to call.
@@ -2853,7 +2851,6 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 			if (i == MOD_COUNT) goto unknown_component;
 
 			unlang_ctx2.component = i;
-			unlang_ctx2.name = component_name;
 		}
 	}
 
@@ -2861,6 +2858,11 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	parse_rules.dict_def = dict;
 
 	unlang_ctx2.actions = unlang_ctx->actions;
+
+	/*
+	 *	@todo - for named methods, we really need to determine
+	 *	what methods we're calling here.
+	 */
 	unlang_ctx2.section_name1 = "subrequest";
 	unlang_ctx2.section_name2 = name2;
 	unlang_ctx2.rules = &parse_rules;
@@ -3047,7 +3049,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		} else {
 			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s { ... }' "
 				   "sections -- they have no such method.", inst->module->name,
-				   unlang_ctx->name);
+				   unlang_ctx->section_name1);
 		}
 
 		return NULL;
@@ -3116,7 +3118,6 @@ static modcall_compile_t compile_table[] = {
  */
 #define UPDATE_CTX2  \
 	unlang_ctx2.component = component; \
-	unlang_ctx2.name = comp2str[component]; \
 	unlang_ctx2.actions = unlang_ctx->actions; \
 	unlang_ctx2.section_name1 = unlang_ctx->section_name1; \
 	unlang_ctx2.section_name2 = unlang_ctx->section_name2; \
@@ -3429,7 +3430,6 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t
 	vp_tmpl_rules_t		my_rules;
 
 	unlang_ctx.component = component;
-	unlang_ctx.name = comp2str[component];
 	unlang_ctx.section_name1 = cf_section_name1(cs);
 	unlang_ctx.section_name2 = cf_section_name2(cs);
 	unlang_ctx.actions = &defaultactions[component];
