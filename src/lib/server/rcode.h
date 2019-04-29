@@ -53,6 +53,15 @@ typedef enum {
 } rlm_rcode_t;
 extern const FR_NAME_NUMBER rcode_table[];
 
+/** Rcodes that translate to a user configurable section failing overall
+ *
+ */
+#define RLM_MODULE_USER_SECTION_REJECT	\
+	RLM_MODULE_REJECT:		\
+	case RLM_MODULE_FAIL:		\
+	case RLM_MODULE_INVALID:	\
+	case RLM_MODULE_USERLOCK
+
 #ifdef __cplusplus
 }
 #endif
