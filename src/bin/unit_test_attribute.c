@@ -812,21 +812,22 @@ static void command_parse(TALLOC_CTX *ctx, char *input, char *output, size_t out
 	snprintf(output, outlen, "Unknown command '%s'", input);
 }
 
+
 static int process_file(TALLOC_CTX *ctx, CONF_SECTION *features,
 			fr_dict_t *dict, const char *root_dir, char const *filename)
 {
-	int		lineno;
-	size_t		i, outlen;
-	ssize_t		len, data_len;
-	FILE		*fp;
-	char		input[8192], buffer[8192];
-	char		output[8192];
-	char		directory[8192];
-	uint8_t		*attr, data[2048];
-	TALLOC_CTX	*tp_ctx = talloc_named_const(ctx, 0, "tp_ctx");
-	fr_dict_t	*proto_dict = NULL;
+	int			lineno;
+	size_t			i, outlen;
+	ssize_t			len, data_len;
+	FILE			*fp;
+	char			input[8192], buffer[8192];
+	char			output[8192];
+	char			directory[8192];
+	uint8_t			*attr, data[2048];
+	TALLOC_CTX		*tp_ctx = talloc_named_const(ctx, 0, "tp_ctx");
+	fr_dict_t		*proto_dict = NULL;
 
-	bool		encode_error = false;		//!< Whether the last encode errored.
+	bool			encode_error = false;		//!< Whether the last encode errored.
 
 #define CLEAR_TEST_POINT \
 do { \
@@ -908,6 +909,8 @@ do { \
 		strlcpy(test_type, p, (q - p) + 1);
 
 		if (strcmp(test_type, "data") == 0) {
+			char *spaces;
+
 			encode_error = false;	/* Clear the encode error if we're doing a comparison */
 
 			/*
@@ -933,8 +936,11 @@ do { \
 					b++;
 				}
 
-				fprintf(stderr, "\tdiffer at %zd\n\tgot      ... %s\n\texpected ... %s\n",
-					(b - output), b, a);
+				spaces = talloc_array(NULL, char, (b - output) + 1);
+				memset(spaces, ' ', (b - output));
+				spaces[(b - output)] = '\0';
+				fprintf(stderr, "\t           %s^ differs here\n", spaces, b, a);
+				talloc_free(spaces);
 
 				goto error;
 			}
