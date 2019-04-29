@@ -225,6 +225,14 @@ struct module_thread_instance_s {
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 };
 
+/** Map string values to module state method
+ *
+ */
+typedef struct {
+	char const			*name;		//!< String identifier for state.
+	module_method_t			func;		//!< State function.
+} module_state_func_table_t;
+
 /** @name Convenience wrappers around other internal APIs to make them easier to instantiate with modules
  *
  * @{
@@ -249,6 +257,12 @@ exfile_t	*module_exfile_init(TALLOC_CTX *ctx,
  *
  * @{
  */
+module_method_t	module_state_str_to_method(module_state_func_table_t const *table,
+					   char const *name, module_method_t def);
+
+char const	*module_state_method_to_str(module_state_func_table_t const *table,
+					    module_method_t method, char const *def);
+
 bool		module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv);
 
 int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);

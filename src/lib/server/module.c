@@ -562,6 +562,37 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	return pool;
 }
 
+
+/*
+ *	Convert a string to an integer
+ */
+module_method_t module_state_str_to_method(module_state_func_table_t const *table,
+					   char const *name, module_method_t def)
+{
+	module_state_func_table_t const *this;
+
+	if (!name) return def;
+
+	for (this = table; this->name != NULL; this++) {
+		if (strcasecmp(this->name, name) == 0) return this->func;
+	}
+
+	return def;
+}
+
+/*
+ *	Convert an integer to a string.
+ */
+char const *module_state_method_to_str(module_state_func_table_t const *table,
+				       module_method_t method, char const *def)
+{
+	module_state_func_table_t const *this;
+
+	for (this = table; this->name != NULL; this++) if (this->func == method) return this->name;
+
+	return def;
+}
+
 /** Set the next section type if it's not already set
  *
  * @param[in] request		The current request.
