@@ -92,6 +92,7 @@ fr_dict_attr_t const *attr_freeradius_proxied_to;
 fr_dict_attr_t const *attr_ms_mppe_send_key;
 fr_dict_attr_t const *attr_ms_mppe_recv_key;
 fr_dict_attr_t const *attr_state;
+fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t eap_base_dict_attr[];
 fr_dict_attr_autoload_t eap_base_dict_attr[] = {
@@ -109,6 +110,7 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ .out = &attr_freeradius_proxied_to, .name = "FreeRADIUS-Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
 };
