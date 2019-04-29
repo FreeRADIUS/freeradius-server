@@ -3145,11 +3145,14 @@ static unlang_t *compile_item(unlang_t *parent,
 		cs = cf_item_to_section(ci);
 		modrefname = cf_section_name1(cs);
 		name2 = cf_section_name2(cs);
-		if (!name2) name2 = "";
 
 		for (i = 0; compile_table[i].name != NULL; i++) {
 			if (strcmp(modrefname, compile_table[i].name) == 0) {
-				*modname = name2;
+				if (name2) {
+					*modname = name2;
+				} else {
+					*modname = "";
+				}
 
 				/*
 				 *	Some blocks can be empty.  The rest need
