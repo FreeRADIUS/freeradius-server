@@ -140,3 +140,109 @@ void fr_rand_buffer(void *start, size_t length)
 
 	memcpy(buffer, &x, buflen);
 }
+
+/** Generate a random string
+ *
+ * @note Character selection is not perfectly distributed, should not be used
+ *      for cryptographic purposes.
+ *
+ * @param[out] out	Where to write the string
+ * @param[in] len	Length of the output buffer.
+ * @param[in] class	to pick characters from (see function body).
+ */
+void fr_rand_str(uint8_t *out, size_t len, char class)
+{
+	uint8_t		*p = out, *end = p + len;
+	unsigned int	word, mod;
+	uint8_t		byte;
+
+	/*
+ 	 *	Lookup tables for randstr char classes
+ 	 */
+	static char	randstr_punc[] = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+	static char	randstr_salt[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz/.";
+
+ 	/*
+ 	 *	Characters humans rarely confuse. Reduces char set considerably
+ 	 *	should only be used for things such as one time passwords.
+ 	 */
+	static char	randstr_otp[] = "469ACGHJKLMNPQRUVWXYabdfhijkprstuvwxyz";
+
+/*
+ *	yeah yeah not perfect distribution
+ *	but close enough.
+ */
+#define fill(_expr) \
+while (p < end) { \
+	if ((mod = ((p - out) & (sizeof(word) - 1))) == 0) word = fr_rand(); \
+	byte = ((uint8_t *)&word)[mod]; \
+	*p++ = (_expr); \
+}
+
+	switch (class) {
+	/*
+	 *  Lowercase letters
+	 */
+	case 'c':
+		fill('a' + (byte % 26))
+		return;
+
+	/*
+	 *  Uppercase letters
+	 */
+	case 'C':
+		fill('A' + (byte % 26))
+		return;
+
+	/*
+	 *  Numbers
+	 */
+	case 'n':
+		fill('0' + (byte % 10));
+		return;
+
+	/*
+	 *  Alpha numeric
+	 */
+	case 'a':
+		fill(randstr_salt[byte % (sizeof(randstr_salt) - 3)]);
+		return;
+
+	/*
+	 *  Punctuation
+	 */
+	case '!':
+		fill(randstr_punc[byte % (sizeof(randstr_punc) - 1)]);
+		return;
+
+	/*
+	 *  Alpha numeric + punctuation
+	 */
+	case '.':
+		fill('!' + (byte % 95));
+		break;
+
+	/*
+	 *  Alpha numeric + salt chars './'
+	 */
+	case 's':
+		fill(randstr_salt[byte % (sizeof(randstr_salt) - 1)]);
+		break;
+
+	/*
+	 *  Chars suitable for One Time Password tokens.
+	 *  Alpha numeric with easily confused char pairs removed.
+	 */
+	case 'o':
+		fill(randstr_otp[byte % (sizeof(randstr_otp) - 1)]);
+		break;
+
+	/*
+	 *	Binary data
+	 */
+	case 'b':
+	default:
+		fill(byte)
+		return;
+	}
+}
