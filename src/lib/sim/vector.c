@@ -384,9 +384,8 @@ int fr_sim_vector_gsm_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 	return 0;
 }
 
-static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_sim_keys_t *keys)
+static int vector_umts_from_ki(REQUEST *request, VALUE_PAIR *vps, fr_sim_keys_t *keys)
 {
-	REQUEST		*request = eap_session->request;
 	VALUE_PAIR	*ki_vp, *amf_vp, *sqn_vp, *version_vp;
 
 	uint64_t	sqn;
@@ -492,10 +491,8 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 /** Get one set of quintuplets from the request
  *
  */
-static int vector_umts_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *vps, fr_sim_keys_t *keys)
+static int vector_umts_from_quintuplets(REQUEST *request, VALUE_PAIR *vps, fr_sim_keys_t *keys)
 {
-	REQUEST		*request = eap_session->request;
-
 	VALUE_PAIR	*rand_vp = NULL, *xres_vp = NULL, *ck_vp = NULL, *ik_vp = NULL;
 	VALUE_PAIR	*autn_vp = NULL, *sqn_vp = NULL, *ak_vp = NULL;
 
@@ -644,7 +641,7 @@ static int vector_umts_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *
  *
  * Hunt for a source of UMTS quintuplets
  *
- * @param eap_session		The current eap_session.
+ * @param request		The current request.
  * @param vps			List to hunt for triplets in.
  * @param keys			UMTS keys.
  * @param src			Forces quintuplets to be retrieved from a particular src.
@@ -654,10 +651,9 @@ static int vector_umts_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *
  *	- 0	Vector was retrieved OK and written to the specified index.
  *	- -1	Error retrieving vector from the specified src.
  */
-int fr_sim_vector_umts_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
+int fr_sim_vector_umts_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 				  fr_sim_keys_t *keys, fr_sim_vector_src_t *src)
 {
-	REQUEST		*request = eap_session->request;
 	int		ret;
 
 	rad_assert((keys->vector_type == SIM_VECTOR_NONE) || (keys->vector_type == SIM_VECTOR_UMTS));
@@ -665,7 +661,7 @@ int fr_sim_vector_umts_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 	switch (*src) {
 	default:
 	case SIM_VECTOR_SRC_KI:
-		ret = vector_umts_from_ki(eap_session, vps, keys);
+		ret = vector_umts_from_ki(request, vps, keys);
 		if (ret == 0) {
 			*src = SIM_VECTOR_SRC_KI;
 			break;
@@ -675,7 +671,7 @@ int fr_sim_vector_umts_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 		/* FALL-THROUGH */
 
 	case SIM_VECTOR_SRC_QUINTUPLETS:
-		ret = vector_umts_from_quintuplets(eap_session, vps, keys);
+		ret = vector_umts_from_quintuplets(request, vps, keys);
 		if (ret == 0) {
 			*src = SIM_VECTOR_SRC_QUINTUPLETS;
 			break;;

@@ -568,176 +568,6 @@ int fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys)
 	return 0;
 }
 
-/** Initialise fr_sim_keys_t with EAP-SIM/EAP-AKA reauthentication data
- *
- * @param[out] keys		structure to populate.
- * @param[in] master_key	from original authentication.
- * @param[in] counter		re-authentication counter.
- */
-void fr_sim_crypto_keys_init_kdf_0_reauth(fr_sim_keys_t *keys,
-					  uint8_t const master_key[static SIM_MK_SIZE], uint16_t counter)
-{
-	uint32_t nonce_s[4];
-
-	/*
-	 *	Copy in master key
-	 */
-	memcpy(keys->master_key, master_key, sizeof(keys->master_key));
-
-	keys->reauth.counter = counter;
-
-	nonce_s[0] = fr_rand();
-	nonce_s[1] = fr_rand();
-	nonce_s[2] = fr_rand();
-	nonce_s[3] = fr_rand();
-	memcpy(keys->reauth.nonce_s, (uint8_t *)&nonce_s, sizeof(keys->reauth.nonce_s));
-}
-
-/** Key Derivation Function (Fast-Reauthentication) as described in RFC4186/7 (EAP-SIM/AKA) section 7
- *
- @verbatim
-	XKEY' = SHA1(Identity|counter|NONCE_S| MK)
-	FK    = PRF(XKEY')
-	MSK   = FK[0..511]
-	EMSK  = FK[512..1023]
- @endverbatim
- *
- * Derives new MSK, EMSK, k_aut, k_encr
- *
- * Use #fr_sim_crypto_keys_init_kdf_0_reauth to populate the #fr_sim_keys_t structure.
- *
- * @note expects keys to contain a populated master_key, none_s and counter values.
- *
- * @param[in,out] keys		Contains the authentication vectors and the buffers
- *				to store the result of the derivation.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
-{
-	EVP_MD_CTX	*md_ctx;
-	uint8_t		fk[160];
-	uint8_t		xkey_prime[SHA1_DIGEST_LENGTH];
-
-	uint8_t		buf[384];
-	uint8_t		*p;
-
-	size_t		need;
-	unsigned int	len = 0;
-
-	if (keys->reauth.counter == 0) {
-		fr_strerror_printf("Re-authentication counter not initialised, must be >= 1");
-		return -1;
-	}
-
-	need = keys->identity_len + sizeof(uint16_t) + SIM_NONCE_S_SIZE + sizeof(keys->master_key);
-	if (need > sizeof(buf)) {
-		fr_strerror_printf("Identity too long. PRF input is %zu bytes, input buffer is %zu bytes",
-				   need, sizeof(buf));
-		return -1;
-	}
-
-	/*
-	 *	Re-derive k_aut and k_encr from the original Master Key
-	 *	These keys stay the same over multiple re-auth attempts.
-	 */
-	fr_sim_fips186_2prf(fk, keys->master_key);
-
-	p = fk;
-	memcpy(keys->k_encr, p, 16);				/* 128 bits for encryption */
-	p += 16;
-	FR_PROTO_HEX_DUMP(keys->k_encr, sizeof(keys->k_encr), "K_encr");
-
-	memcpy(keys->k_aut,  p, EAP_SIM_AUTH_SIZE);		/* 128 bits for auth */
-
-	keys->k_aut_len = EAP_SIM_AUTH_SIZE;
-	FR_PROTO_HEX_DUMP(keys->k_aut, keys->k_aut_len, "K_aut");
-
-	/*
-	 *	Derive a new MSK and EMSK
-	 *
-	 *	New PRF input is:
-	 *	XKEY' = SHA1(Identity|counter|NONCE_S| MK)
-	 */
-
-	/*
-	 *	Identity
-	 */
-	p = buf;
-	memcpy(p, keys->identity, keys->identity_len);
-	p += keys->identity_len;
-	FR_PROTO_HEX_DUMP(keys->identity, keys->identity_len, "identity");
-
-	/*
-	 *	Counter
-	 */
-	*p++ = ((keys->reauth.counter & 0xff00) >> 8);
-	*p++ = (keys->reauth.counter & 0x00ff);
-
-	/*
-	 *	nonce_s
-	 */
-	memcpy(p, keys->reauth.nonce_s, sizeof(keys->reauth.nonce_s));
-	p += sizeof(keys->reauth.nonce_s);
-
-	/*
-	 *	Master key
-	 */
-	memcpy(p, keys->master_key, sizeof(keys->master_key));
-	p += sizeof(keys->master_key);
-
-	FR_PROTO_HEX_DUMP(buf, p - buf, "Identity || counter || NONCE_S || MK");
-
-	/*
-	 *	Digest re-auth key with SHA1
-	 */
-	md_ctx = EVP_MD_CTX_create();
-	if (!md_ctx) {
-		tls_strerror_printf("Failed creating MD ctx");
-	error:
-		EVP_MD_CTX_destroy(md_ctx);
-		return -1;
-	}
-
-	if (EVP_DigestInit_ex(md_ctx, EVP_sha1(), NULL) != 1) {
-		tls_strerror_printf("Failed initialising digest");
-		goto error;
-	}
-
-	if (EVP_DigestUpdate(md_ctx, buf, p - buf) != 1) {
-		tls_strerror_printf("Failed digesting crypto data");
-		goto error;
-	}
-
-	if (EVP_DigestFinal_ex(md_ctx, xkey_prime, &len) != 1) {
-		tls_strerror_printf("Failed finalising digest");
-		goto error;
-	}
-
-	EVP_MD_CTX_destroy(md_ctx);
-
-	FR_PROTO_HEX_DUMP(xkey_prime, sizeof(xkey_prime), "xkey'");
-
-	/*
-	 *	Expand XKEY' with PRF
-	 */
-	fr_sim_fips186_2prf(fk, xkey_prime);
-
-	/*
-	 *	Split up the result
-	 */
-	p = fk;
-	memcpy(keys->msk, p, 64);				/* 64 bytes for Master Session Key */
-	p += 64;
-	FR_PROTO_HEX_DUMP(keys->msk, sizeof(keys->msk), "K_msk");
-
-	memcpy(keys->emsk, p, 64);				/* 64 bytes for Extended Master Session Key */
-	FR_PROTO_HEX_DUMP(keys->emsk, sizeof(keys->emsk), "K_emsk");
-
-	return 0;
-}
-
 /** Key Derivation Function (CK', IK') as specified in 3GPP.33.402
  *
  @verbatim
@@ -1023,6 +853,185 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 	return 0;
 }
 
+
+/** Initialise fr_sim_keys_t with EAP-SIM/EAP-AKA['] reauthentication data
+ *
+ * Generates a new nonce_s and copies the mk and counter values into the fr_sim_keys_t.
+ *
+ * @param[out] keys		structure to populate.
+ * @param[in] master_key	from original authentication.
+ * @param[in] counter		re-authentication counter.
+ */
+void fr_sim_crypto_keys_init_reauth(fr_sim_keys_t *keys,
+				    uint8_t const master_key[static SIM_MK_SIZE], uint16_t counter)
+{
+	uint32_t nonce_s[4];
+
+	/*
+	 *	Copy in master key
+	 */
+	memcpy(keys->master_key, master_key, sizeof(keys->master_key));
+
+	keys->reauth.counter = counter;
+
+	nonce_s[0] = fr_rand();
+	nonce_s[1] = fr_rand();
+	nonce_s[2] = fr_rand();
+	nonce_s[3] = fr_rand();
+	memcpy(keys->reauth.nonce_s, (uint8_t *)&nonce_s, sizeof(keys->reauth.nonce_s));
+}
+
+/** Key Derivation Function (Fast-Reauthentication) as described in RFC4186/7 (EAP-SIM/AKA) section 7
+ *
+ @verbatim
+	XKEY' = SHA1(Identity|counter|NONCE_S| MK)
+	FK    = PRF(XKEY')
+	MSK   = FK[0..511]
+	EMSK  = FK[512..1023]
+ @endverbatim
+ *
+ * Derives new MSK, EMSK, k_aut, k_encr
+ *
+ * Use #fr_sim_crypto_keys_init_reauth to populate the #fr_sim_keys_t structure.
+ *
+ * @note expects keys to contain a populated master_key, none_s and counter values.
+ *
+ * @param[in,out] keys		Contains the authentication vectors and the buffers
+ *				to store the result of the derivation.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
+{
+	EVP_MD_CTX	*md_ctx;
+	uint8_t		fk[160];
+	uint8_t		xkey_prime[SHA1_DIGEST_LENGTH];
+
+	uint8_t		buf[384];
+	uint8_t		*p;
+
+	size_t		need;
+	unsigned int	len = 0;
+
+	/*
+	 *	RFC 4187 Section 5.1
+	 *	...
+	 *	"On full authentication, both the server and
+   	 *	the peer initialize the counter to one."
+	 */
+	if (keys->reauth.counter == 0) {
+		fr_strerror_printf("Re-authentication counter not initialised, must be >= 1");
+		return -1;
+	}
+
+	need = keys->identity_len + sizeof(uint16_t) + SIM_NONCE_S_SIZE + sizeof(keys->master_key);
+	if (need > sizeof(buf)) {
+		fr_strerror_printf("Identity too long. PRF input is %zu bytes, input buffer is %zu bytes",
+				   need, sizeof(buf));
+		return -1;
+	}
+
+	/*
+	 *	Re-derive k_aut and k_encr from the original Master Key
+	 *	These keys stay the same over multiple re-auth attempts.
+	 */
+	fr_sim_fips186_2prf(fk, keys->master_key);
+
+	p = fk;
+	memcpy(keys->k_encr, p, 16);				/* 128 bits for encryption */
+	p += 16;
+	FR_PROTO_HEX_DUMP(keys->k_encr, sizeof(keys->k_encr), "K_encr");
+
+	memcpy(keys->k_aut,  p, EAP_SIM_AUTH_SIZE);		/* 128 bits for auth */
+
+	keys->k_aut_len = EAP_SIM_AUTH_SIZE;
+	FR_PROTO_HEX_DUMP(keys->k_aut, keys->k_aut_len, "K_aut");
+
+	/*
+	 *	Derive a new MSK and EMSK
+	 *
+	 *	New PRF input is:
+	 *	XKEY' = SHA1(Identity|counter|NONCE_S| MK)
+	 */
+
+	/*
+	 *	Identity
+	 */
+	p = buf;
+	memcpy(p, keys->identity, keys->identity_len);
+	p += keys->identity_len;
+	FR_PROTO_HEX_DUMP(keys->identity, keys->identity_len, "identity");
+
+	/*
+	 *	Counter
+	 */
+	*p++ = ((keys->reauth.counter & 0xff00) >> 8);
+	*p++ = (keys->reauth.counter & 0x00ff);
+
+	/*
+	 *	nonce_s
+	 */
+	memcpy(p, keys->reauth.nonce_s, sizeof(keys->reauth.nonce_s));
+	p += sizeof(keys->reauth.nonce_s);
+
+	/*
+	 *	Master key
+	 */
+	memcpy(p, keys->master_key, sizeof(keys->master_key));
+	p += sizeof(keys->master_key);
+
+	FR_PROTO_HEX_DUMP(buf, p - buf, "Identity || counter || NONCE_S || MK");
+
+	/*
+	 *	Digest re-auth key with SHA1
+	 */
+	md_ctx = EVP_MD_CTX_create();
+	if (!md_ctx) {
+		tls_strerror_printf("Failed creating MD ctx");
+	error:
+		EVP_MD_CTX_destroy(md_ctx);
+		return -1;
+	}
+
+	if (EVP_DigestInit_ex(md_ctx, EVP_sha1(), NULL) != 1) {
+		tls_strerror_printf("Failed initialising digest");
+		goto error;
+	}
+
+	if (EVP_DigestUpdate(md_ctx, buf, p - buf) != 1) {
+		tls_strerror_printf("Failed digesting crypto data");
+		goto error;
+	}
+
+	if (EVP_DigestFinal_ex(md_ctx, xkey_prime, &len) != 1) {
+		tls_strerror_printf("Failed finalising digest");
+		goto error;
+	}
+
+	EVP_MD_CTX_destroy(md_ctx);
+
+	FR_PROTO_HEX_DUMP(xkey_prime, sizeof(xkey_prime), "xkey'");
+
+	/*
+	 *	Expand XKEY' with PRF
+	 */
+	fr_sim_fips186_2prf(fk, xkey_prime);
+
+	/*
+	 *	Split up the result
+	 */
+	p = fk;
+	memcpy(keys->msk, p, 64);				/* 64 bytes for Master Session Key */
+	p += 64;
+	FR_PROTO_HEX_DUMP(keys->msk, sizeof(keys->msk), "K_msk");
+
+	memcpy(keys->emsk, p, 64);				/* 64 bytes for Extended Master Session Key */
+	FR_PROTO_HEX_DUMP(keys->emsk, sizeof(keys->emsk), "K_emsk");
+
+	return 0;
+}
+
 /** Key Derivation Function (Fast-Reauthentication) as described in RFC 5448 (EAP-AKA') section 3.3
  *
  @verbatim
@@ -1152,6 +1161,12 @@ void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys)
 				"IK'          :");
 		break;
 
+	case SIM_VECTOR_UMTS_REAUTH:
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->master_key, sizeof(keys->master_key), "mk           :");
+		RDEBUG3("counter      : %u", keys->reauth.counter);
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->reauth.nonce_s, sizeof(keys->reauth.nonce_s), "nonce_s      :");
+		break;
+
 	case SIM_VECTOR_NONE:
 		break;
 	}
@@ -1159,8 +1174,16 @@ void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys)
 
 	RDEBUG3("Derived keys");
 	RINDENT();
-	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->master_key, sizeof(keys->master_key),
-			"mk           :");
+
+	switch (keys->vector_type) {
+	case SIM_VECTOR_UMTS_REAUTH:
+		break;
+
+	default:
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->master_key, sizeof(keys->master_key),
+				"mk           :");
+		break;
+	}
 	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->k_aut, keys->k_aut_len,
 			"k_aut        :");
 	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->k_encr, sizeof(keys->k_encr),

@@ -410,7 +410,7 @@ static int eap_sim_send_reauthentication(eap_session_t *eap_session)
 	/*
 	 *	All set, calculate keys!
 	 */
-	fr_sim_crypto_keys_init_kdf_0_reauth(&eap_sim_session->keys, mk->vp_octets, counter->vp_uint16);
+	fr_sim_crypto_keys_init_reauth(&eap_sim_session->keys, mk->vp_octets, counter->vp_uint16);
 	fr_sim_crypto_kdf_0_reauth(&eap_sim_session->keys);
 	if (RDEBUG_ENABLED3) fr_sim_crypto_keys_log(request, &eap_sim_session->keys);
 

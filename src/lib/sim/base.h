@@ -45,6 +45,10 @@ RCSIDH(sim_h, "$Id$")
 #define SIM_SQN_AK_SIZE			6
 #define SIM_NONCE_S_SIZE		16		//!< Length of re-authentication nonce
 
+#define SIM_KI_SIZE			16		//!< Length of secret data shared between SIM and AuC.
+#define SIM_OP_SIZE			16		//!< Length of Operator Algorithm Configuration.
+#define SIM_OPC_SIZE			16		//!< Length of modified Operator Algorithm Configuration.
+
 #define SIM_MK_SIZE			20		//!< Master key size
 
 #define SIM_SKIPPABLE_MAX		127		//!< The last non-skippable attribute.
@@ -66,7 +70,8 @@ RCSIDH(sim_h, "$Id$")
 typedef enum {
 	SIM_VECTOR_NONE = 0,
 	SIM_VECTOR_GSM,						//!< Vector is GSM triplets.
-	SIM_VECTOR_UMTS						//!< Vector is UMTS quintuplets.
+	SIM_VECTOR_UMTS,					//!< Vector is UMTS quintuplets.
+	SIM_VECTOR_UMTS_REAUTH
 } fr_sim_vector_type_t;
 
 /** Where to get EAP-SIM vectors from
@@ -76,7 +81,8 @@ typedef enum {
 	SIM_VECTOR_SRC_TRIPLETS,				//!< Source of triplets is EAP-SIM-* attributes.
 	SIM_VECTOR_SRC_QUINTUPLETS,				//!< Source of triplets is derived from EAP-AKA-*
 								///< quintuplets.
-	SIM_VECTOR_SRC_KI					//!< Should generate triplets locally using a Ki.
+	SIM_VECTOR_SRC_KI,					//!< Should generate triplets locally using a Ki.
+	SIM_VECTOR_SRC_REAUTH
 } fr_sim_vector_src_t;
 
 typedef struct {
@@ -259,12 +265,12 @@ int		fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys);
 
 int		fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys);
 
-void		fr_sim_crypto_keys_init_kdf_0_reauth(fr_sim_keys_t *keys,
-						     uint8_t const master_key[static SIM_MK_SIZE], uint16_t counter);
+int		fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys);
+
+void		fr_sim_crypto_keys_init_reauth(fr_sim_keys_t *keys,
+					       uint8_t const master_key[static SIM_MK_SIZE], uint16_t counter);
 
 int		fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys);
-
-int		fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys);
 
 int		fr_sim_crypto_kdf_1_reauth(fr_sim_keys_t *keys);
 
@@ -276,8 +282,16 @@ void		fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys);
 int		fr_sim_vector_gsm_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 					     int idx, fr_sim_keys_t *keys, fr_sim_vector_src_t *src);
 
-int		fr_sim_vector_umts_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
+int		fr_sim_vector_umts_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 					      fr_sim_keys_t *keys, fr_sim_vector_src_t *src);
+
+int		fr_sim_vector_umts_reauth_from_attrs(REQUEST *request, VALUE_PAIR *vps,
+						     fr_sim_keys_t *keys);
+
+void		fr_sim_vector_umts_reauth_clear(fr_sim_keys_t *keys);
+
+int		fr_sim_umts_resync_from_attrs(uint64_t *new_sqn,
+					      REQUEST *request, VALUE_PAIR *auts_vp, fr_sim_keys_t *keys);
 
 /*
  *	fips186prf.c
