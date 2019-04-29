@@ -939,7 +939,7 @@ do { \
 				spaces = talloc_array(NULL, char, (b - output) + 1);
 				memset(spaces, ' ', (b - output));
 				spaces[(b - output)] = '\0';
-				fprintf(stderr, "\t           %s^ differs here\n", spaces, b, a);
+				fprintf(stderr, "\t           %s^ differs here\n", spaces);
 				talloc_free(spaces);
 
 				goto error;
