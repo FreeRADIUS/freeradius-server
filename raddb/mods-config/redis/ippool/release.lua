@@ -7,7 +7,7 @@
 -- Sets the expiry time to be NOW() - 1 to maximise time between
 -- IP address allocations.
 --
--- Returns @verbatim array { <rcode>[, <counter>] } @endverbatim
+-- Returns @verbatim array { <rcode> } @endverbatim
 -- - IPPOOL_RCODE_SUCCESS lease updated..
 -- - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
 -- - IPPOOL_RCODE_EXPIRED lease already expired
@@ -44,11 +44,6 @@ if ret == 0 then
   return { ippool_rcode_expired }
 end
 
--- Remove the association between the device and a lease
-device_key = "{" .. KEYS[1] .. "}:" .. ippool_key_device .. ":" .. ARGV[2]
-redis.call("DEL", device_key)
-
 return {
-  ippool_rcode_success,
-  redis.call("HINCRBY", address_key, "counter", 1) - 1
+  ippool_rcode_success
 }

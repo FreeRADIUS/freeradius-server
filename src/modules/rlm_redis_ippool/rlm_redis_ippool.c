@@ -404,37 +404,6 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 			goto finish;
 		}
 	}
-
-	/*
-	 *	Process Expiry time
-	 */
-	if (inst->expiry_attr && (reply->elements > 3)) {
-		vp_tmpl_t expiry_rhs = {
-			.name = "",
-			.type = TMPL_TYPE_DATA,
-			.tmpl_value_type = FR_TYPE_STRING,
-			.quote = T_DOUBLE_QUOTED_STRING
-		};
-		vp_map_t expiry_map = {
-			.lhs = inst->expiry_attr,
-			.op = T_OP_SET,
-			.rhs = &expiry_rhs
-		};
-
-		if (reply->element[3]->type != REDIS_REPLY_INTEGER) {
-			REDEBUG("Server returned unexpected type \"%s\" for expiry element (result[3])",
-				fr_int2str(redis_reply_types, reply->element[3]->type, "<UNKNOWN>"));
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
-		}
-
-		expiry_map.rhs->tmpl_value.vb_uint32 = reply->element[3]->integer;
-		expiry_map.rhs->tmpl_value_type = FR_TYPE_UINT32;
-		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
-		}
-	}
 finish:
 	fr_redis_reply_free(&reply);
 	return ret;
@@ -532,30 +501,6 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		default:
 			REDEBUG("Server returned unexpected type \"%s\" for range element (result[1])",
 				fr_int2str(redis_reply_types, reply->element[0]->type, "<UNKNOWN>"));
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
-		}
-	}
-
-	/*
-	 *	Copy expiry time to expires attribute (if set)
-	 */
-	if (inst->expiry_attr) {
-		vp_tmpl_t expiry_rhs = {
-			.name = "",
-			.type = TMPL_TYPE_DATA,
-			.tmpl_value_type = FR_TYPE_STRING,
-			.quote = T_DOUBLE_QUOTED_STRING
-		};
-		vp_map_t expiry_map = {
-			.lhs = inst->expiry_attr,
-			.op = T_OP_SET,
-			.rhs = &expiry_rhs
-		};
-
-		expiry_map.rhs->tmpl_value.vb_uint32 = expires;
-		expiry_map.rhs->tmpl_value_type = FR_TYPE_UINT32;
-		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
 		}

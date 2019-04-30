@@ -14,6 +14,7 @@
 local ret
 local found
 local time
+local expires_in
 
 local pool_key
 local address_key
@@ -34,19 +35,14 @@ end
 
 time = redis.call("TIME")
 
+expires_in = tonumber(ARGV[1])
+
 -- Update the expiry time
 pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key_pool
-redis.call("ZADD", pool_key, "XX", time[1] + ARGV[1], ARGV[2])
+redis.call("ZADD", pool_key, "XX", time[1] + expires_in, ARGV[2])
 
--- The device key should usually exist, but
--- theoretically, if we were right on the cusp
--- of a lease being expired, it may have been
--- removed.
 device_key = "{" .. KEYS[1] .. "}:" .. ippool_key_device .. ":" .. ARGV[3]
-if redis.call("EXPIRE", device_key, ARGV[1]) == 0 then
-  redis.call("SET", device_key, ARGV[2])
-  redis.call("EXPIRE", device_key, ARGV[1])
-end
+redis.call("SET", device_key, ARGV[2], "EX", 10 * expires_in)
 
 -- Update the gateway address
 if ARGV[4] ~= found[3] then
