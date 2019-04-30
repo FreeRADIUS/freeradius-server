@@ -1,23 +1,71 @@
-MAP_TESTS	:= $(patsubst $(top_srcdir)/src/tests/map/%,%,$(filter-log %.conf %.md %.attrs %.c %.mk %~ %.rej %.log,$(wildcard $(top_srcdir)/src/tests/map/*)))
-MAP_OUTPUT	:= $(addsuffix .log,$(addprefix $(BUILD_DIR)/tests/map/,$(MAP_TESTS)))
-MAP_UNIT_BIN	:= $(BUILD_DIR)/bin/local/unit_test_map
-MAP_UNIT	:= ./build/make/jlibtool --silent --mode=execute $(MAP_UNIT_BIN)
+#
+#  Unit tests for individual pieces of functionality.
+#
 
-.PHONY: $(BUILD_DIR)/tests/map/
-$(BUILD_DIR)/tests/map/:
+#
+#  Test name
+#
+TEST := tests.map
+
+#
+#  The files are put here in order.  Later tests need
+#  functionality from earlier tests.
+#
+FILES  := \
+	base \
+	count-error \
+	count-list-error
+
+OUTPUT := $(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+
+#
+#  Create the output directory
+#
+.PHONY: $(OUTPUT)
+$(OUTPUT):
 	${Q}mkdir -p $@
 
 #
-#	Re-run the tests if the test program changes
+#  All of the output files depend on the input files
 #
-#	Create the logput directory before the files
+FILES.$(TEST) := $(addprefix $(OUTPUT),$(notdir $(FILES)))
+
 #
-$(MAP_OUTPUT): $(MAP_UNIT_BIN) | $(BUILD_DIR)/tests/map/
+#  The output files also depend on the directory
+#  and on the previous test.
+#
+$(FILES.$(TEST)): | $(OUTPUT)
+
+#
+#  We have a real file that's created if all of the tests pass.
+#
+$(BUILD_DIR)/tests/$(TEST): $(FILES.$(TEST))
+	${Q}touch $@
+
+#
+#  For simplicity, we create a phony target so that the poor developer
+#  doesn't need to remember path names
+#
+$(TEST): $(BUILD_DIR)/tests/$(TEST)
+
+#
+#  Clean the ouput directory and files.
+#
+#  Note that we have to specify the actual filenames here, because
+#  of stupidities with GNU Make.
+#
+.PHONY: clean.$(TEST)
+clean.$(TEST):
+	${Q}rm -rf $(BUILD_DIR)/tests/unit $(BUILD_DIR)/tests/tests.unit
+
+clean.test: clean.$(TEST)
+
+MAP_UNIT := $(TESTBINDIR)/unit_test_map
 
 #
 #	Re-run the tests if the input file changes
 #
-$(BUILD_DIR)/tests/map/%: $(top_srcdir)/src/tests/map/%
+$(BUILD_DIR)/tests/map/%: $(DIR)/% $(TESTBINDIR)/unit_test_map
 	${Q}echo MAP_TEST $(notdir $<)
 	${Q}if ! $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r "$@" "$<" > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
@@ -26,7 +74,7 @@ $(BUILD_DIR)/tests/map/%: $(top_srcdir)/src/tests/map/%
 			echo FAILED: "$(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share/dictionary -r \"$@\" \"$<\""; \
 			exit 1; \
 		fi; \
-		FOUND=$$(grep $< $@ | head -1 | sed 's,^.*$(top_srcdir),,;s/:.*//;s/.*\[//;s/\].*//'); \
+		FOUND=$$(grep -E '^(Error : )?$<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
 		EXPECTED=$$(grep -n ERROR $< | sed 's/:.*//'); \
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat "$@.log"; \
@@ -44,15 +92,3 @@ $(BUILD_DIR)/tests/map/%: $(top_srcdir)/src/tests/map/%
 			exit 1; \
 		fi; \
 	fi
-
-TESTS.MAP_FILES := $(MAP_OUTPUT)
-
-$(TESTS.MAP_FILES): $(TESTS.UNIT_FILES)
-
-tests.map: $(MAP_OUTPUT)
-
-.PHONY: clean.tests.map
-clean.tests.map:
-	${Q}rm -rf $(BUILD_DIR)/tests/map/
-
-clean.test: clean.tests.map
