@@ -159,7 +159,7 @@ size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
  *
  */
 bool const fr_dict_attr_allowed_chars[UINT8_MAX] = {
-	['-'] = true, ['.'] = true, ['/'] = true, ['_'] = true,
+	['-'] = true, ['/'] = true, ['_'] = true,
 	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
 	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
 	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true, ['E'] = true,
