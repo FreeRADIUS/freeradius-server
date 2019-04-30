@@ -15,10 +15,12 @@ local address_key
 pool_key = "{" .. KEYS[1] .. "}:" .. ippool_key_pool
 ret = redis.call("ZADD", pool_key, "NX", "CH", 0, ARGV[1])
 
+address_key = "{" .. KEYS[1] .. "}:" .. ippool_key_address .. ":" .. ARGV[1]
+
+redis.call("HSETNX", address_key, "counter", 0)
+
 -- Zero length ranges are allowed, and should be preserved
 if ARGV[2] then
-  address_key = "{" .. KEYS[1] .. "}:" .. ippool_key_address .. ":" .. ARGV[1]
-
   redis.call("HSET", address_key, "range", ARGV[2])
 end
 
