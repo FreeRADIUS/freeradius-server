@@ -1116,8 +1116,8 @@ static int _module_instance_free(module_instance_t *mi)
 {
 	DEBUG3("Freeing %s (%p)", mi->name, mi);
 
-	if (mi->in_name_tree) rbtree_deletebydata(module_instance_name_tree, mi);
-	if (mi->in_data_tree) rbtree_deletebydata(module_instance_data_tree, mi);
+	if (mi->in_name_tree) if (!fr_cond_assert(rbtree_deletebydata(module_instance_name_tree, mi))) return 1;
+	if (mi->in_data_tree) if (!fr_cond_assert(rbtree_deletebydata(module_instance_data_tree, mi))) return 1;
 	if (mi->mutex) {
 		/*
 		 *	FIXME
@@ -1188,7 +1188,7 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 		return NULL;
 	}
 
-	MEM(mi = talloc_zero(instance_ctx, module_instance_t));
+	MEM(mi = talloc_zero(parent ? parent : instance_ctx, module_instance_t));
 	talloc_set_destructor(mi, _module_instance_free);
 
 	if (dl_instance(mi, &mi->dl_inst, cs,
@@ -1242,7 +1242,7 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 		cf_log_debug(mi->dl_inst->conf, "Bootstrapping module \"%s\"", mi->name);
 
 	    	if ((mi->module->bootstrap)(mi->dl_inst->data, cs) < 0) {
-			cf_log_err(cs, "Bootstrap failed for module \"%s\"", inst_name);
+			cf_log_err(cs, "Bootstrap failed for module \"%s\"", mi->name);
 			talloc_free(mi);
 			return NULL;
 		}
