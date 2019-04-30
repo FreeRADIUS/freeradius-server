@@ -214,8 +214,8 @@ uint64_t unlang_interpret_active_callers(unlang_t *instruction)
 
 /** Push a new frame onto the stack
  *
- * @param[in] stack		to push the frame onto.
- * @param[in] program		One or more unlang_t nodes describing the operations to execute.
+ * @param[in] request		to push the frame onto.
+ * @param[in] instruction	One or more unlang_t nodes describing the operations to execute.
  * @param[in] default_rcode	The default result.
  * @param[in] do_next_sibling	Whether to only execute the first node in the #unlang_t program
  *				or to execute subsequent nodes.

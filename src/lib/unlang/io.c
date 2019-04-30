@@ -63,11 +63,7 @@ fr_io_final_t unlang_io_process_interpret(UNUSED void const *instance, REQUEST *
 /** Allocate a child request based on the parent.
  *
  * @param[in] parent		spawning the child request.
- * @param[in] instruction	child starts executing.
- * @param[in] server_cs		the child is operating in.  If NULL the parent's server is used.
  * @param[in] namespace		the child request operates in. If NULL the parent's namespace is used.
- * @param[in] default_rcode	for the section the child is executing.
- * @param[in] do_next_sibling	Execute next sibling.
  * @param[in] detachable	Allow/disallow the child to be detached.
  * @return
  *      - The new child request.
