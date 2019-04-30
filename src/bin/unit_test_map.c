@@ -54,18 +54,6 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 	{ NULL }
 };
 
-module_instance_t *module_by_name_and_method(UNUSED rlm_components_t *method,
-					   UNUSED module_instance_t const *parent, UNUSED char const *name)
-{
-	return NULL;
-}
-
-module_thread_instance_t *module_thread(UNUSED module_instance_t *mi)
-{
-	return NULL;
-}
-
-/* Linker hacks */
 
 static void NEVER_RETURNS usage(char *argv[])
 {
