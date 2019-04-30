@@ -244,7 +244,6 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 					    uint8_t const *gateway_id, size_t gateway_id_len,
 					    uint32_t expires)
 {
-	struct			timeval now;
 	redisReply		*reply = NULL;
 
 	fr_redis_rcode_t	status;
@@ -252,8 +251,6 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 
 	rad_assert(key_prefix);
 	rad_assert(device_id);
-
-	now = fr_time_to_timeval(fr_time());
 
 	/*
 	 *	hiredis doesn't deal well with NULL string pointers
@@ -264,10 +261,10 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 				 key_prefix, key_prefix_len,
 				 inst->wait_num, inst->wait_timeout,
 				 inst->lua_alloc.script,
-				 "EVALSHA %s 1 %b %u %u %b %b",
+				 "EVALSHA %s 1 %b %u %b %b",
 				 inst->lua_alloc.digest,
 				 key_prefix, key_prefix_len,
-				 (unsigned int)now.tv_sec, expires,
+				 expires,
 				 device_id, device_id_len,
 				 gateway_id, gateway_id_len);
 	if (status != REDIS_RCODE_SUCCESS) {
@@ -453,7 +450,6 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 					  uint8_t const *gateway_id, size_t gateway_id_len,
 					  uint32_t expires)
 {
-	struct			timeval now;
 	redisReply		*reply = NULL;
 
 	fr_redis_rcode_t	status;
@@ -461,8 +457,6 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 
 	vp_tmpl_t		range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_value_type = FR_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
 	vp_map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
-
-	now = fr_time_to_timeval(fr_time());
 
 	/*
 	 *	hiredis doesn't deal well with NULL string pointers
@@ -477,10 +471,10 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 				 key_prefix, key_prefix_len,
 				 inst->wait_num, inst->wait_timeout,
 				 inst->lua_update.script,
-				 "EVALSHA %s 1 %b %u %u %s %b %b",
+				 "EVALSHA %s 1 %b %u %s %b %b",
 				 inst->lua_update.digest,
 				 key_prefix, key_prefix_len,
-				 (unsigned int)now.tv_sec, expires,
+				 expires,
 				 ip_buff,
 				 device_id, device_id_len,
 				 gateway_id, gateway_id_len);
@@ -581,13 +575,10 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 					   fr_ipaddr_t *ip,
 					   uint8_t const *device_id, size_t device_id_len)
 {
-	struct			timeval now;
 	redisReply		*reply = NULL;
 
 	fr_redis_rcode_t	status;
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
-
-	now = fr_time_to_timeval(fr_time());
 
 	/*
 	 *	hiredis doesn't deal well with NULL string pointers
@@ -601,10 +592,9 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 				 key_prefix, key_prefix_len,
 				 inst->wait_num, inst->wait_timeout,
 				 inst->lua_release.script,
-				 "EVALSHA %s 1 %b %u %s %b",
+				 "EVALSHA %s 1 %b %s %b",
 				 inst->lua_release.digest,
 				 key_prefix, key_prefix_len,
-				 (unsigned int)now.tv_sec,
 				 ip_buff,
 				 device_id, device_id_len);
 	if (status != REDIS_RCODE_SUCCESS) {
