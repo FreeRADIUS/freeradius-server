@@ -801,7 +801,6 @@ void fr_sim_vector_umts_reauth_clear(fr_sim_keys_t *keys)
  * @param[in] request	The current request.
  * @param[in] auts_vp	The AUTS response.
  * @param[in] keys	UMTS keys.
- * @param[in] auts	The auts pair provided by the supplicant.
  * @return
  *	- 1 if we do not have sufficient data (lacking ki).
  *	- 0 on success.
