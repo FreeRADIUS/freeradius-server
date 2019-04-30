@@ -279,8 +279,9 @@ int		module_section_component(rlm_components_t *component, char const *name1, ch
  */
 module_instance_t	*module_by_name(module_instance_t const *parent, char const *asked_name);
 
-module_instance_t	*module_by_name_and_method(rlm_components_t *method,
-						   module_instance_t const *parent, char const *asked_name);
+module_instance_t	*module_by_name_and_method(module_method_t *method, rlm_components_t *component,
+						   char const **name1, char const **name2,
+						   char const *asked_name);
 
 module_instance_t	*module_by_data(void const *data);
 

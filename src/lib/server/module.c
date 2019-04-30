@@ -680,26 +680,36 @@ module_instance_t *module_by_name(module_instance_t const *parent, char const *a
  * Extracts the method from the module name where the format is @verbatim <module>.<method> @endverbatim
  * and ensures the module implements the specified method.
  *
- * @param[out] method		the method component we found associated with the module. May be NULL.
- * @param[in] parent		of the module, usually NULL unless we're looking up submodules.
- * @param[in] name 		The name of the module we're attempting to find, concatenated with
- *				the method.
+ * @param[out] method		the method function we will call
+ * @param[in,out] component	the default component to use.  Updated to be the found component
+ * @param[out] name1		name1 of the method being called
+ * @param[out] name2		name2 of the method being called
+ * @param[in] name 		The name of the module we're attempting to find, concatenated with the method
  * @return
  *	- The module instance on success.
- *	- NULL on error (or not found).
+ *	- NULL on not found
+ *
+ *  If the module exists but the method doesn't exist, then `method` is set to NULL.
  */
-module_instance_t *module_by_name_and_method(rlm_components_t *method, module_instance_t const *parent, char const *name)
+module_instance_t *module_by_name_and_method(module_method_t *method, rlm_components_t *component,
+					     char const **name1, char const **name2,
+					     char const *name)
 {
-	char			*p;
+	char			*p, *inst_name;
 	rlm_components_t	i;
 	module_instance_t	*mi;
+
+	if (method) *method = NULL;
 
 	/*
 	 *	Module names are allowed to contain '.'
 	 *	so we search for the bare module name first.
 	 */
-	mi = module_by_name(parent, name);
-	if (mi) return mi;
+	mi = module_by_name(NULL, name);
+	if (mi) {
+		if (method && component) *method = mi->module->methods[*component];
+		return mi;
+	}
 
 	/*
 	 *	Find out if the instance name contains
@@ -710,30 +720,37 @@ module_instance_t *module_by_name_and_method(rlm_components_t *method, module_in
 	if (!p) return NULL;
 
 	/*
+	 *	The first bit MUST be the instance name.
+	 */
+	inst_name = talloc_bstrndup(NULL, name, p - name);
+	mi = module_by_name(NULL, inst_name);
+	talloc_free(inst_name);
+	if (!mi) return NULL;
+
+	/*
+	 *	Set these names so that the caller gets told which
+	 *	method was being referenced here.
+	 */
+	if (name1) *name1 = p + 1;
+	if (name2) *name2 = NULL;
+
+	/*
 	 *	Find the component.
 	 */
 	for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-		if (strcmp(p + 1, section_type_value[i].section) == 0) {
-			char *inst_name;
+		if (strcmp(p + 1, section_type_value[i].section) != 0) continue;
 
-			inst_name = talloc_bstrndup(NULL, name, p - name);
-			mi = module_by_name(NULL, inst_name);
-			talloc_free(inst_name);
-			if (!mi) return NULL;
-
-			/*
-			 *	Verify the module actually implements
-			 *	the specified method.
-			 */
-			if (!mi->module->methods[i]) {
-				cf_log_debug(mi->dl_inst->conf, "%s does not implement method \"%s\"",
-					     mi->module->name, p + 1);
-				return NULL;
-			}
-			if (method) *method = i;
-
-			return mi;
+		/*
+		 *	Tell the caller which component was
+		 *	referenced, and set the method to the found
+		 *	function.
+		 */
+		if (component) {
+			*component = i;
+			if (method) *method = mi->module->methods[*component];
 		}
+
+		break;
 	}
 
 	return mi;
@@ -1304,8 +1321,10 @@ static int virtual_module_bootstrap(CONF_SECTION *vm_cs)
 
 			/*
 			 *	Allow "foo.authorize" in subsections.
+			 *
+			 *	Note that we don't care what the method is, just that it exists.
 			 */
-			instance = module_by_name_and_method(NULL, NULL, cf_pair_attr(cp));
+			instance = module_by_name_and_method(NULL, NULL, NULL, NULL, cf_pair_attr(cp));
 			if (!instance) {
 				cf_log_err(sub_ci, "Module instance \"%s\" referenced in %s block, does not exist",
 					   cf_pair_attr(cp), cf_section_name1(vm_cs));
@@ -1356,6 +1375,7 @@ int modules_bootstrap(CONF_SECTION *root)
 
 	MEM(module_instance_name_tree = rbtree_create(NULL, module_instance_name_cmp, NULL, RBTREE_FLAG_NONE));
 	MEM(module_instance_data_tree = rbtree_create(NULL, module_instance_data_cmp, NULL, RBTREE_FLAG_NONE));
+
 	/*
 	 *	Remember where the modules were stored.
 	 */

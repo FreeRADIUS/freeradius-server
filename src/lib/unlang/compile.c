@@ -3031,7 +3031,7 @@ static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_compone
 
 
 static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
-				CONF_ITEM *ci, module_instance_t *inst,
+				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
 				unlang_group_type_t parentgroup_type, char const *realname)
 {
 	unlang_t *c;
@@ -3041,14 +3041,14 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	Check if the module in question has the necessary
 	 *	component.
 	 */
-	if (!inst->module->methods[unlang_ctx->component]) {
+	if (!method) {
 		if (unlang_ctx->section_name1 && unlang_ctx->section_name2) {
-			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s %s { ... }' "
-				   "sections -- they have no such method.", inst->module->name,
+			cf_log_err(ci, "The \"%s\" module does not have a '%s %s' method.",
+				   inst->module->name,
 				   unlang_ctx->section_name1, unlang_ctx->section_name2);
 		} else {
-			cf_log_err(ci, "\"%s\" modules aren't allowed in '%s { ... }' "
-				   "sections -- they have no such method.", inst->module->name,
+			cf_log_err(ci, "The \"%s\" module does not have a '%s' method.",
+				   inst->module->name,
 				   unlang_ctx->section_name1);
 		}
 
@@ -3057,7 +3057,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	single = talloc_zero(parent, unlang_module_t);
 	single->module_instance = inst;
-	single->method = inst->module->methods[unlang_ctx->component];
+	single->method = method;
 
 	c = unlang_module_to_generic(single);
 	c->parent = parent;
@@ -3138,6 +3138,7 @@ static unlang_t *compile_item(unlang_t *parent,
 	char const		*realname;
 	rlm_components_t	component = unlang_ctx->component;
 	unlang_compile_t	unlang_ctx2;
+	module_method_t		method;
 
 	if (cf_item_is_section(ci)) {
 		int i;
@@ -3390,17 +3391,18 @@ static unlang_t *compile_item(unlang_t *parent,
 	if (realname[0] == '-') realname++;
 
 	/*
-	 *	As of v3, the "modules" section contains
-	 *	modules we use.  Configuration for other
-	 *	modules belongs in raddb/mods-available/,
-	 *	which isn't loaded into the "modules" section.
+	 *	Set the child compilation context BEFORE parsing the
+	 *	module name and method.  The lookup function will take
+	 *	care of returning the appropriate component, name1,
+	 *	name2, etc.
 	 */
-	inst = module_by_name_and_method(&component, NULL, realname);
+	UPDATE_CTX2;
+	inst = module_by_name_and_method(&method, &unlang_ctx2.component,
+					 &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
+					 realname);
 	if (inst) {
-		UPDATE_CTX2;
-
 		*modname = inst->module->name;
-		return compile_module(parent, &unlang_ctx2, ci, inst, parent_group_type, realname);
+		return compile_module(parent, &unlang_ctx2, ci, inst, method, parent_group_type, realname);
 	}
 
 	/*
