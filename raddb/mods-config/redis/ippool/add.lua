@@ -22,6 +22,8 @@ redis.call("HSETNX", address_key, "counter", 0)
 -- Zero length ranges are allowed, and should be preserved
 if ARGV[2] then
   redis.call("HSET", address_key, "range", ARGV[2])
+else
+  redis.call("HDEL", address_key, "range")
 end
 
 return {
