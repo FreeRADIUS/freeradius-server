@@ -230,6 +230,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		p = strrchr(dir, FR_DIR_SEP);
 		if (!p) {
 			fr_strerror_printf("No '/' in '%s'", filename);
+			talloc_free(dir);
 			return -1;
 		}
 		*p = '\0';
