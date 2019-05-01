@@ -63,6 +63,25 @@ static fr_cmd_table_t cmd_module_table[];
 
 static int _module_instantiate(void *instance, UNUSED void *ctx);
 
+/*
+ *	Ordered by component
+ */
+const char *section_type_value[MOD_COUNT] = {
+	"authenticate",
+	"authorize",
+	"preacct",
+	"accounting",
+	"pre-proxy",
+	"post-proxy",
+	"post-auth"
+#ifdef WITH_COA
+	,
+	"recv-coa",
+	"send-coa"
+#endif
+};
+
+
 static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	module_instance_t *mi = ctx;
@@ -833,7 +852,7 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	 */
 	if (!q) {
 		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-			if (strcmp(section_type_value[i].section, p) != 0) continue;
+			if (strcmp(section_type_value[i], p) != 0) continue;
 
 			/*
 			 *	Tell the caller which component was

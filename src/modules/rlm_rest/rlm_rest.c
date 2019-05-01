@@ -1068,13 +1068,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (
 		(parse_sub_section(inst, conf, xlat_config, &inst->xlat, "xlat") < 0) ||
 		(parse_sub_section(inst, conf, section_config, &inst->authorize,
-				   section_type_value[MOD_AUTHORIZE].section) < 0) ||
+				   section_type_value[MOD_AUTHORIZE]) < 0) ||
 		(parse_sub_section(inst, conf, section_config, &inst->authenticate,
-				   section_type_value[MOD_AUTHENTICATE].section) < 0) ||
+				   section_type_value[MOD_AUTHENTICATE]) < 0) ||
 		(parse_sub_section(inst, conf, section_config, &inst->accounting,
-				   section_type_value[MOD_ACCOUNTING].section) < 0) ||
+				   section_type_value[MOD_ACCOUNTING]) < 0) ||
 		(parse_sub_section(inst, conf, section_config, &inst->post_auth,
-				   section_type_value[MOD_POST_AUTH].section) < 0))
+				   section_type_value[MOD_POST_AUTH]) < 0))
 	{
 		return -1;
 	}

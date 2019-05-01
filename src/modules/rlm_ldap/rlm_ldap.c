@@ -1421,7 +1421,7 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 {
 	CONF_SECTION *cs;
 
-	char const *name = section_type_value[comp].section;
+	char const *name = section_type_value[comp];
 
 	cs = cf_section_find(parent, name, NULL);
 	if (!cs) {

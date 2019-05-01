@@ -32,7 +32,6 @@ extern "C" {
 typedef struct rad_module_s module_t;
 typedef struct rad_module_method_names_s module_method_names_t;
 typedef struct module_instance_s module_instance_t;
-typedef struct section_type_value_s section_type_value_t;
 typedef struct module_thread_instance_s  module_thread_instance_t;
 
 #ifdef __cplusplus
@@ -55,21 +54,11 @@ extern "C" {
 
 extern const FR_NAME_NUMBER mod_rcode_table[];
 
-/** Map a section name, to a section typename, to an attribute number
- *
- * Used by module.c to define the mappings between names, types and control
- * attributes.
- */
-struct section_type_value_s {
-	char const      *section;		//!< Section name e.g. "Authorize".
-	int		attr;			//!< Attribute number.
-};
-
 /** Mappings between section names, and control attributes
  *
  * Defined in module.c.
  */
-extern const section_type_value_t section_type_value[];
+extern const char *section_type_value[MOD_COUNT];
 
 #define RLM_TYPE_THREAD_SAFE	(0 << 0) 	//!< Module is threadsafe.
 #define RLM_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.

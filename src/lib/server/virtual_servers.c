@@ -41,24 +41,6 @@ RCSID("$Id$")
 
 #include "virtual_servers.h"
 
-/*
- *	Ordered by component
- */
-const section_type_value_t section_type_value[MOD_COUNT] = {
-	{ "authenticate", FR_AUTH_TYPE },
-	{ "authorize",   FR_AUTZ_TYPE },
-	{ "preacct",     FR_PRE_ACCT_TYPE },
-	{ "accounting",  FR_ACCT_TYPE },
-	{ "pre-proxy",   FR_PRE_PROXY_TYPE },
-	{ "post-proxy",  FR_POST_PROXY_TYPE },
-	{ "post-auth",   FR_POST_AUTH_TYPE }
-#ifdef WITH_COA
-	,
-	{ "recv-coa",    FR_RECV_COA_TYPE },
-	{ "send-coa",    FR_SEND_COA_TYPE }
-#endif
-};
-
 typedef struct {
 	char const		*namespace;		//!< Namespace function is registered to.
 	fr_virtual_server_compile_t	func;		//!< Function to call to compile sections.
