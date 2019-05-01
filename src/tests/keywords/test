@@ -21,3 +21,5 @@ test.send.Access-Accept
 #  And a named "recv Access-Request" method.
 #
 test.recv.Access-Request
+
+success
