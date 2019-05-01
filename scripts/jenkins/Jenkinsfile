@@ -1,0 +1,35 @@
+platforms = ["ubuntu14", "ubuntu16", "ubuntu18","centos7","debian8","debian9"]
+def buildClosures(arg) {
+    println arg.inspect()
+    def platforms = arg
+    def closures = [:]
+    for (value in platforms) {
+        //final valueCopy = value
+
+        closures[value] = {platform ->
+                stage("build-${platform}") {
+                    docker.build("${platform}-test","-f ./scripts/jenkins/${platform}/Dockerfile ./scripts/jenkins/${platform}").inside {
+                        checkout([$class: 'GitSCM', branches: [[name: '*/v3.0.x']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanBeforeCheckout'],[$class: 'RelativeTargetDirectory', relativeTargetDir: "${platform}"]], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/mattrose/freeradius-server']]])
+                        sh "cat /etc/os-release || cat /etc/redhat-release"
+                        dir(platform) {
+                            if (platform.contains("centos")) {
+                                sh 'mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,BUILDROOT,RPMS,SRPMS}'
+                                sh 'tar -j -c --transform "s/./freeradius-server-$(cat VERSION)/" --exclude ".git" --exclude "rpmbuild" -f rpmbuild/SOURCES/freeradius-server-$(cat VERSION).tar.bz2 .'
+                                sh 'for file in $(grep "^Source...:" redhat/freeradius.spec | cut -d" " -f2) ; do cp redhat/$file rpmbuild/SOURCES/$file ; done'
+                                sh 'rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb redhat/freeradius.spec'
+                            } else {
+                                sh "make deb"
+                            }
+                        }
+                    }
+                }
+                echo platform.toString()
+            }.curry(value)
+    }
+    closures
+}
+
+node {
+    checkout scm
+    parallel buildClosures(platforms)
+}
