@@ -2228,6 +2228,7 @@ empty:
 		for (p = vpt->name; *p != '\0'; p++) {
 			if (*p == ' ') break;
 			if (*p == '\'') break;
+			if (*p == '.') continue;
 			if (!fr_dict_attr_allowed_chars[(uint8_t) *p]) break;
 		}
 		c = *p ? '"' : '\0';
