@@ -434,6 +434,25 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 	}
 
 	/*
+	 *	Sometimes the file permissions are changed externally.
+	 *	just be sure to update the permission if necessary.
+	 */
+	if ((st.st_mode & ~S_IFMT) != permissions) {
+		char str_need[10], oct_need[5];
+
+		rad_mode_to_oct(oct_need, permissions);
+		rad_mode_to_str(str_need, permissions);
+
+		WARN("Updating the file %s permission to %s (%s)", filename, oct_need, str_need);
+
+		if (fchmod(ef->entries[i].fd, permissions) < 0)	{
+			fr_strerror_printf("Failed to reset the file %s permissions to %s (%s)",
+				filename, oct_need, str_need);
+			goto error;
+		}
+	}
+
+	/*
 	 *	If we're appending, seek to the end of the file before
 	 *	returning the FD to the caller.
 	 */
