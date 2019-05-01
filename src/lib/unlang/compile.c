@@ -3038,6 +3038,19 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	unlang_module_t *single;
 
 	/*
+	 *	Can't use "chap" in "dhcp".
+	 */
+	if (inst->module->dict && *inst->module->dict && unlang_ctx->rules && unlang_ctx->rules->dict_def &&
+	    (unlang_ctx->rules->dict_def != fr_dict_internal) &&
+	    (*inst->module->dict != unlang_ctx->rules->dict_def)) {
+		cf_log_err(ci, "The \"%s\" module can only used with 'namespace = %s'.  It cannot be used with 'namespace = %s'.",
+			   inst->module->name,
+			   fr_dict_root(*inst->module->dict)->name,
+			   fr_dict_root(unlang_ctx->rules->dict_def)->name);
+		return NULL;
+	}
+
+	/*
 	 *	Check if the module in question has the necessary
 	 *	component.
 	 */

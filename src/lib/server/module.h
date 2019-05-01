@@ -177,6 +177,7 @@ struct rad_module_s {
 								//!< for modules.
 	module_method_t			methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
 	module_method_names_t const	*method_names;		//!< named methods
+	fr_dict_t			**dict;			//!< pointer to local fr_dict_t*
 };
 
 /** Per instance data

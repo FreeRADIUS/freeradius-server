@@ -210,6 +210,7 @@ module_t rlm_chap = {
 	.name		= "chap",
 	.inst_size	= sizeof(rlm_chap_t),
 	.bootstrap	= mod_bootstrap,
+	.dict		= &dict_radius,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
