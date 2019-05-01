@@ -102,3 +102,56 @@ socket abstraction from above.
 ## Control Socket
 
 We need equivalent functionality to v3, or close enough.
+
+## Named processing sections
+
+Instead of `authorize`, etc., allow for `recv Access-Request`
+
+The modules should export a list of names they support and functions, such as:
+
+* CF_IDENT_ANY
+* recv CF_IDENT_ANY
+* recv Access-Request
+* session start
+* session update
+* session stop
+* session check
+
+_Module export is done_.
+
+We may also need per-method instantitation / parsing functions, as
+with `rlm_rest`.  That is still TBD.
+
+We also need a way to call named methods for a module.  Right now, we
+do "module.METHOD", which doesn't work well for two names.  We then
+extend this to "module.NAME1.NAME2".
+
+_calling module methods is done_
+
+We could also do named subsections?  i.e.
+
+```
+recv Access-Request {
+	...
+	session start {
+		module
+	}
+}
+```
+
+_Named subsections is done_
+
+We should have a registry, so that the `fr_app_worker_t` can export a
+list of sections it accepts, and what is allowed in those sections.
+Then also what dictionary is used, and what packet types are allowed
+in those sections.
+
+We will hope that the packet names are different in every protocol.
+
+The `parse_rules()` should take a list of similar names, so that the
+`unlang_compile()` function can cross-correlate, and call the right
+function.
+
+The `subrequest` functionality also needs to be updated to handle
+this.  Initially just by allowing anything.  Or, later relying on the
+registry and packet types?
