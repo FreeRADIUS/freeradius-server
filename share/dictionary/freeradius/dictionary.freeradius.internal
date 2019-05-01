@@ -53,13 +53,13 @@ ATTRIBUTE	Connect-Rate				1007	integer
 ATTRIBUTE	Add-Prefix				1008	string
 ATTRIBUTE	Add-Suffix				1009	string
 ATTRIBUTE	Expiration				1010	date
-ATTRIBUTE	Autz-Type				1011	integer
-ATTRIBUTE	Acct-Type				1012	integer
-ATTRIBUTE	Session-Type				1013	integer
-ATTRIBUTE	Post-Auth-Type				1014	integer
-ATTRIBUTE	Pre-Proxy-Type				1015	integer
-ATTRIBUTE	Post-Proxy-Type				1016	integer
-ATTRIBUTE	Pre-Acct-Type				1017	integer
+#ATTRIBUTE	Autz-Type				1011	integer
+#ATTRIBUTE	Acct-Type				1012	integer
+#ATTRIBUTE	Session-Type				1013	integer
+#ATTRIBUTE	Post-Auth-Type				1014	integer
+#ATTRIBUTE	Pre-Proxy-Type				1015	integer
+#ATTRIBUTE	Post-Proxy-Type				1016	integer
+#ATTRIBUTE	Pre-Acct-Type				1017	integer
 
 #
 #	This is the EAP type of authentication, which is set
@@ -223,8 +223,8 @@ ATTRIBUTE	EAP-EMSK				1130	octets
 #
 #	For send/recv CoA packets (like Auth-Type, Acct-Type, etc.)
 #
-ATTRIBUTE	Recv-CoA-Type				1131	integer
-ATTRIBUTE	Send-CoA-Type				1132	integer
+#ATTRIBUTE	Recv-CoA-Type				1131	integer
+#ATTRIBUTE	Send-CoA-Type				1132	integer
 
 ATTRIBUTE	MS-CHAP-Password			1133	string
 ATTRIBUTE	Packet-Transmit-Counter			1134	integer
@@ -770,46 +770,46 @@ VALUE	Auth-Type			Accept			254
 #
 #	Authorization type, too.
 #
-VALUE	Autz-Type			Local			1
+#VALUE	Autz-Type			Local			1
 
 #
 #	And accounting
 #
-VALUE	Acct-Type			Local			1
+#VALUE	Acct-Type			Local			1
 
 #
 #	And Session handling
 #
-VALUE	Session-Type			Local			1
+#VALUE	Session-Type			Local			1
 
 #
 #	And Post-Auth
-VALUE	Post-Auth-Type			Local			1
-VALUE	Post-Auth-Type			Reject			2
-VALUE	Post-Auth-Type			Challenge		3
+#VALUE	Post-Auth-Type			Local			1
+#VALUE	Post-Auth-Type			Reject			2
+#VALUE	Post-Auth-Type			Challenge		3
 
 #
 #	And Post-Proxy
-VALUE	Post-Proxy-Type			Fail-Access-Request	1
-VALUE	Post-Proxy-Type			Fail-Authentication	1
+#VALUE	Post-Proxy-Type			Fail-Access-Request	1
+#VALUE	Post-Proxy-Type			Fail-Authentication	1
 
-VALUE	Post-Proxy-Type			Access-Reject		3
-VALUE	Post-Proxy-Type			Reject			3
+#VALUE	Post-Proxy-Type			Access-Reject		3
+#VALUE	Post-Proxy-Type			Reject			3
 
-VALUE	Post-Proxy-Type			Fail-Accounting-Request	4
-VALUE	Post-Proxy-Type			Fail-Accounting		4
+#VALUE	Post-Proxy-Type			Fail-Accounting-Request	4
+#VALUE	Post-Proxy-Type			Fail-Accounting		4
 
-VALUE	Post-Proxy-Type			Fail-Disconnect-Request	40
-VALUE	Post-Proxy-Type			Fail-Disconnect		40
+#VALUE	Post-Proxy-Type			Fail-Disconnect-Request	40
+#VALUE	Post-Proxy-Type			Fail-Disconnect		40
 
-VALUE	Post-Proxy-Type			Disconnect-NAK		42
+#VALUE	Post-Proxy-Type			Disconnect-NAK		42
 
-VALUE	Post-Proxy-Type			Fail-CoA-Request	43
-VALUE	Post-Proxy-Type			Fail-CoA		43
+#VALUE	Post-Proxy-Type			Fail-CoA-Request	43
+#VALUE	Post-Proxy-Type			Fail-CoA		43
 
-VALUE	Post-Proxy-Type			CoA-NAK			45
+#VALUE	Post-Proxy-Type			CoA-NAK			45
 
-VALUE	Post-Proxy-Type			Fail			256
+#VALUE	Post-Proxy-Type			Fail			256
 
 #
 #	Experimental Non-Protocol Integer Translations for FreeRADIUS

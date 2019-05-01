@@ -1126,15 +1126,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **pcond, char const **er
 
 						switch (da->attr) {
 						case FR_AUTH_TYPE:
-						case FR_AUTZ_TYPE:
-						case FR_ACCT_TYPE:
-						case FR_SESSION_TYPE:
-						case FR_POST_AUTH_TYPE:
-						case FR_PRE_PROXY_TYPE:
-						case FR_POST_PROXY_TYPE:
-						case FR_PRE_ACCT_TYPE:
-						case FR_RECV_COA_TYPE:
-						case FR_SEND_COA_TYPE:
 							/*
 							 *	The types for these attributes are dynamically allocated
 							 *	by module.c, so we can't enforce strictness here.
