@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 typedef struct rad_module_s module_t;
+typedef struct rad_module_method_names_s module_method_names_t;
 typedef struct module_instance_s module_instance_t;
 typedef struct section_type_value_s section_type_value_t;
 typedef struct module_thread_instance_s  module_thread_instance_t;
@@ -161,6 +162,18 @@ struct rad_submodule_s {
 	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
 };
 
+/** Named methods exported by a module
+ *
+ */
+struct rad_module_method_names_s {
+	char const	*name1;
+	char const	*name2;
+	module_method_t	method;
+};
+
+#define MODULE_NAME_TERMINATOR { .name1 = NULL }
+
+
 /** Struct exported by a rlm_* module
  *
  * Determines the capabilities of the module, and maps internal functions
@@ -174,6 +187,7 @@ struct rad_module_s {
 	int				type;			//!< Type flags that control calling conventions
 								//!< for modules.
 	module_method_t			methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
+	module_method_names_t const	*method_names;		//!< named methods
 };
 
 /** Per instance data

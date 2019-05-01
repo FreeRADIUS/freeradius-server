@@ -695,9 +695,12 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 					     char const **name1, char const **name2,
 					     char const *name)
 {
-	char			*p, *inst_name;
+	char			*p, *q, *inst_name;
+	size_t			len;
+	int			j;
 	rlm_components_t	i;
 	module_instance_t	*mi;
+	module_method_names_t const	*methods;
 
 	if (method) *method = NULL;
 
@@ -707,7 +710,58 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	 */
 	mi = module_by_name(NULL, name);
 	if (mi) {
-		if (method && component) *method = mi->module->methods[*component];
+		if (!method) return mi;
+
+		/*
+		 *	Prefer to call the "recv Access-Request"
+		 *	method over MOD_AUTHORIZE.
+		 */
+		if (name1 && *name1 && name2 && mi->module->method_names) {
+			for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
+				methods = &mi->module->method_names[j];
+
+				/*
+				 *	Wildcard match name1, we're
+				 *	done.
+				 */
+				if (methods->name1 == CF_IDENT_ANY) {
+				found:
+					*method = methods->method;
+					return mi;
+				}
+
+				/*
+				 *	If name1 doesn't match, skip it.
+				 */
+				if (strcmp(methods->name1, *name1) != 0) continue;
+
+				/*
+				 *	The module can declare a
+				 *	wildcard for name2, in which
+				 *	case it's a match.
+				 */
+				if (methods->name2 == CF_IDENT_ANY) goto found;
+
+				/*
+				 *	No name2 is also a match to no name2.
+				 */
+				if (!methods->name2 && !*name2) goto found;
+
+				/*
+				 *	Don't do strcmp on NULLs
+				 */
+				if (!methods->name2 || !*name2) continue;
+
+				if (strcmp(methods->name2, *name2) == 0) goto found;
+			}
+		}
+
+		/*
+		 *	We didn't find a matching name.  Return the
+		 *	method for the component, if any.
+		 */
+		if (component) *method = mi->module->methods[*component];
+
 		return mi;
 	}
 
@@ -716,43 +770,177 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	 *	a method, if it doesn't, then the module
 	 *	doesn't exist.
 	 */
-	p = strrchr(name, '.');
+	p = strchr(name, '.');
 	if (!p) return NULL;
 
 	/*
-	 *	The first bit MUST be the instance name.
+	 *	The module name may have a '.' in it, AND it may have
+	 *	a method <sigh> So we try to find out which is which.
 	 */
-	inst_name = talloc_bstrndup(NULL, name, p - name);
-	mi = module_by_name(NULL, inst_name);
-	talloc_free(inst_name);
-	if (!mi) return NULL;
+	inst_name = talloc_strdup(NULL, name);
+	p = inst_name + (p - name);
 
 	/*
-	 *	Set these names so that the caller gets told which
-	 *	method was being referenced here.
+	 *	Loop over the '.' portions, gradually looking up a
+	 *	longer string, in order to find the full module name.
 	 */
-	if (name1) *name1 = p + 1;
-	if (name2) *name2 = NULL;
+	do {
+		*p = '\0';
 
-	/*
-	 *	Find the component.
-	 */
-	for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-		if (strcmp(p + 1, section_type_value[i].section) != 0) continue;
+		mi = module_by_name(NULL, inst_name);
+		if (mi) break;
 
 		/*
-		 *	Tell the caller which component was
-		 *	referenced, and set the method to the found
-		 *	function.
+		 *	Find the next '.'
 		 */
-		if (component) {
-			*component = i;
-			if (method) *method = mi->module->methods[*component];
-		}
+		*p = '.';
+		p = strchr(p + 1, '.');
+	} while (p);
 
-		break;
+	/*
+	 *	No such module, we're done.
+	 */
+	if (!mi) {
+		talloc_free(inst_name);
+		return NULL;
 	}
 
+	/*
+	 *	We have a module, but the caller doesn't care about
+	 *	method or names, so just return the module.
+	 */
+	if (!name1 || !name2 || !method) {
+		talloc_free(inst_name);
+		return mi;
+	}
+
+	/*
+	 *	We MAY have two names.
+	 */
+	p++;
+	q = strchr(p, '.');
+
+	/*
+	 *	If there's only one component, look for it in the
+	 *	"authorize", etc. list first.
+	 */
+	if (!q) {
+		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
+			if (strcmp(section_type_value[i].section, p) != 0) continue;
+
+			/*
+			 *	Tell the caller which component was
+			 *	referenced, and set the method to the found
+			 *	function.
+			 */
+			if (component) {
+				*component = i;
+				if (method) *method = mi->module->methods[*component];
+			}
+
+			/*
+			 *	The string matched.  Return it.  Also set the
+			 *	names so that the caller gets told the method
+			 *	name being used.
+			 */
+			*name1 = name + (p - inst_name);
+			*name2 = NULL;
+			talloc_free(inst_name);
+			return mi;
+		}
+	}
+
+	/*
+	 *	We've found the module, but it has no named methods.
+	 */
+	if (!mi->module->method_names) {
+		talloc_free(inst_name);
+		return mi;
+	}
+
+	/*
+	 *	We CANNOT have '.' in method names.
+	 */
+	if (q && (strchr(q + 1, '.') != 0)) {
+		talloc_free(inst_name);
+		return mi;
+	}
+
+	/*
+	 *	We have "module.METHOD", but METHOD doesn't match
+	 *	"authorize", "authenticate", etc.  Let's see if it
+	 *	matches anything else.  We may also have
+	 *	"module.METHOD1.METHOD2".
+	 *
+	 *	Loop over the method names, seeing if we have a match.
+	 */
+	len = q - p;
+	for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
+		methods = &mi->module->method_names[j];
+
+		/*
+		 *	Wildcard match name1, we're
+		 *	done.
+		 */
+		if (methods->name1 == CF_IDENT_ANY) {
+			/*
+			 *	Allocate name1 from the module
+			 *	instance.  Perhaps not the best
+			 *	solution, but the caller needs a
+			 *	zero-terminated string, and we don't
+			 *	have one here.
+			 */
+			*name1 = talloc_bstrndup(mi, p, len);
+			*name2 = name + (q - inst_name);
+			*method = methods->method;
+			talloc_free(inst_name);
+			return mi;
+		}
+
+		/*
+		 *	If name1 doesn't match, skip it.
+		 */
+		if (strncmp(methods->name1, p, len) != 0) {
+		found2:
+			/*
+			 *	Update name1/name2 with the methods
+			 *	that were found.
+			 */
+			*name1 = methods->name1;
+			*name2 = name + (q - inst_name);
+			*method = methods->method;
+			talloc_free(inst_name);
+			return mi;
+		}
+
+		/*
+		 *	It may have been a partial match, like "rec",
+		 *	instead of "recv".  In which case check if it
+		 *	was a FULL match.
+		 */
+		if (strlen(methods->name1) != len) continue;
+
+		/*
+		 *	The module can declare a
+		 *	wildcard for name2, in which
+		 *	case it's a match.
+		 */
+		if (methods->name2 == CF_IDENT_ANY) goto found2;
+
+		/*
+		 *	No name2 is also a match to no name2.
+		 */
+		if (!methods->name2 && !q) goto found2;
+
+		/*
+		 *	Don't do strcmp on NULLs
+		 */
+		if (!methods->name2 || !q) continue;
+
+		if (strcmp(methods->name2, q) == 0) goto found2;
+	}
+
+	talloc_free(inst_name);
 	return mi;
 }
 
