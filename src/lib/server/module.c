@@ -713,6 +713,19 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		if (!method) return mi;
 
 		/*
+		 *	For now, prefer existing methods over named
+		 *	sections.  That is because modules can now
+		 *	export both old-style methods and new
+		 *	"wildcard" methods, which may do different
+		 *	things.
+		 */
+		if (component && mi->module->methods[*component]) {
+			*method = mi->module->methods[*component];
+			return mi;
+		}
+
+
+		/*
 		 *	Prefer to call the "recv Access-Request"
 		 *	method over MOD_AUTHORIZE.
 		 */
@@ -755,12 +768,6 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 				if (strcmp(methods->name2, *name2) == 0) goto found;
 			}
 		}
-
-		/*
-		 *	We didn't find a matching name.  Return the
-		 *	method for the component, if any.
-		 */
-		if (component) *method = mi->module->methods[*component];
 
 		return mi;
 	}

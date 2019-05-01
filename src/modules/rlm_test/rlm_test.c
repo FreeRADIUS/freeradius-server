@@ -326,11 +326,28 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, void *
 }
 #endif
 
+/*
+ *	Write accounting information to this modules database.
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_return(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+{
+	return RLM_MODULE_OK;
+}
+
 static int mod_detach(UNUSED void *instance)
 {
 	/* free things here */
 	return 0;
 }
+
+static const module_method_names_t method_names[] = {
+	{ CF_IDENT_ANY, CF_IDENT_ANY,	mod_return },
+	{ "send",	CF_IDENT_ANY,	mod_return },
+	{ "recv",	"Access-Challenge", mod_return },
+
+	MODULE_NAME_TERMINATOR
+};
+
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -361,4 +378,6 @@ module_t rlm_test = {
 		[MOD_ACCOUNTING]	= mod_accounting,
 #endif
 	},
+
+	.method_names = method_names,
 };
