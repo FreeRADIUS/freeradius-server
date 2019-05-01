@@ -632,13 +632,41 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 }
 
 static virtual_server_compile_t compile_list[] = {
-	{ "recv", "Access-Request",	MOD_AUTHORIZE },
-	{ "send", "Access-Accept",	MOD_POST_AUTH },
-	{ "send", "Access-Challenge",	MOD_POST_AUTH },
-	{ "send", "Access-Reject",	MOD_POST_AUTH },
-	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
-	{ "send", "Protocol-Error",    	MOD_POST_AUTH },
-	{ "authenticate", CF_IDENT_ANY,	MOD_AUTHENTICATE },
+	{
+		.name = "recv",
+		.name2 = "Access-Request",
+		.component = MOD_AUTHORIZE,
+	},
+	{
+		.name = "send",
+		.name2 = "Access-Accept",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "Access-Challenge",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "Access-Reject",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "Do-Not-Respond",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "Protocol-Error",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "authenticate",
+		.name2 = CF_IDENT_ANY,
+		.component = MOD_AUTHENTICATE,
+	},
 
 	COMPILE_TERMINATOR
 };

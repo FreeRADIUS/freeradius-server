@@ -228,14 +228,45 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 }
 
 static virtual_server_compile_t compile_list[] = {
-	{ "recv", "CoA-Request",	MOD_RECV_COA },
-	{ "send", "CoA-ACK",		MOD_SEND_COA },
-	{ "send", "CoA-NAK",		MOD_SEND_COA },
-	{ "recv", "Disconnect-Request",	MOD_RECV_COA },
-	{ "send", "Disconnect-ACK",    	MOD_SEND_COA },
-	{ "send", "Disconnect-NAK",    	MOD_SEND_COA },
-	{ "send", "Protocol-Error",    	MOD_POST_AUTH },
-	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
+	{
+		.name = "recv",
+		.name2 = "CoA-Request",\
+		.component = MOD_RECV_COA,
+	},
+	{
+		.name = "send",
+		.name2 = "CoA-ACK",
+		.component = MOD_SEND_COA,
+	},
+	{
+		.name = "send",.name2 = "CoA-NAK",
+		.component = MOD_SEND_COA,
+	},
+	{
+		.name = "recv",
+		.name2 = "Disconnect-Request",
+		.component = MOD_RECV_COA,
+	},
+	{
+		.name = "send",
+		.name2 = "Disconnect-ACK",
+		.component = MOD_SEND_COA,
+	},
+	{
+		.name = "send",
+		.name2 = "Disconnect-NAK",
+		.component = MOD_SEND_COA,
+	},
+	{
+		.name = "send",
+		.name2 = "Protocol-Error",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "Do-Not-Respond",
+		.component = MOD_POST_AUTH,
+	},
 
 	COMPILE_TERMINATOR
 };

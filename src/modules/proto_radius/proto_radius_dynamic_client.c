@@ -205,9 +205,21 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 
 static virtual_server_compile_t compile_list[] = {
-	{ "new", "client",		MOD_AUTHORIZE },
-	{ "add", "client",		MOD_POST_AUTH },
-	{ "deny", "client",		MOD_POST_AUTH },
+	{
+		.name = "new",
+		.name2 = "client",
+		.component = MOD_AUTHORIZE,
+	},
+	{
+		.name = "add",
+		.name2 = "client",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "deny",
+		.name2 = "client",
+		.component = MOD_POST_AUTH,
+	},
 
 	COMPILE_TERMINATOR
 };

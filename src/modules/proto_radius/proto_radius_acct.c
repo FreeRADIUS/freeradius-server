@@ -240,11 +240,31 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 
 static virtual_server_compile_t compile_list[] = {
-	{ "recv", "Accounting-Request",	MOD_PREACCT },
-	{ "send", "Accounting-Response", MOD_ACCOUNTING },
-	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
-	{ "send", "Protocol-Error",    	MOD_POST_AUTH },
-	{ "accounting", CF_IDENT_ANY,	MOD_ACCOUNTING },
+	{
+		.name = "recv",
+		.name2 = "Accounting-Request", 
+		.component = MOD_PREACCT,
+	},
+	{
+		.name = "send",
+		.name2 = "Accounting-Response",
+		.component = MOD_ACCOUNTING,
+	},
+	{
+		.name = "send",
+		.name2 = "Do-Not-Respond",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "Protocol-Error",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "accounting",
+		.name2 = CF_IDENT_ANY,
+		.component = MOD_ACCOUNTING,
+	},
 
 	COMPILE_TERMINATOR
 };

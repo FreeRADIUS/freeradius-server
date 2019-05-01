@@ -204,11 +204,31 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 
 static virtual_server_compile_t compile_list[] = {
-	{ "recv", "Join-Request",	MOD_AUTHORIZE },
-	{ "send", "Join-Response",	MOD_POST_AUTH },
-	{ "recv", "Reconfirm-Request",	MOD_AUTHORIZE },
-	{ "send", "Reconfirm-Response",	MOD_POST_AUTH },
-	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
+	{
+		.name = "recv",
+		.name2 = "Join-Request",
+		.component = MOD_AUTHORIZE,
+	},
+	{
+		.name = "send",
+		.name2 = "Join-Response",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "recv",
+		.name2 = "Reconfirm-Request",
+		.component = MOD_AUTHORIZE,
+	},
+	{
+		.name = "send",
+		.name2 = "Reconfirm-Response",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "Do-Not-Respond",
+		.component = MOD_POST_AUTH,
+	},
 
 	COMPILE_TERMINATOR
 };

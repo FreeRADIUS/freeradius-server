@@ -282,22 +282,74 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 
 
 static virtual_server_compile_t compile_list[] = {
-	{ "recv", "DHCP-Discover",	MOD_POST_AUTH },
-	{ "send", "DHCP-Offer",		MOD_POST_AUTH },
-	{ "recv", "DHCP-Request",	MOD_POST_AUTH },
+	{
+		.name = "recv",
+		.name2 = "DHCP-Discover",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "DHCP-Offer",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "recv",
+		.name2 = "DHCP-Request",
+		.component = MOD_POST_AUTH,
+	},
 
-	{ "send", "DHCP-Ack",		MOD_POST_AUTH },
-	{ "send", "DHCP-NAK",		MOD_POST_AUTH },
-	{ "send", "DHCP-Decline",	MOD_POST_AUTH },
+	{
+		.name = "send",
+		.name2 = "DHCP-Ack",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "DHCP-NAK",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "DHCP-Decline",
+		.component = MOD_POST_AUTH,
+	},
 
-	{ "recv", "DHCP-Release",	MOD_POST_AUTH },
-	{ "recv", "DHCP-Inform",	MOD_POST_AUTH },
-	{ "send", "Do-Not-Respond",	MOD_POST_AUTH },
+	{
+		.name = "recv",
+		.name2 = "DHCP-Release",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "recv",
+		.name2 = "DHCP-Inform",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "Do-Not-Respond",
+		.component = MOD_POST_AUTH,
+	},
 
-	{ "recv", "DHCP-Lease-Query",	MOD_POST_AUTH },
-	{ "send", "DHCP-Lease-Unassigned", MOD_POST_AUTH },
-	{ "send", "DHCP-Lease-Unknown",	MOD_POST_AUTH },
-	{ "send", "DHCP-Lease-Active",	MOD_POST_AUTH },
+	{
+		.name = "recv",
+		.name2 = "DHCP-Lease-Query",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "DHCP-Lease-Unassigned",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "DHCP-Lease-Unknown",
+		.component = MOD_POST_AUTH,
+	},
+	{
+		.name = "send",
+		.name2 = "DHCP-Lease-Active",
+		.component = MOD_POST_AUTH,
+	},
 
 	COMPILE_TERMINATOR
 };
