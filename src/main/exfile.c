@@ -145,7 +145,7 @@ static void exfile_cleanup_entry(exfile_entry_t *entry)
 
 
 /*
- *	Try to open the file. It it doesn't exist, try to
+ *	Try to open the file. If it doesn't exist, try to
  *	create it's parent directories.
  */
 static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissions)
@@ -166,6 +166,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		p = strrchr(dir, FR_DIR_SEP);
 		if (!p) {
 			fr_strerror_printf("No '/' in '%s'", filename);
+			talloc_free(dir);
 			return -1;
 		}
 		*p = '\0';
