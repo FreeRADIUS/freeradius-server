@@ -625,6 +625,7 @@ module_t rlm_digest = {
 	.name		= "digest",
 	.inst_size	= sizeof(rlm_digest_t),
 	.bootstrap	= mod_bootstrap,
+	.dict		= &dict_radius,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize

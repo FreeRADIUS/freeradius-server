@@ -450,6 +450,7 @@ module_t rlm_wimax = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_wimax_t),
 	.config		= module_config,
+	.dict		= &dict_radius,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
