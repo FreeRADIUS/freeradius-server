@@ -430,7 +430,7 @@ static void openssl_free(void *to_free, char const *file, int line)
 
 	snprintf(buffer, sizeof(buffer), "%s:%i", file, line);
 
-	return _talloc_free(to_free, buffer);
+	(void)_talloc_free(to_free, buffer);
 }
 #else
 static void openssl_free(void *to_free)
