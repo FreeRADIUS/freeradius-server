@@ -13,6 +13,8 @@ freeradius-dhcp
 freeradius-memcached
 freeradius-redis
 freeradius-yubikey
+freeradius.postinst.debhelper
+freeradius.postrm.debhelper
 freeradius
 libfreeradius-dev
 libfreeradius3
