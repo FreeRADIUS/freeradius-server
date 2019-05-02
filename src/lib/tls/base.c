@@ -434,10 +434,10 @@ static void openssl_free(void *to_free, char const *file, int line)
 }
 #else
 static void openssl_free(void *to_free)
-#endif
 {
 	(void)talloc_free(to_free);
 }
+#endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 /** Free any memory alloced by libssl
