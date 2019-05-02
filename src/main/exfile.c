@@ -503,7 +503,7 @@ int exfile_close(exfile_t *ef, int fd)
 		if (ef->entries[i].fd == fd) {
 			(void) lseek(ef->entries[i].fd, 0, SEEK_SET);
 			(void) rad_unlockfd(ef->entries[i].fd, 0);
-
+			TALLOC_FREE(ef->entries[i].filename);
 			PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
 			return 0;
 		}
