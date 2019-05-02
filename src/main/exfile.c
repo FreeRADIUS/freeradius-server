@@ -443,12 +443,11 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 		rad_mode_to_oct(oct_need, permissions);
 		rad_mode_to_str(str_need, permissions);
 
-		WARN("Updating the file %s permission to %s (%s)", filename, oct_need, str_need);
+		WARN("Correcting file %s permission to %s (%s)", filename, oct_need, str_need);
 
 		if (fchmod(ef->entries[i].fd, permissions) < 0)	{
-			fr_strerror_printf("Failed to reset the file %s permissions to %s (%s)",
-				filename, oct_need, str_need);
-			goto error;
+			WARN("Failed resetting file %s permissions to %s (%s): %s",
+			     filename, oct_need, str_need, fr_syserror(errno));
 		}
 	}
 
