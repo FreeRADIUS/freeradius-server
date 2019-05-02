@@ -861,13 +861,6 @@ int main(int argc, char *argv[])
 	if (xlat_init() < 0) EXIT_WITH_FAILURE;
 
 	/*
-	 *	Initialize Auth-Type, etc. in the virtual servers
-	 *	before loading the modules.  Some modules need those
-	 *	to be defined.
-	 */
-	if (virtual_servers_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
-
-	/*
 	 *	Bootstrap the modules.  This links to them, and runs
 	 *	their "bootstrap" routines.
 	 *
@@ -876,15 +869,16 @@ int main(int argc, char *argv[])
 	if (modules_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
 	/*
+	 *	Initialize Auth-Type, etc. in the virtual servers
+	 *	before loading the modules.  Some modules need those
+	 *	to be defined.
+	 */
+	if (virtual_servers_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
+
+	/*
 	 *	Instantiate the modules
 	 */
 	if (modules_instantiate() < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Create a dummy event list
-	 */
-	el = fr_event_list_alloc(NULL, NULL, NULL);
-	rad_assert(el != NULL);
 
 	/*
 	 *	And then load the virtual servers.
@@ -900,6 +894,12 @@ int main(int argc, char *argv[])
 	 *	Instantiate "permanent" paircmps
 	 */
 	if (paircmp_init() < 0) EXIT_WITH_FAILURE;
+
+	/*
+	 *	Create a dummy event list
+	 */
+	el = fr_event_list_alloc(NULL, NULL, NULL);
+	rad_assert(el != NULL);
 
 	/*
 	 *	Simulate thread specific instantiation
