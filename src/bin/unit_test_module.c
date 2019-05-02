@@ -759,6 +759,11 @@ int main(int argc, char *argv[])
 	if (tls_dict_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
+	if (modules_init() < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
+
 	/*
 	 *	Load the custom dictionary
 	 */

@@ -472,6 +472,11 @@ int main(int argc, char *argv[])
 	}
 #endif
 
+	if (modules_init() < 0) {
+		fr_perror("radiusd");
+		EXIT_WITH_FAILURE;
+	}
+
 	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */

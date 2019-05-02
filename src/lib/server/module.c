@@ -1060,6 +1060,18 @@ void modules_free(void)
 	TALLOC_FREE(instance_ctx);
 }
 
+static int module_section_name_cmp(void const *one, void const *two); /* will later be moved to virtual_servers.c */
+
+int modules_init(void)
+{
+	MEM(module_instance_name_tree = rbtree_create(NULL, module_instance_name_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(module_instance_data_tree = rbtree_create(NULL, module_instance_data_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(module_section_name_tree = rbtree_create(NULL, module_section_name_cmp, NULL, RBTREE_FLAG_NONE));
+	instance_ctx = talloc_init("module instance context");
+
+	return 0;
+}
+
 /** Destructor for module_thread_instance_t array
  */
 static int _module_thread_inst_array_free(module_thread_instance_t **array)
@@ -1585,11 +1597,6 @@ int modules_bootstrap(CONF_SECTION *root)
 	CONF_ITEM *ci, *next;
 	CONF_SECTION *cs, *modules;
 
-	instance_ctx = talloc_init("module instance context");
-
-	MEM(module_instance_name_tree = rbtree_create(NULL, module_instance_name_cmp, NULL, RBTREE_FLAG_NONE));
-	MEM(module_instance_data_tree = rbtree_create(NULL, module_instance_data_cmp, NULL, RBTREE_FLAG_NONE));
-
 	/*
 	 *	Remember where the modules were stored.
 	 */
@@ -1730,9 +1737,7 @@ int module_section_register(char const *name1, char const *name2, rlm_components
 {
 	module_section_name_t *sname;
 
-	if (!module_section_name_tree) {
-		MEM(module_section_name_tree = rbtree_create(NULL, module_section_name_cmp, NULL, RBTREE_FLAG_NONE));
-	}
+	rad_assert(module_section_name_tree != NULL);
 
 	sname = rbtree_finddata(module_section_name_tree,
 				&(module_section_name_t) {

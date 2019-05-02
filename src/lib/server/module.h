@@ -300,6 +300,8 @@ module_thread_instance_t *module_thread_by_data(void const *data);
  */
 void		module_free(module_instance_t *mi);
 
+int		modules_init(void);
+
 void		modules_free(void);
 
 int		modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull);
