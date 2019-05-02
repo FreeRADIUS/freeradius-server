@@ -349,11 +349,15 @@ static RADCLIENT *radclient_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
 	COPY_FIELD(server_cs);
 	COPY_FIELD(cs);
 	COPY_FIELD(proto);
+
 	COPY_FIELD(use_connected);
 
 #ifdef WITH_TLS
 	COPY_FIELD(tls_required);
 #endif
+
+	c->ipaddr = parent->ipaddr;
+	c->src_ipaddr = parent->src_ipaddr;
 
 	return c;
 
@@ -1314,7 +1318,7 @@ do_read:
 		memset(client, 0, sizeof(*client));
 
 		client->state = state;
-		client->src_ipaddr = radclient->ipaddr;
+		client->src_ipaddr = address.src_ipaddr;
 		client->radclient = radclient;
 		client->inst = inst;
 		client->thread = thread;
