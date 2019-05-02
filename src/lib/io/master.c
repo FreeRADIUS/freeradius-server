@@ -774,22 +774,22 @@ static void get_inst(fr_listen_t *li, fr_io_instance_t const **inst, fr_io_threa
 
 static RADCLIENT *radclient_alloc(TALLOC_CTX *ctx, int ipproto, fr_io_address_t *address)
 {
-	RADCLIENT *client;
+	RADCLIENT *radclient;
 
-	MEM(client = talloc_zero(ctx, RADCLIENT));
+	MEM(radclient = talloc_zero(ctx, RADCLIENT));
 
-	client->longname = client->shortname = fr_value_box_asprint(client, fr_box_ipaddr(address->src_ipaddr), '\0');
+	radclient->longname = radclient->shortname = fr_value_box_asprint(radclient, fr_box_ipaddr(address->src_ipaddr), '\0');
 
-	client->secret = client->nas_type = talloc_strdup(client, "");
+	radclient->secret = radclient->nas_type = talloc_strdup(radclient, "");
 
-	client->ipaddr = address->src_ipaddr;
+	radclient->ipaddr = address->src_ipaddr;
 
-	client->src_ipaddr = address->dst_ipaddr;
+	radclient->src_ipaddr = address->dst_ipaddr;
 
-	client->proto = ipproto;
-	client->dynamic = true;
+	radclient->proto = ipproto;
+	radclient->dynamic = true;
 
-	return client;
+	return radclient;
 }
 
 
