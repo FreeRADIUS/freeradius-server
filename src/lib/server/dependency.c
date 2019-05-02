@@ -432,6 +432,14 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
+	dependency_feature_add(cs, "systemd",
+#ifdef HAVE_SYSTEMD
+				true
+#else
+				false
+#endif
+				);
+
 	dependency_feature_add(cs, "tls",
 #ifdef WITH_TLS
 				true
