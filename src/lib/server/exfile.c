@@ -424,27 +424,25 @@ try_lock:
 	 *	locked it.  So, we close the current file, re-open it,
 	 *	and try again/
 	 */
-	if (ef->locking) {
-		for (tries = 0; tries < MAX_TRY_LOCK; tries++) {
-			if (rad_lockfd_nonblock(ef->entries[i].fd, 0) >= 0) break;
+	for (tries = 0; tries < MAX_TRY_LOCK; tries++) {
+		if (rad_lockfd_nonblock(ef->entries[i].fd, 0) >= 0) break;
 
-			if (errno != EAGAIN) {
-				fr_strerror_printf("Failed to lock file %s: %s", filename, fr_syserror(errno));
-				goto error;
-			}
-
-			close(ef->entries[i].fd);
-			ef->entries[i].fd = open(filename, O_RDWR | O_CREAT, permissions);
-			if (ef->entries[i].fd < 0) {
-				fr_strerror_printf("Failed to open file %s: %s", filename, fr_syserror(errno));
-				goto error;
-			}
-		}
-
-		if (tries >= MAX_TRY_LOCK) {
-			fr_strerror_printf("Failed to lock file %s: too many tries", filename);
+		if (errno != EAGAIN) {
+			fr_strerror_printf("Failed to lock file %s: %s", filename, fr_syserror(errno));
 			goto error;
 		}
+
+		close(ef->entries[i].fd);
+		ef->entries[i].fd = open(filename, O_RDWR | O_CREAT, permissions);
+		if (ef->entries[i].fd < 0) {
+			fr_strerror_printf("Failed to open file %s: %s", filename, fr_syserror(errno));
+			goto error;
+		}
+	}
+
+	if (tries >= MAX_TRY_LOCK) {
+		fr_strerror_printf("Failed to lock file %s: too many tries", filename);
+		goto error;
 	}
 
 	/*
