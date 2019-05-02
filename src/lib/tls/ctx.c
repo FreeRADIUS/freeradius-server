@@ -233,7 +233,8 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 		/*
 		 *	Seems to be a bug where
 		 *	SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR trashes the error,
-		 *	so have the function fail as normal.
+		 *	so have the function fail as normal
+		 *	without printing diagnostic info.
 		 */
 		case FR_TLS_CHAIN_VERIFY_SOFT:
 			if (!SSL_CTX_build_cert_chain(ctx, mode)) {
@@ -289,17 +290,11 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	int		ctx_options = 0;
 	void		*app_data_index;
 
-	SSL_BIND_OBJ_MEMORY(ctx = SSL_CTX_new(SSLv23_method())); /* which is really "all known SSL / TLS methods".  Idiots. */
+	ctx = SSL_CTX_new(SSLv23_method()); /* which is really "all known SSL / TLS methods".  Idiots. */
 	if (!ctx) {
 		tls_log_error(NULL, "Failed creating TLS context");
 		return NULL;
 	}
-
-	/*
-	 *	Bind any other memory to the ctx to fix
-	 *	leaks on exit.
-	 */
-	SSL_BIND_MEMORY_BEGIN(ctx);
 
 	/*
 	 *	Save the config on the context so that callbacks which
@@ -320,7 +315,6 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		if (!*conf->psk_query) {
 			ERROR("Invalid PSK Configuration: psk_query cannot be empty");
 		error:
-			SSL_BIND_MEMORY_END;
 			SSL_CTX_free(ctx);
 			return NULL;
 		}
@@ -827,11 +821,6 @@ post_ca:
 		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
 		if (ctx_dh_params_load(ctx, dh_file) < 0) goto error;
 	}
-
-	/*
-	 *	We're done configuring the ctx.
-	 */
-	SSL_BIND_MEMORY_END;
 
 	/*
 	 *	Setup session caching
