@@ -1318,7 +1318,7 @@ do_read:
 		memset(client, 0, sizeof(*client));
 
 		client->state = state;
-		client->src_ipaddr = address.src_ipaddr;
+		client->src_ipaddr = radclient->ipaddr;
 		client->radclient = radclient;
 		client->inst = inst;
 		client->thread = thread;
