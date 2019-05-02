@@ -401,6 +401,18 @@ int main(int argc, char *argv[])
 			INFO("systemd watchdog is disabled");
 		}
 	}
+#else
+	/*
+	 *	Some users get frustrated due to can't handle the service using "systemctl start radiusd"
+	 *	even when the SO supports systemd. The reason is because the FreeRADIUS version was built
+	 *	without the proper support.
+	 *
+	 *	Then, as can be seen in https://www.systutorials.com/docs/linux/man/3-sd_notify/
+	 *	We could assume that if find the NOTIFY_SOCKET, it's because we are under systemd.
+	 *
+	 */
+	if (getenv("NOTIFY_SOCKET"))
+		WARN("Built without support for systemd watchdog, but running under systemd.");
 #endif
 
 #ifndef __MINGW32__
