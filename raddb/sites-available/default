@@ -1049,9 +1049,9 @@ authenticate digest {
 #  that anything that can be done in PAM can be done easier in
 #  FreeRADIUS.
 #
-authenticate pam {
-	pam
-}
+#authenticate pam {
+#	pam
+#}
 
 #
 #  ### LDAP Authentication
