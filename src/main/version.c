@@ -415,6 +415,14 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
+	version_add_feature(cs, "systemd",
+#ifdef HAVE_SYSTEMD
+				true
+#else
+				false
+#endif
+				);
+
 	version_add_feature(cs, "tcp",
 #ifdef WITH_TCP
 				true
