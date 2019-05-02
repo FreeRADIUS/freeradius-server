@@ -759,16 +759,6 @@ int main(int argc, char *argv[])
 	if (tls_dict_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
-	if (modules_init() < 0) {
-		fr_perror("%s", config->name);
-		EXIT_WITH_FAILURE;
-	}
-
-	if (virtual_servers_init(config->root_cs) < 0) {
-		fr_perror("%s", config->name);
-		EXIT_WITH_FAILURE;
-	}
-
 	/*
 	 *	Load the custom dictionary
 	 */
@@ -796,6 +786,16 @@ int main(int argc, char *argv[])
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (main_config_init(config) < 0) {
+		EXIT_WITH_FAILURE;
+	}
+
+	if (modules_init() < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
+
+	if (virtual_servers_init(config->root_cs) < 0) {
+		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
 	}
 

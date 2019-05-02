@@ -473,6 +473,11 @@ int main(int argc, char *argv[])
 	}
 #endif
 
+	/*
+	 *  Read the configuration files, BEFORE doing anything else.
+	 */
+	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
+
 	if (modules_init() < 0) {
 		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
@@ -482,11 +487,6 @@ int main(int argc, char *argv[])
 		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
-
-	/*
-	 *  Read the configuration files, BEFORE doing anything else.
-	 */
-	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Set panic_action from the main config if one wasn't specified in the
