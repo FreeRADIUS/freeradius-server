@@ -99,6 +99,9 @@ typedef struct {
 
 int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules) CC_HINT(nonnull);
 
+int		virtual_server_section_component(rlm_components_t *component, char const *name1, char const *name2);
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -71,6 +71,13 @@ static CONF_SECTION *virtual_server_root;
 
 static rbtree_t *listen_addr_root = NULL;
 
+/** Lookup allowed section names for modules
+ */
+static rbtree_t *server_section_name_tree = NULL;
+
+static int server_section_name_cmp(void const *one, void const *two);
+static int virtual_server_section_register(virtual_server_compile_t const *entry);
+
 static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
 			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int listen_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
@@ -598,8 +605,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		return -1;
 	}
 
-	listen_addr_root = rbtree_create(config, listen_addr_cmp, NULL, RBTREE_FLAG_NONE);
-
 	/*
 	 *	Check the talloc hierarchy is sane
 	 */
@@ -885,6 +890,9 @@ int virtual_servers_init(CONF_SECTION *config)
 {
 	virtual_server_root = config;
 
+	MEM(listen_addr_root = rbtree_create(config, listen_addr_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(server_section_name_tree = rbtree_create(config, server_section_name_cmp, NULL, RBTREE_FLAG_NONE));
+
 	return 0;
 }
 
@@ -1051,7 +1059,7 @@ int fr_app_process_bootstrap(CONF_SECTION *server, dl_instance_t **type_submodul
 			for (j = 0; list[j].name != NULL; j++) {
 				if (list[j].name == CF_IDENT_ANY) continue;
 
-				if (module_section_register(list[j].name, list[j].name2, list[j].component) < 0) {
+				if (virtual_server_section_register(&list[j]) < 0) {
 					cf_log_err(conf, "Failed registering section name for %s",
 						app_process->name);
 					return -1;
@@ -1178,6 +1186,81 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 			if (rcode < 0) return -1;
 		}
 	}
+
+	return 0;
+}
+
+static int server_section_name_cmp(void const *one, void const *two)
+{
+	int rcode;
+	virtual_server_compile_t const *a = one;
+	virtual_server_compile_t const *b = two;
+
+	rcode = strcmp(a->name, b->name);
+	if (rcode != 0) return rcode;
+
+	if (a->name2 == b->name2) return 0;
+	if ((a->name2 == CF_IDENT_ANY) && (b->name2 != CF_IDENT_ANY)) return -1;
+	if ((a->name2 != CF_IDENT_ANY) && (b->name2 == CF_IDENT_ANY)) return +1;
+
+	return strcmp(a->name2, b->name2);
+}
+
+/** Register name1 / name2 as allowed processing sections
+ *
+ *  This function is called from the virtual server bootstrap routine,
+ *  which happens before module_bootstrap();
+ */
+static int virtual_server_section_register(virtual_server_compile_t const *entry)
+{
+	virtual_server_compile_t *old;
+
+	rad_assert(server_section_name_tree != NULL);
+
+	old = rbtree_finddata(server_section_name_tree, entry);
+	if (old) return 0;
+
+	if (!rbtree_insert(server_section_name_tree, entry)) {
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/** Find the component for a section
+ *
+ */
+int virtual_server_section_component(rlm_components_t *component, char const *name1, char const *name2)
+{
+	virtual_server_compile_t *entry;
+
+	rad_assert(server_section_name_tree != NULL);
+
+	/*
+	 *	Look up the wildcard name first.
+	 */
+	if (name2 != CF_IDENT_ANY) {
+		entry = rbtree_finddata(server_section_name_tree,
+					&(virtual_server_compile_t) {
+						.name = name1,
+						.name2 = CF_IDENT_ANY,
+					});
+		if (entry) goto done;
+	}
+
+	/*
+	 *	Then the specific name.
+	 */
+	entry = rbtree_finddata(server_section_name_tree,
+				&(virtual_server_compile_t) {
+					.name = name1,
+					.name2 = name2,
+				});
+	if (!entry) return -1;
+
+done:
+	*component = entry->component;
 
 	return 0;
 }

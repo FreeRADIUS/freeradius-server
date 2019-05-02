@@ -53,10 +53,6 @@ static rbtree_t *module_instance_name_tree;
  */
 static rbtree_t *module_instance_data_tree;
 
-/** Lookup allowed section names for modules
- */
-static rbtree_t *module_section_name_tree = NULL;
-
 /** Module command table
  */
 static fr_cmd_table_t cmd_module_table[];
@@ -1056,17 +1052,13 @@ void modules_free(void)
 
 	TALLOC_FREE(module_instance_name_tree);
 	TALLOC_FREE(module_instance_data_tree);
-	TALLOC_FREE(module_section_name_tree);
 	TALLOC_FREE(instance_ctx);
 }
-
-static int module_section_name_cmp(void const *one, void const *two); /* will later be moved to virtual_servers.c */
 
 int modules_init(void)
 {
 	MEM(module_instance_name_tree = rbtree_create(NULL, module_instance_name_cmp, NULL, RBTREE_FLAG_NONE));
 	MEM(module_instance_data_tree = rbtree_create(NULL, module_instance_data_cmp, NULL, RBTREE_FLAG_NONE));
-	MEM(module_section_name_tree = rbtree_create(NULL, module_section_name_cmp, NULL, RBTREE_FLAG_NONE));
 	instance_ctx = talloc_init("module instance context");
 
 	return 0;
@@ -1700,100 +1692,6 @@ int modules_bootstrap(CONF_SECTION *root)
 		      fr_strerror());
 		return -1;
 	}
-
-	return 0;
-}
-
-
-typedef struct {
-	char const	*name1;
-	char const	*name2;
-	rlm_components_t component;
-} module_section_name_t;
-
-
-static int module_section_name_cmp(void const *one, void const *two)
-{
-	int rcode;
-	module_section_name_t const *a = one;
-	module_section_name_t const *b = two;
-
-	rcode = strcmp(a->name1, b->name1);
-	if (rcode != 0) return rcode;
-
-	if (a->name2 == b->name2) return 0;
-	if ((a->name2 == CF_IDENT_ANY) && (b->name2 != CF_IDENT_ANY)) return -1;
-	if ((a->name2 != CF_IDENT_ANY) && (b->name2 == CF_IDENT_ANY)) return +1;
-
-	return strcmp(a->name2, b->name2);
-}
-
-/** Register name1 / name2 as allowed processing sections
- *
- *  This function is called from the virtual server bootstrap routine,
- *  which happens before module_bootstrap();
- */
-int module_section_register(char const *name1, char const *name2, rlm_components_t component)
-{
-	module_section_name_t *sname;
-
-	rad_assert(module_section_name_tree != NULL);
-
-	sname = rbtree_finddata(module_section_name_tree,
-				&(module_section_name_t) {
-					.name1 = name1,
-					.name2 = name2,
-				});
-	if (sname) return 0;
-
-	MEM(sname = talloc_zero(module_section_name_tree, module_section_name_t));
-
-	sname->name1 = name1;
-	sname->name2 = name2;
-	sname->component = component;
-
-	if (!rbtree_insert(module_section_name_tree, sname)) {
-		talloc_free(sname);
-		return -1;
-	}
-
-	return 0;
-}
-
-
-/** Find the component for a section
- *
- */
-int module_section_component(rlm_components_t *component, char const *name1, char const *name2)
-{
-	module_section_name_t *sname;
-
-	rad_assert(module_section_name_tree != NULL);
-
-	/*
-	 *	Look up the wildcard name first.
-	 */
-	if (name2 != CF_IDENT_ANY) {
-		sname = rbtree_finddata(module_section_name_tree,
-					&(module_section_name_t) {
-						.name1 = name1,
-						.name2 = CF_IDENT_ANY,
-					});
-		if (sname) goto done;
-	}
-
-	/*
-	 *	Then the specific name.
-	 */
-	sname = rbtree_finddata(module_section_name_tree,
-				&(module_section_name_t) {
-					.name1 = name1,
-					.name2 = name2,
-				});
-	if (!sname) return -1;
-
-done:
-	*component = sname->component;
 
 	return 0;
 }
