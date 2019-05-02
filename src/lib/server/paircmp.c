@@ -58,9 +58,7 @@ fr_dict_autoload_t paircmp_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_acct_type;
 static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_autz_type;
 static fr_dict_attr_t const *attr_client_ip_address;
 static fr_dict_attr_t const *attr_crypt_password;
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
@@ -72,7 +70,6 @@ static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_prefix;
 static fr_dict_attr_t const *attr_request_processing_stage;
-static fr_dict_attr_t const *attr_session_type;
 static fr_dict_attr_t const *attr_strip_user_name;
 static fr_dict_attr_t const *attr_stripped_user_name;
 static fr_dict_attr_t const *attr_suffix;
@@ -82,9 +79,6 @@ static fr_dict_attr_t const *attr_virtual_server;
 
 extern fr_dict_attr_autoload_t paircmp_dict_attr[];
 fr_dict_attr_autoload_t paircmp_dict_attr[] = {
-	{ .out = &attr_acct_type, .name = "Acct-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_autz_type, .name = "Autz-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
@@ -95,7 +89,6 @@ fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_prefix, .name = "Prefix", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_request_processing_stage, .name = "Request-Processing-Stage", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_session_type, .name = "Session-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_strip_user_name, .name = "Strip-User-Name", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_suffix, .name = "Suffix", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
@@ -592,9 +585,6 @@ int paircmp(REQUEST *request,
 		 */
 		if ((check_item->da == attr_crypt_password) ||
 		    (check_item->da == attr_auth_type) ||
-		    (check_item->da == attr_autz_type) ||
-		    (check_item->da == attr_acct_type) ||
-		    (check_item->da == attr_session_type) ||
 		    (check_item->da == attr_strip_user_name)) {
 			continue;
 		}
