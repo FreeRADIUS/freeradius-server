@@ -424,7 +424,14 @@ static void *openssl_realloc(void *old, size_t len)
  * @param to_free memory to free.
  */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-static void openssl_free(void *to_free, UNUSED char const *file, UNUSED int line)
+static void openssl_free(void *to_free, char const *file, int line)
+{
+	char buffer[256];
+
+	snprintf(buffer, sizeof(buffer), "%s:%i", file, line);
+
+	return _talloc_free(to_free, buffer);
+}
 #else
 static void openssl_free(void *to_free)
 #endif
