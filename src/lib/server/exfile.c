@@ -469,6 +469,24 @@ try_lock:
 	ef->entries[i].st_ino = st.st_ino;
 
 	/*
+	 *	Sometimes the file permissions are changed externally.
+	 *	just be sure to update the permission if necessary.
+	 */
+	if ((st.st_mode & ~S_IFMT) != permissions) {
+		char str_need[10], oct_need[5];
+
+		rad_mode_to_oct(oct_need, permissions);
+		rad_mode_to_str(str_need, permissions);
+
+		WARN("Correcting file %s permission to %s (%s)", filename, oct_need, str_need);
+
+		if (fchmod(ef->entries[i].fd, permissions) < 0)	{
+			WARN("Failed resetting file %s permissions to %s (%s): %s",
+			     filename, oct_need, str_need, fr_syserror(errno));
+		}
+	}
+
+	/*
 	 *	Seek to the end of the file before returning the FD to
 	 *	the caller.
 	 */
