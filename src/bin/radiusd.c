@@ -478,6 +478,11 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	if (virtual_servers_init(config->root_cs) < 0) {
+		fr_perror("%s", program);
+		EXIT_WITH_FAILURE;
+	}
+
 	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
@@ -979,6 +984,11 @@ cleanup:
 	 *  Free any resources used by the unlang interpreter.
 	 */
 	unlang_free();
+
+	/*
+	 *	Free information associated with the virtual servers.
+	 */
+	virtual_servers_free();
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */

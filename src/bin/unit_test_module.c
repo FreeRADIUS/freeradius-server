@@ -764,6 +764,11 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	if (virtual_servers_init(config->root_cs) < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
+
 	/*
 	 *	Load the custom dictionary
 	 */
@@ -1150,6 +1155,11 @@ cleanup:
 	 *	Free any resources used by the unlang interpreter.
 	 */
 	unlang_free();
+
+	/*
+	 *	Free information associated with the virtual servers.
+	 */
+	virtual_servers_free();
 
 	/*
 	 *	And now nothing should be left anywhere except the

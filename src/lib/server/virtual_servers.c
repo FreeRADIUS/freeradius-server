@@ -593,8 +593,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	size_t i, server_cnt = 0;
 	CONF_SECTION *cs = NULL;
 
-	virtual_server_root = config;
-
 	if (!virtual_servers) {
 		ERROR("No server { ... } sections found");
 		return -1;
@@ -882,6 +880,19 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 
 	return 0;
 }
+
+int virtual_servers_init(CONF_SECTION *config)
+{
+	virtual_server_root = config;
+
+	return 0;
+}
+
+int virtual_servers_free(void)
+{
+	return 0;
+}
+
 
 /**
  */

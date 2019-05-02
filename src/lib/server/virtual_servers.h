@@ -45,6 +45,11 @@ int		virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const
 int		virtual_servers_instantiate(void);
 
 int		virtual_servers_bootstrap(CONF_SECTION *config);
+
+int		virtual_servers_init(CONF_SECTION *config) CC_HINT(nonnull);
+
+int		virtual_servers_free(void);
+
 /** @} */
 
 /** @name Runtime management
