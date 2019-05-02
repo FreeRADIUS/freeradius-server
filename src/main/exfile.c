@@ -439,13 +439,22 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 	 */
 	if ((st.st_mode & ~S_IFMT) != permissions) {
 		char str_need[10], oct_need[5];
+		char str_have[10], oct_have[5];
 
 		rad_mode_to_oct(oct_need, permissions);
 		rad_mode_to_str(str_need, permissions);
 
-		WARN("Correcting file %s permission to %s (%s)", filename, oct_need, str_need);
+		rad_mode_to_oct(oct_have, st.st_mode & ~S_IFMT);
+		rad_mode_to_str(str_have, st.st_mode & ~S_IFMT);
 
-		if (fchmod(ef->entries[i].fd, permissions) < 0)	{
+		WARN("File %s permissions are %s (%s) not %s (%s))", filename,
+		     oct_have, str_have, oct_need, str_need);
+
+		if (((st.st_mode | permissions) != st.st_mode) &&
+		    (fchmod(ef->entries[i].fd, (st.st_mode & ~S_IFMT) | permissions) < 0)) {
+			rad_mode_to_oct(oct_need, (st.st_mode & ~S_IFMT) | permissions);
+			rad_mode_to_str(str_need, (st.st_mode & ~S_IFMT) | permissions);
+			
 			WARN("Failed resetting file %s permissions to %s (%s): %s",
 			     filename, oct_need, str_need, fr_syserror(errno));
 		}
