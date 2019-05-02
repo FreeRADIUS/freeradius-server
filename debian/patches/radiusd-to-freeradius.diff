@@ -63,24 +63,26 @@
 
  			#
  			#  Access mode.
+diff --git a/src/bin/radiusd.c b/src/bin/radiusd.c
+index dd8d82d..f573ce5 100644
 --- a/src/bin/radiusd.c
 +++ b/src/bin/radiusd.c
-@@ -231,13 +231,11 @@ int main(int argc, char *argv[])
+@@ -227,14 +227,11 @@ int main(int argc, char *argv[])
+ 	}
+ 
  	/*
- 	 *	Set some default values
--	 */
--	p = strrchr(argv[0], FR_DIR_SEP);
--	if (!p) {
--		main_config_name_set_default(config, argv[0], false);
--	} else {
--		main_config_name_set_default(config, p + 1, false);
--	}
+-	 *	Set some default values
 +	 *
 +	 *	Debian changes the binary name to "freeradius", but
 +	 *	leaves the configuration file as "radiusd.conf".
-+	 */
-+	main_config_name_set_default(config, "radiusd", false);
-
+ 	 */
+-	program = strrchr(argv[0], FR_DIR_SEP);
+-	if (!program) {
+-		program = argv[0];
+-	} else {
+-		program++;
+-	}
++	program = "radiusd";
+ 	main_config_name_set_default(config, program, false);
+ 
  	config->daemonize = true;
- 	config->spawn_workers = true;
-

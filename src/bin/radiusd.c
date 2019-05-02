@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 	bool		display_version = false;
 	bool		radmin = false;
 	int		from_child[2] = {-1, -1};
-	char		*p;
+	char		*program;
 	fr_schedule_t	*sc = NULL;
 	int		ret = EXIT_SUCCESS;
 
@@ -229,12 +229,13 @@ int main(int argc, char *argv[])
 	/*
 	 *	Set some default values
 	 */
-	p = strrchr(argv[0], FR_DIR_SEP);
-	if (!p) {
-		main_config_name_set_default(config, argv[0], false);
+	program = strrchr(argv[0], FR_DIR_SEP);
+	if (!program) {
+		program = argv[0];
 	} else {
-		main_config_name_set_default(config, p + 1, false);
+		program++;
 	}
+	main_config_name_set_default(config, program, false);
 
 	config->daemonize = true;
 	config->spawn_workers = true;
@@ -461,19 +462,19 @@ int main(int argc, char *argv[])
 	 *	the protocols.
 	 */
 	if (fr_dict_global_init(global_ctx, config->dict_dir) < 0) {
-		fr_perror("radiusd");
+		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	if (tls_dict_init() < 0) {
-		fr_perror("radiusd");
+		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
 #endif
 
 	if (modules_init() < 0) {
-		fr_perror("radiusd");
+		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
 
