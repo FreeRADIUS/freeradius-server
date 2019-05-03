@@ -91,10 +91,11 @@ post-auth {
 	#  un-comment the following line, and enable the
 	#  'detail reply_log' module.
 #	reply_log
+
 	#
 	#  After authenticating the user, do another SQL query.
 	#
-	#  See "Authentication Logging Queries" in sql.conf
+	#  See "Authentication Logging Queries" in `mods-config/sql/main/$driver/queries.conf`
 	-sql
 
 	#

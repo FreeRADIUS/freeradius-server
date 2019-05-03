@@ -116,7 +116,7 @@ accounting {
 	#  was NOT handled properly, and will keep trying to process it
 	#  through this virtual server!
 	#
-	#  See "Accounting queries" in sql.conf
+	#  See "Accounting queries" in `mods-config/sql/main/$driver/queries.conf`
 #	sql
 
 	#  Cisco VoIP specific bulk accounting

@@ -7,7 +7,7 @@
 #  $Id$
 
 sqlippool {
-	# SQL instance to use (from sql.conf)
+	# SQL instance to use (from mods-available/sql)
 	#
 	#  If you have multiple sql instances, such as "sql sql1 {...}",
 	#  use the *instance* name here: sql1.
