@@ -662,19 +662,19 @@ int main(int argc, char *argv[])
 	if (unlang_init() < 0) EXIT_WITH_FAILURE;
 
 	/*
+	 *	Initialize Auth-Type, etc. in the virtual servers
+	 *	before loading the modules.  Some modules need those
+	 *	to be defined.
+	 */
+	if (virtual_servers_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
+
+	/*
 	 *	Bootstrap the modules.  This links to them, and runs
 	 *	their "bootstrap" routines.
 	 *
 	 *	After this step, all dynamic attributes, xlats, etc. are defined.
 	 */
 	if (modules_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
-
-	/*
-	 *	Initialize Auth-Type, etc. in the virtual servers
-	 *	before loading the modules.  Some modules need those
-	 *	to be defined.
-	 */
-	if (virtual_servers_bootstrap(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	And then load the virtual servers.
