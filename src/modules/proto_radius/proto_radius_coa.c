@@ -38,10 +38,14 @@ fr_dict_autoload_t proto_radius_coa_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_service_type;
+static fr_dict_attr_t const *attr_state;
 
 extern fr_dict_attr_autoload_t proto_radius_coa_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_coa_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_service_type, .name = "Service-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -79,6 +83,19 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:Packet-Type");
 			return FR_IO_FAIL;
+		}
+
+		/*
+		 *	We require a State attribute for
+		 *	re-authorization requests.
+		 */
+		if (request->packet->code == FR_CODE_COA_REQUEST) {
+			vp = fr_pair_find_by_da(request->reply->vps, attr_service_type, TAG_ANY);
+			if (vp && !fr_pair_find_by_da(request->reply->vps, attr_state, TAG_ANY)) {
+				REDEBUG("CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
+				request->reply->code = FR_CODE_COA_NAK;
+				goto nak;
+			}
 		}
 
 		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
@@ -129,6 +146,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
 		if (vp) request->reply->code = vp->vp_uint32;
 
+	nak:
 		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
