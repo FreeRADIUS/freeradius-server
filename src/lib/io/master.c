@@ -2099,7 +2099,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 */
 	if (buffer_len == 1) {
 		client->state = PR_CLIENT_NAK;
-		talloc_free(client->pending);
+		TALLOC_FREE(client->pending);
 		if (client->table) TALLOC_FREE(client->table);
 		rad_assert(client->packets == 0);
 
