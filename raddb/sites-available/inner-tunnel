@@ -276,7 +276,7 @@ send Access-Accept {
 
 	#
 	#  Un-comment the following if you have set
-	#  'edir_account_policy_check = yes' in the ldap module sub-section of
+	#  'edir = yes' in the ldap module sub-section of
 	#  the 'modules' section.
 	#
 #	ldap
@@ -297,7 +297,7 @@ send Access-Accept {
 #  post-auth section.
 #
 #  Add the ldap module name (or instance) if you have set
-#  'edir_account_policy_check = yes' in the ldap module configuration
+#  'edir = yes' in the ldap module configuration
 #
 send Access-Reject {
 	#  log failed authentications in SQL, too.
