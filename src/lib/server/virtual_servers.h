@@ -89,10 +89,20 @@ bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
 int fr_app_process_bootstrap(CONF_SECTION *server, dl_instance_t **type_submodule, CONF_SECTION *conf);
 int fr_app_process_instantiate(CONF_SECTION *server, dl_instance_t **type_submodule, dl_instance_t **type_submodule_by_code, int code_max, CONF_SECTION *conf);
 
+
+/** Module methods which are allowed in virtual servers.
+ *
+ */
+typedef struct {
+	char const		*name;
+	char const		*name2;
+} virtual_server_method_t;
+
 typedef struct {
 	char const		*name;
 	char const		*name2;
 	rlm_components_t	component;
+	virtual_server_method_t *methods;
 } virtual_server_compile_t;
 
 #define COMPILE_TERMINATOR { .name = NULL, .name2 = NULL }

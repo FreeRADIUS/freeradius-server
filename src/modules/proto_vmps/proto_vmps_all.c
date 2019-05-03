@@ -48,7 +48,7 @@ fr_dict_attr_autoload_t proto_vmps_all_dict_attr[] = {
 	{ NULL }
 };
 
-static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, UNUSED fr_io_action_t action)
+static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 {
 	rlm_rcode_t		rcode;
 	CONF_SECTION		*unlang;

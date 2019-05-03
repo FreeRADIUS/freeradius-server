@@ -1013,7 +1013,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	if ((*request->async->original_recv_time == request->async->recv_time) &&
 	    (request->async->fake ||
 	     fr_channel_active(request->async->channel))) {
-		final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
+		final = request->async->process(request->async->process_inst, request);
 
 	} else {
 		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);

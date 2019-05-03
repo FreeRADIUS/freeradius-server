@@ -159,7 +159,7 @@ runit:
 	}
 
 	RDEBUG("server %s {", cf_section_name2(request->server_cs));
-	final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
+	final = request->async->process(request->async->process_inst, request);
 	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
 	fr_cond_assert(final == FR_IO_REPLY);

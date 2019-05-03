@@ -240,7 +240,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	talloc_free(msg);
 }
 
-static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_action_t action)
+static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 {
 	proto_radius_auth_t const	*inst = instance;
 	VALUE_PAIR			*vp, *auth_type;
@@ -250,15 +250,6 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request, fr_io_a
 	fr_cursor_t			cursor;
 
 	REQUEST_VERIFY(request);
-
-	/*
-	 *	Pass this through asynchronously to the module which
-	 *	is waiting for something to happen.
-	 */
-	if (action != FR_IO_ACTION_RUN) {
-		unlang_interpret_signal(request, (fr_state_signal_t) action);
-		return FR_IO_DONE;
-	}
 
 	switch (request->request_state) {
 	case REQUEST_INIT:

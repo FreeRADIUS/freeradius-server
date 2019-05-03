@@ -46,16 +46,6 @@ typedef struct {
 } fr_io_stats_t;
 
 /**
- *  Tell an async process function if it should run or exit.
- */
-typedef enum {
-	FR_IO_ACTION_INVALID = 0,
-	FR_IO_ACTION_RUN,
-	FR_IO_ACTION_DONE,
-	FR_IO_ACTION_DUP,
-} fr_io_action_t;
-
-/**
  *  Answer from an async process function if the worker should yield,
  *  reply, or drop the request.
  */
@@ -339,7 +329,7 @@ typedef int (*fr_io_close_t)(fr_listen_t *li);
  *				for the #fr_app_worker_t that gave us the
  *				entry point.
  */
-typedef	fr_io_final_t (*fr_io_process_t)(void const *instance, REQUEST *request, fr_io_action_t action);
+typedef	fr_io_final_t (*fr_io_process_t)(void const *instance, REQUEST *request);
 
 /*
  *	Structures and definitions for the master IO handler.

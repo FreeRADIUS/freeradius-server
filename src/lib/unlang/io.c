@@ -33,20 +33,11 @@ RCSID("$Id$")
  *
  * This is a shim function added to 'fake' requests by the subrequest and parallel keywords.
  */
-fr_io_final_t unlang_io_process_interpret(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
+fr_io_final_t unlang_io_process_interpret(UNUSED void const *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 
 	REQUEST_VERIFY(request);
-
-	/*
-	 *	Pass this through asynchronously to the module which
-	 *	is waiting for something to happen.
-	 */
-	if (action != FR_IO_ACTION_RUN) {
-		unlang_interpret_signal(request, (fr_state_signal_t) action);
-		return FR_IO_DONE;
-	}
 
 	rcode = unlang_interpret_resume(request);
 

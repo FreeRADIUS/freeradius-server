@@ -114,7 +114,7 @@ static unlang_action_t unlang_call(REQUEST *request,
 	 *	(e.g. Access-Request -> Accounting-Request) unless
 	 *	we're in a subrequest.
 	 */
-	final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
+	final = request->async->process(request->async->process_inst, request);
 
 	RDEBUG("} # server %s", server);
 

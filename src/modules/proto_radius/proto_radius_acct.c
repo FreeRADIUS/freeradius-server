@@ -48,7 +48,7 @@ fr_dict_attr_autoload_t proto_radius_acct_dict_attr[] = {
 };
 
 
-static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, fr_io_action_t action)
+static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 {
 	VALUE_PAIR 	*vp;
 	rlm_rcode_t	rcode;
@@ -56,15 +56,6 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request, 
 	fr_dict_enum_t	const *dv;
 
 	REQUEST_VERIFY(request);
-
-	/*
-	 *	Pass this through asynchronously to the module which
-	 *	is waiting for something to happen.
-	 */
-	if (action != FR_IO_ACTION_RUN) {
-		unlang_interpret_signal(request, (fr_state_signal_t) action);
-		return FR_IO_DONE;
-	}
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
