@@ -52,7 +52,7 @@ sub process_file {
 		#
 		#  Skip editor commands
 		#
-		if (/^# -\*- text -\*-/) {
+		if (/^#\s*-\*- text -\*-/) {
 			next;
 		}
 
