@@ -555,13 +555,13 @@ int main(int argc, char *argv[])
 	}
 #else
 	/*
-	 *	Some users get frustrated due to can't handle the service using "systemctl start radiusd"
-	 *	even when the SO supports systemd. The reason is because the FreeRADIUS version was built
-	 *	without the proper support.
+	 *	If the default systemd unit file is used, but the server wasn't
+	 *	built with support for systemd, the status returned by systemctl
+	 *	will stay permanently as "activating".
 	 *
-	 *	Then, as can be seen in https://www.systutorials.com/docs/linux/man/3-sd_notify/
-	 *	We could assume that if find the NOTIFY_SOCKET, it's because we are under systemd.
-	 *
+	 *	We detect this condition and warn about it here, using the
+	 *	presence of the NOTIFY_SOCKET envrionmental variable to determine
+	 *	whether we're running under systemd.
 	 */
 	if (getenv("NOTIFY_SOCKET"))
 		INFO("Built without support for systemd watchdog, but running under systemd.");
