@@ -323,6 +323,7 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  */
 int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const *subcs_name, fr_dict_attr_t const *da)
 {
+	int			rcode = 0;
 	CONF_SECTION		*subcs = NULL;
 
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
@@ -356,9 +357,11 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 			PERROR("Failed adding section value");
 			return -1;
 		}
+
+		rcode = 1;
 	}
 
-	return 0;
+	return rcode;
 }
 
 
