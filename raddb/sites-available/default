@@ -846,7 +846,7 @@ post-auth {
 	#  post-auth section.
 	#
 	#  Add the ldap module name (or instance) if you have set
-	#  'edir_account_policy_check = yes' in the ldap module configuration
+	#  'edir = yes' in the ldap module configuration
 	#
 	#  The "session-state" attributes are not available here.
 	#
