@@ -2008,7 +2008,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		el = thread->el;
 	}
 
-
 	if (client->pending) packets += fr_heap_num_elements(client->pending);
 
 	/*
