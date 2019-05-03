@@ -12,7 +12,7 @@
 
 server abfab-idp {
 recv Access-Request {
-        psk_authorize
+        abfab_psk_authorize
 	abfab_client_check
 	filter_username
 

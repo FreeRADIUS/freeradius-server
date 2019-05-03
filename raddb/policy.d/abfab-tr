@@ -8,7 +8,7 @@
 #
 # Verify rp parameters
 #
-psk_authorize {
+abfab_psk_authorize {
 	if (&TLS-PSK-Identity) {
 		# TODO: may need to check trust-router-apc as well
 		if ("%{psksql:select distinct keyid from authorizations_keys where keyid = '%{tls-psk-identity}' and '%{trust-router-coi}' like coi and '%{gss-acceptor-realm-name}' like acceptor_realm and '%{gss-acceptor-host-name}' like hostname;}") {
