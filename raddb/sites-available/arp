@@ -24,11 +24,17 @@
 #
 
 #
-#  ## The Virtual Server
+#  # Example configuration
+#
+
+#
+#  ## server arp { ... }
 #
 #  This is the default `arp` virtual server.
 #
 server arp {
+	#
+	#  ### listen { ... }
 	#
 	#  Please see `listen` for more.
 	#
@@ -46,7 +52,9 @@ server arp {
 	}
 
 	#
-	#  arp { ... }:: If you need to know the interface, use `%{listen:interface}`
+	#  ### arp { ... }
+	#
+	#  If you need to know the interface, use `%{listen:interface}`
 	#
 	arp {
 		ok
