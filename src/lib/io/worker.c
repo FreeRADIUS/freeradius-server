@@ -66,6 +66,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/dlist.h>
 
 /**
@@ -585,7 +586,7 @@ finished:
 static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t now)
 {
 	fr_time_tracking_resume(&request->async->tracking, now, &worker->tracking);
-	(void) request->async->process(request->async->process_inst, request, FR_IO_ACTION_DONE);
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 
 	/*
 	 *	The request is ALWAYS in the time_order list.  It MAY
@@ -939,7 +940,7 @@ nak:
 			 *	running, but is yielded.  It MAY clean
 			 *	itself up, or do something...
 			 */
-			(void) old->async->process(request->async->process_inst, old, FR_IO_ACTION_DUP);
+			unlang_interpret_signal(old, FR_SIGNAL_DUP);
 			worker->stats.dup++;
 			return NULL;
 		}
@@ -1015,9 +1016,8 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_RUN);
 
 	} else {
-		final = request->async->process(request->async->process_inst, request, FR_IO_ACTION_DONE);
-
-		rad_assert(final == FR_IO_DONE);
+		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+		final = FR_IO_DONE;
 	}
 
 	/*
