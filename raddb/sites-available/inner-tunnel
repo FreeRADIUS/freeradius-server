@@ -308,7 +308,7 @@ post-auth {
 
 	#
 	#  Un-comment the following if you have set
-	#  'edir_account_policy_check = yes' in the ldap module sub-section of
+	#  'edir = yes' in the ldap module sub-section of
 	#  the 'modules' section.
 	#
 #	ldap
@@ -365,7 +365,7 @@ post-auth {
 	#  post-auth section.
 	#
 	#  Add the ldap module name (or instance) if you have set
-	#  'edir_account_policy_check = yes' in the ldap module configuration
+	#  'edir = yes' in the ldap module configuration
 	#
 	Post-Auth-Type REJECT {
 		# log failed authentications in SQL, too.
