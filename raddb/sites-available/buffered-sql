@@ -147,7 +147,7 @@ server buffered-sql {
 		#
 		#  Log traffic to an SQL database.
 		#
-		#  See "Accounting queries" in sql.conf
+		#  See "Accounting queries" in mods-config/sql/main/$driver/queries.conf
 	#	sql
 
 
