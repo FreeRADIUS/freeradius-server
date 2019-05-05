@@ -2041,6 +2041,19 @@ void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 	fr_pair_add(to, head_new);
 }
 
+/** Copy the value from one pair to another
+ *
+ * @param[out] out	where to copy the value to.
+ *			will clear assigned value.
+ * @param[in] in	where to copy the value from
+ *			Must have an assigned value.
+ */
+void fr_pair_value_copy(VALUE_PAIR *out, VALUE_PAIR *in)
+{
+	if (!fr_cond_assert(in->data.type != FR_TYPE_INVALID)) return;
+	if (out->data.type != FR_TYPE_INVALID) fr_value_box_clear(&out->data);
+	fr_value_box_copy(out, &out->data, &in->data);
+}
 
 /** Convert string value to native attribute value
  *
