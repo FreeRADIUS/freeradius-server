@@ -471,8 +471,11 @@ rlm_rcode_t unlang_module_yield_to_section(REQUEST *request, CONF_SECTION *subcs
 
 		switch (instruction->type) {
 		case UNLANG_TYPE_RESUME:
-			instruction = instruction->parent;
+		{
+			unlang_resume_t *mr = unlang_generic_to_resume(instruction);
+			instruction = mr->parent;
 			if (!fr_cond_assert(instruction->type == UNLANG_TYPE_MODULE)) return RLM_MODULE_FAIL;
+		}
 			/* FALL-THROUGH */
 
 		case UNLANG_TYPE_MODULE:
