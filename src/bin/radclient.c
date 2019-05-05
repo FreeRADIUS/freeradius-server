@@ -914,11 +914,13 @@ static int send_one_packet(rc_request_t *request)
 			if ((vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY)) != NULL) {
 				fr_pair_value_strcpy(vp, request->password->vp_strvalue);
 
-			} else if ((vp = fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY)) != NULL) {
+			} else if ((vp = fr_pair_find_by_da(request->packet->vps,
+							    attr_chap_password, TAG_ANY)) != NULL) {
 				uint8_t buffer[17];
 
-				fr_radius_encode_chap_password(buffer, request->packet, fr_rand() & 0xff, request->password);
-				fr_pair_value_memcpy(vp, buffer, sizeof(buffer));
+				fr_radius_encode_chap_password(buffer, request->packet,
+							       fr_rand() & 0xff, request->password);
+				fr_pair_value_memcpy(vp, buffer, sizeof(buffer), false);
 
 			} else if (fr_pair_find_by_da(request->packet->vps, attr_ms_chap_password, TAG_ANY) != NULL) {
 				mschapv1_encode(request->packet, &request->packet->vps, request->password->vp_strvalue);

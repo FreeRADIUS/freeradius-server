@@ -156,7 +156,7 @@ static int ocsp_staple_to_pair(VALUE_PAIR **out, REQUEST *request, OCSP_RESPONSE
 		return -1;
 	}
 	MEM(pair_update_request(&vp, attr_tls_ocsp_response) >= 0);
-	fr_pair_value_memsteal(vp, buff);
+	fr_pair_value_memsteal(vp, buff, true);
 
 	RDEBUG2("Serializing OCSP response");
 	RINDENT();

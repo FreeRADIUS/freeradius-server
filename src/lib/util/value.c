@@ -25,7 +25,7 @@
  *   uint8 ordering for consistency.
  *   - #fr_value_box_cast is used to convert (cast) #fr_value_box_t between INTERNAL formats.
  *   - #fr_value_box_strdup* is used to ingest nul terminated strings into the INTERNAL format.
- *   - #fr_value_box_memdup* is used to ingest binary data into the INTERNAL format.
+ *   - #fr_value_box_memcpy* is used to ingest binary data into the INTERNAL format.
  *
  * - NETWORK format is the format we send/receive on the wire.  It is not a perfect representation
  *   of data packing for all protocols, so you will likely need to overload conversion for some types.
@@ -1260,7 +1260,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		return len;
 
 	case FR_TYPE_OCTETS:
-		if (fr_value_box_memdup(ctx, dst, enumv, src, len, tainted) < 0) return -1;
+		if (fr_value_box_memcpy(ctx, dst, enumv, src, len, tainted) < 0) return -1;
 		return len;
 
 	/*
@@ -3216,19 +3216,21 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
  *
  * Copy a buffer containing binary data, setting fields in the dst value box appropriately.
  *
- * Caller should set dst->taint = true, where the value was acquired from an untrusted source.
- *
  * @param[in] ctx	to allocate any new buffers in.
  * @param[in] dst	to assign new buffer to.
  * @param[in] enumv	Aliases for values.
  * @param[in] src	a buffer.
- * @param[in] len	of data in the buffer.
+ * @param[in] len	of data in the buffer. If 0, a zero length
+ *			talloc buffer will be alloced. dst->vb_octets
+ *			will *NOT* be NULL.  You should use the length
+ *			field of the box to determine if any value
+ *      		is assigned.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+int fr_value_box_memcpy(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 			uint8_t const *src, size_t len, bool tainted)
 {
 	uint8_t *bin;
@@ -3314,12 +3316,12 @@ int fr_value_box_append_mem(fr_value_box_t *dst, uint8_t const *src, size_t len,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+int fr_value_box_memcpy_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 			       uint8_t *src, bool tainted)
 {
 	(void) talloc_get_type_abort(src, uint8_t);
 
-	return fr_value_box_memdup(ctx, dst, enumv, src, talloc_array_length(src), tainted);
+	return fr_value_box_memcpy(ctx, dst, enumv, src, talloc_array_length(src), tainted);
 }
 
 /** Steal a talloced buffer into a specified ctx, and assign to a #fr_value_box_t
@@ -3361,7 +3363,7 @@ void fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
  * @param[in] len	of buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
-void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+void fr_value_box_memcpy_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				 uint8_t *src, size_t len, bool tainted)
 {
 	dst->type = FR_TYPE_OCTETS;
@@ -3382,7 +3384,7 @@ void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
  * @param[in] src	a talloced buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
-void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+void fr_value_box_memcpy_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				        uint8_t *src, bool tainted)
 {
 	(void) talloc_get_type_abort(src, uint8_t);

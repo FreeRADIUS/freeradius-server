@@ -315,15 +315,15 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Okay, we got the challenges! Put them into attributes.
 	 */
 	MEM(vp = fr_pair_afrom_da(packet, attr_eap_sim_rand));
-	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[0].rand, SIM_VECTOR_GSM_RAND_SIZE);
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[0].rand, SIM_VECTOR_GSM_RAND_SIZE, false);
 	fr_pair_add(to_peer, vp);
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_eap_sim_rand));
-	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[1].rand, SIM_VECTOR_GSM_RAND_SIZE);
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[1].rand, SIM_VECTOR_GSM_RAND_SIZE, false);
 	fr_pair_add(to_peer, vp);
 
 	MEM(vp = fr_pair_afrom_da(packet, attr_eap_sim_rand));
-	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[2].rand, SIM_VECTOR_GSM_RAND_SIZE);
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[2].rand, SIM_VECTOR_GSM_RAND_SIZE, false);
 	fr_pair_add(to_peer, vp);
 
 	/*
@@ -428,7 +428,8 @@ static int eap_sim_send_reauthentication(eap_session_t *eap_session)
 	 *	Add nonce_s
 	 */
 	MEM(vp = fr_pair_afrom_da(packet, attr_eap_sim_nonce_s));
-	fr_pair_value_memcpy(vp, eap_sim_session->keys.reauth.nonce_s, sizeof(eap_sim_session->keys.reauth.nonce_s));
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.reauth.nonce_s,
+			     sizeof(eap_sim_session->keys.reauth.nonce_s), false);
 	fr_pair_replace(to_peer, vp);
 
 	/*

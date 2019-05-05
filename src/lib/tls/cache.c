@@ -66,7 +66,7 @@ static int tls_cache_session_id_to_vp(REQUEST *request, uint8_t const *key, size
 	VALUE_PAIR *vp;
 
 	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
-	fr_pair_value_memcpy(vp, key, key_len);
+	fr_pair_value_memcpy(vp, key, key_len, false);
 
 	RINDENT();
 	RDEBUG2("&%pP", vp);
@@ -288,7 +288,7 @@ int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
 		return -1;
 	}
 
-	fr_pair_value_memcpy(vp, tls_session->session_blob, talloc_array_length(tls_session->session_blob));
+	fr_pair_value_memcpy(vp, tls_session->session_blob, talloc_array_length(tls_session->session_blob), false);
 	RINDENT();
 	RDEBUG2("&session-state:%pP", vp);
 	REXDENT();

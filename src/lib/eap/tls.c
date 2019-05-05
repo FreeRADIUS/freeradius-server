@@ -314,7 +314,7 @@ int eap_tls_success(eap_session_t *eap_session,
 					      sessid_prf_label, sessid_prf_label_len) < 0) return -1;
 
 		MEM(pair_add_reply(&vp, attr_eap_session_id) >= 0);
-		fr_pair_value_memsteal(vp, session_id);
+		fr_pair_value_memsteal(vp, session_id, true);
 
 		RINDENT();
 		RDEBUG2("&reply:%pP", vp);

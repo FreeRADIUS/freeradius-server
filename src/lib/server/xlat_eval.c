@@ -514,7 +514,7 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	 */
 	} else if (vpt->tmpl_da == attr_packet_authentication_vector) {
 		value = fr_value_box_alloc_null(ctx);
-		fr_value_box_memdup(ctx, value, vpt->tmpl_da, packet->vector, sizeof(packet->vector), true);
+		fr_value_box_memcpy(ctx, value, vpt->tmpl_da, packet->vector, sizeof(packet->vector), true);
 	} else if (vpt->tmpl_da == attr_client_ip_address) {
 		if (request->client) {
 			value = fr_value_box_alloc_null(ctx);

@@ -290,7 +290,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 	p[2] = (data_len + EAP_HEADER_LEN) >> 8;
 	p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
 	memcpy(p + EAP_HEADER_LEN, data, total);
-	fr_pair_value_memsteal(vp, p);
+	fr_pair_value_memsteal(vp, p, false);
 
 	fr_cursor_init(&cursor, &head);
 	fr_cursor_append(&cursor, vp);
@@ -301,7 +301,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 			return NULL;
 		}
 
-		fr_pair_value_memcpy(vp, data + total, (data_len - total));
+		fr_pair_value_memcpy(vp, data + total, (data_len - total), false);
 
 		total += vp->vp_length;
 
@@ -694,7 +694,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		memcpy(q + EAP_HEADER_LEN + 1,
 		       t->username->vp_strvalue, t->username->vp_length);
 
-		fr_pair_value_memsteal(vp, q);
+		fr_pair_value_memsteal(vp, q, false);
 		fr_pair_add(&fake->packet->vps, vp);
 	}
 		break;

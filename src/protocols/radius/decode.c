@@ -393,7 +393,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		fr_pair_list_free(&vp);
 		return -1;
 	}
-	fr_pair_value_memsteal(vp, p);
+	fr_pair_value_memsteal(vp, p, true);
 
 	ptr = data;
 	while (ptr < end) {

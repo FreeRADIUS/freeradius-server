@@ -341,7 +341,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 		uint8_t	amf_buff[2] = { 0x80, 0x00 };	/* Set the AMF separation bit high */
 
 		MEM(pair_update_control(&vp, attr_sim_amf) >= 0);
-		fr_pair_value_memcpy(vp, amf_buff, sizeof(amf_buff));
+		fr_pair_value_memcpy(vp, amf_buff, sizeof(amf_buff), false);
 	}
 
 	/*
@@ -424,7 +424,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	Okay, we got the challenge! Put it into an attribute.
 	 */
 	MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_rand));
-	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE);
+	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE, false);
 	fr_pair_replace(to_peer, vp);
 
 	/*
@@ -432,7 +432,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	whoever has knowledge of the Ki.
 	 */
 	MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_autn));
-	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE);
+	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE, false);
 	fr_pair_replace(to_peer, vp);
 
 	/*
@@ -457,7 +457,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 		eap_aka_session->checkcode_len = slen;
 
 		MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_checkcode));
-		fr_pair_value_memcpy(vp, eap_aka_session->checkcode, slen);
+		fr_pair_value_memcpy(vp, eap_aka_session->checkcode, slen, false);
 	/*
 	 *	If we don't have checkcode data, then we exchanged
 	 *	no identity packets, so checkcode is zero.

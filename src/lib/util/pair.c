@@ -344,8 +344,6 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	n = fr_pair_afrom_da(ctx, vp->da);
 	if (!n) return NULL;
 
-	memcpy(n, vp, sizeof(*n));
-
 	/*
 	 *	Copy the unknown attribute hierarchy
 	 */
@@ -367,21 +365,7 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 		n->xlat = talloc_typed_strdup(n, n->xlat);
 		return n;
 	}
-
-	switch (vp->vp_type) {
-	case FR_TYPE_OCTETS:
-		n->vp_octets = NULL;	/* else fr_pair_value_memcpy will free vp's value */
-		fr_pair_value_memcpy(n, vp->vp_octets, n->vp_length);
-		break;
-
-	case FR_TYPE_STRING:
-		n->vp_strvalue = NULL;	/* else pairstrnpy will free vp's value */
-		fr_pair_value_bstrncpy(n, vp->vp_strvalue, n->vp_length);
-		break;
-
-	default:
-		break;
-	}
+	fr_value_box_copy(n, &n->data, &vp->data);
 
 	return n;
 }
@@ -1995,7 +1979,7 @@ void fr_pair_list_move(VALUE_PAIR **to, VALUE_PAIR **from)
 				break;
 
 			case FR_TYPE_OCTETS:
-				fr_pair_value_memsteal(found, i->vp_octets);
+				fr_pair_value_memsteal(found, i->vp_octets, i->data.tainted);
 				i->vp_octets = NULL;
 				break;
 
@@ -2116,26 +2100,24 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t inlen, cha
  * @param[in,out] vp	to update
  * @param[in] src	data to copy
  * @param[in] size	of the data.
+ * @param[in] tainted	Whether the value being
+ *			assigned came from a trusted source.
+ * @return
+ *      - 0 on success.
+ *	- -1 on failure.
  */
-void fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
+int fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size, bool tainted)
 {
-	uint8_t *p = NULL;
+	int ret;
 
-	if (size) {
-		p = talloc_memdup(vp, src, size);
-		if (!p) return;
-		talloc_set_type(p, uint8_t);
+	fr_value_box_clear(&vp->data);	/* Clear existing values */
+	ret = fr_value_box_memcpy(vp, &vp->data, vp->da, src, size, tainted);
+	if (ret == 0) {
+		vp->type = VT_DATA;
+		VP_VERIFY(vp);
 	}
 
-	fr_value_box_clear(&vp->data);
-
-	vp->vp_octets = p;
-	vp->vp_length = size;
-	vp->vp_type = FR_TYPE_OCTETS;
-
-	vp->type = VT_DATA;
-
-	VP_VERIFY(vp);
+	return ret;
 }
 
 /** Reparent an allocated octet buffer to a VALUE_PAIR
@@ -2143,18 +2125,12 @@ void fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
  * @param[in,out] vp	to update
  * @param[in] src	buffer to steal.
  */
-void fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src)
+void fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted)
 {
 	fr_value_box_clear(&vp->data);
 
-	vp->vp_octets = talloc_steal(vp, src);
-	vp->vp_length = talloc_array_length(vp->vp_octets);
-	vp->vp_type = FR_TYPE_OCTETS;
-	talloc_set_type(vp->vp_ptr, uint8_t);
-
+	fr_value_box_memsteal(vp, &vp->data, vp->da, src, tainted);
 	vp->type = VT_DATA;
-
-	VP_VERIFY(vp);
 }
 
 /** Reparent an allocated char buffer to a VALUE_PAIR

@@ -79,7 +79,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		RDEBUG2("Creating CHAP-Challenge from the request authenticator");
 
 		MEM(vp = fr_pair_afrom_da(request->packet, attr_chap_challenge));
-		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
+		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector), true);
 		fr_pair_add(&request->packet->vps, vp);
 	}
 

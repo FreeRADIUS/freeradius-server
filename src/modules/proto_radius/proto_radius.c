@@ -368,7 +368,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 					break;
 
 				case FR_TYPE_OCTETS:
-					fr_pair_value_memcpy(vp, (uint8_t const *) "", 1);
+					fr_pair_value_memcpy(vp, (uint8_t const *) "", 1, true);
 					break;
 
 				case FR_TYPE_STRING:

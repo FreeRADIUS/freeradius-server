@@ -522,7 +522,7 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 			fr_rand_buffer(buffer, sizeof(buffer));
 
 			MEM(pair_update_reply(&vp, attr_state) >= 0);
-			fr_pair_value_memcpy(vp, buffer, sizeof(buffer));
+			fr_pair_value_memcpy(vp, buffer, sizeof(buffer), false);
 		}
 
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));

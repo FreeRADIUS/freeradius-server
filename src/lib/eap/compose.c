@@ -248,7 +248,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		static uint8_t auth_vector[RADIUS_AUTH_VECTOR_LENGTH] = { 0x00 };
 
 		MEM(pair_add_reply(&vp, attr_message_authenticator) >= 0);
-		fr_pair_value_memcpy(vp, auth_vector, sizeof(auth_vector));
+		fr_pair_value_memcpy(vp, auth_vector, sizeof(auth_vector), false);
 	}
 
 	/* Set request reply code, but only if it's not already set. */
@@ -353,7 +353,7 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 		p[2] = 0;
 		p[3] = 5; /* length */
 		p[4] = FR_EAP_METHOD_IDENTITY;
-		fr_pair_value_memsteal(vp, p);
+		fr_pair_value_memsteal(vp, p, false);
 
 		return RLM_MODULE_HANDLED;
 	} /* end of handling EAP-Start */

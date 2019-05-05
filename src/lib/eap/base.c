@@ -142,7 +142,7 @@ VALUE_PAIR *eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 			fr_pair_list_free(&head);
 			return NULL;
 		}
-		fr_pair_value_memcpy(vp, ptr, size);
+		fr_pair_value_memcpy(vp, ptr, size, false);
 
 		fr_cursor_append(&out, vp);
 
@@ -383,7 +383,7 @@ void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *va
 	VALUE_PAIR *vp;
 
 	MEM(pair_update_reply(&vp, da) >= 0);
-	fr_pair_value_memcpy(vp, value, len);
+	fr_pair_value_memcpy(vp, value, len, false);
 
 	RINDENT();
 	RDEBUG2("&reply:%pP", vp);

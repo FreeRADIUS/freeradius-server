@@ -681,7 +681,7 @@ void mschap_add_reply(REQUEST *request, uint8_t ident,
 		p = talloc_array(vp, uint8_t, len + 1);		/* Account for the ident byte */
 		p[0] = ident;
 		memcpy(p + 1, value, len);
-		fr_pair_value_memsteal(vp, p);
+		fr_pair_value_memsteal(vp, p, false);
 	}
 }
 
@@ -693,7 +693,7 @@ static void mppe_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t c
 	VALUE_PAIR *vp;
 
 	MEM(pair_update_reply(&vp, da) >= 0);
-	fr_pair_value_memcpy(vp, value, len);
+	fr_pair_value_memcpy(vp, value, len, false);
 }
 
 static int write_all(int fd, char const *buf, int len) {
@@ -963,7 +963,7 @@ ntlm_auth_err:
 		 */
 		MEM(pair_update_request(&new_hash, attr_ms_chap_new_nt_password) >= 0);
 		MEM(q = talloc_array(new_hash, uint8_t, NT_DIGEST_LENGTH));
-		fr_pair_value_memsteal(new_hash, q);
+		fr_pair_value_memsteal(new_hash, q, false);
 		fr_md4_calc(q, p, passlen);
 
 		/*
@@ -1054,7 +1054,7 @@ ntlm_auth_err:
 		 *  fall through to the authentication code using the new hash,
 		 *  not the old one.
 		 */
-		fr_pair_value_memcpy(nt_password, new_hash->vp_octets, new_hash->vp_length);
+		fr_pair_value_memcpy(nt_password, new_hash->vp_octets, new_hash->vp_length, false);
 
 		/*
 		 *  Rock on! password change succeeded.
@@ -1535,7 +1535,7 @@ static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t const *inst
 			RDEBUG2("Found Cleartext-Password, hashing to create NT-Password");
 			MEM(pair_update_control(&nt_password, attr_nt_password) >= 0);
 			MEM(p = talloc_array(nt_password, uint8_t, NT_DIGEST_LENGTH));
-			fr_pair_value_memsteal(nt_password, p);
+			fr_pair_value_memsteal(nt_password, p, false);
 
 			if (mschap_ntpwdhash(p, password->vp_strvalue) < 0) {
 				RERROR("Failed generating NT-Password");
@@ -1610,7 +1610,7 @@ static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t const *inst
 
 			MEM(pair_update_control(&lm_password, attr_lm_password) >= 0);
 			MEM(p = talloc_array(lm_password, uint8_t, LM_DIGEST_LENGTH));
-			fr_pair_value_memsteal(lm_password, p);
+			fr_pair_value_memsteal(lm_password, p, false);
 			smbdes_lmpwdhash(password->vp_strvalue, p);
 
 		/*
@@ -1887,7 +1887,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		/* peer challenge and client NT response */
 		memcpy(p + 2, cpw->vp_octets + 18, 48);
 
-		fr_pair_value_memsteal(response, p);
+		fr_pair_value_memsteal(response, p, false);
 	}
 
 	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);

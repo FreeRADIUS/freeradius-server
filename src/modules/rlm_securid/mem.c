@@ -117,7 +117,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 	memset(session->state, 0, sizeof(session->state));
 	snprintf(session->state,sizeof(session->state)-1,"FRR-CH %d|%d",session->session_id,session->trips+1);
 	RDEBUG2("Inserting session id=%d identity='%s' state='%s' to the session list",
-			 session->session_id,SAFE_STR(session->identity),session->state);
+		session->session_id,SAFE_STR(session->identity),session->state);
 
 
 	/*
@@ -125,7 +125,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 	 *	the list.
 	 */
 	MEM(pair_update_reply(&state, attr_state) >= 0);
-	fr_pair_value_memcpy(state, session->state, sizeof(session->state));
+	fr_pair_value_memcpy(state, session->state, sizeof(session->state), true);
 
 	status = rbtree_insert(inst->session_tree, session);
 	if (status) {

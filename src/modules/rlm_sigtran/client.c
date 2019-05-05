@@ -314,17 +314,17 @@ static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *inst
 				RDEBUG2("SIM auth vector %i", i);
 				RINDENT();
 				vp = fr_pair_afrom_da(request, attr_eap_sim_rand);
-				fr_pair_value_memsteal(vp, vec->sim.rand);
+				fr_pair_value_memsteal(vp, vec->sim.rand, false);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_da(request, attr_eap_sim_sres);
-				fr_pair_value_memsteal(vp, vec->sim.sres);
+				fr_pair_value_memsteal(vp, vec->sim.sres, false);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_da(request, attr_eap_sim_kc);
-				fr_pair_value_memsteal(vp, vec->sim.kc);
+				fr_pair_value_memsteal(vp, vec->sim.kc, false);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 				REXDENT();
@@ -342,27 +342,27 @@ static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *inst
 				RDEBUG2("UMTS auth vector %i", i);
 				RINDENT();
 				vp = fr_pair_afrom_da(request, attr_eap_aka_rand);
-				fr_pair_value_memsteal(vp, vec->umts.rand);
+				fr_pair_value_memsteal(vp, vec->umts.rand, false);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_da(request, attr_eap_aka_xres);
-				fr_pair_value_memsteal(vp, vec->umts.xres);
+				fr_pair_value_memsteal(vp, vec->umts.xres, false);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_da(request, attr_eap_aka_ck);
-				fr_pair_value_memsteal(vp, vec->umts.ck);
+				fr_pair_value_memsteal(vp, vec->umts.ck, false);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_da(request, attr_eap_aka_ik);
-				fr_pair_value_memsteal(vp, vec->umts.ik);
+				fr_pair_value_memsteal(vp, vec->umts.ik, false);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_da(request, attr_eap_aka_autn);
-				fr_pair_value_memsteal(vp, vec->umts.authn);
+				fr_pair_value_memsteal(vp, vec->umts.authn, false);
 				RDEBUG2("&control:%pP", vp);
 				fr_cursor_append(&cursor, vp);
 				REXDENT();

@@ -944,7 +944,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	 *	RADIUS protocol code will calculate the correct value later...
 	 */
 	MEM(pair_update_reply(&vp, attr_message_authenticator) >= 0);
-	fr_pair_value_memsteal(vp, talloc_zero_array(vp, uint8_t, RADIUS_AUTH_VECTOR_LENGTH));
+	fr_pair_value_memsteal(vp, talloc_zero_array(vp, uint8_t, RADIUS_AUTH_VECTOR_LENGTH), false);
 
 	return RLM_MODULE_UPDATED;
 }

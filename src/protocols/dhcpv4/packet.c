@@ -166,7 +166,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		case FR_TYPE_OCTETS:
 			if (packet->data[2] == 0) break;
 
-			fr_pair_value_memcpy(vp, p, packet->data[2]);
+			fr_pair_value_memcpy(vp, p, packet->data[2], true);
 			break;
 
 			/*

@@ -179,7 +179,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 					p[4] = 'N';
 					p[3] = 'A';
 					p[2] = 'P';
-					fr_pair_value_memsteal(vp, p);
+					fr_pair_value_memsteal(vp, p, false);
 					fr_pair_add(&request->reply->vps, vp);
 
 				} else {

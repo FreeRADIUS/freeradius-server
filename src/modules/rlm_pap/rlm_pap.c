@@ -234,13 +234,15 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_len)
 	 *	twice the minimum length.
 	 */
 	if (!(vp->vp_length & 0x01) && vp->vp_length >= (2 * min_len)) {
-		size_t decoded;
+		bool	tainted = vp->data.tainted;
+		size_t	decoded;
+
 
 		decoded = fr_hex2bin(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
 		if (decoded == (vp->vp_length >> 1)) {
 			RDEBUG2("Normalizing %s from hex encoding, %zu bytes -> %zu bytes",
 				vp->da->name, vp->vp_length, decoded);
-			fr_pair_value_memcpy(vp, buffer, decoded);
+			fr_pair_value_memcpy(vp, buffer, decoded, tainted);
 			return;
 		}
 	}
@@ -254,9 +256,11 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_len)
 		decoded = fr_base64_decode(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
 		if (decoded < 0) return;
 		if (decoded >= (ssize_t) min_len) {
+			bool tainted = vp->data.tainted;
+
 			RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes",
 				vp->da->name, vp->vp_length, decoded);
-			fr_pair_value_memcpy(vp, buffer, decoded);
+			fr_pair_value_memcpy(vp, buffer, decoded, tainted);
 			return;
 		}
 	}
@@ -419,7 +423,7 @@ redo:
 		new = fr_pair_afrom_da(ctx, da);
 		switch (da->type) {
 		case FR_TYPE_OCTETS:
-			fr_pair_value_memcpy(new, (uint8_t const *)q + 1, len - hlen);
+			fr_pair_value_memcpy(new, (uint8_t const *)q + 1, len - hlen, true);
 			break;
 
 		case FR_TYPE_STRING:

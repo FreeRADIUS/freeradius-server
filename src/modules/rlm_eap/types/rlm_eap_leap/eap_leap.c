@@ -179,7 +179,7 @@ static int eap_leap_ntpwdhash(uint8_t *out, REQUEST *request, VALUE_PAIR *passwo
 		 */
 		fr_md4_calc(out, ucs2_password, len);
 	} else {		/* MUST be NT-Password */
-		uint8_t *p = NULL;
+		uint8_t	*p = NULL;
 
 		if (password->vp_length == 32) {
 			p = talloc_array(password, uint8_t, 16);
@@ -191,7 +191,7 @@ static int eap_leap_ntpwdhash(uint8_t *out, REQUEST *request, VALUE_PAIR *passwo
 		}
 
 		if (p) {
-			fr_pair_value_memcpy(password, p, 16);
+			fr_pair_value_memcpy(password, p, 16, password->data.tainted);
 			talloc_free(p);
 		}
 

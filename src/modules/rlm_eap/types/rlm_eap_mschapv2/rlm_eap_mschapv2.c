@@ -475,14 +475,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 			RDEBUG2("Password change packet received");
 
 			MEM(pair_update_request(&auth_challenge, attr_ms_chap_challenge) >= 0);
-			fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN);
+			fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
 
 			MEM(pair_update_request(&cpw, attr_ms_chap2_cpw) >= 0);
 			p = talloc_array(cpw, uint8_t, 68);
 			p[0] = 7;
 			p[1] = mschap_id;
 			memcpy(p + 2, eap_round->response->type.data + 520, 66);
-			fr_pair_value_memsteal(cpw, p);
+			fr_pair_value_memsteal(cpw, p, false);
 
 			/*
 			 * break the encoded password into VPs (3 of them)
@@ -500,7 +500,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 				p[2] = 0;
 				p[3] = seq++;
 				memcpy(p + 4, eap_round->response->type.data + 4 + copied, to_copy);
-				fr_pair_value_memsteal(nt_enc, p);
+				fr_pair_value_memsteal(nt_enc, p, false);
 
 				copied += to_copy;
 			}
@@ -624,7 +624,7 @@ failure:
 	 *	but it works.
 	 */
 	MEM(pair_update_request(&auth_challenge, attr_ms_chap_challenge) >= 0);
-	fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN);
+	fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
 
 	MEM(pair_update_request(&response, attr_ms_chap2_response) >= 0);
 	p = talloc_array(response, uint8_t, MSCHAPV2_RESPONSE_LEN);
@@ -637,7 +637,7 @@ failure:
 	 *	the challenge sent by the client.
 	 */
 	if (data->has_peer_challenge) memcpy(p + 2, data->peer_challenge, MSCHAPV2_CHALLENGE_LEN);
-	fr_pair_value_memsteal(response, p);
+	fr_pair_value_memsteal(response, p, false);
 
 	/*
 	 *	MS-Length - MS-Value - 5.
@@ -793,7 +793,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 		MEM(auth_challenge = fr_pair_afrom_da(eap_session, attr_ms_chap_challenge));
 		p = talloc_array(auth_challenge, uint8_t, MSCHAPV2_CHALLENGE_LEN);
 		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) p[i] = fr_rand();
-		fr_pair_value_memsteal(auth_challenge, p);
+		fr_pair_value_memsteal(auth_challenge, p, false);
 	}
 	RDEBUG2("Issuing Challenge");
 

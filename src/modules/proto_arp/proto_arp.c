@@ -208,7 +208,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 		ret = fr_value_box_from_network(vp, &vp->data, da->type, da, p, len, true);
 		if (ret <= 0) {
 			fr_pair_to_unknown(vp);
-			fr_pair_value_memcpy(vp, p, len);
+			fr_pair_value_memcpy(vp, p, len, true);
 		}
 
 		DEBUG2("&%pP", vp);
