@@ -355,7 +355,7 @@ fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_attr_t const *da, char const *ali
  */
 int			fr_dict_internal_afrom_file(fr_dict_t **out, char const *internal_name);
 
-int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name);
+int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char const *proto_dir);
 
 int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename);
 /** @} */

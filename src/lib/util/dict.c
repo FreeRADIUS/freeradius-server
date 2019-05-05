@@ -5223,15 +5223,14 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
  * @param[out] out		Where to write a pointer to the new dictionary.  Will free existing
  *				dictionary if files have changed and *out is not NULL.
  * @param[in] proto_name	that we're loading the dictionary for.
+ * @param[in] proto_dir		Explicitly set where to hunt for the dictionary files.  May be NULL.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
+int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char const *proto_dir)
 {
-	char		*dir;
-	char		*proto_dir;
-	char		*p;
+	char		*dict_dir = NULL;
 	fr_dict_t	*dict;
 
 	if (unlikely(!protocol_by_name || !protocol_by_num)) {
@@ -5255,12 +5254,11 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 		return 0;
 	}
 
-	/*
-	 *	Replace [_-] with '/'
-	 */
-	proto_dir = talloc_strdup(dict_ctx, proto_name);
-	for (p = proto_dir; *p; p++) if ((*p == '_') || (*p == '-')) *p = FR_DIR_SEP;
-	dir = talloc_asprintf(proto_dir, "%s%c%s", default_dict_dir, FR_DIR_SEP, proto_dir);
+	if (!proto_dir) {
+		dict_dir = talloc_asprintf(NULL, "%s%c%s", default_dict_dir, FR_DIR_SEP, proto_name);
+	} else {
+		dict_dir = talloc_asprintf(NULL, "%s%c%s", default_dict_dir, FR_DIR_SEP, proto_dir);
+	}
 
 	/*
 	 *	Start in the context of the internal dictionary,
@@ -5271,9 +5269,9 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 	 *	for multiple protocols, which'll probably be useful
 	 *	at some point.
 	 */
-	if (dict_from_file(fr_dict_internal, dir, FR_DICTIONARY_FILE, NULL, 0) < 0) {
+	if (dict_from_file(fr_dict_internal, dict_dir, FR_DICTIONARY_FILE, NULL, 0) < 0) {
 	error:
-		talloc_free(proto_dir);
+		talloc_free(dict_dir);
 		return -1;
 	}
 
@@ -5282,11 +5280,11 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 	 */
 	dict = fr_dict_by_protocol_name(proto_name);
 	if (!dict) {
-		fr_strerror_printf("Dictionary \"%s\" missing \"BEGIN-PROTOCOL %s\" declaration", dir, proto_name);
+		fr_strerror_printf("Dictionary \"%s\" missing \"BEGIN-PROTOCOL %s\" declaration", dict_dir, proto_name);
 		goto error;
 	}
 	/*
-	 *	Applies fixup to any attributes added to the *internal*
+	 *	Applies  to any attributes added to the *internal*
 	 *	dictionary.
 	 *
 	 *	Fixups should have been applied already to any protocol
@@ -5294,7 +5292,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name)
 	 */
 	if (fr_dict_finalise(dict) < 0) goto error;
 
-	talloc_free(proto_dir);
+	talloc_free(dict_dir);
 
 	/*
 	 *	If we're autoloading a previously defined dictionary,
@@ -5415,7 +5413,7 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 		if (strcmp(p->proto, "freeradius") == 0) {
 			if (fr_dict_internal_afrom_file(&dict, p->proto) < 0) return -1;
 		} else {
-			if (fr_dict_protocol_afrom_file(&dict, p->proto) < 0) return -1;
+			if (fr_dict_protocol_afrom_file(&dict, p->proto, p->base_dir) < 0) return -1;
 		}
 
 		*(p->out) = dict;

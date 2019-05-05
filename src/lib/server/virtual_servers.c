@@ -206,7 +206,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Initialising namespace \"%s\"", namespace);
 
-	if (fr_dict_protocol_afrom_file(&dict, namespace) < 0) {
+	if (fr_dict_protocol_afrom_file(&dict, namespace, NULL) < 0) {
 #if 1
 		return 0;
 #else

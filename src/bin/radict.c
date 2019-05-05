@@ -115,7 +115,7 @@ static int load_dicts(char const *dict_dir)
 				}
 
 				INFO("Loading dictionary: %s/dictionary", file_str);
-				if (fr_dict_protocol_afrom_file(dict_end, dp->d_name) < 0) {
+				if (fr_dict_protocol_afrom_file(dict_end, dp->d_name, NULL) < 0) {
 					goto error;
 				}
 				dict_end++;

@@ -834,7 +834,7 @@ int main(int argc, char *argv[])
 					  T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 		cf_pair_add(server, namespace);
 
-		if (fr_dict_protocol_afrom_file(&ns_dict, cf_pair_value(namespace)) < 0) {
+		if (fr_dict_protocol_afrom_file(&ns_dict, cf_pair_value(namespace), NULL) < 0) {
 			cf_log_perr(server, "Failed initialising namespace \"%s\"", cf_pair_value(namespace));
 			return -1;
 		}

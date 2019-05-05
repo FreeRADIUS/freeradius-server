@@ -970,10 +970,12 @@ do { \
 		}
 
 		if (strcmp(test_type, "load-dictionary") == 0) {
+			char *name, *dir, *tmp = NULL;
+
 			p += 15;
 
 			if (*p++ != ' ') {
-				fprintf(stderr, "Load-dictionary syntax is \"load-dictionary <proto_name>\"");
+				fprintf(stderr, "Load-dictionary syntax is \"load-dictionary <proto_name> [<proto_dir>]\"");
 				goto error;
 			}
 
@@ -982,10 +984,22 @@ do { \
 			 */
 			if (proto_dict) fr_dict_free(&proto_dict);
 
-			if (fr_dict_protocol_afrom_file(&proto_dict, p) < 0) {
+			q = strchr(p, ' ');
+			if (q) {
+				name = tmp = talloc_bstrndup(NULL, p, q - p);
+				q++;
+				dir = q;
+			} else {
+				name = p;
+				dir = NULL;
+			}
+
+			if (fr_dict_protocol_afrom_file(&proto_dict, name, dir) < 0) {
 				fr_perror("unit_test_attribute");
+				talloc_free(tmp);
 				goto error;
 			}
+			talloc_free(tmp);
 
 			/*
 			 *	Dump the dictionary if we're in super debug mode
