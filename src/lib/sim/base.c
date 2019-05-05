@@ -49,8 +49,8 @@ extern fr_dict_autoload_t libfreeradius_sim_dict[];
 fr_dict_autoload_t libfreeradius_sim_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ .out = &dict_eap_sim, .proto = "eap-sim" },
-	{ .out = &dict_eap_aka, .proto = "eap-aka" },
+	{ .out = &dict_eap_sim, .proto = "eap-sim", .base_dir = "eap/sim" },
+	{ .out = &dict_eap_aka, .proto = "eap-aka", .base_dir = "eap/aka" },
 
 	{ NULL }
 };

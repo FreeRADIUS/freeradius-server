@@ -7,7 +7,7 @@ need-feature tls
 
 # Load the EAP-SIM module
 load eap-sim
-load-dictionary eap-sim
+load-dictionary eap-sim eap/sim
 
 # Boolean attribute
 encode-pair.sim_tp_encode EAP-SIM-Any-ID-Req = yes

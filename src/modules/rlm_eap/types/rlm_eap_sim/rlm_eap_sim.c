@@ -66,7 +66,7 @@ extern fr_dict_autoload_t rlm_eap_sim_dict[];
 fr_dict_autoload_t rlm_eap_sim_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ .out = &dict_eap_sim, .proto = "eap-sim" },
+	{ .out = &dict_eap_sim, .proto = "eap-sim", .base_dir = 'eap/sim' },
 	{ NULL }
 };
 

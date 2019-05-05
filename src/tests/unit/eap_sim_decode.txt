@@ -9,7 +9,7 @@ need-feature tls
 
 # Load the EAP-SIM module
 load eap-sim
-load-dictionary eap-sim
+load-dictionary eap-sim eap/sim
 
 # Boolean attribute
 decode-pair.sim_tp_decode 0d 01 00 00
