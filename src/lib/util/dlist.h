@@ -60,6 +60,15 @@ static inline void fr_dlist_entry_init(fr_dlist_t *entry)
 	entry->prev = entry->next = entry;
 }
 
+/** Remove an item from the dlist when we don't have access to the head
+ *
+ */
+static inline void fr_dlist_entry_unlink(fr_dlist_t *entry)
+{
+	entry->prev->next = entry->next;
+	entry->next->prev = entry->prev;
+}
+
 /** Initialise the head structure of a doubly linked list
  *
  * @note This variant does not perform talloc validation.
