@@ -331,6 +331,9 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *msg, va_list ap
 
 #ifdef HAVE_SYSLOG_H
 	case L_DST_SYSLOG:
+	{
+		int syslog_priority;
+
 		switch (type) {
 		case L_DBG:
 		case L_DBG_INFO:
@@ -338,22 +341,23 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *msg, va_list ap
 		case L_DBG_ERR:
 		case L_DBG_ERR_REQ:
 		case L_DBG_WARN_REQ:
-			type = LOG_DEBUG;
+			syslog_priority= LOG_DEBUG;
 			break;
 
 		case L_INFO:
-			type = LOG_INFO;
+			syslog_priority = LOG_INFO;
 			break;
 
 		case L_WARN:
-			type = LOG_WARNING;
+			syslog_priority = LOG_WARNING;
 			break;
 
 		case L_ERR:
-			type = LOG_ERR;
+			syslog_priority = LOG_ERR;
 			break;
 		}
-		syslog(type, "%s", buffer);
+		syslog(syslog_priority, "%s", buffer);
+	}
 		break;
 #endif
 
