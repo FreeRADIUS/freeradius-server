@@ -344,6 +344,10 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	n = fr_pair_afrom_da(ctx, vp->da);
 	if (!n) return NULL;
 
+	n->op = vp->op;
+	n->tag = vp->tag;
+	n->next = NULL;
+
 	/*
 	 *	Copy the unknown attribute hierarchy
 	 */
@@ -354,7 +358,7 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 			return NULL;
 		}
 	}
-	n->next = NULL;
+
 
 	/*
 	 *	If it's an xlat, copy the raw string and return
