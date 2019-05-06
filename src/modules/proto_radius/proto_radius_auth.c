@@ -229,7 +229,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(proto_radius_auth_t cons
 	msg = fr_vasprintf(request, fmt, ap);
 	va_end(ap);
 
-	RAUTH("%s: [%pV%s%pV] (%s)%s",
+	RINFO("%s: [%pV%s%pV] (%s)%s",
 	      msg,
 	      username ? &username->data : fr_box_strvalue("<no User-Name attribute>"),
 	      logit ? "/" : "",

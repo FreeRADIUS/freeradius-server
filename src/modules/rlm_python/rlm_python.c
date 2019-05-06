@@ -143,12 +143,9 @@ static struct {
 
 	A(L_DBG)
 	A(L_WARN)
-	A(L_AUTH)
 	A(L_INFO)
 	A(L_ERR)
-	A(L_PROXY)
 	A(L_WARN)
-	A(L_ACCT)
 	A(L_DBG_WARN)
 	A(L_DBG_ERR)
 	A(L_DBG_WARN_REQ)

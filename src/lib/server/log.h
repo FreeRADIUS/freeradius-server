@@ -145,19 +145,12 @@ void	log_global_free(void);
  * **Debug categories**
  * Name     | Syslog severity         | Colour/style | When to use
  * -------- | ----------------------- | ------------ | -----------
- * AUTH     | LOG_NOTICE              | Bold         | Never - Deprecated
- * ACCT     | LOG_NOTICE              | Bold         | Never - Deprecated
- * PROXY    | LOG_NOTICE              | Bold         | Never - Deprecated
  * INFO     | LOG_INFO                | Bold         | TBD
  * WARN     | LOG_WARNING             | Yellow       | Warnings. Impending resource exhaustion, resource exhaustion
  * ERROR    | LOG_ERR                 | Red          | Critical server errors. Malformed queries, failed operations, connection errors, packet processing errors
  *
  * @{
  */
-#define AUTH(fmt, ...)		_FR_LOG(L_AUTH, fmt, ## __VA_ARGS__)
-#define ACCT(fmt, ...)		_FR_LOG(L_ACCT, fmt, ## __VA_ARGS__)
-#define PROXY(fmt, ...)		_FR_LOG(L_PROXY, fmt, ## __VA_ARGS__)
-
 #define INFO(fmt, ...)		_FR_LOG(L_INFO, fmt, ## __VA_ARGS__)
 #define WARN(fmt, ...)		_FR_LOG(L_WARN, fmt, ## __VA_ARGS__)
 #define ERROR(fmt, ...)		_FR_LOG(L_ERR, fmt, ## __VA_ARGS__)
@@ -214,17 +207,11 @@ void	log_global_free(void);
  * **Debug categories**
  * Name     | Syslog severity         | Colour/style | When to use
  * -------- | ----------------------- | -------------| -----------
- * RAUTH    | LOG_NOTICE              | Bold         | Never - Deprecated
- * RACCT    | LOG_NOTICE              | Bold         | Never - Deprecated
- * RPROXY   | LOG_NOTICE              | Bold         | Never - Deprecated
  * RINFO    | LOG_INFO                | Bold         | TBD
  * RWARN    | LOG_WARNING             | Yellow/Bold  | Warnings. Impending resource exhaustion, or resource exhaustion.
  * RERROR   | LOG_ERR                 | Red/Bold     | Critical server errors. Malformed queries, failed operations, connection errors, packet processing errors.
  * @{
  */
-#define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
-#define RACCT(fmt, ...)		log_request(L_ACCT, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
-#define RPROXY(fmt, ...)	log_request(L_PROXY, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
 #define RINFO(fmt, ...)		log_request(L_INFO, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
 #define RWARN(fmt, ...)		log_request(L_DBG_WARN, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
 #define RERROR(fmt, ...)	log_request_error(L_DBG_ERR, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)

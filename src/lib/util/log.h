@@ -50,13 +50,9 @@ extern bool	log_dates_utc;
 extern const FR_NAME_NUMBER fr_log_levels[];
 
 typedef enum {
-	L_AUTH = 2,				//!< Authentication message.
 	L_INFO = 3,				//!< Informational message.
 	L_ERR = 4,				//!< Error message.
 	L_WARN = 5,				//!< Warning.
-	L_PROXY	= 6,				//!< Proxy messages
-	L_ACCT = 7,				//!< Accounting messages
-
 	L_DBG = 16,				//!< Only displayed when debugging is enabled.
 	L_DBG_INFO = 17,			//!< Info only displayed when debugging is enabled.
 	L_DBG_WARN = 18,			//!< Warning only displayed when debugging is enabled.

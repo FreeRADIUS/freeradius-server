@@ -116,11 +116,8 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
  */
 const FR_NAME_NUMBER fr_log_levels[] = {
 	{ "Debug : ",		L_DBG		},
-	{ "Auth  : ",		L_AUTH		},
-	{ "Proxy : ",		L_PROXY		},
 	{ "Info  : ",		L_INFO		},
 	{ "Warn  : ",		L_WARN		},
-	{ "Acct  : ",		L_ACCT		},
 	{ "Error : ",		L_ERR		},
 	{ "WARN  : ",		L_DBG_WARN	},
 	{ "ERROR : ",		L_DBG_ERR	},
@@ -149,10 +146,7 @@ const FR_NAME_NUMBER fr_log_levels[] = {
  */
 static const FR_NAME_NUMBER colours[] = {
 	{ "",			L_DBG		},
-	{ VTC_BOLD,		L_AUTH		},
-	{ VTC_BOLD,		L_PROXY		},
 	{ VTC_BOLD,		L_INFO		},
-	{ VTC_BOLD,		L_ACCT		},
 	{ VTC_RED,		L_ERR		},
 	{ VTC_BOLD VTC_YELLOW,	L_WARN		},
 	{ VTC_BOLD VTC_RED,	L_DBG_ERR	},
@@ -345,12 +339,6 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *msg, va_list ap
 		case L_DBG_ERR_REQ:
 		case L_DBG_WARN_REQ:
 			type = LOG_DEBUG;
-			break;
-
-		case L_AUTH:
-		case L_PROXY:
-		case L_ACCT:
-			type = LOG_NOTICE;
 			break;
 
 		case L_INFO:

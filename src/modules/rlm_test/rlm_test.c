@@ -245,9 +245,6 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	DEBUG2("Debug2 message");
 	DEBUG3("Debug3 message");
 	DEBUG4("Debug4 message");
-	AUTH("Auth message");
-	ACCT("Acct message");
-	PROXY("Proxy message");
 
 	return 0;
 }
