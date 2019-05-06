@@ -120,7 +120,7 @@ recv Access-Request {
 	#  Look in an SQL database.  The schema of the database
 	#  is meant to mirror the "users" file.
 	#
-	#  See "Authorization Queries" in sql.conf
+	#  See "Authorization Queries" in `mods-config/sql/main/$driver/queries.conf`
 	-sql
 
 	#
@@ -265,7 +265,7 @@ send Access-Accept {
 	#
 	#  After authenticating the user, do another SQL query.
 	#
-	#  See "Authentication Logging Queries" in sql.conf
+	#  See "Authentication Logging Queries" in `mods-config/sql/main/$driver/queries.conf`
 	-sql
 
 	#

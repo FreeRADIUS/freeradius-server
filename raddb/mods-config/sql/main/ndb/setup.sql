@@ -3,7 +3,7 @@
 ## admin.sql -- MySQL commands for creating the RADIUS user.
 ##
 ##	WARNING: You should change 'localhost' and 'radpass'
-##		 to something else.  Also update raddb/sql.conf
+##		 to something else.  Also update raddb/mods-available/sql
 ##		 with the new RADIUS password.
 ##
 ##	$Id$
