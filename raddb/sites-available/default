@@ -778,7 +778,7 @@ recv Access-Request {
 	#
 #	if (&User-Name =~ /@example\.com$/) {
 #		update control {
-#			Auth-Type := "proxy-example.com"
+#			&Auth-Type := "proxy-example.com"
 #		}
 #	}
 
@@ -1166,7 +1166,7 @@ send Access-Accept {
 	#
 #	if (!&reply:State) {
 #		update reply {
-#			State := "0x%{randstr:16h}"
+#			&State := "0x%{randstr:16h}"
 #		}
 #	}
 
@@ -1269,19 +1269,19 @@ send Access-Accept {
 	#  available).
 	#
 #	update reply {
-#		Reply-Message += "%{session-state:TLS-Cert-Serial}"
-#		Reply-Message += "%{session-state:TLS-Cert-Expiration}"
-#		Reply-Message += "%{session-state:TLS-Cert-Subject}"
-#		Reply-Message += "%{session-state:TLS-Cert-Issuer}"
-#		Reply-Message += "%{session-state:TLS-Cert-Common-Name}"
-#		Reply-Message += "%{session-state:TLS-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state:TLS-Cert-Serial}"
+#		&Reply-Message += "%{session-state:TLS-Cert-Expiration}"
+#		&Reply-Message += "%{session-state:TLS-Cert-Subject}"
+#		&Reply-Message += "%{session-state:TLS-Cert-Issuer}"
+#		&Reply-Message += "%{session-state:TLS-Cert-Common-Name}"
+#		&Reply-Message += "%{session-state:TLS-Cert-Subject-Alt-Name-Email}"
 #
-#		Reply-Message += "%{session-state:TLS-Client-Cert-Serial}"
-#		Reply-Message += "%{session-state:TLS-Client-Cert-Expiration}"
-#		Reply-Message += "%{session-state:TLS-Client-Cert-Subject}"
-#		Reply-Message += "%{session-state:TLS-Client-Cert-Issuer}"
-#		Reply-Message += "%{session-state:TLS-Client-Cert-Common-Name}"
-#		Reply-Message += "%{session-state:TLS-Client-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state:TLS-Client-Cert-Serial}"
+#		&Reply-Message += "%{session-state:TLS-Client-Cert-Expiration}"
+#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject}"
+#		&Reply-Message += "%{session-state:TLS-Client-Cert-Issuer}"
+#		&Reply-Message += "%{session-state:TLS-Client-Cert-Common-Name}"
+#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject-Alt-Name-Email}"
 #	}
 
 	#
@@ -1308,7 +1308,7 @@ send Access-Accept {
 #
 #	if (&reply:EAP-Session-Id) {
 #		update reply {
-#			EAP-Key-Name := &reply:EAP-Session-Id
+#			&EAP-Key-Name := &reply:EAP-Session-Id
 #		}
 #	}
 
