@@ -2,6 +2,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	Feature improvements
 	* Add Jenkins continuous integration.  Fixes #2620.
 	  Used to build http://packages.networkradius.com/
+	* Added Force10 dictionary.
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host #2627
@@ -9,6 +10,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Fix a slow memory leak in the file management code.
 	* Try to fix file permissions if they get modified while
 	  the server is running.
+	* Fix slow memory leak with clients.
 
 FreeRADIUS 3.0.19 Wed 10 Apr 2019 09:00:00 EDT urgency=high
 	Feature improvements
