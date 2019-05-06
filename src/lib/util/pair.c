@@ -2101,11 +2101,12 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, ssize_t inlen, cha
 
 /** Copy data into an "octets" data type.
  *
+ * @note Will clear existing values (including buffers).
+ *
  * @param[in,out] vp	to update
  * @param[in] src	data to copy
  * @param[in] size	of the data.
- * @param[in] tainted	Whether the value being
- *			assigned came from a trusted source.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *      - 0 on success.
  *	- -1 on failure.
@@ -2126,8 +2127,11 @@ int fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size, bool t
 
 /** Reparent an allocated octet buffer to a VALUE_PAIR
  *
+ * @note Will clear existing values (including buffers).
+ *
  * @param[in,out] vp	to update
  * @param[in] src	buffer to steal.
+ * @param[in] tainted	Whether the value came from a trusted source.
  */
 void fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src, bool tainted)
 {
