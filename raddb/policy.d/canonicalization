@@ -85,6 +85,12 @@ rewrite_called_station_id {
 				&Called-Station-SSID := "%{8}"
 			}
 		}
+		# Support non RFC3580 compliant Aruba AP's
+		elsif (&Aruba-Essid-Name) {
+			update request {
+				&Called-Station-SSID := &Aruba-Essid-Name
+			}
+		}
 		updated
 	}
 	else {
