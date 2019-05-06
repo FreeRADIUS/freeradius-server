@@ -16,7 +16,7 @@
 #
 sqlippool {
 	#
-	#  sql_module_instance:: SQL instance to use (from `sql.conf`)
+	#  sql_module_instance:: SQL instance to use (from `raddb/mods-available/sql`)
 	#
 	#  If you have multiple sql instances, such as `sql sql1 {...}`,
 	#  use the *instance* name here: `sql1`.
