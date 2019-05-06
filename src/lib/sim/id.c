@@ -274,7 +274,7 @@ bad_format:
 	default:
 		*hint = SIM_METHOD_HINT_UNKNOWN;
 		*type = SIM_ID_TYPE_UNKNOWN;
-		fr_strerror_printf_push("Unrecognised tag '%c'", id[0]);
+		fr_strerror_printf_push("Unrecognised tag '%s'", fr_box_strvalue_len(id, 1)); /* Have to box, may be \000 */
 		return -1;
 	}
 }
