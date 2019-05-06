@@ -103,7 +103,7 @@ sql {
 	#
 	#  .If you're using `postgresql` this can also be used instead of the connection info parameters.
 	#
-#	radius_db = "dbname=radius host=localhost user=radius password=raddpass"
+#	radius_db = "dbname=radius host=localhost user=radius password=radpass"
 
 	#
 	#  NOTE: Postgreql doesn't take `tls{}` options in its module config like mysql does,
