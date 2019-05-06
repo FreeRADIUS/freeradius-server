@@ -286,7 +286,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		clients->tree[client->ipaddr.prefix] = rbtree_talloc_create(clients, client_cmp, RADCLIENT,
 									    NULL, RBTREE_FLAG_NONE);
 		if (!clients->tree[client->ipaddr.prefix]) {
-			return NULL;
+			return false;
 		}
 	}
 
