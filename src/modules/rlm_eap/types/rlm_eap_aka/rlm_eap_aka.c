@@ -71,7 +71,7 @@ extern fr_dict_autoload_t rlm_eap_aka_dict[];
 fr_dict_autoload_t rlm_eap_aka_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ .out = &dict_eap_aka, .proto = "eap-aka" .base_dir = 'eap/aka' },
+	{ .out = &dict_eap_aka, .proto = "eap-aka", .base_dir = "eap/aka" },
 	{ NULL }
 };
 
