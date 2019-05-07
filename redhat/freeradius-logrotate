@@ -9,6 +9,7 @@
 	missingok
 	compress
 	delaycompress
+	su radiusd radiusd
 }
 
 # Session monitoring utilities, session database modules and
@@ -22,6 +23,7 @@
 	missingok
 	compress
 	delaycompress
+	su radiusd radiusd
 }
 
 # There are different detail-rotating strategies you can use.  One is
@@ -38,4 +40,5 @@
 	missingok
 	compress
 	delaycompress
+	su radiusd radiusd
 }
