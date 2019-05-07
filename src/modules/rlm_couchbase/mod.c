@@ -77,7 +77,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 
 	/* create instance */
 	cb_error = couchbase_init_connection(&cb_inst, inst->server, inst->bucket, inst->username,
-					inst->password, FR_TIMEVAL_TO_MS(timeout));
+					inst->password, FR_TIMEVAL_TO_MS(timeout) * 1000);
 
 	/* check couchbase instance */
 	if (cb_error != LCB_SUCCESS) {
