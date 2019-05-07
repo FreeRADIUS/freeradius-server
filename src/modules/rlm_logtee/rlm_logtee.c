@@ -201,8 +201,10 @@ static void logtee_fd_idle(rlm_logtee_thread_t *t);
 
 static void logtee_fd_active(rlm_logtee_thread_t *t);
 
-static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *fmt, va_list ap, void *uctx)
-		      CC_HINT(format (printf, 4, 0)) CC_HINT(nonnull (3, 4));
+static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+		      char const *file, int line,
+		      char const *fmt, va_list ap, void *uctx)
+		      CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (3, 6));
 
 static rlm_rcode_t mod_insert_logtee(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 
@@ -429,11 +431,15 @@ static fr_connection_state_t _logtee_conn_init(int *fd_out, void *uctx)
  * @param[in] type	What type of message this is (error, warn, info, debug).
  * @param[in] lvl	At what logging level this message should be output.
  * @param[in] request	The current request.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
  * @param[in] fmt	sprintf style fmt string.
  * @param[in] ap	Arguments for the fmt string.
  * @param[in] uctx	Context data for the log function.
  */
-static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *fmt, va_list ap, void *uctx)
+static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+		      UNUSED char const *file, UNUSED int line,
+		      char const *fmt, va_list ap, void *uctx)
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
 	rlm_logtee_t const	*inst = t->inst;

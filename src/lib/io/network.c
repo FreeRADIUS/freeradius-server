@@ -24,6 +24,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_DST nr->log
+
 #include <talloc.h>
 
 #include <freeradius-devel/util/event.h>
@@ -39,19 +41,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/queue.h>
 #include <freeradius-devel/io/ring_buffer.h>
 #include <freeradius-devel/io/worker.h>
-
-/*
- *	Define our own debugging.
- */
-#undef DEBUG
-#undef DEBUG2
-#undef DEBUG3
-#undef ERROR
-
-//#define DEBUG(fmt, ...) if (nr->lvl) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
-//#define DEBUG2(fmt, ...) if (nr->lvl >= L_DBG_LVL_2) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
-#define DEBUG3(fmt, ...) if (nr->lvl >= L_DBG_LVL_3) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
-#define ERROR(fmt, ...) fr_log(nr->log, L_ERR, fmt, ## __VA_ARGS__)
 
 #define MAX_WORKERS 64
 
@@ -408,7 +397,8 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	if (!s->cd) {
 		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->listen->default_message_size);
 		if (!cd) {
-			fr_log(nr->log, L_ERR, "Failed allocating message size %zd! - Closing socket", s->listen->default_message_size);
+			ERROR("Failed allocating message size %zd! - Closing socket",
+			      s->listen->default_message_size);
 			fr_network_socket_dead(nr, s);
 			return;
 		}
@@ -502,14 +492,14 @@ next_message:
 		next = (fr_channel_data_t *) fr_message_alloc_reserve(s->ms, &cd->m, data_size, s->leftover,
 								      s->listen->default_message_size);
 		if (!next) {
-			fr_log(nr->log, L_ERR, "Failed reserving partial packet.");
+			ERROR(, "Failed reserving partial packet.");
 			// @todo - probably close the socket...
 			rad_assert(0 == 1);
 		}
 	}
 
 	if (!fr_network_send_request(nr, cd)) {
-		fr_log(nr->log, L_ERR, "Failed sending packet to worker");
+		ERROR(, "Failed sending packet to worker");
 		fr_message_done(&cd->m);
 		nr->stats.dropped++;
 		s->stats.dropped++;
@@ -777,7 +767,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 				      sizeof(fr_channel_data_t),
 				      size);
 	if (!s->ms) {
-		fr_log(nr->log, L_ERR, "Failed creating message buffers for network IO: %s", fr_strerror());
+		ERROR(, "Failed creating message buffers for network IO: %s", fr_strerror());
 		talloc_free(s);
 		return;
 	}
@@ -843,7 +833,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 				      sizeof(fr_channel_data_t),
 				      s->listen->default_message_size * s->listen->num_messages);
 	if (!s->ms) {
-		fr_log(nr->log, L_ERR, "Failed creating message buffers for directory IO: %s", fr_strerror());
+		ERROR(, "Failed creating message buffers for directory IO: %s", fr_strerror());
 		talloc_free(s);
 		return;
 	}

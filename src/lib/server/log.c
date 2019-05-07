@@ -46,6 +46,8 @@ RCSID("$Id$")
 fr_log_lvl_t	rad_debug_lvl = 0;		//!< Global debugging level
 fr_log_lvl_t	req_debug_lvl = 0;		//!< Request debugging level
 
+fr_thread_local_setup(TALLOC_CTX *, fr_vlog_request_pool)
+
 /** Syslog facility table
  *
  * Maps syslog facility keywords, to the syslog facility macros defined
@@ -178,19 +180,25 @@ fr_dict_attr_autoload_t log_dict_attr[] = {
 
 /** Send a server log message to its destination without evaluating its debug level
  *
- * @param log	destination.
- * @param type	of log message.
- * @param msg	with printf style substitution tokens.
- * @param ...	Substitution arguments.
+ * @param[in] log	destination.
+ * @param[in] type	of log message.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
+ * @param[in] fmt	with printf style substitution tokens.
+ * @param[in] ...	Substitution arguments.
  */
-static int log_always(fr_log_t const *log, fr_log_type_t type, char const *msg, ...) CC_HINT(format (printf, 3, 4));
-static int log_always(fr_log_t const *log, fr_log_type_t type, char const *msg, ...)
+static int log_always(fr_log_t const *log, fr_log_type_t type,
+		      char const *file, int line,
+		      char const *fmt, ...) CC_HINT(format (printf, 5, 6));
+static int log_always(fr_log_t const *log, fr_log_type_t type,
+		      char const *file, int line,
+		      char const *fmt, ...)
 {
 	va_list ap;
 	int r;
 
-	va_start(ap, msg);
-	r = fr_vlog(log, type, msg, ap);
+	va_start(ap, fmt);
+	r = fr_vlog(log, type, file, line, fmt, ap);
 	va_end(ap);
 
 	return r;
@@ -229,16 +237,28 @@ inline bool log_debug_enabled(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *req
 	return false;
 }
 
+/** Cleanup the memory pool used by vlog_request
+ *
+ */
+static void _fr_vlog_request_pool_free(UNUSED void *arg)
+{
+	TALLOC_FREE(fr_vlog_request_pool);
+}
+
 /** Send a log message to its destination, possibly including fields from the request
  *
  * @param[in] type	of log message, #L_ERR, #L_WARN, #L_INFO, #L_DBG.
  * @param[in] lvl	Minimum required server or request level to output this message.
  * @param[in] request	The current request.
- * @param[in] msg	with printf style substitution tokens.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
+ * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  * @param[in] uctx	The #fr_log_t specifying the destination for log messages.
  */
-void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap, void *uctx)
+void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+		  char const *file, int line,
+		  char const *fmt, va_list ap, void *uctx)
 {
 	char const	*filename;
 	FILE		*fp = NULL;
@@ -248,16 +268,32 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char c
 	uint8_t		unlang_indent, module_indent;
 	va_list		aq;
 
-	char		*msg_prefix = NULL;
-	char		*msg_module = NULL;
-	char		*msg_exp = NULL;
+	char const	*fmt_location = "";
+	char const	*fmt_prefix = "";
+	char const	*fmt_module = "";
+	char const	*fmt_exp = "";
 
 	fr_log_t	*log_dst = uctx;
+	TALLOC_CTX	*pool;
 
 	/*
 	 *	No output means no output.
 	 */
 	if (!log_dst) return;
+
+	/*
+	 *	Allocate a thread local, 4k pool so we don't
+	 *      need to keep allocating memory on the heap.
+	 */
+	pool = fr_vlog_request_pool;
+	if (!pool) {
+		pool = talloc_pool(NULL, 4096);
+		if (!pool) {
+			fr_perror("Failed allocating memory for vlog_request_pool");
+			return;
+		}
+		fr_thread_local_set_destructor(fr_vlog_request_pool, _fr_vlog_request_pool_free, pool);
+	}
 
 	filename = log_dst->file;
 
@@ -307,7 +343,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char c
 		default:
 			break;
 		}
-		goto print_msg;
+		goto print_fmt;
 	}
 
 	if (filename) {
@@ -341,7 +377,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char c
 		if (p) {
 			*p = '\0';
 			if (rad_mkdir(exp, S_IRWXU, -1, -1) < 0) {
-				ERROR("Failed creating %s: %s", exp, fr_syserror(errno));
+				ERROR( "Failed creating %s: %s", exp, fr_syserror(errno));
 				talloc_free(exp);
 				return;
 			}
@@ -352,18 +388,18 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char c
 		talloc_free(exp);
 	}
 
-print_msg:
+print_fmt:
 	/*
 	 *	Request prefix i.e.
 	 *
-	 *	(0) <msg>
+	 *	(0) <fmt>
 	 */
 	if (request->name) {
 		if ((request->seq_start == 0) || (request->number == request->seq_start)) {
-			msg_prefix = talloc_typed_asprintf(request, "(%s)  ", request->name);
+			fmt_prefix = talloc_typed_asprintf(pool, "(%s)  ", request->name);
 		} else {
-			msg_prefix = talloc_typed_asprintf(request, "(%s,%" PRIu64 ")  ",
-						     request->name, request->seq_start);
+			fmt_prefix = talloc_typed_asprintf(pool, "(%s,%" PRIu64 ")  ",
+							   request->name, request->seq_start);
 		}
 	}
 
@@ -381,10 +417,10 @@ print_msg:
 	/*
 	 *	Module name and indentation i.e.
 	 *
-	 *	test -     <msg>
+	 *	test -     <fmt>
 	 */
 	if (request->module) {
-		msg_module = talloc_typed_asprintf(request, "%s - %.*s", request->module, module_indent, spaces);
+		fmt_module = talloc_typed_asprintf(pool, "%s - %.*s", request->module, module_indent, spaces);
 	}
 
 	/*
@@ -397,7 +433,7 @@ print_msg:
 	 *  running unit tests which generate errors under CI.
 	 */
 	va_copy(aq, ap);
-	msg_exp = fr_vasprintf(request, msg, aq);
+	fmt_exp = fr_vasprintf(pool, fmt, aq);
 	va_end(aq);
 
 	/*
@@ -408,6 +444,10 @@ print_msg:
 
 		time_t timeval;
 		timeval = time(NULL);
+
+#if 0
+		fmt_location = talloc_typed_asprintf(pool, "%s[%i]: ", file, line);
+#endif
 
 #ifdef HAVE_GMTIME_R
 		if (log_dates_utc) {
@@ -426,13 +466,22 @@ print_msg:
 		p = strrchr(time_buff, '\n');
 		if (p) p[0] = '\0';
 
-		fprintf(fp, "%s" "%s : " "%s" "%.*s" "%s" "%s" "\n",
-			msg_prefix ? msg_prefix : "",
+		fprintf(fp,
+			"%s"		/* location */
+			"%s"		/* prefix */
+			"%s : "		/* time */
+			"%s"		/* facility */
+			"%.*s"		/* indent */
+			"%s"		/* module */
+			"%s"		/* message */
+			"\n",
+			fmt_location,
+			fmt_prefix,
 			time_buff,
 			fr_int2str(fr_log_levels, type, ""),
 			unlang_indent, spaces,
-			msg_module ? msg_module : "",
-			msg_exp);
+			fmt_module,
+			fmt_exp);
 		fclose(fp);
 		goto finish;
 	}
@@ -454,33 +503,35 @@ print_msg:
 		break;
 	};
 
-	log_always(log_dst,
-		   type, "%s" "%.*s" "%s" "%s" "%s",
-		   msg_prefix ? msg_prefix : "",
+	log_always(log_dst, type, file, line,
+		   "%s"			/* prefix */
+		   "%.*s"		/* indent */
+		   "%s"			/* module */
+		   "%s"			/* extra */
+		   "%s",		/* message */
+		   fmt_prefix,
 		   unlang_indent, spaces,
-		   msg_module ? msg_module : "",
+		   fmt_module,
 		   extra,
-		   msg_exp);
+		   fmt_exp);
 
 finish:
-	talloc_free(msg_exp);
-	talloc_free(msg_module);
-	talloc_free(msg_prefix);
+	talloc_free_children(pool);
 }
 
 /** Add a module failure message VALUE_PAIR to the request
  *
  * @param[in] request	The current request.
- * @param[in] msg	with printf style substitution tokens.
+ * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-void vlog_module_failure_msg(REQUEST *request, char const *msg, va_list ap)
+void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 {
 	char		*p;
 	VALUE_PAIR	*vp;
 	va_list		aq;
 
-	if (!msg || !request || !request->packet) return;
+	if (!fmt || !request || !request->packet) return;
 
 	rad_assert(attr_module_failure_message);
 
@@ -494,7 +545,7 @@ void vlog_module_failure_msg(REQUEST *request, char const *msg, va_list ap)
 	 *  running unit tests which generate errors under CI.
 	 */
 	va_copy(aq, ap);
-	p = fr_vasprintf(request, msg, aq);
+	p = fr_vasprintf(request, fmt, aq);
 	va_end(aq);
 
 	MEM(pair_add_request(&vp, attr_module_failure_message) >= 0);
@@ -509,15 +560,15 @@ void vlog_module_failure_msg(REQUEST *request, char const *msg, va_list ap)
 /** Add a module failure message VALUE_PAIRE to the request
  *
  * @param[in] request	The current request.
- * @param[in] msg	with printf style substitution tokens.
+ * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_module_failure_msg(REQUEST *request, char const *msg, ...)
+void log_module_failure_msg(REQUEST *request, char const *fmt, ...)
 {
 	va_list ap;
 
-	va_start(ap, msg);
-	vlog_module_failure_msg(request, msg, ap);
+	va_start(ap, fmt);
+	vlog_module_failure_msg(request, fmt, ap);
 	va_end(ap);
 }
 
@@ -528,19 +579,22 @@ void log_module_failure_msg(REQUEST *request, char const *msg, ...)
  * @param[in] type	the log category.
  * @param[in] lvl	of debugging this message should be logged at.
  * @param[in] request	The current request.
- * @param[in] msg	with printf style substitution tokens.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
+ * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+		 char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
 	log_dst_t	*dst_p;
 
 	if (!request->log.dst) return;
 
-	va_start(ap, msg);
+	va_start(ap, fmt);
 	for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
-		dst_p->func(type, lvl, request, msg, ap, dst_p->uctx);
+		dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
 	}
 	va_end(ap);
 }
@@ -558,36 +612,42 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char co
  * @param[in] type	the log category.
  * @param[in] lvl	of debugging this message should be logged at.
  * @param[in] request	The current request.
- * @param[in] msg	with printf style substitution tokens.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
+ * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+		       char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
 	log_dst_t	*dst_p;
 
 	if (!request->log.dst) return;
 
-	va_start(ap, msg);
+	va_start(ap, fmt);
 	for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
-		dst_p->func(type, lvl, request, msg, ap, dst_p->uctx);
+		dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
 	}
-	vlog_module_failure_msg(request, msg, ap);
+	vlog_module_failure_msg(request, fmt, ap);
 	va_end(ap);
 }
 
 /** Drain any outstanding messages from the fr_strerror buffers
  *
- * This function drains any messages from fr_strerror buffer adding a prefix (msg)
+ * This function drains any messages from fr_strerror buffer adding a prefix (fmt)
  * to the first message.
  *
  * @param[in] type	the log category.
  * @param[in] lvl	of debugging this message should be logged at.
  * @param[in] request	The current request.
- * @param[in] msg	with printf style substitution tokens.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
+ * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+			char const *file, int line, char const *fmt, ...)
 {
 	char const *strerror;
 
@@ -601,11 +661,11 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, 
 		va_list		ap;
 		log_dst_t	*dst_p;
 
-		if (!msg) return;	/* NOOP */
+		if (!fmt) return;	/* NOOP */
 
-		va_start(ap, msg);
+		va_start(ap, fmt);
 		for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
-			dst_p->func(type, lvl, request, msg, ap, dst_p->uctx);
+			dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
 		}
 		va_end(ap);
 
@@ -613,29 +673,29 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, 
 	}
 
 	/*
-	 *	Concatenate msg with fr_strerror()
+	 *	Concatenate fmt with fr_strerror()
 	 */
-	if (msg) {
+	if (fmt) {
 		va_list ap;
 		char *tmp;
 
-		va_start(ap, msg);
-		tmp = fr_vasprintf(request, msg, ap);
+		va_start(ap, fmt);
+		tmp = fr_vasprintf(request, fmt, ap);
 		va_end(ap);
 
 		if (!tmp) return;
 
-		log_request_error(type, lvl, request, "%s: %s", tmp, strerror);
+		log_request_error(type, lvl, request, file, line, "%s: %s", tmp, strerror);
 		talloc_free(tmp);
 	} else {
-		log_request_error(type, lvl, request, "%s", strerror);
+		log_request_error(type, lvl, request, file, line, "%s", strerror);
 	}
 
 	/*
 	 *	Only the first message gets the prefix
 	 */
 	while ((strerror = fr_strerror_pop())) {
-		log_request_error(type, lvl, request, "%s", strerror);
+		log_request_error(type, lvl, request, file, line, "%s", strerror);
 	}
 }
 
@@ -643,6 +703,8 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, 
  *
  * @param[in] lvl	Debug lvl (1-4).
  * @param[in] request	to read logging params from.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
  * @param[in] vp	to print.
  * @param[in] prefix	(optional).
  */
@@ -717,13 +779,17 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR 
  * @param[in] type	the log category.
  * @param[in] lvl	of debugging this message should be logged at.
  * @param[in] request	The current request.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
  * @param[in] str	string we were parsing.
  * @param[in] idx	The position of the marker relative to the string.
  * @param[in] fmt	What the parse error was.
  * @param[in] ...	Arguments for fmt string.
  */
 void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
-			char const *str, size_t idx, char const *fmt, ...)
+			char const *file, int line,
+			char const *str, size_t idx,
+			char const *fmt, ...)
 {
 	char const	*prefix = "";
 	uint8_t		unlang_indent;
@@ -747,12 +813,12 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	request->log.unlang_indent = 0;
 	request->log.module_indent = 0;
 
-	log_request(type, lvl, request, "%s%s", prefix, str);
+	log_request(type, lvl, request, file, line, "%s%s", prefix, str);
 
 	va_start(ap, fmt);
 	errstr = fr_vasprintf(request, fmt, ap);
 	va_end(ap);
-	log_request(type, lvl, request, "%s%.*s^ %s", prefix, (int) idx, spaces, errstr);
+	log_request(type, lvl, request, file, line, "%s%.*s^ %s", prefix, (int) idx, spaces, errstr);
 	talloc_free(errstr);
 
 	request->log.unlang_indent = unlang_indent;
@@ -760,7 +826,8 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 }
 
 void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
-			uint8_t const *data, size_t data_len)
+		     char const *file, int line,
+		     uint8_t const *data, size_t data_len)
 {
 	size_t i, j, len;
 	char *p;
@@ -771,11 +838,12 @@ void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 		if ((i + len) > data_len) len = data_len - i;
 
 		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
-		log_request(type, lvl, request, "%04x: %s", (int)i, buffer);
+		log_request(type, lvl, request, file, line, "%04x: %s", (int)i, buffer);
 	}
 }
 
-void log_hex(fr_log_t const *log, fr_log_type_t type, fr_log_lvl_t lvl, uint8_t const *data, size_t data_len)
+void log_hex(fr_log_t const *log, fr_log_type_t type, fr_log_lvl_t lvl,
+	     char const *file, int line, uint8_t const *data, size_t data_len)
 {
 	size_t i, j, len;
 	char *p;
@@ -788,19 +856,19 @@ void log_hex(fr_log_t const *log, fr_log_type_t type, fr_log_lvl_t lvl, uint8_t 
 		if ((i + len) > data_len) len = data_len - i;
 
 		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
-		fr_log(log, type, "%04x: %s", (int)i, buffer);
+		fr_log(log, type, file, line, "%04x: %s", (int)i, buffer);
 	}
 }
 
 /** Log a fatal error, then exit
  *
  */
-void log_fatal(char const *fmt, ...)
+void log_fatal(fr_log_t const *log, char const *file, int line, char const *fmt, ...)
 {
 	va_list ap;
 
 	va_start(ap, fmt);
-	fr_vlog(&default_log, L_ERR, fmt, ap);
+	fr_vlog(log, L_ERR, file, line, fmt, ap);
 	va_end(ap);
 
 	fr_exit_now(1);

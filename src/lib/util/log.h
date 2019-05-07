@@ -42,7 +42,7 @@ extern FILE	*fr_log_fp;
  *	Error functions.
  */
 void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
-void		fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *msg);
+void		fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *fmt);
 
 extern int	fr_debug_lvl;	/* 0 = no debugging information */
 extern bool	log_dates_utc;
@@ -91,6 +91,8 @@ typedef enum {
 typedef struct {
 	fr_log_dst_t		dst;		//!< Log destination.
 
+	bool			line_number;	//!< Log src file and line number.
+
 	bool			colourise;	//!< Prefix log messages with VT100 escape codes to change text
 						//!< colour.
 
@@ -113,14 +115,14 @@ extern fr_log_t default_log;
 
 int	fr_log_init(fr_log_t *log, bool daemonize);
 
-int	fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *fmt, va_list ap)
-	CC_HINT(format (printf, 3, 0)) CC_HINT(nonnull (1,3));
+int	fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, va_list ap)
+	CC_HINT(format (printf, 5, 0)) CC_HINT(nonnull (1,3));
 
-int	fr_log(fr_log_t const *log, fr_log_type_t lvl, char const *fmt, ...)
-	CC_HINT(format (printf, 3, 4)) CC_HINT(nonnull (1,3));
+int	fr_log(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, ...)
+	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1,3));
 
-int	fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *msg, ...)
-	CC_HINT(format (printf, 3, 4)) CC_HINT(nonnull (1));
+int	fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
+	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1));
 
 bool	fr_rate_limit_enabled(void);
 

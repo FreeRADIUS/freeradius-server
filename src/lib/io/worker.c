@@ -61,6 +61,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_DST worker->log
+
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/message.h>
@@ -84,24 +86,6 @@ static void fr_worker_verify(fr_worker_t *worker);
 #define WORKER_VERIFY
 #endif
 
-/*
- *	Define our own debugging.
- */
-#undef DEBUG
-#undef DEBUG2
-#undef DEBUG3
-#undef ERROR
-#undef RDEBUG
-#undef RDEBUG2
-#undef RDEBUG3
-
-DIAG_OFF(unused-macros)
-#define DEBUG(fmt, ...) if (worker->lvl) fr_log(worker->log, L_DBG, fmt, ## __VA_ARGS__)
-#define DEBUG2(fmt, ...) if (worker->lvl >= L_DBG_LVL_2) fr_log(worker->log, L_DBG, fmt, ## __VA_ARGS__)
-#define DEBUG3(fmt, ...) if (worker->lvl >= L_DBG_LVL_3) fr_log(worker->log, L_DBG, fmt, ## __VA_ARGS__)
-#define ERROR(fmt, ...) fr_log(worker->log, L_ERR, fmt, ## __VA_ARGS__)
-#define RDEBUG(fmt, ...) if (worker->lvl) fr_log(worker->log, L_DBG, "(%s)  " fmt, request->name, ## __VA_ARGS__)
-DIAG_ON(unused-macros)
 
 /**
  *  A worker which takes packets from a master, and processes them.

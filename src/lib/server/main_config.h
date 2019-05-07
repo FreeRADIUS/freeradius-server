@@ -88,6 +88,7 @@ struct main_config_s {
 
 	char const	*log_file;
 	bool		do_colourise;
+	bool		log_line_number;		//!< Log src file/line the message was generated on.
 
 	bool		log_dates_utc;
 	bool		*log_timestamp;

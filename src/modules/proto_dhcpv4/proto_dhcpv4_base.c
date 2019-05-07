@@ -89,7 +89,7 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 	if (!RDEBUG_ENABLED) return;
 
 
-	log_request(L_DBG, L_DBG_LVL_1, request, "%s %s XID %08x from %s%s%s:%i to %s%s%s:%i "
+	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s XID %08x from %s%s%s:%i to %s%s%s:%i "
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 		       "%s%s%s"
 #endif

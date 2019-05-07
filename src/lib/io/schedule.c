@@ -24,6 +24,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_DST sc->log
+
 #include <freeradius-devel/autoconf.h>
 
 #include <freeradius-devel/io/schedule.h>
@@ -60,14 +62,6 @@ RCSID("$Id$")
 #endif	/* __APPLE__ */
 
 #define SEM_WAIT_INTR(_x) do {if (sem_wait(_x) == 0) break;} while (errno == EINTR)
-
-#undef DEBUG
-#undef DEBUG2
-#undef DEBUG3
-
-#define DEBUG(fmt, ...) if (sc->lvl) fr_log(sc->log, L_DBG, fmt, ## __VA_ARGS__)
-//#define DEBUG2(fmt, ...) if (sc->lvl >= L_DBG_LVL_2) fr_log(sc->log, L_DBG, fmt, ## __VA_ARGS__)
-#define DEBUG3(fmt, ...) if (sc->lvl >= L_DBG_LVL_3) fr_log(sc->log, L_DBG, fmt, ## __VA_ARGS__)
 
 /**
  *  Track the child thread status.
@@ -173,23 +167,22 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	sw->ctx = ctx = talloc_init("worker %d", sw->id);
 	if (!ctx) {
-		fr_log(sc->log, L_ERR, "Worker %d - Failed allocating memory", sw->id);
+		ERROR("Worker %d - Failed allocating memory", sw->id);
 		goto fail;
 	}
 
-	fr_log(sc->log, L_INFO, "Worker %d starting\n", sw->id);
+	INFO("Worker %d starting\n", sw->id);
 
 	sw->el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!sw->el) {
-		fr_log(sc->log, L_ERR, "Worker %d - Failed creating event list: %s",
-		       sw->id, fr_strerror());
+		ERROR("Worker %d - Failed creating event list: %s", sw->id, fr_strerror());
 		goto fail;
 	}
 
 	snprintf(buffer, sizeof(buffer), "%d", worker_id);
 	sw->worker = fr_worker_create(ctx, buffer, sw->el, sc->log, sc->lvl);
 	if (!sw->worker) {
-		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
+		ERROR("Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
 	}
 
@@ -201,7 +194,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 */
 	if (sc->worker_thread_instantiate &&
 	    (sc->worker_thread_instantiate(sw->ctx, fr_worker_el(sw->worker), sc->worker_instantiate_ctx) < 0)) {
-		fr_log(sc->log, L_ERR, "Worker %d - Failed calling thread instantiate: %s", sw->id, fr_strerror());
+		ERROR("Worker %d - Failed calling thread instantiate: %s", sw->id, fr_strerror());
 		goto fail;
 	}
 
@@ -259,24 +252,24 @@ static void *fr_schedule_network_thread(void *arg)
 	fr_schedule_child_status_t	status = FR_CHILD_FAIL;
 	fr_event_list_t			*el;
 
-	fr_log(sc->log, L_INFO, "Network %d starting\n", sn->id);
+	INFO("Network %d starting\n", sn->id);
 
 	sn->ctx = ctx = talloc_init("network %d", sn->id);
 	if (!ctx) {
-		fr_log(sc->log, L_ERR, "Network %d - Failed allocating memory", sn->id);
+		ERROR("Network %d - Failed allocating memory", sn->id);
 		goto fail;
 	}
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!el) {
-		fr_log(sc->log, L_ERR, "Network %d - Failed creating event list: %s",
+		ERROR("Network %d - Failed creating event list: %s",
 		       sn->id, fr_strerror());
 		goto fail;
 	}
 
 	sn->nr = fr_network_create(ctx, el, sc->log, sc->lvl);
 	if (!sn->nr) {
-		fr_log(sc->log, L_ERR, "Network %d - Failed creating network: %s", sn->id, fr_strerror());
+		ERROR("Network %d - Failed creating network: %s", sn->id, fr_strerror());
 		goto fail;
 	}
 
@@ -413,7 +406,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	if (el) {
 		sc->single_network = fr_network_create(sc, el, sc->log, sc->lvl);
 		if (!sc->single_network) {
-			fr_log(sc->log, L_ERR, "Failed creating network: %s", fr_strerror());
+			ERROR("Failed creating network: %s", fr_strerror());
 		st_fail:
 			talloc_free(sc);
 			return NULL;
@@ -421,7 +414,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 		sc->single_worker = fr_worker_create(sc, "0", el, sc->log, sc->lvl);
 		if (!sc->single_worker) {
-			fr_log(sc->log, L_ERR, "Failed creating worker: %s", fr_strerror());
+			ERROR("Failed creating worker: %s", fr_strerror());
 			goto st_fail;
 		}
 
@@ -430,17 +423,17 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		 */
 		if (sc->worker_thread_instantiate &&
 		    (sc->worker_thread_instantiate(sc->single_worker, el, sc->worker_instantiate_ctx) < 0)) {
-			fr_log(sc->log, L_ERR, "Failed calling thread instantiate: %s", fr_strerror());
+			ERROR("Failed calling thread instantiate: %s", fr_strerror());
 			goto st_fail;
 		}
 
 		if (fr_command_register_hook(NULL, "0", sc->single_worker, cmd_worker_table) < 0) {
-			fr_log(sc->log, L_ERR, "Failed adding worker commands: %s", fr_strerror());
+			ERROR("Failed adding worker commands: %s", fr_strerror());
 			goto st_fail;
 		}
 
 		if (fr_command_register_hook(NULL, "0", sc->single_network, cmd_network_table) < 0) {
-			fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
+			ERROR("Failed adding network commands: %s", fr_strerror());
 			goto st_fail;
 		}
 
@@ -457,7 +450,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	memset(&sc->semaphore, 0, sizeof(sc->semaphore));
 	if (sem_init(&sc->semaphore, 0, SEMAPHORE_LOCKED) != 0) {
-		fr_log(sc->log, L_ERR, "Failed creating semaphore: %s", fr_syserror(errno));
+		ERROR("Failed creating semaphore: %s", fr_syserror(errno));
 		talloc_free(sc);
 		return NULL;
 	}
@@ -471,7 +464,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	sc->sn->id = 0;
 
 	if (fr_schedule_pthread_create(&sc->sn->pthread_id, fr_schedule_network_thread, sc->sn) < 0) {
-		fr_log(sc->log, L_ERR, "Failed creating network thread %s", fr_strerror());
+		ERROR("Failed creating network thread %s", fr_strerror());
 		goto fail;
 	}
 
@@ -495,7 +488,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		 */
 		sw = talloc_zero(sc, fr_schedule_worker_t);
 		if (!sw) {
-			fr_log(sc->log, L_ERR, "Worker %d - Failed allocating memory", i);
+			ERROR("Worker %d - Failed allocating memory", i);
 			break;
 		}
 
@@ -505,7 +498,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		fr_dlist_insert_head(&sc->workers, sw);
 
 		if (fr_schedule_pthread_create(&sw->pthread_id, fr_schedule_worker_thread, sw) < 0) {
-			fr_log(sc->log, L_ERR, "Failed creating worker %d: %s\n", i, fr_strerror());
+			ERROR("Failed creating worker %d: %s\n", i, fr_strerror());
 			break;
 		}
 
@@ -556,17 +549,17 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 		snprintf(buffer, sizeof(buffer), "%d", i);
 		if (fr_command_register_hook(NULL, buffer, sw->worker, cmd_worker_table) < 0) {
-			fr_log(sc->log, L_ERR, "Failed adding worker commands: %s", fr_strerror());
+			ERROR("Failed adding worker commands: %s", fr_strerror());
 			goto st_fail;
 		}
 	}
 
 	if (fr_command_register_hook(NULL, "0", sc->sn->nr, cmd_network_table) < 0) {
-		fr_log(sc->log, L_ERR, "Failed adding network commands: %s", fr_strerror());
+		ERROR("Failed adding network commands: %s", fr_strerror());
 		goto st_fail;
 	}
 
-	if (sc) fr_log(sc->log, L_INFO, "Scheduler created successfully with %d networks and %d workers",
+	if (sc) INFO("Scheduler created successfully with %d networks and %d workers",
 		       sc->max_networks, sc->num_workers);
 
 	return sc;
@@ -650,7 +643,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		 *	module instances.
 		 */
 		if (pthread_join(sw->pthread_id, NULL) != 0) {
-			fr_log(sc->log, L_ERR, "Failed joining worker %i: %s", sw->id, fr_syserror(errno));
+			ERROR("Failed joining worker %i: %s", sw->id, fr_syserror(errno));
 		} else {
 			DEBUG3("Worker %i exited", sw->id);
 		}

@@ -1194,9 +1194,12 @@ int tls_session_recv(REQUEST *request, tls_session_t *session)
 	session->clean_out.used = ret;
 	ret = 0;
 
-	RDEBUG2("Decrypted TLS application data (%zu bytes)", session->clean_out.used);
-	log_request_hex(L_DBG, L_DBG_LVL_3, request, session->clean_out.data, session->clean_out.used);
-
+	if (RDEBUG_ENABLED3) {
+		RHEXDUMP(L_DBG_LVL_3, session->clean_out.data, session->clean_out.used,
+			 "Decrypted TLS application data (%zu bytes)", session->clean_out.used);
+	} else {
+		RDEBUG2("Decrypted TLS application data (%zu bytes)", session->clean_out.used);
+	}
 finish:
 	tls_session_request_unbind(session->ssl);
 
@@ -1238,8 +1241,12 @@ int tls_session_send(REQUEST *request, tls_session_t *session)
 	 *	contain the data to send to the client.
 	 */
 	if (session->clean_in.used > 0) {
-		RDEBUG2("TLS application data to encrypt (%zu bytes)", session->clean_in.used);
-		log_request_hex(L_DBG, L_DBG_LVL_3, request, session->clean_in.data, session->clean_in.used);
+		if (RDEBUG_ENABLED3) {
+			RHEXDUMP(L_DBG_LVL_3, session->clean_in.data, session->clean_in.used,
+				 "TLS application data to encrypt (%zu bytes)", session->clean_in.used);
+		} else {
+			RDEBUG2("TLS application data to encrypt (%zu bytes)", session->clean_in.used);
+		}
 
 		ret = SSL_write(session->ssl, session->clean_in.data, session->clean_in.used);
 		record_to_buff(&session->clean_in, NULL, ret);

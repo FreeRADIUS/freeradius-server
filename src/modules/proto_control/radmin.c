@@ -969,7 +969,7 @@ int main(int argc, char **argv)
 		 *	If required, log commands to a radmin log file.
 		 */
 		if (radmin_log.dst == L_DST_FILES) {
-			fr_log(&radmin_log, L_INFO, "%s", line);
+			fr_log(&radmin_log, L_INFO, __FILE__, __LINE__, "%s", line);
 		}
 
 	retry:

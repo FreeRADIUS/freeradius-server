@@ -313,7 +313,7 @@ static XS(XS_radiusd_log)
 		 *	Because 'msg' is a 'char *', we don't want '%s', etc.
 		 *	in it to give us printf-style vulnerabilities.
 		 */
-		fr_log(&default_log, level, "rlm_perl: %s", msg);
+		fr_log(&default_log, level, __FILE__, __LINE__, "rlm_perl: %s", msg);
 	}
 	XSRETURN_NO;
 }

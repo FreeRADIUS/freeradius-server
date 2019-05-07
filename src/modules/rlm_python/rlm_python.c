@@ -182,7 +182,7 @@ static PyObject *mod_log(UNUSED PyObject *module, PyObject *args)
 		return NULL;
 	}
 
-	fr_log(&default_log, status, "%s", msg);
+	fr_log(&default_log, status, __FILE__, __LINE__, "%s", msg);
 	Py_INCREF(Py_None);
 
 	return Py_None;

@@ -305,7 +305,7 @@ int main(int argc, char **argv)
 	}
 
 	if (fr_dict_read(dict, config->raddb_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
+		PERROR("Failed to initialize the dictionaries");
 		return 1;
 	}
 	fr_strerror();	/* Clear the error buffer */

@@ -64,7 +64,7 @@ static mrb_value mruby_log(mrb_state *mrb, UNUSED mrb_value self)
 	char *msg = NULL;
 
 	mrb_get_args(mrb, "iz", &level, &msg);
-	fr_log(&default_log, level, "rlm_ruby: %s", msg);
+	fr_log(&default_log, level, __FILE__, __LINE__, "rlm_ruby: %s", msg);
 
 	return mrb_nil_value();
 }

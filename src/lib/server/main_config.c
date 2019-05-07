@@ -120,6 +120,7 @@ static const CONF_PARSER initial_logging_config[] = {
  **********************************************************************/
 static const CONF_PARSER log_config[] = {
 	{ FR_CONF_OFFSET("colourise", FR_TYPE_BOOL, main_config_t, do_colourise) },
+	{ FR_CONF_OFFSET("line_number", FR_TYPE_BOOL, main_config_t, log_line_number) },
 	{ FR_CONF_OFFSET("timestamp", FR_TYPE_BOOL, main_config_t, log_timestamp) },
 	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, main_config_t, log_dates_utc) },
 #ifdef WITH_CONF_WRITE
@@ -1184,6 +1185,7 @@ do {\
 	} else {
 		default_log.colourise = false;
 	}
+	default_log.line_number = config->log_line_number;
 
 	/*
 	 *	Starting the server, WITHOUT "-x" on the

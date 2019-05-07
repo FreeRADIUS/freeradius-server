@@ -1491,7 +1491,7 @@ int main(int argc, char *argv[])
 	 *	Load the custom dictionary
 	 */
 	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
+		PERROR("Failed to initialize the dictionaries");
 		EXIT_WITH_FAILURE;
 	}
 
