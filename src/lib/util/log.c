@@ -338,19 +338,19 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *msg, va_list ap
 		case L_DBG_ERR:
 		case L_DBG_ERR_REQ:
 		case L_DBG_WARN_REQ:
-			type = LOG_DEBUG;
+			type = (fr_log_type_t)LOG_DEBUG;
 			break;
 
 		case L_INFO:
-			type = LOG_INFO;
+			type = (fr_log_type_t)LOG_INFO;
 			break;
 
 		case L_WARN:
-			type = LOG_WARNING;
+			type = (fr_log_type_t)LOG_WARNING;
 			break;
 
 		case L_ERR:
-			type = LOG_ERR;
+			type = (fr_log_type_t)LOG_ERR;
 			break;
 		}
 		syslog(type, "%s", buffer);
