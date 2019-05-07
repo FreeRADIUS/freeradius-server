@@ -492,14 +492,14 @@ next_message:
 		next = (fr_channel_data_t *) fr_message_alloc_reserve(s->ms, &cd->m, data_size, s->leftover,
 								      s->listen->default_message_size);
 		if (!next) {
-			ERROR(, "Failed reserving partial packet.");
+			ERROR("Failed reserving partial packet.");
 			// @todo - probably close the socket...
 			rad_assert(0 == 1);
 		}
 	}
 
 	if (!fr_network_send_request(nr, cd)) {
-		ERROR(, "Failed sending packet to worker");
+		ERROR("Failed sending packet to worker");
 		fr_message_done(&cd->m);
 		nr->stats.dropped++;
 		s->stats.dropped++;
@@ -767,7 +767,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 				      sizeof(fr_channel_data_t),
 				      size);
 	if (!s->ms) {
-		ERROR(, "Failed creating message buffers for network IO: %s", fr_strerror());
+		ERROR("Failed creating message buffers for network IO: %s", fr_strerror());
 		talloc_free(s);
 		return;
 	}
@@ -833,7 +833,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 				      sizeof(fr_channel_data_t),
 				      s->listen->default_message_size * s->listen->num_messages);
 	if (!s->ms) {
-		ERROR(, "Failed creating message buffers for directory IO: %s", fr_strerror());
+		ERROR("Failed creating message buffers for directory IO: %s", fr_strerror());
 		talloc_free(s);
 		return;
 	}

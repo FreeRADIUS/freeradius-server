@@ -182,6 +182,8 @@ static void _fr_vlog_pool_free(UNUSED void *arg)
  *
  * @param[in] log	destination.
  * @param[in] type	of log message.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
@@ -412,10 +414,12 @@ int fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line, 
  * This function drains any messages from fr_strerror buffer adding a prefix (fmt)
  * to the first message.
  *
- * @param log	destination.
- * @param type	of log message.
- * @param fmt	with printf style substitution tokens.
- * @param ...	Substitution arguments.
+ * @param[in] log	destination.
+ * @param[in] type	of log message.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
+ * @param[in] fmt	with printf style substitution tokens.
+ * @param[in] ...	Substitution arguments.
  */
 int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
 {

@@ -377,7 +377,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 		if (p) {
 			*p = '\0';
 			if (rad_mkdir(exp, S_IRWXU, -1, -1) < 0) {
-				ERROR( "Failed creating %s: %s", exp, fr_syserror(errno));
+				ERROR("Failed creating %s: %s", exp, fr_syserror(errno));
 				talloc_free(exp);
 				return;
 			}
@@ -703,8 +703,6 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
  *
  * @param[in] lvl	Debug lvl (1-4).
  * @param[in] request	to read logging params from.
- * @param[in] file	src file the log message was generated in.
- * @param[in] line	number the log message was generated on.
  * @param[in] vp	to print.
  * @param[in] prefix	(optional).
  */
