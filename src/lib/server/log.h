@@ -121,7 +121,8 @@ void	log_hex(fr_log_t const *log, fr_log_type_t type, fr_log_lvl_t lvl,
 		char const *file, int line,
 		uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 
-void	log_fatal(fr_log_t const *log, char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 4, 5));
+void	log_fatal(fr_log_t const *log, char const *file, int line, char const *fmt, ...)
+	CC_HINT(format (printf, 4, 5)) CC_HINT(noreturn);
 
 int	log_global_init(fr_log_t *log, bool daemonize);
 
