@@ -451,8 +451,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		size_t len, i;
 		bool sep = false;
 
-		len = talloc_array_length(inst->server_raw);
-		server = p = talloc_array(inst, char, len);
+		len = talloc_array_length(inst->server_raw) - 1;
+		server = p = talloc_array(inst, char, len + 1);
 		for (i = 0; i < len; i++) {
 			switch (inst->server_raw[i]) {
 			case '\t':
