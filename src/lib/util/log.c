@@ -45,6 +45,7 @@ FILE	*fr_log_fp = NULL;
 int	fr_debug_lvl = 0;
 
 fr_thread_local_setup(TALLOC_CTX *, fr_vlog_pool)
+static uint32_t location_indent = 30;
 
 /** Canonicalize error strings, removing tabs, and generate spaces for error marker
  *
@@ -193,12 +194,14 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 	char		*buffer;
 	TALLOC_CTX	*pool;
 	int		ret = 0;
-
 	char const	*fmt_colour = "";
 	char const	*fmt_location = "";
 	char		fmt_time[50];
 	char const	*fmt_facility = "";
 	char const	*fmt_type = "";
+	char		*fmt_msg;
+
+	static char const *spaces = "                                    ";	/* 40 */
 
 	fmt_time[0] = '\0';
 
@@ -233,8 +236,25 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 	/*
 	 *	Print src file/line
 	 */
-	if (log->line_number) fmt_location = talloc_asprintf(pool, "%s:%i : ", file, line);
+	if (log->line_number) {
+		size_t	len;
+		int	pad = 0;
+		char	*str;
 
+		str = talloc_asprintf(pool, "%s:%i", file, line);
+		len = talloc_array_length(str) - 1;
+
+		/*
+		 *	Only increase the indent
+		 */
+		if (len > location_indent) {
+			location_indent = len;
+		} else {
+			pad = location_indent - len;
+		}
+
+		fmt_location = talloc_asprintf_append_buffer(str, "%.*s : ", pad, spaces);
+	}
 	/*
 	 *	Determine if we need to add a timestamp to the start of the message
 	 */
@@ -304,6 +324,44 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 		}
 	}
 
+	/*
+	 *	Sanitize output.
+	 *
+	 *	Most strings should be escaped before they get here.
+	 */
+	{
+		char	*p, *end;
+
+		p = fmt_msg = fr_vasprintf(pool, fmt, ap);
+		end = p + talloc_array_length(fmt_msg) - 1;
+
+		/*
+		 *	Filter out control chars and non UTF8 chars
+		 */
+		for (p = fmt_msg; *p != '\0'; p++) {
+			int clen;
+
+			switch (*p) {
+			case '\r':
+			case '\n':
+				*p = ' ';
+				break;
+
+			case '\t':
+				continue;
+
+			default:
+				clen = fr_utf8_char((uint8_t *)p, -1);
+				if (!clen) {
+					*p = '?';
+					continue;
+				}
+				p += (clen - 1);
+				break;
+			}
+		}
+	}
+
 	switch (log->dst) {
 
 #ifdef HAVE_SYSLOG_H
@@ -339,7 +397,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 		       "%s",	/* message */
 		       fmt_time,
 		       fmt_time[0] ? ": " : "",
-		       fr_vasprintf(pool, fmt, ap));
+		       fmt_msg);
 	}
 		break;
 #endif
@@ -366,7 +424,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 				 	 fmt_time[0] ? ": " : "",
 				 	 fmt_facility,
 				 	 fmt_type,
-				 	 fr_vasprintf(pool, fmt, ap),
+				 	 fmt_msg,
 				 	 colourise ? VTC_RESET : "");
 
 		len = talloc_array_length(buffer) - 1;
