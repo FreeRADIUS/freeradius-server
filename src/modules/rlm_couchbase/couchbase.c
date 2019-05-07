@@ -189,11 +189,12 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, co
  * @param instance Empty (un-allocated) Couchbase instance object.
  * @param host       The Couchbase server or list of servers.
  * @param bucket     The Couchbase bucket to associate with the instance.
+ * @param user       The Couchbase bucket user (NULL if none).
  * @param pass       The Couchbase bucket password (NULL if none).
  * @param timeout    Maximum time to wait for obtaining the initial configuration.
  * @return           Couchbase error object.
  */
-lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass,
+lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *user, const char *pass,
 				      lcb_uint32_t timeout)
 {
 	lcb_error_t error;                      /* couchbase command return */
@@ -205,12 +206,8 @@ lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const c
 	/* assign couchbase create options */
 	options.v.v0.host = host;
 	options.v.v0.bucket = bucket;
-
-	/* assign user and password if they were both passed */
-	if (bucket != NULL && pass != NULL) {
-		options.v.v0.user = bucket;
-		options.v.v0.passwd = pass;
-	}
+	options.v.v0.user = user;
+	options.v.v0.passwd = pass;
 
 	/* create couchbase connection instance */
 	error = lcb_create(instance, &options);

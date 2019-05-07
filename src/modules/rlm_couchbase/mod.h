@@ -49,6 +49,7 @@ typedef struct {
 	char const		*server_raw;     	//!< Raw server string before parsing.
 	char const		*server;         	//!< Couchbase server list.
 	char const		*bucket;         	//!< Couchbase bucket.
+	char const		*username;       	//!< Couchbase bucket username.
 	char const		*password;       	//!< Couchbase bucket password.
 
 	vp_tmpl_t		*user_key;       	//!< User document key.

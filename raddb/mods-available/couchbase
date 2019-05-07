@@ -29,6 +29,11 @@ couchbase {
 	bucket = "radius"
 
 	#
+	#  username:: Couchbase bucket username (optional).
+	#
+#	username = "radius"
+
+	#
 	#  password:: Couchbase bucket password (optional).
 	#
 #	password = "password"

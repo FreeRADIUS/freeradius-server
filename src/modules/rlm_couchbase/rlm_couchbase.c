@@ -54,6 +54,7 @@ static const CONF_PARSER client_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_couchbase_t, server_raw) },
 	{ FR_CONF_OFFSET("bucket", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_couchbase_t, bucket) },
+	{ FR_CONF_OFFSET("username", FR_TYPE_STRING, rlm_couchbase_t, username) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING, rlm_couchbase_t, password) },
 #ifdef WITH_ACCOUNTING
 	{ FR_CONF_OFFSET("acct_key", FR_TYPE_TMPL, rlm_couchbase_t, acct_key), .dflt = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}", .quote = T_DOUBLE_QUOTED_STRING },
