@@ -13,6 +13,7 @@ missingok
 compress
 delaycompress
 notifempty
+su radiusd radiusd
 
 #
 #  The main server log
