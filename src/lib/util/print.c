@@ -209,11 +209,11 @@ char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
  * @note Return value should be checked with is_truncated
  * @note Will always \0 terminate unless outlen == 0.
  *
- * @param[in] in string to escape.
- * @param[in] inlen length of string to escape (lets us deal with embedded NULs)
- * @param[out] out where to write the escaped string.
- * @param[out] outlen the length of the buffer pointed to by out.
- * @param[in] quote the quotation character
+ * @param[in] in	string to escape.
+ * @param[in] inlen	length of string to escape (lets us deal with embedded NULs)
+ * @param[out] out	where to write the escaped string.
+ * @param[out] outlen	the length of the buffer pointed to by out.
+ * @param[in] quote	the quotation character
  * @return
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
@@ -411,13 +411,13 @@ size_t fr_snprint_len(char const *in, ssize_t inlen, char quote)
  * but under some conditions may get binary data. A good example is libldap
  * and the arrays of struct berval ldap_get_values_len returns.
  *
- * @param[in] ctx To allocate new buffer in.
- * @param[in] in String to escape.
- * @param[in] inlen Length of string. Should be >= 0 if the data may contain
- *	embedded \0s. Must be >= 0 if data may not be \0 terminated.
- *	If < 0 inlen will be calculated using strlen.
- * @param[in] quote the quotation character.
- * @return new buffer holding the escaped string.
+ * @param[in] ctx	To allocate new buffer in.
+ * @param[in] in	String to escape.
+ * @param[in] inlen	Length of string. Should be >= 0 if the data may contain
+ *			embedded \0s. Must be >= 0 if data may not be \0 terminated.
+ *			If < 0 inlen will be calculated using strlen.
+ * @param[in] quote	the quotation character.
+ * @return new		buffer holding the escaped string.
  */
 char *fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
 {
