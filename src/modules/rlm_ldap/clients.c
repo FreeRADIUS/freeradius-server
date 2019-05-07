@@ -236,7 +236,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 		/*
 		 *@todo these should be parented from something
 		 */
-		c = client_afrom_cs(NULL, client, false);
+		c = client_afrom_cs(NULL, client, NULL);
 		if (!c) {
 			talloc_free(client);
 			ret = -1;
