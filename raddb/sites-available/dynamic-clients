@@ -253,32 +253,17 @@ server dynamic_clients {
 		}
 
 		#
-		#  Example 3: Look the clients up in SQL.
+		#  Example 2: Look the clients up in SQL.
 		#
 		#  This requires the SQL module to be configured, of course.
 		#
-		#   @todo - use the new 'map' function to map the 'nastable' to the attributes
-		#
-		if ("%{sql: SELECT nasname FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}") {
-			update control {
-				#
-				#  Echo the IP.
-				&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
-
-				#
-				#  Do multiple SELECT statements to grab
-				#  the various definitions.
-				&FreeRADIUS-Client-Shortname = "%{sql: SELECT shortname FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
-
-				&FreeRADIUS-Client-Secret = "%{sql: SELECT secret FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
-
-				&FreeRADIUS-Client-NAS-Type = "%{sql: SELECT type FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
-
-				&FreeRADIUS-Client-Virtual-Server = "%{sql: SELECT server FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
-			}
-
+		map sql "SELECT nasname,shortname,secret,type,server FROM nas WHERE nasname = '%{Packet-Src-IP-Address}' LIMIT 1" {
+			&control:FreeRADIUS-Client-IP-Address := 'nasname'
+			&control:FreeRADIUS-Client-Shortname := 'shortname'
+			&control:FreeRADIUS-Client-Secret := 'secret'
+			&control:FreeRADIUS-Client-NAS-Type := 'type'
+			&control:FreeRADIUS-Client-Virtual-Server := 'server'
 		}
-
 
 		#
 		#  Example 3: Look the clients up in LDAP
