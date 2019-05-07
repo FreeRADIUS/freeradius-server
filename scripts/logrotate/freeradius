@@ -17,6 +17,7 @@
 	notifempty
 
 	copytruncate
+	su radiusd radiusd
 }
 
 # (in order)
@@ -34,6 +35,7 @@
 	notifempty
 
 	nocreate
+	su radiusd radiusd
 }
 
 # There are different detail-rotating strategies you can use.  One is
@@ -53,4 +55,5 @@
 	notifempty
 
 	nocreate
+	su radiusd radiusd
 }

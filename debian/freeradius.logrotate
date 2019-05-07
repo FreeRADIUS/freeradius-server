@@ -9,6 +9,7 @@
 	notifempty
 
 	copytruncate
+	su freerad freerad
 }
 
 # (in order)
@@ -26,6 +27,7 @@
 	notifempty
 
 	nocreate
+	su freerad freerad
 }
 
 # There are different detail-rotating strategies you can use.  One is
@@ -45,4 +47,5 @@
 	notifempty
 
 	nocreate
+	su freerad freerad
 }
