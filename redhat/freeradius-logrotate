@@ -9,6 +9,7 @@ rotate 4
 missingok
 compress
 delaycompress
+su radiusd radiusd
 
 #
 #  The main server log
