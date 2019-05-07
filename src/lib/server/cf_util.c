@@ -1112,7 +1112,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	cp->lhs_quote = lhs_quote;
 	cp->rhs_quote = rhs_quote;
 	cp->op = op;
-	cp->item.filename = "<internal>"; /* will be over-written if necessary */
+	cp->item.filename = "";		/* will be over-written if necessary */
 	fr_cursor_init(&cp->item.cursor, &cp->item.child);
 
 	cp->attr = talloc_typed_strdup(cp, attr);
@@ -1691,16 +1691,19 @@ int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 
 static inline void truncate_filename(char const **e, char const **p, int *len, char const *filename)
 {
-	size_t flen = talloc_array_length(filename) - 1;
+	size_t flen;
 	char const *q;
 
 	#define FILENAME_TRUNCATE	200
 
 	*p = filename;
+	*e = "";
 
+	if (!filename || !*filename) return;
+
+	flen = talloc_array_length(filename) - 1;
 	if (flen <= FILENAME_TRUNCATE) {
 		*len = (int)flen;
-		*e = "";
 		return;
 	}
 
