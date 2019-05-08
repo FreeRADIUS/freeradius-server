@@ -2475,6 +2475,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (inst->dynamic_clients) {
 		fr_app_worker_t const	*app_process;
 
+		if (!inst->dynamic_submodule) {
+			cf_log_err(conf, "Cannot find the \"new Client {...}\" section in \"%s {...}\"", cf_section_name1(conf));
+			return -1;
+		}
+
 		app_process = (fr_app_worker_t const *) inst->dynamic_submodule->module->common;
 		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_submodule->data, conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
