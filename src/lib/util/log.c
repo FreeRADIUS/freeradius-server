@@ -477,9 +477,9 @@ int fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line, 
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
  * @param[in] fmt	with printf style substitution tokens.
- * @param[in] ...	Substitution arguments.
+ * @param[in] ap	Substitution arguments.
  */
-int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
+int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, va_list ap)
 {
 	char const *strerror;
 	int ret;
@@ -491,12 +491,12 @@ int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int
 
 	strerror = fr_strerror_pop();
 	if (!strerror) {
-		va_list ap;
+		va_list aq;
 		if (!fmt) return 0;	/* NOOP */
 
-		va_start(ap, fmt);
-		ret = fr_vlog(log, type, file, line, fmt, ap);
-		va_end(ap);
+		va_copy(aq, ap);
+		ret = fr_vlog(log, type, file, line, fmt, aq);
+		va_end(aq);
 
 		return ret;		/* DONE */
 	}
@@ -505,12 +505,12 @@ int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int
 	 *	Concatenate fmt with fr_strerror()
 	 */
 	if (fmt) {
-		va_list ap;
+		va_list aq;
 		char *tmp;
 
-		va_start(ap, fmt);
+		va_copy(aq, ap);
 		tmp = talloc_vasprintf(NULL, fmt, ap);
-		va_end(ap);
+		va_end(aq);
 
 		if (!tmp) return -1;
 
@@ -529,6 +529,30 @@ int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int
 	}
 
 	return 0;
+}
+
+/** Drain any outstanding messages from the fr_strerror buffers
+ *
+ * This function drains any messages from fr_strerror buffer adding a prefix (fmt)
+ * to the first message.
+ *
+ * @param[in] log	destination.
+ * @param[in] type	of log message.
+ * @param[in] file	src file the log message was generated in.
+ * @param[in] line	number the log message was generated on.
+ * @param[in] fmt	with printf style substitution tokens.
+ * @param[in] ...	Substitution arguments.
+ */
+int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
+{
+	int	ret;
+	va_list ap;
+
+	va_start(ap, fmt);
+	ret = fr_vlog_perror(log, type, file, line, fmt, ap);
+	va_end(ap);
+
+	return ret;
 }
 
 static int stderr_fd = -1;		//!< The original unmolested stderr file descriptor

@@ -121,6 +121,9 @@ int	fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, 
 int	fr_log(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1,3));
 
+int	fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, va_list ap)
+	CC_HINT(format (printf, 5, 0)) CC_HINT(nonnull (1));
+
 int	fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1));
 
