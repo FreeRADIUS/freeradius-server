@@ -317,7 +317,7 @@ void	log_global_free(void);
  *	 only RINFO, RWARN, RERROR etc...
  */
 #  define RINDENT() do {\
-	RDEBUG4(">> (%i) at %s[%u]", request->log.unlang_indent, __FILE__, __LINE__); \
+	RDEBUG4(">> (%i)", request->log.unlang_indent); \
 	if (request->module) {\
 		request->log.module_indent += 2;\
 	} else {\
@@ -336,7 +336,7 @@ void	log_global_free(void);
 	} else {\
 		request->log.unlang_indent -= 2;\
 	}\
-	RDEBUG4("<< (%i) at %s[%u]", request->log.unlang_indent, __FILE__, __LINE__); \
+	RDEBUG4("<< (%i)", request->log.unlang_indent); \
 } while(0)
 #else
 /** Indent R* messages by one level
