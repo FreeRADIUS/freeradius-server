@@ -2404,10 +2404,19 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	inst->app_io_conf = inst->submodule->conf;
 	inst->app_io_instance = inst->submodule->data;
+
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for proto_%s", inst->app_io->name);
 		return -1;
+	}
+
+	/*
+	 *	Get various information after bootstrapping the
+	 *	application IO module.
+	 */
+	if (inst->app_io->network_get) {
+		inst->app_io->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
 	}
 
 	/*
@@ -2434,14 +2443,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	if (inst->ipproto && !inst->app_io->connection_set) {
 		cf_log_err(inst->app_io_conf, "Cannot set TCP for proto_%s - internal set error", inst->app_io->name);
 		return -1;
-	}
-
-	/*
-	 *	Get various information after bootstrapping the
-	 *	application IO module.
-	 */
-	if (inst->app_io->network_get) {
-		inst->app_io->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
 	}
 
 	return 0;
