@@ -2374,7 +2374,7 @@ static int mod_close(fr_listen_t *li)
 		if (rcode < 0) return rcode;
 	} else {
 		close(child->fd);
-		child->fd = -1;
+//		child->fd = -1;
 	}
 
 	if (!connection) return 0;
