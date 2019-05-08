@@ -140,3 +140,12 @@ See
 [here](https://docs.docker.com/engine/userguide/networking/#embedded-dns-server)
 for more details on docker networking.
 
+### Example
+
+Here are the steps you would follow to debug FreeRADIUS on centos7.
+
+```
+cd scripts/docker/build-centos7
+docker build -f Dockerfile.deps -t freeradius/centos7-deps .
+docker run --privileged -it freeradius/centos7-deps
+```
