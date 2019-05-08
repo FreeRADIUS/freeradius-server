@@ -215,28 +215,10 @@ static virtual_server_compile_t compile_list[] = {
 	COMPILE_TERMINATOR
 };
 
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *process_app_cs)
-{
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
-	CONF_SECTION		*server_cs;
-	vp_tmpl_rules_t		parse_rules;
-
-	memset(&parse_rules, 0, sizeof(parse_rules));
-	parse_rules.dict_def = dict_radius;
-
-	rad_assert(listen_cs);
-
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules);
-}
-
-
 extern fr_app_worker_t proto_radius_dynamic_client;
 fr_app_worker_t proto_radius_dynamic_client = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_dynamic_client",
-	.instantiate	= mod_instantiate,
 	.entry_point	= mod_process,
+	.compile_list	= compile_list,
 };
