@@ -9,7 +9,7 @@ def buildClosures(arg) {
         closures[value] = {platform ->
                 stage("build-${platform}") {
                     docker.build("${platform}-test","-f ./scripts/jenkins/${platform}/Dockerfile ./scripts/jenkins/${platform}").inside {
-                        checkout([$class: 'GitSCM', branches: [[name: '*/v3.0.x']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanBeforeCheckout'],[$class: 'RelativeTargetDirectory', relativeTargetDir: "${platform}"]], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/mattrose/freeradius-server']]])
+                        checkout([$class: 'GitSCM', branches: [[name: '*/v3.0.x']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanBeforeCheckout'],[$class: 'RelativeTargetDirectory', relativeTargetDir: "${platform}"]], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/freeradius/freeradius-server']]])
                         sh "cat /etc/os-release || cat /etc/redhat-release"
                         dir(platform) {
                             if (platform.contains("centos")) {
