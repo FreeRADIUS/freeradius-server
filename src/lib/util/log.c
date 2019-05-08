@@ -338,7 +338,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 		/*
 		 *	Filter out control chars and non UTF8 chars
 		 */
-		for (p = fmt_msg; *p != '\0'; p++) {
+		for (p = fmt_msg; p < end; p++) {
 			int clen;
 
 			switch (*p) {
