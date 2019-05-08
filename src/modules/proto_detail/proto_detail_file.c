@@ -152,8 +152,8 @@ static int mod_open(fr_listen_t *li)
 	thread->vnode_fd = -1;
 	pthread_mutex_init(&thread->worker_mutex, NULL);
 
-	DEBUG("Listening on %s bound to virtual server %s FD %d",
-	      thread->name, cf_section_name2(inst->parent->server_cs), thread->fd);
+	DEBUG("Listening on %s bound to virtual server %s",
+	      thread->name, cf_section_name2(inst->parent->server_cs));
 
 	return 0;
 }
