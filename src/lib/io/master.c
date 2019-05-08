@@ -2423,6 +2423,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			return -1;
 		}
 
+		rad_assert(inst->dynamic_submodule != NULL);
+
 		/*
 		 *	Don't bootstrap the dynamic submodule.  We're
 		 *	not even sure what that means...
@@ -2476,7 +2478,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		fr_app_worker_t const	*app_process;
 
 		if (!inst->dynamic_submodule) {
-			cf_log_err(conf, "Instantiation failed for \"%s\" - there is no way to define dynamic clients", app_process->name);
+			cf_log_err(conf, "Instantiation failed for \"proto_%s\" - there is no way to define dynamic clients", inst->app_io->name);
 			return -1;
 		}
 
