@@ -1727,6 +1727,7 @@ error:
 	*pfiledone = false;
 	vp = fr_cursor_head(&cursor);
 	if (vp) fr_pair_list_free(&vp);
+	*out = NULL;
 
 	return -1;
 }
