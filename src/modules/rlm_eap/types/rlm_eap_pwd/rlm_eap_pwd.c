@@ -565,7 +565,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		break;
 
 	default:
-		cf_log_err_by_name(cs, "group", "Group %i is not supported", inst->group);
+		cf_log_err_by_child(cs, "group", "Group %i is not supported", inst->group);
 		return -1;
 	}
 

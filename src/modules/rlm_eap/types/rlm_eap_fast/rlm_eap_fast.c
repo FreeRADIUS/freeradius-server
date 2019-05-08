@@ -185,13 +185,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
 
 	if (!virtual_server_find(inst->virtual_server)) {
-		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+		cf_log_err_by_child(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
 		return -1;
 	}
 
 	inst->default_provisioning_method = eap_name2type(inst->default_provisioning_method_name);
 	if (!inst->default_provisioning_method) {
-		cf_log_err_by_name(cs, "default_provisioning_eap_type", "Unknown EAP type %s",
+		cf_log_err_by_child(cs, "default_provisioning_eap_type", "Unknown EAP type %s",
 				   inst->default_provisioning_method_name);
 		return -1;
 	}
@@ -203,12 +203,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
 
 	if (!inst->tls_conf) {
-		cf_log_err_by_name(cs, "tls", "Failed initializing SSL context");
+		cf_log_err_by_child(cs, "tls", "Failed initializing SSL context");
 		return -1;
 	}
 
 	if (talloc_array_length(inst->pac_opaque_key) - 1 != 32) {
-		cf_log_err_by_name(cs, "pac_opaque_key", "Must be 32 bytes long");
+		cf_log_err_by_child(cs, "pac_opaque_key", "Must be 32 bytes long");
 		return -1;
 	}
 
@@ -217,12 +217,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	 *	disable TLSv1.2 later.
 	 */
 	if (inst->tls_conf->tls_min_version > (float) 1.1) {
-		cf_log_err_by_name(cs, "tls_min_version", "require tls_min_version <= 1.1");
+		cf_log_err_by_child(cs, "tls_min_version", "require tls_min_version <= 1.1");
 		return -1;
 	}
 
 	if (!inst->pac_lifetime) {
-		cf_log_err_by_name(cs, "pac_lifetime", "must be non-zero");
+		cf_log_err_by_child(cs, "pac_lifetime", "must be non-zero");
 		return -1;
 	}
 

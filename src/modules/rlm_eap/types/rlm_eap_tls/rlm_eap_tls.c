@@ -311,7 +311,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	}
 
 	if (inst->virtual_server && !virtual_server_find(inst->virtual_server)) {
-		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+		cf_log_err_by_child(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
 		return -1;
 	}
 
