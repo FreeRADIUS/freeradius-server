@@ -33,8 +33,8 @@
 static fr_dict_t *dict_freeradius;
 static fr_dict_t *dict_radius;
 
-extern fr_dict_autoload_t proto_radius_auth_dict[];
-fr_dict_autoload_t proto_radius_auth_dict[] = {
+extern fr_dict_autoload_t proto_radius_dynamic_client_dict[];
+fr_dict_autoload_t proto_radius_dynamic_client_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
