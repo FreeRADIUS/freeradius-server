@@ -123,8 +123,13 @@ $(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
 
 ifneq "$(LOCAL_CERT_PRODUCTS)" ""
 $(LOCAL_CERT_PRODUCTS):
+ifeq "$(ENABLE_REPRODUCIBLE_BUILDS)" "yes"
+	@echo BOOTSTRAP raddb/certs/ passwords.mk
+	@$(MAKE) -C $(R)$(raddbdir)/certs/ passwords.mk
+else
 	@echo BOOTSTRAP raddb/certs/
 	@$(MAKE) -C $(R)$(raddbdir)/certs/
+endif
 
 # Bootstrap is special
 $(R)$(raddbdir)/certs/bootstrap: | raddb/certs/bootstrap $(LOCAL_CERT_PRODUCTS)

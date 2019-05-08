@@ -173,3 +173,8 @@ else
 	TESTBINDIR = ./$(BUILD_DIR)/bin
 	TESTBIN    = ./$(BUILD_DIR)/bin
 endif
+
+#
+#  With reproducible builds, do not generate certificates during installation
+#
+ENABLE_REPRODUCIBLE_BUILDS = @ENABLE_REPRODUCIBLE_BUILDS@

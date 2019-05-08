@@ -619,6 +619,7 @@ AC_SUBST([openssl_version_check_config])
 dnl #
 dnl #  extra argument: --enable-reproducible-builds
 dnl #
+ENABLE_REPRODUCIBLE_BUILDS=no
 AC_ARG_ENABLE(reproducible-builds,
 [AS_HELP_STRING([--enable-reproducible-builds],
                 [ensure the build does not change each time])],
@@ -627,11 +628,13 @@ AC_ARG_ENABLE(reproducible-builds,
     AC_DEFINE(ENABLE_REPRODUCIBLE_BUILDS, [1],
               [Define to ensure each build is the same])
     reproducible_builds=yes
+    ENABLE_REPRODUCIBLE_BUILDS=yes
     ;;
   *)
     reproducible_builds=no
   esac ]
 )
+AC_SUBST(ENABLE_REPRODUCIBLE_BUILDS)
 
 
 dnl #############################################################

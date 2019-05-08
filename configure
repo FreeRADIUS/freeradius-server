@@ -655,6 +655,7 @@ RUSERS
 SNMPWALK
 SNMPGET
 PERL
+ENABLE_REPRODUCIBLE_BUILDS
 openssl_version_check_config
 WITH_DHCP
 modconfdir
@@ -5586,6 +5587,7 @@ else
 fi
 
 
+ENABLE_REPRODUCIBLE_BUILDS=no
 # Check whether --enable-reproducible-builds was given.
 if test "${enable_reproducible_builds+set}" = set; then :
   enableval=$enable_reproducible_builds;  case "$enableval" in
@@ -5594,12 +5596,14 @@ if test "${enable_reproducible_builds+set}" = set; then :
 $as_echo "#define ENABLE_REPRODUCIBLE_BUILDS 1" >>confdefs.h
 
     reproducible_builds=yes
+    ENABLE_REPRODUCIBLE_BUILDS=yes
     ;;
   *)
     reproducible_builds=no
   esac
 
 fi
+
 
 
 
