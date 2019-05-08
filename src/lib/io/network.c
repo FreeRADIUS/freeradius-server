@@ -1288,7 +1288,11 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			fr_message_done(&cd->m);
 			if (li->app_io->error) li->app_io->error(li);
 
-			fr_network_socket_dead(nr, s);
+			/*
+			 *	Don't close the socket.  The write may
+			 *	be temporary.
+			 */
+//			fr_network_socket_dead(nr, s);
 			continue;
 		}
 
