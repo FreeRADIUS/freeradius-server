@@ -177,6 +177,7 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 /** Remove a pending timer
  *
  * @param[in] request	The current request.
+ * @param[in] ctx	that was provided to #unlang_xlat_event_timeout_add.
  * @return
  *	- 0 if there was a pending timer and it was removed.
  *      - -1 if there was no pending timer.
