@@ -9,9 +9,9 @@ def buildClosures(arg) {
         closures[value] = {platform ->
                 stage("build-${platform}") {
                     docker.build("${platform}-test","-f ./scripts/jenkins/${platform}/Dockerfile ./scripts/jenkins/${platform}").inside {
-                        checkout([$class: 'GitSCM', branches: [[name: '*/v3.0.x']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanBeforeCheckout'],[$class: 'RelativeTargetDirectory', relativeTargetDir: "${platform}"]], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/freeradius/freeradius-server']]])
+                        checkout([$class: 'GitSCM', branches: [[name: '*/v3.0.x']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanBeforeCheckout'],[$class: 'RelativeTargetDirectory', relativeTargetDir: "${platform}/build"]], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/freeradius/freeradius-server']]])
                         sh "cat /etc/os-release || cat /etc/redhat-release"
-                        dir(platform) {
+                        dir("${platform}/build/") {
                             if (platform.contains("centos")) {
                                 sh 'mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,BUILDROOT,RPMS,SRPMS}'
                                 sh 'tar -j -c --transform "s/./freeradius-server-$(cat VERSION)/" --exclude ".git" --exclude "rpmbuild" -f rpmbuild/SOURCES/freeradius-server-$(cat VERSION).tar.bz2 .'
@@ -30,6 +30,8 @@ def buildClosures(arg) {
 }
 
 node {
+    cleanWs(patterns: [[pattern: '**/*.deb , **/*.changes , **/*.buildinfo , **/*.rpm', type: 'INCLUDE']])
     checkout scm
     parallel buildClosures(platforms)
+    archiveArtifacts '**/*.changes,**/*.buildinfo,**/*.deb,**/*.rpm'
 }
