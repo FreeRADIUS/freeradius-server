@@ -1296,3 +1296,38 @@ done:
 
 	return 0;
 }
+
+/** Find the component for a section
+ *
+ */
+virtual_server_method_t *virtual_server_section_methods(char const *name1, char const *name2)
+{
+	virtual_server_compile_t *entry;
+
+	rad_assert(server_section_name_tree != NULL);
+
+	/*
+	 *	Look up the specific name first.  That way we can
+	 *	define both "accounting on", and "accounting *".
+	 */
+	if (name2 != CF_IDENT_ANY) {
+		entry = rbtree_finddata(server_section_name_tree,
+					&(virtual_server_compile_t) {
+						.name = name1,
+						.name2 = name2,
+					});
+		if (entry) return entry->methods;
+	}
+
+	/*
+	 *	Then look up the wildcard, if we didn't find any matching name2.
+	 */
+	entry = rbtree_finddata(server_section_name_tree,
+				&(virtual_server_compile_t) {
+					.name = name1,
+					.name2 = CF_IDENT_ANY,
+				});
+	if (!entry) return NULL;
+
+	return entry->methods;
+}
