@@ -433,6 +433,26 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
+/** Bootstrap the module
+ *
+ * Define attributes.
+ *
+ * @param conf to parse.
+ * @param instance configuration data.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
+ */
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	rlm_couchbase_t	*inst = instance;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	return 0;
+}
+
 /** Initialize the rlm_couchbase module
  *
  * Intialize the module and create the initial Couchbase connection pool.
@@ -546,6 +566,7 @@ module_t rlm_couchbase = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_couchbase_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.onload		= mod_load,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,

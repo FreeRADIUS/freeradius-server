@@ -58,7 +58,8 @@ typedef struct {
 	const char		*client_view;    	//!< Couchbase view that returns client documents.
 
 	json_object		*map;           	//!< Json object to hold user defined attribute map.
-	fr_pool_t	*pool;			//!< Connection pool.
+	fr_pool_t		*pool;			//!< Connection pool.
+	char const		*name;			//!< Module instance name.
 } rlm_couchbase_t;
 
 /** Couchbase instance specific information
