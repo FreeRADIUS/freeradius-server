@@ -366,7 +366,8 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	 *	the VALUE_PAIR.
 	 */
 	if (vp->type == VT_XLAT) {
-		n->xlat = talloc_typed_strdup(n, n->xlat);
+		n->type = VT_XLAT;
+		n->xlat = talloc_typed_strdup(n, vp->xlat);
 		return n;
 	}
 	fr_value_box_copy(n, &n->data, &vp->data);
