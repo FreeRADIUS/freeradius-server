@@ -699,7 +699,7 @@ module_instance_t *module_by_name(module_instance_t const *parent, char const *a
  * @param[in,out] component	the default component to use.  Updated to be the found component
  * @param[out] name1		name1 of the method being called
  * @param[out] name2		name2 of the method being called
- * @param[in] name 		The name of the module we're attempting to find, concatenated with the method
+ * @param[in] name 		The name of the module we're attempting to find, possibly concatenated with the method
  * @return
  *	- The module instance on success.
  *	- NULL on not found
@@ -725,6 +725,8 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	 */
 	mi = module_by_name(NULL, name);
 	if (mi) {
+		virtual_server_method_t *allowed_list;
+
 		if (!method) return mi;
 
 		/*
@@ -739,51 +741,119 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 			return mi;
 		}
 
+		/*
+		 *	We weren't asked to search for specific names,
+		 *	OR the module has no specific names, return.
+		 */
+		if (!name1 || !*name1 || !name2 || !mi->module->method_names) {
+			return mi;
+		}
 
 		/*
-		 *	Prefer to call the "recv Access-Request"
-		 *	method over MOD_AUTHORIZE.
+		 *	Walk through the module, finding a matching
+		 *	method.
 		 */
-		if (name1 && *name1 && name2 && mi->module->method_names) {
-			for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
-				methods = &mi->module->method_names[j];
+		for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
+			methods = &mi->module->method_names[j];
+
+			/*
+			 *	Wildcard match name1, we're
+			 *	done.
+			 */
+			if (methods->name1 == CF_IDENT_ANY) {
+			found:
+				*method = methods->method;
+				return mi;
+			}
+
+			/*
+			 *	If name1 doesn't match, skip it.
+			 */
+			if (strcmp(methods->name1, *name1) != 0) continue;
+
+			/*
+			 *	The module can declare a
+			 *	wildcard for name2, in which
+			 *	case it's a match.
+			 */
+			if (methods->name2 == CF_IDENT_ANY) goto found;
+
+			/*
+			 *	No name2 is also a match to no name2.
+			 */
+			if (!methods->name2 && !*name2) goto found;
+
+			/*
+			 *	Don't do strcmp on NULLs
+			 */
+			if (!methods->name2 || !*name2) continue;
+
+			if (strcmp(methods->name2, *name2) == 0) goto found;
+		}
+
+		/*
+		 *	No match for "recv Access-Request", or
+		 *	whatever else the section is.  Let's see if
+		 *	the section has a list of allowed methods.
+		 */
+		allowed_list = virtual_server_section_methods(*name1, *name2);
+		if (!allowed_list) return mi;
+
+		/*
+		 *	Walk over allowed methods for this section,
+		 *	(implicitly ordered by priority), and see if
+		 *	the allowed method matches any of the module
+		 *	methods.
+		 *
+		 *	Unfortunately, this process is O(N*M).
+		 *	Luckily, we only do it if all else fails, so
+		 *	it's mostly OK.
+		 *
+		 *	Note that the "allowed" list CANNOT include
+		 *	CF_IDENT_ANY.  Only the module can do that.
+		 *	If the "allowed" list exported CF_IDENT_ANY,
+		 *	then any module method would match, which is
+		 *	bad.
+		 */
+		for (j = 0; allowed_list[j].name != NULL; j++) {
+			int k;
+			virtual_server_method_t *allowed = &allowed_list[j];
+
+			for (k = 0; mi->module->method_names[k].name1 != NULL; k++) {
+				methods = &mi->module->method_names[k];
+
+				rad_assert(methods->name1 != CF_IDENT_ANY); /* should have been caught above */
+
+				if (strcmp(methods->name1, allowed->name) != 0) continue;
 
 				/*
-				 *	Wildcard match name1, we're
-				 *	done.
+				 *	The module matches "recv *",
+				 *	call this method.
 				 */
-				if (methods->name1 == CF_IDENT_ANY) {
-				found:
+				if (methods->name2 == CF_IDENT_ANY) {
+				found_allowed:
 					*method = methods->method;
 					return mi;
 				}
 
 				/*
-				 *	If name1 doesn't match, skip it.
-				 */
-				if (strcmp(methods->name1, *name1) != 0) continue;
-
-				/*
-				 *	The module can declare a
-				 *	wildcard for name2, in which
-				 *	case it's a match.
-				 */
-				if (methods->name2 == CF_IDENT_ANY) goto found;
-
-				/*
 				 *	No name2 is also a match to no name2.
 				 */
-				if (!methods->name2 && !*name2) goto found;
+				if (!methods->name2 && !allowed->name2) goto found_allowed;
 
 				/*
 				 *	Don't do strcmp on NULLs
 				 */
-				if (!methods->name2 || !*name2) continue;
+				if (!methods->name2 || !allowed->name2) continue;
 
-				if (strcmp(methods->name2, *name2) == 0) goto found;
+				if (strcmp(methods->name2, allowed->name2) == 0) goto found_allowed;
 			}
 		}
 
+		/*
+		 *	Didn't find a matching method.  Just return
+		 *	the module.
+		 */
 		return mi;
 	}
 
