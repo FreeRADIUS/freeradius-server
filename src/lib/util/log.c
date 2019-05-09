@@ -447,6 +447,8 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
  *
  * @param log	destination.
  * @param type	of log message.
+ * @param file	where the log message originated
+ * @param line	where the log message originated
  * @param fmt	with printf style substitution tokens.
  * @param ...	Substitution arguments.
  */
