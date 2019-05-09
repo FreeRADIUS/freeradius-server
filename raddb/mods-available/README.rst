@@ -77,3 +77,40 @@ method described above.
 
 Once the module is enabled, it will automatically be used in the
 default configuration.
+
+Multiple Instances
+------------------
+
+It is sometimes necessary to have the same module do two different
+things.  The server supports this functionality via "instances" of
+modules.
+
+Normally, a module configuration looks like this:
+
+  sql {
+    ... sql stuff ...
+  }
+
+This module is then refereed to as the "sql" module.
+
+
+But what happens if you want to connect to two different SQL
+databases?  The solution is simple; copy the "sql" module
+configuration, and add an instance name after the "sql" string:
+
+  sql mysql1 {
+    ... configuration for connecting to mysql11 ...
+  }
+  
+  sql mysql2 {
+    ... configuration for connecting to mysql12 ...
+  }
+
+This configuration says "load the SQL module, but create two copies of
+it, with different configurations".  The different configurations can
+be referred to by name, as "mysql1" and "mysql2".  That is, anywhere
+you would normally use "sql", you could use either "mysql1" or
+"mysql2".
+
+For further examples of using module instances, see the "attr_filter"
+module configuration in this directory.
