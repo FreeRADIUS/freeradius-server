@@ -1920,12 +1920,7 @@ void _cf_log_by_child(fr_log_type_t type, CONF_SECTION const *parent, char const
 		      char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
-	char		*msg;
 	CONF_PAIR const	*cp;
-
-	va_start(ap, fmt);
-	msg = fr_vasprintf(NULL, fmt, ap);
-	va_end(ap);
 
 	cp = cf_pair_find(parent, child);
 	if (cp) {
