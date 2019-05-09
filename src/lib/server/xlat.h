@@ -335,6 +335,8 @@ void		xlat_instances_free(void);
 int		unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t callback,
 					      void const *ctx, struct timeval *when);
 
+int		unlang_xlat_event_timeout_delete(REQUEST *request, void *ctx);
+
 void		unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 				 REQUEST *request, xlat_exp_t const *exp, bool top_frame);
 

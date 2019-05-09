@@ -125,6 +125,7 @@ static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
 static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, struct timeval *now, void *ctx)
 {
 	unlang_xlat_event_t *ev = talloc_get_type_abort(ctx, unlang_xlat_event_t);
+
 	void *mutable_ctx;
 	void *mutable_inst;
 
@@ -132,6 +133,9 @@ static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, struct
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
 	ev->timeout(ev->request, mutable_inst, ev->thread, mutable_ctx, now);
+
+	/* Remove old references from the request */
+	if (!fr_cond_assert(request_data_get(ev->request, ev->ctx, -1) == ev)) return;
 	talloc_free(ev);
 }
 
@@ -170,6 +174,24 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 	return 0;
 }
 
+/** Remove a pending timer
+ *
+ * @param[in] request	The current request.
+ * @return
+ *	- 0 if there was a pending timer and it was removed.
+ *      - -1 if there was no pending timer.
+ */
+int unlang_xlat_event_timeout_delete(REQUEST *request, void *ctx)
+{
+	unlang_xlat_event_t *xev = request_data_get(request, ctx, -1);
+
+	if (xev) {
+		talloc_free(xev);
+		return 0;
+	}
+
+	return -1;
+}
 
 /** Push a pre-compiled xlat onto the stack for evaluation
  *
