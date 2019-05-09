@@ -2437,6 +2437,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		/*
 		 *	Don't bootstrap the dynamic submodule.  We're
 		 *	not even sure what that means...
+		 *
+		 *	@todo - maybe register the sections in
+		 *	app_process->compile_list?
 		 */
 	}
 
@@ -2484,6 +2487,25 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		}
 
 		app_process = (fr_app_worker_t const *) inst->dynamic_submodule->module->common;
+
+		/*
+		 *	Compile the processing sections if the compile
+		 *	list exists.
+		 *
+		 *	Note that we don't register these sections.
+		 *	Maybe we should?
+		 */
+		if (app_process->compile_list) {
+			vp_tmpl_rules_t		parse_rules;
+
+			memset(&parse_rules, 0, sizeof(parse_rules));
+			parse_rules.dict_def = virtual_server_namespace(cf_section_name2(inst->server_cs));
+
+			if (virtual_server_compile_sections(inst->server_cs, app_process->compile_list, &parse_rules) < 0) {
+				return -1;
+			}
+		}
+
 		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_submodule->data, conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
