@@ -1223,7 +1223,35 @@ static int virtual_server_section_register(virtual_server_compile_t const *entry
 	old = rbtree_finddata(server_section_name_tree, entry);
 	if (old) return 0;
 
+#ifndef NDEBUG
+	/*
+	 *	Catch stupid programmers.
+	 *
+	 *	Processing sections can't allow "*" for module
+	 *	methods, because otherwise you would be allowed to run
+	 *	DHCP things in a RADIUS accounting section.  And that
+	 *	would be bad.
+	 */
+	if (entry->methods) {
+		int i;
+
+		for (i = 0; entry->methods[i].name != NULL; i++) {
+			if (entry->methods[i].name == CF_IDENT_ANY) {
+				ERROR("Processing sections cannot allow \"*\"");
+				return -1;
+			}
+
+			if (entry->methods[i].name2 == CF_IDENT_ANY) {
+				ERROR("Processing sections cannot allow \"%s *\"",
+					entry->methods[i].name);
+				return -1;
+			}
+		}
+	}
+#endif
+
 	if (!rbtree_insert(server_section_name_tree, entry)) {
+		fr_strerror_printf("Failed inserting entry into internal tree");
 		return -1;
 	}
 
