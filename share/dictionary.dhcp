@@ -272,7 +272,7 @@ ATTRIBUTE	DHCP-BCMS-Server-IPv4-Address		89	ipaddr array
 # Authentication
 ATTRIBUTE	DHCP-Authentication			90	octets
 
-ATTRIBUTE	DHCP-Client-Last-Txn-Time		91	octets
+ATTRIBUTE	DHCP-Client-Last-Txn-Time		91	integer # seconds in the past
 
 ATTRIBUTE	DHCP-associated-ip			92	octets
 # Client System Architecture
