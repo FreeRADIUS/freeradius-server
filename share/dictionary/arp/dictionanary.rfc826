@@ -2,6 +2,7 @@
 # Copyright (C) 2019 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
+
 ##############################################################################
 #
 #	Dictionary for the ARP protocol.
@@ -10,34 +11,43 @@
 #
 ##############################################################################
 
-#
-#  We really need to make dictionaries protocol-specific.
-#  For now, this hack works.
-#
-VENDOR		ARP				55
+ATTRIBUTE	Arp-Packet				1	struct
+ATTRIBUTE	Hardware-Format				.1	short
+ATTRIBUTE	Protocol-Format				.2	short
+ATTRIBUTE	Hardware-Address-Length			.3	byte
+ATTRIBUTE	Protocol-Address-Length			.4	byte
+ATTRIBUTE	ARP-Operation				.5	short
+ATTRIBUTE	Sender-Hardware-Address			.6	ether
+ATTRIBUTE	Sender-Protocol-Address			.7	ipaddr
+ATTRIBUTE	Target-Hardware-Address			.8	ether
+ATTRIBUTE	Target-Protocol-Address			.9	ipaddr
 
-BEGIN-VENDOR	ARP
+VALUE	Hardware-Format			Ethernet		1
 
-ATTRIBUTE	ARP-Hardware-Format			1	short
-ATTRIBUTE	ARP-Protocol-Format			2	short
-ATTRIBUTE	ARP-Hardware-Address-Length		3	byte
-ATTRIBUTE	ARP-Protocol-Address-Length		4	byte
-ATTRIBUTE	ARP-Operation				5	short
-ATTRIBUTE	ARP-Sender-Hardware-Address		6	ether
-ATTRIBUTE	ARP-Sender-Protocol-Address		7	ipaddr
-ATTRIBUTE	ARP-Target-Hardware-Address		8	ether
-ATTRIBUTE	ARP-Target-Protocol-Address		9	ipaddr
-
-VALUE	ARP-Hardware-Format		Ethernet		1
-
-VALUE	ARP-Protocol-Format		IPv4			0x0800
+VALUE	Protocol-Format			IPv4			0x0800
 
 VALUE	ARP-Operation			Request			1
 VALUE	ARP-Operation			Reply			2
-VALUE	ARP-Operation			Rev-Request		3
-VALUE	ARP-Operation			Rev-Reply		4
-VALUE	ARP-Operation			Rev-Reply		4
-VALUE	ARP-Operation			Inv-Request		8
-VALUE	ARP-Operation			Inv-Reply		9
-
-END-VENDOR ARP
+VALUE	ARP-Operation			Reverse-Request		3
+VALUE	ARP-Operation			Reverse-Reply		4
+VALUE	ARP-Operation			DRARP-Request		5
+VALUE	ARP-Operation			DRARP-Reply		6
+VALUE	ARP-Operation			DRARP-Error		7
+VALUE	ARP-Operation			InARP-Request		8
+VALUE	ARP-Operation			InARP-Reply		9
+VALUE	ARP-Operation			ARP-NAK			10
+VALUE	ARP-Operation			MARS-Request		11
+VALUE	ARP-Operation			MARS-Multi		12
+VALUE	ARP-Operation			MARS-MServ		13
+VALUE	ARP-Operation			MARS-Join		14
+VALUE	ARP-Operation			MARS-Leave		15
+VALUE	ARP-Operation			MARS-NAK		16
+VALUE	ARP-Operation			MARS-Unserv		17
+VALUE	ARP-Operation			MARS-SJoin		18
+VALUE	ARP-Operation			MARS-SLeave		19
+VALUE	ARP-Operation			MARS-Grouplist-Request	20
+VALUE	ARP-Operation			MARS-Grouplist-Reply	21
+VALUE	ARP-Operation			MARS-Redirect-MAP	22
+VALUE	ARP-Operation			MAPOS-UNARP		23
+VALUE	ARP-Operation			OP_EXP1			24
+VALUE	ARP-Operation			OP_EXP2			25
