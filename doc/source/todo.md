@@ -148,10 +148,19 @@ in those sections.
 
 We will hope that the packet names are different in every protocol.
 
-The `parse_rules()` should take a list of similar names, so that the
-`unlang_compile()` function can cross-correlate, and call the right
-function.
+The processing modules can now export a list of *additional* methods
+that they take.  The `*module_by_name_and_method()` function walks
+down that list:
 
-The `subrequest` functionality also needs to be updated to handle
-this.  Initially just by allowing anything.  Or, later relying on the
-registry and packet types?
+  * if method[COMPONTENT] is set, then return that
+  * otherwise walk over the named methods for a module, looking
+    for a match to the current section we're compiling.
+    e.g. "recv Access-Request"
+  * if that still isn't found, then look up the list of allowed
+    methods for this processing section.  Then, walk over that list
+    and the module list in O(N*M), to see if there's a matching
+    method
+
+The last step is more rare, so it shouldn't affect speed much.
+
+The processing sections don't (yet) export such additional methods.
