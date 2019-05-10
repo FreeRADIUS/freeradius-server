@@ -429,6 +429,7 @@ static int mod_detach(void *instance)
 
 	if (inst->map) json_object_put(inst->map);
 	if (inst->pool) fr_pool_free(inst->pool);
+	if (inst->api_opts) mod_free_api_opts(inst);
 
 	return 0;
 }
@@ -499,6 +500,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	/* setup item map */
 	if (mod_build_attribute_element_map(conf, inst) != 0) {
+		/* fail */
+		return -1;
+	}
+
+	/* setup libcouchbase extra options */
+	if (mod_build_api_opts(conf, inst) != 0) {
 		/* fail */
 		return -1;
 	}
