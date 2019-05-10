@@ -28,7 +28,11 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_couchbase - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/json/base.h>
+
+DIAG_OFF(documentation)
+#include <libcouchbase/couchbase.h>
+#include <libcouchbase/n1ql.h>
+DIAG_ON(documentation)
 
 #include "couchbase.h"
 
@@ -419,3 +423,100 @@ lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char 
 	/* return error */
 	return error;
 }
+
+/** Couchbase callback for N1QL operations
+ *
+ * @param instance Couchbase connection instance.
+ * @param cbtype   Couchbase callback type.
+ * @param resp     Couchbase query response object.
+ */
+static void couchbase_n1ql_callback(lcb_t instance, int cbtype, const lcb_RESPN1QL *resp) {
+	cookie_u cu;                         /* union of const and non const pointers */
+	cu.cdata = resp->cookie;             /* set const union member to cookie passed from couchbase */
+	cookie_t *c = (cookie_t *) cu.data;  /* set our cookie struct using non-const member */
+
+	if (resp->rc != LCB_SUCCESS) {
+		ERROR("(couchbase_n1ql_callback) %s (0x%x)", lcb_strerror(instance, resp->rc), resp->rc);
+		return;
+	}
+
+	if (!resp->row || resp->nrow < 1) {
+		ERROR("Result is too short");
+		return;
+	}
+
+	if (resp->rflags & LCB_RESP_F_FINAL) return;
+
+	DEBUG4("(couchbase_n1ql_callback) got %zu bytes: %.*s, callback-type: %s\n", resp->nrow,
+			(int)resp->nrow, resp->row, lcb_strcbtype(cbtype));
+
+	c->jobj = json_tokener_parse_ex(c->jtok, resp->row, resp->nrow);
+
+	switch ((c->jerr = json_tokener_get_error(c->jtok))) {
+	case json_tokener_continue:
+		if (c->jobj != NULL) {
+			ERROR("(couchbase_n1ql_callback) object not null on continue!");
+			return;
+		}
+
+		break;
+	case json_tokener_success:
+		break;
+	default:
+		ERROR("(couchbase_n1ql_callback) json parsing error: %s", json_tokener_error_desc(c->jerr));
+		break;
+	}
+}
+
+/** Query a Couchbase using N1QL
+ *
+ * Setup and execute a Couchbase view request and wait for the result.
+ *
+ * @param  instance Couchbase connection instance.
+ * @param  cookie   Couchbase cookie for returning information from callbacks.
+ * @param  query    The fully qualified view path including the design document and view name.
+ * @return          Couchbase error object.
+ */
+lcb_error_t couchbase_query_n1ql(lcb_t instance, const void *cookie, const char *query)
+{
+	cookie_u cu;                         /* union of const and non const pointers */
+	cu.cdata = cookie;                   /* set const union member to cookie passed from couchbase */
+	cookie_t *c = (cookie_t *) cu.data;  /* set our cookie struct using non-const member */
+	lcb_error_t rc;                      /* couchbase command return */
+	lcb_N1QLPARAMS *nparams;             /* Object to store the N1QL */
+	lcb_CMDN1QL cmd = {                  /* Object to store the query callback */
+		.callback = couchbase_n1ql_callback,
+		.cmdflags = LCB_CMDN1QL_F_PREPCACHE
+	};
+
+	rad_assert(query != NULL);
+
+	memset(c, 0, sizeof(cookie_t));
+
+	c->jerr = json_tokener_success;
+	c->jtok = json_tokener_new();
+
+	/* debugging */
+	DEBUG4("fetching N1QL: %s", query);
+
+	nparams = lcb_n1p_new();
+	rc = lcb_n1p_setstmtz(nparams, query);
+
+	if (rc == LCB_SUCCESS) rc = lcb_n1p_setconsistency(nparams, LCB_N1P_CONSISTENCY_REQUEST);
+	if (rc == LCB_SUCCESS) rc = lcb_n1p_mkcmd(nparams, &cmd);
+	if (rc == LCB_SUCCESS) rc = lcb_n1ql_query(instance, c, &cmd);	
+	if (rc == LCB_SUCCESS) lcb_wait(instance);
+
+	if (rc != LCB_SUCCESS) {
+		ERROR("(couchbase_query_n1ql) %s (0x%x)", lcb_strerror(instance, rc), rc);
+	}
+
+	lcb_n1p_free(nparams);
+
+	/* free token */
+	json_tokener_free(c->jtok);
+
+	/* return error */
+	return rc;
+}
+

@@ -9,6 +9,18 @@
 #
 #  The `couchbase` module is used to provide connections to a `Couchbase` database.
 #
+#  It is possible to fetch the content using N1QL as the below example.
+#
+#  e.g:
+#
+#  ```
+#  map couchbase "SELECT myfield1,myfield2 FROM `mybucket` WHERE id='123'" {
+#    &control:Tmp-String-0 := 'myfield1'
+#    &control:Tmp-String-1 := 'myfield2'
+#  }
+#  ```
+#  And use the content stored in `&control:Tmp-String-0`.
+#
 
 #
 #  ## Configuration Settings

@@ -25,11 +25,11 @@
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 RCSIDH(couchbase_h, "$Id$")
-
 #ifdef HAVE_WDOCUMENTATION
 DIAG_OFF(documentation)
 #endif
 #include <libcouchbase/couchbase.h>
+#include <libcouchbase/n1ql.h>
 #ifdef HAVE_WDOCUMENTATION
 DIAG_ON(documentation)
 #endif
@@ -104,3 +104,7 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
 
 /* query a couchbase view via http */
 lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char *path, const char *post);
+
+/* query a couchbase bucket via N1QL */
+lcb_error_t couchbase_query_n1ql(lcb_t instance, const void *cookie, const char *query);
+
