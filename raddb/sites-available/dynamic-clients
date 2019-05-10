@@ -265,8 +265,25 @@ server dynamic_clients {
 			&control:FreeRADIUS-Client-Virtual-Server := 'server'
 		}
 
+
 		#
-		#  Example 3: Look the clients up in LDAP
+		#  Example 3: Look the clients up in Couchbase bucket.
+		#
+		#  This requires the COUCHBASE module to be configured, of course.
+		#
+		#  NOTE: To run queries, the bucket should exist a primary index.
+		#  https://docs.couchbase.com/server/4.0/getting-started/first-n1ql-query.html
+		#
+		map couchbase "SELECT nasname,shortname,secret,type,server FROM `client` WHERE nasname='%{Packet-Src-IP-Address}' LIMIT 1"  {
+			&control:FreeRADIUS-Client-IP-Address := 'nasname'
+			&control:FreeRADIUS-Client-Shortname := 'shortname'
+			&control:FreeRADIUS-Client-Secret := 'secret'
+			&control:FreeRADIUS-Client-NAS-Type := 'type'
+			&control:FreeRADIUS-Client-Virtual-Server := 'server'
+		}
+
+		#
+		#  Example 4: Look the clients up in LDAP
 		#
 		#  @todo - use the new 'map' function to map the
 		#         'nastable' to the attributes

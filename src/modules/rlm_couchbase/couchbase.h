@@ -26,8 +26,10 @@
  */
 RCSIDH(couchbase_h, "$Id$")
 
-#include <libcouchbase/couchbase.h>
 #include <freeradius-devel/json/base.h>
+
+#include <libcouchbase/couchbase.h>
+#include <libcouchbase/n1ql.h>
 
 /** Information relating to the parsing of Couchbase document payloads
  *
@@ -97,3 +99,7 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
 
 /* query a couchbase view via http */
 lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char *path, const char *post);
+
+/* query a couchbase bucket via N1SQL */
+lcb_error_t couchbase_query_n1sql(lcb_t instance, const void *cookie, const char *query);
+
