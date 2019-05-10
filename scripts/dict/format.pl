@@ -53,7 +53,11 @@ while (@ARGV) {
     push @output, "# -*- text -*-\n";
     push @output, "# Copyright (C) ", $year, " The FreeRADIUS Server project and contributors\n";
     push @output, "# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0\n";
-    push @output, "# Version \$Id$\n";
+
+    #
+    #  Separate the '$' from the "Id", so that git doesn't get excited over it.
+    #
+    push @output, "# Version \$", "Id: ", "\$\n";
 
 
     while (<FILE>) {
