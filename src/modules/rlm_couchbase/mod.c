@@ -99,7 +99,7 @@ int mod_build_api_opts(CONF_SECTION *conf, void *instance)
 	CONF_SECTION *cs;                	/* module config list */
 	CONF_ITEM *ci;                   	/* config item */
 	CONF_PAIR *cp;                   	/* config pair */
-	couchbase_opts_t *entry;			/* couchbase api options */
+	couchbase_opts_t *entry = NULL;			/* couchbase api options */
 
 	/* find opts list */
 	cs = cf_section_find(conf, "opts", NULL);
@@ -122,7 +122,7 @@ int mod_build_api_opts(CONF_SECTION *conf, void *instance)
 		cp = cf_item_to_pair(ci);
 
 		/* create opts object */
-		if (!inst->api_opts) {
+		if (!entry) {
 			entry = talloc_zero(inst, couchbase_opts_t);
 			inst->api_opts = entry;
 		} else {
