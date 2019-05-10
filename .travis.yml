@@ -8,9 +8,10 @@ env:
     - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
     - secure: "H+uQeyOgsIyXtIPPG2VzAG8S/8KYGHlHaWhdiNuz1LM3SMcEKoPqG6o/P+HO8HVvYnA6nelyGuEryV90UfuwGY9YC6A/pqPQvx/gXSso63Zt66XSaiZjulCSm9OV8EB3wyWF7VSQ/ZHcn+L01hIlsQXTqLprMaC33cM0FYPr9fY="
   matrix:
-    - DO_BUILD=yes LIBS_OPTIONAL=no LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
-    - DO_BUILD=yes LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
-    - DO_BUILD=yes LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3"
+    - DO_BUILD=yes LIBS_OPTIONAL=no LIBS_SHARED=yes REPRODUCIBLE=no BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
+    - DO_BUILD=yes LIBS_OPTIONAL=yes LIBS_SHARED=yes REPRODUCIBLE=no BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
+    - DO_BUILD=yes LIBS_OPTIONAL=yes LIBS_SHARED=yes REPRODUCIBLE=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
+    - DO_BUILD=yes LIBS_OPTIONAL=yes LIBS_SHARED=yes REPRODUCIBLE=no BUILD_CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3"
     - DO_BUILD=no
 addons:
   coverity_scan:
@@ -76,7 +77,7 @@ before_install:
   - $CC --version
 before_script:
 # Configure the server
-  - if [ "${DO_BUILD}" = 'yes' ]; then CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL; fi
+  - if [ "${DO_BUILD}" = 'yes' ]; then CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL --enable-reproducible-builds=${REPRODUCIBLE}; fi
   - if [ "${DO_BUILD}" = 'no' ]; then ./configure -C --without-modules; fi
 # Build the server
   - if [ "${DO_BUILD}" = 'yes' ]; then make -j8; fi
