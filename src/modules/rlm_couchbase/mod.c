@@ -101,21 +101,21 @@ int mod_build_api_opts(CONF_SECTION *conf, void *instance)
 	CONF_PAIR *cp;                   	/* config pair */
 	couchbase_opts_t *entry;			/* couchbase api options */
 
-	/* find libcouchbase_opts list */
-	cs = cf_section_find(conf, "libcouchbase_opts", NULL);
+	/* find opts list */
+	cs = cf_section_find(conf, "opts", NULL);
 
 	/* check list */
 	if (!cs) return 0;
 
 	/* parse libcouchbase_opts list */
-	cf_log_debug(cs, "libcouchbase_opts {");
+	cf_log_debug(cs, "opts {");
 
 	for (ci = cf_item_next(cs, NULL); ci != NULL; ci = cf_item_next(cs, ci)) {
-		/* validate item */
+		/*
+		 *	Ignore things we don't care about.
+		 */
 		if (!cf_item_is_pair(ci)) {
-			ERROR("failed to parse invalid item in 'libcouchbase_opts' list");
-			/* fail */
-			return -1;
+			continue;
 		}
 
 		/* get value pair from item */
