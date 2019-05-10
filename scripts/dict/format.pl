@@ -38,6 +38,23 @@ $begin_vendor = 0;
 $blank = 0;
 $previous = "";
 
+
+sub tabs {
+	my $width = shift;
+	my $name = shift;
+	my $len, $lenx;
+
+	$len = length $name;
+
+	return " " if ($len >= $width);
+
+	$lenx = $width - $len;
+	$lenx += 7;		# round up
+	$lenx /= 8;
+	$lenx = int $lenx;
+	return "\t" x $lenx;
+}
+
 while (@ARGV) {
     $filename = shift;
 
@@ -111,16 +128,7 @@ while (@ARGV) {
 	if (/^PROTOCOL\s+([-\w]+)\s+(\w+)\s+(.*)/) {
 	    $name=$1;
 	    $format = $3;
-	    $len = length $name;
-	    if ($len < 16) {
-		$lenx = 16 - $len;
-		$lenx += 7;		# round up
-		$lenx /= 8;
-		$lenx = int $lenx;
-		$tabs = "\t" x $lenx;
-	    } else {
-		$tabs = " ";
-	    }
+	    $tabs = tabs(16, $name);
 
 	    $format = "\t$format" if ($format);
 
@@ -133,16 +141,8 @@ while (@ARGV) {
 	#
 	if (/^VENDOR\s+([-\w]+)\s+(\w+)(.*)/) {
 	    $name=$1;
-	    $len = length $name;
-	    if ($len < 32) {
-		$lenx = 32 - $len;
-		$lenx += 7;		# round up
-		$lenx /= 8;
-		$lenx = int $lenx;
-		$tabs = "\t" x $lenx;
-	    } else {
-		$tabs = " ";
-	    }
+	    $tabs = tabs(32, $name);
+
 	    push @output, "VENDOR\t\t$name$tabs$2$3\n";
 	    $vendor = $name;
 	    next;
@@ -183,19 +183,7 @@ while (@ARGV) {
 	#
 	if (/^ATTRIBUTE\s+([-\w]+)\s+([\w.]+)\s+(\w+)(.*)/) {
 	    $name=$1;
-	    $len = length $name;
-	    if ($len < 40) {
-		$lenx = 40 - $len;
-		$lenx += 7;		# round up
-		$lenx /= 8;
-		$lenx = int $lenx;
-		$tabs = "\t" x $lenx;
-		if ($tabs eq "") {
-		    $tabs = " ";
-		}
-	    } else {
-		$tabs = " ";
-	    }
+	    $tabs = tabs(40, $name);
 
 	    $value = $2;
 	    $type = $3;
@@ -240,6 +228,8 @@ while (@ARGV) {
 	if (/^VALUE\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
 	    $attr=$1;
 	    $len = length $attr;
+
+
 	    if ($len < 32) {
 		$lenx = 32 - $len;
 		$lenx += 7;		# round up
@@ -291,19 +281,7 @@ while (@ARGV) {
 	#
 	if (/^FLAGS\s+([!-\w]+)\s+(.*)/) {
 	    $name=$1;
-	    $len = length $name;
-	    if ($len < 40) {
-		$lenx = 40 - $len;
-		$lenx += 7;		# round up
-		$lenx /= 8;
-		$lenx = int $lenx;
-		$tabs = "\t" x $lenx;
-		if ($tabs eq "") {
-		    $tabs = " ";
-		}
-	    } else {
-		$tabs = " ";
-	    }
+	    $tabs = tabs(40, $name);
 
 	    push @output, "FLAGS\t$name$2\n";
 	    next;
