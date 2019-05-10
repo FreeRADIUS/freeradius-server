@@ -40,14 +40,6 @@ RCSID("$Id$")
 #include "couchbase.h"
 
 /**
- * Client Configuration
- */
-static const CONF_PARSER client_config[] = {
-	{ FR_CONF_OFFSET("view", FR_TYPE_STRING, rlm_couchbase_t, client_view), .dflt = "_design/client/_view/by_name" },
-	CONF_PARSER_TERMINATOR
-};
-
-/**
  * Module Configuration
  */
 static const CONF_PARSER module_config[] = {
@@ -61,8 +53,6 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("expire", FR_TYPE_UINT32, rlm_couchbase_t, expire), .dflt = 0 },
 #endif
 	{ FR_CONF_OFFSET("user_key", FR_TYPE_TMPL, rlm_couchbase_t, user_key), .dflt = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}", .quote = T_DOUBLE_QUOTED_STRING },
-	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOL, rlm_couchbase_t, read_clients) }, /* NULL defaults to "no" */
-	{ FR_CONF_POINTER("client", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) client_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -517,38 +507,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		ERROR("failed to initiate connection pool");
 		/* fail */
 		return -1;
-	}
-
-	/* load clients if requested */
-	if (inst->read_clients) {
-		CONF_SECTION *cs, *map, *tmpl; /* conf section */
-
-		/* attempt to find client section */
-		cs = cf_section_find(conf, "client", NULL);
-		if (!cs) {
-			ERROR("failed to find client section while loading clients");
-			/* fail */
-			return -1;
-		}
-
-		/* attempt to find attribute subsection */
-		map = cf_section_find(cs, "attribute", NULL);
-		if (!map) {
-			ERROR("failed to find attribute subsection while loading clients");
-			/* fail */
-			return -1;
-		}
-
-		tmpl = cf_section_find(cs, "template", NULL);
-
-		/* debugging */
-		DEBUG("preparing to load client documents");
-
-		/* attempt to load clients */
-		if (mod_load_client_documents(inst, tmpl, map) != 0) {
-			/* fail */
-			return -1;
-		}
 	}
 
 	/* return okay */

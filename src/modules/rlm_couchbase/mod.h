@@ -54,9 +54,6 @@ typedef struct {
 
 	vp_tmpl_t		*user_key;       	//!< User document key.
 
-	bool			read_clients;		//!< Toggle for loading client records.
-	const char		*client_view;    	//!< Couchbase view that returns client documents.
-
 	json_object		*map;           	//!< Json object to hold user defined attribute map.
 	fr_pool_t		*pool;			//!< Connection pool.
 	char const		*name;			//!< Module instance name.
@@ -87,10 +84,6 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
 json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp);
 
 int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps);
-
-int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map, json_object *json, char const *docid);
-
-int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map);
 
 int mod_build_api_opts(CONF_SECTION *conf, void *instance);
 

@@ -112,63 +112,6 @@ couchbase {
 	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
 
 	#
-	#  read_clients:: Set to `yes` to read radius clients from the Couchbase view specified below.
-	#  NOTE: Clients will *ONLY* be read on server *startup*.
-	#
-#	read_clients = no
-
-	#
-	#  client { ... }:: `Map` attribute names to jSON element names when loading clients.
-	#
-	#  Configuration follows the same rules as the accounting `map` above.
-	#
-	client {
-		#
-		#  view:: Couchbase view that should return all available client documents.
-		#
-		view = "_design/client/_view/by_id"
-
-		#
-		#  template { ... }:: Sets default values (not obtained from couchbase) for new client entries.
-		#
-		template {
-#			login				= 'test'
-#			password			= 'test'
-#			proto	 			= tcp
-#			require_message_authenticator	= yes
-		}
-
-		#
-		#  attribute { ... }:: Sets the client mappings following the format: `<client attribute> = '<element name>'`.
-		#
-		#  The following attributes are required:
-		#
-		#  [options="header,autowidth"]
-		#  |===
-		#  | Attr                            | Description
-		#  | `ipaddr`, `ipv4add`, `ipv6addr` | Client IP Address.
-		#  | `secret`                        | RADIUS shared secret.
-		#  |===
-		#
-		#  NOTE: All attributes usually supported in a `client` definition are also
-		#  supported here. Element names *should be single quoted*.
-		#
-		attribute {
-			ipaddr                          = 'clientIdentifier'
-			secret                          = 'clientSecret'
-			shortname                       = 'clientShortname'
-			nas_type                        = 'nasType'
-			virtual_server                  = 'virtualServer'
-			require_message_authenticator   = 'requireMessageAuthenticator'
-			limit {
-				max_connections             = 'maxConnections'
-				lifetime                    = 'clientLifetime'
-				idle_timeout                = 'idleTimeout'
-			}
-		}
-	}
-
-	#
 	#  pool { ... }:: The connection pool is new for >= `3.0`, and will be used in many
 	#  modules, for all kinds of connection-related activity.
 	#
