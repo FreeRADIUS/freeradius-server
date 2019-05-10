@@ -55,6 +55,94 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
 	return 0;
 }
 
+/** Delete a object built by mod_build_api_opts()
+ *
+ * Release the underlying mod_build_api_opts() objects
+ *
+ * @param  instance The module instance.
+ * @return 0.
+ */
+int mod_free_api_opts(void *instance)
+{
+	rlm_couchbase_t *inst = instance;	/* our module instance */
+	couchbase_opts_t *opts = inst->api_opts;
+
+	if (!opts) return 0;
+
+	DEBUG("Releasing the couchbase api options");
+
+	for (; opts != NULL; opts = opts->next) {
+		if (opts->key) talloc_free(opts->key);
+		if (opts->val) talloc_free(opts->val);
+	}
+
+	talloc_free(opts);
+
+	/* return */
+	return 0;
+}
+
+/** Build a couchbase_opts_t structure from the configuration "couchbase_api" list
+ *
+ * Parse the "couchbase_api" list from the module configuration file and store this
+ * as a couchbase_opts_t object (key/value list).
+ *
+ * @param  conf     Configuration list.
+ * @param  instance The module instance.
+ * @return
+ *	 - 0 on success.
+ *	- -1 on failure.
+ */
+int mod_build_api_opts(CONF_SECTION *conf, void *instance)
+{
+	rlm_couchbase_t *inst = instance;	/* our module instance */
+	CONF_SECTION *cs;                	/* module config list */
+	CONF_ITEM *ci;                   	/* config item */
+	CONF_PAIR *cp;                   	/* config pair */
+	couchbase_opts_t *entry;			/* couchbase api options */
+
+	/* find libcouchbase_opts list */
+	cs = cf_section_find(conf, "libcouchbase_opts", NULL);
+
+	/* check list */
+	if (!cs) return 0;
+
+	/* parse libcouchbase_opts list */
+	cf_log_debug(cs, "libcouchbase_opts {");
+
+	for (ci = cf_item_next(cs, NULL); ci != NULL; ci = cf_item_next(cs, ci)) {
+		/* validate item */
+		if (!cf_item_is_pair(ci)) {
+			ERROR("failed to parse invalid item in 'libcouchbase_opts' list");
+			/* fail */
+			return -1;
+		}
+
+		/* get value pair from item */
+		cp = cf_item_to_pair(ci);
+
+		/* create opts object */
+		if (!inst->api_opts) {
+			entry = talloc_zero(inst, couchbase_opts_t);
+			inst->api_opts = entry;
+		} else {
+			entry->next = talloc_zero(inst->api_opts, couchbase_opts_t);
+			entry = entry->next;
+		}
+		entry->next = NULL;
+		entry->key = talloc_typed_strdup(entry, cf_pair_attr(cp));
+		entry->val = talloc_typed_strdup(entry, cf_pair_value(cp));
+
+		/* debugging */
+		cf_log_debug(cs, "\t%s = \"%s\"", entry->key, entry->val);
+	}
+
+	cf_log_debug(cs, "}");
+
+	/* return */
+	return 0;
+}
+
 /** Create a new connection pool handle
  *
  * Create a new connection to Couchbase within the pool and initialize
@@ -70,14 +158,15 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
 	rlm_couchbase_t const *inst = instance;           /* module instance pointer */
-	rlm_couchbase_handle_t *chandle = NULL;     /* connection handle pointer */
-	cookie_t *cookie = NULL;                    /* couchbase cookie */
-	lcb_t cb_inst;                              /* couchbase connection instance */
-	lcb_error_t cb_error;			    /* couchbase error status */
+	rlm_couchbase_handle_t *chandle = NULL;     	  /* connection handle pointer */
+	cookie_t *cookie = NULL;                          /* couchbase cookie */
+	lcb_t cb_inst;                                    /* couchbase connection instance */
+	lcb_error_t cb_error;			          /* couchbase error status */
+	couchbase_opts_t const *opts = inst->api_opts;	  /* couchbase extra API settings */
 
 	/* create instance */
 	cb_error = couchbase_init_connection(&cb_inst, inst->server, inst->bucket, inst->username,
-					inst->password, FR_TIMEVAL_TO_MS(timeout) * 1000);
+					inst->password, FR_TIMEVAL_TO_MS(timeout) * 1000, opts);
 
 	/* check couchbase instance */
 	if (cb_error != LCB_SUCCESS) {

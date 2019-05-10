@@ -50,6 +50,18 @@ typedef union cookie_u {
 	void *data;           //!< Non-constant pointer to data payload (@p cookie_t).
 } cookie_u;
 
+/**
+ * This may be used to provide a simple interface from a command line or higher 
+ * evel language to allow the setting of specific key-value pairs.
+ *
+ * Options ref: https://docs.couchbase.com/sdk-api/couchbase-c-client-2.5.6/group__lcb-cntl.html
+ */
+typedef struct couchbase_opts_t {
+    char *key;			   //!< Key value for lcb_cntl_string().
+    char *val;			   //!< Value for the key used in lcb_cntl_string().
+    struct couchbase_opts_t *next; //!< Linked list.
+} couchbase_opts_t;
+
 extern fr_dict_attr_t const *attr_acct_status_type;
 extern fr_dict_attr_t const *attr_acct_session_time;
 extern fr_dict_attr_t const *attr_event_timestamp;
@@ -72,7 +84,7 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance,
 
 /* create a couchbase instance and connect to the cluster */
 lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *user,
-					const char *pass, lcb_uint32_t timeout);
+					const char *pass, lcb_uint32_t timeout, const couchbase_opts_t *opts);
 
 /* get server statistics */
 lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie);

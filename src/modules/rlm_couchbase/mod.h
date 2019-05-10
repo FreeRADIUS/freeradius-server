@@ -58,7 +58,9 @@ typedef struct {
 	const char		*client_view;    	//!< Couchbase view that returns client documents.
 
 	json_object		*map;           	//!< Json object to hold user defined attribute map.
-	fr_pool_t	*pool;			//!< Connection pool.
+	fr_pool_t		*pool;			//!< Connection pool.
+	char const		*name;			//!< Module instance name.
+	void			*api_opts;		//!< Couchbase API internal options.
 } rlm_couchbase_t;
 
 /** Couchbase instance specific information
@@ -89,3 +91,8 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps);
 int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map, json_object *json, char const *docid);
 
 int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map);
+
+int mod_build_api_opts(CONF_SECTION *conf, void *instance);
+
+int mod_free_api_opts(void *instance);
+

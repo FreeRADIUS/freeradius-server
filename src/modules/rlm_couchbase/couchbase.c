@@ -192,10 +192,11 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, co
  * @param user       The Couchbase bucket user (NULL if none).
  * @param pass       The Couchbase bucket password (NULL if none).
  * @param timeout    Maximum time to wait for obtaining the initial configuration.
+ * @param opts       Extra options to configure the libcouchbase.
  * @return           Couchbase error object.
  */
 lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *user, const char *pass,
-				      lcb_uint32_t timeout)
+				      lcb_uint32_t timeout, const couchbase_opts_t *opts)
 {
 	lcb_error_t error;                      /* couchbase command return */
 	struct lcb_create_st options;           /* init create struct */
@@ -215,6 +216,19 @@ lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const c
 
 	error = lcb_cntl(*instance, LCB_CNTL_SET, LCB_CNTL_CONFIGURATION_TIMEOUT, &timeout);
 	if (error != LCB_SUCCESS) return error;
+
+	/* Couchbase extra api settings */
+	if (opts != NULL) {
+		const couchbase_opts_t *o = opts;
+
+		for (; o != NULL; o = o->next) {
+			error = lcb_cntl_string(*instance, o->key, o->val);
+			if (error != LCB_SUCCESS) {
+				ERROR("Failed to configure the couchbase with %s=%s", o->key, o->val);
+				return error;
+			}
+		}
+	}
 
 	/* initiate connection */
 	error = lcb_connect(*instance);
