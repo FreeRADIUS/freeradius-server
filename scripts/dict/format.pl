@@ -102,6 +102,29 @@ while (@ARGV) {
 	}
 
 	#
+	#  Remember the protocol
+	#
+	if (/^PROTOCOL\s+([-\w]+)\s+(\w+)\s+(.*)/) {
+	    $name=$1;
+	    $format = $3;
+	    $len = length $name;
+	    if ($len < 16) {
+		$lenx = 16 - $len;
+		$lenx += 7;		# round up
+		$lenx /= 8;
+		$lenx = int $lenx;
+		$tabs = "\t" x $lenx;
+	    } else {
+		$tabs = " ";
+	    }
+
+	    $format = "\t$format" if ($format);
+
+	    push @output, "PROTOCOL\t$name$tabs$2$format\n";
+	    next;
+	}
+
+	#
 	#  Remember the vendor
 	#
 	if (/^VENDOR\s+([-\w]+)\s+(\w+)(.*)/) {
