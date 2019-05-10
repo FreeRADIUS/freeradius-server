@@ -8,7 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	TACACS	5
+PROTOCOL	TACACS		5
 BEGIN-PROTOCOL TACACS
 
 $INCLUDE dictionary.tacacs

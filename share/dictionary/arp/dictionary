@@ -8,7 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	ARP	8
+PROTOCOL	ARP		8
 BEGIN-PROTOCOL	ARP
 
 $INCLUDE dictionary.rfc826

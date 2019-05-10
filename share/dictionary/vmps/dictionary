@@ -8,7 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	VMPS	6		format=2
+PROTOCOL	VMPS		6	format=2
 BEGIN-PROTOCOL	VMPS
 
 $INCLUDE dictionary.vmps
