@@ -192,7 +192,7 @@ ATTRIBUTE	DHCP-BCMS-Server-IPv4-Address		89	ipaddr array
 # Authentication
 ATTRIBUTE	DHCP-Authentication			90	octets
 
-ATTRIBUTE	DHCP-Client-Last-Txn-Time		91	octets
+ATTRIBUTE	DHCP-Client-Last-Transaction-Time	91	integer # seconds on the past
 
 ATTRIBUTE	DHCP-associated-ip			92	ipaddr array
 
@@ -456,7 +456,7 @@ VALUE	DHCP-Parameter-Request-List	DHCP-NDS-Servers	85
 VALUE	DHCP-Parameter-Request-List	DHCP-NDS-Tree-Name	86
 VALUE	DHCP-Parameter-Request-List	DHCP-NDS-Context	87
 VALUE	DHCP-Parameter-Request-List	DHCP-Authentication	90
-VALUE	DHCP-Parameter-Request-List	DHCP-Client-Last-Txn-Time 91
+VALUE	DHCP-Parameter-Request-List	DHCP-Client-Last-Transaction-Time 91
 VALUE	DHCP-Parameter-Request-List	DHCP-associated-ip	92
 VALUE	DHCP-Parameter-Request-List	DHCP-Client-System	93
 VALUE	DHCP-Parameter-Request-List	DHCP-Client-NDI		94
