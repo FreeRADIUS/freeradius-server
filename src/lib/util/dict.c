@@ -4473,18 +4473,6 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	if (argc == 3) {
 		if (dict_read_parse_format(argv[2], &value, &type, &length, &continuation) < 0) return -1;
 
-	} else if (value == RADIUS_VENDORPEC_USR) { /* catch dictionary screw-ups */
-		type = 4;
-		length = 0;
-
-	} else if (value == RADIUS_VENDORPEC_LUCENT) {
-		type = 2;
-		length = 1;
-
-	} else if (value == RADIUS_VENDORPEC_STARENT) {
-		type = 2;
-		length = 2;
-
 	} else {
 		type = length = 1;
 	}
