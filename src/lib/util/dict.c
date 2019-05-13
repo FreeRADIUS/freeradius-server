@@ -3881,8 +3881,7 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
 /*
  *	Process the ATTRIBUTE command
  */
-static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *parent,
-			     	       fr_dict_vendor_t const *block_vendor, char **argv, int argc,
+static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, int argc,
 				       fr_dict_attr_flags_t *base_flags, fr_dict_attr_t const **previous)
 {
 	bool			oid = false;
@@ -3895,6 +3894,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 	unsigned int		length;
 	fr_dict_attr_flags_t	flags;
 	fr_dict_attr_t const	*ref = NULL;
+	fr_dict_attr_t const	*parent = ctx->parent;
 	char			*p;
 
 	if ((argc < 3) || (argc > 4)) {
@@ -3949,7 +3949,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 get_by_oid:
 		oid = true;
 
-		slen = fr_dict_attr_by_oid(dict, &parent, &attr, argv[1]);
+		slen = fr_dict_attr_by_oid(ctx->dict, &parent, &attr, argv[1]);
 		if (slen <= 0) return -1;
 
 		if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
@@ -4071,13 +4071,16 @@ get_by_oid:
 				flags.virtual = 1;
 
 			} else if (strcmp(key, "reference") == 0) {
-				ref = dict_resolve_reference(dict, value);
+				ref = dict_resolve_reference(ctx->dict, value);
 				if (!ref) return -1;
 				flags.is_reference = 1;
 
 			/*
 			 *	The only thing is the vendor name, and it's a known name:
 			 *	allow it.
+			 *
+			 *	This format is terrible, and is only
+			 *	allowed for backwards compatability.
 			 */
 			} else if ((argv[3] == p) && (*q == '\0')) {
 				if (oid) {
@@ -4085,12 +4088,12 @@ get_by_oid:
 					return -1;
 				}
 
-				if (block_vendor) {
+				if (ctx->block_vendor) {
 					fr_strerror_printf("Vendor flag inside of 'BEGIN-VENDOR' is not allowed");
 					return -1;
 				}
 
-				vendor = fr_dict_vendor_by_name(dict, key);
+				vendor = fr_dict_vendor_by_name(ctx->dict, key);
 				if (!vendor) goto unknown;
 				break;
 
@@ -4119,12 +4122,12 @@ get_by_oid:
 	 *	Add in a normal attribute
 	 */
 	if (!ref) {
-		if (fr_dict_attr_add(dict, parent, argv[0], attr, type, &flags) < 0) return -1;
+		if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
 	/*
 	 *	Add in a special reference attribute
 	 */
 	} else {
-		if (dict_attr_ref_add(dict, parent, argv[0], attr, type, &flags, ref) < 0) return -1;
+		if (dict_attr_ref_add(ctx->dict, parent, argv[0], attr, type, &flags, ref) < 0) return -1;
 	}
 
 	/*
@@ -4139,7 +4142,7 @@ get_by_oid:
 /*
  *	Process the ATTRIBUTE command, where it only has a name.
  */
-static int dict_read_process_named_attribute(fr_dict_t *dict, fr_dict_attr_t const *parent,
+static int dict_read_process_named_attribute(dict_from_file_ctx_t *ctx,
 					     char **argv, int argc,
 					     fr_dict_attr_flags_t const *base_flags)
 {
@@ -4175,7 +4178,7 @@ static int dict_read_process_named_attribute(fr_dict_t *dict, fr_dict_attr_t con
 	/*
 	 *	Add it in.
 	 */
-	if (fr_dict_attr_add(dict, parent, argv[0], attr, type, base_flags) < 0) return -1;
+	if (fr_dict_attr_add(ctx->dict, ctx->parent, argv[0], attr, type, base_flags) < 0) return -1;
 
 	return 0;
 }
@@ -4740,11 +4743,11 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 			if (!base_flags.named) {
-				if (dict_read_process_attribute(ctx->dict, ctx->parent, ctx->block_vendor,
+				if (dict_read_process_attribute(ctx,
 								argv + 1, argc - 1,
 								&base_flags, &previous) == -1) goto error;
 			} else {
-				if (dict_read_process_named_attribute(ctx->dict, ctx->parent,
+				if (dict_read_process_named_attribute(ctx,
 								      argv + 1, argc - 1,
 								      &base_flags) == -1) goto error;
 			}
@@ -5479,8 +5482,8 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 	int	argc;
 	char	*argv[MAX_ARGV];
 	int	ret;
-
 	fr_dict_attr_flags_t base_flags;
+	dict_from_file_ctx_t ctx;
 
 	INTERNAL_IF_NULL(dict, -1);
 
@@ -5492,6 +5495,9 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 
 	dict->fixup_pool = talloc_pool(dict, DICT_FIXUP_POOL_SIZE);
 	if (!dict->fixup_pool) return -1;
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.dict = dict;
 
 	if (strcasecmp(argv[0], "VALUE") == 0) {
 		if (argc < 4) {
@@ -5515,8 +5521,9 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 
 		memset(&base_flags, 0, sizeof(base_flags));
 
-		ret = dict_read_process_attribute(dict, parent,
-						  fr_dict_vendor_by_num(dict, vendor_pen),
+		if (vendor_pen) ctx.block_vendor = fr_dict_vendor_by_num(dict, vendor_pen);
+
+		ret = dict_read_process_attribute(&ctx,
 						  argv + 1, argc - 1, &base_flags, NULL);
 		if (ret < 0) goto error;
 	} else if (strcasecmp(argv[0], "VENDOR") == 0) {
