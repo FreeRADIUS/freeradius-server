@@ -2702,6 +2702,8 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsi
 	unsigned int		num = 0;
 	ssize_t			slen;
 
+	if (!*parent) return -1;
+
 	/*
 	 *	It's a partial OID.  Grab it, and skip to the next bit.
 	 */
@@ -4104,6 +4106,10 @@ get_by_oid:
 	}
 #endif
 
+#ifdef __clang_analyzer__
+	if (!ctx->dict) return -1;
+#endif
+
 	/*
 	 *	Add in a normal attribute
 	 */
@@ -4411,16 +4417,22 @@ static int dict_read_process_protocol(char **argv, int argc)
 	 */
 	dict = fr_dict_by_protocol_name(argv[0]);
 	if (dict) {
+#ifdef __clang_analyzer__
+		if (!dict->root) return -1;
+#endif
+
 		if (dict->root->attr != value) {
 			fr_strerror_printf("Conflicting numbers %u vs %u for PROTOCOL \"%s\"",
 					   dict->root->attr, value, dict->root->name);
 			return -1;
 		}
 
-	} else {
-		dict = fr_dict_by_protocol_num(value);
+	} else if ((dict = fr_dict_by_protocol_num(value)) != NULL) {
+#ifdef __clang_analyzer__
+		if (!dict->root) return -1;
+#endif
 
-		if (dict && (strcasecmp(dict->root->name, argv[0]) != 0)) {
+		if (strcasecmp(dict->root->name, argv[0]) != 0) {
 			fr_strerror_printf("Conflicting names \"%s\" vs \"%s\" for PROTOCOL %u",
 					   dict->root->name, argv[0], dict->root->attr);
 			return -1;
@@ -5529,7 +5541,8 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 		if (ret < 0) goto error;
 
 	} else if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-		if (!parent) parent = fr_dict_root(dict);
+		ctx.parent = parent;
+		if (!ctx.parent) ctx.parent = fr_dict_root(dict);
 
 		memset(&base_flags, 0, sizeof(base_flags));
 
