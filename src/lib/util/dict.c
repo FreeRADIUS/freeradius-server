@@ -4764,8 +4764,15 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		/*
 		 *	See if we need to import another dictionary.
 		 */
-		if (strcasecmp(argv[0], "$INCLUDE") == 0) {
+		if (strncasecmp(argv[0], "$INCLUDE", 8) == 0) {
+			int rcode;
 			dict_from_file_ctx_t nctx = *ctx;
+
+			/*
+			 *	Allow "$INCLUDE" or "$INCLUDE-", but
+			 *	not anything else.
+			 */
+			if ((argv[0][8] != '\0') && ((argv[0][8] != '-') || (argv[0][9] != '\0'))) goto invalid_keyword;
 
 			/*
 			 *	Included files operate on a copy of the context.
@@ -4778,7 +4785,13 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			 *	parent.
 			 */
 
-			if (_dict_from_file(&nctx, dir, argv[1], fn, line) < 0) {
+			rcode = _dict_from_file(&nctx, dir, argv[1], fn, line);
+			if ((rcode == -2) && (argv[0][8] == '-')) {
+				fr_strerror_printf(NULL); /* delete all errors */
+				rcode = 0;
+			}
+
+			if (rcode < 0) {
 				fr_strerror_printf_push("from $INCLUDE at %s[%d]", fn, line);
 				fclose(fp);
 				return -1;
@@ -4792,25 +4805,6 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			ctx->enum_fixup = nctx.enum_fixup;
 			continue;
 		} /* $INCLUDE */
-
-		/*
-		 *	Optionally include a dictionary
-		 */
-		if (strcasecmp(argv[0], "$INCLUDE-") == 0) {
-			int rcode = _dict_from_file(ctx, dir, argv[1], fn, line);
-
-			if (rcode == -2) {
-				fr_strerror_printf(NULL); /* delete all errors */
-				continue;
-			}
-
-			if (rcode < 0) {
-				fr_strerror_printf_push("from $INCLUDE at %s[%d]", fn, line);
-				fclose(fp);
-				return -1;
-			}
-			continue;
-		} /* $INCLUDE- */
 
 		/*
 		 *	Process VENDOR lines.
@@ -5125,6 +5119,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		/*
 		 *	Any other string: We don't recognize it.
 		 */
+	invalid_keyword:
 		fr_strerror_printf_push("Invalid keyword '%s'", argv[0]);
 		goto error;
 	}
