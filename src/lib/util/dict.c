@@ -2708,8 +2708,6 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsi
 	unsigned int		num = 0;
 	ssize_t			slen;
 
-	if (!fr_cond_assert(parent)) return 0;
-
 	INTERNAL_IF_NULL(dict, 0);
 
 	/*

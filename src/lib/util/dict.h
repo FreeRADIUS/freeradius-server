@@ -260,7 +260,7 @@ size_t			fr_dict_print_attr_oid(char *buffer, size_t outlen,
 					       fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da);
 
 ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
-					    unsigned int *attr, char const *oid);
+					    unsigned int *attr, char const *oid) CC_HINT(nonnull);
 /** @} */
 
 /** @name Attribute, vendor and dictionary lookup
