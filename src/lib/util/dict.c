@@ -94,8 +94,6 @@ struct fr_dict {
 
 	bool			autoloaded;		//!< manual vs autoload
 
-	dict_enum_fixup_t	*enum_fixup;
-
 	fr_hash_table_t		*vendors_by_name;	//!< Lookup vendor by name.
 	fr_hash_table_t		*vendors_by_num;	//!< Lookup vendor by PEN.
 
@@ -109,7 +107,6 @@ struct fr_dict {
 	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
 
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce allocs.
-	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
 							///< in the dictionary.
 };
 
@@ -3679,6 +3676,9 @@ typedef struct {
 
 	fr_dict_attr_t const	*last_attr;		//!< Cache of last attribute to speed up
 							///< value processing.
+
+	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
+	dict_enum_fixup_t	*enum_fixup;
 } dict_from_file_ctx_t;
 
 /** Set a new root dictionary attribute
@@ -3758,9 +3758,6 @@ static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 */
 	dict->pool = talloc_pool(dict, DICT_POOL_SIZE);
 	if (!dict->pool) goto error;
-
-	dict->fixup_pool = talloc_pool(dict, DICT_FIXUP_POOL_SIZE);
-	if (!dict->fixup_pool) goto error;
 
 	/*
 	 *	Create the table of vendor by name.   There MAY NOT
@@ -4217,9 +4214,9 @@ static int dict_read_process_value(dict_from_file_ctx_t *ctx, char **argv, int a
 	if (!da) {
 		dict_enum_fixup_t *fixup;
 
-		if (!fr_cond_assert_msg(ctx->dict->fixup_pool, "fixup pool context invalid")) return -1;
+		if (!fr_cond_assert_msg(ctx->fixup_pool, "fixup pool context invalid")) return -1;
 
-		fixup = talloc_zero(ctx->dict->fixup_pool, dict_enum_fixup_t);
+		fixup = talloc_zero(ctx->fixup_pool, dict_enum_fixup_t);
 		if (!fixup) {
 		oom:
 			talloc_free(fixup);
@@ -4236,8 +4233,8 @@ static int dict_read_process_value(dict_from_file_ctx_t *ctx, char **argv, int a
 		/*
 		 *	Insert to the head of the list.
 		 */
-		fixup->next = ctx->dict->enum_fixup;
-		ctx->dict->enum_fixup = fixup;
+		fixup->next = ctx->enum_fixup;
+		ctx->enum_fixup = fixup;
 
 		return 0;
 	}
@@ -4514,23 +4511,23 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	return 0;
 }
 
-static int fr_dict_finalise(fr_dict_t *dict)
+static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 {
 	/*
 	 *	Resolve any VALUE aliases (enums) that were defined
 	 *	before the attributes they reference.
 	 */
-	if (dict->enum_fixup) {
+	if (ctx->enum_fixup) {
 		fr_dict_attr_t const *da;
 		dict_enum_fixup_t *this, *next;
 
-		for (this = dict->enum_fixup; this != NULL; this = next) {
+		for (this = ctx->enum_fixup; this != NULL; this = next) {
 			fr_value_box_t	value;
 			fr_type_t	type;
 			int		ret;
 
 			next = this->next;
-			da = fr_dict_attr_by_name(dict, this->attribute);
+			da = fr_dict_attr_by_name(ctx->dict, this->attribute);
 			if (!da) {
 				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s'",
 						   this->attribute, this->alias);
@@ -4553,10 +4550,10 @@ static int fr_dict_finalise(fr_dict_t *dict)
 			/*
 			 *	Just so we don't lose track of things.
 			 */
-			dict->enum_fixup = next;
+			ctx->enum_fixup = next;
 		}
 	}
-	TALLOC_FREE(dict->fixup_pool);
+	TALLOC_FREE(ctx->fixup_pool);
 
 	/*
 	 *	Walk over all of the hash tables to ensure they're
@@ -4564,11 +4561,13 @@ static int fr_dict_finalise(fr_dict_t *dict)
 	 *	lookups, and we don't want multi-threaded re-ordering
 	 *	of the table entries.  That would be bad.
 	 */
-	fr_hash_table_walk(dict->vendors_by_name, hash_null_callback, NULL);
-	fr_hash_table_walk(dict->vendors_by_num, hash_null_callback, NULL);
+	fr_hash_table_walk(ctx->dict->vendors_by_name, hash_null_callback, NULL);
+	fr_hash_table_walk(ctx->dict->vendors_by_num, hash_null_callback, NULL);
 
-	fr_hash_table_walk(dict->values_by_da, hash_null_callback, NULL);
-	fr_hash_table_walk(dict->values_by_alias, hash_null_callback, NULL);
+	fr_hash_table_walk(ctx->dict->values_by_da, hash_null_callback, NULL);
+	fr_hash_table_walk(ctx->dict->values_by_alias, hash_null_callback, NULL);
+
+	ctx->last_attr = NULL;
 
 	return 0;
 }
@@ -4769,13 +4768,28 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			dict_from_file_ctx_t nctx = *ctx;
 
 			/*
-			 *	Included files operate on a copy of the context
+			 *	Included files operate on a copy of the context.
+			 *
+			 *	This copy means that they inherit the
+			 *	current context, including parents,
+			 *	TLVs, etc.  But if the included file
+			 *	leaves a "dangling" TLV or "last
+			 *	attribute", then it won't affect the
+			 *	parent.
 			 */
+
 			if (_dict_from_file(&nctx, dir, argv[1], fn, line) < 0) {
 				fr_strerror_printf_push("from $INCLUDE at %s[%d]", fn, line);
 				fclose(fp);
 				return -1;
 			}
+
+			/*
+			 *	Fixups are added to the head of the
+			 *	list, so copy the new head over to the
+			 *	parent.
+			 */
+			ctx->enum_fixup = nctx.enum_fixup;
 			continue;
 		} /* $INCLUDE */
 
@@ -4849,12 +4863,13 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 			/*
 			 *	Add a temporary fixup pool
+			 *
+			 *	@todo - make a nested ctx?
 			 */
-			if (!found->fixup_pool) found->fixup_pool = talloc_pool(found, DICT_FIXUP_POOL_SIZE);
+			if (!ctx->fixup_pool) ctx->fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
 
 			ctx->dict = found;
 			ctx->parent = ctx->dict->root;
-
 			continue;
 		}
 
@@ -4885,11 +4900,15 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			 *	Applies fixups to any attributes added to
 			 *	the protocol dictionary.
 			 */
-			if (fr_dict_finalise(ctx->dict) < 0) goto error;
+			if (fr_dict_finalise(ctx) < 0) goto error;
 
-			ctx->dict = ctx->old_dict;	/* Switch back to the old dictionary */
+			/*
+			 *	Switch back to old values.
+			 *
+			 *	@todo - just create a stack of contests, so we don't need "old_foo"
+			 */
+			ctx->dict = ctx->old_dict;
 			ctx->parent = ctx->dict->root;
-
 			continue;
 		}
 
@@ -5117,8 +5136,28 @@ static int dict_from_file(fr_dict_t *dict,
 			  char const *dir_name, char const *filename,
 			  char const *src_file, int src_line)
 {
-	return _dict_from_file(&(dict_from_file_ctx_t) { .dict = dict, .parent = dict->root },
-			       dir_name, filename, src_file, src_line);
+	int rcode;
+	dict_from_file_ctx_t ctx;
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.dict = dict;
+	ctx.parent = dict->root;
+
+	rcode = _dict_from_file(&ctx,
+				dir_name, filename, src_file, src_line);
+	if (rcode < 0) {
+		// free up the various fixups
+		return rcode;
+	}
+
+	/*
+	 *	Applies  to any attributes added to the *internal*
+	 *	dictionary.
+	 *
+	 *	Fixups should have been applied already to any protocol
+	 *	dictionaries.
+	 */
+	return fr_dict_finalise(&ctx);
 }
 
 /** (Re-)Initialize the special internal dictionary
@@ -5185,10 +5224,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	for (p = fr_value_box_type_table; p->name; p++) {
 		fr_dict_attr_t *n;
 
-		/*
-		 *	Reduce holes in the main pool by using the fixup pool
-		 */
-		type_name = talloc_typed_asprintf(dict->fixup_pool, "Tmp-Cast-%s", p->name);
+		type_name = talloc_typed_asprintf(NULL, "Tmp-Cast-%s", p->name);
 
 		n = dict_attr_alloc(dict->pool, dict->root, type_name,
 				    FR_CAST_BASE + p->number, p->number, &flags);
@@ -5212,11 +5248,6 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	}
 
 	if (dict_path && dict_from_file(dict, dict_path, FR_DICTIONARY_FILE, NULL, 0) < 0) goto error;
-
-	/*
-	 *	Applies fixups to any attributes
-	 */
-	if (fr_dict_finalise(dict) < 0) goto error;
 
 	talloc_free(dict_path);
 
@@ -5293,14 +5324,6 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 		fr_strerror_printf("Dictionary \"%s\" missing \"BEGIN-PROTOCOL %s\" declaration", dict_dir, proto_name);
 		goto error;
 	}
-	/*
-	 *	Applies  to any attributes added to the *internal*
-	 *	dictionary.
-	 *
-	 *	Fixups should have been applied already to any protocol
-	 *	dictionaries.
-	 */
-	if (fr_dict_finalise(dict) < 0) goto error;
 
 	talloc_free(dict_dir);
 
@@ -5490,21 +5513,18 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 	argc = fr_dict_str_to_argv(buf, argv, MAX_ARGV);
 	if (argc == 0) return 0;
 
-	if (!fr_cond_assert_msg(!dict->fixup_pool && !dict->enum_fixup,
-				"dict not finalised from previous processing")) return -1;
-
-	dict->fixup_pool = talloc_pool(dict, DICT_FIXUP_POOL_SIZE);
-	if (!dict->fixup_pool) return -1;
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
+
+	ctx.fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
+	if (!ctx.fixup_pool) return -1;
 
 	if (strcasecmp(argv[0], "VALUE") == 0) {
 		if (argc < 4) {
 			fr_strerror_printf("VALUE needs at least 4 arguments, got %i", argc);
 		error:
-			TALLOC_FREE(dict->fixup_pool);
-			dict->enum_fixup = NULL;
+			TALLOC_FREE(ctx.fixup_pool);
 			return -1;
 		}
 
@@ -5534,7 +5554,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 		goto error;
 	}
 
-	fr_dict_finalise(dict);
+	fr_dict_finalise(&ctx);
 
 	return 0;
 }
