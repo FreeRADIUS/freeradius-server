@@ -95,7 +95,6 @@ travis-test: raddb/test.conf test
 	@rm -f raddb/test.conf
 	@$(MAKE) install
 	@perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
-	@sh ${HOME}/freeradius/etc/raddb/certs
 	@${sbindir}/radiusd -XC
 endif
 
