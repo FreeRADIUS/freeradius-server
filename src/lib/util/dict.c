@@ -3666,8 +3666,9 @@ typedef struct {
 
 	fr_dict_attr_t const	*parent;		//!< Current parent attribute (root/vendor/tlv).
 
-	fr_dict_attr_t const	*last_attr;		//!< Cache of last attribute to speed up
+	fr_dict_attr_t const	*value_attr;		//!< Cache of last attribute to speed up
 							///< value processing.
+	fr_dict_attr_t const	*previous_attr;		//!< for ".82" instead of "1.2.3.82".
 
 	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
 	dict_enum_fixup_t	*enum_fixup;
@@ -3918,12 +3919,12 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 		 *	previously defined attribute, which then must exist.
 		 */
 	} else if (argv[1][0] == '.') {
-		if (!ctx->last_attr) {
+		if (!ctx->previous_attr) {
 			fr_strerror_printf("Unknown parent for partial OID");
 			return -1;
 		}
 
-		parent = ctx->last_attr;
+		parent = ctx->previous_attr;
 		set_previous = false;
 		goto get_by_oid;
 
@@ -4128,7 +4129,7 @@ get_by_oid:
 	 *	*canonical* previous attribute, and not any potential
 	 *	duplicate which was just added.
 	 */
-	if (set_previous) ctx->last_attr = fr_dict_attr_child_by_num(parent, attr);
+	if (set_previous) ctx->previous_attr = fr_dict_attr_child_by_num(parent, attr);
 
 	return 0;
 }
@@ -4193,14 +4194,12 @@ static int dict_read_process_value(dict_from_file_ctx_t *ctx, char **argv, int a
 	/*
 	 *	Most VALUEs are bunched together by ATTRIBUTE.  We can
 	 *	save a lot of lookups on dictionary initialization by
-	 *	caching the last attribute.
+	 *	caching the last attribute for a VALUE.
 	 */
-	if (ctx->last_attr && (strcasecmp(argv[0], ctx->last_attr->name) == 0)) {
-		da = ctx->last_attr;
-	} else {
-		da = fr_dict_attr_by_name(ctx->dict, argv[0]);
-		ctx->last_attr = da;
+	if (!ctx->value_attr || (strcasecmp(argv[0], ctx->value_attr->name) != 0)) {
+		ctx->value_attr = fr_dict_attr_by_name(ctx->dict, argv[0]);
 	}
+	da = ctx->value_attr;
 
 	/*
 	 *	Remember which attribute is associated with this
@@ -4570,7 +4569,8 @@ static int fr_dict_finalise(dict_from_file_ctx_t *ctx)
 	fr_hash_table_walk(ctx->dict->values_by_da, hash_null_callback, NULL);
 	fr_hash_table_walk(ctx->dict->values_by_alias, hash_null_callback, NULL);
 
-	ctx->last_attr = NULL;
+	ctx->value_attr = NULL;
+	ctx->previous_attr = NULL;
 
 	return 0;
 }
@@ -4813,7 +4813,8 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 *	Reset the previous attribute when we see
 		 *	VENDOR or PROTOCOL or BEGIN/END-VENDOR, etc.
 		 */
-		ctx->last_attr = NULL;
+		ctx->value_attr = NULL;
+		ctx->previous_attr = NULL;
 
 		/*
 		 *	Process VENDOR lines.
