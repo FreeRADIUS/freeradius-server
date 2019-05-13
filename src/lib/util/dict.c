@@ -24,12 +24,7 @@ RCSID("$Id$")
 
 #include "dict.h"
 
-#ifdef WITH_DHCP
-#  include <freeradius-devel/dhcpv4/dhcpv4.h>
-#endif
 #include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/misc.h>
@@ -524,8 +519,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	 *	the appropriate flags set for attributes in this
 	 *	space.
 	 */
-	if ((*attr > UINT8_MAX) && !flags->internal &&
-	    !((strncmp("VMPS", name, 4) == 0) || (strncmp("VQP", name, 3) == 0))) {	/* Fixme */
+	if ((*attr > UINT8_MAX) && !flags->internal) {
 		for (v = parent; v != NULL; v = v->parent) {
 			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
 				if ((v->flags.type_size < 4) &&
