@@ -4464,9 +4464,6 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 		return -1;
 	}
 
-	/* Create a new VENDOR entry for the list */
-	if (dict_vendor_add(dict, argv[0], value) < 0) return -1;
-
 	/*
 	 *	Look for a format statement.  Allow it to over-ride the hard-coded formats below.
 	 */
@@ -4476,6 +4473,9 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	} else {
 		type = length = 1;
 	}
+
+	/* Create a new VENDOR entry for the list */
+	if (dict_vendor_add(dict, argv[0], value) < 0) return -1;
 
 	dv = fr_dict_vendor_by_num(dict, value);
 	if (!dv) {
