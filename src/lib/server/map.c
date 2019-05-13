@@ -2158,6 +2158,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		slen = xlat_aeval(request, &str, request, map->rhs->name, NULL, NULL);
 		if (slen < 0) {
 			rcode = slen;
+			talloc_free(n);
 			goto error;
 		}
 
@@ -2181,6 +2182,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 
 		if (fr_pair_value_from_str(n, map->rhs->name, -1, '\0', false) < 0) {
 			rcode = 0;
+			talloc_free(n);
 			goto error;
 		}
 		n->op = map->op;
