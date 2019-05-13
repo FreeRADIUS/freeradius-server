@@ -1725,7 +1725,7 @@ ssize_t _tmpl_to_type(void *out,
 		 *	Data type conversion...
 		 */
 		ret = fr_value_box_cast(ctx, &value_from_cast, dst_type, NULL, to_cast);
-		if (ret < 0) return -1;
+		if (ret < 0) goto error;
 
 
 		/*
