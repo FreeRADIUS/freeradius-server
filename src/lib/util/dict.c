@@ -463,37 +463,11 @@ static int dict_enum_value_cmp(void const *one, void const *two)
 static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				   char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
-	size_t			name_len;
 	fr_dict_attr_t const	*v;
 
-	if (!fr_cond_assert(parent)) return NULL;
+	if (!fr_cond_assert(parent)) return false;
 
-	name_len = strlen(name);
-	if (name_len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("Attribute name too long");
-	error:
-		fr_strerror_printf_push("Definition for '%s' is invalid", name);
-		return false;
-	}
-
-	if (fr_dict_valid_name(name, -1) <= 0) return NULL;
-
-	/*
-	 *	type_size is used to limit the maximum attribute number, so it's checked first.
-	 */
-	if (flags->type_size) {
-		if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
-			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
-			goto error;
-		}
-
-		if ((flags->type_size != 1) &&
-		    (flags->type_size != 2) &&
-		    (flags->type_size != 4)) {
-			fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
-			goto error;
-		}
-	}
+	if (fr_dict_valid_name(name, -1) <= 0) return false;
 
 	/******************** sanity check attribute number ********************/
 
@@ -501,13 +475,13 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		static unsigned int max_attr = UINT8_MAX + 1;
 
 		if (*attr == -1) {
-			if (fr_dict_attr_by_name(dict, name)) return 0; /* exists, don't add it again */
+			if (fr_dict_attr_by_name(dict, name)) return false; /* exists, don't add it again */
 			*attr = ++max_attr;
 			flags->internal = 1;
 
 		} else if (*attr <= 0) {
 			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
-			goto error;
+			return false;
 
 		} else if ((unsigned int) *attr > max_attr) {
 			max_attr = *attr;
@@ -529,7 +503,24 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	 */
 	if (*attr < 0) {
 		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
-		goto error;
+		return false;
+	}
+
+	/*
+	 *	type_size is used to limit the maximum attribute number, so it's checked first.
+	 */
+	if (flags->type_size) {
+		if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
+			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
+			return false;
+		}
+
+		if ((flags->type_size != 1) &&
+		    (flags->type_size != 2) &&
+		    (flags->type_size != 4)) {
+			fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
+			return false;
+		}
 	}
 
 	/*
@@ -547,7 +538,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 				    (*attr >= (1 << (8 * v->flags.type_size)))) {
 					fr_strerror_printf("Attributes must have value between 1..%u",
 							   (1 << (8 * v->flags.type_size)) - 1);
-					goto error;
+					return false;
 				}
 				break;
 			}
@@ -562,12 +553,12 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	if (flags->virtual) {
 		if (!parent->flags.is_root) {
 			fr_strerror_printf("The 'virtual' flag can only be used for normal attributes");
-			goto error;
+			return false;
 		}
 
 		if (*attr <= (1 << (8 * parent->flags.type_size))) {
 			fr_strerror_printf("The 'virtual' flag can only be used for non-protocol attributes");
-			goto error;
+			return false;
 		}
 	}
 
@@ -578,24 +569,24 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
 			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
 					   "or 'string'");
-			goto error;
+			return false;
 		}
 
 		if (!(parent->flags.is_root ||
 		      ((parent->type == FR_TYPE_VENDOR) &&
 		       (parent->parent && parent->parent->type == FR_TYPE_VSA)))) {
 			fr_strerror_printf("The 'has_tag' flag can only be used with RFC and VSA attributes");
-			goto error;
+			return false;
 		}
 
 		if (flags->array || flags->has_value || flags->concat || flags->virtual || flags->length) {
 			fr_strerror_printf("The 'has_tag' flag cannot be used with any other flag");
-			goto error;
+			return false;
 		}
 
 		if (flags->encrypt && (flags->encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
 			fr_strerror_printf("The 'has_tag' flag can only be used with 'encrypt=2'");
-			goto error;
+			return false;
 		}
 	}
 
@@ -605,18 +596,18 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	if (flags->concat) {
 		if (type != FR_TYPE_OCTETS) {
 			fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
-			goto error;
+			return false;
 		}
 
 		if (!parent->flags.is_root) {
 			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
-			goto error;
+			return false;
 		}
 
 		if (flags->array || flags->internal || flags->has_value || flags->virtual ||
 		    flags->encrypt || flags->length) {
 			fr_strerror_printf("The 'concat' flag cannot be used any other flag");
-			goto error;
+			return false;
 		}
 	}
 
@@ -626,7 +617,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	if (flags->length) {
 		if (flags->has_value || flags->virtual) {
 			fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
-			goto error;
+			return false;
 		}
 
 		if (flags->length > 253) {
@@ -639,11 +630,11 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			    (flags->length != 2) &&
 			    (flags->length != 4)) {
 				fr_strerror_printf("The 'length' flag can only be used with attributes of TLV lengths of 1,2 or 4");
-				goto error;
+				return false;
 			}
 		} else if (type != FR_TYPE_OCTETS) {
 			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets' or 'struct'");
-			goto error;
+			return false;
 		}
 	}
 
@@ -655,7 +646,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		default:
 			fr_strerror_printf("The 'array' flag cannot be used with attributes of type '%s'",
 					   fr_int2str(fr_value_box_type_table, type, "<UNKNOWN>"));
-			goto error;
+			return false;
 
 		case FR_TYPE_IPV4_ADDR:
 		case FR_TYPE_IPV6_ADDR:
@@ -670,7 +661,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 
 		if (flags->internal || flags->has_value || flags->encrypt || flags->virtual) {
 			fr_strerror_printf("The 'array' flag cannot be used any other flag");
-			goto error;
+			return false;
 		}
 	}
 
@@ -682,12 +673,12 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		if (type != FR_TYPE_UINT32) {
 			fr_strerror_printf("The 'has_value' flag can only be used with attributes "
 					   "of type 'integer'");
-			goto error;
+			return false;
 		}
 
 		if (flags->encrypt || flags->virtual) {
 			fr_strerror_printf("The 'has_value' flag cannot be used with any other flag");
-			goto error;
+			return false;
 		}
 	}
 
@@ -704,19 +695,19 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			if (type != FR_TYPE_OCTETS) {
 				fr_strerror_printf("The 'encrypt=1' flag can only be used with "
 						   "attributes of type 'string'");
-				goto error;
+				return false;
 			}
 
 			if (flags->length == 0) {
 				fr_strerror_printf("The 'encrypt=1' flag MUST be used with an explicit length for "
 						   "'octets' data types");
-				goto error;
+				return false;
 			}
 		}
 
 		if (flags->encrypt > FLAG_ENCRYPT_OTHER) {
 			fr_strerror_printf("The 'encrypt' flag can only be 0..4");
-			goto error;
+			return false;
 		}
 
 		/*
@@ -734,7 +725,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
 							   "of type '%s'", flags->encrypt,
 							   fr_int2str(fr_value_box_type_table, type, "<UNKNOWN>"));
-					goto error;
+					return false;
 
 				default:
 					break;
@@ -748,7 +739,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		encrypt_fail:
 			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
 					   fr_int2str(fr_value_box_type_table, type, "<UNKNOWN>"));
-			goto error;
+			return false;
 
 		case FR_TYPE_TLV:
 		case FR_TYPE_IPV4_ADDR:
@@ -776,7 +767,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		if (!parent->flags.is_root) {
 			fr_strerror_printf("Attributes of type '%s' can only be used in the RFC space",
 					   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
-			goto error;
+			return false;
 		}
 		break;
 
@@ -787,7 +778,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		if ((parent->type != FR_TYPE_EXTENDED) && (parent->type != FR_TYPE_LONG_EXTENDED)) {
 			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', "
 					   "instead of '%s'", fr_int2str(fr_value_box_type_table, parent->type, "?Unknown?"));
-			goto error;
+			return false;
 		}
 		break;
 
@@ -796,7 +787,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' or "
 					   "'evs', instead of '%s'",
 					   fr_int2str(fr_value_box_type_table, parent->type, "?Unknown?"));
-			goto error;
+			return false;
 		}
 
 		if (parent->type == FR_TYPE_VSA) {
@@ -832,7 +823,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		if (!v) {
 			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
 					   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
-			goto error;
+			return false;
 		}
 
 		/*
@@ -856,7 +847,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		if (!v) {
 			fr_strerror_printf("Attributes of type '%s' can only be used in VSA dictionaries",
 					   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
-			goto error;
+			return false;
 		}
 		break;
 
@@ -866,7 +857,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	case FR_TYPE_COMBO_IP_PREFIX:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
 				   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
-		goto error;
+		return false;
 
 	default:
 		break;
@@ -916,7 +907,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		if (!parent->flags.is_root || (*attr < 241)) {
 			fr_strerror_printf("Attributes of type 'extended' MUST be "
 					   "RFC attributes with value >= 241.");
-			goto error;
+			return false;
 		}
 		flags->length = 0;
 		break;
@@ -925,7 +916,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		if (!parent->flags.is_root || (*attr < 241)) {
 			fr_strerror_printf("Attributes of type 'long-extended' MUST "
 					   "be RFC attributes with value >= 241.");
-			goto error;
+			return false;
 		}
 
 		flags->length = 0;
@@ -934,7 +925,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	case FR_TYPE_EVS:
 		if (*attr != FR_VENDOR_SPECIFIC) {
 			fr_strerror_printf("Attributes of type 'evs' MUST have attribute code 26, got %i", *attr);
-			goto error;
+			return false;
 		}
 
 		flags->length = 0;
@@ -949,12 +940,12 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 
 		if (flags->encrypt != FLAG_ENCRYPT_NONE) {
 			fr_strerror_printf("Attributes of type 'struct' MUST NOT be encrypted.");
-			goto error;
+			return false;
 		}
 
 		if (flags->internal || flags->has_tag || flags->array || flags->concat || flags->virtual) {
 			fr_strerror_printf("Invalid flag for attribute of type 'struct'");
-			goto error;
+			return false;
 		}
 		break;
 
@@ -973,12 +964,12 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	if (parent->type == FR_TYPE_STRUCT) {
 		if (flags->encrypt != FLAG_ENCRYPT_NONE) {
 			fr_strerror_printf("Attributes inside a 'struct' MUST NOT be encrypted.");
-			goto error;
+			return false;
 		}
 
 		if (flags->internal || flags->has_tag || flags->array || flags->concat || flags->virtual) {
 			fr_strerror_printf("Invalid flag for attribute inside a 'struct'");
-			goto error;
+			return false;
 		}
 
 		if (*attr > 1) {
@@ -987,12 +978,12 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			sibling = fr_dict_attr_child_by_num(parent, (*attr) - 1);
 			if (!sibling) {
 				fr_strerror_printf("Children of 'struct' type attributes MUST be numbered consecutively.");
-				goto error;
+				return false;
 			}
 
 			if (dict_attr_sizes[sibling->type][1] == ~(size_t) 0) {
 				fr_strerror_printf("Only the last child of a 'struct' attribute can have variable length");
-				goto error;
+				return false;
 			}
 
 		} else {
@@ -1003,7 +994,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			 */
 			if ((type != FR_TYPE_STRUCT) && (flags->length == 0)) {
 				fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
-				goto error;
+				return false;
 			}
 		}
 	}
@@ -1513,7 +1504,7 @@ static int dict_attr_ref_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	fr_dict_attr_flags_t	our_flags = *flags;
 
 	/*
-	 *	Check it's valid
+	 *	Check that the definition is valid.
 	 */
 	if (!dict_attr_fields_valid(dict, parent, name, &attr, type, &our_flags)) return -1;
 
@@ -1592,7 +1583,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	fr_dict_attr_flags_t	our_flags = *flags;
 
 	/*
-	 *	Check it's valid
+	 *	Check that the definition is valid.
 	 */
 	if (!dict_attr_fields_valid(dict, parent, name, &attr, type, &our_flags)) return -1;
 
@@ -5555,6 +5546,12 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 	char const *p = name, *end;
 
 	if (len < 0) len = strlen(name);
+
+	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
+		fr_strerror_printf("Attribute name is too long");
+		return -1;
+	}
+
 	end = p + len;
 
 	do {
