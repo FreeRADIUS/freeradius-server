@@ -3869,7 +3869,7 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
  *	Process the ATTRIBUTE command
  */
 static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, int argc,
-				       fr_dict_attr_flags_t *base_flags, fr_dict_attr_t const **previous)
+				       fr_dict_attr_flags_t *base_flags)
 {
 	bool			oid = false;
 	bool			set_previous = true;
@@ -3916,15 +3916,14 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 		 *	previously defined attribute, which then must exist.
 		 */
 	} else if (argv[1][0] == '.') {
-		if (!previous || !*previous) {
+		if (!ctx->last_attr) {
 			fr_strerror_printf("Unknown parent for partial OID");
 			return -1;
 		}
 
-		parent = *previous;
+		parent = ctx->last_attr;
 		set_previous = false;
 		goto get_by_oid;
-
 
 		/*
 		 *	Got an OID string.  Every attribute should exist other
@@ -4119,9 +4118,11 @@ get_by_oid:
 
 	/*
 	 *	If we need to set the previous attribute, we have to
-	 *	look it up by number.
+	 *	look it up by number.  This lets us set the
+	 *	*canonical* previous attribute, and not any potential
+	 *	duplicate which was just added.
 	 */
-	if (set_previous && previous) *previous = fr_dict_attr_child_by_num(parent, attr);
+	if (set_previous) ctx->last_attr = fr_dict_attr_child_by_num(parent, attr);
 
 	return 0;
 }
@@ -4589,7 +4590,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 	struct stat		statbuf;
 	char			*argv[MAX_ARGV];
 	int			argc;
-	fr_dict_attr_t const	*da, *previous = NULL;
+	fr_dict_attr_t const	*da;
 
 	/*
 	 *	Base flags are only set for the current file
@@ -4720,21 +4721,13 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		}
 
 		/*
-		 *	Process VALUE lines.
-		 */
-		if (strcasecmp(argv[0], "VALUE") == 0) {
-			if (dict_read_process_value(ctx, argv + 1, argc - 1) == -1) goto error;
-			continue;
-		}
-
-		/*
 		 *	Perhaps this is an attribute.
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 			if (!base_flags.named) {
 				if (dict_read_process_attribute(ctx,
 								argv + 1, argc - 1,
-								&base_flags, &previous) == -1) goto error;
+								&base_flags) == -1) goto error;
 			} else {
 				if (dict_read_process_named_attribute(ctx,
 								      argv + 1, argc - 1,
@@ -4745,6 +4738,14 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 		/*
 		 *	Process VALUE lines.
+		 */
+		if (strcasecmp(argv[0], "VALUE") == 0) {
+			if (dict_read_process_value(ctx, argv + 1, argc - 1) == -1) goto error;
+			continue;
+		}
+
+		/*
+		 *	Process FLAGS lines.
 		 */
 		if (strcasecmp(argv[0], "FLAGS") == 0) {
 			if (dict_read_process_flags(ctx->dict, argv + 1, argc - 1, &base_flags) == -1) goto error;
@@ -4795,6 +4796,12 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			ctx->enum_fixup = nctx.enum_fixup;
 			continue;
 		} /* $INCLUDE */
+
+		/*
+		 *	Reset the previous attribute when we see
+		 *	VENDOR or PROTOCOL or BEGIN/END-VENDOR, etc.
+		 */
+		ctx->last_attr = NULL;
 
 		/*
 		 *	Process VENDOR lines.
@@ -5529,7 +5536,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 		if (vendor_pen) ctx.block_vendor = fr_dict_vendor_by_num(dict, vendor_pen);
 
 		ret = dict_read_process_attribute(&ctx,
-						  argv + 1, argc - 1, &base_flags, NULL);
+						  argv + 1, argc - 1, &base_flags);
 		if (ret < 0) goto error;
 	} else if (strcasecmp(argv[0], "VENDOR") == 0) {
 		ret = dict_read_process_vendor(dict, argv + 1, argc - 1);
