@@ -4389,6 +4389,11 @@ static int dict_read_process_protocol(char **argv, int argc)
 		return -1;
 	}
 
+	if (value == 0) {
+		fr_strerror_printf("Invalid value '%u' following PROTOCOL", value);
+		return -1;
+	}
+
 	/*
 	 *	Look for a format statement.  This may specify the
 	 *	type length of the protocol's types.
@@ -4410,7 +4415,30 @@ static int dict_read_process_protocol(char **argv, int argc)
 		}
 	}
 
-	dict = fr_dict_by_protocol_num(value);
+	/*
+	 *	Cross check name / number.
+	 */
+	dict = fr_dict_by_protocol_name(argv[0]);
+	if (dict) {
+		if (dict->root->attr != value) {
+			fr_strerror_printf("Conflicting numbers %u vs %u for PROTOCOL \"%s\"",
+					   dict->root->attr, value, dict->root->name);
+			return -1;
+		}
+
+	} else {
+		dict = fr_dict_by_protocol_num(value);
+
+		if (dict && (strcasecmp(dict->root->name, argv[0]) != 0)) {
+			fr_strerror_printf("Conflicting names \"%s\" vs \"%s\" for PROTOCOL %u",
+					   dict->root->name, argv[0], dict->root->attr);
+			return -1;
+		}
+	}
+
+	/*
+	 *	And check types no matter what.
+	 */
 	if (dict) {
 		if (dict->root->flags.type_size != type_size) {
 			fr_strerror_printf("Conflicting flags for PROTOCOL \"%s\"", dict->root->name);
