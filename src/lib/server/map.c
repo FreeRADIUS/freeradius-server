@@ -2260,6 +2260,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		if (map->lhs->tmpl_da->type == map->rhs->tmpl_value_type) {
 			if (fr_value_box_copy(n, &n->data, &map->rhs->tmpl_value) < 0) {
 				rcode = -1;
+				talloc_free(n);
 				goto error;
 			}
 		} else {
@@ -2267,6 +2268,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 					   &map->rhs->tmpl_value) < 0) {
 				RPEDEBUG("Implicit cast failed");
 				rcode = -1;
+				talloc_free(n);
 				goto error;
 			}
 		}
