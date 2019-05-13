@@ -4428,7 +4428,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 
 	} else if ((dict = fr_dict_by_protocol_num(value)) != NULL) {
 #ifdef __clang_analyzer__
-		if (!dict->root) return -1;
+		if (!dict->root || !dict->root->name) return -1;
 #endif
 
 		if (strcasecmp(dict->root->name, argv[0]) != 0) {
