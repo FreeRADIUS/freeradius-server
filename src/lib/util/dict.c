@@ -111,9 +111,6 @@ struct fr_dict {
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce allocs.
 	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
 							///< in the dictionary.
-
-	fr_dict_attr_t const	*last_attr;		//!< Cache of last attribute to speed up
-							///< value processing.
 };
 
 /** Map data types to min / max data sizes
@@ -3679,6 +3676,9 @@ typedef struct {
 	int			block_tlv_depth;	//!< Nested TLV block index we're inserting into.
 
 	fr_dict_attr_t const	*parent;		//!< Current parent attribute (root/vendor/tlv).
+
+	fr_dict_attr_t const	*last_attr;		//!< Cache of last attribute to speed up
+							///< value processing.
 } dict_from_file_ctx_t;
 
 /** Set a new root dictionary attribute
@@ -4186,7 +4186,7 @@ static int dict_read_process_named_attribute(dict_from_file_ctx_t *ctx,
 /** Process a value alias
  *
  */
-static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
+static int dict_read_process_value(dict_from_file_ctx_t *ctx, char **argv, int argc)
 {
 	fr_dict_attr_t const		*da;
 	fr_value_box_t			value;
@@ -4201,11 +4201,11 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 	 *	save a lot of lookups on dictionary initialization by
 	 *	caching the last attribute.
 	 */
-	if (dict->last_attr && (strcasecmp(argv[0], dict->last_attr->name) == 0)) {
-		da = dict->last_attr;
+	if (ctx->last_attr && (strcasecmp(argv[0], ctx->last_attr->name) == 0)) {
+		da = ctx->last_attr;
 	} else {
-		da = fr_dict_attr_by_name(dict, argv[0]);
-		dict->last_attr = da;
+		da = fr_dict_attr_by_name(ctx->dict, argv[0]);
+		ctx->last_attr = da;
 	}
 
 	/*
@@ -4217,9 +4217,9 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 	if (!da) {
 		dict_enum_fixup_t *fixup;
 
-		if (!fr_cond_assert_msg(dict->fixup_pool, "fixup pool context invalid")) return -1;
+		if (!fr_cond_assert_msg(ctx->dict->fixup_pool, "fixup pool context invalid")) return -1;
 
-		fixup = talloc_zero(dict->fixup_pool, dict_enum_fixup_t);
+		fixup = talloc_zero(ctx->dict->fixup_pool, dict_enum_fixup_t);
 		if (!fixup) {
 		oom:
 			talloc_free(fixup);
@@ -4236,8 +4236,8 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 		/*
 		 *	Insert to the head of the list.
 		 */
-		fixup->next = dict->enum_fixup;
-		dict->enum_fixup = fixup;
+		fixup->next = ctx->dict->enum_fixup;
+		ctx->dict->enum_fixup = fixup;
 
 		return 0;
 	}
@@ -4734,7 +4734,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 *	Process VALUE lines.
 		 */
 		if (strcasecmp(argv[0], "VALUE") == 0) {
-			if (dict_read_process_value(ctx->dict, argv + 1, argc - 1) == -1) goto error;
+			if (dict_read_process_value(ctx, argv + 1, argc - 1) == -1) goto error;
 			continue;
 		}
 
@@ -5513,7 +5513,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 					   argv[1], dict->root->name);
 			goto error;
 		}
-		ret = dict_read_process_value(dict, argv + 1, argc - 1);
+		ret = dict_read_process_value(&ctx, argv + 1, argc - 1);
 		if (ret < 0) goto error;
 
 	} else if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
