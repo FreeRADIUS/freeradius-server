@@ -1906,7 +1906,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		/* Error in expansion, this is distinct from zero length expansion */
 		slen = xlat_aeval_compiled(tmp_ctx, (char **)&value.datum.ptr, request, vpt->tmpl_xlat, escape, escape_ctx);
-		if (slen < 0) return slen;
+		if (slen < 0) goto error;
 
 		value.datum.length = slen;
 
@@ -1933,7 +1933,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		RDEBUG4("EXPAND TMPL ATTR");
 
 		ret = tmpl_find_vp(&vp, request, vpt);
-		if (ret < 0) return -2;
+		if (ret < 0) {
+			talloc_free(tmp_ctx);
+			return -2;
+		}
 
 		rad_assert(vp);
 
@@ -1991,11 +1994,11 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		MEM(*vb_out = fr_value_box_alloc_null(ctx));
 
 		ret = needs_dup ? fr_value_box_copy(ctx, *vb_out, to_cast) : fr_value_box_steal(ctx, *vb_out, to_cast);
+		talloc_free(tmp_ctx);
 		if (ret < 0) {
 			RPEDEBUG("Failed copying data to output box");
 			return -1;
 		}
-		talloc_free(tmp_ctx);
 		return 0;
 	}
 
