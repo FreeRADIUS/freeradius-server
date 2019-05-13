@@ -378,14 +378,6 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
-	dependency_feature_add(cs, "osfc2",
-#ifdef OSFC2
-				true
-#else
-				false
-#endif
-				);
-
 	dependency_feature_add(cs, "proxy",
 #ifdef WITH_PROXY
 				true

@@ -560,12 +560,6 @@
 /* Architecture information for the target platform */
 #undef HOSTINFO
 
-/* define if you have OSFC2 authentication */
-#undef OSFC2
-
-/* define if you have OSFSIA authentication */
-#undef OSFSIA
-
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 

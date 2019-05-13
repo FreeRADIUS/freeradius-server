@@ -869,19 +869,6 @@ AC_CHECK_HEADERS(net/if.h, [], [],
   ]
 )
 
-dnl #
-dnl #  other checks which require headers
-dnl #
-if test "x$ac_cv_header_sys_security_h" = "xyes" && test "x$ac_cv_header_prot_h" = "xyes"
-then
-  AC_DEFINE(OSFC2, [], [define if you have OSFC2 authentication])
-fi
-
-if test "x$ac_cv_header_sia_h" = "xyes" && test "x$ac_cv_header_siad_h" = "xyes"
-then
-  AC_DEFINE(OSFSIA, [], [define if you have OSFSIA authentication])
-fi
-
 dnl #############################################################
 dnl #
 dnl #  3a. Checks for user libraries

@@ -7700,20 +7700,6 @@ fi
 done
 
 
-if test "x$ac_cv_header_sys_security_h" = "xyes" && test "x$ac_cv_header_prot_h" = "xyes"
-then
-
-$as_echo "#define OSFC2 /**/" >>confdefs.h
-
-fi
-
-if test "x$ac_cv_header_sia_h" = "xyes" && test "x$ac_cv_header_siad_h" = "xyes"
-then
-
-$as_echo "#define OSFSIA /**/" >>confdefs.h
-
-fi
-
 
 smart_try_dir="$talloc_lib_dir"
 
