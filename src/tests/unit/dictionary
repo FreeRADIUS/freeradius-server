@@ -41,30 +41,30 @@ ATTRIBUTE	Unit-Ext-241-Short	241.245		short
 ATTRIBUTE	Unit-Ext-241-Integer64	241.246		integer64
 
 ATTRIBUTE	Unit-Ext-241-Struct1	241.247		struct
-ATTRIBUTE	Unit-Struct1-Int1	.1		integer
-ATTRIBUTE	Unit-Struct1-Int2	.2		integer
-ATTRIBUTE	Unit-Struct1-Short	.3		uint16
-ATTRIBUTE	Unit-Struct1-String	.4		string
+MEMBER		Unit-Struct1-Int1		integer
+MEMBER		Unit-Struct1-Int2		integer
+MEMBER		Unit-Struct1-Short		uint16
+MEMBER		Unit-Struct1-String		string
 
 ATTRIBUTE	Unit-Ext-241-Struct2	241.248		struct
-ATTRIBUTE	Unit-Struct2-Int1	.1		integer
-ATTRIBUTE	Unit-Struct2-Short	.2		uint16
-ATTRIBUTE	Unit-Struct2-TLV	.3		tlv
+MEMBER		Unit-Struct2-Int1		integer
+MEMBER		Unit-Struct2-Short		uint16
+MEMBER		Unit-Struct2-TLV		tlv
 ATTRIBUTE	Unit-Struct2-TLV-Int1	.3.1		integer
 ATTRIBUTE	Unit-Struct2-TLV-Int2	.3.2		integer
 ATTRIBUTE	Unit-Struct2-TLV-String	.3.3		string
 
 ATTRIBUTE	Unit-Ext-241-Struct3	241.249		struct
-ATTRIBUTE	Unit-Struct3-Int	.1		integer
-ATTRIBUTE	Unit-Struct3-TLV	.2		tlv
+MEMBER		Unit-Struct3-Int		integer
+MEMBER		Unit-Struct3-TLV		tlv
 ATTRIBUTE	Unit-Struct3a		.2.1		struct
 ATTRIBUTE	Unit-Struct3a-Ipaddr1	.2.1.1		ipaddr
 ATTRIBUTE	Unit-Struct3a-Ipaddr2	.2.1.2		ipaddr
 
 ATTRIBUTE	Unit-Ext-241-Struct4	241.250		struct
-ATTRIBUTE	Unit-Struct4-Int1	.1		integer
-ATTRIBUTE	Unit-Struct4-Int2	.2		integer
-ATTRIBUTE	Unit-Struct4-Short	.3		uint16
+MEMBER		Unit-Struct4-Int1		integer
+MEMBER		Unit-Struct4-Int2		integer
+MEMBER		Unit-Struct4-Short		uint16
 
 
 ATTRIBUTE	Unit-TLV-Integer	241.243.1	integer
