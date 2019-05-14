@@ -94,7 +94,7 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
 	{ .out = &attr_wimax_mn_hha_mip4_key, .name = "WiMAX-MN-hHA-MIP4-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_wimax_mn_hha_mip4_spi, .name = "WiMAX-MN-hHA-MIP4-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_wimax_hha_ip_mip4, .name = "WiMAX-hHA-IP-MIP4", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
-	{ .out = &attr_wimax_hha_ip_mip6, .name = "WiMAX-hHA-IP-MIP6", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_wimax_hha_ip_mip6, .name = "WiMAX-hHA-IP-MIP6", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
 	{ .out = &attr_wimax_mn_hha_mip6_key, .name = "WiMAX-MN-hHA-MIP6-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_wimax_mn_hha_mip6_spi, .name = "WiMAX-MN-hHA-MIP6-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_wimax_fa_rk_key, .name = "WiMAX-FA-RK-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
