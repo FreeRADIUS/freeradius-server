@@ -84,7 +84,7 @@ static int dl_module_cmp(void const *one, void const *two)
 
 /** Call the load() function in a module's exported structure
  *
- * @param[in] dl_module	to call the load function for.
+ * @param[in] dl	to call the load function for.
  * @param[in] symbol	UNUSED.
  * @param[in] ctx	UNUSED.
  * @return
@@ -105,7 +105,7 @@ static int dl_module_onload_func(dl_t const *dl, UNUSED void *symbol, UNUSED voi
 
 /** Call the unload() function in a module's exported structure
  *
- * @param[in] dl_module	to call the unload function for.
+ * @param[in] dl	to call the unload function for.
  * @param[in] symbol	UNUSED.
  * @param[in] ctx	UNUSED.
  */
@@ -367,7 +367,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
  *
  * Also decrements the reference count of the module potentially unloading it.
  *
- * @param[in] dl_inst to free.
+ * @param[in] dl_module_inst to free.
  * @return 0.
  */
 static int _dl_module_instance_free(dl_module_inst_t *dl_module_inst)
@@ -401,10 +401,10 @@ static int _dl_module_instance_free(dl_module_inst_t *dl_module_inst)
 /** Retrieve a public symbol from a module using dlsym
  *
  * Convenience function to lookup/return public symbols from modules loaded
- * with #dl_instance.
+ * with #dl_module_instance.
  *
- * @param[in] dl_inst	Instance who's module we're looking for the symbol in.
- * @param[in] sym_name	to lookup.
+ * @param[in] dl_module_inst	Instance who's module we're looking for the symbol in.
+ * @param[in] sym_name		to lookup.
  * @return
  *	- Pointer to the public data structure.
  * 	- NULL if no matching symbol was found.
