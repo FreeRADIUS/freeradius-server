@@ -58,8 +58,8 @@ ATTRIBUTE	Unit-Ext-241-Struct3	241.249		struct
 MEMBER		Unit-Struct3-Int		integer
 MEMBER		Unit-Struct3-TLV		tlv
 ATTRIBUTE	Unit-Struct3a		.2.1		struct
-ATTRIBUTE	Unit-Struct3a-Ipaddr1	.2.1.1		ipaddr
-ATTRIBUTE	Unit-Struct3a-Ipaddr2	.2.1.2		ipaddr
+MEMBER		Unit-Struct3a-Ipaddr1			ipaddr
+MEMBER		Unit-Struct3a-Ipaddr2			ipaddr
 
 ATTRIBUTE	Unit-Ext-241-Struct4	241.250		struct
 MEMBER		Unit-Struct4-Int1		integer
