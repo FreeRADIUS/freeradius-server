@@ -4139,8 +4139,13 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 		return -1;
 	}
 
-	if (!ctx->previous_attr || (ctx->previous_attr->type != FR_TYPE_STRUCT)) {
-		fr_strerror_printf("MEMBER can only be used for ATTRIBUTES of type 'struct', not %s", ctx->previous_attr->name);
+	if (!ctx->previous_attr) {
+		fr_strerror_printf("MEMBER can only be used immediately after an ATTRIBUTE definition");
+		return -1;
+	}
+
+	if (ctx->previous_attr->type != FR_TYPE_STRUCT) {
+		fr_strerror_printf("MEMBER can only be used for ATTRIBUTEs of type 'struct', not %s", ctx->previous_attr->name);
 		return -1;
 	}
 
