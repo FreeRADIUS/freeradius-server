@@ -3868,6 +3868,150 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
 	return da;
 }
 
+
+static int process_type(char const *name, fr_type_t *type_p, fr_dict_attr_flags_t *flags)
+{
+	char *p;
+	int type;
+
+	/*
+	 *	Some types can have fixed length
+	 */
+	p = strchr(name, '[');
+	if (p) *p = '\0';
+
+	/*
+	 *	find the type of the attribute.
+	 */
+	type = fr_str2int(fr_value_box_type_table, name, -1);
+	if (type < 0) {
+		fr_strerror_printf("Unknown data type '%s'", name);
+		return -1;
+	}
+
+	if (p) {
+		char *q;
+		unsigned int length;
+
+		if (type != FR_TYPE_OCTETS) {
+			fr_strerror_printf("Only 'octets' types can have a 'length' parameter");
+			return -1;
+		}
+
+		q = strchr(p + 1, ']');
+		if (!q) {
+			fr_strerror_printf("Invalid format for '%s[...]'", name);
+			return -1;
+		}
+
+		*q = '\0';
+
+		if (!dict_read_sscanf_i(&length, p + 1)) {
+			fr_strerror_printf("Invalid length for '%s[...]'", name);
+			return -1;
+		}
+
+		if ((length == 0) || (length > 253)) {
+			fr_strerror_printf("Invalid length for '%s[...]'", name);
+			return -1;
+		}
+
+		flags->length = length;
+	}
+
+	*type_p = type;
+	return 0;
+}
+
+
+static int process_flags(dict_from_file_ctx_t *ctx, char *name, fr_dict_attr_t const **ref_p, fr_dict_attr_flags_t *flags)
+{
+	char *p, *q, *v;
+	fr_dict_attr_t const *ref = NULL;
+
+	p = name;
+	do {
+		char key[64], value[256];
+
+		q = strchr(p, ',');
+		if (!q) q = p + strlen(p);
+
+		/*
+		 *	Nothing after the trailing comma
+		 */
+		if (p == q) break;
+
+		if ((size_t)(q - p) > sizeof(key)) {
+			fr_strerror_printf("ATTRIBUTE option key too long");
+			return -1;
+		}
+
+		/*
+		 *	Copy key and value
+		 */
+		if (!(v = memchr(p, '=', q - p)) || (v == q)) {
+			value[0] = '\0';
+			strlcpy(key, p, (q - p) + 1);
+		} else {
+			strlcpy(key, p, (v - p) + 1);
+			strlcpy(value, v + 1, q - v);
+		}
+
+		/*
+		 *	Boolean flag, means this is a tagged
+		 *	attribute.
+		 */
+		if (strcmp(key, "has_tag") == 0) {
+			flags->has_tag = 1;
+
+			/*
+			 *	Encryption method.
+			 */
+		} else if (strcmp(key, "encrypt") == 0) {
+			char *qq;
+
+			flags->encrypt = strtol(value, &qq, 0);
+			if (*qq) {
+				fr_strerror_printf("Invalid encrypt value \"%s\"", value);
+				return -1;
+			}
+
+			/*
+			 *	Marks the attribute up as internal.
+			 *	This means it can use numbers outside of the allowed
+			 *	protocol range, and also means it will not be included
+			 *	in replies or proxy requests.
+			 */
+		} else if (strcmp(key, "internal") == 0) {
+			flags->internal = 1;
+
+		} else if (strcmp(key, "array") == 0) {
+			flags->array = 1;
+
+		} else if (strcmp(key, "concat") == 0) {
+			flags->concat = 1;
+
+		} else if (strcmp(key, "virtual") == 0) {
+			flags->virtual = 1;
+
+		} else if (strcmp(key, "reference") == 0) {
+			ref = dict_resolve_reference(ctx->dict, value);
+			if (!ref) return -1;
+			flags->is_reference = 1;
+
+			*ref_p = ref;
+
+		} else {
+			fr_strerror_printf("Unknown option '%s'", key);
+			return -1;
+		}
+		p = q;
+	} while (*p++);
+
+	return 0;
+}
+
+
 /*
  *	Process the ATTRIBUTE command
  */
@@ -3877,15 +4021,12 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 	bool			oid = false;
 	bool			set_previous = true;
 
-	fr_dict_vendor_t const	*vendor;
 	unsigned int		attr;
 
-	int			type;
-	unsigned int		length;
+	fr_type_t      		type;
 	fr_dict_attr_flags_t	flags;
 	fr_dict_attr_t const	*ref = NULL;
 	fr_dict_attr_t const	*parent = ctx->parent;
-	char			*p;
 
 	if ((argc < 3) || (argc > 4)) {
 		fr_strerror_printf("Invalid ATTRIBUTE syntax");
@@ -3944,156 +4085,12 @@ get_by_oid:
 		if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
 	}
 
-	/*
-	 *	Some types can have fixed length
-	 */
-	p = strchr(argv[2], '[');
-	if (p) *p = '\0';
-
-	/*
-	 *	find the type of the attribute.
-	 */
-	type = fr_str2int(fr_value_box_type_table, argv[2], -1);
-	if (type < 0) {
-		fr_strerror_printf("Unknown data type '%s'", argv[2]);
-		return -1;
-	}
-
-	if (p) {
-		char *q;
-
-		if (type != FR_TYPE_OCTETS) {
-			fr_strerror_printf("Only 'octets' types can have a 'length' parameter");
-			return -1;
-		}
-
-		q = strchr(p + 1, ']');
-		if (!q) {
-			fr_strerror_printf("Invalid format for '%s[...]'", argv[2]);
-			return -1;
-		}
-
-		*q = '\0';
-
-		if (!dict_read_sscanf_i(&length, p + 1)) {
-			fr_strerror_printf("Invalid length for '%s[...]'", argv[2]);
-			return -1;
-		}
-
-		if ((length == 0) || (length > 253)) {
-			fr_strerror_printf("Invalid length for '%s[...]'", argv[2]);
-			return -1;
-		}
-
-		flags.length = length;
-	}
+	if (process_type(argv[2], &type, &flags) < 0) return -1;
 
 	/*
 	 *	Parse options.
 	 */
-	if (argc >= 4) {
-		char *q, *v;
-
-		p = argv[3];
-		do {
-			char key[64], value[256];
-
-			q = strchr(p, ',');
-			if (!q) q = p + strlen(p);
-
-			/*
-			 *	Nothing after the trailing comma
-			 */
-			if (p == q) break;
-
-			if ((size_t)(q - p) > sizeof(key)) {
-				fr_strerror_printf("ATTRIBUTE option key too long");
-				return -1;
-			}
-
-			/*
-			 *	Copy key and value
-			 */
-			if (!(v = memchr(p, '=', q - p)) || (v == q)) {
-				value[0] = '\0';
-				strlcpy(key, p, (q - p) + 1);
-			} else {
-				strlcpy(key, p, (v - p) + 1);
-				strlcpy(value, v + 1, q - v);
-			}
-
-			/*
-			 *	Boolean flag, means this is a tagged
-			 *	attribute.
-			 */
-			if (strcmp(key, "has_tag") == 0) {
-				flags.has_tag = 1;
-
-			/*
-			 *	Encryption method.
-			 */
-			} else if (strcmp(key, "encrypt") == 0) {
-				char *qq;
-
-				flags.encrypt = strtol(value, &qq, 0);
-				if (*qq) {
-					fr_strerror_printf("Invalid encrypt value \"%s\"", value);
-					return -1;
-				}
-
-			/*
-			 *	Marks the attribute up as internal.
-			 *	This means it can use numbers outside of the allowed
-			 *	protocol range, and also means it will not be included
-			 *	in replies or proxy requests.
-			 */
-			} else if (strcmp(key, "internal") == 0) {
-				flags.internal = 1;
-
-			} else if (strcmp(key, "array") == 0) {
-				flags.array = 1;
-
-			} else if (strcmp(key, "concat") == 0) {
-				flags.concat = 1;
-
-			} else if (strcmp(key, "virtual") == 0) {
-				flags.virtual = 1;
-
-			} else if (strcmp(key, "reference") == 0) {
-				ref = dict_resolve_reference(ctx->dict, value);
-				if (!ref) return -1;
-				flags.is_reference = 1;
-
-			/*
-			 *	The only thing is the vendor name, and it's a known name:
-			 *	allow it.
-			 *
-			 *	This format is terrible, and is only
-			 *	allowed for backwards compatability.
-			 */
-			} else if ((argv[3] == p) && (*q == '\0')) {
-				if (oid) {
-					fr_strerror_printf("ATTRIBUTE cannot use a 'vendor' flag");
-					return -1;
-				}
-
-				if (ctx->block_vendor) {
-					fr_strerror_printf("Vendor flag inside of 'BEGIN-VENDOR' is not allowed");
-					return -1;
-				}
-
-				vendor = fr_dict_vendor_by_name(ctx->dict, key);
-				if (!vendor) goto unknown;
-				break;
-
-			} else {
-			unknown:
-				fr_strerror_printf("Unknown option '%s'", key);
-				return -1;
-			}
-			p = q;
-		} while (*p++);
-	}
+	if ((argc >= 4) && (process_flags(ctx, argv[3], &ref, &flags) < 0)) return -1;
 
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
