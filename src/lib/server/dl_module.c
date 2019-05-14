@@ -612,8 +612,9 @@ dl_module_loader_t *dl_module_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
 	DEBUG4("Module linker search path(s)");
 	if (DEBUG_ENABLED4) {
 		char const	*env;
-		char		buffer[PATH_MAX];
+
 #ifdef __APPLE__
+		char		buffer[PATH_MAX];
 
 		env = getenv("LD_LIBRARY_PATH");
 		if (env) {
