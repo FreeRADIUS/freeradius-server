@@ -40,7 +40,7 @@ typedef struct module_thread_instance_s  module_thread_instance_t;
 
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/components.h>
-#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/server/rcode.h>
@@ -189,7 +189,7 @@ struct rad_module_s {
 struct module_instance_s {
 	char const			*name;		//!< Instance name e.g. user_database.
 
-	dl_instance_t			*dl_inst;	//!< Structure containing the module's instance data,
+	dl_module_inst_t			*dl_inst;	//!< Structure containing the module's instance data,
 							//!< configuration, and dl handle.
 
 	module_t const			*module;	//!< Public module structure.  Cached for convenience.

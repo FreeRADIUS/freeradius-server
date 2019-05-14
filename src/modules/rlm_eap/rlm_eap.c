@@ -30,8 +30,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/dl.h>
-#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/dl_module.h>
+#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/module.h>
@@ -151,8 +151,8 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	case FR_EAP_METHOD_AKA:
 	case FR_EAP_METHOD_SIM:
 	{
-		rlm_eap_t *inst = ((dl_instance_t *)cf_data_value(cf_data_find(eap_cs,
-									       dl_instance_t, "rlm_eap")))->data;
+		rlm_eap_t *inst = ((dl_module_inst_t *)cf_data_value(cf_data_find(eap_cs,
+									       dl_module_inst_t, "rlm_eap")))->data;
 
 		WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
 

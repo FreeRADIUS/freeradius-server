@@ -26,7 +26,7 @@
  */
 RCSIDH(modpriv_h, "$Id$")
 
-#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/module.h>
 

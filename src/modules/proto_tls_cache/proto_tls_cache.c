@@ -23,7 +23,7 @@
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/tls/base.h>
 

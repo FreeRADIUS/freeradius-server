@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/command.h>
-#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/parser.h>
 #include <freeradius-devel/server/protocol.h>
@@ -47,7 +47,7 @@ typedef struct {
 } fr_virtual_namespace_t;
 
 typedef struct {
-	dl_instance_t		*proto_module;		//!< The proto_* module for a listen section.
+	dl_module_inst_t		*proto_module;		//!< The proto_* module for a listen section.
 	fr_app_t const		*app;			//!< Easy access to the exported struct.
 } fr_virtual_listen_t;
 
@@ -154,7 +154,7 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
-	dl_t const		*module;
+	dl_module_t const	*module;
 
 	if (!namespace) {
 		cf_log_err(listen_cs, "No 'namespace' set for virtual server");
@@ -165,7 +165,7 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading proto_%s", cf_pair_value(namespace));
 
-	module = dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO);
+	module = dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_MODULE_TYPE_PROTO);
 	if (!module) {
 		cf_log_err(listen_cs, "Failed loading proto_%s module", cf_pair_value(namespace));
 		return -1;
@@ -267,7 +267,7 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", cf_pair_value(namespace), out);
 
-	if (dl_instance(ctx, &listen->proto_module, listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO) < 0) {
+	if (dl_module_instance(ctx, &listen->proto_module, listen_cs, NULL, cf_pair_value(namespace), DL_MODULE_TYPE_PROTO) < 0) {
 		cf_log_err(listen_cs, "Failed loading proto module");
 		return -1;
 	}
@@ -660,7 +660,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 			(void) talloc_get_type_abort(listen, fr_virtual_listen_t);
 
-			talloc_get_type_abort(listen->proto_module, dl_instance_t);
+			talloc_get_type_abort(listen->proto_module, dl_module_inst_t);
 			listen->app = (fr_app_t const *)listen->proto_module->module->common;
 
 			if (listen->app->bootstrap &&
@@ -1011,7 +1011,7 @@ void fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el)
 	listener[0]->app->entry_point_set(listener[0]->proto_module->data, request);
 }
 
-int fr_app_process_bootstrap(CONF_SECTION *server, dl_instance_t **type_submodule, CONF_SECTION *conf)
+int fr_app_process_bootstrap(CONF_SECTION *server, dl_module_inst_t **type_submodule, CONF_SECTION *conf)
 {
 	int i = 0;
 	CONF_PAIR *cp = NULL;
@@ -1021,8 +1021,8 @@ int fr_app_process_bootstrap(CONF_SECTION *server, dl_instance_t **type_submodul
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		char const		*value;
-		dl_t const		*module = talloc_get_type_abort_const(type_submodule[i]->module, dl_t);
-		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)module->common;
+		dl_module_t const	*module = talloc_get_type_abort_const(type_submodule[i]->module, dl_module_t);
+		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)(module->common);
 
 		if (app_process->bootstrap && (app_process->bootstrap(type_submodule[i]->data,
 								      type_submodule[i]->conf) < 0)) {
@@ -1079,7 +1079,7 @@ int fr_app_process_bootstrap(CONF_SECTION *server, dl_instance_t **type_submodul
 }
 
 
-int fr_app_process_instantiate(CONF_SECTION *server, dl_instance_t **type_submodule, dl_instance_t **type_submodule_by_code, int code_max, CONF_SECTION *conf)
+int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_submodule, dl_module_inst_t **type_submodule_by_code, int code_max, CONF_SECTION *conf)
 {
 	int i;
 	CONF_PAIR *cp = NULL;

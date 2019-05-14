@@ -112,7 +112,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	rlm_cache_memcached_t		*driver = instance;
 	memcached_return_t		ret;
 	char				buffer[256];
-	rlm_cache_config_t const	*config = dl_parent_data_by_child_data(instance);
+	rlm_cache_config_t const	*config = dl_module_parent_data_by_child_data(instance);
 
 	rad_assert(config);
 

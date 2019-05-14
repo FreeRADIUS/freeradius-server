@@ -128,7 +128,7 @@ struct fr_io_connection_t {
 	fr_listen_t			*child;		//!< child listener (app_io) for this socket
 	fr_io_client_t			*client;	//!< our local client (pending or connected).
 	fr_io_client_t			*parent;	//!< points to the parent client.
-	dl_instance_t   		*dl_inst;	//!< for submodule
+	dl_module_inst_t   		*dl_inst;	//!< for submodule
 
 	bool				dead;		//!< roundabout way to get the network side to close a socket
 	bool				paused;		//!< event filter doesn't like resuming something that isn't paused
@@ -423,7 +423,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 {
 	int rcode;
 	fr_io_connection_t *connection;
-	dl_instance_t *dl_inst = NULL;
+	dl_module_inst_t *dl_inst = NULL;
 	fr_listen_t *li;
 	RADCLIENT *radclient;
 
@@ -455,7 +455,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			}
 		}
 
-		if (dl_instance(NULL, &dl_inst, NULL, inst->dl_inst, inst->transport, DL_TYPE_SUBMODULE) < 0) {
+		if (dl_module_instance(NULL, &dl_inst, NULL, inst->dl_inst, inst->transport, DL_MODULE_TYPE_SUBMODULE) < 0) {
 			DEBUG("Failed to find proto_%s_%s", inst->app->name, inst->transport);
 			return NULL;
 		}
@@ -2426,8 +2426,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		/*
 		 *	Load proto_dhcpv4_dynamic_client
 		 */
-		if (dl_instance(cs, &inst->dynamic_submodule,
-				cs, inst->dl_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
+		if (dl_module_instance(cs, &inst->dynamic_submodule,
+				cs, inst->dl_inst, "dynamic_client", DL_MODULE_TYPE_SUBMODULE) < 0) {
 			cf_log_err(cs, "Failed finding proto_%s_dynamic_client", inst->app->name);
 			return -1;
 		}

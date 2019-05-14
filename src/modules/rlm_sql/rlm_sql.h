@@ -221,7 +221,7 @@ struct sql_inst {
 							//!< dictionary attribute.
 	exfile_t		*ef;
 
-	dl_instance_t		*driver_inst;		//!< Driver's instance data.
+	dl_module_inst_t		*driver_inst;		//!< Driver's instance data.
 	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
 
 	int (*sql_set_user)(rlm_sql_t const *inst, REQUEST *request, char const *username);

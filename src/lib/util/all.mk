@@ -11,6 +11,7 @@ SOURCES		:= \
 		   cursor.c \
 		   debug.c \
 		   dict.c \
+		   dl.c \
 		   event.c \
 		   fifo.c \
 		   fring.c \

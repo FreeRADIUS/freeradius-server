@@ -25,7 +25,7 @@
 RCSIDH(cache_h, "$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/map.h>
 
 typedef struct cache_driver cache_driver_t;

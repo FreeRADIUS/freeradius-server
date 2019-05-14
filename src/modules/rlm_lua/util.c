@@ -215,7 +215,7 @@ int fr_lua_util_jit_log_register(rlm_lua_t const *inst, lua_State *L)
 	char *lua_str;
 	int ret;
 
-	search_path = dl_search_path();
+	search_path = dl_module_search_path();
 	lua_str = talloc_asprintf(NULL, "\
 		ffi = require(\"ffi\")\
 		ffi.cdef [[\

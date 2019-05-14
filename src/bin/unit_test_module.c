@@ -743,7 +743,7 @@ int main(int argc, char *argv[])
 		goto cleanup;
 	}
 
-	dl_loader_init(autofree, config->lib_dir);
+	dl_module_loader_init(autofree, config->lib_dir);
 
 	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
 		fr_perror("%s", config->name);

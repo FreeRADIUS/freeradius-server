@@ -113,7 +113,7 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
  * the proto_radius_auth module.
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
- * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
@@ -137,7 +137,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
 	CONF_SECTION		*process_app_cs;
 	proto_radius_t		*inst;
-	dl_instance_t		*parent_inst;
+	dl_module_inst_t		*parent_inst;
 	char const		*name = NULL;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
@@ -193,7 +193,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	name = type_lib_table[code];
 	if (!name) goto invalid_type;
 
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_radius"));
 	rad_assert(parent_inst);
 
 	/*
@@ -222,15 +222,15 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	}
 
 	/*
-	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
+	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
 	 */
-	return dl_instance(ctx, out, process_app_cs, parent_inst, name, DL_TYPE_SUBMODULE);
+	return dl_module_instance(ctx, out, process_app_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
 }
 
 /** Wrapper around dl_instance
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
- * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
@@ -241,14 +241,14 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*name = cf_pair_value(cf_item_to_pair(ci));
-	dl_instance_t	*parent_inst;
+	dl_module_inst_t	*parent_inst;
 	proto_radius_t	*inst;
 	CONF_SECTION	*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION	*transport_cs;
 
 	transport_cs = cf_section_find(listen_cs, name, NULL);
 
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_radius"));
 	rad_assert(parent_inst);
 
 	/*
@@ -268,7 +268,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 		inst->io.app_io_conf = transport_cs;
 	}
 
-	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
+	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
 }
 
 /** Decode the packet
@@ -524,7 +524,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 static void mod_entry_point_set(void const *instance, REQUEST *request)
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	dl_instance_t		*type_submodule;
+	dl_module_inst_t		*type_submodule;
 	fr_io_track_t		*track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
@@ -713,7 +713,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
-	inst->io.dl_inst = dl_instance_by_data(inst);
+	inst->io.dl_inst = dl_module_instance_by_data(inst);
 	rad_assert(inst != NULL);
 
 	/*

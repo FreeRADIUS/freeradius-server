@@ -28,6 +28,7 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/types.h>
 
@@ -367,6 +368,12 @@ int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load);
 int			fr_dict_autoload(fr_dict_autoload_t const *to_load);
 
 void			fr_dict_autofree(fr_dict_autoload_t const *to_free);
+
+int			fr_dl_dict_autoload(dl_t const *module, void *symbol, void *user_ctx);
+
+void			fr_dl_dict_autofree(dl_t const *module, void *symbol, void *user_ctx);
+
+int			fr_dl_dict_attr_autoload(dl_t const *module, void *symbol, void *user_ctx);
 /** @} */
 
 void			fr_dict_free(fr_dict_t **dict);

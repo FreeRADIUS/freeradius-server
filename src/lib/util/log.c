@@ -174,9 +174,10 @@ fr_log_t default_log = {
 /** Cleanup the memory pool used by vlog_request
  *
  */
-static void _fr_vlog_pool_free(UNUSED void *arg)
+static void _fr_vlog_pool_free(void *arg)
 {
-	TALLOC_FREE(fr_vlog_pool);
+	talloc_free(arg);
+	fr_vlog_pool = NULL;
 }
 
 /** Send a server log message to its destination

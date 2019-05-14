@@ -29,7 +29,7 @@ RCSIDH(protocol_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/io/base.h>
 
 /*

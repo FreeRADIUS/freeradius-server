@@ -134,7 +134,7 @@ static int dictionary_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
  * @param[in] ctx	to allocate data in (instance of proto_detail).
- * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
@@ -146,9 +146,9 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	dl_instance_t		*parent_inst;
+	dl_module_inst_t		*parent_inst;
 	fr_dict_enum_t const	*type_enum;
-	dl_instance_t		*process_dl;
+	dl_module_inst_t		*process_dl;
 	proto_detail_process_t	*process_inst;
 	fr_dict_attr_t const	*attr_packet_type;
 	proto_detail_t		*inst = parent;
@@ -178,17 +178,17 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 
 	inst->code = type_enum->value->vb_uint32;
 
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_detail"));
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_detail"));
 	rad_assert(parent_inst);
 
 	/*
-	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
+	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
 	 */
-	if (dl_instance(ctx, out, listen_cs, parent_inst, "process", DL_TYPE_SUBMODULE) < 0) {
+	if (dl_module_instance(ctx, out, listen_cs, parent_inst, "process", DL_MODULE_TYPE_SUBMODULE) < 0) {
 		return -1;
 	}
 
-	process_dl = *(dl_instance_t **) out;
+	process_dl = *(dl_module_inst_t **) out;
 	process_inst = inst->process_instance = process_dl->data;
 
 	process_inst->dict = inst->dict;
@@ -200,7 +200,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 /** Wrapper around dl_instance
  *
  * @param[in] ctx	to allocate data in (instance of proto_detail).
- * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
@@ -212,7 +212,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*name = cf_pair_value(cf_item_to_pair(ci));
-	dl_instance_t	*parent_inst;
+	dl_module_inst_t	*parent_inst;
 	CONF_SECTION	*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION	*transport_cs;
 
@@ -224,10 +224,10 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	 */
 	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
 
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_detail"));
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_detail"));
 	rad_assert(parent_inst);
 
-	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
+	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
 }
 
 /** Decode the packet, and set the request->process function
@@ -458,7 +458,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 *	Testing: allow it to read a "detail.work" file
 	 *	directly.
 	 */
-	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") == 0) {
+	if (strcmp(inst->io_submodule->module->dl->name, "proto_detail_work") == 0) {
 		if (!fr_schedule_listen_add(sc, li)) {
 			talloc_free(li);
 			return -1;
@@ -544,7 +544,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	If the IO is "file" and not the worker, instantiate the worker now.
 	 */
-	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") != 0) {
+	if (strcmp(inst->io_submodule->module->dl->name, "proto_detail_work") != 0) {
 		if (inst->work_io->instantiate && (inst->work_io->instantiate(inst->work_io_instance,
 									      inst->work_io_conf) < 0)) {
 			cf_log_err(inst->work_io_conf, "Instantiation failed for \"%s\"", inst->work_io->name);
@@ -581,8 +581,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Bootstrap the process module.
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		dl_t const		*module = talloc_get_type_abort_const(inst->type_submodule->module, dl_t);
-		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)module->common;
+		dl_module_t const	*module = talloc_get_type_abort_const(inst->type_submodule->module,
+									      dl_module_t);
+		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)(module->common);
 
 		if (app_process->bootstrap && (app_process->bootstrap(inst->type_submodule->data,
 								      inst->type_submodule->conf) < 0)) {
@@ -616,14 +617,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	If we're not loading the work submodule directly, then try to load it here.
 	 */
-	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") != 0) {
+	if (strcmp(inst->io_submodule->module->dl->name, "proto_detail_work") != 0) {
 		CONF_SECTION *transport_cs;
-		dl_instance_t *parent_inst;
+		dl_module_inst_t *parent_inst;
 
 		inst->work_submodule = NULL;
 
 		transport_cs = cf_section_find(inst->cs, "work", NULL);
-		parent_inst = cf_data_value(cf_data_find(inst->cs, dl_instance_t, "proto_detail"));
+		parent_inst = cf_data_value(cf_data_find(inst->cs, dl_module_inst_t, "proto_detail"));
 		rad_assert(parent_inst);
 
 		if (!transport_cs) {
@@ -635,8 +636,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			}
 		}
 
-		if (dl_instance(inst->cs, &inst->work_submodule, transport_cs,
-				parent_inst, "work", DL_TYPE_SUBMODULE) < 0) {
+		if (dl_module_instance(inst->cs, &inst->work_submodule, transport_cs,
+				parent_inst, "work", DL_MODULE_TYPE_SUBMODULE) < 0) {
 			cf_log_perr(inst->cs, "Failed to load proto_detail_work");
 			return -1;
 		}

@@ -22,7 +22,7 @@
  *
  * @copyright 2019  The FreeRADIUS server project
  */
-#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/module.h>
 
 #define MAX_PROVIDED_METHODS	10

@@ -86,8 +86,8 @@ void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for 
 fr_listen_t *  	listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
 bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
 
-int fr_app_process_bootstrap(CONF_SECTION *server, dl_instance_t **type_submodule, CONF_SECTION *conf);
-int fr_app_process_instantiate(CONF_SECTION *server, dl_instance_t **type_submodule, dl_instance_t **type_submodule_by_code, int code_max, CONF_SECTION *conf);
+int fr_app_process_bootstrap(CONF_SECTION *server, dl_module_inst_t **type_submodule, CONF_SECTION *conf);
+int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_submodule, dl_module_inst_t **type_submodule_by_code, int code_max, CONF_SECTION *conf);
 
 
 /** Module methods which are allowed in virtual servers.

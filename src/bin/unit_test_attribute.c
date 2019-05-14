@@ -36,7 +36,7 @@ typedef struct rad_request REQUEST;
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_util.h>
-#include <freeradius-devel/server/dl.h>
+#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/command.h>
 #include <freeradius-devel/io/test_point.h>
@@ -70,7 +70,8 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 }
 
 static char proto_name_prev[128];
-static void *dl_handle;
+static dl_t		*dl;
+static dl_loader_t	*dl_loader;
 
 /** Concatenate error stack
  */
@@ -591,15 +592,12 @@ static void parse_xlat(fr_dict_t const *dict, char const *input, char *output, s
 
 static void unload_proto_library(void)
 {
-	if (dl_handle) {
-		dlclose(dl_handle);
-		dl_handle = NULL;
-	}
+	TALLOC_FREE(dl);
 }
 
 static ssize_t load_proto_library(char const *proto_name)
 {
-	char dl_name[128];
+	char	dl_name[128];
 
 	if (strcmp(proto_name_prev, proto_name) != 0) {
 		/*
@@ -608,13 +606,10 @@ static ssize_t load_proto_library(char const *proto_name)
 		unload_proto_library();
 
 		snprintf(dl_name, sizeof(dl_name), "libfreeradius-%s", proto_name);
-		if (dl_handle) {
-			dlclose(dl_handle);
-			dl_handle = NULL;
-		}
+		if (dl) TALLOC_FREE(dl);
 
-		dl_handle = dl_by_name(dl_name);
-		if (!dl_handle) {
+		dl = dl_by_name(dl_loader, dl_name, NULL, false);
+		if (!dl) {
 			fprintf(stderr, "Failed to link to library \"%s\": %s\n", dl_name, fr_strerror());
 			unload_proto_library();
 			return 0;
@@ -633,7 +628,7 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, size_t o
 	char const	*symbol_name;
 	void		*dl_symbol;
 
-	if (!dl_handle) {
+	if (!dl) {
 		fprintf(stderr, "No protocol library loaded. Specify library with \"load <proto name>\"\n");
 		return 0;
 	}
@@ -651,7 +646,7 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, size_t o
 		symbol_name = buffer;
 	}
 
-	dl_symbol = dlsym(dl_handle, symbol_name);
+	dl_symbol = dlsym(dl->handle, symbol_name);
 	if (!dl_symbol) {
 		fprintf(stderr, "Test point (symbol \"%s\") not exported by library\n", symbol_name);
 		unload_proto_library();
@@ -1392,15 +1387,16 @@ static void usage(char *argv[])
 
 int main(int argc, char *argv[])
 {
-	int		c;
-	char const	*raddb_dir = RADDBDIR;
-	char const	*dict_dir = DICTDIR;
-	char const	*receipt_file = NULL;
-	int		*inst = &c;
-	CONF_SECTION	*cs, *features;
-	fr_dict_t	*dict = NULL;
-	int		ret = EXIT_SUCCESS;
-	TALLOC_CTX	*autofree = talloc_autofree_context();
+	int			c;
+	char const		*raddb_dir = RADDBDIR;
+	char const		*dict_dir = DICTDIR;
+	char const		*receipt_file = NULL;
+	int			*inst = &c;
+	CONF_SECTION		*cs, *features;
+	fr_dict_t		*dict = NULL;
+	int			ret = EXIT_SUCCESS;
+	TALLOC_CTX		*autofree = talloc_autofree_context();
+	dl_module_loader_t	*dl_module_loader;
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -1475,7 +1471,8 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	dl_loader_init(autofree, NULL);
+	dl_module_loader = dl_module_loader_init(autofree, NULL);
+	dl_loader = dl_loader_init(autofree, NULL, NULL, false, false);
 
 	if (fr_dict_global_init(autofree, dict_dir) < 0) {
 		fr_perror("unit_test_attribute");

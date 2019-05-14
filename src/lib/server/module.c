@@ -253,7 +253,7 @@ static int module_instance_name_cmp(void const *one, void const *two)
 {
 	module_instance_t const *a = one;
 	module_instance_t const *b = two;
-	dl_instance_t const	*dl_inst;
+	dl_module_inst_t const	*dl_inst;
 	int a_depth = 0, b_depth = 0;
 	int ret;
 
@@ -682,7 +682,7 @@ module_instance_t *module_by_name(module_instance_t const *parent, char const *a
 
 	inst = rbtree_finddata(module_instance_name_tree,
 			       &(module_instance_t){
-					.dl_inst = &(dl_instance_t){ .parent = parent ? parent->dl_inst : NULL },
+					.dl_inst = &(dl_module_inst_t){ .parent = parent ? parent->dl_inst : NULL },
 					.name = inst_name
 			       });
 	if (!inst) return NULL;
@@ -1052,7 +1052,7 @@ module_instance_t *module_by_data(void const *data)
 
 	mi = rbtree_finddata(module_instance_data_tree,
 			     &(module_instance_t){
-				.dl_inst = &(dl_instance_t){ .data = mutable },
+				.dl_inst = &(dl_module_inst_t){ .data = mutable },
 			     });
 	if (!mi) return NULL;
 
@@ -1496,10 +1496,10 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 	MEM(mi = talloc_zero(parent ? parent : instance_ctx, module_instance_t));
 	talloc_set_destructor(mi, _module_instance_free);
 
-	if (dl_instance(mi, &mi->dl_inst, cs,
+	if (dl_module_instance(mi, &mi->dl_inst, cs,
 			parent ? parent->dl_inst : NULL,
 			name1,
-			parent ? DL_TYPE_SUBMODULE : DL_TYPE_MODULE) < 0) {
+			parent ? DL_MODULE_TYPE_SUBMODULE : DL_MODULE_TYPE_MODULE) < 0) {
 	error:
 		mi->name = inst_name;	/* Assigned purely for debug log output when mi is freed */
 		talloc_free(mi);
@@ -1513,7 +1513,7 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 
 	mi->module = (module_t const *)mi->dl_inst->module->common;
 	if (!mi->module) {
-		cf_log_err(cs, "Missing module public structure for \"%s\"", inst_name);
+		cf_log_err(cs, "Missing public structure for \"%s\"", inst_name);
 		talloc_free(mi);
 		return NULL;
 	}

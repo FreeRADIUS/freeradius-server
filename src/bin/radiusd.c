@@ -162,6 +162,7 @@ int main(int argc, char *argv[])
 
 	TALLOC_CTX	*global_ctx = NULL;
 	main_config_t	*config = NULL;
+	dl_module_loader_t *dl_module_loader;
 	bool		talloc_memory_report = false;
 
 	size_t		pool_size = 0;
@@ -455,7 +456,7 @@ int main(int argc, char *argv[])
 	 *	Initialize the DL infrastructure, which is used by the
 	 *	config file parser.
 	 */
-	dl_loader_init(global_ctx, config->lib_dir);
+	dl_module_loader = dl_module_loader_init(global_ctx, config->lib_dir);
 
 	/*
 	 *	Initialise the top level dictionary hashes which hold
@@ -633,14 +634,14 @@ int main(int argc, char *argv[])
 			/* Don't turn children into zombies */
 			if (child_ret == 0) {
 				waitpid(pid, &stat_loc, WNOHANG);
-				exit(EXIT_FAILURE);
+				EXIT_WITH_FAILURE;
 			}
 
 #ifdef HAVE_SYSTEMD
 			sd_notify(0, "READY=1");
 #endif
 
-			exit(EXIT_SUCCESS);
+			goto cleanup;
 		}
 
 		/* so the pipe is correctly widowed if the parent exits?! */

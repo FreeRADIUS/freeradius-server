@@ -12,7 +12,7 @@ SOURCES	:= \
 	connection.c \
 	crypt.c \
 	dependency.c \
-	dl.c \
+	dl_module.c \
 	exec.c \
 	exfile.c \
 	log.c \

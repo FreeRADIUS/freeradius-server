@@ -873,14 +873,14 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	proto_detail_work_t	*inst = talloc_get_type_abort(instance, proto_detail_work_t);
-	dl_instance_t const	*dl_inst;
+	dl_module_inst_t const	*dl_inst;
 
 	/*
-	 *	Find the dl_instance_t holding our instance data
+	 *	Find the dl_module_inst_t holding our instance data
 	 *	so we can find out what the parent of our instance
 	 *	was.
 	 */
-	dl_inst = dl_instance_by_data(instance);
+	dl_inst = dl_module_instance_by_data(instance);
 	rad_assert(dl_inst);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);

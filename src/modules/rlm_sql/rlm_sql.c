@@ -1006,7 +1006,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Load the driver
 	 */
-	if (dl_instance(inst, &inst->driver_inst, driver_cs, dl_instance_by_data(inst), name, DL_TYPE_SUBMODULE) < 0) {
+	if (dl_module_instance(inst, &inst->driver_inst, driver_cs, dl_module_instance_by_data(inst), name, DL_MODULE_TYPE_SUBMODULE) < 0) {
 		return -1;
 	}
 	inst->driver = (rlm_sql_driver_t const *)inst->driver_inst->module->common;

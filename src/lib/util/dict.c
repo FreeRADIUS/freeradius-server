@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
@@ -5425,6 +5426,49 @@ void fr_dict_autofree(fr_dict_autoload_t const *to_free)
 
 		fr_dict_free(dict);
 	}
+}
+
+/** Callback to automatically load dictionaries required by modules
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dl_dict_autoload(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	if (fr_dict_autoload((fr_dict_autoload_t const *)symbol) < 0) return -1;
+
+	return 0;
+}
+
+/** Callback to automatically free a dictionary when the module is unloaded
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ */
+void fr_dl_dict_autofree(UNUSED dl_t const *module, UNUSED void *symbol, UNUSED void *user_ctx)
+{
+//	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
+}
+
+/** Callback to automatically resolve attributes and check the types are correct
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dl_dict_attr_autoload(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	if (fr_dict_attr_autoload((fr_dict_attr_autoload_t *)symbol) < 0) return -1;
+
+	return 0;
 }
 
 static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)

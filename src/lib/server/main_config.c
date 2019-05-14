@@ -429,57 +429,6 @@ static int gid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 }
 #endif
 
-/** Callback to automatically load dictionaries required by modules
- *
- * @param[in] module	being loaded.
- * @param[in] symbol	An array of fr_dict_autoload_t to load.
- * @param[in] user_ctx	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
-{
-	DEBUG("Loading dictionaries for %s", module->name);
-
-	if (fr_dict_autoload((fr_dict_autoload_t const *)symbol) < 0) {
-		WARN("Failed initialising protocol library: %s", fr_strerror());
-		return -1;
-	}
-
-	return 0;
-}
-
-/** Callback to automatically free a dictionary when the module is unloaded
- *
- * @param[in] module	being loaded.
- * @param[in] symbol	An array of fr_dict_autoload_t to load.
- * @param[in] user_ctx	unused.
- */
-static void _module_dict_autofree(UNUSED dl_t const *module, UNUSED void *symbol, UNUSED void *user_ctx)
-{
-//	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
-}
-
-/** Callback to automatically resolve attributes and check the types are correct
- *
- * @param[in] module	being loaded.
- * @param[in] symbol	An array of fr_dict_autoload_t to load.
- * @param[in] user_ctx	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int _module_dict_attr_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
-{
-	if (fr_dict_attr_autoload((fr_dict_attr_autoload_t *)symbol) < 0) {
-		ERROR("%s: %s", module->name, fr_strerror());
-		return -1;
-	}
-
-	return 0;
-}
-
 static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t len = 0;
@@ -1010,13 +959,6 @@ do {\
 	 *	their local dict pointer, instead of NULL.
 	 */
 	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) goto failure;
-
-	/*
-	 *	Register dictionary autoload callbacks
-	 */
-	dl_symbol_init_cb_register(DL_PRIORITY_DICT_ATTR, "dict_attr", _module_dict_attr_autoload, NULL);
-	dl_symbol_init_cb_register(DL_PRIORITY_DICT, "dict", _module_dict_autoload, NULL);
-	dl_symbol_free_cb_register(DL_PRIORITY_DICT, "dict", _module_dict_autofree, NULL);
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->raddb_dir, config->name);
