@@ -142,10 +142,10 @@ struct dl_module_s {
  */
 typedef struct dl_module_instance_s dl_module_inst_t;
 struct dl_module_instance_s {
-	char const			*name;		//!< Instance name.
-	dl_module_t const		*module;	//!< Module
-	void				*data;		//!< Module instance's parsed configuration.
-	CONF_SECTION			*conf;		//!< Module's instance configuration.
+	char const		*name;			//!< Instance name.
+	dl_module_t const	*module;		//!< Module
+	void			*data;			//!< Module instance's parsed configuration.
+	CONF_SECTION		*conf;			//!< Module's instance configuration.
 	dl_module_inst_t const	*parent;		//!< Parent module's instance (if any).
 };
 
