@@ -78,7 +78,6 @@ typedef enum {
 	FR_TYPE_STRUCT,				//!< like TLV, but without T or L, and fixed-width children
 
 	FR_TYPE_EXTENDED,			//!< Extended attribute space attribute.
-	FR_TYPE_LONG_EXTENDED,			//!< Long extended attribute space attribute.
 
 	FR_TYPE_VSA,				//!< Vendor-Specific, for RADIUS attribute 26.
 	FR_TYPE_EVS,				//!< Extended attribute, vendor specific.
@@ -158,7 +157,6 @@ typedef enum {
  */
 #define FR_TYPE_STRUCTURAL_EXCEPT_VSA \
 	     FR_TYPE_EXTENDED: \
-	case FR_TYPE_LONG_EXTENDED: \
 	case FR_TYPE_EVS: \
 	case FR_TYPE_TLV: \
 	case FR_TYPE_STRUCT

@@ -136,8 +136,7 @@ size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_TLV]		= {2, ~0},
 	[FR_TYPE_STRUCT]	= {1, ~0},
 
-	[FR_TYPE_EXTENDED]	= {2, ~0},
-	[FR_TYPE_LONG_EXTENDED]	= {3, ~0},
+	[FR_TYPE_EXTENDED]	= {1, ~0},
 
 	[FR_TYPE_VSA]		= {4, ~0},
 	[FR_TYPE_EVS]		= {6, ~0},
@@ -173,7 +172,6 @@ bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_TLV] = true,
 	[FR_TYPE_STRUCT] = true,
 	[FR_TYPE_EXTENDED] = true,
-	[FR_TYPE_LONG_EXTENDED] = true,
 	[FR_TYPE_VSA] = true,
 	[FR_TYPE_EVS] = true,
 	[FR_TYPE_VENDOR] = true
@@ -709,7 +707,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 			for (v = parent; v != NULL; v = v->parent) {
 				switch (v->type) {
 				case FR_TYPE_EXTENDED:
-				case FR_TYPE_LONG_EXTENDED:
 				case FR_TYPE_EVS:
 					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
 							   "of type '%s'", flags->encrypt,
@@ -751,7 +748,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	 *	These types may only be parented from the root of the dictionary
 	 */
 	case FR_TYPE_EXTENDED:
-	case FR_TYPE_LONG_EXTENDED:
 //	case FR_TYPE_VSA:
 		if (!parent->flags.is_root) {
 			fr_strerror_printf("Attributes of type '%s' can only be used in the RFC space",
@@ -764,7 +760,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 	 *	EVS may only occur under extended and long extended.
 	 */
 	case FR_TYPE_EVS:
-		if ((parent->type != FR_TYPE_EXTENDED) && (parent->type != FR_TYPE_LONG_EXTENDED)) {
+		if (parent->type != FR_TYPE_EXTENDED) {
 			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', "
 					   "instead of '%s'", fr_int2str(fr_value_box_type_table, parent->type, "?Unknown?"));
 			return false;
@@ -898,16 +894,6 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 					   "RFC attributes with value >= 241.");
 			return false;
 		}
-		flags->length = 0;
-		break;
-
-	case FR_TYPE_LONG_EXTENDED:
-		if (!parent->flags.is_root || (*attr < 241)) {
-			fr_strerror_printf("Attributes of type 'long-extended' MUST "
-					   "be RFC attributes with value >= 241.");
-			return false;
-		}
-
 		flags->length = 0;
 		break;
 
@@ -2314,7 +2300,6 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 
 				case FR_TYPE_TLV:
 				case FR_TYPE_EXTENDED:
-				case FR_TYPE_LONG_EXTENDED:
 				is_root:
 					if (dict_unknown_attr_afrom_num(n, &our_da, our_parent, num) < 0) {
 						goto error;
@@ -2512,10 +2497,6 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 
 	case FR_TYPE_VENDOR:
 		name = "VENDOR";
-		break;
-
-	case FR_TYPE_LONG_EXTENDED:
-		name = "LONG EXTENDED";
 		break;
 
 	case FR_TYPE_STRUCT:
@@ -3996,6 +3977,9 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_dic
 
 		} else if (strcmp(key, "virtual") == 0) {
 			flags->virtual = 1;
+
+		} else if (strcmp(key, "long") == 0) {
+			flags->extra = 1;
 
 		} else if (ref_p && (strcmp(key, "reference") == 0)) {
 			ref = dict_resolve_reference(ctx->dict, value);

@@ -430,7 +430,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	case FR_TYPE_INVALID:
 	case FR_TYPE_EXTENDED:
-	case FR_TYPE_LONG_EXTENDED:
 	case FR_TYPE_COMBO_IP_ADDR:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_COMBO_IP_PREFIX:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_EVS:

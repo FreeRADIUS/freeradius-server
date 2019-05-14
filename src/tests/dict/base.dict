@@ -22,7 +22,7 @@ ATTRIBUTE	Base-Signed				13	signed
 
 ATTRIBUTE	Base-TLV				15	tlv
 
-# Ignore extended,long-extended, and evs
+# Ignore extended and evs
 
 ATTRIBUTE	Base-Integer64				19	integer64
 ATTRIBUTE	Base-IPv4-Prefix			20	ipv4prefix

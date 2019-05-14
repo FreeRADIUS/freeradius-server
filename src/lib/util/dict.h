@@ -68,6 +68,8 @@ typedef struct {
 
 	unsigned int		virtual : 1;			//!< for dynamic expansion
 
+	unsigned int		extra : 1;			//!< for LONG extended attributes
+
 	enum {
 		FLAG_ENCRYPT_NONE = 0,				//!< Don't encrypt the attribute.
 		FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.

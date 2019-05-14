@@ -108,7 +108,6 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_STRUCT]		= {1, ~0},
 
 	[FR_TYPE_EXTENDED]		= {2, ~0},
-	[FR_TYPE_LONG_EXTENDED]		= {3, ~0},
 
 	[FR_TYPE_VSA]			= {4, ~0},
 	[FR_TYPE_EVS]			= {6, ~0},

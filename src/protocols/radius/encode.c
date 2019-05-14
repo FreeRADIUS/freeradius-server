@@ -684,7 +684,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	case FR_TYPE_INVALID:
 	case FR_TYPE_EXTENDED:
-	case FR_TYPE_LONG_EXTENDED:
 	case FR_TYPE_COMBO_IP_ADDR:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_COMBO_IP_PREFIX:	/* Should have been converted to concrete equivalent */
 	case FR_TYPE_EVS:
@@ -878,26 +877,16 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 */
 	switch (attr_type) {
 	case FR_TYPE_EXTENDED:
-		if (outlen < 3) return 0;
+		if ((outlen < 3) + tlv_stack[0]->flags.extra) return 0;
 
 		/*
 		 *	Encode which extended attribute it is.
 		 */
 		out[0] = tlv_stack[depth++]->attr & 0xff;
-		out[1] = 3;
+		out[1] = 3 + tlv_stack[0]->flags.extra;
 		out[2] = tlv_stack[depth]->attr & 0xff;
-		break;
 
-	case FR_TYPE_LONG_EXTENDED:
-		if (outlen < 4) return 0;
-
-		/*
-		 *	Encode which extended attribute it is.
-		 */
-		out[0] = tlv_stack[depth++]->attr & 0xff;
-		out[1] = 4;
-		out[2] = tlv_stack[depth]->attr & 0xff;
-		out[3] = 0;	/* flags start off at zero */
+		if (tlv_stack[0]->flags.extra) out[3] = 0;	/* flags start off at zero */
 		break;
 
 	default:
@@ -937,7 +926,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 *	"outlen" can be larger than 255 here, but only for the
 	 *	"long" extended type.
 	 */
-	if ((attr_type == FR_TYPE_EXTENDED) && (outlen > 255)) outlen = 255;
+	if ((attr_type == FR_TYPE_EXTENDED) && !tlv_stack[0]->flags.extra && (outlen > 255)) outlen = 255;
 
 	if (tlv_stack[depth]->type == FR_TYPE_TLV) {
 		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
@@ -960,9 +949,8 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 
 #ifndef NDEBUG
 	if ((fr_debug_lvl > 3) && fr_log_fp) {
-		int jump = 3;
+		int jump = 3 + tlv_stack[0]->flags.extra;
 
-		if (attr_type != FR_TYPE_EXTENDED) jump = 4;
 		if (vsa_type == FR_TYPE_EVS) jump += 5;
 
 		FR_PROTO_HEX_DUMP(out, jump, "header extended");
@@ -1499,15 +1487,6 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 
 	case FR_TYPE_EXTENDED:
 		ret = encode_extended_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
-		break;
-
-	case FR_TYPE_LONG_EXTENDED:
-		/*
-		 *	These attributes can be longer than 253
-		 *	octets.  We therefore fragment the data across
-		 *	multiple attributes.
-		 */
-		ret = encode_extended_hdr(out, outlen, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
 	case FR_TYPE_INVALID:

@@ -1176,6 +1176,24 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		}
 		FR_PROTO_TRACE("decode context changed %s->%s", child->name, parent->name);
 
+		min = 1;
+		if (child->flags.extra) {
+			if (data_len < 3) goto raw; /* etype, flags, value */
+
+			/*
+			 *	This requires a whole lot more work.
+			 */
+			if ((p[1] & 0x80) != 0) {
+				return decode_extended(ctx, cursor, dict, child, data, attr_len, packet_len, decoder_ctx);
+			}
+
+			/*
+			 *	else we can just decode a value
+			 *	directly from the attribute.
+			 */
+			min++;
+		}
+
 		/*
 		 *	Recurse to decode the contents, which could be
 		 *	a TLV, IPaddr, etc.  Note that we decode only
@@ -1183,54 +1201,10 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	p after it.
 		 */
 		rcode = fr_radius_decode_pair_value(ctx, cursor, dict, child,
-						    p + 1, attr_len - 1, attr_len - 1,
+						    p + min, attr_len - min, attr_len - min,
 						    decoder_ctx);
 		if (rcode < 0) goto raw;
 		return attr_len;
-
-	case FR_TYPE_LONG_EXTENDED:
-		if (data_len < 3) goto raw; /* etype, flags, value */
-
-		child = fr_dict_attr_child_by_num(parent, p[0]);
-		if (!child) {
-			if ((p[0] != FR_VENDOR_SPECIFIC) || (data_len < (3 + 4 + 1))) {
-				/* da->attr < 255, fr_dict_vendor_num_by_da(da) == 0 */
-				child = fr_dict_unknown_afrom_fields(ctx, parent, 0, p[0]);
-			} else {
-				/*
-				 *	Try to find the VSA.
-				 */
-				memcpy(&vendor, p + 3, 4);
-				vendor = ntohl(vendor);
-
-				if (vendor == 0) goto raw;
-
-				child = fr_dict_unknown_afrom_fields(ctx, parent, vendor, p[7]);
-			}
-			if (!child) {
-				fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
-				return -1;
-			}
-		}
-		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
-
-		/*
-		 *	If there no more fragments, then the contents
-		 *	have to be a well-known p type.
-		 *
-		 */
-		if ((p[1] & 0x80) == 0) {
-			rcode = fr_radius_decode_pair_value(ctx, cursor, dict,
-							    child, p + 2, attr_len - 2, attr_len - 2,
-							    decoder_ctx);
-			if (rcode < 0) goto raw;
-			return attr_len;
-		}
-
-		/*
-		 *	This requires a whole lot more work.
-		 */
-		return decode_extended(ctx, cursor, dict, child, data, attr_len, packet_len, decoder_ctx);
 
 	case FR_TYPE_EVS:
 	{
