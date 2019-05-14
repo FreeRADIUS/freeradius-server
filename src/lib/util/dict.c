@@ -4005,7 +4005,6 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_dic
 static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, int argc,
 				       fr_dict_attr_flags_t *base_flags)
 {
-	bool			oid = false;
 	bool			set_previous = true;
 
 	unsigned int		attr;
@@ -4064,8 +4063,6 @@ static int dict_read_process_attribute(dict_from_file_ctx_t *ctx, char **argv, i
 		ssize_t slen;
 
 get_by_oid:
-		oid = true;
-
 		slen = fr_dict_attr_by_oid(ctx->dict, &parent, &attr, argv[1]);
 		if (slen <= 0) return -1;
 
