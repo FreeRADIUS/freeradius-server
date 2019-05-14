@@ -742,15 +742,6 @@ recv Access-Request {
 	#
 	filter_username
 
-#	if (!&Proxy-State) {
-#		radius
-#	}
-
-
-	update reply {
-		&DHCP-Client-FQDN := "example.org"
-	}
-
 	#
 	#  Some broken equipment sends passwords with embedded
 	#  zeros, i.e. the debug output will show:
