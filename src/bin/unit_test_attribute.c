@@ -1471,8 +1471,16 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	dl_module_loader = dl_module_loader_init(autofree, NULL);
+	if (!dl_module_loader_init(autofree, NULL)) {
+		fr_perror("unit_test_attribute");
+		EXIT_WITH_FAILURE;
+	}
+
 	dl_loader = dl_loader_init(autofree, NULL, NULL, false, false);
+	if (!dl_loader) {
+		fr_perror("unit_test_attribute");
+		EXIT_WITH_FAILURE;
+	}
 
 	if (fr_dict_global_init(autofree, dict_dir) < 0) {
 		fr_perror("unit_test_attribute");

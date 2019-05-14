@@ -456,7 +456,10 @@ int main(int argc, char *argv[])
 	 *	Initialize the DL infrastructure, which is used by the
 	 *	config file parser.
 	 */
-	dl_module_loader = dl_module_loader_init(global_ctx, config->lib_dir);
+	if (!dl_module_loader_init(global_ctx, config->lib_dir)) {
+		fr_perror("%s", program);
+		EXIT_WITH_FAILURE;
+	}
 
 	/*
 	 *	Initialise the top level dictionary hashes which hold

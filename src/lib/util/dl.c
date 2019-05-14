@@ -386,7 +386,7 @@ static int _dl_free(dl_t *dl)
 dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx_free)
 {
 	int		flags = RTLD_NOW;
-	void		*handle;
+	void		*handle = NULL;
 	char const	*search_path;
 	dl_t		*dl;
 
