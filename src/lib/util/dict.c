@@ -921,7 +921,7 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		break;
 
 		/*
-		 *	The length is calculated from th children, not
+		 *	The length is calculated from the children, not
 		 *	input as the flags.
 		 */
 	case FR_TYPE_STRUCT:
@@ -966,7 +966,8 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 
 			sibling = fr_dict_attr_child_by_num(parent, (*attr) - 1);
 			if (!sibling) {
-				fr_strerror_printf("Children of 'struct' type attributes MUST be numbered consecutively.");
+				fr_strerror_printf("Child %s of 'struct' type attribute %s MUST be numbered consecutively %u.",
+					name, parent->name, *attr);
 				return false;
 			}
 
@@ -3670,6 +3671,8 @@ typedef struct {
 							///< value processing.
 	fr_dict_attr_t const	*previous_attr;		//!< for ".82" instead of "1.2.3.82".
 
+	int			member_num;		//!< for attributes of type 'struct'
+
 	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
 	dict_enum_fixup_t	*enum_fixup;
 } dict_from_file_ctx_t;
@@ -3869,7 +3872,7 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
 }
 
 
-static int process_type(char const *name, fr_type_t *type_p, fr_dict_attr_flags_t *flags)
+static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_attr_flags_t *flags)
 {
 	char *p;
 	int type;
@@ -3924,7 +3927,7 @@ static int process_type(char const *name, fr_type_t *type_p, fr_dict_attr_flags_
 }
 
 
-static int process_flags(dict_from_file_ctx_t *ctx, char *name, fr_dict_attr_t const **ref_p, fr_dict_attr_flags_t *flags)
+static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_dict_attr_t const **ref_p, fr_dict_attr_flags_t *flags)
 {
 	char *p, *q, *v;
 	fr_dict_attr_t const *ref = NULL;
@@ -3994,7 +3997,7 @@ static int process_flags(dict_from_file_ctx_t *ctx, char *name, fr_dict_attr_t c
 		} else if (strcmp(key, "virtual") == 0) {
 			flags->virtual = 1;
 
-		} else if (strcmp(key, "reference") == 0) {
+		} else if (ref_p && (strcmp(key, "reference") == 0)) {
 			ref = dict_resolve_reference(ctx->dict, value);
 			if (!ref) return -1;
 			flags->is_reference = 1;
@@ -4085,12 +4088,21 @@ get_by_oid:
 		if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
 	}
 
-	if (process_type(argv[2], &type, &flags) < 0) return -1;
+	/*
+	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
+	 */
+	if (parent->type == FR_TYPE_STRUCT) {
+		fr_strerror_printf("Member %s of ATTRIBUTE %s type 'struct' MUST use \"MEMBER\" keyword",
+				   argv[0], parent->name);
+		return -1;
+	}
+
+	if (dict_process_type_field(argv[2], &type, &flags) < 0) return -1;
 
 	/*
 	 *	Parse options.
 	 */
-	if ((argc >= 4) && (process_flags(ctx, argv[3], &ref, &flags) < 0)) return -1;
+	if ((argc >= 4) && (dict_process_flag_field(ctx, argv[3], &ref, &flags) < 0)) return -1;
 
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
@@ -4129,6 +4141,53 @@ get_by_oid:
 	if (set_previous) ctx->previous_attr = fr_dict_attr_child_by_num(parent, attr);
 
 	return 0;
+}
+
+
+/*
+ *	Process the MEMBER command
+ */
+static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int argc,
+				       fr_dict_attr_flags_t *base_flags)
+{
+	fr_type_t      		type;
+	fr_dict_attr_flags_t	flags;
+
+	if ((argc < 2) || (argc > 3)) {
+		fr_strerror_printf("Invalid MEMBER syntax");
+		return -1;
+	}
+
+	if (!ctx->previous_attr || (ctx->previous_attr->type != FR_TYPE_STRUCT)) {
+		fr_strerror_printf("MEMBER can only be used for ATTRIBUTES of type 'struct', not %s", ctx->previous_attr->name);
+		return -1;
+	}
+
+	/*
+	 *	Dictionaries need to have real names, not shitty ones.
+	 */
+	if (strncmp(argv[0], "Attr-", 5) == 0) {
+		fr_strerror_printf("Invalid MEMBER name");
+		return -1;
+	}
+
+	memcpy(&flags, base_flags, sizeof(flags));
+
+	if (dict_process_type_field(argv[1], &type, &flags) < 0) return -1;
+
+	/*
+	 *	Parse options.
+	 */
+	if ((argc >= 3) && (dict_process_flag_field(ctx, argv[2], NULL, &flags) < 0)) return -1;
+
+#ifdef __clang_analyzer__
+	if (!ctx->dict) return -1;
+#endif
+
+	/*
+	 *	Add in a normal attribute, and DON'T set ctx->previous_attr.
+	 */
+	return fr_dict_attr_add(ctx->dict, ctx->previous_attr, argv[0], ++ctx->member_num, type, &flags);
 }
 
 
@@ -4250,6 +4309,7 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
 	fr_strerror_printf("Invalid FLAGS syntax");
 	return -1;
 }
+
 
 static int dict_read_parse_format(char const *format, unsigned int *pvalue, int *ptype, int *plength,
 				  bool *pcontinuation)
@@ -4693,6 +4753,13 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			if (dict_read_process_attribute(ctx,
 							argv + 1, argc - 1,
 							&base_flags) == -1) goto error;
+
+			/*
+			 *	When we see a new ATTRIBUTE, it means
+			 *	that we're done the MEMBER definitions
+			 *	of a 'struct'.
+			 */
+			ctx->member_num = 0;
 			continue;
 		}
 
@@ -4709,6 +4776,19 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "FLAGS") == 0) {
 			if (dict_read_process_flags(ctx->dict, argv + 1, argc - 1, &base_flags) == -1) goto error;
+			continue;
+		}
+
+		/*
+		 *	Perhaps this is a MEMBER of a struct
+		 *
+		 *	@todo - create child ctx, so that we can have
+		 *	nested structs.
+		 */
+		if (strcasecmp(argv[0], "MEMBER") == 0) {
+			if (dict_read_process_member(ctx,
+						     argv + 1, argc - 1,
+						     &base_flags) == -1) goto error;
 			continue;
 		}
 

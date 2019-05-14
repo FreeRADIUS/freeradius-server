@@ -12,15 +12,15 @@
 ##############################################################################
 
 ATTRIBUTE	Arp-Packet				1	struct
-ATTRIBUTE	Hardware-Format				.1	short
-ATTRIBUTE	Protocol-Format				.2	short
-ATTRIBUTE	Hardware-Address-Length			.3	byte
-ATTRIBUTE	Protocol-Address-Length			.4	byte
-ATTRIBUTE	ARP-Operation				.5	short
-ATTRIBUTE	Sender-Hardware-Address			.6	ether
-ATTRIBUTE	Sender-Protocol-Address			.7	ipaddr
-ATTRIBUTE	Target-Hardware-Address			.8	ether
-ATTRIBUTE	Target-Protocol-Address			.9	ipaddr
+MEMBER		Hardware-Format				short
+MEMBER		Protocol-Format				short
+MEMBER		Hardware-Address-Length			byte
+MEMBER		Protocol-Address-Length			byte
+MEMBER		ARP-Operation				short
+MEMBER		Sender-Hardware-Address			ether
+MEMBER		Sender-Protocol-Address			ipaddr
+MEMBER		Target-Hardware-Address			ether
+MEMBER		Target-Protocol-Address			ipaddr
 
 VALUE	Hardware-Format			Ethernet		1
 

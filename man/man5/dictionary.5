@@ -122,6 +122,20 @@ that attribute by name in the dictionary, and uses the definition
 found there.
 
 .TP 0.5i
+.B MEMBER name  type [flags]
+Define a member attribute of a structure.  The MEMBER definitions MUST
+follow the ATTRIBUTE entry that defines the 'struct'.  Multiple MEMBER
+definitions are allowed.
+
+The MEMBER keyword allows the dictionaries to define attributes which
+look like other attributes for all intents and purposes.  The only
+difference is that numbers do not have to be assigned to each MEMBER
+of an ATTRIBUTE of type 'struct'.
+
+The 'name' 'type' and 'flags' fields for MEMBER definitions have the
+same meaning as given above for the ATTRIBUTE definitions.
+
+.TP 0.5i
 .B FLAGS flag-name
 Set attribute flags for all subsequent attributes.  Flags can be
 unset by prefixing them with the "!" character.

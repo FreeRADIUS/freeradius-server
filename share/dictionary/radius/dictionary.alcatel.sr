@@ -59,44 +59,44 @@ ATTRIBUTE	Alc-Default-Router			18	ipaddr
 
 # RADIUS subscriber accounting VSAs
 ATTRIBUTE	Alc-Acct-I-Inprof-Octets-64		19	struct
-ATTRIBUTE	Alc-Acct-I-Inprof-Octets-Selection	.1	byte
-ATTRIBUTE	Alc-Acct-I-Inprof-Octets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-I-Inprof-Octets		.3	integer64
+MEMBER		Alc-Acct-I-Inprof-Octets-Selection	byte
+MEMBER		Alc-Acct-I-Inprof-Octets-Id		byte
+MEMBER		Alc-Acct-I-Inprof-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-I-Outprof-Octets-64		20	struct
-ATTRIBUTE	Alc-Acct-I-Outprof-Octets-Selection	.1	byte
-ATTRIBUTE	Alc-Acct-I-Outprof-Octets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-I-Outprof-Octets		.3	integer64
+MEMBER		Alc-Acct-I-Outprof-Octets-Selection	byte
+MEMBER		Alc-Acct-I-Outprof-Octets-Id		byte
+MEMBER		Alc-Acct-I-Outprof-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-O-Inprof-Octets-64		21	struct
-ATTRIBUTE	Alc-Acct-O-Inprof-Octets-Selection	.1	byte
-ATTRIBUTE	Alc-Acct-O-Inprof-Octets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-O-Inprof-Octets		.3	integer64
+MEMBER		Alc-Acct-O-Inprof-Octets-Selection	byte
+MEMBER		Alc-Acct-O-Inprof-Octets-Id		byte
+MEMBER		Alc-Acct-O-Inprof-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-O-Outprof-Octets-64		22	struct
-ATTRIBUTE	Alc-Acct-O-Outprof-Octets-Selection	.1	byte
-ATTRIBUTE	Alc-Acct-O-Outprof-Octets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-O-Outprof-Octets		.3	integer64
+MEMBER		Alc-Acct-O-Outprof-Octets-Selection	byte
+MEMBER		Alc-Acct-O-Outprof-Octets-Id		byte
+MEMBER		Alc-Acct-O-Outprof-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-I-Inprof-Pkts-64		23	struct
-ATTRIBUTE	Alc-Acct-I-Inprof-Pkts-Selection	.1	byte
-ATTRIBUTE	Alc-Acct-I-Inprof-Pkts-Id		.2	byte
-ATTRIBUTE	Alc-Acct-I-Inprof-Pkts			.3	integer64
+MEMBER		Alc-Acct-I-Inprof-Pkts-Selection	byte
+MEMBER		Alc-Acct-I-Inprof-Pkts-Id		byte
+MEMBER		Alc-Acct-I-Inprof-Pkts			integer64
 
 ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-64		24	struct
-ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-Selection	.1	byte
-ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-Id		.2	byte
-ATTRIBUTE	Alc-Acct-I-Outprof-Pkts			.3	integer64
+MEMBER		Alc-Acct-I-Outprof-Pkts-Selection	byte
+MEMBER		Alc-Acct-I-Outprof-Pkts-Id		byte
+MEMBER		Alc-Acct-I-Outprof-Pkts			integer64
 
 ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-64		25	struct
-ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-Selection	.1	byte
-ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-Id		.2	byte
-ATTRIBUTE	Alc-Acct-O-Inprof-Pkts			.3	integer64
+MEMBER		Alc-Acct-O-Inprof-Pkts-Selection	byte
+MEMBER		Alc-Acct-O-Inprof-Pkts-Id		byte
+MEMBER		Alc-Acct-O-Inprof-Pkts			integer64
 
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-64		26	struct
-ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Selection	.1	byte
-ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Id		.2	byte
-ATTRIBUTE	Alc-Acct-O-Outprof-Pkts			.3	integer64
+MEMBER		Alc-Acct-O-Outprof-Pkts-Selection	byte
+MEMBER		Alc-Acct-O-Outprof-Pkts-Id		byte
+MEMBER		Alc-Acct-O-Outprof-Pkts			integer64
 
 ATTRIBUTE	Alc-Client-Hardware-Addr		27	string
 
@@ -112,36 +112,36 @@ ATTRIBUTE	Alc-DHCP-Vendor-Class-Id		36	string
 
 # RADIUS subscriber accounting VSAs (HSMDA override counters)
 ATTRIBUTE	Alc-Acct-OC-I-Inprof-Octets-64		37	struct
-ATTRIBUTE	Alc-Acct-OC-I-Inprof-Octets-Id		.1	short
-ATTRIBUTE	Alc-Acct-OC-I-Inprof-Octets		.2	integer64
+MEMBER		Alc-Acct-OC-I-Inprof-Octets-Id		short
+MEMBER		Alc-Acct-OC-I-Inprof-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-OC-I-Outprof-Octets-64		38	struct
-ATTRIBUTE	Alc-Acct-OC-I-Outprof-Octets-Id		.1	short
-ATTRIBUTE	Alc-Acct-OC-I-Outprof-Octets		.2	integer64
+MEMBER		Alc-Acct-OC-I-Outprof-Octets-Id		short
+MEMBER		Alc-Acct-OC-I-Outprof-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-OC-O-Inprof-Octets-64		39	struct
-ATTRIBUTE	Alc-Acct-OC-O-Inprof-Octets-Id		.1	short
-ATTRIBUTE	Alc-Acct-OC-O-Inprof-Octets		.2	integer64
+MEMBER		Alc-Acct-OC-O-Inprof-Octets-Id		short
+MEMBER		Alc-Acct-OC-O-Inprof-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-OC-O-Outprof-Octets-64		40	struct
-ATTRIBUTE	Alc-Acct-OC-O-Outprof-Octets-Id		.1	short
-ATTRIBUTE	Alc-Acct-OC-O-Outprof-Octets		.2	integer64
+MEMBER		Alc-Acct-OC-O-Outprof-Octets-Id		short
+MEMBER		Alc-Acct-OC-O-Outprof-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-OC-I-Inprof-Pkts-64		41	struct
-ATTRIBUTE	Alc-Acct-OC-I-Inprof-Pkts-Id		.1	short
-ATTRIBUTE	Alc-Acct-OC-I-Inprof-Pkts		.2	integer64
+MEMBER		Alc-Acct-OC-I-Inprof-Pkts-Id		short
+MEMBER		Alc-Acct-OC-I-Inprof-Pkts		integer64
 
 ATTRIBUTE	Alc-Acct-OC-I-Outprof-Pkts-64		42	struct
-ATTRIBUTE	Alc-Acct-OC-I-Outprof-Pkts-Id		.1	short
-ATTRIBUTE	Alc-Acct-OC-I-Outprof-Pkts		.2	integer64
+MEMBER		Alc-Acct-OC-I-Outprof-Pkts-Id		short
+MEMBER		Alc-Acct-OC-I-Outprof-Pkts		integer64
 
 ATTRIBUTE	Alc-Acct-OC-O-Inprof-Pkts-64		43	struct
-ATTRIBUTE	Alc-Acct-OC-O-Inprof-Pkts-Id		.1	short
-ATTRIBUTE	Alc-Acct-OC-O-Inprof-Pkts		.2	integer64
+MEMBER		Alc-Acct-OC-O-Inprof-Pkts-Id		short
+MEMBER		Alc-Acct-OC-O-Inprof-Pkts		integer64
 
 ATTRIBUTE	Alc-Acct-OC-O-Outprof-Pkts-64		44	struct
-ATTRIBUTE	Alc-Acct-OC-O-Outprof-Pkts-Id		.1	short
-ATTRIBUTE	Alc-Acct-OC-O-Outprof-Pkts		.2	integer64
+MEMBER		Alc-Acct-OC-O-Outprof-Pkts-Id		short
+MEMBER		Alc-Acct-OC-O-Outprof-Pkts		integer64
 
 ATTRIBUTE	Alc-App-Prof-Str			45	string
 ATTRIBUTE	Alc-Tunnel-Group			46	string
@@ -200,68 +200,68 @@ ATTRIBUTE	Alc-IPsec-SA-Replay-Window		68	integer
 
 # RADIUS subscriber accounting VSAs (custom records)
 ATTRIBUTE	Alc-Acct-I-High-Octets-Drop_64		69	struct
-ATTRIBUTE	Alc-Acct-I-High-Octets-Drop-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-High-Octets-Drop		.2	integer64
+MEMBER		Alc-Acct-I-High-Octets-Drop-Id		short
+MEMBER		Alc-Acct-I-High-Octets-Drop		integer64
 
 ATTRIBUTE	Alc-Acct-I-Low-Octets-Drop_64		70	struct
-ATTRIBUTE	Alc-Acct-I-Low-Octets-Drop-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-Low-Octets-Drop		.2	integer64
+MEMBER		Alc-Acct-I-Low-Octets-Drop-Id		short
+MEMBER		Alc-Acct-I-Low-Octets-Drop		integer64
 
 ATTRIBUTE	Alc-Acct-I-High-Pack-Drop_64		71	struct
-ATTRIBUTE	Alc-Acct-I-High-Pack-Drop-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-High-Pack-Drop		.2	integer64
+MEMBER		Alc-Acct-I-High-Pack-Drop-Id		short
+MEMBER		Alc-Acct-I-High-Pack-Drop		integer64
 
 ATTRIBUTE	Alc-Acct-I-Low-Pack-Drop_64		72	struct
-ATTRIBUTE	Alc-Acct-I-Low-Pack-Drop-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-Low-Pack-Drop		.2	integer64
+MEMBER		Alc-Acct-I-Low-Pack-Drop-Id		short
+MEMBER		Alc-Acct-I-Low-Pack-Drop		integer64
 
 ATTRIBUTE	Alc-Acct-I-High-Octets-Offer_64		73	struct
-ATTRIBUTE	Alc-Acct-I-High-Octets-Offer-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-High-Octets-Offer		.2	integer64
+MEMBER		Alc-Acct-I-High-Octets-Offer-Id		short
+MEMBER		Alc-Acct-I-High-Octets-Offer		integer64
 
 ATTRIBUTE	Alc-Acct-I-Low-Octets-Offer_64		74	struct
-ATTRIBUTE	Alc-Acct-I-Low-Octets-Offer-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-HigLow-Octets-Offer		.2	integer64
+MEMBER		Alc-Acct-I-Low-Octets-Offer-Id		short
+MEMBER		Alc-Acct-I-HigLow-Octets-Offer		integer64
 
 ATTRIBUTE	Alc-Acct-I-High-Pack-Offer_64		75	struct
-ATTRIBUTE	Alc-Acct-I-High-Packs-Offer-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-High-Packs-Offer		.2	integer64
+MEMBER		Alc-Acct-I-High-Packs-Offer-Id		short
+MEMBER		Alc-Acct-I-High-Packs-Offer		integer64
 
 ATTRIBUTE	Alc-Acct-I-Low-Pack-Offer_64		76	struct
-ATTRIBUTE	Alc-Acct-I-Low-Pack-Offer-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-Low-Pack-Offer		.2	integer64
+MEMBER		Alc-Acct-I-Low-Pack-Offer-Id		short
+MEMBER		Alc-Acct-I-Low-Pack-Offer		integer64
 
 ATTRIBUTE	Alc-Acct-I-Unc-Octets-Offer_64		77	struct
-ATTRIBUTE	Alc-Acct-I-Unc-Octets-Offer-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-Unc-Octets-Offer		.2	integer64
+MEMBER		Alc-Acct-I-Unc-Octets-Offer-Id		short
+MEMBER		Alc-Acct-I-Unc-Octets-Offer		integer64
 
 ATTRIBUTE	Alc-Acct-I-Unc-Pack-Offer_64		78	struct
-ATTRIBUTE	Alc-Acct-I-Unc-Pack-Offer-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-unc-Pack-Offer		.2	integer64
+MEMBER		Alc-Acct-I-Unc-Pack-Offer-Id		short
+MEMBER		Alc-Acct-I-unc-Pack-Offer		integer64
 
 ATTRIBUTE	Alc-Acct-I-All-Octets-Offer_64		79	struct
-ATTRIBUTE	Alc-Acct-I-All-Octets-Offer-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-All-Octets-Offer		.2	integer64
+MEMBER		Alc-Acct-I-All-Octets-Offer-Id		short
+MEMBER		Alc-Acct-I-All-Octets-Offer		integer64
 
 ATTRIBUTE	Alc-Acct-I-All-Pack-Offer_64		80	struct
-ATTRIBUTE	Alc-Acct-I-All-Pack-Offer-Id		.1	short
-ATTRIBUTE	Alc-Acct-I-All-Pack-Offer		.2	integer64
+MEMBER		Alc-Acct-I-All-Pack-Offer-Id		short
+MEMBER		Alc-Acct-I-All-Pack-Offer		integer64
 
 ATTRIBUTE	Alc-Acct-O-Inprof-Pack-Drop_64		81	struct
-ATTRIBUTE	Alc-Acct-O-Inprof-Pack-Drop-Id		.1	short
-ATTRIBUTE	Alc-Acct-O-Inprof-Pack-Drop		.2	integer64
+MEMBER		Alc-Acct-O-Inprof-Pack-Drop-Id		short
+MEMBER		Alc-Acct-O-Inprof-Pack-Drop		integer64
 
 ATTRIBUTE	Alc-Acct-O-Outprof-Pack-Drop_64		82	struct
-ATTRIBUTE	Alc-Acct-O-Outprof-Pack-Drop-Id		.1	short
-ATTRIBUTE	Alc-Acct-O-Outprof-Pack-Drop		.2	integer64
+MEMBER		Alc-Acct-O-Outprof-Pack-Drop-Id		short
+MEMBER		Alc-Acct-O-Outprof-Pack-Drop		integer64
 
 ATTRIBUTE	Alc-Acct-O-Inprof-Octs-Drop_64		83	struct
-ATTRIBUTE	Alc-Acct-O-Inprof-Octs-Drop-Id		.1	short
-ATTRIBUTE	Alc-Acct-O-Inprof-Octs-Drop		.2	integer64
+MEMBER		Alc-Acct-O-Inprof-Octs-Drop-Id		short
+MEMBER		Alc-Acct-O-Inprof-Octs-Drop		integer64
 
 ATTRIBUTE	Alc-Acct-O-Outprof-Octs-Drop_64		84	struct
-ATTRIBUTE	Alc-Acct-O-Outprof-Octs-Drop-Id		.1	short
-ATTRIBUTE	Alc-Acct-O-Outprof-Octs-Drop		.2	integer64
+MEMBER		Alc-Acct-O-Outprof-Octs-Drop-Id		short
+MEMBER		Alc-Acct-O-Outprof-Octs-Drop		integer64
 
 # RADIUS subscriber accounting VSAs (custom records, HSMDA)
 ATTRIBUTE	Alc-Acct-OC-I-All-Octs-Offer_64		85	octets
@@ -298,64 +298,64 @@ ATTRIBUTE	Alc-Ipv6-Secondary-Dns			106	ipv6addr
 ATTRIBUTE	Alc-Acct-I-statmode			107	string
 
 ATTRIBUTE	Alc-Acct-I-Hiprio-Octets_64		108	struct
-ATTRIBUTE	Alc-Acct-I-Hiprio-Octets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-I-Hiprio-Octets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-I-Hiprio-Octets		.3	integer64
+MEMBER		Alc-Acct-I-Hiprio-Octets-x80		byte
+MEMBER		Alc-Acct-I-Hiprio-Octets-Id		byte
+MEMBER		Alc-Acct-I-Hiprio-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-I-Lowprio-Octets_64		109	struct
-ATTRIBUTE	Alc-Acct-I-Lowprio-Octets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-I-Lowprio-Octets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-I-Lowprio-Octets		.3	integer64
+MEMBER		Alc-Acct-I-Lowprio-Octets-x80		byte
+MEMBER		Alc-Acct-I-Lowprio-Octets-Id		byte
+MEMBER		Alc-Acct-I-Lowprio-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-O-Hiprio-Octets_64		110	struct
-ATTRIBUTE	Alc-Acct-O-Hiprio-Octets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-O-Hiprio-Octets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-O-Hiprio-Octets		.3	integer64
+MEMBER		Alc-Acct-O-Hiprio-Octets-x80		byte
+MEMBER		Alc-Acct-O-Hiprio-Octets-Id		byte
+MEMBER		Alc-Acct-O-Hiprio-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-O-Lowprio-Octets_64		111	struct
-ATTRIBUTE	Alc-Acct-O-Lowprio-Octets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-O-Lowprio-Octets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-O-Lowprio-Octets		.3	integer64
+MEMBER		Alc-Acct-O-Lowprio-Octets-x80		byte
+MEMBER		Alc-Acct-O-Lowprio-Octets-Id		byte
+MEMBER		Alc-Acct-O-Lowprio-Octets		integer64
 
 ATTRIBUTE	Alc-Acct-I-Hiprio-Packets_64		112	struct
-ATTRIBUTE	Alc-Acct-I-Hiprio-Packets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-I-Hiprio-Packets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-I-Hiprio-Packets		.3	integer64
+MEMBER		Alc-Acct-I-Hiprio-Packets-x80		byte
+MEMBER		Alc-Acct-I-Hiprio-Packets-Id		byte
+MEMBER		Alc-Acct-I-Hiprio-Packets		integer64
 
 ATTRIBUTE	Alc-Acct-I-Lowprio-Packets_64		113	struct
-ATTRIBUTE	Alc-Acct-I-Lowprio-Packets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-I-Lowprio-Packets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-I-Lowprio-Packets		.3	integer64
+MEMBER		Alc-Acct-I-Lowprio-Packets-x80		byte
+MEMBER		Alc-Acct-I-Lowprio-Packets-Id		byte
+MEMBER		Alc-Acct-I-Lowprio-Packets		integer64
 
 ATTRIBUTE	Alc-Acct-O-Hiprio-Packets_64		114	struct
-ATTRIBUTE	Alc-Acct-O-Hiprio-Packets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-O-Hiprio-Packets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-O-Hiprio-Packets		.3	integer64
+MEMBER		Alc-Acct-O-Hiprio-Packets-x80		byte
+MEMBER		Alc-Acct-O-Hiprio-Packets-Id		byte
+MEMBER		Alc-Acct-O-Hiprio-Packets		integer64
 
 ATTRIBUTE	Alc-Acct-O-Lowprio-Packets_64		115	struct
-ATTRIBUTE	Alc-Acct-O-Lowprio-Packets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-O-Lowprio-Packets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-O-Lowprio-Packets		.3	integer64
+MEMBER		Alc-Acct-O-Lowprio-Packets-x80		byte
+MEMBER		Alc-Acct-O-Lowprio-Packets-Id		byte
+MEMBER		Alc-Acct-O-Lowprio-Packets		integer64
 
 ATTRIBUTE	Alc-Acct-I-All-Octets_64		116	struct
-ATTRIBUTE	Alc-Acct-I-All-Octets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-I-All-Octets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-I-All-Octets			.3	integer64
+MEMBER		Alc-Acct-I-All-Octets-x80		byte
+MEMBER		Alc-Acct-I-All-Octets-Id		byte
+MEMBER		Alc-Acct-I-All-Octets			integer64
 
 ATTRIBUTE	Alc-Acct-O-All-Octets_64		117	struct
-ATTRIBUTE	Alc-Acct-O-All-Octets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-O-All-Octets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-O-All-Octets			.3	integer64
+MEMBER		Alc-Acct-O-All-Octets-x80		byte
+MEMBER		Alc-Acct-O-All-Octets-Id		byte
+MEMBER		Alc-Acct-O-All-Octets			integer64
 
 ATTRIBUTE	Alc-Acct-I-All-Packets_64		118	struct
-ATTRIBUTE	Alc-Acct-I-All-Packets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-I-All-Packets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-I-All-Packets			.3	integer64
+MEMBER		Alc-Acct-I-All-Packets-x80		byte
+MEMBER		Alc-Acct-I-All-Packets-Id		byte
+MEMBER		Alc-Acct-I-All-Packets			integer64
 
 ATTRIBUTE	Alc-Acct-O-All-Packets_64		119	struct
-ATTRIBUTE	Alc-Acct-O-All-Packets-x80		.1	byte
-ATTRIBUTE	Alc-Acct-O-All-Packets-Id		.2	byte
-ATTRIBUTE	Alc-Acct-O-All-Packets			.3	integer64
+MEMBER		Alc-Acct-O-All-Packets-x80		byte
+MEMBER		Alc-Acct-O-All-Packets-Id		byte
+MEMBER		Alc-Acct-O-All-Packets			integer64
 
 ATTRIBUTE	Alc-Tunnel-Rx-Window-Size		120	integer	has_tag
 

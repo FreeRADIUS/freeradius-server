@@ -223,6 +223,20 @@ while (@ARGV) {
 	}
 
 	#
+	#  Get MEMBER
+	#
+	if (/^MEMBER\s+([-\w]+)\s+(\w+)(.*)/) {
+	    $name=$1;
+	    $tabs = tabs(40, $name);
+
+	    $type = $2;
+	    $stuff = $3;
+
+	    push @output, "MEMBER\t\t$name$tabs$type$stuff\n";
+	    next;
+	}
+
+	#
 	#  Values.
 	#
 	if (/^VALUE\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
