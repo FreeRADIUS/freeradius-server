@@ -1108,19 +1108,26 @@ void module_free(module_instance_t *mi)
 	talloc_free(mi);
 }
 
+
+static int _module_instance_free_walker(void *data, UNUSED void *uctx)
+{
+	module_instance_t *mi = data;
+
+	mi->in_name_tree = false; /* about to be deleted */
+	talloc_free(mi);
+	return 2;
+}
+
+
 /** Free all modules loaded by the server
  */
 void modules_free(void)
 {
-	module_instance_t **inst = NULL;
-	size_t len, i;
+	if (module_instance_name_tree) {
+		rbtree_walk(module_instance_name_tree, RBTREE_DELETE_ORDER, _module_instance_free_walker, NULL);
+		TALLOC_FREE(module_instance_name_tree);
+	}
 
-	rbtree_flatten(NULL, (void ***)&inst, module_instance_name_tree, RBTREE_IN_ORDER);
-	len = talloc_array_length(inst);
-	for (i = 0; i < len; i++) talloc_free(inst[(len - i) - 1]);
-	talloc_free(inst);
-
-	TALLOC_FREE(module_instance_name_tree);
 	TALLOC_FREE(module_instance_data_tree);
 	TALLOC_FREE(instance_ctx);
 }
