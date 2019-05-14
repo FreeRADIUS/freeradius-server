@@ -1396,7 +1396,6 @@ int main(int argc, char *argv[])
 	fr_dict_t		*dict = NULL;
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree = talloc_autofree_context();
-	dl_module_loader_t	*dl_module_loader;
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {

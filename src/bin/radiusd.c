@@ -162,7 +162,6 @@ int main(int argc, char *argv[])
 
 	TALLOC_CTX	*global_ctx = NULL;
 	main_config_t	*config = NULL;
-	dl_module_loader_t *dl_module_loader;
 	bool		talloc_memory_report = false;
 
 	size_t		pool_size = 0;
