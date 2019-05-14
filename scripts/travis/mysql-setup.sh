@@ -1,5 +1,11 @@
 #!/bin/sh -e
 
+echo "MySQL - Dropping existing database"
+mysql -h "${SQL_MYSQL_TEST_SERVER}" -u root -e 'DROP DATABASE radius;' || true
+
+echo "MySQL - Dropping existing user"
+mysql -h "${SQL_MYSQL_TEST_SERVER}" -u root -e 'DROP USER radius@localhost;' || true
+
 echo "MySQL - Creating database"
 mysql -h "${SQL_MYSQL_TEST_SERVER}" -u root -e 'CREATE DATABASE radius;'
 

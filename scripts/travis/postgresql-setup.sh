@@ -7,6 +7,12 @@
 #    /usr/local/opt/postgres/bin/createuser -s postgres
 #
 
+echo "Dropping existing database"
+psql -h "${SQL_POSTGRESQL_TEST_SERVER}" -c 'drop database radius;' -U postgres || true
+
+echo "Dropping existing database"
+psql -h "${SQL_POSTGRESQL_TEST_SERVER}" -c 'drop user radius;' -U postgres || true
+
 echo "PostgreSQL - Creating database"
 psql -h "${SQL_POSTGRESQL_TEST_SERVER}" -c 'create database radius;' -U postgres || true
 
