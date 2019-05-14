@@ -449,7 +449,6 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 	DL_INIT_CHECK;
 
 	MEM(dl_module_inst = talloc_zero(ctx, dl_module_inst_t));
-	talloc_set_destructor(dl_module_inst, _dl_module_instance_free);
 
 	/*
 	 *	Find a section with the same name as the module
@@ -464,6 +463,8 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 	 *	ctx here is the main module's instance data
 	 */
 	dl_module_instance_data_alloc(dl_module_inst, &dl_module_inst->data, dl_module_inst->module);
+
+	talloc_set_destructor(dl_module_inst, _dl_module_instance_free);
 
 	/*
 	 *	Associate the module instance with the conf section
