@@ -56,7 +56,10 @@ sub process_file {
 			next;
 		}
 
-		if (/\$Id: /) {
+		#
+		#  Need the [:] to avoid git getting excited
+		#
+		if (/\$Id[:] /) {
 			next;
 		}
 
