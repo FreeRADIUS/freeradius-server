@@ -23,7 +23,7 @@ DD:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 CB_IMAGES:=$(patsubst $(DT)/build-%,%,$(wildcard $(DT)/build-*))
 
 # Location of the .git dir (may be different for e.g. submodules)
-GITDIR:=$(shell git rev-parse --git-dir)
+GITDIR:=$(shell readlink -f $$(git rev-parse --git-dir))
 
 CB_CPREFIX:=fr-crossbuild-
 CB_IPREFIX:=freeradius-build
