@@ -1167,43 +1167,82 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		break;
 
 	case FR_TYPE_EXTENDED:
-		if (data_len < 2) goto raw; /* etype, value */
+		min = 1 + parent->flags.extra;
 
+		/*
+		 *	Not enough data, just create a raw attribute.
+		 */
+		if (data_len <= min) goto raw;
+
+		/*
+		 *	Look up the extended type.  It's almost always
+		 *	a known child, so we use that as the fast
+		 *	path.
+		 */
 		child = fr_dict_attr_child_by_num(parent, p[0]);
-		if (!child) {
-			FR_PROTO_TRACE("Extended attribute %s has no child %i", parent->name, p[0]);
-			goto raw;
-		}
-		FR_PROTO_TRACE("decode context changed %s->%s", child->name, parent->name);
-
-		min = 1;
-		if (child->flags.extra) {
-			if (data_len < 3) goto raw; /* etype, flags, value */
-
+		if (child) {
 			/*
-			 *	This requires a whole lot more work.
+			 *	Normal "extended" with 0 or more bytes
+			 *	of data. OR a "long extended" with a
+			 *	flag byte, BUT the "more" flag is not
+			 *	set.  Just decode it.
 			 */
-			if ((p[1] & 0x80) != 0) {
-				return decode_extended(ctx, cursor, dict, child, data, attr_len, packet_len, decoder_ctx);
+			if (!parent->flags.extra || ((p[1] & 0x80) == 0)) {
+				rcode = fr_radius_decode_pair_value(ctx, cursor, dict, child,
+								    p + min, attr_len - min, attr_len - min,
+								    decoder_ctx);
+				if (rcode < 0) goto invalid_extended;
+				return attr_len;
 			}
 
 			/*
-			 *	else we can just decode a value
-			 *	directly from the attribute.
+			 *	It's a "long extended" attribute with
+			 *	an attribute number, but with no flag
+			 *	byte.  It's invalid.
 			 */
-			min++;
+			if (data_len == 1) goto invalid_extended;
+
+			/*
+			 *	"long extended" with a flag byte.  Due
+			 *	to the above checks, the flag byte
+			 *	MUST have the "more" bit set.  So we
+			 *	don't check it again here.
+			 */
+			rcode = decode_extended(ctx, cursor, dict, child, data, attr_len, packet_len, decoder_ctx);
+			if (rcode >= 0) return rcode; /* which may be LONGER than attr_len */
+
+			/* Fall through to invalid extended attribute */
+		} else {
+			FR_PROTO_TRACE("Extended attribute %s has no child %i", parent->name, p[0]);
 		}
 
+	invalid_extended:
 		/*
-		 *	Recurse to decode the contents, which could be
-		 *	a TLV, IPaddr, etc.  Note that we decode only
-		 *	the current attribute, and we ignore any extra
-		 *	p after it.
+		 *	Create an unknown attribute, and decode it as
+		 *	"octets".  Note that we have to account for
+		 *	the flag byte, too.
+		 *
+		 *	If the child was a VSA, BUT the VSA contents
+		 *	were malformed, then the recursive call to
+		 *	ourselves would create an unknown attribute
+		 *	and succeed, instead of failing.  So we don't
+		 *	need to handle that case here.
 		 */
+		child = fr_dict_unknown_afrom_fields(ctx, parent, 0, p[0]);
+		if (!child) goto raw;
+
+		/*
+		 *	"long" extended.  Decode the value.
+		 */
+		if (parent->flags.extra) {
+			rcode = decode_extended(ctx, cursor, dict, child, data, attr_len, packet_len, decoder_ctx);
+			if (rcode >= 0) return rcode; /* which may be LONGER than attr_len */
+		}
+
 		rcode = fr_radius_decode_pair_value(ctx, cursor, dict, child,
 						    p + min, attr_len - min, attr_len - min,
 						    decoder_ctx);
-		if (rcode < 0) goto raw;
+		if (rcode < 0) return -1;
 		return attr_len;
 
 	case FR_TYPE_EVS:
