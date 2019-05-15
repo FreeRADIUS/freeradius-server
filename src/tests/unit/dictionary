@@ -50,14 +50,14 @@ ATTRIBUTE	Unit-Ext-241-Struct2	241.248		struct
 MEMBER		Unit-Struct2-Int1		integer
 MEMBER		Unit-Struct2-Short		uint16
 MEMBER		Unit-Struct2-TLV		tlv
-ATTRIBUTE	Unit-Struct2-TLV-Int1	.3.1		integer
-ATTRIBUTE	Unit-Struct2-TLV-Int2	.3.2		integer
-ATTRIBUTE	Unit-Struct2-TLV-String	.3.3		string
+ATTRIBUTE	Unit-Struct2-TLV-Int1	.1		integer
+ATTRIBUTE	Unit-Struct2-TLV-Int2	.2		integer
+ATTRIBUTE	Unit-Struct2-TLV-String	.3		string
 
 ATTRIBUTE	Unit-Ext-241-Struct3	241.249		struct
 MEMBER		Unit-Struct3-Int		integer
 MEMBER		Unit-Struct3-TLV		tlv
-ATTRIBUTE	Unit-Struct3a		.2.1		struct
+ATTRIBUTE	Unit-Struct3a		.1		struct
 MEMBER		Unit-Struct3a-Ipaddr1			ipaddr
 MEMBER		Unit-Struct3a-Ipaddr2			ipaddr
 
