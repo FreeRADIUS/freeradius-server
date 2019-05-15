@@ -101,14 +101,12 @@ clean.test: clean.tests.modules
 
 #  Tests specifically for Travis. We do a LOT more than just
 #  the above tests
-ifneq "$(findstring travis,${prefix})" ""
 travis-test: raddb/test.conf test
 	@FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -xxxv -n test
 	@rm -f raddb/test.conf
 	@$(MAKE) install
 	@perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
 	@${sbindir}/radiusd -XC
-endif
 
 #
 # The $(R) is a magic variable not defined anywhere in this source.

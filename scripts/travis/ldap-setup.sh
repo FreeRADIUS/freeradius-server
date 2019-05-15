@@ -3,6 +3,8 @@
 # Allow setup script to work with homebrew too
 export PATH="/usr/local/opt/openldap/libexec:$PATH"
 
+# Clean out any existing DB
+rm -rf /tmp/ldap/db
 # Create directory we can write DB files to
 mkdir -p /tmp/ldap/db/
 
@@ -33,7 +35,16 @@ slapd -h "ldap://127.0.0.1:3890/" -f scripts/travis/ldap/slapd.conf &
 sleep 1
 
 # Add test data
-ldapadd -x -H ldap://127.0.0.1:3890/ -D "cn=admin,cn=config" -w secret -f src/tests/salt-test-server/salt/ldap/base.ldif
+count=0
+while [ $count -lt 10 ] ; do
+    if ldapadd -x -H ldap://127.0.0.1:3890/ -D "cn=admin,cn=config" -w secret -f src/tests/salt-test-server/salt/ldap/base.ldif ; then
+        break 2
+    else
+        count=$((count+1))
+        sleep 1
+    fi
+done
+
 if [ $? -ne 0 ]; then
 	echo "Error configuring server"
 	exit 1
