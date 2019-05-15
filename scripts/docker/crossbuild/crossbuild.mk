@@ -90,10 +90,11 @@ $(DD)/stamp-image.${1}:
 .PHONY: $(DD)/docker.up.${1}
 $(DD)/docker.up.${1}: $(DD)/stamp-image.${1}
 	@echo "START ${1} ($(CB_CPREFIX)${1})"
-	@docker run -d --rm \
+	@docker container inspect $(CB_CPREFIX)${1} >/dev/null 2>&1 || \
+		docker run -d --rm \
 		--mount=type=bind,source="$(GITDIR)",destination=/srv/src,ro \
 		--name $(CB_CPREFIX)${1} $(CB_IPREFIX)/${1} \
-		/bin/sh -c 'while true; do sleep 60; done' >/dev/null 2>&1 || true
+		/bin/sh -c 'while true; do sleep 60; done' >/dev/null
 
 $(DD)/stamp-up.${1}: $(DD)/docker.up.${1}
 	@touch $(DD)/stamp-up.${1}
