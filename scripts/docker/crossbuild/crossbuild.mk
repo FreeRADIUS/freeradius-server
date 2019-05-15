@@ -110,7 +110,7 @@ $(DD)/docker.run.${1}: $(DD)/stamp-up.${1}
 	@echo "REFRESH ${1}"
 	@docker container exec $(CB_CPREFIX)${1} sh -c 'rsync -a /srv/src/ /srv/local-src/'
 	@docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config core.bare true'
-	@docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config --unset core.worktree'
+	@docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config --unset core.worktree || true'
 	@docker container exec $(CB_CPREFIX)${1} sh -c '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
 	@docker container exec $(CB_CPREFIX)${1} sh -c '(cd /srv/build && git pull --rebase)'
 	@docker container exec $(CB_CPREFIX)${1} sh -c '[ -e /srv/build/config.log ] || echo CONFIGURE ${1}'
