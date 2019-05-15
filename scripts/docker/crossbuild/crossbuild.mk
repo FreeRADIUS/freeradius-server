@@ -49,13 +49,13 @@ crossbuild.help: crossbuild.info
 	@echo "    crossbuild.common      - build and test common images"
 	@echo "    crossbuild.reset       - remove cache of docker state"
 	@echo "    crossbuild.down        - stop all containers"
-	@echo "    crossbuild.clean       - destroy all images"
+	@echo "    crossbuild.wipe        - destroy all crossbuild Docker images"
 	@echo "    crossbuild.IMAGE       - build and test IMAGE"
 	@echo "    crossbuild.IMAGE.log   - show latest build log"
 	@echo "    crossbuild.IMAGE.up    - start container"
 	@echo "    crossbuild.IMAGE.down  - stop container"
 	@echo "    crossbuild.IMAGE.sh    - shell in container"
-	@echo "    crossbuild.IMAGE.clean - remove docker image"
+	@echo "    crossbuild.IMAGE.wipe  - remove Docker image"
 
 #
 #  Remove stamp files, so that we try and create images again
@@ -70,7 +70,7 @@ crossbuild.down: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.down)
 #
 #  Remove all images
 #
-crossbuild.clean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.clean)
+crossbuild.wipe: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.wipe)
 
 #
 #  Define rules for building a particular image
@@ -162,8 +162,8 @@ crossbuild.${1}.reset:
 #  Clean down images. Means on next run we'll rebuild the
 #  container (rather than just starting it).
 #
-.PHONY: crossbuild.${1}.clean
-crossbuild.${1}.clean:
+.PHONY: crossbuild.${1}.wipe
+crossbuild.${1}.wipe:
 	@echo CLEAN ${1}
 	@docker image rm $(CB_IPREFIX)/${1} >/dev/null 2>&1 || true
 	@rm -f $(DD)/stamp-image.${1}
