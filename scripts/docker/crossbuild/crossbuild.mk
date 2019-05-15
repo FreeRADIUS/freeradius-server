@@ -22,6 +22,9 @@ DD:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 # List of all the docker images
 CB_IMAGES:=$(patsubst $(DT)/build-%,%,$(wildcard $(DT)/build-*))
 
+# Location of the .git dir (may be different for e.g. submodules)
+GITDIR:=$(shell git rev-parse --git-dir)
+
 CB_CPREFIX:=fr-crossbuild-
 CB_IPREFIX:=freeradius-build
 
@@ -87,7 +90,10 @@ $(DD)/stamp-image.${1}:
 .PHONY: $(DD)/docker.up.${1}
 $(DD)/docker.up.${1}: $(DD)/stamp-image.${1}
 	@echo "START ${1} ($(CB_CPREFIX)${1})"
-	@docker run -d --rm --name $(CB_CPREFIX)${1} $(CB_IPREFIX)/${1} /bin/sh -c 'while true; do sleep 60; done' >/dev/null 2>&1 || true
+	@docker run -d --rm \
+		--mount=type=bind,source="$(GITDIR)",destination=/srv/src,ro \
+		--name $(CB_CPREFIX)${1} $(CB_IPREFIX)/${1} \
+		/bin/sh -c 'while true; do sleep 60; done' >/dev/null 2>&1 || true
 
 $(DD)/stamp-up.${1}: $(DD)/docker.up.${1}
 	@touch $(DD)/stamp-up.${1}
@@ -101,10 +107,10 @@ crossbuild.${1}.up: $(DD)/stamp-up.${1}
 .PHONY: $(DD)/docker.run.${1}
 $(DD)/docker.run.${1}: $(DD)/stamp-up.${1}
 	@echo "REFRESH ${1}"
-	@docker container exec $(CB_CPREFIX)${1} [ ! -d /srv/src ] || rm -rf /srv/src
-	@docker container exec $(CB_CPREFIX)${1} mkdir -p /srv/src
-	@docker container cp .git $(CB_CPREFIX)${1}:/srv/src/
-	@docker container exec $(CB_CPREFIX)${1} sh -c '[ -d /srv/build ] || git clone /srv/src /srv/build'
+	@docker container exec $(CB_CPREFIX)${1} sh -c 'rsync -a /srv/src/ /srv/local-src/'
+	@docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config core.bare true'
+	@docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config --unset core.worktree'
+	@docker container exec $(CB_CPREFIX)${1} sh -c '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
 	@docker container exec $(CB_CPREFIX)${1} sh -c '(cd /srv/build && git pull --rebase)'
 	@docker container exec $(CB_CPREFIX)${1} sh -c '[ -e /srv/build/config.log ] || echo CONFIGURE ${1}'
 	@docker container exec $(CB_CPREFIX)${1} sh -c '[ -e /srv/build/config.log ] || (cd /srv/build && ./configure -C)' > $(DD)/configure.${1} 2>&1
