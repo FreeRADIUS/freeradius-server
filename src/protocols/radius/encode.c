@@ -877,7 +877,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 */
 	switch (attr_type) {
 	case FR_TYPE_EXTENDED:
-		if (outlen < (3 + tlv_stack[0]->flags.extra)) return 0;
+		if (outlen < (size_t) (3 + tlv_stack[0]->flags.extra)) return 0;
 
 		/*
 		 *	Encode which extended attribute it is.
