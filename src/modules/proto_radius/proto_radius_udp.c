@@ -165,7 +165,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 		return 0;
 	}
 
-	if ((buffer[0] == 0) || (buffer[0] > FR_MAX_PACKET_CODE)) {
+	if ((buffer[0] == 0) || (buffer[0] > FR_RADIUS_MAX_PACKET_CODE)) {
 		DEBUG("proto_radius_udp got invalid packet code %d", buffer[0]);
 		thread->stats.total_unknown_types++;
 		return 0;

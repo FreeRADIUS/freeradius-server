@@ -139,7 +139,7 @@ static CONF_PARSER const module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const type_interval_config[FR_MAX_PACKET_CODE] = {
+static CONF_PARSER const type_interval_config[FR_RADIUS_MAX_PACKET_CODE] = {
 	[FR_CODE_ACCESS_REQUEST] = { FR_CONF_POINTER("Access-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) auth_config },
 
 	[FR_CODE_ACCOUNTING_REQUEST] = { FR_CONF_POINTER("Accounting-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_config },
@@ -216,7 +216,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	}
 
 	if (!code ||
-	    (code >= FR_MAX_PACKET_CODE) ||
+	    (code >= FR_RADIUS_MAX_PACKET_CODE) ||
 	    (!type_interval_config[code].name)) goto invalid_code;
 
 	/*
@@ -301,7 +301,7 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
 	 *	types.
 	 */
 	if (!code ||
-	    (code >= FR_MAX_PACKET_CODE) ||
+	    (code >= FR_RADIUS_MAX_PACKET_CODE) ||
 	    (!type_interval_config[code].name)) goto invalid_code;
 
 	/*
@@ -478,7 +478,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 		return RLM_MODULE_FAIL;
 	}
 
-	if ((request->packet->code >= FR_MAX_PACKET_CODE) ||
+	if ((request->packet->code >= FR_RADIUS_MAX_PACKET_CODE) ||
 	    !inst->retry[request->packet->code].irt) { /* can't be zero */
 		REDEBUG("Invalid packet code %d", request->packet->code);
 		return RLM_MODULE_FAIL;
@@ -574,12 +574,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 		code = inst->types[i];
 		rad_assert(code > 0);
-		rad_assert(code < FR_MAX_PACKET_CODE);
+		rad_assert(code < FR_RADIUS_MAX_PACKET_CODE);
 
 		inst->allowed[code] = 1;
 	}
 
-	rad_assert(inst->status_check < FR_MAX_PACKET_CODE);
+	rad_assert(inst->status_check < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	If we have status_check = packet, then 'packet' MUST either be

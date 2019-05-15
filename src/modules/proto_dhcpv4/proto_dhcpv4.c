@@ -259,7 +259,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	fr_io_address_t *address = track->address;
 	RADCLIENT const *client;
 
-	rad_assert(data[0] < FR_MAX_PACKET_CODE);
+	rad_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -460,7 +460,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 	proto_dhcpv4_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
 
 	rad_assert(buffer[0] > 0);
-	rad_assert(buffer[0] < FR_MAX_PACKET_CODE);
+	rad_assert(buffer[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Disallowed packet

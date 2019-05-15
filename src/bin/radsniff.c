@@ -1763,7 +1763,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	CoA and Disconnect Messages, as we get the average latency across both
 		 *	response types.
 		 *
-		 *	It also justifies allocating FR_CODE_MAX instances of rs_latency_t.
+		 *	It also justifies allocating FR_CODE_RADIUS_MAX instances of rs_latency_t.
 		 */
 		rs_stats_update_latency(&stats->exchange[current->code], &latency);
 		rs_stats_update_latency(&stats->exchange[original->expect->code], &latency);

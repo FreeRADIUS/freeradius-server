@@ -132,7 +132,7 @@ FR_NAME_NUMBER const fr_request_types[] = {
 	{ NULL, 0}
 };
 
-char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
+char const *fr_packet_codes[FR_RADIUS_MAX_PACKET_CODE] = {
 	"",					//!< 0
 	"Access-Request",
 	"Access-Accept",
@@ -188,7 +188,7 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"Protocol-Error",
 };
 
-bool const fr_request_packets[FR_CODE_MAX + 1] = {
+bool const fr_request_packets[FR_RADIUS_MAX_PACKET_CODE + 1] = {
 	[FR_CODE_ACCESS_REQUEST] = true,
 	[FR_CODE_ACCOUNTING_REQUEST] = true,
 	[FR_CODE_STATUS_SERVER] = true,
@@ -527,7 +527,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	Code of 16 or greate is not understood.
 	 */
 	if ((packet[0] == 0) ||
-	    (packet[0] >= FR_MAX_PACKET_CODE)) {
+	    (packet[0] >= FR_RADIUS_MAX_PACKET_CODE)) {
 		FR_DEBUG_STRERROR_PRINTF("unknown packet code %d", packet[0]);
 		failure = DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		goto finish;
@@ -1133,7 +1133,7 @@ void fr_radius_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 	int i;
 	uint8_t const *attr, *end;
 
-	if ((packet[0] > 0) && (packet[0] < FR_MAX_PACKET_CODE)) {
+	if ((packet[0] > 0) && (packet[0] < FR_RADIUS_MAX_PACKET_CODE)) {
 		fprintf(fp, "  Code:\t\t%s\n", fr_packet_codes[packet[0]]);
 	} else {
 		fprintf(fp, "  Code:\t\t%u\n", packet[0]);

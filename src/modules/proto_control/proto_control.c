@@ -168,7 +168,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	fr_io_address_t *address = track->address;
 	RADCLIENT const *client;
 
-	rad_assert(data[0] < FR_MAX_PACKET_CODE);
+	rad_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -250,7 +250,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	 *	"Do not respond"
 	 */
 	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_MAX_PACKET_CODE)) {
+	    (request->reply->code == 0) || (request->reply->code >= FR_RADIUS_MAX_PACKET_CODE)) {
 		*buffer = false;
 		return 1;
 	}

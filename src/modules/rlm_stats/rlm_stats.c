@@ -47,14 +47,14 @@ typedef struct {
 	fr_dict_attr_t const	*ipv6_da;			//!< FreeRADIUS-Stats4-IPv6-Address
 	fr_dlist_head_t		list;				//!< for threads to know about each other
 
-	uint64_t		stats[FR_MAX_PACKET_CODE];
+	uint64_t		stats[FR_RADIUS_MAX_PACKET_CODE];
 } rlm_stats_t;
 
 typedef struct {
 	fr_ipaddr_t		ipaddr;				//!< IP address of this thing
 	fr_time_t		created;			//!< when it was created
 	fr_time_t		last_packet;			//!< when we last saw a packet
-	uint64_t		stats[FR_MAX_PACKET_CODE];	//!< actual statistic
+	uint64_t		stats[FR_RADIUS_MAX_PACKET_CODE];	//!< actual statistic
 } rlm_stats_data_t;
 
 typedef struct {
@@ -68,7 +68,7 @@ typedef struct {
 	rbtree_t		*src;				//!< stats by source
 	rbtree_t		*dst;				//!< stats by destination
 
-	uint64_t		stats[FR_MAX_PACKET_CODE];
+	uint64_t		stats[FR_RADIUS_MAX_PACKET_CODE];
 } rlm_stats_thread_t;
 
 static const CONF_PARSER module_config[] = {
@@ -95,13 +95,13 @@ fr_dict_attr_autoload_t rlm_stats_dict_attr[] = {
 	{ NULL }
 };
 
-static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_t *t,
+static void coalesce(uint64_t final_stats[FR_RADIUS_MAX_PACKET_CODE], rlm_stats_thread_t *t,
 		     size_t tree_offset, rlm_stats_data_t *mydata)
 {
 	rlm_stats_data_t *stats;
 	rlm_stats_thread_t *other;
 	rbtree_t **tree;
-	uint64_t local_stats[FR_MAX_PACKET_CODE];
+	uint64_t local_stats[FR_RADIUS_MAX_PACKET_CODE];
 
 	tree = (rbtree_t **) (((uint8_t *) t) + tree_offset);
 
@@ -111,7 +111,7 @@ static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_
 	 */
 	stats = rbtree_finddata(*tree, mydata);
 	if (!stats) {
-		memset(final_stats, 0, sizeof(uint64_t) * FR_MAX_PACKET_CODE);
+		memset(final_stats, 0, sizeof(uint64_t) * FR_RADIUS_MAX_PACKET_CODE);
 	} else {
 		memcpy(final_stats, stats->stats, sizeof(stats->stats));
 	}
@@ -134,7 +134,7 @@ static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_
 		}
 		memcpy(&local_stats, stats->stats, sizeof(stats->stats));
 
-		for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
+		for (i = 0; i < FR_RADIUS_MAX_PACKET_CODE; i++) {
 			final_stats[i] += local_stats[i];
 		}
 	}
@@ -165,10 +165,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		int src_code, dst_code;
 
 		src_code = request->packet->code;
-		if (src_code >= FR_MAX_PACKET_CODE) src_code = 0;
+		if (src_code >= FR_RADIUS_MAX_PACKET_CODE) src_code = 0;
 
 		dst_code = request->reply->code;
-		if (dst_code >= FR_MAX_PACKET_CODE) dst_code = 0;
+		if (dst_code >= FR_RADIUS_MAX_PACKET_CODE) dst_code = 0;
 
 		t->stats[src_code]++;
 		t->stats[dst_code]++;
@@ -220,7 +220,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		t->last_global_update = request->async->recv_time;
 
 		pthread_mutex_lock(&inst->mutex);
-		for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
+		for (i = 0; i < FR_RADIUS_MAX_PACKET_CODE; i++) {
 			inst->stats[i] += t->stats[i];
 			t->stats[i] = 0;
 		}
@@ -261,7 +261,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		 *	The copy helps minimize mutex contention.
 		 */
 		pthread_mutex_lock(&inst->mutex);
-		for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
+		for (i = 0; i < FR_RADIUS_MAX_PACKET_CODE; i++) {
 			inst->stats[i] += t->stats[i];
 			t->stats[i] = 0;
 		}
@@ -303,7 +303,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 
 	strcpy(buffer, "FreeRADIUS-Stats4-");
 
-	for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
+	for (i = 0; i < FR_RADIUS_MAX_PACKET_CODE; i++) {
 		fr_dict_attr_t const *da;
 
 		if (!local_stats[i]) continue;
@@ -366,7 +366,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	int i;
 
 	pthread_mutex_lock(&inst->mutex);
-	for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
+	for (i = 0; i < FR_RADIUS_MAX_PACKET_CODE; i++) {
 		inst->stats[i] += t->stats[i];
 	}
 	fr_dlist_remove(&inst->list, t);

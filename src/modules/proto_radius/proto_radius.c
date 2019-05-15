@@ -123,13 +123,12 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
  */
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	static char const *type_lib_table[] = {
+	static char const *type_lib_table[FR_RADIUS_MAX_PACKET_CODE] = {
 		[FR_CODE_ACCESS_REQUEST]	= "auth",
 		[FR_CODE_ACCOUNTING_REQUEST]	= "acct",
 		[FR_CODE_COA_REQUEST]		= "coa",
 		[FR_CODE_DISCONNECT_REQUEST]	= "coa",
 		[FR_CODE_STATUS_SERVER]		= "status",
-		[FR_CODE_MAX] 			= NULL
 	};
 
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
@@ -169,7 +168,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 	cf_data_add(ci, type_enum, NULL, false);
 
 	code = type_enum->value->vb_uint32;
-	if (code >= FR_MAX_PACKET_CODE) {
+	if (code >= FR_RADIUS_MAX_PACKET_CODE) {
 	invalid_type:
 		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
 		return -1;
@@ -281,7 +280,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	fr_io_address_t		*address = track->address;
 	RADCLIENT const		*client;
 
-	rad_assert(data[0] < FR_MAX_PACKET_CODE);
+	rad_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	if (DEBUG_ENABLED3) {
 		RDEBUG("proto_radius decode packet");
@@ -421,7 +420,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	 *	"Do not respond"
 	 */
 	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_MAX_PACKET_CODE)) {
+	    (request->reply->code == 0) || (request->reply->code >= FR_RADIUS_MAX_PACKET_CODE)) {
 		*buffer = false;
 		return 1;
 	}
@@ -528,7 +527,7 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 	fr_io_track_t		*track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
-	rad_assert(request->packet->code <= FR_CODE_MAX);
+	rad_assert(request->packet->code <= FR_RADIUS_MAX_PACKET_CODE);
 
 	request->server_cs = inst->io.server_cs;
 
@@ -562,7 +561,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 
 	rad_assert(buffer[0] > 0);
-	rad_assert(buffer[0] < FR_MAX_PACKET_CODE);
+	rad_assert(buffer[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Disallowed packet

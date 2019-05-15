@@ -1185,7 +1185,7 @@ static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr
 /** Turn a reply code into a module rcode;
  *
  */
-static rlm_rcode_t code2rcode[FR_MAX_PACKET_CODE] = {
+static rlm_rcode_t code2rcode[FR_RADIUS_MAX_PACKET_CODE] = {
 	[FR_CODE_ACCESS_ACCEPT]		= RLM_MODULE_OK,
 	[FR_CODE_ACCESS_CHALLENGE]	= RLM_MODULE_UPDATED,
 	[FR_CODE_ACCESS_REJECT]		= RLM_MODULE_REJECT,
@@ -1205,7 +1205,7 @@ static rlm_rcode_t code2rcode[FR_MAX_PACKET_CODE] = {
 /** If we get a reply, the request must come from one of a small
  * number of packet types.
  */
-static FR_CODE allowed_replies[FR_MAX_PACKET_CODE] = {
+static FR_CODE allowed_replies[FR_RADIUS_MAX_PACKET_CODE] = {
 	[FR_CODE_ACCESS_ACCEPT]		= FR_CODE_ACCESS_REQUEST,
 	[FR_CODE_ACCESS_CHALLENGE]	= FR_CODE_ACCESS_REQUEST,
 	[FR_CODE_ACCESS_REJECT]		= FR_CODE_ACCESS_REQUEST,
@@ -1456,7 +1456,7 @@ check_active:
 		 */
 		goto decode_reply;
 
-	} else if (!code || (code >= FR_MAX_PACKET_CODE)) {
+	} else if (!code || (code >= FR_RADIUS_MAX_PACKET_CODE)) {
 		REDEBUG("Unknown reply code %d", code);
 		u->rcode = RLM_MODULE_INVALID;
 
@@ -2740,7 +2740,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, void *request_io_c
 	fr_io_connection_t		*c;
 
 	rad_assert(request->packet->code > 0);
-	rad_assert(request->packet->code < FR_MAX_PACKET_CODE);
+	rad_assert(request->packet->code < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	If configured, and we don't have any active
