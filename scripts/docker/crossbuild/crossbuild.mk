@@ -47,14 +47,16 @@ crossbuild.help: crossbuild.info
 	@echo Make targets:
 	@echo "    crossbuild             - build and test all images"
 	@echo "    crossbuild.common      - build and test common images"
-	@echo "    crossbuild.reset       - remove cache of docker state"
 	@echo "    crossbuild.down        - stop all containers"
+	@echo "    crossbuild.reset       - remove cache of docker state"
+	@echo "    crossbuild.clean       - down and reset all targets"
 	@echo "    crossbuild.wipe        - destroy all crossbuild Docker images"
 	@echo "    crossbuild.IMAGE       - build and test IMAGE"
 	@echo "    crossbuild.IMAGE.log   - show latest build log"
 	@echo "    crossbuild.IMAGE.up    - start container"
 	@echo "    crossbuild.IMAGE.down  - stop container"
 	@echo "    crossbuild.IMAGE.sh    - shell in container"
+	@echo "    crossbuild.IMAGE.clean - stop container and tidy up"
 	@echo "    crossbuild.IMAGE.wipe  - remove Docker image"
 
 #
@@ -66,6 +68,11 @@ crossbuild.reset: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.reset)
 #  Stop all containers
 #
 crossbuild.down: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.down)
+
+#
+#  Clean up: stop all containers, do a reset
+#
+crossbuild.clean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.clean)
 
 #
 #  Remove all images
@@ -126,6 +133,9 @@ crossbuild.${1}.down:
 	@echo STOP ${1}
 	@docker container kill $(CB_CPREFIX)${1} || true
 	@rm -f $(DD)/stamp-up.${1}
+
+.PHONY: crossbuild.${1}.clean
+crossbuild.${1}.clean: crossbuild.${1}.down crossbuild.${1}.reset
 
 #
 #  Shell into container. cd to root first (will always succeed),
