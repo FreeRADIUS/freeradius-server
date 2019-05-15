@@ -113,7 +113,6 @@ services:
 - postgresql
 - redis-server
 before_install:
-- python -c "import fcntl; fcntl.fcntl(1, fcntl.F_SETFL, 0)"
 - rvm --install --default --binary use 2.4
 - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 && sudo update-alternatives --config gcc; fi
 - if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-7 60 && sudo update-alternatives --config clang; fi
