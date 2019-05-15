@@ -1,0 +1,66 @@
+// Initialize a variable to hold the matrix of travis builds
+tmatrix = []
+
+/* This function takes a list of tests and builds closures for each test to
+* be run in it's own docker container. It's a little strange, and uses a 
+* functional programming trick (function currying) to create a closure that 
+* can be passed to the "parallel" function, which can only take one argument 
+* in this context 
+*/
+
+def buildClosures(arg) {
+    println arg.inspect()
+    def travisTests = arg
+    def closures = [:]
+    for (value in travisTests) {
+        final valueCopy = value
+        closures[value] = { testEnv_str ->
+            def(dir,testEnv) = testEnv_str.split(":")
+            stage("$testEnv") {
+                // Docker needs full privileges and capabilites to run the tests
+                // This passes the necessary arguments to "docker run"
+                travisImage.inside("--privileged --cap-add=ALL") {
+                    checkout([$class: 'GitSCM',\
+                    branches: [[name: scm.branches[0].name]],\
+                    doGenerateSubmoduleConfigurations: false,\
+                    extensions: [[$class: 'CleanCheckout'],\
+                        [$class: 'CleanBeforeCheckout'],\
+                        [$class: 'RelativeTargetDirectory', relativeTargetDir: dir]],\
+                    submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/FreeRADIUS/freeradius-server']]])
+                    sh "cd $dir ; export ${testEnv} ; bash scripts/travis/start.sh"
+                }
+            }
+        }.curry(value)
+    }
+    closures
+}
+
+/* This section does three things
+* 1. Checkout the repo for the necessary setup files
+* 2. Reads the test matrix from the .travis.yml and converts it into a list that
+*    can be passed to the buildClosures function
+* 3. runs each test matrix under gcc and clang in parallel.
+*/
+
+node {
+    cleanWs()
+    checkout scm
+    travis = readYaml(file: "./.travis.yml")
+    travisImage = docker.build("travis-image-${scm.branches[0].name}", "./scripts/travis/")
+    stage("clang tests") {
+        tmatrix = []
+        c = "clang"
+        travis["env"]["matrix"].eachWithIndex { t,i -> 
+            tmatrix << "${c}-${i}:CC=${c} ${t}"
+        }
+        parallel buildClosures(tmatrix)
+    }
+    stage("gcc tests") {
+        tmatrix = []
+        c = "gcc"
+        travis["env"]["matrix"].eachWithIndex { t,i -> 
+            tmatrix << "${c}-${i}:CC=${c} ${t}"
+        }
+        parallel buildClosures(tmatrix)
+    }
+}
