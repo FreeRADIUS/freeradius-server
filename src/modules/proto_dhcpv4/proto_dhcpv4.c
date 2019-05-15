@@ -423,7 +423,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 static void mod_entry_point_set(void const *instance, REQUEST *request)
 {
 	proto_dhcpv4_t const	*inst = talloc_get_type_abort_const(instance, proto_dhcpv4_t);
-	dl_module_inst_t		*type_submodule;
+	dl_module_inst_t	*type_submodule;
 	fr_io_track_t		*track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
@@ -446,7 +446,7 @@ static void mod_entry_point_set(void const *instance, REQUEST *request)
 
 	type_submodule = inst->type_submodule_by_code[request->packet->code];
 	if (!type_submodule) {
-		REDEBUG("No module available to handle packet code %i", request->packet->code);
+		REDEBUG("The server is not configured to accept 'type = %s'", dhcp_message_types[request->packet->code]);
 		return;
 	}
 
