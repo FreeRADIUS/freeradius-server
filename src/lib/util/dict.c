@@ -4119,7 +4119,7 @@ get_by_oid:
 	 *	*canonical* previous attribute, and not any potential
 	 *	duplicate which was just added.
 	 */
-	if (set_previous) ctx->previous_attr = fr_dict_attr_child_by_num(parent, attr);
+	if (set_previous || (type == FR_TYPE_STRUCT)) ctx->previous_attr = fr_dict_attr_child_by_num(parent, attr);
 
 	return 0;
 }
@@ -4173,7 +4173,19 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 	/*
 	 *	Add in a normal attribute, and DON'T set ctx->previous_attr.
 	 */
-	return fr_dict_attr_add(ctx->dict, ctx->previous_attr, argv[0], ++ctx->member_num, type, &flags);
+	if (fr_dict_attr_add(ctx->dict, ctx->previous_attr, argv[0], ++ctx->member_num, type, &flags) < 0) return -1;
+
+	/*
+	 *	A 'struct' can have a MEMBER of type 'tlv', but ONLY
+	 *	as the last entry in the 'struct'.  If we see that,
+	 *	set the previous attribute to the TLV we just added.
+	 *	This allows the children of the TLV to be parsed as
+	 *	partial OIDs, so we don't need to know the full path
+	 *	to them.
+	 */
+	if (type == FR_TYPE_TLV) ctx->previous_attr = fr_dict_attr_child_by_num(ctx->previous_attr, ctx->member_num);
+
+	return 0;
 }
 
 
