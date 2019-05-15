@@ -89,7 +89,6 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.xlat 
 
 #  Tests specifically for Travis.  We do a LOT more than just
 #  the above tests
-ifneq "$(findstring travis,${prefix})" ""
 travis-test: raddb/test.conf test
 	@FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/radiusd -xxxv -n test
 	@rm -f raddb/test.conf
@@ -97,7 +96,6 @@ travis-test: raddb/test.conf test
 	@perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
 	@sh ${HOME}/freeradius/etc/raddb/certs
 	@${sbindir}/radiusd -XC
-endif
 
 #
 # The $(R) is a magic variable not defined anywhere in this source.
