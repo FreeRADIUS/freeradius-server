@@ -667,7 +667,7 @@ static int python_function_load(python_func_def_t *def)
 
 	error:
 		python_error_log();
-		ERROR("%s - Failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
+		ERROR("%s - Failed importing python function '%s.%s'", funcname, def->module_name, def->function_name);
 		Py_XDECREF(def->function);
 		def->function = NULL;
 		Py_XDECREF(def->module);
