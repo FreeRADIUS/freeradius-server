@@ -23,7 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/io/time.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/util/inet.h>

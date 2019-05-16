@@ -666,7 +666,6 @@ int main(int argc, char **argv)
 	if (argc < 2) usage();
 
 	/*	convert timeout to a struct timeval */
-#define USEC 1000000
 	tv_timeout.tv_sec = timeout;
 	tv_timeout.tv_usec = ((timeout - (float) tv_timeout.tv_sec) * USEC);
 

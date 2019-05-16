@@ -213,7 +213,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		 *	@todo - periodically clean up old entries.
 		 */
 
-		if ((t->last_global_update + NANOSEC) > request->async->recv_time) {
+		if ((t->last_global_update + NSEC) > request->async->recv_time) {
 			return RLM_MODULE_UPDATED;
 		}
 

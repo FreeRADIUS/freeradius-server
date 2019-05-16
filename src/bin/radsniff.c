@@ -177,7 +177,6 @@ static void rs_daemonize(char const *pidfile)
 	}
 }
 
-#define USEC 1000000
 static void rs_tv_add_ms(struct timeval const *start, unsigned long interval, struct timeval *result) {
     result->tv_sec = start->tv_sec + (interval / 1000);
     result->tv_usec = start->tv_usec + ((interval % 1000) * 1000);

@@ -65,7 +65,7 @@ typedef struct rad_client_list RADCLIENT_LIST;
  */
 typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
 
-#include <freeradius-devel/io/time.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/socket.h>
 #include <freeradius-devel/server/stats.h>

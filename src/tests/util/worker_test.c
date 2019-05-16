@@ -456,7 +456,7 @@ check_close:
 			if (!workers[i].worker) num_outstanding--;
 		}
 
-		if ((now - last_checked) > (NANOSEC / 10)) {
+		if ((now - last_checked) > (NSEC / 10)) {
 			MPRINT1("still num_outstanding %d\n", num_outstanding);
 		}
 

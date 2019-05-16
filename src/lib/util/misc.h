@@ -161,15 +161,6 @@ ssize_t		fr_writev(int fd, struct iovec vector[], int iovcnt, struct timeval *ti
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
 int		fr_time_from_str(time_t *date, char const *date_str);
-void		fr_timeval_from_ms(struct timeval *out, uint64_t ms);
-void		fr_timeval_from_usec(struct timeval *out, uint64_t usec);
-void		fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct timeval const *start);
-void		fr_timeval_add(struct timeval *out, struct timeval const *a, struct timeval const *b);
-void		fr_timeval_divide(struct timeval *out, struct timeval const *in, int divisor);
-
-int		fr_timeval_cmp(struct timeval const *a, struct timeval const *b);
-int		fr_timeval_from_str(struct timeval *out, char const *in);
-bool		fr_timeval_isset(struct timeval const *tv);
 
 void		fr_timespec_subtract(struct timespec *out, struct timespec const *end, struct timespec const *start);
 

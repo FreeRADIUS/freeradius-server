@@ -644,7 +644,7 @@ static void worker_reset_timer(fr_worker_t *worker)
 	rad_assert(worker->num_active > 0);
 
 	cleanup = worker->max_request_time;
-	cleanup *= NANOSEC;
+	cleanup *= NSEC;
 	cleanup += request->async->recv_time;
 	fr_time_to_timeval(&when, cleanup);
 
@@ -654,7 +654,7 @@ static void worker_reset_timer(fr_worker_t *worker)
 	 */
 	if (worker->ev_cleanup) {
 		if ((cleanup > worker->next_cleanup) &&
-		    (cleanup - worker->next_cleanup) <= NANOSEC) return;
+		    (cleanup - worker->next_cleanup) <= NSEC) return;
 	}
 
 	worker->next_cleanup = cleanup;
@@ -692,7 +692,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	while ((cd = fr_dlist_tail(&worker->localized.list)) != NULL) {
 		waiting = now - cd->m.when;
 
-		if (waiting < ((worker->max_request_time - 2) * (fr_time_t) NANOSEC)) break;
+		if (waiting < ((worker->max_request_time - 2) * (fr_time_t) NSEC)) break;
 
 		/*
 		 *	Waiting too long, delete it.
@@ -710,12 +710,12 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 
 		waiting = now - cd->m.when;
 
-		if (waiting < (NANOSEC / 100)) break;
+		if (waiting < (NSEC / 100)) break;
 
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		if (waiting > NANOSEC) {
+		if (waiting > NSEC) {
 			WORKER_HEAP_EXTRACT(to_decode, cd);
 			DEBUG3("TIMEOUT: Extracting packet from to_decode list");
 
@@ -1425,7 +1425,7 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 	 *	the next nearest second (or 1/10s) so that the
 	 *	cleanups are done periodically.
 	 */
-	if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
+	if ((now - worker->checked_timeout) > (NSEC / 10)) {
 		DEBUG3("\tWorker %s checking timeouts", worker->name);
 		fr_worker_check_timeouts(worker, now);
 	}
@@ -1646,16 +1646,16 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_inf
 
 	if ((info->argc == 0) || (strcmp(info->argv[0], "cpu") == 0)) {
 		when = worker->tracking.predicted;
-		fprintf(fp, "cpu.average_request_time\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+		fprintf(fp, "cpu.average_request_time\t%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
 
 		when = worker->tracking.running;
-		fprintf(fp, "cpu.used\t\t\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+		fprintf(fp, "cpu.used\t\t\t%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
 
 		when = worker->tracking.waiting;
-		fprintf(fp, "cpu.waiting\t\t\t%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+		fprintf(fp, "cpu.waiting\t\t\t%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
 
 		when = fr_time() - worker->last_event;
-		fprintf(fp, "cpu.event_loop_serviced\t\t-%u.%03u\n", (unsigned int) (when / NANOSEC), (unsigned int) (when % NANOSEC) / 1000000);
+		fprintf(fp, "cpu.event_loop_serviced\t\t-%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
 
 		fr_time_elapsed_fprint(fp, &worker->cpu_time, "cpu.requests", 1);
 		fr_time_elapsed_fprint(fp, &worker->wall_clock, "time.requests", 1);

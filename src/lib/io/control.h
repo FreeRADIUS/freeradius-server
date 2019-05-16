@@ -27,7 +27,7 @@ RCSIDH(control_h, "$Id$")
 
 #include <freeradius-devel/io/atomic_queue.h>
 #include <freeradius-devel/io/ring_buffer.h>
-#include <freeradius-devel/io/time.h>
+#include <freeradius-devel/util/time.h>
 
 #include <sys/types.h>
 #include <sys/event.h>

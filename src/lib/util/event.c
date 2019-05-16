@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 #include "event.h"
 
-#include <freeradius-devel/io/time.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/heap.h>
@@ -41,6 +41,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/timeval.h>
 
 #include <sys/stat.h>
 
@@ -1609,7 +1610,6 @@ void fr_event_service(fr_event_list_t *el)
                 }
 
 service:
-
 		/*
 		 *	If any of these callbacks are NULL, then
 		 *	there's a logic error somewhere.

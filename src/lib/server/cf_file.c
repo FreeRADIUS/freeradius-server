@@ -39,6 +39,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/timeval.h>
 
 #include "cf_priv.h"
 

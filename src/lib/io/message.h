@@ -25,7 +25,7 @@
  */
 RCSIDH(message_h, "$Id$")
 
-#include <freeradius-devel/io/time.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/io/ring_buffer.h>
 
 #ifdef __cplusplus

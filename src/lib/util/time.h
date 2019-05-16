@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file io/time.h
+ * @file lib/util/time.h
  * @brief Simple time functions
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
@@ -75,12 +75,39 @@ typedef struct {
 	uint64_t	array[8];		//!< 100ns to 100s
 } fr_time_elapsed_t;
 
-#define NANOSEC (1000000000)
+#define NSEC	(1000000000)
 #define USEC	(1000000)
 
 int fr_time_start(void);
 fr_time_t fr_time(void);
+
+static inline fr_time_t fr_time_from_usec(uint64_t usec)
+{
+	return (usec * 1000);
+}
+
+static inline fr_time_t fr_time_from_msec(uint64_t msec)
+{
+	return (msec * 1000000);
+}
+
+static inline fr_time_t fr_time_from_sec(uint64_t sec)
+{
+	return (sec * NSEC);
+}
+
+static inline fr_time_t fr_time_delta_from_timeval(struct timeval *tv)
+{
+	return (tv->tv_sec * NSEC) + (tv->tv_usec * 1000);
+}
+
+static inline fr_time_t fr_time_delta_from_timespec(struct timespec *ts)
+{
+	return (ts->tv_sec * NSEC) + ts->tv_nsec;
+}
+
 void fr_time_to_timeval(struct timeval *tv, fr_time_t when) CC_HINT(nonnull);
+void fr_time_to_timespec(struct timespec *ts, fr_time_t when) CC_HINT(nonnull);
 
 void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);

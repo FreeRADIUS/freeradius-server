@@ -569,10 +569,6 @@ int rad_copy_variable(char *to, char const *from)
 	return -1;
 }
 
-#ifndef USEC
-#define USEC 1000000
-#endif
-
 uint32_t rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval *now)
 {
 	uint32_t pps;

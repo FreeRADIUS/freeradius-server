@@ -278,10 +278,10 @@ int clock_gettime(int clk_id, struct timespec *t)
 	{
 		uint64_t time;
 		time = mach_absolute_time();
-		double nseconds = ((double)time * (double)timebase.numer)/((double)timebase.denom);
+		double nanoseconds = ((double)time * (double)timebase.numer)/((double)timebase.denom);
 		double seconds = ((double)time * (double)timebase.numer)/((double)timebase.denom * 1e9);
 		t->tv_sec = seconds;
-		t->tv_nsec = nseconds;
+		t->tv_nsec = nanoseconds;
 	}
 		return 0;
 

@@ -18,14 +18,14 @@
  * $Id$
  *
  * @brief Platform independent time functions
- * @file io/time.c
+ * @file lib/util/time.c
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
-#include <freeradius-devel/io/time.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dlist.h>
 
 /*
@@ -102,13 +102,13 @@ fr_time_t fr_time(void)
 
 	if (ts.tv_nsec < ts_started.tv_nsec) {
 		ts.tv_sec--;
-		ts.tv_nsec += NANOSEC;
+		ts.tv_nsec += NSEC;
 	}
 
 	ts.tv_sec = ts.tv_sec - ts_started.tv_sec;
 	ts.tv_nsec = ts.tv_nsec - ts_started.tv_nsec;
 
-	now = ts.tv_sec * NANOSEC;
+	now = ts.tv_sec * NSEC;
 	now += ts.tv_nsec;
 
 	return now;
@@ -142,6 +142,21 @@ void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
 	tv->tv_usec = tv->tv_usec % USEC;
 }
 
+/** Convert a fr_time_t to a struct timeval.
+ *
+ * @param[out] tv the timeval to update
+ * @param[in] when the fr_time_t
+ */
+void fr_time_to_timespec(struct timespec *ts, fr_time_t when)
+{
+	TIMEVAL_TO_TIMESPEC(&tm_started, ts);
+
+	ts->tv_sec += (when / NSEC);
+	ts->tv_nsec += (when % NSEC);
+
+	ts->tv_sec += ts->tv_nsec / NSEC;
+	ts->tv_nsec = ts->tv_nsec % NSEC;
+}
 
 /** Start time tracking for a request.
  *
