@@ -423,44 +423,6 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-/** Converts a string value into a #VALUE_PAIR
- *
- * @param[in,out] ctx to allocate #VALUE_PAIR (s).
- * @param[out] out where to write the resulting #VALUE_PAIR.
- * @param[in] request The current request.
- * @param[in] map to process.
- * @param[in] uctx The value to parse.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int _cb_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out,
-				   REQUEST *request, vp_map_t const *map, void *uctx)
-{
-	VALUE_PAIR	*vp;
-	char const	*value = uctx;
-
-	vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
-	if (!vp) return -1;
-
-	/*
-	 *	Buffer not always talloced, sometimes it's
-	 *	just a pointer to a field in a result struct.
-	 */
-	if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
-		RPEDEBUG("Failed parsing value \"%pV\" for attribute %s",
-			 fr_box_strvalue_buffer(value), map->lhs->tmpl_da->name);
-		talloc_free(vp);
-
-		return -1;
-	}
-
-	vp->op = map->op;
-	*out = vp;
-
-	return 0;
-}
-
 /*
  *	Verify the result of the map.
  */
@@ -476,17 +438,27 @@ static int mod_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
 	return 0;
 }
 
-/** Executes a SELECT ns1sql query and maps the result to server attributes
+/** Executes a N1QL query and maps the result to server attributes.
  *
- * @param mod_inst 	#rlm_couchbase_t instance.
- * @param proc_inst 	Instance data for this specific mod_proc call (unused).
- * @param request 	The current request.
- * @param query 	string to execute.
- * @param maps 		Head of the map list (unused).
+ * @param instance   #rlm_couchbase_t instance.
+ * @param proc_inst  Instance data for this specific mod_proc call (unused).
+ * @param request    The current request.
+ * @param query      String to execute.
+ * @param maps       Head of the map list
+ *
+ * Example of use.
+ * @code{.unlang}
+ * map couchbase "SELECT field1,field2,field3 FROM 'bucketX' LIMIT 1" {
+ *   &control:Tmp-String-0 := 'field1'
+ *   &control:Tmp-String-1 := 'field2'
+ *   &control:Reply-Message := 'field3'
+ * }
+ * @endcode
+ *
  * @return
- *	- #RLM_MODULE_NOOP 	no rows were returned or columns matched.
- *	- #RLM_MODULE_UPDATED 	if one or more #VALUE_PAIR were added to the #REQUEST.
- *	- #RLM_MODULE_FAIL 	if a fault occurred.
+ *	- #RLM_MODULE_NOOP     no rows were returned or columns matched.
+ *	- #RLM_MODULE_UPDATED  if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_FAIL     if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(void *instance, UNUSED void *proc_inst, REQUEST *request,
 				 fr_value_box_t **query, vp_map_t const *maps)
@@ -495,11 +467,12 @@ static rlm_rcode_t mod_map_proc(void *instance, UNUSED void *proc_inst, REQUEST 
 	rlm_couchbase_handle_t *handle;         /* connection pool handle */
 	rlm_rcode_t rcode = RLM_MODULE_UPDATED; /* return code */
 	vp_map_t const	*map;
-	json_object *j_value;
 	lcb_t cb_inst;
 	lcb_error_t cb_error;
 	cookie_t *cookie = NULL;
-	char const	*query_str;
+	fr_cursor_t	vlms;
+	vp_list_mod_t	*vlm_head = NULL, *vlm;
+	TALLOC_CTX	*pool = NULL;
 
 	if (!*query) {
 		REDEBUG("Query cannot be (null)");
@@ -511,8 +484,6 @@ static rlm_rcode_t mod_map_proc(void *instance, UNUSED void *proc_inst, REQUEST 
 		return RLM_MODULE_FAIL;
 	}
 
-	query_str = (*query)->vb_strvalue;
-
 	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
 		rcode = RLM_MODULE_FAIL;
@@ -523,78 +494,119 @@ static rlm_rcode_t mod_map_proc(void *instance, UNUSED void *proc_inst, REQUEST 
 	cb_inst = handle->handle;
 
 	/* query N1QL */
-	cb_error = couchbase_query_n1ql(cb_inst, cookie, query_str);
+	cb_error = couchbase_query_n1ql(cb_inst, cookie, (*query)->vb_strvalue);
 	if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success || !cookie->jobj) {
-		ERROR("Problems to execute the N1QL query: %s", query_str);
+		ERROR("Problems to execute the N1QL query: %s", (*query)->vb_strvalue);
 		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	/* check for valid row value */
+	if (!fr_json_object_is_type(cookie->jobj, json_type_object) || json_object_object_length(cookie->jobj) < 1) {
+		ERROR("No valid rows returned from N1QL query: %s", (*query)->vb_strvalue);
+		rcode = RLM_MODULE_NOOP;
 		goto finish;
 	}
 
 	/* debugging */
 	DEBUG4("cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
 
-	/* check for valid row value */
-	if (!fr_json_object_is_type(cookie->jobj, json_type_object) || json_object_object_length(cookie->jobj) < 1) {
-		ERROR("no valid rows returned from N1QL query: %s", query_str);
-		rcode = RLM_MODULE_NOOP;
-		goto finish;
-	}
+	pool = talloc_pool(request, 1024);	/* We need to do lots of allocs */
 
-	RINDENT();
-
+	/*
+	 *	Convert maps/rhs using JSON object
+	 */
+	fr_cursor_init(&vlms, &vlm_head);
 	for (map = maps; map != NULL; map = map->next) {
-		char *field_name = NULL;
-		char field_value[MAX_KEY_SIZE];
-		const char *op = fr_int2str(fr_tokens_table, map->op, NULL);
+		const char *rhs_value = NULL;
+		json_object *j_value = NULL;
+		fr_dict_attr_t const *da = map->lhs->data.attribute.da;
+		fr_value_box_t rhs_result = {
+			.type = FR_TYPE_INVALID
+		};
 
 		/*
 		 *	Avoid memory allocations if possible.
 		 */
 		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
-			if (tmpl_aexpand(request, &field_name, request, map->rhs, NULL, NULL) < 0) {
+			if (tmpl_aexpand(request, &rhs_value, request, map->rhs, NULL, NULL) < 0) {
 				REDEBUG("Failed expanding RHS at %s", map->lhs->name);
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
 		} else {
-			memcpy(&field_name, &map->rhs->name, sizeof(field_name)); /* const */
+			memcpy(&rhs_value, &map->rhs->name, sizeof(rhs_value)); /* const */
 		}
 
-		/* debugging */
-		DEBUG4("Looking up for %s %s %s", map->lhs->name, op, field_name);
-
-		if (field_name != map->rhs->name) talloc_free(field_name);
-
-		/* get value of key */
-		memset(field_value, 0, sizeof(field_value));
-
-		if (json_object_object_get_ex(cookie->jobj, field_name, &j_value)) {
-			if (strlcpy(field_value, json_object_get_string(j_value), sizeof(field_value)) >= sizeof(field_value)) {
-				ERROR("key from row longer than MAX_KEY_SIZE (%d)",
-				      MAX_KEY_SIZE);
-				continue;
+		if (map->lhs->type != TMPL_TYPE_UNPARSED) {
+			if (tmpl_aexpand(request, &rhs_value, request, map->rhs, NULL, NULL) < 0) {
+				REDEBUG("Failed expanding RHS at %s", map->lhs->name);
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
 			}
 		}
 
-		if (!field_value[0]) {
-			WARN("failed to fetch the value of key '%s' from row - skipping", field_name);
+		/* debugging */
+		DEBUG4("Looking up for %s %s \"%s\"", map->lhs->name, fr_token_name(map->op), rhs_value);
+
+		/* check the jSON field */
+		if (!json_object_object_get_ex(cookie->jobj, rhs_value, &j_value)) {
+			WARN("The key '%s' not found", rhs_value);
 			continue;
 		}
 
+		/* Update the RHS with the jSON payload['$RHS'] value */
+		if (fr_json_object_to_value_box(pool, &rhs_result, j_value, da, true) < 0) {
+			RPERROR("Failed parsing value for \"%s\"", json_object_get_string(j_value));
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+		}
+
+		/* Cast the*/
+		if (fr_value_box_cast_in_place(pool, &rhs_result, da->type, da) < 0) {
+			fr_value_box_clear(&rhs_result);
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+		}
+
 		/*
-		 *	Pass the raw data to the callback, which will
-		 *	create the VP and add it to the map.
+		 *	Convert all the maps into list modifications,
+		 *	which are guaranteed to succeed.
 		 */
-		if (map_to_request(request, map, _cb_map_proc_get_value, field_value) < 0) {
-			REXDENT();
+		if (map_to_list_mod(pool, &vlm, request, map, NULL, (fr_value_box_t **)&rhs_result) < 0) {
+			RPERROR("Failed converting from map to list with \"%s\"", json_object_get_string(j_value));
+			fr_value_box_clear(&rhs_result);
+			continue;
+		}
+
+		fr_cursor_insert(&vlms, vlm);
+		fr_value_box_clear(&rhs_result);
+	}
+
+	if (!vlm_head) {
+		RDEBUG2("Nothing to update");
+		rcode = RLM_MODULE_NOOP;
+		goto finish;
+	}
+
+	/*
+	 *	Apply the list of modifications
+	 */
+	for (vlm = fr_cursor_head(&vlms);
+	     vlm;
+	     vlm = fr_cursor_next(&vlms)) {
+		int ret;
+
+		ret = map_list_mod_apply(request, vlm);	/* SHOULD NOT FAIL */
+		if (!fr_cond_assert(ret == 0)) {
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
 	}
 
-	REXDENT();
-
 finish:
+
+	TALLOC_FREE(pool);
 
 	/* free cookie object */
 	if (cookie->jobj) {
@@ -602,7 +614,8 @@ finish:
 		cookie->jobj = NULL;
 	}
 
-	fr_pool_connection_release(inst->pool, request, handle);
+	/* release handle */
+	if (handle) fr_pool_connection_release(inst->pool, request, handle);
 
 	return rcode;
 }
