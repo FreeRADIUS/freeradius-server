@@ -93,7 +93,9 @@ Requires: freeradius-config = %{version}-%{release}
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
 Requires: freeradius-openssl
 %else
-Requires: openssl
+# Need openssl-perl for c_rehash, which is used when
+# generating certificates
+Requires: openssl, openssl-perl
 %endif
 
 Requires: libpcap
