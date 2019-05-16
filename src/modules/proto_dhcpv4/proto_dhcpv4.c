@@ -135,7 +135,6 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	char const		*name = NULL;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
-	size_t			i;
 
 	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
@@ -152,21 +151,12 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	cf_data_add(ci, type_enum, NULL, false);
 
 	code = type_enum->value->vb_uint32;
-	if (!code || (code >= FR_DHCP_MAX)) {
+	if (!code || (code >= (sizeof(type_lib_table) / sizeof(*type_lib_table)))) {
 		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
 		return -1;
 	}
 
-	if (!type_lib_table[code]) {
-		cf_log_err(ci, "Cannot listen for unsupported 'type = %s'", type_str);
-		return -1;
-	}
-
-	for (i = 0; i < (sizeof(type_lib_table) / sizeof(*type_lib_table)); i++) {
-		name = type_lib_table[i];
-		if (name) break;
-	}
-
+	name = type_lib_table[code];
 	if (!name) {
 		cf_log_err(ci, "Cannot listen for unsupported 'type = %s'", type_str);
 		return -1;
