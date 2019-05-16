@@ -54,5 +54,9 @@ function run-tests() {
         if [ "${DO_BUILD}" = 'no' ]; then cd doc/source; doxygen 3>&1 1>&2 2>&3 | grep -iv '^warning:' | tee doxygen_stderr.log && [ ! -n "$(cat doxygen_stderr.log)" ]; fi
 }
 
+if ! test -e /tmp/initialized ; then
+    startservices
+fi
+
 run-tests
 
