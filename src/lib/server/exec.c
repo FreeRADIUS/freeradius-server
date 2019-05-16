@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/timeval.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 

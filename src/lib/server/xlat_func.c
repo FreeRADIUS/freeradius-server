@@ -1443,6 +1443,7 @@ EVP_MD_XLAT(sha3_256, sha3_256)
 EVP_MD_XLAT(sha3_384, sha3_384)
 EVP_MD_XLAT(sha3_512, sha3_512)
 #  endif
+#endif
 
 typedef enum {
 	HMAC_MD5,

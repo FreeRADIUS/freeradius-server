@@ -51,6 +51,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/timeval.h>
 
 #include <assert.h>
 #include <ctype.h>

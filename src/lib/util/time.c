@@ -144,7 +144,7 @@ void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
 
 /** Convert a fr_time_t to a struct timeval.
  *
- * @param[out] tv the timeval to update
+ * @param[out] ts the timeval to update
  * @param[in] when the fr_time_t
  */
 void fr_time_to_timespec(struct timespec *ts, fr_time_t when)
