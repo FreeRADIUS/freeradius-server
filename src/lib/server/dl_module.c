@@ -483,7 +483,7 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 	 */
 	dl_inst->module = dl_module(conf, parent ? parent->module : NULL, name, type);
 	if (!dl_inst->module) {
-		talloc_free(dl_module_inst);
+		talloc_free(dl_inst);
 		return -1;
 	}
 
@@ -505,7 +505,7 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 		    (cf_section_parse(dl_inst->data, dl_inst->data, conf) < 0)) {
 			cf_log_err(conf, "Failed evaluating configuration for module \"%s\"",
 				   dl_inst->module->dl->name);
-			talloc_free(dl_module_inst);
+			talloc_free(dl_inst);
 			return -1;
 		}
 	}
