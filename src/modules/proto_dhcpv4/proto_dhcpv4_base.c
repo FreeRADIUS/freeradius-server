@@ -49,7 +49,7 @@ fr_dict_attr_autoload_t proto_dhcpv4_base_dict_attr[] = {
 	{ NULL }
 };
 
-static int reply_ok[FR_DHCP_INFORM + 1] = {
+static int reply_ok[] = {
 	[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
 	[FR_DHCP_DISCOVER]	= FR_DHCP_OFFER,
 	[FR_DHCP_OFFER]		= FR_DHCP_OFFER,
@@ -59,9 +59,10 @@ static int reply_ok[FR_DHCP_INFORM + 1] = {
 	[FR_DHCP_NAK]		= FR_DHCP_NAK,
 	[FR_DHCP_RELEASE]	= 0,
 	[FR_DHCP_INFORM]	= FR_DHCP_ACK,
+	[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_ACTIVE, /* not really correct, but whatever */
 };
 
-static int reply_fail[FR_DHCP_INFORM + 1] = {
+static int reply_fail[] = {
 	[0]			= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
 	[FR_DHCP_DISCOVER]	= 0,
 	[FR_DHCP_OFFER]		= FR_DHCP_NAK,
@@ -71,6 +72,7 @@ static int reply_fail[FR_DHCP_INFORM + 1] = {
 	[FR_DHCP_NAK]		= FR_DHCP_NAK,
 	[FR_DHCP_RELEASE]	= 0,
 	[FR_DHCP_INFORM]	= FR_DHCP_MESSAGE_TYPE_VALUE_DHCP_DO_NOT_RESPOND,
+	[FR_DHCP_LEASE_QUERY]	= FR_DHCP_LEASE_UNKNOWN,
 };
 
 
@@ -87,7 +89,6 @@ static void dhcpv4_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
-
 
 	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s XID %08x from %s%s%s:%i to %s%s%s:%i "
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
@@ -129,7 +130,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 
 	REQUEST_VERIFY(request);
 	rad_assert(request->packet->code > 0);
-	rad_assert(request->packet->code <= FR_DHCP_INFORM);
+	rad_assert(request->packet->code <= FR_DHCP_LEASE_QUERY);
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
