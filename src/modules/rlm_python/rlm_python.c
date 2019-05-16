@@ -229,7 +229,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 	int	     	tuplesize;
 	vp_tmpl_t       *dst;
 	VALUE_PAIR      *vp;
-	REQUEST         *current = request;
+	REQUEST	*current = request;
 
 	/*
 	 *	If the Python function gave us None for the tuple,
@@ -940,11 +940,19 @@ static int mod_detach(void *instance)
 	int	     ret;
 
 	/*
+	 *      If we don't have a sub_interpreter
+	 *      we didn't get far enough into
+	 *      instantiation to generate things
+	 *      we need to clean up...
+	 */
+	if (!inst->sub_interpreter) return 0;
+
+	/*
 	 *	Call module destructor
 	 */
 	PyEval_RestoreThread(inst->sub_interpreter);
 
-	ret = do_python_single(NULL, inst->detach.function, "detach");
+	if (inst->detach.function) ret = do_python_single(NULL, inst->detach.function, "detach");
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
