@@ -375,30 +375,31 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
  */
 static int _dl_module_instance_free(dl_module_inst_t *dl_module_inst)
 {
-	if (dl_module_inst->module) {
-		if (dl_module_inst->module->common->detach) {
-			dl_module_inst->module->common->detach(dl_module_inst->data);
-		}
+        if (dl_module_inst->module->common->detach) {
+                dl_module_inst->module->common->detach(dl_module_inst->data);
+        }
 
-		/*
-		 *	Remove this instance from the tracking tree.
-		 */
-		rad_assert(dl_module_loader != NULL);
-		rbtree_deletebydata(dl_module_loader->inst_tree, dl_module_inst);
+        /*
+         *	Remove this instance from the tracking tree.
+         */
+        rad_assert(dl_module_loader != NULL);
+        rbtree_deletebydata(dl_module_loader->inst_tree, dl_module_inst);
 
-		/*
-		 *	Decrements the reference count. The module object
-		 *	won't be unloaded until all instances of that module
-		 *	have been destroyed.
-		 */
-		talloc_decrease_ref_count(dl_module_inst->module);
-	}
+        /*
+         *	Ensure sane free order, and that all destructors
+         *	run before the .so/.dylib is unloaded.
+         *
+         *      This *MUST* be done *BEFORE* decrementing the
+         *      reference count on the module.
+         */
+        talloc_free_children(dl_module_inst);
 
-	/*
-	 *	Ensure sane free order, and that all destructors
-	 *	run before the .so/.dylib is unloaded.
-	 */
-	talloc_free_children(dl_module_inst);
+        /*
+         *	Decrements the reference count. The module object
+         *	won't be unloaded until all instances of that module
+         *	have been destroyed.
+         */
+        talloc_decrease_ref_count(dl_module_inst->module);
 
 	return 0;
 }
