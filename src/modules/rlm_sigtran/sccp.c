@@ -188,13 +188,6 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 		ERROR("Failed inserting transaction, maybe at txn limit?");
 
 		msgb_free(msg);
-
-		txn->response.type = SIGTRAN_RESPONSE_FAIL;
-
-		if (sigtran_event_submit(ofd, txn) < 0) {
-			ERROR("Failed informing event client of result: %s", fr_syserror(errno));
-			return -1;
-		}
 		return -1;
 	}
 
