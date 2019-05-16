@@ -69,6 +69,11 @@ RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 
 	done
 
 #
+#  Which is required by fixture setup utilities
+#
+RUN yum install -y which
+
+#
 #  Explicitly install libnl3-devel which is required for the EAP tests
 #
 RUN yum install -y libnl3-devel
