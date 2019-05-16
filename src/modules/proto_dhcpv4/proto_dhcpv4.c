@@ -124,7 +124,6 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 		[FR_DHCP_RELEASE]	= "base",
 		[FR_DHCP_INFORM]	= "base",
 		[FR_DHCP_LEASE_QUERY]	= "base",
-		[FR_DHCP_MAX]		= NULL,
 	};
 
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
