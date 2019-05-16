@@ -1432,13 +1432,17 @@ EVP_MD_XLAT(sha2_256, sha256)
 EVP_MD_XLAT(sha2_384, sha384)
 EVP_MD_XLAT(sha2_512, sha512)
 
-#  ifdef HAVE_EVP_SHA3_512
+#  if OPENSSL_VERSION_NUMBER >= 0x10100000L
+EVP_MD_XLAT(blake2s_256, blake2s256)
+EVP_MD_XLAT(blake2b_512, blake2b512)
+#  endif
+
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 EVP_MD_XLAT(sha3_224, sha3_224)
 EVP_MD_XLAT(sha3_256, sha3_256)
 EVP_MD_XLAT(sha3_384, sha3_384)
 EVP_MD_XLAT(sha3_512, sha3_512)
 #  endif
-#endif
 
 typedef enum {
 	HMAC_MD5,
