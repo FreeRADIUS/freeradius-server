@@ -394,10 +394,10 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
  *
  * Also decrements the reference count of the module potentially unloading it.
  *
- * @param[in] dl_module_inst to free.
+ * @param[in] dl_inst to free.
  * @return 0.
  */
-static int _dl_module_instance_free(dl_module_inst_t *dl_module_inst)
+static int _dl_module_instance_free(dl_module_inst_t *dl_inst)
 {
         /*
          *	Ensure sane free order, and that all destructors
@@ -411,20 +411,20 @@ static int _dl_module_instance_free(dl_module_inst_t *dl_module_inst)
          *      can find the dl_module_inst_t associated with
          *      the opaque data.
          */
-        talloc_free_children(dl_module_inst);
+        talloc_free_children(dl_inst);
 
         /*
          *	Remove this instance from the tracking tree.
          */
         rad_assert(dl_module_loader != NULL);
-        rbtree_deletebydata(dl_module_loader->inst_data_tree, dl_module_inst);
+        rbtree_deletebydata(dl_module_loader->inst_data_tree, dl_inst);
 
         /*
          *	Decrements the reference count. The module object
          *	won't be unloaded until all instances of that module
          *	have been destroyed.
          */
-        talloc_decrease_ref_count(dl_module_inst->module);
+        talloc_decrease_ref_count(dl_inst->module);
 
 	return 0;
 }
@@ -440,11 +440,11 @@ static int _dl_module_instance_free(dl_module_inst_t *dl_module_inst)
  *	- Pointer to the public data structure.
  * 	- NULL if no matching symbol was found.
  */
-void *dl_module_instance_symbol(dl_module_inst_t const *dl_module_inst, char const *sym_name)
+void *dl_module_instance_symbol(dl_module_inst_t const *dl_inst, char const *sym_name)
 {
 	if (!sym_name) return NULL;
 
- 	return dlsym(dl_module_inst->module->dl->handle, sym_name);
+ 	return dlsym(dl_inst->module->dl->handle, sym_name);
 }
 
 /** Load a module and parse its #CONF_SECTION in one operation
@@ -471,18 +471,18 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 		       CONF_SECTION *conf, dl_module_inst_t const *parent,
 		       char const *name, dl_module_type_t type)
 {
-	dl_module_inst_t	*dl_module_inst;
+	dl_module_inst_t	*dl_inst;
 	char const		*name2;
 
 	DL_INIT_CHECK;
 
-	MEM(dl_module_inst = talloc_zero(ctx, dl_module_inst_t));
+	MEM(dl_inst = talloc_zero(ctx, dl_module_inst_t));
 
 	/*
 	 *	Find a section with the same name as the module
 	 */
-	dl_module_inst->module = dl_module(conf, parent ? parent->module : NULL, name, type);
-	if (!dl_module_inst->module) {
+	dl_inst->module = dl_module(conf, parent ? parent->module : NULL, name, type);
+	if (!dl_inst->module) {
 		talloc_free(dl_module_inst);
 		return -1;
 	}
@@ -490,21 +490,21 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 	/*
 	 *	ctx here is the main module's instance data
 	 */
-	dl_module_instance_data_alloc(dl_module_inst, dl_module_inst->module);
+	dl_module_instance_data_alloc(dl_inst, dl_inst->module);
 
-	talloc_set_destructor(dl_module_inst, _dl_module_instance_free);
+	talloc_set_destructor(dl_inst, _dl_module_instance_free);
 
 	/*
 	 *	Associate the module instance with the conf section
 	 *	*before* executing any parse rules that might need it.
 	 */
-	cf_data_add(conf, dl_module_inst, dl_module_inst->module->dl->name, false);
+	cf_data_add(conf, dl_inst, dl_inst->module->dl->name, false);
 
-	if (dl_module_inst->module->common->config && conf) {
-		if ((cf_section_rules_push(conf, dl_module_inst->module->common->config)) < 0 ||
-		    (cf_section_parse(dl_module_inst->data, dl_module_inst->data, conf) < 0)) {
+	if (dl_inst->module->common->config && conf) {
+		if ((cf_section_rules_push(conf, dl_inst->module->common->config)) < 0 ||
+		    (cf_section_parse(dl_inst->data, dl_inst->data, conf) < 0)) {
 			cf_log_err(conf, "Failed evaluating configuration for module \"%s\"",
-				   dl_module_inst->module->dl->name);
+				   dl_inst->module->dl->name);
 			talloc_free(dl_module_inst);
 			return -1;
 		}
@@ -512,15 +512,15 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 
 	name2 = cf_section_name2(conf);
 	if (name2) {
-		dl_module_inst->name = talloc_typed_strdup(dl_module_inst, name2);
+		dl_inst->name = talloc_typed_strdup(dl_inst, name2);
 	} else {
-		dl_module_inst->name = talloc_typed_strdup(dl_module_inst, cf_section_name1(conf));
+		dl_inst->name = talloc_typed_strdup(dl_inst, cf_section_name1(conf));
 	}
 
-	dl_module_inst->conf = conf;
-	dl_module_inst->parent = parent;
+	dl_inst->conf = conf;
+	dl_inst->parent = parent;
 
-	*out = dl_module_inst;
+	*out = dl_inst;
 
 	return 0;
 }
