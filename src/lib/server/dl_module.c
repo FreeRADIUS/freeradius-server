@@ -46,7 +46,6 @@ RCSID("$Id$")
  */
 struct dl_module_loader_s {
 	rbtree_t	*module_tree;
-	rbtree_t	*inst_tree;
 	rbtree_t	*inst_data_tree;
 	dl_loader_t	*dl_loader;
 };
@@ -62,7 +61,7 @@ static FR_NAME_NUMBER const dl_module_type_prefix[] = {
 	{  NULL , -1 },
 };
 
-static int dl_module_instance_cmp(void const *one, void const *two)
+static int dl_module_inst_data_cmp(void const *one, void const *two)
 {
 	dl_module_inst_t const *a = one, *b = two;
 
@@ -183,7 +182,7 @@ dl_module_inst_t const *dl_module_instance_by_data(void const *data)
 
 	memcpy(&mutable, &data, sizeof(mutable));
 
-	return rbtree_finddata(dl_module_loader->inst_tree, &(dl_module_inst_t){ .data = mutable });
+	return rbtree_finddata(dl_module_loader->inst_data_tree, &(dl_module_inst_t){ .data = mutable });
 }
 
 /** A convenience function for returning a parent's private data
@@ -207,17 +206,31 @@ void *dl_module_parent_data_by_child_data(void const *data)
 	return dl_inst->parent->data;
 }
 
+static int _dl_module_instance_data_free(void *data)
+{
+        dl_module_inst_t const *dl_inst = dl_module_instance_by_data(data);
+
+        if (!dl_inst) {
+                ERROR("Failed resolving data %p, to dl_module_inst_t, refusing to free", data);
+                return -1;
+        }
+
+        if (dl_inst->module->common->detach) dl_inst->module->common->detach(dl_inst->data);
+
+        return 0;
+}
+
 /** Allocate module instance data, and parse the module's configuration
  *
- * @param[in] ctx	to allocate this instance data in.
- * @param[out] data	Module's private data, the result of parsing the config.
+ * @param[in] dl_inst	to allocate this instance data in.
  * @param[in] module	to alloc instance data for.
  */
-static void dl_module_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_module_t const *module)
+static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t const *module)
 {
+        void *data;
+
 	/*
 	 *	If there is supposed to be instance data, allocate it now.
-	 *	Also parse the configuration data, if required.
 	 *
 	 *      If the structure is zero length then allocation will still
 	 *	succeed, and will create a talloc chunk header.
@@ -225,13 +238,24 @@ static void dl_module_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_modul
 	 *      This is needed so we can resolve instance data back to
 	 *	dl_module_instance_t/dl_module_t/dl_t.
 	 */
-	MEM(*data = talloc_zero_array(ctx, uint8_t, module->common->inst_size));
+	MEM(data = talloc_zero_array(dl_inst, uint8_t, module->common->inst_size));
 
 	if (!module->common->inst_type) {
-		talloc_set_name(*data, "%s_t", module->dl->name ? module->dl->name : "config");
+		talloc_set_name(data, "%s_t", module->dl->name ? module->dl->name : "config");
 	} else {
-		talloc_set_name(*data, "%s", module->common->inst_type);
+		talloc_set_name(data, "%s", module->common->inst_type);
 	}
+	dl_inst->data = data;
+
+        /*
+         *      Must be done before setting the destructor to ensure the
+         *      destructor can find the dl_module_inst_t associated
+         *      with the data.
+         */
+	rad_assert(dl_module_loader != NULL);
+	rbtree_insert(dl_module_loader->inst_data_tree, dl_inst);	/* Duplicates not possible */
+
+	talloc_set_destructor(data, _dl_module_instance_data_free);
 }
 
 /** Decrement the reference count of the dl, eventually freeing it
@@ -375,24 +399,25 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
  */
 static int _dl_module_instance_free(dl_module_inst_t *dl_module_inst)
 {
-        if (dl_module_inst->module->common->detach) {
-                dl_module_inst->module->common->detach(dl_module_inst->data);
-        }
-
-        /*
-         *	Remove this instance from the tracking tree.
-         */
-        rad_assert(dl_module_loader != NULL);
-        rbtree_deletebydata(dl_module_loader->inst_tree, dl_module_inst);
-
         /*
          *	Ensure sane free order, and that all destructors
          *	run before the .so/.dylib is unloaded.
          *
          *      This *MUST* be done *BEFORE* decrementing the
          *      reference count on the module.
+         *
+         *      It also *MUST* be done before removing this struct
+         *      from the inst_data_tree, so the detach destructor
+         *      can find the dl_module_inst_t associated with
+         *      the opaque data.
          */
         talloc_free_children(dl_module_inst);
+
+        /*
+         *	Remove this instance from the tracking tree.
+         */
+        rad_assert(dl_module_loader != NULL);
+        rbtree_deletebydata(dl_module_loader->inst_data_tree, dl_module_inst);
 
         /*
          *	Decrements the reference count. The module object
@@ -465,7 +490,7 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 	/*
 	 *	ctx here is the main module's instance data
 	 */
-	dl_module_instance_data_alloc(dl_module_inst, &dl_module_inst->data, dl_module_inst->module);
+	dl_module_instance_data_alloc(dl_module_inst, dl_module_inst->module);
 
 	talloc_set_destructor(dl_module_inst, _dl_module_instance_free);
 
@@ -495,9 +520,6 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 	dl_module_inst->conf = conf;
 	dl_module_inst->parent = parent;
 
-	rad_assert(dl_module_loader != NULL);
-	rbtree_insert(dl_module_loader->inst_tree, dl_module_inst);	/* Duplicates not possible */
-
 	*out = dl_module_inst;
 
 	return 0;
@@ -518,11 +540,11 @@ static int _dl_module_loader_free(dl_module_loader_t *dl_module_l)
 {
 	int ret = 0;
 
-	if (rbtree_num_elements(dl_module_l->inst_tree) > 0) {
+	if (rbtree_num_elements(dl_module_l->inst_data_tree) > 0) {
 		ret = -1;
 #ifndef NDEBUG
 		WARN("Refusing to cleanup dl loader, the following module instances are still in use:");
-		rbtree_walk(dl_module_l->inst_tree, RBTREE_IN_ORDER, _dl_inst_walk_print, NULL);
+		rbtree_walk(dl_module_l->inst_data_tree, RBTREE_IN_ORDER, _dl_inst_walk_print, NULL);
 #endif
 		goto finish;
 	}
@@ -578,16 +600,16 @@ dl_module_loader_t *dl_module_loader_init(TALLOC_CTX *ctx, char const *lib_dir)
 		return NULL;
 	}
 
-	dl_module_loader->inst_tree = rbtree_talloc_create(dl_module_loader,
-							   dl_module_instance_cmp, dl_module_inst_t, NULL, 0);
-	if (!dl_module_loader->inst_tree) {
-		ERROR("Failed initialising dl->inst_tree");
+	dl_module_loader->inst_data_tree = rbtree_talloc_create(dl_module_loader,
+							        dl_module_inst_data_cmp, dl_module_inst_t, NULL, 0);
+	if (!dl_module_loader->inst_data_tree) {
+		ERROR("Failed initialising dl->inst_data_tree");
 		goto error;
 	}
 
 	dl_module_loader->module_tree = rbtree_talloc_create(dl_module_loader,
 							     dl_module_cmp, dl_module_t, NULL, 0);
-	if (!dl_module_loader->inst_tree) {
+	if (!dl_module_loader->inst_data_tree) {
 		ERROR("Failed initialising dl->module_tree");
 		goto error;
 	}
