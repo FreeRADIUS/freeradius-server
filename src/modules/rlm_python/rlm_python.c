@@ -937,7 +937,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static int mod_detach(void *instance)
 {
 	rlm_python_t *inst = instance;
-	int	     ret;
+	int	     ret = 0;
 
 	/*
 	 *      If we don't have a sub_interpreter
