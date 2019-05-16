@@ -31,5 +31,32 @@ ExecStart=/usr/sbin/radiusd $FREERADIUS_OPTIONS
 Restart=on-failure
 RestartSec=5
 
+#  Don't elevate privileges after starting
+NoNewPrivileges=true
+
+# Allow binding to secure ports, broadcast addresses, and raw interfaces.
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW
+
+# Private /tmp that isn't shared by other processes
+PrivateTmp=true
+
+# cgroups are readable only by radiusd, and child processes
+ProtectControlGroups=true
+
+# don't load new kernel modules
+ProtectKernelModules=true
+
+# don't tune kernel parameters
+ProtectKernelTunables=true
+
+# Only allow native system calls
+SystemCallArchitectures=native
+
+# We shouldn't be writing to the configuration directory
+ReadOnlyDirectories=/etc/raddb/
+
+# We can read and write to the log directory.
+ReadWriteDirectories=/var/log/radius/
+
 [Install]
 WantedBy=multi-user.target
