@@ -434,7 +434,7 @@ static int _dl_module_instance_free(dl_module_inst_t *dl_inst)
  * Convenience function to lookup/return public symbols from modules loaded
  * with #dl_module_instance.
  *
- * @param[in] dl_module_inst	Instance who's module we're looking for the symbol in.
+ * @param[in] dl_inst   	Instance who's module we're looking for the symbol in.
  * @param[in] sym_name		to lookup.
  * @return
  *	- Pointer to the public data structure.
