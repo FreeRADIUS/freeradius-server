@@ -263,7 +263,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 *	This isn't available in the packet header.
 		 */
 		code = fr_dhcpv4_packet_get_option(packet, buffer_len, attr_message_type);
-		if (!code || (code[1] < 1) || (code[2] == 0) || (code[2] >= FR_DHCP_INFORM)) {
+		if (!code || (code[1] < 1) || (code[2] == 0) || (code[2] > FR_DHCP_LEASE_ACTIVE)) {
 			DEBUG("WARNING - silently discarding reply due to invalid or missing message type");
 			return 0;
 		}
