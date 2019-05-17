@@ -113,7 +113,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	int				flags;
 	ssize_t				data_size;
 	size_t				packet_len;
-	struct timeval			timestamp;
+	fr_time_t			timestamp;
 
 	fr_time_t			*recv_time_p;
 	uint32_t			id;
@@ -180,8 +180,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 		return 0;
 	}
 
-	// @todo - maybe convert timestamp?
-	*recv_time_p = fr_time();
+	*recv_time_p = timestamp;
 
 	/*
 	 *	proto_vmps sets the priority

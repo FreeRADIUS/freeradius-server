@@ -206,7 +206,7 @@ RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd)
 	packet->data = data;
 	packet->sockfd = sockfd;
 	packet->if_index = if_index;
-	packet->timestamp = when;
+	packet->timestamp = fr_time_from_timeval(&when);
 	return packet;
 }
 

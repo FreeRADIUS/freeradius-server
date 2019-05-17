@@ -96,7 +96,7 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 
 	if (strcmp(fmt, "request") == 0) {
 		return date_encode_strftime(out, outlen, inst, request,
-					    request->packet->timestamp.tv_sec);
+					    fr_time_to_sec(request->packet->timestamp));
 	}
 
 	if (strcmp(fmt, "now") == 0) {

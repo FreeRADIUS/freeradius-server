@@ -166,7 +166,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 
 	}
 
-	gettimeofday(&packet->timestamp, NULL);
+	packet->timestamp = fr_time();
 
 	return 1;		/* done reading the packet */
 }

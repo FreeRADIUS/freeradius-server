@@ -581,7 +581,7 @@ static fr_io_final_t mod_process(void const *instance, REQUEST *request)
 		}
 
 	send_reply:
-		gettimeofday(&request->reply->timestamp, NULL);
+		request->reply->timestamp = fr_time();
 
 		/*
 		 *	Save session-state list for Access-Challenge from a NAS.

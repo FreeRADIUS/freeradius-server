@@ -33,6 +33,7 @@ extern "C" {
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/time.h>
 
 #ifdef WITH_VERIFY_PTR
 #  define PACKET_VERIFY(_x)	(void) talloc_get_type_abort_const(_x, RADIUS_PACKET)
@@ -65,7 +66,7 @@ typedef struct {
 	uint8_t			vector[RADIUS_AUTH_VECTOR_LENGTH];//!< RADIUS authentication vector.
 
 	uint32_t       		count;			//!< Number of times we've seen this packet
-	struct timeval		timestamp;		//!< When we received the packet.
+	fr_time_t		timestamp;		//!< When we received the packet.
 	uint8_t			*data;			//!< Packet data (body).
 	size_t			data_len;		//!< Length of packet data.
 	VALUE_PAIR		*vps;			//!< Result of decoding the packet into VALUE_PAIRs.

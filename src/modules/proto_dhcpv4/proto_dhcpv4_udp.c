@@ -137,7 +137,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	int				flags;
 	ssize_t				data_size;
 	size_t				packet_len;
-	struct timeval			timestamp;
+	fr_time_t			timestamp;
 	uint8_t				message_type;
 	uint32_t			xid, ipaddr;
 	dhcp_packet_t			*packet;
@@ -197,7 +197,6 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 		return 0;
 	}
 
-	// @todo - maybe convert timestamp?
 	*recv_time_p = fr_time();
 
 	/*

@@ -84,7 +84,7 @@ static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *reque
 	/*
 	 *      If there's a request, use that timestamp.
 	 */
-	if (timestr_match(check->vp_strvalue, req ? req->packet->timestamp.tv_sec : time(NULL)) >= 0) return 0;
+	if (timestr_match(check->vp_strvalue, req ? fr_time_to_sec(req->packet->timestamp) : time(NULL)) >= 0) return 0;
 
 	return -1;
 }
@@ -101,13 +101,15 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 	int		hhmmss, when;
 	char const	*p;
 	struct tm	*tm, s_tm;
+	time_t		now;
 
 	if (strspn(check->vp_strvalue, "0123456789: ") != strlen(check->vp_strvalue)) {
 		RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
 		return -1;
 	}
 
-	tm = localtime_r(&request->packet->timestamp.tv_sec, &s_tm);
+	now = fr_time_to_sec(request->packet->timestamp);
+	tm = localtime_r(&now, &s_tm);
 	hhmmss = (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec;
 
 	/*
@@ -166,7 +168,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	/*
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
-	left = timestr_match(ends->vp_strvalue, request->packet->timestamp.tv_sec);
+	left = timestr_match(ends->vp_strvalue, fr_time_to_sec(request->packet->timestamp));
 	if (left < 0) return RLM_MODULE_USERLOCK; /* outside of the allowed time */
 
 	/*

@@ -1335,7 +1335,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		return;
 	}
 
-	current->timestamp = header->ts;
+	current->timestamp = fr_time_from_timeval(&header->ts);
 	current->data_len = header->caplen - (p - data);
 	memcpy(&current->data, &p, sizeof(current->data));
 
@@ -1724,7 +1724,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	Insert a callback to remove the request from the tree
 		 */
-		original->packet->timestamp = header->ts;
+		original->packet->timestamp = fr_time_from_timeval(&header->ts);
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
 		if (fr_event_timer_at(NULL, event->list, &original->event,
 				      fr_time_from_timeval(&original->when), _rs_event, original) < 0) {
@@ -1756,9 +1756,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	It's a linked response
 	 */
 	if (original && original->linked) {
-		fr_timeval_from_nsec(&latency,
-				     (fr_time_from_timeval(&current->timestamp) -
-				     fr_time_from_timeval(&original->packet->timestamp)));
+		fr_timeval_from_nsec(&latency, current->timestamp - original->packet->timestamp);
 
 		/*
 		 *	Update stats for both the request and response types.
@@ -1776,7 +1774,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	We're filtering on response, now print out the full data from the request
 		 */
 		if (conf->filter_response && RIDEBUG_ENABLED() && (conf->event_flags & RS_NORMAL)) {
-			struct timeval ts_tv = original->packet->timestamp;
+			struct timeval ts_tv;
+
+			fr_time_to_timeval(&ts_tv, original->packet->timestamp);
 
 			rs_time_print(timestr, sizeof(timestr), &ts_tv);
 			fr_timeval_subtract(&elapsed, &ts_tv, &start_pcap);

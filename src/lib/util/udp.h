@@ -33,6 +33,7 @@ extern "C" {
 #  include <freeradius-devel/util/udpfromto.h>
 #endif
 #include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/util/time.h>
 
 #define UDP_FLAGS_NONE		(0)
 #define UDP_FLAGS_CONNECTED	(1 << 0)
@@ -49,7 +50,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
 ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, int *if_index,
-		 struct timeval *when);
+		 fr_time_t *when);
 
 #ifdef __cplusplus
 }

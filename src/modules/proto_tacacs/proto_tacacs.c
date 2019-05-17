@@ -434,7 +434,7 @@ setup_send:
 		rad_assert(request->log.unlang_indent == 0);
 
 send_reply:
-		gettimeofday(&request->reply->timestamp, NULL);
+		request->reply->timestamp = fr_time();
 
 		if (tacacs_type(request->packet) == TAC_PLUS_AUTHEN) {
 			vp = fr_pair_find_by_da(request->reply->vps, attr_tacacs_authentication_status, TAG_ANY);

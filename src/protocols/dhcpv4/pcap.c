@@ -220,7 +220,7 @@ RADIUS_PACKET *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	packet->dst_ipaddr = dst_ipaddr;
 
 	packet->data = talloc_memdup(packet, p, packet->data_len);
-	packet->timestamp = header->ts;
+	packet->timestamp = fr_time_from_timeval(&header->ts);
 	packet->if_index = pcap->if_index;
 	return packet;
 }

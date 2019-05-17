@@ -1419,7 +1419,8 @@ void fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn)
 	    	pool->state.last_held_max = this->last_released.tv_sec;
 	}
 
-	fr_stats_bins(&pool->state.held_stats, &this->last_reserved, &this->last_released);
+	fr_stats_bins(&pool->state.held_stats,
+		      fr_time_from_timeval(&this->last_reserved), fr_time_from_timeval(&this->last_released));
 
 	/*
 	 *	Insert the connection in the heap.

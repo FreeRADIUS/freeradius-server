@@ -117,7 +117,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 	int				flags;
 	ssize_t				data_size;
 	size_t				packet_len;
-	struct timeval			timestamp;
+	fr_time_t			timestamp;
 	decode_fail_t			reason;
 
 	fr_time_t			*recv_time_p;
@@ -183,8 +183,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t **recv_tim
 		return 0;
 	}
 
-	// @todo - maybe convert timestamp?
-	*recv_time_p = fr_time();
+	*recv_time_p = timestamp;
 
 	/*
 	 *	proto_radius sets the priority
@@ -394,7 +393,7 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 					     &thread->connection->src_ipaddr, thread->connection->src_port,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
-	
+
 	return 0;
 }
 

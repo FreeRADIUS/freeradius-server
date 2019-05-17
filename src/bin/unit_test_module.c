@@ -176,7 +176,6 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	VALUE_PAIR	*vp;
 	REQUEST		*request;
 	fr_cursor_t	cursor;
-	struct timeval	now;
 
 	static int	number = 0;
 
@@ -184,7 +183,6 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	 *	Create and initialize the new request.
 	 */
 	request = request_alloc(ctx);
-	gettimeofday(&now, NULL);
 
 	/*
 	 *	FIXME - Should be less RADIUS centric, but everything
@@ -203,7 +201,7 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 		talloc_free(request);
 		return NULL;
 	}
-	request->packet->timestamp = now;
+	request->packet->timestamp = fr_time();
 
 	request->reply = fr_radius_alloc(request, false);
 	if (!request->reply) {

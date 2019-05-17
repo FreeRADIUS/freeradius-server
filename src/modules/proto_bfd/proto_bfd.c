@@ -96,9 +96,9 @@ typedef struct {
 
 	fr_event_timer_t const	*ev_timeout;
 	fr_event_timer_t const	*ev_packet;
-	struct timeval	last_recv;
-	struct timeval	next_recv;
-	struct timeval	last_sent;
+	fr_time_t	last_recv;
+	fr_time_t	next_recv;
+	fr_time_t	last_sent;
 
 	bfd_session_state_t session_state;
 	bfd_session_state_t remote_session_state;
@@ -894,16 +894,16 @@ static void bfd_send_packet(UNUSED fr_event_list_t *eel, UNUSED fr_time_t now, v
 
 static int bfd_start_packets(bfd_state_t *session)
 {
-	uint32_t interval, base;
-	uint64_t jitter;
-	struct timeval now;
+	uint32_t	interval, base;
+	uint64_t	jitter;
+	fr_time_t	now;
 
 	/*
 	 *	Reset the timers.
 	 */
 	fr_event_timer_delete(session->el, &session->ev_packet);
 
-	gettimeofday(&session->last_sent, NULL);
+	session->last_sent = fr_time();
 	now = session->last_sent;
 
 	if (session->desired_min_tx_interval >= session->remote_min_rx_interval) {
@@ -927,17 +927,9 @@ static int bfd_start_packets(bfd_state_t *session)
 	interval = base;
 	interval += jitter;
 
-	if (interval >= USEC) {
-		now.tv_sec += interval / USEC;
-	}
-	now.tv_usec += interval % USEC;
-	if (now.tv_usec >= USEC) {
-		now.tv_sec++;
-		now.tv_usec -= USEC;
-	}
-
-	if (fr_event_timer_insert(session, session->el, &session->ev_packet,
-				  &now, bfd_send_packet, session) < 0) {
+	if (fr_event_timer_in(session, session->el, &session->ev_packet,
+			      fr_time_delta_from_usec(interval),
+			      bfd_send_packet, session) < 0) {
 		rad_assert("Failed to insert event" == NULL);
 	}
 
@@ -945,40 +937,26 @@ static int bfd_start_packets(bfd_state_t *session)
 }
 
 
-static void bfd_set_timeout(bfd_state_t *session, struct timeval *when)
+static void bfd_set_timeout(bfd_state_t *session, fr_time_t when)
 {
-	struct timeval now = *when;
+	fr_time_t now = when;
 
 	fr_event_timer_delete(session->el, &session->ev_timeout);
 
-	if (session->detection_time >= USEC) {
-		now.tv_sec += session->detection_time / USEC;
-	}
-	now.tv_usec += session->detection_time % USEC;
-	if (now.tv_usec >= USEC) {
-		now.tv_sec++;
-		now.tv_usec -= USEC;
-	}
+	now += fr_time_delta_from_usec(session->detection_time);
 
 	if (session->detect_multi >= 2) {
 		uint32_t delay;
 
-		session->next_recv = *when;
+		session->next_recv = when;
 		delay = session->detection_time / session->detect_multi;
 		delay += delay / 2;
 
-		if (delay > USEC) {
-			session->next_recv.tv_sec += delay / USEC;
-		}
-		session->next_recv.tv_usec += delay % USEC;
-		if (session->next_recv.tv_usec >= USEC) {
-			session->next_recv.tv_sec++;
-			session->next_recv.tv_usec -= USEC;
-		}
+		session->next_recv += fr_time_delta_from_usec(delay);
 	}
 
-	if (fr_event_timer_insert(session, session->el, &session->ev_timeout,
-				  &now, bfd_detection_timeout, session) < 0) {
+	if (fr_event_timer_at(session, session->el, &session->ev_timeout,
+			      now, bfd_detection_timeout, session) < 0) {
 		rad_assert("Failed to insert event" == NULL);
 	}
 }
@@ -1001,7 +979,7 @@ static int bfd_start_control(bfd_state_t *session)
 		return 0;
 	}
 
-	bfd_set_timeout(session, &session->last_recv);
+	bfd_set_timeout(session, session->last_recv);
 
 	if (session->ev_packet) return 0;
 
@@ -1070,8 +1048,7 @@ static int bfd_stop_poll(bfd_state_t *session)
 	return bfd_stop_control(session);
 }
 
-static void bfd_set_desired_min_tx_interval(bfd_state_t *session,
-					    uint32_t value)
+static void bfd_set_desired_min_tx_interval(bfd_state_t *session, uint32_t value)
 {
 	/*
 	 *	Increasing the value: don't change it if we're already
@@ -1095,13 +1072,9 @@ static void bfd_set_desired_min_tx_interval(bfd_state_t *session,
 	bfd_start_poll(session);
 }
 
-
-static void bfd_detection_timeout(UNUSED fr_event_list_t *eel, fr_time_t now_t, void *ctx)
+static void bfd_detection_timeout(UNUSED fr_event_list_t *eel, fr_time_t now, void *ctx)
 {
 	bfd_state_t *session = ctx;
-	struct timeval now;
-
-	fr_time_to_timeval(&now, now_t);
 
 	DEBUG("BFD %d Timeout state %s ****** ", session->number,
 	      bfd_state[session->session_state]);
@@ -1134,7 +1107,7 @@ static void bfd_detection_timeout(UNUSED fr_event_list_t *eel, fr_time_t now_t, 
 
 	session->detection_timeouts++;
 
-	bfd_set_timeout(session, &now);
+	bfd_set_timeout(session, now);
 }
 
 
@@ -1336,16 +1309,13 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 	 *	We've received the packet for the purpose of Section
 	 *	6.8.4.
 	 */
-	gettimeofday(&session->last_recv, NULL);
+	session->last_recv = fr_time();
 
 	/*
 	 *	We've received a packet, but missed the previous one.
 	 *	Warn about it.
 	 */
-	if ((session->detect_multi >= 2) &&
-	    ((session->last_recv.tv_sec > session->next_recv.tv_sec) ||
-	     ((session->last_recv.tv_sec == session->next_recv.tv_sec) &&
-	      (session->last_recv.tv_usec > session->next_recv.tv_usec)))) {
+	if ((session->detect_multi >= 2) && (session->last_recv > session->next_recv)) {
 		RADIUS_PACKET packet;
 		REQUEST request;
 

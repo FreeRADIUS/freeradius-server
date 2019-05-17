@@ -30,6 +30,7 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include "proto_detail.h"
 
@@ -632,15 +633,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 
 		} /* we're on retransmission N */
 
-		when.tv_sec = track->rt / USEC;
-		when.tv_usec = track->rt % USEC;
-
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %d.%06ds",
 		      thread->name, track->id, (int) when.tv_sec, (int) when.tv_usec);
 
-		fr_timeval_add(&when, &now, &when);
-
-		if (fr_event_timer_insert(thread, thread->el, &track->ev, &when, work_retransmit, track) < 0) {
+		if (fr_event_timer_in(thread, thread->el, &track->ev,
+				      fr_time_delta_from_usec(track->rt), work_retransmit, track) < 0) {
 			ERROR("%s - Failed inserting retransmission timeout", thread->name);
 		fail:
 			if (inst->track_progress && (track->done_offset > 0)) goto mark_done;

@@ -101,7 +101,7 @@ static int delay_add(REQUEST *request, fr_time_t *resume_at, fr_time_t now,
 	 *	Process the delay relative to the start of packet processing
 	 */
 	if (relative) {
-		*resume_at = fr_time_from_timeval(&request->packet->timestamp) + delay;
+		*resume_at = request->packet->timestamp + delay;
 	} else {
 		*resume_at = now + delay;
 	}

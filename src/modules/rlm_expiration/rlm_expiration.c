@@ -70,14 +70,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		*      and add our own Reply-Message, saying
 		*      why they're being rejected.
 		*/
-		if (((time_t) check_item->vp_date) <= request->packet->timestamp.tv_sec) {
+		if (((time_t) check_item->vp_date) <= fr_time_to_sec(request->packet->timestamp)) {
 			REDEBUG("Account expired at '%pV'", &check_item->data);
 
 			return RLM_MODULE_USERLOCK;
 		}
 		RDEBUG2("Account will expire at '%pV'", &check_item->data);
 
-		left = (uint32_t)(((time_t) check_item->vp_date) - request->packet->timestamp.tv_sec);
+		left = (uint32_t)(((time_t) check_item->vp_date) - fr_time_to_sec(request->packet->timestamp));
 
 		/*
 		 *	Else the account hasn't expired, but it may do so
@@ -115,7 +115,7 @@ static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *req
 {
 	time_t now = 0;
 
-	now = (req) ? req->packet->timestamp.tv_sec : time(NULL);
+	now = (req) ? fr_time_to_sec(req->packet->timestamp) : time(NULL);
 
 	if (now <= ((time_t) check->vp_date)) return 0;
 

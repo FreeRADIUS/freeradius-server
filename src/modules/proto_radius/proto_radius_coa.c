@@ -213,7 +213,7 @@ static fr_io_final_t mod_process(UNUSED void const *instance, REQUEST *request)
 		}
 
 	send_reply:
-		gettimeofday(&request->reply->timestamp, NULL);
+		request->reply->timestamp = fr_time();
 
 		/*
 		 *	Check for "do not respond".

@@ -79,7 +79,7 @@ static const CONF_PARSER file_listen_config[] = {
 
 	{ FR_CONF_OFFSET("filename_work", FR_TYPE_STRING, proto_detail_work_t, filename_work ) },
 
-	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_UINT32, proto_detail_file_t, poll_interval), .dflt = "5" },
+	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_TIMEVAL, proto_detail_file_t, poll_interval), .dflt = "5.0" },
 
 	{ FR_CONF_OFFSET("immediate", FR_TYPE_BOOL, proto_detail_file_t, immediate) },
 
@@ -252,15 +252,16 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	"detail.work" exists, try to lock it.
 	 */
 	if (rad_lockfd_nonblock(fd, 0) < 0) {
-		struct timeval when, now;
+		fr_time_t	in;
+		struct timeval	in_tv;
 
 		DEBUG3("proto_detail (%s): Failed locking %s: %s",
 		       thread->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
 
-		when.tv_usec = thread->lock_interval % USEC;
-		when.tv_sec = thread->lock_interval / USEC;
+		in = fr_time_delta_from_usec(thread->lock_interval);
+		fr_timeval_from_nsec(&in_tv, in);
 
 		/*
 		 *	Ensure that we don't do massive busy-polling.
@@ -269,13 +270,10 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 		if (thread->lock_interval > (30 * USEC)) thread->lock_interval = 30 * USEC;
 
 		DEBUG3("proto_detail (%s): Waiting %d.%06ds for lock on file %s",
-		       thread->name, (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
+		       thread->name, (int) in_tv.tv_sec, (int) in_tv.tv_usec, inst->filename_work);
 
-		gettimeofday(&now, NULL);
-		fr_timeval_add(&when, &when, &now);
-
-		if (fr_event_timer_insert(thread, thread->el, &thread->ev,
-					  &when, work_retry_timer, thread) < 0) {
+		if (fr_event_timer_in(thread, thread->el, &thread->ev,
+				      in, work_retry_timer, thread) < 0) {
 			ERROR("Failed inserting retry timer for %s", inst->filename_work);
 		}
 		return 0;
@@ -508,8 +506,6 @@ retry:
 	 *	in the directory changed.
 	 */
 	if (fd < 0) {
-		struct timeval when, now;
-
 		/*
 		 *	Wait for the directory to change before
 		 *	looking for another "detail" file.
@@ -520,18 +516,10 @@ delay:
 		/*
 		 *	Check every N seconds.
 		 */
-		when.tv_sec = inst->poll_interval;
-		when.tv_usec = 0;
+		DEBUG3("Waiting %d.000000s for new files in %s", inst->poll_interval, thread->name);
 
-		DEBUG3("Waiting %d.%06ds for new files in %s",
-		       (int) when.tv_sec, (int) when.tv_usec, thread->name);
-
-		gettimeofday(&now, NULL);
-
-		fr_timeval_add(&when, &when, &now);
-
-		if (fr_event_timer_insert(thread, thread->el, &thread->ev,
-					  &when, work_retry_timer, thread) < 0) {
+		if (fr_event_timer_in(thread, thread->el, &thread->ev,
+				      fr_time_delta_from_sec(inst->poll_interval), work_retry_timer, thread) < 0) {
 			ERROR("Failed inserting poll timer for %s", inst->filename_work);
 		}
 		return;
@@ -570,7 +558,6 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 {
 	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
-	struct timeval when;
 
 	thread->el = el;
 
@@ -586,11 +573,8 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 	 *	therefore change permissions, so that libkqueue can
 	 *	read it.
 	 */
-	gettimeofday(&when, NULL);
-	when.tv_sec +=1;
-
-	if (fr_event_timer_insert(thread, thread->el, &thread->ev,
-				  &when, work_retry_timer, thread) < 0) {
+	if (fr_event_timer_in(thread, thread->el, &thread->ev,
+			      fr_time_delta_from_sec(1), work_retry_timer, thread) < 0) {
 		ERROR("Failed inserting poll timer for %s", thread->filename_work);
 	}
 }

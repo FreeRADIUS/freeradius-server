@@ -447,7 +447,7 @@ int fr_tacacs_packet_recv(RADIUS_PACKET * const packet, char const * const secre
 
 	}
 
-	gettimeofday(&packet->timestamp, NULL);
+	packet->timestamp = fr_time();
 
 	return 1;	/* done reading the packet */
 }

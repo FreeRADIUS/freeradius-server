@@ -511,7 +511,7 @@ static REQUEST *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t
 	packet->dst_ipaddr = inst->src_ipaddr;
 	packet->dst_port = inst->src_port;
 
-	gettimeofday(&packet->timestamp, NULL);
+	packet->timestamp = fr_time();
 
 	request = request_setup(ctx, listen, packet, inst->client, NULL);
 	if (!request) return NULL;

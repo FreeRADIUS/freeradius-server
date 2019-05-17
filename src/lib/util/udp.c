@@ -176,7 +176,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
 ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, int *if_index,
-		 struct timeval *when)
+		 fr_time_t *when)
 {
 	int			sock_flags = 0;
 	struct sockaddr_storage	src;
@@ -188,10 +188,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 
 	if ((flags & UDP_FLAGS_PEEK) != 0) sock_flags |= MSG_PEEK;
 
-	if (when) {
-		when->tv_sec = 0;
-		when->tv_usec = 0;
-	}
+	if (when) *when = 0;
 
 	/*
 	 *	Connected sockets already know src/dst IP/port
@@ -207,11 +204,15 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	 */
 #ifdef WITH_UDPFROMTO
 	if (dst_ipaddr) {
+		struct timeval when_tv;
+
 		received = recvfromto(sockfd, data, data_len, sock_flags,
 				      (struct sockaddr *)&src, &sizeof_src,
 				      (struct sockaddr *)&dst, &sizeof_dst,
-				      if_index, when);
+				      if_index, &when_tv);
 		if (received <= 0) goto done;
+
+		*when = fr_time_from_timeval(&when_tv);
 	} else {
 		received = recvfrom(sockfd, data, data_len, sock_flags,
 				    (struct sockaddr *)&src, &sizeof_src);
@@ -252,7 +253,11 @@ done:
 		return received;
 	}
 
-	if (when && !when->tv_sec) gettimeofday(when, NULL);
+	/*
+	 *	We didn't get it from the kernel
+	 *	so use our own time source.
+	 */
+	if (when && !*when) *when = fr_time();
 
 	return received;
 }
