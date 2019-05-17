@@ -52,7 +52,7 @@ USES_APPLE_DEPRECATED_API
 static _Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
 
 #ifdef HAVE_CLOCK_GETTIME
-static struct timespec			our_epoch = { 0, 0 };
+static int64_t				our_epoch;
 #else  /* __MACH__ */
 static mach_timebase_info_data_t	timebase;
 static uint64_t				our_mach_epoch;
@@ -83,14 +83,13 @@ static inline int fr_time_sync(void)
 		struct timespec ts_realtime, ts_monotime;
 
 		/*
-		 *	Call these in sequence to minimise drift...
+		 *	Call these consecutively to minimise drift...
 		 */
 		if (clock_gettime(CLOCK_REALTIME, &ts_realtime) < 0) return -1;
 		if (clock_gettime(CLOCK_MONOTONIC, &ts_monotime) < 0) return -1;
 
 		our_realtime = fr_time_delta_from_timespec(&ts_realtime) -
-			       (fr_time_delta_from_timespec(&ts_monotime) -
-			        fr_time_delta_from_timespec(&our_epoch));
+			       (fr_time_delta_from_timespec(&ts_monotime) - our_epoch);
 		return 0;
 	}
 #else
@@ -99,7 +98,7 @@ static inline int fr_time_sync(void)
 		uint64_t	monotime;
 
 		/*
-		 *	Call these in sequence to minimise drift...
+		 *	Call these consecutively to minimise drift...
 		 */
 		(void) gettimeofday(&tv_realtime, NULL);
 		monotime = mach_absolute_time();
@@ -125,7 +124,12 @@ int fr_time_start(void)
 	tzset();	/* Populate timezone, daylight and tzname globals */
 
 #ifdef HAVE_CLOCK_GETTIME
-	if (clock_gettime(CLOCK_MONOTONIC, &our_epoch) < 0) return -1;
+	{
+		struct timespec ts;
+
+		if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) return -1;
+		our_epoch = fr_time_delta_from_timespec(&ts);
+	}
 #else  /* __MACH__ is defined */
 	mach_timebase_info(&timebase);
 	our_mach_epoch = mach_absolute_time();
@@ -144,26 +148,10 @@ int fr_time_start(void)
 fr_time_t fr_time(void)
 {
 #ifdef HAVE_CLOCK_GETTIME
-	fr_time_t now;
 	struct timespec ts;
-
 	(void) clock_gettime(CLOCK_MONOTONIC, &ts);
-
-	if (ts.tv_nsec < our_epoch.tv_nsec) {
-		ts.tv_sec--;
-		ts.tv_nsec += NSEC;
-	}
-
-	ts.tv_sec = ts.tv_sec - our_epoch.tv_sec;
-	ts.tv_nsec = ts.tv_nsec - our_epoch.tv_nsec;
-
-	now = ts.tv_sec * NSEC;
-	now += ts.tv_nsec;
-
-	return now;
-
+	return fr_time_delta_from_timespec(&ts) - our_epoch;
 #else  /* __MACH__ is defined */
-
 	uint64_t when;
 
 	when = mach_absolute_time();
@@ -193,7 +181,7 @@ void fr_time_to_timespec(struct timespec *ts, fr_time_t when)
 	fr_time_delta_to_timespec(ts, when + our_realtime);
 }
 
-/** Convert an fr_time_t to number of usec since the epoch
+/** Convert an fr_time_t to number of usec since the unix epoch
  *
  */
 int64_t fr_time_to_usec(fr_time_t when)
@@ -201,7 +189,7 @@ int64_t fr_time_to_usec(fr_time_t when)
 	return ((when + our_realtime) / 1000);
 }
 
-/** Convert an fr_time_t to number of msec since the epoch
+/** Convert an fr_time_t to number of msec since the unix epoch
  *
  */
 int64_t fr_time_to_msec(fr_time_t when)
@@ -209,7 +197,7 @@ int64_t fr_time_to_msec(fr_time_t when)
 	return ((when + our_realtime) / 1000000);
 }
 
-/** Convert an fr_time_t to number of sec since the epoch
+/** Convert an fr_time_t to number of sec since the unix epoch
  *
  */
 int64_t fr_time_to_sec(fr_time_t when)
