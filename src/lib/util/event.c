@@ -1131,7 +1131,7 @@ int fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
 	now = fr_time();
 	now += delta;
 
-	return fr_event_timer_at(ctx, el, ev_p, delta, callback, uctx);
+	return fr_event_timer_at(ctx, el, ev_p, now, callback, uctx);
 }
 
 /** Legacy timer function that uses timeval
