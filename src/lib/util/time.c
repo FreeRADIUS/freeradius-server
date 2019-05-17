@@ -185,7 +185,6 @@ int64_t fr_time_to_sec(fr_time_t when)
 
 /** Convert a timeval to a fr_time_t
  *
- * @param[out] out	The fr_time_t value.
  * @param[in] when_tv	The timestamp to convert.
  * @return
  *	- >0 number of nanoseconds since the server started.
@@ -199,7 +198,6 @@ fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
 
 /** Convert a timespec to a fr_time_t
  *
- * @param[out] out	The fr_time_t value.
  * @param[in] when_ts	The timestamp to convert.
  * @return
  *	- >0 number of nanoseconds since the server started.
