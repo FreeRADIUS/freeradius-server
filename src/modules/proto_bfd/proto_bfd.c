@@ -896,7 +896,6 @@ static int bfd_start_packets(bfd_state_t *session)
 {
 	uint32_t	interval, base;
 	uint64_t	jitter;
-	fr_time_t	now;
 
 	/*
 	 *	Reset the timers.
@@ -904,7 +903,6 @@ static int bfd_start_packets(bfd_state_t *session)
 	fr_event_timer_delete(session->el, &session->ev_packet);
 
 	session->last_sent = fr_time();
-	now = session->last_sent;
 
 	if (session->desired_min_tx_interval >= session->remote_min_rx_interval) {
 		interval = session->desired_min_tx_interval;
