@@ -54,6 +54,12 @@ ATTRIBUTE	HP-Nas-Rules-IPv6			63	integer
 ATTRIBUTE	HP-Egress-VLANID			64	integer
 ATTRIBUTE	HP-Egress-VLAN-Name			65	string
 
+# AAA for REST
+ATTRIBUTE	HP-URI-String				80	string
+ATTRIBUTE	HP-URI-Json-String			81	string
+ATTRIBUTE	HP-URI-Access				82	string
+ATTRIBUTE	HP-URI-Exception			83	integer
+
 ATTRIBUTE	HP-VC-groups				192	string
 
 # See http://wiki.freeradius.org/vendor/HP#Capability-advertisements
