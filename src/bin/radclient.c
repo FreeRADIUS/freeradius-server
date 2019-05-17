@@ -1016,10 +1016,10 @@ static int send_one_packet(rc_request_t *request)
 static int recv_one_packet(int wait_time)
 {
 	fd_set		set;
-	struct timeval  tv;
+	struct timeval	tv;
 	rc_request_t	*request;
 	RADIUS_PACKET	*reply, **packet_p;
-	volatile int max_fd;
+	volatile int	max_fd;
 
 	/* And wait for reply, timing out as necessary */
 	FD_ZERO(&set);
