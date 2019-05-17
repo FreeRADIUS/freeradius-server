@@ -42,8 +42,8 @@ function run-tests() {
         export FR_GLOBAL_POOL=2M
         ## before_install 
         if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 && sudo update-alternatives --config gcc; fi
-        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-7 60 && sudo update-alternatives --config clang; fi
-        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-7 60 && sudo update-alternatives --config llvm-symbolizer; fi
+        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-8 60 && sudo update-alternatives --config clang; fi
+        if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-8 60 && sudo update-alternatives --config llvm-symbolizer; fi
         $CC --version
         make --version
         ## before_script
