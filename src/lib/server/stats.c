@@ -27,13 +27,12 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rad_assert.h>
 
 #include <freeradius-devel/util/misc.h>
-
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/radius/defs.h>
 
 
 #ifdef WITH_STATS
 
-#define USEC (1000000)
 #define EMA_SCALE (100)
 #define F_EMA_SCALE (1000000)
 

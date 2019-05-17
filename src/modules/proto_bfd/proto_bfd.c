@@ -33,8 +33,8 @@
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/socket.h>
+#include <freeradius-devel/util/time.h>
 
-#define USEC (1000000)
 #define BFD_MAX_SECRET_LENGTH 20
 
 typedef enum bfd_session_state_t {

@@ -27,14 +27,11 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/rad_assert.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-
-#ifndef USEC
-#define USEC (1000000)
-#endif
 
 typedef struct {
 	bool		log_stripped_names;
