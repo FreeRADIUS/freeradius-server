@@ -35,7 +35,6 @@ RCSID("$Id$")
 #error clock_gettime is required
 #endif
 
-
 #if !defined(HAVE_CLOCK_GETTIME) && defined(__MACH__)
 /*
  *	AbsoluteToNanoseconds() has been deprecated,
@@ -48,16 +47,69 @@ USES_APPLE_DEPRECATED_API
 #  include <mach/mach_time.h>
 #endif
 
-static struct timeval tm_started = { 0, 0};	     //!< Time from the epoch represented as a timeval.
-static fr_time_t t_started;				//!< Time from the epoch represented as nanoseconds.
+#include <stdatomic.h>
+
+static _Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
 
 #ifdef HAVE_CLOCK_GETTIME
-static struct timespec ts_started = { 0, 0};
-
+static struct timespec			our_epoch = { 0, 0 };
 #else  /* __MACH__ */
-static mach_timebase_info_data_t timebase;
-static uint64_t abs_started;
+static mach_timebase_info_data_t	timebase;
+static uint64_t				our_mach_epoch;
 #endif
+
+/** Get a new our_realtime value
+ *
+ * Should be done regularly to adjust for changes in system time.
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static inline int fr_time_sync(void)
+{
+	/*
+	 *	our_realtime represents system time
+	 *	at the start of our epoch.
+	 *
+	 *	So to convert a realtime timeval
+	 *	to fr_time we just subtract
+	 *	our_realtime from the timeval,
+	 *      which leaves the number of nanoseconds
+	 *	elapsed since our epoch.
+	 */
+#ifdef HAVE_CLOCK_GETTIME
+	{
+		struct timespec ts_realtime, ts_monotime;
+
+		/*
+		 *	Call these in sequence to minimise drift...
+		 */
+		if (clock_gettime(CLOCK_REALTIME, &ts_realtime) < 0) return -1;
+		if (clock_gettime(CLOCK_MONOTONIC, &ts_monotime) < 0) return -1;
+
+		our_realtime = fr_time_delta_from_timespec(&ts_realtime) -
+			       (fr_time_delta_from_timespec(&ts_monotime) -
+			        fr_time_delta_from_timespec(&our_epoch));
+		return 0;
+	}
+#else
+	{
+		struct timeval	tv_realtime;
+		uint64_t	monotime;
+
+		/*
+		 *	Call these in sequence to minimise drift...
+		 */
+		(void) gettimeofday(&tv_realtime, NULL);
+		monotime = mach_absolute_time();
+
+		our_realtime = fr_time_delta_from_timeval(&tv_realtime) -
+			       (monotime - our_mach_epoch) * (timebase.numer / timebase.denom);
+		return 0;
+	}
+#endif
+}
 
 /** Initialize the local time.
  *
@@ -72,26 +124,22 @@ int fr_time_start(void)
 {
 	tzset();	/* Populate timezone, daylight and tzname globals */
 
-	(void) gettimeofday(&tm_started, NULL);
-	t_started = fr_time_delta_from_timeval(&tm_started);
-
 #ifdef HAVE_CLOCK_GETTIME
-	return clock_gettime(CLOCK_MONOTONIC, &ts_started);
-
+	if (clock_gettime(CLOCK_MONOTONIC, &our_epoch) < 0) return -1;
 #else  /* __MACH__ is defined */
 	mach_timebase_info(&timebase);
-	abs_started = mach_absolute_time();
-
-	return 0;
+	our_mach_epoch = mach_absolute_time();
 #endif
+
+	return fr_time_sync();
 }
 
-/** Return a relative time since the server ts_started
+/** Return a relative time since the server our_epoch
  *
  *  This time is useful for doing time comparisons, deltas, etc.
  *  Human (i.e. printable) time is something else.
  *
- * @returns fr_time_t time in nanoseconds since the server ts_started.
+ * @returns fr_time_t time in nanoseconds since the server our_epoch.
  */
 fr_time_t fr_time(void)
 {
@@ -101,13 +149,13 @@ fr_time_t fr_time(void)
 
 	(void) clock_gettime(CLOCK_MONOTONIC, &ts);
 
-	if (ts.tv_nsec < ts_started.tv_nsec) {
+	if (ts.tv_nsec < our_epoch.tv_nsec) {
 		ts.tv_sec--;
 		ts.tv_nsec += NSEC;
 	}
 
-	ts.tv_sec = ts.tv_sec - ts_started.tv_sec;
-	ts.tv_nsec = ts.tv_nsec - ts_started.tv_nsec;
+	ts.tv_sec = ts.tv_sec - our_epoch.tv_sec;
+	ts.tv_nsec = ts.tv_nsec - our_epoch.tv_nsec;
 
 	now = ts.tv_sec * NSEC;
 	now += ts.tv_nsec;
@@ -119,7 +167,7 @@ fr_time_t fr_time(void)
 	uint64_t when;
 
 	when = mach_absolute_time();
-	when -= abs_started;
+	when -= our_mach_epoch;
 
 	return when * (timebase.numer / timebase.denom);
 #endif
@@ -132,15 +180,7 @@ fr_time_t fr_time(void)
  */
 void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
 {
-	*tv = tm_started;
-
-	when /= 1000;
-
-	tv->tv_sec += (when / USEC);
-	tv->tv_usec += (when % USEC);
-
-	tv->tv_sec += tv->tv_usec / USEC;
-	tv->tv_usec = tv->tv_usec % USEC;
+	fr_time_delta_to_timeval(tv, when + our_realtime);
 }
 
 /** Convert a fr_time_t to a struct timeval.
@@ -150,13 +190,7 @@ void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
  */
 void fr_time_to_timespec(struct timespec *ts, fr_time_t when)
 {
-	TIMEVAL_TO_TIMESPEC(&tm_started, ts);
-
-	ts->tv_sec += (when / NSEC);
-	ts->tv_nsec += (when % NSEC);
-
-	ts->tv_sec += ts->tv_nsec / NSEC;
-	ts->tv_nsec = ts->tv_nsec % NSEC;
+	fr_time_delta_to_timespec(ts, when + our_realtime);
 }
 
 /** Convert an fr_time_t to number of usec since the epoch
@@ -164,7 +198,7 @@ void fr_time_to_timespec(struct timespec *ts, fr_time_t when)
  */
 int64_t fr_time_to_usec(fr_time_t when)
 {
-	return ((when + t_started) / 1000);
+	return ((when + our_realtime) / 1000);
 }
 
 /** Convert an fr_time_t to number of msec since the epoch
@@ -172,7 +206,7 @@ int64_t fr_time_to_usec(fr_time_t when)
  */
 int64_t fr_time_to_msec(fr_time_t when)
 {
-	return ((when + t_started) / 1000000);
+	return ((when + our_realtime) / 1000000);
 }
 
 /** Convert an fr_time_t to number of sec since the epoch
@@ -180,7 +214,7 @@ int64_t fr_time_to_msec(fr_time_t when)
  */
 int64_t fr_time_to_sec(fr_time_t when)
 {
-	return ((when + t_started) / NSEC);
+	return ((when + our_realtime) / NSEC);
 }
 
 /** Convert a timeval to a fr_time_t
@@ -193,7 +227,7 @@ int64_t fr_time_to_sec(fr_time_t when)
  */
 fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
 {
-	return fr_time_delta_from_timeval(when_tv) - t_started;
+	return fr_time_delta_from_timeval(when_tv) - our_realtime;
 }
 
 /** Convert a timespec to a fr_time_t
@@ -206,7 +240,7 @@ fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
  */
 fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
 {
-	return fr_time_delta_from_timespec(when_ts) - t_started;
+	return fr_time_delta_from_timespec(when_ts) - our_realtime;
 }
 
 /** Start time tracking for a request.
