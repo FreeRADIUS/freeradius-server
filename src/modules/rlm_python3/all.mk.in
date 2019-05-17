@@ -1,0 +1,26 @@
+TARGETNAME	:= @targetname@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		:= $(TARGETNAME).a
+endif
+
+SOURCES		:= $(TARGETNAME).c
+
+SRC_CFLAGS	:= @mod_cflags@
+TGT_LDLIBS	:= @mod_ldflags@
+
+ifneq "$(TARGETNAME)" ""
+install: $(R)$(modconfdir)/python3/radiusd.py $(R)$(modconfdir)/python3/example.py
+
+$(R)$(modconfdir)/python3: | $(R)$(modconfdir)
+	@echo INSTALL $(patsubst $(R)$(raddbdir)%,raddb%,$@)
+	@$(INSTALL) -d -m 750 $@
+
+$(R)$(modconfdir)/python3/radiusd.py: src/modules/rlm_python3/radiusd.py | $(R)$(modconfdir)/python3
+	@$(ECHO) INSTALL $(notdir $<)
+	@$(INSTALL) -m 755 $< $(R)$(modconfdir)/python3
+
+$(R)$(modconfdir)/python3/example.py: src/modules/rlm_python3/example.py | $(R)$(modconfdir)/python3
+	@$(ECHO) INSTALL $(notdir $<)
+	@$(INSTALL) -m 755 $< $(R)$(modconfdir)/python3
+endif
