@@ -174,7 +174,7 @@ static int sync_new_cookie(bool *new_cookie, sync_state_t *sync, BerElement *ber
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int sync_search_entry_or_refrence(sync_state_t *sync, LDAPMessage *msg, LDAPControl **ctrls)
+static int sync_search_entry_or_reference(sync_state_t *sync, LDAPMessage *msg, LDAPControl **ctrls)
 {
 	int			ret = 0, i;
 	ber_tag_t		bv_ret;
@@ -817,7 +817,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 		switch (type) {
 		case LDAP_RES_SEARCH_REFERENCE:
 		case LDAP_RES_SEARCH_ENTRY:
-			ret = sync_search_entry_or_refrence(sync, msg, ctrls);
+			ret = sync_search_entry_or_reference(sync, msg, ctrls);
 			if (ret < 0) goto sync_error;
 			break;
 
