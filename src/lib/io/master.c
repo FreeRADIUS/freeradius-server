@@ -1703,14 +1703,13 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 }
 
 
-static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *uctx)
+static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
-	fr_io_client_t *client = uctx;
-	fr_io_instance_t const *inst;
-	fr_io_connection_t *connection;
-	struct timeval when;
-	struct timeval const *delay;
-	int packets, connections;
+	fr_io_client_t		*client = uctx;
+	fr_io_instance_t const	*inst;
+	fr_io_connection_t	*connection;
+	struct timeval const	*delay;
+	int			packets, connections;
 
 	/*
 	 *	No event list?  We don't need to expire the client.
@@ -1727,7 +1726,7 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 
 	/*
 	 *	Called from the read or write functions with
-	 *	now==NULL, to signal that we have to *set* the timer.
+	 *	now==0, to signal that we have to *set* the timer.
 	 */
 	if (!now) {
 		switch (client->state) {
@@ -1895,11 +1894,8 @@ idle_timeout:
 	delay = &inst->check_interval;
 
 reset_timer:
-	gettimeofday(&when, NULL);
-	fr_timeval_add(&when, &when, delay);
-
-	if (fr_event_timer_insert(client, el, &client->ev,
-				  &when, client_expiry_timer, client) < 0) {
+	if (fr_event_timer_in(client, el, &client->ev,
+			      fr_time_delta_from_timeval(delay), client_expiry_timer, client) < 0) {
 		ERROR("proto_%s - Failed adding timeout for dynamic client %s.  It will be permanent!",
 		      inst->app_io->name, client->radclient->shortname);
 		return;
@@ -1909,7 +1905,7 @@ reset_timer:
 }
 
 
-static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *uctx)
+static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_io_track_t *track = talloc_get_type_abort(uctx, fr_io_track_t);
 	fr_io_client_t *client = track->client;
@@ -1921,14 +1917,9 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	 */
 	if (el && !now &&
 	    ((inst->cleanup_delay.tv_sec | inst->cleanup_delay.tv_usec) != 0)) {
-
-		struct timeval when;
-
-		gettimeofday(&when, NULL);
-		fr_timeval_add(&when, &when, &inst->cleanup_delay);
-
-		if (fr_event_timer_insert(client, el, &track->ev,
-					  &when, packet_expiry_timer, track) == 0) {
+		if (fr_event_timer_in(client, el, &track->ev,
+				      fr_time_delta_from_timeval(&inst->cleanup_delay),
+				      packet_expiry_timer, track) == 0) {
 			return;
 		}
 
@@ -2034,7 +2025,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			 *	idle timeouts.
 			 */
 			if ((packets == 0) && (client->state != PR_CLIENT_STATIC)) {
-				client_expiry_timer(el, NULL, client);
+				client_expiry_timer(el, 0, client);
 			}
 			return buffer_len;
 		}
@@ -2047,7 +2038,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		if (buffer_len < 20) {
 			track->reply_len = 1; /* don't respond */
-			packet_expiry_timer(el, NULL, track);
+			packet_expiry_timer(el, 0, track);
 			return buffer_len;
 		}
 
@@ -2069,7 +2060,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		/*
 		 *	Expire the packet (if necessary).
 		 */
-		packet_expiry_timer(el, NULL, track);
+		packet_expiry_timer(el, 0, track);
 
 		return packet_len;
 	}
@@ -2117,7 +2108,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		if (connection && (inst->ipproto == IPPROTO_UDP)) {
 			connection = fr_io_connection_alloc(inst, thread, client, -1, connection->address, connection);
-			client_expiry_timer(el, NULL, connection->client);
+			client_expiry_timer(el, 0, connection->client);
 
 			errno = ECONNREFUSED;
 			return -1;
@@ -2129,7 +2120,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	connection.
 		 */
 
-		client_expiry_timer(el, NULL, client);
+		client_expiry_timer(el, 0, client);
 		return buffer_len;
 	}
 
@@ -2336,7 +2327,7 @@ finish:
 	 *	timed out, so there's nothing more to do.  In that case, set up the expiry timers.
 	 */
 	if (packets == 0) {
-		client_expiry_timer(el, NULL, client);
+		client_expiry_timer(el, 0, client);
 	}
 
 reread:

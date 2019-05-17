@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -29,8 +30,10 @@ RCSIDH(timeval_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
-void		fr_timeval_from_ms(struct timeval *out, uint64_t ms);
-void		fr_timeval_from_usec(struct timeval *out, uint64_t usec);
+void            fr_timeval_from_nsec(struct timeval *out, int64_t nsec);
+void		fr_timeval_from_usec(struct timeval *out, int64_t usec);
+void		fr_timeval_from_msec(struct timeval *out, int64_t msec);
+
 void		fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct timeval const *start);
 void		fr_timeval_add(struct timeval *out, struct timeval const *a, struct timeval const *b);
 void		fr_timeval_divide(struct timeval *out, struct timeval const *in, int divisor);

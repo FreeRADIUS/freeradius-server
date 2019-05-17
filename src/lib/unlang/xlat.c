@@ -122,7 +122,7 @@ static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
  * @param[in] ctx	unlang_module_event_t structure holding callbacks.
  *
  */
-static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, struct timeval *now, void *ctx)
+static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx)
 {
 	unlang_xlat_event_t *ev = talloc_get_type_abort(ctx, unlang_xlat_event_t);
 
@@ -140,7 +140,7 @@ static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, struct
 }
 
 int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t callback,
-				  void const *ctx, struct timeval *when)
+				  void const *ctx, fr_time_t when)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -160,8 +160,7 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 	ev->thread = xlat_thread_instance_find(xs->exp);
 	ev->ctx = ctx;
 
-	if (fr_event_timer_insert(request, request->el, &ev->ev,
-				  when, unlang_xlat_event_timeout_handler, ev) < 0) {
+	if (fr_event_timer_at(request, request->el, &ev->ev, when, unlang_xlat_event_timeout_handler, ev) < 0) {
 		RPEDEBUG("Failed inserting event");
 		talloc_free(ev);
 		return -1;

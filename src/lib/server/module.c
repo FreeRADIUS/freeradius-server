@@ -99,8 +99,8 @@ typedef struct {
 
 static int _module_tab_expand(void *instance, void *ctx)
 {
-	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
-	module_tab_expand_t *mt = ctx;
+	module_instance_t       *mi = talloc_get_type_abort(instance, module_instance_t);
+	module_tab_expand_t     *mt = ctx;
 
 	if (mt->count >= mt->max_expansions) return 1;
 

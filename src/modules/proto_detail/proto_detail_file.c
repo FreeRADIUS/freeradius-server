@@ -226,7 +226,7 @@ static int work_rename(proto_detail_file_thread_t *thread)
 /*
  *	Start polling again after a timeout.
  */
-static void work_retry_timer(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+static void work_retry_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(uctx, proto_detail_file_thread_t);
 

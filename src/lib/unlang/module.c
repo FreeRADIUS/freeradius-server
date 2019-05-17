@@ -98,7 +98,7 @@ static int _unlang_event_free(unlang_module_event_t *ev)
  * @param[in] ctx	unlang_module_event_t structure holding callbacks.
  *
  */
-static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, struct timeval *now, void *ctx)
+static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx)
 {
 	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
 	void *mutable_ctx;
@@ -127,7 +127,7 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, stru
  *	- <0 on error.
  */
 int unlang_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
-				    void const *ctx, struct timeval *when)
+			      void const *ctx, fr_time_t when)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -151,8 +151,8 @@ int unlang_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callb
 	ev->thread = ms->thread;
 	ev->ctx = ctx;
 
-	if (fr_event_timer_insert(request, request->el, &ev->ev,
-				  when, unlang_module_event_timeout_handler, ev) < 0) {
+	if (fr_event_timer_at(request, request->el, &ev->ev,
+			      when, unlang_module_event_timeout_handler, ev) < 0) {
 		RPEDEBUG("Failed inserting event");
 		talloc_free(ev);
 		return -1;

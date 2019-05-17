@@ -27,15 +27,15 @@
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/timeval.h>
 
-/** Convert a time specified in milliseconds to a timeval
+/** Convert a time specified in nanoseconds to a timeval
  *
  * @param[out] out	Where to write the result.
- * @param[in] ms	To convert to a timeval struct.
+ * @param[in] nsec	To convert to a timeval struct.
  */
-void fr_timeval_from_ms(struct timeval *out, uint64_t ms)
+void fr_timeval_from_nsec(struct timeval *out, int64_t nsec)
 {
-	out->tv_sec = ms / 1000;
-	out->tv_usec = (ms % 1000) * 1000;
+	out->tv_sec = nsec / NSEC;
+	out->tv_usec = (nsec % NSEC) / 1000;
 }
 
 /** Convert a time specified in microseconds to a timeval
@@ -43,10 +43,21 @@ void fr_timeval_from_ms(struct timeval *out, uint64_t ms)
  * @param[out] out	Where to write the result.
  * @param[in] usec	To convert to a timeval struct.
  */
-void fr_timeval_from_usec(struct timeval *out, uint64_t usec)
+void fr_timeval_from_usec(struct timeval *out, int64_t usec)
 {
 	out->tv_sec = usec / USEC;
 	out->tv_usec = usec % USEC;
+}
+
+/** Convert a time specified in milliseconds to a timeval
+ *
+ * @param[out] out	Where to write the result.
+ * @param[in] ms	To convert to a timeval struct.
+ */
+void fr_timeval_from_msec(struct timeval *out, int64_t ms)
+{
+	out->tv_sec = ms / 1000;
+	out->tv_usec = (ms % 1000) * 1000;
 }
 
 /** Subtract one timeval from another

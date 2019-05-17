@@ -244,7 +244,7 @@ fr_dict_autoload_t proto_bfd_dict[] = {
 static int bfd_start_packets(bfd_state_t *session);
 static int bfd_start_control(bfd_state_t *session);
 static int bfd_stop_control(bfd_state_t *session);
-static void bfd_detection_timeout(UNUSED fr_event_list_t *eel, struct timeval *now, void *ctx);
+static void bfd_detection_timeout(UNUSED fr_event_list_t *eel, fr_time_t now, void *ctx);
 static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd);
 
 static fr_event_list_t *event_list = NULL; /* don't ask */
@@ -866,7 +866,7 @@ static void bfd_sign(bfd_state_t *session, bfd_packet_t *bfd)
 /*
  *	Send a packet.
  */
-static void bfd_send_packet(UNUSED fr_event_list_t *eel, UNUSED struct timeval *now, void *ctx)
+static void bfd_send_packet(UNUSED fr_event_list_t *eel, UNUSED fr_time_t now, void *ctx)
 {
 	bfd_state_t *session = ctx;
 	bfd_packet_t bfd;
@@ -1096,9 +1096,12 @@ static void bfd_set_desired_min_tx_interval(bfd_state_t *session,
 }
 
 
-static void bfd_detection_timeout(UNUSED fr_event_list_t *eel, struct timeval *now, void *ctx)
+static void bfd_detection_timeout(UNUSED fr_event_list_t *eel, fr_time_t now_t, void *ctx)
 {
 	bfd_state_t *session = ctx;
+	struct timeval now;
+
+	fr_time_to_timeval(&now, now_t);
 
 	DEBUG("BFD %d Timeout state %s ****** ", session->number,
 	      bfd_state[session->session_state]);
@@ -1131,7 +1134,7 @@ static void bfd_detection_timeout(UNUSED fr_event_list_t *eel, struct timeval *n
 
 	session->detection_timeouts++;
 
-	bfd_set_timeout(session, now);
+	bfd_set_timeout(session, &now);
 }
 
 

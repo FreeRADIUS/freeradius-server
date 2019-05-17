@@ -86,8 +86,8 @@ do { \
 	conn->state = _new; \
 } while (0)
 
-static void connection_state_init(fr_connection_t *conn, struct timeval *now);
-static void connection_state_failed(fr_connection_t *conn, struct timeval *now);
+static void connection_state_init(fr_connection_t *conn, fr_time_t now);
+static void connection_state_failed(fr_connection_t *conn, fr_time_t now);
 
 /** The requisite period of time has passed, try and re-open the connection
  *
@@ -95,7 +95,7 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now);
  * @param[in] now	the current time.
  * @param[in] uctx	The #fr_connection_t the fd is associated with.
  */
-static void _reconnect_delay_done(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
+static void _reconnect_delay_done(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 
@@ -114,7 +114,7 @@ static void _reconnect_delay_done(UNUSED fr_event_list_t *el, struct timeval *no
  * @param[in] conn	that failed.
  * @param[in] now	The current time.
  */
-static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
+static void connection_state_failed(fr_connection_t *conn, fr_time_t now)
 {
 	fr_connection_state_t prev;
 	rad_assert(conn->state != FR_CONNECTION_STATE_FAILED);
@@ -162,14 +162,10 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
 	case FR_CONNECTION_STATE_INIT:				/* Failed during initialisation */
 	case FR_CONNECTION_STATE_CONNECTED:			/* Failed after connecting */
 	case FR_CONNECTION_STATE_CONNECTING:			/* Failed during connecting */
-	{
-		struct timeval when;
-
 		STATE_TRANSITION(FR_CONNECTION_STATE_FAILED);
-		fr_timeval_add(&when, now, &conn->reconnection_delay);
-		fr_event_timer_insert(conn, conn->el, &conn->reconnection_timer,
-				      &when, _reconnect_delay_done, conn);
-	}
+		fr_event_timer_at(conn, conn->el, &conn->reconnection_timer,
+				  now + fr_time_delta_from_timeval(&conn->reconnection_delay),
+				  _reconnect_delay_done, conn);
 		break;
 
 	case FR_CONNECTION_STATE_TIMEOUT:			/* Failed during connecting */
@@ -189,7 +185,7 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
  * @param[in] now	the current time.
  * @param[in] uctx	The #fr_connection_t the fd is associated with.
  */
-static void _connection_timeout(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
+static void _connection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 
@@ -209,7 +205,6 @@ static void _connection_timeout(UNUSED fr_event_list_t *el, struct timeval *now,
 static void _connection_error(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, int fd_errno, void *uctx)
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
-	struct timeval	now;
 
 	/*
 	 *	Explicit error occurred, delete the connection timer
@@ -217,8 +212,7 @@ static void _connection_error(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSE
 	fr_event_timer_delete(conn->el, &conn->connection_timer);
 
 	ERROR("Connection failed: %s", fr_syserror(fd_errno));
-	gettimeofday(&now, NULL);
-	connection_state_failed(conn, &now);
+	connection_state_failed(conn, fr_time());
 }
 
 /** Receive a write notification after connecting a socket
@@ -254,14 +248,9 @@ static void _connection_writable(UNUSED fr_event_list_t *el, UNUSED int sock, UN
 	 *	Open callback failed
 	 */
 	case FR_CONNECTION_STATE_FAILED:
-	{
-		struct timeval now;
-
 		PERROR("Connection failed");
-		gettimeofday(&now, NULL);
-		connection_state_failed(conn, &now);
+		connection_state_failed(conn, fr_time());
 		return;
-	}
 
 	default:
 		rad_assert(0);
@@ -273,7 +262,7 @@ static void _connection_writable(UNUSED fr_event_list_t *el, UNUSED int sock, UN
  * @param[in] conn	being initialised.
  * @param[in] now	the current ime.
  */
-static void connection_state_init(fr_connection_t *conn, struct timeval *now)
+static void connection_state_init(fr_connection_t *conn, fr_time_t now)
 {
 	fr_connection_state_t ret;
 
@@ -295,9 +284,6 @@ static void connection_state_init(fr_connection_t *conn, struct timeval *now)
 
 	switch (ret) {
 	case FR_CONNECTION_STATE_CONNECTING:
-	{
-		struct timeval when = { 0, 0 };
-
 		DEBUG2("Connection initialised");
 		STATE_TRANSITION(ret);
 
@@ -330,11 +316,10 @@ static void connection_state_init(fr_connection_t *conn, struct timeval *now)
 		 *	set, then add the timer.
 		 */
 		if (conn->connection_timeout.tv_sec || conn->connection_timeout.tv_usec) {
-			fr_timeval_add(&when, now, &conn->connection_timeout);
-			fr_event_timer_insert(conn, conn->el, &conn->connection_timer,
-				      	      &when, _connection_timeout, conn);
+			fr_event_timer_at(conn, conn->el, &conn->connection_timer,
+				      	  now + fr_time_delta_from_timeval(&conn->connection_timeout),
+				      	  _connection_timeout, conn);
 		}
-	}
 		break;
 
 	/*
@@ -486,13 +471,9 @@ void fr_connection_failed_func(fr_connection_t *conn, fr_connection_failed_t fun
  */
 void fr_connection_signal_init(fr_connection_t *conn)
 {
-	struct timeval now;
-
-	gettimeofday(&now, NULL);
-
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_HALTED:
-		connection_state_init(conn, &now);
+		connection_state_init(conn, fr_time());
 		return;
 
 	default:
@@ -546,15 +527,8 @@ void fr_connection_signal_reconnect(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_CONNECTING:
 	case FR_CONNECTION_STATE_CONNECTED:
 	case FR_CONNECTION_STATE_TIMEOUT:
-	{
-		struct timeval now;
-
-		gettimeofday(&now, NULL);
-
 		DEBUG2("Reconnecting...");
-
-		connection_state_failed(conn, &now);
-	}
+		connection_state_failed(conn, fr_time());
 		return;
 	}
 }

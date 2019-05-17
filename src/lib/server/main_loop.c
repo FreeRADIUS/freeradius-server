@@ -63,15 +63,14 @@ static fr_event_timer_t		const *sd_watchdog_ev;
  * Note actually a very good indicator of aliveness as the main event
  * loop doesn't actually do any packet processing.
  */
-static void sd_watchdog_event(fr_event_list_t *our_el, struct timeval *now, void *ctx)
+static void sd_watchdog_event(fr_event_list_t *our_el, UNUSED fr_time_t now, void *ctx)
 {
-	struct timeval when;
-
 	DEBUG("Emitting systemd watchdog notification");
 	sd_notify(0, "WATCHDOG=1");
 
-	fr_timeval_add(&when, &sd_watchdog_interval, now);
-	if (fr_event_timer_insert(NULL, our_el, &sd_watchdog_ev, &when, sd_watchdog_event, ctx) < 0) {
+	if (fr_event_timer_in(NULL, our_el, &sd_watchdog_ev,
+			      fr_time_delta_from_timeval(&sd_watchdog_interval),
+			      sd_watchdog_event, ctx) < 0) {
 		ERROR("Failed to insert watchdog event");
 	}
 }
@@ -225,7 +224,7 @@ int main_loop_process(void)
 	return fr_event_loop(event_list);
 }
 
-static int _loop_status(UNUSED void *ctx, struct timeval *wake)
+static int _loop_status(UNUSED void *ctx, fr_time_t wake)
 {
 	if (!DEBUG_ENABLED) {
 		if (just_started) {
@@ -238,10 +237,9 @@ static int _loop_status(UNUSED void *ctx, struct timeval *wake)
 	if (!wake) {
 		if (main_config->drop_requests) return 0;
 		INFO("Ready to process requests");
-	} else if ((wake->tv_sec != 0) ||
-		   (wake->tv_usec >= 100000)) {
-		DEBUG("Waking up in %d.%01u seconds.",
-		      (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
+	} else if (wake > 100000000) {
+		DEBUG("Waking up in %d.%02u seconds.",
+		      (int) wake / NSEC, (int)((wake % NSEC) / 1000000));
 	}
 
 	return 0;
@@ -257,9 +255,8 @@ int main_loop_init(void)
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
 	if (sd_watchdog_interval.tv_sec || sd_watchdog_interval.tv_usec) {
-		struct timeval now;
-
-		fr_event_list_time(&now, event_list);
+		struct timeval	now;
+		fr_time_to_timeval(&now, fr_event_list_time(event_list));
 		sd_watchdog_event(event_list, &now, NULL);
 	}
 #endif

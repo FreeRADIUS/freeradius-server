@@ -547,7 +547,7 @@ done:
 }
 
 
-static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_detail_entry_t		*track = talloc_get_type_abort(uctx, fr_detail_entry_t);
 	proto_detail_work_thread_t     	*thread = track->parent;

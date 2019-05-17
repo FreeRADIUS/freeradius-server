@@ -149,7 +149,7 @@ struct fr_worker_t {
 	fr_channel_t		**channel;	//!< list of channels
 };
 
-static void fr_worker_post_event(fr_event_list_t *el, struct timeval *now, void *uctx);
+static void fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 
 /*
  *	We need wrapper macros because we have multiple instances of
@@ -596,7 +596,7 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
  * @param[in] when the current time
  * @param[in] uctx the fr_worker_t
  */
-static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct timeval *when, void *uctx)
+static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
 {
 	fr_time_t now = fr_time();
 	REQUEST *request;
@@ -1058,7 +1058,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
  * @param[in] ctx the worker
  * @param[in] wake the time when the event loop will wake up.
  */
-static int fr_worker_pre_event(void *ctx, struct timeval *wake)
+static int fr_worker_pre_event(void *ctx, fr_time_t wake)
 {
 	bool sleeping;
 	int i;
@@ -1091,9 +1091,7 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	 *	we will get called again on the next round of the
 	 *	event loop.
 	 */
-	if (wake && ((wake->tv_sec == 0) && (wake->tv_usec == 0))) {
-		return 0;
-	}
+	if (wake) return 0;
 
 	DEBUG3("\tWorker %s sleeping running %u, localized %u, to_decode %u",
 	       worker->name,
@@ -1407,7 +1405,7 @@ void fr_worker_exit(fr_worker_t *worker)
 }
 
 
-static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timeval *when, void *uctx)
+static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
 {
 	fr_time_t now;
 	REQUEST *request;

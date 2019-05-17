@@ -48,6 +48,7 @@ typedef struct xlat_exp xlat_exp_t;
 #include <freeradius-devel/server/signal.h>
 
 #include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/value.h>
 
@@ -90,8 +91,8 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
  * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] fired		the time the timeout event actually fired.
  */
-typedef	void (*fr_unlang_xlat_timeout_t)(REQUEST *request, void *xlat_inst, void *xlat_thread_inst, void *rctx,
-					 struct timeval *fired);
+typedef	void (*fr_unlang_xlat_timeout_t)(REQUEST *request, void *xlat_inst,
+					 void *xlat_thread_inst, void *rctx, fr_time_t fired);
 
 /** A callback when the FD is ready for reading
  *
@@ -106,7 +107,8 @@ typedef	void (*fr_unlang_xlat_timeout_t)(REQUEST *request, void *xlat_inst, void
  * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] fd		the file descriptor.
  */
-typedef void (*fr_unlang_xlat_fd_event_t)(REQUEST *request, void *xlat_inst, void *xlat_thread_inst, void *rctx, int fd);
+typedef void (*fr_unlang_xlat_fd_event_t)(REQUEST *request, void *xlat_inst,
+					  void *xlat_thread_inst, void *rctx, int fd);
 
 /** xlat callback function
  *
@@ -333,7 +335,7 @@ void		xlat_instances_free(void);
  *	unlang/xlat.c
  */
 int		unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t callback,
-					      void const *ctx, struct timeval *when);
+					      void const *ctx, fr_time_t when);
 
 int		unlang_xlat_event_timeout_delete(REQUEST *request, void *ctx);
 

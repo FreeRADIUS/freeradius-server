@@ -264,7 +264,7 @@ static void conn_writable(fr_event_list_t *el, int fd, int flags, void *uctx);
 static int conn_write(fr_io_connection_t *c, fr_io_request_t *u);
 static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state);
 static void state_transition(fr_io_request_t *u, fr_io_request_state_t state, fr_io_connection_t *c);
-static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx);
+static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx);
 
 static int conn_cmp(void const *one, void const *two)
 {
@@ -301,7 +301,7 @@ static int queue_cmp(void const *one, void const *two)
 /** Close a socket due to idle timeout
  *
  */
-static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_io_connection_t *c = talloc_get_type_abort(uctx, fr_io_connection_t);
 
@@ -846,16 +846,17 @@ static int conn_timeout_init(fr_event_list_t *el, fr_io_request_t *u, fr_event_c
 /** Deal with status check timeouts for transmissions, etc.
  *
  */
-static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void *uctx)
+static void status_check_timeout(fr_event_list_t *el, fr_time_t now_t, void *uctx)
 {
 	int				rcode;
-	fr_io_request_t	*u = uctx;
+	fr_io_request_t			*u = uctx;
 	fr_io_connection_t		*c = u->c;
 	rlm_radius_udp_connection_t	*radius = c->ctx;
 	REQUEST				*request;
 	uint32_t			event_time;
 	uint8_t				*attr, *end;
 	char const			*module_name;
+	struct timeval			now;
 
 	rad_assert(u == radius->status_u);
 	rad_assert(u->timer.ev == NULL);
@@ -871,7 +872,8 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 	 *	connection is zombie.  If we don't have a connection,
 	 *	just give up on the request.
 	 */
-	rcode = rr_track_retry(&u->timer, now);
+	fr_time_to_timeval(&now, now_t);
+	rcode = rr_track_retry(&u->timer, &now);
 	if (rcode == 0) {
 		REDEBUG("No response to status checks, closing connection %s", c->name);
 		talloc_free(c);
@@ -1007,7 +1009,7 @@ static void status_check_timeout(fr_event_list_t *el, struct timeval *now, void 
 /** Mark a connection "zombie" due to zombie timeout.
  *
  */
-static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_io_connection_t *c = talloc_get_type_abort(uctx, fr_io_connection_t);
 	rlm_radius_udp_connection_t *radius = c->ctx;
@@ -1765,15 +1767,18 @@ static int retransmit_packet(fr_io_request_t *u, struct timeval *now)
 /** Deal with per-request timeouts for transmissions, etc.
  *
  */
-static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uctx)
+static void response_timeout(fr_event_list_t *el, fr_time_t now_t, void *uctx)
 {
 	int				rcode;
 	fr_io_request_t			*u = uctx;
 	fr_io_connection_t		*c = u->c;
+	struct timeval			now;
 	REQUEST				*request;
 
 	rad_assert(u->timer.ev == NULL);
 	rad_assert(!c || !c->inst->parent->synchronous);
+
+	fr_time_to_timeval(&now, now_t);
 
 	request = u->request;
 
@@ -1785,7 +1790,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 *	connection is zombie.  If we don't have a connection,
 	 *	just give up on the request.
 	 */
-	rcode = rr_track_retry(&u->timer, now);
+	rcode = rr_track_retry(&u->timer, &now);
 	if (rcode == 0) {
 		if (c) {
 			REDEBUG("No response to proxied request ID %d on connection %s",
@@ -1841,7 +1846,7 @@ get_new_connection:
 	 *	t->queued
 	 */
 	RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
-	rcode = retransmit_packet(u, now);
+	rcode = retransmit_packet(u, &now);
 	if (rcode < 0) {
 		RDEBUG("Failed retransmitting packet for connection %s", c->name);
 		state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);

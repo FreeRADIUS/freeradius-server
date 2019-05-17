@@ -805,13 +805,16 @@ static void rs_stats_print_csv(rs_update_t *this, rs_stats_t *stats, UNUSED stru
 /** Process stats for a single interval
  *
  */
-static void rs_stats_process(fr_event_list_t *el, struct timeval *now, void *ctx)
+static void rs_stats_process(fr_event_list_t *el, fr_time_t now_t, void *ctx)
 {
 	size_t		i;
 	size_t		rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
 	fr_pcap_t	*in_p;
 	rs_update_t	*this = ctx;
 	rs_stats_t	*stats = this->stats;
+	struct timeval	now;
+
+	fr_time_to_timeval(&now, now_t);
 
 	if (!this->done_header) {
 		if (this->head) this->head(this);
@@ -826,7 +829,7 @@ static void rs_stats_process(fr_event_list_t *el, struct timeval *now, void *ctx
 		if (rs_check_pcap_drop(in_p) < 0) {
 			ERROR("Muting stats for the next %i milliseconds", conf->stats.timeout);
 
-			rs_tv_add_ms(now, conf->stats.timeout, &stats->quiet);
+			rs_tv_add_ms(&now, conf->stats.timeout, &stats->quiet);
 			goto clear;
 		}
 	}
@@ -835,14 +838,14 @@ static void rs_stats_process(fr_event_list_t *el, struct timeval *now, void *ctx
 	 *	Stats temporarily muted
 	 */
 	if ((stats->quiet.tv_sec + (stats->quiet.tv_usec / 1000000.0)) -
-	    (now->tv_sec + (now->tv_usec / 1000000.0)) > 0) goto clear;
+	    (now.tv_sec + (now.tv_usec / 1000000.0)) > 0) goto clear;
 
 	for (i = 0; i < rs_codes_len; i++) {
 		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]]);
 		rs_stats_process_counters(&stats->exchange[rs_useful_codes[i]]);
 	}
 
-	if (this->body) this->body(this, stats, now);
+	if (this->body) this->body(this, stats, &now);
 
 #ifdef HAVE_COLLECTDC_H
 	/*
@@ -850,7 +853,7 @@ static void rs_stats_process(fr_event_list_t *el, struct timeval *now, void *ctx
 	 *	initialised earlier.
 	 */
 	if ((conf->stats.out == RS_STATS_OUT_COLLECTD) && conf->stats.handle) {
-		rs_stats_collectd_do_stats(conf, conf->stats.tmpl, now);
+		rs_stats_collectd_do_stats(conf, conf->stats.tmpl, &now);
 	}
 #endif
 
@@ -866,11 +869,11 @@ clear:
 	{
 		static fr_event_timer_t const *event;
 
-		now->tv_sec += conf->stats.interval;
-		now->tv_usec = 0;
+		now.tv_sec += conf->stats.interval;
+		now.tv_usec = 0;
 
-		if (fr_event_timer_insert(NULL, el, &event,
-					  now, rs_stats_process, ctx) < 0) {
+		if (fr_event_timer_at(NULL, el, &event,
+				      fr_time_from_timeval(&now), rs_stats_process, ctx) < 0) {
 			ERROR("Failed inserting stats interval event");
 		}
 	}
@@ -939,8 +942,8 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 		rs_tv_add_ms(now, conf->stats.timeout, &(stats->quiet));
 	}
 
-	if (fr_event_timer_insert(NULL, events, (void *) &event,
-				  now, rs_stats_process, &update) < 0) {
+	if (fr_event_timer_at(NULL, events, (void *) &event,
+			      fr_time_from_timeval(now), rs_stats_process, &update) < 0) {
 		ERROR("Failed inserting stats event");
 		return -1;
 	}
@@ -1090,7 +1093,7 @@ static void rs_packet_cleanup(rs_request_t *request)
 	talloc_free(request);
 }
 
-static void _rs_event(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *ctx)
+static void _rs_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
 {
 	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
 	request->event = NULL;
@@ -1468,8 +1471,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			original->linked = talloc_steal(original, current);
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-			if (fr_event_timer_insert(NULL, event->list, &original->event,
-						  &original->when, _rs_event, original) < 0) {
+			if (fr_event_timer_at(NULL, event->list, &original->event,
+					      fr_time_from_timeval(&original->when), _rs_event, original) < 0) {
 				REDEBUG("Failed inserting new event");
 				/*
 				 *	Delete the original request/event, it's no longer valid
@@ -1723,8 +1726,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 */
 		original->packet->timestamp = header->ts;
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-		if (fr_event_timer_insert(NULL, event->list, &original->event,
-					  &original->when, _rs_event, original) < 0) {
+		if (fr_event_timer_at(NULL, event->list, &original->event,
+				      fr_time_from_timeval(&original->when), _rs_event, original) < 0) {
 			REDEBUG("Failed inserting new event");
 
 			talloc_free(original);
@@ -1753,7 +1756,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	It's a linked response
 	 */
 	if (original && original->linked) {
-		fr_timeval_subtract(&latency, &current->timestamp, &original->packet->timestamp);
+		fr_timeval_from_nsec(&latency,
+				     (fr_time_from_timeval(&current->timestamp) -
+				     fr_time_from_timeval(&original->packet->timestamp)));
 
 		/*
 		 *	Update stats for both the request and response types.
@@ -1771,8 +1776,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	We're filtering on response, now print out the full data from the request
 		 */
 		if (conf->filter_response && RIDEBUG_ENABLED() && (conf->event_flags & RS_NORMAL)) {
-			rs_time_print(timestr, sizeof(timestr), &original->packet->timestamp);
-			fr_timeval_subtract(&elapsed, &original->packet->timestamp, &start_pcap);
+			struct timeval ts_tv = original->packet->timestamp;
+
+			rs_time_print(timestr, sizeof(timestr), &ts_tv);
+			fr_timeval_subtract(&elapsed, &ts_tv, &start_pcap);
 			rs_packet_print(original, original->id, RS_NORMAL, original->in,
 					original->packet, &elapsed, NULL, false, true);
 			fr_timeval_subtract(&elapsed, &header->ts, &start_pcap);
@@ -1819,11 +1826,11 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 	rs_event_t	*event = ctx;
 	pcap_t		*handle = event->in->handle;
 
-	int i;
-	int ret;
-	int total = 0;
-	const uint8_t *data;
-	struct pcap_pkthdr *header;
+	int		i;
+	int		ret;
+	int		total = 0;
+	const		uint8_t *data;
+	struct		pcap_pkthdr *header;
 
 	/*
 	 *	Consume entire capture, interleaving not currently possible
@@ -1832,7 +1839,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 		bool stats_started = false;
 
 		while ((total < 5) && !fr_event_loop_exiting(el)) {
-			struct timeval now;
+			fr_time_t now;
 
 			ret = pcap_next_ex(handle, &header, &data);
 			if (ret == 0) {
@@ -1864,7 +1871,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 			}
 
 			do {
-				now = header->ts;
+				now = fr_time_from_timeval(&header->ts);
 			} while (fr_event_timer_run(el, &now) == 1);
 			count++;
 
@@ -1894,13 +1901,17 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 	}
 }
 
-static int  _rs_event_status(UNUSED void *ctx, struct timeval *wake)
+static int  _rs_event_status(UNUSED void *ctx, fr_time_t wake_t)
 {
-	if (wake && ((wake->tv_sec != 0) || (wake->tv_usec >= 100000))) {
-		DEBUG2("Waking up in %d.%01u seconds.", (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
+	struct timeval wake;
+
+	fr_time_to_timeval(&wake, wake_t);
+
+	if ((wake.tv_sec != 0) || (wake.tv_usec >= 100000)) {
+		DEBUG2("Waking up in %d.%01u seconds.", (int) wake.tv_sec, (unsigned int) wake.tv_usec / 100000);
 
 		if (RIDEBUG_ENABLED()) {
-			rs_time_print(timestr, sizeof(timestr), wake);
+			rs_time_print(timestr, sizeof(timestr), &wake);
 		}
 	}
 
@@ -2058,10 +2069,9 @@ static void _unmark_link(void *request)
 /** Re-open the collectd socket
  *
  */
-static void rs_collectd_reopen(fr_event_list_t *el, struct timeval *now, UNUSED void *ctx)
+static void rs_collectd_reopen(fr_event_list_t *el, fr_time_t now, UNUSED void *ctx)
 {
 	static fr_event_timer_t const *event;
-	struct timeval when;
 
 	if (rs_stats_collectd_open(conf) == 0) {
 		DEBUG2("Stats output socket (re)opened");
@@ -2070,9 +2080,8 @@ static void rs_collectd_reopen(fr_event_list_t *el, struct timeval *now, UNUSED 
 
 	ERROR("Will attempt to re-establish connection in %i ms", RS_SOCKET_REOPEN_DELAY);
 
-	rs_tv_add_ms(now, RS_SOCKET_REOPEN_DELAY, &when);
-	if (fr_event_timer_insert(NULL, el, &event,
-				  &when, rs_collectd_reopen, el) < 0) {
+	if (fr_event_timer_at(NULL, el, &event,
+			      now + fr_time_delta_from_msec(RS_SOCKET_REOPEN_DELAY), rs_collectd_reopen, el) < 0) {
 		ERROR("Failed inserting re-open event");
 		RS_ASSERT(0);
 	}
@@ -2118,12 +2127,7 @@ fr_event_list_t *list, int fd, int UNUSED flags, UNUSED void *ctx)
 	switch (sig) {
 #ifdef HAVE_COLLECTDC_H
 	case SIGPIPE:
-	{
-		struct timeval now;
-
-		gettimeofday(&now, NULL);
-		rs_collectd_reopen(list, &now, list);
-	}
+		rs_collectd_reopen(list, fr_time(), list);
 		break;
 #else
 	case SIGPIPE:

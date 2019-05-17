@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/map_proc.h>
+#include <freeradius-devel/util/time.h>
 
 typedef struct {
 	char const	*xlat_name;		//!< Name of our xlat function.
@@ -57,9 +58,9 @@ static const CONF_PARSER module_config[] = {
  * @param[in] rctx		Scheduled end of the delay.
  * @param[in] fired		When request processing was resumed.
  */
-static void _delay_done(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx, struct timeval *fired)
+static void _delay_done(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx, fr_time_t fired)
 {
-	struct timeval *yielded = talloc_get_type_abort(rctx, struct timeval);
+	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
 
 	RDEBUG2("Delay done");
 
@@ -67,15 +68,15 @@ static void _delay_done(UNUSED void *instance, UNUSED void *thread, REQUEST *req
 	 *	timeout should never be *before* the scheduled time,
 	 *	if it is, something is very broken.
 	 */
-	if (!fr_cond_assert(fr_timeval_cmp(fired, yielded) >= 0)) REDEBUG("Unexpected resume time");
+	if (!fr_cond_assert(fired >= *yielded)) REDEBUG("Unexpected resume time");
 
 	unlang_interpret_resumable(request);
 }
 
 static void _xlat_delay_done(REQUEST *request,
-			     UNUSED void *xlat_inst, UNUSED void *xlat_thread_inst, void *rctx, struct timeval *fired)
+			     UNUSED void *xlat_inst, UNUSED void *xlat_thread_inst, void *rctx, fr_time_t fired)
 {
-	struct timeval *yielded = talloc_get_type_abort(rctx, struct timeval);
+	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
 
 	RDEBUG2("Delay done");
 
@@ -83,42 +84,41 @@ static void _xlat_delay_done(REQUEST *request,
 	 *	timeout should never be *before* the scheduled time,
 	 *	if it is, something is very broken.
 	 */
-	if (!fr_cond_assert(fr_timeval_cmp(fired, yielded) >= 0)) REDEBUG("Unexpected resume time");
+	if (!fr_cond_assert(fired > *yielded)) REDEBUG("Unexpected resume time");
 
 	unlang_interpret_resumable(request);
 }
 
-static int delay_add(REQUEST *request, struct timeval *resume_at, struct timeval *now,
-		     struct timeval *delay, bool force_reschedule, bool relative)
+static int delay_add(REQUEST *request, fr_time_t *resume_at, fr_time_t now,
+		     fr_time_t delay, bool force_reschedule, bool relative)
 {
-	int		cmp;
-
 	/*
 	 *	Delay is zero (and reschedule is not forced)
 	 */
-	if (!force_reschedule && (delay->tv_sec == 0) && (delay->tv_usec == 0)) return 1;
+	if (!force_reschedule && (delay == 0)) return 1;
 
 	/*
 	 *	Process the delay relative to the start of packet processing
 	 */
 	if (relative) {
-		fr_timeval_add(resume_at, &request->packet->timestamp, delay);
+		*resume_at = fr_time_from_timeval(&request->packet->timestamp) + delay;
 	} else {
-		fr_timeval_add(resume_at, now, delay);
+		*resume_at = now + delay;
 	}
 
 	/*
 	 *	If resume_at is in the past (and reschedule is not forced), just return noop
 	 */
-	cmp = fr_timeval_cmp(now, resume_at);
-	if (!force_reschedule && (cmp >= 0)) return 1;
+	if (!force_reschedule && (*resume_at <= now)) return 1;
 
-	if (cmp < 0) {
-		struct timeval delay_by;
+	if (*resume_at > now) {
+		if (RDEBUG_ENABLED2) {
+			struct timeval	delayed_tv;
 
-		fr_timeval_subtract(&delay_by, resume_at, now);
+			fr_time_delta_to_timeval(&delayed_tv, *resume_at - now);
 
-		RDEBUG2("Delaying request by ~%pVs", fr_box_timeval(delay_by));
+			RDEBUG2("Delaying request by ~%pVs", fr_box_timeval(delayed_tv));
+		}
 	} else {
 		RDEBUG2("Rescheduling request");
 	}
@@ -131,18 +131,17 @@ static int delay_add(REQUEST *request, struct timeval *resume_at, struct timeval
  */
 static rlm_rcode_t mod_delay_return(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
 {
-	struct timeval *yielded = talloc_get_type_abort(rctx, struct timeval);
+	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
 
 	/*
 	 *	Print how long the delay *really* was.
 	 */
 	if (RDEBUG_ENABLED3) {
-		struct timeval delayed, now;
+		struct timeval	delayed_tv;
 
-		gettimeofday(&now, NULL);
-		fr_timeval_subtract(&delayed, &now, yielded);
+		fr_time_delta_to_timeval(&delayed_tv, fr_time() - *yielded);
 
-		RDEBUG3("Request delayed by %pV", fr_box_timeval(delayed));
+		RDEBUG3("Request delayed by %pV", fr_box_timeval(delayed_tv));
 	}
 	talloc_free(yielded);
 
@@ -162,7 +161,9 @@ static void mod_delay_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST
 static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_delay_t const	*inst = instance;
-	struct timeval		delay, resume_at, *yielded_at;
+	struct timeval		delay;
+	fr_time_t		resume_at, *yielded_at;
+	struct timeval		resume_at_tv, yielded_at_tv;
 
 	if (inst->delay) {
 		if (tmpl_aexpand(request, &delay, request, inst->delay, NULL, NULL) < 0) return RLM_MODULE_FAIL;
@@ -173,22 +174,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *threa
 	/*
 	 *	Record the time that we yielded the request
 	 */
-	MEM(yielded_at = talloc(request, struct timeval));
-	if (gettimeofday(yielded_at, NULL) < 0) {
-		REDEBUG("Failed getting current time: %s", fr_syserror(errno));
-		return RLM_MODULE_FAIL;
-	}
+	MEM(yielded_at = talloc(request, fr_time_t));
+	*yielded_at = fr_time();
 
 	/*
 	 *	Setup the delay for this request
 	 */
-	if (delay_add(request, &resume_at, yielded_at, &delay, inst->force_reschedule, inst->delay) != 0) {
+	if (delay_add(request, &resume_at, *yielded_at, fr_time_delta_from_timeval(&delay),
+		      inst->force_reschedule, inst->delay) != 0) {
 		return RLM_MODULE_NOOP;
 	}
 
-	RDEBUG3("Current time %pV, resume time %pV", fr_box_timeval(*yielded_at), fr_box_timeval(resume_at));
+	fr_time_to_timeval(&resume_at_tv, resume_at);
+	fr_time_to_timeval(&yielded_at_tv, *yielded_at);
 
-	if (unlang_module_timeout_add(request, _delay_done, yielded_at, &resume_at) < 0) {
+	RDEBUG3("Current time %pV, resume time %pV",
+		fr_box_timeval(yielded_at_tv), fr_box_timeval(resume_at_tv));
+
+	if (unlang_module_timeout_add(request, _delay_done, yielded_at, resume_at) < 0) {
 		RPEDEBUG("Adding event failed");
 		return RLM_MODULE_FAIL;
 	}
@@ -201,18 +204,20 @@ static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       UNUSED fr_value_box_t **in, void *rctx)
 {
-	struct timeval	*yielded_at = talloc_get_type_abort(rctx, struct timeval);
-	struct timeval	delayed, now;
+	fr_time_t	*yielded_at = talloc_get_type_abort(rctx, fr_time_t);
+	fr_time_t	delayed;
+	struct timeval	delayed_tv;
 	fr_value_box_t	*vb;
 
-	gettimeofday(&now, NULL);
-	fr_timeval_subtract(&delayed, &now, yielded_at);
+	delayed = fr_time() - *yielded_at;
 	talloc_free(yielded_at);
 
-	RDEBUG3("Request delayed by %pVs", fr_box_timeval(delayed));
+	fr_time_delta_to_timeval(&delayed_tv, delayed);
+
+	RDEBUG3("Request delayed by %pVs", fr_box_timeval(delayed_tv));
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIMEVAL, NULL, false));
-	vb->vb_timeval = delayed;
+	vb->vb_timeval = delayed_tv;
 
 	fr_cursor_insert(out, vb);
 
@@ -235,7 +240,9 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 {
 	rlm_delay_t const	*inst;
 	void			*instance;
-	struct timeval		resume_at, delay, *yielded_at;
+	struct timeval		delay_tv;
+	fr_time_t		resume_at, *yielded_at;
+	struct timeval		resume_at_tv, yielded_at_tv;
 
 	memcpy(&instance, xlat_inst, sizeof(instance));	/* Stupid const issues */
 
@@ -244,11 +251,8 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	/*
 	 *	Record the time that we yielded the request
 	 */
-	MEM(yielded_at = talloc(request, struct timeval));
-	if (gettimeofday(yielded_at, NULL) < 0) {
-		REDEBUG("Failed getting current time: %s", fr_syserror(errno));
-		return XLAT_ACTION_FAIL;
-	}
+	MEM(yielded_at = talloc(request, fr_time_t));
+	*yielded_at = fr_time();
 
 	/*
 	 *	If there's no input delay, just yield and
@@ -256,8 +260,7 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	 *	This is very useful for testing.
 	 */
 	if (!*in) {
-		memset(&delay, 0, sizeof(delay));
-		if (!fr_cond_assert(delay_add(request, &resume_at, yielded_at, &delay, true, true) == 0)) {
+		if (!fr_cond_assert(delay_add(request, &resume_at, *yielded_at, 0, true, true) == 0)) {
 			return XLAT_ACTION_FAIL;
 		}
 		goto yield;
@@ -269,22 +272,26 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_timeval_from_str(&delay, (*in)->vb_strvalue) < 0) {
+	if (fr_timeval_from_str(&delay_tv, (*in)->vb_strvalue) < 0) {
 		RPEDEBUG("Failed parsing delay time");
 		talloc_free(yielded_at);
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (delay_add(request, &resume_at, yielded_at, &delay, inst->force_reschedule, inst->relative) != 0) {
+	if (delay_add(request, &resume_at, *yielded_at,
+		      fr_time_delta_from_timeval(&delay_tv), inst->force_reschedule, inst->relative) != 0) {
 		RDEBUG2("Not adding delay");
 		talloc_free(yielded_at);
 		return XLAT_ACTION_DONE;
 	}
 
 yield:
-	RDEBUG3("Current time %pV, resume time %pV", fr_box_timeval(*yielded_at), fr_box_timeval(resume_at));
+	fr_time_to_timeval(&resume_at_tv, resume_at);
+	fr_time_to_timeval(&yielded_at_tv, *yielded_at);
 
-	if (unlang_xlat_event_timeout_add(request, _xlat_delay_done, yielded_at, &resume_at) < 0) {
+	RDEBUG3("Current time %pV, resume time %pV", fr_box_timeval(yielded_at_tv), fr_box_timeval(resume_at_tv));
+
+	if (unlang_xlat_event_timeout_add(request, _xlat_delay_done, yielded_at, resume_at) < 0) {
 		RPEDEBUG("Adding event failed");
 		return XLAT_ACTION_FAIL;
 	}

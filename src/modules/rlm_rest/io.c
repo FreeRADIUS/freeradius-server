@@ -105,7 +105,7 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
  * @param[in] now	The current time according to the event loop.
  * @param[in] ctx	The rlm_rest_thread_t specific to this thread.
  */
-static void _rest_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *ctx)
+static void _rest_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
 {
 	rlm_rest_thread_t	*t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
 	CURLMcode		ret;
@@ -251,7 +251,6 @@ static int _rest_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 	rlm_rest_thread_t	*t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
 	CURLMcode		ret;
 	int			running = 0;
-	struct timeval		now, to_add, when;
 
 	if (timeout_ms == 0) {
 		ret = curl_multi_socket_action(mandle, CURL_SOCKET_TIMEOUT, 0, &running);
@@ -277,12 +276,8 @@ static int _rest_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 
 	DEBUG3("multi-handle %p will need servicing in %li ms", mandle, timeout_ms);
 
-	gettimeofday(&now, NULL);
-	fr_timeval_from_ms(&to_add, (uint64_t)timeout_ms);
-	fr_timeval_add(&when, &now, &to_add);
-
-	(void) fr_event_timer_insert(NULL, t->el, &t->ev,
-				     &when, _rest_io_timer_expired, t);
+	(void) fr_event_timer_in(NULL, t->el, &t->ev,
+				 fr_time_delta_from_msec(timeout_ms), _rest_io_timer_expired, t);
 
 	return 0;
 }

@@ -128,8 +128,8 @@ struct fr_network_t {
 	fr_network_worker_t	*workers[MAX_WORKERS]; 	//!< each worker
 };
 
-static void fr_network_post_event(fr_event_list_t *el, struct timeval *now, void *uctx);
-static int fr_network_pre_event(void *ctx, struct timeval *wake);
+static void fr_network_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
+static int fr_network_pre_event(void *ctx, fr_time_t wake);
 
 static int reply_cmp(void const *one, void const *two)
 {
@@ -1144,7 +1144,7 @@ int fr_network_destroy(fr_network_t *nr)
  * @param[in] ctx the network
  * @param[in] wake the time when the event loop will wake up.
  */
-static int fr_network_pre_event(void *ctx, UNUSED struct timeval *wake)
+static int fr_network_pre_event(void *ctx, UNUSED fr_time_t wake)
 {
 	fr_network_t *nr = talloc_get_type_abort(ctx, fr_network_t);
 
@@ -1161,7 +1161,7 @@ static int fr_network_pre_event(void *ctx, UNUSED struct timeval *wake)
  * @param now	the current time (mostly)
  * @param uctx	the fr_network_t
  */
-static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_channel_data_t *cd;
 	fr_network_t *nr = talloc_get_type_abort(uctx, fr_network_t);

@@ -43,7 +43,7 @@ fr_dict_attr_autoload_t subrequest_dict_attr[] = {
 	{ NULL }
 };
 
-static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	REQUEST *request = talloc_get_type_abort(uctx, REQUEST);
 

@@ -47,7 +47,7 @@ extern "C" {
  * @param[in] fired		the time the timeout event actually fired.
  */
 typedef	void (*fr_unlang_module_timeout_t)(void *instance, void *thread, REQUEST *request, void *rctx,
-					   struct timeval *fired);
+					   fr_time_t fired);
 
 /** A callback when the FD is ready for reading
  *
@@ -93,7 +93,7 @@ typedef void (*fr_unlang_module_signal_t)(void *instance, void *thread, REQUEST 
 					  void *rctx, fr_state_signal_t action);
 
 int		unlang_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
-					  void const *ctx, struct timeval *timeout);
+					  void const *ctx, fr_time_t when);
 
 int		unlang_module_timeout_delete(REQUEST *request, void const *ctx);
 

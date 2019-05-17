@@ -48,7 +48,8 @@ USES_APPLE_DEPRECATED_API
 #  include <mach/mach_time.h>
 #endif
 
-static struct timeval tm_started = { 0, 0};
+static struct timeval tm_started = { 0, 0};	     //!< Time from the epoch represented as a timeval.
+static fr_time_t t_started;				//!< Time from the epoch represented as nanoseconds.
 
 #ifdef HAVE_CLOCK_GETTIME
 static struct timespec ts_started = { 0, 0};
@@ -58,7 +59,7 @@ static mach_timebase_info_data_t timebase;
 static uint64_t abs_started;
 #endif
 
-/**  Initialize the local time.
+/** Initialize the local time.
  *
  *  MUST be called when the program starts.  MUST NOT be called after
  *  that.
@@ -72,6 +73,7 @@ int fr_time_start(void)
 	tzset();	/* Populate timezone, daylight and tzname globals */
 
 	(void) gettimeofday(&tm_started, NULL);
+	t_started = fr_time_delta_from_timeval(&tm_started);
 
 #ifdef HAVE_CLOCK_GETTIME
 	return clock_gettime(CLOCK_MONOTONIC, &ts_started);
@@ -84,8 +86,7 @@ int fr_time_start(void)
 #endif
 }
 
-
-/** Return a relative time since the server ts_started.
+/** Return a relative time since the server ts_started
  *
  *  This time is useful for doing time comparisons, deltas, etc.
  *  Human (i.e. printable) time is something else.
@@ -156,6 +157,58 @@ void fr_time_to_timespec(struct timespec *ts, fr_time_t when)
 
 	ts->tv_sec += ts->tv_nsec / NSEC;
 	ts->tv_nsec = ts->tv_nsec % NSEC;
+}
+
+/** Convert an fr_time_t to number of usec since the epoch
+ *
+ */
+int64_t fr_time_to_usec(fr_time_t when)
+{
+	return ((when + t_started) / 1000);
+}
+
+/** Convert an fr_time_t to number of msec since the epoch
+ *
+ */
+int64_t fr_time_to_msec(fr_time_t when)
+{
+	return ((when + t_started) / 1000000);
+}
+
+/** Convert an fr_time_t to number of sec since the epoch
+ *
+ */
+int64_t fr_time_to_sec(fr_time_t when)
+{
+	return ((when + t_started) / NSEC);
+}
+
+/** Convert a timeval to a fr_time_t
+ *
+ * @param[out] out	The fr_time_t value.
+ * @param[in] when_tv	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
+{
+	return fr_time_delta_from_timeval(when_tv) - t_started;
+}
+
+/** Convert a timespec to a fr_time_t
+ *
+ * @param[out] out	The fr_time_t value.
+ * @param[in] when_ts	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- 0 if when_tv occurred before the server started.
+ */
+fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
+{
+	return fr_time_delta_from_timespec(when_ts) - t_started;
 }
 
 /** Start time tracking for a request.
