@@ -592,7 +592,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	rad_assert(thread->fd >= 0);
 
 	if (!buffer[0]) {
-		struct timeval when, now;
+		struct timeval now;
 
 		/*
 		 *	Cap at MRC, if required.
@@ -634,7 +634,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		} /* we're on retransmission N */
 
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %d.%06ds",
-		      thread->name, track->id, (int) when.tv_sec, (int) when.tv_usec);
+		      thread->name, track->id, track->rt / USEC, track->rt % USEC);
 
 		if (fr_event_timer_in(thread, thread->el, &track->ev,
 				      fr_time_delta_from_usec(track->rt), work_retransmit, track) < 0) {
