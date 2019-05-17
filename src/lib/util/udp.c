@@ -204,15 +204,11 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	 */
 #ifdef WITH_UDPFROMTO
 	if (dst_ipaddr) {
-		struct timeval when_tv;
-
 		received = recvfromto(sockfd, data, data_len, sock_flags,
 				      (struct sockaddr *)&src, &sizeof_src,
 				      (struct sockaddr *)&dst, &sizeof_dst,
-				      if_index, &when_tv);
+				      if_index, when);
 		if (received <= 0) goto done;
-
-		*when = fr_time_from_timeval(&when_tv);
 	} else {
 		received = recvfrom(sockfd, data, data_len, sock_flags,
 				    (struct sockaddr *)&src, &sizeof_src);

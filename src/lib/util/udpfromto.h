@@ -32,6 +32,7 @@ extern "C" {
 #ifdef WITH_UDPFROMTO
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/time.h>
 
 #include <netinet/in.h>
 #include <stddef.h>
@@ -42,7 +43,7 @@ int	udpfromto_init(int s);
 int	recvfromto(int s, void *buf, size_t len, int flags,
 	       	   struct sockaddr *from, socklen_t *fromlen,
 		   struct sockaddr *to, socklen_t *tolen,
-		   int *if_index, struct timeval *when);
+		   int *if_index, fr_time_t *when);
 
 int	sendfromto(int s, void *buf, size_t len, int flags,
 		   struct sockaddr *from, socklen_t fromlen,

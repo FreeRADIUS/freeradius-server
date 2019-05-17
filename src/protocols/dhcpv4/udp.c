@@ -153,7 +153,7 @@ RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd)
 	fr_ipaddr_t		src_ipaddr, dst_ipaddr;
 	uint16_t		src_port, dst_port;
 	int			if_index = 0;
-	struct timeval		when;
+	fr_time_t		when;
 
 	data = talloc_zero_array(NULL, uint8_t, MAX_PACKET_SIZE);
 	if (!data) {
@@ -206,7 +206,7 @@ RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd)
 	packet->data = data;
 	packet->sockfd = sockfd;
 	packet->if_index = if_index;
-	packet->timestamp = fr_time_from_timeval(&when);
+	packet->timestamp = when;
 	return packet;
 }
 

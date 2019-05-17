@@ -194,7 +194,7 @@ int udpfromto_init(int s)
 int recvfromto(int fd, void *buf, size_t len, int flags,
 	       struct sockaddr *from, socklen_t *from_len,
 	       struct sockaddr *to, socklen_t *to_len,
-	       int *if_index, struct timeval *when)
+	       int *if_index, fr_time_t *when)
 {
 	struct msghdr		msgh;
 	struct cmsghdr		*cmsg;
@@ -216,7 +216,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 	 *	Catch the case where the caller passes invalid arguments.
 	 */
 	if (!to || !to_len) {
-		if (when) gettimeofday(when, NULL);
+		if (when) *when = fr_time();
 		return recvfrom(fd, buf, len, flags, from, from_len);
 	}
 
@@ -301,10 +301,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 	if (from_len) *from_len = msgh.msg_namelen;
 
 	if (if_index) *if_index = 0;
-	if (when) {
-		when->tv_sec = 0;
-		when->tv_usec = 0;
-	}
+	if (when) *when = 0;
 
 	/* Process auxiliary received data in msgh */
 	for (cmsg = CMSG_FIRSTHDR(&msgh);
@@ -354,12 +351,16 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 
 #ifdef SO_TIMESTAMP
 		if (when && (cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == SO_TIMESTAMP)) {
-			memcpy(when, CMSG_DATA(cmsg), sizeof(*when));
+			struct timeval when_tv;
+
+			memcpy(&when_tv, CMSG_DATA(cmsg), sizeof(when_tv));
+
+			*when = fr_time_from_timeval(&when_tv);
 		}
 #endif
 	}
 
-	if (when && !when->tv_sec) gettimeofday(when, NULL);
+	if (when && !*when) *when = fr_time();
 
 	return ret;
 }
@@ -637,7 +638,7 @@ client:
 
 	if ((n = recvfromto(client_socket, buf, sizeof(buf), 0,
 	    		    (struct sockaddr *)&from, &fl,
-	    		    (struct sockaddr *)&to, &tl, &if_index)) < 0) {
+	    		    (struct sockaddr *)&to, &tl, &if_index, NULL)) < 0) {
 		perror("client: recvfromto");
 		fr_exit_now(1);
 	}
