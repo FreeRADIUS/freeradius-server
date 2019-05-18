@@ -43,8 +43,6 @@ typedef enum {
 
 extern time_t fr_start_time;
 
-extern struct timeval sd_watchdog_interval;
-
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/listen.h>
 #include <freeradius-devel/server/signal.h>
