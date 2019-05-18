@@ -833,8 +833,9 @@ static int conn_timeout_init(fr_event_list_t *el, fr_io_request_t *u, fr_event_c
 		return -1;
 	}
 
-	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next,
-				  callback, u) < 0) {
+	if (fr_event_timer_at(u, el, &u->timer.ev,
+			      fr_time_from_timeval(&u->timer.next),
+			      callback, u) < 0) {
 		return -1;
 	}
 
