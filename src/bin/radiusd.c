@@ -634,7 +634,7 @@ int main(int argc, char *argv[])
 			 *	Update the systemd MAINPID to be our child,
 			 *	as the parent is about to exit.
 			 */
-			sd_notify(0, "MAINPID=%lu", (unsigned long)pid);
+			sd_notifyf(0, "MAINPID=%lu", (unsigned long)pid);
 #endif
 
 			goto cleanup;
