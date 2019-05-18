@@ -325,31 +325,28 @@ static unlang_action_t unlang_detach(REQUEST *request,
 	 */
 	vp = fr_pair_find_by_da(request->control, attr_request_lifetime, TAG_ANY);
 	if (!vp || (vp->vp_uint32 > 0)) {
-		struct timeval when;
+		fr_time_delta_t when = 0;
 		const fr_event_timer_t **ev_p;
 
-		gettimeofday(&when, NULL);
-
 		if (!vp) {
-			when.tv_sec += 30; /* default to 30s if not set */
+			when += fr_time_delta_from_sec(30); /* default to 30s if not set */
 
 		} else if (vp->vp_uint32 > 3600) {
-			RWARN("Request-Timeout can be no more than 3600");
-			when.tv_sec += 3600;
+			RWARN("Request-Timeout can be no more than 3600 seconds");
+			when += fr_time_delta_from_sec(3600);
 
 		} else if (vp->vp_uint32 < 5) {
-			RWARN("Request-Timeout can be no less than 5");
-			when.tv_sec += 5;
+			RWARN("Request-Timeout can be no less than 5 seconds");
+			when += fr_time_delta_from_sec(5);
 
 		} else {
-			when.tv_sec += vp->vp_uint32;
+			when += fr_time_delta_from_sec(vp->vp_uint32);
 		}
 
 		ev_p = talloc_size(request, sizeof(*ev_p));
 		memset(ev_p, 0, sizeof(*ev_p));
 
-		(void) fr_event_timer_insert(request, request->el, ev_p,
-					     &when, unlang_max_request_time, request);
+		(void) fr_event_timer_in(request, request->el, ev_p, when, unlang_max_request_time, request);
 	}
 
 	/*
