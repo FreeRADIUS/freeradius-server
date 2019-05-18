@@ -338,9 +338,11 @@ static int mod_detach(UNUSED void *instance)
 }
 
 static const module_method_names_t method_names[] = {
-	{ CF_IDENT_ANY, CF_IDENT_ANY,	mod_return },
-	{ "send",	CF_IDENT_ANY,	mod_return },
 	{ "recv",	"Access-Challenge", mod_return },
+	{ "recv",	CF_IDENT_ANY,	mod_return },
+	{ "name1_null",	NULL,		mod_return },
+	{ "send",	CF_IDENT_ANY,	mod_return },
+	{ CF_IDENT_ANY, CF_IDENT_ANY,	mod_return },
 
 	MODULE_NAME_TERMINATOR
 };
