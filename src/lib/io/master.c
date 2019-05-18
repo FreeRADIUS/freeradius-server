@@ -401,6 +401,13 @@ static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED size_t
 }
 
 
+static int _client_free(fr_io_client_t *client)
+{
+	if (client->pending) TALLOC_FREE(client->pending);
+
+	return 0;
+}
+
 static int connection_free(fr_io_connection_t *connection)
 {
 	/*
@@ -476,6 +483,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 
 	MEM(connection->client->radclient = radclient = radclient_clone(connection->client, client->radclient));
 
+	talloc_set_destructor(connection->client, _client_free);
 	talloc_set_destructor(connection, connection_free);
 
 	connection->client->pending_id = -1;
@@ -968,11 +976,13 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
  *	This function is only used for the "main" socket.  Clients
  *	from connections do not use it.
  */
-static int _client_free(fr_io_client_t *client)
+static int _client_live_free(fr_io_client_t *client)
 {
 	rad_assert(client->in_trie);
 	rad_assert(!client->connection);
 	rad_assert(fr_heap_num_elements(client->thread->alive_clients) > 0);
+
+	if (client->pending) TALLOC_FREE(client->pending);
 
 	(void) fr_trie_remove(client->thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
 	(void) fr_heap_extract(client->thread->alive_clients, client);
@@ -1390,7 +1400,7 @@ do_read:
 		 *	incremented the numbers, set the destructor
 		 *	function.
 		 */
-		talloc_set_destructor(client, _client_free);
+		talloc_set_destructor(client, _client_live_free);
 	}
 
 have_client:
