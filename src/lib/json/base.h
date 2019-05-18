@@ -57,7 +57,7 @@ char		*fr_jpath_asprint(TALLOC_CTX *ctx, fr_jpath_node_t const *head);
 ssize_t		fr_jpath_parse(TALLOC_CTX *ctx, fr_jpath_node_t **head, char const *in, size_t inlen);
 
 /* json.c */
-int		fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_object *object,
+int	CC_HINT(nonnull(2,3)) fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_object *object,
 					    fr_dict_attr_t const *enumv, bool tainted);
 
 json_object	*json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *data);

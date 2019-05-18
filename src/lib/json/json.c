@@ -50,29 +50,16 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 	{
 		char const	*value;
 		size_t		len;
-		fr_dict_enum_t	*found;
+		fr_type_t dst_type = FR_TYPE_STRING;
 
 		value = json_object_get_string(object);
 		len = json_object_get_string_len(object);
 
-		if (!enumv) goto no_enumv;
-
-		if (fr_dict_valid_name(value, len) < 0) goto no_enumv;
-
-		/*
-		 *	If an alias exists, use that value instead
-		 */
-		found = fr_dict_enum_by_alias(enumv, value, len);
-		if (found) {
-			if (fr_value_box_copy(ctx, out, found->value) < 0) return -1;
-			return 0;
+		if (fr_value_box_from_str(ctx, out, &dst_type, enumv,
+					value, len, '\0', tainted) < 0) {
+			return -1;
 		}
 
-	no_enumv:
-		/*
-		 *	Just copy the string to the box.
-		 */
-		fr_value_box_bstrndup(ctx, out, NULL, value, len, tainted);
 	}
 		break;
 
