@@ -951,59 +951,67 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	}
 
 	/*
-	 *	We CANNOT have '.' in method names.
+	 *	We have "module.METHOD", but METHOD doesn't match
+	 *	"authorize", "authenticate", etc.  Let's see if it
+	 *	matches anything else.
 	 */
-	if (q && (strchr(q + 1, '.') != 0)) {
+	if (!q) {
+		for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
+			methods = &mi->module->method_names[j];
+
+			/*
+			 *	Wildcard match name1, we're
+			 *	done.
+			 */
+			if (!methods->name1 || (methods->name1 == CF_IDENT_ANY)) goto found_name1;
+
+			/*
+			 *	If name1 doesn't match, skip it.
+			 */
+			if (strcmp(methods->name1, p) != 0) continue;
+
+			if (methods->name1 != CF_IDENT_ANY) continue;
+
+		found_name1:
+			/*
+			 *	We've matched "*", or "name1" or
+			 *	"name1 *".  Return that.
+			 */
+			*name1 = p;
+			*name2 = NULL;
+			*method = methods->method;
+			break;
+		}
+
+		/*
+		 *	Return the found module.
+		 */
 		talloc_free(inst_name);
 		return mi;
 	}
 
 	/*
-	 *	We have "module.METHOD", but METHOD doesn't match
-	 *	"authorize", "authenticate", etc.  Let's see if it
-	 *	matches anything else.  We may also have
-	 *	"module.METHOD1.METHOD2".
+	 *	We CANNOT have '.' in method names.
+	 */
+	if (strchr(q + 1, '.') != 0) {
+		talloc_free(inst_name);
+		return mi;
+	}
+
+	len = q - p;
+
+	/*
+	 *	We have "module.METHOD1.METHOD2".
 	 *
 	 *	Loop over the method names, seeing if we have a match.
 	 */
-	len = q - p;
 	for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
 		methods = &mi->module->method_names[j];
 
 		/*
-		 *	Wildcard match name1, we're
-		 *	done.
-		 */
-		if (methods->name1 == CF_IDENT_ANY) {
-			/*
-			 *	Allocate name1 from the module
-			 *	instance.  Perhaps not the best
-			 *	solution, but the caller needs a
-			 *	zero-terminated string, and we don't
-			 *	have one here.
-			 */
-			*name1 = talloc_bstrndup(mi, p, len);
-			*name2 = name + (q - inst_name);
-			*method = methods->method;
-			talloc_free(inst_name);
-			return mi;
-		}
-
-		/*
 		 *	If name1 doesn't match, skip it.
 		 */
-		if (strncmp(methods->name1, p, len) != 0) {
-		found2:
-			/*
-			 *	Update name1/name2 with the methods
-			 *	that were found.
-			 */
-			*name1 = methods->name1;
-			*name2 = name + (q - inst_name);
-			*method = methods->method;
-			talloc_free(inst_name);
-			return mi;
-		}
+		if (strncmp(methods->name1, p, len) != 0) continue;
 
 		/*
 		 *	It may have been a partial match, like "rec",
@@ -1017,19 +1025,29 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		 *	wildcard for name2, in which
 		 *	case it's a match.
 		 */
-		if (methods->name2 == CF_IDENT_ANY) goto found2;
+		if (!methods->name2 || (methods->name2 == CF_IDENT_ANY)) goto found_name2;
 
 		/*
 		 *	No name2 is also a match to no name2.
 		 */
-		if (!methods->name2 && !q) goto found2;
+		if (!methods->name2 && !q) goto found_name2;
 
 		/*
 		 *	Don't do strcmp on NULLs
 		 */
 		if (!methods->name2 || !q) continue;
 
-		if (strcmp(methods->name2, q) == 0) goto found2;
+		if (strcmp(methods->name2, q) != 0) continue;
+
+	found_name2:
+		/*
+		 *	Update name1/name2 with the methods
+		 *	that were found.
+		 */
+		*name1 = methods->name1;
+		*name2 = name + (q - inst_name);
+		*method = methods->method;
+		break;
 	}
 
 	talloc_free(inst_name);
