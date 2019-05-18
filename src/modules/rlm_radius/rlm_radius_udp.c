@@ -719,7 +719,7 @@ static rlm_rcode_t conn_request_resume(UNUSED void *instance, UNUSED void *threa
 
 static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state)
 {
-	struct timeval when;
+	fr_time_t when;
 
 	if (c->state == state) return;
 
@@ -790,13 +790,14 @@ static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t stat
 
 		fr_dlist_insert_head(&c->thread->zombie, c);
 
-		gettimeofday(&when, NULL);
-		c->zombie_start = when;
+		when = fr_time();
+		fr_time_to_timeval(&c->zombie_start, when);
+		when += fr_time_delta_from_timeval(&c->thread->zombie_period);
 
-		fr_timeval_add(&when, &when, &c->thread->zombie_period);
 		WARN("%s - Entering Zombie state - connection %s", c->module_name, c->name);
 
-		if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
+		if (fr_event_timer_at(c, c->thread->el, &c->zombie_ev,
+				      when, conn_zombie_timeout, c) < 0) {
 			ERROR("%s - Failed inserting zombie timeout for connection %s",
 			      c->module_name, c->name);
 		}
