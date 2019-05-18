@@ -460,13 +460,11 @@ static bool do_xlats(char const *filename, FILE *fp)
 	char		input[8192];
 	char		output[8192];
 	REQUEST		*request;
-	struct timeval	now;
 
 	/*
 	 *	Create and initialize the new request.
 	 */
 	request = request_alloc(NULL);
-	gettimeofday(&now, NULL);
 
 	request->log.dst = talloc_zero(request, log_dst_t);
 	request->log.dst->func = vlog_request;

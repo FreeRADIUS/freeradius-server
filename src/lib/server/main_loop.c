@@ -255,9 +255,7 @@ int main_loop_init(void)
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
 	if (sd_watchdog_interval.tv_sec || sd_watchdog_interval.tv_usec) {
-		struct timeval	now;
-		fr_time_to_timeval(&now, fr_event_list_time(event_list));
-		sd_watchdog_event(event_list, &now, NULL);
+		sd_watchdog_event(event_list, 0, NULL);
 	}
 #endif
 

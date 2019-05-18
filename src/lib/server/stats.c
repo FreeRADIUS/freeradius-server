@@ -36,8 +36,8 @@ RCSID("$Id$")
 #define EMA_SCALE (100)
 #define F_EMA_SCALE (1000000)
 
-static struct timeval	start_time;
-static struct timeval	hup_time;
+static fr_time_t start_time;
+static fr_time_t hup_time;
 
 #define FR_STATS_INIT { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 	\
 				 { 0, 0, 0, 0, 0, 0, 0, 0 }}
@@ -552,9 +552,9 @@ void request_stats_reply(REQUEST *request)
 	 */
 	if ((flag->vp_uint32 & 0x10) != 0) {
 		vp = ADD_TO_REPLY(FR_FREERADIUS_STATS_START_TIME, VENDORPEC_FREERADIUS);
-		if (vp) vp->vp_date = start_time.tv_sec;
+		if (vp) vp->vp_date = fr_time_to_sec(start_time);
 		vp = ADD_TO_REPLY(FR_FREERADIUS_STATS_HUP_TIME, VENDORPEC_FREERADIUS);
-		if (vp) vp->vp_date = hup_time.tv_sec;
+		if (vp) vp->vp_date = fr_time_to_sec(hup_time);
 	}
 
 	/*
@@ -800,10 +800,10 @@ void request_stats_reply(REQUEST *request)
 void radius_stats_init(int flag)
 {
 	if (!flag) {
-		gettimeofday(&start_time, NULL);
+		start_time = fr_time();
 		hup_time = start_time; /* it's just nicer this way */
 	} else {
-		gettimeofday(&hup_time, NULL);
+		hup_time = fr_time();
 	}
 }
 

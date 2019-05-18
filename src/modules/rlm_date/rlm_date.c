@@ -89,7 +89,6 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 {
 	rlm_date_t const *inst = mod_inst;
 	struct tm tminfo;
-	struct timeval now;
 	VALUE_PAIR *vp;
 
 	memset(&tminfo, 0, sizeof(tminfo));
@@ -100,8 +99,7 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	}
 
 	if (strcmp(fmt, "now") == 0) {
-		gettimeofday(&now, NULL);
-		return date_encode_strftime(out, outlen, inst, request, now.tv_sec);
+		return date_encode_strftime(out, outlen, inst, request, fr_time_to_sec(fr_time()));
 	}
 
 	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
