@@ -541,21 +541,11 @@ int main(int argc, char *argv[])
 
 	/*
 	 *  The systemd watchdog enablement must be checked before we
-	 *  daemonize, but the notifications can come from any process.
+	 *  daemonize, but the watchdog notifications can come from any
+	 *  process.
 	 */
 #ifdef HAVE_SYSTEMD_WATCHDOG
-	if (!check_config) {
-		uint64_t usec;
-
-		if ((sd_watchdog_enabled(0, &usec) > 0) && (usec > 0)) {
-			usec /= 2;
-			fr_timeval_from_usec(&sd_watchdog_interval, usec);
-
-			INFO("systemd watchdog interval is %pT secs", &sd_watchdog_interval);
-		} else {
-			INFO("systemd watchdog is disabled");
-		}
-	}
+	if (!check_config) main_loop_set_sd_watchdog_interval();
 #else
 	/*
 	 *	If the default systemd unit file is used, but the server wasn't
@@ -567,7 +557,7 @@ int main(int argc, char *argv[])
 	 *	whether we're running under systemd.
 	 */
 	if (getenv("NOTIFY_SOCKET"))
-		INFO("Built without support for systemd watchdog, but running under systemd.");
+		INFO("Built without support for systemd watchdog, but running under systemd");
 #endif
 
 	/*
@@ -640,7 +630,12 @@ int main(int argc, char *argv[])
 			}
 
 #ifdef HAVE_SYSTEMD
-			sd_notify(0, "READY=1");
+			/*
+			 *	Tell systemd we're ready, and pass it the PID
+			 *	of our child, which is the new MAINPID as
+			 *	this process is about to exit...
+			 */
+			sd_notify(0, "READY=1\nMAINPID=%lu", (unsigned long)pid);
 #endif
 
 			goto cleanup;
@@ -787,7 +782,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Start the main event loop.
 	 */
-	if (main_loop_start(config->spawn_workers) < 0) {
+	if (main_loop_start() < 0) {
 		ERROR("Failed starting event loop");
 		EXIT_WITH_FAILURE;
 	}

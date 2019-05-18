@@ -55,7 +55,7 @@ static int			self_pipe[2] = { -1, -1 };
 #ifdef HAVE_SYSTEMD_WATCHDOG
 #include <systemd/sd-daemon.h>
 
-struct timeval			sd_watchdog_interval;
+static fr_time_delta_t		sd_watchdog_interval;
 static fr_event_timer_t		const *sd_watchdog_ev;
 
 /** Reoccurring watchdog event to inform systemd we're still alive
@@ -66,10 +66,11 @@ static fr_event_timer_t		const *sd_watchdog_ev;
 static void sd_watchdog_event(fr_event_list_t *our_el, UNUSED fr_time_t now, void *ctx)
 {
 	DEBUG("Emitting systemd watchdog notification");
+
 	sd_notify(0, "WATCHDOG=1");
 
 	if (fr_event_timer_in(NULL, our_el, &sd_watchdog_ev,
-			      fr_time_delta_from_timeval(&sd_watchdog_interval),
+			      sd_watchdog_interval,
 			      sd_watchdog_event, ctx) < 0) {
 		ERROR("Failed to insert watchdog event");
 	}
@@ -162,14 +163,55 @@ fr_event_list_t *main_loop_event_list(void)
 	return event_list;
 }
 
+#ifdef HAVE_SYSTEMD_WATCHDOG
+void main_loop_set_sd_watchdog_interval(void)
+{
+	uint64_t interval_usec;
+
+	if (sd_watchdog_enabled(0, &interval_usec) > 0) {
+		struct timeval interval_tv;
+		/*
+		 *	Convert microseconds to nanoseconds
+		 *	and set the interval to be half what
+		 *	systemd uses as its timeout value.
+		 */
+		sd_watchdog_interval = ((interval_usec * 1000) / 2);
+		fr_time_delta_to_timeval(&interval_tv, sd_watchdog_interval);
+
+		INFO("systemd watchdog interval is %pV secs", fr_box_timeval(interval_tv));
+	} else {
+		INFO("systemd watchdog is disabled");
+	}
+}
+#endif
+
+void main_loop_free(void)
+{
+	TALLOC_FREE(event_list);
+}
+
+int main_loop_process(void)
+{
+	int ret;
+	if (!event_list) return 0;
+
+	ret = fr_event_loop(event_list);
+#ifdef HAVE_SYSTEMD_WATCHDOG
+	if (ret != 0x80) {	/* Not HUP */
+		INFO("Informing systemd we're stopping");
+		sd_notify(0, "STOPPING=1");
+	}
+#endif
+	return ret;
+}
+
 /** Start the main event loop and initialise the listeners
  *
- * @param have_children Whether the server is threaded.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int main_loop_start(UNUSED bool have_children)
+int main_loop_start(void)
 {
 	if (fr_start_time != (time_t)-1) return 0;
 
@@ -212,18 +254,6 @@ int main_loop_start(UNUSED bool have_children)
 	return 0;
 }
 
-void main_loop_free(void)
-{
-	TALLOC_FREE(event_list);
-}
-
-int main_loop_process(void)
-{
-	if (!event_list) return 0;
-
-	return fr_event_loop(event_list);
-}
-
 static int _loop_status(UNUSED void *ctx, fr_time_t wake)
 {
 	if (!DEBUG_ENABLED) {
@@ -252,12 +282,6 @@ int main_loop_init(void)
 {
 	event_list = fr_event_list_alloc(NULL, _loop_status, NULL);	/* Must not be allocated in mprotected ctx */
 	if (!event_list) return 0;
-
-#ifdef HAVE_SYSTEMD_WATCHDOG
-	if (sd_watchdog_interval.tv_sec || sd_watchdog_interval.tv_usec) {
-		sd_watchdog_event(event_list, 0, NULL);
-	}
-#endif
 
 	return 1;
 }

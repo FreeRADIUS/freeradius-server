@@ -53,14 +53,17 @@ fr_event_list_t		*main_loop_event_list(void);
 
 void			main_loop_signal_self(int flag);
 
-int			main_loop_init(void);
-
-int			main_loop_start(bool spawn_flag);
+#ifdef HAVE_SYSTEMD_WATCHDOG
+void			main_loop_set_sd_watchdog_interval(void)
+#endif
 
 void			main_loop_free(void);
 
 int			main_loop_process(void);
 
+int			main_loop_start(void);
+
+int			main_loop_init(void);
 #ifdef __cplusplus
 }
 #endif
