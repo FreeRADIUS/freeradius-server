@@ -334,7 +334,7 @@ static int fr_event_timer_cmp(void const *a, void const *b)
 {
 	fr_event_timer_t const	*ev_a = a, *ev_b = b;
 
-	return (&ev_a->when > &ev_b->when) - (&ev_a->when < &ev_b->when);
+	return fr_time_cmp(ev_a->when, ev_b->when);
 }
 
 /** Compare two file descriptor handles
