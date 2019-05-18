@@ -47,7 +47,8 @@ VALUE	HP-Port-MA-Port-Mode		Port-Based		1
 ATTRIBUTE	HP-Port-Bounce-Host			23	integer
 ATTRIBUTE	HP-Captive-Portal-URL			24	string
 ATTRIBUTE	HP-User-Role				25	string
-ATTRIBUTE	HPE-CPPM-Role				27	string
+ATTRIBUTE	HP-CPPM-Role				27	string
+ATTRIBUTE	HP-CPPM-Secondary-Role			28	string
 
 # Client QoS attributes
 ATTRIBUTE	HP-Port-Priority-Regeneration-Table	40	string
@@ -63,13 +64,18 @@ ATTRIBUTE	HP-Ip-Filter-Raw			61	string
 
 # Client ACL attributes
 ATTRIBUTE	HP-Nas-Filter-Rule			61	string
+ATTRIBUTE	HP-Access-Profile			62	string
 ATTRIBUTE	HP-Nas-Rules-IPv6			63	integer
 
 # VLAN assignment attributes
 ATTRIBUTE	HP-Egress-VLANID			64	integer
 ATTRIBUTE	HP-Egress-VLAN-Name			65	string
 
-#AAA for REST
+# Bonjour Profile
+ATTRIBUTE	HP-Bonjour-Inbound-Profile		66	string
+ATTRIBUTE	HP-Bonjour-Outbound-Profile		67	string
+
+# AAA for REST
 ATTRIBUTE	HP-URI-String				80	string
 ATTRIBUTE	HP-URI-Json-String			81	string
 ATTRIBUTE	HP-URI-Access				82	string
