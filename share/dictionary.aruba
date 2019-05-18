@@ -55,9 +55,14 @@ ATTRIBUTE	Aruba-Port-Bounce-Host			40	integer
 ATTRIBUTE	Aruba-Calea-Server-Ip			41	ipaddr
 
 ATTRIBUTE	Aruba-Admin-Path			42	string
+ATTRIBUTE	Aruba-Captive-Portal-URL		43	string
+ATTRIBUTE	Aruba-MPSK-Passphrase			44	octets encrypt=2
+ATTRIBUTE	Aruba-ACL-Server-Query-Info		45	string
+ATTRIBUTE	Aruba-Command-String			46	string
 
 VALUE	Aruba-AirGroup-Device-Type	Personal-Device		1
 VALUE	Aruba-AirGroup-Device-Type	Shared-Device		2
+VALUE	Aruba-AirGroup-Device-Type	Deleted-Device		3
 
 VALUE	Aruba-AirGroup-Version		AirGroup-v1		1
 VALUE	Aruba-AirGroup-Version		AirGroup-v2		2
