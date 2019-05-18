@@ -631,11 +631,10 @@ int main(int argc, char *argv[])
 
 #ifdef HAVE_SYSTEMD
 			/*
-			 *	Tell systemd we're ready, and pass it the PID
-			 *	of our child, which is the new MAINPID as
-			 *	this process is about to exit...
+			 *	Update the systemd MAINPID to be our child,
+			 *	as the parent is about to exit.
 			 */
-			sd_notify(0, "READY=1\nMAINPID=%lu", (unsigned long)pid);
+			sd_notify(0, "MAINPID=%lu", (unsigned long)pid);
 #endif
 
 			goto cleanup;

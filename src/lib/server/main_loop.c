@@ -251,6 +251,13 @@ int main_loop_start(void)
 		return -1;
 	}
 
+#ifdef HAVE_SYSTEMD_WATCHDOG
+	/*
+	 *	Tell systemd we're ready!
+	 */
+	sd_notify(0, "READY=1");
+#endif
+
 	return 0;
 }
 
