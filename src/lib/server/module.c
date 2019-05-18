@@ -966,7 +966,7 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	 *
 	 *	Loop over the method names, seeing if we have a match.
 	 */
-	len = q - p;
+	len = strlen(p);
 	for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
 		methods = &mi->module->method_names[j];
 
@@ -990,22 +990,6 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		}
 
 		/*
-		 *	If name1 doesn't match, skip it.
-		 */
-		if (strncmp(methods->name1, p, len) != 0) {
-		found2:
-			/*
-			 *	Update name1/name2 with the methods
-			 *	that were found.
-			 */
-			*name1 = methods->name1;
-			*name2 = name + (q - inst_name);
-			*method = methods->method;
-			talloc_free(inst_name);
-			return mi;
-		}
-
-		/*
 		 *	It may have been a partial match, like "rec",
 		 *	instead of "recv".  In which case check if it
 		 *	was a FULL match.
@@ -1013,11 +997,27 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		if (strlen(methods->name1) != len) continue;
 
 		/*
+		 *	If name1 doesn't match, skip it.
+		 */
+		if (strncmp(methods->name1, p, len) != 0) continue;
+
+		/*
 		 *	The module can declare a
 		 *	wildcard for name2, in which
 		 *	case it's a match.
 		 */
-		if (methods->name2 == CF_IDENT_ANY) goto found2;
+		if (methods->name2 == CF_IDENT_ANY) {
+			found2:
+			/*
+			 *	Update name1/name2 with the methods
+			 *	that were found.
+			 */
+			*name1 = methods->name1;
+			*name2 = !q ? NULL : (name + (q - inst_name));
+			*method = methods->method;
+			talloc_free(inst_name);
+			return mi;
+		}
 
 		/*
 		 *	No name2 is also a match to no name2.
