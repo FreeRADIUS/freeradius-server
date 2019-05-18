@@ -326,8 +326,27 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, void *
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_return(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_method_send(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
+	DEBUG3("rlm_test: method \"test.send\"");
+	return RLM_MODULE_OK;
+}
+
+static rlm_rcode_t CC_HINT(nonnull) mod_method_recv_ac(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+{
+	DEBUG3("rlm_test: method \"test.recv.Access-Challenge\"");
+	return RLM_MODULE_OK;
+}
+
+static rlm_rcode_t CC_HINT(nonnull) mod_method_recv_any(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+{
+	DEBUG3("rlm_test: method \"test.recv.*\"");
+	return RLM_MODULE_OK;
+}
+
+static rlm_rcode_t CC_HINT(nonnull) mod_method_wildcard(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+{
+	DEBUG3("rlm_test: method \"test.*\" (wildcard)");
 	return RLM_MODULE_OK;
 }
 
@@ -338,12 +357,11 @@ static int mod_detach(UNUSED void *instance)
 }
 
 static const module_method_names_t method_names[] = {
-	{ "recv",	"Access-Challenge", mod_return },
-	{ "recv",	CF_IDENT_ANY,	mod_return },
-	{ "name1_null",	NULL,		mod_return },
-	{ "send",	CF_IDENT_ANY,	mod_return },
-	{ CF_IDENT_ANY, CF_IDENT_ANY,	mod_return },
-
+	{ "recv",	"Access-Challenge", mod_method_recv_ac  },
+	{ "recv",	CF_IDENT_ANY, 	    mod_method_recv_any },
+	{ "name1_null",	NULL,		    mod_method_wildcard },
+	{ "send",	CF_IDENT_ANY,	    mod_method_send 	},
+	{ CF_IDENT_ANY, CF_IDENT_ANY,	    mod_method_wildcard },
 	MODULE_NAME_TERMINATOR
 };
 
