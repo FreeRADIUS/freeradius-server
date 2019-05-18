@@ -1124,7 +1124,7 @@ int fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t con
  *	- -1 on failure.
  */
 int fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
-		      fr_time_t delta, fr_event_cb_t callback, void const *uctx)
+		      fr_time_delta_t delta, fr_event_cb_t callback, void const *uctx)
 {
 	fr_time_t now;
 
