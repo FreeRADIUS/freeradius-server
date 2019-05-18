@@ -54,7 +54,7 @@ fr_event_list_t		*main_loop_event_list(void);
 void			main_loop_signal_self(int flag);
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
-void			main_loop_set_sd_watchdog_interval(void)
+void			main_loop_set_sd_watchdog_interval(void);
 #endif
 
 void			main_loop_free(void);
