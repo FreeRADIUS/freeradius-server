@@ -635,9 +635,8 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_tim
  */
 static void worker_reset_timer(fr_worker_t *worker)
 {
-	struct timeval when;
-	fr_time_t cleanup;
-	REQUEST *request;
+	fr_time_t	cleanup;
+	REQUEST		*request;
 
 	request = fr_heap_peek_tail(worker->time_order);
 	if (!request) return;
@@ -646,7 +645,6 @@ static void worker_reset_timer(fr_worker_t *worker)
 	cleanup = worker->max_request_time;
 	cleanup *= NSEC;
 	cleanup += request->async->recv_time;
-	fr_time_to_timeval(&when, cleanup);
 
 	/*
 	 *	Suppress the timer update if it's within 1s of the
@@ -658,11 +656,10 @@ static void worker_reset_timer(fr_worker_t *worker)
 	}
 
 	worker->next_cleanup = cleanup;
-	fr_time_to_timeval(&when, cleanup);
 
 	DEBUG2("Resetting worker %i cleanup timer to +%ds", worker->max_request_time, fr_schedule_worker_id());
-	if (fr_event_timer_insert(worker, worker->el, &worker->ev_cleanup,
-				  &when, fr_worker_max_request_time, worker) < 0) {
+	if (fr_event_timer_at(worker, worker->el, &worker->ev_cleanup,
+			      cleanup, fr_worker_max_request_time, worker) < 0) {
 		ERROR("Failed inserting max_request_time timer.");
 	}
 }
