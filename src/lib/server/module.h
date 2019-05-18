@@ -160,8 +160,7 @@ struct rad_module_method_names_s {
 	module_method_t	method;
 };
 
-#define MODULE_NAME_TERMINATOR { .name1 = NULL }
-
+#define MODULE_METHOD_NAME_TERMINATOR { .name1 = NULL, .name2 = NULL, .method = NULL }
 
 /** Struct exported by a rlm_* module
  *

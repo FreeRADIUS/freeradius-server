@@ -342,7 +342,7 @@ static const module_method_names_t method_names[] = {
 	{ "send",	CF_IDENT_ANY,	mod_return },
 	{ "recv",	"Access-Challenge", mod_return },
 
-	MODULE_NAME_TERMINATOR
+	MODULE_METHOD_NAME_TERMINATOR
 };
 
 
