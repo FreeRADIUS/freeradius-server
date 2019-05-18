@@ -1407,7 +1407,10 @@ int fr_event_timer_run(fr_event_list_t *el, fr_time_t *when)
 	/*
 	 *	See if it's time to do this one.
 	 */
-	if (ev->when > *when) return 0;
+	if (ev->when > *when) {
+		*when = ev->when;
+		return 0;
+	}
 
 	callback = ev->callback;
 	memcpy(&uctx, &ev->uctx, sizeof(uctx));
