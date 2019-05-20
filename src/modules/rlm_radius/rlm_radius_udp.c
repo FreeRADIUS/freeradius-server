@@ -2955,12 +2955,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	COPY(connection_timeout);
 	COPY(reconnection_delay);
 
-
-	t->idle_timeout = inst->parent->idle_timeout.tv_sec * NSEC;
-	t->idle_timeout += inst->parent->idle_timeout.tv_usec * 1000;
-
-	t->zombie_period = inst->parent->zombie_period.tv_sec * NSEC;
-	t->zombie_period += inst->parent->zombie_period.tv_usec * 1000;
+	t->idle_timeout = fr_time_delta_from_timeval(&inst->parent->idle_timeout);
+	t->zombie_period = fr_time_delta_from_timeval(&inst->parent->zombie_period);
 
 	rcode = conn_thread_instantiate(t, el);
 	if (rcode < 0) return rcode;
