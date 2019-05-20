@@ -319,7 +319,7 @@ static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, 
  */
 static void conn_check_idle(fr_io_connection_t *c)
 {
-	fr_time_delta_t when = 0;
+	struct timeval when;
 
 	/*
 	 *	We set idle (or not) depending on the conneciton
@@ -363,18 +363,21 @@ static void conn_check_idle(fr_io_connection_t *c)
 	 */
 	if (c->idle_ev) return;
 
-	when = fr_time();
-	when += fr_time_delta_from_timeval(&c->thread->idle_timeout);
-	when += (1 * NSEC);
+	gettimeofday(&when, NULL);
+	when.tv_usec += c->thread->idle_timeout.tv_usec;
+	when.tv_sec += when.tv_usec / USEC;
+	when.tv_usec %= USEC;
 
-	if (when > fr_time_from_timeval(&c->idle_timeout)) {
-		when -= (1 * NSEC);
-		fr_time_to_timeval(&c->idle_timeout, when);
+	when.tv_sec += c->thread->idle_timeout.tv_sec;
+	when.tv_sec += 1;
+
+	if (timercmp(&when, &c->idle_timeout, >)) {
+		when.tv_sec--;
+		c->idle_timeout = when;
 
 		DEBUG("%s - Setting idle timeout to +%pV for connection %s",
 		      c->module_name, fr_box_timeval(c->thread->idle_timeout), c->name);
-		if (fr_event_timer_at(c, c->thread->el, &c->idle_ev,
-				      when, conn_idle_timeout, c) < 0) {
+		if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 			ERROR("%s - Failed inserting idle timeout for connection %s",
 			      c->module_name, c->name);
 		}
@@ -719,7 +722,7 @@ static rlm_rcode_t conn_request_resume(UNUSED void *instance, UNUSED void *threa
 
 static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state)
 {
-	fr_time_t when;
+	struct timeval when;
 
 	if (c->state == state) return;
 
@@ -790,14 +793,13 @@ static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t stat
 
 		fr_dlist_insert_head(&c->thread->zombie, c);
 
-		when = fr_time();
-		fr_time_to_timeval(&c->zombie_start, when);
-		when += fr_time_delta_from_timeval(&c->thread->zombie_period);
+		gettimeofday(&when, NULL);
+		c->zombie_start = when;
 
+		fr_timeval_add(&when, &when, &c->thread->zombie_period);
 		WARN("%s - Entering Zombie state - connection %s", c->module_name, c->name);
 
-		if (fr_event_timer_at(c, c->thread->el, &c->zombie_ev,
-				      when, conn_zombie_timeout, c) < 0) {
+		if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
 			ERROR("%s - Failed inserting zombie timeout for connection %s",
 			      c->module_name, c->name);
 		}
@@ -833,9 +835,8 @@ static int conn_timeout_init(fr_event_list_t *el, fr_io_request_t *u, fr_event_c
 		return -1;
 	}
 
-	if (fr_event_timer_at(u, el, &u->timer.ev,
-			      fr_time_from_timeval(&u->timer.next),
-			      callback, u) < 0) {
+	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next,
+				  callback, u) < 0) {
 		return -1;
 	}
 
