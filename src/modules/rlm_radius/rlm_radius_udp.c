@@ -78,7 +78,7 @@ typedef struct {
 	uint32_t		max_connections;  //!< maximum number of open connections
 	struct timeval		connection_timeout;
 	struct timeval		reconnection_delay;
-	struct timeval		idle_timeout;
+	fr_time_delta_t		idle_timeout;
 	fr_time_delta_t		zombie_period;
 } fr_io_connection_thread_t;
 
@@ -124,7 +124,7 @@ typedef struct {
 	int32_t			heap_id;		//!< For the active heap.
 
 	fr_event_timer_t const	*idle_ev;		//!< Idle timeout event.
-	struct timeval		idle_timeout;		//!< When the idle timeout will fire.
+	fr_time_t		idle_timeout;		//!< When the idle timeout will fire.
 
 	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.
@@ -318,7 +318,7 @@ static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, 
  */
 static void conn_check_idle(fr_io_connection_t *c)
 {
-	struct timeval when;
+	fr_time_t when;
 
 	/*
 	 *	We set idle (or not) depending on the conneciton
@@ -362,21 +362,18 @@ static void conn_check_idle(fr_io_connection_t *c)
 	 */
 	if (c->idle_ev) return;
 
-	gettimeofday(&when, NULL);
-	when.tv_usec += c->thread->idle_timeout.tv_usec;
-	when.tv_sec += when.tv_usec / USEC;
-	when.tv_usec %= USEC;
+	when = fr_time();
+	when += c->thread->idle_timeout;
 
-	when.tv_sec += c->thread->idle_timeout.tv_sec;
-	when.tv_sec += 1;
-
-	if (timercmp(&when, &c->idle_timeout, >)) {
-		when.tv_sec--;
+	if (when > c->idle_timeout) {
 		c->idle_timeout = when;
 
-		DEBUG("%s - Setting idle timeout to +%pV for connection %s",
-		      c->module_name, fr_box_timeval(c->thread->idle_timeout), c->name);
-		if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
+		DEBUG("%s - Setting idle timeout to +%u.%03u for connection %s",
+		      c->module_name,
+		      (uint32_t) c->thread->idle_timeout / NSEC,
+		      (uint32_t) (c->thread->idle_timeout % NSEC) / 1000000,
+		      c->name);
+		if (fr_event_timer_at(c, c->thread->el, &c->idle_ev, c->idle_timeout, conn_idle_timeout, c) < 0) {
 			ERROR("%s - Failed inserting idle timeout for connection %s",
 			      c->module_name, c->name);
 		}
@@ -2957,12 +2954,15 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	COPY(max_connections);
 	COPY(connection_timeout);
 	COPY(reconnection_delay);
-	COPY(idle_timeout);
+
+
+	t->idle_timeout = inst->parent->idle_timeout.tv_sec * NSEC;
+	t->idle_timeout += inst->parent->idle_timeout.tv_usec * 1000;
 
 	t->zombie_period = inst->parent->zombie_period.tv_sec * NSEC;
 	t->zombie_period += inst->parent->zombie_period.tv_usec * 1000;
 
-	rcode =conn_thread_instantiate(t, el);
+	rcode = conn_thread_instantiate(t, el);
 	if (rcode < 0) return rcode;
 
 	conn_alloc(inst, t);
