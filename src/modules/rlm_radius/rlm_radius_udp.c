@@ -79,7 +79,7 @@ typedef struct {
 	struct timeval		connection_timeout;
 	struct timeval		reconnection_delay;
 	struct timeval		idle_timeout;
-	struct timeval		zombie_period;
+	fr_time_delta_t		zombie_period;
 } fr_io_connection_thread_t;
 
 typedef enum fr_io_connection_state_t {
@@ -126,11 +126,10 @@ typedef struct {
 	fr_event_timer_t const	*idle_ev;		//!< Idle timeout event.
 	struct timeval		idle_timeout;		//!< When the idle timeout will fire.
 
-	struct timeval		mrs_time;		//!< Most recent sent time which had a reply.
-	struct timeval		last_reply;		//!< When we last received a reply.
+	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
+	fr_time_t		last_reply;		//!< When we last received a reply.
 
 	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
-	struct timeval		zombie_start;		//!< When the zombie period started.
 
 	fr_dlist_head_t		sent;			//!< List of sent packets.
 
@@ -271,8 +270,8 @@ static int conn_cmp(void const *one, void const *two)
 	fr_io_connection_t const *a = talloc_get_type_abort_const(one, fr_io_connection_t);
 	fr_io_connection_t const *b = talloc_get_type_abort_const(two, fr_io_connection_t);
 
-	if (timercmp(&a->mrs_time, &b->mrs_time, <)) return -1;
-	if (timercmp(&a->mrs_time, &b->mrs_time, >)) return +1;
+	if (a->mrs_time < b->mrs_time) return -1;
+	if (a->mrs_time > b->mrs_time) return -1;
 
 	if (a->slots_free < b->slots_free) return -1;
 	if (a->slots_free > b->slots_free) return +1;
@@ -387,7 +386,7 @@ static void conn_check_idle(fr_io_connection_t *c)
 
 static int conn_check_zombie(fr_io_connection_t *c)
 {
-	struct timeval when, now;
+	fr_time_t when, now;
 
 	switch (c->state) {
 		/*
@@ -417,7 +416,7 @@ static int conn_check_zombie(fr_io_connection_t *c)
 	/*
 	 *	Check if we can mark the connection as "dead".
 	 */
-	gettimeofday(&now, NULL);
+	now = fr_time();
 	when = c->last_reply;
 
 	/*
@@ -426,8 +425,8 @@ static int conn_check_zombie(fr_io_connection_t *c)
 	 *	Note that we do this check on every packet, which is a
 	 *	bit annoying, but oh well.
 	 */
-	fr_timeval_add(&when, &when, &c->thread->zombie_period);
-	if (timercmp(&when, &now, > )) return 0;
+	when += c->thread->zombie_period;
+	if (when > now) return 0;
 
 	/*
 	 *	The home server hasn't responded in a long time.  Mark
@@ -722,8 +721,6 @@ static rlm_rcode_t conn_request_resume(UNUSED void *instance, UNUSED void *threa
 
 static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t state)
 {
-	struct timeval when;
-
 	if (c->state == state) return;
 
 	/*
@@ -793,13 +790,9 @@ static void conn_transition(fr_io_connection_t *c, fr_io_connection_state_t stat
 
 		fr_dlist_insert_head(&c->thread->zombie, c);
 
-		gettimeofday(&when, NULL);
-		c->zombie_start = when;
-
-		fr_timeval_add(&when, &when, &c->thread->zombie_period);
 		WARN("%s - Entering Zombie state - connection %s", c->module_name, c->name);
 
-		if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
+		if (fr_event_timer_in(c, c->thread->el, &c->zombie_ev, c ->thread->zombie_period, conn_zombie_timeout, c) < 0) {
 			ERROR("%s - Failed inserting zombie timeout for connection %s",
 			      c->module_name, c->name);
 		}
@@ -828,15 +821,13 @@ static void conn_finished_request(fr_io_connection_t *c, fr_io_request_t *u)
 
 static int conn_timeout_init(fr_event_list_t *el, fr_io_request_t *u, fr_event_cb_t callback)
 {
-	u->time_sent = fr_time();
-	fr_time_to_timeval(&u->timer.start, u->time_sent);
+	u->timer.start = u->time_sent = fr_time();
 
 	if (rr_track_start(&u->timer) < 0) {
 		return -1;
 	}
 
-	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next,
-				  callback, u) < 0) {
+	if (fr_event_timer_at(u, el, &u->timer.ev, u->timer.next, callback, u) < 0) {
 		return -1;
 	}
 
@@ -846,7 +837,7 @@ static int conn_timeout_init(fr_event_list_t *el, fr_io_request_t *u, fr_event_c
 /** Deal with status check timeouts for transmissions, etc.
  *
  */
-static void status_check_timeout(fr_event_list_t *el, fr_time_t now_t, void *uctx)
+static void status_check_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	int				rcode;
 	fr_io_request_t			*u = uctx;
@@ -856,7 +847,6 @@ static void status_check_timeout(fr_event_list_t *el, fr_time_t now_t, void *uct
 	uint32_t			event_time;
 	uint8_t				*attr, *end;
 	char const			*module_name;
-	struct timeval			now;
 
 	rad_assert(u == radius->status_u);
 	rad_assert(u->timer.ev == NULL);
@@ -872,8 +862,7 @@ static void status_check_timeout(fr_event_list_t *el, fr_time_t now_t, void *uct
 	 *	connection is zombie.  If we don't have a connection,
 	 *	just give up on the request.
 	 */
-	fr_time_to_timeval(&now, now_t);
-	rcode = rr_track_retry(&u->timer, &now);
+	rcode = rr_track_retry(&u->timer, now);
 	if (rcode == 0) {
 		REDEBUG("No response to status checks, closing connection %s", c->name);
 		talloc_free(c);
@@ -883,7 +872,7 @@ static void status_check_timeout(fr_event_list_t *el, fr_time_t now_t, void *uct
 	/*
 	 *	Insert the next retransmission timer.
 	 */
-	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next, status_check_timeout, u) < 0) {
+	if (fr_event_timer_at(u, el, &u->timer.ev, u->timer.next, status_check_timeout, u) < 0) {
 		REDEBUG("Failed inserting retransmission timer for status check - closing connection %s", c->name);
 		talloc_free(c);
 		return;
@@ -1563,7 +1552,7 @@ done:
 	/*
 	 *	Remember when we last saw a reply.
 	 */
-	gettimeofday(&c->last_reply, NULL);
+	c->last_reply = fr_time();
 
 	/*
 	 *	Track the Most Recently Started with reply.  If we're
@@ -1576,7 +1565,7 @@ done:
 	case CONN_ACTIVE:
 		if (reinserted) break;
 
-		if (timercmp(&u->timer.start, &c->mrs_time, >)) {
+		if (u->timer.start > c->mrs_time) {
 			(void) fr_heap_extract(c->thread->active, c);
 			c->mrs_time = u->timer.start;
 			(void) fr_heap_insert(c->thread->active, c);
@@ -1585,7 +1574,7 @@ done:
 		break;
 
 	default:
-		if (timercmp(&u->timer.start, &c->mrs_time, >)) {
+		if (u->timer.start > c->mrs_time) {
 			c->mrs_time = u->timer.start;
 		}
 
@@ -1621,7 +1610,7 @@ done:
 	goto redo;
 }
 
-static int retransmit_packet(fr_io_request_t *u, struct timeval *now)
+static int retransmit_packet(fr_io_request_t *u, fr_time_t now)
 {
 	bool				resign = false;
 	int				rcode;
@@ -1677,10 +1666,10 @@ static int retransmit_packet(fr_io_request_t *u, struct timeval *now)
 
 		if (u->acct_delay_time) {
 			uint32_t delay;
-			struct timeval diff;
 
-			fr_timeval_subtract(&diff, now, &u->timer.start);
-			delay = u->initial_delay_time + diff.tv_sec;
+			now -= u->timer.start;
+			delay = now / NSEC;
+			delay += u->initial_delay_time;
 			delay = htonl(delay);
 			memcpy(u->acct_delay_time, &delay, 4);
 
@@ -1767,18 +1756,15 @@ static int retransmit_packet(fr_io_request_t *u, struct timeval *now)
 /** Deal with per-request timeouts for transmissions, etc.
  *
  */
-static void response_timeout(fr_event_list_t *el, fr_time_t now_t, void *uctx)
+static void response_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	int				rcode;
 	fr_io_request_t			*u = uctx;
 	fr_io_connection_t		*c = u->c;
-	struct timeval			now;
 	REQUEST				*request;
 
 	rad_assert(u->timer.ev == NULL);
 	rad_assert(!c || !c->inst->parent->synchronous);
-
-	fr_time_to_timeval(&now, now_t);
 
 	request = u->request;
 
@@ -1790,7 +1776,7 @@ static void response_timeout(fr_event_list_t *el, fr_time_t now_t, void *uctx)
 	 *	connection is zombie.  If we don't have a connection,
 	 *	just give up on the request.
 	 */
-	rcode = rr_track_retry(&u->timer, &now);
+	rcode = rr_track_retry(&u->timer, now);
 	if (rcode == 0) {
 		if (c) {
 			REDEBUG("No response to proxied request ID %d on connection %s",
@@ -1807,7 +1793,7 @@ static void response_timeout(fr_event_list_t *el, fr_time_t now_t, void *uctx)
 	/*
 	 *	Insert the next retransmission timer.
 	 */
-	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next, response_timeout, u) < 0) {
+	if (fr_event_timer_at(u, el, &u->timer.ev, u->timer.next, response_timeout, u) < 0) {
 		RDEBUG("Failed inserting retransmission timer");
 		conn_finished_request(c, u);
 		return;
@@ -1846,7 +1832,7 @@ get_new_connection:
 	 *	t->queued
 	 */
 	RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
-	rcode = retransmit_packet(u, &now);
+	rcode = retransmit_packet(u, fr_time());
 	if (rcode < 0) {
 		RDEBUG("Failed retransmitting packet for connection %s", c->name);
 		state_transition(u, REQUEST_IO_STATE_QUEUED, NULL);
@@ -2499,8 +2485,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 	 *
 	 *	@todo - connection negotiation via Status-Server
 	 */
-	gettimeofday(&c->mrs_time, NULL);
-	c->last_reply = c->mrs_time;
+	c->last_reply = c->mrs_time = fr_time();
 
 	/*
 	 *	If the connection is open, it must be writable.
@@ -2508,7 +2493,6 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, int fd, void
 	rad_assert(c->state == CONN_OPENING);
 
 	rad_assert(c->zombie_ev == NULL);
-	memset(&c->zombie_start, 0, sizeof(c->zombie_start));
 	fr_dlist_init(&c->sent, fr_io_request_t, entry);
 
 { /* RADIUS start */
@@ -2974,7 +2958,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	COPY(connection_timeout);
 	COPY(reconnection_delay);
 	COPY(idle_timeout);
-	COPY(zombie_period);
+
+	t->zombie_period = inst->parent->zombie_period.tv_sec * NSEC;
+	t->zombie_period += inst->parent->zombie_period.tv_usec * 1000;
 
 	rcode =conn_thread_instantiate(t, el);
 	if (rcode < 0) return rcode;

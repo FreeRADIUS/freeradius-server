@@ -378,7 +378,7 @@ void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag)
 	id->use_authenticator = flag;
 }
 
-int rr_track_retry(rlm_radius_retransmit_t *timer, struct timeval *now)
+int rr_track_retry(rlm_radius_retransmit_t *timer, fr_time_t now)
 {
 	uint32_t delay, frac;
 
@@ -387,7 +387,7 @@ int rr_track_retry(rlm_radius_retransmit_t *timer, struct timeval *now)
 	 *	the same as 'now'.
 	 */
 	timer->next = timer->start;
-	timer->next.tv_usec += timer->rt;
+	timer->next += timer->rt * 1000; /* rt is in usec */
 
 	/*
 	 *	Increment retransmission counter
@@ -406,12 +406,12 @@ int rr_track_retry(rlm_radius_retransmit_t *timer, struct timeval *now)
 	 *	Cap delay at MRD
 	 */
 	if (timer->retry->mrd) {
-		struct timeval end;
+		fr_time_t end;
 
 		end = timer->start;
-		end.tv_sec += timer->retry->mrd;
+		end += timer->retry->mrd * NSEC;
 
-		if (timercmp(now, &end, >=)) {
+		if (now > end) {
 			DEBUG3("RETRANSMIT - reached MRD %d", timer->retry->mrd);
 			return 0;
 		}
@@ -457,9 +457,7 @@ int rr_track_retry(rlm_radius_retransmit_t *timer, struct timeval *now)
 	/*
 	 *	Get the next delay time.
 	 */
-	timer->next.tv_usec += timer->rt;
-	timer->next.tv_sec += (timer->next.tv_usec / USEC);
-	timer->next.tv_usec %= USEC;
+	timer->next += timer->rt * 1000;
 
 	DEBUG3("RETRANSMIT - in %d.%06ds", timer->rt / USEC, timer->rt % USEC);
 	return 1;
@@ -472,9 +470,7 @@ int rr_track_start(rlm_radius_retransmit_t *timer)
 	timer->rt = timer->retry->irt * USEC; /* rt is in usec */
 
 	timer->next = timer->start;
-	timer->next.tv_usec += timer->rt;
-	timer->next.tv_sec += (timer->next.tv_usec / USEC);
-	timer->next.tv_usec %= USEC;
+	timer->next += timer->rt * 1000;
 
 	return 0;
 }
