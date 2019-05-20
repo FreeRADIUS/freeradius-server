@@ -2834,7 +2834,6 @@ static void mod_signal(REQUEST *request, void *instance, UNUSED void *thread, vo
 {
 	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	fr_io_request_t *u = talloc_get_type_abort(request_io_ctx, fr_io_request_t);
-	struct timeval now;
 
 	if (action != FR_SIGNAL_DUP) return;
 
@@ -2846,8 +2845,7 @@ static void mod_signal(REQUEST *request, void *instance, UNUSED void *thread, vo
 
 	RDEBUG("retransmitting proxied request");
 
-	gettimeofday(&now, NULL);
-	retransmit_packet(u, &now);
+	retransmit_packet(u, fr_time());
 }
 
 
