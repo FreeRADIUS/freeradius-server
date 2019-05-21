@@ -1340,11 +1340,18 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				if (gettoken(&ptr, buff[6], talloc_array_length(buff[6]), false) != T_LCBRACE) {
 					goto map_error;
 				}
+
 			} else if (t3 != T_LCBRACE) {
 			map_error:
 				ERROR("%s[%d]: Expecting section start brace '{' in 'map' definition",
 				      filename, *lineno);
 				goto error;
+
+			} else {
+				/*
+				 *	Skip the parsed "{" token.
+				 */
+				ptr = p;
 			}
 
 			/*
