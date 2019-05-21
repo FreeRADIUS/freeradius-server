@@ -599,10 +599,10 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	}
 
 	if (inst->key_type == FR_TYPE_IPV4_PREFIX) {
-		e = fr_trie_lookup(inst->trie, (*key)->vb_ip.addr.v4.s_addr, (*key)->vb_ip.prefix);
+		e = fr_trie_lookup(inst->trie, &(*key)->vb_ip.addr.v4.s_addr, (*key)->vb_ip.prefix);
 
 	} else if (inst->key_type == FR_TYPE_IPV6_PREFIX) {
-		e = fr_trie_lookup(inst->trie, (*key)->vb_ip.addr.v6.s6_addr, (*key)->vb_ip.prefix);
+		e = fr_trie_lookup(inst->trie, &(*key)->vb_ip.addr.v6.s6_addr, (*key)->vb_ip.prefix);
 
 	} else {
 		e = rbtree_finddata(inst->tree, &(rlm_csv_entry_t){ .key = (*key)});
