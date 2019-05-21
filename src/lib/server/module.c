@@ -719,7 +719,8 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 
 	if (method) *method = NULL;
 
-	*name1 = *name2 = NULL;
+	if (name1) *name1 = NULL;
+	if (name2) *name2 = NULL;
 
 	/*
 	 *	Module names are allowed to contain '.'
