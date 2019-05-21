@@ -71,7 +71,7 @@ typedef struct {
 	time_t		*date_m;
 
 	size_t		abinary[32/sizeof(size_t)];
-	size_t		abinary_m[32/sizeof(size_t)];
+	size_t		*abinary_m[32/sizeof(size_t)];
 
 	uint8_t const	*octets;
 	uint8_t const	**octets_m;

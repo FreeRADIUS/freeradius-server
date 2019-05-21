@@ -1406,9 +1406,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	case FR_TYPE_DATE:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_IFID:
-	case FR_TYPE_DATE_MILLISECONDS:
-	case FR_TYPE_DATE_MICROSECONDS:
-	case FR_TYPE_DATE_NANOSECONDS:
 	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, data_len, true) < 0) {

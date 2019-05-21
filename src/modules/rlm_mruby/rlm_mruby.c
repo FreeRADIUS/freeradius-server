@@ -285,9 +285,6 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 		case FR_TYPE_INT32:
 		case FR_TYPE_INT64:
 		case FR_TYPE_DATE:
-		case FR_TYPE_DATE_MILLISECONDS:
-		case FR_TYPE_DATE_MICROSECONDS:
-		case FR_TYPE_DATE_NANOSECONDS:
 		case FR_TYPE_SIZE:
 			val = mrb_convert_type(mrb, to_cast, MRB_TT_FIXNUM, "Fixnum", "to_int");
 			break;

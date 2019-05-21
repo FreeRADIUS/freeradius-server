@@ -126,9 +126,6 @@ FR_NAME_NUMBER const fr_value_box_type_table[] = {
 
 	{ "timeval",		FR_TYPE_TIMEVAL },
 	{ "date",		FR_TYPE_DATE },
-	{ "date_milliseconds",	FR_TYPE_DATE_MILLISECONDS },
-	{ "date_microseconds",	FR_TYPE_DATE_MICROSECONDS },
-	{ "date_nanoseconds",	FR_TYPE_DATE_NANOSECONDS },
 
 	{ "abinary",		FR_TYPE_ABINARY },
 
@@ -196,9 +193,6 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_FLOAT64]			= {8, 8},
 
 	[FR_TYPE_DATE]				= {4, 4},
-	[FR_TYPE_DATE_MILLISECONDS]		= {8, 8},
-	[FR_TYPE_DATE_MICROSECONDS]		= {8, 8},
-	[FR_TYPE_DATE_NANOSECONDS]		= {8, 8},
 
 	[FR_TYPE_ABINARY]			= {32, ~0},
 	[FR_TYPE_MAX]				= {~0, 0}		//!< Ensure array covers all types.
@@ -237,9 +231,6 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_FLOAT64]			= SIZEOF_MEMBER(fr_value_box_t, vb_float64),
 
 	[FR_TYPE_DATE]				= SIZEOF_MEMBER(fr_value_box_t, vb_date),
-	[FR_TYPE_DATE_MILLISECONDS]		= SIZEOF_MEMBER(fr_value_box_t, vb_date_milliseconds),
-	[FR_TYPE_DATE_MICROSECONDS]		= SIZEOF_MEMBER(fr_value_box_t, vb_date_microseconds),
-	[FR_TYPE_DATE_NANOSECONDS]		= SIZEOF_MEMBER(fr_value_box_t, vb_date_nanoseconds),
 
 	[FR_TYPE_TIMEVAL]			= SIZEOF_MEMBER(fr_value_box_t, datum.timeval),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
@@ -282,9 +273,6 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_FLOAT64]			= offsetof(fr_value_box_t, vb_float64),
 
 	[FR_TYPE_DATE]				= offsetof(fr_value_box_t, vb_date),
-	[FR_TYPE_DATE_MILLISECONDS]		= offsetof(fr_value_box_t, vb_date_milliseconds),
-	[FR_TYPE_DATE_MICROSECONDS]		= offsetof(fr_value_box_t, vb_date_microseconds),
-	[FR_TYPE_DATE_NANOSECONDS]		= offsetof(fr_value_box_t, vb_date_nanoseconds),
 
 	[FR_TYPE_TIMEVAL]			= offsetof(fr_value_box_t, vb_timeval),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, vb_size),
@@ -460,18 +448,6 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 
 	case FR_TYPE_FLOAT64:
 		CHECK(float64);
-		break;
-
-	case FR_TYPE_DATE_MILLISECONDS:
-		CHECK(date_milliseconds);
-		break;
-
-	case FR_TYPE_DATE_MICROSECONDS:
-		CHECK(date_microseconds);
-		break;
-
-	case FR_TYPE_DATE_NANOSECONDS:
-		CHECK(date_nanoseconds);
 		break;
 
 	case FR_TYPE_ETHERNET:
@@ -967,18 +943,6 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		dst->vb_date = htonl(src->vb_date);
 		break;
 
-	case FR_TYPE_DATE_MILLISECONDS:
-		dst->vb_date_milliseconds = htonll(src->vb_date_milliseconds);
-		break;
-
-	case FR_TYPE_DATE_MICROSECONDS:
-		dst->vb_date_microseconds = htonll(src->vb_date_microseconds);
-		break;
-
-	case FR_TYPE_DATE_NANOSECONDS:
-		dst->vb_date_nanoseconds = htonll(src->vb_date_nanoseconds);
-		break;
-
 	case FR_TYPE_BOOL:
 	case FR_TYPE_UINT8:
 	case FR_TYPE_INT8:
@@ -1170,9 +1134,6 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	case FR_TYPE_DATE:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
-	case FR_TYPE_DATE_MILLISECONDS:
-	case FR_TYPE_DATE_MICROSECONDS:
-	case FR_TYPE_DATE_NANOSECONDS:
 	{
 		fr_value_box_t tmp;
 
@@ -1318,9 +1279,6 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	case FR_TYPE_DATE:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
-	case FR_TYPE_DATE_MILLISECONDS:
-	case FR_TYPE_DATE_MICROSECONDS:
-	case FR_TYPE_DATE_NANOSECONDS:
 		memcpy(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], src, len);
 		fr_value_box_hton(dst, dst);	/* Operate in-place */
 		break;
@@ -2401,9 +2359,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_DATE:
-	case FR_TYPE_DATE_MILLISECONDS:
-	case FR_TYPE_DATE_MICROSECONDS:
-	case FR_TYPE_DATE_NANOSECONDS:
 
 	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
@@ -3463,9 +3418,6 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_UINT64:
-	case FR_TYPE_DATE_MILLISECONDS:
-	case FR_TYPE_DATE_MICROSECONDS:
-	case FR_TYPE_DATE_NANOSECONDS:
 		/*
 		 *	fr_strtoull checks for overflows and calls
 		 *	fr_strerror_printf to set an error.
@@ -3564,21 +3516,6 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 	case FR_TYPE_INT64:
 		/* IN_RANGE_SIGNED doesn't work here */
 		dst->vb_int64 = (int64_t)sinteger;
-		break;
-
-	case FR_TYPE_DATE_MILLISECONDS:
-		IN_RANGE_UNSIGNED(UINT64);
-		dst->vb_date_milliseconds = (uint64_t)uinteger;
-		break;
-
-	case FR_TYPE_DATE_MICROSECONDS:
-		IN_RANGE_UNSIGNED(UINT64);
-		dst->vb_date_microseconds = (uint64_t)uinteger;
-		break;
-
-	case FR_TYPE_DATE_NANOSECONDS:
-		IN_RANGE_UNSIGNED(UINT64);
-		dst->vb_date_nanoseconds = (uint64_t)uinteger;
 		break;
 
 	default:
@@ -3871,9 +3808,6 @@ parse:
 	case FR_TYPE_INT16:
 	case FR_TYPE_INT32:
 	case FR_TYPE_INT64:
-	case FR_TYPE_DATE_MILLISECONDS:
-	case FR_TYPE_DATE_MICROSECONDS:
-	case FR_TYPE_DATE_NANOSECONDS:
 		if (fr_value_box_from_integer_str(dst, *dst_type, in) < 0) return -1;
 		break;
 
@@ -4206,18 +4140,6 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		p = talloc_typed_strdup(ctx, buff);
 		break;
 	}
-
-	case FR_TYPE_DATE_MILLISECONDS:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->vb_date_milliseconds);
-		break;
-
-	case FR_TYPE_DATE_MICROSECONDS:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->vb_date_microseconds);
-		break;
-
-	case FR_TYPE_DATE_NANOSECONDS:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->vb_date_nanoseconds);
-		break;
 
 	case FR_TYPE_SIZE:
 		p = talloc_typed_asprintf(ctx, "%zu", data->datum.size);
@@ -4633,15 +4555,6 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		}
 		a = buf;
 		break;
-
-	case FR_TYPE_DATE_MILLISECONDS:
-		return snprintf(out, outlen, "%" PRIu64, data->vb_date_milliseconds);
-
-	case FR_TYPE_DATE_MICROSECONDS:
-		return snprintf(out, outlen, "%" PRIu64, data->vb_date_microseconds);
-
-	case FR_TYPE_DATE_NANOSECONDS:
-		return snprintf(out, outlen, "%" PRIu64, data->vb_date_nanoseconds);
 
 	case FR_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY

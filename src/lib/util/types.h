@@ -63,9 +63,6 @@ typedef enum {
 	FR_TYPE_FLOAT64,			//!< Double precision floating point.
 
 	FR_TYPE_DATE,				//!< 32 Bit Unix timestamp.
-	FR_TYPE_DATE_MILLISECONDS,		//!< Milliseconds since the epoch.
-	FR_TYPE_DATE_MICROSECONDS,		//!< Microseconds since the epoch.
-	FR_TYPE_DATE_NANOSECONDS,		//!< Nanoseconds since the epoch.
 
 	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
 						//!< address on the local system.
@@ -130,9 +127,6 @@ typedef enum {
 	case FR_TYPE_FLOAT32: \
 	case FR_TYPE_FLOAT64: \
 	case FR_TYPE_DATE: \
-	case FR_TYPE_DATE_MILLISECONDS: \
-	case FR_TYPE_DATE_MICROSECONDS: \
-	case FR_TYPE_DATE_NANOSECONDS: \
 	case FR_TYPE_SIZE
 
 /** Match all variable length types in case statements

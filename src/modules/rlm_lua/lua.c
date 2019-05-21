@@ -165,21 +165,6 @@ static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 		lua_pushinteger(L, (lua_Integer)vp->vp_date);
 		break;
 
-	case FR_TYPE_DATE_MILLISECONDS:
-		IN_RANGE_INTEGER_UNSIGNED(vp->vp_date_milliseconds);
-		lua_pushinteger(L, (lua_Integer)vp->vp_date_milliseconds);
-		break;
-
-	case FR_TYPE_DATE_MICROSECONDS:
-		IN_RANGE_INTEGER_UNSIGNED(vp->vp_date_microseconds);
-		lua_pushinteger(L, (lua_Integer)vp->vp_date_microseconds);
-		break;
-
-	case FR_TYPE_DATE_NANOSECONDS:
-		IN_RANGE_INTEGER_UNSIGNED(vp->vp_date_nanoseconds);
-		lua_pushinteger(L, (lua_Integer)vp->vp_date_nanoseconds);
-		break;
-
 	case FR_TYPE_FLOAT32:
 		IN_RANGE_FLOAT_SIGNED(vp->vp_float32);
 		lua_pushnumber(L, (lua_Number)vp->vp_float32);

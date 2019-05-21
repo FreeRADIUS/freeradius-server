@@ -413,18 +413,6 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		value = PyFloat_FromDouble(vp->vp_float64);
 		break;
 
-	case FR_TYPE_DATE_MILLISECONDS:
-		value = PyLong_FromLongLong(vp->vp_date_milliseconds);
-		break;
-
-	case FR_TYPE_DATE_MICROSECONDS:
-		value = PyLong_FromLongLong(vp->vp_date_microseconds);
-		break;
-
-	case FR_TYPE_DATE_NANOSECONDS:
-		value = PyLong_FromLongLong(vp->vp_date_nanoseconds);
-		break;
-
 	case FR_TYPE_SIZE:
 		value = PyLong_FromUnsignedLongLong((unsigned long long)vp->vp_size);
 		break;

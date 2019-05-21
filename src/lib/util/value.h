@@ -104,10 +104,6 @@ struct value_box {
 
 		uint32_t		date;			//!< Date (32bit Unix timestamp).
 
-		uint64_t		date_milliseconds;	//!< milliseconds since the epoch.
-		uint64_t		date_microseconds;	//!< microseconds since the epoch.
-		uint64_t		date_nanoseconds;	//!< nanoseconds since the epoch.
-
 		/*
 		 *	System specific - Used for runtime configuration only.
 		 */
@@ -219,9 +215,6 @@ struct value_box {
 #define fr_box_float64(_val)			_fr_box(FR_TYPE_FLOAT64, .vb_float64, _val)
 
 #define fr_box_date(_val)			_fr_box(FR_TYPE_DATE, .vb_date, _val)
-#define fr_box_date_milliseconds(_val)		_fr_box(FR_TYPE_DATE_MILLISECONDS, .vb_date_milliseconds, _val)
-#define fr_box_date_microseconds(_val)		_fr_box(FR_TYPE_DATE_MICROSECONDS, .vb_date_microseconds, _val)
-#define fr_box_date_nanoseconds(_val)		_fr_box(FR_TYPE_DATE_NANOSECONDS, .vb_date_nanoseconds, _val)
 
 #define fr_box_size(_val)			_fr_box(FR_TYPE_SIZE, .vb_size, _val)
 #define fr_box_timeval(_val)			_fr_box(FR_TYPE_TIMEVAL, .vb_timeval, _val)
@@ -380,9 +373,6 @@ DEF_BOXING_FUNC(float, float32, FR_TYPE_FLOAT32)
 DEF_BOXING_FUNC(double, float64, FR_TYPE_FLOAT64)
 
 DEF_BOXING_FUNC(uint64_t, date, FR_TYPE_DATE)
-DEF_BOXING_FUNC(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
-DEF_BOXING_FUNC(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
-DEF_BOXING_FUNC(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
 
 /** Automagically fill in a box, determining the value type from the type of the C variable
  *
@@ -470,9 +460,6 @@ DEF_UNBOXING_FUNC(float, float32, FR_TYPE_FLOAT32)
 DEF_UNBOXING_FUNC(double, float64, FR_TYPE_FLOAT64)
 
 DEF_UNBOXING_FUNC(uint64_t, date, FR_TYPE_DATE)
-DEF_UNBOXING_FUNC(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
-DEF_UNBOXING_FUNC(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
-DEF_UNBOXING_FUNC(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
 
 /** Unbox simple types peforming type checks
  *
