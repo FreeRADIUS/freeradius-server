@@ -719,6 +719,8 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 
 	if (method) *method = NULL;
 
+	*name1 = *name2 = NULL;
+
 	/*
 	 *	Module names are allowed to contain '.'
 	 *	so we search for the bare module name first.
@@ -958,6 +960,10 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	if (!q) {
 		for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
 			methods = &mi->module->method_names[j];
+			/*
+			 *	If we do not have the second $method, then ignore it!
+			 */
+			if (methods->name2 != CF_IDENT_ANY) continue;
 
 			/*
 			 *	Wildcard match name1, we're
@@ -997,6 +1003,11 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	}
 
 	len = q - p;
+
+	/*
+	 *	Trim the '.'.
+	 */
+	if (*q == '.' && *(q + 1)) q++;
 
 	/*
 	 *	We have "module.METHOD1.METHOD2".
