@@ -76,4 +76,12 @@ csv {
 	#  It can be any one of the field names defined above.
 	#
 	key_field = "field1"
+
+	#
+	#  key_type:: The data type of the key_field.
+	#
+	#  This data type MUST be one of the data types known to FreeRADIUS.
+	#  e.g. "string", "ipaddr", etc.
+	#
+	key_type = string
 }

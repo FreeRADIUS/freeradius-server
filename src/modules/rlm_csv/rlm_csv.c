@@ -46,6 +46,9 @@ typedef struct {
 	char const	*delimiter;
 	char const	*fields;
 	char const	*key;
+	char const	*key_type_str;
+
+	fr_type_t	key_type;
 
 	bool		header;
 
@@ -60,7 +63,7 @@ typedef struct {
 
 typedef struct {
 	struct rlm_csv_entry_t *next;
-	char const *key;
+	fr_value_box_t *key;
 	char *data[];
 } rlm_csv_entry_t;
 
@@ -73,6 +76,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("fields", FR_TYPE_STRING , rlm_csv_t, fields) },
 	{ FR_CONF_OFFSET("header", FR_TYPE_BOOL, rlm_csv_t, header) },
 	{ FR_CONF_OFFSET("key_field", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, key) },
+	{ FR_CONF_OFFSET("key_type", FR_TYPE_STRING, rlm_csv_t, key_type_str) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -81,7 +85,7 @@ static int csv_entry_cmp(void const *one, void const *two)
 	rlm_csv_entry_t const *a = one;
 	rlm_csv_entry_t const *b = two;
 
-	return strcmp(a->key, b->key);
+	return fr_value_box_cmp(a->key, b->key);
 }
 
 /*
@@ -185,7 +189,13 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		 *	This is the key field.
 		 */
 		if (i == inst->key_field) {
-			e->key = talloc_typed_strdup(e, p);
+			fr_type_t type = inst->key_type;
+
+			e->key = talloc_zero(e, fr_value_box_t);
+			if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
+				cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
+					   fr_strerror());
+			}
 			continue;
 		}
 
@@ -198,7 +208,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 	}
 
 	if (i < inst->num_fields) {
-		cf_log_err(conf, "Too few fields at file %s line %d (%d < %d)", inst->filename, lineno, i, inst->num_fields);
+		cf_log_err(conf, "Too few fields in file %s at line %d (%d < %d)", inst->filename, lineno, i, inst->num_fields);
 		return NULL;
 	}
 
@@ -206,7 +216,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 	 *	FIXME: Allow duplicate keys later.
 	 */
 	if (!rbtree_insert(inst->tree, e)) {
-		cf_log_err(conf, "Failed inserting entry for filename %s line %d: duplicate entry",
+		cf_log_err(conf, "Failed inserting entry for file %s line %d: duplicate entry",
 			      inst->filename, lineno);
 		return NULL;
 	}
@@ -290,6 +300,16 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (inst->delimiter[1]) {
 		cf_log_err(conf, "'delimiter' must be one character long");
 		return -1;
+	}
+
+	if (!inst->key_type_str || !*inst->key_type_str) {
+		inst->key_type = FR_TYPE_STRING;
+	} else {
+		inst->key_type = fr_str2int(fr_value_box_type_table, inst->key_type_str, FR_TYPE_INVALID);
+		if (!inst->key_type) {
+			cf_log_err(conf, "Invalid key_type '%s'", inst->key_type_str);
+			return -1;
+		}
 	}
 
 	/*
@@ -553,12 +573,12 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		return RLM_MODULE_FAIL;
 	}
 
-	if (fr_value_box_list_concat(request, *key, key, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(request, *key, key, inst->key_type, true) < 0) {
 		REDEBUG("Failed concatenating key elements");
 		return RLM_MODULE_FAIL;
 	}
 
-	e = rbtree_finddata(inst->tree, &(rlm_csv_entry_t){ .key = (*key)->vb_strvalue });
+	e = rbtree_finddata(inst->tree, &(rlm_csv_entry_t){ .key = (*key)});
 	if (!e) {
 		rcode = RLM_MODULE_NOOP;
 		goto finish;
