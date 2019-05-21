@@ -177,6 +177,15 @@ bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_VENDOR] = true
 };
 
+static FR_NAME_NUMBER const date_precision_table[] = {
+	{ "seconds",		DATE_SECONDS },
+	{ "milliseconds",	DATE_MILLISECONDS },
+	{ "microseconds",	DATE_MICROSECONDS },
+	{ "nanoseconds",	DATE_NANOSECONDS },
+
+	{ NULL,			0 }
+};
+
 /*
  *	Create the hash of the name.
  *
@@ -843,6 +852,15 @@ static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
 				   fr_int2str(fr_value_box_type_table, type, "?Unknown?"));
 		return false;
+
+	case FR_TYPE_DATE:
+		if (flags->type_size > DATE_NANOSECONDS) {
+			fr_strerror_printf("Invalid precision '%d' for attribute of type 'date'",
+					   flags->type_size);
+			return false;
+		}
+		break;
+
 
 	default:
 		break;
@@ -3908,7 +3926,7 @@ static int dict_process_type_field(char const *name, fr_type_t *type_p, fr_dict_
 }
 
 
-static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_dict_attr_t const **ref_p, fr_dict_attr_flags_t *flags)
+static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_t const **ref_p, fr_dict_attr_flags_t *flags)
 {
 	char *p, *q, *v;
 	fr_dict_attr_t const *ref = NULL;
@@ -3987,6 +4005,16 @@ static int dict_process_flag_field(dict_from_file_ctx_t *ctx, char *name, fr_dic
 			flags->is_reference = 1;
 
 			*ref_p = ref;
+
+		} else if (type == FR_TYPE_DATE) {
+			int precision;
+
+			precision = fr_str2int(date_precision_table, key, -1);
+			if (precision < 0) {
+				fr_strerror_printf("Unknown date precision '%s'", key);
+				return -1;
+			}
+			flags->type_size = precision;
 
 		} else {
 			fr_strerror_printf("Unknown option '%s'", key);
@@ -4083,7 +4111,7 @@ get_by_oid:
 	/*
 	 *	Parse options.
 	 */
-	if ((argc >= 4) && (dict_process_flag_field(ctx, argv[3], &ref, &flags) < 0)) return -1;
+	if ((argc >= 4) && (dict_process_flag_field(ctx, argv[3], type, &ref, &flags) < 0)) return -1;
 
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
@@ -4164,7 +4192,7 @@ static int dict_read_process_member(dict_from_file_ctx_t *ctx, char **argv, int 
 	/*
 	 *	Parse options.
 	 */
-	if ((argc >= 3) && (dict_process_flag_field(ctx, argv[2], NULL, &flags) < 0)) return -1;
+	if ((argc >= 3) && (dict_process_flag_field(ctx, argv[2], type, NULL, &flags) < 0)) return -1;
 
 #ifdef __clang_analyzer__
 	if (!ctx->dict) return -1;

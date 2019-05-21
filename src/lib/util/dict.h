@@ -85,6 +85,11 @@ typedef struct {
 extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 extern fr_dict_t *fr_dict_internal;
 
+#define DATE_SECONDS		(0)
+#define DATE_MILLISECONDS	(1)
+#define DATE_MICROSECONDS	(2)
+#define DATE_NANOSECONDS	(3)
+
 /** Dictionary attribute
  */
 struct dict_attr {
