@@ -254,7 +254,7 @@ fr_dict_attr_t const	*fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *
  *
  * @{
  */
-ssize_t			fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t const *flags);
+ssize_t			fr_dict_snprint_flags(char *out, size_t outlen, fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 void			fr_dict_print(fr_dict_attr_t const *da, int depth);
 

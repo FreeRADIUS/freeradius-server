@@ -2441,7 +2441,7 @@ fr_dict_attr_t const *fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *
 	return NULL;
 }
 
-ssize_t fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t const *flags)
+ssize_t fr_dict_snprint_flags(char *out, size_t outlen, fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	char *p = out, *end = p + outlen;
 	size_t len;
@@ -2477,6 +2477,16 @@ do { \
 		if (p >= end) return -1;
 	}
 
+	/*
+	 *	Print out the date precision.
+	 */
+	if (type == FR_TYPE_DATE) {
+		char const *precision = fr_int2str(date_precision_table, flags->type_size, "?");
+
+		p += strlcpy(p, precision, end - p);
+		if (p >= end) return -1;
+	}
+
 	if (!out[0]) return -1;
 
 	/*
@@ -2494,7 +2504,7 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 	unsigned int i;
 	char const *name;
 
-	fr_dict_snprint_flags(buff, sizeof(buff), &da->flags);
+	fr_dict_snprint_flags(buff, sizeof(buff), da->type, &da->flags);
 
 	switch (da->type) {
 	case FR_TYPE_VSA:
@@ -5581,7 +5591,7 @@ static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)
 	fr_dict_attr_t const	*p;
 	char			flags[256];
 
-	fr_dict_snprint_flags(flags, sizeof(flags), &da->flags);
+	fr_dict_snprint_flags(flags, sizeof(flags), da->type, &da->flags);
 
 	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
 	       da->name, da->attr, fr_int2str(fr_value_box_type_table, da->type, "<INVALID>"), flags);
