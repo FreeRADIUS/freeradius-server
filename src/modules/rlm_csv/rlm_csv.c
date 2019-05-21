@@ -244,7 +244,7 @@ static int csv_map_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_in
 	vp_map_t const	*map;
 
 	if (!src) {
-		cf_log_err(cs, "Missing file name");
+		cf_log_err(cs, "Missing key expansion");
 
 		return -1;
 	}
