@@ -14,6 +14,22 @@
 #
 #  WARNING: Multi-line fields are NOT allowed.
 #
+#  The CSV map can be used in a `map` section, as in the following example.
+#
+#    map csv "%{User-Name}" {
+#		Attribute-Name := field1
+#		Attribute-Name := field2
+#		...
+#    }
+#
+#  The argument to "map" is dynamically expanded.  The result is taken
+#  as a string, and is used as the value of the "key".  The key is
+#  then looked up in the cached CSV file.  The fields are then mapped
+#  to the attributes on the left side of the map.
+#
+#  NOTE: All key lookups are done as string comparisons.  All data in
+#  the CSV files are treated as strings.
+#
 #  ## Default instance
 #
 csv {
@@ -28,17 +44,30 @@ csv {
 	delimiter = ","
 
 	#
-	#  header:: A header which defines field names.
+	#  header:: Whether or not there is a one-line header in the file.
+	#
+	#  If the value is set to 'yes', then the CSV file MUST contain
+	#  a header as the first line of the file.  That header line
+	#  must contain the field names.
+	#
+	header = no
+
+	#
+	#  fields:: A string which defines field names.
+	#
+	#  This configuration item is used only when `header = no`.
+	#  The content of the `fields` item must be the same as in RFC 4180.
+	#  That is, a comma-separated list of field names.
 	#
 	#  [NOTE]
 	#  =====
-	#  * MUST have the same number of fields as are in the CSV file.
-	#  * MUST NOT include whitespace.
-	#  * Fields which are not used should have no name.
+	#  * the header MUST have the same number of fields as are in the CSV file.
+	#  * the field names MUST NOT include whitespace.
+	#  * Fields which are not used should have no name
 	#
 	#  e.g. *"foo,,bar"* defines 3 fields, where the second is unused.
 	#  =====
-	header = "field1,,field3,field4"
+	fields = "field1,,field3,field4"
 
 	#
 	#  key_field:: The name of the key field, which is used to index the

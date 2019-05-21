@@ -1285,6 +1285,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		/*
 		 *	"map" sections have three arguments!
+		 *
+		 *	map NAME ARGUMENT { ... }
 		 */
 		if (strcmp(buff[1], "map") == 0) {
 			char const *mod;
@@ -1331,9 +1333,15 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					      filename, *lineno);
 					goto error;
 				}
-			}
 
-			if (gettoken(&ptr, buff[6], talloc_array_length(buff[6]), false) != T_LCBRACE) {
+				/*
+				 *	After the map expansion, we open a section.
+				 */
+				if (gettoken(&ptr, buff[6], talloc_array_length(buff[6]), false) != T_LCBRACE) {
+					goto map_error;
+				}
+			} else if (t3 != T_LCBRACE) {
+			map_error:
 				ERROR("%s[%d]: Expecting section start brace '{' in 'map' definition",
 				      filename, *lineno);
 				goto error;

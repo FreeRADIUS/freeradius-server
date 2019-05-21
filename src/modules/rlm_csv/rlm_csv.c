@@ -44,8 +44,10 @@ typedef struct {
 	char const	*name;
 	char const	*filename;
 	char const	*delimiter;
-	char const	*header;
+	char const	*fields;
 	char const	*key;
+
+	bool		header;
 
 	int		num_fields;
 	int		used_fields;
@@ -68,7 +70,8 @@ typedef struct {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, filename) },
 	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, delimiter), .dflt = "," },
-	{ FR_CONF_OFFSET("header", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, header) },
+	{ FR_CONF_OFFSET("fields", FR_TYPE_STRING , rlm_csv_t, fields) },
+	{ FR_CONF_OFFSET("header", FR_TYPE_BOOL, rlm_csv_t, header) },
 	{ FR_CONF_OFFSET("key_field", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_csv_t, key) },
 	CONF_PARSER_TERMINATOR
 };
@@ -162,7 +165,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 	char *p, *q;
 
 	MEM(e = (rlm_csv_entry_t *)talloc_zero_array(inst->tree, uint8_t,
-						     sizeof(*e) + inst->used_fields + sizeof(e->data[0])));
+						     sizeof(*e) + (inst->used_fields * sizeof(e->data[0]))));
 	talloc_set_type(e, rlm_csv_entry_t);
 
 	for (p = buffer, i = 0; p != NULL; p = q, i++) {
@@ -276,7 +279,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	int i;
 	char const *p;
 	char *q;
-	char *header;
+	char *fields;
 	FILE *fp;
 	int lineno;
 	char buffer[8192];
@@ -289,18 +292,55 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	for (p = inst->header; p != NULL; p = strchr(p + 1, *inst->delimiter)) {
+	/*
+	 *	Read the file line by line.
+	 */
+	fp = fopen(inst->filename, "r");
+	if (!fp) {
+		cf_log_err(conf, "Error opening filename %s: %s", inst->filename, fr_syserror(errno));
+		return -1;
+	}
+	lineno = 1;
+
+	/*
+	 *	If there is a header in the file, then read that first.
+	 */
+	if (inst->header) {
+		p = fgets(buffer, sizeof(buffer), fp);
+		if (!p) {
+		error_eof:
+			cf_log_err(conf, "Error reading filename %s: Unexpected EOF", inst->filename);
+			fclose(fp);
+			return -1;
+		}
+
+		q = strchr(buffer, '\n');
+		if (!q) goto error_eof;
+
+		*q = '\0';
+
+		/*
+		 *	Over-write whatever is in the config with the
+		 *	header from the file.
+		 */
+		inst->fields = talloc_strdup(inst, buffer);
+		lineno++;
+	}
+
+	for (p = inst->fields; p != NULL; p = strchr(p + 1, *inst->delimiter)) {
 		inst->num_fields++;
 	}
 
 	if (inst->num_fields < 2) {
-		cf_log_err(conf, "Must have at least a key field and data field");
+		cf_log_err(conf, "The CSV file MUST have at least a key field and data field");
+		fclose(fp);
 		return -1;
 	}
 
-	inst->field_names = talloc_array(inst, const char *, inst->num_fields);
+	inst->field_names = talloc_zero_array(inst, const char *, inst->num_fields);
 	if (!inst->field_names) {
 	oom:
+		fclose(fp);
 		cf_log_err(conf, "Out of memory");
 		return -1;
 	}
@@ -313,10 +353,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Get a writable copy of the header
+	 *	Get a writable copy of the fields definition
 	 */
-	header = talloc_typed_strdup(inst, inst->header);
-	if (!header) goto oom;
+	fields = talloc_typed_strdup(inst, inst->fields);
+	if (!fields) goto oom;
 
 	/*
 	 *	Mark up the field names.  Note that they can be empty,
@@ -325,61 +365,93 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->key_field = -1;
 
 	/*
-	 *	FIXME: remove whitespace from field names, if we care.
+	 *	Parse the field names
 	 */
-	for (p = header, i = 0; p != NULL; p = q, i++) {
-		q = strchr(p, *inst->delimiter);
+	i = 0;
+	p = q = fields;
+	while (*q) {
+		bool last_field;
 
 		/*
-		 *	Fields 0..N-1
+		 *	Skip the field name
 		 */
-		if (q) {
-			*q = '\0';
-
-			if (q > (p + 1)) {
-					if (strcmp(p, inst->key) == 0) {
-					inst->key_field = i;
-				} else {
-					inst->field_offsets[i] = inst->used_fields++;
-				}
+		while (*q && (*q != *inst->delimiter)) {
+			if ((*q == '\'') || (*q == '"')) {
+				cf_log_err(conf, "Field %d name cannot have quotation marks.",
+					   i + 1);
+				fclose(fp);
+				return -1;
 			}
+
+			if (*q < ' ') {
+				*q = '\0';
+				break;
+			}
+
+			if (isspace((int) *q)) {
+				cf_log_err(conf, "Field %d name cannot have spaces.",
+					   i + 1);
+				fclose(fp);
+				return -1;
+			}
+
 			q++;
-
-		} else {	/* field N */
-			if (*p) {
-				if (strcmp(p, inst->key) == 0) {
-					inst->key_field = i;
-				} else {
-					inst->field_offsets[i] = inst->used_fields++;
-				}
-			}
 		}
 
 		/*
-		 *	Save the field names, even when they're not used.
+		 *	Check for the last field.
+		 */
+		if (!*q) {
+			last_field = true;
+		} else {
+			*q = '\0';
+			last_field = false;
+		}
+
+		/*
+		 *	Track which field is the key, and which fields
+		 *	map to which entries.
+		 *
+		 *	Some fields are unused, so there isn't a 1-1
+		 *	mapping betweeen CSV file fields, and fields
+		 *	in the map.
+		 */
+		if (strcmp(p, inst->key) == 0) {
+			inst->key_field = i;
+		} else {
+			inst->field_offsets[i] = inst->used_fields++;
+		}
+
+		/*
+		 *	Save the field names, even when the field names are empty.
 		 */
 		inst->field_names[i] = p;
+
+		if (last_field) break;
+
+		q++;
+		i++;
+		p = q;
 	}
 
 	if (inst->key_field < 0) {
-		cf_log_err(conf, "Key field '%s' does not appear in header", inst->key);
+		fclose(fp);
+		cf_log_err(conf, "Key field '%s' does not appear in the list of field names",
+			   inst->key);
 		return -1;
 	}
 
+	/*
+	 *	@todo - also define data types for each field.  And do
+	 *	type-specific comparisons.
+	 */
 	inst->tree = rbtree_talloc_create(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0);
 	if (!inst->tree) goto oom;
 
 	/*
-	 *	Read the file line by line.
+	 *	Read the rest of the file.
 	 */
-	fp = fopen(inst->filename, "r");
-	if (!fp) {
-		cf_log_err(conf, "Error opening filename %s: %s", inst->filename, fr_syserror(errno));
-		return -1;
-	}
-
-	lineno = 1;
-	while (fgets(buffer, sizeof(buffer), fp)) {
+	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		rlm_csv_entry_t *e;
 
 		e = file2csv(conf, inst, lineno, buffer);
