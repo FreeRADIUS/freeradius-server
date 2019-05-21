@@ -20,7 +20,7 @@
  * @brief Read and map CSV files
  *
  * @copyright 2015 The FreeRADIUS server project
- * @copyright 2015 Alan DeKok <aland@freeradius.org>
+ * @copyright 2019 Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
 
@@ -59,6 +59,7 @@ typedef struct {
 	char const     	**field_names;
 	int		*field_offsets; /* field X from the file maps to array entry Y here */
 	rbtree_t	*tree;
+	fr_trie_t	*trie;
 } rlm_csv_t;
 
 typedef struct {
@@ -168,7 +169,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 	int i;
 	char *p, *q;
 
-	MEM(e = (rlm_csv_entry_t *)talloc_zero_array(inst->tree, uint8_t,
+	MEM(e = (rlm_csv_entry_t *)talloc_zero_array(inst, uint8_t,
 						     sizeof(*e) + (inst->used_fields * sizeof(e->data[0]))));
 	talloc_set_type(e, rlm_csv_entry_t);
 
@@ -212,10 +213,24 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		return NULL;
 	}
 
-	/*
-	 *	FIXME: Allow duplicate keys later.
-	 */
-	if (!rbtree_insert(inst->tree, e)) {
+	if (inst->key_type == FR_TYPE_IPV4_PREFIX) {
+		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v4.s_addr, e->key->vb_ip.prefix, e) < 0) {
+			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
+				   inst->filename, lineno, fr_strerror());
+			return NULL;
+		}
+
+	} else if (inst->key_type == FR_TYPE_IPV6_PREFIX) {
+		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v6.s6_addr, e->key->vb_ip.prefix, e) < 0) {
+			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
+				   inst->filename, lineno, fr_strerror());
+			return NULL;
+		}
+
+	} else if (!rbtree_insert(inst->tree, e)) {
+		/*
+		 *	@todo - allow duplicate keys later
+		 */
 		cf_log_err(conf, "Failed inserting entry for file %s line %d: duplicate entry",
 			      inst->filename, lineno);
 		return NULL;
@@ -465,8 +480,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	@todo - also define data types for each field.  And do
 	 *	type-specific comparisons.
 	 */
-	inst->tree = rbtree_talloc_create(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0);
-	if (!inst->tree) goto oom;
+	if ((inst->key_type == FR_TYPE_IPV4_PREFIX) || (inst->key_type == FR_TYPE_IPV6_PREFIX)) {
+		inst->trie = fr_trie_alloc(inst);
+		if (!inst->trie) goto oom;
+	} else {
+		inst->tree = rbtree_talloc_create(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0);
+		if (!inst->tree) goto oom;
+	}
 
 	/*
 	 *	Read the rest of the file.
@@ -578,7 +598,15 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		return RLM_MODULE_FAIL;
 	}
 
-	e = rbtree_finddata(inst->tree, &(rlm_csv_entry_t){ .key = (*key)});
+	if (inst->key_type == FR_TYPE_IPV4_PREFIX) {
+		e = fr_trie_lookup(inst->trie, (*key)->vb_ip.addr.v4.s_addr, (*key)->vb_ip.prefix);
+
+	} else if (inst->key_type == FR_TYPE_IPV6_PREFIX) {
+		e = fr_trie_lookup(inst->trie, (*key)->vb_ip.addr.v6.s6_addr, (*key)->vb_ip.prefix);
+
+	} else {
+		e = rbtree_finddata(inst->tree, &(rlm_csv_entry_t){ .key = (*key)});
+	}
 	if (!e) {
 		rcode = RLM_MODULE_NOOP;
 		goto finish;
