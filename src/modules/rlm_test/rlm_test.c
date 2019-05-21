@@ -70,9 +70,6 @@ typedef struct {
 	time_t		date;
 	time_t		*date_m;
 
-	size_t		abinary[32/sizeof(size_t)];
-	size_t		*abinary_m[32/sizeof(size_t)];
-
 	uint8_t const	*octets;
 	uint8_t const	**octets_m;
 
@@ -135,9 +132,6 @@ static const CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("date", FR_TYPE_DATE, rlm_test_t, date) },
 	{ FR_CONF_OFFSET("date_m", FR_TYPE_DATE | FR_TYPE_MULTI, rlm_test_t, date_m) },
-
-	{ FR_CONF_OFFSET("abinary", FR_TYPE_ABINARY, rlm_test_t, abinary) },
-	{ FR_CONF_OFFSET("abinary_m", FR_TYPE_ABINARY | FR_TYPE_MULTI, rlm_test_t, abinary_m) },
 
 	{ FR_CONF_OFFSET("octets", FR_TYPE_OCTETS, rlm_test_t, octets) },
 	{ FR_CONF_OFFSET("octets_m", FR_TYPE_OCTETS | FR_TYPE_MULTI, rlm_test_t, octets_m) },
