@@ -77,9 +77,9 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 static const CONF_PARSER file_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename ) },
 
-	{ FR_CONF_OFFSET("filename_work", FR_TYPE_STRING, proto_detail_work_t, filename_work ) },
+	{ FR_CONF_OFFSET("filename_work", FR_TYPE_STRING, proto_detail_file_t, filename_work ) },
 
-	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_TIMEVAL, proto_detail_file_t, poll_interval), .dflt = "5.0" },
+	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_UINT32, proto_detail_file_t, poll_interval), .dflt = "5" },
 
 	{ FR_CONF_OFFSET("immediate", FR_TYPE_BOOL, proto_detail_file_t, immediate) },
 
