@@ -970,8 +970,6 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 			 */
 			if (strcmp(methods->name1, p) != 0) continue;
 
-			if (methods->name1 != CF_IDENT_ANY) continue;
-
 		found_name1:
 			/*
 			 *	We've matched "*", or "name1" or
