@@ -53,10 +53,10 @@ static CONF_PARSER const status_check_update_config[] = {
 };
 
 static CONF_PARSER const connection_config[] = {
-	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIMEVAL, rlm_radius_t, connection_timeout),
+	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, rlm_radius_t, connection_timeout),
 	  .dflt = STRINGIFY(5) },
 
-	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIMEVAL, rlm_radius_t, reconnection_delay),
+	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIME_DELTA, rlm_radius_t, reconnection_delay),
 	  .dflt = STRINGIFY(5) },
 
 	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, rlm_radius_t, idle_timeout),
@@ -549,11 +549,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	FR_TIMEVAL_BOUND_CHECK("connection.connect_timeout", &inst->connection_timeout, >=, 1, 0);
-	FR_TIMEVAL_BOUND_CHECK("connection.connect_timeout", &inst->connection_timeout, <=, 30, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.connect_timeout", inst->connection_timeout, >=, 1, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.connect_timeout", inst->connection_timeout, <=, 30, 0);
 
-	FR_TIMEVAL_BOUND_CHECK("connection.reconnect_delay", &inst->reconnection_delay, >=, 5, 0);
-	FR_TIMEVAL_BOUND_CHECK("connection.reconnect_delay", &inst->reconnection_delay, <=, 300, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.reconnect_delay", inst->reconnection_delay, >=, 5, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.reconnect_delay", inst->reconnection_delay, <=, 300, 0);
 
 	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, >=, 5, 0);
 	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, <=, 600, 0);

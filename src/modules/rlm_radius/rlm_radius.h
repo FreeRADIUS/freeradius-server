@@ -78,8 +78,8 @@ typedef struct {
 struct rlm_radius_t {
 	char const		*name;		//!< Module instance name.
 
-	struct timeval		connection_timeout;
-	struct timeval		reconnection_delay;
+	fr_time_delta_t		connection_timeout;
+	fr_time_delta_t		reconnection_delay;
 	fr_time_delta_t		idle_timeout;
 	fr_time_delta_t		zombie_period;
 

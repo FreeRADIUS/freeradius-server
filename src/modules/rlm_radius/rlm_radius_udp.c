@@ -76,8 +76,8 @@ typedef struct {
 	fr_dlist_head_t		opening;      		//!< Opening connections.
 
 	uint32_t		max_connections;  //!< maximum number of open connections
-	struct timeval		connection_timeout;
-	struct timeval		reconnection_delay;
+	fr_time_delta_t		connection_timeout;
+	fr_time_delta_t		reconnection_delay;
 	fr_time_delta_t		idle_timeout;
 	fr_time_delta_t		zombie_period;
 } fr_io_connection_thread_t;
@@ -2634,6 +2634,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, fr_io_connection_thread_t *t)
 {
 	fr_io_connection_t	*c;
 	rlm_radius_udp_connection_t *radius;
+	struct timeval connection_timeout, reconnection_delay;
 
 	c = talloc_zero(t, fr_io_connection_t);
 	c->module_name = inst->parent->name;
@@ -2678,7 +2679,10 @@ static void conn_alloc(rlm_radius_udp_t *inst, fr_io_connection_thread_t *t)
 	}
 	fr_dlist_init(&c->sent, fr_io_request_t, entry);
 
-	c->conn = fr_connection_alloc(c, t->el, &t->connection_timeout, &t->reconnection_delay,
+	fr_timeval_from_nsec(&connection_timeout, t->connection_timeout);
+	fr_timeval_from_nsec(&reconnection_delay, t->reconnection_delay);
+
+	c->conn = fr_connection_alloc(c, t->el, &connection_timeout, &reconnection_delay,
 				      _conn_init,
 				      _conn_open,
 				      _conn_close,
@@ -2952,9 +2956,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	COPY(max_connections);
 	COPY(connection_timeout);
 	COPY(reconnection_delay);
-
-	t->idle_timeout = inst->parent->idle_timeout;
-	t->zombie_period = inst->parent->zombie_period;
+	COPY(idle_timeout);
+	COPY(zombie_period);
 
 	rcode = conn_thread_instantiate(t, el);
 	if (rcode < 0) return rcode;
