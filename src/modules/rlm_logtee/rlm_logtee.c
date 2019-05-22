@@ -105,8 +105,8 @@ typedef struct {
 	logtee_net_t		tcp;			//!< TCP server.
 	logtee_net_t		udp;			//!< UDP server.
 
-	struct timeval		connection_timeout;	//!< How long to wait to open a socket.
-	struct timeval		reconnection_delay;	//!< How long to wait to retry.
+	fr_time_delta_t		connection_timeout;	//!< How long to wait to open a socket.
+	fr_time_delta_t		reconnection_delay;	//!< How long to wait to retry.
 } rlm_logtee_t;
 
 /** Per-thread instance data
@@ -171,8 +171,8 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("tcp", FR_TYPE_SUBSECTION, rlm_logtee_t, tcp), .subcs= (void const *) tcp_config },
 	{ FR_CONF_OFFSET("udp", FR_TYPE_SUBSECTION, rlm_logtee_t, udp), .subcs = (void const *) udp_config },
 
-	{ FR_CONF_OFFSET("connection_timeout", FR_TYPE_TIMEVAL, rlm_logtee_t, connection_timeout), .dflt = "1.0" },
-	{ FR_CONF_OFFSET("reconnection_delay", FR_TYPE_TIMEVAL, rlm_logtee_t, reconnection_delay), .dflt = "1.0" },
+	{ FR_CONF_OFFSET("connection_timeout", FR_TYPE_TIME_DELTA, rlm_logtee_t, connection_timeout), .dflt = "1.0" },
+	{ FR_CONF_OFFSET("reconnection_delay", FR_TYPE_TIME_DELTA, rlm_logtee_t, reconnection_delay), .dflt = "1.0" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -544,6 +544,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 {
 	rlm_logtee_t		*inst = talloc_get_type_abort(instance, rlm_logtee_t);
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(thread, rlm_logtee_thread_t);
+	struct timeval		connection_timeout, reconnection_delay;
 
 	MEM(t->fring = fr_fring_alloc(t, inst->buffer_depth, false));
 
@@ -558,11 +559,13 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	MEM(t->type = fr_pair_afrom_da(t, attr_log_type));
 	MEM(t->lvl = fr_pair_afrom_da(t, attr_log_level));
 
+	fr_timeval_from_nsec(&connection_timeout, inst->connection_timeout);
+	fr_timeval_from_nsec(&reconnection_delay, inst->reconnection_delay);
+
 	/*
 	 *	This opens the outbound connection
 	 */
-
-	t->conn = fr_connection_alloc(t, el, &inst->connection_timeout, &inst->reconnection_delay,
+	t->conn = fr_connection_alloc(t, el, &connection_timeout, &reconnection_delay,
 				      _logtee_conn_init, _logtee_conn_open, _logtee_conn_close,
 				      inst->name, t);
 	if (t->conn == NULL) return -1;
