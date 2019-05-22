@@ -4193,38 +4193,53 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		break;
 
 	case FR_TYPE_TIME_DELTA:
-		/*
-		 *	Print at the appropriate scale, with the
-		 *	appropriate precision.  We don't want to print
-		 *	out reams of numbers that get ignored...
-		 */
-		{
-			char *q;
+	{
+		char *q;
+		uint64_t lhs, rhs;
+		int spec = DATE_SECONDS;
 
-			p = talloc_typed_asprintf(ctx, "%" PRIu64 ".%09" PRIu64 "s",
-						  (uint64_t)data->datum.time_delta / NSEC, (uint64_t)data->datum.time_delta % NSEC);
+		if (data->enumv) spec = data->enumv->flags.type_size;
 
-			/*
-			 *	Manually truncate trailing zeros after
-			 *	printing.  It's less work than having
-			 *	umpteen format strings.
-			 */
-			q = strchr(p, 's');
-			if (!q) break;
-			q--;
+		switch (spec) {
+		default:
+		case DATE_SECONDS:
+			lhs = data->datum.time_delta / NSEC;
+			rhs = data->datum.time_delta % NSEC;
+			break;
 
-			while (*q == '0') {
-				q[0] = 's';
-				q[1] = '\0';
-				q--;
-			}
+		case DATE_MILLISECONDS:
+			lhs = data->datum.time_delta / 1000000;
+			rhs = data->datum.time_delta % 1000000;
+			break;
 
-			if ((q[0] == '.') && (q[1] == 's')) {
-				q[0] = 's';
-				q[1] = '\0';
-			}
+		case DATE_MICROSECONDS:
+			lhs = data->datum.time_delta / 1000;
+			rhs = data->datum.time_delta % 1000;
+			break;
+
+		case DATE_NANOSECONDS:
+			lhs = data->datum.time_delta;
+			rhs = 0;
+			break;
 		}
 
+		p = talloc_typed_asprintf(ctx, "%" PRIu64 ".%09" PRIu64, lhs, rhs);
+
+		/*
+		 *	Truncate trailing zeros.
+		 */
+		q = p + strlen(p) - 1;
+		while (*q == '0') {
+			*(q--) = '\0';
+		}
+
+		/*
+		 *	If there's nothing after the decimal point,
+		 *	trunctate the decimal point.  i.e. Don't print
+		 *	"5."
+		 */
+		if (*q == '.') *q = '\0';
+	}
 		break;
 
 	case FR_TYPE_ABINARY:
@@ -4686,40 +4701,58 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		break;
 
 	case FR_TYPE_TIME_DELTA:
-		/*
-		 *	@todo - print at the appropriate scale
-		 *	Unqualified numbers are seconds.  Otherwise,
-		 *	qualify the numbers with "ms", "us", or "ns".
-		 */
-		len = snprintf(buf, sizeof(buf), "%" PRIu64 ".%09" PRIu64 "s",
-			       (uint64_t)data->datum.time_delta / NSEC, (uint64_t)data->datum.time_delta % NSEC);
+	{
+		char *q;
+		uint64_t lhs, rhs;
+		int spec = DATE_SECONDS;
+
+		if (data->enumv) spec = data->enumv->flags.type_size;
+
+		switch (spec) {
+		default:
+		case DATE_SECONDS:
+			lhs = data->datum.time_delta / NSEC;
+			rhs = data->datum.time_delta % NSEC;
+			break;
+
+		case DATE_MILLISECONDS:
+			lhs = data->datum.time_delta / 1000000;
+			rhs = data->datum.time_delta % 1000000;
+			break;
+
+		case DATE_MICROSECONDS:
+			lhs = data->datum.time_delta / 1000;
+			rhs = data->datum.time_delta % 1000;
+			break;
+
+		case DATE_NANOSECONDS:
+			lhs = data->datum.time_delta;
+			rhs = 0;
+			break;
+		}
+
+		len = snprintf(buf, sizeof(buf), "%" PRIu64 ".%09" PRIu64, lhs, rhs);
 		a = buf;
 
-		{
-			char *q ;
-
-			/*
-			 *	Manually truncate trailing zeros after
-			 *	printing.  It's less work than having
-			 *	umpteen format strings.
-			 */
-			q = strchr(a, 's');
-			if (!q) break;
-			q--;
-
-			while (*q == '0') {
-				q[0] = 's';
-				q[1] = '\0';
-				q--;
-			}
-
-			if ((q[0] == '.') && (q[1] == 's')) {
-				q[0] = 's';
-				q[1] = '\0';
-			}
-
-			len = (q - a) + 1;
+		/*
+		 *	Truncate trailing zeros.
+		 */
+		q = buf + len - 1;
+		while (*q == '0') {
+			*(q--) = '\0';
+			len--;
 		}
+
+		/*
+		 *	If there's nothing after the decimal point,
+		 *	trunctate the decimal point.  i.e. Don't print
+		 *	"5."
+		 */
+		if (*q == '.') {
+			*q = '\0';
+			len--;
+		}
+	}
 		break;
 
 	/*
