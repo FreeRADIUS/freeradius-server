@@ -438,13 +438,13 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		goto finish;
 	}
 
-	gettimeofday(&when, NULL);
+	fr_time_to_timeval(&when, fr_time());
 	when.tv_sec += conf->timeout;
 
 	do {
 		rc = OCSP_sendreq_nbio(&resp, ctx);
 		if (conf->timeout) {
-			gettimeofday(&now, NULL);
+			fr_time_to_timeval(&now, fr_time());
 			if (fr_timeval_cmp(&now, &when) >= 0) break;
 		}
 	} while ((rc == -1) && BIO_should_retry(conn));
@@ -536,7 +536,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		 *	Sometimes we already know what 'now' is depending
 		 *	on the code path, other times we don't.
 		 */
-		if (now.tv_sec == 0) gettimeofday(&now, NULL);
+		if (now.tv_sec == 0) fr_time_to_timeval(&now, fr_time());
 		if (tls_utils_asn1time_to_epoch(&next, next_update) < 0) {
 			RPEDEBUG("Failed parsing next_update time");
 			ocsp_status = OCSP_STATUS_SKIPPED;

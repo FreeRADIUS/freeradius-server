@@ -471,7 +471,7 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
 	 *	Read from the pipe until we doesn't get any more or
 	 *	until the message is full.
 	 */
-	gettimeofday(&start, NULL);
+	fr_time_to_timeval(&start, fr_time());
 	while (1) {
 		int rcode;
 		fd_set fds;
@@ -480,7 +480,7 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
 		FD_ZERO(&fds);
 		FD_SET(fd, &fds);
 
-		gettimeofday(&when, NULL);
+		fr_time_to_timeval(&when, fr_time());
 		fr_timeval_subtract(&elapsed, &when, &start);
 		if (elapsed.tv_sec >= timeout) goto too_long;
 
