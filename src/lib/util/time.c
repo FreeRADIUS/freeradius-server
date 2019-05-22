@@ -572,6 +572,7 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, int hint)
 		if (*end) goto failed;
 
 		delta = minutes * 60 + sec;
+		delta *= NSEC;
 
 	} else if (!*end) {
 	do_scale:
