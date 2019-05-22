@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/strerror.h>
 
 /*
@@ -421,7 +422,7 @@ void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char con
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_time_delta_from_str(fr_time_delta_t *out, char const *in)
+int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, int hint)
 {
 	int	sec;
 	char	*p, *end;
@@ -487,9 +488,9 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in)
 
 	parse_precision:
 		/*
-		 *	Nothing else, it defaults to "s".
+		 *	Nothing else, it defaults to whatever scale the caller passed.
 		 */
-		if (!*p) goto done;
+		if (!*p) goto do_scale;
 
 		if ((p[0] == 's') && !p[1]) goto done;
 
@@ -570,6 +571,29 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in)
 		if (*end) goto failed;
 
 		delta = minutes * 60 + sec;
+
+	} else if (!*end) {
+	do_scale:
+		switch (hint) {
+		case DATE_SECONDS:
+			break;
+
+		case DATE_MILLISECONDS:
+			delta /= 1000;
+			break;
+
+		case DATE_MICROSECONDS:
+			delta /= 1000000;
+			break;
+
+		case DATE_NANOSECONDS:
+			delta /= 1000000000;
+			break;
+
+		default:
+			fr_strerror_printf("Invalid hint %d for time delta", hint);
+			return -1;
+		}
 
 	} else {
 		goto failed;

@@ -170,7 +170,7 @@ void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp) CC_HINT(nonnull);
 void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end);
 void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs);
 
-int fr_time_delta_from_str(fr_time_delta_t *out, char const *in);
+int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, int hint);
 
 #ifdef __cplusplus
 }
