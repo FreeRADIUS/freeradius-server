@@ -2954,7 +2954,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	COPY(reconnection_delay);
 
 	t->idle_timeout = inst->parent->idle_timeout;
-	t->zombie_period = fr_time_delta_from_timeval(&inst->parent->zombie_period);
+	t->zombie_period = inst->parent->zombie_period;
 
 	rcode = conn_thread_instantiate(t, el);
 	if (rcode < 0) return rcode;

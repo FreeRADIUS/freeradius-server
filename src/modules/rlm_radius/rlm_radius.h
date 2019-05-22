@@ -81,7 +81,7 @@ struct rlm_radius_t {
 	struct timeval		connection_timeout;
 	struct timeval		reconnection_delay;
 	fr_time_delta_t		idle_timeout;
-	struct timeval		zombie_period;
+	fr_time_delta_t		zombie_period;
 
 	bool			replicate;	//!< are we ignoring responses?
 	bool			synchronous;	//!< are we doing synchronous proxying?

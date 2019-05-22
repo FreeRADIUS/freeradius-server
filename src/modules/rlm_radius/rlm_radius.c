@@ -62,7 +62,7 @@ static CONF_PARSER const connection_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, rlm_radius_t, idle_timeout),
 	  .dflt = STRINGIFY(300) },
 
-	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIMEVAL, rlm_radius_t, zombie_period),
+	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIME_DELTA, rlm_radius_t, zombie_period),
 	  .dflt = STRINGIFY(40) },
 
 	CONF_PARSER_TERMINATOR
@@ -558,8 +558,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, >=, 5, 0);
 	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, <=, 600, 0);
 
-	FR_TIMEVAL_BOUND_CHECK("connection.zombie_period", &inst->zombie_period, >=, 1, 0);
-	FR_TIMEVAL_BOUND_CHECK("connection.zombie_period", &inst->zombie_period, <=, 120, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.zombie_period", inst->zombie_period, >=, 1, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.zombie_period", inst->zombie_period, <=, 120, 0);
 
 	num_types = talloc_array_length(inst->types);
 	rad_assert(num_types > 0);
