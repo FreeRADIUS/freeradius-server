@@ -860,6 +860,7 @@ do { \
 		char			*p = strchr(buffer, '\n'), *q;
 		char			test_type[128];
 		VALUE_PAIR		*vp, *head = NULL;
+		fr_type_t		type;
 
 		lineno++;
 
@@ -1357,7 +1358,30 @@ do { \
 			continue;
 		}
 
-		fprintf(stderr, "Unknown input at line %d of %s: %s\n", lineno, directory, p);
+		/*
+		 *	Parse data types
+		 */
+		type = fr_str2int(fr_value_box_type_table, test_type, FR_TYPE_INVALID);
+		if (type != FR_TYPE_INVALID) {
+			fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
+
+			while (!isspace((int) *p)) p++;
+			while (isspace((int) *p)) p++;
+
+			if (fr_value_box_from_str(box, box, &type, NULL, p, -1, '"', false) < 0) {
+				snprintf(output, sizeof(output), "ERROR parsing value: %s",
+					 fr_strerror());
+				talloc_free(box);
+				continue;
+			}
+
+			fr_value_box_snprint(output, sizeof(output), box, '"');
+			talloc_free(box);
+			continue;
+		}
+
+		*p = ' ';
+		fprintf(stderr, "Unknown input at line %d of %s: %s\n", lineno, directory, test_type);
 
 		goto error;
 

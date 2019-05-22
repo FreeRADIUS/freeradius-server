@@ -1,0 +1,39 @@
+#
+#  Parse / print data types
+#
+uint32 0
+data 0
+
+ipaddr 127.0.0.1
+data 127.0.0.1
+
+#  And canonicalized
+ipaddr 127.0.0.001
+data 127.0.0.1
+
+#
+#  Time deltas can have qualifiers, but they're always printed
+#  as seconds.
+#
+#  Unless the attribute (which we don't have here) has a scale defined
+#
+time_delta 1
+data 1
+
+time_delta 2.4
+data 2.4
+
+time_delta 1ms
+data 0.001
+
+time_delta 1us
+data 0.000001
+
+time_delta 1.5us
+data 0.0000015
+
+time_delta 1ns
+data 0.000000001
+
+time_delta 1:30
+data 90
