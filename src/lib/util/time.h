@@ -104,12 +104,12 @@ static inline fr_time_delta_t fr_time_delta_from_sec(uint64_t sec)
 
 static inline fr_time_delta_t fr_time_delta_from_timeval(struct timeval const *tv)
 {
-	return (tv->tv_sec * NSEC) + (tv->tv_usec * 1000);
+	return (((fr_time_delta_t) tv->tv_sec) * NSEC) + (((fr_time_delta_t) tv->tv_usec) * 1000);
 }
 
 static inline fr_time_delta_t fr_time_delta_from_timespec(struct timespec const *ts)
 {
-	return (ts->tv_sec * NSEC) + ts->tv_nsec;
+	return (((fr_time_delta_t) ts->tv_sec) * NSEC) + ts->tv_nsec;
 }
 
 static inline int64_t fr_time_delta_to_usec(fr_time_delta_t delta)
