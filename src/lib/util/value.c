@@ -4194,12 +4194,37 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 
 	case FR_TYPE_TIME_DELTA:
 		/*
-		 *	@todo - print at the appropriate scale
-		 *	Unqualified numbers are seconds.  Otherwise,
-		 *	qualify the numbers with "ms", "us", or "ns".
+		 *	Print at the appropriate scale, with the
+		 *	appropriate precision.  We don't want to print
+		 *	out reams of numbers that get ignored...
 		 */
-		p = talloc_typed_asprintf(ctx, "%" PRIu64 ".%09" PRIu64,
-					  (uint64_t)data->datum.time_delta / NSEC, (uint64_t)data->datum.time_delta % NSEC);
+		{
+			char *q;
+
+			p = talloc_typed_asprintf(ctx, "%" PRIu64 ".%09" PRIu64 "s",
+						  (uint64_t)data->datum.time_delta / NSEC, (uint64_t)data->datum.time_delta % NSEC);
+
+			/*
+			 *	Manually truncate trailing zeros after
+			 *	printing.  It's less work than having
+			 *	umpteen format strings.
+			 */
+			q = strchr(p, 's');
+			if (!q) break;
+			q--;
+
+			while (*q == '0') {
+				q[0] = 's';
+				q[1] = '\0';
+				q--;
+			}
+
+			if ((q[0] == '.') && (q[1] == 's')) {
+				q[0] = 's';
+				q[1] = '\0';
+			}
+		}
+
 		break;
 
 	case FR_TYPE_ABINARY:
@@ -4666,9 +4691,35 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		 *	Unqualified numbers are seconds.  Otherwise,
 		 *	qualify the numbers with "ms", "us", or "ns".
 		 */
-		len = snprintf(buf, sizeof(buf), "%" PRIu64 ".%09" PRIu64,
+		len = snprintf(buf, sizeof(buf), "%" PRIu64 ".%09" PRIu64 "s",
 			       (uint64_t)data->datum.time_delta / NSEC, (uint64_t)data->datum.time_delta % NSEC);
 		a = buf;
+
+		{
+			char *q ;
+
+			/*
+			 *	Manually truncate trailing zeros after
+			 *	printing.  It's less work than having
+			 *	umpteen format strings.
+			 */
+			q = strchr(a, 's');
+			if (!q) break;
+			q--;
+
+			while (*q == '0') {
+				q[0] = 's';
+				q[1] = '\0';
+				q--;
+			}
+
+			if ((q[0] == '.') && (q[1] == 's')) {
+				q[0] = 's';
+				q[1] = '\0';
+			}
+
+			len = (q - a) + 1;
+		}
 		break;
 
 	/*
