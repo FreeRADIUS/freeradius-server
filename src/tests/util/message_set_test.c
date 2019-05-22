@@ -375,7 +375,7 @@ int main(int argc, char *argv[])
 	if (debug_lvl) {
 		struct timeval start_t, end_t;
 
-		gettimeofday(&start_t, NULL);
+		fr_time_to_timeval(&start_t, fr_time());
 
 		/*
 		 *	Do another 10000 rounds of alloc / free.
@@ -388,7 +388,7 @@ int main(int argc, char *argv[])
 			free_blocks(ms, &seed, &start, &end);
 		}
 
-		gettimeofday(&end_t, NULL);
+		fr_time_to_timeval(&end_t, fr_time());
 
 		end_t.tv_sec -= start_t.tv_sec;
 		if (end_t.tv_sec > 0) {
