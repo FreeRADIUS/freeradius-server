@@ -434,7 +434,20 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in)
 		return -1;
 	}
 
-	delta = sec * NSEC;
+	/*
+	 *	Cast before multiplication to avoid integer overflow
+	 *	in 'int' seconds.
+	 */
+	delta = sec;
+	delta *= NSEC;
+
+	/*
+	 *	Allow "1ns", etc.
+	 */
+	if ((*end >= 'a') && (*end <= 'z')) {
+		p = end;
+		goto parse_precision;
+	}
 
 	/*
 	 *	Decimal number
@@ -472,6 +485,7 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in)
 
 		delta += sec;
 
+	parse_precision:
 		/*
 		 *	Nothing else, it defaults to "s".
 		 */
