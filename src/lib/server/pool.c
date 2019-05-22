@@ -482,7 +482,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 	this->in_use = in_use;
 
 	this->number = number;
-	gettimeofday(&this->last_reserved, NULL);
+	fr_time_to_timeval(&this->last_reserved, fr_time());
 	this->last_released = this->last_reserved;
 
 	/*
@@ -883,7 +883,7 @@ static void *connection_get_internal(fr_pool_t *pool, REQUEST *request, bool spa
 do_return:
 	pool->state.active++;
 	this->num_uses++;
-	gettimeofday(&this->last_reserved, NULL);
+	fr_time_to_timeval(&this->last_reserved, fr_time());
 	this->in_use = true;
 
 #ifdef PTHREAD_DEBUG
@@ -1393,7 +1393,7 @@ void fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn)
 	/*
 	 *	Record when the connection was last released
 	 */
-	gettimeofday(&this->last_released, NULL);
+	fr_time_to_timeval(&this->last_reserved, fr_time());
 	pool->state.last_released = this->last_released;
 
 	/*
@@ -1520,7 +1520,7 @@ int fr_pool_connection_close(fr_pool_t *pool, REQUEST *request, void *conn)
 	/*
 	 *	Record the last time a connection was closed
 	 */
-	gettimeofday(&pool->state.last_closed, NULL);
+	fr_time_to_timeval(&pool->state.last_closed, fr_time());
 
 	ROPTIONAL(RINFO, INFO, "Deleting connection (%" PRIu64 ")", this->number);
 

@@ -118,7 +118,7 @@ static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	gettimeofday(&now, NULL);
+	fr_time_to_timeval(&now, fr_time());
 	fr_timeval_subtract(&diff, &now, &uptime);
 
 	out->vb_uint32 = diff.tv_sec * 100;
@@ -135,7 +135,7 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *ou
 
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	gettimeofday(&now, NULL);
+	fr_time_to_timeval(&now, fr_time());
 	fr_timeval_subtract(&diff, &now, &reset_time);
 
 	out->vb_uint32 = diff.tv_sec * 100;
@@ -161,7 +161,7 @@ static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED 
 	switch (in->vb_uint32) {
 	case FR_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RESET:
 		main_loop_signal_self(RADIUS_SIGNAL_SELF_HUP);
-		gettimeofday(&reset_time, NULL);
+		fr_time_to_timeval(&reset_time, fr_time());
 		return 0;
 
 	default:
@@ -1110,7 +1110,7 @@ static int _fr_snmp_init(fr_snmp_map_t map[])
  */
 int fr_snmp_init(void)
 {
-	gettimeofday(&uptime, NULL);
+	fr_time_to_timeval(&uptime, fr_time());
 	reset_time = uptime;
 
 	if (fr_dict_autoload(snmp_dict) < 0) {

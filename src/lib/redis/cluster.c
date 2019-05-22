@@ -1344,7 +1344,7 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 	rad_assert(live->next);			/* There should be at least one */
 	if (live->next == 1) goto no_alts;	/* Weird, but conceivable */
 
-	gettimeofday(&now, NULL);
+	fr_time_to_timeval(&now, fr_time());
 
 	/*
 	 *	Weighted random selection
