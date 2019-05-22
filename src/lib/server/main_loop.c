@@ -274,9 +274,9 @@ static int _loop_status(UNUSED void *ctx, fr_time_t wake)
 	if (!wake) {
 		if (main_config->drop_requests) return 0;
 		INFO("Ready to process requests");
-	} else if (wake > 100000000) {
+	} else if (wake > (NSEC / 10)) {
 		DEBUG("Waking up in %d.%02u seconds.",
-		      (int) wake / NSEC, (int)((wake % NSEC) / 1000000));
+		      (int) (wake / NSEC), (int)((wake % NSEC) / 1000000));
 	}
 
 	return 0;
