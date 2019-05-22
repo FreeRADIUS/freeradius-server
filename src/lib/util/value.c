@@ -1014,7 +1014,7 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
  *   format in memory.
  * - Dates are encoded as 32bit unsigned UNIX timestamps.
  *
- * #FR_TYPE_TIMEVAL, #FR_TIME_DELTA and #FR_TYPE_SIZE are not encodable, as they're system specific.
+ * #FR_TYPE_TIMEVAL, #FR_TYPE_TIME_DELTA and #FR_TYPE_SIZE are not encodable, as they're system specific.
  * #FR_TYPE_ABINARY is RADIUS specific and should be encoded by the RADIUS encoder.
  *
  * This function will not encode complex types (TLVs, VSAs etc...).  These are usually
