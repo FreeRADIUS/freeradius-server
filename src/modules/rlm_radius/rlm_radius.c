@@ -59,7 +59,7 @@ static CONF_PARSER const connection_config[] = {
 	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIMEVAL, rlm_radius_t, reconnection_delay),
 	  .dflt = STRINGIFY(5) },
 
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, rlm_radius_t, idle_timeout),
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, rlm_radius_t, idle_timeout),
 	  .dflt = STRINGIFY(300) },
 
 	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIMEVAL, rlm_radius_t, zombie_period),
@@ -555,10 +555,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIMEVAL_BOUND_CHECK("connection.reconnect_delay", &inst->reconnection_delay, >=, 5, 0);
 	FR_TIMEVAL_BOUND_CHECK("connection.reconnect_delay", &inst->reconnection_delay, <=, 300, 0);
 
-	if ((inst->idle_timeout.tv_sec != 0) && (inst->idle_timeout.tv_usec != 0)) {
-		FR_TIMEVAL_BOUND_CHECK("connection.idle_timeout", &inst->idle_timeout, >=, 5, 0);
-	}
-	FR_TIMEVAL_BOUND_CHECK("connection.idle_timeout", &inst->idle_timeout, <=, 600, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, >=, 5, 0);
+	FR_TIME_DELTA_BOUND_CHECK("connection.idle_timeout", inst->idle_timeout, <=, 600, 0);
 
 	FR_TIMEVAL_BOUND_CHECK("connection.zombie_period", &inst->zombie_period, >=, 1, 0);
 	FR_TIMEVAL_BOUND_CHECK("connection.zombie_period", &inst->zombie_period, <=, 120, 0);

@@ -80,7 +80,7 @@ struct rlm_radius_t {
 
 	struct timeval		connection_timeout;
 	struct timeval		reconnection_delay;
-	struct timeval		idle_timeout;
+	fr_time_delta_t		idle_timeout;
 	struct timeval		zombie_period;
 
 	bool			replicate;	//!< are we ignoring responses?

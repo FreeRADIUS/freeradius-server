@@ -370,7 +370,7 @@ static void conn_check_idle(fr_io_connection_t *c)
 
 		DEBUG("%s - Setting idle timeout to +%u.%03u for connection %s",
 		      c->module_name,
-		      (uint32_t) c->thread->idle_timeout / NSEC,
+		      (uint32_t) (c->thread->idle_timeout / NSEC),
 		      (uint32_t) (c->thread->idle_timeout % NSEC) / 1000000,
 		      c->name);
 		if (fr_event_timer_at(c, c->thread->el, &c->idle_ev, c->idle_timeout, conn_idle_timeout, c) < 0) {
@@ -2953,7 +2953,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	COPY(connection_timeout);
 	COPY(reconnection_delay);
 
-	t->idle_timeout = fr_time_delta_from_timeval(&inst->parent->idle_timeout);
+	t->idle_timeout = inst->parent->idle_timeout;
 	t->zombie_period = fr_time_delta_from_timeval(&inst->parent->zombie_period);
 
 	rcode = conn_thread_instantiate(t, el);
