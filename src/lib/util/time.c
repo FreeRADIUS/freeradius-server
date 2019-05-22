@@ -418,6 +418,7 @@ void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char con
  *
  * @param[out] out Where to write fr_time_delta_t
  * @param[in] in String to parse.
+ * @param[in] hint scale for the parsing.  Default is "seconds"
  * @return
  *	- 0 on success.
  *	- -1 on failure.
