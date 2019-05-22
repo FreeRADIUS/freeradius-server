@@ -78,10 +78,10 @@ typedef struct {
 	uint32_t			max_clients;			//!< maximum number of dynamic clients to allow
 	uint32_t			max_pending_packets;		//!< maximum number of pending packets
 
-	struct timeval			cleanup_delay;			//!< for Access-Request packets
-	struct timeval			idle_timeout;			//!< for dynamic clients
-	struct timeval			nak_lifetime;			//!< lifetime of NAKed clients
-	struct timeval			check_interval;			//!< polling for closed sockets
+	fr_time_delta_t			cleanup_delay;			//!< for Access-Request packets
+	fr_time_delta_t			idle_timeout;			//!< for dynamic clients
+	fr_time_delta_t			nak_lifetime;			//!< lifetime of NAKed clients
+	fr_time_delta_t			check_interval;			//!< polling for closed sockets
 
 	bool				dynamic_clients;		//!< do we have dynamic clients.
 

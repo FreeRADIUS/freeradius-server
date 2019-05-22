@@ -52,8 +52,8 @@ static const CONF_PARSER priority_config[] = {
 };
 
 static CONF_PARSER const limit_config[] = {
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, proto_dhcpv4_t, io.idle_timeout), .dflt = "30.0" } ,
-	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIMEVAL, proto_dhcpv4_t, io.nak_lifetime), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, proto_dhcpv4_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIME_DELTA, proto_dhcpv4_t, io.nak_lifetime), .dflt = "30.0" } ,
 
 	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, proto_dhcpv4_t, io.max_connections), .dflt = "1024" } ,
 	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, proto_dhcpv4_t, io.max_clients), .dflt = "256" } ,
@@ -576,11 +576,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	These timers are usually protocol specific.
 	 */
-	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->io.idle_timeout, >=, 1, 0);
-	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->io.idle_timeout, <=, 600, 0);
+	FR_TIME_DELTA_BOUND_CHECK("idle_timeout", inst->io.idle_timeout, >=, 1, 0);
+	FR_TIME_DELTA_BOUND_CHECK("idle_timeout", inst->io.idle_timeout, <=, 600, 0);
 
-	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->io.nak_lifetime, >=, 1, 0);
-	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->io.nak_lifetime, <=, 600, 0);
+	FR_TIME_DELTA_BOUND_CHECK("nak_lifetime", inst->io.nak_lifetime, >=, 1, 0);
+	FR_TIME_DELTA_BOUND_CHECK("nak_lifetime", inst->io.nak_lifetime, <=, 600, 0);
 
 	/*
 	 *	Tell the master handler about the main protocol instance.

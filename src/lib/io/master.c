@@ -1693,9 +1693,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	 *	No dynamic clients AND no packet cleanups?  We don't
 	 *	need timers.
 	 */
-	if (!inst->dynamic_clients &&
-	    (inst->cleanup_delay.tv_sec == 0) &&
-	    (inst->cleanup_delay.tv_usec == 0)) {
+	if (!inst->dynamic_clients && !inst->cleanup_delay) {
 		return;
 	}
 
@@ -1718,7 +1716,7 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_io_client_t		*client = uctx;
 	fr_io_instance_t const	*inst;
 	fr_io_connection_t	*connection;
-	struct timeval const	*delay;
+	fr_time_delta_t		delay;
 	int			packets, connections;
 
 	/*
@@ -1742,16 +1740,16 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:
 			rad_assert(connection != NULL);
-			delay = &inst->idle_timeout;
+			delay = inst->idle_timeout;
 			break;
 
 		case PR_CLIENT_DYNAMIC:
-			delay = &inst->idle_timeout;
+			delay = inst->idle_timeout;
 			break;
 
 		case PR_CLIENT_NAK:
 			rad_assert(!connection);
-			delay = &inst->nak_lifetime;
+			delay = inst->nak_lifetime;
 			break;
 
 		default:
@@ -1887,7 +1885,7 @@ idle_timeout:
 		 *	idle timeut.
 		 */
 		client->ready_to_delete = true;
-		delay = &inst->idle_timeout;
+		delay = inst->idle_timeout;
 		goto reset_timer;
 	}
 
@@ -1901,11 +1899,11 @@ idle_timeout:
 	 *	if the total number of clients is limited.
 	 */
 	client->ready_to_delete = false;
-	delay = &inst->check_interval;
+	delay = inst->check_interval;
 
 reset_timer:
 	if (fr_event_timer_in(client, el, &client->ev,
-			      fr_time_delta_from_timeval(delay), client_expiry_timer, client) < 0) {
+			      delay, client_expiry_timer, client) < 0) {
 		ERROR("proto_%s - Failed adding timeout for dynamic client %s.  It will be permanent!",
 		      inst->app_io->name, client->radclient->shortname);
 		return;
@@ -1925,10 +1923,9 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	@todo - figure out how to do this only for SOME
 	 *	packets, not just RADIUS ones.
 	 */
-	if (el && !now &&
-	    ((inst->cleanup_delay.tv_sec | inst->cleanup_delay.tv_usec) != 0)) {
+	if (el && !now && inst->cleanup_delay) {
 		if (fr_event_timer_in(client, el, &track->ev,
-				      fr_time_delta_from_timeval(&inst->cleanup_delay),
+				      inst->cleanup_delay,
 				      packet_expiry_timer, track) == 0) {
 			return;
 		}
