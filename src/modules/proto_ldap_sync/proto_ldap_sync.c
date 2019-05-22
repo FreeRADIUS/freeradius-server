@@ -129,22 +129,22 @@ static CONF_PARSER ldap_sync_search_config[] = {
 
 static CONF_PARSER option_config[] = {
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	{ FR_CONF_OFFSET("idle", FR_TYPE_UINT32, fr_ldap_config_t, keepalive_idle), .dflt = "60" },
+	{ FR_CONF_OFFSET("idle", FR_TYPE_TIME_DELTA, fr_ldap_config_t, keepalive_idle), .dflt = "60" },
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
 	{ FR_CONF_OFFSET("probes", FR_TYPE_UINT32, fr_ldap_config_t, keepalive_probes), .dflt = "3" },
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	{ FR_CONF_OFFSET("interval", FR_TYPE_UINT32, fr_ldap_config_t, keepalive_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("interval", FR_TYPE_TIME_DELTA, fr_ldap_config_t, keepalive_interval), .dflt = "30" },
 #endif
 	{ FR_CONF_OFFSET("dereference", FR_TYPE_STRING, fr_ldap_config_t, dereference_str) },
 	/* allow server unlimited time for search (server-side limit) */
-	{ FR_CONF_OFFSET("srv_timelimit", FR_TYPE_UINT32, fr_ldap_config_t, srv_timelimit), .dflt = "20" },
+	{ FR_CONF_OFFSET("srv_timelimit", FR_TYPE_TIME_DELTA, fr_ldap_config_t, srv_timelimit), .dflt = "20" },
 	/* timeout for search results */
-	{ FR_CONF_OFFSET("res_timeout", FR_TYPE_TIMEVAL, fr_ldap_config_t, res_timeout), .dflt = "20" },
+	{ FR_CONF_OFFSET("res_timeout", FR_TYPE_TIME_DELTA, fr_ldap_config_t, res_timeout), .dflt = "20" },
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/* timeout on network activity */
-	{ FR_CONF_DEPRECATED("net_timeout", FR_TYPE_UINT32, fr_ldap_config_t, net_timeout), .dflt = "10" },
+	{ FR_CONF_DEPRECATED("net_timeout", FR_TYPE_TIME_DELTA, fr_ldap_config_t, net_timeout), .dflt = "10" },
 #endif
 
 	CONF_PARSER_TERMINATOR

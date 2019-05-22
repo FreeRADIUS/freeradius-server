@@ -114,6 +114,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	fr_ldap_rcode_t		status;
 	fr_ldap_connection_t	*conn;
 	fr_ldap_config_t const	*handle_config = instance;	/* Not talloced */
+	fr_time_delta_t		delta;
 
 	conn = fr_ldap_connection_alloc(ctx);
 	if (!conn) return NULL;
@@ -123,7 +124,9 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 		return NULL;
 	}
 
-	fr_ldap_connection_timeout_set(conn, timeout);
+	delta = fr_time_delta_from_timeval(timeout);
+
+	fr_ldap_connection_timeout_set(conn, delta);
 	if (handle_config->start_tls) {
 		if (ldap_start_tls_s(conn->handle, NULL, NULL) != LDAP_SUCCESS) {
 			int ldap_errno;

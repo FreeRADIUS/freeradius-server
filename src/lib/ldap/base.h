@@ -240,7 +240,7 @@ typedef struct {
 	 *	For keep-alives.
 	 */
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	uint32_t		keepalive_idle;		//!< Number of seconds a connections needs to remain idle
+	fr_time_delta_t		keepalive_idle;		//!< Number of seconds a connections needs to remain idle
 							//!< before TCP starts sending keepalive probes.
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
@@ -248,29 +248,29 @@ typedef struct {
 							///< dropped.
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	uint32_t		keepalive_interval;	//!< Interval between keepalive probes.
+	fr_time_delta_t		keepalive_interval;	//!< Interval between keepalive probes.
 #endif
 
 	/*
 	 *	Search timelimits
 	 */
-	uint32_t		srv_timelimit;		//!< How long the server should spent on a single request
+	fr_time_delta_t		srv_timelimit;		//!< How long the server should spent on a single request
 							///< (also bounded by value on the server).
 
-	struct timeval		res_timeout;		//!< How long we wait for results.
+	fr_time_delta_t		res_timeout;		//!< How long we wait for results.
 
 	/*
 	 *	I/O timelimits.
 	 */
-	struct timeval		net_timeout;		//!< How long we wait in blocking network calls.
+	fr_time_delta_t		net_timeout;		//!< How long we wait in blocking network calls.
 							///< We set this in the LDAP API, even though with
 							///< async calls, we control this using our event loop.
 							///< This is just in case there are blocking calls which
 							///< happen internally which we can't work around.
 
-	struct timeval		tls_handshake_timeout;	//!< How long we wait for the TLS handshake to complete.
+	fr_time_delta_t		tls_handshake_timeout;	//!< How long we wait for the TLS handshake to complete.
 
-	struct timeval		reconnection_delay;	//!< How long to wait before attempting to reconnect.
+	fr_time_delta_t		reconnection_delay;	//!< How long to wait before attempting to reconnect.
 } fr_ldap_config_t;
 
 /** Tracks the state of a libldap connection handle
@@ -494,7 +494,7 @@ fr_ldap_connection_t *fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_l
 
 int		fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config);
 
-int		fr_ldap_connection_timeout_set(fr_ldap_connection_t const *conn, struct timeval const *timeout);
+int		fr_ldap_connection_timeout_set(fr_ldap_connection_t const *conn, fr_time_delta_t timeout);
 
 int		fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *conn);
 

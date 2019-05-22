@@ -110,7 +110,8 @@ static void _ldap_start_tls_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, U
 		 *	If tls_handshake_timeout is NULL ldap_install_tls
 		 *	will block forever.
 		 */
-		fr_ldap_connection_timeout_set(c, &c->config->tls_handshake_timeout);
+		fr_ldap_connection_timeout_set(c, c->config->tls_handshake_timeout);
+
 		/*
 		 *	This call will block for a maximum of tls_handshake_timeout.
 		 *	Patches to libldap are required to fix this.

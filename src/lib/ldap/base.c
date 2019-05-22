@@ -418,7 +418,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 	if (lib_errno != LDAP_SUCCESS) return fr_ldap_error_check(NULL, conn, NULL, dn);
 
 	if (!timeout) {
-		tv = conn->config->res_timeout;
+		fr_timeval_from_nsec(&tv, conn->config->res_timeout);
 	} else {
 		tv = *timeout;
 	}
