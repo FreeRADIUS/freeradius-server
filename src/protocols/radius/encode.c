@@ -693,6 +693,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_GROUP:
@@ -1489,6 +1490,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 	case FR_TYPE_INVALID:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_EVS:
 	case FR_TYPE_MAX:

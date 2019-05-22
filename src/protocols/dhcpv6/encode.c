@@ -439,6 +439,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:

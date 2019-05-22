@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/strerror.h>
 
 /*
  *	Avoid too many ifdef's later in the code.
@@ -410,4 +411,55 @@ void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char con
 		fprintf(fp, "%s.%s\t%.*s%" PRIu64 "\n",
 			prefix, names[i], tabs, tab_string, elapsed->array[i]);
 	}
+}
+
+/** Create fr_time_delta_t from a string
+ *
+ * @param[out] out Where to write fr_time_delta_t
+ * @param[in] in String to parse.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_time_delta_from_str(fr_time_delta_t *out, char const *in)
+{
+	int	sec;
+	char	*end;
+	fr_time_delta_t delta;
+
+	sec = strtoul(in, &end, 10);
+	if (in == end) {
+		fr_strerror_printf("Failed parsing \"%s\" as float", in);
+		return -1;
+	}
+	delta = sec * NSEC;
+
+	if (*end == '.') {
+		size_t len;
+
+		len = strlen(end + 1);
+
+		if (len > 9) {
+			fr_strerror_printf("Too much precision for fr_time_delta_t");
+			return -1;
+		}
+
+		/*
+		 *	We parse "0.1" as "1", and then shift the
+		 *	number by how many *missing* digits there are.
+		 */
+		sec = strtoul(end + 1, &end, 10);
+		if (in == end) {
+			fr_strerror_printf("Failed parsing fractional component \"%s\" of float", in);
+			return -1;
+		}
+		while (len < 9) {
+			sec *= 10;
+			len++;
+		}
+		delta += sec;
+	}
+
+	*out = delta;
+	return 0;
 }

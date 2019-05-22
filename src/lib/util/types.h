@@ -69,6 +69,8 @@ typedef enum {
 
 	FR_TYPE_TIMEVAL,			//!< Time value (struct timeval), only for config items.
 
+	FR_TYPE_TIME_DELTA,			//!< fr_time_delta_t
+
 	FR_TYPE_ABINARY,			//!< Ascend binary format a packed data structure.
 
 	FR_TYPE_TLV,				//!< Contains nested attributes.
@@ -108,6 +110,7 @@ typedef enum {
 	case FR_TYPE_COMBO_IP_PREFIX: \
 	case FR_TYPE_INT32: \
 	case FR_TYPE_TIMEVAL: \
+	case FR_TYPE_TIME_DELTA: \
 	case FR_TYPE_BOOL: \
 	case FR_TYPE_FLOAT64
 

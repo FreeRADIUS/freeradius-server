@@ -44,6 +44,7 @@ typedef struct value_box fr_value_box_t;
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -109,6 +110,7 @@ struct value_box {
 		 */
 		size_t			size;			//!< System specific file/memory size.
 		struct timeval		timeval;		//!< A time value with usec precision.
+		fr_time_delta_t		time_delta;		//!< a delta time in nanoseconds
 	} datum;
 
 	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
@@ -164,6 +166,7 @@ struct value_box {
 
 #define vb_size					datum.size
 #define vb_timeval				datum.timeval
+#define vb_time_delta				datum.time_delta
 
 #define vb_length				datum.length
 /* @} **/
@@ -218,6 +221,7 @@ struct value_box {
 
 #define fr_box_size(_val)			_fr_box(FR_TYPE_SIZE, .vb_size, _val)
 #define fr_box_timeval(_val)			_fr_box(FR_TYPE_TIMEVAL, .vb_timeval, _val)
+#define fr_box_time_delta(_val)			_fr_box(FR_TYPE_TIME_DELTA, .vb_time_delta, _val)
 
 /* @} **/
 

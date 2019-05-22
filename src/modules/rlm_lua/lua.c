@@ -92,6 +92,7 @@ static int fr_lua_marshall(REQUEST *request, lua_State *L, VALUE_PAIR const *vp)
 	case FR_TYPE_IPV6_PREFIX:
 	case FR_TYPE_IFID:
 	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 	{
 		char	buff[128];

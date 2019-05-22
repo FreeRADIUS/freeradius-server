@@ -418,6 +418,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_DATE:
 	case FR_TYPE_ABINARY:

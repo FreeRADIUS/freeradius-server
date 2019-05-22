@@ -125,6 +125,7 @@ FR_NAME_NUMBER const fr_value_box_type_table[] = {
 	{ "float64",		FR_TYPE_FLOAT64 },
 
 	{ "timeval",		FR_TYPE_TIMEVAL },
+	{ "time_delta",		FR_TYPE_TIME_DELTA },
 	{ "date",		FR_TYPE_DATE },
 
 	{ "abinary",		FR_TYPE_ABINARY },
@@ -233,6 +234,7 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_DATE]				= SIZEOF_MEMBER(fr_value_box_t, vb_date),
 
 	[FR_TYPE_TIMEVAL]			= SIZEOF_MEMBER(fr_value_box_t, datum.timeval),
+	[FR_TYPE_TIME_DELTA]			= SIZEOF_MEMBER(fr_value_box_t, datum.time_delta),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
 
 	[FR_TYPE_ABINARY]			= SIZEOF_MEMBER(fr_value_box_t, datum.filter),
@@ -275,6 +277,7 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_DATE]				= offsetof(fr_value_box_t, vb_date),
 
 	[FR_TYPE_TIMEVAL]			= offsetof(fr_value_box_t, vb_timeval),
+	[FR_TYPE_TIME_DELTA]			= offsetof(fr_value_box_t, vb_time_delta),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, vb_size),
 
 	[FR_TYPE_ABINARY]			= offsetof(fr_value_box_t, datum.filter),
@@ -440,6 +443,10 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 
 	case FR_TYPE_TIMEVAL:
 		compare = fr_timeval_cmp(&a->datum.timeval, &b->datum.timeval);
+		break;
+
+	case FR_TYPE_TIME_DELTA:
+		CHECK(time_delta);
 		break;
 
 	case FR_TYPE_FLOAT32:
@@ -954,6 +961,7 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 		fr_value_box_copy(NULL, dst, src);
 		return 0;
@@ -1006,7 +1014,7 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
  *   format in memory.
  * - Dates are encoded as 32bit unsigned UNIX timestamps.
  *
- * #FR_TYPE_TIMEVAL and #FR_TYPE_SIZE are not encodable, as they're system specific.
+ * #FR_TYPE_TIMEVAL, #FR_TIME_DELTA and #FR_TYPE_SIZE are not encodable, as they're system specific.
  * #FR_TYPE_ABINARY is RADIUS specific and should be encoded by the RADIUS encoder.
  *
  * This function will not encode complex types (TLVs, VSAs etc...).  These are usually
@@ -1148,6 +1156,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	case FR_TYPE_STRING:
 	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
 		goto unsupported;
@@ -1285,6 +1294,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
 		fr_strerror_printf("Cannot decode type \"%s\" - Is not a value",
@@ -2362,6 +2372,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_ABINARY:
 		break;
 
@@ -2467,6 +2478,29 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			if (sizeof(uint64_t) > SIZEOF_MEMBER(struct timeval, tv_sec)) goto invalid_cast;
 			dst->datum.timeval.tv_sec = src->vb_uint64;
 			dst->datum.timeval.tv_usec = 0;
+			break;
+
+		default:
+			goto invalid_cast;
+		}
+	}
+
+	if (dst_type == FR_TYPE_TIME_DELTA) {
+		switch (src->type) {
+		case FR_TYPE_UINT8:
+			dst->datum.time_delta = src->vb_uint8;
+			break;
+
+		case FR_TYPE_UINT16:
+			dst->datum.time_delta = src->vb_uint16;
+			break;
+
+		case FR_TYPE_UINT32:
+			dst->datum.time_delta = src->vb_uint32;
+			break;
+
+		case FR_TYPE_UINT64:
+			dst->datum.time_delta = src->vb_uint64;
 			break;
 
 		default:
@@ -3819,6 +3853,10 @@ parse:
 		if (fr_timeval_from_str(&dst->datum.timeval, in) < 0) return -1;
 		break;
 
+	case FR_TYPE_TIME_DELTA:
+		if (fr_time_delta_from_str(&dst->datum.time_delta, in) < 0) return -1;
+		break;
+
 	case FR_TYPE_FLOAT32:
 	{
 		float f;
@@ -4150,6 +4188,15 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 					  (uint64_t)data->datum.timeval.tv_sec, (uint64_t)data->datum.timeval.tv_usec);
 		break;
 
+	case FR_TYPE_TIME_DELTA:
+		/*
+		 *	@todo - print at the appropriate scale
+		 *	Unqualified numbers are seconds.  Otherwise,
+		 *	qualify the numbers with "ms", "us", or "ns".
+		 */
+		p = talloc_typed_asprintf(ctx, "%" PRIu64 ".%09" PRIu64,
+					  (uint64_t)data->datum.time_delta / NSEC, (uint64_t)data->datum.time_delta % NSEC);
+		break;
 
 	case FR_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
@@ -4606,6 +4653,17 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	case FR_TYPE_TIMEVAL:
 		len = snprintf(buf, sizeof(buf), "%" PRIu64 ".%06" PRIu64,
 			       (uint64_t)data->datum.timeval.tv_sec, (uint64_t)data->datum.timeval.tv_usec);
+		a = buf;
+		break;
+
+	case FR_TYPE_TIME_DELTA:
+		/*
+		 *	@todo - print at the appropriate scale
+		 *	Unqualified numbers are seconds.  Otherwise,
+		 *	qualify the numbers with "ms", "us", or "ns".
+		 */
+		len = snprintf(buf, sizeof(buf), "%" PRIu64 ".%09" PRIu64,
+			       (uint64_t)data->datum.time_delta / NSEC, (uint64_t)data->datum.time_delta % NSEC);
 		a = buf;
 		break;
 
