@@ -155,7 +155,7 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 
 	sec = strtoul(in, &end, 10);
 	if (in == end) {
-		fr_strerror_printf("Failed parsing \"%s\" as float", in);
+		fr_strerror_printf("Failed parsing \"%s\" as timeval", in);
 		return -1;
 	}
 	tv.tv_sec = sec;
@@ -176,7 +176,7 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 		 */
 		sec = strtoul(end + 1, &end, 10);
 		if (in == end) {
-			fr_strerror_printf("Failed parsing fractional component \"%s\" of float", in);
+			fr_strerror_printf("Failed parsing fractional component \"%s\" of timeval", in);
 			return -1;
 		}
 		while (len < 6) {
