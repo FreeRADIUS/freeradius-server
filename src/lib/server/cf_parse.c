@@ -403,6 +403,21 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	}
 		break;
 
+	case FR_TYPE_TIME_DELTA:
+	{
+		fr_time_delta_t delta;
+
+		if (fr_time_delta_from_str(&delta, cp->value) < 0) {
+			cf_log_perr(cp, "Failed parsing config item");
+			rcode = -1;
+			goto error;
+		}
+		cf_log_debug(cs, "%.*s%s = %d.%06d", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
+			    (int) (delta / NSEC), (int)(delta % NSEC) / 1000);
+		memcpy(out, &delta, sizeof(delta));
+	}
+		break;
+
 	case FR_TYPE_FLOAT32:
 	{
 		float num;

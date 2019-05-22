@@ -75,6 +75,8 @@ typedef void _mismatch_size;		//!< Dummy type used to indicate FR_TYPE_*/C type 
 typedef void _mismatch_size_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_timeval;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_timeval_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_time_delta;     	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_time_delta_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_void;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_void_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_default;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
@@ -181,6 +183,10 @@ _Generic((_ct), \
 	_timeval_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_timeval) 0), \
 	_timeval_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && ((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_timeval_m) 0), \
+	fr_time_delta_t * : __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && !((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_timeval) 0), \
+	fr_time_delta_t ** : __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_timeval_m) 0), \
 	void *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_void) 0), \
@@ -344,6 +350,17 @@ do {\
 		     (int)(_var)->tv_sec, (int)(_var)->tv_usec,\
 		     (int)_bound.tv_sec, (int)_bound.tv_usec);\
 		*_var = _bound;\
+	}\
+} while (0)
+
+#define FR_TIME_DELTA_BOUND_CHECK(_name, _var, _op, _bound_sec, _bound_usec)\
+do {\
+	fr_time_delta_t _bound = ((fr_time_delta_t) _bound_sec) * NSEC + ((fr_time_delta_t) _bound_usec) * 1000;\
+	if (!(_var _op _bound)) { \
+		WARN("Ignoring \"" _name " = %d.%.06d\", forcing to \"" _name " = %d.%06d\"",\
+		     (int)(_var / NSEC), ((int)(_var % NSEC)) / 1000,\
+		     (int)_bound_sec, (int)_bound_usec);\
+		_var = _bound;\
 	}\
 } while (0)
 
