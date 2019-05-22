@@ -603,7 +603,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			goto fail;
 		}
 
-		gettimeofday(&now, NULL);
+		fr_time_delta_to_timeval(&now, fr_time());
 
 		if (track->count == 0) {
 			track->rt = inst->irt * USEC;
