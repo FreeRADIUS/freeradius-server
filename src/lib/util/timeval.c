@@ -155,11 +155,15 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 
 	sec = strtoul(in, &end, 10);
 	if (in == end) {
+	failed:
 		fr_strerror_printf("Failed parsing \"%s\" as timeval", in);
 		return -1;
 	}
 	tv.tv_sec = sec;
 	tv.tv_usec = 0;
+
+	if (*end && (*end != '.')) goto failed;
+
 	if (*end == '.') {
 		size_t len;
 
