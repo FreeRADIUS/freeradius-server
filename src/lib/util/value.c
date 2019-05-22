@@ -3854,7 +3854,11 @@ parse:
 		break;
 
 	case FR_TYPE_TIME_DELTA:
-		if (fr_time_delta_from_str(&dst->datum.time_delta, in, DATE_SECONDS) < 0) return -1;
+		if (dst_enumv) {
+			if (fr_time_delta_from_str(&dst->datum.time_delta, in, dst_enumv->flags.type_size) < 0) return -1;
+		} else {
+			if (fr_time_delta_from_str(&dst->datum.time_delta, in, DATE_SECONDS) < 0) return -1;
+		}
 		break;
 
 	case FR_TYPE_FLOAT32:
