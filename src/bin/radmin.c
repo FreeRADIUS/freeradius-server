@@ -454,7 +454,7 @@ static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr
 {
 	struct timeval now;
 
-	gettimeofday(&now, NULL);
+	fr_time_to_timeval(&now, fr_time());
 	fr_timeval_subtract(&now, &now, &start_time);
 
 	fprintf(fp, "Uptime: %u.%06u seconds\n",
@@ -942,7 +942,7 @@ int fr_radmin_start(main_config_t *config, bool cli)
 	radmin_ctx = talloc_init("radmin");
 	if (!radmin_ctx) return -1;
 
-	gettimeofday(&start_time, NULL);
+	fr_time_to_timeval(&start_time, fr_time());
 
 #ifdef USE_READLINE
 	memcpy(&rl_readline_name, &config->name, sizeof(rl_readline_name)); /* const issues on OSX */

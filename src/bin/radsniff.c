@@ -194,7 +194,7 @@ static void rs_time_print(char *out, size_t len, struct timeval const *t)
 	uint32_t usec;
 
 	if (!t) {
-		gettimeofday(&now, NULL);
+		fr_time_to_timeval(&now, fr_time());
 		t = &now;
 	}
 
@@ -2926,7 +2926,7 @@ int main(int argc, char *argv[])
 		 *  Insert our stats processor
 		 */
 		if (conf->stats.interval && conf->from_dev) {
-			gettimeofday(&now, NULL);
+			fr_time_to_timeval(&now, fr_time());
 			rs_install_stats_processor(stats, events, in, &now, false);
 		}
 	}
