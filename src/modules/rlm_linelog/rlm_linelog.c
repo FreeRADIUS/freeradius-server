@@ -72,7 +72,7 @@ typedef struct {
 	fr_ipaddr_t		dst_ipaddr;		//!< Network server.
 	fr_ipaddr_t		src_ipaddr;		//!< Send requests from a given src_ipaddr.
 	uint16_t		port;			//!< Network port.
-	struct timeval		timeout;		//!< How long to wait for read/write operations.
+	fr_time_delta_t		timeout;		//!< How long to wait for read/write operations.
 } linelog_net_t;
 
 /** linelog module instance
@@ -110,7 +110,7 @@ typedef struct {
 
 	struct {
 		char const		*path;			//!< Where the UNIX socket lives.
-		struct timeval		timeout;		//!< How long to wait for read/write operations.
+		fr_time_delta_t		timeout;		//!< How long to wait for read/write operations.
 	} unix_sock;	// Lowercase unix is a macro on some systems?!
 
 	linelog_net_t		tcp;			//!< TCP server.
@@ -146,14 +146,14 @@ static const CONF_PARSER unix_config[] = {
 static const CONF_PARSER udp_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, linelog_net_t, port) },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, linelog_net_t, timeout), .dflt = "1000" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, linelog_net_t, timeout), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER tcp_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, linelog_net_t, port) },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, linelog_net_t, timeout), .dflt = "1000" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, linelog_net_t, timeout), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -452,7 +452,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	linelog_conn_t		*conn;
-	struct timeval		*timeout = NULL;
+	struct timeval		*timeout = NULL, tv;
 
 	char			buff[4096];
 
@@ -682,19 +682,26 @@ build_vector:
 		break;
 
 	case LINELOG_DST_UNIX:
-		if (inst->unix_sock.timeout.tv_sec || inst->unix_sock.timeout.tv_usec) {
-			timeout = &inst->unix_sock.timeout;
+		if (inst->unix_sock.timeout) {
+			timeout = &tv;
+			fr_timeval_from_nsec(timeout, inst->unix_sock.timeout);
 		}
 		goto do_write;
 
 	case LINELOG_DST_UDP:
-		if (inst->udp.timeout.tv_sec || inst->udp.timeout.tv_usec) timeout = &inst->udp.timeout;
+		if (inst->udp.timeout) {
+			timeout = &tv;
+			fr_timeval_from_nsec(timeout, inst->udp.timeout);
+		}
 		goto do_write;
 
 	case LINELOG_DST_TCP:
 	{
 		int i, num;
-		if (inst->tcp.timeout.tv_sec || inst->tcp.timeout.tv_usec) timeout = &inst->tcp.timeout;
+		if (inst->tcp.timeout) {
+			timeout = &tv;
+			fr_timeval_from_nsec(timeout, inst->tcp.timeout);
+		}
 
 	do_write:
 		num = fr_pool_state(inst->pool)->num;
