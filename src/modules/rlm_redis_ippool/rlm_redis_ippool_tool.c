@@ -1067,7 +1067,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 
 	MEM(replies = talloc_zero_array(inst, redisReply *, STATS_COMMANDS_TOTAL));
 
-	gettimeofday(&now, NULL);
+	fr_time_to_timeval(&now, fr_time());
 
 	for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request, key, key_p - key, false);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;
@@ -1701,7 +1701,7 @@ do { \
 
 			leases[i] = talloc_get_type_abort(leases[i], ippool_tool_lease_t);
 
-			gettimeofday(&now, NULL);
+			fr_time_to_timeval(&now, fr_time());
 			is_active = now.tv_sec <= leases[i]->next_event;
 			if (leases[i]->next_event) {
 				strftime(time_buff, sizeof(time_buff), "%b %e %Y %H:%M:%S %Z",
