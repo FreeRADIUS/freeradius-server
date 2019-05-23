@@ -1364,6 +1364,7 @@ do { \
 		type = fr_str2int(fr_value_box_type_table, test_type, FR_TYPE_INVALID);
 		if (type != FR_TYPE_INVALID) {
 			fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
+			fr_value_box_t *box2;
 
 			while (!isspace((int) *p)) p++;
 			while (isspace((int) *p)) p++;
@@ -1376,6 +1377,32 @@ do { \
 			}
 
 			fr_value_box_snprint(output, sizeof(output), box, '"');
+
+			/*
+			 *	Behind the scenes, parse the output
+			 *	string.  We should get the same value
+			 *	box as last time.
+			 */
+			box2 = talloc_zero(NULL, fr_value_box_t);
+			if (fr_value_box_from_str(box2, box2, &type, NULL, output, -1, '"', false) < 0) {
+				snprintf(output, sizeof(output), "ERROR parsing output value: %s",
+					 fr_strerror());
+				talloc_free(box2);
+				talloc_free(box);
+				continue;
+			}
+
+			/*
+			 *	They MUST be identical
+			 */
+			if (fr_value_box_cmp(box, box2) != 0) {
+				snprintf(output, sizeof(output), "ERROR failed in parse / print / parse.  Results are not identical!");
+				talloc_free(box2);
+				talloc_free(box);
+				continue;
+			}
+
+			talloc_free(box2);
 			talloc_free(box);
 			continue;
 		}
