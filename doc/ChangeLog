@@ -5,6 +5,7 @@ FreeRADIUS 3.0.20 Wed 10 Apr 2019 09:00:00 EDT urgency=low
 	* Added Force10 dictionary.
 	* Update dictionary.hp with new attributes for REST. #2690
 	* Update dictionary.aruba with new attributes for REST. #2696
+	* Update logrotate settings to rotate as non-root user. #2666
 
 	Bug fixes
 	* Allow listen.ipaddr to reference an IPv6-only host #2627
