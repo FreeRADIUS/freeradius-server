@@ -12,6 +12,7 @@ TEST := tests.unit
 #  functionality from earlier tests.
 #
 FILES  := \
+	data_types.txt \
 	radius_rfc.txt \
 	radius_errors.txt \
 	radius_extended.txt \
