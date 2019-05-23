@@ -26,7 +26,7 @@ def buildClosures(arg) {
                     extensions: [[$class: 'CleanCheckout'],\
                         [$class: 'CleanBeforeCheckout'],\
                         [$class: 'RelativeTargetDirectory', relativeTargetDir: dir]],\
-                    submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/FreeRADIUS/freeradius-server']]])
+                    submoduleCfg: [], userRemoteConfigs: [[url: scm.userRemoteConfigs[0].url]]])
                     sh "cd $dir ; export ${testEnv} ; bash scripts/travis/startservice.sh"
                 }
             }
@@ -45,6 +45,7 @@ def buildClosures(arg) {
 node {
     cleanWs()
     checkout scm
+    echo scm.userRemoteConfigs[0].url
     travis = readYaml(file: "./.travis.yml")
     travisImage = docker.build("travis-image", "./scripts/travis/")
     stage("clang tests") {
