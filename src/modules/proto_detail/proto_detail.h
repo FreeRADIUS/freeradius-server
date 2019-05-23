@@ -121,7 +121,7 @@ struct proto_detail_work_thread_s {
 	fr_dlist_head_t			list;			//!< for retransmissions
 
 	uint32_t       			outstanding;		//!< number of currently outstanding records;
-	uint32_t			lock_interval;		//!< interval between trying the locks.
+	fr_time_delta_t			lock_interval;		//!< interval between trying the locks.
 
 	bool				eof;			//!< are we at EOF on reading?
 	bool				closing;		//!< we should be closing the file

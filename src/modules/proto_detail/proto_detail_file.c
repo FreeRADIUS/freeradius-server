@@ -252,28 +252,27 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	"detail.work" exists, try to lock it.
 	 */
 	if (rad_lockfd_nonblock(fd, 0) < 0) {
-		fr_time_t	in;
-		struct timeval	in_tv;
+		fr_time_t delay;
 
 		DEBUG3("proto_detail (%s): Failed locking %s: %s",
 		       thread->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
 
-		in = fr_time_delta_from_usec(thread->lock_interval);
-		fr_timeval_from_nsec(&in_tv, in);
+		delay = thread->lock_interval;
 
 		/*
-		 *	Ensure that we don't do massive busy-polling.
+		 *	Set the next interval, and ensure that we
+		 *	don't do massive busy-polling.
 		 */
 		thread->lock_interval += thread->lock_interval / 2;
-		if (thread->lock_interval > (30 * USEC)) thread->lock_interval = 30 * USEC;
+		if (thread->lock_interval > ((fr_time_delta_t) 30) * NSEC) thread->lock_interval = ((fr_time_delta_t) 30) * NSEC;
 
 		DEBUG3("proto_detail (%s): Waiting %d.%06ds for lock on file %s",
-		       thread->name, (int) in_tv.tv_sec, (int) in_tv.tv_usec, inst->filename_work);
+		       thread->name, (int) (delay / NSEC), (int) ((delay % NSEC) / 1000), inst->filename_work);
 
 		if (fr_event_timer_in(thread, thread->el, &thread->ev,
-				      in, work_retry_timer, thread) < 0) {
+				      delay, work_retry_timer, thread) < 0) {
 			ERROR("Failed inserting retry timer for %s", inst->filename_work);
 		}
 		return 0;
@@ -525,7 +524,7 @@ delay:
 		return;
 	}
 
-	thread->lock_interval = USEC / 10;
+	thread->lock_interval = NSEC / 10;
 
 	/*
 	 *	It exists, go process it!
