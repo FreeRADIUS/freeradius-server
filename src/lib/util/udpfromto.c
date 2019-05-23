@@ -186,7 +186,7 @@ int udpfromto_init(int s)
  *			Will only be populated if to is not NULL.
  * @param[out] when	the packet was received (may be NULL).  If SO_TIMESTAMP is
  *			not available or SO_TIMESTAMP Was not set on the socket,
- *			gettimeofday will be used instead.
+ *			then another method will be used instead to get the time.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
