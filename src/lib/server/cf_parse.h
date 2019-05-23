@@ -117,6 +117,10 @@ __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_DATE) && !((_t) & FR_TYPE_MUL
 	__builtin_choose_expr(is_compatible((_ct), time_t *), _p, (_mismatch_time) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_DATE) && ((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), time_t **), _p, (_mismatch_time_m) 0), \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && !((_t) & FR_TYPE_MULTI), \
+	__builtin_choose_expr(is_compatible((_ct), fr_time_delta_t *), _p, (_mismatch_time_delta) 0), \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && ((_t) & FR_TYPE_MULTI), \
+	__builtin_choose_expr(is_compatible((_ct), fr_time_delta_t **), _p, (_mismatch_time_delta_m) 0), \
 _Generic((_ct), \
 	vp_tmpl_t **	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl) 0), \
@@ -184,15 +188,11 @@ _Generic((_ct), \
 			_p, (_mismatch_timeval) 0), \
 	_timeval_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_timeval_m) 0), \
-	fr_time_delta_t * : __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && !((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_timeval) 0), \
-	fr_time_delta_t ** : __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && ((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_timeval_m) 0), \
 	void *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_void) 0), \
 	void **		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_void_m) 0), \
-	default: (conf_type_mismatch)0))))))
+	default: (conf_type_mismatch)0))))))))
 
 #  define FR_CONF_OFFSET(_n, _t, _s, _f) \
 	.name = _n, \
