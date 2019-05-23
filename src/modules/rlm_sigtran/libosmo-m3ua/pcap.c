@@ -75,7 +75,7 @@ int mtp_pcap_write_msu(int fd, const uint8_t *data, int length)
 		.orig_len   = length,
 	};
 
-	gettimeofday(&tv, NULL);
+	fr_time_to_timeval(&tv, fr_time());
 	payload_header.ts_sec = tv.tv_sec;
 	payload_header.ts_usec = tv.tv_usec;
 
