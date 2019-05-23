@@ -377,10 +377,6 @@ struct tm *gmtime_r(time_t const *l_clock, struct tm *result);
 int vdprintf (int fd, char const *format, va_list args);
 #endif
 
-#ifndef HAVE_GETTIMEOFDAY
-int gettimeofday (struct timeval *tv, void *tz);
-#endif
-
 #ifndef HAVE_CLOCK_GETTIME
 enum {
 	CLOCK_REALTIME,
