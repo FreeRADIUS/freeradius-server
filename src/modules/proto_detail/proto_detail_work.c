@@ -65,8 +65,7 @@ typedef struct {
 	uint32_t			rt;
 	uint32_t       			count;			//!< number of retransmission tries
 
-	struct timeval			start;			//!< when we started trying to send
-	struct timeval			next;			//!< when it next fires
+	fr_time_t			start;			//!< when we started trying to send
 
 	fr_event_timer_t const		*ev;			//!< retransmission timer
 	fr_dlist_t			entry;			//!< for the retransmission list
@@ -592,7 +591,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	rad_assert(thread->fd >= 0);
 
 	if (!buffer[0]) {
-		struct timeval now;
+		fr_time_t now;
 
 		/*
 		 *	Cap at MRC, if required.
@@ -603,26 +602,22 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 			goto fail;
 		}
 
-		fr_time_delta_to_timeval(&now, fr_time());
+		now = fr_time();
 
 		if (track->count == 0) {
 			track->rt = inst->irt * USEC;
-			fr_time_to_timeval(&track->start, request_time);
-			track->next = track->start;
-			track->next.tv_usec += track->rt;
-			track->next.tv_sec += track->next.tv_usec / USEC;
-			track->next.tv_usec %= USEC;
+			track->start = request_time;
 
 		} else {
 			/*
 			 *	Cap at MRD, if required.
 			 */
 			if (inst->mrd) {
-				struct timeval end;
+				fr_time_t end;
 
 				end = track->start;
-				end.tv_sec += inst->mrd;
-				if (timercmp(&now, &end, >=)) {
+				end += inst->mrd * NSEC;
+				if (now >= end) {
 					DEBUG("%s - packet %d failed after %u seconds",
 					      thread->name, track->id, inst->mrd);
 					goto fail;
@@ -636,8 +631,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %d.%06ds",
 		      thread->name, track->id, track->rt / USEC, track->rt % USEC);
 
-		if (fr_event_timer_in(thread, thread->el, &track->ev,
-				      fr_time_delta_from_usec(track->rt), work_retransmit, track) < 0) {
+		if (fr_event_timer_at(thread, thread->el, &track->ev,
+				      now + fr_time_delta_from_usec(track->rt), work_retransmit, track) < 0) {
 			ERROR("%s - Failed inserting retransmission timeout", thread->name);
 		fail:
 			if (inst->track_progress && (track->done_offset > 0)) goto mark_done;
