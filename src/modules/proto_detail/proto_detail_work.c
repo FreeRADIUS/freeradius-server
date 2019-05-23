@@ -62,7 +62,7 @@ typedef struct {
 	uint8_t				*packet;		//!< for retransmissions
 	size_t				packet_len;		//!< for retransmissions
 
-	uint32_t			rt;
+	fr_time_delta_t			rt;
 	uint32_t       			count;			//!< number of retransmission tries
 
 	fr_time_t			start;			//!< when we started trying to send
@@ -495,6 +495,7 @@ redo:
 	track->timestamp = fr_time();
 	track->id = thread->count++;
 	track->rt = inst->irt;
+	track->rt *= NSEC;
 
 	track->done_offset = done_offset;
 	if (inst->retransmit) {
@@ -605,7 +606,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		now = fr_time();
 
 		if (track->count == 0) {
-			track->rt = inst->irt * USEC;
+			track->rt = inst->irt;
+			track->rt *= NSEC;
 			track->start = request_time;
 
 		} else {
@@ -616,7 +618,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 				fr_time_t end;
 
 				end = track->start;
-				end += inst->mrd * NSEC;
+				end += ((fr_time_t) inst->mrd) * NSEC;
 				if (now >= end) {
 					DEBUG("%s - packet %d failed after %u seconds",
 					      thread->name, track->id, inst->mrd);
@@ -629,10 +631,10 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		} /* we're on retransmission N */
 
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %d.%06ds",
-		      thread->name, track->id, track->rt / USEC, track->rt % USEC);
+		      thread->name, track->id, (int) (track->rt / NSEC), (int) ((track->rt % NSEC) / 1000));
 
 		if (fr_event_timer_at(thread, thread->el, &track->ev,
-				      now + fr_time_delta_from_usec(track->rt), work_retransmit, track) < 0) {
+				      now + track->rt, work_retransmit, track) < 0) {
 			ERROR("%s - Failed inserting retransmission timeout", thread->name);
 		fail:
 			if (inst->track_progress && (track->done_offset > 0)) goto mark_done;
