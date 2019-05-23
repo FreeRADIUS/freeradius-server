@@ -4238,7 +4238,13 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		 *	trunctate the decimal point.  i.e. Don't print
 		 *	"5."
 		 */
-		if (*q == '.') *q = '\0';
+		if (*q == '.') {
+			*q = '\0';
+		} else {
+			q++;	/* to account for q-- above */
+		}
+
+		p = talloc_bstr_realloc(ctx, p, q - p);
 	}
 		break;
 
