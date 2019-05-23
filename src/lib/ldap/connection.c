@@ -418,7 +418,6 @@ static fr_connection_state_t _ldap_connection_init(int *fd_out, void *uctx)
 {
 	fr_ldap_connection_t	*c = talloc_get_type_abort(uctx, fr_ldap_connection_t);
 	fr_ldap_state_t		state;
-	struct timeval		to = { 0 };
 
 	*fd_out = -1;	/* We set a real value later */
 
@@ -431,7 +430,7 @@ static fr_connection_state_t _ldap_connection_init(int *fd_out, void *uctx)
 	if (ldap_set_option(c->handle, LDAP_OPT_CONNECT_ASYNC, LDAP_OPT_ON) != LDAP_OPT_SUCCESS) {
 		return FR_CONNECTION_STATE_FAILED;
 	}
-	fr_ldap_connection_timeout_set(c, &to);					/* Forces LDAP_X_CONNECTING */
+	fr_ldap_connection_timeout_set(c, 0);					/* Forces LDAP_X_CONNECTING */
 
 	state = fr_ldap_state_next(c);
 	if (state == FR_LDAP_STATE_ERROR) return FR_CONNECTION_STATE_FAILED;
