@@ -170,9 +170,6 @@ int main(UNUSED int argc, UNUSED char *argv[])
 	uint32_t thresh;
 	int n, rep;
 	uint32_t vals[MAXSIZE];
-	struct timeval now;
-
-	fr_time_to_timeval(&now, fr_time());
 
 	/* TODO: make starting seed and repetitions a CLI option */
 	rep = REPS;

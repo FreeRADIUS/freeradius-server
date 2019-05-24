@@ -373,9 +373,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (debug_lvl) {
-		struct timeval start_t, end_t;
+		fr_time_t start_t, end_t;
 
-		fr_time_to_timeval(&start_t, fr_time());
+		start = fr_time());
 
 		/*
 		 *	Do another 10000 rounds of alloc / free.
@@ -388,23 +388,10 @@ int main(int argc, char *argv[])
 			free_blocks(ms, &seed, &start, &end);
 		}
 
-		fr_time_to_timeval(&end_t, fr_time());
+		end_t = fr_time();
 
-		end_t.tv_sec -= start_t.tv_sec;
-		if (end_t.tv_sec > 0) {
-			end_t.tv_usec += 1000000;
-			end_t.tv_sec--;
-
-			end_t.tv_usec -= start_t.tv_usec;
-			if (end_t.tv_usec > 1000000) {
-				end_t.tv_usec -= 1000000;
-				end_t.tv_sec++;
-			}
-		} else {
-			end_t.tv_usec -= start_t.tv_usec;
-		}
-
-		printf("\nELAPSED %d.%06d seconds, %d allocation / free cycles\n\n", (int) end_t.tv_sec, (int) end_t.tv_usec,
+		printf("\nELAPSED %d.%06d seconds, %d allocation / free cycles\n\n",
+		       (int) (end_t - start_t) / NSEC, (int) ((end_t - start_t) % NSEC),
 		       my_alloc_size * 10000);
 	}
 
