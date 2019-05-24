@@ -539,6 +539,10 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, VALUE_PAIR **vp
 		return vp;
 	}
 
+#ifndef NDEBUG
+	if (!da) return NULL;
+#endif
+
 	/*
 	 *	Untagged attributes can't have a tag.
 	 */
