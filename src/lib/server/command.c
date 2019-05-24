@@ -1650,6 +1650,8 @@ void fr_command_list(FILE *fp, int max_depth, fr_cmd_t *head, int options)
 	if ((max_depth <= 0) || !head) return;
 	if (max_depth > CMD_MAX_ARGV) max_depth = CMD_MAX_ARGV;
 
+	argv[0] = NULL;		/* not sure what argv is doing here... */
+
 	if ((options & FR_COMMAND_OPTION_LIST_CHILD) != 0) {
 		if (!head->child) {
 			rad_assert(head->func != NULL);
