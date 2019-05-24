@@ -5156,7 +5156,10 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				memcpy(&mutable, &vsa_da, sizeof(mutable));
 				new = dict_attr_alloc(mutable, ctx->parent, argv[1],
 						      vendor->pen, FR_TYPE_VENDOR, &flags);
-				dict_attr_child_add(mutable, new);
+				if (dict_attr_child_add(mutable, new) < 0) {
+					talloc_free(new);
+					goto error;
+				}
 
 				vendor_da = new;
 			}
