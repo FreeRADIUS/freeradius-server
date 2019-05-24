@@ -90,16 +90,17 @@ struct fr_pool_s {
 	uint32_t	max;			//!< Maximum number of concurrent connections to allow.
 	uint32_t	max_pending;		//!< Max number of pending connections to allow.
 	uint32_t	spare;			//!< Number of spare connections to try.
-	uint32_t	retry_delay;		//!< seconds to delay re-open after a failed open.
-	uint32_t	cleanup_interval; 	//!< Initial timer for how often we sweep the pool
-						//!< for free connections. (0 is infinite).
-	int		delay_interval;		//!< When we next do a cleanup.  Initialized to
-						//!< cleanup_interval, and increase from there based
-						//!< on the delay.
 	uint64_t	max_uses;		//!< Maximum number of times a connection can be used
 						//!< before being closed.
 	uint32_t	pending_window;		//!< Sliding window of pending connections.
-	uint32_t	lifetime;		//!< How long a connection can be open before being
+
+	fr_time_delta_t	retry_delay;		//!< seconds to delay re-open after a failed open.
+	fr_time_delta_t	cleanup_interval; 	//!< Initial timer for how often we sweep the pool
+						//!< for free connections. (0 is infinite).
+	fr_time_delta_t	delay_interval;		//!< When we next do a cleanup.  Initialized to
+						//!< cleanup_interval, and increase from there based
+						//!< on the delay.
+	fr_time_delta_t	lifetime;		//!< How long a connection can be open before being
 						//!< closed (irrespective of whether it's idle or not).
 	fr_time_delta_t	idle_timeout;		//!< How long a connection can be idle before
 						//!< being closed.
@@ -154,14 +155,13 @@ static const CONF_PARSER pool_config[] = {
 	{ FR_CONF_OFFSET("max_pending", FR_TYPE_UINT32, fr_pool_t, max_pending), .dflt = "0" },
 	{ FR_CONF_OFFSET("spare", FR_TYPE_UINT32, fr_pool_t, spare), .dflt = "3" },
 	{ FR_CONF_OFFSET("uses", FR_TYPE_UINT64, fr_pool_t, max_uses), .dflt = "0" },
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_pool_t, lifetime), .dflt = "0" },
-	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_UINT32, fr_pool_t, cleanup_interval) },
-	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_UINT32, fr_pool_t, cleanup_interval), .dflt = "30" },
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_UINT32, fr_pool_t, idle_timeout), .dflt = "60" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_TIME_DELTA, fr_pool_t, lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_TIME_DELTA, fr_pool_t, cleanup_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, fr_pool_t, idle_timeout), .dflt = "60" },
 	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, fr_pool_t, connect_timeout), .dflt = "3.0" },
 	{ FR_CONF_OFFSET("held_trigger_min", FR_TYPE_TIME_DELTA, fr_pool_t, held_trigger_min), .dflt = "0.0" },
 	{ FR_CONF_OFFSET("held_trigger_max", FR_TYPE_TIME_DELTA, fr_pool_t, held_trigger_max), .dflt = "0.5" },
-	{ FR_CONF_OFFSET("retry_delay", FR_TYPE_UINT32, fr_pool_t, retry_delay), .dflt = "1" },
+	{ FR_CONF_OFFSET("retry_delay", FR_TYPE_TIME_DELTA, fr_pool_t, retry_delay), .dflt = "1" },
 	{ FR_CONF_OFFSET("spread", FR_TYPE_BOOL, fr_pool_t, spread), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
