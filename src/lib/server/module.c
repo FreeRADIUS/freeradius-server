@@ -1038,14 +1038,9 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		if (!methods->name2 || (methods->name2 == CF_IDENT_ANY)) goto found_name2;
 
 		/*
-		 *	No name2 is also a match to no name2.
-		 */
-		if (!methods->name2 && !q) goto found_name2;
-
-		/*
 		 *	Don't do strcmp on NULLs
 		 */
-		if (!methods->name2 || !q) continue;
+		if (!methods->name2) continue;
 
 		if (strcmp(methods->name2, q) != 0) continue;
 
