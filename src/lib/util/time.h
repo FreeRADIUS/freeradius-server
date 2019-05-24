@@ -127,17 +127,11 @@ static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
 	return (delta / NSEC);
 }
 
-static inline void fr_time_delta_to_timeval(struct timeval *tv, fr_time_delta_t delta)
-{
-	tv->tv_sec = delta / NSEC;
-	tv->tv_usec = (delta % NSEC) / 1000;
-}
+#define fr_time_delta_to_timeval(_delta) \
+	(struct timeval){ .tv_sec = (_delta) / NSEC, .tv_usec = ((_delta) % NSEC) / 1000 }
 
-static inline void fr_time_delta_to_timespec(struct timespec *ts, fr_time_delta_t delta)
-{
-	ts->tv_sec = delta / NSEC;
-	ts->tv_nsec = delta % NSEC;
-}
+#define fr_time_delta_to_timespec(_delta) \
+	(struct timespec){ .tv_sec = (_delta) / NSEC, .tv_nsec = ((_delta) % NSEC) }
 
 /** Compare two fr_time_t values
  *

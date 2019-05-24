@@ -1503,7 +1503,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	 *	and when the event should occur.
 	 */
 	if (wake) {
-		fr_time_delta_to_timespec(&ts_when, when);
+		ts_when = fr_time_delta_to_timespec(when);
 		ts_wake = &ts_when;
 	} else {
 		ts_wake = NULL;

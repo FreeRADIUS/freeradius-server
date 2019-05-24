@@ -112,13 +112,7 @@ static int delay_add(REQUEST *request, fr_time_t *resume_at, fr_time_t now,
 	if (!force_reschedule && (*resume_at <= now)) return 1;
 
 	if (*resume_at > now) {
-		if (RDEBUG_ENABLED2) {
-			struct timeval	delayed_tv;
-
-			fr_time_delta_to_timeval(&delayed_tv, *resume_at - now);
-
-			RDEBUG2("Delaying request by ~%pVs", fr_box_timeval(delayed_tv));
-		}
+		RDEBUG2("Delaying request by ~%pVs", fr_box_time_delta(*resume_at - now));
 	} else {
 		RDEBUG2("Rescheduling request");
 	}
@@ -136,13 +130,7 @@ static rlm_rcode_t mod_delay_return(UNUSED void *instance, UNUSED void *thread, 
 	/*
 	 *	Print how long the delay *really* was.
 	 */
-	if (RDEBUG_ENABLED3) {
-		struct timeval	delayed_tv;
-
-		fr_time_delta_to_timeval(&delayed_tv, fr_time() - *yielded);
-
-		RDEBUG3("Request delayed by %pV", fr_box_timeval(delayed_tv));
-	}
+	RDEBUG3("Request delayed by %pV", fr_box_time_delta(fr_time() - *yielded));
 	talloc_free(yielded);
 
 	return RLM_MODULE_OK;
@@ -212,9 +200,9 @@ static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	delayed = fr_time() - *yielded_at;
 	talloc_free(yielded_at);
 
-	fr_time_delta_to_timeval(&delayed_tv, delayed);
+	delayed_tv = fr_time_delta_to_timeval(delayed);
 
-	RDEBUG3("Request delayed by %pVs", fr_box_timeval(delayed_tv));
+	RDEBUG3("Request delayed by %pVs", fr_box_time_delta(delayed));
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIMEVAL, NULL, false));
 	vb->vb_timeval = delayed_tv;

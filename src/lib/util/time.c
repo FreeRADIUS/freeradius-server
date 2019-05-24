@@ -170,7 +170,7 @@ fr_time_t fr_time(void)
  */
 void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
 {
-	fr_time_delta_to_timeval(tv, when + our_realtime);
+	*tv = fr_time_delta_to_timeval(when + our_realtime);
 }
 
 /** Convert a fr_time_t to a struct timeval.
@@ -180,7 +180,7 @@ void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
  */
 void fr_time_to_timespec(struct timespec *ts, fr_time_t when)
 {
-	fr_time_delta_to_timespec(ts, when + our_realtime);
+	*ts = fr_time_delta_to_timespec(when + our_realtime);
 }
 
 /** Convert an fr_time_t to number of usec since the unix epoch

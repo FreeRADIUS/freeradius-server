@@ -169,16 +169,14 @@ void main_loop_set_sd_watchdog_interval(void)
 	uint64_t interval_usec;
 
 	if (sd_watchdog_enabled(0, &interval_usec) > 0) {
-		struct timeval interval_tv;
 		/*
 		 *	Convert microseconds to nanoseconds
 		 *	and set the interval to be half what
 		 *	systemd uses as its timeout value.
 		 */
 		sd_watchdog_interval = ((interval_usec * 1000) / 2);
-		fr_time_delta_to_timeval(&interval_tv, sd_watchdog_interval);
 
-		INFO("systemd watchdog interval is %pV secs", fr_box_timeval(interval_tv));
+		INFO("systemd watchdog interval is %pVs", fr_box_time_delta(interval));
 	} else {
 		INFO("systemd watchdog is disabled");
 	}
