@@ -225,7 +225,7 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 {
 	rlm_delay_t const	*inst;
 	void			*instance;
-	struct timeval		delay_tv;
+	fr_time_delta_t		delay;
 	fr_time_t		resume_at, *yielded_at;
 
 	memcpy(&instance, xlat_inst, sizeof(instance));	/* Stupid const issues */
@@ -256,14 +256,13 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_timeval_from_str(&delay_tv, (*in)->vb_strvalue) < 0) {
+	if (fr_time_delta_from_str(&delay, (*in)->vb_strvalue, FR_TIME_RES_SEC) < 0) {
 		RPEDEBUG("Failed parsing delay time");
 		talloc_free(yielded_at);
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (delay_add(request, &resume_at, *yielded_at,
-		      fr_time_delta_from_timeval(&delay_tv), inst->force_reschedule, inst->relative) != 0) {
+	if (delay_add(request, &resume_at, *yielded_at, delay, inst->force_reschedule, inst->relative) != 0) {
 		RDEBUG2("Not adding delay");
 		talloc_free(yielded_at);
 		return XLAT_ACTION_DONE;
