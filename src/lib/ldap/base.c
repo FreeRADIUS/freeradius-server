@@ -398,8 +398,6 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 	fr_ldap_rcode_t	status = LDAP_PROC_SUCCESS;
 	int		lib_errno;
 
-	fr_time_delta_t	our_timeout;
-
 	LDAPMessage	*tmp_msg = NULL, *msg;	/* Temporary message pointer storage if we weren't provided with one */
 	LDAPMessage	**result_p = result;
 
