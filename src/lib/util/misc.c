@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/time.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -913,7 +914,6 @@ int fr_size_from_str(size_t *out, char const *str)
 	return 0;
 }
 
-#define NSEC 1000000000
 /** Subtract one timespec from another
  *
  * @param[out] out Where to write difference.
