@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 		       break;
 
 		case 't':
-			if (fr_time_delta_from_str(&conf->timeout, optarg, DATE_SEC) < 0) {
+			if (fr_time_delta_from_str(&conf->timeout, optarg, DATE_SECONDS) < 0) {
 				PERROR("Failed parsing timeout value");
 				exit(EXIT_FAILURE);
 			}
