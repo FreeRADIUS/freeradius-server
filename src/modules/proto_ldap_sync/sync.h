@@ -138,8 +138,8 @@ struct sync_config_s {
 
 	int				scope;
 	char const			*scope_str;		//!< Scope (sub, one, base).
-	uint32_t			size_limit;		//!< Maximum size of the entry to return.
-	struct timeval			time_limit;		//!< Time limit.
+	size_t				size_limit;		//!< Maximum size of the entry to return.
+	fr_time_delta_t			time_limit;		//!< Time limit.
 	bool				persist;		//!< Whether we do a search and persist, or periodic
 								//!< refreshes.
 	bool				allow_refresh;		//!< If false, we synthesize the cookie value
