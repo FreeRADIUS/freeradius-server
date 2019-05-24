@@ -98,8 +98,6 @@ struct main_config_s {
 
 	char const	*dict_dir;			//!< Where to load dictionaries from.
 
-	struct timeval	init_delay;			//!< Initial request processing delay.
-
 	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #REQUEST.
 
 	bool		write_pid;			//!< write the PID file

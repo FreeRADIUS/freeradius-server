@@ -1145,14 +1145,6 @@ do {\
 	INFO("Switching to configured log settings");
 
 	/*
-	 *	Set default initial request processing delay to 1/3 of a second.
-	 *	Will be updated by the lowest response window across all home servers,
-	 *	if it is less than this.
-	 */
-	config->init_delay.tv_sec = 0;
-	config->init_delay.tv_usec = 2* (1000000 / 3);
-
-	/*
 	 *	Free the old configuration items, and replace them
 	 *	with the new ones.
 	 *
