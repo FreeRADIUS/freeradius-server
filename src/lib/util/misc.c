@@ -498,7 +498,7 @@ int fr_blocking(UNUSED int fd)
  *	- Number of bytes written.
  *	- -1 on failure.
  */
-ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, struct timeval *timeout)
+ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t timeout)
 {
 	struct iovec *vector_p = vector;
 	ssize_t total = 0;
@@ -547,7 +547,7 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, struct timeval *tim
 
 			/* Don't let signals mess up the select */
 			do {
-				ret = select(fd + 1, NULL, &write_set, NULL, timeout);
+				ret = select(fd + 1, NULL, &write_set, NULL, &(fr_time_delta_to_timeval(timeout)));
 			} while ((ret == -1) && (errno == EINTR));
 
 			/* Select returned 0 which means it reached the timeout */
