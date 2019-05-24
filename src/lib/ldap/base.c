@@ -415,8 +415,6 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
 	if (lib_errno != LDAP_SUCCESS) return fr_ldap_error_check(NULL, conn, NULL, dn);
 
-	if (!timeout) our_timeout = conn->config->res_timeout;
-
 	/*
 	 *	Now retrieve the result and check for errors
 	 *	ldap_result returns -1 on failure, and 0 on timeout
