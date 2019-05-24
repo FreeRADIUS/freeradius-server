@@ -1269,7 +1269,7 @@ do_read:
 
 		} else if (inst->dynamic_clients) {
 			if (inst->max_clients && (fr_heap_num_elements(thread->alive_clients) >= inst->max_clients)) {
-				if (accept_fd <= 0) {
+				if (accept_fd < 0) {
 					DEBUG("proto_%s - ignoring packet from client IP address %pV - "
 					      "too many dynamic clients are defined",
 					      inst->app_io->name, fr_box_ipaddr(address.src_ipaddr));
