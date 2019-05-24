@@ -397,7 +397,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 {
 	fr_ldap_rcode_t	status = LDAP_PROC_SUCCESS;
 	int		lib_errno;
-	fr_time_delta_t	our_timeout;
+	fr_time_delta_t	our_timeout = timeout;
 
 	LDAPMessage	*tmp_msg = NULL, *msg;	/* Temporary message pointer storage if we weren't provided with one */
 	LDAPMessage	**result_p = result;
@@ -422,7 +422,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 	 *	Now retrieve the result and check for errors
 	 *	ldap_result returns -1 on failure, and 0 on timeout
 	 */
-	lib_errno = ldap_result(conn->handle, msgid, all, &fr_time_delta_to_timeval(timeout), result_p);
+	lib_errno = ldap_result(conn->handle, msgid, all, &fr_time_delta_to_timeval(our_timeout), result_p);
 	switch (lib_errno) {
 	case 0:
 		lib_errno = LDAP_TIMEOUT;
