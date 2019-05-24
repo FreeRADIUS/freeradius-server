@@ -1050,7 +1050,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 
 	fr_redis_cluster_state_t	state;
 	fr_redis_rcode_t		status;
-	struct timeval			now;
+	fr_time_t			now;
 
 	int				s_ret = REDIS_RCODE_SUCCESS;
 	REQUEST				*request;
@@ -1067,7 +1067,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 
 	MEM(replies = talloc_zero_array(inst, redisReply *, STATS_COMMANDS_TOTAL));
 
-	fr_time_to_timeval(&now, fr_time());
+	now = fr_time();
 
 	for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request, key, key_p - key, false);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;
@@ -1077,15 +1077,15 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 		redisAppendCommand(conn->handle, "MULTI");
 		redisAppendCommand(conn->handle, "ZCARD %b", key, key_p - key);		/* Total */
 		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
-				   key, key_p - key, now.tv_sec);			/* Free */
+				   key, key_p - key, fr_time_to_sec(now));		/* Free */
 		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
-				   key, key_p - key, now.tv_sec + 60);			/* Free in next 60s */
+				   key, key_p - key, fr_time_to_sec(now) + 60);		/* Free in next 60s */
 		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
-				   key, key_p - key, now.tv_sec + (60 * 30));		/* Free in next 30 mins */
+				   key, key_p - key, fr_time_to_sec(now) + (60 * 30));	/* Free in next 30 mins */
 		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
-				   key, key_p - key, now.tv_sec + (60 * 60));		/* Free in next 60 mins */
+				   key, key_p - key, fr_time_to_sec(now) + (60 * 60));	/* Free in next 60 mins */
 		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
-				   key, key_p - key, now.tv_sec + (60 * 60 * 24));	/* Free in next day */
+				   key, key_p - key, fr_time_to_sec(now) + (60 * 60 * 24));	/* Free in next day */
 		redisAppendCommand(conn->handle, "EXEC");
 		if (!replies) return -1;
 
