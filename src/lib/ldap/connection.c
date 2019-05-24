@@ -200,7 +200,6 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 {
 	LDAP				*handle = NULL;
 	int				ldap_errno, ldap_version;
-	struct timeval			tv;
 
 	rad_assert(config->server);
 
@@ -280,35 +279,29 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 	 *
 	 *	libldap requires tv_sec to be -1 to mean that.
 	 */
-	{
-		struct timeval ldap_timeout;
-
-		fr_timeval_from_nsec(&ldap_timeout, config->net_timeout);
-
-		if ((ldap_timeout.tv_usec == 0) && (ldap_timeout.tv_sec == 0)) ldap_timeout.tv_sec = -1;
-
-		do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout", &ldap_timeout);
-	}
+	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout",
+		       (config->net_timeout ? &fr_time_delta_to_timeval(config->net_timeout) :
+					      &(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
 #endif
 
-	fr_timeval_from_nsec(&tv, config->srv_timelimit);
-	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &tv);
+	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &fr_time_delta_to_timeval(config->srv_timelimit));
 
 	ldap_version = LDAP_VERSION3;
 	do_ldap_option(LDAP_OPT_PROTOCOL_VERSION, "ldap_version", &ldap_version);
 
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	fr_timeval_from_nsec(&tv, config->keepalive_idle);
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &tv);
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle",
+		       &fr_time_delta_to_timeval(config->keepalive_idle));
 #endif
 
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", &config->keepalive_probes);
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes",
+		       &fr_time_delta_to_timeval(config->keepalive_probes));
 #endif
 
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	fr_timeval_from_nsec(&tv, config->keepalive_interval);
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &tv);
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval",
+		       &fr_time_delta_to_timeval(config->keepalive_interval));
 #endif
 
 #ifdef HAVE_LDAP_START_TLS_S
@@ -500,15 +493,9 @@ int fr_ldap_connection_timeout_set(fr_ldap_connection_t const *c, fr_time_delta_
 	 *
 	 *	libldap requires tv_sec to be -1 to mean that.
 	 */
-	{
-		struct timeval ldap_timeout;
-
-		fr_timeval_from_nsec(&ldap_timeout, timeout);
-
-		if ((ldap_timeout.tv_usec == 0) && (ldap_timeout.tv_sec == 0)) ldap_timeout.tv_sec = -1;
-
-		do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout", &ldap_timeout);
-	}
+	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout",
+		       (timeout ? &fr_time_delta_to_timeval(timeout) :
+				  &(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
 #endif
 
 	return 0;
@@ -530,15 +517,9 @@ int fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *c)
 	 *
 	 *	libldap requires tv_sec to be -1 to mean that.
 	 */
-	{
-		struct timeval ldap_timeout;
-
-		fr_timeval_from_nsec(&ldap_timeout, c->config->net_timeout);
-
-		if ((ldap_timeout.tv_usec == 0) && (ldap_timeout.tv_sec == 0)) ldap_timeout.tv_sec = -1;
-
-		do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout", &ldap_timeout);
-	}
+	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout",
+		       (c->config->net_timeout ? &fr_time_delta_to_timeval(c->config->net_timeout) :
+						 &(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
 #endif
 
 	return 0;
