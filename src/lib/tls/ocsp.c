@@ -271,9 +271,8 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 	int		reason;
 	OCSP_REQ_CTX	*ctx;
 	int		rc;
-	struct timeval	when;
-	struct timeval	now = { 0, 0 };
-	time_t		next;
+
+	fr_time_t	start;
 	VALUE_PAIR	*vp;
 
 	if (conf->cache_server) switch (tls_cache_process(request, conf->cache.load)) {
@@ -438,14 +437,11 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		goto finish;
 	}
 
-	fr_time_to_timeval(&when, fr_time());
-	when.tv_sec += conf->timeout;
-
+	start = fr_time();
 	do {
 		rc = OCSP_sendreq_nbio(&resp, ctx);
 		if (conf->timeout) {
-			fr_time_to_timeval(&now, fr_time());
-			if (fr_timeval_cmp(&now, &when) >= 0) break;
+			if (conf->timeout > (fr_time() - start)) break;
 		}
 	} while ((rc == -1) && BIO_should_retry(conn));
 
@@ -532,21 +528,25 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 	 *	next_update is NULL.
 	 */
 	if (next_update) {
+		fr_time_t	now;
+		time_t		next;
+
 		/*
 		 *	Sometimes we already know what 'now' is depending
 		 *	on the code path, other times we don't.
 		 */
-		if (now.tv_sec == 0) fr_time_to_timeval(&now, fr_time());
+		now = fr_time();
+
 		if (tls_utils_asn1time_to_epoch(&next, next_update) < 0) {
 			RPEDEBUG("Failed parsing next_update time");
 			ocsp_status = OCSP_STATUS_SKIPPED;
 			goto finish;
 		}
-		if (now.tv_sec < next){
+		if (fr_time_to_sec(now) < next){
 			RDEBUG2("Adding OCSP TTL attribute");
 
 			MEM(pair_update_request(&vp, attr_tls_ocsp_next_update) >= 0);
-			vp->vp_uint32 = next - now.tv_sec;
+			vp->vp_uint32 = next - fr_time_to_sec(now);
 			RINDENT();
 			RDEBUG2("&%pP", vp);
 			REXDENT();
