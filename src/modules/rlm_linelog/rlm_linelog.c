@@ -452,8 +452,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	linelog_conn_t		*conn;
-	struct timeval		*timeout = NULL, tv;
-
+	fr_time_delta_t		timeout = 0;
 	char			buff[4096];
 
 	char			*p = buff;
@@ -683,15 +682,13 @@ build_vector:
 
 	case LINELOG_DST_UNIX:
 		if (inst->unix_sock.timeout) {
-			timeout = &tv;
-			fr_timeval_from_nsec(timeout, inst->unix_sock.timeout);
+			timeout = inst->unix_sock.timeout;
 		}
 		goto do_write;
 
 	case LINELOG_DST_UDP:
 		if (inst->udp.timeout) {
-			timeout = &tv;
-			fr_timeval_from_nsec(timeout, inst->udp.timeout);
+			timeout = inst->udp.timeout;
 		}
 		goto do_write;
 
@@ -699,8 +696,7 @@ build_vector:
 	{
 		int i, num;
 		if (inst->tcp.timeout) {
-			timeout = &tv;
-			fr_timeval_from_nsec(timeout, inst->tcp.timeout);
+			timeout = inst->tcp.timeout;
 		}
 
 	do_write:
